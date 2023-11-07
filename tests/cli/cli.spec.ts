@@ -26,6 +26,7 @@ suite(__filename, () => {
         "bigquery",
         projectDir,
         "--skip-install",
+        "true",
         "--default-database",
         "dataform-integration-tests",
         "--default-location",

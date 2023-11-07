@@ -46,7 +46,7 @@ export function main(encodedCoreExecutionRequest: string): string {
   // Require "includes/*.js" files, attaching them (by file basename) to the `global` object.
   // We delay attaching them to `global` until after all have been required, to prevent
   // "includes" files from implicitly depending on other "includes" files.
-  const topLevelIncludes: {[key: string]: any} = {};
+  const topLevelIncludes: { [key: string]: any } = {};
   compileRequest.compileConfig.filePaths
     .filter(path => path.startsWith(`includes${utils.pathSeperator}`))
     .filter(path => path.split(utils.pathSeperator).length === 2) // Only include top-level "includes" files.

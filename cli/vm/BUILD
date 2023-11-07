@@ -14,7 +14,9 @@ ts_library(
         "//protos:ts",
         "@npm//@types/glob",
         "@npm//@types/node",
+        "@npm//@types/semver",
         "@npm//glob",
+        "@npm//semver",
         "@npm//vm2",
     ],
 )
