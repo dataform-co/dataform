@@ -1,3 +1,4 @@
+import { decode64, encode64 } from "df/common/protos";
 import { Session } from "df/core/session";
 import * as utils from "df/core/utils";
 import { dataform } from "df/protos/ts";
@@ -8,11 +9,18 @@ import { dataform } from "df/protos/ts";
  * @param coreExecutionRequest an encoded {@see dataform.CoreExecutionRequest} proto.
  * @returns an encoded {@see dataform.CoreExecutionResponse} proto.
  */
-export function main(coreExecutionRequest: Uint8Array): Uint8Array {
+export function main(coreExecutionRequest: Uint8Array | string): Uint8Array | string {
   const globalAny = global as any;
 
-  const request = dataform.CoreExecutionRequest.decode(coreExecutionRequest).compile;
-  const compileRequest = request;
+  let request: dataform.CoreExecutionRequest;
+  if (typeof coreExecutionRequest === "string") {
+    // Legacy versions of Dataform core use a base64 encoded string.
+    // See https://github.com/dataform-co/dataform/pull/1570.
+    request = decode64(dataform.CoreExecutionRequest, coreExecutionRequest);
+  } else {
+    request = dataform.CoreExecutionRequest.decode(coreExecutionRequest);
+  }
+  const compileRequest = request.compile;
 
   // Read the project config from the root of the project.
   const originalProjectConfig = require("dataform.json");
@@ -79,6 +87,15 @@ export function main(coreExecutionRequest: Uint8Array): Uint8Array {
         session.compileError(e, definitionPath);
       }
     });
+
+  if (typeof coreExecutionRequest === "string") {
+    // Legacy versions of Dataform core use a base64 encoded string.
+    // See https://github.com/dataform-co/dataform/pull/1570.
+    return encode64(
+      dataform.CoreExecutionResponse,
+      dataform.CoreExecutionResponse.create({ compile: { compiledGraph: session.compile() } })
+    );
+  }
 
   return dataform.CoreExecutionResponse.encode(
     dataform.CoreExecutionResponse.create({
