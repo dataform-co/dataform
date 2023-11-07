@@ -3,7 +3,6 @@ import * as path from "path";
 import * as semver from "semver";
 import { CompilerFunction, NodeVM } from "vm2";
 
-import { createCoreExecutionRequest } from "df/cli/vm/create_config";
 import { encode64 } from "df/common/protos";
 import { dataform } from "df/protos/ts";
 
@@ -41,19 +40,17 @@ export function compile(compileConfig: dataform.ICompileConfig) {
     compiler
   });
 
-  // const dataformCoreVersion: string = runDataformCoreVmScript(
-  //   userCodeVm,
-  //   vmIndexFileName,
-  //   'return require("@dataform/core").version || "0.0.0"'
-  //   // "return '3.0.0'"
-  // );
-  // console.log("🚀 ~ file: compile.ts:50 ~ compile ~ dataformCoreVersion:", dataformCoreVersion);
-  // if (semver.lt(dataformCoreVersion, "3.0.0")) {
-  //   return new Error(
-  //     "Version 3.0.0 and later of @dataform/cli only supports version 3.0.0 and later of" +
-  //       "@dataform/core."
-  //   );
-  // }
+  const dataformCoreVersion: string = runDataformCoreVmScript(
+    userCodeVm,
+    vmIndexFileName,
+    'return require("@dataform/core").version || "0.0.0"'
+  );
+  if (semver.lt(dataformCoreVersion, "3.0.0")) {
+    throw new Error(
+      "Version 3.0.0 and later of @dataform/cli only supports version 3.0.0 and later of" +
+        "@dataform/core."
+    );
+  }
 
   return runDataformCoreVmScript(
     userCodeVm,
@@ -108,7 +105,7 @@ if (require.main === module) {
 /**
  * @returns a base64 encoded {@see dataform.CoreExecutionRequest} proto.
  */
-export function createCoreExecutionRequest(compileConfig: dataform.ICompileConfig): string {
+function createCoreExecutionRequest(compileConfig: dataform.ICompileConfig): string {
   const filePaths = Array.from(
     new Set<string>(glob.sync("!(node_modules)/**/*.*", { cwd: compileConfig.projectDir }))
   );
