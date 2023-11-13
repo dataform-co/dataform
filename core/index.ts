@@ -3,7 +3,8 @@ import { compile as compiler, compileStandaloneSqlxQuery } from "df/core/compile
 import { genIndex as indexFileGenerator } from "df/core/gen_index";
 import { main } from "df/core/main";
 import { Session } from "df/core/session";
-import { version as dataformCoreVersion } from "df/core/version";
+import { version } from "df/core/version";
+import { dataform } from "df/protos/ts";
 
 // Create static session object.
 // This hack just enforces the singleton session object to
@@ -16,19 +17,17 @@ function globalSession() {
 }
 const session = globalSession();
 
-const supportedFeatures = {
-  arrayBufferIPC: true
-};
+const supportedFeatures = [dataform.SupportedFeatures.ARRAY_BUFFER_IPC];
 
 // These exports constitute the public API of @dataform/core.
 // Changes to these will break @dataform/api, so take care!
 export {
   adapters,
-  dataformCoreVersion,
-  indexFileGenerator,
   compiler,
-  main,
   compileStandaloneSqlxQuery,
+  indexFileGenerator,
+  main,
   session,
-  supportedFeatures
+  supportedFeatures,
+  version
 };

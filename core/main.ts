@@ -14,7 +14,7 @@ export function main(coreExecutionRequest: Uint8Array | string): Uint8Array | st
 
   let request: dataform.CoreExecutionRequest;
   if (typeof coreExecutionRequest === "string") {
-    // Legacy versions of Dataform core use a base64 encoded string.
+    // Older versions of the Dataform CLI send a base64 encoded string.
     // See https://github.com/dataform-co/dataform/pull/1570.
     request = decode64(dataform.CoreExecutionRequest, coreExecutionRequest);
   } else {
@@ -88,18 +88,15 @@ export function main(coreExecutionRequest: Uint8Array | string): Uint8Array | st
       }
     });
 
+  const coreExecutionResponse = dataform.CoreExecutionResponse.create({
+    compile: { compiledGraph: session.compile() }
+  });
+
   if (typeof coreExecutionRequest === "string") {
-    // Legacy versions of Dataform core use a base64 encoded string.
+    // Older versions of the Dataform CLI expect a base64 encoded string to be returned.
     // See https://github.com/dataform-co/dataform/pull/1570.
-    return encode64(
-      dataform.CoreExecutionResponse,
-      dataform.CoreExecutionResponse.create({ compile: { compiledGraph: session.compile() } })
-    );
+    return encode64(dataform.CoreExecutionResponse, coreExecutionResponse);
   }
 
-  return dataform.CoreExecutionResponse.encode(
-    dataform.CoreExecutionResponse.create({
-      compile: { compiledGraph: session.compile() }
-    })
-  ).finish();
+  return dataform.CoreExecutionResponse.encode(coreExecutionResponse).finish();
 }

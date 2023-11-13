@@ -319,3 +319,10 @@ message CompileExecutionRequest {
 message CompileExecutionResponse {
   CompiledGraph compiled_graph = 1;
 }
+
+// This feature list is added to when making potentilly backwards breaking changes. It lets the
+// caller of Dataform Core know whether it supports the change.
+enum SupportedFeatures {
+  UNKNOWN_FEATURE = 0;
+  ARRAY_BUFFER_IPC = 1;
+}
