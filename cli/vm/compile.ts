@@ -46,10 +46,7 @@ export function compile(compileConfig: dataform.ICompileConfig) {
     'return require("@dataform/core").version || "0.0.0"'
   );
   if (semver.lt(dataformCoreVersion, "3.0.0")) {
-    throw new Error(
-      "Version 3.0.0 and later of @dataform/cli only supports version 3.0.0 and later of" +
-        "@dataform/core."
-    );
+    throw new Error("@dataform/core ^3.0.0 required.");
   }
 
   return runDataformCoreVmScript(
