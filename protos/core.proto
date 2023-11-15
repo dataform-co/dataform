@@ -56,10 +56,7 @@ message CompileConfig {
   // Override compilation timeout settings.
   int32 timeout_millis = 6;
 
-  // Whether to use the new main function instead of gen index.
-  bool use_main = 9;
-
-  reserved 2, 4, 5, 7;
+  reserved 2, 4, 5, 7, 9;
 }
 
 message Target {
@@ -290,4 +287,96 @@ message CompileExecutionRequest {
 
 message CompileExecutionResponse {
   CompiledGraph compiled_graph = 1;
+}
+
+// This feature list is added to when making potentilly backwards breaking
+// changes. It lets the caller of Dataform Core know whether it supports the
+// change.
+enum SupportedFeatures {
+  UNKNOWN_FEATURE = 0;
+  ARRAY_BUFFER_IPC = 1;
+}
+
+message ActionConfigs {
+  repeated ActionConfig actions = 1;
+}
+
+message ActionConfig {
+  // Target is a unique action identifier.
+  Target target = 1;
+
+  // A list of user-defined tags with which the action should be labeled.
+  repeated string tags = 2;
+
+  // Targets of actions that this action is dependent on.
+  repeated Target dependency_targets = 3;
+
+  // Type specific configs. Must correspond to the declared type.
+  oneof action_config {
+    TableConfig table = 4;
+    ViewConfig view = 5;
+    IncrementalTableConfig incremental_table = 6;
+    AssertionConfig assertion = 7;
+    OperationConfig operation = 8;
+    DeclarationConfig declaration = 9;
+    NotebookConfig notebook = 10;
+  }
+}
+
+// Configuration options for BigQuery tables.
+message TableConfig {
+  // If set to true, this action will not be executed. However, the action may
+  // still be depended upon.
+  bool disabled = 1;
+}
+
+// Configuration options for BigQuery views.
+message ViewConfig {
+  // If set to true, this action will not be executed. However, the action may
+  // still be depended upon.
+  bool disabled = 1;
+
+  // If set to true, will make the view materialized.
+  // For more information, read the [BigQuery materialized view
+  // docs](https://cloud.google.com/bigquery/docs/materialized-views-intro).
+  bool materialized = 2;
+}
+
+// Configuration options for BigQuery incremental tables.
+message IncrementalTableConfig {
+  // If set to true, this action will not be executed. However, the action may
+  // still be depended upon.
+  bool disabled = 1;
+}
+
+// Configuration options for BigQuery table assertions.
+message AssertionConfig {
+  // If set to true, this action will not be executed. However, the action may
+  // still be depended upon.
+  bool disabled = 1;
+}
+
+// Configuration options for BigQuery table opertions.
+message OperationConfig {
+  // If set to true, this action will not be executed. However, the action may
+  // still be depended upon.
+  bool disabled = 1;
+
+  // Declares that this `operations` action creates a dataset which should be
+  // referenceable using the `ref` function.
+  bool has_output = 2;
+}
+
+// Configuration options for BigQuery table declarations.
+// TODO(ekrekr): remove this empty message, if explicit action type without a
+// `type` field proves to be impossible / ugly.
+message DeclarationConfig {}
+
+// Configuration options for Vertex AI notebooks.
+message NotebookConfig {
+  // If set to true, this action will not be executed. However, the action may
+  // still be depended upon.
+  bool disabled = 1;
+
+  // TODO(ekrekr): add a notebook runtime field definition.
 }
