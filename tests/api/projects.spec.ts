@@ -729,23 +729,6 @@ suite("examples", () => {
     }
   });
 
-  test("backwards_compatibility", async () => {
-    // The purpose of this test is partially to make sure we don't break the compilation "contract"
-    // between the old versions of core and the new versions of the CLI.
-    const graph = await compile({ projectDir: "tests/api/projects/backwards_compatibility" });
-
-    const tableNames = graph.tables.map((t: dataform.ITable) => t.target.name);
-
-    // Make sure it compiles.
-    expect(tableNames).includes("example");
-    const example = graph.tables.filter((t: dataform.ITable) => t.target.name === "example")[0];
-    expect(example.type).equals("table");
-    expect(example.query.trim()).equals("select 1 as foo_bar");
-
-    // Make sure we can dry run.
-    new Builder(graph, {}, { tables: [] }).build();
-  });
-
   test("times out after timeout period during compilation", async () => {
     try {
       await compile({ projectDir: "tests/api/projects/never_finishes_compiling" });

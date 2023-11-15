@@ -1,10 +1,8 @@
-import * as compilers from "df/core/compilers";
+import { compile as compiler } from "df/core/compilers";
+import { main } from "df/core/main";
 import { Session } from "df/core/session";
-
-// These exports constitute the public API of @dataform/core.
-// Changes to these will break @dataform/api, so take care!
-export const compiler = compilers.compile;
-export { main } from "df/core/main";
+import { version } from "df/core/version";
+import { dataform } from "df/protos/ts";
 
 // Create static session object.
 // This hack just enforces the singleton session object to
@@ -15,4 +13,10 @@ function globalSession() {
   }
   return (global as any)._DF_SESSION as Session;
 }
-export const session = globalSession();
+const session = globalSession();
+
+const supportedFeatures = [dataform.SupportedFeatures.ARRAY_BUFFER_IPC];
+
+// These exports constitute the public API of @dataform/core.
+// Changes to these will break @dataform/api, so take care!
+export { compiler, main, session, supportedFeatures, version };
