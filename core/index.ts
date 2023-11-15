@@ -1,6 +1,7 @@
 import * as compilers from "df/core/compilers";
 import { genIndex } from "df/core/gen_index";
 import { Session } from "df/core/session";
+import { getWorkflowSettings } from "df/core/workflow_settings";
 
 // These exports constitute the public API of @dataform/core.
 // Changes to these will break @dataform/api, so take care!
@@ -18,3 +19,5 @@ function globalSession() {
   return (global as any)._DF_SESSION as Session;
 }
 export const session = globalSession();
+
+export { getWorkflowSettings };
