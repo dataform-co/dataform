@@ -17,9 +17,15 @@ ts_library(
         "//common/strings",
         "//core",
         "//protos:ts",
+<<<<<<< HEAD:cli/api/BUILD
         "//cli/vm:compile_loader",
         "//sqlx:lexer",
         "//cli/vm:vm",
+=======
+        "//sandbox/vm:compile_loader",
+        "//sqlx:lexer",
+        "//sandbox/vm:vm",
+>>>>>>> main:api/BUILD
         "@npm//@google-cloud/bigquery",
         "@npm//@types/glob",
         "@npm//@types/js-beautify",

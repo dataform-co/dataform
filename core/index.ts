@@ -1,12 +1,10 @@
-import * as compilers from "df/core/compilers";
-import { genIndex } from "df/core/gen_index";
+import * as adapters from "df/core/adapters";
+import { compile as compiler, compileStandaloneSqlxQuery } from "df/core/compilers";
+import { genIndex as indexFileGenerator } from "df/core/gen_index";
+import { main } from "df/core/main";
 import { Session } from "df/core/session";
-
-// These exports constitute the public API of @dataform/core.
-// Changes to these will break @dataform/api, so take care!
-export const indexFileGenerator = genIndex;
-export const compiler = compilers.compile;
-export { main } from "df/core/main";
+import { version } from "df/core/version";
+import { dataform } from "df/protos/ts";
 
 // Create static session object.
 // This hack just enforces the singleton session object to
@@ -17,7 +15,19 @@ function globalSession() {
   }
   return (global as any)._DF_SESSION as Session;
 }
-export const session = globalSession();
+const session = globalSession();
 
-// Used by generated index.js file.
-export const compileStandaloneSqlxQuery = compilers.compileStandaloneSqlxQuery;
+const supportedFeatures = [dataform.SupportedFeatures.ARRAY_BUFFER_IPC];
+
+// These exports constitute the public API of @dataform/core.
+// Changes to these will break @dataform/api, so take care!
+export {
+  adapters,
+  compiler,
+  compileStandaloneSqlxQuery,
+  indexFileGenerator,
+  main,
+  session,
+  supportedFeatures,
+  version
+};
