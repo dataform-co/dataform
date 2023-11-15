@@ -14,11 +14,6 @@ expand_template(
     template = "version.ts.tmpl",
 )
 
-filegroup(
-    name = "files",
-    srcs = glob(["**/*.*"]) + [":version.ts"],
-)
-
 ts_library(
     name = "core",
     srcs = [
@@ -26,10 +21,7 @@ ts_library(
         "column_descriptors.ts",
         "common.ts",
         "compilers.ts",
-        # TODO(ekrekr): move this to its own build folder.
-        "compilation_sql/index.ts",
         "declaration.ts",
-        "gen_index.ts",
         "index.ts",
         "main.ts",
         "operation.ts",
@@ -43,6 +35,7 @@ ts_library(
         ":version.ts",
     ],
     deps = [
+        "//core/compilation_sql",
         "//common/errors",
         "//common/protos",
         "//common/strings",
@@ -53,6 +46,13 @@ ts_library(
         "@npm//protobufjs",
         "@npm//semver",
         "@npm//tarjan-graph",
+
+        "@npm//@types/js-yaml",
+        "@npm//js-yaml",
+        
+
+        "@npm//@types/fs-extra",
+        "@npm//fs-extra",
     ],
 )
 

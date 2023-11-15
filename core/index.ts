@@ -3,7 +3,7 @@ import { main } from "df/core/main";
 import { Session } from "df/core/session";
 import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
-import { getWorkflowSettings } from "df/core/workflow_settings";
+import { readWorkflowSettings } from "df/core/workflow_settings";
 
 // Create static session object.
 // This hack just enforces the singleton session object to
@@ -20,4 +20,4 @@ const supportedFeatures = [dataform.SupportedFeatures.ARRAY_BUFFER_IPC];
 
 // These exports constitute the public API of @dataform/core.
 // Changes to these will break @dataform/api, so take care!
-export { compiler, main, session, supportedFeatures, version };
+export { compiler, main, readWorkflowSettings, session, supportedFeatures, version };
