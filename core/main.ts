@@ -79,6 +79,7 @@ export function main(coreExecutionRequest: Uint8Array | string): Uint8Array | st
   compileRequest.compileConfig.filePaths
     .filter(path => path.startsWith(`definitions${utils.pathSeperator}`))
     .filter(path => path.endsWith(".js") || path.endsWith(".sqlx"))
+    .sort()
     .forEach(definitionPath => {
       try {
         // tslint:disable-next-line: tsr-detect-non-literal-require

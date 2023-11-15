@@ -1,5 +1,4 @@
 import { compile as compiler } from "df/core/compilers";
-import { genIndex as indexFileGenerator } from "df/core/gen_index";
 import { main } from "df/core/main";
 import { Session } from "df/core/session";
 import { version } from "df/core/version";
@@ -20,4 +19,4 @@ const supportedFeatures = [dataform.SupportedFeatures.ARRAY_BUFFER_IPC];
 
 // These exports constitute the public API of @dataform/core.
 // Changes to these will break @dataform/api, so take care!
-export { compiler, indexFileGenerator, main, session, supportedFeatures, version };
+export { compiler, main, session, supportedFeatures, version };

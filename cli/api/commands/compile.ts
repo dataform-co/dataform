@@ -42,27 +42,10 @@ export async function compile(
     );
   }
 
-  if (compileConfig.useMain === null || compileConfig.useMain === undefined) {
-    try {
-      const packageJson = JSON.parse(
-        fs.readFileSync(`${compileConfig.projectDir}/package.json`, "utf8")
-      );
-      const dataformCoreVersion = packageJson.dependencies["@dataform/core"];
-      compileConfig.useMain = semver.subset(dataformCoreVersion, ">=2.0.4");
-    } catch (e) {
-      // Silently catch any thrown Error. Do not attempt to use `main` compilation.
-    }
-  }
-
   const result = await CompileChildProcess.forkProcess().compile(compileConfig);
 
-  let compileResult: dataform.CompiledGraph;
-  if (compileConfig.useMain) {
-    const decodedResult = decode64(dataform.CoreExecutionResponse, result);
-    compileResult = dataform.CompiledGraph.create(decodedResult.compile.compiledGraph);
-  } else {
-    compileResult = decode64(dataform.CompiledGraph, result);
-  }
+  const decodedResult = decode64(dataform.CoreExecutionResponse, result);
+  const compileResult = dataform.CompiledGraph.create(decodedResult.compile.compiledGraph);
 
   compileResult.tables.forEach(setOrValidateTableEnumType);
   return compileResult;

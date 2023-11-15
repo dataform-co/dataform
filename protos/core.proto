@@ -56,10 +56,7 @@ message CompileConfig {
   // Override compilation timeout settings.
   int32 timeout_millis = 6;
 
-  // Whether to use the new main function instead of gen index.
-  bool use_main = 9;
-
-  reserved 2, 4, 5, 7;
+  reserved 2, 4, 5, 7, 9;
 }
 
 message Target {
