@@ -14,14 +14,12 @@ ts_library(
 )
 
 externals = [
+    "js-yaml",
     "protobufjs",
     "tarjan-graph",
     "semver",
     "moo",
     "long",
-
-    "fs-extra",
-    "js-yaml",
 ]
 
 pkg_json(

@@ -31,30 +31,26 @@ ts_library(
         "targets.ts",
         "tasks.ts",
         "test.ts",
-        "types.d.ts",
         "utils.ts",
         "workflow_settings.ts",
         ":version.ts",
     ],
     deps = [
-        "//core/compilation_sql",
         "//common/errors",
         "//common/protos",
         "//common/strings",
+        "//core/compilation_sql",
         "//protos:ts",
         "//sqlx:lexer",
+        "@npm//@types/fs-extra",
+        "@npm//@types/js-yaml",
         "@npm//@types/node",
         "@npm//@types/semver",
+        "@npm//fs-extra",
+        "@npm//js-yaml",
         "@npm//protobufjs",
         "@npm//semver",
         "@npm//tarjan-graph",
-
-        "@npm//@types/js-yaml",
-        "@npm//js-yaml",
-        
-
-        "@npm//@types/fs-extra",
-        "@npm//fs-extra",
     ],
 )
 
@@ -68,17 +64,15 @@ ts_test_suite(
     ],
     deps = [
         ":core",
+        "//common/protos",
         "//protos:ts",
         "//testing",
+        "//tests/utils",
         "@npm//@types/chai",
-        "//common/protos",
         "@npm//@types/fs-extra",
         "@npm//@types/node",
         "@npm//chai",
         "@npm//fs-extra",
-
-
-        "//tests/utils",
         "@npm//vm2",
     ],
 )
