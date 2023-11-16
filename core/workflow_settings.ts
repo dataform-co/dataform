@@ -23,7 +23,7 @@ export function readWorkflowSettings(projectDir: string): dataform.ProjectConfig
   }
 
   if (workflowSettingsFileExists) {
-    const workflowSettingsAsJson = require(workflowSettingsPath);
+    const workflowSettingsAsJson = require(workflowSettingsPath).asJson();
     verifyWorkflowSettingsAsJson(workflowSettingsAsJson);
     return dataform.ProjectConfig.create(workflowSettingsAsJson);
   }

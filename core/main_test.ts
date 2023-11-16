@@ -8,15 +8,17 @@ import { TmpDirFixture } from "df/testing/fixtures";
 import { expect } from "chai";
 import { CompilerFunction, NodeVM } from "vm2";
 import { decode64, encode64 } from "df/common/protos";
+import { asPlainObject } from "df/tests/utils";
 
 const VALID_WORKFLOW_SETTINGS_YAML = `
 warehouse: bigquery
-defaultLocation: US
+defaultDatabase: dataform
 `;
 
 const VALID_DATAFORM_JSON = `
 {
-  "warehouse": "bigquery"
+  "warehouse": "bigquery",
+  "defaultDatabase": "dataform"
 }
 `;
 
@@ -35,73 +37,83 @@ suite("@dataform/core", ({ beforeEach, afterEach }) => {
       });
 
       const result = runMainInVm(coreExecutionRequest);
-      expect(result.compile.compiledGraph.projectConfig).deep.equals({
-        warehouse: "bigquery",
-        defaultLocation: "US"
-      });
+
+      expect(asPlainObject(result.compile.compiledGraph.projectConfig)).deep.equals(
+        asPlainObject({
+          warehouse: "bigquery",
+          defaultDatabase: "dataform"
+        })
+      );
     });
 
-    // // dataform.json for workflow settings is deprecated, but still currently supported.
-    // test(`main succeeds when a valid dataform.json is present`, () => {
-    //   const projectDir = tmpDirFixture.createNewTmpDir();
-    //   fs.writeFileSync(path.join(projectDir, "dataform.json"), VALID_DATAFORM_JSON);
-    //   const coreExecutionRequest = dataform.CoreExecutionRequest.create({
-    //     compile: { compileConfig: { projectDir } }
-    //   });
+    // dataform.json for workflow settings is deprecated, but still currently supported.
+    test(`main succeeds when a valid dataform.json is present`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(path.join(projectDir, "dataform.json"), VALID_DATAFORM_JSON);
+      const coreExecutionRequest = dataform.CoreExecutionRequest.create({
+        compile: { compileConfig: { projectDir } }
+      });
 
-    //   runMainInVm(coreExecutionRequest);
-    // });
+      const result = runMainInVm(coreExecutionRequest);
 
-    // test(`main fails when no workflow settings file is present`, () => {
-    //   const projectDir = tmpDirFixture.createNewTmpDir();
-    //   const coreExecutionRequest = dataform.CoreExecutionRequest.create({
-    //     compile: { compileConfig: { projectDir } }
-    //   });
+      expect(asPlainObject(result.compile.compiledGraph.projectConfig)).deep.equals(
+        asPlainObject({
+          warehouse: "bigquery",
+          defaultDatabase: "dataform"
+        })
+      );
+    });
 
-    //   expect(() => runMainInVm(coreExecutionRequest)).to.throw(
-    //     "Failed to resolve workflow_settings.yaml"
-    //   );
-    // });
+    test(`main fails when no workflow settings file is present`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      const coreExecutionRequest = dataform.CoreExecutionRequest.create({
+        compile: { compileConfig: { projectDir } }
+      });
 
-    // test(`main fails when both workflow settings and dataform.json files are present`, () => {
-    //   const projectDir = tmpDirFixture.createNewTmpDir();
-    //   fs.writeFileSync(path.join(projectDir, "dataform.json"), VALID_DATAFORM_JSON);
-    //   fs.writeFileSync(
-    //     path.join(projectDir, "workflow_settings.yaml"),
-    //     VALID_WORKFLOW_SETTINGS_YAML
-    //   );
-    //   const coreExecutionRequest = dataform.CoreExecutionRequest.create({
-    //     compile: { compileConfig: { projectDir } }
-    //   });
+      expect(() => runMainInVm(coreExecutionRequest)).to.throw(
+        "Failed to resolve workflow_settings.yaml"
+      );
+    });
 
-    //   expect(() => runMainInVm(coreExecutionRequest)).to.throw(
-    //     "dataform.json has been deprecated and cannot be defined alongside workflow_settings.yaml"
-    //   );
-    // });
+    test(`main fails when both workflow settings and dataform.json files are present`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(path.join(projectDir, "dataform.json"), VALID_DATAFORM_JSON);
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      const coreExecutionRequest = dataform.CoreExecutionRequest.create({
+        compile: { compileConfig: { projectDir } }
+      });
 
-    // test(`main fails when workflow_settings.yaml is an invalid yaml file`, () => {
-    //   const projectDir = tmpDirFixture.createNewTmpDir();
-    //   fs.writeFileSync(path.join(projectDir, "workflow_settings.yaml"), "doubleColon::");
-    //   const coreExecutionRequest = dataform.CoreExecutionRequest.create({
-    //     compile: { compileConfig: { projectDir } }
-    //   });
+      expect(() => runMainInVm(coreExecutionRequest)).to.throw(
+        "dataform.json has been deprecated and cannot be defined alongside workflow_settings.yaml"
+      );
+    });
 
-    //   expect(() => runMainInVm(coreExecutionRequest)).to.throw(
-    //     "dataform.json has been deprecated and cannot be defined alongside workflow_settings.yaml"
-    //   );
-    // });
+    test(`main fails when workflow_settings.yaml is an invalid yaml file`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(path.join(projectDir, "workflow_settings.yaml"), "&*19132sdS:asd:");
+      const coreExecutionRequest = dataform.CoreExecutionRequest.create({
+        compile: { compileConfig: { projectDir } }
+      });
 
-    // test(`main fails when dataform.json is an invalid json file`, () => {
-    //   const projectDir = tmpDirFixture.createNewTmpDir();
-    //   fs.writeFileSync(path.join(projectDir, "dataform.json"), '{keyWithNoQuotes: "validValue"}');
-    //   const coreExecutionRequest = dataform.CoreExecutionRequest.create({
-    //     compile: { compileConfig: { projectDir } }
-    //   });
+      expect(() => runMainInVm(coreExecutionRequest)).to.throw(
+        "workflow_settings.yaml contains invalid fields"
+      );
+    });
 
-    //   expect(() => runMainInVm(coreExecutionRequest)).to.throw(
-    //     "Unexpected token k in JSON at position 1"
-    //   );
-    // });
+    test(`main fails when dataform.json is an invalid json file`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(path.join(projectDir, "dataform.json"), '{keyWithNoQuotes: "validValue"}');
+      const coreExecutionRequest = dataform.CoreExecutionRequest.create({
+        compile: { compileConfig: { projectDir } }
+      });
+
+      expect(() => runMainInVm(coreExecutionRequest)).to.throw(
+        "Unexpected token k in JSON at position 1"
+      );
+    });
   });
 });
 

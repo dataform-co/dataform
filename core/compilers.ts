@@ -9,13 +9,8 @@ export function compile(code: string, path: string): string {
   }
   if (path.endsWith(".yaml")) {
     try {
-      console.log("🚀 ~ file: compilers.ts:13 ~ compile ~ code:", code);
-      const loadedYaml = loadYaml(code) as { [key: string]: number };
-      console.log("🚀 ~ file: compilers.ts:13 ~ compile ~ loadedYaml:", loadedYaml);
-      const tmp = JSON.stringify(loadedYaml);
-      // TODO: make this expose content in the module setting correctly.
-      console.log("🚀 ~ file: compilers.ts:13 ~ compile ~ tmp:", tmp);
-      return `return ${tmp}`;
+      const yamlAsJson = JSON.stringify(loadYaml(code) as { [key: string]: number });
+      return `exports.asJson = () => (${yamlAsJson})`;
     } catch (e) {
       if (e instanceof YAMLException) {
         throw Error(`${path} is not a valid YAML file: ${e}`);
@@ -249,56 +244,3 @@ function escapeNode(node: string | SyntaxTreeNode) {
   }
   return node.concatenate(SQL_STATEMENT_ESCAPERS);
 }
-
-// // TODO(ekrekr): find a way around this, it's horrible. For example, it doesn't currently work with
-// // nested arrays.
-// function yamlObjectAsString(
-//   fullObject: { [key: string]: unknown } | unknown[],
-//   path: string
-// ): string {
-//   // The result of JSON.stringify() can't be loaded directly in a JS context because it quotes the
-//   // JSON keys. Instead, the object is formed without quoting the keys.
-//   let result = "";
-
-//   if (Array.isArray(fullObject)) {
-//     throw Error(`Did not expect an array at the root of ${path}`);
-//   }
-
-//   const pushNestedObject = (object: { [key: string]: unknown }) => {
-//     console.log("🚀 ~ file: compilers.ts:256 ~ pushNestedObject ~ object:", object);
-
-//     result = result + "{";
-//     for (const key in object) {
-//       console.log("🚀 ~ file: compilers.ts:270 ~ pushNestedObject ~ key:", key);
-//       result = `${result} ${key}:`;
-//       switch (typeof object[key]) {
-//         case "string":
-//           result = result + `"${object[key]}",`;
-//           break;
-//         case "number":
-//           result = result + `${object[key]},`;
-//           break;
-//         case "object":
-//           if (!!Object.keys(object[key])) {
-//             pushNestedObject(object[key] as { [key: string]: unknown });
-//           }
-//           break;
-//         default:
-//           throw Error(
-//             `Unrecognized value type in ${path}, type: ${typeof object[key]}, value: ${object[key]}`
-//           );
-//       }
-//     }
-//     // Remove the trailing comma.
-//     result = result.slice(0, -1);
-
-//     result = result + "},";
-//   };
-
-//   pushNestedObject(fullObject);
-
-//   // Remove the trailing comma.
-//   result = result.slice(0, -1);
-
-//   return result;
-// }

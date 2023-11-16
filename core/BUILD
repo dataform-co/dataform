@@ -77,6 +77,8 @@ ts_test_suite(
         "@npm//chai",
         "@npm//fs-extra",
 
+
+        "//tests/utils",
         "@npm//vm2",
     ],
 )

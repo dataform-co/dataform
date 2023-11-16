@@ -1,6 +1,6 @@
 load("//tools:ts_library.bzl", "ts_library")
 
-package(default_visibility = ["//tests:__subpackages__", "//examples:__subpackages__"])
+package(default_visibility = ["//visibility:public"])
 
 ts_library(
     name = "utils",
