@@ -9,6 +9,8 @@ import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { asPlainObject } from "df/tests/utils";
 
+// TODO(ekrekr): migrate the tests in this file to core/main_test.ts.
+
 class TestConfigs {
   public static bigquery: dataform.IProjectConfig = {
     warehouse: "bigquery",

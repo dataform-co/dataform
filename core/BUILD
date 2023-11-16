@@ -2,6 +2,7 @@ load("//tools:ts_library.bzl", "ts_library")
 load("//tools:expand_template.bzl", "expand_template")
 load("//:version.bzl", "DF_VERSION")
 load("//testing:index.bzl", "ts_test_suite")
+load("//tools:node_modules.bzl", "node_modules")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -30,6 +31,7 @@ ts_library(
         "targets.ts",
         "tasks.ts",
         "test.ts",
+        "types.d.ts",
         "utils.ts",
         "workflow_settings.ts",
         ":version.ts",
@@ -58,15 +60,30 @@ ts_library(
 
 ts_test_suite(
     name = "tests",
-    srcs = ["workflow_settings_test.ts"],
+    srcs = [
+        "main_test.ts",
+    ],
+    data = [
+        ":node_modules",
+    ],
     deps = [
         ":core",
         "//protos:ts",
         "//testing",
         "@npm//@types/chai",
+        "//common/protos",
         "@npm//@types/fs-extra",
         "@npm//@types/node",
         "@npm//chai",
         "@npm//fs-extra",
+
+        "@npm//vm2",
+    ],
+)
+
+node_modules(
+    name = "node_modules",
+    deps = [
+        "//packages/@dataform/core:package_tar",
     ],
 )

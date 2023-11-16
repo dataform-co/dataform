@@ -1,18 +1,20 @@
-import * as fs from "fs-extra";
-import * as path from "path";
-import { load as loadYaml, YAMLException } from "js-yaml";
-
 import { dataform } from "df/protos/ts";
 
-export function readWorkflowSettings(projectDir: string = ""): dataform.ProjectConfig {
-  // `dataform.json` is deprecated; new versions of dataform prefer `workflow_settings.yaml`.
-  const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
-  const dataformJsonPath = path.join(projectDir, "dataform.json");
+export function readWorkflowSettings(projectDir: string): dataform.ProjectConfig {
+  let workflowSettingsFileExists = false;
+  let workflowSettingsPath: string | undefined;
+  try {
+    workflowSettingsPath = require.resolve(projectDir + "/workflow_settings.yaml");
+    workflowSettingsFileExists = true;
+  } catch (e) {}
 
-  // TODO: YAML files can't be required, we instead have to first read it, then convert it to JSON.
-  // However, fs isn't available in the sandboxed environment (?).
-  const workflowSettingsFileExists = fs.existsSync(workflowSettingsPath);
-  const dataformJsonFileExists = fs.existsSync(dataformJsonPath);
+  // `dataform.json` is deprecated; new versions of Dataform Core prefer `workflow_settings.yaml`.
+  let dataformJsonFileExists = false;
+  let dataformJsonPath: string | undefined;
+  try {
+    dataformJsonPath = require.resolve(projectDir + "/dataform.json");
+    dataformJsonFileExists = true;
+  } catch (e) {}
 
   if (workflowSettingsFileExists && dataformJsonFileExists) {
     throw Error(
@@ -20,25 +22,16 @@ export function readWorkflowSettings(projectDir: string = ""): dataform.ProjectC
     );
   }
 
-  let workflowSettingsAsJson = {};
-
   if (workflowSettingsFileExists) {
-    const workflowSettingsContent = fs.readFileSync(workflowSettingsPath, { encoding: "utf-8" });
-    try {
-      workflowSettingsAsJson = loadYaml(workflowSettingsContent);
-    } catch (e) {
-      if (e instanceof YAMLException) {
-        throw Error(`workflow_settings.yaml is not a valid YAML file: ${e}`);
-      }
-    }
+    const workflowSettingsAsJson = require(workflowSettingsPath);
     verifyWorkflowSettingsAsJson(workflowSettingsAsJson);
     return dataform.ProjectConfig.create(workflowSettingsAsJson);
   }
 
   if (dataformJsonFileExists) {
-    workflowSettingsAsJson = require(dataformJsonPath);
-    verifyWorkflowSettingsAsJson(workflowSettingsAsJson);
-    return dataform.ProjectConfig.create(workflowSettingsAsJson);
+    const dataformJson = require(dataformJsonPath);
+    verifyWorkflowSettingsAsJson(dataformJson);
+    return dataform.ProjectConfig.create(dataformJson);
   }
 
   throw Error("Failed to resolve workflow_settings.yaml");

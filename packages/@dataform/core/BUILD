@@ -19,6 +19,9 @@ externals = [
     "semver",
     "moo",
     "long",
+
+    "fs-extra",
+    "js-yaml",
 ]
 
 pkg_json(

@@ -2,6 +2,7 @@ import { decode64, encode64 } from "df/common/protos";
 import { Session } from "df/core/session";
 import * as utils from "df/core/utils";
 import { dataform } from "df/protos/ts";
+import { readWorkflowSettings } from "df/core/workflow_settings";
 
 /**
  * This is the main entry point into the user space code that should be invoked by the compilation wrapper sandbox.
@@ -23,7 +24,7 @@ export function main(coreExecutionRequest: Uint8Array | string): Uint8Array | st
   const compileRequest = request.compile;
 
   // Read the project config from the root of the project.
-  const originalProjectConfig = require("dataform.json");
+  const originalProjectConfig = readWorkflowSettings(request.compile.compileConfig.projectDir);
 
   const projectConfigOverride = compileRequest.compileConfig.projectConfigOverride ?? {};
 
