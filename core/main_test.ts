@@ -1,4 +1,3 @@
-// tslint:disable: detect-non-literal-fs-filename
 import { expect } from "chai";
 import * as fs from "fs-extra";
 import * as path from "path";
@@ -29,6 +28,7 @@ suite("@dataform/core", ({ afterEach }) => {
   suite("workflow settings", () => {
     test(`main succeeds when a valid workflow_settings.yaml is present`, () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
+      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(
         path.join(projectDir, "workflow_settings.yaml"),
         VALID_WORKFLOW_SETTINGS_YAML
@@ -50,6 +50,7 @@ suite("@dataform/core", ({ afterEach }) => {
     // dataform.json for workflow settings is deprecated, but still currently supported.
     test(`main succeeds when a valid dataform.json is present`, () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
+      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(path.join(projectDir, "dataform.json"), VALID_DATAFORM_JSON);
       const coreExecutionRequest = dataform.CoreExecutionRequest.create({
         compile: { compileConfig: { projectDir } }
@@ -78,7 +79,9 @@ suite("@dataform/core", ({ afterEach }) => {
 
     test(`main fails when both workflow settings and dataform.json files are present`, () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
+      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(path.join(projectDir, "dataform.json"), VALID_DATAFORM_JSON);
+      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(
         path.join(projectDir, "workflow_settings.yaml"),
         VALID_WORKFLOW_SETTINGS_YAML
@@ -94,6 +97,7 @@ suite("@dataform/core", ({ afterEach }) => {
 
     test(`main fails when workflow_settings.yaml is an invalid yaml file`, () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
+      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(path.join(projectDir, "workflow_settings.yaml"), "&*19132sdS:asd:");
       const coreExecutionRequest = dataform.CoreExecutionRequest.create({
         compile: { compileConfig: { projectDir } }
@@ -106,6 +110,7 @@ suite("@dataform/core", ({ afterEach }) => {
 
     test(`main fails when dataform.json is an invalid json file`, () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
+      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(path.join(projectDir, "dataform.json"), '{keyWithNoQuotes: "validValue"}');
       const coreExecutionRequest = dataform.CoreExecutionRequest.create({
         compile: { compileConfig: { projectDir } }
