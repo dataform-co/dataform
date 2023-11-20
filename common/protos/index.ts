@@ -33,7 +33,7 @@ export function verifyObjectMatchesProto<Proto>(
         throw ReferenceError(`unexpected key '${presentKey}'`);
       }
       if (typeof presentValue === "object") {
-        return checkFields(presentValue, desiredValue);
+        checkFields(presentValue, desiredValue);
       }
     });
   }
