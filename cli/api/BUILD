@@ -16,6 +16,7 @@ ts_library(
         "//common/protos",
         "//common/strings",
         "//core",
+        "//core/compilation_sql",
         "//protos:ts",
         "//cli/vm:compile_loader",
         "//sqlx:lexer",
