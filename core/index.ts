@@ -2,8 +2,8 @@ import { compile as compiler } from "df/core/compilers";
 import { main } from "df/core/main";
 import { Session } from "df/core/session";
 import { version } from "df/core/version";
-import { dataform } from "df/protos/ts";
 import { readWorkflowSettings } from "df/core/workflow_settings";
+import { dataform } from "df/protos/ts";
 
 // Create static session object.
 // This hack just enforces the singleton session object to

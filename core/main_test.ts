@@ -1,13 +1,13 @@
-import { suite, test } from "df/testing";
-import { dataform } from "df/protos/ts";
-import * as path from "path";
-import * as fs from "fs-extra";
-import * as main from "df/core/main";
-import { compile } from "df/core/compilers";
-import { TmpDirFixture } from "df/testing/fixtures";
 import { expect } from "chai";
+import * as fs from "fs-extra";
+import * as path from "path";
 import { CompilerFunction, NodeVM } from "vm2";
+
 import { decode64, encode64 } from "df/common/protos";
+import { compile } from "df/core/compilers";
+import { dataform } from "df/protos/ts";
+import { suite, test } from "df/testing";
+import { TmpDirFixture } from "df/testing/fixtures";
 import { asPlainObject } from "df/tests/utils";
 
 const VALID_WORKFLOW_SETTINGS_YAML = `
@@ -22,7 +22,8 @@ const VALID_DATAFORM_JSON = `
 }
 `;
 
-suite("@dataform/core", ({ beforeEach, afterEach }) => {
+// tslint:disable: detect-non-literal-fs-filename
+suite("@dataform/core", ({ afterEach }) => {
   const tmpDirFixture = new TmpDirFixture(afterEach);
 
   suite("workflow settings", () => {

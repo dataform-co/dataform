@@ -35,6 +35,7 @@ function verifyWorkflowSettingsAsJson(workflowSettingsAsJson?: object) {
 
 function maybeRequire(file: string): any {
   try {
+    // tslint:disable-next-line: tsr-detect-non-literal-require
     return require(file);
   } catch (e) {
     if (e instanceof SyntaxError) {
