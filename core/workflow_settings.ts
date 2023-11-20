@@ -1,3 +1,4 @@
+import { verifyObjectMatchesProto } from "df/common/protos";
 import { dataform } from "df/protos/ts";
 
 export function readWorkflowSettings(): dataform.ProjectConfig {
@@ -14,22 +15,29 @@ export function readWorkflowSettings(): dataform.ProjectConfig {
   if (workflowSettingsYaml) {
     const workflowSettingsAsJson = workflowSettingsYaml.asJson();
     verifyWorkflowSettingsAsJson(workflowSettingsAsJson);
-    return dataform.ProjectConfig.create(workflowSettingsAsJson);
+    return dataform.ProjectConfig.fromObject(workflowSettingsAsJson);
   }
 
   if (dataformJson) {
     verifyWorkflowSettingsAsJson(dataformJson);
-    return dataform.ProjectConfig.create(dataformJson);
+    return dataform.ProjectConfig.fromObject(dataformJson);
   }
 
   throw Error("Failed to resolve workflow_settings.yaml");
 }
 
 function verifyWorkflowSettingsAsJson(workflowSettingsAsJson?: object) {
-  // TODO(ekrekr): Implement a protobuf field validator. Protobufjs's verify method is not fit for
-  // purpose.
   if (!workflowSettingsAsJson) {
-    throw Error("workflow_settings.yaml contains invalid fields");
+    throw Error("workflow_settings.yaml is invalid");
+  }
+
+  try {
+    verifyObjectMatchesProto(dataform.ProjectConfig, workflowSettingsAsJson);
+  } catch (e) {
+    if (e instanceof ReferenceError) {
+      throw ReferenceError(`Workflow settings error: ${e.message}`);
+    }
+    throw e;
   }
 }
 

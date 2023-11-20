@@ -103,9 +103,7 @@ suite("@dataform/core", ({ afterEach }) => {
         compile: { compileConfig: { projectDir } }
       });
 
-      expect(() => runMainInVm(coreExecutionRequest)).to.throw(
-        "workflow_settings.yaml contains invalid fields"
-      );
+      expect(() => runMainInVm(coreExecutionRequest)).to.throw("workflow_settings.yaml is invalid");
     });
 
     test(`main fails when dataform.json is an invalid json file`, () => {
@@ -120,6 +118,40 @@ suite("@dataform/core", ({ afterEach }) => {
         "Unexpected token k in JSON at position 1"
       );
     });
+
+    test(`main fails when a valid workflow_settings.yaml contains unknown fields`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        "notAProjectConfigField: value"
+      );
+      const coreExecutionRequest = dataform.CoreExecutionRequest.create({
+        compile: { compileConfig: { projectDir } }
+      });
+
+      expect(() => runMainInVm(coreExecutionRequest)).to.throw(
+        "Workflow settings error: unexpected key 'notAProjectConfigField'"
+      );
+    });
+
+    test(`main fails when a valid dataform.json contains unknown fields`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
+      fs.writeFileSync(
+        path.join(projectDir, "dataform.json"),
+        `{"notAProjectConfigField": "value"}`
+      );
+      const coreExecutionRequest = dataform.CoreExecutionRequest.create({
+        compile: { compileConfig: { projectDir } }
+      });
+
+      expect(() => runMainInVm(coreExecutionRequest)).to.throw(
+        "Workflow settings error: unexpected key 'notAProjectConfigField'"
+      );
+    });
+
+    // TODO(ekrekr): add a test for nested fields, once they exist.
   });
 });
 
