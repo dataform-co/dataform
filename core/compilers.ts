@@ -1,9 +1,22 @@
+import { load as loadYaml, YAMLException } from "js-yaml";
+
 import * as utils from "df/core/utils";
 import { SyntaxTreeNode, SyntaxTreeNodeType } from "df/sqlx/lexer";
 
-export function compile(code: string, path: string) {
+export function compile(code: string, path: string): string {
   if (path.endsWith(".sqlx")) {
     return compileSqlx(SyntaxTreeNode.create(code), path);
+  }
+  if (path.endsWith(".yaml")) {
+    try {
+      const yamlAsJson = JSON.stringify(loadYaml(code));
+      return `exports.asJson = () => (${yamlAsJson})`;
+    } catch (e) {
+      if (e instanceof YAMLException) {
+        throw Error(`${path} is not a valid YAML file: ${e}`);
+      }
+      throw e;
+    }
   }
   return code;
 }
@@ -31,7 +44,7 @@ export function extractJsBlocks(code: string): { sql: string; js: string } {
   };
 }
 
-function compileSqlx(rootNode: SyntaxTreeNode, path: string) {
+function compileSqlx(rootNode: SyntaxTreeNode, path: string): string {
   const { config, js, sql, incremental, preOperations, postOperations, inputs } = extractSqlxParts(
     rootNode
   );

@@ -14,6 +14,7 @@ ts_library(
 )
 
 externals = [
+    "js-yaml",
     "protobufjs",
     "tarjan-graph",
     "semver",
