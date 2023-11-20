@@ -14,6 +14,9 @@ export function readWorkflowSettings(): dataform.ProjectConfig {
 
   if (workflowSettingsYaml) {
     const workflowSettingsAsJson = workflowSettingsYaml.asJson();
+    if (!workflowSettingsAsJson) {
+      throw Error("workflow_settings.yaml is invalid");
+    }
     verifyWorkflowSettingsAsJson(workflowSettingsAsJson);
     return dataform.ProjectConfig.fromObject(workflowSettingsAsJson);
   }
@@ -26,11 +29,7 @@ export function readWorkflowSettings(): dataform.ProjectConfig {
   throw Error("Failed to resolve workflow_settings.yaml");
 }
 
-function verifyWorkflowSettingsAsJson(workflowSettingsAsJson?: object) {
-  if (!workflowSettingsAsJson) {
-    throw Error("workflow_settings.yaml is invalid");
-  }
-
+function verifyWorkflowSettingsAsJson(workflowSettingsAsJson: object) {
   try {
     verifyObjectMatchesProto(dataform.ProjectConfig, workflowSettingsAsJson);
   } catch (e) {
