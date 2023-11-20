@@ -1,6 +1,6 @@
 load("//tools:ts_library.bzl", "ts_library")
 
-package(default_visibility = ["//core:__subpackages__"])
+package(default_visibility = ["//visibility:public"])
 
 ts_library(
     name = "compilation_sql",
