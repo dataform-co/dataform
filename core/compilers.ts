@@ -9,7 +9,7 @@ export function compile(code: string, path: string): string {
   }
   if (path.endsWith(".yaml")) {
     try {
-      const yamlAsJson = JSON.stringify(loadYaml(code) as { [key: string]: number });
+      const yamlAsJson = JSON.stringify(loadYaml(code));
       return `exports.asJson = () => (${yamlAsJson})`;
     } catch (e) {
       if (e instanceof YAMLException) {

@@ -1,35 +1,23 @@
 import { dataform } from "df/protos/ts";
 
 export function readWorkflowSettings(projectDir: string): dataform.ProjectConfig {
-  let workflowSettingsFileExists = false;
-  let workflowSettingsPath: string | undefined;
-  try {
-    workflowSettingsPath = require.resolve(projectDir + "/workflow_settings.yaml");
-    workflowSettingsFileExists = true;
-  } catch (e) {}
-
+  const workflowSettingsYaml = maybeRequire(projectDir + "/workflow_settings.yaml");
   // `dataform.json` is deprecated; new versions of Dataform Core prefer `workflow_settings.yaml`.
-  let dataformJsonFileExists = false;
-  let dataformJsonPath: string | undefined;
-  try {
-    dataformJsonPath = require.resolve(projectDir + "/dataform.json");
-    dataformJsonFileExists = true;
-  } catch (e) {}
+  const dataformJson = maybeRequire(projectDir + "/dataform.json");
 
-  if (workflowSettingsFileExists && dataformJsonFileExists) {
+  if (workflowSettingsYaml && dataformJson) {
     throw Error(
       "dataform.json has been deprecated and cannot be defined alongside workflow_settings.yaml"
     );
   }
 
-  if (workflowSettingsFileExists) {
-    const workflowSettingsAsJson = require(workflowSettingsPath).asJson();
+  if (workflowSettingsYaml) {
+    const workflowSettingsAsJson = workflowSettingsYaml.asJson();
     verifyWorkflowSettingsAsJson(workflowSettingsAsJson);
     return dataform.ProjectConfig.create(workflowSettingsAsJson);
   }
 
-  if (dataformJsonFileExists) {
-    const dataformJson = require(dataformJsonPath);
+  if (dataformJson) {
     verifyWorkflowSettingsAsJson(dataformJson);
     return dataform.ProjectConfig.create(dataformJson);
   }
@@ -42,5 +30,16 @@ function verifyWorkflowSettingsAsJson(workflowSettingsAsJson?: object) {
   // purpose.
   if (!workflowSettingsAsJson) {
     throw Error("workflow_settings.yaml contains invalid fields");
+  }
+}
+
+function maybeRequire(file: string): any {
+  try {
+    return require(file);
+  } catch (e) {
+    if (e instanceof SyntaxError) {
+      throw e;
+    }
+    return undefined;
   }
 }
