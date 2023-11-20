@@ -1,3 +1,4 @@
+// tslint:disable: detect-non-literal-fs-filename
 import { expect } from "chai";
 import * as fs from "fs-extra";
 import * as path from "path";
@@ -22,7 +23,6 @@ const VALID_DATAFORM_JSON = `
 }
 `;
 
-// tslint:disable: detect-non-literal-fs-filename
 suite("@dataform/core", ({ afterEach }) => {
   const tmpDirFixture = new TmpDirFixture(afterEach);
 
