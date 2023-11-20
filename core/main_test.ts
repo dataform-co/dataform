@@ -136,9 +136,8 @@ function runMainInVm(coreExecutionRequest: dataform.CoreExecutionRequest) {
       context: "sandbox",
       external: true,
       root: projectDir,
-      resolve: (moduleName, parentDirName) => {
-        path.join(parentDirName, path.relative(parentDirName, projectDir), moduleName);
-      }
+      resolve: (moduleName, parentDirName) =>
+        path.join(parentDirName, path.relative(parentDirName, projectDir), moduleName)
     },
     sourceExtensions: ["js", "sql", "sqlx", "yaml"],
     compiler

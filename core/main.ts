@@ -24,7 +24,7 @@ export function main(coreExecutionRequest: Uint8Array | string): Uint8Array | st
   const compileRequest = request.compile;
 
   // Read the project config from the root of the project.
-  const originalProjectConfig = readWorkflowSettings(request.compile.compileConfig.projectDir);
+  const originalProjectConfig = readWorkflowSettings();
 
   const projectConfigOverride = compileRequest.compileConfig.projectConfigOverride ?? {};
 

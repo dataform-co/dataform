@@ -1,9 +1,9 @@
 import { dataform } from "df/protos/ts";
 
-export function readWorkflowSettings(projectDir: string): dataform.ProjectConfig {
-  const workflowSettingsYaml = maybeRequire(projectDir + "/workflow_settings.yaml");
+export function readWorkflowSettings(): dataform.ProjectConfig {
+  const workflowSettingsYaml = maybeRequire("workflow_settings.yaml");
   // `dataform.json` is deprecated; new versions of Dataform Core prefer `workflow_settings.yaml`.
-  const dataformJson = maybeRequire(projectDir + "/dataform.json");
+  const dataformJson = maybeRequire("dataform.json");
 
   if (workflowSettingsYaml && dataformJson) {
     throw Error(
