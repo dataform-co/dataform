@@ -18,7 +18,7 @@ ts_library(
         "//core",
         "//protos:ts",
         "//sandbox/vm:compile_loader",
-        "//sqlx",
+        "//sqlx:lexer",
         "//sandbox/vm:vm",
         "@npm//@google-cloud/bigquery",
         "@npm//@types/glob",
