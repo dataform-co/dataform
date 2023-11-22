@@ -50,7 +50,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
     // Bigquery allows 50 concurrent queries, and a rate limit of 100/user/second by default.
     // These limits should be safely low enough for most projects.
     this.pool = new PromisePoolExecutor({
-      concurrencyLimit: options.concurrencyLimit,
+      concurrencyLimit: options?.concurrencyLimit,
       frequencyWindow: 1000,
       frequencyLimit: 30
     });
