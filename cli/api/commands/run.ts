@@ -26,7 +26,7 @@ export interface IExecutedAction {
 }
 
 export interface IExecutionOptions {
-  bigquery?: { jobPrefix?: string };
+  bigquery?: { jobPrefix?: string; actionRetryLimit: number };
 }
 
 export function run(
@@ -337,6 +337,7 @@ export class Runner {
           const taskStatus = await this.executeTask(client, task, actionResult, {
             bigquery: {
               labels: action.actionDescriptor?.bigqueryLabels,
+              actionRetryLimit: this.executionOptions?.bigquery?.actionRetryLimit,
               jobPrefix: this.executionOptions?.bigquery?.jobPrefix
             }
           });
@@ -431,7 +432,7 @@ export class Runner {
             rowLimit: 1,
             bigquery: options.bigquery
           }),
-        task.type === "operation" ? 1 : this.graph.projectConfig.idempotentActionRetries + 1 || 1
+        task.type === "operation" ? 1 : options.bigquery.actionRetryLimit + 1 || 1
       );
       taskResult.metadata = metadata;
       if (task.type === "assertion") {

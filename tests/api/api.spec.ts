@@ -1036,10 +1036,7 @@ suite("@dataform/api", () => {
     suite("execute with retry", () => {
       test("should fail when execution fails too many times for the retry setting", async () => {
         const mockedDbAdapter = mock(BigQueryDbAdapter);
-        const NEW_TEST_GRAPH = {
-          ...RUN_TEST_GRAPH,
-          projectConfig: { ...RUN_TEST_GRAPH.projectConfig, idempotentActionRetries: 1 }
-        };
+        const NEW_TEST_GRAPH = RUN_TEST_GRAPH;
         when(mockedDbAdapter.createSchema(anyString(), anyString())).thenResolve(null);
         when(
           mockedDbAdapter.execute(NEW_TEST_GRAPH.actions[0].tasks[0].statement, anything())
@@ -1047,6 +1044,7 @@ suite("@dataform/api", () => {
           rows: [],
           metadata: {
             bigquery: {
+              actionRetryLimit: 1,
               jobId: "abc",
               totalBytesBilled: Long.fromNumber(0),
               totalBytesProcessed: Long.fromNumber(0)
@@ -1077,10 +1075,7 @@ suite("@dataform/api", () => {
 
       test("should pass when execution fails initially, then passes with the number of allowed retries", async () => {
         const mockedDbAdapter = mock(BigQueryDbAdapter);
-        const NEW_TEST_GRAPH = {
-          ...RUN_TEST_GRAPH,
-          projectConfig: { ...RUN_TEST_GRAPH.projectConfig, idempotentActionRetries: 2 }
-        };
+        const NEW_TEST_GRAPH = RUN_TEST_GRAPH;
         when(mockedDbAdapter.createSchema(anyString(), anyString())).thenResolve(null);
         when(
           mockedDbAdapter.execute(NEW_TEST_GRAPH.actions[0].tasks[0].statement, anything())
@@ -1088,6 +1083,7 @@ suite("@dataform/api", () => {
           rows: [],
           metadata: {
             bigquery: {
+              actionRetryLimit: 2,
               jobId: "abc",
               totalBytesBilled: Long.fromNumber(0),
               totalBytesProcessed: Long.fromNumber(0)
@@ -1135,10 +1131,7 @@ suite("@dataform/api", () => {
 
       test("should not retry when the task is an operation", async () => {
         const mockedDbAdapter = mock(BigQueryDbAdapter);
-        const NEW_TEST_GRAPH_WITH_OPERATION = {
-          ...RUN_TEST_GRAPH,
-          projectConfig: { ...RUN_TEST_GRAPH.projectConfig, idempotentActionRetries: 3 }
-        };
+        const NEW_TEST_GRAPH_WITH_OPERATION = RUN_TEST_GRAPH;
         NEW_TEST_GRAPH_WITH_OPERATION.actions[1].tasks[0].type = "operation";
 
         when(mockedDbAdapter.createSchema(anyString(), anyString())).thenResolve(null);
@@ -1148,6 +1141,7 @@ suite("@dataform/api", () => {
           rows: [],
           metadata: {
             bigquery: {
+              actionRetryLimit: 3,
               jobId: "abc",
               totalBytesBilled: Long.fromNumber(0),
               totalBytesProcessed: Long.fromNumber(0)

@@ -19,9 +19,6 @@ message ProjectConfig {
 
   map<string, string> vars = 14;
 
-  int32 concurrent_query_limit = 13;
-  int32 idempotent_action_retries = 8;
-
   string database_suffix = 15;
   string schema_suffix = 7;
   string table_prefix = 11;
@@ -32,7 +29,7 @@ message ProjectConfig {
   // This setting no longer has any effect.
   bool use_run_cache = 10;
 
-  reserved 3, 4, 12;
+  reserved 3, 4, 8, 12, 13;
 }
 
 message GenerateIndexConfig {
