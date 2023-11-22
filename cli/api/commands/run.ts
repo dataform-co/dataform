@@ -383,6 +383,8 @@ export class Runner {
       }
     }
 
+    this.warehouseStateByTarget.delete(action.target);
+
     if (actionResult.status === dataform.ActionResult.ExecutionStatus.RUNNING) {
       actionResult.status = dataform.ActionResult.ExecutionStatus.SUCCESSFUL;
     }

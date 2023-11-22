@@ -12,10 +12,6 @@ export async function build(
   runConfig: dataform.IRunConfig,
   dbadapter: dbadapters.IDbAdapter
 ) {
-  runConfig = {
-    ...runConfig
-  };
-
   const prunedGraph = prune(compiledGraph, runConfig);
 
   const allInvolvedTargets = new StringifiedSet<dataform.ITarget>(
