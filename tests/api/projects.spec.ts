@@ -82,11 +82,6 @@ suite("examples", () => {
             {
               fileName: "definitions/has_compile_errors/table_with_materialized.sqlx",
               message: "The 'materialized' option is only valid for BigQuery views"
-            },
-            {
-              fileName: "definitions/has_compile_errors/view_without_hermetic.sqlx",
-              message:
-                "Zero-dependency actions which create datasets are required to explicitly declare 'hermetic: (true|false)' when run caching is turned on."
             }
           ]);
 

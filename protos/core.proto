@@ -23,21 +23,7 @@ message ProjectConfig {
   string schema_suffix = 7;
   string table_prefix = 11;
 
-  // Deprecated.
-  // Please use 'default_database' instead.
-  string gcloud_project_id = 6;
-  // This setting no longer has any effect.
-  bool use_run_cache = 10;
-
-  reserved 3, 4, 8, 12, 13;
-}
-
-message GenerateIndexConfig {
-  CompileConfig compile_config = 1;
-  repeated string include_paths = 2;
-  repeated string definition_paths = 3;
-
-  reserved 4;
+  reserved 3, 4, 6, 8, 10, 12, 13;
 }
 
 message CompileConfig {

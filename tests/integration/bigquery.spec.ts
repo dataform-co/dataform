@@ -257,9 +257,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
   suite("evaluate", async () => {
     test("evaluate from valid compiled graph as valid", async () => {
       // Create and run the project.
-      const compiledGraph = await compile("tests/integration/bigquery_project", "evaluate", {
-        useRunCache: false
-      });
+      const compiledGraph = await compile("tests/integration/bigquery_project", "evaluate");
       const executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
       await dfapi.run(dbadapter, executionGraph).result();
 

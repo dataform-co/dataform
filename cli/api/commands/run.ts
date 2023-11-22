@@ -384,21 +384,7 @@ export class Runner {
       }
     }
 
-    let newMetadata: dataform.ITableMetadata;
-    if (this.graph.projectConfig.useRunCache) {
-      try {
-        newMetadata = await this.dbadapter.table(action.target);
-      } catch (e) {
-        // Ignore Errors thrown when trying to get new table metadata; just allow the relevant
-        // warehouseStateAfterRunByTarget entry to be cleared out (below).
-      }
-    }
-    if (newMetadata) {
-      this.warehouseStateByTarget.set(action.target, newMetadata);
-      this.notifyListeners();
-    } else {
-      this.warehouseStateByTarget.delete(action.target);
-    }
+    this.warehouseStateByTarget.delete(action.target);
 
     if (actionResult.status === dataform.ActionResult.ExecutionStatus.RUNNING) {
       actionResult.status = dataform.ActionResult.ExecutionStatus.SUCCESSFUL;
