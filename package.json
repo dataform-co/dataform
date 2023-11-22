@@ -54,7 +54,7 @@
     "@zeit/next-css": "1.0.1",
     "algoliasearch": "^3.32.1",
     "analytics-node": "^3.5.0",
-    "axios": "^0.21.2",
+    "axios": "^1.6.0",
     "babel-loader": "^8.0.6",
     "babel-plugin-transform-runtime": "^6.23.0",
     "babel-preset-env": "^1.7.0",
