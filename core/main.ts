@@ -3,6 +3,15 @@ import { Session } from "df/core/session";
 import * as utils from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
+declare var __webpack_require__: any;
+declare var __non_webpack_require__: any;
+
+// If this code is bundled with webpack, we need to side-step the webpack require re-writing and use the real require method in here.
+const nativeRequire =
+ typeof __webpack_require__ === "function"
+    ? __non_webpack_require__
+    : require;
+
 /**
  * This is the main entry point into the user space code that should be invoked by the compilation wrapper sandbox.
  *
@@ -23,7 +32,7 @@ export function main(coreExecutionRequest: Uint8Array | string): Uint8Array | st
   const compileRequest = request.compile;
 
   // Read the project config from the root of the project.
-  const originalProjectConfig = require("dataform.json");
+  const originalProjectConfig = nativeRequire("dataform.json");
 
   const projectConfigOverride = compileRequest.compileConfig.projectConfigOverride ?? {};
 
@@ -43,7 +52,7 @@ export function main(coreExecutionRequest: Uint8Array | string): Uint8Array | st
   };
 
   // Initialize the compilation session.
-  const session = require("@dataform/core").session as Session;
+  const session = nativeRequire("@dataform/core").session as Session;
 
   session.init(compileRequest.compileConfig.projectDir, projectConfig, originalProjectConfig);
 
@@ -61,7 +70,7 @@ export function main(coreExecutionRequest: Uint8Array | string): Uint8Array | st
     .forEach(includePath => {
       try {
         // tslint:disable-next-line: tsr-detect-non-literal-require
-        topLevelIncludes[utils.baseFilename(includePath)] = require(includePath);
+        topLevelIncludes[utils.baseFilename(includePath)] = nativeRequire(includePath);
       } catch (e) {
         session.compileError(e, includePath);
       }
@@ -82,7 +91,7 @@ export function main(coreExecutionRequest: Uint8Array | string): Uint8Array | st
     .forEach(definitionPath => {
       try {
         // tslint:disable-next-line: tsr-detect-non-literal-require
-        require(definitionPath);
+        nativeRequire(definitionPath);
       } catch (e) {
         session.compileError(e, definitionPath);
       }
