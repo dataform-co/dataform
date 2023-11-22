@@ -401,16 +401,6 @@ export class Session {
       [].concat(compiledGraph.tables, compiledGraph.assertions, compiledGraph.operations)
     );
 
-    if (this.config.useRunCache) {
-      this.checkRunCachingCorrectness(
-        [].concat(
-          compiledGraph.tables,
-          compiledGraph.assertions,
-          compiledGraph.operations.filter(operation => operation.hasOutput)
-        )
-      );
-    }
-
     utils.throwIfInvalid(compiledGraph, dataform.CompiledGraph.verify);
     return compiledGraph;
   }

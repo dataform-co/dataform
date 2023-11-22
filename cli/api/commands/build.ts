@@ -13,8 +13,7 @@ export async function build(
   dbadapter: dbadapters.IDbAdapter
 ) {
   runConfig = {
-    ...runConfig,
-    useRunCache: false
+    ...runConfig
   };
 
   const prunedGraph = prune(compiledGraph, runConfig);
@@ -23,15 +22,6 @@ export async function build(
     targetStringifier,
     prunedGraph.tables.map(table => table.target)
   );
-  if (runConfig.useRunCache) {
-    for (const includedAction of [
-      ...prunedGraph.tables,
-      ...prunedGraph.operations,
-      ...prunedGraph.assertions
-    ]) {
-      allInvolvedTargets.add(includedAction.target);
-    }
-  }
 
   return new Builder(
     prunedGraph,

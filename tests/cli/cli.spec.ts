@@ -160,8 +160,7 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
         }
       },
       runConfig: {
-        fullRefresh: false,
-        useRunCache: false
+        fullRefresh: false
       },
       warehouseState: {}
     });
