@@ -1044,7 +1044,6 @@ suite("@dataform/api", () => {
           rows: [],
           metadata: {
             bigquery: {
-              actionRetryLimit: 1,
               jobId: "abc",
               totalBytesBilled: Long.fromNumber(0),
               totalBytesProcessed: Long.fromNumber(0)
@@ -1066,7 +1065,9 @@ suite("@dataform/api", () => {
         mockDbAdapterInstance.withClientLock = async callback =>
           await callback(mockDbAdapterInstance);
 
-        const runner = new Runner(mockDbAdapterInstance, NEW_TEST_GRAPH);
+        const runner = new Runner(mockDbAdapterInstance, NEW_TEST_GRAPH, {
+          bigquery: { actionRetryLimit: 1 }
+        });
 
         expect(
           dataform.RunResult.create(cleanTiming(await runner.execute().result())).toJSON()
@@ -1083,7 +1084,6 @@ suite("@dataform/api", () => {
           rows: [],
           metadata: {
             bigquery: {
-              actionRetryLimit: 2,
               jobId: "abc",
               totalBytesBilled: Long.fromNumber(0),
               totalBytesProcessed: Long.fromNumber(0)
@@ -1105,7 +1105,9 @@ suite("@dataform/api", () => {
         mockDbAdapterInstance.withClientLock = async callback =>
           await callback(mockDbAdapterInstance);
 
-        const runner = new Runner(mockDbAdapterInstance, NEW_TEST_GRAPH);
+        const runner = new Runner(mockDbAdapterInstance, NEW_TEST_GRAPH, {
+          bigquery: { actionRetryLimit: 2 }
+        });
 
         expect(
           dataform.RunResult.create(cleanTiming(await runner.execute().result())).toJSON()
@@ -1141,7 +1143,6 @@ suite("@dataform/api", () => {
           rows: [],
           metadata: {
             bigquery: {
-              actionRetryLimit: 3,
               jobId: "abc",
               totalBytesBilled: Long.fromNumber(0),
               totalBytesProcessed: Long.fromNumber(0)
@@ -1168,7 +1169,9 @@ suite("@dataform/api", () => {
         mockDbAdapterInstance.withClientLock = async callback =>
           await callback(mockDbAdapterInstance);
 
-        const runner = new Runner(mockDbAdapterInstance, NEW_TEST_GRAPH_WITH_OPERATION);
+        const runner = new Runner(mockDbAdapterInstance, NEW_TEST_GRAPH_WITH_OPERATION, {
+          bigquery: { actionRetryLimit: 3 }
+        });
 
         expect(
           dataform.RunResult.create(cleanTiming(await runner.execute().result())).toJSON()
