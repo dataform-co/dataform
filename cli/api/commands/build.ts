@@ -12,26 +12,12 @@ export async function build(
   runConfig: dataform.IRunConfig,
   dbadapter: dbadapters.IDbAdapter
 ) {
-  runConfig = {
-    ...runConfig,
-    useRunCache: false
-  };
-
   const prunedGraph = prune(compiledGraph, runConfig);
 
   const allInvolvedTargets = new StringifiedSet<dataform.ITarget>(
     targetStringifier,
     prunedGraph.tables.map(table => table.target)
   );
-  if (runConfig.useRunCache) {
-    for (const includedAction of [
-      ...prunedGraph.tables,
-      ...prunedGraph.operations,
-      ...prunedGraph.assertions
-    ]) {
-      allInvolvedTargets.add(includedAction.target);
-    }
-  }
 
   return new Builder(
     prunedGraph,

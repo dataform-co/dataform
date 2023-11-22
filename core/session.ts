@@ -401,16 +401,6 @@ export class Session {
       [].concat(compiledGraph.tables, compiledGraph.assertions, compiledGraph.operations)
     );
 
-    if (this.config.useRunCache) {
-      this.checkRunCachingCorrectness(
-        [].concat(
-          compiledGraph.tables,
-          compiledGraph.assertions,
-          compiledGraph.operations.filter(operation => operation.hasOutput)
-        )
-      );
-    }
-
     utils.throwIfInvalid(compiledGraph, dataform.CompiledGraph.verify);
     return compiledGraph;
   }
@@ -672,28 +662,6 @@ export class Session {
         .map(vertex => vertex.name)
         .join(" > ")} > ${targetAsReadableString(firstActionInCycle.target)}]`;
       this.compileError(new Error(message), firstActionInCycle.fileName, firstActionInCycle.target);
-    });
-  }
-
-  private checkRunCachingCorrectness(actionsWithOutput: IActionProto[]) {
-    actionsWithOutput.forEach(action => {
-      if (action.dependencyTargets?.length > 0) {
-        return;
-      }
-      if (
-        [dataform.ActionHermeticity.HERMETIC, dataform.ActionHermeticity.NON_HERMETIC].includes(
-          action.hermeticity
-        )
-      ) {
-        return;
-      }
-      this.compileError(
-        new Error(
-          "Zero-dependency actions which create datasets are required to explicitly declare 'hermetic: (true|false)' when run caching is turned on."
-        ),
-        action.fileName,
-        action.target
-      );
     });
   }
 

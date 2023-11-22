@@ -28,12 +28,6 @@ export function main(coreExecutionRequest: Uint8Array | string): Uint8Array | st
 
   const projectConfigOverride = compileRequest.compileConfig.projectConfigOverride ?? {};
 
-  // Stop using the deprecated 'gcloudProjectId' field.
-  if (!originalProjectConfig.defaultDatabase) {
-    originalProjectConfig.defaultDatabase = originalProjectConfig.gcloudProjectId;
-  }
-  delete originalProjectConfig.gcloudProjectId;
-
   let projectConfig = { ...originalProjectConfig };
 
   // Merge in general project config overrides.
