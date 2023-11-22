@@ -29,7 +29,7 @@ const BIGQUERY_DATE_RELATED_FIELDS = [
 const BIGQUERY_INTERNAL_ERROR_JOB_MAX_ATTEMPTS = 3;
 
 export interface IBigQueryExecutionOptions {
-  actionRetryLimit: number;
+  actionRetryLimit?: number;
   labels?: { [label: string]: string };
   location?: string;
   jobPrefix?: string;

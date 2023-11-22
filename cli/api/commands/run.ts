@@ -26,7 +26,7 @@ export interface IExecutedAction {
 }
 
 export interface IExecutionOptions {
-  bigquery?: { jobPrefix?: string; actionRetryLimit: number };
+  bigquery?: { jobPrefix?: string; actionRetryLimit?: number };
 }
 
 export function run(
