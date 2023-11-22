@@ -18,7 +18,7 @@ export interface IProtoClass<IProto, Proto> {
 // TODO(ekrekr): swap to Typescript protobuf library rather than having to do this.
 export function verifyObjectMatchesProto<Proto>(
   protoType: IProtoClass<any, Proto>,
-  object: Object
+  object: object
 ) {
   // Create a version of the object that only contains the valid proto fields.
   // ProtobufJS doesn't care about the types of the values of fields.
