@@ -665,28 +665,6 @@ export class Session {
     });
   }
 
-  private checkRunCachingCorrectness(actionsWithOutput: IActionProto[]) {
-    actionsWithOutput.forEach(action => {
-      if (action.dependencyTargets?.length > 0) {
-        return;
-      }
-      if (
-        [dataform.ActionHermeticity.HERMETIC, dataform.ActionHermeticity.NON_HERMETIC].includes(
-          action.hermeticity
-        )
-      ) {
-        return;
-      }
-      this.compileError(
-        new Error(
-          "Zero-dependency actions which create datasets are required to explicitly declare 'hermetic: (true|false)' when run caching is turned on."
-        ),
-        action.fileName,
-        action.target
-      );
-    });
-  }
-
   private removeNonUniqueActionsFromCompiledGraph(compiledGraph: dataform.CompiledGraph) {
     function getNonUniqueTargets(targets: dataform.ITarget[]): StringifiedSet<dataform.ITarget> {
       const allTargets = new StringifiedSet<dataform.ITarget>(targetStringifier);
