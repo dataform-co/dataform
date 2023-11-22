@@ -95,7 +95,6 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
         assertionSchema: "dataform_assertions",
         defaultDatabase: "dataform-integration-tests",
         defaultLocation: "US",
-        useRunCache: false,
         vars: {
           testVar1: "testValue1",
           testVar2: "testValue2"
@@ -154,7 +153,6 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
         defaultDatabase: "dataform-integration-tests",
         defaultLocation: "US",
         defaultSchema: "dataform",
-        useRunCache: false,
         warehouse: "bigquery",
         vars: {
           testVar1: "testValue1",
