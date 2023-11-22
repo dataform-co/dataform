@@ -302,8 +302,7 @@ export function runCli() {
             {
               warehouse: argv[warehouseOption.name],
               defaultDatabase: argv[defaultDatabaseOptionName],
-              defaultLocation: argv[defaultLocationOptionName],
-              useRunCache: false
+              defaultLocation: argv[defaultLocationOptionName]
             },
             {
               skipInstall: argv[skipInstallOptionName]
