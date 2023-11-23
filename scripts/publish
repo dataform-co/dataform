@@ -15,14 +15,24 @@ fi
 
 bazel test //... --build_tests_only -- -tests/integration:snowflake.spec
 
-bazel run packages/@dataform/cli:package.publish
-bazel run packages/@dataform/core:package.publish
+VERSION=$(cat version.bzl | grep DF_VERSION | awk '{ print $3 }' | sed "s/\"//g")
+
+TAG=next
+
+# If the version is a normal release (1.2.3) and not pre-release e.g (1.2.3-alpha.1) then publish with the 'latest' tag.
+if [[ "$VERSION" =~ [0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    TAG=latest
+fi
+
+echo "Publishing as '$TAG' based on version: $VERSION"
+
+bazel run packages/@dataform/cli:package.publish -- --tag=$TAG
+bazel run packages/@dataform/core:package.publish -- --tag=$TAG
 bazel run cli:push
 
-VERSION=$(cat version.bzl | grep DF_VERSION | awk '{ print $3 }' | sed "s/\"//g")
 git tag $VERSION
 git push origin $VERSION
 
 docker pull dataformco/dataform:$VERSION
-docker tag dataformco/dataform:$VERSION dataformco/dataform:latest
-docker push dataformco/dataform:latest
+docker tag dataformco/dataform:$VERSION dataformco/dataform:$TAG
+docker push dataformco/dataform:$TAG
