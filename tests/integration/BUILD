@@ -4,9 +4,10 @@ load("//testing:index.bzl", "ts_test_suite")
 
 ts_test_suite(
     name = "tests",
-    srcs = glob(
-        ["*.ts"],
-    ),
+    srcs = [
+        "utils.ts",
+        "bigquery.spec.ts",
+    ],
     data = [
         "//test_credentials:bigquery.json",
         "//tests/integration/bigquery_project:files",
