@@ -1036,10 +1036,7 @@ suite("@dataform/api", () => {
     suite("execute with retry", () => {
       test("should fail when execution fails too many times for the retry setting", async () => {
         const mockedDbAdapter = mock(BigQueryDbAdapter);
-        const NEW_TEST_GRAPH = {
-          ...RUN_TEST_GRAPH,
-          projectConfig: { ...RUN_TEST_GRAPH.projectConfig, idempotentActionRetries: 1 }
-        };
+        const NEW_TEST_GRAPH = RUN_TEST_GRAPH;
         when(mockedDbAdapter.createSchema(anyString(), anyString())).thenResolve(null);
         when(
           mockedDbAdapter.execute(NEW_TEST_GRAPH.actions[0].tasks[0].statement, anything())
@@ -1068,7 +1065,9 @@ suite("@dataform/api", () => {
         mockDbAdapterInstance.withClientLock = async callback =>
           await callback(mockDbAdapterInstance);
 
-        const runner = new Runner(mockDbAdapterInstance, NEW_TEST_GRAPH);
+        const runner = new Runner(mockDbAdapterInstance, NEW_TEST_GRAPH, {
+          bigquery: { actionRetryLimit: 1 }
+        });
 
         expect(
           dataform.RunResult.create(cleanTiming(await runner.execute().result())).toJSON()
@@ -1077,10 +1076,7 @@ suite("@dataform/api", () => {
 
       test("should pass when execution fails initially, then passes with the number of allowed retries", async () => {
         const mockedDbAdapter = mock(BigQueryDbAdapter);
-        const NEW_TEST_GRAPH = {
-          ...RUN_TEST_GRAPH,
-          projectConfig: { ...RUN_TEST_GRAPH.projectConfig, idempotentActionRetries: 2 }
-        };
+        const NEW_TEST_GRAPH = RUN_TEST_GRAPH;
         when(mockedDbAdapter.createSchema(anyString(), anyString())).thenResolve(null);
         when(
           mockedDbAdapter.execute(NEW_TEST_GRAPH.actions[0].tasks[0].statement, anything())
@@ -1109,7 +1105,9 @@ suite("@dataform/api", () => {
         mockDbAdapterInstance.withClientLock = async callback =>
           await callback(mockDbAdapterInstance);
 
-        const runner = new Runner(mockDbAdapterInstance, NEW_TEST_GRAPH);
+        const runner = new Runner(mockDbAdapterInstance, NEW_TEST_GRAPH, {
+          bigquery: { actionRetryLimit: 2 }
+        });
 
         expect(
           dataform.RunResult.create(cleanTiming(await runner.execute().result())).toJSON()
@@ -1135,10 +1133,7 @@ suite("@dataform/api", () => {
 
       test("should not retry when the task is an operation", async () => {
         const mockedDbAdapter = mock(BigQueryDbAdapter);
-        const NEW_TEST_GRAPH_WITH_OPERATION = {
-          ...RUN_TEST_GRAPH,
-          projectConfig: { ...RUN_TEST_GRAPH.projectConfig, idempotentActionRetries: 3 }
-        };
+        const NEW_TEST_GRAPH_WITH_OPERATION = RUN_TEST_GRAPH;
         NEW_TEST_GRAPH_WITH_OPERATION.actions[1].tasks[0].type = "operation";
 
         when(mockedDbAdapter.createSchema(anyString(), anyString())).thenResolve(null);
@@ -1174,7 +1169,9 @@ suite("@dataform/api", () => {
         mockDbAdapterInstance.withClientLock = async callback =>
           await callback(mockDbAdapterInstance);
 
-        const runner = new Runner(mockDbAdapterInstance, NEW_TEST_GRAPH_WITH_OPERATION);
+        const runner = new Runner(mockDbAdapterInstance, NEW_TEST_GRAPH_WITH_OPERATION, {
+          bigquery: { actionRetryLimit: 3 }
+        });
 
         expect(
           dataform.RunResult.create(cleanTiming(await runner.execute().result())).toJSON()

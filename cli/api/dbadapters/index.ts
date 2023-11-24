@@ -47,7 +47,7 @@ export interface IDbAdapter extends IDbClient {
 }
 
 interface ICredentialsOptions {
-  concurrencyLimit?: number;
+  concurrencyLimit: number;
   disableSslForTestsOnly?: boolean;
 }
 

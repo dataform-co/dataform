@@ -23,11 +23,7 @@ message ProjectConfig {
   string schema_suffix = 7;
   string table_prefix = 11;
 
-  // TODO(ekrekr): Move these to be CLI flags instead.
-  int32 concurrent_query_limit = 13;
-  int32 idempotent_action_retries = 8;
-
-  reserved 3, 4, 6, 10, 12;
+  reserved 3, 4, 6, 8, 10, 12, 13;
 }
 
 message CompileConfig {

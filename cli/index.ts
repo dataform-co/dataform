@@ -209,6 +209,15 @@ const jobPrefixOption: INamedOption<yargs.Options> = {
   }
 };
 
+const concurrencyQueryLimitOption: INamedOption<yargs.Options> = {
+  name: "concurrency-query-limit",
+  option: {
+    describe: "The limit for the number of concurrent queries that can be run against BigQuery.",
+    type: "number",
+    default: 16
+  }
+};
+
 const defaultDatabaseOptionName = "default-database";
 const defaultLocationOptionName = "default-location";
 const skipInstallOptionName = "skip-install";
@@ -222,6 +231,8 @@ const runTestsOptionName = "run-tests";
 
 const schemaOptionName = "schema";
 const tableOptionName = "table";
+
+const actionRetryLimitName = "action-retry-limit";
 
 const getCredentialsPath = (projectDir: string, credentialsPath: string) =>
   actuallyResolve(credentialsPath || path.join(projectDir, CREDENTIALS_FILENAME));
@@ -493,7 +504,13 @@ export function runCli() {
         format: `test [${projectDirMustExistOption.name}]`,
         description: "Run the dataform project's unit tests on the configured data warehouse.",
         positionalOptions: [projectDirMustExistOption],
-        options: [credentialsOption, varsOption, timeoutOption, trackOption],
+        options: [
+          concurrencyQueryLimitOption,
+          credentialsOption,
+          varsOption,
+          timeoutOption,
+          trackOption
+        ],
         processFn: async argv => {
           print("Compiling...\n");
           const compiledGraph = await compile({
@@ -523,7 +540,7 @@ export function runCli() {
           const dbadapter = await dbadapters.create(
             readCredentials,
             compiledGraph.projectConfig.warehouse,
-            { concurrencyLimit: compiledGraph.projectConfig.concurrentQueryLimit }
+            { concurrencyLimit: argv[concurrencyQueryLimitOption.name] }
           );
           try {
             const testResults = await test(dbadapter, compiledGraph.tests);
@@ -555,18 +572,27 @@ export function runCli() {
               type: "boolean"
             }
           },
-          fullRefreshOption,
+          {
+            name: actionRetryLimitName,
+            option: {
+              describe: "If set, idempotent actions will be retried up to the limit.",
+              type: "number",
+              default: 0
+            }
+          },
           actionsOption,
-          tagsOption,
+          concurrencyQueryLimitOption,
+          credentialsOption,
+          fullRefreshOption,
           includeDepsOption,
           includeDependentsOption,
-          schemaSuffixOverrideOption,
-          credentialsOption,
-          jsonOutputOption,
-          varsOption,
-          timeoutOption,
           jobPrefixOption,
-          trackOption
+          jsonOutputOption,
+          schemaSuffixOverrideOption,
+          tagsOption,
+          trackOption,
+          timeoutOption,
+          varsOption
         ],
         processFn: async argv => {
           if (!argv[jsonOutputOption.name]) {
@@ -595,7 +621,7 @@ export function runCli() {
           const dbadapter = await dbadapters.create(
             readCredentials,
             compiledGraph.projectConfig.warehouse,
-            { concurrencyLimit: compiledGraph.projectConfig.concurrentQueryLimit }
+            { concurrencyLimit: argv[concurrencyQueryLimitOption.name] }
           );
           try {
             const executionGraph = await build(
@@ -634,13 +660,11 @@ export function runCli() {
             if (!argv[jsonOutputOption.name]) {
               print("Running...\n");
             }
-            const runner = run(
-              dbadapter,
-              executionGraph,
-              argv[jobPrefixOption.name]
-                ? { bigquery: { jobPrefix: argv[jobPrefixOption.name] } }
-                : {}
-            );
+            let bigqueryOptions: {} = { actionRetryLimit: argv[actionRetryLimitName] };
+            if (argv[jobPrefixOption.name]) {
+              bigqueryOptions = { ...bigqueryOptions, jobPrefix: argv[jobPrefixOption.name] };
+            }
+            const runner = run(dbadapter, executionGraph, bigqueryOptions);
             process.on("SIGINT", () => {
               runner.cancel();
             });

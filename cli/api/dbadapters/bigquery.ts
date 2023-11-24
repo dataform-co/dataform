@@ -29,13 +29,14 @@ const BIGQUERY_DATE_RELATED_FIELDS = [
 const BIGQUERY_INTERNAL_ERROR_JOB_MAX_ATTEMPTS = 3;
 
 export interface IBigQueryExecutionOptions {
+  actionRetryLimit?: number;
   labels?: { [label: string]: string };
   location?: string;
   jobPrefix?: string;
 }
 
 export class BigQueryDbAdapter implements IDbAdapter {
-  public static async create(credentials: Credentials, options?: { concurrencyLimit?: number }) {
+  public static async create(credentials: Credentials, options?: { concurrencyLimit: number }) {
     return new BigQueryDbAdapter(credentials, options);
   }
 
@@ -44,12 +45,12 @@ export class BigQueryDbAdapter implements IDbAdapter {
 
   private readonly clients = new Map<string, BigQuery>();
 
-  private constructor(credentials: Credentials, options?: { concurrencyLimit?: number }) {
+  private constructor(credentials: Credentials, options?: { concurrencyLimit: number }) {
     this.bigQueryCredentials = credentials as dataform.IBigQuery;
     // Bigquery allows 50 concurrent queries, and a rate limit of 100/user/second by default.
     // These limits should be safely low enough for most projects.
     this.pool = new PromisePoolExecutor({
-      concurrencyLimit: options?.concurrencyLimit || 16,
+      concurrencyLimit: options?.concurrencyLimit,
       frequencyWindow: 1000,
       frequencyLimit: 30
     });
