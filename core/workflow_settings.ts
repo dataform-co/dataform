@@ -43,7 +43,9 @@ function verifyWorkflowSettingsAsJson(workflowSettingsAsJson: object): { [key: s
     throw e;
   }
   const verifiedWorkflowSettings = workflowSettingsAsJson as { [key: string]: any };
+  // tslint:disable-next-line: no-string-literal
   if (!verifiedWorkflowSettings["warehouse"]) {
+    // tslint:disable-next-line: no-string-literal
     verifiedWorkflowSettings["warehouse"] = "bigquery";
   }
   return verifiedWorkflowSettings;
