@@ -1,6 +1,6 @@
 import yargs from "yargs";
 
-import Analytics from "analytics-node";
+import { Analytics}  from "@segment/analytics-node";
 import {getConfigSettings, getConfigSettingsPath, upsertConfigSettings} from "df/cli/config";
 import {ynQuestion} from "df/cli/console";
 import {INamedOption} from "df/cli/yargswrapper";
@@ -14,7 +14,7 @@ export const trackOption: INamedOption<yargs.Options> = {
   }
 };
 
-const analytics = new Analytics("eR24ln3MniE3TKZXkvAkOGkiSN02xXqw");
+const analytics = new Analytics({ writeKey: "eR24ln3MniE3TKZXkvAkOGkiSN02xXqw"});
 
 let currentCommand: string;
 let allowAnonymousAnalytics: boolean;
