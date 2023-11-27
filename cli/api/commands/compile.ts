@@ -10,18 +10,6 @@ import { decode64 } from "df/common/protos";
 import { setOrValidateTableEnumType } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
-// Project config properties that are required.
-const mandatoryProps: Array<keyof dataform.IProjectConfig> = ["warehouse", "defaultSchema"];
-
-// Project config properties that require alphanumeric characters, hyphens or underscores.
-const simpleCheckProps: Array<keyof dataform.IProjectConfig> = [
-  "assertionSchema",
-  "databaseSuffix",
-  "schemaSuffix",
-  "tablePrefix",
-  "defaultSchema"
-];
-
 export class CompilationTimeoutError extends Error {}
 
 export async function compile(
@@ -29,18 +17,6 @@ export async function compile(
 ): Promise<dataform.CompiledGraph> {
   // Resolve the path in case it hasn't been resolved already.
   path.resolve(compileConfig.projectDir);
-
-  try {
-    // check dataformJson is valid before we try to compile
-    const dataformJson = fs.readFileSync(`${compileConfig.projectDir}/dataform.json`, "utf8");
-    const projectConfig = JSON.parse(dataformJson);
-    checkDataformJsonValidity(deepmerge(projectConfig, compileConfig.projectConfigOverride || {}));
-  } catch (e) {
-    throw new ErrorWithCause(
-      `Compilation failed. ProjectConfig ('dataform.json') is invalid: ${e.message}`,
-      e
-    );
-  }
 
   const result = await CompileChildProcess.forkProcess().compile(compileConfig);
 
@@ -116,31 +92,3 @@ export class CompileChildProcess {
     }
   }
 }
-
-export const checkDataformJsonValidity = (dataformJsonParsed: { [prop: string]: any }) => {
-  const invalidWarehouseProp = () => {
-    return dataformJsonParsed.warehouse && !validWarehouses.includes(dataformJsonParsed.warehouse)
-      ? `Invalid value on property warehouse: ${
-          dataformJsonParsed.warehouse
-        }. Should be one of: ${validWarehouses.join(", ")}.`
-      : null;
-  };
-  const invalidProp = () => {
-    const invProp = simpleCheckProps.find(prop => {
-      return prop in dataformJsonParsed && !/^[a-zA-Z_0-9\-]*$/.test(dataformJsonParsed[prop]);
-    });
-    return invProp
-      ? `Invalid value on property ${invProp}: ${dataformJsonParsed[invProp]}. Should only contain alphanumeric characters, underscores and/or hyphens.`
-      : null;
-  };
-  const missingMandatoryProp = () => {
-    const missMandatoryProp = mandatoryProps.find(prop => {
-      return !(prop in dataformJsonParsed);
-    });
-    return missMandatoryProp ? `Missing mandatory property: ${missMandatoryProp}.` : null;
-  };
-  const message = invalidWarehouseProp() || invalidProp() || missingMandatoryProp();
-  if (message) {
-    throw new Error(message);
-  }
-};
