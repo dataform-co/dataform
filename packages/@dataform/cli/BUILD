@@ -1,6 +1,7 @@
 load("//tools:ts_library.bzl", "ts_library")
 load("//:version.bzl", "DF_VERSION")
 load("//packages:index.bzl", "pkg_bundle", "pkg_json", "pkg_npm_tar")
+load("@build_bazel_rules_nodejs//:index.bzl", "nodejs_binary")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -14,8 +15,6 @@ ts_library(
     ],
 )
 
-load("@build_bazel_rules_nodejs//:index.bzl", "nodejs_binary")
-
 nodejs_binary(
     name = "bin",
     data = [
@@ -28,12 +27,12 @@ nodejs_binary(
 
 externals = [
     "@google-cloud/bigquery",
+    "@segment/analytics-node",
     "protobufjs",
     "tarjan-graph",
     "semver",
     "moo",
     "chokidar",
-    "analytics-node",
     "uuid",
     "readline-sync",
     "untildify",
@@ -77,9 +76,9 @@ pkg_json(
 
 pkg_bundle(
     name = "bundle",
+    allow_node_builtins = True,
     args = ["--banner='#!/usr/bin/env node'"],
     entry_point = "index.ts",
-    allow_node_builtins = True,
     externals = externals,
     deps = [
         ":cli",
@@ -88,9 +87,9 @@ pkg_bundle(
 
 pkg_bundle(
     name = "worker_bundle",
+    allow_node_builtins = True,
     args = ["--banner='#!/usr/bin/env node'"],
     entry_point = "worker.ts",
-    allow_node_builtins = True,
     externals = externals,
     deps = [
         ":cli",
