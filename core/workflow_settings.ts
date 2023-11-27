@@ -33,7 +33,7 @@ export function readWorkflowSettings(): dataform.ProjectConfig {
   throw Error("Failed to resolve workflow_settings.yaml");
 }
 
-function verifyWorkflowSettingsAsJson(workflowSettingsAsJson: object) {
+function verifyWorkflowSettingsAsJson(workflowSettingsAsJson: object): { [key: string]: any } {
   try {
     verifyObjectMatchesProto(dataform.ProjectConfig, workflowSettingsAsJson);
   } catch (e) {
@@ -42,6 +42,13 @@ function verifyWorkflowSettingsAsJson(workflowSettingsAsJson: object) {
     }
     throw e;
   }
+  const verifiedWorkflowSettings = workflowSettingsAsJson as { [key: string]: any };
+  // tslint:disable-next-line: no-string-literal
+  if (!verifiedWorkflowSettings["warehouse"]) {
+    // tslint:disable-next-line: no-string-literal
+    verifiedWorkflowSettings["warehouse"] = "bigquery";
+  }
+  return verifiedWorkflowSettings;
 }
 
 function maybeRequire(file: string): any {

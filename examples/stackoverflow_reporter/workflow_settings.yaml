@@ -1,0 +1,4 @@
+defaultDatabase: "dataform-demos"
+defaultLocation: "us"
+defaultSchema: "dataform"
+assertionSchema: "dataform_assertions"

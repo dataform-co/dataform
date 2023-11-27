@@ -11,7 +11,6 @@ import { TmpDirFixture } from "df/testing/fixtures";
 import { asPlainObject } from "df/tests/utils";
 
 const VALID_WORKFLOW_SETTINGS_YAML = `
-warehouse: bigquery
 defaultDatabase: dataform
 `;
 
