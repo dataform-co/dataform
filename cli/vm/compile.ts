@@ -85,7 +85,6 @@ function runDataformCoreVmScript(nodeVM: NodeVM, vmIndexFileName: string, script
     try {
       return nodeVM.run(script, vmIndexFileName);
     } catch (e) {
-      console.log("🚀 ~ file: compile.ts:88 ~ getResult ~ e:", e);
       throw missingValidCorePackageError();
     }
   };
