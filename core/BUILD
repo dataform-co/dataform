@@ -25,6 +25,7 @@ ts_library(
         "declaration.ts",
         "index.ts",
         "main.ts",
+        "notebook.ts",
         "operation.ts",
         "session.ts",
         "table.ts",

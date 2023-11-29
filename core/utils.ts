@@ -2,7 +2,7 @@ import { Assertion } from "df/core/assertion";
 import { Resolvable } from "df/core/common";
 import { Declaration } from "df/core/declaration";
 import { Operation } from "df/core/operation";
-import { IActionProto, Session } from "df/core/session";
+import { Action, IActionProto, Session } from "df/core/session";
 import { Table } from "df/core/table";
 import { dataform } from "df/protos/ts";
 
@@ -33,7 +33,7 @@ export function baseFilename(fullPath: string) {
 }
 
 export function getEscapedFileName(path: string) {
-  return baseFilename(path).replace(/\\/g, '\\\\')
+  return baseFilename(path).replace(/\\/g, "\\\\");
 }
 
 export function matchPatterns(patterns: string[], values: string[]) {
@@ -151,10 +151,7 @@ export function stringifyResolvable(res: Resolvable) {
   return typeof res === "string" ? res : JSON.stringify(res);
 }
 
-export function ambiguousActionNameMsg(
-  act: Resolvable,
-  allActs: Array<Table | Operation | Assertion | Declaration> | string[]
-) {
+export function ambiguousActionNameMsg(act: Resolvable, allActs: Array<Action> | string[]) {
   const allActNames =
     typeof allActs[0] === "string"
       ? allActs
@@ -189,6 +186,10 @@ export function setNameAndTarget(
   overrideDatabase?: string
 ) {
   action.target = target(session.config, name, overrideSchema, overrideDatabase);
+  if (action.config) {
+    action.config.target = target(session.canonicalConfig, name, overrideSchema, overrideDatabase);
+    return;
+  }
   action.canonicalTarget = target(session.canonicalConfig, name, overrideSchema, overrideDatabase);
 }
 
@@ -265,7 +266,6 @@ export function tableTypeStringToEnum(type: string, throwIfUnknown: boolean) {
 export function tableTypeEnumToString(enumType: dataform.TableType) {
   return dataform.TableType[enumType].toLowerCase();
 }
-
 
 export function setOrValidateTableEnumType(table: dataform.ITable) {
   let enumTypeFromStr: dataform.TableType | null = null;

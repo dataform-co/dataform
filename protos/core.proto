@@ -234,6 +234,14 @@ message Test {
   string file_name = 4;
 }
 
+message Notebook {
+  ActionConfig config = 1;
+
+  Target target = 2;
+
+  string notebook_contents = 3;
+}
+
 message CompiledGraph {
   ProjectConfig project_config = 4;
 
@@ -242,6 +250,7 @@ message CompiledGraph {
   repeated Assertion assertions = 3;
   repeated Declaration declarations = 9;
   repeated Test tests = 8;
+  repeated Notebook notebooks = 12;
 
   GraphErrors graph_errors = 7;
 
@@ -294,15 +303,18 @@ message ActionConfig {
   // Targets of actions that this action is dependent on.
   repeated Target dependency_targets = 3;
 
+  // Filename to load the action contents from.
+  string file_name = 4;
+
   // Type specific configs. Must correspond to the declared type.
   oneof action_config {
-    TableConfig table = 4;
-    ViewConfig view = 5;
-    IncrementalTableConfig incremental_table = 6;
-    AssertionConfig assertion = 7;
-    OperationConfig operation = 8;
-    DeclarationConfig declaration = 9;
-    NotebookConfig notebook = 10;
+    TableConfig table = 5;
+    ViewConfig view = 6;
+    IncrementalTableConfig incremental_table = 7;
+    AssertionConfig assertion = 8;
+    OperationConfig operation = 9;
+    DeclarationConfig declaration = 10;
+    NotebookConfig notebook = 11;
   }
 }
 

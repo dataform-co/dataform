@@ -14,6 +14,7 @@ import * as utils from "df/core/utils";
 import { toResolvable } from "df/core/utils";
 import { version as dataformCoreVersion } from "df/core/version";
 import { dataform } from "df/protos/ts";
+import { Notebook } from "df/core/notebook";
 
 const DEFAULT_CONFIG = {
   defaultSchema: "dataform",
@@ -30,6 +31,7 @@ export interface IActionProto {
   target?: dataform.ITarget;
   canonicalTarget?: dataform.ITarget;
   parentAction?: dataform.ITarget;
+  config?: dataform.ActionConfig;
 }
 
 type SqlxConfig = (
@@ -40,7 +42,7 @@ type SqlxConfig = (
   | (test.ITestConfig & { type: "test" })
 ) & { name: string };
 
-type Action = Table | Operation | Assertion | Declaration;
+export type Action = Table | Operation | Assertion | Declaration | Notebook;
 
 /**
  * @hidden
@@ -200,6 +202,14 @@ export class Session {
     }
   }
 
+  public notebookAction(notebookConfig: dataform.ActionConfig, notebookContents: string): Notebook {
+    const notebook = new Notebook(this, notebookConfig);
+    utils.setNameAndTarget(this, notebook.proto as IActionProto, notebookConfig.target.name);
+    notebook.setNotebookContents(notebookContents);
+    this.actions.push(notebook);
+    return notebook;
+  }
+
   public resolve(ref: Resolvable | string[], ...rest: string[]): string {
     ref = toResolvable(ref, rest);
     const allResolved = this.indexedActions.find(utils.resolvableAsTarget(ref));
@@ -345,12 +355,6 @@ export class Session {
   public compile(): dataform.CompiledGraph {
     this.indexedActions = new ActionIndex(this.actions);
 
-    if (this.config.warehouse === "bigquery" && !this.config.defaultLocation) {
-      this.compileError(
-        "A defaultLocation is required for BigQuery. This can be configured in dataform.json.",
-        "dataform.json"
-      );
-    }
     if (
       !!this.config.vars &&
       !Object.values(this.config.vars).every(value => typeof value === "string")
@@ -358,6 +362,7 @@ export class Session {
       throw new Error("Custom variables defined in dataform.json can only be strings.");
     }
 
+    // TODO(ekrekr): get rid of verify here, because it doesn't actually do anything.
     const compiledGraph = dataform.CompiledGraph.create({
       projectConfig: this.config,
       tables: this.compileGraphChunk(
@@ -377,6 +382,10 @@ export class Session {
         dataform.Declaration.verify
       ),
       tests: this.compileGraphChunk(Object.values(this.tests), dataform.Test.verify),
+      notebooks: this.compileGraphChunk(
+        this.actions.filter(action => action instanceof Notebook),
+        dataform.Notebook.verify
+      ),
       graphErrors: this.graphErrors,
       dataformCoreVersion,
       targets: this.actions.map(action => action.proto.target)

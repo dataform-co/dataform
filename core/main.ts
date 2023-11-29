@@ -1,4 +1,4 @@
-import { decode64, encode64 } from "df/common/protos";
+import { decode64, encode64, verifyObjectMatchesProto } from "df/common/protos";
 import { Session } from "df/core/session";
 import * as utils from "df/core/utils";
 import { readWorkflowSettings } from "df/core/workflow_settings";
@@ -75,6 +75,31 @@ export function main(coreExecutionRequest: Uint8Array | string): Uint8Array | st
   globalAny.assert = session.assert.bind(session);
   globalAny.declare = session.declare.bind(session);
   globalAny.test = session.test.bind(session);
+
+  // Require all "definitions" files (attaching them to the session).
+  compileRequest.compileConfig.filePaths
+    .filter(path => path.startsWith(`definitions${utils.pathSeperator}`))
+    .filter(path => path.endsWith("actions.yaml"))
+    .sort()
+    .forEach(actionConfigsPath => {
+      let actionConfigsAsJson = {};
+      try {
+        // tslint:disable-next-line: tsr-detect-non-literal-require
+        actionConfigsAsJson = nativeRequire(actionConfigsPath).asJson();
+      } catch (e) {
+        session.compileError(e, actionConfigsPath);
+      }
+      verifyObjectMatchesProto(dataform.ActionConfigs, actionConfigsAsJson);
+      const actionConfigs = dataform.ActionConfigs.fromObject(actionConfigsAsJson);
+      actionConfigs.actions.forEach(actionConfig => {
+        if (actionConfig.notebook) {
+          // TODO: Throw error if file not found?
+          // TODO: Check file extension is .ipynb?
+          const notebookContents = nativeRequire(actionConfig.fileName);
+          session.notebookAction(dataform.ActionConfig.create(actionConfig), notebookContents);
+        }
+      });
+    });
 
   // Require all "definitions" files (attaching them to the session).
   compileRequest.compileConfig.filePaths
