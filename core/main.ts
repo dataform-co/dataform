@@ -89,12 +89,14 @@ export function main(coreExecutionRequest: Uint8Array | string): Uint8Array | st
       } catch (e) {
         session.compileError(e, actionConfigsPath);
       }
+      // TODO: Throw nice errors if the proto is invalid.
       verifyObjectMatchesProto(dataform.ActionConfigs, actionConfigsAsJson);
       const actionConfigs = dataform.ActionConfigs.fromObject(actionConfigsAsJson);
       actionConfigs.actions.forEach(actionConfig => {
-        if (actionConfig.notebook) {
+        const fileExtension = actionConfig.fileName.split(".").slice(-1)[0];
+        if (fileExtension === "ipynb") {
+          // TODO(ekrekr): throw an error if any non-notebook configs are given.
           // TODO: Throw error if file not found?
-          // TODO: Check file extension is .ipynb?
           const notebookContents = nativeRequire(actionConfig.fileName);
           session.notebookAction(dataform.ActionConfig.create(actionConfig), notebookContents);
         }

@@ -31,7 +31,7 @@ export interface IActionProto {
   target?: dataform.ITarget;
   canonicalTarget?: dataform.ITarget;
   parentAction?: dataform.ITarget;
-  config?: dataform.ActionConfig;
+  config?: dataform.IActionConfig;
 }
 
 type SqlxConfig = (
@@ -382,10 +382,10 @@ export class Session {
         dataform.Declaration.verify
       ),
       tests: this.compileGraphChunk(Object.values(this.tests), dataform.Test.verify),
-      notebooks: this.compileGraphChunk(
-        this.actions.filter(action => action instanceof Notebook),
-        dataform.Notebook.verify
-      ),
+      // notebooks: this.compileGraphChunk(
+      //   this.actions.filter(action => action instanceof Notebook),
+      //   dataform.Notebook.verify
+      // ),
       graphErrors: this.graphErrors,
       dataformCoreVersion,
       targets: this.actions.map(action => action.proto.target)
