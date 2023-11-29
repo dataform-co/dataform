@@ -16,6 +16,7 @@ ts_library(
         "@npm//@types/node",
         "@npm//glob",
         "@npm//vm2",
+        "@npm//pyodide",
     ],
 )
 

@@ -117,7 +117,7 @@ export class CompileChildProcess {
       (resolve, reject) =>
         (timer = setTimeout(
           () => reject(new CompilationTimeoutError("Compilation timed out")),
-          compileConfig.timeoutMillis || 5000
+          compileConfig.timeoutMillis || 10000
         ))
     );
     try {

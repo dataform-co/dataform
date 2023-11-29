@@ -84,10 +84,17 @@ export function main(coreExecutionRequest: Uint8Array | string): Uint8Array | st
   globalAny.declare = session.declare.bind(session);
   globalAny.test = session.test.bind(session);
 
+  globalAny.pyodide.registerJsModule("dataform", {
+    // toJs thing basically unwraps the python dict (which was turned into a JavaScript Map) into an Object.
+    // We probably need to do some runtime typechecking to make sure this always works; possibly by defining Python wrapper APIs
+    // which enforce that the caller passes the right types, which are then expected and unwrapped on the JavaScript side.
+    publish: (name: string, queryOrConfig?: any) => globalAny.publish(name, queryOrConfig?.toJs({dict_converter : Object.fromEntries}))
+  });
+
   // Require all "definitions" files (attaching them to the session).
   compileRequest.compileConfig.filePaths
     .filter(path => path.startsWith(`definitions${utils.pathSeperator}`))
-    .filter(path => path.endsWith(".js") || path.endsWith(".sqlx"))
+    .filter(path => path.endsWith(".js") || path.endsWith(".sqlx") || path.endsWith(".py"))
     .forEach(definitionPath => {
       try {
         // tslint:disable-next-line: tsr-detect-non-literal-require

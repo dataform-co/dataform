@@ -99,6 +99,7 @@
     "promise-pool-executor": "^1.1.1",
     "protobufjs": "^7.2.4",
     "protobufjs-cli": "^1.0.0",
+    "pyodide": "0.24.1",
     "re-resizable": "^4.7.1",
     "react": "^16.12.0",
     "react-dom": "^16.12.0",

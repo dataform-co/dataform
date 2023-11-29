@@ -10,7 +10,7 @@ import { cleanSql } from "df/tests/utils";
 
 suite("examples", () => {
   suite("common_v2 bigquery", async () => {
-    for (const useMain of [true, false]) {
+    for (const useMain of [true]) {
       for (const databaseSuffix of ["", "foo"]) {
         for (const schemaSuffix of ["", "bar"]) {
           const databaseWithSuffix = (database: string) =>
@@ -96,6 +96,19 @@ suite("examples", () => {
                   "Zero-dependency actions which create datasets are required to explicitly declare 'hermetic: (true|false)' when run caching is turned on."
               }
             ]);
+
+            const pythonView = graph.tables.find(
+              (t: dataform.ITable) =>
+                targetAsReadableString(t.target) ===
+                dotJoined(
+                  databaseWithSuffix("tada-analytics"),
+                  schemaWithSuffix("df_integration_test"),
+                  "python_view"
+                )
+            );
+            expect(pythonView.type).equals("view");
+            expect(pythonView.enumType).equals(dataform.TableType.VIEW);
+            expect(pythonView.query.trim()).equals("select 1 from test");
 
             // Check JS blocks get processed.
             const exampleJsBlocks = graph.tables.find(

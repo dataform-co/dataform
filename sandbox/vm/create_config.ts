@@ -16,7 +16,7 @@ export function createGenIndexConfig(compileConfig: dataform.ICompileConfig): st
 
   const definitionPaths: string[] = [];
   glob
-    .sync("definitions/**/*.{js,sql,sqlx}", { cwd: compileConfig.projectDir })
+    .sync("definitions/**/*.{js,sql,sqlx,py}", { cwd: compileConfig.projectDir })
     .sort(alphabetically)
     .forEach(path => {
       if (definitionPaths.indexOf(path) < 0) {

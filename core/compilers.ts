@@ -5,6 +5,13 @@ import * as utils from "df/core/utils";
 import { SyntaxTreeNode, SyntaxTreeNodeType } from "df/sqlx/lexer";
 
 export function compile(code: string, path: string) {
+  if (path.endsWith(".py")) {
+    return `
+pyodide.runPython(\`
+${code}
+\`);
+`;
+  }
   if (path.endsWith(".sqlx")) {
     return compileSqlx(SyntaxTreeNode.create(code), path);
   }
