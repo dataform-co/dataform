@@ -6,6 +6,7 @@ import { AContextable, Assertion, AssertionContext, IAssertionConfig } from "df/
 import { Contextable, ICommonContext, Resolvable } from "df/core/common";
 import { CompilationSql } from "df/core/compilation_sql";
 import { Declaration, IDeclarationConfig } from "df/core/declaration";
+import { Notebook } from "df/core/notebook";
 import { IOperationConfig, Operation, OperationContext } from "df/core/operation";
 import { ITableConfig, ITableContext, Table, TableContext, TableType } from "df/core/table";
 import { targetAsReadableString, targetStringifier } from "df/core/targets";
@@ -14,7 +15,6 @@ import * as utils from "df/core/utils";
 import { toResolvable } from "df/core/utils";
 import { version as dataformCoreVersion } from "df/core/version";
 import { dataform } from "df/protos/ts";
-import { Notebook } from "df/core/notebook";
 
 const DEFAULT_CONFIG = {
   defaultSchema: "dataform",

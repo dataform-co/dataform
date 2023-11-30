@@ -151,7 +151,7 @@ export function stringifyResolvable(res: Resolvable) {
   return typeof res === "string" ? res : JSON.stringify(res);
 }
 
-export function ambiguousActionNameMsg(act: Resolvable, allActs: Array<Action> | string[]) {
+export function ambiguousActionNameMsg(act: Resolvable, allActs: Action[] | string[]) {
   const allActNames =
     typeof allActs[0] === "string"
       ? allActs
