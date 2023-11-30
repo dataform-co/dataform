@@ -118,7 +118,7 @@ function loadActionConfigs(session: Session, filePaths: string[]) {
       } catch (e) {
         session.compileError(e, actionConfigsPath);
       }
-      // TODO: Throw nice errors if the proto is invalid.
+      // TODO(ekrekr): Throw nice errors if the proto is invalid.
       verifyObjectMatchesProto(dataform.ActionConfigs, actionConfigsAsJson);
       const actionConfigs = dataform.ActionConfigs.fromObject(actionConfigsAsJson);
 

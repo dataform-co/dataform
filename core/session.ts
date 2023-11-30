@@ -355,6 +355,13 @@ export class Session {
   public compile(): dataform.CompiledGraph {
     this.indexedActions = new ActionIndex(this.actions);
 
+    if (this.config.warehouse === "bigquery" && !this.config.defaultLocation) {
+      this.compileError(
+        "A defaultLocation is required for BigQuery. This can be configured in dataform.json.",
+        "dataform.json"
+      );
+    }
+
     if (
       !!this.config.vars &&
       !Object.values(this.config.vars).every(value => typeof value === "string")
