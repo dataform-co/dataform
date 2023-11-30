@@ -33,7 +33,7 @@ export function baseFilename(fullPath: string) {
 }
 
 export function getEscapedFileName(path: string) {
-  return baseFilename(path).replace(/\\/g, '\\\\')
+  return baseFilename(path).replace(/\\/g, "\\\\");
 }
 
 export function matchPatterns(patterns: string[], values: string[]) {
@@ -236,13 +236,6 @@ export function validateQueryString(session: Session, query: string, filename: s
   }
 }
 
-export function throwIfInvalid<T>(proto: T, verify: (proto: T) => string) {
-  const verifyError = verify(proto);
-  if (verifyError) {
-    throw new Error(verifyError);
-  }
-}
-
 export function tableTypeStringToEnum(type: string, throwIfUnknown: boolean) {
   switch (type) {
     case "table":
@@ -265,7 +258,6 @@ export function tableTypeStringToEnum(type: string, throwIfUnknown: boolean) {
 export function tableTypeEnumToString(enumType: dataform.TableType) {
   return dataform.TableType[enumType].toLowerCase();
 }
-
 
 export function setOrValidateTableEnumType(table: dataform.ITable) {
   let enumTypeFromStr: dataform.TableType | null = null;

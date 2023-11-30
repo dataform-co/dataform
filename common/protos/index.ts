@@ -19,10 +19,11 @@ export interface IProtoClass<IProto, Proto> {
 export function verifyObjectMatchesProto<Proto>(
   protoType: IProtoClass<any, Proto>,
   object: object
-) {
+): Proto {
   // Create a version of the object that only contains the valid proto fields.
   // ProtobufJS doesn't care about the types of the values of fields.
-  const protoCastObject = protoType.toObject(protoType.create(object));
+  const proto = protoType.create(object);
+  const protoCastObject = protoType.toObject(proto);
 
   function checkFields(present: { [k: string]: any }, desired: { [k: string]: any }) {
     // Present is guaranteed to be a strict subset of desired.
@@ -39,6 +40,7 @@ export function verifyObjectMatchesProto<Proto>(
   }
 
   checkFields(object, protoCastObject);
+  return proto;
 }
 
 export function encode64<IProto, Proto>(
