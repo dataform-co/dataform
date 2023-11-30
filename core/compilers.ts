@@ -18,6 +18,12 @@ export function compile(code: string, path: string): string {
       throw e;
     }
   }
+  if (path.endsWith(".ipynb")) {
+    const notebookAsJson = JSON.parse(code);
+    // TODO(ekrekr): strip notebook cell outputs.
+    // TODO(ekrekr): base64 encode the notebook as a string instead.
+    return `exports.asBase64String = () => \`${JSON.stringify(notebookAsJson)})\``;
+  }
   return code;
 }
 

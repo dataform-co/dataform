@@ -362,7 +362,7 @@ export class Session {
       throw new Error("Custom variables defined in dataform.json can only be strings.");
     }
 
-    // TODO(ekrekr): get rid of verify here, because it doesn't actually do anything.
+    // TODO(ekrekr): replace verify here with something that actually works.
     const compiledGraph = dataform.CompiledGraph.create({
       projectConfig: this.config,
       tables: this.compileGraphChunk(
@@ -382,10 +382,10 @@ export class Session {
         dataform.Declaration.verify
       ),
       tests: this.compileGraphChunk(Object.values(this.tests), dataform.Test.verify),
-      // notebooks: this.compileGraphChunk(
-      //   this.actions.filter(action => action instanceof Notebook),
-      //   dataform.Notebook.verify
-      // ),
+      notebooks: this.compileGraphChunk(
+        this.actions.filter(action => action instanceof Notebook),
+        dataform.Notebook.verify
+      ),
       graphErrors: this.graphErrors,
       dataformCoreVersion,
       targets: this.actions.map(action => action.proto.target)

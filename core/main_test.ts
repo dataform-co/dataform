@@ -170,7 +170,7 @@ suite("@dataform/core", ({ afterEach }) => {
         path.join(projectDir, "definitions/actions.yaml"),
         `
 actions:
-- fileName: notebook.ipynb
+- fileName: definitions/notebook.ipynb
 `
       );
       // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
@@ -190,7 +190,22 @@ actions:
       const result = runMainInVm(coreExecutionRequest);
 
       expect(asPlainObject(result.compile.compiledGraph.notebooks)).deep.equals(
-        asPlainObject([{}])
+        asPlainObject([
+          {
+            config: {
+              fileName: "definitions/notebook.ipynb",
+              target: {
+                database: "dataform",
+                name: "note"
+              }
+            },
+            notebookContents: '{"cells":[]})',
+            target: {
+              database: "dataform",
+              name: "note"
+            }
+          }
+        ])
       );
     });
   });
@@ -220,7 +235,7 @@ function runMainInVm(
       resolve: (moduleName, parentDirName) =>
         path.join(parentDirName, path.relative(parentDirName, projectDir), moduleName)
     },
-    sourceExtensions: ["js", "sql", "sqlx", "yaml"],
+    sourceExtensions: ["js", "sql", "sqlx", "yaml", "ipynb"],
     compiler
   });
 
