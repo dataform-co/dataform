@@ -6,10 +6,11 @@ import { Builder, credentials, prune, Runner } from "df/cli/api";
 import { IDbAdapter } from "df/cli/api/dbadapters";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 import { sleep, sleepUntil } from "df/common/promises";
-import { targetAsReadableString, targetsAreEqual } from "df/core/targets";
+import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { asPlainObject, cleanSql } from "df/tests/utils";
+import { equals } from "df/common/protos";
 
 config.truncateThreshold = 0;
 
@@ -136,17 +137,23 @@ suite("@dataform/api", () => {
       expect(executedGraph.actions.length).greaterThan(0);
 
       graph.tables.forEach((t: dataform.ITable) => {
-        const action = executedGraph.actions.find(item => targetsAreEqual(item.target, t.target));
+        const action = executedGraph.actions.find(item =>
+          equals(dataform.Target, item.target, t.target)
+        );
         expect(action).to.include({ type: "table", target: t.target, tableType: t.type });
       });
 
       graph.operations.forEach((o: dataform.IOperation) => {
-        const action = executedGraph.actions.find(item => targetsAreEqual(item.target, o.target));
+        const action = executedGraph.actions.find(item =>
+          equals(dataform.Target, item.target, o.target)
+        );
         expect(action).to.include({ type: "operation", target: o.target });
       });
 
       graph.assertions.forEach((a: dataform.IAssertion) => {
-        const action = executedGraph.actions.find(item => targetsAreEqual(item.target, a.target));
+        const action = executedGraph.actions.find(item =>
+          equals(dataform.Target, item.target, a.target)
+        );
         expect(action).to.include({ type: "assertion" });
       });
     });
@@ -171,7 +178,9 @@ suite("@dataform/api", () => {
       expect(executedGraph.actions.length).greaterThan(0);
 
       graph.tables.forEach((t: dataform.ITable) => {
-        const action = executedGraph.actions.find(item => targetsAreEqual(item.target, t.target));
+        const action = executedGraph.actions.find(item =>
+          equals(dataform.Target, item.target, t.target)
+        );
         expect(action).to.include({
           type: "table",
           target: t.target,
