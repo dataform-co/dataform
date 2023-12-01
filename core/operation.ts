@@ -1,3 +1,4 @@
+import { verifyObjectMatchesProto } from "df/common/protos";
 import { ColumnDescriptors } from "df/core/column_descriptors";
 import {
   Contextable,
@@ -60,6 +61,7 @@ export const IIOperationConfigProperties = strictKeysOf<IOperationConfig>()([
  * @hidden
  */
 export class Operation {
+  // TODO(ekrekr): make this field private, to enforce proto update logic to happen in this class.
   public proto: dataform.IOperation = dataform.Operation.create();
 
   // Hold a reference to the Session instance.
@@ -185,6 +187,10 @@ export class Operation {
     return this;
   }
 
+  public getTarget() {
+    return dataform.Target.create(this.proto.target);
+  }
+
   public compile() {
     if (this.proto.actionDescriptor?.columns?.length > 0 && !this.proto.hasOutput) {
       this.session.compileError(
@@ -200,7 +206,7 @@ export class Operation {
     const appliedQueries = context.apply(this.contextableQueries);
     this.proto.queries = typeof appliedQueries === "string" ? [appliedQueries] : appliedQueries;
 
-    return this.proto;
+    return verifyObjectMatchesProto(dataform.Operation, this.proto);
   }
 }
 
@@ -219,9 +225,7 @@ export class OperationContext implements ICommonContext {
   }
 
   public name(): string {
-    return this.operation.session.finalizeName(
-      this.operation.proto.target.name
-    );
+    return this.operation.session.finalizeName(this.operation.proto.target.name);
   }
 
   public ref(ref: Resolvable | string[], ...rest: string[]) {
@@ -239,9 +243,7 @@ export class OperationContext implements ICommonContext {
   }
 
   public schema(): string {
-    return this.operation.session.finalizeSchema(
-      this.operation.proto.target.schema
-    );
+    return this.operation.session.finalizeSchema(this.operation.proto.target.schema);
   }
 
   public database(): string {
@@ -252,9 +254,7 @@ export class OperationContext implements ICommonContext {
       return "";
     }
 
-    return this.operation.session.finalizeDatabase(
-      this.operation.proto.target.database
-    );
+    return this.operation.session.finalizeDatabase(this.operation.proto.target.database);
   }
 
   public dependencies(name: Resolvable | Resolvable[]) {

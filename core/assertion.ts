@@ -1,3 +1,4 @@
+import { verifyObjectMatchesProto } from "df/common/protos";
 import {
   IActionConfig,
   ICommonContext,
@@ -62,6 +63,7 @@ export type AContextable<T> = T | ((ctx: AssertionContext) => T);
  * @hidden
  */
 export class Assertion {
+  // TODO(ekrekr): make this field private, to enforce proto update logic to happen in this class.
   public proto: dataform.IAssertion = dataform.Assertion.create();
 
   // Hold a reference to the Session instance.
@@ -162,13 +164,17 @@ export class Assertion {
     return this;
   }
 
+  public getTarget() {
+    return dataform.Target.create(this.proto.target);
+  }
+
   public compile() {
     const context = new AssertionContext(this);
 
     this.proto.query = context.apply(this.contextableQuery);
     validateQueryString(this.session, this.proto.query, this.proto.fileName);
 
-    return this.proto;
+    return verifyObjectMatchesProto(dataform.Assertion, this.proto);
   }
 }
 
@@ -187,9 +193,7 @@ export class AssertionContext implements ICommonContext {
   }
 
   public name(): string {
-    return this.assertion.session.finalizeName(
-      this.assertion.proto.target.name
-    );
+    return this.assertion.session.finalizeName(this.assertion.proto.target.name);
   }
 
   public ref(ref: Resolvable | string[], ...rest: string[]) {
@@ -207,9 +211,7 @@ export class AssertionContext implements ICommonContext {
   }
 
   public schema(): string {
-    return this.assertion.session.finalizeSchema(
-      this.assertion.proto.target.schema
-    );
+    return this.assertion.session.finalizeSchema(this.assertion.proto.target.schema);
   }
 
   public database(): string {
@@ -220,9 +222,7 @@ export class AssertionContext implements ICommonContext {
       return "";
     }
 
-    return this.assertion.session.finalizeDatabase(
-      this.assertion.proto.target.database
-    );
+    return this.assertion.session.finalizeDatabase(this.assertion.proto.target.database);
   }
 
   public dependencies(name: Resolvable | Resolvable[]) {
