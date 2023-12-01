@@ -1,9 +1,10 @@
 import { verifyObjectMatchesProto } from "df/common/protos";
 import { StringifiedMap } from "df/common/strings/stringifier";
+import { IActionBuilder } from "df/core/actions";
+import * as table from "df/core/actions/table";
+import { ITableContext } from "df/core/actions/table";
 import { Contextable, ICommonContext, INamedConfig, Resolvable } from "df/core/common";
 import { Session } from "df/core/session";
-import * as table from "df/core/table";
-import { ITableContext } from "df/core/table";
 import { targetStringifier } from "df/core/targets";
 import {
   ambiguousActionNameMsg,
@@ -30,7 +31,7 @@ const ITestConfigProperties = strictKeysOf<ITestConfig>()(["type", "dataset", "n
 /**
  * @hidden
  */
-export class Test {
+export class Test implements IActionBuilder<dataform.Test> {
   // TODO(ekrekr): make this field private, to enforce proto update logic to happen in this class.
   public proto: dataform.ITest = dataform.Test.create();
 
@@ -69,6 +70,10 @@ export class Test {
   public expect(contextableQuery: Contextable<ICommonContext, string>) {
     this.contextableQuery = contextableQuery;
     return this;
+  }
+
+  public getFileName() {
+    return this.proto.fileName;
   }
 
   public getTarget(): undefined {

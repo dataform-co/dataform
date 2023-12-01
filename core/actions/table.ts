@@ -1,5 +1,6 @@
 import { verifyObjectMatchesProto } from "df/common/protos";
-import { Assertion } from "df/core/assertion";
+import { IActionBuilder } from "df/core/actions";
+import { Assertion } from "df/core/actions/assertion";
 import { ColumnDescriptors } from "df/core/column_descriptors";
 import {
   Contextable,
@@ -239,7 +240,7 @@ export interface ITableContext extends ICommonContext {
 /**
  * @hidden
  */
-export class Table {
+export class Table implements IActionBuilder<dataform.Table> {
   public static readonly INLINE_IGNORED_PROPS: Array<keyof dataform.ITable> = [
     "bigquery",
     "preOps",
@@ -509,6 +510,10 @@ export class Table {
       }
     }
     return this;
+  }
+
+  public getFileName() {
+    return this.proto.fileName;
   }
 
   public getTarget() {
