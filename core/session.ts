@@ -9,7 +9,7 @@ import { Declaration, IDeclarationConfig } from "df/core/declaration";
 import { IOperationConfig, Operation, OperationContext } from "df/core/operation";
 import { ITableConfig, ITableContext, Table, TableContext, TableType } from "df/core/table";
 import { targetAsReadableString, targetStringifier } from "df/core/targets";
-import { Test, ITestConfig } from "df/core/test";
+import { ITestConfig, Test } from "df/core/test";
 import * as utils from "df/core/utils";
 import { toResolvable } from "df/core/utils";
 import { version as dataformCoreVersion } from "df/core/version";
