@@ -1,3 +1,4 @@
+import { verifyObjectMatchesProto } from "df/common/protos";
 import { StringifiedMap } from "df/common/strings/stringifier";
 import { Contextable, ICommonContext, INamedConfig, Resolvable } from "df/core/common";
 import { Session } from "df/core/session";
@@ -30,6 +31,7 @@ const ITestConfigProperties = strictKeysOf<ITestConfig>()(["type", "dataset", "n
  * @hidden
  */
 export class Test {
+  // TODO(ekrekr): make this field private, to enforce proto update logic to happen in this class.
   public proto: dataform.ITest = dataform.Test.create();
 
   public session: Session;
@@ -69,6 +71,11 @@ export class Test {
     return this;
   }
 
+  public getTarget(): undefined {
+    // The test action type has no target because it is not processed during regular execution.
+    return undefined;
+  }
+
   public compile() {
     const testContext = new TestContext(this);
     if (!this.datasetToTest) {
@@ -101,7 +108,8 @@ export class Test {
       }
     }
     this.proto.expectedOutputQuery = testContext.apply(this.contextableQuery);
-    return this.proto;
+
+    return verifyObjectMatchesProto(dataform.Test, this.proto);
   }
 }
 

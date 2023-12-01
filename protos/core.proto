@@ -249,6 +249,8 @@ message CompiledGraph {
   repeated Operation operations = 2;
   repeated Assertion assertions = 3;
   repeated Declaration declarations = 9;
+  // TODO(ekrekr): move the Test action outside of the compiled graph, because
+  // it is not used at runtime.
   repeated Test tests = 8;
   repeated Notebook notebooks = 12;
 

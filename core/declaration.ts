@@ -1,6 +1,6 @@
+import { verifyObjectMatchesProto } from "df/common/protos";
 import { ColumnDescriptors } from "df/core/column_descriptors";
 import {
-  IActionConfig,
   IColumnsDescriptor,
   IDocumentableConfig,
   INamedConfig,
@@ -27,6 +27,7 @@ export const IDeclarationConfigProperties = strictKeysOf<IDeclarationConfig>()([
  * @hidden
  */
 export class Declaration {
+  // TODO(ekrekr): make this field private, to enforce proto update logic to happen in this class.
   public proto: dataform.IDeclaration = dataform.Declaration.create();
 
   public session: Session;
@@ -66,7 +67,12 @@ export class Declaration {
     return this;
   }
 
+  public getTarget() {
+    return dataform.Target.create(this.proto.target);
+  }
+
   public compile() {
-    return this.proto;
+    // ProtobufJS isn't strict with the fields available on protos, so we validate this here.
+    return verifyObjectMatchesProto(dataform.Declaration, this.proto);
   }
 }

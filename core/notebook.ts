@@ -19,6 +19,10 @@ export class Notebook {
     this.proto.notebookContents = contents;
   }
 
+  public getTarget() {
+    return dataform.Target.create(this.proto.target);
+  }
+
   public compile() {
     return this.proto;
   }

@@ -1,6 +1,6 @@
 import { default as TarjanGraphConstructor, Graph as TarjanGraph } from "tarjan-graph";
 
-import { encode64 } from "df/common/protos";
+import { encode64, verifyObjectMatchesProto } from "df/common/protos";
 import { StringifiedMap, StringifiedSet } from "df/common/strings/stringifier";
 import { AContextable, Assertion, AssertionContext, IAssertionConfig } from "df/core/assertion";
 import { Contextable, ICommonContext, Resolvable } from "df/core/common";
@@ -10,7 +10,7 @@ import { Notebook } from "df/core/notebook";
 import { IOperationConfig, Operation, OperationContext } from "df/core/operation";
 import { ITableConfig, ITableContext, Table, TableContext, TableType } from "df/core/table";
 import { targetAsReadableString, targetStringifier } from "df/core/targets";
-import * as test from "df/core/test";
+import { ITestConfig, Test } from "df/core/test";
 import * as utils from "df/core/utils";
 import { toResolvable } from "df/core/utils";
 import { version as dataformCoreVersion } from "df/core/version";
@@ -39,7 +39,7 @@ type SqlxConfig = (
   | (IAssertionConfig & { type: "assertion" })
   | (IOperationConfig & { type: "operations" })
   | (IDeclarationConfig & { type: "declaration" })
-  | (test.ITestConfig & { type: "test" })
+  | (ITestConfig & { type: "test" })
 ) & { name: string };
 
 export type Action = Table | Operation | Assertion | Declaration | Notebook;
@@ -55,7 +55,7 @@ export class Session {
 
   public actions: Action[];
   public indexedActions: ActionIndex;
-  public tests: { [name: string]: test.Test };
+  public tests: { [name: string]: Test };
 
   public graphErrors: dataform.IGraphErrors;
 
@@ -325,8 +325,8 @@ export class Session {
     return declaration;
   }
 
-  public test(name: string): test.Test {
-    const newTest = new test.Test();
+  public test(name: string): Test {
+    const newTest = new Test();
     newTest.session = this;
     newTest.proto.name = name;
     newTest.proto.fileName = utils.getCallerFile(this.rootDir);
@@ -372,23 +372,17 @@ export class Session {
     // TODO(ekrekr): replace verify here with something that actually works.
     const compiledGraph = dataform.CompiledGraph.create({
       projectConfig: this.config,
-      tables: this.compileGraphChunk(
-        this.actions.filter(action => action instanceof Table),
-        dataform.Table.verify
-      ),
+      tables: this.compileGraphChunk(this.actions.filter(action => action instanceof Table)),
       operations: this.compileGraphChunk(
-        this.actions.filter(action => action instanceof Operation),
-        dataform.Operation.verify
+        this.actions.filter(action => action instanceof Operation)
       ),
       assertions: this.compileGraphChunk(
-        this.actions.filter(action => action instanceof Assertion),
-        dataform.Assertion.verify
+        this.actions.filter(action => action instanceof Assertion)
       ),
       declarations: this.compileGraphChunk(
-        this.actions.filter(action => action instanceof Declaration),
-        dataform.Declaration.verify
+        this.actions.filter(action => action instanceof Declaration)
       ),
-      tests: this.compileGraphChunk(Object.values(this.tests), dataform.Test.verify),
+      tests: this.compileGraphChunk(Object.values(this.tests)),
       notebooks: this.compileGraphChunk(
         this.actions.filter(action => action instanceof Notebook),
         dataform.Notebook.verify
@@ -417,7 +411,7 @@ export class Session {
       [].concat(compiledGraph.tables, compiledGraph.assertions, compiledGraph.operations)
     );
 
-    utils.throwIfInvalid(compiledGraph, dataform.CompiledGraph.verify);
+    verifyObjectMatchesProto(dataform.CompiledGraph, compiledGraph);
     return compiledGraph;
   }
 
@@ -449,19 +443,15 @@ export class Session {
     return !!this.config.tablePrefix ? `${this.config.tablePrefix}_` : "";
   }
 
-  private compileGraphChunk<T>(
-    actions: Array<{ proto: IActionProto; compile(): T }>,
-    verify: (proto: T) => string
-  ): T[] {
+  private compileGraphChunk<T>(actions: Array<Action | Test>): T[] {
     const compiledChunks: T[] = [];
 
     actions.forEach(action => {
       try {
         const compiledChunk = action.compile();
-        utils.throwIfInvalid(compiledChunk, verify);
-        compiledChunks.push(compiledChunk);
+        compiledChunks.push(compiledChunk as any);
       } catch (e) {
-        this.compileError(e, action.proto.fileName, action.proto.target);
+        this.compileError(e, action.proto.fileName, action.getTarget());
       }
     });
 

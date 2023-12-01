@@ -1,3 +1,4 @@
+import { verifyObjectMatchesProto } from "df/common/protos";
 import { Assertion } from "df/core/assertion";
 import { ColumnDescriptors } from "df/core/column_descriptors";
 import {
@@ -248,6 +249,7 @@ export class Table {
     "where"
   ];
 
+  // TODO(ekrekr): make this field private, to enforce proto update logic to happen in this class.
   public proto: dataform.ITable = dataform.Table.create({
     type: "view",
     enumType: dataform.TableType.VIEW,
@@ -509,6 +511,10 @@ export class Table {
     return this;
   }
 
+  public getTarget() {
+    return dataform.Target.create(this.proto.target);
+  }
+
   public compile() {
     const context = new TableContext(this);
     const incrementalContext = new TableContext(this, true);
@@ -539,7 +545,7 @@ export class Table {
     validateQueryString(this.session, this.proto.query, this.proto.fileName);
     validateQueryString(this.session, this.proto.incrementalQuery, this.proto.fileName);
 
-    return this.proto;
+    return verifyObjectMatchesProto(dataform.Table, this.proto);
   }
 
   private contextifyOps(

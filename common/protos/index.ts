@@ -15,21 +15,31 @@ export interface IProtoClass<IProto, Proto> {
 }
 
 // ProtobufJS's native verify method does not check that only defined fields are present.
-// TODO(ekrekr): swap to Typescript protobuf library rather than having to do this.
+// TODO(ekrekr): swap to Typescript protobuf library rather than having to do this; however using TS
+// libraries currently available would incur a significant performance hit.
 export function verifyObjectMatchesProto<Proto>(
   protoType: IProtoClass<any, Proto>,
   object: object
-) {
+): Proto {
   // Create a version of the object that only contains the valid proto fields.
   // ProtobufJS doesn't care about the types of the values of fields.
-  const protoCastObject = protoType.toObject(protoType.create(object));
+  const proto = protoType.create(object);
+  const protoCastObject = protoType.toObject(proto);
 
   function checkFields(present: { [k: string]: any }, desired: { [k: string]: any }) {
     // Present is guaranteed to be a strict subset of desired.
     // Present fields cannot have empty values.
     Object.entries(present).forEach(([presentKey, presentValue]) => {
       const desiredValue = desired[presentKey];
-      if (!desiredValue) {
+      if (typeof desiredValue !== typeof presentValue) {
+        if (Array.isArray(presentValue) && presentValue.length === 0) {
+          // Empty arrays are assigned to empty proto array fields by ProtobufJS.
+          return;
+        }
+        if (typeof presentValue === "object" && Object.keys(presentValue).length === 0) {
+          // Empty objects are assigned to empty objects by ProtobufJS.
+          return;
+        }
         throw ReferenceError(`unexpected key '${presentKey}'`);
       }
       if (typeof presentValue === "object") {
@@ -39,6 +49,7 @@ export function verifyObjectMatchesProto<Proto>(
   }
 
   checkFields(object, protoCastObject);
+  return proto;
 }
 
 export function encode64<IProto, Proto>(
