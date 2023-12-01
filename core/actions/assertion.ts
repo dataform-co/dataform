@@ -1,4 +1,5 @@
 import { verifyObjectMatchesProto } from "df/common/protos";
+import { IActionBuilder } from "df/core/actions";
 import {
   IActionConfig,
   ICommonContext,
@@ -62,7 +63,7 @@ export type AContextable<T> = T | ((ctx: AssertionContext) => T);
 /**
  * @hidden
  */
-export class Assertion {
+export class Assertion implements IActionBuilder<dataform.Assertion> {
   // TODO(ekrekr): make this field private, to enforce proto update logic to happen in this class.
   public proto: dataform.IAssertion = dataform.Assertion.create();
 
@@ -162,6 +163,10 @@ export class Assertion {
       this.proto.target.database
     );
     return this;
+  }
+
+  public getFileName() {
+    return this.proto.fileName;
   }
 
   public getTarget() {

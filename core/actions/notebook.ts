@@ -1,10 +1,12 @@
+import { verifyObjectMatchesProto } from "df/common/protos";
+import { IActionBuilder } from "df/core/actions";
 import { Session } from "df/core/session";
 import { dataform } from "df/protos/ts";
 
 /**
  * @hidden
  */
-export class Notebook {
+export class Notebook implements IActionBuilder<dataform.Notebook> {
   public session: Session;
 
   // TODO: make this field private, to enforce proto update logic to happen in this class.
@@ -19,11 +21,15 @@ export class Notebook {
     this.proto.notebookContents = contents;
   }
 
+  public getFileName() {
+    return this.proto.config.fileName;
+  }
+
   public getTarget() {
     return dataform.Target.create(this.proto.target);
   }
 
   public compile() {
-    return this.proto;
+    return verifyObjectMatchesProto(dataform.Notebook, this.proto);
   }
 }

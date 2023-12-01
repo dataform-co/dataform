@@ -7,7 +7,7 @@ import { Flags } from "df/common/flags";
 import { retry } from "df/common/promises";
 import { deepClone, equals } from "df/common/protos";
 import { StringifiedMap, StringifiedSet } from "df/common/strings/stringifier";
-import { IBigQueryOptions } from "df/core/table";
+import { IBigQueryOptions } from "df/core/actions/table";
 import { targetsAreEqual, targetStringifier } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 

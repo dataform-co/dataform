@@ -2,15 +2,16 @@ import { default as TarjanGraphConstructor, Graph as TarjanGraph } from "tarjan-
 
 import { encode64, verifyObjectMatchesProto } from "df/common/protos";
 import { StringifiedMap, StringifiedSet } from "df/common/strings/stringifier";
-import { AContextable, Assertion, AssertionContext, IAssertionConfig } from "df/core/assertion";
+import { Action, SqlxConfig } from "df/core/actions";
+import { AContextable, Assertion, AssertionContext } from "df/core/actions/assertion";
+import { Declaration } from "df/core/actions/declaration";
+import { Notebook } from "df/core/actions/notebook";
+import { Operation, OperationContext } from "df/core/actions/operation";
+import { ITableConfig, ITableContext, Table, TableContext, TableType } from "df/core/actions/table";
+import { Test } from "df/core/actions/test";
 import { Contextable, ICommonContext, Resolvable } from "df/core/common";
 import { CompilationSql } from "df/core/compilation_sql";
-import { Declaration, IDeclarationConfig } from "df/core/declaration";
-import { Notebook } from "df/core/notebook";
-import { IOperationConfig, Operation, OperationContext } from "df/core/operation";
-import { ITableConfig, ITableContext, Table, TableContext, TableType } from "df/core/table";
 import { targetAsReadableString, targetStringifier } from "df/core/targets";
-import { ITestConfig, Test } from "df/core/test";
 import * as utils from "df/core/utils";
 import { toResolvable } from "df/core/utils";
 import { version as dataformCoreVersion } from "df/core/version";
@@ -23,6 +24,8 @@ const DEFAULT_CONFIG = {
 
 /**
  * @hidden
+ * @deprecated
+ * TODO(ekrekr): the action type should be passed around rather than this proxy for the proto.
  */
 export interface IActionProto {
   fileName?: string;
@@ -33,16 +36,6 @@ export interface IActionProto {
   parentAction?: dataform.ITarget;
   config?: dataform.IActionConfig;
 }
-
-type SqlxConfig = (
-  | (ITableConfig & { type: TableType })
-  | (IAssertionConfig & { type: "assertion" })
-  | (IOperationConfig & { type: "operations" })
-  | (IDeclarationConfig & { type: "declaration" })
-  | (ITestConfig & { type: "test" })
-) & { name: string };
-
-export type Action = Table | Operation | Assertion | Declaration | Notebook;
 
 /**
  * @hidden
@@ -383,10 +376,7 @@ export class Session {
         this.actions.filter(action => action instanceof Declaration)
       ),
       tests: this.compileGraphChunk(Object.values(this.tests)),
-      notebooks: this.compileGraphChunk(
-        this.actions.filter(action => action instanceof Notebook),
-        dataform.Notebook.verify
-      ),
+      notebooks: this.compileGraphChunk(this.actions.filter(action => action instanceof Notebook)),
       graphErrors: this.graphErrors,
       dataformCoreVersion,
       targets: this.actions.map(action => action.proto.target)
@@ -451,7 +441,7 @@ export class Session {
         const compiledChunk = action.compile();
         compiledChunks.push(compiledChunk as any);
       } catch (e) {
-        this.compileError(e, action.proto.fileName, action.getTarget());
+        this.compileError(e, action.getFileName(), action.getTarget());
       }
     });
 

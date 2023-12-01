@@ -1,9 +1,9 @@
-import { Assertion } from "df/core/assertion";
+import { Action } from "df/core/actions";
+import { Assertion } from "df/core/actions/assertion";
+import { Operation } from "df/core/actions/operation";
+import { Table } from "df/core/actions/table";
 import { Resolvable } from "df/core/common";
-import { Declaration } from "df/core/declaration";
-import { Operation } from "df/core/operation";
-import { Action, IActionProto, Session } from "df/core/session";
-import { Table } from "df/core/table";
+import { IActionProto, Session } from "df/core/session";
 import { dataform } from "df/protos/ts";
 
 export const pathSeperator = (() => {
