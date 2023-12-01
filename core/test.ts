@@ -72,7 +72,7 @@ export class Test {
   }
 
   public getTarget(): undefined {
-    // The test action type is not processed at runtime so has no target.
+    // The test action type has no target because it is not processed during regular execution.
     return undefined;
   }
 

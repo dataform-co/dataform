@@ -15,7 +15,8 @@ export interface IProtoClass<IProto, Proto> {
 }
 
 // ProtobufJS's native verify method does not check that only defined fields are present.
-// TODO(ekrekr): swap to Typescript protobuf library rather than having to do this.
+// TODO(ekrekr): swap to Typescript protobuf library rather than having to do this; however using TS
+// libraries currently available would incur a significant performance hit b/305915462#comment18.
 export function verifyObjectMatchesProto<Proto>(
   protoType: IProtoClass<any, Proto>,
   object: object
@@ -30,7 +31,15 @@ export function verifyObjectMatchesProto<Proto>(
     // Present fields cannot have empty values.
     Object.entries(present).forEach(([presentKey, presentValue]) => {
       const desiredValue = desired[presentKey];
-      if (!desiredValue) {
+      if (typeof desiredValue !== typeof presentValue) {
+        if (Array.isArray(presentValue) && presentValue.length === 0) {
+          // Empty arrays are assigned to empty proto array fields by ProtobufJS.
+          return;
+        }
+        if (typeof presentValue === "object" && Object.keys(presentValue).length === 0) {
+          // Empty objects are assigned to empty objects by ProtobufJS.
+          return;
+        }
         throw ReferenceError(`unexpected key '${presentKey}'`);
       }
       if (typeof presentValue === "object") {

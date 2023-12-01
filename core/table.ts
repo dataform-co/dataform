@@ -249,6 +249,7 @@ export class Table {
     "where"
   ];
 
+  // TODO(ekrekr): make this field private, to enforce proto update logic to happen in this class.
   public proto: dataform.ITable = dataform.Table.create({
     type: "view",
     enumType: dataform.TableType.VIEW,

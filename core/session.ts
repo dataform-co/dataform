@@ -432,8 +432,8 @@ export class Session {
 
     actions.forEach(action => {
       try {
-        const compiledChunk = action.compile() as T;
-        compiledChunks.push(compiledChunk);
+        const compiledChunk = action.compile();
+        compiledChunks.push(compiledChunk as any);
       } catch (e) {
         this.compileError(e, action.proto.fileName, action.getTarget());
       }
