@@ -1,4 +1,5 @@
 import { verifyObjectMatchesProto } from "df/common/protos";
+import { IActionBuilder } from "df/core/actions";
 import { ColumnDescriptors } from "df/core/column_descriptors";
 import {
   IColumnsDescriptor,
@@ -9,6 +10,7 @@ import {
 import { Session } from "df/core/session";
 import { checkExcessProperties, strictKeysOf } from "df/core/utils";
 import { dataform } from "df/protos/ts";
+
 /**
  * Configuration options for `declaration` action types.
  */
@@ -26,7 +28,7 @@ export const IDeclarationConfigProperties = strictKeysOf<IDeclarationConfig>()([
 /**
  * @hidden
  */
-export class Declaration {
+export class Declaration implements IActionBuilder<dataform.Declaration> {
   // TODO(ekrekr): make this field private, to enforce proto update logic to happen in this class.
   public proto: dataform.IDeclaration = dataform.Declaration.create();
 
@@ -65,6 +67,10 @@ export class Declaration {
       (e: Error) => this.session.compileError(e)
     );
     return this;
+  }
+
+  public getFileName() {
+    return this.proto.fileName;
   }
 
   public getTarget() {
