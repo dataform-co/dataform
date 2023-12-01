@@ -57,6 +57,7 @@ function maybeRequire(file: string): any {
     return nativeRequire(file);
   } catch (e) {
     if (e instanceof SyntaxError) {
+      // A syntax error indicates that the file was successfully resolve, but is invalid.
       throw e;
     }
     return undefined;

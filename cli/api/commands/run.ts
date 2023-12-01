@@ -8,7 +8,7 @@ import { retry } from "df/common/promises";
 import { deepClone, equals } from "df/common/protos";
 import { StringifiedMap, StringifiedSet } from "df/common/strings/stringifier";
 import { IBigQueryOptions } from "df/core/actions/table";
-import { targetsAreEqual, targetStringifier } from "df/core/targets";
+import { targetStringifier } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 
 const CANCEL_EVENT = "jobCancel";
@@ -312,7 +312,7 @@ export class Runner {
     }
 
     const resumedActionResult = this.runResult.actions.find(existingActionResult =>
-      targetsAreEqual(existingActionResult.target, action.target)
+      equals(dataform.Target, existingActionResult.target, action.target)
     );
     if (resumedActionResult) {
       actionResult = resumedActionResult;

@@ -712,10 +712,6 @@ export class Session {
   }
 }
 
-function declaresDataset(type: string, hasOutput?: boolean) {
-  return definesDataset(type) || type === "declaration" || hasOutput;
-}
-
 function definesDataset(type: string) {
   return type === "view" || type === "table" || type === "inline" || type === "incremental";
 }
