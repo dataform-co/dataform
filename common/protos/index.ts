@@ -16,7 +16,7 @@ export interface IProtoClass<IProto, Proto> {
 
 // ProtobufJS's native verify method does not check that only defined fields are present.
 // TODO(ekrekr): swap to Typescript protobuf library rather than having to do this; however using TS
-// libraries currently available would incur a significant performance hit b/305915462#comment18.
+// libraries currently available would incur a significant performance hit.
 export function verifyObjectMatchesProto<Proto>(
   protoType: IProtoClass<any, Proto>,
   object: object
