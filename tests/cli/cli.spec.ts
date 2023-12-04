@@ -51,8 +51,14 @@ suite(__filename, () => {
     fs.writeFileSync(
       filePath,
       `
-config { type: "table" }
-select 1 as \${dataform.projectConfig.vars.testVar2}
+config {
+  type: "table",
+  database: dataform.projectConfig.vars.databaseVar,
+  assertions: {
+    nonNull: [dataform.projectConfig.vars.columnVar],
+  }
+}
+select 1 as \${dataform.projectConfig.vars.columnVar}
 `
     );
 
@@ -63,50 +69,87 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
         "compile",
         projectDir,
         "--json",
-        "--vars=testVar1=testValue1,testVar2=testValue2"
+        "--vars=databaseVar=databaseValue,columnVar=columnValue",
+        "--schema-suffix=test_schema_suffix"
       ])
     );
 
     expect(compileResult.exitCode).equals(0);
 
     expect(JSON.parse(compileResult.stdout)).deep.equals({
-      tables: [
+      assertions: [
         {
-          type: "table",
-          enumType: "TABLE",
           target: {
-            database: "dataform-integration-tests",
-            schema: "dataform",
-            name: "example"
+            database: "databaseValue",
+            name: "dataform_example_assertions_rowConditions",
+            schema: "dataform_assertions_test_schema_suffix"
           },
           canonicalTarget: {
-            schema: "dataform",
-            name: "example",
-            database: "dataform-integration-tests"
+            database: "databaseValue",
+            name: "dataform_example_assertions_rowConditions",
+            schema: "dataform_assertions"
           },
-          query: "\n\nselect 1 as testValue2\n",
-          disabled: false,
-          fileName: "definitions/example.sqlx"
+          dependencyTargets: [
+            {
+              database: "databaseValue",
+              name: "example",
+              schema: "dataform_test_schema_suffix"
+            }
+          ],
+          fileName: "definitions/example.sqlx",
+          parentAction: {
+            database: "databaseValue",
+            name: "example",
+            schema: "dataform_test_schema_suffix"
+          },
+          query:
+            "\nSELECT\n  'columnValue IS NOT NULL' AS failing_row_condition,\n  *\nFROM `databaseValue.dataform_test_schema_suffix.example`\nWHERE NOT (columnValue IS NOT NULL)\n"
         }
       ],
+      dataformCoreVersion: "3.0.0",
+      graphErrors: {},
       projectConfig: {
-        warehouse: "bigquery",
-        defaultSchema: "dataform",
         assertionSchema: "dataform_assertions",
         defaultDatabase: "dataform-integration-tests",
         defaultLocation: "US",
+        defaultSchema: "dataform",
+        schemaSuffix: "test_schema_suffix",
+        useRunCache: false,
         vars: {
-          testVar1: "testValue1",
-          testVar2: "testValue2"
-        }
+          databaseVar: "databaseValue",
+          columnVar: "columnValue"
+        },
+        warehouse: "bigquery"
       },
-      graphErrors: {},
-      dataformCoreVersion: version,
+      tables: [
+        {
+          canonicalTarget: {
+            database: "databaseValue",
+            name: "example",
+            schema: "dataform"
+          },
+          disabled: false,
+          enumType: "TABLE",
+          fileName: "definitions/example.sqlx",
+          query: "\n\nselect 1 as columnValue\n",
+          target: {
+            database: "databaseValue",
+            name: "example",
+            schema: "dataform_test_schema_suffix"
+          },
+          type: "table"
+        }
+      ],
       targets: [
         {
-          database: "dataform-integration-tests",
-          schema: "dataform",
-          name: "example"
+          database: "databaseValue",
+          name: "example",
+          schema: "dataform"
+        },
+        {
+          database: "databaseValue",
+          name: "dataform_example_assertions_rowConditions",
+          schema: "dataform_assertions"
         }
       ]
     });
@@ -121,7 +164,8 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
         "test_credentials/bigquery.json",
         "--dry-run",
         "--json",
-        "--vars=testVar1=testValue1,testVar2=testValue2"
+        "--vars=testVar1=testValue1,testVar2=testValue2",
+        "--default-location=europe"
       ])
     );
 
@@ -151,8 +195,9 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
       projectConfig: {
         assertionSchema: "dataform_assertions",
         defaultDatabase: "dataform-integration-tests",
-        defaultLocation: "US",
+        defaultLocation: "europe",
         defaultSchema: "dataform",
+        useRunCache: false,
         warehouse: "bigquery",
         vars: {
           testVar1: "testValue1",
@@ -160,7 +205,8 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
         }
       },
       runConfig: {
-        fullRefresh: false
+        fullRefresh: false,
+        useRunCache: false
       },
       warehouseState: {}
     });
