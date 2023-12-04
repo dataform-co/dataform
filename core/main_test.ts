@@ -211,7 +211,11 @@ vars:
 config {
   type: "table",
   database: dataform.projectConfig.vars.var1,
-  description: dataform.projectConfig.vars.var2
+  schema: "tableSchema",
+  description: dataform.projectConfig.vars.var2,
+  assertions: {
+    nonNull: [dataform.projectConfig.vars.var3],
+  }
 }
 select 1 AS \${dataform.projectConfig.vars.var3}`
         );
@@ -223,6 +227,31 @@ select 1 AS \${dataform.projectConfig.vars.var3}`
 
         expect(asPlainObject(result.compile.compiledGraph)).deep.equals(
           asPlainObject({
+            assertions: [
+              {
+                canonicalTarget: {
+                  name: "tableSchema_file_assertions_rowConditions"
+                },
+                dependencyTargets: [
+                  {
+                    database: "value1",
+                    name: "file",
+                    schema: "tableSchema"
+                  }
+                ],
+                fileName: "definitions/file.sqlx",
+                parentAction: {
+                  database: "value1",
+                  name: "file",
+                  schema: "tableSchema"
+                },
+                query:
+                  "\nSELECT\n  'value3 IS NOT NULL' AS failing_row_condition,\n  *\nFROM `value1.tableSchema.file`\nWHERE NOT (value3 IS NOT NULL)\n",
+                target: {
+                  name: "tableSchema_file_assertions_rowConditions"
+                }
+              }
+            ],
             dataformCoreVersion: "3.0.0",
             graphErrors: {},
             projectConfig: {
@@ -241,7 +270,8 @@ select 1 AS \${dataform.projectConfig.vars.var3}`
                 },
                 canonicalTarget: {
                   database: "value1",
-                  name: "file"
+                  name: "file",
+                  schema: "tableSchema"
                 },
                 disabled: false,
                 enumType: "TABLE",
@@ -249,7 +279,8 @@ select 1 AS \${dataform.projectConfig.vars.var3}`
                 query: "\n\nselect 1 AS value3",
                 target: {
                   database: "value1",
-                  name: "file"
+                  name: "file",
+                  schema: "tableSchema"
                 },
                 type: "table"
               }
@@ -257,7 +288,11 @@ select 1 AS \${dataform.projectConfig.vars.var3}`
             targets: [
               {
                 database: "value1",
-                name: "file"
+                name: "file",
+                schema: "tableSchema"
+              },
+              {
+                name: "tableSchema_file_assertions_rowConditions"
               }
             ]
           })
