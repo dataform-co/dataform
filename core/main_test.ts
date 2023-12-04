@@ -316,12 +316,10 @@ vars:
         // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
         fs.writeFileSync(
           path.join(projectDir, "definitions/file.sqlx"),
-          // TODO(https://github.com/dataform-co/dataform/issues/1295): add a test and fix
-          // functionality for assertions overriding database.
           `
 config {
   type: "table",
-  database: dataform.projectConfig.vars.var1,
+  database: dataform.projectConfig.vars.databaseVar,
 }
 select 1 AS \${dataform.projectConfig.vars.selectVar}`
         );
@@ -381,8 +379,6 @@ select 1 AS \${dataform.projectConfig.vars.selectVar}`
         );
       });
     });
-
-    // TODO(ekrekr): add a test for nested fields, once they exist.
   });
 
   suite("notebooks", () => {
