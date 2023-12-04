@@ -277,9 +277,8 @@ vars:
           `
 defaultLocation: "us"
 vars:
-  var1: value1
-  var2: value2
-  var3: value3`
+  descriptionVar: descriptionValue
+  columnVar: columnValue`
         );
         // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
         fs.mkdirSync(path.join(projectDir, "definitions"));
@@ -291,17 +290,27 @@ vars:
           `
 config {
   type: "table",
-  database: dataform.projectConfig.vars.var1,
+  database: dataform.projectConfig.vars.databaseVar,
   schema: "tableSchema",
-  description: dataform.projectConfig.vars.var2,
+  description: dataform.projectConfig.vars.descriptionVar,
   assertions: {
-    nonNull: [dataform.projectConfig.vars.var3],
+    nonNull: [dataform.projectConfig.vars.columnVar],
   }
 }
-select 1 AS \${dataform.projectConfig.vars.var3}`
+select 1 AS \${dataform.projectConfig.vars.columnVar}`
         );
         const coreExecutionRequest = dataform.CoreExecutionRequest.create({
-          compile: { compileConfig: { projectDir, filePaths: ["definitions/file.sqlx"] } }
+          compile: {
+            compileConfig: {
+              projectDir,
+              filePaths: ["definitions/file.sqlx"],
+              projectConfigOverride: {
+                vars: {
+                  databaseVar: "databaseVal"
+                }
+              }
+            }
+          }
         });
 
         const result = runMainInVm(coreExecutionRequest);
@@ -315,19 +324,19 @@ select 1 AS \${dataform.projectConfig.vars.var3}`
                 },
                 dependencyTargets: [
                   {
-                    database: "value1",
+                    database: "databaseVal",
                     name: "file",
                     schema: "tableSchema"
                   }
                 ],
                 fileName: "definitions/file.sqlx",
                 parentAction: {
-                  database: "value1",
+                  database: "databaseVal",
                   name: "file",
                   schema: "tableSchema"
                 },
                 query:
-                  "\nSELECT\n  'value3 IS NOT NULL' AS failing_row_condition,\n  *\nFROM `value1.tableSchema.file`\nWHERE NOT (value3 IS NOT NULL)\n",
+                  "\nSELECT\n  'columnValue IS NOT NULL' AS failing_row_condition,\n  *\nFROM `databaseVal.tableSchema.file`\nWHERE NOT (columnValue IS NOT NULL)\n",
                 target: {
                   name: "tableSchema_file_assertions_rowConditions"
                 }
@@ -338,28 +347,28 @@ select 1 AS \${dataform.projectConfig.vars.var3}`
             projectConfig: {
               defaultLocation: "us",
               vars: {
-                var1: "value1",
-                var2: "value2",
-                var3: "value3"
+                databaseVar: "databaseVal",
+                descriptionVar: "descriptionValue",
+                columnVar: "columnValue"
               },
               warehouse: "bigquery"
             },
             tables: [
               {
                 actionDescriptor: {
-                  description: "value2"
+                  description: "descriptionValue"
                 },
                 canonicalTarget: {
-                  database: "value1",
+                  database: "databaseVal",
                   name: "file",
                   schema: "tableSchema"
                 },
                 disabled: false,
                 enumType: "TABLE",
                 fileName: "definitions/file.sqlx",
-                query: "\n\nselect 1 AS value3",
+                query: "\n\nselect 1 AS columnValue",
                 target: {
-                  database: "value1",
+                  database: "databaseVal",
                   name: "file",
                   schema: "tableSchema"
                 },
@@ -368,7 +377,7 @@ select 1 AS \${dataform.projectConfig.vars.var3}`
             ],
             targets: [
               {
-                database: "value1",
+                database: "databaseVal",
                 name: "file",
                 schema: "tableSchema"
               },
