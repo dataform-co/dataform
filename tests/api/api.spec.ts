@@ -6,11 +6,11 @@ import { Builder, credentials, prune, Runner } from "df/cli/api";
 import { IDbAdapter } from "df/cli/api/dbadapters";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 import { sleep, sleepUntil } from "df/common/promises";
+import { equals } from "df/common/protos";
 import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { asPlainObject, cleanSql } from "df/tests/utils";
-import { equals } from "df/common/protos";
 
 config.truncateThreshold = 0;
 
