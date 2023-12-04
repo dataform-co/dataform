@@ -32,7 +32,6 @@ ts_library(
         "main.ts",
         "session.ts",
         "targets.ts",
-        "tasks.ts",
         "utils.ts",
         "workflow_settings.ts",
         ":version.ts",

@@ -15,6 +15,7 @@ ts_test_suite(
         "//cli/api",
         "//cli/api/utils",
         "//common/promises",
+        "//common/protos",
         "//common/strings",
         "//core",
         "//protos:ts",
