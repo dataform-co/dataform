@@ -161,8 +161,8 @@ suite("@dataform/core", ({ afterEach }) => {
           path.join(projectDir, "workflow_settings.yaml"),
           `
 vars:
-    valueIsInt: 1
-    keyAndValueAre: "str"`
+  intValue: 1
+  strValue: "str"`
         );
         const coreExecutionRequest = dataform.CoreExecutionRequest.create({
           compile: { compileConfig: { projectDir } }
@@ -282,9 +282,8 @@ select 1 AS \${dataform.projectConfig.vars.var3}`
       fs.writeFileSync(
         path.join(projectDir, "definitions/actions.yaml"),
         `
-  actions:
-  - fileName: definitions/notebook.ipynb
-  `
+actions:
+  - fileName: definitions/notebook.ipynb`
       );
       // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(
