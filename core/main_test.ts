@@ -298,6 +298,88 @@ select 1 AS \${dataform.projectConfig.vars.var3}`
           })
         );
       });
+
+      test(`variables from the project config override are merged with dataform.json variables and applied`, () => {
+        const projectDir = tmpDirFixture.createNewTmpDir();
+        // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
+        fs.writeFileSync(
+          path.join(projectDir, "workflow_settings.yaml"),
+          `
+defaultDatabase: dataform
+defaultLocation: us
+vars:
+  selectVar: selectVal
+`
+        );
+        // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
+        fs.mkdirSync(path.join(projectDir, "definitions"));
+        // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
+        fs.writeFileSync(
+          path.join(projectDir, "definitions/file.sqlx"),
+          // TODO(https://github.com/dataform-co/dataform/issues/1295): add a test and fix
+          // functionality for assertions overriding database.
+          `
+config {
+  type: "table",
+  database: dataform.projectConfig.vars.var1,
+}
+select 1 AS \${dataform.projectConfig.vars.selectVar}`
+        );
+        const coreExecutionRequest = dataform.CoreExecutionRequest.create({
+          compile: {
+            compileConfig: {
+              projectDir,
+              filePaths: ["definitions/file.sqlx"],
+              projectConfigOverride: {
+                vars: {
+                  databaseVar: "databaseVal"
+                }
+              }
+            }
+          }
+        });
+
+        const result = runMainInVm(coreExecutionRequest);
+
+        expect(asPlainObject(result.compile.compiledGraph)).deep.equals(
+          asPlainObject({
+            dataformCoreVersion: "3.0.0",
+            graphErrors: {},
+            projectConfig: {
+              defaultDatabase: "dataform",
+              defaultLocation: "us",
+              vars: {
+                databaseVar: "databaseVal",
+                selectVar: "selectVal"
+              },
+              warehouse: "bigquery"
+            },
+            tables: [
+              {
+                canonicalTarget: {
+                  database: "databaseVal",
+                  name: "file"
+                },
+                disabled: false,
+                enumType: "TABLE",
+                fileName: "definitions/file.sqlx",
+                query: "\n\nselect 1 AS selectVal",
+                target: {
+                  database: "databaseVal",
+                  name: "file"
+                },
+                type: "table"
+              }
+            ],
+            targets: [
+              {
+                database: "databaseVal",
+                name: "file"
+              }
+            ]
+          })
+        );
+      });
     });
 
     // TODO(ekrekr): add a test for nested fields, once they exist.
