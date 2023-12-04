@@ -359,7 +359,7 @@ export class Session {
       !!this.config.vars &&
       !Object.values(this.config.vars).every(value => typeof value === "string")
     ) {
-      throw new Error("Custom variables defined in dataform.json can only be strings.");
+      throw new Error("Custom variables defined in workflow settings can only be strings.");
     }
 
     // TODO(ekrekr): replace verify here with something that actually works.
