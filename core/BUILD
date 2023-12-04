@@ -22,6 +22,7 @@ ts_library(
         "actions/declaration.ts",
         "actions/index.ts",
         "actions/operation.ts",
+        "actions/notebook.ts",
         "actions/table.ts",
         "actions/test.ts",
         "column_descriptors.ts",

@@ -1,5 +1,5 @@
+import { Action } from "df/core/actions";
 import { Assertion } from "df/core/actions/assertion";
-import { Declaration } from "df/core/actions/declaration";
 import { Operation } from "df/core/actions/operation";
 import { Table } from "df/core/actions/table";
 import { Resolvable } from "df/core/common";
@@ -151,10 +151,7 @@ export function stringifyResolvable(res: Resolvable) {
   return typeof res === "string" ? res : JSON.stringify(res);
 }
 
-export function ambiguousActionNameMsg(
-  act: Resolvable,
-  allActs: Array<Table | Operation | Assertion | Declaration> | string[]
-) {
+export function ambiguousActionNameMsg(act: Resolvable, allActs: Action[] | string[]) {
   const allActNames =
     typeof allActs[0] === "string"
       ? allActs
@@ -189,6 +186,10 @@ export function setNameAndTarget(
   overrideDatabase?: string
 ) {
   action.target = target(session.config, name, overrideSchema, overrideDatabase);
+  if (action.config) {
+    action.config.target = target(session.canonicalConfig, name, overrideSchema, overrideDatabase);
+    return;
+  }
   action.canonicalTarget = target(session.canonicalConfig, name, overrideSchema, overrideDatabase);
 }
 

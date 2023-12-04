@@ -5,6 +5,7 @@ import { StringifiedMap, StringifiedSet } from "df/common/strings/stringifier";
 import { Action, SqlxConfig } from "df/core/actions";
 import { AContextable, Assertion, AssertionContext } from "df/core/actions/assertion";
 import { Declaration } from "df/core/actions/declaration";
+import { Notebook } from "df/core/actions/notebook";
 import { Operation, OperationContext } from "df/core/actions/operation";
 import { ITableConfig, ITableContext, Table, TableContext, TableType } from "df/core/actions/table";
 import { Test } from "df/core/actions/test";
@@ -33,6 +34,7 @@ export interface IActionProto {
   target?: dataform.ITarget;
   canonicalTarget?: dataform.ITarget;
   parentAction?: dataform.ITarget;
+  config?: dataform.IActionConfig;
 }
 
 /**
@@ -193,6 +195,14 @@ export class Session {
     }
   }
 
+  public notebookAction(notebookConfig: dataform.ActionConfig, notebookContents: string): Notebook {
+    const notebook = new Notebook(this, notebookConfig);
+    utils.setNameAndTarget(this, notebook.proto as IActionProto, notebookConfig.target.name);
+    notebook.setNotebookContents(notebookContents);
+    this.actions.push(notebook);
+    return notebook;
+  }
+
   public resolve(ref: Resolvable | string[], ...rest: string[]): string {
     ref = toResolvable(ref, rest);
     const allResolved = this.indexedActions.find(utils.resolvableAsTarget(ref));
@@ -344,6 +354,7 @@ export class Session {
         "dataform.json"
       );
     }
+
     if (
       !!this.config.vars &&
       !Object.values(this.config.vars).every(value => typeof value === "string")
@@ -351,6 +362,7 @@ export class Session {
       throw new Error("Custom variables defined in dataform.json can only be strings.");
     }
 
+    // TODO(ekrekr): replace verify here with something that actually works.
     const compiledGraph = dataform.CompiledGraph.create({
       projectConfig: this.config,
       tables: this.compileGraphChunk(this.actions.filter(action => action instanceof Table)),
@@ -364,6 +376,7 @@ export class Session {
         this.actions.filter(action => action instanceof Declaration)
       ),
       tests: this.compileGraphChunk(Object.values(this.tests)),
+      notebooks: this.compileGraphChunk(this.actions.filter(action => action instanceof Notebook)),
       graphErrors: this.graphErrors,
       dataformCoreVersion,
       targets: this.actions.map(action => action.proto.target)
