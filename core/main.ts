@@ -1,4 +1,4 @@
-import { decode64, encode64 } from "df/common/protos";
+import { decode64, encode64, verifyObjectMatchesProto } from "df/common/protos";
 import { Session } from "df/core/session";
 import * as utils from "df/core/utils";
 import { readWorkflowSettings } from "df/core/workflow_settings";
@@ -76,6 +76,8 @@ export function main(coreExecutionRequest: Uint8Array | string): Uint8Array | st
   globalAny.declare = session.declare.bind(session);
   globalAny.test = session.test.bind(session);
 
+  loadActionConfigs(session, compileRequest.compileConfig.filePaths);
+
   // Require all "definitions" files (attaching them to the session).
   compileRequest.compileConfig.filePaths
     .filter(path => path.startsWith(`definitions${utils.pathSeperator}`))
@@ -101,4 +103,55 @@ export function main(coreExecutionRequest: Uint8Array | string): Uint8Array | st
   }
 
   return dataform.CoreExecutionResponse.encode(coreExecutionResponse).finish();
+}
+
+function loadActionConfigs(session: Session, filePaths: string[]) {
+  filePaths
+    .filter(
+      path => path.startsWith(`definitions${utils.pathSeperator}`) && path.endsWith("actions.yaml")
+    )
+    .sort()
+    .forEach(actionConfigsPath => {
+      let actionConfigsAsJson = {};
+      try {
+        // tslint:disable-next-line: tsr-detect-non-literal-require
+        actionConfigsAsJson = nativeRequire(actionConfigsPath).asJson();
+      } catch (e) {
+        session.compileError(e, actionConfigsPath);
+      }
+      // TODO(ekrekr): Throw nice errors if the proto is invalid.
+      verifyObjectMatchesProto(dataform.ActionConfigs, actionConfigsAsJson);
+      const actionConfigs = dataform.ActionConfigs.fromObject(actionConfigsAsJson);
+
+      actionConfigs.actions.forEach(actionConfig => {
+        const { fileExtension, fileNameAsTargetName } = extractActionDetailsFromFileName(
+          actionConfig.fileName
+        );
+        if (!actionConfig.target?.name) {
+          if (!actionConfig.target) {
+            actionConfig.target = {};
+          }
+          actionConfig.target.name = fileNameAsTargetName;
+        }
+
+        if (fileExtension === "ipynb") {
+          // TODO(ekrekr): throw an error if any non-notebook configs are given.
+          // TODO(ekrekr): add test for nice errors if file not found.
+          const notebookContents = nativeRequire(actionConfig.fileName).asBase64String();
+          session.notebookAction(dataform.ActionConfig.create(actionConfig), notebookContents);
+        }
+      });
+    });
+}
+
+function extractActionDetailsFromFileName(
+  path: string
+): { fileExtension: string; fileNameAsTargetName: string } {
+  // TODO(ekrekr): make filename in actions.yaml files not need the `definitions` prefix. In
+  // addition, actions.yaml in nested directories should prefix file imports with their path.
+  const fileName = path.split("/").slice(-1)[0];
+  const fileExtension = fileName.split(".").slice(-1)[0];
+  // TODO(ekrekr): validate and test weird characters in filenames.
+  const fileNameAsTargetName = fileName.slice(0, fileExtension.length - 1);
+  return { fileExtension, fileNameAsTargetName };
 }

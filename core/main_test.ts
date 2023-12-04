@@ -21,6 +21,8 @@ const VALID_DATAFORM_JSON = `
 }
 `;
 
+const EMPTY_NOTEBOOK_CONTENTS = '{ "cells": [] }';
+
 suite("@dataform/core", ({ afterEach }) => {
   const tmpDirFixture = new TmpDirFixture(afterEach);
 
@@ -152,10 +154,67 @@ suite("@dataform/core", ({ afterEach }) => {
 
     // TODO(ekrekr): add a test for nested fields, once they exist.
   });
+
+  suite("notebooks", () => {
+    test(`notebooks can be loaded via an actions config file`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/actions.yaml"),
+        `
+actions:
+- fileName: definitions/notebook.ipynb
+`
+      );
+      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/notebook.ipynb"),
+        EMPTY_NOTEBOOK_CONTENTS
+      );
+      const coreExecutionRequest = dataform.CoreExecutionRequest.create({
+        compile: {
+          compileConfig: {
+            projectDir,
+            filePaths: ["definitions/actions.yaml"]
+          }
+        }
+      });
+
+      const result = runMainInVm(coreExecutionRequest);
+
+      expect(asPlainObject(result.compile.compiledGraph.notebooks)).deep.equals(
+        asPlainObject([
+          {
+            config: {
+              fileName: "definitions/notebook.ipynb",
+              target: {
+                database: "dataform",
+                name: "note"
+              }
+            },
+            notebookContents: '{"cells":[]})',
+            target: {
+              database: "dataform",
+              name: "note"
+            }
+          }
+        ])
+      );
+    });
+  });
 });
 
 // A VM is needed when running main because Node functions like `require` are overridden.
-function runMainInVm(coreExecutionRequest: dataform.CoreExecutionRequest) {
+function runMainInVm(
+  coreExecutionRequest: dataform.CoreExecutionRequest
+): dataform.CoreExecutionResponse {
   const projectDir = coreExecutionRequest.compile.compileConfig.projectDir;
 
   // Copy over the build Dataform Core that is set up as a node_modules directory.
@@ -176,7 +235,7 @@ function runMainInVm(coreExecutionRequest: dataform.CoreExecutionRequest) {
       resolve: (moduleName, parentDirName) =>
         path.join(parentDirName, path.relative(parentDirName, projectDir), moduleName)
     },
-    sourceExtensions: ["js", "sql", "sqlx", "yaml"],
+    sourceExtensions: ["js", "sql", "sqlx", "yaml", "ipynb"],
     compiler
   });
 
