@@ -306,7 +306,7 @@ select 1 AS \${dataform.projectConfig.vars.var3}`
           path.join(projectDir, "workflow_settings.yaml"),
           `
 defaultDatabase: dataform
-defaultLocation: us
+defaultLocation: locationInWorkflowSettings
 vars:
   selectVar: selectVal
 `
@@ -329,6 +329,7 @@ select 1 AS \${dataform.projectConfig.vars.selectVar}`
               projectDir,
               filePaths: ["definitions/file.sqlx"],
               projectConfigOverride: {
+                defaultLocation: "locationInOverride",
                 vars: {
                   databaseVar: "databaseVal"
                 }
@@ -345,7 +346,7 @@ select 1 AS \${dataform.projectConfig.vars.selectVar}`
             graphErrors: {},
             projectConfig: {
               defaultDatabase: "dataform",
-              defaultLocation: "us",
+              defaultLocation: "locationInOverride",
               vars: {
                 databaseVar: "databaseVal",
                 selectVar: "selectVal"
