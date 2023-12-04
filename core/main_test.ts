@@ -156,7 +156,6 @@ suite("@dataform/core", ({ afterEach }) => {
       test(`variables in workflow_settings.yaml must be strings`, () => {
         const projectDir = tmpDirFixture.createNewTmpDir();
         // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
-        // fs.writeFileSync(path.join(projectDir, "workflow_settings.yaml"), `"&*19132sdS:asd:"`);
         fs.writeFileSync(
           path.join(projectDir, "workflow_settings.yaml"),
           `
@@ -203,6 +202,7 @@ vars:
         );
         // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
         fs.mkdirSync(path.join(projectDir, "definitions"));
+        // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
         fs.writeFileSync(
           path.join(projectDir, "definitions/file.sqlx"),
           // TODO(https://github.com/dataform-co/dataform/issues/1295): add a test and fix
