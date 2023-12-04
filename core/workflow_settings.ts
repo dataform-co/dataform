@@ -21,34 +21,39 @@ export function readWorkflowSettings(): dataform.ProjectConfig {
     if (!workflowSettingsAsJson) {
       throw Error("workflow_settings.yaml is invalid");
     }
-    verifyWorkflowSettingsAsJson(workflowSettingsAsJson);
-    return dataform.ProjectConfig.fromObject(workflowSettingsAsJson);
+    return verifyWorkflowSettingsAsJson(workflowSettingsAsJson);
   }
 
   if (dataformJson) {
-    verifyWorkflowSettingsAsJson(dataformJson);
-    return dataform.ProjectConfig.fromObject(dataformJson);
+    return verifyWorkflowSettingsAsJson(dataformJson);
   }
 
   throw Error("Failed to resolve workflow_settings.yaml");
 }
 
-function verifyWorkflowSettingsAsJson(workflowSettingsAsJson: object): { [key: string]: any } {
+function verifyWorkflowSettingsAsJson(workflowSettingsAsJson: object): dataform.ProjectConfig {
+  let projectConfig = dataform.ProjectConfig.create();
   try {
-    verifyObjectMatchesProto(dataform.ProjectConfig, workflowSettingsAsJson);
+    projectConfig = dataform.ProjectConfig.create(
+      verifyObjectMatchesProto(
+        dataform.ProjectConfig,
+        workflowSettingsAsJson as {
+          [key: string]: any;
+        }
+      )
+    );
   } catch (e) {
     if (e instanceof ReferenceError) {
       throw ReferenceError(`Workflow settings error: ${e.message}`);
     }
     throw e;
   }
-  const verifiedWorkflowSettings = workflowSettingsAsJson as { [key: string]: any };
   // tslint:disable-next-line: no-string-literal
-  if (!verifiedWorkflowSettings["warehouse"]) {
+  if (!projectConfig.warehouse) {
     // tslint:disable-next-line: no-string-literal
-    verifiedWorkflowSettings["warehouse"] = "bigquery";
+    projectConfig.warehouse = "bigquery";
   }
-  return verifiedWorkflowSettings;
+  return projectConfig;
 }
 
 function maybeRequire(file: string): any {

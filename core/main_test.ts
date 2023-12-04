@@ -152,6 +152,154 @@ suite("@dataform/core", ({ afterEach }) => {
       );
     });
 
+    suite("variables", () => {
+      test(`variables in workflow_settings.yaml must be strings`, () => {
+        const projectDir = tmpDirFixture.createNewTmpDir();
+        // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
+        fs.writeFileSync(
+          path.join(projectDir, "workflow_settings.yaml"),
+          `
+vars:
+  intValue: 1
+  strValue: "str"`
+        );
+        const coreExecutionRequest = dataform.CoreExecutionRequest.create({
+          compile: { compileConfig: { projectDir } }
+        });
+
+        expect(() => runMainInVm(coreExecutionRequest)).to.throw(
+          "Custom variables defined in workflow settings can only be strings."
+        );
+      });
+
+      test(`variables in dataform.json must be strings`, () => {
+        const projectDir = tmpDirFixture.createNewTmpDir();
+        // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
+        fs.writeFileSync(
+          path.join(projectDir, "dataform.json"),
+          `{"vars": { "intVar": 1, "strVar": "str" } }`
+        );
+        const coreExecutionRequest = dataform.CoreExecutionRequest.create({
+          compile: { compileConfig: { projectDir } }
+        });
+
+        expect(() => runMainInVm(coreExecutionRequest)).to.throw(
+          "Custom variables defined in workflow settings can only be strings."
+        );
+      });
+
+      test(`variables can be referenced in SQLX`, () => {
+        const projectDir = tmpDirFixture.createNewTmpDir();
+        // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
+        fs.writeFileSync(
+          path.join(projectDir, "workflow_settings.yaml"),
+          `
+defaultLocation: "us"
+vars:
+  var1: value1
+  var2: value2
+  var3: value3`
+        );
+        // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
+        fs.mkdirSync(path.join(projectDir, "definitions"));
+        // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
+        fs.writeFileSync(
+          path.join(projectDir, "definitions/file.sqlx"),
+          // TODO(https://github.com/dataform-co/dataform/issues/1295): add a test and fix
+          // functionality for assertions overriding database.
+          `
+config {
+  type: "table",
+  database: dataform.projectConfig.vars.var1,
+  schema: "tableSchema",
+  description: dataform.projectConfig.vars.var2,
+  assertions: {
+    nonNull: [dataform.projectConfig.vars.var3],
+  }
+}
+select 1 AS \${dataform.projectConfig.vars.var3}`
+        );
+        const coreExecutionRequest = dataform.CoreExecutionRequest.create({
+          compile: { compileConfig: { projectDir, filePaths: ["definitions/file.sqlx"] } }
+        });
+
+        const result = runMainInVm(coreExecutionRequest);
+
+        expect(asPlainObject(result.compile.compiledGraph)).deep.equals(
+          asPlainObject({
+            assertions: [
+              {
+                canonicalTarget: {
+                  name: "tableSchema_file_assertions_rowConditions"
+                },
+                dependencyTargets: [
+                  {
+                    database: "value1",
+                    name: "file",
+                    schema: "tableSchema"
+                  }
+                ],
+                fileName: "definitions/file.sqlx",
+                parentAction: {
+                  database: "value1",
+                  name: "file",
+                  schema: "tableSchema"
+                },
+                query:
+                  "\nSELECT\n  'value3 IS NOT NULL' AS failing_row_condition,\n  *\nFROM `value1.tableSchema.file`\nWHERE NOT (value3 IS NOT NULL)\n",
+                target: {
+                  name: "tableSchema_file_assertions_rowConditions"
+                }
+              }
+            ],
+            dataformCoreVersion: "3.0.0",
+            graphErrors: {},
+            projectConfig: {
+              defaultLocation: "us",
+              vars: {
+                var1: "value1",
+                var2: "value2",
+                var3: "value3"
+              },
+              warehouse: "bigquery"
+            },
+            tables: [
+              {
+                actionDescriptor: {
+                  description: "value2"
+                },
+                canonicalTarget: {
+                  database: "value1",
+                  name: "file",
+                  schema: "tableSchema"
+                },
+                disabled: false,
+                enumType: "TABLE",
+                fileName: "definitions/file.sqlx",
+                query: "\n\nselect 1 AS value3",
+                target: {
+                  database: "value1",
+                  name: "file",
+                  schema: "tableSchema"
+                },
+                type: "table"
+              }
+            ],
+            targets: [
+              {
+                database: "value1",
+                name: "file",
+                schema: "tableSchema"
+              },
+              {
+                name: "tableSchema_file_assertions_rowConditions"
+              }
+            ]
+          })
+        );
+      });
+    });
+
     // TODO(ekrekr): add a test for nested fields, once they exist.
   });
 
@@ -170,8 +318,7 @@ suite("@dataform/core", ({ afterEach }) => {
         path.join(projectDir, "definitions/actions.yaml"),
         `
 actions:
-- fileName: definitions/notebook.ipynb
-`
+  - fileName: definitions/notebook.ipynb`
       );
       // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(

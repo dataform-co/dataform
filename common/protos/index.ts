@@ -15,6 +15,8 @@ export interface IProtoClass<IProto, Proto> {
 }
 
 // ProtobufJS's native verify method does not check that only defined fields are present.
+// Note: ProtobufJS does not do conversion of typed fields, so if a type number is present but a
+// string expected, this won't throw an error.
 // TODO(ekrekr): swap to Typescript protobuf library rather than having to do this; however using TS
 // libraries currently available would incur a significant performance hit.
 export function verifyObjectMatchesProto<Proto>(
