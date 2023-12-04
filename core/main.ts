@@ -107,8 +107,9 @@ export function main(coreExecutionRequest: Uint8Array | string): Uint8Array | st
 
 function loadActionConfigs(session: Session, filePaths: string[]) {
   filePaths
-    .filter(path => path.startsWith(`definitions${utils.pathSeperator}`))
-    .filter(path => path.endsWith("actions.yaml"))
+    .filter(
+      path => path.startsWith(`definitions${utils.pathSeperator}`) && path.endsWith("actions.yaml")
+    )
     .sort()
     .forEach(actionConfigsPath => {
       let actionConfigsAsJson = {};
