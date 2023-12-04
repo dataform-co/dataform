@@ -74,6 +74,7 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
       tables: [
         {
           type: "table",
+          enumType: "TABLE",
           target: {
             database: "dataform-integration-tests",
             schema: "dataform_test_schema_suffix",

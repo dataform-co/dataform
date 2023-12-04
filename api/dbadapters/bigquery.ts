@@ -28,6 +28,12 @@ const BIGQUERY_DATE_RELATED_FIELDS = [
 
 const BIGQUERY_INTERNAL_ERROR_JOB_MAX_ATTEMPTS = 3;
 
+export interface IBigQueryExecutionOptions {
+  labels?: { [label: string]: string };
+  location?: string;
+  jobPrefix?: string;
+}
+
 export class BigQueryDbAdapter implements IDbAdapter {
   public static async create(credentials: Credentials, options?: { concurrencyLimit?: number }) {
     return new BigQueryDbAdapter(credentials, options);
@@ -57,10 +63,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
       interactive?: boolean;
       rowLimit?: number;
       byteLimit?: number;
-      bigquery?: {
-        labels?: { [label: string]: string };
-        location?: string;
-      };
+      bigquery?: IBigQueryExecutionOptions;
     } = { interactive: false, rowLimit: 1000, byteLimit: 1024 * 1024 }
   ): Promise<IExecutionResult> {
     if (options?.interactive && options?.bigquery?.labels) {
@@ -88,7 +91,8 @@ export class BigQueryDbAdapter implements IDbAdapter {
                 options?.byteLimit,
                 options?.onCancel,
                 options?.bigquery?.labels,
-                options.bigquery?.location
+                options?.bigquery?.location,
+                options?.bigquery?.jobPrefix
               )
       })
       .promise();
@@ -350,7 +354,8 @@ export class BigQueryDbAdapter implements IDbAdapter {
     byteLimit?: number,
     onCancel?: OnCancel,
     labels?: { [label: string]: string },
-    location?: string
+    location?: string,
+    jobPrefix?: string
   ) {
     let isCancelled = false;
     onCancel?.(() => (isCancelled = true));
@@ -360,7 +365,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
         try {
           const job = await this.getClient().createQueryJob({
             useLegacySql: false,
-            jobPrefix: "dataform-",
+            jobPrefix: "dataform-" + (jobPrefix ? `${jobPrefix}-` : ""),
             query,
             params,
             labels,

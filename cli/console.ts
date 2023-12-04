@@ -1,23 +1,41 @@
 import { IInitResult } from "df/api/commands/init";
 import { prettyJsonStringify } from "df/api/utils";
+import { setOrValidateTableEnumType, tableTypeEnumToString } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 import * as readlineSync from "readline-sync";
 
-// Uses ANSI escape color codes.
-// https://en.wikipedia.org/wiki/ANSI_escape_code#Colors
-const coloredOutput = (output: string, ansiColorCode: number) =>
-  `\x1b[${ansiColorCode}m${output}\x1b[0m`;
-const successOutput = (output: string) => coloredOutput(output, 32);
-const warningOutput = (output: string) => coloredOutput(output, 93);
-const errorOutput = (output: string) => coloredOutput(output, 91);
-const calloutOutput = (output: string) => coloredOutput(output, 36);
+// Support disabling colors in CLI output by using informal standard from https://no-color.org/
+// NO_COLOR=1, NO_COLOR=true, NO_COLOR=yes
+const noColor = process.env.NO_COLOR && ["1", "true", "yes"].includes(process.env.NO_COLOR.toLowerCase());
 
-const write = (stream: NodeJS.WriteStream, output: string, indentCount: number) =>
-  stream.write(`${"  ".repeat(indentCount)}${output}\n`);
-const writeStdOut = (output: string, indentCount: number = 0) =>
-  write(process.stdout, output, indentCount);
-const writeStdErr = (output: string, indentCount: number = 0) =>
-  write(process.stderr, output, indentCount);
+const ansiColorCodes = Object.freeze({
+    red: 91,
+    green: 32,
+    yellow: 93,
+    cyan: 36
+})
+
+function output(text: string, ansiColorCode: number): string {
+  if (noColor) {
+    return text;
+  }
+
+  // Uses ANSI escape color codes.
+  // https://en.wikipedia.org/wiki/ANSI_escape_code#Colors
+  return `\x1b[${ansiColorCode}m${text}\x1b[0m`;
+}
+
+const successOutput = (text: string) => output(text, ansiColorCodes.green);
+const warningOutput = (text: string) => output(text, ansiColorCodes.yellow);
+const errorOutput = (text: string) => output(text, ansiColorCodes.red);
+const calloutOutput = (text: string) => output(text, ansiColorCodes.cyan);
+
+const write = (stream: NodeJS.WriteStream, text: string, indentCount: number) =>
+  stream.write(`${"  ".repeat(indentCount)}${text}\n`);
+const writeStdOut = (text: string, indentCount: number = 0) =>
+  write(process.stdout, text, indentCount);
+const writeStdErr = (text: string, indentCount: number = 0) =>
+  write(process.stderr, text, indentCount);
 
 const DEFAULT_PROMPT = "> ";
 
@@ -112,10 +130,11 @@ export function printCompiledGraph(graph: dataform.ICompiledGraph, verbose: bool
       (graph.operations ? graph.operations.length : 0);
     writeStdOut(successOutput(`Compiled ${actionCount} action(s).`));
     if (graph.tables && graph.tables.length) {
+      graph.tables.forEach(setOrValidateTableEnumType);
       writeStdOut(`${graph.tables.length} dataset(s):`);
       graph.tables.forEach(compiledTable => {
         writeStdOut(
-          `${datasetString(compiledTable.target, compiledTable.type, compiledTable.disabled)}`,
+          `${datasetString(compiledTable.target, tableTypeEnumToString(compiledTable.enumType), compiledTable.disabled)}`,
           1
         );
       });

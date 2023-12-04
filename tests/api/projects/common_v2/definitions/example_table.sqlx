@@ -1,0 +1,12 @@
+config { type: "table" }
+select * from ${ref("df_integration_test", "sample_data")}
+
+-- here ${"is"} a `comment
+
+/* ${"another"} ` backtick ` containing ```comment */
+
+post_operations {
+    GRANT SELECT ON ${self()} TO GROUP "${constants.allUsersEmailAddress}"
+    ---
+    GRANT SELECT ON ${self()} TO GROUP "otherusers@dataform.co"
+}

@@ -44,7 +44,7 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
     let executedGraph = await dfapi.run(dbadapter, executionGraph).result();
 
     const actionMap = keyBy(executedGraph.actions, v => targetAsReadableString(v.target));
-    expect(Object.keys(actionMap).length).eql(18);
+    expect(Object.keys(actionMap).length).eql(17);
 
     // Check the status of action execution.
     const expectedFailedActions = [
@@ -67,19 +67,6 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
         "INTEGRATION_TESTS.DF_INTEGRATION_TEST_ASSERTIONS_PROJECT_E2E.EXAMPLE_ASSERTION_FAIL"
       ].tasks[1].errorMessage
     ).to.eql("snowflake error: Assertion failed: query returned 1 row(s).");
-
-    // Check the status of the s3 load operation.
-    expect(
-      actionMap["INTEGRATION_TESTS.DF_INTEGRATION_TEST_PROJECT_E2E.LOAD_FROM_S3"].status
-    ).equals(dataform.ActionResult.ExecutionStatus.SUCCESSFUL);
-
-    // Check the s3 table has two rows, as per:
-    // https://dataform-integration-tests.s3.us-east-2.amazonaws.com/sample-data/sample_data.csv
-    const s3Table = keyBy(compiledGraph.operations, t => targetAsReadableString(t.target))[
-      "INTEGRATION_TESTS.DF_INTEGRATION_TEST_PROJECT_E2E.LOAD_FROM_S3"
-    ];
-    const s3Rows = await getTableRows(s3Table.target, adapter, dbadapter);
-    expect(s3Rows.length).equals(2);
 
     // Check the status of the view in the non-default database.
     const tada2DatabaseView = keyBy(compiledGraph.tables, t => targetAsReadableString(t.target))[
@@ -317,7 +304,7 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
     test("invalid table fails validation and error parsed correctly", async () => {
       const evaluations = await dbadapter.evaluate(
         dataform.Table.create({
-          type: "table",
+          enumType: dataform.TableType.TABLE,
           query: "selects\n1 as x",
           target: {
             name: "EXAMPLE_ILLEGAL_TABLE",
@@ -339,7 +326,7 @@ suite("@dataform/integration/snowflake", ({ before, after }) => {
     test("incremental pre and post ops, core version <= 1.4.8", async () => {
       // 1.4.8 used `preOps` and `postOps` instead of `incrementalPreOps` and `incrementalPostOps`.
       const table: dataform.ITable = {
-        type: "incremental",
+        enumType: dataform.TableType.INCREMENTAL,
         query: "query",
         preOps: ["preop task1", "preop task2"],
         incrementalQuery: "",

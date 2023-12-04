@@ -8,7 +8,7 @@ import { build, compile, credentials, init, install, run, table, test } from "df
 import { CREDENTIALS_FILENAME } from "df/api/commands/credentials";
 import * as dbadapters from "df/api/dbadapters";
 import { prettyJsonStringify } from "df/api/utils";
-import { trackError } from "df/cli/analytics";
+import { trackError, trackOption } from "df/cli/analytics";
 import {
   print,
   printCompiledGraph,
@@ -33,7 +33,7 @@ import {
 } from "df/cli/credentials";
 import { actuallyResolve, assertPathExists, compiledGraphHasErrors } from "df/cli/util";
 import { createYargsCli, INamedOption } from "df/cli/yargswrapper";
-import { supportsCancel, WarehouseType } from "df/core/adapters";
+import { isWarehouseType, supportsCancel, WarehouseType } from "df/core/adapters";
 import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 import { formatFile } from "df/sqlx/format";
@@ -163,6 +163,16 @@ const timeoutOption: INamedOption<yargs.Options> = {
   }
 };
 
+const jobPrefixOption: INamedOption<yargs.Options> = {
+  name: "job-prefix",
+  option: {
+    describe:
+      "Adds an additional prefix in the form of `dataform-${jobPrefix}-`. Has no effect on warehouses other than BigQuery.",
+    type: "string",
+    default: null
+  }
+};
+
 const skipInstallOptionName = "skip-install";
 
 const testConnectionOptionName = "test-connection";
@@ -197,6 +207,7 @@ export function runCli() {
         description: "Create a new dataform project.",
         positionalOptions: [ProjectConfigOptions.warehouse, projectDirOption],
         options: [
+          trackOption,
           {
             ...ProjectConfigOptions.defaultDatabase,
             option: {
@@ -244,7 +255,7 @@ export function runCli() {
         format: `install [${projectDirMustExistOption.name}]`,
         description: "Install a project's NPM dependencies.",
         positionalOptions: [projectDirMustExistOption],
-        options: [],
+        options: [trackOption],
         processFn: async argv => {
           print("Installing NPM dependencies...\n");
           await install(argv[projectDirMustExistOption.name]);
@@ -259,6 +270,7 @@ export function runCli() {
           "accessing your warehouse.",
         positionalOptions: [ProjectConfigOptions.warehouse, projectDirMustExistOption],
         options: [
+          trackOption,
           {
             name: testConnectionOptionName,
             option: {
@@ -348,6 +360,7 @@ export function runCli() {
           },
           jsonOutputOption,
           timeoutOption,
+          trackOption,
           ...ProjectConfigOptions.allYargsOptions
         ],
         processFn: async argv => {
@@ -421,8 +434,8 @@ export function runCli() {
                 }
               }, RECOMPILE_DELAY);
             });
-          process.on("SIGINT", () => {
-            watcher.close();
+          process.on("SIGINT", async () => {
+            await watcher.close();
             watching = false;
             process.exit(1);
           });
@@ -435,7 +448,12 @@ export function runCli() {
         format: `test [${projectDirMustExistOption.name}]`,
         description: "Run the dataform project's unit tests on the configured data warehouse.",
         positionalOptions: [projectDirMustExistOption],
-        options: [credentialsOption, timeoutOption, ...ProjectConfigOptions.allYargsOptions],
+        options: [
+          credentialsOption,
+          timeoutOption,
+          ...ProjectConfigOptions.allYargsOptions,
+          trackOption
+        ],
         processFn: async argv => {
           print("Compiling...\n");
           const compiledGraph = await compile({
@@ -503,7 +521,8 @@ export function runCli() {
           credentialsOption,
           jsonOutputOption,
           timeoutOption,
-          ...ProjectConfigOptions.allYargsOptions
+          ...ProjectConfigOptions.allYargsOptions,
+          trackOption
         ],
         processFn: async argv => {
           if (!argv[jsonOutputOption.name]) {
@@ -569,7 +588,13 @@ export function runCli() {
             if (!argv[jsonOutputOption.name]) {
               print("Running...\n");
             }
-            const runner = run(dbadapter, executionGraph);
+            const runner = run(
+              dbadapter,
+              executionGraph,
+              argv[jobPrefixOption.name]
+                ? { bigquery: { jobPrefix: argv[jobPrefixOption.name] } }
+                : {}
+            );
             process.on("SIGINT", () => {
               if (
                 !supportsCancel(
@@ -619,8 +644,27 @@ export function runCli() {
         format: `format [${projectDirMustExistOption.name}]`,
         description: "Format the dataform project's files.",
         positionalOptions: [projectDirMustExistOption],
-        options: [],
+        options: [trackOption],
         processFn: async argv => {
+          const readWarehouseConfig = (): WarehouseType => {
+            let wh: string;
+            try {
+              const dataformJson = fs.readFileSync(
+                path.resolve(argv[projectDirMustExistOption.name], "dataform.json"),
+                "utf8"
+              );
+              const projectConfig = JSON.parse(dataformJson);
+              wh = projectConfig.warehouse;
+            } catch (e) {
+              throw new Error(`Could not parse dataform.json: ${e.message}`);
+            }
+            if (!isWarehouseType(wh)) {
+              throw new Error("Unrecognized 'warehouse' setting in dataform.json");
+            }
+            return wh;
+          };
+          const warehouse = readWarehouseConfig();
+
           const filenames = glob.sync("{definitions,includes}/**/*.{js,sqlx}", {
             cwd: argv[projectDirMustExistOption.name]
           });
@@ -628,7 +672,8 @@ export function runCli() {
             filenames.map(async filename => {
               try {
                 await formatFile(path.resolve(argv[projectDirMustExistOption.name], filename), {
-                  overwriteFile: true
+                  overwriteFile: true,
+                  warehouse
                 });
                 return {
                   filename
@@ -649,7 +694,7 @@ export function runCli() {
         format: `listtables <${ProjectConfigOptions.warehouse.name}>`,
         description: "List tables on the configured data warehouse.",
         positionalOptions: [ProjectConfigOptions.warehouse],
-        options: [credentialsOption],
+        options: [credentialsOption, trackOption],
         processFn: async argv => {
           const readCredentials = credentials.read(
             argv[ProjectConfigOptions.warehouse.name],
@@ -687,7 +732,7 @@ export function runCli() {
             }
           }
         ],
-        options: [credentialsOption],
+        options: [credentialsOption, trackOption],
         processFn: async argv => {
           const readCredentials = credentials.read(
             argv[ProjectConfigOptions.warehouse.name],

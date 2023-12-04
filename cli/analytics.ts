@@ -1,21 +1,46 @@
-import Analytics from "analytics-node";
-import { getConfigSettings, getConfigSettingsPath, upsertConfigSettings } from "df/cli/config";
-import { ynQuestion } from "df/cli/console";
-import { v4 as uuidv4 } from "uuid";
+import yargs from "yargs";
 
-const analytics = new Analytics("eR24ln3MniE3TKZXkvAkOGkiSN02xXqw");
+import { Analytics}  from "@segment/analytics-node";
+import {getConfigSettings, getConfigSettingsPath, upsertConfigSettings} from "df/cli/config";
+import {ynQuestion} from "df/cli/console";
+import {INamedOption} from "df/cli/yargswrapper";
+import {v4 as uuidv4} from "uuid";
+
+export const trackOption: INamedOption<yargs.Options> = {
+  name: "track",
+  option: {
+    describe: `Sets analytics tracking without asking the user. Overrides settings.json`,
+    type: "boolean"
+  }
+};
+
+const analytics = new Analytics({ writeKey: "eR24ln3MniE3TKZXkvAkOGkiSN02xXqw"});
 
 let currentCommand: string;
+let allowAnonymousAnalytics: boolean;
+let anonymousUserId: string;
 
-export async function maybeConfigureAnalytics() {
+export async function maybeConfigureAnalytics(track?: boolean) {
   const settings = await getConfigSettings();
+  if (track !== undefined) {
+    allowAnonymousAnalytics = track;
+    if (track) {
+      // in the case where the user *wants* tracking and has no settings.json
+      // assign them a temporary tracking id
+      anonymousUserId = settings.anonymousUserId || uuidv4();
+    }
+    return;
+  }
   // We should only ask if users want to track analytics if they are in an interactive terminal;
   if (!process.stdout.isTTY) {
     return;
   }
   if (settings.allowAnonymousAnalytics !== undefined) {
+    allowAnonymousAnalytics = settings.allowAnonymousAnalytics;
+    anonymousUserId = settings.anonymousUserId;
     return;
   }
+
   const optInResponse = ynQuestion(
     `
 To help improve the quality of our products, we collect anonymized usage data and anonymized stacktraces when crashes are encountered.
@@ -24,22 +49,24 @@ This can be changed at any point by modifying your settings file: ${getConfigSet
 Would you like to opt-in to anonymous usage and error tracking?`,
     false
   );
+  allowAnonymousAnalytics = optInResponse;
+  anonymousUserId = uuidv4();
+
   await upsertConfigSettings({
-    allowAnonymousAnalytics: optInResponse,
-    anonymousUserId: uuidv4()
+    allowAnonymousAnalytics,
+    anonymousUserId
   });
 }
 
 export async function trackCommand(command: string) {
-  currentCommand = command;
-  const config = await getConfigSettings();
-  if (!config.allowAnonymousAnalytics) {
+  if (!allowAnonymousAnalytics) {
     return;
   }
+  currentCommand = command;
   await new Promise(resolve => {
     analytics.track(
       {
-        userId: config.anonymousUserId,
+        userId: anonymousUserId,
         event: "event_dataform_cli_command",
         properties: {
           command
@@ -54,14 +81,13 @@ export async function trackCommand(command: string) {
 }
 
 export async function trackError() {
-  const config = await getConfigSettings();
-  if (!config.allowAnonymousAnalytics) {
+  if (!allowAnonymousAnalytics) {
     return;
   }
   await new Promise(resolve => {
     analytics.track(
       {
-        userId: config.anonymousUserId,
+        userId: anonymousUserId,
         event: "event_dataform_cli_error",
         properties: {
           currentCommand

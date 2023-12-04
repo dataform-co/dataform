@@ -7,6 +7,7 @@ import deepmerge from "deepmerge";
 import { validWarehouses } from "df/api/dbadapters";
 import { coerceAsError, ErrorWithCause } from "df/common/errors/errors";
 import { decode64 } from "df/common/protos";
+import { setOrValidateTableEnumType } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
 // Project config properties that are required.
@@ -55,12 +56,16 @@ export async function compile(
 
   const result = await CompileChildProcess.forkProcess().compile(compileConfig);
 
+  let compileResult: dataform.CompiledGraph;
   if (compileConfig.useMain) {
     const decodedResult = decode64(dataform.CoreExecutionResponse, result);
-    return dataform.CompiledGraph.create(decodedResult.compile.compiledGraph);
+    compileResult = dataform.CompiledGraph.create(decodedResult.compile.compiledGraph);
+  } else {
+    compileResult = decode64(dataform.CompiledGraph, result);
   }
 
-  return decode64(dataform.CompiledGraph, result);
+  compileResult.tables.forEach(setOrValidateTableEnumType);
+  return compileResult;
 }
 
 export class CompileChildProcess {
