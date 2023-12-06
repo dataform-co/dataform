@@ -1,6 +1,7 @@
 import { load as loadYaml, YAMLException } from "js-yaml";
 
 import * as utils from "df/core/utils";
+import { Path } from "df/core/utils";
 import { SyntaxTreeNode, SyntaxTreeNodeType } from "df/sqlx/lexer";
 
 export function compile(code: string, path: string): string {
@@ -70,7 +71,7 @@ function compileSqlx(rootNode: SyntaxTreeNode, path: string): string {
 
   return `dataform.sqlxAction({
   sqlxConfig: {
-    name: "${utils.getEscapedFileName(path)}",
+    name: "${Path.escapedFileName(path)}",
     type: "operations",
     ...${config || "{}"}
   },
