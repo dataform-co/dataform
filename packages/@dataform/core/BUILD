@@ -29,11 +29,11 @@ load("@build_bazel_rules_nodejs//:index.bzl", "npm_package_bin")
 npm_package_bin(
     name = "bundle",
     outs = [
-        "bundle-tmp.js",
+        "bundle_no_license.js",
     ],
     args = [
         "--config=$(location webpack.config.js)",
-        "--output=$(location bundle-tmp.js)",
+        "--output=$(location bundle_no_license.js)",
         "--mode=production"
     ],
     data = [
@@ -51,7 +51,7 @@ pkg_json(
         "//:package.json",
         "//packages/@dataform:package.layer.json",
     ],
-    main = "bundle.js",
+    main = "bundle.js.no_license",
     version = DF_VERSION,
 )
 
