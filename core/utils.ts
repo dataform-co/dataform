@@ -177,8 +177,8 @@ export function target(
 ): dataform.ITarget {
   return dataform.Target.create({
     name,
-    schema: schema || config.defaultSchema,
-    database: database || config.defaultDatabase
+    schema: schema || config.defaultSchema || undefined,
+    database: database || config.defaultDatabase || undefined
   });
 }
 

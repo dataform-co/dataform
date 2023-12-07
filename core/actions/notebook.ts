@@ -20,13 +20,13 @@ export class Notebook implements IActionBuilder<dataform.Notebook> {
     const canonicalTarget = this.proto.config.target;
     this.proto.config.target = dataform.Target.create({
       name: canonicalTarget.name,
-      schema: canonicalTarget.schema || session.canonicalConfig.defaultSchema,
-      database: canonicalTarget.database || session.canonicalConfig.defaultDatabase
+      schema: canonicalTarget.schema || session.canonicalConfig.defaultSchema || undefined,
+      database: canonicalTarget.database || session.canonicalConfig.defaultDatabase || undefined
     });
     this.proto.target = dataform.Target.create({
       name: canonicalTarget.name,
-      schema: canonicalTarget.schema || session.config.defaultSchema,
-      database: canonicalTarget.database || session.config.defaultDatabase
+      schema: canonicalTarget.schema || session.config.defaultSchema || undefined,
+      database: canonicalTarget.database || session.config.defaultDatabase || undefined
     });
   }
 
