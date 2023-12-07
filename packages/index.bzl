@@ -67,3 +67,34 @@ def pkg_npm_tar(name, srcs = [], deps = []):
         cmd = "tar -cvzf $(location {name}.tgz) -C $(location :{name})/.. --dereference {name}"
             .format(name = name),
     )
+
+LICENSE_HEADER = """// Copyright 2023 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+"""
+
+def add_license_header_to_file(name, from_file, to_file):
+    """
+    Adds the Apache 2.0 license header to a file. This is not done in-place because Bazel requires
+    separate output and input files.
+    """
+    native.genrule(
+        name=name,
+        srcs=[from_file],
+        outs=[to_file],
+        cmd=(
+            (
+                "echo '{license_header}' | cat - $(location {from_file}) > $(location {to_file})"
+            ).format(from_file=from_file, to_file=to_file, license_header=LICENSE_HEADER)
+        ),
+    )
