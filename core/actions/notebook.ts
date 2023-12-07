@@ -16,7 +16,7 @@ export class Notebook implements IActionBuilder<dataform.Notebook> {
     this.session = session;
     this.proto.config = config;
 
-    // TODO(ekrekr): move this to an Action Builder utility method, once configs are on protos.
+    // TODO(ekrekr): move this to an Action Builder utility method, once configs are on all protos.
     const canonicalTarget = this.proto.config.target;
     this.proto.config.target = dataform.Target.create({
       name: canonicalTarget.name,
