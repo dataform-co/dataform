@@ -1,6 +1,6 @@
 load("//tools:ts_library.bzl", "ts_library")
 load("//:version.bzl", "DF_VERSION")
-load("//packages:index.bzl", "pkg_bundle", "pkg_json", "pkg_npm_tar")
+load("//packages:index.bzl", "pkg_bundle", "pkg_json", "pkg_npm_tar", "add_license_header_to_file")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -64,7 +64,7 @@ pkg_json(
 )
 
 pkg_bundle(
-    name = "bundle",
+    name = "bundle_no_license",
     args = ["--banner='#!/usr/bin/env node'"],
     entry_point = "index.ts",
     allow_node_builtins = True,
@@ -75,7 +75,7 @@ pkg_bundle(
 )
 
 pkg_bundle(
-    name = "worker_bundle",
+    name = "worker_bundle_no_license",
     args = ["--banner='#!/usr/bin/env node'"],
     entry_point = "worker.ts",
     allow_node_builtins = True,
@@ -85,11 +85,23 @@ pkg_bundle(
     ],
 )
 
+add_license_header_to_file(
+    name="bundle_with_license",
+    from_file=":bundle_no_license",
+    to_file=":bundle.js",
+)
+
+add_license_header_to_file(
+    name="worker_bundle_with_license",
+    from_file=":worker_bundle_no_license",
+    to_file=":worker_bundle.js",
+)
+
 pkg_npm_tar(
     name = "package",
     deps = [
-        ":bundle",
+        ":bundle_with_license",
         ":package.json",
-        ":worker_bundle",
+        ":worker_bundle_with_license",
     ],
 )
