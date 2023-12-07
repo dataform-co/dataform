@@ -7,14 +7,14 @@ import { IActionProto, Session } from "df/core/session";
 import { dataform } from "df/protos/ts";
 
 export class Path {
-  static readonly separator = (() => {
+  public static readonly separator = (() => {
     if (typeof process !== "undefined") {
       return process.platform === "win32" ? "\\" : "/";
     }
     return "/";
   })();
 
-  static relativePath(fullPath: string, base: string) {
+  public static relativePath(fullPath: string, base: string) {
     if (base.length === 0) {
       return fullPath;
     }
@@ -26,18 +26,18 @@ export class Path {
     }
   }
 
-  static fileName(fullPath: string) {
+  public static fileName(fullPath: string) {
     return fullPath
       .split(Path.separator)
       .slice(-1)[0]
       .split(".")[0];
   }
 
-  static escapedFileName(path: string) {
+  public static escapedFileName(path: string) {
     return Path.fileName(path).replace(/\\/g, "\\\\");
   }
 
-  static fileExtension(fullPath: string) {
+  public static fileExtension(fullPath: string) {
     return fullPath.split(".").slice(-1)[0];
   }
 }
