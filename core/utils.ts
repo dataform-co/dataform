@@ -175,12 +175,10 @@ export function target(
   schema?: string,
   database?: string
 ): dataform.ITarget {
-  schema = schema || config.defaultSchema;
-  database = database || config.defaultDatabase;
   return dataform.Target.create({
     name,
-    schema: !!schema ? schema || config.defaultSchema : undefined,
-    database: !!database ? database : undefined
+    schema: schema || config.defaultSchema,
+    database: database || config.defaultDatabase
   });
 }
 
@@ -192,10 +190,6 @@ export function setNameAndTarget(
   overrideDatabase?: string
 ) {
   action.target = target(session.config, name, overrideSchema, overrideDatabase);
-  if (action.config) {
-    action.config.target = target(session.canonicalConfig, name, overrideSchema, overrideDatabase);
-    return;
-  }
   action.canonicalTarget = target(session.canonicalConfig, name, overrideSchema, overrideDatabase);
 }
 

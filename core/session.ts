@@ -197,8 +197,7 @@ export class Session {
 
   public notebook(notebookConfig: dataform.ActionConfig, notebookContents: string): Notebook {
     const notebook = new Notebook(this, notebookConfig);
-    utils.setNameAndTarget(this, notebook.proto as IActionProto, notebookConfig.target.name);
-    notebook.setNotebookContents(notebookContents);
+    notebook.notebookContents(notebookContents);
     this.actions.push(notebook);
     return notebook;
   }

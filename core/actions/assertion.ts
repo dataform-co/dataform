@@ -165,10 +165,16 @@ export class Assertion implements IActionBuilder<dataform.Assertion> {
     return this;
   }
 
+  /**
+   * @hidden
+   */
   public getFileName() {
     return this.proto.fileName;
   }
 
+  /**
+   * @hidden
+   */
   public getTarget() {
     return dataform.Target.create(this.proto.target);
   }

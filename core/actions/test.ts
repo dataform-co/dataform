@@ -72,10 +72,16 @@ export class Test implements IActionBuilder<dataform.Test> {
     return this;
   }
 
+  /**
+   * @hidden
+   */
   public getFileName() {
     return this.proto.fileName;
   }
 
+  /**
+   * @hidden
+   */
   public getTarget(): undefined {
     // The test action type has no target because it is not processed during regular execution.
     return undefined;
