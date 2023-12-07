@@ -45,7 +45,7 @@ export function compile(compileConfig: dataform.ICompileConfig) {
     vmIndexFileName,
     'return require("@dataform/core").version || "0.0.0"'
   );
-  if (semver.lt(dataformCoreVersion, "3.0.0")) {
+  if (semver.lt(dataformCoreVersion, "3.0.0-alpha.0")) {
     throw new Error("@dataform/core ^3.0.0 required.");
   }
 

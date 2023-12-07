@@ -51,20 +51,20 @@ pkg_json(
         "//:package.json",
         "//packages/@dataform:package.layer.json",
     ],
-    main = "bundle.js.no_license",
+    main = "bundle.js",
     version = DF_VERSION,
 )
 
 add_license_header_to_file(
     name="core_proto_with_license",
     from_file="//protos:core.proto",
-    to_file=":core.proto",
+    to_file="core.proto",
 )
 
 add_license_header_to_file(
     name="bundle_with_license",
-    from_file=":bundle",
-    to_file=":bundle.js",
+    from_file="bundle",
+    to_file="bundle.js",
 )
 
 pkg_npm_tar(
