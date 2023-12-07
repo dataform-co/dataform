@@ -195,7 +195,7 @@ select 1 AS \${dataform.projectConfig.vars.selectVar}`
 
       expect(asPlainObject(result.compile.compiledGraph)).deep.equals(
         asPlainObject({
-          dataformCoreVersion: "3.0.0",
+          dataformCoreVersion: "3.0.0-alpha.0",
           graphErrors: {},
           projectConfig: {
             defaultDatabase: "dataform",
@@ -342,7 +342,7 @@ select 1 AS \${dataform.projectConfig.vars.columnVar}`
                 }
               }
             ],
-            dataformCoreVersion: "3.0.0",
+            dataformCoreVersion: "3.0.0-alpha.0",
             graphErrors: {},
             projectConfig: {
               defaultLocation: "us",
