@@ -1,7 +1,7 @@
+import * as Path from "df/core/path";
 import { decode64, encode64, verifyObjectMatchesProto } from "df/common/protos";
 import { Session } from "df/core/session";
 import * as utils from "df/core/utils";
-import { Path } from "df/core/utils";
 import { readWorkflowSettings } from "df/core/workflow_settings";
 import { dataform } from "df/protos/ts";
 

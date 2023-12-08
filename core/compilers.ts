@@ -1,7 +1,6 @@
 import { load as loadYaml, YAMLException } from "js-yaml";
 
-import * as utils from "df/core/utils";
-import { Path } from "df/core/utils";
+import * as Path from "df/core/path";
 import { SyntaxTreeNode, SyntaxTreeNodeType } from "df/sqlx/lexer";
 
 export function compile(code: string, path: string): string {

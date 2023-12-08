@@ -3,44 +3,9 @@ import { Assertion } from "df/core/actions/assertion";
 import { Operation } from "df/core/actions/operation";
 import { Table } from "df/core/actions/table";
 import { Resolvable } from "df/core/common";
+import * as Path from "df/core/path";
 import { IActionProto, Session } from "df/core/session";
 import { dataform } from "df/protos/ts";
-
-export class Path {
-  public static readonly separator = (() => {
-    if (typeof process !== "undefined") {
-      return process.platform === "win32" ? "\\" : "/";
-    }
-    return "/";
-  })();
-
-  public static relativePath(fullPath: string, base: string) {
-    if (base.length === 0) {
-      return fullPath;
-    }
-    const stripped = fullPath.substr(base.length);
-    if (stripped.startsWith(Path.separator)) {
-      return stripped.substr(1);
-    } else {
-      return stripped;
-    }
-  }
-
-  public static fileName(fullPath: string) {
-    return fullPath
-      .split(Path.separator)
-      .slice(-1)[0]
-      .split(".")[0];
-  }
-
-  public static escapedFileName(path: string) {
-    return Path.fileName(path).replace(/\\/g, "\\\\");
-  }
-
-  public static fileExtension(fullPath: string) {
-    return fullPath.split(".").slice(-1)[0];
-  }
-}
 
 export function matchPatterns(patterns: string[], values: string[]) {
   const fullyQualifiedActions: string[] = [];
