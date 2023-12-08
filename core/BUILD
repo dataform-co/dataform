@@ -30,6 +30,7 @@ ts_library(
         "compilers.ts",
         "index.ts",
         "main.ts",
+        "path.ts",
         "session.ts",
         "targets.ts",
         "utils.ts",

@@ -15,16 +15,35 @@ export class Notebook implements IActionBuilder<dataform.Notebook> {
   constructor(session: Session, config: dataform.ActionConfig) {
     this.session = session;
     this.proto.config = config;
+
+    // TODO(ekrekr): move this to an Action Builder utility method, once configs are on all protos.
+    const canonicalTarget = this.proto.config.target;
+    this.proto.config.target = dataform.Target.create({
+      name: canonicalTarget.name,
+      schema: canonicalTarget.schema || session.canonicalConfig.defaultSchema || undefined,
+      database: canonicalTarget.database || session.canonicalConfig.defaultDatabase || undefined
+    });
+    this.proto.target = dataform.Target.create({
+      name: canonicalTarget.name,
+      schema: canonicalTarget.schema || session.config.defaultSchema || undefined,
+      database: canonicalTarget.database || session.config.defaultDatabase || undefined
+    });
   }
 
-  public setNotebookContents(contents: string) {
-    this.proto.notebookContents = contents;
+  public notebookContents(notebookContents: string) {
+    this.proto.notebookContents = notebookContents;
   }
 
+  /**
+   * @hidden
+   */
   public getFileName() {
     return this.proto.config.fileName;
   }
 
+  /**
+   * @hidden
+   */
   public getTarget() {
     return dataform.Target.create(this.proto.target);
   }

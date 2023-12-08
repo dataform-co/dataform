@@ -512,10 +512,16 @@ export class Table implements IActionBuilder<dataform.Table> {
     return this;
   }
 
+  /**
+   * @hidden
+   */
   public getFileName() {
     return this.proto.fileName;
   }
 
+  /**
+   * @hidden
+   */
   public getTarget() {
     return dataform.Target.create(this.proto.target);
   }

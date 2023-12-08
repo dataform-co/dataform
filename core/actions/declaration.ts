@@ -69,10 +69,16 @@ export class Declaration implements IActionBuilder<dataform.Declaration> {
     return this;
   }
 
+  /**
+   * @hidden
+   */
   public getFileName() {
     return this.proto.fileName;
   }
 
+  /**
+   * @hidden
+   */
   public getTarget() {
     return dataform.Target.create(this.proto.target);
   }

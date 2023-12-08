@@ -188,10 +188,16 @@ export class Operation implements IActionBuilder<dataform.Operation> {
     return this;
   }
 
+  /**
+   * @hidden
+   */
   public getFileName() {
     return this.proto.fileName;
   }
 
+  /**
+   * @hidden
+   */
   public getTarget() {
     return dataform.Target.create(this.proto.target);
   }

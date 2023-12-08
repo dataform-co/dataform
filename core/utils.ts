@@ -3,38 +3,9 @@ import { Assertion } from "df/core/actions/assertion";
 import { Operation } from "df/core/actions/operation";
 import { Table } from "df/core/actions/table";
 import { Resolvable } from "df/core/common";
+import * as Path from "df/core/path";
 import { IActionProto, Session } from "df/core/session";
 import { dataform } from "df/protos/ts";
-
-export const pathSeperator = (() => {
-  if (typeof process !== "undefined") {
-    return process.platform === "win32" ? "\\" : "/";
-  }
-  return "/";
-})();
-
-function relativePath(fullPath: string, base: string) {
-  if (base.length === 0) {
-    return fullPath;
-  }
-  const stripped = fullPath.substr(base.length);
-  if (stripped.startsWith(pathSeperator)) {
-    return stripped.substr(1);
-  } else {
-    return stripped;
-  }
-}
-
-export function baseFilename(fullPath: string) {
-  return fullPath
-    .split(pathSeperator)
-    .slice(-1)[0]
-    .split(".")[0];
-}
-
-export function getEscapedFileName(path: string) {
-  return baseFilename(path).replace(/\\/g, "\\\\");
-}
 
 export function matchPatterns(patterns: string[], values: string[]) {
   const fullyQualifiedActions: string[] = [];
@@ -76,8 +47,8 @@ export function getCallerFile(rootDir: string) {
     lastfile = nextLastfile;
     if (
       !(
-        nextLastfile.includes(`definitions${pathSeperator}`) ||
-        nextLastfile.includes(`models${pathSeperator}`)
+        nextLastfile.includes(`definitions${Path.separator}`) ||
+        nextLastfile.includes(`models${Path.separator}`)
       )
     ) {
       continue;
@@ -89,7 +60,7 @@ export function getCallerFile(rootDir: string) {
     // If so, explicitly pass the filename to Session.compileError().
     throw new Error("Unable to find valid caller file; please report this issue.");
   }
-  return relativePath(lastfile, rootDir);
+  return Path.relativePath(lastfile, rootDir);
 }
 
 function getCurrentStack(): NodeJS.CallSite[] {
@@ -169,12 +140,10 @@ export function target(
   schema?: string,
   database?: string
 ): dataform.ITarget {
-  schema = schema || config.defaultSchema;
-  database = database || config.defaultDatabase;
   return dataform.Target.create({
     name,
-    schema: !!schema ? schema || config.defaultSchema : undefined,
-    database: !!database ? database : undefined
+    schema: schema || config.defaultSchema || undefined,
+    database: database || config.defaultDatabase || undefined
   });
 }
 
@@ -186,10 +155,6 @@ export function setNameAndTarget(
   overrideDatabase?: string
 ) {
   action.target = target(session.config, name, overrideSchema, overrideDatabase);
-  if (action.config) {
-    action.config.target = target(session.canonicalConfig, name, overrideSchema, overrideDatabase);
-    return;
-  }
   action.canonicalTarget = target(session.canonicalConfig, name, overrideSchema, overrideDatabase);
 }
 
@@ -274,4 +239,16 @@ export function setOrValidateTableEnumType(table: dataform.ITable) {
       )}" are not equivalent.`
     );
   }
+}
+
+export function extractActionDetailsFromFileName(
+  path: string
+): { fileExtension: string; fileNameAsTargetName: string } {
+  // TODO(ekrekr): make filename in actions.yaml files not need the `definitions` prefix. In
+  // addition, actions.yaml in nested directories should prefix file imports with their path.
+  const fileName = Path.fileName(path);
+  const fileExtension = Path.fileExtension(path);
+  // TODO(ekrekr): validate and test weird characters in filenames.
+  const fileNameAsTargetName = fileName.slice(0, fileExtension.length - 1);
+  return { fileExtension, fileNameAsTargetName };
 }

@@ -1,4 +1,5 @@
 import { decode64, encode64, verifyObjectMatchesProto } from "df/common/protos";
+import * as Path from "df/core/path";
 import { Session } from "df/core/session";
 import * as utils from "df/core/utils";
 import { readWorkflowSettings } from "df/core/workflow_settings";
@@ -56,13 +57,13 @@ export function main(coreExecutionRequest: Uint8Array | string): Uint8Array | st
   // "includes" files from implicitly depending on other "includes" files.
   const topLevelIncludes: { [key: string]: any } = {};
   compileRequest.compileConfig.filePaths
-    .filter(path => path.startsWith(`includes${utils.pathSeperator}`))
-    .filter(path => path.split(utils.pathSeperator).length === 2) // Only include top-level "includes" files.
+    .filter(path => path.startsWith(`includes${Path.separator}`))
+    .filter(path => path.split(Path.separator).length === 2) // Only include top-level "includes" files.
     .filter(path => path.endsWith(".js"))
     .forEach(includePath => {
       try {
         // tslint:disable-next-line: tsr-detect-non-literal-require
-        topLevelIncludes[utils.baseFilename(includePath)] = nativeRequire(includePath);
+        topLevelIncludes[Path.fileName(includePath)] = nativeRequire(includePath);
       } catch (e) {
         session.compileError(e, includePath);
       }
@@ -80,7 +81,7 @@ export function main(coreExecutionRequest: Uint8Array | string): Uint8Array | st
 
   // Require all "definitions" files (attaching them to the session).
   compileRequest.compileConfig.filePaths
-    .filter(path => path.startsWith(`definitions${utils.pathSeperator}`))
+    .filter(path => path.startsWith(`definitions${Path.separator}`))
     .filter(path => path.endsWith(".js") || path.endsWith(".sqlx"))
     .sort()
     .forEach(definitionPath => {
@@ -108,7 +109,7 @@ export function main(coreExecutionRequest: Uint8Array | string): Uint8Array | st
 function loadActionConfigs(session: Session, filePaths: string[]) {
   filePaths
     .filter(
-      path => path.startsWith(`definitions${utils.pathSeperator}`) && path.endsWith("actions.yaml")
+      path => path.startsWith(`definitions${Path.separator}`) && path.endsWith("/actions.yaml")
     )
     .sort()
     .forEach(actionConfigsPath => {
@@ -124,13 +125,13 @@ function loadActionConfigs(session: Session, filePaths: string[]) {
       const actionConfigs = dataform.ActionConfigs.fromObject(actionConfigsAsJson);
 
       actionConfigs.actions.forEach(actionConfig => {
-        const { fileExtension, fileNameAsTargetName } = extractActionDetailsFromFileName(
+        const { fileExtension, fileNameAsTargetName } = utils.extractActionDetailsFromFileName(
           actionConfig.fileName
         );
-        if (!actionConfig.target?.name) {
-          if (!actionConfig.target) {
-            actionConfig.target = {};
-          }
+        if (!actionConfig.target) {
+          actionConfig.target = {};
+        }
+        if (!actionConfig.target.name) {
           actionConfig.target.name = fileNameAsTargetName;
         }
 
@@ -138,20 +139,8 @@ function loadActionConfigs(session: Session, filePaths: string[]) {
           // TODO(ekrekr): throw an error if any non-notebook configs are given.
           // TODO(ekrekr): add test for nice errors if file not found.
           const notebookContents = nativeRequire(actionConfig.fileName).asBase64String();
-          session.notebookAction(dataform.ActionConfig.create(actionConfig), notebookContents);
+          session.notebook(dataform.ActionConfig.create(actionConfig), notebookContents);
         }
       });
     });
-}
-
-function extractActionDetailsFromFileName(
-  path: string
-): { fileExtension: string; fileNameAsTargetName: string } {
-  // TODO(ekrekr): make filename in actions.yaml files not need the `definitions` prefix. In
-  // addition, actions.yaml in nested directories should prefix file imports with their path.
-  const fileName = path.split("/").slice(-1)[0];
-  const fileExtension = fileName.split(".").slice(-1)[0];
-  // TODO(ekrekr): validate and test weird characters in filenames.
-  const fileNameAsTargetName = fileName.slice(0, fileExtension.length - 1);
-  return { fileExtension, fileNameAsTargetName };
 }
