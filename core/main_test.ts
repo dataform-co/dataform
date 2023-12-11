@@ -17,7 +17,6 @@ defaultDatabase: dataform
 
 const VALID_DATAFORM_JSON = `
 {
-  "warehouse": "bigquery",
   "defaultDatabase": "dataform"
 }
 `;
@@ -136,6 +135,86 @@ suite("@dataform/core", ({ afterEach }) => {
 
       expect(() => runMainInVm(coreExecutionRequest)).to.throw(
         "Workflow settings error: unexpected key 'notAProjectConfigField'"
+      );
+    });
+
+    test(`main succeeds when dataform.json specifies BigQuery as the warehouse`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
+      fs.writeFileSync(
+        path.join(projectDir, "dataform.json"),
+        `{"warehouse": "bigquery", "defaultDatabase": "dataform"}`
+      );
+      const coreExecutionRequest = dataform.CoreExecutionRequest.create({
+        compile: { compileConfig: { projectDir } }
+      });
+
+      const result = runMainInVm(coreExecutionRequest);
+
+      expect(asPlainObject(result.compile.compiledGraph.projectConfig)).deep.equals(
+        asPlainObject({
+          warehouse: "bigquery",
+          defaultDatabase: "dataform",
+          version
+        })
+      );
+    });
+
+    test(`main fails when dataform.json specifies non-BigQuery as the warehouse`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
+      fs.writeFileSync(
+        path.join(projectDir, "dataform.json"),
+        `{"warehouse": "redshift", "defaultDatabase": "dataform"}`
+      );
+      const coreExecutionRequest = dataform.CoreExecutionRequest.create({
+        compile: { compileConfig: { projectDir } }
+      });
+
+      expect(() => runMainInVm(coreExecutionRequest)).to.throw(
+        "Workflow settings error: the warehouse field is deprecated"
+      );
+    });
+
+    test(`main succeeds when workflow_settings.yaml specifies BigQuery as the warehouse`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        `
+warehouse: bigquery
+defaultDatabase: dataform`
+      );
+      const coreExecutionRequest = dataform.CoreExecutionRequest.create({
+        compile: { compileConfig: { projectDir } }
+      });
+
+      const result = runMainInVm(coreExecutionRequest);
+
+      expect(asPlainObject(result.compile.compiledGraph.projectConfig)).deep.equals(
+        asPlainObject({
+          warehouse: "bigquery",
+          defaultDatabase: "dataform",
+          version
+        })
+      );
+    });
+
+    test(`main fails when workflow_settings.yaml specifies non-BigQuery as the warehouse`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        `
+warehouse: redshift
+defaultDatabase: dataform`
+      );
+      const coreExecutionRequest = dataform.CoreExecutionRequest.create({
+        compile: { compileConfig: { projectDir } }
+      });
+
+      expect(() => runMainInVm(coreExecutionRequest)).to.throw(
+        "Workflow settings error: the warehouse field is deprecated"
       );
     });
 

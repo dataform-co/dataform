@@ -51,6 +51,7 @@ function verifyWorkflowSettingsAsJson(workflowSettingsAsJson: object): dataform.
   }
   // tslint:disable-next-line: no-string-literal
   if (!projectConfig.warehouse) {
+    // The warehouse field still set, though deprecated, to simplify compatability with dependents.
     // tslint:disable-next-line: no-string-literal
     projectConfig.warehouse = "bigquery";
   }
@@ -66,6 +67,10 @@ function verifyWorkflowSettingsAsJson(workflowSettingsAsJson: object): dataform.
     );
   }
 
+  // tslint:disable-next-line: no-string-literal
+  if (projectConfig.warehouse !== "bigquery") {
+    throw Error("Workflow settings error: the warehouse field is deprecated");
+  }
   return projectConfig;
 }
 
