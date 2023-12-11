@@ -44,7 +44,7 @@ suite("@dataform/core", ({ afterEach }) => {
         asPlainObject({
           warehouse: "bigquery",
           defaultDatabase: "dataform",
-          version
+          dataformCoreVersion: version
         })
       );
     });
@@ -64,7 +64,7 @@ suite("@dataform/core", ({ afterEach }) => {
         asPlainObject({
           warehouse: "bigquery",
           defaultDatabase: "dataform",
-          version
+          dataformCoreVersion: version
         })
       );
     });
@@ -155,7 +155,7 @@ suite("@dataform/core", ({ afterEach }) => {
         asPlainObject({
           warehouse: "bigquery",
           defaultDatabase: "dataform",
-          version
+          dataformCoreVersion: version
         })
       );
     });
@@ -195,7 +195,7 @@ defaultDatabase: dataform`
         asPlainObject({
           warehouse: "bigquery",
           defaultDatabase: "dataform",
-          version
+          dataformCoreVersion: version
         })
       );
     });
@@ -240,7 +240,7 @@ defaultDatabase: dataform`
       fs.writeFileSync(
         path.join(projectDir, "workflow_settings.yaml"),
         `
-version: 1.0.0
+dataformCoreVersion: 1.0.0
 defaultDatabase: dataform
         `
       );
@@ -259,7 +259,7 @@ defaultDatabase: dataform
       fs.writeFileSync(
         path.join(projectDir, "workflow_settings.yaml"),
         `
-version: ${version}
+dataformCoreVersion: ${version}
 defaultDatabase: dataform
         `
       );
@@ -273,7 +273,7 @@ defaultDatabase: dataform
         asPlainObject({
           warehouse: "bigquery",
           defaultDatabase: "dataform",
-          version
+          dataformCoreVersion: version
         })
       );
     });
@@ -331,7 +331,7 @@ select 1 AS \${dataform.projectConfig.vars.selectVar}`
               selectVar: "selectVal"
             },
             warehouse: "bigquery",
-            version
+            dataformCoreVersion: version
           },
           tables: [
             {
@@ -479,7 +479,7 @@ select 1 AS \${dataform.projectConfig.vars.columnVar}`
                 columnVar: "columnValue"
               },
               warehouse: "bigquery",
-              version
+              dataformCoreVersion: version
             },
             tables: [
               {

@@ -56,14 +56,14 @@ function verifyWorkflowSettingsAsJson(workflowSettingsAsJson: object): dataform.
     projectConfig.warehouse = "bigquery";
   }
 
-  if (!projectConfig.version) {
-    projectConfig.version = version;
+  if (!projectConfig.dataformCoreVersion) {
+    projectConfig.dataformCoreVersion = version;
   }
   // The caller of Dataform Core should ensure that the correct version is installed.
-  if (projectConfig.version !== version) {
+  if (projectConfig.dataformCoreVersion !== version) {
     throw Error(
-      `Version mismatch: workflow settings specifies version ${projectConfig.version}, ` +
-        `but ${version} was found`
+      `Version mismatch: workflow settings specifies version ${projectConfig.dataformCoreVersion}` +
+        `, but ${version} was found`
     );
   }
 
