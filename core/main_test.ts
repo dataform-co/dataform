@@ -9,6 +9,7 @@ import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
 import { asPlainObject } from "df/tests/utils";
+import { version } from "df/core/version";
 
 const VALID_WORKFLOW_SETTINGS_YAML = `
 defaultDatabase: dataform
@@ -43,7 +44,8 @@ suite("@dataform/core", ({ afterEach }) => {
       expect(asPlainObject(result.compile.compiledGraph.projectConfig)).deep.equals(
         asPlainObject({
           warehouse: "bigquery",
-          defaultDatabase: "dataform"
+          defaultDatabase: "dataform",
+          version
         })
       );
     });
@@ -62,7 +64,8 @@ suite("@dataform/core", ({ afterEach }) => {
       expect(asPlainObject(result.compile.compiledGraph.projectConfig)).deep.equals(
         asPlainObject({
           warehouse: "bigquery",
-          defaultDatabase: "dataform"
+          defaultDatabase: "dataform",
+          version
         })
       );
     });
@@ -152,6 +155,48 @@ suite("@dataform/core", ({ afterEach }) => {
       );
     });
 
+    test(`main fails when workflow settings contains the wrong version`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        `
+version: nonsense
+defaultDatabase: dataform
+        `
+      );
+      const coreExecutionRequest = dataform.CoreExecutionRequest.create({
+        compile: { compileConfig: { projectDir } }
+      });
+
+      expect(() => runMainInVm(coreExecutionRequest)).to.throw("");
+    });
+
+    test(`main succeeds when workflow settings contains the matching version`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        `
+version: ${version}
+defaultDatabase: dataform
+        `
+      );
+      const coreExecutionRequest = dataform.CoreExecutionRequest.create({
+        compile: { compileConfig: { projectDir } }
+      });
+
+      const result = runMainInVm(coreExecutionRequest);
+
+      expect(asPlainObject(result.compile.compiledGraph.projectConfig)).deep.equals(
+        asPlainObject({
+          warehouse: "bigquery",
+          defaultDatabase: "dataform",
+          version
+        })
+      );
+    });
+
     test(`workflow settings and project config overrides are merged and applied within SQLX files`, () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
       // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
@@ -204,7 +249,8 @@ select 1 AS \${dataform.projectConfig.vars.selectVar}`
               databaseVar: "databaseVal",
               selectVar: "selectVal"
             },
-            warehouse: "bigquery"
+            warehouse: "bigquery",
+            version
           },
           tables: [
             {
@@ -351,7 +397,8 @@ select 1 AS \${dataform.projectConfig.vars.columnVar}`
                 descriptionVar: "descriptionValue",
                 columnVar: "columnValue"
               },
-              warehouse: "bigquery"
+              warehouse: "bigquery",
+              version
             },
             tables: [
               {

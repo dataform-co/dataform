@@ -1,4 +1,5 @@
 import { verifyObjectMatchesProto } from "df/common/protos";
+import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
 
 declare var __webpack_require__: any;
@@ -53,6 +54,18 @@ function verifyWorkflowSettingsAsJson(workflowSettingsAsJson: object): dataform.
     // tslint:disable-next-line: no-string-literal
     projectConfig.warehouse = "bigquery";
   }
+
+  if (!projectConfig.version) {
+    projectConfig.version = version;
+  }
+  // The caller of Dataform Core should ensure that the correct version is installed.
+  if (projectConfig.version !== version) {
+    throw Error(
+      `Version mismatch: workflow settings specifies version ${projectConfig.version}, ` +
+        `but ${version} was found`
+    );
+  }
+
   return projectConfig;
 }
 
