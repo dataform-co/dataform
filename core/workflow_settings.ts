@@ -55,7 +55,7 @@ function verifyWorkflowSettingsAsJson(workflowSettingsAsJson: object): dataform.
     projectConfig.warehouse = "bigquery";
   }
   // tslint:disable-next-line: no-string-literal
-  if (projectConfig.warehouse != "bigquery") {
+  if (projectConfig.warehouse !== "bigquery") {
     throw Error("Workflow settings error: the warehouse field is deprecated");
   }
   return projectConfig;
