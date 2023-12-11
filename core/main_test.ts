@@ -155,13 +155,13 @@ suite("@dataform/core", ({ afterEach }) => {
       );
     });
 
-    test(`main fails when workflow settings contains the wrong version`, () => {
+    test(`main fails when the version workflow settings is not the current version`, () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
       // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(
         path.join(projectDir, "workflow_settings.yaml"),
         `
-version: nonsense
+version: 1.0.0
 defaultDatabase: dataform
         `
       );
@@ -169,7 +169,9 @@ defaultDatabase: dataform
         compile: { compileConfig: { projectDir } }
       });
 
-      expect(() => runMainInVm(coreExecutionRequest)).to.throw("");
+      expect(() => runMainInVm(coreExecutionRequest)).to.throw(
+        `Version mismatch: workflow settings specifies version 1.0.0, but ${version} was found`
+      );
     });
 
     test(`main succeeds when workflow settings contains the matching version`, () => {
