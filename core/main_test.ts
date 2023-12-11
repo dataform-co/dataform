@@ -5,11 +5,11 @@ import { CompilerFunction, NodeVM } from "vm2";
 
 import { decode64, encode64 } from "df/common/protos";
 import { compile } from "df/core/compilers";
+import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
 import { asPlainObject } from "df/tests/utils";
-import { version } from "df/core/version";
 
 const VALID_WORKFLOW_SETTINGS_YAML = `
 defaultDatabase: dataform
