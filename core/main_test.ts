@@ -468,7 +468,7 @@ select 1 AS \${dataform.projectConfig.vars.columnVar}`
     });
   });
 
-  suite("notebooks", ({ before }) => {
+  suite("notebooks", () => {
     const createSimpleNotebookProject = (): string => {
       const projectDir = tmpDirFixture.createNewTmpDir();
       // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
