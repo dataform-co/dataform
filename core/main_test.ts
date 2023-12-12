@@ -311,7 +311,7 @@ select 1 AS \${dataform.projectConfig.vars.selectVar}`
       );
     });
 
-    suite("version", () => {
+    suite("dataform core version", () => {
       test(`main fails when the workflow settings version is not the installed current version`, () => {
         const projectDir = tmpDirFixture.createNewTmpDir();
         // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
@@ -319,8 +319,7 @@ select 1 AS \${dataform.projectConfig.vars.selectVar}`
           path.join(projectDir, "workflow_settings.yaml"),
           `
 dataformCoreVersion: 1.0.0
-defaultDatabase: dataform
-        `
+defaultDatabase: dataform`
         );
         const coreExecutionRequest = dataform.CoreExecutionRequest.create({
           compile: { compileConfig: { projectDir } }
@@ -338,8 +337,7 @@ defaultDatabase: dataform
           path.join(projectDir, "workflow_settings.yaml"),
           `
 dataformCoreVersion: ${version}
-defaultDatabase: dataform
-        `
+defaultDatabase: dataform`
         );
         const coreExecutionRequest = dataform.CoreExecutionRequest.create({
           compile: { compileConfig: { projectDir } }
