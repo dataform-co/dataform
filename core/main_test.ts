@@ -43,8 +43,7 @@ suite("@dataform/core", ({ afterEach }) => {
       expect(asPlainObject(result.compile.compiledGraph.projectConfig)).deep.equals(
         asPlainObject({
           warehouse: "bigquery",
-          defaultDatabase: "dataform",
-          dataformCoreVersion: version
+          defaultDatabase: "dataform"
         })
       );
     });
@@ -63,8 +62,7 @@ suite("@dataform/core", ({ afterEach }) => {
       expect(asPlainObject(result.compile.compiledGraph.projectConfig)).deep.equals(
         asPlainObject({
           warehouse: "bigquery",
-          defaultDatabase: "dataform",
-          dataformCoreVersion: version
+          defaultDatabase: "dataform"
         })
       );
     });
@@ -154,8 +152,7 @@ suite("@dataform/core", ({ afterEach }) => {
       expect(asPlainObject(result.compile.compiledGraph.projectConfig)).deep.equals(
         asPlainObject({
           warehouse: "bigquery",
-          defaultDatabase: "dataform",
-          dataformCoreVersion: version
+          defaultDatabase: "dataform"
         })
       );
     });
@@ -194,8 +191,7 @@ defaultDatabase: dataform`
       expect(asPlainObject(result.compile.compiledGraph.projectConfig)).deep.equals(
         asPlainObject({
           warehouse: "bigquery",
-          defaultDatabase: "dataform",
-          dataformCoreVersion: version
+          defaultDatabase: "dataform"
         })
       );
     });
@@ -231,50 +227,6 @@ defaultDatabase: dataform`
 
       expect(() => runMainInVm(coreExecutionRequest)).to.throw(
         "Workflow settings error: unexpected key 'notAProjectConfigField'"
-      );
-    });
-
-    test(`main fails when the version workflow settings is not the current version`, () => {
-      const projectDir = tmpDirFixture.createNewTmpDir();
-      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
-      fs.writeFileSync(
-        path.join(projectDir, "workflow_settings.yaml"),
-        `
-dataformCoreVersion: 1.0.0
-defaultDatabase: dataform
-        `
-      );
-      const coreExecutionRequest = dataform.CoreExecutionRequest.create({
-        compile: { compileConfig: { projectDir } }
-      });
-
-      expect(() => runMainInVm(coreExecutionRequest)).to.throw(
-        `Version mismatch: workflow settings specifies version 1.0.0, but ${version} was found`
-      );
-    });
-
-    test(`main succeeds when workflow settings contains the matching version`, () => {
-      const projectDir = tmpDirFixture.createNewTmpDir();
-      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
-      fs.writeFileSync(
-        path.join(projectDir, "workflow_settings.yaml"),
-        `
-dataformCoreVersion: ${version}
-defaultDatabase: dataform
-        `
-      );
-      const coreExecutionRequest = dataform.CoreExecutionRequest.create({
-        compile: { compileConfig: { projectDir } }
-      });
-
-      const result = runMainInVm(coreExecutionRequest);
-
-      expect(asPlainObject(result.compile.compiledGraph.projectConfig)).deep.equals(
-        asPlainObject({
-          warehouse: "bigquery",
-          defaultDatabase: "dataform",
-          dataformCoreVersion: version
-        })
       );
     });
 
@@ -330,8 +282,7 @@ select 1 AS \${dataform.projectConfig.vars.selectVar}`
               databaseVar: "databaseVal",
               selectVar: "selectVal"
             },
-            warehouse: "bigquery",
-            dataformCoreVersion: version
+            warehouse: "bigquery"
           },
           tables: [
             {
@@ -358,6 +309,52 @@ select 1 AS \${dataform.projectConfig.vars.selectVar}`
           ]
         })
       );
+    });
+
+    suite("version", () => {
+      test(`main fails when the workflow settings version is not the installed current version`, () => {
+        const projectDir = tmpDirFixture.createNewTmpDir();
+        // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
+        fs.writeFileSync(
+          path.join(projectDir, "workflow_settings.yaml"),
+          `
+dataformCoreVersion: 1.0.0
+defaultDatabase: dataform
+        `
+        );
+        const coreExecutionRequest = dataform.CoreExecutionRequest.create({
+          compile: { compileConfig: { projectDir } }
+        });
+
+        expect(() => runMainInVm(coreExecutionRequest)).to.throw(
+          `Version mismatch: workflow settings specifies version 1.0.0, but ${version} was found`
+        );
+      });
+
+      test(`main succeeds when workflow settings contains the matching version`, () => {
+        const projectDir = tmpDirFixture.createNewTmpDir();
+        // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
+        fs.writeFileSync(
+          path.join(projectDir, "workflow_settings.yaml"),
+          `
+dataformCoreVersion: ${version}
+defaultDatabase: dataform
+        `
+        );
+        const coreExecutionRequest = dataform.CoreExecutionRequest.create({
+          compile: { compileConfig: { projectDir } }
+        });
+
+        const result = runMainInVm(coreExecutionRequest);
+
+        expect(asPlainObject(result.compile.compiledGraph.projectConfig)).deep.equals(
+          asPlainObject({
+            warehouse: "bigquery",
+            defaultDatabase: "dataform",
+            dataformCoreVersion: version
+          })
+        );
+      });
     });
 
     suite("variables", () => {
@@ -478,8 +475,7 @@ select 1 AS \${dataform.projectConfig.vars.columnVar}`
                 descriptionVar: "descriptionValue",
                 columnVar: "columnValue"
               },
-              warehouse: "bigquery",
-              dataformCoreVersion: version
+              warehouse: "bigquery"
             },
             tables: [
               {
