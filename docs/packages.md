@@ -2,7 +2,7 @@
 
 [<- Back to Home](https://dataform-co.github.io/dataform).
 
-## Some Recommended Packages
+## Sample Packages
 
 - [https://github.com/dataform-co/dataform-scd](https://github.com/dataform-co/dataform-scd).
 - [https://github.com/ArtemKorneevGA/dataform-ga4-sessions](https://github.com/ArtemKorneevGA/dataform-ga4-sessions).

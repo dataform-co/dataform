@@ -42,7 +42,7 @@ You can learn more on [cloud.google.com/dataform](https://cloud.google.com/dataf
 
 - Read the [docs here](https://cloud.google.com/dataform/docs/overview).
 
-## Some Example Projects
+## Example Projects
 
 - [https://github.com/GoogleCloudPlatform/marketing-data-engine-dataform](https://github.com/GoogleCloudPlatform/marketing-data-engine-dataform).
 - [https://github.com/wintermi/movielens-dataform](https://github.com/wintermi/movielens-dataform).
