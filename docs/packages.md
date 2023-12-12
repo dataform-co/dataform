@@ -1,15 +1,15 @@
 # Packages
 
-{:toc}
+[<- Back to Home](https://dataform-co.github.io/dataform).
 
-## Some Recommended Packages
+## Sample Packages
 
-- https://github.com/dataform-co/dataform-scd
-- https://github.com/ArtemKorneevGA/dataform-ga4-sessions
-- https://github.com/mokhahmed/dvform
-- https://github.com/dataform-co/dataform-fivetran-log
-- https://github.com/dataform-co/dataform-segment
-- https://github.com/dataform-co/dataform-fivetran-stripe
+- [https://github.com/dataform-co/dataform-scd](https://github.com/dataform-co/dataform-scd).
+- [https://github.com/ArtemKorneevGA/dataform-ga4-sessions](https://github.com/ArtemKorneevGA/dataform-ga4-sessions).
+- [https://github.com/mokhahmed/dvform](https://github.com/mokhahmed/dvform).
+- [https://github.com/dataform-co/dataform-fivetran-log](https://github.com/dataform-co/dataform-fivetran-log).
+- [https://github.com/dataform-co/dataform-segment](https://github.com/dataform-co/dataform-segment).
+- [https://github.com/dataform-co/dataform-fivetran-stripe](https://github.com/dataform-co/dataform-fivetran-stripe).
 
 ## Creating a package
 
