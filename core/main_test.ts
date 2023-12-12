@@ -469,7 +469,7 @@ select 1 AS \${dataform.projectConfig.vars.columnVar}`
   });
 
   suite("notebooks", () => {
-    test(`notebooks can be loaded via an actions config file`, () => {
+    const createSimpleNotebookProject = (): string => {
       const projectDir = tmpDirFixture.createNewTmpDir();
       // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(
@@ -485,6 +485,13 @@ select 1 AS \${dataform.projectConfig.vars.columnVar}`
 actions:
   - fileName: definitions/notebook.ipynb`
       );
+
+      return projectDir;
+    };
+
+    test(`notebooks can be loaded via an actions config file`, () => {
+      const projectDir = createSimpleNotebookProject();
+
       // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(
         path.join(projectDir, "definitions/notebook.ipynb"),
@@ -511,7 +518,58 @@ actions:
                 name: "note"
               }
             },
-            notebookContents: '{"cells":[]})',
+            notebookContents: JSON.stringify({ cells: [] }),
+            target: {
+              database: "dataform",
+              name: "note"
+            }
+          }
+        ])
+      );
+    });
+
+    test(`notebook cell output is removed`, () => {
+      const projectDir = createSimpleNotebookProject();
+
+      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/notebook.ipynb"),
+        JSON.stringify({
+          cells: [
+            { cell_type: "markdown", source: ["# Some title"], outputs: ["something"] },
+            { cell_type: "code", source: ["print('hi')"], outputs: ["hi"] },
+            { cell_type: "raw", source: ["print('hi')"] }
+          ]
+        })
+      );
+      const coreExecutionRequest = dataform.CoreExecutionRequest.create({
+        compile: {
+          compileConfig: {
+            projectDir,
+            filePaths: ["definitions/actions.yaml"]
+          }
+        }
+      });
+
+      const result = runMainInVm(coreExecutionRequest);
+
+      expect(asPlainObject(result.compile.compiledGraph.notebooks)).deep.equals(
+        asPlainObject([
+          {
+            config: {
+              fileName: "definitions/notebook.ipynb",
+              target: {
+                database: "dataform",
+                name: "note"
+              }
+            },
+            notebookContents: JSON.stringify({
+              cells: [
+                { cell_type: "markdown", source: ["# Some title"], outputs: [] },
+                { cell_type: "code", source: ["print('hi')"], outputs: [] },
+                { cell_type: "raw", source: ["print('hi')"] }
+              ]
+            }),
             target: {
               database: "dataform",
               name: "note"
