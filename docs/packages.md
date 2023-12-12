@@ -35,18 +35,10 @@ The base package repo creates a simple dependency graph with one declaration and
 - includes/dataset_one.js
 - includes/dataset_two.js
 
-If you're not quite sure how to set your package up, you may want to explore the code respoitories for other Dataform packages. Alternatively, ask the community in our [Slack channel](https://join.slack.com/t/dataform-users/shared_invite/zt-dark6b7k-r5~12LjYL1a17Vgma2ru2A).
-
 ### Connect to a data warehouse and test it out
 
 Once you're done, it's a good idea to connect to a data warehouse and make sure it's doing what you expected.
 
 ### Release to the community!
 
-Once your package is ready to be released, let the community know in our [Slack channel](https://join.slack.com/t/dataform-users/shared_invite/zt-dark6b7k-r5~12LjYL1a17Vgma2ru2A). And if you'd like to list your package on docs.dataform.co, send an email to the [Dataform team](mailto:team@dataform.co).
-
-### Questions?
-
-If you have any questions at any point, don't hesitate to get in touch by [email](mailto:team@dataform.co) or [Slack](https://join.slack.com/t/dataform-users/shared_invite/zt-dark6b7k-r5~12LjYL1a17Vgma2ru2A).
-
-On behalf of the Dataform community, thanks in advance for your contribution!
+Once your package is ready to be released, let [the community know](https://cloud.google.com/dataform/docs/get-support#get_support_from_the_community). If you'd like to list your package here, make a pull request to add it!
