@@ -51,7 +51,6 @@ You can learn more on [cloud.google.com/dataform](https://cloud.google.com/dataf
 - https://github.com/wintermi/fashion-dataform.
 - https://github.com/G2H/dataform-stackoverflow.
 - https://github.com/karcot1/dataform_deployment_sample.
-- https://github.com/snowplow-incubator/dataform-data-models.
 
 ## Want to report a bug or request a feature?
 
