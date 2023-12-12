@@ -5,6 +5,7 @@ import { CompilerFunction, NodeVM } from "vm2";
 
 import { decode64, encode64 } from "df/common/protos";
 import { compile } from "df/core/compilers";
+import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
@@ -308,6 +309,50 @@ select 1 AS \${dataform.projectConfig.vars.selectVar}`
           ]
         })
       );
+    });
+
+    suite("dataform core version", () => {
+      test(`main fails when the workflow settings version is not the installed current version`, () => {
+        const projectDir = tmpDirFixture.createNewTmpDir();
+        // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
+        fs.writeFileSync(
+          path.join(projectDir, "workflow_settings.yaml"),
+          `
+dataformCoreVersion: 1.0.0
+defaultDatabase: dataform`
+        );
+        const coreExecutionRequest = dataform.CoreExecutionRequest.create({
+          compile: { compileConfig: { projectDir } }
+        });
+
+        expect(() => runMainInVm(coreExecutionRequest)).to.throw(
+          `Version mismatch: workflow settings specifies version 1.0.0, but ${version} was found`
+        );
+      });
+
+      test(`main succeeds when workflow settings contains the matching version`, () => {
+        const projectDir = tmpDirFixture.createNewTmpDir();
+        // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
+        fs.writeFileSync(
+          path.join(projectDir, "workflow_settings.yaml"),
+          `
+dataformCoreVersion: ${version}
+defaultDatabase: dataform`
+        );
+        const coreExecutionRequest = dataform.CoreExecutionRequest.create({
+          compile: { compileConfig: { projectDir } }
+        });
+
+        const result = runMainInVm(coreExecutionRequest);
+
+        expect(asPlainObject(result.compile.compiledGraph.projectConfig)).deep.equals(
+          asPlainObject({
+            warehouse: "bigquery",
+            defaultDatabase: "dataform",
+            dataformCoreVersion: version
+          })
+        );
+      });
     });
 
     suite("variables", () => {

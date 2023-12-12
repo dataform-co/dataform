@@ -1,4 +1,5 @@
 import { verifyObjectMatchesProto } from "df/common/protos";
+import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
 
 declare var __webpack_require__: any;
@@ -54,6 +55,15 @@ function verifyWorkflowSettingsAsJson(workflowSettingsAsJson: object): dataform.
     // tslint:disable-next-line: no-string-literal
     projectConfig.warehouse = "bigquery";
   }
+
+  // The caller of Dataform Core should ensure that the correct version is installed.
+  if (!!projectConfig.dataformCoreVersion && projectConfig.dataformCoreVersion !== version) {
+    throw Error(
+      `Version mismatch: workflow settings specifies version ${projectConfig.dataformCoreVersion}` +
+        `, but ${version} was found`
+    );
+  }
+
   // tslint:disable-next-line: no-string-literal
   if (projectConfig.warehouse !== "bigquery") {
     throw Error("Workflow settings error: the warehouse field is deprecated");
