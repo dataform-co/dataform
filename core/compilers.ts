@@ -33,10 +33,10 @@ function stripNotebookOutputs(
   if (!("cells" in notebookAsJson)) {
     throw new Error(`Notebook at ${path} is invalid: cells field not present`);
   }
-  (notebookAsJson["cells"] as { [key: string]: unknown }[]).forEach((cell, index) => {
+  (notebookAsJson.cells as Array<{ [key: string]: unknown }>).forEach((cell, index) => {
     if ("outputs" in cell) {
-      cell["outputs"] = [];
-      (notebookAsJson["cells"] as { [key: string]: unknown }[])[index] = cell;
+      cell.outputs = [];
+      (notebookAsJson.cells as Array<{ [key: string]: unknown }>)[index] = cell;
     }
   });
   return notebookAsJson;
