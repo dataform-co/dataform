@@ -1,6 +1,6 @@
 # Packages
 
-[<- Back to Home](https://dataform-co.github.io/dataform/docs/packages).
+[<- Back to Home](https://dataform-co.github.io/dataform).
 
 ## Some Recommended Packages
 
