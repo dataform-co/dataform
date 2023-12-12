@@ -13,7 +13,7 @@ Using Dataform core, data teams can build scalable SQL data transformation pipel
 - [Configure dependencies](https://cloud.google.com/dataform/docs/define-table#define_table_structure_and_dependencies).
 - Write [data quality checks](https://cloud.google.com/dataform/docs/assertions).
 - Enable [scripting](https://cloud.google.com/dataform/docs/develop-workflows-js) and code re-use with a JavaScript API.
-- Import [pre-defined packages](https://dataform-co.github.io/dataform/), or create your own.
+- Import [pre-defined packages](https://dataform-co.github.io/dataform/docs/packages), or create your own.
 
 ![A simple Dataform DAG illustrating table dependency](static/images/simple-dag.png?raw=true)
 
@@ -36,7 +36,7 @@ Dataform in Google Cloud Platform provides a fully managed experience to build s
 - a cloud development environment to develop data assets with SQL and Dataform core and version control code with GitHub, GitLab, and other Git providers.
 - a fully managed, serverless orchestration environment for data pipelines, fully integrated in Google Cloud Platform.
 
-You can learn more on [cloud.google.com/dataform](https://cloud.google.com/dataform)
+You can learn more on [cloud.google.com/dataform](https://cloud.google.com/dataform).
 
 ### How it works
 
@@ -44,13 +44,13 @@ You can learn more on [cloud.google.com/dataform](https://cloud.google.com/dataf
 
 ## Some Example Projects
 
-- https://github.com/GoogleCloudPlatform/marketing-data-engine-dataform.
-- https://github.com/wintermi/movielens-dataform.
-- https://github.com/wintermi/bqe-dataform.
-- https://github.com/wintermi/imdb-dataform.
-- https://github.com/wintermi/fashion-dataform.
-- https://github.com/G2H/dataform-stackoverflow.
-- https://github.com/karcot1/dataform_deployment_sample.
+- [https://github.com/GoogleCloudPlatform/marketing-data-engine-dataform](https://github.com/GoogleCloudPlatform/marketing-data-engine-dataform).
+- [https://github.com/wintermi/movielens-dataform](https://github.com/wintermi/movielens-dataform).
+- [https://github.com/wintermi/bqe-dataform](https://github.com/wintermi/bqe-dataform).
+- [https://github.com/wintermi/imdb-dataform](https://github.com/wintermi/imdb-dataform).
+- [https://github.com/wintermi/fashion-dataform](https://github.com/wintermi/fashion-dataform).
+- [https://github.com/G2H/dataform-stackoverflow](https://github.com/G2H/dataform-stackoverflow).
+- [https://github.com/karcot1/dataform_deployment_sample](https://github.com/karcot1/dataform_deployment_sample).
 
 ## Want to report a bug or request a feature?
 
