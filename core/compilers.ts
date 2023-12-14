@@ -6,11 +6,7 @@ import { SyntaxTreeNode, SyntaxTreeNodeType } from "df/sqlx/lexer";
 
 export function compile(code: string, path: string) {
   if (path.endsWith(".py")) {
-    return `
-pyodide.runPython(\`
-${code}
-\`);
-`;
+    return compilePython(code);
   }
   if (path.endsWith(".sqlx")) {
     return compileSqlx(SyntaxTreeNode.create(code), path);
@@ -124,12 +120,28 @@ export function compileStandaloneSqlxQuery(code: string) {
   `;
 }
 
+function compilePython(code: string) {
+  return `pyodide.runPython(\`
+${code.replace("`", "\\`")}
+\`);
+`;
+}
+
 function compileSqlx(rootNode: SyntaxTreeNode, path: string) {
   const { config, js, sql, incremental, preOperations, postOperations, inputs } = extractSqlxParts(
     rootNode
   );
 
-  const contextFunctions = ["self", "ref", "resolve", "name", "when", "incremental", "schema", "database"]
+  const contextFunctions = [
+    "self",
+    "ref",
+    "resolve",
+    "name",
+    "when",
+    "incremental",
+    "schema",
+    "database"
+  ]
     .map(name => `const ${name} = ctx.${name} ? ctx.${name}.bind(ctx) : undefined;`)
     .join("\n");
 
