@@ -19,7 +19,8 @@ const session = globalSession();
 
 const supportedFeatures = [dataform.SupportedFeatures.ARRAY_BUFFER_IPC];
 
-// These exports constitute the public API of @dataform/core.
+// These exports constitute the public API of @dataform/core. 
+// They must also be listed in packages/@dataform/core/index.ts.
 // Changes to these will break @dataform/api, so take care!
 export {
   adapters,
