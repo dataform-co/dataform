@@ -963,7 +963,7 @@ class ProjectConfigOptions {
       projectConfigOptions.schemaSuffix = argv[ProjectConfigOptions.schemaSuffix.name];
     }
     if (argv[ProjectConfigOptions.tablePrefix.name]) {
-      projectConfigOptions.schemaSuffix = argv[ProjectConfigOptions.tablePrefix.name];
+      projectConfigOptions.tablePrefix = argv[ProjectConfigOptions.tablePrefix.name];
     }
     return projectConfigOptions;
   }
