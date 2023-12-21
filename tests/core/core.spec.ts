@@ -995,7 +995,7 @@ suite("@dataform/core", () => {
     test("throws error for unknown action with .sql file compilation unsupported", () => {
       const session = new Session(path.dirname(__filename), TestConfigs.bigquery, undefined, false);
       const graph = session.compile();
-      expect(session.resolve("whatever")).to.be.empty;
+      expect(session.resolve("whatever")).to.equal("");
       expect(graph.graphErrors.compilationErrors[0].message).deep
         .equals('Could not resolve "whatever"');
     });
