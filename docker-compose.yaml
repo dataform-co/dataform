@@ -1,0 +1,10 @@
+version: "3.0"
+
+services:
+  dev:
+    image: node:16
+    tty: true
+    working_dir: /usr/src/app
+    platform: linux/amd64
+    volumes:
+      - .:/usr/src/app
