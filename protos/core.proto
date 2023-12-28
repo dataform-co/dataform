@@ -166,9 +166,13 @@ message Table {
 }
 
 message Operation {
+  ActionConfig config = 15;
+
   Target target = 3;
-  Target canonical_target = 13;
-  repeated Target dependency_targets = 11;
+
+  // Canonical and dependency targets are now specified in the config.
+  Target canonical_target = 13 [deprecated = true];
+  repeated Target dependency_targets = 11 [deprecated = true];
 
   ActionHermeticity hermeticity = 12;
 

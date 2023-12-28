@@ -3,6 +3,8 @@ import * as Path from "df/core/path";
 import { Session } from "df/core/session";
 import * as utils from "df/core/utils";
 import { readWorkflowSettings } from "df/core/workflow_settings";
+import { Operation } from "df/core/actions/operation";
+import { Notebook } from "df/core/actions/notebook";
 import { dataform } from "df/protos/ts";
 
 declare var __webpack_require__: any;
@@ -124,7 +126,8 @@ function loadActionConfigs(session: Session, filePaths: string[]) {
       verifyObjectMatchesProto(dataform.ActionConfigs, actionConfigsAsJson);
       const actionConfigs = dataform.ActionConfigs.fromObject(actionConfigsAsJson);
 
-      actionConfigs.actions.forEach(actionConfig => {
+      actionConfigs.actions.forEach(nonProtoActionConfig => {
+        let actionConfig = dataform.ActionConfig.create(nonProtoActionConfig);
         const { fileExtension, fileNameAsTargetName } = utils.extractActionDetailsFromFileName(
           actionConfig.fileName
         );
@@ -135,11 +138,29 @@ function loadActionConfigs(session: Session, filePaths: string[]) {
           actionConfig.target.name = fileNameAsTargetName;
         }
 
+        // TODO(ekrekr): throw an error if incorrect configs are specified for the filetype.
+        // TODO(ekrekr): add a test for nice errors if files are not found.
+
         if (fileExtension === "ipynb") {
-          // TODO(ekrekr): throw an error if any non-notebook configs are given.
-          // TODO(ekrekr): add test for nice errors if file not found.
           const notebookContents = nativeRequire(actionConfig.fileName).asBase64String();
-          session.notebook(dataform.ActionConfig.create(actionConfig), notebookContents);
+          session.actions.push(
+            new Notebook(session, actionConfig).notebookContents(notebookContents)
+          );
+        }
+
+        if (fileExtension === "sql") {
+          const queryAsContextable = nativeRequire(actionConfig.fileName).queryAsContextable;
+          if (
+            actionConfig.table ||
+            actionConfig.view ||
+            actionConfig.incrementalTable ||
+            actionConfig.assertion ||
+            actionConfig.declaration
+          ) {
+            throw Error("Only operation actions are currently supported in actions.yaml files");
+          }
+          // If no config is specified, the operation action type is defaulted to.
+          session.actions.push(new Operation(session, actionConfig).queries(queryAsContextable));
         }
       });
     });

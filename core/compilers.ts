@@ -3,6 +3,19 @@ import { load as loadYaml, YAMLException } from "js-yaml";
 import * as Path from "df/core/path";
 import { SyntaxTreeNode, SyntaxTreeNodeType } from "df/sqlx/lexer";
 
+const CONTEXT_FUNCTIONS = [
+  "self",
+  "ref",
+  "resolve",
+  "name",
+  "when",
+  "incremental",
+  "schema",
+  "database"
+]
+  .map(name => `const ${name} = ctx.${name} ? ctx.${name}.bind(ctx) : undefined;`)
+  .join("\n");
+
 export function compile(code: string, path: string): string {
   if (path.endsWith(".sqlx")) {
     return compileSqlx(SyntaxTreeNode.create(code), path);
@@ -22,6 +35,12 @@ export function compile(code: string, path: string): string {
     const notebookAsJson = stripNotebookOutputs(JSON.parse(code), path);
     // TODO(ekrekr): base64 encode the notebook as a string instead.
     return `exports.asBase64String = () => \`${JSON.stringify(notebookAsJson)}\``;
+  }
+  if (path.endsWith(".sql")) {
+    return `exports.queryAsContextable = (ctx) => {
+      ${CONTEXT_FUNCTIONS}
+      return \`${code}\`;
+    }`;
   }
   return code;
 }
@@ -70,19 +89,6 @@ function compileSqlx(rootNode: SyntaxTreeNode, path: string): string {
     rootNode
   );
 
-  const contextFunctions = [
-    "self",
-    "ref",
-    "resolve",
-    "name",
-    "when",
-    "incremental",
-    "schema",
-    "database"
-  ]
-    .map(name => `const ${name} = ctx.${name} ? ctx.${name}.bind(ctx) : undefined;`)
-    .join("\n");
-
   return `dataform.sqlxAction({
   sqlxConfig: {
     name: "${Path.escapedFileName(path)}",
@@ -91,14 +97,14 @@ function compileSqlx(rootNode: SyntaxTreeNode, path: string): string {
   },
   sqlStatementCount: ${sql.length},
   sqlContextable: (ctx) => {
-    ${contextFunctions}
+    ${CONTEXT_FUNCTIONS}
     ${js}
     return [${sql.map(sqlOp => `\`${sqlOp}\``)}];
   },
   incrementalWhereContextable: ${
     !!incremental
       ? `(ctx) => {
-    ${contextFunctions}
+    ${CONTEXT_FUNCTIONS}
     ${js}
     return \`${incremental}\`
   }`
@@ -107,7 +113,7 @@ function compileSqlx(rootNode: SyntaxTreeNode, path: string): string {
   preOperationsContextable: ${
     preOperations.length > 0
       ? `(ctx) => {
-    ${contextFunctions}
+    ${CONTEXT_FUNCTIONS}
     ${js}
     return [${preOperations.map(preOpSql => `\`${preOpSql}\``)}];
   }`
@@ -116,7 +122,7 @@ function compileSqlx(rootNode: SyntaxTreeNode, path: string): string {
   postOperationsContextable: ${
     postOperations.length > 0
       ? `(ctx) => {
-    ${contextFunctions}
+    ${CONTEXT_FUNCTIONS}
     ${js}
     return [${postOperations.map(postOpSql => `\`${postOpSql}\``)}];
   }`

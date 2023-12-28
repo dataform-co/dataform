@@ -195,13 +195,6 @@ export class Session {
     }
   }
 
-  public notebook(notebookConfig: dataform.ActionConfig, notebookContents: string): Notebook {
-    const notebook = new Notebook(this, notebookConfig);
-    notebook.notebookContents(notebookContents);
-    this.actions.push(notebook);
-    return notebook;
-  }
-
   public resolve(ref: Resolvable | string[], ...rest: string[]): string {
     ref = toResolvable(ref, rest);
     const allResolved = this.indexedActions.find(utils.resolvableAsTarget(ref));
