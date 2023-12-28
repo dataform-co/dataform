@@ -1,5 +1,5 @@
 import { verifyObjectMatchesProto } from "df/common/protos";
-import { IActionBuilder } from "df/core/actions";
+import { ActionBuilder } from "df/core/actions";
 import {
   IActionConfig,
   ICommonContext,
@@ -63,7 +63,7 @@ export type AContextable<T> = T | ((ctx: AssertionContext) => T);
 /**
  * @hidden
  */
-export class Assertion implements IActionBuilder<dataform.Assertion> {
+export class Assertion extends ActionBuilder<dataform.Assertion> {
   // TODO(ekrekr): make this field private, to enforce proto update logic to happen in this class.
   public proto: dataform.IAssertion = dataform.Assertion.create();
 
@@ -72,6 +72,10 @@ export class Assertion implements IActionBuilder<dataform.Assertion> {
 
   // We delay contextification until the final compile step, so hold these here for now.
   private contextableQuery: AContextable<string>;
+
+  constructor(session?: Session) {
+    super(session);
+  }
 
   public config(config: IAssertionConfig) {
     checkExcessProperties(
