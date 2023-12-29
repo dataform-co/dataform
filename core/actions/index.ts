@@ -24,12 +24,12 @@ export type SqlxConfig = (
 export abstract class ActionBuilder<T> {
   public session: Session;
 
-  constructor(session: Session) {
+  constructor(session?: Session) {
     this.session = session;
   }
 
-  // Canonical targets use the schema and database before any override is applied.
-  public applyCanonicalConfigToTarget(targetFromConfig: dataform.ITarget): dataform.Target {
+  // Applying the session canonically means using the schema and database present before overrides.
+  public applySessionCanonicallyToTarget(targetFromConfig: dataform.ITarget): dataform.Target {
     return dataform.Target.create({
       name: targetFromConfig.name,
       schema: targetFromConfig.schema || this.session.canonicalConfig.defaultSchema || undefined,
@@ -38,7 +38,7 @@ export abstract class ActionBuilder<T> {
     });
   }
 
-  public applyConfigToTarget(targetFromConfig: dataform.ITarget): dataform.Target {
+  public applySessionToTarget(targetFromConfig: dataform.ITarget): dataform.Target {
     return dataform.Target.create({
       name: targetFromConfig.name,
       schema: targetFromConfig.schema || this.session.config.defaultSchema || undefined,
@@ -50,14 +50,14 @@ export abstract class ActionBuilder<T> {
    * @deprecated
    * Configs are soon to be replaced with pure protobuf representations.
    */
-  abstract config(config: any): ActionBuilder<T>;
+  public abstract config(config: any): ActionBuilder<T>;
 
   /** Retrieves the filename from the config. */
-  abstract getFileName(): string;
+  public abstract getFileName(): string;
 
   /** Retrieves the resolved target from the proto. */
-  abstract getTarget(): dataform.Target;
+  public abstract getTarget(): dataform.Target;
 
   /** Creates the final protobuf representation. */
-  abstract compile(): T;
+  public abstract compile(): T;
 }

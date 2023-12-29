@@ -1,5 +1,5 @@
 import { verifyObjectMatchesProto } from "df/common/protos";
-import { IActionBuilder } from "df/core/actions";
+import { ActionBuilder } from "df/core/actions";
 import { Assertion } from "df/core/actions/assertion";
 import { ColumnDescriptors } from "df/core/column_descriptors";
 import {
@@ -240,7 +240,7 @@ export interface ITableContext extends ICommonContext {
 /**
  * @hidden
  */
-export class Table implements IActionBuilder<dataform.Table> {
+export class Table extends ActionBuilder<dataform.Table> {
   public static readonly INLINE_IGNORED_PROPS: Array<keyof dataform.ITable> = [
     "bigquery",
     "preOps",
@@ -269,6 +269,10 @@ export class Table implements IActionBuilder<dataform.Table> {
 
   private uniqueKeyAssertions: Assertion[] = [];
   private rowConditionsAssertion: Assertion;
+
+  constructor(session?: Session) {
+    super(session);
+  }
 
   public config(config: ITableConfig) {
     checkExcessProperties(

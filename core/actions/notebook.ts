@@ -18,8 +18,8 @@ export class Notebook extends ActionBuilder<dataform.Notebook> {
     this.session = session;
     this.proto.config = config;
 
-    this.proto.target = this.applyConfigToTarget(this.proto.config.target);
-    this.proto.config.target = this.applyCanonicalConfigToTarget(this.proto.config.target);
+    this.proto.target = this.applySessionToTarget(this.proto.config.target);
+    this.proto.config.target = this.applySessionCanonicallyToTarget(this.proto.config.target);
   }
 
   public notebookContents(notebookContents: string): Notebook {
