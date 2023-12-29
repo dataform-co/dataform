@@ -1,5 +1,5 @@
 import { verifyObjectMatchesProto } from "df/common/protos";
-import { IActionBuilder } from "df/core/actions";
+import { ActionBuilder } from "df/core/actions";
 import { ColumnDescriptors } from "df/core/column_descriptors";
 import {
   Contextable,
@@ -61,7 +61,7 @@ export const IIOperationConfigProperties = strictKeysOf<IOperationConfig>()([
 /**
  * @hidden
  */
-export class Operation implements IActionBuilder<dataform.Operation> {
+export class Operation extends ActionBuilder<dataform.Operation> {
   // TODO(ekrekr): make this field private, to enforce proto update logic to happen in this class.
   public proto: dataform.IOperation = dataform.Operation.create();
 
@@ -70,6 +70,10 @@ export class Operation implements IActionBuilder<dataform.Operation> {
 
   // We delay contextification until the final compile step, so hold these here for now.
   private contextableQueries: Contextable<ICommonContext, string | string[]>;
+
+  constructor(session?: Session) {
+    super(session);
+  }
 
   public config(config: IOperationConfig) {
     checkExcessProperties(

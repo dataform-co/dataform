@@ -1,6 +1,6 @@
 import { verifyObjectMatchesProto } from "df/common/protos";
 import { StringifiedMap } from "df/common/strings/stringifier";
-import { IActionBuilder } from "df/core/actions";
+import { ActionBuilder } from "df/core/actions";
 import * as table from "df/core/actions/table";
 import { ITableContext } from "df/core/actions/table";
 import { Contextable, ICommonContext, INamedConfig, Resolvable } from "df/core/common";
@@ -31,7 +31,7 @@ const ITestConfigProperties = strictKeysOf<ITestConfig>()(["type", "dataset", "n
 /**
  * @hidden
  */
-export class Test implements IActionBuilder<dataform.Test> {
+export class Test extends ActionBuilder<dataform.Test> {
   // TODO(ekrekr): make this field private, to enforce proto update logic to happen in this class.
   public proto: dataform.ITest = dataform.Test.create();
 
@@ -43,6 +43,10 @@ export class Test implements IActionBuilder<dataform.Test> {
 
   private datasetToTest: Resolvable;
   private contextableQuery: Contextable<ICommonContext, string>;
+
+  constructor(session?: Session) {
+    super(session);
+  }
 
   public config(config: ITestConfig) {
     checkExcessProperties(

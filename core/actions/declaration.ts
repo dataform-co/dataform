@@ -1,5 +1,5 @@
 import { verifyObjectMatchesProto } from "df/common/protos";
-import { IActionBuilder } from "df/core/actions";
+import { ActionBuilder } from "df/core/actions";
 import { ColumnDescriptors } from "df/core/column_descriptors";
 import {
   IColumnsDescriptor,
@@ -28,11 +28,15 @@ export const IDeclarationConfigProperties = strictKeysOf<IDeclarationConfig>()([
 /**
  * @hidden
  */
-export class Declaration implements IActionBuilder<dataform.Declaration> {
+export class Declaration extends ActionBuilder<dataform.Declaration> {
   // TODO(ekrekr): make this field private, to enforce proto update logic to happen in this class.
   public proto: dataform.IDeclaration = dataform.Declaration.create();
 
   public session: Session;
+
+  constructor(session?: Session) {
+    super(session);
+  }
 
   public config(config: IDeclarationConfig) {
     checkExcessProperties(
