@@ -560,13 +560,13 @@ actions:
               fileName: "definitions/notebook.ipynb",
               target: {
                 database: "dataform",
-                name: "note"
+                name: "notebook"
               }
             },
             notebookContents: JSON.stringify({ cells: [] }),
             target: {
               database: "dataform",
-              name: "note"
+              name: "notebook"
             }
           }
         ])
@@ -605,7 +605,7 @@ actions:
               fileName: "definitions/notebook.ipynb",
               target: {
                 database: "dataform",
-                name: "note"
+                name: "notebook"
               }
             },
             notebookContents: JSON.stringify({
@@ -617,7 +617,7 @@ actions:
             }),
             target: {
               database: "dataform",
-              name: "note"
+              name: "notebook"
             }
           }
         ])
@@ -663,19 +663,19 @@ actions:
           {
             canonicalTarget: {
               database: "dataform",
-              name: "ac"
+              name: "action"
             },
             config: {
               fileName: "definitions/action.sql",
               target: {
                 database: "dataform",
-                name: "ac"
+                name: "action"
               }
             },
             queries: ["SELECT dataform AS proofThatContextIsRead"],
             target: {
               database: "dataform",
-              name: "ac"
+              name: "action"
             }
           }
         ])
