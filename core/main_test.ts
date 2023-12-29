@@ -623,67 +623,60 @@ actions:
         ])
       );
     });
+  });
 
-    suite("SQL actions", () => {
-      test(`SQL actions can be loaded via an actions config file`, () => {
-        const projectDir = tmpDirFixture.createNewTmpDir();
-        // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
-        fs.writeFileSync(
-          path.join(projectDir, "workflow_settings.yaml"),
-          VALID_WORKFLOW_SETTINGS_YAML
-        );
-        // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
-        fs.mkdirSync(path.join(projectDir, "definitions"));
-        // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
-        fs.writeFileSync(
-          path.join(projectDir, "definitions/actions.yaml"),
-          `
-  actions:
-    - fileName: definitions/action1.sql
-      table: {}
-    - fileName: definitions/action2.sql`
-        );
-
-        // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
-        fs.writeFileSync(path.join(projectDir, "definitions/action1.sql"), "SELECT 1 AS TEST");
-        fs.writeFileSync(
-          path.join(projectDir, "definitions/action2.sql"),
-          "SELECT * FROM ${ref('action1')}"
-        );
-        const coreExecutionRequest = dataform.CoreExecutionRequest.create({
-          compile: {
-            compileConfig: {
-              projectDir,
-              filePaths: [
-                "definitions/actions.yaml",
-                "definitions/action1.sql",
-                "definitions/action2.sql"
-              ]
-            }
+  suite("SQL actions", () => {
+    test(`SQL actions can be loaded via an actions config file`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/actions.yaml"),
+        `
+    actions:
+      - fileName: definitions/action.sql`
+      );
+      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
+      fs.writeFileSync(path.join(projectDir, "definitions/action.sql"), "SELECT 1");
+      const coreExecutionRequest = dataform.CoreExecutionRequest.create({
+        compile: {
+          compileConfig: {
+            projectDir,
+            filePaths: ["definitions/actions.yaml", "definitions/action.sql"]
           }
-        });
+        }
+      });
 
-        const result = runMainInVm(coreExecutionRequest);
+      const result = runMainInVm(coreExecutionRequest);
 
-        expect(asPlainObject(result.compile.compiledGraph.notebooks)).deep.equals(
-          asPlainObject([
-            {
-              config: {
-                fileName: "definitions/notebook.ipynb",
-                target: {
-                  database: "dataform",
-                  name: "note"
-                }
-              },
-              notebookContents: JSON.stringify({ cells: [] }),
+      expect(asPlainObject(result.compile.compiledGraph.operations)).deep.equals(
+        asPlainObject([
+          {
+            canonicalTarget: {
+              database: "dataform",
+              name: "ac"
+            },
+            config: {
+              fileName: "definitions/action.sql",
               target: {
                 database: "dataform",
-                name: "note"
+                name: "ac"
               }
+            },
+            queries: ["SELECT 1"],
+            target: {
+              database: "dataform",
+              name: "ac"
             }
-          ])
-        );
-      });
+          }
+        ])
+      );
     });
   });
 });

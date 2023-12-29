@@ -80,15 +80,16 @@ export class Operation extends ActionBuilder<dataform.Operation> {
     this.session = session;
     this.proto.config = config;
 
-    this.proto.target = this.applyConfigToTarget(this.proto.config.target);
-    this.proto.config.target = this.applyCanonicalConfigToTarget(this.proto.config.target);
+    this.proto.target = this.applySessionToTarget(this.proto.config.target);
+    this.proto.config.target = this.proto.canonicalTarget = this.applySessionCanonicallyToTarget(
+      this.proto.config.target
+    );
 
-    // This is a workaround for backwards compatability with the deprecated config method.
     this.config({
       dependencies: config.dependencyTargets,
-      disabled: config.operation.disabled,
+      disabled: config.operation?.disabled,
       tags: config.tags,
-      hasOutput: config.operation.hasOutput
+      hasOutput: config.operation?.hasOutput
     });
   }
 
