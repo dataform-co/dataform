@@ -50,14 +50,14 @@ export abstract class ActionBuilder<T> {
    * @deprecated
    * Configs are soon to be replaced with pure protobuf representations.
    */
-  abstract config(config: any): ActionBuilder<T>;
+  public abstract config(config: any): ActionBuilder<T>;
 
   /** Retrieves the filename from the config. */
-  abstract getFileName(): string;
+  public abstract getFileName(): string;
 
   /** Retrieves the resolved target from the proto. */
-  abstract getTarget(): dataform.Target;
+  public abstract getTarget(): dataform.Target;
 
   /** Creates the final protobuf representation. */
-  abstract compile(): T;
+  public abstract compile(): T;
 }
