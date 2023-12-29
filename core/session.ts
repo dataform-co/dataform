@@ -268,15 +268,15 @@ export class Session {
     queries?: Contextable<ICommonContext, string | string[]>
   ): Operation {
     if (typeof operationConfig === "string") {
-      const operation = new Operation();
-      operation.session = this;
-      utils.setNameAndTarget(this, operation.proto, operationConfig);
+      const deprecatedOperationConstructor = new Operation();
+      deprecatedOperationConstructor.session = this;
+      utils.setNameAndTarget(this, deprecatedOperationConstructor.proto, operationConfig);
       if (queries) {
-        operation.queries(queries);
+        deprecatedOperationConstructor.queries(queries);
       }
-      operation.proto.fileName = utils.getCallerFile(this.rootDir);
-      this.actions.push(operation);
-      return operation;
+      deprecatedOperationConstructor.proto.fileName = utils.getCallerFile(this.rootDir);
+      this.actions.push(deprecatedOperationConstructor);
+      return deprecatedOperationConstructor;
     }
     const operation = new Operation(this, operationConfig);
     operation.queries(queries);

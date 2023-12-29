@@ -125,7 +125,7 @@ function loadActionConfigs(session: Session, filePaths: string[]) {
       const actionConfigs = dataform.ActionConfigs.fromObject(actionConfigsAsJson);
 
       actionConfigs.actions.forEach(nonProtoActionConfig => {
-        let actionConfig = dataform.ActionConfig.create(nonProtoActionConfig);
+        const actionConfig = dataform.ActionConfig.create(nonProtoActionConfig);
         const { fileExtension, fileNameAsTargetName } = utils.extractActionDetailsFromFileName(
           actionConfig.fileName
         );
