@@ -170,9 +170,8 @@ message Operation {
 
   Target target = 3;
 
-  // Canonical and dependency targets are now specified in the config.
-  Target canonical_target = 13 [deprecated = true];
-  repeated Target dependency_targets = 11 [deprecated = true];
+  Target canonical_target = 13;
+  repeated Target dependency_targets = 11;
 
   ActionHermeticity hermeticity = 12;
 

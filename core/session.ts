@@ -392,6 +392,7 @@ export class Session {
     this.checkCircularity(
       [].concat(compiledGraph.tables, compiledGraph.assertions, compiledGraph.operations)
     );
+
     verifyObjectMatchesProto(dataform.CompiledGraph, compiledGraph);
     return compiledGraph;
   }
