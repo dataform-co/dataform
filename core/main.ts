@@ -3,8 +3,6 @@ import * as Path from "df/core/path";
 import { Session } from "df/core/session";
 import * as utils from "df/core/utils";
 import { readWorkflowSettings } from "df/core/workflow_settings";
-import { Operation } from "df/core/actions/operation";
-import { Notebook } from "df/core/actions/notebook";
 import { dataform } from "df/protos/ts";
 
 declare var __webpack_require__: any;
@@ -143,9 +141,7 @@ function loadActionConfigs(session: Session, filePaths: string[]) {
 
         if (fileExtension === "ipynb") {
           const notebookContents = nativeRequire(actionConfig.fileName).asBase64String();
-          session.actions.push(
-            new Notebook(session, actionConfig).notebookContents(notebookContents)
-          );
+          session.notebook(dataform.ActionConfig.create(actionConfig), notebookContents);
         }
 
         if (fileExtension === "sql") {
@@ -160,7 +156,7 @@ function loadActionConfigs(session: Session, filePaths: string[]) {
             throw Error("Only operation actions are currently supported in actions.yaml files");
           }
           // If no config is specified, the operation action type is defaulted to.
-          session.actions.push(new Operation(session, actionConfig).queries(queryAsContextable));
+          session.operate(dataform.ActionConfig.create(actionConfig), queryAsContextable);
         }
       });
     });

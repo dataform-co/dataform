@@ -195,6 +195,13 @@ export class Session {
     }
   }
 
+  public notebook(notebookConfig: dataform.ActionConfig, notebookContents: string): Notebook {
+    const notebook = new Notebook(this, notebookConfig);
+    notebook.notebookContents(notebookContents);
+    this.actions.push(notebook);
+    return notebook;
+  }
+
   public resolve(ref: Resolvable | string[], ...rest: string[]): string {
     ref = toResolvable(ref, rest);
     const allResolved = this.indexedActions.find(utils.resolvableAsTarget(ref));
@@ -256,16 +263,23 @@ export class Session {
   }
 
   public operate(
-    name: string,
+    // operationConfig as a string is deprecated in favor of the strictly typed proto action config.
+    operationConfig: string | dataform.ActionConfig,
     queries?: Contextable<ICommonContext, string | string[]>
   ): Operation {
-    const operation = new Operation();
-    operation.session = this;
-    utils.setNameAndTarget(this, operation.proto, name);
-    if (queries) {
-      operation.queries(queries);
+    if (typeof operationConfig === "string") {
+      const operation = new Operation();
+      operation.session = this;
+      utils.setNameAndTarget(this, operation.proto, operationConfig);
+      if (queries) {
+        operation.queries(queries);
+      }
+      operation.proto.fileName = utils.getCallerFile(this.rootDir);
+      this.actions.push(operation);
+      return operation;
     }
-    operation.proto.fileName = utils.getCallerFile(this.rootDir);
+    const operation = new Operation(this, operationConfig);
+    operation.queries(queries);
     this.actions.push(operation);
     return operation;
   }
