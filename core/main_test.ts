@@ -273,7 +273,7 @@ select 1 AS \${dataform.projectConfig.vars.selectVar}`
 
       expect(asPlainObject(result.compile.compiledGraph)).deep.equals(
         asPlainObject({
-          dataformCoreVersion: "3.0.0-alpha.0",
+          dataformCoreVersion: version,
           graphErrors: {},
           projectConfig: {
             defaultDatabase: "dataform",
@@ -464,7 +464,7 @@ select 1 AS \${dataform.projectConfig.vars.columnVar}`
                 }
               }
             ],
-            dataformCoreVersion: "3.0.0-alpha.0",
+            dataformCoreVersion: version,
             graphErrors: {},
             projectConfig: {
               defaultLocation: "us",
@@ -643,7 +643,10 @@ actions:
       - fileName: definitions/action.sql`
       );
       // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
-      fs.writeFileSync(path.join(projectDir, "definitions/action.sql"), "SELECT 1");
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/action.sql"),
+        "SELECT ${database()} AS proofThatContextIsRead"
+      );
       const coreExecutionRequest = dataform.CoreExecutionRequest.create({
         compile: {
           compileConfig: {
@@ -669,7 +672,7 @@ actions:
                 name: "ac"
               }
             },
-            queries: ["SELECT 1"],
+            queries: ["SELECT dataform AS proofThatContextIsRead"],
             target: {
               database: "dataform",
               name: "ac"
