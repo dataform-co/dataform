@@ -272,11 +272,11 @@ export class Table extends ActionBuilder<dataform.Table> {
 
   constructor(session?: Session, config?: dataform.ActionConfig) {
     super(session);
-    if (!session || !config) {
+    this.session = session;
+
+    if (!config) {
       return;
     }
-
-    this.session = session;
     this.proto.config = config;
 
     this.proto.target = this.applySessionToTarget(this.proto.config.target);
