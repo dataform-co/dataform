@@ -34,8 +34,19 @@ export class Declaration extends ActionBuilder<dataform.Declaration> {
 
   public session: Session;
 
-  constructor(session?: Session) {
+  constructor(session?: Session, config?: dataform.ActionConfig) {
     super(session);
+    this.session = session;
+
+    if (!config) {
+      return;
+    }
+    this.proto.config = config;
+
+    this.proto.target = this.applySessionToTarget(this.proto.config.target);
+    this.proto.config.target = this.proto.canonicalTarget = this.applySessionCanonicallyToTarget(
+      this.proto.config.target
+    );
   }
 
   public config(config: IDeclarationConfig) {

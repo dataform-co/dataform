@@ -224,6 +224,8 @@ enum ActionHermeticity {
 }
 
 message Declaration {
+  ActionConfig config = 16;
+
   Target target = 2;
   Target canonical_target = 5;
 
