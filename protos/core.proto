@@ -131,7 +131,7 @@ message Table {
   // configured in compiled graphs via the Table proto.
   TableType enum_type = 36;
 
-  ActionConfig config = 16;
+  ActionConfig config = 37;
 
   Target target = 4;
   Target canonical_target = 32;
