@@ -319,12 +319,18 @@ export class Session {
     // The declaration property exists on ActionConfig but not on Target.
     if (!declarationConfig.hasOwnProperty("declaration")) {
       const target = declarationConfig as dataform.ITarget;
-      const declaration = new Declaration();
-      declaration.session = this;
-      utils.setNameAndTarget(this, declaration.proto, target.name, target.schema, target.database);
-      declaration.proto.fileName = utils.getCallerFile(this.rootDir);
-      this.actions.push(declaration);
-      return declaration;
+      const deprecatedDeclarationConstructor = new Declaration();
+      deprecatedDeclarationConstructor.session = this;
+      utils.setNameAndTarget(
+        this,
+        deprecatedDeclarationConstructor.proto,
+        target.name,
+        target.schema,
+        target.database
+      );
+      deprecatedDeclarationConstructor.proto.fileName = utils.getCallerFile(this.rootDir);
+      this.actions.push(deprecatedDeclarationConstructor);
+      return deprecatedDeclarationConstructor;
     }
     const declaration = new Declaration(this, declarationConfig as dataform.ActionConfig);
     this.actions.push(declaration);
