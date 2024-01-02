@@ -189,6 +189,8 @@ message Operation {
 }
 
 message Assertion {
+  ActionConfig config = 16;
+
   Target target = 8;
   Target canonical_target = 13;
 

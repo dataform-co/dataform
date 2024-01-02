@@ -303,6 +303,10 @@ export class Session {
     return newTable;
   }
 
+  /**
+   * @deprecated
+   * Use `assertion()`.
+   */
   public assert(name: string, query?: AContextable<string>): Assertion {
     const assertion = new Assertion();
     assertion.session = this;
@@ -311,6 +315,17 @@ export class Session {
       assertion.query(query);
     }
     assertion.proto.fileName = utils.getCallerFile(this.rootDir);
+    this.actions.push(assertion);
+    return assertion;
+  }
+
+  public assertion(
+    assertionConfig: dataform.ActionConfig,
+    query?: Contextable<ICommonContext, string>
+  ) {
+    console.log("🚀 ~ file: session.ts:326 ~ Session ~ assertionConfig:", assertionConfig);
+    const assertion = new Assertion(this, assertionConfig);
+    assertion.query(query);
     this.actions.push(assertion);
     return assertion;
   }

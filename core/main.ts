@@ -126,6 +126,7 @@ function loadActionConfigs(session: Session, filePaths: string[]) {
 
       actionConfigs.actions.forEach(nonProtoActionConfig => {
         const actionConfig = dataform.ActionConfig.create(nonProtoActionConfig);
+        console.log("🚀 ~ file: main.ts:129 ~ loadActionConfigs ~ actionConfig:", actionConfig);
 
         // TODO(ekrekr): throw an error if incorrect configs are specified for the action type.
 
@@ -135,6 +136,8 @@ function loadActionConfigs(session: Session, filePaths: string[]) {
         }
 
         // TODO(ekrekr): add a test for nice errors if files are not found.
+        // TODO(ekrekr): throw if filename not present and action type is not declaration.
+
         const { fileExtension, fileNameAsTargetName } = utils.extractActionDetailsFromFileName(
           actionConfig.fileName
         );
@@ -145,25 +148,27 @@ function loadActionConfigs(session: Session, filePaths: string[]) {
           actionConfig.target.name = fileNameAsTargetName;
         }
 
-        // TODO(ekrekr): throw an error if incorrect configs are specified for the filetype.
-        // TODO(ekrekr): add a test for nice errors if files are not found.
-
         if (fileExtension === "ipynb") {
           const notebookContents = nativeRequire(actionConfig.fileName).asBase64String();
           session.notebook(actionConfig, notebookContents);
         }
 
         if (fileExtension === "sql") {
+          console.log("🚀 ~ file: main.ts:157 ~ loadActionConfigs ~ fileExtension:", fileExtension);
           const queryAsContextable = nativeRequire(actionConfig.fileName).queryAsContextable;
           if (
             actionConfig.table ||
             actionConfig.view ||
             actionConfig.incrementalTable ||
-            actionConfig.assertion ||
             actionConfig.declaration
           ) {
             throw Error("Only operation actions are currently supported in actions.yaml files");
           }
+
+          if (actionConfig.assertion) {
+            return session.assertion(actionConfig, queryAsContextable);
+          }
+
           // If no config is specified, the operation action type is defaulted to.
           session.operate(dataform.ActionConfig.create(actionConfig), queryAsContextable);
         }
