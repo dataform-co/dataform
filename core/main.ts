@@ -126,7 +126,6 @@ function loadActionConfigs(session: Session, filePaths: string[]) {
 
       actionConfigs.actions.forEach(nonProtoActionConfig => {
         const actionConfig = dataform.ActionConfig.create(nonProtoActionConfig);
-        console.log("🚀 ~ file: main.ts:129 ~ loadActionConfigs ~ actionConfig:", actionConfig);
 
         // TODO(ekrekr): throw an error if incorrect configs are specified for the action type.
 

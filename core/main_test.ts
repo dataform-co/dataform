@@ -941,9 +941,7 @@ actions:
         `
 actions:
   - assertion: {}
-    fileName: definitions/action.sql
-    target:
-      name: action`
+    fileName: definitions/action.sql`
       );
       // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(
