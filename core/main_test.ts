@@ -639,8 +639,8 @@ actions:
       fs.writeFileSync(
         path.join(projectDir, "definitions/actions.yaml"),
         `
-    actions:
-      - fileName: definitions/action.sql`
+actions:
+  - fileName: definitions/action.sql`
       );
       // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(
@@ -696,9 +696,9 @@ actions:
         path.join(projectDir, "definitions/actions.yaml"),
         `
 actions:
-  - target:
-      name: action
-    declaration: {}`
+  - declaration: {}
+    target:
+      name: action`
       );
       const coreExecutionRequest = dataform.CoreExecutionRequest.create({
         compile: {

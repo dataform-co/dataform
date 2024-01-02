@@ -165,21 +165,6 @@ function loadActionConfigs(session: Session, filePaths: string[]) {
             throw Error("Only operation actions are currently supported in actions.yaml files");
           }
           // If no config is specified, the operation action type is defaulted to.
-          session.operate(actionConfig, queryAsContextable);
-        }
-
-        if (fileExtension === "sql") {
-          const queryAsContextable = nativeRequire(actionConfig.fileName).queryAsContextable;
-          if (
-            actionConfig.table ||
-            actionConfig.view ||
-            actionConfig.incrementalTable ||
-            actionConfig.assertion ||
-            actionConfig.declaration
-          ) {
-            throw Error("Only operation actions are currently supported in actions.yaml files");
-          }
-          // If no config is specified, the operation action type is defaulted to.
           session.operate(dataform.ActionConfig.create(actionConfig), queryAsContextable);
         }
       });
