@@ -270,8 +270,27 @@ export class Table extends ActionBuilder<dataform.Table> {
   private uniqueKeyAssertions: Assertion[] = [];
   private rowConditionsAssertion: Assertion;
 
-  constructor(session?: Session) {
+  constructor(session?: Session, config?: dataform.ActionConfig) {
     super(session);
+    if (!session || !config) {
+      return;
+    }
+
+    this.session = session;
+    this.proto.config = config;
+
+    this.proto.target = this.applySessionToTarget(this.proto.config.target);
+    this.proto.config.target = this.proto.canonicalTarget = this.applySessionCanonicallyToTarget(
+      this.proto.config.target
+    );
+
+    // TODO(ekrekr): add new actions files for view and incremental action types.
+    this.config({
+      type: "table",
+      dependencies: config.dependencyTargets,
+      disabled: config.table?.disabled,
+      tags: config.tags
+    });
   }
 
   public config(config: ITableConfig) {
