@@ -263,16 +263,23 @@ export class Session {
   }
 
   public operate(
-    name: string,
+    // operationConfig as a string is deprecated in favor of the strictly typed proto action config.
+    operationConfig: string | dataform.ActionConfig,
     queries?: Contextable<ICommonContext, string | string[]>
   ): Operation {
-    const operation = new Operation();
-    operation.session = this;
-    utils.setNameAndTarget(this, operation.proto, name);
-    if (queries) {
-      operation.queries(queries);
+    if (typeof operationConfig === "string") {
+      const deprecatedOperationConstructor = new Operation();
+      deprecatedOperationConstructor.session = this;
+      utils.setNameAndTarget(this, deprecatedOperationConstructor.proto, operationConfig);
+      if (queries) {
+        deprecatedOperationConstructor.queries(queries);
+      }
+      deprecatedOperationConstructor.proto.fileName = utils.getCallerFile(this.rootDir);
+      this.actions.push(deprecatedOperationConstructor);
+      return deprecatedOperationConstructor;
     }
-    operation.proto.fileName = utils.getCallerFile(this.rootDir);
+    const operation = new Operation(this, operationConfig);
+    operation.queries(queries);
     this.actions.push(operation);
     return operation;
   }

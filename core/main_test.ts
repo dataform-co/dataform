@@ -273,7 +273,7 @@ select 1 AS \${dataform.projectConfig.vars.selectVar}`
 
       expect(asPlainObject(result.compile.compiledGraph)).deep.equals(
         asPlainObject({
-          dataformCoreVersion: "3.0.0-alpha.0",
+          dataformCoreVersion: version,
           graphErrors: {},
           projectConfig: {
             defaultDatabase: "dataform",
@@ -464,7 +464,7 @@ select 1 AS \${dataform.projectConfig.vars.columnVar}`
                 }
               }
             ],
-            dataformCoreVersion: "3.0.0-alpha.0",
+            dataformCoreVersion: version,
             graphErrors: {},
             projectConfig: {
               defaultLocation: "us",
@@ -560,13 +560,13 @@ actions:
               fileName: "definitions/notebook.ipynb",
               target: {
                 database: "dataform",
-                name: "note"
+                name: "notebook"
               }
             },
             notebookContents: JSON.stringify({ cells: [] }),
             target: {
               database: "dataform",
-              name: "note"
+              name: "notebook"
             }
           }
         ])
@@ -605,7 +605,7 @@ actions:
               fileName: "definitions/notebook.ipynb",
               target: {
                 database: "dataform",
-                name: "note"
+                name: "notebook"
               }
             },
             notebookContents: JSON.stringify({
@@ -617,7 +617,65 @@ actions:
             }),
             target: {
               database: "dataform",
-              name: "note"
+              name: "notebook"
+            }
+          }
+        ])
+      );
+    });
+  });
+
+  suite("SQL actions", () => {
+    test(`SQL actions can be loaded via an actions config file`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/actions.yaml"),
+        `
+    actions:
+      - fileName: definitions/action.sql`
+      );
+      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/action.sql"),
+        "SELECT ${database()} AS proofThatContextIsRead"
+      );
+      const coreExecutionRequest = dataform.CoreExecutionRequest.create({
+        compile: {
+          compileConfig: {
+            projectDir,
+            filePaths: ["definitions/actions.yaml", "definitions/action.sql"]
+          }
+        }
+      });
+
+      const result = runMainInVm(coreExecutionRequest);
+
+      expect(asPlainObject(result.compile.compiledGraph.operations)).deep.equals(
+        asPlainObject([
+          {
+            canonicalTarget: {
+              database: "dataform",
+              name: "action"
+            },
+            config: {
+              fileName: "definitions/action.sql",
+              target: {
+                database: "dataform",
+                name: "action"
+              }
+            },
+            queries: ["SELECT dataform AS proofThatContextIsRead"],
+            target: {
+              database: "dataform",
+              name: "action"
             }
           }
         ])

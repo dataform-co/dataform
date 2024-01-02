@@ -248,7 +248,6 @@ export function extractActionDetailsFromFileName(
   // addition, actions.yaml in nested directories should prefix file imports with their path.
   const fileName = Path.fileName(path);
   const fileExtension = Path.fileExtension(path);
-  // TODO(ekrekr): validate and test weird characters in filenames.
-  const fileNameAsTargetName = fileName.slice(0, fileExtension.length - 1);
-  return { fileExtension, fileNameAsTargetName };
+  // TODO(ekrekr): validate and test weird characters in filenames to make it a valid target name.
+  return { fileExtension, fileNameAsTargetName: fileName };
 }

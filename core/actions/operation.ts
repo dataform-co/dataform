@@ -71,8 +71,26 @@ export class Operation extends ActionBuilder<dataform.Operation> {
   // We delay contextification until the final compile step, so hold these here for now.
   private contextableQueries: Contextable<ICommonContext, string | string[]>;
 
-  constructor(session?: Session) {
+  constructor(session?: Session, config?: dataform.ActionConfig) {
     super(session);
+    if (!session || !config) {
+      return;
+    }
+
+    this.session = session;
+    this.proto.config = config;
+
+    this.proto.target = this.applySessionToTarget(this.proto.config.target);
+    this.proto.config.target = this.proto.canonicalTarget = this.applySessionCanonicallyToTarget(
+      this.proto.config.target
+    );
+
+    this.config({
+      dependencies: config.dependencyTargets,
+      disabled: config.operation?.disabled,
+      tags: config.tags,
+      hasOutput: config.operation?.hasOutput
+    });
   }
 
   public config(config: IOperationConfig) {
