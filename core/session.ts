@@ -284,6 +284,10 @@ export class Session {
     return operation;
   }
 
+  /**
+   * @deprecated
+   * Prefer explicit methods for actions, such as `table()`, `incrementalTable()` and `view()`.
+   */
   public publish(
     name: string,
     queryOrConfig?: Contextable<ITableContext, string> | ITableConfig
@@ -301,6 +305,16 @@ export class Session {
     newTable.proto.fileName = utils.getCallerFile(this.rootDir);
     this.actions.push(newTable);
     return newTable;
+  }
+
+  public table(
+    tableConfig: dataform.ActionConfig,
+    query?: Contextable<ICommonContext, string>
+  ): Table {
+    const table = new Table(this, tableConfig);
+    table.query(query);
+    this.actions.push(table);
+    return table;
   }
 
   /**

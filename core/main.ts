@@ -156,17 +156,15 @@ function loadActionConfigs(session: Session, filePaths: string[]) {
         if (fileExtension === "sql") {
           console.log("🚀 ~ file: main.ts:157 ~ loadActionConfigs ~ fileExtension:", fileExtension);
           const queryAsContextable = nativeRequire(actionConfig.fileName).queryAsContextable;
-          if (
-            actionConfig.table ||
-            actionConfig.view ||
-            actionConfig.incrementalTable ||
-            actionConfig.declaration
-          ) {
-            throw Error("Only operation actions are currently supported in actions.yaml files");
+          if (actionConfig.view || actionConfig.incrementalTable || actionConfig.declaration) {
+            throw Error("Unsupported action type");
           }
 
           if (actionConfig.assertion) {
             return session.assertion(actionConfig, queryAsContextable);
+          }
+          if (actionConfig.table) {
+            return session.table(actionConfig, queryAsContextable);
           }
 
           // If no config is specified, the operation action type is defaulted to.
