@@ -681,6 +681,58 @@ actions:
         ])
       );
     });
+
+    test(`declarations can be loaded via an actions config file`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/actions.yaml"),
+        `
+actions:
+  - target:
+      name: action
+    declaration: {}`
+      );
+      const coreExecutionRequest = dataform.CoreExecutionRequest.create({
+        compile: {
+          compileConfig: {
+            projectDir,
+            filePaths: ["definitions/actions.yaml"]
+          }
+        }
+      });
+
+      const result = runMainInVm(coreExecutionRequest);
+
+      expect(asPlainObject(result.compile.compiledGraph.declarations)).deep.equals(
+        asPlainObject([
+          {
+            canonicalTarget: {
+              database: "dataform",
+              name: "action"
+            },
+            config: {
+              declaration: {},
+              target: {
+                database: "dataform",
+                name: "action"
+              }
+            },
+            target: {
+              database: "dataform",
+              name: "action"
+            }
+          }
+        ])
+      );
+    });
   });
 });
 

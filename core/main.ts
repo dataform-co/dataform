@@ -126,6 +126,15 @@ function loadActionConfigs(session: Session, filePaths: string[]) {
 
       actionConfigs.actions.forEach(nonProtoActionConfig => {
         const actionConfig = dataform.ActionConfig.create(nonProtoActionConfig);
+
+        // TODO(ekrekr): throw an error if incorrect configs are specified for the action type.
+
+        if (actionConfig.declaration) {
+          session.declare(actionConfig);
+          return;
+        }
+
+        // TODO(ekrekr): add a test for nice errors if files are not found.
         const { fileExtension, fileNameAsTargetName } = utils.extractActionDetailsFromFileName(
           actionConfig.fileName
         );
@@ -141,7 +150,22 @@ function loadActionConfigs(session: Session, filePaths: string[]) {
 
         if (fileExtension === "ipynb") {
           const notebookContents = nativeRequire(actionConfig.fileName).asBase64String();
-          session.notebook(dataform.ActionConfig.create(actionConfig), notebookContents);
+          session.notebook(actionConfig, notebookContents);
+        }
+
+        if (fileExtension === "sql") {
+          const queryAsContextable = nativeRequire(actionConfig.fileName).queryAsContextable;
+          if (
+            actionConfig.table ||
+            actionConfig.view ||
+            actionConfig.incrementalTable ||
+            actionConfig.assertion ||
+            actionConfig.declaration
+          ) {
+            throw Error("Only operation actions are currently supported in actions.yaml files");
+          }
+          // If no config is specified, the operation action type is defaulted to.
+          session.operate(actionConfig, queryAsContextable);
         }
 
         if (fileExtension === "sql") {
