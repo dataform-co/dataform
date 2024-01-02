@@ -127,6 +127,12 @@ enum TableType {
 }
 
 message Table {
+  // For legacy compatability reasons, both incremental tables and views are
+  // configured in compiled graphs via the Table proto.
+  TableType enum_type = 36;
+
+  ActionConfig config = 37;
+
   Target target = 4;
   Target canonical_target = 32;
 
@@ -139,7 +145,6 @@ message Table {
   string query = 5;
   bool protected = 9;
   bool materialized = 35;
-  TableType enum_type = 36;
 
   ActionDescriptor action_descriptor = 24;
 
