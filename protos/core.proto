@@ -357,6 +357,16 @@ message IncrementalTableConfig {
   // If set to true, this action will not be executed. However, the action may
   // still be depended upon.
   bool disabled = 1;
+
+  // If set to true, running this action will ignore the full-refresh option.
+  // This is useful for tables which are built from transient data, to ensure
+  // that historical data is never lost.
+  bool protected = 2;
+
+  // Unique keys for merge criteria for incremental tables.
+  // If configured, records with matching unique key(s) will be updated, rather
+  // than new rows being inserted.
+  repeated string unique_key = 3;
 }
 
 // Configuration options for BigQuery table assertions.

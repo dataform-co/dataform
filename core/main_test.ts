@@ -795,6 +795,137 @@ actions:
       );
     });
 
+    test(`incremental tables can be loaded via an actions config file`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/actions.yaml"),
+        `
+actions:
+  - fileName: definitions/action.sql
+    incrementalTable:
+      protected: true
+      uniqueKey:
+      -  someKey1
+      -  someKey2`
+      );
+      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/action.sql"),
+        "SELECT ${database()} AS proofThatContextIsRead"
+      );
+      const coreExecutionRequest = dataform.CoreExecutionRequest.create({
+        compile: {
+          compileConfig: {
+            projectDir,
+            filePaths: ["definitions/actions.yaml", "definitions/action.sql"]
+          }
+        }
+      });
+
+      const result = runMainInVm(coreExecutionRequest);
+
+      expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals(
+        asPlainObject([
+          {
+            canonicalTarget: {
+              database: "dataform",
+              name: "action"
+            },
+            config: {
+              fileName: "definitions/action.sql",
+              incrementalTable: {
+                protected: true,
+                uniqueKey: ["someKey1", "someKey2"]
+              },
+              target: {
+                database: "dataform",
+                name: "action"
+              }
+            },
+            query: "SELECT dataform AS proofThatContextIsRead",
+            target: {
+              database: "dataform",
+              name: "action"
+            },
+            type: "table",
+            enumType: "TABLE",
+            protected: true,
+            disabled: false,
+            uniqueKey: ["someKey1", "someKey2"]
+          }
+        ])
+      );
+    });
+
+    test(`views can be loaded via an actions config file`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/actions.yaml"),
+        `
+actions:
+  - fileName: definitions/action.sql
+    view: {}`
+      );
+      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/action.sql"),
+        "SELECT ${database()} AS proofThatContextIsRead"
+      );
+      const coreExecutionRequest = dataform.CoreExecutionRequest.create({
+        compile: {
+          compileConfig: {
+            projectDir,
+            filePaths: ["definitions/actions.yaml", "definitions/action.sql"]
+          }
+        }
+      });
+
+      const result = runMainInVm(coreExecutionRequest);
+
+      expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals(
+        asPlainObject([
+          {
+            canonicalTarget: {
+              database: "dataform",
+              name: "action"
+            },
+            config: {
+              fileName: "definitions/action.sql",
+              view: {},
+              target: {
+                database: "dataform",
+                name: "action"
+              }
+            },
+            query: "SELECT dataform AS proofThatContextIsRead",
+            target: {
+              database: "dataform",
+              name: "action"
+            },
+            type: "table",
+            enumType: "TABLE",
+            disabled: false
+          }
+        ])
+      );
+    });
+
     test(`assertions can be loaded via an actions config file`, () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
       // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
@@ -838,12 +969,14 @@ actions:
               name: "action"
             },
             config: {
-              declaration: {},
+              assertion: {},
+              fileName: "definitions/action.sql",
               target: {
                 database: "dataform",
                 name: "action"
               }
             },
+            query: "SELECT dataform AS proofThatContextIsRead",
             target: {
               database: "dataform",
               name: "action"

@@ -317,6 +317,26 @@ export class Session {
     return table;
   }
 
+  public incrementalTable(
+    incrementalTableConfig: dataform.ActionConfig,
+    query?: Contextable<ICommonContext, string>
+  ): Table {
+    const incrementalTable = new Table(this, incrementalTableConfig);
+    incrementalTable.query(query);
+    this.actions.push(incrementalTable);
+    return incrementalTable;
+  }
+
+  public view(
+    viewConfig: dataform.ActionConfig,
+    query?: Contextable<ICommonContext, string>
+  ): Table {
+    const view = new Table(this, viewConfig);
+    view.query(query);
+    this.actions.push(view);
+    return view;
+  }
+
   /**
    * @deprecated
    * Use `assertion()`.
@@ -337,7 +357,6 @@ export class Session {
     assertionConfig: dataform.ActionConfig,
     query?: Contextable<ICommonContext, string>
   ) {
-    console.log("🚀 ~ file: session.ts:326 ~ Session ~ assertionConfig:", assertionConfig);
     const assertion = new Assertion(this, assertionConfig);
     assertion.query(query);
     this.actions.push(assertion);

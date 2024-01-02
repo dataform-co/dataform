@@ -154,11 +154,7 @@ function loadActionConfigs(session: Session, filePaths: string[]) {
         }
 
         if (fileExtension === "sql") {
-          console.log("🚀 ~ file: main.ts:157 ~ loadActionConfigs ~ fileExtension:", fileExtension);
           const queryAsContextable = nativeRequire(actionConfig.fileName).queryAsContextable;
-          if (actionConfig.view || actionConfig.incrementalTable || actionConfig.declaration) {
-            throw Error("Unsupported action type");
-          }
 
           if (actionConfig.assertion) {
             return session.assertion(actionConfig, queryAsContextable);
@@ -166,9 +162,14 @@ function loadActionConfigs(session: Session, filePaths: string[]) {
           if (actionConfig.table) {
             return session.table(actionConfig, queryAsContextable);
           }
-
+          if (actionConfig.incrementalTable) {
+            return session.incrementalTable(actionConfig, queryAsContextable);
+          }
+          if (actionConfig.view) {
+            return session.view(actionConfig, queryAsContextable);
+          }
           // If no config is specified, the operation action type is defaulted to.
-          session.operate(dataform.ActionConfig.create(actionConfig), queryAsContextable);
+          session.operate(actionConfig, queryAsContextable);
         }
       });
     });
