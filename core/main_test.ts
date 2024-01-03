@@ -528,7 +528,7 @@ select 1 AS \${dataform.projectConfig.vars.columnVar}`
         path.join(projectDir, "definitions/actions.yaml"),
         `
 actions:
-  - fileName: definitions/notebook.ipynb`
+  - fileName: notebook.ipynb`
       );
 
       return projectDir;
@@ -640,7 +640,7 @@ actions:
         path.join(projectDir, "definitions/actions.yaml"),
         `
 actions:
-  - fileName: definitions/action.sql`
+  - fileName: action.sql`
       );
       // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(
@@ -748,7 +748,7 @@ actions:
         path.join(projectDir, "definitions/actions.yaml"),
         `
 actions:
-  - fileName: definitions/action.sql
+  - fileName: action.sql
     table: {}`
       );
       // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
@@ -809,7 +809,7 @@ actions:
         path.join(projectDir, "definitions/actions.yaml"),
         `
 actions:
-  - fileName: definitions/action.sql
+  - fileName: action.sql
     incrementalTable:
       protected: true
       uniqueKey:
@@ -879,7 +879,7 @@ actions:
         path.join(projectDir, "definitions/actions.yaml"),
         `
 actions:
-  - fileName: definitions/action.sql
+  - fileName: action.sql
     view: {}`
       );
       // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
@@ -941,7 +941,7 @@ actions:
         `
 actions:
   - assertion: {}
-    fileName: definitions/action.sql`
+    fileName: action.sql`
       );
       // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(

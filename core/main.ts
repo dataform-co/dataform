@@ -113,17 +113,7 @@ function loadActionConfigs(session: Session, filePaths: string[]) {
     )
     .sort()
     .forEach(actionConfigsPath => {
-      let actionConfigsAsJson = {};
-      try {
-        // tslint:disable-next-line: tsr-detect-non-literal-require
-        actionConfigsAsJson = nativeRequire(actionConfigsPath).asJson();
-      } catch (e) {
-        session.compileError(e, actionConfigsPath);
-      }
-      // TODO(ekrekr): Throw nice errors if the proto is invalid.
-      verifyObjectMatchesProto(dataform.ActionConfigs, actionConfigsAsJson);
-      const actionConfigs = dataform.ActionConfigs.fromObject(actionConfigsAsJson);
-
+      const actionConfigs = loadActionConfigsFile(session, actionConfigsPath);
       actionConfigs.actions.forEach(nonProtoActionConfig => {
         const actionConfig = dataform.ActionConfig.create(nonProtoActionConfig);
 
@@ -147,29 +137,58 @@ function loadActionConfigs(session: Session, filePaths: string[]) {
           actionConfig.target.name = fileNameAsTargetName;
         }
 
+        // Path manipulation makes references to files in action configs be relative to the path of
+        // the action config file.
+        const absoluteFileName =
+          actionConfigsPath.substring(0, actionConfigsPath.length - "actions.yaml".length) +
+          actionConfig.fileName;
+
         if (fileExtension === "ipynb") {
-          const notebookContents = nativeRequire(actionConfig.fileName).asBase64String();
+          const notebookContents = nativeRequire(absoluteFileName).asBase64String();
           session.notebook(actionConfig, notebookContents);
         }
 
         if (fileExtension === "sql") {
-          const queryAsContextable = nativeRequire(actionConfig.fileName).queryAsContextable;
-
-          if (actionConfig.assertion) {
-            return session.assertion(actionConfig, queryAsContextable);
-          }
-          if (actionConfig.table) {
-            return session.table(actionConfig, queryAsContextable);
-          }
-          if (actionConfig.incrementalTable) {
-            return session.incrementalTable(actionConfig, queryAsContextable);
-          }
-          if (actionConfig.view) {
-            return session.view(actionConfig, queryAsContextable);
-          }
-          // If no config is specified, the operation action type is defaulted to.
-          session.operate(actionConfig, queryAsContextable);
+          loadSqlFile(session, actionConfig, absoluteFileName);
         }
       });
     });
+}
+
+function loadActionConfigsFile(
+  session: Session,
+  actionConfigsPath: string
+): dataform.ActionConfigs {
+  let actionConfigsAsJson = {};
+  try {
+    // tslint:disable-next-line: tsr-detect-non-literal-require
+    actionConfigsAsJson = nativeRequire(actionConfigsPath).asJson();
+  } catch (e) {
+    session.compileError(e, actionConfigsPath);
+  }
+  verifyObjectMatchesProto(dataform.ActionConfigs, actionConfigsAsJson);
+  return dataform.ActionConfigs.fromObject(actionConfigsAsJson);
+}
+
+function loadSqlFile(
+  session: Session,
+  actionConfig: dataform.ActionConfig,
+  absoluteFileName: string
+) {
+  const queryAsContextable = nativeRequire(absoluteFileName).queryAsContextable;
+
+  if (actionConfig.assertion) {
+    return session.assertion(actionConfig, queryAsContextable);
+  }
+  if (actionConfig.table) {
+    return session.table(actionConfig, queryAsContextable);
+  }
+  if (actionConfig.incrementalTable) {
+    return session.incrementalTable(actionConfig, queryAsContextable);
+  }
+  if (actionConfig.view) {
+    return session.view(actionConfig, queryAsContextable);
+  }
+  // If no config is specified, the operation action type is defaulted to.
+  session.operate(actionConfig, queryAsContextable);
 }
