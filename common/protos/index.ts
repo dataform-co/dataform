@@ -19,9 +19,9 @@ export interface IProtoClass<IProto, Proto> {
 // https://github.com/protocolbuffers/protobuf/blob/670e0c2a0d0b64c994f743a73ee9b8926c47580d/java/util/src/main/java/com/google/protobuf/util/JsonFormat.java#L1455
 // This is used because:
 // * ProtobufJS's native verify method does not check that only defined fields are present.
-// * Other libraries, such as ProtobufTS, incur significant performance hits.
-// However, the main downside of using ProtobufJS is that it does not record the expected types of
-// fields, meaning that the type of fields cannot be verified; an int can be confused with a string.
+// * Other protobuf libraries, such as ProtobufTS, incur significant performance hits.
+// A key downside of using ProtobufJS is that it does not record the expected types of fields,
+// meaning that the type of fields cannot be verified; an int can be confused with a string.
 export function verifyObjectMatchesProto<Proto>(
   protoType: IProtoClass<any, Proto>,
   object: object
@@ -35,8 +35,8 @@ export function verifyObjectMatchesProto<Proto>(
   const protoCastObject = protoType.toObject(proto);
 
   function checkFields(present: { [k: string]: any }, desired: { [k: string]: any }) {
-    // Only the entries of present need to be iterated through as desired is guaranteed to be a
-    // strict subset of present.
+    // Only the entries of `present` need to be iterated through as `desired` is guaranteed to be a
+    // strict subset of `present`.
     Object.entries(present).forEach(([presentKey, presentValue]) => {
       const desiredValue = desired[presentKey];
       if (typeof desiredValue !== typeof presentValue) {
