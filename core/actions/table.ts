@@ -284,11 +284,14 @@ export class Table extends ActionBuilder<dataform.Table> {
       this.proto.config.target
     );
 
-    // TODO(ekrekr): add new actions files for view and incremental action types.
+    // TODO(ekrekr): instead of overloading, add new class files for view and incremental actions.
     this.config({
       type: "table",
       dependencies: config.dependencyTargets,
-      disabled: config.table?.disabled,
+      disabled:
+        config.table?.disabled || config.incrementalTable?.disabled || config.view?.disabled,
+      protected: config.incrementalTable?.protected,
+      uniqueKey: config.incrementalTable?.uniqueKey,
       tags: config.tags
     });
   }

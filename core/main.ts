@@ -135,6 +135,8 @@ function loadActionConfigs(session: Session, filePaths: string[]) {
         }
 
         // TODO(ekrekr): add a test for nice errors if files are not found.
+        // TODO(ekrekr): throw if filename not present and action type is not declaration.
+
         const { fileExtension, fileNameAsTargetName } = utils.extractActionDetailsFromFileName(
           actionConfig.fileName
         );
@@ -145,9 +147,6 @@ function loadActionConfigs(session: Session, filePaths: string[]) {
           actionConfig.target.name = fileNameAsTargetName;
         }
 
-        // TODO(ekrekr): throw an error if incorrect configs are specified for the filetype.
-        // TODO(ekrekr): add a test for nice errors if files are not found.
-
         if (fileExtension === "ipynb") {
           const notebookContents = nativeRequire(actionConfig.fileName).asBase64String();
           session.notebook(actionConfig, notebookContents);
@@ -155,21 +154,21 @@ function loadActionConfigs(session: Session, filePaths: string[]) {
 
         if (fileExtension === "sql") {
           const queryAsContextable = nativeRequire(actionConfig.fileName).queryAsContextable;
-          if (
-            actionConfig.view ||
-            actionConfig.incrementalTable ||
-            actionConfig.assertion ||
-            actionConfig.declaration
-          ) {
-            throw Error("Unsupported action type");
-          }
 
+          if (actionConfig.assertion) {
+            return session.assertion(actionConfig, queryAsContextable);
+          }
           if (actionConfig.table) {
             return session.table(actionConfig, queryAsContextable);
           }
-
+          if (actionConfig.incrementalTable) {
+            return session.incrementalTable(actionConfig, queryAsContextable);
+          }
+          if (actionConfig.view) {
+            return session.view(actionConfig, queryAsContextable);
+          }
           // If no config is specified, the operation action type is defaulted to.
-          session.operate(dataform.ActionConfig.create(actionConfig), queryAsContextable);
+          session.operate(actionConfig, queryAsContextable);
         }
       });
     });

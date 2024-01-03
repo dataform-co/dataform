@@ -73,8 +73,25 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
   // We delay contextification until the final compile step, so hold these here for now.
   private contextableQuery: AContextable<string>;
 
-  constructor(session?: Session) {
+  constructor(session?: Session, config?: dataform.ActionConfig) {
     super(session);
+    this.session = session;
+
+    if (!config) {
+      return;
+    }
+    this.proto.config = config;
+
+    this.proto.target = this.applySessionToTarget(this.proto.config.target);
+    this.proto.config.target = this.proto.canonicalTarget = this.applySessionCanonicallyToTarget(
+      this.proto.config.target
+    );
+
+    this.config({
+      dependencies: config.dependencyTargets,
+      disabled: config.table?.disabled,
+      tags: config.tags
+    });
   }
 
   public config(config: IAssertionConfig) {

@@ -317,6 +317,30 @@ export class Session {
     return table;
   }
 
+  public incrementalTable(
+    incrementalTableConfig: dataform.ActionConfig,
+    query?: Contextable<ICommonContext, string>
+  ): Table {
+    const incrementalTable = new Table(this, incrementalTableConfig);
+    incrementalTable.query(query);
+    this.actions.push(incrementalTable);
+    return incrementalTable;
+  }
+
+  public view(
+    viewConfig: dataform.ActionConfig,
+    query?: Contextable<ICommonContext, string>
+  ): Table {
+    const view = new Table(this, viewConfig);
+    view.query(query);
+    this.actions.push(view);
+    return view;
+  }
+
+  /**
+   * @deprecated
+   * Use `assertion()`.
+   */
   public assert(name: string, query?: AContextable<string>): Assertion {
     const assertion = new Assertion();
     assertion.session = this;
@@ -325,6 +349,16 @@ export class Session {
       assertion.query(query);
     }
     assertion.proto.fileName = utils.getCallerFile(this.rootDir);
+    this.actions.push(assertion);
+    return assertion;
+  }
+
+  public assertion(
+    assertionConfig: dataform.ActionConfig,
+    query?: Contextable<ICommonContext, string>
+  ) {
+    const assertion = new Assertion(this, assertionConfig);
+    assertion.query(query);
     this.actions.push(assertion);
     return assertion;
   }
