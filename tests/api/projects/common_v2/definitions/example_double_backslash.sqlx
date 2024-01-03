@@ -1,6 +1,5 @@
 config {
-    type: "view",
-    hermetic: false
+    type: "view"
 }
 
 select * from regexp_extract('01a_data_engine', '^(\\d{2}\\w)')

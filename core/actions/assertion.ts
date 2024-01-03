@@ -48,7 +48,6 @@ export const IAssertionConfigProperties = strictKeysOf<IAssertionConfig>()([
   "dependencies",
   "description",
   "disabled",
-  "hermetic",
   "name",
   "schema",
   "tags",
@@ -104,9 +103,6 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
     if (config.dependencies) {
       this.dependencies(config.dependencies);
     }
-    if (config.hermetic !== undefined) {
-      this.hermetic(config.hermetic);
-    }
     if (config.disabled) {
       this.disabled();
     }
@@ -136,12 +132,6 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
       this.proto.dependencyTargets.push(resolvableAsTarget(resolvable));
     });
     return this;
-  }
-
-  public hermetic(hermetic: boolean) {
-    this.proto.hermeticity = hermetic
-      ? dataform.ActionHermeticity.HERMETIC
-      : dataform.ActionHermeticity.NON_HERMETIC;
   }
 
   public disabled() {

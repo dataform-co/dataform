@@ -123,16 +123,6 @@ export interface IDependenciesConfig {
    * Typically this would remain unset, because most dependencies are declared as a by-product of using the `ref` function.
    */
   dependencies?: Resolvable | Resolvable[];
-
-  /**
-   * Declares whether or not this action is hermetic. An action is hermetic if all of its dependencies are explicitly
-   * declared.
-   *
-   * If this action depends on data from a source which has not been declared as a dependency, then `hermetic`
-   * should be explicitly set to `false`. Otherwise, if this action only depends on data from explicitly-declared
-   * dependencies, then it should be set to `true`.
-   */
-  hermetic?: boolean;
 }
 
 /**

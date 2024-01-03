@@ -1,4 +1,4 @@
-config { type: "incremental", protected: true, hermetic: false }
+config { type: "incremental", protected: true }
 
 select * from (
     select current_timestamp() as ts

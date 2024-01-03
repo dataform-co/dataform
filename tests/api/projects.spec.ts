@@ -35,17 +35,17 @@ suite("examples", () => {
             {
               fileName: "definitions/has_compile_errors/assertion_with_bigquery.sqlx",
               message:
-                'Unexpected property "bigquery" in assertion config. Supported properties are: ["database","dependencies","description","disabled","hermetic","name","schema","tags","type"]'
+                'Unexpected property "bigquery" in assertion config. Supported properties are: ["database","dependencies","description","disabled","name","schema","tags","type"]'
             },
             {
               fileName: "definitions/has_compile_errors/assertion_with_materialized.sqlx",
               message:
-                'Unexpected property "materialized" in assertion config. Supported properties are: ["database","dependencies","description","disabled","hermetic","name","schema","tags","type"]'
+                'Unexpected property "materialized" in assertion config. Supported properties are: ["database","dependencies","description","disabled","name","schema","tags","type"]'
             },
             {
               fileName: "definitions/has_compile_errors/assertion_with_output.sqlx",
               message:
-                'Unexpected property "hasOutput" in assertion config. Supported properties are: ["database","dependencies","description","disabled","hermetic","name","schema","tags","type"]'
+                'Unexpected property "hasOutput" in assertion config. Supported properties are: ["database","dependencies","description","disabled","name","schema","tags","type"]'
             },
             {
               fileName: "definitions/has_compile_errors/assertion_with_postops.sqlx",
@@ -63,7 +63,7 @@ suite("examples", () => {
             {
               fileName: "definitions/has_compile_errors/protected_assertion.sqlx",
               message:
-                'Unexpected property "protected" in assertion config. Supported properties are: ["database","dependencies","description","disabled","hermetic","name","schema","tags","type"]'
+                'Unexpected property "protected" in assertion config. Supported properties are: ["database","dependencies","description","disabled","name","schema","tags","type"]'
             },
             {
               fileName: "definitions/has_compile_errors/view_with_incremental.sqlx",

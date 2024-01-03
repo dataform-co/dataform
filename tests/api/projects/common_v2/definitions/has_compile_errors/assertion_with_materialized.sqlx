@@ -1,2 +1,2 @@
-config { type: "assertion", materialized: true, hermetic: false }
+config { type: "assertion", materialized: true }
 SELECT 1 as test

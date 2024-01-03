@@ -51,7 +51,6 @@ export const IIOperationConfigProperties = strictKeysOf<IOperationConfig>()([
   "description",
   "disabled",
   "hasOutput",
-  "hermetic",
   "name",
   "schema",
   "tags",
@@ -103,9 +102,6 @@ export class Operation extends ActionBuilder<dataform.Operation> {
     if (config.dependencies) {
       this.dependencies(config.dependencies);
     }
-    if (config.hermetic !== undefined) {
-      this.hermetic(config.hermetic);
-    }
     if (config.disabled) {
       this.disabled();
     }
@@ -141,12 +137,6 @@ export class Operation extends ActionBuilder<dataform.Operation> {
       this.proto.dependencyTargets.push(resolvableAsTarget(resolvable));
     });
     return this;
-  }
-
-  public hermetic(hermetic: boolean) {
-    this.proto.hermeticity = hermetic
-      ? dataform.ActionHermeticity.HERMETIC
-      : dataform.ActionHermeticity.NON_HERMETIC;
   }
 
   public disabled() {

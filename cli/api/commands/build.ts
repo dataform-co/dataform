@@ -84,8 +84,7 @@ export class Builder {
       tableType: utils.tableTypeEnumToString(table.enumType),
       tasks: table.disabled
         ? []
-        : this.executionSql.publishTasks(table, runConfig, tableMetadata).build(),
-      hermeticity: table.hermeticity || dataform.ActionHermeticity.HERMETIC
+        : this.executionSql.publishTasks(table, runConfig, tableMetadata).build()
     };
   }
 
@@ -95,8 +94,7 @@ export class Builder {
       type: "operation",
       tasks: operation.disabled
         ? []
-        : operation.queries.map(statement => ({ type: "statement", statement })),
-      hermeticity: operation.hermeticity || dataform.ActionHermeticity.NON_HERMETIC
+        : operation.queries.map(statement => ({ type: "statement", statement }))
     };
   }
 
@@ -106,8 +104,7 @@ export class Builder {
       type: "assertion",
       tasks: assertion.disabled
         ? []
-        : this.executionSql.assertTasks(assertion, this.prunedGraph.projectConfig).build(),
-      hermeticity: assertion.hermeticity || dataform.ActionHermeticity.HERMETIC
+        : this.executionSql.assertTasks(assertion, this.prunedGraph.projectConfig).build()
     };
   }
 

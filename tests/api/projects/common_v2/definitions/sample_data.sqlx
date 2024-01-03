@@ -4,7 +4,6 @@ config {
   columns: {
       sample: "Sample integers."
   },
-  hermetic: false
 }
 
 pre_operations {

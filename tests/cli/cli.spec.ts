@@ -131,7 +131,6 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
       actions: [
         {
           fileName: "definitions/example.sqlx",
-          hermeticity: "HERMETIC",
           tableType: "table",
           target: {
             database: "dataform-integration-tests",

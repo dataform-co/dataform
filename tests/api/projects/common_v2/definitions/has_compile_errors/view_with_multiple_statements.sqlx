@@ -1,4 +1,4 @@
-config { type: "view", hermetic: false }
+config { type: "view" }
 select 1 as test
 ---
 select 2 as test2

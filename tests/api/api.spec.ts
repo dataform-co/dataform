@@ -501,8 +501,7 @@ suite("@dataform/api", () => {
                 "create or replace materialized view `deeb.schema.materialized` as select 1 as test"
             }
           ],
-          dependencyTargets: [],
-          hermeticity: dataform.ActionHermeticity.HERMETIC
+          dependencyTargets: []
         },
         {
           type: "table",
@@ -517,8 +516,7 @@ suite("@dataform/api", () => {
               statement: "create or replace view `deeb.schema.plain` as select 1 as test"
             }
           ],
-          dependencyTargets: [],
-          hermeticity: dataform.ActionHermeticity.HERMETIC
+          dependencyTargets: []
         }
       ];
       const executionGraph = new Builder(testGraph, {}, dataform.WarehouseState.create({})).build();

@@ -30,7 +30,6 @@ const DEFAULT_CONFIG = {
 export interface IActionProto {
   fileName?: string;
   dependencyTargets?: dataform.ITarget[];
-  hermeticity?: dataform.ActionHermeticity;
   target?: dataform.ITarget;
   canonicalTarget?: dataform.ITarget;
   parentAction?: dataform.ITarget;

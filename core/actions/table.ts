@@ -211,7 +211,6 @@ export const ITableConfigProperties = () =>
     "tags",
     "uniqueKey",
     "dependencies",
-    "hermetic",
     "schema",
     "assertions",
     "database",
@@ -308,9 +307,6 @@ export class Table extends ActionBuilder<dataform.Table> {
     }
     if (config.dependencies) {
       this.dependencies(config.dependencies);
-    }
-    if (config.hermetic !== undefined) {
-      this.hermetic(config.hermetic);
     }
     if (config.disabled) {
       this.disabled();
@@ -419,12 +415,6 @@ export class Table extends ActionBuilder<dataform.Table> {
     });
 
     return this;
-  }
-
-  public hermetic(hermetic: boolean) {
-    this.proto.hermeticity = hermetic
-      ? dataform.ActionHermeticity.HERMETIC
-      : dataform.ActionHermeticity.NON_HERMETIC;
   }
 
   public tags(value: string | string[]) {
