@@ -566,8 +566,7 @@ suite("@dataform/api", () => {
                 "create or replace table `deeb.schema.partitionby` partition by DATE(test) as select 1 as test"
             }
           ],
-          dependencyTargets: [],
-          hermeticity: dataform.ActionHermeticity.HERMETIC
+          dependencyTargets: []
         },
         {
           type: "table",
@@ -582,8 +581,7 @@ suite("@dataform/api", () => {
               statement: "create or replace table `deeb.schema.plain` as select 1 as test"
             }
           ],
-          dependencyTargets: [],
-          hermeticity: dataform.ActionHermeticity.HERMETIC
+          dependencyTargets: []
         }
       ];
       const executionGraph = new Builder(testGraph, {}, dataform.WarehouseState.create({})).build();
@@ -635,8 +633,7 @@ suite("@dataform/api", () => {
                 "create or replace table `deeb.schema.partitionby` partition by DATE(test) OPTIONS(partition_expiration_days=1,require_partition_filter=true)as select 1 as test"
             }
           ],
-          dependencyTargets: [],
-          hermeticity: dataform.ActionHermeticity.HERMETIC
+          dependencyTargets: []
         },
         {
           type: "table",
@@ -651,8 +648,7 @@ suite("@dataform/api", () => {
               statement: "create or replace table `deeb.schema.plain` as select 1 as test"
             }
           ],
-          dependencyTargets: [],
-          hermeticity: dataform.ActionHermeticity.HERMETIC
+          dependencyTargets: []
         }
       ];
       const executionGraph = new Builder(testGraph, {}, dataform.WarehouseState.create({})).build();
@@ -702,8 +698,7 @@ suite("@dataform/api", () => {
                 "create or replace table `deeb.schema.partitionby` partition by DATE(test) cluster by name, revenue as select 1 as test"
             }
           ],
-          dependencyTargets: [],
-          hermeticity: dataform.ActionHermeticity.HERMETIC
+          dependencyTargets: []
         },
         {
           type: "table",
@@ -718,8 +713,7 @@ suite("@dataform/api", () => {
               statement: "create or replace table `deeb.schema.plain` as select 1 as test"
             }
           ],
-          dependencyTargets: [],
-          hermeticity: dataform.ActionHermeticity.HERMETIC
+          dependencyTargets: []
         }
       ];
       const executionGraph = new Builder(testGraph, {}, dataform.WarehouseState.create({})).build();
@@ -772,8 +766,7 @@ suite("@dataform/api", () => {
                 'create or replace table `deeb.schema.additional_options` OPTIONS(partition_expiration_days=1,require_partition_filter=true,friendly_name="friendlyName")as select 1 as test'
             }
           ],
-          dependencyTargets: [],
-          hermeticity: dataform.ActionHermeticity.HERMETIC
+          dependencyTargets: []
         },
         {
           type: "table",
@@ -788,8 +781,7 @@ suite("@dataform/api", () => {
               statement: "create or replace table `deeb.schema.plain` as select 1 as test"
             }
           ],
-          dependencyTargets: [],
-          hermeticity: dataform.ActionHermeticity.HERMETIC
+          dependencyTargets: []
         }
       ];
       const executionGraph = new Builder(testGraph, {}, dataform.WarehouseState.create({})).build();
