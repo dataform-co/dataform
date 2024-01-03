@@ -132,7 +132,20 @@ suite("@dataform/core", ({ afterEach }) => {
       });
 
       expect(() => runMainInVm(coreExecutionRequest)).to.throw(
-        "Workflow settings error: unexpected key 'notAProjectConfigField'"
+        "Cannot find field: notAProjectConfigField in message"
+      );
+    });
+
+    test(`main fails when a valid workflow_settings.yaml base level is an array`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
+      fs.writeFileSync(path.join(projectDir, "workflow_settings.yaml"), "- someArrayEntry");
+      const coreExecutionRequest = dataform.CoreExecutionRequest.create({
+        compile: { compileConfig: { projectDir } }
+      });
+
+      expect(() => runMainInVm(coreExecutionRequest)).to.throw(
+        "Expected a top-level object, but found an array"
       );
     });
 
@@ -226,7 +239,7 @@ defaultDatabase: dataform`
       });
 
       expect(() => runMainInVm(coreExecutionRequest)).to.throw(
-        "Workflow settings error: unexpected key 'notAProjectConfigField'"
+        "Cannot find field: notAProjectConfigField in message"
       );
     });
 
