@@ -137,7 +137,6 @@ message Table {
   Target canonical_target = 32;
 
   repeated Target dependency_targets = 27;
-  ActionHermeticity hermeticity = 31;
 
   bool disabled = 6;
 
@@ -167,7 +166,7 @@ message Table {
   // Generated.
   string file_name = 18;
 
-  reserved 1, 2, 7, 12, 16;
+  reserved 1, 2, 7, 12, 16, 31;
 }
 
 message Operation {
@@ -176,8 +175,6 @@ message Operation {
   Target target = 3;
   Target canonical_target = 13;
   repeated Target dependency_targets = 11;
-
-  ActionHermeticity hermeticity = 12;
 
   bool disabled = 14;
 
@@ -190,7 +187,7 @@ message Operation {
   // Generated.
   string file_name = 7;
 
-  reserved 1, 2, 4, 5;
+  reserved 1, 2, 4, 5, 12;
 }
 
 message Assertion {
@@ -200,7 +197,6 @@ message Assertion {
   Target canonical_target = 13;
 
   repeated Target dependency_targets = 11;
-  ActionHermeticity hermeticity = 12;
 
   bool disabled = 14;
 
@@ -216,13 +212,7 @@ message Assertion {
   // Generated.
   string file_name = 7;
 
-  reserved 1, 2, 4, 5, 6;
-}
-
-enum ActionHermeticity {
-  UNKNOWN = 0;
-  HERMETIC = 1;
-  NON_HERMETIC = 2;
+  reserved 1, 2, 4, 5, 6, 12;
 }
 
 message Declaration {
