@@ -23,7 +23,7 @@ export function compile(code: string, path: string): string {
   if (path.endsWith(".yaml")) {
     try {
       const yamlAsJson = JSON.stringify(loadYaml(code));
-      return `exports.asJson = () => (${yamlAsJson})`;
+      return `exports.asJson = ${yamlAsJson}`;
     } catch (e) {
       if (e instanceof YAMLException) {
         throw Error(`${path} is not a valid YAML file: ${e}`);
@@ -33,7 +33,7 @@ export function compile(code: string, path: string): string {
   }
   if (path.endsWith(".ipynb")) {
     const notebookAsJson = stripNotebookOutputs(JSON.parse(code), path);
-    return `exports.asBase64String = () => \`${JSON.stringify(notebookAsJson)}\``;
+    return `exports.asBase64String = \`${JSON.stringify(notebookAsJson)}\``;
   }
   if (path.endsWith(".sql")) {
     return `exports.queryAsContextable = (ctx) => {

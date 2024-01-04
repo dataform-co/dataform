@@ -149,7 +149,7 @@ function loadActionConfigs(session: Session, filePaths: string[]) {
           actionConfig.fileName;
 
         if (fileExtension === "ipynb") {
-          const notebookContents = nativeRequire(actionConfig.fileName).asBase64String();
+          const notebookContents = nativeRequire(actionConfig.fileName).asBase64String;
           session.notebook(actionConfig, notebookContents);
         }
 
@@ -167,7 +167,7 @@ function loadActionConfigsFile(
   let actionConfigsAsJson = {};
   try {
     // tslint:disable-next-line: tsr-detect-non-literal-require
-    actionConfigsAsJson = nativeRequire(actionConfigsPath).asJson();
+    actionConfigsAsJson = nativeRequire(actionConfigsPath).asJson;
   } catch (e) {
     session.compileError(e, actionConfigsPath);
   }
