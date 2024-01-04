@@ -117,15 +117,20 @@ function loadActionConfigs(session: Session, filePaths: string[]) {
       actionConfigs.actions.forEach(nonProtoActionConfig => {
         const actionConfig = dataform.ActionConfig.create(nonProtoActionConfig);
 
-        // TODO(ekrekr): throw an error if incorrect configs are specified for the action type.
-
         if (actionConfig.declaration) {
+          if (actionConfig.fileName) {
+            throw Error(
+              "Declaration configs cannot have 'fileName' fields as they cannot take source files"
+            );
+          }
+          if (!actionConfig.target?.name) {
+            throw Error(
+              "Declaration configs must include a 'target' with a populated 'name' field"
+            );
+          }
           session.declare(actionConfig);
           return;
         }
-
-        // TODO(ekrekr): add a test for nice errors if files are not found.
-        // TODO(ekrekr): throw if filename not present and action type is not declaration.
 
         const { fileExtension, fileNameAsTargetName } = utils.extractActionDetailsFromFileName(
           actionConfig.fileName
@@ -144,8 +149,12 @@ function loadActionConfigs(session: Session, filePaths: string[]) {
           actionConfig.fileName;
 
         if (fileExtension === "ipynb") {
-          const notebookContents = nativeRequire(actionConfig.fileName).asBase64String();
-          session.notebook(actionConfig, notebookContents);
+          const notebookContents = nativeRequire(actionConfig.fileName).asJson;
+          const strippedNotebookContents = stripNotebookOutputs(
+            notebookContents,
+            actionConfig.fileName
+          );
+          session.notebook(actionConfig, JSON.stringify(strippedNotebookContents));
         }
 
         if (fileExtension === "sql") {
@@ -162,7 +171,7 @@ function loadActionConfigsFile(
   let actionConfigsAsJson = {};
   try {
     // tslint:disable-next-line: tsr-detect-non-literal-require
-    actionConfigsAsJson = nativeRequire(actionConfigsPath).asJson();
+    actionConfigsAsJson = nativeRequire(actionConfigsPath).asJson;
   } catch (e) {
     session.compileError(e, actionConfigsPath);
   }
@@ -187,4 +196,20 @@ function loadSqlFile(session: Session, actionConfig: dataform.ActionConfig) {
   }
   // If no config is specified, the operation action type is defaulted to.
   session.operate(actionConfig, queryAsContextable);
+}
+
+function stripNotebookOutputs(
+  notebookAsJson: { [key: string]: unknown },
+  path: string
+): { [key: string]: unknown } {
+  if (!("cells" in notebookAsJson)) {
+    throw new Error(`Notebook at ${path} is invalid: cells field not present`);
+  }
+  (notebookAsJson.cells as Array<{ [key: string]: unknown }>).forEach((cell, index) => {
+    if ("outputs" in cell) {
+      cell.outputs = [];
+      (notebookAsJson.cells as Array<{ [key: string]: unknown }>)[index] = cell;
+    }
+  });
+  return notebookAsJson;
 }

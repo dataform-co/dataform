@@ -22,8 +22,8 @@ export function compile(code: string, path: string): string {
   }
   if (path.endsWith(".yaml")) {
     try {
-      const yamlAsJson = JSON.stringify(loadYaml(code));
-      return `exports.asJson = () => (${yamlAsJson})`;
+      const yamlAsJson = loadYaml(code);
+      return `exports.asJson = ${JSON.stringify(yamlAsJson)}`;
     } catch (e) {
       if (e instanceof YAMLException) {
         throw Error(`${path} is not a valid YAML file: ${e}`);
@@ -32,9 +32,8 @@ export function compile(code: string, path: string): string {
     }
   }
   if (path.endsWith(".ipynb")) {
-    const notebookAsJson = stripNotebookOutputs(JSON.parse(code), path);
-    // TODO(ekrekr): base64 encode the notebook as a string instead.
-    return `exports.asBase64String = () => \`${JSON.stringify(notebookAsJson)}\``;
+    const notebookAsJson = JSON.stringify(JSON.parse(code));
+    return `exports.asJson = ${notebookAsJson}`;
   }
   if (path.endsWith(".sql")) {
     return `exports.queryAsContextable = (ctx) => {
@@ -43,22 +42,6 @@ export function compile(code: string, path: string): string {
     }`;
   }
   return code;
-}
-
-function stripNotebookOutputs(
-  notebookAsJson: { [key: string]: unknown },
-  path: string
-): { [key: string]: unknown } {
-  if (!("cells" in notebookAsJson)) {
-    throw new Error(`Notebook at ${path} is invalid: cells field not present`);
-  }
-  (notebookAsJson.cells as Array<{ [key: string]: unknown }>).forEach((cell, index) => {
-    if ("outputs" in cell) {
-      cell.outputs = [];
-      (notebookAsJson.cells as Array<{ [key: string]: unknown }>)[index] = cell;
-    }
-  });
-  return notebookAsJson;
 }
 
 export function extractJsBlocks(code: string): { sql: string; js: string } {

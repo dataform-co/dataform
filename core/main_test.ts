@@ -1,3 +1,4 @@
+// tslint:disable tsr-detect-non-literal-fs-filename
 import { expect } from "chai";
 import * as fs from "fs-extra";
 import * as path from "path";
@@ -29,7 +30,6 @@ suite("@dataform/core", ({ afterEach }) => {
   suite("workflow settings", () => {
     test(`main succeeds when a valid workflow_settings.yaml is present`, () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
-      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(
         path.join(projectDir, "workflow_settings.yaml"),
         VALID_WORKFLOW_SETTINGS_YAML
@@ -51,7 +51,6 @@ suite("@dataform/core", ({ afterEach }) => {
     // dataform.json for workflow settings is deprecated, but still currently supported.
     test(`main succeeds when a valid dataform.json is present`, () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
-      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(path.join(projectDir, "dataform.json"), VALID_DATAFORM_JSON);
       const coreExecutionRequest = dataform.CoreExecutionRequest.create({
         compile: { compileConfig: { projectDir } }
@@ -80,9 +79,7 @@ suite("@dataform/core", ({ afterEach }) => {
 
     test(`main fails when both workflow settings and dataform.json files are present`, () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
-      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(path.join(projectDir, "dataform.json"), VALID_DATAFORM_JSON);
-      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(
         path.join(projectDir, "workflow_settings.yaml"),
         VALID_WORKFLOW_SETTINGS_YAML
@@ -98,7 +95,6 @@ suite("@dataform/core", ({ afterEach }) => {
 
     test(`main fails when workflow_settings.yaml is an invalid yaml file`, () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
-      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(path.join(projectDir, "workflow_settings.yaml"), "&*19132sdS:asd:");
       const coreExecutionRequest = dataform.CoreExecutionRequest.create({
         compile: { compileConfig: { projectDir } }
@@ -109,7 +105,6 @@ suite("@dataform/core", ({ afterEach }) => {
 
     test(`main fails when dataform.json is an invalid json file`, () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
-      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(path.join(projectDir, "dataform.json"), '{keyWithNoQuotes: "validValue"}');
       const coreExecutionRequest = dataform.CoreExecutionRequest.create({
         compile: { compileConfig: { projectDir } }
@@ -122,7 +117,6 @@ suite("@dataform/core", ({ afterEach }) => {
 
     test(`main fails when a valid workflow_settings.yaml contains unknown fields`, () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
-      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(
         path.join(projectDir, "workflow_settings.yaml"),
         "notAProjectConfigField: value"
@@ -138,7 +132,6 @@ suite("@dataform/core", ({ afterEach }) => {
 
     test(`main fails when a valid workflow_settings.yaml base level is an array`, () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
-      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(path.join(projectDir, "workflow_settings.yaml"), "- someArrayEntry");
       const coreExecutionRequest = dataform.CoreExecutionRequest.create({
         compile: { compileConfig: { projectDir } }
@@ -151,7 +144,6 @@ suite("@dataform/core", ({ afterEach }) => {
 
     test(`main succeeds when dataform.json specifies BigQuery as the warehouse`, () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
-      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(
         path.join(projectDir, "dataform.json"),
         `{"warehouse": "bigquery", "defaultDatabase": "dataform"}`
@@ -172,7 +164,6 @@ suite("@dataform/core", ({ afterEach }) => {
 
     test(`main fails when dataform.json specifies non-BigQuery as the warehouse`, () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
-      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(
         path.join(projectDir, "dataform.json"),
         `{"warehouse": "redshift", "defaultDatabase": "dataform"}`
@@ -188,7 +179,6 @@ suite("@dataform/core", ({ afterEach }) => {
 
     test(`main succeeds when workflow_settings.yaml specifies BigQuery as the warehouse`, () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
-      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(
         path.join(projectDir, "workflow_settings.yaml"),
         `
@@ -211,7 +201,6 @@ defaultDatabase: dataform`
 
     test(`main fails when workflow_settings.yaml specifies non-BigQuery as the warehouse`, () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
-      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(
         path.join(projectDir, "workflow_settings.yaml"),
         `
@@ -229,7 +218,6 @@ defaultDatabase: dataform`
 
     test(`main fails when a valid dataform.json contains unknown fields`, () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
-      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(
         path.join(projectDir, "dataform.json"),
         `{"notAProjectConfigField": "value"}`
@@ -245,7 +233,6 @@ defaultDatabase: dataform`
 
     test(`workflow settings and project config overrides are merged and applied within SQLX files`, () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
-      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(
         path.join(projectDir, "workflow_settings.yaml"),
         `
@@ -255,9 +242,7 @@ vars:
   selectVar: selectVal
 `
       );
-      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.mkdirSync(path.join(projectDir, "definitions"));
-      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(
         path.join(projectDir, "definitions/file.sqlx"),
         `
@@ -327,7 +312,6 @@ select 1 AS \${dataform.projectConfig.vars.selectVar}`
     suite("dataform core version", () => {
       test(`main fails when the workflow settings version is not the installed current version`, () => {
         const projectDir = tmpDirFixture.createNewTmpDir();
-        // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
         fs.writeFileSync(
           path.join(projectDir, "workflow_settings.yaml"),
           `
@@ -345,7 +329,6 @@ defaultDatabase: dataform`
 
       test(`main succeeds when workflow settings contains the matching version`, () => {
         const projectDir = tmpDirFixture.createNewTmpDir();
-        // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
         fs.writeFileSync(
           path.join(projectDir, "workflow_settings.yaml"),
           `
@@ -371,7 +354,6 @@ defaultDatabase: dataform`
     suite("variables", () => {
       test(`variables in workflow_settings.yaml must be strings`, () => {
         const projectDir = tmpDirFixture.createNewTmpDir();
-        // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
         fs.writeFileSync(
           path.join(projectDir, "workflow_settings.yaml"),
           `
@@ -390,7 +372,6 @@ vars:
 
       test(`variables in dataform.json must be strings`, () => {
         const projectDir = tmpDirFixture.createNewTmpDir();
-        // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
         fs.writeFileSync(
           path.join(projectDir, "dataform.json"),
           `{"vars": { "intVar": 1, "strVar": "str" } }`
@@ -406,7 +387,6 @@ vars:
 
       test(`variables can be referenced in SQLX`, () => {
         const projectDir = tmpDirFixture.createNewTmpDir();
-        // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
         fs.writeFileSync(
           path.join(projectDir, "workflow_settings.yaml"),
           `
@@ -415,9 +395,7 @@ vars:
   descriptionVar: descriptionValue
   columnVar: columnValue`
         );
-        // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
         fs.mkdirSync(path.join(projectDir, "definitions"));
-        // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
         fs.writeFileSync(
           path.join(projectDir, "definitions/file.sqlx"),
           // TODO(https://github.com/dataform-co/dataform/issues/1295): add a test and fix
@@ -529,28 +507,22 @@ select 1 AS \${dataform.projectConfig.vars.columnVar}`
   suite("notebooks", () => {
     const createSimpleNotebookProject = (): string => {
       const projectDir = tmpDirFixture.createNewTmpDir();
-      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(
         path.join(projectDir, "workflow_settings.yaml"),
         VALID_WORKFLOW_SETTINGS_YAML
       );
-      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.mkdirSync(path.join(projectDir, "definitions"));
-      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(
         path.join(projectDir, "definitions/actions.yaml"),
         `
 actions:
   - fileName: notebook.ipynb`
       );
-
       return projectDir;
     };
 
     test(`notebooks can be loaded via an actions config file`, () => {
       const projectDir = createSimpleNotebookProject();
-
-      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(
         path.join(projectDir, "definitions/notebook.ipynb"),
         EMPTY_NOTEBOOK_CONTENTS
@@ -588,8 +560,6 @@ actions:
 
     test(`notebook cell output is removed`, () => {
       const projectDir = createSimpleNotebookProject();
-
-      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(
         path.join(projectDir, "definitions/notebook.ipynb"),
         JSON.stringify({
@@ -639,23 +609,19 @@ actions:
   });
 
   suite("action configs", () => {
-    test(`SQL actions can be loaded`, () => {
+    test(`actions configs are loaded as operations by default when no explicit config is given`, () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
-      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(
         path.join(projectDir, "workflow_settings.yaml"),
         VALID_WORKFLOW_SETTINGS_YAML
       );
-      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.mkdirSync(path.join(projectDir, "definitions"));
-      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(
         path.join(projectDir, "definitions/actions.yaml"),
         `
 actions:
   - fileName: action.sql`
       );
-      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(
         path.join(projectDir, "definitions/action.sql"),
         "SELECT ${database()} AS proofThatContextIsRead"
@@ -697,14 +663,11 @@ actions:
 
     test(`declarations can be loaded`, () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
-      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(
         path.join(projectDir, "workflow_settings.yaml"),
         VALID_WORKFLOW_SETTINGS_YAML
       );
-      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.mkdirSync(path.join(projectDir, "definitions"));
-      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(
         path.join(projectDir, "definitions/actions.yaml"),
         `
@@ -747,16 +710,72 @@ actions:
       );
     });
 
-    test(`tables can be loaded`, () => {
+    test(`fails when filename is defined for declaration`, () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
-      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(
         path.join(projectDir, "workflow_settings.yaml"),
         VALID_WORKFLOW_SETTINGS_YAML
       );
-      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.mkdirSync(path.join(projectDir, "definitions"));
-      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/actions.yaml"),
+        `
+actions:
+  - declaration: {}
+    fileName: doesnotexist.sql
+    target:
+      name: name`
+      );
+      const coreExecutionRequest = dataform.CoreExecutionRequest.create({
+        compile: {
+          compileConfig: {
+            projectDir,
+            filePaths: ["definitions/actions.yaml"]
+          }
+        }
+      });
+
+      expect(() => runMainInVm(coreExecutionRequest)).to.throw(
+        "Declaration configs cannot have 'fileName' fields as they cannot take source files"
+      );
+    });
+
+    test(`fails when target name is not defined for declaration`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/actions.yaml"),
+        `
+actions:
+  - declaration: {}
+    target:
+      schema: test`
+      );
+      const coreExecutionRequest = dataform.CoreExecutionRequest.create({
+        compile: {
+          compileConfig: {
+            projectDir,
+            filePaths: ["definitions/actions.yaml"]
+          }
+        }
+      });
+
+      expect(() => runMainInVm(coreExecutionRequest)).to.throw(
+        "Declaration configs must include a 'target' with a populated 'name' field"
+      );
+    });
+
+    test(`tables can be loaded`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
       fs.writeFileSync(
         path.join(projectDir, "definitions/actions.yaml"),
         `
@@ -764,7 +783,6 @@ actions:
   - fileName: action.sql
     table: {}`
       );
-      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(
         path.join(projectDir, "definitions/action.sql"),
         "SELECT ${database()} AS proofThatContextIsRead"
@@ -810,14 +828,11 @@ actions:
 
     test(`incremental tables can be loaded`, () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
-      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(
         path.join(projectDir, "workflow_settings.yaml"),
         VALID_WORKFLOW_SETTINGS_YAML
       );
-      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.mkdirSync(path.join(projectDir, "definitions"));
-      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(
         path.join(projectDir, "definitions/actions.yaml"),
         `
@@ -829,7 +844,6 @@ actions:
       -  someKey1
       -  someKey2`
       );
-      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(
         path.join(projectDir, "definitions/action.sql"),
         "SELECT ${database()} AS proofThatContextIsRead"
@@ -880,14 +894,11 @@ actions:
 
     test(`views can be loaded`, () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
-      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(
         path.join(projectDir, "workflow_settings.yaml"),
         VALID_WORKFLOW_SETTINGS_YAML
       );
-      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.mkdirSync(path.join(projectDir, "definitions"));
-      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(
         path.join(projectDir, "definitions/actions.yaml"),
         `
@@ -895,7 +906,6 @@ actions:
   - fileName: action.sql
     view: {}`
       );
-      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(
         path.join(projectDir, "definitions/action.sql"),
         "SELECT ${database()} AS proofThatContextIsRead"
@@ -941,14 +951,11 @@ actions:
 
     test(`assertions can be loaded`, () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
-      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(
         path.join(projectDir, "workflow_settings.yaml"),
         VALID_WORKFLOW_SETTINGS_YAML
       );
-      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.mkdirSync(path.join(projectDir, "definitions"));
-      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(
         path.join(projectDir, "definitions/actions.yaml"),
         `
@@ -956,7 +963,6 @@ actions:
   - assertion: {}
     fileName: action.sql`
       );
-      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(
         path.join(projectDir, "definitions/action.sql"),
         "SELECT ${database()} AS proofThatContextIsRead"
@@ -991,6 +997,114 @@ actions:
             target: {
               database: "dataform",
               name: "action"
+            }
+          }
+        ])
+      );
+    });
+
+    test(`fails when file is not found`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/actions.yaml"),
+        `
+actions:
+  - fileName: doesnotexist.sql`
+      );
+      const coreExecutionRequest = dataform.CoreExecutionRequest.create({
+        compile: {
+          compileConfig: {
+            projectDir,
+            filePaths: ["definitions/actions.yaml"]
+          }
+        }
+      });
+
+      expect(() => runMainInVm(coreExecutionRequest)).to.throw(
+        "Cannot find module 'definitions/doesnotexist.sql'"
+      );
+    });
+
+    test(`fails when properties belonging to other action config types are populated for an action config`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/actions.yaml"),
+        `
+actions:
+  - fileName: action.sql
+    table:
+      materialized: true`
+      );
+      const coreExecutionRequest = dataform.CoreExecutionRequest.create({
+        compile: {
+          compileConfig: {
+            projectDir,
+            filePaths: ["definitions/actions.yaml"]
+          }
+        }
+      });
+
+      expect(() => runMainInVm(coreExecutionRequest)).to.throw(
+        "Cannot find field: materialized in message, or value type is incorrect"
+      );
+    });
+
+    test(`filenames with non-UTF8 characters are valid`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/actions.yaml"),
+        `
+actions:
+  - fileName: utf8characters:私🙂 and some spaces.sql`
+      );
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/utf8characters:私🙂 and some spaces.sql"),
+        "SELECT ${database()} AS proofThatContextIsRead"
+      );
+      const coreExecutionRequest = dataform.CoreExecutionRequest.create({
+        compile: {
+          compileConfig: {
+            projectDir,
+            filePaths: ["definitions/actions.yaml", "definitions/action.sql"]
+          }
+        }
+      });
+
+      const result = runMainInVm(coreExecutionRequest);
+
+      expect(asPlainObject(result.compile.compiledGraph.operations)).deep.equals(
+        asPlainObject([
+          {
+            canonicalTarget: {
+              database: "dataform",
+              name: "utf8characters:私🙂 and some spaces"
+            },
+            config: {
+              fileName: "definitions/utf8characters:私🙂 and some spaces.sql",
+              target: {
+                database: "dataform",
+                name: "utf8characters:私🙂 and some spaces"
+              }
+            },
+            queries: ["SELECT dataform AS proofThatContextIsRead"],
+            target: {
+              database: "dataform",
+              name: "utf8characters:私🙂 and some spaces"
             }
           }
         ])

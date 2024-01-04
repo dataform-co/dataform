@@ -18,7 +18,7 @@ export function readWorkflowSettings(): dataform.ProjectConfig {
   }
 
   if (workflowSettingsYaml) {
-    const workflowSettingsAsJson = workflowSettingsYaml.asJson();
+    const workflowSettingsAsJson = workflowSettingsYaml.asJson;
     if (!workflowSettingsAsJson) {
       throw Error("workflow_settings.yaml is invalid");
     }
