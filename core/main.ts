@@ -149,7 +149,7 @@ function loadActionConfigs(session: Session, filePaths: string[]) {
           actionConfig.fileName;
 
         if (fileExtension === "ipynb") {
-          const notebookContents = nativeRequire(actionConfig.fileName).asBase64String;
+          const notebookContents = nativeRequire(actionConfig.fileName).asString;
           session.notebook(actionConfig, notebookContents);
         }
 

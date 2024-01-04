@@ -33,7 +33,7 @@ export function compile(code: string, path: string): string {
   }
   if (path.endsWith(".ipynb")) {
     const notebookAsJson = stripNotebookOutputs(JSON.parse(code), path);
-    return `exports.asBase64String = \`${JSON.stringify(notebookAsJson)}\``;
+    return `exports.asString = \`${JSON.stringify(notebookAsJson)}\``;
   }
   if (path.endsWith(".sql")) {
     return `exports.queryAsContextable = (ctx) => {
