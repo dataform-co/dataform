@@ -33,7 +33,6 @@ export function compile(code: string, path: string): string {
   }
   if (path.endsWith(".ipynb")) {
     const notebookAsJson = stripNotebookOutputs(JSON.parse(code), path);
-    // TODO(ekrekr): base64 encode the notebook as a string instead.
     return `exports.asBase64String = () => \`${JSON.stringify(notebookAsJson)}\``;
   }
   if (path.endsWith(".sql")) {

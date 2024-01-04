@@ -117,15 +117,20 @@ function loadActionConfigs(session: Session, filePaths: string[]) {
       actionConfigs.actions.forEach(nonProtoActionConfig => {
         const actionConfig = dataform.ActionConfig.create(nonProtoActionConfig);
 
-        // TODO(ekrekr): throw an error if incorrect configs are specified for the action type.
-
         if (actionConfig.declaration) {
+          if (actionConfig.fileName) {
+            throw Error(
+              "Declaration configs cannot have 'fileName' fields as they cannot take source files"
+            );
+          }
+          if (!actionConfig.target?.name) {
+            throw Error(
+              "Declaration configs must include a 'target' with a populated 'name' field"
+            );
+          }
           session.declare(actionConfig);
           return;
         }
-
-        // TODO(ekrekr): add a test for nice errors if files are not found.
-        // TODO(ekrekr): throw if filename not present and action type is not declaration.
 
         const { fileExtension, fileNameAsTargetName } = utils.extractActionDetailsFromFileName(
           actionConfig.fileName

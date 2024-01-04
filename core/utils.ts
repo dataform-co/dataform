@@ -244,10 +244,7 @@ export function setOrValidateTableEnumType(table: dataform.ITable) {
 export function extractActionDetailsFromFileName(
   path: string
 ): { fileExtension: string; fileNameAsTargetName: string } {
-  // TODO(ekrekr): make filename in actions.yaml files not need the `definitions` prefix. In
-  // addition, actions.yaml in nested directories should prefix file imports with their path.
   const fileName = Path.fileName(path);
   const fileExtension = Path.fileExtension(path);
-  // TODO(ekrekr): validate and test weird characters in filenames to make it a valid target name.
   return { fileExtension, fileNameAsTargetName: fileName };
 }
