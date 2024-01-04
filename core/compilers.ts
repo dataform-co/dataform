@@ -32,8 +32,8 @@ export function compile(code: string, path: string): string {
     }
   }
   if (path.endsWith(".ipynb")) {
-    const notebookAsJson = stripNotebookOutputs(JSON.parse(code), path);
-    return `exports.asString = \`${JSON.stringify(notebookAsJson)}\``;
+    const notebookAsJson = JSON.stringify(JSON.parse(code));
+    return `exports.asJson = ${notebookAsJson}`;
   }
   if (path.endsWith(".sql")) {
     return `exports.queryAsContextable = (ctx) => {
@@ -42,22 +42,6 @@ export function compile(code: string, path: string): string {
     }`;
   }
   return code;
-}
-
-function stripNotebookOutputs(
-  notebookAsJson: { [key: string]: unknown },
-  path: string
-): { [key: string]: unknown } {
-  if (!("cells" in notebookAsJson)) {
-    throw new Error(`Notebook at ${path} is invalid: cells field not present`);
-  }
-  (notebookAsJson.cells as Array<{ [key: string]: unknown }>).forEach((cell, index) => {
-    if ("outputs" in cell) {
-      cell.outputs = [];
-      (notebookAsJson.cells as Array<{ [key: string]: unknown }>)[index] = cell;
-    }
-  });
-  return notebookAsJson;
 }
 
 export function extractJsBlocks(code: string): { sql: string; js: string } {

@@ -149,8 +149,12 @@ function loadActionConfigs(session: Session, filePaths: string[]) {
           actionConfig.fileName;
 
         if (fileExtension === "ipynb") {
-          const notebookContents = nativeRequire(actionConfig.fileName).asString;
-          session.notebook(actionConfig, notebookContents);
+          const notebookContents = nativeRequire(actionConfig.fileName).asJson;
+          const strippedNotebookContents = stripNotebookOutputs(
+            notebookContents,
+            actionConfig.fileName
+          );
+          session.notebook(actionConfig, JSON.stringify(strippedNotebookContents));
         }
 
         if (fileExtension === "sql") {
@@ -192,4 +196,20 @@ function loadSqlFile(session: Session, actionConfig: dataform.ActionConfig) {
   }
   // If no config is specified, the operation action type is defaulted to.
   session.operate(actionConfig, queryAsContextable);
+}
+
+function stripNotebookOutputs(
+  notebookAsJson: { [key: string]: unknown },
+  path: string
+): { [key: string]: unknown } {
+  if (!("cells" in notebookAsJson)) {
+    throw new Error(`Notebook at ${path} is invalid: cells field not present`);
+  }
+  (notebookAsJson.cells as Array<{ [key: string]: unknown }>).forEach((cell, index) => {
+    if ("outputs" in cell) {
+      cell.outputs = [];
+      (notebookAsJson.cells as Array<{ [key: string]: unknown }>)[index] = cell;
+    }
+  });
+  return notebookAsJson;
 }
