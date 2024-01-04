@@ -137,19 +137,19 @@ function loadActionConfigs(session: Session, filePaths: string[]) {
           actionConfig.target.name = fileNameAsTargetName;
         }
 
-        // Path manipulation makes references to files in action configs be relative to the path of
-        // the action config file.
-        const absoluteFileName =
+        // Users define file paths relative to action config path, but internally and in the
+        // compiled graph they are absolute paths.
+        actionConfig.fileName =
           actionConfigsPath.substring(0, actionConfigsPath.length - "actions.yaml".length) +
           actionConfig.fileName;
 
         if (fileExtension === "ipynb") {
-          const notebookContents = nativeRequire(absoluteFileName).asBase64String();
+          const notebookContents = nativeRequire(actionConfig.fileName).asBase64String();
           session.notebook(actionConfig, notebookContents);
         }
 
         if (fileExtension === "sql") {
-          loadSqlFile(session, actionConfig, absoluteFileName);
+          loadSqlFile(session, actionConfig);
         }
       });
     });
@@ -170,12 +170,8 @@ function loadActionConfigsFile(
   return dataform.ActionConfigs.fromObject(actionConfigsAsJson);
 }
 
-function loadSqlFile(
-  session: Session,
-  actionConfig: dataform.ActionConfig,
-  absoluteFileName: string
-) {
-  const queryAsContextable = nativeRequire(absoluteFileName).queryAsContextable;
+function loadSqlFile(session: Session, actionConfig: dataform.ActionConfig) {
+  const queryAsContextable = nativeRequire(actionConfig.fileName).queryAsContextable;
 
   if (actionConfig.assertion) {
     return session.assertion(actionConfig, queryAsContextable);

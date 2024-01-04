@@ -638,8 +638,8 @@ actions:
     });
   });
 
-  suite("SQL actions", () => {
-    test(`SQL actions can be loaded via an actions config file`, () => {
+  suite("action configs", () => {
+    test(`SQL actions can be loaded`, () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
       // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(
@@ -695,7 +695,7 @@ actions:
       );
     });
 
-    test(`declarations can be loaded via an actions config file`, () => {
+    test(`declarations can be loaded`, () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
       // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(
@@ -747,7 +747,7 @@ actions:
       );
     });
 
-    test(`tables can be loaded via an actions config file`, () => {
+    test(`tables can be loaded`, () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
       // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(
@@ -808,7 +808,7 @@ actions:
       );
     });
 
-    test(`incremental tables can be loaded via an actions config file`, () => {
+    test(`incremental tables can be loaded`, () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
       // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(
@@ -878,7 +878,7 @@ actions:
       );
     });
 
-    test(`views can be loaded via an actions config file`, () => {
+    test(`views can be loaded`, () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
       // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(
@@ -939,7 +939,7 @@ actions:
       );
     });
 
-    test(`assertions can be loaded via an actions config file`, () => {
+    test(`assertions can be loaded`, () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
       // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(
