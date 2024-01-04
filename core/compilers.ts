@@ -22,8 +22,8 @@ export function compile(code: string, path: string): string {
   }
   if (path.endsWith(".yaml")) {
     try {
-      const yamlAsJson = JSON.stringify(loadYaml(code));
-      return `exports.asJson = ${yamlAsJson}`;
+      const yamlAsJson = loadYaml(code);
+      return `exports.asJson = ${JSON.stringify(yamlAsJson)}`;
     } catch (e) {
       if (e instanceof YAMLException) {
         throw Error(`${path} is not a valid YAML file: ${e}`);
