@@ -17,7 +17,8 @@ let CACHED_COMPILE_GRAPH: dataform.ICompiledGraph = null;
 let WORKSPACE_ROOT_FOLDER: string = null;
 
 let settings = {
-  compilerOptions: [] as string[]
+  compilerOptions: [] as string[],
+  compileOnSave: true
 };
 
 connection.onInitialize(() => {
@@ -48,7 +49,9 @@ connection.onRequest("compile", async () => {
 });
 
 documents.onDidSave(change => {
-  const _ = compileAndValidate();
+  if (settings.compileOnSave) {
+    const _ = compileAndValidate();
+  }
 });
 
 async function applySettings() {
