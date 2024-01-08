@@ -60,6 +60,7 @@ export class Session {
 
   public config: dataform.IProjectConfig;
   public canonicalConfig: dataform.IProjectConfig;
+  public supportSqlFileCompilation: boolean;
 
   public actions: Action[];
   public indexedActions: ActionIndex;
@@ -70,21 +71,24 @@ export class Session {
   constructor(
     rootDir?: string,
     projectConfig?: dataform.IProjectConfig,
-    originalProjectConfig?: dataform.IProjectConfig
+    originalProjectConfig?: dataform.IProjectConfig,
+    supportSqlFileCompilation?: boolean,
   ) {
-    this.init(rootDir, projectConfig, originalProjectConfig);
+    this.init(rootDir, projectConfig, originalProjectConfig, supportSqlFileCompilation);
   }
 
   public init(
     rootDir: string,
     projectConfig?: dataform.IProjectConfig,
-    originalProjectConfig?: dataform.IProjectConfig
+    originalProjectConfig?: dataform.IProjectConfig,
+    supportSqlFileCompilation: boolean = true,
   ) {
     this.rootDir = rootDir;
     this.config = projectConfig || DEFAULT_CONFIG;
     this.canonicalConfig = getCanonicalProjectConfig(
       originalProjectConfig || projectConfig || DEFAULT_CONFIG
     );
+    this.supportSqlFileCompilation = supportSqlFileCompilation;
     this.actions = [];
     this.tests = {};
     this.graphErrors = { compilationErrors: [] };
@@ -223,6 +227,7 @@ export class Session {
     const allResolved = this.indexedActions.find(utils.resolvableAsTarget(ref));
     if (allResolved.length > 1) {
       this.compileError(new Error(utils.ambiguousActionNameMsg(ref, allResolved)));
+      return "";
     }
     const resolved = allResolved.length > 0 ? allResolved[0] : undefined;
 
@@ -235,6 +240,7 @@ export class Session {
       this.compileError(
         new Error("Actions cannot resolve operations which do not produce output.")
       );
+      return "";
     }
 
     if (resolved) {
@@ -250,6 +256,12 @@ export class Session {
         name: this.finalizeName(resolved.proto.target.name),
       });
     }
+
+    if (!this.supportSqlFileCompilation) {
+      this.compileError(new Error(`Could not resolve "${ref}"`));
+      return "";
+    }
+
     // TODO: Here we allow 'ref' to go unresolved. This is for backwards compatibility with projects
     // that use .sql files. In these projects, this session may not know about all actions (yet), and
     // thus we need to fall back to assuming that the target *will* exist in the future. Once we break
