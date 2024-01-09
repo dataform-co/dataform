@@ -36,9 +36,10 @@ export function compile(code: string, path: string): string {
     return `exports.asJson = ${notebookAsJson}`;
   }
   if (path.endsWith(".sql")) {
+    const { sql } = extractSqlxParts(SyntaxTreeNode.create(code));
     return `exports.queryAsContextable = (ctx) => {
       ${CONTEXT_FUNCTIONS}
-      return \`${code}\`;
+      return \`${sql.join("")}\`;
     }`;
   }
   return code;

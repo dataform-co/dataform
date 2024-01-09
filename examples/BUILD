@@ -22,7 +22,9 @@ ts_test_suite(
         "//testing",
         "//tests/utils",
         "@npm//@types/chai",
+        "@npm//@types/fs-extra",
         "@npm//chai",
+        "@npm//fs-extra",
     ],
 )
 
@@ -31,5 +33,4 @@ node_modules(
     deps = [
         "//packages/@dataform/core:package_tar",
     ],
-    for_subdirectory = "stackoverflow_reporter",
 )
