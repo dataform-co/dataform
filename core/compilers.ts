@@ -3,6 +3,8 @@ import { load as loadYaml, YAMLException } from "js-yaml";
 import * as Path from "df/core/path";
 import { SyntaxTreeNode, SyntaxTreeNodeType } from "df/sqlx/lexer";
 
+const RAW_BACKTICKS_REGEX = /([^\\])`/g;
+
 const CONTEXT_FUNCTIONS = [
   "self",
   "ref",
@@ -36,9 +38,10 @@ export function compile(code: string, path: string): string {
     return `exports.asJson = ${notebookAsJson}`;
   }
   if (path.endsWith(".sql")) {
+    const cleaned_code = code.replace(RAW_BACKTICKS_REGEX, (_, group1) => group1 + "\\`");
     return `exports.queryAsContextable = (ctx) => {
       ${CONTEXT_FUNCTIONS}
-      return \`${code}\`;
+      return \`${cleaned_code}\`;
     }`;
   }
   return code;
@@ -47,7 +50,6 @@ export function compile(code: string, path: string): string {
 export function extractJsBlocks(code: string): { sql: string; js: string } {
   const JS_REGEX = /^\s*\/\*[jJ][sS]\s*[\r\n]+((?:[^*]|[\r\n]|(?:\*+(?:[^*/]|[\r\n])))*)\*+\/|^\s*\-\-[jJ][sS]\s(.*)/gm;
   // This captures any single backticks that aren't escaped with a preceding \.
-  const RAW_BACKTICKS_REGEX = /([^\\])`/g;
   const jsBlocks: string[] = [];
   const cleanSql = code
     .replace(JS_REGEX, (_, group1, group2) => {

@@ -21,15 +21,25 @@ ts_test_suite(
         "//cli/api",
         "//testing",
         "//tests/utils",
+        "@npm//@types/fs-extra",
+        "@npm//fs-extra",
         "@npm//@types/chai",
         "@npm//chai",
     ],
 )
+
+# node_modules(
+#     name = "node_modules",
+#     deps = [
+#         "//packages/@dataform/core:package_tar",
+#     ],
+#     for_subdirectory = "stackoverflow_reporter",
+# )
 
 node_modules(
     name = "node_modules",
     deps = [
         "//packages/@dataform/core:package_tar",
     ],
-    for_subdirectory = "stackoverflow_reporter",
+    for_subdirectory = "snow_programming",
 )

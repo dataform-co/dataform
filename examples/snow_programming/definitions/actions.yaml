@@ -1,0 +1,6 @@
+actions:
+  - fileName: snow_based_repositories.sql
+  - fileName: did_it_snow.sql
+    view:
+      materialized: true
+# - fileName: snowy_repository_creation.ipynb
