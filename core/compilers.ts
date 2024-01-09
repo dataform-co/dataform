@@ -3,10 +3,6 @@ import { load as loadYaml, YAMLException } from "js-yaml";
 import * as Path from "df/core/path";
 import { SyntaxTreeNode, SyntaxTreeNodeType } from "df/sqlx/lexer";
 
-const BACKTICKS_REGEX = /\`/g;
-
-const JS_TEMPLATE_LITERALS_REGEX = /\${/g;
-
 const CONTEXT_FUNCTIONS = [
   "self",
   "ref",
@@ -245,11 +241,11 @@ function createEscapedStatements(nodes: Array<string | SyntaxTreeNode>) {
 const SQL_STATEMENT_ESCAPERS = new Map([
   [
     SyntaxTreeNodeType.SQL_COMMENT,
-    (str: string) => str.replace(/`/g, "\\`").replace(JS_TEMPLATE_LITERALS_REGEX, "\\${")
+    (str: string) => str.replace(/`/g, "\\`").replace(/\${/g, "\\${")
   ],
   [
     SyntaxTreeNodeType.SQL_LITERAL_STRING,
-    (str: string) => str.replace(/\\/g, "\\\\").replace(BACKTICKS_REGEX, "\\`")
+    (str: string) => str.replace(/\\/g, "\\\\").replace(/\`/g, "\\`")
   ]
 ]);
 
