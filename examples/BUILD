@@ -28,18 +28,9 @@ ts_test_suite(
     ],
 )
 
-# node_modules(
-#     name = "node_modules",
-#     deps = [
-#         "//packages/@dataform/core:package_tar",
-#     ],
-#     for_subdirectory = "stackoverflow_reporter",
-# )
-
 node_modules(
     name = "node_modules",
     deps = [
         "//packages/@dataform/core:package_tar",
     ],
-    for_subdirectory = "snow_programming",
 )

@@ -85,13 +85,11 @@ function runDataformCoreVmScript(nodeVM: NodeVM, vmIndexFileName: string, script
     try {
       return nodeVM.run(script, vmIndexFileName);
     } catch (e) {
-      console.log("🚀 ~ file: compile.ts:88 ~ getResult ~ e:", e);
       throw missingValidCorePackageError();
     }
   };
   const result = getResult();
   if (!result) {
-    console.log("🚀 ~ file: compile.ts:94 ~ runDataformCoreVmScript ~ result:", result);
     throw missingValidCorePackageError();
   }
   return result as any;

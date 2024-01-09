@@ -38,7 +38,9 @@ export function compile(code: string, path: string): string {
     return `exports.asJson = ${notebookAsJson}`;
   }
   if (path.endsWith(".sql")) {
-    const cleaned_code = code.replace(RAW_BACKTICKS_REGEX, (_, group1) => group1 + "\\`");
+    // To avoid escaping exiting the wrapped escaped string prematurely, backticks and clodeblocks
+    // are escaped.
+    const cleaned_code = code.replace(RAW_BACKTICKS_REGEX, "\\`").replace(/\${/g, "\\${");
     return `exports.queryAsContextable = (ctx) => {
       ${CONTEXT_FUNCTIONS}
       return \`${cleaned_code}\`;
