@@ -40,14 +40,10 @@ export function compile(code: string, path: string): string {
     return `exports.asJson = ${notebookAsJson}`;
   }
   if (path.endsWith(".sql")) {
-    // To avoid escaping exiting the wrapped escaped string prematurely, backticks and clodeblocks
-    // are escaped.
-    const cleanedCode = code
-      .replace(BACKTICKS_REGEX, "\\`")
-      .replace(JS_TEMPLATE_LITERALS_REGEX, "\\${");
+    const { sql } = extractSqlxParts(SyntaxTreeNode.create(code));
     return `exports.queryAsContextable = (ctx) => {
       ${CONTEXT_FUNCTIONS}
-      return \`${cleanedCode}\`;
+      return \`${sql.join("")}\`;
     }`;
   }
   return code;
