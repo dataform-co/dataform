@@ -42,12 +42,12 @@ export function compile(code: string, path: string): string {
   if (path.endsWith(".sql")) {
     // To avoid escaping exiting the wrapped escaped string prematurely, backticks and clodeblocks
     // are escaped.
-    const cleaned_code = code
+    const cleanedCode = code
       .replace(BACKTICKS_REGEX, "\\`")
       .replace(JS_TEMPLATE_LITERALS_REGEX, "\\${");
     return `exports.queryAsContextable = (ctx) => {
       ${CONTEXT_FUNCTIONS}
-      return \`${cleaned_code}\`;
+      return \`${cleanedCode}\`;
     }`;
   }
   return code;

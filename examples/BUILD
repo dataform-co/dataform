@@ -21,10 +21,10 @@ ts_test_suite(
         "//cli/api",
         "//testing",
         "//tests/utils",
-        "@npm//@types/fs-extra",
-        "@npm//fs-extra",
         "@npm//@types/chai",
+        "@npm//@types/fs-extra",
         "@npm//chai",
+        "@npm//fs-extra",
     ],
 )
 

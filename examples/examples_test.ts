@@ -1,9 +1,8 @@
 import { expect } from "chai";
+import * as fs from "fs-extra";
 
 import { compile } from "df/cli/api";
 import { suite, test } from "df/testing";
-
-import * as fs from "fs-extra";
 
 suite("examples", () => {
   test("stackoverflow_reporter compiles", async () => {

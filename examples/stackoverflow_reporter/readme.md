@@ -1,3 +1,3 @@
 # Stackoverflow Reporter
 
-This project demonstrates how live reporting of stack overflow posts can be configured.
+Retrieve analytics on Stack Overflow posts and users.
