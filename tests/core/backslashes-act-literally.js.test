@@ -21,7 +21,7 @@ select
   regexp_extract('01a_data_engine', '^(\\\\d{2}\\\\w)'),
   regexp_extract('\\\\', ''),
   regexp_extract("", r"[0-9]\\"*"),
-
+  """\\ \\? \\\\""",
 
 `];
   },
