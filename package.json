@@ -115,7 +115,7 @@
     "rimraf": "^2.6.2",
     "rollup": "^2.7.3",
     "rollup-plugin-dts": "^1.4.0",
-    "semver": "^7.5.3",
+    "semver": "^7.5.4",
     "snowflake-sdk": "^1.9.1",
     "source-map-loader": "^0.2.0",
     "sql-formatter": "^12.2.1",
