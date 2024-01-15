@@ -54,13 +54,16 @@ const projectDirMustExistOption = {
   ...projectDirOption,
   check: (argv: yargs.Arguments<any>) => {
     assertPathExists(argv[projectDirOption.name]);
-    try {
-      assertPathExists(path.resolve(argv[projectDirOption.name], "dataform.json"));
-    } catch (e) {
+    const dataformJsonPath = path.resolve(argv[projectDirOption.name], "dataform.json");
+    const workflowSettingsYamlPath = path.resolve(
+      argv[projectDirOption.name],
+      "workflow_settings.yaml"
+    );
+    if (!fs.existsSync(dataformJsonPath) && !fs.existsSync(workflowSettingsYamlPath)) {
       throw new Error(
         `${
           argv[projectDirOption.name]
-        } does not appear to be a dataform directory (missing dataform.json file).`
+        } does not appear to be a dataform directory (missing workflow_settings.yaml file).`
       );
     }
   }
@@ -709,22 +712,6 @@ export function runCli() {
         positionalOptions: [projectDirMustExistOption],
         options: [trackOption],
         processFn: async argv => {
-          const readWarehouseConfig = (): string => {
-            let wh: string;
-            try {
-              const dataformJson = fs.readFileSync(
-                path.resolve(argv[projectDirMustExistOption.name], "dataform.json"),
-                "utf8"
-              );
-              const projectConfig = JSON.parse(dataformJson);
-              wh = projectConfig.warehouse;
-            } catch (e) {
-              throw new Error(`Could not parse dataform.json: ${e.message}`);
-            }
-            return wh;
-          };
-          const warehouse = readWarehouseConfig();
-
           const filenames = glob.sync("{definitions,includes}/**/*.{js,sqlx}", {
             cwd: argv[projectDirMustExistOption.name]
           });

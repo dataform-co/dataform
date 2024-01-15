@@ -1076,7 +1076,7 @@ suite("@dataform/core", () => {
       });
       const graph = session.compile();
       expect(graph.graphErrors.compilationErrors.map(error => error.message)).deep.equals([
-        "A defaultLocation is required for BigQuery. This can be configured in dataform.json."
+        "A defaultLocation is required for BigQuery. This can be configured in workflow_settings.yaml."
       ]);
     });
   });
