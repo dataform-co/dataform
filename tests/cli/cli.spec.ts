@@ -90,6 +90,7 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
         }
       ],
       projectConfig: {
+        dataformCoreVersion: version,
         warehouse: "bigquery",
         defaultSchema: "dataform",
         assertionSchema: "dataform_assertions",
@@ -149,6 +150,7 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
         }
       ],
       projectConfig: {
+        dataformCoreVersion: version,
         assertionSchema: "dataform_assertions",
         defaultDatabase: "dataform-integration-tests",
         defaultLocation: "US",

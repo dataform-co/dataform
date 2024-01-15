@@ -1,4 +1,5 @@
 import * as fs from "fs";
+import { dump as dumpYaml } from "js-yaml";
 import * as path from "path";
 
 import { CREDENTIALS_FILENAME } from "df/cli/api/commands/credentials";
@@ -27,11 +28,17 @@ export async function init(
   projectConfig: dataform.IProjectConfig,
   options: IInitOptions = {}
 ): Promise<IInitResult> {
-  const dataformJsonPath = path.join(projectDir, "dataform.json");
+  const workflowSettingsYamlPath = path.join(projectDir, "workflow_settings.yaml");
   const packageJsonPath = path.join(projectDir, "package.json");
   const gitignorePath = path.join(projectDir, ".gitignore");
+  // dataform.json is Deprecated.
+  const dataformJsonPath = path.join(projectDir, "dataform.json");
 
-  if (fs.existsSync(dataformJsonPath) || fs.existsSync(packageJsonPath)) {
+  if (
+    fs.existsSync(workflowSettingsYamlPath) ||
+    fs.existsSync(packageJsonPath) ||
+    fs.existsSync(dataformJsonPath)
+  ) {
     throw new Error(
       "Cannot init dataform project, this already appears to be an NPM or Dataform directory."
     );
@@ -45,27 +52,18 @@ export async function init(
     dirsCreated.push(projectDir);
   }
 
-  fs.writeFileSync(
-    dataformJsonPath,
-    prettyJsonStringify(
-      dataform.ProjectConfig.create({
-        defaultSchema: "dataform",
-        assertionSchema: "dataform_assertions",
-        ...projectConfig
-      })
-    )
-  );
-  filesWritten.push(dataformJsonPath);
-
-  fs.writeFileSync(
-    packageJsonPath,
-    prettyJsonStringify({
-      dependencies: {
-        "@dataform/core": version
-      }
+  const yamlAsJson = dumpYaml(
+    dataform.ProjectConfig.create({
+      defaultSchema: "dataform",
+      assertionSchema: "dataform_assertions",
+      dataformCoreVersion: version,
+      ...projectConfig
     })
   );
-  filesWritten.push(packageJsonPath);
+  console.log("🚀 ~ yamlAsJson:", yamlAsJson);
+
+  fs.writeFileSync(workflowSettingsYamlPath, yamlAsJson);
+  filesWritten.push(workflowSettingsYamlPath);
 
   fs.writeFileSync(gitignorePath, gitIgnoreContents);
   filesWritten.push(gitignorePath);

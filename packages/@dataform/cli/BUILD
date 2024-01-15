@@ -41,6 +41,7 @@ externals = [
     "deepmerge",
     "glob",
     "js-beautify",
+    "js-yaml",
     "object-sizeof",
     "parse-duration",
     "promise-pool-executor",

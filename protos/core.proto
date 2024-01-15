@@ -35,7 +35,7 @@ message CompileConfig {
   // A list of all files in the project directory.
   repeated string file_paths = 8;
 
-  // Project configuration overrides (dataform.json).
+  // Project configuration overrides.
   ProjectConfig project_config_override = 3;
 
   // Override compilation timeout settings.
