@@ -61,10 +61,26 @@ copy_file(
     out = "core.proto",
 )
 
+pkg_bundle_dts(
+    name = "bundle.d",
+    entry_point = "index.ts",
+    externals = [
+      "protobufjs",
+      "tarjan-graph",
+      "semver",
+      "moo",
+      "long",
+    ],
+    deps = [
+        ":core",
+    ],
+)
+
 pkg_npm_tar(
     name = "package",
     deps = [
         ":bundle",
+        ":bundle.d",
         ":package.json",
         ":core.proto",
     ],
