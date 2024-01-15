@@ -17,37 +17,41 @@ export async function install(projectPath: string, skipInstall?: boolean) {
 
   let installCommand = "npm i --ignore-scripts";
 
-  if (fs.existsSync(workflowSettingsPath)) {
-    // Core's readWorkflowSettings method cannot be used for this because Core assumes that
-    // `require` can read YAML files directly.
-    const workflowSettings = readWorkflowSettings(workflowSettingsPath);
-    if (workflowSettings.dataformCoreVersion) {
-      if (fs.existsSync(packageJsonPath)) {
-        throw new Error(
-          "dataformCoreVersion cannot be defined in workflow_settings.yaml when a package.json is present"
-        );
-      }
-      if (fs.existsSync(packageLockJsonPath)) {
-        throw new Error(
-          "dataformCoreVersion cannot be defined in workflow_settings.yaml when a package-lock.json is present"
-        );
-      }
-      // If there are other packages already in the package.json, specifying a specific package to
-      // install will trigger the other packages to be installed too.
-      installCommand += ` @dataform/core@${workflowSettings.dataformCoreVersion}`;
-    } else {
-      if (!fs.existsSync(packageJsonPath)) {
-        throw new Error(
-          "dataformCoreVersion must be specified either in workflow_settings.yaml or via a package.json"
-        );
-      }
+  // Core's readWorkflowSettings method cannot be used for this because Core assumes that
+  // `require` can read YAML files directly.
+  let dataformCoreVersion = readDataformCoreVersionIfPresent(workflowSettingsPath);
+
+  if (dataformCoreVersion) {
+    if (fs.existsSync(packageJsonPath)) {
+      throw new Error(
+        "dataformCoreVersion cannot be defined in workflow_settings.yaml when a package.json is present"
+      );
     }
+    if (fs.existsSync(packageLockJsonPath)) {
+      throw new Error(
+        "dataformCoreVersion cannot be defined in workflow_settings.yaml when a package-lock.json is present"
+      );
+    }
+
+    // If there are other packages already in the package.json, specifying a specific package to
+    // install will trigger the other packages to be installed too.
+    installCommand += ` @dataform/core@${dataformCoreVersion}`;
+  }
+
+  if (!dataformCoreVersion && !fs.existsSync(packageJsonPath)) {
+    throw new Error(
+      "dataformCoreVersion must be specified either in workflow_settings.yaml or via a package.json"
+    );
   }
 
   await promisify(childProcess.exec)(installCommand, { cwd: resolvedProjectPath });
 }
 
-function readWorkflowSettings(workflowSettingsPath: string): dataform.ProjectConfig {
+function readDataformCoreVersionIfPresent(workflowSettingsPath: string): string {
+  if (!fs.existsSync(workflowSettingsPath)) {
+    return "";
+  }
+
   const workflowSettingsContent = fs.readFileSync(workflowSettingsPath, "utf-8");
   let workflowSettingsAsJson = {};
   try {
@@ -58,5 +62,5 @@ function readWorkflowSettings(workflowSettingsPath: string): dataform.ProjectCon
     }
     throw e;
   }
-  return dataform.ProjectConfig.create(workflowSettingsAsJson);
+  return dataform.ProjectConfig.create(workflowSettingsAsJson).dataformCoreVersion;
 }
