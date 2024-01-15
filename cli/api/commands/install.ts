@@ -19,7 +19,7 @@ export async function install(projectPath: string, skipInstall?: boolean) {
 
   // Core's readWorkflowSettings method cannot be used for this because Core assumes that
   // `require` can read YAML files directly.
-  let dataformCoreVersion = readDataformCoreVersionIfPresent(workflowSettingsPath);
+  const dataformCoreVersion = readDataformCoreVersionIfPresent(workflowSettingsPath);
 
   if (dataformCoreVersion) {
     // If there are other packages already in the package.json, specifying a specific package to
