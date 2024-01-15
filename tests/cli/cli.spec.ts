@@ -4,7 +4,7 @@ import * as os from "os";
 import * as path from "path";
 
 import { ChildProcess, execFile } from "child_process";
-import { version } from "df/core/version";
+import { version } from "df/common/version";
 import { suite, test } from "df/testing";
 
 suite(__filename, () => {

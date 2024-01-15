@@ -2,6 +2,7 @@ import { default as TarjanGraphConstructor, Graph as TarjanGraph } from "tarjan-
 
 import { encode64, verifyObjectMatchesProto } from "df/common/protos";
 import { StringifiedMap, StringifiedSet } from "df/common/strings/stringifier";
+import { version as dataformCoreVersion } from "df/common/version";
 import { Action, SqlxConfig } from "df/core/actions";
 import { AContextable, Assertion, AssertionContext } from "df/core/actions/assertion";
 import { Declaration } from "df/core/actions/declaration";
@@ -14,7 +15,6 @@ import { CompilationSql } from "df/core/compilation_sql";
 import { targetAsReadableString, targetStringifier } from "df/core/targets";
 import * as utils from "df/core/utils";
 import { toResolvable } from "df/core/utils";
-import { version as dataformCoreVersion } from "df/core/version";
 import { dataform } from "df/protos/ts";
 
 const DEFAULT_CONFIG = {

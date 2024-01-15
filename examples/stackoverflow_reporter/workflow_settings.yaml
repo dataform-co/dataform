@@ -2,3 +2,4 @@ defaultDatabase: "dataform-demos"
 defaultLocation: "us"
 defaultSchema: "dataform"
 assertionSchema: "dataform_assertions"
+dataformCoreVersion: 3.0.0-alpha.2

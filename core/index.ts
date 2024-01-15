@@ -1,7 +1,7 @@
+import { version } from "df/common/version";
 import { compile as compiler } from "df/core/compilers";
 import { main } from "df/core/main";
 import { Session } from "df/core/session";
-import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
 
 // Create static session object.

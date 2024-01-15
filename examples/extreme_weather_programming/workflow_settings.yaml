@@ -1,2 +1,3 @@
 defaultDatabase: "dataform-demos"
 defaultLocation: "us"
+dataformCoreVersion: 3.0.0-alpha.2

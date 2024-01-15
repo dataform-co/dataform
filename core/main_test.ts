@@ -5,8 +5,8 @@ import * as path from "path";
 import { CompilerFunction, NodeVM } from "vm2";
 
 import { decode64, encode64 } from "df/common/protos";
+import { version } from "df/common/version";
 import { compile } from "df/core/compilers";
-import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";

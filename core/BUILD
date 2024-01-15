@@ -1,19 +1,8 @@
 load("//tools:ts_library.bzl", "ts_library")
-load("//tools:expand_template.bzl", "expand_template")
-load("//:version.bzl", "DF_VERSION")
 load("//testing:index.bzl", "ts_test_suite")
 load("//tools:node_modules.bzl", "node_modules")
 
 package(default_visibility = ["//visibility:public"])
-
-expand_template(
-    name = "version",
-    out = "version.ts",
-    substitutions = {
-        "$DF_VERSION": DF_VERSION,
-    },
-    template = "version.ts.tmpl",
-)
 
 ts_library(
     name = "core",
@@ -35,12 +24,12 @@ ts_library(
         "targets.ts",
         "utils.ts",
         "workflow_settings.ts",
-        ":version.ts",
     ],
     deps = [
         "//common/errors",
         "//common/protos",
         "//common/strings",
+        "//common:current_version",
         "//core/compilation_sql",
         "//protos:ts",
         "//sqlx:lexer",

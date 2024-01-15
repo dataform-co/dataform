@@ -749,7 +749,7 @@ suite("examples", () => {
       projectDir: "tests/api/projects/common_v2",
       projectConfigOverride: { warehouse: "bigquery" }
     });
-    const { version: expectedVersion } = require("df/core/version");
+    const { version: expectedVersion } = require("df/common/version");
     expect(graph.dataformCoreVersion).equals(expectedVersion);
   });
 });

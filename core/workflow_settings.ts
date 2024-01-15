@@ -1,5 +1,5 @@
 import { verifyObjectMatchesProto } from "df/common/protos";
-import { version } from "df/core/version";
+import { version } from "df/common/version";
 import { dataform } from "df/protos/ts";
 
 declare var __webpack_require__: any;
