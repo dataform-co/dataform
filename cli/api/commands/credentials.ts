@@ -16,7 +16,8 @@ export function read(warehouse: string, credentialsPath: string): Credentials {
 
 export function coerce(warehouse: string, credentials: any): Credentials {
   switch (warehouse) {
-    case "bigquery" || "": {
+    // TODO(ekrekr): Remove the need for bigquery at all in the dataform.json.
+    case "bigquery": {
       return validateAnyAsCredentials(
         credentials,
         dataform.BigQuery.verify,

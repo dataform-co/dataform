@@ -52,17 +52,17 @@ export async function init(
     dirsCreated.push(projectDir);
   }
 
-  const yamlAsJson = dumpYaml(
-    dataform.ProjectConfig.create({
-      defaultSchema: "dataform",
-      assertionSchema: "dataform_assertions",
-      dataformCoreVersion: version,
-      ...projectConfig
-    })
+  fs.writeFileSync(
+    workflowSettingsYamlPath,
+    dumpYaml(
+      dataform.ProjectConfig.create({
+        defaultSchema: "dataform",
+        assertionSchema: "dataform_assertions",
+        dataformCoreVersion: version,
+        ...projectConfig
+      })
+    )
   );
-  console.log("🚀 ~ yamlAsJson:", yamlAsJson);
-
-  fs.writeFileSync(workflowSettingsYamlPath, yamlAsJson);
   filesWritten.push(workflowSettingsYamlPath);
 
   fs.writeFileSync(gitignorePath, gitIgnoreContents);
