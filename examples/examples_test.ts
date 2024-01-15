@@ -4,17 +4,18 @@ import { load as loadYaml } from "js-yaml";
 import * as path from "path";
 
 import { compile } from "df/cli/api";
-import { suite, test } from "df/testing";
-import { dataform } from "df/protos/ts";
 import { version } from "df/common/version";
+import { dataform } from "df/protos/ts";
+import { suite, test } from "df/testing";
 
 suite("examples", () => {
   test("ensure matching dataformCoreVersion", async () => {
     // To make examples code work without modification, dataformCoreVersion needs to be given. This
     // test ensures that the version doesn't get out of sync with that of current development.
     fs.readdirSync("examples", { withFileTypes: true })
-      .filter(dir => dir.isDirectory() && dir.name != "node_modules")
+      .filter(dir => dir.isDirectory() && dir.name !== "node_modules")
       .forEach(folder => {
+        // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
         const workflowSettingsYamlContents = fs.readFileSync(
           path.join("examples", folder.name, "workflow_settings.yaml"),
           "utf-8"
