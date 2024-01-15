@@ -22,17 +22,6 @@ export async function install(projectPath: string, skipInstall?: boolean) {
   let dataformCoreVersion = readDataformCoreVersionIfPresent(workflowSettingsPath);
 
   if (dataformCoreVersion) {
-    if (fs.existsSync(packageJsonPath)) {
-      throw new Error(
-        "dataformCoreVersion cannot be defined in workflow_settings.yaml when a package.json is present"
-      );
-    }
-    if (fs.existsSync(packageLockJsonPath)) {
-      throw new Error(
-        "dataformCoreVersion cannot be defined in workflow_settings.yaml when a package-lock.json is present"
-      );
-    }
-
     // If there are other packages already in the package.json, specifying a specific package to
     // install will trigger the other packages to be installed too.
     installCommand += ` @dataform/core@${dataformCoreVersion}`;
