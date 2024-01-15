@@ -1,8 +1,2 @@
-vars: {}
-defaultSchema: dataform
-assertionSchema: dataform_assertions
-dataformCoreVersion: 3.0.0-alpha.1
-warehouse: bigquery
-defaultDatabase: dataform-integration-tests
-defaultLocation: US
-
+defaultDatabase: "dataform-demos"
+defaultLocation: "us"
