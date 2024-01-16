@@ -55,6 +55,7 @@ ts_test_suite(
     ],
     deps = [
         ":core",
+        "//common:current_version",
         "//common/protos",
         "//protos:ts",
         "//testing",
