@@ -29,7 +29,7 @@ ts_library(
         "//common/errors",
         "//common/protos",
         "//common/strings",
-        "//common:current_version",
+        "//common:version",
         "//core/compilation_sql",
         "//protos:ts",
         "//sqlx:lexer",
@@ -55,7 +55,7 @@ ts_test_suite(
     ],
     deps = [
         ":core",
-        "//common:current_version",
+        "//common:version",
         "//common/protos",
         "//protos:ts",
         "//testing",

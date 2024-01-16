@@ -19,7 +19,7 @@ ts_test_suite(
         "@nodejs//:npm",
     ],
     deps = [
-        "//common:current_version",
+        "//common:version",
         "//core",
         "//protos:ts",
         "//testing",

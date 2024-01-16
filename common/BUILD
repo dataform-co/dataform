@@ -5,7 +5,7 @@ load("//:version.bzl", "DF_VERSION")
 package(default_visibility = ["//visibility:public"])
 
 expand_template(
-    name = "version",
+    name = "version_tmpl_expansion",
     out = "version.ts",
     substitutions = {
         "$DF_VERSION": DF_VERSION,
@@ -14,7 +14,7 @@ expand_template(
 )
 
 ts_library(
-    name = "current_version",
+    name = "version",
     srcs = [
         ":version.ts",
     ]

@@ -11,7 +11,7 @@ ts_library(
     srcs = glob(["**/*.ts"]),
     deps = [
         "//cli/api",
-        "//common:current_version",
+        "//common:version",
         "//core",
         "//protos:ts",
         "//sqlx:format",

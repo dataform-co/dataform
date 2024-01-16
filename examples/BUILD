@@ -19,7 +19,7 @@ ts_test_suite(
     ],
     deps = [
         "//cli/api",
-        "//common:current_version",
+        "//common:version",
         "//protos:ts",
         "//testing",
         "//tests/utils",

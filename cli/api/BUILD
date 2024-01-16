@@ -10,7 +10,7 @@ ts_library(
     ),
     deps = [
         "//cli/api/utils",
-        "//common:current_version",
+        "//common:version",
         "//common/errors",
         "//common/flags",
         "//common/promises",
