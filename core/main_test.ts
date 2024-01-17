@@ -12,6 +12,8 @@ import { suite, test } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
 import { asPlainObject } from "df/tests/utils";
 
+const SOURCE_EXTENSIONS = ["js", "sql", "sqlx", "yaml", "ipynb"];
+
 const VALID_WORKFLOW_SETTINGS_YAML = `
 defaultDatabase: dataform
 `;
@@ -970,7 +972,7 @@ function runMainInVmForDirectory(projectDir: string): dataform.CoreExecutionResp
 
 // A VM is needed when running main because Node functions like `require` are overridden.
 function runMainInVm(
-  coreExecutionRequest?: dataform.CoreExecutionRequest
+  coreExecutionRequest: dataform.CoreExecutionRequest
 ): dataform.CoreExecutionResponse {
   const projectDir = coreExecutionRequest.compile.compileConfig.projectDir;
 
@@ -996,7 +998,7 @@ function runMainInVm(
       resolve: (moduleName, parentDirName) =>
         path.join(parentDirName, path.relative(parentDirName, projectDir), moduleName)
     },
-    sourceExtensions: ["js", "sql", "sqlx", "yaml", "ipynb"],
+    sourceExtensions: SOURCE_EXTENSIONS,
     compiler
   });
 
@@ -1009,18 +1011,22 @@ function runMainInVm(
   return decode64(dataform.CoreExecutionResponse, encodedCoreExecutionResponse);
 }
 
-function walkDirectoryForFilenames(projectDir: string): string[] {
+function walkDirectoryForFilenames(projectDir: string, relativePath: string = ""): string[] {
   let paths: string[] = [];
-  fs.readdirSync(projectDir, { withFileTypes: true }).forEach(directoryEntry => {
-    if (directoryEntry.name === "node_modules") {
-      return;
+  fs.readdirSync(path.join(projectDir, relativePath), { withFileTypes: true }).forEach(
+    directoryEntry => {
+      if (directoryEntry.name === "node_modules") {
+        return;
+      }
+      if (directoryEntry.isDirectory()) {
+        paths = paths.concat(walkDirectoryForFilenames(projectDir, directoryEntry.name));
+        return;
+      }
+      const fileExtension = directoryEntry.name.split(".").slice(-1)[0];
+      if (directoryEntry.isFile() && SOURCE_EXTENSIONS.includes(fileExtension)) {
+        paths.push(directoryEntry.name);
+      }
     }
-    const name = path.join(projectDir, directoryEntry.name);
-    if (directoryEntry.isDirectory()) {
-      paths = paths.concat(walkDirectoryForFilenames(name));
-      return;
-    }
-    paths.push(name);
-  });
-  return [];
+  );
+  return paths.map(filename => path.join(relativePath, filename));
 }
