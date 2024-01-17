@@ -209,7 +209,6 @@ export class Session {
       this.compileError(new Error(utils.ambiguousActionNameMsg(ref, allResolved)));
     }
     const resolved = allResolved.length > 0 ? allResolved[0] : undefined;
-    console.log("🚀 ~ Session ~ resolve ~ resolved:", resolved.proto.target);
 
     if (
       resolved &&
@@ -239,7 +238,7 @@ export class Session {
       });
     }
 
-    this.compileError(new Error(`Could not resolve ${ref.toString()}`));
+    this.compileError(new Error(`Could not resolve '${ref.toString()}'`));
     return "unresolved";
   }
 

@@ -15,6 +15,7 @@ import { asPlainObject } from "df/tests/utils";
 
 const VALID_WORKFLOW_SETTINGS_YAML = `
 defaultDatabase: dataform
+defaultLocation: US
 `;
 
 const VALID_DATAFORM_JSON = `
@@ -57,7 +58,7 @@ suite("@dataform/core", ({ afterEach }) => {
   const tmpDirFixture = new TmpDirFixture(afterEach);
 
   suite("session", () => {
-    suite("resolve", () => {
+    suite("resolve succeeds", () => {
       [
         TestConfigs.bigquery,
         TestConfigs.bigqueryWithSchemaSuffix,
@@ -85,11 +86,38 @@ suite("@dataform/core", ({ afterEach }) => {
 
           const suffix = testConfig.schemaSuffix ? `_${testConfig.schemaSuffix}` : "";
           const prefix = testConfig.tablePrefix ? `${testConfig.tablePrefix}_` : "";
-          expect(asPlainObject(result.compile.compiledGraph.operations[0].queries[0])).deep.equals(
+          expect(result.compile.compiledGraph.operations[0].queries[0]).deep.equals(
             `\`schema${suffix}.${prefix}e\``
           );
         });
       });
+    });
+
+    suite("resolve fails", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(path.join(projectDir, "definitions/file.sqlx"), "${resolve('e')}");
+      const coreExecutionRequest = dataform.CoreExecutionRequest.create({
+        compile: {
+          compileConfig: {
+            projectDir,
+            filePaths: ["definitions/file.sqlx"]
+          }
+        }
+      });
+
+      const result = runMainInVm(coreExecutionRequest);
+
+      expect(asPlainObject(result.compile.compiledGraph.operations[0].queries[0])).deep.equals(
+        `unresolved`
+      );
+      expect(
+        asPlainObject(result.compile.compiledGraph.graphErrors.compilationErrors[0].message)
+      ).deep.equals(`Could not resolve 'e'`);
     });
   });
 
@@ -109,9 +137,11 @@ suite("@dataform/core", ({ afterEach }) => {
       expect(asPlainObject(result.compile.compiledGraph.projectConfig)).deep.equals(
         asPlainObject({
           warehouse: "bigquery",
-          defaultDatabase: "dataform"
+          defaultDatabase: "dataform",
+          defaultLocation: "US"
         })
       );
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).equals(0);
     });
 
     // dataform.json for workflow settings is deprecated, but still currently supported.
