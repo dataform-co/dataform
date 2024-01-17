@@ -209,6 +209,7 @@ export class Session {
       this.compileError(new Error(utils.ambiguousActionNameMsg(ref, allResolved)));
     }
     const resolved = allResolved.length > 0 ? allResolved[0] : undefined;
+    console.log("🚀 ~ Session ~ resolve ~ resolved:", resolved.proto.target);
 
     if (
       resolved &&
@@ -237,29 +238,9 @@ export class Session {
         name: this.finalizeName(resolved.proto.target.name)
       });
     }
-    // TODO: Here we allow 'ref' to go unresolved. This is for backwards compatibility with projects
-    // that use .sql files. In these projects, this session may not know about all actions (yet), and
-    // thus we need to fall back to assuming that the target *will* exist in the future. Once we break
-    // backwards compatibility with .sql files, we should remove the below code, and append a compile
-    // error instead.
-    if (typeof ref === "string") {
-      return this.compilationSql().resolveTarget(
-        utils.target(
-          this.config,
-          this.finalizeName(ref),
-          this.finalizeSchema(this.config.defaultSchema),
-          this.config.defaultDatabase && this.finalizeDatabase(this.config.defaultDatabase)
-        )
-      );
-    }
-    return this.compilationSql().resolveTarget(
-      utils.target(
-        this.config,
-        this.finalizeName(ref.name),
-        this.finalizeSchema(ref.schema),
-        ref.database && this.finalizeName(ref.database)
-      )
-    );
+
+    this.compileError(new Error(`Could not resolve ${ref.toString()}`));
+    return "unresolved";
   }
 
   public operate(
