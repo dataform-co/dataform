@@ -45,7 +45,6 @@ export class Session {
 
   public config: dataform.IProjectConfig;
   public canonicalConfig: dataform.IProjectConfig;
-  public supportSqlFileCompilation: boolean;
 
   public actions: Action[];
   public indexedActions: ActionIndex;
@@ -56,24 +55,21 @@ export class Session {
   constructor(
     rootDir?: string,
     projectConfig?: dataform.IProjectConfig,
-    originalProjectConfig?: dataform.IProjectConfig,
-    supportSqlFileCompilation?: boolean
+    originalProjectConfig?: dataform.IProjectConfig
   ) {
-    this.init(rootDir, projectConfig, originalProjectConfig, supportSqlFileCompilation);
+    this.init(rootDir, projectConfig, originalProjectConfig);
   }
 
   public init(
     rootDir: string,
     projectConfig?: dataform.IProjectConfig,
-    originalProjectConfig?: dataform.IProjectConfig,
-    supportSqlFileCompilation: boolean = true
+    originalProjectConfig?: dataform.IProjectConfig
   ) {
     this.rootDir = rootDir;
     this.config = projectConfig || DEFAULT_CONFIG;
     this.canonicalConfig = getCanonicalProjectConfig(
       originalProjectConfig || projectConfig || DEFAULT_CONFIG
     );
-    this.supportSqlFileCompilation = supportSqlFileCompilation;
     this.actions = [];
     this.tests = {};
     this.graphErrors = { compilationErrors: [] };
@@ -244,34 +240,8 @@ export class Session {
       });
     }
 
-    if (!this.supportSqlFileCompilation) {
-      this.compileError(new Error(`Could not resolve ${JSON.stringify(ref)}`));
-      return "";
-    }
-
-    // TODO: Here we allow 'ref' to go unresolved. This is for backwards compatibility with projects
-    // that use .sql files. In these projects, this session may not know about all actions (yet), and
-    // thus we need to fall back to assuming that the target *will* exist in the future. Once we break
-    // backwards compatibility with .sql files, we should remove the below code, and append a compile
-    // error instead.
-    if (typeof ref === "string") {
-      return this.compilationSql().resolveTarget(
-        utils.target(
-          this.config,
-          this.finalizeName(ref),
-          this.finalizeSchema(this.config.defaultSchema),
-          this.config.defaultDatabase && this.finalizeDatabase(this.config.defaultDatabase)
-        )
-      );
-    }
-    return this.compilationSql().resolveTarget(
-      utils.target(
-        this.config,
-        this.finalizeName(ref.name),
-        this.finalizeSchema(ref.schema),
-        ref.database && this.finalizeName(ref.database)
-      )
-    );
+    this.compileError(new Error(`Could not resolve ${JSON.stringify(ref)}`));
+    return "";
   }
 
   public operate(

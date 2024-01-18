@@ -1,6 +1,7 @@
 // tslint:disable tsr-detect-non-literal-fs-filename
 import { expect } from "chai";
 import * as fs from "fs-extra";
+import { dump as dumpYaml } from "js-yaml";
 import * as path from "path";
 import { CompilerFunction, NodeVM } from "vm2";
 
@@ -16,6 +17,7 @@ const SOURCE_EXTENSIONS = ["js", "sql", "sqlx", "yaml", "ipynb"];
 
 const VALID_WORKFLOW_SETTINGS_YAML = `
 defaultDatabase: dataform
+defaultLocation: US
 `;
 
 const VALID_DATAFORM_JSON = `
@@ -24,10 +26,100 @@ const VALID_DATAFORM_JSON = `
 }
 `;
 
+class TestConfigs {
+  public static bigquery: dataform.IProjectConfig = {
+    warehouse: "bigquery",
+    defaultSchema: "schema",
+    defaultLocation: "US"
+  };
+
+  public static bigqueryWithDefaultDatabase: dataform.IProjectConfig = {
+    ...TestConfigs.bigquery,
+    defaultDatabase: "default-database"
+  };
+
+  public static bigqueryWithSchemaSuffix: dataform.IProjectConfig = {
+    ...TestConfigs.bigquery,
+    schemaSuffix: "suffix"
+  };
+
+  public static bigqueryWithDefaultDatabaseAndSuffix: dataform.IProjectConfig = {
+    ...TestConfigs.bigqueryWithDefaultDatabase,
+    databaseSuffix: "suffix"
+  };
+
+  public static bigqueryWithTablePrefix: dataform.IProjectConfig = {
+    ...TestConfigs.bigquery,
+    tablePrefix: "prefix"
+  };
+}
+
 const EMPTY_NOTEBOOK_CONTENTS = '{ "cells": [] }';
 
 suite("@dataform/core", ({ afterEach }) => {
   const tmpDirFixture = new TmpDirFixture(afterEach);
+
+  suite("session", () => {
+    suite("resolve succeeds", () => {
+      [
+        TestConfigs.bigquery,
+        TestConfigs.bigqueryWithSchemaSuffix,
+        TestConfigs.bigqueryWithTablePrefix
+      ].forEach(testConfig => {
+        test(`resolve with prefix "${testConfig.tablePrefix}" and suffix "${testConfig.schemaSuffix}"`, () => {
+          const projectDir = tmpDirFixture.createNewTmpDir();
+          fs.writeFileSync(
+            path.join(projectDir, "workflow_settings.yaml"),
+            dumpYaml(dataform.ProjectConfig.create(testConfig))
+          );
+          fs.mkdirSync(path.join(projectDir, "definitions"));
+          fs.writeFileSync(path.join(projectDir, "definitions/e.sqlx"), `config {type: "view"}`);
+          fs.writeFileSync(path.join(projectDir, "definitions/file.sqlx"), "${resolve('e')}");
+          const coreExecutionRequest = dataform.CoreExecutionRequest.create({
+            compile: {
+              compileConfig: {
+                projectDir,
+                filePaths: ["definitions/e.sqlx", "definitions/file.sqlx"]
+              }
+            }
+          });
+
+          const result = runMainInVm(coreExecutionRequest);
+
+          const suffix = testConfig.schemaSuffix ? `_${testConfig.schemaSuffix}` : "";
+          const prefix = testConfig.tablePrefix ? `${testConfig.tablePrefix}_` : "";
+          expect(result.compile.compiledGraph.operations[0].queries[0]).deep.equals(
+            `\`schema${suffix}.${prefix}e\``
+          );
+        });
+      });
+    });
+
+    suite("resolve fails", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(path.join(projectDir, "definitions/file.sqlx"), "${resolve('e')}");
+      const coreExecutionRequest = dataform.CoreExecutionRequest.create({
+        compile: {
+          compileConfig: {
+            projectDir,
+            filePaths: ["definitions/file.sqlx"]
+          }
+        }
+      });
+
+      const result = runMainInVm(coreExecutionRequest);
+
+      expect(asPlainObject(result.compile.compiledGraph.operations[0].queries[0])).deep.equals(``);
+      expect(
+        asPlainObject(result.compile.compiledGraph.graphErrors.compilationErrors[0].message)
+      ).deep.equals(`Could not resolve "e"`);
+    });
+  });
 
   suite("workflow settings", () => {
     test(`main succeeds when a valid workflow_settings.yaml is present`, () => {
@@ -42,9 +134,11 @@ suite("@dataform/core", ({ afterEach }) => {
       expect(asPlainObject(result.compile.compiledGraph.projectConfig)).deep.equals(
         asPlainObject({
           warehouse: "bigquery",
-          defaultDatabase: "dataform"
+          defaultDatabase: "dataform",
+          defaultLocation: "US"
         })
       );
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).equals(0);
     });
 
     // dataform.json for workflow settings is deprecated, but still currently supported.
