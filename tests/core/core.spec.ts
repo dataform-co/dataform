@@ -1138,7 +1138,10 @@ select * from \${ref('dab')}
       expect(
         compilers.compile(
           `
-select "\`" from \`location\`
+select
+  "\`",
+  """\`"",
+from \`location\`
 `,
           "file.sqlx"
         )
@@ -1154,7 +1157,7 @@ select
   regexp_extract('01a_data_engine', '^(\\\\d{2}\\\\w)'),
   regexp_extract('\\\\', ''),
   regexp_extract("", r"[0-9]\\"*"),
-
+  """\\ \\? \\\\""",
 pre_operations {
   select
     regexp_extract('01a_data_engine', '^(\\d{2}\\w)'),
