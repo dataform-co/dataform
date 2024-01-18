@@ -5,7 +5,7 @@ import yargs from "yargs";
 
 import * as chokidar from "chokidar";
 import { trackError, trackOption } from "df/cli/analytics";
-import { build, compile, credentials, init, install, run, table, test } from "df/cli/api";
+import { build, compile, credentials, init, install, run, test } from "df/cli/api";
 import { CREDENTIALS_FILENAME } from "df/cli/api/commands/credentials";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 import { prettyJsonStringify } from "df/cli/api/utils";
@@ -17,10 +17,8 @@ import {
   printExecutedAction,
   printExecutionGraph,
   printFormatFilesResult,
-  printGetTableResult,
   printInitCredsResult,
   printInitResult,
-  printListTablesResult,
   printSuccess,
   printTestResult
 } from "df/cli/console";
@@ -177,9 +175,6 @@ const watchOptionName = "watch";
 const dryRunOptionName = "dry-run";
 const runTestsOptionName = "run-tests";
 
-const schemaOptionName = "schema";
-const tableOptionName = "table";
-
 const actionRetryLimitName = "action-retry-limit";
 
 const getCredentialsPath = (projectDir: string, credentialsPath: string) =>
@@ -315,7 +310,6 @@ export function runCli() {
                 }
               }
             } finally {
-              await dbadapter.close();
             }
           } else {
             print("\nCredentials test query was not run.\n");
@@ -462,18 +456,14 @@ export function runCli() {
 
           print(`Running ${compiledGraph.tests.length} unit tests...\n`);
           const dbadapter = new BigQueryDbAdapter(readCredentials);
-          try {
-            const testResults = await test(dbadapter, compiledGraph.tests);
-            testResults.forEach(testResult => printTestResult(testResult));
-            return testResults.every(testResult => testResult.successful) ? 0 : 1;
-          } finally {
-            await dbadapter.close();
-          }
+          const testResults = await test(dbadapter, compiledGraph.tests);
+          testResults.forEach(testResult => printTestResult(testResult));
+          return testResults.every(testResult => testResult.successful) ? 0 : 1;
         }
       },
       {
         format: `run [${projectDirMustExistOption.name}]`,
-        description: "run the dataform project.",
+        description: "Run the dataform project.",
         positionalOptions: [projectDirMustExistOption],
         options: [
           {
@@ -531,84 +521,80 @@ export function runCli() {
           );
 
           const dbadapter = new BigQueryDbAdapter(readCredentials);
-          try {
-            const executionGraph = await build(
-              compiledGraph,
-              {
-                fullRefresh: argv[fullRefreshOption.name],
-                actions: argv[actionsOption.name],
-                includeDependencies: argv[includeDepsOption.name],
-                includeDependents: argv[includeDependentsOption.name],
-                tags: argv[tagsOption.name]
-              },
-              dbadapter
-            );
+          const executionGraph = await build(
+            compiledGraph,
+            {
+              fullRefresh: argv[fullRefreshOption.name],
+              actions: argv[actionsOption.name],
+              includeDependencies: argv[includeDepsOption.name],
+              includeDependents: argv[includeDependentsOption.name],
+              tags: argv[tagsOption.name]
+            },
+            dbadapter
+          );
 
-            if (argv[dryRunOptionName]) {
-              if (!argv[jsonOutputOption.name]) {
-                print(
-                  `Dry run (--${dryRunOptionName}) mode is turned on; not running the following actions:\n`
-                );
-              }
-              printExecutionGraph(executionGraph, argv[jsonOutputOption.name]);
-              return;
-            }
-
-            if (argv[runTestsOptionName]) {
-              print(`Running ${compiledGraph.tests.length} unit tests...\n`);
-              const testResults = await test(dbadapter, compiledGraph.tests);
-              testResults.forEach(testResult => printTestResult(testResult));
-              if (testResults.some(testResult => !testResult.successful)) {
-                printError("\nUnit tests did not pass; aborting run.");
-                return 1;
-              }
-              printSuccess("Unit tests completed successfully.\n");
-            }
-
+          if (argv[dryRunOptionName]) {
             if (!argv[jsonOutputOption.name]) {
-              print("Running...\n");
+              print(
+                `Dry run (--${dryRunOptionName}) mode is turned on; not running the following actions:\n`
+              );
             }
-            let bigqueryOptions: {} = { actionRetryLimit: argv[actionRetryLimitName] };
-            if (argv[jobPrefixOption.name]) {
-              bigqueryOptions = { ...bigqueryOptions, jobPrefix: argv[jobPrefixOption.name] };
-            }
-            const runner = run(dbadapter, executionGraph, bigqueryOptions);
-            process.on("SIGINT", () => {
-              runner.cancel();
-            });
-
-            const actionsByName = new Map<string, dataform.IExecutionAction>();
-            executionGraph.actions.forEach(action => {
-              actionsByName.set(targetAsReadableString(action.target), action);
-            });
-            const alreadyPrintedActions = new Set<string>();
-
-            const printExecutedGraph = (executedGraph: dataform.IRunResult) => {
-              executedGraph.actions
-                .filter(
-                  actionResult =>
-                    actionResult.status !== dataform.ActionResult.ExecutionStatus.RUNNING
-                )
-                .filter(
-                  executedAction =>
-                    !alreadyPrintedActions.has(targetAsReadableString(executedAction.target))
-                )
-                .forEach(executedAction => {
-                  printExecutedAction(
-                    executedAction,
-                    actionsByName.get(targetAsReadableString(executedAction.target))
-                  );
-                  alreadyPrintedActions.add(targetAsReadableString(executedAction.target));
-                });
-            };
-
-            runner.onChange(printExecutedGraph);
-            const runResult = await runner.result();
-            printExecutedGraph(runResult);
-            return runResult.status === dataform.RunResult.ExecutionStatus.SUCCESSFUL ? 0 : 1;
-          } finally {
-            await dbadapter.close();
+            printExecutionGraph(executionGraph, argv[jsonOutputOption.name]);
+            return;
           }
+
+          if (argv[runTestsOptionName]) {
+            print(`Running ${compiledGraph.tests.length} unit tests...\n`);
+            const testResults = await test(dbadapter, compiledGraph.tests);
+            testResults.forEach(testResult => printTestResult(testResult));
+            if (testResults.some(testResult => !testResult.successful)) {
+              printError("\nUnit tests did not pass; aborting run.");
+              return 1;
+            }
+            printSuccess("Unit tests completed successfully.\n");
+          }
+
+          if (!argv[jsonOutputOption.name]) {
+            print("Running...\n");
+          }
+          let bigqueryOptions: {} = { actionRetryLimit: argv[actionRetryLimitName] };
+          if (argv[jobPrefixOption.name]) {
+            bigqueryOptions = { ...bigqueryOptions, jobPrefix: argv[jobPrefixOption.name] };
+          }
+          const runner = run(dbadapter, executionGraph, bigqueryOptions);
+          process.on("SIGINT", () => {
+            runner.cancel();
+          });
+
+          const actionsByName = new Map<string, dataform.IExecutionAction>();
+          executionGraph.actions.forEach(action => {
+            actionsByName.set(targetAsReadableString(action.target), action);
+          });
+          const alreadyPrintedActions = new Set<string>();
+
+          const printExecutedGraph = (executedGraph: dataform.IRunResult) => {
+            executedGraph.actions
+              .filter(
+                actionResult =>
+                  actionResult.status !== dataform.ActionResult.ExecutionStatus.RUNNING
+              )
+              .filter(
+                executedAction =>
+                  !alreadyPrintedActions.has(targetAsReadableString(executedAction.target))
+              )
+              .forEach(executedAction => {
+                printExecutedAction(
+                  executedAction,
+                  actionsByName.get(targetAsReadableString(executedAction.target))
+                );
+                alreadyPrintedActions.add(targetAsReadableString(executedAction.target));
+              });
+          };
+
+          runner.onChange(printExecutedGraph);
+          const runResult = await runner.result();
+          printExecutedGraph(runResult);
+          return runResult.status === dataform.RunResult.ExecutionStatus.SUCCESSFUL ? 0 : 1;
         }
       },
       {
@@ -638,58 +624,6 @@ export function runCli() {
             })
           );
           printFormatFilesResult(results);
-          return 0;
-        }
-      },
-      {
-        format: `listtables`,
-        description: "List tables.",
-        positionalOptions: [],
-        options: [credentialsOption, trackOption],
-        processFn: async argv => {
-          const readCredentials = credentials.read(actuallyResolve(argv[credentialsOption.name]));
-          const dbadapter = new BigQueryDbAdapter(readCredentials);
-          try {
-            printListTablesResult(await table.list(dbadapter));
-          } finally {
-            await dbadapter.close();
-          }
-          return 0;
-        }
-      },
-      {
-        format: `gettablemetadata <${schemaOptionName}> <${tableOptionName}>`,
-        description: "Fetch metadata for a specified table.",
-        positionalOptions: [
-          {
-            name: schemaOptionName,
-            option: {
-              describe: "The schema inside which the table exists.",
-              type: "string"
-            }
-          },
-          {
-            name: tableOptionName,
-            option: {
-              describe: "The table's name.",
-              type: "string"
-            }
-          }
-        ],
-        options: [credentialsOption, trackOption],
-        processFn: async argv => {
-          const readCredentials = credentials.read(actuallyResolve(argv[credentialsOption.name]));
-          const dbadapter = new BigQueryDbAdapter(readCredentials);
-          try {
-            printGetTableResult(
-              await table.get(dbadapter, {
-                schema: argv[schemaOptionName],
-                name: argv[tableOptionName]
-              })
-            );
-          } finally {
-            await dbadapter.close();
-          }
           return 0;
         }
       }

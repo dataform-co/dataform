@@ -10,12 +10,15 @@ export function read(credentialsPath: string): dataform.IBigQuery {
   if (!fs.existsSync(credentialsPath)) {
     throw new Error(`Missing credentials JSON file; not found at path '${credentialsPath}'.`);
   }
-  const credentials = verifyObjectMatchesProto(
-    dataform.BigQuery,
-    JSON.parse(fs.readFileSync(credentialsPath, "utf8"))
-  );
-  if (!Object.keys(credentials).find(key => key === "projectId").length) {
-    throw new Error(`The projectId field is required`);
+  let credentialsAsJson: object;
+  try {
+    credentialsAsJson = JSON.parse(fs.readFileSync(credentialsPath, "utf8"));
+  } catch (e) {
+    throw new Error(`Error reading credentials file: ${e.message}`);
+  }
+  const credentials = verifyObjectMatchesProto(dataform.BigQuery, credentialsAsJson);
+  if (!Object.keys(credentials).find(key => key === "projectId")?.length) {
+    throw new Error(`Error reading credentials file: the projectId field is required`);
   }
   return credentials;
 }

@@ -21,8 +21,6 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
     });
   });
 
-  after("close adapter", () => dbadapter.close());
-
   suite("run", { parallel: true }, () => {
     test("project e2e", { timeout: 60000 }, async () => {
       const compiledGraph = await compile("tests/integration/bigquery_project", "project_e2e");

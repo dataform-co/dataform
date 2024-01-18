@@ -215,28 +215,6 @@ export class BigQueryDbAdapter implements IDbAdapter {
     });
   }
 
-  public async preview(target: dataform.ITarget, limitRows: number = 10): Promise<any[]> {
-    const metadata = await this.getMetadata(target);
-    if (metadata.type === "TABLE") {
-      // For tables, we use the BigQuery tabledata.list API, as per https://cloud.google.com/bigquery/docs/best-practices-costs#preview-data.
-      // Also see https://cloud.google.com/nodejs/docs/reference/bigquery/3.0.x/Table#getRows.
-      const rowsResult = await this.getClient(target.database)
-        .dataset(target.schema)
-        .table(target.name)
-        .getRows({
-          maxResults: limitRows
-        });
-      return cleanRows(rowsResult[0]);
-    }
-    const {
-      rows
-    } = await this.execute(
-      `SELECT * FROM \`${metadata.tableReference.projectId}.${metadata.tableReference.datasetId}.${metadata.tableReference.tableId}\``,
-      { rowLimit: limitRows }
-    );
-    return rows;
-  }
-
   public async schemas(database: string): Promise<string[]> {
     const data = await this.getClient(database).getDatasets();
     return data[0].map(dataset => dataset.id);
@@ -247,10 +225,6 @@ export class BigQueryDbAdapter implements IDbAdapter {
       `create schema if not exists \`${database || this.bigQueryCredentials.projectId}.${schema}\``,
       { bigquery: { location: this.bigQueryCredentials.location || "US" } }
     );
-  }
-
-  public async close() {
-    // Unimplemented.
   }
 
   public async setMetadata(action: dataform.IExecutionAction): Promise<void> {

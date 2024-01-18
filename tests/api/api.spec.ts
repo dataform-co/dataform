@@ -812,7 +812,7 @@ suite("@dataform/api", () => {
       const credentialsPath = path.join(projectDir, "credentials.json");
       fs.writeFileSync(credentialsPath, "");
       expect(() => credentials.read(credentialsPath)).to.throw(
-        /Credentials JSON object does not conform to protobuf requirements: object expected/
+        /Error reading credentials file: Unexpected end of JSON input/
       );
     });
 
@@ -820,7 +820,9 @@ suite("@dataform/api", () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
       const credentialsPath = path.join(projectDir, "credentials.json");
       fs.writeFileSync(credentialsPath, "{}");
-      expect(() => credentials.read(credentialsPath)).to.throw(/Missing required properties:/);
+      expect(() => credentials.read(credentialsPath)).to.throw(
+        /Error reading credentials file: the projectId field is required/
+      );
     });
   });
 
@@ -1220,7 +1222,6 @@ suite("@dataform/api", () => {
         withClientLock: callback => callback(mockDbAdapter),
         schemas: _ => Promise.resolve([]),
         createSchema: (_, __) => Promise.resolve(),
-        close: () => undefined,
         table: _ => undefined
       } as IDbAdapter;
 
