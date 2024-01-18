@@ -93,29 +93,13 @@ message ColumnDescriptor {
 
   string display_name = 3;
 
-  enum DimensionType {
-    UNKNOWN_DIMENSION = 0;
-    CATEGORY = 1;
-    TIMESTAMP = 2;
-    NUMBER = 3;
-  }
-  DimensionType dimension_type = 4;
-
-  enum Aggregation {
-    UNKNOWN_AGGREGATION = 0;
-    SUM = 1;
-    DISTINCT = 2;
-    DERIVED = 3;
-  }
-  Aggregation aggregation = 5;
-
-  string expression = 6;
-
   repeated string tags = 7;
 
   // BigQuery specific settings.
 
   repeated string bigquery_policy_tags = 8;
+
+  reserved 4, 5;
 }
 
 enum TableType {

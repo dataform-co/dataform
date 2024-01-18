@@ -642,10 +642,7 @@ suite("@dataform/core", () => {
           columns: {
             colly: {
               displayName: "colly display name",
-              description: "colly description",
-              dimension: "timestamp",
-              aggregator: "distinct",
-              expression: "1"
+              description: "colly description"
             }
           }
         })
@@ -665,10 +662,7 @@ suite("@dataform/core", () => {
         dataform.ColumnDescriptor.create({
           path: ["colly"],
           displayName: "colly display name",
-          description: "colly description",
-          dimensionType: dataform.ColumnDescriptor.DimensionType.TIMESTAMP,
-          aggregation: dataform.ColumnDescriptor.Aggregation.DISTINCT,
-          expression: "1"
+          description: "colly description"
         })
       );
     });
