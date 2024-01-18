@@ -6,7 +6,7 @@
   "description": "Syntax highlighting, compilation, and intellisense for Dataform and SQLX projects.",
   "displayName": "Dataform",
   "publisher": "dataform",
-  "version": "0.0.11",
+  "version": "0.0.13",
   "icon": "dataform_logo.png",
   "repository": {
     "url": "https://github.com/dataform-co/dataform/tree/master/vscode"
@@ -24,6 +24,26 @@
     "vscode-languageserver-textdocument": "^1.0.1"
   },
   "contributes": {
+    "configuration": [
+      {
+        "title": "Dataform",
+        "properties": {
+          "dataform.compileOnSave": {
+            "type": "boolean",
+            "default": true,
+            "markdownDescription": "Whether to re-compile project each time an `.sqlx` file is saved. Will always re-compile on initialize and on config change."
+          },
+          "dataform.compilerOptions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": [],
+            "markdownDescription": "An array of additional arguments the extension should pass to the Dataform cli while executing `dataform compile --json`."
+          }
+        }
+      }
+    ],
     "commands": [
       {
         "command": "dataform.compile",

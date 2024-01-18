@@ -16,7 +16,10 @@ const schema = ctx.schema ? ctx.schema.bind(ctx) : undefined;
 const database = ctx.database ? ctx.database.bind(ctx) : undefined;
     
     return [`
-select "\`" from \`location\`
+select
+  "\`",
+  """\`"",
+from \`location\`
 `];
   },
   incrementalWhereContextable: undefined,
