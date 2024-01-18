@@ -112,9 +112,7 @@ suite("@dataform/core", ({ afterEach }) => {
 
       const result = runMainInVm(coreExecutionRequest);
 
-      expect(asPlainObject(result.compile.compiledGraph.operations[0].queries[0])).deep.equals(
-        `unresolved`
-      );
+      expect(asPlainObject(result.compile.compiledGraph.operations[0].queries[0])).deep.equals(``);
       expect(
         asPlainObject(result.compile.compiledGraph.graphErrors.compilationErrors[0].message)
       ).deep.equals(`Could not resolve "e"`);

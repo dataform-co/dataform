@@ -241,7 +241,7 @@ export class Session {
     }
 
     this.compileError(new Error(`Could not resolve ${JSON.stringify(ref)}`));
-    return "unresolved";
+    return "";
   }
 
   public operate(
