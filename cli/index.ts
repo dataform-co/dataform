@@ -5,9 +5,9 @@ import yargs from "yargs";
 
 import * as chokidar from "chokidar";
 import { trackError, trackOption } from "df/cli/analytics";
-import { build, compile, credentials, init, install, run, table, test } from "df/cli/api";
+import { build, compile, credentials, init, install, run, test } from "df/cli/api";
 import { CREDENTIALS_FILENAME } from "df/cli/api/commands/credentials";
-import * as dbadapters from "df/cli/api/dbadapters";
+import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 import { prettyJsonStringify } from "df/cli/api/utils";
 import {
   print,
@@ -17,10 +17,8 @@ import {
   printExecutedAction,
   printExecutionGraph,
   printFormatFilesResult,
-  printGetTableResult,
   printInitCredsResult,
   printInitResult,
-  printListTablesResult,
   printSuccess,
   printTestResult
 } from "df/cli/console";
@@ -162,8 +160,7 @@ const timeoutOption: INamedOption<yargs.Options> = {
 const jobPrefixOption: INamedOption<yargs.Options> = {
   name: "job-prefix",
   option: {
-    describe:
-      "Adds an additional prefix in the form of `dataform-${jobPrefix}-`. Has no effect on warehouses other than BigQuery.",
+    describe: "Adds an additional prefix in the form of `dataform-${jobPrefix}-`.",
     type: "string",
     default: null
   }
@@ -177,9 +174,6 @@ const watchOptionName = "watch";
 
 const dryRunOptionName = "dry-run";
 const runTestsOptionName = "run-tests";
-
-const schemaOptionName = "schema";
-const tableOptionName = "table";
 
 const actionRetryLimitName = "action-retry-limit";
 
@@ -201,28 +195,45 @@ export function runCli() {
         }
       },
       {
-        format: `init <${ProjectConfigOptions.warehouse.name}> [${projectDirOption.name}]`,
+        format:
+          `init [${projectDirOption.name}] [${ProjectConfigOptions.defaultDatabase.name}]` +
+          ` [${ProjectConfigOptions.defaultLocation.name}]`,
         description: "Create a new dataform project.",
-        positionalOptions: [ProjectConfigOptions.warehouse, projectDirOption],
+        positionalOptions: [
+          projectDirOption,
+          {
+            name: ProjectConfigOptions.defaultDatabase.name,
+            option: {
+              describe: "The default database to use, equivalent to Google Cloud Project ID."
+            },
+            check: (argv: yargs.Arguments<any>) => {
+              if (!argv[ProjectConfigOptions.defaultDatabase.name]) {
+                throw new Error(
+                  `The ${ProjectConfigOptions.defaultDatabase.name} positional argument is ` +
+                    `required. Use "dataform help init" for more info.`
+                );
+              }
+            }
+          },
+          {
+            name: ProjectConfigOptions.defaultLocation.name,
+            option: {
+              describe:
+                "The default location to use. See " +
+                "https://cloud.google.com/bigquery/docs/locations for supported values."
+            },
+            check: (argv: yargs.Arguments<any>) => {
+              if (!argv[ProjectConfigOptions.defaultLocation.name]) {
+                throw new Error(
+                  `The ${ProjectConfigOptions.defaultLocation.name} positional argument is ` +
+                    `required. Use "dataform help init" for more info.`
+                );
+              }
+            }
+          }
+        ],
         options: [
           trackOption,
-          {
-            ...ProjectConfigOptions.defaultDatabase,
-            option: {
-              ...ProjectConfigOptions.defaultDatabase.option,
-              describe:
-                "The default database to use. For BigQuery, this is a Google Cloud Project ID."
-            }
-          },
-          {
-            ...ProjectConfigOptions.defaultLocation,
-            option: {
-              ...ProjectConfigOptions.defaultLocation.option,
-              describe:
-                "The default BigQuery location to use. See " +
-                "https://cloud.google.com/bigquery/docs/locations for supported values."
-            }
-          },
           {
             name: skipInstallOptionName,
             option: {
@@ -236,7 +247,6 @@ export function runCli() {
           const initResult = await init(
             argv[projectDirOption.name],
             {
-              warehouse: argv[ProjectConfigOptions.warehouse.name],
               defaultDatabase: argv[ProjectConfigOptions.defaultDatabase.name],
               defaultLocation: argv[ProjectConfigOptions.defaultLocation.name]
             },
@@ -261,11 +271,11 @@ export function runCli() {
         }
       },
       {
-        format: `init-creds <${ProjectConfigOptions.warehouse.name}> [${projectDirMustExistOption.name}]`,
+        format: `init-creds [${projectDirMustExistOption.name}]`,
         description:
           `Create a ${credentials.CREDENTIALS_FILENAME} file for Dataform to use when ` +
-          "accessing your warehouse.",
-        positionalOptions: [ProjectConfigOptions.warehouse, projectDirMustExistOption],
+          `accessing BigQuery.`,
+        positionalOptions: [projectDirMustExistOption],
         options: [
           trackOption,
           {
@@ -278,47 +288,28 @@ export function runCli() {
           }
         ],
         processFn: async argv => {
-          const credentialsFn = () => {
-            switch (argv[ProjectConfigOptions.warehouse.name]) {
-              case "bigquery": {
-                return getBigQueryCredentials();
+          const finalCredentials = getBigQueryCredentials();
+          if (argv[testConnectionOptionName]) {
+            print("\nRunning connection test...");
+            const dbadapter = new BigQueryDbAdapter(finalCredentials);
+            const testResult = await credentials.test(dbadapter);
+            switch (testResult.status) {
+              case credentials.TestResultStatus.SUCCESSFUL: {
+                printSuccess("\nCredentials test query completed successfully.\n");
+                break;
               }
-              default: {
+              case credentials.TestResultStatus.TIMED_OUT: {
+                throw new Error("Credentials test connection timed out.");
+              }
+              case credentials.TestResultStatus.OTHER_ERROR: {
                 throw new Error(
-                  `Unrecognized warehouse type ${argv[ProjectConfigOptions.warehouse.name]}`
+                  `Credentials test query failed: ${testResult.error.stack ||
+                    testResult.error.message}`
                 );
               }
             }
-          };
-          const finalCredentials = credentialsFn();
-          if (argv[testConnectionOptionName]) {
-            print("\nRunning connection test...");
-            const dbadapter = await dbadapters.create(
-              finalCredentials,
-              argv[ProjectConfigOptions.warehouse.name]
-            );
-            try {
-              const testResult = await credentials.test(dbadapter);
-              switch (testResult.status) {
-                case credentials.TestResultStatus.SUCCESSFUL: {
-                  printSuccess("\nWarehouse test query completed successfully.\n");
-                  break;
-                }
-                case credentials.TestResultStatus.TIMED_OUT: {
-                  throw new Error("Warehouse test connection timed out.");
-                }
-                case credentials.TestResultStatus.OTHER_ERROR: {
-                  throw new Error(
-                    `Warehouse test query failed: ${testResult.error.stack ||
-                      testResult.error.message}`
-                  );
-                }
-              }
-            } finally {
-              await dbadapter.close();
-            }
           } else {
-            print("\nWarehouse test query was not run.\n");
+            print("\nCredentials test query was not run.\n");
           }
           const filePath = path.resolve(
             argv[projectDirMustExistOption.name],
@@ -431,7 +422,7 @@ export function runCli() {
       },
       {
         format: `test [${projectDirMustExistOption.name}]`,
-        description: "Run the dataform project's unit tests on the configured data warehouse.",
+        description: "Run the dataform project's unit tests.",
         positionalOptions: [projectDirMustExistOption],
         options: [
           credentialsOption,
@@ -452,7 +443,6 @@ export function runCli() {
           }
           printSuccess("Compiled successfully.\n");
           const readCredentials = credentials.read(
-            compiledGraph.projectConfig.warehouse,
             getCredentialsPath(argv[projectDirOption.name], argv[credentialsOption.name])
           );
 
@@ -462,30 +452,21 @@ export function runCli() {
           }
 
           print(`Running ${compiledGraph.tests.length} unit tests...\n`);
-          const dbadapter = await dbadapters.create(
-            readCredentials,
-            compiledGraph.projectConfig.warehouse
-          );
-          try {
-            const testResults = await test(dbadapter, compiledGraph.tests);
-            testResults.forEach(testResult => printTestResult(testResult));
-            return testResults.every(testResult => testResult.successful) ? 0 : 1;
-          } finally {
-            await dbadapter.close();
-          }
+          const dbadapter = new BigQueryDbAdapter(readCredentials);
+          const testResults = await test(dbadapter, compiledGraph.tests);
+          testResults.forEach(testResult => printTestResult(testResult));
+          return testResults.every(testResult => testResult.successful) ? 0 : 1;
         }
       },
       {
         format: `run [${projectDirMustExistOption.name}]`,
-        description: "Run the dataform project's scripts on the configured data warehouse.",
+        description: "Run the dataform project.",
         positionalOptions: [projectDirMustExistOption],
         options: [
           {
             name: dryRunOptionName,
             option: {
-              describe:
-                "If set, built SQL is not run against the data warehouse and instead is printed " +
-                "to the console.",
+              describe: "If set, built SQL is not run and instead is printed to the console.",
               type: "boolean"
             }
           },
@@ -533,93 +514,84 @@ export function runCli() {
             printSuccess("Compiled successfully.\n");
           }
           const readCredentials = credentials.read(
-            compiledGraph.projectConfig.warehouse,
             getCredentialsPath(argv[projectDirOption.name], argv[credentialsOption.name])
           );
 
-          const dbadapter = await dbadapters.create(
-            readCredentials,
-            compiledGraph.projectConfig.warehouse
+          const dbadapter = new BigQueryDbAdapter(readCredentials);
+          const executionGraph = await build(
+            compiledGraph,
+            {
+              fullRefresh: argv[fullRefreshOption.name],
+              actions: argv[actionsOption.name],
+              includeDependencies: argv[includeDepsOption.name],
+              includeDependents: argv[includeDependentsOption.name],
+              tags: argv[tagsOption.name]
+            },
+            dbadapter
           );
-          try {
-            const executionGraph = await build(
-              compiledGraph,
-              {
-                fullRefresh: argv[fullRefreshOption.name],
-                actions: argv[actionsOption.name],
-                includeDependencies: argv[includeDepsOption.name],
-                includeDependents: argv[includeDependentsOption.name],
-                tags: argv[tagsOption.name]
-              },
-              dbadapter
-            );
 
-            if (argv[dryRunOptionName]) {
-              if (!argv[jsonOutputOption.name]) {
-                print(
-                  `Dry run (--${dryRunOptionName}) mode is turned on; not running the following ` +
-                    "actions against your warehouse:\n"
-                );
-              }
-              printExecutionGraph(executionGraph, argv[jsonOutputOption.name]);
-              return;
-            }
-
-            if (argv[runTestsOptionName]) {
-              print(`Running ${compiledGraph.tests.length} unit tests...\n`);
-              const testResults = await test(dbadapter, compiledGraph.tests);
-              testResults.forEach(testResult => printTestResult(testResult));
-              if (testResults.some(testResult => !testResult.successful)) {
-                printError("\nUnit tests did not pass; aborting run.");
-                return 1;
-              }
-              printSuccess("Unit tests completed successfully.\n");
-            }
-
+          if (argv[dryRunOptionName]) {
             if (!argv[jsonOutputOption.name]) {
-              print("Running...\n");
+              print(
+                `Dry run (--${dryRunOptionName}) mode is turned on; not running the following actions:\n`
+              );
             }
-            let bigqueryOptions: {} = { actionRetryLimit: argv[actionRetryLimitName] };
-            if (argv[jobPrefixOption.name]) {
-              bigqueryOptions = { ...bigqueryOptions, jobPrefix: argv[jobPrefixOption.name] };
-            }
-            const runner = run(dbadapter, executionGraph, bigqueryOptions);
-            process.on("SIGINT", () => {
-              runner.cancel();
-            });
-
-            const actionsByName = new Map<string, dataform.IExecutionAction>();
-            executionGraph.actions.forEach(action => {
-              actionsByName.set(targetAsReadableString(action.target), action);
-            });
-            const alreadyPrintedActions = new Set<string>();
-
-            const printExecutedGraph = (executedGraph: dataform.IRunResult) => {
-              executedGraph.actions
-                .filter(
-                  actionResult =>
-                    actionResult.status !== dataform.ActionResult.ExecutionStatus.RUNNING
-                )
-                .filter(
-                  executedAction =>
-                    !alreadyPrintedActions.has(targetAsReadableString(executedAction.target))
-                )
-                .forEach(executedAction => {
-                  printExecutedAction(
-                    executedAction,
-                    actionsByName.get(targetAsReadableString(executedAction.target))
-                  );
-                  alreadyPrintedActions.add(targetAsReadableString(executedAction.target));
-                });
-            };
-
-            runner.onChange(printExecutedGraph);
-            const runResult = await runner.result();
-            printExecutedGraph(runResult);
-            return runResult.status === dataform.RunResult.ExecutionStatus.SUCCESSFUL ? 0 : 1;
-          } finally {
-            await dbadapter.close();
+            printExecutionGraph(executionGraph, argv[jsonOutputOption.name]);
+            return;
           }
+
+          if (argv[runTestsOptionName]) {
+            print(`Running ${compiledGraph.tests.length} unit tests...\n`);
+            const testResults = await test(dbadapter, compiledGraph.tests);
+            testResults.forEach(testResult => printTestResult(testResult));
+            if (testResults.some(testResult => !testResult.successful)) {
+              printError("\nUnit tests did not pass; aborting run.");
+              return 1;
+            }
+            printSuccess("Unit tests completed successfully.\n");
+          }
+
+          if (!argv[jsonOutputOption.name]) {
+            print("Running...\n");
+          }
+          let bigqueryOptions: {} = { actionRetryLimit: argv[actionRetryLimitName] };
+          if (argv[jobPrefixOption.name]) {
+            bigqueryOptions = { ...bigqueryOptions, jobPrefix: argv[jobPrefixOption.name] };
+          }
+          const runner = run(dbadapter, executionGraph, bigqueryOptions);
+          process.on("SIGINT", () => {
+            runner.cancel();
+          });
+
+          const actionsByName = new Map<string, dataform.IExecutionAction>();
+          executionGraph.actions.forEach(action => {
+            actionsByName.set(targetAsReadableString(action.target), action);
+          });
+          const alreadyPrintedActions = new Set<string>();
+
+          const printExecutedGraph = (executedGraph: dataform.IRunResult) => {
+            executedGraph.actions
+              .filter(
+                actionResult =>
+                  actionResult.status !== dataform.ActionResult.ExecutionStatus.RUNNING
+              )
+              .filter(
+                executedAction =>
+                  !alreadyPrintedActions.has(targetAsReadableString(executedAction.target))
+              )
+              .forEach(executedAction => {
+                printExecutedAction(
+                  executedAction,
+                  actionsByName.get(targetAsReadableString(executedAction.target))
+                );
+                alreadyPrintedActions.add(targetAsReadableString(executedAction.target));
+              });
+          };
+
+          runner.onChange(printExecutedGraph);
+          const runResult = await runner.result();
+          printExecutedGraph(runResult);
+          return runResult.status === dataform.RunResult.ExecutionStatus.SUCCESSFUL ? 0 : 1;
         }
       },
       {
@@ -649,71 +621,6 @@ export function runCli() {
             })
           );
           printFormatFilesResult(results);
-          return 0;
-        }
-      },
-      {
-        format: `listtables <${ProjectConfigOptions.warehouse.name}>`,
-        description: "List tables on the configured data warehouse.",
-        positionalOptions: [ProjectConfigOptions.warehouse],
-        options: [credentialsOption, trackOption],
-        processFn: async argv => {
-          const readCredentials = credentials.read(
-            argv[ProjectConfigOptions.warehouse.name],
-            actuallyResolve(argv[credentialsOption.name])
-          );
-          const dbadapter = await dbadapters.create(
-            readCredentials,
-            argv[ProjectConfigOptions.warehouse.name]
-          );
-          try {
-            printListTablesResult(await table.list(dbadapter));
-          } finally {
-            await dbadapter.close();
-          }
-          return 0;
-        }
-      },
-      {
-        format: `gettablemetadata <${ProjectConfigOptions.warehouse.name}> <${schemaOptionName}> <${tableOptionName}>`,
-        description: "Fetch metadata for a specified table.",
-        positionalOptions: [
-          ProjectConfigOptions.warehouse,
-          {
-            name: schemaOptionName,
-            option: {
-              describe: "The schema inside which the table exists.",
-              type: "string"
-            }
-          },
-          {
-            name: tableOptionName,
-            option: {
-              describe: "The table's name.",
-              type: "string"
-            }
-          }
-        ],
-        options: [credentialsOption, trackOption],
-        processFn: async argv => {
-          const readCredentials = credentials.read(
-            argv[ProjectConfigOptions.warehouse.name],
-            actuallyResolve(argv[credentialsOption.name])
-          );
-          const dbadapter = await dbadapters.create(
-            readCredentials,
-            argv[ProjectConfigOptions.warehouse.name]
-          );
-          try {
-            printGetTableResult(
-              await table.get(dbadapter, {
-                schema: argv[schemaOptionName],
-                name: argv[tableOptionName]
-              })
-            );
-          } finally {
-            await dbadapter.close();
-          }
           return 0;
         }
       }
@@ -748,38 +655,9 @@ class ProjectConfigOptions {
     name: "default-database",
     option: {
       describe:
-        "The default database to use. For BigQuery, this is a Google Cloud Project ID. If unset, " +
-        "the value from dataform.json is used.",
+        "The default database to use, equivalent to Google Cloud Project ID. If unset, " +
+        "the value from workflow_settings.yaml is used.",
       type: "string"
-    },
-    check: (argv: yargs.Arguments<any>) => {
-      if (!argv[ProjectConfigOptions.warehouse.name]) {
-        return;
-      }
-      if (!["bigquery", "snowflake"].includes(argv[ProjectConfigOptions.warehouse.name])) {
-        throw new Error(
-          `The --${ProjectConfigOptions.defaultDatabase.name} flag is only used` +
-            " for BigQuery and Snowflake projects."
-        );
-      }
-      if (
-        !argv[ProjectConfigOptions.defaultDatabase.name] &&
-        argv[ProjectConfigOptions.warehouse.name] === "bigquery"
-      ) {
-        throw new Error(
-          `The --${ProjectConfigOptions.defaultDatabase.name} flag is required for ` +
-            "BigQuery projects."
-        );
-      }
-    }
-  };
-
-  public static warehouse: INamedOption<yargs.PositionalOptions> = {
-    name: "warehouse",
-    option: {
-      describe:
-        "The project's data warehouse type. If unset, the value from dataform.json is used.",
-      choices: ["bigquery"]
     }
   };
 
@@ -787,7 +665,7 @@ class ProjectConfigOptions {
     name: "default-schema",
     option: {
       describe:
-        "Override for the default schema name. If unset, the value from dataform.json is used."
+        "Override for the default schema name. If unset, the value from workflow_settings.yaml is used."
     }
   };
 
@@ -795,45 +673,23 @@ class ProjectConfigOptions {
     name: "default-location",
     option: {
       describe:
-        "The default BigQuery location to use. See " +
+        "The default location to use. See " +
         "https://cloud.google.com/bigquery/docs/locations for supported values. If unset, the " +
-        "value from dataform.json is used."
-    },
-    check: (argv: yargs.Arguments<any>) => {
-      if (!argv[ProjectConfigOptions.warehouse.name]) {
-        return;
-      }
-      if (
-        argv[ProjectConfigOptions.defaultLocation.name] &&
-        !["bigquery"].includes(argv[ProjectConfigOptions.warehouse.name])
-      ) {
-        throw new Error(
-          `The --${ProjectConfigOptions.defaultLocation.name} flag is only used for BigQuery.`
-        );
-      }
-      if (
-        !argv[ProjectConfigOptions.defaultLocation.name] &&
-        argv[ProjectConfigOptions.warehouse.name] === "bigquery"
-      ) {
-        throw new Error(
-          `The --${ProjectConfigOptions.defaultLocation.name} flag is required for BigQuery ` +
-            "projects. Please run 'dataform help init' for more information."
-        );
-      }
+        "value from workflow_settings.yaml is used."
     }
   };
 
   public static assertionSchema: INamedOption<yargs.Options> = {
     name: "assertion-schema",
     option: {
-      describe: "Default assertion schema. If unset, the value from dataform.json is used."
+      describe: "Default assertion schema. If unset, the value from workflow_settings.yaml is used."
     }
   };
 
   public static databaseSuffix: INamedOption<yargs.Options> = {
     name: "database-suffix",
     option: {
-      describe: "Default assertion schema. If unset, the value from dataform.json is used."
+      describe: "Default assertion schema. If unset, the value from workflow_settings.yaml is used."
     }
   };
 
@@ -842,7 +698,7 @@ class ProjectConfigOptions {
     option: {
       describe:
         "Override for variables to inject via '--vars=someKey=someValue,a=b', referenced by " +
-        "`dataform.projectConfig.vars.someValue`.  If unset, the value from dataform.json is used.",
+        "`dataform.projectConfig.vars.someValue`.  If unset, the value from workflow_settings.yaml is used.",
       type: "string",
       default: null,
       coerce: (rawVarsString: string | null) => {
@@ -860,7 +716,7 @@ class ProjectConfigOptions {
     name: "schema-suffix",
     option: {
       describe:
-        "A suffix to be appended to output schema names. If unset, the value from dataform.json " +
+        "A suffix to be appended to output schema names. If unset, the value from workflow_settings.yaml " +
         "is used."
     },
     check: (argv: yargs.Arguments<any>) => {
@@ -879,12 +735,12 @@ class ProjectConfigOptions {
   public static tablePrefix: INamedOption<yargs.Options> = {
     name: "table-prefix",
     option: {
-      describe: "Adds a prefix for all table names. If unset, the value from dataform.json is used."
+      describe:
+        "Adds a prefix for all table names. If unset, the value from workflow_settings.yaml is used."
     }
   };
 
   public static allYargsOptions = [
-    ProjectConfigOptions.warehouse,
     ProjectConfigOptions.defaultDatabase,
     ProjectConfigOptions.defaultSchema,
     ProjectConfigOptions.defaultLocation,
@@ -900,9 +756,6 @@ class ProjectConfigOptions {
   ): dataform.IProjectConfig {
     const projectConfigOptions: dataform.IProjectConfig = {};
 
-    if (argv[ProjectConfigOptions.warehouse.name]) {
-      projectConfigOptions.warehouse = argv[ProjectConfigOptions.warehouse.name];
-    }
     if (argv[ProjectConfigOptions.defaultDatabase.name]) {
       projectConfigOptions.defaultDatabase = argv[ProjectConfigOptions.defaultDatabase.name];
     }

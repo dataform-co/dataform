@@ -100,18 +100,3 @@ function fromBase64(value: string): Uint8Array {
   util.base64.decode(value, buf, 0);
   return buf;
 }
-
-export class ProtoStringifier<T> implements IStringifier<T> {
-  public static create<T>(protoType: IProtoClass<T, T>) {
-    return new ProtoStringifier<T>(protoType);
-  }
-
-  constructor(private readonly protoType: IProtoClass<T, T>) {}
-
-  public stringify(value: T) {
-    return encode64(this.protoType, value);
-  }
-  public parse(value: string) {
-    return decode64(this.protoType, value);
-  }
-}

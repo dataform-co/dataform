@@ -1,14 +1,7 @@
 import Long from "long";
 import { PromisePoolExecutor } from "promise-pool-executor";
 
-import {
-  BigQuery,
-  GetTablesResponse,
-  Table,
-  TableField,
-  TableMetadata
-} from "@google-cloud/bigquery";
-import { Credentials } from "df/cli/api/commands/credentials";
+import { BigQuery, GetTablesResponse, TableField, TableMetadata } from "@google-cloud/bigquery";
 import { collectEvaluationQueries, QueryOrAction } from "df/cli/api/dbadapters/execution_sql";
 import { IDbAdapter, IDbClient, IExecutionResult, OnCancel } from "df/cli/api/dbadapters/index";
 import { parseBigqueryEvalError } from "df/cli/api/utils/error_parsing";
@@ -36,17 +29,13 @@ export interface IBigQueryExecutionOptions {
 }
 
 export class BigQueryDbAdapter implements IDbAdapter {
-  public static async create(credentials: Credentials, options?: { concurrencyLimit: number }) {
-    return new BigQueryDbAdapter(credentials, options);
-  }
-
   private bigQueryCredentials: dataform.IBigQuery;
   private pool: PromisePoolExecutor;
 
   private readonly clients = new Map<string, BigQuery>();
 
-  private constructor(credentials: Credentials, options?: { concurrencyLimit: number }) {
-    this.bigQueryCredentials = credentials as dataform.IBigQuery;
+  constructor(credentials: dataform.IBigQuery, options?: { concurrencyLimit: number }) {
+    this.bigQueryCredentials = credentials;
     // Bigquery allows 50 concurrent queries, and a rate limit of 100/user/second by default.
     // These limits should be safely low enough for most projects.
     this.pool = new PromisePoolExecutor({
@@ -226,28 +215,6 @@ export class BigQueryDbAdapter implements IDbAdapter {
     });
   }
 
-  public async preview(target: dataform.ITarget, limitRows: number = 10): Promise<any[]> {
-    const metadata = await this.getMetadata(target);
-    if (metadata.type === "TABLE") {
-      // For tables, we use the BigQuery tabledata.list API, as per https://cloud.google.com/bigquery/docs/best-practices-costs#preview-data.
-      // Also see https://cloud.google.com/nodejs/docs/reference/bigquery/3.0.x/Table#getRows.
-      const rowsResult = await this.getClient(target.database)
-        .dataset(target.schema)
-        .table(target.name)
-        .getRows({
-          maxResults: limitRows
-        });
-      return cleanRows(rowsResult[0]);
-    }
-    const {
-      rows
-    } = await this.execute(
-      `SELECT * FROM \`${metadata.tableReference.projectId}.${metadata.tableReference.datasetId}.${metadata.tableReference.tableId}\``,
-      { rowLimit: limitRows }
-    );
-    return rows;
-  }
-
   public async schemas(database: string): Promise<string[]> {
     const data = await this.getClient(database).getDatasets();
     return data[0].map(dataset => dataset.id);
@@ -258,10 +225,6 @@ export class BigQueryDbAdapter implements IDbAdapter {
       `create schema if not exists \`${database || this.bigQueryCredentials.projectId}.${schema}\``,
       { bigquery: { location: this.bigQueryCredentials.location || "US" } }
     );
-  }
-
-  public async close() {
-    // Unimplemented.
   }
 
   public async setMetadata(action: dataform.IExecutionAction): Promise<void> {

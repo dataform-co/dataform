@@ -1,33 +1,26 @@
 import * as fs from "fs";
 
 import * as dbadapters from "df/cli/api/dbadapters";
+import { verifyObjectMatchesProto } from "df/common/protos";
 import { dataform } from "df/protos/ts";
 
 export const CREDENTIALS_FILENAME = ".df-credentials.json";
 
-export type Credentials = dataform.IBigQuery;
-
-export function read(warehouse: string, credentialsPath: string): Credentials {
+export function read(credentialsPath: string): dataform.IBigQuery {
   if (!fs.existsSync(credentialsPath)) {
     throw new Error(`Missing credentials JSON file; not found at path '${credentialsPath}'.`);
   }
-  return coerce(warehouse, JSON.parse(fs.readFileSync(credentialsPath, "utf8")));
-}
-
-export function coerce(warehouse: string, credentials: any): Credentials {
-  switch (warehouse) {
-    // TODO(ekrekr): Remove the need for bigquery at all in the dataform.json.
-    case "bigquery": {
-      return validateAnyAsCredentials(
-        credentials,
-        dataform.BigQuery.verify,
-        dataform.BigQuery.create,
-        ["projectId"]
-      );
-    }
-    default:
-      throw new Error(`Dataform now only supports bigquery`);
+  let credentialsAsJson: object;
+  try {
+    credentialsAsJson = JSON.parse(fs.readFileSync(credentialsPath, "utf8"));
+  } catch (e) {
+    throw new Error(`Error reading credentials file: ${e.message}`);
   }
+  const credentials = verifyObjectMatchesProto(dataform.BigQuery, credentialsAsJson);
+  if (!Object.keys(credentials).find(key => key === "projectId")?.length) {
+    throw new Error(`Error reading credentials file: the projectId field is required`);
+  }
+  return credentials;
 }
 
 export enum TestResultStatus {
@@ -64,22 +57,4 @@ export async function test(
       clearTimeout(timer);
     }
   }
-}
-
-function validateAnyAsCredentials<T>(
-  credentials: any,
-  verify: (credentials: any) => string,
-  create: (credentials: any) => T,
-  requiredProps: string[]
-): T {
-  const errMsg = verify(credentials);
-  if (errMsg) {
-    throw new Error(`Credentials JSON object does not conform to protobuf requirements: ${errMsg}`);
-  }
-  const protobuf = create(credentials);
-  const missingProps = requiredProps.filter(key => Object.keys(protobuf).indexOf(key) === -1);
-  if (missingProps.length > 0) {
-    throw new Error(`Missing required properties: ${missingProps.join(", ")}`);
-  }
-  return protobuf;
 }

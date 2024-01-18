@@ -6,20 +6,6 @@ import { install } from "df/cli/api/commands/install";
 import { prune } from "df/cli/api/commands/prune";
 import * as query from "df/cli/api/commands/query";
 import { run, Runner } from "df/cli/api/commands/run";
-import * as table from "df/cli/api/commands/table";
 import { test } from "df/cli/api/commands/test";
 
-export {
-  init,
-  install,
-  credentials,
-  compile,
-  test,
-  build,
-  run,
-  query,
-  table,
-  Runner,
-  Builder,
-  prune
-};
+export { init, install, credentials, compile, test, build, run, query, Runner, Builder, prune };

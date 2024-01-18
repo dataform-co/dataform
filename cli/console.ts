@@ -387,14 +387,6 @@ export function printFormatFilesResult(
   }
 }
 
-export function printListTablesResult(tables: dataform.ITarget[]) {
-  tables.forEach(foundTable => writeStdOut(`${foundTable.schema}.${foundTable.name}`));
-}
-
-export function printGetTableResult(tableMetadata: dataform.ITableMetadata) {
-  writeStdOut(prettyJsonStringify(tableMetadata));
-}
-
 function datasetString(target: dataform.ITarget, datasetType: string, disabled: boolean) {
   return `${targetString(target)} [${datasetType}]${disabled ? " [disabled]" : ""}`;
 }

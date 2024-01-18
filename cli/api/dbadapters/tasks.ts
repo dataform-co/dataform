@@ -14,9 +14,6 @@ export function concatenateQueries(statements: string[], modifier?: (mod: string
 }
 
 export class Tasks {
-  public static create() {
-    return new Tasks();
-  }
   private tasks: Task[] = [];
 
   public add(task: Task) {
@@ -34,27 +31,19 @@ export class Tasks {
   }
 
   public concatenate() {
-    return Tasks.create().add(
+    return new Tasks().add(
       Task.statement(concatenateQueries(this.tasks.map(task => task.getStatement())))
     );
   }
 }
 
 export class Task {
-  public static create() {
-    return new Task();
-  }
-
   public static statement(statement: string) {
-    return Task.create()
-      .type("statement")
-      .statement(statement);
+    return new Task().type("statement").statement(statement);
   }
 
   public static assertion(statement: string) {
-    return Task.create()
-      .type("assertion")
-      .statement(statement);
+    return new Task().type("assertion").statement(statement);
   }
   private proto: dataform.IExecutionTask = dataform.ExecutionTask.create();
 

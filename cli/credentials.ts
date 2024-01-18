@@ -1,6 +1,6 @@
 import * as fs from "fs";
 
-import { intQuestion, passwordQuestion, question, selectionQuestion } from "df/cli/console";
+import { question, selectionQuestion } from "df/cli/console";
 import { actuallyResolve } from "df/cli/util";
 import { dataform } from "df/protos/ts";
 
