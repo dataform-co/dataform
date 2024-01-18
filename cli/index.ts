@@ -211,6 +211,13 @@ export function runCli() {
               ...ProjectConfigOptions.defaultDatabase.option,
               describe:
                 "The default database to use. For BigQuery, this is a Google Cloud Project ID."
+            },
+            check: (argv: yargs.Arguments<any>) => {
+              if (!argv[ProjectConfigOptions.defaultDatabase.name]) {
+                throw new Error(
+                  `The --${ProjectConfigOptions.defaultDatabase.name} flag is required.`
+                );
+              }
             }
           },
           {
@@ -218,8 +225,16 @@ export function runCli() {
             option: {
               ...ProjectConfigOptions.defaultLocation.option,
               describe:
-                "The default BigQuery location to use. See " +
+                "The default location to use. See " +
                 "https://cloud.google.com/bigquery/docs/locations for supported values."
+            },
+            check: (argv: yargs.Arguments<any>) => {
+              if (!argv[ProjectConfigOptions.defaultLocation.name]) {
+                throw new Error(
+                  `The --${ProjectConfigOptions.defaultLocation.name} flag is required ` +
+                    "projects. Please run 'dataform help init' for more information."
+                );
+              }
             }
           },
           {
@@ -707,38 +722,9 @@ class ProjectConfigOptions {
     name: "default-database",
     option: {
       describe:
-        "The default database to use. For BigQuery, this is a Google Cloud Project ID. If unset, " +
-        "the value from dataform.json is used.",
+        "The default database to use, equivalent to Google Cloud Project ID. If unset, " +
+        "the value from workflow_settings.yaml is used.",
       type: "string"
-    },
-    check: (argv: yargs.Arguments<any>) => {
-      if (!argv[ProjectConfigOptions.warehouse.name]) {
-        return;
-      }
-      if (!["bigquery", "snowflake"].includes(argv[ProjectConfigOptions.warehouse.name])) {
-        throw new Error(
-          `The --${ProjectConfigOptions.defaultDatabase.name} flag is only used` +
-            " for BigQuery and Snowflake projects."
-        );
-      }
-      if (
-        !argv[ProjectConfigOptions.defaultDatabase.name] &&
-        argv[ProjectConfigOptions.warehouse.name] === "bigquery"
-      ) {
-        throw new Error(
-          `The --${ProjectConfigOptions.defaultDatabase.name} flag is required for ` +
-            "BigQuery projects."
-        );
-      }
-    }
-  };
-
-  public static warehouse: INamedOption<yargs.PositionalOptions> = {
-    name: "warehouse",
-    option: {
-      describe:
-        "The project's data warehouse type. If unset, the value from dataform.json is used.",
-      choices: ["bigquery"]
     }
   };
 
@@ -746,7 +732,7 @@ class ProjectConfigOptions {
     name: "default-schema",
     option: {
       describe:
-        "Override for the default schema name. If unset, the value from dataform.json is used."
+        "Override for the default schema name. If unset, the value from workflow_settings.yaml is used."
     }
   };
 
@@ -754,45 +740,23 @@ class ProjectConfigOptions {
     name: "default-location",
     option: {
       describe:
-        "The default BigQuery location to use. See " +
+        "The default location to use. See " +
         "https://cloud.google.com/bigquery/docs/locations for supported values. If unset, the " +
-        "value from dataform.json is used."
-    },
-    check: (argv: yargs.Arguments<any>) => {
-      if (!argv[ProjectConfigOptions.warehouse.name]) {
-        return;
-      }
-      if (
-        argv[ProjectConfigOptions.defaultLocation.name] &&
-        !["bigquery"].includes(argv[ProjectConfigOptions.warehouse.name])
-      ) {
-        throw new Error(
-          `The --${ProjectConfigOptions.defaultLocation.name} flag is only used for BigQuery.`
-        );
-      }
-      if (
-        !argv[ProjectConfigOptions.defaultLocation.name] &&
-        argv[ProjectConfigOptions.warehouse.name] === "bigquery"
-      ) {
-        throw new Error(
-          `The --${ProjectConfigOptions.defaultLocation.name} flag is required for BigQuery ` +
-            "projects. Please run 'dataform help init' for more information."
-        );
-      }
+        "value from workflow_settings.yaml is used."
     }
   };
 
   public static assertionSchema: INamedOption<yargs.Options> = {
     name: "assertion-schema",
     option: {
-      describe: "Default assertion schema. If unset, the value from dataform.json is used."
+      describe: "Default assertion schema. If unset, the value from workflow_settings.yaml is used."
     }
   };
 
   public static databaseSuffix: INamedOption<yargs.Options> = {
     name: "database-suffix",
     option: {
-      describe: "Default assertion schema. If unset, the value from dataform.json is used."
+      describe: "Default assertion schema. If unset, the value from workflow_settings.yaml is used."
     }
   };
 
@@ -801,7 +765,7 @@ class ProjectConfigOptions {
     option: {
       describe:
         "Override for variables to inject via '--vars=someKey=someValue,a=b', referenced by " +
-        "`dataform.projectConfig.vars.someValue`.  If unset, the value from dataform.json is used.",
+        "`dataform.projectConfig.vars.someValue`.  If unset, the value from workflow_settings.yaml is used.",
       type: "string",
       default: null,
       coerce: (rawVarsString: string | null) => {
@@ -819,7 +783,7 @@ class ProjectConfigOptions {
     name: "schema-suffix",
     option: {
       describe:
-        "A suffix to be appended to output schema names. If unset, the value from dataform.json " +
+        "A suffix to be appended to output schema names. If unset, the value from workflow_settings.yaml " +
         "is used."
     },
     check: (argv: yargs.Arguments<any>) => {
@@ -838,12 +802,12 @@ class ProjectConfigOptions {
   public static tablePrefix: INamedOption<yargs.Options> = {
     name: "table-prefix",
     option: {
-      describe: "Adds a prefix for all table names. If unset, the value from dataform.json is used."
+      describe:
+        "Adds a prefix for all table names. If unset, the value from workflow_settings.yaml is used."
     }
   };
 
   public static allYargsOptions = [
-    ProjectConfigOptions.warehouse,
     ProjectConfigOptions.defaultDatabase,
     ProjectConfigOptions.defaultSchema,
     ProjectConfigOptions.defaultLocation,
@@ -859,9 +823,6 @@ class ProjectConfigOptions {
   ): dataform.IProjectConfig {
     const projectConfigOptions: dataform.IProjectConfig = {};
 
-    if (argv[ProjectConfigOptions.warehouse.name]) {
-      projectConfigOptions.warehouse = argv[ProjectConfigOptions.warehouse.name];
-    }
     if (argv[ProjectConfigOptions.defaultDatabase.name]) {
       projectConfigOptions.defaultDatabase = argv[ProjectConfigOptions.defaultDatabase.name];
     }

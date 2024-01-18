@@ -23,7 +23,6 @@ suite(__filename, () => {
       execFile(nodePath, [
         cliEntryPointPath,
         "init",
-        "bigquery",
         projectDir,
         "--skip-install",
         "--default-database",
