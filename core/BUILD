@@ -72,9 +72,11 @@ ts_test_suite(
         "//tests/utils",
         "@npm//@types/chai",
         "@npm//@types/fs-extra",
+        "@npm//@types/js-yaml",
         "@npm//@types/node",
         "@npm//chai",
         "@npm//fs-extra",
+        "@npm//js-yaml",
         "@npm//vm2",
     ],
 )

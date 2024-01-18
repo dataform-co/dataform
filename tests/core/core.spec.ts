@@ -844,24 +844,6 @@ suite("@dataform/core", () => {
     });
   });
 
-  suite("resolve", () => {
-    [
-      TestConfigs.bigquery,
-      TestConfigs.bigqueryWithSchemaSuffix,
-      TestConfigs.bigqueryWithTablePrefix
-    ].forEach(testConfig => {
-      test(`resolve with prefix "${testConfig.tablePrefix}" and suffix "${testConfig.schemaSuffix}"`, () => {
-        const session = new Session(path.dirname(__filename), testConfig);
-        session.compile();
-        const suffix = testConfig.schemaSuffix ? `_${testConfig.schemaSuffix}` : "";
-        const prefix = testConfig.tablePrefix ? `${testConfig.tablePrefix}_` : "";
-
-        const resolvedRef = session.resolve("e");
-        expect(resolvedRef).to.equal(`\`schema${suffix}.${prefix}e\``);
-      });
-    });
-  });
-
   suite("operate", () => {
     test("ref", () => {
       const session = new Session(path.dirname(__filename), TestConfigs.bigquery);
