@@ -7,7 +7,6 @@ import * as chokidar from "chokidar";
 import { trackError, trackOption } from "df/cli/analytics";
 import { build, compile, credentials, init, install, run, table, test } from "df/cli/api";
 import { CREDENTIALS_FILENAME } from "df/cli/api/commands/credentials";
-import * as dbadapters from "df/cli/api/dbadapters";
 import { prettyJsonStringify } from "df/cli/api/utils";
 import {
   print,
@@ -31,6 +30,7 @@ import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 import { formatFile } from "df/sqlx/format";
 import parseDuration from "parse-duration";
+import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 
 const RECOMPILE_DELAY = 500;
 
@@ -156,14 +156,6 @@ const credentialsOption: INamedOption<yargs.Options> = {
     getCredentialsPath(argv[projectDirOption.name], argv[credentialsOption.name])
 };
 
-const warehouseOption: INamedOption<yargs.PositionalOptions> = {
-  name: "warehouse",
-  option: {
-    describe: "The project's data warehouse type.",
-    choices: ["bigquery"]
-  }
-};
-
 const jsonOutputOption: INamedOption<yargs.Options> = {
   name: "json",
   option: {
@@ -205,8 +197,7 @@ const timeoutOption: INamedOption<yargs.Options> = {
 const jobPrefixOption: INamedOption<yargs.Options> = {
   name: "job-prefix",
   option: {
-    describe:
-      "Adds an additional prefix in the form of `dataform-${jobPrefix}-`. Has no effect on warehouses other than BigQuery.",
+    describe: "Adds an additional prefix in the form of `dataform-${jobPrefix}-`.",
     type: "string",
     default: null
   }
@@ -255,9 +246,9 @@ export function runCli() {
         }
       },
       {
-        format: `init <${warehouseOption.name}> [${projectDirOption.name}]`,
+        format: `init [${projectDirOption.name}]`,
         description: "Create a new dataform project.",
-        positionalOptions: [warehouseOption, projectDirOption],
+        positionalOptions: [projectDirOption],
         options: [
           trackOption,
           {
@@ -267,14 +258,9 @@ export function runCli() {
                 "The default database to use. For BigQuery, this is a Google Cloud Project ID."
             },
             check: (argv: yargs.Arguments<any>) => {
-              if (argv[defaultDatabaseOptionName] && argv[warehouseOption.name] !== "bigquery") {
+              if (!argv[defaultDatabaseOptionName]) {
                 throw new Error(
-                  `The --${defaultDatabaseOptionName} flag is only used for BigQuery projects.`
-                );
-              }
-              if (!argv[defaultDatabaseOptionName] && argv[warehouseOption.name] === "bigquery") {
-                throw new Error(
-                  `The --${defaultDatabaseOptionName} flag is required for BigQuery projects. Please run 'dataform help init' for more information.`
+                  `The --${defaultDatabaseOptionName} flag is required. Please run 'dataform help init' for more information.`
                 );
               }
             }
@@ -286,15 +272,7 @@ export function runCli() {
                 "The default BigQuery location to use. See https://cloud.google.com/bigquery/docs/locations for supported values."
             },
             check: (argv: yargs.Arguments<any>) => {
-              if (
-                argv[defaultLocationOptionName] &&
-                !["bigquery"].includes(argv[warehouseOption.name])
-              ) {
-                throw new Error(
-                  `The --${defaultLocationOptionName} flag is only used for BigQuery.`
-                );
-              }
-              if (!argv[defaultLocationOptionName] && argv[warehouseOption.name] === "bigquery") {
+              if (!argv[defaultLocationOptionName]) {
                 throw new Error(
                   `The --${defaultLocationOptionName} flag is required for BigQuery projects. Please run 'dataform help init' for more information.`
                 );
@@ -314,7 +292,6 @@ export function runCli() {
           const initResult = await init(
             argv[projectDirOption.name],
             {
-              warehouse: argv[warehouseOption.name],
               defaultDatabase: argv[defaultDatabaseOptionName],
               defaultLocation: argv[defaultLocationOptionName]
             },
@@ -339,9 +316,9 @@ export function runCli() {
         }
       },
       {
-        format: `init-creds <${warehouseOption.name}> [${projectDirMustExistOption.name}]`,
-        description: `Create a ${credentials.CREDENTIALS_FILENAME} file for Dataform to use when accessing your warehouse.`,
-        positionalOptions: [warehouseOption, projectDirMustExistOption],
+        format: `init-creds [${projectDirMustExistOption.name}]`,
+        description: `Create a ${credentials.CREDENTIALS_FILENAME} file for Dataform to use when accessing BigQuery.`,
+        positionalOptions: [projectDirMustExistOption],
         options: [
           trackOption,
           {
@@ -354,33 +331,23 @@ export function runCli() {
           }
         ],
         processFn: async argv => {
-          const credentialsFn = () => {
-            switch (argv[warehouseOption.name]) {
-              case "bigquery": {
-                return getBigQueryCredentials();
-              }
-              default: {
-                throw new Error(`Unrecognized warehouse type ${argv[warehouseOption.name]}`);
-              }
-            }
-          };
-          const finalCredentials = credentialsFn();
+          const finalCredentials = getBigQueryCredentials();
           if (argv[testConnectionOptionName]) {
             print("\nRunning connection test...");
-            const dbadapter = await dbadapters.create(finalCredentials, argv[warehouseOption.name]);
+            const dbadapter = new BigQueryDbAdapter(finalCredentials);
             try {
               const testResult = await credentials.test(dbadapter);
               switch (testResult.status) {
                 case credentials.TestResultStatus.SUCCESSFUL: {
-                  printSuccess("\nWarehouse test query completed successfully.\n");
+                  printSuccess("\nCredentials test query completed successfully.\n");
                   break;
                 }
                 case credentials.TestResultStatus.TIMED_OUT: {
-                  throw new Error("Warehouse test connection timed out.");
+                  throw new Error("Credentials test connection timed out.");
                 }
                 case credentials.TestResultStatus.OTHER_ERROR: {
                   throw new Error(
-                    `Warehouse test query failed: ${testResult.error.stack ||
+                    `Credentials test query failed: ${testResult.error.stack ||
                       testResult.error.message}`
                   );
                 }
@@ -389,7 +356,7 @@ export function runCli() {
               await dbadapter.close();
             }
           } else {
-            print("\nWarehouse test query was not run.\n");
+            print("\nCredentials test query was not run.\n");
           }
           const filePath = path.resolve(
             argv[projectDirMustExistOption.name],
@@ -505,7 +472,7 @@ export function runCli() {
       },
       {
         format: `test [${projectDirMustExistOption.name}]`,
-        description: "Run the dataform project's unit tests on the configured data warehouse.",
+        description: "Run the dataform project's unit tests.",
         positionalOptions: [projectDirMustExistOption],
         options: [
           concurrencyQueryLimitOption,
@@ -530,7 +497,6 @@ export function runCli() {
           }
           printSuccess("Compiled successfully.\n");
           const readCredentials = credentials.read(
-            compiledGraph.projectConfig.warehouse,
             getCredentialsPath(argv[projectDirOption.name], argv[credentialsOption.name])
           );
 
@@ -540,11 +506,9 @@ export function runCli() {
           }
 
           print(`Running ${compiledGraph.tests.length} unit tests...\n`);
-          const dbadapter = await dbadapters.create(
-            readCredentials,
-            compiledGraph.projectConfig.warehouse,
-            { concurrencyLimit: argv[concurrencyQueryLimitOption.name] }
-          );
+          const dbadapter = new BigQueryDbAdapter(readCredentials, {
+            concurrencyLimit: argv[concurrencyQueryLimitOption.name]
+          });
           try {
             const testResults = await test(dbadapter, compiledGraph.tests);
             testResults.forEach(testResult => printTestResult(testResult));
@@ -556,14 +520,13 @@ export function runCli() {
       },
       {
         format: `run [${projectDirMustExistOption.name}]`,
-        description: "Run the dataform project's scripts on the configured data warehouse.",
+        description: "run the dataform project.",
         positionalOptions: [projectDirMustExistOption],
         options: [
           {
             name: dryRunOptionName,
             option: {
-              describe:
-                "If set, built SQL is not run against the data warehouse and instead is printed to the console.",
+              describe: "If set, built SQL is not run and instead is printed to the console.",
               type: "boolean"
             }
           },
@@ -617,15 +580,12 @@ export function runCli() {
             printSuccess("Compiled successfully.\n");
           }
           const readCredentials = credentials.read(
-            compiledGraph.projectConfig.warehouse,
             getCredentialsPath(argv[projectDirOption.name], argv[credentialsOption.name])
           );
 
-          const dbadapter = await dbadapters.create(
-            readCredentials,
-            compiledGraph.projectConfig.warehouse,
-            { concurrencyLimit: argv[concurrencyQueryLimitOption.name] }
-          );
+          const dbadapter = new BigQueryDbAdapter(readCredentials, {
+            concurrencyLimit: argv[concurrencyQueryLimitOption.name]
+          });
           try {
             const executionGraph = await build(
               compiledGraph,
@@ -642,7 +602,7 @@ export function runCli() {
             if (argv[dryRunOptionName]) {
               if (!argv[jsonOutputOption.name]) {
                 print(
-                  `Dry run (--${dryRunOptionName}) mode is turned on; not running the following actions against your warehouse:\n`
+                  `Dry run (--${dryRunOptionName}) mode is turned on; not running the following actions:\n`
                 );
               }
               printExecutionGraph(executionGraph, argv[jsonOutputOption.name]);
@@ -737,16 +697,13 @@ export function runCli() {
         }
       },
       {
-        format: `listtables <${warehouseOption.name}>`,
-        description: "List tables on the configured data warehouse.",
-        positionalOptions: [warehouseOption],
+        format: `listtables`,
+        description: "List tables.",
+        positionalOptions: [],
         options: [credentialsOption, trackOption],
         processFn: async argv => {
-          const readCredentials = credentials.read(
-            argv[warehouseOption.name],
-            actuallyResolve(argv[credentialsOption.name])
-          );
-          const dbadapter = await dbadapters.create(readCredentials, argv[warehouseOption.name]);
+          const readCredentials = credentials.read(actuallyResolve(argv[credentialsOption.name]));
+          const dbadapter = new BigQueryDbAdapter(readCredentials);
           try {
             printListTablesResult(await table.list(dbadapter));
           } finally {
@@ -756,10 +713,9 @@ export function runCli() {
         }
       },
       {
-        format: `gettablemetadata <${warehouseOption.name}> <${schemaOptionName}> <${tableOptionName}>`,
+        format: `gettablemetadata <${schemaOptionName}> <${tableOptionName}>`,
         description: "Fetch metadata for a specified table.",
         positionalOptions: [
-          warehouseOption,
           {
             name: schemaOptionName,
             option: {
@@ -777,11 +733,8 @@ export function runCli() {
         ],
         options: [credentialsOption, trackOption],
         processFn: async argv => {
-          const readCredentials = credentials.read(
-            argv[warehouseOption.name],
-            actuallyResolve(argv[credentialsOption.name])
-          );
-          const dbadapter = await dbadapters.create(readCredentials, argv[warehouseOption.name]);
+          const readCredentials = credentials.read(actuallyResolve(argv[credentialsOption.name]));
+          const dbadapter = new BigQueryDbAdapter(readCredentials);
           try {
             printGetTableResult(
               await table.get(dbadapter, {

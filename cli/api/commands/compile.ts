@@ -1,11 +1,7 @@
-import * as fs from "fs";
 import * as path from "path";
-import * as semver from "semver";
 
 import { ChildProcess, fork } from "child_process";
-import deepmerge from "deepmerge";
-import { validWarehouses } from "df/cli/api/dbadapters";
-import { coerceAsError, ErrorWithCause } from "df/common/errors/errors";
+import { coerceAsError } from "df/common/errors/errors";
 import { decode64 } from "df/common/protos";
 import { setOrValidateTableEnumType } from "df/core/utils";
 import { dataform } from "df/protos/ts";

@@ -125,7 +125,7 @@ from (${query}) as insertions`;
     runConfig: dataform.IRunConfig,
     tableMetadata?: dataform.ITableMetadata
   ): Tasks {
-    const tasks = Tasks.create();
+    const tasks = new Tasks();
 
     this.preOps(table, runConfig, tableMetadata).forEach(statement => tasks.add(statement));
 
@@ -171,7 +171,7 @@ from (${query}) as insertions`;
     assertion: dataform.IAssertion,
     projectConfig: dataform.IProjectConfig
   ): Tasks {
-    const tasks = Tasks.create();
+    const tasks = new Tasks();
     const target = assertion.target;
     tasks.add(Task.statement(this.createOrReplaceView(target, assertion.query)));
     tasks.add(Task.assertion(`select sum(1) as row_count from ${this.resolveTarget(target)}`));

@@ -1,14 +1,10 @@
 import { expect } from "chai";
-import Long from "long";
 import { basename } from "path";
 
 import {
-  ArrayStringifier,
   JSONObjectStringifier,
-  LongStringifier,
   StringifiedMap,
-  StringifiedSet,
-  StringStringifier
+  StringifiedSet
 } from "df/common/strings/stringifier";
 import { suite, test } from "df/testing";
 
@@ -20,7 +16,7 @@ interface IKey {
 suite(basename(__filename), () => {
   suite("json object stringifier", () => {
     test("serialize and deserialize", () => {
-      const stringifier = JSONObjectStringifier.create();
+      const stringifier = new JSONObjectStringifier();
       const value = {
         a: "test",
         b: 123,
@@ -34,7 +30,7 @@ suite(basename(__filename), () => {
     });
 
     test("is insensitive to key order", () => {
-      const stringifier = JSONObjectStringifier.create();
+      const stringifier = new JSONObjectStringifier();
       const value = {
         a: "test",
         b: 123,
@@ -55,16 +51,8 @@ suite(basename(__filename), () => {
     });
   });
 
-  suite("array stringifier", () => {
-    test("serialize and deserialize", () => {
-      const stringifier = ArrayStringifier.create(LongStringifier.create());
-      const value = [Long.fromNumber(12345), Long.fromNumber(12345234)];
-      expect(stringifier.parse(stringifier.stringify(value))).deep.equals(value);
-    });
-  });
-
   suite("stringified map", () => {
-    const jsonStringifiedMap = new StringifiedMap<IKey, string>(JSONObjectStringifier.create(), [
+    const jsonStringifiedMap = new StringifiedMap<IKey, string>(new JSONObjectStringifier(), [
       [{ a: "1", b: 2 }, "x"],
       [{ a: "2", b: 2 }, "y"],
       [{ a: "2", b: 3 }, "z"]
@@ -87,7 +75,7 @@ suite(basename(__filename), () => {
     });
 
     test("set and get", () => {
-      const map = new StringifiedMap<IKey, string>(JSONObjectStringifier.create());
+      const map = new StringifiedMap<IKey, string>(new JSONObjectStringifier());
       map.set(
         {
           a: "1",
@@ -105,7 +93,7 @@ suite(basename(__filename), () => {
   });
 
   suite("stringified set", () => {
-    const jsonStringifiedSet = new StringifiedSet<IKey>(JSONObjectStringifier.create(), [
+    const jsonStringifiedSet = new StringifiedSet<IKey>(new JSONObjectStringifier(), [
       { a: "1", b: 2 },
       { a: "2", b: 2 },
       { a: "2", b: 3 }
@@ -128,7 +116,7 @@ suite(basename(__filename), () => {
     });
 
     test("add and has", () => {
-      const set = new StringifiedSet<IKey>(JSONObjectStringifier.create());
+      const set = new StringifiedSet<IKey>(new JSONObjectStringifier());
       set.add({
         a: "1",
         b: 2
@@ -140,12 +128,5 @@ suite(basename(__filename), () => {
         })
       ).equals(true);
     });
-  });
-
-  test("string stringifier", () => {
-    const stringifier = StringStringifier.create();
-    const stringified = stringifier.stringify("Str$ng");
-    expect(stringified).to.equal("Str$ng");
-    expect(stringifier.parse(stringified)).to.equal("Str$ng");
   });
 });

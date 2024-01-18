@@ -1,5 +1,3 @@
-import { Credentials } from "df/cli/api/commands/credentials";
-import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 import { QueryOrAction } from "df/cli/api/dbadapters/execution_sql";
 import { dataform } from "df/protos/ts";
 
@@ -45,33 +43,3 @@ export interface IDbAdapter extends IDbClient {
 
   close(): Promise<void>;
 }
-
-interface ICredentialsOptions {
-  concurrencyLimit: number;
-  disableSslForTestsOnly?: boolean;
-}
-
-export interface IDbAdapterClass<T extends IDbAdapter> {
-  create: (credentials: Credentials, options: ICredentialsOptions) => Promise<T>;
-}
-
-const registry: { [warehouseType: string]: IDbAdapterClass<IDbAdapter> } = {};
-
-export function register(warehouseType: string, c: IDbAdapterClass<IDbAdapter>) {
-  registry[warehouseType] = c;
-}
-
-export const validWarehouses = ["bigquery"];
-
-export async function create(
-  credentials: Credentials,
-  warehouseType: typeof validWarehouses[number],
-  options?: ICredentialsOptions
-): Promise<IDbAdapter> {
-  if (!registry[warehouseType]) {
-    throw new Error(`Unsupported warehouse: ${warehouseType}`);
-  }
-  return await registry[warehouseType].create(credentials, options);
-}
-
-register("bigquery", BigQueryDbAdapter);

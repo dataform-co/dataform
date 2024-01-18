@@ -11,14 +11,14 @@ import { suite, test } from "df/testing";
 import { compile, dropAllTables, getTableRows, keyBy } from "df/tests/integration/utils";
 
 suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) => {
-  const credentials = dfapi.credentials.read("bigquery", "test_credentials/bigquery.json");
+  const credentials = dfapi.credentials.read("test_credentials/bigquery.json");
   let dbadapter: BigQueryDbAdapter;
 
   before("create adapter", async () => {
-    dbadapter = (await dbadapters.create(
-      { ...credentials, location: "EU" },
-      "bigquery"
-    )) as BigQueryDbAdapter;
+    dbadapter = new BigQueryDbAdapter({
+      ...credentials,
+      location: "EU"
+    });
   });
 
   after("close adapter", () => dbadapter.close());

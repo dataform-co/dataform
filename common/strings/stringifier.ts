@@ -7,25 +7,7 @@ export interface IStringifier<T> {
 
 export type IJSONPrimitive = string | number | boolean | string[] | number[] | boolean[] | null;
 
-export class JSONStringifier<T extends IJSONPrimitive> implements IStringifier<T> {
-  public static create<T extends IJSONPrimitive>() {
-    return new JSONStringifier<T>();
-  }
-
-  public stringify(value: T) {
-    return JSON.stringify(value);
-  }
-
-  public parse(value: string) {
-    return JSON.parse(value) as T;
-  }
-}
-
 export class JSONObjectStringifier<T> implements IStringifier<T> {
-  public static create<T>() {
-    return new JSONObjectStringifier<T>();
-  }
-
   public stringify(value: T) {
     // Sort the object keys.
     return JSON.stringify(
@@ -37,51 +19,6 @@ export class JSONObjectStringifier<T> implements IStringifier<T> {
 
   public parse(value: string) {
     return JSON.parse(value) as T;
-  }
-}
-
-export class LongStringifier implements IStringifier<Long> {
-  public static create() {
-    return new LongStringifier();
-  }
-
-  public stringify(value: Long) {
-    return value.toString();
-  }
-
-  public parse(value: string) {
-    return Long.fromString(value);
-  }
-}
-
-export class ArrayStringifier<T> implements IStringifier<T[]> {
-  public static create<T>(stringifier: IStringifier<T>) {
-    return new ArrayStringifier(stringifier);
-  }
-
-  constructor(private stringifier: IStringifier<T>) {}
-
-  public stringify(value: T[]) {
-    return JSON.stringify(value.map(v => this.stringifier.stringify(v)));
-  }
-
-  public parse(value: string) {
-    return (JSON.parse(value) as string[]).map(v => this.stringifier.parse(v));
-  }
-}
-
-// Stringifying a string doesn't require any operation; like the empty set, or an empty monad.
-export class StringStringifier implements IStringifier<string> {
-  public static create() {
-    return new StringStringifier();
-  }
-
-  public stringify(value: string) {
-    return value;
-  }
-
-  public parse(value: string) {
-    return value;
   }
 }
 

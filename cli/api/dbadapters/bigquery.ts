@@ -1,14 +1,7 @@
 import Long from "long";
 import { PromisePoolExecutor } from "promise-pool-executor";
 
-import {
-  BigQuery,
-  GetTablesResponse,
-  Table,
-  TableField,
-  TableMetadata
-} from "@google-cloud/bigquery";
-import { Credentials } from "df/cli/api/commands/credentials";
+import { BigQuery, GetTablesResponse, TableField, TableMetadata } from "@google-cloud/bigquery";
 import { collectEvaluationQueries, QueryOrAction } from "df/cli/api/dbadapters/execution_sql";
 import { IDbAdapter, IDbClient, IExecutionResult, OnCancel } from "df/cli/api/dbadapters/index";
 import { parseBigqueryEvalError } from "df/cli/api/utils/error_parsing";
@@ -36,17 +29,13 @@ export interface IBigQueryExecutionOptions {
 }
 
 export class BigQueryDbAdapter implements IDbAdapter {
-  public static async create(credentials: Credentials, options?: { concurrencyLimit: number }) {
-    return new BigQueryDbAdapter(credentials, options);
-  }
-
   private bigQueryCredentials: dataform.IBigQuery;
   private pool: PromisePoolExecutor;
 
   private readonly clients = new Map<string, BigQuery>();
 
-  private constructor(credentials: Credentials, options?: { concurrencyLimit: number }) {
-    this.bigQueryCredentials = credentials as dataform.IBigQuery;
+  constructor(credentials: dataform.IBigQuery, options?: { concurrencyLimit: number }) {
+    this.bigQueryCredentials = credentials;
     // Bigquery allows 50 concurrent queries, and a rate limit of 100/user/second by default.
     // These limits should be safely low enough for most projects.
     this.pool = new PromisePoolExecutor({

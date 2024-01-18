@@ -2,7 +2,7 @@ import { JSONObjectStringifier } from "df/common/strings/stringifier";
 import { dataform } from "df/protos/ts";
 
 /** Produces an unambigous mapping to and from a string representation. */
-export const targetStringifier = JSONObjectStringifier.create<dataform.ITarget>();
+export const targetStringifier = new JSONObjectStringifier<dataform.ITarget>();
 
 /**
  * Provides a readable string representation of the target which is used for e.g. specifying

@@ -1,5 +1,7 @@
 import { assert, config, expect } from "chai";
+import * as fs from "fs-extra";
 import Long from "long";
+import * as path from "path";
 import { anyString, anything, instance, mock, verify, when } from "ts-mockito";
 
 import { Builder, credentials, prune, Runner } from "df/cli/api";
@@ -11,6 +13,7 @@ import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { asPlainObject, cleanSql } from "df/tests/utils";
+import { TmpDirFixture } from "df/testing/fixtures";
 
 config.truncateThreshold = 0;
 
@@ -801,36 +804,23 @@ suite("@dataform/api", () => {
     });
   });
 
-  suite("credentials_config", () => {
-    const bigqueryCredentials = { projectId: "", credentials: "" };
+  suite("credentials_config", ({ afterEach }) => {
+    const tmpDirFixture = new TmpDirFixture(afterEach);
 
-    test("bigquery_empty_credentials", () => {
-      expect(() => credentials.coerce("bigquery", null)).to.throw(
+    test("bigquery blank credentials file", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      const credentialsPath = path.join(projectDir, "credentials.json");
+      fs.writeFileSync(credentialsPath, "");
+      expect(() => credentials.read(credentialsPath)).to.throw(
         /Credentials JSON object does not conform to protobuf requirements: object expected/
       );
-      expect(() => credentials.coerce("bigquery", {})).to.throw(/Missing required properties:/);
     });
 
-    test("warehouse_check", () => {
-      expect(() => credentials.coerce("bigquery", bigqueryCredentials)).to.not.throw();
-      expect(() => credentials.coerce("some_other_warehouse", {})).to.throw(
-        /Dataform now only supports bigquery/
-      );
-    });
-
-    [{}, { wrongProperty: "" }].forEach(bigquery => {
-      test("bigquery_properties_check", () => {
-        expect(() =>
-          credentials.coerce("bigquery", JSON.parse(JSON.stringify(bigquery)))
-        ).to.throw();
-
-        expect(() =>
-          credentials.coerce(
-            "bigquery",
-            JSON.parse(JSON.stringify({ ...bigqueryCredentials, oneMoreProperty: "" }))
-          )
-        ).to.not.throw(/Missing required properties/);
-      });
+    test("bigquery empty credentials file", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      const credentialsPath = path.join(projectDir, "credentials.json");
+      fs.writeFileSync(credentialsPath, "{}");
+      expect(() => credentials.read(credentialsPath)).to.throw(/Missing required properties:/);
     });
   });
 
