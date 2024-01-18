@@ -7,6 +7,7 @@ import * as chokidar from "chokidar";
 import { trackError, trackOption } from "df/cli/analytics";
 import { build, compile, credentials, init, install, run, table, test } from "df/cli/api";
 import { CREDENTIALS_FILENAME } from "df/cli/api/commands/credentials";
+import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 import { prettyJsonStringify } from "df/cli/api/utils";
 import {
   print,
@@ -30,7 +31,6 @@ import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 import { formatFile } from "df/sqlx/format";
 import parseDuration from "parse-duration";
-import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 
 const RECOMPILE_DELAY = 500;
 

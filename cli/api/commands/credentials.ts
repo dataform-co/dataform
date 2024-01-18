@@ -1,8 +1,8 @@
 import * as fs from "fs";
 
 import * as dbadapters from "df/cli/api/dbadapters";
-import { dataform } from "df/protos/ts";
 import { verifyObjectMatchesProto } from "df/common/protos";
+import { dataform } from "df/protos/ts";
 
 export const CREDENTIALS_FILENAME = ".df-credentials.json";
 
