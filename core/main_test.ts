@@ -37,7 +37,7 @@ suite("@dataform/core", ({ afterEach }) => {
         VALID_WORKFLOW_SETTINGS_YAML
       );
 
-      const result = runMainInVmForDirectory(projectDir);
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
       expect(asPlainObject(result.compile.compiledGraph.projectConfig)).deep.equals(
         asPlainObject({
@@ -52,7 +52,7 @@ suite("@dataform/core", ({ afterEach }) => {
       const projectDir = tmpDirFixture.createNewTmpDir();
       fs.writeFileSync(path.join(projectDir, "dataform.json"), VALID_DATAFORM_JSON);
 
-      const result = runMainInVmForDirectory(projectDir);
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
       expect(asPlainObject(result.compile.compiledGraph.projectConfig)).deep.equals(
         asPlainObject({
@@ -65,7 +65,7 @@ suite("@dataform/core", ({ afterEach }) => {
     test(`main fails when no workflow settings file is present`, () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
 
-      expect(() => runMainInVmForDirectory(projectDir)).to.throw(
+      expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
         "Failed to resolve workflow_settings.yaml"
       );
     });
@@ -78,7 +78,7 @@ suite("@dataform/core", ({ afterEach }) => {
         VALID_WORKFLOW_SETTINGS_YAML
       );
 
-      expect(() => runMainInVmForDirectory(projectDir)).to.throw(
+      expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
         "dataform.json has been deprecated and cannot be defined alongside workflow_settings.yaml"
       );
     });
@@ -87,7 +87,7 @@ suite("@dataform/core", ({ afterEach }) => {
       const projectDir = tmpDirFixture.createNewTmpDir();
       fs.writeFileSync(path.join(projectDir, "workflow_settings.yaml"), "&*19132sdS:asd:");
 
-      expect(() => runMainInVmForDirectory(projectDir)).to.throw(
+      expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
         "workflow_settings.yaml is invalid"
       );
     });
@@ -96,7 +96,7 @@ suite("@dataform/core", ({ afterEach }) => {
       const projectDir = tmpDirFixture.createNewTmpDir();
       fs.writeFileSync(path.join(projectDir, "dataform.json"), '{keyWithNoQuotes: "validValue"}');
 
-      expect(() => runMainInVmForDirectory(projectDir)).to.throw(
+      expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
         "Unexpected token k in JSON at position 1"
       );
     });
@@ -108,7 +108,7 @@ suite("@dataform/core", ({ afterEach }) => {
         "notAProjectConfigField: value"
       );
 
-      expect(() => runMainInVmForDirectory(projectDir)).to.throw(
+      expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
         "Cannot find field: notAProjectConfigField in message"
       );
     });
@@ -117,7 +117,7 @@ suite("@dataform/core", ({ afterEach }) => {
       const projectDir = tmpDirFixture.createNewTmpDir();
       fs.writeFileSync(path.join(projectDir, "workflow_settings.yaml"), "- someArrayEntry");
 
-      expect(() => runMainInVmForDirectory(projectDir)).to.throw(
+      expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
         "Expected a top-level object, but found an array"
       );
     });
@@ -129,7 +129,7 @@ suite("@dataform/core", ({ afterEach }) => {
         `{"warehouse": "bigquery", "defaultDatabase": "dataform"}`
       );
 
-      const result = runMainInVmForDirectory(projectDir);
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
       expect(asPlainObject(result.compile.compiledGraph.projectConfig)).deep.equals(
         asPlainObject({
@@ -146,7 +146,7 @@ suite("@dataform/core", ({ afterEach }) => {
         `{"warehouse": "redshift", "defaultDatabase": "dataform"}`
       );
 
-      expect(() => runMainInVmForDirectory(projectDir)).to.throw(
+      expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
         "Workflow settings error: the warehouse field is deprecated"
       );
     });
@@ -160,7 +160,7 @@ warehouse: bigquery
 defaultDatabase: dataform`
       );
 
-      const result = runMainInVmForDirectory(projectDir);
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
       expect(asPlainObject(result.compile.compiledGraph.projectConfig)).deep.equals(
         asPlainObject({
@@ -179,7 +179,7 @@ warehouse: redshift
 defaultDatabase: dataform`
       );
 
-      expect(() => runMainInVmForDirectory(projectDir)).to.throw(
+      expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
         "Workflow settings error: the warehouse field is deprecated"
       );
     });
@@ -191,7 +191,7 @@ defaultDatabase: dataform`
         `{"notAProjectConfigField": "value"}`
       );
 
-      expect(() => runMainInVmForDirectory(projectDir)).to.throw(
+      expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
         "Cannot find field: notAProjectConfigField in message"
       );
     });
@@ -284,7 +284,7 @@ dataformCoreVersion: 1.0.0
 defaultDatabase: dataform`
         );
 
-        expect(() => runMainInVmForDirectory(projectDir)).to.throw(
+        expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
           `Version mismatch: workflow settings specifies version 1.0.0, but ${version} was found`
         );
       });
@@ -298,7 +298,7 @@ dataformCoreVersion: ${version}
 defaultDatabase: dataform`
         );
 
-        const result = runMainInVmForDirectory(projectDir);
+        const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
         expect(asPlainObject(result.compile.compiledGraph.projectConfig)).deep.equals(
           asPlainObject({
@@ -321,7 +321,7 @@ vars:
   strValue: "str"`
         );
 
-        expect(() => runMainInVmForDirectory(projectDir)).to.throw(
+        expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
           "Custom variables defined in workflow settings can only be strings."
         );
       });
@@ -333,7 +333,7 @@ vars:
           `{"vars": { "intVar": 1, "strVar": "str" } }`
         );
 
-        expect(() => runMainInVmForDirectory(projectDir)).to.throw(
+        expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
           "Custom variables defined in workflow settings can only be strings."
         );
       });
@@ -481,7 +481,7 @@ actions:
         EMPTY_NOTEBOOK_CONTENTS
       );
 
-      const result = runMainInVmForDirectory(projectDir);
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
       expect(asPlainObject(result.compile.compiledGraph.notebooks)).deep.equals(
         asPlainObject([
@@ -516,7 +516,7 @@ actions:
         })
       );
 
-      const result = runMainInVmForDirectory(projectDir);
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
       expect(asPlainObject(result.compile.compiledGraph.notebooks)).deep.equals(
         asPlainObject([
@@ -564,7 +564,7 @@ actions:
         "SELECT ${database()} AS proofThatContextIsRead"
       );
 
-      const result = runMainInVmForDirectory(projectDir);
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
       expect(asPlainObject(result.compile.compiledGraph.operations)).deep.equals(
         asPlainObject([
@@ -606,7 +606,7 @@ actions:
       name: action`
       );
 
-      const result = runMainInVmForDirectory(projectDir);
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
       expect(asPlainObject(result.compile.compiledGraph.declarations)).deep.equals(
         asPlainObject([
@@ -648,7 +648,7 @@ actions:
       name: name`
       );
 
-      expect(() => runMainInVmForDirectory(projectDir)).to.throw(
+      expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
         "Declaration configs cannot have 'fileName' fields as they cannot take source files"
       );
     });
@@ -669,7 +669,7 @@ actions:
       schema: test`
       );
 
-      expect(() => runMainInVmForDirectory(projectDir)).to.throw(
+      expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
         "Declaration configs must include a 'target' with a populated 'name' field"
       );
     });
@@ -693,7 +693,7 @@ actions:
         "SELECT ${database()} AS proofThatContextIsRead"
       );
 
-      const result = runMainInVmForDirectory(projectDir);
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
       expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals(
         asPlainObject([
@@ -746,7 +746,7 @@ actions:
         "SELECT ${database()} AS proofThatContextIsRead"
       );
 
-      const result = runMainInVmForDirectory(projectDir);
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
       expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals(
         asPlainObject([
@@ -800,7 +800,7 @@ actions:
         "SELECT ${database()} AS proofThatContextIsRead"
       );
 
-      const result = runMainInVmForDirectory(projectDir);
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
       expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals(
         asPlainObject([
@@ -849,7 +849,7 @@ actions:
         "SELECT ${database()} AS proofThatContextIsRead"
       );
 
-      const result = runMainInVmForDirectory(projectDir);
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
       expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals(
         asPlainObject([
@@ -890,7 +890,7 @@ actions:
   - fileName: doesnotexist.sql`
       );
 
-      expect(() => runMainInVmForDirectory(projectDir)).to.throw(
+      expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
         "Cannot find module 'definitions/doesnotexist.sql'"
       );
     });
@@ -911,7 +911,7 @@ actions:
       materialized: true`
       );
 
-      expect(() => runMainInVmForDirectory(projectDir)).to.throw(
+      expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
         "Cannot find field: materialized in message, or value type is incorrect"
       );
     });
@@ -934,7 +934,7 @@ actions:
         "SELECT ${database()} AS proofThatContextIsRead"
       );
 
-      const result = runMainInVmForDirectory(projectDir);
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
       expect(asPlainObject(result.compile.compiledGraph.operations)).deep.equals(
         asPlainObject([
@@ -962,12 +962,10 @@ actions:
   });
 });
 
-function runMainInVmForDirectory(projectDir: string): dataform.CoreExecutionResponse {
-  return runMainInVm(
-    dataform.CoreExecutionRequest.create({
-      compile: { compileConfig: { projectDir } }
-    })
-  );
+function coreExecutionRequestFromPath(projectDir: string): dataform.CoreExecutionRequest {
+  return dataform.CoreExecutionRequest.create({
+    compile: { compileConfig: { projectDir, filePaths: walkDirectoryForFilenames(projectDir) } }
+  });
 }
 
 // A VM is needed when running main because Node functions like `require` are overridden.
@@ -975,10 +973,6 @@ function runMainInVm(
   coreExecutionRequest: dataform.CoreExecutionRequest
 ): dataform.CoreExecutionResponse {
   const projectDir = coreExecutionRequest.compile.compileConfig.projectDir;
-
-  if (!coreExecutionRequest.compile.compileConfig.filePaths) {
-    coreExecutionRequest.compile.compileConfig.filePaths = walkDirectoryForFilenames(projectDir);
-  }
 
   // Copy over the build Dataform Core that is set up as a node_modules directory.
   fs.copySync(`${process.cwd()}/core/node_modules`, `${projectDir}/node_modules`);
@@ -1013,11 +1007,9 @@ function runMainInVm(
 
 function walkDirectoryForFilenames(projectDir: string, relativePath: string = ""): string[] {
   let paths: string[] = [];
-  fs.readdirSync(path.join(projectDir, relativePath), { withFileTypes: true }).forEach(
-    directoryEntry => {
-      if (directoryEntry.name === "node_modules") {
-        return;
-      }
+  fs.readdirSync(path.join(projectDir, relativePath), { withFileTypes: true })
+    .filter(directoryEntry => directoryEntry.name !== "node_modules")
+    .forEach(directoryEntry => {
       if (directoryEntry.isDirectory()) {
         paths = paths.concat(walkDirectoryForFilenames(projectDir, directoryEntry.name));
         return;
@@ -1026,7 +1018,6 @@ function walkDirectoryForFilenames(projectDir: string, relativePath: string = ""
       if (directoryEntry.isFile() && SOURCE_EXTENSIONS.includes(fileExtension)) {
         paths.push(directoryEntry.name);
       }
-    }
-  );
+    });
   return paths.map(filename => path.join(relativePath, filename));
 }
