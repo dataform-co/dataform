@@ -75,16 +75,8 @@ suite("@dataform/core", ({ afterEach }) => {
           fs.mkdirSync(path.join(projectDir, "definitions"));
           fs.writeFileSync(path.join(projectDir, "definitions/e.sqlx"), `config {type: "view"}`);
           fs.writeFileSync(path.join(projectDir, "definitions/file.sqlx"), "${resolve('e')}");
-          const coreExecutionRequest = dataform.CoreExecutionRequest.create({
-            compile: {
-              compileConfig: {
-                projectDir,
-                filePaths: ["definitions/e.sqlx", "definitions/file.sqlx"]
-              }
-            }
-          });
 
-          const result = runMainInVm(coreExecutionRequest);
+          const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
           const suffix = testConfig.schemaSuffix ? `_${testConfig.schemaSuffix}` : "";
           const prefix = testConfig.tablePrefix ? `${testConfig.tablePrefix}_` : "";
@@ -103,16 +95,8 @@ suite("@dataform/core", ({ afterEach }) => {
       );
       fs.mkdirSync(path.join(projectDir, "definitions"));
       fs.writeFileSync(path.join(projectDir, "definitions/file.sqlx"), "${resolve('e')}");
-      const coreExecutionRequest = dataform.CoreExecutionRequest.create({
-        compile: {
-          compileConfig: {
-            projectDir,
-            filePaths: ["definitions/file.sqlx"]
-          }
-        }
-      });
 
-      const result = runMainInVm(coreExecutionRequest);
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
       expect(asPlainObject(result.compile.compiledGraph.operations[0].queries[0])).deep.equals(``);
       expect(
