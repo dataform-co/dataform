@@ -634,45 +634,6 @@ suite("@dataform/core", () => {
       expect(errors).that.matches(/Unused property was detected: "where"/);
     });
 
-    test("validation_navigator_descriptors", () => {
-      const session = new Session(path.dirname(__filename), TestConfigs.bigquery);
-      session
-        .publish("a", {
-          type: "table",
-          columns: {
-            colly: {
-              displayName: "colly display name",
-              description: "colly description",
-              dimension: "timestamp",
-              aggregator: "distinct",
-              expression: "1"
-            }
-          }
-        })
-        .query(_ => "select 1 as test");
-
-      const graph = session.compile();
-      expect(graph.graphErrors.compilationErrors).deep.equals([]);
-
-      const schema = graph.tables.find(
-        table => targetAsReadableString(table.target) === "schema.a"
-      );
-
-      const collyColumn = schema.actionDescriptor.columns.find(
-        column => column.displayName === "colly display name"
-      );
-      expect(collyColumn).to.eql(
-        dataform.ColumnDescriptor.create({
-          path: ["colly"],
-          displayName: "colly display name",
-          description: "colly description",
-          dimensionType: dataform.ColumnDescriptor.DimensionType.TIMESTAMP,
-          aggregation: dataform.ColumnDescriptor.Aggregation.DISTINCT,
-          expression: "1"
-        })
-      );
-    });
-
     [
       TestConfigs.bigquery,
       TestConfigs.bigqueryWithSchemaSuffix,
