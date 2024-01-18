@@ -117,7 +117,7 @@ suite("@dataform/core", ({ afterEach }) => {
       );
       expect(
         asPlainObject(result.compile.compiledGraph.graphErrors.compilationErrors[0].message)
-      ).deep.equals(`Could not resolve 'e'`);
+      ).deep.equals(`Could not resolve "e"`);
     });
   });
 

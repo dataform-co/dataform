@@ -207,6 +207,7 @@ export class Session {
     const allResolved = this.indexedActions.find(utils.resolvableAsTarget(ref));
     if (allResolved.length > 1) {
       this.compileError(new Error(utils.ambiguousActionNameMsg(ref, allResolved)));
+      return "";
     }
     const resolved = allResolved.length > 0 ? allResolved[0] : undefined;
 
@@ -223,6 +224,7 @@ export class Session {
       this.compileError(
         new Error("Actions cannot resolve operations which do not produce output.")
       );
+      return "";
     }
 
     if (resolved) {
@@ -238,7 +240,7 @@ export class Session {
       });
     }
 
-    this.compileError(new Error(`Could not resolve '${ref.toString()}'`));
+    this.compileError(new Error(`Could not resolve ${JSON.stringify(ref)}`));
     return "unresolved";
   }
 
@@ -861,14 +863,14 @@ class ActionIndex {
         return (
           this.byDatabaseSchemaAndName
             .get(target.database)
-            .get(target.schema)
-            .get(target.name) || []
+            ?.get(target.schema)
+            ?.get(target.name) || []
         );
       }
-      return this.byDatabaseAndName.get(target.database).get(target.name) || [];
+      return this.byDatabaseAndName.get(target.database)?.get(target.name) || [];
     }
     if (!!target.schema) {
-      return this.bySchemaAndName.get(target.schema).get(target.name) || [];
+      return this.bySchemaAndName.get(target.schema)?.get(target.name) || [];
     }
     return this.byName.get(target.name) || [];
   }
