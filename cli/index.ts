@@ -292,24 +292,21 @@ export function runCli() {
           if (argv[testConnectionOptionName]) {
             print("\nRunning connection test...");
             const dbadapter = new BigQueryDbAdapter(finalCredentials);
-            try {
-              const testResult = await credentials.test(dbadapter);
-              switch (testResult.status) {
-                case credentials.TestResultStatus.SUCCESSFUL: {
-                  printSuccess("\nCredentials test query completed successfully.\n");
-                  break;
-                }
-                case credentials.TestResultStatus.TIMED_OUT: {
-                  throw new Error("Credentials test connection timed out.");
-                }
-                case credentials.TestResultStatus.OTHER_ERROR: {
-                  throw new Error(
-                    `Credentials test query failed: ${testResult.error.stack ||
-                      testResult.error.message}`
-                  );
-                }
+            const testResult = await credentials.test(dbadapter);
+            switch (testResult.status) {
+              case credentials.TestResultStatus.SUCCESSFUL: {
+                printSuccess("\nCredentials test query completed successfully.\n");
+                break;
               }
-            } finally {
+              case credentials.TestResultStatus.TIMED_OUT: {
+                throw new Error("Credentials test connection timed out.");
+              }
+              case credentials.TestResultStatus.OTHER_ERROR: {
+                throw new Error(
+                  `Credentials test query failed: ${testResult.error.stack ||
+                    testResult.error.message}`
+                );
+              }
             }
           } else {
             print("\nCredentials test query was not run.\n");
