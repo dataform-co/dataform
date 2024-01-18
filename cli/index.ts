@@ -200,30 +200,29 @@ export function runCli() {
         }
       },
       {
-        format: `init [${projectDirOption.name}]`,
+        format:
+          `init [${projectDirOption.name}] [${ProjectConfigOptions.defaultDatabase.name}]` +
+          ` [${ProjectConfigOptions.defaultLocation.name}]`,
         description: "Create a new dataform project.",
-        positionalOptions: [projectDirOption],
-        options: [
-          trackOption,
+        positionalOptions: [
+          projectDirOption,
           {
-            ...ProjectConfigOptions.defaultDatabase,
+            name: ProjectConfigOptions.defaultDatabase.name,
             option: {
-              ...ProjectConfigOptions.defaultDatabase.option,
-              describe:
-                "The default database to use. For BigQuery, this is a Google Cloud Project ID."
+              describe: "The default database to use, equivalent to Google Cloud Project ID."
             },
             check: (argv: yargs.Arguments<any>) => {
               if (!argv[ProjectConfigOptions.defaultDatabase.name]) {
                 throw new Error(
-                  `The --${ProjectConfigOptions.defaultDatabase.name} flag is required.`
+                  `The ${ProjectConfigOptions.defaultDatabase.name} positional argument is ` +
+                    `required. Use "dataform help init" for more info.`
                 );
               }
             }
           },
           {
-            ...ProjectConfigOptions.defaultLocation,
+            name: ProjectConfigOptions.defaultLocation.name,
             option: {
-              ...ProjectConfigOptions.defaultLocation.option,
               describe:
                 "The default location to use. See " +
                 "https://cloud.google.com/bigquery/docs/locations for supported values."
@@ -231,12 +230,15 @@ export function runCli() {
             check: (argv: yargs.Arguments<any>) => {
               if (!argv[ProjectConfigOptions.defaultLocation.name]) {
                 throw new Error(
-                  `The --${ProjectConfigOptions.defaultLocation.name} flag is required ` +
-                    "projects. Please run 'dataform help init' for more information."
+                  `The ${ProjectConfigOptions.defaultLocation.name} positional argument is ` +
+                    `required. Use "dataform help init" for more info.`
                 );
               }
             }
-          },
+          }
+        ],
+        options: [
+          trackOption,
           {
             name: skipInstallOptionName,
             option: {

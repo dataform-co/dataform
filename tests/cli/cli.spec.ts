@@ -24,11 +24,9 @@ suite(__filename, () => {
         cliEntryPointPath,
         "init",
         projectDir,
-        "--skip-install",
-        "--default-database",
         "dataform-integration-tests",
-        "--default-location",
-        "US"
+        "US",
+        "--skip-install"
       ])
     );
 
