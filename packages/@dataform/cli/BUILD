@@ -1,6 +1,7 @@
 load("//tools:ts_library.bzl", "ts_library")
 load("//:version.bzl", "DF_VERSION")
 load("//packages:index.bzl", "LICENSE_HEADER", "add_license_header_to_file", "pkg_bundle", "pkg_json", "pkg_npm_tar")
+load("@build_bazel_rules_nodejs//:index.bzl", "nodejs_binary")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -12,8 +13,6 @@ ts_library(
         "//cli/vm:compile_loader",
     ],
 )
-
-load("@build_bazel_rules_nodejs//:index.bzl", "nodejs_binary")
 
 nodejs_binary(
     name = "bin",
@@ -27,12 +26,12 @@ nodejs_binary(
 
 externals = [
     "@google-cloud/bigquery",
+    "@segment/analytics-node",
     "protobufjs",
     "tarjan-graph",
     "semver",
     "moo",
     "chokidar",
-    "analytics-node",
     "uuid",
     "readline-sync",
     "untildify",
