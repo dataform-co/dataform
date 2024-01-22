@@ -266,37 +266,6 @@ message CompiledGraphV3 {
     repeated string bigquery_policy_tags = 4;
   }
 
-  message BigQueryOptions {
-    // The key by which to partition the table. Typically the name of a
-    // timestamp or the date column. See
-    // https://cloud.google.com/dataform/docs/partitions-clusters.
-    string partition_by = 1;
-
-    // The keys by which to cluster partitions by. See
-    // https://cloud.google.com/dataform/docs/partitions-clusters.
-    repeated string cluster_by = 2;
-
-    // SQL-based filter for when incremental updates are applied.
-    string update_partition_filter = 3;
-
-    // Key-value pairs for BigQuery labels. If the label name contains special
-    // characters, e.g. hyphens, then quote its name, e.g. `labels: {
-    // "label-name": "value" }`.
-    map<string, string> labels = 4;
-
-    // The number of days for which BigQuery stores data in each partition. The
-    // setting applies to all partitions in a table, but is calculated
-    // independently for each partition based on the partition time.
-    int32 partition_expiration_days = 5;
-
-    // Declares whether the partitioned table requires a WHERE clause predicate
-    // filter that filters the partitioning column.
-    bool require_partition_filter = 6;
-
-    // Key-value pairs for the table, view, and materialized view options.
-    map<string, string> additional_options = 7;
-  }
-
   message Table {
     // Target is the unique action identifier.
     Target target = 1;
@@ -323,25 +292,47 @@ message CompiledGraphV3 {
     // still be depended upon.
     bool disabled = 7;
 
-    // Describes a struct, object or record in a dataset that has nested
-    // columns.
-    ActionDescriptor action_descriptor = 8;
-
     // The SQL query.
-    string query = 9;
+    string query = 8;
 
     // Pre/post operations.
-    repeated string pre_ops = 10;
-    repeated string post_ops = 11;
+    repeated string pre_ops = 9;
+    repeated string post_ops = 10;
 
     // Common BigQuery options.
-    BigQueryOptions bigquery = 12;
+    BigQueryOptions bigquery = 11;
 
     // Description of the table.
-    string description = 13;
+    string description = 12;
 
     // Descriptions of columns within the table.
-    repeated ColumnDescriptor columns = 14;
+    repeated ColumnDescriptor columns = 13;
+
+    // The key by which to partition the table. Typically the name of a
+    // timestamp or the date column. See
+    // https://cloud.google.com/dataform/docs/partitions-clusters.
+    string partition_by = 14;
+
+    // The number of days for which BigQuery stores data in each partition. The
+    // setting applies to all partitions in a table, but is calculated
+    // independently for each partition based on the partition time.
+    int32 partition_expiration_days = 15;
+
+    // Declares whether the partitioned table requires a WHERE clause predicate
+    // filter that filters the partitioning column.
+    bool require_partition_filter = 16;
+
+    // The keys by which to cluster partitions by. See
+    // https://cloud.google.com/dataform/docs/partitions-clusters.
+    repeated string cluster_by = 17;
+
+    // Key-value pairs for BigQuery labels. If the label name contains special
+    // characters, e.g. hyphens, then quote its name, e.g. `labels: {
+    // "label-name": "value" }`.
+    map<string, string> labels = 18;
+
+    // Key-value pairs for the table, view, and materialized view options.
+    map<string, string> additional_options = 19;
   }
 
   message View {
@@ -370,29 +361,33 @@ message CompiledGraphV3 {
     // still be depended upon.
     bool disabled = 7;
 
-    // Describes a struct, object or record in a dataset that has nested
-    // columns.
-    ActionDescriptor action_descriptor = 8;
-
     // The SQL query.
-    string query = 9;
+    string query = 10;
 
     // Pre/post operations.
-    repeated string pre_ops = 10;
-    repeated string post_ops = 11;
+    repeated string pre_ops = 11;
+    repeated string post_ops = 12;
 
     // Common BigQuery options.
-    BigQueryOptions bigquery = 12;
+    BigQueryOptions bigquery = 13;
 
     // Applies the materialized view optimization, see
     // https://cloud.google.com/bigquery/docs/materialized-views-intro.
-    bool materialized = 13;
+    bool materialized = 14;
 
     // Description of the view.
-    string description = 14;
+    string description = 15;
 
     // Descriptions of columns within the table.
-    repeated ColumnDescriptor columns = 15;
+    repeated ColumnDescriptor columns = 16;
+
+    // Key-value pairs for BigQuery labels. If the label name contains special
+    // characters, e.g. hyphens, then quote its name, e.g. `labels: {
+    // "label-name": "value" }`.
+    map<string, string> labels = 17;
+
+    // Key-value pairs for the table, view, and materialized view options.
+    map<string, string> additional_options = 18;
   }
 
   message IncrementalTable {
@@ -421,16 +416,12 @@ message CompiledGraphV3 {
     // still be depended upon.
     bool disabled = 7;
 
-    // Describes a struct, object or record in a dataset that has nested
-    // columns.
-    ActionDescriptor action_descriptor = 8;
-
     // The SQL query.
-    string query = 9;
+    string query = 8;
 
     // The query that is applied when the table already exists.
     // This option cannot be manually specified in action configs.
-    string incremental_query = 13;
+    string incremental_query = 9;
 
     // Pre/post operations.
     repeated string pre_ops = 10;
@@ -440,17 +431,46 @@ message CompiledGraphV3 {
     BigQueryOptions bigquery = 12;
 
     // If true, prevents the dataset from being rebuilt from scratch.
-    bool protected = 14;
+    bool protected = 13;
 
     // is specified, if a row arrives whose key matches an existing row's key,
     // then the existing row is overwritten with the new data.
-    repeated string unique_key = 15;
+    repeated string unique_key = 14;
 
     // Description of the incremental table.
-    string description = 16;
+    string description = 15;
 
     // Descriptions of columns within the table.
-    repeated ColumnDescriptor columns = 17;
+    repeated ColumnDescriptor columns = 16;
+
+    // The key by which to partition the table. Typically the name of a
+    // timestamp or the date column. See
+    // https://cloud.google.com/dataform/docs/partitions-clusters.
+    string partition_by = 17;
+
+    // The number of days for which BigQuery stores data in each partition. The
+    // setting applies to all partitions in a table, but is calculated
+    // independently for each partition based on the partition time.
+    int32 partition_expiration_days = 18;
+
+    // Declares whether the partitioned table requires a WHERE clause predicate
+    // filter that filters the partitioning column.
+    bool require_partition_filter = 19;
+
+    // SQL-based filter for when incremental updates are applied.
+    string update_partition_filter = 20;
+
+    // The keys by which to cluster partitions by. See
+    // https://cloud.google.com/dataform/docs/partitions-clusters.
+    repeated string cluster_by = 21;
+
+    // Key-value pairs for BigQuery labels. If the label name contains special
+    // characters, e.g. hyphens, then quote its name, e.g. `labels: {
+    // "label-name": "value" }`.
+    map<string, string> labels = 22;
+
+    // Key-value pairs for the table, view, and materialized view options.
+    map<string, string> additional_options = 23;
   }
 
   message Assertion {
@@ -479,15 +499,11 @@ message CompiledGraphV3 {
     // still be depended upon.
     bool disabled = 7;
 
-    // Describes a struct, object or record in a dataset that has nested
-    // columns.
-    ActionDescriptor action_descriptor = 8;
-
     // The SQL query.
-    string query = 9;
+    string query = 8;
 
     // Description of the assertion.
-    string description = 10;
+    string description = 9;
   }
 
   message Operation {
@@ -516,23 +532,19 @@ message CompiledGraphV3 {
     // still be depended upon.
     bool disabled = 7;
 
-    // Describes a struct, object or record in a dataset that has nested
-    // columns.
-    ActionDescriptor action_descriptor = 8;
-
     // The SQL query.
-    string query = 9;
+    string query = 8;
 
     // Declares that this action creates a dataset which should be referenceable
     // as a dependency target, for example by using the `ref` function.
-    bool has_output = 10;
+    bool has_output = 9;
 
     // Description of the operation.
-    string description = 11;
+    string description = 10;
 
     // Descriptions of columns within the operation. Can only be set if
     // hasOutput is true.
-    repeated ColumnDescriptor columns = 12;
+    repeated ColumnDescriptor columns = 11;
   }
 
   message Declaration {
@@ -557,12 +569,8 @@ message CompiledGraphV3 {
     // A list of user-defined tags with which the action should be labeled.
     repeated string tags = 6;
 
-    // Describes a struct, object or record in a dataset that has nested
-    // columns.
-    ActionDescriptor action_descriptor = 7;
-
     // Description of the declaration.
-    string description = 8;
+    string description = 7;
   }
 
   message Notebook {
@@ -645,21 +653,17 @@ message CoreExecutionRequest {
 // versioned, because it facilitates consumers supporting major protobuf changes
 // within the same proto file.
 message CoreExecutionResponse {
-  oneof response {
-    CompileExecutionResponse compile = 1 [deprecated = true];
-    CompileExecutionResponseV3 compile_v3 = 2;
-  }
+  CompileExecutionResponse compile = 1;
 }
 
 message CompileExecutionRequest {
   CompileConfig compile_config = 1;
 }
 message CompileExecutionResponse {
-  CompiledGraph compiled_graph = 1;
-}
-
-message CompileExecutionResponseV3 {
-  CompiledGraphV3 compiled_graph = 1;
+  oneof response {
+    CompiledGraph compiled_graph = 1 [deprecated = true];
+    CompiledGraphV3 compiled_graph_v3 = 2;
+  }
 }
 
 // This feature list is added to when making potentilly backwards breaking
