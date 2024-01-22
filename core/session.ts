@@ -195,13 +195,6 @@ export class Session {
     }
   }
 
-  public notebook(notebookConfig: dataform.ActionConfig, notebookContents: string): Notebook {
-    const notebook = new Notebook(this, notebookConfig);
-    notebook.notebookContents(notebookContents);
-    this.actions.push(notebook);
-    return notebook;
-  }
-
   public resolve(ref: Resolvable | string[], ...rest: string[]): string {
     ref = toResolvable(ref, rest);
     const allResolved = this.indexedActions.find(utils.resolvableAsTarget(ref));
@@ -245,31 +238,20 @@ export class Session {
   }
 
   public operate(
-    // operationConfig as a string is deprecated in favor of the strictly typed proto action config.
-    operationConfig: string | dataform.ActionConfig,
+    name: string,
     queries?: Contextable<ICommonContext, string | string[]>
   ): Operation {
-    if (typeof operationConfig === "string") {
-      const deprecatedOperationConstructor = new Operation();
-      deprecatedOperationConstructor.session = this;
-      utils.setNameAndTarget(this, deprecatedOperationConstructor.proto, operationConfig);
-      if (queries) {
-        deprecatedOperationConstructor.queries(queries);
-      }
-      deprecatedOperationConstructor.proto.fileName = utils.getCallerFile(this.rootDir);
-      this.actions.push(deprecatedOperationConstructor);
-      return deprecatedOperationConstructor;
+    const operation = new Operation();
+    operation.session = this;
+    utils.setNameAndTarget(this, operation.proto, name);
+    if (queries) {
+      operation.queries(queries);
     }
-    const operation = new Operation(this, operationConfig);
-    operation.queries(queries);
+    operation.proto.fileName = utils.getCallerFile(this.rootDir);
     this.actions.push(operation);
     return operation;
   }
 
-  /**
-   * @deprecated
-   * Prefer explicit methods for actions, such as `table()`, `incrementalTable()` and `view()`.
-   */
   public publish(
     name: string,
     queryOrConfig?: Contextable<ITableContext, string> | ITableConfig
@@ -289,40 +271,6 @@ export class Session {
     return newTable;
   }
 
-  public table(
-    tableConfig: dataform.ActionConfig,
-    query?: Contextable<ICommonContext, string>
-  ): Table {
-    const table = new Table(this, tableConfig);
-    table.query(query);
-    this.actions.push(table);
-    return table;
-  }
-
-  public incrementalTable(
-    incrementalTableConfig: dataform.ActionConfig,
-    query?: Contextable<ICommonContext, string>
-  ): Table {
-    const incrementalTable = new Table(this, incrementalTableConfig);
-    incrementalTable.query(query);
-    this.actions.push(incrementalTable);
-    return incrementalTable;
-  }
-
-  public view(
-    viewConfig: dataform.ActionConfig,
-    query?: Contextable<ICommonContext, string>
-  ): Table {
-    const view = new Table(this, viewConfig);
-    view.query(query);
-    this.actions.push(view);
-    return view;
-  }
-
-  /**
-   * @deprecated
-   * Use `assertion()`.
-   */
   public assert(name: string, query?: AContextable<string>): Assertion {
     const assertion = new Assertion();
     assertion.session = this;
@@ -335,34 +283,11 @@ export class Session {
     return assertion;
   }
 
-  public assertion(
-    assertionConfig: dataform.ActionConfig,
-    query?: Contextable<ICommonContext, string>
-  ) {
-    const assertion = new Assertion(this, assertionConfig);
-    assertion.query(query);
-    this.actions.push(assertion);
-    return assertion;
-  }
-
-  public declare(declarationConfig: dataform.ITarget | dataform.ActionConfig): Declaration {
-    // The declaration property exists on ActionConfig but not on Target.
-    if (!declarationConfig.hasOwnProperty("declaration")) {
-      const target = declarationConfig as dataform.ITarget;
-      const deprecatedDeclarationConstructor = new Declaration();
-      deprecatedDeclarationConstructor.session = this;
-      utils.setNameAndTarget(
-        this,
-        deprecatedDeclarationConstructor.proto,
-        target.name,
-        target.schema,
-        target.database
-      );
-      deprecatedDeclarationConstructor.proto.fileName = utils.getCallerFile(this.rootDir);
-      this.actions.push(deprecatedDeclarationConstructor);
-      return deprecatedDeclarationConstructor;
-    }
-    const declaration = new Declaration(this, declarationConfig as dataform.ActionConfig);
+  public declare(dataset: dataform.ITarget): Declaration {
+    const declaration = new Declaration();
+    declaration.session = this;
+    utils.setNameAndTarget(this, declaration.proto, dataset.name, dataset.schema, dataset.database);
+    declaration.proto.fileName = utils.getCallerFile(this.rootDir);
     this.actions.push(declaration);
     return declaration;
   }
@@ -375,6 +300,15 @@ export class Session {
     // Add it to global index.
     this.tests[name] = newTest;
     return newTest;
+  }
+
+  public notebook(name: string): Notebook {
+    const notebook = new Notebook();
+    notebook.session = this;
+    utils.setNameAndTarget(this, notebook.proto, name);
+    notebook.proto.config.fileName = utils.getCallerFile(this.rootDir);
+    this.actions.push(notebook);
+    return notebook;
   }
 
   public compileError(err: Error | string, path?: string, actionTarget?: dataform.ITarget) {

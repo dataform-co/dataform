@@ -1,4 +1,9 @@
 import { decode64, encode64, verifyObjectMatchesProto } from "df/common/protos";
+import { Assertion } from "df/core/actions/assertion";
+import { Declaration } from "df/core/actions/declaration";
+import { Notebook } from "df/core/actions/notebook";
+import { Operation } from "df/core/actions/operation";
+import { Table } from "df/core/actions/table";
 import * as Path from "df/core/path";
 import { Session } from "df/core/session";
 import * as utils from "df/core/utils";
@@ -128,7 +133,9 @@ function loadActionConfigs(session: Session, filePaths: string[]) {
               "Declaration configs must include a 'target' with a populated 'name' field"
             );
           }
-          session.declare(actionConfig);
+
+          const declaration = new Declaration(session, actionConfig);
+          session.actions.push(declaration);
           return;
         }
 
@@ -154,7 +161,9 @@ function loadActionConfigs(session: Session, filePaths: string[]) {
             notebookContents,
             actionConfig.fileName
           );
-          session.notebook(actionConfig, JSON.stringify(strippedNotebookContents));
+          const notebook = new Notebook(session, actionConfig);
+          notebook.ipynb(strippedNotebookContents);
+          session.actions.push(notebook);
         }
 
         if (fileExtension === "sql") {
@@ -183,19 +192,21 @@ function loadSqlFile(session: Session, actionConfig: dataform.ActionConfig) {
   const queryAsContextable = nativeRequire(actionConfig.fileName).queryAsContextable;
 
   if (actionConfig.assertion) {
-    return session.assertion(actionConfig, queryAsContextable);
+    const assertion = new Assertion(session, actionConfig);
+    assertion.query(queryAsContextable);
+    session.actions.push(assertion);
+    return;
   }
-  if (actionConfig.table) {
-    return session.table(actionConfig, queryAsContextable);
-  }
-  if (actionConfig.incrementalTable) {
-    return session.incrementalTable(actionConfig, queryAsContextable);
-  }
-  if (actionConfig.view) {
-    return session.view(actionConfig, queryAsContextable);
+  if (actionConfig.table || actionConfig.incrementalTable || actionConfig.view) {
+    const table = new Table(session, actionConfig);
+    table.query(queryAsContextable);
+    session.actions.push(table);
+    return;
   }
   // If no config is specified, the operation action type is defaulted to.
-  session.operate(actionConfig, queryAsContextable);
+  const operation = new Operation(session, actionConfig);
+  operation.queries(queryAsContextable);
+  session.actions.push(operation);
 }
 
 function stripNotebookOutputs(
