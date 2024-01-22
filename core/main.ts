@@ -1,14 +1,14 @@
 import { decode64, encode64, verifyObjectMatchesProto } from "df/common/protos";
+import { Assertion } from "df/core/actions/assertion";
+import { Declaration } from "df/core/actions/declaration";
+import { Notebook } from "df/core/actions/notebook";
+import { Operation } from "df/core/actions/operation";
+import { Table } from "df/core/actions/table";
 import * as Path from "df/core/path";
 import { Session } from "df/core/session";
 import * as utils from "df/core/utils";
 import { readWorkflowSettings } from "df/core/workflow_settings";
 import { dataform } from "df/protos/ts";
-import { Table } from "df/core/actions/table";
-import { Assertion } from "df/core/actions/assertion";
-import { Operation } from "df/core/actions/operation";
-import { Notebook } from "df/core/actions/notebook";
-import { Declaration } from "./actions/declaration";
 
 declare var __webpack_require__: any;
 declare var __non_webpack_require__: any;
@@ -195,11 +195,13 @@ function loadSqlFile(session: Session, actionConfig: dataform.ActionConfig) {
     const assertion = new Assertion(session, actionConfig);
     assertion.query(queryAsContextable);
     session.actions.push(assertion);
+    return;
   }
   if (actionConfig.table || actionConfig.incrementalTable || actionConfig.view) {
     const table = new Table(session, actionConfig);
     table.query(queryAsContextable);
     session.actions.push(table);
+    return;
   }
   // If no config is specified, the operation action type is defaulted to.
   const operation = new Operation(session, actionConfig);

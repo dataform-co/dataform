@@ -286,7 +286,7 @@ export class Table extends ActionBuilder<dataform.Table> {
 
     // TODO(ekrekr): instead of overloading, add new class files for view and incremental actions.
     this.config({
-      type: "table",
+      type: config.table ? "table" : config.view ? "view" : "incremental",
       dependencies: config.dependencyTargets,
       disabled:
         config.table?.disabled || config.incrementalTable?.disabled || config.view?.disabled,
