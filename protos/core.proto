@@ -115,8 +115,6 @@ message Table {
   // configured in compiled graphs via the Table proto.
   TableType enum_type = 36;
 
-  ActionConfig config = 37;
-
   Target target = 4;
   Target canonical_target = 32;
 
@@ -145,7 +143,7 @@ message Table {
   repeated string incremental_pre_ops = 28;
   repeated string incremental_post_ops = 29;
 
-  // Warehouse specific features.
+  // Common BigQuery options.
   BigQueryOptions bigquery = 22;
 
   // Generated.
@@ -155,8 +153,6 @@ message Table {
 }
 
 message Operation {
-  ActionConfig config = 15;
-
   Target target = 3;
   Target canonical_target = 13;
   repeated Target dependency_targets = 11;
@@ -178,8 +174,6 @@ message Operation {
 }
 
 message Assertion {
-  ActionConfig config = 16;
-
   Target target = 8;
   Target canonical_target = 13;
 
@@ -210,8 +204,6 @@ enum ActionHermeticity {
 }
 
 message Declaration {
-  ActionConfig config = 16;
-
   Target target = 2;
   Target canonical_target = 5;
 
@@ -232,8 +224,6 @@ message Test {
 }
 
 message Notebook {
-  ActionConfig config = 1;
-
   Target target = 2;
 
   string notebook_contents = 3;
@@ -260,24 +250,395 @@ message CompiledGraph {
   reserved 5, 6;
 }
 
+message CompiledGraphV3 {
+  message ColumnDescriptor {
+    // The identifier for the column, using multiple parts for nested records.
+    repeated string path = 1;
+
+    // A text description of the column.
+    string description = 2;
+
+    // A list of tags for this column which will be applied if supported by the
+    // warehouse.
+    repeated string tags = 3;
+
+    // A list of BigQuery policy tags that will be applied to the column.
+    repeated string bigquery_policy_tags = 4;
+  }
+
+  message BigQueryOptions {
+    string partition_by = 1;
+    repeated string cluster_by = 2;
+    string update_partition_filter = 3;
+    map<string, string> labels = 4;
+    int32 partition_expiration_days = 5;
+    bool require_partition_filter = 6;
+    map<string, string> additional_options = 7;
+  }
+
+  message Table {
+    // Target is the unique action identifier.
+    Target target = 1;
+
+    // Canonical Target is the unique action identifier, with no target
+    // overrides applied.
+    // This option cannot be manually specified in action configs.
+    Target canonical_target = 2;
+
+    // Targets (non-canonical) of actions that this action is dependent on.
+    repeated Target dependency_targets = 3;
+
+    // Path to the source file that the contents of the action is loaded from.
+    string source = 4;
+
+    // Path that the config of the action is loaded from.
+    // This option cannot be manually specified in action configs.
+    string config_path = 5;
+
+    // A list of user-defined tags with which the action should be labeled.
+    repeated string tags = 6;
+
+    // If set to true, this action will not be executed. However, the action may
+    // still be depended upon.
+    bool disabled = 7;
+
+    // Describes a struct, object or record in a dataset that has nested
+    // columns.
+    ActionDescriptor action_descriptor = 8;
+
+    // The SQL query.
+    string query = 9;
+
+    // Pre/post operations.
+    repeated string pre_ops = 10;
+    repeated string post_ops = 11;
+
+    // Common BigQuery options.
+    BigQueryOptions bigquery = 12;
+
+    // Description of the table.
+    string description = 13;
+
+    // Descriptions of columns within the table.
+    repeated ColumnDescriptor columns = 14;
+  }
+
+  message View {
+    // Target is the unique action identifier.
+    Target target = 1;
+
+    // Canonical Target is the unique action identifier, with no target
+    // overrides applied.
+    // This option cannot be manually specified in action configs.
+    Target canonical_target = 2;
+
+    // Targets (non-canonical) of actions that this action is dependent on.
+    repeated Target dependency_targets = 3;
+
+    // Path to the source file that the contents of the action is loaded from.
+    string source = 4;
+
+    // Path that the config of the action is loaded from.
+    // This option cannot be manually specified in action configs.
+    string config_path = 5;
+
+    // A list of user-defined tags with which the action should be labeled.
+    repeated string tags = 6;
+
+    // If set to true, this action will not be executed. However, the action may
+    // still be depended upon.
+    bool disabled = 7;
+
+    // Describes a struct, object or record in a dataset that has nested
+    // columns.
+    ActionDescriptor action_descriptor = 8;
+
+    // The SQL query.
+    string query = 9;
+
+    // Pre/post operations.
+    repeated string pre_ops = 10;
+    repeated string post_ops = 11;
+
+    // Common BigQuery options.
+    BigQueryOptions bigquery = 12;
+
+    // Applies the materialized view optimization, see
+    // https://cloud.google.com/bigquery/docs/materialized-views-intro.
+    bool materialized = 13;
+
+    // Description of the view.
+    string description = 14;
+
+    // Descriptions of columns within the table.
+    repeated ColumnDescriptor columns = 15;
+  }
+
+  message IncrementalTable {
+    // Target is the unique action identifier.
+    Target target = 1;
+
+    // Canonical Target is the unique action identifier, with no target
+    // overrides applied.
+    // This option cannot be manually specified in action configs.
+    Target canonical_target = 2;
+
+    // Targets (non-canonical) of actions that this action is dependent on.
+    repeated Target dependency_targets = 3;
+
+    // Path to the source file that the contents of the action is loaded from.
+    string source = 4;
+
+    // Path that the config of the action is loaded from.
+    // This option cannot be manually specified in action configs.
+    string config_path = 5;
+
+    // A list of user-defined tags with which the action should be labeled.
+    repeated string tags = 6;
+
+    // If set to true, this action will not be executed. However, the action may
+    // still be depended upon.
+    bool disabled = 7;
+
+    // Describes a struct, object or record in a dataset that has nested
+    // columns.
+    ActionDescriptor action_descriptor = 8;
+
+    // The SQL query.
+    string query = 9;
+
+    // The query that is applied when the table already exists.
+    // This option cannot be manually specified in action configs.
+    string incremental_query = 13;
+
+    // Pre/post operations.
+    repeated string pre_ops = 10;
+    repeated string post_ops = 11;
+
+    // Common BigQuery options.
+    BigQueryOptions bigquery = 12;
+
+    // If true, prevents the dataset from being rebuilt from scratch.
+    bool protected = 14;
+
+    // is specified, if a row arrives whose key matches an existing row's key,
+    // then the existing row is overwritten with the new data.
+    repeated string unique_key = 15;
+
+    // Description of the incremental table.
+    string description = 16;
+
+    // Descriptions of columns within the table.
+    repeated ColumnDescriptor columns = 17;
+  }
+
+  message Assertion {
+    // Target is the unique action identifier.
+    Target target = 1;
+
+    // Canonical Target is the unique action identifier, with no target
+    // overrides applied.
+    // This option cannot be manually specified in action configs.
+    Target canonical_target = 2;
+
+    // Targets (non-canonical) of actions that this action is dependent on.
+    repeated Target dependency_targets = 3;
+
+    // Path to the source file that the contents of the action is loaded from.
+    string source = 4;
+
+    // Path that the config of the action is loaded from.
+    // This option cannot be manually specified in action configs.
+    string config_path = 5;
+
+    // A list of user-defined tags with which the action should be labeled.
+    repeated string tags = 6;
+
+    // If set to true, this action will not be executed. However, the action may
+    // still be depended upon.
+    bool disabled = 7;
+
+    // Describes a struct, object or record in a dataset that has nested
+    // columns.
+    ActionDescriptor action_descriptor = 8;
+
+    // The SQL query.
+    string query = 9;
+
+    // Description of the assertion.
+    string description = 10;
+  }
+
+  message Operation {
+    // Target is the unique action identifier.
+    Target target = 1;
+
+    // Canonical Target is the unique action identifier, with no target
+    // overrides applied.
+    // This option cannot be manually specified in action configs.
+    Target canonical_target = 2;
+
+    // Targets (non-canonical) of actions that this action is dependent on.
+    repeated Target dependency_targets = 3;
+
+    // Path to the source file that the contents of the action is loaded from.
+    string source = 4;
+
+    // Path that the config of the action is loaded from.
+    // This option cannot be manually specified in action configs.
+    string config_path = 5;
+
+    // A list of user-defined tags with which the action should be labeled.
+    repeated string tags = 6;
+
+    // If set to true, this action will not be executed. However, the action may
+    // still be depended upon.
+    bool disabled = 7;
+
+    // Describes a struct, object or record in a dataset that has nested
+    // columns.
+    ActionDescriptor action_descriptor = 8;
+
+    // The SQL query.
+    string query = 9;
+
+    // Declares that this action creates a dataset which should be referenceable
+    // as a dependency target, for example by using the `ref` function.
+    bool has_output = 10;
+
+    // Description of the operation.
+    string description = 11;
+
+    // Descriptions of columns within the operation. Can only be set if
+    // hasOutput is true.
+    repeated ColumnDescriptor columns = 12;
+  }
+
+  message Declaration {
+    // Target is the unique action identifier.
+    Target target = 1;
+
+    // Canonical Target is the unique action identifier, with no target
+    // overrides applied.
+    // This option cannot be manually specified in action configs.
+    Target canonical_target = 2;
+
+    // Targets (non-canonical) of actions that this action is dependent on.
+    repeated Target dependency_targets = 3;
+
+    // Path to the source file that the contents of the action is loaded from.
+    string source = 4;
+
+    // Path that the config of the action is loaded from.
+    // This option cannot be manually specified in action configs.
+    string config_path = 5;
+
+    // A list of user-defined tags with which the action should be labeled.
+    repeated string tags = 6;
+
+    // Describes a struct, object or record in a dataset that has nested
+    // columns.
+    ActionDescriptor action_descriptor = 7;
+
+    // Description of the declaration.
+    string description = 8;
+  }
+
+  message Notebook {
+    // Target is the unique action identifier.
+    Target target = 1;
+
+    // Canonical Target is the unique action identifier, with no target
+    // overrides applied.
+    // This option cannot be manually specified in action configs.
+    Target canonical_target = 2;
+
+    // Targets (non-canonical) of actions that this action is dependent on.
+    repeated Target dependency_targets = 3;
+
+    // Path to the source file that the contents of the action is loaded from.
+    string source = 4;
+
+    // Path that the config of the action is loaded from.
+    // This option cannot be manually specified in action configs.
+    string config_path = 5;
+
+    // A list of user-defined tags with which the action should be labeled.
+    repeated string tags = 6;
+
+    // Description of the notebook.
+    string description = 7;
+
+    // TODO(ekrekr): add a notebook runtime field definition.
+  }
+
+  message Actions {
+    message Action {
+      oneof action {
+        Table table = 1;
+        View view = 2;
+        IncrementalTable incremental_table = 3;
+        Assertion assertion = 4;
+        Operation operation = 5;
+        Declaration declaration = 6;
+        Notebook notebook = 7;
+      }
+    }
+    repeated Action action = 1;
+  }
+
+  Actions actions = 1;
+
+  message WorkflowSettings {
+    string dataform_core_version = 1;
+
+    string default_database = 2;
+    string default_schema = 3;
+    string default_location = 4;
+
+    string assertion_schema = 5;
+
+    map<string, string> vars = 6;
+
+    string database_suffix = 7;
+    string schema_suffix = 8;
+    string table_prefix = 9;
+  }
+
+  WorkflowSettings workflow_settings = 2;
+
+  GraphErrors graph_errors = 3;
+
+  string dataform_core_version = 4;
+
+  repeated Target targets = 5;
+}
+
 message CoreExecutionRequest {
   oneof request {
     CompileExecutionRequest compile = 1;
   }
 }
 
+// Core execution response contains multiple compiled graphs, that are
+// versioned, because it facilitates consumers supporting major protobuf changes
+// within the same proto file.
 message CoreExecutionResponse {
   oneof response {
-    CompileExecutionResponse compile = 1;
+    CompileExecutionResponse compile = 1 [deprecated = true];
+    CompileExecutionResponseV3 compile_v3 = 2;
   }
 }
 
 message CompileExecutionRequest {
   CompileConfig compile_config = 1;
 }
-
 message CompileExecutionResponse {
   CompiledGraph compiled_graph = 1;
+}
+
+message CompileExecutionResponseV3 {
+  CompiledGraphV3 compiled_graph = 1;
 }
 
 // This feature list is added to when making potentilly backwards breaking
@@ -286,101 +647,4 @@ message CompileExecutionResponse {
 enum SupportedFeatures {
   UNKNOWN_FEATURE = 0;
   ARRAY_BUFFER_IPC = 1;
-}
-
-message ActionConfigs {
-  repeated ActionConfig actions = 1;
-}
-
-message ActionConfig {
-  // Target is a unique action identifier.
-  Target target = 1;
-
-  // A list of user-defined tags with which the action should be labeled.
-  repeated string tags = 2;
-
-  // Targets of actions that this action is dependent on.
-  repeated Target dependency_targets = 3;
-
-  // Filename to load the action contents from.
-  string file_name = 4;
-
-  // Type specific configs. Must correspond to the declared type.
-  oneof action_config {
-    TableConfig table = 5;
-    ViewConfig view = 6;
-    IncrementalTableConfig incremental_table = 7;
-    AssertionConfig assertion = 8;
-    OperationConfig operation = 9;
-    DeclarationConfig declaration = 10;
-    NotebookConfig notebook = 11;
-  }
-}
-
-// Configuration options for BigQuery tables.
-message TableConfig {
-  // If set to true, this action will not be executed. However, the action may
-  // still be depended upon.
-  bool disabled = 1;
-}
-
-// Configuration options for BigQuery views.
-message ViewConfig {
-  // If set to true, this action will not be executed. However, the action may
-  // still be depended upon.
-  bool disabled = 1;
-
-  // If set to true, will make the view materialized.
-  // For more information, read the [BigQuery materialized view
-  // docs](https://cloud.google.com/bigquery/docs/materialized-views-intro).
-  bool materialized = 2;
-}
-
-// Configuration options for BigQuery incremental tables.
-message IncrementalTableConfig {
-  // If set to true, this action will not be executed. However, the action may
-  // still be depended upon.
-  bool disabled = 1;
-
-  // If set to true, running this action will ignore the full-refresh option.
-  // This is useful for tables which are built from transient data, to ensure
-  // that historical data is never lost.
-  bool protected = 2;
-
-  // Unique keys for merge criteria for incremental tables.
-  // If configured, records with matching unique key(s) will be updated, rather
-  // than new rows being inserted.
-  repeated string unique_key = 3;
-}
-
-// Configuration options for BigQuery table assertions.
-message AssertionConfig {
-  // If set to true, this action will not be executed. However, the action may
-  // still be depended upon.
-  bool disabled = 1;
-}
-
-// Configuration options for BigQuery table opertions.
-message OperationConfig {
-  // If set to true, this action will not be executed. However, the action may
-  // still be depended upon.
-  bool disabled = 1;
-
-  // Declares that this `operations` action creates a dataset which should be
-  // referenceable using the `ref` function.
-  bool has_output = 2;
-}
-
-// Configuration options for BigQuery table declarations.
-// TODO(ekrekr): remove this empty message, if explicit action type without a
-// `type` field proves to be impossible / ugly.
-message DeclarationConfig {}
-
-// Configuration options for Vertex AI notebooks.
-message NotebookConfig {
-  // If set to true, this action will not be executed. However, the action may
-  // still be depended upon.
-  bool disabled = 1;
-
-  // TODO(ekrekr): add a notebook runtime field definition.
 }
