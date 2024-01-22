@@ -12,7 +12,7 @@ export class Notebook extends ActionBuilder<dataform.Notebook> {
   // TODO: make this field private, to enforce proto update logic to happen in this class.
   public proto: dataform.INotebook = dataform.Notebook.create();
 
-  constructor(session: Session, config: dataform.ActionConfig) {
+  constructor(session?: Session, config?: dataform.ActionConfig) {
     super(session);
 
     this.session = session;
@@ -22,8 +22,8 @@ export class Notebook extends ActionBuilder<dataform.Notebook> {
     this.proto.config.target = this.applySessionCanonicallyToTarget(this.proto.config.target);
   }
 
-  public notebookContents(notebookContents: string): Notebook {
-    this.proto.notebookContents = notebookContents;
+  public ipynb(contents: object): Notebook {
+    this.proto.notebookContents = JSON.stringify(contents);
     return this;
   }
 
