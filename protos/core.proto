@@ -275,12 +275,8 @@ message CompiledGraphV3 {
     // A text description of the column.
     string description = 2;
 
-    // A list of tags for this column which will be applied if supported by the
-    // warehouse.
-    repeated string tags = 3;
-
     // A list of BigQuery policy tags that will be applied to the column.
-    repeated string bigquery_policy_tags = 4;
+    repeated string bigquery_policy_tags = 3;
   }
 
   message Table {
@@ -655,9 +651,7 @@ message CompiledGraphV3 {
 
   GraphErrors graph_errors = 3;
 
-  string dataform_core_version = 4;
-
-  repeated Target targets = 5;
+  repeated Target targets = 4;
 }
 
 message CoreExecutionRequest {
