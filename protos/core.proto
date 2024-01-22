@@ -143,7 +143,7 @@ message Table {
   repeated string incremental_pre_ops = 28;
   repeated string incremental_post_ops = 29;
 
-  // Common BigQuery options.
+  // Warehouse specific features.
   BigQueryOptions bigquery = 22;
 
   // Generated.
@@ -267,12 +267,33 @@ message CompiledGraphV3 {
   }
 
   message BigQueryOptions {
+    // The key by which to partition the table. Typically the name of a
+    // timestamp or the date column. See
+    // https://cloud.google.com/dataform/docs/partitions-clusters.
     string partition_by = 1;
+
+    // The keys by which to cluster partitions by. See
+    // https://cloud.google.com/dataform/docs/partitions-clusters.
     repeated string cluster_by = 2;
+
+    // SQL-based filter for when incremental updates are applied.
     string update_partition_filter = 3;
+
+    // Key-value pairs for BigQuery labels. If the label name contains special
+    // characters, e.g. hyphens, then quote its name, e.g. `labels: {
+    // "label-name": "value" }`.
     map<string, string> labels = 4;
+
+    // The number of days for which BigQuery stores data in each partition. The
+    // setting applies to all partitions in a table, but is calculated
+    // independently for each partition based on the partition time.
     int32 partition_expiration_days = 5;
+
+    // Declares whether the partitioned table requires a WHERE clause predicate
+    // filter that filters the partitioning column.
     bool require_partition_filter = 6;
+
+    // Key-value pairs for the table, view, and materialized view options.
     map<string, string> additional_options = 7;
   }
 
