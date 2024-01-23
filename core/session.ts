@@ -150,7 +150,6 @@ export class Session {
     switch (sqlxConfig.type) {
       case "view":
       case "table":
-      case "inline":
       case "incremental":
         const table = this.publish(sqlxConfig.name)
           .config(sqlxConfig)
@@ -204,15 +203,6 @@ export class Session {
     }
     const resolved = allResolved.length > 0 ? allResolved[0] : undefined;
 
-    if (
-      resolved &&
-      resolved instanceof Table &&
-      resolved.proto.enumType === dataform.TableType.INLINE
-    ) {
-      // TODO: Pretty sure this is broken as the proto.query value may not
-      // be set yet as it happens during compilation. We should evalute the query here.
-      return `(${resolved.proto.query})`;
-    }
     if (resolved && resolved instanceof Operation && !resolved.proto.hasOutput) {
       this.compileError(
         new Error("Actions cannot resolve operations which do not produce output.")
@@ -451,19 +441,9 @@ export class Session {
             action.target
           );
         } else if (possibleDeps.length === 1) {
-          // We found a single matching target, and fully-qualify it if it's a normal dependency,
-          // or add all of its dependencies to ours if it's an 'inline' table.
+          // We found a single matching target, and fully-qualify it if it's a normal dependency.
           const protoDep = possibleDeps[0].proto;
-          if (
-            protoDep instanceof dataform.Table &&
-            protoDep.enumType === dataform.TableType.INLINE
-          ) {
-            protoDep.dependencyTargets.forEach(inlineDep =>
-              action.dependencyTargets.push(inlineDep)
-            );
-          } else {
-            fullyQualifiedDependencies[targetAsReadableString(protoDep.target)] = protoDep.target;
-          }
+          fullyQualifiedDependencies[targetAsReadableString(protoDep.target)] = protoDep.target;
         } else {
           // Too many targets matched the dependency.
           this.compileError(
@@ -592,19 +572,6 @@ export class Session {
           }
         }
       }
-
-      // Ignored properties
-      if (table.enumType === dataform.TableType.INLINE) {
-        Table.INLINE_IGNORED_PROPS.forEach(ignoredProp => {
-          if (objectExistsOrIsNonEmpty(table[ignoredProp])) {
-            this.compileError(
-              `Unused property was detected: "${ignoredProp}". This property is not used for tables with type "inline" and will be ignored`,
-              table.fileName,
-              table.target
-            );
-          }
-        });
-      }
     });
   }
 
@@ -712,7 +679,7 @@ export class Session {
 }
 
 function definesDataset(type: string) {
-  return type === "view" || type === "table" || type === "inline" || type === "incremental";
+  return type === "view" || type === "table" || type === "incremental";
 }
 
 function getCanonicalProjectConfig(originalProjectConfig: dataform.IProjectConfig) {

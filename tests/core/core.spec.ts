@@ -359,7 +359,7 @@ suite("@dataform/core", () => {
           actionName: "schema.exampleFail",
           actionTarget: { schema: "schema", name: "exampleFail" },
           message:
-            'Wrong type of table detected. Should only use predefined types: "table" | "view" | "incremental" | "inline"'
+            'Wrong type of table detected. Should only use predefined types: "table" | "view" | "incremental"'
         }
       ]);
 
@@ -529,109 +529,6 @@ suite("@dataform/core", () => {
         })
       );
       expect(graph.graphErrors.compilationErrors).to.deep.equals([]);
-    });
-
-    test("validation_type_inline", () => {
-      const session = new Session(path.dirname(__filename), TestConfigs.bigquery);
-      session.publish("a", { type: "table" }).query(_ => "select 1 as test");
-      session
-        .publish("b", {
-          type: "inline",
-          bigquery: {
-            labels: { a: "b" }
-          },
-          columns: { test: "test description b" },
-          disabled: true
-        })
-        .preOps(_ => ["pre_op_b"])
-        .postOps(_ => ["post_op_b"])
-        .where("test_where")
-        .query(ctx => `select * from ${ctx.ref("a")}`);
-      session
-        .publish("c", {
-          type: "table",
-          columns: { test: "test description c" }
-        })
-        .preOps(_ => ["pre_op_c"])
-        .postOps(_ => ["post_op_c"])
-        .query(ctx => `select * from ${ctx.ref("b")}`);
-
-      const graph = session.compile();
-
-      const tableA = graph.tables.find(
-        table => targetAsReadableString(table.target) === "schema.a"
-      );
-      expect(tableA.type).equals("table");
-      expect(tableA.enumType).equals(dataform.TableType.TABLE);
-      expect(
-        tableA.dependencyTargets.map(dependency => targetAsReadableString(dependency))
-      ).deep.equals([]);
-      expect(tableA.query).equals("select 1 as test");
-
-      const tableB = graph.tables.find(
-        table => targetAsReadableString(table.target) === "schema.b"
-      );
-      expect(tableB.type).equals("inline");
-      expect(tableB.enumType).equals(dataform.TableType.INLINE);
-      expect(
-        tableB.dependencyTargets.map(dependency => targetAsReadableString(dependency))
-      ).includes("schema.a");
-      expect(tableB.actionDescriptor).eql({
-        bigqueryLabels: {
-          a: "b"
-        },
-        columns: [
-          dataform.ColumnDescriptor.create({
-            description: "test description b",
-            path: ["test"]
-          })
-        ]
-      });
-      expect(tableB.preOps).deep.equals(["pre_op_b"]);
-      expect(tableB.postOps).deep.equals(["post_op_b"]);
-      expect(asPlainObject(tableB.bigquery)).deep.equals(
-        asPlainObject({
-          labels: {
-            a: "b"
-          }
-        })
-      );
-      expect(tableB.disabled).equals(true);
-      expect(tableB.where).equals("test_where");
-      expect(tableB.query).equals("select * from `schema.a`");
-
-      const tableC = graph.tables.find(
-        table => targetAsReadableString(table.target) === "schema.c"
-      );
-      expect(tableC.type).equals("table");
-      expect(tableC.enumType).equals(dataform.TableType.TABLE);
-      expect(
-        tableC.dependencyTargets.map(dependency => targetAsReadableString(dependency))
-      ).includes("schema.a");
-      expect(tableC.actionDescriptor).eql({
-        columns: [
-          dataform.ColumnDescriptor.create({
-            description: "test description c",
-            path: ["test"]
-          })
-        ]
-      });
-      expect(tableC.preOps).deep.equals(["pre_op_c"]);
-      expect(tableC.postOps).deep.equals(["post_op_c"]);
-      expect(tableC.bigquery).equals(null);
-      expect(tableC.disabled).equals(false);
-      expect(tableC.where).equals("");
-      expect(tableC.query).equals("select * from (select * from `schema.a`)");
-
-      const errors = graph.graphErrors.compilationErrors
-        .filter(item => item.actionName === "schema.b")
-        .map(item => item.message);
-
-      expect(errors).that.matches(/Unused property was detected: "preOps"/);
-      expect(errors).that.matches(/Unused property was detected: "postOps"/);
-      expect(errors).that.matches(/Unused property was detected: "bigquery"/);
-      expect(errors).that.matches(/Unused property was detected: "disabled"/);
-      expect(errors).that.matches(/Unused property was detected: "where"/);
     });
 
     [

@@ -364,8 +364,7 @@ export class Runner {
       // (i.e. it must still be RUNNING, and not FAILED).
       actionResult.status === dataform.ActionResult.ExecutionStatus.RUNNING &&
       !(this.graph.runConfig && this.graph.runConfig.disableSetMetadata) &&
-      action.type === "table" &&
-      action.tableType !== "inline"
+      action.type === "table"
     ) {
       try {
         await this.dbadapter.setMetadata(action);
