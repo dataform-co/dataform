@@ -225,9 +225,19 @@ message Test {
 }
 
 message Notebook {
-  Target target = 2;
+  Target target = 1;
 
-  string notebook_contents = 3;
+  Target canonical_target = 2;
+
+  repeated string tags = 3;
+
+  repeated Target dependency_targets = 4;
+
+  string file_name = 5;
+
+  bool disabled = 6;
+
+  string notebook_contents = 7;
 }
 
 message CompiledGraph {
@@ -640,6 +650,7 @@ message ActionConfig {
 
     // TODO(ekrekr): add a notebook runtime field definition.
   }
+
   oneof action {
     TableConfig table = 1;
     ViewConfig view = 2;

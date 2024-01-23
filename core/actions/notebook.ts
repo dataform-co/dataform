@@ -12,14 +12,16 @@ export class Notebook extends ActionBuilder<dataform.Notebook> {
   // TODO: make this field private, to enforce proto update logic to happen in this class.
   public proto: dataform.INotebook = dataform.Notebook.create();
 
-  constructor(session?: Session, config?: dataform.ActionConfig) {
+  constructor(session?: Session, config?: dataform.ActionConfig.Notebook) {
     super(session);
 
     this.session = session;
-    this.proto.config = config;
-
     this.proto.target = this.applySessionToTarget(this.proto.config.target);
-    this.proto.config.target = this.applySessionCanonicallyToTarget(this.proto.config.target);
+    this.proto.canonicalTarget = this.applySessionCanonicallyToTarget(config.target);
+    this.proto.tags = config.tags;
+    this.proto.dependencyTargets = config.dependencyTargets;
+    this.proto.fileName = config.filename;
+    this.proto.disabled = config.disabled;
   }
 
   public ipynb(contents: object): Notebook {
