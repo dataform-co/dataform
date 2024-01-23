@@ -116,9 +116,6 @@ message Table {
   // configured in compiled graphs via the Table proto.
   TableType enum_type = 36;
 
-  // TODO(ekrekr): remove this.
-  ActionConfig config = 37;
-
   Target target = 4;
   Target canonical_target = 32;
 
@@ -157,9 +154,6 @@ message Table {
 }
 
 message Operation {
-  // TODO(ekrekr): remove this.
-  ActionConfig config = 15;
-
   Target target = 3;
   Target canonical_target = 13;
   repeated Target dependency_targets = 11;
@@ -181,9 +175,6 @@ message Operation {
 }
 
 message Assertion {
-  // TODO(ekrekr): remove this.
-  ActionConfig config = 16;
-
   Target target = 8;
   Target canonical_target = 13;
 
@@ -214,9 +205,6 @@ enum ActionHermeticity {
 }
 
 message Declaration {
-  // TODO(ekrekr): remove this.
-  ActionConfig config = 16;
-
   Target target = 2;
   Target canonical_target = 5;
 
@@ -238,8 +226,6 @@ message Test {
 
 // TODO(ekrekr): remove this.
 message Notebook {
-  ActionConfig config = 1;
-
   Target target = 2;
 
   string notebook_contents = 3;
@@ -255,8 +241,6 @@ message CompiledGraph {
   // TODO(ekrekr): move the Test action outside of the compiled graph, because
   // it is not used at runtime.
   repeated Test tests = 8;
-
-  // TODO(ekrekr): remove this.
   repeated Notebook notebooks = 12;
 
   GraphErrors graph_errors = 7;
@@ -268,7 +252,74 @@ message CompiledGraph {
   reserved 5, 6;
 }
 
-message CompiledGraphV3 {
+message CoreExecutionRequest {
+  oneof request {
+    CompileExecutionRequest compile = 1;
+  }
+}
+
+// Core execution response contains multiple compiled graphs, that are
+// versioned, because it facilitates consumers supporting major protobuf changes
+// within the same proto file.
+message CoreExecutionResponse {
+  CompileExecutionResponse compile = 1;
+}
+
+message CompileExecutionRequest {
+  CompileConfig compile_config = 1;
+}
+message CompileExecutionResponse {
+  CompiledGraph compiled_graph = 1;
+}
+
+// This feature list is added to when making potentilly backwards breaking
+// changes. It lets the caller of Dataform Core know whether it supports the
+// change.
+enum SupportedFeatures {
+  UNKNOWN_FEATURE = 0;
+  ARRAY_BUFFER_IPC = 1;
+}
+
+// Workflow Settings specifies the contents of the workflow_settings.yaml
+// configuration file.
+message WorkflowSettingsConfig {
+  // The desired dataform core version to compile against.
+  string dataform_core_version = 1;
+
+  // Required. The default database (Google Cloud project ID).
+  string default_database = 2;
+
+  // Required. The default schema (BigQuery dataset ID).
+  string default_schema = 3;
+
+  // Required. The default BigQuery location to use. For more information on
+  // BigQuery locations, see https://cloud.google.com/bigquery/docs/locations.
+  string default_location = 4;
+
+  // Required. The default schema (BigQuery dataset ID) for assertions.
+  string assertion_schema = 5;
+
+  // Optional. User-defined variables that are made available to project code
+  // during compilation. An object containing a list of "key": value pairs.
+  // Example: `{ "name": "wrench", "mass": "1.3kg", "count": "3" }`.
+  map<string, string> vars = 6;
+
+  // Optional. The suffix that should be appended to all database (Google Cloud
+  // project ID) names.
+  string database_suffix = 7;
+
+  // Optional. The suffix that should be appended to all schema (BigQuery
+  // dataset ID) names.
+  string schema_suffix = 8;
+
+  // Optional. The prefix that should be prepended to all table names.
+  string table_prefix = 9;
+}
+
+// Action configs define the configuration properties of actions, via
+// `actions.yaml` files.
+// TODO(ekrekr): consolidate these configuration options in the JS API.
+message ActionConfigs {
   message ColumnDescriptor {
     // The identifier for the column, using multiple parts for nested records.
     repeated string path = 1;
@@ -302,51 +353,51 @@ message CompiledGraphV3 {
     // A list of user-defined tags with which the action should be labeled.
     repeated string tags = 6;
 
-    // If set to true, this action will not be executed. However, the action may
-    // still be depended upon.
+    // If set to true, this action will not be executed. However, the action
+    // may still be depended upon.
     bool disabled = 7;
 
     // The SQL query.
     string query = 8;
 
-    // Pre/post operations.
-    repeated string pre_ops = 9;
-    repeated string post_ops = 10;
+    // Queries to run before `query`. This can be useful for granting
+    // permissions.
+    repeated string pre_operations = 9;
 
-    // Common BigQuery options.
-    BigQueryOptions bigquery = 11;
+    // Queries to run after `query`.
+    repeated string post_operations = 10;
 
     // Description of the table.
-    string description = 12;
+    string description = 11;
 
     // Descriptions of columns within the table.
-    repeated ColumnDescriptor columns = 13;
+    repeated ColumnDescriptor columns = 12;
 
     // The key by which to partition the table. Typically the name of a
     // timestamp or the date column. See
     // https://cloud.google.com/dataform/docs/partitions-clusters.
-    string partition_by = 14;
+    string partition_by = 13;
 
-    // The number of days for which BigQuery stores data in each partition. The
-    // setting applies to all partitions in a table, but is calculated
+    // The number of days for which BigQuery stores data in each partition.
+    // The setting applies to all partitions in a table, but is calculated
     // independently for each partition based on the partition time.
-    int32 partition_expiration_days = 15;
+    int32 partition_expiration_days = 14;
 
-    // Declares whether the partitioned table requires a WHERE clause predicate
-    // filter that filters the partitioning column.
-    bool require_partition_filter = 16;
+    // Declares whether the partitioned table requires a WHERE clause
+    // predicate filter that filters the partitioning column.
+    bool require_partition_filter = 15;
 
     // The keys by which to cluster partitions by. See
     // https://cloud.google.com/dataform/docs/partitions-clusters.
-    repeated string cluster_by = 17;
+    repeated string cluster_by = 16;
 
     // Key-value pairs for BigQuery labels. If the label name contains special
     // characters, e.g. hyphens, then quote its name, e.g. `labels: {
     // "label-name": "value" }`.
-    map<string, string> labels = 18;
+    map<string, string> labels = 17;
 
     // Key-value pairs for the table, view, and materialized view options.
-    map<string, string> additional_options = 19;
+    map<string, string> additional_options = 18;
   }
 
   message View {
@@ -371,37 +422,37 @@ message CompiledGraphV3 {
     // A list of user-defined tags with which the action should be labeled.
     repeated string tags = 6;
 
-    // If set to true, this action will not be executed. However, the action may
-    // still be depended upon.
+    // If set to true, this action will not be executed. However, the action
+    // may still be depended upon.
     bool disabled = 7;
 
     // The SQL query.
     string query = 10;
 
-    // Pre/post operations.
-    repeated string pre_ops = 11;
-    repeated string post_ops = 12;
+    // Queries to run before `query`. This can be useful for granting
+    // permissions.
+    repeated string pre_operations = 11;
 
-    // Common BigQuery options.
-    BigQueryOptions bigquery = 13;
+    // Queries to run after `query`.
+    repeated string post_operations = 12;
 
     // Applies the materialized view optimization, see
     // https://cloud.google.com/bigquery/docs/materialized-views-intro.
-    bool materialized = 14;
+    bool materialized = 13;
 
     // Description of the view.
-    string description = 15;
+    string description = 14;
 
     // Descriptions of columns within the table.
-    repeated ColumnDescriptor columns = 16;
+    repeated ColumnDescriptor columns = 15;
 
     // Key-value pairs for BigQuery labels. If the label name contains special
     // characters, e.g. hyphens, then quote its name, e.g. `labels: {
     // "label-name": "value" }`.
-    map<string, string> labels = 17;
+    map<string, string> labels = 16;
 
     // Key-value pairs for the table, view, and materialized view options.
-    map<string, string> additional_options = 18;
+    map<string, string> additional_options = 17;
   }
 
   message IncrementalTable {
@@ -426,8 +477,8 @@ message CompiledGraphV3 {
     // A list of user-defined tags with which the action should be labeled.
     repeated string tags = 6;
 
-    // If set to true, this action will not be executed. However, the action may
-    // still be depended upon.
+    // If set to true, this action will not be executed. However, the action
+    // may still be depended upon.
     bool disabled = 7;
 
     // The SQL query.
@@ -437,54 +488,54 @@ message CompiledGraphV3 {
     // This option cannot be manually specified in action configs.
     string incremental_query = 9;
 
-    // Pre/post operations.
-    repeated string pre_ops = 10;
-    repeated string post_ops = 11;
+    // Queries to run before `query`. This can be useful for granting
+    // permissions.
+    repeated string pre_operations = 10;
 
-    // Common BigQuery options.
-    BigQueryOptions bigquery = 12;
+    // Queries to run after `query`.
+    repeated string post_operations = 11;
 
     // If true, prevents the dataset from being rebuilt from scratch.
-    bool protected = 13;
+    bool protected = 12;
 
     // is specified, if a row arrives whose key matches an existing row's key,
     // then the existing row is overwritten with the new data.
-    repeated string unique_key = 14;
+    repeated string unique_key = 13;
 
     // Description of the incremental table.
-    string description = 15;
+    string description = 14;
 
     // Descriptions of columns within the table.
-    repeated ColumnDescriptor columns = 16;
+    repeated ColumnDescriptor columns = 15;
 
     // The key by which to partition the table. Typically the name of a
     // timestamp or the date column. See
     // https://cloud.google.com/dataform/docs/partitions-clusters.
-    string partition_by = 17;
+    string partition_by = 16;
 
-    // The number of days for which BigQuery stores data in each partition. The
-    // setting applies to all partitions in a table, but is calculated
+    // The number of days for which BigQuery stores data in each partition.
+    // The setting applies to all partitions in a table, but is calculated
     // independently for each partition based on the partition time.
-    int32 partition_expiration_days = 18;
+    int32 partition_expiration_days = 17;
 
-    // Declares whether the partitioned table requires a WHERE clause predicate
-    // filter that filters the partitioning column.
-    bool require_partition_filter = 19;
+    // Declares whether the partitioned table requires a WHERE clause
+    // predicate filter that filters the partitioning column.
+    bool require_partition_filter = 18;
 
     // SQL-based filter for when incremental updates are applied.
-    string update_partition_filter = 20;
+    string update_partition_filter = 19;
 
     // The keys by which to cluster partitions by. See
     // https://cloud.google.com/dataform/docs/partitions-clusters.
-    repeated string cluster_by = 21;
+    repeated string cluster_by = 20;
 
     // Key-value pairs for BigQuery labels. If the label name contains special
     // characters, e.g. hyphens, then quote its name, e.g. `labels: {
     // "label-name": "value" }`.
-    map<string, string> labels = 22;
+    map<string, string> labels = 21;
 
     // Key-value pairs for the table, view, and materialized view options.
-    map<string, string> additional_options = 23;
+    map<string, string> additional_options = 22;
   }
 
   message Assertion {
@@ -509,8 +560,8 @@ message CompiledGraphV3 {
     // A list of user-defined tags with which the action should be labeled.
     repeated string tags = 6;
 
-    // If set to true, this action will not be executed. However, the action may
-    // still be depended upon.
+    // If set to true, this action will not be executed. However, the action
+    // may still be depended upon.
     bool disabled = 7;
 
     // The SQL query.
@@ -542,15 +593,16 @@ message CompiledGraphV3 {
     // A list of user-defined tags with which the action should be labeled.
     repeated string tags = 6;
 
-    // If set to true, this action will not be executed. However, the action may
-    // still be depended upon.
+    // If set to true, this action will not be executed. However, the action
+    // may still be depended upon.
     bool disabled = 7;
 
     // The SQL query.
     string query = 8;
 
-    // Declares that this action creates a dataset which should be referenceable
-    // as a dependency target, for example by using the `ref` function.
+    // Declares that this action creates a dataset which should be
+    // referenceable as a dependency target, for example by using the `ref`
+    // function.
     bool has_output = 9;
 
     // Description of the operation.
@@ -615,168 +667,17 @@ message CompiledGraphV3 {
     // TODO(ekrekr): add a notebook runtime field definition.
   }
 
-  message Actions {
-    message Action {
-      oneof action {
-        Table table = 1;
-        View view = 2;
-        IncrementalTable incremental_table = 3;
-        Assertion assertion = 4;
-        Operation operation = 5;
-        Declaration declaration = 6;
-        Notebook notebook = 7;
-      }
+  message ActionConfig {
+    oneof action {
+      Table table = 1;
+      View view = 2;
+      IncrementalTable incremental_table = 3;
+      Assertion assertion = 4;
+      Operation operation = 5;
+      Declaration declaration = 6;
+      Notebook notebook = 7;
     }
-    repeated Action action = 1;
   }
 
-  Actions actions = 1;
-
-  message WorkflowSettings {
-    string dataform_core_version = 1;
-
-    string default_database = 2;
-    string default_schema = 3;
-    string default_location = 4;
-
-    string assertion_schema = 5;
-
-    map<string, string> vars = 6;
-
-    string database_suffix = 7;
-    string schema_suffix = 8;
-    string table_prefix = 9;
-  }
-
-  WorkflowSettings workflow_settings = 2;
-
-  GraphErrors graph_errors = 3;
-
-  repeated Target targets = 4;
-}
-
-message CoreExecutionRequest {
-  oneof request {
-    CompileExecutionRequest compile = 1;
-  }
-}
-
-// Core execution response contains multiple compiled graphs, that are
-// versioned, because it facilitates consumers supporting major protobuf changes
-// within the same proto file.
-message CoreExecutionResponse {
-  CompileExecutionResponse compile = 1;
-}
-
-message CompileExecutionRequest {
-  CompileConfig compile_config = 1;
-}
-message CompileExecutionResponse {
-  oneof response {
-    CompiledGraph compiled_graph = 1 [deprecated = true];
-    CompiledGraphV3 compiled_graph_v3 = 2;
-  }
-}
-
-// This feature list is added to when making potentilly backwards breaking
-// changes. It lets the caller of Dataform Core know whether it supports the
-// change.
-enum SupportedFeatures {
-  UNKNOWN_FEATURE = 0;
-  ARRAY_BUFFER_IPC = 1;
-}
-
-// TODO(ekrekr): remove this.
-message ActionConfigs {
   repeated ActionConfig actions = 1;
-}
-
-// TODO(ekrekr): remove this.
-message ActionConfig {
-  // Target is a unique action identifier.
-  Target target = 1;
-
-  // A list of user-defined tags with which the action should be labeled.
-  repeated string tags = 2;
-
-  // Targets of actions that this action is dependent on.
-  repeated Target dependency_targets = 3;
-
-  // Filename to load the action contents from.
-  string file_name = 4;
-
-  // Type specific configs. Must correspond to the declared type.
-  oneof action_config {
-    TableConfig table = 5;
-    ViewConfig view = 6;
-    IncrementalTableConfig incremental_table = 7;
-    AssertionConfig assertion = 8;
-    OperationConfig operation = 9;
-    DeclarationConfig declaration = 10;
-    NotebookConfig notebook = 11;
-  }
-}
-
-// TODO(ekrekr): remove this.
-message TableConfig {
-  // If set to true, this action will not be executed. However, the action may
-  // still be depended upon.
-  bool disabled = 1;
-}
-
-// TODO(ekrekr): remove this.
-message ViewConfig {
-  // If set to true, this action will not be executed. However, the action may
-  // still be depended upon.
-  bool disabled = 1;
-
-  // If set to true, will make the view materialized.
-  // For more information, read the [BigQuery materialized view
-  // docs](https://cloud.google.com/bigquery/docs/materialized-views-intro).
-  bool materialized = 2;
-}
-
-// TODO(ekrekr): remove this.
-message IncrementalTableConfig {
-  // If set to true, this action will not be executed. However, the action may
-  // still be depended upon.
-  bool disabled = 1;
-
-  // If set to true, running this action will ignore the full-refresh option.
-  // This is useful for tables which are built from transient data, to ensure
-  // that historical data is never lost.
-  bool protected = 2;
-
-  // Unique keys for merge criteria for incremental tables.
-  // If configured, records with matching unique key(s) will be updated, rather
-  // than new rows being inserted.
-  repeated string unique_key = 3;
-}
-
-// TODO(ekrekr): remove this.
-message AssertionConfig {
-  // If set to true, this action will not be executed. However, the action may
-  // still be depended upon.
-  bool disabled = 1;
-}
-
-// TODO(ekrekr): remove this.
-message OperationConfig {
-  // If set to true, this action will not be executed. However, the action may
-  // still be depended upon.
-  bool disabled = 1;
-
-  // Declares that this `operations` action creates a dataset which should be
-  // referenceable using the `ref` function.
-  bool has_output = 2;
-}
-
-// TODO(ekrekr): remove this.
-message DeclarationConfig {}
-
-// TODO(ekrekr): remove this.
-message NotebookConfig {
-  // If set to true, this action will not be executed. However, the action may
-  // still be depended upon.
-  bool disabled = 1;
 }
