@@ -299,35 +299,6 @@ suite("@dataform/api", () => {
       ]
     });
 
-    test("prune removes inline tables", async () => {
-      const graph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
-        projectConfig: { warehouse: "bigquery", defaultLocation: "US" },
-        tables: [
-          { target: { schema: "schema", name: "a" }, type: "table" },
-          {
-            target: { schema: "schema", name: "b" },
-            type: "inline",
-            dependencyTargets: [{ schema: "schema", name: "a" }]
-          },
-          {
-            target: { schema: "schema", name: "c" },
-            type: "table",
-            dependencyTargets: [{ schema: "schema", name: "a" }]
-          }
-        ]
-      });
-
-      const prunedGraph = prune(graph, {});
-
-      expect(prunedGraph.tables.length).greaterThan(0);
-
-      const actionNames = prunedGraph.tables.map(action => targetAsReadableString(action.target));
-
-      expect(actionNames).includes("schema.a");
-      expect(actionNames).not.includes("schema.b");
-      expect(actionNames).includes("schema.c");
-    });
-
     test("prune actions with --tags (with dependencies)", () => {
       const prunedGraph = prune(TEST_GRAPH_WITH_TAGS, {
         actions: ["op_b", "op_d"],

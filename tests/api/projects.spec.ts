@@ -199,33 +199,6 @@ suite("examples", () => {
           );
           expect(exampleDeferred.fileName).includes("definitions/example_deferred.js");
 
-          // Check inline tables
-          const exampleInline = graph.tables.find(
-            (t: dataform.ITable) =>
-              targetAsReadableString(t.target) ===
-              dotJoined(
-                databaseWithSuffix("tada-analytics"),
-                schemaWithSuffix("df_integration_test"),
-                "example_inline"
-              )
-          );
-          expect(exampleInline.type).equals("inline");
-          expect(exampleInline.enumType).equals(dataform.TableType.INLINE);
-          expect(exampleInline.query.trim()).equals(
-            `select * from \`${dotJoined(
-              databaseWithSuffix("tada-analytics"),
-              schemaWithSuffix("df_integration_test"),
-              "sample_data"
-            )}\``
-          );
-          expect(exampleInline.dependencyTargets).eql([
-            dataform.Target.create({
-              database: databaseWithSuffix("tada-analytics"),
-              schema: schemaWithSuffix("df_integration_test"),
-              name: "sample_data"
-            })
-          ]);
-
           // Check view
           const exampleView = graph.tables.find(
             (t: dataform.ITable) =>
@@ -608,11 +581,6 @@ suite("examples", () => {
               database: databaseWithSuffix("override_database"),
               schema: schemaWithSuffix("df_integration_test"),
               name: "override_database_example"
-            }),
-            dataform.Target.create({
-              database: databaseWithSuffix("tada-analytics"),
-              schema: schemaWithSuffix("df_integration_test"),
-              name: "sample_data"
             })
           ]);
           expect(exampleOperations.tags).to.eql([]);

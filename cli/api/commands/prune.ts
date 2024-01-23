@@ -28,12 +28,9 @@ function computeIncludedActionNames(
   compiledGraph: dataform.ICompiledGraph,
   runConfig: dataform.IRunConfig
 ): Set<string> {
-  // Remove inline tables.
-  const filteredTables = compiledGraph.tables.filter(t => t.enumType !== dataform.TableType.INLINE);
-
   // Union all tables, operations, assertions.
   const allActions: CompileAction[] = [].concat(
-    filteredTables,
+    compiledGraph.tables,
     compiledGraph.operations,
     compiledGraph.assertions
   );
