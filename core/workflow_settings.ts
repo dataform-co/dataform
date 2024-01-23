@@ -6,7 +6,7 @@ declare var __webpack_require__: any;
 declare var __non_webpack_require__: any;
 const nativeRequire = typeof __webpack_require__ === "function" ? __non_webpack_require__ : require;
 
-export function readWorkflowSettings(): dataform.WorkflowSettings {
+export function readWorkflowSettings(): dataform.ProjectConfig {
   const workflowSettingsYaml = maybeRequire("workflow_settings.yaml");
   // `dataform.json` is deprecated; new versions of Dataform Core prefer `workflow_settings.yaml`.
   const dataformJson = maybeRequire("dataform.json");
@@ -22,11 +22,21 @@ export function readWorkflowSettings(): dataform.WorkflowSettings {
     if (!workflowSettingsAsJson) {
       throw Error("workflow_settings.yaml is invalid");
     }
-    return verifyWorkflowSettingsAsJson(workflowSettingsAsJson);
+    return workflowSettingsAsProjectConfig(verifyWorkflowSettingsAsJson(workflowSettingsAsJson));
   }
 
   if (dataformJson) {
-    return verifyWorkflowSettingsAsJson(dataformJson);
+    // Dataform JSON used the compiled graph's config proto, rather than workflow settings.
+    try {
+      return dataform.ProjectConfig.create(
+        verifyObjectMatchesProto(dataform.ProjectConfig, dataformJson)
+      );
+    } catch (e) {
+      if (e instanceof ReferenceError) {
+        throw ReferenceError(`Dataform json error: ${e.message}`);
+      }
+      throw e;
+    }
   }
 
   throw Error("Failed to resolve workflow_settings.yaml");
@@ -76,7 +86,7 @@ function maybeRequire(file: string): any {
 export function workflowSettingsAsProjectConfig(
   workflowSettings: dataform.WorkflowSettings
 ): dataform.ProjectConfig {
-  let projectConfig = dataform.ProjectConfig.create();
+  const projectConfig = dataform.ProjectConfig.create();
   if (workflowSettings.defaultProject) {
     projectConfig.defaultDatabase = workflowSettings.defaultProject;
   }

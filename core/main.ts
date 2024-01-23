@@ -7,7 +7,7 @@ import { Table } from "df/core/actions/table";
 import * as Path from "df/core/path";
 import { Session } from "df/core/session";
 import { nativeRequire } from "df/core/utils";
-import { readWorkflowSettings, workflowSettingsAsProjectConfig } from "df/core/workflow_settings";
+import { readWorkflowSettings } from "df/core/workflow_settings";
 import { dataform } from "df/protos/ts";
 
 /**
@@ -30,10 +30,7 @@ export function main(coreExecutionRequest: Uint8Array | string): Uint8Array | st
   const compileRequest = request.compile;
 
   // Read the workflow settings from the root of the project.
-  const workflowSettings = readWorkflowSettings();
-
-  // Convert the workflow settings to the compiled graph's project config structure.
-  let projectConfig = workflowSettingsAsProjectConfig(workflowSettings);
+  let projectConfig = readWorkflowSettings();
 
   // Merge in project config overrides.
   const projectConfigOverride = compileRequest.compileConfig.projectConfigOverride ?? {};

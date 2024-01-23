@@ -51,5 +51,5 @@ function readDataformCoreVersionIfPresent(workflowSettingsPath: string): string 
     }
     throw e;
   }
-  return dataform.ProjectConfig.create(workflowSettingsAsJson).dataformCoreVersion;
+  return dataform.WorkflowSettings.create(workflowSettingsAsJson).dataformCoreVersion;
 }

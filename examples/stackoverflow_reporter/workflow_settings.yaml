@@ -1,4 +1,4 @@
-defaultDatabase: "dataform-demos"
+defaultProject: "dataform-demos"
 defaultLocation: "us"
-defaultSchema: "dataform"
-assertionSchema: "dataform_assertions"
+defaultDataset: "dataform"
+defaultAssertionDataset: "dataform_assertions"

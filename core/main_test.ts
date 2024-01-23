@@ -22,7 +22,7 @@ defaultLocation: US
 
 const VALID_DATAFORM_JSON = `
 {
-  "defaultProject": "dataform"
+  "defaultDatabase": "dataform"
 }
 `;
 
@@ -133,7 +133,6 @@ suite("@dataform/core", ({ afterEach }) => {
 
       expect(asPlainObject(result.compile.compiledGraph.projectConfig)).deep.equals(
         asPlainObject({
-          warehouse: "bigquery",
           defaultDatabase: "dataform"
         })
       );

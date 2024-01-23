@@ -302,13 +302,13 @@ export class Table extends ActionBuilder<dataform.Table> {
 
       // TODO(ekrekr): this is a workaround for avoiding keys that aren't present, and should be
       // cleaned up when the JS API is redone.
-      let bigqueryOptions: IBigQueryOptions | undefined =
+      const bigqueryOptions: IBigQueryOptions | undefined =
         config.partitionBy ||
         config.partitionExpirationDays ||
         config.requirePartitionFilter ||
-        config.clusterBy ||
-        config.labels ||
-        config.additionalOptions
+        config.clusterBy.length ||
+        Object.keys(config.labels).length ||
+        Object.keys(config.additionalOptions).length
           ? {}
           : undefined;
       if (bigqueryOptions) {
@@ -321,13 +321,13 @@ export class Table extends ActionBuilder<dataform.Table> {
         if (config.requirePartitionFilter) {
           bigqueryOptions.requirePartitionFilter = config.requirePartitionFilter;
         }
-        if (config.clusterBy) {
+        if (config.clusterBy.length) {
           bigqueryOptions.clusterBy = config.clusterBy;
         }
-        if (config.labels) {
+        if (Object.keys(config.labels).length) {
           bigqueryOptions.labels = config.labels;
         }
-        if (config.additionalOptions) {
+        if (Object.keys(config.additionalOptions).length) {
           bigqueryOptions.additionalOptions = config.additionalOptions;
         }
       }
@@ -346,13 +346,15 @@ export class Table extends ActionBuilder<dataform.Table> {
 
       // TODO(ekrekr): this is a workaround for avoiding keys that aren't present, and should be
       // cleaned up when the JS API is redone.
-      let bigqueryOptions: IBigQueryOptions | undefined =
-        config.labels || config.additionalOptions ? {} : undefined;
+      const bigqueryOptions: IBigQueryOptions | undefined =
+        Object.keys(config.labels).length || Object.keys(config.additionalOptions).length
+          ? {}
+          : undefined;
       if (bigqueryOptions) {
-        if (config.labels) {
+        if (Object.keys(config.labels).length) {
           bigqueryOptions.labels = config.labels;
         }
-        if (config.additionalOptions) {
+        if (Object.keys(config.additionalOptions).length) {
           bigqueryOptions.additionalOptions = config.additionalOptions;
         }
       }
@@ -372,14 +374,14 @@ export class Table extends ActionBuilder<dataform.Table> {
 
       // TODO(ekrekr): this is a workaround for avoiding keys that aren't present, and should be
       // cleaned up when the JS API is redone.
-      let bigqueryOptions: IBigQueryOptions | undefined =
+      const bigqueryOptions: IBigQueryOptions | undefined =
         config.partitionBy ||
         config.partitionExpirationDays ||
         config.requirePartitionFilter ||
         config.updatePartitionFilter ||
-        config.clusterBy ||
-        config.labels ||
-        config.additionalOptions
+        config.clusterBy.length ||
+        Object.keys(config.labels).length ||
+        Object.keys(config.additionalOptions).length
           ? {}
           : undefined;
       if (bigqueryOptions) {
@@ -395,13 +397,13 @@ export class Table extends ActionBuilder<dataform.Table> {
         if (config.updatePartitionFilter) {
           bigqueryOptions.updatePartitionFilter = config.updatePartitionFilter;
         }
-        if (config.clusterBy) {
+        if (config.clusterBy.length) {
           bigqueryOptions.clusterBy = config.clusterBy;
         }
-        if (config.labels) {
+        if (Object.keys(config.labels).length) {
           bigqueryOptions.labels = config.labels;
         }
-        if (config.additionalOptions) {
+        if (Object.keys(config.additionalOptions).length) {
           bigqueryOptions.additionalOptions = config.additionalOptions;
         }
       }
@@ -448,7 +450,7 @@ export class Table extends ActionBuilder<dataform.Table> {
     if (config.protected) {
       this.protected();
     }
-    if (config.bigquery && Object.keys(config.bigquery).length === 0) {
+    if (config.bigquery && Object.keys(config.bigquery).length > 0) {
       this.bigquery(config.bigquery);
     }
     if (config.tags) {
