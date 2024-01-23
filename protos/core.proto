@@ -279,7 +279,7 @@ enum SupportedFeatures {
   ARRAY_BUFFER_IPC = 1;
 }
 
-// Workflow Settings Config defines the contents of the workflow_settings.yaml
+// Workflow Settings Config defines the contents of the `workflow_settings.yaml`
 // configuration file.
 message WorkflowSettingsConfig {
   // The desired dataform core version to compile against.
@@ -315,10 +315,14 @@ message WorkflowSettingsConfig {
   string table_prefix = 9;
 }
 
-// Action configs define the configuration properties of actions, via
-// `actions.yaml` files.
+// Action configs defines the contents of `actions.yaml` configuration files.
 // TODO(ekrekr): consolidate these configuration options in the JS API.
 message ActionConfigs {
+  repeated ActionConfig actions = 1;
+}
+
+// Action config defines the configuration properties of actions.
+message ActionConfig {
   message ColumnDescriptor {
     // The identifier for the column, using multiple parts for nested records.
     repeated string path = 1;
@@ -402,7 +406,8 @@ message ActionConfigs {
   }
 
   message ViewConfig {
-    // Target is the unique action identifier.
+    // Target is the unique action identifier. If unset, name is inferred from
+    // filename.
     Target target = 1;
 
     // Targets of actions that this action is dependent on.
@@ -635,18 +640,13 @@ message ActionConfigs {
 
     // TODO(ekrekr): add a notebook runtime field definition.
   }
-
-  message ActionConfig {
-    oneof action {
-      TableConfig table = 1;
-      ViewConfig view = 2;
-      IncrementalTableConfig incremental_table = 3;
-      AssertionConfig assertion = 4;
-      OperationConfig operation = 5;
-      DeclarationConfig declaration = 6;
-      NotebookConfig notebook = 7;
-    }
+  oneof action {
+    TableConfig table = 1;
+    ViewConfig view = 2;
+    IncrementalTableConfig incremental_table = 3;
+    AssertionConfig assertion = 4;
+    OperationConfig operation = 5;
+    DeclarationConfig declaration = 6;
+    NotebookConfig notebook = 7;
   }
-
-  repeated ActionConfig actions = 1;
 }

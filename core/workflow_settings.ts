@@ -6,7 +6,7 @@ declare var __webpack_require__: any;
 declare var __non_webpack_require__: any;
 const nativeRequire = typeof __webpack_require__ === "function" ? __non_webpack_require__ : require;
 
-export function readWorkflowSettings(): dataform.ProjectConfig {
+export function readWorkflowSettings(): dataform.WorkflowSettings {
   const workflowSettingsYaml = maybeRequire("workflow_settings.yaml");
   // `dataform.json` is deprecated; new versions of Dataform Core prefer `workflow_settings.yaml`.
   const dataformJson = maybeRequire("dataform.json");
@@ -32,12 +32,14 @@ export function readWorkflowSettings(): dataform.ProjectConfig {
   throw Error("Failed to resolve workflow_settings.yaml");
 }
 
-function verifyWorkflowSettingsAsJson(workflowSettingsAsJson: object): dataform.ProjectConfig {
-  let projectConfig = dataform.ProjectConfig.create();
+function verifyWorkflowSettingsAsJson(
+  workflowSettingsAsJson: object
+): dataform.WorkflowSettingsConfig {
+  let workflowSettingsConfig = dataform.WorkflowSettingsConfig.create();
   try {
-    projectConfig = dataform.ProjectConfig.create(
+    workflowSettingsConfig = dataform.WorkflowSettingsConfig.create(
       verifyObjectMatchesProto(
-        dataform.ProjectConfig,
+        dataform.WorkflowSettingsConfig,
         workflowSettingsAsJson as {
           [key: string]: any;
         }
@@ -50,25 +52,28 @@ function verifyWorkflowSettingsAsJson(workflowSettingsAsJson: object): dataform.
     throw e;
   }
   // tslint:disable-next-line: no-string-literal
-  if (!projectConfig.warehouse) {
+  if (!workflowSettingsConfig.warehouse) {
     // The warehouse field still set, though deprecated, to simplify compatability with dependents.
     // tslint:disable-next-line: no-string-literal
-    projectConfig.warehouse = "bigquery";
+    workflowSettingsConfig.warehouse = "bigquery";
   }
 
   // The caller of Dataform Core should ensure that the correct version is installed.
-  if (!!projectConfig.dataformCoreVersion && projectConfig.dataformCoreVersion !== version) {
+  if (
+    !!workflowSettingsConfig.dataformCoreVersion &&
+    workflowSettingsConfig.dataformCoreVersion !== version
+  ) {
     throw Error(
-      `Version mismatch: workflow settings specifies version ${projectConfig.dataformCoreVersion}` +
+      `Version mismatch: workflow settings specifies version ${workflowSettingsConfig.dataformCoreVersion}` +
         `, but ${version} was found`
     );
   }
 
   // tslint:disable-next-line: no-string-literal
-  if (projectConfig.warehouse !== "bigquery") {
+  if (workflowSettingsConfig.warehouse !== "bigquery") {
     throw Error("Workflow settings error: the warehouse field is deprecated");
   }
-  return projectConfig;
+  return workflowSettingsConfig;
 }
 
 function maybeRequire(file: string): any {
