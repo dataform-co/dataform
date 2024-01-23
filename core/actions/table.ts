@@ -28,7 +28,7 @@ import { dataform } from "df/protos/ts";
 /**
  * @hidden
  */
-export const TableType = ["table", "view", "incremental", "inline"] as const;
+export const TableType = ["table", "view", "incremental"] as const;
 /**
  * Supported types of table actions.
  *
@@ -241,15 +241,6 @@ export interface ITableContext extends ICommonContext {
  * @hidden
  */
 export class Table extends ActionBuilder<dataform.Table> {
-  public static readonly INLINE_IGNORED_PROPS: Array<keyof dataform.ITable> = [
-    "bigquery",
-    "preOps",
-    "postOps",
-    "actionDescriptor",
-    "disabled",
-    "where"
-  ];
-
   // TODO(ekrekr): make this field private, to enforce proto update logic to happen in this class.
   public proto: dataform.ITable = dataform.Table.create({
     type: "view",
@@ -286,7 +277,7 @@ export class Table extends ActionBuilder<dataform.Table> {
 
     // TODO(ekrekr): instead of overloading, add new class files for view and incremental actions.
     this.config({
-      type: "table",
+      type: config.table ? "table" : config.view ? "view" : "incremental",
       dependencies: config.dependencyTargets,
       disabled:
         config.table?.disabled || config.incrementalTable?.disabled || config.view?.disabled,

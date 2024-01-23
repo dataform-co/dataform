@@ -210,8 +210,6 @@ export function tableTypeStringToEnum(type: string, throwIfUnknown: boolean) {
       return dataform.TableType.INCREMENTAL;
     case "view":
       return dataform.TableType.VIEW;
-    case "inline":
-      return dataform.TableType.INLINE;
     default: {
       if (throwIfUnknown) {
         throw new Error(`Unexpected table type: ${type}`);

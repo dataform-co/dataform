@@ -821,7 +821,8 @@ actions:
       );
       fs.writeFileSync(
         path.join(projectDir, "definitions/action.sql"),
-        "SELECT ${database()} AS proofThatContextIsRead"
+        "SELECT ${database()} AS ${when(incremental(), `proofThatIncrementalContextIsRead`, " +
+          "`proofThatContextIsRead`) }"
       );
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
@@ -845,12 +846,13 @@ actions:
               }
             },
             query: "SELECT dataform AS proofThatContextIsRead",
+            incrementalQuery: "SELECT dataform AS proofThatIncrementalContextIsRead",
             target: {
               database: "dataform",
               name: "action"
             },
-            type: "table",
-            enumType: "TABLE",
+            type: "incremental",
+            enumType: "INCREMENTAL",
             protected: true,
             disabled: false,
             uniqueKey: ["someKey1", "someKey2"]
@@ -900,8 +902,8 @@ actions:
               database: "dataform",
               name: "action"
             },
-            type: "table",
-            enumType: "TABLE",
+            type: "view",
+            enumType: "VIEW",
             disabled: false
           }
         ])

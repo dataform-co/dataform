@@ -1,6 +1,5 @@
 config {
     type: "operations",
-    dependencies: "example_inline"
 }
 
 CREATE OR REPLACE VIEW someschema.someview AS (SELECT 1 AS test)

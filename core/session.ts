@@ -150,7 +150,6 @@ export class Session {
     switch (sqlxConfig.type) {
       case "view":
       case "table":
-      case "inline":
       case "incremental":
         const table = this.publish(sqlxConfig.name)
           .config(sqlxConfig)
@@ -195,13 +194,6 @@ export class Session {
     }
   }
 
-  public notebook(notebookConfig: dataform.ActionConfig, notebookContents: string): Notebook {
-    const notebook = new Notebook(this, notebookConfig);
-    notebook.notebookContents(notebookContents);
-    this.actions.push(notebook);
-    return notebook;
-  }
-
   public resolve(ref: Resolvable | string[], ...rest: string[]): string {
     ref = toResolvable(ref, rest);
     const allResolved = this.indexedActions.find(utils.resolvableAsTarget(ref));
@@ -211,15 +203,6 @@ export class Session {
     }
     const resolved = allResolved.length > 0 ? allResolved[0] : undefined;
 
-    if (
-      resolved &&
-      resolved instanceof Table &&
-      resolved.proto.enumType === dataform.TableType.INLINE
-    ) {
-      // TODO: Pretty sure this is broken as the proto.query value may not
-      // be set yet as it happens during compilation. We should evalute the query here.
-      return `(${resolved.proto.query})`;
-    }
     if (resolved && resolved instanceof Operation && !resolved.proto.hasOutput) {
       this.compileError(
         new Error("Actions cannot resolve operations which do not produce output.")
@@ -245,31 +228,20 @@ export class Session {
   }
 
   public operate(
-    // operationConfig as a string is deprecated in favor of the strictly typed proto action config.
-    operationConfig: string | dataform.ActionConfig,
+    name: string,
     queries?: Contextable<ICommonContext, string | string[]>
   ): Operation {
-    if (typeof operationConfig === "string") {
-      const deprecatedOperationConstructor = new Operation();
-      deprecatedOperationConstructor.session = this;
-      utils.setNameAndTarget(this, deprecatedOperationConstructor.proto, operationConfig);
-      if (queries) {
-        deprecatedOperationConstructor.queries(queries);
-      }
-      deprecatedOperationConstructor.proto.fileName = utils.getCallerFile(this.rootDir);
-      this.actions.push(deprecatedOperationConstructor);
-      return deprecatedOperationConstructor;
+    const operation = new Operation();
+    operation.session = this;
+    utils.setNameAndTarget(this, operation.proto, name);
+    if (queries) {
+      operation.queries(queries);
     }
-    const operation = new Operation(this, operationConfig);
-    operation.queries(queries);
+    operation.proto.fileName = utils.getCallerFile(this.rootDir);
     this.actions.push(operation);
     return operation;
   }
 
-  /**
-   * @deprecated
-   * Prefer explicit methods for actions, such as `table()`, `incrementalTable()` and `view()`.
-   */
   public publish(
     name: string,
     queryOrConfig?: Contextable<ITableContext, string> | ITableConfig
@@ -289,40 +261,6 @@ export class Session {
     return newTable;
   }
 
-  public table(
-    tableConfig: dataform.ActionConfig,
-    query?: Contextable<ICommonContext, string>
-  ): Table {
-    const table = new Table(this, tableConfig);
-    table.query(query);
-    this.actions.push(table);
-    return table;
-  }
-
-  public incrementalTable(
-    incrementalTableConfig: dataform.ActionConfig,
-    query?: Contextable<ICommonContext, string>
-  ): Table {
-    const incrementalTable = new Table(this, incrementalTableConfig);
-    incrementalTable.query(query);
-    this.actions.push(incrementalTable);
-    return incrementalTable;
-  }
-
-  public view(
-    viewConfig: dataform.ActionConfig,
-    query?: Contextable<ICommonContext, string>
-  ): Table {
-    const view = new Table(this, viewConfig);
-    view.query(query);
-    this.actions.push(view);
-    return view;
-  }
-
-  /**
-   * @deprecated
-   * Use `assertion()`.
-   */
   public assert(name: string, query?: AContextable<string>): Assertion {
     const assertion = new Assertion();
     assertion.session = this;
@@ -335,34 +273,11 @@ export class Session {
     return assertion;
   }
 
-  public assertion(
-    assertionConfig: dataform.ActionConfig,
-    query?: Contextable<ICommonContext, string>
-  ) {
-    const assertion = new Assertion(this, assertionConfig);
-    assertion.query(query);
-    this.actions.push(assertion);
-    return assertion;
-  }
-
-  public declare(declarationConfig: dataform.ITarget | dataform.ActionConfig): Declaration {
-    // The declaration property exists on ActionConfig but not on Target.
-    if (!declarationConfig.hasOwnProperty("declaration")) {
-      const target = declarationConfig as dataform.ITarget;
-      const deprecatedDeclarationConstructor = new Declaration();
-      deprecatedDeclarationConstructor.session = this;
-      utils.setNameAndTarget(
-        this,
-        deprecatedDeclarationConstructor.proto,
-        target.name,
-        target.schema,
-        target.database
-      );
-      deprecatedDeclarationConstructor.proto.fileName = utils.getCallerFile(this.rootDir);
-      this.actions.push(deprecatedDeclarationConstructor);
-      return deprecatedDeclarationConstructor;
-    }
-    const declaration = new Declaration(this, declarationConfig as dataform.ActionConfig);
+  public declare(dataset: dataform.ITarget): Declaration {
+    const declaration = new Declaration();
+    declaration.session = this;
+    utils.setNameAndTarget(this, declaration.proto, dataset.name, dataset.schema, dataset.database);
+    declaration.proto.fileName = utils.getCallerFile(this.rootDir);
     this.actions.push(declaration);
     return declaration;
   }
@@ -375,6 +290,15 @@ export class Session {
     // Add it to global index.
     this.tests[name] = newTest;
     return newTest;
+  }
+
+  public notebook(name: string): Notebook {
+    const notebook = new Notebook();
+    notebook.session = this;
+    utils.setNameAndTarget(this, notebook.proto, name);
+    notebook.proto.config.fileName = utils.getCallerFile(this.rootDir);
+    this.actions.push(notebook);
+    return notebook;
   }
 
   public compileError(err: Error | string, path?: string, actionTarget?: dataform.ITarget) {
@@ -517,19 +441,9 @@ export class Session {
             action.target
           );
         } else if (possibleDeps.length === 1) {
-          // We found a single matching target, and fully-qualify it if it's a normal dependency,
-          // or add all of its dependencies to ours if it's an 'inline' table.
+          // We found a single matching target, and fully-qualify it if it's a normal dependency.
           const protoDep = possibleDeps[0].proto;
-          if (
-            protoDep instanceof dataform.Table &&
-            protoDep.enumType === dataform.TableType.INLINE
-          ) {
-            protoDep.dependencyTargets.forEach(inlineDep =>
-              action.dependencyTargets.push(inlineDep)
-            );
-          } else {
-            fullyQualifiedDependencies[targetAsReadableString(protoDep.target)] = protoDep.target;
-          }
+          fullyQualifiedDependencies[targetAsReadableString(protoDep.target)] = protoDep.target;
         } else {
           // Too many targets matched the dependency.
           this.compileError(
@@ -658,19 +572,6 @@ export class Session {
           }
         }
       }
-
-      // Ignored properties
-      if (table.enumType === dataform.TableType.INLINE) {
-        Table.INLINE_IGNORED_PROPS.forEach(ignoredProp => {
-          if (objectExistsOrIsNonEmpty(table[ignoredProp])) {
-            this.compileError(
-              `Unused property was detected: "${ignoredProp}". This property is not used for tables with type "inline" and will be ignored`,
-              table.fileName,
-              table.target
-            );
-          }
-        });
-      }
     });
   }
 
@@ -778,7 +679,7 @@ export class Session {
 }
 
 function definesDataset(type: string) {
-  return type === "view" || type === "table" || type === "inline" || type === "incremental";
+  return type === "view" || type === "table" || type === "incremental";
 }
 
 function getCanonicalProjectConfig(originalProjectConfig: dataform.IProjectConfig) {
