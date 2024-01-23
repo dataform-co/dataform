@@ -22,22 +22,32 @@ export function readWorkflowSettings(): dataform.ProjectConfig {
     if (!workflowSettingsAsJson) {
       throw Error("workflow_settings.yaml is invalid");
     }
-    return verifyWorkflowSettingsAsJson(workflowSettingsAsJson);
+    return workflowSettingsAsProjectConfig(verifyWorkflowSettingsAsJson(workflowSettingsAsJson));
   }
 
   if (dataformJson) {
-    return verifyWorkflowSettingsAsJson(dataformJson);
+    // Dataform JSON used the compiled graph's config proto, rather than workflow settings.
+    try {
+      return dataform.ProjectConfig.create(
+        verifyObjectMatchesProto(dataform.ProjectConfig, dataformJson)
+      );
+    } catch (e) {
+      if (e instanceof ReferenceError) {
+        throw ReferenceError(`Dataform json error: ${e.message}`);
+      }
+      throw e;
+    }
   }
 
   throw Error("Failed to resolve workflow_settings.yaml");
 }
 
-function verifyWorkflowSettingsAsJson(workflowSettingsAsJson: object): dataform.ProjectConfig {
-  let projectConfig = dataform.ProjectConfig.create();
+function verifyWorkflowSettingsAsJson(workflowSettingsAsJson: object): dataform.WorkflowSettings {
+  let workflowSettings = dataform.WorkflowSettings.create();
   try {
-    projectConfig = dataform.ProjectConfig.create(
+    workflowSettings = dataform.WorkflowSettings.create(
       verifyObjectMatchesProto(
-        dataform.ProjectConfig,
+        dataform.WorkflowSettings,
         workflowSettingsAsJson as {
           [key: string]: any;
         }
@@ -49,26 +59,16 @@ function verifyWorkflowSettingsAsJson(workflowSettingsAsJson: object): dataform.
     }
     throw e;
   }
-  // tslint:disable-next-line: no-string-literal
-  if (!projectConfig.warehouse) {
-    // The warehouse field still set, though deprecated, to simplify compatability with dependents.
-    // tslint:disable-next-line: no-string-literal
-    projectConfig.warehouse = "bigquery";
-  }
 
   // The caller of Dataform Core should ensure that the correct version is installed.
-  if (!!projectConfig.dataformCoreVersion && projectConfig.dataformCoreVersion !== version) {
+  if (!!workflowSettings.dataformCoreVersion && workflowSettings.dataformCoreVersion !== version) {
     throw Error(
-      `Version mismatch: workflow settings specifies version ${projectConfig.dataformCoreVersion}` +
+      `Version mismatch: workflow settings specifies version ${workflowSettings.dataformCoreVersion}` +
         `, but ${version} was found`
     );
   }
 
-  // tslint:disable-next-line: no-string-literal
-  if (projectConfig.warehouse !== "bigquery") {
-    throw Error("Workflow settings error: the warehouse field is deprecated");
-  }
-  return projectConfig;
+  return workflowSettings;
 }
 
 function maybeRequire(file: string): any {
@@ -81,4 +81,36 @@ function maybeRequire(file: string): any {
     }
     return undefined;
   }
+}
+
+export function workflowSettingsAsProjectConfig(
+  workflowSettings: dataform.WorkflowSettings
+): dataform.ProjectConfig {
+  const projectConfig = dataform.ProjectConfig.create();
+  if (workflowSettings.defaultProject) {
+    projectConfig.defaultDatabase = workflowSettings.defaultProject;
+  }
+  if (workflowSettings.defaultDataset) {
+    projectConfig.defaultSchema = workflowSettings.defaultDataset;
+  }
+  if (workflowSettings.defaultLocation) {
+    projectConfig.defaultLocation = workflowSettings.defaultLocation;
+  }
+  if (workflowSettings.defaultAssertionDataset) {
+    projectConfig.assertionSchema = workflowSettings.defaultAssertionDataset;
+  }
+  if (workflowSettings.vars) {
+    projectConfig.vars = workflowSettings.vars;
+  }
+  if (workflowSettings.projectSuffix) {
+    projectConfig.databaseSuffix = workflowSettings.projectSuffix;
+  }
+  if (workflowSettings.datasetSuffix) {
+    projectConfig.schemaSuffix = workflowSettings.datasetSuffix;
+  }
+  if (workflowSettings.namePrefix) {
+    projectConfig.tablePrefix = workflowSettings.namePrefix;
+  }
+  projectConfig.warehouse = "bigquery";
+  return projectConfig;
 }

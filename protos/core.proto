@@ -23,8 +23,6 @@ message ProjectConfig {
   string schema_suffix = 7;
   string table_prefix = 11;
 
-  string dataform_core_version = 17;
-
   reserved 3, 4, 6, 8, 10, 12, 13;
 }
 
@@ -116,8 +114,6 @@ message Table {
   // configured in compiled graphs via the Table proto.
   TableType enum_type = 36;
 
-  ActionConfig config = 37;
-
   Target target = 4;
   Target canonical_target = 32;
 
@@ -156,8 +152,6 @@ message Table {
 }
 
 message Operation {
-  ActionConfig config = 15;
-
   Target target = 3;
   Target canonical_target = 13;
   repeated Target dependency_targets = 11;
@@ -179,8 +173,6 @@ message Operation {
 }
 
 message Assertion {
-  ActionConfig config = 16;
-
   Target target = 8;
   Target canonical_target = 13;
 
@@ -211,8 +203,6 @@ enum ActionHermeticity {
 }
 
 message Declaration {
-  ActionConfig config = 16;
-
   Target target = 2;
   Target canonical_target = 5;
 
@@ -233,11 +223,19 @@ message Test {
 }
 
 message Notebook {
-  ActionConfig config = 1;
+  Target target = 1;
 
-  Target target = 2;
+  Target canonical_target = 2;
 
-  string notebook_contents = 3;
+  repeated string tags = 3;
+
+  repeated Target dependency_targets = 4;
+
+  string file_name = 5;
+
+  bool disabled = 6;
+
+  string notebook_contents = 7;
 }
 
 message CompiledGraph {
@@ -287,101 +285,4 @@ message CompileExecutionResponse {
 enum SupportedFeatures {
   UNKNOWN_FEATURE = 0;
   ARRAY_BUFFER_IPC = 1;
-}
-
-message ActionConfigs {
-  repeated ActionConfig actions = 1;
-}
-
-message ActionConfig {
-  // Target is a unique action identifier.
-  Target target = 1;
-
-  // A list of user-defined tags with which the action should be labeled.
-  repeated string tags = 2;
-
-  // Targets of actions that this action is dependent on.
-  repeated Target dependency_targets = 3;
-
-  // Filename to load the action contents from.
-  string file_name = 4;
-
-  // Type specific configs. Must correspond to the declared type.
-  oneof action_config {
-    TableConfig table = 5;
-    ViewConfig view = 6;
-    IncrementalTableConfig incremental_table = 7;
-    AssertionConfig assertion = 8;
-    OperationConfig operation = 9;
-    DeclarationConfig declaration = 10;
-    NotebookConfig notebook = 11;
-  }
-}
-
-// Configuration options for BigQuery tables.
-message TableConfig {
-  // If set to true, this action will not be executed. However, the action may
-  // still be depended upon.
-  bool disabled = 1;
-}
-
-// Configuration options for BigQuery views.
-message ViewConfig {
-  // If set to true, this action will not be executed. However, the action may
-  // still be depended upon.
-  bool disabled = 1;
-
-  // If set to true, will make the view materialized.
-  // For more information, read the [BigQuery materialized view
-  // docs](https://cloud.google.com/bigquery/docs/materialized-views-intro).
-  bool materialized = 2;
-}
-
-// Configuration options for BigQuery incremental tables.
-message IncrementalTableConfig {
-  // If set to true, this action will not be executed. However, the action may
-  // still be depended upon.
-  bool disabled = 1;
-
-  // If set to true, running this action will ignore the full-refresh option.
-  // This is useful for tables which are built from transient data, to ensure
-  // that historical data is never lost.
-  bool protected = 2;
-
-  // Unique keys for merge criteria for incremental tables.
-  // If configured, records with matching unique key(s) will be updated, rather
-  // than new rows being inserted.
-  repeated string unique_key = 3;
-}
-
-// Configuration options for BigQuery table assertions.
-message AssertionConfig {
-  // If set to true, this action will not be executed. However, the action may
-  // still be depended upon.
-  bool disabled = 1;
-}
-
-// Configuration options for BigQuery table opertions.
-message OperationConfig {
-  // If set to true, this action will not be executed. However, the action may
-  // still be depended upon.
-  bool disabled = 1;
-
-  // Declares that this `operations` action creates a dataset which should be
-  // referenceable using the `ref` function.
-  bool has_output = 2;
-}
-
-// Configuration options for BigQuery table declarations.
-// TODO(ekrekr): remove this empty message, if explicit action type without a
-// `type` field proves to be impossible / ugly.
-message DeclarationConfig {}
-
-// Configuration options for Vertex AI notebooks.
-message NotebookConfig {
-  // If set to true, this action will not be executed. However, the action may
-  // still be depended upon.
-  bool disabled = 1;
-
-  // TODO(ekrekr): add a notebook runtime field definition.
 }

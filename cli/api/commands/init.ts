@@ -51,17 +51,31 @@ export async function init(
     dirsCreated.push(projectDir);
   }
 
-  fs.writeFileSync(
-    workflowSettingsYamlPath,
-    dumpYaml(
-      dataform.ProjectConfig.create({
-        defaultSchema: "dataform",
-        assertionSchema: "dataform_assertions",
-        dataformCoreVersion: version,
-        ...projectConfig
-      })
-    )
-  );
+  const workflowSettings = dataform.WorkflowSettings.create({
+    defaultDataset: projectConfig.defaultSchema || "dataform",
+    defaultAssertionDataset: projectConfig.assertionSchema || "dataform_assertions",
+    dataformCoreVersion: version
+  });
+  if (projectConfig.defaultDatabase) {
+    workflowSettings.defaultProject = projectConfig.defaultDatabase;
+  }
+  if (projectConfig.defaultLocation) {
+    workflowSettings.defaultLocation = projectConfig.defaultLocation;
+  }
+  if (projectConfig.vars) {
+    workflowSettings.vars = projectConfig.vars;
+  }
+  if (projectConfig.databaseSuffix) {
+    workflowSettings.projectSuffix = projectConfig.databaseSuffix;
+  }
+  if (projectConfig.schemaSuffix) {
+    workflowSettings.datasetSuffix = projectConfig.schemaSuffix;
+  }
+  if (projectConfig.tablePrefix) {
+    workflowSettings.namePrefix = projectConfig.tablePrefix;
+  }
+
+  fs.writeFileSync(workflowSettingsYamlPath, dumpYaml(workflowSettings));
   filesWritten.push(workflowSettingsYamlPath);
 
   fs.writeFileSync(gitignorePath, gitIgnoreContents);

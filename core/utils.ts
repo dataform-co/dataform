@@ -7,6 +7,13 @@ import * as Path from "df/core/path";
 import { IActionProto, Session } from "df/core/session";
 import { dataform } from "df/protos/ts";
 
+declare var __webpack_require__: any;
+declare var __non_webpack_require__: any;
+
+// This side-steps webpack's require in favour of the real require.
+export const nativeRequire =
+  typeof __webpack_require__ === "function" ? __non_webpack_require__ : require;
+
 export function matchPatterns(patterns: string[], values: string[]) {
   const fullyQualifiedActions: string[] = [];
   patterns.forEach(pattern => {

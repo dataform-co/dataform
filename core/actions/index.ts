@@ -29,7 +29,7 @@ export abstract class ActionBuilder<T> {
   }
 
   // Applying the session canonically means using the schema and database present before overrides.
-  public applySessionCanonicallyToTarget(targetFromConfig: dataform.ITarget): dataform.Target {
+  public applySessionCanonicallyToTarget(targetFromConfig: dataform.Target): dataform.Target {
     return dataform.Target.create({
       name: targetFromConfig.name,
       schema: targetFromConfig.schema || this.session.canonicalConfig.defaultSchema || undefined,
@@ -38,7 +38,7 @@ export abstract class ActionBuilder<T> {
     });
   }
 
-  public applySessionToTarget(targetFromConfig: dataform.ITarget): dataform.Target {
+  public applySessionToTarget(targetFromConfig: dataform.Target): dataform.Target {
     return dataform.Target.create({
       name: targetFromConfig.name,
       schema: targetFromConfig.schema || this.session.config.defaultSchema || undefined,
