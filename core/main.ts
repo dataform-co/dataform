@@ -64,7 +64,7 @@ export function main(coreExecutionRequest: Uint8Array | string): Uint8Array | st
   compileRequest.compileConfig.filePaths
     .filter(path => path.startsWith(`includes${Path.separator}`))
     .filter(path => path.split(Path.separator).length === 2) // Only include top-level "includes" files.
-    .filter(path => path.endsWith(".js"))
+    .filter(path => Path.fileExtension(path) === "js")
     .forEach(includePath => {
       try {
         // tslint:disable-next-line: tsr-detect-non-literal-require
@@ -87,7 +87,7 @@ export function main(coreExecutionRequest: Uint8Array | string): Uint8Array | st
   // Require all "definitions" files (attaching them to the session).
   compileRequest.compileConfig.filePaths
     .filter(path => path.startsWith(`definitions${Path.separator}`))
-    .filter(path => path.endsWith(".js") || path.endsWith(".sqlx"))
+    .filter(path => Path.fileExtension(path) === "js" || Path.fileExtension(path) === "sqlx")
     .sort()
     .forEach(definitionPath => {
       try {
@@ -114,7 +114,10 @@ export function main(coreExecutionRequest: Uint8Array | string): Uint8Array | st
 function loadActionConfigs(session: Session, filePaths: string[]) {
   filePaths
     .filter(
-      path => path.startsWith(`definitions${Path.separator}`) && path.endsWith("/actions.yaml")
+      path =>
+        path.startsWith(`definitions${Path.separator}`) &&
+        Path.fileName(path) === "actions" &&
+        Path.fileExtension(path) === "yaml"
     )
     .sort()
     .forEach(actionConfigsPath => {
@@ -151,9 +154,7 @@ function loadActionConfigs(session: Session, filePaths: string[]) {
 
         // Users define file paths relative to action config path, but internally and in the
         // compiled graph they are absolute paths.
-        actionConfig.fileName =
-          actionConfigsPath.substring(0, actionConfigsPath.length - "actions.yaml".length) +
-          actionConfig.fileName;
+        actionConfig.fileName = Path.join(Path.dirName(actionConfigsPath), actionConfig.fileName);
 
         if (fileExtension === "ipynb") {
           const notebookContents = nativeRequire(actionConfig.fileName).asJson;
