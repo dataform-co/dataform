@@ -224,7 +224,6 @@ message Test {
   string file_name = 4;
 }
 
-// TODO(ekrekr): remove this.
 message Notebook {
   Target target = 2;
 
@@ -258,16 +257,16 @@ message CoreExecutionRequest {
   }
 }
 
-// Core execution response contains multiple compiled graphs, that are
-// versioned, because it facilitates consumers supporting major protobuf changes
-// within the same proto file.
 message CoreExecutionResponse {
-  CompileExecutionResponse compile = 1;
+  oneof response {
+    CompileExecutionResponse compile = 1;
+  }
 }
 
 message CompileExecutionRequest {
   CompileConfig compile_config = 1;
 }
+
 message CompileExecutionResponse {
   CompiledGraph compiled_graph = 1;
 }
@@ -280,7 +279,7 @@ enum SupportedFeatures {
   ARRAY_BUFFER_IPC = 1;
 }
 
-// Workflow Settings specifies the contents of the workflow_settings.yaml
+// Workflow Settings Config defines the contents of the workflow_settings.yaml
 // configuration file.
 message WorkflowSettingsConfig {
   // The desired dataform core version to compile against.
@@ -331,43 +330,170 @@ message ActionConfigs {
     repeated string bigquery_policy_tags = 3;
   }
 
-  message Table {
+  message TableConfig {
     // Target is the unique action identifier.
     Target target = 1;
 
-    // Canonical Target is the unique action identifier, with no target
-    // overrides applied.
-    // This option cannot be manually specified in action configs.
-    Target canonical_target = 2;
-
-    // Targets (non-canonical) of actions that this action is dependent on.
-    repeated Target dependency_targets = 3;
+    // Targets of actions that this action is dependent on.
+    repeated Target dependency_targets = 2;
 
     // Path to the source file that the contents of the action is loaded from.
-    string source = 4;
-
-    // Path that the config of the action is loaded from.
-    // This option cannot be manually specified in action configs.
-    string config_path = 5;
+    string filename = 3;
 
     // A list of user-defined tags with which the action should be labeled.
-    repeated string tags = 6;
+    repeated string tags = 4;
 
-    // If set to true, this action will not be executed. However, the action
-    // may still be depended upon.
-    bool disabled = 7;
+    // If set to true, this action will not be executed. However, the action can
+    // still be depended upon. Useful for temporarily turning off broken
+    // actions.
+    bool disabled = 5;
 
     // The SQL query.
-    string query = 8;
+    string query = 6;
 
     // Queries to run before `query`. This can be useful for granting
     // permissions.
-    repeated string pre_operations = 9;
+    repeated string pre_operations = 7;
 
     // Queries to run after `query`.
-    repeated string post_operations = 10;
+    repeated string post_operations = 8;
 
     // Description of the table.
+    string description = 9;
+
+    // Descriptions of columns within the table.
+    repeated ColumnDescriptor columns = 10;
+
+    // The key by which to partition the table. Typically the name of a
+    // timestamp or the date column. See
+    // https://cloud.google.com/dataform/docs/partitions-clusters.
+    string partition_by = 11;
+
+    // The number of days for which BigQuery stores data in each partition.
+    // The setting applies to all partitions in a table, but is calculated
+    // independently for each partition based on the partition time.
+    int32 partition_expiration_days = 12;
+
+    // Declares whether the partitioned table requires a WHERE clause
+    // predicate filter that filters the partitioning column.
+    bool require_partition_filter = 13;
+
+    // The keys by which to cluster partitions by. See
+    // https://cloud.google.com/dataform/docs/partitions-clusters.
+    repeated string cluster_by = 14;
+
+    // Key-value pairs for BigQuery labels. If the label name contains special
+    // characters, e.g. hyphens, then quote its name, e.g. `labels: {
+    // "label-name": "value" }`.
+    map<string, string> labels = 15;
+
+    // Key-value pairs of additional options to pass to the BigQuery API.
+    //
+    // Some options, for example, partitionExpirationDays, have dedicated
+    // type/validity checked fields. For such options, use the dedicated
+    // fields.
+    //
+    // String values must be encapsulated in double-quotes, for example:
+    // additionalOptions: {numeric_option: "5", string_option: '"string-value"'}
+    //
+    // If the option name contains special characters, encapsulate the name in
+    // quotes, for example: additionalOptions: { "option-name": "value" }.
+    map<string, string> additional_options = 16;
+  }
+
+  message ViewConfig {
+    // Target is the unique action identifier.
+    Target target = 1;
+
+    // Targets of actions that this action is dependent on.
+    repeated Target dependency_targets = 2;
+
+    // Path to the source file that the contents of the action is loaded from.
+    string filename = 3;
+
+    // A list of user-defined tags with which the action should be labeled.
+    repeated string tags = 4;
+
+    // If set to true, this action will not be executed. However, the action can
+    // still be depended upon. Useful for temporarily turning off broken
+    // actions.
+    bool disabled = 5;
+
+    // The SQL query.
+    string query = 6;
+
+    // Queries to run before `query`. This can be useful for granting
+    // permissions.
+    repeated string pre_operations = 7;
+
+    // Queries to run after `query`.
+    repeated string post_operations = 8;
+
+    // Applies the materialized view optimization, see
+    // https://cloud.google.com/bigquery/docs/materialized-views-intro.
+    bool materialized = 9;
+
+    // Description of the view.
+    string description = 10;
+
+    // Descriptions of columns within the table.
+    repeated ColumnDescriptor columns = 11;
+
+    // Key-value pairs for BigQuery labels. If the label name contains special
+    // characters, e.g. hyphens, then quote its name, e.g. `labels: {
+    // "label-name": "value" }`.
+    map<string, string> labels = 12;
+
+    // Key-value pairs of additional options to pass to the BigQuery API.
+    //
+    // Some options, for example, partitionExpirationDays, have dedicated
+    // type/validity checked fields. For such options, use the dedicated
+    // fields.
+    //
+    // String values must be encapsulated in double-quotes, for example:
+    // additionalOptions: {numeric_option: "5", string_option: '"string-value"'}
+    //
+    // If the option name contains special characters, encapsulate the name in
+    // quotes, for example: additionalOptions: { "option-name": "value" }.
+    map<string, string> additional_options = 13;
+  }
+
+  message IncrementalTableConfig {
+    // Target is the unique action identifier.
+    Target target = 1;
+
+    // Targets of actions that this action is dependent on.
+    repeated Target dependency_targets = 2;
+
+    // Path to the source file that the contents of the action is loaded from.
+    string filename = 3;
+
+    // A list of user-defined tags with which the action should be labeled.
+    repeated string tags = 4;
+
+    // If set to true, this action will not be executed. However, the action can
+    // still be depended upon. Useful for temporarily turning off broken
+    // actions.
+    bool disabled = 5;
+
+    // The SQL query.
+    string query = 6;
+
+    // Queries to run before `query`. This can be useful for granting
+    // permissions.
+    repeated string pre_operations = 7;
+
+    // Queries to run after `query`.
+    repeated string post_operations = 8;
+
+    // If true, prevents the dataset from being rebuilt from scratch.
+    bool protected = 9;
+
+    // is specified, if a row arrives whose key matches an existing row's key,
+    // then the existing row is overwritten with the new data.
+    repeated string unique_key = 10;
+
+    // Description of the incremental table.
     string description = 11;
 
     // Descriptions of columns within the table.
@@ -387,181 +513,48 @@ message ActionConfigs {
     // predicate filter that filters the partitioning column.
     bool require_partition_filter = 15;
 
-    // The keys by which to cluster partitions by. See
-    // https://cloud.google.com/dataform/docs/partitions-clusters.
-    repeated string cluster_by = 16;
-
-    // Key-value pairs for BigQuery labels. If the label name contains special
-    // characters, e.g. hyphens, then quote its name, e.g. `labels: {
-    // "label-name": "value" }`.
-    map<string, string> labels = 17;
-
-    // Key-value pairs for the table, view, and materialized view options.
-    map<string, string> additional_options = 18;
-  }
-
-  message View {
-    // Target is the unique action identifier.
-    Target target = 1;
-
-    // Canonical Target is the unique action identifier, with no target
-    // overrides applied.
-    // This option cannot be manually specified in action configs.
-    Target canonical_target = 2;
-
-    // Targets (non-canonical) of actions that this action is dependent on.
-    repeated Target dependency_targets = 3;
-
-    // Path to the source file that the contents of the action is loaded from.
-    string source = 4;
-
-    // Path that the config of the action is loaded from.
-    // This option cannot be manually specified in action configs.
-    string config_path = 5;
-
-    // A list of user-defined tags with which the action should be labeled.
-    repeated string tags = 6;
-
-    // If set to true, this action will not be executed. However, the action
-    // may still be depended upon.
-    bool disabled = 7;
-
-    // The SQL query.
-    string query = 10;
-
-    // Queries to run before `query`. This can be useful for granting
-    // permissions.
-    repeated string pre_operations = 11;
-
-    // Queries to run after `query`.
-    repeated string post_operations = 12;
-
-    // Applies the materialized view optimization, see
-    // https://cloud.google.com/bigquery/docs/materialized-views-intro.
-    bool materialized = 13;
-
-    // Description of the view.
-    string description = 14;
-
-    // Descriptions of columns within the table.
-    repeated ColumnDescriptor columns = 15;
-
-    // Key-value pairs for BigQuery labels. If the label name contains special
-    // characters, e.g. hyphens, then quote its name, e.g. `labels: {
-    // "label-name": "value" }`.
-    map<string, string> labels = 16;
-
-    // Key-value pairs for the table, view, and materialized view options.
-    map<string, string> additional_options = 17;
-  }
-
-  message IncrementalTable {
-    // Target is the unique action identifier.
-    Target target = 1;
-
-    // Canonical Target is the unique action identifier, with no target
-    // overrides applied.
-    // This option cannot be manually specified in action configs.
-    Target canonical_target = 2;
-
-    // Targets (non-canonical) of actions that this action is dependent on.
-    repeated Target dependency_targets = 3;
-
-    // Path to the source file that the contents of the action is loaded from.
-    string source = 4;
-
-    // Path that the config of the action is loaded from.
-    // This option cannot be manually specified in action configs.
-    string config_path = 5;
-
-    // A list of user-defined tags with which the action should be labeled.
-    repeated string tags = 6;
-
-    // If set to true, this action will not be executed. However, the action
-    // may still be depended upon.
-    bool disabled = 7;
-
-    // The SQL query.
-    string query = 8;
-
-    // The query that is applied when the table already exists.
-    // This option cannot be manually specified in action configs.
-    string incremental_query = 9;
-
-    // Queries to run before `query`. This can be useful for granting
-    // permissions.
-    repeated string pre_operations = 10;
-
-    // Queries to run after `query`.
-    repeated string post_operations = 11;
-
-    // If true, prevents the dataset from being rebuilt from scratch.
-    bool protected = 12;
-
-    // is specified, if a row arrives whose key matches an existing row's key,
-    // then the existing row is overwritten with the new data.
-    repeated string unique_key = 13;
-
-    // Description of the incremental table.
-    string description = 14;
-
-    // Descriptions of columns within the table.
-    repeated ColumnDescriptor columns = 15;
-
-    // The key by which to partition the table. Typically the name of a
-    // timestamp or the date column. See
-    // https://cloud.google.com/dataform/docs/partitions-clusters.
-    string partition_by = 16;
-
-    // The number of days for which BigQuery stores data in each partition.
-    // The setting applies to all partitions in a table, but is calculated
-    // independently for each partition based on the partition time.
-    int32 partition_expiration_days = 17;
-
-    // Declares whether the partitioned table requires a WHERE clause
-    // predicate filter that filters the partitioning column.
-    bool require_partition_filter = 18;
-
     // SQL-based filter for when incremental updates are applied.
-    string update_partition_filter = 19;
+    string update_partition_filter = 16;
 
     // The keys by which to cluster partitions by. See
     // https://cloud.google.com/dataform/docs/partitions-clusters.
-    repeated string cluster_by = 20;
+    repeated string cluster_by = 17;
 
     // Key-value pairs for BigQuery labels. If the label name contains special
     // characters, e.g. hyphens, then quote its name, e.g. `labels: {
     // "label-name": "value" }`.
-    map<string, string> labels = 21;
+    map<string, string> labels = 18;
 
-    // Key-value pairs for the table, view, and materialized view options.
-    map<string, string> additional_options = 22;
+    // Key-value pairs of additional options to pass to the BigQuery API.
+    //
+    // Some options, for example, partitionExpirationDays, have dedicated
+    // type/validity checked fields. For such options, use the dedicated
+    // fields.
+    //
+    // String values must be encapsulated in double-quotes, for example:
+    // additionalOptions: {numeric_option: "5", string_option: '"string-value"'}
+    //
+    // If the option name contains special characters, encapsulate the name in
+    // quotes, for example: additionalOptions: { "option-name": "value" }.
+    map<string, string> additional_options = 19;
   }
 
-  message Assertion {
+  message AssertionConfig {
     // Target is the unique action identifier.
     Target target = 1;
 
-    // Canonical Target is the unique action identifier, with no target
-    // overrides applied.
-    // This option cannot be manually specified in action configs.
-    Target canonical_target = 2;
-
-    // Targets (non-canonical) of actions that this action is dependent on.
-    repeated Target dependency_targets = 3;
+    // Targets of actions that this action is dependent on.
+    repeated Target dependency_targets = 2;
 
     // Path to the source file that the contents of the action is loaded from.
-    string source = 4;
-
-    // Path that the config of the action is loaded from.
-    // This option cannot be manually specified in action configs.
-    string config_path = 5;
+    string filename = 3;
 
     // A list of user-defined tags with which the action should be labeled.
     repeated string tags = 6;
 
-    // If set to true, this action will not be executed. However, the action
-    // may still be depended upon.
+    // If set to true, this action will not be executed. However, the action can
+    // still be depended upon. Useful for temporarily turning off broken
+    // actions.
     bool disabled = 7;
 
     // The SQL query.
@@ -571,111 +564,87 @@ message ActionConfigs {
     string description = 9;
   }
 
-  message Operation {
+  message OperationConfig {
     // Target is the unique action identifier.
     Target target = 1;
 
-    // Canonical Target is the unique action identifier, with no target
-    // overrides applied.
-    // This option cannot be manually specified in action configs.
-    Target canonical_target = 2;
-
-    // Targets (non-canonical) of actions that this action is dependent on.
-    repeated Target dependency_targets = 3;
+    // Targets of actions that this action is dependent on.
+    repeated Target dependency_targets = 2;
 
     // Path to the source file that the contents of the action is loaded from.
-    string source = 4;
-
-    // Path that the config of the action is loaded from.
-    // This option cannot be manually specified in action configs.
-    string config_path = 5;
+    string filename = 3;
 
     // A list of user-defined tags with which the action should be labeled.
-    repeated string tags = 6;
+    repeated string tags = 4;
 
-    // If set to true, this action will not be executed. However, the action
-    // may still be depended upon.
-    bool disabled = 7;
+    // If set to true, this action will not be executed. However, the action can
+    // still be depended upon. Useful for temporarily turning off broken
+    // actions.
+    bool disabled = 5;
 
     // The SQL query.
-    string query = 8;
+    string query = 6;
 
     // Declares that this action creates a dataset which should be
     // referenceable as a dependency target, for example by using the `ref`
     // function.
-    bool has_output = 9;
+    bool has_output = 7;
 
     // Description of the operation.
-    string description = 10;
+    string description = 8;
 
     // Descriptions of columns within the operation. Can only be set if
     // hasOutput is true.
-    repeated ColumnDescriptor columns = 11;
+    repeated ColumnDescriptor columns = 9;
   }
 
-  message Declaration {
+  message DeclarationConfig {
     // Target is the unique action identifier.
     Target target = 1;
 
-    // Canonical Target is the unique action identifier, with no target
-    // overrides applied.
-    // This option cannot be manually specified in action configs.
-    Target canonical_target = 2;
-
-    // Targets (non-canonical) of actions that this action is dependent on.
-    repeated Target dependency_targets = 3;
-
-    // Path to the source file that the contents of the action is loaded from.
-    string source = 4;
-
-    // Path that the config of the action is loaded from.
-    // This option cannot be manually specified in action configs.
-    string config_path = 5;
+    // Targets of actions that this action is dependent on.
+    repeated Target dependency_targets = 2;
 
     // A list of user-defined tags with which the action should be labeled.
-    repeated string tags = 6;
+    repeated string tags = 3;
 
     // Description of the declaration.
-    string description = 7;
+    string description = 4;
   }
 
-  message Notebook {
+  message NotebookConfig {
     // Target is the unique action identifier.
     Target target = 1;
 
-    // Canonical Target is the unique action identifier, with no target
-    // overrides applied.
-    // This option cannot be manually specified in action configs.
-    Target canonical_target = 2;
-
-    // Targets (non-canonical) of actions that this action is dependent on.
-    repeated Target dependency_targets = 3;
+    // Targets of actions that this action is dependent on.
+    repeated Target dependency_targets = 2;
 
     // Path to the source file that the contents of the action is loaded from.
-    string source = 4;
-
-    // Path that the config of the action is loaded from.
-    // This option cannot be manually specified in action configs.
-    string config_path = 5;
+    string filename = 3;
 
     // A list of user-defined tags with which the action should be labeled.
-    repeated string tags = 6;
+    repeated string tags = 4;
+
+    // If set to true, this action will not be executed. However, the action can
+    // still be depended upon. Useful for temporarily turning off broken
+    // actions.
+    bool disabled = 5;
 
     // Description of the notebook.
-    string description = 7;
+    string description = 6;
 
     // TODO(ekrekr): add a notebook runtime field definition.
   }
 
   message ActionConfig {
     oneof action {
-      Table table = 1;
-      View view = 2;
-      IncrementalTable incremental_table = 3;
-      Assertion assertion = 4;
-      Operation operation = 5;
-      Declaration declaration = 6;
-      Notebook notebook = 7;
+      TableConfig table = 1;
+      ViewConfig view = 2;
+      IncrementalTableConfig incremental_table = 3;
+      AssertionConfig assertion = 4;
+      OperationConfig operation = 5;
+      DeclarationConfig declaration = 6;
+      NotebookConfig notebook = 7;
     }
   }
 
