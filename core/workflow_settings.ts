@@ -32,14 +32,12 @@ export function readWorkflowSettings(): dataform.WorkflowSettings {
   throw Error("Failed to resolve workflow_settings.yaml");
 }
 
-function verifyWorkflowSettingsAsJson(
-  workflowSettingsAsJson: object
-): dataform.WorkflowSettingsConfig {
-  let workflowSettingsConfig = dataform.WorkflowSettingsConfig.create();
+function verifyWorkflowSettingsAsJson(workflowSettingsAsJson: object): dataform.WorkflowSettings {
+  let workflowSettings = dataform.WorkflowSettings.create();
   try {
-    workflowSettingsConfig = dataform.WorkflowSettingsConfig.create(
+    workflowSettings = dataform.WorkflowSettings.create(
       verifyObjectMatchesProto(
-        dataform.WorkflowSettingsConfig,
+        dataform.WorkflowSettings,
         workflowSettingsAsJson as {
           [key: string]: any;
         }
@@ -52,28 +50,25 @@ function verifyWorkflowSettingsAsJson(
     throw e;
   }
   // tslint:disable-next-line: no-string-literal
-  if (!workflowSettingsConfig.warehouse) {
+  if (!workflowSettings.warehouse) {
     // The warehouse field still set, though deprecated, to simplify compatability with dependents.
     // tslint:disable-next-line: no-string-literal
-    workflowSettingsConfig.warehouse = "bigquery";
+    workflowSettings.warehouse = "bigquery";
   }
 
   // The caller of Dataform Core should ensure that the correct version is installed.
-  if (
-    !!workflowSettingsConfig.dataformCoreVersion &&
-    workflowSettingsConfig.dataformCoreVersion !== version
-  ) {
+  if (!!workflowSettings.dataformCoreVersion && workflowSettings.dataformCoreVersion !== version) {
     throw Error(
-      `Version mismatch: workflow settings specifies version ${workflowSettingsConfig.dataformCoreVersion}` +
+      `Version mismatch: workflow settings specifies version ${workflowSettings.dataformCoreVersion}` +
         `, but ${version} was found`
     );
   }
 
   // tslint:disable-next-line: no-string-literal
-  if (workflowSettingsConfig.warehouse !== "bigquery") {
+  if (workflowSettings.warehouse !== "bigquery") {
     throw Error("Workflow settings error: the warehouse field is deprecated");
   }
-  return workflowSettingsConfig;
+  return workflowSettings;
 }
 
 function maybeRequire(file: string): any {

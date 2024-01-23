@@ -35,24 +35,33 @@ export function main(coreExecutionRequest: Uint8Array | string): Uint8Array | st
   }
   const compileRequest = request.compile;
 
-  // Read the project config from the root of the project.
-  const originalProjectConfig = readWorkflowSettings();
+  // Read the workflow settings from the root of the project.
+  const workflowSettings = readWorkflowSettings();
 
+  // Convert the workflow settings to the compiled graph's project config structure.
+  let projectConfig = dataform.ProjectConfig.create({
+    warehouse: "bigquery",
+    defaultDatabase: workflowSettings.defaultProject,
+    defaultSchema: workflowSettings.defaultDataset,
+    defaultLocation: workflowSettings.defaultLocation,
+    assertionSchema: workflowSettings.defaultAssertionDataset,
+    vars: workflowSettings.vars,
+    databaseSuffix: workflowSettings.projectSuffix,
+    schemaSuffix: workflowSettings.datasetSuffix,
+    tablePrefix: workflowSettings.actionPrefix
+  });
+
+  // Merge in project config overrides.
   const projectConfigOverride = compileRequest.compileConfig.projectConfigOverride ?? {};
-
-  let projectConfig = { ...originalProjectConfig };
-
-  // Merge in general project config overrides.
-  projectConfig = {
+  projectConfig = dataform.ProjectConfig.create({
     ...projectConfig,
     ...projectConfigOverride,
     vars: { ...projectConfig.vars, ...projectConfigOverride.vars }
-  };
+  });
 
   // Initialize the compilation session.
   const session = nativeRequire("@dataform/core").session as Session;
-
-  session.init(compileRequest.compileConfig.projectDir, projectConfig, originalProjectConfig);
+  session.init(compileRequest.compileConfig.projectDir, projectConfig, projectConfig);
 
   // Allow "includes" files to use the current session object.
   globalAny.dataform = session;

@@ -12,12 +12,18 @@ export class Notebook extends ActionBuilder<dataform.Notebook> {
   // TODO: make this field private, to enforce proto update logic to happen in this class.
   public proto: dataform.INotebook = dataform.Notebook.create();
 
-  constructor(session?: Session, config?: dataform.ActionConfig.Notebook) {
+  constructor(session?: Session, config?: dataform.ActionConfig.NotebookConfig) {
     super(session);
 
+    const target = dataform.Target.create({
+      name: config.name,
+      schema: config.location,
+      database: config.project
+    });
+
     this.session = session;
-    this.proto.target = this.applySessionToTarget(this.proto.config.target);
-    this.proto.canonicalTarget = this.applySessionCanonicallyToTarget(config.target);
+    this.proto.target = this.applySessionToTarget(target);
+    this.proto.canonicalTarget = this.applySessionCanonicallyToTarget(target);
     this.proto.tags = config.tags;
     this.proto.dependencyTargets = config.dependencyTargets;
     this.proto.fileName = config.filename;
@@ -40,7 +46,7 @@ export class Notebook extends ActionBuilder<dataform.Notebook> {
    * @hidden
    */
   public getFileName() {
-    return this.proto.config.fileName;
+    return this.proto.fileName;
   }
 
   /**

@@ -7,6 +7,7 @@ package(default_visibility = ["//visibility:public"])
 proto_library(
     name = "dataform_proto",
     srcs = [
+        "configs.proto",
         "core.proto",
         "evaluation.proto",
         "execution.proto",

@@ -261,30 +261,82 @@ export class Table extends ActionBuilder<dataform.Table> {
   private uniqueKeyAssertions: Assertion[] = [];
   private rowConditionsAssertion: Assertion;
 
-  constructor(session?: Session, config?: dataform.ActionConfig) {
+  constructor(
+    session?: Session,
+    config?:
+      | dataform.ActionConfig.TableConfig
+      | dataform.ActionConfig.ViewConfig
+      | dataform.ActionConfig.IncrementalTableConfig
+  ) {
     super(session);
     this.session = session;
 
     if (!config) {
       return;
     }
-    this.proto.config = config;
 
-    this.proto.target = this.applySessionToTarget(this.proto.config.target);
-    this.proto.config.target = this.proto.canonicalTarget = this.applySessionCanonicallyToTarget(
-      this.proto.config.target
-    );
+    this.proto.target = this.applySessionToTarget(config.target);
+    this.proto.canonicalTarget = this.applySessionCanonicallyToTarget(config.target);
+    this.proto.fileName = config.filename;
 
-    // TODO(ekrekr): instead of overloading, add new class files for view and incremental actions.
-    this.config({
-      type: config.table ? "table" : config.view ? "view" : "incremental",
-      dependencies: config.dependencyTargets,
-      disabled:
-        config.table?.disabled || config.incrementalTable?.disabled || config.view?.disabled,
-      protected: config.incrementalTable?.protected,
-      uniqueKey: config.incrementalTable?.uniqueKey,
-      tags: config.tags
-    });
+    // TODO(ekrekr): As part of JS API updates, instead of overloading, add new class files for the
+    // view and incremental action types.
+    if (typeof config === dataform.ActionConfig.TableConfig) {
+      this.config({
+        type: "table",
+        dependencies: config.dependencyTargets,
+        disabled: config.disabled,
+        tags: config.tags,
+        description: config.description,
+        columns: config.columns,
+        bigquery: {
+          partitionBy: config.partitionBy,
+          partitionExpirationDays: config.partitionExpirationDays,
+          requirePartitionFilter: config.requirePartitionFilter,
+          clusterBy: config.clusterBy,
+          labels: config.labels,
+          additionalOptions: config.additionalOptions
+        }
+      });
+    }
+    if (typeof config === dataform.ActionConfig.ViewConfig) {
+      this.config({
+        type: "view",
+        dependencies: config.dependencyTargets,
+        disabled: config.disabled,
+        materialized: config.materialized,
+        uniqueKey: config.incrementalTable?.uniqueKey,
+        tags: config.tags,
+        description: config.description,
+        columns: config.columns,
+        bigquery: {
+          labels: config.labels,
+          additionalOptions: config.additionalOptions
+        }
+      });
+    }
+    if (typeof config === dataform.ActionConfig.IncrementalTableConfig) {
+      this.config({
+        type: "incremental",
+        dependencies: config.dependencyTargets,
+        disabled: config.disabled,
+        protected: config.protected,
+        uniqueKey: config.uniqueKey,
+        tags: config.tags,
+        description: config.description,
+        columns: config.columns,
+        bigquery: {
+          partitionBy: config.partitionBy,
+          partitionExpirationDays: config.partitionExpirationDays,
+          requirePartitionFilter: config.requirePartitionFilter,
+          updatePartitionFilter: config.updatePartitionFilter,
+          clusterBy: config.clusterBy,
+          labels: config.labels,
+          additionalOptions: config.additionalOptions
+        }
+      });
+    }
+    throw Error(`Unrecognised action config type: ${typeof config}`);
   }
 
   public config(config: ITableConfig) {

@@ -1,8 +1,11 @@
 actions:
-  - fileName: repositories_created_during_extreme_weather.sql
-    view: {}
-  - fileName: repositories_that_mention_extreme_weather.sql
-    view: {}
-  - fileName: was_there_extreme_weather.sql
-    view: {}
-  - fileName: snowy_repository_creation.ipynb
+  view:
+    name: value
+    dataset: blah
+    materialized: true
+    filename: somewhere
+  notebook:
+    name: value
+    location: us-central1
+    materialized: true
+    filename: somewhere
