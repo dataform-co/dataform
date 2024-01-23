@@ -73,7 +73,11 @@ export class Operation extends ActionBuilder<dataform.Operation> {
   // We delay contextification until the final compile step, so hold these here for now.
   private contextableQueries: Contextable<ICommonContext, string | string[]>;
 
-  constructor(session?: Session, config?: dataform.ActionConfig.OperationConfig) {
+  constructor(
+    session?: Session,
+    config?: dataform.ActionConfig.OperationConfig,
+    configPath?: string
+  ) {
     super(session);
     this.session = session;
 
@@ -89,6 +93,8 @@ export class Operation extends ActionBuilder<dataform.Operation> {
     this.proto.target = this.applySessionToTarget(target);
     this.proto.canonicalTarget = this.applySessionCanonicallyToTarget(target);
 
+    // Resolve the filename as its absolute path.
+    config.filename = Path.join(Path.dirName(configPath), config.filename);
     this.proto.fileName = config.filename;
 
     // TODO(ekrekr): load config proto column descriptors.

@@ -14,7 +14,11 @@ export class Notebook extends ActionBuilder<dataform.Notebook> {
   // TODO: make this field private, to enforce proto update logic to happen in this class.
   public proto: dataform.INotebook = dataform.Notebook.create();
 
-  constructor(session?: Session, config?: dataform.ActionConfig.NotebookConfig) {
+  constructor(
+    session?: Session,
+    config?: dataform.ActionConfig.NotebookConfig,
+    configPath?: string
+  ) {
     super(session);
 
     const target = dataform.Target.create({
@@ -23,13 +27,18 @@ export class Notebook extends ActionBuilder<dataform.Notebook> {
       database: config.project
     });
 
+    // Resolve the filename as its absolute path.
+    config.filename = Path.join(Path.dirName(configPath), config.filename);
+
     this.session = session;
     this.proto.target = this.applySessionToTarget(target);
     this.proto.canonicalTarget = this.applySessionCanonicallyToTarget(target);
     this.proto.tags = config.tags;
     this.proto.dependencyTargets = config.dependencyTargets;
     this.proto.fileName = config.filename;
-    this.proto.disabled = config.disabled;
+    if (config.disabled) {
+      this.proto.disabled = config.disabled;
+    }
 
     const notebookContents = nativeRequire(config.filename).asJson;
     this.proto.notebookContents = JSON.stringify(

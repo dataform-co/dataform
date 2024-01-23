@@ -42,6 +42,10 @@ export class Declaration extends ActionBuilder<dataform.Declaration> {
       return;
     }
 
+    if (!config.name) {
+      throw Error("Declarations must have a populated 'name' field.");
+    }
+
     const target = dataform.Target.create({
       name: config.name,
       schema: config.dataset,

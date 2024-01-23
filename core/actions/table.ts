@@ -269,8 +269,10 @@ export class Table extends ActionBuilder<dataform.Table> {
       | dataform.ActionConfig.TableConfig
       | dataform.ActionConfig.ViewConfig
       | dataform.ActionConfig.IncrementalTableConfig,
-    // TODO(ekrekr): this is a temporary field for checking this constructor's type config.
-    tableType?: TableType
+    // TODO(ekrekr): As part of JS API updates, instead of overloading, add new class files for the
+    // view and incremental action types, instead of using this table type workaround.
+    tableType?: TableType,
+    configPath?: string
   ) {
     super(session);
     this.session = session;
@@ -290,31 +292,71 @@ export class Table extends ActionBuilder<dataform.Table> {
     this.proto.target = this.applySessionToTarget(target);
     this.proto.canonicalTarget = this.applySessionCanonicallyToTarget(target);
 
+    // Resolve the filename as its absolute path.
+    tableTypeConfig.filename = Path.join(Path.dirName(configPath), tableTypeConfig.filename);
     this.proto.fileName = tableTypeConfig.filename;
 
     // TODO(ekrekr): load config proto column descriptors.
-    // TODO(ekrekr): As part of JS API updates, instead of overloading, add new class files for the
-    // view and incremental action types.
     if (tableType === "table") {
       const config = tableTypeConfig as dataform.ActionConfig.TableConfig;
+
+      // TODO(ekrekr): this is a workaround for avoiding keys that aren't present, and should be
+      // cleaned up when the JS API is redone.
+      let bigqueryOptions: IBigQueryOptions | undefined =
+        config.partitionBy ||
+        config.partitionExpirationDays ||
+        config.requirePartitionFilter ||
+        config.clusterBy ||
+        config.labels ||
+        config.additionalOptions
+          ? {}
+          : undefined;
+      if (bigqueryOptions) {
+        if (config.partitionBy) {
+          bigqueryOptions.partitionBy = config.partitionBy;
+        }
+        if (config.partitionExpirationDays) {
+          bigqueryOptions.partitionExpirationDays = config.partitionExpirationDays;
+        }
+        if (config.requirePartitionFilter) {
+          bigqueryOptions.requirePartitionFilter = config.requirePartitionFilter;
+        }
+        if (config.clusterBy) {
+          bigqueryOptions.clusterBy = config.clusterBy;
+        }
+        if (config.labels) {
+          bigqueryOptions.labels = config.labels;
+        }
+        if (config.additionalOptions) {
+          bigqueryOptions.additionalOptions = config.additionalOptions;
+        }
+      }
+
       this.config({
         type: "table",
         dependencies: config.dependencyTargets,
         tags: config.tags,
         disabled: config.disabled,
         description: config.description,
-        bigquery: {
-          partitionBy: config.partitionBy,
-          partitionExpirationDays: config.partitionExpirationDays,
-          requirePartitionFilter: config.requirePartitionFilter,
-          clusterBy: config.clusterBy,
-          labels: config.labels,
-          additionalOptions: config.additionalOptions
-        }
+        bigquery: bigqueryOptions
       });
     }
     if (tableType === "view") {
       const config = tableTypeConfig as dataform.ActionConfig.ViewConfig;
+
+      // TODO(ekrekr): this is a workaround for avoiding keys that aren't present, and should be
+      // cleaned up when the JS API is redone.
+      let bigqueryOptions: IBigQueryOptions | undefined =
+        config.labels || config.additionalOptions ? {} : undefined;
+      if (bigqueryOptions) {
+        if (config.labels) {
+          bigqueryOptions.labels = config.labels;
+        }
+        if (config.additionalOptions) {
+          bigqueryOptions.additionalOptions = config.additionalOptions;
+        }
+      }
+
       this.config({
         type: "view",
         dependencies: config.dependencyTargets,
@@ -322,14 +364,48 @@ export class Table extends ActionBuilder<dataform.Table> {
         materialized: config.materialized,
         tags: config.tags,
         description: config.description,
-        bigquery: {
-          labels: config.labels,
-          additionalOptions: config.additionalOptions
-        }
+        bigquery: bigqueryOptions
       });
     }
     if (tableType === "incremental") {
       const config = tableTypeConfig as dataform.ActionConfig.IncrementalTableConfig;
+
+      // TODO(ekrekr): this is a workaround for avoiding keys that aren't present, and should be
+      // cleaned up when the JS API is redone.
+      let bigqueryOptions: IBigQueryOptions | undefined =
+        config.partitionBy ||
+        config.partitionExpirationDays ||
+        config.requirePartitionFilter ||
+        config.updatePartitionFilter ||
+        config.clusterBy ||
+        config.labels ||
+        config.additionalOptions
+          ? {}
+          : undefined;
+      if (bigqueryOptions) {
+        if (config.partitionBy) {
+          bigqueryOptions.partitionBy = config.partitionBy;
+        }
+        if (config.partitionExpirationDays) {
+          bigqueryOptions.partitionExpirationDays = config.partitionExpirationDays;
+        }
+        if (config.requirePartitionFilter) {
+          bigqueryOptions.requirePartitionFilter = config.requirePartitionFilter;
+        }
+        if (config.updatePartitionFilter) {
+          bigqueryOptions.updatePartitionFilter = config.updatePartitionFilter;
+        }
+        if (config.clusterBy) {
+          bigqueryOptions.clusterBy = config.clusterBy;
+        }
+        if (config.labels) {
+          bigqueryOptions.labels = config.labels;
+        }
+        if (config.additionalOptions) {
+          bigqueryOptions.additionalOptions = config.additionalOptions;
+        }
+      }
+
       this.config({
         type: "incremental",
         dependencies: config.dependencyTargets,
@@ -338,15 +414,7 @@ export class Table extends ActionBuilder<dataform.Table> {
         uniqueKey: config.uniqueKey,
         tags: config.tags,
         description: config.description,
-        bigquery: {
-          partitionBy: config.partitionBy,
-          partitionExpirationDays: config.partitionExpirationDays,
-          requirePartitionFilter: config.requirePartitionFilter,
-          updatePartitionFilter: config.updatePartitionFilter,
-          clusterBy: config.clusterBy,
-          labels: config.labels,
-          additionalOptions: config.additionalOptions
-        }
+        bigquery: bigqueryOptions
       });
     }
     this.query(nativeRequire(tableTypeConfig.filename).queryAsContextable);
@@ -380,7 +448,7 @@ export class Table extends ActionBuilder<dataform.Table> {
     if (config.protected) {
       this.protected();
     }
-    if (config.bigquery) {
+    if (config.bigquery && Object.keys(config.bigquery).length === 0) {
       this.bigquery(config.bigquery);
     }
     if (config.tags) {

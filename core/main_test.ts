@@ -501,18 +501,16 @@ actions:
       expect(asPlainObject(result.compile.compiledGraph.notebooks)).deep.equals(
         asPlainObject([
           {
-            config: {
-              fileName: "definitions/notebook.ipynb",
-              target: {
-                database: "dataform",
-                name: "notebook"
-              }
-            },
-            notebookContents: JSON.stringify({ cells: [] }),
             target: {
               database: "dataform",
               name: "notebook"
-            }
+            },
+            canonicalTarget: {
+              database: "dataform",
+              name: "notebook"
+            },
+            fileName: "definitions/notebook.ipynb",
+            notebookContents: JSON.stringify({ cells: [] })
           }
         ])
       );
@@ -536,13 +534,11 @@ actions:
       expect(asPlainObject(result.compile.compiledGraph.notebooks)).deep.equals(
         asPlainObject([
           {
-            config: {
-              fileName: "definitions/notebook.ipynb",
-              target: {
-                database: "dataform",
-                name: "notebook"
-              }
+            canonicalTarget: {
+              database: "dataform",
+              name: "notebook"
             },
+            fileName: "definitions/notebook.ipynb",
             notebookContents: JSON.stringify({
               cells: [
                 { cell_type: "markdown", source: ["# Some title"], outputs: [] },
@@ -572,7 +568,7 @@ actions:
         path.join(projectDir, "definitions/actions.yaml"),
         `
 actions:
-  operation:
+- operation:
     filename: action.sql`
       );
       fs.writeFileSync(
@@ -589,13 +585,7 @@ actions:
               database: "dataform",
               name: "action"
             },
-            config: {
-              fileName: "definitions/action.sql",
-              target: {
-                database: "dataform",
-                name: "action"
-              }
-            },
+            fileName: "definitions/action.sql",
             queries: ["SELECT dataform AS proofThatContextIsRead"],
             target: {
               database: "dataform",
@@ -618,7 +608,7 @@ actions:
         `
 actions:
 - declaration:
-  name: action`
+    name: action`
       );
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
@@ -629,13 +619,6 @@ actions:
             canonicalTarget: {
               database: "dataform",
               name: "action"
-            },
-            config: {
-              declaration: {},
-              target: {
-                database: "dataform",
-                name: "action"
-              }
             },
             target: {
               database: "dataform",
@@ -658,12 +641,12 @@ actions:
         `
 actions:
 - declaration:
-  fileName: doesnotexist.sql
-  name: name`
+    fileName: doesnotexist.sql
+    name: name`
       );
 
       expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
-        "Declaration configs cannot have 'fileName' fields as they cannot take source files"
+        "Cannot find field: fileName in message, or value type is incorrect"
       );
     });
 
@@ -679,11 +662,11 @@ actions:
         `
 actions:
 - declaration:
-  schema: test`
+    dataset: test`
       );
 
       expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
-        "Declaration configs must include a 'target' with a populated 'name' field"
+        "Declarations must have a populated 'name' field."
       );
     });
 
@@ -699,7 +682,7 @@ actions:
         `
 actions:
 - table:
-  fileName: action.sql`
+    filename: action.sql`
       );
       fs.writeFileSync(
         path.join(projectDir, "definitions/action.sql"),
@@ -715,14 +698,7 @@ actions:
               database: "dataform",
               name: "action"
             },
-            config: {
-              fileName: "definitions/action.sql",
-              table: {},
-              target: {
-                database: "dataform",
-                name: "action"
-              }
-            },
+            fileName: "definitions/action.sql",
             query: "SELECT dataform AS proofThatContextIsRead",
             target: {
               database: "dataform",
@@ -748,7 +724,7 @@ actions:
         `
 actions:
 - incrementalTable:
-  fileName: action.sql
+    filename: action.sql
     protected: true
     uniqueKey:
     -  someKey1
@@ -769,17 +745,7 @@ actions:
               database: "dataform",
               name: "action"
             },
-            config: {
-              fileName: "definitions/action.sql",
-              incrementalTable: {
-                protected: true,
-                uniqueKey: ["someKey1", "someKey2"]
-              },
-              target: {
-                database: "dataform",
-                name: "action"
-              }
-            },
+            fileName: "definitions/action.sql",
             query: "SELECT dataform AS proofThatContextIsRead",
             incrementalQuery: "SELECT dataform AS proofThatIncrementalContextIsRead",
             target: {
@@ -807,8 +773,8 @@ actions:
         path.join(projectDir, "definitions/actions.yaml"),
         `
 actions:
-- view: {}
-  fileName: action.sql`
+- view:
+    filename: action.sql`
       );
       fs.writeFileSync(
         path.join(projectDir, "definitions/action.sql"),
@@ -824,14 +790,7 @@ actions:
               database: "dataform",
               name: "action"
             },
-            config: {
-              fileName: "definitions/action.sql",
-              view: {},
-              target: {
-                database: "dataform",
-                name: "action"
-              }
-            },
+            fileName: "definitions/action.sql",
             query: "SELECT dataform AS proofThatContextIsRead",
             target: {
               database: "dataform",
@@ -857,7 +816,7 @@ actions:
         `
 actions:
 - assertion:
-  fileName: action.sql`
+    filename: action.sql`
       );
       fs.writeFileSync(
         path.join(projectDir, "definitions/action.sql"),
@@ -873,14 +832,7 @@ actions:
               database: "dataform",
               name: "action"
             },
-            config: {
-              assertion: {},
-              fileName: "definitions/action.sql",
-              target: {
-                database: "dataform",
-                name: "action"
-              }
-            },
+            fileName: "definitions/action.sql",
             query: "SELECT dataform AS proofThatContextIsRead",
             target: {
               database: "dataform",
@@ -903,7 +855,7 @@ actions:
         `
 actions:
 - operation:
-  filename: doesnotexist.sql`
+    filename: doesnotexist.sql`
       );
 
       expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
@@ -923,8 +875,8 @@ actions:
         `
 actions:
 - table:
-  fileName: action.sql
-  materialized: true`
+    filename: action.sql
+    materialized: true`
       );
 
       expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
@@ -944,7 +896,7 @@ actions:
         `
 actions:
 - operation:
-  fileName: utf8characters:私🙂 and some spaces.sql`
+    filename: utf8characters:私🙂 and some spaces.sql`
       );
       fs.writeFileSync(
         path.join(projectDir, "definitions/utf8characters:私🙂 and some spaces.sql"),
@@ -960,13 +912,7 @@ actions:
               database: "dataform",
               name: "utf8characters:私🙂 and some spaces"
             },
-            config: {
-              fileName: "definitions/utf8characters:私🙂 and some spaces.sql",
-              target: {
-                database: "dataform",
-                name: "utf8characters:私🙂 and some spaces"
-              }
-            },
+            fileName: "definitions/utf8characters:私🙂 and some spaces.sql",
             queries: ["SELECT dataform AS proofThatContextIsRead"],
             target: {
               database: "dataform",

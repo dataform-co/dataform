@@ -75,7 +75,11 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
   // We delay contextification until the final compile step, so hold these here for now.
   private contextableQuery: AContextable<string>;
 
-  constructor(session?: Session, config?: dataform.ActionConfig.AssertionConfig) {
+  constructor(
+    session?: Session,
+    config?: dataform.ActionConfig.AssertionConfig,
+    configPath?: string
+  ) {
     super(session);
     this.session = session;
 
@@ -91,6 +95,8 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
     this.proto.target = this.applySessionToTarget(target);
     this.proto.canonicalTarget = this.applySessionCanonicallyToTarget(target);
 
+    // Resolve the filename as its absolute path.
+    config.filename = Path.join(Path.dirName(configPath), config.filename);
     this.proto.fileName = config.filename;
 
     // TODO(ekrekr): load config proto column descriptors.

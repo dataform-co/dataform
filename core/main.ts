@@ -117,31 +117,45 @@ function loadActionConfigs(session: Session, filePaths: string[]) {
 
         if (actionConfig.table) {
           session.actions.push(
-            new Table(session, dataform.ActionConfig.TableConfig.create(actionConfig.table))
+            new Table(
+              session,
+              dataform.ActionConfig.TableConfig.create(actionConfig.table),
+              "table",
+              actionConfigsPath
+            )
           );
         } else if (actionConfig.view) {
           session.actions.push(
-            new Table(session, dataform.ActionConfig.ViewConfig.create(actionConfig.view))
+            new Table(
+              session,
+              dataform.ActionConfig.ViewConfig.create(actionConfig.view),
+              "view",
+              actionConfigsPath
+            )
           );
         } else if (actionConfig.incrementalTable) {
           session.actions.push(
             new Table(
               session,
-              dataform.ActionConfig.IncrementalTableConfig.create(actionConfig.incrementalTable)
+              dataform.ActionConfig.IncrementalTableConfig.create(actionConfig.incrementalTable),
+              "incremental",
+              actionConfigsPath
             )
           );
         } else if (actionConfig.assertion) {
           session.actions.push(
             new Assertion(
               session,
-              dataform.ActionConfig.AssertionConfig.create(actionConfig.assertion)
+              dataform.ActionConfig.AssertionConfig.create(actionConfig.assertion),
+              actionConfigsPath
             )
           );
         } else if (actionConfig.operation) {
           session.actions.push(
             new Operation(
               session,
-              dataform.ActionConfig.OperationConfig.create(actionConfig.operation)
+              dataform.ActionConfig.OperationConfig.create(actionConfig.operation),
+              actionConfigsPath
             )
           );
         } else if (actionConfig.declaration) {
@@ -155,7 +169,8 @@ function loadActionConfigs(session: Session, filePaths: string[]) {
           session.actions.push(
             new Notebook(
               session,
-              dataform.ActionConfig.NotebookConfig.create(actionConfig.notebook)
+              dataform.ActionConfig.NotebookConfig.create(actionConfig.notebook),
+              actionConfigsPath
             )
           );
         } else {

@@ -24,6 +24,24 @@ export function fileName(fullPath: string) {
     .split(".")[0];
 }
 
+export function dirName(fullPath: string) {
+  return join(...fullPath.split(separator).slice(0, -1));
+}
+
+export function join(...paths: string[]) {
+  return paths
+    .map(path => {
+      if (path.startsWith(separator)) {
+        path = path.slice(1);
+      }
+      if (path.endsWith(separator)) {
+        path = path.slice(0, -1);
+      }
+      return path;
+    })
+    .join(separator);
+}
+
 export function escapedFileName(path: string) {
   return fileName(path).replace(/\\/g, "\\\\");
 }
