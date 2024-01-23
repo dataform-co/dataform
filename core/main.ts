@@ -6,15 +6,9 @@ import { Operation } from "df/core/actions/operation";
 import { Table } from "df/core/actions/table";
 import * as Path from "df/core/path";
 import { Session } from "df/core/session";
-import * as utils from "df/core/utils";
-import { readWorkflowSettings } from "df/core/workflow_settings";
+import { nativeRequire } from "df/core/utils";
+import { readWorkflowSettings, workflowSettingsAsProjectConfig } from "df/core/workflow_settings";
 import { dataform } from "df/protos/ts";
-
-declare var __webpack_require__: any;
-declare var __non_webpack_require__: any;
-
-// If this code is bundled with webpack, we need to side-step the webpack require re-writing and use the real require method in here.
-const nativeRequire = typeof __webpack_require__ === "function" ? __non_webpack_require__ : require;
 
 /**
  * This is the main entry point into the user space code that should be invoked by the compilation wrapper sandbox.
@@ -39,17 +33,7 @@ export function main(coreExecutionRequest: Uint8Array | string): Uint8Array | st
   const workflowSettings = readWorkflowSettings();
 
   // Convert the workflow settings to the compiled graph's project config structure.
-  let projectConfig = dataform.ProjectConfig.create({
-    warehouse: "bigquery",
-    defaultDatabase: workflowSettings.defaultProject,
-    defaultSchema: workflowSettings.defaultDataset,
-    defaultLocation: workflowSettings.defaultLocation,
-    assertionSchema: workflowSettings.defaultAssertionDataset,
-    vars: workflowSettings.vars,
-    databaseSuffix: workflowSettings.projectSuffix,
-    schemaSuffix: workflowSettings.datasetSuffix,
-    tablePrefix: workflowSettings.actionPrefix
-  });
+  let projectConfig = workflowSettingsAsProjectConfig(workflowSettings);
 
   // Merge in project config overrides.
   const projectConfigOverride = compileRequest.compileConfig.projectConfigOverride ?? {};
@@ -131,52 +115,51 @@ function loadActionConfigs(session: Session, filePaths: string[]) {
       actionConfigs.actions.forEach(nonProtoActionConfig => {
         const actionConfig = dataform.ActionConfig.create(nonProtoActionConfig);
 
-        if (actionConfig.declaration) {
-          if (actionConfig.fileName) {
-            throw Error(
-              "Declaration configs cannot have 'fileName' fields as they cannot take source files"
-            );
-          }
-          if (!actionConfig.target?.name) {
-            throw Error(
-              "Declaration configs must include a 'target' with a populated 'name' field"
-            );
-          }
-
-          const declaration = new Declaration(session, actionConfig);
-          session.actions.push(declaration);
-          return;
-        }
-
-        const { fileExtension, fileNameAsTargetName } = utils.extractActionDetailsFromFileName(
-          actionConfig.fileName
-        );
-        if (!actionConfig.target) {
-          actionConfig.target = {};
-        }
-        if (!actionConfig.target.name) {
-          actionConfig.target.name = fileNameAsTargetName;
-        }
-
-        // Users define file paths relative to action config path, but internally and in the
-        // compiled graph they are absolute paths.
-        actionConfig.fileName =
-          actionConfigsPath.substring(0, actionConfigsPath.length - "actions.yaml".length) +
-          actionConfig.fileName;
-
-        if (fileExtension === "ipynb") {
-          const notebookContents = nativeRequire(actionConfig.fileName).asJson;
-          const strippedNotebookContents = stripNotebookOutputs(
-            notebookContents,
-            actionConfig.fileName
+        if (actionConfig.table) {
+          session.actions.push(
+            new Table(session, dataform.ActionConfig.TableConfig.create(actionConfig.table))
           );
-          const notebook = new Notebook(session, actionConfig);
-          notebook.ipynb(strippedNotebookContents);
-          session.actions.push(notebook);
-        }
-
-        if (fileExtension === "sql") {
-          loadSqlFile(session, actionConfig);
+        } else if (actionConfig.view) {
+          session.actions.push(
+            new Table(session, dataform.ActionConfig.ViewConfig.create(actionConfig.view))
+          );
+        } else if (actionConfig.incrementalTable) {
+          session.actions.push(
+            new Table(
+              session,
+              dataform.ActionConfig.IncrementalTableConfig.create(actionConfig.incrementalTable)
+            )
+          );
+        } else if (actionConfig.assertion) {
+          session.actions.push(
+            new Assertion(
+              session,
+              dataform.ActionConfig.AssertionConfig.create(actionConfig.assertion)
+            )
+          );
+        } else if (actionConfig.operation) {
+          session.actions.push(
+            new Operation(
+              session,
+              dataform.ActionConfig.OperationConfig.create(actionConfig.operation)
+            )
+          );
+        } else if (actionConfig.declaration) {
+          session.actions.push(
+            new Declaration(
+              session,
+              dataform.ActionConfig.DeclarationConfig.create(actionConfig.declaration)
+            )
+          );
+        } else if (actionConfig.notebook) {
+          session.actions.push(
+            new Notebook(
+              session,
+              dataform.ActionConfig.NotebookConfig.create(actionConfig.notebook)
+            )
+          );
+        } else {
+          throw Error("Empty action configs are not permitted.");
         }
       });
     });
@@ -195,41 +178,4 @@ function loadActionConfigsFile(
   }
   verifyObjectMatchesProto(dataform.ActionConfigs, actionConfigsAsJson);
   return dataform.ActionConfigs.fromObject(actionConfigsAsJson);
-}
-
-function loadSqlFile(session: Session, actionConfig: dataform.ActionConfig) {
-  const queryAsContextable = nativeRequire(actionConfig.fileName).queryAsContextable;
-
-  if (actionConfig.assertion) {
-    const assertion = new Assertion(session, actionConfig);
-    assertion.query(queryAsContextable);
-    session.actions.push(assertion);
-    return;
-  }
-  if (actionConfig.table || actionConfig.incrementalTable || actionConfig.view) {
-    const table = new Table(session, actionConfig);
-    table.query(queryAsContextable);
-    session.actions.push(table);
-    return;
-  }
-  // If no config is specified, the operation action type is defaulted to.
-  const operation = new Operation(session, actionConfig);
-  operation.queries(queryAsContextable);
-  session.actions.push(operation);
-}
-
-function stripNotebookOutputs(
-  notebookAsJson: { [key: string]: unknown },
-  path: string
-): { [key: string]: unknown } {
-  if (!("cells" in notebookAsJson)) {
-    throw new Error(`Notebook at ${path} is invalid: cells field not present`);
-  }
-  (notebookAsJson.cells as Array<{ [key: string]: unknown }>).forEach((cell, index) => {
-    if ("outputs" in cell) {
-      cell.outputs = [];
-      (notebookAsJson.cells as Array<{ [key: string]: unknown }>)[index] = cell;
-    }
-  });
-  return notebookAsJson;
 }

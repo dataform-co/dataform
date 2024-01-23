@@ -8,9 +8,11 @@ import {
   ITargetableConfig,
   Resolvable
 } from "df/core/common";
+import * as Path from "df/core/path";
 import { Session } from "df/core/session";
 import {
   checkExcessProperties,
+  nativeRequire,
   resolvableAsTarget,
   setNameAndTarget,
   strictKeysOf,
@@ -73,25 +75,33 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
   // We delay contextification until the final compile step, so hold these here for now.
   private contextableQuery: AContextable<string>;
 
-  constructor(session?: Session, config?: dataform.ActionConfig) {
+  constructor(session?: Session, config?: dataform.ActionConfig.AssertionConfig) {
     super(session);
     this.session = session;
 
     if (!config) {
       return;
     }
-    this.proto.config = config;
 
-    this.proto.target = this.applySessionToTarget(this.proto.config.target);
-    this.proto.config.target = this.proto.canonicalTarget = this.applySessionCanonicallyToTarget(
-      this.proto.config.target
-    );
+    const target = dataform.Target.create({
+      name: config.name || Path.fileName(config.filename),
+      schema: config.dataset,
+      database: config.project
+    });
+    this.proto.target = this.applySessionToTarget(target);
+    this.proto.canonicalTarget = this.applySessionCanonicallyToTarget(target);
 
+    this.proto.fileName = config.filename;
+
+    // TODO(ekrekr): load config proto column descriptors.
     this.config({
       dependencies: config.dependencyTargets,
-      disabled: config.table?.disabled,
-      tags: config.tags
+      tags: config.tags,
+      disabled: config.disabled,
+      description: config.description
     });
+
+    this.query(nativeRequire(config.filename).queryAsContextable);
   }
 
   public config(config: IAssertionConfig) {

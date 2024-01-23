@@ -39,7 +39,7 @@ message WorkflowSettings {
   string dataset_suffix = 8;
 
   // Optional. The prefix to append to all action names.
-  string action_prefix = 9;
+  string name_prefix = 9;
 }
 
 // Action configs defines the contents of `actions.yaml` configuration files.
@@ -366,14 +366,11 @@ message ActionConfig {
     // The Google Cloud project (database) of the declaration.
     string project = 3;
 
-    // Targets of actions that this action is dependent on.
-    repeated Target dependency_targets = 4;
-
-    // A list of user-defined tags with which the action should be labeled.
-    repeated string tags = 5;
-
     // Description of the declaration.
-    string description = 6;
+    string description = 4;
+
+    // Descriptions of columns within the declaration.
+    repeated ColumnDescriptor columns = 5;
   }
 
   message NotebookConfig {

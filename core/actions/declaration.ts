@@ -34,19 +34,24 @@ export class Declaration extends ActionBuilder<dataform.Declaration> {
 
   public session: Session;
 
-  constructor(session?: Session, config?: dataform.ActionConfig) {
+  constructor(session?: Session, config?: dataform.ActionConfig.DeclarationConfig) {
     super(session);
     this.session = session;
 
     if (!config) {
       return;
     }
-    this.proto.config = config;
 
-    this.proto.target = this.applySessionToTarget(this.proto.config.target);
-    this.proto.config.target = this.proto.canonicalTarget = this.applySessionCanonicallyToTarget(
-      this.proto.config.target
-    );
+    const target = dataform.Target.create({
+      name: config.name,
+      schema: config.dataset,
+      database: config.project
+    });
+    this.proto.target = this.applySessionToTarget(target);
+    this.proto.canonicalTarget = this.applySessionCanonicallyToTarget(target);
+
+    // TODO(ekrekr): load config proto column descriptors.
+    this.config({ description: config.description });
   }
 
   public config(config: IDeclarationConfig) {

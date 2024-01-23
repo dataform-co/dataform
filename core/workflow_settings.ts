@@ -49,12 +49,6 @@ function verifyWorkflowSettingsAsJson(workflowSettingsAsJson: object): dataform.
     }
     throw e;
   }
-  // tslint:disable-next-line: no-string-literal
-  if (!workflowSettings.warehouse) {
-    // The warehouse field still set, though deprecated, to simplify compatability with dependents.
-    // tslint:disable-next-line: no-string-literal
-    workflowSettings.warehouse = "bigquery";
-  }
 
   // The caller of Dataform Core should ensure that the correct version is installed.
   if (!!workflowSettings.dataformCoreVersion && workflowSettings.dataformCoreVersion !== version) {
@@ -64,10 +58,6 @@ function verifyWorkflowSettingsAsJson(workflowSettingsAsJson: object): dataform.
     );
   }
 
-  // tslint:disable-next-line: no-string-literal
-  if (workflowSettings.warehouse !== "bigquery") {
-    throw Error("Workflow settings error: the warehouse field is deprecated");
-  }
   return workflowSettings;
 }
 
@@ -81,4 +71,36 @@ function maybeRequire(file: string): any {
     }
     return undefined;
   }
+}
+
+export function workflowSettingsAsProjectConfig(
+  workflowSettings: dataform.WorkflowSettings
+): dataform.ProjectConfig {
+  let projectConfig = dataform.ProjectConfig.create();
+  if (workflowSettings.defaultProject) {
+    projectConfig.defaultDatabase = workflowSettings.defaultProject;
+  }
+  if (workflowSettings.defaultDataset) {
+    projectConfig.defaultSchema = workflowSettings.defaultDataset;
+  }
+  if (workflowSettings.defaultLocation) {
+    projectConfig.defaultLocation = workflowSettings.defaultLocation;
+  }
+  if (workflowSettings.defaultAssertionDataset) {
+    projectConfig.assertionSchema = workflowSettings.defaultAssertionDataset;
+  }
+  if (workflowSettings.vars) {
+    projectConfig.vars = workflowSettings.vars;
+  }
+  if (workflowSettings.projectSuffix) {
+    projectConfig.databaseSuffix = workflowSettings.projectSuffix;
+  }
+  if (workflowSettings.datasetSuffix) {
+    projectConfig.schemaSuffix = workflowSettings.datasetSuffix;
+  }
+  if (workflowSettings.namePrefix) {
+    projectConfig.tablePrefix = workflowSettings.namePrefix;
+  }
+  projectConfig.warehouse = "bigquery";
+  return projectConfig;
 }

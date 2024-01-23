@@ -16,42 +16,41 @@ import { asPlainObject } from "df/tests/utils";
 const SOURCE_EXTENSIONS = ["js", "sql", "sqlx", "yaml", "ipynb"];
 
 const VALID_WORKFLOW_SETTINGS_YAML = `
-defaultDatabase: dataform
+defaultProject: dataform
 defaultLocation: US
 `;
 
 const VALID_DATAFORM_JSON = `
 {
-  "defaultDatabase": "dataform"
+  "defaultProject": "dataform"
 }
 `;
 
 class TestConfigs {
-  public static bigquery: dataform.IProjectConfig = {
-    warehouse: "bigquery",
-    defaultSchema: "schema",
+  public static bigquery = dataform.WorkflowSettings.create({
+    defaultDataset: "schema",
     defaultLocation: "US"
-  };
+  });
 
-  public static bigqueryWithDefaultDatabase: dataform.IProjectConfig = {
+  public static bigqueryWithDefaultDatabase = dataform.WorkflowSettings.create({
     ...TestConfigs.bigquery,
-    defaultDatabase: "default-database"
-  };
+    defaultProject: "default-database"
+  });
 
-  public static bigqueryWithSchemaSuffix: dataform.IProjectConfig = {
+  public static bigqueryWithSchemaSuffix = dataform.WorkflowSettings.create({
     ...TestConfigs.bigquery,
-    schemaSuffix: "suffix"
-  };
+    datasetSuffix: "suffix"
+  });
 
-  public static bigqueryWithDefaultDatabaseAndSuffix: dataform.IProjectConfig = {
+  public static bigqueryWithDefaultDatabaseAndSuffix = dataform.WorkflowSettings.create({
     ...TestConfigs.bigqueryWithDefaultDatabase,
-    databaseSuffix: "suffix"
-  };
+    projectSuffix: "suffix"
+  });
 
-  public static bigqueryWithTablePrefix: dataform.IProjectConfig = {
+  public static bigqueryWithTablePrefix = dataform.WorkflowSettings.create({
     ...TestConfigs.bigquery,
-    tablePrefix: "prefix"
-  };
+    namePrefix: "prefix"
+  });
 }
 
 const EMPTY_NOTEBOOK_CONTENTS = '{ "cells": [] }';
@@ -66,11 +65,11 @@ suite("@dataform/core", ({ afterEach }) => {
         TestConfigs.bigqueryWithSchemaSuffix,
         TestConfigs.bigqueryWithTablePrefix
       ].forEach(testConfig => {
-        test(`resolve with prefix "${testConfig.tablePrefix}" and suffix "${testConfig.schemaSuffix}"`, () => {
+        test(`resolve with prefix "${testConfig.namePrefix}" and suffix "${testConfig.datasetSuffix}"`, () => {
           const projectDir = tmpDirFixture.createNewTmpDir();
           fs.writeFileSync(
             path.join(projectDir, "workflow_settings.yaml"),
-            dumpYaml(dataform.ProjectConfig.create(testConfig))
+            dumpYaml(dataform.WorkflowSettings.create(testConfig))
           );
           fs.mkdirSync(path.join(projectDir, "definitions"));
           fs.writeFileSync(path.join(projectDir, "definitions/e.sqlx"), `config {type: "view"}`);
@@ -78,8 +77,8 @@ suite("@dataform/core", ({ afterEach }) => {
 
           const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
-          const suffix = testConfig.schemaSuffix ? `_${testConfig.schemaSuffix}` : "";
-          const prefix = testConfig.tablePrefix ? `${testConfig.tablePrefix}_` : "";
+          const suffix = testConfig.datasetSuffix ? `_${testConfig.datasetSuffix}` : "";
+          const prefix = testConfig.namePrefix ? `${testConfig.namePrefix}_` : "";
           expect(result.compile.compiledGraph.operations[0].queries[0]).deep.equals(
             `\`schema${suffix}.${prefix}e\``
           );
@@ -200,68 +199,6 @@ suite("@dataform/core", ({ afterEach }) => {
       );
     });
 
-    test(`main succeeds when dataform.json specifies BigQuery as the warehouse`, () => {
-      const projectDir = tmpDirFixture.createNewTmpDir();
-      fs.writeFileSync(
-        path.join(projectDir, "dataform.json"),
-        `{"warehouse": "bigquery", "defaultDatabase": "dataform"}`
-      );
-
-      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
-
-      expect(asPlainObject(result.compile.compiledGraph.projectConfig)).deep.equals(
-        asPlainObject({
-          warehouse: "bigquery",
-          defaultDatabase: "dataform"
-        })
-      );
-    });
-
-    test(`main fails when dataform.json specifies non-BigQuery as the warehouse`, () => {
-      const projectDir = tmpDirFixture.createNewTmpDir();
-      fs.writeFileSync(
-        path.join(projectDir, "dataform.json"),
-        `{"warehouse": "redshift", "defaultDatabase": "dataform"}`
-      );
-
-      expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
-        "Workflow settings error: the warehouse field is deprecated"
-      );
-    });
-
-    test(`main succeeds when workflow_settings.yaml specifies BigQuery as the warehouse`, () => {
-      const projectDir = tmpDirFixture.createNewTmpDir();
-      fs.writeFileSync(
-        path.join(projectDir, "workflow_settings.yaml"),
-        `
-warehouse: bigquery
-defaultDatabase: dataform`
-      );
-
-      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
-
-      expect(asPlainObject(result.compile.compiledGraph.projectConfig)).deep.equals(
-        asPlainObject({
-          warehouse: "bigquery",
-          defaultDatabase: "dataform"
-        })
-      );
-    });
-
-    test(`main fails when workflow_settings.yaml specifies non-BigQuery as the warehouse`, () => {
-      const projectDir = tmpDirFixture.createNewTmpDir();
-      fs.writeFileSync(
-        path.join(projectDir, "workflow_settings.yaml"),
-        `
-warehouse: redshift
-defaultDatabase: dataform`
-      );
-
-      expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
-        "Workflow settings error: the warehouse field is deprecated"
-      );
-    });
-
     test(`main fails when a valid dataform.json contains unknown fields`, () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
       fs.writeFileSync(
@@ -279,7 +216,7 @@ defaultDatabase: dataform`
       fs.writeFileSync(
         path.join(projectDir, "workflow_settings.yaml"),
         `
-defaultDatabase: dataform
+defaultProject: dataform
 defaultLocation: locationInWorkflowSettings
 vars:
   selectVar: selectVal
@@ -291,7 +228,7 @@ vars:
         `
 config {
   type: "table",
-  database: dataform.projectConfig.vars.databaseVar,
+  database: dataform.projectConfig.vars.projectVar,
 }
 select 1 AS \${dataform.projectConfig.vars.selectVar}`
       );
@@ -303,7 +240,7 @@ select 1 AS \${dataform.projectConfig.vars.selectVar}`
             projectConfigOverride: {
               defaultLocation: "locationInOverride",
               vars: {
-                databaseVar: "databaseVal"
+                projectVar: "projectVal"
               }
             }
           }
@@ -320,7 +257,7 @@ select 1 AS \${dataform.projectConfig.vars.selectVar}`
             defaultDatabase: "dataform",
             defaultLocation: "locationInOverride",
             vars: {
-              databaseVar: "databaseVal",
+              projectVar: "projectVal",
               selectVar: "selectVal"
             },
             warehouse: "bigquery"
@@ -328,7 +265,7 @@ select 1 AS \${dataform.projectConfig.vars.selectVar}`
           tables: [
             {
               canonicalTarget: {
-                database: "databaseVal",
+                database: "projectVal",
                 name: "file"
               },
               disabled: false,
@@ -336,7 +273,7 @@ select 1 AS \${dataform.projectConfig.vars.selectVar}`
               fileName: "definitions/file.sqlx",
               query: "\n\nselect 1 AS selectVal",
               target: {
-                database: "databaseVal",
+                database: "projectVal",
                 name: "file"
               },
               type: "table"
@@ -344,7 +281,7 @@ select 1 AS \${dataform.projectConfig.vars.selectVar}`
           ],
           targets: [
             {
-              database: "databaseVal",
+              database: "projectVal",
               name: "file"
             }
           ]
@@ -359,7 +296,7 @@ select 1 AS \${dataform.projectConfig.vars.selectVar}`
           path.join(projectDir, "workflow_settings.yaml"),
           `
 dataformCoreVersion: 1.0.0
-defaultDatabase: dataform`
+defaultProject: dataform`
         );
 
         expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
@@ -373,7 +310,7 @@ defaultDatabase: dataform`
           path.join(projectDir, "workflow_settings.yaml"),
           `
 dataformCoreVersion: ${version}
-defaultDatabase: dataform`
+defaultProject: dataform`
         );
 
         const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
@@ -381,8 +318,7 @@ defaultDatabase: dataform`
         expect(asPlainObject(result.compile.compiledGraph.projectConfig)).deep.equals(
           asPlainObject({
             warehouse: "bigquery",
-            defaultDatabase: "dataform",
-            dataformCoreVersion: version
+            defaultDatabase: "dataform"
           })
         );
       });
@@ -547,7 +483,8 @@ select 1 AS \${dataform.projectConfig.vars.columnVar}`
         path.join(projectDir, "definitions/actions.yaml"),
         `
 actions:
-  - fileName: notebook.ipynb`
+- notebook:
+    filename: notebook.ipynb`
       );
       return projectDir;
     };
@@ -624,7 +561,7 @@ actions:
   });
 
   suite("action configs", () => {
-    test(`actions configs are loaded as operations by default when no explicit config is given`, () => {
+    test(`operations can be loaded`, () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
       fs.writeFileSync(
         path.join(projectDir, "workflow_settings.yaml"),
@@ -635,7 +572,8 @@ actions:
         path.join(projectDir, "definitions/actions.yaml"),
         `
 actions:
-  - fileName: action.sql`
+  operation:
+    filename: action.sql`
       );
       fs.writeFileSync(
         path.join(projectDir, "definitions/action.sql"),
@@ -679,9 +617,8 @@ actions:
         path.join(projectDir, "definitions/actions.yaml"),
         `
 actions:
-  - declaration: {}
-    target:
-      name: action`
+- declaration:
+  name: action`
       );
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
@@ -720,10 +657,9 @@ actions:
         path.join(projectDir, "definitions/actions.yaml"),
         `
 actions:
-  - declaration: {}
-    fileName: doesnotexist.sql
-    target:
-      name: name`
+- declaration:
+  fileName: doesnotexist.sql
+  name: name`
       );
 
       expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
@@ -742,9 +678,8 @@ actions:
         path.join(projectDir, "definitions/actions.yaml"),
         `
 actions:
-  - declaration: {}
-    target:
-      schema: test`
+- declaration:
+  schema: test`
       );
 
       expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
@@ -763,8 +698,8 @@ actions:
         path.join(projectDir, "definitions/actions.yaml"),
         `
 actions:
-  - fileName: action.sql
-    table: {}`
+- table:
+  fileName: action.sql`
       );
       fs.writeFileSync(
         path.join(projectDir, "definitions/action.sql"),
@@ -812,12 +747,12 @@ actions:
         path.join(projectDir, "definitions/actions.yaml"),
         `
 actions:
-  - fileName: action.sql
-    incrementalTable:
-      protected: true
-      uniqueKey:
-      -  someKey1
-      -  someKey2`
+- incrementalTable:
+  fileName: action.sql
+    protected: true
+    uniqueKey:
+    -  someKey1
+    -  someKey2`
       );
       fs.writeFileSync(
         path.join(projectDir, "definitions/action.sql"),
@@ -872,8 +807,8 @@ actions:
         path.join(projectDir, "definitions/actions.yaml"),
         `
 actions:
-  - fileName: action.sql
-    view: {}`
+- view: {}
+  fileName: action.sql`
       );
       fs.writeFileSync(
         path.join(projectDir, "definitions/action.sql"),
@@ -921,8 +856,8 @@ actions:
         path.join(projectDir, "definitions/actions.yaml"),
         `
 actions:
-  - assertion: {}
-    fileName: action.sql`
+- assertion:
+  fileName: action.sql`
       );
       fs.writeFileSync(
         path.join(projectDir, "definitions/action.sql"),
@@ -967,7 +902,8 @@ actions:
         path.join(projectDir, "definitions/actions.yaml"),
         `
 actions:
-  - fileName: doesnotexist.sql`
+- operation:
+  filename: doesnotexist.sql`
       );
 
       expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
@@ -986,9 +922,9 @@ actions:
         path.join(projectDir, "definitions/actions.yaml"),
         `
 actions:
-  - fileName: action.sql
-    table:
-      materialized: true`
+- table:
+  fileName: action.sql
+  materialized: true`
       );
 
       expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
@@ -1007,7 +943,8 @@ actions:
         path.join(projectDir, "definitions/actions.yaml"),
         `
 actions:
-  - fileName: utf8characters:私🙂 and some spaces.sql`
+- operation:
+  fileName: utf8characters:私🙂 and some spaces.sql`
       );
       fs.writeFileSync(
         path.join(projectDir, "definitions/utf8characters:私🙂 and some spaces.sql"),

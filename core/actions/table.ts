@@ -13,9 +13,11 @@ import {
   ITargetableConfig,
   Resolvable
 } from "df/core/common";
+import * as Path from "df/core/path";
 import { Session } from "df/core/session";
 import {
   checkExcessProperties,
+  nativeRequire,
   resolvableAsTarget,
   setNameAndTarget,
   strictKeysOf,
@@ -263,32 +265,44 @@ export class Table extends ActionBuilder<dataform.Table> {
 
   constructor(
     session?: Session,
-    config?:
+    tableTypeConfig?:
       | dataform.ActionConfig.TableConfig
       | dataform.ActionConfig.ViewConfig
-      | dataform.ActionConfig.IncrementalTableConfig
+      | dataform.ActionConfig.IncrementalTableConfig,
+    // TODO(ekrekr): this is a temporary field for checking this constructor's type config.
+    tableType?: TableType
   ) {
     super(session);
     this.session = session;
 
-    if (!config) {
+    if (!tableTypeConfig) {
       return;
     }
+    if (!tableType) {
+      throw Error("Expected table type");
+    }
 
-    this.proto.target = this.applySessionToTarget(config.target);
-    this.proto.canonicalTarget = this.applySessionCanonicallyToTarget(config.target);
-    this.proto.fileName = config.filename;
+    const target = dataform.Target.create({
+      name: tableTypeConfig.name || Path.fileName(tableTypeConfig.filename),
+      schema: tableTypeConfig.dataset,
+      database: tableTypeConfig.project
+    });
+    this.proto.target = this.applySessionToTarget(target);
+    this.proto.canonicalTarget = this.applySessionCanonicallyToTarget(target);
 
+    this.proto.fileName = tableTypeConfig.filename;
+
+    // TODO(ekrekr): load config proto column descriptors.
     // TODO(ekrekr): As part of JS API updates, instead of overloading, add new class files for the
     // view and incremental action types.
-    if (typeof config === dataform.ActionConfig.TableConfig) {
+    if (tableType === "table") {
+      const config = tableTypeConfig as dataform.ActionConfig.TableConfig;
       this.config({
         type: "table",
         dependencies: config.dependencyTargets,
-        disabled: config.disabled,
         tags: config.tags,
+        disabled: config.disabled,
         description: config.description,
-        columns: config.columns,
         bigquery: {
           partitionBy: config.partitionBy,
           partitionExpirationDays: config.partitionExpirationDays,
@@ -299,23 +313,23 @@ export class Table extends ActionBuilder<dataform.Table> {
         }
       });
     }
-    if (typeof config === dataform.ActionConfig.ViewConfig) {
+    if (tableType === "view") {
+      const config = tableTypeConfig as dataform.ActionConfig.ViewConfig;
       this.config({
         type: "view",
         dependencies: config.dependencyTargets,
         disabled: config.disabled,
         materialized: config.materialized,
-        uniqueKey: config.incrementalTable?.uniqueKey,
         tags: config.tags,
         description: config.description,
-        columns: config.columns,
         bigquery: {
           labels: config.labels,
           additionalOptions: config.additionalOptions
         }
       });
     }
-    if (typeof config === dataform.ActionConfig.IncrementalTableConfig) {
+    if (tableType === "incremental") {
+      const config = tableTypeConfig as dataform.ActionConfig.IncrementalTableConfig;
       this.config({
         type: "incremental",
         dependencies: config.dependencyTargets,
@@ -324,7 +338,6 @@ export class Table extends ActionBuilder<dataform.Table> {
         uniqueKey: config.uniqueKey,
         tags: config.tags,
         description: config.description,
-        columns: config.columns,
         bigquery: {
           partitionBy: config.partitionBy,
           partitionExpirationDays: config.partitionExpirationDays,
@@ -336,7 +349,13 @@ export class Table extends ActionBuilder<dataform.Table> {
         }
       });
     }
-    throw Error(`Unrecognised action config type: ${typeof config}`);
+    this.query(nativeRequire(tableTypeConfig.filename).queryAsContextable);
+    if (tableTypeConfig.preOperations) {
+      this.preOps(tableTypeConfig.preOperations);
+    }
+    if (tableTypeConfig.postOperations) {
+      this.postOps(tableTypeConfig.postOperations);
+    }
   }
 
   public config(config: ITableConfig) {
