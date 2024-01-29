@@ -25,7 +25,7 @@ export function fileName(fullPath: string) {
 }
 
 export function dirName(fullPath: string) {
-  return join(...fullPath.split(separator).slice(0, -1));
+  return fullPath.slice(0, fullPath.lastIndexOf(separator));
 }
 
 export function join(...paths: string[]) {
