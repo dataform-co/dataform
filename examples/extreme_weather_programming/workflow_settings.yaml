@@ -1,2 +1,2 @@
-defaultDatabase: "dataform-demos"
+defaultDataset: "dataform-demos"
 defaultLocation: "us"

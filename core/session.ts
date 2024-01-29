@@ -296,7 +296,7 @@ export class Session {
     const notebook = new Notebook();
     notebook.session = this;
     utils.setNameAndTarget(this, notebook.proto, name);
-    notebook.proto.config.fileName = utils.getCallerFile(this.rootDir);
+    notebook.proto.fileName = utils.getCallerFile(this.rootDir);
     this.actions.push(notebook);
     return notebook;
   }

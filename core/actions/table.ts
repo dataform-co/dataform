@@ -13,9 +13,11 @@ import {
   ITargetableConfig,
   Resolvable
 } from "df/core/common";
+import * as Path from "df/core/path";
 import { Session } from "df/core/session";
 import {
   checkExcessProperties,
+  nativeRequire,
   resolvableAsTarget,
   setNameAndTarget,
   strictKeysOf,
@@ -261,30 +263,169 @@ export class Table extends ActionBuilder<dataform.Table> {
   private uniqueKeyAssertions: Assertion[] = [];
   private rowConditionsAssertion: Assertion;
 
-  constructor(session?: Session, config?: dataform.ActionConfig) {
+  constructor(
+    session?: Session,
+    tableTypeConfig?:
+      | dataform.ActionConfig.TableConfig
+      | dataform.ActionConfig.ViewConfig
+      | dataform.ActionConfig.IncrementalTableConfig,
+    // TODO(ekrekr): As part of JS API updates, instead of overloading, add new class files for the
+    // view and incremental action types, instead of using this table type workaround.
+    tableType?: TableType,
+    configPath?: string
+  ) {
     super(session);
     this.session = session;
 
-    if (!config) {
+    if (!tableTypeConfig) {
       return;
     }
-    this.proto.config = config;
+    if (!tableType) {
+      throw Error("Expected table type");
+    }
 
-    this.proto.target = this.applySessionToTarget(this.proto.config.target);
-    this.proto.config.target = this.proto.canonicalTarget = this.applySessionCanonicallyToTarget(
-      this.proto.config.target
-    );
-
-    // TODO(ekrekr): instead of overloading, add new class files for view and incremental actions.
-    this.config({
-      type: config.table ? "table" : config.view ? "view" : "incremental",
-      dependencies: config.dependencyTargets,
-      disabled:
-        config.table?.disabled || config.incrementalTable?.disabled || config.view?.disabled,
-      protected: config.incrementalTable?.protected,
-      uniqueKey: config.incrementalTable?.uniqueKey,
-      tags: config.tags
+    const target = dataform.Target.create({
+      name: tableTypeConfig.name || Path.fileName(tableTypeConfig.filename),
+      schema: tableTypeConfig.dataset,
+      database: tableTypeConfig.project
     });
+    this.proto.target = this.applySessionToTarget(target);
+    this.proto.canonicalTarget = this.applySessionCanonicallyToTarget(target);
+
+    // Resolve the filename as its absolute path.
+    tableTypeConfig.filename = Path.join(Path.dirName(configPath), tableTypeConfig.filename);
+    this.proto.fileName = tableTypeConfig.filename;
+
+    // TODO(ekrekr): load config proto column descriptors.
+    if (tableType === "table") {
+      const config = tableTypeConfig as dataform.ActionConfig.TableConfig;
+
+      // TODO(ekrekr): this is a workaround for avoiding keys that aren't present, and should be
+      // cleaned up when the JS API is redone.
+      const bigqueryOptions: IBigQueryOptions | undefined =
+        config.partitionBy ||
+        config.partitionExpirationDays ||
+        config.requirePartitionFilter ||
+        config.clusterBy.length ||
+        Object.keys(config.labels).length ||
+        Object.keys(config.additionalOptions).length
+          ? {}
+          : undefined;
+      if (bigqueryOptions) {
+        if (config.partitionBy) {
+          bigqueryOptions.partitionBy = config.partitionBy;
+        }
+        if (config.partitionExpirationDays) {
+          bigqueryOptions.partitionExpirationDays = config.partitionExpirationDays;
+        }
+        if (config.requirePartitionFilter) {
+          bigqueryOptions.requirePartitionFilter = config.requirePartitionFilter;
+        }
+        if (config.clusterBy.length) {
+          bigqueryOptions.clusterBy = config.clusterBy;
+        }
+        if (Object.keys(config.labels).length) {
+          bigqueryOptions.labels = config.labels;
+        }
+        if (Object.keys(config.additionalOptions).length) {
+          bigqueryOptions.additionalOptions = config.additionalOptions;
+        }
+      }
+
+      this.config({
+        type: "table",
+        dependencies: config.dependencyTargets,
+        tags: config.tags,
+        disabled: config.disabled,
+        description: config.description,
+        bigquery: bigqueryOptions
+      });
+    }
+    if (tableType === "view") {
+      const config = tableTypeConfig as dataform.ActionConfig.ViewConfig;
+
+      // TODO(ekrekr): this is a workaround for avoiding keys that aren't present, and should be
+      // cleaned up when the JS API is redone.
+      const bigqueryOptions: IBigQueryOptions | undefined =
+        Object.keys(config.labels).length || Object.keys(config.additionalOptions).length
+          ? {}
+          : undefined;
+      if (bigqueryOptions) {
+        if (Object.keys(config.labels).length) {
+          bigqueryOptions.labels = config.labels;
+        }
+        if (Object.keys(config.additionalOptions).length) {
+          bigqueryOptions.additionalOptions = config.additionalOptions;
+        }
+      }
+
+      this.config({
+        type: "view",
+        dependencies: config.dependencyTargets,
+        disabled: config.disabled,
+        materialized: config.materialized,
+        tags: config.tags,
+        description: config.description,
+        bigquery: bigqueryOptions
+      });
+    }
+    if (tableType === "incremental") {
+      const config = tableTypeConfig as dataform.ActionConfig.IncrementalTableConfig;
+
+      // TODO(ekrekr): this is a workaround for avoiding keys that aren't present, and should be
+      // cleaned up when the JS API is redone.
+      const bigqueryOptions: IBigQueryOptions | undefined =
+        config.partitionBy ||
+        config.partitionExpirationDays ||
+        config.requirePartitionFilter ||
+        config.updatePartitionFilter ||
+        config.clusterBy.length ||
+        Object.keys(config.labels).length ||
+        Object.keys(config.additionalOptions).length
+          ? {}
+          : undefined;
+      if (bigqueryOptions) {
+        if (config.partitionBy) {
+          bigqueryOptions.partitionBy = config.partitionBy;
+        }
+        if (config.partitionExpirationDays) {
+          bigqueryOptions.partitionExpirationDays = config.partitionExpirationDays;
+        }
+        if (config.requirePartitionFilter) {
+          bigqueryOptions.requirePartitionFilter = config.requirePartitionFilter;
+        }
+        if (config.updatePartitionFilter) {
+          bigqueryOptions.updatePartitionFilter = config.updatePartitionFilter;
+        }
+        if (config.clusterBy.length) {
+          bigqueryOptions.clusterBy = config.clusterBy;
+        }
+        if (Object.keys(config.labels).length) {
+          bigqueryOptions.labels = config.labels;
+        }
+        if (Object.keys(config.additionalOptions).length) {
+          bigqueryOptions.additionalOptions = config.additionalOptions;
+        }
+      }
+
+      this.config({
+        type: "incremental",
+        dependencies: config.dependencyTargets,
+        disabled: config.disabled,
+        protected: config.protected,
+        uniqueKey: config.uniqueKey,
+        tags: config.tags,
+        description: config.description,
+        bigquery: bigqueryOptions
+      });
+    }
+    this.query(nativeRequire(tableTypeConfig.filename).queryAsContextable);
+    if (tableTypeConfig.preOperations) {
+      this.preOps(tableTypeConfig.preOperations);
+    }
+    if (tableTypeConfig.postOperations) {
+      this.postOps(tableTypeConfig.postOperations);
+    }
   }
 
   public config(config: ITableConfig) {
@@ -309,7 +450,7 @@ export class Table extends ActionBuilder<dataform.Table> {
     if (config.protected) {
       this.protected();
     }
-    if (config.bigquery) {
+    if (config.bigquery && Object.keys(config.bigquery).length > 0) {
       this.bigquery(config.bigquery);
     }
     if (config.tags) {
