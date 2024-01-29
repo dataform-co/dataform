@@ -513,6 +513,30 @@ suite("@dataform/core", () => {
           partitionExpirationDays: 7
         }
       });
+      session.publish("example_require_partition_filter_view_fail", {
+        type: "view",
+        bigquery: {
+          requirePartitionFilter: true
+        }
+      });
+      session.publish("example_expiring_materialized_view_fail", {
+        type: "view",
+        materialized: true,
+        bigquery: {
+          partitionBy: "some_partition",
+          clusterBy: ["some_cluster"],
+          partitionExpirationDays: 7
+        }
+      });
+      session.publish("example_require_partition_filter_materialized_view_fail", {
+        type: "view",
+        materialized: true,
+        bigquery: {
+          partitionBy: "some_partition",
+          clusterBy: ["some_cluster"],
+          requirePartitionFilter: true
+        }
+      });
       session.publish("example_materialize_table_fail", {
         type: "table",
         materialized: true
@@ -554,15 +578,27 @@ suite("@dataform/core", () => {
       ).has.deep.members([
         {
           actionName: "schema.example_partitionBy_view_fail",
-          message: `partitionBy/clusterBy/requirePartitionFilter/partitionExpirationDays are not valid for BigQuery views; they are only valid for tables`
+          message: `partitionBy/clusterBy/requirePartitionFilter/partitionExpirationDays are not valid for BigQuery views`
         },
         {
           actionName: "schema.example_clusterBy_view_fail",
-          message: `partitionBy/clusterBy/requirePartitionFilter/partitionExpirationDays are not valid for BigQuery views; they are only valid for tables`
+          message: `partitionBy/clusterBy/requirePartitionFilter/partitionExpirationDays are not valid for BigQuery views`
         },
         {
           actionName: "schema.example_expiring_view_fail",
-          message: `partitionBy/clusterBy/requirePartitionFilter/partitionExpirationDays are not valid for BigQuery views; they are only valid for tables`
+          message: `partitionBy/clusterBy/requirePartitionFilter/partitionExpirationDays are not valid for BigQuery views`
+        },
+        {
+          actionName: "schema.example_require_partition_filter_view_fail",
+          message: `partitionBy/clusterBy/requirePartitionFilter/partitionExpirationDays are not valid for BigQuery views`
+        },
+        {
+          actionName: "schema.example_expiring_materialized_view_fail",
+          message: `requirePartitionFilter/partitionExpirationDays are not valid for BigQuery materialized views`
+        },
+        {
+          actionName: "schema.example_require_partition_filter_materialized_view_fail",
+          message: `requirePartitionFilter/partitionExpirationDays are not valid for BigQuery materialized views`
         },
         {
           actionName: "schema.example_materialize_table_fail",
