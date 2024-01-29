@@ -17,10 +17,10 @@ const CONTEXT_FUNCTIONS = [
   .join("\n");
 
 export function compile(code: string, path: string): string {
-  if (path.endsWith(".sqlx")) {
+  if (Path.fileExtension(path) === "sqlx") {
     return compileSqlx(SyntaxTreeNode.create(code), path);
   }
-  if (path.endsWith(".yaml")) {
+  if (Path.fileExtension(path) === "yaml") {
     try {
       const yamlAsJson = loadYaml(code);
       return `exports.asJson = ${JSON.stringify(yamlAsJson)}`;
@@ -31,11 +31,11 @@ export function compile(code: string, path: string): string {
       throw e;
     }
   }
-  if (path.endsWith(".ipynb")) {
+  if (Path.fileExtension(path) === "ipynb") {
     const notebookAsJson = JSON.stringify(JSON.parse(code));
     return `exports.asJson = ${notebookAsJson}`;
   }
-  if (path.endsWith(".sql")) {
+  if (Path.fileExtension(path) === "sql") {
     const { sql } = extractSqlxParts(SyntaxTreeNode.create(code));
     return `exports.queryAsContextable = (ctx) => {
       ${CONTEXT_FUNCTIONS}
@@ -250,7 +250,7 @@ const SQL_STATEMENT_ESCAPERS = new Map([
   [
     SyntaxTreeNodeType.SQL_LITERAL_MULTILINE_STRING,
     (str: string) => str.replace(/\\/g, "\\\\").replace(/\`/g, "\\`")
-  ],
+  ]
 ]);
 
 function escapeNode(node: string | SyntaxTreeNode) {
