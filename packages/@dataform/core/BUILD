@@ -1,6 +1,6 @@
 load("//tools:ts_library.bzl", "ts_library")
 load("//:version.bzl", "DF_VERSION")
-load("//packages:index.bzl", "pkg_bundle", "pkg_bundle_dts", "pkg_json", "pkg_npm_tar", "add_license_header_to_file")
+load("//packages:index.bzl", "add_license_header_to_file", "pkg_bundle", "pkg_bundle_dts", "pkg_json", "pkg_npm_tar")
 load("//tools/common:copy.bzl", "copy_file")
 
 package(default_visibility = ["//visibility:public"])
@@ -18,8 +18,8 @@ load("@npm//webpack:index.bzl", "webpack")
 webpack(
     name = "bundler",
     data = [
-        ":webpack.config.js",
         ":core",
+        ":webpack.config.js",
         "@npm//webpack-cli",
     ],
 )
@@ -34,7 +34,7 @@ npm_package_bin(
     args = [
         "--config=$(location webpack.config.js)",
         "--output=$(location bundle_no_license.js)",
-        "--mode=production"
+        "--mode=production",
     ],
     data = [
         ":webpack.config.js",
@@ -56,26 +56,32 @@ pkg_json(
 )
 
 add_license_header_to_file(
-    name="core_proto_with_license",
-    from_file="//protos:core.proto",
-    to_file="core.proto",
+    name = "core_proto_with_license",
+    from_file = "//protos:core.proto",
+    to_file = "core.proto",
 )
 
 add_license_header_to_file(
-    name="bundle_with_license",
-    from_file="bundle",
-    to_file="bundle.js",
+    name = "configs_proto_with_license",
+    from_file = "//protos:configs.proto",
+    to_file = "configs.proto",
+)
+
+add_license_header_to_file(
+    name = "bundle_with_license",
+    from_file = "bundle",
+    to_file = "bundle.js",
 )
 
 pkg_bundle_dts(
     name = "bundle.d",
     entry_point = "index.ts",
     externals = [
-      "protobufjs",
-      "tarjan-graph",
-      "semver",
-      "moo",
-      "long",
+        "protobufjs",
+        "tarjan-graph",
+        "semver",
+        "moo",
+        "long",
     ],
     deps = [
         ":core",
@@ -85,9 +91,10 @@ pkg_bundle_dts(
 pkg_npm_tar(
     name = "package",
     deps = [
-        ":bundle_with_license",
         ":bundle.d",
-        ":package.json",
+        ":bundle_with_license",
+        ":configs_proto_with_license",
         ":core_proto_with_license",
+        ":package.json",
     ],
 )
