@@ -13,50 +13,67 @@ ts_library(
     ],
 )
 
-externals = [
-    "protobufjs",
-    "tarjan-graph",
-    "semver",
-    "moo",
-    "long",
-]
+load("@npm//webpack:index.bzl", "webpack")
+
+webpack(
+    name = "bundler",
+    data = [
+        ":webpack.config.js",
+        ":core",
+        "@npm//webpack-cli",
+    ],
+)
+
+load("@build_bazel_rules_nodejs//:index.bzl", "npm_package_bin")
+
+npm_package_bin(
+    name = "bundle",
+    outs = [
+        "bundle.js",
+    ],
+    args = [
+        "--config=$(location webpack.config.js)",
+        "--output=$(location bundle.js)",
+        "--mode=production"
+    ],
+    data = [
+        ":webpack.config.js",
+    ],
+    tool = ":bundler",
+)
 
 pkg_json(
     name = "json",
     package_name = "@dataform/core",
     description = "Dataform core API.",
-    external_deps = externals,
+    external_deps = [],
     layers = [
         "//:package.json",
         "//packages/@dataform:package.layer.json",
     ],
     main = "bundle.js",
-    types = "bundle.d.ts",
     version = DF_VERSION,
-)
-
-pkg_bundle(
-    name = "bundle",
-    entry_point = "index.ts",
-    externals = externals,
-    deps = [
-        ":core",
-    ],
-)
-
-pkg_bundle_dts(
-    name = "bundle.d",
-    entry_point = "index.ts",
-    externals = externals,
-    deps = [
-        ":core",
-    ],
 )
 
 copy_file(
     name = "core_proto",
     src = "//protos:core.proto",
     out = "core.proto",
+)
+
+pkg_bundle_dts(
+    name = "bundle.d",
+    entry_point = "index.ts",
+    externals = [
+      "protobufjs",
+      "tarjan-graph",
+      "semver",
+      "moo",
+      "long",
+    ],
+    deps = [
+        ":core",
+    ],
 )
 
 pkg_npm_tar(

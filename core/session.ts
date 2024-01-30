@@ -60,6 +60,7 @@ export class Session {
 
   public config: dataform.IProjectConfig;
   public canonicalConfig: dataform.IProjectConfig;
+  public supportSqlFileCompilation: boolean;
 
   public actions: Action[];
   public indexedActions: ActionIndex;
@@ -70,21 +71,24 @@ export class Session {
   constructor(
     rootDir?: string,
     projectConfig?: dataform.IProjectConfig,
-    originalProjectConfig?: dataform.IProjectConfig
+    originalProjectConfig?: dataform.IProjectConfig,
+    supportSqlFileCompilation?: boolean
   ) {
-    this.init(rootDir, projectConfig, originalProjectConfig);
+    this.init(rootDir, projectConfig, originalProjectConfig, supportSqlFileCompilation);
   }
 
   public init(
     rootDir: string,
     projectConfig?: dataform.IProjectConfig,
-    originalProjectConfig?: dataform.IProjectConfig
+    originalProjectConfig?: dataform.IProjectConfig,
+    supportSqlFileCompilation: boolean = true
   ) {
     this.rootDir = rootDir;
     this.config = projectConfig || DEFAULT_CONFIG;
     this.canonicalConfig = getCanonicalProjectConfig(
       originalProjectConfig || projectConfig || DEFAULT_CONFIG
     );
+    this.supportSqlFileCompilation = supportSqlFileCompilation;
     this.actions = [];
     this.tests = {};
     this.graphErrors = { compilationErrors: [] };
@@ -223,10 +227,15 @@ export class Session {
     const allResolved = this.indexedActions.find(utils.resolvableAsTarget(ref));
     if (allResolved.length > 1) {
       this.compileError(new Error(utils.ambiguousActionNameMsg(ref, allResolved)));
+      return "";
     }
     const resolved = allResolved.length > 0 ? allResolved[0] : undefined;
 
-    if (resolved && resolved instanceof Table && resolved.proto.enumType === dataform.TableType.INLINE) {
+    if (
+      resolved &&
+      resolved instanceof Table &&
+      resolved.proto.enumType === dataform.TableType.INLINE
+    ) {
       // TODO: Pretty sure this is broken as the proto.query value may not
       // be set yet as it happens during compilation. We should evalute the query here.
       return `(${resolved.proto.query})`;
@@ -235,6 +244,7 @@ export class Session {
       this.compileError(
         new Error("Actions cannot resolve operations which do not produce output.")
       );
+      return "";
     }
 
     if (resolved) {
@@ -244,12 +254,17 @@ export class Session {
       return this.adapter().resolveTarget({
         ...resolved.proto.target,
         database:
-          resolved.proto.target.database &&
-          this.finalizeDatabase(resolved.proto.target.database),
+          resolved.proto.target.database && this.finalizeDatabase(resolved.proto.target.database),
         schema: this.finalizeSchema(resolved.proto.target.schema),
-        name: this.finalizeName(resolved.proto.target.name),
+        name: this.finalizeName(resolved.proto.target.name)
       });
     }
+
+    if (!this.supportSqlFileCompilation) {
+      this.compileError(new Error(`Could not resolve ${JSON.stringify(ref)}`));
+      return "";
+    }
+
     // TODO: Here we allow 'ref' to go unresolved. This is for backwards compatibility with projects
     // that use .sql files. In these projects, this session may not know about all actions (yet), and
     // thus we need to fall back to assuming that the target *will* exist in the future. Once we break
@@ -262,8 +277,7 @@ export class Session {
           this.config,
           this.finalizeName(ref),
           this.finalizeSchema(this.config.defaultSchema),
-          this.config.defaultDatabase &&
-            this.finalizeDatabase(this.config.defaultDatabase),
+          this.config.defaultDatabase && this.finalizeDatabase(this.config.defaultDatabase)
         )
       );
     }
@@ -273,7 +287,7 @@ export class Session {
         this.config,
         this.finalizeName(ref.name),
         this.finalizeSchema(ref.schema),
-        ref.database && this.finalizeName(ref.database),
+        ref.database && this.finalizeName(ref.database)
       )
     );
   }
@@ -370,8 +384,8 @@ export class Session {
       );
     }
     if (
-      !!this.config.vars && 
-      !Object.values(this.config.vars).every((value) => typeof value === 'string')
+      !!this.config.vars &&
+      !Object.values(this.config.vars).every(value => typeof value === "string")
     ) {
       throw new Error("Custom variables defined in dataform.json can only be strings.");
     }
@@ -439,17 +453,16 @@ export class Session {
 
   public finalizeDatabase(database: string): string {
     return this.adapter().normalizeIdentifier(
-      `${database}${this.getDatabaseSuffixWithUnderscore()}`);
+      `${database}${this.getDatabaseSuffixWithUnderscore()}`
+    );
   }
 
   public finalizeSchema(schema: string): string {
-    return this.adapter().normalizeIdentifier(
-      `${schema}${this.getSchemaSuffixWithUnderscore()}`);
+    return this.adapter().normalizeIdentifier(`${schema}${this.getSchemaSuffixWithUnderscore()}`);
   }
 
   public finalizeName(name: string): string {
-    return this.adapter().normalizeIdentifier(
-      `${this.getTablePrefixWithUnderscore()}${name}`);
+    return this.adapter().normalizeIdentifier(`${this.getTablePrefixWithUnderscore()}${name}`);
   }
 
   private getDatabaseSuffixWithUnderscore() {
@@ -503,7 +516,10 @@ export class Session {
           // We found a single matching target, and fully-qualify it if it's a normal dependency,
           // or add all of its dependencies to ours if it's an 'inline' table.
           const protoDep = possibleDeps[0].proto;
-          if (protoDep instanceof dataform.Table && protoDep.enumType === dataform.TableType.INLINE) {
+          if (
+            protoDep instanceof dataform.Table &&
+            protoDep.enumType === dataform.TableType.INLINE
+          ) {
             protoDep.dependencyTargets.forEach(inlineDep =>
               action.dependencyTargets.push(inlineDep)
             );
@@ -985,21 +1001,21 @@ class ActionIndex {
         return (
           this.byDatabaseSchemaAndName
             .get(this.adapter.normalizeIdentifier(target.database))
-            .get(this.adapter.normalizeIdentifier(target.schema))
-            .get(this.adapter.normalizeIdentifier(target.name)) || []
+            ?.get(this.adapter.normalizeIdentifier(target.schema))
+            ?.get(this.adapter.normalizeIdentifier(target.name)) || []
         );
       }
       return (
         this.byDatabaseAndName
           .get(this.adapter.normalizeIdentifier(target.database))
-          .get(this.adapter.normalizeIdentifier(target.name)) || []
+          ?.get(this.adapter.normalizeIdentifier(target.name)) || []
       );
     }
     if (!!target.schema) {
       return (
         this.bySchemaAndName
           .get(this.adapter.normalizeIdentifier(target.schema))
-          .get(this.adapter.normalizeIdentifier(target.name)) || []
+          ?.get(this.adapter.normalizeIdentifier(target.name)) || []
       );
     }
     return this.byName.get(this.adapter.normalizeIdentifier(target.name)) || [];

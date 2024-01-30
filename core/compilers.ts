@@ -315,7 +315,11 @@ const SQL_STATEMENT_ESCAPERS = new Map([
   [
     SyntaxTreeNodeType.SQL_LITERAL_STRING,
     (str: string) => str.replace(/\\/g, "\\\\").replace(/\`/g, "\\`")
-  ]
+  ],
+  [
+    SyntaxTreeNodeType.SQL_LITERAL_MULTILINE_STRING,
+    (str: string) => str.replace(/\\/g, "\\\\").replace(/\`/g, "\\`")
+  ],
 ]);
 
 function escapeNode(node: string | SyntaxTreeNode) {

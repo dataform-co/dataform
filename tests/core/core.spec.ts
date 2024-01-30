@@ -1,13 +1,13 @@
-import {expect} from "chai";
+import { expect } from "chai";
 import * as fs from "fs-extra";
 import * as path from "path";
 
 import * as compilers from "df/core/compilers";
-import {Session} from "df/core/session";
-import {targetAsReadableString} from "df/core/targets";
-import {dataform} from "df/protos/ts";
-import {suite, test} from "df/testing";
-import {asPlainObject} from "df/tests/utils";
+import { Session } from "df/core/session";
+import { targetAsReadableString } from "df/core/targets";
+import { dataform } from "df/protos/ts";
+import { suite, test } from "df/testing";
+import { asPlainObject } from "df/tests/utils";
 
 class TestConfigs {
   public static redshift: dataform.IProjectConfig = {
@@ -33,12 +33,12 @@ class TestConfigs {
 
   public static bigqueryWithDatabase: dataform.IProjectConfig = {
     ...TestConfigs.bigquery,
-    defaultDatabase: "test-db",
+    defaultDatabase: "test-db"
   };
 
   public static bigqueryWithDatabaseAndSuffix: dataform.IProjectConfig = {
     ...TestConfigs.bigqueryWithDatabase,
-    databaseSuffix: "suffix",
+    databaseSuffix: "suffix"
   };
 
   public static snowflake: dataform.IProjectConfig = {
@@ -74,7 +74,7 @@ suite("@dataform/core", () => {
           .publish("example", {
             type: "table",
             schema: "schema2",
-            dependencies: [{schema: "schema", name: "example"}],
+            dependencies: [{ schema: "schema", name: "example" }],
             description: "test description"
           })
           .query(_ => "select 1 as test")
@@ -163,7 +163,7 @@ suite("@dataform/core", () => {
           .publish("example", {
             type: "table",
             schema: "schema2",
-            dependencies: [{schema: "schema", name: "example"}],
+            dependencies: [{ schema: "schema", name: "example" }],
             description: "test description"
           })
           .query(_ => "select 1 as test")
@@ -252,7 +252,7 @@ suite("@dataform/core", () => {
           disabled: false,
           fileName: path.basename(__filename),
           type: "incremental",
-          enumType: "INCREMENTAL",
+          enumType: "INCREMENTAL"
         }
       ]);
     });
@@ -273,7 +273,7 @@ suite("@dataform/core", () => {
       const session = new Session(path.dirname(__filename), overrideConfig, originalConfig);
       session.publish("dataset");
       session.assert("assertion");
-      session.declare({name: "declaration"});
+      session.declare({ name: "declaration" });
       session.operate("operation");
 
       const graph = session.compile();
@@ -315,7 +315,7 @@ suite("@dataform/core", () => {
         defaultDatabase: "database",
         defaultLocation: "US"
       };
-      const overrideConfig = {...originalConfig, defaultSchema: "otherschema"};
+      const overrideConfig = { ...originalConfig, defaultSchema: "otherschema" };
       const session = new Session(path.dirname(__filename), overrideConfig, originalConfig);
       session
         .publish("view", {
@@ -327,9 +327,11 @@ suite("@dataform/core", () => {
         schema: "schema"
       });
       const graph = session.compile();
-      expect(graph.graphErrors.compilationErrors.map(error => error.message)).deep.equals(Array(2).fill(
-        'Duplicate canonical target detected. Canonical targets must be unique across tables, declarations, assertions, and operations:\n"{"schema":"schema","name":"view","database":"database"}"'
-      ));
+      expect(graph.graphErrors.compilationErrors.map(error => error.message)).deep.equals(
+        Array(2).fill(
+          'Duplicate canonical target detected. Canonical targets must be unique across tables, declarations, assertions, and operations:\n"{"schema":"schema","name":"view","database":"database"}"'
+        )
+      );
     });
 
     test("validation_type_incremental", () => {
@@ -349,9 +351,9 @@ suite("@dataform/core", () => {
 
     test("validation_type", () => {
       const sessionSuccess = new Session(path.dirname(__filename), TestConfigs.redshift);
-      sessionSuccess.publish("exampleSuccess1", {type: "table"});
-      sessionSuccess.publish("exampleSuccess2", {type: "view"});
-      sessionSuccess.publish("exampleSuccess3", {type: "incremental"}).where("test");
+      sessionSuccess.publish("exampleSuccess1", { type: "table" });
+      sessionSuccess.publish("exampleSuccess2", { type: "view" });
+      sessionSuccess.publish("exampleSuccess3", { type: "incremental" }).where("test");
       const cgSuccess = sessionSuccess.compile();
       expect(cgSuccess.graphErrors.compilationErrors).deep.equals([]);
 
@@ -363,7 +365,7 @@ suite("@dataform/core", () => {
         {
           fileName: "core.spec.js",
           actionName: "schema.exampleFail",
-          actionTarget: {schema: "schema", name: "exampleFail"},
+          actionTarget: { schema: "schema", name: "exampleFail" },
           message:
             'Wrong type of table detected. Should only use predefined types: "table" | "view" | "incremental" | "inline"'
         }
@@ -462,15 +464,15 @@ suite("@dataform/core", () => {
       });
 
       const expectedResults = [
-        {name: "schema.example_absent_distKey", message: `Property "distKey" is not defined`},
-        {name: "schema.example_absent_distStyle", message: `Property "distStyle" is not defined`},
+        { name: "schema.example_absent_distKey", message: `Property "distKey" is not defined` },
+        { name: "schema.example_absent_distStyle", message: `Property "distStyle" is not defined` },
         {
           name: "schema.example_wrong_distStyle",
           message: `Wrong value of "distStyle" property. Should only use predefined values: "even" | "key" | "all"`
         },
-        {name: "schema.example_absent_sortKeys", message: `Property "sortKeys" is not defined`},
-        {name: "schema.example_empty_sortKeys", message: `Property "sortKeys" is not defined`},
-        {name: "schema.example_absent_sortStyle", message: `Property "sortStyle" is not defined`},
+        { name: "schema.example_absent_sortKeys", message: `Property "sortKeys" is not defined` },
+        { name: "schema.example_empty_sortKeys", message: `Property "sortKeys" is not defined` },
+        { name: "schema.example_absent_sortStyle", message: `Property "sortStyle" is not defined` },
         {
           name: "schema.example_wrong_sortStyle",
           message: `Wrong value of "sortStyle" property. Should only use predefined values: "compound" | "interleaved"`
@@ -545,7 +547,7 @@ suite("@dataform/core", () => {
       const graph = session.compile();
 
       expect(
-        graph.graphErrors.compilationErrors.map(({message, actionName}) => ({
+        graph.graphErrors.compilationErrors.map(({ message, actionName }) => ({
           message,
           actionName
         }))
@@ -610,7 +612,7 @@ suite("@dataform/core", () => {
       const graph = session.compile();
 
       expect(
-        graph.graphErrors.compilationErrors.map(({message, actionName}) => ({
+        graph.graphErrors.compilationErrors.map(({ message, actionName }) => ({
           message,
           actionName
         }))
@@ -681,7 +683,7 @@ suite("@dataform/core", () => {
 
     test("validation_type_inline", () => {
       const session = new Session(path.dirname(__filename), TestConfigs.redshift);
-      session.publish("a", {type: "table"}).query(_ => "select 1 as test");
+      session.publish("a", { type: "table" }).query(_ => "select 1 as test");
       session
         .publish("b", {
           type: "inline",
@@ -691,7 +693,7 @@ suite("@dataform/core", () => {
             sortKeys: ["column1", "column2"],
             sortStyle: "compound"
           },
-          columns: {test: "test description b"},
+          columns: { test: "test description b" },
           disabled: true
         })
         .preOps(_ => ["pre_op_b"])
@@ -701,7 +703,7 @@ suite("@dataform/core", () => {
       session
         .publish("c", {
           type: "table",
-          columns: {test: "test description c"}
+          columns: { test: "test description c" }
         })
         .preOps(_ => ["pre_op_c"])
         .postOps(_ => ["post_op_c"])
@@ -832,7 +834,7 @@ suite("@dataform/core", () => {
           session.publish(`a`, _ => "select 1 as test");
           session.publish(`b`, ctx => `select * from ${ctx.ref("a")}`);
           session.publish(`c`, ctx => `select * from ${ctx.ref(undefined)}`);
-          session.publish(`d`, ctx => `select * from ${ctx.ref({schema: "schema", name: "a"})}`);
+          session.publish(`d`, ctx => `select * from ${ctx.ref({ schema: "schema", name: "a" })}`);
           session.publish(`g`, ctx => `select * from ${ctx.ref("schema", "a")}`);
           session.publish(`h`, ctx => `select * from ${ctx.ref(["schema", "a"])}`);
           session
@@ -909,70 +911,84 @@ suite("@dataform/core", () => {
     );
 
     [
-      {testConfig: TestConfigs.redshift, target: 'schema'},
-      {testConfig: TestConfigs.redshiftWithSuffix, target: 'schema_suffix'},
-    ].forEach(({testConfig, target}) => {
+      { testConfig: TestConfigs.redshift, target: "schema" },
+      { testConfig: TestConfigs.redshiftWithSuffix, target: "schema_suffix" }
+    ].forEach(({ testConfig, target }) => {
       test(`schema/suffix: "${target}"`, () => {
         const session = new Session(path.dirname(__filename), testConfig);
-        session.publish("test", {type: "table"})
-          .query(ctx => ctx.schema());
+        session.publish("test", { type: "table" }).query(ctx => ctx.schema());
 
         const graph = session.compile();
 
-        const testTable = graph.tables
-          .find(table => targetAsReadableString(table.target) === `${target}.test`);
+        const testTable = graph.tables.find(
+          table => targetAsReadableString(table.target) === `${target}.test`
+        );
 
-        expect(testTable.query).deep.equals(target)
+        expect(testTable.query).deep.equals(target);
       });
     });
 
     [
-      {testConfig: TestConfigs.redshift, target: 'schema.test', name: 'test'},
-      {testConfig: TestConfigs.redshiftWithPrefix, target: 'schema.prefix_test', name: 'prefix_test'},
-    ].forEach(({testConfig, target, name}) => {
+      { testConfig: TestConfigs.redshift, target: "schema.test", name: "test" },
+      {
+        testConfig: TestConfigs.redshiftWithPrefix,
+        target: "schema.prefix_test",
+        name: "prefix_test"
+      }
+    ].forEach(({ testConfig, target, name }) => {
       test(`name/prefix: "${target}"`, () => {
         const session = new Session(path.dirname(__filename), testConfig);
-        session.publish("test", {type: "table"})
-          .query(ctx => ctx.name());
+        session.publish("test", { type: "table" }).query(ctx => ctx.name());
 
         const graph = session.compile();
 
-        const testTable = graph.tables
-          .find(table => targetAsReadableString(table.target) === target);
+        const testTable = graph.tables.find(
+          table => targetAsReadableString(table.target) === target
+        );
 
-        expect(testTable.query).deep.equals(name)
+        expect(testTable.query).deep.equals(name);
       });
     });
 
     [
-      {testConfig: TestConfigs.bigqueryWithDatabase, target: 'test-db.schema.test', database: 'test-db'},
-      {testConfig: TestConfigs.bigqueryWithDatabaseAndSuffix, target: 'test-db_suffix.schema.test', database: 'test-db_suffix'},
-    ].forEach(({testConfig, target, database}) => {
+      {
+        testConfig: TestConfigs.bigqueryWithDatabase,
+        target: "test-db.schema.test",
+        database: "test-db"
+      },
+      {
+        testConfig: TestConfigs.bigqueryWithDatabaseAndSuffix,
+        target: "test-db_suffix.schema.test",
+        database: "test-db_suffix"
+      }
+    ].forEach(({ testConfig, target, database }) => {
       test(`database/suffix: "${target}"`, () => {
         const session = new Session(path.dirname(__filename), testConfig);
-        session.publish("test", {type: "table"})
-          .query(ctx => ctx.database());
+        session.publish("test", { type: "table" }).query(ctx => ctx.database());
 
         const graph = session.compile();
 
-        const testTable = graph.tables
-          .find(table => targetAsReadableString(table.target) === target);
+        const testTable = graph.tables.find(
+          table => targetAsReadableString(table.target) === target
+        );
 
-        expect(testTable.query).deep.equals(database)
+        expect(testTable.query).deep.equals(database);
       });
     });
 
     test(`database fails when undefined`, () => {
       const session = new Session(path.dirname(__filename), TestConfigs.redshift);
-      session.publish("test", {type: "table"}).query(ctx => ctx.database());
+      session.publish("test", { type: "table" }).query(ctx => ctx.database());
 
       const graph = session.compile();
 
-      const testTable = graph.tables
-        .find(table => targetAsReadableString(table.target) === 'schema.test');
+      const testTable = graph.tables.find(
+        table => targetAsReadableString(table.target) === "schema.test"
+      );
 
-      expect(graph.graphErrors.compilationErrors[0].message).deep
-        .equals("Warehouse does not support multiple databases");
+      expect(graph.graphErrors.compilationErrors[0].message).deep.equals(
+        "Warehouse does not support multiple databases"
+      );
       expect(testTable.query).deep.equals("");
     });
   });
@@ -991,6 +1007,24 @@ suite("@dataform/core", () => {
         });
       }
     );
+
+    test("throws error for unknown action with .sql file compilation unsupported", () => {
+      const session = new Session(path.dirname(__filename), TestConfigs.bigquery, undefined, false);
+      const graph = session.compile();
+      expect(session.resolve("whatever")).to.equal("");
+      expect(graph.graphErrors.compilationErrors[0].message).deep.equals(
+        'Could not resolve "whatever"'
+      );
+    });
+
+    test("throws error for unknown action in unknown schema with .sql file compilation unsupported", () => {
+      const session = new Session(path.dirname(__filename), TestConfigs.bigquery, undefined, false);
+      const graph = session.compile();
+      expect(session.resolve("unknown_schema", "whatever")).to.equal("");
+      expect(graph.graphErrors.compilationErrors[0].message).deep.equals(
+        'Could not resolve {"schema":"unknown_schema","name":"whatever"}'
+      );
+    });
   });
 
   suite("operate", () => {
@@ -1021,9 +1055,9 @@ suite("@dataform/core", () => {
     });
 
     [
-      {testConfig: TestConfigs.redshift, finalizedSchema: 'schema'},
-      {testConfig: TestConfigs.redshiftWithSuffix, finalizedSchema: 'schema_suffix'},
-    ].forEach(({testConfig, finalizedSchema}) => {
+      { testConfig: TestConfigs.redshift, finalizedSchema: "schema" },
+      { testConfig: TestConfigs.redshiftWithSuffix, finalizedSchema: "schema_suffix" }
+    ].forEach(({ testConfig, finalizedSchema }) => {
       test(`schema with suffix: "${finalizedSchema}"`, () => {
         const session = new Session(path.dirname(__filename), testConfig);
         session.operate("operate-1", ctx => ctx.schema()).hasOutput(true);
@@ -1035,9 +1069,9 @@ suite("@dataform/core", () => {
     });
 
     [
-      {testConfig: TestConfigs.redshift, finalizedName: 'operate-1'},
-      {testConfig: TestConfigs.redshiftWithPrefix, finalizedName: 'prefix_operate-1'},
-    ].forEach(({testConfig, finalizedName}) => {
+      { testConfig: TestConfigs.redshift, finalizedName: "operate-1" },
+      { testConfig: TestConfigs.redshiftWithPrefix, finalizedName: "prefix_operate-1" }
+    ].forEach(({ testConfig, finalizedName }) => {
       test(`name with prefix: "${finalizedName}"`, () => {
         const session = new Session(path.dirname(__filename), testConfig);
         session.operate("operate-1", ctx => ctx.name()).hasOutput(true);
@@ -1049,9 +1083,9 @@ suite("@dataform/core", () => {
     });
 
     [
-      {testConfig: TestConfigs.bigqueryWithDatabase, finalizedDatabase: 'test-db'},
-      {testConfig: TestConfigs.bigqueryWithDatabaseAndSuffix, finalizedDatabase: 'test-db_suffix'},
-    ].forEach(({testConfig, finalizedDatabase}) => {
+      { testConfig: TestConfigs.bigqueryWithDatabase, finalizedDatabase: "test-db" },
+      { testConfig: TestConfigs.bigqueryWithDatabaseAndSuffix, finalizedDatabase: "test-db_suffix" }
+    ].forEach(({ testConfig, finalizedDatabase }) => {
       test(`database with suffix: "${finalizedDatabase}"`, () => {
         const session = new Session(path.dirname(__filename), testConfig);
         session.operate("operate-1", ctx => ctx.database()).hasOutput(true);
@@ -1069,8 +1103,9 @@ suite("@dataform/core", () => {
 
       const graph = session.compile();
 
-      expect(graph.graphErrors.compilationErrors[0].message).deep
-        .equals("Warehouse does not support multiple databases");
+      expect(graph.graphErrors.compilationErrors[0].message).deep.equals(
+        "Warehouse does not support multiple databases"
+      );
       expect(JSON.stringify(graph.operations[0].queries)).deep.equals('[""]');
     });
   });
@@ -1114,34 +1149,34 @@ suite("@dataform/core", () => {
 
     test("duplicate actions in compiled graph", () => {
       const session = new Session(path.dirname(__filename), TestConfigs.redshift);
-      session.publish("a")
+      session.publish("a");
       session.publish("a");
       session.publish("b"); // unique action
-      session.publish("c")
+      session.publish("c");
 
-      session.operate("a")
-      session.operate("d") // unique action
-      session.operate("e") // unique action
+      session.operate("a");
+      session.operate("d"); // unique action
+      session.operate("e"); // unique action
 
-      session.declare({name: "a"})
-      session.declare({name: "f"}) // unique action
-      session.declare({name: "g"})
+      session.declare({ name: "a" });
+      session.declare({ name: "f" }); // unique action
+      session.declare({ name: "g" });
 
-      session.assert("c")
-      session.assert("g")
+      session.assert("c");
+      session.assert("g");
 
       const cGraph = session.compile();
 
       expect(
         [].concat(cGraph.tables, cGraph.assertions, cGraph.operations, cGraph.declarations).length
-      ).equals(4)
+      ).equals(4);
     });
 
     test("same action names in different schemas (ambiguity)", () => {
       const session = new Session(path.dirname(__filename), TestConfigs.redshift);
-      session.publish("a", {schema: "foo"});
-      session.publish("a", {schema: "bar"});
-      session.publish("b", {schema: "foo"}).dependencies("a");
+      session.publish("a", { schema: "foo" });
+      session.publish("a", { schema: "bar" });
+      session.publish("b", { schema: "foo" }).dependencies("a");
       const cGraph = session.compile();
       expect(
         cGraph.graphErrors.compilationErrors.filter(item =>
@@ -1154,8 +1189,8 @@ suite("@dataform/core", () => {
 
     test("same action name in same schema", () => {
       const session = new Session(path.dirname(__filename), TestConfigs.redshift);
-      session.publish("a", {schema: "schema2"}).dependencies("b");
-      session.publish("a", {schema: "schema2"});
+      session.publish("a", { schema: "schema2" }).dependencies("b");
+      session.publish("a", { schema: "schema2" });
       session.publish("b");
       const cGraph = session.compile();
       expect(
@@ -1168,8 +1203,8 @@ suite("@dataform/core", () => {
     test("same action names in different schemas", () => {
       const session = new Session(path.dirname(__filename), TestConfigs.redshift);
       session.publish("b");
-      session.publish("a", {schema: "schema1"}).dependencies("b");
-      session.publish("a", {schema: "schema2"});
+      session.publish("a", { schema: "schema1" }).dependencies("b");
+      session.publish("a", { schema: "schema2" });
       const cGraph = session.compile();
       expect(cGraph.graphErrors.compilationErrors).deep.equals([]);
     });
@@ -1190,11 +1225,11 @@ suite("@dataform/core", () => {
     test("defaultLocation must be set in BigQuery", () => {
       const session = new Session(path.dirname(__filename), {
         warehouse: "bigquery",
-        defaultSchema: "schema",
+        defaultSchema: "schema"
       });
       const graph = session.compile();
       expect(graph.graphErrors.compilationErrors.map(error => error.message)).deep.equals([
-        "A defaultLocation is required for BigQuery. This can be configured in dataform.json.",
+        "A defaultLocation is required for BigQuery. This can be configured in dataform.json."
       ]);
     });
 
@@ -1208,8 +1243,8 @@ suite("@dataform/core", () => {
           str_var: "str"
         }
       } as any);
-      
-      expect(() => { 
+
+      expect(() => {
         sessionFail.compile();
       }).to.throw("Custom variables defined in dataform.json can only be strings.");
 
@@ -1265,7 +1300,7 @@ suite("@dataform/core", () => {
 
         select 1 as test from \\\`x\\\``.trim();
 
-      const {sql, js} = compilers.extractJsBlocks(TEST_SQL_FILE);
+      const { sql, js } = compilers.extractJsBlocks(TEST_SQL_FILE);
       expect(sql).equals(EXPECTED_SQL);
       expect(js).equals(EXPECTED_JS);
     });
@@ -1285,7 +1320,10 @@ select * from \${ref('dab')}
       expect(
         compilers.compile(
           `
-select "\`" from \`location\`
+select
+  "\`",
+  """\`"",
+from \`location\`
 `,
           "file.sqlx"
         )
@@ -1301,7 +1339,7 @@ select
   regexp_extract('01a_data_engine', '^(\\\\d{2}\\\\w)'),
   regexp_extract('\\\\', ''),
   regexp_extract("", r"[0-9]\\"*"),
-
+  """\\ \\? \\\\""",
 pre_operations {
   select
     regexp_extract('01a_data_engine', '^(\\d{2}\\w)'),
@@ -1356,9 +1394,9 @@ select '\${\`bar\`}'
 
   suite("assert", () => {
     [
-      {testConfig: TestConfigs.redshift, assertion: 'schema'},
-      {testConfig: TestConfigs.redshiftWithSuffix, assertion: 'schema_suffix'},
-    ].forEach(({testConfig, assertion}) => {
+      { testConfig: TestConfigs.redshift, assertion: "schema" },
+      { testConfig: TestConfigs.redshiftWithSuffix, assertion: "schema_suffix" }
+    ].forEach(({ testConfig, assertion }) => {
       test(`schema: ${assertion}`, () => {
         const session = new Session(path.dirname(__filename), testConfig);
 
@@ -1371,9 +1409,9 @@ select '\${\`bar\`}'
     });
 
     [
-      {testConfig: TestConfigs.redshift, finalizedName: 'name'},
-      {testConfig: TestConfigs.redshiftWithPrefix, finalizedName: 'prefix_name'},
-    ].forEach(({testConfig, finalizedName}) => {
+      { testConfig: TestConfigs.redshift, finalizedName: "name" },
+      { testConfig: TestConfigs.redshiftWithPrefix, finalizedName: "prefix_name" }
+    ].forEach(({ testConfig, finalizedName }) => {
       test(`name: ${finalizedName}`, () => {
         const session = new Session(path.dirname(__filename), testConfig);
 
@@ -1386,11 +1424,14 @@ select '\${\`bar\`}'
     });
 
     [
-      {testConfig: TestConfigs.bigqueryWithDatabase, finalizedDatabase: 'test-db'},
-      {testConfig: TestConfigs.bigqueryWithDatabaseAndSuffix, finalizedDatabase: 'test-db_suffix'},
-    ].forEach(({testConfig, finalizedDatabase}) => {
+      { testConfig: TestConfigs.bigqueryWithDatabase, finalizedDatabase: "test-db" },
+      { testConfig: TestConfigs.bigqueryWithDatabaseAndSuffix, finalizedDatabase: "test-db_suffix" }
+    ].forEach(({ testConfig, finalizedDatabase }) => {
       test(`database: ${finalizedDatabase}`, () => {
-        const session = new Session(path.dirname(__filename), {...testConfig, defaultDatabase: 'test-db'});
+        const session = new Session(path.dirname(__filename), {
+          ...testConfig,
+          defaultDatabase: "test-db"
+        });
 
         session.assert("database", ctx => ctx.database());
 
@@ -1407,8 +1448,9 @@ select '\${\`bar\`}'
 
       const graph = session.compile();
 
-      expect(graph.graphErrors.compilationErrors[0].message).deep
-        .equals("Warehouse does not support multiple databases");
+      expect(graph.graphErrors.compilationErrors[0].message).deep.equals(
+        "Warehouse does not support multiple databases"
+      );
       expect(JSON.stringify(graph.assertions[0].query)).to.deep.equal('""');
     });
   });
