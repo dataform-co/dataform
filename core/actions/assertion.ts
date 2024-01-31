@@ -263,7 +263,6 @@ export class AssertionContext implements ICommonContext {
   }
 
   public database(): string {
-    console.log("🚀 ~ AssertionContext ~ database ~ string: LATTER");
     if (!this.assertion.proto.target.database) {
       this.assertion.session.compileError(
         new Error(`Warehouse does not support multiple databases`)
