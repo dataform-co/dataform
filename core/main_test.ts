@@ -37,17 +37,17 @@ class TestConfigs {
     defaultProject: "default-database"
   });
 
-  public static bigqueryWithSchemaSuffix = dataform.WorkflowSettings.create({
+  public static bigqueryWithDatasetSuffix = dataform.WorkflowSettings.create({
     ...TestConfigs.bigquery,
     datasetSuffix: "suffix"
   });
 
-  public static bigqueryWithDefaultDatabaseAndSuffix = dataform.WorkflowSettings.create({
+  public static bigqueryWithDefaultProjectAndDataset = dataform.WorkflowSettings.create({
     ...TestConfigs.bigqueryWithDefaultDatabase,
     projectSuffix: "suffix"
   });
 
-  public static bigqueryWithTablePrefix = dataform.WorkflowSettings.create({
+  public static bigqueryWithNamePrefix = dataform.WorkflowSettings.create({
     ...TestConfigs.bigquery,
     namePrefix: "prefix"
   });
@@ -62,10 +62,10 @@ suite("@dataform/core", ({ afterEach }) => {
     suite("resolve succeeds", () => {
       [
         TestConfigs.bigquery,
-        TestConfigs.bigqueryWithSchemaSuffix,
-        TestConfigs.bigqueryWithTablePrefix
+        TestConfigs.bigqueryWithDatasetSuffix,
+        TestConfigs.bigqueryWithNamePrefix
       ].forEach(testConfig => {
-        test(`resolve with prefix "${testConfig.namePrefix}" and suffix "${testConfig.datasetSuffix}"`, () => {
+        test(`resolve with name prefix "${testConfig.namePrefix}" and dataset suffix "${testConfig.datasetSuffix}"`, () => {
           const projectDir = tmpDirFixture.createNewTmpDir();
           fs.writeFileSync(
             path.join(projectDir, "workflow_settings.yaml"),
@@ -102,6 +102,199 @@ suite("@dataform/core", ({ afterEach }) => {
         asPlainObject(result.compile.compiledGraph.graphErrors.compilationErrors[0].message)
       ).deep.equals(`Could not resolve "e"`);
     });
+
+    suite("context methods", () => {
+      [
+        TestConfigs.bigqueryWithDefaultProjectAndDataset,
+        { ...TestConfigs.bigqueryWithDatasetSuffix, defaultProject: "default-database" },
+        { ...TestConfigs.bigqueryWithNamePrefix, defaultProject: "default-database" }
+      ].forEach(testConfig => {
+        test(
+          `assertions target context functions with project suffix '${testConfig.projectSuffix}', ` +
+            `dataset suffix '${testConfig.datasetSuffix}', and name prefix '${testConfig.namePrefix}'`,
+          () => {
+            const projectDir = tmpDirFixture.createNewTmpDir();
+            fs.writeFileSync(
+              path.join(projectDir, "workflow_settings.yaml"),
+              dumpYaml(dataform.WorkflowSettings.create(testConfig))
+            );
+            fs.mkdirSync(path.join(projectDir, "definitions"));
+            fs.writeFileSync(
+              path.join(projectDir, "definitions/file.js"),
+              'assert("name", ctx => `${ctx.database()}.${ctx.schema()}.${ctx.name()}`)'
+            );
+
+            const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+            expect(
+              asPlainObject(result.compile.compiledGraph.graphErrors.compilationErrors)
+            ).deep.equals([]);
+            expect(asPlainObject(result.compile.compiledGraph.assertions[0].query)).deep.equals(
+              `default-database${testConfig.projectSuffix ? `_suffix` : ""}.` +
+                `schema${testConfig.datasetSuffix ? `_suffix` : ""}.` +
+                `${testConfig.namePrefix ? `prefix_` : ""}name`
+            );
+          }
+        );
+      });
+
+      test("assertions database function fails when database is undefined on the proto", () => {
+        const projectDir = tmpDirFixture.createNewTmpDir();
+        fs.writeFileSync(
+          path.join(projectDir, "workflow_settings.yaml"),
+          dumpYaml(dataform.WorkflowSettings.create(TestConfigs.bigquery))
+        );
+        fs.mkdirSync(path.join(projectDir, "definitions"));
+        fs.writeFileSync(
+          path.join(projectDir, "definitions/file.js"),
+          'assert("name", ctx => `${ctx.database()}.${ctx.schema()}.${ctx.name()}`)'
+        );
+
+        const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+        expect(
+          asPlainObject(result.compile.compiledGraph.graphErrors.compilationErrors?.[0]?.message)
+        ).deep.equals("Warehouse does not support multiple databases");
+      });
+    });
+  });
+
+  suite("sqlx special characters", () => {
+    test("extract blocks", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        dumpYaml(dataform.WorkflowSettings.create(TestConfigs.bigquery))
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/file.sqlx"),
+        `
+config {
+  type: "table"
+}
+js {
+  var a = 1;
+}
+/*
+A multiline comment
+*/
+pre_operations {
+  SELECT 2;
+}
+post_operations {
+  SELECT 3;
+}
+-- A single line comment.
+SELECT \${a}`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(asPlainObject(result.compile.compiledGraph.graphErrors.compilationErrors)).deep.equals(
+        []
+      );
+      expect(result.compile.compiledGraph.tables[0].query).equals(`
+
+
+/*
+A multiline comment
+*/
+
+
+-- A single line comment.
+SELECT 1`);
+      expect(result.compile.compiledGraph.tables[0].preOps[0]).equals(`
+  SELECT 2;
+`);
+      expect(result.compile.compiledGraph.tables[0].postOps[0]).equals(`
+  SELECT 3;
+`);
+    });
+
+    test("backticks appear to users as written", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        dumpYaml(dataform.WorkflowSettings.create(TestConfigs.bigquery))
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      const fileContents = `select
+  "\`",
+  """\`"",
+from \`location\``;
+      fs.writeFileSync(path.join(projectDir, "definitions/file.sqlx"), fileContents);
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(asPlainObject(result.compile.compiledGraph.graphErrors.compilationErrors)).deep.equals(
+        []
+      );
+      expect(result.compile.compiledGraph.operations[0].queries[0]).equals(fileContents);
+    });
+
+    test("backslashes appear to users as written", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        dumpYaml(dataform.WorkflowSettings.create(TestConfigs.bigquery))
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      const sqlContents = `select
+  regexp_extract('01a_data_engine', '^(\\d{2}\\w)'),
+  regexp_extract('01a_data_engine', '^(\\\\d{2}\\\\w)'),
+  regexp_extract('\\\\', ''),
+  regexp_extract("", r"[0-9]\\"*"),
+  """\\ \\? \\\\"""`;
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/file.sqlx"),
+        `config { type: "table" }` + sqlContents + `pre_operations { ${sqlContents} }`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(asPlainObject(result.compile.compiledGraph.graphErrors.compilationErrors)).deep.equals(
+        []
+      );
+      expect(result.compile.compiledGraph.tables[0].query.trim()).equals(sqlContents);
+      expect(result.compile.compiledGraph.tables[0].preOps[0].trim()).equals(sqlContents);
+    });
+
+    test("strings appear to users as written", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        dumpYaml(dataform.WorkflowSettings.create(TestConfigs.bigquery))
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      const sqlContents = `select
+"""
+triple
+quotes
+""",
+"asd\\"123'def",
+'asd\\'123"def',
+
+select
+"""
+triple
+quotes
+""",
+"asd\\"123'def",
+'asd\\'123"def'`;
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/file.sqlx"),
+        `config { type: "table" }` + sqlContents + `post_operations { ${sqlContents} }`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(asPlainObject(result.compile.compiledGraph.graphErrors.compilationErrors)).deep.equals(
+        []
+      );
+      expect(result.compile.compiledGraph.tables[0].query.trim()).equals(sqlContents);
+      expect(result.compile.compiledGraph.tables[0].postOps[0].trim()).equals(sqlContents);
+    });
   });
 
   suite("workflow settings", () => {
@@ -121,7 +314,9 @@ suite("@dataform/core", ({ afterEach }) => {
           defaultLocation: "US"
         })
       );
-      expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).equals(0);
+      expect(asPlainObject(result.compile.compiledGraph.graphErrors.compilationErrors)).deep.equals(
+        []
+      );
     });
 
     // dataform.json for workflow settings is deprecated, but still currently supported.
