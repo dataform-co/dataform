@@ -730,10 +730,22 @@ export class Session {
             table.bigquery.clusterBy?.length ||
             table.bigquery.partitionExpirationDays ||
             table.bigquery.requirePartitionFilter) &&
-          table.enumType === dataform.TableType.VIEW
+          table.enumType === dataform.TableType.VIEW &&
+          !table.materialized
         ) {
           this.compileError(
-            `partitionBy/clusterBy/requirePartitionFilter/partitionExpirationDays are not valid for BigQuery views; they are only valid for tables`,
+            `partitionBy/clusterBy/requirePartitionFilter/partitionExpirationDays are not valid for BigQuery views`,
+            table.fileName,
+            table.target
+          );
+        } else if (
+          (table.bigquery.partitionExpirationDays ||
+            table.bigquery.requirePartitionFilter) &&
+          table.enumType === dataform.TableType.VIEW &&
+          table.materialized
+        ) {
+          this.compileError(
+            `requirePartitionFilter/partitionExpirationDays are not valid for BigQuery materialized views`,
             table.fileName,
             table.target
           );
