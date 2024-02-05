@@ -81,10 +81,6 @@ export function listenForCompileRequest() {
   });
 }
 
-function runDataformCoreVmScript(nodeVM: NodeVM, vmIndexFileName: string, script: string): any {
-  return nodeVM.run(script, vmIndexFileName);
-}
-
 if (require.main === module) {
   listenForCompileRequest();
 }
