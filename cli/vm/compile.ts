@@ -2,11 +2,24 @@ import * as glob from "glob";
 import * as path from "path";
 import * as semver from "semver";
 import { CompilerFunction, NodeVM } from "vm2";
+import * as fs from "fs";
 
 import { encode64 } from "df/common/protos";
 import { dataform } from "df/protos/ts";
 
 export function compile(compileConfig: dataform.ICompileConfig) {
+  if (
+    !fs.existsSync(
+      path.join(compileConfig.projectDir, "node_modules", "@dataform", "core", "bundle.js")
+    )
+  ) {
+    throw new Error(
+      "Could not find a recent installed version of @dataform/core in the project. Check that " +
+        "`dataformCoreVersion` is specified in `workflow_settings.yaml` file, then run " +
+        "`dataform install`."
+    );
+  }
+
   const vmIndexFileName = path.resolve(path.join(compileConfig.projectDir, "index.js"));
 
   // First retrieve a compiler function for vm2 to process files.
@@ -19,10 +32,9 @@ export function compile(compileConfig: dataform.ICompileConfig) {
       builtin: ["path"]
     }
   });
-  const compiler: CompilerFunction = runDataformCoreVmScript(
-    indexGeneratorVm,
-    vmIndexFileName,
-    'return require("@dataform/core").compiler'
+  const compiler: CompilerFunction = indexGeneratorVm.run(
+    'return require("@dataform/core").compiler',
+    vmIndexFileName
   );
 
   // Then use vm2's native compiler integration to apply the compiler to files.
@@ -40,19 +52,17 @@ export function compile(compileConfig: dataform.ICompileConfig) {
     compiler
   });
 
-  const dataformCoreVersion: string = runDataformCoreVmScript(
-    userCodeVm,
-    vmIndexFileName,
-    'return require("@dataform/core").version || "0.0.0"'
+  const dataformCoreVersion: string = userCodeVm.run(
+    'return require("@dataform/core").version || "0.0.0"',
+    vmIndexFileName
   );
   if (semver.lt(dataformCoreVersion, "3.0.0-alpha.0")) {
     throw new Error("@dataform/core ^3.0.0 required.");
   }
 
-  return runDataformCoreVmScript(
-    userCodeVm,
-    vmIndexFileName,
-    `return require("@dataform/core").main("${createCoreExecutionRequest(compileConfig)}")`
+  return userCodeVm.run(
+    `return require("@dataform/core").main("${createCoreExecutionRequest(compileConfig)}")`,
+    vmIndexFileName
   );
 }
 
@@ -71,28 +81,8 @@ export function listenForCompileRequest() {
   });
 }
 
-function missingValidCorePackageError() {
-  return new Error(
-    "Could not find a recent installed version of @dataform/core in the project. Ensure packages " +
-      "are installed and upgrade to a recent version."
-  );
-}
-
 function runDataformCoreVmScript(nodeVM: NodeVM, vmIndexFileName: string, script: string): any {
-  // Missing valid core package errors are thrown because if @dataform/core isn't installed,
-  // the properties of it can't be found.
-  const getResult = (): any => {
-    try {
-      return nodeVM.run(script, vmIndexFileName);
-    } catch (e) {
-      throw missingValidCorePackageError();
-    }
-  };
-  const result = getResult();
-  if (!result) {
-    throw missingValidCorePackageError();
-  }
-  return result as any;
+  return nodeVM.run(script, vmIndexFileName);
 }
 
 if (require.main === module) {
