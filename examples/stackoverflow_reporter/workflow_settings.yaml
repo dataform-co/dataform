@@ -2,5 +2,3 @@ defaultProject: "dataform-demos"
 defaultLocation: "us"
 defaultDataset: "dataform"
 defaultAssertionDataset: "dataform_assertions"
-dataformCoreVersion: 3.0.0-alpha.4
-
