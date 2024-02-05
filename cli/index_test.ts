@@ -33,8 +33,8 @@ suite("@dataform/cli", ({ afterEach }) => {
         .stderr
     ).contains(
       "Could not find a recent installed version of @dataform/core in the project. Check that " +
-        "`dataformCoreVersion` is specified in either a `workflow_settings.yaml` or a " +
-        "`package.json` file, then run `dataform install`."
+        "either `dataformCoreVersion` is specified in `workflow_settings.yaml`, or " +
+        "`@dataform/core` is specified in `package.json`, then run `dataform install`."
     );
   });
 });
