@@ -4,10 +4,7 @@ load("//tools:ts_library.bzl", "ts_library")
 
 ts_library(
     name = "vm",
-    srcs = glob(
-        ["**/*.ts"],
-        exclude = ["utils/**/*.*"],
-    ),
+    srcs = ["compile.ts"],
     deps = [
         "//common/protos",
         "//core",
