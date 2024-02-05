@@ -1,8 +1,8 @@
+import * as fs from "fs";
 import * as glob from "glob";
 import * as path from "path";
 import * as semver from "semver";
 import { CompilerFunction, NodeVM } from "vm2";
-import * as fs from "fs";
 
 import { encode64 } from "df/common/protos";
 import { dataform } from "df/protos/ts";
