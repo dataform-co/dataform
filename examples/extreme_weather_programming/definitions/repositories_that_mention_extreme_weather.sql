@@ -6,7 +6,7 @@ FROM
 WHERE
     REGEXP_CONTAINS(
         repository_description,
-        "${constants.WEATHER.join(" | ")}"
+        "snow | hail | thunder | tornado"
     )
 GROUP BY
     date

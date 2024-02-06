@@ -765,10 +765,7 @@ actions:
 - operation:
     filename: action.sql`
       );
-      fs.writeFileSync(
-        path.join(projectDir, "definitions/action.sql"),
-        "SELECT ${database()} AS proofThatContextIsRead"
-      );
+      fs.writeFileSync(path.join(projectDir, "definitions/action.sql"), "SELECT 1");
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
@@ -780,7 +777,7 @@ actions:
               name: "action"
             },
             fileName: "definitions/action.sql",
-            queries: ["SELECT dataform AS proofThatContextIsRead"],
+            queries: ["SELECT 1"],
             target: {
               database: "dataform",
               name: "action"
@@ -878,10 +875,7 @@ actions:
 - table:
     filename: action.sql`
       );
-      fs.writeFileSync(
-        path.join(projectDir, "definitions/action.sql"),
-        "SELECT ${database()} AS proofThatContextIsRead"
-      );
+      fs.writeFileSync(path.join(projectDir, "definitions/action.sql"), "SELECT 1");
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
@@ -893,7 +887,7 @@ actions:
               name: "action"
             },
             fileName: "definitions/action.sql",
-            query: "SELECT dataform AS proofThatContextIsRead",
+            query: "SELECT 1",
             target: {
               database: "dataform",
               name: "action"
@@ -924,11 +918,7 @@ actions:
     -  someKey1
     -  someKey2`
       );
-      fs.writeFileSync(
-        path.join(projectDir, "definitions/action.sql"),
-        "SELECT ${database()} AS ${when(incremental(), `proofThatIncrementalContextIsRead`, " +
-          "`proofThatContextIsRead`) }"
-      );
+      fs.writeFileSync(path.join(projectDir, "definitions/action.sql"), "SELECT 1");
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
@@ -940,8 +930,8 @@ actions:
               name: "action"
             },
             fileName: "definitions/action.sql",
-            query: "SELECT dataform AS proofThatContextIsRead",
-            incrementalQuery: "SELECT dataform AS proofThatIncrementalContextIsRead",
+            query: "SELECT 1",
+            incrementalQuery: "SELECT 1",
             target: {
               database: "dataform",
               name: "action"
@@ -970,10 +960,7 @@ actions:
 - view:
     filename: action.sql`
       );
-      fs.writeFileSync(
-        path.join(projectDir, "definitions/action.sql"),
-        "SELECT ${database()} AS proofThatContextIsRead"
-      );
+      fs.writeFileSync(path.join(projectDir, "definitions/action.sql"), "SELECT 1");
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
@@ -985,7 +972,7 @@ actions:
               name: "action"
             },
             fileName: "definitions/action.sql",
-            query: "SELECT dataform AS proofThatContextIsRead",
+            query: "SELECT 1",
             target: {
               database: "dataform",
               name: "action"
@@ -1012,10 +999,7 @@ actions:
 - assertion:
     filename: action.sql`
       );
-      fs.writeFileSync(
-        path.join(projectDir, "definitions/action.sql"),
-        "SELECT ${database()} AS proofThatContextIsRead"
-      );
+      fs.writeFileSync(path.join(projectDir, "definitions/action.sql"), "SELECT 1");
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
@@ -1027,7 +1011,7 @@ actions:
               name: "action"
             },
             fileName: "definitions/action.sql",
-            query: "SELECT dataform AS proofThatContextIsRead",
+            query: "SELECT 1",
             target: {
               database: "dataform",
               name: "action"
@@ -1094,7 +1078,7 @@ actions:
       );
       fs.writeFileSync(
         path.join(projectDir, "definitions/utf8characters:私🙂 and some spaces.sql"),
-        "SELECT ${database()} AS proofThatContextIsRead"
+        "SELECT 1"
       );
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
@@ -1107,7 +1091,7 @@ actions:
               name: "utf8characters:私🙂 and some spaces"
             },
             fileName: "definitions/utf8characters:私🙂 and some spaces.sql",
-            queries: ["SELECT dataform AS proofThatContextIsRead"],
+            queries: ["SELECT 1"],
             target: {
               database: "dataform",
               name: "utf8characters:私🙂 and some spaces"

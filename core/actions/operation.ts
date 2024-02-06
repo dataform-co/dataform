@@ -106,7 +106,7 @@ export class Operation extends ActionBuilder<dataform.Operation> {
       description: config.description
     });
 
-    this.queries(nativeRequire(config.filename).queryAsContextable);
+    this.queries(nativeRequire(config.filename).query);
   }
 
   public config(config: IOperationConfig) {

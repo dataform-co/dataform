@@ -5,7 +5,10 @@ FROM
     `bigquery-public-data.samples.gsod`
 WHERE
     (
-        ${ constants.WEATHER.map(weather => `${weather} = TRUE`).join(" OR\n   ") }
+        snow = TRUE
+        OR hail = TRUE
+        OR thunder = TRUE
+        OR tornado = TRUE
     ) -- The GitHub data only ranges from 2007 to 2012.
     -- The weather data is only available up to 2010.
     AND year >= 2007

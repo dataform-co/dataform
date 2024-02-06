@@ -243,6 +243,10 @@ message ActionConfig {
 
     // is specified, if a row arrives whose key matches an existing row's key,
     // then the existing row is overwritten with the new data.
+
+    // If set, unique key represents a set of names of columns that will act as
+    // a the unique key. To enforce this, when updating the incremental
+    // table, Dataform merges rows with `uniqueKey` instead of appending them.
     repeated string unique_key = 11;
 
     // Description of the incremental table.
