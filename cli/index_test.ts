@@ -16,16 +16,14 @@ suite("@dataform/cli", ({ afterEach }) => {
   const platformPath = os.platform() === "darwin" ? "nodejs_darwin_amd64" : "nodejs_linux_amd64";
   const nodePath = `external/${platformPath}/bin/node`;
   const cliEntryPointPath = "cli/node_modules/@dataform/cli/bundle.js";
+  const npmPath = `external/${platformPath}/bin/npm`;
+  const corePackageTarPath = "packages/@dataform/core/package.tgz";
 
   test("compile error when no @dataform/core package is installed", async () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
     fs.writeFileSync(
       path.join(projectDir, "workflow_settings.yaml"),
       dumpYaml(dataform.WorkflowSettings.create({ dataformCoreVersion: version }))
-    );
-
-    const compileResult = await getProcessResult(
-      execFile(nodePath, [cliEntryPointPath, "compile", projectDir])
     );
 
     expect(
@@ -41,9 +39,6 @@ suite("@dataform/cli", ({ afterEach }) => {
   test("golden path", async () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
     const npmCacheDir = tmpDirFixture.createNewTmpDir();
-    const nodePath = `external/${platformPath}/bin/node`;
-    const npmPath = `external/${platformPath}/bin/npm`;
-    const corePackageTarPath = "packages/@dataform/core/package.tgz";
 
     // Initialize a project using the CLI, don't install packages.
     await getProcessResult(
