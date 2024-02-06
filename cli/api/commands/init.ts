@@ -51,20 +51,14 @@ export async function init(
     dirsCreated.push(projectDir);
   }
 
-  const workflowSettings = dataform.WorkflowSettings.create({
+  // The order that fields are set here is preserved in the written yaml.
+  const workflowSettings: dataform.IWorkflowSettings = {
+    dataformCoreVersion: version,
+    defaultProject: projectConfig.defaultDatabase,
+    defaultLocation: projectConfig.defaultLocation,
     defaultDataset: projectConfig.defaultSchema || "dataform",
-    defaultAssertionDataset: projectConfig.assertionSchema || "dataform_assertions",
-    dataformCoreVersion: version
-  });
-  if (projectConfig.defaultDatabase) {
-    workflowSettings.defaultProject = projectConfig.defaultDatabase;
-  }
-  if (projectConfig.defaultLocation) {
-    workflowSettings.defaultLocation = projectConfig.defaultLocation;
-  }
-  if (projectConfig.vars) {
-    workflowSettings.vars = projectConfig.vars;
-  }
+    defaultAssertionDataset: projectConfig.assertionSchema || "dataform_assertions"
+  };
   if (projectConfig.databaseSuffix) {
     workflowSettings.projectSuffix = projectConfig.databaseSuffix;
   }
@@ -73,6 +67,9 @@ export async function init(
   }
   if (projectConfig.tablePrefix) {
     workflowSettings.namePrefix = projectConfig.tablePrefix;
+  }
+  if (projectConfig.vars) {
+    workflowSettings.vars = projectConfig.vars;
   }
 
   fs.writeFileSync(workflowSettingsYamlPath, dumpYaml(workflowSettings));
