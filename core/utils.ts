@@ -253,3 +253,15 @@ export function extractActionDetailsFromFileName(
   const fileExtension = Path.fileExtension(path);
   return { fileExtension, fileNameAsTargetName: fileName };
 }
+
+export function actionConfigToCompiledGraphTarget(
+  // The target interface is used here because Action configs contain all the fields of action
+  // config targets, even if they are not strictly target objects.
+  target: dataform.ActionConfig.ITarget
+): dataform.Target {
+  return dataform.Target.create({
+    name: target.name,
+    schema: target.dataset,
+    database: target.project
+  });
+}

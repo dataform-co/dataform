@@ -17,6 +17,7 @@ import * as Path from "df/core/path";
 import { Session } from "df/core/session";
 import {
   checkExcessProperties,
+  actionConfigToCompiledGraphTarget,
   nativeRequire,
   resolvableAsTarget,
   setNameAndTarget,
@@ -284,11 +285,10 @@ export class Table extends ActionBuilder<dataform.Table> {
       throw Error("Expected table type");
     }
 
-    const target = dataform.Target.create({
-      name: tableTypeConfig.name || Path.fileName(tableTypeConfig.filename),
-      schema: tableTypeConfig.dataset,
-      database: tableTypeConfig.project
-    });
+    if (!tableTypeConfig.name) {
+      tableTypeConfig.name = Path.fileName(tableTypeConfig.filename);
+    }
+    const target = actionConfigToCompiledGraphTarget(tableTypeConfig);
     this.proto.target = this.applySessionToTarget(target);
     this.proto.canonicalTarget = this.applySessionCanonicallyToTarget(target);
 
@@ -334,7 +334,9 @@ export class Table extends ActionBuilder<dataform.Table> {
 
       this.config({
         type: "table",
-        dependencies: config.dependencyTargets,
+        dependencies: config.dependencyTargets.map(target =>
+          actionConfigToCompiledGraphTarget(dataform.ActionConfig.Target.create(target))
+        ),
         tags: config.tags,
         disabled: config.disabled,
         description: config.description,
@@ -361,7 +363,9 @@ export class Table extends ActionBuilder<dataform.Table> {
 
       this.config({
         type: "view",
-        dependencies: config.dependencyTargets,
+        dependencies: config.dependencyTargets.map(target =>
+          actionConfigToCompiledGraphTarget(dataform.ActionConfig.Target.create(target))
+        ),
         disabled: config.disabled,
         materialized: config.materialized,
         tags: config.tags,
@@ -410,7 +414,9 @@ export class Table extends ActionBuilder<dataform.Table> {
 
       this.config({
         type: "incremental",
-        dependencies: config.dependencyTargets,
+        dependencies: config.dependencyTargets.map(target =>
+          actionConfigToCompiledGraphTarget(dataform.ActionConfig.Target.create(target))
+        ),
         disabled: config.disabled,
         protected: config.protected,
         uniqueKey: config.uniqueKey,
