@@ -10,7 +10,7 @@ suite("examples", () => {
 
     const graph = await compile({ projectDir: "examples/stackoverflow_reporter" });
 
-    expect(graph.graphErrors.compilationErrors.length).equals(0);
+    expect(graph.graphErrors.compilationErrors).deep.equals([]);
   });
 
   test("extreme_weather_programming compiles", async () => {
@@ -18,7 +18,7 @@ suite("examples", () => {
 
     const graph = await compile({ projectDir: "examples/extreme_weather_programming" });
 
-    expect(graph.graphErrors.compilationErrors.length).equals(0);
+    expect(graph.graphErrors.compilationErrors).deep.equals([]);
     expect(graph.tables.length).equals(3);
     expect(graph.notebooks.length).equals(1);
   });
