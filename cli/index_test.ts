@@ -16,16 +16,14 @@ suite("@dataform/cli", ({ afterEach }) => {
   const platformPath = os.platform() === "darwin" ? "nodejs_darwin_amd64" : "nodejs_linux_amd64";
   const nodePath = `external/${platformPath}/bin/node`;
   const cliEntryPointPath = "cli/node_modules/@dataform/cli/bundle.js";
+  const npmPath = `external/${platformPath}/bin/npm`;
+  const corePackageTarPath = "packages/@dataform/core/package.tgz";
 
   test("compile error when no @dataform/core package is installed", async () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
     fs.writeFileSync(
       path.join(projectDir, "workflow_settings.yaml"),
       dumpYaml(dataform.WorkflowSettings.create({ dataformCoreVersion: version }))
-    );
-
-    const compileResult = await getProcessResult(
-      execFile(nodePath, [cliEntryPointPath, "compile", projectDir])
     );
 
     expect(
@@ -36,6 +34,158 @@ suite("@dataform/cli", ({ afterEach }) => {
         "either `dataformCoreVersion` is specified in `workflow_settings.yaml`, or " +
         "`@dataform/core` is specified in `package.json`, then run `dataform install`."
     );
+  });
+
+  test("golden path", async () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    const npmCacheDir = tmpDirFixture.createNewTmpDir();
+
+    // Initialize a project using the CLI, don't install packages.
+    await getProcessResult(
+      execFile(nodePath, [
+        cliEntryPointPath,
+        "init",
+        projectDir,
+        "dataform-integration-tests",
+        "US",
+        "--skip-install"
+      ])
+    );
+
+    // Install packages manually to get around bazel sandbox issues.
+    await getProcessResult(
+      execFile(npmPath, [
+        "install",
+        "--prefix",
+        projectDir,
+        "--cache",
+        npmCacheDir,
+        corePackageTarPath
+      ])
+    );
+
+    // Write a simple file to the project.
+    const filePath = path.join(projectDir, "definitions", "example.sqlx");
+    fs.ensureFileSync(filePath);
+    fs.writeFileSync(
+      filePath,
+      `
+config { type: "table" }
+select 1 as \${dataform.projectConfig.vars.testVar2}
+`
+    );
+
+    // Compile the project using the CLI.
+    const compileResult = await getProcessResult(
+      execFile(nodePath, [
+        cliEntryPointPath,
+        "compile",
+        projectDir,
+        "--json",
+        "--vars=testVar1=testValue1,testVar2=testValue2",
+        "--schema-suffix=test_schema_suffix"
+      ])
+    );
+
+    expect(compileResult.exitCode).equals(0);
+
+    expect(JSON.parse(compileResult.stdout)).deep.equals({
+      tables: [
+        {
+          type: "table",
+          enumType: "TABLE",
+          target: {
+            database: "dataform-integration-tests",
+            schema: "dataform_test_schema_suffix",
+            name: "example"
+          },
+          canonicalTarget: {
+            schema: "dataform",
+            name: "example",
+            database: "dataform-integration-tests"
+          },
+          query: "\n\nselect 1 as testValue2\n",
+          disabled: false,
+          fileName: "definitions/example.sqlx"
+        }
+      ],
+      projectConfig: {
+        warehouse: "bigquery",
+        defaultSchema: "dataform",
+        assertionSchema: "dataform_assertions",
+        defaultDatabase: "dataform-integration-tests",
+        defaultLocation: "US",
+        vars: {
+          testVar1: "testValue1",
+          testVar2: "testValue2"
+        },
+        schemaSuffix: "test_schema_suffix"
+      },
+      graphErrors: {},
+      dataformCoreVersion: version,
+      targets: [
+        {
+          database: "dataform-integration-tests",
+          schema: "dataform",
+          name: "example"
+        }
+      ]
+    });
+
+    // Dry run the project.
+    const runResult = await getProcessResult(
+      execFile(nodePath, [
+        cliEntryPointPath,
+        "run",
+        projectDir,
+        "--credentials",
+        "test_credentials/bigquery.json",
+        "--dry-run",
+        "--json",
+        "--vars=testVar1=testValue1,testVar2=testValue2",
+        "--default-location=europe"
+      ])
+    );
+
+    expect(runResult.exitCode).equals(0);
+
+    expect(JSON.parse(runResult.stdout)).deep.equals({
+      actions: [
+        {
+          fileName: "definitions/example.sqlx",
+          hermeticity: "HERMETIC",
+          tableType: "table",
+          target: {
+            database: "dataform-integration-tests",
+            name: "example",
+            schema: "dataform"
+          },
+          tasks: [
+            {
+              statement:
+                "create or replace table `dataform-integration-tests.dataform.example` as \n\nselect 1 as testValue2",
+              type: "statement"
+            }
+          ],
+          type: "table"
+        }
+      ],
+      projectConfig: {
+        assertionSchema: "dataform_assertions",
+        defaultDatabase: "dataform-integration-tests",
+        defaultLocation: "europe",
+        defaultSchema: "dataform",
+        warehouse: "bigquery",
+        vars: {
+          testVar1: "testValue1",
+          testVar2: "testValue2"
+        }
+      },
+      runConfig: {
+        fullRefresh: false
+      },
+      warehouseState: {}
+    });
   });
 });
 

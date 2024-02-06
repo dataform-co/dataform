@@ -55,6 +55,7 @@ ts_test_suite(
     data = [
         ":node_modules",
         "//test_credentials:bigquery.json",
+        "//packages/@dataform/core:package_tar",
         "@nodejs//:node",
         "@nodejs//:npm",
     ],
