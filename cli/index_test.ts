@@ -36,6 +36,29 @@ suite("@dataform/cli", ({ afterEach }) => {
     );
   });
 
+  test("workflow_settings.yaml generated from init", async () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+
+    await getProcessResult(
+      execFile(nodePath, [
+        cliEntryPointPath,
+        "init",
+        projectDir,
+        "--default-database=dataform-database",
+        "--default-location=us-central1",
+        "--skip-install"
+      ])
+    );
+
+    expect(fs.readFileSync(path.join(projectDir, "workflow_settings.yaml"), "utf8")).to
+      .equal(`dataformCoreVersion: ${version}
+defaultProject: dataform-database
+defaultLocation: us-central1
+defaultDataset: dataform
+defaultAssertionDataset: dataform_assertions
+`);
+  });
+
   test("golden path", async () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
     const npmCacheDir = tmpDirFixture.createNewTmpDir();
