@@ -51,7 +51,7 @@ export async function init(
     dirsCreated.push(projectDir);
   }
 
-  // The order that fields are set here is preserved in the outputted yaml.
+  // The order that fields are set here is preserved in the written yaml.
   const workflowSettings: dataform.IWorkflowSettings = {
     dataformCoreVersion: version,
     defaultProject: projectConfig.defaultDatabase,
