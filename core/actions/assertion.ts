@@ -11,8 +11,8 @@ import {
 import * as Path from "df/core/path";
 import { Session } from "df/core/session";
 import {
-  checkExcessProperties,
   actionConfigToCompiledGraphTarget,
+  checkExcessProperties,
   nativeRequire,
   resolvableAsTarget,
   setNameAndTarget,
@@ -101,8 +101,8 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
 
     // TODO(ekrekr): load config proto column descriptors.
     this.config({
-      dependencies: config.dependencyTargets.map(target =>
-        actionConfigToCompiledGraphTarget(dataform.ActionConfig.Target.create(target))
+      dependencies: config.dependencyTargets.map(dependencyTarget =>
+        actionConfigToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget))
       ),
       tags: config.tags,
       disabled: config.disabled,

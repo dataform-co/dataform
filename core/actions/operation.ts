@@ -99,8 +99,8 @@ export class Operation extends ActionBuilder<dataform.Operation> {
 
     // TODO(ekrekr): load config proto column descriptors.
     this.config({
-      dependencies: config.dependencyTargets.map(target =>
-        actionConfigToCompiledGraphTarget(dataform.ActionConfig.Target.create(target))
+      dependencies: config.dependencyTargets.map(dependencyTarget =>
+        actionConfigToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget))
       ),
       tags: config.tags,
       disabled: config.disabled,

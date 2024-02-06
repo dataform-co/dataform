@@ -9,8 +9,8 @@ import {
 } from "df/core/common";
 import { Session } from "df/core/session";
 import {
-  checkExcessProperties,
   actionConfigToCompiledGraphTarget,
+  checkExcessProperties,
   strictKeysOf
 } from "df/core/utils";
 import { dataform } from "df/protos/ts";

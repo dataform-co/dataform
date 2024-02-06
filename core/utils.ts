@@ -257,11 +257,11 @@ export function extractActionDetailsFromFileName(
 export function actionConfigToCompiledGraphTarget(
   // The target interface is used here because Action configs contain all the fields of action
   // config targets, even if they are not strictly target objects.
-  target: dataform.ActionConfig.ITarget
+  actionConfigTarget: dataform.ActionConfig.ITarget
 ): dataform.Target {
   return dataform.Target.create({
-    name: target.name,
-    schema: target.dataset,
-    database: target.project
+    name: actionConfigTarget.name,
+    schema: actionConfigTarget.dataset,
+    database: actionConfigTarget.project
   });
 }

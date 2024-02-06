@@ -16,8 +16,8 @@ import {
 import * as Path from "df/core/path";
 import { Session } from "df/core/session";
 import {
-  checkExcessProperties,
   actionConfigToCompiledGraphTarget,
+  checkExcessProperties,
   nativeRequire,
   resolvableAsTarget,
   setNameAndTarget,
@@ -334,8 +334,8 @@ export class Table extends ActionBuilder<dataform.Table> {
 
       this.config({
         type: "table",
-        dependencies: config.dependencyTargets.map(target =>
-          actionConfigToCompiledGraphTarget(dataform.ActionConfig.Target.create(target))
+        dependencies: config.dependencyTargets.map(dependencyTarget =>
+          actionConfigToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget))
         ),
         tags: config.tags,
         disabled: config.disabled,
@@ -363,8 +363,8 @@ export class Table extends ActionBuilder<dataform.Table> {
 
       this.config({
         type: "view",
-        dependencies: config.dependencyTargets.map(target =>
-          actionConfigToCompiledGraphTarget(dataform.ActionConfig.Target.create(target))
+        dependencies: config.dependencyTargets.map(dependencyTarget =>
+          actionConfigToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget))
         ),
         disabled: config.disabled,
         materialized: config.materialized,
@@ -414,8 +414,8 @@ export class Table extends ActionBuilder<dataform.Table> {
 
       this.config({
         type: "incremental",
-        dependencies: config.dependencyTargets.map(target =>
-          actionConfigToCompiledGraphTarget(dataform.ActionConfig.Target.create(target))
+        dependencies: config.dependencyTargets.map(dependencyTarget =>
+          actionConfigToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget))
         ),
         disabled: config.disabled,
         protected: config.protected,

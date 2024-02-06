@@ -33,8 +33,8 @@ export class Notebook extends ActionBuilder<dataform.Notebook> {
     this.proto.target = this.applySessionToTarget(target);
     this.proto.canonicalTarget = this.applySessionCanonicallyToTarget(target);
     this.proto.tags = config.tags;
-    this.proto.dependencyTargets = config.dependencyTargets.map(target =>
-      actionConfigToCompiledGraphTarget(dataform.ActionConfig.Target.create(target))
+    this.proto.dependencyTargets = config.dependencyTargets.map(dependencyTarget =>
+      actionConfigToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget))
     );
     this.proto.fileName = config.filename;
     if (config.disabled) {
