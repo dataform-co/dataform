@@ -3,11 +3,7 @@ actions:
       filename: repositories_created_during_extreme_weather.sql
       dependencyTargets:
         - name: was_there_extreme_weather
-          dataset: dataform
-          project: dataform-demos
         - name: repositories_that_mention_extreme_weather
-          dataset: dataform
-          project: dataform-demos
   - view:
       filename: repositories_that_mention_extreme_weather.sql
   - view:
@@ -16,5 +12,3 @@ actions:
       filename: snowy_repository_creation.ipynb
       dependencyTargets:
         - name: repositories_created_during_extreme_weather
-          dataset: dataform
-          project: dataform-demos

@@ -42,8 +42,11 @@ export function compile(code: string, path: string): string {
     return `exports.asJson = ${notebookAsJson}`;
   }
   if (Path.fileExtension(path) === "sql") {
-    const { sql } = extractSqlxParts(SyntaxTreeNode.create(code));
-    return `exports.query = \`${sql.join("")}\`;`;
+    const escapedCode = code
+      .replace(/\\/g, "\\\\")
+      .replace(/`/g, "\\`")
+      .replace(/\${/g, "\\${");
+    return `exports.query = \`${escapedCode}\`;`;
   }
   return code;
 }
