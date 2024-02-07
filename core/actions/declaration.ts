@@ -8,7 +8,11 @@ import {
   ITargetableConfig
 } from "df/core/common";
 import { Session } from "df/core/session";
-import { checkExcessProperties, strictKeysOf } from "df/core/utils";
+import {
+  actionConfigToCompiledGraphTarget,
+  checkExcessProperties,
+  strictKeysOf
+} from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
 /**
@@ -46,11 +50,7 @@ export class Declaration extends ActionBuilder<dataform.Declaration> {
       throw Error("Declarations must have a populated 'name' field.");
     }
 
-    const target = dataform.Target.create({
-      name: config.name,
-      schema: config.dataset,
-      database: config.project
-    });
+    const target = actionConfigToCompiledGraphTarget(config);
     this.proto.target = this.applySessionToTarget(target);
     this.proto.canonicalTarget = this.applySessionCanonicallyToTarget(target);
 

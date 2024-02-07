@@ -1100,6 +1100,53 @@ actions:
         ])
       );
     });
+
+    test(`dependency targets are loaded`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/actions.yaml"),
+        `
+actions:
+- declaration:
+    name: declaration
+- table:
+    filename: table.sql
+    dependencyTargets:
+    - name: declaration
+- incrementalTable:
+    filename: incrementalTable.sql
+    dependencyTargets:
+    - name: table
+- view:
+    filename: view.sql
+    dependencyTargets:
+    - name: incrementalTable
+- operation:
+    filename: operation.sql
+    dependencyTargets:
+    - name: view
+- notebook:
+    filename: notebook.ipynb
+    dependencyTargets:
+    - name: view`
+      );
+      ["table.sql", "incrementalTable.sql", "view.sql", "operation.sql"].forEach(filename => {
+        fs.writeFileSync(path.join(projectDir, `definitions/${filename}`), "SELECT 1");
+      });
+      fs.writeFileSync(
+        path.join(projectDir, `definitions/notebook.ipynb`),
+        EMPTY_NOTEBOOK_CONTENTS
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+    });
   });
 });
 

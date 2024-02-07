@@ -2,7 +2,7 @@ import { verifyObjectMatchesProto } from "df/common/protos";
 import { ActionBuilder } from "df/core/actions";
 import * as Path from "df/core/path";
 import { Session } from "df/core/session";
-import { nativeRequire } from "df/core/utils";
+import { actionConfigToCompiledGraphTarget, nativeRequire } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
 /**
@@ -21,11 +21,10 @@ export class Notebook extends ActionBuilder<dataform.Notebook> {
   ) {
     super(session);
 
-    const target = dataform.Target.create({
-      name: config.name || Path.fileName(config.filename),
-      schema: config.location,
-      database: config.project
-    });
+    if (!config.name) {
+      config.name = Path.fileName(config.filename);
+    }
+    const target = actionConfigToCompiledGraphTarget(config);
 
     // Resolve the filename as its absolute path.
     config.filename = Path.join(Path.dirName(configPath), config.filename);
@@ -34,7 +33,9 @@ export class Notebook extends ActionBuilder<dataform.Notebook> {
     this.proto.target = this.applySessionToTarget(target);
     this.proto.canonicalTarget = this.applySessionCanonicallyToTarget(target);
     this.proto.tags = config.tags;
-    this.proto.dependencyTargets = config.dependencyTargets;
+    this.proto.dependencyTargets = config.dependencyTargets.map(dependencyTarget =>
+      actionConfigToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget))
+    );
     this.proto.fileName = config.filename;
     if (config.disabled) {
       this.proto.disabled = config.disabled;

@@ -32,7 +32,13 @@ export function compile(code: string, path: string): string {
     }
   }
   if (Path.fileExtension(path) === "ipynb") {
-    const notebookAsJson = JSON.stringify(JSON.parse(code));
+    let codeAsJson = {};
+    try {
+      codeAsJson = JSON.parse(code);
+    } catch (e) {
+      throw new Error(`Error parsing ${path} as JSON: ${e}`);
+    }
+    const notebookAsJson = JSON.stringify(codeAsJson);
     return `exports.asJson = ${notebookAsJson}`;
   }
   if (Path.fileExtension(path) === "sql") {

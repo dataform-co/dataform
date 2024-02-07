@@ -15,6 +15,7 @@ import {
 import * as Path from "df/core/path";
 import { Session } from "df/core/session";
 import {
+  actionConfigToCompiledGraphTarget,
   checkExcessProperties,
   nativeRequire,
   resolvableAsTarget,
@@ -85,11 +86,10 @@ export class Operation extends ActionBuilder<dataform.Operation> {
       return;
     }
 
-    const target = dataform.Target.create({
-      name: config.name || Path.fileName(config.filename),
-      schema: config.dataset,
-      database: config.project
-    });
+    if (!config.name) {
+      config.name = Path.fileName(config.filename);
+    }
+    const target = actionConfigToCompiledGraphTarget(config);
     this.proto.target = this.applySessionToTarget(target);
     this.proto.canonicalTarget = this.applySessionCanonicallyToTarget(target);
 
@@ -99,7 +99,9 @@ export class Operation extends ActionBuilder<dataform.Operation> {
 
     // TODO(ekrekr): load config proto column descriptors.
     this.config({
-      dependencies: config.dependencyTargets,
+      dependencies: config.dependencyTargets.map(dependencyTarget =>
+        actionConfigToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget))
+      ),
       tags: config.tags,
       disabled: config.disabled,
       hasOutput: config.hasOutput,
