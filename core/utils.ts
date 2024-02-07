@@ -259,9 +259,12 @@ export function actionConfigToCompiledGraphTarget(
   // config targets, even if they are not strictly target objects.
   actionConfigTarget: dataform.ActionConfig.ITarget
 ): dataform.Target {
-  return dataform.Target.create({
-    name: actionConfigTarget.name,
-    schema: actionConfigTarget.dataset,
-    database: actionConfigTarget.project
-  });
+  const compiledGraphTarget: dataform.ITarget = { name: actionConfigTarget.name };
+  if (actionConfigTarget.dataset) {
+    compiledGraphTarget.schema = actionConfigTarget.dataset;
+  }
+  if (actionConfigTarget.project) {
+    compiledGraphTarget.database = actionConfigTarget.project;
+  }
+  return dataform.Target.create(compiledGraphTarget);
 }
