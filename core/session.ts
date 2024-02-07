@@ -359,11 +359,21 @@ export class Session {
     });
 
     this.fullyQualifyDependencies(
-      [].concat(compiledGraph.tables, compiledGraph.assertions, compiledGraph.operations)
+      [].concat(
+        compiledGraph.tables,
+        compiledGraph.assertions,
+        compiledGraph.operations,
+        compiledGraph.notebooks
+      )
     );
 
     this.alterActionName(
-      [].concat(compiledGraph.tables, compiledGraph.assertions, compiledGraph.operations),
+      [].concat(
+        compiledGraph.tables,
+        compiledGraph.assertions,
+        compiledGraph.operations,
+        compiledGraph.notebooks
+      ),
       [].concat(compiledGraph.declarations.map(declaration => declaration.target))
     );
 
@@ -374,7 +384,12 @@ export class Session {
     this.checkTableConfigValidity(compiledGraph.tables);
 
     this.checkCircularity(
-      [].concat(compiledGraph.tables, compiledGraph.assertions, compiledGraph.operations)
+      [].concat(
+        compiledGraph.tables,
+        compiledGraph.assertions,
+        compiledGraph.operations,
+        compiledGraph.notebooks
+      )
     );
 
     verifyObjectMatchesProto(dataform.CompiledGraph, compiledGraph);
@@ -633,7 +648,8 @@ export class Session {
       compiledGraph.tables,
       compiledGraph.assertions,
       compiledGraph.operations,
-      compiledGraph.declarations
+      compiledGraph.declarations,
+      compiledGraph.notebooks
     );
 
     const nonUniqueActionsTargets = getNonUniqueTargets(actions.map(action => action.target));
@@ -675,6 +691,7 @@ export class Session {
     compiledGraph.operations = compiledGraph.operations.filter(isUniqueAction);
     compiledGraph.declarations = compiledGraph.declarations.filter(isUniqueAction);
     compiledGraph.assertions = compiledGraph.assertions.filter(isUniqueAction);
+    compiledGraph.notebooks = compiledGraph.notebooks.filter(isUniqueAction);
   }
 }
 
