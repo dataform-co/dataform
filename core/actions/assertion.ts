@@ -109,7 +109,7 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
       description: config.description
     });
 
-    this.query(nativeRequire(config.filename).queryAsContextable);
+    this.query(nativeRequire(config.filename).query);
   }
 
   public config(config: IAssertionConfig) {

@@ -425,7 +425,7 @@ export class Table extends ActionBuilder<dataform.Table> {
         bigquery: bigqueryOptions
       });
     }
-    this.query(nativeRequire(tableTypeConfig.filename).queryAsContextable);
+    this.query(nativeRequire(tableTypeConfig.filename).query);
     if (tableTypeConfig.preOperations) {
       this.preOps(tableTypeConfig.preOperations);
     }
