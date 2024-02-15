@@ -45,8 +45,7 @@ suite("@dataform/cli", ({ afterEach }) => {
         "init",
         projectDir,
         "--default-database=dataform-database",
-        "--default-location=us-central1",
-        "--skip-install"
+        "--default-location=us-central1"
       ])
     );
 
@@ -59,9 +58,33 @@ defaultAssertionDataset: dataform_assertions
 `);
   });
 
+  test("install throws an error when dataformCoreVersion in workflow_settings.yaml", async () => {
+    // When dataformCoreVersion is managed by workflow_settings.yaml, installation is stateless and
+    // lazy; it happens when compile is called, or otherwise as needed.
+
+    const projectDir = tmpDirFixture.createNewTmpDir();
+
+    await getProcessResult(
+      execFile(nodePath, [
+        cliEntryPointPath,
+        "init",
+        projectDir,
+        "--default-database=dataform-database",
+        "--default-location=us-central1"
+      ])
+    );
+
+    expect(
+      (await getProcessResult(execFile(nodePath, [cliEntryPointPath, "install", projectDir])))
+        .stderr
+    ).contains(
+      "The install method cannot be used when dataformCoreVersion is managed by a " +
+        "workflow_settings.yaml file"
+    );
+  });
+
   test("golden path", async () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
-    const npmCacheDir = tmpDirFixture.createNewTmpDir();
 
     // Initialize a project using the CLI, don't install packages.
     await getProcessResult(
@@ -70,20 +93,7 @@ defaultAssertionDataset: dataform_assertions
         "init",
         projectDir,
         "dataform-integration-tests",
-        "US",
-        "--skip-install"
-      ])
-    );
-
-    // Install packages manually to get around bazel sandbox issues.
-    await getProcessResult(
-      execFile(npmPath, [
-        "install",
-        "--prefix",
-        projectDir,
-        "--cache",
-        npmCacheDir,
-        corePackageTarPath
+        "US"
       ])
     );
 
