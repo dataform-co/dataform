@@ -1,6 +1,8 @@
-import * as path from "path";
-
 import { ChildProcess, fork } from "child_process";
+import {
+  cleanupNpmFiles,
+  runInstallIfWorkflowSettingsDataformCoreVersion
+} from "df/cli/api/commands/install";
 import { coerceAsError } from "df/common/errors/errors";
 import { decode64 } from "df/common/protos";
 import { setOrValidateTableEnumType } from "df/core/utils";
@@ -11,16 +13,26 @@ export class CompilationTimeoutError extends Error {}
 export async function compile(
   compileConfig: dataform.ICompileConfig = {}
 ): Promise<dataform.CompiledGraph> {
-  // Resolve the path in case it hasn't been resolved already.
-  path.resolve(compileConfig.projectDir);
+  let compiledGraph = dataform.CompiledGraph.create();
+  let workflowSettingsDataformCoreVersion = "";
+  try {
+    workflowSettingsDataformCoreVersion = await runInstallIfWorkflowSettingsDataformCoreVersion(
+      compileConfig.projectDir
+    );
 
-  const result = await CompileChildProcess.forkProcess().compile(compileConfig);
+    const result = await CompileChildProcess.forkProcess().compile(compileConfig);
 
-  const decodedResult = decode64(dataform.CoreExecutionResponse, result);
-  const compileResult = dataform.CompiledGraph.create(decodedResult.compile.compiledGraph);
+    const decodedResult = decode64(dataform.CoreExecutionResponse, result);
+    compiledGraph = dataform.CompiledGraph.create(decodedResult.compile.compiledGraph);
 
-  compileResult.tables.forEach(setOrValidateTableEnumType);
-  return compileResult;
+    compiledGraph.tables.forEach(setOrValidateTableEnumType);
+  } finally {
+    if (workflowSettingsDataformCoreVersion) {
+      cleanupNpmFiles(compileConfig.projectDir);
+    }
+  }
+
+  return compiledGraph;
 }
 
 export class CompileChildProcess {

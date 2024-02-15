@@ -16,10 +16,10 @@ export function compile(compileConfig: dataform.ICompileConfig) {
     throw new Error(
       "Could not find a recent installed version of @dataform/core in the project. Check that " +
         "either `dataformCoreVersion` is specified in `workflow_settings.yaml`, or " +
-        "`@dataform/core` is specified in `package.json`, then run `dataform install`."
+        "`@dataform/core` is specified in `package.json`. If using `package.json`, then run " +
+        "`dataform install`."
     );
   }
-
   const vmIndexFileName = path.resolve(path.join(compileConfig.projectDir, "index.js"));
 
   // First retrieve a compiler function for vm2 to process files.

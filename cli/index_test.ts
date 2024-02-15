@@ -1,7 +1,7 @@
 // tslint:disable tsr-detect-non-literal-fs-filename
 import { expect } from "chai";
 import * as fs from "fs-extra";
-import { dump as dumpYaml } from "js-yaml";
+import { dump as dumpYaml, load as loadYaml } from "js-yaml";
 import * as os from "os";
 import * as path from "path";
 
@@ -19,11 +19,45 @@ suite("@dataform/cli", ({ afterEach }) => {
   const npmPath = `external/${platformPath}/bin/npm`;
   const corePackageTarPath = "packages/@dataform/core/package.tgz";
 
-  test("compile error when no @dataform/core package is installed", async () => {
+  test(
+    "compile throws an error when dataformCoreVersion not in workflow_settings.yaml and no " +
+      "package.json exists",
+    async () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        dumpYaml(dataform.WorkflowSettings.create({ defaultProject: "dataform" }))
+      );
+
+      expect(
+        (await getProcessResult(execFile(nodePath, [cliEntryPointPath, "compile", projectDir])))
+          .stderr
+      ).contains(
+        "dataformCoreVersion must be specified either in workflow_settings.yaml or via a " +
+          "package.json"
+      );
+    }
+  );
+
+  test("compile error when package.json and no package is installed", async () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
     fs.writeFileSync(
-      path.join(projectDir, "workflow_settings.yaml"),
-      dumpYaml(dataform.WorkflowSettings.create({ dataformCoreVersion: version }))
+      path.join(projectDir, "package.json"),
+      `{
+  "dependencies":{
+    "@dataform/core": "${version}"
+  }
+}`
+    );
+    fs.writeFileSync(
+      path.join(projectDir, "dataform.json"),
+      `{
+  "defaultDatabase": "tada-analytics",
+  "defaultSchema": "df_integration_test",
+  "assertionSchema": "df_integration_test_assertions",
+  "defaultLocation": "US"
+}
+`
     );
 
     expect(
@@ -32,7 +66,8 @@ suite("@dataform/cli", ({ afterEach }) => {
     ).contains(
       "Could not find a recent installed version of @dataform/core in the project. Check that " +
         "either `dataformCoreVersion` is specified in `workflow_settings.yaml`, or " +
-        "`@dataform/core` is specified in `package.json`, then run `dataform install`."
+        "`@dataform/core` is specified in `package.json`. If using `package.json`, then run " +
+        "`dataform install`."
     );
   });
 
@@ -79,12 +114,15 @@ defaultAssertionDataset: dataform_assertions
         .stderr
     ).contains(
       "The install method cannot be used when dataformCoreVersion is managed by a " +
-        "workflow_settings.yaml file"
+        "workflow_settings.yaml file; packages will be installed at compile time instead"
     );
   });
 
-  test("golden path", async () => {
+  test("golden path with package.json", async () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
+    const npmCacheDir = tmpDirFixture.createNewTmpDir();
+    const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
+    const packageJsonPath = path.join(projectDir, "package.json");
 
     // Initialize a project using the CLI, don't install packages.
     await getProcessResult(
@@ -94,6 +132,31 @@ defaultAssertionDataset: dataform_assertions
         projectDir,
         "dataform-integration-tests",
         "US"
+      ])
+    );
+
+    // Install packages manually to get around bazel read-only sandbox issues.
+    const workflowSettings = dataform.WorkflowSettings.create(
+      loadYaml(fs.readFileSync(workflowSettingsPath, "utf8"))
+    );
+    delete workflowSettings.dataformCoreVersion;
+    fs.writeFileSync(workflowSettingsPath, dumpYaml(workflowSettings));
+    fs.writeFileSync(
+      packageJsonPath,
+      `{
+  "dependencies":{
+    "@dataform/core": "${version}"
+  }
+}`
+    );
+    await getProcessResult(
+      execFile(npmPath, [
+        "install",
+        "--prefix",
+        projectDir,
+        "--cache",
+        npmCacheDir,
+        corePackageTarPath
       ])
     );
 

@@ -14,14 +14,12 @@ node_modules/
 export interface IInitResult {
   filesWritten: string[];
   dirsCreated: string[];
-  installedNpmPackages: boolean;
 }
 
 export async function init(
   projectDir: string,
   projectConfig: dataform.IProjectConfig
 ): Promise<IInitResult> {
-  console.log("INIT CALLED");
   const workflowSettingsYamlPath = path.join(projectDir, "workflow_settings.yaml");
   const packageJsonPath = path.join(projectDir, "package.json");
   const gitignorePath = path.join(projectDir, ".gitignore");
@@ -84,7 +82,6 @@ export async function init(
 
   return {
     filesWritten,
-    dirsCreated,
-    installedNpmPackages: true
+    dirsCreated
   };
 }
