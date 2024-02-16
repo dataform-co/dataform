@@ -49,8 +49,7 @@ export async function init(
     dataformJsonPath,
     prettyJsonStringify(
       dataform.ProjectConfig.create({
-        defaultSchema: "dataform",
-        assertionSchema: "dataform_assertions",
+        assertionSchema: projectConfig.defaultSchema + "_assertions",
         ...projectConfig
       })
     )

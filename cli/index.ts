@@ -226,6 +226,15 @@ export function runCli() {
             }
           },
           {
+            ...ProjectConfigOptions.defaultSchema,
+            option: {
+              ...ProjectConfigOptions.defaultSchema.option,
+              describe:
+                "The default schema to use. If not set it will be defined as `dataform`.",
+              default: "dataform"
+            }
+          },
+          {
             name: skipInstallOptionName,
             option: {
               describe: "Whether to skip installing NPM packages.",
@@ -241,6 +250,7 @@ export function runCli() {
               warehouse: argv[ProjectConfigOptions.warehouse.name],
               defaultDatabase: argv[ProjectConfigOptions.defaultDatabase.name],
               defaultLocation: argv[ProjectConfigOptions.defaultLocation.name],
+              defaultSchema: argv[ProjectConfigOptions.defaultSchema.name],
               useRunCache: false
             },
             {
