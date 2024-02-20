@@ -3,7 +3,6 @@ import { dump as dumpYaml } from "js-yaml";
 import * as path from "path";
 
 import { CREDENTIALS_FILENAME } from "df/cli/api/commands/credentials";
-import { install } from "df/cli/api/commands/install";
 import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
 
@@ -15,17 +14,11 @@ node_modules/
 export interface IInitResult {
   filesWritten: string[];
   dirsCreated: string[];
-  installedNpmPackages: boolean;
-}
-
-export interface IInitOptions {
-  skipInstall?: boolean;
 }
 
 export async function init(
   projectDir: string,
-  projectConfig: dataform.IProjectConfig,
-  options: IInitOptions = {}
+  projectConfig: dataform.IProjectConfig
 ): Promise<IInitResult> {
   const workflowSettingsYamlPath = path.join(projectDir, "workflow_settings.yaml");
   const packageJsonPath = path.join(projectDir, "package.json");
@@ -87,12 +80,8 @@ export async function init(
   fs.mkdirSync(includesDir);
   dirsCreated.push(includesDir);
 
-  // Install packages.
-  await install(projectDir, options.skipInstall);
-
   return {
     filesWritten,
-    dirsCreated,
-    installedNpmPackages: !options.skipInstall
+    dirsCreated
   };
 }

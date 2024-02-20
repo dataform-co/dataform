@@ -109,9 +109,6 @@ export function printInitResult(result: IInitResult) {
     writeStdOut(successOutput("Files successfully written:"));
     result.filesWritten.forEach(file => writeStdOut(file, 1));
   }
-  if (result.installedNpmPackages) {
-    writeStdOut(successOutput("NPM packages successfully installed."));
-  }
 }
 
 export function printInitCredsResult(writtenFilePath: string) {

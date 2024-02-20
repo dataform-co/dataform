@@ -166,8 +166,6 @@ const jobPrefixOption: INamedOption<yargs.Options> = {
   }
 };
 
-const skipInstallOptionName = "skip-install";
-
 const testConnectionOptionName = "test-connection";
 
 const watchOptionName = "watch";
@@ -232,28 +230,13 @@ export function runCli() {
             }
           }
         ],
-        options: [
-          trackOption,
-          {
-            name: skipInstallOptionName,
-            option: {
-              describe: "Whether to skip installing NPM packages.",
-              default: false
-            }
-          }
-        ],
+        options: [trackOption],
         processFn: async argv => {
           print("Writing project files...\n");
-          const initResult = await init(
-            argv[projectDirOption.name],
-            {
-              defaultDatabase: argv[ProjectConfigOptions.defaultDatabase.name],
-              defaultLocation: argv[ProjectConfigOptions.defaultLocation.name]
-            },
-            {
-              skipInstall: argv[skipInstallOptionName]
-            }
-          );
+          const initResult = await init(argv[projectDirOption.name], {
+            defaultDatabase: argv[ProjectConfigOptions.defaultDatabase.name],
+            defaultLocation: argv[ProjectConfigOptions.defaultLocation.name]
+          });
           printInitResult(initResult);
           return 0;
         }
