@@ -5,11 +5,10 @@ import { promisify } from "util";
 
 import { ChildProcess, exec, fork } from "child_process";
 import { MISSING_CORE_VERSION_ERROR } from "df/cli/api/commands/install";
+import { readDataformCoreVersionFromWorkflowSettings } from "df/cli/api/utils";
 import { coerceAsError } from "df/common/errors/errors";
 import { decode64 } from "df/common/protos";
-import { setOrValidateTableEnumType } from "df/core/utils";
 import { dataform } from "df/protos/ts";
-import { readDataformCoreVersionFromWorkflowSettings } from "df/cli/api/utils";
 
 export class CompilationTimeoutError extends Error {}
 
@@ -68,8 +67,6 @@ export async function compile(
 
   const decodedResult = decode64(dataform.CoreExecutionResponse, result);
   compiledGraph = dataform.CompiledGraph.create(decodedResult.compile.compiledGraph);
-
-  compiledGraph.tables.forEach(setOrValidateTableEnumType);
 
   if (workflowSettingsDataformCoreVersion) {
     fs.rmdirSync(temporaryDirectoryPath, { recursive: true });
