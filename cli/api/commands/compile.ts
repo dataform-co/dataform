@@ -1,16 +1,15 @@
-import { ChildProcess, fork } from "child_process";
-import * as childProcess from "child_process";
 import * as fs from "fs-extra";
 import { load as loadYaml, YAMLException } from "js-yaml";
 import * as path from "path";
 import * as tmp from "tmp";
 import { promisify } from "util";
 
+import { ChildProcess, exec, fork } from "child_process";
+import { MISSING_CORE_VERSION_ERROR } from "df/cli/api/commands/install";
 import { coerceAsError } from "df/common/errors/errors";
 import { decode64 } from "df/common/protos";
 import { setOrValidateTableEnumType } from "df/core/utils";
 import { dataform } from "df/protos/ts";
-import { MISSING_CORE_VERSION_ERROR } from "df/cli/api/commands/install";
 
 export class CompilationTimeoutError extends Error {}
 
@@ -48,7 +47,7 @@ export async function compile(
 }`
     );
 
-    await promisify(childProcess.exec)("npm i --ignore-scripts", {
+    await promisify(exec)("npm i --ignore-scripts", {
       cwd: temporaryInstallPath
     });
 
