@@ -1,5 +1,4 @@
 import * as fs from "fs-extra";
-import { load as loadYaml, YAMLException } from "js-yaml";
 import * as path from "path";
 import * as tmp from "tmp";
 import { promisify } from "util";
@@ -10,6 +9,7 @@ import { coerceAsError } from "df/common/errors/errors";
 import { decode64 } from "df/common/protos";
 import { setOrValidateTableEnumType } from "df/core/utils";
 import { dataform } from "df/protos/ts";
+import { readDataformCoreVersionFromWorkflowSettings } from "df/cli/api/utils";
 
 export class CompilationTimeoutError extends Error {}
 
@@ -20,8 +20,14 @@ export async function compile(
 
   const resolvedProjectPath = path.resolve(compileConfig.projectDir);
   const packageJsonPath = path.join(resolvedProjectPath, "package.json");
+  const packageLockJsonPath = path.join(resolvedProjectPath, "package-lock.json");
   const projectNodeModulesPath = path.join(resolvedProjectPath, "node_modules");
-  const temporaryInstallPath = tmp.dirSync().name;
+
+  const temporaryDirectoryPath = tmp.dirSync().name;
+  const temporaryProjectPath = path.join(
+    temporaryDirectoryPath,
+    resolvedProjectPath.split("/").slice(0, -1)[0]
+  );
 
   const workflowSettingsDataformCoreVersion = readDataformCoreVersionFromWorkflowSettings(
     resolvedProjectPath
@@ -31,27 +37,31 @@ export async function compile(
     throw new Error(MISSING_CORE_VERSION_ERROR);
   }
 
-  // Packages are installed to a temporary directory in order to minimize interfering with user's
-  // project directories.
+  // For stateless package installation, a temporary directory is used in order to avoid interfering
+  // with user's project directories.
   if (workflowSettingsDataformCoreVersion) {
-    if (fs.existsSync(projectNodeModulesPath)) {
-      fs.rmdirSync(projectNodeModulesPath);
-    }
+    [projectNodeModulesPath, packageJsonPath, packageLockJsonPath].forEach(npmPath => {
+      if (fs.existsSync(npmPath)) {
+        throw new Error(`'${npmPath}' unexpected; remove it and try again`);
+      }
+    });
+
+    fs.copySync(resolvedProjectPath, temporaryDirectoryPath);
 
     fs.writeFileSync(
-      path.join(temporaryInstallPath, "package.json"),
+      path.join(temporaryProjectPath, "package.json"),
       `{
-  "dependencies":{
+  "dependencies": {
   "@dataform/core": "${workflowSettingsDataformCoreVersion}"
   }
 }`
     );
 
     await promisify(exec)("npm i --ignore-scripts", {
-      cwd: temporaryInstallPath
+      cwd: temporaryProjectPath
     });
 
-    fs.copySync(path.join(temporaryInstallPath, "node_modules"), resolvedProjectPath);
+    compileConfig.projectDir = temporaryDirectoryPath;
   }
 
   const result = await CompileChildProcess.forkProcess().compile(compileConfig);
@@ -62,8 +72,7 @@ export async function compile(
   compiledGraph.tables.forEach(setOrValidateTableEnumType);
 
   if (workflowSettingsDataformCoreVersion) {
-    fs.rmdirSync(projectNodeModulesPath);
-    fs.rmdirSync(temporaryInstallPath);
+    fs.rmdirSync(temporaryDirectoryPath, { recursive: true });
   }
 
   return compiledGraph;
@@ -133,25 +142,4 @@ export class CompileChildProcess {
       }
     }
   }
-}
-
-export function readDataformCoreVersionFromWorkflowSettings(
-  resolvedProjectPath: string
-): string | undefined {
-  const workflowSettingsPath = path.join(resolvedProjectPath, "workflow_settings.yaml");
-  if (!fs.existsSync(workflowSettingsPath)) {
-    return;
-  }
-
-  const workflowSettingsContent = fs.readFileSync(workflowSettingsPath, "utf-8");
-  let workflowSettingsAsJson = {};
-  try {
-    workflowSettingsAsJson = loadYaml(workflowSettingsContent);
-  } catch (e) {
-    if (e instanceof YAMLException) {
-      throw new Error(`${path} is not a valid YAML file: ${e}`);
-    }
-    throw e;
-  }
-  return dataform.WorkflowSettings.create(workflowSettingsAsJson).dataformCoreVersion;
 }

@@ -118,6 +118,34 @@ defaultAssertionDataset: dataform_assertions
     );
   });
 
+  ["package.json", "package-lock.json", "node_modules"].forEach(npmPath => {
+    test(`compile throws an error when dataformCoreVersion in workflow_settings.yaml and ${npmPath} is present`, async () => {
+      // When dataformCoreVersion is managed by workflow_settings.yaml, installation is stateless and
+      // lazy; it happens when compile is called, or otherwise as needed.
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        dumpYaml(
+          dataform.WorkflowSettings.create({
+            defaultProject: "dataform",
+            dataformCoreVersion: "3.0.0"
+          })
+        )
+      );
+      const resolvedNpmPath = path.join(projectDir, npmPath);
+      if (npmPath === "node_modules") {
+        fs.mkdirSync(resolvedNpmPath);
+      } else {
+        fs.writeFileSync(resolvedNpmPath, "");
+      }
+
+      expect(
+        (await getProcessResult(execFile(nodePath, [cliEntryPointPath, "compile", projectDir])))
+          .stderr
+      ).contains(`${npmPath}' unexpected; remove it and try again`);
+    });
+  });
+
   test("golden path with package.json", async () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
     const npmCacheDir = tmpDirFixture.createNewTmpDir();
