@@ -1,12 +1,16 @@
 import { ChildProcess, fork } from "child_process";
-import {
-  cleanupNpmFiles,
-  runInstallIfWorkflowSettingsDataformCoreVersion
-} from "df/cli/api/commands/install";
+import * as childProcess from "child_process";
+import * as fs from "fs-extra";
+import { load as loadYaml, YAMLException } from "js-yaml";
+import * as path from "path";
+import * as tmp from "tmp";
+import { promisify } from "util";
+
 import { coerceAsError } from "df/common/errors/errors";
 import { decode64 } from "df/common/protos";
 import { setOrValidateTableEnumType } from "df/core/utils";
 import { dataform } from "df/protos/ts";
+import { MISSING_CORE_VERSION_ERROR } from "df/cli/api/commands/install";
 
 export class CompilationTimeoutError extends Error {}
 
@@ -14,22 +18,53 @@ export async function compile(
   compileConfig: dataform.ICompileConfig = {}
 ): Promise<dataform.CompiledGraph> {
   let compiledGraph = dataform.CompiledGraph.create();
-  let workflowSettingsDataformCoreVersion = "";
-  try {
-    workflowSettingsDataformCoreVersion = await runInstallIfWorkflowSettingsDataformCoreVersion(
-      compileConfig.projectDir
+
+  const resolvedProjectPath = path.resolve(compileConfig.projectDir);
+  const packageJsonPath = path.join(resolvedProjectPath, "package.json");
+  const projectNodeModulesPath = path.join(resolvedProjectPath, "node_modules");
+  const temporaryInstallPath = tmp.dirSync().name;
+
+  const workflowSettingsDataformCoreVersion = readDataformCoreVersionFromWorkflowSettings(
+    resolvedProjectPath
+  );
+
+  if (!workflowSettingsDataformCoreVersion && !fs.existsSync(packageJsonPath)) {
+    throw new Error(MISSING_CORE_VERSION_ERROR);
+  }
+
+  // Packages are installed to a temporary directory in order to minimize interfering with user's
+  // project directories.
+  if (workflowSettingsDataformCoreVersion) {
+    if (fs.existsSync(projectNodeModulesPath)) {
+      fs.rmdirSync(projectNodeModulesPath);
+    }
+
+    fs.writeFileSync(
+      path.join(temporaryInstallPath, "package.json"),
+      `{
+  "dependencies":{
+  "@dataform/core": "${workflowSettingsDataformCoreVersion}"
+  }
+}`
     );
 
-    const result = await CompileChildProcess.forkProcess().compile(compileConfig);
+    await promisify(childProcess.exec)("npm i --ignore-scripts", {
+      cwd: temporaryInstallPath
+    });
 
-    const decodedResult = decode64(dataform.CoreExecutionResponse, result);
-    compiledGraph = dataform.CompiledGraph.create(decodedResult.compile.compiledGraph);
+    fs.copySync(path.join(temporaryInstallPath, "node_modules"), resolvedProjectPath);
+  }
 
-    compiledGraph.tables.forEach(setOrValidateTableEnumType);
-  } finally {
-    if (workflowSettingsDataformCoreVersion) {
-      cleanupNpmFiles(compileConfig.projectDir);
-    }
+  const result = await CompileChildProcess.forkProcess().compile(compileConfig);
+
+  const decodedResult = decode64(dataform.CoreExecutionResponse, result);
+  compiledGraph = dataform.CompiledGraph.create(decodedResult.compile.compiledGraph);
+
+  compiledGraph.tables.forEach(setOrValidateTableEnumType);
+
+  if (workflowSettingsDataformCoreVersion) {
+    fs.rmdirSync(projectNodeModulesPath);
+    fs.rmdirSync(temporaryInstallPath);
   }
 
   return compiledGraph;
@@ -99,4 +134,25 @@ export class CompileChildProcess {
       }
     }
   }
+}
+
+export function readDataformCoreVersionFromWorkflowSettings(
+  resolvedProjectPath: string
+): string | undefined {
+  const workflowSettingsPath = path.join(resolvedProjectPath, "workflow_settings.yaml");
+  if (!fs.existsSync(workflowSettingsPath)) {
+    return;
+  }
+
+  const workflowSettingsContent = fs.readFileSync(workflowSettingsPath, "utf-8");
+  let workflowSettingsAsJson = {};
+  try {
+    workflowSettingsAsJson = loadYaml(workflowSettingsContent);
+  } catch (e) {
+    if (e instanceof YAMLException) {
+      throw new Error(`${path} is not a valid YAML file: ${e}`);
+    }
+    throw e;
+  }
+  return dataform.WorkflowSettings.create(workflowSettingsAsJson).dataformCoreVersion;
 }
