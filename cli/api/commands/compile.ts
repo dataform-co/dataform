@@ -22,11 +22,7 @@ export async function compile(
   const packageLockJsonPath = path.join(resolvedProjectPath, "package-lock.json");
   const projectNodeModulesPath = path.join(resolvedProjectPath, "node_modules");
 
-  const temporaryDirectoryPath = tmp.dirSync().name;
-  const temporaryProjectPath = path.join(
-    temporaryDirectoryPath,
-    resolvedProjectPath.split("/").slice(0, -1)[0]
-  );
+  const temporaryProjectPath = tmp.dirSync().name;
 
   const workflowSettingsDataformCoreVersion = readDataformCoreVersionFromWorkflowSettings(
     resolvedProjectPath
@@ -45,7 +41,7 @@ export async function compile(
       }
     });
 
-    fs.copySync(resolvedProjectPath, temporaryDirectoryPath);
+    fs.copySync(resolvedProjectPath, temporaryProjectPath);
 
     fs.writeFileSync(
       path.join(temporaryProjectPath, "package.json"),
@@ -60,7 +56,7 @@ export async function compile(
       cwd: temporaryProjectPath
     });
 
-    compileConfig.projectDir = temporaryDirectoryPath;
+    compileConfig.projectDir = temporaryProjectPath;
   }
 
   const result = await CompileChildProcess.forkProcess().compile(compileConfig);
@@ -69,7 +65,7 @@ export async function compile(
   compiledGraph = dataform.CompiledGraph.create(decodedResult.compile.compiledGraph);
 
   if (workflowSettingsDataformCoreVersion) {
-    fs.rmdirSync(temporaryDirectoryPath, { recursive: true });
+    fs.rmdirSync(temporaryProjectPath, { recursive: true });
   }
 
   return compiledGraph;

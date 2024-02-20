@@ -7,6 +7,7 @@ import { suite, test } from "df/testing";
 suite("examples", () => {
   test("stackoverflow_reporter compiles", async () => {
     fs.copySync("examples/node_modules", "examples/stackoverflow_reporter/node_modules");
+    fs.writeFileSync("examples/stackoverflow_reporter/package.json", "");
 
     const graph = await compile({ projectDir: "examples/stackoverflow_reporter" });
 
@@ -15,6 +16,7 @@ suite("examples", () => {
 
   test("extreme_weather_programming compiles", async () => {
     fs.copySync("examples/node_modules", "examples/extreme_weather_programming/node_modules");
+    fs.writeFileSync("examples/extreme_weather_programming/package.json", "");
 
     const graph = await compile({ projectDir: "examples/extreme_weather_programming" });
 
