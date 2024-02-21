@@ -1,28 +1,25 @@
 import { expect } from "chai";
 import Long from "long";
 
-import * as dfapi from "df/api";
-import * as dbadapters from "df/api/dbadapters";
-import { BigQueryDbAdapter } from "df/api/dbadapters/bigquery";
-import * as adapters from "df/core/adapters";
-import { BigQueryAdapter } from "df/core/adapters/bigquery";
+import * as dfapi from "df/cli/api";
+import * as dbadapters from "df/cli/api/dbadapters";
+import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
+import { ExecutionSql } from "df/cli/api/dbadapters/execution_sql";
 import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { compile, dropAllTables, getTableRows, keyBy } from "df/tests/integration/utils";
 
 suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) => {
-  const credentials = dfapi.credentials.read("bigquery", "test_credentials/bigquery.json");
+  const credentials = dfapi.credentials.read("test_credentials/bigquery.json");
   let dbadapter: BigQueryDbAdapter;
 
   before("create adapter", async () => {
-    dbadapter = (await dbadapters.create(
-      { ...credentials, location: "EU" },
-      "bigquery"
-    )) as BigQueryDbAdapter;
+    dbadapter = new BigQueryDbAdapter({
+      ...credentials,
+      location: "EU"
+    });
   });
-
-  after("close adapter", () => dbadapter.close());
 
   suite("run", { parallel: true }, () => {
     test("project e2e", { timeout: 60000 }, async () => {
@@ -81,7 +78,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       await cleanWarehouse(compiledGraph, dbadapter);
 
       // Run two iterations of the project.
-      const adapter = adapters.create(
+      const adapter = new ExecutionSql(
         compiledGraph.projectConfig,
         compiledGraph.dataformCoreVersion
       );
@@ -258,9 +255,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
   suite("evaluate", async () => {
     test("evaluate from valid compiled graph as valid", async () => {
       // Create and run the project.
-      const compiledGraph = await compile("tests/integration/bigquery_project", "evaluate", {
-        useRunCache: false
-      });
+      const compiledGraph = await compile("tests/integration/bigquery_project", "evaluate");
       const executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
       await dfapi.run(dbadapter, executionGraph).result();
 
@@ -388,7 +383,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
         target: { schema: "", name: "", database: "" }
       };
 
-      const bqadapter = new BigQueryAdapter({ warehouse: "bigquery" }, "1.4.8");
+      const bqadapter = new ExecutionSql({ warehouse: "bigquery" }, "1.4.8");
 
       const refresh = bqadapter.publishTasks(table, { fullRefresh: true }, { fields: [] }).build();
       const splitRefresh = refresh[0].statement.split("\n;\n");
@@ -501,7 +496,7 @@ async function cleanWarehouse(
 ) {
   await dropAllTables(
     (await dfapi.build(compiledGraph, {}, dbadapter)).warehouseState.tables,
-    adapters.create(compiledGraph.projectConfig, compiledGraph.dataformCoreVersion),
+    new ExecutionSql(compiledGraph.projectConfig, compiledGraph.dataformCoreVersion),
     dbadapter
   );
 }

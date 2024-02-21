@@ -3,14 +3,25 @@ load("//tools/common:copy.bzl", "copy_file")
 load("@io_bazel_rules_docker//container:container.bzl", "container_image", "container_push")
 load("@io_bazel_rules_docker//docker/util:run.bzl", "container_run_and_commit")
 load("//:version.bzl", "DF_VERSION")
+load("//testing:index.bzl", "ts_test_suite")
+load("//tools:node_modules.bzl", "node_modules")
 
 package(default_visibility = ["//visibility:public"])
 
 ts_library(
     name = "cli",
-    srcs = glob(["**/*.ts"]),
+    srcs = [
+        "analytics.ts",
+        "config.ts",
+        "console.ts",
+        "credentials.ts",
+        "index.ts",
+        "util.ts",
+        "yargswrapper.ts",
+    ],
     deps = [
-        "//api",
+        "//cli/api",
+        "//cli/vm",
         "//core",
         "//protos:ts",
         "//sqlx:format",
@@ -24,11 +35,41 @@ ts_library(
         "@npm//chokidar",
         "@npm//glob",
         "@npm//parse-duration",
-        "@npm//presto-client",
         "@npm//readline-sync",
         "@npm//untildify",
         "@npm//uuid",
         "@npm//yargs",
+    ],
+)
+
+node_modules(
+    name = "node_modules",
+    deps = [
+        "//packages/@dataform/cli:package_tar",
+    ],
+)
+
+ts_test_suite(
+    name = "tests",
+    srcs = ["index_test.ts"],
+    data = [
+        ":node_modules",
+        "//test_credentials:bigquery.json",
+        "//packages/@dataform/core:package_tar",
+        "@nodejs//:node",
+        "@nodejs//:npm",
+    ],
+    deps = [
+        "//core",
+        "//protos:ts",
+        "//testing",
+        "@npm//@types/chai",
+        "@npm//@types/fs-extra",
+        "@npm//@types/js-yaml",
+        "@npm//@types/node",
+        "@npm//chai",
+        "@npm//fs-extra",
+        "@npm//js-yaml",
     ],
 )
 

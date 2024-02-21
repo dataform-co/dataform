@@ -1,10 +1,1 @@
-export {
-    adapters,
-    compiler,
-    compileStandaloneSqlxQuery,
-    indexFileGenerator,
-    main,
-    session,
-    supportedFeatures,
-    version
-} from "df/core";
+export { compiler, indexFileGenerator, main, session, supportedFeatures, version } from "df/core";

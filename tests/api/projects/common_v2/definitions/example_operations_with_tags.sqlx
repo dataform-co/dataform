@@ -1,6 +1,5 @@
 config {
     type: "operations",
-    dependencies: "example_inline",
     tags: ["tag1"]
 }
 

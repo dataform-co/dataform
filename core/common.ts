@@ -177,21 +177,6 @@ export interface IRecordDescriptor {
   displayName?: string;
 
   /**
-   * @hidden
-   */
-  dimension?: "category" | "timestamp" | "number";
-
-  /**
-   * @hidden
-   */
-  aggregator?: "sum" | "distinct" | "derived";
-
-  /**
-   * @hidden
-   */
-  expression?: string;
-
-  /**
    * Tags that apply to this column (experimental).
    *
    * @hidden
@@ -221,9 +206,6 @@ export const IRecordDescriptorProperties = () =>
     "description",
     "columns",
     "displayName",
-    "dimension",
-    "aggregator",
-    "expression",
     "tags",
     "bigqueryPolicyTags"
   ]);

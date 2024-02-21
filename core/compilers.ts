@@ -1,70 +1,54 @@
-import { AssertionContext } from "df/core/assertion";
-import { OperationContext } from "df/core/operation";
-import { TableContext } from "df/core/table";
-import * as utils from "df/core/utils";
+import { load as loadYaml, YAMLException } from "js-yaml";
+
+import * as Path from "df/core/path";
 import { SyntaxTreeNode, SyntaxTreeNodeType } from "df/sqlx/lexer";
 
-export function compile(code: string, path: string) {
-  if (path.endsWith(".sqlx")) {
+const CONTEXT_FUNCTIONS = [
+  "self",
+  "ref",
+  "resolve",
+  "name",
+  "when",
+  "incremental",
+  "schema",
+  "database"
+]
+  .map(name => `const ${name} = ctx.${name} ? ctx.${name}.bind(ctx) : undefined;`)
+  .join("\n");
+
+export function compile(code: string, path: string): string {
+  if (Path.fileExtension(path) === "sqlx") {
     return compileSqlx(SyntaxTreeNode.create(code), path);
   }
-  if (path.endsWith(".assert.sql")) {
-    return compileAssertionSql(code, path);
+  if (Path.fileExtension(path) === "yaml") {
+    try {
+      const yamlAsJson = loadYaml(code);
+      return `exports.asJson = ${JSON.stringify(yamlAsJson)}`;
+    } catch (e) {
+      if (e instanceof YAMLException) {
+        throw Error(`${path} is not a valid YAML file: ${e}`);
+      }
+      throw e;
+    }
   }
-  if (path.endsWith(".ops.sql")) {
-    return compileOperationSql(code, path);
+  if (Path.fileExtension(path) === "ipynb") {
+    let codeAsJson = {};
+    try {
+      codeAsJson = JSON.parse(code);
+    } catch (e) {
+      throw new Error(`Error parsing ${path} as JSON: ${e}`);
+    }
+    const notebookAsJson = JSON.stringify(codeAsJson);
+    return `exports.asJson = ${notebookAsJson}`;
   }
-  if (path.endsWith(".sql")) {
-    return compileTableSql(code, path);
+  if (Path.fileExtension(path) === "sql") {
+    const escapedCode = code
+      .replace(/\\/g, "\\\\")
+      .replace(/`/g, "\\`")
+      .replace(/\${/g, "\\${");
+    return `exports.query = \`${escapedCode}\`;`;
   }
   return code;
-}
-
-// For older versions of @dataform/core, these functions may not actually exist so leave them as undefined.
-function safelyBindCtxFunction(name: string) {
-  return `ctx.${name} ? ctx.${name}.bind(ctx) : undefined`;
-}
-
-function compileTableSql(code: string, path: string) {
-  const { sql, js } = extractJsBlocks(code);
-  const functionsBindings = getFunctionPropertyNames(TableContext.prototype).map(
-    name => `const ${name} = ${safelyBindCtxFunction(name)};`
-  );
-
-  return `
-  publish("${utils.getEscapedFileName(path)}").query(ctx => {
-    ${functionsBindings.join("\n")}
-    ${js}
-    return \`${sql}\`;
-  })`;
-}
-
-function compileOperationSql(code: string, path: string) {
-  const { sql, js } = extractJsBlocks(code);
-  const functionsBindings = getFunctionPropertyNames(OperationContext.prototype).map(
-    name => `const ${name} = ${safelyBindCtxFunction(name)};`
-  );
-
-  return `
-  operate("${utils.getEscapedFileName(path)}").queries(ctx => {
-    ${functionsBindings.join("\n")}
-    ${js}
-    return \`${sql}\`.split("\\n---\\n");
-  })`;
-}
-
-function compileAssertionSql(code: string, path: string) {
-  const { sql, js } = extractJsBlocks(code);
-  const functionsBindings = getFunctionPropertyNames(AssertionContext.prototype).map(
-    name => `const ${name} = ${safelyBindCtxFunction(name)};`
-  );
-
-  return `
-  assert("${utils.getEscapedFileName(path)}").query(ctx => {
-    ${functionsBindings.join("\n")}
-    ${js}
-    return \`${sql}\`;
-  })`;
 }
 
 export function extractJsBlocks(code: string): { sql: string; js: string } {
@@ -90,58 +74,27 @@ export function extractJsBlocks(code: string): { sql: string; js: string } {
   };
 }
 
-export function compileStandaloneSqlxQuery(code: string) {
-  const { config, js, sql, incremental, preOperations, postOperations, inputs } = extractSqlxParts(
-    SyntaxTreeNode.create(code)
-  );
-  if (config) {
-    throw new Error(`Standalone SQLX queries may not define 'config' code blocks.`);
-  }
-  if (incremental) {
-    throw new Error(`Standalone SQLX queries may not define 'incremental_where' code blocks.`);
-  }
-  if (preOperations.length > 0) {
-    throw new Error(`Standalone SQLX queries may not define 'pre_operations' code blocks.`);
-  }
-  if (postOperations.length > 0) {
-    throw new Error(`Standalone SQLX queries may not define 'post_operations' code blocks.`);
-  }
-  if (inputs.length > 0) {
-    throw new Error(`Standalone SQLX queries may not define 'input' code blocks.`);
-  }
-  return `
-    const ref = dataform.resolve.bind(dataform);
-    const resolve = dataform.resolve.bind(dataform);
-    ${js}
-    return \`${sql}\`;
-  `;
-}
-
-function compileSqlx(rootNode: SyntaxTreeNode, path: string) {
+function compileSqlx(rootNode: SyntaxTreeNode, path: string): string {
   const { config, js, sql, incremental, preOperations, postOperations, inputs } = extractSqlxParts(
     rootNode
   );
 
-  const contextFunctions = ["self", "ref", "resolve", "name", "when", "incremental", "schema", "database"]
-    .map(name => `const ${name} = ctx.${name} ? ctx.${name}.bind(ctx) : undefined;`)
-    .join("\n");
-
   return `dataform.sqlxAction({
   sqlxConfig: {
-    name: "${utils.getEscapedFileName(path)}",
+    name: "${Path.escapedFileName(path)}",
     type: "operations",
     ...${config || "{}"}
   },
   sqlStatementCount: ${sql.length},
   sqlContextable: (ctx) => {
-    ${contextFunctions}
+    ${CONTEXT_FUNCTIONS}
     ${js}
     return [${sql.map(sqlOp => `\`${sqlOp}\``)}];
   },
   incrementalWhereContextable: ${
     !!incremental
       ? `(ctx) => {
-    ${contextFunctions}
+    ${CONTEXT_FUNCTIONS}
     ${js}
     return \`${incremental}\`
   }`
@@ -150,7 +103,7 @@ function compileSqlx(rootNode: SyntaxTreeNode, path: string) {
   preOperationsContextable: ${
     preOperations.length > 0
       ? `(ctx) => {
-    ${contextFunctions}
+    ${CONTEXT_FUNCTIONS}
     ${js}
     return [${preOperations.map(preOpSql => `\`${preOpSql}\``)}];
   }`
@@ -159,7 +112,7 @@ function compileSqlx(rootNode: SyntaxTreeNode, path: string) {
   postOperationsContextable: ${
     postOperations.length > 0
       ? `(ctx) => {
-    ${contextFunctions}
+    ${CONTEXT_FUNCTIONS}
     ${js}
     return [${postOperations.map(postOpSql => `\`${postOpSql}\``)}];
   }`
@@ -279,22 +232,6 @@ function extractSqlxParts(rootNode: SyntaxTreeNode) {
   };
 }
 
-function getFunctionPropertyNames(prototype: any) {
-  return [
-    ...new Set(
-      Object.getOwnPropertyNames(prototype).filter(propertyName => {
-        if (typeof prototype[propertyName] !== "function") {
-          return false;
-        }
-        if (propertyName === "constructor") {
-          return false;
-        }
-        return true;
-      })
-    )
-  ];
-}
-
 function createEscapedStatements(nodes: Array<string | SyntaxTreeNode>) {
   const results = [""];
   nodes.forEach(node => {
@@ -319,7 +256,7 @@ const SQL_STATEMENT_ESCAPERS = new Map([
   [
     SyntaxTreeNodeType.SQL_LITERAL_MULTILINE_STRING,
     (str: string) => str.replace(/\\/g, "\\\\").replace(/\`/g, "\\`")
-  ],
+  ]
 ]);
 
 function escapeNode(node: string | SyntaxTreeNode) {

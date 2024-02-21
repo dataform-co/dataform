@@ -1,0 +1,419 @@
+syntax = "proto3";
+
+package dataform;
+
+option java_package = "com.dataform.protos";
+option java_outer_classname = "ConfigsMeta";
+option java_multiple_files = true;
+
+option go_package = "github.com/dataform-co/dataform/protos/dataform";
+
+// Workflow Settings defines the contents of the `workflow_settings.yaml`
+// configuration file.
+message WorkflowSettings {
+  // The desired dataform core version to compile against.
+  string dataform_core_version = 1;
+
+  // Required. The default Google Cloud project (database).
+  string default_project = 2;
+
+  // Required. The default dataset (schema).
+  string default_dataset = 3;
+
+  // Required. The default BigQuery location to use. For more information on
+  // BigQuery locations, see https://cloud.google.com/bigquery/docs/locations.
+  string default_location = 4;
+
+  // Required. The default dataset (schema) for assertions.
+  string default_assertion_dataset = 5;
+
+  // Optional. User-defined variables that are made available to project code
+  // during compilation. An object containing a list of "key": value pairs.
+  // Example: `{ "name": "wrench", "mass": "1.3kg", "count": "3" }`.
+  map<string, string> vars = 6;
+
+  // Optional. The suffix to append to all Google Cloud project references.
+  string project_suffix = 7;
+
+  // Optional. The suffix to append to all dataset references.
+  string dataset_suffix = 8;
+
+  // Optional. The prefix to append to all action names.
+  string name_prefix = 9;
+}
+
+// Action configs defines the contents of `actions.yaml` configuration files.
+// TODO(ekrekr): consolidate these configuration options in the JS API.
+message ActionConfigs {
+  repeated ActionConfig actions = 1;
+}
+
+// Action config defines the configuration properties of actions.
+message ActionConfig {
+  // Target represents a unique action identifier.
+  message Target {
+    // The Google Cloud project (database) of the action.
+    string project = 1;
+
+    // The dataset (schema) of the action. For notebooks, this is the location.
+    string dataset = 2;
+
+    // The name of the action.
+    string name = 4;
+  }
+
+  message ColumnDescriptor {
+    // The identifier for the column, using multiple parts for nested records.
+    repeated string path = 1;
+
+    // A text description of the column.
+    string description = 2;
+
+    // A list of BigQuery policy tags that will be applied to the column.
+    repeated string bigquery_policy_tags = 3;
+  }
+
+  message TableConfig {
+    // The name of the table.
+    string name = 1;
+
+    // The dataset (schema) of the table.
+    string dataset = 2;
+
+    // The Google Cloud project (database) of the table.
+    string project = 3;
+
+    // Targets of actions that this action is dependent on.
+    repeated Target dependency_targets = 4;
+
+    // Path to the source file that the contents of the action is loaded from.
+    string filename = 5;
+
+    // A list of user-defined tags with which the action should be labeled.
+    repeated string tags = 6;
+
+    // If set to true, this action will not be executed. However, the action can
+    // still be depended upon. Useful for temporarily turning off broken
+    // actions.
+    bool disabled = 7;
+
+    // Queries to run before `query`. This can be useful for granting
+    // permissions.
+    repeated string pre_operations = 8;
+
+    // Queries to run after `query`.
+    repeated string post_operations = 9;
+
+    // Description of the table.
+    string description = 10;
+
+    // Descriptions of columns within the table.
+    repeated ColumnDescriptor columns = 11;
+
+    // The key by which to partition the table. Typically the name of a
+    // timestamp or the date column. See
+    // https://cloud.google.com/dataform/docs/partitions-clusters.
+    string partition_by = 12;
+
+    // The number of days for which BigQuery stores data in each partition.
+    // The setting applies to all partitions in a table, but is calculated
+    // independently for each partition based on the partition time.
+    int32 partition_expiration_days = 13;
+
+    // Declares whether the partitioned table requires a WHERE clause
+    // predicate filter that filters the partitioning column.
+    bool require_partition_filter = 14;
+
+    // The keys by which to cluster partitions by. See
+    // https://cloud.google.com/dataform/docs/partitions-clusters.
+    repeated string cluster_by = 15;
+
+    // Key-value pairs for BigQuery labels. If the label name contains special
+    // characters, e.g. hyphens, then quote its name, e.g. `labels: {
+    // "label-name": "value" }`.
+    map<string, string> labels = 16;
+
+    // Key-value pairs of additional options to pass to the BigQuery API.
+    //
+    // Some options, for example, partitionExpirationDays, have dedicated
+    // type/validity checked fields. For such options, use the dedicated
+    // fields.
+    //
+    // String values must be encapsulated in double-quotes, for example:
+    // additionalOptions: {numeric_option: "5", string_option: '"string-value"'}
+    //
+    // If the option name contains special characters, encapsulate the name in
+    // quotes, for example: additionalOptions: { "option-name": "value" }.
+    map<string, string> additional_options = 17;
+  }
+
+  message ViewConfig {
+    // The name of the view.
+    string name = 1;
+
+    // The dataset (schema) of the view.
+    string dataset = 2;
+
+    // The Google Cloud project (database) of the view.
+    string project = 3;
+
+    // Targets of actions that this action is dependent on.
+    repeated Target dependency_targets = 4;
+
+    // Path to the source file that the contents of the action is loaded from.
+    string filename = 5;
+
+    // A list of user-defined tags with which the action should be labeled.
+    repeated string tags = 6;
+
+    // If set to true, this action will not be executed. However, the action can
+    // still be depended upon. Useful for temporarily turning off broken
+    // actions.
+    bool disabled = 7;
+
+    // Queries to run before `query`. This can be useful for granting
+    // permissions.
+    repeated string pre_operations = 8;
+
+    // Queries to run after `query`.
+    repeated string post_operations = 9;
+
+    // Applies the materialized view optimization, see
+    // https://cloud.google.com/bigquery/docs/materialized-views-intro.
+    bool materialized = 10;
+
+    // Description of the view.
+    string description = 11;
+
+    // Descriptions of columns within the table.
+    repeated ColumnDescriptor columns = 12;
+
+    // Key-value pairs for BigQuery labels. If the label name contains special
+    // characters, e.g. hyphens, then quote its name, e.g. `labels: {
+    // "label-name": "value" }`.
+    map<string, string> labels = 13;
+
+    // Key-value pairs of additional options to pass to the BigQuery API.
+    //
+    // Some options, for example, partitionExpirationDays, have dedicated
+    // type/validity checked fields. For such options, use the dedicated
+    // fields.
+    //
+    // String values must be encapsulated in double-quotes, for example:
+    // additionalOptions: {numeric_option: "5", string_option: '"string-value"'}
+    //
+    // If the option name contains special characters, encapsulate the name in
+    // quotes, for example: additionalOptions: { "option-name": "value" }.
+    map<string, string> additional_options = 14;
+  }
+
+  message IncrementalTableConfig {
+    // The name of the incremental table.
+    string name = 1;
+
+    // The dataset (schema) of the incremental table.
+    string dataset = 2;
+
+    // The Google Cloud project (database) of the incremental table.
+    string project = 3;
+
+    // Targets of actions that this action is dependent on.
+    repeated Target dependency_targets = 4;
+
+    // Path to the source file that the contents of the action is loaded from.
+    string filename = 5;
+
+    // A list of user-defined tags with which the action should be labeled.
+    repeated string tags = 6;
+
+    // If set to true, this action will not be executed. However, the action can
+    // still be depended upon. Useful for temporarily turning off broken
+    // actions.
+    bool disabled = 7;
+
+    // Queries to run before `query`. This can be useful for granting
+    // permissions.
+    repeated string pre_operations = 8;
+
+    // Queries to run after `query`.
+    repeated string post_operations = 9;
+
+    // If true, prevents the dataset from being rebuilt from scratch.
+    bool protected = 10;
+
+    // is specified, if a row arrives whose key matches an existing row's key,
+    // then the existing row is overwritten with the new data.
+
+    // If set, unique key represents a set of names of columns that will act as
+    // a the unique key. To enforce this, when updating the incremental
+    // table, Dataform merges rows with `uniqueKey` instead of appending them.
+    repeated string unique_key = 11;
+
+    // Description of the incremental table.
+    string description = 12;
+
+    // Descriptions of columns within the table.
+    repeated ColumnDescriptor columns = 13;
+
+    // The key by which to partition the table. Typically the name of a
+    // timestamp or the date column. See
+    // https://cloud.google.com/dataform/docs/partitions-clusters.
+    string partition_by = 14;
+
+    // The number of days for which BigQuery stores data in each partition.
+    // The setting applies to all partitions in a table, but is calculated
+    // independently for each partition based on the partition time.
+    int32 partition_expiration_days = 15;
+
+    // Declares whether the partitioned table requires a WHERE clause
+    // predicate filter that filters the partitioning column.
+    bool require_partition_filter = 16;
+
+    // SQL-based filter for when incremental updates are applied.
+    string update_partition_filter = 17;
+
+    // The keys by which to cluster partitions by. See
+    // https://cloud.google.com/dataform/docs/partitions-clusters.
+    repeated string cluster_by = 18;
+
+    // Key-value pairs for BigQuery labels. If the label name contains special
+    // characters, e.g. hyphens, then quote its name, e.g. `labels: {
+    // "label-name": "value" }`.
+    map<string, string> labels = 19;
+
+    // Key-value pairs of additional options to pass to the BigQuery API.
+    //
+    // Some options, for example, partitionExpirationDays, have dedicated
+    // type/validity checked fields. For such options, use the dedicated
+    // fields.
+    //
+    // String values must be encapsulated in double-quotes, for example:
+    // additionalOptions: {numeric_option: "5", string_option: '"string-value"'}
+    //
+    // If the option name contains special characters, encapsulate the name in
+    // quotes, for example: additionalOptions: { "option-name": "value" }.
+    map<string, string> additional_options = 20;
+  }
+
+  message AssertionConfig {
+    // The name of the assertion.
+    string name = 1;
+
+    // The dataset (schema) of the assertion.
+    string dataset = 2;
+
+    // The Google Cloud project (database) of the assertion.
+    string project = 3;
+
+    // Targets of actions that this action is dependent on.
+    repeated Target dependency_targets = 4;
+
+    // Path to the source file that the contents of the action is loaded from.
+    string filename = 5;
+
+    // A list of user-defined tags with which the action should be labeled.
+    repeated string tags = 6;
+
+    // If set to true, this action will not be executed. However, the action can
+    // still be depended upon. Useful for temporarily turning off broken
+    // actions.
+    bool disabled = 7;
+
+    // Description of the assertion.
+    string description = 8;
+  }
+
+  message OperationConfig {
+    // The name of the operation.
+    string name = 1;
+
+    // The dataset (schema) of the operation.
+    string dataset = 2;
+
+    // The Google Cloud project (database) of the operation.
+    string project = 3;
+
+    // Targets of actions that this action is dependent on.
+    repeated Target dependency_targets = 4;
+
+    // Path to the source file that the contents of the action is loaded from.
+    string filename = 5;
+
+    // A list of user-defined tags with which the action should be labeled.
+    repeated string tags = 6;
+
+    // If set to true, this action will not be executed. However, the action can
+    // still be depended upon. Useful for temporarily turning off broken
+    // actions.
+    bool disabled = 7;
+
+    // Declares that this action creates a dataset which should be
+    // referenceable as a dependency target, for example by using the `ref`
+    // function.
+    bool has_output = 8;
+
+    // Description of the operation.
+    string description = 9;
+
+    // Descriptions of columns within the operation. Can only be set if
+    // hasOutput is true.
+    repeated ColumnDescriptor columns = 10;
+  }
+
+  message DeclarationConfig {
+    // The name of the declaration.
+    string name = 1;
+
+    // The dataset (schema) of the declaration.
+    string dataset = 2;
+
+    // The Google Cloud project (database) of the declaration.
+    string project = 3;
+
+    // Description of the declaration.
+    string description = 4;
+
+    // Descriptions of columns within the declaration.
+    repeated ColumnDescriptor columns = 5;
+  }
+
+  message NotebookConfig {
+    // The name of the notebook.
+    string name = 1;
+
+    // The Google Cloud location of the notebook.
+    string location = 2;
+
+    // The Google Cloud project (database) of the notebook.
+    string project = 3;
+
+    // Targets of actions that this action is dependent on.
+    repeated Target dependency_targets = 4;
+
+    // Path to the source file that the contents of the action is loaded from.
+    string filename = 5;
+
+    // A list of user-defined tags with which the action should be labeled.
+    repeated string tags = 6;
+
+    // If set to true, this action will not be executed. However, the action can
+    // still be depended upon. Useful for temporarily turning off broken
+    // actions.
+    bool disabled = 7;
+
+    // Description of the notebook.
+    string description = 8;
+
+    // TODO(ekrekr): add a notebook runtime field definition.
+  }
+
+  oneof action {
+    TableConfig table = 1;
+    ViewConfig view = 2;
+    IncrementalTableConfig incremental_table = 3;
+    AssertionConfig assertion = 4;
+    OperationConfig operation = 5;
+    DeclarationConfig declaration = 6;
+    NotebookConfig notebook = 7;
+  }
+}

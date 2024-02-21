@@ -1,16 +1,14 @@
-import { decode64, encode64 } from "df/common/protos";
+import { decode64, encode64, verifyObjectMatchesProto } from "df/common/protos";
+import { Assertion } from "df/core/actions/assertion";
+import { Declaration } from "df/core/actions/declaration";
+import { Notebook } from "df/core/actions/notebook";
+import { Operation } from "df/core/actions/operation";
+import { Table } from "df/core/actions/table";
+import * as Path from "df/core/path";
 import { Session } from "df/core/session";
-import * as utils from "df/core/utils";
+import { nativeRequire } from "df/core/utils";
+import { readWorkflowSettings } from "df/core/workflow_settings";
 import { dataform } from "df/protos/ts";
-
-declare var __webpack_require__: any;
-declare var __non_webpack_require__: any;
-
-// If this code is bundled with webpack, we need to side-step the webpack require re-writing and use the real require method in here.
-const nativeRequire =
- typeof __webpack_require__ === "function"
-    ? __non_webpack_require__
-    : require;
 
 /**
  * This is the main entry point into the user space code that should be invoked by the compilation wrapper sandbox.
@@ -31,36 +29,20 @@ export function main(coreExecutionRequest: Uint8Array | string): Uint8Array | st
   }
   const compileRequest = request.compile;
 
-  // Read the project config from the root of the project.
-  const originalProjectConfig = nativeRequire("dataform.json");
+  // Read the workflow settings from the root of the project.
+  let projectConfig = readWorkflowSettings();
 
+  // Merge in project config overrides.
   const projectConfigOverride = compileRequest.compileConfig.projectConfigOverride ?? {};
-
-  // Stop using the deprecated 'gcloudProjectId' field.
-  if (!originalProjectConfig.defaultDatabase) {
-    originalProjectConfig.defaultDatabase = originalProjectConfig.gcloudProjectId;
-  }
-  delete originalProjectConfig.gcloudProjectId;
-
-  let projectConfig = { ...originalProjectConfig };
-
-  // Merge in general project config overrides.
-  projectConfig = {
+  projectConfig = dataform.ProjectConfig.create({
     ...projectConfig,
     ...projectConfigOverride,
     vars: { ...projectConfig.vars, ...projectConfigOverride.vars }
-  };
+  });
 
   // Initialize the compilation session.
   const session = nativeRequire("@dataform/core").session as Session;
-
-  session.init(
-    compileRequest.compileConfig.projectDir,
-    projectConfig, originalProjectConfig,
-    // `main.ts` compilation does not support compiling plain ".sql" files.
-    // (They are not require()d, and thus not attached to the session / compiled.)
-    false /* supportSqlFileCompilation */,
-  );
+  session.init(compileRequest.compileConfig.projectDir, projectConfig, projectConfig);
 
   // Allow "includes" files to use the current session object.
   globalAny.dataform = session;
@@ -70,13 +52,13 @@ export function main(coreExecutionRequest: Uint8Array | string): Uint8Array | st
   // "includes" files from implicitly depending on other "includes" files.
   const topLevelIncludes: { [key: string]: any } = {};
   compileRequest.compileConfig.filePaths
-    .filter(path => path.startsWith(`includes${utils.pathSeperator}`))
-    .filter(path => path.split(utils.pathSeperator).length === 2) // Only include top-level "includes" files.
-    .filter(path => path.endsWith(".js"))
+    .filter(path => path.startsWith(`includes${Path.separator}`))
+    .filter(path => path.split(Path.separator).length === 2) // Only include top-level "includes" files.
+    .filter(path => Path.fileExtension(path) === "js")
     .forEach(includePath => {
       try {
         // tslint:disable-next-line: tsr-detect-non-literal-require
-        topLevelIncludes[utils.baseFilename(includePath)] = nativeRequire(includePath);
+        topLevelIncludes[Path.fileName(includePath)] = nativeRequire(includePath);
       } catch (e) {
         session.compileError(e, includePath);
       }
@@ -88,12 +70,16 @@ export function main(coreExecutionRequest: Uint8Array | string): Uint8Array | st
   globalAny.operate = session.operate.bind(session);
   globalAny.assert = session.assert.bind(session);
   globalAny.declare = session.declare.bind(session);
+  globalAny.notebook = session.notebook.bind(session);
   globalAny.test = session.test.bind(session);
+
+  loadActionConfigs(session, compileRequest.compileConfig.filePaths);
 
   // Require all "definitions" files (attaching them to the session).
   compileRequest.compileConfig.filePaths
-    .filter(path => path.startsWith(`definitions${utils.pathSeperator}`))
-    .filter(path => path.endsWith(".js") || path.endsWith(".sqlx"))
+    .filter(path => path.startsWith(`definitions${Path.separator}`))
+    .filter(path => Path.fileExtension(path) === "js" || Path.fileExtension(path) === "sqlx")
+    .sort()
     .forEach(definitionPath => {
       try {
         // tslint:disable-next-line: tsr-detect-non-literal-require
@@ -114,4 +100,98 @@ export function main(coreExecutionRequest: Uint8Array | string): Uint8Array | st
   }
 
   return dataform.CoreExecutionResponse.encode(coreExecutionResponse).finish();
+}
+
+function loadActionConfigs(session: Session, filePaths: string[]) {
+  filePaths
+    .filter(
+      path =>
+        path.startsWith(`definitions${Path.separator}`) &&
+        Path.fileName(path) === "actions" &&
+        Path.fileExtension(path) === "yaml"
+    )
+    .sort()
+    .forEach(actionConfigsPath => {
+      const actionConfigs = loadActionConfigsFile(session, actionConfigsPath);
+      actionConfigs.actions.forEach(nonProtoActionConfig => {
+        const actionConfig = dataform.ActionConfig.create(nonProtoActionConfig);
+
+        if (actionConfig.table) {
+          session.actions.push(
+            new Table(
+              session,
+              dataform.ActionConfig.TableConfig.create(actionConfig.table),
+              "table",
+              actionConfigsPath
+            )
+          );
+        } else if (actionConfig.view) {
+          session.actions.push(
+            new Table(
+              session,
+              dataform.ActionConfig.ViewConfig.create(actionConfig.view),
+              "view",
+              actionConfigsPath
+            )
+          );
+        } else if (actionConfig.incrementalTable) {
+          session.actions.push(
+            new Table(
+              session,
+              dataform.ActionConfig.IncrementalTableConfig.create(actionConfig.incrementalTable),
+              "incremental",
+              actionConfigsPath
+            )
+          );
+        } else if (actionConfig.assertion) {
+          session.actions.push(
+            new Assertion(
+              session,
+              dataform.ActionConfig.AssertionConfig.create(actionConfig.assertion),
+              actionConfigsPath
+            )
+          );
+        } else if (actionConfig.operation) {
+          session.actions.push(
+            new Operation(
+              session,
+              dataform.ActionConfig.OperationConfig.create(actionConfig.operation),
+              actionConfigsPath
+            )
+          );
+        } else if (actionConfig.declaration) {
+          session.actions.push(
+            new Declaration(
+              session,
+              dataform.ActionConfig.DeclarationConfig.create(actionConfig.declaration)
+            )
+          );
+        } else if (actionConfig.notebook) {
+          session.actions.push(
+            new Notebook(
+              session,
+              dataform.ActionConfig.NotebookConfig.create(actionConfig.notebook),
+              actionConfigsPath
+            )
+          );
+        } else {
+          throw Error("Empty action configs are not permitted.");
+        }
+      });
+    });
+}
+
+function loadActionConfigsFile(
+  session: Session,
+  actionConfigsPath: string
+): dataform.ActionConfigs {
+  let actionConfigsAsJson = {};
+  try {
+    // tslint:disable-next-line: tsr-detect-non-literal-require
+    actionConfigsAsJson = nativeRequire(actionConfigsPath).asJson;
+  } catch (e) {
+    session.compileError(e, actionConfigsPath);
+  }
+  verifyObjectMatchesProto(dataform.ActionConfigs, actionConfigsAsJson);
+  return dataform.ActionConfigs.fromObject(actionConfigsAsJson);
 }

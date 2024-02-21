@@ -1,8 +1,0 @@
-config {
-    type: "table",
-    snowflake: {
-        transient: true
-    }
-}
-
-select 1 as test

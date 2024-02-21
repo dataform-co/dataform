@@ -1,8 +1,0 @@
-config {
-    type: "assertion"
-}
-
-WITH base AS (
-    SELECT val1, val2, SUM(1) as row_count FROM ${ref("sample_data_2")} GROUP BY val1, val2
-)
-SELECT * FROM base WHERE row_count > 1
