@@ -6,11 +6,6 @@ if [ "$(git status --porcelain)" ]; then
     exit 1
 fi
 
-if [ "main" != "$(git branch --show-current)" ]; then 
-    echo "Not on the 'main' branch; aborting." 1>&2
-    exit 1
-fi
-
 # Run all the tests.
 
 bazel test //... --build_tests_only
@@ -22,6 +17,11 @@ TAG=next
 # If the version is a normal release (1.2.3) and not pre-release e.g (1.2.3-alpha.1) then publish with the 'latest' tag.
 if [[ "$VERSION" =~ [0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     TAG=latest
+
+    if [ "main" != "$(git branch --show-current)" ]; then
+        echo "Not on the 'main' branch; aborting." 1>&2
+        exit 1
+    fi
 fi
 
 echo "Publishing as '$TAG' based on version: $VERSION"
