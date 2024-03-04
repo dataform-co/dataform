@@ -1,0 +1,14 @@
+actions:
+  - view:
+      filename: repositories_created_during_extreme_weather.sql
+      dependencyTargets:
+        - name: was_there_extreme_weather
+        - name: repositories_that_mention_extreme_weather
+  - view:
+      filename: repositories_that_mention_extreme_weather.sql
+  - view:
+      filename: was_there_extreme_weather.sql
+  - notebook:
+      filename: snowy_repository_creation.ipynb
+      dependencyTargets:
+        - name: repositories_created_during_extreme_weather

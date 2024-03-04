@@ -155,26 +155,6 @@ load(
 
 _nodejs_image_repos()
 
-# Postgres
-
-container_pull(
-    name = "postgres",
-    # This digest is for tag "12.4".
-    digest = "sha256:b0cfe264cb1143c7c660ddfd5c482464997d62d6bc9f97f8fdf3deefce881a8c",
-    registry = "index.docker.io",
-    repository = "library/postgres",
-)
-
-# Trino (used to be called Presto)
-
-container_pull(
-    name = "trino",
-    # This digest is for tag "351".
-    digest = "sha256:e97be2f4193b30cad176307665a7e334988059461f677d542ad8a62f68511133",
-    registry = "index.docker.io",
-    repository = "trinodb/trino",
-)
-
 # Gcloud SDK binaries.
 load("//tools/gcloud:repository_rules.bzl", "gcloud_sdk")
 

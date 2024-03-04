@@ -1,6 +1,6 @@
 load("//tools:ts_library.bzl", "ts_library")
 load("//:version.bzl", "DF_VERSION")
-load("//packages:index.bzl", "pkg_bundle", "pkg_json", "pkg_npm_tar")
+load("//packages:index.bzl", "LICENSE_HEADER", "add_license_header_to_file", "pkg_bundle", "pkg_json", "pkg_npm_tar")
 load("@build_bazel_rules_nodejs//:index.bzl", "nodejs_binary")
 
 package(default_visibility = ["//visibility:public"])
@@ -9,9 +9,8 @@ ts_library(
     name = "cli",
     srcs = glob(["*.ts"]),
     deps = [
-        "//api",
         "//cli",
-        "//sandbox/vm",
+        "//cli/vm:compile_loader",
     ],
 )
 
@@ -28,36 +27,27 @@ nodejs_binary(
 externals = [
     "@google-cloud/bigquery",
     "@segment/analytics-node",
-    "protobufjs",
-    "tarjan-graph",
-    "semver",
-    "moo",
     "chokidar",
-    "uuid",
-    "readline-sync",
-    "untildify",
-    "yargs",
-    "glob",
-    "cron-parser",
     "deepmerge",
-    "get-port",
+    "fs-extra",
     "glob",
     "js-beautify",
-    "lodash",
-    "mssql",
-    "object-hash",
+    "js-yaml",
+    "moo",
     "object-sizeof",
     "parse-duration",
-    "pg",
-    "pg-query-stream",
-    "presto-client",
-    "pretty-ms",
     "promise-pool-executor",
-    "snowflake-sdk",
+    "protobufjs",
+    "readline-sync",
+    "semver",
     "sql-formatter",
-    "ssh2",
+    "tarjan-graph",
+    "tmp",
     "typeid-js",
+    "uuid",
+    "untildify",
     "vm2",
+    "yargs",
 ]
 
 pkg_json(
@@ -77,7 +67,7 @@ pkg_json(
 pkg_bundle(
     name = "bundle",
     allow_node_builtins = True,
-    args = ["--banner='#!/usr/bin/env node'"],
+    args = ["--banner='#!/usr/bin/env node\n" + LICENSE_HEADER + "'"],
     entry_point = "index.ts",
     externals = externals,
     deps = [
@@ -88,7 +78,7 @@ pkg_bundle(
 pkg_bundle(
     name = "worker_bundle",
     allow_node_builtins = True,
-    args = ["--banner='#!/usr/bin/env node'"],
+    args = ["--banner='#!/usr/bin/env node\n" + LICENSE_HEADER + "'"],
     entry_point = "worker.ts",
     externals = externals,
     deps = [
@@ -102,5 +92,6 @@ pkg_npm_tar(
         ":bundle",
         ":package.json",
         ":worker_bundle",
+
     ],
 )

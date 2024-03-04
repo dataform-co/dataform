@@ -23,7 +23,6 @@ ts_library(
     deps = [
         ":lexer",
         "//:modules-fix",
-        "//core",
         "//common/errors",
         "@npm//@types/js-beautify",
         "@npm//@types/node",

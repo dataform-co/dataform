@@ -10,30 +10,3 @@ gcloud_secret(
     key = "dataform-builder-key",
     keyring = "dataform-builder-keyring",
 )
-
-gcloud_secret(
-    name = "redshift.json",
-    testonly = 1,
-    ciphertext_file = ":redshift.json.enc",
-    project = "dataform-public",
-    key = "dataform-builder-key",
-    keyring = "dataform-builder-keyring",
-)
-
-gcloud_secret(
-    name = "snowflake.json",
-    testonly = 1,
-    ciphertext_file = ":snowflake.json.enc",
-    project = "dataform-public",
-    key = "dataform-builder-key",
-    keyring = "dataform-builder-keyring",
-)
-
-gcloud_secret(
-    name = "sqldatawarehouse.json",
-    testonly = 1,
-    ciphertext_file = ":sqldatawarehouse.json.enc",
-    project = "dataform-public",
-    key = "dataform-builder-key",
-    keyring = "dataform-builder-keyring",
-)

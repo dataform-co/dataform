@@ -4,7 +4,6 @@ import * as sqlFormatter from "sql-formatter";
 import { promisify } from "util";
 
 import { ErrorWithCause } from "df/common/errors/errors";
-import { WarehouseType } from "df/core/adapters";
 import { SyntaxTreeNode, SyntaxTreeNodeType } from "df/sqlx/lexer";
 import { typeid } from "typeid-js";
 
@@ -16,26 +15,11 @@ const JS_BEAUTIFY_OPTIONS = {
 
 const MAX_SQL_FORMAT_ATTEMPTS = 5;
 
-const WAREHOUSE_LANGUAGE_MAP: Record<WarehouseType, sqlFormatter.SqlLanguage> = {
-  [WarehouseType.BIGQUERY]: "bigquery",
-  [WarehouseType.PRESTO]: "trino",
-  [WarehouseType.POSTGRES]: "postgresql",
-  [WarehouseType.REDSHIFT]: "redshift",
-  [WarehouseType.SNOWFLAKE]: "snowflake",
-  [WarehouseType.SQLDATAWAREHOUSE]: "transactsql"
-};
-
-const DEFAULT_WAREHOUSE_FOR_FORMATTING: WarehouseType = WarehouseType.BIGQUERY;
-
-export function format(
-  text: string,
-  fileExtension: string,
-  warehouse: WarehouseType = DEFAULT_WAREHOUSE_FOR_FORMATTING
-) {
+export function format(text: string, fileExtension: string) {
   try {
     switch (fileExtension) {
       case "sqlx":
-        return postProcessFormattedSqlx(formatSqlx(SyntaxTreeNode.create(text), "", warehouse));
+        return postProcessFormattedSqlx(formatSqlx(SyntaxTreeNode.create(text), ""));
       case "js":
         return `${formatJavaScript(text).trim()}\n`;
       default:
@@ -50,14 +34,13 @@ export async function formatFile(
   filename: string,
   options?: {
     overwriteFile?: boolean;
-    warehouse?: WarehouseType;
   }
 ) {
   const fileExtension = filename.split(".").slice(-1)[0];
   const originalFileContent = await promisify(fs.readFile)(filename, "utf8");
 
-  const formattedText = format(originalFileContent, fileExtension, options?.warehouse);
-  if (formattedText !== format(formattedText, fileExtension, options?.warehouse)) {
+  const formattedText = format(originalFileContent, fileExtension);
+  if (formattedText !== format(formattedText, fileExtension)) {
     throw new Error("Formatter unable to determine final formatted form.");
   }
 
@@ -74,11 +57,10 @@ export async function formatFile(
   return formattedText;
 }
 
-function formatSqlx(node: SyntaxTreeNode, indent = "", warehouse: WarehouseType) {
+function formatSqlx(node: SyntaxTreeNode, indent = "") {
   const { sqlxStatements, javascriptBlocks, innerSqlBlocks } = separateSqlxIntoParts(
     node.children()
   );
-  const sqlLanguage = WAREHOUSE_LANGUAGE_MAP[warehouse];
 
   // First, format the JS blocks (including the config block).
   const formattedJsCodeBlocks = javascriptBlocks.map(jsCodeBlock =>
@@ -91,7 +73,7 @@ function formatSqlx(node: SyntaxTreeNode, indent = "", warehouse: WarehouseType)
       [placeholderId: string]: SyntaxTreeNode | string;
     } = {};
     const unformattedPlaceholderSql = stripUnformattableText(sqlxStatement, placeholders).join("");
-    const formattedPlaceholderSql = formatSql(unformattedPlaceholderSql, sqlLanguage);
+    const formattedPlaceholderSql = formatSql(unformattedPlaceholderSql);
     return formatEveryLine(
       replacePlaceholders(formattedPlaceholderSql, placeholders),
       line => `${indent}${line}`
@@ -119,7 +101,7 @@ function formatSqlx(node: SyntaxTreeNode, indent = "", warehouse: WarehouseType)
           ]);
 
     return `${upToFirstBrace}
-${formatSqlx(sqlCodeBlockWithoutOuterBraces, "  ", warehouse)}
+${formatSqlx(sqlCodeBlockWithoutOuterBraces, "  ")}
 ${lastBraceOnwards}`;
   });
 
@@ -225,11 +207,11 @@ function formatJavaScript(text: string) {
   return jsBeautify.js(text, JS_BEAUTIFY_OPTIONS);
 }
 
-function formatSql(text: string, language: sqlFormatter.SqlLanguage) {
-  let formatted = sqlFormatter.format(text, { language }) as string;
+function formatSql(text: string) {
+  let formatted = sqlFormatter.format(text, { language: "bigquery" }) as string;
   // Unfortunately sql-formatter does not always produce final formatted output (even on plain SQL) in a single pass.
   for (let attempts = 0; attempts < MAX_SQL_FORMAT_ATTEMPTS; attempts++) {
-    const newFormatted = sqlFormatter.format(formatted, { language }) as string;
+    const newFormatted = sqlFormatter.format(formatted, { language: "bigquery" }) as string;
     if (newFormatted === formatted) {
       return newFormatted;
     }

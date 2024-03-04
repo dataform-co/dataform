@@ -1,19 +1,20 @@
-import { IInitResult } from "df/api/commands/init";
-import { prettyJsonStringify } from "df/api/utils";
+import { IInitResult } from "df/cli/api/commands/init";
+import { prettyJsonStringify } from "df/cli/api/utils";
 import { setOrValidateTableEnumType, tableTypeEnumToString } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 import * as readlineSync from "readline-sync";
 
 // Support disabling colors in CLI output by using informal standard from https://no-color.org/
 // NO_COLOR=1, NO_COLOR=true, NO_COLOR=yes
-const noColor = process.env.NO_COLOR && ["1", "true", "yes"].includes(process.env.NO_COLOR.toLowerCase());
+const noColor =
+  process.env.NO_COLOR && ["1", "true", "yes"].includes(process.env.NO_COLOR.toLowerCase());
 
 const ansiColorCodes = Object.freeze({
-    red: 91,
-    green: 32,
-    yellow: 93,
-    cyan: 36
-})
+  red: 91,
+  green: 32,
+  yellow: 93,
+  cyan: 36
+});
 
 function output(text: string, ansiColorCode: number): string {
   if (noColor) {
@@ -108,9 +109,6 @@ export function printInitResult(result: IInitResult) {
     writeStdOut(successOutput("Files successfully written:"));
     result.filesWritten.forEach(file => writeStdOut(file, 1));
   }
-  if (result.installedNpmPackages) {
-    writeStdOut(successOutput("NPM packages successfully installed."));
-  }
 }
 
 export function printInitCredsResult(writtenFilePath: string) {
@@ -134,7 +132,11 @@ export function printCompiledGraph(graph: dataform.ICompiledGraph, verbose: bool
       writeStdOut(`${graph.tables.length} dataset(s):`);
       graph.tables.forEach(compiledTable => {
         writeStdOut(
-          `${datasetString(compiledTable.target, tableTypeEnumToString(compiledTable.enumType), compiledTable.disabled)}`,
+          `${datasetString(
+            compiledTable.target,
+            tableTypeEnumToString(compiledTable.enumType),
+            compiledTable.disabled
+          )}`,
           1
         );
       });
@@ -380,14 +382,6 @@ export function printFormatFilesResult(
       writeStdOut(`${result.filename}: ${result.err.message}`, 1)
     );
   }
-}
-
-export function printListTablesResult(tables: dataform.ITarget[]) {
-  tables.forEach(foundTable => writeStdOut(`${foundTable.schema}.${foundTable.name}`));
-}
-
-export function printGetTableResult(tableMetadata: dataform.ITableMetadata) {
-  writeStdOut(prettyJsonStringify(tableMetadata));
 }
 
 function datasetString(target: dataform.ITarget, datasetType: string, disabled: boolean) {

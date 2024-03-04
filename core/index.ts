@@ -1,6 +1,4 @@
-import * as adapters from "df/core/adapters";
-import { compile as compiler, compileStandaloneSqlxQuery } from "df/core/compilers";
-import { genIndex as indexFileGenerator } from "df/core/gen_index";
+import { compile as compiler } from "df/core/compilers";
 import { main } from "df/core/main";
 import { Session } from "df/core/session";
 import { version } from "df/core/version";
@@ -19,16 +17,15 @@ const session = globalSession();
 
 const supportedFeatures = [dataform.SupportedFeatures.ARRAY_BUFFER_IPC];
 
-// These exports constitute the public API of @dataform/core. 
+// Older versions of the CLI are not compatible with Core version ^3.0.0, and throw when this method
+// is not available. Instead this more interpretable error message is thrown.
+// Note: for future backwards compatability breaking changes, the exported "version" variable should
+// be used instead.
+function indexFileGenerator() {
+  throw new Error("@dataform/cli ^3.0.0 required.");
+}
+
+// These exports constitute the public API of @dataform/core.
 // They must also be listed in packages/@dataform/core/index.ts.
-// Changes to these will break @dataform/api, so take care!
-export {
-  adapters,
-  compiler,
-  compileStandaloneSqlxQuery,
-  indexFileGenerator,
-  main,
-  session,
-  supportedFeatures,
-  version
-};
+// Changes to these will break @dataform/cli, so take care!
+export { compiler, indexFileGenerator, main, session, supportedFeatures, version };

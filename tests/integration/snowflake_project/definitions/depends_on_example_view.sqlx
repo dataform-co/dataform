@@ -1,5 +1,0 @@
-config {
-  type: "view"
-}
-
-select * from ${ref("example_view")}

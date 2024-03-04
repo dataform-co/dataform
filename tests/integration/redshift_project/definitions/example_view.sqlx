@@ -1,8 +1,0 @@
-config { 
-    type: "view",
-    description: "An example view",
-    columns: {
-        val: "val doc",
-    }
-}
-select * from ${ref("sample_data")}

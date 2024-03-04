@@ -1,55 +1,44 @@
 import { expect } from "chai";
-import * as fs from "fs-extra";
 import * as path from "path";
 
-import * as compilers from "df/core/compilers";
 import { Session } from "df/core/session";
 import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
-import { asPlainObject } from "df/tests/utils";
+
+// TODO(ekrekr): migrate the tests in this file to core/main_test.ts.
 
 class TestConfigs {
-  public static redshift: dataform.IProjectConfig = {
-    warehouse: "redshift",
-    defaultSchema: "schema"
-  };
-
-  public static redshiftWithSuffix: dataform.IProjectConfig = {
-    ...TestConfigs.redshift,
-    schemaSuffix: "suffix"
-  };
-
-  public static redshiftWithPrefix: dataform.IProjectConfig = {
-    ...TestConfigs.redshift,
-    tablePrefix: "prefix"
-  };
-
   public static bigquery: dataform.IProjectConfig = {
     warehouse: "bigquery",
     defaultSchema: "schema",
     defaultLocation: "US"
   };
 
-  public static bigqueryWithDatabase: dataform.IProjectConfig = {
+  public static bigqueryWithDefaultDatabase: dataform.IProjectConfig = {
     ...TestConfigs.bigquery,
-    defaultDatabase: "test-db"
+    defaultDatabase: "default-database"
   };
 
-  public static bigqueryWithDatabaseAndSuffix: dataform.IProjectConfig = {
-    ...TestConfigs.bigqueryWithDatabase,
+  public static bigqueryWithSchemaSuffix: dataform.IProjectConfig = {
+    ...TestConfigs.bigquery,
+    schemaSuffix: "suffix"
+  };
+
+  public static bigqueryWithDefaultDatabaseAndSuffix: dataform.IProjectConfig = {
+    ...TestConfigs.bigqueryWithDefaultDatabase,
     databaseSuffix: "suffix"
   };
 
-  public static snowflake: dataform.IProjectConfig = {
-    warehouse: "snowflake",
-    defaultSchema: "schema"
+  public static bigqueryWithTablePrefix: dataform.IProjectConfig = {
+    ...TestConfigs.bigquery,
+    tablePrefix: "prefix"
   };
 }
 
 suite("@dataform/core", () => {
   suite("publish", () => {
-    [TestConfigs.redshift, TestConfigs.redshiftWithPrefix].forEach(testConfig => {
+    [TestConfigs.bigquery, TestConfigs.bigqueryWithTablePrefix].forEach(testConfig => {
       test(`config with prefix "${testConfig.tablePrefix}"`, () => {
         const tableWithPrefix = (table: string) =>
           testConfig.tablePrefix ? `${testConfig.tablePrefix}_${table}` : table;
@@ -142,7 +131,7 @@ suite("@dataform/core", () => {
       });
     });
 
-    [TestConfigs.redshift, TestConfigs.redshiftWithSuffix].forEach(testConfig => {
+    [TestConfigs.bigquery, TestConfigs.bigqueryWithSchemaSuffix].forEach(testConfig => {
       test(`config with suffix "${testConfig.schemaSuffix}"`, () => {
         const schemaWithSuffix = (schema: string) =>
           testConfig.schemaSuffix ? `${schema}_${testConfig.schemaSuffix}` : schema;
@@ -229,7 +218,7 @@ suite("@dataform/core", () => {
     });
 
     test("incremental table", () => {
-      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
+      const session = new Session(path.dirname(__filename), TestConfigs.bigquery);
       session
         .publish("incremental", {
           type: "incremental"
@@ -241,11 +230,11 @@ suite("@dataform/core", () => {
         {
           target: {
             name: "incremental",
-            schema: TestConfigs.redshift.defaultSchema
+            schema: TestConfigs.bigquery.defaultSchema
           },
           canonicalTarget: {
             name: "incremental",
-            schema: TestConfigs.redshift.defaultSchema
+            schema: TestConfigs.bigquery.defaultSchema
           },
           query: "select false as incremental",
           incrementalQuery: "select true as incremental",
@@ -335,7 +324,7 @@ suite("@dataform/core", () => {
     });
 
     test("validation_type_incremental", () => {
-      const sessionSuccess = new Session(path.dirname(__filename), TestConfigs.redshift);
+      const sessionSuccess = new Session(path.dirname(__filename), TestConfigs.bigquery);
       sessionSuccess
         .publish("exampleSuccess1", {
           type: "incremental"
@@ -350,14 +339,14 @@ suite("@dataform/core", () => {
     });
 
     test("validation_type", () => {
-      const sessionSuccess = new Session(path.dirname(__filename), TestConfigs.redshift);
+      const sessionSuccess = new Session(path.dirname(__filename), TestConfigs.bigquery);
       sessionSuccess.publish("exampleSuccess1", { type: "table" });
       sessionSuccess.publish("exampleSuccess2", { type: "view" });
       sessionSuccess.publish("exampleSuccess3", { type: "incremental" }).where("test");
       const cgSuccess = sessionSuccess.compile();
       expect(cgSuccess.graphErrors.compilationErrors).deep.equals([]);
 
-      const sessionFail = new Session(path.dirname(__filename), TestConfigs.redshift);
+      const sessionFail = new Session(path.dirname(__filename), TestConfigs.bigquery);
       sessionFail.publish("exampleFail", JSON.parse('{"type": "ta ble"}'));
       const cgFail = sessionFail.compile();
 
@@ -367,7 +356,7 @@ suite("@dataform/core", () => {
           actionName: "schema.exampleFail",
           actionTarget: { schema: "schema", name: "exampleFail" },
           message:
-            'Wrong type of table detected. Should only use predefined types: "table" | "view" | "incremental" | "inline"'
+            'Wrong type of table detected. Should only use predefined types: "table" | "view" | "incremental"'
         }
       ]);
 
@@ -379,107 +368,17 @@ suite("@dataform/core", () => {
         .that.matches(/Wrong type of table/);
     });
 
-    test("validation_redshift_success", () => {
-      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
-      session.publish("example_without_dist", {
-        redshift: {
-          sortKeys: ["column1", "column2"],
-          sortStyle: "compound"
-        }
-      });
-      session.publish("example_without_sort", {
-        redshift: {
-          distKey: "column1",
-          distStyle: "even"
-        }
-      });
-
-      const graph = session.compile();
-
-      expect(graph)
-        .to.have.property("tables")
-        .to.be.an("array")
-        .to.have.lengthOf(2);
-
-      expect(graph.graphErrors.compilationErrors).deep.equals([]);
-    });
-
-    test("validation_redshift_fail", () => {
-      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
-      session.publish("example_absent_distKey", {
-        redshift: {
-          distStyle: "even",
-          sortKeys: ["column1", "column2"],
-          sortStyle: "compound"
-        }
-      });
-      session.publish("example_absent_distStyle", {
-        redshift: {
-          distKey: "column1",
-          sortKeys: ["column1", "column2"],
-          sortStyle: "compound"
-        }
-      });
-      session.publish("example_wrong_distStyle", {
-        redshift: {
-          distKey: "column1",
-          distStyle: "wrong_even",
-          sortKeys: ["column1", "column2"],
-          sortStyle: "compound"
-        }
-      });
-      session.publish("example_absent_sortKeys", {
-        redshift: {
-          distKey: "column1",
-          distStyle: "even",
-          sortStyle: "compound"
-        }
-      });
-      session.publish("example_empty_sortKeys", {
-        redshift: {
-          distKey: "column1",
-          distStyle: "even",
-          sortKeys: [],
-          sortStyle: "compound"
-        }
-      });
-      session.publish("example_absent_sortStyle", {
-        redshift: {
-          distKey: "column1",
-          distStyle: "even",
-          sortKeys: ["column1", "column2"]
-        }
-      });
-      session.publish("example_wrong_sortStyle", {
-        redshift: {
-          distKey: "column1",
-          distStyle: "even",
-          sortKeys: ["column1", "column2"],
-          sortStyle: "wrong_sortStyle"
-        }
-      });
+    test("validation_bigquery_fail", () => {
+      const session = new Session(path.dirname(__filename), TestConfigs.bigquery);
       session.publish("example_materialized_view", {
-        type: "view",
+        type: "table",
         materialized: true
       });
 
       const expectedResults = [
-        { name: "schema.example_absent_distKey", message: `Property "distKey" is not defined` },
-        { name: "schema.example_absent_distStyle", message: `Property "distStyle" is not defined` },
-        {
-          name: "schema.example_wrong_distStyle",
-          message: `Wrong value of "distStyle" property. Should only use predefined values: "even" | "key" | "all"`
-        },
-        { name: "schema.example_absent_sortKeys", message: `Property "sortKeys" is not defined` },
-        { name: "schema.example_empty_sortKeys", message: `Property "sortKeys" is not defined` },
-        { name: "schema.example_absent_sortStyle", message: `Property "sortStyle" is not defined` },
-        {
-          name: "schema.example_wrong_sortStyle",
-          message: `Wrong value of "sortStyle" property. Should only use predefined values: "compound" | "interleaved"`
-        },
         {
           name: "schema.example_materialized_view",
-          message: "The 'materialized' option is only valid for Snowflake and BigQuery views"
+          message: "The 'materialized' option is only valid for BigQuery views"
         }
       ];
 
@@ -602,7 +501,7 @@ suite("@dataform/core", () => {
         },
         {
           actionName: "schema.example_materialize_table_fail",
-          message: "The 'materialized' option is only valid for Snowflake and BigQuery views"
+          message: "The 'materialized' option is only valid for BigQuery views"
         },
         {
           actionName: "schema.example_expiring_non_partitioned_fail",
@@ -616,58 +515,6 @@ suite("@dataform/core", () => {
         {
           actionName: "schema.example_duplicate_require_partition_filter_fail",
           message: "requirePartitionFilter has been declared twice"
-        }
-      ]);
-    });
-
-    test("validation_snowflake_fail", () => {
-      const session = new Session(path.dirname(__filename), TestConfigs.snowflake);
-      session.publish("example_secure_table_fail", {
-        type: "table",
-        snowflake: {
-          secure: true
-        }
-      });
-      session.publish("example_transient_view_fail", {
-        type: "view",
-        snowflake: {
-          transient: true
-        }
-      });
-      session.publish("example_cluster_by_view_fail", {
-        type: "view",
-        snowflake: {
-          clusterBy: ["a"]
-        }
-      });
-      session.publish("example_materialize_table_fail", {
-        type: "table",
-        materialized: true
-      });
-
-      const graph = session.compile();
-
-      expect(
-        graph.graphErrors.compilationErrors.map(({ message, actionName }) => ({
-          message,
-          actionName
-        }))
-      ).has.deep.members([
-        {
-          actionName: "SCHEMA.EXAMPLE_SECURE_TABLE_FAIL",
-          message: "The 'secure' option is only valid for Snowflake views"
-        },
-        {
-          actionName: "SCHEMA.EXAMPLE_TRANSIENT_VIEW_FAIL",
-          message: "The 'transient' option is only valid for Snowflake tables"
-        },
-        {
-          actionName: "SCHEMA.EXAMPLE_CLUSTER_BY_VIEW_FAIL",
-          message: "The 'clusterBy' option is only valid for Snowflake tables"
-        },
-        {
-          actionName: "SCHEMA.EXAMPLE_MATERIALIZE_TABLE_FAIL",
-          message: "The 'materialized' option is only valid for Snowflake and BigQuery views"
         }
       ]);
     });
@@ -717,238 +564,97 @@ suite("@dataform/core", () => {
       expect(graph.graphErrors.compilationErrors).to.deep.equals([]);
     });
 
-    test("validation_type_inline", () => {
-      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
-      session.publish("a", { type: "table" }).query(_ => "select 1 as test");
-      session
-        .publish("b", {
-          type: "inline",
-          redshift: {
-            distKey: "column1",
-            distStyle: "even",
-            sortKeys: ["column1", "column2"],
-            sortStyle: "compound"
-          },
-          columns: { test: "test description b" },
-          disabled: true
-        })
-        .preOps(_ => ["pre_op_b"])
-        .postOps(_ => ["post_op_b"])
-        .where("test_where")
-        .query(ctx => `select * from ${ctx.ref("a")}`);
-      session
-        .publish("c", {
-          type: "table",
-          columns: { test: "test description c" }
-        })
-        .preOps(_ => ["pre_op_c"])
-        .postOps(_ => ["post_op_c"])
-        .query(ctx => `select * from ${ctx.ref("b")}`);
+    [
+      TestConfigs.bigquery,
+      TestConfigs.bigqueryWithSchemaSuffix,
+      TestConfigs.bigqueryWithTablePrefix
+    ].forEach(testConfig => {
+      test(`ref with prefix "${testConfig.tablePrefix}" and suffix "${testConfig.schemaSuffix}"`, () => {
+        const session = new Session(path.dirname(__filename), testConfig);
+        const suffix = testConfig.schemaSuffix ? `_${testConfig.schemaSuffix}` : "";
+        const prefix = testConfig.tablePrefix ? `${testConfig.tablePrefix}_` : "";
 
-      const graph = session.compile();
-
-      const tableA = graph.tables.find(
-        table => targetAsReadableString(table.target) === "schema.a"
-      );
-      expect(tableA.type).equals("table");
-      expect(tableA.enumType).equals(dataform.TableType.TABLE);
-      expect(
-        tableA.dependencyTargets.map(dependency => targetAsReadableString(dependency))
-      ).deep.equals([]);
-      expect(tableA.query).equals("select 1 as test");
-
-      const tableB = graph.tables.find(
-        table => targetAsReadableString(table.target) === "schema.b"
-      );
-      expect(tableB.type).equals("inline");
-      expect(tableB.enumType).equals(dataform.TableType.INLINE);
-      expect(
-        tableB.dependencyTargets.map(dependency => targetAsReadableString(dependency))
-      ).includes("schema.a");
-      expect(tableB.actionDescriptor).eql({
-        columns: [
-          dataform.ColumnDescriptor.create({
-            description: "test description b",
-            path: ["test"]
+        session.publish(`a`, _ => "select 1 as test");
+        session.publish(`b`, ctx => `select * from ${ctx.ref("a")}`);
+        session.publish(`c`, ctx => `select * from ${ctx.ref(undefined)}`);
+        session.publish(`d`, ctx => `select * from ${ctx.ref({ schema: "schema", name: "a" })}`);
+        session.publish(`g`, ctx => `select * from ${ctx.ref("schema", "a")}`);
+        session.publish(`h`, ctx => `select * from ${ctx.ref(["schema", "a"])}`);
+        session
+          .publish("e", {
+            schema: "foo"
           })
-        ]
-      });
-      expect(tableB.preOps).deep.equals(["pre_op_b"]);
-      expect(tableB.postOps).deep.equals(["post_op_b"]);
-      expect(asPlainObject(tableB.redshift)).deep.equals(
-        asPlainObject({
-          distKey: "column1",
-          distStyle: "even",
-          sortKeys: ["column1", "column2"],
-          sortStyle: "compound"
-        })
-      );
-      expect(tableB.disabled).equals(true);
-      expect(tableB.where).equals("test_where");
-      expect(tableB.query).equals('select * from "schema"."a"');
+          .query(_ => "select 1 as test");
+        session.publish("f", ctx => `select * from ${ctx.ref("e")}`);
 
-      const tableC = graph.tables.find(
-        table => targetAsReadableString(table.target) === "schema.c"
-      );
-      expect(tableC.type).equals("table");
-      expect(tableC.enumType).equals(dataform.TableType.TABLE);
-      expect(
-        tableC.dependencyTargets.map(dependency => targetAsReadableString(dependency))
-      ).includes("schema.a");
-      expect(tableC.actionDescriptor).eql({
-        columns: [
-          dataform.ColumnDescriptor.create({
-            description: "test description c",
-            path: ["test"]
-          })
-        ]
-      });
-      expect(tableC.preOps).deep.equals(["pre_op_c"]);
-      expect(tableC.postOps).deep.equals(["post_op_c"]);
-      expect(tableC.redshift).equals(null);
-      expect(tableC.disabled).equals(false);
-      expect(tableC.where).equals("");
-      expect(tableC.query).equals('select * from (select * from "schema"."a")');
+        const graph = session.compile();
 
-      const errors = graph.graphErrors.compilationErrors
-        .filter(item => item.actionName === "schema.b")
-        .map(item => item.message);
+        const tableNames = graph.tables.map(table => targetAsReadableString(table.target));
 
-      expect(errors).that.matches(/Unused property was detected: "preOps"/);
-      expect(errors).that.matches(/Unused property was detected: "postOps"/);
-      expect(errors).that.matches(/Unused property was detected: "redshift"/);
-      expect(errors).that.matches(/Unused property was detected: "disabled"/);
-      expect(errors).that.matches(/Unused property was detected: "where"/);
-    });
+        const baseEqlArray = [
+          "schema.a",
+          "schema.b",
+          "schema.c",
+          "schema.d",
+          "schema.g",
+          "schema.h",
+          "foo.e",
+          "schema.f"
+        ];
 
-    test("validation_navigator_descriptors", () => {
-      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
-      session
-        .publish("a", {
-          type: "table",
-          columns: {
-            colly: {
-              displayName: "colly display name",
-              description: "colly description",
-              dimension: "timestamp",
-              aggregator: "distinct",
-              expression: "1"
+        expect(tableNames).eql(
+          baseEqlArray.map(item => {
+            if (testConfig.tablePrefix) {
+              const separatedItems = item.split(".");
+              separatedItems[1] = `${prefix}${separatedItems[1]}`;
+              return separatedItems.join(".");
             }
-          }
-        })
-        .query(_ => "select 1 as test");
 
-      const graph = session.compile();
-      expect(graph.graphErrors.compilationErrors).deep.equals([]);
+            if (testConfig.schemaSuffix) {
+              const separatedItems = item.split(".");
+              separatedItems[0] = `${separatedItems[0]}${suffix}`;
+              return separatedItems.join(".");
+            }
 
-      const schema = graph.tables.find(
-        table => targetAsReadableString(table.target) === "schema.a"
-      );
+            return item;
+          })
+        );
 
-      const collyColumn = schema.actionDescriptor.columns.find(
-        column => column.displayName === "colly display name"
-      );
-      expect(collyColumn).to.eql(
-        dataform.ColumnDescriptor.create({
-          path: ["colly"],
-          displayName: "colly display name",
-          description: "colly description",
-          dimensionType: dataform.ColumnDescriptor.DimensionType.TIMESTAMP,
-          aggregation: dataform.ColumnDescriptor.Aggregation.DISTINCT,
-          expression: "1"
-        })
-      );
+        expect(
+          graph.tables
+            .find(table => targetAsReadableString(table.target) === `schema${suffix}.${prefix}b`)
+            .dependencyTargets.map(dependency => targetAsReadableString(dependency))
+        ).eql([`schema${suffix}.${prefix}a`]);
+        expect(
+          graph.tables
+            .find(table => targetAsReadableString(table.target) === `schema${suffix}.${prefix}d`)
+            .dependencyTargets.map(dependency => targetAsReadableString(dependency))
+        ).eql([`schema${suffix}.${prefix}a`]);
+        expect(
+          graph.tables
+            .find(table => targetAsReadableString(table.target) === `schema${suffix}.${prefix}g`)
+            .dependencyTargets.map(dependency => targetAsReadableString(dependency))
+        ).eql([`schema${suffix}.${prefix}a`]);
+        expect(
+          graph.tables
+            .find(table => targetAsReadableString(table.target) === `schema${suffix}.${prefix}h`)
+            .dependencyTargets.map(dependency => targetAsReadableString(dependency))
+        ).eql([`schema${suffix}.${prefix}a`]);
+        expect(
+          graph.tables
+            .find(table => targetAsReadableString(table.target) === `schema${suffix}.${prefix}f`)
+            .dependencyTargets.map(dependency => targetAsReadableString(dependency))
+        ).eql([`foo${suffix}.${prefix}e`]);
+
+        const errors = graph.graphErrors.compilationErrors.map(item => item.message);
+        expect(errors).includes("Action name is not specified");
+        expect(graph.graphErrors.compilationErrors.length).eql(1);
+      });
     });
-
-    [TestConfigs.redshift, TestConfigs.redshiftWithPrefix, TestConfigs.redshiftWithSuffix].forEach(
-      testConfig => {
-        test(`ref with prefix "${testConfig.tablePrefix}" and suffix "${testConfig.schemaSuffix}"`, () => {
-          const session = new Session(path.dirname(__filename), testConfig);
-          const suffix = testConfig.schemaSuffix ? `_${testConfig.schemaSuffix}` : "";
-          const prefix = testConfig.tablePrefix ? `${testConfig.tablePrefix}_` : "";
-
-          session.publish(`a`, _ => "select 1 as test");
-          session.publish(`b`, ctx => `select * from ${ctx.ref("a")}`);
-          session.publish(`c`, ctx => `select * from ${ctx.ref(undefined)}`);
-          session.publish(`d`, ctx => `select * from ${ctx.ref({ schema: "schema", name: "a" })}`);
-          session.publish(`g`, ctx => `select * from ${ctx.ref("schema", "a")}`);
-          session.publish(`h`, ctx => `select * from ${ctx.ref(["schema", "a"])}`);
-          session
-            .publish("e", {
-              schema: "foo"
-            })
-            .query(_ => "select 1 as test");
-          session.publish("f", ctx => `select * from ${ctx.ref("e")}`);
-
-          const graph = session.compile();
-
-          const tableNames = graph.tables.map(table => targetAsReadableString(table.target));
-
-          const baseEqlArray = [
-            "schema.a",
-            "schema.b",
-            "schema.c",
-            "schema.d",
-            "schema.g",
-            "schema.h",
-            "foo.e",
-            "schema.f"
-          ];
-
-          expect(tableNames).eql(
-            baseEqlArray.map(item => {
-              if (testConfig.tablePrefix) {
-                const separatedItems = item.split(".");
-                separatedItems[1] = `${prefix}${separatedItems[1]}`;
-                return separatedItems.join(".");
-              }
-
-              if (testConfig.schemaSuffix) {
-                const separatedItems = item.split(".");
-                separatedItems[0] = `${separatedItems[0]}${suffix}`;
-                return separatedItems.join(".");
-              }
-
-              return item;
-            })
-          );
-
-          expect(
-            graph.tables
-              .find(table => targetAsReadableString(table.target) === `schema${suffix}.${prefix}b`)
-              .dependencyTargets.map(dependency => targetAsReadableString(dependency))
-          ).eql([`schema${suffix}.${prefix}a`]);
-          expect(
-            graph.tables
-              .find(table => targetAsReadableString(table.target) === `schema${suffix}.${prefix}d`)
-              .dependencyTargets.map(dependency => targetAsReadableString(dependency))
-          ).eql([`schema${suffix}.${prefix}a`]);
-          expect(
-            graph.tables
-              .find(table => targetAsReadableString(table.target) === `schema${suffix}.${prefix}g`)
-              .dependencyTargets.map(dependency => targetAsReadableString(dependency))
-          ).eql([`schema${suffix}.${prefix}a`]);
-          expect(
-            graph.tables
-              .find(table => targetAsReadableString(table.target) === `schema${suffix}.${prefix}h`)
-              .dependencyTargets.map(dependency => targetAsReadableString(dependency))
-          ).eql([`schema${suffix}.${prefix}a`]);
-          expect(
-            graph.tables
-              .find(table => targetAsReadableString(table.target) === `schema${suffix}.${prefix}f`)
-              .dependencyTargets.map(dependency => targetAsReadableString(dependency))
-          ).eql([`foo${suffix}.${prefix}e`]);
-
-          const errors = graph.graphErrors.compilationErrors.map(item => item.message);
-          expect(errors).includes("Action name is not specified");
-          expect(graph.graphErrors.compilationErrors.length).eql(1);
-        });
-      }
-    );
 
     [
-      { testConfig: TestConfigs.redshift, target: "schema" },
-      { testConfig: TestConfigs.redshiftWithSuffix, target: "schema_suffix" }
+      { testConfig: TestConfigs.bigquery, target: "schema" },
+      { testConfig: TestConfigs.bigqueryWithSchemaSuffix, target: "schema_suffix" }
     ].forEach(({ testConfig, target }) => {
       test(`schema/suffix: "${target}"`, () => {
         const session = new Session(path.dirname(__filename), testConfig);
@@ -965,9 +671,9 @@ suite("@dataform/core", () => {
     });
 
     [
-      { testConfig: TestConfigs.redshift, target: "schema.test", name: "test" },
+      { testConfig: TestConfigs.bigquery, target: "schema.test", name: "test" },
       {
-        testConfig: TestConfigs.redshiftWithPrefix,
+        testConfig: TestConfigs.bigqueryWithTablePrefix,
         target: "schema.prefix_test",
         name: "prefix_test"
       }
@@ -988,14 +694,14 @@ suite("@dataform/core", () => {
 
     [
       {
-        testConfig: TestConfigs.bigqueryWithDatabase,
-        target: "test-db.schema.test",
-        database: "test-db"
+        testConfig: TestConfigs.bigqueryWithDefaultDatabase,
+        target: "default-database.schema.test",
+        database: "default-database"
       },
       {
-        testConfig: TestConfigs.bigqueryWithDatabaseAndSuffix,
-        target: "test-db_suffix.schema.test",
-        database: "test-db_suffix"
+        testConfig: TestConfigs.bigqueryWithDefaultDatabaseAndSuffix,
+        target: "default-database_suffix.schema.test",
+        database: "default-database_suffix"
       }
     ].forEach(({ testConfig, target, database }) => {
       test(`database/suffix: "${target}"`, () => {
@@ -1013,7 +719,7 @@ suite("@dataform/core", () => {
     });
 
     test(`database fails when undefined`, () => {
-      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
+      const session = new Session(path.dirname(__filename), TestConfigs.bigquery);
       session.publish("test", { type: "table" }).query(ctx => ctx.database());
 
       const graph = session.compile();
@@ -1029,43 +735,9 @@ suite("@dataform/core", () => {
     });
   });
 
-  suite("resolve", () => {
-    [TestConfigs.redshift, TestConfigs.redshiftWithPrefix, TestConfigs.redshiftWithSuffix].forEach(
-      testConfig => {
-        test(`resolve with prefix "${testConfig.tablePrefix}" and suffix "${testConfig.schemaSuffix}"`, () => {
-          const session = new Session(path.dirname(__filename), testConfig);
-          session.compile();
-          const suffix = testConfig.schemaSuffix ? `_${testConfig.schemaSuffix}` : "";
-          const prefix = testConfig.tablePrefix ? `${testConfig.tablePrefix}_` : "";
-
-          const resolvedRef = session.resolve("e");
-          expect(resolvedRef).to.equal(`"schema${suffix}"."${prefix}e"`);
-        });
-      }
-    );
-
-    test("throws error for unknown action with .sql file compilation unsupported", () => {
-      const session = new Session(path.dirname(__filename), TestConfigs.bigquery, undefined, false);
-      const graph = session.compile();
-      expect(session.resolve("whatever")).to.equal("");
-      expect(graph.graphErrors.compilationErrors[0].message).deep.equals(
-        'Could not resolve "whatever"'
-      );
-    });
-
-    test("throws error for unknown action in unknown schema with .sql file compilation unsupported", () => {
-      const session = new Session(path.dirname(__filename), TestConfigs.bigquery, undefined, false);
-      const graph = session.compile();
-      expect(session.resolve("unknown_schema", "whatever")).to.equal("");
-      expect(graph.graphErrors.compilationErrors[0].message).deep.equals(
-        'Could not resolve {"schema":"unknown_schema","name":"whatever"}'
-      );
-    });
-  });
-
   suite("operate", () => {
     test("ref", () => {
-      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
+      const session = new Session(path.dirname(__filename), TestConfigs.bigquery);
       session.operate("operate-1", () => `select 1 as sample`).hasOutput(true);
       session.operate("operate-2", ctx => `select * from ${ctx.ref("operate-1")}`).hasOutput(true);
 
@@ -1087,12 +759,15 @@ suite("@dataform/core", () => {
       expect(
         graph.operations[1].dependencyTargets.map(dependency => targetAsReadableString(dependency))
       ).deep.equals(["schema.operate-1"]);
-      expect(graph.operations[1].queries).deep.equals(['select * from "schema"."operate-1"']);
+      expect(graph.operations[1].queries).deep.equals(["select * from `schema.operate-1`"]);
     });
 
     [
-      { testConfig: TestConfigs.redshift, finalizedSchema: "schema" },
-      { testConfig: TestConfigs.redshiftWithSuffix, finalizedSchema: "schema_suffix" }
+      { testConfig: TestConfigs.bigquery, finalizedSchema: "schema" },
+      {
+        testConfig: TestConfigs.bigqueryWithSchemaSuffix,
+        finalizedSchema: "schema_suffix"
+      }
     ].forEach(({ testConfig, finalizedSchema }) => {
       test(`schema with suffix: "${finalizedSchema}"`, () => {
         const session = new Session(path.dirname(__filename), testConfig);
@@ -1105,8 +780,11 @@ suite("@dataform/core", () => {
     });
 
     [
-      { testConfig: TestConfigs.redshift, finalizedName: "operate-1" },
-      { testConfig: TestConfigs.redshiftWithPrefix, finalizedName: "prefix_operate-1" }
+      { testConfig: TestConfigs.bigquery, finalizedName: "operate-1" },
+      {
+        testConfig: TestConfigs.bigqueryWithTablePrefix,
+        finalizedName: "prefix_operate-1"
+      }
     ].forEach(({ testConfig, finalizedName }) => {
       test(`name with prefix: "${finalizedName}"`, () => {
         const session = new Session(path.dirname(__filename), testConfig);
@@ -1119,8 +797,14 @@ suite("@dataform/core", () => {
     });
 
     [
-      { testConfig: TestConfigs.bigqueryWithDatabase, finalizedDatabase: "test-db" },
-      { testConfig: TestConfigs.bigqueryWithDatabaseAndSuffix, finalizedDatabase: "test-db_suffix" }
+      {
+        testConfig: TestConfigs.bigqueryWithDefaultDatabase,
+        finalizedDatabase: "default-database"
+      },
+      {
+        testConfig: TestConfigs.bigqueryWithDefaultDatabaseAndSuffix,
+        finalizedDatabase: "default-database_suffix"
+      }
     ].forEach(({ testConfig, finalizedDatabase }) => {
       test(`database with suffix: "${finalizedDatabase}"`, () => {
         const session = new Session(path.dirname(__filename), testConfig);
@@ -1133,7 +817,7 @@ suite("@dataform/core", () => {
     });
 
     test(`database fails when undefined`, () => {
-      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
+      const session = new Session(path.dirname(__filename), TestConfigs.bigquery);
 
       session.operate("operate-1", ctx => ctx.database()).hasOutput(true);
 
@@ -1148,7 +832,7 @@ suite("@dataform/core", () => {
 
   suite("graph", () => {
     test("circular_dependencies", () => {
-      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
+      const session = new Session(path.dirname(__filename), TestConfigs.bigquery);
       session.publish("a").dependencies("b");
       session.publish("b").dependencies("a");
       const cGraph = session.compile();
@@ -1160,7 +844,7 @@ suite("@dataform/core", () => {
     });
 
     test("missing_dependency", () => {
-      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
+      const session = new Session(path.dirname(__filename), TestConfigs.bigquery);
       session.publish("a", ctx => `select * from ${ctx.ref("b")}`);
       const cGraph = session.compile();
       expect(
@@ -1171,7 +855,7 @@ suite("@dataform/core", () => {
     });
 
     test("duplicate_action_names", () => {
-      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
+      const session = new Session(path.dirname(__filename), TestConfigs.bigquery);
       session.publish("a").dependencies("b");
       session.publish("b");
       session.publish("a");
@@ -1184,7 +868,7 @@ suite("@dataform/core", () => {
     });
 
     test("duplicate actions in compiled graph", () => {
-      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
+      const session = new Session(path.dirname(__filename), TestConfigs.bigquery);
       session.publish("a");
       session.publish("a");
       session.publish("b"); // unique action
@@ -1209,7 +893,7 @@ suite("@dataform/core", () => {
     });
 
     test("same action names in different schemas (ambiguity)", () => {
-      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
+      const session = new Session(path.dirname(__filename), TestConfigs.bigquery);
       session.publish("a", { schema: "foo" });
       session.publish("a", { schema: "bar" });
       session.publish("b", { schema: "foo" }).dependencies("a");
@@ -1224,7 +908,7 @@ suite("@dataform/core", () => {
     });
 
     test("same action name in same schema", () => {
-      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
+      const session = new Session(path.dirname(__filename), TestConfigs.bigquery);
       session.publish("a", { schema: "schema2" }).dependencies("b");
       session.publish("a", { schema: "schema2" });
       session.publish("b");
@@ -1237,7 +921,7 @@ suite("@dataform/core", () => {
     });
 
     test("same action names in different schemas", () => {
-      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
+      const session = new Session(path.dirname(__filename), TestConfigs.bigquery);
       session.publish("b");
       session.publish("a", { schema: "schema1" }).dependencies("b");
       session.publish("a", { schema: "schema2" });
@@ -1248,7 +932,7 @@ suite("@dataform/core", () => {
     test("semi-colons at the end of files throw", () => {
       // If this didn't happen, then the generated SQL could be incorrect
       // because of being broken up by semi-colons.
-      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
+      const session = new Session(path.dirname(__filename), TestConfigs.bigquery);
       session.publish("a", "select 1 as x;\n");
       session.assert("b", "select 1 as x;");
       const graph = session.compile();
@@ -1265,229 +949,8 @@ suite("@dataform/core", () => {
       });
       const graph = session.compile();
       expect(graph.graphErrors.compilationErrors.map(error => error.message)).deep.equals([
-        "A defaultLocation is required for BigQuery. This can be configured in dataform.json."
+        "A defaultLocation is required for BigQuery. This can be configured in workflow_settings.yaml."
       ]);
-    });
-
-    test("variables defined in dataform.json must be strings", () => {
-      const sessionFail = new Session(path.dirname(__filename), {
-        warehouse: "bigquery",
-        defaultSchema: "schema",
-        defaultLocation: "location",
-        vars: {
-          int_var: 1,
-          str_var: "str"
-        }
-      } as any);
-
-      expect(() => {
-        sessionFail.compile();
-      }).to.throw("Custom variables defined in dataform.json can only be strings.");
-
-      const sessionSuccess = new Session(path.dirname(__filename), {
-        warehouse: "bigquery",
-        defaultSchema: "schema",
-        defaultLocation: "location",
-        vars: {
-          str_var1: "str1",
-          str_var2: "str2"
-        }
-      } as any);
-
-      const graph = sessionSuccess.compile();
-      expect(graph.graphErrors.compilationErrors).to.eql([]);
-    });
-  });
-
-  suite("compilers", () => {
-    test("extract_blocks", () => {
-      const TEST_SQL_FILE = `
-        /*js
-        var a = 1;
-        */
-        /*js
-        var c = 3;
-        */
-        /*
-        normal_multiline_comment
-        */
-        -- --js var x = 1200;
-        --js var b = 2;
-        -- normal_single_line_comment
-
-        -- /*js
-        -- var y = 234; // some js comment
-        -- */
-
-        select 1 as test from \`x\`
-        `;
-      const EXPECTED_JS = `var a = 1;\nvar c = 3;\nvar b = 2;`.trim();
-      const EXPECTED_SQL = `
-        /*
-        normal_multiline_comment
-        */
-        -- --js var x = 1200;
-
-        -- normal_single_line_comment
-
-        -- /*js
-        -- var y = 234; // some js comment
-        -- */
-
-        select 1 as test from \\\`x\\\``.trim();
-
-      const { sql, js } = compilers.extractJsBlocks(TEST_SQL_FILE);
-      expect(sql).equals(EXPECTED_SQL);
-      expect(js).equals(EXPECTED_JS);
-    });
-
-    test("basic syntax", async () => {
-      expect(
-        compilers.compile(
-          `
-select * from \${ref('dab')}
-`,
-          "file.sqlx"
-        )
-      ).eql(await fs.readFile("tests/core/basic-syntax.js.test", "utf8"));
-    });
-
-    test("backticks are escaped", async () => {
-      expect(
-        compilers.compile(
-          `
-select
-  "\`",
-  """\`"",
-from \`location\`
-`,
-          "file.sqlx"
-        )
-      ).eql(await fs.readFile("tests/core/backticks-are-escaped.js.test", "utf8"));
-    });
-
-    test("backslashes act literally", async () => {
-      expect(
-        compilers.compile(
-          `
-select
-  regexp_extract('01a_data_engine', '^(\\d{2}\\w)'),
-  regexp_extract('01a_data_engine', '^(\\\\d{2}\\\\w)'),
-  regexp_extract('\\\\', ''),
-  regexp_extract("", r"[0-9]\\"*"),
-  """\\ \\? \\\\""",
-pre_operations {
-  select
-    regexp_extract('01a_data_engine', '^(\\d{2}\\w)'),
-    regexp_extract('01a_data_engine', '^(\\\\d{2}\\\\w)'),
-    regexp_extract('\\\\', ''),
-    regexp_extract("", r"[0-9]\\"*"),
-}
-`,
-          "file.sqlx"
-        )
-      ).eql(await fs.readFile("tests/core/backslashes-act-literally.js.test", "utf8"));
-    });
-    test("strings act literally", async () => {
-      expect(
-        compilers.compile(
-          `
-select
-  """
-  triple
-  quotes
-  """,
-  "asd\\"123'def",
-  'asd\\'123"def',
-
-post_operations {
-  select
-    """
-    triple
-    quotes
-    """,
-    "asd\\"123'def",
-    'asd\\'123"def',
-}
-`,
-          "file.sqlx"
-        )
-      ).eql(await fs.readFile("tests/core/strings-act-literally.js.test", "utf8"));
-    });
-    test("JS placeholders inside SQL strings", async () => {
-      expect(
-        compilers.compile(
-          `
-select '\${\`bar\`}'
-`,
-          "file.sqlx"
-        )
-      ).eql(
-        await fs.readFile("tests/core/js-placeholder-strings-inside-sql-strings.js.test", "utf8")
-      );
-    });
-  });
-
-  suite("assert", () => {
-    [
-      { testConfig: TestConfigs.redshift, assertion: "schema" },
-      { testConfig: TestConfigs.redshiftWithSuffix, assertion: "schema_suffix" }
-    ].forEach(({ testConfig, assertion }) => {
-      test(`schema: ${assertion}`, () => {
-        const session = new Session(path.dirname(__filename), testConfig);
-
-        session.assert("schema-assertion", ctx => ctx.schema());
-
-        const graph = session.compile();
-
-        expect(JSON.stringify(graph.assertions[0].query)).to.deep.equal(`"${assertion}"`);
-      });
-    });
-
-    [
-      { testConfig: TestConfigs.redshift, finalizedName: "name" },
-      { testConfig: TestConfigs.redshiftWithPrefix, finalizedName: "prefix_name" }
-    ].forEach(({ testConfig, finalizedName }) => {
-      test(`name: ${finalizedName}`, () => {
-        const session = new Session(path.dirname(__filename), testConfig);
-
-        session.assert("name", ctx => ctx.name());
-
-        const graph = session.compile();
-
-        expect(JSON.stringify(graph.assertions[0].query)).to.deep.equal(`"${finalizedName}"`);
-      });
-    });
-
-    [
-      { testConfig: TestConfigs.bigqueryWithDatabase, finalizedDatabase: "test-db" },
-      { testConfig: TestConfigs.bigqueryWithDatabaseAndSuffix, finalizedDatabase: "test-db_suffix" }
-    ].forEach(({ testConfig, finalizedDatabase }) => {
-      test(`database: ${finalizedDatabase}`, () => {
-        const session = new Session(path.dirname(__filename), {
-          ...testConfig,
-          defaultDatabase: "test-db"
-        });
-
-        session.assert("database", ctx => ctx.database());
-
-        const graph = session.compile();
-
-        expect(JSON.stringify(graph.assertions[0].query)).to.deep.equal(`"${finalizedDatabase}"`);
-      });
-    });
-
-    test(`database fails when undefined`, () => {
-      const session = new Session(path.dirname(__filename), TestConfigs.redshift);
-
-      session.assert("database", ctx => ctx.database());
-
-      const graph = session.compile();
-
-      expect(graph.graphErrors.compilationErrors[0].message).deep.equals(
-        "Warehouse does not support multiple databases"
-      );
-      expect(JSON.stringify(graph.assertions[0].query)).to.deep.equal('""');
     });
   });
 });

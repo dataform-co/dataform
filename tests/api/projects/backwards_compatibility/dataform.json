@@ -1,7 +1,0 @@
-{
-  "warehouse": "bigquery",
-  "defaultDatabase": "tada-analytics",
-  "defaultSchema": "dataform_example",
-  "assertionSchema": "dataform_assertions",
-  "defaultLocation": "US"
-}
