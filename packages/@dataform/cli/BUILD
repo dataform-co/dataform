@@ -26,7 +26,6 @@ nodejs_binary(
 
 externals = [
     "@google-cloud/bigquery",
-    "@segment/analytics-node",
     "chokidar",
     "deepmerge",
     "fs-extra",
@@ -44,7 +43,6 @@ externals = [
     "tarjan-graph",
     "tmp",
     "typeid-js",
-    "uuid",
     "untildify",
     "vm2",
     "yargs",

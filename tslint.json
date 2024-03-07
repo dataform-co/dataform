@@ -1,13 +1,15 @@
 {
   "extends": [
     "tslint:recommended",
-    "tslint-react",
     "tslint-config-prettier",
     "tslint-config-security"
   ],
   "rules": {
     "object-literal-sort-keys": false,
-    "max-classes-per-file": [false, 1],
+    "max-classes-per-file": [
+      false,
+      1
+    ],
     "no-floating-promises": true,
     "jsx-no-lambda": false,
     "ordered-imports": [
