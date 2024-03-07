@@ -11,8 +11,6 @@ package(default_visibility = ["//visibility:public"])
 ts_library(
     name = "cli",
     srcs = [
-        "analytics.ts",
-        "config.ts",
         "console.ts",
         "credentials.ts",
         "index.ts",
@@ -25,19 +23,16 @@ ts_library(
         "//core",
         "//protos:ts",
         "//sqlx:format",
-        "@npm//@segment/analytics-node",
         "@npm//@types/glob",
         "@npm//@types/long",
         "@npm//@types/node",
         "@npm//@types/readline-sync",
-        "@npm//@types/uuid",
         "@npm//@types/yargs",
         "@npm//chokidar",
         "@npm//glob",
         "@npm//parse-duration",
         "@npm//readline-sync",
         "@npm//untildify",
-        "@npm//uuid",
         "@npm//yargs",
     ],
 )

@@ -4,7 +4,6 @@ import * as path from "path";
 import yargs from "yargs";
 
 import * as chokidar from "chokidar";
-import { trackError, trackOption } from "df/cli/analytics";
 import { build, compile, credentials, init, install, run, test } from "df/cli/api";
 import { CREDENTIALS_FILENAME } from "df/cli/api/commands/credentials";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
@@ -34,7 +33,6 @@ const RECOMPILE_DELAY = 500;
 
 process.on("unhandledRejection", async (reason: any) => {
   printError(`Unhandled promise rejection: ${reason?.stack || reason}`);
-  await trackError();
 });
 
 // TODO: Since yargs launched an actually well typed API in version 12, let's use it as this file is currently not type checked.
@@ -59,8 +57,7 @@ const projectDirMustExistOption = {
     );
     if (!fs.existsSync(dataformJsonPath) && !fs.existsSync(workflowSettingsYamlPath)) {
       throw new Error(
-        `${
-          argv[projectDirOption.name]
+        `${argv[projectDirOption.name]
         } does not appear to be a dataform directory (missing workflow_settings.yaml file).`
       );
     }
@@ -208,7 +205,7 @@ export function runCli() {
               if (!argv[ProjectConfigOptions.defaultDatabase.name]) {
                 throw new Error(
                   `The ${ProjectConfigOptions.defaultDatabase.name} positional argument is ` +
-                    `required. Use "dataform help init" for more info.`
+                  `required. Use "dataform help init" for more info.`
                 );
               }
             }
@@ -224,13 +221,13 @@ export function runCli() {
               if (!argv[ProjectConfigOptions.defaultLocation.name]) {
                 throw new Error(
                   `The ${ProjectConfigOptions.defaultLocation.name} positional argument is ` +
-                    `required. Use "dataform help init" for more info.`
+                  `required. Use "dataform help init" for more info.`
                 );
               }
             }
           }
         ],
-        options: [trackOption],
+        options: [],
         processFn: async argv => {
           print("Writing project files...\n");
           const initResult = await init(argv[projectDirOption.name], {
@@ -245,7 +242,7 @@ export function runCli() {
         format: `install [${projectDirMustExistOption.name}]`,
         description: "Install a project's NPM dependencies.",
         positionalOptions: [projectDirMustExistOption],
-        options: [trackOption],
+        options: [],
         processFn: async argv => {
           print("Installing NPM dependencies...\n");
           await install(argv[projectDirMustExistOption.name]);
@@ -260,7 +257,6 @@ export function runCli() {
           `accessing BigQuery.`,
         positionalOptions: [projectDirMustExistOption],
         options: [
-          trackOption,
           {
             name: testConnectionOptionName,
             option: {
@@ -287,7 +283,7 @@ export function runCli() {
               case credentials.TestResultStatus.OTHER_ERROR: {
                 throw new Error(
                   `Credentials test query failed: ${testResult.error.stack ||
-                    testResult.error.message}`
+                  testResult.error.message}`
                 );
               }
             }
@@ -319,7 +315,6 @@ export function runCli() {
           },
           jsonOutputOption,
           timeoutOption,
-          trackOption,
           ...ProjectConfigOptions.allYargsOptions
         ],
         processFn: async argv => {
@@ -411,7 +406,6 @@ export function runCli() {
           credentialsOption,
           timeoutOption,
           ...ProjectConfigOptions.allYargsOptions,
-          trackOption
         ],
         processFn: async argv => {
           print("Compiling...\n");
@@ -478,7 +472,6 @@ export function runCli() {
           jsonOutputOption,
           timeoutOption,
           ...ProjectConfigOptions.allYargsOptions,
-          trackOption
         ],
         processFn: async argv => {
           if (!argv[jsonOutputOption.name]) {
@@ -581,7 +574,7 @@ export function runCli() {
         format: `format [${projectDirMustExistOption.name}]`,
         description: "Format the dataform project's files.",
         positionalOptions: [projectDirMustExistOption],
-        options: [trackOption],
+        options: [],
         processFn: async argv => {
           const filenames = glob.sync("{definitions,includes}/**/*.{js,sqlx}", {
             cwd: argv[projectDirMustExistOption.name]
@@ -619,7 +612,6 @@ export function runCli() {
       } else {
         const message = err?.message ? err.message.split("\n")[0] : msg;
         printError(`Dataform encountered an error: ${message}`);
-        await trackError();
         if (err?.stack) {
           printError(err.stack);
         }
@@ -709,7 +701,7 @@ class ProjectConfigOptions {
       ) {
         throw new Error(
           `--${ProjectConfigOptions.schemaSuffix.name} should contain only ` +
-            `alphanumeric characters and/or underscores.`
+          `alphanumeric characters and/or underscores.`
         );
       }
     }
