@@ -23,7 +23,6 @@
     "@types/request": "^2.48.3",
     "@types/rimraf": "^2.0.2",
     "@types/semver": "^7.3.13",
-    "@types/stack-trace": "^0.0.29",
     "@types/tmp": "^0.2.0",
     "@types/vscode": "^1.45.1",
     "@types/yargs": "^15.0.5",
