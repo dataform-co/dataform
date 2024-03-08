@@ -25,11 +25,9 @@ ts_test_suite(
         "@npm//@types/fs-extra",
         "@npm//@types/long",
         "@npm//@types/node",
-        "@npm//@types/stack-trace",
         "@npm//chai",
         "@npm//fs-extra",
         "@npm//rimraf",
-        "@npm//stack-trace",
         "@npm//ts-mockito",
     ],
 )
