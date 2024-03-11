@@ -31,7 +31,6 @@ export function main(coreExecutionRequest: Uint8Array | string): Uint8Array | st
 
   // Read the workflow settings from the root of the project.
   let projectConfig = readWorkflowSettings();
-  console.log("🚀 ~ main ~ projectConfig:", projectConfig);
 
   // Merge in project config overrides.
   const projectConfigOverride = compileRequest.compileConfig.projectConfigOverride ?? {};

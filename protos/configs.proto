@@ -41,7 +41,8 @@ message WorkflowSettings {
   // Optional. The prefix to append to all action names.
   string name_prefix = 9;
 
-  // Optional. Options for Notebook actions.
+  // Optional. Default storage bucket to output notebooks in their
+  // post-execution state.
   string default_notebook_output_bucket = 10;
 }
 
