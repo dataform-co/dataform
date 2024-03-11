@@ -23,6 +23,8 @@ message ProjectConfig {
   string schema_suffix = 7;
   string table_prefix = 11;
 
+  string default_notebook_output_bucket = 17;
+
   reserved 3, 4, 6, 8, 10, 12, 13;
 }
 
