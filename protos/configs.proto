@@ -42,14 +42,7 @@ message WorkflowSettings {
   string name_prefix = 9;
 
   // Optional. Options for Notebook actions.
-  NotebookOptions notebook_options = 10;
-}
-
-// Notebook options defines options for notebook actions.
-message NotebookOptions {
-  // Default output bucket is the default storage bucket used for outputting
-  // notebooks in their post-execution state.
-  string defaultOutputBucket = 1;
+  string default_notebook_output_bucket = 10;
 }
 
 // Action configs defines the contents of `actions.yaml` configuration files.

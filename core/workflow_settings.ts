@@ -8,6 +8,7 @@ const nativeRequire = typeof __webpack_require__ === "function" ? __non_webpack_
 
 export function readWorkflowSettings(): dataform.ProjectConfig {
   const workflowSettingsYaml = maybeRequire("workflow_settings.yaml");
+  console.log("🚀 ~ readWorkflowSettings ~ workflowSettingsYaml:", workflowSettingsYaml);
   // `dataform.json` is deprecated; new versions of Dataform Core prefer `workflow_settings.yaml`.
   const dataformJson = maybeRequire("dataform.json");
 
@@ -110,6 +111,9 @@ export function workflowSettingsAsProjectConfig(
   }
   if (workflowSettings.namePrefix) {
     projectConfig.tablePrefix = workflowSettings.namePrefix;
+  }
+  if (workflowSettings.defaultNotebookOutputBucket) {
+    projectConfig.defaultNotebookOutputBucket = workflowSettings.defaultNotebookOutputBucket;
   }
   projectConfig.warehouse = "bigquery";
   return projectConfig;

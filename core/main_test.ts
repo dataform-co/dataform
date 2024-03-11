@@ -666,12 +666,11 @@ select 1 AS \${dataform.projectConfig.vars.columnVar}`
   });
 
   suite("notebooks", () => {
-    const createSimpleNotebookProject = (): string => {
+    const createSimpleNotebookProject = (
+      workflowSettingsYaml = VALID_WORKFLOW_SETTINGS_YAML
+    ): string => {
       const projectDir = tmpDirFixture.createNewTmpDir();
-      fs.writeFileSync(
-        path.join(projectDir, "workflow_settings.yaml"),
-        VALID_WORKFLOW_SETTINGS_YAML
-      );
+      fs.writeFileSync(path.join(projectDir, "workflow_settings.yaml"), workflowSettingsYaml);
       fs.mkdirSync(path.join(projectDir, "definitions"));
       fs.writeFileSync(
         path.join(projectDir, "definitions/actions.yaml"),
@@ -747,6 +746,26 @@ actions:
           }
         ])
       );
+    });
+
+    test(`notebook options loaded`, () => {
+      const projectDir = createSimpleNotebookProject(`
+defaultProject: dataform
+defaultLocation: US
+defaultNotebookOutputBucket: gs://some-bucket`);
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/notebook.ipynb"),
+        EMPTY_NOTEBOOK_CONTENTS
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(asPlainObject(result.compile.compiledGraph.projectConfig)).deep.equals({
+        defaultDatabase: "dataform",
+        defaultLocation: "US",
+        defaultNotebookOutputBucket: "gs://some-bucket",
+        warehouse: "bigquery"
+      });
     });
   });
 
