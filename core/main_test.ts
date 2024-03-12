@@ -748,11 +748,12 @@ actions:
       );
     });
 
-    test(`notebook options loaded`, () => {
+    test(`notebook default runtime options are loaded`, () => {
       const projectDir = createSimpleNotebookProject(`
 defaultProject: dataform
 defaultLocation: US
-defaultNotebookOutputBucket: gs://some-bucket`);
+defaultNotebookRuntimeOptions:
+  outputBucket: gs://some-bucket`);
       fs.writeFileSync(
         path.join(projectDir, "definitions/notebook.ipynb"),
         EMPTY_NOTEBOOK_CONTENTS
@@ -763,7 +764,9 @@ defaultNotebookOutputBucket: gs://some-bucket`);
       expect(asPlainObject(result.compile.compiledGraph.projectConfig)).deep.equals({
         defaultDatabase: "dataform",
         defaultLocation: "US",
-        defaultNotebookOutputBucket: "gs://some-bucket",
+        defaultNotebookRuntimeOptions: {
+          outputBucket: "gs://some-bucket"
+        },
         warehouse: "bigquery"
       });
     });

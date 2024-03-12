@@ -1,4 +1,5 @@
-defaultProject: "dataform-demos"
-defaultLocation: "us"
-defaultDataset: "dataform"
-defaultNotebookOutputBucket: "gs://some-bucket"
+defaultProject: dataform-demos
+defaultLocation: us
+defaultDataset: dataform
+defaultNotebookRuntimeOptions:
+  outputBucket: gs://some-bucket
