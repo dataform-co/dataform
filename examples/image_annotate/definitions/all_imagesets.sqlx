@@ -1,0 +1,10 @@
+config {
+    type: "operations",
+    hasOutput: true
+}
+
+  -- Create the object table for the images
+CREATE EXTERNAL TABLE IF NOT EXISTS
+  ${self()}
+WITH CONNECTION `us.gcs` OPTIONS( object_metadata = 'SIMPLE',
+    uris = ['${constants.IMAGE_BUCKET}'] );

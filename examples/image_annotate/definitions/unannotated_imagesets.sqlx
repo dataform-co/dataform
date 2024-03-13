@@ -1,0 +1,19 @@
+config {
+    type: "view"
+}
+
+js {
+    // Ref is avoided here to avoid the circular dependency chain.
+    const ANNOTATED_IMAGESETS = `${ctx.schema()}` + ".annotated_imagesets"
+}
+
+SELECT
+  *
+FROM
+  ${ref("all_imagesets")}
+LEFT JOIN
+  `${ANNOTATED_IMAGESETS}`
+ON
+  ${ref("all_imagesets")}.uri = `${ANNOTATED_IMAGESETS}`.uri
+WHERE
+  `${ANNOTATED_IMAGESETS}`.uri IS NULL

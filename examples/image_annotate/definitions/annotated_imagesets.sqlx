@@ -1,0 +1,25 @@
+config {
+    type: "incremental"
+}
+
+SELECT
+  *
+FROM
+  ${ref("object_table")}
+WHERE
+  ml_annotate_image_status NOT LIKE "${constants.RETRYABLE_ERROR}"
+  ${
+      when(incremental(), `AND
+      ${constants.MERGE_COLUMN} NOT IN (
+      SELECT
+        ${constants.MERGE_COLUMN}
+      FROM
+        ${self()})
+      OR updated > (
+      SELECT
+        MAX(updated)
+      FROM
+        ${self()})`)
+  }
+LIMIT
+  ${constants.BATCH_SIZE}

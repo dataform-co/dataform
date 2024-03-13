@@ -1,0 +1,10 @@
+config {
+    type: "assertion"
+}
+
+SELECT
+  *
+FROM
+  ${ref("object_table")}
+WHERE
+  ml_annotate_image_status LIKE "${constants.RETRYABLE_ERROR}"

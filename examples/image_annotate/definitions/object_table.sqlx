@@ -1,0 +1,10 @@
+config {
+    type: "table",
+}
+
+SELECT
+  *
+FROM
+  ML.ANNOTATE_IMAGE( MODEL ${ref("vision_model")},
+    TABLE ${ref("unannotated_imagesets")},
+    STRUCT(['LABEL_DETECTION'] AS vision_features))
