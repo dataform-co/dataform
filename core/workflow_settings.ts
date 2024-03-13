@@ -111,8 +111,12 @@ export function workflowSettingsAsProjectConfig(
   if (workflowSettings.namePrefix) {
     projectConfig.tablePrefix = workflowSettings.namePrefix;
   }
-  if (workflowSettings.defaultNotebookOutputBucket) {
-    projectConfig.defaultNotebookOutputBucket = workflowSettings.defaultNotebookOutputBucket;
+  if (workflowSettings.defaultNotebookRuntimeOptions) {
+    projectConfig.defaultNotebookRuntimeOptions = {};
+    if (workflowSettings.defaultNotebookRuntimeOptions.outputBucket) {
+      projectConfig.defaultNotebookRuntimeOptions.outputBucket =
+        workflowSettings.defaultNotebookRuntimeOptions.outputBucket;
+    }
   }
   projectConfig.warehouse = "bigquery";
   return projectConfig;

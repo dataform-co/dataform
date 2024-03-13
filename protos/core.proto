@@ -23,7 +23,7 @@ message ProjectConfig {
   string schema_suffix = 7;
   string table_prefix = 11;
 
-  string default_notebook_output_bucket = 17;
+  NotebookRuntimeOptions default_notebook_runtime_options = 17;
 
   reserved 3, 4, 6, 8, 10, 12, 13;
 }
@@ -238,6 +238,12 @@ message Notebook {
   bool disabled = 6;
 
   string notebook_contents = 7;
+}
+
+message NotebookRuntimeOptions {
+  oneof output_sink {
+    string output_bucket = 1;
+  }
 }
 
 message CompiledGraph {

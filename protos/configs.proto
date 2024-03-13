@@ -41,9 +41,8 @@ message WorkflowSettings {
   // Optional. The prefix to append to all action names.
   string name_prefix = 9;
 
-  // Optional. Default storage bucket to output notebooks in their
-  // post-execution state.
-  string default_notebook_output_bucket = 10;
+  // Optional. Default runtime options for Notebook actions.
+  NotebookRuntimeOptionsConfig default_notebook_runtime_options = 10;
 }
 
 // Action configs defines the contents of `actions.yaml` configuration files.
@@ -419,5 +418,12 @@ message ActionConfig {
     OperationConfig operation = 5;
     DeclarationConfig declaration = 6;
     NotebookConfig notebook = 7;
+  }
+}
+
+message NotebookRuntimeOptionsConfig {
+  oneof output_sink {
+    // Storage bucket to output notebooks to after their execution.
+    string output_bucket = 1;
   }
 }
