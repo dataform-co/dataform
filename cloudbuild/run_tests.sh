@@ -1,9 +1,6 @@
 #!/bin/bash
 set -e
 
-# # Cloud build expects the dataform repo to be mounted in a `/dataform` directory.
-# cd dataform
-
 # Run tslint.
 bazel run @nodejs//:yarn
 bazel build @npm//tslint/bin:tslint && bazel-bin/external/npm/tslint/bin/tslint.sh --project .
