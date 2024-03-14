@@ -17,7 +17,7 @@ suite("@dataform/cli", ({ afterEach }) => {
   const nodePath = `external/${platformPath}/bin/node`;
   const cliEntryPointPath = "cli/node_modules/@dataform/cli/bundle.js";
   const npmPath = `external/${platformPath}/bin/npm`;
-  const corePackageTarPath = "packages/@dataform/core/package.tgz";
+  const corePackageTarPath = "packages/@dataform/core/package.tar.gz";
 
   test(
     "compile throws an error when dataformCoreVersion not in workflow_settings.yaml and no " +

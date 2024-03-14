@@ -96,65 +96,6 @@ load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies", "go_repository")
 
 gazelle_dependencies()
 
-# Docker base images.
-http_archive(
-    name = "io_bazel_rules_docker",
-    sha256 = "b1e80761a8a8243d03ebca8845e9cc1ba6c82ce7c5179ce2b295cd36f7e394bf",
-    urls = ["https://github.com/bazelbuild/rules_docker/releases/download/v0.25.0/rules_docker-v0.25.0.tar.gz"],
-)
-
-load(
-    "@io_bazel_rules_docker//toolchains/docker:toolchain.bzl",
-    docker_toolchain_configure = "toolchain_configure",
-)
-
-# Force Docker toolchain to use 'which' to find Docker binary.
-docker_toolchain_configure(
-    name = "docker_config",
-)
-
-load(
-    "@io_bazel_rules_docker//repositories:repositories.bzl",
-    container_repositories = "repositories",
-)
-
-container_repositories()
-
-load("@io_bazel_rules_docker//repositories:deps.bzl", container_deps = "deps")
-
-container_deps()
-
-load("@io_bazel_rules_docker//repositories:py_repositories.bzl", "py_deps")
-
-py_deps()
-
-load(
-    "@io_bazel_rules_docker//container:container.bzl",
-    "container_pull",
-)
-
-container_pull(
-    name = "nodejs_base",
-    # This digest is for tag "18.13.0".
-    digest = "sha256:d9061fd0205c20cd47f70bdc879a7a84fb472b822d3ad3158aeef40698d2ce36",
-    registry = "index.docker.io",
-    repository = "library/node",
-)
-
-container_pull(
-    name = "nginx_base",
-    digest = "sha256:8c3cdb5acd050a5a46be0bb5637e23d192f4ef010b4fb6c5af40e45c5b7a0a71",
-    registry = "index.docker.io",
-    repository = "library/nginx",
-)
-
-load(
-    "@io_bazel_rules_docker//nodejs:image.bzl",
-    _nodejs_image_repos = "repositories",
-)
-
-_nodejs_image_repos()
-
 # Gcloud SDK binaries.
 load("//tools/gcloud:repository_rules.bzl", "gcloud_sdk")
 
@@ -184,12 +125,4 @@ go_repository(
     importpath = "golang.org/x/text",
     sum = "h1:tW2bmiBqwgJj/UpqtC8EpXEZVYOwU0yG4iWbprSVAcs=",
     version = "v0.3.2",
-)
-
-container_pull(
-    name = "debian_base",
-    # docker manifest inspect index.docker.io/debian:bullseye
-    digest = "sha256:c11d2593cb741ae8a36d0de9cd240d13518e95f50bccfa8d00a668c006db181e",
-    registry = "index.docker.io",
-    repository = "library/debian",
 )

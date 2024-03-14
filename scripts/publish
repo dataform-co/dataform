@@ -32,7 +32,3 @@ bazel run cli:push
 
 git tag $VERSION
 git push origin $VERSION
-
-docker pull dataformco/dataform:$VERSION
-docker tag dataformco/dataform:$VERSION dataformco/dataform:$TAG
-docker push dataformco/dataform:$TAG
