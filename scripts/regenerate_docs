@@ -1,0 +1,8 @@
+#!/bin/bash
+
+docker pull pseudomuto/protoc-gen-doc
+
+docker run --rm \
+  -v $(pwd)/docs:/out \
+  -v $(pwd)/protos:/protos \
+  pseudomuto/protoc-gen-doc configs.proto --doc_opt=markdown,configs-reference.md
