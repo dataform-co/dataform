@@ -1,6 +1,5 @@
 steps:
-  - name: "gcr.io/dataform-public/dataform-builder"
-    args:
-      ["build", "-t", "gcr.io/dataform-public/dataform-builder", "-f", "cloudbuild/Dockerfile", "."]
+  - name:
+    args: ["./cloudbuild/install_requirements.sh"]
   - name:
     args: ["./cloudbuild/run_tests.sh"]
