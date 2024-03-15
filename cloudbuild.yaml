@@ -1,0 +1,4 @@
+steps:
+  - name: gcr.io/cloud-builders/bazel:5.4.0
+    entrypoint: bash
+    args: ["./scripts/run_tests"]

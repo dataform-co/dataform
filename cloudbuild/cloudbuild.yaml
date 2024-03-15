@@ -1,5 +1,0 @@
-steps:
-  - name:
-    args: ["./cloudbuild/install_requirements.sh"]
-  - name:
-    args: ["./cloudbuild/run_tests.sh"]
