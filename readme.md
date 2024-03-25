@@ -35,9 +35,8 @@ npm i -g @dataform/cli
 - Write [data quality checks](https://cloud.google.com/dataform/docs/assertions).
 - Enable [scripting](https://cloud.google.com/dataform/docs/develop-workflows-js) and code re-use with a JavaScript API.
 - Import [pre-defined packages](https://dataform-co.github.io/dataform/docs/packages), or create your own.
-- Import [pre-defined packages](https://dataform-co.github.io/dataform/docs/packages), or create your own.
 - View the [Dataform Core reference](https://cloud.google.com/dataform/docs/reference/dataform-core-reference).
-- View the [Dataform configs reference](docs/configs-reference).
+- View the [Dataform configs reference](https://dataform-co.github.io/dataform/docs/configs-reference).
 
 _Note: this readme can also be viewed on https://dataform-co.github.io/dataform._
 

@@ -63,8 +63,8 @@ def pkg_npm_tar(name, srcs = [], deps = []):
     native.genrule(
         name = name + "_tar",
         srcs = [":" + name],
-        outs = [name + ".tgz"],
-        cmd = "tar -cvzf $(location {name}.tgz) -C $(location :{name})/.. --dereference {name}"
+        outs = [name + ".tar.gz"],
+        cmd = "tar -cvzf $(location {name}.tar.gz) -C $(location :{name})/.. --dereference {name}"
             .format(name = name),
     )
 

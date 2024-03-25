@@ -90,6 +90,5 @@ pkg_npm_tar(
         ":bundle",
         ":package.json",
         ":worker_bundle",
-
     ],
 )
