@@ -117,8 +117,8 @@ export function printInitCredsResult(writtenFilePath: string) {
   writeStdOut("To change connection settings, edit this file directly.");
 }
 
-export function printCompiledGraph(graph: dataform.ICompiledGraph, verbose: boolean) {
-  if (verbose) {
+export function printCompiledGraph(graph: dataform.ICompiledGraph, asJson: boolean) {
+  if (asJson) {
     writeStdOut(prettyJsonStringify(graph));
   } else {
     const actionCount =
@@ -179,8 +179,8 @@ export function printTestResult(testResult: dataform.ITestResult) {
   }
 }
 
-export function printExecutionGraph(executionGraph: dataform.ExecutionGraph, verbose: boolean) {
-  if (verbose) {
+export function printExecutionGraph(executionGraph: dataform.ExecutionGraph, asJson: boolean) {
+  if (asJson) {
     writeStdOut(prettyJsonStringify(executionGraph.toJSON()));
   } else {
     const actionsByType = {

@@ -320,14 +320,12 @@ export function runCli() {
           ...ProjectConfigOptions.allYargsOptions
         ],
         processFn: async argv => {
-          const projectDir = argv[projectDirMustExistOption.name];
-
-          const compileAndPrint = async () => {
+          async function compileAndPrint() {
             if (!argv[jsonOutputOption.name]) {
               print("Compiling...\n");
             }
             const compiledGraph = await compile({
-              projectDir,
+              projectDir: argv[projectDirMustExistOption.name],
               projectConfigOverride: ProjectConfigOptions.constructProjectConfigOverride(argv),
               timeoutMillis: argv[timeoutOption.name] || undefined
             });
@@ -338,7 +336,8 @@ export function runCli() {
               return true;
             }
             return false;
-          };
+          }
+
           const graphHasErrors = await compileAndPrint();
 
           if (!argv[watchOptionName]) {
@@ -472,6 +471,13 @@ export function runCli() {
           ...ProjectConfigOptions.allYargsOptions
         ],
         processFn: async argv => {
+          if (argv[jsonOutputOption.name] && !argv[dryRunOptionName]) {
+            print(
+              `For execution, the --${jsonOutputOption.name} option is only supported if the ` +
+                `--${dryRunOptionName} option is enabled`
+            );
+            return;
+          }
           if (!argv[jsonOutputOption.name]) {
             print("Compiling...\n");
           }
@@ -511,7 +517,7 @@ export function runCli() {
               );
             }
             printExecutionGraph(executionGraph, argv[jsonOutputOption.name]);
-            return;
+            return 1;
           }
 
           if (argv[runTestsOptionName]) {
