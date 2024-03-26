@@ -232,7 +232,7 @@ export function printExecutedAction(
       switch (executionAction.type) {
         case "table": {
           writeStdOut(
-            `${successOutput("Dataset created: ")} ${datasetString(
+            `${successOutput("Table created: ")} ${datasetString(
               executionAction.target,
               executionAction.tableType,
               executionAction.tasks.length === 0

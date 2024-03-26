@@ -18,7 +18,7 @@
     "@types/json-stable-stringify": "^1.0.32",
     "@types/long": "^4.0.0",
     "@types/moo": "^0.5.0",
-    "@types/node": "^12.12.6",
+    "@types/node": "^16.16.0",
     "@types/readline-sync": "^1.4.3",
     "@types/request": "^2.48.3",
     "@types/rimraf": "^2.0.2",

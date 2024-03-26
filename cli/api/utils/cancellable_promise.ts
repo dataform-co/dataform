@@ -32,7 +32,7 @@ export class CancellablePromise<T> implements PromiseLike<T> {
   ): Promise<S> {
     // TODO: Seems like local and remote bazel builds behave
     // differently and I can't get this to type correctly for both.
-    return (this.promise.then(onfulfilled, onrejected) as any);
+    return this.promise.then(onfulfilled, onrejected) as any;
   }
 
   public catch(onRejected?: (reason: any) => PromiseLike<never>): Promise<T> {
@@ -41,6 +41,6 @@ export class CancellablePromise<T> implements PromiseLike<T> {
 
   public cancel(): void {
     this.cancelled = true;
-    this.emitter.emit(CancellablePromise.CANCEL_EVENT);
+    this.emitter.emit(CancellablePromise.CANCEL_EVENT, undefined, undefined);
   }
 }

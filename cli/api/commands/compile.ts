@@ -65,7 +65,7 @@ export async function compile(
   compiledGraph = dataform.CompiledGraph.create(decodedResult.compile.compiledGraph);
 
   if (workflowSettingsDataformCoreVersion) {
-    fs.rmdirSync(temporaryProjectPath, { recursive: true });
+    fs.rmSync(temporaryProjectPath, { recursive: true });
   }
 
   return compiledGraph;
