@@ -86,7 +86,8 @@ const tagsOption: INamedOption<yargs.Options> = {
   name: "tags",
   option: {
     describe: "A list of tags to filter the actions to run.",
-    type: "array"
+    type: "array",
+    coerce: (rawTags: string[] | null) => rawTags.map(tags => tags.split(",")).flat()
   }
 };
 
@@ -470,6 +471,7 @@ export function runCli() {
           credentialsOption,
           jsonOutputOption,
           timeoutOption,
+          tagsOption,
           ...ProjectConfigOptions.allYargsOptions
         ],
         processFn: async argv => {

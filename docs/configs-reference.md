@@ -39,7 +39,7 @@
 <a name="dataform-ActionConfig"></a>
 
 ### ActionConfig
-Action config defines the configuration properties of actions.
+Action config defines the contents of `actions.yaml` configuration files.
 
 
 | Field | Type | Label | Description |

@@ -51,7 +51,7 @@ message ActionConfigs {
   repeated ActionConfig actions = 1;
 }
 
-// Action config defines the configuration properties of actions.
+// Action config defines the contents of `actions.yaml` configuration files.
 message ActionConfig {
   // Target represents a unique action identifier.
   message Target {
