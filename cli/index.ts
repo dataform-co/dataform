@@ -320,12 +320,14 @@ export function runCli() {
           ...ProjectConfigOptions.allYargsOptions
         ],
         processFn: async argv => {
+          const projectDir = argv[projectDirMustExistOption.name];
+
           async function compileAndPrint() {
             if (!argv[jsonOutputOption.name]) {
               print("Compiling...\n");
             }
             const compiledGraph = await compile({
-              projectDir: argv[projectDirMustExistOption.name],
+              projectDir,
               projectConfigOverride: ProjectConfigOptions.constructProjectConfigOverride(argv),
               timeoutMillis: argv[timeoutOption.name] || undefined
             });
