@@ -174,7 +174,7 @@ const runTestsOptionName = "run-tests";
 const actionRetryLimitName = "action-retry-limit";
 
 function getCredentialsPath(projectDir: string, credentialsPath: string) {
-  return actuallyResolve(projectDir, CREDENTIALS_FILENAME);
+  return actuallyResolve(projectDir, credentialsPath);
 }
 
 export function runCli() {
