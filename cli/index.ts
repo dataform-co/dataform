@@ -87,15 +87,7 @@ const tagsOption: INamedOption<yargs.Options> = {
   option: {
     describe: "A list of tags to filter the actions to run.",
     type: "array",
-    coerce: (rawTags: string[] | null) => {
-      const tags: string[] = [];
-      rawTags.forEach(rawTag =>
-        rawTag?.split(",").forEach(tag => {
-          tags.push(tag);
-        })
-      );
-      return tags;
-    }
+    coerce: (rawTags: string[] | null) => rawTags.map(tags => tags.split(",")).flat()
   }
 };
 
