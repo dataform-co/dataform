@@ -7,6 +7,7 @@ import { dataform } from "df/protos/ts";
 export const CREDENTIALS_FILENAME = ".df-credentials.json";
 
 export function read(credentialsPath: string): dataform.IBigQuery {
+  console.log("🚀 ~ read ~ credentialsPath:", credentialsPath);
   if (!fs.existsSync(credentialsPath)) {
     throw new Error(`Missing credentials JSON file; not found at path '${credentialsPath}'.`);
   }
