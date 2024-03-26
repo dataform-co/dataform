@@ -4,7 +4,9 @@ import * as path from "path";
 import { dataform } from "df/protos/ts";
 import untildify from "untildify";
 
-export const actuallyResolve = (filePath: string) => path.resolve(untildify(filePath));
+export function actuallyResolve(...filePaths: string[]) {
+  return path.resolve(...filePaths.map(filePath => untildify(filePath)));
+}
 
 export function assertPathExists(checkPath: string) {
   if (!fs.existsSync(checkPath)) {

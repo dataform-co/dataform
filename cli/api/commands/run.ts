@@ -131,7 +131,7 @@ export class Runner {
 
   public cancel() {
     this.cancelled = true;
-    this.eEmitter.emit(CANCEL_EVENT);
+    this.eEmitter.emit(CANCEL_EVENT, undefined, undefined);
   }
 
   public async result(): Promise<dataform.IRunResult> {

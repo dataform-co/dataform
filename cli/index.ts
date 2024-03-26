@@ -57,7 +57,8 @@ const projectDirMustExistOption = {
     );
     if (!fs.existsSync(dataformJsonPath) && !fs.existsSync(workflowSettingsYamlPath)) {
       throw new Error(
-        `${argv[projectDirOption.name]
+        `${
+          argv[projectDirOption.name]
         } does not appear to be a dataform directory (missing workflow_settings.yaml file).`
       );
     }
@@ -172,8 +173,9 @@ const runTestsOptionName = "run-tests";
 
 const actionRetryLimitName = "action-retry-limit";
 
-const getCredentialsPath = (projectDir: string, credentialsPath: string) =>
-  actuallyResolve(credentialsPath || path.join(projectDir, CREDENTIALS_FILENAME));
+function getCredentialsPath(projectDir: string, credentialsPath: string) {
+  return actuallyResolve(projectDir, credentialsPath);
+}
 
 export function runCli() {
   const builtYargs = createYargsCli({
@@ -205,7 +207,7 @@ export function runCli() {
               if (!argv[ProjectConfigOptions.defaultDatabase.name]) {
                 throw new Error(
                   `The ${ProjectConfigOptions.defaultDatabase.name} positional argument is ` +
-                  `required. Use "dataform help init" for more info.`
+                    `required. Use "dataform help init" for more info.`
                 );
               }
             }
@@ -221,7 +223,7 @@ export function runCli() {
               if (!argv[ProjectConfigOptions.defaultLocation.name]) {
                 throw new Error(
                   `The ${ProjectConfigOptions.defaultLocation.name} positional argument is ` +
-                  `required. Use "dataform help init" for more info.`
+                    `required. Use "dataform help init" for more info.`
                 );
               }
             }
@@ -283,7 +285,7 @@ export function runCli() {
               case credentials.TestResultStatus.OTHER_ERROR: {
                 throw new Error(
                   `Credentials test query failed: ${testResult.error.stack ||
-                  testResult.error.message}`
+                    testResult.error.message}`
                 );
               }
             }
@@ -402,11 +404,7 @@ export function runCli() {
         format: `test [${projectDirMustExistOption.name}]`,
         description: "Run the dataform project's unit tests.",
         positionalOptions: [projectDirMustExistOption],
-        options: [
-          credentialsOption,
-          timeoutOption,
-          ...ProjectConfigOptions.allYargsOptions,
-        ],
+        options: [credentialsOption, timeoutOption, ...ProjectConfigOptions.allYargsOptions],
         processFn: async argv => {
           print("Compiling...\n");
           const compiledGraph = await compile({
@@ -471,7 +469,7 @@ export function runCli() {
           credentialsOption,
           jsonOutputOption,
           timeoutOption,
-          ...ProjectConfigOptions.allYargsOptions,
+          ...ProjectConfigOptions.allYargsOptions
         ],
         processFn: async argv => {
           if (!argv[jsonOutputOption.name]) {
@@ -701,7 +699,7 @@ class ProjectConfigOptions {
       ) {
         throw new Error(
           `--${ProjectConfigOptions.schemaSuffix.name} should contain only ` +
-          `alphanumeric characters and/or underscores.`
+            `alphanumeric characters and/or underscores.`
         );
       }
     }
