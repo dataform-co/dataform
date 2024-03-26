@@ -263,7 +263,7 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
         "run",
         projectDir,
         "--credentials",
-        "test_credentials/bigquery.json",
+        path.resolve(process.env.RUNFILES, "df/test_credentials/bigquery.json"),
         "--dry-run",
         "--json",
         "--vars=testVar1=testValue1,testVar2=testValue2",
