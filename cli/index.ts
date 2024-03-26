@@ -519,7 +519,7 @@ export function runCli() {
               );
             }
             printExecutionGraph(executionGraph, argv[jsonOutputOption.name]);
-            return 1;
+            return;
           }
 
           if (argv[runTestsOptionName]) {
