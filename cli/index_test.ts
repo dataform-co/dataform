@@ -194,7 +194,7 @@ defaultAssertionDataset: dataform_assertions
     fs.writeFileSync(
       filePath,
       `
-config { type: "table" }
+config { type: "table", tags: ["someTag"] }
 select 1 as \${dataform.projectConfig.vars.testVar2}
 `
     );
@@ -230,7 +230,8 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
           },
           query: "\n\nselect 1 as testValue2\n",
           disabled: false,
-          fileName: "definitions/example.sqlx"
+          fileName: "definitions/example.sqlx",
+          tags: ["someTag"]
         }
       ],
       projectConfig: {
@@ -267,7 +268,8 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
         "--dry-run",
         "--json",
         "--vars=testVar1=testValue1,testVar2=testValue2",
-        "--default-location=europe"
+        "--default-location=europe",
+        "--tags=someTag,someOtherTag"
       ])
     );
 
@@ -306,7 +308,8 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
         }
       },
       runConfig: {
-        fullRefresh: false
+        fullRefresh: false,
+        tags: ["someTag", "someOtherTag"]
       },
       warehouseState: {}
     });
