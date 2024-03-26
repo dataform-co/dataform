@@ -323,7 +323,7 @@ export function runCli() {
         processFn: async argv => {
           const projectDir = argv[projectDirMustExistOption.name];
 
-          const compileAndPrint = async () => {
+          async function compileAndPrint() {
             if (!argv[jsonOutputOption.name]) {
               print("Compiling...\n");
             }
@@ -339,7 +339,8 @@ export function runCli() {
               return true;
             }
             return false;
-          };
+          }
+
           const graphHasErrors = await compileAndPrint();
 
           if (!argv[watchOptionName]) {
@@ -474,6 +475,13 @@ export function runCli() {
           ...ProjectConfigOptions.allYargsOptions
         ],
         processFn: async argv => {
+          if (argv[jsonOutputOption.name] && !argv[dryRunOptionName]) {
+            print(
+              `For execution, the --${jsonOutputOption.name} option is only supported if the ` +
+                `--${dryRunOptionName} option is enabled`
+            );
+            return;
+          }
           if (!argv[jsonOutputOption.name]) {
             print("Compiling...\n");
           }
