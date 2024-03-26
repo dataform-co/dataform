@@ -26,7 +26,7 @@ export interface IExecutedAction {
 }
 
 export interface IExecutionOptions {
-  bigquery?: { jobPrefix?: string; actionRetryLimit?: number };
+  bigquery?: { jobPrefix?: string; actionRetryLimit?: number; dryRun?: boolean };
 }
 
 export function run(
@@ -338,7 +338,8 @@ export class Runner {
             bigquery: {
               labels: action.actionDescriptor?.bigqueryLabels,
               actionRetryLimit: this.executionOptions?.bigquery?.actionRetryLimit,
-              jobPrefix: this.executionOptions?.bigquery?.jobPrefix
+              jobPrefix: this.executionOptions?.bigquery?.jobPrefix,
+              dryRun: this.executionOptions?.bigquery?.dryRun
             }
           });
           if (taskStatus === dataform.TaskResult.ExecutionStatus.FAILED) {

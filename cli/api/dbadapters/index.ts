@@ -20,6 +20,7 @@ export interface IDbClient {
         labels?: { [label: string]: string };
         location?: string;
         jobPrefix?: string;
+        dryRun?: boolean;
       };
     }
   ): Promise<IExecutionResult>;

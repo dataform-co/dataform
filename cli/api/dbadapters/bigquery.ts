@@ -26,6 +26,7 @@ export interface IBigQueryExecutionOptions {
   labels?: { [label: string]: string };
   location?: string;
   jobPrefix?: string;
+  dryRun?: boolean;
 }
 
 export class BigQueryDbAdapter implements IDbAdapter {
@@ -82,7 +83,8 @@ export class BigQueryDbAdapter implements IDbAdapter {
                 options?.onCancel,
                 options?.bigquery?.labels,
                 options?.bigquery?.location,
-                options?.bigquery?.jobPrefix
+                options?.bigquery?.jobPrefix,
+                options?.bigquery?.dryRun
               )
       })
       .promise();
@@ -319,7 +321,8 @@ export class BigQueryDbAdapter implements IDbAdapter {
     onCancel?: OnCancel,
     labels?: { [label: string]: string },
     location?: string,
-    jobPrefix?: string
+    jobPrefix?: string,
+    dryRun?: boolean
   ) {
     let isCancelled = false;
     onCancel?.(() => (isCancelled = true));
@@ -333,7 +336,8 @@ export class BigQueryDbAdapter implements IDbAdapter {
             query,
             params,
             labels,
-            location
+            location,
+            dryRun
           });
           const resultStream = job[0].getQueryResultsStream();
           return new Promise<IExecutionResult>((resolve, reject) => {
