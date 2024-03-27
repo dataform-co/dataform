@@ -86,7 +86,7 @@ suite("@dataform/core", ({ afterEach }) => {
       });
     });
 
-    suite("resolve fails", () => {
+    test("resolve fails", () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
       fs.writeFileSync(
         path.join(projectDir, "workflow_settings.yaml"),
@@ -156,6 +156,38 @@ suite("@dataform/core", ({ afterEach }) => {
           asPlainObject(result.compile.compiledGraph.graphErrors.compilationErrors?.[0]?.message)
         ).deep.equals("Warehouse does not support multiple databases");
       });
+    });
+  });
+
+  suite("actions", () => {
+    test("disabled", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/table.sqlx"),
+        "config { type: 'table', disabled: true }"
+      );
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/operation.sqlx"),
+        "config { type: 'operations', disabled: false }"
+      );
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/assertion.sqlx"),
+        "config { type: 'assertion', disabled: true }"
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(asPlainObject(result.compile.compiledGraph.graphErrors.compilationErrors)).deep.equals(
+        []
+      );
+      expect(asPlainObject(result.compile.compiledGraph.tables[0].disabled)).is.true;
+      expect(asPlainObject(result.compile.compiledGraph.operations[0].disabled)).is.false;
+      expect(asPlainObject(result.compile.compiledGraph.assertions[0].disabled)).is.true;
     });
   });
 

@@ -162,8 +162,8 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
       : dataform.ActionHermeticity.NON_HERMETIC;
   }
 
-  public disabled() {
-    this.proto.disabled = true;
+  public disabled(disabled = true) {
+    this.proto.disabled = disabled;
     return this;
   }
 

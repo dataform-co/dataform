@@ -167,8 +167,8 @@ export class Operation extends ActionBuilder<dataform.Operation> {
       : dataform.ActionHermeticity.NON_HERMETIC;
   }
 
-  public disabled() {
-    this.proto.disabled = true;
+  public disabled(disabled = true) {
+    this.proto.disabled = disabled;
     return this;
   }
 
