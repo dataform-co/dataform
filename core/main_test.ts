@@ -185,9 +185,9 @@ suite("@dataform/core", ({ afterEach }) => {
       expect(asPlainObject(result.compile.compiledGraph.graphErrors.compilationErrors)).deep.equals(
         []
       );
-      expect(asPlainObject(result.compile.compiledGraph.tables[0].disabled)).is.true;
-      expect(asPlainObject(result.compile.compiledGraph.operations[0].disabled)).is.false;
-      expect(asPlainObject(result.compile.compiledGraph.assertions[0].disabled)).is.true;
+      expect(asPlainObject(result.compile.compiledGraph.tables[0].disabled)).equals(true);
+      expect(asPlainObject(result.compile.compiledGraph.operations[0].disabled)).equals(false);
+      expect(asPlainObject(result.compile.compiledGraph.assertions[0].disabled)).equals(true);
     });
   });
 
