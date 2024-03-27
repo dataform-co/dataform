@@ -249,9 +249,9 @@ export function setOrValidateTableEnumType(table: dataform.ITable) {
 export function extractActionDetailsFromFileName(
   path: string
 ): { fileExtension: string; fileNameAsTargetName: string } {
-  const fileName = Path.fileName(path);
+  const basename = Path.basename(path);
   const fileExtension = Path.fileExtension(path);
-  return { fileExtension, fileNameAsTargetName: fileName };
+  return { fileExtension, fileNameAsTargetName: basename };
 }
 
 export function actionConfigToCompiledGraphTarget(

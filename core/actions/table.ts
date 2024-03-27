@@ -286,7 +286,7 @@ export class Table extends ActionBuilder<dataform.Table> {
     }
 
     if (!tableTypeConfig.name) {
-      tableTypeConfig.name = Path.fileName(tableTypeConfig.filename);
+      tableTypeConfig.name = Path.basename(tableTypeConfig.filename);
     }
     const target = actionConfigToCompiledGraphTarget(tableTypeConfig);
     this.proto.target = this.applySessionToTarget(target);

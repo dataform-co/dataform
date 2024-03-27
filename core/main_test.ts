@@ -157,6 +157,22 @@ suite("@dataform/core", ({ afterEach }) => {
         ).deep.equals("Warehouse does not support multiple databases");
       });
     });
+
+    suite("filenames with multiple dots cause compilation errors", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(path.join(projectDir, "definitions/file.extradot.sqlx"), "SELECT 1");
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(
+        asPlainObject(result.compile.compiledGraph.graphErrors.compilationErrors?.[0]?.message)
+      ).deep.equals(`Action target names cannot include '.'`);
+    });
   });
 
   suite("sqlx special characters", () => {
