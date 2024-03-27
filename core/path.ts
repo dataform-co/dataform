@@ -17,11 +17,12 @@ export function relativePath(fullPath: string, base: string) {
   }
 }
 
-export function fileName(fullPath: string) {
-  return fullPath
-    .split(separator)
-    .slice(-1)[0]
-    .split(".")[0];
+export function filename(path: string) {
+  return path.split(separator).slice(-1)[0];
+}
+
+export function basename(path: string) {
+  return filename(path).substring(0, filename(path).lastIndexOf("."));
 }
 
 export function dirName(fullPath: string) {
@@ -43,7 +44,7 @@ export function join(...paths: string[]) {
 }
 
 export function escapedFileName(path: string) {
-  return fileName(path).replace(/\\/g, "\\\\");
+  return basename(path).replace(/\\/g, "\\\\");
 }
 
 export function fileExtension(fullPath: string) {

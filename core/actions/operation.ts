@@ -87,7 +87,7 @@ export class Operation extends ActionBuilder<dataform.Operation> {
     }
 
     if (!config.name) {
-      config.name = Path.fileName(config.filename);
+      config.name = Path.basename(config.filename);
     }
     const target = actionConfigToCompiledGraphTarget(config);
     this.proto.target = this.applySessionToTarget(target);

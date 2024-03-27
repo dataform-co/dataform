@@ -58,7 +58,7 @@ export function main(coreExecutionRequest: Uint8Array | string): Uint8Array | st
     .forEach(includePath => {
       try {
         // tslint:disable-next-line: tsr-detect-non-literal-require
-        topLevelIncludes[Path.fileName(includePath)] = nativeRequire(includePath);
+        topLevelIncludes[Path.basename(includePath)] = nativeRequire(includePath);
       } catch (e) {
         session.compileError(e, includePath);
       }
@@ -107,7 +107,7 @@ function loadActionConfigs(session: Session, filePaths: string[]) {
     .filter(
       path =>
         path.startsWith(`definitions${Path.separator}`) &&
-        Path.fileName(path) === "actions" &&
+        Path.basename(path) === "actions" &&
         Path.fileExtension(path) === "yaml"
     )
     .sort()
