@@ -225,14 +225,15 @@ export function printExecutionGraph(executionGraph: dataform.ExecutionGraph, asJ
 
 export function printExecutedAction(
   executedAction: dataform.IActionResult,
-  executionAction: dataform.IExecutionAction
+  executionAction: dataform.IExecutionAction,
+  dryRun?: boolean
 ) {
   switch (executedAction.status) {
     case dataform.ActionResult.ExecutionStatus.SUCCESSFUL: {
       switch (executionAction.type) {
         case "table": {
           writeStdOut(
-            `${successOutput("Table created: ")} ${datasetString(
+            `${successOutput(`Table ${dryRun ? "dry run success" : "created"}: `)} ${datasetString(
               executionAction.target,
               executionAction.tableType,
               executionAction.tasks.length === 0
@@ -242,19 +243,17 @@ export function printExecutedAction(
         }
         case "assertion": {
           writeStdOut(
-            `${successOutput("Assertion passed: ")} ${assertionString(
-              executionAction.target,
-              executionAction.tasks.length === 0
-            )}`
+            `${successOutput(
+              `Assertion ${dryRun ? "dry run success" : "passed"}: `
+            )} ${assertionString(executionAction.target, executionAction.tasks.length === 0)}`
           );
           return;
         }
         case "operation": {
           writeStdOut(
-            `${successOutput("Operation completed successfully: ")} ${operationString(
-              executionAction.target,
-              executionAction.tasks.length === 0
-            )}`
+            `${successOutput(
+              `Operation ${dryRun ? "dry run success" : "completed successfully"}: `
+            )} ${operationString(executionAction.target, executionAction.tasks.length === 0)}`
           );
           return;
         }

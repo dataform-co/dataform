@@ -514,12 +514,7 @@ export function runCli() {
             dbadapter
           );
 
-          if (argv[dryRunOptionName]) {
-            if (!argv[jsonOutputOption.name]) {
-              print(
-                `Dry run (--${dryRunOptionName}) mode is turned on; not running the following actions:\n`
-              );
-            }
+          if (argv[dryRunOptionName] && argv[jsonOutputOption.name]) {
             printExecutionGraph(executionGraph, argv[jsonOutputOption.name]);
             return;
           }
@@ -535,10 +530,17 @@ export function runCli() {
             printSuccess("Unit tests completed successfully.\n");
           }
 
-          if (!argv[jsonOutputOption.name]) {
+          if (argv[dryRunOptionName]) {
+            print("Dry running (no changes to the warehouse will be applied)...");
+          } else {
             print("Running...\n");
           }
-          let bigqueryOptions: {} = { actionRetryLimit: argv[actionRetryLimitName] };
+          let bigqueryOptions: {} = {
+            actionRetryLimit: argv[actionRetryLimitName]
+          };
+          if (argv[dryRunOptionName]) {
+            bigqueryOptions = { ...bigqueryOptions, dryRun: argv[dryRunOptionName] };
+          }
           if (argv[jobPrefixOption.name]) {
             bigqueryOptions = { ...bigqueryOptions, jobPrefix: argv[jobPrefixOption.name] };
           }
@@ -566,7 +568,8 @@ export function runCli() {
               .forEach(executedAction => {
                 printExecutedAction(
                   executedAction,
-                  actionsByName.get(targetAsReadableString(executedAction.target))
+                  actionsByName.get(targetAsReadableString(executedAction.target)),
+                  argv[dryRunOptionName]
                 );
                 alreadyPrintedActions.add(targetAsReadableString(executedAction.target));
               });
