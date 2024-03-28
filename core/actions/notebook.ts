@@ -2,7 +2,11 @@ import { verifyObjectMatchesProto } from "df/common/protos";
 import { ActionBuilder } from "df/core/actions";
 import * as Path from "df/core/path";
 import { Session } from "df/core/session";
-import { actionConfigToCompiledGraphTarget, nativeRequire } from "df/core/utils";
+import {
+  actionConfigToCompiledGraphTarget,
+  nativeRequire,
+  resolveActionsConfigFilename
+} from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
 /**
@@ -25,9 +29,7 @@ export class Notebook extends ActionBuilder<dataform.Notebook> {
       config.name = Path.fileName(config.filename);
     }
     const target = actionConfigToCompiledGraphTarget(config);
-
-    // Resolve the filename as its absolute path.
-    config.filename = Path.join(Path.dirName(configPath), config.filename);
+    config.filename = resolveActionsConfigFilename(config.filename, configPath);
 
     this.session = session;
     this.proto.target = this.applySessionToTarget(target);
@@ -41,6 +43,7 @@ export class Notebook extends ActionBuilder<dataform.Notebook> {
       this.proto.disabled = config.disabled;
     }
 
+    console.log("🚀 ~ Notebook ~ config.filename:", config.filename);
     const notebookContents = nativeRequire(config.filename).asJson;
     this.proto.notebookContents = JSON.stringify(
       stripNotebookOutputs(notebookContents, config.filename)

@@ -268,3 +268,12 @@ export function actionConfigToCompiledGraphTarget(
   }
   return dataform.Target.create(compiledGraphTarget);
 }
+
+export function resolveActionsConfigFilename(configFilename: string, configPath: string) {
+  // This path computation supports "absolute" paths in the context of a dataform project.
+  if (configFilename[0] === "/") {
+    return configFilename.slice(1);
+  }
+  // Otherwise load paths relative to the location of the actions.yaml file.
+  return Path.join(Path.dirName(configPath), configFilename);
+}
