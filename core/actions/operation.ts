@@ -19,6 +19,7 @@ import {
   checkExcessProperties,
   nativeRequire,
   resolvableAsTarget,
+  resolveActionsConfigFilename,
   setNameAndTarget,
   strictKeysOf,
   toResolvable
@@ -93,8 +94,7 @@ export class Operation extends ActionBuilder<dataform.Operation> {
     this.proto.target = this.applySessionToTarget(target);
     this.proto.canonicalTarget = this.applySessionCanonicallyToTarget(target);
 
-    // Resolve the filename as its absolute path.
-    config.filename = Path.join(Path.dirName(configPath), config.filename);
+    config.filename = resolveActionsConfigFilename(config.filename, configPath);
     this.proto.fileName = config.filename;
 
     // TODO(ekrekr): load config proto column descriptors.

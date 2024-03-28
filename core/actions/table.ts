@@ -20,6 +20,7 @@ import {
   checkExcessProperties,
   nativeRequire,
   resolvableAsTarget,
+  resolveActionsConfigFilename,
   setNameAndTarget,
   strictKeysOf,
   tableTypeStringToEnum,
@@ -292,8 +293,7 @@ export class Table extends ActionBuilder<dataform.Table> {
     this.proto.target = this.applySessionToTarget(target);
     this.proto.canonicalTarget = this.applySessionCanonicallyToTarget(target);
 
-    // Resolve the filename as its absolute path.
-    tableTypeConfig.filename = Path.join(Path.dirName(configPath), tableTypeConfig.filename);
+    tableTypeConfig.filename = resolveActionsConfigFilename(tableTypeConfig.filename, configPath);
     this.proto.fileName = tableTypeConfig.filename;
 
     // TODO(ekrekr): load config proto column descriptors.

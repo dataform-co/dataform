@@ -79,6 +79,7 @@ suite("@dataform/core", ({ afterEach }) => {
 
           const suffix = testConfig.datasetSuffix ? `_${testConfig.datasetSuffix}` : "";
           const prefix = testConfig.namePrefix ? `${testConfig.namePrefix}_` : "";
+          expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
           expect(result.compile.compiledGraph.operations[0].queries[0]).deep.equals(
             `\`schema${suffix}.${prefix}e\``
           );
@@ -1200,6 +1201,32 @@ actions:
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
       expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+    });
+
+    test(`files can be loaded from the root directory`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/actions.yaml"),
+        `
+actions:
+- notebook:
+    filename: /contents.ipynb
+- operation:
+    filename: /table.sql`
+      );
+      fs.writeFileSync(path.join(projectDir, `contents.ipynb`), JSON.stringify({ cells: [] }));
+      fs.writeFileSync(path.join(projectDir, `table.sql`), "SELECT 1");
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(result.compile.compiledGraph.notebooks[0].fileName).deep.equals("contents.ipynb");
+      expect(result.compile.compiledGraph.operations[0].fileName).deep.equals("table.sql");
     });
   });
 });
