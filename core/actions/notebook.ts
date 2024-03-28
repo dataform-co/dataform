@@ -43,7 +43,6 @@ export class Notebook extends ActionBuilder<dataform.Notebook> {
       this.proto.disabled = config.disabled;
     }
 
-    console.log("🚀 ~ Notebook ~ config.filename:", config.filename);
     const notebookContents = nativeRequire(config.filename).asJson;
     this.proto.notebookContents = JSON.stringify(
       stripNotebookOutputs(notebookContents, config.filename)
