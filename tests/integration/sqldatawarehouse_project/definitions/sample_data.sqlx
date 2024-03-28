@@ -1,5 +1,0 @@
-config { type: "view" }
-
-select ${when(dataform.projectConfig.vars.fooVar === "bar", "1", "2")} as val union all
-select 2 as val union all
-select ${when(dataform.projectConfig.warehouse === "sqldatawarehouse", "3", "2")} as val

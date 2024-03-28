@@ -1,4 +1,4 @@
-syntax="proto3";
+syntax = "proto3";
 
 package dataform;
 
@@ -19,29 +19,13 @@ message ProjectConfig {
 
   map<string, string> vars = 14;
 
-  int32 concurrent_query_limit = 13;
-  int32 idempotent_action_retries = 8;
-
   string database_suffix = 15;
   string schema_suffix = 7;
   string table_prefix = 11;
 
+  NotebookRuntimeOptions default_notebook_runtime_options = 17;
 
-  // Deprecated.
-  // Please use 'default_database' instead.
-  string gcloud_project_id = 6;
-  // This setting no longer has any effect.
-  bool use_run_cache = 10;
-
-  reserved 3, 4, 12;
-}
-
-message GenerateIndexConfig {
-  CompileConfig compile_config = 1;
-  repeated string include_paths = 2;
-  repeated string definition_paths = 3;
-
-  reserved 4;
+  reserved 3, 4, 6, 8, 10, 12, 13;
 }
 
 message CompileConfig {
@@ -51,16 +35,13 @@ message CompileConfig {
   // A list of all files in the project directory.
   repeated string file_paths = 8;
 
-  // Project configuration overrides (dataform.json).
+  // Project configuration overrides.
   ProjectConfig project_config_override = 3;
 
   // Override compilation timeout settings.
   int32 timeout_millis = 6;
 
-  // Whether to use the new main function instead of gen index.
-  bool use_main = 9;
-
-  reserved 2, 4, 5, 7;
+  reserved 2, 4, 5, 7, 9;
 }
 
 message Target {
@@ -77,29 +58,6 @@ message BigQueryOptions {
   int32 partition_expiration_days = 5;
   bool require_partition_filter = 6;
   map<string, string> additional_options = 7;
-}
-
-message RedshiftOptions {
-  string dist_key = 1;
-  string dist_style = 2;
-  repeated string sort_keys = 3;
-  string sort_style = 4;
-
-  bool bind = 5 [deprecated = true];
-}
-
-message SnowflakeOptions {
-  bool secure = 1;
-  bool transient = 2;
-  repeated string cluster_by = 3;
-}
-
-message SQLDataWarehouseOptions {
-  string distribution = 1;
-}
-
-message PrestoOptions {
-  repeated string partition_by = 3;
 }
 
 message GraphErrors {
@@ -129,37 +87,35 @@ message ColumnDescriptor {
   string description = 1;
 
   // For nested records, the path might look like e.g. ["record", "column"].
-  // For simple columns, this will always contain a single entry e.g. ["column"].
+  // For simple columns, this will always contain a single entry e.g.
+  // ["column"].
   repeated string path = 2;
 
   string display_name = 3;
-
-  enum DimensionType {
-    UNKNOWN_DIMENSION = 0;
-    CATEGORY = 1;
-    TIMESTAMP = 2;
-    NUMBER = 3;
-  }
-  DimensionType dimension_type = 4;
-
-  enum Aggregation {
-    UNKNOWN_AGGREGATION = 0;
-    SUM = 1;
-    DISTINCT = 2;
-    DERIVED = 3;
-  }
-  Aggregation aggregation = 5;
-
-  string expression = 6;
 
   repeated string tags = 7;
 
   // BigQuery specific settings.
 
   repeated string bigquery_policy_tags = 8;
+
+  reserved 4, 5, 6;
+}
+
+enum TableType {
+  UNKNOWN_TYPE = 0;
+  TABLE = 1;
+  INCREMENTAL = 2;
+  VIEW = 3;
+
+  reserved 4;
 }
 
 message Table {
+  // For legacy compatability reasons, both incremental tables and views are
+  // configured in compiled graphs via the Table proto.
+  TableType enum_type = 36;
+
   Target target = 4;
   Target canonical_target = 32;
 
@@ -168,7 +124,7 @@ message Table {
 
   bool disabled = 6;
 
-  string type = 3;
+  string type = 3 [deprecated = true];
   string query = 5;
   bool protected = 9;
   bool materialized = 35;
@@ -189,16 +145,12 @@ message Table {
   repeated string incremental_post_ops = 29;
 
   // Warehouse specific features.
-  RedshiftOptions redshift = 21;
   BigQueryOptions bigquery = 22;
-  SnowflakeOptions snowflake = 33;
-  SQLDataWarehouseOptions sql_data_warehouse = 25;
-  PrestoOptions presto = 34;
 
   // Generated.
   string file_name = 18;
 
-  reserved 1,2, 7, 12, 16;
+  reserved 1, 2, 7, 12, 16;
 }
 
 message Operation {
@@ -253,7 +205,6 @@ enum ActionHermeticity {
 }
 
 message Declaration {
-
   Target target = 2;
   Target canonical_target = 5;
 
@@ -273,6 +224,28 @@ message Test {
   string file_name = 4;
 }
 
+message Notebook {
+  Target target = 1;
+
+  Target canonical_target = 2;
+
+  repeated string tags = 3;
+
+  repeated Target dependency_targets = 4;
+
+  string file_name = 5;
+
+  bool disabled = 6;
+
+  string notebook_contents = 7;
+}
+
+message NotebookRuntimeOptions {
+  oneof output_sink {
+    string output_bucket = 1;
+  }
+}
+
 message CompiledGraph {
   ProjectConfig project_config = 4;
 
@@ -280,7 +253,10 @@ message CompiledGraph {
   repeated Operation operations = 2;
   repeated Assertion assertions = 3;
   repeated Declaration declarations = 9;
+  // TODO(ekrekr): move the Test action outside of the compiled graph, because
+  // it is not used at runtime.
   repeated Test tests = 8;
+  repeated Notebook notebooks = 12;
 
   GraphErrors graph_errors = 7;
 
@@ -309,4 +285,12 @@ message CompileExecutionRequest {
 
 message CompileExecutionResponse {
   CompiledGraph compiled_graph = 1;
+}
+
+// This feature list is added to when making potentilly backwards breaking
+// changes. It lets the caller of Dataform Core know whether it supports the
+// change.
+enum SupportedFeatures {
+  UNKNOWN_FEATURE = 0;
+  ARRAY_BUFFER_IPC = 1;
 }

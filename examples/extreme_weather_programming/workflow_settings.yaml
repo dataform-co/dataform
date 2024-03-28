@@ -1,0 +1,5 @@
+defaultProject: dataform-demos
+defaultLocation: us
+defaultDataset: dataform
+defaultNotebookRuntimeOptions:
+  outputBucket: gs://some-bucket

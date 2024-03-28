@@ -1,6 +1,0 @@
-{
-    "name": "@dataform/examples-bigquery-backwards-compatibility",
-    "version": "0.0.2-alpha.38",
-    "description": "Example Dataform project (BigQuery) for backwards compatibility.",
-    "private": true
-}

@@ -2,6 +2,7 @@ import { ChildProcess, spawn } from "child_process";
 import { dataform } from "df/protos/ts";
 import {
   createConnection,
+  DidChangeConfigurationNotification,
   HandlerResult,
   Location,
   ProposedFeatures,
@@ -15,36 +16,50 @@ const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
 let CACHED_COMPILE_GRAPH: dataform.ICompiledGraph = null;
 let WORKSPACE_ROOT_FOLDER: string = null;
 
+let settings = {
+  compilerOptions: [] as string[],
+  compileOnSave: true
+};
+
 connection.onInitialize(() => {
   return {
     capabilities: {
       textDocumentSync: TextDocumentSyncKind.Incremental,
-      // Tell the client that the server supports code completion and definitions
-      completionProvider: {
-        resolveProvider: true
-      },
+      // Tell the client that the server supports definitions
       definitionProvider: true
     }
   };
 });
 
 connection.onInitialized(async () => {
+  await Promise.all([applySettings(), connection.client.register(DidChangeConfigurationNotification.type)]);
   const _ = compileAndValidate();
   const workSpaceFolders = await connection.workspace.getWorkspaceFolders();
   // the first item is the root folder
   WORKSPACE_ROOT_FOLDER = workSpaceFolders[0].uri;
 });
 
+connection.onDidChangeConfiguration(async () => {
+  await applySettings();
+  await compileAndValidate();
+})
+
 connection.onRequest("compile", async () => {
   const _ = compileAndValidate();
 });
 
 documents.onDidSave(change => {
-  const _ = compileAndValidate();
+  if (settings.compileOnSave) {
+    const _ = compileAndValidate();
+  }
 });
 
+async function applySettings() {
+  settings = await connection.workspace.getConfiguration('dataform');
+}
+
 async function compileAndValidate() {
-  const spawnedProcess = spawn("dataform", ["compile", "--json"]);
+  const spawnedProcess = spawn("dataform", ["compile", "--json", ...settings.compilerOptions]);
   spawnedProcess.on("error", err => {
     // tslint:disable-next-line: no-console
     console.error("Error running 'dataform compile':", err);

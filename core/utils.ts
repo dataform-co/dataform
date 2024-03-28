@@ -1,37 +1,18 @@
-import { adapters } from "df/core";
-import { Assertion } from "df/core/assertion";
+import { Action } from "df/core/actions";
+import { Assertion } from "df/core/actions/assertion";
+import { Operation } from "df/core/actions/operation";
+import { Table } from "df/core/actions/table";
 import { Resolvable } from "df/core/common";
-import { Declaration } from "df/core/declaration";
-import { Operation } from "df/core/operation";
+import * as Path from "df/core/path";
 import { IActionProto, Session } from "df/core/session";
-import { Table } from "df/core/table";
 import { dataform } from "df/protos/ts";
 
-const pathSeperator = (() => {
-  if (typeof process !== "undefined") {
-    return process.platform === "win32" ? "\\" : "/";
-  }
-  return "/";
-})();
+declare var __webpack_require__: any;
+declare var __non_webpack_require__: any;
 
-function relativePath(fullPath: string, base: string) {
-  if (base.length === 0) {
-    return fullPath;
-  }
-  const stripped = fullPath.substr(base.length);
-  if (stripped.startsWith(pathSeperator)) {
-    return stripped.substr(1);
-  } else {
-    return stripped;
-  }
-}
-
-export function baseFilename(fullPath: string) {
-  return fullPath
-    .split(pathSeperator)
-    .slice(-1)[0]
-    .split(".")[0];
-}
+// This side-steps webpack's require in favour of the real require.
+export const nativeRequire =
+  typeof __webpack_require__ === "function" ? __non_webpack_require__ : require;
 
 export function matchPatterns(patterns: string[], values: string[]) {
   const fullyQualifiedActions: string[] = [];
@@ -73,8 +54,8 @@ export function getCallerFile(rootDir: string) {
     lastfile = nextLastfile;
     if (
       !(
-        nextLastfile.includes(`definitions${pathSeperator}`) ||
-        nextLastfile.includes(`models${pathSeperator}`)
+        nextLastfile.includes(`definitions${Path.separator}`) ||
+        nextLastfile.includes(`models${Path.separator}`)
       )
     ) {
       continue;
@@ -86,7 +67,7 @@ export function getCallerFile(rootDir: string) {
     // If so, explicitly pass the filename to Session.compileError().
     throw new Error("Unable to find valid caller file; please report this issue.");
   }
-  return relativePath(lastfile, rootDir);
+  return Path.relativePath(lastfile, rootDir);
 }
 
 function getCurrentStack(): NodeJS.CallSite[] {
@@ -148,10 +129,7 @@ export function stringifyResolvable(res: Resolvable) {
   return typeof res === "string" ? res : JSON.stringify(res);
 }
 
-export function ambiguousActionNameMsg(
-  act: Resolvable,
-  allActs: Array<Table | Operation | Assertion | Declaration> | string[]
-) {
+export function ambiguousActionNameMsg(act: Resolvable, allActs: Action[] | string[]) {
   const allActNames =
     typeof allActs[0] === "string"
       ? allActs
@@ -164,18 +142,15 @@ export function ambiguousActionNameMsg(
 }
 
 export function target(
-  adapter: adapters.IAdapter,
   config: dataform.IProjectConfig,
   name: string,
   schema?: string,
   database?: string
 ): dataform.ITarget {
-  schema = schema || config.defaultSchema;
-  database = database || config.defaultDatabase;
   return dataform.Target.create({
-    name: adapter.normalizeIdentifier(name),
-    schema: !!schema ? adapter.normalizeIdentifier(schema || config.defaultSchema) : undefined,
-    database: !!database ? adapter.normalizeIdentifier(database) : undefined
+    name,
+    schema: schema || config.defaultSchema || undefined,
+    database: database || config.defaultDatabase || undefined
   });
 }
 
@@ -186,14 +161,8 @@ export function setNameAndTarget(
   overrideSchema?: string,
   overrideDatabase?: string
 ) {
-  action.target = target(session.adapter(), session.config, name, overrideSchema, overrideDatabase);
-  action.canonicalTarget = target(
-    session.adapter(),
-    session.canonicalConfig,
-    name,
-    overrideSchema,
-    overrideDatabase
-  );
+  action.target = target(session.config, name, overrideSchema, overrideDatabase);
+  action.canonicalTarget = target(session.canonicalConfig, name, overrideSchema, overrideDatabase);
 }
 
 /**
@@ -240,9 +209,62 @@ export function validateQueryString(session: Session, query: string, filename: s
   }
 }
 
-export function throwIfInvalid<T>(proto: T, verify: (proto: T) => string) {
-  const verifyError = verify(proto);
-  if (verifyError) {
-    throw new Error(verifyError);
+export function tableTypeStringToEnum(type: string, throwIfUnknown: boolean) {
+  switch (type) {
+    case "table":
+      return dataform.TableType.TABLE;
+    case "incremental":
+      return dataform.TableType.INCREMENTAL;
+    case "view":
+      return dataform.TableType.VIEW;
+    default: {
+      if (throwIfUnknown) {
+        throw new Error(`Unexpected table type: ${type}`);
+      }
+      return dataform.TableType.UNKNOWN_TYPE;
+    }
   }
+}
+
+export function tableTypeEnumToString(enumType: dataform.TableType) {
+  return dataform.TableType[enumType].toLowerCase();
+}
+
+export function setOrValidateTableEnumType(table: dataform.ITable) {
+  let enumTypeFromStr: dataform.TableType | null = null;
+  if (table.type !== "" && table.type !== undefined) {
+    enumTypeFromStr = tableTypeStringToEnum(table.type, true);
+  }
+  if (table.enumType === dataform.TableType.UNKNOWN_TYPE || table.enumType === undefined) {
+    table.enumType = enumTypeFromStr!;
+  } else if (enumTypeFromStr !== null && table.enumType !== enumTypeFromStr) {
+    throw new Error(
+      `Table str type "${table.type}" and enumType "${tableTypeEnumToString(
+        table.enumType
+      )}" are not equivalent.`
+    );
+  }
+}
+
+export function extractActionDetailsFromFileName(
+  path: string
+): { fileExtension: string; fileNameAsTargetName: string } {
+  const fileName = Path.fileName(path);
+  const fileExtension = Path.fileExtension(path);
+  return { fileExtension, fileNameAsTargetName: fileName };
+}
+
+export function actionConfigToCompiledGraphTarget(
+  // The target interface is used here because Action configs contain all the fields of action
+  // config targets, even if they are not strictly target objects.
+  actionConfigTarget: dataform.ActionConfig.ITarget
+): dataform.Target {
+  const compiledGraphTarget: dataform.ITarget = { name: actionConfigTarget.name };
+  if (actionConfigTarget.dataset) {
+    compiledGraphTarget.schema = actionConfigTarget.dataset;
+  }
+  if (actionConfigTarget.project) {
+    compiledGraphTarget.database = actionConfigTarget.project;
+  }
+  return dataform.Target.create(compiledGraphTarget);
 }

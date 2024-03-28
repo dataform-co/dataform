@@ -1,23 +1,42 @@
-import { IInitResult } from "df/api/commands/init";
-import { prettyJsonStringify } from "df/api/utils";
+import { IInitResult } from "df/cli/api/commands/init";
+import { prettyJsonStringify } from "df/cli/api/utils";
+import { setOrValidateTableEnumType, tableTypeEnumToString } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 import * as readlineSync from "readline-sync";
 
-// Uses ANSI escape color codes.
-// https://en.wikipedia.org/wiki/ANSI_escape_code#Colors
-const coloredOutput = (output: string, ansiColorCode: number) =>
-  `\x1b[${ansiColorCode}m${output}\x1b[0m`;
-const successOutput = (output: string) => coloredOutput(output, 32);
-const warningOutput = (output: string) => coloredOutput(output, 93);
-const errorOutput = (output: string) => coloredOutput(output, 91);
-const calloutOutput = (output: string) => coloredOutput(output, 36);
+// Support disabling colors in CLI output by using informal standard from https://no-color.org/
+// NO_COLOR=1, NO_COLOR=true, NO_COLOR=yes
+const noColor =
+  process.env.NO_COLOR && ["1", "true", "yes"].includes(process.env.NO_COLOR.toLowerCase());
 
-const write = (stream: NodeJS.WriteStream, output: string, indentCount: number) =>
-  stream.write(`${"  ".repeat(indentCount)}${output}\n`);
-const writeStdOut = (output: string, indentCount: number = 0) =>
-  write(process.stdout, output, indentCount);
-const writeStdErr = (output: string, indentCount: number = 0) =>
-  write(process.stderr, output, indentCount);
+const ansiColorCodes = Object.freeze({
+  red: 91,
+  green: 32,
+  yellow: 93,
+  cyan: 36
+});
+
+function output(text: string, ansiColorCode: number): string {
+  if (noColor) {
+    return text;
+  }
+
+  // Uses ANSI escape color codes.
+  // https://en.wikipedia.org/wiki/ANSI_escape_code#Colors
+  return `\x1b[${ansiColorCode}m${text}\x1b[0m`;
+}
+
+const successOutput = (text: string) => output(text, ansiColorCodes.green);
+const warningOutput = (text: string) => output(text, ansiColorCodes.yellow);
+const errorOutput = (text: string) => output(text, ansiColorCodes.red);
+const calloutOutput = (text: string) => output(text, ansiColorCodes.cyan);
+
+const write = (stream: NodeJS.WriteStream, text: string, indentCount: number) =>
+  stream.write(`${"  ".repeat(indentCount)}${text}\n`);
+const writeStdOut = (text: string, indentCount: number = 0) =>
+  write(process.stdout, text, indentCount);
+const writeStdErr = (text: string, indentCount: number = 0) =>
+  write(process.stderr, text, indentCount);
 
 const DEFAULT_PROMPT = "> ";
 
@@ -90,9 +109,6 @@ export function printInitResult(result: IInitResult) {
     writeStdOut(successOutput("Files successfully written:"));
     result.filesWritten.forEach(file => writeStdOut(file, 1));
   }
-  if (result.installedNpmPackages) {
-    writeStdOut(successOutput("NPM packages successfully installed."));
-  }
 }
 
 export function printInitCredsResult(writtenFilePath: string) {
@@ -101,8 +117,8 @@ export function printInitCredsResult(writtenFilePath: string) {
   writeStdOut("To change connection settings, edit this file directly.");
 }
 
-export function printCompiledGraph(graph: dataform.ICompiledGraph, verbose: boolean) {
-  if (verbose) {
+export function printCompiledGraph(graph: dataform.ICompiledGraph, asJson: boolean) {
+  if (asJson) {
     writeStdOut(prettyJsonStringify(graph));
   } else {
     const actionCount =
@@ -112,10 +128,15 @@ export function printCompiledGraph(graph: dataform.ICompiledGraph, verbose: bool
       (graph.operations ? graph.operations.length : 0);
     writeStdOut(successOutput(`Compiled ${actionCount} action(s).`));
     if (graph.tables && graph.tables.length) {
+      graph.tables.forEach(setOrValidateTableEnumType);
       writeStdOut(`${graph.tables.length} dataset(s):`);
       graph.tables.forEach(compiledTable => {
         writeStdOut(
-          `${datasetString(compiledTable.target, compiledTable.type, compiledTable.disabled)}`,
+          `${datasetString(
+            compiledTable.target,
+            tableTypeEnumToString(compiledTable.enumType),
+            compiledTable.disabled
+          )}`,
           1
         );
       });
@@ -158,8 +179,8 @@ export function printTestResult(testResult: dataform.ITestResult) {
   }
 }
 
-export function printExecutionGraph(executionGraph: dataform.ExecutionGraph, verbose: boolean) {
-  if (verbose) {
+export function printExecutionGraph(executionGraph: dataform.ExecutionGraph, asJson: boolean) {
+  if (asJson) {
     writeStdOut(prettyJsonStringify(executionGraph.toJSON()));
   } else {
     const actionsByType = {
@@ -204,14 +225,15 @@ export function printExecutionGraph(executionGraph: dataform.ExecutionGraph, ver
 
 export function printExecutedAction(
   executedAction: dataform.IActionResult,
-  executionAction: dataform.IExecutionAction
+  executionAction: dataform.IExecutionAction,
+  dryRun?: boolean
 ) {
   switch (executedAction.status) {
     case dataform.ActionResult.ExecutionStatus.SUCCESSFUL: {
       switch (executionAction.type) {
         case "table": {
           writeStdOut(
-            `${successOutput("Dataset created: ")} ${datasetString(
+            `${successOutput(`Table ${dryRun ? "dry run success" : "created"}: `)} ${datasetString(
               executionAction.target,
               executionAction.tableType,
               executionAction.tasks.length === 0
@@ -221,19 +243,17 @@ export function printExecutedAction(
         }
         case "assertion": {
           writeStdOut(
-            `${successOutput("Assertion passed: ")} ${assertionString(
-              executionAction.target,
-              executionAction.tasks.length === 0
-            )}`
+            `${successOutput(
+              `Assertion ${dryRun ? "dry run success" : "passed"}: `
+            )} ${assertionString(executionAction.target, executionAction.tasks.length === 0)}`
           );
           return;
         }
         case "operation": {
           writeStdOut(
-            `${successOutput("Operation completed successfully: ")} ${operationString(
-              executionAction.target,
-              executionAction.tasks.length === 0
-            )}`
+            `${successOutput(
+              `Operation ${dryRun ? "dry run success" : "completed successfully"}: `
+            )} ${operationString(executionAction.target, executionAction.tasks.length === 0)}`
           );
           return;
         }
@@ -361,14 +381,6 @@ export function printFormatFilesResult(
       writeStdOut(`${result.filename}: ${result.err.message}`, 1)
     );
   }
-}
-
-export function printListTablesResult(tables: dataform.ITarget[]) {
-  tables.forEach(foundTable => writeStdOut(`${foundTable.schema}.${foundTable.name}`));
-}
-
-export function printGetTableResult(tableMetadata: dataform.ITableMetadata) {
-  writeStdOut(prettyJsonStringify(tableMetadata));
 }
 
 function datasetString(target: dataform.ITarget, datasetType: string, disabled: boolean) {

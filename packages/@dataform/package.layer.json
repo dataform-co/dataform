@@ -1,6 +1,6 @@
 {
   "homepage": "https://github.com/dataform-co/dataform",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "keywords": [
     "dataform",
     "etl",
@@ -9,7 +9,6 @@
     "data-modelling",
     "sql",
     "bigquery",
-    "redshift",
     "dataops"
   ],
   "publishConfig": {

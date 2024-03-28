@@ -148,7 +148,6 @@ message Field {
     TIMESTAMP = 8;
     TIME = 9;
     BYTES = 10;
-    // Semi structured data from Snowflake has no strong schema, and could therefore be anything.
     ANY = 11;
     GEOGRAPHY = 12;
   }
