@@ -80,6 +80,7 @@ export class Session {
     | "warehouse"
     | "defaultDatabase"
     | "defaultSchema"
+    | "defaultLocation"
     | "assertionSchema"
     | "databaseSuffix"
     | "schemaSuffix"
@@ -90,6 +91,7 @@ export class Session {
       warehouse: this.config.warehouse,
       defaultDatabase: this.config.defaultDatabase,
       defaultSchema: this.config.defaultSchema,
+      defaultLocation: this.config.defaultLocation,
       assertionSchema: this.config.assertionSchema,
       databaseSuffix: this.config.databaseSuffix,
       schemaSuffix: this.config.schemaSuffix,
