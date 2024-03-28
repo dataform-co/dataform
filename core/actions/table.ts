@@ -513,10 +513,10 @@ export class Table extends ActionBuilder<dataform.Table> {
     return this;
   }
 
-  public disabled() {
-    this.proto.disabled = true;
-    this.uniqueKeyAssertions.forEach(assertion => assertion.disabled());
-    this.rowConditionsAssertion?.disabled();
+  public disabled(disabled = true) {
+    this.proto.disabled = disabled;
+    this.uniqueKeyAssertions.forEach(assertion => assertion.disabled(disabled));
+    this.rowConditionsAssertion?.disabled(disabled);
     return this;
   }
 
