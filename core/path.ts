@@ -22,7 +22,8 @@ export function filename(path: string) {
 }
 
 export function basename(path: string) {
-  return filename(path).substring(0, filename(path).lastIndexOf("."));
+  const f = filename(path);
+  return f.substring(0, f.lastIndexOf("."));
 }
 
 export function dirName(fullPath: string) {
@@ -43,7 +44,7 @@ export function join(...paths: string[]) {
     .join(separator);
 }
 
-export function escapedFileName(path: string) {
+export function escapedBasename(path: string) {
   return basename(path).replace(/\\/g, "\\\\");
 }
 

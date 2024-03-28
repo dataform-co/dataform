@@ -289,7 +289,7 @@ export class Table extends ActionBuilder<dataform.Table> {
       tableTypeConfig.name = Path.basename(tableTypeConfig.filename);
     }
     const target = actionConfigToCompiledGraphTarget(tableTypeConfig);
-    this.proto.target = this.applySessionToTarget(target);
+    this.proto.target = this.applySessionToTarget(target, tableTypeConfig.filename);
     this.proto.canonicalTarget = this.applySessionCanonicallyToTarget(target);
 
     // Resolve the filename as its absolute path.

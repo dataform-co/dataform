@@ -141,6 +141,9 @@ export function ambiguousActionNameMsg(act: Resolvable, allActs: Action[] | stri
   )}. Did you mean one of: ${allActNames.join(", ")}.`;
 }
 
+/**
+ * @deprecated use ActionBuilder.applySessionToTarget() instead.
+ */
 export function target(
   config: dataform.IProjectConfig,
   name: string,
@@ -154,6 +157,9 @@ export function target(
   });
 }
 
+/**
+ * @deprecated use ActionBuilder.applySessionToTarget() instead.
+ */
 export function setNameAndTarget(
   session: Session,
   action: IActionProto,
@@ -163,6 +169,27 @@ export function setNameAndTarget(
 ) {
   action.target = target(session.config, name, overrideSchema, overrideDatabase);
   action.canonicalTarget = target(session.canonicalConfig, name, overrideSchema, overrideDatabase);
+  if (action.target.name.includes(".")) {
+    session.compileError(
+      new Error("Action target names cannot include '.'"),
+      undefined,
+      action.target
+    );
+  }
+  if (action.target.schema.includes(".")) {
+    session.compileError(
+      new Error("Action target datasets cannot include '.'"),
+      undefined,
+      action.target
+    );
+  }
+  if (action.target.database.includes(".")) {
+    session.compileError(
+      new Error("Action target projects cannot include '.'"),
+      undefined,
+      action.target
+    );
+  }
 }
 
 /**

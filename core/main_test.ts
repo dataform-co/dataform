@@ -165,13 +165,28 @@ suite("@dataform/core", ({ afterEach }) => {
         VALID_WORKFLOW_SETTINGS_YAML
       );
       fs.mkdirSync(path.join(projectDir, "definitions"));
-      fs.writeFileSync(path.join(projectDir, "definitions/file.extradot.sqlx"), "SELECT 1");
+      fs.writeFileSync(path.join(projectDir, "definitions/table1.extradot.sqlx"), "SELECT 1");
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/actions.yaml"),
+        `
+actions:
+- operation:
+    dataset: "dataset.extradot"
+    filename: table2.extradot.sql`
+      );
+      fs.writeFileSync(path.join(projectDir, "definitions/table2.extradot.sql"), "SELECT 2");
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
       expect(
-        asPlainObject(result.compile.compiledGraph.graphErrors.compilationErrors?.[0]?.message)
-      ).deep.equals(`Action target names cannot include '.'`);
+        result.compile.compiledGraph.graphErrors.compilationErrors
+          .map(({ message }) => message)
+          .sort()
+      ).deep.equals([
+        `Action target datasets cannot include '.'`,
+        `Action target names cannot include '.'`,
+        `Action target names cannot include '.'`
+      ]);
     });
   });
 

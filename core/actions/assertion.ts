@@ -92,7 +92,7 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
       config.name = Path.basename(config.filename);
     }
     const target = actionConfigToCompiledGraphTarget(config);
-    this.proto.target = this.applySessionToTarget(target);
+    this.proto.target = this.applySessionToTarget(target, config.filename);
     this.proto.canonicalTarget = this.applySessionCanonicallyToTarget(target);
 
     // Resolve the filename as its absolute path.

@@ -392,16 +392,6 @@ export class Session {
       )
     );
 
-    this.checkNoDotsInTargetFields(
-      [].concat(
-        compiledGraph.tables,
-        compiledGraph.assertions,
-        compiledGraph.operations,
-        compiledGraph.notebooks,
-        compiledGraph.declarations
-      )
-    );
-
     verifyObjectMatchesProto(dataform.CompiledGraph, compiledGraph);
     return compiledGraph;
   }
@@ -647,33 +637,6 @@ export class Session {
         .map(vertex => vertex.name)
         .join(" > ")} > ${targetAsReadableString(firstActionInCycle.target)}]`;
       this.compileError(new Error(message), firstActionInCycle.fileName, firstActionInCycle.target);
-    });
-  }
-
-  private checkNoDotsInTargetFields(actions: IActionProto[]) {
-    actions.forEach(action => {
-      const target = dataform.Target.create(action.target);
-      if (target.name.includes(".")) {
-        this.compileError(
-          new Error("Action target names cannot include '.'"),
-          action.fileName,
-          action.target
-        );
-      }
-      if (target.schema.includes(".")) {
-        this.compileError(
-          new Error("Action target datasets cannot include '.'"),
-          action.fileName,
-          action.target
-        );
-      }
-      if (target.database.includes(".")) {
-        this.compileError(
-          new Error("Action target projects cannot include '.'"),
-          action.fileName,
-          action.target
-        );
-      }
     });
   }
 
