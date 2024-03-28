@@ -22,7 +22,7 @@ export class Notebook extends ActionBuilder<dataform.Notebook> {
     super(session);
 
     if (!config.name) {
-      config.name = Path.fileName(config.filename);
+      config.name = Path.basename(config.filename);
     }
     const target = actionConfigToCompiledGraphTarget(config);
 
@@ -30,7 +30,7 @@ export class Notebook extends ActionBuilder<dataform.Notebook> {
     config.filename = Path.join(Path.dirName(configPath), config.filename);
 
     this.session = session;
-    this.proto.target = this.applySessionToTarget(target);
+    this.proto.target = this.applySessionToTarget(target, config.filename);
     this.proto.canonicalTarget = this.applySessionCanonicallyToTarget(target);
     this.proto.tags = config.tags;
     this.proto.dependencyTargets = config.dependencyTargets.map(dependencyTarget =>

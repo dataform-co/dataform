@@ -556,8 +556,7 @@ export class Session {
             table.target
           );
         } else if (
-          (table.bigquery.partitionExpirationDays ||
-            table.bigquery.requirePartitionFilter) &&
+          (table.bigquery.partitionExpirationDays || table.bigquery.requirePartitionFilter) &&
           table.enumType === dataform.TableType.VIEW &&
           table.materialized
         ) {

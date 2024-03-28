@@ -87,10 +87,10 @@ export class Operation extends ActionBuilder<dataform.Operation> {
     }
 
     if (!config.name) {
-      config.name = Path.fileName(config.filename);
+      config.name = Path.basename(config.filename);
     }
     const target = actionConfigToCompiledGraphTarget(config);
-    this.proto.target = this.applySessionToTarget(target);
+    this.proto.target = this.applySessionToTarget(target, config.filename);
     this.proto.canonicalTarget = this.applySessionCanonicallyToTarget(target);
 
     // Resolve the filename as its absolute path.

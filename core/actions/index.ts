@@ -38,12 +38,37 @@ export abstract class ActionBuilder<T> {
     });
   }
 
-  public applySessionToTarget(targetFromConfig: dataform.Target): dataform.Target {
-    return dataform.Target.create({
+  public applySessionToTarget(
+    targetFromConfig: dataform.Target,
+    fileName?: string
+  ): dataform.Target {
+    const target = dataform.Target.create({
       name: targetFromConfig.name,
       schema: targetFromConfig.schema || this.session.config.defaultSchema || undefined,
       database: targetFromConfig.database || this.session.config.defaultDatabase || undefined
     });
+    if (target.name.includes(".")) {
+      this.session.compileError(
+        new Error("Action target names cannot include '.'"),
+        fileName,
+        target
+      );
+    }
+    if (target.schema.includes(".")) {
+      this.session.compileError(
+        new Error("Action target datasets cannot include '.'"),
+        fileName,
+        target
+      );
+    }
+    if (target.database.includes(".")) {
+      this.session.compileError(
+        new Error("Action target projects cannot include '.'"),
+        fileName,
+        target
+      );
+    }
+    return target;
   }
 
   /**
