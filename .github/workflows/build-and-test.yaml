@@ -11,6 +11,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Get Google Credentials
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: "my-project"
+          workload_identity_provider: "projects/TODO/locations/global/workloadIdentityPools/github-actions-workload-identity-pool/providers/github-actions-workload-identity-pool-provider"
+
+      - name: "Set up Cloud SDK"
+        uses: "google-github-actions/setup-gcloud@v2"
+        with:
+          version: ">= 416.0.0"
+
       - name: Run tests
         uses: docker://gcr.io/cloud-builders/bazel:5.4.0
         with:
