@@ -1203,7 +1203,7 @@ actions:
       expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
     });
 
-    test(`files can be loaded from the root directory`, () => {
+    test(`files can be loaded from the root directory and are normalized in the compiled graph`, () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
       fs.writeFileSync(
         path.join(projectDir, "workflow_settings.yaml"),
@@ -1215,9 +1215,9 @@ actions:
         `
 actions:
 - notebook:
-    filename: /contents.ipynb
+    filename: ../contents.ipynb
 - operation:
-    filename: /table.sql`
+    filename: ../table.sql`
       );
       fs.writeFileSync(path.join(projectDir, `contents.ipynb`), JSON.stringify({ cells: [] }));
       fs.writeFileSync(path.join(projectDir, `table.sql`), "SELECT 1");
