@@ -51,3 +51,31 @@ export function escapedBasename(path: string) {
 export function fileExtension(fullPath: string) {
   return fullPath.split(".").slice(-1)[0];
 }
+
+export function normalize(path: string) {
+  const parts = [];
+  let dotDotCount = 0;
+  for (const part of path.split("/").filter(p => !!p && p !== ".")) {
+    if (part === "..") {
+      if (parts.length === 0) {
+        dotDotCount++;
+      } else {
+        parts.pop();
+      }
+    } else {
+      parts.push(part);
+    }
+  }
+  if (path.startsWith("/")) {
+    if (parts.length === 0) {
+      return "/";
+    }
+    parts.unshift("");
+  } else {
+    parts.unshift(...new Array(dotDotCount).fill(".."));
+    if (parts.length === 0) {
+      return ".";
+    }
+  }
+  return parts.join("/");
+}

@@ -295,3 +295,7 @@ export function actionConfigToCompiledGraphTarget(
   }
   return dataform.Target.create(compiledGraphTarget);
 }
+
+export function resolveActionsConfigFilename(configFilename: string, configPath: string) {
+  return Path.normalize(Path.join(Path.dirName(configPath), configFilename));
+}
