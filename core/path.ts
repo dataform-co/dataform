@@ -53,7 +53,7 @@ export function fileExtension(fullPath: string) {
 export function normalize(path: string) {
   const parts = [];
   let dotDotCount = 0;
-  for (const part of path.split("/").filter(part => !!part && part !== ".")) {
+  for (const part of path.split("/").filter(p => !!p && p !== ".")) {
     if (part === "..") {
       if (parts.length === 0) {
         dotDotCount++;
