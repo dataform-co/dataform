@@ -106,13 +106,6 @@ suite("@dataform/api", () => {
       }).to.throw();
     });
 
-    test("trying to fully refresh a protected dataset fails", () => {
-      const testGraph = dataform.CompiledGraph.create(TEST_GRAPH);
-      testGraph.tables[0].protected = true;
-      const builder = new Builder(TEST_GRAPH, { fullRefresh: true }, TEST_STATE);
-      expect(() => builder.build()).to.throw();
-    });
-
     test("action_types", () => {
       const graph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
         projectConfig: { warehouse: "bigquery" },
@@ -388,53 +381,132 @@ suite("@dataform/api", () => {
   });
 
   suite("sql_generating", () => {
-    test("bigquery_incremental", () => {
-      const graph = dataform.CompiledGraph.create({
-        projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb", defaultLocation: "US" },
-        tables: [
-          {
-            target: {
-              schema: "schema",
-              name: "incremental"
+    suite("incremental", () => {
+      test("simple action", () => {
+        const graph = dataform.CompiledGraph.create({
+          projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb", defaultLocation: "US" },
+          tables: [
+            {
+              target: {
+                schema: "schema",
+                name: "incremental"
+              },
+              type: "incremental",
+              query: "select 1 as test",
+              where: "true"
             },
-            type: "incremental",
-            query: "select 1 as test",
-            where: "true"
-          }
-        ]
-      });
-      const state = dataform.WarehouseState.create({
-        tables: [
-          {
-            target: {
-              schema: "schema",
-              name: "incremental"
-            },
-            type: dataform.TableMetadata.Type.TABLE,
-            fields: [
-              {
-                name: "existing_field"
-              }
-            ]
-          }
-        ]
-      });
-      const executionGraph = new Builder(graph, {}, state).build();
-      expect(
-        cleanSql(
-          executionGraph.actions.filter(
-            n => targetAsReadableString(n.target) === "schema.incremental"
-          )[0].tasks[0].statement
-        )
-      ).equals(
-        cleanSql(
-          `insert into \`deeb.schema.incremental\` (\`existing_field\`)
+            {
+              target: {
+                schema: "schema",
+                name: "non_incremental"
+              },
+              type: "incremental",
+              query: "select 1 as test",
+              where: "true"
+            }
+          ]
+        });
+        const state = dataform.WarehouseState.create({
+          tables: [
+            {
+              target: {
+                schema: "schema",
+                name: "incremental"
+              },
+              type: dataform.TableMetadata.Type.TABLE,
+              fields: [
+                {
+                  name: "existing_field"
+                }
+              ]
+            }
+          ]
+        });
+
+        const executionGraph = new Builder(graph, {}, state).build();
+
+        expect(
+          cleanSql(
+            executionGraph.actions.filter(
+              n => targetAsReadableString(n.target) === "schema.incremental"
+            )[0].tasks[0].statement
+          )
+        ).equals(
+          cleanSql(
+            `insert into \`deeb.schema.incremental\` (\`existing_field\`)
            select \`existing_field\` from (
              select * from (select 1 as test) as subquery
              where true
            ) as insertions`
-        )
-      );
+          )
+        );
+        expect(
+          cleanSql(
+            executionGraph.actions.filter(
+              n => targetAsReadableString(n.target) === "schema.non_incremental"
+            )[0].tasks[0].statement
+          )
+        ).equals(
+          cleanSql(`create table if not exists \`deeb.schema.non_incremental\` as select 1 as test`)
+        );
+      });
+
+      test("full refresh and protected", () => {
+        const graph = dataform.CompiledGraph.create({
+          projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb", defaultLocation: "US" },
+          tables: [
+            {
+              target: {
+                schema: "schema",
+                name: "protected"
+              },
+              type: "incremental",
+              query: "select 1 as test",
+              protected: true
+            },
+            {
+              target: {
+                schema: "schema",
+                name: "not_protected"
+              },
+              type: "incremental",
+              query: "select 1 as test"
+            }
+          ]
+        });
+        const state = dataform.WarehouseState.create({
+          tables: [
+            {
+              target: {
+                schema: "schema",
+                name: "not_protected"
+              },
+              type: dataform.TableMetadata.Type.TABLE
+            }
+          ]
+        });
+
+        const executionGraph = new Builder(graph, { fullRefresh: true }, state).build();
+
+        expect(
+          cleanSql(
+            executionGraph.actions.filter(
+              n => targetAsReadableString(n.target) === "schema.protected"
+            )[0].tasks[0].statement
+          )
+        ).equals(
+          cleanSql(`create table if not exists \`deeb.schema.protected\` as select 1 as test`)
+        );
+        expect(
+          cleanSql(
+            executionGraph.actions.filter(
+              n => targetAsReadableString(n.target) === "schema.not_protected"
+            )[0].tasks[0].statement
+          )
+        ).equals(
+          cleanSql(`create or replace table \`deeb.schema.not_protected\` as select 1 as test`)
+        );
+      });
     });
 
     test("bigquery_materialized", () => {

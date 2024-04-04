@@ -196,18 +196,20 @@ from (${query}) as insertions`;
       }
     }
 
-    const recreateTableIfNotExists =
-      runConfig.fullRefresh || table.enumType !== dataform.TableType.INCREMENTAL;
+    let protectTable = false;
+    if (table.enumType === dataform.TableType.INCREMENTAL) {
+      protectTable = table.protected || !runConfig.fullRefresh;
+    }
 
     let statement = "create ";
-    if (recreateTableIfNotExists) {
+    if (!protectTable) {
       statement += "or replace ";
     }
     if (table.materialized) {
       statement += "materialized ";
     }
     statement += `${this.tableTypeAsSql(this.baseTableType(table.enumType))} `;
-    if (!recreateTableIfNotExists) {
+    if (protectTable) {
       statement += "if not exists ";
     }
     statement += `${this.resolveTarget(table.target)} `;
