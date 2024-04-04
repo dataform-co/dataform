@@ -138,7 +138,7 @@ from (${query}) as insertions`;
 
     if (table.enumType === dataform.TableType.INCREMENTAL) {
       if (!this.shouldWriteIncrementally(runConfig, tableMetadata)) {
-        tasks.add(Task.statement(this.createTableStatement(table)));
+        tasks.add(Task.statement(this.createTableStatement(table, runConfig)));
       } else {
         tasks.add(
           Task.statement(
@@ -159,7 +159,7 @@ from (${query}) as insertions`;
         );
       }
     } else {
-      tasks.add(Task.statement(this.createTableStatement(table)));
+      tasks.add(Task.statement(this.createTableStatement(table, runConfig)));
     }
 
     this.postOps(table, runConfig, tableMetadata).forEach(statement => tasks.add(statement));
@@ -182,7 +182,7 @@ from (${query}) as insertions`;
     return `drop ${this.tableTypeAsSql(type)} if exists ${this.resolveTarget(target)}`;
   }
 
-  private createTableStatement(table: dataform.ITable) {
+  private createTableStatement(table: dataform.ITable, runConfig: dataform.IRunConfig) {
     const options = [];
     if (table.bigquery && table.bigquery.partitionBy && table.bigquery.partitionExpirationDays) {
       options.push(`partition_expiration_days=${table.bigquery.partitionExpirationDays}`);
@@ -196,15 +196,18 @@ from (${query}) as insertions`;
       }
     }
 
+    const recreateTableIfNotExists =
+      runConfig.fullRefresh || table.enumType !== dataform.TableType.INCREMENTAL;
+
     let statement = "create ";
-    if (table.enumType !== dataform.TableType.INCREMENTAL) {
+    if (recreateTableIfNotExists) {
       statement += "or replace ";
     }
     if (table.materialized) {
       statement += "materialized ";
     }
     statement += `${this.tableTypeAsSql(this.baseTableType(table.enumType))} `;
-    if (table.enumType === dataform.TableType.INCREMENTAL) {
+    if (!recreateTableIfNotExists) {
       statement += "if not exists ";
     }
     statement += `${this.resolveTarget(table.target)} `;
