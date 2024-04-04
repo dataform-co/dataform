@@ -233,7 +233,7 @@ suite("@dataform/api", () => {
           expect(action.tasks).eql([
             dataform.ExecutionTask.create({
               type: "statement",
-              statement: "preOp\n;\ncreate or replace table `schema.a` as foo\n;\npostOp"
+              statement: "preOp\n;\ncreate table if not exists `schema.a` as foo\n;\npostOp"
             })
           ]);
         });

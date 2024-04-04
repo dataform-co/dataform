@@ -138,7 +138,7 @@ from (${query}) as insertions`;
 
     if (table.enumType === dataform.TableType.INCREMENTAL) {
       if (!this.shouldWriteIncrementally(runConfig, tableMetadata)) {
-        tasks.add(Task.statement(this.createOrReplace(table)));
+        tasks.add(Task.statement(this.createTableStatement(table)));
       } else {
         tasks.add(
           Task.statement(
@@ -159,7 +159,7 @@ from (${query}) as insertions`;
         );
       }
     } else {
-      tasks.add(Task.statement(this.createOrReplace(table)));
+      tasks.add(Task.statement(this.createTableStatement(table)));
     }
 
     this.postOps(table, runConfig, tableMetadata).forEach(statement => tasks.add(statement));
@@ -182,7 +182,7 @@ from (${query}) as insertions`;
     return `drop ${this.tableTypeAsSql(type)} if exists ${this.resolveTarget(target)}`;
   }
 
-  private createOrReplace(table: dataform.ITable) {
+  private createTableStatement(table: dataform.ITable) {
     const options = [];
     if (table.bigquery && table.bigquery.partitionBy && table.bigquery.partitionExpirationDays) {
       options.push(`partition_expiration_days=${table.bigquery.partitionExpirationDays}`);
@@ -196,17 +196,29 @@ from (${query}) as insertions`;
       }
     }
 
-    return `create or replace ${table.materialized ? "materialized " : ""}${this.tableTypeAsSql(
-      this.baseTableType(table.enumType)
-    )} ${this.resolveTarget(table.target)} ${
-      table.bigquery && table.bigquery.partitionBy
-        ? `partition by ${table.bigquery.partitionBy} `
-        : ""
-    }${
-      table.bigquery && table.bigquery.clusterBy && table.bigquery.clusterBy.length > 0
-        ? `cluster by ${table.bigquery.clusterBy.join(", ")} `
-        : ""
-    }${options.length > 0 ? `OPTIONS(${options.join(",")})` : ""}as ${table.query}`;
+    let statement = "create ";
+    if (table.enumType !== dataform.TableType.INCREMENTAL) {
+      statement += "or replace ";
+    }
+    if (table.materialized) {
+      statement += "materialized ";
+    }
+    statement += `${this.tableTypeAsSql(this.baseTableType(table.enumType))} `;
+    if (table.enumType === dataform.TableType.INCREMENTAL) {
+      statement += "if not exists ";
+    }
+    statement += `${this.resolveTarget(table.target)} `;
+    if (table.bigquery && table.bigquery.partitionBy) {
+      statement += `partition by ${table.bigquery.partitionBy} `;
+    }
+    if (table.bigquery && table.bigquery.clusterBy && table.bigquery.clusterBy.length > 0) {
+      statement += `cluster by ${table.bigquery.clusterBy.join(", ")} `;
+    }
+    if (options.length > 0) {
+      statement += `OPTIONS(${options.join(",")})`;
+    }
+    statement += `as ${table.query}`;
+    return statement;
   }
 
   private createOrReplaceView(target: dataform.ITarget, query: string) {
