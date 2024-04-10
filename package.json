@@ -48,7 +48,7 @@
     "parse-duration": "^1.0.0",
     "prettier": "^1.14.2",
     "promise-pool-executor": "^1.1.1",
-    "protobufjs": "^7.2.4",
+    "protobufjs": "^7.2.5",
     "protobufjs-cli": "^1.0.0",
     "readline-sync": "^1.4.9",
     "request": "^2.88.0",
