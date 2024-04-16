@@ -453,8 +453,8 @@ export class Table extends ActionBuilder<dataform.Table> {
     if (config.disabled) {
       this.disabled();
     }
-    if (config.protected) {
-      this.protected();
+    if (config.type === "incremental") {
+      this.protected(config.protected);
     }
     if (config.bigquery && Object.keys(config.bigquery).length > 0) {
       this.bigquery(config.bigquery);
@@ -520,8 +520,12 @@ export class Table extends ActionBuilder<dataform.Table> {
     return this;
   }
 
-  public protected() {
-    this.proto.protected = true;
+  public protected(defaultsToTrueProtected: boolean) {
+    // To prevent accidental data deletion, protected defaults to true if unspecified.
+    if (defaultsToTrueProtected === undefined || defaultsToTrueProtected === null) {
+      defaultsToTrueProtected = true;
+    }
+    this.proto.protected = defaultsToTrueProtected;
     return this;
   }
 
