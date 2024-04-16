@@ -5,7 +5,7 @@ import { dump as dumpYaml } from "js-yaml";
 import * as path from "path";
 import { CompilerFunction, NodeVM } from "vm2";
 
-import { decode64, deepClone, encode64 } from "df/common/protos";
+import { decode64, encode64 } from "df/common/protos";
 import { compile } from "df/core/compilers";
 import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
