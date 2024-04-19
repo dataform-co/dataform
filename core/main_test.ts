@@ -1260,6 +1260,341 @@ actions:
       expect(result.compile.compiledGraph.operations[0].fileName).deep.equals("table.sql");
     });
   });
+
+  suite("assertions as dependencies", () => {
+    [
+      TestConfigs.bigquery,
+      TestConfigs.bigqueryWithDatasetSuffix,
+      TestConfigs.bigqueryWithNamePrefix
+    ].forEach(testConfig => {
+      test("using only dependOnDependencyAssertions flag", ()=>{
+        const projectDir = tmpDirFixture.createNewTmpDir();
+          fs.writeFileSync(
+            path.join(projectDir, "workflow_settings.yaml"),
+            dumpYaml(dataform.WorkflowSettings.create(testConfig))
+          );
+          fs.mkdirSync(path.join(projectDir, "definitions"));
+          fs.writeFileSync(path.join(projectDir, "definitions/A.sqlx"), 
+          `config {
+            type: "table",
+             assertions: {
+               rowConditions: ["test > 1"]
+            }
+          }
+          SELECT 1 as test
+        }
+        `);
+          fs.writeFileSync(path.join(projectDir, "definitions/A_assert.sqlx"), 
+          `config {
+            type: "assertion",
+        }
+        select test from \${ref("A")} where test > 3`);
+        fs.writeFileSync(path.join(projectDir, "definitions/B.sqlx"),
+           `config {
+            type: "table",
+            dependOnDependencyAssertions: true,
+            dependencies: ["A"]
+        }
+        select 1 as btest
+        `);
+        fs.writeFileSync(path.join(projectDir, "definitions/C.sqlx"), 
+          `config {
+            type: "table",
+             assertions: {
+               rowConditions: ["test > 1"]
+            }
+          }
+          SELECT 1 as test
+        }
+        `);
+
+          const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+          expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+          expect(asPlainObject(result.compile.compiledGraph.tables[1].dependencyTargets.length)).equals(3)
+      })
+
+      test("using includeDependentAssertions flag in config.dependencies", ()=>{
+        const projectDir = tmpDirFixture.createNewTmpDir();
+          fs.writeFileSync(
+            path.join(projectDir, "workflow_settings.yaml"),
+            dumpYaml(dataform.WorkflowSettings.create(testConfig))
+          );
+          fs.mkdirSync(path.join(projectDir, "definitions"));
+          fs.writeFileSync(path.join(projectDir, "definitions/A.sqlx"), 
+          `config {
+            type: "table",
+             assertions: {
+               rowConditions: ["test > 1"]
+            }
+          }
+          SELECT 1 as test
+        }
+        `);
+          fs.writeFileSync(path.join(projectDir, "definitions/A_assert.sqlx"), 
+          `config {
+            type: "assertion",
+        }
+        select test from \${ref("A")} where test > 3`);
+        fs.writeFileSync(path.join(projectDir, "definitions/B.sqlx"),
+           `config {
+            type: "table",
+            dependencies: [{name: "A", includeDependentAssertions: true}, "C"]
+        }
+        select 1 as btest
+        `);
+        fs.writeFileSync(path.join(projectDir, "definitions/C.sqlx"), 
+          `config {
+            type: "table",
+             assertions: {
+               rowConditions: ["test > 1"]
+            }
+          }
+          SELECT 1 as test
+        }
+        `);
+
+          const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+          expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+          expect(asPlainObject(result.compile.compiledGraph.tables[1].dependencyTargets.length)).equals(4)
+      })
+
+      test("using includeDependentAssertions flag in ref", ()=>{
+        const projectDir = tmpDirFixture.createNewTmpDir();
+          fs.writeFileSync(
+            path.join(projectDir, "workflow_settings.yaml"),
+            dumpYaml(dataform.WorkflowSettings.create(testConfig))
+          );
+          fs.mkdirSync(path.join(projectDir, "definitions"));
+          fs.writeFileSync(path.join(projectDir, "definitions/A.sqlx"), 
+          `config {
+            type: "table",
+             assertions: {
+               rowConditions: ["test > 1"]
+            }
+          }
+          SELECT 1 as test
+        }
+        `);
+          fs.writeFileSync(path.join(projectDir, "definitions/A_assert.sqlx"), 
+          `config {
+            type: "assertion",
+        }
+        select test from \${ref("A")} where test > 3`);
+        fs.writeFileSync(path.join(projectDir, "definitions/B.sqlx"),
+           `config {
+            type: "table",
+            dependencies: ["A"]
+        }
+        select * from \${ref({name: "C", includeDependentAssertions: true})}
+        select 1 as btest
+        `);
+        fs.writeFileSync(path.join(projectDir, "definitions/C.sqlx"), 
+          `config {
+            type: "table",
+             assertions: {
+               rowConditions: ["test > 1"]
+            }
+          }
+          SELECT 1 as test
+        }
+        `);
+
+          const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+          expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+          expect(asPlainObject(result.compile.compiledGraph.tables[1].dependencyTargets.length)).equals(3)
+      })
+
+      test("Conflict: dependOnDependencyAssertions True, includeDependentAssertions False", ()=>{
+        const projectDir = tmpDirFixture.createNewTmpDir();
+          fs.writeFileSync(
+            path.join(projectDir, "workflow_settings.yaml"),
+            dumpYaml(dataform.WorkflowSettings.create(testConfig))
+          );
+          fs.mkdirSync(path.join(projectDir, "definitions"));
+          fs.writeFileSync(path.join(projectDir, "definitions/A.sqlx"), 
+          `config {
+            type: "table",
+             assertions: {
+               rowConditions: ["test > 1"]
+            }
+          }
+          SELECT 1 as test
+        }
+        `);
+          fs.writeFileSync(path.join(projectDir, "definitions/A_assert.sqlx"), 
+          `config {
+            type: "assertion",
+        }
+        select test from \${ref("A")} where test > 3`);
+        fs.writeFileSync(path.join(projectDir, "definitions/B.sqlx"),
+           `config {
+            type: "table",
+            dependOnDependencyAssertions: true,
+            dependencies: ["A"]
+        }
+        select * from \${ref({name: "C", includeDependentAssertions: false})}
+        select 1 as btest
+        `);
+        fs.writeFileSync(path.join(projectDir, "definitions/C.sqlx"), 
+          `config {
+            type: "table",
+             assertions: {
+               rowConditions: ["test > 1"]
+            }
+          }
+          SELECT 1 as test
+        }
+        `);
+
+          const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+          expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+          expect(asPlainObject(result.compile.compiledGraph.tables[1].dependencyTargets.length)).equals(4)
+      })
+
+      test("Conflict: using dependOnDependencyAssertions False, includeDependentAssertions True", ()=>{
+        const projectDir = tmpDirFixture.createNewTmpDir();
+          fs.writeFileSync(
+            path.join(projectDir, "workflow_settings.yaml"),
+            dumpYaml(dataform.WorkflowSettings.create(testConfig))
+          );
+          fs.mkdirSync(path.join(projectDir, "definitions"));
+          fs.writeFileSync(path.join(projectDir, "definitions/A.sqlx"), 
+          `config {
+            type: "table",
+             assertions: {
+               rowConditions: ["test > 1"]
+            }
+          }
+          SELECT 1 as test
+        }
+        `);
+          fs.writeFileSync(path.join(projectDir, "definitions/A_assert.sqlx"), 
+          `config {
+            type: "assertion",
+        }
+        select test from \${ref("A")} where test > 3`);
+        fs.writeFileSync(path.join(projectDir, "definitions/B.sqlx"),
+           `config {
+            type: "operations",
+            dependOnDependencyAssertions: false,
+            dependencies: ["A"]
+        }
+        select * from \${ref({name: "C", includeDependentAssertions: true})}
+        select 1 as btest
+        `);
+        fs.writeFileSync(path.join(projectDir, "definitions/C.sqlx"), 
+          `config {
+            type: "table",
+             assertions: {
+               rowConditions: ["test > 1"]
+            }
+          }
+          SELECT 1 as test
+        }
+        `);
+
+          const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+          expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+          expect(asPlainObject(result.compile.compiledGraph.operations[0].dependencyTargets.length)).equals(3)
+      })
+      
+      test("Duplicate assertion in config and ref", ()=>{
+        const projectDir = tmpDirFixture.createNewTmpDir();
+          fs.writeFileSync(
+            path.join(projectDir, "workflow_settings.yaml"),
+            dumpYaml(dataform.WorkflowSettings.create(testConfig))
+          );
+          fs.mkdirSync(path.join(projectDir, "definitions"));
+          fs.writeFileSync(path.join(projectDir, "definitions/A.sqlx"), 
+          `config {
+            type: "table",
+             assertions: {
+               rowConditions: ["test > 1"]
+            }
+          }
+          SELECT 1 as test
+        }
+        `);
+          fs.writeFileSync(path.join(projectDir, "definitions/A_assert.sqlx"), 
+          `config {
+            type: "assertion",
+        }
+        select test from \${ref("A")} where test > 3`);
+        fs.writeFileSync(path.join(projectDir, "definitions/B.sqlx"),
+           `config {
+            type: "table",
+            dependencies: ["A_assert", "C"]
+        }
+        select * from \${ref({name: "A", includeDependentAssertions: true})}
+        select * from \${ref({name: "C", includeDependentAssertions: false})}
+        select 1 as btest
+        `);
+        fs.writeFileSync(path.join(projectDir, "definitions/C.sqlx"), 
+          `config {
+            type: "table",
+             assertions: {
+               rowConditions: ["test > 1"]
+            }
+          }
+          SELECT 1 as test
+        }
+        `);
+
+          const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+          expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+          expect(asPlainObject(result.compile.compiledGraph.tables[1].dependencyTargets.length)).equals(4)
+      })
+
+      test("conflicting includeDependentAssertions flag in config and ref", ()=>{
+        const projectDir = tmpDirFixture.createNewTmpDir();
+          fs.writeFileSync(
+            path.join(projectDir, "workflow_settings.yaml"),
+            dumpYaml(dataform.WorkflowSettings.create(testConfig))
+          );
+          fs.mkdirSync(path.join(projectDir, "definitions"));
+          fs.writeFileSync(path.join(projectDir, "definitions/A.sqlx"), 
+          `config {
+            type: "table",
+             assertions: {
+               rowConditions: ["test > 1"]
+            }
+          }
+          SELECT 1 as test
+        }
+        `);
+          fs.writeFileSync(path.join(projectDir, "definitions/A_assert.sqlx"), 
+          `config {
+            type: "assertion",
+        }
+        select test from \${ref("A")} where test > 3`);
+        fs.writeFileSync(path.join(projectDir, "definitions/B.sqlx"),
+           `config {
+            type: "table",
+            dependencies: [{name: "A", includeDependentAssertions: false}, {name: "C", includeDependentAssertions: true}]
+        }
+        select * from \${ref({name: "A", includeDependentAssertions: true})}
+        select * from \${ref({name: "C", includeDependentAssertions: false})}
+        select 1 as btest
+        `);
+        fs.writeFileSync(path.join(projectDir, "definitions/C.sqlx"), 
+          `config {
+            type: "table",
+             assertions: {
+               rowConditions: ["test > 1"]
+            }
+          }
+          SELECT 1 as test
+        }
+        `);
+
+          const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+          expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).deep.equals(2);
+          expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).deep.equals(`Conflicting "includeDependentAssertions" flag not allowed. Dependency A have different value set for this flag.`);
+      })
+            
+    })
+  });
+  
 });
 
 function coreExecutionRequestFromPath(projectDir: string): dataform.CoreExecutionRequest {

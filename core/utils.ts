@@ -299,3 +299,21 @@ export function actionConfigToCompiledGraphTarget(
 export function resolveActionsConfigFilename(configFilename: string, configPath: string) {
   return Path.normalize(Path.join(Path.dirName(configPath), configFilename));
 }
+
+
+export function isSameTarget(targetA: dataform.ITarget, targetB: dataform.ITarget): boolean {
+  if (targetA.name !== targetB.name){
+      return false
+  }
+  if (!!targetA.database || !!targetB.schema){
+      if (targetA.database !== targetB.database){
+          return false;
+      }
+  }
+  if (!!targetA.schema || !!targetB.schema){
+      if(targetA.schema !== targetB.schema){
+          return false
+      }
+  }
+  return true
+}

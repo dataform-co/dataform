@@ -25,7 +25,8 @@ import {
   strictKeysOf,
   tableTypeStringToEnum,
   toResolvable,
-  validateQueryString
+  validateQueryString,
+  isSameTarget
 } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
@@ -221,7 +222,8 @@ export const ITableConfigProperties = () =>
     "database",
     "columns",
     "description",
-    "materialized"
+    "materialized",
+    "dependOnDependencyAssertions"
   ]);
 
 /**
@@ -264,6 +266,10 @@ export class Table extends ActionBuilder<dataform.Table> {
 
   private uniqueKeyAssertions: Assertion[] = [];
   private rowConditionsAssertion: Assertion;
+
+  // This is Action level flag. If set to true, we will add assertions from all the depenedncies of
+  // current action as dependencies. 
+  public dependOnDependencyAssertions: boolean = false;
 
   constructor(
     session?: Session,
@@ -444,6 +450,9 @@ export class Table extends ActionBuilder<dataform.Table> {
     if (config.type) {
       this.type(config.type);
     }
+    if (config.dependOnDependencyAssertions) {
+      this.setDependOnDependencyAssertions(config.dependOnDependencyAssertions);
+    }
     if (config.dependencies) {
       this.dependencies(config.dependencies);
     }
@@ -553,7 +562,19 @@ export class Table extends ActionBuilder<dataform.Table> {
   public dependencies(value: Resolvable | Resolvable[]) {
     const newDependencies = Array.isArray(value) ? value : [value];
     newDependencies.forEach(resolvable => {
-      this.proto.dependencyTargets.push(resolvableAsTarget(resolvable));
+      let dependencyTarget = resolvableAsTarget(resolvable);
+      dependencyTarget.includeDependentAssertions = dependencyTarget.includeDependentAssertions===undefined ? this.dependOnDependencyAssertions : dependencyTarget.includeDependentAssertions;
+      const existingDependencies = this.proto.dependencyTargets.filter(dependency => isSameTarget(dependencyTarget, dependency) && dependency.includeDependentAssertions !== dependencyTarget.includeDependentAssertions)
+      if (existingDependencies.length !== 0){
+          this.session.compileError(
+            `Conflicting "includeDependentAssertions" flag not allowed. Dependency ${dependencyTarget.name} have different value set for this flag.`,
+             this.proto.fileName,
+             this.proto.target
+          )
+          return this;
+      }
+
+      this.proto.dependencyTargets.push(dependencyTarget);
     });
 
     return this;
@@ -673,6 +694,11 @@ export class Table extends ActionBuilder<dataform.Table> {
         this.rowConditionsAssertion.tags(this.proto.tags);
       }
     }
+    return this;
+  }
+
+  public setDependOnDependencyAssertions(dependOnDependencyAssertions: boolean){
+    this.dependOnDependencyAssertions = dependOnDependencyAssertions;
     return this;
   }
 

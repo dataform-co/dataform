@@ -133,6 +133,11 @@ export interface IDependenciesConfig {
    * dependencies, then it should be set to `true`.
    */
   hermetic?: boolean;
+
+  /**
+   * If this flag is set to true, assertions depenedent upon any of the dependencies are added as depenedencies as well.
+   */
+  dependOnDependencyAssertions?: boolean;
 }
 
 /**
@@ -219,6 +224,8 @@ export interface ITarget {
   schema?: string;
 
   name?: string;
+
+  IncludeDependentAssertions?: boolean;
 }
 
 /**

@@ -901,7 +901,7 @@ suite("@dataform/core", () => {
       expect(
         cGraph.graphErrors.compilationErrors.filter(item =>
           item.message.match(
-            /Ambiguous Action name: {\"name\":\"a\"}. Did you mean one of: foo.a, bar.a./
+            /Ambiguous Action name: {\"name\":\"a\",\"includeDependentAssertions\":false}. Did you mean one of: foo.a, bar.a./
           )
         ).length
       ).greaterThan(0);

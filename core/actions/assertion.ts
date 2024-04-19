@@ -56,7 +56,8 @@ export const IAssertionConfigProperties = strictKeysOf<IAssertionConfig>()([
   "name",
   "schema",
   "tags",
-  "type"
+  "type",
+  "dependOnDependencyAssertions"
 ]);
 
 /**
@@ -151,7 +152,9 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
   public dependencies(value: Resolvable | Resolvable[]) {
     const newDependencies = Array.isArray(value) ? value : [value];
     newDependencies.forEach(resolvable => {
-      this.proto.dependencyTargets.push(resolvableAsTarget(resolvable));
+      const resolvableTarget = resolvableAsTarget(resolvable);
+      this.session.actionAssertionMap.set(resolvableTarget, this.proto.target);
+      this.proto.dependencyTargets.push(resolvableTarget);
     });
     return this;
   }
