@@ -1589,12 +1589,297 @@ actions:
 
           const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
           expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).deep.equals(2);
-          expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).deep.equals(`Conflicting "includeDependentAssertions" flag not allowed. Dependency A have different value set for this flag.`);
+          expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).deep.equals(`Conflicting "includeDependentAssertions" flag not allowed. Dependency A have different values set for this flag.`);
       })
-            
+
+      suite("action configs", () => {
+        test(`using only dependOnDependencyAssertions flag`, () => {
+          const projectDir = tmpDirFixture.createNewTmpDir();
+          fs.writeFileSync(
+            path.join(projectDir, "workflow_settings.yaml"),
+            VALID_WORKFLOW_SETTINGS_YAML
+          );
+          fs.mkdirSync(path.join(projectDir, "definitions"));
+          fs.writeFileSync(
+            path.join(projectDir, "definitions/actions.yaml"),
+            `
+            actions:
+              - table:
+                  filename: A.sql
+              - assertion:
+                  filename: A_assert.sql
+                  dependencyTargets:
+                    - name: A
+              - view:
+                  filename: B.sql
+                  dependOnDependencyAssertions: true
+                  dependencyTargets:
+                    - name: A
+              - operation:
+                  filename: C.sql
+                  dependOnDependencyAssertions: true
+                  dependencyTargets:
+                    - name: A
+              - notebook:
+                  filename: notebook.ipynb
+                  dependOnDependencyAssertions: true
+                  dependencyTargets:
+                    - name: A
+            `
+          );
+          fs.writeFileSync(path.join(projectDir, "definitions/A.sql"), "SELECT 1 as test");
+          fs.writeFileSync(path.join(projectDir, "definitions/A_assert.sql"), "SELECT test from A");
+          fs.writeFileSync(path.join(projectDir, "definitions/B.sql"), "SELECT 1");      
+          fs.writeFileSync(path.join(projectDir, "definitions/C.sql"), "SELECT 1");
+          fs.writeFileSync(
+            path.join(projectDir, `definitions/notebook.ipynb`),
+            EMPTY_NOTEBOOK_CONTENTS
+          );
+           
+          const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+    
+          expect(asPlainObject(result.compile.compiledGraph.operations[0].dependencyTargets.length)).deep.equals(2);
+          expect(asPlainObject(result.compile.compiledGraph.tables[1].dependencyTargets.length)).deep.equals(2);
+          expect(asPlainObject(result.compile.compiledGraph.notebooks[0].dependencyTargets.length)).deep.equals(2);
+          expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+        });
+
+        test(`using includeDependentAssertions flag in config.dependencies`, () => {
+          const projectDir = tmpDirFixture.createNewTmpDir();
+          fs.writeFileSync(
+            path.join(projectDir, "workflow_settings.yaml"),
+            VALID_WORKFLOW_SETTINGS_YAML
+          );
+          fs.mkdirSync(path.join(projectDir, "definitions"));
+          fs.writeFileSync(
+            path.join(projectDir, "definitions/actions.yaml"),
+            `
+            actions:
+              - table:
+                  filename: A.sql
+              - assertion:
+                  filename: A_assert.sql
+                  dependencyTargets:
+                    - name: A
+              - view:
+                  filename: B.sql
+                  dependencyTargets:
+                    - 
+                      name: A
+                      includeDependentAssertions: true 
+              - operation:
+                  filename: C.sql
+                  dependencyTargets:
+                    - name: A
+                      includeDependentAssertions: true
+              - notebook:
+                  filename: notebook.ipynb
+                  dependencyTargets:
+                    - name: A
+                      includeDependentAssertions: true
+            `
+          );
+          fs.writeFileSync(path.join(projectDir, "definitions/A.sql"), "SELECT 1 as test");
+          fs.writeFileSync(path.join(projectDir, "definitions/A_assert.sql"), "SELECT test from A");
+          fs.writeFileSync(path.join(projectDir, "definitions/B.sql"), "SELECT 1");      
+          fs.writeFileSync(path.join(projectDir, "definitions/C.sql"), "SELECT 1");
+          fs.writeFileSync(
+            path.join(projectDir, `definitions/notebook.ipynb`),
+            EMPTY_NOTEBOOK_CONTENTS
+          );
+           
+          const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+          
+          expect(asPlainObject(result.compile.compiledGraph.operations[0].dependencyTargets.length)).deep.equals(2);
+          expect(asPlainObject(result.compile.compiledGraph.tables[1].dependencyTargets.length)).deep.equals(2);
+          expect(asPlainObject(result.compile.compiledGraph.notebooks[0].dependencyTargets.length)).deep.equals(2);
+          expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+        });
+
+        test(`Conflict: dependOnDependencyAssertions True, includeDependentAssertions False`, () => {
+          const projectDir = tmpDirFixture.createNewTmpDir();
+          fs.writeFileSync(
+            path.join(projectDir, "workflow_settings.yaml"),
+            VALID_WORKFLOW_SETTINGS_YAML
+          );
+          fs.mkdirSync(path.join(projectDir, "definitions"));
+          fs.writeFileSync(
+            path.join(projectDir, "definitions/actions.yaml"),
+            `
+            actions:
+              - table:
+                  filename: A.sql
+              - assertion:
+                  filename: A_assert.sql
+                  dependencyTargets:
+                    - name: A
+              - view:
+                  filename: B.sql
+                  dependOnDependencyAssertions: true
+                  dependencyTargets:
+                    - name: A
+                      includeDependentAssertions: false
+              - assertion:
+                  filename: B_assert.sql
+                  dependencyTargets:
+                    - name: B
+              - operation:
+                  filename: C.sql
+                  dependOnDependencyAssertions: true
+                  dependencyTargets:
+                    - name: A
+                      includeDependentAssertions: false
+              - notebook:
+                  filename: notebook.ipynb
+                  dependOnDependencyAssertions: true
+                  dependencyTargets:
+                    - name: A
+                      includeDependentAssertions: false
+                    - name: B
+            `
+          );
+          fs.writeFileSync(path.join(projectDir, "definitions/A.sql"), "SELECT 1 as test");
+          fs.writeFileSync(path.join(projectDir, "definitions/A_assert.sql"), "SELECT test from A");
+          fs.writeFileSync(path.join(projectDir, "definitions/B.sql"), "SELECT 1 as test");      
+          fs.writeFileSync(path.join(projectDir, "definitions/B_assert.sql"), "SELECT test from B");
+          fs.writeFileSync(path.join(projectDir, "definitions/C.sql"), "SELECT 1");
+          fs.writeFileSync(
+            path.join(projectDir, `definitions/notebook.ipynb`),
+            EMPTY_NOTEBOOK_CONTENTS
+          );
+           
+          const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+          
+          expect(asPlainObject(result.compile.compiledGraph.operations[0].dependencyTargets.length)).deep.equals(1);
+          expect(asPlainObject(result.compile.compiledGraph.tables[1].dependencyTargets.length)).deep.equals(1);
+          expect(asPlainObject(result.compile.compiledGraph.notebooks[0].dependencyTargets.length)).deep.equals(3);
+          expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+        });
+
+        test(`Conflict: using dependOnDependencyAssertions False, includeDependentAssertions True`, () => {
+          const projectDir = tmpDirFixture.createNewTmpDir();
+          fs.writeFileSync(
+            path.join(projectDir, "workflow_settings.yaml"),
+            VALID_WORKFLOW_SETTINGS_YAML
+          );
+          fs.mkdirSync(path.join(projectDir, "definitions"));
+          fs.writeFileSync(
+            path.join(projectDir, "definitions/actions.yaml"),
+            `
+            actions:
+              - table:
+                  filename: A.sql
+              - assertion:
+                  filename: A_assert.sql
+                  dependencyTargets:
+                    - name: A
+              - view:
+                  filename: B.sql
+                  dependOnDependencyAssertions: false
+                  dependencyTargets:
+                    - name: A
+                      includeDependentAssertions: true
+              - assertion:
+                  filename: B_assert.sql
+                  dependencyTargets:
+                    - name: B
+              - operation:
+                  filename: C.sql
+                  dependOnDependencyAssertions: false
+                  dependencyTargets:
+                    - name: A
+                      includeDependentAssertions: true
+                    - name: B
+              - notebook:
+                  filename: notebook.ipynb
+                  dependOnDependencyAssertions: false
+                  dependencyTargets:
+                    - name: A
+                      includeDependentAssertions: true
+                    - name: B
+            `
+          );
+          fs.writeFileSync(path.join(projectDir, "definitions/A.sql"), "SELECT 1 as test");
+          fs.writeFileSync(path.join(projectDir, "definitions/A_assert.sql"), "SELECT test from A");
+          fs.writeFileSync(path.join(projectDir, "definitions/B.sql"), "SELECT 1 as test");      
+          fs.writeFileSync(path.join(projectDir, "definitions/B_assert.sql"), "SELECT test from B");
+          fs.writeFileSync(path.join(projectDir, "definitions/C.sql"), "SELECT 1");
+          fs.writeFileSync(
+            path.join(projectDir, `definitions/notebook.ipynb`),
+            EMPTY_NOTEBOOK_CONTENTS
+          );
+           
+          const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+          
+          expect(asPlainObject(result.compile.compiledGraph.operations[0].dependencyTargets.length)).deep.equals(3);
+          expect(asPlainObject(result.compile.compiledGraph.tables[1].dependencyTargets.length)).deep.equals(2);
+          expect(asPlainObject(result.compile.compiledGraph.notebooks[0].dependencyTargets.length)).deep.equals(3);
+          expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+        });
+
+        test(`conflicting includeDependentAssertions flag in config`, () => {
+          const projectDir = tmpDirFixture.createNewTmpDir();
+          fs.writeFileSync(
+            path.join(projectDir, "workflow_settings.yaml"),
+            VALID_WORKFLOW_SETTINGS_YAML
+          );
+          fs.mkdirSync(path.join(projectDir, "definitions"));
+          fs.writeFileSync(
+            path.join(projectDir, "definitions/actions.yaml"),
+            `
+            actions:
+              - table:
+                  filename: A.sql
+              - assertion:
+                  filename: A_assert.sql
+                  dependencyTargets:
+                    - name: A
+              - view:
+                  filename: B.sql
+                  dependOnDependencyAssertions: true
+                  dependencyTargets:
+                    - name: A
+              - assertion:
+                  filename: B_assert.sql
+                  dependencyTargets:
+                    - name: B
+              - operation:
+                  filename: C.sql
+                  dependencyTargets:
+                    - name: A
+                      includeDependentAssertions: true
+                    - name: B
+                    - name: A
+                      includeDependentAssertions: false
+              - notebook:
+                  filename: notebook.ipynb
+                  dependOnDependencyAssertions: false
+                  dependencyTargets:
+                    - name: A
+                      includeDependentAssertions: false
+                    - name: B
+                    - name: A
+                      includeDependentAssertions: true
+            `
+          );
+          fs.writeFileSync(path.join(projectDir, "definitions/A.sql"), "SELECT 1 as test");
+          fs.writeFileSync(path.join(projectDir, "definitions/A_assert.sql"), "SELECT test from A");
+          fs.writeFileSync(path.join(projectDir, "definitions/B.sql"), "SELECT 1 as test");      
+          fs.writeFileSync(path.join(projectDir, "definitions/B_assert.sql"), "SELECT test from B");
+          fs.writeFileSync(path.join(projectDir, "definitions/C.sql"), "SELECT 1");
+          fs.writeFileSync(
+            path.join(projectDir, `definitions/notebook.ipynb`),
+            EMPTY_NOTEBOOK_CONTENTS
+          );
+           
+          const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+          
+          expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).deep.equals(2);
+          expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).deep.equals(`Conflicting "includeDependentAssertions" flag not allowed. Dependency A have different values set for this flag.`);
+        });
+      }); 
     })
   });
-  
 });
 
 function coreExecutionRequestFromPath(projectDir: string): dataform.CoreExecutionRequest {

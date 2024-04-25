@@ -6,9 +6,12 @@ import { Resolvable } from "df/core/common";
 import * as Path from "df/core/path";
 import { IActionProto, Session } from "df/core/session";
 import { dataform } from "df/protos/ts";
+import { Notebook } from "./actions/notebook";
 
 declare var __webpack_require__: any;
 declare var __non_webpack_require__: any;
+
+type actionsWithDependencies = Table | Operation | Notebook
 
 // This side-steps webpack's require in favour of the real require.
 export const nativeRequire =
@@ -293,13 +296,15 @@ export function actionConfigToCompiledGraphTarget(
   if (actionConfigTarget.project) {
     compiledGraphTarget.database = actionConfigTarget.project;
   }
+  if (actionConfigTarget.hasOwnProperty("includeDependentAssertions")){
+    compiledGraphTarget.includeDependentAssertions = actionConfigTarget.includeDependentAssertions;
+  }
   return dataform.Target.create(compiledGraphTarget);
 }
 
 export function resolveActionsConfigFilename(configFilename: string, configPath: string) {
   return Path.normalize(Path.join(Path.dirName(configPath), configFilename));
 }
-
 
 export function isSameTarget(targetA: dataform.ITarget, targetB: dataform.ITarget): boolean {
   if (targetA.name !== targetB.name){
@@ -316,4 +321,20 @@ export function isSameTarget(targetA: dataform.ITarget, targetB: dataform.ITarge
       }
   }
   return true
+}
+
+export function addDependenciesToActionDependencyTargets(action: actionsWithDependencies, resolvable: Resolvable){
+  let dependencyTarget = resolvableAsTarget(resolvable);
+  dependencyTarget.includeDependentAssertions = dependencyTarget.hasOwnProperty("includeDependentAssertions") ? dependencyTarget.includeDependentAssertions : action.dependOnDependencyAssertions;
+  const existingDependencies = action.proto.dependencyTargets.filter(dependency => isSameTarget(dependencyTarget, dependency) && dependency.includeDependentAssertions !== dependencyTarget.includeDependentAssertions)
+  if (existingDependencies.length !== 0){
+    action.session.compileError(
+        `Conflicting "includeDependentAssertions" flag not allowed. Dependency ${dependencyTarget.name} have different values set for this flag.`,
+        action.proto.fileName,
+        action.proto.target
+      )
+      return action;
+  }
+
+  action.proto.dependencyTargets.push(dependencyTarget);
 }

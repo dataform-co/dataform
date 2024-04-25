@@ -23,7 +23,7 @@ import {
   setNameAndTarget,
   strictKeysOf,
   toResolvable,
-  isSameTarget
+  addDependenciesToActionDependencyTargets
 } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
@@ -111,7 +111,8 @@ export class Operation extends ActionBuilder<dataform.Operation> {
       tags: config.tags,
       disabled: config.disabled,
       hasOutput: config.hasOutput,
-      description: config.description
+      description: config.description,
+      dependOnDependencyAssertions: config.dependOnDependencyAssertions
     });
 
     this.queries(nativeRequire(config.filename).query);
@@ -164,21 +165,7 @@ export class Operation extends ActionBuilder<dataform.Operation> {
 
   public dependencies(value: Resolvable | Resolvable[]) {
     const newDependencies = Array.isArray(value) ? value : [value];
-    newDependencies.forEach(resolvable => {
-      let dependencyTarget = resolvableAsTarget(resolvable);
-      dependencyTarget.includeDependentAssertions = dependencyTarget.includeDependentAssertions===undefined ? this.dependOnDependencyAssertions : dependencyTarget.includeDependentAssertions;
-      const existingDependencies = this.proto.dependencyTargets.filter(dependency => isSameTarget(dependencyTarget, dependency) && dependency.includeDependentAssertions !== dependencyTarget.includeDependentAssertions)
-      if (existingDependencies.length !== 0){
-          this.session.compileError(
-            `Conflicting "includeDependentAssertions" flag not allowed. Dependency ${dependencyTarget.name} have different value set for this flag.`,
-             this.proto.fileName,
-             this.proto.target
-          )
-          return this;
-      }
-
-      this.proto.dependencyTargets.push(dependencyTarget);
-    });
+    newDependencies.forEach(resolvable => addDependenciesToActionDependencyTargets(this, resolvable));
     return this;
   }
 

@@ -225,7 +225,7 @@ export interface ITarget {
 
   name?: string;
 
-  IncludeDependentAssertions?: boolean;
+  includeDependentAssertions?: boolean;
 }
 
 /**

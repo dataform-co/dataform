@@ -63,6 +63,9 @@ message ActionConfig {
 
     // The name of the action.
     string name = 4;
+
+    // flag for when we want to add assertions of this dependency in dependency_targets as well
+    bool include_dependent_assertions = 5;
   }
 
   message ColumnDescriptor {
@@ -148,6 +151,10 @@ message ActionConfig {
     // If the option name contains special characters, encapsulate the name in
     // quotes, for example: additionalOptions: { "option-name": "value" }.
     map<string, string> additional_options = 17;
+
+    // boolean flag when set to true, assertions dependent upon any dependency will
+    // be add as dedpendency to this action
+    bool dependOnDependencyAssertions = 18;
   }
 
   message ViewConfig {
@@ -208,6 +215,10 @@ message ActionConfig {
     // If the option name contains special characters, encapsulate the name in
     // quotes, for example: additionalOptions: { "option-name": "value" }.
     map<string, string> additional_options = 14;
+
+    // boolean flag when set to true, assertions dependent upon any dependency will
+    // be add as dedpendency to this action
+    bool dependOnDependencyAssertions = 15;
   }
 
   message IncrementalTableConfig {
@@ -296,6 +307,10 @@ message ActionConfig {
     // If the option name contains special characters, encapsulate the name in
     // quotes, for example: additionalOptions: { "option-name": "value" }.
     map<string, string> additional_options = 20;
+
+    // boolean flag when set to true, assertions dependent upon any dependency will
+    // be add as dedpendency to this action
+    bool dependOnDependencyAssertions = 21;
   }
 
   message AssertionConfig {
@@ -361,6 +376,10 @@ message ActionConfig {
     // Descriptions of columns within the operation. Can only be set if
     // hasOutput is true.
     repeated ColumnDescriptor columns = 10;
+
+    // boolean flag when set to true, assertions dependent upon any dependency will
+    // be add as dedpendency to this action
+    bool dependOnDependencyAssertions = 11;
   }
 
   message DeclarationConfig {
@@ -406,6 +425,10 @@ message ActionConfig {
 
     // Description of the notebook.
     string description = 8;
+
+    // boolean flag when set to true, assertions dependent upon any dependency will
+    // be add as dedpendency to this action
+    bool dependOnDependencyAssertions = 9;
 
     // TODO(ekrekr): add a notebook runtime field definition.
   }

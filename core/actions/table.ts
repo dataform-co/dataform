@@ -26,7 +26,7 @@ import {
   tableTypeStringToEnum,
   toResolvable,
   validateQueryString,
-  isSameTarget
+  addDependenciesToActionDependencyTargets,
 } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
@@ -346,7 +346,8 @@ export class Table extends ActionBuilder<dataform.Table> {
         tags: config.tags,
         disabled: config.disabled,
         description: config.description,
-        bigquery: bigqueryOptions
+        bigquery: bigqueryOptions,
+        dependOnDependencyAssertions: config.dependOnDependencyAssertions
       });
     }
     if (tableType === "view") {
@@ -376,7 +377,8 @@ export class Table extends ActionBuilder<dataform.Table> {
         materialized: config.materialized,
         tags: config.tags,
         description: config.description,
-        bigquery: bigqueryOptions
+        bigquery: bigqueryOptions,
+        dependOnDependencyAssertions: config.dependOnDependencyAssertions
       });
     }
     if (tableType === "incremental") {
@@ -428,7 +430,8 @@ export class Table extends ActionBuilder<dataform.Table> {
         uniqueKey: config.uniqueKey,
         tags: config.tags,
         description: config.description,
-        bigquery: bigqueryOptions
+        bigquery: bigqueryOptions,
+        dependOnDependencyAssertions: config.dependOnDependencyAssertions
       });
     }
     this.query(nativeRequire(tableTypeConfig.filename).query);
@@ -561,22 +564,7 @@ export class Table extends ActionBuilder<dataform.Table> {
 
   public dependencies(value: Resolvable | Resolvable[]) {
     const newDependencies = Array.isArray(value) ? value : [value];
-    newDependencies.forEach(resolvable => {
-      let dependencyTarget = resolvableAsTarget(resolvable);
-      dependencyTarget.includeDependentAssertions = dependencyTarget.includeDependentAssertions===undefined ? this.dependOnDependencyAssertions : dependencyTarget.includeDependentAssertions;
-      const existingDependencies = this.proto.dependencyTargets.filter(dependency => isSameTarget(dependencyTarget, dependency) && dependency.includeDependentAssertions !== dependencyTarget.includeDependentAssertions)
-      if (existingDependencies.length !== 0){
-          this.session.compileError(
-            `Conflicting "includeDependentAssertions" flag not allowed. Dependency ${dependencyTarget.name} have different value set for this flag.`,
-             this.proto.fileName,
-             this.proto.target
-          )
-          return this;
-      }
-
-      this.proto.dependencyTargets.push(dependencyTarget);
-    });
-
+    newDependencies.forEach(resolvable => addDependenciesToActionDependencyTargets(this, resolvable));
     return this;
   }
 
