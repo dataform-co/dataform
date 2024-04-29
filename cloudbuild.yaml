@@ -1,0 +1,8 @@
+steps:
+  - name: gcr.io/cloud-builders/bazel:5.4.0
+    entrypoint: bash
+    args:
+      - ./scripts/run_tests
+options:
+  machineType: N1_HIGHCPU_8
+timeout: 3600s
