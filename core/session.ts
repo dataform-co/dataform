@@ -465,9 +465,9 @@ export class Session {
           // We found a single matching target, and fully-qualify it if it's a normal dependency.
           const protoDep = possibleDeps[0].proto;
           fullyQualifiedDependencies[targetAsReadableString(protoDep.target)] = protoDep.target;
-          
-          if (dependency.includeDependentAssertions){
-            this.actionAssertionMap.get(dependency).forEach(assertionTarget => 
+
+          if (dependency.includeDependentAssertions) {
+            this.actionAssertionMap.get(dependency).forEach(assertionTarget =>
               fullyQualifiedDependencies[targetAsReadableString(assertionTarget)] = assertionTarget
             );
           }
@@ -827,10 +827,10 @@ class ActionAssertionMap {
     Map<string, Map<string, dataform.ITarget[]>>
   > = new Map();
 
-  public set(actionTarget: ITarget, assertionTarget: dataform.ITarget){
+  public set(actionTarget: ITarget, assertionTarget: dataform.ITarget) {
     this.setByNameLevel(this.byName, actionTarget.name, assertionTarget);
 
-    if (!!actionTarget.schema){
+    if (!!actionTarget.schema) {
       this.setBySchemaLevel(this.bySchemaAndName, actionTarget, assertionTarget);
     }
 
@@ -840,7 +840,7 @@ class ActionAssertionMap {
       }
       const forDatabaseNoSchema = this.byDatabaseAndName.get(actionTarget.database);
       this.setByNameLevel(forDatabaseNoSchema, actionTarget.name, assertionTarget)
-      
+
       if (!!actionTarget.schema) {
         if (!this.byDatabaseSchemaAndName.has(actionTarget.database)) {
           this.byDatabaseSchemaAndName.set(actionTarget.database, new Map());
@@ -869,14 +869,14 @@ class ActionAssertionMap {
     return this.byName.get(target.name) || [];
   }
 
-  private setByNameLevel(targetMap: Map<string, dataform.ITarget[]>, name: string, assertionTarget: dataform.ITarget){
+  private setByNameLevel(targetMap: Map<string, dataform.ITarget[]>, name: string, assertionTarget: dataform.ITarget) {
     if (!targetMap.has(name)) {
       targetMap.set(name, []);
     }
     targetMap.get(name).push(assertionTarget);
   }
 
-  private setBySchemaLevel(targetMap: Map<string, Map<string, dataform.ITarget[]>>, actionTarget: ITarget, assertionTarget: dataform.ITarget){
+  private setBySchemaLevel(targetMap: Map<string, Map<string, dataform.ITarget[]>>, actionTarget: ITarget, assertionTarget: dataform.ITarget) {
     if (!targetMap.has(actionTarget.schema)) {
       targetMap.set(actionTarget.schema, new Map());
     }

@@ -20,8 +20,7 @@ export class Notebook extends ActionBuilder<dataform.Notebook> {
   // TODO: make this field private, to enforce proto update logic to happen in this class.
   public proto: dataform.INotebook = dataform.Notebook.create();
 
-  // This is Action level flag. If set to true, we will add assertions from all the depenedncies of
-  // current action as dependencies. 
+  // If true, adds the inline assertions of dependencies as direct dependencies for this action. 
   public dependOnDependencyAssertions: boolean = false;
 
   constructor(

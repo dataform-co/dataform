@@ -6,7 +6,7 @@ import { Resolvable } from "df/core/common";
 import * as Path from "df/core/path";
 import { IActionProto, Session } from "df/core/session";
 import { dataform } from "df/protos/ts";
-import { Notebook } from "./actions/notebook";
+import { Notebook } from "df/core/actions/notebook";
 
 declare var __webpack_require__: any;
 declare var __non_webpack_require__: any;
@@ -137,8 +137,8 @@ export function ambiguousActionNameMsg(act: Resolvable, allActs: Action[] | stri
     typeof allActs[0] === "string"
       ? allActs
       : (allActs as Array<Table | Operation | Assertion>).map(
-          r => `${r.proto.target.schema}.${r.proto.target.name}`
-        );
+        r => `${r.proto.target.schema}.${r.proto.target.name}`
+      );
   return `Ambiguous Action name: ${stringifyResolvable(
     act
   )}. Did you mean one of: ${allActNames.join(", ")}.`;
@@ -219,8 +219,7 @@ export function checkExcessProperties<T>(
   if (extraProperties.length > 0) {
     reportError(
       new Error(
-        `Unexpected property "${extraProperties[0]}"${
-          !!name ? ` in ${name}` : ""
+        `Unexpected property "${extraProperties[0]}"${!!name ? ` in ${name}` : ""
         }. Supported properties are: ${JSON.stringify(supportedProperties)}`
       )
     );
@@ -296,7 +295,7 @@ export function actionConfigToCompiledGraphTarget(
   if (actionConfigTarget.project) {
     compiledGraphTarget.database = actionConfigTarget.project;
   }
-  if (actionConfigTarget.hasOwnProperty("includeDependentAssertions")){
+  if (actionConfigTarget.hasOwnProperty("includeDependentAssertions")) {
     compiledGraphTarget.includeDependentAssertions = actionConfigTarget.includeDependentAssertions;
   }
   return dataform.Target.create(compiledGraphTarget);
@@ -306,35 +305,26 @@ export function resolveActionsConfigFilename(configFilename: string, configPath:
   return Path.normalize(Path.join(Path.dirName(configPath), configFilename));
 }
 
-export function isSameTarget(targetA: dataform.ITarget, targetB: dataform.ITarget): boolean {
-  if (targetA.name !== targetB.name){
-      return false
-  }
-  if (!!targetA.database || !!targetB.schema){
-      if (targetA.database !== targetB.database){
-          return false;
-      }
-  }
-  if (!!targetA.schema || !!targetB.schema){
-      if(targetA.schema !== targetB.schema){
-          return false
-      }
-  }
-  return true
-}
-
-export function addDependenciesToActionDependencyTargets(action: actionsWithDependencies, resolvable: Resolvable){
+export function addDependenciesToActionDependencyTargets(action: actionsWithDependencies, resolvable: Resolvable) {
   let dependencyTarget = resolvableAsTarget(resolvable);
-  dependencyTarget.includeDependentAssertions = dependencyTarget.hasOwnProperty("includeDependentAssertions") ? dependencyTarget.includeDependentAssertions : action.dependOnDependencyAssertions;
-  const existingDependencies = action.proto.dependencyTargets.filter(dependency => isSameTarget(dependencyTarget, dependency) && dependency.includeDependentAssertions !== dependencyTarget.includeDependentAssertions)
-  if (existingDependencies.length !== 0){
-    action.session.compileError(
-        `Conflicting "includeDependentAssertions" flag not allowed. Dependency ${dependencyTarget.name} have different values set for this flag.`,
-        action.proto.fileName,
-        action.proto.target
-      )
-      return action;
+  if (!dependencyTarget.hasOwnProperty("includeDependentAssertions")) {
+    // dependency `includeDependentAssertions` takes precedence over the config's `dependOnDependencyAssertions`
+    dependencyTarget.includeDependentAssertions = action.dependOnDependencyAssertions;
   }
 
+  // check if same dependency already exist in this action but with opposite value for includeDependentAssertions
+  const conflictingIncludeDependentAssertions =
+    action.proto.dependencyTargets.filter(existingDependency =>
+      action.session.compilationSql().resolveTarget(existingDependency) === action.session.compilationSql().resolveTarget(dependencyTarget)
+      && existingDependency.includeDependentAssertions !== dependencyTarget.includeDependentAssertions
+    );
+  if (conflictingIncludeDependentAssertions.length !== 0) {
+    action.session.compileError(
+      `Conflicting "includeDependentAssertions" properties are not allowed. Dependency ${dependencyTarget.name} has different values set for this property.`,
+      action.proto.fileName,
+      action.proto.target
+    )
+    return action;
+  }
   action.proto.dependencyTargets.push(dependencyTarget);
 }

@@ -158,10 +158,10 @@ const ITableAssertionsProperties = () =>
  */
 export interface ITableConfig
   extends IActionConfig,
-    IDependenciesConfig,
-    IDocumentableConfig,
-    INamedConfig,
-    ITargetableConfig {
+  IDependenciesConfig,
+  IDocumentableConfig,
+  INamedConfig,
+  ITargetableConfig {
   /**
    * The type of the dataset. For more information on how this setting works, check out some of the [guides](guides)
    * on publishing different types of datasets with Dataform.
@@ -267,8 +267,7 @@ export class Table extends ActionBuilder<dataform.Table> {
   private uniqueKeyAssertions: Assertion[] = [];
   private rowConditionsAssertion: Assertion;
 
-  // This is Action level flag. If set to true, we will add assertions from all the depenedncies of
-  // current action as dependencies. 
+  // If true, adds the inline assertions of dependencies as direct dependencies for this action. 
   public dependOnDependencyAssertions: boolean = false;
 
   constructor(
@@ -685,7 +684,7 @@ export class Table extends ActionBuilder<dataform.Table> {
     return this;
   }
 
-  public setDependOnDependencyAssertions(dependOnDependencyAssertions: boolean){
+  public setDependOnDependencyAssertions(dependOnDependencyAssertions: boolean) {
     this.dependOnDependencyAssertions = dependOnDependencyAssertions;
     return this;
   }
@@ -754,7 +753,7 @@ export class Table extends ActionBuilder<dataform.Table> {
  * @hidden
  */
 export class TableContext implements ITableContext {
-  constructor(private table: Table, private isIncremental = false) {}
+  constructor(private table: Table, private isIncremental = false) { }
 
   public config(config: ITableConfig) {
     this.table.config(config);

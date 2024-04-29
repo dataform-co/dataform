@@ -112,7 +112,7 @@ suite("@dataform/core", ({ afterEach }) => {
       ].forEach(testConfig => {
         test(
           `assertions target context functions with project suffix '${testConfig.projectSuffix}', ` +
-            `dataset suffix '${testConfig.datasetSuffix}', and name prefix '${testConfig.namePrefix}'`,
+          `dataset suffix '${testConfig.datasetSuffix}', and name prefix '${testConfig.namePrefix}'`,
           () => {
             const projectDir = tmpDirFixture.createNewTmpDir();
             fs.writeFileSync(
@@ -132,8 +132,8 @@ suite("@dataform/core", ({ afterEach }) => {
             ).deep.equals([]);
             expect(asPlainObject(result.compile.compiledGraph.assertions[0].query)).deep.equals(
               `default-database${testConfig.projectSuffix ? `_suffix` : ""}.` +
-                `schema${testConfig.datasetSuffix ? `_suffix` : ""}.` +
-                `${testConfig.namePrefix ? `prefix_` : ""}name`
+              `schema${testConfig.datasetSuffix ? `_suffix` : ""}.` +
+              `${testConfig.namePrefix ? `prefix_` : ""}name`
             );
           }
         );
@@ -1261,88 +1261,67 @@ actions:
     });
   });
 
-  suite("assertions as dependencies", () => {
+  suite("Assertions as dependencies", ({ beforeEach }) => {
     [
       TestConfigs.bigquery,
       TestConfigs.bigqueryWithDatasetSuffix,
       TestConfigs.bigqueryWithNamePrefix
     ].forEach(testConfig => {
-      test("using only dependOnDependencyAssertions flag", ()=>{
-        const projectDir = tmpDirFixture.createNewTmpDir();
-          fs.writeFileSync(
-            path.join(projectDir, "workflow_settings.yaml"),
-            dumpYaml(dataform.WorkflowSettings.create(testConfig))
-          );
-          fs.mkdirSync(path.join(projectDir, "definitions"));
-          fs.writeFileSync(path.join(projectDir, "definitions/A.sqlx"), 
+      let projectDir: any;
+      beforeEach("Create temperory dir and files", () => {
+        projectDir = tmpDirFixture.createNewTmpDir();
+        fs.writeFileSync(
+          path.join(projectDir, "workflow_settings.yaml"),
+          dumpYaml(dataform.WorkflowSettings.create(testConfig))
+        );
+        fs.mkdirSync(path.join(projectDir, "definitions"));
+        fs.writeFileSync(path.join(projectDir, "definitions/A.sqlx"),
           `config {
-            type: "table",
-             assertions: {
-               rowConditions: ["test > 1"]
-            }
+          type: "table",
+           assertions: {
+             rowConditions: ["test > 1"]
           }
-          SELECT 1 as test
         }
-        `);
-          fs.writeFileSync(path.join(projectDir, "definitions/A_assert.sqlx"), 
+        SELECT 1 as test
+      }
+      `);
+        fs.writeFileSync(path.join(projectDir, "definitions/A_assert.sqlx"),
           `config {
-            type: "assertion",
-        }
-        select test from \${ref("A")} where test > 3`);
+          type: "assertion",
+      }
+      select test from \${ref("A")} where test > 3`);
+      });
+
+      test("When dependOnDependencyAssertions property is set to true, assertions from A are added as dependencies", () => {
         fs.writeFileSync(path.join(projectDir, "definitions/B.sqlx"),
-           `config {
+          `config {
             type: "table",
             dependOnDependencyAssertions: true,
             dependencies: ["A"]
         }
         select 1 as btest
         `);
-        fs.writeFileSync(path.join(projectDir, "definitions/C.sqlx"), 
-          `config {
-            type: "table",
-             assertions: {
-               rowConditions: ["test > 1"]
-            }
-          }
-          SELECT 1 as test
-        }
-        `);
 
-          const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
-          expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-          expect(asPlainObject(result.compile.compiledGraph.tables[1].dependencyTargets.length)).equals(3)
+        const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+        expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+        expect(asPlainObject(result.compile.compiledGraph.tables[1].dependencyTargets.length)).equals(3)
+        expect(asPlainObject(result.compile.compiledGraph.tables[1].dependencyTargets.flatMap(dependencyTarget => dependencyTarget.name))).deep.equals([
+          testConfig.namePrefix ? `${testConfig.namePrefix}_A` : "A",
+          testConfig.namePrefix ? `${testConfig.namePrefix}_schema_A_assertions_rowConditions` : "schema_A_assertions_rowConditions",
+          testConfig.namePrefix ? `${testConfig.namePrefix}_A_assert` : "A_assert"
+        ])
       })
 
-      test("using includeDependentAssertions flag in config.dependencies", ()=>{
-        const projectDir = tmpDirFixture.createNewTmpDir();
-          fs.writeFileSync(
-            path.join(projectDir, "workflow_settings.yaml"),
-            dumpYaml(dataform.WorkflowSettings.create(testConfig))
-          );
-          fs.mkdirSync(path.join(projectDir, "definitions"));
-          fs.writeFileSync(path.join(projectDir, "definitions/A.sqlx"), 
-          `config {
-            type: "table",
-             assertions: {
-               rowConditions: ["test > 1"]
-            }
-          }
-          SELECT 1 as test
-        }
-        `);
-          fs.writeFileSync(path.join(projectDir, "definitions/A_assert.sqlx"), 
-          `config {
-            type: "assertion",
-        }
-        select test from \${ref("A")} where test > 3`);
+      test("Setting includeDependentAssertions to true in config.dependencies adds assertions from that dependeny to dependencyTargets", () => {
         fs.writeFileSync(path.join(projectDir, "definitions/B.sqlx"),
-           `config {
+          `config {
             type: "table",
             dependencies: [{name: "A", includeDependentAssertions: true}, "C"]
         }
         select 1 as btest
         `);
-        fs.writeFileSync(path.join(projectDir, "definitions/C.sqlx"), 
+        fs.writeFileSync(path.join(projectDir, "definitions/C.sqlx"),
           `config {
             type: "table",
              assertions: {
@@ -1353,42 +1332,27 @@ actions:
         }
         `);
 
-          const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
-          expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-          expect(asPlainObject(result.compile.compiledGraph.tables[1].dependencyTargets.length)).equals(4)
+        const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+        expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+        expect(asPlainObject(result.compile.compiledGraph.tables[1].dependencyTargets.length)).equals(4)
+        expect(asPlainObject(result.compile.compiledGraph.tables[1].dependencyTargets.flatMap(dependencyTarget => dependencyTarget.name))).deep.equals([
+          testConfig.namePrefix ? `${testConfig.namePrefix}_A` : "A",
+          testConfig.namePrefix ? `${testConfig.namePrefix}_schema_A_assertions_rowConditions` : "schema_A_assertions_rowConditions",
+          testConfig.namePrefix ? `${testConfig.namePrefix}_A_assert` : "A_assert",
+          testConfig.namePrefix ? `${testConfig.namePrefix}_C` : "C",
+        ])
       })
 
-      test("using includeDependentAssertions flag in ref", ()=>{
-        const projectDir = tmpDirFixture.createNewTmpDir();
-          fs.writeFileSync(
-            path.join(projectDir, "workflow_settings.yaml"),
-            dumpYaml(dataform.WorkflowSettings.create(testConfig))
-          );
-          fs.mkdirSync(path.join(projectDir, "definitions"));
-          fs.writeFileSync(path.join(projectDir, "definitions/A.sqlx"), 
-          `config {
-            type: "table",
-             assertions: {
-               rowConditions: ["test > 1"]
-            }
-          }
-          SELECT 1 as test
-        }
-        `);
-          fs.writeFileSync(path.join(projectDir, "definitions/A_assert.sqlx"), 
-          `config {
-            type: "assertion",
-        }
-        select test from \${ref("A")} where test > 3`);
+      test("Setting includeDependentAssertions to true in ref, adds assertions from that dependeny to dependencyTargets", () => {
         fs.writeFileSync(path.join(projectDir, "definitions/B.sqlx"),
-           `config {
+          `config {
             type: "table",
             dependencies: ["A"]
         }
         select * from \${ref({name: "C", includeDependentAssertions: true})}
         select 1 as btest
         `);
-        fs.writeFileSync(path.join(projectDir, "definitions/C.sqlx"), 
+        fs.writeFileSync(path.join(projectDir, "definitions/C.sqlx"),
           `config {
             type: "table",
              assertions: {
@@ -1399,35 +1363,19 @@ actions:
         }
         `);
 
-          const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
-          expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-          expect(asPlainObject(result.compile.compiledGraph.tables[1].dependencyTargets.length)).equals(3)
+        const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+        expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+        expect(asPlainObject(result.compile.compiledGraph.tables[1].dependencyTargets.length)).equals(3);
+        expect(asPlainObject(result.compile.compiledGraph.tables[1].dependencyTargets.flatMap(dependencyTarget => dependencyTarget.name))).deep.equals([
+          testConfig.namePrefix ? `${testConfig.namePrefix}_A` : "A",
+          testConfig.namePrefix ? `${testConfig.namePrefix}_C` : "C",
+          testConfig.namePrefix ? `${testConfig.namePrefix}_schema_C_assertions_rowConditions` : "schema_C_assertions_rowConditions"
+        ])
       })
 
-      test("Conflict: dependOnDependencyAssertions True, includeDependentAssertions False", ()=>{
-        const projectDir = tmpDirFixture.createNewTmpDir();
-          fs.writeFileSync(
-            path.join(projectDir, "workflow_settings.yaml"),
-            dumpYaml(dataform.WorkflowSettings.create(testConfig))
-          );
-          fs.mkdirSync(path.join(projectDir, "definitions"));
-          fs.writeFileSync(path.join(projectDir, "definitions/A.sqlx"), 
-          `config {
-            type: "table",
-             assertions: {
-               rowConditions: ["test > 1"]
-            }
-          }
-          SELECT 1 as test
-        }
-        `);
-          fs.writeFileSync(path.join(projectDir, "definitions/A_assert.sqlx"), 
-          `config {
-            type: "assertion",
-        }
-        select test from \${ref("A")} where test > 3`);
+      test("When dependOnDependencyAssertions=true and includeDependentAssertions=false, the assertions related to dependency should not be added to dependencyTargets", () => {
         fs.writeFileSync(path.join(projectDir, "definitions/B.sqlx"),
-           `config {
+          `config {
             type: "table",
             dependOnDependencyAssertions: true,
             dependencies: ["A"]
@@ -1435,7 +1383,7 @@ actions:
         select * from \${ref({name: "C", includeDependentAssertions: false})}
         select 1 as btest
         `);
-        fs.writeFileSync(path.join(projectDir, "definitions/C.sqlx"), 
+        fs.writeFileSync(path.join(projectDir, "definitions/C.sqlx"),
           `config {
             type: "table",
              assertions: {
@@ -1446,35 +1394,20 @@ actions:
         }
         `);
 
-          const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
-          expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-          expect(asPlainObject(result.compile.compiledGraph.tables[1].dependencyTargets.length)).equals(4)
+        const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+        expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+        expect(asPlainObject(result.compile.compiledGraph.tables[1].dependencyTargets.length)).equals(4)
+        expect(asPlainObject(result.compile.compiledGraph.tables[1].dependencyTargets.flatMap(dependencyTarget => dependencyTarget.name))).deep.equals([
+          testConfig.namePrefix ? `${testConfig.namePrefix}_A` : "A",
+          testConfig.namePrefix ? `${testConfig.namePrefix}_schema_A_assertions_rowConditions` : "schema_A_assertions_rowConditions",
+          testConfig.namePrefix ? `${testConfig.namePrefix}_A_assert` : "A_assert",
+          testConfig.namePrefix ? `${testConfig.namePrefix}_C` : "C"
+        ]);
       })
 
-      test("Conflict: using dependOnDependencyAssertions False, includeDependentAssertions True", ()=>{
-        const projectDir = tmpDirFixture.createNewTmpDir();
-          fs.writeFileSync(
-            path.join(projectDir, "workflow_settings.yaml"),
-            dumpYaml(dataform.WorkflowSettings.create(testConfig))
-          );
-          fs.mkdirSync(path.join(projectDir, "definitions"));
-          fs.writeFileSync(path.join(projectDir, "definitions/A.sqlx"), 
-          `config {
-            type: "table",
-             assertions: {
-               rowConditions: ["test > 1"]
-            }
-          }
-          SELECT 1 as test
-        }
-        `);
-          fs.writeFileSync(path.join(projectDir, "definitions/A_assert.sqlx"), 
-          `config {
-            type: "assertion",
-        }
-        select test from \${ref("A")} where test > 3`);
+      test("When dependOnDependencyAssertions=false and includeDependentAssertions=true, the assertions related to dependency should be added to dependencyTargets", () => {
         fs.writeFileSync(path.join(projectDir, "definitions/B.sqlx"),
-           `config {
+          `config {
             type: "operations",
             dependOnDependencyAssertions: false,
             dependencies: ["A"]
@@ -1482,7 +1415,7 @@ actions:
         select * from \${ref({name: "C", includeDependentAssertions: true})}
         select 1 as btest
         `);
-        fs.writeFileSync(path.join(projectDir, "definitions/C.sqlx"), 
+        fs.writeFileSync(path.join(projectDir, "definitions/C.sqlx"),
           `config {
             type: "table",
              assertions: {
@@ -1493,82 +1426,40 @@ actions:
         }
         `);
 
-          const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
-          expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-          expect(asPlainObject(result.compile.compiledGraph.operations[0].dependencyTargets.length)).equals(3)
+        const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+        expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+        expect(asPlainObject(result.compile.compiledGraph.operations[0].dependencyTargets.length)).equals(3);
+        expect(asPlainObject(result.compile.compiledGraph.operations[0].dependencyTargets.flatMap(dependencyTarget => dependencyTarget.name))).deep.equals([
+          testConfig.namePrefix ? `${testConfig.namePrefix}_A` : "A",
+          testConfig.namePrefix ? `${testConfig.namePrefix}_C` : "C",
+          testConfig.namePrefix ? `${testConfig.namePrefix}_schema_C_assertions_rowConditions` : "schema_C_assertions_rowConditions",
+        ]);
       })
-      
-      test("Duplicate assertion in config and ref", ()=>{
-        const projectDir = tmpDirFixture.createNewTmpDir();
-          fs.writeFileSync(
-            path.join(projectDir, "workflow_settings.yaml"),
-            dumpYaml(dataform.WorkflowSettings.create(testConfig))
-          );
-          fs.mkdirSync(path.join(projectDir, "definitions"));
-          fs.writeFileSync(path.join(projectDir, "definitions/A.sqlx"), 
-          `config {
-            type: "table",
-             assertions: {
-               rowConditions: ["test > 1"]
-            }
-          }
-          SELECT 1 as test
-        }
-        `);
-          fs.writeFileSync(path.join(projectDir, "definitions/A_assert.sqlx"), 
-          `config {
-            type: "assertion",
-        }
-        select test from \${ref("A")} where test > 3`);
+
+      test("If assertions are added using includeDependentAssertions and also by add in dependencies, this duplications should be handle and added only once.", () => {
         fs.writeFileSync(path.join(projectDir, "definitions/B.sqlx"),
-           `config {
+          `config {
             type: "table",
-            dependencies: ["A_assert", "C"]
+            dependencies: ["A_assert"]
         }
         select * from \${ref({name: "A", includeDependentAssertions: true})}
-        select * from \${ref({name: "C", includeDependentAssertions: false})}
         select 1 as btest
         `);
-        fs.writeFileSync(path.join(projectDir, "definitions/C.sqlx"), 
-          `config {
-            type: "table",
-             assertions: {
-               rowConditions: ["test > 1"]
-            }
-          }
-          SELECT 1 as test
-        }
-        `);
 
-          const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
-          expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-          expect(asPlainObject(result.compile.compiledGraph.tables[1].dependencyTargets.length)).equals(4)
+        const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+        expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+        expect(asPlainObject(result.compile.compiledGraph.tables[1].dependencyTargets.length)).equals(3);
+        expect(asPlainObject(result.compile.compiledGraph.tables[1].dependencyTargets.flatMap(dependencyTarget => dependencyTarget.name))).deep.equals([
+          testConfig.namePrefix ? `${testConfig.namePrefix}_A_assert` : "A_assert",
+          testConfig.namePrefix ? `${testConfig.namePrefix}_A` : "A",
+          testConfig.namePrefix ? `${testConfig.namePrefix}_schema_A_assertions_rowConditions` : "schema_A_assertions_rowConditions"
+        ]);
       })
 
-      test("conflicting includeDependentAssertions flag in config and ref", ()=>{
-        const projectDir = tmpDirFixture.createNewTmpDir();
-          fs.writeFileSync(
-            path.join(projectDir, "workflow_settings.yaml"),
-            dumpYaml(dataform.WorkflowSettings.create(testConfig))
-          );
-          fs.mkdirSync(path.join(projectDir, "definitions"));
-          fs.writeFileSync(path.join(projectDir, "definitions/A.sqlx"), 
-          `config {
-            type: "table",
-             assertions: {
-               rowConditions: ["test > 1"]
-            }
-          }
-          SELECT 1 as test
-        }
-        `);
-          fs.writeFileSync(path.join(projectDir, "definitions/A_assert.sqlx"), 
-          `config {
-            type: "assertion",
-        }
-        select test from \${ref("A")} where test > 3`);
+      test("When includeDependentAssertions property in config and ref are set different for same dependency, compilationError is thrown.", () => {
         fs.writeFileSync(path.join(projectDir, "definitions/B.sqlx"),
-           `config {
+          `config {
             type: "table",
             dependencies: [{name: "A", includeDependentAssertions: false}, {name: "C", includeDependentAssertions: true}]
         }
@@ -1576,7 +1467,7 @@ actions:
         select * from \${ref({name: "C", includeDependentAssertions: false})}
         select 1 as btest
         `);
-        fs.writeFileSync(path.join(projectDir, "definitions/C.sqlx"), 
+        fs.writeFileSync(path.join(projectDir, "definitions/C.sqlx"),
           `config {
             type: "table",
              assertions: {
@@ -1587,19 +1478,32 @@ actions:
         }
         `);
 
-          const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
-          expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).deep.equals(2);
-          expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).deep.equals(`Conflicting "includeDependentAssertions" flag not allowed. Dependency A have different values set for this flag.`);
+        const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+        expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).deep.equals(2);
+        expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).deep.equals(`Conflicting "includeDependentAssertions" properties are not allowed. Dependency A has different values set for this property.`);
       })
 
-      suite("action configs", () => {
-        test(`using only dependOnDependencyAssertions flag`, () => {
-          const projectDir = tmpDirFixture.createNewTmpDir();
+      suite("Action configs", ({ beforeEach }) => {
+        let projectDir: any;
+
+        beforeEach("Create temp dir and files", () => {
+          projectDir = tmpDirFixture.createNewTmpDir();
           fs.writeFileSync(
             path.join(projectDir, "workflow_settings.yaml"),
-            VALID_WORKFLOW_SETTINGS_YAML
+            dumpYaml(dataform.WorkflowSettings.create(testConfig))
           );
-          fs.mkdirSync(path.join(projectDir, "definitions"));
+          fs.mkdirSync(path.join(projectDir, "definitions"))
+          fs.writeFileSync(path.join(projectDir, "definitions/A.sql"), "SELECT 1 as test");
+          fs.writeFileSync(path.join(projectDir, "definitions/A_assert.sql"), "SELECT test from A");
+          fs.writeFileSync(path.join(projectDir, "definitions/B.sql"), "SELECT 1");
+          fs.writeFileSync(path.join(projectDir, "definitions/C.sql"), "SELECT 1");
+          fs.writeFileSync(
+            path.join(projectDir, `definitions/notebook.ipynb`),
+            EMPTY_NOTEBOOK_CONTENTS
+          );
+        });
+
+        test(`When dependOnDependencyAssertions property is set to true, assertions from A are added as dependencies`, () => {
           fs.writeFileSync(
             path.join(projectDir, "definitions/actions.yaml"),
             `
@@ -1627,30 +1531,16 @@ actions:
                     - name: A
             `
           );
-          fs.writeFileSync(path.join(projectDir, "definitions/A.sql"), "SELECT 1 as test");
-          fs.writeFileSync(path.join(projectDir, "definitions/A_assert.sql"), "SELECT test from A");
-          fs.writeFileSync(path.join(projectDir, "definitions/B.sql"), "SELECT 1");      
-          fs.writeFileSync(path.join(projectDir, "definitions/C.sql"), "SELECT 1");
-          fs.writeFileSync(
-            path.join(projectDir, `definitions/notebook.ipynb`),
-            EMPTY_NOTEBOOK_CONTENTS
-          );
-           
+
           const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
-    
+
           expect(asPlainObject(result.compile.compiledGraph.operations[0].dependencyTargets.length)).deep.equals(2);
           expect(asPlainObject(result.compile.compiledGraph.tables[1].dependencyTargets.length)).deep.equals(2);
           expect(asPlainObject(result.compile.compiledGraph.notebooks[0].dependencyTargets.length)).deep.equals(2);
           expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
         });
 
-        test(`using includeDependentAssertions flag in config.dependencies`, () => {
-          const projectDir = tmpDirFixture.createNewTmpDir();
-          fs.writeFileSync(
-            path.join(projectDir, "workflow_settings.yaml"),
-            VALID_WORKFLOW_SETTINGS_YAML
-          );
-          fs.mkdirSync(path.join(projectDir, "definitions"));
+        test(`Setting includeDependentAssertions to true in config.dependencies adds assertions from that dependeny to dependencyTargets`, () => {
           fs.writeFileSync(
             path.join(projectDir, "definitions/actions.yaml"),
             `
@@ -1679,30 +1569,16 @@ actions:
                       includeDependentAssertions: true
             `
           );
-          fs.writeFileSync(path.join(projectDir, "definitions/A.sql"), "SELECT 1 as test");
-          fs.writeFileSync(path.join(projectDir, "definitions/A_assert.sql"), "SELECT test from A");
-          fs.writeFileSync(path.join(projectDir, "definitions/B.sql"), "SELECT 1");      
-          fs.writeFileSync(path.join(projectDir, "definitions/C.sql"), "SELECT 1");
-          fs.writeFileSync(
-            path.join(projectDir, `definitions/notebook.ipynb`),
-            EMPTY_NOTEBOOK_CONTENTS
-          );
-           
+
           const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
-          
+
           expect(asPlainObject(result.compile.compiledGraph.operations[0].dependencyTargets.length)).deep.equals(2);
           expect(asPlainObject(result.compile.compiledGraph.tables[1].dependencyTargets.length)).deep.equals(2);
           expect(asPlainObject(result.compile.compiledGraph.notebooks[0].dependencyTargets.length)).deep.equals(2);
           expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
         });
 
-        test(`Conflict: dependOnDependencyAssertions True, includeDependentAssertions False`, () => {
-          const projectDir = tmpDirFixture.createNewTmpDir();
-          fs.writeFileSync(
-            path.join(projectDir, "workflow_settings.yaml"),
-            VALID_WORKFLOW_SETTINGS_YAML
-          );
-          fs.mkdirSync(path.join(projectDir, "definitions"));
+        test(`When dependOnDependencyAssertions=true and includeDependentAssertions=false, the assertions related to dependency should not be added to dependencyTargets`, () => {
           fs.writeFileSync(
             path.join(projectDir, "definitions/actions.yaml"),
             `
@@ -1738,31 +1614,17 @@ actions:
                     - name: B
             `
           );
-          fs.writeFileSync(path.join(projectDir, "definitions/A.sql"), "SELECT 1 as test");
-          fs.writeFileSync(path.join(projectDir, "definitions/A_assert.sql"), "SELECT test from A");
-          fs.writeFileSync(path.join(projectDir, "definitions/B.sql"), "SELECT 1 as test");      
           fs.writeFileSync(path.join(projectDir, "definitions/B_assert.sql"), "SELECT test from B");
-          fs.writeFileSync(path.join(projectDir, "definitions/C.sql"), "SELECT 1");
-          fs.writeFileSync(
-            path.join(projectDir, `definitions/notebook.ipynb`),
-            EMPTY_NOTEBOOK_CONTENTS
-          );
-           
+
           const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
-          
+
           expect(asPlainObject(result.compile.compiledGraph.operations[0].dependencyTargets.length)).deep.equals(1);
           expect(asPlainObject(result.compile.compiledGraph.tables[1].dependencyTargets.length)).deep.equals(1);
           expect(asPlainObject(result.compile.compiledGraph.notebooks[0].dependencyTargets.length)).deep.equals(3);
           expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
         });
 
-        test(`Conflict: using dependOnDependencyAssertions False, includeDependentAssertions True`, () => {
-          const projectDir = tmpDirFixture.createNewTmpDir();
-          fs.writeFileSync(
-            path.join(projectDir, "workflow_settings.yaml"),
-            VALID_WORKFLOW_SETTINGS_YAML
-          );
-          fs.mkdirSync(path.join(projectDir, "definitions"));
+        test(`When dependOnDependencyAssertions=false and includeDependentAssertions=true, the assertions related to dependency should be added to dependencyTargets`, () => {
           fs.writeFileSync(
             path.join(projectDir, "definitions/actions.yaml"),
             `
@@ -1799,31 +1661,17 @@ actions:
                     - name: B
             `
           );
-          fs.writeFileSync(path.join(projectDir, "definitions/A.sql"), "SELECT 1 as test");
-          fs.writeFileSync(path.join(projectDir, "definitions/A_assert.sql"), "SELECT test from A");
-          fs.writeFileSync(path.join(projectDir, "definitions/B.sql"), "SELECT 1 as test");      
           fs.writeFileSync(path.join(projectDir, "definitions/B_assert.sql"), "SELECT test from B");
-          fs.writeFileSync(path.join(projectDir, "definitions/C.sql"), "SELECT 1");
-          fs.writeFileSync(
-            path.join(projectDir, `definitions/notebook.ipynb`),
-            EMPTY_NOTEBOOK_CONTENTS
-          );
-           
+
           const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
-          
+
           expect(asPlainObject(result.compile.compiledGraph.operations[0].dependencyTargets.length)).deep.equals(3);
           expect(asPlainObject(result.compile.compiledGraph.tables[1].dependencyTargets.length)).deep.equals(2);
           expect(asPlainObject(result.compile.compiledGraph.notebooks[0].dependencyTargets.length)).deep.equals(3);
           expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
         });
 
-        test(`conflicting includeDependentAssertions flag in config`, () => {
-          const projectDir = tmpDirFixture.createNewTmpDir();
-          fs.writeFileSync(
-            path.join(projectDir, "workflow_settings.yaml"),
-            VALID_WORKFLOW_SETTINGS_YAML
-          );
-          fs.mkdirSync(path.join(projectDir, "definitions"));
+        test(`When includeDependentAssertions property are set different for same dependency, compilationError is thrown.`, () => {
           fs.writeFileSync(
             path.join(projectDir, "definitions/actions.yaml"),
             `
@@ -1839,10 +1687,6 @@ actions:
                   dependOnDependencyAssertions: true
                   dependencyTargets:
                     - name: A
-              - assertion:
-                  filename: B_assert.sql
-                  dependencyTargets:
-                    - name: B
               - operation:
                   filename: C.sql
                   dependencyTargets:
@@ -1851,33 +1695,16 @@ actions:
                     - name: B
                     - name: A
                       includeDependentAssertions: false
-              - notebook:
-                  filename: notebook.ipynb
-                  dependOnDependencyAssertions: false
-                  dependencyTargets:
-                    - name: A
-                      includeDependentAssertions: false
-                    - name: B
-                    - name: A
-                      includeDependentAssertions: true
             `
           );
-          fs.writeFileSync(path.join(projectDir, "definitions/A.sql"), "SELECT 1 as test");
-          fs.writeFileSync(path.join(projectDir, "definitions/A_assert.sql"), "SELECT test from A");
-          fs.writeFileSync(path.join(projectDir, "definitions/B.sql"), "SELECT 1 as test");      
           fs.writeFileSync(path.join(projectDir, "definitions/B_assert.sql"), "SELECT test from B");
-          fs.writeFileSync(path.join(projectDir, "definitions/C.sql"), "SELECT 1");
-          fs.writeFileSync(
-            path.join(projectDir, `definitions/notebook.ipynb`),
-            EMPTY_NOTEBOOK_CONTENTS
-          );
-           
+
           const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
-          
-          expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).deep.equals(2);
-          expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).deep.equals(`Conflicting "includeDependentAssertions" flag not allowed. Dependency A have different values set for this flag.`);
+
+          expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).deep.equals(1);
+          expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).deep.equals(`Conflicting "includeDependentAssertions" properties are not allowed. Dependency A has different values set for this property.`);
         });
-      }); 
+      });
     })
   });
 });

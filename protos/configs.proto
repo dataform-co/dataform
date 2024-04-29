@@ -152,9 +152,9 @@ message ActionConfig {
     // quotes, for example: additionalOptions: { "option-name": "value" }.
     map<string, string> additional_options = 17;
 
-    // boolean flag when set to true, assertions dependent upon any dependency will
+    // When set to true, assertions dependent upon any dependency will
     // be add as dedpendency to this action
-    bool dependOnDependencyAssertions = 18;
+    bool depend_on_dependency_assertions = 18;
   }
 
   message ViewConfig {
@@ -216,9 +216,9 @@ message ActionConfig {
     // quotes, for example: additionalOptions: { "option-name": "value" }.
     map<string, string> additional_options = 14;
 
-    // boolean flag when set to true, assertions dependent upon any dependency will
+    // When set to true, assertions dependent upon any dependency will
     // be add as dedpendency to this action
-    bool dependOnDependencyAssertions = 15;
+    bool depend_on_dependency_assertions = 15;
   }
 
   message IncrementalTableConfig {
@@ -308,9 +308,9 @@ message ActionConfig {
     // quotes, for example: additionalOptions: { "option-name": "value" }.
     map<string, string> additional_options = 20;
 
-    // boolean flag when set to true, assertions dependent upon any dependency will
+    // When set to true, assertions dependent upon any dependency will
     // be add as dedpendency to this action
-    bool dependOnDependencyAssertions = 21;
+    bool depend_on_dependency_assertions = 21;
   }
 
   message AssertionConfig {
@@ -377,9 +377,9 @@ message ActionConfig {
     // hasOutput is true.
     repeated ColumnDescriptor columns = 10;
 
-    // boolean flag when set to true, assertions dependent upon any dependency will
+    // When set to true, assertions dependent upon any dependency will
     // be add as dedpendency to this action
-    bool dependOnDependencyAssertions = 11;
+    bool depend_on_dependency_assertions = 11;
   }
 
   message DeclarationConfig {
@@ -426,9 +426,9 @@ message ActionConfig {
     // Description of the notebook.
     string description = 8;
 
-    // boolean flag when set to true, assertions dependent upon any dependency will
+    // When set to true, assertions dependent upon any dependency will
     // be add as dedpendency to this action
-    bool dependOnDependencyAssertions = 9;
+    bool depend_on_dependency_assertions = 9;
 
     // TODO(ekrekr): add a notebook runtime field definition.
   }

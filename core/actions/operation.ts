@@ -32,10 +32,10 @@ import { dataform } from "df/protos/ts";
  */
 export interface IOperationConfig
   extends IActionConfig,
-    IDependenciesConfig,
-    IDocumentableConfig,
-    INamedConfig,
-    ITargetableConfig {
+  IDependenciesConfig,
+  IDocumentableConfig,
+  INamedConfig,
+  ITargetableConfig {
   /**
    * Declares that this `operations` action creates a dataset which should be referenceable using the `ref` function.
    *
@@ -77,8 +77,7 @@ export class Operation extends ActionBuilder<dataform.Operation> {
   // We delay contextification until the final compile step, so hold these here for now.
   private contextableQueries: Contextable<ICommonContext, string | string[]>;
 
-  // This is Action level flag. If set to true, we will add assertions from all the depenedncies of
-  // current action as dependencies. 
+  // If true, adds the inline assertions of dependencies as direct dependencies for this action. 
   public dependOnDependencyAssertions: boolean = false;
 
   constructor(
@@ -236,7 +235,7 @@ export class Operation extends ActionBuilder<dataform.Operation> {
     return this;
   }
 
-  public setDependOnDependencyAssertions(dependOnDependencyAssertions: boolean){
+  public setDependOnDependencyAssertions(dependOnDependencyAssertions: boolean) {
     this.dependOnDependencyAssertions = dependOnDependencyAssertions;
     return this;
   }
