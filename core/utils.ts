@@ -313,18 +313,18 @@ export function addDependenciesToActionDependencyTargets(action: actionsWithDepe
   }
 
   // check if same dependency already exist in this action but with opposite value for includeDependentAssertions
-  const conflictingIncludeDependentAssertions =
-    action.proto.dependencyTargets.filter(existingDependency =>
-      action.session.compilationSql().resolveTarget(existingDependency) === action.session.compilationSql().resolveTarget(dependencyTarget)
-      && existingDependency.includeDependentAssertions !== dependencyTarget.includeDependentAssertions
-    );
-  if (conflictingIncludeDependentAssertions.length !== 0) {
-    action.session.compileError(
-      `Conflicting "includeDependentAssertions" properties are not allowed. Dependency ${dependencyTarget.name} has different values set for this property.`,
-      action.proto.fileName,
-      action.proto.target
-    )
-    return action;
+  const dependencyTargetString = action.session.compilationSql().resolveTarget(dependencyTarget)
+
+  if (action.includeAssertionsForDependencyMap.has(dependencyTargetString)){
+    if (action.includeAssertionsForDependencyMap.get(dependencyTargetString) !== dependencyTarget.includeDependentAssertions){
+      action.session.compileError(
+        `Conflicting "includeDependentAssertions" properties are not allowed. Dependency ${dependencyTarget.name} has different values set for this property.`,
+        action.proto.fileName,
+        action.proto.target
+      )
+      return action;
+    }
   }
   action.proto.dependencyTargets.push(dependencyTarget);
+  action.includeAssertionsForDependencyMap.set(dependencyTargetString, dependencyTarget.includeDependentAssertions)
 }
