@@ -1268,7 +1268,7 @@ actions:
       TestConfigs.bigqueryWithNamePrefix
     ].forEach(testConfig => {
       let projectDir: any;
-      beforeEach("Create temperory dir and files", () => {
+      beforeEach("Create temporary dir and files", () => {
         projectDir = tmpDirFixture.createNewTmpDir();
         fs.writeFileSync(
           path.join(projectDir, "workflow_settings.yaml"),
@@ -1313,7 +1313,7 @@ actions:
         ])
       })
 
-      test("Setting includeDependentAssertions to true in config.dependencies adds assertions from that dependeny to dependencyTargets", () => {
+      test("Setting includeDependentAssertions to true in config.dependencies adds assertions from that dependency to dependencyTargets", () => {
         fs.writeFileSync(path.join(projectDir, "definitions/B.sqlx"),
           `config {
             type: "table",
@@ -1343,7 +1343,7 @@ actions:
         ])
       })
 
-      test("Setting includeDependentAssertions to true in ref, adds assertions from that dependeny to dependencyTargets", () => {
+      test("Setting includeDependentAssertions to true in ref, adds assertions from that dependency to dependencyTargets", () => {
         fs.writeFileSync(path.join(projectDir, "definitions/B.sqlx"),
           `config {
             type: "table",
@@ -1436,7 +1436,7 @@ actions:
         ]);
       })
 
-      test("If assertions are added using includeDependentAssertions and also by add in dependencies, this duplications should be handle and added only once.", () => {
+      test("Assertions added through includeDependentAssertions and explicitly listed in dependencies are deduplicated.", () => {
         fs.writeFileSync(path.join(projectDir, "definitions/B.sqlx"),
           `config {
             type: "table",
@@ -1457,7 +1457,7 @@ actions:
         ]);
       })
 
-      test("When includeDependentAssertions property in config and ref are set different for same dependency, compilationError is thrown.", () => {
+      test("When includeDependentAssertions property in config and ref are set differently for the same dependency, compilation error is thrown.", () => {
         fs.writeFileSync(path.join(projectDir, "definitions/B.sqlx"),
           `config {
             type: "table",
@@ -1486,7 +1486,7 @@ actions:
       suite("Action configs", ({ beforeEach }) => {
         let projectDir: any;
 
-        beforeEach("Create temp dir and files", () => {
+        beforeEach("Create temporary dir and files", () => {
           projectDir = tmpDirFixture.createNewTmpDir();
           fs.writeFileSync(
             path.join(projectDir, "workflow_settings.yaml"),
@@ -1540,7 +1540,7 @@ actions:
           expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
         });
 
-        test(`Setting includeDependentAssertions to true in config.dependencies adds assertions from that dependeny to dependencyTargets`, () => {
+        test(`Setting includeDependentAssertions to true in config.dependencies adds assertions from that dependency to dependencyTargets`, () => {
           fs.writeFileSync(
             path.join(projectDir, "definitions/actions.yaml"),
             `
@@ -1671,7 +1671,7 @@ actions:
           expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
         });
 
-        test(`When includeDependentAssertions property are set different for same dependency, compilationError is thrown.`, () => {
+        test(`When includeDependentAssertions property in config and ref are set differently for the same dependency, compilation error is thrown.`, () => {
           fs.writeFileSync(
             path.join(projectDir, "definitions/actions.yaml"),
             `

@@ -47,12 +47,12 @@ export class Session {
   public canonicalConfig: dataform.IProjectConfig;
 
   public actions: Action[];
-  public indexedActions: ActionIndex;
+  public indexedActions: ActionMap;
   public tests: { [name: string]: Test };
 
   // This map holds information about what assertions are dependent
   // upon a certain action in our actions list. We use this later to resolve dependencies.
-  public actionAssertionMap = new ActionAssertionMap();
+  public actionAssertionMap = new ActionMap([]);
 
   public graphErrors: dataform.IGraphErrors;
 
@@ -325,7 +325,7 @@ export class Session {
   }
 
   public compile(): dataform.CompiledGraph {
-    this.indexedActions = new ActionIndex(this.actions);
+    this.indexedActions = new ActionMap(this.actions);
 
     if (
       (this.config.warehouse === "bigquery" || this.config.warehouse === "") &&
@@ -467,8 +467,8 @@ export class Session {
           fullyQualifiedDependencies[targetAsReadableString(protoDep.target)] = protoDep.target;
 
           if (dependency.includeDependentAssertions) {
-            this.actionAssertionMap.get(dependency).forEach(assertionTarget =>
-              fullyQualifiedDependencies[targetAsReadableString(assertionTarget)] = assertionTarget
+            this.actionAssertionMap.find(dependency).forEach(assertion =>
+              fullyQualifiedDependencies[targetAsReadableString(assertion.proto.target)] = assertion.proto.target
             );
           }
         } else {
@@ -747,87 +747,22 @@ function objectExistsOrIsNonEmpty(prop: any): boolean {
   );
 }
 
-class ActionIndex {
-  private readonly byName: Map<string, Action[]> = new Map();
-  private readonly bySchemaAndName: Map<string, Map<string, Action[]>> = new Map();
-  private readonly byDatabaseAndName: Map<string, Map<string, Action[]>> = new Map();
-  private readonly byDatabaseSchemaAndName: Map<
+class ActionMap {
+  private byName: Map<string, Action[]> = new Map();
+  private bySchemaAndName: Map<string, Map<string, Action[]>> = new Map();
+  private byDatabaseAndName: Map<string, Map<string, Action[]>> = new Map();
+  private byDatabaseSchemaAndName: Map<
     string,
     Map<string, Map<string, Action[]>>
   > = new Map();
 
   public constructor(actions: Action[]) {
     for (const action of actions) {
-      if (!this.byName.has(action.proto.target.name)) {
-        this.byName.set(action.proto.target.name, []);
-      }
-      this.byName.get(action.proto.target.name).push(action);
-
-      if (!this.bySchemaAndName.has(action.proto.target.schema)) {
-        this.bySchemaAndName.set(action.proto.target.schema, new Map());
-      }
-      const forSchema = this.bySchemaAndName.get(action.proto.target.schema);
-      if (!forSchema.has(action.proto.target.name)) {
-        forSchema.set(action.proto.target.name, []);
-      }
-      forSchema.get(action.proto.target.name).push(action);
-
-      if (!!action.proto.target.database) {
-        if (!this.byDatabaseAndName.has(action.proto.target.database)) {
-          this.byDatabaseAndName.set(action.proto.target.database, new Map());
-        }
-        const forDatabaseNoSchema = this.byDatabaseAndName.get(action.proto.target.database);
-        if (!forDatabaseNoSchema.has(action.proto.target.name)) {
-          forDatabaseNoSchema.set(action.proto.target.name, []);
-        }
-        forDatabaseNoSchema.get(action.proto.target.name).push(action);
-
-        if (!this.byDatabaseSchemaAndName.has(action.proto.target.database)) {
-          this.byDatabaseSchemaAndName.set(action.proto.target.database, new Map());
-        }
-        const forDatabase = this.byDatabaseSchemaAndName.get(action.proto.target.database);
-        if (!forDatabase.has(action.proto.target.schema)) {
-          forDatabase.set(action.proto.target.schema, new Map());
-        }
-        const forDatabaseAndSchema = forDatabase.get(action.proto.target.schema);
-        if (!forDatabaseAndSchema.has(action.proto.target.name)) {
-          forDatabaseAndSchema.set(action.proto.target.name, []);
-        }
-        forDatabaseAndSchema.get(action.proto.target.name).push(action);
-      }
+      this.set(action.proto.target, action)
     }
   }
 
-  public find(target: dataform.ITarget) {
-    if (!!target.database) {
-      if (!!target.schema) {
-        return (
-          this.byDatabaseSchemaAndName
-            .get(target.database)
-            ?.get(target.schema)
-            ?.get(target.name) || []
-        );
-      }
-      return this.byDatabaseAndName.get(target.database)?.get(target.name) || [];
-    }
-    if (!!target.schema) {
-      return this.bySchemaAndName.get(target.schema)?.get(target.name) || [];
-    }
-    return this.byName.get(target.name) || [];
-  }
-}
-
-
-class ActionAssertionMap {
-  private byName: Map<string, dataform.ITarget[]> = new Map();
-  private bySchemaAndName: Map<string, Map<string, dataform.ITarget[]>> = new Map();
-  private byDatabaseAndName: Map<string, Map<string, dataform.ITarget[]>> = new Map();
-  private byDatabaseSchemaAndName: Map<
-    string,
-    Map<string, Map<string, dataform.ITarget[]>>
-  > = new Map();
-
-  public set(actionTarget: ITarget, assertionTarget: dataform.ITarget) {
+  public set(actionTarget: ITarget, assertionTarget: Action) {
     this.setByNameLevel(this.byName, actionTarget.name, assertionTarget);
 
     if (!!actionTarget.schema) {
@@ -851,7 +786,7 @@ class ActionAssertionMap {
     }
   }
 
-  public get(target: dataform.ITarget) {
+  public find(target: dataform.ITarget) {
     if (!!target.database) {
       if (!!target.schema) {
         return (
@@ -869,14 +804,14 @@ class ActionAssertionMap {
     return this.byName.get(target.name) || [];
   }
 
-  private setByNameLevel(targetMap: Map<string, dataform.ITarget[]>, name: string, assertionTarget: dataform.ITarget) {
+  private setByNameLevel(targetMap: Map<string, Action[]>, name: string, assertionTarget: Action) {
     if (!targetMap.has(name)) {
       targetMap.set(name, []);
     }
     targetMap.get(name).push(assertionTarget);
   }
 
-  private setBySchemaLevel(targetMap: Map<string, Map<string, dataform.ITarget[]>>, actionTarget: ITarget, assertionTarget: dataform.ITarget) {
+  private setBySchemaLevel(targetMap: Map<string, Map<string, Action[]>>, actionTarget: ITarget, assertionTarget: Action) {
     if (!targetMap.has(actionTarget.schema)) {
       targetMap.set(actionTarget.schema, new Map());
     }

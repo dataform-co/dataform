@@ -153,7 +153,7 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
     const newDependencies = Array.isArray(value) ? value : [value];
     newDependencies.forEach(resolvable => {
       const resolvableTarget = resolvableAsTarget(resolvable);
-      this.session.actionAssertionMap.set(resolvableTarget, this.proto.target);
+      this.session.actionAssertionMap.set(resolvableTarget, this);
       this.proto.dependencyTargets.push(resolvableTarget);
     });
     return this;
