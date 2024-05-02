@@ -1276,207 +1276,201 @@ actions:
         );
         fs.mkdirSync(path.join(projectDir, "definitions"));
         fs.writeFileSync(path.join(projectDir, "definitions/A.sqlx"),
-          `config {
-          type: "table",
-           assertions: {
-             rowConditions: ["test > 1"]
-          }
-        }
-        SELECT 1 as test
-      }
-      `);
+          `
+config {
+  type: "table",
+  assertions: {rowConditions: ["test > 1"]}}
+  SELECT 1 as test`);
         fs.writeFileSync(path.join(projectDir, "definitions/A_assert.sqlx"),
-          `config {
-          type: "assertion",
-      }
-      select test from \${ref("A")} where test > 3`);
+          `
+config {
+    type: "assertion",
+}
+select test from \${ref("A")} where test > 3`);
       });
 
       test("When dependOnDependencyAssertions property is set to true, assertions from A are added as dependencies", () => {
         fs.writeFileSync(path.join(projectDir, "definitions/B.sqlx"),
-          `config {
-            type: "table",
-            dependOnDependencyAssertions: true,
-            dependencies: ["A"]
-        }
-        select 1 as btest
-        `);
+`config {
+    type: "table",
+    dependOnDependencyAssertions: true,
+    dependencies: ["A"]
+}
+select 1 as btest
+`);
 
         const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
         expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-        expect(asPlainObject(result.compile.compiledGraph.tables[1].dependencyTargets.length)).equals(3)
-        expect(asPlainObject(result.compile.compiledGraph.tables[1].dependencyTargets.flatMap(dependencyTarget => dependencyTarget.name))).deep.equals([
-          testConfig.namePrefix ? `${testConfig.namePrefix}_A` : "A",
-          testConfig.namePrefix ? `${testConfig.namePrefix}_schema_A_assertions_rowConditions` : "schema_A_assertions_rowConditions",
-          testConfig.namePrefix ? `${testConfig.namePrefix}_A_assert` : "A_assert"
+        expect(asPlainObject(result.compile.compiledGraph.tables.find(table => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B")).dependencyTargets.length)).equals(3)
+        expect(asPlainObject(result.compile.compiledGraph.tables.find(table => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B")).dependencyTargets.flatMap(dependencyTarget => dependencyTarget.name))).deep.equals([
+          prefixAdjustedName(testConfig.namePrefix, "A"),
+          prefixAdjustedName(testConfig.namePrefix, "schema_A_assertions_rowConditions"),
+          prefixAdjustedName(testConfig.namePrefix, "A_assert"),
         ])
       })
 
       test("Setting includeDependentAssertions to true in config.dependencies adds assertions from that dependency to dependencyTargets", () => {
         fs.writeFileSync(path.join(projectDir, "definitions/B.sqlx"),
-          `config {
-            type: "table",
-            dependencies: [{name: "A", includeDependentAssertions: true}, "C"]
-        }
-        select 1 as btest
-        `);
+        `
+config {
+  type: "table",
+  dependencies: [{name: "A", includeDependentAssertions: true}, "C"]
+}
+select 1 as btest`);
         fs.writeFileSync(path.join(projectDir, "definitions/C.sqlx"),
-          `config {
-            type: "table",
-             assertions: {
-               rowConditions: ["test > 1"]
-            }
-          }
-          SELECT 1 as test
-        }
-        `);
+        `
+config {
+type: "table",
+  assertions: {
+    rowConditions: ["test > 1"]
+}
+}
+SELECT 1 as test
+}`);
 
         const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
         expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-        expect(asPlainObject(result.compile.compiledGraph.tables[1].dependencyTargets.length)).equals(4)
-        expect(asPlainObject(result.compile.compiledGraph.tables[1].dependencyTargets.flatMap(dependencyTarget => dependencyTarget.name))).deep.equals([
-          testConfig.namePrefix ? `${testConfig.namePrefix}_A` : "A",
-          testConfig.namePrefix ? `${testConfig.namePrefix}_schema_A_assertions_rowConditions` : "schema_A_assertions_rowConditions",
-          testConfig.namePrefix ? `${testConfig.namePrefix}_A_assert` : "A_assert",
-          testConfig.namePrefix ? `${testConfig.namePrefix}_C` : "C",
+        expect(asPlainObject(result.compile.compiledGraph.tables.find(table => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B")).dependencyTargets.length)).equals(4)
+        expect(asPlainObject(result.compile.compiledGraph.tables.find(table => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B")).dependencyTargets.flatMap(dependencyTarget => dependencyTarget.name))).deep.equals([
+          prefixAdjustedName(testConfig.namePrefix, "A"),
+          prefixAdjustedName(testConfig.namePrefix, "schema_A_assertions_rowConditions"),
+          prefixAdjustedName(testConfig.namePrefix, "A_assert"),
+          prefixAdjustedName(testConfig.namePrefix, "C"),
         ])
       })
 
       test("Setting includeDependentAssertions to true in ref, adds assertions from that dependency to dependencyTargets", () => {
         fs.writeFileSync(path.join(projectDir, "definitions/B.sqlx"),
-          `config {
-            type: "table",
-            dependencies: ["A"]
-        }
-        select * from \${ref({name: "C", includeDependentAssertions: true})}
-        select 1 as btest
-        `);
+          `
+config {
+  type: "table",
+  dependencies: ["A"]
+}
+select * from \${ref({name: "C", includeDependentAssertions: true})}
+select 1 as btest`);
         fs.writeFileSync(path.join(projectDir, "definitions/C.sqlx"),
-          `config {
-            type: "table",
-             assertions: {
-               rowConditions: ["test > 1"]
-            }
-          }
-          SELECT 1 as test
-        }
-        `);
+          `
+config {
+  type: "table",
+    assertions: {
+      rowConditions: ["test > 1"]
+  }
+}
+SELECT 1 as test`);
 
         const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
         expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-        expect(asPlainObject(result.compile.compiledGraph.tables[1].dependencyTargets.length)).equals(3);
-        expect(asPlainObject(result.compile.compiledGraph.tables[1].dependencyTargets.flatMap(dependencyTarget => dependencyTarget.name))).deep.equals([
-          testConfig.namePrefix ? `${testConfig.namePrefix}_A` : "A",
-          testConfig.namePrefix ? `${testConfig.namePrefix}_C` : "C",
-          testConfig.namePrefix ? `${testConfig.namePrefix}_schema_C_assertions_rowConditions` : "schema_C_assertions_rowConditions"
+        expect(asPlainObject(result.compile.compiledGraph.tables.find(table => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B")).dependencyTargets.length)).equals(3);
+        expect(asPlainObject(result.compile.compiledGraph.tables.find(table => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B")).dependencyTargets.flatMap(dependencyTarget => dependencyTarget.name))).deep.equals([
+          prefixAdjustedName(testConfig.namePrefix, "A"),
+          prefixAdjustedName(testConfig.namePrefix, "C"),
+          prefixAdjustedName(testConfig.namePrefix, "schema_C_assertions_rowConditions"),
         ])
       })
 
       test("When dependOnDependencyAssertions=true and includeDependentAssertions=false, the assertions related to dependency should not be added to dependencyTargets", () => {
         fs.writeFileSync(path.join(projectDir, "definitions/B.sqlx"),
-          `config {
-            type: "table",
-            dependOnDependencyAssertions: true,
-            dependencies: ["A"]
-        }
-        select * from \${ref({name: "C", includeDependentAssertions: false})}
-        select 1 as btest
-        `);
+          `
+config {
+  type: "table",
+  dependOnDependencyAssertions: true,
+  dependencies: ["A"]
+}
+select * from \${ref({name: "C", includeDependentAssertions: false})}
+select 1 as btest`);
         fs.writeFileSync(path.join(projectDir, "definitions/C.sqlx"),
-          `config {
-            type: "table",
-             assertions: {
-               rowConditions: ["test > 1"]
-            }
-          }
-          SELECT 1 as test
-        }
-        `);
+          `
+config {
+  type: "table",
+    assertions: {
+      rowConditions: ["test > 1"]
+  }
+}
+SELECT 1 as test`);
 
         const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
         expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-        expect(asPlainObject(result.compile.compiledGraph.tables[1].dependencyTargets.length)).equals(4)
-        expect(asPlainObject(result.compile.compiledGraph.tables[1].dependencyTargets.flatMap(dependencyTarget => dependencyTarget.name))).deep.equals([
-          testConfig.namePrefix ? `${testConfig.namePrefix}_A` : "A",
-          testConfig.namePrefix ? `${testConfig.namePrefix}_schema_A_assertions_rowConditions` : "schema_A_assertions_rowConditions",
-          testConfig.namePrefix ? `${testConfig.namePrefix}_A_assert` : "A_assert",
-          testConfig.namePrefix ? `${testConfig.namePrefix}_C` : "C"
+        expect(asPlainObject(result.compile.compiledGraph.tables.find(table => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B")).dependencyTargets.length)).equals(4)
+        expect(asPlainObject(result.compile.compiledGraph.tables.find(table => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B")).dependencyTargets.flatMap(dependencyTarget => dependencyTarget.name))).deep.equals([
+          prefixAdjustedName(testConfig.namePrefix, "A"),
+          prefixAdjustedName(testConfig.namePrefix, "schema_A_assertions_rowConditions"),
+          prefixAdjustedName(testConfig.namePrefix, "A_assert"),
+          prefixAdjustedName(testConfig.namePrefix, "C"),
         ]);
       })
 
       test("When dependOnDependencyAssertions=false and includeDependentAssertions=true, the assertions related to dependency should be added to dependencyTargets", () => {
         fs.writeFileSync(path.join(projectDir, "definitions/B.sqlx"),
-          `config {
-            type: "operations",
-            dependOnDependencyAssertions: false,
-            dependencies: ["A"]
-        }
-        select * from \${ref({name: "C", includeDependentAssertions: true})}
-        select 1 as btest
-        `);
+          `
+config {
+  type: "operations",
+  dependOnDependencyAssertions: false,
+  dependencies: ["A"]
+}
+select * from \${ref({name: "C", includeDependentAssertions: true})}
+select 1 as btest`);
         fs.writeFileSync(path.join(projectDir, "definitions/C.sqlx"),
-          `config {
-            type: "table",
-             assertions: {
-               rowConditions: ["test > 1"]
-            }
-          }
-          SELECT 1 as test
-        }
-        `);
+          `
+config {
+  type: "table",
+    assertions: {
+      rowConditions: ["test > 1"]
+  }
+}
+SELECT 1 as test`);
 
         const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
         expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-        expect(asPlainObject(result.compile.compiledGraph.operations[0].dependencyTargets.length)).equals(3);
-        expect(asPlainObject(result.compile.compiledGraph.operations[0].dependencyTargets.flatMap(dependencyTarget => dependencyTarget.name))).deep.equals([
-          testConfig.namePrefix ? `${testConfig.namePrefix}_A` : "A",
-          testConfig.namePrefix ? `${testConfig.namePrefix}_C` : "C",
-          testConfig.namePrefix ? `${testConfig.namePrefix}_schema_C_assertions_rowConditions` : "schema_C_assertions_rowConditions",
+        expect(asPlainObject(result.compile.compiledGraph.operations.find(operation => operation.target.name === prefixAdjustedName(testConfig.namePrefix, "B")).dependencyTargets.length)).equals(3);
+        expect(asPlainObject(result.compile.compiledGraph.operations.find(operation => operation.target.name === prefixAdjustedName(testConfig.namePrefix, "B")).dependencyTargets.flatMap(dependencyTarget => dependencyTarget.name))).deep.equals([
+          prefixAdjustedName(testConfig.namePrefix, "A"),
+          prefixAdjustedName(testConfig.namePrefix, "C"),
+          prefixAdjustedName(testConfig.namePrefix, "schema_C_assertions_rowConditions"),
         ]);
       })
 
       test("Assertions added through includeDependentAssertions and explicitly listed in dependencies are deduplicated.", () => {
         fs.writeFileSync(path.join(projectDir, "definitions/B.sqlx"),
-          `config {
-            type: "table",
-            dependencies: ["A_assert"]
-        }
-        select * from \${ref({name: "A", includeDependentAssertions: true})}
-        select 1 as btest
-        `);
+          `
+config {
+  type: "table",
+  dependencies: ["A_assert"]
+}
+select * from \${ref({name: "A", includeDependentAssertions: true})}
+select 1 as btest`);
 
         const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
         expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-        expect(asPlainObject(result.compile.compiledGraph.tables[1].dependencyTargets.length)).equals(3);
-        expect(asPlainObject(result.compile.compiledGraph.tables[1].dependencyTargets.flatMap(dependencyTarget => dependencyTarget.name))).deep.equals([
-          testConfig.namePrefix ? `${testConfig.namePrefix}_A_assert` : "A_assert",
-          testConfig.namePrefix ? `${testConfig.namePrefix}_A` : "A",
-          testConfig.namePrefix ? `${testConfig.namePrefix}_schema_A_assertions_rowConditions` : "schema_A_assertions_rowConditions"
+        expect(asPlainObject(result.compile.compiledGraph.tables.find(table => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B")).dependencyTargets.length)).equals(3);
+        expect(asPlainObject(result.compile.compiledGraph.tables.find(table => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B")).dependencyTargets.flatMap(dependencyTarget => dependencyTarget.name))).deep.equals([
+          prefixAdjustedName(testConfig.namePrefix, "A_assert"),
+          prefixAdjustedName(testConfig.namePrefix, "A"),
+          prefixAdjustedName(testConfig.namePrefix, "schema_A_assertions_rowConditions"),
         ]);
       })
 
       test("When includeDependentAssertions property in config and ref are set differently for the same dependency, compilation error is thrown.", () => {
         fs.writeFileSync(path.join(projectDir, "definitions/B.sqlx"),
-          `config {
-            type: "table",
-            dependencies: [{name: "A", includeDependentAssertions: false}, {name: "C", includeDependentAssertions: true}]
-        }
-        select * from \${ref({name: "A", includeDependentAssertions: true})}
-        select * from \${ref({name: "C", includeDependentAssertions: false})}
-        select 1 as btest
-        `);
+          `
+config {
+  type: "table",
+  dependencies: [{name: "A", includeDependentAssertions: false}, {name: "C", includeDependentAssertions: true}]
+}
+select * from \${ref({name: "A", includeDependentAssertions: true})}
+select * from \${ref({name: "C", includeDependentAssertions: false})}
+select 1 as btest`);
         fs.writeFileSync(path.join(projectDir, "definitions/C.sqlx"),
-          `config {
-            type: "table",
-             assertions: {
-               rowConditions: ["test > 1"]
-            }
-          }
-          SELECT 1 as test
-        }
-        `);
+          `
+config {
+  type: "table",
+    assertions: {
+      rowConditions: ["test > 1"]
+  }
+}
+SELECT 1 as test
+}`);
 
         const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
         expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).deep.equals(2);
@@ -1507,36 +1501,36 @@ actions:
           fs.writeFileSync(
             path.join(projectDir, "definitions/actions.yaml"),
             `
-            actions:
-              - table:
-                  filename: A.sql
-              - assertion:
-                  filename: A_assert.sql
-                  dependencyTargets:
-                    - name: A
-              - view:
-                  filename: B.sql
-                  dependOnDependencyAssertions: true
-                  dependencyTargets:
-                    - name: A
-              - operation:
-                  filename: C.sql
-                  dependOnDependencyAssertions: true
-                  dependencyTargets:
-                    - name: A
-              - notebook:
-                  filename: notebook.ipynb
-                  dependOnDependencyAssertions: true
-                  dependencyTargets:
-                    - name: A
-            `
+actions:
+- table:
+    filename: A.sql
+- assertion:
+    filename: A_assert.sql
+    dependencyTargets:
+      - name: A
+- view:
+    filename: B.sql
+    dependOnDependencyAssertions: true
+    dependencyTargets:
+      - name: A
+- operation:
+    filename: C.sql
+    dependOnDependencyAssertions: true
+    dependencyTargets:
+      - name: A
+- notebook:
+    filename: notebook.ipynb
+    dependOnDependencyAssertions: true
+    dependencyTargets:
+      - name: A
+`
           );
 
           const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
-          expect(asPlainObject(result.compile.compiledGraph.operations[0].dependencyTargets.length)).deep.equals(2);
-          expect(asPlainObject(result.compile.compiledGraph.tables[1].dependencyTargets.length)).deep.equals(2);
-          expect(asPlainObject(result.compile.compiledGraph.notebooks[0].dependencyTargets.length)).deep.equals(2);
+          expect(asPlainObject(result.compile.compiledGraph.operations.find(operation => operation.target.name === prefixAdjustedName(testConfig.namePrefix, "C")).dependencyTargets.length)).deep.equals(2);
+          expect(asPlainObject(result.compile.compiledGraph.tables.find(table => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B")).dependencyTargets.length)).deep.equals(2);
+          expect(asPlainObject(result.compile.compiledGraph.notebooks.find(notebook => notebook.target.name === prefixAdjustedName(testConfig.namePrefix, "notebook")).dependencyTargets.length)).deep.equals(2);
           expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
         });
 
@@ -1544,37 +1538,36 @@ actions:
           fs.writeFileSync(
             path.join(projectDir, "definitions/actions.yaml"),
             `
-            actions:
-              - table:
-                  filename: A.sql
-              - assertion:
-                  filename: A_assert.sql
-                  dependencyTargets:
-                    - name: A
-              - view:
-                  filename: B.sql
-                  dependencyTargets:
-                    - 
-                      name: A
-                      includeDependentAssertions: true 
-              - operation:
-                  filename: C.sql
-                  dependencyTargets:
-                    - name: A
-                      includeDependentAssertions: true
-              - notebook:
-                  filename: notebook.ipynb
-                  dependencyTargets:
-                    - name: A
-                      includeDependentAssertions: true
-            `
+actions:
+- table:
+    filename: A.sql
+- assertion:
+    filename: A_assert.sql
+    dependencyTargets:
+      - name: A
+- view:
+    filename: B.sql
+    dependencyTargets:
+      - name: A
+        includeDependentAssertions: true 
+- operation:
+    filename: C.sql
+    dependencyTargets:
+      - name: A
+        includeDependentAssertions: true
+- notebook:
+    filename: notebook.ipynb
+    dependencyTargets:
+      - name: A
+        includeDependentAssertions: true
+`
           );
 
           const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
-          expect(asPlainObject(result.compile.compiledGraph.operations[0].dependencyTargets.length)).deep.equals(2);
-          expect(asPlainObject(result.compile.compiledGraph.tables[1].dependencyTargets.length)).deep.equals(2);
-          expect(asPlainObject(result.compile.compiledGraph.notebooks[0].dependencyTargets.length)).deep.equals(2);
+          expect(asPlainObject(result.compile.compiledGraph.operations.find(operation => operation.target.name === prefixAdjustedName(testConfig.namePrefix, "C")).dependencyTargets.length)).deep.equals(2);
+          expect(asPlainObject(result.compile.compiledGraph.tables.find(table => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B")).dependencyTargets.length)).deep.equals(2);
+          expect(asPlainObject(result.compile.compiledGraph.notebooks.find(notebook => notebook.target.name === prefixAdjustedName(testConfig.namePrefix, "notebook")).dependencyTargets.length)).deep.equals(2);
           expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
         });
 
@@ -1582,45 +1575,45 @@ actions:
           fs.writeFileSync(
             path.join(projectDir, "definitions/actions.yaml"),
             `
-            actions:
-              - table:
-                  filename: A.sql
-              - assertion:
-                  filename: A_assert.sql
-                  dependencyTargets:
-                    - name: A
-              - view:
-                  filename: B.sql
-                  dependOnDependencyAssertions: true
-                  dependencyTargets:
-                    - name: A
-                      includeDependentAssertions: false
-              - assertion:
-                  filename: B_assert.sql
-                  dependencyTargets:
-                    - name: B
-              - operation:
-                  filename: C.sql
-                  dependOnDependencyAssertions: true
-                  dependencyTargets:
-                    - name: A
-                      includeDependentAssertions: false
-              - notebook:
-                  filename: notebook.ipynb
-                  dependOnDependencyAssertions: true
-                  dependencyTargets:
-                    - name: A
-                      includeDependentAssertions: false
-                    - name: B
-            `
+actions:
+- table:
+    filename: A.sql
+- assertion:
+    filename: A_assert.sql
+    dependencyTargets:
+      - name: A
+- view:
+    filename: B.sql
+    dependOnDependencyAssertions: true
+    dependencyTargets:
+      - name: A
+        includeDependentAssertions: false
+- assertion:
+    filename: B_assert.sql
+    dependencyTargets:
+      - name: B
+- operation:
+    filename: C.sql
+    dependOnDependencyAssertions: true
+    dependencyTargets:
+      - name: A
+        includeDependentAssertions: false
+- notebook:
+    filename: notebook.ipynb
+    dependOnDependencyAssertions: true
+    dependencyTargets:
+      - name: A
+        includeDependentAssertions: false
+      - name: B
+`
           );
           fs.writeFileSync(path.join(projectDir, "definitions/B_assert.sql"), "SELECT test from B");
 
           const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
-          expect(asPlainObject(result.compile.compiledGraph.operations[0].dependencyTargets.length)).deep.equals(1);
-          expect(asPlainObject(result.compile.compiledGraph.tables[1].dependencyTargets.length)).deep.equals(1);
-          expect(asPlainObject(result.compile.compiledGraph.notebooks[0].dependencyTargets.length)).deep.equals(3);
+          expect(asPlainObject(result.compile.compiledGraph.operations.find(operation => operation.target.name === prefixAdjustedName(testConfig.namePrefix, "C")).dependencyTargets.length)).deep.equals(1);
+          expect(asPlainObject(result.compile.compiledGraph.tables.find(table => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B")).dependencyTargets.length)).deep.equals(1);
+          expect(asPlainObject(result.compile.compiledGraph.notebooks.find(notebook => notebook.target.name === prefixAdjustedName(testConfig.namePrefix, "notebook")).dependencyTargets.length)).deep.equals(3);
           expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
         });
 
@@ -1628,46 +1621,46 @@ actions:
           fs.writeFileSync(
             path.join(projectDir, "definitions/actions.yaml"),
             `
-            actions:
-              - table:
-                  filename: A.sql
-              - assertion:
-                  filename: A_assert.sql
-                  dependencyTargets:
-                    - name: A
-              - view:
-                  filename: B.sql
-                  dependOnDependencyAssertions: false
-                  dependencyTargets:
-                    - name: A
-                      includeDependentAssertions: true
-              - assertion:
-                  filename: B_assert.sql
-                  dependencyTargets:
-                    - name: B
-              - operation:
-                  filename: C.sql
-                  dependOnDependencyAssertions: false
-                  dependencyTargets:
-                    - name: A
-                      includeDependentAssertions: true
-                    - name: B
-              - notebook:
-                  filename: notebook.ipynb
-                  dependOnDependencyAssertions: false
-                  dependencyTargets:
-                    - name: A
-                      includeDependentAssertions: true
-                    - name: B
-            `
+actions:
+- table:
+    filename: A.sql
+- assertion:
+    filename: A_assert.sql
+    dependencyTargets:
+      - name: A
+- view:
+    filename: B.sql
+    dependOnDependencyAssertions: false
+    dependencyTargets:
+      - name: A
+        includeDependentAssertions: true
+- assertion:
+    filename: B_assert.sql
+    dependencyTargets:
+      - name: B
+- operation:
+    filename: C.sql
+    dependOnDependencyAssertions: false
+    dependencyTargets:
+      - name: A
+        includeDependentAssertions: true
+      - name: B
+- notebook:
+    filename: notebook.ipynb
+    dependOnDependencyAssertions: false
+    dependencyTargets:
+      - name: A
+        includeDependentAssertions: true
+      - name: B
+`
           );
           fs.writeFileSync(path.join(projectDir, "definitions/B_assert.sql"), "SELECT test from B");
 
           const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
-          expect(asPlainObject(result.compile.compiledGraph.operations[0].dependencyTargets.length)).deep.equals(3);
-          expect(asPlainObject(result.compile.compiledGraph.tables[1].dependencyTargets.length)).deep.equals(2);
-          expect(asPlainObject(result.compile.compiledGraph.notebooks[0].dependencyTargets.length)).deep.equals(3);
+          expect(asPlainObject(result.compile.compiledGraph.operations.find(operation => operation.target.name === prefixAdjustedName(testConfig.namePrefix, "C")).dependencyTargets.length)).deep.equals(3);
+          expect(asPlainObject(result.compile.compiledGraph.tables.find(table => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B")).dependencyTargets.length)).deep.equals(2);
+          expect(asPlainObject(result.compile.compiledGraph.notebooks.find(notebook => notebook.target.name === prefixAdjustedName(testConfig.namePrefix, "notebook")).dependencyTargets.length)).deep.equals(3);
           expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
         });
 
@@ -1675,27 +1668,27 @@ actions:
           fs.writeFileSync(
             path.join(projectDir, "definitions/actions.yaml"),
             `
-            actions:
-              - table:
-                  filename: A.sql
-              - assertion:
-                  filename: A_assert.sql
-                  dependencyTargets:
-                    - name: A
-              - view:
-                  filename: B.sql
-                  dependOnDependencyAssertions: true
-                  dependencyTargets:
-                    - name: A
-              - operation:
-                  filename: C.sql
-                  dependencyTargets:
-                    - name: A
-                      includeDependentAssertions: true
-                    - name: B
-                    - name: A
-                      includeDependentAssertions: false
-            `
+actions:
+- table:
+    filename: A.sql
+- assertion:
+    filename: A_assert.sql
+    dependencyTargets:
+      - name: A
+- view:
+    filename: B.sql
+    dependOnDependencyAssertions: true
+    dependencyTargets:
+      - name: A
+- operation:
+    filename: C.sql
+    dependencyTargets:
+      - name: A
+        includeDependentAssertions: true
+      - name: B
+      - name: A
+        includeDependentAssertions: false
+`
           );
           fs.writeFileSync(path.join(projectDir, "definitions/B_assert.sql"), "SELECT test from B");
 
@@ -1767,4 +1760,8 @@ function walkDirectoryForFilenames(projectDir: string, relativePath: string = ""
       }
     });
   return paths.map(filename => path.join(relativePath, filename));
+}
+
+function prefixAdjustedName(prefix: string | undefined, name: string){
+  return prefix ? `${prefix}_${name}` : name
 }
