@@ -154,13 +154,7 @@ defaultAssertionDataset: dataform_assertions
 
     // Initialize a project using the CLI, don't install packages.
     await getProcessResult(
-      execFile(nodePath, [
-        cliEntryPointPath,
-        "init",
-        projectDir,
-        "dataform-integration-tests",
-        "US"
-      ])
+      execFile(nodePath, [cliEntryPointPath, "init", projectDir, "dataform-open-source", "US"])
     );
 
     // Install packages manually to get around bazel read-only sandbox issues.
@@ -219,14 +213,14 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
           type: "table",
           enumType: "TABLE",
           target: {
-            database: "dataform-integration-tests",
+            database: "dataform-open-source",
             schema: "dataform_test_schema_suffix",
             name: "example"
           },
           canonicalTarget: {
             schema: "dataform",
             name: "example",
-            database: "dataform-integration-tests"
+            database: "dataform-open-source"
           },
           query: "\n\nselect 1 as testValue2\n",
           disabled: false,
@@ -238,7 +232,7 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
         warehouse: "bigquery",
         defaultSchema: "dataform",
         assertionSchema: "dataform_assertions",
-        defaultDatabase: "dataform-integration-tests",
+        defaultDatabase: "dataform-open-source",
         defaultLocation: "US",
         vars: {
           testVar1: "testValue1",
@@ -250,7 +244,7 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
       dataformCoreVersion: version,
       targets: [
         {
-          database: "dataform-integration-tests",
+          database: "dataform-open-source",
           schema: "dataform",
           name: "example"
         }
@@ -282,14 +276,14 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
           hermeticity: "HERMETIC",
           tableType: "table",
           target: {
-            database: "dataform-integration-tests",
+            database: "dataform-open-source",
             name: "example",
             schema: "dataform"
           },
           tasks: [
             {
               statement:
-                "create or replace table `dataform-integration-tests.dataform.example` as \n\nselect 1 as testValue2",
+                "create or replace table `dataform-open-source.dataform.example` as \n\nselect 1 as testValue2",
               type: "statement"
             }
           ],
@@ -298,7 +292,7 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
       ],
       projectConfig: {
         assertionSchema: "dataform_assertions",
-        defaultDatabase: "dataform-integration-tests",
+        defaultDatabase: "dataform-open-source",
         defaultLocation: "europe",
         defaultSchema: "dataform",
         warehouse: "bigquery",

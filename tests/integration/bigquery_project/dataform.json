@@ -1,6 +1,6 @@
 {
   "warehouse": "bigquery",
-  "defaultDatabase": "dataform-integration-tests",
+  "defaultDatabase": "dataform-open-source",
   "defaultSchema": "df_integration_test_eu",
   "assertionSchema": "df_integration_test_eu_assertions",
   "defaultLocation": "US",
