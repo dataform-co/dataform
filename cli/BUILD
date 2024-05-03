@@ -42,30 +42,29 @@ node_modules(
     ],
 )
 
-# TODO(ekrekr): re-enable these tests once we have working BQ credentials.
-# ts_test_suite(
-#     name = "tests",
-#     srcs = ["index_test.ts"],
-#     data = [
-#         ":node_modules",
-#         "//packages/@dataform/core:package_tar",
-#         "//test_credentials:bigquery.json",
-#         "@nodejs//:node",
-#         "@nodejs//:npm",
-#     ],
-#     deps = [
-#         "//core",
-#         "//protos:ts",
-#         "//testing",
-#         "@npm//@types/chai",
-#         "@npm//@types/fs-extra",
-#         "@npm//@types/js-yaml",
-#         "@npm//@types/node",
-#         "@npm//chai",
-#         "@npm//fs-extra",
-#         "@npm//js-yaml",
-#     ],
-# )
+ts_test_suite(
+    name = "tests",
+    srcs = ["index_test.ts"],
+    data = [
+        ":node_modules",
+        "//packages/@dataform/core:package_tar",
+        # "//test_credentials:bigquery.json",
+        "@nodejs//:node",
+        "@nodejs//:npm",
+    ],
+    deps = [
+        "//core",
+        "//protos:ts",
+        "//testing",
+        "@npm//@types/chai",
+        "@npm//@types/fs-extra",
+        "@npm//@types/js-yaml",
+        "@npm//@types/node",
+        "@npm//chai",
+        "@npm//fs-extra",
+        "@npm//js-yaml",
+    ],
+)
 
 copy_file(
     name = "readme",
