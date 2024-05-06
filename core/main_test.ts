@@ -1312,14 +1312,14 @@ select 1 as btest
 
       test("Setting includeDependentAssertions to true in config.dependencies adds assertions from that dependency to dependencyTargets", () => {
         fs.writeFileSync(path.join(projectDir, "definitions/B.sqlx"),
-        `
+          `
 config {
   type: "table",
   dependencies: [{name: "A", includeDependentAssertions: true}, "C"]
 }
 select 1 as btest`);
         fs.writeFileSync(path.join(projectDir, "definitions/C.sqlx"),
-        `
+          `
 config {
 type: "table",
   assertions: {
@@ -1478,8 +1478,6 @@ SELECT 1 as test
       })
 
       suite("Action configs", ({ beforeEach }) => {
-        let projectDir: any;
-
         beforeEach("Create temporary dir and files", () => {
           projectDir = tmpDirFixture.createNewTmpDir();
           fs.writeFileSync(
@@ -1762,6 +1760,6 @@ function walkDirectoryForFilenames(projectDir: string, relativePath: string = ""
   return paths.map(filename => path.join(relativePath, filename));
 }
 
-function prefixAdjustedName(prefix: string | undefined, name: string){
+function prefixAdjustedName(prefix: string | undefined, name: string) {
   return prefix ? `${prefix}_${name}` : name
 }

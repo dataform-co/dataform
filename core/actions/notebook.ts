@@ -1,5 +1,6 @@
 import { verifyObjectMatchesProto } from "df/common/protos";
 import { ActionBuilder } from "df/core/actions";
+import { Resolvable } from "df/core/common";
 import * as Path from "df/core/path";
 import { Session } from "df/core/session";
 import {
@@ -8,7 +9,6 @@ import {
   nativeRequire,
   resolveActionsConfigFilename
 } from "df/core/utils";
-import { Resolvable } from "df/core/common";
 import { dataform } from "df/protos/ts";
 
 /**

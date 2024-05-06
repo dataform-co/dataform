@@ -17,6 +17,7 @@ import * as Path from "df/core/path";
 import { Session } from "df/core/session";
 import {
   actionConfigToCompiledGraphTarget,
+  addDependenciesToActionDependencyTargets,
   checkExcessProperties,
   nativeRequire,
   resolvableAsTarget,
@@ -26,7 +27,6 @@ import {
   tableTypeStringToEnum,
   toResolvable,
   validateQueryString,
-  addDependenciesToActionDependencyTargets,
 } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
@@ -258,6 +258,9 @@ export class Table extends ActionBuilder<dataform.Table> {
   // Hold a reference to the Session instance.
   public session: Session;
 
+  // If true, adds the inline assertions of dependencies as direct dependencies for this action. 
+  public dependOnDependencyAssertions: boolean = false;
+
   // We delay contextification until the final compile step, so hold these here for now.
   public contextableQuery: Contextable<ITableContext, string>;
   private contextableWhere: Contextable<ITableContext, string>;
@@ -266,9 +269,6 @@ export class Table extends ActionBuilder<dataform.Table> {
 
   private uniqueKeyAssertions: Assertion[] = [];
   private rowConditionsAssertion: Assertion;
-
-  // If true, adds the inline assertions of dependencies as direct dependencies for this action. 
-  public dependOnDependencyAssertions: boolean = false;
 
   constructor(
     session?: Session,

@@ -16,6 +16,7 @@ import * as Path from "df/core/path";
 import { Session } from "df/core/session";
 import {
   actionConfigToCompiledGraphTarget,
+  addDependenciesToActionDependencyTargets,
   checkExcessProperties,
   nativeRequire,
   resolvableAsTarget,
@@ -23,7 +24,6 @@ import {
   setNameAndTarget,
   strictKeysOf,
   toResolvable,
-  addDependenciesToActionDependencyTargets
 } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
@@ -74,11 +74,11 @@ export class Operation extends ActionBuilder<dataform.Operation> {
   // Hold a reference to the Session instance.
   public session: Session;
 
-  // We delay contextification until the final compile step, so hold these here for now.
-  private contextableQueries: Contextable<ICommonContext, string | string[]>;
-
   // If true, adds the inline assertions of dependencies as direct dependencies for this action. 
   public dependOnDependencyAssertions: boolean = false;
+
+  // We delay contextification until the final compile step, so hold these here for now.
+  private contextableQueries: Contextable<ICommonContext, string | string[]>;
 
   constructor(
     session?: Session,

@@ -306,7 +306,7 @@ export function resolveActionsConfigFilename(configFilename: string, configPath:
 }
 
 export function addDependenciesToActionDependencyTargets(action: actionsWithDependencies, resolvable: Resolvable) {
-  let dependencyTarget = resolvableAsTarget(resolvable);
+  const dependencyTarget = resolvableAsTarget(resolvable);
   if (!dependencyTarget.hasOwnProperty("includeDependentAssertions")) {
     // dependency `includeDependentAssertions` takes precedence over the config's `dependOnDependencyAssertions`
     dependencyTarget.includeDependentAssertions = action.dependOnDependencyAssertions;
