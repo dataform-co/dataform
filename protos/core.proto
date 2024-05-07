@@ -48,6 +48,7 @@ message Target {
   string database = 3;
   string schema = 1;
   string name = 2;
+  bool include_dependent_assertions = 4;
 }
 
 message BigQueryOptions {

@@ -9,7 +9,7 @@ import { Notebook } from "df/core/actions/notebook";
 import { Operation, OperationContext } from "df/core/actions/operation";
 import { ITableConfig, ITableContext, Table, TableContext, TableType } from "df/core/actions/table";
 import { Test } from "df/core/actions/test";
-import { Contextable, ICommonContext, Resolvable } from "df/core/common";
+import { Contextable, ICommonContext, ITarget, Resolvable } from "df/core/common";
 import { CompilationSql } from "df/core/compilation_sql";
 import { targetAsReadableString, targetStringifier } from "df/core/targets";
 import * as utils from "df/core/utils";
@@ -47,8 +47,12 @@ export class Session {
   public canonicalConfig: dataform.IProjectConfig;
 
   public actions: Action[];
-  public indexedActions: ActionIndex;
+  public indexedActions: ActionMap;
   public tests: { [name: string]: Test };
+
+  // This map holds information about what assertions are dependent
+  // upon a certain action in our actions list. We use this later to resolve dependencies.
+  public actionAssertionMap = new ActionMap([]);
 
   public graphErrors: dataform.IGraphErrors;
 
@@ -321,7 +325,7 @@ export class Session {
   }
 
   public compile(): dataform.CompiledGraph {
-    this.indexedActions = new ActionIndex(this.actions);
+    this.indexedActions = new ActionMap(this.actions);
 
     if (
       (this.config.warehouse === "bigquery" || this.config.warehouse === "") &&
@@ -461,6 +465,12 @@ export class Session {
           // We found a single matching target, and fully-qualify it if it's a normal dependency.
           const protoDep = possibleDeps[0].proto;
           fullyQualifiedDependencies[targetAsReadableString(protoDep.target)] = protoDep.target;
+
+          if (dependency.includeDependentAssertions) {
+            this.actionAssertionMap.find(dependency).forEach(assertion =>
+              fullyQualifiedDependencies[targetAsReadableString(assertion.proto.target)] = assertion.proto.target
+            );
+          }
         } else {
           // Too many targets matched the dependency.
           this.compileError(
@@ -737,53 +747,41 @@ function objectExistsOrIsNonEmpty(prop: any): boolean {
   );
 }
 
-class ActionIndex {
-  private readonly byName: Map<string, Action[]> = new Map();
-  private readonly bySchemaAndName: Map<string, Map<string, Action[]>> = new Map();
-  private readonly byDatabaseAndName: Map<string, Map<string, Action[]>> = new Map();
-  private readonly byDatabaseSchemaAndName: Map<
+class ActionMap {
+  private byName: Map<string, Action[]> = new Map();
+  private bySchemaAndName: Map<string, Map<string, Action[]>> = new Map();
+  private byDatabaseAndName: Map<string, Map<string, Action[]>> = new Map();
+  private byDatabaseSchemaAndName: Map<
     string,
     Map<string, Map<string, Action[]>>
   > = new Map();
 
   public constructor(actions: Action[]) {
     for (const action of actions) {
-      if (!this.byName.has(action.proto.target.name)) {
-        this.byName.set(action.proto.target.name, []);
-      }
-      this.byName.get(action.proto.target.name).push(action);
+      this.set(action.proto.target, action)
+    }
+  }
 
-      if (!this.bySchemaAndName.has(action.proto.target.schema)) {
-        this.bySchemaAndName.set(action.proto.target.schema, new Map());
-      }
-      const forSchema = this.bySchemaAndName.get(action.proto.target.schema);
-      if (!forSchema.has(action.proto.target.name)) {
-        forSchema.set(action.proto.target.name, []);
-      }
-      forSchema.get(action.proto.target.name).push(action);
+  public set(actionTarget: ITarget, assertionTarget: Action) {
+    this.setByNameLevel(this.byName, actionTarget.name, assertionTarget);
 
-      if (!!action.proto.target.database) {
-        if (!this.byDatabaseAndName.has(action.proto.target.database)) {
-          this.byDatabaseAndName.set(action.proto.target.database, new Map());
-        }
-        const forDatabaseNoSchema = this.byDatabaseAndName.get(action.proto.target.database);
-        if (!forDatabaseNoSchema.has(action.proto.target.name)) {
-          forDatabaseNoSchema.set(action.proto.target.name, []);
-        }
-        forDatabaseNoSchema.get(action.proto.target.name).push(action);
+    if (!!actionTarget.schema) {
+      this.setBySchemaLevel(this.bySchemaAndName, actionTarget, assertionTarget);
+    }
 
-        if (!this.byDatabaseSchemaAndName.has(action.proto.target.database)) {
-          this.byDatabaseSchemaAndName.set(action.proto.target.database, new Map());
+    if (!!actionTarget.database) {
+      if (!this.byDatabaseAndName.has(actionTarget.database)) {
+        this.byDatabaseAndName.set(actionTarget.database, new Map());
+      }
+      const forDatabaseNoSchema = this.byDatabaseAndName.get(actionTarget.database);
+      this.setByNameLevel(forDatabaseNoSchema, actionTarget.name, assertionTarget)
+
+      if (!!actionTarget.schema) {
+        if (!this.byDatabaseSchemaAndName.has(actionTarget.database)) {
+          this.byDatabaseSchemaAndName.set(actionTarget.database, new Map());
         }
-        const forDatabase = this.byDatabaseSchemaAndName.get(action.proto.target.database);
-        if (!forDatabase.has(action.proto.target.schema)) {
-          forDatabase.set(action.proto.target.schema, new Map());
-        }
-        const forDatabaseAndSchema = forDatabase.get(action.proto.target.schema);
-        if (!forDatabaseAndSchema.has(action.proto.target.name)) {
-          forDatabaseAndSchema.set(action.proto.target.name, []);
-        }
-        forDatabaseAndSchema.get(action.proto.target.name).push(action);
+        const forDatabase = this.byDatabaseSchemaAndName.get(actionTarget.database);
+        this.setBySchemaLevel(forDatabase, actionTarget, assertionTarget);
       }
     }
   }
@@ -804,5 +802,20 @@ class ActionIndex {
       return this.bySchemaAndName.get(target.schema)?.get(target.name) || [];
     }
     return this.byName.get(target.name) || [];
+  }
+
+  private setByNameLevel(targetMap: Map<string, Action[]>, name: string, assertionTarget: Action) {
+    if (!targetMap.has(name)) {
+      targetMap.set(name, []);
+    }
+    targetMap.get(name).push(assertionTarget);
+  }
+
+  private setBySchemaLevel(targetMap: Map<string, Map<string, Action[]>>, actionTarget: ITarget, assertionTarget: Action) {
+    if (!targetMap.has(actionTarget.schema)) {
+      targetMap.set(actionTarget.schema, new Map());
+    }
+    const forSchema = targetMap.get(actionTarget.schema);
+    this.setByNameLevel(forSchema, actionTarget.name, assertionTarget);
   }
 }

@@ -17,6 +17,7 @@ import * as Path from "df/core/path";
 import { Session } from "df/core/session";
 import {
   actionConfigToCompiledGraphTarget,
+  addDependenciesToActionDependencyTargets,
   checkExcessProperties,
   nativeRequire,
   resolvableAsTarget,
@@ -25,7 +26,7 @@ import {
   strictKeysOf,
   tableTypeStringToEnum,
   toResolvable,
-  validateQueryString
+  validateQueryString,
 } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
@@ -157,10 +158,10 @@ const ITableAssertionsProperties = () =>
  */
 export interface ITableConfig
   extends IActionConfig,
-    IDependenciesConfig,
-    IDocumentableConfig,
-    INamedConfig,
-    ITargetableConfig {
+  IDependenciesConfig,
+  IDocumentableConfig,
+  INamedConfig,
+  ITargetableConfig {
   /**
    * The type of the dataset. For more information on how this setting works, check out some of the [guides](guides)
    * on publishing different types of datasets with Dataform.
@@ -221,7 +222,8 @@ export const ITableConfigProperties = () =>
     "database",
     "columns",
     "description",
-    "materialized"
+    "materialized",
+    "dependOnDependencyAssertions"
   ]);
 
 /**
@@ -255,6 +257,9 @@ export class Table extends ActionBuilder<dataform.Table> {
 
   // Hold a reference to the Session instance.
   public session: Session;
+
+  // If true, adds the inline assertions of dependencies as direct dependencies for this action. 
+  public dependOnDependencyAssertions: boolean = false;
 
   // We delay contextification until the final compile step, so hold these here for now.
   public contextableQuery: Contextable<ITableContext, string>;
@@ -340,7 +345,8 @@ export class Table extends ActionBuilder<dataform.Table> {
         tags: config.tags,
         disabled: config.disabled,
         description: config.description,
-        bigquery: bigqueryOptions
+        bigquery: bigqueryOptions,
+        dependOnDependencyAssertions: config.dependOnDependencyAssertions
       });
     }
     if (tableType === "view") {
@@ -370,7 +376,8 @@ export class Table extends ActionBuilder<dataform.Table> {
         materialized: config.materialized,
         tags: config.tags,
         description: config.description,
-        bigquery: bigqueryOptions
+        bigquery: bigqueryOptions,
+        dependOnDependencyAssertions: config.dependOnDependencyAssertions
       });
     }
     if (tableType === "incremental") {
@@ -422,7 +429,8 @@ export class Table extends ActionBuilder<dataform.Table> {
         uniqueKey: config.uniqueKey,
         tags: config.tags,
         description: config.description,
-        bigquery: bigqueryOptions
+        bigquery: bigqueryOptions,
+        dependOnDependencyAssertions: config.dependOnDependencyAssertions
       });
     }
     this.query(nativeRequire(tableTypeConfig.filename).query);
@@ -443,6 +451,9 @@ export class Table extends ActionBuilder<dataform.Table> {
     );
     if (config.type) {
       this.type(config.type);
+    }
+    if (config.dependOnDependencyAssertions) {
+      this.setDependOnDependencyAssertions(config.dependOnDependencyAssertions);
     }
     if (config.dependencies) {
       this.dependencies(config.dependencies);
@@ -552,10 +563,7 @@ export class Table extends ActionBuilder<dataform.Table> {
 
   public dependencies(value: Resolvable | Resolvable[]) {
     const newDependencies = Array.isArray(value) ? value : [value];
-    newDependencies.forEach(resolvable => {
-      this.proto.dependencyTargets.push(resolvableAsTarget(resolvable));
-    });
-
+    newDependencies.forEach(resolvable => addDependenciesToActionDependencyTargets(this, resolvable));
     return this;
   }
 
@@ -676,6 +684,11 @@ export class Table extends ActionBuilder<dataform.Table> {
     return this;
   }
 
+  public setDependOnDependencyAssertions(dependOnDependencyAssertions: boolean) {
+    this.dependOnDependencyAssertions = dependOnDependencyAssertions;
+    return this;
+  }
+
   /**
    * @hidden
    */
@@ -740,7 +753,7 @@ export class Table extends ActionBuilder<dataform.Table> {
  * @hidden
  */
 export class TableContext implements ITableContext {
-  constructor(private table: Table, private isIncremental = false) {}
+  constructor(private table: Table, private isIncremental = false) { }
 
   public config(config: ITableConfig) {
     this.table.config(config);

@@ -16,13 +16,14 @@ import * as Path from "df/core/path";
 import { Session } from "df/core/session";
 import {
   actionConfigToCompiledGraphTarget,
+  addDependenciesToActionDependencyTargets,
   checkExcessProperties,
   nativeRequire,
   resolvableAsTarget,
   resolveActionsConfigFilename,
   setNameAndTarget,
   strictKeysOf,
-  toResolvable
+  toResolvable,
 } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
@@ -31,10 +32,10 @@ import { dataform } from "df/protos/ts";
  */
 export interface IOperationConfig
   extends IActionConfig,
-    IDependenciesConfig,
-    IDocumentableConfig,
-    INamedConfig,
-    ITargetableConfig {
+  IDependenciesConfig,
+  IDocumentableConfig,
+  INamedConfig,
+  ITargetableConfig {
   /**
    * Declares that this `operations` action creates a dataset which should be referenceable using the `ref` function.
    *
@@ -59,7 +60,8 @@ export const IIOperationConfigProperties = strictKeysOf<IOperationConfig>()([
   "name",
   "schema",
   "tags",
-  "type"
+  "type",
+  "dependOnDependencyAssertions"
 ]);
 
 /**
@@ -71,6 +73,9 @@ export class Operation extends ActionBuilder<dataform.Operation> {
 
   // Hold a reference to the Session instance.
   public session: Session;
+
+  // If true, adds the inline assertions of dependencies as direct dependencies for this action. 
+  public dependOnDependencyAssertions: boolean = false;
 
   // We delay contextification until the final compile step, so hold these here for now.
   private contextableQueries: Contextable<ICommonContext, string | string[]>;
@@ -105,7 +110,8 @@ export class Operation extends ActionBuilder<dataform.Operation> {
       tags: config.tags,
       disabled: config.disabled,
       hasOutput: config.hasOutput,
-      description: config.description
+      description: config.description,
+      dependOnDependencyAssertions: config.dependOnDependencyAssertions
     });
 
     this.queries(nativeRequire(config.filename).query);
@@ -118,6 +124,9 @@ export class Operation extends ActionBuilder<dataform.Operation> {
       IIOperationConfigProperties,
       "operation config"
     );
+    if (config.dependOnDependencyAssertions) {
+      this.setDependOnDependencyAssertions(config.dependOnDependencyAssertions);
+    }
     if (config.dependencies) {
       this.dependencies(config.dependencies);
     }
@@ -155,9 +164,7 @@ export class Operation extends ActionBuilder<dataform.Operation> {
 
   public dependencies(value: Resolvable | Resolvable[]) {
     const newDependencies = Array.isArray(value) ? value : [value];
-    newDependencies.forEach(resolvable => {
-      this.proto.dependencyTargets.push(resolvableAsTarget(resolvable));
-    });
+    newDependencies.forEach(resolvable => addDependenciesToActionDependencyTargets(this, resolvable));
     return this;
   }
 
@@ -225,6 +232,11 @@ export class Operation extends ActionBuilder<dataform.Operation> {
       schema,
       this.proto.target.database
     );
+    return this;
+  }
+
+  public setDependOnDependencyAssertions(dependOnDependencyAssertions: boolean) {
+    this.dependOnDependencyAssertions = dependOnDependencyAssertions;
     return this;
   }
 

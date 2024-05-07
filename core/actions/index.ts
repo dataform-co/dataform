@@ -23,6 +23,7 @@ export type SqlxConfig = (
 
 export abstract class ActionBuilder<T> {
   public session: Session;
+  public includeAssertionsForDependency: Map<string, boolean> = new Map();
 
   constructor(session?: Session) {
     this.session = session;
