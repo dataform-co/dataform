@@ -6,7 +6,7 @@ gcloud_secret(
     name = "bigquery.json",
     testonly = 1,
     ciphertext_file = ":bigquery.json.enc",
-    project = "dataform-public",
+    project = "dataform-open-source",
     key = "dataform-builder-key",
     keyring = "dataform-builder-keyring",
 )
