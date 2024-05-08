@@ -251,64 +251,62 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
       ]
     });
 
-    // TODO(ekrekr): re-enable this part of the test once we have working BQ credentials.
+    // Dry run the project.
+    const runResult = await getProcessResult(
+      execFile(nodePath, [
+        cliEntryPointPath,
+        "run",
+        projectDir,
+        "--credentials",
+        path.resolve(process.env.RUNFILES, "df/test_credentials/bigquery.json"),
+        "--dry-run",
+        "--json",
+        "--vars=testVar1=testValue1,testVar2=testValue2",
+        "--default-location=europe",
+        "--tags=someTag,someOtherTag"
+      ])
+    );
 
-    // // Dry run the project.
-    // const runResult = await getProcessResult(
-    //   execFile(nodePath, [
-    //     cliEntryPointPath,
-    //     "run",
-    //     projectDir,
-    //     "--credentials",
-    //     path.resolve(process.env.RUNFILES, "df/test_credentials/bigquery.json"),
-    //     "--dry-run",
-    //     "--json",
-    //     "--vars=testVar1=testValue1,testVar2=testValue2",
-    //     "--default-location=europe",
-    //     "--tags=someTag,someOtherTag"
-    //   ])
-    // );
+    expect(runResult.exitCode).equals(0);
 
-    // expect(runResult.exitCode).equals(0);
-
-    // expect(JSON.parse(runResult.stdout)).deep.equals({
-    //   actions: [
-    //     {
-    //       fileName: "definitions/example.sqlx",
-    //       hermeticity: "HERMETIC",
-    //       tableType: "table",
-    //       target: {
-    //         database: "dataform-open-source",
-    //         name: "example",
-    //         schema: "dataform"
-    //       },
-    //       tasks: [
-    //         {
-    //           statement:
-    //             "create or replace table `dataform-open-source.dataform.example` as \n\nselect 1 as testValue2",
-    //           type: "statement"
-    //         }
-    //       ],
-    //       type: "table"
-    //     }
-    //   ],
-    //   projectConfig: {
-    //     assertionSchema: "dataform_assertions",
-    //     defaultDatabase: "dataform-open-source",
-    //     defaultLocation: "europe",
-    //     defaultSchema: "dataform",
-    //     warehouse: "bigquery",
-    //     vars: {
-    //       testVar1: "testValue1",
-    //       testVar2: "testValue2"
-    //     }
-    //   },
-    //   runConfig: {
-    //     fullRefresh: false,
-    //     tags: ["someTag", "someOtherTag"]
-    //   },
-    //   warehouseState: {}
-    // });
+    expect(JSON.parse(runResult.stdout)).deep.equals({
+      actions: [
+        {
+          fileName: "definitions/example.sqlx",
+          hermeticity: "HERMETIC",
+          tableType: "table",
+          target: {
+            database: "dataform-open-source",
+            name: "example",
+            schema: "dataform"
+          },
+          tasks: [
+            {
+              statement:
+                "create or replace table `dataform-open-source.dataform.example` as \n\nselect 1 as testValue2",
+              type: "statement"
+            }
+          ],
+          type: "table"
+        }
+      ],
+      projectConfig: {
+        assertionSchema: "dataform_assertions",
+        defaultDatabase: "dataform-open-source",
+        defaultLocation: "europe",
+        defaultSchema: "dataform",
+        warehouse: "bigquery",
+        vars: {
+          testVar1: "testValue1",
+          testVar2: "testValue2"
+        }
+      },
+      runConfig: {
+        fullRefresh: false,
+        tags: ["someTag", "someOtherTag"]
+      },
+      warehouseState: {}
+    });
   });
 });
 
