@@ -20,7 +20,7 @@ suite("examples", { parallel: true }, () => {
       // A blank `package.json` makes no `dataformCoreVersion` in `workflow_settings.yaml` be OK.
       fs.writeFileSync(`${projectDir}/package.json`, "");
 
-      // TODO(ekrekr): update this to test `run` instead, once viable.
+      // TODO(ekrekr): make this test `run` instead.
       const processResult = await getProcessResult(
         execFile(nodePath, [cliEntryPointPath, "compile", projectDir, "--json"])
       );

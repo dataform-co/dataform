@@ -1,6 +1,6 @@
 defaultProject: dataform-open-source
 defaultLocation: us
-defaultDataset: dataform_examples
-defaultAssertionDataset: dataform_examples_assertions
+defaultDataset: dataform_extreme_weather_programming_example
+defaultAssertionDataset: dataform_extreme_weather_programming_example_assertions
 defaultNotebookRuntimeOptions:
   outputBucket: gs://some-bucket
