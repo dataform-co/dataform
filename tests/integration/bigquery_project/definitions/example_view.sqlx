@@ -4,7 +4,6 @@ config {
     columns: {
         val: {
             description: "val doc",
-            bigqueryPolicyTags: "projects/dataform-open-source/locations/eu/taxonomies/3546360117715097846/policyTags/6995291324014833226"
         }
     },
     bigquery: {

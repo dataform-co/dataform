@@ -1,0 +1,6 @@
+defaultProject: dataform-open-source
+defaultLocation: us
+defaultDataset: df_integration_test
+defaultAssertionDataset: df_integration_test_assertions
+vars:
+  fooVar: bar
