@@ -69,7 +69,6 @@ ts_test_suite(
         "//common/protos",
         "//protos:ts",
         "//testing",
-        "//tests/utils",
         "@npm//@types/chai",
         "@npm//@types/fs-extra",
         "@npm//@types/js-yaml",

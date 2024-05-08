@@ -2,11 +2,10 @@ import { fail } from "assert";
 import { expect } from "chai";
 import * as path from "path";
 
-import { Builder, compile } from "df/cli/api";
+import { compile } from "df/cli/api";
 import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
-import { suite, test } from "df/testing";
-import { cleanSql } from "df/tests/utils";
+import { suite, test, cleanSql } from "df/testing";
 
 suite("examples", () => {
   suite("common_v2 bigquery", async () => {
