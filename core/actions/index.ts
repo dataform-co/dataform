@@ -29,25 +29,28 @@ export abstract class ActionBuilder<T> {
     this.session = session;
   }
 
-  // Applying the session canonically means using the schema and database present before overrides.
-  public applySessionCanonicallyToTarget(targetFromConfig: dataform.Target): dataform.Target {
-    return dataform.Target.create({
-      name: targetFromConfig.name,
-      schema: targetFromConfig.schema || this.session.canonicalConfig.defaultSchema || undefined,
-      database:
-        targetFromConfig.database || this.session.canonicalConfig.defaultDatabase || undefined
-    });
-  }
-
   public applySessionToTarget(
     targetFromConfig: dataform.Target,
-    fileName?: string
+    projectConfig: dataform.ProjectConfig,
+    fileName?: string,
+    validateTarget = false,
+    useDefaultAssertionSchema = false
   ): dataform.Target {
+    const defaultSchema = useDefaultAssertionSchema
+      ? projectConfig.assertionSchema
+      : projectConfig.defaultSchema;
     const target = dataform.Target.create({
       name: targetFromConfig.name,
-      schema: targetFromConfig.schema || this.session.config.defaultSchema || undefined,
-      database: targetFromConfig.database || this.session.config.defaultDatabase || undefined
+      schema: targetFromConfig.schema || defaultSchema || undefined,
+      database: targetFromConfig.database || projectConfig.defaultDatabase || undefined
     });
+    if (validateTarget) {
+      this.validateTarget(targetFromConfig, fileName);
+    }
+    return target;
+  }
+
+  private validateTarget(target: dataform.Target, fileName: string) {
     if (target.name.includes(".")) {
       this.session.compileError(
         new Error("Action target names cannot include '.'"),
@@ -69,7 +72,6 @@ export abstract class ActionBuilder<T> {
         target
       );
     }
-    return target;
   }
 
   /**
