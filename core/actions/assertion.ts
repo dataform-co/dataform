@@ -46,8 +46,8 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
       config.name = Path.basename(config.filename);
     }
     const target = actionConfigToCompiledGraphTarget(config);
-    this.proto.target = this.applySessionToTarget(target, config.filename);
-    this.proto.canonicalTarget = this.applySessionCanonicallyToTarget(target);
+    this.proto.target = this.applySessionToTarget(target, config.filename, true);
+    this.proto.canonicalTarget = this.applySessionCanonicallyToTarget(target, true);
 
     if (configPath) {
       config.filename = resolveActionsConfigFilename(config.filename, configPath);
@@ -100,7 +100,7 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
     }
     if (unverifiedConfig.schema) {
       unverifiedConfig.dataset = unverifiedConfig.schema;
-      delete unverifiedConfig.dataset;
+      delete unverifiedConfig.schema;
     }
     if (unverifiedConfig.fileName) {
       unverifiedConfig.filename = unverifiedConfig.fileName;

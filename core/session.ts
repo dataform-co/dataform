@@ -2,7 +2,7 @@ import { default as TarjanGraphConstructor, Graph as TarjanGraph } from "tarjan-
 
 import { encode64, verifyObjectMatchesProto } from "df/common/protos";
 import { StringifiedMap, StringifiedSet } from "df/common/strings/stringifier";
-import { Action, SqlxConfig } from "df/core/actions";
+import { Action } from "df/core/actions";
 import { AContextable, Assertion, AssertionContext } from "df/core/actions/assertion";
 import { Declaration } from "df/core/actions/declaration";
 import { Notebook } from "df/core/actions/notebook";
@@ -198,7 +198,7 @@ export class Session {
         });
         break;
       default:
-        throw new Error(`Unrecognized action type: ${(sqlxConfig as SqlxConfig).type}`);
+        throw new Error(`Unrecognized action type: ${sqlxConfig.type}`);
     }
   }
 
@@ -515,6 +515,8 @@ export class Session {
       });
       action.target = newTargetByOriginalTarget.get(action.target);
     });
+
+    // TODO(ekrekr): fix this here.
 
     // Fix up dependencies in case those dependencies' names have changed.
     const getUpdatedTarget = (originalTarget: dataform.ITarget) => {

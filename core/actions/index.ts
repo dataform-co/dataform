@@ -1,24 +1,12 @@
 import { Assertion } from "df/core/actions/assertion";
-import { Declaration, IDeclarationConfig } from "df/core/actions/declaration";
+import { Declaration } from "df/core/actions/declaration";
 import { Notebook } from "df/core/actions/notebook";
-import { IOperationConfig, Operation } from "df/core/actions/operation";
-import { ITableConfig, Table, TableType } from "df/core/actions/table";
-import { ITestConfig } from "df/core/actions/test";
+import { Operation } from "df/core/actions/operation";
+import { Table } from "df/core/actions/table";
 import { Session } from "df/core/session";
 import { dataform } from "df/protos/ts";
 
 export type Action = Table | Operation | Assertion | Declaration | Notebook;
-
-/**
- * @deprecated
- * Configs are soon to be replaced with pure protobuf representations.
- */
-export type SqlxConfig = (
-  | (ITableConfig & { type: TableType })
-  | (IOperationConfig & { type: "operations" })
-  | (IDeclarationConfig & { type: "declaration" })
-  | (ITestConfig & { type: "test" })
-) & { name: string };
 
 // TODO(ekrekr): In v4, make all method on inheritors of this private, forcing users to use
 // constructors in order to populate actions.
@@ -31,10 +19,16 @@ export abstract class ActionBuilder<T> {
   }
 
   // Applying the session canonically means using the schema and database present before overrides.
-  public applySessionCanonicallyToTarget(targetFromConfig: dataform.Target): dataform.Target {
+  public applySessionCanonicallyToTarget(
+    targetFromConfig: dataform.Target,
+    useDefaultAssertionSchema = false
+  ): dataform.Target {
+    const defaultSchema = useDefaultAssertionSchema
+      ? this.session.canonicalConfig.assertionSchema
+      : this.session.canonicalConfig.defaultSchema;
     return dataform.Target.create({
       name: targetFromConfig.name,
-      schema: targetFromConfig.schema || this.session.canonicalConfig.defaultSchema || undefined,
+      schema: targetFromConfig.schema || defaultSchema || undefined,
       database:
         targetFromConfig.database || this.session.canonicalConfig.defaultDatabase || undefined
     });
@@ -42,11 +36,15 @@ export abstract class ActionBuilder<T> {
 
   public applySessionToTarget(
     targetFromConfig: dataform.Target,
-    fileName?: string
+    fileName?: string,
+    useDefaultAssertionSchema = false
   ): dataform.Target {
+    const defaultSchema = useDefaultAssertionSchema
+      ? this.session.config.assertionSchema
+      : this.session.config.defaultSchema;
     const target = dataform.Target.create({
       name: targetFromConfig.name,
-      schema: targetFromConfig.schema || this.session.config.defaultSchema || undefined,
+      schema: targetFromConfig.schema || defaultSchema || undefined,
       database: targetFromConfig.database || this.session.config.defaultDatabase || undefined
     });
     if (target.name.includes(".")) {
@@ -72,12 +70,6 @@ export abstract class ActionBuilder<T> {
     }
     return target;
   }
-
-  // /**
-  //  * @deprecated
-  //  * Configs are soon to be replaced with pure protobuf representations.
-  //  */
-  // public abstract config(config: any): ActionBuilder<T>;
 
   /** Retrieves the filename from the config. */
   public abstract getFileName(): string;

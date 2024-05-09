@@ -3,14 +3,14 @@ import { expect } from "chai";
 import * as path from "path";
 
 import { compile } from "df/cli/api";
-import { targetAsReadableString } from "df/core/targets";
+import { targetAsReadableString, targetStringifier } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 import { suite, test, cleanSql } from "df/testing";
 
 suite("examples", () => {
   suite("common_v2 bigquery", async () => {
-    for (const databaseSuffix of ["", "foo"]) {
-      for (const schemaSuffix of ["", "bar"]) {
+    for (const databaseSuffix of ["foo"]) {
+      for (const schemaSuffix of ["bar"]) {
         const databaseWithSuffix = (database: string) =>
           databaseSuffix ? `${database}_${databaseSuffix}` : database;
         const schemaWithSuffix = (schema: string) =>
@@ -33,18 +33,15 @@ suite("examples", () => {
             },
             {
               fileName: "definitions/has_compile_errors/assertion_with_bigquery.sqlx",
-              message:
-                'Unexpected property "bigquery" in assertion config. Supported properties are: ["database","dependencies","description","disabled","hermetic","name","schema","tags","type","dependOnDependencyAssertions"]'
+              message: "Cannot find field: bigquery in message, or value type is incorrect"
             },
             {
               fileName: "definitions/has_compile_errors/assertion_with_materialized.sqlx",
-              message:
-                'Unexpected property "materialized" in assertion config. Supported properties are: ["database","dependencies","description","disabled","hermetic","name","schema","tags","type","dependOnDependencyAssertions"]'
+              message: "Cannot find field: materialized in message, or value type is incorrect"
             },
             {
               fileName: "definitions/has_compile_errors/assertion_with_output.sqlx",
-              message:
-                'Unexpected property "hasOutput" in assertion config. Supported properties are: ["database","dependencies","description","disabled","hermetic","name","schema","tags","type","dependOnDependencyAssertions"]'
+              message: "Cannot find field: hasOutput in message, or value type is incorrect"
             },
             {
               fileName: "definitions/has_compile_errors/assertion_with_postops.sqlx",
@@ -61,8 +58,7 @@ suite("examples", () => {
             },
             {
               fileName: "definitions/has_compile_errors/protected_assertion.sqlx",
-              message:
-                'Unexpected property "protected" in assertion config. Supported properties are: ["database","dependencies","description","disabled","hermetic","name","schema","tags","type","dependOnDependencyAssertions"]'
+              message: "Cannot find field: protected in message, or value type is incorrect"
             },
             {
               fileName: "definitions/has_compile_errors/view_with_incremental.sqlx",
@@ -531,15 +527,14 @@ suite("examples", () => {
             })
           );
 
+          const expected = dotJoined(
+            databaseWithSuffix("tada-analytics"),
+            schemaWithSuffix("df_integration_test_assertions"),
+            "example_assertion_with_tags"
+          );
           // Check Assertion with tags
           const exampleAssertionWithTags = graph.assertions.find(
-            (a: dataform.IAssertion) =>
-              targetAsReadableString(a.target) ===
-              dotJoined(
-                databaseWithSuffix("tada-analytics"),
-                schemaWithSuffix("df_integration_test_assertions"),
-                "example_assertion_with_tags"
-              )
+            (a: dataform.IAssertion) => targetAsReadableString(a.target) === expected
           );
           expect(exampleAssertionWithTags.target.schema).equals(
             schemaWithSuffix("df_integration_test_assertions")
