@@ -29,7 +29,7 @@ export function readWorkflowSettings(): dataform.ProjectConfig {
     // Dataform JSON used the compiled graph's config proto, rather than workflow settings.
     try {
       return dataform.ProjectConfig.create(
-        verifyObjectMatchesProto(dataform.ProjectConfig, dataformJson)
+        verifyObjectMatchesProto(dataform.ProjectConfig, dataformJson, false, false)
       );
     } catch (e) {
       if (e instanceof ReferenceError) {

@@ -124,7 +124,7 @@ export class Test extends ActionBuilder<dataform.Test> {
     }
     this.proto.expectedOutputQuery = testContext.apply(this.contextableQuery);
 
-    return verifyObjectMatchesProto(dataform.Test, this.proto, false);
+    return verifyObjectMatchesProto(dataform.Test, this.proto, true);
   }
 }
 

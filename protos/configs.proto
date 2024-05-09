@@ -45,8 +45,9 @@ message WorkflowSettings {
   NotebookRuntimeOptionsConfig default_notebook_runtime_options = 10;
 }
 
+// TODO(ekrekr): consolidate ActionsConfigs proto types in the JS API.
+
 // Action configs defines the contents of `actions.yaml` configuration files.
-// TODO(ekrekr): consolidate these configuration options in the JS API.
 message ActionConfigs {
   repeated ActionConfig actions = 1;
 }

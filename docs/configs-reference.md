@@ -317,7 +317,7 @@ Target represents a unique action identifier.
 | project | [string](#string) |  | The Google Cloud project (database) of the action. |
 | dataset | [string](#string) |  | The dataset (schema) of the action. For notebooks, this is the location. |
 | name | [string](#string) |  | The name of the action. |
-| include_dependent_assertions | [bool](#bool) |  | flag for when we want to add assertions of this dependency in dependency_targets as well |
+| include_dependent_assertions | [bool](#bool) |  | flag for when we want to add assertions of this dependency in dependency_targets as well. |
 
 
 
@@ -395,7 +395,6 @@ If the option name contains special characters, encapsulate the name in quotes, 
 
 ### ActionConfigs
 Action configs defines the contents of `actions.yaml` configuration files.
-TODO(ekrekr): consolidate these configuration options in the JS API.
 
 
 | Field | Type | Label | Description |

@@ -14,6 +14,8 @@ export interface IProtoClass<IProto, Proto> {
 
   toObject(proto: Proto): { [k: string]: any };
   fromObject(obj: { [k: string]: any }): Proto;
+
+  getTypeUrl(prefix: string): string;
 }
 
 // This is a minimalist Typescript equivalent for the validation part of Profobuf's JsonFormat's
@@ -27,7 +29,8 @@ export interface IProtoClass<IProto, Proto> {
 export function verifyObjectMatchesProto<Proto>(
   protoType: IProtoClass<any, Proto>,
   object: object,
-  isConfigsProto: boolean = true
+  suggestReportToDataformTeam: boolean = false,
+  showDocsLink: boolean = true
 ): Proto {
   if (Array.isArray(object)) {
     throw ReferenceError(`Expected a top-level object, but found an array`);
@@ -51,16 +54,24 @@ export function verifyObjectMatchesProto<Proto>(
           // Empty objects are assigned to empty object fields by ProtobufJS.
           return;
         }
-        if (isConfigsProto) {
+        if (suggestReportToDataformTeam) {
           throw ReferenceError(
-            `Unexpected property "${presentKey}", or property value is of an incorrect type. See ` +
-              `${CONFIGS_PROTO_DOCUMENTATION_URL} for allowed properties.`
+            `Unexpected property "${presentKey}" for "${protoType
+              .getTypeUrl("")
+              .replace("/", "")}", please report this to the Dataform team at ` +
+              `${REPORT_ISSUE_URL}.`
           );
         }
-        // If it's not a configs proto, then it's not a configuration issue by the user, it's a bug.
         throw ReferenceError(
-          `Unexpected property "${presentKey}", please report this to the Dataform team at ` +
-            `${REPORT_ISSUE_URL}.`
+          `Unexpected property "${presentKey}", or property value type of ` +
+            `"${typeof presentValue}" is incorrect.` +
+            (showDocsLink
+              ? ` See ${CONFIGS_PROTO_DOCUMENTATION_URL}#${protoType
+                  .getTypeUrl("")
+                  // Clean up the proto type into its URL form.
+                  .replace(".", "-")
+                  .replace("/", "")} for allowed properties.`
+              : "")
         );
       }
       if (typeof presentValue === "object") {
