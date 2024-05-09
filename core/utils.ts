@@ -11,7 +11,7 @@ import { dataform } from "df/protos/ts";
 declare var __webpack_require__: any;
 declare var __non_webpack_require__: any;
 
-type actionsWithDependencies = Table | Operation | Notebook
+type actionsWithDependencies = Table | Operation | Notebook;
 
 // This side-steps webpack's require in favour of the real require.
 export const nativeRequire =
@@ -137,8 +137,8 @@ export function ambiguousActionNameMsg(act: Resolvable, allActs: Action[] | stri
     typeof allActs[0] === "string"
       ? allActs
       : (allActs as Array<Table | Operation | Assertion>).map(
-        r => `${r.proto.target.schema}.${r.proto.target.name}`
-      );
+          r => `${r.proto.target.schema}.${r.proto.target.name}`
+        );
   return `Ambiguous Action name: ${stringifyResolvable(
     act
   )}. Did you mean one of: ${allActNames.join(", ")}.`;
@@ -206,6 +206,8 @@ export function strictKeysOf<T>() {
 
 /**
  * Will throw an error if the provided object contains any properties that aren't in the provided list.
+ * @deprecated verifyObjectMatchesProto will be replacing this soon.
+ * TODO(ekrekr): make verifyObjectMatchesProto have this error message instead.
  */
 export function checkExcessProperties<T>(
   reportError: (e: Error) => void,
@@ -219,7 +221,8 @@ export function checkExcessProperties<T>(
   if (extraProperties.length > 0) {
     reportError(
       new Error(
-        `Unexpected property "${extraProperties[0]}"${!!name ? ` in ${name}` : ""
+        `Unexpected property "${extraProperties[0]}"${
+          !!name ? ` in ${name}` : ""
         }. Supported properties are: ${JSON.stringify(supportedProperties)}`
       )
     );
@@ -305,7 +308,10 @@ export function resolveActionsConfigFilename(configFilename: string, configPath:
   return Path.normalize(Path.join(Path.dirName(configPath), configFilename));
 }
 
-export function addDependenciesToActionDependencyTargets(action: actionsWithDependencies, resolvable: Resolvable) {
+export function addDependenciesToActionDependencyTargets(
+  action: actionsWithDependencies,
+  resolvable: Resolvable
+) {
   const dependencyTarget = resolvableAsTarget(resolvable);
   if (!dependencyTarget.hasOwnProperty("includeDependentAssertions")) {
     // dependency `includeDependentAssertions` takes precedence over the config's `dependOnDependencyAssertions`
@@ -313,18 +319,24 @@ export function addDependenciesToActionDependencyTargets(action: actionsWithDepe
   }
 
   // check if same dependency already exist in this action but with opposite value for includeDependentAssertions
-  const dependencyTargetString = action.session.compilationSql().resolveTarget(dependencyTarget)
+  const dependencyTargetString = action.session.compilationSql().resolveTarget(dependencyTarget);
 
   if (action.includeAssertionsForDependency.has(dependencyTargetString)) {
-    if (action.includeAssertionsForDependency.get(dependencyTargetString) !== dependencyTarget.includeDependentAssertions) {
+    if (
+      action.includeAssertionsForDependency.get(dependencyTargetString) !==
+      dependencyTarget.includeDependentAssertions
+    ) {
       action.session.compileError(
         `Conflicting "includeDependentAssertions" properties are not allowed. Dependency ${dependencyTarget.name} has different values set for this property.`,
         action.proto.fileName,
         action.proto.target
-      )
+      );
       return action;
     }
   }
   action.proto.dependencyTargets.push(dependencyTarget);
-  action.includeAssertionsForDependency.set(dependencyTargetString, dependencyTarget.includeDependentAssertions)
+  action.includeAssertionsForDependency.set(
+    dependencyTargetString,
+    dependencyTarget.includeDependentAssertions
+  );
 }

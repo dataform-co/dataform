@@ -64,7 +64,8 @@ message ActionConfig {
     // The name of the action.
     string name = 4;
 
-    // flag for when we want to add assertions of this dependency in dependency_targets as well
+    // flag for when we want to add assertions of this dependency in
+    // dependency_targets as well
     bool include_dependent_assertions = 5;
   }
 
@@ -339,6 +340,16 @@ message ActionConfig {
 
     // Description of the assertion.
     string description = 8;
+
+    // If true, this indicates that the action only depends on data from
+    // explicitly-declared dependencies. Otherwise if false, it indicates that
+    // the  action depends on data from a source which has not been declared as
+    // a dependency.
+    bool hermetic = 9;
+
+    // If true, assertions dependent upon any of the dependencies are added as
+    // dependencies as well.
+    bool depend_on_dependency_assertions = 10;
   }
 
   message OperationConfig {

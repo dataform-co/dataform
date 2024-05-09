@@ -109,7 +109,7 @@ export class Session {
   }
 
   public sqlxAction(actionOptions: {
-    sqlxConfig: SqlxConfig;
+    sqlxConfig: any;
     sqlStatementCount: number;
     sqlContextable: (
       ctx: TableContext | AssertionContext | OperationContext | ICommonContext
@@ -125,35 +125,37 @@ export class Session {
     ];
   }) {
     const { sqlxConfig } = actionOptions;
-    if (actionOptions.sqlStatementCount > 1 && sqlxConfig.type !== "operations") {
+    const actionType = sqlxConfig.hasOwnProperty("type") ? sqlxConfig.type : "operations";
+    delete sqlxConfig.type;
+    if (actionOptions.sqlStatementCount > 1 && actionType !== "operations") {
       this.compileError(
         "Actions may only contain more than one SQL statement if they are of type 'operations'."
       );
     }
-    if (sqlxConfig.hasOwnProperty("protected") && sqlxConfig.type !== "incremental") {
+    if (sqlxConfig.hasOwnProperty("protected") && actionType !== "incremental") {
       this.compileError(
         "Actions may only specify 'protected: true' if they are of type 'incremental'."
       );
     }
-    if (actionOptions.incrementalWhereContextable && sqlxConfig.type !== "incremental") {
+    if (actionOptions.incrementalWhereContextable && actionType !== "incremental") {
       this.compileError(
         "Actions may only include incremental_where if they are of type 'incremental'."
       );
     }
-    if (!sqlxConfig.hasOwnProperty("schema") && sqlxConfig.type === "declaration") {
+    if (!sqlxConfig.hasOwnProperty("schema") && actionType === "declaration") {
       this.compileError("Actions of type 'declaration' must specify a value for 'schema'.");
     }
-    if (actionOptions.inputContextables.length > 0 && sqlxConfig.type !== "test") {
+    if (actionOptions.inputContextables.length > 0 && actionType !== "test") {
       this.compileError("Actions may only include input blocks if they are of type 'test'.");
     }
-    if (actionOptions.preOperationsContextable && !definesDataset(sqlxConfig.type)) {
+    if (actionOptions.preOperationsContextable && !definesDataset(actionType)) {
       this.compileError("Actions may only include pre_operations if they create a dataset.");
     }
-    if (actionOptions.postOperationsContextable && !definesDataset(sqlxConfig.type)) {
+    if (actionOptions.postOperationsContextable && !definesDataset(actionType)) {
       this.compileError("Actions may only include post_operations if they create a dataset.");
     }
 
-    switch (sqlxConfig.type) {
+    switch (actionType) {
       case "view":
       case "table":
       case "incremental":
@@ -171,9 +173,9 @@ export class Session {
         }
         break;
       case "assertion":
-        this.assert(sqlxConfig.name)
-          .config(sqlxConfig)
-          .query(ctx => actionOptions.sqlContextable(ctx)[0]);
+        this.actions.push(
+          new Assertion(this, sqlxConfig).query(ctx => actionOptions.sqlContextable(ctx)[0])
+        );
         break;
       case "operations":
         this.operate(sqlxConfig.name)
@@ -467,9 +469,13 @@ export class Session {
           fullyQualifiedDependencies[targetAsReadableString(protoDep.target)] = protoDep.target;
 
           if (dependency.includeDependentAssertions) {
-            this.actionAssertionMap.find(dependency).forEach(assertion =>
-              fullyQualifiedDependencies[targetAsReadableString(assertion.proto.target)] = assertion.proto.target
-            );
+            this.actionAssertionMap
+              .find(dependency)
+              .forEach(
+                assertion =>
+                  (fullyQualifiedDependencies[targetAsReadableString(assertion.proto.target)] =
+                    assertion.proto.target)
+              );
           }
         } else {
           // Too many targets matched the dependency.
@@ -751,14 +757,11 @@ class ActionMap {
   private byName: Map<string, Action[]> = new Map();
   private bySchemaAndName: Map<string, Map<string, Action[]>> = new Map();
   private byDatabaseAndName: Map<string, Map<string, Action[]>> = new Map();
-  private byDatabaseSchemaAndName: Map<
-    string,
-    Map<string, Map<string, Action[]>>
-  > = new Map();
+  private byDatabaseSchemaAndName: Map<string, Map<string, Map<string, Action[]>>> = new Map();
 
   public constructor(actions: Action[]) {
     for (const action of actions) {
-      this.set(action.proto.target, action)
+      this.set(action.proto.target, action);
     }
   }
 
@@ -774,7 +777,7 @@ class ActionMap {
         this.byDatabaseAndName.set(actionTarget.database, new Map());
       }
       const forDatabaseNoSchema = this.byDatabaseAndName.get(actionTarget.database);
-      this.setByNameLevel(forDatabaseNoSchema, actionTarget.name, assertionTarget)
+      this.setByNameLevel(forDatabaseNoSchema, actionTarget.name, assertionTarget);
 
       if (!!actionTarget.schema) {
         if (!this.byDatabaseSchemaAndName.has(actionTarget.database)) {
@@ -811,7 +814,11 @@ class ActionMap {
     targetMap.get(name).push(assertionTarget);
   }
 
-  private setBySchemaLevel(targetMap: Map<string, Map<string, Action[]>>, actionTarget: ITarget, assertionTarget: Action) {
+  private setBySchemaLevel(
+    targetMap: Map<string, Map<string, Action[]>>,
+    actionTarget: ITarget,
+    assertionTarget: Action
+  ) {
     if (!targetMap.has(actionTarget.schema)) {
       targetMap.set(actionTarget.schema, new Map());
     }

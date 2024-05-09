@@ -1,4 +1,4 @@
-import { Assertion, IAssertionConfig } from "df/core/actions/assertion";
+import { Assertion } from "df/core/actions/assertion";
 import { Declaration, IDeclarationConfig } from "df/core/actions/declaration";
 import { Notebook } from "df/core/actions/notebook";
 import { IOperationConfig, Operation } from "df/core/actions/operation";
@@ -15,12 +15,13 @@ export type Action = Table | Operation | Assertion | Declaration | Notebook;
  */
 export type SqlxConfig = (
   | (ITableConfig & { type: TableType })
-  | (IAssertionConfig & { type: "assertion" })
   | (IOperationConfig & { type: "operations" })
   | (IDeclarationConfig & { type: "declaration" })
   | (ITestConfig & { type: "test" })
 ) & { name: string };
 
+// TODO(ekrekr): In v4, make all method on inheritors of this private, forcing users to use
+// constructors in order to populate actions.
 export abstract class ActionBuilder<T> {
   public session: Session;
   public includeAssertionsForDependency: Map<string, boolean> = new Map();
@@ -72,11 +73,11 @@ export abstract class ActionBuilder<T> {
     return target;
   }
 
-  /**
-   * @deprecated
-   * Configs are soon to be replaced with pure protobuf representations.
-   */
-  public abstract config(config: any): ActionBuilder<T>;
+  // /**
+  //  * @deprecated
+  //  * Configs are soon to be replaced with pure protobuf representations.
+  //  */
+  // public abstract config(config: any): ActionBuilder<T>;
 
   /** Retrieves the filename from the config. */
   public abstract getFileName(): string;
