@@ -64,7 +64,8 @@ message ActionConfig {
     // The name of the action.
     string name = 4;
 
-    // flag for when we want to add assertions of this dependency in dependency_targets as well
+    // flag for when we want to add assertions of this dependency in
+    // dependency_targets as well
     bool include_dependent_assertions = 5;
   }
 

@@ -443,7 +443,7 @@ quotes
       );
 
       expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
-        "Cannot find field: notAProjectConfigField in message"
+        `Workflow settings error: Unexpected property "notAProjectConfigField", or property value is of an incorrect type.`
       );
     });
 
@@ -464,7 +464,7 @@ quotes
       );
 
       expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
-        "Cannot find field: notAProjectConfigField in message"
+        `Dataform json error: Unexpected property "notAProjectConfigField", or property value is of an incorrect type.`
       );
     });
 
@@ -922,7 +922,7 @@ actions:
       );
 
       expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
-        "Cannot find field: fileName in message, or value type is incorrect"
+        `Unexpected property "fileName", or property value is of an incorrect type.`
       );
     });
 
@@ -1143,7 +1143,7 @@ actions:
       );
 
       expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
-        "Cannot find field: materialized in message, or value type is incorrect"
+        `Unexpected property "materialized", or property value is of an incorrect type.`
       );
     });
 
