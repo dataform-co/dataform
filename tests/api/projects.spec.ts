@@ -5,7 +5,7 @@ import * as path from "path";
 import { compile } from "df/cli/api";
 import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
-import { suite, test, cleanSql } from "df/testing";
+import { cleanSql, suite, test } from "df/testing";
 
 suite("examples", () => {
   suite("common_v2 bigquery", async () => {

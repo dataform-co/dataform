@@ -7,7 +7,7 @@ import * as path from "path";
 import { execFile } from "child_process";
 import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
-import { suite, test, getProcessResult, nodePath, npmPath, corePackageTarPath } from "df/testing";
+import { corePackageTarPath, getProcessResult, nodePath, npmPath, suite, test } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
 
 suite("@dataform/cli", ({ afterEach }) => {

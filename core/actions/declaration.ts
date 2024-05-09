@@ -51,8 +51,8 @@ export class Declaration extends ActionBuilder<dataform.Declaration> {
     }
 
     const target = actionConfigToCompiledGraphTarget(config);
-    this.proto.target = this.applySessionToTarget(target);
-    this.proto.canonicalTarget = this.applySessionCanonicallyToTarget(target);
+    this.proto.target = this.applySessionToTarget(target, session.projectConfig);
+    this.proto.canonicalTarget = this.applySessionToTarget(target, session.canonicalProjectConfig);
 
     // TODO(ekrekr): load config proto column descriptors.
     this.config({ description: config.description });

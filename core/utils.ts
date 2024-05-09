@@ -170,8 +170,13 @@ export function setNameAndTarget(
   overrideSchema?: string,
   overrideDatabase?: string
 ) {
-  action.target = target(session.config, name, overrideSchema, overrideDatabase);
-  action.canonicalTarget = target(session.canonicalConfig, name, overrideSchema, overrideDatabase);
+  action.target = target(session.projectConfig, name, overrideSchema, overrideDatabase);
+  action.canonicalTarget = target(
+    session.canonicalProjectConfig,
+    name,
+    overrideSchema,
+    overrideDatabase
+  );
   if (action.target.name.includes(".")) {
     session.compileError(
       new Error("Action target names cannot include '.'"),

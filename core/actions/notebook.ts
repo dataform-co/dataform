@@ -20,7 +20,7 @@ export class Notebook extends ActionBuilder<dataform.Notebook> {
   // TODO: make this field private, to enforce proto update logic to happen in this class.
   public proto: dataform.INotebook = dataform.Notebook.create();
 
-  // If true, adds the inline assertions of dependencies as direct dependencies for this action. 
+  // If true, adds the inline assertions of dependencies as direct dependencies for this action.
   public dependOnDependencyAssertions: boolean = false;
 
   constructor(
@@ -37,8 +37,13 @@ export class Notebook extends ActionBuilder<dataform.Notebook> {
     config.filename = resolveActionsConfigFilename(config.filename, configPath);
 
     this.session = session;
-    this.proto.target = this.applySessionToTarget(target, config.filename);
-    this.proto.canonicalTarget = this.applySessionCanonicallyToTarget(target);
+    this.proto.target = this.applySessionToTarget(
+      target,
+      session.projectConfig,
+      config.filename,
+      true
+    );
+    this.proto.canonicalTarget = this.applySessionToTarget(target, session.canonicalProjectConfig);
     this.proto.tags = config.tags;
     this.dependOnDependencyAssertions = config.dependOnDependencyAssertions;
     this.dependencies(config.dependencyTargets);
@@ -70,7 +75,9 @@ export class Notebook extends ActionBuilder<dataform.Notebook> {
    */
   public dependencies(value: Resolvable | Resolvable[]) {
     const newDependencies = Array.isArray(value) ? value : [value];
-    newDependencies.forEach(resolvable => addDependenciesToActionDependencyTargets(this, resolvable));
+    newDependencies.forEach(resolvable =>
+      addDependenciesToActionDependencyTargets(this, resolvable)
+    );
     return this;
   }
 

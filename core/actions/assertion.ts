@@ -46,8 +46,20 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
       config.name = Path.basename(config.filename);
     }
     const target = actionConfigToCompiledGraphTarget(config);
-    this.proto.target = this.applySessionToTarget(target, config.filename, true);
-    this.proto.canonicalTarget = this.applySessionCanonicallyToTarget(target, true);
+    this.proto.target = this.applySessionToTarget(
+      target,
+      session.projectConfig,
+      config.filename,
+      true,
+      true
+    );
+    this.proto.canonicalTarget = this.applySessionToTarget(
+      target,
+      session.canonicalProjectConfig,
+      undefined,
+      false,
+      true
+    );
 
     if (configPath) {
       config.filename = resolveActionsConfigFilename(config.filename, configPath);
@@ -85,35 +97,6 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
       this.proto.fileName = config.filename;
     }
     return this;
-  }
-
-  private verifyConfig(unverifiedConfig: any): dataform.ActionConfig.AssertionConfig {
-    // This maintains backwards compatability with older versions.
-    // TODO(ekrekr): break backwards compatability of these in v4.
-    if (unverifiedConfig.dependencies) {
-      unverifiedConfig.dependencyTargets = unverifiedConfig.dependencies;
-      delete unverifiedConfig.dependencies;
-    }
-    if (unverifiedConfig.database) {
-      unverifiedConfig.project = unverifiedConfig.database;
-      delete unverifiedConfig.database;
-    }
-    if (unverifiedConfig.schema) {
-      unverifiedConfig.dataset = unverifiedConfig.schema;
-      delete unverifiedConfig.schema;
-    }
-    if (unverifiedConfig.fileName) {
-      unverifiedConfig.filename = unverifiedConfig.fileName;
-      delete unverifiedConfig.fileName;
-    }
-
-    // TODO(ekrekr): move this to a shared location after all action builders have proto config
-    // verifiers.
-    if (unverifiedConfig.type) {
-      delete unverifiedConfig.type;
-    }
-
-    return verifyObjectMatchesProto(dataform.ActionConfig.AssertionConfig, unverifiedConfig);
   }
 
   public query(query: AContextable<string>) {
@@ -200,6 +183,35 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
     validateQueryString(this.session, this.proto.query, this.proto.fileName);
 
     return verifyObjectMatchesProto(dataform.Assertion, this.proto);
+  }
+
+  private verifyConfig(unverifiedConfig: any): dataform.ActionConfig.AssertionConfig {
+    // This maintains backwards compatability with older versions.
+    // TODO(ekrekr): break backwards compatability of these in v4.
+    if (unverifiedConfig.dependencies) {
+      unverifiedConfig.dependencyTargets = unverifiedConfig.dependencies;
+      delete unverifiedConfig.dependencies;
+    }
+    if (unverifiedConfig.database) {
+      unverifiedConfig.project = unverifiedConfig.database;
+      delete unverifiedConfig.database;
+    }
+    if (unverifiedConfig.schema) {
+      unverifiedConfig.dataset = unverifiedConfig.schema;
+      delete unverifiedConfig.schema;
+    }
+    if (unverifiedConfig.fileName) {
+      unverifiedConfig.filename = unverifiedConfig.fileName;
+      delete unverifiedConfig.fileName;
+    }
+
+    // TODO(ekrekr): move this to a shared location after all action builders have proto config
+    // verifiers.
+    if (unverifiedConfig.type) {
+      delete unverifiedConfig.type;
+    }
+
+    return verifyObjectMatchesProto(dataform.ActionConfig.AssertionConfig, unverifiedConfig);
   }
 }
 
