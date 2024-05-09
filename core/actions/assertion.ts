@@ -51,7 +51,7 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
 
     if (configPath) {
       config.filename = resolveActionsConfigFilename(config.filename, configPath);
-      this.proto.fileName = config.filename;
+      this.query(nativeRequire(config.filename).query);
     }
 
     // TODO(ekrekr): load config proto column descriptors.
@@ -81,9 +81,8 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
     if (config.dataset) {
       this.schema(config.dataset);
     }
-
     if (config.filename) {
-      this.query(nativeRequire(config.filename).query);
+      this.proto.fileName = config.filename;
     }
     return this;
   }
@@ -102,6 +101,10 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
     if (unverifiedConfig.schema) {
       unverifiedConfig.dataset = unverifiedConfig.schema;
       delete unverifiedConfig.dataset;
+    }
+    if (unverifiedConfig.fileName) {
+      unverifiedConfig.filename = unverifiedConfig.fileName;
+      delete unverifiedConfig.fileName;
     }
 
     // TODO(ekrekr): move this to a shared location after all action builders have proto config

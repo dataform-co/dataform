@@ -1082,7 +1082,21 @@ actions:
         `
 actions:
 - assertion:
-    filename: action.sql`
+    name: name
+    dataset: dataset
+    project: project
+    dependencyTargets:
+      - name: nameA
+        dataset: datasetA
+        project: projectA
+    filename: action.sql
+    tags:
+      - tagA
+      - tagB
+    disabled: true,
+    description: description
+    hermetic: true,
+    dependOnDependencyAssertions: true`
       );
       fs.writeFileSync(path.join(projectDir, "definitions/action.sql"), "SELECT 1");
 
@@ -1091,15 +1105,23 @@ actions:
       expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals(
         asPlainObject([
           {
-            canonicalTarget: {
-              database: "dataform",
-              name: "action"
+            actionDescriptor: {
+              description: "description"
             },
+            canonicalTarget: {
+              database: "project",
+              schema: "dataset",
+              name: "name"
+            },
+            disabled: true,
             fileName: "definitions/action.sql",
+            hermeticity: "HERMETIC",
+            tags: ["tagA", "tagB"],
             query: "SELECT 1",
             target: {
-              database: "dataform",
-              name: "action"
+              database: "project",
+              schema: "dataset",
+              name: "name"
             }
           }
         ])
@@ -1257,6 +1279,61 @@ actions:
       expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(result.compile.compiledGraph.notebooks[0].fileName).deep.equals("contents.ipynb");
       expect(result.compile.compiledGraph.operations[0].fileName).deep.equals("table.sql");
+    });
+  });
+
+  suite("sqlx", () => {
+    test(`assertions can be loaded`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/assertion.sqlx"),
+        `
+config {
+  type: "assertion",
+  name: "name",
+  dataset: "dataset",
+  project: "project",
+  dependencyTargets: [{name: "nameA", dataset: "datasetA", project: "projectA"}],
+  tags: ["tagA", "tagB"],
+  disabled: true,
+  description: "description",
+  hermetic: true,
+  dependOnDependencyAssertions: true,
+}
+SELECT 1`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals(
+        asPlainObject([
+          {
+            actionDescriptor: {
+              description: "description"
+            },
+            canonicalTarget: {
+              database: "project",
+              schema: "dataset",
+              name: "name"
+            },
+            disabled: true,
+            fileName: "definitions/assertion.sqlx",
+            hermeticity: "HERMETIC",
+            tags: ["tagA", "tagB"],
+            query: "\n\nSELECT 1",
+            target: {
+              database: "project",
+              schema: "dataset",
+              name: "name"
+            }
+          }
+        ])
+      );
     });
   });
 

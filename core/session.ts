@@ -126,7 +126,6 @@ export class Session {
   }) {
     const { sqlxConfig } = actionOptions;
     const actionType = sqlxConfig.hasOwnProperty("type") ? sqlxConfig.type : "operations";
-    delete sqlxConfig.type;
     if (actionOptions.sqlStatementCount > 1 && actionType !== "operations") {
       this.compileError(
         "Actions may only contain more than one SQL statement if they are of type 'operations'."
@@ -173,6 +172,7 @@ export class Session {
         }
         break;
       case "assertion":
+        sqlxConfig.filename = utils.getCallerFile(this.rootDir);
         this.actions.push(
           new Assertion(this, sqlxConfig).query(ctx => actionOptions.sqlContextable(ctx)[0])
         );
