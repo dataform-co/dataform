@@ -80,31 +80,6 @@ export class Session {
     this.graphErrors = { compilationErrors: [] };
   }
 
-  // public get projectConfig(): Pick<
-  //   dataform.IProjectConfig,
-  //   | "warehouse"
-  //   | "defaultDatabase"
-  //   | "defaultSchema"
-  //   | "defaultLocation"
-  //   | "assertionSchema"
-  //   | "databaseSuffix"
-  //   | "schemaSuffix"
-  //   | "tablePrefix"
-  //   | "vars"
-  // > {
-  //   return Object.freeze({
-  //     warehouse: this.config.warehouse,
-  //     defaultDatabase: this.config.defaultDatabase,
-  //     defaultSchema: this.config.defaultSchema,
-  //     defaultLocation: this.config.defaultLocation,
-  //     assertionSchema: this.config.assertionSchema,
-  //     databaseSuffix: this.config.databaseSuffix,
-  //     schemaSuffix: this.config.schemaSuffix,
-  //     tablePrefix: this.config.tablePrefix,
-  //     vars: Object.freeze({ ...this.config.vars })
-  //   });
-  // }
-
   public compilationSql(): CompilationSql {
     return new CompilationSql(this.projectConfig, dataformCoreVersion);
   }

@@ -1,5 +1,6 @@
-import { ChildProcess } from "child_process";
 import * as os from "os";
+
+import { ChildProcess } from "child_process";
 
 export * from "df/testing/hook";
 export * from "df/testing/suite";

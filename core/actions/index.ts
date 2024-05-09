@@ -50,6 +50,21 @@ export abstract class ActionBuilder<T> {
     return target;
   }
 
+  /**
+   * @deprecated
+   * Configs are soon to be replaced with pure protobuf representations.
+   */
+  public abstract config(config: any): ActionBuilder<T>;
+
+  /** Retrieves the filename from the config. */
+  public abstract getFileName(): string;
+
+  /** Retrieves the resolved target from the proto. */
+  public abstract getTarget(): dataform.Target;
+
+  /** Creates the final protobuf representation. */
+  public abstract compile(): T;
+
   private validateTarget(target: dataform.Target, fileName: string) {
     if (target.name.includes(".")) {
       this.session.compileError(
@@ -73,19 +88,4 @@ export abstract class ActionBuilder<T> {
       );
     }
   }
-
-  /**
-   * @deprecated
-   * Configs are soon to be replaced with pure protobuf representations.
-   */
-  public abstract config(config: any): ActionBuilder<T>;
-
-  /** Retrieves the filename from the config. */
-  public abstract getFileName(): string;
-
-  /** Retrieves the resolved target from the proto. */
-  public abstract getTarget(): dataform.Target;
-
-  /** Creates the final protobuf representation. */
-  public abstract compile(): T;
 }

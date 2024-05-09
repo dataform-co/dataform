@@ -11,7 +11,7 @@ import { sleep, sleepUntil } from "df/common/promises";
 import { equals } from "df/common/protos";
 import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
-import { suite, test, asPlainObject, cleanSql } from "df/testing";
+import { asPlainObject, cleanSql, suite, test } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
 
 config.truncateThreshold = 0;
