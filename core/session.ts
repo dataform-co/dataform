@@ -398,7 +398,7 @@ export class Session {
       )
     );
 
-    verifyObjectMatchesProto(dataform.CompiledGraph, compiledGraph);
+    verifyObjectMatchesProto(dataform.CompiledGraph, compiledGraph, false);
     return compiledGraph;
   }
 
@@ -467,9 +467,13 @@ export class Session {
           fullyQualifiedDependencies[targetAsReadableString(protoDep.target)] = protoDep.target;
 
           if (dependency.includeDependentAssertions) {
-            this.actionAssertionMap.find(dependency).forEach(assertion =>
-              fullyQualifiedDependencies[targetAsReadableString(assertion.proto.target)] = assertion.proto.target
-            );
+            this.actionAssertionMap
+              .find(dependency)
+              .forEach(
+                assertion =>
+                  (fullyQualifiedDependencies[targetAsReadableString(assertion.proto.target)] =
+                    assertion.proto.target)
+              );
           }
         } else {
           // Too many targets matched the dependency.
@@ -751,14 +755,11 @@ class ActionMap {
   private byName: Map<string, Action[]> = new Map();
   private bySchemaAndName: Map<string, Map<string, Action[]>> = new Map();
   private byDatabaseAndName: Map<string, Map<string, Action[]>> = new Map();
-  private byDatabaseSchemaAndName: Map<
-    string,
-    Map<string, Map<string, Action[]>>
-  > = new Map();
+  private byDatabaseSchemaAndName: Map<string, Map<string, Map<string, Action[]>>> = new Map();
 
   public constructor(actions: Action[]) {
     for (const action of actions) {
-      this.set(action.proto.target, action)
+      this.set(action.proto.target, action);
     }
   }
 
@@ -774,7 +775,7 @@ class ActionMap {
         this.byDatabaseAndName.set(actionTarget.database, new Map());
       }
       const forDatabaseNoSchema = this.byDatabaseAndName.get(actionTarget.database);
-      this.setByNameLevel(forDatabaseNoSchema, actionTarget.name, assertionTarget)
+      this.setByNameLevel(forDatabaseNoSchema, actionTarget.name, assertionTarget);
 
       if (!!actionTarget.schema) {
         if (!this.byDatabaseSchemaAndName.has(actionTarget.database)) {
@@ -811,7 +812,11 @@ class ActionMap {
     targetMap.get(name).push(assertionTarget);
   }
 
-  private setBySchemaLevel(targetMap: Map<string, Map<string, Action[]>>, actionTarget: ITarget, assertionTarget: Action) {
+  private setBySchemaLevel(
+    targetMap: Map<string, Map<string, Action[]>>,
+    actionTarget: ITarget,
+    assertionTarget: Action
+  ) {
     if (!targetMap.has(actionTarget.schema)) {
       targetMap.set(actionTarget.schema, new Map());
     }

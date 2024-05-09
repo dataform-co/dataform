@@ -20,7 +20,7 @@ export class Notebook extends ActionBuilder<dataform.Notebook> {
   // TODO: make this field private, to enforce proto update logic to happen in this class.
   public proto: dataform.INotebook = dataform.Notebook.create();
 
-  // If true, adds the inline assertions of dependencies as direct dependencies for this action. 
+  // If true, adds the inline assertions of dependencies as direct dependencies for this action.
   public dependOnDependencyAssertions: boolean = false;
 
   constructor(
@@ -70,7 +70,9 @@ export class Notebook extends ActionBuilder<dataform.Notebook> {
    */
   public dependencies(value: Resolvable | Resolvable[]) {
     const newDependencies = Array.isArray(value) ? value : [value];
-    newDependencies.forEach(resolvable => addDependenciesToActionDependencyTargets(this, resolvable));
+    newDependencies.forEach(resolvable =>
+      addDependenciesToActionDependencyTargets(this, resolvable)
+    );
     return this;
   }
 
@@ -89,7 +91,7 @@ export class Notebook extends ActionBuilder<dataform.Notebook> {
   }
 
   public compile() {
-    return verifyObjectMatchesProto(dataform.Notebook, this.proto);
+    return verifyObjectMatchesProto(dataform.Notebook, this.proto, false);
   }
 }
 

@@ -23,7 +23,7 @@ import {
   resolveActionsConfigFilename,
   setNameAndTarget,
   strictKeysOf,
-  toResolvable,
+  toResolvable
 } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
@@ -32,10 +32,10 @@ import { dataform } from "df/protos/ts";
  */
 export interface IOperationConfig
   extends IActionConfig,
-  IDependenciesConfig,
-  IDocumentableConfig,
-  INamedConfig,
-  ITargetableConfig {
+    IDependenciesConfig,
+    IDocumentableConfig,
+    INamedConfig,
+    ITargetableConfig {
   /**
    * Declares that this `operations` action creates a dataset which should be referenceable using the `ref` function.
    *
@@ -74,7 +74,7 @@ export class Operation extends ActionBuilder<dataform.Operation> {
   // Hold a reference to the Session instance.
   public session: Session;
 
-  // If true, adds the inline assertions of dependencies as direct dependencies for this action. 
+  // If true, adds the inline assertions of dependencies as direct dependencies for this action.
   public dependOnDependencyAssertions: boolean = false;
 
   // We delay contextification until the final compile step, so hold these here for now.
@@ -164,7 +164,9 @@ export class Operation extends ActionBuilder<dataform.Operation> {
 
   public dependencies(value: Resolvable | Resolvable[]) {
     const newDependencies = Array.isArray(value) ? value : [value];
-    newDependencies.forEach(resolvable => addDependenciesToActionDependencyTargets(this, resolvable));
+    newDependencies.forEach(resolvable =>
+      addDependenciesToActionDependencyTargets(this, resolvable)
+    );
     return this;
   }
 
@@ -269,7 +271,7 @@ export class Operation extends ActionBuilder<dataform.Operation> {
     const appliedQueries = context.apply(this.contextableQueries);
     this.proto.queries = typeof appliedQueries === "string" ? [appliedQueries] : appliedQueries;
 
-    return verifyObjectMatchesProto(dataform.Operation, this.proto);
+    return verifyObjectMatchesProto(dataform.Operation, this.proto, false);
   }
 }
 

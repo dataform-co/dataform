@@ -26,7 +26,7 @@ import {
   strictKeysOf,
   tableTypeStringToEnum,
   toResolvable,
-  validateQueryString,
+  validateQueryString
 } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
@@ -158,10 +158,10 @@ const ITableAssertionsProperties = () =>
  */
 export interface ITableConfig
   extends IActionConfig,
-  IDependenciesConfig,
-  IDocumentableConfig,
-  INamedConfig,
-  ITargetableConfig {
+    IDependenciesConfig,
+    IDocumentableConfig,
+    INamedConfig,
+    ITargetableConfig {
   /**
    * The type of the dataset. For more information on how this setting works, check out some of the [guides](guides)
    * on publishing different types of datasets with Dataform.
@@ -258,7 +258,7 @@ export class Table extends ActionBuilder<dataform.Table> {
   // Hold a reference to the Session instance.
   public session: Session;
 
-  // If true, adds the inline assertions of dependencies as direct dependencies for this action. 
+  // If true, adds the inline assertions of dependencies as direct dependencies for this action.
   public dependOnDependencyAssertions: boolean = false;
 
   // We delay contextification until the final compile step, so hold these here for now.
@@ -563,7 +563,9 @@ export class Table extends ActionBuilder<dataform.Table> {
 
   public dependencies(value: Resolvable | Resolvable[]) {
     const newDependencies = Array.isArray(value) ? value : [value];
-    newDependencies.forEach(resolvable => addDependenciesToActionDependencyTargets(this, resolvable));
+    newDependencies.forEach(resolvable =>
+      addDependenciesToActionDependencyTargets(this, resolvable)
+    );
     return this;
   }
 
@@ -733,7 +735,7 @@ export class Table extends ActionBuilder<dataform.Table> {
     validateQueryString(this.session, this.proto.query, this.proto.fileName);
     validateQueryString(this.session, this.proto.incrementalQuery, this.proto.fileName);
 
-    return verifyObjectMatchesProto(dataform.Table, this.proto);
+    return verifyObjectMatchesProto(dataform.Table, this.proto, false);
   }
 
   private contextifyOps(
@@ -753,7 +755,7 @@ export class Table extends ActionBuilder<dataform.Table> {
  * @hidden
  */
 export class TableContext implements ITableContext {
-  constructor(private table: Table, private isIncremental = false) { }
+  constructor(private table: Table, private isIncremental = false) {}
 
   public config(config: ITableConfig) {
     this.table.config(config);

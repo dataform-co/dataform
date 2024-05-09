@@ -1,6 +1,7 @@
 import { util } from "protobufjs";
 
-import { IStringifier } from "df/common/strings/stringifier";
+const DOCUMENTATION_URL = "https://dataform-co.github.io/dataform/docs/configs-reference";
+const REPORT_ISSUE_URL = "https://github.com/dataform-co/dataform/issues";
 
 export interface IProtoClass<IProto, Proto> {
   new (): Proto;
@@ -24,7 +25,8 @@ export interface IProtoClass<IProto, Proto> {
 // meaning that the type of fields cannot be verified; an int can be confused with a string.
 export function verifyObjectMatchesProto<Proto>(
   protoType: IProtoClass<any, Proto>,
-  object: object
+  object: object,
+  isConfigsProto: boolean = true
 ): Proto {
   if (Array.isArray(object)) {
     throw ReferenceError(`Expected a top-level object, but found an array`);
@@ -48,8 +50,16 @@ export function verifyObjectMatchesProto<Proto>(
           // Empty objects are assigned to empty object fields by ProtobufJS.
           return;
         }
+        if (isConfigsProto) {
+          throw ReferenceError(
+            `Unexpected property "${presentKey}", or property value is of an incorrect type. See ` +
+              `${DOCUMENTATION_URL} for allowed properties.`
+          );
+        }
+        // If it's not a configs proto, then it's not a configuration issue by the user, it's a bug.
         throw ReferenceError(
-          `Cannot find field: ${presentKey} in message, or value type is incorrect`
+          `Unexpected property "${presentKey}", please report this to the Dataform team at ` +
+            `${REPORT_ISSUE_URL}.`
         );
       }
       if (typeof presentValue === "object") {

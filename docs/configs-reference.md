@@ -149,6 +149,7 @@ Some options, for example, partitionExpirationDays, have dedicated type/validity
 String values must be encapsulated in double-quotes, for example: additionalOptions: {numeric_option: &#34;5&#34;, string_option: &#39;&#34;string-value&#34;&#39;}
 
 If the option name contains special characters, encapsulate the name in quotes, for example: additionalOptions: { &#34;option-name&#34;: &#34;value&#34; }. |
+| depend_on_dependency_assertions | [bool](#bool) |  | When set to true, assertions dependent upon any dependency will be add as dedpendency to this action |
 
 
 
@@ -203,6 +204,7 @@ If the option name contains special characters, encapsulate the name in quotes, 
 | tags | [string](#string) | repeated | A list of user-defined tags with which the action should be labeled. |
 | disabled | [bool](#bool) |  | If set to true, this action will not be executed. However, the action can still be depended upon. Useful for temporarily turning off broken actions. |
 | description | [string](#string) |  | Description of the notebook. |
+| depend_on_dependency_assertions | [bool](#bool) |  | When set to true, assertions dependent upon any dependency will be add as dedpendency to this action |
 
 
 
@@ -227,6 +229,7 @@ If the option name contains special characters, encapsulate the name in quotes, 
 | has_output | [bool](#bool) |  | Declares that this action creates a dataset which should be referenceable as a dependency target, for example by using the `ref` function. |
 | description | [string](#string) |  | Description of the operation. |
 | columns | [ActionConfig.ColumnDescriptor](#dataform-ActionConfig-ColumnDescriptor) | repeated | Descriptions of columns within the operation. Can only be set if hasOutput is true. |
+| depend_on_dependency_assertions | [bool](#bool) |  | When set to true, assertions dependent upon any dependency will be add as dedpendency to this action |
 
 
 
@@ -264,6 +267,7 @@ Some options, for example, partitionExpirationDays, have dedicated type/validity
 String values must be encapsulated in double-quotes, for example: additionalOptions: {numeric_option: &#34;5&#34;, string_option: &#39;&#34;string-value&#34;&#39;}
 
 If the option name contains special characters, encapsulate the name in quotes, for example: additionalOptions: { &#34;option-name&#34;: &#34;value&#34; }. |
+| depend_on_dependency_assertions | [bool](#bool) |  | When set to true, assertions dependent upon any dependency will be add as dedpendency to this action |
 
 
 
@@ -313,6 +317,7 @@ Target represents a unique action identifier.
 | project | [string](#string) |  | The Google Cloud project (database) of the action. |
 | dataset | [string](#string) |  | The dataset (schema) of the action. For notebooks, this is the location. |
 | name | [string](#string) |  | The name of the action. |
+| include_dependent_assertions | [bool](#bool) |  | flag for when we want to add assertions of this dependency in dependency_targets as well |
 
 
 
@@ -347,6 +352,7 @@ Some options, for example, partitionExpirationDays, have dedicated type/validity
 String values must be encapsulated in double-quotes, for example: additionalOptions: {numeric_option: &#34;5&#34;, string_option: &#39;&#34;string-value&#34;&#39;}
 
 If the option name contains special characters, encapsulate the name in quotes, for example: additionalOptions: { &#34;option-name&#34;: &#34;value&#34; }. |
+| depend_on_dependency_assertions | [bool](#bool) |  | When set to true, assertions dependent upon any dependency will be add as dedpendency to this action |
 
 
 
