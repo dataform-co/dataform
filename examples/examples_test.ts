@@ -1,27 +1,36 @@
 import { expect } from "chai";
 import * as fs from "fs-extra";
+import * as path from "path";
 
-import { compile } from "df/cli/api";
-import { suite, test } from "df/testing";
+import { suite, test, getProcessResult, nodePath } from "df/testing";
+import { exec, execFile } from "child_process";
+import { dataform } from "df/protos/ts";
+import { verifyObjectMatchesProto } from "df/common/protos";
 
-suite("examples", () => {
-  test("stackoverflow_reporter compiles", async () => {
-    fs.copySync("examples/node_modules", "examples/stackoverflow_reporter/node_modules");
-    fs.writeFileSync("examples/stackoverflow_reporter/package.json", "");
+suite("examples", { parallel: true }, () => {
+  const cliEntryPointPath = "examples/node_modules/@dataform/cli/bundle.js";
 
-    const graph = await compile({ projectDir: "examples/stackoverflow_reporter" });
+  ["stackoverflow_reporter", "extreme_weather_programming"].forEach(exampleProject => {
+    test(`${exampleProject} runs`, async () => {
+      const projectDir = `examples/${exampleProject}`;
+      fs.copySync(
+        "examples/node_modules/@dataform/core",
+        `${projectDir}/node_modules/@dataform/core`
+      );
+      // A blank `package.json` makes no `dataformCoreVersion` in `workflow_settings.yaml` be OK.
+      fs.writeFileSync(`${projectDir}/package.json`, "");
 
-    expect(graph.graphErrors.compilationErrors).deep.equals([]);
-  });
+      // TODO(ekrekr): make this test `run` instead.
+      const processResult = await getProcessResult(
+        execFile(nodePath, [cliEntryPointPath, "compile", projectDir, "--json"])
+      );
 
-  test("extreme_weather_programming compiles", async () => {
-    fs.copySync("examples/node_modules", "examples/extreme_weather_programming/node_modules");
-    fs.writeFileSync("examples/extreme_weather_programming/package.json", "");
-
-    const graph = await compile({ projectDir: "examples/extreme_weather_programming" });
-
-    expect(graph.graphErrors.compilationErrors).deep.equals([]);
-    expect(graph.tables.length).equals(3);
-    expect(graph.notebooks.length).equals(1);
+      expect(processResult.exitCode).equals(0);
+      const compiledGraph = verifyObjectMatchesProto(
+        dataform.CompiledGraph,
+        JSON.parse(processResult.stdout)
+      );
+      expect(compiledGraph.graphErrors).deep.equals({});
+    });
   });
 });
