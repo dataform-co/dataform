@@ -34,9 +34,9 @@ export abstract class ActionBuilder<T> {
     projectConfig: dataform.ProjectConfig,
     fileName?: string,
     validateTarget = false,
-    useDefaultAssertionSchema = false
+    useDefaultAssertionDataset = false
   ): dataform.Target {
-    const defaultSchema = useDefaultAssertionSchema
+    const defaultSchema = useDefaultAssertionDataset
       ? projectConfig.assertionSchema
       : projectConfig.defaultSchema;
     const target = dataform.Target.create({
