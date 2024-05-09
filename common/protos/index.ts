@@ -1,6 +1,7 @@
 import { util } from "protobufjs";
 
-const DOCUMENTATION_URL = "https://dataform-co.github.io/dataform/docs/configs-reference";
+const CONFIGS_PROTO_DOCUMENTATION_URL =
+  "https://dataform-co.github.io/dataform/docs/configs-reference";
 const REPORT_ISSUE_URL = "https://github.com/dataform-co/dataform/issues";
 
 export interface IProtoClass<IProto, Proto> {
@@ -53,7 +54,7 @@ export function verifyObjectMatchesProto<Proto>(
         if (isConfigsProto) {
           throw ReferenceError(
             `Unexpected property "${presentKey}", or property value is of an incorrect type. See ` +
-              `${DOCUMENTATION_URL} for allowed properties.`
+              `${CONFIGS_PROTO_DOCUMENTATION_URL} for allowed properties.`
           );
         }
         // If it's not a configs proto, then it's not a configuration issue by the user, it's a bug.
