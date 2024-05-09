@@ -516,8 +516,6 @@ export class Session {
       action.target = newTargetByOriginalTarget.get(action.target);
     });
 
-    // TODO(ekrekr): fix this here.
-
     // Fix up dependencies in case those dependencies' names have changed.
     const getUpdatedTarget = (originalTarget: dataform.ITarget) => {
       // It's possible that we don't have a new Target for a dependency that failed to compile,

@@ -3,7 +3,7 @@ import { expect } from "chai";
 import * as path from "path";
 
 import { compile } from "df/cli/api";
-import { targetAsReadableString, targetStringifier } from "df/core/targets";
+import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 import { suite, test, cleanSql } from "df/testing";
 
@@ -527,14 +527,15 @@ suite("examples", () => {
             })
           );
 
-          const expected = dotJoined(
-            databaseWithSuffix("tada-analytics"),
-            schemaWithSuffix("df_integration_test_assertions"),
-            "example_assertion_with_tags"
-          );
           // Check Assertion with tags
           const exampleAssertionWithTags = graph.assertions.find(
-            (a: dataform.IAssertion) => targetAsReadableString(a.target) === expected
+            (a: dataform.IAssertion) =>
+              targetAsReadableString(a.target) ===
+              dotJoined(
+                databaseWithSuffix("tada-analytics"),
+                schemaWithSuffix("df_integration_test_assertions"),
+                "example_assertion_with_tags"
+              )
           );
           expect(exampleAssertionWithTags.target.schema).equals(
             schemaWithSuffix("df_integration_test_assertions")
