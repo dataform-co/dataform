@@ -43,8 +43,9 @@ export interface IActionProto {
 export class Session {
   public rootDir: string;
 
-  public config: dataform.IProjectConfig;
-  public canonicalConfig: dataform.IProjectConfig;
+  public projectConfig: dataform.ProjectConfig;
+  // The canonical project config contains the project config before schema and database overrides.
+  public canonicalProjectConfig: dataform.ProjectConfig;
 
   public actions: Action[];
   public indexedActions: ActionMap;
@@ -58,54 +59,29 @@ export class Session {
 
   constructor(
     rootDir?: string,
-    projectConfig?: dataform.IProjectConfig,
-    originalProjectConfig?: dataform.IProjectConfig
+    projectConfig?: dataform.ProjectConfig,
+    originalProjectConfig?: dataform.ProjectConfig
   ) {
     this.init(rootDir, projectConfig, originalProjectConfig);
   }
 
   public init(
     rootDir: string,
-    projectConfig?: dataform.IProjectConfig,
-    originalProjectConfig?: dataform.IProjectConfig
+    projectConfig?: dataform.ProjectConfig,
+    originalProjectConfig?: dataform.ProjectConfig
   ) {
     this.rootDir = rootDir;
-    this.config = projectConfig || DEFAULT_CONFIG;
-    this.canonicalConfig = getCanonicalProjectConfig(
-      originalProjectConfig || projectConfig || DEFAULT_CONFIG
+    this.projectConfig = dataform.ProjectConfig.create(projectConfig || DEFAULT_CONFIG);
+    this.canonicalProjectConfig = getCanonicalProjectConfig(
+      dataform.ProjectConfig.create(originalProjectConfig || projectConfig || DEFAULT_CONFIG)
     );
     this.actions = [];
     this.tests = {};
     this.graphErrors = { compilationErrors: [] };
   }
 
-  public get projectConfig(): Pick<
-    dataform.IProjectConfig,
-    | "warehouse"
-    | "defaultDatabase"
-    | "defaultSchema"
-    | "defaultLocation"
-    | "assertionSchema"
-    | "databaseSuffix"
-    | "schemaSuffix"
-    | "tablePrefix"
-    | "vars"
-  > {
-    return Object.freeze({
-      warehouse: this.config.warehouse,
-      defaultDatabase: this.config.defaultDatabase,
-      defaultSchema: this.config.defaultSchema,
-      defaultLocation: this.config.defaultLocation,
-      assertionSchema: this.config.assertionSchema,
-      databaseSuffix: this.config.databaseSuffix,
-      schemaSuffix: this.config.schemaSuffix,
-      tablePrefix: this.config.tablePrefix,
-      vars: Object.freeze({ ...this.config.vars })
-    });
-  }
-
   public compilationSql(): CompilationSql {
-    return new CompilationSql(this.config, dataformCoreVersion);
+    return new CompilationSql(this.projectConfig, dataformCoreVersion);
   }
 
   public sqlxAction(actionOptions: {
@@ -270,7 +246,7 @@ export class Session {
   public assert(name: string, query?: AContextable<string>): Assertion {
     const assertion = new Assertion();
     assertion.session = this;
-    utils.setNameAndTarget(this, assertion.proto, name, this.config.assertionSchema);
+    utils.setNameAndTarget(this, assertion.proto, name, this.projectConfig.assertionSchema);
     if (query) {
       assertion.query(query);
     }
@@ -328,8 +304,8 @@ export class Session {
     this.indexedActions = new ActionMap(this.actions);
 
     if (
-      (this.config.warehouse === "bigquery" || this.config.warehouse === "") &&
-      !this.config.defaultLocation
+      (this.projectConfig.warehouse === "bigquery" || this.projectConfig.warehouse === "") &&
+      !this.projectConfig.defaultLocation
     ) {
       this.compileError(
         "A defaultLocation is required for BigQuery. This can be configured in workflow_settings.yaml.",
@@ -338,15 +314,15 @@ export class Session {
     }
 
     if (
-      !!this.config.vars &&
-      !Object.values(this.config.vars).every(value => typeof value === "string")
+      !!this.projectConfig.vars &&
+      !Object.values(this.projectConfig.vars).every(value => typeof value === "string")
     ) {
       throw new Error("Custom variables defined in workflow settings can only be strings.");
     }
 
     // TODO(ekrekr): replace verify here with something that actually works.
     const compiledGraph = dataform.CompiledGraph.create({
-      projectConfig: this.config,
+      projectConfig: this.projectConfig,
       tables: this.compileGraphChunk(this.actions.filter(action => action instanceof Table)),
       operations: this.compileGraphChunk(
         this.actions.filter(action => action instanceof Operation)
@@ -419,15 +395,15 @@ export class Session {
   }
 
   private getDatabaseSuffixWithUnderscore() {
-    return !!this.config.databaseSuffix ? `_${this.config.databaseSuffix}` : "";
+    return !!this.projectConfig.databaseSuffix ? `_${this.projectConfig.databaseSuffix}` : "";
   }
 
   private getSchemaSuffixWithUnderscore() {
-    return !!this.config.schemaSuffix ? `_${this.config.schemaSuffix}` : "";
+    return !!this.projectConfig.schemaSuffix ? `_${this.projectConfig.schemaSuffix}` : "";
   }
 
   private getTablePrefixWithUnderscore() {
-    return !!this.config.tablePrefix ? `${this.config.tablePrefix}_` : "";
+    return !!this.projectConfig.tablePrefix ? `${this.projectConfig.tablePrefix}_` : "";
   }
 
   private compileGraphChunk<T>(actions: Array<Action | Test>): T[] {
@@ -489,7 +465,7 @@ export class Session {
   }
 
   private alterActionName(actions: IActionProto[], declarationTargets: dataform.ITarget[]) {
-    const { tablePrefix, schemaSuffix, databaseSuffix } = this.config;
+    const { tablePrefix, schemaSuffix, databaseSuffix } = this.projectConfig;
 
     if (!tablePrefix && !schemaSuffix && !databaseSuffix) {
       return;
@@ -726,13 +702,13 @@ function definesDataset(type: string) {
   return type === "view" || type === "table" || type === "incremental";
 }
 
-function getCanonicalProjectConfig(originalProjectConfig: dataform.IProjectConfig) {
-  return {
+function getCanonicalProjectConfig(originalProjectConfig: dataform.ProjectConfig) {
+  return dataform.ProjectConfig.create({
     warehouse: originalProjectConfig.warehouse,
     defaultSchema: originalProjectConfig.defaultSchema,
     defaultDatabase: originalProjectConfig.defaultDatabase,
     assertionSchema: originalProjectConfig.assertionSchema
-  };
+  });
 }
 
 function joinQuoted(values: readonly string[]) {

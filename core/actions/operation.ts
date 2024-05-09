@@ -96,8 +96,13 @@ export class Operation extends ActionBuilder<dataform.Operation> {
       config.name = Path.basename(config.filename);
     }
     const target = actionConfigToCompiledGraphTarget(config);
-    this.proto.target = this.applySessionToTarget(target, config.filename);
-    this.proto.canonicalTarget = this.applySessionCanonicallyToTarget(target);
+    this.proto.target = this.applySessionToTarget(
+      target,
+      session.projectConfig,
+      config.filename,
+      true
+    );
+    this.proto.canonicalTarget = this.applySessionToTarget(target, session.canonicalProjectConfig);
 
     config.filename = resolveActionsConfigFilename(config.filename, configPath);
     this.proto.fileName = config.filename;

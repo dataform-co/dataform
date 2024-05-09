@@ -295,8 +295,13 @@ export class Table extends ActionBuilder<dataform.Table> {
       tableTypeConfig.name = Path.basename(tableTypeConfig.filename);
     }
     const target = actionConfigToCompiledGraphTarget(tableTypeConfig);
-    this.proto.target = this.applySessionToTarget(target, tableTypeConfig.filename);
-    this.proto.canonicalTarget = this.applySessionCanonicallyToTarget(target);
+    this.proto.target = this.applySessionToTarget(
+      target,
+      session.projectConfig,
+      tableTypeConfig.filename,
+      true
+    );
+    this.proto.canonicalTarget = this.applySessionToTarget(target, session.canonicalProjectConfig);
 
     tableTypeConfig.filename = resolveActionsConfigFilename(tableTypeConfig.filename, configPath);
     this.proto.fileName = tableTypeConfig.filename;
