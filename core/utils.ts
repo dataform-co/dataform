@@ -212,7 +212,6 @@ export function strictKeysOf<T>() {
 /**
  * Will throw an error if the provided object contains any properties that aren't in the provided list.
  * @deprecated verifyObjectMatchesProto will be replacing this soon.
- * TODO(ekrekr): make verifyObjectMatchesProto have this error message instead.
  */
 export function checkExcessProperties<T>(
   reportError: (e: Error) => void,

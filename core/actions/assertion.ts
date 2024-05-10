@@ -218,7 +218,11 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
       delete unverifiedConfig.type;
     }
 
-    return verifyObjectMatchesProto(dataform.ActionConfig.AssertionConfig, unverifiedConfig);
+    return verifyObjectMatchesProto(
+      dataform.ActionConfig.AssertionConfig,
+      unverifiedConfig,
+      VerifyProtoErrorBehaviour.SHOW_DOCS_LINK
+    );
   }
 }
 

@@ -85,6 +85,8 @@ export class Session {
   }
 
   public sqlxAction(actionOptions: {
+    // sqlxConfig has type any here because any object can be passed in from the compiler - the
+    // structure of it is verified at later steps.
     sqlxConfig: any;
     sqlStatementCount: number;
     sqlContextable: (
