@@ -1,4 +1,4 @@
-import { verifyObjectMatchesProto } from "df/common/protos";
+import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
 
@@ -50,7 +50,8 @@ function verifyWorkflowSettingsAsJson(workflowSettingsAsJson: object): dataform.
         dataform.WorkflowSettings,
         workflowSettingsAsJson as {
           [key: string]: any;
-        }
+        },
+        VerifyProtoErrorBehaviour.SHOW_DOCS_LINK
       )
     );
   } catch (e) {

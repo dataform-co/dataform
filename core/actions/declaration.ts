@@ -1,4 +1,4 @@
-import { verifyObjectMatchesProto } from "df/common/protos";
+import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { ActionBuilder } from "df/core/actions";
 import { ColumnDescriptors } from "df/core/column_descriptors";
 import {
@@ -108,7 +108,10 @@ export class Declaration extends ActionBuilder<dataform.Declaration> {
   }
 
   public compile() {
-    // ProtobufJS isn't strict with the fields available on protos, so we validate this here.
-    return verifyObjectMatchesProto(dataform.Declaration, this.proto);
+    return verifyObjectMatchesProto(
+      dataform.Declaration,
+      this.proto,
+      VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM
+    );
   }
 }

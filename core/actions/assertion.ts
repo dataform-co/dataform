@@ -1,4 +1,4 @@
-import { verifyObjectMatchesProto } from "df/common/protos";
+import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { ActionBuilder } from "df/core/actions";
 import {
   IActionConfig,
@@ -239,7 +239,11 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
     this.proto.query = context.apply(this.contextableQuery);
     validateQueryString(this.session, this.proto.query, this.proto.fileName);
 
-    return verifyObjectMatchesProto(dataform.Assertion, this.proto);
+    return verifyObjectMatchesProto(
+      dataform.Assertion,
+      this.proto,
+      VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM
+    );
   }
 }
 
