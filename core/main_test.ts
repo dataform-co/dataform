@@ -1260,6 +1260,381 @@ actions:
     });
   });
 
+  suite("sqlx config options checks for", () => {
+    const exampleActionDescriptor = {
+      inputSqlxConfigBlock: `
+  columns: {
+    column1Key: "column1Val",
+    column2Key: {
+      description: "description",
+      columns: {
+        nestedColumnKey: "nestedColumnVal"
+      },
+      displayName: "displayName",
+      tags: ["tag3", "tag4"],
+      bigqueryPolicyTags: ["bigqueryPolicyTag1", "bigqueryPolicyTag2"],
+    }
+  },`,
+      outputActionDescriptor: {
+        columns: [
+          {
+            description: "column1Val",
+            path: ["column1Key"]
+          },
+          {
+            bigqueryPolicyTags: ["bigqueryPolicyTag1", "bigqueryPolicyTag2"],
+            description: "description",
+            displayName: "displayName",
+            path: ["column2Key"],
+            tags: ["tag3", "tag4"]
+          },
+          {
+            description: "nestedColumnVal",
+            path: ["column2Key", "nestedColumnKey"]
+          }
+        ],
+        description: "description"
+      }
+    };
+
+    test(`assertions`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(path.join(projectDir, "definitions/operation.sqlx"), "SELECT 1");
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/assertion.sqlx"),
+        `
+config {
+  type: "assertion",
+  name: "name",
+  schema: "dataset",
+  database: "project",
+  dependencies: ["operation"],
+  tags: ["tagA", "tagB"],
+  disabled: true,
+  description: "description",
+  hermetic: true,
+  dependOnDependencyAssertions: true,
+}
+SELECT 1`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(asPlainObject(result.compile.compiledGraph.graphErrors.compilationErrors)).deep.equals(
+        []
+      );
+      expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals(
+        asPlainObject([
+          {
+            actionDescriptor: {
+              description: "description"
+            },
+            canonicalTarget: {
+              database: "project",
+              schema: "dataset",
+              name: "name"
+            },
+            dependencyTargets: [
+              {
+                database: "dataform",
+                name: "operation"
+              }
+            ],
+            disabled: true,
+            fileName: "definitions/assertion.sqlx",
+            hermeticity: "HERMETIC",
+            tags: ["tagA", "tagB"],
+            query: "\n\nSELECT 1",
+            target: {
+              database: "project",
+              schema: "dataset",
+              name: "name"
+            }
+          }
+        ])
+      );
+    });
+
+    test(`declarations`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/assertion.sqlx"),
+        `
+config {
+  type: "declaration",
+  name: "name",
+  schema: "dataset",
+  database: "project",
+  description: "description",
+${exampleActionDescriptor.inputSqlxConfigBlock}
+}`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(asPlainObject(result.compile.compiledGraph.graphErrors.compilationErrors)).deep.equals(
+        []
+      );
+      expect(asPlainObject(result.compile.compiledGraph.declarations)).deep.equals(
+        asPlainObject([
+          {
+            canonicalTarget: {
+              database: "project",
+              schema: "dataset",
+              name: "name"
+            },
+            fileName: "definitions/assertion.sqlx",
+            target: {
+              database: "project",
+              schema: "dataset",
+              name: "name"
+            },
+            actionDescriptor: exampleActionDescriptor.outputActionDescriptor
+          }
+        ])
+      );
+    });
+
+    test("tables", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(path.join(projectDir, "definitions/operation.sqlx"), "SELECT 1");
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/incremental_table.sqlx"),
+        // Incremental table is the table type used here because it's the most complex.
+        `
+config {
+  type: "incremental",
+  disabled: true,
+  protected: false,
+  name: "name",
+  bigquery: {
+    partitionBy: "partitionBy",
+    clusterBy: ["clusterBy"],
+    updatePartitionFilter: "updatePartitionFilter",
+    labels: {"key": "val"},
+    partitionExpirationDays: 1,
+    requirePartitionFilter: true,
+    additionalOptions: {
+      option1Key: "option1",
+      option2Key: "option2",
+    }
+  },
+  tags: ["tag1", "tag2"],
+  uniqueKey: ["key1", "key2"],
+  dependencies: ["operation"],
+  hermetic: true,
+  schema: "schema",
+  assertions: {
+    uniqueKeys: [["uniqueKey1", "uniqueKey2"]],
+    nonNull: "nonNull",
+    rowConditions: ["rowConditions1", "rowConditions2"],
+  },
+  database: "database",
+${exampleActionDescriptor.inputSqlxConfigBlock}
+  description: "description",
+  materialized: false
+}
+SELECT 1`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(asPlainObject(result.compile.compiledGraph.graphErrors.compilationErrors)).deep.equals(
+        []
+      );
+      expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals([
+        {
+          type: "incremental",
+          disabled: true,
+          // TODO(ekrekr): finish fixing this in https://github.com/dataform-co/dataform/pull/1718.
+          // protected: false,
+          hermeticity: "HERMETIC",
+          target: {
+            database: "database",
+            name: "name",
+            schema: "schema"
+          },
+          canonicalTarget: {
+            database: "database",
+            name: "name",
+            schema: "schema"
+          },
+          bigquery: {
+            additionalOptions: {
+              option1Key: "option1",
+              option2Key: "option2"
+            },
+            clusterBy: ["clusterBy"],
+            labels: {
+              key: "val"
+            },
+            partitionBy: "partitionBy",
+            partitionExpirationDays: 1,
+            requirePartitionFilter: true,
+            updatePartitionFilter: "updatePartitionFilter"
+          },
+          tags: ["tag1", "tag2"],
+          uniqueKey: ["key1", "key2"],
+          dependencyTargets: [
+            {
+              database: "dataform",
+              name: "operation"
+            }
+          ],
+          enumType: "INCREMENTAL",
+          fileName: "definitions/incremental_table.sqlx",
+          query: "\n\nSELECT 1",
+          incrementalQuery: "\n\nSELECT 1",
+          actionDescriptor: {
+            ...exampleActionDescriptor.outputActionDescriptor,
+            // sqlxConfig.bigquery.labels are placed as bigqueryLabels.
+            bigqueryLabels: {
+              key: "val"
+            }
+          }
+        }
+      ]);
+      expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals([
+        {
+          target: {
+            database: "dataform",
+            name: "schema_name_assertions_uniqueKey_0"
+          },
+          canonicalTarget: {
+            database: "dataform",
+            name: "schema_name_assertions_uniqueKey_0"
+          },
+          dependencyTargets: [
+            {
+              database: "database",
+              name: "name",
+              schema: "schema"
+            }
+          ],
+          disabled: true,
+          fileName: "definitions/incremental_table.sqlx",
+          parentAction: {
+            database: "database",
+            name: "name",
+            schema: "schema"
+          },
+          query:
+            "\nSELECT\n  *\nFROM (\n  SELECT\n    uniqueKey1, uniqueKey2,\n    COUNT(1) AS index_row_count\n  FROM `database.schema.name`\n  GROUP BY uniqueKey1, uniqueKey2\n  ) AS data\nWHERE index_row_count > 1\n",
+          tags: ["tag1", "tag2"]
+        },
+        {
+          target: {
+            database: "dataform",
+            name: "schema_name_assertions_rowConditions"
+          },
+          canonicalTarget: {
+            database: "dataform",
+            name: "schema_name_assertions_rowConditions"
+          },
+          dependencyTargets: [
+            {
+              database: "database",
+              name: "name",
+              schema: "schema"
+            }
+          ],
+          disabled: true,
+          fileName: "definitions/incremental_table.sqlx",
+          parentAction: {
+            database: "database",
+            name: "name",
+            schema: "schema"
+          },
+          query:
+            "\nSELECT\n  'rowConditions1' AS failing_row_condition,\n  *\nFROM `database.schema.name`\nWHERE NOT (rowConditions1)\nUNION ALL\nSELECT\n  'rowConditions2' AS failing_row_condition,\n  *\nFROM `database.schema.name`\nWHERE NOT (rowConditions2)\nUNION ALL\nSELECT\n  'nonNull IS NOT NULL' AS failing_row_condition,\n  *\nFROM `database.schema.name`\nWHERE NOT (nonNull IS NOT NULL)\n",
+          tags: ["tag1", "tag2"]
+        }
+      ]);
+    });
+
+    test(`operations`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/table.sqlx"),
+        `config {type: "view"} SELECT 1`
+      );
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/operation.sqlx"),
+        `
+config {
+  type: "operations",
+  name: "operation",
+  schema: "dataset",
+  database: "project",
+  dependencies: ["table"],
+  tags: ["tagA", "tagB"],
+  disabled: true,
+  description: "description",
+  hermetic: true,
+  hasOutput: true,
+  dependOnDependencyAssertions: true,
+${exampleActionDescriptor.inputSqlxConfigBlock}
+}
+SELECT 1`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(asPlainObject(result.compile.compiledGraph.graphErrors.compilationErrors)).deep.equals(
+        []
+      );
+      expect(asPlainObject(result.compile.compiledGraph.operations)).deep.equals(
+        asPlainObject([
+          {
+            canonicalTarget: {
+              database: "project",
+              schema: "dataset",
+              name: "operation"
+            },
+            dependencyTargets: [
+              {
+                database: "dataform",
+                name: "table"
+              }
+            ],
+            disabled: true,
+            fileName: "definitions/operation.sqlx",
+            hermeticity: "HERMETIC",
+            hasOutput: true,
+            tags: ["tagA", "tagB"],
+            queries: ["\n\nSELECT 1"],
+            target: {
+              database: "project",
+              schema: "dataset",
+              name: "operation"
+            },
+            actionDescriptor: exampleActionDescriptor.outputActionDescriptor
+          }
+        ])
+      );
+    });
+  });
+
   suite("Assertions as dependencies", ({ beforeEach }) => {
     [
       TestConfigs.bigquery,
