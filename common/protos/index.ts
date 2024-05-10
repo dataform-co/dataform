@@ -18,6 +18,12 @@ export interface IProtoClass<IProto, Proto> {
   getTypeUrl(prefix: string): string;
 }
 
+export enum VerifyProtoErrorBehaviour {
+  DEFAULT,
+  SUGGEST_REPORTING_TO_DATAFORM_TEAM,
+  SHOW_DOCS_LINK
+}
+
 // This is a minimalist Typescript equivalent for the validation part of Profobuf's JsonFormat's
 // mergeMessage method:
 // https://github.com/protocolbuffers/protobuf/blob/670e0c2a0d0b64c994f743a73ee9b8926c47580d/java/util/src/main/java/com/google/protobuf/util/JsonFormat.java#L1455
@@ -29,7 +35,7 @@ export interface IProtoClass<IProto, Proto> {
 export function verifyObjectMatchesProto<Proto>(
   protoType: IProtoClass<any, Proto>,
   object: object,
-  options?: { suggestReportToDataformTeam?: boolean; showDocsLink?: boolean }
+  errorBehaviour: VerifyProtoErrorBehaviour = VerifyProtoErrorBehaviour.DEFAULT
 ): Proto {
   if (Array.isArray(object)) {
     throw ReferenceError(`Expected a top-level object, but found an array`);
@@ -53,7 +59,7 @@ export function verifyObjectMatchesProto<Proto>(
           // Empty objects are assigned to empty object fields by ProtobufJS.
           return;
         }
-        if (options?.suggestReportToDataformTeam) {
+        if (errorBehaviour === VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM) {
           throw ReferenceError(
             `Unexpected property "${presentKey}" for "${protoType
               .getTypeUrl("")
@@ -64,7 +70,7 @@ export function verifyObjectMatchesProto<Proto>(
         throw ReferenceError(
           `Unexpected property "${presentKey}", or property value type of ` +
             `"${typeof presentValue}" is incorrect.` +
-            (options?.showDocsLink
+            (errorBehaviour === VerifyProtoErrorBehaviour.SHOW_DOCS_LINK
               ? ` See ${CONFIGS_PROTO_DOCUMENTATION_URL}#${protoType
                   .getTypeUrl("")
                   // Clean up the proto type into its URL form.

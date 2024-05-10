@@ -1,4 +1,4 @@
-import { verifyObjectMatchesProto } from "df/common/protos";
+import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { ActionBuilder } from "df/core/actions";
 import { Resolvable } from "df/core/common";
 import * as Path from "df/core/path";
@@ -96,9 +96,11 @@ export class Notebook extends ActionBuilder<dataform.Notebook> {
   }
 
   public compile() {
-    return verifyObjectMatchesProto(dataform.Notebook, this.proto, {
-      suggestReportToDataformTeam: true
-    });
+    return verifyObjectMatchesProto(
+      dataform.Notebook,
+      this.proto,
+      VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM
+    );
   }
 }
 
