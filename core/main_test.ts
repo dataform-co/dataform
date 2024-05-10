@@ -1260,7 +1260,7 @@ actions:
     });
   });
 
-  suite("sqlx simple config checks for", () => {
+  suite("sqlx config options checks for", () => {
     const exampleActionDescriptor = {
       inputSqlxConfigBlock: `
   columns: {
@@ -1405,7 +1405,7 @@ ${exampleActionDescriptor.inputSqlxConfigBlock}
       );
     });
 
-    test("incremental tables", () => {
+    test("tables", () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
       fs.writeFileSync(
         path.join(projectDir, "workflow_settings.yaml"),
@@ -1415,6 +1415,7 @@ ${exampleActionDescriptor.inputSqlxConfigBlock}
       fs.writeFileSync(path.join(projectDir, "definitions/operation.sqlx"), "SELECT 1");
       fs.writeFileSync(
         path.join(projectDir, "definitions/incremental_table.sqlx"),
+        // Incremental table is the table type used here because it's the most complex.
         `
 config {
   type: "incremental",
@@ -1564,6 +1565,73 @@ SELECT 1`
           tags: ["tag1", "tag2"]
         }
       ]);
+    });
+
+    test(`operations`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/table.sqlx"),
+        `config {type: "view"} SELECT 1`
+      );
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/operation.sqlx"),
+        `
+config {
+  type: "operations",
+  name: "operation",
+  schema: "dataset",
+  database: "project",
+  dependencies: ["table"],
+  tags: ["tagA", "tagB"],
+  disabled: true,
+  description: "description",
+  hermetic: true,
+  hasOutput: true,
+  dependOnDependencyAssertions: true,
+${exampleActionDescriptor.inputSqlxConfigBlock}
+}
+SELECT 1`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(asPlainObject(result.compile.compiledGraph.graphErrors.compilationErrors)).deep.equals(
+        []
+      );
+      expect(asPlainObject(result.compile.compiledGraph.operations)).deep.equals(
+        asPlainObject([
+          {
+            canonicalTarget: {
+              database: "project",
+              schema: "dataset",
+              name: "operation"
+            },
+            dependencyTargets: [
+              {
+                database: "dataform",
+                name: "table"
+              }
+            ],
+            disabled: true,
+            fileName: "definitions/operation.sqlx",
+            hermeticity: "HERMETIC",
+            hasOutput: true,
+            tags: ["tagA", "tagB"],
+            queries: ["\n\nSELECT 1"],
+            target: {
+              database: "project",
+              schema: "dataset",
+              name: "operation"
+            },
+            actionDescriptor: exampleActionDescriptor.outputActionDescriptor
+          }
+        ])
+      );
     });
   });
 
