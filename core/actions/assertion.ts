@@ -191,7 +191,7 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
 
   private verifyConfig(unverifiedConfig: any): dataform.ActionConfig.AssertionConfig {
     // This maintains backwards compatability with older versions.
-    // TODO(ekrekr): break backwards compatability of these in v4.
+    // TODO(ekrekr): consider breaking backwards compatability of these in v4.
     if (unverifiedConfig.dependencies) {
       unverifiedConfig.dependencyTargets = unverifiedConfig.dependencies.map(
         (dependency: string | object) =>
@@ -218,7 +218,6 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
       delete unverifiedConfig.type;
     }
 
-    console.log("🚀 ~ Assertion ~ verifyConfig ~ unverifiedConfig:", unverifiedConfig);
     return verifyObjectMatchesProto(dataform.ActionConfig.AssertionConfig, unverifiedConfig);
   }
 }

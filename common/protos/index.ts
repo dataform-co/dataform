@@ -67,11 +67,6 @@ export function verifyObjectMatchesProto<Proto>(
               `${REPORT_ISSUE_URL}.`
           );
         }
-        console.log("🚀 ~ Object.entries ~ desiredValue:", desiredValue);
-        console.log("🚀 ~ Object.entries ~ typeof desiredValue:", typeof desiredValue);
-        console.log("🚀 ~ Object.entries ~ typeof presentValue:", typeof presentValue);
-        console.log("🚀 ~ Object.entries ~ presentKey:", presentKey);
-        console.log("🚀 ~ Object.entries ~ presentValue:", presentValue);
         throw ReferenceError(
           `Unexpected property "${presentKey}", or property value type of ` +
             `"${typeof presentValue}" is incorrect.` +
