@@ -1,4 +1,4 @@
-import { verifyObjectMatchesProto } from "df/common/protos";
+import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { ActionBuilder } from "df/core/actions";
 import { ColumnDescriptors } from "df/core/column_descriptors";
 import {
@@ -276,7 +276,11 @@ export class Operation extends ActionBuilder<dataform.Operation> {
     const appliedQueries = context.apply(this.contextableQueries);
     this.proto.queries = typeof appliedQueries === "string" ? [appliedQueries] : appliedQueries;
 
-    return verifyObjectMatchesProto(dataform.Operation, this.proto);
+    return verifyObjectMatchesProto(
+      dataform.Operation,
+      this.proto,
+      VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM
+    );
   }
 }
 

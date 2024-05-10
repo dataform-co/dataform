@@ -443,7 +443,7 @@ quotes
       );
 
       expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
-        "Cannot find field: notAProjectConfigField in message"
+        `Workflow settings error: Unexpected property "notAProjectConfigField", or property value type of "string" is incorrect. See https://dataform-co.github.io/dataform/docs/configs-reference#dataform-WorkflowSettings for allowed properties.`
       );
     });
 
@@ -464,7 +464,7 @@ quotes
       );
 
       expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
-        "Cannot find field: notAProjectConfigField in message"
+        `Dataform json error: Unexpected property "notAProjectConfigField", or property value type of "string" is incorrect.`
       );
     });
 
@@ -922,7 +922,7 @@ actions:
       );
 
       expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
-        "Cannot find field: fileName in message, or value type is incorrect"
+        `Unexpected property "fileName", or property value type of "string" is incorrect. See https://dataform-co.github.io/dataform/docs/configs-reference#dataform-ActionConfigs for allowed properties.`
       );
     });
 
@@ -1143,7 +1143,7 @@ actions:
       );
 
       expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
-        "Cannot find field: materialized in message, or value type is incorrect"
+        `Unexpected property "materialized", or property value type of "boolean" is incorrect. See https://dataform-co.github.io/dataform/docs/configs-reference#dataform-ActionConfigs for allowed properties.`
       );
     });
 
