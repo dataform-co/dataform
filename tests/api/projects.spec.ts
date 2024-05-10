@@ -33,15 +33,18 @@ suite("examples", () => {
             },
             {
               fileName: "definitions/has_compile_errors/assertion_with_bigquery.sqlx",
-              message: "Cannot find field: bigquery in message, or value type is incorrect"
+              message:
+                'Unexpected property "bigquery", or property value type of "object" is incorrect.'
             },
             {
               fileName: "definitions/has_compile_errors/assertion_with_materialized.sqlx",
-              message: "Cannot find field: materialized in message, or value type is incorrect"
+              message:
+                'Unexpected property "materialized", or property value type of "boolean" is incorrect.'
             },
             {
               fileName: "definitions/has_compile_errors/assertion_with_output.sqlx",
-              message: "Cannot find field: hasOutput in message, or value type is incorrect"
+              message:
+                'Unexpected property "hasOutput", or property value type of "boolean" is incorrect.'
             },
             {
               fileName: "definitions/has_compile_errors/assertion_with_postops.sqlx",
@@ -58,7 +61,8 @@ suite("examples", () => {
             },
             {
               fileName: "definitions/has_compile_errors/protected_assertion.sqlx",
-              message: "Cannot find field: protected in message, or value type is incorrect"
+              message:
+                'Unexpected property "protected", or property value type of "boolean" is incorrect.'
             },
             {
               fileName: "definitions/has_compile_errors/view_with_incremental.sqlx",

@@ -1,6 +1,6 @@
 import { default as TarjanGraphConstructor, Graph as TarjanGraph } from "tarjan-graph";
 
-import { encode64, verifyObjectMatchesProto } from "df/common/protos";
+import { encode64, verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { StringifiedMap, StringifiedSet } from "df/common/strings/stringifier";
 import { Action } from "df/core/actions";
 import { AContextable, Assertion, AssertionContext } from "df/core/actions/assertion";
@@ -376,7 +376,11 @@ export class Session {
       )
     );
 
-    verifyObjectMatchesProto(dataform.CompiledGraph, compiledGraph);
+    verifyObjectMatchesProto(
+      dataform.CompiledGraph,
+      compiledGraph,
+      VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM
+    );
     return compiledGraph;
   }
 

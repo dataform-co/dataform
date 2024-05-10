@@ -1,4 +1,4 @@
-import { verifyObjectMatchesProto } from "df/common/protos";
+import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { ActionBuilder } from "df/core/actions";
 import { ICommonContext, Resolvable } from "df/core/common";
 import * as Path from "df/core/path";
@@ -182,14 +182,21 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
     this.proto.query = context.apply(this.contextableQuery);
     validateQueryString(this.session, this.proto.query, this.proto.fileName);
 
-    return verifyObjectMatchesProto(dataform.Assertion, this.proto);
+    return verifyObjectMatchesProto(
+      dataform.Assertion,
+      this.proto,
+      VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM
+    );
   }
 
   private verifyConfig(unverifiedConfig: any): dataform.ActionConfig.AssertionConfig {
     // This maintains backwards compatability with older versions.
     // TODO(ekrekr): break backwards compatability of these in v4.
     if (unverifiedConfig.dependencies) {
-      unverifiedConfig.dependencyTargets = unverifiedConfig.dependencies;
+      unverifiedConfig.dependencyTargets = unverifiedConfig.dependencies.map(
+        (dependency: string | object) =>
+          typeof dependency === "string" ? { name: dependency } : dependency
+      );
       delete unverifiedConfig.dependencies;
     }
     if (unverifiedConfig.database) {
@@ -211,6 +218,7 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
       delete unverifiedConfig.type;
     }
 
+    console.log("🚀 ~ Assertion ~ verifyConfig ~ unverifiedConfig:", unverifiedConfig);
     return verifyObjectMatchesProto(dataform.ActionConfig.AssertionConfig, unverifiedConfig);
   }
 }

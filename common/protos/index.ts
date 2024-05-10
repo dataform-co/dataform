@@ -1,6 +1,8 @@
 import { util } from "protobufjs";
 
-import { IStringifier } from "df/common/strings/stringifier";
+const CONFIGS_PROTO_DOCUMENTATION_URL =
+  "https://dataform-co.github.io/dataform/docs/configs-reference";
+const REPORT_ISSUE_URL = "https://github.com/dataform-co/dataform/issues";
 
 export interface IProtoClass<IProto, Proto> {
   new (): Proto;
@@ -12,6 +14,14 @@ export interface IProtoClass<IProto, Proto> {
 
   toObject(proto: Proto): { [k: string]: any };
   fromObject(obj: { [k: string]: any }): Proto;
+
+  getTypeUrl(prefix: string): string;
+}
+
+export enum VerifyProtoErrorBehaviour {
+  DEFAULT,
+  SUGGEST_REPORTING_TO_DATAFORM_TEAM,
+  SHOW_DOCS_LINK
 }
 
 // This is a minimalist Typescript equivalent for the validation part of Profobuf's JsonFormat's
@@ -24,7 +34,8 @@ export interface IProtoClass<IProto, Proto> {
 // meaning that the type of fields cannot be verified; an int can be confused with a string.
 export function verifyObjectMatchesProto<Proto>(
   protoType: IProtoClass<any, Proto>,
-  object: object
+  object: object,
+  errorBehaviour: VerifyProtoErrorBehaviour = VerifyProtoErrorBehaviour.DEFAULT
 ): Proto {
   if (Array.isArray(object)) {
     throw ReferenceError(`Expected a top-level object, but found an array`);
@@ -48,8 +59,29 @@ export function verifyObjectMatchesProto<Proto>(
           // Empty objects are assigned to empty object fields by ProtobufJS.
           return;
         }
+        if (errorBehaviour === VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM) {
+          throw ReferenceError(
+            `Unexpected property "${presentKey}" for "${protoType
+              .getTypeUrl("")
+              .replace("/", "")}", please report this to the Dataform team at ` +
+              `${REPORT_ISSUE_URL}.`
+          );
+        }
+        console.log("🚀 ~ Object.entries ~ desiredValue:", desiredValue);
+        console.log("🚀 ~ Object.entries ~ typeof desiredValue:", typeof desiredValue);
+        console.log("🚀 ~ Object.entries ~ typeof presentValue:", typeof presentValue);
+        console.log("🚀 ~ Object.entries ~ presentKey:", presentKey);
+        console.log("🚀 ~ Object.entries ~ presentValue:", presentValue);
         throw ReferenceError(
-          `Cannot find field: ${presentKey} in message, or value type is incorrect`
+          `Unexpected property "${presentKey}", or property value type of ` +
+            `"${typeof presentValue}" is incorrect.` +
+            (errorBehaviour === VerifyProtoErrorBehaviour.SHOW_DOCS_LINK
+              ? ` See ${CONFIGS_PROTO_DOCUMENTATION_URL}#${protoType
+                  .getTypeUrl("")
+                  // Clean up the proto type into its URL form.
+                  .replace(".", "-")
+                  .replace("/", "")} for allowed properties.`
+              : "")
         );
       }
       if (typeof presentValue === "object") {
