@@ -15,25 +15,28 @@ import { TmpDirFixture } from "df/testing/fixtures";
 const SOURCE_EXTENSIONS = ["js", "sql", "sqlx", "yaml", "ipynb"];
 
 const VALID_WORKFLOW_SETTINGS_YAML = `
-defaultProject: dataform
+defaultProject: defaultProject
+defaultDataset: defaultDataset
 defaultLocation: US
 `;
 
 const VALID_DATAFORM_JSON = `
 {
-  "defaultDatabase": "dataform"
+  "defaultDatabase": "defaultProject",
+  "defaultSchema": "defaultDataset",
+  "defaultLocation": "US"
 }
 `;
 
 class TestConfigs {
   public static bigquery = dataform.WorkflowSettings.create({
-    defaultDataset: "schema",
+    defaultDataset: "defaultDataset",
     defaultLocation: "US"
   });
 
-  public static bigqueryWithDefaultDatabase = dataform.WorkflowSettings.create({
+  public static bigqueryWithDefaultProject = dataform.WorkflowSettings.create({
     ...TestConfigs.bigquery,
-    defaultProject: "default-database"
+    defaultProject: "defaultProject"
   });
 
   public static bigqueryWithDatasetSuffix = dataform.WorkflowSettings.create({
@@ -42,7 +45,7 @@ class TestConfigs {
   });
 
   public static bigqueryWithDefaultProjectAndDataset = dataform.WorkflowSettings.create({
-    ...TestConfigs.bigqueryWithDefaultDatabase,
+    ...TestConfigs.bigqueryWithDefaultProject,
     projectSuffix: "suffix"
   });
 
@@ -80,7 +83,7 @@ suite("@dataform/core", ({ afterEach }) => {
           const prefix = testConfig.namePrefix ? `${testConfig.namePrefix}_` : "";
           expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
           expect(result.compile.compiledGraph.operations[0].queries[0]).deep.equals(
-            `\`schema${suffix}.${prefix}e\``
+            `\`defaultDataset${suffix}.${prefix}e\``
           );
         });
       });
@@ -106,8 +109,8 @@ suite("@dataform/core", ({ afterEach }) => {
     suite("context methods", () => {
       [
         TestConfigs.bigqueryWithDefaultProjectAndDataset,
-        { ...TestConfigs.bigqueryWithDatasetSuffix, defaultProject: "default-database" },
-        { ...TestConfigs.bigqueryWithNamePrefix, defaultProject: "default-database" }
+        { ...TestConfigs.bigqueryWithDatasetSuffix, defaultProject: "defaultProject" },
+        { ...TestConfigs.bigqueryWithNamePrefix, defaultProject: "defaultProject" }
       ].forEach(testConfig => {
         test(
           `assertions target context functions with project suffix '${testConfig.projectSuffix}', ` +
@@ -130,8 +133,8 @@ suite("@dataform/core", ({ afterEach }) => {
               asPlainObject(result.compile.compiledGraph.graphErrors.compilationErrors)
             ).deep.equals([]);
             expect(asPlainObject(result.compile.compiledGraph.assertions[0].query)).deep.equals(
-              `default-database${testConfig.projectSuffix ? `_suffix` : ""}.` +
-                `schema${testConfig.datasetSuffix ? `_suffix` : ""}.` +
+              `defaultProject${testConfig.projectSuffix ? `_suffix` : ""}.` +
+                `defaultDataset${testConfig.datasetSuffix ? `_suffix` : ""}.` +
                 `${testConfig.namePrefix ? `prefix_` : ""}name`
             );
           }
@@ -213,9 +216,7 @@ actions:
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
-      expect(asPlainObject(result.compile.compiledGraph.graphErrors.compilationErrors)).deep.equals(
-        []
-      );
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(asPlainObject(result.compile.compiledGraph.tables[0].disabled)).equals(true);
       expect(asPlainObject(result.compile.compiledGraph.operations[0].disabled)).equals(false);
       expect(asPlainObject(result.compile.compiledGraph.assertions[0].disabled)).equals(true);
@@ -254,9 +255,7 @@ SELECT \${a}`
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
-      expect(asPlainObject(result.compile.compiledGraph.graphErrors.compilationErrors)).deep.equals(
-        []
-      );
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(result.compile.compiledGraph.tables[0].query).equals(`
 
 
@@ -290,9 +289,7 @@ from \`location\``;
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
-      expect(asPlainObject(result.compile.compiledGraph.graphErrors.compilationErrors)).deep.equals(
-        []
-      );
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(result.compile.compiledGraph.operations[0].queries[0]).equals(fileContents);
     });
 
@@ -316,9 +313,7 @@ from \`location\``;
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
-      expect(asPlainObject(result.compile.compiledGraph.graphErrors.compilationErrors)).deep.equals(
-        []
-      );
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(result.compile.compiledGraph.tables[0].query.trim()).equals(sqlContents);
       expect(result.compile.compiledGraph.tables[0].preOps[0].trim()).equals(sqlContents);
     });
@@ -352,9 +347,7 @@ quotes
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
-      expect(asPlainObject(result.compile.compiledGraph.graphErrors.compilationErrors)).deep.equals(
-        []
-      );
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(result.compile.compiledGraph.tables[0].query.trim()).equals(sqlContents);
       expect(result.compile.compiledGraph.tables[0].postOps[0].trim()).equals(sqlContents);
     });
@@ -370,15 +363,14 @@ quotes
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(asPlainObject(result.compile.compiledGraph.projectConfig)).deep.equals(
         asPlainObject({
           warehouse: "bigquery",
-          defaultDatabase: "dataform",
+          defaultDatabase: "defaultProject",
+          defaultSchema: "defaultDataset",
           defaultLocation: "US"
         })
-      );
-      expect(asPlainObject(result.compile.compiledGraph.graphErrors.compilationErrors)).deep.equals(
-        []
       );
     });
 
@@ -389,9 +381,12 @@ quotes
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(asPlainObject(result.compile.compiledGraph.projectConfig)).deep.equals(
         asPlainObject({
-          defaultDatabase: "dataform"
+          defaultDatabase: "defaultProject",
+          defaultLocation: "US",
+          defaultSchema: "defaultDataset"
         })
       );
     });
@@ -473,7 +468,7 @@ quotes
       fs.writeFileSync(
         path.join(projectDir, "workflow_settings.yaml"),
         `
-defaultProject: dataform
+defaultProject: defaultProject
 defaultLocation: locationInWorkflowSettings
 vars:
   selectVar: selectVal
@@ -506,12 +501,13 @@ select 1 AS \${dataform.projectConfig.vars.selectVar}`
 
       const result = runMainInVm(coreExecutionRequest);
 
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(asPlainObject(result.compile.compiledGraph)).deep.equals(
         asPlainObject({
           dataformCoreVersion: version,
           graphErrors: {},
           projectConfig: {
-            defaultDatabase: "dataform",
+            defaultDatabase: "defaultProject",
             defaultLocation: "locationInOverride",
             vars: {
               projectVar: "projectVal",
@@ -567,15 +563,18 @@ defaultProject: dataform`
           path.join(projectDir, "workflow_settings.yaml"),
           `
 dataformCoreVersion: ${version}
-defaultProject: dataform`
+defaultProject: project
+defaultLocation: US`
         );
 
         const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
+        expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
         expect(asPlainObject(result.compile.compiledGraph.projectConfig)).deep.equals(
           asPlainObject({
             warehouse: "bigquery",
-            defaultDatabase: "dataform"
+            defaultDatabase: "project",
+            defaultLocation: "US"
           })
         );
       });
@@ -652,6 +651,7 @@ select 1 AS \${dataform.projectConfig.vars.columnVar}`
 
         const result = runMainInVm(coreExecutionRequest);
 
+        expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
         expect(asPlainObject(result.compile.compiledGraph)).deep.equals(
           asPlainObject({
             assertions: [
@@ -754,15 +754,18 @@ actions:
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(asPlainObject(result.compile.compiledGraph.notebooks)).deep.equals(
         asPlainObject([
           {
             target: {
-              database: "dataform",
+              database: "defaultProject",
+              schema: "defaultDataset",
               name: "notebook"
             },
             canonicalTarget: {
-              database: "dataform",
+              database: "defaultProject",
+              schema: "defaultDataset",
               name: "notebook"
             },
             fileName: "definitions/notebook.ipynb",
@@ -787,11 +790,18 @@ actions:
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(asPlainObject(result.compile.compiledGraph.notebooks)).deep.equals(
         asPlainObject([
           {
+            target: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "notebook"
+            },
             canonicalTarget: {
-              database: "dataform",
+              database: "defaultProject",
+              schema: "defaultDataset",
               name: "notebook"
             },
             fileName: "definitions/notebook.ipynb",
@@ -801,11 +811,7 @@ actions:
                 { cell_type: "code", source: ["print('hi')"], outputs: [] },
                 { cell_type: "raw", source: ["print('hi')"] }
               ]
-            }),
-            target: {
-              database: "dataform",
-              name: "notebook"
-            }
+            })
           }
         ])
       );
@@ -824,6 +830,7 @@ defaultNotebookRuntimeOptions:
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(asPlainObject(result.compile.compiledGraph.projectConfig)).deep.equals({
         defaultDatabase: "dataform",
         defaultLocation: "US",
@@ -854,19 +861,22 @@ actions:
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(asPlainObject(result.compile.compiledGraph.operations)).deep.equals(
         asPlainObject([
           {
+            target: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "action"
+            },
             canonicalTarget: {
-              database: "dataform",
+              database: "defaultProject",
+              schema: "defaultDataset",
               name: "action"
             },
             fileName: "definitions/action.sql",
-            queries: ["SELECT 1"],
-            target: {
-              database: "dataform",
-              name: "action"
-            }
+            queries: ["SELECT 1"]
           }
         ])
       );
@@ -889,15 +899,18 @@ actions:
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(asPlainObject(result.compile.compiledGraph.declarations)).deep.equals(
         asPlainObject([
           {
-            canonicalTarget: {
-              database: "dataform",
+            target: {
+              database: "defaultProject",
+              schema: "defaultDataset",
               name: "action"
             },
-            target: {
-              database: "dataform",
+            canonicalTarget: {
+              database: "defaultProject",
+              schema: "defaultDataset",
               name: "action"
             }
           }
@@ -964,19 +977,22 @@ actions:
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals(
         asPlainObject([
           {
+            target: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "action"
+            },
             canonicalTarget: {
-              database: "dataform",
+              database: "defaultProject",
+              schema: "defaultDataset",
               name: "action"
             },
             fileName: "definitions/action.sql",
             query: "SELECT 1",
-            target: {
-              database: "dataform",
-              name: "action"
-            },
             type: "table",
             enumType: "TABLE",
             disabled: false
@@ -1007,20 +1023,23 @@ actions:
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals(
         asPlainObject([
           {
+            target: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "action"
+            },
             canonicalTarget: {
-              database: "dataform",
+              database: "defaultProject",
+              schema: "defaultDataset",
               name: "action"
             },
             fileName: "definitions/action.sql",
             query: "SELECT 1",
             incrementalQuery: "SELECT 1",
-            target: {
-              database: "dataform",
-              name: "action"
-            },
             type: "incremental",
             enumType: "INCREMENTAL",
             protected: true,
@@ -1049,19 +1068,22 @@ actions:
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals(
         asPlainObject([
           {
+            target: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "action"
+            },
             canonicalTarget: {
-              database: "dataform",
+              database: "defaultProject",
+              schema: "defaultDataset",
               name: "action"
             },
             fileName: "definitions/action.sql",
             query: "SELECT 1",
-            target: {
-              database: "dataform",
-              name: "action"
-            },
             type: "view",
             enumType: "VIEW",
             disabled: false
@@ -1088,19 +1110,20 @@ actions:
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals(
         asPlainObject([
           {
+            target: {
+              database: "defaultProject",
+              name: "action"
+            },
             canonicalTarget: {
-              database: "dataform",
+              database: "defaultProject",
               name: "action"
             },
             fileName: "definitions/action.sql",
-            query: "SELECT 1",
-            target: {
-              database: "dataform",
-              name: "action"
-            }
+            query: "SELECT 1"
           }
         ])
       );
@@ -1168,19 +1191,22 @@ actions:
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(asPlainObject(result.compile.compiledGraph.operations)).deep.equals(
         asPlainObject([
           {
+            target: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "utf8characters:私🙂 and some spaces"
+            },
             canonicalTarget: {
-              database: "dataform",
+              database: "defaultProject",
+              schema: "defaultDataset",
               name: "utf8characters:私🙂 and some spaces"
             },
             fileName: "definitions/utf8characters:私🙂 and some spaces.sql",
-            queries: ["SELECT 1"],
-            target: {
-              database: "dataform",
-              name: "utf8characters:私🙂 and some spaces"
-            }
+            queries: ["SELECT 1"]
           }
         ])
       );
@@ -1325,23 +1351,27 @@ SELECT 1`
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
-      expect(asPlainObject(result.compile.compiledGraph.graphErrors.compilationErrors)).deep.equals(
-        []
-      );
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals(
         asPlainObject([
           {
-            actionDescriptor: {
-              description: "description"
+            target: {
+              database: "project",
+              schema: "dataset",
+              name: "name"
             },
             canonicalTarget: {
               database: "project",
               schema: "dataset",
               name: "name"
             },
+            actionDescriptor: {
+              description: "description"
+            },
             dependencyTargets: [
               {
-                database: "dataform",
+                database: "defaultProject",
+                schema: "defaultDataset",
                 name: "operation"
               }
             ],
@@ -1349,12 +1379,7 @@ SELECT 1`
             fileName: "definitions/assertion.sqlx",
             hermeticity: "HERMETIC",
             tags: ["tagA", "tagB"],
-            query: "\n\nSELECT 1",
-            target: {
-              database: "project",
-              schema: "dataset",
-              name: "name"
-            }
+            query: "\n\nSELECT 1"
           }
         ])
       );
@@ -1382,23 +1407,21 @@ ${exampleActionDescriptor.inputSqlxConfigBlock}
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
-      expect(asPlainObject(result.compile.compiledGraph.graphErrors.compilationErrors)).deep.equals(
-        []
-      );
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(asPlainObject(result.compile.compiledGraph.declarations)).deep.equals(
         asPlainObject([
           {
+            target: {
+              database: "project",
+              schema: "dataset",
+              name: "name"
+            },
             canonicalTarget: {
               database: "project",
               schema: "dataset",
               name: "name"
             },
             fileName: "definitions/assertion.sqlx",
-            target: {
-              database: "project",
-              schema: "dataset",
-              name: "name"
-            },
             actionDescriptor: exampleActionDescriptor.outputActionDescriptor
           }
         ])
@@ -1438,13 +1461,13 @@ config {
   uniqueKey: ["key1", "key2"],
   dependencies: ["operation"],
   hermetic: true,
-  schema: "schema",
+  schema: "dataset",
   assertions: {
     uniqueKeys: [["uniqueKey1", "uniqueKey2"]],
     nonNull: "nonNull",
     rowConditions: ["rowConditions1", "rowConditions2"],
   },
-  database: "database",
+  database: "project",
 ${exampleActionDescriptor.inputSqlxConfigBlock}
   description: "description",
   materialized: false
@@ -1454,26 +1477,24 @@ SELECT 1`
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
-      expect(asPlainObject(result.compile.compiledGraph.graphErrors.compilationErrors)).deep.equals(
-        []
-      );
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals([
         {
+          target: {
+            database: "project",
+            schema: "dataset",
+            name: "name"
+          },
+          canonicalTarget: {
+            database: "project",
+            schema: "dataset",
+            name: "name"
+          },
           type: "incremental",
           disabled: true,
           // TODO(ekrekr): finish fixing this in https://github.com/dataform-co/dataform/pull/1718.
           // protected: false,
           hermeticity: "HERMETIC",
-          target: {
-            database: "database",
-            name: "name",
-            schema: "schema"
-          },
-          canonicalTarget: {
-            database: "database",
-            name: "name",
-            schema: "schema"
-          },
           bigquery: {
             additionalOptions: {
               option1Key: "option1",
@@ -1492,7 +1513,8 @@ SELECT 1`
           uniqueKey: ["key1", "key2"],
           dependencyTargets: [
             {
-              database: "dataform",
+              database: "defaultProject",
+              schema: "defaultDataset",
               name: "operation"
             }
           ],
@@ -1512,56 +1534,60 @@ SELECT 1`
       expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals([
         {
           target: {
-            database: "dataform",
-            name: "schema_name_assertions_uniqueKey_0"
+            database: "defaultProject",
+            schema: "defaultDataset",
+            name: "dataset_name_assertions_uniqueKey_0"
           },
           canonicalTarget: {
-            database: "dataform",
-            name: "schema_name_assertions_uniqueKey_0"
+            database: "defaultProject",
+            schema: "defaultDataset",
+            name: "dataset_name_assertions_uniqueKey_0"
           },
           dependencyTargets: [
             {
-              database: "database",
-              name: "name",
-              schema: "schema"
+              database: "project",
+              schema: "dataset",
+              name: "name"
             }
           ],
           disabled: true,
           fileName: "definitions/incremental_table.sqlx",
           parentAction: {
-            database: "database",
-            name: "name",
-            schema: "schema"
+            database: "project",
+            schema: "dataset",
+            name: "name"
           },
           query:
-            "\nSELECT\n  *\nFROM (\n  SELECT\n    uniqueKey1, uniqueKey2,\n    COUNT(1) AS index_row_count\n  FROM `database.schema.name`\n  GROUP BY uniqueKey1, uniqueKey2\n  ) AS data\nWHERE index_row_count > 1\n",
+            "\nSELECT\n  *\nFROM (\n  SELECT\n    uniqueKey1, uniqueKey2,\n    COUNT(1) AS index_row_count\n  FROM `project.dataset.name`\n  GROUP BY uniqueKey1, uniqueKey2\n  ) AS data\nWHERE index_row_count > 1\n",
           tags: ["tag1", "tag2"]
         },
         {
           target: {
-            database: "dataform",
-            name: "schema_name_assertions_rowConditions"
+            database: "defaultProject",
+            schema: "defaultDataset",
+            name: "dataset_name_assertions_rowConditions"
           },
           canonicalTarget: {
-            database: "dataform",
-            name: "schema_name_assertions_rowConditions"
+            database: "defaultProject",
+            schema: "defaultDataset",
+            name: "dataset_name_assertions_rowConditions"
           },
           dependencyTargets: [
             {
-              database: "database",
-              name: "name",
-              schema: "schema"
+              database: "project",
+              schema: "dataset",
+              name: "name"
             }
           ],
           disabled: true,
           fileName: "definitions/incremental_table.sqlx",
           parentAction: {
-            database: "database",
-            name: "name",
-            schema: "schema"
+            database: "project",
+            schema: "dataset",
+            name: "name"
           },
           query:
-            "\nSELECT\n  'rowConditions1' AS failing_row_condition,\n  *\nFROM `database.schema.name`\nWHERE NOT (rowConditions1)\nUNION ALL\nSELECT\n  'rowConditions2' AS failing_row_condition,\n  *\nFROM `database.schema.name`\nWHERE NOT (rowConditions2)\nUNION ALL\nSELECT\n  'nonNull IS NOT NULL' AS failing_row_condition,\n  *\nFROM `database.schema.name`\nWHERE NOT (nonNull IS NOT NULL)\n",
+            "\nSELECT\n  'rowConditions1' AS failing_row_condition,\n  *\nFROM `project.dataset.name`\nWHERE NOT (rowConditions1)\nUNION ALL\nSELECT\n  'rowConditions2' AS failing_row_condition,\n  *\nFROM `project.dataset.name`\nWHERE NOT (rowConditions2)\nUNION ALL\nSELECT\n  'nonNull IS NOT NULL' AS failing_row_condition,\n  *\nFROM `project.dataset.name`\nWHERE NOT (nonNull IS NOT NULL)\n",
           tags: ["tag1", "tag2"]
         }
       ]);
@@ -1583,7 +1609,7 @@ SELECT 1`
         `
 config {
   type: "operations",
-  name: "operation",
+  name: "name",
   schema: "dataset",
   database: "project",
   dependencies: ["table"],
@@ -1600,20 +1626,24 @@ SELECT 1`
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
-      expect(asPlainObject(result.compile.compiledGraph.graphErrors.compilationErrors)).deep.equals(
-        []
-      );
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(asPlainObject(result.compile.compiledGraph.operations)).deep.equals(
         asPlainObject([
           {
+            target: {
+              database: "project",
+              schema: "dataset",
+              name: "name"
+            },
             canonicalTarget: {
               database: "project",
               schema: "dataset",
-              name: "operation"
+              name: "name"
             },
             dependencyTargets: [
               {
-                database: "dataform",
+                database: "defaultProject",
+                schema: "defaultDataset",
                 name: "table"
               }
             ],
@@ -1623,11 +1653,6 @@ SELECT 1`
             hasOutput: true,
             tags: ["tagA", "tagB"],
             queries: ["\n\nSELECT 1"],
-            target: {
-              database: "project",
-              schema: "dataset",
-              name: "operation"
-            },
             actionDescriptor: exampleActionDescriptor.outputActionDescriptor
           }
         ])
@@ -1661,7 +1686,7 @@ config {
           path.join(projectDir, "definitions/A_assert.sqlx"),
           `
 config {
-    type: "assertion",
+  type: "assertion",
 }
 select test from \${ref("A")} where test > 3`
         );
@@ -1678,9 +1703,9 @@ select test from \${ref("A")} where test > 3`
           path.join(projectDir, "definitions/B.sqlx"),
           `
 config {
-    type: "table",
-    dependOnDependencyAssertions: true,
-    dependencies: ["A"]
+  type: "table",
+  dependOnDependencyAssertions: true,
+  dependencies: ["A"]
 }
 select 1 as btest
 `
@@ -1704,7 +1729,7 @@ select 1 as btest
           )
         ).deep.equals([
           prefixAdjustedName(testConfig.namePrefix, "A"),
-          prefixAdjustedName(testConfig.namePrefix, "schema_A_assertions_rowConditions"),
+          prefixAdjustedName(testConfig.namePrefix, "defaultDataset_A_assertions_rowConditions"),
           prefixAdjustedName(testConfig.namePrefix, "A_assert")
         ]);
       });
@@ -1723,16 +1748,16 @@ select 1 as btest`
           path.join(projectDir, "definitions/C.sqlx"),
           `
 config {
-type: "table",
+  type: "table",
   assertions: {
     rowConditions: ["test > 1"]
+  }
 }
-}
-SELECT 1 as test
-}`
+SELECT 1 as test`
         );
 
         const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
         expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
         expect(
           asPlainObject(
@@ -1749,7 +1774,7 @@ SELECT 1 as test
           )
         ).deep.equals([
           prefixAdjustedName(testConfig.namePrefix, "A"),
-          prefixAdjustedName(testConfig.namePrefix, "schema_A_assertions_rowConditions"),
+          prefixAdjustedName(testConfig.namePrefix, "defaultDataset_A_assertions_rowConditions"),
           prefixAdjustedName(testConfig.namePrefix, "A_assert"),
           prefixAdjustedName(testConfig.namePrefix, "C")
         ]);
@@ -1779,6 +1804,7 @@ SELECT 1 as test`
         );
 
         const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
         expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
         expect(
           asPlainObject(
@@ -1796,7 +1822,7 @@ SELECT 1 as test`
         ).deep.equals([
           prefixAdjustedName(testConfig.namePrefix, "A"),
           prefixAdjustedName(testConfig.namePrefix, "C"),
-          prefixAdjustedName(testConfig.namePrefix, "schema_C_assertions_rowConditions")
+          prefixAdjustedName(testConfig.namePrefix, "defaultDataset_C_assertions_rowConditions")
         ]);
       });
 
@@ -1825,6 +1851,7 @@ SELECT 1 as test`
         );
 
         const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
         expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
         expect(
           asPlainObject(
@@ -1841,7 +1868,7 @@ SELECT 1 as test`
           )
         ).deep.equals([
           prefixAdjustedName(testConfig.namePrefix, "A"),
-          prefixAdjustedName(testConfig.namePrefix, "schema_A_assertions_rowConditions"),
+          prefixAdjustedName(testConfig.namePrefix, "defaultDataset_A_assertions_rowConditions"),
           prefixAdjustedName(testConfig.namePrefix, "A_assert"),
           prefixAdjustedName(testConfig.namePrefix, "C")
         ]);
@@ -1872,6 +1899,7 @@ SELECT 1 as test`
         );
 
         const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
         expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
         expect(
           asPlainObject(
@@ -1892,7 +1920,7 @@ SELECT 1 as test`
         ).deep.equals([
           prefixAdjustedName(testConfig.namePrefix, "A"),
           prefixAdjustedName(testConfig.namePrefix, "C"),
-          prefixAdjustedName(testConfig.namePrefix, "schema_C_assertions_rowConditions")
+          prefixAdjustedName(testConfig.namePrefix, "defaultDataset_C_assertions_rowConditions")
         ]);
       });
 
@@ -1927,7 +1955,7 @@ select 1 as btest`
         ).deep.equals([
           prefixAdjustedName(testConfig.namePrefix, "A_assert"),
           prefixAdjustedName(testConfig.namePrefix, "A"),
-          prefixAdjustedName(testConfig.namePrefix, "schema_A_assertions_rowConditions")
+          prefixAdjustedName(testConfig.namePrefix, "defaultDataset_A_assertions_rowConditions")
         ]);
       });
 
@@ -1957,6 +1985,7 @@ SELECT 1 as test
         );
 
         const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
         expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).deep.equals(2);
         expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).deep.equals(
           `Conflicting "includeDependentAssertions" properties are not allowed. Dependency A has different values set for this property.`
@@ -2039,6 +2068,7 @@ actions:
 
           const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
+          expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
           expect(
             asPlainObject(
               result.compile.compiledGraph.operations.find(
@@ -2062,7 +2092,6 @@ actions:
               ).dependencyTargets.length
             )
           ).deep.equals(3);
-          expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
         });
 
         test(`When dependOnDependencyAssertions=true and includeDependentAssertions=false, the assertions related to dependency should not be added to dependencyTargets`, () => {
@@ -2099,6 +2128,7 @@ actions:
 
           const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
+          expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
           expect(
             asPlainObject(
               result.compile.compiledGraph.operations.find(
@@ -2122,7 +2152,6 @@ actions:
               ).dependencyTargets.length
             )
           ).deep.equals(3);
-          expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
         });
 
         test(`When dependOnDependencyAssertions=false and includeDependentAssertions=true, the assertions related to dependency should be added to dependencyTargets`, () => {
@@ -2160,6 +2189,7 @@ actions:
 
           const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
+          expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
           expect(
             asPlainObject(
               result.compile.compiledGraph.operations.find(
@@ -2183,7 +2213,6 @@ actions:
               ).dependencyTargets.length
             )
           ).deep.equals(4);
-          expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
         });
 
         test(`When includeDependentAssertions property in config and ref are set differently for the same dependency, compilation error is thrown.`, () => {
