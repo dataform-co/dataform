@@ -192,6 +192,6 @@ function loadActionConfigsFile(
   } catch (e) {
     session.compileError(e, actionConfigsPath);
   }
-  verifyObjectMatchesProto(dataform.ActionConfigs, actionConfigsAsJson);
+  verifyObjectMatchesProto(dataform.ActionConfigs, actionConfigsAsJson, { showDocsLink: true });
   return dataform.ActionConfigs.fromObject(actionConfigsAsJson);
 }

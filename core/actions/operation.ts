@@ -276,7 +276,9 @@ export class Operation extends ActionBuilder<dataform.Operation> {
     const appliedQueries = context.apply(this.contextableQueries);
     this.proto.queries = typeof appliedQueries === "string" ? [appliedQueries] : appliedQueries;
 
-    return verifyObjectMatchesProto(dataform.Operation, this.proto, true);
+    return verifyObjectMatchesProto(dataform.Operation, this.proto, {
+      suggestReportToDataformTeam: true
+    });
   }
 }
 

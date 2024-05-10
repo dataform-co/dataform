@@ -29,8 +29,7 @@ export interface IProtoClass<IProto, Proto> {
 export function verifyObjectMatchesProto<Proto>(
   protoType: IProtoClass<any, Proto>,
   object: object,
-  suggestReportToDataformTeam: boolean = false,
-  showDocsLink: boolean = true
+  options?: { suggestReportToDataformTeam?: boolean; showDocsLink?: boolean }
 ): Proto {
   if (Array.isArray(object)) {
     throw ReferenceError(`Expected a top-level object, but found an array`);
@@ -54,7 +53,7 @@ export function verifyObjectMatchesProto<Proto>(
           // Empty objects are assigned to empty object fields by ProtobufJS.
           return;
         }
-        if (suggestReportToDataformTeam) {
+        if (options?.suggestReportToDataformTeam) {
           throw ReferenceError(
             `Unexpected property "${presentKey}" for "${protoType
               .getTypeUrl("")
@@ -65,7 +64,7 @@ export function verifyObjectMatchesProto<Proto>(
         throw ReferenceError(
           `Unexpected property "${presentKey}", or property value type of ` +
             `"${typeof presentValue}" is incorrect.` +
-            (showDocsLink
+            (options?.showDocsLink
               ? ` See ${CONFIGS_PROTO_DOCUMENTATION_URL}#${protoType
                   .getTypeUrl("")
                   // Clean up the proto type into its URL form.

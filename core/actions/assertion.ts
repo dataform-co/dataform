@@ -239,7 +239,9 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
     this.proto.query = context.apply(this.contextableQuery);
     validateQueryString(this.session, this.proto.query, this.proto.fileName);
 
-    return verifyObjectMatchesProto(dataform.Assertion, this.proto, true);
+    return verifyObjectMatchesProto(dataform.Assertion, this.proto, {
+      suggestReportToDataformTeam: true
+    });
   }
 }
 

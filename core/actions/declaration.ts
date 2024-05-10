@@ -108,7 +108,8 @@ export class Declaration extends ActionBuilder<dataform.Declaration> {
   }
 
   public compile() {
-    // ProtobufJS isn't strict with the fields available on protos, so we validate this here.
-    return verifyObjectMatchesProto(dataform.Declaration, this.proto, true);
+    return verifyObjectMatchesProto(dataform.Declaration, this.proto, {
+      suggestReportToDataformTeam: true
+    });
   }
 }

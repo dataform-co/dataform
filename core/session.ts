@@ -374,7 +374,9 @@ export class Session {
       )
     );
 
-    verifyObjectMatchesProto(dataform.CompiledGraph, compiledGraph, true);
+    verifyObjectMatchesProto(dataform.CompiledGraph, compiledGraph, {
+      suggestReportToDataformTeam: true
+    });
     return compiledGraph;
   }
 

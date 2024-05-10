@@ -96,7 +96,9 @@ export class Notebook extends ActionBuilder<dataform.Notebook> {
   }
 
   public compile() {
-    return verifyObjectMatchesProto(dataform.Notebook, this.proto, true);
+    return verifyObjectMatchesProto(dataform.Notebook, this.proto, {
+      suggestReportToDataformTeam: true
+    });
   }
 }
 

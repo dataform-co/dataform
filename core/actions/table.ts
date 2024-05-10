@@ -740,7 +740,9 @@ export class Table extends ActionBuilder<dataform.Table> {
     validateQueryString(this.session, this.proto.query, this.proto.fileName);
     validateQueryString(this.session, this.proto.incrementalQuery, this.proto.fileName);
 
-    return verifyObjectMatchesProto(dataform.Table, this.proto, true);
+    return verifyObjectMatchesProto(dataform.Table, this.proto, {
+      suggestReportToDataformTeam: true
+    });
   }
 
   private contextifyOps(
