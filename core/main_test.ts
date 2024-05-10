@@ -1260,14 +1260,51 @@ actions:
     });
   });
 
-  suite("sqlx", () => {
-    test(`assertions can be loaded`, () => {
+  suite("sqlx simple config checks for", () => {
+    const exampleActionDescriptor = {
+      inputSqlxConfigBlock: `
+  columns: {
+    column1Key: "column1Val",
+    column2Key: {
+      description: "description",
+      columns: {
+        nestedColumnKey: "nestedColumnVal"
+      },
+      displayName: "displayName",
+      tags: ["tag3", "tag4"],
+      bigqueryPolicyTags: ["bigqueryPolicyTag1", "bigqueryPolicyTag2"],
+    }
+  },`,
+      outputActionDescriptor: {
+        columns: [
+          {
+            description: "column1Val",
+            path: ["column1Key"]
+          },
+          {
+            bigqueryPolicyTags: ["bigqueryPolicyTag1", "bigqueryPolicyTag2"],
+            description: "description",
+            displayName: "displayName",
+            path: ["column2Key"],
+            tags: ["tag3", "tag4"]
+          },
+          {
+            description: "nestedColumnVal",
+            path: ["column2Key", "nestedColumnKey"]
+          }
+        ],
+        description: "description"
+      }
+    };
+
+    test(`assertions`, () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
       fs.writeFileSync(
         path.join(projectDir, "workflow_settings.yaml"),
         VALID_WORKFLOW_SETTINGS_YAML
       );
       fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(path.join(projectDir, "definitions/operation.sqlx"), "SELECT 1");
       fs.writeFileSync(
         path.join(projectDir, "definitions/assertion.sqlx"),
         `
@@ -1276,7 +1313,7 @@ config {
   name: "name",
   schema: "dataset",
   database: "project",
-  dependencyTargets: [{name: "nameA", dataset: "datasetA", project: "projectA"}],
+  dependencies: ["operation"],
   tags: ["tagA", "tagB"],
   disabled: true,
   description: "description",
@@ -1288,6 +1325,9 @@ SELECT 1`
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
+      expect(asPlainObject(result.compile.compiledGraph.graphErrors.compilationErrors)).deep.equals(
+        []
+      );
       expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals(
         asPlainObject([
           {
@@ -1299,6 +1339,12 @@ SELECT 1`
               schema: "dataset",
               name: "name"
             },
+            dependencyTargets: [
+              {
+                database: "dataform",
+                name: "operation"
+              }
+            ],
             disabled: true,
             fileName: "definitions/assertion.sqlx",
             hermeticity: "HERMETIC",
@@ -1313,7 +1359,53 @@ SELECT 1`
         ])
       );
     });
-    test("Incremental tables can be loaded", () => {
+
+    test(`declarations`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/assertion.sqlx"),
+        `
+config {
+  type: "declaration",
+  name: "name",
+  schema: "dataset",
+  database: "project",
+  description: "description",
+${exampleActionDescriptor.inputSqlxConfigBlock}
+}`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(asPlainObject(result.compile.compiledGraph.graphErrors.compilationErrors)).deep.equals(
+        []
+      );
+      expect(asPlainObject(result.compile.compiledGraph.declarations)).deep.equals(
+        asPlainObject([
+          {
+            canonicalTarget: {
+              database: "project",
+              schema: "dataset",
+              name: "name"
+            },
+            fileName: "definitions/assertion.sqlx",
+            target: {
+              database: "project",
+              schema: "dataset",
+              name: "name"
+            },
+            actionDescriptor: exampleActionDescriptor.outputActionDescriptor
+          }
+        ])
+      );
+    });
+
+    test("incremental tables", () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
       fs.writeFileSync(
         path.join(projectDir, "workflow_settings.yaml"),
@@ -1325,47 +1417,36 @@ SELECT 1`
         path.join(projectDir, "definitions/incremental_table.sqlx"),
         `
 config {
-type: "incremental",
-disabled: true,
-protected: false,
-name: "name",
-bigquery: {
-  partitionBy: "partitionBy",
-  clusterBy: ["clusterBy"],
-  updatePartitionFilter: "updatePartitionFilter",
-  labels: {"key": "val"},
-  partitionExpirationDays: 1,
-  requirePartitionFilter: true,
-  additionalOptions: {
-    option1Key: "option1",
-    option2Key: "option2",
-  }
-},
-tags: ["tag1", "tag2"],
-uniqueKey: ["key1", "key2"],
-dependencies: ["operation"],
-hermetic: true,
-schema: "schema",
-assertions: {
-  uniqueKeys: [["uniqueKey1", "uniqueKey2"]],
-  nonNull: "nonNull",
-  rowConditions: ["rowConditions1", "rowConditions2"],
-},
-database: "database",
-columns: {
-  column1Key: "column1Val",
-  column2Key: {
-    description: "description",
-    columns: {
-      nestedColumnKey: "nestedColumnVal"
-    },
-    displayName: "displayName",
-    tags: ["tag3", "tag4"],
-    bigqueryPolicyTags: ["bigqueryPolicyTag1", "bigqueryPolicyTag2"],
-  }
-},
-description: "description",
-materialized: false
+  type: "incremental",
+  disabled: true,
+  protected: false,
+  name: "name",
+  bigquery: {
+    partitionBy: "partitionBy",
+    clusterBy: ["clusterBy"],
+    updatePartitionFilter: "updatePartitionFilter",
+    labels: {"key": "val"},
+    partitionExpirationDays: 1,
+    requirePartitionFilter: true,
+    additionalOptions: {
+      option1Key: "option1",
+      option2Key: "option2",
+    }
+  },
+  tags: ["tag1", "tag2"],
+  uniqueKey: ["key1", "key2"],
+  dependencies: ["operation"],
+  hermetic: true,
+  schema: "schema",
+  assertions: {
+    uniqueKeys: [["uniqueKey1", "uniqueKey2"]],
+    nonNull: "nonNull",
+    rowConditions: ["rowConditions1", "rowConditions2"],
+  },
+  database: "database",
+${exampleActionDescriptor.inputSqlxConfigBlock}
+  description: "description",
+  materialized: false
 }
 SELECT 1`
       );
@@ -1414,33 +1495,17 @@ SELECT 1`
               name: "operation"
             }
           ],
-          actionDescriptor: {
-            bigqueryLabels: {
-              key: "val"
-            },
-            columns: [
-              {
-                description: "column1Val",
-                path: ["column1Key"]
-              },
-              {
-                bigqueryPolicyTags: ["bigqueryPolicyTag1", "bigqueryPolicyTag2"],
-                description: "description",
-                displayName: "displayName",
-                path: ["column2Key"],
-                tags: ["tag3", "tag4"]
-              },
-              {
-                description: "nestedColumnVal",
-                path: ["column2Key", "nestedColumnKey"]
-              }
-            ],
-            description: "description"
-          },
           enumType: "INCREMENTAL",
           fileName: "definitions/incremental_table.sqlx",
           query: "\n\nSELECT 1",
-          incrementalQuery: "\n\nSELECT 1"
+          incrementalQuery: "\n\nSELECT 1",
+          actionDescriptor: {
+            ...exampleActionDescriptor.outputActionDescriptor,
+            // sqlxConfig.bigquery.labels are placed as bigqueryLabels.
+            bigqueryLabels: {
+              key: "val"
+            }
+          }
         }
       ]);
       expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals([
