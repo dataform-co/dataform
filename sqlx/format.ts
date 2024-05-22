@@ -1,6 +1,6 @@
 import * as fs from "fs";
 import * as jsBeautify from "js-beautify";
-import * as sqlFormatter from "sql-formatter";
+import { QueryFormatter, GoogleSqlDefinition } from "google-sql-syntax-ts";
 import { promisify } from "util";
 
 import { ErrorWithCause } from "df/common/errors/errors";
@@ -13,7 +13,7 @@ const JS_BEAUTIFY_OPTIONS = {
   max_preserve_newlines: 2
 };
 
-const MAX_SQL_FORMAT_ATTEMPTS = 5;
+const queryFormatter = new QueryFormatter(new GoogleSqlDefinition());
 
 export function format(text: string, fileExtension: string) {
   try {
@@ -73,7 +73,7 @@ function formatSqlx(node: SyntaxTreeNode, indent = "") {
       [placeholderId: string]: SyntaxTreeNode | string;
     } = {};
     const unformattedPlaceholderSql = stripUnformattableText(sqlxStatement, placeholders).join("");
-    const formattedPlaceholderSql = formatSql(unformattedPlaceholderSql);
+    const formattedPlaceholderSql = queryFormatter.formatQuery(unformattedPlaceholderSql);
     return formatEveryLine(
       replacePlaceholders(formattedPlaceholderSql, placeholders),
       line => `${indent}${line}`
@@ -161,8 +161,8 @@ function stripUnformattableText(
           return placeholderId;
         }
         case SyntaxTreeNodeType.SQL_COMMENT: {
-          // sql-formatter knows how to format comments (as long as they keep to a single line);
-          // give it a hint.
+          // google-sql-syntax-ts knows how to format comments (as long as they keep to a single
+          // line); give it a hint.
           const commentPlaceholderId = part.concatenate().startsWith("--")
             ? `--${placeholderId}`
             : `/*${placeholderId}*/`;
@@ -205,21 +205,6 @@ function replacePlaceholders(
 
 function formatJavaScript(text: string) {
   return jsBeautify.js(text, JS_BEAUTIFY_OPTIONS);
-}
-
-function formatSql(text: string) {
-  let formatted = sqlFormatter.format(text, { language: "bigquery" }) as string;
-  // Unfortunately sql-formatter does not always produce final formatted output (even on plain SQL) in a single pass.
-  for (let attempts = 0; attempts < MAX_SQL_FORMAT_ATTEMPTS; attempts++) {
-    const newFormatted = sqlFormatter.format(formatted, { language: "bigquery" }) as string;
-    if (newFormatted === formatted) {
-      return newFormatted;
-    }
-    formatted = newFormatted;
-  }
-  throw new Error(
-    `SQL formatter was unable to determine final formatted form within ${MAX_SQL_FORMAT_ATTEMPTS} attempts. Original text: ${text}`
-  );
 }
 
 function formatPlaceholderInSqlx(
