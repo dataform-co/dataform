@@ -32,9 +32,9 @@ js {
     jsFunction("table");
 }
 
-select
+SELECT
   1
-from
+FROM
   \${
     ref({
       schema: "df_integration_test",
@@ -78,17 +78,19 @@ SELECT
   let finalTableName = 'dkaodihwada';
 }
 
-drop something
+  DROP something
 
 ---
 
-alter table \${tempTable}
-rename to \${finalTableName}
+ALTER TABLE
+  \${tempTable} RENAME TO \${finalTableName}
 
 ---
 
 SELECT
-  SUM(IF(session_start_event, 1, 0)) AS session_index
+  SUM(
+  IF
+    ( session_start_event, 1, 0 ) ) AS session_index
 `);
     });
 
@@ -111,21 +113,14 @@ where sample = 100`;
   tags: ["tag1", "tag2"]
 }
 
-select
-  CAST(
-    REGEXP_EXTRACT("", r'^/([0-9]+)\\'\\"/.*') AS INT64
-  ) AS id,
-  CAST(
-    REGEXP_EXTRACT("", r"^/([0-9]+)\\"\\'/.*") AS INT64
-  ) AS id2,
-  IFNULL(
-    regexp_extract('', r'\\a?query=([^&]+)&*'),
-    regexp_extract('', r'\\a?q=([^&]+)&*')
-  ) AS id3,
-  regexp_extract('bar', r'bar') as ID4
-from
+SELECT
+  CAST(REGEXP_EXTRACT("", r'^/([0-9]+)\\'\\"/.*') AS INT64) AS id,
+  CAST(REGEXP_EXTRACT("", r"^/([0-9]+)\\"\\'/.*") AS INT64) AS id2,
+  IFNULL ( REGEXP_EXTRACT('', r'\\a?query=([^&]+)&*'), REGEXP_EXTRACT('', r'\\a?q=([^&]+)&*') ) AS id3,
+  REGEXP_EXTRACT('bar', r'bar') AS ID4
+FROM
   \${ref("dab")}
-where
+WHERE
   sample = 100
 `);
     });
@@ -171,21 +166,20 @@ as test
 }
 
 SELECT
-  MAX(
-    (
-      SELECT
-        SUM(IF(track.event = "event_viewed_project_with_connection", 1, 0))
-      FROM
-        UNNEST (records)
-    )
-  ) > 0 as created_project,
+  MAX((
+    SELECT
+      SUM(
+      IF
+        (track.event="event_viewed_project_with_connection",1,0))
+    FROM
+      UNNEST(records)))>0 AS created_project,
   /* multi line
   comment      */
-  2 as foo
+  2 AS foo
 
 input "something" {
-  select
-    1 as test
+  SELECT
+    1 AS test
     /* something */
     /* something
     else      */
@@ -195,8 +189,8 @@ input "something" {
     });
     test("Backslashes within regex don't cause 'r' prefix to separate.", async () => {
       const fileContents = `select regexp_extract("", r'abc\\de\\'fg select * from self()'), 'bar'`;
-      expect(format(fileContents, "sqlx")).equal(`select
-  regexp_extract("", r'abc\\de\\'fg select * from self()'),
+      expect(format(fileContents, "sqlx")).equal(`SELECT
+  REGEXP_EXTRACT("", r'abc\\de\\'fg select * from self()'),
   'bar'
 `);
     });
@@ -218,7 +212,7 @@ SELECT MAKE_INTERVAL(1,  day=>2, minute => 3)`;
 }
 
 SELECT
-  MAKE_INTERVAL(1, day => 2, minute => 3)
+  MAKE_INTERVAL(1, day=>2, minute => 3)
 `);
     });
 
@@ -236,7 +230,7 @@ QUALIFY MOD(ROW_NUMBER() OVER (), 2) = 0`;
 SELECT
   *
 FROM
-  UNNEST ([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]) AS n
+  UNNEST([0,1,2,3,4,5,6,7,8,9]) AS n
 WHERE
   n < 8
 QUALIFY
@@ -279,7 +273,7 @@ SELECT
   line
     string
       with indent""" AS multi_line,
-  REGEXP_CONTAINS("\\n  abc\\n  ", r'''
+  REGEXP_CONTAINS( "\\n  abc\\n  ", r'''
 abc
 ''') AS multi_line_regex,
   """
@@ -288,8 +282,8 @@ This project is ...
 """ AS with_js
 
 post_operations {
-  select
-    """1""" as inner_sql
+  SELECT
+    """1""" AS inner_sql
 }
 `);
     });

@@ -1,6 +1,6 @@
 import * as fs from "fs";
+import { GoogleSqlDefinition, QueryFormatter } from "google-sql-syntax-ts";
 import * as jsBeautify from "js-beautify";
-import { QueryFormatter, GoogleSqlDefinition } from "google-sql-syntax-ts";
 import { promisify } from "util";
 
 import { ErrorWithCause } from "df/common/errors/errors";

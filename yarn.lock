@@ -2524,10 +2524,10 @@ google-p12-pem@^3.0.3:
   dependencies:
     node-forge "^0.10.0"
 
-google-sql-syntax-ts@^1.0.1:
-  version "1.0.1"
-  resolved "https://registry.yarnpkg.com/google-sql-syntax-ts/-/google-sql-syntax-ts-1.0.1.tgz#219c20626481e1359307a5429b6585bf6a405c88"
-  integrity sha512-gHdfepEo5+fB3HSvpp+CS0C9OivFtetX3eQm503mxaUqt7LFTJoS5HGtT2CCVebxd7VfUjL7/LFgVuknTr1UDA==
+google-sql-syntax-ts@^1.0.3:
+  version "1.0.3"
+  resolved "https://registry.yarnpkg.com/google-sql-syntax-ts/-/google-sql-syntax-ts-1.0.3.tgz#5d3c63dbc9b7147929a49fa82da02439871f1c20"
+  integrity sha512-hkO4n1dNS/GIUpSDSBmc7DbEgzFBJWKMJTI0ArHb/qNjveOP1UfAb8wAeBt9WSWkUGlnV2S0/gh+MHx8GCBI2Q==
   dependencies:
     monaco-editor "^0.44.0"
 

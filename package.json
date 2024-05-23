@@ -36,7 +36,7 @@
     "estraverse": "^5.1.0",
     "fs-extra": "^9.0.0",
     "glob": "^10.3.3",
-    "google-sql-syntax-ts": "^1.0.1",
+    "google-sql-syntax-ts": "^1.0.3",
     "grpc": "^1.24.0",
     "js-beautify": "^1.10.2",
     "js-yaml": "^4.1.0",
