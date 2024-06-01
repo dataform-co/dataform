@@ -114,7 +114,7 @@ async function getProcessResult(childProcess: ChildProcess) {
   childProcess.stderr.on("data", chunk => (stderr += String(chunk)));
   childProcess.stdout.pipe(process.stdout);
   childProcess.stdout.on("data", chunk => (stdout += String(chunk)));
-  childProcess.on("error", _err => ( error = _err));
+  childProcess.on("error", err => (error = err));
   const exitCode: number = await new Promise(resolve => {
     childProcess.on("close", resolve);
   });
