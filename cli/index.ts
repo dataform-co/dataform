@@ -591,7 +591,7 @@ export function runCli() {
         ],
         processFn: async argv => {
           let actions = ["{definitions,includes}/**/*.{js,sqlx}"]
-          if (actionsOption.name in argv && actions.length > 0) {
+          if (actionsOption.name in argv && argv[actionsOption.name].length > 0) {
             actions = argv[actionsOption.name]
           }
           const filenames = actions.map((action: string) =>
