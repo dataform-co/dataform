@@ -16,12 +16,21 @@ import { dataform } from "df/protos/ts";
 
 /**
  * @hidden
+ * This maintains backwards compatability with older versions.
+ * TODO(ekrekr): consider breaking backwards compatability of these in v4.
  */
+interface LegacyAssertionConfig extends dataform.ActionConfig.AssertionConfig {
+  dependencies: Resolvable[];
+  database: string;
+  schema: string;
+  fileName: string;
+  type: string;
+}
+
+/** @hidden */
 export type AContextable<T> = T | ((ctx: AssertionContext) => T);
 
-/**
- * @hidden
- */
+/** @hidden */
 export class Assertion extends ActionBuilder<dataform.Assertion> {
   // TODO(ekrekr): make this field private, to enforce proto update logic to happen in this class.
   public proto: dataform.IAssertion = dataform.Assertion.create();
@@ -189,9 +198,9 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
     );
   }
 
-  private verifyConfig(unverifiedConfig: any): dataform.ActionConfig.AssertionConfig {
-    // This maintains backwards compatability with older versions.
-    // TODO(ekrekr): consider breaking backwards compatability of these in v4.
+  private verifyConfig(
+    unverifiedConfig: LegacyAssertionConfig
+  ): dataform.ActionConfig.AssertionConfig {
     if (unverifiedConfig.dependencies) {
       unverifiedConfig.dependencyTargets = unverifiedConfig.dependencies.map(
         (dependency: string | object) =>
@@ -212,8 +221,8 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
       delete unverifiedConfig.fileName;
     }
 
-    // TODO(ekrekr): move this to a shared location after all action builders have proto config
-    // verifiers.
+    // TODO(ekrekr): consider moving this to a shared location after all action builders have proto
+    // config verifiers.
     if (unverifiedConfig.type) {
       delete unverifiedConfig.type;
     }
