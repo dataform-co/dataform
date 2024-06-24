@@ -16,6 +16,7 @@ import * as utils from "df/core/utils";
 import { toResolvable } from "df/core/utils";
 import { version as dataformCoreVersion } from "df/core/version";
 import { dataform } from "df/protos/ts";
+import { View } from "./actions/view";
 
 const DEFAULT_CONFIG = {
   defaultSchema: "dataform",
@@ -134,11 +135,24 @@ export class Session {
 
     switch (actionType) {
       case "view":
+        sqlxConfig.filename = utils.getCallerFile(this.rootDir);
+        const view = new View(this, sqlxConfig).query(ctx => actionOptions.sqlContextable(ctx)[0]);
+        if (actionOptions.incrementalWhereContextable) {
+          view.where(actionOptions.incrementalWhereContextable);
+        }
+        if (actionOptions.preOperationsContextable) {
+          view.preOps(actionOptions.preOperationsContextable);
+        }
+        if (actionOptions.postOperationsContextable) {
+          view.postOps(actionOptions.postOperationsContextable);
+        }
+        this.actions.push(view);
       case "table":
       case "incremental":
         const table = this.publish(sqlxConfig.name)
           .config(sqlxConfig)
           .query(ctx => actionOptions.sqlContextable(ctx)[0]);
+        this.actions.push(table);
         if (actionOptions.incrementalWhereContextable) {
           table.where(actionOptions.incrementalWhereContextable);
         }

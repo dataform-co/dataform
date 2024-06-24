@@ -81,6 +81,34 @@ message ActionConfig {
     repeated string bigquery_policy_tags = 3;
   }
 
+  // Options for shorthand specifying assertions, useable for some table-based
+  // action types.
+  message TableAssertionsConfig {
+    // Column(s) which constitute the dataset's unique key index.
+    //  If set, the resulting assertion will fail if there is more than one row
+    //  in the dataset with the same values for all of these column(s).
+    repeated string unique_key = 1;
+
+    // Combinations of column(s), each of which should constitute a unique key
+    // index for the dataset. If set, the resulting assertion(s) will fail if
+    // there is more than one row in the dataset with the same values for all of
+    // the column(s) in the unique key(s).
+    message UniqueKey {
+      repeated string unique_key = 1;
+    }
+    repeated UniqueKey unique_keys = 2;
+
+    // Column(s) which may never be `NULL`.
+    // If set, the resulting assertion will fail if any row contains `NULL`
+    // values for these column(s).
+    repeated string non_null = 3;
+
+    // General condition(s) which should hold true for all rows in the dataset.
+    // If set, the resulting assertion will fail if any row violates any of
+    // these condition(s).
+    repeated string row_conditions = 4;
+  }
+
   message TableConfig {
     // The name of the table.
     string name = 1;
@@ -157,6 +185,11 @@ message ActionConfig {
     // When set to true, assertions dependent upon any dependency will
     // be add as dedpendency to this action
     bool depend_on_dependency_assertions = 18;
+
+    // Assertions to be run on the dataset.
+    // If configured, relevant assertions will automatically be created and run
+    // as a dependency of this dataset.
+    TableAssertionsConfig assertions = 19;
   }
 
   message ViewConfig {
@@ -221,6 +254,17 @@ message ActionConfig {
     // When set to true, assertions dependent upon any dependency will
     // be add as dedpendency to this action
     bool depend_on_dependency_assertions = 15;
+
+    // If true, this indicates that the action only depends on data from
+    // explicitly-declared dependencies. Otherwise if false, it indicates that
+    // the  action depends on data from a source which has not been declared as
+    // a dependency.
+    bool hermetic = 16;
+
+    // Assertions to be run on the dataset.
+    // If configured, relevant assertions will automatically be created and run
+    // as a dependency of this dataset.
+    TableAssertionsConfig assertions = 17;
   }
 
   message IncrementalTableConfig {
@@ -313,6 +357,11 @@ message ActionConfig {
     // When set to true, assertions dependent upon any dependency will
     // be add as dedpendency to this action
     bool depend_on_dependency_assertions = 21;
+
+    // Assertions to be run on the dataset.
+    // If configured, relevant assertions will automatically be created and run
+    // as a dependency of this dataset.
+    TableAssertionsConfig assertions = 22;
   }
 
   message AssertionConfig {

@@ -14,6 +14,7 @@ import { Session } from "df/core/session";
 import { nativeRequire } from "df/core/utils";
 import { readWorkflowSettings } from "df/core/workflow_settings";
 import { dataform } from "df/protos/ts";
+import { View } from "./actions/view";
 
 /**
  * This is the main entry point into the user space code that should be invoked by the compilation wrapper sandbox.
@@ -132,10 +133,9 @@ function loadActionConfigs(session: Session, filePaths: string[]) {
           );
         } else if (actionConfig.view) {
           session.actions.push(
-            new Table(
+            new View(
               session,
               dataform.ActionConfig.ViewConfig.create(actionConfig.view),
-              "view",
               actionConfigsPath
             )
           );
