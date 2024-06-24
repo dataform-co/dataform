@@ -30,201 +30,27 @@ import {
 } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
-/**
- * @hidden
- */
 export const TableType = ["table", "view", "incremental"] as const;
-/**
- * Supported types of table actions.
- *
- * Tables of type `view` will be created as views.
- *
- * Tables of type `table` will be created as tables.
- *
- * Tables of type `incremental` must have a where clause provided. For more information, see the [incremental tables guide](guides/incremental-datasets).
- */
 export type TableType = typeof TableType[number];
 
-/**
- * BigQuery-specific warehouse options.
- */
-export interface IBigQueryOptions {
-  /**
-   * The key with which to partition the table. Typically the name of a timestamp or date column.
-   *
-   * For more information, read the [BigQuery partitioned tables docs](https://cloud.google.com/bigquery/docs/partitioned-tables).
-   */
-  partitionBy?: string;
-
-  /**
-   * The keys by which to cluster partitions by.
-   *
-   * For more information, read the [BigQuery clustered tables docs](https://cloud.google.com/bigquery/docs/clustered-tables).
-   */
-  clusterBy?: string[];
-
-  /**
-   * SQL based filter for when incremental updates are applied.
-   *
-   * For more information, see our [incremental dataset docs](https://docs.dataform.co/guides/incremental-datasets).
-   */
-  updatePartitionFilter?: string;
-
-  /**
-   * Key-value pairs for [BigQuery labels](https://cloud.google.com/bigquery/docs/labels-intro).
-   *
-   * If the label name contains special characters, e.g. hyphens, then quote its name, e.g. labels: { "label-name": "value" }.
-   */
-  labels?: { [name: string]: string };
-
-  /**
-   * This setting specifies how long BigQuery keeps the data in each partition. The setting applies to all partitions in the table,
-   * but is calculated independently for each partition based on the partition time.
-   *
-   * For more information, see our [docs](https://cloud.google.com/bigquery/docs/managing-partitioned-tables#partition-expiration).
-   */
-  partitionExpirationDays?: number;
-
-  /**
-   * When you create a partitioned table, you can require that all queries on the table must include a predicate filter (
-   * a WHERE clause) that filters on the partitioning column.
-   * This setting can improve performance and reduce costs,
-   * because BigQuery can use the filter to prune partitions that don't match the predicate.
-   *
-   * For more information, see our [docs](https://cloud.google.com/bigquery/docs/managing-partitioned-tables#require-filter).
-   */
-  requirePartitionFilter?: boolean;
-
-  /**
-   * Key-value pairs for options [table](https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#table_option_list), [view](https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#view_option_list), [materialized view](https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#materialized_view_option_list).
-   *
-   * Some options (e.g. `partitionExpirationDays`) have dedicated type/validity checked fields; prefer using those.
-   * String values need double-quotes, e.g. additionalOptions: {numeric_option: "5", string_option: '"string-value"'}
-   * If the option name contains special characters, e.g. hyphens, then quote its name, e.g. additionalOptions: { "option-name": "value" }.
-   */
-  additionalOptions?: { [name: string]: string };
-}
-
-const IBigQueryOptionsProperties = () =>
-  strictKeysOf<IBigQueryOptions>()([
-    "partitionBy",
-    "clusterBy",
-    "updatePartitionFilter",
-    "labels",
-    "partitionExpirationDays",
-    "requirePartitionFilter",
-    "additionalOptions"
-  ]);
-
-/**
- * Options for creating assertions as part of a dataset definition.
- */
-export interface ITableAssertions {
-  /**
-   * Column(s) which constitute the dataset's unique key index.
-   *
-   * If set, the resulting assertion will fail if there is more than one row in the dataset with the same values for all of these column(s).
-   */
-  uniqueKey?: string | string[];
-
-  /**
-   * Combinations of column(s), each of which should constitute a unique key index for the dataset.
-   *
-   * If set, the resulting assertion(s) will fail if there is more than one row in the dataset with the same values for all of the column(s)
-   * in the unique key(s).
-   */
-  uniqueKeys?: string[][];
-
-  /**
-   * Column(s) which may never be `NULL`.
-   *
-   * If set, the resulting assertion will fail if any row contains `NULL` values for these column(s).
-   */
-  nonNull?: string | string[];
-
-  /**
-   * General condition(s) which should hold true for all rows in the dataset.
-   *
-   * If set, the resulting assertion will fail if any row violates any of these condition(s).
-   */
-  rowConditions?: string[];
-}
-
-const ITableAssertionsProperties = () =>
-  strictKeysOf<ITableAssertions>()(["uniqueKey", "uniqueKeys", "nonNull", "rowConditions"]);
-
-/**
- * Configuration options for `dataset` actions, including `table`, `view` and `incremental` action types.
- */
-export interface ITableConfig
-  extends IActionConfig,
-    IDependenciesConfig,
-    IDocumentableConfig,
-    INamedConfig,
-    ITargetableConfig {
-  /**
-   * The type of the dataset. For more information on how this setting works, check out some of the [guides](guides)
-   * on publishing different types of datasets with Dataform.
-   */
+export interface LegacyTableConfig extends dataform.ActionConfig.TableConfig {
   type?: TableType;
-
-  /**
-   * Only allowed when the table type is `incremental`.
-   *
-   * If set to true, running this action will ignore the full-refresh option.
-   * This is useful for tables which are built from transient data, to ensure that historical data is never lost.
-   */
-  protected?: boolean;
-
-  /**
-   * BigQuery-specific warehouse options.
-   */
-  bigquery?: IBigQueryOptions;
-
-  /**
-   * Assertions to be run on the dataset.
-   *
-   * If configured, relevant assertions will automatically be created and run as a dependency of this dataset.
-   */
-  assertions?: ITableAssertions;
-
-  /**
-   * Unique keys for merge criteria for incremental tables.
-   *
-   * If configured, records with matching unique key(s) will be updated, rather than new rows being inserted.
-   */
-  uniqueKey?: string[];
-
-  /**
-   * Only valid when the table type is `view`.
-   *
-   * If set to true, will make the view materialized.
-   *
-   * For more information, read the [BigQuery materialized view docs](https://cloud.google.com/bigquery/docs/materialized-views-intro).
-   */
-  materialized?: boolean;
+  // TODO: move these assertions fields to the configs proto.
+  assertions?: {
+    uniqueKey?: string | string[];
+    uniqueKeys?: string[][];
+    nonNull?: string | string[];
+    rowConditions?: string[];
+  };
 }
 
-// TODO: This needs to be a method, I'm really not sure why, but it hits a runtime failure otherwise.
-export const ITableConfigProperties = () =>
-  strictKeysOf<ITableConfig>()([
-    "type",
-    "disabled",
-    "protected",
-    "name",
-    "bigquery",
-    "tags",
-    "uniqueKey",
-    "dependencies",
-    "hermetic",
-    "schema",
-    "assertions",
-    "database",
-    "columns",
-    "description",
-    "materialized",
-    "dependOnDependencyAssertions"
-  ]);
+export interface LegacyIncrementalTableConfig extends dataform.ActionConfig.IncrementalTableConfig {
+  type?: TableType;
+}
+
+export interface LegacyViewConfig extends dataform.ActionConfig.ViewConfig {
+  type?: TableType;
+}
 
 /**
  * Context methods are available when evaluating contextable SQL code, such as
@@ -312,7 +138,7 @@ export class Table extends ActionBuilder<dataform.Table> {
 
       // TODO(ekrekr): this is a workaround for avoiding keys that aren't present, and should be
       // cleaned up when the JS API is redone.
-      const bigqueryOptions: IBigQueryOptions | undefined =
+      const bigqueryOptions: any =
         config.partitionBy ||
         config.partitionExpirationDays ||
         config.requirePartitionFilter ||
@@ -344,14 +170,7 @@ export class Table extends ActionBuilder<dataform.Table> {
 
       this.config({
         type: "table",
-        dependencies: config.dependencyTargets.map(dependencyTarget =>
-          actionConfigToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget))
-        ),
-        tags: config.tags,
-        disabled: config.disabled,
-        description: config.description,
-        bigquery: bigqueryOptions,
-        dependOnDependencyAssertions: config.dependOnDependencyAssertions
+        ...config
       });
     }
     if (tableType === "view") {
@@ -445,25 +264,13 @@ export class Table extends ActionBuilder<dataform.Table> {
     if (tableTypeConfig.postOperations) {
       this.postOps(tableTypeConfig.postOperations);
     }
-  }
-
-  public config(config: ITableConfig) {
-    checkExcessProperties(
-      (e: Error) => this.session.compileError(e),
-      config,
-      ITableConfigProperties(),
-      "table config"
-    );
-    if (config.type) {
-      this.type(config.type);
+    if (tableTypeConfig.dependOnDependencyAssertions) {
+      this.setDependOnDependencyAssertions(tableTypeConfig.dependOnDependencyAssertions);
     }
-    if (config.dependOnDependencyAssertions) {
-      this.setDependOnDependencyAssertions(config.dependOnDependencyAssertions);
-    }
-    if (config.dependencies) {
+    if (tableTypeConfig.dependencies) {
       this.dependencies(config.dependencies);
     }
-    if (config.hermetic !== undefined) {
+    if (tableTypeConfig.hermetic !== undefined) {
       this.hermetic(config.hermetic);
     }
     if (config.disabled) {
@@ -500,12 +307,6 @@ export class Table extends ActionBuilder<dataform.Table> {
       this.materialized(config.materialized);
     }
 
-    return this;
-  }
-
-  public type(type: TableType) {
-    this.proto.type = type;
-    this.proto.enumType = tableTypeStringToEnum(type, false);
     return this;
   }
 
@@ -566,7 +367,7 @@ export class Table extends ActionBuilder<dataform.Table> {
     return this;
   }
 
-  public dependencies(value: Resolvable | Resolvable[]) {
+  public dependencies(value: dataform.ActionConfig.Target[]) {
     const newDependencies = Array.isArray(value) ? value : [value];
     newDependencies.forEach(resolvable =>
       addDependenciesToActionDependencyTargets(this, resolvable)

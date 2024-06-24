@@ -7,7 +7,15 @@ import { AContextable, Assertion, AssertionContext } from "df/core/actions/asser
 import { Declaration } from "df/core/actions/declaration";
 import { Notebook } from "df/core/actions/notebook";
 import { Operation, OperationContext } from "df/core/actions/operation";
-import { ITableConfig, ITableContext, Table, TableContext, TableType } from "df/core/actions/table";
+import {
+  ITableContext,
+  LegacyIncrementalTableConfig,
+  LegacyTableConfig,
+  LegacyViewConfig,
+  Table,
+  TableContext,
+  TableType
+} from "df/core/actions/table";
 import { Test } from "df/core/actions/test";
 import { Contextable, ICommonContext, ITarget, Resolvable } from "df/core/common";
 import { CompilationSql } from "df/core/compilation_sql";
@@ -226,7 +234,11 @@ export class Session {
 
   public publish(
     name: string,
-    queryOrConfig?: Contextable<ITableContext, string> | ITableConfig
+    queryOrConfig?:
+      | Contextable<ITableContext, string>
+      | LegacyTableConfig
+      | LegacyIncrementalTableConfig
+      | LegacyViewConfig
   ): Table {
     const newTable = new Table();
     newTable.session = this;
