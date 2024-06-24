@@ -19,7 +19,7 @@ import { dataform } from "df/protos/ts";
  * This maintains backwards compatability with older versions.
  * TODO(ekrekr): consider breaking backwards compatability of these in v4.
  */
-interface LegacyAssertionConfig extends dataform.ActionConfig.AssertionConfig {
+interface ILegacyAssertionConfig extends dataform.ActionConfig.AssertionConfig {
   dependencies: Resolvable[];
   database: string;
   schema: string;
@@ -199,7 +199,7 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
   }
 
   private verifyConfig(
-    unverifiedConfig: LegacyAssertionConfig
+    unverifiedConfig: ILegacyAssertionConfig
   ): dataform.ActionConfig.AssertionConfig {
     if (unverifiedConfig.dependencies) {
       unverifiedConfig.dependencyTargets = unverifiedConfig.dependencies.map(
