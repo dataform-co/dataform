@@ -1101,12 +1101,28 @@ actions:
       fs.mkdirSync(path.join(projectDir, "definitions"));
       fs.writeFileSync(
         path.join(projectDir, "definitions/actions.yaml"),
+        // If change, then change test "sqlx config options checks for assertions".
         `
 actions:
 - assertion:
-    filename: action.sql`
+    name: name
+    dataset: dataset
+    project: project
+    dependencyTargets:
+      - name: operation
+        dataset: defaultDataset
+        project: defaultProject
+    filename: action.sql
+    tags:
+      - tagA
+      - tagB
+    disabled: true,
+    description: description
+    hermetic: true,
+    dependOnDependencyAssertions: true`
       );
       fs.writeFileSync(path.join(projectDir, "definitions/action.sql"), "SELECT 1");
+      fs.writeFileSync(path.join(projectDir, "definitions/operation.sqlx"), "SELECT 1");
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
@@ -1115,15 +1131,30 @@ actions:
         asPlainObject([
           {
             target: {
-              database: "defaultProject",
-              name: "action"
+              database: "project",
+              schema: "dataset",
+              name: "name"
             },
             canonicalTarget: {
-              database: "defaultProject",
-              name: "action"
+              database: "project",
+              schema: "dataset",
+              name: "name"
             },
+            actionDescriptor: {
+              description: "description"
+            },
+            disabled: true,
             fileName: "definitions/action.sql",
-            query: "SELECT 1"
+            hermeticity: "HERMETIC",
+            tags: ["tagA", "tagB"],
+            query: "SELECT 1",
+            dependencyTargets: [
+              {
+                name: "operation",
+                schema: "defaultDataset",
+                database: "defaultProject"
+              }
+            ]
           }
         ])
       );
@@ -1333,6 +1364,7 @@ actions:
       fs.writeFileSync(path.join(projectDir, "definitions/operation.sqlx"), "SELECT 1");
       fs.writeFileSync(
         path.join(projectDir, "definitions/assertion.sqlx"),
+        // If change, then change test "action configs assertions can be loaded".
         `
 config {
   type: "assertion",

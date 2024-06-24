@@ -2,7 +2,7 @@ import { default as TarjanGraphConstructor, Graph as TarjanGraph } from "tarjan-
 
 import { encode64, verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { StringifiedMap, StringifiedSet } from "df/common/strings/stringifier";
-import { Action, SqlxConfig } from "df/core/actions";
+import { Action } from "df/core/actions";
 import { AContextable, Assertion, AssertionContext } from "df/core/actions/assertion";
 import { Declaration } from "df/core/actions/declaration";
 import { Notebook } from "df/core/actions/notebook";
@@ -85,7 +85,9 @@ export class Session {
   }
 
   public sqlxAction(actionOptions: {
-    sqlxConfig: SqlxConfig;
+    // sqlxConfig has type any here because any object can be passed in from the compiler - the
+    // structure of it is verified at later steps.
+    sqlxConfig: any;
     sqlStatementCount: number;
     sqlContextable: (
       ctx: TableContext | AssertionContext | OperationContext | ICommonContext
@@ -101,35 +103,36 @@ export class Session {
     ];
   }) {
     const { sqlxConfig } = actionOptions;
-    if (actionOptions.sqlStatementCount > 1 && sqlxConfig.type !== "operations") {
+    const actionType = sqlxConfig.hasOwnProperty("type") ? sqlxConfig.type : "operations";
+    if (actionOptions.sqlStatementCount > 1 && actionType !== "operations") {
       this.compileError(
         "Actions may only contain more than one SQL statement if they are of type 'operations'."
       );
     }
-    if (sqlxConfig.hasOwnProperty("protected") && sqlxConfig.type !== "incremental") {
+    if (sqlxConfig.hasOwnProperty("protected") && actionType !== "incremental") {
       this.compileError(
         "Actions may only specify 'protected: true' if they are of type 'incremental'."
       );
     }
-    if (actionOptions.incrementalWhereContextable && sqlxConfig.type !== "incremental") {
+    if (actionOptions.incrementalWhereContextable && actionType !== "incremental") {
       this.compileError(
         "Actions may only include incremental_where if they are of type 'incremental'."
       );
     }
-    if (!sqlxConfig.hasOwnProperty("schema") && sqlxConfig.type === "declaration") {
+    if (!sqlxConfig.hasOwnProperty("schema") && actionType === "declaration") {
       this.compileError("Actions of type 'declaration' must specify a value for 'schema'.");
     }
-    if (actionOptions.inputContextables.length > 0 && sqlxConfig.type !== "test") {
+    if (actionOptions.inputContextables.length > 0 && actionType !== "test") {
       this.compileError("Actions may only include input blocks if they are of type 'test'.");
     }
-    if (actionOptions.preOperationsContextable && !definesDataset(sqlxConfig.type)) {
+    if (actionOptions.preOperationsContextable && !definesDataset(actionType)) {
       this.compileError("Actions may only include pre_operations if they create a dataset.");
     }
-    if (actionOptions.postOperationsContextable && !definesDataset(sqlxConfig.type)) {
+    if (actionOptions.postOperationsContextable && !definesDataset(actionType)) {
       this.compileError("Actions may only include post_operations if they create a dataset.");
     }
 
-    switch (sqlxConfig.type) {
+    switch (actionType) {
       case "view":
       case "table":
       case "incremental":
@@ -147,9 +150,10 @@ export class Session {
         }
         break;
       case "assertion":
-        this.assert(sqlxConfig.name)
-          .config(sqlxConfig)
-          .query(ctx => actionOptions.sqlContextable(ctx)[0]);
+        sqlxConfig.filename = utils.getCallerFile(this.rootDir);
+        this.actions.push(
+          new Assertion(this, sqlxConfig).query(ctx => actionOptions.sqlContextable(ctx)[0])
+        );
         break;
       case "operations":
         this.operate(sqlxConfig.name)
@@ -172,7 +176,7 @@ export class Session {
         });
         break;
       default:
-        throw new Error(`Unrecognized action type: ${(sqlxConfig as SqlxConfig).type}`);
+        throw new Error(`Unrecognized action type: ${sqlxConfig.type}`);
     }
   }
 

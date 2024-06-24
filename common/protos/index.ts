@@ -74,8 +74,8 @@ export function verifyObjectMatchesProto<Proto>(
               ? ` See ${CONFIGS_PROTO_DOCUMENTATION_URL}#${protoType
                   .getTypeUrl("")
                   // Clean up the proto type into its URL form.
-                  .replace(".", "-")
-                  .replace("/", "")} for allowed properties.`
+                  .replace(/\./g, "-")
+                  .replace(/\//, "")} for allowed properties.`
               : "")
         );
       }
