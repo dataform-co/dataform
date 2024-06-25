@@ -1692,7 +1692,6 @@ SELECT 1`
             }
           },
           tags: ["tag1", "tag2"],
-          uniqueKey: ["key1", "key2"],
           dependencyTargets: [
             {
               database: "defaultProject",
