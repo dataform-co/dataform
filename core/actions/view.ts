@@ -1,6 +1,6 @@
 import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { ActionBuilder } from "df/core/actions";
-import { ColumnDescriptors } from "df/core/column_descriptors";
+import { ColumnDescriptors, LegacyColumnDescriptors } from "df/core/column_descriptors";
 import { Resolvable, Contextable } from "df/core/common";
 import * as Path from "df/core/path";
 import { Session } from "df/core/session";
@@ -119,7 +119,11 @@ export class View extends ActionBuilder<dataform.Table> {
       this.description(config.description);
     }
     if (config.columns) {
-      this.columns(config.columns);
+      this.columns(
+        config.columns.map(columnDescriptor =>
+          dataform.ActionConfig.ColumnDescriptor.create(columnDescriptor)
+        )
+      );
     }
     if (config.project) {
       this.database(config.project);
@@ -220,13 +224,12 @@ export class View extends ActionBuilder<dataform.Table> {
     return this;
   }
 
-  public columns(columns: dataform.ActionConfig.ColumnDescriptor) {
+  public columns(columns: dataform.ActionConfig.ColumnDescriptor[]) {
     if (!this.proto.actionDescriptor) {
       this.proto.actionDescriptor = {};
     }
-    this.proto.actionDescriptor.columns = ColumnDescriptors.mapToColumnProtoArray(
-      columns,
-      (e: Error) => this.session.compileError(e)
+    this.proto.actionDescriptor.columns = ColumnDescriptors.mapConfigProtoToCompilationProto(
+      columns
     );
     return this;
   }
@@ -259,15 +262,18 @@ export class View extends ActionBuilder<dataform.Table> {
         new Error("Specify at most one of 'assertions.uniqueKey' and 'assertions.uniqueKeys'.")
       );
     }
-    let uniqueKeys = assertions.uniqueKeys;
+    let uniqueKeys = assertions.uniqueKeys.map(uniqueKey =>
+      dataform.ActionConfig.TableAssertionsConfig.UniqueKey.create(uniqueKey)
+    );
     if (!!assertions.uniqueKey) {
-      uniqueKeys =
-        typeof assertions.uniqueKey === "string"
-          ? [[assertions.uniqueKey]]
-          : [assertions.uniqueKey];
+      uniqueKeys = [
+        dataform.ActionConfig.TableAssertionsConfig.UniqueKey.create({
+          uniqueKey: ["TableAssertionsConfig"]
+        })
+      ];
     }
     if (uniqueKeys) {
-      uniqueKeys.forEach((uniqueKey, index) => {
+      uniqueKeys.forEach(({ uniqueKey }, index) => {
         const uniqueKeyAssertion = this.session.assert(
           `${this.proto.target.schema}_${this.proto.target.name}_assertions_uniqueKey_${index}`,
           ctx => this.session.compilationSql().indexAssertion(ctx.ref(this.proto.target), uniqueKey)
@@ -394,6 +400,22 @@ export class View extends ActionBuilder<dataform.Table> {
     if (unverifiedConfig.fileName) {
       unverifiedConfig.filename = unverifiedConfig.fileName;
       delete unverifiedConfig.fileName;
+    }
+    if (unverifiedConfig.columns) {
+      // TODO(ekrekr) columns in their current config format are a difficult structure to represent
+      // as protos. They are nested, and use the object keys as the names. Consider a forced
+      // migration to the proto style column names.
+      unverifiedConfig.columns = ColumnDescriptors.mapLegacyObjectToConfigProto(
+        unverifiedConfig.columns as any
+      );
+    }
+    if (unverifiedConfig?.assertions) {
+      if (unverifiedConfig.assertions.uniqueKey) {
+        if (typeof unverifiedConfig.assertions.uniqueKey === "string") {
+          // In the config structure, uniqueKey is always a list.
+          unverifiedConfig.assertions.uniqueKey = [unverifiedConfig.assertions.uniqueKey];
+        }
+      }
     }
 
     // TODO(ekrekr): consider moving this to a shared location after all action builders have proto

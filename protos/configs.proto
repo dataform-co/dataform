@@ -79,6 +79,9 @@ message ActionConfig {
 
     // A list of BigQuery policy tags that will be applied to the column.
     repeated string bigquery_policy_tags = 3;
+
+    // A list of tags for this column which will be applied.
+    repeated string tags = 4;
   }
 
   // Options for shorthand specifying assertions, useable for some table-based
