@@ -147,12 +147,12 @@ export class Session {
           view.postOps(actionOptions.postOperationsContextable);
         }
         this.actions.push(view);
+        break;
       case "table":
       case "incremental":
         const table = this.publish(sqlxConfig.name)
           .config(sqlxConfig)
           .query(ctx => actionOptions.sqlContextable(ctx)[0]);
-        this.actions.push(table);
         if (actionOptions.incrementalWhereContextable) {
           table.where(actionOptions.incrementalWhereContextable);
         }
@@ -341,7 +341,9 @@ export class Session {
     // TODO(ekrekr): replace verify here with something that actually works.
     const compiledGraph = dataform.CompiledGraph.create({
       projectConfig: this.projectConfig,
-      tables: this.compileGraphChunk(this.actions.filter(action => action instanceof Table)),
+      tables: this.compileGraphChunk(
+        this.actions.filter(action => action instanceof Table || action instanceof View)
+      ),
       operations: this.compileGraphChunk(
         this.actions.filter(action => action instanceof Operation)
       ),

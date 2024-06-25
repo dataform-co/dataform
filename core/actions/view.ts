@@ -7,6 +7,7 @@ import { Session } from "df/core/session";
 import {
   actionConfigToCompiledGraphTarget,
   addDependenciesToActionDependencyTargets,
+  nativeRequire,
   resolvableAsTarget,
   resolveActionsConfigFilename,
   setNameAndTarget,
@@ -82,21 +83,6 @@ export class View extends ActionBuilder<dataform.Table> {
     config.filename = resolveActionsConfigFilename(config.filename, configPath);
     this.proto.fileName = config.filename;
 
-    // TODO(ekrekr): this is a workaround for avoiding keys that aren't present, and should be
-    // cleaned up when the JS API is redone.
-    const bigqueryOptions: any =
-      Object.keys(config.labels).length || Object.keys(config.additionalOptions).length
-        ? {}
-        : undefined;
-    if (bigqueryOptions) {
-      if (Object.keys(config.labels).length) {
-        bigqueryOptions.labels = config.labels;
-      }
-      if (Object.keys(config.additionalOptions).length) {
-        bigqueryOptions.additionalOptions = config.additionalOptions;
-      }
-    }
-
     if (config.dependOnDependencyAssertions) {
       this.setDependOnDependencyAssertions(config.dependOnDependencyAssertions);
     }
@@ -109,7 +95,7 @@ export class View extends ActionBuilder<dataform.Table> {
     if (config.disabled) {
       this.disabled();
     }
-    if (config.additionalOptions) {
+    if (Object.keys(config.additionalOptions).length > 0) {
       this.bigquery({ additionalOptions: config.additionalOptions });
     }
     if (config.tags) {
@@ -118,7 +104,7 @@ export class View extends ActionBuilder<dataform.Table> {
     if (config.description) {
       this.description(config.description);
     }
-    if (config.columns) {
+    if (config.columns?.length) {
       this.columns(
         config.columns.map(columnDescriptor =>
           dataform.ActionConfig.ColumnDescriptor.create(columnDescriptor)
@@ -136,6 +122,13 @@ export class View extends ActionBuilder<dataform.Table> {
     }
     if (config.materialized) {
       this.materialized(config.materialized);
+    }
+    this.query(nativeRequire(config.filename).query);
+    if (config.preOperations) {
+      this.preOps(config.preOperations);
+    }
+    if (config.postOperations) {
+      this.postOps(config.postOperations);
     }
 
     return this;
