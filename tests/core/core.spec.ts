@@ -247,7 +247,8 @@ suite("@dataform/core", () => {
           disabled: false,
           fileName: path.basename(__filename),
           type: "incremental",
-          enumType: "INCREMENTAL"
+          enumType: "INCREMENTAL",
+          protected: true
         }
       ]);
     });
