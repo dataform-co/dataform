@@ -55,6 +55,12 @@ export function verifyObjectMatchesProto<Proto>(
           // Empty arrays are assigned to empty proto array fields by ProtobufJS.
           return;
         }
+        if (!presentValue) {
+          throw ReferenceError(
+            `Unexpected empty value for "${presentKey}".` +
+              maybeGetDocsLinkPrefix(errorBehaviour, protoType)
+          );
+        }
         if (typeof presentValue === "object" && Object.keys(presentValue).length === 0) {
           // Empty objects are assigned to empty object fields by ProtobufJS.
           return;
@@ -70,13 +76,7 @@ export function verifyObjectMatchesProto<Proto>(
         throw ReferenceError(
           `Unexpected property "${presentKey}", or property value type of ` +
             `"${typeof presentValue}" is incorrect.` +
-            (errorBehaviour === VerifyProtoErrorBehaviour.SHOW_DOCS_LINK
-              ? ` See ${CONFIGS_PROTO_DOCUMENTATION_URL}#${protoType
-                  .getTypeUrl("")
-                  // Clean up the proto type into its URL form.
-                  .replace(/\./g, "-")
-                  .replace(/\//, "")} for allowed properties.`
-              : "")
+            maybeGetDocsLinkPrefix(errorBehaviour, protoType)
         );
       }
       if (typeof presentValue === "object") {
@@ -87,6 +87,19 @@ export function verifyObjectMatchesProto<Proto>(
 
   checkFields(object, protoCastObject);
   return proto;
+}
+
+function maybeGetDocsLinkPrefix<Proto>(
+  errorBehaviour: VerifyProtoErrorBehaviour,
+  protoType: IProtoClass<any, Proto>
+) {
+  return errorBehaviour === VerifyProtoErrorBehaviour.SHOW_DOCS_LINK
+    ? ` See ${CONFIGS_PROTO_DOCUMENTATION_URL}#${protoType
+        .getTypeUrl("")
+        // Clean up the proto type into its URL form.
+        .replace(/\./g, "-")
+        .replace(/\//, "")} for allowed properties.`
+    : "";
 }
 
 export function encode64<IProto, Proto>(
