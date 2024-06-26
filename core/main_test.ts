@@ -181,6 +181,11 @@ actions:
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
+      console.log(
+        "🚀 ~ suite ~ result.compile.compiledGraph.graphErrors.compilationErrors:",
+        result.compile.compiledGraph.graphErrors.compilationErrors
+      );
+
       expect(
         result.compile.compiledGraph.graphErrors.compilationErrors
           .map(({ message }) => message)
