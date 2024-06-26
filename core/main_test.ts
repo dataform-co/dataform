@@ -1201,6 +1201,24 @@ actions:
       );
     });
 
+    test(`fails when empty objects are given`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/actions.yaml"),
+        `
+actions:`
+      );
+
+      expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
+        `Unexpected empty value for "actions". See https://dataform-co.github.io/dataform/docs/configs-reference#dataform-ActionConfigs for allowed properties.`
+      );
+    });
+
     test(`filenames with non-UTF8 characters are valid`, () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
       fs.writeFileSync(
