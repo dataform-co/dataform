@@ -160,11 +160,9 @@ export class Session {
         this.actions.push(new Operation(this, sqlxConfig).queries(actionOptions.sqlContextable));
         break;
       case "declaration":
-        this.declare({
-          database: sqlxConfig.database,
-          schema: sqlxConfig.schema,
-          name: sqlxConfig.name
-        }).config(sqlxConfig);
+        const declaration = new Declaration(this, sqlxConfig);
+        declaration.proto.fileName = utils.getCallerFile(this.rootDir);
+        this.actions.push(declaration);
         break;
       case "test":
         const testCase = this.test(sqlxConfig.name)
