@@ -1,15 +1,15 @@
 import { default as TarjanGraphConstructor, Graph as TarjanGraph } from "tarjan-graph";
 
-import { encode64, verifyObjectMatchesProto } from "df/common/protos";
+import { encode64, verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { StringifiedMap, StringifiedSet } from "df/common/strings/stringifier";
-import { Action, SqlxConfig } from "df/core/actions";
+import { Action } from "df/core/actions";
 import { AContextable, Assertion, AssertionContext } from "df/core/actions/assertion";
 import { Declaration } from "df/core/actions/declaration";
 import { Notebook } from "df/core/actions/notebook";
 import { Operation, OperationContext } from "df/core/actions/operation";
 import { ITableConfig, ITableContext, Table, TableContext, TableType } from "df/core/actions/table";
 import { Test } from "df/core/actions/test";
-import { Contextable, ICommonContext, Resolvable } from "df/core/common";
+import { Contextable, ICommonContext, ITarget, Resolvable } from "df/core/common";
 import { CompilationSql } from "df/core/compilation_sql";
 import { targetAsReadableString, targetStringifier } from "df/core/targets";
 import * as utils from "df/core/utils";
@@ -43,69 +43,51 @@ export interface IActionProto {
 export class Session {
   public rootDir: string;
 
-  public config: dataform.IProjectConfig;
-  public canonicalConfig: dataform.IProjectConfig;
+  public projectConfig: dataform.ProjectConfig;
+  // The canonical project config contains the project config before schema and database overrides.
+  public canonicalProjectConfig: dataform.ProjectConfig;
 
   public actions: Action[];
-  public indexedActions: ActionIndex;
+  public indexedActions: ActionMap;
   public tests: { [name: string]: Test };
+
+  // This map holds information about what assertions are dependent
+  // upon a certain action in our actions list. We use this later to resolve dependencies.
+  public actionAssertionMap = new ActionMap([]);
 
   public graphErrors: dataform.IGraphErrors;
 
   constructor(
     rootDir?: string,
-    projectConfig?: dataform.IProjectConfig,
-    originalProjectConfig?: dataform.IProjectConfig
+    projectConfig?: dataform.ProjectConfig,
+    originalProjectConfig?: dataform.ProjectConfig
   ) {
     this.init(rootDir, projectConfig, originalProjectConfig);
   }
 
   public init(
     rootDir: string,
-    projectConfig?: dataform.IProjectConfig,
-    originalProjectConfig?: dataform.IProjectConfig
+    projectConfig?: dataform.ProjectConfig,
+    originalProjectConfig?: dataform.ProjectConfig
   ) {
     this.rootDir = rootDir;
-    this.config = projectConfig || DEFAULT_CONFIG;
-    this.canonicalConfig = getCanonicalProjectConfig(
-      originalProjectConfig || projectConfig || DEFAULT_CONFIG
+    this.projectConfig = dataform.ProjectConfig.create(projectConfig || DEFAULT_CONFIG);
+    this.canonicalProjectConfig = getCanonicalProjectConfig(
+      dataform.ProjectConfig.create(originalProjectConfig || projectConfig || DEFAULT_CONFIG)
     );
     this.actions = [];
     this.tests = {};
     this.graphErrors = { compilationErrors: [] };
   }
 
-  public get projectConfig(): Pick<
-    dataform.IProjectConfig,
-    | "warehouse"
-    | "defaultDatabase"
-    | "defaultSchema"
-    | "defaultLocation"
-    | "assertionSchema"
-    | "databaseSuffix"
-    | "schemaSuffix"
-    | "tablePrefix"
-    | "vars"
-  > {
-    return Object.freeze({
-      warehouse: this.config.warehouse,
-      defaultDatabase: this.config.defaultDatabase,
-      defaultSchema: this.config.defaultSchema,
-      defaultLocation: this.config.defaultLocation,
-      assertionSchema: this.config.assertionSchema,
-      databaseSuffix: this.config.databaseSuffix,
-      schemaSuffix: this.config.schemaSuffix,
-      tablePrefix: this.config.tablePrefix,
-      vars: Object.freeze({ ...this.config.vars })
-    });
-  }
-
   public compilationSql(): CompilationSql {
-    return new CompilationSql(this.config, dataformCoreVersion);
+    return new CompilationSql(this.projectConfig, dataformCoreVersion);
   }
 
   public sqlxAction(actionOptions: {
-    sqlxConfig: SqlxConfig;
+    // sqlxConfig has type any here because any object can be passed in from the compiler - the
+    // structure of it is verified at later steps.
+    sqlxConfig: any;
     sqlStatementCount: number;
     sqlContextable: (
       ctx: TableContext | AssertionContext | OperationContext | ICommonContext
@@ -121,35 +103,36 @@ export class Session {
     ];
   }) {
     const { sqlxConfig } = actionOptions;
-    if (actionOptions.sqlStatementCount > 1 && sqlxConfig.type !== "operations") {
+    const actionType = sqlxConfig.hasOwnProperty("type") ? sqlxConfig.type : "operations";
+    if (actionOptions.sqlStatementCount > 1 && actionType !== "operations") {
       this.compileError(
         "Actions may only contain more than one SQL statement if they are of type 'operations'."
       );
     }
-    if (sqlxConfig.hasOwnProperty("protected") && sqlxConfig.type !== "incremental") {
+    if (sqlxConfig.hasOwnProperty("protected") && actionType !== "incremental") {
       this.compileError(
         "Actions may only specify 'protected: true' if they are of type 'incremental'."
       );
     }
-    if (actionOptions.incrementalWhereContextable && sqlxConfig.type !== "incremental") {
+    if (actionOptions.incrementalWhereContextable && actionType !== "incremental") {
       this.compileError(
         "Actions may only include incremental_where if they are of type 'incremental'."
       );
     }
-    if (!sqlxConfig.hasOwnProperty("schema") && sqlxConfig.type === "declaration") {
+    if (!sqlxConfig.hasOwnProperty("schema") && actionType === "declaration") {
       this.compileError("Actions of type 'declaration' must specify a value for 'schema'.");
     }
-    if (actionOptions.inputContextables.length > 0 && sqlxConfig.type !== "test") {
+    if (actionOptions.inputContextables.length > 0 && actionType !== "test") {
       this.compileError("Actions may only include input blocks if they are of type 'test'.");
     }
-    if (actionOptions.preOperationsContextable && !definesDataset(sqlxConfig.type)) {
+    if (actionOptions.preOperationsContextable && !definesDataset(actionType)) {
       this.compileError("Actions may only include pre_operations if they create a dataset.");
     }
-    if (actionOptions.postOperationsContextable && !definesDataset(sqlxConfig.type)) {
+    if (actionOptions.postOperationsContextable && !definesDataset(actionType)) {
       this.compileError("Actions may only include post_operations if they create a dataset.");
     }
 
-    switch (sqlxConfig.type) {
+    switch (actionType) {
       case "view":
       case "table":
       case "incremental":
@@ -167,9 +150,10 @@ export class Session {
         }
         break;
       case "assertion":
-        this.assert(sqlxConfig.name)
-          .config(sqlxConfig)
-          .query(ctx => actionOptions.sqlContextable(ctx)[0]);
+        sqlxConfig.filename = utils.getCallerFile(this.rootDir);
+        this.actions.push(
+          new Assertion(this, sqlxConfig).query(ctx => actionOptions.sqlContextable(ctx)[0])
+        );
         break;
       case "operations":
         this.operate(sqlxConfig.name)
@@ -192,7 +176,7 @@ export class Session {
         });
         break;
       default:
-        throw new Error(`Unrecognized action type: ${(sqlxConfig as SqlxConfig).type}`);
+        throw new Error(`Unrecognized action type: ${sqlxConfig.type}`);
     }
   }
 
@@ -266,7 +250,7 @@ export class Session {
   public assert(name: string, query?: AContextable<string>): Assertion {
     const assertion = new Assertion();
     assertion.session = this;
-    utils.setNameAndTarget(this, assertion.proto, name, this.config.assertionSchema);
+    utils.setNameAndTarget(this, assertion.proto, name, this.projectConfig.assertionSchema);
     if (query) {
       assertion.query(query);
     }
@@ -321,11 +305,11 @@ export class Session {
   }
 
   public compile(): dataform.CompiledGraph {
-    this.indexedActions = new ActionIndex(this.actions);
+    this.indexedActions = new ActionMap(this.actions);
 
     if (
-      (this.config.warehouse === "bigquery" || this.config.warehouse === "") &&
-      !this.config.defaultLocation
+      (this.projectConfig.warehouse === "bigquery" || this.projectConfig.warehouse === "") &&
+      !this.projectConfig.defaultLocation
     ) {
       this.compileError(
         "A defaultLocation is required for BigQuery. This can be configured in workflow_settings.yaml.",
@@ -334,15 +318,15 @@ export class Session {
     }
 
     if (
-      !!this.config.vars &&
-      !Object.values(this.config.vars).every(value => typeof value === "string")
+      !!this.projectConfig.vars &&
+      !Object.values(this.projectConfig.vars).every(value => typeof value === "string")
     ) {
       throw new Error("Custom variables defined in workflow settings can only be strings.");
     }
 
     // TODO(ekrekr): replace verify here with something that actually works.
     const compiledGraph = dataform.CompiledGraph.create({
-      projectConfig: this.config,
+      projectConfig: this.projectConfig,
       tables: this.compileGraphChunk(this.actions.filter(action => action instanceof Table)),
       operations: this.compileGraphChunk(
         this.actions.filter(action => action instanceof Operation)
@@ -394,7 +378,11 @@ export class Session {
       )
     );
 
-    verifyObjectMatchesProto(dataform.CompiledGraph, compiledGraph);
+    verifyObjectMatchesProto(
+      dataform.CompiledGraph,
+      compiledGraph,
+      VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM
+    );
     return compiledGraph;
   }
 
@@ -415,15 +403,15 @@ export class Session {
   }
 
   private getDatabaseSuffixWithUnderscore() {
-    return !!this.config.databaseSuffix ? `_${this.config.databaseSuffix}` : "";
+    return !!this.projectConfig.databaseSuffix ? `_${this.projectConfig.databaseSuffix}` : "";
   }
 
   private getSchemaSuffixWithUnderscore() {
-    return !!this.config.schemaSuffix ? `_${this.config.schemaSuffix}` : "";
+    return !!this.projectConfig.schemaSuffix ? `_${this.projectConfig.schemaSuffix}` : "";
   }
 
   private getTablePrefixWithUnderscore() {
-    return !!this.config.tablePrefix ? `${this.config.tablePrefix}_` : "";
+    return !!this.projectConfig.tablePrefix ? `${this.projectConfig.tablePrefix}_` : "";
   }
 
   private compileGraphChunk<T>(actions: Array<Action | Test>): T[] {
@@ -461,6 +449,16 @@ export class Session {
           // We found a single matching target, and fully-qualify it if it's a normal dependency.
           const protoDep = possibleDeps[0].proto;
           fullyQualifiedDependencies[targetAsReadableString(protoDep.target)] = protoDep.target;
+
+          if (dependency.includeDependentAssertions) {
+            this.actionAssertionMap
+              .find(dependency)
+              .forEach(
+                assertion =>
+                  (fullyQualifiedDependencies[targetAsReadableString(assertion.proto.target)] =
+                    assertion.proto.target)
+              );
+          }
         } else {
           // Too many targets matched the dependency.
           this.compileError(
@@ -475,7 +473,7 @@ export class Session {
   }
 
   private alterActionName(actions: IActionProto[], declarationTargets: dataform.ITarget[]) {
-    const { tablePrefix, schemaSuffix, databaseSuffix } = this.config;
+    const { tablePrefix, schemaSuffix, databaseSuffix } = this.projectConfig;
 
     if (!tablePrefix && !schemaSuffix && !databaseSuffix) {
       return;
@@ -712,13 +710,13 @@ function definesDataset(type: string) {
   return type === "view" || type === "table" || type === "incremental";
 }
 
-function getCanonicalProjectConfig(originalProjectConfig: dataform.IProjectConfig) {
-  return {
+function getCanonicalProjectConfig(originalProjectConfig: dataform.ProjectConfig) {
+  return dataform.ProjectConfig.create({
     warehouse: originalProjectConfig.warehouse,
     defaultSchema: originalProjectConfig.defaultSchema,
     defaultDatabase: originalProjectConfig.defaultDatabase,
     assertionSchema: originalProjectConfig.assertionSchema
-  };
+  });
 }
 
 function joinQuoted(values: readonly string[]) {
@@ -737,53 +735,38 @@ function objectExistsOrIsNonEmpty(prop: any): boolean {
   );
 }
 
-class ActionIndex {
-  private readonly byName: Map<string, Action[]> = new Map();
-  private readonly bySchemaAndName: Map<string, Map<string, Action[]>> = new Map();
-  private readonly byDatabaseAndName: Map<string, Map<string, Action[]>> = new Map();
-  private readonly byDatabaseSchemaAndName: Map<
-    string,
-    Map<string, Map<string, Action[]>>
-  > = new Map();
+class ActionMap {
+  private byName: Map<string, Action[]> = new Map();
+  private bySchemaAndName: Map<string, Map<string, Action[]>> = new Map();
+  private byDatabaseAndName: Map<string, Map<string, Action[]>> = new Map();
+  private byDatabaseSchemaAndName: Map<string, Map<string, Map<string, Action[]>>> = new Map();
 
   public constructor(actions: Action[]) {
     for (const action of actions) {
-      if (!this.byName.has(action.proto.target.name)) {
-        this.byName.set(action.proto.target.name, []);
-      }
-      this.byName.get(action.proto.target.name).push(action);
+      this.set(action.proto.target, action);
+    }
+  }
 
-      if (!this.bySchemaAndName.has(action.proto.target.schema)) {
-        this.bySchemaAndName.set(action.proto.target.schema, new Map());
-      }
-      const forSchema = this.bySchemaAndName.get(action.proto.target.schema);
-      if (!forSchema.has(action.proto.target.name)) {
-        forSchema.set(action.proto.target.name, []);
-      }
-      forSchema.get(action.proto.target.name).push(action);
+  public set(actionTarget: ITarget, assertionTarget: Action) {
+    this.setByNameLevel(this.byName, actionTarget.name, assertionTarget);
 
-      if (!!action.proto.target.database) {
-        if (!this.byDatabaseAndName.has(action.proto.target.database)) {
-          this.byDatabaseAndName.set(action.proto.target.database, new Map());
-        }
-        const forDatabaseNoSchema = this.byDatabaseAndName.get(action.proto.target.database);
-        if (!forDatabaseNoSchema.has(action.proto.target.name)) {
-          forDatabaseNoSchema.set(action.proto.target.name, []);
-        }
-        forDatabaseNoSchema.get(action.proto.target.name).push(action);
+    if (!!actionTarget.schema) {
+      this.setBySchemaLevel(this.bySchemaAndName, actionTarget, assertionTarget);
+    }
 
-        if (!this.byDatabaseSchemaAndName.has(action.proto.target.database)) {
-          this.byDatabaseSchemaAndName.set(action.proto.target.database, new Map());
+    if (!!actionTarget.database) {
+      if (!this.byDatabaseAndName.has(actionTarget.database)) {
+        this.byDatabaseAndName.set(actionTarget.database, new Map());
+      }
+      const forDatabaseNoSchema = this.byDatabaseAndName.get(actionTarget.database);
+      this.setByNameLevel(forDatabaseNoSchema, actionTarget.name, assertionTarget);
+
+      if (!!actionTarget.schema) {
+        if (!this.byDatabaseSchemaAndName.has(actionTarget.database)) {
+          this.byDatabaseSchemaAndName.set(actionTarget.database, new Map());
         }
-        const forDatabase = this.byDatabaseSchemaAndName.get(action.proto.target.database);
-        if (!forDatabase.has(action.proto.target.schema)) {
-          forDatabase.set(action.proto.target.schema, new Map());
-        }
-        const forDatabaseAndSchema = forDatabase.get(action.proto.target.schema);
-        if (!forDatabaseAndSchema.has(action.proto.target.name)) {
-          forDatabaseAndSchema.set(action.proto.target.name, []);
-        }
-        forDatabaseAndSchema.get(action.proto.target.name).push(action);
+        const forDatabase = this.byDatabaseSchemaAndName.get(actionTarget.database);
+        this.setBySchemaLevel(forDatabase, actionTarget, assertionTarget);
       }
     }
   }
@@ -804,5 +787,24 @@ class ActionIndex {
       return this.bySchemaAndName.get(target.schema)?.get(target.name) || [];
     }
     return this.byName.get(target.name) || [];
+  }
+
+  private setByNameLevel(targetMap: Map<string, Action[]>, name: string, assertionTarget: Action) {
+    if (!targetMap.has(name)) {
+      targetMap.set(name, []);
+    }
+    targetMap.get(name).push(assertionTarget);
+  }
+
+  private setBySchemaLevel(
+    targetMap: Map<string, Map<string, Action[]>>,
+    actionTarget: ITarget,
+    assertionTarget: Action
+  ) {
+    if (!targetMap.has(actionTarget.schema)) {
+      targetMap.set(actionTarget.schema, new Map());
+    }
+    const forSchema = targetMap.get(actionTarget.schema);
+    this.setByNameLevel(forSchema, actionTarget.name, assertionTarget);
   }
 }

@@ -45,8 +45,9 @@ message WorkflowSettings {
   NotebookRuntimeOptionsConfig default_notebook_runtime_options = 10;
 }
 
+// TODO(ekrekr): consolidate ActionsConfigs proto types in the JS API.
+
 // Action configs defines the contents of `actions.yaml` configuration files.
-// TODO(ekrekr): consolidate these configuration options in the JS API.
 message ActionConfigs {
   repeated ActionConfig actions = 1;
 }
@@ -63,6 +64,10 @@ message ActionConfig {
 
     // The name of the action.
     string name = 4;
+
+    // flag for when we want to add assertions of this dependency in
+    // dependency_targets as well.
+    bool include_dependent_assertions = 5;
   }
 
   message ColumnDescriptor {
@@ -148,6 +153,10 @@ message ActionConfig {
     // If the option name contains special characters, encapsulate the name in
     // quotes, for example: additionalOptions: { "option-name": "value" }.
     map<string, string> additional_options = 17;
+
+    // When set to true, assertions dependent upon any dependency will
+    // be add as dedpendency to this action
+    bool depend_on_dependency_assertions = 18;
   }
 
   message ViewConfig {
@@ -208,6 +217,10 @@ message ActionConfig {
     // If the option name contains special characters, encapsulate the name in
     // quotes, for example: additionalOptions: { "option-name": "value" }.
     map<string, string> additional_options = 14;
+
+    // When set to true, assertions dependent upon any dependency will
+    // be add as dedpendency to this action
+    bool depend_on_dependency_assertions = 15;
   }
 
   message IncrementalTableConfig {
@@ -296,6 +309,10 @@ message ActionConfig {
     // If the option name contains special characters, encapsulate the name in
     // quotes, for example: additionalOptions: { "option-name": "value" }.
     map<string, string> additional_options = 20;
+
+    // When set to true, assertions dependent upon any dependency will
+    // be add as dedpendency to this action
+    bool depend_on_dependency_assertions = 21;
   }
 
   message AssertionConfig {
@@ -324,6 +341,16 @@ message ActionConfig {
 
     // Description of the assertion.
     string description = 8;
+
+    // If true, this indicates that the action only depends on data from
+    // explicitly-declared dependencies. Otherwise if false, it indicates that
+    // the  action depends on data from a source which has not been declared as
+    // a dependency.
+    bool hermetic = 9;
+
+    // If true, assertions dependent upon any of the dependencies are added as
+    // dependencies as well.
+    bool depend_on_dependency_assertions = 10;
   }
 
   message OperationConfig {
@@ -361,6 +388,10 @@ message ActionConfig {
     // Descriptions of columns within the operation. Can only be set if
     // hasOutput is true.
     repeated ColumnDescriptor columns = 10;
+
+    // When set to true, assertions dependent upon any dependency will
+    // be add as dedpendency to this action
+    bool depend_on_dependency_assertions = 11;
   }
 
   message DeclarationConfig {
@@ -406,6 +437,10 @@ message ActionConfig {
 
     // Description of the notebook.
     string description = 8;
+
+    // When set to true, assertions dependent upon any dependency will
+    // be add as dedpendency to this action
+    bool depend_on_dependency_assertions = 9;
 
     // TODO(ekrekr): add a notebook runtime field definition.
   }

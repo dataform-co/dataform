@@ -52,6 +52,17 @@ bazel build cli
 
 The projects folder here is not built as it requires an environment file, which can be provided from the team.
 
+### Add New NPM Dependencies
+
+Global yarn installations will throw errors when installing packages, instead you should use:
+
+```bash
+$ bazel run @nodejs//:yarn add ...
+```
+
+Additionally, installed NPM dependencies need to be added to the `deps` of `ts_library` rules by
+prefixing them with `@npm//...`.
+
 ## The Contribution Process
 
 1. Decide on what you'd like to contribute. The majority of open-source contributions come from:

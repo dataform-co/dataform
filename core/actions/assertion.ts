@@ -1,72 +1,36 @@
-import { verifyObjectMatchesProto } from "df/common/protos";
+import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { ActionBuilder } from "df/core/actions";
-import {
-  IActionConfig,
-  ICommonContext,
-  IDependenciesConfig,
-  INamedConfig,
-  ITargetableConfig,
-  Resolvable
-} from "df/core/common";
+import { ICommonContext, Resolvable } from "df/core/common";
 import * as Path from "df/core/path";
 import { Session } from "df/core/session";
 import {
   actionConfigToCompiledGraphTarget,
-  checkExcessProperties,
   nativeRequire,
   resolvableAsTarget,
   resolveActionsConfigFilename,
   setNameAndTarget,
-  strictKeysOf,
   toResolvable,
   validateQueryString
 } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
 /**
- * Configuration options for `assertion` action types.
+ * @hidden
+ * This maintains backwards compatability with older versions.
+ * TODO(ekrekr): consider breaking backwards compatability of these in v4.
  */
-export interface IAssertionConfig
-  extends IActionConfig,
-    IDependenciesConfig,
-    INamedConfig,
-    ITargetableConfig {
-  /**
-   * The database where the corresponding view for this assertion should be created.
-   */
-  database?: string;
-
-  /**
-   * The schema where the corresponding view for this assertion should be created.
-   */
-  schema?: string;
-
-  /**
-   * A description for this assertion.
-   */
-  description?: string;
+interface ILegacyAssertionConfig extends dataform.ActionConfig.AssertionConfig {
+  dependencies: Resolvable[];
+  database: string;
+  schema: string;
+  fileName: string;
+  type: string;
 }
 
-export const IAssertionConfigProperties = strictKeysOf<IAssertionConfig>()([
-  "database",
-  "dependencies",
-  "description",
-  "disabled",
-  "hermetic",
-  "name",
-  "schema",
-  "tags",
-  "type"
-]);
-
-/**
- * @hidden
- */
+/** @hidden */
 export type AContextable<T> = T | ((ctx: AssertionContext) => T);
 
-/**
- * @hidden
- */
+/** @hidden */
 export class Assertion extends ActionBuilder<dataform.Assertion> {
   // TODO(ekrekr): make this field private, to enforce proto update logic to happen in this class.
   public proto: dataform.IAssertion = dataform.Assertion.create();
@@ -77,52 +41,50 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
   // We delay contextification until the final compile step, so hold these here for now.
   private contextableQuery: AContextable<string>;
 
-  constructor(
-    session?: Session,
-    config?: dataform.ActionConfig.AssertionConfig,
-    configPath?: string
-  ) {
+  constructor(session?: Session, unverifiedConfig?: any, configPath?: string) {
     super(session);
     this.session = session;
 
-    if (!config) {
+    if (!unverifiedConfig) {
       return;
     }
+
+    const config = this.verifyConfig(unverifiedConfig);
 
     if (!config.name) {
       config.name = Path.basename(config.filename);
     }
     const target = actionConfigToCompiledGraphTarget(config);
-    this.proto.target = this.applySessionToTarget(target, config.filename);
-    this.proto.canonicalTarget = this.applySessionCanonicallyToTarget(target);
+    this.proto.target = this.applySessionToTarget(
+      target,
+      session.projectConfig,
+      config.filename,
+      true,
+      true
+    );
+    this.proto.canonicalTarget = this.applySessionToTarget(
+      target,
+      session.canonicalProjectConfig,
+      undefined,
+      false,
+      true
+    );
 
-    config.filename = resolveActionsConfigFilename(config.filename, configPath);
-    this.proto.fileName = config.filename;
+    if (configPath) {
+      config.filename = resolveActionsConfigFilename(config.filename, configPath);
+      this.query(nativeRequire(config.filename).query);
+    }
 
     // TODO(ekrekr): load config proto column descriptors.
-    this.config({
-      dependencies: config.dependencyTargets.map(dependencyTarget =>
-        actionConfigToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget))
-      ),
-      tags: config.tags,
-      disabled: config.disabled,
-      description: config.description
-    });
 
-    this.query(nativeRequire(config.filename).query);
-  }
-
-  public config(config: IAssertionConfig) {
-    checkExcessProperties(
-      (e: Error) => this.session.compileError(e),
-      config,
-      IAssertionConfigProperties,
-      "assertion config"
-    );
-    if (config.dependencies) {
-      this.dependencies(config.dependencies);
+    if (config.dependencyTargets) {
+      this.dependencies(
+        config.dependencyTargets.map(dependencyTarget =>
+          actionConfigToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget))
+        )
+      );
     }
-    if (config.hermetic !== undefined) {
+    if (config.hermetic) {
       this.hermetic(config.hermetic);
     }
     if (config.disabled) {
@@ -134,11 +96,14 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
     if (config.description) {
       this.description(config.description);
     }
-    if (config.database) {
-      this.database(config.database);
+    if (config.project) {
+      this.database(config.project);
     }
-    if (config.schema) {
-      this.schema(config.schema);
+    if (config.dataset) {
+      this.schema(config.dataset);
+    }
+    if (config.filename) {
+      this.proto.fileName = config.filename;
     }
     return this;
   }
@@ -151,7 +116,9 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
   public dependencies(value: Resolvable | Resolvable[]) {
     const newDependencies = Array.isArray(value) ? value : [value];
     newDependencies.forEach(resolvable => {
-      this.proto.dependencyTargets.push(resolvableAsTarget(resolvable));
+      const resolvableTarget = resolvableAsTarget(resolvable);
+      this.session.actionAssertionMap.set(resolvableTarget, this);
+      this.proto.dependencyTargets.push(resolvableTarget);
     });
     return this;
   }
@@ -224,7 +191,47 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
     this.proto.query = context.apply(this.contextableQuery);
     validateQueryString(this.session, this.proto.query, this.proto.fileName);
 
-    return verifyObjectMatchesProto(dataform.Assertion, this.proto);
+    return verifyObjectMatchesProto(
+      dataform.Assertion,
+      this.proto,
+      VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM
+    );
+  }
+
+  private verifyConfig(
+    unverifiedConfig: ILegacyAssertionConfig
+  ): dataform.ActionConfig.AssertionConfig {
+    if (unverifiedConfig.dependencies) {
+      unverifiedConfig.dependencyTargets = unverifiedConfig.dependencies.map(
+        (dependency: string | object) =>
+          typeof dependency === "string" ? { name: dependency } : dependency
+      );
+      delete unverifiedConfig.dependencies;
+    }
+    if (unverifiedConfig.database) {
+      unverifiedConfig.project = unverifiedConfig.database;
+      delete unverifiedConfig.database;
+    }
+    if (unverifiedConfig.schema) {
+      unverifiedConfig.dataset = unverifiedConfig.schema;
+      delete unverifiedConfig.schema;
+    }
+    if (unverifiedConfig.fileName) {
+      unverifiedConfig.filename = unverifiedConfig.fileName;
+      delete unverifiedConfig.fileName;
+    }
+
+    // TODO(ekrekr): consider moving this to a shared location after all action builders have proto
+    // config verifiers.
+    if (unverifiedConfig.type) {
+      delete unverifiedConfig.type;
+    }
+
+    return verifyObjectMatchesProto(
+      dataform.ActionConfig.AssertionConfig,
+      unverifiedConfig,
+      VerifyProtoErrorBehaviour.SHOW_DOCS_LINK
+    );
   }
 }
 

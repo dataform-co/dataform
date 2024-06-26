@@ -1,9 +1,11 @@
-import { verifyObjectMatchesProto } from "df/common/protos";
+import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { ActionBuilder } from "df/core/actions";
+import { Resolvable } from "df/core/common";
 import * as Path from "df/core/path";
 import { Session } from "df/core/session";
 import {
   actionConfigToCompiledGraphTarget,
+  addDependenciesToActionDependencyTargets,
   nativeRequire,
   resolveActionsConfigFilename
 } from "df/core/utils";
@@ -17,6 +19,9 @@ export class Notebook extends ActionBuilder<dataform.Notebook> {
 
   // TODO: make this field private, to enforce proto update logic to happen in this class.
   public proto: dataform.INotebook = dataform.Notebook.create();
+
+  // If true, adds the inline assertions of dependencies as direct dependencies for this action.
+  public dependOnDependencyAssertions: boolean = false;
 
   constructor(
     session?: Session,
@@ -32,12 +37,16 @@ export class Notebook extends ActionBuilder<dataform.Notebook> {
     config.filename = resolveActionsConfigFilename(config.filename, configPath);
 
     this.session = session;
-    this.proto.target = this.applySessionToTarget(target, config.filename);
-    this.proto.canonicalTarget = this.applySessionCanonicallyToTarget(target);
-    this.proto.tags = config.tags;
-    this.proto.dependencyTargets = config.dependencyTargets.map(dependencyTarget =>
-      actionConfigToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget))
+    this.proto.target = this.applySessionToTarget(
+      target,
+      session.projectConfig,
+      config.filename,
+      true
     );
+    this.proto.canonicalTarget = this.applySessionToTarget(target, session.canonicalProjectConfig);
+    this.proto.tags = config.tags;
+    this.dependOnDependencyAssertions = config.dependOnDependencyAssertions;
+    this.dependencies(config.dependencyTargets);
     this.proto.fileName = config.filename;
     if (config.disabled) {
       this.proto.disabled = config.disabled;
@@ -64,6 +73,17 @@ export class Notebook extends ActionBuilder<dataform.Notebook> {
   /**
    * @hidden
    */
+  public dependencies(value: Resolvable | Resolvable[]) {
+    const newDependencies = Array.isArray(value) ? value : [value];
+    newDependencies.forEach(resolvable =>
+      addDependenciesToActionDependencyTargets(this, resolvable)
+    );
+    return this;
+  }
+
+  /**
+   * @hidden
+   */
   public getFileName() {
     return this.proto.fileName;
   }
@@ -76,7 +96,11 @@ export class Notebook extends ActionBuilder<dataform.Notebook> {
   }
 
   public compile() {
-    return verifyObjectMatchesProto(dataform.Notebook, this.proto);
+    return verifyObjectMatchesProto(
+      dataform.Notebook,
+      this.proto,
+      VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM
+    );
   }
 }
 

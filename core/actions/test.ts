@@ -1,4 +1,4 @@
-import { verifyObjectMatchesProto } from "df/common/protos";
+import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { StringifiedMap } from "df/common/strings/stringifier";
 import { ActionBuilder } from "df/core/actions";
 import * as table from "df/core/actions/table";
@@ -124,7 +124,11 @@ export class Test extends ActionBuilder<dataform.Test> {
     }
     this.proto.expectedOutputQuery = testContext.apply(this.contextableQuery);
 
-    return verifyObjectMatchesProto(dataform.Test, this.proto);
+    return verifyObjectMatchesProto(
+      dataform.Test,
+      this.proto,
+      VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM
+    );
   }
 }
 

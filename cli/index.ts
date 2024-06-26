@@ -443,7 +443,8 @@ export function runCli() {
           {
             name: dryRunOptionName,
             option: {
-              describe: "If set, built SQL is not run and instead is printed to the console.",
+              describe:
+                "If set, BigQuery will validate the run SQL without applying changes to the warehouse.",
               type: "boolean"
             }
           },
@@ -544,7 +545,7 @@ export function runCli() {
           if (argv[jobPrefixOption.name]) {
             bigqueryOptions = { ...bigqueryOptions, jobPrefix: argv[jobPrefixOption.name] };
           }
-          const runner = run(dbadapter, executionGraph, bigqueryOptions);
+          const runner = run(dbadapter, executionGraph, { bigquery: bigqueryOptions });
           process.on("SIGINT", () => {
             runner.cancel();
           });
@@ -585,13 +586,19 @@ export function runCli() {
         format: `format [${projectDirMustExistOption.name}]`,
         description: "Format the dataform project's files.",
         positionalOptions: [projectDirMustExistOption],
-        options: [],
+        options: [
+            actionsOption
+        ],
         processFn: async argv => {
-          const filenames = glob.sync("{definitions,includes}/**/*.{js,sqlx}", {
-            cwd: argv[projectDirMustExistOption.name]
-          });
-          const results = await Promise.all(
-            filenames.map(async filename => {
+          let actions = ["{definitions,includes}/**/*.{js,sqlx}"]
+          if (actionsOption.name in argv && argv[actionsOption.name].length > 0) {
+            actions = argv[actionsOption.name]
+          }
+          const filenames = actions.map((action: string) =>
+            glob.sync(action, {cwd: argv[projectDirMustExistOption.name]})
+          ).flat();
+          const results: Array<{ filename: string; err?: Error; }> = await Promise.all(
+            filenames.map(async (filename: string) => {
               try {
                 await formatFile(path.resolve(argv[projectDirMustExistOption.name], filename), {
                   overwriteFile: true
