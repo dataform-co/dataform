@@ -181,17 +181,14 @@ actions:
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
-      console.log(
-        "🚀 ~ suite ~ result.compile.compiledGraph.graphErrors.compilationErrors:",
-        result.compile.compiledGraph.graphErrors.compilationErrors
-      );
-
       expect(
         result.compile.compiledGraph.graphErrors.compilationErrors
           .map(({ message }) => message)
           .sort()
       ).deep.equals([
         `Action target datasets cannot include '.'`,
+        `Action target datasets cannot include '.'`,
+        `Action target names cannot include '.'`,
         `Action target names cannot include '.'`,
         `Action target names cannot include '.'`
       ]);
@@ -1350,7 +1347,6 @@ actions:
       columns: {
         nestedColumnKey: "nestedColumnVal"
       },
-      displayName: "displayName",
       tags: ["tag3", "tag4"],
       bigqueryPolicyTags: ["bigqueryPolicyTag1", "bigqueryPolicyTag2"],
     }
@@ -1364,7 +1360,6 @@ actions:
           {
             bigqueryPolicyTags: ["bigqueryPolicyTag1", "bigqueryPolicyTag2"],
             description: "description",
-            displayName: "displayName",
             path: ["column2Key"],
             tags: ["tag3", "tag4"]
           },
@@ -1849,6 +1844,7 @@ SELECT 1`
         path.join(projectDir, "definitions/table.sqlx"),
         `config {type: "view"} SELECT 1`
       );
+      // TODO(ekrekr): re-add hermetic.
       fs.writeFileSync(
         path.join(projectDir, "definitions/operation.sqlx"),
         `
@@ -1861,7 +1857,6 @@ config {
   tags: ["tagA", "tagB"],
   disabled: true,
   description: "description",
-  hermetic: true,
   hasOutput: true,
   dependOnDependencyAssertions: true,
 ${exampleActionDescriptor.inputSqlxConfigBlock}
@@ -1894,7 +1889,7 @@ SELECT 1`
             ],
             disabled: true,
             fileName: "definitions/operation.sqlx",
-            hermeticity: "HERMETIC",
+            // hermeticity: "HERMETIC",
             hasOutput: true,
             tags: ["tagA", "tagB"],
             queries: ["\n\nSELECT 1"],

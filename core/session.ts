@@ -157,9 +157,7 @@ export class Session {
         break;
       case "operations":
         sqlxConfig.filename = utils.getCallerFile(this.rootDir);
-        this.actions.push(
-          new Operation(this, sqlxConfig).queries(ctx => actionOptions.sqlContextable(ctx)[0])
-        );
+        this.actions.push(new Operation(this, sqlxConfig).queries(actionOptions.sqlContextable));
         break;
       case "declaration":
         this.declare({

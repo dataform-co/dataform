@@ -1,28 +1,16 @@
 import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { ActionBuilder } from "df/core/actions";
 import { ColumnDescriptors } from "df/core/column_descriptors";
-import {
-  Contextable,
-  IActionConfig,
-  IColumnsDescriptor,
-  ICommonContext,
-  IDependenciesConfig,
-  IDocumentableConfig,
-  INamedConfig,
-  ITargetableConfig,
-  Resolvable
-} from "df/core/common";
+import { Contextable, ICommonContext, Resolvable } from "df/core/common";
 import * as Path from "df/core/path";
 import { Session } from "df/core/session";
 import {
   actionConfigToCompiledGraphTarget,
   addDependenciesToActionDependencyTargets,
-  checkExcessProperties,
   nativeRequire,
   resolvableAsTarget,
   resolveActionsConfigFilename,
   setNameAndTarget,
-  strictKeysOf,
   toResolvable
 } from "df/core/utils";
 import { dataform } from "df/protos/ts";
@@ -78,8 +66,10 @@ export class Operation extends ActionBuilder<dataform.Operation> {
     );
     this.proto.canonicalTarget = this.applySessionToTarget(target, session.canonicalProjectConfig);
 
-    config.filename = resolveActionsConfigFilename(config.filename, configPath);
-    this.proto.fileName = config.filename;
+    if (configPath) {
+      config.filename = resolveActionsConfigFilename(config.filename, configPath);
+      this.queries(nativeRequire(config.filename).query);
+    }
 
     if (config.dependOnDependencyAssertions) {
       this.setDependOnDependencyAssertions(config.dependOnDependencyAssertions);
@@ -119,7 +109,9 @@ export class Operation extends ActionBuilder<dataform.Operation> {
     if (config.dataset) {
       this.schema(config.dataset);
     }
-    this.queries(nativeRequire(config.filename).query);
+    if (config.filename) {
+      this.proto.fileName = config.filename;
+    }
     return this;
   }
 
