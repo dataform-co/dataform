@@ -33,12 +33,12 @@ ts_library(
         "@npm//deepmerge",
         "@npm//fs-extra",
         "@npm//glob",
+        "@npm//google-sql-syntax-ts",
         "@npm//js-beautify",
         "@npm//js-yaml",
         "@npm//promise-pool-executor",
         "@npm//protobufjs",
         "@npm//semver",
         "@npm//tmp",
-        "@npm//sql-formatter",
     ],
 )

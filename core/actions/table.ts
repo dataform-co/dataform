@@ -1,7 +1,7 @@
-import { verifyObjectMatchesProto } from "df/common/protos";
+import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { ActionBuilder } from "df/core/actions";
 import { Assertion } from "df/core/actions/assertion";
-import { ColumnDescriptors } from "df/core/column_descriptors";
+import { LegacyColumnDescriptors } from "df/core/column_descriptors";
 import {
   Contextable,
   IActionConfig,
@@ -17,9 +17,11 @@ import * as Path from "df/core/path";
 import { Session } from "df/core/session";
 import {
   actionConfigToCompiledGraphTarget,
+  addDependenciesToActionDependencyTargets,
   checkExcessProperties,
   nativeRequire,
   resolvableAsTarget,
+  resolveActionsConfigFilename,
   setNameAndTarget,
   strictKeysOf,
   tableTypeStringToEnum,
@@ -220,7 +222,8 @@ export const ITableConfigProperties = () =>
     "database",
     "columns",
     "description",
-    "materialized"
+    "materialized",
+    "dependOnDependencyAssertions"
   ]);
 
 /**
@@ -255,6 +258,9 @@ export class Table extends ActionBuilder<dataform.Table> {
   // Hold a reference to the Session instance.
   public session: Session;
 
+  // If true, adds the inline assertions of dependencies as direct dependencies for this action.
+  public dependOnDependencyAssertions: boolean = false;
+
   // We delay contextification until the final compile step, so hold these here for now.
   public contextableQuery: Contextable<ITableContext, string>;
   private contextableWhere: Contextable<ITableContext, string>;
@@ -286,14 +292,18 @@ export class Table extends ActionBuilder<dataform.Table> {
     }
 
     if (!tableTypeConfig.name) {
-      tableTypeConfig.name = Path.fileName(tableTypeConfig.filename);
+      tableTypeConfig.name = Path.basename(tableTypeConfig.filename);
     }
     const target = actionConfigToCompiledGraphTarget(tableTypeConfig);
-    this.proto.target = this.applySessionToTarget(target);
-    this.proto.canonicalTarget = this.applySessionCanonicallyToTarget(target);
+    this.proto.target = this.applySessionToTarget(
+      target,
+      session.projectConfig,
+      tableTypeConfig.filename,
+      true
+    );
+    this.proto.canonicalTarget = this.applySessionToTarget(target, session.canonicalProjectConfig);
 
-    // Resolve the filename as its absolute path.
-    tableTypeConfig.filename = Path.join(Path.dirName(configPath), tableTypeConfig.filename);
+    tableTypeConfig.filename = resolveActionsConfigFilename(tableTypeConfig.filename, configPath);
     this.proto.fileName = tableTypeConfig.filename;
 
     // TODO(ekrekr): load config proto column descriptors.
@@ -340,7 +350,8 @@ export class Table extends ActionBuilder<dataform.Table> {
         tags: config.tags,
         disabled: config.disabled,
         description: config.description,
-        bigquery: bigqueryOptions
+        bigquery: bigqueryOptions,
+        dependOnDependencyAssertions: config.dependOnDependencyAssertions
       });
     }
     if (tableType === "view") {
@@ -370,7 +381,8 @@ export class Table extends ActionBuilder<dataform.Table> {
         materialized: config.materialized,
         tags: config.tags,
         description: config.description,
-        bigquery: bigqueryOptions
+        bigquery: bigqueryOptions,
+        dependOnDependencyAssertions: config.dependOnDependencyAssertions
       });
     }
     if (tableType === "incremental") {
@@ -422,7 +434,8 @@ export class Table extends ActionBuilder<dataform.Table> {
         uniqueKey: config.uniqueKey,
         tags: config.tags,
         description: config.description,
-        bigquery: bigqueryOptions
+        bigquery: bigqueryOptions,
+        dependOnDependencyAssertions: config.dependOnDependencyAssertions
       });
     }
     this.query(nativeRequire(tableTypeConfig.filename).query);
@@ -444,6 +457,9 @@ export class Table extends ActionBuilder<dataform.Table> {
     if (config.type) {
       this.type(config.type);
     }
+    if (config.dependOnDependencyAssertions) {
+      this.setDependOnDependencyAssertions(config.dependOnDependencyAssertions);
+    }
     if (config.dependencies) {
       this.dependencies(config.dependencies);
     }
@@ -453,8 +469,8 @@ export class Table extends ActionBuilder<dataform.Table> {
     if (config.disabled) {
       this.disabled();
     }
-    if (config.protected) {
-      this.protected();
+    if (config.type === "incremental") {
+      this.protected(config.protected);
     }
     if (config.bigquery && Object.keys(config.bigquery).length > 0) {
       this.bigquery(config.bigquery);
@@ -520,8 +536,12 @@ export class Table extends ActionBuilder<dataform.Table> {
     return this;
   }
 
-  public protected() {
-    this.proto.protected = true;
+  public protected(defaultsToTrueProtected: boolean) {
+    // To prevent accidental data deletion, protected defaults to true if unspecified.
+    if (defaultsToTrueProtected === undefined || defaultsToTrueProtected === null) {
+      defaultsToTrueProtected = true;
+    }
+    this.proto.protected = defaultsToTrueProtected;
     return this;
   }
 
@@ -552,10 +572,9 @@ export class Table extends ActionBuilder<dataform.Table> {
 
   public dependencies(value: Resolvable | Resolvable[]) {
     const newDependencies = Array.isArray(value) ? value : [value];
-    newDependencies.forEach(resolvable => {
-      this.proto.dependencyTargets.push(resolvableAsTarget(resolvable));
-    });
-
+    newDependencies.forEach(resolvable =>
+      addDependenciesToActionDependencyTargets(this, resolvable)
+    );
     return this;
   }
 
@@ -587,7 +606,7 @@ export class Table extends ActionBuilder<dataform.Table> {
     if (!this.proto.actionDescriptor) {
       this.proto.actionDescriptor = {};
     }
-    this.proto.actionDescriptor.columns = ColumnDescriptors.mapToColumnProtoArray(
+    this.proto.actionDescriptor.columns = LegacyColumnDescriptors.mapToColumnProtoArray(
       columns,
       (e: Error) => this.session.compileError(e)
     );
@@ -676,6 +695,11 @@ export class Table extends ActionBuilder<dataform.Table> {
     return this;
   }
 
+  public setDependOnDependencyAssertions(dependOnDependencyAssertions: boolean) {
+    this.dependOnDependencyAssertions = dependOnDependencyAssertions;
+    return this;
+  }
+
   /**
    * @hidden
    */
@@ -720,7 +744,11 @@ export class Table extends ActionBuilder<dataform.Table> {
     validateQueryString(this.session, this.proto.query, this.proto.fileName);
     validateQueryString(this.session, this.proto.incrementalQuery, this.proto.fileName);
 
-    return verifyObjectMatchesProto(dataform.Table, this.proto);
+    return verifyObjectMatchesProto(
+      dataform.Table,
+      this.proto,
+      VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM
+    );
   }
 
   private contextifyOps(

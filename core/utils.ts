@@ -1,5 +1,6 @@
 import { Action } from "df/core/actions";
 import { Assertion } from "df/core/actions/assertion";
+import { Notebook } from "df/core/actions/notebook";
 import { Operation } from "df/core/actions/operation";
 import { Table } from "df/core/actions/table";
 import { Resolvable } from "df/core/common";
@@ -9,6 +10,8 @@ import { dataform } from "df/protos/ts";
 
 declare var __webpack_require__: any;
 declare var __non_webpack_require__: any;
+
+type actionsWithDependencies = Table | Operation | Notebook;
 
 // This side-steps webpack's require in favour of the real require.
 export const nativeRequire =
@@ -141,6 +144,9 @@ export function ambiguousActionNameMsg(act: Resolvable, allActs: Action[] | stri
   )}. Did you mean one of: ${allActNames.join(", ")}.`;
 }
 
+/**
+ * @deprecated use ActionBuilder.applySessionToTarget() instead.
+ */
 export function target(
   config: dataform.IProjectConfig,
   name: string,
@@ -154,6 +160,9 @@ export function target(
   });
 }
 
+/**
+ * @deprecated use ActionBuilder.applySessionToTarget() instead.
+ */
 export function setNameAndTarget(
   session: Session,
   action: IActionProto,
@@ -161,8 +170,34 @@ export function setNameAndTarget(
   overrideSchema?: string,
   overrideDatabase?: string
 ) {
-  action.target = target(session.config, name, overrideSchema, overrideDatabase);
-  action.canonicalTarget = target(session.canonicalConfig, name, overrideSchema, overrideDatabase);
+  action.target = target(session.projectConfig, name, overrideSchema, overrideDatabase);
+  action.canonicalTarget = target(
+    session.canonicalProjectConfig,
+    name,
+    overrideSchema,
+    overrideDatabase
+  );
+  if (action.target.name.includes(".")) {
+    session.compileError(
+      new Error("Action target names cannot include '.'"),
+      undefined,
+      action.target
+    );
+  }
+  if (action.target.schema.includes(".")) {
+    session.compileError(
+      new Error("Action target datasets cannot include '.'"),
+      undefined,
+      action.target
+    );
+  }
+  if (action.target.database.includes(".")) {
+    session.compileError(
+      new Error("Action target projects cannot include '.'"),
+      undefined,
+      action.target
+    );
+  }
 }
 
 /**
@@ -176,6 +211,7 @@ export function strictKeysOf<T>() {
 
 /**
  * Will throw an error if the provided object contains any properties that aren't in the provided list.
+ * @deprecated verifyObjectMatchesProto will be replacing this soon.
  */
 export function checkExcessProperties<T>(
   reportError: (e: Error) => void,
@@ -249,9 +285,9 @@ export function setOrValidateTableEnumType(table: dataform.ITable) {
 export function extractActionDetailsFromFileName(
   path: string
 ): { fileExtension: string; fileNameAsTargetName: string } {
-  const fileName = Path.fileName(path);
+  const basename = Path.basename(path);
   const fileExtension = Path.fileExtension(path);
-  return { fileExtension, fileNameAsTargetName: fileName };
+  return { fileExtension, fileNameAsTargetName: basename };
 }
 
 export function actionConfigToCompiledGraphTarget(
@@ -266,5 +302,45 @@ export function actionConfigToCompiledGraphTarget(
   if (actionConfigTarget.project) {
     compiledGraphTarget.database = actionConfigTarget.project;
   }
+  if (actionConfigTarget.hasOwnProperty("includeDependentAssertions")) {
+    compiledGraphTarget.includeDependentAssertions = actionConfigTarget.includeDependentAssertions;
+  }
   return dataform.Target.create(compiledGraphTarget);
+}
+
+export function resolveActionsConfigFilename(configFilename: string, configPath: string) {
+  return Path.normalize(Path.join(Path.dirName(configPath), configFilename));
+}
+
+export function addDependenciesToActionDependencyTargets(
+  action: actionsWithDependencies,
+  resolvable: Resolvable
+) {
+  const dependencyTarget = resolvableAsTarget(resolvable);
+  if (!dependencyTarget.hasOwnProperty("includeDependentAssertions")) {
+    // dependency `includeDependentAssertions` takes precedence over the config's `dependOnDependencyAssertions`
+    dependencyTarget.includeDependentAssertions = action.dependOnDependencyAssertions;
+  }
+
+  // check if same dependency already exist in this action but with opposite value for includeDependentAssertions
+  const dependencyTargetString = action.session.compilationSql().resolveTarget(dependencyTarget);
+
+  if (action.includeAssertionsForDependency.has(dependencyTargetString)) {
+    if (
+      action.includeAssertionsForDependency.get(dependencyTargetString) !==
+      dependencyTarget.includeDependentAssertions
+    ) {
+      action.session.compileError(
+        `Conflicting "includeDependentAssertions" properties are not allowed. Dependency ${dependencyTarget.name} has different values set for this property.`,
+        action.proto.fileName,
+        action.proto.target
+      );
+      return action;
+    }
+  }
+  action.proto.dependencyTargets.push(dependencyTarget);
+  action.includeAssertionsForDependency.set(
+    dependencyTargetString,
+    dependencyTarget.includeDependentAssertions
+  );
 }

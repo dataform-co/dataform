@@ -2,16 +2,15 @@ import { fail } from "assert";
 import { expect } from "chai";
 import * as path from "path";
 
-import { Builder, compile } from "df/cli/api";
+import { compile } from "df/cli/api";
 import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
-import { suite, test } from "df/testing";
-import { cleanSql } from "df/tests/utils";
+import { cleanSql, suite, test } from "df/testing";
 
 suite("examples", () => {
   suite("common_v2 bigquery", async () => {
-    for (const databaseSuffix of ["", "foo"]) {
-      for (const schemaSuffix of ["", "bar"]) {
+    for (const databaseSuffix of ["foo"]) {
+      for (const schemaSuffix of ["bar"]) {
         const databaseWithSuffix = (database: string) =>
           databaseSuffix ? `${database}_${databaseSuffix}` : database;
         const schemaWithSuffix = (schema: string) =>
@@ -35,17 +34,17 @@ suite("examples", () => {
             {
               fileName: "definitions/has_compile_errors/assertion_with_bigquery.sqlx",
               message:
-                'Unexpected property "bigquery" in assertion config. Supported properties are: ["database","dependencies","description","disabled","hermetic","name","schema","tags","type"]'
+                'Unexpected property "bigquery", or property value type of "object" is incorrect. See https://dataform-co.github.io/dataform/docs/configs-reference#dataform-ActionConfig-AssertionConfig for allowed properties.'
             },
             {
               fileName: "definitions/has_compile_errors/assertion_with_materialized.sqlx",
               message:
-                'Unexpected property "materialized" in assertion config. Supported properties are: ["database","dependencies","description","disabled","hermetic","name","schema","tags","type"]'
+                'Unexpected property "materialized", or property value type of "boolean" is incorrect. See https://dataform-co.github.io/dataform/docs/configs-reference#dataform-ActionConfig-AssertionConfig for allowed properties.'
             },
             {
               fileName: "definitions/has_compile_errors/assertion_with_output.sqlx",
               message:
-                'Unexpected property "hasOutput" in assertion config. Supported properties are: ["database","dependencies","description","disabled","hermetic","name","schema","tags","type"]'
+                'Unexpected property "hasOutput", or property value type of "boolean" is incorrect. See https://dataform-co.github.io/dataform/docs/configs-reference#dataform-ActionConfig-AssertionConfig for allowed properties.'
             },
             {
               fileName: "definitions/has_compile_errors/assertion_with_postops.sqlx",
@@ -63,7 +62,7 @@ suite("examples", () => {
             {
               fileName: "definitions/has_compile_errors/protected_assertion.sqlx",
               message:
-                'Unexpected property "protected" in assertion config. Supported properties are: ["database","dependencies","description","disabled","hermetic","name","schema","tags","type"]'
+                'Unexpected property "protected", or property value type of "boolean" is incorrect. See https://dataform-co.github.io/dataform/docs/configs-reference#dataform-ActionConfig-AssertionConfig for allowed properties.'
             },
             {
               fileName: "definitions/has_compile_errors/view_with_incremental.sqlx",

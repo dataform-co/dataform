@@ -1,6 +1,6 @@
-import { verifyObjectMatchesProto } from "df/common/protos";
+import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { ActionBuilder } from "df/core/actions";
-import { ColumnDescriptors } from "df/core/column_descriptors";
+import { LegacyColumnDescriptors } from "df/core/column_descriptors";
 import {
   Contextable,
   IActionConfig,
@@ -16,9 +16,11 @@ import * as Path from "df/core/path";
 import { Session } from "df/core/session";
 import {
   actionConfigToCompiledGraphTarget,
+  addDependenciesToActionDependencyTargets,
   checkExcessProperties,
   nativeRequire,
   resolvableAsTarget,
+  resolveActionsConfigFilename,
   setNameAndTarget,
   strictKeysOf,
   toResolvable
@@ -58,7 +60,8 @@ export const IIOperationConfigProperties = strictKeysOf<IOperationConfig>()([
   "name",
   "schema",
   "tags",
-  "type"
+  "type",
+  "dependOnDependencyAssertions"
 ]);
 
 /**
@@ -70,6 +73,9 @@ export class Operation extends ActionBuilder<dataform.Operation> {
 
   // Hold a reference to the Session instance.
   public session: Session;
+
+  // If true, adds the inline assertions of dependencies as direct dependencies for this action.
+  public dependOnDependencyAssertions: boolean = false;
 
   // We delay contextification until the final compile step, so hold these here for now.
   private contextableQueries: Contextable<ICommonContext, string | string[]>;
@@ -87,14 +93,18 @@ export class Operation extends ActionBuilder<dataform.Operation> {
     }
 
     if (!config.name) {
-      config.name = Path.fileName(config.filename);
+      config.name = Path.basename(config.filename);
     }
     const target = actionConfigToCompiledGraphTarget(config);
-    this.proto.target = this.applySessionToTarget(target);
-    this.proto.canonicalTarget = this.applySessionCanonicallyToTarget(target);
+    this.proto.target = this.applySessionToTarget(
+      target,
+      session.projectConfig,
+      config.filename,
+      true
+    );
+    this.proto.canonicalTarget = this.applySessionToTarget(target, session.canonicalProjectConfig);
 
-    // Resolve the filename as its absolute path.
-    config.filename = Path.join(Path.dirName(configPath), config.filename);
+    config.filename = resolveActionsConfigFilename(config.filename, configPath);
     this.proto.fileName = config.filename;
 
     // TODO(ekrekr): load config proto column descriptors.
@@ -105,7 +115,8 @@ export class Operation extends ActionBuilder<dataform.Operation> {
       tags: config.tags,
       disabled: config.disabled,
       hasOutput: config.hasOutput,
-      description: config.description
+      description: config.description,
+      dependOnDependencyAssertions: config.dependOnDependencyAssertions
     });
 
     this.queries(nativeRequire(config.filename).query);
@@ -118,6 +129,9 @@ export class Operation extends ActionBuilder<dataform.Operation> {
       IIOperationConfigProperties,
       "operation config"
     );
+    if (config.dependOnDependencyAssertions) {
+      this.setDependOnDependencyAssertions(config.dependOnDependencyAssertions);
+    }
     if (config.dependencies) {
       this.dependencies(config.dependencies);
     }
@@ -155,9 +169,9 @@ export class Operation extends ActionBuilder<dataform.Operation> {
 
   public dependencies(value: Resolvable | Resolvable[]) {
     const newDependencies = Array.isArray(value) ? value : [value];
-    newDependencies.forEach(resolvable => {
-      this.proto.dependencyTargets.push(resolvableAsTarget(resolvable));
-    });
+    newDependencies.forEach(resolvable =>
+      addDependenciesToActionDependencyTargets(this, resolvable)
+    );
     return this;
   }
 
@@ -199,7 +213,7 @@ export class Operation extends ActionBuilder<dataform.Operation> {
     if (!this.proto.actionDescriptor) {
       this.proto.actionDescriptor = {};
     }
-    this.proto.actionDescriptor.columns = ColumnDescriptors.mapToColumnProtoArray(
+    this.proto.actionDescriptor.columns = LegacyColumnDescriptors.mapToColumnProtoArray(
       columns,
       (e: Error) => this.session.compileError(e)
     );
@@ -225,6 +239,11 @@ export class Operation extends ActionBuilder<dataform.Operation> {
       schema,
       this.proto.target.database
     );
+    return this;
+  }
+
+  public setDependOnDependencyAssertions(dependOnDependencyAssertions: boolean) {
+    this.dependOnDependencyAssertions = dependOnDependencyAssertions;
     return this;
   }
 
@@ -257,7 +276,11 @@ export class Operation extends ActionBuilder<dataform.Operation> {
     const appliedQueries = context.apply(this.contextableQueries);
     this.proto.queries = typeof appliedQueries === "string" ? [appliedQueries] : appliedQueries;
 
-    return verifyObjectMatchesProto(dataform.Operation, this.proto);
+    return verifyObjectMatchesProto(
+      dataform.Operation,
+      this.proto,
+      VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM
+    );
   }
 }
 

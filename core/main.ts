@@ -1,4 +1,9 @@
-import { decode64, encode64, verifyObjectMatchesProto } from "df/common/protos";
+import {
+  decode64,
+  encode64,
+  verifyObjectMatchesProto,
+  VerifyProtoErrorBehaviour
+} from "df/common/protos";
 import { Assertion } from "df/core/actions/assertion";
 import { Declaration } from "df/core/actions/declaration";
 import { Notebook } from "df/core/actions/notebook";
@@ -58,7 +63,7 @@ export function main(coreExecutionRequest: Uint8Array | string): Uint8Array | st
     .forEach(includePath => {
       try {
         // tslint:disable-next-line: tsr-detect-non-literal-require
-        topLevelIncludes[Path.fileName(includePath)] = nativeRequire(includePath);
+        topLevelIncludes[Path.basename(includePath)] = nativeRequire(includePath);
       } catch (e) {
         session.compileError(e, includePath);
       }
@@ -107,7 +112,7 @@ function loadActionConfigs(session: Session, filePaths: string[]) {
     .filter(
       path =>
         path.startsWith(`definitions${Path.separator}`) &&
-        Path.fileName(path) === "actions" &&
+        Path.basename(path) === "actions" &&
         Path.fileExtension(path) === "yaml"
     )
     .sort()
@@ -192,6 +197,10 @@ function loadActionConfigsFile(
   } catch (e) {
     session.compileError(e, actionConfigsPath);
   }
-  verifyObjectMatchesProto(dataform.ActionConfigs, actionConfigsAsJson);
+  verifyObjectMatchesProto(
+    dataform.ActionConfigs,
+    actionConfigsAsJson,
+    VerifyProtoErrorBehaviour.SHOW_DOCS_LINK
+  );
   return dataform.ActionConfigs.fromObject(actionConfigsAsJson);
 }

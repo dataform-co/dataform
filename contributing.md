@@ -34,15 +34,13 @@ _Note: If you are running Bazel on a **Mac**, this or any step that requires bui
 
 ### Test
 
-The following command runs all unit tests:
+The following command runs tests for @dataform/core:
 
 ```bash
-bazel test --build_tests_only -- ... -tests/integration/...
+bazel test //core/...
 ```
 
-This runs all tests excluding those that rely on encrypted secrets. If you need to run integration tests, please [get in touch](mailto:opensource@dataform.co) with the team.
-
-_Note: A `java failed` error suggests that Java needs to be installed._
+If you need to run integration tests, that rely on encrypted secrets, please [get in touch](mailto:opensource@dataform.co) with the team.
 
 ### Building
 
@@ -53,6 +51,17 @@ bazel build cli
 ```
 
 The projects folder here is not built as it requires an environment file, which can be provided from the team.
+
+### Add New NPM Dependencies
+
+Global yarn installations will throw errors when installing packages, instead you should use:
+
+```bash
+$ bazel run @nodejs//:yarn add ...
+```
+
+Additionally, installed NPM dependencies need to be added to the `deps` of `ts_library` rules by
+prefixing them with `@npm//...`.
 
 ## The Contribution Process
 

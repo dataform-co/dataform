@@ -9,31 +9,31 @@ import { suite, test } from "df/testing";
 // TODO(ekrekr): migrate the tests in this file to core/main_test.ts.
 
 class TestConfigs {
-  public static bigquery: dataform.IProjectConfig = {
+  public static bigquery = dataform.ProjectConfig.create({
     warehouse: "bigquery",
     defaultSchema: "schema",
     defaultLocation: "US"
-  };
+  });
 
-  public static bigqueryWithDefaultDatabase: dataform.IProjectConfig = {
+  public static bigqueryWithDefaultDatabase = dataform.ProjectConfig.create({
     ...TestConfigs.bigquery,
     defaultDatabase: "default-database"
-  };
+  });
 
-  public static bigqueryWithSchemaSuffix: dataform.IProjectConfig = {
+  public static bigqueryWithSchemaSuffix = dataform.ProjectConfig.create({
     ...TestConfigs.bigquery,
     schemaSuffix: "suffix"
-  };
+  });
 
-  public static bigqueryWithDefaultDatabaseAndSuffix: dataform.IProjectConfig = {
+  public static bigqueryWithDefaultDatabaseAndSuffix = dataform.ProjectConfig.create({
     ...TestConfigs.bigqueryWithDefaultDatabase,
     databaseSuffix: "suffix"
-  };
+  });
 
-  public static bigqueryWithTablePrefix: dataform.IProjectConfig = {
+  public static bigqueryWithTablePrefix = dataform.ProjectConfig.create({
     ...TestConfigs.bigquery,
     tablePrefix: "prefix"
-  };
+  });
 }
 
 suite("@dataform/core", () => {
@@ -42,7 +42,10 @@ suite("@dataform/core", () => {
       test(`config with prefix "${testConfig.tablePrefix}"`, () => {
         const tableWithPrefix = (table: string) =>
           testConfig.tablePrefix ? `${testConfig.tablePrefix}_${table}` : table;
-        const session = new Session(path.dirname(__filename), testConfig);
+        const session = new Session(
+          path.dirname(__filename),
+          dataform.ProjectConfig.create(testConfig)
+        );
         session
           .publish("example", {
             type: "table",
@@ -135,7 +138,10 @@ suite("@dataform/core", () => {
       test(`config with suffix "${testConfig.schemaSuffix}"`, () => {
         const schemaWithSuffix = (schema: string) =>
           testConfig.schemaSuffix ? `${schema}_${testConfig.schemaSuffix}` : schema;
-        const session = new Session(path.dirname(__filename), testConfig);
+        const session = new Session(
+          path.dirname(__filename),
+          dataform.ProjectConfig.create(testConfig)
+        );
         session
           .publish("example", {
             type: "table",
@@ -241,24 +247,25 @@ suite("@dataform/core", () => {
           disabled: false,
           fileName: path.basename(__filename),
           type: "incremental",
-          enumType: "INCREMENTAL"
+          enumType: "INCREMENTAL",
+          protected: true
         }
       ]);
     });
 
     test("canonical targets", () => {
-      const originalConfig = {
+      const originalConfig = dataform.ProjectConfig.create({
         warehouse: "bigquery",
         defaultSchema: "schema",
         defaultDatabase: "database",
         schemaSuffix: "dev",
         tablePrefix: "dev"
-      };
-      const overrideConfig = {
+      });
+      const overrideConfig = dataform.ProjectConfig.create({
         ...originalConfig,
         defaultSchema: "otherschema",
         defaultDatabase: "otherdatabase"
-      };
+      });
       const session = new Session(path.dirname(__filename), overrideConfig, originalConfig);
       session.publish("dataset");
       session.assert("assertion");
@@ -298,13 +305,16 @@ suite("@dataform/core", () => {
     });
 
     test("non-unique canonical targets fails", () => {
-      const originalConfig = {
+      const originalConfig = dataform.ProjectConfig.create({
         warehouse: "bigquery",
         defaultSchema: "schema",
         defaultDatabase: "database",
         defaultLocation: "US"
-      };
-      const overrideConfig = { ...originalConfig, defaultSchema: "otherschema" };
+      });
+      const overrideConfig = dataform.ProjectConfig.create({
+        ...originalConfig,
+        defaultSchema: "otherschema"
+      });
       const session = new Session(path.dirname(__filename), overrideConfig, originalConfig);
       session
         .publish("view", {
@@ -901,7 +911,7 @@ suite("@dataform/core", () => {
       expect(
         cGraph.graphErrors.compilationErrors.filter(item =>
           item.message.match(
-            /Ambiguous Action name: {\"name\":\"a\"}. Did you mean one of: foo.a, bar.a./
+            /Ambiguous Action name: {\"name\":\"a\",\"includeDependentAssertions\":false}. Did you mean one of: foo.a, bar.a./
           )
         ).length
       ).greaterThan(0);
@@ -943,10 +953,13 @@ suite("@dataform/core", () => {
     });
 
     test("defaultLocation must be set in BigQuery", () => {
-      const session = new Session(path.dirname(__filename), {
-        warehouse: "bigquery",
-        defaultSchema: "schema"
-      });
+      const session = new Session(
+        path.dirname(__filename),
+        dataform.ProjectConfig.create({
+          warehouse: "bigquery",
+          defaultSchema: "schema"
+        })
+      );
       const graph = session.compile();
       expect(graph.graphErrors.compilationErrors.map(error => error.message)).deep.equals([
         "A defaultLocation is required for BigQuery. This can be configured in workflow_settings.yaml."

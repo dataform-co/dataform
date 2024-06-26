@@ -356,7 +356,15 @@ export class BigQueryDbAdapter implements IDbAdapter {
               byteLimit
             });
             resultStream
-              .on("error", e => reject(e))
+              .on("error", e => {
+                // Dry run queries against BigQuery done by this package eagerly fail with
+                // "Not found: job". This is a workaround to avoid that.
+                // Example: https://github.com/googleapis/python-bigquery/issues/118.
+                if (dryRun && e.message?.includes("Not found: Job")) {
+                  resolve({ rows: [], metadata: {} });
+                }
+                reject(e);
+              })
               .on("data", row => {
                 if (!results.push(row)) {
                   resultStream.end();

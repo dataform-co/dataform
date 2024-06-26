@@ -9,32 +9,34 @@ import { decode64, encode64 } from "df/common/protos";
 import { compile } from "df/core/compilers";
 import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
-import { suite, test } from "df/testing";
+import { asPlainObject, suite, test } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
-import { asPlainObject } from "df/tests/utils";
 
 const SOURCE_EXTENSIONS = ["js", "sql", "sqlx", "yaml", "ipynb"];
 
 const VALID_WORKFLOW_SETTINGS_YAML = `
-defaultProject: dataform
+defaultProject: defaultProject
+defaultDataset: defaultDataset
 defaultLocation: US
 `;
 
 const VALID_DATAFORM_JSON = `
 {
-  "defaultDatabase": "dataform"
+  "defaultDatabase": "defaultProject",
+  "defaultSchema": "defaultDataset",
+  "defaultLocation": "US"
 }
 `;
 
 class TestConfigs {
   public static bigquery = dataform.WorkflowSettings.create({
-    defaultDataset: "schema",
+    defaultDataset: "defaultDataset",
     defaultLocation: "US"
   });
 
-  public static bigqueryWithDefaultDatabase = dataform.WorkflowSettings.create({
+  public static bigqueryWithDefaultProject = dataform.WorkflowSettings.create({
     ...TestConfigs.bigquery,
-    defaultProject: "default-database"
+    defaultProject: "defaultProject"
   });
 
   public static bigqueryWithDatasetSuffix = dataform.WorkflowSettings.create({
@@ -43,7 +45,7 @@ class TestConfigs {
   });
 
   public static bigqueryWithDefaultProjectAndDataset = dataform.WorkflowSettings.create({
-    ...TestConfigs.bigqueryWithDefaultDatabase,
+    ...TestConfigs.bigqueryWithDefaultProject,
     projectSuffix: "suffix"
   });
 
@@ -79,8 +81,9 @@ suite("@dataform/core", ({ afterEach }) => {
 
           const suffix = testConfig.datasetSuffix ? `_${testConfig.datasetSuffix}` : "";
           const prefix = testConfig.namePrefix ? `${testConfig.namePrefix}_` : "";
+          expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
           expect(result.compile.compiledGraph.operations[0].queries[0]).deep.equals(
-            `\`schema${suffix}.${prefix}e\``
+            `\`defaultDataset${suffix}.${prefix}e\``
           );
         });
       });
@@ -106,8 +109,8 @@ suite("@dataform/core", ({ afterEach }) => {
     suite("context methods", () => {
       [
         TestConfigs.bigqueryWithDefaultProjectAndDataset,
-        { ...TestConfigs.bigqueryWithDatasetSuffix, defaultProject: "default-database" },
-        { ...TestConfigs.bigqueryWithNamePrefix, defaultProject: "default-database" }
+        { ...TestConfigs.bigqueryWithDatasetSuffix, defaultProject: "defaultProject" },
+        { ...TestConfigs.bigqueryWithNamePrefix, defaultProject: "defaultProject" }
       ].forEach(testConfig => {
         test(
           `assertions target context functions with project suffix '${testConfig.projectSuffix}', ` +
@@ -130,8 +133,8 @@ suite("@dataform/core", ({ afterEach }) => {
               asPlainObject(result.compile.compiledGraph.graphErrors.compilationErrors)
             ).deep.equals([]);
             expect(asPlainObject(result.compile.compiledGraph.assertions[0].query)).deep.equals(
-              `default-database${testConfig.projectSuffix ? `_suffix` : ""}.` +
-                `schema${testConfig.datasetSuffix ? `_suffix` : ""}.` +
+              `defaultProject${testConfig.projectSuffix ? `_suffix` : ""}.` +
+                `defaultDataset${testConfig.datasetSuffix ? `_suffix` : ""}.` +
                 `${testConfig.namePrefix ? `prefix_` : ""}name`
             );
           }
@@ -156,6 +159,37 @@ suite("@dataform/core", ({ afterEach }) => {
           asPlainObject(result.compile.compiledGraph.graphErrors.compilationErrors?.[0]?.message)
         ).deep.equals("Warehouse does not support multiple databases");
       });
+    });
+
+    suite("filenames with multiple dots cause compilation errors", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(path.join(projectDir, "definitions/table1.extradot.sqlx"), "SELECT 1");
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/actions.yaml"),
+        `
+actions:
+- operation:
+    dataset: "dataset.extradot"
+    filename: table2.extradot.sql`
+      );
+      fs.writeFileSync(path.join(projectDir, "definitions/table2.extradot.sql"), "SELECT 2");
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(
+        result.compile.compiledGraph.graphErrors.compilationErrors
+          .map(({ message }) => message)
+          .sort()
+      ).deep.equals([
+        `Action target datasets cannot include '.'`,
+        `Action target names cannot include '.'`,
+        `Action target names cannot include '.'`
+      ]);
     });
   });
 
@@ -182,9 +216,7 @@ suite("@dataform/core", ({ afterEach }) => {
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
-      expect(asPlainObject(result.compile.compiledGraph.graphErrors.compilationErrors)).deep.equals(
-        []
-      );
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(asPlainObject(result.compile.compiledGraph.tables[0].disabled)).equals(true);
       expect(asPlainObject(result.compile.compiledGraph.operations[0].disabled)).equals(false);
       expect(asPlainObject(result.compile.compiledGraph.assertions[0].disabled)).equals(true);
@@ -223,9 +255,7 @@ SELECT \${a}`
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
-      expect(asPlainObject(result.compile.compiledGraph.graphErrors.compilationErrors)).deep.equals(
-        []
-      );
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(result.compile.compiledGraph.tables[0].query).equals(`
 
 
@@ -259,9 +289,7 @@ from \`location\``;
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
-      expect(asPlainObject(result.compile.compiledGraph.graphErrors.compilationErrors)).deep.equals(
-        []
-      );
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(result.compile.compiledGraph.operations[0].queries[0]).equals(fileContents);
     });
 
@@ -285,9 +313,7 @@ from \`location\``;
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
-      expect(asPlainObject(result.compile.compiledGraph.graphErrors.compilationErrors)).deep.equals(
-        []
-      );
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(result.compile.compiledGraph.tables[0].query.trim()).equals(sqlContents);
       expect(result.compile.compiledGraph.tables[0].preOps[0].trim()).equals(sqlContents);
     });
@@ -321,9 +347,7 @@ quotes
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
-      expect(asPlainObject(result.compile.compiledGraph.graphErrors.compilationErrors)).deep.equals(
-        []
-      );
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(result.compile.compiledGraph.tables[0].query.trim()).equals(sqlContents);
       expect(result.compile.compiledGraph.tables[0].postOps[0].trim()).equals(sqlContents);
     });
@@ -339,15 +363,14 @@ quotes
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(asPlainObject(result.compile.compiledGraph.projectConfig)).deep.equals(
         asPlainObject({
           warehouse: "bigquery",
-          defaultDatabase: "dataform",
+          defaultDatabase: "defaultProject",
+          defaultSchema: "defaultDataset",
           defaultLocation: "US"
         })
-      );
-      expect(asPlainObject(result.compile.compiledGraph.graphErrors.compilationErrors)).deep.equals(
-        []
       );
     });
 
@@ -358,9 +381,12 @@ quotes
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(asPlainObject(result.compile.compiledGraph.projectConfig)).deep.equals(
         asPlainObject({
-          defaultDatabase: "dataform"
+          defaultDatabase: "defaultProject",
+          defaultLocation: "US",
+          defaultSchema: "defaultDataset"
         })
       );
     });
@@ -412,7 +438,7 @@ quotes
       );
 
       expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
-        "Cannot find field: notAProjectConfigField in message"
+        `Workflow settings error: Unexpected property "notAProjectConfigField", or property value type of "string" is incorrect. See https://dataform-co.github.io/dataform/docs/configs-reference#dataform-WorkflowSettings for allowed properties.`
       );
     });
 
@@ -433,7 +459,7 @@ quotes
       );
 
       expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
-        "Cannot find field: notAProjectConfigField in message"
+        `Dataform json error: Unexpected property "notAProjectConfigField", or property value type of "string" is incorrect.`
       );
     });
 
@@ -442,7 +468,7 @@ quotes
       fs.writeFileSync(
         path.join(projectDir, "workflow_settings.yaml"),
         `
-defaultProject: dataform
+defaultProject: defaultProject
 defaultLocation: locationInWorkflowSettings
 vars:
   selectVar: selectVal
@@ -475,12 +501,13 @@ select 1 AS \${dataform.projectConfig.vars.selectVar}`
 
       const result = runMainInVm(coreExecutionRequest);
 
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(asPlainObject(result.compile.compiledGraph)).deep.equals(
         asPlainObject({
           dataformCoreVersion: version,
           graphErrors: {},
           projectConfig: {
-            defaultDatabase: "dataform",
+            defaultDatabase: "defaultProject",
             defaultLocation: "locationInOverride",
             vars: {
               projectVar: "projectVal",
@@ -536,15 +563,18 @@ defaultProject: dataform`
           path.join(projectDir, "workflow_settings.yaml"),
           `
 dataformCoreVersion: ${version}
-defaultProject: dataform`
+defaultProject: project
+defaultLocation: US`
         );
 
         const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
+        expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
         expect(asPlainObject(result.compile.compiledGraph.projectConfig)).deep.equals(
           asPlainObject({
             warehouse: "bigquery",
-            defaultDatabase: "dataform"
+            defaultDatabase: "project",
+            defaultLocation: "US"
           })
         );
       });
@@ -621,6 +651,7 @@ select 1 AS \${dataform.projectConfig.vars.columnVar}`
 
         const result = runMainInVm(coreExecutionRequest);
 
+        expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
         expect(asPlainObject(result.compile.compiledGraph)).deep.equals(
           asPlainObject({
             assertions: [
@@ -723,15 +754,18 @@ actions:
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(asPlainObject(result.compile.compiledGraph.notebooks)).deep.equals(
         asPlainObject([
           {
             target: {
-              database: "dataform",
+              database: "defaultProject",
+              schema: "defaultDataset",
               name: "notebook"
             },
             canonicalTarget: {
-              database: "dataform",
+              database: "defaultProject",
+              schema: "defaultDataset",
               name: "notebook"
             },
             fileName: "definitions/notebook.ipynb",
@@ -756,11 +790,18 @@ actions:
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(asPlainObject(result.compile.compiledGraph.notebooks)).deep.equals(
         asPlainObject([
           {
+            target: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "notebook"
+            },
             canonicalTarget: {
-              database: "dataform",
+              database: "defaultProject",
+              schema: "defaultDataset",
               name: "notebook"
             },
             fileName: "definitions/notebook.ipynb",
@@ -770,11 +811,7 @@ actions:
                 { cell_type: "code", source: ["print('hi')"], outputs: [] },
                 { cell_type: "raw", source: ["print('hi')"] }
               ]
-            }),
-            target: {
-              database: "dataform",
-              name: "notebook"
-            }
+            })
           }
         ])
       );
@@ -793,6 +830,7 @@ defaultNotebookRuntimeOptions:
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(asPlainObject(result.compile.compiledGraph.projectConfig)).deep.equals({
         defaultDatabase: "dataform",
         defaultLocation: "US",
@@ -823,19 +861,22 @@ actions:
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(asPlainObject(result.compile.compiledGraph.operations)).deep.equals(
         asPlainObject([
           {
+            target: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "action"
+            },
             canonicalTarget: {
-              database: "dataform",
+              database: "defaultProject",
+              schema: "defaultDataset",
               name: "action"
             },
             fileName: "definitions/action.sql",
-            queries: ["SELECT 1"],
-            target: {
-              database: "dataform",
-              name: "action"
-            }
+            queries: ["SELECT 1"]
           }
         ])
       );
@@ -858,15 +899,18 @@ actions:
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(asPlainObject(result.compile.compiledGraph.declarations)).deep.equals(
         asPlainObject([
           {
-            canonicalTarget: {
-              database: "dataform",
+            target: {
+              database: "defaultProject",
+              schema: "defaultDataset",
               name: "action"
             },
-            target: {
-              database: "dataform",
+            canonicalTarget: {
+              database: "defaultProject",
+              schema: "defaultDataset",
               name: "action"
             }
           }
@@ -891,7 +935,7 @@ actions:
       );
 
       expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
-        "Cannot find field: fileName in message, or value type is incorrect"
+        `Unexpected property "fileName", or property value type of "string" is incorrect. See https://dataform-co.github.io/dataform/docs/configs-reference#dataform-ActionConfigs for allowed properties.`
       );
     });
 
@@ -933,19 +977,22 @@ actions:
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals(
         asPlainObject([
           {
+            target: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "action"
+            },
             canonicalTarget: {
-              database: "dataform",
+              database: "defaultProject",
+              schema: "defaultDataset",
               name: "action"
             },
             fileName: "definitions/action.sql",
             query: "SELECT 1",
-            target: {
-              database: "dataform",
-              name: "action"
-            },
             type: "table",
             enumType: "TABLE",
             disabled: false
@@ -976,20 +1023,23 @@ actions:
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals(
         asPlainObject([
           {
+            target: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "action"
+            },
             canonicalTarget: {
-              database: "dataform",
+              database: "defaultProject",
+              schema: "defaultDataset",
               name: "action"
             },
             fileName: "definitions/action.sql",
             query: "SELECT 1",
             incrementalQuery: "SELECT 1",
-            target: {
-              database: "dataform",
-              name: "action"
-            },
             type: "incremental",
             enumType: "INCREMENTAL",
             protected: true,
@@ -1018,19 +1068,22 @@ actions:
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals(
         asPlainObject([
           {
+            target: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "action"
+            },
             canonicalTarget: {
-              database: "dataform",
+              database: "defaultProject",
+              schema: "defaultDataset",
               name: "action"
             },
             fileName: "definitions/action.sql",
             query: "SELECT 1",
-            target: {
-              database: "dataform",
-              name: "action"
-            },
             type: "view",
             enumType: "VIEW",
             disabled: false
@@ -1048,28 +1101,60 @@ actions:
       fs.mkdirSync(path.join(projectDir, "definitions"));
       fs.writeFileSync(
         path.join(projectDir, "definitions/actions.yaml"),
+        // If change, then change test "sqlx config options checks for assertions".
         `
 actions:
 - assertion:
-    filename: action.sql`
+    name: name
+    dataset: dataset
+    project: project
+    dependencyTargets:
+      - name: operation
+        dataset: defaultDataset
+        project: defaultProject
+    filename: action.sql
+    tags:
+      - tagA
+      - tagB
+    disabled: true,
+    description: description
+    hermetic: true,
+    dependOnDependencyAssertions: true`
       );
       fs.writeFileSync(path.join(projectDir, "definitions/action.sql"), "SELECT 1");
+      fs.writeFileSync(path.join(projectDir, "definitions/operation.sqlx"), "SELECT 1");
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals(
         asPlainObject([
           {
-            canonicalTarget: {
-              database: "dataform",
-              name: "action"
-            },
-            fileName: "definitions/action.sql",
-            query: "SELECT 1",
             target: {
-              database: "dataform",
-              name: "action"
-            }
+              database: "project",
+              schema: "dataset",
+              name: "name"
+            },
+            canonicalTarget: {
+              database: "project",
+              schema: "dataset",
+              name: "name"
+            },
+            actionDescriptor: {
+              description: "description"
+            },
+            disabled: true,
+            fileName: "definitions/action.sql",
+            hermeticity: "HERMETIC",
+            tags: ["tagA", "tagB"],
+            query: "SELECT 1",
+            dependencyTargets: [
+              {
+                name: "operation",
+                schema: "defaultDataset",
+                database: "defaultProject"
+              }
+            ]
           }
         ])
       );
@@ -1112,7 +1197,25 @@ actions:
       );
 
       expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
-        "Cannot find field: materialized in message, or value type is incorrect"
+        `Unexpected property "materialized", or property value type of "boolean" is incorrect. See https://dataform-co.github.io/dataform/docs/configs-reference#dataform-ActionConfigs for allowed properties.`
+      );
+    });
+
+    test(`fails when empty objects are given`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/actions.yaml"),
+        `
+actions:`
+      );
+
+      expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
+        `Unexpected empty value for "actions". See https://dataform-co.github.io/dataform/docs/configs-reference#dataform-ActionConfigs for allowed properties.`
       );
     });
 
@@ -1137,19 +1240,22 @@ actions:
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(asPlainObject(result.compile.compiledGraph.operations)).deep.equals(
         asPlainObject([
           {
+            target: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "utf8characters:私🙂 and some spaces"
+            },
             canonicalTarget: {
-              database: "dataform",
+              database: "defaultProject",
+              schema: "defaultDataset",
               name: "utf8characters:私🙂 and some spaces"
             },
             fileName: "definitions/utf8characters:私🙂 and some spaces.sql",
-            queries: ["SELECT 1"],
-            target: {
-              database: "dataform",
-              name: "utf8characters:私🙂 and some spaces"
-            }
+            queries: ["SELECT 1"]
           }
         ])
       );
@@ -1200,6 +1306,1183 @@ actions:
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
       expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+    });
+
+    test(`files can be loaded from the root directory and are normalized in the compiled graph`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/actions.yaml"),
+        `
+actions:
+- notebook:
+    filename: ../contents.ipynb
+- operation:
+    filename: ../table.sql`
+      );
+      fs.writeFileSync(path.join(projectDir, `contents.ipynb`), JSON.stringify({ cells: [] }));
+      fs.writeFileSync(path.join(projectDir, `table.sql`), "SELECT 1");
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(result.compile.compiledGraph.notebooks[0].fileName).deep.equals("contents.ipynb");
+      expect(result.compile.compiledGraph.operations[0].fileName).deep.equals("table.sql");
+    });
+  });
+
+  suite("sqlx config options", () => {
+    const exampleActionDescriptor = {
+      inputSqlxConfigBlock: `
+  columns: {
+    column1Key: "column1Val",
+    column2Key: {
+      description: "description",
+      columns: {
+        nestedColumnKey: "nestedColumnVal"
+      },
+      tags: ["tag3", "tag4"],
+      bigqueryPolicyTags: ["bigqueryPolicyTag1", "bigqueryPolicyTag2"],
+    }
+  },`,
+      outputActionDescriptor: {
+        columns: [
+          {
+            description: "column1Val",
+            path: ["column1Key"]
+          },
+          {
+            bigqueryPolicyTags: ["bigqueryPolicyTag1", "bigqueryPolicyTag2"],
+            description: "description",
+            path: ["column2Key"],
+            tags: ["tag3", "tag4"]
+          },
+          {
+            description: "nestedColumnVal",
+            path: ["column2Key", "nestedColumnKey"]
+          }
+        ],
+        description: "description"
+      } as dataform.IColumnDescriptor
+    };
+
+    const exampleBuiltInAssertions = {
+      inputSqlxConfigBlock: `
+  assertions: {
+    uniqueKeys: [["uniqueKey1", "uniqueKey2"]],
+    nonNull: "nonNull",
+    rowConditions: ["rowConditions1", "rowConditions2"],
+  },`,
+      outputAssertions: [
+        {
+          target: {
+            database: "defaultProject",
+            schema: "defaultDataset",
+            name: "dataset_name_assertions_uniqueKey_0"
+          },
+          canonicalTarget: {
+            database: "defaultProject",
+            schema: "defaultDataset",
+            name: "dataset_name_assertions_uniqueKey_0"
+          },
+          dependencyTargets: [
+            {
+              database: "project",
+              schema: "dataset",
+              name: "name"
+            }
+          ],
+          disabled: true,
+          fileName: "definitions/filename.sqlx",
+          parentAction: {
+            database: "project",
+            schema: "dataset",
+            name: "name"
+          },
+          query:
+            "\nSELECT\n  *\nFROM (\n  SELECT\n    uniqueKey1, uniqueKey2,\n    COUNT(1) AS index_row_count\n  FROM `project.dataset.name`\n  GROUP BY uniqueKey1, uniqueKey2\n  ) AS data\nWHERE index_row_count > 1\n",
+          tags: ["tag1", "tag2"]
+        },
+        {
+          target: {
+            database: "defaultProject",
+            schema: "defaultDataset",
+            name: "dataset_name_assertions_rowConditions"
+          },
+          canonicalTarget: {
+            database: "defaultProject",
+            schema: "defaultDataset",
+            name: "dataset_name_assertions_rowConditions"
+          },
+          dependencyTargets: [
+            {
+              database: "project",
+              schema: "dataset",
+              name: "name"
+            }
+          ],
+          disabled: true,
+          fileName: "definitions/filename.sqlx",
+          parentAction: {
+            database: "project",
+            schema: "dataset",
+            name: "name"
+          },
+          query:
+            "\nSELECT\n  'rowConditions1' AS failing_row_condition,\n  *\nFROM `project.dataset.name`\nWHERE NOT (rowConditions1)\nUNION ALL\nSELECT\n  'rowConditions2' AS failing_row_condition,\n  *\nFROM `project.dataset.name`\nWHERE NOT (rowConditions2)\nUNION ALL\nSELECT\n  'nonNull IS NOT NULL' AS failing_row_condition,\n  *\nFROM `project.dataset.name`\nWHERE NOT (nonNull IS NOT NULL)\n",
+          tags: ["tag1", "tag2"]
+        }
+      ] as dataform.IAssertion[]
+    };
+
+    test(`for assertions`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(path.join(projectDir, "definitions/operation.sqlx"), "SELECT 1");
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/assertion.sqlx"),
+        // If change, then change test "action configs assertions can be loaded".
+        `
+config {
+  type: "assertion",
+  name: "name",
+  schema: "dataset",
+  database: "project",
+  dependencies: ["operation"],
+  tags: ["tagA", "tagB"],
+  disabled: true,
+  description: "description",
+  hermetic: true,
+  dependOnDependencyAssertions: true,
+}
+SELECT 1`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals(
+        asPlainObject([
+          {
+            target: {
+              database: "project",
+              schema: "dataset",
+              name: "name"
+            },
+            canonicalTarget: {
+              database: "project",
+              schema: "dataset",
+              name: "name"
+            },
+            actionDescriptor: {
+              description: "description"
+            },
+            dependencyTargets: [
+              {
+                database: "defaultProject",
+                schema: "defaultDataset",
+                name: "operation"
+              }
+            ],
+            disabled: true,
+            fileName: "definitions/assertion.sqlx",
+            hermeticity: "HERMETIC",
+            tags: ["tagA", "tagB"],
+            query: "\n\nSELECT 1"
+          }
+        ])
+      );
+    });
+
+    test(`for declarations`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/assertion.sqlx"),
+        `
+config {
+  type: "declaration",
+  name: "name",
+  schema: "dataset",
+  database: "project",
+  description: "description",
+${exampleActionDescriptor.inputSqlxConfigBlock}
+}`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.declarations)).deep.equals(
+        asPlainObject([
+          {
+            target: {
+              database: "project",
+              schema: "dataset",
+              name: "name"
+            },
+            canonicalTarget: {
+              database: "project",
+              schema: "dataset",
+              name: "name"
+            },
+            fileName: "definitions/assertion.sqlx",
+            actionDescriptor: exampleActionDescriptor.outputActionDescriptor
+          }
+        ])
+      );
+    });
+
+    test("for tables", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(path.join(projectDir, "definitions/operation.sqlx"), "SELECT 1");
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/filename.sqlx"),
+        `
+config {
+  type: "table",
+  name: "name",
+  schema: "dataset",
+  database: "project",
+  dependencies: ["operation"],
+  tags: ["tag1", "tag2"],
+  disabled: true,
+  description: "description",
+${exampleActionDescriptor.inputSqlxConfigBlock}
+  bigquery: {
+    partitionBy: "partitionBy",
+    partitionExpirationDays: 1,
+    requirePartitionFilter: true,
+    clusterBy: ["clusterBy"],
+    labels: {"key": "val"},
+    additionalOptions: {
+      option1Key: "option1",
+      option2Key: "option2",
+    }
+  },
+  ${exampleBuiltInAssertions.inputSqlxConfigBlock}
+  dependOnDependencyAssertions: true,
+  hermetic: true,
+}
+SELECT 1`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals([
+        {
+          target: {
+            database: "project",
+            schema: "dataset",
+            name: "name"
+          },
+          canonicalTarget: {
+            database: "project",
+            schema: "dataset",
+            name: "name"
+          },
+          type: "table",
+          disabled: true,
+          hermeticity: "HERMETIC",
+          bigquery: {
+            additionalOptions: {
+              option1Key: "option1",
+              option2Key: "option2"
+            },
+            clusterBy: ["clusterBy"],
+            labels: {
+              key: "val"
+            },
+            partitionBy: "partitionBy",
+            partitionExpirationDays: 1,
+            requirePartitionFilter: true
+          },
+          tags: ["tag1", "tag2"],
+          dependencyTargets: [
+            {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "operation"
+            }
+          ],
+          enumType: "TABLE",
+          fileName: "definitions/filename.sqlx",
+          query: "\n\nSELECT 1",
+          actionDescriptor: {
+            ...exampleActionDescriptor.outputActionDescriptor,
+            // sqlxConfig.bigquery.labels are placed as bigqueryLabels.
+            bigqueryLabels: {
+              key: "val"
+            }
+          }
+        }
+      ]);
+      expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals(
+        exampleBuiltInAssertions.outputAssertions
+      );
+    });
+
+    test("for views", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(path.join(projectDir, "definitions/operation.sqlx"), "SELECT 1");
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/filename.sqlx"),
+        `
+config {
+  type: "view",
+  name: "name",
+  schema: "dataset",
+  database: "project",
+  dependencies: ["operation"],
+  tags: ["tag1", "tag2"],
+  disabled: true,
+  materialized: true,
+  description: "description",
+${exampleActionDescriptor.inputSqlxConfigBlock}
+  bigquery: {
+    labels: {"key": "val"},
+    additionalOptions: {
+      option1Key: "option1",
+      option2Key: "option2",
+    }
+  },
+  dependOnDependencyAssertions: true,
+  hermetic: true,
+${exampleBuiltInAssertions.inputSqlxConfigBlock}
+}
+SELECT 1`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals([
+        {
+          target: {
+            database: "project",
+            schema: "dataset",
+            name: "name"
+          },
+          canonicalTarget: {
+            database: "project",
+            schema: "dataset",
+            name: "name"
+          },
+          type: "view",
+          disabled: true,
+          hermeticity: "HERMETIC",
+          bigquery: {
+            additionalOptions: {
+              option1Key: "option1",
+              option2Key: "option2"
+            },
+            labels: {
+              key: "val"
+            }
+          },
+          tags: ["tag1", "tag2"],
+          dependencyTargets: [
+            {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "operation"
+            }
+          ],
+          enumType: "VIEW",
+          fileName: "definitions/filename.sqlx",
+          query: "\n\nSELECT 1",
+          actionDescriptor: {
+            ...exampleActionDescriptor.outputActionDescriptor,
+            // sqlxConfig.bigquery.labels are placed as bigqueryLabels.
+            bigqueryLabels: {
+              key: "val"
+            }
+          },
+          materialized: true
+        }
+      ]);
+      expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals(
+        exampleBuiltInAssertions.outputAssertions
+      );
+    });
+
+    test("for incremental tables", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(path.join(projectDir, "definitions/operation.sqlx"), "SELECT 1");
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/filename.sqlx"),
+        `
+config {
+  type: "incremental",
+  name: "name",
+  schema: "dataset",
+  database: "project",
+  dependencies: ["operation"],
+  tags: ["tag1", "tag2"],
+  disabled: true,
+  protected: false,
+  uniqueKey: ["key1", "key2"],
+  description: "description",
+  ${exampleActionDescriptor.inputSqlxConfigBlock}
+  bigquery: {
+    partitionBy: "partitionBy",
+    partitionExpirationDays: 1,
+    requirePartitionFilter: true,
+    updatePartitionFilter: "updatePartitionFilter",
+    clusterBy: ["clusterBy"],
+    labels: {"key": "val"},
+    additionalOptions: {
+      option1Key: "option1",
+      option2Key: "option2",
+    }
+  },
+  dependOnDependencyAssertions: true,
+  ${exampleBuiltInAssertions.inputSqlxConfigBlock}
+  hermetic: true,
+}
+SELECT 1`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals([
+        {
+          target: {
+            database: "project",
+            schema: "dataset",
+            name: "name"
+          },
+          canonicalTarget: {
+            database: "project",
+            schema: "dataset",
+            name: "name"
+          },
+          type: "incremental",
+          disabled: true,
+          protected: false,
+          hermeticity: "HERMETIC",
+          bigquery: {
+            additionalOptions: {
+              option1Key: "option1",
+              option2Key: "option2"
+            },
+            clusterBy: ["clusterBy"],
+            labels: {
+              key: "val"
+            },
+            partitionBy: "partitionBy",
+            partitionExpirationDays: 1,
+            requirePartitionFilter: true,
+            updatePartitionFilter: "updatePartitionFilter"
+          },
+          tags: ["tag1", "tag2"],
+          uniqueKey: ["key1", "key2"],
+          dependencyTargets: [
+            {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "operation"
+            }
+          ],
+          enumType: "INCREMENTAL",
+          fileName: "definitions/filename.sqlx",
+          query: "\n\nSELECT 1",
+          incrementalQuery: "\n\nSELECT 1",
+          actionDescriptor: {
+            ...exampleActionDescriptor.outputActionDescriptor,
+            // sqlxConfig.bigquery.labels are placed as bigqueryLabels.
+            bigqueryLabels: {
+              key: "val"
+            }
+          }
+        }
+      ]);
+      expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals(
+        exampleBuiltInAssertions.outputAssertions
+      );
+    });
+
+    test(`for operations`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/table.sqlx"),
+        `config {type: "view"} SELECT 1`
+      );
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/operation.sqlx"),
+        `
+config {
+  type: "operations",
+  name: "name",
+  schema: "dataset",
+  database: "project",
+  dependencies: ["table"],
+  tags: ["tagA", "tagB"],
+  disabled: true,
+  description: "description",
+  hermetic: true,
+  hasOutput: true,
+  dependOnDependencyAssertions: true,
+${exampleActionDescriptor.inputSqlxConfigBlock}
+}
+SELECT 1`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.operations)).deep.equals(
+        asPlainObject([
+          {
+            target: {
+              database: "project",
+              schema: "dataset",
+              name: "name"
+            },
+            canonicalTarget: {
+              database: "project",
+              schema: "dataset",
+              name: "name"
+            },
+            dependencyTargets: [
+              {
+                database: "defaultProject",
+                schema: "defaultDataset",
+                name: "table"
+              }
+            ],
+            disabled: true,
+            fileName: "definitions/operation.sqlx",
+            hermeticity: "HERMETIC",
+            hasOutput: true,
+            tags: ["tagA", "tagB"],
+            queries: ["\n\nSELECT 1"],
+            actionDescriptor: exampleActionDescriptor.outputActionDescriptor
+          }
+        ])
+      );
+    });
+  });
+
+  suite("Assertions as dependencies", ({ beforeEach }) => {
+    [
+      TestConfigs.bigquery,
+      TestConfigs.bigqueryWithDatasetSuffix,
+      TestConfigs.bigqueryWithNamePrefix
+    ].forEach(testConfig => {
+      let projectDir: any;
+      beforeEach("Create temporary dir and files", () => {
+        projectDir = tmpDirFixture.createNewTmpDir();
+        fs.writeFileSync(
+          path.join(projectDir, "workflow_settings.yaml"),
+          dumpYaml(dataform.WorkflowSettings.create(testConfig))
+        );
+        fs.mkdirSync(path.join(projectDir, "definitions"));
+        fs.writeFileSync(
+          path.join(projectDir, "definitions/A.sqlx"),
+          `
+config {
+  type: "table",
+  assertions: {rowConditions: ["test > 1"]}}
+  SELECT 1 as test`
+        );
+        fs.writeFileSync(
+          path.join(projectDir, "definitions/A_assert.sqlx"),
+          `
+config {
+  type: "assertion",
+}
+select test from \${ref("A")} where test > 3`
+        );
+        fs.writeFileSync(path.join(projectDir, "definitions/B.sql"), "SELECT 1");
+        fs.writeFileSync(path.join(projectDir, "definitions/C.sql"), "SELECT 1");
+        fs.writeFileSync(
+          path.join(projectDir, `definitions/notebook.ipynb`),
+          EMPTY_NOTEBOOK_CONTENTS
+        );
+      });
+
+      test("When dependOnDependencyAssertions property is set to true, assertions from A are added as dependencies", () => {
+        fs.writeFileSync(
+          path.join(projectDir, "definitions/B.sqlx"),
+          `
+config {
+  type: "table",
+  dependOnDependencyAssertions: true,
+  dependencies: ["A"]
+}
+select 1 as btest
+`
+        );
+
+        const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+        expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+        expect(
+          asPlainObject(
+            result.compile.compiledGraph.tables.find(
+              table => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B")
+            ).dependencyTargets.length
+          )
+        ).equals(3);
+        expect(
+          asPlainObject(
+            result.compile.compiledGraph.tables
+              .find(table => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B"))
+              .dependencyTargets.flatMap(dependencyTarget => dependencyTarget.name)
+          )
+        ).deep.equals([
+          prefixAdjustedName(testConfig.namePrefix, "A"),
+          prefixAdjustedName(testConfig.namePrefix, "defaultDataset_A_assertions_rowConditions"),
+          prefixAdjustedName(testConfig.namePrefix, "A_assert")
+        ]);
+      });
+
+      test("Setting includeDependentAssertions to true in config.dependencies adds assertions from that dependency to dependencyTargets", () => {
+        fs.writeFileSync(
+          path.join(projectDir, "definitions/B.sqlx"),
+          `
+config {
+  type: "table",
+  dependencies: [{name: "A", includeDependentAssertions: true}, "C"]
+}
+select 1 as btest`
+        );
+        fs.writeFileSync(
+          path.join(projectDir, "definitions/C.sqlx"),
+          `
+config {
+  type: "table",
+  assertions: {
+    rowConditions: ["test > 1"]
+  }
+}
+SELECT 1 as test`
+        );
+
+        const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+        expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+        expect(
+          asPlainObject(
+            result.compile.compiledGraph.tables.find(
+              table => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B")
+            ).dependencyTargets.length
+          )
+        ).equals(4);
+        expect(
+          asPlainObject(
+            result.compile.compiledGraph.tables
+              .find(table => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B"))
+              .dependencyTargets.flatMap(dependencyTarget => dependencyTarget.name)
+          )
+        ).deep.equals([
+          prefixAdjustedName(testConfig.namePrefix, "A"),
+          prefixAdjustedName(testConfig.namePrefix, "defaultDataset_A_assertions_rowConditions"),
+          prefixAdjustedName(testConfig.namePrefix, "A_assert"),
+          prefixAdjustedName(testConfig.namePrefix, "C")
+        ]);
+      });
+
+      test("Setting includeDependentAssertions to true in ref, adds assertions from that dependency to dependencyTargets", () => {
+        fs.writeFileSync(
+          path.join(projectDir, "definitions/B.sqlx"),
+          `
+config {
+  type: "table",
+  dependencies: ["A"]
+}
+select * from \${ref({name: "C", includeDependentAssertions: true})}
+select 1 as btest`
+        );
+        fs.writeFileSync(
+          path.join(projectDir, "definitions/C.sqlx"),
+          `
+config {
+  type: "table",
+    assertions: {
+      rowConditions: ["test > 1"]
+  }
+}
+SELECT 1 as test`
+        );
+
+        const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+        expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+        expect(
+          asPlainObject(
+            result.compile.compiledGraph.tables.find(
+              table => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B")
+            ).dependencyTargets.length
+          )
+        ).equals(3);
+        expect(
+          asPlainObject(
+            result.compile.compiledGraph.tables
+              .find(table => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B"))
+              .dependencyTargets.flatMap(dependencyTarget => dependencyTarget.name)
+          )
+        ).deep.equals([
+          prefixAdjustedName(testConfig.namePrefix, "A"),
+          prefixAdjustedName(testConfig.namePrefix, "C"),
+          prefixAdjustedName(testConfig.namePrefix, "defaultDataset_C_assertions_rowConditions")
+        ]);
+      });
+
+      test("When dependOnDependencyAssertions=true and includeDependentAssertions=false, the assertions related to dependency should not be added to dependencyTargets", () => {
+        fs.writeFileSync(
+          path.join(projectDir, "definitions/B.sqlx"),
+          `
+config {
+  type: "table",
+  dependOnDependencyAssertions: true,
+  dependencies: ["A"]
+}
+select * from \${ref({name: "C", includeDependentAssertions: false})}
+select 1 as btest`
+        );
+        fs.writeFileSync(
+          path.join(projectDir, "definitions/C.sqlx"),
+          `
+config {
+  type: "table",
+    assertions: {
+      rowConditions: ["test > 1"]
+  }
+}
+SELECT 1 as test`
+        );
+
+        const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+        expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+        expect(
+          asPlainObject(
+            result.compile.compiledGraph.tables.find(
+              table => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B")
+            ).dependencyTargets.length
+          )
+        ).equals(4);
+        expect(
+          asPlainObject(
+            result.compile.compiledGraph.tables
+              .find(table => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B"))
+              .dependencyTargets.flatMap(dependencyTarget => dependencyTarget.name)
+          )
+        ).deep.equals([
+          prefixAdjustedName(testConfig.namePrefix, "A"),
+          prefixAdjustedName(testConfig.namePrefix, "defaultDataset_A_assertions_rowConditions"),
+          prefixAdjustedName(testConfig.namePrefix, "A_assert"),
+          prefixAdjustedName(testConfig.namePrefix, "C")
+        ]);
+      });
+
+      test("When dependOnDependencyAssertions=false and includeDependentAssertions=true, the assertions related to dependency should be added to dependencyTargets", () => {
+        fs.writeFileSync(
+          path.join(projectDir, "definitions/B.sqlx"),
+          `
+config {
+  type: "operations",
+  dependOnDependencyAssertions: false,
+  dependencies: ["A"]
+}
+select * from \${ref({name: "C", includeDependentAssertions: true})}
+select 1 as btest`
+        );
+        fs.writeFileSync(
+          path.join(projectDir, "definitions/C.sqlx"),
+          `
+config {
+  type: "table",
+    assertions: {
+      rowConditions: ["test > 1"]
+  }
+}
+SELECT 1 as test`
+        );
+
+        const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+        expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+        expect(
+          asPlainObject(
+            result.compile.compiledGraph.operations.find(
+              operation => operation.target.name === prefixAdjustedName(testConfig.namePrefix, "B")
+            ).dependencyTargets.length
+          )
+        ).equals(3);
+        expect(
+          asPlainObject(
+            result.compile.compiledGraph.operations
+              .find(
+                operation =>
+                  operation.target.name === prefixAdjustedName(testConfig.namePrefix, "B")
+              )
+              .dependencyTargets.flatMap(dependencyTarget => dependencyTarget.name)
+          )
+        ).deep.equals([
+          prefixAdjustedName(testConfig.namePrefix, "A"),
+          prefixAdjustedName(testConfig.namePrefix, "C"),
+          prefixAdjustedName(testConfig.namePrefix, "defaultDataset_C_assertions_rowConditions")
+        ]);
+      });
+
+      test("Assertions added through includeDependentAssertions and explicitly listed in dependencies are deduplicated.", () => {
+        fs.writeFileSync(
+          path.join(projectDir, "definitions/B.sqlx"),
+          `
+config {
+  type: "table",
+  dependencies: ["A_assert"]
+}
+select * from \${ref({name: "A", includeDependentAssertions: true})}
+select 1 as btest`
+        );
+
+        const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+        expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+        expect(
+          asPlainObject(
+            result.compile.compiledGraph.tables.find(
+              table => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B")
+            ).dependencyTargets.length
+          )
+        ).equals(3);
+        expect(
+          asPlainObject(
+            result.compile.compiledGraph.tables
+              .find(table => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B"))
+              .dependencyTargets.flatMap(dependencyTarget => dependencyTarget.name)
+          )
+        ).deep.equals([
+          prefixAdjustedName(testConfig.namePrefix, "A_assert"),
+          prefixAdjustedName(testConfig.namePrefix, "A"),
+          prefixAdjustedName(testConfig.namePrefix, "defaultDataset_A_assertions_rowConditions")
+        ]);
+      });
+
+      test("When includeDependentAssertions property in config and ref are set differently for the same dependency, compilation error is thrown.", () => {
+        fs.writeFileSync(
+          path.join(projectDir, "definitions/B.sqlx"),
+          `
+config {
+  type: "table",
+  dependencies: [{name: "A", includeDependentAssertions: false}, {name: "C", includeDependentAssertions: true}]
+}
+select * from \${ref({name: "A", includeDependentAssertions: true})}
+select * from \${ref({name: "C", includeDependentAssertions: false})}
+select 1 as btest`
+        );
+        fs.writeFileSync(
+          path.join(projectDir, "definitions/C.sqlx"),
+          `
+config {
+  type: "table",
+    assertions: {
+      rowConditions: ["test > 1"]
+  }
+}
+SELECT 1 as test
+}`
+        );
+
+        const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+        expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).deep.equals(2);
+        expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).deep.equals(
+          `Conflicting "includeDependentAssertions" properties are not allowed. Dependency A has different values set for this property.`
+        );
+      });
+
+      suite("Action configs", () => {
+        test(`When dependOnDependencyAssertions property is set to true, assertions from A are added as dependencies`, () => {
+          fs.writeFileSync(
+            path.join(projectDir, "definitions/actions.yaml"),
+            `
+actions:
+- view:
+    filename: B.sql
+    dependOnDependencyAssertions: true
+    dependencyTargets:
+      - name: A
+- operation:
+    filename: C.sql
+    dependOnDependencyAssertions: true
+    dependencyTargets:
+      - name: A
+- notebook:
+    filename: notebook.ipynb
+    dependOnDependencyAssertions: true
+    dependencyTargets:
+      - name: A
+`
+          );
+
+          const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+          expect(
+            asPlainObject(
+              result.compile.compiledGraph.operations.find(
+                operation =>
+                  operation.target.name === prefixAdjustedName(testConfig.namePrefix, "C")
+              ).dependencyTargets.length
+            )
+          ).deep.equals(3);
+          expect(
+            asPlainObject(
+              result.compile.compiledGraph.tables.find(
+                table => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B")
+              ).dependencyTargets.length
+            )
+          ).deep.equals(3);
+          expect(
+            asPlainObject(
+              result.compile.compiledGraph.notebooks.find(
+                notebook =>
+                  notebook.target.name === prefixAdjustedName(testConfig.namePrefix, "notebook")
+              ).dependencyTargets.length
+            )
+          ).deep.equals(3);
+          expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+        });
+
+        test(`Setting includeDependentAssertions to true in config.dependencies adds assertions from that dependency to dependencyTargets`, () => {
+          fs.writeFileSync(
+            path.join(projectDir, "definitions/actions.yaml"),
+            `
+actions:
+- view:
+    filename: B.sql
+    dependencyTargets:
+      - name: A
+        includeDependentAssertions: true 
+- operation:
+    filename: C.sql
+    dependencyTargets:
+      - name: A
+        includeDependentAssertions: true
+- notebook:
+    filename: notebook.ipynb
+    dependencyTargets:
+      - name: A
+        includeDependentAssertions: true
+`
+          );
+
+          const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+          expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+          expect(
+            asPlainObject(
+              result.compile.compiledGraph.operations.find(
+                operation =>
+                  operation.target.name === prefixAdjustedName(testConfig.namePrefix, "C")
+              ).dependencyTargets.length
+            )
+          ).deep.equals(3);
+          expect(
+            asPlainObject(
+              result.compile.compiledGraph.tables.find(
+                table => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B")
+              ).dependencyTargets.length
+            )
+          ).deep.equals(3);
+          expect(
+            asPlainObject(
+              result.compile.compiledGraph.notebooks.find(
+                notebook =>
+                  notebook.target.name === prefixAdjustedName(testConfig.namePrefix, "notebook")
+              ).dependencyTargets.length
+            )
+          ).deep.equals(3);
+        });
+
+        test(`When dependOnDependencyAssertions=true and includeDependentAssertions=false, the assertions related to dependency should not be added to dependencyTargets`, () => {
+          fs.writeFileSync(
+            path.join(projectDir, "definitions/actions.yaml"),
+            `
+actions:
+- view:
+    filename: B.sql
+    dependOnDependencyAssertions: true
+    dependencyTargets:
+      - name: A
+        includeDependentAssertions: false
+- assertion:
+    filename: B_assert.sql
+    dependencyTargets:
+      - name: B
+- operation:
+    filename: C.sql
+    dependOnDependencyAssertions: true
+    dependencyTargets:
+      - name: A
+        includeDependentAssertions: false
+- notebook:
+    filename: notebook.ipynb
+    dependOnDependencyAssertions: true
+    dependencyTargets:
+      - name: A
+        includeDependentAssertions: false
+      - name: B
+`
+          );
+          fs.writeFileSync(path.join(projectDir, "definitions/B_assert.sql"), "SELECT test from B");
+
+          const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+          expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+          expect(
+            asPlainObject(
+              result.compile.compiledGraph.operations.find(
+                operation =>
+                  operation.target.name === prefixAdjustedName(testConfig.namePrefix, "C")
+              ).dependencyTargets.length
+            )
+          ).deep.equals(1);
+          expect(
+            asPlainObject(
+              result.compile.compiledGraph.tables.find(
+                table => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B")
+              ).dependencyTargets.length
+            )
+          ).deep.equals(1);
+          expect(
+            asPlainObject(
+              result.compile.compiledGraph.notebooks.find(
+                notebook =>
+                  notebook.target.name === prefixAdjustedName(testConfig.namePrefix, "notebook")
+              ).dependencyTargets.length
+            )
+          ).deep.equals(3);
+        });
+
+        test(`When dependOnDependencyAssertions=false and includeDependentAssertions=true, the assertions related to dependency should be added to dependencyTargets`, () => {
+          fs.writeFileSync(
+            path.join(projectDir, "definitions/actions.yaml"),
+            `
+actions:
+- view:
+    filename: B.sql
+    dependOnDependencyAssertions: false
+    dependencyTargets:
+      - name: A
+        includeDependentAssertions: true
+- assertion:
+    filename: B_assert.sql
+    dependencyTargets:
+      - name: B
+- operation:
+    filename: C.sql
+    dependOnDependencyAssertions: false
+    dependencyTargets:
+      - name: A
+        includeDependentAssertions: true
+      - name: B
+- notebook:
+    filename: notebook.ipynb
+    dependOnDependencyAssertions: false
+    dependencyTargets:
+      - name: A
+        includeDependentAssertions: true
+      - name: B
+`
+          );
+          fs.writeFileSync(path.join(projectDir, "definitions/B_assert.sql"), "SELECT test from B");
+
+          const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+          expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+          expect(
+            asPlainObject(
+              result.compile.compiledGraph.operations.find(
+                operation =>
+                  operation.target.name === prefixAdjustedName(testConfig.namePrefix, "C")
+              ).dependencyTargets.length
+            )
+          ).deep.equals(4);
+          expect(
+            asPlainObject(
+              result.compile.compiledGraph.tables.find(
+                table => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B")
+              ).dependencyTargets.length
+            )
+          ).deep.equals(3);
+          expect(
+            asPlainObject(
+              result.compile.compiledGraph.notebooks.find(
+                notebook =>
+                  notebook.target.name === prefixAdjustedName(testConfig.namePrefix, "notebook")
+              ).dependencyTargets.length
+            )
+          ).deep.equals(4);
+        });
+
+        test(`When includeDependentAssertions property in config and ref are set differently for the same dependency, compilation error is thrown.`, () => {
+          fs.writeFileSync(
+            path.join(projectDir, "definitions/actions.yaml"),
+            `
+actions:
+- view:
+    filename: B.sql
+    dependOnDependencyAssertions: true
+    dependencyTargets:
+      - name: A
+- operation:
+    filename: C.sql
+    dependencyTargets:
+      - name: A
+        includeDependentAssertions: true
+      - name: B
+      - name: A
+        includeDependentAssertions: false
+`
+          );
+          fs.writeFileSync(path.join(projectDir, "definitions/B_assert.sql"), "SELECT test from B");
+
+          const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+          expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).deep.equals(1);
+          expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).deep.equals(
+            `Conflicting "includeDependentAssertions" properties are not allowed. Dependency A has different values set for this property.`
+          );
+        });
+      });
     });
   });
 });
@@ -1262,4 +2545,8 @@ function walkDirectoryForFilenames(projectDir: string, relativePath: string = ""
       }
     });
   return paths.map(filename => path.join(relativePath, filename));
+}
+
+function prefixAdjustedName(prefix: string | undefined, name: string) {
+  return prefix ? `${prefix}_${name}` : name;
 }

@@ -20,7 +20,6 @@ ts_test_suite(
         "//core",
         "//protos:ts",
         "//testing",
-        "//tests/utils",
         "@npm//@types/chai",
         "@npm//@types/long",
         "@npm//@types/node",

@@ -26,8 +26,8 @@ ts_library(
         "//common/errors",
         "@npm//@types/js-beautify",
         "@npm//@types/node",
+        "@npm//google-sql-syntax-ts",
         "@npm//js-beautify",
-        "@npm//sql-formatter",
         "@npm//typeid-js",
     ],
 )
