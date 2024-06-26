@@ -1345,7 +1345,6 @@ actions:
       columns: {
         nestedColumnKey: "nestedColumnVal"
       },
-      displayName: "displayName",
       tags: ["tag3", "tag4"],
       bigqueryPolicyTags: ["bigqueryPolicyTag1", "bigqueryPolicyTag2"],
     }
@@ -1359,7 +1358,6 @@ actions:
           {
             bigqueryPolicyTags: ["bigqueryPolicyTag1", "bigqueryPolicyTag2"],
             description: "description",
-            displayName: "displayName",
             path: ["column2Key"],
             tags: ["tag3", "tag4"]
           },
