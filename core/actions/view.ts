@@ -29,6 +29,13 @@ interface ILegacyViewConfig extends dataform.ActionConfig.ViewConfig {
   schema: string;
   fileName: string;
   type: string;
+  bigquery: {
+    labels: { [key: string]: string };
+    additionalOptions: { [key: string]: string };
+  };
+  // Legacy view config's table assertions cannot directly extend the protobuf view config
+  // definition because of legacy view config's flexible types.
+  assertions: any;
 }
 
 /**
@@ -80,8 +87,10 @@ export class View extends ActionBuilder<dataform.Table> {
     );
     this.proto.canonicalTarget = this.applySessionToTarget(target, session.canonicalProjectConfig);
 
-    config.filename = resolveActionsConfigFilename(config.filename, configPath);
-    this.proto.fileName = config.filename;
+    if (configPath) {
+      config.filename = resolveActionsConfigFilename(config.filename, configPath);
+      this.query(nativeRequire(config.filename).query);
+    }
 
     if (config.dependOnDependencyAssertions) {
       this.setDependOnDependencyAssertions(config.dependOnDependencyAssertions);
@@ -129,6 +138,12 @@ export class View extends ActionBuilder<dataform.Table> {
     }
     if (config.postOperations) {
       this.postOps(config.postOperations);
+    }
+    if (Object.keys(config.labels).length || Object.keys(config.additionalOptions).length) {
+      this.bigquery({ labels: config.labels, additionalOptions: config.additionalOptions });
+    }
+    if (config.filename) {
+      this.proto.fileName = config.filename;
     }
 
     return this;
@@ -250,7 +265,7 @@ export class View extends ActionBuilder<dataform.Table> {
   }
 
   public assertions(assertions: dataform.ActionConfig.TableAssertionsConfig) {
-    if (!!assertions.uniqueKey && !!assertions.uniqueKeys) {
+    if (!!assertions.uniqueKey?.length && !!assertions.uniqueKeys?.length) {
       this.session.compileError(
         new Error("Specify at most one of 'assertions.uniqueKey' and 'assertions.uniqueKeys'.")
       );
@@ -258,7 +273,7 @@ export class View extends ActionBuilder<dataform.Table> {
     let uniqueKeys = assertions.uniqueKeys.map(uniqueKey =>
       dataform.ActionConfig.TableAssertionsConfig.UniqueKey.create(uniqueKey)
     );
-    if (!!assertions.uniqueKey) {
+    if (!!assertions.uniqueKey?.length) {
       uniqueKeys = [
         dataform.ActionConfig.TableAssertionsConfig.UniqueKey.create({
           uniqueKey: ["TableAssertionsConfig"]
@@ -404,15 +419,28 @@ export class View extends ActionBuilder<dataform.Table> {
     }
     if (unverifiedConfig?.assertions) {
       if (unverifiedConfig.assertions.uniqueKey) {
-        if (typeof unverifiedConfig.assertions.uniqueKey === "string") {
-          // In the config structure, uniqueKey is always a list.
-          unverifiedConfig.assertions.uniqueKey = [unverifiedConfig.assertions.uniqueKey];
-        }
+        unverifiedConfig.assertions.uniqueKey = unverifiedConfig.assertions.uniqueKey;
+      }
+      // This determines if the uniqueKeys is of the legacy type.
+      if (unverifiedConfig.assertions.uniqueKeys?.[0]?.length > 0) {
+        unverifiedConfig.assertions.uniqueKeys = (unverifiedConfig.assertions
+          .uniqueKeys as string[][]).map(uniqueKey =>
+          dataform.ActionConfig.TableAssertionsConfig.UniqueKey.create({ uniqueKey })
+        );
+      }
+      if (typeof unverifiedConfig.assertions.nonNull === "string") {
+        unverifiedConfig.assertions.nonNull = [unverifiedConfig.assertions.nonNull];
       }
     }
-
-    // TODO(ekrekr): consider moving this to a shared location after all action builders have proto
-    // config verifiers.
+    if (unverifiedConfig?.bigquery) {
+      if (!!unverifiedConfig.bigquery.labels) {
+        unverifiedConfig.labels = unverifiedConfig.bigquery.labels;
+      }
+      if (!!unverifiedConfig.bigquery.additionalOptions) {
+        unverifiedConfig.additionalOptions = unverifiedConfig.bigquery.additionalOptions;
+      }
+      delete unverifiedConfig.bigquery;
+    }
     if (unverifiedConfig.type) {
       delete unverifiedConfig.type;
     }
