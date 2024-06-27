@@ -60,18 +60,43 @@ async function applySettings() {
 }
 
 async function compileAndValidate() {
-  const spawnedProcess = spawn("dataform", ["compile", "--json", ...settings.compilerOptions]);
-  spawnedProcess.on("error", err => {
+  const spawnedProcess = spawn(
+    (process.platform !== "win32") ? "dataform" : "dataform.cmd",
+    ["compile", "--json", ...settings.compilerOptions]
+  );
+
+  const compileResult = await getProcessResult(spawnedProcess);
+  if (compileResult.exitCode !== 0) {
     // tslint:disable-next-line: no-console
-    console.error("Error running 'dataform compile':", err);
+    console.error("Error running 'dataform compile':", compileResult);
+    if (compileResult.error?.code === "ENOENT") {
+      connection.sendNotification(
+        "error",
+        "Errors encountered when running 'dataform' CLI. Please ensure that the CLI is installed and up-to-date: 'npm i -g @dataform/cli'."
+      );
+      return;
+    } else {
+      connection.sendNotification(
+        "error",
+        "Errors encountered when running 'dataform' CLI. Please check the output for more information."
+      );
+      return;
+    }
+  }
+
+  let parsedResult: dataform.ICompiledGraph = null;
+  try {
+    parsedResult = JSON.parse(compileResult.stdout);
+  } catch (e) {
+    // tslint:disable-next-line: no-console
+    console.error("Error parsing 'dataform compile' output", e);
     connection.sendNotification(
       "error",
-      "Errors encountered when running 'dataform' CLI. Please ensure that the CLI is installed and up-to-date: 'npm i -g @dataform/cli'."
+      "Error parsing 'dataform compile' output. Please check the output for more information."
     );
-  });
-  const compileResult = await getProcessResult(spawnedProcess);
+    return;
+  }
 
-  const parsedResult: dataform.ICompiledGraph = JSON.parse(compileResult.stdout);
   if (parsedResult?.graphErrors?.compilationErrors) {
     parsedResult.graphErrors.compilationErrors.forEach(compilationError => {
       connection.sendNotification("error", compilationError.message);
@@ -84,13 +109,17 @@ async function compileAndValidate() {
 
 async function getProcessResult(childProcess: ChildProcess) {
   let stdout = "";
+  let stderr = "";
+  let error: any = null;
   childProcess.stderr.pipe(process.stderr);
+  childProcess.stderr.on("data", chunk => (stderr += String(chunk)));
   childProcess.stdout.pipe(process.stdout);
   childProcess.stdout.on("data", chunk => (stdout += String(chunk)));
+  childProcess.on("error", err => (error = err));
   const exitCode: number = await new Promise(resolve => {
     childProcess.on("close", resolve);
   });
-  return { exitCode, stdout };
+  return { exitCode, stdout, stderr, error };
 }
 
 function gatherAllActions(
