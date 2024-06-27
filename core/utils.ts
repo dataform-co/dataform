@@ -3,11 +3,11 @@ import { Assertion } from "df/core/actions/assertion";
 import { Notebook } from "df/core/actions/notebook";
 import { Operation } from "df/core/actions/operation";
 import { Table } from "df/core/actions/table";
+import { View } from "df/core/actions/view";
 import { Resolvable } from "df/core/common";
 import * as Path from "df/core/path";
 import { IActionProto, Session } from "df/core/session";
 import { dataform } from "df/protos/ts";
-import { View } from "./actions/view";
 
 declare var __webpack_require__: any;
 declare var __non_webpack_require__: any;

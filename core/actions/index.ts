@@ -3,9 +3,9 @@ import { Declaration } from "df/core/actions/declaration";
 import { Notebook } from "df/core/actions/notebook";
 import { Operation } from "df/core/actions/operation";
 import { Table } from "df/core/actions/table";
+import { View } from "df/core/actions/view";
 import { Session } from "df/core/session";
 import { dataform } from "df/protos/ts";
-import { View } from "./view";
 
 export type Action = Table | View | Operation | Assertion | Declaration | Notebook;
 
