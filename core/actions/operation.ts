@@ -116,7 +116,8 @@ export class Operation extends ActionBuilder<dataform.Operation> {
       disabled: config.disabled,
       hasOutput: config.hasOutput,
       description: config.description,
-      dependOnDependencyAssertions: config.dependOnDependencyAssertions
+      dependOnDependencyAssertions: config.dependOnDependencyAssertions,
+      hermetic: config.hermetic === true ? true : undefined
     });
 
     this.queries(nativeRequire(config.filename).query);
