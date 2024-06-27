@@ -1,6 +1,6 @@
 import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { ActionBuilder } from "df/core/actions";
-import { ColumnDescriptors, LegacyColumnDescriptors } from "df/core/column_descriptors";
+import { ColumnDescriptors } from "df/core/column_descriptors";
 import { Resolvable, Contextable } from "df/core/common";
 import * as Path from "df/core/path";
 import { Session } from "df/core/session";
@@ -16,7 +16,7 @@ import {
 } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 import { Assertion } from "./assertion";
-import { ITableContext, Table, TableType } from "./table";
+import { ITableContext, Table } from "./table";
 
 /**
  * @hidden
@@ -174,15 +174,6 @@ export class View extends ActionBuilder<dataform.Table> {
     this.uniqueKeyAssertions.forEach(assertion => assertion.disabled(disabled));
     this.rowConditionsAssertion?.disabled(disabled);
     return this;
-  }
-
-  public protected() {
-    this.proto.protected = true;
-    return this;
-  }
-
-  public uniqueKey(uniqueKey: string[]) {
-    this.proto.uniqueKey = uniqueKey;
   }
 
   public materialized(materialized: boolean) {
