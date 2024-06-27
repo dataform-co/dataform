@@ -193,6 +193,12 @@ message ActionConfig {
     // If configured, relevant assertions will automatically be created and run
     // as a dependency of this dataset.
     TableAssertionsConfig assertions = 19;
+
+    // If true, this indicates that the action only depends on data from
+    // explicitly-declared dependencies. Otherwise if false, it indicates that
+    // the  action depends on data from a source which has not been declared as
+    // a dependency.
+    bool hermetic = 20;
   }
 
   message ViewConfig {
@@ -365,6 +371,12 @@ message ActionConfig {
     // If configured, relevant assertions will automatically be created and run
     // as a dependency of this dataset.
     TableAssertionsConfig assertions = 22;
+
+    // If true, this indicates that the action only depends on data from
+    // explicitly-declared dependencies. Otherwise if false, it indicates that
+    // the  action depends on data from a source which has not been declared as
+    // a dependency.
+    bool hermetic = 23;
   }
 
   message AssertionConfig {
@@ -444,6 +456,12 @@ message ActionConfig {
     // When set to true, assertions dependent upon any dependency will
     // be add as dedpendency to this action
     bool depend_on_dependency_assertions = 11;
+
+    // If true, this indicates that the action only depends on data from
+    // explicitly-declared dependencies. Otherwise if false, it indicates that
+    // the  action depends on data from a source which has not been declared as
+    // a dependency.
+    bool hermetic = 12;
   }
 
   message DeclarationConfig {

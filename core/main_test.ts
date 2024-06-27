@@ -1917,6 +1917,565 @@ SELECT 1`
     });
   });
 
+  suite("action config options", () => {
+    const exampleBuiltInAssertions = {
+      inputActionConfigBlock: `
+    assertions:
+      uniqueKeys:
+      - uniqueKey:
+        - uniqueKey1
+        - uniqueKey2
+      nonNull:
+      - nonNull
+      rowConditions:
+      - rowConditions1
+      - rowConditions2
+`,
+      outputAssertions: [
+        {
+          target: {
+            database: "defaultProject",
+            schema: "defaultDataset",
+            name: "dataset_name_assertions_uniqueKey_0"
+          },
+          canonicalTarget: {
+            database: "defaultProject",
+            schema: "defaultDataset",
+            name: "dataset_name_assertions_uniqueKey_0"
+          },
+          dependencyTargets: [
+            {
+              database: "project",
+              schema: "dataset",
+              name: "name"
+            }
+          ],
+          disabled: true,
+          // TODO(ekrekr): fix this through action constructors.
+          fileName: "index.js",
+          parentAction: {
+            database: "project",
+            schema: "dataset",
+            name: "name"
+          },
+          query:
+            "\nSELECT\n  *\nFROM (\n  SELECT\n    uniqueKey1, uniqueKey2,\n    COUNT(1) AS index_row_count\n  FROM `project.dataset.name`\n  GROUP BY uniqueKey1, uniqueKey2\n  ) AS data\nWHERE index_row_count > 1\n",
+          tags: ["tag1", "tag2"]
+        },
+        {
+          target: {
+            database: "defaultProject",
+            schema: "defaultDataset",
+            name: "dataset_name_assertions_rowConditions"
+          },
+          canonicalTarget: {
+            database: "defaultProject",
+            schema: "defaultDataset",
+            name: "dataset_name_assertions_rowConditions"
+          },
+          dependencyTargets: [
+            {
+              database: "project",
+              schema: "dataset",
+              name: "name"
+            }
+          ],
+          disabled: true,
+          // TODO(ekrekr): fix this through action constructors.
+          fileName: "index.js",
+          parentAction: {
+            database: "project",
+            schema: "dataset",
+            name: "name"
+          },
+          query:
+            "\nSELECT\n  'rowConditions1' AS failing_row_condition,\n  *\nFROM `project.dataset.name`\nWHERE NOT (rowConditions1)\nUNION ALL\nSELECT\n  'rowConditions2' AS failing_row_condition,\n  *\nFROM `project.dataset.name`\nWHERE NOT (rowConditions2)\nUNION ALL\nSELECT\n  'nonNull IS NOT NULL' AS failing_row_condition,\n  *\nFROM `project.dataset.name`\nWHERE NOT (nonNull IS NOT NULL)\n",
+          tags: ["tag1", "tag2"]
+        }
+      ] as dataform.IAssertion[]
+    };
+
+    test(`for assertions`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(path.join(projectDir, "definitions/operation.sqlx"), "SELECT 1");
+      fs.writeFileSync(path.join(projectDir, "definitions/filename.sql"), "SELECT 1");
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/actions.yaml"),
+        `
+actions:
+- assertion:
+    name: name
+    dataset: dataset
+    project: project
+    dependencyTargets:
+    - name: operation
+    filename: filename.sql
+    tags:
+    - tagA
+    - tagB
+    disabled: true
+    description: description
+    hermetic: true
+    dependOnDependencyAssertions: true
+`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals(
+        asPlainObject([
+          {
+            target: {
+              database: "project",
+              schema: "dataset",
+              name: "name"
+            },
+            canonicalTarget: {
+              database: "project",
+              schema: "dataset",
+              name: "name"
+            },
+            actionDescriptor: {
+              description: "description"
+            },
+            dependencyTargets: [
+              {
+                database: "defaultProject",
+                schema: "defaultDataset",
+                name: "operation"
+              }
+            ],
+            disabled: true,
+            fileName: "definitions/filename.sql",
+            hermeticity: "HERMETIC",
+            tags: ["tagA", "tagB"],
+            query: "SELECT 1"
+          }
+        ])
+      );
+    });
+
+    test(`for declarations`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(path.join(projectDir, "definitions/operation.sqlx"), "SELECT 1");
+      // TODO(ekrekr): add support for columns.
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/actions.yaml"),
+        `
+actions:
+- declaration:
+    name: name
+    dataset: dataset
+    project: project
+    description: description
+`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.declarations)).deep.equals(
+        asPlainObject([
+          {
+            target: {
+              database: "project",
+              schema: "dataset",
+              name: "name"
+            },
+            canonicalTarget: {
+              database: "project",
+              schema: "dataset",
+              name: "name"
+            },
+            actionDescriptor: {
+              description: "description"
+            }
+          }
+        ])
+      );
+    });
+
+    test("for tables", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(path.join(projectDir, "definitions/operation.sqlx"), "SELECT 1");
+      fs.writeFileSync(path.join(projectDir, "definitions/filename.sql"), "SELECT 1");
+      // TODO(ekrekr): add support for columns.
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/actions.yaml"),
+        `
+actions:
+- table:
+    name: name
+    dataset: dataset
+    project: project
+    dependencyTargets:
+    - name: operation
+    filename: filename.sql
+    tags:
+    - tag1
+    - tag2
+    disabled: true
+    description: description
+    partitionBy: partitionBy
+    partitionExpirationDays: 1
+    requirePartitionFilter: true
+    clusterBy:
+    - clusterBy
+    labels:
+      key: val
+    additionalOptions:
+      option1Key: option1
+      option2Key: option2
+    dependOnDependencyAssertions: true
+    hermetic: true
+${exampleBuiltInAssertions.inputActionConfigBlock}
+    `
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals([
+        {
+          target: {
+            database: "project",
+            schema: "dataset",
+            name: "name"
+          },
+          canonicalTarget: {
+            database: "project",
+            schema: "dataset",
+            name: "name"
+          },
+          type: "table",
+          disabled: true,
+          // TODO(ekrekr): finish fixing this in https://github.com/dataform-co/dataform/pull/1718.
+          // protected: false,
+          hermeticity: "HERMETIC",
+          bigquery: {
+            additionalOptions: {
+              option1Key: "option1",
+              option2Key: "option2"
+            },
+            clusterBy: ["clusterBy"],
+            labels: {
+              key: "val"
+            },
+            partitionBy: "partitionBy",
+            partitionExpirationDays: 1,
+            requirePartitionFilter: true
+          },
+          tags: ["tag1", "tag2"],
+          dependencyTargets: [
+            {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "operation"
+            }
+          ],
+          enumType: "TABLE",
+          fileName: "definitions/filename.sql",
+          query: "SELECT 1",
+          actionDescriptor: {
+            bigqueryLabels: {
+              key: "val"
+            },
+            description: "description"
+          }
+        }
+      ]);
+      expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals(
+        exampleBuiltInAssertions.outputAssertions
+      );
+    });
+
+    test("for views", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(path.join(projectDir, "definitions/operation.sqlx"), "SELECT 1");
+      fs.writeFileSync(path.join(projectDir, "definitions/filename.sql"), "SELECT 1");
+      // TODO(ekrekr): add support for columns.
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/actions.yaml"),
+        `
+actions:
+- view:
+    name: name
+    dataset: dataset
+    project: project
+    dependencyTargets:
+    - name: operation
+    filename: filename.sql
+    tags:
+    - tag1
+    - tag2
+    disabled: true
+    materialized: true
+    description: description
+    labels:
+      key: val
+    additionalOptions:
+      option1Key: option1
+      option2Key: option2
+    dependOnDependencyAssertions: true
+${exampleBuiltInAssertions.inputActionConfigBlock}
+    hermetic: true
+    `
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals([
+        {
+          target: {
+            database: "project",
+            schema: "dataset",
+            name: "name"
+          },
+          canonicalTarget: {
+            database: "project",
+            schema: "dataset",
+            name: "name"
+          },
+          type: "view",
+          disabled: true,
+          // TODO(ekrekr): finish fixing this in https://github.com/dataform-co/dataform/pull/1718.
+          // protected: false,
+          hermeticity: "HERMETIC",
+          bigquery: {
+            additionalOptions: {
+              option1Key: "option1",
+              option2Key: "option2"
+            },
+            labels: {
+              key: "val"
+            }
+          },
+          tags: ["tag1", "tag2"],
+          dependencyTargets: [
+            {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "operation"
+            }
+          ],
+          enumType: "VIEW",
+          fileName: "definitions/filename.sql",
+          query: "SELECT 1",
+          actionDescriptor: {
+            bigqueryLabels: {
+              key: "val"
+            },
+            description: "description"
+          },
+          materialized: true
+        }
+      ]);
+      expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals(
+        exampleBuiltInAssertions.outputAssertions
+      );
+    });
+
+    test("for incremental tables", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(path.join(projectDir, "definitions/operation.sqlx"), "SELECT 1");
+      fs.writeFileSync(path.join(projectDir, "definitions/filename.sql"), "SELECT 1");
+      // TODO(ekrekr): add support for columns.
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/actions.yaml"),
+        `
+actions:
+- incrementalTable:
+    name: name
+    dataset: dataset
+    project: project
+    dependencyTargets:
+    - name: operation
+    filename: filename.sql
+    tags:
+    - tag1
+    - tag2
+    disabled: true
+    protected: true
+    uniqueKey:
+    - key1
+    - key2
+    description: description
+    partitionBy: partitionBy
+    partitionExpirationDays: 1
+    requirePartitionFilter: true
+    updatePartitionFilter: "updatePartitionFilter"
+    clusterBy:
+    - clusterBy
+    labels:
+      key: val
+    additionalOptions:
+      option1Key: option1
+      option2Key: option2
+    dependOnDependencyAssertions: true
+${exampleBuiltInAssertions.inputActionConfigBlock}
+    hermetic: true
+    `
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals([
+        {
+          target: {
+            database: "project",
+            schema: "dataset",
+            name: "name"
+          },
+          canonicalTarget: {
+            database: "project",
+            schema: "dataset",
+            name: "name"
+          },
+          type: "incremental",
+          disabled: true,
+          protected: true,
+          hermeticity: "HERMETIC",
+          bigquery: {
+            additionalOptions: {
+              option1Key: "option1",
+              option2Key: "option2"
+            },
+            clusterBy: ["clusterBy"],
+            labels: {
+              key: "val"
+            },
+            partitionBy: "partitionBy",
+            partitionExpirationDays: 1,
+            requirePartitionFilter: true,
+            updatePartitionFilter: "updatePartitionFilter"
+          },
+          tags: ["tag1", "tag2"],
+          uniqueKey: ["key1", "key2"],
+          dependencyTargets: [
+            {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "operation"
+            }
+          ],
+          enumType: "INCREMENTAL",
+          fileName: "definitions/filename.sql",
+          query: "SELECT 1",
+          incrementalQuery: "SELECT 1",
+          actionDescriptor: {
+            bigqueryLabels: {
+              key: "val"
+            },
+            description: "description"
+          }
+        }
+      ]);
+      expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals(
+        exampleBuiltInAssertions.outputAssertions
+      );
+    });
+
+    test(`for operations`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/table.sqlx"),
+        `config {type: "view"} SELECT 1`
+      );
+      fs.writeFileSync(path.join(projectDir, "definitions/filename.sql"), "SELECT 1");
+      // TODO(ekrekr): add support for columns.
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/actions.yaml"),
+        `
+actions:
+- operation:
+    name: name
+    dataset: dataset
+    project: project
+    dependencyTargets:
+    - name: table
+    filename: filename.sql
+    tags:
+    - tagA
+    - tagB
+    disabled: true
+    hasOutput: true
+    description: description
+    dependOnDependencyAssertions: true
+    hermetic: true
+    `
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.operations)).deep.equals(
+        asPlainObject([
+          {
+            target: {
+              database: "project",
+              schema: "dataset",
+              name: "name"
+            },
+            canonicalTarget: {
+              database: "project",
+              schema: "dataset",
+              name: "name"
+            },
+            dependencyTargets: [
+              {
+                database: "defaultProject",
+                schema: "defaultDataset",
+                name: "table"
+              }
+            ],
+            disabled: true,
+            fileName: "definitions/filename.sql",
+            hermeticity: "HERMETIC",
+            hasOutput: true,
+            tags: ["tagA", "tagB"],
+            queries: ["SELECT 1"],
+            actionDescriptor: {
+              description: "description"
+            }
+          }
+        ])
+      );
+    });
+  });
+
   suite("Assertions as dependencies", ({ beforeEach }) => {
     [
       TestConfigs.bigquery,

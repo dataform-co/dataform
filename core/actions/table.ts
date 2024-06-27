@@ -351,7 +351,9 @@ export class Table extends ActionBuilder<dataform.Table> {
         disabled: config.disabled,
         description: config.description,
         bigquery: bigqueryOptions,
-        dependOnDependencyAssertions: config.dependOnDependencyAssertions
+        dependOnDependencyAssertions: config.dependOnDependencyAssertions,
+        hermetic: config.hermetic === true ? true : undefined,
+        assertions: this.legacyMapConfigAssertions(config.assertions)
       });
     }
     if (tableType === "view") {
@@ -382,7 +384,9 @@ export class Table extends ActionBuilder<dataform.Table> {
         tags: config.tags,
         description: config.description,
         bigquery: bigqueryOptions,
-        dependOnDependencyAssertions: config.dependOnDependencyAssertions
+        dependOnDependencyAssertions: config.dependOnDependencyAssertions,
+        hermetic: config.hermetic === true ? true : undefined,
+        assertions: this.legacyMapConfigAssertions(config.assertions)
       });
     }
     if (tableType === "incremental") {
@@ -435,7 +439,9 @@ export class Table extends ActionBuilder<dataform.Table> {
         tags: config.tags,
         description: config.description,
         bigquery: bigqueryOptions,
-        dependOnDependencyAssertions: config.dependOnDependencyAssertions
+        dependOnDependencyAssertions: config.dependOnDependencyAssertions,
+        hermetic: config.hermetic === true ? true : undefined,
+        assertions: this.legacyMapConfigAssertions(config.assertions)
       });
     }
     this.query(nativeRequire(tableTypeConfig.filename).query);
@@ -635,6 +641,7 @@ export class Table extends ActionBuilder<dataform.Table> {
     return this;
   }
 
+  // TODO(ekrekr): update session JS assertions to action construtors instead.
   public assertions(assertions: ITableAssertions) {
     checkExcessProperties(
       (e: Error) => this.session.compileError(e),
@@ -761,6 +768,30 @@ export class Table extends ActionBuilder<dataform.Table> {
       protoOps = protoOps.concat(typeof appliedOps === "string" ? [appliedOps] : appliedOps);
     });
     return protoOps;
+  }
+
+  private legacyMapConfigAssertions(
+    configAssertions: dataform.ActionConfig.ITableAssertionsConfig
+  ): ITableAssertions | undefined {
+    let legacyAssertions: ITableAssertions | undefined;
+    if (configAssertions) {
+      legacyAssertions = {};
+      if (configAssertions.uniqueKey?.length > 0) {
+        legacyAssertions.uniqueKey = configAssertions.uniqueKey;
+      }
+      if (configAssertions.uniqueKeys) {
+        legacyAssertions.uniqueKeys = configAssertions.uniqueKeys.map(
+          uniqueKeys => uniqueKeys?.uniqueKey
+        );
+      }
+      if (configAssertions.nonNull?.length > 0) {
+        legacyAssertions.nonNull = configAssertions.nonNull;
+      }
+      if (configAssertions.rowConditions?.length > 0) {
+        legacyAssertions.rowConditions = configAssertions.rowConditions;
+      }
+    }
+    return legacyAssertions;
   }
 }
 
