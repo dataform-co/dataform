@@ -2,6 +2,7 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "type": "object",
     "$comment": "Created from 'protos/configs.proto'. Even options are specified as 'required' in proto, they might be specified from the CLI options, so leave them optional except for the dataformCoreVersion which is required in compile.",
+    "additionalProperties": false,
     "properties": {
         "dataformCoreVersion": {
             "type": "string",
