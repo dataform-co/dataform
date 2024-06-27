@@ -1,6 +1,6 @@
 import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { ActionBuilder } from "df/core/actions";
-import { ColumnDescriptors } from "df/core/column_descriptors";
+import { LegacyColumnDescriptors } from "df/core/column_descriptors";
 import {
   Contextable,
   IActionConfig,
@@ -213,7 +213,7 @@ export class Operation extends ActionBuilder<dataform.Operation> {
     if (!this.proto.actionDescriptor) {
       this.proto.actionDescriptor = {};
     }
-    this.proto.actionDescriptor.columns = ColumnDescriptors.mapToColumnProtoArray(
+    this.proto.actionDescriptor.columns = LegacyColumnDescriptors.mapToColumnProtoArray(
       columns,
       (e: Error) => this.session.compileError(e)
     );

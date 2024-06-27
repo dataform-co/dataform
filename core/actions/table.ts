@@ -1,7 +1,7 @@
 import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { ActionBuilder } from "df/core/actions";
 import { Assertion } from "df/core/actions/assertion";
-import { ColumnDescriptors } from "df/core/column_descriptors";
+import { LegacyColumnDescriptors } from "df/core/column_descriptors";
 import {
   Contextable,
   IActionConfig,
@@ -469,8 +469,8 @@ export class Table extends ActionBuilder<dataform.Table> {
     if (config.disabled) {
       this.disabled();
     }
-    if (config.protected) {
-      this.protected();
+    if (config.type === "incremental") {
+      this.protected(config.protected);
     }
     if (config.bigquery && Object.keys(config.bigquery).length > 0) {
       this.bigquery(config.bigquery);
@@ -536,8 +536,12 @@ export class Table extends ActionBuilder<dataform.Table> {
     return this;
   }
 
-  public protected() {
-    this.proto.protected = true;
+  public protected(defaultsToTrueProtected: boolean) {
+    // To prevent accidental data deletion, protected defaults to true if unspecified.
+    if (defaultsToTrueProtected === undefined || defaultsToTrueProtected === null) {
+      defaultsToTrueProtected = true;
+    }
+    this.proto.protected = defaultsToTrueProtected;
     return this;
   }
 
@@ -602,7 +606,7 @@ export class Table extends ActionBuilder<dataform.Table> {
     if (!this.proto.actionDescriptor) {
       this.proto.actionDescriptor = {};
     }
-    this.proto.actionDescriptor.columns = ColumnDescriptors.mapToColumnProtoArray(
+    this.proto.actionDescriptor.columns = LegacyColumnDescriptors.mapToColumnProtoArray(
       columns,
       (e: Error) => this.session.compileError(e)
     );
