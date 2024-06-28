@@ -1041,6 +1041,7 @@ actions:
       expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals(
         asPlainObject([
           {
+            bigquery: {},
             target: {
               database: "defaultProject",
               schema: "defaultDataset",
@@ -1052,6 +1053,7 @@ actions:
               name: "action"
             },
             fileName: "definitions/action.sql",
+            hermeticity: "NON_HERMETIC",
             query: "SELECT 1",
             incrementalQuery: "SELECT 1",
             type: "incremental",

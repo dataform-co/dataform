@@ -21,6 +21,7 @@ ts_library(
         "actions/assertion.ts",
         "actions/declaration.ts",
         "actions/view.ts",
+        "actions/incremental_table.ts",
         "actions/index.ts",
         "actions/operation.ts",
         "actions/notebook.ts",
