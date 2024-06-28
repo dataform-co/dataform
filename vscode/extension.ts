@@ -50,6 +50,9 @@ export async function activate(context: vscode.ExtensionContext) {
   client.onNotification("error", errorMessage => {
     vscode.window.showErrorMessage(errorMessage);
   });
+  client.onNotification("info", message => {
+    vscode.window.showInformationMessage(message);
+  });
   client.onNotification("success", message => {
     vscode.window.showInformationMessage(message);
   });
