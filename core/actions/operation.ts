@@ -81,9 +81,9 @@ export class Operation extends ActionBuilder<dataform.Operation> {
         )
       );
     }
-    // if (config.hermetic !== undefined) {
-    //   this.hermetic(config.hermetic);
-    // }
+    if (config.hermetic !== undefined) {
+      this.hermetic(config.hermetic);
+    }
     if (config.disabled) {
       this.disabled();
     }
@@ -238,40 +238,34 @@ export class Operation extends ActionBuilder<dataform.Operation> {
   private verifyConfig(
     unverifiedConfig: ILegacyOperationConfig
   ): dataform.ActionConfig.OperationConfig {
-    if (unverifiedConfig.dependencies) {
-      unverifiedConfig.dependencyTargets = unverifiedConfig.dependencies.map(
-        (dependency: string | object) =>
-          typeof dependency === "string" ? { name: dependency } : dependency
-      );
-      delete unverifiedConfig.dependencies;
-    }
-    if (unverifiedConfig.database) {
-      unverifiedConfig.project = unverifiedConfig.database;
-      delete unverifiedConfig.database;
-    }
-    if (unverifiedConfig.schema) {
-      unverifiedConfig.dataset = unverifiedConfig.schema;
-      delete unverifiedConfig.schema;
-    }
-    if (unverifiedConfig.fileName) {
-      unverifiedConfig.filename = unverifiedConfig.fileName;
-      delete unverifiedConfig.fileName;
-    }
-    if (unverifiedConfig.columns) {
-      // TODO(ekrekr) columns in their current config format are a difficult structure to represent
-      // as protos. They are nested, and use the object keys as the names. Consider a forced
-      // migration to the proto style column names.
-      unverifiedConfig.columns = ColumnDescriptors.mapLegacyObjectToConfigProto(
-        unverifiedConfig.columns as any
-      );
-    }
-
-    // TODO(ekrekr): consider moving this to a shared location after all action builders have proto
-    // config verifiers.
+    // The "type" field only exists on legacy view configs. Here we convert them to the new format.
     if (unverifiedConfig.type) {
       delete unverifiedConfig.type;
+      if (unverifiedConfig.dependencies) {
+        unverifiedConfig.dependencyTargets = unverifiedConfig.dependencies.map(
+          (dependency: string | object) =>
+            typeof dependency === "string" ? { name: dependency } : dependency
+        );
+        delete unverifiedConfig.dependencies;
+      }
+      if (unverifiedConfig.database) {
+        unverifiedConfig.project = unverifiedConfig.database;
+        delete unverifiedConfig.database;
+      }
+      if (unverifiedConfig.schema) {
+        unverifiedConfig.dataset = unverifiedConfig.schema;
+        delete unverifiedConfig.schema;
+      }
+      if (unverifiedConfig.fileName) {
+        unverifiedConfig.filename = unverifiedConfig.fileName;
+        delete unverifiedConfig.fileName;
+      }
+      if (unverifiedConfig.columns) {
+        unverifiedConfig.columns = ColumnDescriptors.mapLegacyObjectToConfigProto(
+          unverifiedConfig.columns as any
+        );
+      }
     }
-
     return verifyObjectMatchesProto(
       dataform.ActionConfig.OperationConfig,
       unverifiedConfig,

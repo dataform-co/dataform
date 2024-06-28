@@ -892,7 +892,8 @@ actions:
               name: "action"
             },
             fileName: "definitions/action.sql",
-            queries: ["SELECT 1"]
+            queries: ["SELECT 1"],
+            hermeticity: "NON_HERMETIC"
           }
         ])
       );
@@ -1272,7 +1273,8 @@ actions:
               name: "utf8characters:私🙂 and some spaces"
             },
             fileName: "definitions/utf8characters:私🙂 and some spaces.sql",
-            queries: ["SELECT 1"]
+            queries: ["SELECT 1"],
+            hermeticity: "NON_HERMETIC"
           }
         ])
       );
@@ -1859,7 +1861,6 @@ SELECT 1`
         path.join(projectDir, "definitions/table.sqlx"),
         `config {type: "view"} SELECT 1`
       );
-      // TODO(ekrekr): re-add hermetic.
       fs.writeFileSync(
         path.join(projectDir, "definitions/operation.sqlx"),
         `
@@ -1872,6 +1873,7 @@ config {
   tags: ["tagA", "tagB"],
   disabled: true,
   description: "description",
+  hermetic: true,
   hasOutput: true,
   dependOnDependencyAssertions: true,
 ${exampleActionDescriptor.inputSqlxConfigBlock}
@@ -1904,7 +1906,7 @@ SELECT 1`
             ],
             disabled: true,
             fileName: "definitions/operation.sqlx",
-            // hermeticity: "HERMETIC",
+            hermeticity: "HERMETIC",
             hasOutput: true,
             tags: ["tagA", "tagB"],
             queries: ["\n\nSELECT 1"],

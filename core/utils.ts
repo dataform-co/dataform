@@ -310,8 +310,7 @@ export function actionConfigToCompiledGraphTarget(
 }
 
 export function resolveActionsConfigFilename(configFilename: string, configPath: string) {
-  const tmp = Path.dirName(configPath);
-  return Path.normalize(Path.join(tmp, configFilename));
+  return Path.normalize(Path.join(Path.dirName(configPath), configFilename));
 }
 
 export function addDependenciesToActionDependencyTargets(
