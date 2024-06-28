@@ -1350,24 +1350,6 @@ actions:
       bigqueryPolicyTags: ["bigqueryPolicyTag1", "bigqueryPolicyTag2"],
     }
   },`,
-      inputActionConfigBlock: `
-  columns:
-   - path:
-     - column1Key
-    description: column1Val
-   - path:
-     - column2Key
-     tags:
-      - tag3
-      - tag4
-     bigquery_policy_tags:
-     - bigqueryPolicyTag1
-     - bigqueryPolicyTag2
-     description: description
-   - path:
-     - column2Key
-     - nestedColumnKey
-    description: nestedColumnVal`,
       outputActionDescriptor: {
         columns: [
           {
