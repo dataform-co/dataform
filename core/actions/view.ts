@@ -132,7 +132,6 @@ export class View extends ActionBuilder<dataform.Table> {
     if (config.materialized) {
       this.materialized(config.materialized);
     }
-    this.query(nativeRequire(config.filename).query);
     if (config.preOperations) {
       this.preOps(config.preOperations);
     }
