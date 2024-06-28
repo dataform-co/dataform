@@ -3,10 +3,11 @@ import { Declaration } from "df/core/actions/declaration";
 import { Notebook } from "df/core/actions/notebook";
 import { Operation } from "df/core/actions/operation";
 import { Table } from "df/core/actions/table";
+import { View } from "df/core/actions/view";
 import { Session } from "df/core/session";
 import { dataform } from "df/protos/ts";
 
-export type Action = Table | Operation | Assertion | Declaration | Notebook;
+export type Action = Table | View | Operation | Assertion | Declaration | Notebook;
 
 // TODO(ekrekr): In v4, make all method on inheritors of this private, forcing users to use
 // constructors in order to populate actions.

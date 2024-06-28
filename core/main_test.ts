@@ -1099,6 +1099,7 @@ actions:
               name: "action"
             },
             fileName: "definitions/action.sql",
+            hermeticity: "NON_HERMETIC",
             query: "SELECT 1",
             type: "view",
             enumType: "VIEW",

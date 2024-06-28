@@ -9,6 +9,7 @@ import { Notebook } from "df/core/actions/notebook";
 import { Operation, OperationContext } from "df/core/actions/operation";
 import { ITableConfig, ITableContext, Table, TableContext, TableType } from "df/core/actions/table";
 import { Test } from "df/core/actions/test";
+import { View } from "df/core/actions/view";
 import { Contextable, ICommonContext, ITarget, Resolvable } from "df/core/common";
 import { CompilationSql } from "df/core/compilation_sql";
 import { targetAsReadableString, targetStringifier } from "df/core/targets";
@@ -134,6 +135,19 @@ export class Session {
 
     switch (actionType) {
       case "view":
+        sqlxConfig.filename = utils.getCallerFile(this.rootDir);
+        const view = new View(this, sqlxConfig).query(ctx => actionOptions.sqlContextable(ctx)[0]);
+        if (actionOptions.incrementalWhereContextable) {
+          view.where(actionOptions.incrementalWhereContextable);
+        }
+        if (actionOptions.preOperationsContextable) {
+          view.preOps(actionOptions.preOperationsContextable);
+        }
+        if (actionOptions.postOperationsContextable) {
+          view.postOps(actionOptions.postOperationsContextable);
+        }
+        this.actions.push(view);
+        break;
       case "table":
       case "incremental":
         const table = this.publish(sqlxConfig.name)
@@ -324,7 +338,9 @@ export class Session {
     // TODO(ekrekr): replace verify here with something that actually works.
     const compiledGraph = dataform.CompiledGraph.create({
       projectConfig: this.projectConfig,
-      tables: this.compileGraphChunk(this.actions.filter(action => action instanceof Table)),
+      tables: this.compileGraphChunk(
+        this.actions.filter(action => action instanceof Table || action instanceof View)
+      ),
       operations: this.compileGraphChunk(
         this.actions.filter(action => action instanceof Operation)
       ),
