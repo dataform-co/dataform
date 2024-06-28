@@ -1201,6 +1201,24 @@ actions:
       );
     });
 
+    test(`fails when empty objects are given`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/actions.yaml"),
+        `
+actions:`
+      );
+
+      expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
+        `Unexpected empty value for "actions". See https://dataform-co.github.io/dataform/docs/configs-reference#dataform-ActionConfigs for allowed properties.`
+      );
+    });
+
     test(`filenames with non-UTF8 characters are valid`, () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
       fs.writeFileSync(
@@ -1327,7 +1345,6 @@ actions:
       columns: {
         nestedColumnKey: "nestedColumnVal"
       },
-      displayName: "displayName",
       tags: ["tag3", "tag4"],
       bigqueryPolicyTags: ["bigqueryPolicyTag1", "bigqueryPolicyTag2"],
     }
@@ -1341,7 +1358,6 @@ actions:
           {
             bigqueryPolicyTags: ["bigqueryPolicyTag1", "bigqueryPolicyTag2"],
             description: "description",
-            displayName: "displayName",
             path: ["column2Key"],
             tags: ["tag3", "tag4"]
           },
@@ -1585,8 +1601,6 @@ SELECT 1`
           },
           type: "table",
           disabled: true,
-          // TODO(ekrekr): finish fixing this in https://github.com/dataform-co/dataform/pull/1718.
-          // protected: false,
           hermeticity: "HERMETIC",
           bigquery: {
             additionalOptions: {
@@ -1679,8 +1693,6 @@ SELECT 1`
           },
           type: "view",
           disabled: true,
-          // TODO(ekrekr): finish fixing this in https://github.com/dataform-co/dataform/pull/1718.
-          // protected: false,
           hermeticity: "HERMETIC",
           bigquery: {
             additionalOptions: {
@@ -1776,8 +1788,7 @@ SELECT 1`
           },
           type: "incremental",
           disabled: true,
-          // TODO(ekrekr): finish fixing this in https://github.com/dataform-co/dataform/pull/1718.
-          // protected: false,
+          protected: false,
           hermeticity: "HERMETIC",
           bigquery: {
             additionalOptions: {
@@ -2216,277 +2227,277 @@ ${exampleBuiltInAssertions.inputActionConfigBlock}
       );
     });
 
-    //     test("for views", () => {
-    //       const projectDir = tmpDirFixture.createNewTmpDir();
-    //       fs.writeFileSync(
-    //         path.join(projectDir, "workflow_settings.yaml"),
-    //         VALID_WORKFLOW_SETTINGS_YAML
-    //       );
-    //       fs.mkdirSync(path.join(projectDir, "definitions"));
-    //       fs.writeFileSync(path.join(projectDir, "definitions/operation.sqlx"), "SELECT 1");
-    //       fs.writeFileSync(path.join(projectDir, "definitions/filename.sql"), "SELECT 1");
-    //       // TODO(ekrekr): add support for columns.
-    //       fs.writeFileSync(
-    //         path.join(projectDir, "definitions/actions.yaml"),
-    //         `
-    // actions:
-    // - view:
-    //     name: name
-    //     dataset: dataset
-    //     project: project
-    //     dependencyTargets:
-    //     - name: operation
-    //     filename: filename.sql
-    //     tags:
-    //     - tag1
-    //     - tag2
-    //     disabled: true
-    //     materialized: true
-    //     description: description
-    // ${exampleActionDescriptor.inputActionConfigBlock}
-    //     labels:
-    //       key: val
-    //     additionalOptions:
-    //       option1Key: option1
-    //       option2Key: option2
-    //     dependOnDependencyAssertions: true
-    // ${exampleBuiltInAssertions.inputActionConfigBlock}
-    //     hermetic: true
-    //     `
-    //       );
+    test("for views", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(path.join(projectDir, "definitions/operation.sqlx"), "SELECT 1");
+      fs.writeFileSync(path.join(projectDir, "definitions/filename.sql"), "SELECT 1");
+      // TODO(ekrekr): add support for columns.
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/actions.yaml"),
+        `
+    actions:
+    - view:
+        name: name
+        dataset: dataset
+        project: project
+        dependencyTargets:
+        - name: operation
+        filename: filename.sql
+        tags:
+        - tag1
+        - tag2
+        disabled: true
+        materialized: true
+        description: description
+    ${exampleActionDescriptor.inputActionConfigBlock}
+        labels:
+          key: val
+        additionalOptions:
+          option1Key: option1
+          option2Key: option2
+        dependOnDependencyAssertions: true
+    ${exampleBuiltInAssertions.inputActionConfigBlock}
+        hermetic: true
+        `
+      );
 
-    //       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
-    //       expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-    //       expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals([
-    //         {
-    //           target: {
-    //             database: "project",
-    //             schema: "dataset",
-    //             name: "name"
-    //           },
-    //           canonicalTarget: {
-    //             database: "project",
-    //             schema: "dataset",
-    //             name: "name"
-    //           },
-    //           type: "view",
-    //           disabled: true,
-    //           // TODO(ekrekr): finish fixing this in https://github.com/dataform-co/dataform/pull/1718.
-    //           // protected: false,
-    //           hermeticity: "HERMETIC",
-    //           bigquery: {
-    //             additionalOptions: {
-    //               option1Key: "option1",
-    //               option2Key: "option2"
-    //             },
-    //             labels: {
-    //               key: "val"
-    //             }
-    //           },
-    //           tags: ["tag1", "tag2"],
-    //           dependencyTargets: [
-    //             {
-    //               database: "defaultProject",
-    //               schema: "defaultDataset",
-    //               name: "operation"
-    //             }
-    //           ],
-    //           enumType: "VIEW",
-    //           fileName: "definitions/filename.sql",
-    //           query: "SELECT 1",
-    //           actionDescriptor: {
-    //             ...exampleActionDescriptor.outputActionDescriptor,
-    //             bigqueryLabels: {
-    //               key: "val"
-    //             }
-    //           },
-    //           materialized: true
-    //         }
-    //       ]);
-    //       expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals(
-    //         exampleBuiltInAssertions.outputAssertions
-    //       );
-    //     });
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals([
+        {
+          target: {
+            database: "project",
+            schema: "dataset",
+            name: "name"
+          },
+          canonicalTarget: {
+            database: "project",
+            schema: "dataset",
+            name: "name"
+          },
+          type: "view",
+          disabled: true,
+          // TODO(ekrekr): finish fixing this in https://github.com/dataform-co/dataform/pull/1718.
+          // protected: false,
+          hermeticity: "HERMETIC",
+          bigquery: {
+            additionalOptions: {
+              option1Key: "option1",
+              option2Key: "option2"
+            },
+            labels: {
+              key: "val"
+            }
+          },
+          tags: ["tag1", "tag2"],
+          dependencyTargets: [
+            {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "operation"
+            }
+          ],
+          enumType: "VIEW",
+          fileName: "definitions/filename.sql",
+          query: "SELECT 1",
+          actionDescriptor: {
+            ...exampleActionDescriptor.outputActionDescriptor,
+            bigqueryLabels: {
+              key: "val"
+            }
+          },
+          materialized: true
+        }
+      ]);
+      expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals(
+        exampleBuiltInAssertions.outputAssertions
+      );
+    });
 
-    //     test("for incremental tables", () => {
-    //       const projectDir = tmpDirFixture.createNewTmpDir();
-    //       fs.writeFileSync(
-    //         path.join(projectDir, "workflow_settings.yaml"),
-    //         VALID_WORKFLOW_SETTINGS_YAML
-    //       );
-    //       fs.mkdirSync(path.join(projectDir, "definitions"));
-    //       fs.writeFileSync(path.join(projectDir, "definitions/operation.sqlx"), "SELECT 1");
-    //       fs.writeFileSync(path.join(projectDir, "definitions/filename.sql"), "SELECT 1");
-    //       // TODO(ekrekr): add support for columns.
-    //       fs.writeFileSync(
-    //         path.join(projectDir, "definitions/actions.yaml"),
-    //         `
-    // actions:
-    // - incrementalTable:
-    //     name: name
-    //     dataset: dataset
-    //     project: project
-    //     dependencyTargets:
-    //     - name: operation
-    //     filename: filename.sql
-    //     tags:
-    //     - tag1
-    //     - tag2
-    //     disabled: true
-    //     protected: true
-    //     uniqueKey:
-    //     - key1
-    //     - key2
-    //     description: description
-    // ${exampleActionDescriptor.inputActionConfigBlock}
-    //     partitionBy: partitionBy
-    //     partitionExpirationDays: 1
-    //     requirePartitionFilter: true
-    //     updatePartitionFilter: "updatePartitionFilter"
-    //     clusterBy:
-    //     - clusterBy
-    //     labels:
-    //       key: val
-    //     additionalOptions:
-    //       option1Key: option1
-    //       option2Key: option2
-    //     dependOnDependencyAssertions: true
-    // ${exampleBuiltInAssertions.inputActionConfigBlock}
-    //     hermetic: true
-    //     `
-    //       );
+    test("for incremental tables", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(path.join(projectDir, "definitions/operation.sqlx"), "SELECT 1");
+      fs.writeFileSync(path.join(projectDir, "definitions/filename.sql"), "SELECT 1");
+      // TODO(ekrekr): add support for columns.
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/actions.yaml"),
+        `
+    actions:
+    - incrementalTable:
+        name: name
+        dataset: dataset
+        project: project
+        dependencyTargets:
+        - name: operation
+        filename: filename.sql
+        tags:
+        - tag1
+        - tag2
+        disabled: true
+        protected: true
+        uniqueKey:
+        - key1
+        - key2
+        description: description
+    ${exampleActionDescriptor.inputActionConfigBlock}
+        partitionBy: partitionBy
+        partitionExpirationDays: 1
+        requirePartitionFilter: true
+        updatePartitionFilter: "updatePartitionFilter"
+        clusterBy:
+        - clusterBy
+        labels:
+          key: val
+        additionalOptions:
+          option1Key: option1
+          option2Key: option2
+        dependOnDependencyAssertions: true
+    ${exampleBuiltInAssertions.inputActionConfigBlock}
+        hermetic: true
+        `
+      );
 
-    //       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
-    //       expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-    //       expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals([
-    //         {
-    //           target: {
-    //             database: "project",
-    //             schema: "dataset",
-    //             name: "name"
-    //           },
-    //           canonicalTarget: {
-    //             database: "project",
-    //             schema: "dataset",
-    //             name: "name"
-    //           },
-    //           type: "incremental",
-    //           disabled: true,
-    //           protected: true,
-    //           hermeticity: "HERMETIC",
-    //           bigquery: {
-    //             additionalOptions: {
-    //               option1Key: "option1",
-    //               option2Key: "option2"
-    //             },
-    //             clusterBy: ["clusterBy"],
-    //             labels: {
-    //               key: "val"
-    //             },
-    //             partitionBy: "partitionBy",
-    //             partitionExpirationDays: 1,
-    //             requirePartitionFilter: true,
-    //             updatePartitionFilter: "updatePartitionFilter"
-    //           },
-    //           tags: ["tag1", "tag2"],
-    //           uniqueKey: ["key1", "key2"],
-    //           dependencyTargets: [
-    //             {
-    //               database: "defaultProject",
-    //               schema: "defaultDataset",
-    //               name: "operation"
-    //             }
-    //           ],
-    //           enumType: "INCREMENTAL",
-    //           fileName: "definitions/filename.sql",
-    //           query: "SELECT 1",
-    //           incrementalQuery: "SELECT 1",
-    //           actionDescriptor: {
-    //             ...exampleActionDescriptor.outputActionDescriptor,
-    //             bigqueryLabels: {
-    //               key: "val"
-    //             }
-    //           }
-    //         }
-    //       ]);
-    //       expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals(
-    //         exampleBuiltInAssertions.outputAssertions
-    //       );
-    //     });
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals([
+        {
+          target: {
+            database: "project",
+            schema: "dataset",
+            name: "name"
+          },
+          canonicalTarget: {
+            database: "project",
+            schema: "dataset",
+            name: "name"
+          },
+          type: "incremental",
+          disabled: true,
+          protected: true,
+          hermeticity: "HERMETIC",
+          bigquery: {
+            additionalOptions: {
+              option1Key: "option1",
+              option2Key: "option2"
+            },
+            clusterBy: ["clusterBy"],
+            labels: {
+              key: "val"
+            },
+            partitionBy: "partitionBy",
+            partitionExpirationDays: 1,
+            requirePartitionFilter: true,
+            updatePartitionFilter: "updatePartitionFilter"
+          },
+          tags: ["tag1", "tag2"],
+          uniqueKey: ["key1", "key2"],
+          dependencyTargets: [
+            {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "operation"
+            }
+          ],
+          enumType: "INCREMENTAL",
+          fileName: "definitions/filename.sql",
+          query: "SELECT 1",
+          incrementalQuery: "SELECT 1",
+          actionDescriptor: {
+            ...exampleActionDescriptor.outputActionDescriptor,
+            bigqueryLabels: {
+              key: "val"
+            }
+          }
+        }
+      ]);
+      expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals(
+        exampleBuiltInAssertions.outputAssertions
+      );
+    });
 
-    //     test(`for operations`, () => {
-    //       const projectDir = tmpDirFixture.createNewTmpDir();
-    //       fs.writeFileSync(
-    //         path.join(projectDir, "workflow_settings.yaml"),
-    //         VALID_WORKFLOW_SETTINGS_YAML
-    //       );
-    //       fs.mkdirSync(path.join(projectDir, "definitions"));
-    //       fs.writeFileSync(
-    //         path.join(projectDir, "definitions/table.sqlx"),
-    //         `config {type: "view"} SELECT 1`
-    //       );
-    //       fs.writeFileSync(path.join(projectDir, "definitions/filename.sql"), "SELECT 1");
-    //       // TODO(ekrekr): add support for columns.
-    //       fs.writeFileSync(
-    //         path.join(projectDir, "definitions/actions.yaml"),
-    //         `
-    // actions:
-    // - operation:
-    //     name: name
-    //     dataset: dataset
-    //     project: project
-    //     dependencyTargets:
-    //     - name: table
-    //     filename: filename.sql
-    //     tags:
-    //     - tagA
-    //     - tagB
-    //     disabled: true
-    //     hasOutput: true
-    //     description: description
-    //     dependOnDependencyAssertions: true
-    //     hermetic: true
-    //     `
-    //       );
+    test(`for operations`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/table.sqlx"),
+        `config {type: "view"} SELECT 1`
+      );
+      fs.writeFileSync(path.join(projectDir, "definitions/filename.sql"), "SELECT 1");
+      // TODO(ekrekr): add support for columns.
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/actions.yaml"),
+        `
+    actions:
+    - operation:
+        name: name
+        dataset: dataset
+        project: project
+        dependencyTargets:
+        - name: table
+        filename: filename.sql
+        tags:
+        - tagA
+        - tagB
+        disabled: true
+        hasOutput: true
+        description: description
+        dependOnDependencyAssertions: true
+        hermetic: true
+        `
+      );
 
-    //       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
-    //       expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-    //       expect(asPlainObject(result.compile.compiledGraph.operations)).deep.equals(
-    //         asPlainObject([
-    //           {
-    //             target: {
-    //               database: "project",
-    //               schema: "dataset",
-    //               name: "name"
-    //             },
-    //             canonicalTarget: {
-    //               database: "project",
-    //               schema: "dataset",
-    //               name: "name"
-    //             },
-    //             dependencyTargets: [
-    //               {
-    //                 database: "defaultProject",
-    //                 schema: "defaultDataset",
-    //                 name: "table"
-    //               }
-    //             ],
-    //             disabled: true,
-    //             fileName: "definitions/filename.sql",
-    //             hermeticity: "HERMETIC",
-    //             hasOutput: true,
-    //             tags: ["tagA", "tagB"],
-    //             queries: ["SELECT 1"],
-    //             actionDescriptor: {
-    //               description: "description"
-    //             }
-    //           }
-    //         ])
-    //       );
-    //     });
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.operations)).deep.equals(
+        asPlainObject([
+          {
+            target: {
+              database: "project",
+              schema: "dataset",
+              name: "name"
+            },
+            canonicalTarget: {
+              database: "project",
+              schema: "dataset",
+              name: "name"
+            },
+            dependencyTargets: [
+              {
+                database: "defaultProject",
+                schema: "defaultDataset",
+                name: "table"
+              }
+            ],
+            disabled: true,
+            fileName: "definitions/filename.sql",
+            hermeticity: "HERMETIC",
+            hasOutput: true,
+            tags: ["tagA", "tagB"],
+            queries: ["SELECT 1"],
+            actionDescriptor: {
+              description: "description"
+            }
+          }
+        ])
+      );
+    });
   });
 
   suite("Assertions as dependencies", ({ beforeEach }) => {

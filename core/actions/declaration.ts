@@ -8,26 +8,15 @@ import {
   ITargetableConfig
 } from "df/core/common";
 import { Session } from "df/core/session";
-import {
-  actionConfigToCompiledGraphTarget,
-  checkExcessProperties,
-  strictKeysOf
-} from "df/core/utils";
+import { actionConfigToCompiledGraphTarget, checkExcessProperties } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
-/**
- * Configuration options for `declaration` action types.
- */
-export interface IDeclarationConfig extends IDocumentableConfig, INamedConfig, ITargetableConfig {}
-
-export const IDeclarationConfigProperties = strictKeysOf<IDeclarationConfig>()([
-  "columns",
-  "database",
-  "description",
-  "name",
-  "schema",
-  "type"
-]);
+interface ILegacyDeclarationConfig extends dataform.ActionConfig.DeclarationConfig {
+  database: string;
+  schema: string;
+  fileName: string;
+  type: string;
+}
 
 /**
  * @hidden
@@ -38,13 +27,15 @@ export class Declaration extends ActionBuilder<dataform.Declaration> {
 
   public session: Session;
 
-  constructor(session?: Session, config?: dataform.ActionConfig.DeclarationConfig) {
+  constructor(session?: Session, unverifiedConfig?: any) {
     super(session);
     this.session = session;
 
-    if (!config) {
+    if (!unverifiedConfig) {
       return;
     }
+
+    const config = this.verifyConfig(unverifiedConfig);
 
     if (!config.name) {
       throw Error("Declarations must have a populated 'name' field.");
@@ -54,22 +45,15 @@ export class Declaration extends ActionBuilder<dataform.Declaration> {
     this.proto.target = this.applySessionToTarget(target, session.projectConfig);
     this.proto.canonicalTarget = this.applySessionToTarget(target, session.canonicalProjectConfig);
 
-    // TODO(ekrekr): load config proto column descriptors.
-    this.config({ description: config.description });
-  }
-
-  public config(config: IDeclarationConfig) {
-    checkExcessProperties(
-      (e: Error) => this.session.compileError(e),
-      config,
-      IDeclarationConfigProperties,
-      "declaration config"
-    );
     if (config.description) {
       this.description(config.description);
     }
-    if (config.columns) {
-      this.columns(config.columns);
+    if (config.columns?.length) {
+      this.columns(
+        config.columns.map(columnDescriptor =>
+          dataform.ActionConfig.ColumnDescriptor.create(columnDescriptor)
+        )
+      );
     }
     return this;
   }
@@ -82,13 +66,12 @@ export class Declaration extends ActionBuilder<dataform.Declaration> {
     return this;
   }
 
-  public columns(columns: IColumnsDescriptor) {
+  public columns(columns: dataform.ActionConfig.ColumnDescriptor[]) {
     if (!this.proto.actionDescriptor) {
       this.proto.actionDescriptor = {};
     }
-    this.proto.actionDescriptor.columns = ColumnDescriptors.mapToColumnProtoArray(
-      columns,
-      (e: Error) => this.session.compileError(e)
+    this.proto.actionDescriptor.columns = ColumnDescriptors.mapConfigProtoToCompilationProto(
+      columns
     );
     return this;
   }
@@ -112,6 +95,39 @@ export class Declaration extends ActionBuilder<dataform.Declaration> {
       dataform.Declaration,
       this.proto,
       VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM
+    );
+  }
+
+  private verifyConfig(
+    unverifiedConfig: ILegacyDeclarationConfig
+  ): dataform.ActionConfig.DeclarationConfig {
+    if (unverifiedConfig.database) {
+      unverifiedConfig.project = unverifiedConfig.database;
+      delete unverifiedConfig.database;
+    }
+    if (unverifiedConfig.schema) {
+      unverifiedConfig.dataset = unverifiedConfig.schema;
+      delete unverifiedConfig.schema;
+    }
+    if (unverifiedConfig.columns) {
+      // TODO(ekrekr) columns in their current config format are a difficult structure to represent
+      // as protos. They are nested, and use the object keys as the names. Consider a forced
+      // migration to the proto style column names.
+      unverifiedConfig.columns = ColumnDescriptors.mapLegacyObjectToConfigProto(
+        unverifiedConfig.columns as any
+      );
+    }
+
+    // TODO(ekrekr): consider moving this to a shared location after all action builders have proto
+    // config verifiers.
+    if (unverifiedConfig.type) {
+      delete unverifiedConfig.type;
+    }
+
+    return verifyObjectMatchesProto(
+      dataform.ActionConfig.DeclarationConfig,
+      unverifiedConfig,
+      VerifyProtoErrorBehaviour.SHOW_DOCS_LINK
     );
   }
 }
