@@ -9,6 +9,7 @@ import { Declaration } from "df/core/actions/declaration";
 import { Notebook } from "df/core/actions/notebook";
 import { Operation } from "df/core/actions/operation";
 import { Table } from "df/core/actions/table";
+import { View } from "df/core/actions/view";
 import * as Path from "df/core/path";
 import { Session } from "df/core/session";
 import { nativeRequire } from "df/core/utils";
@@ -132,10 +133,9 @@ function loadActionConfigs(session: Session, filePaths: string[]) {
           );
         } else if (actionConfig.view) {
           session.actions.push(
-            new Table(
+            new View(
               session,
               dataform.ActionConfig.ViewConfig.create(actionConfig.view),
-              "view",
               actionConfigsPath
             )
           );

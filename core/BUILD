@@ -20,6 +20,7 @@ ts_library(
     srcs = [
         "actions/assertion.ts",
         "actions/declaration.ts",
+        "actions/view.ts",
         "actions/index.ts",
         "actions/operation.ts",
         "actions/notebook.ts",
