@@ -5,6 +5,7 @@ import { StringifiedMap, StringifiedSet } from "df/common/strings/stringifier";
 import { Action } from "df/core/actions";
 import { AContextable, Assertion, AssertionContext } from "df/core/actions/assertion";
 import { Declaration } from "df/core/actions/declaration";
+import { IncrementalTable } from "df/core/actions/incremental_table";
 import { Notebook } from "df/core/actions/notebook";
 import { Operation, OperationContext } from "df/core/actions/operation";
 import { ITableConfig, ITableContext, Table, TableContext, TableType } from "df/core/actions/table";
@@ -340,7 +341,10 @@ export class Session {
     const compiledGraph = dataform.CompiledGraph.create({
       projectConfig: this.projectConfig,
       tables: this.compileGraphChunk(
-        this.actions.filter(action => action instanceof Table || action instanceof View)
+        this.actions.filter(
+          action =>
+            action instanceof Table || action instanceof View || action instanceof IncrementalTable
+        )
       ),
       operations: this.compileGraphChunk(
         this.actions.filter(action => action instanceof Operation)
