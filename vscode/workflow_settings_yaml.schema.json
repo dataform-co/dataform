@@ -1,0 +1,58 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "$comment": "Created from 'protos/configs.proto'. Even options are specified as 'required' in proto, they might be specified from the CLI options, so leave them optional except for the dataformCoreVersion which is required in compile.",
+    "additionalProperties": false,
+    "properties": {
+        "dataformCoreVersion": {
+            "type": "string",
+            "description": "The desired dataform core version to compile against."
+        },
+        "defaultProject": {
+            "type": "string",
+            "description": "The default Google Cloud project (database)."
+        },
+        "defaultDataset": {
+            "type": "string",
+            "description": "The default dataset (schema)."
+        },
+        "defaultLocation": {
+            "type": "string",
+            "description": "The default BigQuery location to use."
+        },
+        "defaultAssertionDataset": {
+            "type": "string",
+            "description": "The default dataset (schema) for assertions."
+        },
+        "vars": {
+            "type": "object",
+            "description": "User-defined variables that are made available to project code during compilation. An object containing a list of key-value pairs.",
+            "additionalProperties": {
+                "type": "string"
+            }
+        },
+        "projectSuffix": {
+            "type": "string",
+            "description": "The suffix to append to all Google Cloud project references."
+        },
+        "datasetSuffix": {
+            "type": "string",
+            "description": "The suffix to append to all dataset references."
+        },
+        "namePrefix": {
+            "type": "string",
+            "description": "The prefix to append to all action names."
+        },
+        "defaultNotebookRuntimeOptions": {
+            "type": "object",
+            "description": "Default runtime options for Notebook actions.",
+            "outputBucket": {
+                "type": "string",
+                "description": "Storage bucket to output notebooks to after their execution."
+            }
+        }
+    },
+    "required": [
+        "dataformCoreVersion"
+    ]
+}
