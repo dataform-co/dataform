@@ -403,9 +403,6 @@ export class View extends ActionBuilder<dataform.Table> {
         delete unverifiedConfig.fileName;
       }
       if (unverifiedConfig.columns) {
-        // TODO(ekrekr) columns in their current config format are a difficult structure to represent
-        // as protos. They are nested, and use the object keys as the names. Consider a forced
-        // migration to the proto style column names.
         unverifiedConfig.columns = ColumnDescriptors.mapLegacyObjectToConfigProto(
           unverifiedConfig.columns as any
         );
