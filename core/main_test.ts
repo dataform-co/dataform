@@ -2115,7 +2115,7 @@ actions:
     dataset: dataset
     project: project
     description: description
-`
+${exampleActionDescriptor.inputActionConfigBlock}`
       );
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
@@ -2135,7 +2135,7 @@ actions:
               name: "name"
             },
             actionDescriptor: {
-              description: "description"
+              ...exampleActionDescriptor.outputActionDescriptor
             }
           }
         ])
@@ -2168,6 +2168,7 @@ actions:
     - tag2
     disabled: true
     description: description
+${exampleActionDescriptor.inputActionConfigBlock}
     partitionBy: partitionBy
     partitionExpirationDays: 1
     requirePartitionFilter: true
@@ -2229,7 +2230,7 @@ ${exampleBuiltInAssertions.inputActionConfigBlock}
           fileName: "definitions/filename.sql",
           query: "SELECT 1",
           actionDescriptor: {
-            description: "description",
+            ...exampleActionDescriptor.outputActionDescriptor,
             bigqueryLabels: {
               key: "val"
             }
@@ -2250,7 +2251,9 @@ ${exampleBuiltInAssertions.inputActionConfigBlock}
       fs.mkdirSync(path.join(projectDir, "definitions"));
       fs.writeFileSync(path.join(projectDir, "definitions/operation.sqlx"), "SELECT 1");
       fs.writeFileSync(path.join(projectDir, "definitions/filename.sql"), "SELECT 1");
-      const tmp = `
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/actions.yaml"),
+        `
 actions:
 - view:
     name: name
@@ -2273,10 +2276,8 @@ ${exampleActionDescriptor.inputActionConfigBlock}
       option2Key: option2
     dependOnDependencyAssertions: true
 ${exampleBuiltInAssertions.inputActionConfigBlock}
-    hermetic: true
-    `;
-      console.log("🚀 ~ test ~ tmp:", tmp);
-      fs.writeFileSync(path.join(projectDir, "definitions/actions.yaml"), tmp);
+    hermetic: true`
+      );
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
@@ -2362,6 +2363,7 @@ actions:
     - key1
     - key2
     description: description
+${exampleActionDescriptor.inputActionConfigBlock}
     partitionBy: partitionBy
     partitionExpirationDays: 1
     requirePartitionFilter: true
@@ -2426,10 +2428,11 @@ ${exampleBuiltInAssertions.inputActionConfigBlock}
           query: "SELECT 1",
           incrementalQuery: "SELECT 1",
           actionDescriptor: {
-            description: "description",
+            ...exampleActionDescriptor.outputActionDescriptor,
             bigqueryLabels: {
               key: "val"
-            }
+            },
+            description: "description"
           }
         }
       ]);
@@ -2454,23 +2457,23 @@ ${exampleBuiltInAssertions.inputActionConfigBlock}
       fs.writeFileSync(
         path.join(projectDir, "definitions/actions.yaml"),
         `
-    actions:
-    - operation:
-        name: name
-        dataset: dataset
-        project: project
-        dependencyTargets:
-        - name: table
-        filename: filename.sql
-        tags:
-        - tagA
-        - tagB
-        disabled: true
-        hasOutput: true
-        description: description
-        dependOnDependencyAssertions: true
-        hermetic: true
-        `
+actions:
+- operation:
+    name: name
+    dataset: dataset
+    project: project
+    dependencyTargets:
+    - name: table
+    filename: filename.sql
+    tags:
+    - tagA
+    - tagB
+    disabled: true
+    hasOutput: true
+    description: description
+${exampleActionDescriptor.inputActionConfigBlock}
+    dependOnDependencyAssertions: true
+    hermetic: true`
       );
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
@@ -2503,7 +2506,7 @@ ${exampleBuiltInAssertions.inputActionConfigBlock}
             tags: ["tagA", "tagB"],
             queries: ["SELECT 1"],
             actionDescriptor: {
-              description: "description"
+              ...exampleActionDescriptor.outputActionDescriptor
             }
           }
         ])
