@@ -380,59 +380,60 @@ export class View extends ActionBuilder<dataform.Table> {
   }
 
   private verifyConfig(unverifiedConfig: ILegacyViewConfig): dataform.ActionConfig.ViewConfig {
-    if (unverifiedConfig.dependencies) {
-      unverifiedConfig.dependencyTargets = unverifiedConfig.dependencies.map(
-        (dependency: string | object) =>
-          typeof dependency === "string" ? { name: dependency } : dependency
-      );
-      delete unverifiedConfig.dependencies;
-    }
-    if (unverifiedConfig.database) {
-      unverifiedConfig.project = unverifiedConfig.database;
-      delete unverifiedConfig.database;
-    }
-    if (unverifiedConfig.schema) {
-      unverifiedConfig.dataset = unverifiedConfig.schema;
-      delete unverifiedConfig.schema;
-    }
-    if (unverifiedConfig.fileName) {
-      unverifiedConfig.filename = unverifiedConfig.fileName;
-      delete unverifiedConfig.fileName;
-    }
-    if (unverifiedConfig.columns) {
-      // TODO(ekrekr) columns in their current config format are a difficult structure to represent
-      // as protos. They are nested, and use the object keys as the names. Consider a forced
-      // migration to the proto style column names.
-      unverifiedConfig.columns = ColumnDescriptors.mapLegacyObjectToConfigProto(
-        unverifiedConfig.columns as any
-      );
-    }
-    if (unverifiedConfig?.assertions) {
-      if (unverifiedConfig.assertions.uniqueKey) {
-        unverifiedConfig.assertions.uniqueKey = unverifiedConfig.assertions.uniqueKey;
-      }
-      // This determines if the uniqueKeys is of the legacy type.
-      if (unverifiedConfig.assertions.uniqueKeys?.[0]?.length > 0) {
-        unverifiedConfig.assertions.uniqueKeys = (unverifiedConfig.assertions
-          .uniqueKeys as string[][]).map(uniqueKey =>
-          dataform.ActionConfig.TableAssertionsConfig.UniqueKey.create({ uniqueKey })
-        );
-      }
-      if (typeof unverifiedConfig.assertions.nonNull === "string") {
-        unverifiedConfig.assertions.nonNull = [unverifiedConfig.assertions.nonNull];
-      }
-    }
-    if (unverifiedConfig?.bigquery) {
-      if (!!unverifiedConfig.bigquery.labels) {
-        unverifiedConfig.labels = unverifiedConfig.bigquery.labels;
-      }
-      if (!!unverifiedConfig.bigquery.additionalOptions) {
-        unverifiedConfig.additionalOptions = unverifiedConfig.bigquery.additionalOptions;
-      }
-      delete unverifiedConfig.bigquery;
-    }
+    // The "type" field only exists on legacy view configs. Here we convert them to the new format.
     if (unverifiedConfig.type) {
       delete unverifiedConfig.type;
+      if (unverifiedConfig.dependencies) {
+        unverifiedConfig.dependencyTargets = unverifiedConfig.dependencies.map(
+          (dependency: string | object) =>
+            typeof dependency === "string" ? { name: dependency } : dependency
+        );
+        delete unverifiedConfig.dependencies;
+      }
+      if (unverifiedConfig.database) {
+        unverifiedConfig.project = unverifiedConfig.database;
+        delete unverifiedConfig.database;
+      }
+      if (unverifiedConfig.schema) {
+        unverifiedConfig.dataset = unverifiedConfig.schema;
+        delete unverifiedConfig.schema;
+      }
+      if (unverifiedConfig.fileName) {
+        unverifiedConfig.filename = unverifiedConfig.fileName;
+        delete unverifiedConfig.fileName;
+      }
+      if (unverifiedConfig.columns) {
+        // TODO(ekrekr) columns in their current config format are a difficult structure to represent
+        // as protos. They are nested, and use the object keys as the names. Consider a forced
+        // migration to the proto style column names.
+        unverifiedConfig.columns = ColumnDescriptors.mapLegacyObjectToConfigProto(
+          unverifiedConfig.columns as any
+        );
+      }
+      if (unverifiedConfig?.assertions) {
+        if (unverifiedConfig.assertions.uniqueKey) {
+          unverifiedConfig.assertions.uniqueKey = unverifiedConfig.assertions.uniqueKey;
+        }
+        // This determines if the uniqueKeys is of the legacy type.
+        if (unverifiedConfig.assertions.uniqueKeys?.[0]?.length > 0) {
+          unverifiedConfig.assertions.uniqueKeys = (unverifiedConfig.assertions
+            .uniqueKeys as string[][]).map(uniqueKey =>
+            dataform.ActionConfig.TableAssertionsConfig.UniqueKey.create({ uniqueKey })
+          );
+        }
+        if (typeof unverifiedConfig.assertions.nonNull === "string") {
+          unverifiedConfig.assertions.nonNull = [unverifiedConfig.assertions.nonNull];
+        }
+      }
+      if (unverifiedConfig?.bigquery) {
+        if (!!unverifiedConfig.bigquery.labels) {
+          unverifiedConfig.labels = unverifiedConfig.bigquery.labels;
+        }
+        if (!!unverifiedConfig.bigquery.additionalOptions) {
+          unverifiedConfig.additionalOptions = unverifiedConfig.bigquery.additionalOptions;
+        }
+        delete unverifiedConfig.bigquery;
+      }
     }
 
     return verifyObjectMatchesProto(
