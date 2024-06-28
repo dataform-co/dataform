@@ -13,6 +13,8 @@
     - [ActionConfig.IncrementalTableConfig.LabelsEntry](#dataform-ActionConfig-IncrementalTableConfig-LabelsEntry)
     - [ActionConfig.NotebookConfig](#dataform-ActionConfig-NotebookConfig)
     - [ActionConfig.OperationConfig](#dataform-ActionConfig-OperationConfig)
+    - [ActionConfig.TableAssertionsConfig](#dataform-ActionConfig-TableAssertionsConfig)
+    - [ActionConfig.TableAssertionsConfig.UniqueKey](#dataform-ActionConfig-TableAssertionsConfig-UniqueKey)
     - [ActionConfig.TableConfig](#dataform-ActionConfig-TableConfig)
     - [ActionConfig.TableConfig.AdditionalOptionsEntry](#dataform-ActionConfig-TableConfig-AdditionalOptionsEntry)
     - [ActionConfig.TableConfig.LabelsEntry](#dataform-ActionConfig-TableConfig-LabelsEntry)
@@ -73,6 +75,8 @@ Action config defines the contents of `actions.yaml` configuration files.
 | tags | [string](#string) | repeated | A list of user-defined tags with which the action should be labeled. |
 | disabled | [bool](#bool) |  | If set to true, this action will not be executed. However, the action can still be depended upon. Useful for temporarily turning off broken actions. |
 | description | [string](#string) |  | Description of the assertion. |
+| hermetic | [bool](#bool) |  | If true, this indicates that the action only depends on data from explicitly-declared dependencies. Otherwise if false, it indicates that the action depends on data from a source which has not been declared as a dependency. |
+| depend_on_dependency_assertions | [bool](#bool) |  | If true, assertions dependent upon any of the dependencies are added as dependencies as well. |
 
 
 
@@ -90,6 +94,7 @@ Action config defines the contents of `actions.yaml` configuration files.
 | path | [string](#string) | repeated | The identifier for the column, using multiple parts for nested records. |
 | description | [string](#string) |  | A text description of the column. |
 | bigquery_policy_tags | [string](#string) | repeated | A list of BigQuery policy tags that will be applied to the column. |
+| tags | [string](#string) | repeated | A list of tags for this column which will be applied. |
 
 
 
@@ -150,6 +155,8 @@ String values must be encapsulated in double-quotes, for example: additionalOpti
 
 If the option name contains special characters, encapsulate the name in quotes, for example: additionalOptions: { &#34;option-name&#34;: &#34;value&#34; }. |
 | depend_on_dependency_assertions | [bool](#bool) |  | When set to true, assertions dependent upon any dependency will be add as dedpendency to this action |
+| assertions | [ActionConfig.TableAssertionsConfig](#dataform-ActionConfig-TableAssertionsConfig) |  | Assertions to be run on the dataset. If configured, relevant assertions will automatically be created and run as a dependency of this dataset. |
+| hermetic | [bool](#bool) |  | If true, this indicates that the action only depends on data from explicitly-declared dependencies. Otherwise if false, it indicates that the action depends on data from a source which has not been declared as a dependency. |
 
 
 
@@ -230,6 +237,44 @@ If the option name contains special characters, encapsulate the name in quotes, 
 | description | [string](#string) |  | Description of the operation. |
 | columns | [ActionConfig.ColumnDescriptor](#dataform-ActionConfig-ColumnDescriptor) | repeated | Descriptions of columns within the operation. Can only be set if hasOutput is true. |
 | depend_on_dependency_assertions | [bool](#bool) |  | When set to true, assertions dependent upon any dependency will be add as dedpendency to this action |
+| hermetic | [bool](#bool) |  | If true, this indicates that the action only depends on data from explicitly-declared dependencies. Otherwise if false, it indicates that the action depends on data from a source which has not been declared as a dependency. |
+
+
+
+
+
+
+<a name="dataform-ActionConfig-TableAssertionsConfig"></a>
+
+### ActionConfig.TableAssertionsConfig
+Options for shorthand specifying assertions, useable for some table-based
+action types.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| unique_key | [string](#string) | repeated | Column(s) which constitute the dataset&#39;s unique key index. If set, the resulting assertion will fail if there is more than one row in the dataset with the same values for all of these column(s). |
+| unique_keys | [ActionConfig.TableAssertionsConfig.UniqueKey](#dataform-ActionConfig-TableAssertionsConfig-UniqueKey) | repeated |  |
+| non_null | [string](#string) | repeated | Column(s) which may never be `NULL`. If set, the resulting assertion will fail if any row contains `NULL` values for these column(s). |
+| row_conditions | [string](#string) | repeated | General condition(s) which should hold true for all rows in the dataset. If set, the resulting assertion will fail if any row violates any of these condition(s). |
+
+
+
+
+
+
+<a name="dataform-ActionConfig-TableAssertionsConfig-UniqueKey"></a>
+
+### ActionConfig.TableAssertionsConfig.UniqueKey
+Combinations of column(s), each of which should constitute a unique key
+index for the dataset. If set, the resulting assertion(s) will fail if
+there is more than one row in the dataset with the same values for all of
+the column(s) in the unique key(s).
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| unique_key | [string](#string) | repeated |  |
 
 
 
@@ -268,6 +313,8 @@ String values must be encapsulated in double-quotes, for example: additionalOpti
 
 If the option name contains special characters, encapsulate the name in quotes, for example: additionalOptions: { &#34;option-name&#34;: &#34;value&#34; }. |
 | depend_on_dependency_assertions | [bool](#bool) |  | When set to true, assertions dependent upon any dependency will be add as dedpendency to this action |
+| assertions | [ActionConfig.TableAssertionsConfig](#dataform-ActionConfig-TableAssertionsConfig) |  | Assertions to be run on the dataset. If configured, relevant assertions will automatically be created and run as a dependency of this dataset. |
+| hermetic | [bool](#bool) |  | If true, this indicates that the action only depends on data from explicitly-declared dependencies. Otherwise if false, it indicates that the action depends on data from a source which has not been declared as a dependency. |
 
 
 
@@ -353,6 +400,8 @@ String values must be encapsulated in double-quotes, for example: additionalOpti
 
 If the option name contains special characters, encapsulate the name in quotes, for example: additionalOptions: { &#34;option-name&#34;: &#34;value&#34; }. |
 | depend_on_dependency_assertions | [bool](#bool) |  | When set to true, assertions dependent upon any dependency will be add as dedpendency to this action |
+| hermetic | [bool](#bool) |  | If true, this indicates that the action only depends on data from explicitly-declared dependencies. Otherwise if false, it indicates that the action depends on data from a source which has not been declared as a dependency. |
+| assertions | [ActionConfig.TableAssertionsConfig](#dataform-ActionConfig-TableAssertionsConfig) |  | Assertions to be run on the dataset. If configured, relevant assertions will automatically be created and run as a dependency of this dataset. |
 
 
 
