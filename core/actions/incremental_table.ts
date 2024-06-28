@@ -29,19 +29,21 @@ interface ILegacyIncrementalTableConfig extends dataform.ActionConfig.Incrementa
   schema: string;
   fileName: string;
   type: string;
-  bigquery: {
-    partitionBy?: string;
-    clusterBy?: string[];
-    updatePartitionFilter?: string;
-    labels: { [key: string]: string };
-    partitionExpirationDays?: number;
-    requirePartitionFilter?: boolean;
-    additionalOptions: { [key: string]: string };
-  };
+  bigquery?: ILegacyIncrementalTableBigqueryConfig;
   // Legacy incremental table config's table assertions cannot directly extend the protobuf
   // incremental table config definition because of legacy incremental table config's flexible
   // types.
   assertions: any;
+}
+
+interface ILegacyIncrementalTableBigqueryConfig {
+  partitionBy?: string;
+  clusterBy?: string[];
+  updatePartitionFilter?: string;
+  labels?: { [key: string]: string };
+  partitionExpirationDays?: number;
+  requirePartitionFilter?: boolean;
+  additionalOptions?: { [key: string]: string };
 }
 
 /**
@@ -145,9 +147,15 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
     if (config.postOperations) {
       this.postOps(config.postOperations);
     }
-    if (Object.keys(config.labels).length || Object.keys(config.additionalOptions).length) {
-      this.bigquery({ labels: config.labels, additionalOptions: config.additionalOptions });
-    }
+    this.bigquery({
+      partitionBy: config.partitionBy,
+      clusterBy: config.clusterBy,
+      updatePartitionFilter: config.updatePartitionFilter,
+      labels: config.labels,
+      partitionExpirationDays: config.partitionExpirationDays,
+      requirePartitionFilter: config.requirePartitionFilter,
+      additionalOptions: config.additionalOptions
+    });
     if (config.filename) {
       this.proto.fileName = config.filename;
     }
@@ -196,12 +204,25 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
   }
 
   public bigquery(bigquery: dataform.IBigQueryOptions) {
-    this.proto.bigquery = dataform.BigQueryOptions.create(bigquery);
-    if (!!bigquery.labels) {
+    if (!!bigquery.labels && Object.keys(bigquery.labels).length > 0) {
       if (!this.proto.actionDescriptor) {
         this.proto.actionDescriptor = {};
       }
       this.proto.actionDescriptor.bigqueryLabels = bigquery.labels;
+    }
+
+    // Remove all falsy values, to preserve backwards compatability of compiled graph output.
+    let bigqueryFiltered: dataform.IBigQueryOptions = {};
+    Object.entries(bigquery).forEach(([key, value]) => {
+      if (value) {
+        bigqueryFiltered = {
+          ...bigqueryFiltered,
+          [key]: value
+        };
+      }
+    });
+    if (Object.values(bigqueryFiltered).length > 0) {
+      this.proto.bigquery = dataform.BigQueryOptions.create(bigqueryFiltered);
     }
     return this;
   }

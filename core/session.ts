@@ -149,8 +149,23 @@ export class Session {
         }
         this.actions.push(view);
         break;
-      case "table":
       case "incremental":
+        sqlxConfig.filename = utils.getCallerFile(this.rootDir);
+        const incrementalTable = new IncrementalTable(this, sqlxConfig).query(
+          ctx => actionOptions.sqlContextable(ctx)[0]
+        );
+        if (actionOptions.incrementalWhereContextable) {
+          incrementalTable.where(actionOptions.incrementalWhereContextable);
+        }
+        if (actionOptions.preOperationsContextable) {
+          incrementalTable.preOps(actionOptions.preOperationsContextable);
+        }
+        if (actionOptions.postOperationsContextable) {
+          incrementalTable.postOps(actionOptions.postOperationsContextable);
+        }
+        this.actions.push(incrementalTable);
+        break;
+      case "table":
         const table = this.publish(sqlxConfig.name)
           .config(sqlxConfig)
           .query(ctx => actionOptions.sqlContextable(ctx)[0]);
