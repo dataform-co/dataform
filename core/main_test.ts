@@ -2153,7 +2153,6 @@ actions:
     - tag2
     disabled: true
     description: description
-${exampleActionDescriptor.inputActionConfigBlock}
     partitionBy: partitionBy
     partitionExpirationDays: 1
     requirePartitionFilter: true
@@ -2215,7 +2214,7 @@ ${exampleBuiltInAssertions.inputActionConfigBlock}
           fileName: "definitions/filename.sql",
           query: "SELECT 1",
           actionDescriptor: {
-            ...exampleActionDescriptor.outputActionDescriptor,
+            description: "description",
             bigqueryLabels: {
               key: "val"
             }
@@ -2236,35 +2235,33 @@ ${exampleBuiltInAssertions.inputActionConfigBlock}
       fs.mkdirSync(path.join(projectDir, "definitions"));
       fs.writeFileSync(path.join(projectDir, "definitions/operation.sqlx"), "SELECT 1");
       fs.writeFileSync(path.join(projectDir, "definitions/filename.sql"), "SELECT 1");
-      // TODO(ekrekr): add support for columns.
-      fs.writeFileSync(
-        path.join(projectDir, "definitions/actions.yaml"),
-        `
-    actions:
-    - view:
-        name: name
-        dataset: dataset
-        project: project
-        dependencyTargets:
-        - name: operation
-        filename: filename.sql
-        tags:
-        - tag1
-        - tag2
-        disabled: true
-        materialized: true
-        description: description
-    ${exampleActionDescriptor.inputActionConfigBlock}
-        labels:
-          key: val
-        additionalOptions:
-          option1Key: option1
-          option2Key: option2
-        dependOnDependencyAssertions: true
-    ${exampleBuiltInAssertions.inputActionConfigBlock}
-        hermetic: true
-        `
-      );
+      const tmp = `
+actions:
+- view:
+    name: name
+    dataset: dataset
+    project: project
+    dependencyTargets:
+    - name: operation
+    filename: filename.sql
+    tags:
+    - tag1
+    - tag2
+    disabled: true
+    materialized: true
+    description: description
+${exampleActionDescriptor.inputActionConfigBlock}
+    labels:
+      key: val
+    additionalOptions:
+      option1Key: option1
+      option2Key: option2
+    dependOnDependencyAssertions: true
+${exampleBuiltInAssertions.inputActionConfigBlock}
+    hermetic: true
+    `;
+      console.log("🚀 ~ test ~ tmp:", tmp);
+      fs.writeFileSync(path.join(projectDir, "definitions/actions.yaml"), tmp);
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
@@ -2333,38 +2330,37 @@ ${exampleBuiltInAssertions.inputActionConfigBlock}
       fs.writeFileSync(
         path.join(projectDir, "definitions/actions.yaml"),
         `
-    actions:
-    - incrementalTable:
-        name: name
-        dataset: dataset
-        project: project
-        dependencyTargets:
-        - name: operation
-        filename: filename.sql
-        tags:
-        - tag1
-        - tag2
-        disabled: true
-        protected: true
-        uniqueKey:
-        - key1
-        - key2
-        description: description
-    ${exampleActionDescriptor.inputActionConfigBlock}
-        partitionBy: partitionBy
-        partitionExpirationDays: 1
-        requirePartitionFilter: true
-        updatePartitionFilter: "updatePartitionFilter"
-        clusterBy:
-        - clusterBy
-        labels:
-          key: val
-        additionalOptions:
-          option1Key: option1
-          option2Key: option2
-        dependOnDependencyAssertions: true
-    ${exampleBuiltInAssertions.inputActionConfigBlock}
-        hermetic: true
+actions:
+- incrementalTable:
+    name: name
+    dataset: dataset
+    project: project
+    dependencyTargets:
+    - name: operation
+    filename: filename.sql
+    tags:
+    - tag1
+    - tag2
+    disabled: true
+    protected: true
+    uniqueKey:
+    - key1
+    - key2
+    description: description
+    partitionBy: partitionBy
+    partitionExpirationDays: 1
+    requirePartitionFilter: true
+    updatePartitionFilter: "updatePartitionFilter"
+    clusterBy:
+    - clusterBy
+    labels:
+      key: val
+    additionalOptions:
+      option1Key: option1
+      option2Key: option2
+    dependOnDependencyAssertions: true
+${exampleBuiltInAssertions.inputActionConfigBlock}
+    hermetic: true
         `
       );
 
@@ -2415,7 +2411,7 @@ ${exampleBuiltInAssertions.inputActionConfigBlock}
           query: "SELECT 1",
           incrementalQuery: "SELECT 1",
           actionDescriptor: {
-            ...exampleActionDescriptor.outputActionDescriptor,
+            description: "description",
             bigqueryLabels: {
               key: "val"
             }
