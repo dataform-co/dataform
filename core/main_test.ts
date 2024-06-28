@@ -412,12 +412,26 @@ quotes
       );
     });
 
-    test(`main fails when workflow_settings.yaml is an invalid yaml file`, () => {
+    test(`main fails when workflow_settings.yaml cannot be represented in JSON format`, () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
       fs.writeFileSync(path.join(projectDir, "workflow_settings.yaml"), "&*19132sdS:asd:");
 
       expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
         "workflow_settings.yaml is invalid"
+      );
+    });
+
+    test(`main fails when workflow settings fails to be parsed`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        `
+someKey: and an extra: colon
+`
+      );
+
+      expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
+        "workflow_settings.yaml is not a valid YAML file: YAMLException: bad indentation"
       );
     });
 
