@@ -77,10 +77,12 @@ function maybeRequire(file: string): any {
     // tslint:disable-next-line: tsr-detect-non-literal-require
     return nativeRequire(file);
   } catch (e) {
-    if (e instanceof SyntaxError) {
-      throw e;
+    if (e instanceof Error) {
+      if (e.message.includes("Cannot find module")) {
+        return;
+      }
     }
-    return undefined;
+    throw e;
   }
 }
 
