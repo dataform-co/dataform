@@ -70,7 +70,10 @@ export function extractJsBlocks(code: string): { sql: string; js: string } {
 
   return {
     sql: cleanSql.trim(),
-    js: jsBlocks.map(block => block.trim()).join("\n")
+    js: jsBlocks
+      .map(block => block.trim())
+      .filter(block => !!block)
+      .join("\n")
   };
 }
 
