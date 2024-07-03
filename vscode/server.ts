@@ -202,11 +202,9 @@ connection.onDefinition(
       && action?.target?.name !== undefined && action.target.name === linkedTable.name
     ));
     if (foundCompileAction.length === 0) {
-      // raise Error
       connection.sendNotification("error", `Definition not found for ${clickedRef}`);
       return null;
     } else if (foundCompileAction.length > 1) {
-      // raise Error
       connection.sendNotification("error", `Multiple definitions found for ${clickedRef}`);
       return null;
     }
