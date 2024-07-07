@@ -23,29 +23,37 @@ import { dataform } from "df/protos/ts";
  * This maintains backwards compatability with older versions.
  * TODO(ekrekr): consider breaking backwards compatability of these in v4.
  */
-interface ILegacyViewConfig extends dataform.ActionConfig.ViewConfig {
+interface ILegacyIncrementalTableConfig extends dataform.ActionConfig.IncrementalTableConfig {
   dependencies: Resolvable[];
   database: string;
   schema: string;
   fileName: string;
   type: string;
-  bigquery: {
-    labels: { [key: string]: string };
-    additionalOptions: { [key: string]: string };
-  };
-  // Legacy view config's table assertions cannot directly extend the protobuf view config
-  // definition because of legacy view config's flexible types.
+  bigquery?: ILegacyIncrementalTableBigqueryConfig;
+  // Legacy incremental table config's table assertions cannot directly extend the protobuf
+  // incremental table config definition because of legacy incremental table config's flexible
+  // types.
   assertions: any;
+}
+
+interface ILegacyIncrementalTableBigqueryConfig {
+  partitionBy?: string;
+  clusterBy?: string[];
+  updatePartitionFilter?: string;
+  labels?: { [key: string]: string };
+  partitionExpirationDays?: number;
+  requirePartitionFilter?: boolean;
+  additionalOptions?: { [key: string]: string };
 }
 
 /**
  * @hidden
  */
-export class View extends ActionBuilder<dataform.Table> {
+export class IncrementalTable extends ActionBuilder<dataform.Table> {
   // TODO(ekrekr): make this field private, to enforce proto update logic to happen in this class.
   public proto: dataform.ITable = dataform.Table.create({
-    type: "view",
-    enumType: dataform.TableType.VIEW,
+    type: "incremental",
+    enumType: dataform.TableType.INCREMENTAL,
     disabled: false,
     tags: []
   });
@@ -129,18 +137,25 @@ export class View extends ActionBuilder<dataform.Table> {
     if (config.assertions) {
       this.assertions(dataform.ActionConfig.TableAssertionsConfig.create(config.assertions));
     }
-    if (config.materialized) {
-      this.materialized(config.materialized);
+    if (config.uniqueKey) {
+      this.uniqueKey(config.uniqueKey);
     }
+    this.protected(config.protected);
     if (config.preOperations) {
       this.preOps(config.preOperations);
     }
     if (config.postOperations) {
       this.postOps(config.postOperations);
     }
-    if (Object.keys(config.labels).length || Object.keys(config.additionalOptions).length) {
-      this.bigquery({ labels: config.labels, additionalOptions: config.additionalOptions });
-    }
+    this.bigquery({
+      partitionBy: config.partitionBy,
+      clusterBy: config.clusterBy,
+      updatePartitionFilter: config.updatePartitionFilter,
+      labels: config.labels,
+      partitionExpirationDays: config.partitionExpirationDays,
+      requirePartitionFilter: config.requirePartitionFilter,
+      additionalOptions: config.additionalOptions
+    });
     if (config.filename) {
       this.proto.fileName = config.filename;
     }
@@ -175,17 +190,39 @@ export class View extends ActionBuilder<dataform.Table> {
     return this;
   }
 
-  public materialized(materialized: boolean) {
-    this.proto.materialized = materialized;
+  public protected(defaultsToTrueProtected: boolean) {
+    // To prevent accidental data deletion, protected defaults to true if unspecified.
+    if (defaultsToTrueProtected === undefined || defaultsToTrueProtected === null) {
+      defaultsToTrueProtected = true;
+    }
+    this.proto.protected = defaultsToTrueProtected;
+    return this;
+  }
+
+  public uniqueKey(uniqueKey: string[]) {
+    this.proto.uniqueKey = uniqueKey;
   }
 
   public bigquery(bigquery: dataform.IBigQueryOptions) {
-    this.proto.bigquery = dataform.BigQueryOptions.create(bigquery);
-    if (!!bigquery.labels) {
+    if (!!bigquery.labels && Object.keys(bigquery.labels).length > 0) {
       if (!this.proto.actionDescriptor) {
         this.proto.actionDescriptor = {};
       }
       this.proto.actionDescriptor.bigqueryLabels = bigquery.labels;
+    }
+
+    // Remove all falsy values, to preserve backwards compatability of compiled graph output.
+    let bigqueryFiltered: dataform.IBigQueryOptions = {};
+    Object.entries(bigquery).forEach(([key, value]) => {
+      if (value) {
+        bigqueryFiltered = {
+          ...bigqueryFiltered,
+          [key]: value
+        };
+      }
+    });
+    if (Object.values(bigqueryFiltered).length > 0) {
+      this.proto.bigquery = dataform.BigQueryOptions.create(bigqueryFiltered);
     }
     return this;
   }
@@ -331,8 +368,8 @@ export class View extends ActionBuilder<dataform.Table> {
   }
 
   public compile() {
-    const context = new ViewContext(this);
-    const incrementalContext = new ViewContext(this, true);
+    const context = new IncrementalTableContext(this);
+    const incrementalContext = new IncrementalTableContext(this, true);
 
     this.proto.query = context.apply(this.contextableQuery);
 
@@ -369,7 +406,7 @@ export class View extends ActionBuilder<dataform.Table> {
 
   private contextifyOps(
     contextableOps: Array<Contextable<ITableContext, string | string[]>>,
-    currentContext: ViewContext
+    currentContext: IncrementalTableContext
   ) {
     let protoOps: string[] = [];
     contextableOps.forEach(contextableOp => {
@@ -379,8 +416,11 @@ export class View extends ActionBuilder<dataform.Table> {
     return protoOps;
   }
 
-  private verifyConfig(unverifiedConfig: ILegacyViewConfig): dataform.ActionConfig.ViewConfig {
-    // The "type" field only exists on legacy view configs. Here we convert them to the new format.
+  private verifyConfig(
+    unverifiedConfig: ILegacyIncrementalTableConfig
+  ): dataform.ActionConfig.IncrementalTableConfig {
+    // The "type" field only exists on legacy incremental table configs. Here we convert them to the
+    // new format.
     if (unverifiedConfig.type) {
       delete unverifiedConfig.type;
       if (unverifiedConfig.dependencies) {
@@ -423,8 +463,25 @@ export class View extends ActionBuilder<dataform.Table> {
         }
       }
       if (unverifiedConfig?.bigquery) {
+        if (!!unverifiedConfig.bigquery.partitionBy) {
+          unverifiedConfig.partitionBy = unverifiedConfig.bigquery.partitionBy;
+        }
+        if (!!unverifiedConfig.bigquery.clusterBy) {
+          unverifiedConfig.clusterBy = unverifiedConfig.bigquery.clusterBy;
+        }
+        if (!!unverifiedConfig.bigquery.updatePartitionFilter) {
+          unverifiedConfig.updatePartitionFilter = unverifiedConfig.bigquery.updatePartitionFilter;
+        }
         if (!!unverifiedConfig.bigquery.labels) {
           unverifiedConfig.labels = unverifiedConfig.bigquery.labels;
+        }
+        if (!!unverifiedConfig.bigquery.partitionExpirationDays) {
+          unverifiedConfig.partitionExpirationDays =
+            unverifiedConfig.bigquery.partitionExpirationDays;
+        }
+        if (!!unverifiedConfig.bigquery.requirePartitionFilter) {
+          unverifiedConfig.requirePartitionFilter =
+            unverifiedConfig.bigquery.requirePartitionFilter;
         }
         if (!!unverifiedConfig.bigquery.additionalOptions) {
           unverifiedConfig.additionalOptions = unverifiedConfig.bigquery.additionalOptions;
@@ -434,7 +491,7 @@ export class View extends ActionBuilder<dataform.Table> {
     }
 
     return verifyObjectMatchesProto(
-      dataform.ActionConfig.ViewConfig,
+      dataform.ActionConfig.IncrementalTableConfig,
       unverifiedConfig,
       VerifyProtoErrorBehaviour.SHOW_DOCS_LINK
     );
@@ -444,8 +501,8 @@ export class View extends ActionBuilder<dataform.Table> {
 /**
  * @hidden
  */
-export class ViewContext implements ITableContext {
-  constructor(private table: View, private isIncremental = false) {}
+export class IncrementalTableContext implements ITableContext {
+  constructor(private table: IncrementalTable, private isIncremental = false) {}
 
   public self(): string {
     return this.resolve(this.table.proto.target);
