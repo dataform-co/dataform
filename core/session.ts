@@ -186,9 +186,8 @@ export class Session {
         );
         break;
       case "operations":
-        this.operate(sqlxConfig.name)
-          .config(sqlxConfig)
-          .queries(actionOptions.sqlContextable);
+        sqlxConfig.filename = utils.getCallerFile(this.rootDir);
+        this.actions.push(new Operation(this, sqlxConfig).queries(actionOptions.sqlContextable));
         break;
       case "declaration":
         const declaration = new Declaration(this, sqlxConfig);

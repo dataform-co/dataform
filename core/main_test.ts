@@ -187,6 +187,8 @@ actions:
           .sort()
       ).deep.equals([
         `Action target datasets cannot include '.'`,
+        `Action target datasets cannot include '.'`,
+        `Action target names cannot include '.'`,
         `Action target names cannot include '.'`,
         `Action target names cannot include '.'`
       ]);
@@ -890,7 +892,8 @@ actions:
               name: "action"
             },
             fileName: "definitions/action.sql",
-            queries: ["SELECT 1"]
+            queries: ["SELECT 1"],
+            hermeticity: "NON_HERMETIC"
           }
         ])
       );
@@ -1272,7 +1275,8 @@ actions:
               name: "utf8characters:私🙂 and some spaces"
             },
             fileName: "definitions/utf8characters:私🙂 and some spaces.sql",
-            queries: ["SELECT 1"]
+            queries: ["SELECT 1"],
+            hermeticity: "NON_HERMETIC"
           }
         ])
       );
