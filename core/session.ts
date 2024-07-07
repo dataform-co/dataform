@@ -557,16 +557,15 @@ export class Session {
     });
   }
 
+  // TODO(ekrekr): finish pushing config validation down to the classes.
   private checkTableConfigValidity(tables: dataform.ITable[]) {
     tables.forEach(table => {
       // type
       if (table.enumType === dataform.TableType.UNKNOWN_TYPE) {
         this.compileError(
-          `Wrong type of table detected. Should only use predefined types: ${joinQuoted([
-            "table",
-            "view",
-            "incremental"
-          ])}`,
+          `Wrong type of table detected. Should only use predefined types: ${joinQuoted(
+            TableType
+          )}`,
           table.fileName,
           table.target
         );
