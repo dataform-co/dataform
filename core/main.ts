@@ -6,6 +6,7 @@ import {
 } from "df/common/protos";
 import { Assertion } from "df/core/actions/assertion";
 import { Declaration } from "df/core/actions/declaration";
+import { IncrementalTable } from "df/core/actions/incremental_table";
 import { Notebook } from "df/core/actions/notebook";
 import { Operation } from "df/core/actions/operation";
 import { Table } from "df/core/actions/table";
@@ -141,10 +142,9 @@ function loadActionConfigs(session: Session, filePaths: string[]) {
           );
         } else if (actionConfig.incrementalTable) {
           session.actions.push(
-            new Table(
+            new IncrementalTable(
               session,
               dataform.ActionConfig.IncrementalTableConfig.create(actionConfig.incrementalTable),
-              "incremental",
               actionConfigsPath
             )
           );
