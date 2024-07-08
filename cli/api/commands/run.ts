@@ -424,7 +424,7 @@ export class Runner {
       if (task.type === "assertion") {
         // We expect that an assertion query returns 1 row, with 1 field that is the row count.
         // We don't really care what that field/column is called.
-        const rowCount = rows[0][Object.keys(rows[0])[0]];
+        const rowCount = rows[0]?.[Object.keys(rows[0])[0]];
         if (rowCount > 0) {
           throw new Error(`Assertion failed: query returned ${rowCount} row(s).`);
         }
