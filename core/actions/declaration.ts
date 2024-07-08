@@ -95,27 +95,23 @@ export class Declaration extends ActionBuilder<dataform.Declaration> {
   private verifyConfig(
     unverifiedConfig: ILegacyDeclarationConfig
   ): dataform.ActionConfig.DeclarationConfig {
-    if (unverifiedConfig.database) {
-      unverifiedConfig.project = unverifiedConfig.database;
-      delete unverifiedConfig.database;
-    }
-    if (unverifiedConfig.schema) {
-      unverifiedConfig.dataset = unverifiedConfig.schema;
-      delete unverifiedConfig.schema;
-    }
-    if (unverifiedConfig.columns) {
-      // TODO(ekrekr) columns in their current config format are a difficult structure to represent
-      // as protos. They are nested, and use the object keys as the names. Consider a forced
-      // migration to the proto style column names.
-      unverifiedConfig.columns = ColumnDescriptors.mapLegacyObjectToConfigProto(
-        unverifiedConfig.columns as any
-      );
-    }
-
-    // TODO(ekrekr): consider moving this to a shared location after all action builders have proto
-    // config verifiers.
+    // The "type" field only exists on legacy declaration configs. Here we convert them to the new
+    // format.
     if (unverifiedConfig.type) {
       delete unverifiedConfig.type;
+      if (unverifiedConfig.database) {
+        unverifiedConfig.project = unverifiedConfig.database;
+        delete unverifiedConfig.database;
+      }
+      if (unverifiedConfig.schema) {
+        unverifiedConfig.dataset = unverifiedConfig.schema;
+        delete unverifiedConfig.schema;
+      }
+      if (unverifiedConfig.columns) {
+        unverifiedConfig.columns = ColumnDescriptors.mapLegacyObjectToConfigProto(
+          unverifiedConfig.columns as any
+        );
+      }
     }
 
     return verifyObjectMatchesProto(

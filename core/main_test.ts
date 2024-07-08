@@ -2157,7 +2157,7 @@ ${exampleActionDescriptor.inputActionConfigBlock}`
       fs.mkdirSync(path.join(projectDir, "definitions"));
       fs.writeFileSync(path.join(projectDir, "definitions/operation.sqlx"), "SELECT 1");
       fs.writeFileSync(path.join(projectDir, "definitions/filename.sql"), "SELECT 1");
-      // TODO(ekrekr): add support for columns.
+      // TODO(ekrekr): add support for columns once table is its own unique action constructor.
       fs.writeFileSync(
         path.join(projectDir, "definitions/actions.yaml"),
         `
@@ -2174,7 +2174,6 @@ actions:
     - tag2
     disabled: true
     description: description
-${exampleActionDescriptor.inputActionConfigBlock}
     partitionBy: partitionBy
     partitionExpirationDays: 1
     requirePartitionFilter: true
@@ -2236,7 +2235,7 @@ ${exampleBuiltInAssertions.inputActionConfigBlock}
           fileName: "definitions/filename.sql",
           query: "SELECT 1",
           actionDescriptor: {
-            ...exampleActionDescriptor.outputActionDescriptor,
+            description: "description",
             bigqueryLabels: {
               key: "val"
             }
