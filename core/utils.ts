@@ -1,5 +1,6 @@
 import { Action } from "df/core/actions";
 import { Assertion } from "df/core/actions/assertion";
+import { IncrementalTable } from "df/core/actions/incremental_table";
 import { Notebook } from "df/core/actions/notebook";
 import { Operation } from "df/core/actions/operation";
 import { Table } from "df/core/actions/table";
@@ -12,7 +13,7 @@ import { dataform } from "df/protos/ts";
 declare var __webpack_require__: any;
 declare var __non_webpack_require__: any;
 
-type actionsWithDependencies = Table | View | Operation | Notebook;
+type actionsWithDependencies = Table | View | IncrementalTable | Operation | Notebook;
 
 // This side-steps webpack's require in favour of the real require.
 export const nativeRequire =

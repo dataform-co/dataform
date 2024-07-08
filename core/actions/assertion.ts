@@ -75,8 +75,6 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
       this.query(nativeRequire(config.filename).query);
     }
 
-    // TODO(ekrekr): load config proto column descriptors.
-
     if (config.dependencyTargets) {
       this.dependencies(
         config.dependencyTargets.map(dependencyTarget =>

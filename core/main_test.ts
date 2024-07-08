@@ -187,6 +187,8 @@ actions:
           .sort()
       ).deep.equals([
         `Action target datasets cannot include '.'`,
+        `Action target datasets cannot include '.'`,
+        `Action target names cannot include '.'`,
         `Action target names cannot include '.'`,
         `Action target names cannot include '.'`
       ]);
@@ -890,7 +892,8 @@ actions:
               name: "action"
             },
             fileName: "definitions/action.sql",
-            queries: ["SELECT 1"]
+            queries: ["SELECT 1"],
+            hermeticity: "NON_HERMETIC"
           }
         ])
       );
@@ -1041,6 +1044,7 @@ actions:
       expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals(
         asPlainObject([
           {
+            bigquery: {},
             target: {
               database: "defaultProject",
               schema: "defaultDataset",
@@ -1052,6 +1056,7 @@ actions:
               name: "action"
             },
             fileName: "definitions/action.sql",
+            hermeticity: "NON_HERMETIC",
             query: "SELECT 1",
             incrementalQuery: "SELECT 1",
             type: "incremental",
@@ -1270,7 +1275,8 @@ actions:
               name: "utf8characters:私🙂 and some spaces"
             },
             fileName: "definitions/utf8characters:私🙂 and some spaces.sql",
-            queries: ["SELECT 1"]
+            queries: ["SELECT 1"],
+            hermeticity: "NON_HERMETIC"
           }
         ])
       );
