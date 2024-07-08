@@ -60,7 +60,7 @@ async function applySettings() {
 }
 
 async function compileAndValidate() {
-  let hasCompilationError = false;
+  let compilationFailed = false;
   const spawnedProcess = spawn(
     (process.platform !== "win32") ? "dataform" : "dataform.cmd",
     ["compile", "--json", ...settings.compilerOptions]
@@ -77,7 +77,7 @@ async function compileAndValidate() {
       );
       return;
     } else {
-      hasCompilationError = true;
+      compilationFailed = true;
     }
   }
 
@@ -98,7 +98,7 @@ async function compileAndValidate() {
     parsedResult.graphErrors.compilationErrors.forEach(compilationError => {
       connection.sendNotification("error", compilationError.fileName + ": " + compilationError.message);
     });
-    if (hasCompilationError) {
+    if (compilationFailed) {
        connection.sendNotification(
          "error",
          "Errors encountered when running 'dataform' CLI. Please check the output for more information."
