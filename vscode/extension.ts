@@ -56,4 +56,35 @@ export async function activate(context: vscode.ExtensionContext) {
   client.onNotification("success", message => {
     vscode.window.showInformationMessage(message);
   });
+
+  // Recommend YAML extension if not installed
+  // We also can add the extension to "extensionDependencies" in package.json,
+  // but this way we can avoid forcing users to install the extension.
+  // You can control this recommendation behavior through the setting.
+  if (workspace.getConfiguration("dataform").get("recommendYamlExtension")) {
+    const yamlExtension = vscode.extensions.getExtension("redhat.vscode-yaml");
+    if (!yamlExtension) {
+      await vscode.window.showInformationMessage(
+        "The Dataform extension recommends installing the YAML extension for workflow_settings.yaml support.",
+        "Install",
+        "Don't show again"
+      ).then(selection => {
+        if (selection === "Install") {
+          // Open the YAML extension page
+          vscode.env.openExternal(
+            vscode.Uri.parse(
+              "vscode:extension/redhat.vscode-yaml"
+            )
+          );
+        } else if (selection === "Don't show again") {
+          // Disable the recommendation
+          workspace.getConfiguration("dataform").update(
+            "recommendYamlExtension",
+            false,
+            vscode.ConfigurationTarget.Global
+          );
+        }
+      });
+    }
+  }
 }
