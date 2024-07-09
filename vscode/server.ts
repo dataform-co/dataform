@@ -196,10 +196,14 @@ connection.onDefinition(
       return null;
     }
 
+    let tablePrefix = CACHED_COMPILE_GRAPH.projectConfig?.tablePrefix
+    let linkedTableNameWtPrefix = "";
+    linkedTableNameWtPrefix = (tablePrefix !== undefined) ? tablePrefix + "_" + linkedTable.name : linkedTable.name;
+
     const foundCompileAction = gatherAllActions().filter(action => (
       (linkedTable.database === null || action?.target?.database !== undefined && action.target.database === linkedTable.database)
       && (linkedTable.schema === null || action?.target?.schema !== undefined && action.target.schema === linkedTable.schema)
-      && action?.target?.name !== undefined && action.target.name === linkedTable.name
+      && action?.target?.name !== undefined && (action.target.name === linkedTable.name || action.target.name === linkedTableNameWtPrefix)
     ));
     if (foundCompileAction.length === 0) {
       connection.sendNotification("error", `Definition not found for ${clickedRef}`);
