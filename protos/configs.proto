@@ -515,6 +515,32 @@ message ActionConfig {
     // TODO(ekrekr): add a notebook runtime field definition.
   }
 
+  message DataPreparationConfig {
+    // The name of the data preparation.
+    string name = 1;
+
+    // Targets of actions that this action is dependent on.
+    repeated Target dependency_targets = 2;
+
+    // Path to the source file that the contents of the action is loaded from.
+    string filename = 3;
+
+    // A list of user-defined tags with which the action should be labeled.
+    repeated string tags = 4;
+
+    // If set to true, this action will not be executed. However, the action can
+    // still be depended upon. Useful for temporarily turning off broken
+    // actions.
+    bool disabled = 7;
+
+    // Description of the data preparation.
+    string description = 8;
+
+    // When set to true, assertions dependent upon any dependency will
+    // be add as dedpendency to this action
+    bool depend_on_dependency_assertions = 9;
+  }
+
   oneof action {
     TableConfig table = 1;
     ViewConfig view = 2;
@@ -523,6 +549,7 @@ message ActionConfig {
     OperationConfig operation = 5;
     DeclarationConfig declaration = 6;
     NotebookConfig notebook = 7;
+    DataPreparationConfig data_preparation = 8;
   }
 }
 
