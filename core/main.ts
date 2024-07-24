@@ -8,6 +8,7 @@ import { Assertion } from "df/core/actions/assertion";
 import { Declaration } from "df/core/actions/declaration";
 import { IncrementalTable } from "df/core/actions/incremental_table";
 import { Notebook } from "df/core/actions/notebook";
+import { DataPreparation } from "df/core/actions/data_preparation";
 import { Operation } from "df/core/actions/operation";
 import { Table } from "df/core/actions/table";
 import { View } from "df/core/actions/view";
@@ -78,6 +79,7 @@ export function main(coreExecutionRequest: Uint8Array | string): Uint8Array | st
   globalAny.assert = session.assert.bind(session);
   globalAny.declare = session.declare.bind(session);
   globalAny.notebook = session.notebook.bind(session);
+  globalAny.dataPreparation = session.dataPreparation.bind(session);
   globalAny.test = session.test.bind(session);
 
   loadActionConfigs(session, compileRequest.compileConfig.filePaths);
@@ -178,6 +180,14 @@ function loadActionConfigs(session: Session, filePaths: string[]) {
               dataform.ActionConfig.NotebookConfig.create(actionConfig.notebook),
               actionConfigsPath
             )
+          );
+        } else if (actionConfig.dataPreparation) {
+          session.actions.push(
+              new DataPreparation(
+                  session,
+                  dataform.ActionConfig.DataPreparationConfig.create(actionConfig.dataPreparation),
+                  actionConfigsPath
+              )
           );
         } else {
           throw Error("Empty action configs are not permitted.");

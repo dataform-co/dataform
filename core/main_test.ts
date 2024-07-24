@@ -57,6 +57,40 @@ class TestConfigs {
 
 const EMPTY_NOTEBOOK_CONTENTS = '{ "cells": [] }';
 
+const DATA_PREPARATION_CONTENTS = `
+nodes:
+- id: node1
+  source:
+    table:
+      project: prj
+      dataset: ds
+      table: src
+  destination:
+    table:
+      project: prj
+      dataset: ds
+      table: dest
+  generated:
+    outputSchema:
+      field:
+      - name: a
+        type: INT64
+        mode: NULLABLE
+    sourceGenerated:
+      sourceSchema:
+        tableSchema:
+          field:
+          - name: a
+            type: STRING
+            mode: NULLABLE
+    destinationGenerated:
+      schema:
+        field:
+        - name: a
+          type: STRING
+          mode: NULLABLE
+`;
+
 suite("@dataform/core", ({ afterEach }) => {
   const tmpDirFixture = new TmpDirFixture(afterEach);
 
@@ -855,6 +889,123 @@ defaultNotebookRuntimeOptions:
         },
         warehouse: "bigquery"
       });
+    });
+  });
+
+  suite("data_preparations", () => {
+    const createSimpleDataPreparationProject = (
+        workflowSettingsYaml = VALID_WORKFLOW_SETTINGS_YAML
+    ): string => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(path.join(projectDir, "workflow_settings.yaml"), workflowSettingsYaml);
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+          path.join(projectDir, "definitions/actions.yaml"),
+          `
+actions:
+- dataPreparation:
+    filename: data_preparation.yaml`
+      );
+      return projectDir;
+    };
+
+    test(`data preparations can be loaded via an actions config file`, () => {
+      const projectDir = createSimpleDataPreparationProject();
+      fs.writeFileSync(
+          path.join(projectDir, "definitions/data_preparation.yaml"),
+          DATA_PREPARATION_CONTENTS
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.dataPreparations)).deep.equals(
+          asPlainObject([
+            {
+              target: {
+                database: "prj",
+                schema: "ds",
+                name: "dest"
+              },
+              canonicalTarget: {
+                database: "prj",
+                schema: "ds",
+                name: "dest"
+              },
+              targets: [
+                {
+                  database: "prj",
+                  schema: "ds",
+                  name: "dest"
+                }
+              ],
+              canonicalTargets: [
+                {
+                  database: "prj",
+                  schema: "ds",
+                  name: "dest"
+                }
+              ],
+              fileName: "definitions/data_preparation.yaml",
+              dataPreparation: {
+                nodes: [
+                  {
+                    id: "node1",
+                    source: {
+                      table: {
+                        dataset: "ds",
+                        project: "prj",
+                        table: "src"
+                      }
+                    },
+                    destination: {
+                      table: {
+                        dataset: "ds",
+                        project: "prj",
+                        table: "dest"
+                      }
+                    },
+                    generated: {
+                      destinationGenerated: {
+                        schema: {
+                          field: [
+                            {
+                              mode: "NULLABLE",
+                              name: "a",
+                              type: "STRING"
+                            }
+                          ]
+                        }
+                      },
+                      outputSchema: {
+                        field: [
+                          {
+                            mode: "NULLABLE",
+                            name: "a",
+                            type: "INT64"
+                          }
+                        ]
+                      },
+                      sourceGenerated: {
+                        sourceSchema: {
+                          tableSchema: {
+                            field: [
+                              {
+                                mode: "NULLABLE",
+                                name: "a",
+                                type: "STRING"
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          ])
+      );
     });
   });
 
