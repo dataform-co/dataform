@@ -315,15 +315,6 @@ export class Session {
     return notebook;
   }
 
-  public dataPreparation(name: string): DataPreparation {
-    const dataPreparation = new DataPreparation();
-    dataPreparation.session = this;
-    utils.setNameAndTarget(this, dataPreparation.proto, name);
-    dataPreparation.proto.fileName = utils.getCallerFile(this.rootDir);
-    this.actions.push(dataPreparation);
-    return dataPreparation;
-  }
-
   public compileError(err: Error | string, path?: string, actionTarget?: dataform.ITarget) {
     const fileName = path || utils.getCallerFile(this.rootDir) || __filename;
 

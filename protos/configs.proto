@@ -535,10 +535,6 @@ message ActionConfig {
 
     // Description of the data preparation.
     string description = 8;
-
-    // When set to true, assertions dependent upon any dependency will
-    // be add as dedpendency to this action
-    bool depend_on_dependency_assertions = 9;
   }
 
   oneof action {

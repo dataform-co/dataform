@@ -19,9 +19,6 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
   // TODO: make this field private, to enforce proto update logic to happen in this class.
   public proto: dataform.IDataPreparation = dataform.DataPreparation.create();
 
-  // If true, adds the inline assertions of dependencies as direct dependencies for this action.
-  public dependOnDependencyAssertions: boolean = false;
-
   constructor(
     session?: Session,
     config?: dataform.ActionConfig.DataPreparationConfig,
@@ -55,7 +52,6 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     this.proto.canonicalTarget = this.proto.canonicalTargets[0];
 
     this.proto.tags = config.tags;
-    this.dependOnDependencyAssertions = config.dependOnDependencyAssertions;
     this.dependencies(config.dependencyTargets);
     this.proto.fileName = config.filename;
     if (config.disabled) {

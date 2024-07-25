@@ -320,7 +320,8 @@ export function addDependenciesToActionDependencyTargets(
   resolvable: Resolvable
 ) {
   const dependencyTarget = resolvableAsTarget(resolvable);
-  if (!dependencyTarget.hasOwnProperty("includeDependentAssertions")) {
+  if (!dependencyTarget.hasOwnProperty("includeDependentAssertions")
+      && !(action instanceof DataPreparation)) {
     // dependency `includeDependentAssertions` takes precedence over the config's `dependOnDependencyAssertions`
     dependencyTarget.includeDependentAssertions = action.dependOnDependencyAssertions;
   }

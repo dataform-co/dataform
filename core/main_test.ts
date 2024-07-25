@@ -57,40 +57,6 @@ class TestConfigs {
 
 const EMPTY_NOTEBOOK_CONTENTS = '{ "cells": [] }';
 
-const DATA_PREPARATION_CONTENTS = `
-nodes:
-- id: node1
-  source:
-    table:
-      project: prj
-      dataset: ds
-      table: src
-  destination:
-    table:
-      project: prj
-      dataset: ds
-      table: dest
-  generated:
-    outputSchema:
-      field:
-      - name: a
-        type: INT64
-        mode: NULLABLE
-    sourceGenerated:
-      sourceSchema:
-        tableSchema:
-          field:
-          - name: a
-            type: STRING
-            mode: NULLABLE
-    destinationGenerated:
-      schema:
-        field:
-        - name: a
-          type: STRING
-          mode: NULLABLE
-`;
-
 suite("@dataform/core", ({ afterEach }) => {
   const tmpDirFixture = new TmpDirFixture(afterEach);
 
@@ -892,7 +858,7 @@ defaultNotebookRuntimeOptions:
     });
   });
 
-  suite("data_preparations", () => {
+  suite("data preparations", () => {
     const createSimpleDataPreparationProject = (
         workflowSettingsYaml = VALID_WORKFLOW_SETTINGS_YAML
     ): string => {
@@ -913,7 +879,39 @@ actions:
       const projectDir = createSimpleDataPreparationProject();
       fs.writeFileSync(
           path.join(projectDir, "definitions/data_preparation.yaml"),
-          DATA_PREPARATION_CONTENTS
+          `
+nodes:
+- id: node1
+  source:
+    table:
+      project: prj
+      dataset: ds
+      table: src
+  destination:
+    table:
+      project: prj
+      dataset: ds
+      table: dest
+  generated:
+    outputSchema:
+      field:
+      - name: a
+        type: INT64
+        mode: NULLABLE
+    sourceGenerated:
+      sourceSchema:
+        tableSchema:
+          field:
+          - name: a
+            type: STRING
+            mode: NULLABLE
+    destinationGenerated:
+      schema:
+        field:
+        - name: a
+          type: STRING
+          mode: NULLABLE
+`
       );
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));

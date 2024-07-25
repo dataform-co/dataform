@@ -79,7 +79,6 @@ export function main(coreExecutionRequest: Uint8Array | string): Uint8Array | st
   globalAny.assert = session.assert.bind(session);
   globalAny.declare = session.declare.bind(session);
   globalAny.notebook = session.notebook.bind(session);
-  globalAny.dataPreparation = session.dataPreparation.bind(session);
   globalAny.test = session.test.bind(session);
 
   loadActionConfigs(session, compileRequest.compileConfig.filePaths);
