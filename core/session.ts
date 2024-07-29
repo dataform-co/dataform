@@ -4,6 +4,7 @@ import { encode64, verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "d
 import { StringifiedMap, StringifiedSet } from "df/common/strings/stringifier";
 import { Action } from "df/core/actions";
 import { AContextable, Assertion, AssertionContext } from "df/core/actions/assertion";
+import { DataPreparation } from "df/core/actions/data_preparation";
 import { Declaration } from "df/core/actions/declaration";
 import { IncrementalTable } from "df/core/actions/incremental_table";
 import { Notebook } from "df/core/actions/notebook";
@@ -371,6 +372,7 @@ export class Session {
       ),
       tests: this.compileGraphChunk(Object.values(this.tests)),
       notebooks: this.compileGraphChunk(this.actions.filter(action => action instanceof Notebook)),
+      dataPreparations: this.compileGraphChunk(this.actions.filter(action => action instanceof DataPreparation)),
       graphErrors: this.graphErrors,
       dataformCoreVersion,
       targets: this.actions.map(action => action.proto.target)
@@ -381,7 +383,8 @@ export class Session {
         compiledGraph.tables,
         compiledGraph.assertions,
         compiledGraph.operations,
-        compiledGraph.notebooks
+        compiledGraph.notebooks,
+        compiledGraph.dataPreparations
       )
     );
 
@@ -390,7 +393,8 @@ export class Session {
         compiledGraph.tables,
         compiledGraph.assertions,
         compiledGraph.operations,
-        compiledGraph.notebooks
+        compiledGraph.notebooks,
+        compiledGraph.dataPreparations
       ),
       [].concat(compiledGraph.declarations.map(declaration => declaration.target))
     );
@@ -406,7 +410,8 @@ export class Session {
         compiledGraph.tables,
         compiledGraph.assertions,
         compiledGraph.operations,
-        compiledGraph.notebooks
+        compiledGraph.notebooks,
+        compiledGraph.dataPreparations
       )
     );
 
@@ -692,7 +697,8 @@ export class Session {
       compiledGraph.assertions,
       compiledGraph.operations,
       compiledGraph.declarations,
-      compiledGraph.notebooks
+      compiledGraph.notebooks,
+      compiledGraph.dataPreparations
     );
 
     const nonUniqueActionsTargets = getNonUniqueTargets(actions.map(action => action.target));
@@ -735,6 +741,7 @@ export class Session {
     compiledGraph.declarations = compiledGraph.declarations.filter(isUniqueAction);
     compiledGraph.assertions = compiledGraph.assertions.filter(isUniqueAction);
     compiledGraph.notebooks = compiledGraph.notebooks.filter(isUniqueAction);
+    compiledGraph.dataPreparations = compiledGraph.dataPreparations.filter(isUniqueAction);
   }
 }
 

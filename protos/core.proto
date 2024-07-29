@@ -250,7 +250,12 @@ message NotebookRuntimeOptions {
 
 // Data Preparation Related entries
 message DataPreparation {
-  // Data preparatiohs can have more than 1 output
+  // Used ONLY as an identifiers. All outputs should be listed in the targets
+  // section.
+  Target target = 8;
+  Target canonical_target = 9;
+
+  // Data preparations can have more than 1 output
   repeated Target targets = 1;
 
   repeated Target canonical_targets = 2;
