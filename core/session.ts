@@ -4,10 +4,10 @@ import { encode64, verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "d
 import { StringifiedMap, StringifiedSet } from "df/common/strings/stringifier";
 import { Action } from "df/core/actions";
 import { AContextable, Assertion, AssertionContext } from "df/core/actions/assertion";
+import { DataPreparation } from "df/core/actions/data_preparation";
 import { Declaration } from "df/core/actions/declaration";
 import { IncrementalTable } from "df/core/actions/incremental_table";
 import { Notebook } from "df/core/actions/notebook";
-import { DataPreparation } from "df/core/actions/data_preparation";
 import { Operation, OperationContext } from "df/core/actions/operation";
 import { ITableConfig, ITableContext, Table, TableContext, TableType } from "df/core/actions/table";
 import { Test } from "df/core/actions/test";
