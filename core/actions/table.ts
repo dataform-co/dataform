@@ -19,6 +19,7 @@ import {
   actionConfigToCompiledGraphTarget,
   addDependenciesToActionDependencyTargets,
   checkExcessProperties,
+  configTargetToCompiledGraphTarget,
   nativeRequire,
   resolvableAsTarget,
   resolveActionsConfigFilename,
@@ -345,7 +346,7 @@ export class Table extends ActionBuilder<dataform.Table> {
       this.config({
         type: "table",
         dependencies: config.dependencyTargets.map(dependencyTarget =>
-          actionConfigToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget))
+          configTargetToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget))
         ),
         tags: config.tags,
         disabled: config.disabled,
@@ -377,7 +378,7 @@ export class Table extends ActionBuilder<dataform.Table> {
       this.config({
         type: "view",
         dependencies: config.dependencyTargets.map(dependencyTarget =>
-          actionConfigToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget))
+          configTargetToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget))
         ),
         disabled: config.disabled,
         materialized: config.materialized,
@@ -431,7 +432,7 @@ export class Table extends ActionBuilder<dataform.Table> {
       this.config({
         type: "incremental",
         dependencies: config.dependencyTargets.map(dependencyTarget =>
-          actionConfigToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget))
+          configTargetToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget))
         ),
         disabled: config.disabled,
         protected: config.protected,

@@ -299,11 +299,25 @@ export function extractActionDetailsFromFileName(
   return { fileExtension, fileNameAsTargetName: basename };
 }
 
+// Converts the config proto's target proto to the compiled graph proto's representation.
+export function configTargetToCompiledGraphTarget(configTarget: dataform.ActionConfig.Target) {
+  const compiledGraphTarget: dataform.ITarget = { name: configTarget.name };
+  if (configTarget.project) {
+    compiledGraphTarget.database = configTarget.project;
+  }
+  if (configTarget.dataset) {
+    compiledGraphTarget.schema = configTarget.dataset;
+  }
+  if (configTarget.hasOwnProperty("includeDependentAssertions")) {
+    compiledGraphTarget.includeDependentAssertions = configTarget.includeDependentAssertions;
+  }
+  return dataform.Target.create(compiledGraphTarget);
+}
+
+// Converts a config proto's action config proto to the compiled graph proto's representation.
+// Action config protos roughly contain target protos fields.
 export function actionConfigToCompiledGraphTarget(
-  // Action configs contain all the fields of action config targets, even if they are not strictly
-  // target objects, so they are included in this conversion.
-  actionConfigTarget:
-    | dataform.ActionConfig.Target
+  actionConfig:
     | dataform.ActionConfig.TableConfig
     | dataform.ActionConfig.ViewConfig
     | dataform.ActionConfig.IncrementalTableConfig
@@ -313,23 +327,17 @@ export function actionConfigToCompiledGraphTarget(
     | dataform.ActionConfig.NotebookConfig
     | dataform.ActionConfig.DataPreparationConfig
 ): dataform.Target {
-  const compiledGraphTarget: dataform.ITarget = { name: actionConfigTarget.name };
-  if ("project" in actionConfigTarget && actionConfigTarget.project != undefined) {
-    compiledGraphTarget.database = actionConfigTarget.project;
+  const compiledGraphTarget: dataform.ITarget = { name: actionConfig.name };
+  if ("project" in actionConfig && actionConfig.project != undefined) {
+    compiledGraphTarget.database = actionConfig.project;
   }
-  if ("location" in actionConfigTarget && actionConfigTarget.location != undefined) {
+  if ("location" in actionConfig && actionConfig.location != undefined) {
     // This is a hack around the limitations of the compiled graph's target proto not having a
     // "location" field.
-    compiledGraphTarget.schema = actionConfigTarget.location;
+    compiledGraphTarget.schema = actionConfig.location;
   }
-  if ("dataset" in actionConfigTarget && actionConfigTarget.dataset != undefined) {
-    compiledGraphTarget.schema = actionConfigTarget.dataset;
-  }
-  if (
-    "includeDependentAssertions" in actionConfigTarget &&
-    actionConfigTarget.includeDependentAssertions != undefined
-  ) {
-    compiledGraphTarget.includeDependentAssertions = actionConfigTarget.includeDependentAssertions;
+  if ("dataset" in actionConfig && actionConfig.dataset != undefined) {
+    compiledGraphTarget.schema = actionConfig.dataset;
   }
   return dataform.Target.create(compiledGraphTarget);
 }
