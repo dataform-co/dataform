@@ -20,7 +20,10 @@ ts_library(
 
 nodejs_binary(
     name = "gen-package-json-bin",
-    templated_args = ["--node_options=--require=source-map-support/register"],
+    templated_args = [
+        "--node_options=--require=source-map-support/register",
+        "--bazel_patch_module_resolver",
+    ],
     data = [
         ":gen-package-json",
         "@npm//source-map-support",
