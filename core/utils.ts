@@ -328,15 +328,15 @@ export function actionConfigToCompiledGraphTarget(
     | dataform.ActionConfig.DataPreparationConfig
 ): dataform.Target {
   const compiledGraphTarget: dataform.ITarget = { name: actionConfig.name };
-  if ("project" in actionConfig && actionConfig.project != undefined) {
+  if ("project" in actionConfig && actionConfig.project !== undefined) {
     compiledGraphTarget.database = actionConfig.project;
   }
-  if ("location" in actionConfig && actionConfig.location != undefined) {
+  if ("location" in actionConfig && actionConfig.location !== undefined) {
     // This is a hack around the limitations of the compiled graph's target proto not having a
     // "location" field.
     compiledGraphTarget.schema = actionConfig.location;
   }
-  if ("dataset" in actionConfig && actionConfig.dataset != undefined) {
+  if ("dataset" in actionConfig && actionConfig.dataset !== undefined) {
     compiledGraphTarget.schema = actionConfig.dataset;
   }
   return dataform.Target.create(compiledGraphTarget);
