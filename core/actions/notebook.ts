@@ -46,7 +46,13 @@ export class Notebook extends ActionBuilder<dataform.Notebook> {
     this.proto.canonicalTarget = this.applySessionToTarget(target, session.canonicalProjectConfig);
     this.proto.tags = config.tags;
     this.dependOnDependencyAssertions = config.dependOnDependencyAssertions;
-    this.dependencies(config.dependencyTargets);
+    if (config.dependencyTargets) {
+      this.dependencies(
+        config.dependencyTargets.map(dependencyTarget =>
+          actionConfigToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget))
+        )
+      );
+    }
     this.proto.fileName = config.filename;
     if (config.disabled) {
       this.proto.disabled = config.disabled;
@@ -96,11 +102,16 @@ export class Notebook extends ActionBuilder<dataform.Notebook> {
   }
 
   public compile() {
-    return verifyObjectMatchesProto(
+    console.log("NOTEBOOK OBJECT:");
+    console.log(JSON.stringify(this.proto));
+    const tmp = verifyObjectMatchesProto(
       dataform.Notebook,
       this.proto,
-      VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM
+      VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM,
+      true
     );
+    console.log("NOTEBOOK COMPILED GRAPH VERIFY COMPLETE");
+    return tmp;
   }
 }
 
