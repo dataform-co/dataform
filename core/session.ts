@@ -372,7 +372,9 @@ export class Session {
       ),
       tests: this.compileGraphChunk(Object.values(this.tests)),
       notebooks: this.compileGraphChunk(this.actions.filter(action => action instanceof Notebook)),
-      dataPreparations: this.compileGraphChunk(this.actions.filter(action => action instanceof DataPreparation)),
+      dataPreparations: this.compileGraphChunk(
+        this.actions.filter(action => action instanceof DataPreparation)
+      ),
       graphErrors: this.graphErrors,
       dataformCoreVersion,
       targets: this.actions.map(action => action.proto.target)

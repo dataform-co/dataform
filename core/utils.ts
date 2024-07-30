@@ -14,7 +14,13 @@ import { dataform } from "df/protos/ts";
 declare var __webpack_require__: any;
 declare var __non_webpack_require__: any;
 
-type actionsWithDependencies = Table | View | IncrementalTable | Operation | Notebook | DataPreparation;
+type actionsWithDependencies =
+  | Table
+  | View
+  | IncrementalTable
+  | Operation
+  | Notebook
+  | DataPreparation;
 
 // This side-steps webpack's require in favour of the real require.
 export const nativeRequire =
@@ -294,18 +300,35 @@ export function extractActionDetailsFromFileName(
 }
 
 export function actionConfigToCompiledGraphTarget(
-  // The target interface is used here because Action configs contain all the fields of action
-  // config targets, even if they are not strictly target objects.
-  actionConfigTarget: dataform.ActionConfig.ITarget
+  // Action configs contain all the fields of action config targets, even if they are not strictly
+  // target objects, so they are included in this conversion.
+  actionConfigTarget:
+    | dataform.ActionConfig.Target
+    | dataform.ActionConfig.TableConfig
+    | dataform.ActionConfig.ViewConfig
+    | dataform.ActionConfig.IncrementalTableConfig
+    | dataform.ActionConfig.OperationConfig
+    | dataform.ActionConfig.AssertionConfig
+    | dataform.ActionConfig.DeclarationConfig
+    | dataform.ActionConfig.NotebookConfig
+    | dataform.ActionConfig.DataPreparationConfig
 ): dataform.Target {
   const compiledGraphTarget: dataform.ITarget = { name: actionConfigTarget.name };
-  if (actionConfigTarget.dataset) {
-    compiledGraphTarget.schema = actionConfigTarget.dataset;
-  }
-  if (actionConfigTarget.project) {
+  if ("project" in actionConfigTarget && actionConfigTarget.project != undefined) {
     compiledGraphTarget.database = actionConfigTarget.project;
   }
-  if (actionConfigTarget.hasOwnProperty("includeDependentAssertions")) {
+  if ("location" in actionConfigTarget && actionConfigTarget.location != undefined) {
+    // This is a hack around the limitations of the compiled graph's target proto not having a
+    // "location" field.
+    compiledGraphTarget.schema = actionConfigTarget.location;
+  }
+  if ("dataset" in actionConfigTarget && actionConfigTarget.dataset != undefined) {
+    compiledGraphTarget.schema = actionConfigTarget.dataset;
+  }
+  if (
+    "includeDependentAssertions" in actionConfigTarget &&
+    actionConfigTarget.includeDependentAssertions != undefined
+  ) {
     compiledGraphTarget.includeDependentAssertions = actionConfigTarget.includeDependentAssertions;
   }
   return dataform.Target.create(compiledGraphTarget);
@@ -320,8 +343,10 @@ export function addDependenciesToActionDependencyTargets(
   resolvable: Resolvable
 ) {
   const dependencyTarget = resolvableAsTarget(resolvable);
-  if (!dependencyTarget.hasOwnProperty("includeDependentAssertions")
-      && !(action instanceof DataPreparation)) {
+  if (
+    !dependencyTarget.hasOwnProperty("includeDependentAssertions") &&
+    !(action instanceof DataPreparation)
+  ) {
     // dependency `includeDependentAssertions` takes precedence over the config's `dependOnDependencyAssertions`
     dependencyTarget.includeDependentAssertions = action.dependOnDependencyAssertions;
   }

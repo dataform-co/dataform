@@ -102,16 +102,11 @@ export class Notebook extends ActionBuilder<dataform.Notebook> {
   }
 
   public compile() {
-    console.log("NOTEBOOK OBJECT:");
-    console.log(JSON.stringify(this.proto));
-    const tmp = verifyObjectMatchesProto(
+    return verifyObjectMatchesProto(
       dataform.Notebook,
       this.proto,
-      VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM,
-      true
+      VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM
     );
-    console.log("NOTEBOOK COMPILED GRAPH VERIFY COMPLETE");
-    return tmp;
   }
 }
 

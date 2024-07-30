@@ -1473,7 +1473,14 @@ actions:
     dependencyTargets:
     - name: view
       dataset: defaultDataset
-      project: defaultProject`
+      project: defaultProject
+- dataPreparation:
+    filename: data_preparation.yaml
+    dependencyTargets:
+    - name: view
+      dataset: defaultDataset
+      project: defaultProject
+      `
       );
       ["table.sql", "incrementalTable.sql", "view.sql", "operation.sql"].forEach(filename => {
         fs.writeFileSync(path.join(projectDir, `definitions/${filename}`), "SELECT 1");
@@ -1482,6 +1489,7 @@ actions:
         path.join(projectDir, `definitions/notebook.ipynb`),
         EMPTY_NOTEBOOK_CONTENTS
       );
+      fs.writeFileSync(path.join(projectDir, `definitions/data_preparation.yaml`), "");
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
@@ -1512,7 +1520,7 @@ actions:
     project: project
     dependencyTargets:
     - name: notebook1
-      dataset: dataset
+      dataset: location
       project: project
     filename: operation.sql`
       );
