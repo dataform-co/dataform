@@ -1482,15 +1482,6 @@ actions:
         path.join(projectDir, `definitions/notebook.ipynb`),
         EMPTY_NOTEBOOK_CONTENTS
       );
-      fs.writeFileSync(
-        path.join(projectDir, `definitions/data_preparation.yaml`),
-        `
-nodes:
-- id: node1
-  source:
-    table:
-      project: prj`
-      );
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
