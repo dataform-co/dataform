@@ -7,12 +7,26 @@ export * from "df/testing/suite";
 export * from "df/testing/test";
 export * from "df/testing/runner";
 
-export const platformPath =
-  os.platform() === "darwin" ? "nodejs_darwin_amd64" : "nodejs_linux_amd64";
+
+export const platformPath = () => {
+  if (os.platform() === "darwin") {
+    if (os.arch() === "arm64") {
+      return "nodejs_darwin_arm64";
+    } else {
+      return "nodejs_darwin_amd64";
+    }
+  } else {
+    if (os.arch() === 'arm64') {
+      return "nodejs_linux_arm64";
+    } else {
+      return "nodejs_linux_amd64";
+    }
+  }
+}
 
 // Note: it would be more correct for these to be injected by blaze at run time.
-export const nodePath = `external/${platformPath}/bin/node`;
-export const npmPath = `external/${platformPath}/bin/npm`;
+export const nodePath = `external/${platformPath()}/bin/node`;
+export const npmPath = `external/${platformPath()}/bin/npm`;
 export const corePackageTarPath = "packages/@dataform/core/package.tar.gz";
 
 export async function getProcessResult(childProcess: ChildProcess) {

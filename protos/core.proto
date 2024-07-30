@@ -1,4 +1,5 @@
 syntax = "proto3";
+import "data_preparation.proto";
 
 package dataform;
 
@@ -247,6 +248,29 @@ message NotebookRuntimeOptions {
   }
 }
 
+// Data Preparation Related entries
+message DataPreparation {
+  // Used ONLY as an identifiers. All outputs should be listed in the targets
+  // section.
+  Target target = 8;
+  Target canonical_target = 9;
+
+  // Data preparations can have more than 1 output
+  repeated Target targets = 1;
+
+  repeated Target canonical_targets = 2;
+
+  repeated string tags = 3;
+
+  repeated Target dependency_targets = 4;
+
+  string file_name = 5;
+
+  bool disabled = 6;
+
+  DataPreparationDefinition data_preparation = 7;
+}
+
 message CompiledGraph {
   ProjectConfig project_config = 4;
 
@@ -258,6 +282,7 @@ message CompiledGraph {
   // it is not used at runtime.
   repeated Test tests = 8;
   repeated Notebook notebooks = 12;
+  repeated DataPreparation data_preparations = 13;
 
   GraphErrors graph_errors = 7;
 

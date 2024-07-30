@@ -1,4 +1,5 @@
 import { Assertion } from "df/core/actions/assertion";
+import { DataPreparation } from "df/core/actions/data_preparation";
 import { Declaration } from "df/core/actions/declaration";
 import { IncrementalTable } from "df/core/actions/incremental_table";
 import { Notebook } from "df/core/actions/notebook";
@@ -15,7 +16,8 @@ export type Action =
   | Operation
   | Assertion
   | Declaration
-  | Notebook;
+  | Notebook
+  | DataPreparation;
 
 // TODO(ekrekr): In v4, make all method on inheritors of this private, forcing users to use
 // constructors in order to populate actions.

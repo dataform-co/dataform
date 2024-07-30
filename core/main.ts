@@ -5,6 +5,7 @@ import {
   VerifyProtoErrorBehaviour
 } from "df/common/protos";
 import { Assertion } from "df/core/actions/assertion";
+import { DataPreparation } from "df/core/actions/data_preparation";
 import { Declaration } from "df/core/actions/declaration";
 import { IncrementalTable } from "df/core/actions/incremental_table";
 import { Notebook } from "df/core/actions/notebook";
@@ -178,6 +179,14 @@ function loadActionConfigs(session: Session, filePaths: string[]) {
               dataform.ActionConfig.NotebookConfig.create(actionConfig.notebook),
               actionConfigsPath
             )
+          );
+        } else if (actionConfig.dataPreparation) {
+          session.actions.push(
+              new DataPreparation(
+                  session,
+                  dataform.ActionConfig.DataPreparationConfig.create(actionConfig.dataPreparation),
+                  actionConfigsPath
+              )
           );
         } else {
           throw Error("Empty action configs are not permitted.");

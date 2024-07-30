@@ -33,14 +33,12 @@ nodejs_binary(
     name = "pbjs",
     data = PROTOBUF_DEPS,
     entry_point = "@npm//:node_modules/protobufjs-cli/bin/pbjs",
-    install_source_map_support = False,
 )
 
 nodejs_binary(
     name = "pbts",
     data = PROTOBUF_DEPS,
     entry_point = "@npm//:node_modules/protobufjs-cli/bin/pbts",
-    install_source_map_support = False,
 )
 
 nodejs_binary(
@@ -49,7 +47,6 @@ nodejs_binary(
         "@npm//tslint",
     ],
     entry_point = "@npm//:node_modules/tslint/bin/tslint",
-    install_source_map_support = False,
     templated_args = ["--node_options=--preserve-symlinks"],
 )
 
