@@ -1,4 +1,4 @@
-load("@npm_bazel_rollup//:index.bzl", "rollup_bundle")
+load("@npm//@bazel/rollup:index.bzl", "rollup_bundle")
 load(":rollup_bundle_dts.bzl", "rollup_bundle_dts")
 load("@build_bazel_rules_nodejs//:index.bzl", "pkg_npm")
 

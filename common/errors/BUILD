@@ -20,7 +20,10 @@ ts_test_suite(
     data = [
         "@npm//source-map-support",
     ],
-    templated_args = ["--node_options=--require=source-map-support/register"],
+    templated_args = [
+        "--node_options=--require=source-map-support/register",
+        "--bazel_patch_module_resolver",
+    ],
     deps = [
         ":errors",
         "@df//testing",
