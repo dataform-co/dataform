@@ -7,6 +7,7 @@
     - [ActionConfig](#dataform-ActionConfig)
     - [ActionConfig.AssertionConfig](#dataform-ActionConfig-AssertionConfig)
     - [ActionConfig.ColumnDescriptor](#dataform-ActionConfig-ColumnDescriptor)
+    - [ActionConfig.DataPreparationConfig](#dataform-ActionConfig-DataPreparationConfig)
     - [ActionConfig.DeclarationConfig](#dataform-ActionConfig-DeclarationConfig)
     - [ActionConfig.IncrementalTableConfig](#dataform-ActionConfig-IncrementalTableConfig)
     - [ActionConfig.IncrementalTableConfig.AdditionalOptionsEntry](#dataform-ActionConfig-IncrementalTableConfig-AdditionalOptionsEntry)
@@ -53,6 +54,7 @@ Action config defines the contents of `actions.yaml` configuration files.
 | operation | [ActionConfig.OperationConfig](#dataform-ActionConfig-OperationConfig) |  |  |
 | declaration | [ActionConfig.DeclarationConfig](#dataform-ActionConfig-DeclarationConfig) |  |  |
 | notebook | [ActionConfig.NotebookConfig](#dataform-ActionConfig-NotebookConfig) |  |  |
+| data_preparation | [ActionConfig.DataPreparationConfig](#dataform-ActionConfig-DataPreparationConfig) |  |  |
 
 
 
@@ -95,6 +97,26 @@ Action config defines the contents of `actions.yaml` configuration files.
 | description | [string](#string) |  | A text description of the column. |
 | bigquery_policy_tags | [string](#string) | repeated | A list of BigQuery policy tags that will be applied to the column. |
 | tags | [string](#string) | repeated | A list of tags for this column which will be applied. |
+
+
+
+
+
+
+<a name="dataform-ActionConfig-DataPreparationConfig"></a>
+
+### ActionConfig.DataPreparationConfig
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| name | [string](#string) |  | The name of the data preparation. |
+| dependency_targets | [ActionConfig.Target](#dataform-ActionConfig-Target) | repeated | Targets of actions that this action is dependent on. |
+| filename | [string](#string) |  | Path to the source file that the contents of the action is loaded from. |
+| tags | [string](#string) | repeated | A list of user-defined tags with which the action should be labeled. |
+| disabled | [bool](#bool) |  | If set to true, this action will not be executed. However, the action can still be depended upon. Useful for temporarily turning off broken actions. |
+| description | [string](#string) |  | Description of the data preparation. |
 
 
 

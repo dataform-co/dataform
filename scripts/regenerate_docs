@@ -2,6 +2,10 @@
 
 docker pull pseudomuto/protoc-gen-doc
 
+# TODO(ekrekr): make output documentation give camel case rather than snake case.
+# I've tried hacking around the docker image, but it does not contain `protoc-gen-docs`
+# which seems to be required. I've filed the issue at
+# https://github.com/pseudomuto/protoc-gen-doc/issues/539
 docker run --rm \
   -v $(pwd)/docs:/out \
   -v $(pwd)/protos:/protos \
