@@ -33,7 +33,10 @@ connection.onInitialize(() => {
 });
 
 connection.onInitialized(async () => {
-  await Promise.all([applySettings(), connection.client.register(DidChangeConfigurationNotification.type)]);
+  await Promise.all([
+    applySettings(),
+    connection.client.register(DidChangeConfigurationNotification.type)
+  ]);
   const _ = compileAndValidate();
   const workSpaceFolders = await connection.workspace.getWorkspaceFolders();
   // the first item is the root folder
@@ -43,7 +46,7 @@ connection.onInitialized(async () => {
 connection.onDidChangeConfiguration(async () => {
   await applySettings();
   await compileAndValidate();
-})
+});
 
 connection.onRequest("compile", async () => {
   const _ = compileAndValidate();
@@ -56,15 +59,16 @@ documents.onDidSave(change => {
 });
 
 async function applySettings() {
-  settings = await connection.workspace.getConfiguration('dataform');
+  settings = await connection.workspace.getConfiguration("dataform");
 }
 
 async function compileAndValidate() {
   let compilationFailed = false;
-  const spawnedProcess = spawn(
-    (process.platform !== "win32") ? "dataform" : "dataform.cmd",
-    ["compile", "--json", ...settings.compilerOptions]
-  );
+  const spawnedProcess = spawn(process.platform !== "win32" ? "dataform" : "dataform.cmd", [
+    "compile",
+    "--json",
+    ...settings.compilerOptions
+  ]);
 
   const compileResult = await getProcessResult(spawnedProcess);
   if (compileResult.exitCode !== 0) {
@@ -96,14 +100,17 @@ async function compileAndValidate() {
 
   if (parsedResult?.graphErrors?.compilationErrors) {
     parsedResult.graphErrors.compilationErrors.forEach(compilationError => {
-      connection.sendNotification("error", compilationError.fileName + ": " + compilationError.message);
+      connection.sendNotification(
+        "error",
+        compilationError.fileName + ": " + compilationError.message
+      );
     });
     if (compilationFailed) {
-       connection.sendNotification(
-         "error",
-         "Errors encountered when running 'dataform' CLI. Please check the output for more information."
-       );
-       return;
+      connection.sendNotification(
+        "error",
+        "Errors encountered when running 'dataform' CLI. Please check the output for more information."
+      );
+      return;
     }
   } else {
     connection.sendNotification("success", "Project compiled successfully");
@@ -158,35 +165,37 @@ connection.onDefinition(
     }
 
     // Jump to the one that was clicked or closest
-    const clickedRef = refContents.map(
-      (refContent) => ({
+    const clickedRef = refContents
+      .map(refContent => ({
         refContent,
         min: lineWithRef.indexOf(refContent),
         max: lineWithRef.indexOf(refContent) + refContent.length - 1
-      })
-    ).sort((a, b) => {
-      // sort in priority of closest to the clicked position
-      // if position is within the refContent, distance is 0
-      let distanceToA = 0;
-      if (params.position.character < a.min) {
-        distanceToA = a.min - params.position.character;
-      } else if (params.position.character > a.max) {
-        distanceToA = params.position.character - a.max;
-      }
+      }))
+      .sort((a, b) => {
+        // sort in priority of closest to the clicked position
+        // if position is within the refContent, distance is 0
+        let distanceToA = 0;
+        if (params.position.character < a.min) {
+          distanceToA = a.min - params.position.character;
+        } else if (params.position.character > a.max) {
+          distanceToA = params.position.character - a.max;
+        }
 
-      let distanceToB = 0;
-      if (params.position.character < b.min) {
-        distanceToB = b.min - params.position.character;
-      } else if (params.position.character > b.max) {
-        distanceToB = params.position.character - b.max;
-      }
+        let distanceToB = 0;
+        if (params.position.character < b.min) {
+          distanceToB = b.min - params.position.character;
+        } else if (params.position.character > b.max) {
+          distanceToB = params.position.character - b.max;
+        }
 
-      return distanceToA - distanceToB;
-    })[0].refContent;
+        return distanceToA - distanceToB;
+      })[0].refContent;
 
     // split to dataset, schema and name
-    const linkedTable: ITarget = {database: null, schema: null, name: null};
-    const splitMatch = clickedRef.match(/^ref\s*\(\s*(["'](.+?)["'])\s*(,\s*["'](.+?)["']\s*)?(,\s*["'](.+?)["']\s*)?,?\s*\)$/); // tslint:disable-line
+    const linkedTable: ITarget = { database: null, schema: null, name: null };
+    const splitMatch = clickedRef.match(
+      /^ref\s*\(\s*(["'](.+?)["'])\s*(,\s*["'](.+?)["']\s*)?(,\s*["'](.+?)["']\s*)?,?\s*\)$/ // tslint:disable-line
+    );
     if (splitMatch[6] !== undefined) {
       linkedTable.database = splitMatch[2];
       linkedTable.schema = splitMatch[4];
@@ -200,15 +209,21 @@ connection.onDefinition(
       return null;
     }
 
-    let namePrefix = CACHED_COMPILE_GRAPH.projectConfig?.tablePrefix
+    const namePrefix = CACHED_COMPILE_GRAPH.projectConfig?.tablePrefix;
     let linkedTableNameWtPrefix = "";
-    linkedTableNameWtPrefix = (namePrefix !== undefined) ? namePrefix + "_" + linkedTable.name : linkedTable.name;
+    linkedTableNameWtPrefix =
+      namePrefix !== undefined ? namePrefix + "_" + linkedTable.name : linkedTable.name;
 
-    const foundCompileAction = gatherAllActions().filter(action => (
-      (linkedTable.database === null || action?.target?.database !== undefined && action.target.database === linkedTable.database)
-      && (linkedTable.schema === null || action?.target?.schema !== undefined && action.target.schema === linkedTable.schema)
-      && action?.target?.name !== undefined && (action.target.name === linkedTable.name || action.target.name === linkedTableNameWtPrefix)
-    ));
+    const foundCompileAction = gatherAllActions().filter(
+      action =>
+        (linkedTable.database === null ||
+          (action?.target?.database !== undefined &&
+            action.target.database === linkedTable.database)) &&
+        (linkedTable.schema === null ||
+          (action?.target?.schema !== undefined && action.target.schema === linkedTable.schema)) &&
+        action?.target?.name !== undefined &&
+        (action.target.name === linkedTable.name || action.target.name === linkedTableNameWtPrefix)
+    );
     if (foundCompileAction.length === 0) {
       connection.sendNotification("error", `Definition not found for ${clickedRef}`);
       return null;
