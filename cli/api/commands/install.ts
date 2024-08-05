@@ -17,8 +17,8 @@ export async function install(projectPath: string) {
   const dataformCoreVersion = readDataformCoreVersionFromWorkflowSettings(resolvedProjectPath);
   if (dataformCoreVersion) {
     throw new Error(
-      "Package installation is only supported when specifying @dataform/core version in " +
-        "'package.json'"
+      "No installation is needed when using workflow_settings.yaml, as packages are installed at " +
+        "runtime."
     );
   }
 
