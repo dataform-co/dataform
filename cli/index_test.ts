@@ -108,8 +108,8 @@ defaultAssertionDataset: dataform_assertions
       (await getProcessResult(execFile(nodePath, [cliEntryPointPath, "install", projectDir])))
         .stderr
     ).contains(
-      "Package installation is only supported when specifying @dataform/core version in " +
-        "'package.json'"
+      "No installation is needed when using workflow_settings.yaml, as packages are installed at " +
+        "runtime."
     );
   });
 
