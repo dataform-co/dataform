@@ -1,12 +1,12 @@
 #!/bin/bash
 
-docker pull pseudomuto/protoc-gen-doc
+# docker pull pseudomuto/protoc-gen-doc
 
-# TODO(ekrekr): make output documentation give camel case rather than snake case.
-# I've tried hacking around the docker image, but it does not contain `protoc-gen-docs`
-# which seems to be required. I've filed the issue at
-# https://github.com/pseudomuto/protoc-gen-doc/issues/539
-docker run --rm \
-  -v $(pwd)/docs:/out \
-  -v $(pwd)/protos:/protos \
-  pseudomuto/protoc-gen-doc configs.proto --doc_opt=markdown,configs-reference.md
+# docker run --rm \
+#   -v $(pwd)/docs:/out \
+#   -v $(pwd)/protos:/protos \
+#   pseudomuto/protoc-gen-doc configs.proto --doc_opt=markdown,configs-reference.md::camel_case_fields=true
+
+# TODO(ekrekr): Re-enable this script after camelCasing is merged.
+echo ERROR: generating docs with camel casing requires https://github.com/pseudomuto/protoc-gen-doc/pull/540 to be merged. Until this is merged, the updated image with camel casing can be build from the fork before running the above script.
+exit 1
