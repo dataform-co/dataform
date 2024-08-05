@@ -194,8 +194,8 @@ connection.onDefinition(
     // split to dataset, schema and name
     const linkedTable: ITarget = { database: null, schema: null, name: null };
     const splitMatch = clickedRef.match(
-      /^ref\s*\(\s*(["'](.+?)["'])\s*(,\s*["'](.+?)["']\s*)?(,\s*["'](.+?)["']\s*)?,?\s*\)$/
-    ); // tslint:disable-line
+      /^ref\s*\(\s*(["'](.+?)["'])\s*(,\s*["'](.+?)["']\s*)?(,\s*["'](.+?)["']\s*)?,?\s*\)$/ // tslint:disable-line
+    );
     if (splitMatch[6] !== undefined) {
       linkedTable.database = splitMatch[2];
       linkedTable.schema = splitMatch[4];
