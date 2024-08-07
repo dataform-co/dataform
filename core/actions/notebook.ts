@@ -6,6 +6,7 @@ import { Session } from "df/core/session";
 import {
   actionConfigToCompiledGraphTarget,
   addDependenciesToActionDependencyTargets,
+  configTargetToCompiledGraphTarget,
   nativeRequire,
   resolveActionsConfigFilename
 } from "df/core/utils";
@@ -46,7 +47,13 @@ export class Notebook extends ActionBuilder<dataform.Notebook> {
     this.proto.canonicalTarget = this.applySessionToTarget(target, session.canonicalProjectConfig);
     this.proto.tags = config.tags;
     this.dependOnDependencyAssertions = config.dependOnDependencyAssertions;
-    this.dependencies(config.dependencyTargets);
+    if (config.dependencyTargets) {
+      this.dependencies(
+        config.dependencyTargets.map(dependencyTarget =>
+          configTargetToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget))
+        )
+      );
+    }
     this.proto.fileName = config.filename;
     if (config.disabled) {
       this.proto.disabled = config.disabled;
