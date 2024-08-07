@@ -4,7 +4,9 @@ import { Resolvable } from "df/core/common";
 import * as Path from "df/core/path";
 import { Session } from "df/core/session";
 import {
+  actionConfigToCompiledGraphTarget,
   addDependenciesToActionDependencyTargets,
+  configTargetToCompiledGraphTarget,
   nativeRequire,
   resolveActionsConfigFilename
 } from "df/core/utils";
@@ -37,14 +39,13 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     this.proto.dataPreparation = dataPreparationDefinition;
 
     // Find targets
-    const targets = getTargets(dataPreparationDefinition)
-    this.proto.targets = targets.map((target) => this.applySessionToTarget(
-      target,
-      session.projectConfig,
-      config.filename,
-      true
-    ));
-    this.proto.canonicalTargets = targets.map((target) => this.applySessionToTarget(target, session.canonicalProjectConfig));
+    const targets = getTargets(dataPreparationDefinition);
+    this.proto.targets = targets.map(target =>
+      this.applySessionToTarget(target, session.projectConfig, config.filename, true)
+    );
+    this.proto.canonicalTargets = targets.map(target =>
+      this.applySessionToTarget(target, session.canonicalProjectConfig)
+    );
 
     // Set the unique target key as the first target defined.
     // TODO: Remove once multiple targets are supported.
@@ -52,7 +53,13 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     this.proto.canonicalTarget = this.proto.canonicalTargets[0];
 
     this.proto.tags = config.tags;
-    this.dependencies(config.dependencyTargets);
+    if (config.dependencyTargets) {
+      this.dependencies(
+        config.dependencyTargets.map(dependencyTarget =>
+          configTargetToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget))
+        )
+      );
+    }
     this.proto.fileName = config.filename;
     if (config.disabled) {
       this.proto.disabled = config.disabled;
@@ -72,7 +79,7 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
   public dependencies(value: Resolvable | Resolvable[]) {
     const newDependencies = Array.isArray(value) ? value : [value];
     newDependencies.forEach(resolvable =>
-        addDependenciesToActionDependencyTargets(this, resolvable)
+      addDependenciesToActionDependencyTargets(this, resolvable)
     );
     return this;
   }
@@ -101,17 +108,18 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
   }
 }
 
-function parseDataPreparationDefinitionJson(
-    dataPreparationAsJson: { [key: string]: unknown }): dataform.DataPreparationDefinition  {
+function parseDataPreparationDefinitionJson(dataPreparationAsJson: {
+  [key: string]: unknown;
+}): dataform.DataPreparationDefinition {
   try {
     return dataform.DataPreparationDefinition.create(
-        verifyObjectMatchesProto(
-            dataform.DataPreparationDefinition,
-            dataPreparationAsJson as {
-              [key: string]: any;
-            },
-            VerifyProtoErrorBehaviour.SHOW_DOCS_LINK
-        )
+      verifyObjectMatchesProto(
+        dataform.DataPreparationDefinition,
+        dataPreparationAsJson as {
+          [key: string]: any;
+        },
+        VerifyProtoErrorBehaviour.SHOW_DOCS_LINK
+      )
     );
   } catch (e) {
     if (e instanceof ReferenceError) {
@@ -121,9 +129,7 @@ function parseDataPreparationDefinitionJson(
   }
 }
 
-function getTargets(
-  definition: dataform.DataPreparationDefinition
-): dataform.Target[] {
+function getTargets(definition: dataform.DataPreparationDefinition): dataform.Target[] {
   const targets: dataform.Target[] = [];
 
   definition.nodes.forEach(node => {
@@ -131,10 +137,10 @@ function getTargets(
     if (table) {
       const compiledGraphTarget: dataform.ITarget = {
         database: table.project,
-        schema:table.dataset,
+        schema: table.dataset,
         name: table.table
       };
-      targets.push(dataform.Target.create(compiledGraphTarget))
+      targets.push(dataform.Target.create(compiledGraphTarget));
     }
   });
 

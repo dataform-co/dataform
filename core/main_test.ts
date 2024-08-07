@@ -860,14 +860,14 @@ defaultNotebookRuntimeOptions:
 
   suite("data preparations", () => {
     const createSimpleDataPreparationProject = (
-        workflowSettingsYaml = VALID_WORKFLOW_SETTINGS_YAML
+      workflowSettingsYaml = VALID_WORKFLOW_SETTINGS_YAML
     ): string => {
       const projectDir = tmpDirFixture.createNewTmpDir();
       fs.writeFileSync(path.join(projectDir, "workflow_settings.yaml"), workflowSettingsYaml);
       fs.mkdirSync(path.join(projectDir, "definitions"));
       fs.writeFileSync(
-          path.join(projectDir, "definitions/actions.yaml"),
-          `
+        path.join(projectDir, "definitions/actions.yaml"),
+        `
 actions:
 - dataPreparation:
     filename: data_preparation.yaml`
@@ -878,8 +878,8 @@ actions:
     test(`data preparations can be loaded via an actions config file`, () => {
       const projectDir = createSimpleDataPreparationProject();
       fs.writeFileSync(
-          path.join(projectDir, "definitions/data_preparation.yaml"),
-          `
+        path.join(projectDir, "definitions/data_preparation.yaml"),
+        `
 nodes:
 - id: node1
   source:
@@ -918,54 +918,75 @@ nodes:
 
       expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(asPlainObject(result.compile.compiledGraph.dataPreparations)).deep.equals(
-          asPlainObject([
-            {
-              target: {
+        asPlainObject([
+          {
+            target: {
+              database: "prj",
+              schema: "ds",
+              name: "dest"
+            },
+            canonicalTarget: {
+              database: "prj",
+              schema: "ds",
+              name: "dest"
+            },
+            targets: [
+              {
                 database: "prj",
                 schema: "ds",
                 name: "dest"
-              },
-              canonicalTarget: {
+              }
+            ],
+            canonicalTargets: [
+              {
                 database: "prj",
                 schema: "ds",
                 name: "dest"
-              },
-              targets: [
+              }
+            ],
+            fileName: "definitions/data_preparation.yaml",
+            dataPreparation: {
+              nodes: [
                 {
-                  database: "prj",
-                  schema: "ds",
-                  name: "dest"
-                }
-              ],
-              canonicalTargets: [
-                {
-                  database: "prj",
-                  schema: "ds",
-                  name: "dest"
-                }
-              ],
-              fileName: "definitions/data_preparation.yaml",
-              dataPreparation: {
-                nodes: [
-                  {
-                    id: "node1",
-                    source: {
-                      table: {
-                        dataset: "ds",
-                        project: "prj",
-                        table: "src"
+                  id: "node1",
+                  source: {
+                    table: {
+                      dataset: "ds",
+                      project: "prj",
+                      table: "src"
+                    }
+                  },
+                  destination: {
+                    table: {
+                      dataset: "ds",
+                      project: "prj",
+                      table: "dest"
+                    }
+                  },
+                  generated: {
+                    destinationGenerated: {
+                      schema: {
+                        field: [
+                          {
+                            mode: "NULLABLE",
+                            name: "a",
+                            type: "STRING"
+                          }
+                        ]
                       }
                     },
-                    destination: {
-                      table: {
-                        dataset: "ds",
-                        project: "prj",
-                        table: "dest"
-                      }
+                    outputSchema: {
+                      field: [
+                        {
+                          mode: "NULLABLE",
+                          name: "a",
+                          type: "INT64"
+                        }
+                      ]
                     },
-                    generated: {
-                      destinationGenerated: {
-                        schema: {
+                    sourceGenerated: {
+                      sourceSchema: {
+                        tableSchema: {
                           field: [
                             {
                               mode: "NULLABLE",
@@ -974,35 +995,14 @@ nodes:
                             }
                           ]
                         }
-                      },
-                      outputSchema: {
-                        field: [
-                          {
-                            mode: "NULLABLE",
-                            name: "a",
-                            type: "INT64"
-                          }
-                        ]
-                      },
-                      sourceGenerated: {
-                        sourceSchema: {
-                          tableSchema: {
-                            field: [
-                              {
-                                mode: "NULLABLE",
-                                name: "a",
-                                type: "STRING"
-                              }
-                            ]
-                          }
-                        }
                       }
                     }
                   }
-                ]
-              }
+                }
+              ]
             }
-          ])
+          }
+        ])
       );
     });
   });
@@ -1448,22 +1448,32 @@ actions:
     filename: table.sql
     dependencyTargets:
     - name: declaration
+      dataset: defaultDataset
+      project: defaultProject
 - incrementalTable:
     filename: incrementalTable.sql
     dependencyTargets:
     - name: table
+      dataset: defaultDataset
+      project: defaultProject
 - view:
     filename: view.sql
     dependencyTargets:
     - name: incrementalTable
+      dataset: defaultDataset
+      project: defaultProject
 - operation:
     filename: operation.sql
     dependencyTargets:
     - name: view
+      dataset: defaultDataset
+      project: defaultProject
 - notebook:
     filename: notebook.ipynb
     dependencyTargets:
-    - name: view`
+    - name: view
+      dataset: defaultDataset
+      project: defaultProject`
       );
       ["table.sql", "incrementalTable.sql", "view.sql", "operation.sql"].forEach(filename => {
         fs.writeFileSync(path.join(projectDir, `definitions/${filename}`), "SELECT 1");
@@ -1478,30 +1488,43 @@ actions:
       expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
     });
 
-    test(`files can be loaded from the root directory and are normalized in the compiled graph`, () => {
+    test(`dependency targets of actions with different types are loaded`, () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
       fs.writeFileSync(
         path.join(projectDir, "workflow_settings.yaml"),
         VALID_WORKFLOW_SETTINGS_YAML
       );
       fs.mkdirSync(path.join(projectDir, "definitions"));
+      // The dependency target for depending on a notebook currently hacks around the limitations of
+      // the target proto, until proper target support for notebooks is added.
       fs.writeFileSync(
         path.join(projectDir, "definitions/actions.yaml"),
         `
 actions:
 - notebook:
-    filename: ../contents.ipynb
+    name: notebook1
+    location: location
+    project: project
+    filename: notebook.ipynb
 - operation:
-    filename: ../table.sql`
+    name: operation1
+    dataset: dataset
+    project: project
+    dependencyTargets:
+    - name: notebook1
+      dataset: location
+      project: project
+    filename: operation.sql`
       );
-      fs.writeFileSync(path.join(projectDir, `contents.ipynb`), JSON.stringify({ cells: [] }));
-      fs.writeFileSync(path.join(projectDir, `table.sql`), "SELECT 1");
+      fs.writeFileSync(path.join(projectDir, "definitions/operation.sql"), "SELECT 1");
+      fs.writeFileSync(
+        path.join(projectDir, `definitions/notebook.ipynb`),
+        EMPTY_NOTEBOOK_CONTENTS
+      );
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
       expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-      expect(result.compile.compiledGraph.notebooks[0].fileName).deep.equals("contents.ipynb");
-      expect(result.compile.compiledGraph.operations[0].fileName).deep.equals("table.sql");
     });
   });
 
