@@ -29,7 +29,6 @@ message WorkflowSettings {
 
   // Optional. User-defined variables that are made available to project code
   // during compilation. An object containing a list of "key": value pairs.
-  // Example: `{ "name": "wrench", "mass": "1.3kg", "count": "3" }`.
   map<string, string> vars = 6;
 
   // Optional. The suffix to append to all Google Cloud project references.
@@ -167,22 +166,12 @@ message ActionConfig {
     // https://cloud.google.com/dataform/docs/partitions-clusters.
     repeated string cluster_by = 15;
 
-    // Key-value pairs for BigQuery labels. If the label name contains special
-    // characters, e.g. hyphens, then quote its name, e.g. `labels: {
-    // "label-name": "value" }`.
+    // Key-value pairs for BigQuery labels.
     map<string, string> labels = 16;
 
-    // Key-value pairs of additional options to pass to the BigQuery API.
-    //
-    // Some options, for example, partitionExpirationDays, have dedicated
-    // type/validity checked fields. For such options, use the dedicated
-    // fields.
-    //
-    // String values must be encapsulated in double-quotes, for example:
-    // additionalOptions: {numeric_option: "5", string_option: '"string-value"'}
-    //
-    // If the option name contains special characters, encapsulate the name in
-    // quotes, for example: additionalOptions: { "option-name": "value" }.
+    // Key-value pairs of additional options to pass to the BigQuery API. Some
+    // options, for example, partitionExpirationDays, have dedicated
+    // type/validity checked fields. For such options, use the dedicated fields.
     map<string, string> additional_options = 17;
 
     // When set to true, assertions dependent upon any dependency will
@@ -242,22 +231,12 @@ message ActionConfig {
     // Descriptions of columns within the table.
     repeated ColumnDescriptor columns = 12;
 
-    // Key-value pairs for BigQuery labels. If the label name contains special
-    // characters, e.g. hyphens, then quote its name, e.g. `labels: {
-    // "label-name": "value" }`.
+    // Key-value pairs for BigQuery labels.
     map<string, string> labels = 13;
 
-    // Key-value pairs of additional options to pass to the BigQuery API.
-    //
-    // Some options, for example, partitionExpirationDays, have dedicated
-    // type/validity checked fields. For such options, use the dedicated
-    // fields.
-    //
-    // String values must be encapsulated in double-quotes, for example:
-    // additionalOptions: {numeric_option: "5", string_option: '"string-value"'}
-    //
-    // If the option name contains special characters, encapsulate the name in
-    // quotes, for example: additionalOptions: { "option-name": "value" }.
+    // Key-value pairs of additional options to pass to the BigQuery API. Some
+    // options, for example, partitionExpirationDays, have dedicated
+    // type/validity checked fields. For such options, use the dedicated fields.
     map<string, string> additional_options = 14;
 
     // When set to true, assertions dependent upon any dependency will
@@ -345,22 +324,12 @@ message ActionConfig {
     // https://cloud.google.com/dataform/docs/partitions-clusters.
     repeated string cluster_by = 18;
 
-    // Key-value pairs for BigQuery labels. If the label name contains special
-    // characters, e.g. hyphens, then quote its name, e.g. `labels: {
-    // "label-name": "value" }`.
+    // Key-value pairs for BigQuery labels.
     map<string, string> labels = 19;
 
-    // Key-value pairs of additional options to pass to the BigQuery API.
-    //
-    // Some options, for example, partitionExpirationDays, have dedicated
-    // type/validity checked fields. For such options, use the dedicated
-    // fields.
-    //
-    // String values must be encapsulated in double-quotes, for example:
-    // additionalOptions: {numeric_option: "5", string_option: '"string-value"'}
-    //
-    // If the option name contains special characters, encapsulate the name in
-    // quotes, for example: additionalOptions: { "option-name": "value" }.
+    // Key-value pairs of additional options to pass to the BigQuery API. Some
+    // options, for example, partitionExpirationDays, have dedicated
+    // type/validity checked fields. For such options, use the dedicated fields.
     map<string, string> additional_options = 20;
 
     // When set to true, assertions dependent upon any dependency will
