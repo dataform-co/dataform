@@ -168,14 +168,8 @@ Action config defines the contents of `actions.yaml` configuration files.
 | requirePartitionFilter | [bool](#bool) |  | Declares whether the partitioned table requires a WHERE clause predicate filter that filters the partitioning column. |
 | updatePartitionFilter | [string](#string) |  | SQL-based filter for when incremental updates are applied. |
 | clusterBy | [string](#string) | repeated | The keys by which to cluster partitions by. See https://cloud.google.com/dataform/docs/partitions-clusters. |
-| labels | [ActionConfig.IncrementalTableConfig.LabelsEntry](#dataform-ActionConfig-IncrementalTableConfig-LabelsEntry) | repeated | Key-value pairs for BigQuery labels. If the label name contains special characters, e.g. hyphens, then quote its name, e.g. `labels: { &#34;label-name&#34;: &#34;value&#34; }`. |
-| additionalOptions | [ActionConfig.IncrementalTableConfig.AdditionalOptionsEntry](#dataform-ActionConfig-IncrementalTableConfig-AdditionalOptionsEntry) | repeated | Key-value pairs of additional options to pass to the BigQuery API.
-
-Some options, for example, partitionExpirationDays, have dedicated type/validity checked fields. For such options, use the dedicated fields.
-
-String values must be encapsulated in double-quotes, for example: additionalOptions: {numeric_option: &#34;5&#34;, string_option: &#39;&#34;string-value&#34;&#39;}
-
-If the option name contains special characters, encapsulate the name in quotes, for example: additionalOptions: { &#34;option-name&#34;: &#34;value&#34; }. |
+| labels | [ActionConfig.IncrementalTableConfig.LabelsEntry](#dataform-ActionConfig-IncrementalTableConfig-LabelsEntry) | repeated | Key-value pairs for BigQuery labels. |
+| additionalOptions | [ActionConfig.IncrementalTableConfig.AdditionalOptionsEntry](#dataform-ActionConfig-IncrementalTableConfig-AdditionalOptionsEntry) | repeated | Key-value pairs of additional options to pass to the BigQuery API. Some options, for example, partitionExpirationDays, have dedicated type/validity checked fields. For such options, use the dedicated fields. |
 | dependOnDependencyAssertions | [bool](#bool) |  | When set to true, assertions dependent upon any dependency will be add as dedpendency to this action |
 | assertions | [ActionConfig.TableAssertionsConfig](#dataform-ActionConfig-TableAssertionsConfig) |  | Assertions to be run on the dataset. If configured, relevant assertions will automatically be created and run as a dependency of this dataset. |
 | hermetic | [bool](#bool) |  | If true, this indicates that the action only depends on data from explicitly-declared dependencies. Otherwise if false, it indicates that the action depends on data from a source which has not been declared as a dependency. |
@@ -326,14 +320,8 @@ the column(s) in the unique key(s).
 | partitionExpirationDays | [int32](#int32) |  | The number of days for which BigQuery stores data in each partition. The setting applies to all partitions in a table, but is calculated independently for each partition based on the partition time. |
 | requirePartitionFilter | [bool](#bool) |  | Declares whether the partitioned table requires a WHERE clause predicate filter that filters the partitioning column. |
 | clusterBy | [string](#string) | repeated | The keys by which to cluster partitions by. See https://cloud.google.com/dataform/docs/partitions-clusters. |
-| labels | [ActionConfig.TableConfig.LabelsEntry](#dataform-ActionConfig-TableConfig-LabelsEntry) | repeated | Key-value pairs for BigQuery labels. If the label name contains special characters, e.g. hyphens, then quote its name, e.g. `labels: { &#34;label-name&#34;: &#34;value&#34; }`. |
-| additionalOptions | [ActionConfig.TableConfig.AdditionalOptionsEntry](#dataform-ActionConfig-TableConfig-AdditionalOptionsEntry) | repeated | Key-value pairs of additional options to pass to the BigQuery API.
-
-Some options, for example, partitionExpirationDays, have dedicated type/validity checked fields. For such options, use the dedicated fields.
-
-String values must be encapsulated in double-quotes, for example: additionalOptions: {numeric_option: &#34;5&#34;, string_option: &#39;&#34;string-value&#34;&#39;}
-
-If the option name contains special characters, encapsulate the name in quotes, for example: additionalOptions: { &#34;option-name&#34;: &#34;value&#34; }. |
+| labels | [ActionConfig.TableConfig.LabelsEntry](#dataform-ActionConfig-TableConfig-LabelsEntry) | repeated | Key-value pairs for BigQuery labels. |
+| additionalOptions | [ActionConfig.TableConfig.AdditionalOptionsEntry](#dataform-ActionConfig-TableConfig-AdditionalOptionsEntry) | repeated | Key-value pairs of additional options to pass to the BigQuery API. Some options, for example, partitionExpirationDays, have dedicated type/validity checked fields. For such options, use the dedicated fields. |
 | dependOnDependencyAssertions | [bool](#bool) |  | When set to true, assertions dependent upon any dependency will be add as dedpendency to this action |
 | assertions | [ActionConfig.TableAssertionsConfig](#dataform-ActionConfig-TableAssertionsConfig) |  | Assertions to be run on the dataset. If configured, relevant assertions will automatically be created and run as a dependency of this dataset. |
 | hermetic | [bool](#bool) |  | If true, this indicates that the action only depends on data from explicitly-declared dependencies. Otherwise if false, it indicates that the action depends on data from a source which has not been declared as a dependency. |
@@ -413,14 +401,8 @@ Target represents a unique action identifier.
 | materialized | [bool](#bool) |  | Applies the materialized view optimization, see https://cloud.google.com/bigquery/docs/materialized-views-intro. |
 | description | [string](#string) |  | Description of the view. |
 | columns | [ActionConfig.ColumnDescriptor](#dataform-ActionConfig-ColumnDescriptor) | repeated | Descriptions of columns within the table. |
-| labels | [ActionConfig.ViewConfig.LabelsEntry](#dataform-ActionConfig-ViewConfig-LabelsEntry) | repeated | Key-value pairs for BigQuery labels. If the label name contains special characters, e.g. hyphens, then quote its name, e.g. `labels: { &#34;label-name&#34;: &#34;value&#34; }`. |
-| additionalOptions | [ActionConfig.ViewConfig.AdditionalOptionsEntry](#dataform-ActionConfig-ViewConfig-AdditionalOptionsEntry) | repeated | Key-value pairs of additional options to pass to the BigQuery API.
-
-Some options, for example, partitionExpirationDays, have dedicated type/validity checked fields. For such options, use the dedicated fields.
-
-String values must be encapsulated in double-quotes, for example: additionalOptions: {numeric_option: &#34;5&#34;, string_option: &#39;&#34;string-value&#34;&#39;}
-
-If the option name contains special characters, encapsulate the name in quotes, for example: additionalOptions: { &#34;option-name&#34;: &#34;value&#34; }. |
+| labels | [ActionConfig.ViewConfig.LabelsEntry](#dataform-ActionConfig-ViewConfig-LabelsEntry) | repeated | Key-value pairs for BigQuery labels. |
+| additionalOptions | [ActionConfig.ViewConfig.AdditionalOptionsEntry](#dataform-ActionConfig-ViewConfig-AdditionalOptionsEntry) | repeated | Key-value pairs of additional options to pass to the BigQuery API. Some options, for example, partitionExpirationDays, have dedicated type/validity checked fields. For such options, use the dedicated fields. |
 | dependOnDependencyAssertions | [bool](#bool) |  | When set to true, assertions dependent upon any dependency will be add as dedpendency to this action |
 | hermetic | [bool](#bool) |  | If true, this indicates that the action only depends on data from explicitly-declared dependencies. Otherwise if false, it indicates that the action depends on data from a source which has not been declared as a dependency. |
 | assertions | [ActionConfig.TableAssertionsConfig](#dataform-ActionConfig-TableAssertionsConfig) |  | Assertions to be run on the dataset. If configured, relevant assertions will automatically be created and run as a dependency of this dataset. |
@@ -506,7 +488,7 @@ configuration file.
 | defaultDataset | [string](#string) |  | Required. The default dataset (schema). |
 | defaultLocation | [string](#string) |  | Required. The default BigQuery location to use. For more information on BigQuery locations, see https://cloud.google.com/bigquery/docs/locations. |
 | defaultAssertionDataset | [string](#string) |  | Required. The default dataset (schema) for assertions. |
-| vars | [WorkflowSettings.VarsEntry](#dataform-WorkflowSettings-VarsEntry) | repeated | Optional. User-defined variables that are made available to project code during compilation. An object containing a list of &#34;key&#34;: value pairs. Example: `{ &#34;name&#34;: &#34;wrench&#34;, &#34;mass&#34;: &#34;1.3kg&#34;, &#34;count&#34;: &#34;3&#34; }`. |
+| vars | [WorkflowSettings.VarsEntry](#dataform-WorkflowSettings-VarsEntry) | repeated | Optional. User-defined variables that are made available to project code during compilation. An object containing a list of &#34;key&#34;: value pairs. |
 | projectSuffix | [string](#string) |  | Optional. The suffix to append to all Google Cloud project references. |
 | datasetSuffix | [string](#string) |  | Optional. The suffix to append to all dataset references. |
 | namePrefix | [string](#string) |  | Optional. The prefix to append to all action names. |
