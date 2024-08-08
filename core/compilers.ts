@@ -16,6 +16,8 @@ const CONTEXT_FUNCTIONS = [
   .map(name => `const ${name} = ctx.${name} ? ctx.${name}.bind(ctx) : undefined;`)
   .join("\n");
 
+export const INVALID_YAML_ERROR_STRING = "is not a valid YAML file";
+
 export function compile(code: string, path: string): string {
   if (Path.fileExtension(path) === "sqlx") {
     return compileSqlx(SyntaxTreeNode.create(code), path);
@@ -26,7 +28,7 @@ export function compile(code: string, path: string): string {
       return `exports.asJson = ${JSON.stringify(yamlAsJson)}`;
     } catch (e) {
       if (e instanceof YAMLException) {
-        throw Error(`${path} is not a valid YAML file: ${e}`);
+        throw new Error(`${path} ${INVALID_YAML_ERROR_STRING}: ${e}`);
       }
       throw e;
     }
