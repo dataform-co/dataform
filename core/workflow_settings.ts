@@ -1,6 +1,8 @@
 import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
+import { YAMLException } from "js-yaml";
+import { INVALID_YAML_ERROR_STRING } from "./compilers";
 
 declare var __webpack_require__: any;
 declare var __non_webpack_require__: any;
@@ -77,12 +79,14 @@ function maybeRequire(file: string): any {
     // tslint:disable-next-line: tsr-detect-non-literal-require
     return nativeRequire(file);
   } catch (e) {
-    if (e instanceof Error) {
-      if (e.message.includes("Cannot find module")) {
-        return;
-      }
+    if (e instanceof SyntaxError || e instanceof YAMLException) {
+      throw e;
     }
-    throw e;
+    // The YAMLException type isn't propogated by `require`, so instead we must check the message.
+    if (e?.message?.includes(INVALID_YAML_ERROR_STRING)) {
+      throw e;
+    }
+    return undefined;
   }
 }
 
