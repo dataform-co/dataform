@@ -267,10 +267,10 @@ message DataPreparation {
 
   bool disabled = 6;
 
-  reserved 7;
-
   // Binary encoded contents of the Data preparation proto
   bytes data_preparation_contents = 10;
+
+  reserved 7;
 }
 
 message CompiledGraph {
