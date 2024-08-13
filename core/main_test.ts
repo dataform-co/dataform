@@ -945,62 +945,7 @@ nodes:
               }
             ],
             fileName: "definitions/data_preparation.yaml",
-            dataPreparation: {
-              nodes: [
-                {
-                  id: "node1",
-                  source: {
-                    table: {
-                      dataset: "ds",
-                      project: "prj",
-                      table: "src"
-                    }
-                  },
-                  destination: {
-                    table: {
-                      dataset: "ds",
-                      project: "prj",
-                      table: "dest"
-                    }
-                  },
-                  generated: {
-                    destinationGenerated: {
-                      schema: {
-                        field: [
-                          {
-                            mode: "NULLABLE",
-                            name: "a",
-                            type: "STRING"
-                          }
-                        ]
-                      }
-                    },
-                    outputSchema: {
-                      field: [
-                        {
-                          mode: "NULLABLE",
-                          name: "a",
-                          type: "INT64"
-                        }
-                      ]
-                    },
-                    sourceGenerated: {
-                      sourceSchema: {
-                        tableSchema: {
-                          field: [
-                            {
-                              mode: "NULLABLE",
-                              name: "a",
-                              type: "STRING"
-                            }
-                          ]
-                        }
-                      }
-                    }
-                  }
-                }
-              ]
-            }
+            dataPreparationContents: "Cn4KBW5vZGUxEhASDgoDcHJqEgJkcxoDc3JjIlAiFgoUCgFhEgVJTlQ2NBoITlVMTEFCTEUqGyIZEhcKFQoBYRIGU1RSSU5HGghOVUxMQUJMRTIZChcKFQoBYRIGU1RSSU5HGghOVUxMQUJMRSoRCg8KA3ByahICZHMaBGRlc3Q=",
           }
         ])
       );

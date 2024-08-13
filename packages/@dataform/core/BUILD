@@ -66,12 +66,6 @@ add_license_header_to_file(
 )
 
 add_license_header_to_file(
-    name = "data_preparation_proto_with_license",
-    from_file = "//protos:data_preparation.proto",
-    to_file = "data_preparation.proto",
-)
-
-add_license_header_to_file(
     name = "bundle_with_license",
     from_file = "bundle",
     to_file = "bundle.js",
@@ -99,7 +93,6 @@ pkg_npm_tar(
         ":bundle_with_license",
         ":configs_proto_with_license",
         ":core_proto_with_license",
-        ":data_preparation_proto_with_license",
         ":package.json",
     ],
 )
