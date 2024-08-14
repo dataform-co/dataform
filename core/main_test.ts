@@ -8,7 +8,6 @@ import { CompilerFunction, NodeVM } from "vm2";
 import { decode64, encode64, verifyObjectMatchesProto } from "df/common/protos";
 import { compile } from "df/core/compilers";
 import { version } from "df/core/version";
-import { nativeRequire } from 'df/core/utils';
 import { dataform } from "df/protos/ts";
 import { asPlainObject, suite, test } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
