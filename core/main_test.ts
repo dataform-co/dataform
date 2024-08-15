@@ -1,16 +1,17 @@
 // tslint:disable tsr-detect-non-literal-fs-filename
 import { expect } from "chai";
 import * as fs from "fs-extra";
-import { dump as dumpYaml } from "js-yaml";
+import { dump as dumpYaml, load as loadYaml } from "js-yaml";
 import * as path from "path";
 import { CompilerFunction, NodeVM } from "vm2";
 
-import { decode64, encode64 } from "df/common/protos";
+import { decode64, encode64, verifyObjectMatchesProto } from "df/common/protos";
 import { compile } from "df/core/compilers";
 import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
 import { asPlainObject, suite, test } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
+
 
 const SOURCE_EXTENSIONS = ["js", "sql", "sqlx", "yaml", "ipynb"];
 
@@ -877,9 +878,7 @@ actions:
 
     test(`data preparations can be loaded via an actions config file`, () => {
       const projectDir = createSimpleDataPreparationProject();
-      fs.writeFileSync(
-        path.join(projectDir, "definitions/data_preparation.yaml"),
-        `
+      const dataPreparationYaml = `
 nodes:
 - id: node1
   source:
@@ -912,6 +911,23 @@ nodes:
           type: STRING
           mode: NULLABLE
 `
+
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/data_preparation.yaml"),
+          dataPreparationYaml
+      );
+
+      // Generate Base64 encoded representation of the YAML.
+      const dataPreparationAsObject = loadYaml(dataPreparationYaml);
+      const dataPreparationDefinition = verifyObjectMatchesProto(
+          dataform.DataPreparationDefinition,
+          dataPreparationAsObject as {
+            [key: string]: any;
+          }
+      );
+      const base64encodedContents = encode64(
+          dataform.DataPreparationDefinition,
+          dataPreparationDefinition
       );
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
@@ -945,62 +961,8 @@ nodes:
               }
             ],
             fileName: "definitions/data_preparation.yaml",
-            dataPreparation: {
-              nodes: [
-                {
-                  id: "node1",
-                  source: {
-                    table: {
-                      dataset: "ds",
-                      project: "prj",
-                      table: "src"
-                    }
-                  },
-                  destination: {
-                    table: {
-                      dataset: "ds",
-                      project: "prj",
-                      table: "dest"
-                    }
-                  },
-                  generated: {
-                    destinationGenerated: {
-                      schema: {
-                        field: [
-                          {
-                            mode: "NULLABLE",
-                            name: "a",
-                            type: "STRING"
-                          }
-                        ]
-                      }
-                    },
-                    outputSchema: {
-                      field: [
-                        {
-                          mode: "NULLABLE",
-                          name: "a",
-                          type: "INT64"
-                        }
-                      ]
-                    },
-                    sourceGenerated: {
-                      sourceSchema: {
-                        tableSchema: {
-                          field: [
-                            {
-                              mode: "NULLABLE",
-                              name: "a",
-                              type: "STRING"
-                            }
-                          ]
-                        }
-                      }
-                    }
-                  }
-                }
-              ]
-            }
+            // Base64 encoded representation of the data preparation definition proto.
+            dataPreparationContents: base64encodedContents
           }
         ])
       );

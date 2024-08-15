@@ -1,5 +1,4 @@
 syntax = "proto3";
-import "data_preparation.proto";
 
 package dataform;
 
@@ -268,7 +267,10 @@ message DataPreparation {
 
   bool disabled = 6;
 
-  DataPreparationDefinition data_preparation = 7;
+  // Binary encoded contents of the Data preparation proto
+  bytes data_preparation_contents = 10;
+
+  reserved 7;
 }
 
 message CompiledGraph {
