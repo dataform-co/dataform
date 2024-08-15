@@ -1,27 +1,31 @@
 syntax = "proto3";
 
-package dataform;
+package dataform.dataprep;
 
-option java_package = "com.dataform.protos";
+option java_package = "com.dataform.dataprep.protos";
 option java_multiple_files = true;
 
-option go_package = "github.com/dataform-co/dataform/protos/dataform";
+option go_package = "github.com/dataform-co/dataform/protos/dataform/dataprep";
 
-message DataPreparationDefinition {
+message DataPreparation {
   repeated DataPreparationNode nodes = 1;
   DataPreparationGenerated generated = 2;
+  DataPreparationConfiguration configuration = 3;
 }
 
 message DataPreparationNode {
   string id = 1;
-  DataPreparationNodeSource source = 2;
-  repeated DataPreparationNodeStep steps = 3;
-  DataPreparationNodeGenerated generated = 4;
-  // Destination BigQuery table(s) are defined within the data preparation
-  optional DataPreparationNodeDestination destination = 5;
+  Source source = 2;
+  repeated Step steps = 3;
+  NodeGenerated generated = 4;
+  Destination destination = 5;
 }
 
-message DataPreparationNodeSource {
+message DataPreparationConfiguration {
+  TableReference error_table = 1;
+}
+
+message Source {
   oneof source {
     string node_id = 1;
     TableReference table = 2;
@@ -29,20 +33,21 @@ message DataPreparationNodeSource {
   }
 }
 
-message DataPreparationNodeDestination {
+message Destination {
   oneof destination {
     TableReference table = 1;
   }
 }
 
-message DataPreparationNodeStep {
+message Step {
   string id = 1;
   string description = 2;
+
   oneof definition {
     ColumnStep column_step = 3;
     FilterStep filter_step = 4;
   }
-  DataPreparationNodeStepGenerated generated = 5;
+  StepGenerated generated = 5;
 }
 
 message ColumnStep {
@@ -50,8 +55,15 @@ message ColumnStep {
   Expression expression = 2;
 }
 
+enum FilterType {
+  FILTER_TYPE_UNSPECIFIED = 0;
+  ROW_FILTER_KEEP_ROWS = 1;
+  VALIDATION = 2;
+}
+
 message FilterStep {
   Expression expression = 1;
+  optional FilterType filter_type = 2;
 }
 
 message Expression {
@@ -98,75 +110,76 @@ message TableReference {
 }
 
 message DataPreparationGenerated {
-  repeated DataPreparationValidationError validation_errors = 1;
+  repeated ValidationError validation_errors = 1;
   optional string location = 2;
 }
 
-message DataPreparationNodeGenerated {
-  repeated DataPreparationSection sections = 1;
+message NodeGenerated {
+  repeated Section sections = 1;
   repeated string sources = 2;
-  repeated DataPreparationValidationError validation_errors = 3;
-  optional DataPreparationSchema output_schema = 4;
-  DataPreparationNodeSourceGenerated source_generated = 5;
-  optional DataPreparationNodeDestinationGenerated destination_generated = 6;
+  repeated ValidationError validation_errors = 3;
+  Schema output_schema = 4;
+  SourceGenerated source_generated = 5;
+  DestinationGenerated destination_generated = 6;
 }
 
-message DataPreparationSection {
-  DataPreparationSectionType type = 1;
+message Section {
+  SectionType type = 1;
   string label = 2;
 }
 
-enum DataPreparationSectionType {
+enum SectionType {
   SECTION_TYPE_UNSPECIFIED = 0;
   SECTION_UNPARSEABLE = 1;
   SECTION_SOURCE_TABLE = 2;
   SECTION_SQL = 3;
   SECTION_DESTINATION_TABLE = 4;
+  SECTION_JOIN = 5;
 }
 
-message DataPreparationNodeSourceGenerated {
-  optional DataPreparationNodeSourceSourceSchema source_schema = 4;
+message SourceGenerated {
+  SourceSchema source_schema = 4;
 }
 
-message DataPreparationNodeSourceSourceSchema {
+message SourceSchema {
   oneof source_schema {
-    DataPreparationSchema node_schema = 1;
-    DataPreparationSchema table_schema = 2;
+    Schema node_schema = 1;
+    Schema table_schema = 2;
     JoinSchema join_schema = 3;
   }
 }
 
 message JoinSchema {
-  DataPreparationSchema left_schema = 1;
-  DataPreparationSchema right_schema = 2;
+  Schema left_schema = 1;
+  Schema right_schema = 2;
 }
 
-message DataPreparationNodeDestinationGenerated {
-  optional DataPreparationSchema schema = 1;
+message DestinationGenerated {
+  Schema schema = 1;
 }
 
-message DataPreparationNodeStepGenerated {
+message StepGenerated {
   repeated string source_columns = 1;
-  repeated DataPreparationValidationError validation_errors = 2;
+  repeated ValidationError validation_errors = 2;
 }
 
-message DataPreparationSchema {
-  repeated DataPreparationSchemaField field = 1;
+message Schema {
+  repeated Field field = 1;
 }
 
-message DataPreparationSchemaField {
+message Field {
   string name = 1;
   optional string type = 2;
   optional string mode = 3;
-  repeated DataPreparationSchemaField fields = 4;
+  repeated Field fields = 4;
 }
 
-message DataPreparationValidationError {
-  DataPreparationValidationErrorLevel level = 1;
+message ValidationError {
+  ValidationErrorLevel level = 1;
   string description = 2;
 }
 
-enum DataPreparationValidationErrorLevel {
+enum ValidationErrorLevel {
   LEVEL_UNSPECIFIED = 0;
   LEVEL_WARN = 1;
   LEVEL_ERROR = 2;

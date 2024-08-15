@@ -4,7 +4,6 @@ import { Resolvable } from "df/core/common";
 import * as Path from "df/core/path";
 import { Session } from "df/core/session";
 import {
-  actionConfigToCompiledGraphTarget,
   addDependenciesToActionDependencyTargets,
   configTargetToCompiledGraphTarget,
   nativeRequire,
@@ -36,7 +35,7 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     config.filename = resolveActionsConfigFilename(config.filename, configPath);
     const dataPreparationAsJson = nativeRequire(config.filename).asJson;
     const dataPreparationDefinition = parseDataPreparationDefinitionJson(dataPreparationAsJson);
-    this.proto.dataPreparationContents = dataform.DataPreparationDefinition.encode(dataPreparationDefinition).finish();
+    this.proto.dataPreparationContents = dataform.dataprep.DataPreparation.encode(dataPreparationDefinition).finish();
 
     // Find targets
     const targets = getTargets(dataPreparationDefinition);
@@ -110,11 +109,11 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
 
 function parseDataPreparationDefinitionJson(dataPreparationAsJson: {
   [key: string]: unknown;
-}): dataform.DataPreparationDefinition {
+}): dataform.dataprep.DataPreparation {
   try {
-    return dataform.DataPreparationDefinition.create(
+    return dataform.dataprep.DataPreparation.create(
       verifyObjectMatchesProto(
-        dataform.DataPreparationDefinition,
+        dataform.dataprep.DataPreparation,
         dataPreparationAsJson as {
           [key: string]: any;
         },
@@ -129,7 +128,7 @@ function parseDataPreparationDefinitionJson(dataPreparationAsJson: {
   }
 }
 
-function getTargets(definition: dataform.DataPreparationDefinition): dataform.Target[] {
+function getTargets(definition: dataform.dataprep.DataPreparation): dataform.Target[] {
   const targets: dataform.Target[] = [];
 
   definition.nodes.forEach(node => {
