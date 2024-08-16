@@ -920,13 +920,13 @@ nodes:
       // Generate Base64 encoded representation of the YAML.
       const dataPreparationAsObject = loadYaml(dataPreparationYaml);
       const dataPreparationDefinition = verifyObjectMatchesProto(
-          dataform.DataPreparationDefinition,
+          dataform.dataprep.DataPreparation,
           dataPreparationAsObject as {
             [key: string]: any;
           }
       );
       const base64encodedContents = encode64(
-          dataform.DataPreparationDefinition,
+          dataform.dataprep.DataPreparation,
           dataPreparationDefinition
       );
 
