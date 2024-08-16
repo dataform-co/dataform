@@ -83,6 +83,15 @@ async function runTest(
       const normalizedColumn = normalizeColumnName(column);
       const expectedValue = expectedResultRow[normalizedColumn];
       const actualValue = actualResultRow[normalizedColumn];
+      // Check if exactly one of the expected or actual values is null (XOR condition)
+      if ((expectedValue === null) !== (actualValue === null)) {
+        const expectedText = expectedValue === null ? 'null' : `"${expectedValue}"`;
+        const actualText = actualValue === null ? 'null' : `"${actualValue}"`;
+        rowMessages.push(
+          `For row ${i} and column "${column}": expected ${expectedText}, but saw ${actualText}.`
+        );
+        break;
+      }
       if (typeof expectedValue !== typeof actualValue) {
         rowMessages.push(
           `For row ${i} and column "${column}": expected type "${typeof expectedValue}", but saw type "${typeof actualValue}".`
