@@ -37,15 +37,9 @@ protobuf_deps()
 
 ########
 
-# http_archive(
-#     name = "rules_proto_grpc",
-#     sha256 = "7954abbb6898830cd10ac9714fbcacf092299fda00ed2baf781172f545120419",
-#     strip_prefix = "rules_proto_grpc-3.1.1",
-#     urls = ["https://github.com/rules-proto-grpc/rules_proto_grpc/archive/3.1.1.tar.gz"],
-# )
-
-# TODO: We need `base_env` added (used in //tools/ts_proto_library), so have to pull from a recent commit sha.
-# When avaialble, update to rules_proto_grpc 4.4.0 when available, and undo custom version.
+# TODO(ekrekr): We need `base_env` added (used in //tools/ts_proto_library), so have to pull from a
+# recent commit sha. When avaialble, update to rules_proto_grpc 4.4.0 when available, and undo
+# custom version.
 git_repository(
     name = "rules_proto_grpc",
     commit = "e9b7119d712c8e1f4159a10893b2752b38d1b664",
