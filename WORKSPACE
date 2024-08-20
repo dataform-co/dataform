@@ -89,6 +89,7 @@ npm_translate_lock(
     name = "npm",
     pnpm_lock = "//:pnpm-lock.yaml",
     verify_node_modules_ignored = "//:.bazelignore",
+    npmrc = "//:.npmrc"
 )
 
 load("@npm//:repositories.bzl", "npm_repositories")
@@ -109,6 +110,19 @@ load("@aspect_rules_ts//ts:repositories.bzl", "rules_ts_dependencies")
 rules_ts_dependencies(
     ts_version_from = "//:package.json",
 )
+
+########### Jasmine
+
+http_archive(
+    name = "aspect_rules_jasmine",
+    sha256 = "4c16ef202d1e53fd880e8ecc9e0796802201ea9c89fa32f52d5d633fff858cac",
+    strip_prefix = "rules_jasmine-1.1.1",
+    url = "https://github.com/aspect-build/rules_jasmine/releases/download/v1.1.1/rules_jasmine-v1.1.1.tar.gz",
+)
+
+load("@aspect_rules_jasmine//jasmine:dependencies.bzl", "rules_jasmine_dependencies")
+
+rules_jasmine_dependencies()
 
 ########## gazelle
 

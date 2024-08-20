@@ -10,14 +10,14 @@
     "preserveConstEnums": true,
     "removeComments": true,
     "target": "es2017",
-    "sourceMap": true,
     "skipLibCheck": true,
     "declaration": true,
     "experimentalDecorators": true,
     "jsx": "react",
     "lib": ["es2019", "dom"],
     "allowSyntheticDefaultImports": true,
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "inlineSourceMap": true,
   },
-  "exclude": ["bazel-*", "node_modules"]
+  "exclude": ["bazel-*", "node_modules"],
 }

@@ -1,8 +1,9 @@
+load("//testing:index.bzl", "ts_test_suite")
+load("//tools:ts_library.bzl", "ts_library")
+
 package(default_visibility = ["//visibility:public"])
 
 exports_files(["build_test.sh"])
-
-load("//tools:ts_library.bzl", "ts_library")
 
 ts_library(
     name = "testing",
@@ -15,6 +16,7 @@ ts_library(
         "suite.ts",
         "test.ts",
     ],
+    validate = False,
     deps = [
         "//:node_modules/@types/diff",
         "//:node_modules/@types/json-stable-stringify",
@@ -26,8 +28,6 @@ ts_library(
         "//:node_modules/rimraf",
     ],
 )
-
-load("//testing:index.bzl", "ts_test_suite")
 
 ts_test_suite(
     name = "tests",

@@ -12,6 +12,7 @@ def ts_test(name, entry_point, args = [], templated_args = [], data = [], tags =
         name = name,
         data = data + [
             ":{name}_library".format(name = name),
+            ":package.json"
         ],
         entry_point = entry_point,
         args = args,
@@ -34,6 +35,7 @@ def ts_test_suite(name, srcs, args = [], templated_args = [], data = [], tags = 
                 name = basename,
                 data = data + [
                     ":{name}".format(name = name),
+                    ":package.json"
                 ],
                 entry_point = ":" + src,
                 args = args,
