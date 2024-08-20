@@ -11,3 +11,11 @@ build --incompatible_py3_is_default=false
 # build:remote-cache --remote_timeout=3600
 # build:remote-cache --auth_enabled=true
 # build:remote-cache --google_default_credentials=true
+
+# passes an argument `--skipLibCheck` to *every* spawn of tsc
+# Bazel 6.4 or greater: 'common' means 'any command that supports this flag'
+common --@aspect_rules_ts//ts:skipLibCheck=always
+
+# Between Bazel 6.0 and 6.3, you need all of this, to avoid discarding the analysis cache:
+build --@aspect_rules_ts//ts:skipLibCheck=always
+fetch --@aspect_rules_ts//ts:skipLibCheck=always

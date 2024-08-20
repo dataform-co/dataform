@@ -5,5 +5,6 @@ def ts_library(**kwargs):
         tsconfig = "//:tsconfig",
         declaration = True,
         source_map = True,
+        transpiler = "tsc",
         **kwargs
     )

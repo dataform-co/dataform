@@ -76,6 +76,7 @@ specifiers:
   get-port: ^5.1.1
   glob: ^7.1.3
   google-protobuf: ^3.6.1
+  google-sql-syntax-ts: ^1.0.3
   grpc: ^1.24.0
   grpc-web-client: ^0.5.0
   handy-redis: ^1.8.3
@@ -136,7 +137,8 @@ specifiers:
   tslint-react: ^3.6.0
   typed-css-modules: ^0.6.8
   typedoc: ^0.19.2
-  typescript: 4.8.4
+  typeid-js: ^0.3.0
+  typescript: 5.0.2
   uglify-es: ^3.3.9
   uglify-js: ^3.7.7
   untildify: ^4.0.0
@@ -229,6 +231,7 @@ dependencies:
   get-port: 5.1.1
   glob: 7.2.3
   google-protobuf: 3.21.2
+  google-sql-syntax-ts: 1.0.3
   grpc: 1.24.11
   grpc-web-client: 0.5.0_7ouq2zvsbdf2dwgb66cbbrd6aq
   handy-redis: 1.8.3
@@ -270,7 +273,7 @@ dependencies:
   request: 2.88.2
   rimraf: 2.7.1
   rollup: 2.79.1
-  rollup-plugin-dts: 1.4.14_gypgyaqhine6mwjfvh7icfhviq
+  rollup-plugin-dts: 1.4.14_g45eoamnsdoduaatvhvopjkfka
   semver: 7.3.8
   snowflake-sdk: 1.6.18
   source-map-loader: 0.2.4
@@ -280,16 +283,17 @@ dependencies:
   style-loader: 1.3.0_webpack@4.20.2
   tarjan-graph: 2.0.0
   tmp: 0.2.0
-  ts-loader: 5.4.5_typescript@4.8.4
+  ts-loader: 5.4.5_typescript@5.0.2
   ts-mockito: 2.6.1
   ts-proto: 1.139.0
-  tslint: 5.20.1_typescript@4.8.4
+  tslint: 5.20.1_typescript@5.0.2
   tslint-config-prettier: 1.18.0
-  tslint-config-security: 1.16.0_is64cncltak2c2767drphpzcku
-  tslint-react: 3.6.0_is64cncltak2c2767drphpzcku
+  tslint-config-security: 1.16.0_5puaun65swodvacrdru4haa5f4
+  tslint-react: 3.6.0_5puaun65swodvacrdru4haa5f4
   typed-css-modules: 0.6.8
-  typedoc: 0.19.2_typescript@4.8.4
-  typescript: 4.8.4
+  typedoc: 0.19.2_typescript@5.0.2
+  typeid-js: 0.3.0
+  typescript: 5.0.2
   uglify-es: 3.3.9
   uglify-js: 3.17.4
   untildify: 4.0.0
@@ -5215,7 +5219,7 @@ packages:
     resolution: {integrity: sha512-oWb1Z6mkHIskLzEJ/XWX0srkpkTQ7vaopMQkyaEIoq0fmtFVxOthb8cCxeT+p3ynTdkk/RZwbgG4brR5BeWECw==}
     engines: {node: '>= 4.0'}
     os: [darwin]
-    deprecated: fsevents 1 will break on node v14+ and could be using insecure binaries. Upgrade to fsevents 2.
+    deprecated: The v1 package contains DANGEROUS / INSECURE binaries. Upgrade to safe fsevents v2
     requiresBuild: true
     dependencies:
       bindings: 1.5.0
@@ -5521,6 +5525,13 @@ packages:
 
   /google-protobuf/3.21.2:
     resolution: {integrity: sha512-3MSOYFO5U9mPGikIYCzK0SaThypfGgS6bHqrUGXG3DPHCrb+txNqeEcns1W0lkGfk0rCyNXm7xB9rMxnCiZOoA==}
+    dev: false
+
+  /google-sql-syntax-ts/1.0.3:
+    resolution: {integrity: sha512-hkO4n1dNS/GIUpSDSBmc7DbEgzFBJWKMJTI0ArHb/qNjveOP1UfAb8wAeBt9WSWkUGlnV2S0/gh+MHx8GCBI2Q==}
+    engines: {node: '>= 6.0.0'}
+    dependencies:
+      monaco-editor: 0.44.0
     dev: false
 
   /gopd/1.0.1:
@@ -7433,6 +7444,10 @@ packages:
 
   /moment/2.29.4:
     resolution: {integrity: sha512-5LC9SOxjSc2HF6vO2CyuTDNivEdoz2IvyJJGj6X8DJ0eFyfszE0QiEd+iXmBvUP3WHxSjFH/vIsA0EN00cgr8w==}
+    dev: false
+
+  /monaco-editor/0.44.0:
+    resolution: {integrity: sha512-5SmjNStN6bSuSE5WPT2ZV+iYn1/yI9sd4Igtk23ChvqB7kDk9lZbB9F5frsuvpB+2njdIeGGFf2G4gbE6rCC9Q==}
     dev: false
 
   /moo/0.5.2:
@@ -9415,14 +9430,14 @@ packages:
       inherits: 2.0.4
     dev: false
 
-  /rollup-plugin-dts/1.4.14_gypgyaqhine6mwjfvh7icfhviq:
+  /rollup-plugin-dts/1.4.14_g45eoamnsdoduaatvhvopjkfka:
     resolution: {integrity: sha512-H33aGCUbp/Lm+tbkG5gZePnuWvvaafkwh7Uh4RYJs0/ChOfWlENCby1wOn+xBVsCzpV/g/+OVYqgzVjT80dNJg==}
     peerDependencies:
       rollup: ^2.33.1
       typescript: ^4.0.5
     dependencies:
       rollup: 2.79.1
-      typescript: 4.8.4
+      typescript: 5.0.2
     optionalDependencies:
       '@babel/code-frame': 7.18.6
     dev: false
@@ -10460,7 +10475,7 @@ packages:
     resolution: {integrity: sha512-rvuRbTarPXmMb79SmzEp8aqXNKcK+y0XaB298IXueQ8I2PsrATcPBCSPyK/dDNa2iWOhKlfNnOjdAOTBU/nkFA==}
     dev: false
 
-  /ts-loader/5.4.5_typescript@4.8.4:
+  /ts-loader/5.4.5_typescript@5.0.2:
     resolution: {integrity: sha512-XYsjfnRQCBum9AMRZpk2rTYSVpdZBpZK+kDh0TeT3kxmQNBDVIeUjdPjY5RZry4eIAb8XHc4gYSUiUWPYvzSRw==}
     engines: {node: '>=6.11.5'}
     peerDependencies:
@@ -10471,7 +10486,7 @@ packages:
       loader-utils: 1.4.2
       micromatch: 3.1.10
       semver: 5.6.0
-      typescript: 4.8.4
+      typescript: 5.0.2
     transitivePeerDependencies:
       - supports-color
     dev: false
@@ -10526,7 +10541,7 @@ packages:
     hasBin: true
     dev: false
 
-  /tslint-config-security/1.16.0_is64cncltak2c2767drphpzcku:
+  /tslint-config-security/1.16.0_5puaun65swodvacrdru4haa5f4:
     resolution: {integrity: sha512-wwM+COg4FX1Gl6VnvaTV9zqcUY6cs4XkiP6T3qhc6s20Xy4J9irui6+fkP07yVkrwfcNFneji3YcIwiMvKSQPQ==}
     peerDependencies:
       tslib: ^1.9.2
@@ -10534,22 +10549,22 @@ packages:
       typescript: ^2.9.1 || ^3.0.1
     dependencies:
       safe-regex: 1.1.0
-      tslint: 5.20.1_typescript@4.8.4
-      typescript: 4.8.4
+      tslint: 5.20.1_typescript@5.0.2
+      typescript: 5.0.2
     dev: false
 
-  /tslint-react/3.6.0_is64cncltak2c2767drphpzcku:
+  /tslint-react/3.6.0_5puaun65swodvacrdru4haa5f4:
     resolution: {integrity: sha512-AIv1QcsSnj7e9pFir6cJ6vIncTqxfqeFF3Lzh8SuuBljueYzEAtByuB6zMaD27BL0xhMEqsZ9s5eHuCONydjBw==}
     peerDependencies:
       tslint: ^5.1.0
       typescript: '>=2.1.0 || >=2.7.0-dev || >=2.8.0-dev || >=2.9.0-dev'
     dependencies:
-      tslint: 5.20.1_typescript@4.8.4
-      tsutils: 2.29.0_typescript@4.8.4
-      typescript: 4.8.4
+      tslint: 5.20.1_typescript@5.0.2
+      tsutils: 2.29.0_typescript@5.0.2
+      typescript: 5.0.2
     dev: false
 
-  /tslint/5.20.1_typescript@4.8.4:
+  /tslint/5.20.1_typescript@5.0.2:
     resolution: {integrity: sha512-EcMxhzCFt8k+/UP5r8waCf/lzmeSyVlqxqMEDQE7rWYiQky8KpIBz1JAoYXfROHrPZ1XXd43q8yQnULOLiBRQg==}
     engines: {node: '>=4.8.0'}
     hasBin: true
@@ -10568,17 +10583,17 @@ packages:
       resolve: 1.22.1
       semver: 5.6.0
       tslib: 1.14.1
-      tsutils: 2.29.0_typescript@4.8.4
-      typescript: 4.8.4
+      tsutils: 2.29.0_typescript@5.0.2
+      typescript: 5.0.2
     dev: false
 
-  /tsutils/2.29.0_typescript@4.8.4:
+  /tsutils/2.29.0_typescript@5.0.2:
     resolution: {integrity: sha512-g5JVHCIJwzfISaXpXE1qvNalca5Jwob6FjI4AoPlqMusJ6ftFE7IkkFoMhVLRgK+4Kx3gkzb8UZK5t5yTTvEmA==}
     peerDependencies:
       typescript: '>=2.1.0 || >=2.1.0-dev || >=2.2.0-dev || >=2.3.0-dev || >=2.4.0-dev || >=2.5.0-dev || >=2.6.0-dev || >=2.7.0-dev || >=2.8.0-dev || >=2.9.0-dev || >= 3.0.0-dev || >= 3.1.0-dev'
     dependencies:
       tslib: 1.14.1
-      typescript: 4.8.4
+      typescript: 5.0.2
     dev: false
 
   /tty-browserify/0.0.0:
@@ -10671,7 +10686,7 @@ packages:
     engines: {node: '>= 8'}
     dev: false
 
-  /typedoc/0.19.2_typescript@4.8.4:
+  /typedoc/0.19.2_typescript@5.0.2:
     resolution: {integrity: sha512-oDEg1BLEzi1qvgdQXc658EYgJ5qJLVSeZ0hQ57Eq4JXy6Vj2VX4RVo18qYxRWz75ifAaYuYNBUCnbhjd37TfOg==}
     engines: {node: '>= 10.0.0'}
     hasBin: true
@@ -10689,12 +10704,18 @@ packages:
       semver: 7.3.8
       shelljs: 0.8.5
       typedoc-default-themes: 0.11.4
-      typescript: 4.8.4
+      typescript: 5.0.2
     dev: false
 
-  /typescript/4.8.4:
-    resolution: {integrity: sha512-QCh+85mCy+h0IGff8r5XWzOVSbBO+KfeYrMQh7NJ58QujwcE22u+NUSmUxqF+un70P9GXKxa2HCNiTTMJknyjQ==}
-    engines: {node: '>=4.2.0'}
+  /typeid-js/0.3.0:
+    resolution: {integrity: sha512-A1EmvIWG6xwYRfHuYUjPltHqteZ1EiDG+HOmbIYXeHUVztmnGrPIfU9KIK1QC30x59ko0r4JsMlwzsALCyiB3Q==}
+    dependencies:
+      uuidv7: 0.4.4
+    dev: false
+
+  /typescript/5.0.2:
+    resolution: {integrity: sha512-wVORMBGO/FAs/++blGNeAVdbNKtIh1rbBL2EyQ1+J9lClJ93KiiKe8PmFIVdXhHcyv44SL9oglmfeSsndo0jRw==}
+    engines: {node: '>=12.20'}
     hasBin: true
     dev: false
 
@@ -11042,6 +11063,11 @@ packages:
 
   /uuid/8.3.2:
     resolution: {integrity: sha512-+NYs2QeMWy+GWFOEm9xnn6HCDp0l7QBD7ml8zLUmJ+93Q5NF0NocErnwkTkXVFNiX3/fpC6afS8Dhb/gz7R7eg==}
+    hasBin: true
+    dev: false
+
+  /uuidv7/0.4.4:
+    resolution: {integrity: sha512-jjRGChg03uGp9f6wQYSO8qXkweJwRbA5WRuEQE8xLIiehIzIIi23qZSzsyvZPCPoFqkeLtZuz7Plt1LGukAInA==}
     hasBin: true
     dev: false
 

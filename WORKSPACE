@@ -58,35 +58,18 @@ rules_proto_dependencies()
 
 rules_proto_toolchains()
 
-http_archive(
-    name = "build_bazel_rules_nodejs",
-    sha256 = "dcc55f810142b6cf46a44d0180a5a7fb923c04a5061e2e8d8eb05ccccc60864b",
-    urls = ["https://github.com/bazelbuild/rules_nodejs/releases/download/5.8.0/rules_nodejs-5.8.0.tar.gz"],
-)
+############ rules-js
 
 http_archive(
     name = "aspect_rules_js",
-    sha256 = "ad666b12324bab8bc151772bb2eff9aadace7bfd4d624157c2ac3931860d1c95",
-    strip_prefix = "rules_js-1.11.1",
-    url = "https://github.com/aspect-build/rules_js/archive/refs/tags/v1.11.1.tar.gz",
+    sha256 = "d7500d59712accca9622bce723b8ea596b92fb9b4ff4a4dbd77ed353b9d29f34",
+    strip_prefix = "rules_js-1.40.1",
+    url = "https://github.com/aspect-build/rules_js/releases/download/v1.40.1/rules_js-v1.40.1.tar.gz",
 )
 
 load("@aspect_rules_js//js:repositories.bzl", "rules_js_dependencies")
 
 rules_js_dependencies()
-
-http_archive(
-    name = "aspect_rules_ts",
-    sha256 = "e81f37c4fe014fc83229e619360d51bfd6cb8ac405a7e8018b4a362efa79d000",
-    strip_prefix = "rules_ts-1.0.4",
-    url = "https://github.com/aspect-build/rules_ts/archive/refs/tags/v1.0.4.tar.gz",
-)
-
-load("@aspect_rules_ts//ts:repositories.bzl", "rules_ts_dependencies")
-
-rules_ts_dependencies(
-    ts_version_from = "//:package.json",
-)
 
 load("@rules_nodejs//nodejs:repositories.bzl", "DEFAULT_NODE_VERSION", "nodejs_register_toolchains")
 
@@ -95,21 +78,39 @@ nodejs_register_toolchains(
     node_version = DEFAULT_NODE_VERSION,
 )
 
-load("@aspect_rules_js//npm:npm_import.bzl", "npm_translate_lock")
+# For convenience, npm_translate_lock does this call automatically.
+# Uncomment if you don't call npm_translate_lock at all.
+#load("@bazel_features//:deps.bzl", "bazel_features_deps")
+#bazel_features_deps()
+
+load("@aspect_rules_js//npm:repositories.bzl", "npm_translate_lock")
 
 npm_translate_lock(
     name = "npm",
-    data = [
-        "//:package.json",
-    ],
     pnpm_lock = "//:pnpm-lock.yaml",
-    update_pnpm_lock = True,
     verify_node_modules_ignored = "//:.bazelignore",
 )
 
 load("@npm//:repositories.bzl", "npm_repositories")
 
 npm_repositories()
+
+######### rules-ts
+
+http_archive(
+    name = "aspect_rules_ts",
+    sha256 = "f69a6452b129d39d9b05f3dff8b1057185bb195b4daf0cff419988de757c6c31",
+    strip_prefix = "rules_ts-2.4.2",
+    url = "https://github.com/aspect-build/rules_ts/releases/download/v2.4.2/rules_ts-v2.4.2.tar.gz",
+)
+
+load("@aspect_rules_ts//ts:repositories.bzl", "rules_ts_dependencies")
+
+rules_ts_dependencies(
+    ts_version_from = "//:package.json",
+)
+
+########## gazelle
 
 # Go/Gazelle requirements/dependencies.
 http_archive(
@@ -139,6 +140,8 @@ go_register_toolchains(version = "1.19.3")
 load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies", "go_repository")
 
 gazelle_dependencies()
+
+#################
 
 # Gcloud SDK binaries.
 load("//tools/gcloud:repository_rules.bzl", "gcloud_sdk")
