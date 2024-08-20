@@ -47,13 +47,13 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // wait for client to be ready before setting up notification handlers
   await client.onReady();
-  client.onNotification("error", errorMessage => {
+  client.onNotification("error", (errorMessage: string) => {
     vscode.window.showErrorMessage(errorMessage);
   });
-  client.onNotification("info", message => {
+  client.onNotification("info", (message: string) => {
     vscode.window.showInformationMessage(message);
   });
-  client.onNotification("success", message => {
+  client.onNotification("success", (message: string) => {
     vscode.window.showInformationMessage(message);
   });
 
