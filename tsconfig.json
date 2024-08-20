@@ -2,11 +2,7 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "df/*": [
-        "*",
-        "bazel-bin/*",
-        "bazel-genfiles/*"
-      ]
+      "df/*": ["*", "bazel-bin/*", "bazel-genfiles/*"]
     },
     "module": "commonjs",
     "noImplicitAny": true,
@@ -16,24 +12,12 @@
     "target": "es2017",
     "sourceMap": true,
     "skipLibCheck": true,
+    "declaration": true,
     "experimentalDecorators": true,
-    "lib": [
-      "es2019",
-      "dom"
-    ],
+    "jsx": "react",
+    "lib": ["es2019", "dom"],
     "allowSyntheticDefaultImports": true,
-    "esModuleInterop": true,
-    "plugins": [
-      {
-        "name": "@bazel/tsetse",
-        "disabledRules": [
-          "must-type-assert-json-parse"
-        ]
-      }
-    ]
+    "esModuleInterop": true
   },
-  "exclude": [
-    "bazel-*",
-    "node_modules"
-  ]
+  "exclude": ["bazel-*", "node_modules"]
 }
