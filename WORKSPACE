@@ -34,29 +34,14 @@ load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
 
 protobuf_deps()
 
+################ Legacy - Used for protos.
+# http_archive(
+#     name = "build_bazel_rules_nodejs",
+#     sha256 = "dcc55f810142b6cf46a44d0180a5a7fb923c04a5061e2e8d8eb05ccccc60864b",
+#     urls = ["https://github.com/bazelbuild/rules_nodejs/releases/download/5.8.0/rules_nodejs-5.8.0.tar.gz"],
+# )
 
-########
-
-# TODO(ekrekr): We need `base_env` added (used in //tools/ts_proto_library), so have to pull from a
-# recent commit sha. When avaialble, update to rules_proto_grpc 4.4.0 when available, and undo
-# custom version.
-git_repository(
-    name = "rules_proto_grpc",
-    commit = "e9b7119d712c8e1f4159a10893b2752b38d1b664",
-    remote = "https://github.com/rules-proto-grpc/rules_proto_grpc.git",
-)
-
-load("@rules_proto_grpc//:repositories.bzl", "rules_proto_grpc_repos", "rules_proto_grpc_toolchains")
-
-rules_proto_grpc_toolchains()
-
-rules_proto_grpc_repos()
-
-load("@rules_proto//proto:repositories.bzl", "rules_proto_dependencies", "rules_proto_toolchains")
-
-rules_proto_dependencies()
-
-rules_proto_toolchains()
+# load("@build_bazel_rules_nodejs//:index.bzl", "node_repositories")
 
 ############ rules-js
 
@@ -111,18 +96,19 @@ rules_ts_dependencies(
     ts_version_from = "//:package.json",
 )
 
-########### Jasmine
-
+# From https://docs.aspect.build/rulesets/aspect_rules_ts/docs/proto/
 http_archive(
-    name = "aspect_rules_jasmine",
-    sha256 = "4c16ef202d1e53fd880e8ecc9e0796802201ea9c89fa32f52d5d633fff858cac",
-    strip_prefix = "rules_jasmine-1.1.1",
-    url = "https://github.com/aspect-build/rules_jasmine/releases/download/v1.1.1/rules_jasmine-v1.1.1.tar.gz",
+    name = "rules_proto",
+    sha256 = "6fb6767d1bef535310547e03247f7518b03487740c11b6c6adb7952033fe1295",
+    strip_prefix = "rules_proto-6.0.2",
+    url = "https://github.com/bazelbuild/rules_proto/releases/download/6.0.2/rules_proto-6.0.2.tar.gz",
 )
 
-load("@aspect_rules_jasmine//jasmine:dependencies.bzl", "rules_jasmine_dependencies")
+load("@rules_proto//proto:repositories.bzl", "rules_proto_dependencies", "rules_proto_toolchains")
 
-rules_jasmine_dependencies()
+rules_proto_dependencies()
+
+rules_proto_toolchains()
 
 ########## gazelle
 

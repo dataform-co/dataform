@@ -1,6 +1,5 @@
 load("@rules_proto//proto:defs.bzl", "proto_library")
-load("//testing:build_test.bzl", "build_test")
-load("//tools:ts_proto_library.bzl", "ts_proto_library")
+load("@aspect_rules_ts//ts:proto.bzl", "ts_proto_library")
 
 package(default_visibility = ["//visibility:public"])
 
