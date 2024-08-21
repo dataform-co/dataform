@@ -9,12 +9,12 @@ ts_library(
         "//common/protos",
         "//core",
         "//protos:ts",
-        "@npm//@types/glob",
-        "@npm//@types/node",
-        "@npm//@types/semver",
-        "@npm//glob",
-        "@npm//semver",
-        "@npm//vm2",
+        "//:node_modules/@types/glob",
+        "//:node_modules/@types/node",
+        "//:node_modules/@types/semver",
+        "//:node_modules/glob",
+        "//:node_modules/semver",
+        "//:node_modules/vm2",
     ],
 )
 
@@ -26,7 +26,7 @@ ts_library(
     ],
     deps = [
         ":vm",
-        "@npm//source-map-support",
+        "//:node_modules/source-map-support",
     ],
 )
 
@@ -42,7 +42,7 @@ nodejs_binary(
     name = "compile",
     data = [
         ":vm",
-        "@npm//source-map-support",
+        "//:node_modules/source-map-support",
     ],
     entry_point = ":compile.ts",
     templated_args = [

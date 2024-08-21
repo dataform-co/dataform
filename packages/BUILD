@@ -12,9 +12,9 @@ ts_library(
     name = "gen-package-json",
     srcs = ["gen_package_json.ts"],
     deps = [
-        "@npm//@types/node",
-        "@npm//@types/yargs",
-        "@npm//yargs",
+        "//:node_modules/@types/node",
+        "//:node_modules/@types/yargs",
+        "//:node_modules/yargs",
     ],
 )
 
@@ -26,7 +26,7 @@ nodejs_binary(
     ],
     data = [
         ":gen-package-json",
-        "@npm//source-map-support",
+        "//:node_modules/source-map-support",
     ],
     entry_point = ":gen_package_json.ts",
 )

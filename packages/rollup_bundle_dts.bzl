@@ -150,14 +150,14 @@ Otherwise, the outputs are assumed to be a single file.
         doc = "Target that executes the rollup binary",
         executable = True,
         cfg = "host",
-        default = "@npm//rollup/bin:rollup",
+        default = "//:node_modules/rollup/bin:rollup",
     ),
     "rollup_worker_bin": attr.label(
         doc = "Internal use only",
         executable = True,
         cfg = "host",
-        # NB: will be substituted with "@npm//@bazel/rollup/bin:rollup-worker" when the pkg_npm target is built
-        default = "@npm//@bazel/rollup/bin:rollup-worker",
+        # NB: will be substituted with "//:node_modules/@bazel/rollup/bin:rollup-worker" when the pkg_npm target is built
+        default = "//:node_modules/@bazel/rollup/bin:rollup-worker",
     ),
     "silent": attr.bool(
         doc = """Whether to execute the rollup binary with the --silent flag, defaults to False.

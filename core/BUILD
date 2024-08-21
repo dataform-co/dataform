@@ -1,8 +1,7 @@
 load("//:version.bzl", "DF_VERSION")
-load("//testing:index.bzl", "ts_test_suite")
 load("//tools:expand_template.bzl", "expand_template")
 load("//tools:node_modules.bzl", "node_modules")
-load("//tools:ts_library.bzl", "ts_library")
+load("//tools:ts_library.bzl", "ts_library", "ts_test_suite")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -47,20 +46,19 @@ ts_library(
         "//core/compilation_sql",
         "//protos:ts",
         "//sqlx:lexer",
-        "@npm//@types/fs-extra",
-        "@npm//@types/js-yaml",
-        "@npm//@types/node",
-        "@npm//@types/semver",
-        "@npm//fs-extra",
-        "@npm//js-yaml",
-        "@npm//protobufjs",
-        "@npm//semver",
-        "@npm//tarjan-graph",
+        "//:node_modules/@types/fs-extra",
+        "//:node_modules/@types/js-yaml",
+        "//:node_modules/@types/node",
+        "//:node_modules/@types/semver",
+        "//:node_modules/fs-extra",
+        "//:node_modules/js-yaml",
+        "//:node_modules/protobufjs",
+        "//:node_modules/semver",
+        "//:node_modules/tarjan-graph",
     ],
 )
 
 ts_test_suite(
-    name = "tests",
     srcs = [
         "main_test.ts",
     ],
@@ -72,14 +70,14 @@ ts_test_suite(
         "//common/protos",
         "//protos:ts",
         "//testing",
-        "@npm//@types/chai",
-        "@npm//@types/fs-extra",
-        "@npm//@types/js-yaml",
-        "@npm//@types/node",
-        "@npm//chai",
-        "@npm//fs-extra",
-        "@npm//js-yaml",
-        "@npm//vm2",
+        "//:node_modules/@types/chai",
+        "//:node_modules/@types/fs-extra",
+        "//:node_modules/@types/js-yaml",
+        "//:node_modules/@types/node",
+        "//:node_modules/chai",
+        "//:node_modules/fs-extra",
+        "//:node_modules/js-yaml",
+        "//:node_modules/vm2",
     ],
 )
 

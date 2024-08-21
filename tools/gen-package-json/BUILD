@@ -6,9 +6,9 @@ ts_library(
     name = "json-merge",
     srcs = glob(["**/*.ts"]),
     deps = [
-        "@npm//@types/node",
-        "@npm//@types/yargs",
-        "@npm//yargs",
+        "//:node_modules/@types/node",
+        "//:node_modules/@types/yargs",
+        "//:node_modules/yargs",
     ],
 )
 
@@ -22,7 +22,7 @@ nodejs_binary(
     ],
     data = [
         ":json-merge",
-        "@npm//source-map-support",
+        "//:node_modules/source-map-support",
     ],
     entry_point = ":index.ts",
 )
