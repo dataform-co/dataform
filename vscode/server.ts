@@ -1,6 +1,6 @@
 import { ChildProcess, spawn } from "child_process";
-import { ITarget } from "df/core/common";
-import { dataform } from "df/protos/ts";
+import { ITarget } from "#df/core/common";
+import { dataform } from "#df/protos/ts";
 import {
   createConnection,
   DidChangeConfigurationNotification,

@@ -1,5 +1,5 @@
-import { Flags } from "df/common/flags";
-import { IHookHandler } from "df/testing";
+import { Flags } from "#df/common/flags";
+import { IHookHandler } from "#df/testing";
 
 // FlagOverridesFixture can be used to temporarily override flag values for testing purposes.
 // At the end of the test run, any previous flag values will be restored.

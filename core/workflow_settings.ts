@@ -1,9 +1,9 @@
 import { YAMLException } from "js-yaml";
 
-import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
-import { INVALID_YAML_ERROR_STRING } from "df/core/compilers";
-import { version } from "df/core/version";
-import { dataform } from "df/protos/ts";
+import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "#df/common/protos";
+import { INVALID_YAML_ERROR_STRING } from "#df/core/compilers";
+import { version } from "#df/core/version";
+import { dataform } from "#df/protos/ts";
 
 declare var __webpack_require__: any;
 declare var __non_webpack_require__: any;

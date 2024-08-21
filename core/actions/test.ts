@@ -1,11 +1,11 @@
-import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
-import { StringifiedMap } from "df/common/strings/stringifier";
-import { ActionBuilder } from "df/core/actions";
-import * as table from "df/core/actions/table";
-import { ITableContext } from "df/core/actions/table";
-import { Contextable, ICommonContext, INamedConfig, Resolvable } from "df/core/common";
-import { Session } from "df/core/session";
-import { targetStringifier } from "df/core/targets";
+import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "#df/common/protos";
+import { StringifiedMap } from "#df/common/strings/stringifier";
+import { ActionBuilder } from "#df/core/actions";
+import * as table from "#df/core/actions/table";
+import { ITableContext } from "#df/core/actions/table";
+import { Contextable, ICommonContext, INamedConfig, Resolvable } from "#df/core/common";
+import { Session } from "#df/core/session";
+import { targetStringifier } from "#df/core/targets";
 import {
   ambiguousActionNameMsg,
   checkExcessProperties,
@@ -13,8 +13,8 @@ import {
   strictKeysOf,
   stringifyResolvable,
   toResolvable
-} from "df/core/utils";
-import { dataform } from "df/protos/ts";
+} from "#df/core/utils";
+import { dataform } from "#df/protos/ts";
 
 /**
  * Configuration options for unit tests.

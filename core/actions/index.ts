@@ -1,13 +1,13 @@
-import { Assertion } from "df/core/actions/assertion";
-import { DataPreparation } from "df/core/actions/data_preparation";
-import { Declaration } from "df/core/actions/declaration";
-import { IncrementalTable } from "df/core/actions/incremental_table";
-import { Notebook } from "df/core/actions/notebook";
-import { Operation } from "df/core/actions/operation";
-import { Table } from "df/core/actions/table";
-import { View } from "df/core/actions/view";
-import { Session } from "df/core/session";
-import { dataform } from "df/protos/ts";
+import { Assertion } from "#df/core/actions/assertion";
+import { DataPreparation } from "#df/core/actions/data_preparation";
+import { Declaration } from "#df/core/actions/declaration";
+import { IncrementalTable } from "#df/core/actions/incremental_table";
+import { Notebook } from "#df/core/actions/notebook";
+import { Operation } from "#df/core/actions/operation";
+import { Table } from "#df/core/actions/table";
+import { View } from "#df/core/actions/view";
+import { Session } from "#df/core/session";
+import { dataform } from "#df/protos/ts";
 
 export type Action =
   | Table

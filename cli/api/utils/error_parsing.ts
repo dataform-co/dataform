@@ -1,4 +1,4 @@
-import { dataform } from "df/protos/ts";
+import { dataform } from "#df/protos/ts";
 
 interface IBigqueryEvaluationError {
   message?: string;

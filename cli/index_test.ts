@@ -5,10 +5,10 @@ import { dump as dumpYaml, load as loadYaml } from "js-yaml";
 import * as path from "path";
 
 import { execFile } from "child_process";
-import { version } from "df/core/version";
-import { dataform } from "df/protos/ts";
-import { corePackageTarPath, getProcessResult, nodePath, npmPath, suite, test } from "df/testing";
-import { TmpDirFixture } from "df/testing/fixtures";
+import { version } from "#df/core/version";
+import { dataform } from "#df/protos/ts";
+import { corePackageTarPath, getProcessResult, nodePath, npmPath, suite, test } from "#df/testing";
+import { TmpDirFixture } from "#df/testing/fixtures";
 
 suite("@dataform/cli", ({ afterEach }) => {
   const tmpDirFixture = new TmpDirFixture(afterEach);
@@ -253,7 +253,7 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
         "run",
         projectDir,
         "--credentials",
-        path.resolve(process.env.RUNFILES, "df/test_credentials/bigquery.json"),
+        path.resolve(process.env.RUNFILES, "#df/test_credentials/bigquery.json"),
         "--dry-run",
         "--json",
         "--vars=testVar1=testValue1,testVar2=testValue2",

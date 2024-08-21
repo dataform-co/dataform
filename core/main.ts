@@ -3,20 +3,20 @@ import {
   encode64,
   verifyObjectMatchesProto,
   VerifyProtoErrorBehaviour
-} from "df/common/protos";
-import { Assertion } from "df/core/actions/assertion";
-import { DataPreparation } from "df/core/actions/data_preparation";
-import { Declaration } from "df/core/actions/declaration";
-import { IncrementalTable } from "df/core/actions/incremental_table";
-import { Notebook } from "df/core/actions/notebook";
-import { Operation } from "df/core/actions/operation";
-import { Table } from "df/core/actions/table";
-import { View } from "df/core/actions/view";
-import * as Path from "df/core/path";
-import { Session } from "df/core/session";
-import { nativeRequire } from "df/core/utils";
-import { readWorkflowSettings } from "df/core/workflow_settings";
-import { dataform } from "df/protos/ts";
+} from "#df/common/protos";
+import { Assertion } from "#df/core/actions/assertion";
+import { DataPreparation } from "#df/core/actions/data_preparation";
+import { Declaration } from "#df/core/actions/declaration";
+import { IncrementalTable } from "#df/core/actions/incremental_table";
+import { Notebook } from "#df/core/actions/notebook";
+import { Operation } from "#df/core/actions/operation";
+import { Table } from "#df/core/actions/table";
+import { View } from "#df/core/actions/view";
+import * as Path from "#df/core/path";
+import { Session } from "#df/core/session";
+import { nativeRequire } from "#df/core/utils";
+import { readWorkflowSettings } from "#df/core/workflow_settings";
+import { dataform } from "#df/protos/ts";
 
 /**
  * This is the main entry point into the user space code that should be invoked by the compilation wrapper sandbox.
@@ -182,11 +182,11 @@ function loadActionConfigs(session: Session, filePaths: string[]) {
           );
         } else if (actionConfig.dataPreparation) {
           session.actions.push(
-              new DataPreparation(
-                  session,
-                  dataform.ActionConfig.DataPreparationConfig.create(actionConfig.dataPreparation),
-                  actionConfigsPath
-              )
+            new DataPreparation(
+              session,
+              dataform.ActionConfig.DataPreparationConfig.create(actionConfig.dataPreparation),
+              actionConfigsPath
+            )
           );
         } else {
           throw Error("Empty action configs are not permitted.");

@@ -1,15 +1,15 @@
-import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
-import { ActionBuilder } from "df/core/actions";
-import { Resolvable } from "df/core/common";
-import * as Path from "df/core/path";
-import { Session } from "df/core/session";
+import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "#df/common/protos";
+import { ActionBuilder } from "#df/core/actions";
+import { Resolvable } from "#df/core/common";
+import * as Path from "#df/core/path";
+import { Session } from "#df/core/session";
 import {
   addDependenciesToActionDependencyTargets,
   configTargetToCompiledGraphTarget,
   nativeRequire,
   resolveActionsConfigFilename
-} from "df/core/utils";
-import { dataform } from "df/protos/ts";
+} from "#df/core/utils";
+import { dataform } from "#df/protos/ts";
 
 /**
  * @hidden
@@ -35,7 +35,9 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     config.filename = resolveActionsConfigFilename(config.filename, configPath);
     const dataPreparationAsJson = nativeRequire(config.filename).asJson;
     const dataPreparationDefinition = parseDataPreparationDefinitionJson(dataPreparationAsJson);
-    this.proto.dataPreparationContents = dataform.dataprep.DataPreparation.encode(dataPreparationDefinition).finish();
+    this.proto.dataPreparationContents = dataform.dataprep.DataPreparation.encode(
+      dataPreparationDefinition
+    ).finish();
 
     // Find targets
     const targets = getTargets(dataPreparationDefinition);

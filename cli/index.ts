@@ -4,10 +4,10 @@ import * as path from "path";
 import yargs from "yargs";
 
 import * as chokidar from "chokidar";
-import { build, compile, credentials, init, install, run, test } from "df/cli/api";
-import { CREDENTIALS_FILENAME } from "df/cli/api/commands/credentials";
-import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
-import { prettyJsonStringify } from "df/cli/api/utils";
+import { build, compile, credentials, init, install, run, test } from "#df/cli/api";
+import { CREDENTIALS_FILENAME } from "#df/cli/api/commands/credentials";
+import { BigQueryDbAdapter } from "#df/cli/api/dbadapters/bigquery";
+import { prettyJsonStringify } from "#df/cli/api/utils";
 import {
   print,
   printCompiledGraph,
@@ -20,13 +20,13 @@ import {
   printInitResult,
   printSuccess,
   printTestResult
-} from "df/cli/console";
-import { getBigQueryCredentials } from "df/cli/credentials";
-import { actuallyResolve, assertPathExists, compiledGraphHasErrors } from "df/cli/util";
-import { createYargsCli, INamedOption } from "df/cli/yargswrapper";
-import { targetAsReadableString } from "df/core/targets";
-import { dataform } from "df/protos/ts";
-import { formatFile } from "df/sqlx/format";
+} from "#df/cli/console";
+import { getBigQueryCredentials } from "#df/cli/credentials";
+import { actuallyResolve, assertPathExists, compiledGraphHasErrors } from "#df/cli/util";
+import { createYargsCli, INamedOption } from "#df/cli/yargswrapper";
+import { targetAsReadableString } from "#df/core/targets";
+import { dataform } from "#df/protos/ts";
+import { formatFile } from "#df/sqlx/format";
 import parseDuration from "parse-duration";
 
 const RECOMPILE_DELAY = 500;
@@ -586,18 +586,18 @@ export function runCli() {
         format: `format [${projectDirMustExistOption.name}]`,
         description: "Format the dataform project's files.",
         positionalOptions: [projectDirMustExistOption],
-        options: [
-            actionsOption
-        ],
+        options: [actionsOption],
         processFn: async argv => {
-          let actions = ["{definitions,includes}/**/*.{js,sqlx}"]
+          let actions = ["{definitions,includes}/**/*.{js,sqlx}"];
           if (actionsOption.name in argv && argv[actionsOption.name].length > 0) {
-            actions = argv[actionsOption.name]
+            actions = argv[actionsOption.name];
           }
-          const filenames = actions.map((action: string) =>
-            glob.sync(action, {cwd: argv[projectDirMustExistOption.name]})
-          ).flat();
-          const results: Array<{ filename: string; err?: Error; }> = await Promise.all(
+          const filenames = actions
+            .map((action: string) =>
+              glob.sync(action, { cwd: argv[projectDirMustExistOption.name] })
+            )
+            .flat();
+          const results: Array<{ filename: string; err?: Error }> = await Promise.all(
             filenames.map(async (filename: string) => {
               try {
                 await formatFile(path.resolve(argv[projectDirMustExistOption.name], filename), {

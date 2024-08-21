@@ -1,7 +1,7 @@
 import { expect } from "chai";
 
-import { parseBigqueryEvalError } from "df/cli/api/utils/error_parsing";
-import { suite, test } from "df/testing";
+import { parseBigqueryEvalError } from "#df/cli/api/utils/error_parsing";
+import { suite, test } from "#df/testing";
 
 suite("error_parsing", () => {
   suite("bigquery", () => {

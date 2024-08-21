@@ -3,8 +3,8 @@ import { GoogleSqlDefinition, QueryFormatter } from "google-sql-syntax-ts";
 import * as jsBeautify from "js-beautify";
 import { promisify } from "util";
 
-import { ErrorWithCause } from "df/common/errors/errors";
-import { SyntaxTreeNode, SyntaxTreeNodeType } from "df/sqlx/lexer";
+import { ErrorWithCause } from "#df/common/errors/errors";
+import { SyntaxTreeNode, SyntaxTreeNodeType } from "#df/sqlx/lexer";
 import { typeid } from "typeid-js";
 
 const JS_BEAUTIFY_OPTIONS = {

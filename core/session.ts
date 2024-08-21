@@ -1,24 +1,30 @@
 import { default as TarjanGraphConstructor, Graph as TarjanGraph } from "tarjan-graph";
 
-import { encode64, verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
-import { StringifiedMap, StringifiedSet } from "df/common/strings/stringifier";
-import { Action } from "df/core/actions";
-import { AContextable, Assertion, AssertionContext } from "df/core/actions/assertion";
-import { DataPreparation } from "df/core/actions/data_preparation";
-import { Declaration } from "df/core/actions/declaration";
-import { IncrementalTable } from "df/core/actions/incremental_table";
-import { Notebook } from "df/core/actions/notebook";
-import { Operation, OperationContext } from "df/core/actions/operation";
-import { ITableConfig, ITableContext, Table, TableContext, TableType } from "df/core/actions/table";
-import { Test } from "df/core/actions/test";
-import { View } from "df/core/actions/view";
-import { Contextable, ICommonContext, ITarget, Resolvable } from "df/core/common";
-import { CompilationSql } from "df/core/compilation_sql";
-import { targetAsReadableString, targetStringifier } from "df/core/targets";
-import * as utils from "df/core/utils";
-import { toResolvable } from "df/core/utils";
-import { version as dataformCoreVersion } from "df/core/version";
-import { dataform } from "df/protos/ts";
+import { encode64, verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "#df/common/protos";
+import { StringifiedMap, StringifiedSet } from "#df/common/strings/stringifier";
+import { Action } from "#df/core/actions";
+import { AContextable, Assertion, AssertionContext } from "#df/core/actions/assertion";
+import { DataPreparation } from "#df/core/actions/data_preparation";
+import { Declaration } from "#df/core/actions/declaration";
+import { IncrementalTable } from "#df/core/actions/incremental_table";
+import { Notebook } from "#df/core/actions/notebook";
+import { Operation, OperationContext } from "#df/core/actions/operation";
+import {
+  ITableConfig,
+  ITableContext,
+  Table,
+  TableContext,
+  TableType
+} from "#df/core/actions/table";
+import { Test } from "#df/core/actions/test";
+import { View } from "#df/core/actions/view";
+import { Contextable, ICommonContext, ITarget, Resolvable } from "#df/core/common";
+import { CompilationSql } from "#df/core/compilation_sql";
+import { targetAsReadableString, targetStringifier } from "#df/core/targets";
+import * as utils from "#df/core/utils";
+import { toResolvable } from "#df/core/utils";
+import { version as dataformCoreVersion } from "#df/core/version";
+import { dataform } from "#df/protos/ts";
 
 const DEFAULT_CONFIG = {
   defaultSchema: "dataform",

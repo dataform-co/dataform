@@ -1,10 +1,10 @@
 import * as semver from "semver";
 
-import { concatenateQueries, Task, Tasks } from "df/cli/api/dbadapters/tasks";
-import { ErrorWithCause } from "df/common/errors/errors";
-import { CompilationSql } from "df/core/compilation_sql";
-import { tableTypeEnumToString } from "df/core/utils";
-import { dataform } from "df/protos/ts";
+import { concatenateQueries, Task, Tasks } from "#df/cli/api/dbadapters/tasks";
+import { ErrorWithCause } from "#df/common/errors/errors";
+import { CompilationSql } from "#df/core/compilation_sql";
+import { tableTypeEnumToString } from "#df/core/utils";
+import { dataform } from "#df/protos/ts";
 
 export type QueryOrAction = string | dataform.Table | dataform.Operation | dataform.Assertion;
 

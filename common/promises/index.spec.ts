@@ -1,8 +1,8 @@
 import { fail } from "assert";
 import { assert, expect } from "chai";
 
-import { retry, runWithTimeout, sleep } from "df/common/promises";
-import { suite, test } from "df/testing";
+import { retry, runWithTimeout, sleep } from "#df/common/promises";
+import { suite, test } from "#df/testing";
 
 suite(__filename, () => {
   suite("runWithTimeout", () => {

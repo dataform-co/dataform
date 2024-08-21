@@ -4,12 +4,12 @@ const webpack = require("webpack");
 module.exports = (env, argv) => {
   const config = {
     mode: argv.mode || "development",
-    target: 'node',
-    entry: [path.resolve(process.env.RUNFILES, "df/packages/@dataform/core/index")],
+    target: "node",
+    entry: [path.resolve(process.env.RUNFILES, "#df/packages/@dataform/core/index")],
     output: {
       path: path.dirname(path.resolve(argv.output)),
       filename: path.basename(argv.output),
-      libraryTarget: "commonjs-module",
+      libraryTarget: "commonjs-module"
     },
     optimization: {
       minimize: true
@@ -27,7 +27,7 @@ module.exports = (env, argv) => {
       new webpack.optimize.LimitChunkCountPlugin({
         maxChunks: 1
       })
-    ],
+    ]
   };
   return config;
 };

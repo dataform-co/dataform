@@ -3,7 +3,7 @@ import * as path from "path";
 import { promisify } from "util";
 
 import * as childProcess from "child_process";
-import { readDataformCoreVersionFromWorkflowSettings } from "df/cli/api/utils";
+import { readDataformCoreVersionFromWorkflowSettings } from "#df/cli/api/utils";
 
 export const MISSING_CORE_VERSION_ERROR =
   "dataformCoreVersion must be specified either in workflow_settings.yaml or via a package.json";

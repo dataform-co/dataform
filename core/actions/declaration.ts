@@ -1,9 +1,9 @@
-import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
-import { ActionBuilder } from "df/core/actions";
-import { ColumnDescriptors } from "df/core/column_descriptors";
-import { Session } from "df/core/session";
-import { actionConfigToCompiledGraphTarget } from "df/core/utils";
-import { dataform } from "df/protos/ts";
+import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "#df/common/protos";
+import { ActionBuilder } from "#df/core/actions";
+import { ColumnDescriptors } from "#df/core/column_descriptors";
+import { Session } from "#df/core/session";
+import { actionConfigToCompiledGraphTarget } from "#df/core/utils";
+import { dataform } from "#df/protos/ts";
 
 interface ILegacyDeclarationConfig extends dataform.ActionConfig.DeclarationConfig {
   database: string;

@@ -1,4 +1,4 @@
-import { dataform } from "df/protos/ts";
+import { dataform } from "#df/protos/ts";
 
 export function concatenateQueries(statements: string[], modifier?: (mod: string) => string) {
   return statements

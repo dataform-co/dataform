@@ -2,10 +2,10 @@ import { fail } from "assert";
 import { expect } from "chai";
 import * as path from "path";
 
-import { compile } from "df/cli/api";
-import { targetAsReadableString } from "df/core/targets";
-import { dataform } from "df/protos/ts";
-import { cleanSql, suite, test } from "df/testing";
+import { compile } from "#df/cli/api";
+import { targetAsReadableString } from "#df/core/targets";
+import { dataform } from "#df/protos/ts";
+import { cleanSql, suite, test } from "#df/testing";
 
 suite("examples", () => {
   suite("common_v2 bigquery", async () => {
@@ -716,7 +716,7 @@ suite("examples", () => {
       projectDir: "tests/api/projects/common_v2",
       projectConfigOverride: { warehouse: "bigquery" }
     });
-    const { version: expectedVersion } = require("df/core/version");
+    const { version: expectedVersion } = require("#df/core/version");
     expect(graph.dataformCoreVersion).equals(expectedVersion);
   });
 });
