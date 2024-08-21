@@ -24,7 +24,7 @@ ts_test_suite(
     ],
     deps = [
         ":promises",
-        "@df//testing",
+        "//testing",
         "//:node_modules/@types/chai",
         "//:node_modules/@types/node",
         "//:node_modules/chai",

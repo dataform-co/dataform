@@ -1,5 +1,5 @@
 load("//tools:ts_library.bzl", "ts_library")
-load("@build_bazel_rules_nodejs//:index.bzl", "nodejs_binary")
+load("@aspect_rules_js//js:defs.bzl", "js_binary")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -18,7 +18,7 @@ ts_library(
     ],
 )
 
-nodejs_binary(
+js_binary(
     name = "gen-package-json-bin",
     templated_args = [
         "--node_options=--require=source-map-support/register",

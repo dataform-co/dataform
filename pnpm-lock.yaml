@@ -9,6 +9,9 @@ specifiers:
   '@blueprintjs/core': ^3.22.3
   '@blueprintjs/icons': ^3.13.0
   '@blueprintjs/select': ^3.8.0
+  '@bufbuild/protobuf': ^2.0.0
+  '@bufbuild/protoc-gen-es': ^2.0.0
+  '@connectrpc/protoc-gen-connect-es': ^1.4.0
   '@google-cloud/bigquery': ^5.6.0
   '@google-cloud/storage': ^5.8.2
   '@mapbox/rehype-prism': ^0.6.0
@@ -26,6 +29,7 @@ specifiers:
   '@types/glob': ^7.1.1
   '@types/google-protobuf': ^3.2.7
   '@types/js-beautify': ^1.8.1
+  '@types/js-yaml': ^4.0.9
   '@types/json-stable-stringify': ^1.0.32
   '@types/lodash': ^4.14.149
   '@types/long': ^4.0.0
@@ -168,6 +172,9 @@ dependencies:
   '@blueprintjs/core': 3.54.0_wcqkhtmu7mswc6yz4uyexck3ty
   '@blueprintjs/icons': 3.33.0
   '@blueprintjs/select': 3.19.1_wcqkhtmu7mswc6yz4uyexck3ty
+  '@bufbuild/protobuf': 2.0.0
+  '@bufbuild/protoc-gen-es': 2.0.0_@bufbuild+protobuf@2.0.0
+  '@connectrpc/protoc-gen-connect-es': 1.4.0_xzitbcbyyffshs3qjvgy4cjppi
   '@google-cloud/bigquery': 5.12.0
   '@google-cloud/storage': 5.20.5
   '@mapbox/rehype-prism': 0.6.0
@@ -185,6 +192,7 @@ dependencies:
   '@types/glob': 7.2.0
   '@types/google-protobuf': 3.15.6
   '@types/js-beautify': 1.13.3
+  '@types/js-yaml': 4.0.9
   '@types/json-stable-stringify': 1.0.34
   '@types/lodash': 4.14.191
   '@types/long': 4.0.2
@@ -661,9 +669,73 @@ packages:
       tslib: 2.3.1
     dev: false
 
+  /@bufbuild/protobuf/1.10.0:
+    resolution: {integrity: sha512-QDdVFLoN93Zjg36NoQPZfsVH9tZew7wKDKyV5qRdj8ntT4wQCOradQjRaTdwMhWUYsgKsvCINKKm87FdEk96Ag==}
+    dev: false
+
+  /@bufbuild/protobuf/2.0.0:
+    resolution: {integrity: sha512-sw2JhwJyvyL0zlhG61aDzOVryEfJg2PDZFSV7i7IdC7nAE41WuXCru3QWLGiP87At0BMzKOoKO/FqEGoKygGZQ==}
+    dev: false
+
+  /@bufbuild/protoc-gen-es/2.0.0_@bufbuild+protobuf@2.0.0:
+    resolution: {integrity: sha512-xXDrDFjSD97jGu9RMA8O4Myj66DdCLOFeYG7Z0mX1aCE9hayymfor+BKgKCQouUfty6CYv8709FPYpEtDurLFQ==}
+    engines: {node: '>=14'}
+    hasBin: true
+    peerDependencies:
+      '@bufbuild/protobuf': 2.0.0
+    peerDependenciesMeta:
+      '@bufbuild/protobuf':
+        optional: true
+    dependencies:
+      '@bufbuild/protobuf': 2.0.0
+      '@bufbuild/protoplugin': 2.0.0
+    transitivePeerDependencies:
+      - supports-color
+    dev: false
+
+  /@bufbuild/protoplugin/1.10.0:
+    resolution: {integrity: sha512-u6NE4vL0lw1+EK4/PiE/SQB7fKO4LRJNTEScIXVOi2x88K/c8WKc/k0KyEaA0asVBMpwekJQZGnRyj04ZtN5Gg==}
+    dependencies:
+      '@bufbuild/protobuf': 1.10.0
+      '@typescript/vfs': 1.6.0_typescript@4.5.2
+      typescript: 4.5.2
+    transitivePeerDependencies:
+      - supports-color
+    dev: false
+
+  /@bufbuild/protoplugin/2.0.0:
+    resolution: {integrity: sha512-y77IarGNbJfr5YZHQ+biO0O9B8rXicKLLOFRJu9mKr9LYE5/CLIKqonIBfkc/lggCK2YOtinjZJEYb39HymIog==}
+    dependencies:
+      '@bufbuild/protobuf': 2.0.0
+      '@typescript/vfs': 1.6.0_typescript@5.4.5
+      typescript: 5.4.5
+    transitivePeerDependencies:
+      - supports-color
+    dev: false
+
   /@colors/colors/1.5.0:
     resolution: {integrity: sha512-ooWCrlZP11i8GImSjTHYHLkvFDP48nS4+204nGb1RiX/WXYHmJA2III9/e2DWVabCESdW7hBAEzHRqUn9OUVvQ==}
     engines: {node: '>=0.1.90'}
+    dev: false
+
+  /@connectrpc/protoc-gen-connect-es/1.4.0_xzitbcbyyffshs3qjvgy4cjppi:
+    resolution: {integrity: sha512-/7vQ8Q7mEBhV8qEVh/eifRQlQnf8EJ6weMwCD2DljVAQRlZYcW9SLxjYZhV1uM1ZZqQC7Cw2vvgXRg2XQswHBg==}
+    engines: {node: '>=16.0.0'}
+    hasBin: true
+    peerDependencies:
+      '@bufbuild/protoc-gen-es': ^1.7.2
+      '@connectrpc/connect': 1.4.0
+    peerDependenciesMeta:
+      '@bufbuild/protoc-gen-es':
+        optional: true
+      '@connectrpc/connect':
+        optional: true
+    dependencies:
+      '@bufbuild/protobuf': 1.10.0
+      '@bufbuild/protoc-gen-es': 2.0.0_@bufbuild+protobuf@2.0.0
+      '@bufbuild/protoplugin': 1.10.0
+    transitivePeerDependencies:
+      - supports-color
     dev: false
 
   /@dabh/diagnostics/2.0.3:
@@ -1344,6 +1416,10 @@ packages:
     resolution: {integrity: sha512-ucIPw5gmNyvRKi6mpeojlqp+T+6ZBJeU+kqMDnIEDlijEU4QhLTon90sZ3cz9HZr+QTwXILjNsMZImzA7+zuJA==}
     dev: false
 
+  /@types/js-yaml/4.0.9:
+    resolution: {integrity: sha512-k4MGaQl5TGo/iipqb2UDG2UwjXziSWkh0uysQelTlJpX1qGlpUZYm8PnO4DxG1qBomtJUdYJ6qR6xdIah10JLg==}
+    dev: false
+
   /@types/json-schema/7.0.11:
     resolution: {integrity: sha512-wOuvG1SN4Us4rez+tylwwwCV1psiNVOkJeM3AUWUNWg/jDQY2+HE/444y5gc+jBmRqASOm2Oeh5c1axHobwRKQ==}
     dev: false
@@ -1645,6 +1721,28 @@ packages:
     resolution: {integrity: sha512-IziEYMU9XoVj8hWg7k+UJrXALkGFjWJhn5QFEv9q4p+v40oZhSuC135M38st8XPjICL7Ey4TV64ferBGUoJhBg==}
     dependencies:
       '@types/yargs-parser': 21.0.0
+    dev: false
+
+  /@typescript/vfs/1.6.0_typescript@4.5.2:
+    resolution: {integrity: sha512-hvJUjNVeBMp77qPINuUvYXj4FyWeeMMKZkxEATEU3hqBAQ7qdTBCUFT7Sp0Zu0faeEtFf+ldXxMEDr/bk73ISg==}
+    peerDependencies:
+      typescript: '*'
+    dependencies:
+      debug: 4.3.6
+      typescript: 4.5.2
+    transitivePeerDependencies:
+      - supports-color
+    dev: false
+
+  /@typescript/vfs/1.6.0_typescript@5.4.5:
+    resolution: {integrity: sha512-hvJUjNVeBMp77qPINuUvYXj4FyWeeMMKZkxEATEU3hqBAQ7qdTBCUFT7Sp0Zu0faeEtFf+ldXxMEDr/bk73ISg==}
+    peerDependencies:
+      typescript: '*'
+    dependencies:
+      debug: 4.3.6
+      typescript: 5.4.5
+    transitivePeerDependencies:
+      - supports-color
     dev: false
 
   /@webassemblyjs/ast/1.7.8:
@@ -11047,9 +11145,21 @@ packages:
       uuidv7: 0.4.4
     dev: false
 
+  /typescript/4.5.2:
+    resolution: {integrity: sha512-5BlMof9H1yGt0P8/WF+wPNw6GfctgGjXp5hkblpyT+8rkASSmkUKMXrxR0Xg8ThVCi/JnHQiKXeBaEwCeQwMFw==}
+    engines: {node: '>=4.2.0'}
+    hasBin: true
+    dev: false
+
   /typescript/5.0.2:
     resolution: {integrity: sha512-wVORMBGO/FAs/++blGNeAVdbNKtIh1rbBL2EyQ1+J9lClJ93KiiKe8PmFIVdXhHcyv44SL9oglmfeSsndo0jRw==}
     engines: {node: '>=12.20'}
+    hasBin: true
+    dev: false
+
+  /typescript/5.4.5:
+    resolution: {integrity: sha512-vcI4UpRgg81oIRUFwR0WSIHKt11nJ7SAVlYNIu+QpqeyXP+gpQJy/Z4+F0aGxSE4MqwjyXvW/TzgkLAx2AGHwQ==}
+    engines: {node: '>=14.17'}
     hasBin: true
     dev: false
 

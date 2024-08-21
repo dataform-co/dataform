@@ -1,6 +1,7 @@
 package(default_visibility = ["//visibility:public"])
 
 load("//tools:ts_library.bzl", "ts_library")
+load("@aspect_rules_js//js:defs.bzl", "js_binary")
 
 ts_library(
     name = "vm",
@@ -30,15 +31,13 @@ ts_library(
     ],
 )
 
-load("@build_bazel_rules_nodejs//:index.bzl", "nodejs_binary")
-
 # This is a bit nuts. As we fork a process when compiling projects, we
 # start a new node instance but within bazel, modules will fail to load in the
 # forked process as we don't have a loader script available.
 # To fix this, we use the binary rules to generate the bazel loader scripts
 # and then execute these scripts instead, so module resulution works.
 
-nodejs_binary(
+js_binary(
     name = "compile",
     data = [
         ":vm",

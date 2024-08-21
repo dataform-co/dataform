@@ -4,10 +4,10 @@ package(default_visibility = ["//visibility:public"])
 
 ts_library(
     name = "strings",
-    srcs = glob(
-        ["*.ts"],
-        exclude = ["*.spec.ts"],
-    ),
+    srcs = [
+        "index.ts",
+        "stringifier.ts",
+    ],
     deps = [
         "//:node_modules/@types/long",
         "//:node_modules/long",
@@ -15,17 +15,13 @@ ts_library(
 )
 
 ts_test_suite(
-    srcs = glob(["*.spec.ts"]),
+    srcs = ["stringifier_test.ts"],
     data = [
         "//:node_modules/source-map-support",
     ],
-    templated_args = [
-        "--node_options=--require=source-map-support/register",
-        "--bazel_patch_module_resolver",
-    ],
     deps = [
         ":strings",
-        "@df//testing",
+        "//testing",
         "//:node_modules/@types/chai",
         "//:node_modules/@types/long",
         "//:node_modules/@types/node",
