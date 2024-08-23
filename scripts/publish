@@ -3,7 +3,6 @@ set -e
 
 # TODO(ekrekr): re-enable once fork is merged to upstread.
 # ./scripts/regenerate_docs
-tail ~/.npmrc
 
 if [ "$(git status --porcelain)" ]; then 
     echo "There are uncommitted changes; aborting." 1>&2
