@@ -33,5 +33,5 @@ echo "Publishing as '$TAG' based on version: $VERSION"
 bazel run packages/@dataform/cli:package.pack -- --tag=$TAG --dry-run
 bazel run packages/@dataform/core:package.pack -- --tag=$TAG --dry-run
 
-git tag $VERSION
-git push origin $VERSION
+# git tag $VERSION
+# git push origin $VERSION
