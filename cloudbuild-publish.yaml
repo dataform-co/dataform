@@ -10,7 +10,7 @@ steps:
       - ./scripts/publish
 availableSecrets:
   secretManager:
-  - versionName: projects/178487900909/secrets/npm-publish-token/versions/1
+  - versionName: projects/178487900909/secrets/npm-publish-token/versions/2
     env: 'NPM_TOKEN'
 options:
   machineType: E2_HIGHCPU_8
