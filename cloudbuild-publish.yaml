@@ -3,7 +3,6 @@ steps:
     script: |
       #!/usr/bin/env bash
       echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
-      tail ~/.npmrc
     secretEnv: ['NPM_TOKEN']
   - name: gcr.io/cloud-builders/bazel:5.4.0
     entrypoint: bash
