@@ -3,6 +3,7 @@ set -e
 
 # TODO(ekrekr): re-enable once fork is merged to upstread.
 # ./scripts/regenerate_docs
+npm config list
 
 if [ "$(git status --porcelain)" ]; then 
     echo "There are uncommitted changes; aborting." 1>&2
@@ -21,16 +22,16 @@ TAG=next
 if [[ "$VERSION" =~ [0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     TAG=latest
 
-    if [ "main" != "$(git branch --show-current)" ]; then
-        echo "Not on the 'main' branch; aborting." 1>&2
-        exit 1
-    fi
+    # if [ "main" != "$(git branch --show-current)" ]; then
+    #     echo "Not on the 'main' branch; aborting." 1>&2
+    #     exit 1
+    # fi
 fi
 
 echo "Publishing as '$TAG' based on version: $VERSION"
 
-bazel run packages/@dataform/cli:package.publish -- --tag=$TAG
-bazel run packages/@dataform/core:package.publish -- --tag=$TAG
+bazel run packages/@dataform/cli:package.pack -- --tag=$TAG --dry-run
+bazel run packages/@dataform/core:package.pack -- --tag=$TAG --dry-run
 
 git tag $VERSION
 git push origin $VERSION
