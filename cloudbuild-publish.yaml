@@ -1,8 +1,12 @@
 steps:
-  - name: gcr.io/cloud-builders/bazel:5.4.0
-    entrypoint: bash
-    args:
-      - -c
-      - |
-      echo "Hello world!"
+  - name: 'bash'
+    script: |
+      #!/usr/bin/env bash
+      echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN"
+      tail ~.npmrc
+    secretEnv: ['NPM_TOKEN']
+availableSecrets:
+  secretManager:
+  - versionName: projects/178487900909/secrets/npm-publish-token/versions/1
+    env: 'NPM_TOKEN'
 timeout: 3600s
