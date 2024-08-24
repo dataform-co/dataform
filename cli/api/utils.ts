@@ -2,7 +2,7 @@ import * as fs from "fs-extra";
 import { load as loadYaml, YAMLException } from "js-yaml";
 import * as path from "path";
 
-import { dataform } from "df/protos/ts";
+import { dataform } from "#df/protos/ts";
 
 export function prettyJsonStringify(obj: object) {
   return JSON.stringify(obj, null, 4) + "\n";

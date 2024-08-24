@@ -4,8 +4,8 @@ import * as path from "path";
 import * as semver from "semver";
 import { CompilerFunction, NodeVM } from "vm2";
 
-import { encode64 } from "df/common/protos";
-import { dataform } from "df/protos/ts";
+import { encode64 } from "#df/common/protos";
+import { dataform } from "#df/protos/ts";
 
 export function compile(compileConfig: dataform.ICompileConfig) {
   if (

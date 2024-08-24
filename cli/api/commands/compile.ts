@@ -4,11 +4,11 @@ import * as tmp from "tmp";
 import { promisify } from "util";
 
 import { ChildProcess, exec, fork } from "child_process";
-import { MISSING_CORE_VERSION_ERROR } from "df/cli/api/commands/install";
-import { readDataformCoreVersionFromWorkflowSettings } from "df/cli/api/utils";
-import { coerceAsError } from "df/common/errors/errors";
-import { decode64 } from "df/common/protos";
-import { dataform } from "df/protos/ts";
+import { MISSING_CORE_VERSION_ERROR } from "#df/cli/api/commands/install";
+import { readDataformCoreVersionFromWorkflowSettings } from "#df/cli/api/utils";
+import { coerceAsError } from "#df/common/errors/errors";
+import { decode64 } from "#df/common/protos";
+import { dataform } from "#df/protos/ts";
 
 export class CompilationTimeoutError extends Error {}
 

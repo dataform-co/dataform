@@ -1,2 +1,2 @@
-import { runCli } from "df/cli";
+import { runCli } from "#df/cli";
 runCli();

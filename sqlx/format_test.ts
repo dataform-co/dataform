@@ -2,8 +2,8 @@ import { expect } from "chai";
 import * as fs from "fs";
 import * as path from "path";
 
-import { format, formatFile } from "df/sqlx/format";
-import { suite, test } from "df/testing";
+import { format, formatFile } from "#df/sqlx/format";
+import { suite, test } from "#df/testing";
 
 suite("@dataform/sqlx", () => {
   suite("formatter", () => {

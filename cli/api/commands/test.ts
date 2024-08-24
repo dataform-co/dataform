@@ -1,5 +1,5 @@
-import * as dbadapters from "df/cli/api/dbadapters";
-import { dataform } from "df/protos/ts";
+import * as dbadapters from "#df/cli/api/dbadapters";
+import { dataform } from "#df/protos/ts";
 
 export async function test(
   dbadapter: dbadapters.IDbAdapter,

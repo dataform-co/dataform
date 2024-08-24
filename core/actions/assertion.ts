@@ -1,8 +1,8 @@
-import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
-import { ActionBuilder } from "df/core/actions";
-import { ICommonContext, Resolvable } from "df/core/common";
-import * as Path from "df/core/path";
-import { Session } from "df/core/session";
+import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "#df/common/protos";
+import { ActionBuilder } from "#df/core/actions";
+import { ICommonContext, Resolvable } from "#df/core/common";
+import * as Path from "#df/core/path";
+import { Session } from "#df/core/session";
 import {
   actionConfigToCompiledGraphTarget,
   configTargetToCompiledGraphTarget,
@@ -12,8 +12,8 @@ import {
   setNameAndTarget,
   toResolvable,
   validateQueryString
-} from "df/core/utils";
-import { dataform } from "df/protos/ts";
+} from "#df/core/utils";
+import { dataform } from "#df/protos/ts";
 
 /**
  * @hidden

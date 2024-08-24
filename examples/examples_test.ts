@@ -2,9 +2,9 @@ import { expect } from "chai";
 import * as fs from "fs-extra";
 
 import { execFile } from "child_process";
-import { verifyObjectMatchesProto } from "df/common/protos";
-import { dataform } from "df/protos/ts";
-import { getProcessResult, nodePath, suite, test } from "df/testing";
+import { verifyObjectMatchesProto } from "#df/common/protos";
+import { dataform } from "#df/protos/ts";
+import { getProcessResult, nodePath, suite, test } from "#df/testing";
 
 suite("examples", { parallel: true }, () => {
   const cliEntryPointPath = "examples/node_modules/@dataform/cli/bundle.js";

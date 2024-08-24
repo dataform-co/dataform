@@ -1,7 +1,7 @@
-import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
-import { ActionBuilder } from "df/core/actions";
-import { Assertion } from "df/core/actions/assertion";
-import { LegacyColumnDescriptors } from "df/core/column_descriptors";
+import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "#df/common/protos";
+import { ActionBuilder } from "#df/core/actions";
+import { Assertion } from "#df/core/actions/assertion";
+import { LegacyColumnDescriptors } from "#df/core/column_descriptors";
 import {
   Contextable,
   IActionConfig,
@@ -12,9 +12,9 @@ import {
   INamedConfig,
   ITargetableConfig,
   Resolvable
-} from "df/core/common";
-import * as Path from "df/core/path";
-import { Session } from "df/core/session";
+} from "#df/core/common";
+import * as Path from "#df/core/path";
+import { Session } from "#df/core/session";
 import {
   actionConfigToCompiledGraphTarget,
   addDependenciesToActionDependencyTargets,
@@ -28,8 +28,8 @@ import {
   tableTypeStringToEnum,
   toResolvable,
   validateQueryString
-} from "df/core/utils";
-import { dataform } from "df/protos/ts";
+} from "#df/core/utils";
+import { dataform } from "#df/protos/ts";
 
 /**
  * @hidden

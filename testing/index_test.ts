@@ -1,6 +1,6 @@
 import { expect } from "chai";
 
-import { ISuiteContext, Runner, suite, test } from "df/testing";
+import { ISuiteContext, Runner, suite, test } from "#df/testing";
 
 Runner.setNoExit(true);
 

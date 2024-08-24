@@ -4,15 +4,15 @@ import Long from "long";
 import * as path from "path";
 import { anyString, anything, instance, mock, verify, when } from "ts-mockito";
 
-import { Builder, credentials, prune, Runner } from "df/cli/api";
-import { IDbAdapter } from "df/cli/api/dbadapters";
-import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
-import { sleep, sleepUntil } from "df/common/promises";
-import { equals } from "df/common/protos";
-import { targetAsReadableString } from "df/core/targets";
-import { dataform } from "df/protos/ts";
-import { asPlainObject, cleanSql, suite, test } from "df/testing";
-import { TmpDirFixture } from "df/testing/fixtures";
+import { Builder, credentials, prune, Runner } from "#df/cli/api";
+import { IDbAdapter } from "#df/cli/api/dbadapters";
+import { BigQueryDbAdapter } from "#df/cli/api/dbadapters/bigquery";
+import { sleep, sleepUntil } from "#df/common/promises";
+import { equals } from "#df/common/protos";
+import { targetAsReadableString } from "#df/core/targets";
+import { dataform } from "#df/protos/ts";
+import { asPlainObject, cleanSql, suite, test } from "#df/testing";
+import { TmpDirFixture } from "#df/testing/fixtures";
 
 config.truncateThreshold = 0;
 

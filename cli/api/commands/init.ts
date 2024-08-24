@@ -2,9 +2,9 @@ import * as fs from "fs";
 import { dump as dumpYaml } from "js-yaml";
 import * as path from "path";
 
-import { CREDENTIALS_FILENAME } from "df/cli/api/commands/credentials";
-import { version } from "df/core/version";
-import { dataform } from "df/protos/ts";
+import { CREDENTIALS_FILENAME } from "#df/cli/api/commands/credentials";
+import { version } from "#df/core/version";
+import { dataform } from "#df/protos/ts";
 
 const gitIgnoreContents = `
 ${CREDENTIALS_FILENAME}

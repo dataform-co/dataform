@@ -1,6 +1,6 @@
-import { StringifiedMap } from "df/common/strings/stringifier";
-import { targetStringifier } from "df/core/targets";
-import { dataform } from "df/protos/ts";
+import { StringifiedMap } from "#df/common/strings/stringifier";
+import { targetStringifier } from "#df/core/targets";
+import { dataform } from "#df/protos/ts";
 
 export const combineAllActions = (graph: dataform.ICompiledGraph) => {
   return ([] as Array<

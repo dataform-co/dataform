@@ -1,10 +1,10 @@
 import { expect } from "chai";
 import * as path from "path";
 
-import { Session } from "df/core/session";
-import { targetAsReadableString } from "df/core/targets";
-import { dataform } from "df/protos/ts";
-import { suite, test } from "df/testing";
+import { Session } from "#df/core/session";
+import { targetAsReadableString } from "#df/core/targets";
+import { dataform } from "#df/protos/ts";
+import { suite, test } from "#df/testing";
 
 // TODO(ekrekr): migrate the tests in this file to core/main_test.ts.
 

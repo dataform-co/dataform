@@ -1,7 +1,6 @@
-load("//testing:index.bzl", "ts_test_suite")
+load("//tools:ts_library.bzl", "ts_test_suite")
 
 ts_test_suite(
-    name = "tests",
     srcs = glob(["**/*.ts"]),
     data = [
         "//tests/api/projects/common_v2:files",
@@ -20,13 +19,13 @@ ts_test_suite(
         "//core",
         "//protos:ts",
         "//testing",
-        "@npm//@types/chai",
-        "@npm//@types/fs-extra",
-        "@npm//@types/long",
-        "@npm//@types/node",
-        "@npm//chai",
-        "@npm//fs-extra",
-        "@npm//rimraf",
-        "@npm//ts-mockito",
+        "//:node_modules/@types/chai",
+        "//:node_modules/@types/fs-extra",
+        "//:node_modules/@types/long",
+        "//:node_modules/@types/node",
+        "//:node_modules/chai",
+        "//:node_modules/fs-extra",
+        "//:node_modules/rimraf",
+        "//:node_modules/ts-mockito",
     ],
 )

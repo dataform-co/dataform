@@ -1,6 +1,6 @@
-import { targetAsReadableString } from "df/core/targets";
-import * as utils from "df/core/utils";
-import { dataform } from "df/protos/ts";
+import { targetAsReadableString } from "#df/core/targets";
+import * as utils from "#df/core/utils";
+import { dataform } from "#df/protos/ts";
 
 type CompileAction = dataform.ITable | dataform.IOperation | dataform.IAssertion;
 

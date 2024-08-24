@@ -8,9 +8,8 @@ ts_library(
         ["*.ts"],
     ),
     deps = [
-        "//:modules-fix",
         "//common/strings",
-        "@npm//protobufjs",
+        "//:node_modules/protobufjs",
     ],
 )
 

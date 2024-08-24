@@ -2,13 +2,13 @@ import Long from "long";
 import { PromisePoolExecutor } from "promise-pool-executor";
 
 import { BigQuery, GetTablesResponse, TableField, TableMetadata } from "@google-cloud/bigquery";
-import { collectEvaluationQueries, QueryOrAction } from "df/cli/api/dbadapters/execution_sql";
-import { IDbAdapter, IDbClient, IExecutionResult, OnCancel } from "df/cli/api/dbadapters/index";
-import { parseBigqueryEvalError } from "df/cli/api/utils/error_parsing";
-import { LimitedResultSet } from "df/cli/api/utils/results";
-import { coerceAsError } from "df/common/errors/errors";
-import { retry } from "df/common/promises";
-import { dataform } from "df/protos/ts";
+import { collectEvaluationQueries, QueryOrAction } from "#df/cli/api/dbadapters/execution_sql";
+import { IDbAdapter, IDbClient, IExecutionResult, OnCancel } from "#df/cli/api/dbadapters/index";
+import { parseBigqueryEvalError } from "#df/cli/api/utils/error_parsing";
+import { LimitedResultSet } from "#df/cli/api/utils/results";
+import { coerceAsError } from "#df/common/errors/errors";
+import { retry } from "#df/common/promises";
+import { dataform } from "#df/protos/ts";
 
 const EXTRA_GOOGLE_SCOPES = ["https://www.googleapis.com/auth/drive"];
 

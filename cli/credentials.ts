@@ -1,8 +1,8 @@
 import * as fs from "fs";
 
-import { question, selectionQuestion } from "df/cli/console";
-import { actuallyResolve } from "df/cli/util";
-import { dataform } from "df/protos/ts";
+import { question, selectionQuestion } from "#df/cli/console";
+import { actuallyResolve } from "#df/cli/util";
+import { dataform } from "#df/protos/ts";
 
 export function getBigQueryCredentials(): dataform.IBigQuery {
   const locationIndex = selectionQuestion("Enter the location of your datasets:", [

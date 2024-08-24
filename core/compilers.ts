@@ -1,7 +1,7 @@
 import { load as loadYaml, YAMLException } from "js-yaml";
 
-import * as Path from "df/core/path";
-import { SyntaxTreeNode, SyntaxTreeNodeType } from "df/sqlx/lexer";
+import * as Path from "#df/core/path";
+import { SyntaxTreeNode, SyntaxTreeNodeType } from "#df/sqlx/lexer";
 
 const CONTEXT_FUNCTIONS = [
   "self",

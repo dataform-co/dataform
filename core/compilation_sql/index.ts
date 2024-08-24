@@ -1,12 +1,12 @@
-import { dataform } from "df/protos/ts";
+import * as dataform from "#df/protos/core_pb";
 
 export class CompilationSql {
   constructor(
-    private readonly project: dataform.IProjectConfig,
+    private readonly project: dataform.ProjectConfig,
     private readonly dataformCoreVersion: string
   ) {}
 
-  public resolveTarget(target: dataform.ITarget) {
+  public resolveTarget(target: dataform.Target) {
     const database = target.database || this.project.defaultDatabase;
     if (!database) {
       return `\`${target.schema || this.project.defaultSchema}.${target.name}\``;

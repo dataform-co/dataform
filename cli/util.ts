@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import { dataform } from "df/protos/ts";
+import { dataform } from "#df/protos/ts";
 import untildify from "untildify";
 
 export function actuallyResolve(...filePaths: string[]) {

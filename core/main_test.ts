@@ -5,13 +5,12 @@ import { dump as dumpYaml, load as loadYaml } from "js-yaml";
 import * as path from "path";
 import { CompilerFunction, NodeVM } from "vm2";
 
-import { decode64, encode64, verifyObjectMatchesProto } from "df/common/protos";
-import { compile } from "df/core/compilers";
-import { version } from "df/core/version";
-import { dataform } from "df/protos/ts";
-import { asPlainObject, suite, test } from "df/testing";
-import { TmpDirFixture } from "df/testing/fixtures";
-
+import { decode64, encode64, verifyObjectMatchesProto } from "#df/common/protos";
+import { compile } from "#df/core/compilers";
+import { version } from "#df/core/version";
+import { dataform } from "#df/protos/ts";
+import { asPlainObject, suite, test } from "#df/testing";
+import { TmpDirFixture } from "#df/testing/fixtures";
 
 const SOURCE_EXTENSIONS = ["js", "sql", "sqlx", "yaml", "ipynb"];
 
@@ -910,24 +909,24 @@ nodes:
         - name: a
           type: STRING
           mode: NULLABLE
-`
+`;
 
       fs.writeFileSync(
         path.join(projectDir, "definitions/data_preparation.yaml"),
-          dataPreparationYaml
+        dataPreparationYaml
       );
 
       // Generate Base64 encoded representation of the YAML.
       const dataPreparationAsObject = loadYaml(dataPreparationYaml);
       const dataPreparationDefinition = verifyObjectMatchesProto(
-          dataform.dataprep.DataPreparation,
-          dataPreparationAsObject as {
-            [key: string]: any;
-          }
+        dataform.dataprep.DataPreparation,
+        dataPreparationAsObject as {
+          [key: string]: any;
+        }
       );
       const base64encodedContents = encode64(
-          dataform.dataprep.DataPreparation,
-          dataPreparationDefinition
+        dataform.dataprep.DataPreparation,
+        dataPreparationDefinition
       );
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));

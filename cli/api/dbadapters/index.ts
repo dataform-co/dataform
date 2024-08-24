@@ -1,5 +1,5 @@
-import { QueryOrAction } from "df/cli/api/dbadapters/execution_sql";
-import { dataform } from "df/protos/ts";
+import { QueryOrAction } from "#df/cli/api/dbadapters/execution_sql";
+import { dataform } from "#df/protos/ts";
 
 export type OnCancel = (handleCancel: () => void) => void;
 

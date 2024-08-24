@@ -1,5 +1,5 @@
-import { JSONObjectStringifier } from "df/common/strings/stringifier";
-import { dataform } from "df/protos/ts";
+import { JSONObjectStringifier } from "#df/common/strings/stringifier";
+import { dataform } from "#df/protos/ts";
 
 /** Produces an unambigous mapping to and from a string representation. */
 export const targetStringifier = new JSONObjectStringifier<dataform.ITarget>();

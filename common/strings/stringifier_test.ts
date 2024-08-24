@@ -5,8 +5,8 @@ import {
   JSONObjectStringifier,
   StringifiedMap,
   StringifiedSet
-} from "df/common/strings/stringifier";
-import { suite, test } from "df/testing";
+} from "#df/common/strings/stringifier";
+import { suite, test } from "#df/testing";
 
 interface IKey {
   a: string;

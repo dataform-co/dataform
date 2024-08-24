@@ -18,7 +18,7 @@ nodejs_binary(
     name = "bin",
     data = [
         ":cli",
-        "@npm//source-map-support",
+        "//:node_modules/source-map-support",
     ],
     entry_point = ":index.ts",
     templated_args = [

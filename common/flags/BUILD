@@ -8,9 +8,8 @@ ts_library(
         ["*.ts"],
     ),
     deps = [
-        "//:modules-fix",
-        "@npm//@types/long",
-        "@npm//@types/node",
+        "//:node_modules/@types/long",
+        "//:node_modules/@types/node",
     ],
 )
 

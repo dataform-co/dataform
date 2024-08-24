@@ -1,9 +1,9 @@
 import { expect } from "chai";
 
-import * as dfapi from "df/cli/api";
-import * as dbadapters from "df/cli/api/dbadapters";
-import { ExecutionSql } from "df/cli/api/dbadapters/execution_sql";
-import { dataform } from "df/protos/ts";
+import * as dfapi from "#df/cli/api";
+import * as dbadapters from "#df/cli/api/dbadapters";
+import { ExecutionSql } from "#df/cli/api/dbadapters/execution_sql";
+import { dataform } from "#df/protos/ts";
 
 export function keyBy<V>(values: V[], keyFn: (value: V) => string): { [key: string]: V } {
   return values.reduce((map, value) => {

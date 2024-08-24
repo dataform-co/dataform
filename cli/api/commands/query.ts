@@ -1,6 +1,6 @@
-import * as dbadapters from "df/cli/api/dbadapters";
-import { CancellablePromise } from "df/cli/api/utils/cancellable_promise";
-import { dataform } from "df/protos/ts";
+import * as dbadapters from "#df/cli/api/dbadapters";
+import { CancellablePromise } from "#df/cli/api/utils/cancellable_promise";
+import { dataform } from "#df/protos/ts";
 
 export function run(
   dbadapter: dbadapters.IDbAdapter,

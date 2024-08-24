@@ -1,6 +1,7 @@
 package(default_visibility = ["//visibility:public"])
 
 load("//tools:ts_library.bzl", "ts_library")
+load("@aspect_rules_js//js:defs.bzl", "js_binary")
 
 ts_library(
     name = "vm",
@@ -9,12 +10,12 @@ ts_library(
         "//common/protos",
         "//core",
         "//protos:ts",
-        "@npm//@types/glob",
-        "@npm//@types/node",
-        "@npm//@types/semver",
-        "@npm//glob",
-        "@npm//semver",
-        "@npm//vm2",
+        "//:node_modules/@types/glob",
+        "//:node_modules/@types/node",
+        "//:node_modules/@types/semver",
+        "//:node_modules/glob",
+        "//:node_modules/semver",
+        "//:node_modules/vm2",
     ],
 )
 
@@ -26,11 +27,9 @@ ts_library(
     ],
     deps = [
         ":vm",
-        "@npm//source-map-support",
+        "//:node_modules/source-map-support",
     ],
 )
-
-load("@build_bazel_rules_nodejs//:index.bzl", "nodejs_binary")
 
 # This is a bit nuts. As we fork a process when compiling projects, we
 # start a new node instance but within bazel, modules will fail to load in the
@@ -38,11 +37,11 @@ load("@build_bazel_rules_nodejs//:index.bzl", "nodejs_binary")
 # To fix this, we use the binary rules to generate the bazel loader scripts
 # and then execute these scripts instead, so module resulution works.
 
-nodejs_binary(
+js_binary(
     name = "compile",
     data = [
         ":vm",
-        "@npm//source-map-support",
+        "//:node_modules/source-map-support",
     ],
     entry_point = ":compile.ts",
     templated_args = [
