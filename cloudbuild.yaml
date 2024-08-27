@@ -8,9 +8,6 @@ steps:
     entrypoint: bash
     args:
       - ./scripts/publish
-  - name: gcr.io/cloud-builders/gcloud:latest
-    entrypoint: "ls"
-    args: ["-lah","/workspace"]
 availableSecrets:
   secretManager:
   - versionName: projects/178487900909/secrets/npm-publish-token/versions/1
