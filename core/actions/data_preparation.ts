@@ -120,8 +120,7 @@ function parseDataPreparationDefinitionJson(dataPreparationAsJson: {
         dataPreparationAsJson as {
           [key: string]: any;
         },
-        VerifyProtoErrorBehaviour.SHOW_DOCS_LINK,
-        true
+        VerifyProtoErrorBehaviour.SHOW_DOCS_LINK
       )
     );
   } catch (e) {

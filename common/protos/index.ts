@@ -35,8 +35,7 @@ export enum VerifyProtoErrorBehaviour {
 export function verifyObjectMatchesProto<Proto>(
   protoType: IProtoClass<any, Proto>,
   object: object,
-  errorBehaviour: VerifyProtoErrorBehaviour = VerifyProtoErrorBehaviour.DEFAULT,
-  skipUnknownFields = false
+  errorBehaviour: VerifyProtoErrorBehaviour = VerifyProtoErrorBehaviour.DEFAULT
 ): Proto {
   if (Array.isArray(object)) {
     throw ReferenceError(`Expected a top-level object, but found an array`);
@@ -51,10 +50,6 @@ export function verifyObjectMatchesProto<Proto>(
     // strict subset of `present`.
     Object.entries(present).forEach(([presentKey, presentValue]) => {
       const desiredValue = desired[presentKey];
-
-      if (!desiredValue && skipUnknownFields) {
-        return;
-      }
 
       if (typeof desiredValue !== typeof presentValue) {
         if (Array.isArray(presentValue) && presentValue.length === 0) {
