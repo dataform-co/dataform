@@ -876,7 +876,7 @@ actions:
       return projectDir;
     };
 
-    test(`data preparations can be loaded via an actions config file`, () => {
+    test(`data preparations ignores unknown properties when parsing`, () => {
       const projectDir = createSimpleDataPreparationProject();
       const dataPreparationYaml = `
 nodes:
@@ -891,7 +891,6 @@ nodes:
       project: prj
       dataset: ds
       table: dest
-  oof: oof
   generated:
     outputSchema:
       field:
@@ -914,7 +913,7 @@ nodes:
 `
 
       fs.writeFileSync(
-        path.join(projectDir, "definitions/data_preparation.yaml"),
+          path.join(projectDir, "definitions/data_preparation.yaml"),
           dataPreparationYaml
       );
 
@@ -937,42 +936,141 @@ nodes:
 
       expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(asPlainObject(result.compile.compiledGraph.dataPreparations)).deep.equals(
-        asPlainObject([
-          {
-            target: {
-              database: "prj",
-              schema: "ds",
-              name: "dest"
-            },
-            canonicalTarget: {
-              database: "prj",
-              schema: "ds",
-              name: "dest"
-            },
-            targets: [
-              {
+          asPlainObject([
+            {
+              target: {
                 database: "prj",
                 schema: "ds",
                 name: "dest"
-              }
-            ],
-            canonicalTargets: [
-              {
+              },
+              canonicalTarget: {
                 database: "prj",
                 schema: "ds",
                 name: "dest"
-              }
-            ],
-            fileName: "definitions/data_preparation.yaml",
-            // Base64 encoded representation of the data preparation definition proto.
-            dataPreparationContents: base64encodedContents
-          }
-        ])
+              },
+              targets: [
+                {
+                  database: "prj",
+                  schema: "ds",
+                  name: "dest"
+                }
+              ],
+              canonicalTargets: [
+                {
+                  database: "prj",
+                  schema: "ds",
+                  name: "dest"
+                }
+              ],
+              fileName: "definitions/data_preparation.yaml",
+              // Base64 encoded representation of the data preparation definition proto.
+              dataPreparationContents: base64encodedContents
+            }
+          ])
+      );
+    });
+
+    test(`data preparations can be loaded via an actions config file`, () => {
+      const projectDir = createSimpleDataPreparationProject();
+      const dataPreparationYaml = `
+nodes:
+- id: node1
+  unknown1: val1
+  unknown2: 1234
+  unknown3: 
+    nested1: 1234
+    nesteda: qwerty
+  source:
+    table:
+      project: prj
+      dataset: ds
+      table: src
+  destination:
+    table:
+      project: prj
+      dataset: ds
+      table: dest
+  generated:
+    outputSchema:
+      field:
+      - name: a
+        type: INT64
+        mode: NULLABLE
+    sourceGenerated:
+      sourceSchema:
+        tableSchema:
+          field:
+          - name: a
+            type: STRING
+            mode: NULLABLE
+    destinationGenerated:
+      schema:
+        field:
+        - name: a
+          type: STRING
+          mode: NULLABLE
+`
+
+      fs.writeFileSync(
+          path.join(projectDir, "definitions/data_preparation.yaml"),
+          dataPreparationYaml
+      );
+
+      // Generate Base64 encoded representation of the YAML.
+      const dataPreparationAsObject = loadYaml(dataPreparationYaml);
+      const dataPreparationDefinition = verifyObjectMatchesProto(
+          dataform.dataprep.DataPreparation,
+          dataPreparationAsObject as {
+            [key: string]: any;
+          },
+          VerifyProtoErrorBehaviour.DEFAULT,
+          true
+      );
+      const base64encodedContents = encode64(
+          dataform.dataprep.DataPreparation,
+          dataPreparationDefinition
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.dataPreparations)).deep.equals(
+          asPlainObject([
+            {
+              target: {
+                database: "prj",
+                schema: "ds",
+                name: "dest"
+              },
+              canonicalTarget: {
+                database: "prj",
+                schema: "ds",
+                name: "dest"
+              },
+              targets: [
+                {
+                  database: "prj",
+                  schema: "ds",
+                  name: "dest"
+                }
+              ],
+              canonicalTargets: [
+                {
+                  database: "prj",
+                  schema: "ds",
+                  name: "dest"
+                }
+              ],
+              fileName: "definitions/data_preparation.yaml",
+              // Base64 encoded representation of the data preparation definition proto.
+              dataPreparationContents: base64encodedContents
+            }
+          ])
       );
     });
 
 
-    test(`data preparations apply compilation overrides to the encoded proto definition`, () => {
+    test(`data preparations ignores unknown properties when parsing`, () => {
       const projectDir = createSimpleDataPreparationProject();
       const dataPreparationYaml = `
 nodes:
@@ -983,7 +1081,6 @@ nodes:
   destination:
     table:
       table: dest
-  oof: oof
   generated:
     outputSchema:
       field:
@@ -1023,7 +1120,6 @@ nodes:
       project: defaultProject
       dataset: defaultDataset
       table: dest
-  oof: oof
   generated:
     outputSchema:
       field:
