@@ -1,16 +1,16 @@
 // tslint:disable tsr-detect-non-literal-fs-filename
-import {expect} from "chai";
+import { expect } from "chai";
 import * as fs from "fs-extra";
-import {dump as dumpYaml, load as loadYaml} from "js-yaml";
+import { dump as dumpYaml, load as loadYaml } from "js-yaml";
 import * as path from "path";
-import {CompilerFunction, NodeVM} from "vm2";
+import { CompilerFunction, NodeVM } from "vm2";
 
-import {decode64, encode64, verifyObjectMatchesProto, VerifyProtoErrorBehaviour} from "df/common/protos";
-import {compile} from "df/core/compilers";
-import {version} from "df/core/version";
-import {dataform} from "df/protos/ts";
-import {asPlainObject, suite, test} from "df/testing";
-import {TmpDirFixture} from "df/testing/fixtures";
+import { decode64, encode64, verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
+import { compile } from "df/core/compilers";
+import { version } from "df/core/version";
+import { dataform } from "df/protos/ts";
+import { asPlainObject, suite, test } from "df/testing";
+import { TmpDirFixture } from "df/testing/fixtures";
 
 
 const SOURCE_EXTENSIONS = ["js", "sql", "sqlx", "yaml", "ipynb"];

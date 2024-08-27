@@ -9,7 +9,7 @@ import {
   nativeRequire,
   resolveActionsConfigFilename
 } from "df/core/utils";
-import {dataform} from "df/protos/ts";
+import { dataform } from "df/protos/ts";
 
 /**
  * @hidden
