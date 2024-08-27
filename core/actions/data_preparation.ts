@@ -9,7 +9,7 @@ import {
   nativeRequire,
   resolveActionsConfigFilename
 } from "df/core/utils";
-import { dataform } from "df/protos/ts";
+import {dataform} from "df/protos/ts";
 
 /**
  * @hidden
@@ -35,7 +35,6 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     config.filename = resolveActionsConfigFilename(config.filename, configPath);
     const dataPreparationAsJson = nativeRequire(config.filename).asJson;
     const dataPreparationDefinition = parseDataPreparationDefinitionJson(dataPreparationAsJson);
-    this.proto.dataPreparationContents = dataform.dataprep.DataPreparation.encode(dataPreparationDefinition).finish();
 
     // Find targets
     const targets = getTargets(dataPreparationDefinition);
@@ -45,6 +44,10 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     this.proto.canonicalTargets = targets.map(target =>
       this.applySessionToTarget(target, session.canonicalProjectConfig)
     );
+
+    // Resolve all table references with compilation overrides and encode resolved proto instance
+    const resolvedDefinition = resolveSourcesAndDestinations(this, dataPreparationDefinition);
+    this.proto.dataPreparationContents = dataform.dataprep.DataPreparation.encode(resolvedDefinition).finish();
 
     // Set the unique target key as the first target defined.
     // TODO: Remove once multiple targets are supported.
@@ -117,7 +120,8 @@ function parseDataPreparationDefinitionJson(dataPreparationAsJson: {
         dataPreparationAsJson as {
           [key: string]: any;
         },
-        VerifyProtoErrorBehaviour.SHOW_DOCS_LINK
+        VerifyProtoErrorBehaviour.SHOW_DOCS_LINK,
+        true
       )
     );
   } catch (e) {
@@ -127,6 +131,62 @@ function parseDataPreparationDefinitionJson(dataPreparationAsJson: {
     throw e;
   }
 }
+
+function resolveSourcesAndDestinations(
+    actionBuilder: ActionBuilder<dataform.DataPreparation>,
+    definition: dataform.dataprep.DataPreparation): dataform.dataprep.DataPreparation {
+  const resolvedDataPreparation = dataform.dataprep.DataPreparation.create(definition);
+
+  // Loop through all nodes and resolve the compilation overrides for
+  // all source and destination tables.
+  definition.nodes.forEach((node, index) => {
+
+        // Resolve source tables, if set.
+        const sourceTable = node.source.table;
+        if (sourceTable) {
+          const sourceTarget: dataform.ITarget = {
+            database: sourceTable.project,
+            schema: sourceTable.dataset,
+            name: sourceTable.table
+          }
+          const resolvedGraphTarget =
+              actionBuilder.applySessionToTarget(
+                  dataform.Target.create(sourceTarget),
+                  actionBuilder.session.projectConfig)
+          resolvedDataPreparation.nodes[index].source.table =
+              dataform.dataprep.TableReference.create({
+                project: resolvedGraphTarget.database,
+                dataset: resolvedGraphTarget.schema,
+                table: resolvedGraphTarget.name
+              })
+        }
+
+        // Resolve destination tables, if set.
+        const destinationTable = node.destination?.table;
+        if (destinationTable) {
+          const destinationTarget: dataform.ITarget = {
+            database: destinationTable.project,
+            schema: destinationTable.dataset,
+            name: destinationTable.table
+          }
+          const resolvedGraphTarget =
+              actionBuilder.applySessionToTarget(
+                  dataform.Target.create(destinationTarget),
+                  actionBuilder.session.projectConfig)
+          resolvedDataPreparation.nodes[index].destination.table =
+              dataform.dataprep.TableReference.create({
+                project: resolvedGraphTarget.database,
+                dataset: resolvedGraphTarget.schema,
+                table: resolvedGraphTarget.name
+              })
+        }
+      }
+
+    );
+
+  return resolvedDataPreparation;
+}
+
 
 function getTargets(definition: dataform.dataprep.DataPreparation): dataform.Target[] {
   const targets: dataform.Target[] = [];

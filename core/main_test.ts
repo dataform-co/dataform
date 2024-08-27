@@ -1,16 +1,16 @@
 // tslint:disable tsr-detect-non-literal-fs-filename
-import { expect } from "chai";
+import {expect} from "chai";
 import * as fs from "fs-extra";
-import { dump as dumpYaml, load as loadYaml } from "js-yaml";
+import {dump as dumpYaml, load as loadYaml} from "js-yaml";
 import * as path from "path";
-import { CompilerFunction, NodeVM } from "vm2";
+import {CompilerFunction, NodeVM} from "vm2";
 
-import { decode64, encode64, verifyObjectMatchesProto } from "df/common/protos";
-import { compile } from "df/core/compilers";
-import { version } from "df/core/version";
-import { dataform } from "df/protos/ts";
-import { asPlainObject, suite, test } from "df/testing";
-import { TmpDirFixture } from "df/testing/fixtures";
+import {decode64, encode64, verifyObjectMatchesProto, VerifyProtoErrorBehaviour} from "df/common/protos";
+import {compile} from "df/core/compilers";
+import {version} from "df/core/version";
+import {dataform} from "df/protos/ts";
+import {asPlainObject, suite, test} from "df/testing";
+import {TmpDirFixture} from "df/testing/fixtures";
 
 
 const SOURCE_EXTENSIONS = ["js", "sql", "sqlx", "yaml", "ipynb"];
@@ -891,6 +891,7 @@ nodes:
       project: prj
       dataset: ds
       table: dest
+  oof: oof
   generated:
     outputSchema:
       field:
@@ -923,7 +924,9 @@ nodes:
           dataform.dataprep.DataPreparation,
           dataPreparationAsObject as {
             [key: string]: any;
-          }
+          },
+          VerifyProtoErrorBehaviour.DEFAULT,
+          true
       );
       const base64encodedContents = encode64(
           dataform.dataprep.DataPreparation,
@@ -965,6 +968,133 @@ nodes:
             dataPreparationContents: base64encodedContents
           }
         ])
+      );
+    });
+
+
+    test(`data preparations apply compilation overrides to the encoded proto definition`, () => {
+      const projectDir = createSimpleDataPreparationProject();
+      const dataPreparationYaml = `
+nodes:
+- id: node1
+  source:
+    table:
+      table: src
+  destination:
+    table:
+      table: dest
+  oof: oof
+  generated:
+    outputSchema:
+      field:
+      - name: a
+        type: INT64
+        mode: NULLABLE
+    sourceGenerated:
+      sourceSchema:
+        tableSchema:
+          field:
+          - name: a
+            type: STRING
+            mode: NULLABLE
+    destinationGenerated:
+      schema:
+        field:
+        - name: a
+          type: STRING
+          mode: NULLABLE
+`
+
+      fs.writeFileSync(
+          path.join(projectDir, "definitions/data_preparation.yaml"),
+          dataPreparationYaml
+      );
+
+      const resolvedYaml = `
+nodes:
+- id: node1
+  source:
+    table:
+      project: defaultProject
+      dataset: defaultDataset
+      table: src
+  destination:
+    table:
+      project: defaultProject
+      dataset: defaultDataset
+      table: dest
+  oof: oof
+  generated:
+    outputSchema:
+      field:
+      - name: a
+        type: INT64
+        mode: NULLABLE
+    sourceGenerated:
+      sourceSchema:
+        tableSchema:
+          field:
+          - name: a
+            type: STRING
+            mode: NULLABLE
+    destinationGenerated:
+      schema:
+        field:
+        - name: a
+          type: STRING
+          mode: NULLABLE
+`
+
+      // Generate Base64 encoded representation of the YAML.
+      const dataPreparationAsObject = loadYaml(resolvedYaml);
+      const dataPreparationDefinition = verifyObjectMatchesProto(
+          dataform.dataprep.DataPreparation,
+          dataPreparationAsObject as {
+            [key: string]: any;
+          },
+          VerifyProtoErrorBehaviour.DEFAULT,
+          true
+      );
+      const base64encodedContents = encode64(
+          dataform.dataprep.DataPreparation,
+          dataPreparationDefinition
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.dataPreparations)).deep.equals(
+          asPlainObject([
+            {
+              target: {
+                database: "defaultProject",
+                schema: "defaultDataset",
+                name: "dest"
+              },
+              canonicalTarget: {
+                database: "defaultProject",
+                schema: "defaultDataset",
+                name: "dest"
+              },
+              targets: [
+                {
+                  database: "defaultProject",
+                  schema: "defaultDataset",
+                  name: "dest"
+                }
+              ],
+              canonicalTargets: [
+                {
+                  database: "defaultProject",
+                  schema: "defaultDataset",
+                  name: "dest"
+                }
+              ],
+              fileName: "definitions/data_preparation.yaml",
+              // Base64 encoded representation of the data preparation definition proto.
+              dataPreparationContents: base64encodedContents
+            }
+          ])
       );
     });
   });
