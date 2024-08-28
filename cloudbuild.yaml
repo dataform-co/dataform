@@ -2,7 +2,14 @@ steps:
   - name: 'bash'
     script: |
       #!/usr/bin/env bash
-      echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
+      set -e
+      REPO_TOKEN="$(gcloud auth print-access-token)"
+      cat > ~/.npmrc <<EOL
+      //registry.npmjs.org/:_authToken=$NPM_TOKEN"
+      registry=https://us-npm.pkg.dev/artifact-foundry-prod/npm-3p-l1/
+      //us-npm.pkg.dev/artifact-foundry-prod/npm-3p-l1/:always-auth=true
+      //us-npm.pkg.dev/artifact-foundry-prod/npm-3p-l1/:_authToken=${REPO_TOKEN}
+      EOL
     secretEnv: ['NPM_TOKEN']
   - name: gcr.io/cloud-builders/bazel:5.4.0
     entrypoint: bash
@@ -12,11 +19,11 @@ availableSecrets:
   secretManager:
   - versionName: projects/178487900909/secrets/npm-publish-token/versions/1
     env: 'NPM_TOKEN'
-artifacts:
-  npmPackages:
-  - repository: 'https://us-central1-npm.pkg.dev/dataform-open-source/dataform-open-source'
-    packagePath: './bazel-bin/packages/@dataform/cli'
+# artifacts:
+  # npmPackages:
+  # - repository: 'https://us-central1-npm.pkg.dev/dataform-open-source/dataform-open-source'
+    # packagePath: './bazel-bin/packages/@dataform/cli'
 options:
   machineType: E2_HIGHCPU_8
-  requestedVerifyOption: VERIFIED
+  # requestedVerifyOption: VERIFIED
 timeout: 3600s

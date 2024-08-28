@@ -27,9 +27,14 @@ if [[ "$VERSION" =~ [0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     # fi
 fi
 
+tail ~/.npmrc
+
+echo "installing packages"
+npm install
+
 echo "Publishing as '$TAG' based on version: $VERSION"
 
-bazel run packages/@dataform/cli:package.publish -- --tag=$TAG
+bazel run packages/@dataform/cli:package.pack -- --tag=$TAG --dry-run
 # bazel run packages/@dataform/core:package.publish -- --tag=$TAG --dry-run
 
 # git tag $VERSION
