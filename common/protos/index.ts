@@ -50,7 +50,6 @@ export function verifyObjectMatchesProto<Proto>(
     // strict subset of `present`.
     Object.entries(present).forEach(([presentKey, presentValue]) => {
       const desiredValue = desired[presentKey];
-
       if (typeof desiredValue !== typeof presentValue) {
         if (Array.isArray(presentValue) && presentValue.length === 0) {
           // Empty arrays are assigned to empty proto array fields by ProtobufJS.

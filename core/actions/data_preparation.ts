@@ -136,6 +136,26 @@ function resolveSourcesAndDestinations(
     definition: dataform.dataprep.DataPreparation): dataform.dataprep.DataPreparation {
   const resolvedDataPreparation = dataform.dataprep.DataPreparation.create(definition);
 
+  // Resolve error table, if set
+  const errorTable = definition.configuration?.errorTable;
+  if (errorTable) {
+    const errorTarget: dataform.ITarget = {
+      database: errorTable.project,
+      schema: errorTable.dataset,
+      name: errorTable.table
+    }
+    const resolvedGraphTarget =
+        actionBuilder.applySessionToTarget(
+            dataform.Target.create(errorTarget),
+            actionBuilder.session.projectConfig)
+    resolvedDataPreparation.configuration.errorTable =
+        dataform.dataprep.TableReference.create({
+          project: resolvedGraphTarget.database,
+          dataset: resolvedGraphTarget.schema,
+          table: resolvedGraphTarget.name
+        })
+  }
+
   // Loop through all nodes and resolve the compilation overrides for
   // all source and destination tables.
   definition.nodes.forEach((node, index) => {
