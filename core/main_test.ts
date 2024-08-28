@@ -972,20 +972,15 @@ nodes:
     test(`data preparations resolves compilation overrides before encoding`, () => {
       const projectDir = createSimpleDataPreparationProject();
       const dataPreparationYaml = `
+configuration:
+  errorTable:
+    table: error
 nodes:
 - id: node1
   source:
     table:
       table: src
-  destination:
-    table:
-      table: dest
   generated:
-    outputSchema:
-      field:
-      - name: a
-        type: INT64
-        mode: NULLABLE
     sourceGenerated:
       sourceSchema:
         tableSchema:
@@ -993,6 +988,30 @@ nodes:
           - name: a
             type: STRING
             mode: NULLABLE
+    outputSchema:
+      field:
+      - name: a
+        type: INT64
+        mode: NULLABLE
+- id: node2
+  source:
+    nodeId: node1
+  destination:
+    table:
+      table: dest
+  generated:
+    sourceGenerated:
+      sourceSchema:
+        nodeSchema:
+          field:
+          - name: a
+            type: STRING
+            mode: NULLABLE
+    outputSchema:
+      field:
+      - name: a
+        type: INT64
+        mode: NULLABLE
     destinationGenerated:
       schema:
         field:
@@ -1007,6 +1026,11 @@ nodes:
       );
 
       const resolvedYaml = `
+configuration:
+  errorTable:
+    project: defaultProject
+    dataset: defaultDataset
+    table: error
 nodes:
 - id: node1
   source:
@@ -1014,17 +1038,7 @@ nodes:
       project: defaultProject
       dataset: defaultDataset
       table: src
-  destination:
-    table:
-      project: defaultProject
-      dataset: defaultDataset
-      table: dest
   generated:
-    outputSchema:
-      field:
-      - name: a
-        type: INT64
-        mode: NULLABLE
     sourceGenerated:
       sourceSchema:
         tableSchema:
@@ -1032,6 +1046,32 @@ nodes:
           - name: a
             type: STRING
             mode: NULLABLE
+    outputSchema:
+      field:
+      - name: a
+        type: INT64
+        mode: NULLABLE
+- id: node2
+  source:
+    nodeId: node1
+  destination:
+    table:
+      project: defaultProject
+      dataset: defaultDataset
+      table: dest
+  generated:
+    sourceGenerated:
+      sourceSchema:
+        nodeSchema:
+          field:
+          - name: a
+            type: STRING
+            mode: NULLABLE
+    outputSchema:
+      field:
+      - name: a
+        type: INT64
+        mode: NULLABLE
     destinationGenerated:
       schema:
         field:

@@ -133,27 +133,15 @@ function parseDataPreparationDefinitionJson(dataPreparationAsJson: {
 
 function resolveSourcesAndDestinations(
     actionBuilder: ActionBuilder<dataform.DataPreparation>,
-    definition: dataform.dataprep.DataPreparation): dataform.dataprep.DataPreparation {
+    definition: dataform.dataprep.DataPreparation
+): dataform.dataprep.DataPreparation {
   const resolvedDataPreparation = dataform.dataprep.DataPreparation.create(definition);
 
   // Resolve error table, if set
   const errorTable = definition.configuration?.errorTable;
   if (errorTable) {
-    const errorTarget: dataform.ITarget = {
-      database: errorTable.project,
-      schema: errorTable.dataset,
-      name: errorTable.table
-    }
-    const resolvedGraphTarget =
-        actionBuilder.applySessionToTarget(
-            dataform.Target.create(errorTarget),
-            actionBuilder.session.projectConfig)
     resolvedDataPreparation.configuration.errorTable =
-        dataform.dataprep.TableReference.create({
-          project: resolvedGraphTarget.database,
-          dataset: resolvedGraphTarget.schema,
-          table: resolvedGraphTarget.name
-        })
+        applySessionDefaultsToTableReference(actionBuilder, errorTable);
   }
 
   // Loop through all nodes and resolve the compilation overrides for
@@ -163,47 +151,41 @@ function resolveSourcesAndDestinations(
         // Resolve source tables, if set.
         const sourceTable = node.source.table;
         if (sourceTable) {
-          const sourceTarget: dataform.ITarget = {
-            database: sourceTable.project,
-            schema: sourceTable.dataset,
-            name: sourceTable.table
-          }
-          const resolvedGraphTarget =
-              actionBuilder.applySessionToTarget(
-                  dataform.Target.create(sourceTarget),
-                  actionBuilder.session.projectConfig)
           resolvedDataPreparation.nodes[index].source.table =
-              dataform.dataprep.TableReference.create({
-                project: resolvedGraphTarget.database,
-                dataset: resolvedGraphTarget.schema,
-                table: resolvedGraphTarget.name
-              })
+              applySessionDefaultsToTableReference(actionBuilder, sourceTable);
         }
 
         // Resolve destination tables, if set.
         const destinationTable = node.destination?.table;
         if (destinationTable) {
-          const destinationTarget: dataform.ITarget = {
-            database: destinationTable.project,
-            schema: destinationTable.dataset,
-            name: destinationTable.table
-          }
-          const resolvedGraphTarget =
-              actionBuilder.applySessionToTarget(
-                  dataform.Target.create(destinationTarget),
-                  actionBuilder.session.projectConfig)
           resolvedDataPreparation.nodes[index].destination.table =
-              dataform.dataprep.TableReference.create({
-                project: resolvedGraphTarget.database,
-                dataset: resolvedGraphTarget.schema,
-                table: resolvedGraphTarget.name
-              })
+              applySessionDefaultsToTableReference(actionBuilder, destinationTable);
         }
       }
 
     );
 
   return resolvedDataPreparation;
+}
+
+function applySessionDefaultsToTableReference(
+    actionBuilder: ActionBuilder<dataform.DataPreparation>,
+    tableReference: dataform.dataprep.ITableReference
+): dataform.dataprep.ITableReference {
+  const target: dataform.ITarget = {
+    database: tableReference.project,
+    schema: tableReference.dataset,
+    name: tableReference.table
+  }
+  const resolvedTarget =
+      actionBuilder.applySessionToTarget(
+          dataform.Target.create(target),
+          actionBuilder.session.projectConfig)
+  return dataform.dataprep.TableReference.create({
+    project: resolvedTarget.database,
+    dataset: resolvedTarget.schema,
+    table: resolvedTarget.name
+  })
 }
 
 
