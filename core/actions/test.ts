@@ -3,6 +3,7 @@ import { StringifiedMap } from "df/common/strings/stringifier";
 import { ActionBuilder } from "df/core/actions";
 import * as table from "df/core/actions/table";
 import { ITableContext } from "df/core/actions/table";
+import * as view from "df/core/actions/view";
 import { Contextable, ICommonContext, INamedConfig, Resolvable } from "df/core/common";
 import { Session } from "df/core/session";
 import { targetStringifier } from "df/core/targets";
@@ -107,7 +108,7 @@ export class Test extends ActionBuilder<dataform.Test> {
         );
       }
       const dataset = allResolved.length > 0 ? allResolved[0] : undefined;
-      if (!(dataset && dataset instanceof table.Table)) {
+      if (!(dataset && (dataset instanceof table.Table || dataset instanceof view.View))) {
         this.session.compileError(
           new Error(`Dataset ${stringifyResolvable(this.datasetToTest)} could not be found.`),
           this.proto.fileName

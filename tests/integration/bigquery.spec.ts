@@ -245,7 +245,8 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
           'For row 1 and column "col3": expected "6.5", but saw "12".',
           'For row 2 and column "col1": expected "sup?", but saw "WRONG".'
         ]
-      }
+      },
+      { name: "test a view", successful: true },
     ]);
   });
 
