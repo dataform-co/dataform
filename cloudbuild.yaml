@@ -4,7 +4,7 @@ steps:
       #!/usr/bin/env bash
       set -e
       REPO_TOKEN="$(gcloud auth print-access-token)"
-      cat > ~/.npmrc <<EOL
+      cat > .npmrc <<EOL
       //registry.npmjs.org/:_authToken=$NPM_TOKEN"
       registry=https://us-npm.pkg.dev/artifact-foundry-prod/npm-3p-l1/
       //us-npm.pkg.dev/artifact-foundry-prod/npm-3p-l1/:always-auth=true
