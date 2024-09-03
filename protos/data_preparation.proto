@@ -1,16 +1,30 @@
+// Copyright 2023 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 syntax = "proto3";
 
 package dataform.dataprep;
 
 option java_package = "com.dataform.dataprep.protos";
+option java_outer_classname = "DataPreparationMeta";
 option java_multiple_files = true;
-
 option go_package = "github.com/dataform-co/dataform/protos/dataform/dataprep";
 
 message DataPreparation {
   repeated DataPreparationNode nodes = 1;
   DataPreparationGenerated generated = 2;
-  DataPreparationConfiguration configuration = 3;
+  optional DataPreparationConfiguration configuration = 3;
 }
 
 message DataPreparationNode {
@@ -18,11 +32,29 @@ message DataPreparationNode {
   Source source = 2;
   repeated Step steps = 3;
   NodeGenerated generated = 4;
-  Destination destination = 5;
+  optional Destination destination = 5;
 }
 
 message DataPreparationConfiguration {
-  TableReference error_table = 1;
+  optional TableReference error_table = 1;
+  optional int32 error_table_data_expiration_days = 2;
+  optional LoadConfiguration load = 3;
+  optional DefaultsConfiguration defaults = 4;
+}
+
+message LoadConfiguration {
+  oneof mode {
+    SimpleLoadMode replace = 1;
+    SimpleLoadMode append = 2;
+    IncrementalLoadMode maximum = 3;
+    IncrementalLoadMode unique = 4;
+  }
+}
+
+message SimpleLoadMode {}
+
+message IncrementalLoadMode {
+  string column_name = 1;
 }
 
 message Source {
@@ -42,11 +74,13 @@ message Destination {
 message Step {
   string id = 1;
   string description = 2;
-
   oneof definition {
     ColumnStep column_step = 3;
     FilterStep filter_step = 4;
+    DropColumnsStep drop_columns_step = 6;
+    KeepColumnsStep keep_columns_step = 7;
   }
+
   StepGenerated generated = 5;
 }
 
@@ -64,6 +98,14 @@ enum FilterType {
 message FilterStep {
   Expression expression = 1;
   optional FilterType filter_type = 2;
+}
+
+message DropColumnsStep {
+  repeated string columns = 1;
+}
+
+message KeepColumnsStep {
+  repeated string columns = 1;
 }
 
 message Expression {
@@ -118,9 +160,9 @@ message NodeGenerated {
   repeated Section sections = 1;
   repeated string sources = 2;
   repeated ValidationError validation_errors = 3;
-  Schema output_schema = 4;
+  optional Schema output_schema = 4;
   SourceGenerated source_generated = 5;
-  DestinationGenerated destination_generated = 6;
+  optional DestinationGenerated destination_generated = 6;
 }
 
 message Section {
@@ -138,7 +180,7 @@ enum SectionType {
 }
 
 message SourceGenerated {
-  SourceSchema source_schema = 4;
+  optional SourceSchema source_schema = 4;
 }
 
 message SourceSchema {
@@ -155,7 +197,7 @@ message JoinSchema {
 }
 
 message DestinationGenerated {
-  Schema schema = 1;
+  optional Schema schema = 1;
 }
 
 message StepGenerated {
@@ -184,4 +226,9 @@ enum ValidationErrorLevel {
   LEVEL_WARN = 1;
   LEVEL_ERROR = 2;
   LEVEL_FATAL = 3;
+}
+
+message DefaultsConfiguration {
+  string project = 1;
+  string dataset = 2;
 }
