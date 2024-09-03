@@ -3,9 +3,9 @@ steps:
   entrypoint: 'bash'
   args: [ '-c', "gcloud secrets versions access latest --secret=github-token-access --format='get(payload.data)' | tr '_-' '/+' | base64 -d > token.txt" ]
 - name: 'bash'
-    script: |
-      #!/usr/bin/env bash
-      ./scripts/update_version
+  script: |
+    #!/usr/bin/env bash
+    ./scripts/update_version
 - name: 'gcr.io/cloud-builders/git'
   args: ['status']
 - name: 'gcr.io/$PROJECT_ID/github'
