@@ -1,0 +1,25 @@
+#!/bin/bash
+set -e
+
+# Path to the versions.bzl file
+file_path="versions.bzl"
+
+# Extract the current version from the file
+current_version=$(grep -oP '(?<=DF_VERSION = ")[^"]+' "$file_path")
+
+# Split the version into its components
+IFS='.-' read -r major minor patch label <<< "$current_version"
+
+# Increment the patch version
+((patch++))
+
+# Remove the label (if present)
+label=""
+
+# Construct the new version string
+new_version="$major.$minor.$patch$label"
+
+# Update the file with the new version
+sed -i "s/DF_VERSION = \"[^\"]*\"/DF_VERSION = \"$new_version\"/" "$file_path"
+
+echo "Version updated to: $new_version"
