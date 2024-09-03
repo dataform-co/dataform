@@ -46,7 +46,7 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     );
 
     // Resolve all table references with compilation overrides and encode resolved proto instance
-    const resolvedDefinition = resolveSourcesAndDestinations(this, dataPreparationDefinition);
+    const resolvedDefinition = applySessionToDataPreparationContents(this, dataPreparationDefinition);
     this.proto.dataPreparationContents = dataform.dataprep.DataPreparation.encode(resolvedDefinition).finish();
 
     // Set the unique target key as the first target defined.
@@ -131,7 +131,7 @@ function parseDataPreparationDefinitionJson(dataPreparationAsJson: {
   }
 }
 
-function resolveSourcesAndDestinations(
+function applySessionToDataPreparationContents(
     actionBuilder: ActionBuilder<dataform.DataPreparation>,
     definition: dataform.dataprep.DataPreparation
 ): dataform.dataprep.DataPreparation {
@@ -141,7 +141,7 @@ function resolveSourcesAndDestinations(
   const errorTable = definition.configuration?.errorTable;
   if (errorTable) {
     resolvedDataPreparation.configuration.errorTable =
-        applySessionDefaultsToTableReference(actionBuilder, errorTable);
+        applySessionToTableReference(actionBuilder, errorTable);
   }
 
   // Loop through all nodes and resolve the compilation overrides for
@@ -152,14 +152,14 @@ function resolveSourcesAndDestinations(
         const sourceTable = node.source.table;
         if (sourceTable) {
           resolvedDataPreparation.nodes[index].source.table =
-              applySessionDefaultsToTableReference(actionBuilder, sourceTable);
+              applySessionToTableReference(actionBuilder, sourceTable);
         }
 
         // Resolve destination tables, if set.
         const destinationTable = node.destination?.table;
         if (destinationTable) {
           resolvedDataPreparation.nodes[index].destination.table =
-              applySessionDefaultsToTableReference(actionBuilder, destinationTable);
+              applySessionToTableReference(actionBuilder, destinationTable);
         }
       }
 
@@ -168,7 +168,7 @@ function resolveSourcesAndDestinations(
   return resolvedDataPreparation;
 }
 
-function applySessionDefaultsToTableReference(
+function applySessionToTableReference(
     actionBuilder: ActionBuilder<dataform.DataPreparation>,
     tableReference: dataform.dataprep.ITableReference
 ): dataform.dataprep.ITableReference {
@@ -181,11 +181,17 @@ function applySessionDefaultsToTableReference(
       actionBuilder.applySessionToTarget(
           dataform.Target.create(target),
           actionBuilder.session.projectConfig)
-  return dataform.dataprep.TableReference.create({
-    project: resolvedTarget.database,
-    dataset: resolvedTarget.schema,
+  // Convert resolved target into a Data Preparation Table Reference
+  const resolvedTableReference = dataform.dataprep.TableReference.create({
     table: resolvedTarget.name
-  })
+  });
+  if (resolvedTarget.database) {
+    resolvedTableReference.project = resolvedTarget.database;
+  }
+  if (resolvedTarget.schema) {
+    resolvedTableReference.dataset = resolvedTarget.schema;
+  }
+  return resolvedTableReference;
 }
 
 
