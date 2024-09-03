@@ -2,6 +2,7 @@ steps:
 - name: 'bash'
   script: |
     #!/usr/bin/env bash
+    ls
     ./scripts/update_version
 - name: gcr.io/cloud-builders/gcloud
   entrypoint: 'bash'
