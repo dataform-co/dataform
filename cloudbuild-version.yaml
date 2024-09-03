@@ -1,10 +1,8 @@
 steps:
 - name: 'bash'
-  script: |
-    #!/usr/bin/env bash
-    ls
-    chmod +x ./scripts/update_version
-    ./scripts/update_version
+  entrypoint: bash
+  args:
+    - ./scripts/update_version
 - name: gcr.io/cloud-builders/gcloud
   entrypoint: 'bash'
   args: [ '-c', "gcloud secrets versions access latest --secret=github-token-access --format='get(payload.data)' | tr '_-' '/+' | base64 -d > token.txt" ]
