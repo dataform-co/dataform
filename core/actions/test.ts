@@ -3,7 +3,7 @@ import { StringifiedMap } from "df/common/strings/stringifier";
 import { ActionBuilder } from "df/core/actions";
 import * as table from "df/core/actions/table";
 import { ITableContext } from "df/core/actions/table";
-import * as view from "df/core/actions/view";
+import {View} from "df/core/actions/view";
 import { Contextable, ICommonContext, INamedConfig, Resolvable } from "df/core/common";
 import { Session } from "df/core/session";
 import { targetStringifier } from "df/core/targets";
