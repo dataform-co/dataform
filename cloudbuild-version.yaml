@@ -1,6 +1,6 @@
 steps:
 - name: gcr.io/cloud-builders/gcloud
   entrypoint: 'bash'
-  args: [ '-c', "gcloud secrets versions access latest --secret=<secret-name> --format='get(payload.data)' | tr '_-' '/+' | base64 -d > token.txt" ]
+  args: [ '-c', "gcloud secrets versions access latest --secret=projects/178487900909/secrets/github-token-access/versions/1 --format='get(payload.data)' | tr '_-' '/+' | base64 -d > token.txt" ]
 - name: 'gcr.io/$PROJECT_ID/github'
   args: ['repo', 'view', 'dataform-co/dataform']
