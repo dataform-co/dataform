@@ -1,8 +1,4 @@
 steps:
-- name: 'gcr.io/cloud-builders/git'
-  args: ['checkout', '-b', 'npm_version_update']
-- name: 'gcr.io/cloud-builders/git'
-  args: ['status']
 - name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
   entrypoint: bash
   args:
@@ -18,12 +14,14 @@ steps:
   args:
   - '-c'
   - |
+    git checkout -b npm_version_update
     git config --global user.name Tuseeq1
     git config --global user.email mtauseeq@google.com
     git config list
     git add version.bzl
     git commit -m "Update the npm package version"
-    git status
+    git push origin npm_version_update
+    git status 
 # - name: 'gcr.io/cloud-builders/git'
 #   args: ['status']
 # - name: gcr.io/cloud-builders/gcloud
