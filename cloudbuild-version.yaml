@@ -14,8 +14,6 @@ steps:
     set -e
     gh auth login --with-token < token.txt
     gh auth status
-    echo $(gh auth token)
-    echo $(cat token.txt)
 # TODO: (mtauseeq) use build variable to replace name and email
 - name: gcr.io/cloud-builders/git
   entrypoint: 'bash'
@@ -24,11 +22,10 @@ steps:
   - |
     set -e
     echo $(cat token.txt)
-    brew intsall gh
     git checkout -b npm_version_update
     git config user.name Tuseeq1
     git config user.email mtauseeq@google.com
-    git remote set-url https://Tuseeq1:$(gh auth token)@github.com/dataform-co/dataform.git
+    git remote set-url https://Tuseeq1:$(cat token.txt)@github.com/dataform-co/dataform.git
     git config list
     git add version.bzl
     git commit -m "Update the npm package version"
