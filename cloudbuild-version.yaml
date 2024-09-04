@@ -12,7 +12,7 @@ steps:
   - '-c'
   - |
     set -e
-    gh auth login
+    gh auth login --with-token
     gh auth status
     gh auth token > token.txt
     echo $(cat token.txt)
