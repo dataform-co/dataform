@@ -14,9 +14,8 @@ steps:
     set -e
     gh auth login --with-token < token.txt
     gh auth status
-    gh auth token > token.txt
+    echo $(gh auth token)
     echo $(cat token.txt)
-
 # TODO: (mtauseeq) use build variable to replace name and email
 - name: gcr.io/cloud-builders/git
   entrypoint: 'bash'
