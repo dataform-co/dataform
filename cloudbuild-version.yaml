@@ -15,8 +15,9 @@ steps:
   - '-c'
   - |
     git checkout -b npm_version_update
-    git config --global user.name Tuseeq1
-    git config --global user.email mtauseeq@google.com
+    git config user.name Tuseeq1
+    git config user.email mtauseeq@google.com
+    git config remote.origin.url git@github.com:dataform-co/dataform.git
     git config list
     git add version.bzl
     git commit -m "Update the npm package version"
