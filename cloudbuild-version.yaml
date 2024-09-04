@@ -1,7 +1,4 @@
 steps:
-- name: gcr.io/cloud-builders/gcloud
-  entrypoint: 'bash'
-  args: [ '-c', "gcloud secrets versions access latest --secret=github-token-access --format='get(payload.data)' | tr '_-' '/+' | base64 -d > token.txt" ]
 - name: 'gcr.io/cloud-builders/git'
   args: ['checkout', '-b', 'npm_version_update']
 - name: 'gcr.io/cloud-builders/git'
@@ -10,11 +7,19 @@ steps:
   entrypoint: bash
   args:
     - ./scripts/update_version
+- name: gcr.io/cloud-builders/gcloud
+  entrypoint: 'bash'
+  args: [ '-c', "gcloud secrets versions access latest --secret=github-token-access --format='get(payload.data)' | tr '_-' '/+' | base64 -d > token.txt" ]
+- name: 'gcr.io/$PROJECT_ID/github'
+  args: ['auth', 'setup-git']
 - name: 'gcr.io/cloud-builders/git'
   args: ['add', 'version.bzl']
 - name: 'gcr.io/cloud-builders/git'
   args: ['commit', '-m', '"Update the npm package version"']
 - name: 'gcr.io/cloud-builders/git'
   args: ['status']
+- name: gcr.io/cloud-builders/gcloud
+  entrypoint: 'bash'
+  args: [ '-c', "gcloud secrets versions access latest --secret=github-token-access --format='get(payload.data)' | tr '_-' '/+' | base64 -d > token.txt" ]
 - name: 'gcr.io/$PROJECT_ID/github'
   args: ['repo', 'view', 'dataform-co/dataform']
