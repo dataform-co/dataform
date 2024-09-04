@@ -12,14 +12,18 @@ steps:
   args: [ '-c', "gcloud secrets versions access latest --secret=github-token-access --format='get(payload.data)' | tr '_-' '/+' | base64 -d > token.txt" ]
 - name: 'gcr.io/$PROJECT_ID/github'
   args: ['auth', 'status']
-- name: 'gcr.io/$PROJECT_ID/github'
-  args: ['auth', 'login', '--with-token']
-- name: 'gcr.io/cloud-builders/git'
-  args: ['config', 'list']
-- name: 'gcr.io/cloud-builders/git'
-  args: ['add', 'version.bzl']
-- name: 'gcr.io/cloud-builders/git'
-  args: ['commit', '-m', '"Update the npm package version"']
+# TODO: (mtauseeq) use build variable to replace name and email
+- name: gcr.io/cloud-builders/git
+  entrypoint: 'bash'
+  args:
+  - '-c'
+  - |
+    git config --global user.name Tuseeq1
+    git config --global user.email mtauseeq@google.com
+    git config list
+    git add version.bzl
+    git commit -m "Update the npm package version"
+    git status
 # - name: 'gcr.io/cloud-builders/git'
 #   args: ['status']
 # - name: gcr.io/cloud-builders/gcloud
