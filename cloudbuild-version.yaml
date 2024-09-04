@@ -15,12 +15,11 @@ steps:
   - '-c'
   - |
     set -e
+    gh auth status
     git checkout -b npm_version_update
     git config user.name Tuseeq1
     git config user.email mtauseeq@google.com
-    echo $GITHUB_TOKEN
-    echo ${GITHUB_TOKEN}
-    git remote set-url https://Tuseeq1:${GITHUB_TOKEN}@github.com/dataform-co/dataform.git
+    git remote set-url https://Tuseeq1:$(gh auth token)@github.com/dataform-co/dataform.git
     git config list
     git add version.bzl
     git commit -m "Update the npm package version"
