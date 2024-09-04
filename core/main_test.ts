@@ -21,6 +21,10 @@ defaultDataset: defaultDataset
 defaultLocation: US
 `;
 
+const VALID_WORKFLOW_SETTINGS_YAML_WITHOUT_PROJECT_DATASET_DEFAULTS = `
+defaultLocation: US
+`;
+
 const VALID_DATAFORM_JSON = `
 {
   "defaultDatabase": "defaultProject",
@@ -861,14 +865,30 @@ defaultNotebookRuntimeOptions:
 
   suite("data preparations", () => {
     const createSimpleDataPreparationProject = (
-      workflowSettingsYaml = VALID_WORKFLOW_SETTINGS_YAML
+        workflowSettingsYaml = VALID_WORKFLOW_SETTINGS_YAML
     ): string => {
       const projectDir = tmpDirFixture.createNewTmpDir();
       fs.writeFileSync(path.join(projectDir, "workflow_settings.yaml"), workflowSettingsYaml);
       fs.mkdirSync(path.join(projectDir, "definitions"));
       fs.writeFileSync(
-        path.join(projectDir, "definitions/actions.yaml"),
-        `
+          path.join(projectDir, "definitions/actions.yaml"),
+          `
+actions:
+- dataPreparation:
+    filename: data_preparation.yaml`
+      );
+      return projectDir;
+    };
+
+    const createSimpleDataPreparationProjectWithoutDefaults = (
+        workflowSettingsYaml = VALID_WORKFLOW_SETTINGS_YAML_WITHOUT_PROJECT_DATASET_DEFAULTS
+    ): string => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(path.join(projectDir, "workflow_settings.yaml"), workflowSettingsYaml);
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+          path.join(projectDir, "definitions/actions.yaml"),
+          `
 actions:
 - dataPreparation:
     filename: data_preparation.yaml`
@@ -934,6 +954,13 @@ nodes:
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
       expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(
+          asPlainObject(dataPreparationDefinition)).deep.equals(
+          asPlainObject(dataform.dataprep.DataPreparation.decode(
+                  result.compile.compiledGraph.dataPreparations[0].dataPreparationContents
+              )
+          )
+      )
       expect(asPlainObject(result.compile.compiledGraph.dataPreparations)).deep.equals(
           asPlainObject([
             {
@@ -1097,6 +1124,13 @@ nodes:
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
       expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(
+          asPlainObject(dataPreparationDefinition)).deep.equals(
+          asPlainObject(dataform.dataprep.DataPreparation.decode(
+                  result.compile.compiledGraph.dataPreparations[0].dataPreparationContents
+              )
+          )
+      )
       expect(asPlainObject(result.compile.compiledGraph.dataPreparations)).deep.equals(
           asPlainObject([
             {
@@ -1121,6 +1155,182 @@ nodes:
                 {
                   database: "defaultProject",
                   schema: "defaultDataset",
+                  name: "dest"
+                }
+              ],
+              fileName: "definitions/data_preparation.yaml",
+              // Base64 encoded representation of the data preparation definition proto.
+              dataPreparationContents: base64encodedContents
+            }
+          ])
+      );
+    });
+
+    test(`data preparations resolves defaults before encoding`, () => {
+      const projectDir = createSimpleDataPreparationProjectWithoutDefaults();
+      const dataPreparationYaml = `
+configuration:
+  errorTable:
+    table: error
+  defaults:
+    project: dataprepProject
+    dataset: dataprepDataset
+nodes:
+- id: node1
+  source:
+    table:
+      table: src
+  generated:
+    sourceGenerated:
+      sourceSchema:
+        tableSchema:
+          field:
+          - name: a
+            type: STRING
+            mode: NULLABLE
+    outputSchema:
+      field:
+      - name: a
+        type: INT64
+        mode: NULLABLE
+- id: node2
+  source:
+    nodeId: node1
+  destination:
+    table:
+      table: dest
+  generated:
+    sourceGenerated:
+      sourceSchema:
+        nodeSchema:
+          field:
+          - name: a
+            type: STRING
+            mode: NULLABLE
+    outputSchema:
+      field:
+      - name: a
+        type: INT64
+        mode: NULLABLE
+    destinationGenerated:
+      schema:
+        field:
+        - name: a
+          type: STRING
+          mode: NULLABLE
+`
+
+      fs.writeFileSync(
+          path.join(projectDir, "definitions/data_preparation.yaml"),
+          dataPreparationYaml
+      );
+
+      const resolvedYaml = `
+configuration:
+  errorTable:
+    project: dataprepProject
+    dataset: dataprepDataset
+    table: error
+  defaults:
+    project: dataprepProject
+    dataset: dataprepDataset
+nodes:
+- id: node1
+  source:
+    table:
+      project: dataprepProject
+      dataset: dataprepDataset
+      table: src
+  generated:
+    sourceGenerated:
+      sourceSchema:
+        tableSchema:
+          field:
+          - name: a
+            type: STRING
+            mode: NULLABLE
+    outputSchema:
+      field:
+      - name: a
+        type: INT64
+        mode: NULLABLE
+- id: node2
+  source:
+    nodeId: node1
+  destination:
+    table:
+      project: dataprepProject
+      dataset: dataprepDataset
+      table: dest
+  generated:
+    sourceGenerated:
+      sourceSchema:
+        nodeSchema:
+          field:
+          - name: a
+            type: STRING
+            mode: NULLABLE
+    outputSchema:
+      field:
+      - name: a
+        type: INT64
+        mode: NULLABLE
+    destinationGenerated:
+      schema:
+        field:
+        - name: a
+          type: STRING
+          mode: NULLABLE
+`
+
+      // Generate Base64 encoded representation of the resolved YAML.
+      const dataPreparationAsObject = loadYaml(resolvedYaml);
+      const dataPreparationDefinition = verifyObjectMatchesProto(
+          dataform.dataprep.DataPreparation,
+          dataPreparationAsObject as {
+            [key: string]: any;
+          },
+          VerifyProtoErrorBehaviour.DEFAULT
+      );
+      const base64encodedContents = encode64(
+          dataform.dataprep.DataPreparation,
+          dataPreparationDefinition
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(
+          asPlainObject(dataPreparationDefinition)).deep.equals(
+              asPlainObject(dataform.dataprep.DataPreparation.decode(
+                  result.compile.compiledGraph.dataPreparations[0].dataPreparationContents
+              )
+          )
+      )
+      expect(asPlainObject(result.compile.compiledGraph.dataPreparations)).deep.equals(
+          asPlainObject([
+            {
+              target: {
+                database: "dataprepProject",
+                schema: "dataprepDataset",
+                name: "dest"
+              },
+              canonicalTarget: {
+                database: "dataprepProject",
+                schema: "dataprepDataset",
+                name: "dest"
+              },
+              targets: [
+                {
+                  database: "dataprepProject",
+                  schema: "dataprepDataset",
+                  name: "dest"
+                }
+              ],
+              canonicalTargets: [
+                {
+                  database: "dataprepProject",
+                  schema: "dataprepDataset",
                   name: "dest"
                 }
               ],

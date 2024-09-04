@@ -38,12 +38,23 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
 
     // Find targets
     const targets = getTargets(dataPreparationDefinition);
-    this.proto.targets = targets.map(target =>
-      this.applySessionToTarget(target, session.projectConfig, config.filename, true)
-    );
-    this.proto.canonicalTargets = targets.map(target =>
-      this.applySessionToTarget(target, session.canonicalProjectConfig)
-    );
+    this.proto.targets = targets
+        // Apply compilation overrides to target
+        .map(target =>
+            this.applySessionToTarget(target, session.projectConfig, config.filename, true)
+            // Apply data preparation defaults
+        ).map(target =>
+            applyDataPreparationDefaultsToTarget(dataPreparationDefinition, target)
+        );
+    this.proto.canonicalTargets = targets
+        // Apply canonical project config to target
+        .map(target =>
+            this.applySessionToTarget(target, session.canonicalProjectConfig)
+        )
+        // Apply data preparation defaults
+        .map(target =>
+            applyDataPreparationDefaultsToTarget(dataPreparationDefinition, target)
+        );
 
     // Resolve all table references with compilation overrides and encode resolved proto instance
     const resolvedDefinition = applySessionToDataPreparationContents(this, dataPreparationDefinition);
@@ -141,7 +152,11 @@ function applySessionToDataPreparationContents(
   const errorTable = definition.configuration?.errorTable;
   if (errorTable) {
     resolvedDataPreparation.configuration.errorTable =
-        applySessionToTableReference(actionBuilder, errorTable);
+        applySessionAndDefaultsToTableReference(
+            actionBuilder,
+            definition,
+            errorTable
+        );
   }
 
   // Loop through all nodes and resolve the compilation overrides for
@@ -152,20 +167,44 @@ function applySessionToDataPreparationContents(
         const sourceTable = node.source.table;
         if (sourceTable) {
           resolvedDataPreparation.nodes[index].source.table =
-              applySessionToTableReference(actionBuilder, sourceTable);
+              applySessionAndDefaultsToTableReference(
+                  actionBuilder,
+                  definition,
+                  sourceTable
+              );
         }
 
         // Resolve destination tables, if set.
         const destinationTable = node.destination?.table;
         if (destinationTable) {
           resolvedDataPreparation.nodes[index].destination.table =
-              applySessionToTableReference(actionBuilder, destinationTable);
+              applySessionAndDefaultsToTableReference(
+                  actionBuilder,
+                  definition,
+                  destinationTable
+              );
         }
       }
 
     );
 
   return resolvedDataPreparation;
+}
+
+function applySessionAndDefaultsToTableReference(
+    actionBuilder: ActionBuilder<dataform.DataPreparation>,
+    definition: dataform.dataprep.DataPreparation,
+    tableReference: dataform.dataprep.ITableReference
+): dataform.dataprep.ITableReference {
+  // Apply session compilation overrides and afterwards
+  // apply data preparation defaults if needed
+  return applyDataPreparationDefaultsToTableReference(
+      definition,
+      applySessionToTableReference(
+          actionBuilder,
+          tableReference
+      )
+  );
 }
 
 function applySessionToTableReference(
@@ -192,6 +231,46 @@ function applySessionToTableReference(
     resolvedTableReference.dataset = resolvedTarget.schema;
   }
   return resolvedTableReference;
+}
+
+function applyDataPreparationDefaultsToTableReference(
+    definition: dataform.dataprep.DataPreparation,
+    tableReference: dataform.dataprep.ITableReference
+): dataform.dataprep.ITableReference {
+  // Check if defaults are defined for this data preparation
+  if (definition.configuration?.defaults) {
+    const defaults = definition.configuration?.defaults;
+    // Apply project default if needed
+    if (defaults.project && !tableReference.project) {
+      tableReference.project = defaults.project;
+    }
+    // Apply dataset default if needed
+    if (defaults.dataset && !tableReference.dataset) {
+      tableReference.dataset = defaults.dataset;
+    }
+  }
+
+  return tableReference
+}
+
+function applyDataPreparationDefaultsToTarget(
+    definition: dataform.dataprep.DataPreparation,
+    target: dataform.ITarget
+): dataform.ITarget {
+  // Check if defaults are defined for this data preparation
+  if (definition.configuration?.defaults) {
+    const defaults = definition.configuration?.defaults;
+    // Apply project default if needed
+    if (defaults.project && !target.database) {
+      target.database = defaults.project;
+    }
+    // Apply dataset default if needed
+    if (defaults.dataset && !target.schema) {
+      target.schema = defaults.dataset;
+    }
+  }
+
+  return target
 }
 
 
