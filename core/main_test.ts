@@ -21,10 +21,6 @@ defaultDataset: defaultDataset
 defaultLocation: US
 `;
 
-const VALID_WORKFLOW_SETTINGS_YAML_WITHOUT_PROJECT_DATASET_DEFAULTS = `
-defaultLocation: US
-`;
-
 const VALID_DATAFORM_JSON = `
 {
   "defaultDatabase": "defaultProject",
@@ -880,11 +876,11 @@ actions:
       return projectDir;
     };
 
-    const createSimpleDataPreparationProjectWithoutDefaults = (
-        workflowSettingsYaml = VALID_WORKFLOW_SETTINGS_YAML_WITHOUT_PROJECT_DATASET_DEFAULTS
-    ): string => {
+    const createSimpleDataPreparationProjectWithoutDefaults = (): string => {
       const projectDir = tmpDirFixture.createNewTmpDir();
-      fs.writeFileSync(path.join(projectDir, "workflow_settings.yaml"), workflowSettingsYaml);
+      fs.writeFileSync(path.join(projectDir, "workflow_settings.yaml"), `
+defaultLocation: US`
+      );
       fs.mkdirSync(path.join(projectDir, "definitions"));
       fs.writeFileSync(
           path.join(projectDir, "definitions/actions.yaml"),
@@ -1180,29 +1176,13 @@ nodes:
   source:
     table:
       table: src
-  generated:
-    sourceGenerated:
-      sourceSchema:
-        tableSchema:
-          field:
-          - name: a
-            type: STRING
-            mode: NULLABLE
-    outputSchema:
-      field:
-      - name: a
-        type: INT64
-        mode: NULLABLE
-- id: node2
-  source:
-    nodeId: node1
   destination:
     table:
       table: dest
   generated:
     sourceGenerated:
       sourceSchema:
-        nodeSchema:
+        tableSchema:
           field:
           - name: a
             type: STRING
@@ -1241,22 +1221,6 @@ nodes:
       project: dataprepProject
       dataset: dataprepDataset
       table: src
-  generated:
-    sourceGenerated:
-      sourceSchema:
-        tableSchema:
-          field:
-          - name: a
-            type: STRING
-            mode: NULLABLE
-    outputSchema:
-      field:
-      - name: a
-        type: INT64
-        mode: NULLABLE
-- id: node2
-  source:
-    nodeId: node1
   destination:
     table:
       project: dataprepProject
@@ -1265,7 +1229,7 @@ nodes:
   generated:
     sourceGenerated:
       sourceSchema:
-        nodeSchema:
+        tableSchema:
           field:
           - name: a
             type: STRING
