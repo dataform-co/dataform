@@ -13,11 +13,13 @@ steps:
 - name: 'gcr.io/$PROJECT_ID/github'
   args: ['auth', 'status']
 - name: 'gcr.io/$PROJECT_ID/github'
-  args: ['config', 'ls']
-# - name: 'gcr.io/cloud-builders/git'
-#   args: ['add', 'version.bzl']
-# - name: 'gcr.io/cloud-builders/git'
-#   args: ['commit', '-m', '"Update the npm package version"']
+  args: ['auth', 'login']
+- name: 'gcr.io/cloud-builders/git'
+  args: ['config', 'list']
+- name: 'gcr.io/cloud-builders/git'
+  args: ['add', 'version.bzl']
+- name: 'gcr.io/cloud-builders/git'
+  args: ['commit', '-m', '"Update the npm package version"']
 # - name: 'gcr.io/cloud-builders/git'
 #   args: ['status']
 # - name: gcr.io/cloud-builders/gcloud
