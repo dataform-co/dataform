@@ -3,10 +3,6 @@ steps:
   entrypoint: 'bash'
   args: [ '-c', "gcloud secrets versions access latest --secret=github-token-access --format='get(payload.data)' | tr '_-' '/+' | base64 -d > token.txt" ]
 - name: 'gcr.io/cloud-builders/git'
-  args: ['checkout', 'main']
-- name: 'gcr.io/cloud-builders/git'
-  args: ['status']
-- name: 'gcr.io/cloud-builders/git'
   args: ['checkout', '-b', 'npm_version_update']
 - name: 'gcr.io/cloud-builders/git'
   args: ['status']
