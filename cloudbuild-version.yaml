@@ -7,7 +7,15 @@ steps:
   entrypoint: 'bash'
   args: [ '-c', "gcloud secrets versions access latest --secret=github-token-access --format='get(payload.data)' | tr '_-' '/+' | base64 -d > token.txt" ]
 - name: 'gcr.io/$PROJECT_ID/github'
-  args: ['auth', 'status']
+  entrypoint: 'bash'
+  args:
+  - '-c'
+  - |
+    set -e
+    gh auth status
+    gh auth token > token.txt
+    echo $(cat token.txt)
+
 # TODO: (mtauseeq) use build variable to replace name and email
 - name: gcr.io/cloud-builders/git
   entrypoint: 'bash'
@@ -15,7 +23,8 @@ steps:
   - '-c'
   - |
     set -e
-    gh auth status
+    echo $(cat token.txt)
+    brew intsall gh
     git checkout -b npm_version_update
     git config user.name Tuseeq1
     git config user.email mtauseeq@google.com
