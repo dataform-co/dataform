@@ -1048,80 +1048,109 @@ nodes:
           dataPreparationYaml
       );
 
-      const resolvedYaml = `
-configuration:
-  errorTable:
-    project: defaultProject
-    dataset: defaultDataset
-    table: error
-nodes:
-- id: node1
-  source:
-    table:
-      project: defaultProject
-      dataset: defaultDataset
-      table: src
-  generated:
-    sourceGenerated:
-      sourceSchema:
-        tableSchema:
-          field:
-          - name: a
-            type: STRING
-            mode: NULLABLE
-    outputSchema:
-      field:
-      - name: a
-        type: INT64
-        mode: NULLABLE
-- id: node2
-  source:
-    nodeId: node1
-  destination:
-    table:
-      project: defaultProject
-      dataset: defaultDataset
-      table: dest
-  generated:
-    sourceGenerated:
-      sourceSchema:
-        nodeSchema:
-          field:
-          - name: a
-            type: STRING
-            mode: NULLABLE
-    outputSchema:
-      field:
-      - name: a
-        type: INT64
-        mode: NULLABLE
-    destinationGenerated:
-      schema:
-        field:
-        - name: a
-          type: STRING
-          mode: NULLABLE
-`
-
-      // Generate Base64 encoded representation of the YAML.
-      const dataPreparationAsObject = loadYaml(resolvedYaml);
-      const dataPreparationDefinition = verifyObjectMatchesProto(
-          dataform.dataprep.DataPreparation,
-          dataPreparationAsObject as {
-            [key: string]: any;
+      const expectedDataPreparation = dataform.dataprep.DataPreparation.create({
+        configuration: {
+          errorTable: {
+            project: "defaultProject",
+            dataset: "defaultDataset",
+            table: "error"
+          }
+        },
+        nodes: [
+          {
+            id: "node1",
+            source: {
+              table: {
+                project: "defaultProject",
+                dataset: "defaultDataset",
+                table: "src"
+              }
+            },
+            generated: {
+              sourceGenerated: {
+                sourceSchema: {
+                  tableSchema: {
+                    field: [
+                      {
+                        name: "a",
+                        type: "STRING",
+                        mode: "NULLABLE"
+                      }
+                    ]
+                  }
+                }
+              },
+              outputSchema: {
+                field: [
+                  {
+                    name: "a",
+                    type: "INT64",
+                    mode: "NULLABLE"
+                  }
+                ]
+              }
+            }
           },
-          VerifyProtoErrorBehaviour.DEFAULT
-      );
-      const base64encodedContents = encode64(
+          {
+            id: "node2",
+            source: {
+              nodeId: "node1"
+            },
+            destination: {
+              table: {
+                project: "defaultProject",
+                dataset: "defaultDataset",
+                table: "dest"
+              }
+            },
+            generated: {
+              sourceGenerated: {
+                sourceSchema: {
+                  nodeSchema: {
+                    field: [
+                      {
+                        name: "a",
+                        type: "STRING",
+                        mode: "NULLABLE"
+                      }
+                    ]
+                  }
+                }
+              },
+              outputSchema: {
+                field: [
+                  {
+                    name: "a",
+                    type: "INT64",
+                    mode: "NULLABLE"
+                  }
+                ]
+              },
+              destinationGenerated: {
+                schema: {
+                  field: [
+                    {
+                      name: "a",
+                      type: "STRING",
+                      mode: "NULLABLE"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        ]
+      })
+      const expectedDataPreparationContents = encode64(
           dataform.dataprep.DataPreparation,
-          dataPreparationDefinition
+          expectedDataPreparation
       );
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
       expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(
-          asPlainObject(dataPreparationDefinition)).deep.equals(
+          asPlainObject(expectedDataPreparation)).deep.equals(
           asPlainObject(dataform.dataprep.DataPreparation.decode(
                   result.compile.compiledGraph.dataPreparations[0].dataPreparationContents
               )
@@ -1156,7 +1185,7 @@ nodes:
               ],
               fileName: "definitions/data_preparation.yaml",
               // Base64 encoded representation of the data preparation definition proto.
-              dataPreparationContents: base64encodedContents
+              dataPreparationContents: expectedDataPreparationContents
             }
           ])
       );
@@ -1205,67 +1234,83 @@ nodes:
           dataPreparationYaml
       );
 
-      const resolvedYaml = `
-configuration:
-  errorTable:
-    project: dataprepProject
-    dataset: dataprepDataset
-    table: error
-  defaults:
-    project: dataprepProject
-    dataset: dataprepDataset
-nodes:
-- id: node1
-  source:
-    table:
-      project: dataprepProject
-      dataset: dataprepDataset
-      table: src
-  destination:
-    table:
-      project: dataprepProject
-      dataset: dataprepDataset
-      table: dest
-  generated:
-    sourceGenerated:
-      sourceSchema:
-        tableSchema:
-          field:
-          - name: a
-            type: STRING
-            mode: NULLABLE
-    outputSchema:
-      field:
-      - name: a
-        type: INT64
-        mode: NULLABLE
-    destinationGenerated:
-      schema:
-        field:
-        - name: a
-          type: STRING
-          mode: NULLABLE
-`
-
-      // Generate Base64 encoded representation of the resolved YAML.
-      const dataPreparationAsObject = loadYaml(resolvedYaml);
-      const dataPreparationDefinition = verifyObjectMatchesProto(
-          dataform.dataprep.DataPreparation,
-          dataPreparationAsObject as {
-            [key: string]: any;
+      const expectedDataPreparation = dataform.dataprep.DataPreparation.create({
+        configuration: {
+          errorTable: {
+            project: "dataprepProject",
+            dataset: "dataprepDataset",
+            table: "error"
           },
-          VerifyProtoErrorBehaviour.DEFAULT
-      );
-      const base64encodedContents = encode64(
+          defaults: {
+            project: "dataprepProject",
+            dataset: "dataprepDataset"
+          }
+        },
+        nodes: [
+          {
+            id: "node1",
+            source: {
+              table: {
+                project: "dataprepProject",
+                dataset: "dataprepDataset",
+                table: "src"
+              }
+            },
+            destination: {
+              table: {
+                project: "dataprepProject",
+                dataset: "dataprepDataset",
+                table: "dest"
+              }
+            },
+            generated: {
+              sourceGenerated: {
+                sourceSchema: {
+                  tableSchema: {
+                    field: [
+                      {
+                        name: "a",
+                        type: "STRING",
+                        mode: "NULLABLE"
+                      }
+                    ]
+                  }
+                }
+              },
+              outputSchema: {
+                field: [
+                  {
+                    name: "a",
+                    type: "INT64",
+                    mode: "NULLABLE"
+                  }
+                ]
+              },
+              destinationGenerated: {
+                schema: {
+                  field: [
+                    {
+                      name: "a",
+                      type: "STRING",
+                      mode: "NULLABLE"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        ]
+      });
+      const expectedDataPreparationContents = encode64(
           dataform.dataprep.DataPreparation,
-          dataPreparationDefinition
+          expectedDataPreparation
       );
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
       expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(
-          asPlainObject(dataPreparationDefinition)).deep.equals(
+          asPlainObject(expectedDataPreparation)).deep.equals(
               asPlainObject(dataform.dataprep.DataPreparation.decode(
                   result.compile.compiledGraph.dataPreparations[0].dataPreparationContents
               )
@@ -1300,7 +1345,7 @@ nodes:
               ],
               fileName: "definitions/data_preparation.yaml",
               // Base64 encoded representation of the data preparation definition proto.
-              dataPreparationContents: base64encodedContents
+              dataPreparationContents: expectedDataPreparationContents
             }
           ])
       );
