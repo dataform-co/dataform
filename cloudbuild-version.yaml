@@ -1,5 +1,5 @@
 steps:
-- name: 'bash'
+- name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
   entrypoint: bash
   args:
     - ./scripts/update_version
