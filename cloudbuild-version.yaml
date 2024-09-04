@@ -13,7 +13,7 @@ steps:
 - name: 'gcr.io/$PROJECT_ID/github'
   args: ['auth', 'status']
 - name: 'gcr.io/$PROJECT_ID/github'
-  args: ['auth', 'login']
+  args: ['auth', 'login', "--with-token", "<< token.txt"]
 - name: 'gcr.io/cloud-builders/git'
   args: ['config', 'list']
 - name: 'gcr.io/cloud-builders/git'
