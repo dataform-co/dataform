@@ -19,6 +19,7 @@ steps:
     git remote set-url origin https://Tuseeq1:$(cat token.txt)@github.com/dataform-co/dataform.git
     export git_branch_name=npm_veriosn_$(cat version.bzl | grep DF_VERSION | awk '{ print $3 }' | sed "s/\"//g")
     echo "Create new branch $git_branch_name..."
+    echo $(git branch --show-current) > current_main.txt
     git checkout -b $git_branch_name
     git add version.bzl
     git commit -m "Update the npm package version"
@@ -31,8 +32,7 @@ steps:
   - '-c'
   - |
     set -e
+    echo $git_branch_name
     echo "Create PR..."
     gh auth login --with-token < token.txt
-    gh pr create -t "Publish a new NPM versions" -b "Updating NPM package version to $(cat git_branch_name.txt)" -H $(cat git_branch_name.txt)
-# - name: 'gcr.io/$PROJECT_ID/github'
-#   args: [ 'pr', 'create', '-t', '"Publish a new NPM versions"', '-b', '"Pull request body"', '-B', 'npm-package-automation', '-H', '$(cat git_branch_name.txt)', '-r', 'Tuseeq1']
+    gh pr create -t "Publish a new NPM versions" -b "Updating NPM package version to $(cat git_branch_name.txt)" -B $(cat current_main.txt) -H $(cat git_branch_name.txt)
