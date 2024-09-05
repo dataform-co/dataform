@@ -6,14 +6,6 @@ steps:
 - name: gcr.io/cloud-builders/gcloud
   entrypoint: 'bash'
   args: [ '-c', "gcloud secrets versions access latest --secret=github-token-access --format='get(payload.data)' | tr '_-' '/+' | base64 -d > token.txt" ]
-- name: 'gcr.io/$PROJECT_ID/github'
-  entrypoint: 'bash'
-  args:
-  - '-c'
-  - |
-    set -e
-    gh auth login --with-token < token.txt
-    gh auth status
 # TODO: (mtauseeq) use build variable to replace name and email, Also use build variables to replace new branch name
 - name: gcr.io/cloud-builders/git
   entrypoint: 'bash'
@@ -34,4 +26,12 @@ steps:
     git push origin $git_branch_name
     echo $git_branch_name > git_branch_name.txt
 - name: 'gcr.io/$PROJECT_ID/github'
-  args: ['pr', 'create', '-t', '"Publish a new NPM versions"', '-b', '"Pull request body"', '-B', 'npm-package-automation', '-H', '$(cat git_branch_name.txt)', '-r', 'Tuseeq1']
+  entrypoint: 'bash'
+  args:
+  - '-c'
+  - |
+    set -e
+    gh auth login --with-token < token.txt
+    gh pr create -t "Publish a new NPM versions" -b "Pull request body" -B npm-package-automation -H $(cat git_branch_name.txt) -r Tuseeq1
+# - name: 'gcr.io/$PROJECT_ID/github'
+#   args: [ 'pr', 'create', '-t', '"Publish a new NPM versions"', '-b', '"Pull request body"', '-B', 'npm-package-automation', '-H', '$(cat git_branch_name.txt)', '-r', 'Tuseeq1']
