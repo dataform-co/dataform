@@ -19,10 +19,7 @@ steps:
     git remote set-url origin https://Tuseeq1:$(cat token.txt)@github.com/dataform-co/dataform.git
     export git_branch_name=npm_veriosn_$(cat version.bzl | grep DF_VERSION | awk '{ print $3 }' | sed "s/\"//g")
     echo "Create new branch $git_branch_name..."
-    git branch --show-current
-    git pull orign
-    git branch --show-current
-    echo $(git branch --show-current) > current_main.txt
+    echo $BRANCH_NAME
     git checkout -b $git_branch_name
     echo "Update version..."
     ./scripts/update_version
