@@ -33,6 +33,6 @@ steps:
     set -e
     echo "Create PR..."
     gh auth login --with-token < token.txt
-    gh pr create -t "Publish a new NPM versions" -b "Updating NPM package version to $(cat git_branch_name.txt)" -B master -H $(cat git_branch_name.txt)
+    gh pr create -t "Publish a new NPM versions" -b "Updating NPM package version to $(cat git_branch_name.txt)" -H $(cat git_branch_name.txt)
 # - name: 'gcr.io/$PROJECT_ID/github'
 #   args: [ 'pr', 'create', '-t', '"Publish a new NPM versions"', '-b', '"Pull request body"', '-B', 'npm-package-automation', '-H', '$(cat git_branch_name.txt)', '-r', 'Tuseeq1']
