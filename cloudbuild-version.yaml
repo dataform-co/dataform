@@ -14,7 +14,7 @@ steps:
     set -e
     gh auth login --with-token < token.txt
     gh auth status
-# TODO: (mtauseeq) use build variable to replace name and email
+# TODO: (mtauseeq) use build variable to replace name and email, Also use build variables to replace new branch name
 - name: gcr.io/cloud-builders/git
   entrypoint: 'bash'
   args:
@@ -22,6 +22,8 @@ steps:
   - |
     set -e
     echo $(https://Tuseeq1:$(cat token.txt)@github.com/dataform-co/dataform.git)
+    git status
+    git branch -a
     git checkout -b npm_version_update
     git config user.name Tuseeq1
     git config user.email mtauseeq@google.com
