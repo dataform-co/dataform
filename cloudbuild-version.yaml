@@ -21,16 +21,17 @@ steps:
   - '-c'
   - |
     set -e
-    git status
-    git branch -a
-    export git_branch_name=npm_veriosn_$(cat version.bzl | grep DF_VERSION | awk '{ print $3 }' | sed "s/\"//g")
-    git checkout -b $git_branch_name
+    echo "Set the git config..."
     git config user.name Tuseeq1
     git config user.email mtauseeq@google.com
     git remote set-url origin https://Tuseeq1:$(cat token.txt)@github.com/dataform-co/dataform.git
+    export git_branch_name=npm_veriosn_$(cat version.bzl | grep DF_VERSION | awk '{ print $3 }' | sed "s/\"//g")
+    echo "Create new branch $git_branch_name..."
+    git checkout -b $git_branch_name
     git add version.bzl
     git commit -m "Update the npm package version"
+    echo "Push changes to remote"
     git push origin $git_branch_name
     git status 
 - name: 'gcr.io/$PROJECT_ID/github'
-  args: ['pr', 'create', '-t', '"Publish a new NPM versions"', '-b', '"Pull request body"', '-B', 'npm-package-automation', '-H', '$git_branch_name', '-r', 'Tuseeq1' ,'--dry-run']
+  args: ['pr', 'create', '-t', '"Publish a new NPM versions"', '-b', '"Pull request body"', '-B', 'npm-package-automation', '-H', '$git_branch_name', '-r', 'Tuseeq1']
