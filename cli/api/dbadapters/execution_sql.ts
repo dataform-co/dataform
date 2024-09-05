@@ -47,10 +47,10 @@ export class ExecutionSql {
   }
 
   public insertInto(target: dataform.ITarget, columns: string[], query: string) {
-    return `	
-insert into ${this.resolveTarget(target)}	
-(${columns.join(",")})	
-select ${columns.join(",")}	
+    return `
+insert into ${this.resolveTarget(target)}
+(${columns.join(",")})
+select ${columns.join(",")}
 from (${query}) as insertions`;
   }
 
@@ -174,7 +174,6 @@ from (${query}) as insertions`;
     const tasks = new Tasks();
     const target = assertion.target;
     tasks.add(Task.statement(this.createOrReplaceView(target, assertion.query)));
-    tasks.add(Task.assertion(`select sum(1) as row_count from ${this.resolveTarget(target)}`));
     return tasks;
   }
 
