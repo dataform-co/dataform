@@ -32,6 +32,6 @@ steps:
     git commit -m "Update the npm package version"
     echo "Push changes to remote"
     git push origin $git_branch_name
-    git status 
+    echo $git_branch_name > git_branch_name.txt
 - name: 'gcr.io/$PROJECT_ID/github'
-  args: ['pr', 'create', '-t', '"Publish a new NPM versions"', '-b', '"Pull request body"', '-B', 'npm-package-automation', '-H', '$git_branch_name', '-r', 'Tuseeq1']
+  args: ['pr', 'create', '-t', '"Publish a new NPM versions"', '-b', '"Pull request body"', '-B', 'npm-package-automation', '-H', '$(cat git_branch_name.txt)', '-r', 'Tuseeq1']
