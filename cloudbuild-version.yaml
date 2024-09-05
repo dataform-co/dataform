@@ -33,4 +33,4 @@ steps:
     git push origin $GIT_BRANCH_NAME
     git status 
 - name: 'gcr.io/$PROJECT_ID/github'
-  args: ['pr', 'create', '----title', '"Publish a new NPM versions"', '--body', '"Pull request body"']
+  args: ['pr', 'create', '----title', '"Publish a new NPM versions"', '--body', '"Pull request body"', '--base', 'npm-package-automation', '-H', '$GIT_BRANCH_NAME' ,'--dry-run']
