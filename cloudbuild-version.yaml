@@ -21,17 +21,16 @@ steps:
   - '-c'
   - |
     set -e
-    echo $(https://Tuseeq1:$(cat token.txt)@github.com/dataform-co/dataform.git)
+    ls
     git status
     git branch -a
     git checkout -b npm_version_update
     git config user.name Tuseeq1
     git config user.email mtauseeq@google.com
     git remote set-url origin https://Tuseeq1:$(cat token.txt)@github.com/dataform-co/dataform.git
-    git config list
     git add version.bzl
     git commit -m "Update the npm package version"
-    git push origin npm_version_update
+    # git push origin npm_version_update
     git status 
 # - name: 'gcr.io/cloud-builders/git'
 #   args: ['status']
