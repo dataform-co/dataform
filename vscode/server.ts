@@ -64,11 +64,11 @@ async function applySettings() {
 
 async function compileAndValidate() {
   let compilationFailed = false;
-  const spawnedProcess = spawn(process.platform !== "win32" ? "dataform" : "dataform.cmd", [
+  const spawnedProcess = spawn("dataform", [
     "compile",
     "--json",
-    ...settings.compilerOptions
-  ]);
+    ...settings.compilerOptions,
+  ], {shell: true});
 
   const compileResult = await getProcessResult(spawnedProcess);
   if (compileResult.exitCode !== 0) {
