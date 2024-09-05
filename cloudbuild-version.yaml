@@ -14,7 +14,8 @@ steps:
   - |
     set -e
     echo "Set the git config..."
-    git config user.name $_GTIHUB_NAME
+    echo $_GITHUB_USER
+    git config user.name $_GITHUB_USER
     git config user.email $_GITHUB_EMAIL
     git remote set-url origin https://Tuseeq1:$(cat token.txt)@github.com/dataform-co/dataform.git
     export git_branch_name=npm_veriosn_$(cat version.bzl | grep DF_VERSION | awk '{ print $3 }' | sed "s/\"//g")
