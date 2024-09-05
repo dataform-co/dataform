@@ -21,21 +21,16 @@ steps:
   - '-c'
   - |
     set -e
-    ls
     git status
     git branch -a
-    git checkout -b npm_version_update
+    export GIT_BRANCH_NAME=npm_veriosn_$(cat version.bzl | grep DF_VERSION | awk '{ print $3 }' | sed "s/\"//g")
+    git checkout -b $GIT_BRANCH_NAME
     git config user.name Tuseeq1
     git config user.email mtauseeq@google.com
     git remote set-url origin https://Tuseeq1:$(cat token.txt)@github.com/dataform-co/dataform.git
     git add version.bzl
     git commit -m "Update the npm package version"
-    # git push origin npm_version_update
+    git push origin $GIT_BRANCH_NAME
     git status 
-# - name: 'gcr.io/cloud-builders/git'
-#   args: ['status']
-# - name: gcr.io/cloud-builders/gcloud
-#   entrypoint: 'bash'
-#   args: [ '-c', "gcloud secrets versions access latest --secret=github-token-access --format='get(payload.data)' | tr '_-' '/+' | base64 -d > token.txt" ]
-# - name: 'gcr.io/$PROJECT_ID/github'
-#   args: ['repo', 'view', 'dataform-co/dataform']
+- name: 'gcr.io/$PROJECT_ID/github'
+  args: ['pr', 'create', '----title', '"Publish a new NPM versions"', '--body', '"Pull request body"']
