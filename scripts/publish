@@ -29,6 +29,8 @@ fi
 
 tail .npmrc
 
+bazel run @nodejs//:yarn config list
+
 echo "Publishing as '$TAG' based on version: $VERSION"
 
 bazel run packages/@dataform/cli:package.pack -- --tag=$TAG
