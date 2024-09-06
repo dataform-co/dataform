@@ -4,7 +4,7 @@ steps:
       #!/usr/bin/env bash
       set -e
       REPO_TOKEN="$(gcloud auth print-access-token)"
-      cat > workspace/.npmrc <<EOL
+      cat > .npmrc <<EOL
       registry=https://us-npm.pkg.dev/artifact-foundry-prod/ah-3p-staging-npm/
       //us-npm.pkg.dev/artifact-foundry-prod/ah-3p-staging-npm/:always-auth=true
       //us-npm.pkg.dev/artifact-foundry-prod/ah-3p-staging-npm/:_authToken=${REPO_TOKEN}
