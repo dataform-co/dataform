@@ -1,12 +1,8 @@
 steps:
-# - name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
-#   entrypoint: bash
-#   args:
-#     - ./scripts/update_version
 - name: gcr.io/cloud-builders/gcloud
   entrypoint: 'bash'
   args: [ '-c', "gcloud secrets versions access latest --secret=github-token-access --format='get(payload.data)' | tr '_-' '/+' | base64 -d > token.txt" ]
-# TODO: (mtauseeq) use build variable to replace name and email, Also use build variables to replace new branch name
+# TODO: (mtauseeq) use build variables to replace new branch name
 - name: gcr.io/cloud-builders/git
   entrypoint: 'bash'
   args:
@@ -35,9 +31,6 @@ steps:
     set -e
     echo "Create PR..."
     gh auth login --with-token < token.txt
-    gh pr create -t "Publish a new NPM versions" -b "Updating NPM package version to $(cat git_branch_name.txt)" -B $BRANCH_NAME -H $(cat git_branch_name.txt)
+    gh pr create -t "Publish a new NPM versions" -b "Updating NPM package version to $(cat version.bzl | grep DF_VERSION | awk '{ print $3 }' | sed "s/\"//g")" -B $BRANCH_NAME -H $(cat git_branch_name.txt)
 options:
   automapSubstitutions: true
-substitutions:
-  _GITHUB_USER: "Tuseeq1"
-  _GITHUB_EMAIL: "mtauseeq@google.com"

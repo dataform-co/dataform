@@ -5,24 +5,22 @@ steps:
       set -e
       REPO_TOKEN="$(gcloud auth print-access-token)"
       cat > ~/.npmrc <<EOL
+      //registry.npmjs.org/:_authToken=$NPM_TOKEN"
       registry=https://us-npm.pkg.dev/artifact-foundry-prod/ah-3p-staging-npm/
       //us-npm.pkg.dev/artifact-foundry-prod/ah-3p-staging-npm/:always-auth=true
       //us-npm.pkg.dev/artifact-foundry-prod/ah-3p-staging-npm/:_authToken=${REPO_TOKEN}
       EOL
-    # secretEnv: ['NPM_TOKEN']
+    secretEnv: ['NPM_TOKEN']
   - name: gcr.io/cloud-builders/bazel:5.4.0
     script: |
       #!/usr/bin/env bash
       set -e
       bazel run @nodejs//:yarn config set registry https://us-npm.pkg.dev/artifact-foundry-prod/ah-3p-staging-npm/
-      bazel run @nodejs//:yarn config list
-      tail ~/.npmrc
       ./scripts/publish
-    
-# availableSecrets:
-#   secretManager:
-#   - versionName: projects/178487900909/secrets/npm-publish-token/versions/1
-#     env: 'NPM_TOKEN'
+availableSecrets:
+  secretManager:
+  - versionName: projects/178487900909/secrets/npm-publish-token/versions/1
+    env: 'NPM_TOKEN'
 # artifacts:
   # npmPackages:
   # - repository: 'https://us-central1-npm.pkg.dev/dataform-open-source/dataform-open-source'
