@@ -7,14 +7,12 @@ steps:
       cat > .npmrc <<EOL
       registry=https://us-npm.pkg.dev/artifact-foundry-prod/ah-3p-staging-npm/
       //us-npm.pkg.dev/artifact-foundry-prod/ah-3p-staging-npm/:always-auth=true
-      //us-npm.pkg.dev/artifact-foundry-prod/ah-3p-staging-npm/:_authToken=${REPO_TOKEN}
       EOL
     # secretEnv: ['NPM_TOKEN']
   - name: gcr.io/cloud-builders/bazel:5.4.0
-    script: |
-      #!/usr/bin/env bash
-      set -e
-      bazel run @nodejs//:yarn
+    entrypoint: bash
+    args:
+      - ./scripts/run_tests
 # availableSecrets:
 #   secretManager:
 #   - versionName: projects/178487900909/secrets/npm-publish-token/versions/1
