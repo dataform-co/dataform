@@ -27,7 +27,7 @@ if [[ "$VERSION" =~ [0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     # fi
 fi
 
-bazel run @nodejs//:yarn config set registry https://us-npm.pkg.dev/artifact-foundry-prod/ah-3p-staging-npm/
+# bazel run @nodejs//:yarn config set registry https://us-npm.pkg.dev/artifact-foundry-prod/ah-3p-staging-npm/
 bazel run @nodejs//:yarn config list
 
 echo "Publishing as '$TAG' based on version: $VERSION"

@@ -9,15 +9,15 @@ steps:
       //us-npm.pkg.dev/artifact-foundry-prod/ah-3p-staging-npm/:always-auth=true
       //us-npm.pkg.dev/artifact-foundry-prod/ah-3p-staging-npm/:_authToken=${REPO_TOKEN}
       EOL
-    secretEnv: ['NPM_TOKEN']
+    # secretEnv: ['NPM_TOKEN']
   - name: gcr.io/cloud-builders/bazel:5.4.0
     entrypoint: bash
     args:
-      - ./scripts/publish
-availableSecrets:
-  secretManager:
-  - versionName: projects/178487900909/secrets/npm-publish-token/versions/1
-    env: 'NPM_TOKEN'
+      - bazel run @nodejs//:yarn
+# availableSecrets:
+#   secretManager:
+#   - versionName: projects/178487900909/secrets/npm-publish-token/versions/1
+#     env: 'NPM_TOKEN'
 # artifacts:
   # npmPackages:
   # - repository: 'https://us-central1-npm.pkg.dev/dataform-open-source/dataform-open-source'
