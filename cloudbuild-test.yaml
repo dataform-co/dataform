@@ -1,0 +1,20 @@
+steps:
+  - name: 'gcr.io/cloud-builders/gcloud'
+    script: |
+      #!/usr/bin/env bash
+      set -e
+      REPO_TOKEN="$(gcloud auth print-access-token)"
+      cat > ~/.npmrc <<EOL
+      registry=https://us-npm.pkg.dev/artifact-foundry-prod/ah-3p-staging-npm/
+      //us-npm.pkg.dev/artifact-foundry-prod/ah-3p-staging-npm/:always-auth=true
+      //us-npm.pkg.dev/artifact-foundry-prod/ah-3p-staging-npm/:_authToken=${REPO_TOKEN}
+      EOL
+  - name: gcr.io/cloud-builders/bazel:5.4.0
+    script: |
+      #!/usr/bin/env bash
+      set -e
+      bazel run @nodejs//:yarn config set registry https://us-npm.pkg.dev/artifact-foundry-prod/ah-3p-staging-npm/
+      ./scripts/run_tests
+options:
+  machineType: E2_HIGHCPU_8
+timeout: 3600s
