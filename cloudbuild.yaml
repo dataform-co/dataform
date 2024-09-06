@@ -11,9 +11,10 @@ steps:
       EOL
     # secretEnv: ['NPM_TOKEN']
   - name: gcr.io/cloud-builders/bazel:5.4.0
-    entrypoint: bash
-    args:
-      - bazel run @nodejs//:yarn
+    script: |
+      #!/usr/bin/env bash
+      set -e
+      bazel run @nodejs//:yarn
 # availableSecrets:
 #   secretManager:
 #   - versionName: projects/178487900909/secrets/npm-publish-token/versions/1
