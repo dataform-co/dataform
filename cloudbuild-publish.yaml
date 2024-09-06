@@ -25,6 +25,8 @@ artifacts:
   npmPackages:
   - repository: 'https://us-central1-npm.pkg.dev/dataform-open-source/dataform-open-source'
     packagePath: './bazel-bin/packages/@dataform/cli'
+  - repository: 'https://us-central1-npm.pkg.dev/dataform-open-source/dataform-open-source'
+    packagePath: './bazel-bin/packages/@dataform/core'
 options:
   machineType: E2_HIGHCPU_8
   requestedVerifyOption: VERIFIED
