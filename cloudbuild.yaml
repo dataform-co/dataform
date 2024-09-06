@@ -1,15 +1,5 @@
 steps:
-  # - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:slim'
-  #   script: |
-  #     #!/usr/bin/env bash
-  #     set -e
-  #     REPO_TOKEN="$(gcloud auth print-access-token)"
-  #     cat > .npmrc <<EOL
-  #     registry=https://us-npm.pkg.dev/artifact-foundry-prod/ah-3p-staging-npm/
-  #     //us-npm.pkg.dev/artifact-foundry-prod/ah-3p-staging-npm/:always-auth=true
-  #     EOL
-  #   # secretEnv: ['NPM_TOKEN']
-  - name: gcr.io/cloud-builders/bazel:5.4.0
+  - name: 'gcr.io/cloud-builders/gcloud'
     script: |
       #!/usr/bin/env bash
       set -e
@@ -19,6 +9,11 @@ steps:
       //us-npm.pkg.dev/artifact-foundry-prod/ah-3p-staging-npm/:always-auth=true
       //us-npm.pkg.dev/artifact-foundry-prod/ah-3p-staging-npm/:_authToken=${REPO_TOKEN}
       EOL
+    # secretEnv: ['NPM_TOKEN']
+  - name: gcr.io/cloud-builders/bazel:5.4.0
+    script: |
+      #!/usr/bin/env bash
+      set -e
       bazel --version
       bazel run @nodejs//:yarn config list
       bazel run @nodejs//:yarn config set registry https://us-npm.pkg.dev/artifact-foundry-prod/ah-3p-staging-npm/
