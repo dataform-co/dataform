@@ -3,6 +3,7 @@ steps:
     script: |
       #!/usr/bin/env bash
       set -e
+      gcloud auth login
       REPO_TOKEN="$(gcloud auth print-access-token)"
       cat > .npmrc <<EOL
       registry=https://us-npm.pkg.dev/artifact-foundry-prod/ah-3p-staging-npm/
