@@ -16,7 +16,6 @@ steps:
       set -e
       bazel run @nodejs//:yarn config set registry https://us-npm.pkg.dev/artifact-foundry-prod/ah-3p-staging-npm/
       bazel run @nodejs//:yarn config list
-      tail ~/.yarnrc
       tail ~/.npmrc
       bazel run @nodejs//:yarn
     
