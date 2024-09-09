@@ -1,29 +1,29 @@
 #!/bin/bash
 set -e
 
-# Path to the versions.bzl file
+# Path to the versions.bzl file.
 file_path="version.bzl"
 
-# Extract the current version from the file
+# Extract the current version from the file.
 current_version=$(grep -oP '(?<=DF_VERSION = ")[^"]+' "$file_path")
 
-# Split the version into its components
+# Split the version into its components.
 IFS='.-' read -r major minor patch label <<< "$current_version"
 
-# Increment the patch version
+# Increment the patch version.
 ((patch++))
 
-# Toggle the label presence
+# Toggle the label presence.
 if [[ -z "$label" ]]; then
     label=""
 else
-    label="-${label}" # Add hyphen before the label
+    label="-${label}" # Add hyphen before the label.
 fi
 
-# Construct the new version string
+# Construct the new version string.
 new_version="$major.$minor.$patch$label"
 
-# Update the file with the new version
+# Update the file with the new version.
 sed -i "s/DF_VERSION = \"[^\"]*\"/DF_VERSION = \"$new_version\"/" "$file_path"
 
 echo "Version updated to: $new_version"
