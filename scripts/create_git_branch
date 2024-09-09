@@ -1,4 +1,4 @@
-set -e
+# set -e
 
 echo "Set the git config..."
 echo $_GITHUB_USER
