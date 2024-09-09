@@ -14,8 +14,6 @@ steps:
   - name: gcr.io/cloud-builders/bazel:5.4.0
     script: |
       #!/usr/bin/env bash
-      set -e
-      bazel run @nodejs//:yarn config set registry https://us-npm.pkg.dev/artifact-foundry-prod/ah-3p-staging-npm/
       ./scripts/publish
 availableSecrets:
   secretManager:

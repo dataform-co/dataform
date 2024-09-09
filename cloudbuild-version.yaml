@@ -1,4 +1,6 @@
 steps:
+# We have github personal access token stored in `github-token-access` secret in our GCP project.
+# This step downloads it and store it in token.txt file for later steps to use for authentication.
 - name: gcr.io/cloud-builders/gcloud
   entrypoint: 'bash'
   args: [ '-c', "gcloud secrets versions access latest --secret=github-token-access --format='get(payload.data)' | tr '_-' '/+' | base64 -d > token.txt" ]
