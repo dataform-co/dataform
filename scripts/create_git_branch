@@ -1,6 +1,7 @@
 set -e
 
 echo "Set the git config..."
+echo $_GITHUB_USER
 git config user.name $_GITHUB_USER
 git config user.email $_GITHUB_EMAIL
 git remote set-url origin https://$_GITHUB_USER:$(cat token.txt)@github.com/dataform-co/dataform.git

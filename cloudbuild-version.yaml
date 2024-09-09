@@ -8,6 +8,8 @@ steps:
   args:
   - '-c'
   - |
+    echo $_GITHUB_USER
+    git config user.name $_GITHUB_USER
     ./scripts/create_git_branch
 - name: 'gcr.io/$PROJECT_ID/github'
   entrypoint: 'bash'
