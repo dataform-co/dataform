@@ -8,7 +8,6 @@ steps:
   args:
   - '-c'
   - |
-    git config ls
     ./scripts/create_git_branch
 - name: 'gcr.io/$PROJECT_ID/github'
   entrypoint: 'bash'
