@@ -267,10 +267,10 @@ message DataPreparation {
 
   bool disabled = 6;
 
-  // Binary encoded contents of the Data preparation proto
-  bytes data_preparation_contents = 10;
+  // YAML file containing the data preparation YAML with resolved dependencies.
+  string data_preparation_yaml = 11;
 
-  reserved 7;
+  reserved 7, 10;
 }
 
 message CompiledGraph {
