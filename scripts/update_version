@@ -13,7 +13,7 @@ IFS='.-' read -r major minor patch label <<< "$current_version"
 # Increment the patch version.
 ((patch++))
 
-# Toggle the label presence.
+# If there's a label, add a hyphen before it.
 if [[ -z "$label" ]]; then
     label=""
 else
