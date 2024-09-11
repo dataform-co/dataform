@@ -8,7 +8,7 @@ steps:
   args:
   - '-c'
   - |
-    ./scripts/create_git_branch
+    _GITHUB_USER=$_GITHUB_USER _GITHUB_EMAIL=$_GITHUB_EMAIL ./scripts/create_git_branch
 - name: 'gcr.io/$PROJECT_ID/github'
   entrypoint: 'bash'
   args:
