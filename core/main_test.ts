@@ -917,20 +917,6 @@ nodes:
           dataPreparationYaml
       );
 
-      // Generate Base64 encoded representation of the YAML.
-      const dataPreparationAsObject = loadYaml(dataPreparationYaml);
-      const dataPreparationDefinition = verifyObjectMatchesProto(
-          dataform.dataprep.DataPreparation,
-          dataPreparationAsObject as {
-            [key: string]: any;
-          },
-          VerifyProtoErrorBehaviour.DEFAULT
-      );
-      const base64encodedContents = encode64(
-          dataform.dataprep.DataPreparation,
-          dataPreparationDefinition
-      );
-
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
       expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
@@ -962,8 +948,7 @@ nodes:
                 }
               ],
               fileName: "definitions/data_preparation.yaml",
-              // Base64 encoded representation of the data preparation definition proto.
-              dataPreparationContents: base64encodedContents
+              dataPreparationYaml: dumpYaml(loadYaml(dataPreparationYaml))
             }
           ])
       );
@@ -1080,20 +1065,6 @@ nodes:
           mode: NULLABLE
 `
 
-      // Generate Base64 encoded representation of the YAML.
-      const dataPreparationAsObject = loadYaml(resolvedYaml);
-      const dataPreparationDefinition = verifyObjectMatchesProto(
-          dataform.dataprep.DataPreparation,
-          dataPreparationAsObject as {
-            [key: string]: any;
-          },
-          VerifyProtoErrorBehaviour.DEFAULT
-      );
-      const base64encodedContents = encode64(
-          dataform.dataprep.DataPreparation,
-          dataPreparationDefinition
-      );
-
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
       expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
@@ -1125,8 +1096,7 @@ nodes:
                 }
               ],
               fileName: "definitions/data_preparation.yaml",
-              // Base64 encoded representation of the data preparation definition proto.
-              dataPreparationContents: base64encodedContents
+              dataPreparationYaml: dumpYaml(loadYaml(resolvedYaml))
             }
           ])
       );
