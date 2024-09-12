@@ -1,8 +1,10 @@
 #!/bin/bash
 set -e
 
-# Run tslint.
+bazel run @nodejs//:yarn config set registry https://us-npm.pkg.dev/artifact-foundry-prod/ah-3p-staging-npm/
 bazel run @nodejs//:yarn
+
+# Run tslint.
 bazel build @npm//tslint/bin:tslint && bazel-bin/external/npm/tslint/bin/tslint.sh --project .
 
 # Run all the tests
