@@ -18,6 +18,6 @@ steps:
     set -e
     echo "Create PR..."
     gh auth login --with-token < token.txt
-    gh pr create -t "Publish a new NPM versions" -b "Updating NPM package version to $(cat version.bzl | grep DF_VERSION | awk '{ print $3 }' | sed "s/\"//g")" -B $BRANCH_NAME -H $(cat git_branch_name.txt)
+    gh pr create -t "Publish a new NPM versions" -b "Updating NPM package version to $(cat version.bzl | grep DF_VERSION | awk '{ print $3 }' | sed "s/\"//g")" -B $BRANCH_NAME -H $(cat git_branch_name.txt) -r dataform-co/dataform-reviewers
 options:
   automapSubstitutions: true
