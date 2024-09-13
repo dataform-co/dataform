@@ -5,4 +5,4 @@ set -e
 REPO_TOKEN="$(gcloud auth print-access-token)" NPM_TOKEN="test_only" ./scripts/create_npmrc
 
 # run tests
-.scripts/gcb_run_tests
+.scripts/run_tests

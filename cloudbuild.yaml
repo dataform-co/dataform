@@ -3,7 +3,6 @@ steps:
     script: |
       #!/usr/bin/env bash
       REPO_TOKEN="$(gcloud auth print-access-token)" NPM_TOKEN="test_only" ./scripts/create_npmrc
-    secretEnv: ['NPM_TOKEN']
   - name: gcr.io/cloud-builders/bazel:5.4.0
     script: |
       #!/usr/bin/env bash
