@@ -1,11 +1,8 @@
 #!/bin/bash
 set -e
 
-bazel run @nodejs//:yarn config set registry https://us-npm.pkg.dev/artifact-foundry-prod/ah-3p-staging-npm/
-bazel run @nodejs//:yarn
+# Set env.
+REPO_TOKEN="$(gcloud auth print-access-token)" NPM_TOKEN="test_only" ./scripts/create_npmrc
 
-# Run tslint.
-bazel build @npm//tslint/bin:tslint && bazel-bin/external/npm/tslint/bin/tslint.sh --project .
-
-# Run all the tests
-bazel test ... --build_tests_only --test_env=USE_CLOUD_BUILD_NETWORK=true
+# run tests
+./scripts/run_tests_on_cloudbuild

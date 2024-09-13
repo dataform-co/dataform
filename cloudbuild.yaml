@@ -6,7 +6,7 @@ steps:
   - name: gcr.io/cloud-builders/bazel:5.4.0
     script: |
       #!/usr/bin/env bash
-      ./scripts/run_tests
+      ./scripts/run_tests_on_cloudbuild
 options:
   machineType: E2_HIGHCPU_8
 timeout: 3600s
