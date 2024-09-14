@@ -468,6 +468,38 @@ someKey: and an extra: colon
       );
     });
 
+    test(`main fails when workflow settings have non-string default dataset`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        `
+defaultProject: defaultProject
+defaultDataset: 12345
+defaultLocation: US
+`
+      );
+
+      expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
+        "Default schema should be string."
+      );
+    });
+
+    test(`main fails when workflow settings have non-string default project`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        `
+defaultProject: 12345
+defaultDataset: defaultDataset
+defaultLocation: US
+`
+      );
+
+      expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
+        "Default database should be string."
+      );
+    });
+
     test(`main fails when a valid dataform.json contains unknown fields`, () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
       fs.writeFileSync(

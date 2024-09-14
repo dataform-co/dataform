@@ -345,6 +345,14 @@ export class Session {
       );
     }
 
+    if (typeof this.projectConfig.defaultDatabase !== "string") {
+      throw new Error("Default database should be string.");
+    }
+
+    if (typeof this.projectConfig.defaultSchema !== "string") {
+      throw new Error("Default schema should be string.");
+    }
+
     if (
       !!this.projectConfig.vars &&
       !Object.values(this.projectConfig.vars).every(value => typeof value === "string")
