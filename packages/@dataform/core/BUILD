@@ -101,5 +101,6 @@ pkg_npm_tar(
         ":core_proto_with_license",
         ":data_preparation_proto_with_license",
         ":package.json",
+        "//:version.bzl"
     ],
 )
