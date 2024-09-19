@@ -9,7 +9,6 @@ proto_library(
     srcs = [
         "configs.proto",
         "core.proto",
-        "data_preparation.proto",
         "evaluation.proto",
         "execution.proto",
         "profiles.proto",

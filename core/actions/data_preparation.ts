@@ -36,7 +36,6 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
 
     config.filename = resolveActionsConfigFilename(config.filename, configPath);
     const dataPreparationAsJson = nativeRequire(config.filename).asJson;
-    const dataPreparationDefinition = this.parseDataPreparationDefinitionJson(dataPreparationAsJson);
 
     // Find targets
     const targets = this.getTargets(dataPreparationAsJson as {
