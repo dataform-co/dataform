@@ -36,7 +36,6 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
 
     config.filename = resolveActionsConfigFilename(config.filename, configPath);
     const dataPreparationAsJson = nativeRequire(config.filename).asJson;
-    const dataPreparationDefinition = this.parseDataPreparationDefinitionJson(dataPreparationAsJson);
 
     // Find targets
     const targets = this.getTargets(dataPreparationAsJson as {
@@ -174,28 +173,6 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     }
     return resolvedTableReference;
   }
-
-  private parseDataPreparationDefinitionJson(dataPreparationAsJson: {
-    [key: string]: unknown;
-  }): dataform.dataprep.DataPreparation {
-    try {
-      return dataform.dataprep.DataPreparation.create(
-          verifyObjectMatchesProto(
-              dataform.dataprep.DataPreparation,
-              dataPreparationAsJson as {
-                [key: string]: any;
-              },
-              VerifyProtoErrorBehaviour.SHOW_DOCS_LINK
-          )
-      );
-    } catch (e) {
-      if (e instanceof ReferenceError) {
-        throw ReferenceError(`Data Preparation parsing error: ${e.message}`);
-      }
-      throw e;
-    }
-  }
-
 
   private getTargets(definition: {
     [key: string]: any;
