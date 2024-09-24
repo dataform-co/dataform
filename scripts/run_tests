@@ -1,8 +1,9 @@
 #!/bin/bash
 set -e
 
-# Set env.
-REPO_TOKEN="$(gcloud auth print-access-token)" NPM_TOKEN="test_only" ./scripts/create_npmrc
+# Run tslint.
+bazel run @nodejs//:yarn
+bazel build @npm//tslint/bin:tslint && bazel-bin/external/npm/tslint/bin/tslint.sh --project .
 
-# run tests
-./scripts/run_tests_on_cloudbuild
+# Run all the tests
+bazel test ... --build_tests_only --test_env=USE_CLOUD_BUILD_NETWORK=true
