@@ -11,6 +11,7 @@ fi
 
 # Run all the tests.
 bazel run @nodejs//:yarn config set registry https://us-npm.pkg.dev/artifact-foundry-prod/ah-3p-staging-npm/
+bazel run @nodejs//:npm install
 bazel test //... --build_tests_only
 
 VERSION=$(cat version.bzl | grep DF_VERSION | awk '{ print $3 }' | sed "s/\"//g")
