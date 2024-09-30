@@ -4,6 +4,11 @@ set -e
 # TODO(ekrekr): re-enable once fork is merged to upstread.
 # ./scripts/regenerate_docs
 
+# By default GCB uses master branch name. This code change it to main.
+if [ "master" == "$(git branch --show-current)" ]; then
+    git branch -m main
+fi
+
 if [ "$(git status --porcelain)" ]; then 
     echo "There are uncommitted changes; aborting." 1>&2
     exit 1
