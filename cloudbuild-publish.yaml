@@ -2,12 +2,23 @@ steps:
   - name: 'gcr.io/cloud-builders/gcloud'
     script: |
       #!/usr/bin/env bash
+      gcloud secrets versions access latest --secret=github-token-access --format='get(payload.data)' | tr '_-' '/+' | base64 -d > token.txt
       REPO_TOKEN="$(gcloud auth print-access-token)" NPM_TOKEN=$NPM_TOKEN ./scripts/create_npmrc
     secretEnv: ['NPM_TOKEN']
   - name: gcr.io/cloud-builders/bazel:5.4.0
     script: |
       #!/usr/bin/env bash
       ./scripts/publish
+  - name: 'gcr.io/$PROJECT_ID/github'
+    entrypoint: 'bash'
+    args:
+    - '-c'
+    - |
+      set -e
+      VERSION=$(cat version.bzl | grep DF_VERSION | awk '{ print $3 }' | sed "s/\"//g")
+      echo "Create release notes for $VERSION"
+      gh auth login --with-token < token.txt
+      gh release create $VERSION --generate-notes
 availableSecrets:
   secretManager:
   - versionName: projects/178487900909/secrets/npm-publish-token/versions/2
