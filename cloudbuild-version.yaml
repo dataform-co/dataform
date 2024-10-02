@@ -3,7 +3,7 @@ steps:
 # This step downloads it and store it in token.txt file for later steps to use for authentication.
 - name: gcr.io/cloud-builders/gcloud
   entrypoint: 'bash'
-  args: [ '-c', "gcloud secrets versions access latest --secret=github-token-access --format='get(payload.data)' | tr '_-' '/+' | base64 -d > token.txt" ]
+  args: [ '-c', "gcloud secrets versions access latest --secret=github-token-access --format='get(payload.data)' | tr '_-' '/+' | base64 -d > ~/token.txt" ]
 - name: gcr.io/cloud-builders/git
   entrypoint: 'bash'
   args:
@@ -17,7 +17,7 @@ steps:
   - |
     set -e
     echo "Create PR..."
-    gh auth login --with-token < token.txt
+    gh auth login --with-token < ~/token.txt
     gh pr create -t "Publishing Dataform security patches" -b "Updating NPM package version to $(cat version.bzl | grep DF_VERSION | awk '{ print $3 }' | sed "s/\"//g")" -B $BRANCH_NAME -H $(cat git_branch_name.txt) -r dataform-co/dataform-reviewers
 options:
   automapSubstitutions: true
