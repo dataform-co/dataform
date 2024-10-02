@@ -15,10 +15,10 @@ steps:
     - '-c'
     - |
       set -e
-      VERSION=$(cat version.bzl | grep DF_VERSION | awk '{ print $3 }' | sed "s/\"//g")
-      echo "Create release notes for $VERSION"
+      __VERSION=$(cat version.bzl | grep DF_VERSION | awk '{ print $3 }' | sed "s/\"//g")
+      echo "Create release notes for $__VERSION"
       gh auth login --with-token < token.txt
-      gh release create $VERSION --generate-notes
+      gh release create $__VERSION --generate-notes
 availableSecrets:
   secretManager:
   - versionName: projects/178487900909/secrets/npm-publish-token/versions/2
