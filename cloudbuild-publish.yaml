@@ -16,7 +16,7 @@ steps:
     - |
       set -e
       __VERSION=$(cat version.bzl | grep DF_VERSION | awk '{ print $3 }' | sed "s/\"//g")
-      echo "Create release notes for $__VERSION"
+      echo "Creating release notes for $__VERSION"
       gh auth login --with-token < ~/token.txt
       gh release create $__VERSION --generate-notes
 availableSecrets:
