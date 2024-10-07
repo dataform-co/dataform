@@ -271,7 +271,7 @@ export class View extends ActionBuilder<dataform.Table> {
     if (!!assertions.uniqueKey?.length) {
       uniqueKeys = [
         dataform.ActionConfig.TableAssertionsConfig.UniqueKey.create({
-          uniqueKey: ["TableAssertionsConfig"]
+          uniqueKey: assertions.uniqueKey
         })
       ];
     }
