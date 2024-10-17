@@ -1,0 +1,9 @@
+config {
+    type: "operations",
+    hasOutput: true
+}
+
+  -- Model for connecting to the Vision API
+CREATE MODEL IF NOT EXISTS
+  ${self()} REMOTE
+WITH CONNECTION `us.gcs` OPTIONS (remote_service_type = 'cloud_ai_vision_v1');
