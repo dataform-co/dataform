@@ -955,7 +955,14 @@ nodes:
     });
 
     test(`data preparations resolves compilation overrides before encoding`, () => {
-      const projectDir = createSimpleDataPreparationProject();
+      const projectDir = createSimpleDataPreparationProject(`
+defaultProject: defaultProject
+defaultDataset: defaultDataset
+defaultLocation: US
+projectSuffix: projectSuffix
+datasetSuffix: datasetSuffix
+namePrefix: tablePrefix
+`);
       const dataPreparationYaml = `
 configuration:
   errorTable:
@@ -1013,16 +1020,16 @@ nodes:
       const resolvedYaml = `
 configuration:
   errorTable:
-    project: defaultProject
-    dataset: defaultDataset
-    table: error
+    project: defaultProject_projectSuffix
+    dataset: defaultDataset_datasetSuffix
+    table: tablePrefix_error
 nodes:
 - id: node1
   source:
     table:
-      project: defaultProject
-      dataset: defaultDataset
-      table: src
+      project: defaultProject_projectSuffix
+      dataset: defaultDataset_datasetSuffix
+      table: tablePrefix_src
   generated:
     sourceGenerated:
       sourceSchema:
@@ -1041,9 +1048,9 @@ nodes:
     nodeId: node1
   destination:
     table:
-      project: defaultProject
-      dataset: defaultDataset
-      table: dest
+      project: defaultProject_projectSuffix
+      dataset: defaultDataset_datasetSuffix
+      table: tablePrefix_dest
   generated:
     sourceGenerated:
       sourceSchema:
@@ -1072,9 +1079,9 @@ nodes:
           asPlainObject([
             {
               target: {
-                database: "defaultProject",
-                schema: "defaultDataset",
-                name: "dest"
+                database: "defaultProject_projectSuffix",
+                schema: "defaultDataset_datasetSuffix",
+                name: "tablePrefix_dest"
               },
               canonicalTarget: {
                 database: "defaultProject",

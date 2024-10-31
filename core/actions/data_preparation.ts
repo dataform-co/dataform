@@ -161,15 +161,21 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
             this.session.projectConfig)
     // Convert resolved target into a Data Preparation Table Reference
     let resolvedTableReference : {[key: string]: string} = {
-      table: resolvedTarget.name,
+      table: this.session.finalizeName(resolvedTarget.name),
     }
 
     // Ensure project and dataset field are added in order
     if (resolvedTarget.schema) {
-      resolvedTableReference = { dataset: resolvedTarget.schema, ...resolvedTableReference }
+      resolvedTableReference = {
+        dataset: this.session.finalizeSchema(resolvedTarget.schema),
+        ...resolvedTableReference
+      }
     }
     if (resolvedTarget.database) {
-      resolvedTableReference = { project: resolvedTarget.database, ...resolvedTableReference }
+      resolvedTableReference = {
+        project: this.session.finalizeDatabase(resolvedTarget.database),
+        ...resolvedTableReference
+      }
     }
     return resolvedTableReference;
   }
