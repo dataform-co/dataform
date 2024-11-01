@@ -41,8 +41,12 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     const targets = this.getTargets(dataPreparationAsJson as {
       [key: string]: any;
     });
-    this.proto.targets = targets.map(target =>
-      this.applySessionToTarget(target, session.projectConfig, config.filename, true)
+    const resolvedTargets = targets.map(target =>
+        this.applySessionToTarget(target, session.projectConfig, config.filename, true)
+    )
+    // Finalize list of targets.
+    this.proto.targets = resolvedTargets.map(target =>
+        this.finalizeTarget(target)
     );
     this.proto.canonicalTargets = targets.map(target =>
       this.applySessionToTarget(target, session.canonicalProjectConfig)
@@ -54,7 +58,7 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
 
     // Set the unique target key as the first target defined.
     // TODO: Remove once multiple targets are supported.
-    this.proto.target = this.proto.targets[0];
+    this.proto.target = resolvedTargets[0];
     this.proto.canonicalTarget = this.proto.canonicalTargets[0];
 
     this.proto.tags = config.tags;
@@ -161,15 +165,21 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
             this.session.projectConfig)
     // Convert resolved target into a Data Preparation Table Reference
     let resolvedTableReference : {[key: string]: string} = {
-      table: resolvedTarget.name,
+      table: this.session.finalizeName(resolvedTarget.name),
     }
 
     // Ensure project and dataset field are added in order
     if (resolvedTarget.schema) {
-      resolvedTableReference = { dataset: resolvedTarget.schema, ...resolvedTableReference }
+      resolvedTableReference = {
+        dataset: this.session.finalizeSchema(resolvedTarget.schema),
+        ...resolvedTableReference
+      }
     }
     if (resolvedTarget.database) {
-      resolvedTableReference = { project: resolvedTarget.database, ...resolvedTableReference }
+      resolvedTableReference = {
+        project: this.session.finalizeDatabase(resolvedTarget.database),
+        ...resolvedTableReference
+      }
     }
     return resolvedTableReference;
   }
