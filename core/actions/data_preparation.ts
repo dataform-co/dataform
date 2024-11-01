@@ -41,8 +41,12 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     const targets = this.getTargets(dataPreparationAsJson as {
       [key: string]: any;
     });
-    this.proto.targets = targets.map(target =>
-      this.applySessionToTarget(target, session.projectConfig, config.filename, true)
+    const resolvedTargets = targets.map(target =>
+        this.applySessionToTarget(target, session.projectConfig, config.filename, true)
+    )
+    // Finalize list of targets.
+    this.proto.targets = resolvedTargets.map(target =>
+        this.finalizeTarget(target)
     );
     this.proto.canonicalTargets = targets.map(target =>
       this.applySessionToTarget(target, session.canonicalProjectConfig)
@@ -54,7 +58,7 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
 
     // Set the unique target key as the first target defined.
     // TODO: Remove once multiple targets are supported.
-    this.proto.target = this.proto.targets[0];
+    this.proto.target = resolvedTargets[0];
     this.proto.canonicalTarget = this.proto.canonicalTargets[0];
 
     this.proto.tags = config.tags;

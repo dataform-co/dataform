@@ -1090,9 +1090,9 @@ nodes:
               },
               targets: [
                 {
-                  database: "defaultProject",
-                  schema: "defaultDataset",
-                  name: "dest"
+                  database: "defaultProject_projectSuffix",
+                  schema: "defaultDataset_datasetSuffix",
+                  name: "tablePrefix_dest"
                 }
               ],
               canonicalTargets: [
