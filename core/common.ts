@@ -135,7 +135,7 @@ export interface IDependenciesConfig {
   hermetic?: boolean;
 
   /**
-   * If this flag is set to true, assertions depenedent upon any of the dependencies are added as depenedencies as well.
+   * If this flag is set to true, assertions dependent upon any of the dependencies are added as dependencies as well.
    */
   dependOnDependencyAssertions?: boolean;
 }

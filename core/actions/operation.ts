@@ -1,68 +1,33 @@
 import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { ActionBuilder } from "df/core/actions";
 import { ColumnDescriptors } from "df/core/column_descriptors";
-import {
-  Contextable,
-  IActionConfig,
-  IColumnsDescriptor,
-  ICommonContext,
-  IDependenciesConfig,
-  IDocumentableConfig,
-  INamedConfig,
-  ITargetableConfig,
-  Resolvable
-} from "df/core/common";
+import { Contextable, ICommonContext, Resolvable } from "df/core/common";
 import * as Path from "df/core/path";
 import { Session } from "df/core/session";
 import {
   actionConfigToCompiledGraphTarget,
   addDependenciesToActionDependencyTargets,
-  checkExcessProperties,
+  configTargetToCompiledGraphTarget,
   nativeRequire,
   resolvableAsTarget,
   resolveActionsConfigFilename,
   setNameAndTarget,
-  strictKeysOf,
   toResolvable
 } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
 /**
- * Configuration options for `operations` action types.
+ * @hidden
+ * This maintains backwards compatability with older versions.
+ * TODO(ekrekr): consider breaking backwards compatability of these in v4.
  */
-export interface IOperationConfig
-  extends IActionConfig,
-    IDependenciesConfig,
-    IDocumentableConfig,
-    INamedConfig,
-    ITargetableConfig {
-  /**
-   * Declares that this `operations` action creates a dataset which should be referenceable using the `ref` function.
-   *
-   * If set to true, this action should create a dataset with its configured name, using the `self()` context function.
-   *
-   * For example:
-   * ```sql
-   * create or replace table ${self()} as select ...
-   * ```
-   */
-  hasOutput?: boolean;
+interface ILegacyOperationConfig extends dataform.ActionConfig.OperationConfig {
+  dependencies: Resolvable[];
+  database: string;
+  schema: string;
+  fileName: string;
+  type: string;
 }
-
-export const IIOperationConfigProperties = strictKeysOf<IOperationConfig>()([
-  "columns",
-  "database",
-  "dependencies",
-  "description",
-  "disabled",
-  "hasOutput",
-  "hermetic",
-  "name",
-  "schema",
-  "tags",
-  "type",
-  "dependOnDependencyAssertions"
-]);
 
 /**
  * @hidden
@@ -80,17 +45,15 @@ export class Operation extends ActionBuilder<dataform.Operation> {
   // We delay contextification until the final compile step, so hold these here for now.
   private contextableQueries: Contextable<ICommonContext, string | string[]>;
 
-  constructor(
-    session?: Session,
-    config?: dataform.ActionConfig.OperationConfig,
-    configPath?: string
-  ) {
+  constructor(session?: Session, unverifiedConfig?: any, configPath?: string) {
     super(session);
     this.session = session;
 
-    if (!config) {
+    if (!unverifiedConfig) {
       return;
     }
+
+    const config = this.verifyConfig(unverifiedConfig);
 
     if (!config.name) {
       config.name = Path.basename(config.filename);
@@ -104,36 +67,20 @@ export class Operation extends ActionBuilder<dataform.Operation> {
     );
     this.proto.canonicalTarget = this.applySessionToTarget(target, session.canonicalProjectConfig);
 
-    config.filename = resolveActionsConfigFilename(config.filename, configPath);
-    this.proto.fileName = config.filename;
+    if (configPath) {
+      config.filename = resolveActionsConfigFilename(config.filename, configPath);
+      this.queries(nativeRequire(config.filename).query);
+    }
 
-    // TODO(ekrekr): load config proto column descriptors.
-    this.config({
-      dependencies: config.dependencyTargets.map(dependencyTarget =>
-        actionConfigToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget))
-      ),
-      tags: config.tags,
-      disabled: config.disabled,
-      hasOutput: config.hasOutput,
-      description: config.description,
-      dependOnDependencyAssertions: config.dependOnDependencyAssertions
-    });
-
-    this.queries(nativeRequire(config.filename).query);
-  }
-
-  public config(config: IOperationConfig) {
-    checkExcessProperties(
-      (e: Error) => this.session.compileError(e),
-      config,
-      IIOperationConfigProperties,
-      "operation config"
-    );
     if (config.dependOnDependencyAssertions) {
       this.setDependOnDependencyAssertions(config.dependOnDependencyAssertions);
     }
-    if (config.dependencies) {
-      this.dependencies(config.dependencies);
+    if (config.dependencyTargets) {
+      this.dependencies(
+        config.dependencyTargets.map(dependencyTarget =>
+          configTargetToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget))
+        )
+      );
     }
     if (config.hermetic !== undefined) {
       this.hermetic(config.hermetic);
@@ -150,14 +97,21 @@ export class Operation extends ActionBuilder<dataform.Operation> {
     if (config.description) {
       this.description(config.description);
     }
-    if (config.columns) {
-      this.columns(config.columns);
+    if (config.columns?.length) {
+      this.columns(
+        config.columns.map(columnDescriptor =>
+          dataform.ActionConfig.ColumnDescriptor.create(columnDescriptor)
+        )
+      );
     }
-    if (config.database) {
-      this.database(config.database);
+    if (config.project) {
+      this.database(config.project);
     }
-    if (config.schema) {
-      this.schema(config.schema);
+    if (config.dataset) {
+      this.schema(config.dataset);
+    }
+    if (config.filename) {
+      this.proto.fileName = config.filename;
     }
     return this;
   }
@@ -209,13 +163,12 @@ export class Operation extends ActionBuilder<dataform.Operation> {
     return this;
   }
 
-  public columns(columns: IColumnsDescriptor) {
+  public columns(columns: dataform.ActionConfig.ColumnDescriptor[]) {
     if (!this.proto.actionDescriptor) {
       this.proto.actionDescriptor = {};
     }
-    this.proto.actionDescriptor.columns = ColumnDescriptors.mapToColumnProtoArray(
-      columns,
-      (e: Error) => this.session.compileError(e)
+    this.proto.actionDescriptor.columns = ColumnDescriptors.mapConfigProtoToCompilationProto(
+      columns
     );
     return this;
   }
@@ -280,6 +233,44 @@ export class Operation extends ActionBuilder<dataform.Operation> {
       dataform.Operation,
       this.proto,
       VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM
+    );
+  }
+
+  private verifyConfig(
+    unverifiedConfig: ILegacyOperationConfig
+  ): dataform.ActionConfig.OperationConfig {
+    // The "type" field only exists on legacy view configs. Here we convert them to the new format.
+    if (unverifiedConfig.type) {
+      delete unverifiedConfig.type;
+      if (unverifiedConfig.dependencies) {
+        unverifiedConfig.dependencyTargets = unverifiedConfig.dependencies.map(
+          (dependency: string | object) =>
+            typeof dependency === "string" ? { name: dependency } : dependency
+        );
+        delete unverifiedConfig.dependencies;
+      }
+      if (unverifiedConfig.database) {
+        unverifiedConfig.project = unverifiedConfig.database;
+        delete unverifiedConfig.database;
+      }
+      if (unverifiedConfig.schema) {
+        unverifiedConfig.dataset = unverifiedConfig.schema;
+        delete unverifiedConfig.schema;
+      }
+      if (unverifiedConfig.fileName) {
+        unverifiedConfig.filename = unverifiedConfig.fileName;
+        delete unverifiedConfig.fileName;
+      }
+      if (unverifiedConfig.columns) {
+        unverifiedConfig.columns = ColumnDescriptors.mapLegacyObjectToConfigProto(
+          unverifiedConfig.columns as any
+        );
+      }
+    }
+    return verifyObjectMatchesProto(
+      dataform.ActionConfig.OperationConfig,
+      unverifiedConfig,
+      VerifyProtoErrorBehaviour.SHOW_DOCS_LINK
     );
   }
 }

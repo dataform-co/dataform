@@ -83,6 +83,19 @@ async function runTest(
       const normalizedColumn = normalizeColumnName(column);
       const expectedValue = expectedResultRow[normalizedColumn];
       const actualValue = actualResultRow[normalizedColumn];
+      // Null value check
+      if (expectedValue === null && actualValue !== null) {
+        rowMessages.push(
+          `For row ${i} and column "${column}": expected null, but saw "${actualValue}".`
+        );
+        break;
+      }
+      if (expectedValue !== null && actualValue === null) {
+        rowMessages.push(
+          `For row ${i} and column "${column}": expected "${expectedValue}", but saw null.`
+        );
+        break;
+      }
       if (typeof expectedValue !== typeof actualValue) {
         rowMessages.push(
           `For row ${i} and column "${column}": expected type "${typeof expectedValue}", but saw type "${typeof actualValue}".`

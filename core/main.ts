@@ -5,10 +5,13 @@ import {
   VerifyProtoErrorBehaviour
 } from "df/common/protos";
 import { Assertion } from "df/core/actions/assertion";
+import { DataPreparation } from "df/core/actions/data_preparation";
 import { Declaration } from "df/core/actions/declaration";
+import { IncrementalTable } from "df/core/actions/incremental_table";
 import { Notebook } from "df/core/actions/notebook";
 import { Operation } from "df/core/actions/operation";
 import { Table } from "df/core/actions/table";
+import { View } from "df/core/actions/view";
 import * as Path from "df/core/path";
 import { Session } from "df/core/session";
 import { nativeRequire } from "df/core/utils";
@@ -132,19 +135,17 @@ function loadActionConfigs(session: Session, filePaths: string[]) {
           );
         } else if (actionConfig.view) {
           session.actions.push(
-            new Table(
+            new View(
               session,
               dataform.ActionConfig.ViewConfig.create(actionConfig.view),
-              "view",
               actionConfigsPath
             )
           );
         } else if (actionConfig.incrementalTable) {
           session.actions.push(
-            new Table(
+            new IncrementalTable(
               session,
               dataform.ActionConfig.IncrementalTableConfig.create(actionConfig.incrementalTable),
-              "incremental",
               actionConfigsPath
             )
           );
@@ -178,6 +179,14 @@ function loadActionConfigs(session: Session, filePaths: string[]) {
               dataform.ActionConfig.NotebookConfig.create(actionConfig.notebook),
               actionConfigsPath
             )
+          );
+        } else if (actionConfig.dataPreparation) {
+          session.actions.push(
+              new DataPreparation(
+                  session,
+                  dataform.ActionConfig.DataPreparationConfig.create(actionConfig.dataPreparation),
+                  actionConfigsPath
+              )
           );
         } else {
           throw Error("Empty action configs are not permitted.");

@@ -1,8 +1,11 @@
 import { Action } from "df/core/actions";
 import { Assertion } from "df/core/actions/assertion";
+import { DataPreparation } from "df/core/actions/data_preparation";
+import { IncrementalTable } from "df/core/actions/incremental_table";
 import { Notebook } from "df/core/actions/notebook";
 import { Operation } from "df/core/actions/operation";
 import { Table } from "df/core/actions/table";
+import { View } from "df/core/actions/view";
 import { Resolvable } from "df/core/common";
 import * as Path from "df/core/path";
 import { IActionProto, Session } from "df/core/session";
@@ -11,7 +14,13 @@ import { dataform } from "df/protos/ts";
 declare var __webpack_require__: any;
 declare var __non_webpack_require__: any;
 
-type actionsWithDependencies = Table | Operation | Notebook;
+type actionsWithDependencies =
+  | Table
+  | View
+  | IncrementalTable
+  | Operation
+  | Notebook
+  | DataPreparation;
 
 // This side-steps webpack's require in favour of the real require.
 export const nativeRequire =
@@ -211,6 +220,7 @@ export function strictKeysOf<T>() {
 
 /**
  * Will throw an error if the provided object contains any properties that aren't in the provided list.
+ * @deprecated verifyObjectMatchesProto will be replacing this soon.
  */
 export function checkExcessProperties<T>(
   reportError: (e: Error) => void,
@@ -289,20 +299,45 @@ export function extractActionDetailsFromFileName(
   return { fileExtension, fileNameAsTargetName: basename };
 }
 
+// Converts the config proto's target proto to the compiled graph proto's representation.
+export function configTargetToCompiledGraphTarget(configTarget: dataform.ActionConfig.Target) {
+  const compiledGraphTarget: dataform.ITarget = { name: configTarget.name };
+  if (configTarget.project) {
+    compiledGraphTarget.database = configTarget.project;
+  }
+  if (configTarget.dataset) {
+    compiledGraphTarget.schema = configTarget.dataset;
+  }
+  if (configTarget.hasOwnProperty("includeDependentAssertions")) {
+    compiledGraphTarget.includeDependentAssertions = configTarget.includeDependentAssertions;
+  }
+  return dataform.Target.create(compiledGraphTarget);
+}
+
+// Converts a config proto's action config proto to the compiled graph proto's representation.
+// Action config protos roughly contain target protos fields.
 export function actionConfigToCompiledGraphTarget(
-  // The target interface is used here because Action configs contain all the fields of action
-  // config targets, even if they are not strictly target objects.
-  actionConfigTarget: dataform.ActionConfig.ITarget
+  actionConfig:
+    | dataform.ActionConfig.TableConfig
+    | dataform.ActionConfig.ViewConfig
+    | dataform.ActionConfig.IncrementalTableConfig
+    | dataform.ActionConfig.OperationConfig
+    | dataform.ActionConfig.AssertionConfig
+    | dataform.ActionConfig.DeclarationConfig
+    | dataform.ActionConfig.NotebookConfig
+    | dataform.ActionConfig.DataPreparationConfig
 ): dataform.Target {
-  const compiledGraphTarget: dataform.ITarget = { name: actionConfigTarget.name };
-  if (actionConfigTarget.dataset) {
-    compiledGraphTarget.schema = actionConfigTarget.dataset;
+  const compiledGraphTarget: dataform.ITarget = { name: actionConfig.name };
+  if ("project" in actionConfig && actionConfig.project !== undefined) {
+    compiledGraphTarget.database = actionConfig.project;
   }
-  if (actionConfigTarget.project) {
-    compiledGraphTarget.database = actionConfigTarget.project;
+  if ("location" in actionConfig && actionConfig.location !== undefined) {
+    // This is a hack around the limitations of the compiled graph's target proto not having a
+    // "location" field.
+    compiledGraphTarget.schema = actionConfig.location;
   }
-  if (actionConfigTarget.hasOwnProperty("includeDependentAssertions")) {
-    compiledGraphTarget.includeDependentAssertions = actionConfigTarget.includeDependentAssertions;
+  if ("dataset" in actionConfig && actionConfig.dataset !== undefined) {
+    compiledGraphTarget.schema = actionConfig.dataset;
   }
   return dataform.Target.create(compiledGraphTarget);
 }
@@ -316,7 +351,10 @@ export function addDependenciesToActionDependencyTargets(
   resolvable: Resolvable
 ) {
   const dependencyTarget = resolvableAsTarget(resolvable);
-  if (!dependencyTarget.hasOwnProperty("includeDependentAssertions")) {
+  if (
+    !dependencyTarget.hasOwnProperty("includeDependentAssertions") &&
+    !(action instanceof DataPreparation)
+  ) {
     // dependency `includeDependentAssertions` takes precedence over the config's `dependOnDependencyAssertions`
     dependencyTarget.includeDependentAssertions = action.dependOnDependencyAssertions;
   }

@@ -2,13 +2,16 @@ import { default as TarjanGraphConstructor, Graph as TarjanGraph } from "tarjan-
 
 import { encode64, verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { StringifiedMap, StringifiedSet } from "df/common/strings/stringifier";
-import { Action, SqlxConfig } from "df/core/actions";
+import { Action } from "df/core/actions";
 import { AContextable, Assertion, AssertionContext } from "df/core/actions/assertion";
+import { DataPreparation } from "df/core/actions/data_preparation";
 import { Declaration } from "df/core/actions/declaration";
+import { IncrementalTable } from "df/core/actions/incremental_table";
 import { Notebook } from "df/core/actions/notebook";
 import { Operation, OperationContext } from "df/core/actions/operation";
 import { ITableConfig, ITableContext, Table, TableContext, TableType } from "df/core/actions/table";
 import { Test } from "df/core/actions/test";
+import { View } from "df/core/actions/view";
 import { Contextable, ICommonContext, ITarget, Resolvable } from "df/core/common";
 import { CompilationSql } from "df/core/compilation_sql";
 import { targetAsReadableString, targetStringifier } from "df/core/targets";
@@ -85,7 +88,9 @@ export class Session {
   }
 
   public sqlxAction(actionOptions: {
-    sqlxConfig: SqlxConfig;
+    // sqlxConfig has type any here because any object can be passed in from the compiler - the
+    // structure of it is verified at later steps.
+    sqlxConfig: any;
     sqlStatementCount: number;
     sqlContextable: (
       ctx: TableContext | AssertionContext | OperationContext | ICommonContext
@@ -101,38 +106,67 @@ export class Session {
     ];
   }) {
     const { sqlxConfig } = actionOptions;
-    if (actionOptions.sqlStatementCount > 1 && sqlxConfig.type !== "operations") {
+    const actionType = sqlxConfig.hasOwnProperty("type") ? sqlxConfig.type : "operations";
+    if (actionOptions.sqlStatementCount > 1 && actionType !== "operations") {
       this.compileError(
         "Actions may only contain more than one SQL statement if they are of type 'operations'."
       );
     }
-    if (sqlxConfig.hasOwnProperty("protected") && sqlxConfig.type !== "incremental") {
+    if (sqlxConfig.hasOwnProperty("protected") && actionType !== "incremental") {
       this.compileError(
         "Actions may only specify 'protected: true' if they are of type 'incremental'."
       );
     }
-    if (actionOptions.incrementalWhereContextable && sqlxConfig.type !== "incremental") {
+    if (actionOptions.incrementalWhereContextable && actionType !== "incremental") {
       this.compileError(
         "Actions may only include incremental_where if they are of type 'incremental'."
       );
     }
-    if (!sqlxConfig.hasOwnProperty("schema") && sqlxConfig.type === "declaration") {
+    if (!sqlxConfig.hasOwnProperty("schema") && actionType === "declaration") {
       this.compileError("Actions of type 'declaration' must specify a value for 'schema'.");
     }
-    if (actionOptions.inputContextables.length > 0 && sqlxConfig.type !== "test") {
+    if (actionOptions.inputContextables.length > 0 && actionType !== "test") {
       this.compileError("Actions may only include input blocks if they are of type 'test'.");
     }
-    if (actionOptions.preOperationsContextable && !definesDataset(sqlxConfig.type)) {
+    if (actionOptions.preOperationsContextable && !definesDataset(actionType)) {
       this.compileError("Actions may only include pre_operations if they create a dataset.");
     }
-    if (actionOptions.postOperationsContextable && !definesDataset(sqlxConfig.type)) {
+    if (actionOptions.postOperationsContextable && !definesDataset(actionType)) {
       this.compileError("Actions may only include post_operations if they create a dataset.");
     }
 
-    switch (sqlxConfig.type) {
+    switch (actionType) {
       case "view":
-      case "table":
+        sqlxConfig.filename = utils.getCallerFile(this.rootDir);
+        const view = new View(this, sqlxConfig).query(ctx => actionOptions.sqlContextable(ctx)[0]);
+        if (actionOptions.incrementalWhereContextable) {
+          view.where(actionOptions.incrementalWhereContextable);
+        }
+        if (actionOptions.preOperationsContextable) {
+          view.preOps(actionOptions.preOperationsContextable);
+        }
+        if (actionOptions.postOperationsContextable) {
+          view.postOps(actionOptions.postOperationsContextable);
+        }
+        this.actions.push(view);
+        break;
       case "incremental":
+        sqlxConfig.filename = utils.getCallerFile(this.rootDir);
+        const incrementalTable = new IncrementalTable(this, sqlxConfig).query(
+          ctx => actionOptions.sqlContextable(ctx)[0]
+        );
+        if (actionOptions.incrementalWhereContextable) {
+          incrementalTable.where(actionOptions.incrementalWhereContextable);
+        }
+        if (actionOptions.preOperationsContextable) {
+          incrementalTable.preOps(actionOptions.preOperationsContextable);
+        }
+        if (actionOptions.postOperationsContextable) {
+          incrementalTable.postOps(actionOptions.postOperationsContextable);
+        }
+        this.actions.push(incrementalTable);
+        break;
+      case "table":
         const table = this.publish(sqlxConfig.name)
           .config(sqlxConfig)
           .query(ctx => actionOptions.sqlContextable(ctx)[0]);
@@ -147,21 +181,19 @@ export class Session {
         }
         break;
       case "assertion":
-        this.assert(sqlxConfig.name)
-          .config(sqlxConfig)
-          .query(ctx => actionOptions.sqlContextable(ctx)[0]);
+        sqlxConfig.filename = utils.getCallerFile(this.rootDir);
+        this.actions.push(
+          new Assertion(this, sqlxConfig).query(ctx => actionOptions.sqlContextable(ctx)[0])
+        );
         break;
       case "operations":
-        this.operate(sqlxConfig.name)
-          .config(sqlxConfig)
-          .queries(actionOptions.sqlContextable);
+        sqlxConfig.filename = utils.getCallerFile(this.rootDir);
+        this.actions.push(new Operation(this, sqlxConfig).queries(actionOptions.sqlContextable));
         break;
       case "declaration":
-        this.declare({
-          database: sqlxConfig.database,
-          schema: sqlxConfig.schema,
-          name: sqlxConfig.name
-        }).config(sqlxConfig);
+        const declaration = new Declaration(this, sqlxConfig);
+        declaration.proto.fileName = utils.getCallerFile(this.rootDir);
+        this.actions.push(declaration);
         break;
       case "test":
         const testCase = this.test(sqlxConfig.name)
@@ -172,7 +204,7 @@ export class Session {
         });
         break;
       default:
-        throw new Error(`Unrecognized action type: ${(sqlxConfig as SqlxConfig).type}`);
+        throw new Error(`Unrecognized action type: ${sqlxConfig.type}`);
     }
   }
 
@@ -323,7 +355,12 @@ export class Session {
     // TODO(ekrekr): replace verify here with something that actually works.
     const compiledGraph = dataform.CompiledGraph.create({
       projectConfig: this.projectConfig,
-      tables: this.compileGraphChunk(this.actions.filter(action => action instanceof Table)),
+      tables: this.compileGraphChunk(
+        this.actions.filter(
+          action =>
+            action instanceof Table || action instanceof View || action instanceof IncrementalTable
+        )
+      ),
       operations: this.compileGraphChunk(
         this.actions.filter(action => action instanceof Operation)
       ),
@@ -335,6 +372,9 @@ export class Session {
       ),
       tests: this.compileGraphChunk(Object.values(this.tests)),
       notebooks: this.compileGraphChunk(this.actions.filter(action => action instanceof Notebook)),
+      dataPreparations: this.compileGraphChunk(
+        this.actions.filter(action => action instanceof DataPreparation)
+      ),
       graphErrors: this.graphErrors,
       dataformCoreVersion,
       targets: this.actions.map(action => action.proto.target)
@@ -345,7 +385,8 @@ export class Session {
         compiledGraph.tables,
         compiledGraph.assertions,
         compiledGraph.operations,
-        compiledGraph.notebooks
+        compiledGraph.notebooks,
+        compiledGraph.dataPreparations
       )
     );
 
@@ -354,7 +395,8 @@ export class Session {
         compiledGraph.tables,
         compiledGraph.assertions,
         compiledGraph.operations,
-        compiledGraph.notebooks
+        compiledGraph.notebooks,
+        compiledGraph.dataPreparations
       ),
       [].concat(compiledGraph.declarations.map(declaration => declaration.target))
     );
@@ -370,7 +412,8 @@ export class Session {
         compiledGraph.tables,
         compiledGraph.assertions,
         compiledGraph.operations,
-        compiledGraph.notebooks
+        compiledGraph.notebooks,
+        compiledGraph.dataPreparations
       )
     );
 
@@ -656,7 +699,8 @@ export class Session {
       compiledGraph.assertions,
       compiledGraph.operations,
       compiledGraph.declarations,
-      compiledGraph.notebooks
+      compiledGraph.notebooks,
+      compiledGraph.dataPreparations
     );
 
     const nonUniqueActionsTargets = getNonUniqueTargets(actions.map(action => action.target));
@@ -699,6 +743,7 @@ export class Session {
     compiledGraph.declarations = compiledGraph.declarations.filter(isUniqueAction);
     compiledGraph.assertions = compiledGraph.assertions.filter(isUniqueAction);
     compiledGraph.notebooks = compiledGraph.notebooks.filter(isUniqueAction);
+    compiledGraph.dataPreparations = compiledGraph.dataPreparations.filter(isUniqueAction);
   }
 }
 

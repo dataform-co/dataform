@@ -1,26 +1,26 @@
-import { Assertion, IAssertionConfig } from "df/core/actions/assertion";
-import { Declaration, IDeclarationConfig } from "df/core/actions/declaration";
+import { Assertion } from "df/core/actions/assertion";
+import { DataPreparation } from "df/core/actions/data_preparation";
+import { Declaration } from "df/core/actions/declaration";
+import { IncrementalTable } from "df/core/actions/incremental_table";
 import { Notebook } from "df/core/actions/notebook";
-import { IOperationConfig, Operation } from "df/core/actions/operation";
-import { ITableConfig, Table, TableType } from "df/core/actions/table";
-import { ITestConfig } from "df/core/actions/test";
+import { Operation } from "df/core/actions/operation";
+import { Table } from "df/core/actions/table";
+import { View } from "df/core/actions/view";
 import { Session } from "df/core/session";
 import { dataform } from "df/protos/ts";
 
-export type Action = Table | Operation | Assertion | Declaration | Notebook;
+export type Action =
+  | Table
+  | View
+  | IncrementalTable
+  | Operation
+  | Assertion
+  | Declaration
+  | Notebook
+  | DataPreparation;
 
-/**
- * @deprecated
- * Configs are soon to be replaced with pure protobuf representations.
- */
-export type SqlxConfig = (
-  | (ITableConfig & { type: TableType })
-  | (IAssertionConfig & { type: "assertion" })
-  | (IOperationConfig & { type: "operations" })
-  | (IDeclarationConfig & { type: "declaration" })
-  | (ITestConfig & { type: "test" })
-) & { name: string };
-
+// TODO(ekrekr): In v4, make all method on inheritors of this private, forcing users to use
+// constructors in order to populate actions.
 export abstract class ActionBuilder<T> {
   public session: Session;
   public includeAssertionsForDependency: Map<string, boolean> = new Map();
@@ -50,11 +50,17 @@ export abstract class ActionBuilder<T> {
     return target;
   }
 
-  /**
-   * @deprecated
-   * Configs are soon to be replaced with pure protobuf representations.
-   */
-  public abstract config(config: any): ActionBuilder<T>;
+  public finalizeTarget(
+    targetFromConfig: dataform.Target
+  ): dataform.Target {
+    return dataform.Target.create({
+      name: this.session.finalizeName(targetFromConfig.name),
+      schema: targetFromConfig.schema ?
+          this.session.finalizeSchema(targetFromConfig.schema) : undefined,
+      database: targetFromConfig.database ?
+          this.session.finalizeDatabase(targetFromConfig.database) : undefined
+    })
+  }
 
   /** Retrieves the filename from the config. */
   public abstract getFileName(): string;

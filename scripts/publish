@@ -1,7 +1,13 @@
 #!/bin/bash
 set -e
 
-./scripts/regenerate_docs
+# TODO(ekrekr): re-enable once fork is merged to upstread.
+# ./scripts/regenerate_docs
+
+# By default GCB uses master branch name. This code change it to main.
+if [ "master" == "$(git branch --show-current)" ]; then
+    git branch -m main
+fi
 
 if [ "$(git status --porcelain)" ]; then 
     echo "There are uncommitted changes; aborting." 1>&2
@@ -9,8 +15,13 @@ if [ "$(git status --porcelain)" ]; then
 fi
 
 # Run all the tests.
-
+bazel run @nodejs//:yarn config set registry https://us-npm.pkg.dev/artifact-foundry-prod/ah-3p-staging-npm/
+bazel run @nodejs//:npm install
 bazel test //... --build_tests_only
+
+# After the code is build with Airlock dependencies, we change the registry to public npmjs
+# to publish our npm package.
+bazel run @nodejs//:npm config set registry https://registry.npmjs.org/
 
 VERSION=$(cat version.bzl | grep DF_VERSION | awk '{ print $3 }' | sed "s/\"//g")
 
@@ -30,6 +41,3 @@ echo "Publishing as '$TAG' based on version: $VERSION"
 
 bazel run packages/@dataform/cli:package.publish -- --tag=$TAG
 bazel run packages/@dataform/core:package.publish -- --tag=$TAG
-
-git tag $VERSION
-git push origin $VERSION

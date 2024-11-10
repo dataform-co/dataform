@@ -7,6 +7,7 @@ ts_library(
     srcs = glob(["**/*.ts"]),
     deps = [
         "//cli/api",
+        "//core",
         "//protos:ts",
         "@npm//@types/node",
         "@npm//@types/vscode",
@@ -32,6 +33,7 @@ sh_binary(
         ":language-configuration.json",
         ":package.json",
         ":sqlx.grammar.json",
+        ":workflow_settings_yaml.schema.json",
         ":vscode-sources",
     ],
 )
@@ -46,6 +48,7 @@ sh_binary(
         ":README.md",
         ":LICENSE",
         ":sqlx.grammar.json",
+        ":workflow_settings_yaml.schema.json",
         ":vscode-sources",
     ],
 )

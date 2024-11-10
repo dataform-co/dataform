@@ -1,7 +1,7 @@
 import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { ActionBuilder } from "df/core/actions";
 import { Assertion } from "df/core/actions/assertion";
-import { ColumnDescriptors } from "df/core/column_descriptors";
+import { LegacyColumnDescriptors } from "df/core/column_descriptors";
 import {
   Contextable,
   IActionConfig,
@@ -19,6 +19,7 @@ import {
   actionConfigToCompiledGraphTarget,
   addDependenciesToActionDependencyTargets,
   checkExcessProperties,
+  configTargetToCompiledGraphTarget,
   nativeRequire,
   resolvableAsTarget,
   resolveActionsConfigFilename,
@@ -345,13 +346,15 @@ export class Table extends ActionBuilder<dataform.Table> {
       this.config({
         type: "table",
         dependencies: config.dependencyTargets.map(dependencyTarget =>
-          actionConfigToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget))
+          configTargetToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget))
         ),
         tags: config.tags,
         disabled: config.disabled,
         description: config.description,
         bigquery: bigqueryOptions,
-        dependOnDependencyAssertions: config.dependOnDependencyAssertions
+        dependOnDependencyAssertions: config.dependOnDependencyAssertions,
+        hermetic: config.hermetic === true ? true : undefined,
+        assertions: this.legacyMapConfigAssertions(config.assertions)
       });
     }
     if (tableType === "view") {
@@ -375,14 +378,16 @@ export class Table extends ActionBuilder<dataform.Table> {
       this.config({
         type: "view",
         dependencies: config.dependencyTargets.map(dependencyTarget =>
-          actionConfigToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget))
+          configTargetToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget))
         ),
         disabled: config.disabled,
         materialized: config.materialized,
         tags: config.tags,
         description: config.description,
         bigquery: bigqueryOptions,
-        dependOnDependencyAssertions: config.dependOnDependencyAssertions
+        dependOnDependencyAssertions: config.dependOnDependencyAssertions,
+        hermetic: config.hermetic === true ? true : undefined,
+        assertions: this.legacyMapConfigAssertions(config.assertions)
       });
     }
     if (tableType === "incremental") {
@@ -427,7 +432,7 @@ export class Table extends ActionBuilder<dataform.Table> {
       this.config({
         type: "incremental",
         dependencies: config.dependencyTargets.map(dependencyTarget =>
-          actionConfigToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget))
+          configTargetToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget))
         ),
         disabled: config.disabled,
         protected: config.protected,
@@ -435,7 +440,9 @@ export class Table extends ActionBuilder<dataform.Table> {
         tags: config.tags,
         description: config.description,
         bigquery: bigqueryOptions,
-        dependOnDependencyAssertions: config.dependOnDependencyAssertions
+        dependOnDependencyAssertions: config.dependOnDependencyAssertions,
+        hermetic: config.hermetic === true ? true : undefined,
+        assertions: this.legacyMapConfigAssertions(config.assertions)
       });
     }
     this.query(nativeRequire(tableTypeConfig.filename).query);
@@ -469,8 +476,8 @@ export class Table extends ActionBuilder<dataform.Table> {
     if (config.disabled) {
       this.disabled();
     }
-    if (config.protected) {
-      this.protected();
+    if (config.type === "incremental") {
+      this.protected(config.protected);
     }
     if (config.bigquery && Object.keys(config.bigquery).length > 0) {
       this.bigquery(config.bigquery);
@@ -536,8 +543,12 @@ export class Table extends ActionBuilder<dataform.Table> {
     return this;
   }
 
-  public protected() {
-    this.proto.protected = true;
+  public protected(defaultsToTrueProtected: boolean) {
+    // To prevent accidental data deletion, protected defaults to true if unspecified.
+    if (defaultsToTrueProtected === undefined || defaultsToTrueProtected === null) {
+      defaultsToTrueProtected = true;
+    }
+    this.proto.protected = defaultsToTrueProtected;
     return this;
   }
 
@@ -602,7 +613,7 @@ export class Table extends ActionBuilder<dataform.Table> {
     if (!this.proto.actionDescriptor) {
       this.proto.actionDescriptor = {};
     }
-    this.proto.actionDescriptor.columns = ColumnDescriptors.mapToColumnProtoArray(
+    this.proto.actionDescriptor.columns = LegacyColumnDescriptors.mapToColumnProtoArray(
       columns,
       (e: Error) => this.session.compileError(e)
     );
@@ -631,6 +642,7 @@ export class Table extends ActionBuilder<dataform.Table> {
     return this;
   }
 
+  // TODO(ekrekr): update session JS assertions to action construtors instead.
   public assertions(assertions: ITableAssertions) {
     checkExcessProperties(
       (e: Error) => this.session.compileError(e),
@@ -757,6 +769,30 @@ export class Table extends ActionBuilder<dataform.Table> {
       protoOps = protoOps.concat(typeof appliedOps === "string" ? [appliedOps] : appliedOps);
     });
     return protoOps;
+  }
+
+  private legacyMapConfigAssertions(
+    configAssertions: dataform.ActionConfig.ITableAssertionsConfig
+  ): ITableAssertions | undefined {
+    let legacyAssertions: ITableAssertions | undefined;
+    if (configAssertions) {
+      legacyAssertions = {};
+      if (configAssertions.uniqueKey?.length > 0) {
+        legacyAssertions.uniqueKey = configAssertions.uniqueKey;
+      }
+      if (configAssertions.uniqueKeys) {
+        legacyAssertions.uniqueKeys = configAssertions.uniqueKeys.map(
+          uniqueKeys => uniqueKeys?.uniqueKey
+        );
+      }
+      if (configAssertions.nonNull?.length > 0) {
+        legacyAssertions.nonNull = configAssertions.nonNull;
+      }
+      if (configAssertions.rowConditions?.length > 0) {
+        legacyAssertions.rowConditions = configAssertions.rowConditions;
+      }
+    }
+    return legacyAssertions;
   }
 }
 

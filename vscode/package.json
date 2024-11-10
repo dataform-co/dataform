@@ -6,7 +6,7 @@
   "description": "Syntax highlighting, compilation, and intellisense for Dataform and SQLX projects.",
   "displayName": "Dataform",
   "publisher": "dataform",
-  "version": "0.0.13",
+  "version": "0.0.15",
   "icon": "dataform_logo.png",
   "repository": {
     "url": "https://github.com/dataform-co/dataform/tree/master/vscode"
@@ -40,6 +40,11 @@
             },
             "default": [],
             "markdownDescription": "An array of additional arguments the extension should pass to the Dataform cli while executing `dataform compile --json`."
+          },
+          "dataform.recommendYamlExtension": {
+            "type": "boolean",
+            "default": true,
+            "markdownDescription": "Whether to recommend the YAML extension for validating `workflow_settings.yaml`."
           }
         }
       }
@@ -65,6 +70,12 @@
         "language": "sqlx",
         "scopeName": "source.sqlx",
         "path": "sqlx.grammar.json"
+      }
+    ],
+    "yamlValidation": [
+      {
+        "fileMatch": "workflow_settings.yaml",
+        "url": "./workflow_settings_yaml.schema.json"
       }
     ]
   }

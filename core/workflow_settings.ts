@@ -1,4 +1,7 @@
+import { YAMLException } from "js-yaml";
+
 import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
+import { INVALID_YAML_ERROR_STRING } from "df/core/compilers";
 import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
 
@@ -77,7 +80,11 @@ function maybeRequire(file: string): any {
     // tslint:disable-next-line: tsr-detect-non-literal-require
     return nativeRequire(file);
   } catch (e) {
-    if (e instanceof SyntaxError) {
+    if (e instanceof SyntaxError || e instanceof YAMLException) {
+      throw e;
+    }
+    // The YAMLException type isn't propogated by `require`, so instead we must check the message.
+    if (e?.message?.includes(INVALID_YAML_ERROR_STRING)) {
       throw e;
     }
     return undefined;

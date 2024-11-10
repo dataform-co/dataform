@@ -1,0 +1,12 @@
+steps:
+  - name: 'gcr.io/cloud-builders/gcloud'
+    script: |
+      #!/usr/bin/env bash
+      REPO_TOKEN="$(gcloud auth print-access-token)" NPM_TOKEN="test_only" ./scripts/create_npmrc
+  - name: gcr.io/cloud-builders/bazel:5.4.0
+    script: |
+      #!/usr/bin/env bash
+      ./scripts/run_tests_on_cloudbuild
+options:
+  machineType: E2_HIGHCPU_8
+timeout: 3600s
