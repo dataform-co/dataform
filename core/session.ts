@@ -167,9 +167,10 @@ export class Session {
         this.actions.push(incrementalTable);
         break;
       case "table":
-        const table = this.publish(sqlxConfig.name)
-          .config(sqlxConfig)
-          .query(ctx => actionOptions.sqlContextable(ctx)[0]);
+        sqlxConfig.filename = utils.getCallerFile(this.rootDir);
+        const table = new Table(this, sqlxConfig).query(
+          ctx => actionOptions.sqlContextable(ctx)[0]
+        );
         if (actionOptions.incrementalWhereContextable) {
           table.where(actionOptions.incrementalWhereContextable);
         }
@@ -179,6 +180,7 @@ export class Session {
         if (actionOptions.postOperationsContextable) {
           table.postOps(actionOptions.postOperationsContextable);
         }
+        this.actions.push(table);
         break;
       case "assertion":
         sqlxConfig.filename = utils.getCallerFile(this.rootDir);
@@ -256,20 +258,27 @@ export class Session {
     return operation;
   }
 
+  // TODO(ekrekr): add new methods other than publish for the new action types.
   public publish(
     name: string,
     queryOrConfig?: Contextable<ITableContext, string> | ITableConfig
-  ): Table {
-    const newTable = new Table();
-    newTable.session = this;
-    utils.setNameAndTarget(this, newTable.proto, name);
+  ): Table | IncrementalTable | View {
+    let newTable: Table | IncrementalTable | View = new View();
     if (!!queryOrConfig) {
       if (typeof queryOrConfig === "object") {
-        newTable.config(queryOrConfig);
+        if (queryOrConfig?.type === "table") {
+          newTable = new Table(queryOrConfig);
+        } else if (queryOrConfig === "incremental") {
+          newTable = new IncrementalTable(queryOrConfig);
+        } else {
+          newTable = new View(queryOrConfig);
+        }
       } else {
         newTable.query(queryOrConfig);
       }
     }
+    newTable.session = this;
+    utils.setNameAndTarget(this, newTable.proto, name);
     newTable.proto.fileName = utils.getCallerFile(this.rootDir);
     this.actions.push(newTable);
     return newTable;
@@ -555,6 +564,7 @@ export class Session {
     });
   }
 
+  // TODO(ekrekr): finish pushing config validation down to the classes.
   private checkTableConfigValidity(tables: dataform.ITable[]) {
     tables.forEach(table => {
       // type
