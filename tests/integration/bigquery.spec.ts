@@ -246,7 +246,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
           'For row 2 and column "col1": expected "sup?", but saw "WRONG".'
         ]
       },
-      { name: "test a view", successful: true },
+      { name: "test a view", successful: true }
     ]);
   });
 
