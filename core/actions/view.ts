@@ -1,7 +1,6 @@
 import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
-import { ActionBuilder, LegacyConfigConverter } from "df/core/actions";
+import { ActionBuilder, LegacyConfigConverter, ITableContext } from "df/core/actions";
 import { Assertion } from "df/core/actions/assertion";
-import { ITableContext, Table } from "df/core/actions/table";
 import { ColumnDescriptors } from "df/core/column_descriptors";
 import { Contextable, Resolvable } from "df/core/common";
 import * as Path from "df/core/path";

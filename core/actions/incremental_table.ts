@@ -1,7 +1,11 @@
 import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
-import { ActionBuilder, ILegacyTableBigqueryConfig, LegacyConfigConverter } from "df/core/actions";
+import {
+  ActionBuilder,
+  ILegacyTableBigqueryConfig,
+  ITableContext,
+  LegacyConfigConverter
+} from "df/core/actions";
 import { Assertion } from "df/core/actions/assertion";
-import { ITableContext, Table } from "df/core/actions/table";
 import { ColumnDescriptors } from "df/core/column_descriptors";
 import { Contextable, Resolvable } from "df/core/common";
 import * as Path from "df/core/path";
@@ -204,7 +208,7 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
       this.proto.actionDescriptor.bigqueryLabels = bigquery.labels;
     }
 
-    const bigqueryFiltered = this.legacyConvertBigQueryOptions(bigquery);
+    const bigqueryFiltered = LegacyConfigConverter.legacyConvertBigQueryOptions(bigquery);
     if (Object.values(bigqueryFiltered).length > 0) {
       this.proto.bigquery = dataform.BigQueryOptions.create(bigqueryFiltered);
     }
@@ -357,15 +361,10 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
 
     this.proto.query = context.apply(this.contextableQuery);
 
-    if (this.proto.enumType === dataform.TableType.INCREMENTAL) {
-      this.proto.incrementalQuery = incrementalContext.apply(this.contextableQuery);
+    this.proto.incrementalQuery = incrementalContext.apply(this.contextableQuery);
 
-      this.proto.incrementalPreOps = this.contextifyOps(this.contextablePreOps, incrementalContext);
-      this.proto.incrementalPostOps = this.contextifyOps(
-        this.contextablePostOps,
-        incrementalContext
-      );
-    }
+    this.proto.incrementalPreOps = this.contextifyOps(this.contextablePreOps, incrementalContext);
+    this.proto.incrementalPostOps = this.contextifyOps(this.contextablePostOps, incrementalContext);
 
     if (this.contextableWhere) {
       this.proto.where = context.apply(this.contextableWhere);

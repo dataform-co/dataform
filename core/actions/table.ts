@@ -6,15 +6,13 @@ import {
   LegacyConfigConverter
 } from "df/core/actions";
 import { Assertion } from "df/core/actions/assertion";
-import { ColumnDescriptors, LegacyColumnDescriptors } from "df/core/column_descriptors";
-import { Contextable, IColumnsDescriptor, Resolvable } from "df/core/common";
+import { ColumnDescriptors } from "df/core/column_descriptors";
+import { Contextable, Resolvable } from "df/core/common";
 import * as Path from "df/core/path";
 import { Session } from "df/core/session";
 import {
   actionConfigToCompiledGraphTarget,
   addDependenciesToActionDependencyTargets,
-  checkExcessProperties,
-  configTargetToCompiledGraphTarget,
   nativeRequire,
   resolvableAsTarget,
   resolveActionsConfigFilename,
@@ -29,7 +27,7 @@ import { View } from "./view";
 /**
  * @hidden
  * @deprecated
- * TODO(ekrekr): remove these by v4 in favour of unique JS functions and class constructors.
+ * TODO(ekrekr): remove these in favor of the proto enum.
  */
 export const TableType = ["table", "view", "incremental"] as const;
 /**
@@ -82,11 +80,7 @@ export class Table extends ActionBuilder<dataform.Table> {
   private uniqueKeyAssertions: Assertion[] = [];
   private rowConditionsAssertion: Assertion;
 
-  constructor(
-    session?: Session,
-    unverifiedConfig?: dataform.ActionConfig.TableConfig,
-    configPath?: string
-  ) {
+  constructor(session?: Session, unverifiedConfig?: any, configPath?: string) {
     super(session);
     this.session = session;
 
@@ -110,57 +104,6 @@ export class Table extends ActionBuilder<dataform.Table> {
     if (configPath) {
       config.filename = resolveActionsConfigFilename(config.filename, configPath);
       this.query(nativeRequire(config.filename).query);
-    }
-
-    // TODO(ekrekr): load config proto column descriptors.
-    if (tableType === "table") {
-      const config = tableTypeConfig as dataform.ActionConfig.TableConfig;
-
-      // TODO(ekrekr): this is a workaround for avoiding keys that aren't present, and should be
-      // cleaned up when the JS API is redone.
-      const bigqueryOptions: IBigQueryOptions | undefined =
-        config.partitionBy ||
-        config.partitionExpirationDays ||
-        config.requirePartitionFilter ||
-        config.clusterBy.length ||
-        Object.keys(config.labels).length ||
-        Object.keys(config.additionalOptions).length
-          ? {}
-          : undefined;
-      if (bigqueryOptions) {
-        if (config.partitionBy) {
-          bigqueryOptions.partitionBy = config.partitionBy;
-        }
-        if (config.partitionExpirationDays) {
-          bigqueryOptions.partitionExpirationDays = config.partitionExpirationDays;
-        }
-        if (config.requirePartitionFilter) {
-          bigqueryOptions.requirePartitionFilter = config.requirePartitionFilter;
-        }
-        if (config.clusterBy.length) {
-          bigqueryOptions.clusterBy = config.clusterBy;
-        }
-        if (Object.keys(config.labels).length) {
-          bigqueryOptions.labels = config.labels;
-        }
-        if (Object.keys(config.additionalOptions).length) {
-          bigqueryOptions.additionalOptions = config.additionalOptions;
-        }
-      }
-
-      this.config({
-        type: "table",
-        dependencies: config.dependencyTargets.map(dependencyTarget =>
-          configTargetToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget))
-        ),
-        tags: config.tags,
-        disabled: config.disabled,
-        description: config.description,
-        bigquery: bigqueryOptions,
-        dependOnDependencyAssertions: config.dependOnDependencyAssertions,
-        hermetic: config.hermetic === true ? true : undefined,
-        assertions: this.legacyMapConfigAssertions(config.assertions)
-      });
     }
 
     if (config.dependOnDependencyAssertions) {
@@ -206,7 +149,6 @@ export class Table extends ActionBuilder<dataform.Table> {
     this.bigquery({
       partitionBy: config.partitionBy,
       clusterBy: config.clusterBy,
-      updatePartitionFilter: config.updatePartitionFilter,
       labels: config.labels,
       partitionExpirationDays: config.partitionExpirationDays,
       requirePartitionFilter: config.requirePartitionFilter,

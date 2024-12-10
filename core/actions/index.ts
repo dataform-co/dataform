@@ -51,16 +51,16 @@ export abstract class ActionBuilder<T> {
     return target;
   }
 
-  public finalizeTarget(
-    targetFromConfig: dataform.Target
-  ): dataform.Target {
+  public finalizeTarget(targetFromConfig: dataform.Target): dataform.Target {
     return dataform.Target.create({
       name: this.session.finalizeName(targetFromConfig.name),
-      schema: targetFromConfig.schema ?
-          this.session.finalizeSchema(targetFromConfig.schema) : undefined,
-      database: targetFromConfig.database ?
-          this.session.finalizeDatabase(targetFromConfig.database) : undefined
-    })
+      schema: targetFromConfig.schema
+        ? this.session.finalizeSchema(targetFromConfig.schema)
+        : undefined,
+      database: targetFromConfig.database
+        ? this.session.finalizeDatabase(targetFromConfig.database)
+        : undefined
+    });
   }
 
   /** Retrieves the filename from the config. */
@@ -130,9 +130,9 @@ export class LegacyConfigConverter {
     return bigqueryFiltered;
   }
 
-  public static insertLegacyInlineAssertionsToConfigProto(
-    legacyConfig: ILegacyTableConfig | ILegacyIncrementalTableConfig | ILegacyViewConfig
-  ) {
+  public static insertLegacyInlineAssertionsToConfigProto<
+    T extends ILegacyTableConfig | ILegacyIncrementalTableConfig | ILegacyViewConfig
+  >(legacyConfig: T): T {
     if (legacyConfig?.assertions) {
       if (legacyConfig.assertions.uniqueKey) {
         legacyConfig.assertions.uniqueKey = legacyConfig.assertions.uniqueKey;
@@ -151,9 +151,9 @@ export class LegacyConfigConverter {
     return legacyConfig;
   }
 
-  public static insertLegacyBigQueryOptionsToConfigProto(
-    legacyConfig: ILegacyTableConfig | ILegacyIncrementalTableConfig
-  ) {
+  public static insertLegacyBigQueryOptionsToConfigProto<
+    T extends ILegacyTableConfig | ILegacyIncrementalTableConfig
+  >(legacyConfig: T): T {
     if (legacyConfig?.bigquery) {
       if (!!legacyConfig.bigquery.partitionBy) {
         legacyConfig.partitionBy = legacyConfig.bigquery.partitionBy;
@@ -161,8 +161,11 @@ export class LegacyConfigConverter {
       if (!!legacyConfig.bigquery.clusterBy) {
         legacyConfig.clusterBy = legacyConfig.bigquery.clusterBy;
       }
-      if (!!legacyConfig.bigquery.updatePartitionFilter) {
-        legacyConfig.updatePartitionFilter = legacyConfig.bigquery.updatePartitionFilter;
+      if (legacyConfig.type === "incremental") {
+        if (!!legacyConfig.bigquery.updatePartitionFilter) {
+          (legacyConfig as ILegacyIncrementalTableConfig).updatePartitionFilter =
+            legacyConfig.bigquery.updatePartitionFilter;
+        }
       }
       if (!!legacyConfig.bigquery.labels) {
         legacyConfig.labels = legacyConfig.bigquery.labels;
