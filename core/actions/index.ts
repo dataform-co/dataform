@@ -1,4 +1,5 @@
 import { Assertion } from "df/core/actions/assertion";
+import { DataPreparation } from "df/core/actions/data_preparation";
 import { Declaration } from "df/core/actions/declaration";
 import { ILegacyIncrementalTableConfig, IncrementalTable } from "df/core/actions/incremental_table";
 import { Notebook } from "df/core/actions/notebook";
@@ -16,7 +17,8 @@ export type Action =
   | Operation
   | Assertion
   | Declaration
-  | Notebook;
+  | Notebook
+  | DataPreparation;
 
 // TODO(ekrekr): In v4, make all method on inheritors of this private, forcing users to use
 // constructors in order to populate actions.
@@ -47,6 +49,18 @@ export abstract class ActionBuilder<T> {
       this.validateTarget(targetFromConfig, fileName);
     }
     return target;
+  }
+
+  public finalizeTarget(
+    targetFromConfig: dataform.Target
+  ): dataform.Target {
+    return dataform.Target.create({
+      name: this.session.finalizeName(targetFromConfig.name),
+      schema: targetFromConfig.schema ?
+          this.session.finalizeSchema(targetFromConfig.schema) : undefined,
+      database: targetFromConfig.database ?
+          this.session.finalizeDatabase(targetFromConfig.database) : undefined
+    })
   }
 
   /** Retrieves the filename from the config. */

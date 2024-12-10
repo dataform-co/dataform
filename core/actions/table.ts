@@ -14,6 +14,7 @@ import {
   actionConfigToCompiledGraphTarget,
   addDependenciesToActionDependencyTargets,
   checkExcessProperties,
+  configTargetToCompiledGraphTarget,
   nativeRequire,
   resolvableAsTarget,
   resolveActionsConfigFilename,
@@ -109,6 +110,57 @@ export class Table extends ActionBuilder<dataform.Table> {
     if (configPath) {
       config.filename = resolveActionsConfigFilename(config.filename, configPath);
       this.query(nativeRequire(config.filename).query);
+    }
+
+    // TODO(ekrekr): load config proto column descriptors.
+    if (tableType === "table") {
+      const config = tableTypeConfig as dataform.ActionConfig.TableConfig;
+
+      // TODO(ekrekr): this is a workaround for avoiding keys that aren't present, and should be
+      // cleaned up when the JS API is redone.
+      const bigqueryOptions: IBigQueryOptions | undefined =
+        config.partitionBy ||
+        config.partitionExpirationDays ||
+        config.requirePartitionFilter ||
+        config.clusterBy.length ||
+        Object.keys(config.labels).length ||
+        Object.keys(config.additionalOptions).length
+          ? {}
+          : undefined;
+      if (bigqueryOptions) {
+        if (config.partitionBy) {
+          bigqueryOptions.partitionBy = config.partitionBy;
+        }
+        if (config.partitionExpirationDays) {
+          bigqueryOptions.partitionExpirationDays = config.partitionExpirationDays;
+        }
+        if (config.requirePartitionFilter) {
+          bigqueryOptions.requirePartitionFilter = config.requirePartitionFilter;
+        }
+        if (config.clusterBy.length) {
+          bigqueryOptions.clusterBy = config.clusterBy;
+        }
+        if (Object.keys(config.labels).length) {
+          bigqueryOptions.labels = config.labels;
+        }
+        if (Object.keys(config.additionalOptions).length) {
+          bigqueryOptions.additionalOptions = config.additionalOptions;
+        }
+      }
+
+      this.config({
+        type: "table",
+        dependencies: config.dependencyTargets.map(dependencyTarget =>
+          configTargetToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget))
+        ),
+        tags: config.tags,
+        disabled: config.disabled,
+        description: config.description,
+        bigquery: bigqueryOptions,
+        dependOnDependencyAssertions: config.dependOnDependencyAssertions,
+        hermetic: config.hermetic === true ? true : undefined,
+        assertions: this.legacyMapConfigAssertions(config.assertions)
+      });
     }
 
     if (config.dependOnDependencyAssertions) {

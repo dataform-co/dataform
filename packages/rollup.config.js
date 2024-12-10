@@ -29,18 +29,17 @@ const checkImports = imports => {
   const allowedImports = [...imports].map(pattern => convertToRegex(pattern));
 
   // We're going to read these from the arguments.
-  let externals = [];
+  let externals = () => false;
   let allowNodeBuiltins = process.env.ALLOW_NODE_BUILTINS;
 
   return {
     buildStart(options) {
-      externals = options.external || [];
+      externals = options.external || (() => false);
     },
     resolveId(source) {
       // Either this is an internal import, or explicitly listed in externals or we fail.
       if (
-        allowedImports.some(pattern => pattern.test(source)) ||
-        externals.some(external => source === external || source.startsWith(`${external}/`)) ||
+        allowedImports.some(pattern => pattern.test(source)) || externals(source) || externals(source.split("/")[0]) || 
         (allowNodeBuiltins && knownNodeBuiltins.some(pattern => pattern.test(source)))
       ) {
         return null;

@@ -86,3 +86,13 @@ test("wrong row contents")
         select 'sup?' as col3, 3 as col2, 9.5 as col3, true as col4
     `
   );
+
+test("test a view")
+  .dataset("example_view")
+  .input(
+    "sample_data",
+    "select 'hi' as col1, 1 as col2, 3.5 as col3, true as col4, date '2020-07-23' as col5"
+  )
+  .expect(
+    "select 'hi' as col1, 1 as col2, 3.5 as col3, true as col4, date '2020-07-23' as col5"
+  );

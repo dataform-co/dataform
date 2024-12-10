@@ -1,6 +1,8 @@
-load("//tools:ts_library.bzl", "ts_library")
+load("@build_bazel_rules_nodejs//:index.bzl", "npm_package_bin")
+load("@npm//webpack:index.bzl", "webpack")
 load("//:version.bzl", "DF_VERSION")
 load("//packages:index.bzl", "add_license_header_to_file", "pkg_bundle", "pkg_bundle_dts", "pkg_json", "pkg_npm_tar")
+load("//tools:ts_library.bzl", "ts_library")
 load("//tools/common:copy.bzl", "copy_file")
 
 package(default_visibility = ["//visibility:public"])
@@ -13,8 +15,6 @@ ts_library(
     ],
 )
 
-load("@npm//webpack:index.bzl", "webpack")
-
 webpack(
     name = "bundler",
     data = [
@@ -23,8 +23,6 @@ webpack(
         "@npm//webpack-cli",
     ],
 )
-
-load("@build_bazel_rules_nodejs//:index.bzl", "npm_package_bin")
 
 npm_package_bin(
     name = "bundle",
@@ -96,5 +94,6 @@ pkg_npm_tar(
         ":configs_proto_with_license",
         ":core_proto_with_license",
         ":package.json",
+        "//:version.bzl",
     ],
 )

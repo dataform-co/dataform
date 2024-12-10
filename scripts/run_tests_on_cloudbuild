@@ -1,0 +1,7 @@
+#!/bin/bash
+set -e
+
+bazel run @nodejs//:yarn config set registry https://us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/
+bazel run @nodejs//:npm install
+
+./scripts/run_tests

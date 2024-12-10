@@ -9,6 +9,7 @@ import { Session } from "df/core/session";
 import {
   actionConfigToCompiledGraphTarget,
   addDependenciesToActionDependencyTargets,
+  configTargetToCompiledGraphTarget,
   nativeRequire,
   resolvableAsTarget,
   resolveActionsConfigFilename,
@@ -96,7 +97,11 @@ export class View extends ActionBuilder<dataform.Table> {
       this.setDependOnDependencyAssertions(config.dependOnDependencyAssertions);
     }
     if (config.dependencyTargets) {
-      this.dependencies(config.dependencyTargets);
+      this.dependencies(
+        config.dependencyTargets.map(dependencyTarget =>
+          configTargetToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget))
+        )
+      );
     }
     if (config.hermetic !== undefined) {
       this.hermetic(config.hermetic);
@@ -266,7 +271,7 @@ export class View extends ActionBuilder<dataform.Table> {
     if (!!assertions.uniqueKey?.length) {
       uniqueKeys = [
         dataform.ActionConfig.TableAssertionsConfig.UniqueKey.create({
-          uniqueKey: ["TableAssertionsConfig"]
+          uniqueKey: assertions.uniqueKey
         })
       ];
     }

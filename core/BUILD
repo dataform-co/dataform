@@ -1,8 +1,8 @@
-load("//tools:ts_library.bzl", "ts_library")
-load("//tools:expand_template.bzl", "expand_template")
 load("//:version.bzl", "DF_VERSION")
 load("//testing:index.bzl", "ts_test_suite")
+load("//tools:expand_template.bzl", "expand_template")
 load("//tools:node_modules.bzl", "node_modules")
+load("//tools:ts_library.bzl", "ts_library")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -19,14 +19,15 @@ ts_library(
     name = "core",
     srcs = [
         "actions/assertion.ts",
+        "actions/data_preparation.ts",
         "actions/declaration.ts",
-        "actions/view.ts",
         "actions/incremental_table.ts",
         "actions/index.ts",
-        "actions/operation.ts",
         "actions/notebook.ts",
+        "actions/operation.ts",
         "actions/table.ts",
         "actions/test.ts",
+        "actions/view.ts",
         "column_descriptors.ts",
         "common.ts",
         "compilers.ts",

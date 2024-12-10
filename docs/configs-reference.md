@@ -7,6 +7,7 @@
     - [ActionConfig](#dataform-ActionConfig)
     - [ActionConfig.AssertionConfig](#dataform-ActionConfig-AssertionConfig)
     - [ActionConfig.ColumnDescriptor](#dataform-ActionConfig-ColumnDescriptor)
+    - [ActionConfig.DataPreparationConfig](#dataform-ActionConfig-DataPreparationConfig)
     - [ActionConfig.DeclarationConfig](#dataform-ActionConfig-DeclarationConfig)
     - [ActionConfig.IncrementalTableConfig](#dataform-ActionConfig-IncrementalTableConfig)
     - [ActionConfig.IncrementalTableConfig.AdditionalOptionsEntry](#dataform-ActionConfig-IncrementalTableConfig-AdditionalOptionsEntry)
@@ -48,11 +49,12 @@ Action config defines the contents of `actions.yaml` configuration files.
 | ----- | ---- | ----- | ----------- |
 | table | [ActionConfig.TableConfig](#dataform-ActionConfig-TableConfig) |  |  |
 | view | [ActionConfig.ViewConfig](#dataform-ActionConfig-ViewConfig) |  |  |
-| incremental_table | [ActionConfig.IncrementalTableConfig](#dataform-ActionConfig-IncrementalTableConfig) |  |  |
+| incrementalTable | [ActionConfig.IncrementalTableConfig](#dataform-ActionConfig-IncrementalTableConfig) |  |  |
 | assertion | [ActionConfig.AssertionConfig](#dataform-ActionConfig-AssertionConfig) |  |  |
 | operation | [ActionConfig.OperationConfig](#dataform-ActionConfig-OperationConfig) |  |  |
 | declaration | [ActionConfig.DeclarationConfig](#dataform-ActionConfig-DeclarationConfig) |  |  |
 | notebook | [ActionConfig.NotebookConfig](#dataform-ActionConfig-NotebookConfig) |  |  |
+| dataPreparation | [ActionConfig.DataPreparationConfig](#dataform-ActionConfig-DataPreparationConfig) |  |  |
 
 
 
@@ -70,13 +72,13 @@ Action config defines the contents of `actions.yaml` configuration files.
 | name | [string](#string) |  | The name of the assertion. |
 | dataset | [string](#string) |  | The dataset (schema) of the assertion. |
 | project | [string](#string) |  | The Google Cloud project (database) of the assertion. |
-| dependency_targets | [ActionConfig.Target](#dataform-ActionConfig-Target) | repeated | Targets of actions that this action is dependent on. |
+| dependencyTargets | [ActionConfig.Target](#dataform-ActionConfig-Target) | repeated | Targets of actions that this action is dependent on. |
 | filename | [string](#string) |  | Path to the source file that the contents of the action is loaded from. |
 | tags | [string](#string) | repeated | A list of user-defined tags with which the action should be labeled. |
 | disabled | [bool](#bool) |  | If set to true, this action will not be executed. However, the action can still be depended upon. Useful for temporarily turning off broken actions. |
 | description | [string](#string) |  | Description of the assertion. |
 | hermetic | [bool](#bool) |  | If true, this indicates that the action only depends on data from explicitly-declared dependencies. Otherwise if false, it indicates that the action depends on data from a source which has not been declared as a dependency. |
-| depend_on_dependency_assertions | [bool](#bool) |  | If true, assertions dependent upon any of the dependencies are added as dependencies as well. |
+| dependOnDependencyAssertions | [bool](#bool) |  | If true, assertions dependent upon any of the dependencies are added as dependencies as well. |
 
 
 
@@ -93,8 +95,28 @@ Action config defines the contents of `actions.yaml` configuration files.
 | ----- | ---- | ----- | ----------- |
 | path | [string](#string) | repeated | The identifier for the column, using multiple parts for nested records. |
 | description | [string](#string) |  | A text description of the column. |
-| bigquery_policy_tags | [string](#string) | repeated | A list of BigQuery policy tags that will be applied to the column. |
+| bigqueryPolicyTags | [string](#string) | repeated | A list of BigQuery policy tags that will be applied to the column. |
 | tags | [string](#string) | repeated | A list of tags for this column which will be applied. |
+
+
+
+
+
+
+<a name="dataform-ActionConfig-DataPreparationConfig"></a>
+
+### ActionConfig.DataPreparationConfig
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| name | [string](#string) |  | The name of the data preparation. |
+| dependencyTargets | [ActionConfig.Target](#dataform-ActionConfig-Target) | repeated | Targets of actions that this action is dependent on. |
+| filename | [string](#string) |  | Path to the source file that the contents of the action is loaded from. |
+| tags | [string](#string) | repeated | A list of user-defined tags with which the action should be labeled. |
+| disabled | [bool](#bool) |  | If set to true, this action will not be executed. However, the action can still be depended upon. Useful for temporarily turning off broken actions. |
+| description | [string](#string) |  | Description of the data preparation. |
 
 
 
@@ -131,30 +153,24 @@ Action config defines the contents of `actions.yaml` configuration files.
 | name | [string](#string) |  | The name of the incremental table. |
 | dataset | [string](#string) |  | The dataset (schema) of the incremental table. |
 | project | [string](#string) |  | The Google Cloud project (database) of the incremental table. |
-| dependency_targets | [ActionConfig.Target](#dataform-ActionConfig-Target) | repeated | Targets of actions that this action is dependent on. |
+| dependencyTargets | [ActionConfig.Target](#dataform-ActionConfig-Target) | repeated | Targets of actions that this action is dependent on. |
 | filename | [string](#string) |  | Path to the source file that the contents of the action is loaded from. |
 | tags | [string](#string) | repeated | A list of user-defined tags with which the action should be labeled. |
 | disabled | [bool](#bool) |  | If set to true, this action will not be executed. However, the action can still be depended upon. Useful for temporarily turning off broken actions. |
-| pre_operations | [string](#string) | repeated | Queries to run before `query`. This can be useful for granting permissions. |
-| post_operations | [string](#string) | repeated | Queries to run after `query`. |
+| preOperations | [string](#string) | repeated | Queries to run before `query`. This can be useful for granting permissions. |
+| postOperations | [string](#string) | repeated | Queries to run after `query`. |
 | protected | [bool](#bool) |  | If true, prevents the dataset from being rebuilt from scratch. |
-| unique_key | [string](#string) | repeated | If set, unique key represents a set of names of columns that will act as a the unique key. To enforce this, when updating the incremental table, Dataform merges rows with `uniqueKey` instead of appending them. |
+| uniqueKey | [string](#string) | repeated | If set, unique key represents a set of names of columns that will act as a the unique key. To enforce this, when updating the incremental table, Dataform merges rows with `uniqueKey` instead of appending them. |
 | description | [string](#string) |  | Description of the incremental table. |
 | columns | [ActionConfig.ColumnDescriptor](#dataform-ActionConfig-ColumnDescriptor) | repeated | Descriptions of columns within the table. |
-| partition_by | [string](#string) |  | The key by which to partition the table. Typically the name of a timestamp or the date column. See https://cloud.google.com/dataform/docs/partitions-clusters. |
-| partition_expiration_days | [int32](#int32) |  | The number of days for which BigQuery stores data in each partition. The setting applies to all partitions in a table, but is calculated independently for each partition based on the partition time. |
-| require_partition_filter | [bool](#bool) |  | Declares whether the partitioned table requires a WHERE clause predicate filter that filters the partitioning column. |
-| update_partition_filter | [string](#string) |  | SQL-based filter for when incremental updates are applied. |
-| cluster_by | [string](#string) | repeated | The keys by which to cluster partitions by. See https://cloud.google.com/dataform/docs/partitions-clusters. |
-| labels | [ActionConfig.IncrementalTableConfig.LabelsEntry](#dataform-ActionConfig-IncrementalTableConfig-LabelsEntry) | repeated | Key-value pairs for BigQuery labels. If the label name contains special characters, e.g. hyphens, then quote its name, e.g. `labels: { &#34;label-name&#34;: &#34;value&#34; }`. |
-| additional_options | [ActionConfig.IncrementalTableConfig.AdditionalOptionsEntry](#dataform-ActionConfig-IncrementalTableConfig-AdditionalOptionsEntry) | repeated | Key-value pairs of additional options to pass to the BigQuery API.
-
-Some options, for example, partitionExpirationDays, have dedicated type/validity checked fields. For such options, use the dedicated fields.
-
-String values must be encapsulated in double-quotes, for example: additionalOptions: {numeric_option: &#34;5&#34;, string_option: &#39;&#34;string-value&#34;&#39;}
-
-If the option name contains special characters, encapsulate the name in quotes, for example: additionalOptions: { &#34;option-name&#34;: &#34;value&#34; }. |
-| depend_on_dependency_assertions | [bool](#bool) |  | When set to true, assertions dependent upon any dependency will be add as dedpendency to this action |
+| partitionBy | [string](#string) |  | The key by which to partition the table. Typically the name of a timestamp or the date column. See https://cloud.google.com/dataform/docs/partitions-clusters. |
+| partitionExpirationDays | [int32](#int32) |  | The number of days for which BigQuery stores data in each partition. The setting applies to all partitions in a table, but is calculated independently for each partition based on the partition time. |
+| requirePartitionFilter | [bool](#bool) |  | Declares whether the partitioned table requires a WHERE clause predicate filter that filters the partitioning column. |
+| updatePartitionFilter | [string](#string) |  | SQL-based filter for when incremental updates are applied. |
+| clusterBy | [string](#string) | repeated | The keys by which to cluster partitions by. See https://cloud.google.com/dataform/docs/partitions-clusters. |
+| labels | [ActionConfig.IncrementalTableConfig.LabelsEntry](#dataform-ActionConfig-IncrementalTableConfig-LabelsEntry) | repeated | Key-value pairs for BigQuery labels. |
+| additionalOptions | [ActionConfig.IncrementalTableConfig.AdditionalOptionsEntry](#dataform-ActionConfig-IncrementalTableConfig-AdditionalOptionsEntry) | repeated | Key-value pairs of additional options to pass to the BigQuery API. Some options, for example, partitionExpirationDays, have dedicated type/validity checked fields. For such options, use the dedicated fields. |
+| dependOnDependencyAssertions | [bool](#bool) |  | When set to true, assertions dependent upon any dependency will be add as dedpendency to this action |
 | assertions | [ActionConfig.TableAssertionsConfig](#dataform-ActionConfig-TableAssertionsConfig) |  | Assertions to be run on the dataset. If configured, relevant assertions will automatically be created and run as a dependency of this dataset. |
 | hermetic | [bool](#bool) |  | If true, this indicates that the action only depends on data from explicitly-declared dependencies. Otherwise if false, it indicates that the action depends on data from a source which has not been declared as a dependency. |
 
@@ -206,12 +222,12 @@ If the option name contains special characters, encapsulate the name in quotes, 
 | name | [string](#string) |  | The name of the notebook. |
 | location | [string](#string) |  | The Google Cloud location of the notebook. |
 | project | [string](#string) |  | The Google Cloud project (database) of the notebook. |
-| dependency_targets | [ActionConfig.Target](#dataform-ActionConfig-Target) | repeated | Targets of actions that this action is dependent on. |
+| dependencyTargets | [ActionConfig.Target](#dataform-ActionConfig-Target) | repeated | Targets of actions that this action is dependent on. |
 | filename | [string](#string) |  | Path to the source file that the contents of the action is loaded from. |
 | tags | [string](#string) | repeated | A list of user-defined tags with which the action should be labeled. |
 | disabled | [bool](#bool) |  | If set to true, this action will not be executed. However, the action can still be depended upon. Useful for temporarily turning off broken actions. |
 | description | [string](#string) |  | Description of the notebook. |
-| depend_on_dependency_assertions | [bool](#bool) |  | When set to true, assertions dependent upon any dependency will be add as dedpendency to this action |
+| dependOnDependencyAssertions | [bool](#bool) |  | When set to true, assertions dependent upon any dependency will be add as dedpendency to this action |
 
 
 
@@ -229,14 +245,14 @@ If the option name contains special characters, encapsulate the name in quotes, 
 | name | [string](#string) |  | The name of the operation. |
 | dataset | [string](#string) |  | The dataset (schema) of the operation. |
 | project | [string](#string) |  | The Google Cloud project (database) of the operation. |
-| dependency_targets | [ActionConfig.Target](#dataform-ActionConfig-Target) | repeated | Targets of actions that this action is dependent on. |
+| dependencyTargets | [ActionConfig.Target](#dataform-ActionConfig-Target) | repeated | Targets of actions that this action is dependent on. |
 | filename | [string](#string) |  | Path to the source file that the contents of the action is loaded from. |
 | tags | [string](#string) | repeated | A list of user-defined tags with which the action should be labeled. |
 | disabled | [bool](#bool) |  | If set to true, this action will not be executed. However, the action can still be depended upon. Useful for temporarily turning off broken actions. |
-| has_output | [bool](#bool) |  | Declares that this action creates a dataset which should be referenceable as a dependency target, for example by using the `ref` function. |
+| hasOutput | [bool](#bool) |  | Declares that this action creates a dataset which should be referenceable as a dependency target, for example by using the `ref` function. |
 | description | [string](#string) |  | Description of the operation. |
 | columns | [ActionConfig.ColumnDescriptor](#dataform-ActionConfig-ColumnDescriptor) | repeated | Descriptions of columns within the operation. Can only be set if hasOutput is true. |
-| depend_on_dependency_assertions | [bool](#bool) |  | When set to true, assertions dependent upon any dependency will be add as dedpendency to this action |
+| dependOnDependencyAssertions | [bool](#bool) |  | When set to true, assertions dependent upon any dependency will be add as dedpendency to this action |
 | hermetic | [bool](#bool) |  | If true, this indicates that the action only depends on data from explicitly-declared dependencies. Otherwise if false, it indicates that the action depends on data from a source which has not been declared as a dependency. |
 
 
@@ -253,10 +269,10 @@ action types.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| unique_key | [string](#string) | repeated | Column(s) which constitute the dataset&#39;s unique key index. If set, the resulting assertion will fail if there is more than one row in the dataset with the same values for all of these column(s). |
-| unique_keys | [ActionConfig.TableAssertionsConfig.UniqueKey](#dataform-ActionConfig-TableAssertionsConfig-UniqueKey) | repeated |  |
-| non_null | [string](#string) | repeated | Column(s) which may never be `NULL`. If set, the resulting assertion will fail if any row contains `NULL` values for these column(s). |
-| row_conditions | [string](#string) | repeated | General condition(s) which should hold true for all rows in the dataset. If set, the resulting assertion will fail if any row violates any of these condition(s). |
+| uniqueKey | [string](#string) | repeated | Column(s) which constitute the dataset&#39;s unique key index. If set, the resulting assertion will fail if there is more than one row in the dataset with the same values for all of these column(s). |
+| uniqueKeys | [ActionConfig.TableAssertionsConfig.UniqueKey](#dataform-ActionConfig-TableAssertionsConfig-UniqueKey) | repeated |  |
+| nonNull | [string](#string) | repeated | Column(s) which may never be `NULL`. If set, the resulting assertion will fail if any row contains `NULL` values for these column(s). |
+| rowConditions | [string](#string) | repeated | General condition(s) which should hold true for all rows in the dataset. If set, the resulting assertion will fail if any row violates any of these condition(s). |
 
 
 
@@ -274,7 +290,7 @@ the column(s) in the unique key(s).
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| unique_key | [string](#string) | repeated |  |
+| uniqueKey | [string](#string) | repeated |  |
 
 
 
@@ -292,27 +308,21 @@ the column(s) in the unique key(s).
 | name | [string](#string) |  | The name of the table. |
 | dataset | [string](#string) |  | The dataset (schema) of the table. |
 | project | [string](#string) |  | The Google Cloud project (database) of the table. |
-| dependency_targets | [ActionConfig.Target](#dataform-ActionConfig-Target) | repeated | Targets of actions that this action is dependent on. |
+| dependencyTargets | [ActionConfig.Target](#dataform-ActionConfig-Target) | repeated | Targets of actions that this action is dependent on. |
 | filename | [string](#string) |  | Path to the source file that the contents of the action is loaded from. |
 | tags | [string](#string) | repeated | A list of user-defined tags with which the action should be labeled. |
 | disabled | [bool](#bool) |  | If set to true, this action will not be executed. However, the action can still be depended upon. Useful for temporarily turning off broken actions. |
-| pre_operations | [string](#string) | repeated | Queries to run before `query`. This can be useful for granting permissions. |
-| post_operations | [string](#string) | repeated | Queries to run after `query`. |
+| preOperations | [string](#string) | repeated | Queries to run before `query`. This can be useful for granting permissions. |
+| postOperations | [string](#string) | repeated | Queries to run after `query`. |
 | description | [string](#string) |  | Description of the table. |
 | columns | [ActionConfig.ColumnDescriptor](#dataform-ActionConfig-ColumnDescriptor) | repeated | Descriptions of columns within the table. |
-| partition_by | [string](#string) |  | The key by which to partition the table. Typically the name of a timestamp or the date column. See https://cloud.google.com/dataform/docs/partitions-clusters. |
-| partition_expiration_days | [int32](#int32) |  | The number of days for which BigQuery stores data in each partition. The setting applies to all partitions in a table, but is calculated independently for each partition based on the partition time. |
-| require_partition_filter | [bool](#bool) |  | Declares whether the partitioned table requires a WHERE clause predicate filter that filters the partitioning column. |
-| cluster_by | [string](#string) | repeated | The keys by which to cluster partitions by. See https://cloud.google.com/dataform/docs/partitions-clusters. |
-| labels | [ActionConfig.TableConfig.LabelsEntry](#dataform-ActionConfig-TableConfig-LabelsEntry) | repeated | Key-value pairs for BigQuery labels. If the label name contains special characters, e.g. hyphens, then quote its name, e.g. `labels: { &#34;label-name&#34;: &#34;value&#34; }`. |
-| additional_options | [ActionConfig.TableConfig.AdditionalOptionsEntry](#dataform-ActionConfig-TableConfig-AdditionalOptionsEntry) | repeated | Key-value pairs of additional options to pass to the BigQuery API.
-
-Some options, for example, partitionExpirationDays, have dedicated type/validity checked fields. For such options, use the dedicated fields.
-
-String values must be encapsulated in double-quotes, for example: additionalOptions: {numeric_option: &#34;5&#34;, string_option: &#39;&#34;string-value&#34;&#39;}
-
-If the option name contains special characters, encapsulate the name in quotes, for example: additionalOptions: { &#34;option-name&#34;: &#34;value&#34; }. |
-| depend_on_dependency_assertions | [bool](#bool) |  | When set to true, assertions dependent upon any dependency will be add as dedpendency to this action |
+| partitionBy | [string](#string) |  | The key by which to partition the table. Typically the name of a timestamp or the date column. See https://cloud.google.com/dataform/docs/partitions-clusters. |
+| partitionExpirationDays | [int32](#int32) |  | The number of days for which BigQuery stores data in each partition. The setting applies to all partitions in a table, but is calculated independently for each partition based on the partition time. |
+| requirePartitionFilter | [bool](#bool) |  | Declares whether the partitioned table requires a WHERE clause predicate filter that filters the partitioning column. |
+| clusterBy | [string](#string) | repeated | The keys by which to cluster partitions by. See https://cloud.google.com/dataform/docs/partitions-clusters. |
+| labels | [ActionConfig.TableConfig.LabelsEntry](#dataform-ActionConfig-TableConfig-LabelsEntry) | repeated | Key-value pairs for BigQuery labels. |
+| additionalOptions | [ActionConfig.TableConfig.AdditionalOptionsEntry](#dataform-ActionConfig-TableConfig-AdditionalOptionsEntry) | repeated | Key-value pairs of additional options to pass to the BigQuery API. Some options, for example, partitionExpirationDays, have dedicated type/validity checked fields. For such options, use the dedicated fields. |
+| dependOnDependencyAssertions | [bool](#bool) |  | When set to true, assertions dependent upon any dependency will be add as dedpendency to this action |
 | assertions | [ActionConfig.TableAssertionsConfig](#dataform-ActionConfig-TableAssertionsConfig) |  | Assertions to be run on the dataset. If configured, relevant assertions will automatically be created and run as a dependency of this dataset. |
 | hermetic | [bool](#bool) |  | If true, this indicates that the action only depends on data from explicitly-declared dependencies. Otherwise if false, it indicates that the action depends on data from a source which has not been declared as a dependency. |
 
@@ -364,7 +374,7 @@ Target represents a unique action identifier.
 | project | [string](#string) |  | The Google Cloud project (database) of the action. |
 | dataset | [string](#string) |  | The dataset (schema) of the action. For notebooks, this is the location. |
 | name | [string](#string) |  | The name of the action. |
-| include_dependent_assertions | [bool](#bool) |  | flag for when we want to add assertions of this dependency in dependency_targets as well. |
+| includeDependentAssertions | [bool](#bool) |  | flag for when we want to add assertions of this dependency in dependency_targets as well. |
 
 
 
@@ -382,24 +392,18 @@ Target represents a unique action identifier.
 | name | [string](#string) |  | The name of the view. |
 | dataset | [string](#string) |  | The dataset (schema) of the view. |
 | project | [string](#string) |  | The Google Cloud project (database) of the view. |
-| dependency_targets | [ActionConfig.Target](#dataform-ActionConfig-Target) | repeated | Targets of actions that this action is dependent on. |
+| dependencyTargets | [ActionConfig.Target](#dataform-ActionConfig-Target) | repeated | Targets of actions that this action is dependent on. |
 | filename | [string](#string) |  | Path to the source file that the contents of the action is loaded from. |
 | tags | [string](#string) | repeated | A list of user-defined tags with which the action should be labeled. |
 | disabled | [bool](#bool) |  | If set to true, this action will not be executed. However, the action can still be depended upon. Useful for temporarily turning off broken actions. |
-| pre_operations | [string](#string) | repeated | Queries to run before `query`. This can be useful for granting permissions. |
-| post_operations | [string](#string) | repeated | Queries to run after `query`. |
+| preOperations | [string](#string) | repeated | Queries to run before `query`. This can be useful for granting permissions. |
+| postOperations | [string](#string) | repeated | Queries to run after `query`. |
 | materialized | [bool](#bool) |  | Applies the materialized view optimization, see https://cloud.google.com/bigquery/docs/materialized-views-intro. |
 | description | [string](#string) |  | Description of the view. |
 | columns | [ActionConfig.ColumnDescriptor](#dataform-ActionConfig-ColumnDescriptor) | repeated | Descriptions of columns within the table. |
-| labels | [ActionConfig.ViewConfig.LabelsEntry](#dataform-ActionConfig-ViewConfig-LabelsEntry) | repeated | Key-value pairs for BigQuery labels. If the label name contains special characters, e.g. hyphens, then quote its name, e.g. `labels: { &#34;label-name&#34;: &#34;value&#34; }`. |
-| additional_options | [ActionConfig.ViewConfig.AdditionalOptionsEntry](#dataform-ActionConfig-ViewConfig-AdditionalOptionsEntry) | repeated | Key-value pairs of additional options to pass to the BigQuery API.
-
-Some options, for example, partitionExpirationDays, have dedicated type/validity checked fields. For such options, use the dedicated fields.
-
-String values must be encapsulated in double-quotes, for example: additionalOptions: {numeric_option: &#34;5&#34;, string_option: &#39;&#34;string-value&#34;&#39;}
-
-If the option name contains special characters, encapsulate the name in quotes, for example: additionalOptions: { &#34;option-name&#34;: &#34;value&#34; }. |
-| depend_on_dependency_assertions | [bool](#bool) |  | When set to true, assertions dependent upon any dependency will be add as dedpendency to this action |
+| labels | [ActionConfig.ViewConfig.LabelsEntry](#dataform-ActionConfig-ViewConfig-LabelsEntry) | repeated | Key-value pairs for BigQuery labels. |
+| additionalOptions | [ActionConfig.ViewConfig.AdditionalOptionsEntry](#dataform-ActionConfig-ViewConfig-AdditionalOptionsEntry) | repeated | Key-value pairs of additional options to pass to the BigQuery API. Some options, for example, partitionExpirationDays, have dedicated type/validity checked fields. For such options, use the dedicated fields. |
+| dependOnDependencyAssertions | [bool](#bool) |  | When set to true, assertions dependent upon any dependency will be add as dedpendency to this action |
 | hermetic | [bool](#bool) |  | If true, this indicates that the action only depends on data from explicitly-declared dependencies. Otherwise if false, it indicates that the action depends on data from a source which has not been declared as a dependency. |
 | assertions | [ActionConfig.TableAssertionsConfig](#dataform-ActionConfig-TableAssertionsConfig) |  | Assertions to be run on the dataset. If configured, relevant assertions will automatically be created and run as a dependency of this dataset. |
 
@@ -463,7 +467,7 @@ Action configs defines the contents of `actions.yaml` configuration files.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| output_bucket | [string](#string) |  | Storage bucket to output notebooks to after their execution. |
+| outputBucket | [string](#string) |  | Storage bucket to output notebooks to after their execution. |
 
 
 
@@ -479,16 +483,16 @@ configuration file.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| dataform_core_version | [string](#string) |  | The desired dataform core version to compile against. |
-| default_project | [string](#string) |  | Required. The default Google Cloud project (database). |
-| default_dataset | [string](#string) |  | Required. The default dataset (schema). |
-| default_location | [string](#string) |  | Required. The default BigQuery location to use. For more information on BigQuery locations, see https://cloud.google.com/bigquery/docs/locations. |
-| default_assertion_dataset | [string](#string) |  | Required. The default dataset (schema) for assertions. |
-| vars | [WorkflowSettings.VarsEntry](#dataform-WorkflowSettings-VarsEntry) | repeated | Optional. User-defined variables that are made available to project code during compilation. An object containing a list of &#34;key&#34;: value pairs. Example: `{ &#34;name&#34;: &#34;wrench&#34;, &#34;mass&#34;: &#34;1.3kg&#34;, &#34;count&#34;: &#34;3&#34; }`. |
-| project_suffix | [string](#string) |  | Optional. The suffix to append to all Google Cloud project references. |
-| dataset_suffix | [string](#string) |  | Optional. The suffix to append to all dataset references. |
-| name_prefix | [string](#string) |  | Optional. The prefix to append to all action names. |
-| default_notebook_runtime_options | [NotebookRuntimeOptionsConfig](#dataform-NotebookRuntimeOptionsConfig) |  | Optional. Default runtime options for Notebook actions. |
+| dataformCoreVersion | [string](#string) |  | The desired dataform core version to compile against. |
+| defaultProject | [string](#string) |  | Required. The default Google Cloud project (database). |
+| defaultDataset | [string](#string) |  | Required. The default dataset (schema). |
+| defaultLocation | [string](#string) |  | Required. The default BigQuery location to use. For more information on BigQuery locations, see https://cloud.google.com/bigquery/docs/locations. |
+| defaultAssertionDataset | [string](#string) |  | Required. The default dataset (schema) for assertions. |
+| vars | [WorkflowSettings.VarsEntry](#dataform-WorkflowSettings-VarsEntry) | repeated | Optional. User-defined variables that are made available to project code during compilation. An object containing a list of &#34;key&#34;: value pairs. |
+| projectSuffix | [string](#string) |  | Optional. The suffix to append to all Google Cloud project references. |
+| datasetSuffix | [string](#string) |  | Optional. The suffix to append to all dataset references. |
+| namePrefix | [string](#string) |  | Optional. The prefix to append to all action names. |
+| defaultNotebookRuntimeOptions | [NotebookRuntimeOptionsConfig](#dataform-NotebookRuntimeOptionsConfig) |  | Optional. Default runtime options for Notebook actions. |
 
 
 

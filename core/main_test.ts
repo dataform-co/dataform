@@ -1,16 +1,17 @@
 // tslint:disable tsr-detect-non-literal-fs-filename
 import { expect } from "chai";
 import * as fs from "fs-extra";
-import { dump as dumpYaml } from "js-yaml";
+import { dump as dumpYaml, load as loadYaml } from "js-yaml";
 import * as path from "path";
 import { CompilerFunction, NodeVM } from "vm2";
 
-import { decode64, encode64 } from "df/common/protos";
+import { decode64, encode64, verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { compile } from "df/core/compilers";
 import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
 import { asPlainObject, suite, test } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
+
 
 const SOURCE_EXTENSIONS = ["js", "sql", "sqlx", "yaml", "ipynb"];
 
@@ -858,6 +859,257 @@ defaultNotebookRuntimeOptions:
     });
   });
 
+  suite("data preparations", () => {
+    const createSimpleDataPreparationProject = (
+      workflowSettingsYaml = VALID_WORKFLOW_SETTINGS_YAML
+    ): string => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(path.join(projectDir, "workflow_settings.yaml"), workflowSettingsYaml);
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/actions.yaml"),
+        `
+actions:
+- dataPreparation:
+    filename: data_preparation.yaml`
+      );
+      return projectDir;
+    };
+
+    test(`data preparations can be loaded via an actions config file`, () => {
+      const projectDir = createSimpleDataPreparationProject();
+      const dataPreparationYaml = `
+nodes:
+- id: node1
+  source:
+    table:
+      project: prj
+      dataset: ds
+      table: src
+  destination:
+    table:
+      project: prj
+      dataset: ds
+      table: dest
+  generated:
+    outputSchema:
+      field:
+      - name: a
+        type: INT64
+        mode: NULLABLE
+    sourceGenerated:
+      sourceSchema:
+        tableSchema:
+          field:
+          - name: a
+            type: STRING
+            mode: NULLABLE
+    destinationGenerated:
+      schema:
+        field:
+        - name: a
+          type: STRING
+          mode: NULLABLE
+`
+
+      fs.writeFileSync(
+          path.join(projectDir, "definitions/data_preparation.yaml"),
+          dataPreparationYaml
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.dataPreparations)).deep.equals(
+          asPlainObject([
+            {
+              target: {
+                database: "prj",
+                schema: "ds",
+                name: "dest"
+              },
+              canonicalTarget: {
+                database: "prj",
+                schema: "ds",
+                name: "dest"
+              },
+              targets: [
+                {
+                  database: "prj",
+                  schema: "ds",
+                  name: "dest"
+                }
+              ],
+              canonicalTargets: [
+                {
+                  database: "prj",
+                  schema: "ds",
+                  name: "dest"
+                }
+              ],
+              fileName: "definitions/data_preparation.yaml",
+              dataPreparationYaml: dumpYaml(loadYaml(dataPreparationYaml))
+            }
+          ])
+      );
+    });
+
+    test(`data preparations resolves compilation overrides before encoding`, () => {
+      const projectDir = createSimpleDataPreparationProject(`
+defaultProject: defaultProject
+defaultDataset: defaultDataset
+defaultLocation: US
+projectSuffix: projectSuffix
+datasetSuffix: datasetSuffix
+namePrefix: tablePrefix
+`);
+      const dataPreparationYaml = `
+configuration:
+  errorTable:
+    table: error
+nodes:
+- id: node1
+  source:
+    table:
+      table: src
+  generated:
+    sourceGenerated:
+      sourceSchema:
+        tableSchema:
+          field:
+          - name: a
+            type: STRING
+            mode: NULLABLE
+    outputSchema:
+      field:
+      - name: a
+        type: INT64
+        mode: NULLABLE
+- id: node2
+  source:
+    nodeId: node1
+  destination:
+    table:
+      table: dest
+  generated:
+    sourceGenerated:
+      sourceSchema:
+        nodeSchema:
+          field:
+          - name: a
+            type: STRING
+            mode: NULLABLE
+    outputSchema:
+      field:
+      - name: a
+        type: INT64
+        mode: NULLABLE
+    destinationGenerated:
+      schema:
+        field:
+        - name: a
+          type: STRING
+          mode: NULLABLE
+`
+
+      fs.writeFileSync(
+          path.join(projectDir, "definitions/data_preparation.yaml"),
+          dataPreparationYaml
+      );
+
+      const resolvedYaml = `
+configuration:
+  errorTable:
+    project: defaultProject_projectSuffix
+    dataset: defaultDataset_datasetSuffix
+    table: tablePrefix_error
+nodes:
+- id: node1
+  source:
+    table:
+      project: defaultProject_projectSuffix
+      dataset: defaultDataset_datasetSuffix
+      table: tablePrefix_src
+  generated:
+    sourceGenerated:
+      sourceSchema:
+        tableSchema:
+          field:
+          - name: a
+            type: STRING
+            mode: NULLABLE
+    outputSchema:
+      field:
+      - name: a
+        type: INT64
+        mode: NULLABLE
+- id: node2
+  source:
+    nodeId: node1
+  destination:
+    table:
+      project: defaultProject_projectSuffix
+      dataset: defaultDataset_datasetSuffix
+      table: tablePrefix_dest
+  generated:
+    sourceGenerated:
+      sourceSchema:
+        nodeSchema:
+          field:
+          - name: a
+            type: STRING
+            mode: NULLABLE
+    outputSchema:
+      field:
+      - name: a
+        type: INT64
+        mode: NULLABLE
+    destinationGenerated:
+      schema:
+        field:
+        - name: a
+          type: STRING
+          mode: NULLABLE
+`
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.dataPreparations)).deep.equals(
+          asPlainObject([
+            {
+              target: {
+                database: "defaultProject_projectSuffix",
+                schema: "defaultDataset_datasetSuffix",
+                name: "tablePrefix_dest"
+              },
+              canonicalTarget: {
+                database: "defaultProject",
+                schema: "defaultDataset",
+                name: "dest"
+              },
+              targets: [
+                {
+                  database: "defaultProject_projectSuffix",
+                  schema: "defaultDataset_datasetSuffix",
+                  name: "tablePrefix_dest"
+                }
+              ],
+              canonicalTargets: [
+                {
+                  database: "defaultProject",
+                  schema: "defaultDataset",
+                  name: "dest"
+                }
+              ],
+              fileName: "definitions/data_preparation.yaml",
+              dataPreparationYaml: dumpYaml(loadYaml(resolvedYaml))
+            }
+          ])
+      );
+    });
+  });
+
   suite("action configs", () => {
     test(`operations can be loaded`, () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
@@ -1299,22 +1551,32 @@ actions:
     filename: table.sql
     dependencyTargets:
     - name: declaration
+      dataset: defaultDataset
+      project: defaultProject
 - incrementalTable:
     filename: incrementalTable.sql
     dependencyTargets:
     - name: table
+      dataset: defaultDataset
+      project: defaultProject
 - view:
     filename: view.sql
     dependencyTargets:
     - name: incrementalTable
+      dataset: defaultDataset
+      project: defaultProject
 - operation:
     filename: operation.sql
     dependencyTargets:
     - name: view
+      dataset: defaultDataset
+      project: defaultProject
 - notebook:
     filename: notebook.ipynb
     dependencyTargets:
-    - name: view`
+    - name: view
+      dataset: defaultDataset
+      project: defaultProject`
       );
       ["table.sql", "incrementalTable.sql", "view.sql", "operation.sql"].forEach(filename => {
         fs.writeFileSync(path.join(projectDir, `definitions/${filename}`), "SELECT 1");
@@ -1329,30 +1591,43 @@ actions:
       expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
     });
 
-    test(`files can be loaded from the root directory and are normalized in the compiled graph`, () => {
+    test(`dependency targets of actions with different types are loaded`, () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
       fs.writeFileSync(
         path.join(projectDir, "workflow_settings.yaml"),
         VALID_WORKFLOW_SETTINGS_YAML
       );
       fs.mkdirSync(path.join(projectDir, "definitions"));
+      // The dependency target for depending on a notebook currently hacks around the limitations of
+      // the target proto, until proper target support for notebooks is added.
       fs.writeFileSync(
         path.join(projectDir, "definitions/actions.yaml"),
         `
 actions:
 - notebook:
-    filename: ../contents.ipynb
+    name: notebook1
+    location: location
+    project: project
+    filename: notebook.ipynb
 - operation:
-    filename: ../table.sql`
+    name: operation1
+    dataset: dataset
+    project: project
+    dependencyTargets:
+    - name: notebook1
+      dataset: location
+      project: project
+    filename: operation.sql`
       );
-      fs.writeFileSync(path.join(projectDir, `contents.ipynb`), JSON.stringify({ cells: [] }));
-      fs.writeFileSync(path.join(projectDir, `table.sql`), "SELECT 1");
+      fs.writeFileSync(path.join(projectDir, "definitions/operation.sql"), "SELECT 1");
+      fs.writeFileSync(
+        path.join(projectDir, `definitions/notebook.ipynb`),
+        EMPTY_NOTEBOOK_CONTENTS
+      );
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
       expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-      expect(result.compile.compiledGraph.notebooks[0].fileName).deep.equals("contents.ipynb");
-      expect(result.compile.compiledGraph.operations[0].fileName).deep.equals("table.sql");
     });
   });
 
@@ -1392,11 +1667,15 @@ actions:
     };
 
     const exampleBuiltInAssertions = {
-      inputSqlxConfigBlock: `
+      inputSqlxConfigBlock1: `
   assertions: {
     uniqueKeys: [["uniqueKey1", "uniqueKey2"]],
     nonNull: "nonNull",
     rowConditions: ["rowConditions1", "rowConditions2"],
+  },`,
+      inputSqlxConfigBlock2: `
+  assertions: {
+    uniqueKey: ["uniqueKey1"],
   },`,
       outputAssertions: [
         {
@@ -1455,6 +1734,35 @@ actions:
           },
           query:
             "\nSELECT\n  'rowConditions1' AS failing_row_condition,\n  *\nFROM `project.dataset.name`\nWHERE NOT (rowConditions1)\nUNION ALL\nSELECT\n  'rowConditions2' AS failing_row_condition,\n  *\nFROM `project.dataset.name`\nWHERE NOT (rowConditions2)\nUNION ALL\nSELECT\n  'nonNull IS NOT NULL' AS failing_row_condition,\n  *\nFROM `project.dataset.name`\nWHERE NOT (nonNull IS NOT NULL)\n",
+          tags: ["tag1", "tag2"]
+        },
+        {
+          target: {
+            database: "defaultProject",
+            schema: "defaultDataset",
+            name: "dataset_name2_assertions_uniqueKey_0"
+          },
+          canonicalTarget: {
+            database: "defaultProject",
+            schema: "defaultDataset",
+            name: "dataset_name2_assertions_uniqueKey_0"
+          },
+          dependencyTargets: [
+            {
+              database: "project",
+              schema: "dataset",
+              name: "name2"
+            }
+          ],
+          disabled: true,
+          fileName: "definitions/filename2.sqlx",
+          parentAction: {
+            database: "project",
+            schema: "dataset",
+            name: "name2"
+          },
+          query:
+            "\nSELECT\n  *\nFROM (\n  SELECT\n    uniqueKey1,\n    COUNT(1) AS index_row_count\n  FROM `project.dataset.name2`\n  GROUP BY uniqueKey1\n  ) AS data\nWHERE index_row_count > 1\n",
           tags: ["tag1", "tag2"]
         }
       ] as dataform.IAssertion[]
@@ -1568,18 +1876,10 @@ ${exampleActionDescriptor.inputSqlxConfigBlock}
 
     test("for tables", () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
-      fs.writeFileSync(
-        path.join(projectDir, "workflow_settings.yaml"),
-        VALID_WORKFLOW_SETTINGS_YAML
-      );
-      fs.mkdirSync(path.join(projectDir, "definitions"));
-      fs.writeFileSync(path.join(projectDir, "definitions/operation.sqlx"), "SELECT 1");
-      fs.writeFileSync(
-        path.join(projectDir, "definitions/filename.sqlx"),
-        `
+      const tableDefinition = (name: string, assertions: string) => `
 config {
   type: "table",
-  name: "name",
+  name: "${name}",
   schema: "dataset",
   database: "project",
   dependencies: ["operation"],
@@ -1598,71 +1898,57 @@ ${exampleActionDescriptor.inputSqlxConfigBlock}
       option2Key: "option2",
     }
   },
-  ${exampleBuiltInAssertions.inputSqlxConfigBlock}
+  ${assertions}
   dependOnDependencyAssertions: true,
   hermetic: true,
 }
-SELECT 1`
-      );
-
-      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
-
-      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-      expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals([
-        {
-          target: {
-            database: "project",
-            schema: "dataset",
-            name: "name"
+SELECT 1`;
+      const expectedCompiledTable = (name: string, fileName: string) => ({
+        target: {
+          database: "project",
+          schema: "dataset",
+          name
+        },
+        canonicalTarget: {
+          database: "project",
+          schema: "dataset",
+          name
+        },
+        type: "table",
+        disabled: true,
+        hermeticity: "HERMETIC",
+        bigquery: {
+          additionalOptions: {
+            option1Key: "option1",
+            option2Key: "option2"
           },
-          canonicalTarget: {
-            database: "project",
-            schema: "dataset",
-            name: "name"
+          clusterBy: ["clusterBy"],
+          labels: {
+            key: "val"
           },
-          type: "table",
-          disabled: true,
-          hermeticity: "HERMETIC",
-          bigquery: {
-            additionalOptions: {
-              option1Key: "option1",
-              option2Key: "option2"
-            },
-            clusterBy: ["clusterBy"],
-            labels: {
-              key: "val"
-            },
-            partitionBy: "partitionBy",
-            partitionExpirationDays: 1,
-            requirePartitionFilter: true
-          },
-          tags: ["tag1", "tag2"],
-          dependencyTargets: [
-            {
-              database: "defaultProject",
-              schema: "defaultDataset",
-              name: "operation"
-            }
-          ],
-          enumType: "TABLE",
-          fileName: "definitions/filename.sqlx",
-          query: "\n\nSELECT 1",
-          actionDescriptor: {
-            ...exampleActionDescriptor.outputActionDescriptor,
-            // sqlxConfig.bigquery.labels are placed as bigqueryLabels.
-            bigqueryLabels: {
-              key: "val"
-            }
+          partitionBy: "partitionBy",
+          partitionExpirationDays: 1,
+          requirePartitionFilter: true
+        },
+        tags: ["tag1", "tag2"],
+        dependencyTargets: [
+          {
+            database: "defaultProject",
+            schema: "defaultDataset",
+            name: "operation"
+          }
+        ],
+        enumType: "TABLE",
+        fileName,
+        query: "\n\nSELECT 1",
+        actionDescriptor: {
+          ...exampleActionDescriptor.outputActionDescriptor,
+          // sqlxConfig.bigquery.labels are placed as bigqueryLabels.
+          bigqueryLabels: {
+            key: "val"
           }
         }
-      ]);
-      expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals(
-        exampleBuiltInAssertions.outputAssertions
-      );
-    });
-
-    test("for views", () => {
-      const projectDir = tmpDirFixture.createNewTmpDir();
+      });
       fs.writeFileSync(
         path.join(projectDir, "workflow_settings.yaml"),
         VALID_WORKFLOW_SETTINGS_YAML
@@ -1671,10 +1957,31 @@ SELECT 1`
       fs.writeFileSync(path.join(projectDir, "definitions/operation.sqlx"), "SELECT 1");
       fs.writeFileSync(
         path.join(projectDir, "definitions/filename.sqlx"),
-        `
+        tableDefinition("name", exampleBuiltInAssertions.inputSqlxConfigBlock1)
+      );
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/filename2.sqlx"),
+        tableDefinition("name2", exampleBuiltInAssertions.inputSqlxConfigBlock2)
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals([
+        expectedCompiledTable("name", "definitions/filename.sqlx"),
+        expectedCompiledTable("name2", "definitions/filename2.sqlx")
+      ]);
+      expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals(
+        exampleBuiltInAssertions.outputAssertions
+      );
+    });
+
+    test("for views", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      const viewDefinition = (name: string, assertions: string) => `
 config {
   type: "view",
-  name: "name",
+  name: "${name}",
   schema: "dataset",
   database: "project",
   dependencies: ["operation"],
@@ -1692,66 +1999,52 @@ ${exampleActionDescriptor.inputSqlxConfigBlock}
   },
   dependOnDependencyAssertions: true,
   hermetic: true,
-${exampleBuiltInAssertions.inputSqlxConfigBlock}
+${assertions}
 }
-SELECT 1`
-      );
-
-      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
-
-      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-      expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals([
-        {
-          target: {
-            database: "project",
-            schema: "dataset",
-            name: "name"
+SELECT 1`;
+      const expectedCompiledView = (name: string, fileName: string) => ({
+        target: {
+          database: "project",
+          schema: "dataset",
+          name
+        },
+        canonicalTarget: {
+          database: "project",
+          schema: "dataset",
+          name
+        },
+        type: "view",
+        disabled: true,
+        hermeticity: "HERMETIC",
+        bigquery: {
+          additionalOptions: {
+            option1Key: "option1",
+            option2Key: "option2"
           },
-          canonicalTarget: {
-            database: "project",
-            schema: "dataset",
-            name: "name"
-          },
-          type: "view",
-          disabled: true,
-          hermeticity: "HERMETIC",
-          bigquery: {
-            additionalOptions: {
-              option1Key: "option1",
-              option2Key: "option2"
-            },
-            labels: {
-              key: "val"
-            }
-          },
-          tags: ["tag1", "tag2"],
-          dependencyTargets: [
-            {
-              database: "defaultProject",
-              schema: "defaultDataset",
-              name: "operation"
-            }
-          ],
-          enumType: "VIEW",
-          fileName: "definitions/filename.sqlx",
-          query: "\n\nSELECT 1",
-          actionDescriptor: {
-            ...exampleActionDescriptor.outputActionDescriptor,
-            // sqlxConfig.bigquery.labels are placed as bigqueryLabels.
-            bigqueryLabels: {
-              key: "val"
-            }
-          },
-          materialized: true
-        }
-      ]);
-      expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals(
-        exampleBuiltInAssertions.outputAssertions
-      );
-    });
-
-    test("for incremental tables", () => {
-      const projectDir = tmpDirFixture.createNewTmpDir();
+          labels: {
+            key: "val"
+          }
+        },
+        tags: ["tag1", "tag2"],
+        dependencyTargets: [
+          {
+            database: "defaultProject",
+            schema: "defaultDataset",
+            name: "operation"
+          }
+        ],
+        enumType: "VIEW",
+        fileName,
+        query: "\n\nSELECT 1",
+        actionDescriptor: {
+          ...exampleActionDescriptor.outputActionDescriptor,
+          // sqlxConfig.bigquery.labels are placed as bigqueryLabels.
+          bigqueryLabels: {
+            key: "val"
+          }
+        },
+        materialized: true
+      });
       fs.writeFileSync(
         path.join(projectDir, "workflow_settings.yaml"),
         VALID_WORKFLOW_SETTINGS_YAML
@@ -1760,10 +2053,31 @@ SELECT 1`
       fs.writeFileSync(path.join(projectDir, "definitions/operation.sqlx"), "SELECT 1");
       fs.writeFileSync(
         path.join(projectDir, "definitions/filename.sqlx"),
-        `
+        viewDefinition("name", exampleBuiltInAssertions.inputSqlxConfigBlock1)
+      );
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/filename2.sqlx"),
+        viewDefinition("name2", exampleBuiltInAssertions.inputSqlxConfigBlock2)
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals([
+        expectedCompiledView("name", "definitions/filename.sqlx"),
+        expectedCompiledView("name2", "definitions/filename2.sqlx")
+      ]);
+      expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals(
+        exampleBuiltInAssertions.outputAssertions
+      );
+    });
+
+    test("for incremental tables", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      const tableDefinition = (name: string, assertions: string) => `
 config {
   type: "incremental",
-  name: "name",
+  name: "${name}",
   schema: "dataset",
   database: "project",
   dependencies: ["operation"],
@@ -1786,66 +2100,81 @@ config {
     }
   },
   dependOnDependencyAssertions: true,
-  ${exampleBuiltInAssertions.inputSqlxConfigBlock}
+  ${assertions}
   hermetic: true,
 }
 SELECT 1`
+      const expectedCompiledTable = (name: string, fileName: string) => ({
+        target: {
+          database: "project",
+          schema: "dataset",
+          name
+        },
+        canonicalTarget: {
+          database: "project",
+          schema: "dataset",
+          name
+        },
+        type: "incremental",
+        disabled: true,
+        protected: false,
+        hermeticity: "HERMETIC",
+        bigquery: {
+          additionalOptions: {
+            option1Key: "option1",
+            option2Key: "option2"
+          },
+          clusterBy: ["clusterBy"],
+          labels: {
+            key: "val"
+          },
+          partitionBy: "partitionBy",
+          partitionExpirationDays: 1,
+          requirePartitionFilter: true,
+          updatePartitionFilter: "updatePartitionFilter"
+        },
+        tags: ["tag1", "tag2"],
+        uniqueKey: ["key1", "key2"],
+        dependencyTargets: [
+          {
+            database: "defaultProject",
+            schema: "defaultDataset",
+            name: "operation"
+          }
+        ],
+        enumType: "INCREMENTAL",
+        fileName,
+        query: "\n\nSELECT 1",
+        incrementalQuery: "\n\nSELECT 1",
+        actionDescriptor: {
+          ...exampleActionDescriptor.outputActionDescriptor,
+          // sqlxConfig.bigquery.labels are placed as bigqueryLabels.
+          bigqueryLabels: {
+            key: "val"
+          }
+        }
+      })
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(path.join(projectDir, "definitions/operation.sqlx"), "SELECT 1");
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/filename.sqlx"),
+        tableDefinition("name", exampleBuiltInAssertions.inputSqlxConfigBlock1)
+      );
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/filename2.sqlx"),
+        tableDefinition("name2", exampleBuiltInAssertions.inputSqlxConfigBlock2)
       );
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
       expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals([
-        {
-          target: {
-            database: "project",
-            schema: "dataset",
-            name: "name"
-          },
-          canonicalTarget: {
-            database: "project",
-            schema: "dataset",
-            name: "name"
-          },
-          type: "incremental",
-          disabled: true,
-          protected: false,
-          hermeticity: "HERMETIC",
-          bigquery: {
-            additionalOptions: {
-              option1Key: "option1",
-              option2Key: "option2"
-            },
-            clusterBy: ["clusterBy"],
-            labels: {
-              key: "val"
-            },
-            partitionBy: "partitionBy",
-            partitionExpirationDays: 1,
-            requirePartitionFilter: true,
-            updatePartitionFilter: "updatePartitionFilter"
-          },
-          tags: ["tag1", "tag2"],
-          uniqueKey: ["key1", "key2"],
-          dependencyTargets: [
-            {
-              database: "defaultProject",
-              schema: "defaultDataset",
-              name: "operation"
-            }
-          ],
-          enumType: "INCREMENTAL",
-          fileName: "definitions/filename.sqlx",
-          query: "\n\nSELECT 1",
-          incrementalQuery: "\n\nSELECT 1",
-          actionDescriptor: {
-            ...exampleActionDescriptor.outputActionDescriptor,
-            // sqlxConfig.bigquery.labels are placed as bigqueryLabels.
-            bigqueryLabels: {
-              key: "val"
-            }
-          }
-        }
+        expectedCompiledTable("name", "definitions/filename.sqlx"),
+        expectedCompiledTable("name2", "definitions/filename2.sqlx")
       ]);
       expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals(
         exampleBuiltInAssertions.outputAssertions

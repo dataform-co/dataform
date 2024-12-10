@@ -1,4 +1,5 @@
 import { ChildProcess, spawn } from "child_process";
+import { ITarget } from "df/core/common";
 import { dataform } from "df/protos/ts";
 import {
   createConnection,
@@ -32,7 +33,10 @@ connection.onInitialize(() => {
 });
 
 connection.onInitialized(async () => {
-  await Promise.all([applySettings(), connection.client.register(DidChangeConfigurationNotification.type)]);
+  await Promise.all([
+    applySettings(),
+    connection.client.register(DidChangeConfigurationNotification.type)
+  ]);
   const _ = compileAndValidate();
   const workSpaceFolders = await connection.workspace.getWorkspaceFolders();
   // the first item is the root folder
@@ -42,7 +46,7 @@ connection.onInitialized(async () => {
 connection.onDidChangeConfiguration(async () => {
   await applySettings();
   await compileAndValidate();
-})
+});
 
 connection.onRequest("compile", async () => {
   const _ = compileAndValidate();
@@ -55,14 +59,16 @@ documents.onDidSave(change => {
 });
 
 async function applySettings() {
-  settings = await connection.workspace.getConfiguration('dataform');
+  settings = await connection.workspace.getConfiguration("dataform");
 }
 
 async function compileAndValidate() {
-  const spawnedProcess = spawn(
-    (process.platform !== "win32") ? "dataform" : "dataform.cmd",
-    ["compile", "--json", ...settings.compilerOptions]
-  );
+  let compilationFailed = false;
+  const spawnedProcess = spawn("dataform", [
+    "compile",
+    "--json",
+    ...settings.compilerOptions,
+  ], {shell: true});
 
   const compileResult = await getProcessResult(spawnedProcess);
   if (compileResult.exitCode !== 0) {
@@ -75,11 +81,7 @@ async function compileAndValidate() {
       );
       return;
     } else {
-      connection.sendNotification(
-        "error",
-        "Errors encountered when running 'dataform' CLI. Please check the output for more information."
-      );
-      return;
+      compilationFailed = true;
     }
   }
 
@@ -98,8 +100,18 @@ async function compileAndValidate() {
 
   if (parsedResult?.graphErrors?.compilationErrors) {
     parsedResult.graphErrors.compilationErrors.forEach(compilationError => {
-      connection.sendNotification("error", compilationError.message);
+      connection.sendNotification(
+        "error",
+        compilationError.fileName + ": " + compilationError.message
+      );
     });
+    if (compilationFailed) {
+      connection.sendNotification(
+        "error",
+        "Errors encountered when running 'dataform' CLI. Please check the output for more information."
+      );
+      return;
+    }
   } else {
     connection.sendNotification("success", "Project compiled successfully");
   }
@@ -124,13 +136,12 @@ async function getProcessResult(childProcess: ChildProcess) {
 function gatherAllActions(
   graph = CACHED_COMPILE_GRAPH
 ): Array<dataform.Table | dataform.Declaration | dataform.Operation | dataform.Assertion> {
-  return [].concat(graph.tables, graph.operations, graph.assertions, graph.declarations);
-}
-
-function retrieveLinkedFileName(ref: string) {
-  const allActions = gatherAllActions();
-  const foundCompileAction = allActions.find(action => action.target.name === ref);
-  return foundCompileAction.fileName;
+  return [].concat(
+    graph.tables ?? [],
+    graph.operations ?? [],
+    graph.assertions ?? [],
+    graph.declarations ?? []
+  );
 }
 
 connection.onDefinition(
@@ -141,28 +152,94 @@ connection.onDefinition(
       end: { line: params.position.line + 1, character: 0 }
     });
 
-    const refRegex = new RegExp(/(?<=ref\(\"|'\s*).*?(?=\s*\"|'\))/g); // tslint:disable-line
+    const refRegex = new RegExp(/ref\s*\(\s*(["'].+?["'])\s*\)/g); // tslint:disable-line
     const refContents = lineWithRef.match(refRegex);
     if (!refContents || refContents.length === 0) {
       return null;
     }
 
-    const minPosition = lineWithRef.search(refRegex);
-    const refStatement = refContents[0];
-    const maxPosition = minPosition + refStatement.length;
-
-    if (params.position.character > minPosition && params.position.character < maxPosition) {
-      // TODO: Make this work for multiple refs in one line
-      const linkedFileName = retrieveLinkedFileName(refContents[0]);
-      const fileString = `${WORKSPACE_ROOT_FOLDER}/${linkedFileName}`;
-      return {
-        uri: fileString,
-        range: {
-          start: { line: 0, character: 0 },
-          end: { line: 1, character: 0 }
-        }
-      } as Location;
+    // if not compiled yet, we cannot jump to the definition
+    if (CACHED_COMPILE_GRAPH === null) {
+      connection.sendNotification("info", "Project not compiled yet. Please compile first.");
+      return null;
     }
+
+    // Jump to the one that was clicked or closest
+    const clickedRef = refContents
+      .map(refContent => ({
+        refContent,
+        min: lineWithRef.indexOf(refContent),
+        max: lineWithRef.indexOf(refContent) + refContent.length - 1
+      }))
+      .sort((a, b) => {
+        // sort in priority of closest to the clicked position
+        // if position is within the refContent, distance is 0
+        let distanceToA = 0;
+        if (params.position.character < a.min) {
+          distanceToA = a.min - params.position.character;
+        } else if (params.position.character > a.max) {
+          distanceToA = params.position.character - a.max;
+        }
+
+        let distanceToB = 0;
+        if (params.position.character < b.min) {
+          distanceToB = b.min - params.position.character;
+        } else if (params.position.character > b.max) {
+          distanceToB = params.position.character - b.max;
+        }
+
+        return distanceToA - distanceToB;
+      })[0].refContent;
+
+    // split to dataset, schema and name
+    const linkedTable: ITarget = { database: null, schema: null, name: null };
+    const splitMatch = clickedRef.match(
+      /^ref\s*\(\s*(["'](.+?)["'])\s*(,\s*["'](.+?)["']\s*)?(,\s*["'](.+?)["']\s*)?,?\s*\)$/ // tslint:disable-line
+    );
+    if (splitMatch[6] !== undefined) {
+      linkedTable.database = splitMatch[2];
+      linkedTable.schema = splitMatch[4];
+      linkedTable.name = splitMatch[6];
+    } else if (splitMatch[4] !== undefined) {
+      linkedTable.schema = splitMatch[2];
+      linkedTable.name = splitMatch[4];
+    } else if (splitMatch[2] !== undefined) {
+      linkedTable.name = splitMatch[2];
+    } else {
+      return null;
+    }
+
+    const namePrefix = CACHED_COMPILE_GRAPH.projectConfig?.tablePrefix;
+    let linkedTableNameWtPrefix = "";
+    linkedTableNameWtPrefix =
+      namePrefix !== undefined ? namePrefix + "_" + linkedTable.name : linkedTable.name;
+
+    const foundCompileAction = gatherAllActions().filter(
+      action =>
+        (linkedTable.database === null ||
+          (action?.target?.database !== undefined &&
+            action.target.database === linkedTable.database)) &&
+        (linkedTable.schema === null ||
+          (action?.target?.schema !== undefined && action.target.schema === linkedTable.schema)) &&
+        action?.target?.name !== undefined &&
+        (action.target.name === linkedTable.name || action.target.name === linkedTableNameWtPrefix)
+    );
+    if (foundCompileAction.length === 0) {
+      connection.sendNotification("error", `Definition not found for ${clickedRef}`);
+      return null;
+    } else if (foundCompileAction.length > 1) {
+      connection.sendNotification("error", `Multiple definitions found for ${clickedRef}`);
+      return null;
+    }
+
+    const fileString = `${WORKSPACE_ROOT_FOLDER}/${foundCompileAction[0].fileName}`;
+    return {
+      uri: fileString,
+      range: {
+        start: { line: 0, character: 0 },
+        end: { line: 1, character: 0 }
+      }
+    } as Location;
   }
 );
 
