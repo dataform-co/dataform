@@ -134,7 +134,7 @@ export class LegacyConfigConverter {
     T extends ILegacyTableConfig | ILegacyIncrementalTableConfig | ILegacyViewConfig
   >(legacyConfig: T): T {
     if (legacyConfig?.assertions) {
-      if (legacyConfig.assertions.uniqueKey) {
+      if (!!legacyConfig.assertions.uniqueKey?.length) {
         legacyConfig.assertions.uniqueKey = legacyConfig.assertions.uniqueKey;
       }
       // This determines if the uniqueKeys is of the legacy type.
@@ -161,11 +161,9 @@ export class LegacyConfigConverter {
       if (!!legacyConfig.bigquery.clusterBy) {
         legacyConfig.clusterBy = legacyConfig.bigquery.clusterBy;
       }
-      if (legacyConfig.type === "incremental") {
-        if (!!legacyConfig.bigquery.updatePartitionFilter) {
-          (legacyConfig as ILegacyIncrementalTableConfig).updatePartitionFilter =
-            legacyConfig.bigquery.updatePartitionFilter;
-        }
+      if (!!legacyConfig.bigquery.updatePartitionFilter) {
+        (legacyConfig as ILegacyIncrementalTableConfig).updatePartitionFilter =
+          legacyConfig.bigquery.updatePartitionFilter;
       }
       if (!!legacyConfig.bigquery.labels) {
         legacyConfig.labels = legacyConfig.bigquery.labels;

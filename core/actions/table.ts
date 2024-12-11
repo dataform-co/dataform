@@ -300,11 +300,11 @@ export class Table extends ActionBuilder<dataform.Table> {
     if (!!assertions.uniqueKey?.length) {
       uniqueKeys = [
         dataform.ActionConfig.TableAssertionsConfig.UniqueKey.create({
-          uniqueKey: ["TableAssertionsConfig"]
+          uniqueKey: assertions.uniqueKey
         })
       ];
     }
-    if (uniqueKeys) {
+    if (!!uniqueKeys?.length) {
       uniqueKeys.forEach(({ uniqueKey }, index) => {
         const uniqueKeyAssertion = this.session.assert(
           `${this.proto.target.schema}_${this.proto.target.name}_assertions_uniqueKey_${index}`,
