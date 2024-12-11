@@ -1,7 +1,11 @@
 import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
-import { ActionBuilder } from "df/core/actions";
+import {
+  ActionBuilder,
+  ILegacyTableBigqueryConfig,
+  ITableContext,
+  LegacyConfigConverter
+} from "df/core/actions";
 import { Assertion } from "df/core/actions/assertion";
-import { ITableContext, Table } from "df/core/actions/table";
 import { ColumnDescriptors } from "df/core/column_descriptors";
 import { Contextable, Resolvable } from "df/core/common";
 import * as Path from "df/core/path";
@@ -24,27 +28,18 @@ import { dataform } from "df/protos/ts";
  * This maintains backwards compatability with older versions.
  * TODO(ekrekr): consider breaking backwards compatability of these in v4.
  */
-interface ILegacyIncrementalTableConfig extends dataform.ActionConfig.IncrementalTableConfig {
+export interface ILegacyIncrementalTableConfig
+  extends dataform.ActionConfig.IncrementalTableConfig {
   dependencies: Resolvable[];
   database: string;
   schema: string;
   fileName: string;
   type: string;
-  bigquery?: ILegacyIncrementalTableBigqueryConfig;
+  bigquery?: ILegacyTableBigqueryConfig;
   // Legacy incremental table config's table assertions cannot directly extend the protobuf
   // incremental table config definition because of legacy incremental table config's flexible
   // types.
   assertions: any;
-}
-
-interface ILegacyIncrementalTableBigqueryConfig {
-  partitionBy?: string;
-  clusterBy?: string[];
-  updatePartitionFilter?: string;
-  labels?: { [key: string]: string };
-  partitionExpirationDays?: number;
-  requirePartitionFilter?: boolean;
-  additionalOptions?: { [key: string]: string };
 }
 
 /**
@@ -116,9 +111,6 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
     }
     if (config.disabled) {
       this.disabled();
-    }
-    if (Object.keys(config.additionalOptions).length > 0) {
-      this.bigquery({ additionalOptions: config.additionalOptions });
     }
     if (config.tags) {
       this.tags(config.tags);
@@ -216,16 +208,7 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
       this.proto.actionDescriptor.bigqueryLabels = bigquery.labels;
     }
 
-    // Remove all falsy values, to preserve backwards compatability of compiled graph output.
-    let bigqueryFiltered: dataform.IBigQueryOptions = {};
-    Object.entries(bigquery).forEach(([key, value]) => {
-      if (value) {
-        bigqueryFiltered = {
-          ...bigqueryFiltered,
-          [key]: value
-        };
-      }
-    });
+    const bigqueryFiltered = LegacyConfigConverter.legacyConvertBigQueryOptions(bigquery);
     if (Object.values(bigqueryFiltered).length > 0) {
       this.proto.bigquery = dataform.BigQueryOptions.create(bigqueryFiltered);
     }
@@ -378,15 +361,10 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
 
     this.proto.query = context.apply(this.contextableQuery);
 
-    if (this.proto.enumType === dataform.TableType.INCREMENTAL) {
-      this.proto.incrementalQuery = incrementalContext.apply(this.contextableQuery);
+    this.proto.incrementalQuery = incrementalContext.apply(this.contextableQuery);
 
-      this.proto.incrementalPreOps = this.contextifyOps(this.contextablePreOps, incrementalContext);
-      this.proto.incrementalPostOps = this.contextifyOps(
-        this.contextablePostOps,
-        incrementalContext
-      );
-    }
+    this.proto.incrementalPreOps = this.contextifyOps(this.contextablePreOps, incrementalContext);
+    this.proto.incrementalPostOps = this.contextifyOps(this.contextablePostOps, incrementalContext);
 
     if (this.contextableWhere) {
       this.proto.where = context.apply(this.contextableWhere);
@@ -452,47 +430,12 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
           unverifiedConfig.columns as any
         );
       }
-      if (unverifiedConfig?.assertions) {
-        if (unverifiedConfig.assertions.uniqueKey) {
-          unverifiedConfig.assertions.uniqueKey = unverifiedConfig.assertions.uniqueKey;
-        }
-        // This determines if the uniqueKeys is of the legacy type.
-        if (unverifiedConfig.assertions.uniqueKeys?.[0]?.length > 0) {
-          unverifiedConfig.assertions.uniqueKeys = (unverifiedConfig.assertions
-            .uniqueKeys as string[][]).map(uniqueKey =>
-            dataform.ActionConfig.TableAssertionsConfig.UniqueKey.create({ uniqueKey })
-          );
-        }
-        if (typeof unverifiedConfig.assertions.nonNull === "string") {
-          unverifiedConfig.assertions.nonNull = [unverifiedConfig.assertions.nonNull];
-        }
-      }
-      if (unverifiedConfig?.bigquery) {
-        if (!!unverifiedConfig.bigquery.partitionBy) {
-          unverifiedConfig.partitionBy = unverifiedConfig.bigquery.partitionBy;
-        }
-        if (!!unverifiedConfig.bigquery.clusterBy) {
-          unverifiedConfig.clusterBy = unverifiedConfig.bigquery.clusterBy;
-        }
-        if (!!unverifiedConfig.bigquery.updatePartitionFilter) {
-          unverifiedConfig.updatePartitionFilter = unverifiedConfig.bigquery.updatePartitionFilter;
-        }
-        if (!!unverifiedConfig.bigquery.labels) {
-          unverifiedConfig.labels = unverifiedConfig.bigquery.labels;
-        }
-        if (!!unverifiedConfig.bigquery.partitionExpirationDays) {
-          unverifiedConfig.partitionExpirationDays =
-            unverifiedConfig.bigquery.partitionExpirationDays;
-        }
-        if (!!unverifiedConfig.bigquery.requirePartitionFilter) {
-          unverifiedConfig.requirePartitionFilter =
-            unverifiedConfig.bigquery.requirePartitionFilter;
-        }
-        if (!!unverifiedConfig.bigquery.additionalOptions) {
-          unverifiedConfig.additionalOptions = unverifiedConfig.bigquery.additionalOptions;
-        }
-        delete unverifiedConfig.bigquery;
-      }
+      unverifiedConfig = LegacyConfigConverter.insertLegacyInlineAssertionsToConfigProto(
+        unverifiedConfig
+      );
+      unverifiedConfig = LegacyConfigConverter.insertLegacyBigQueryOptionsToConfigProto(
+        unverifiedConfig
+      );
     }
 
     return verifyObjectMatchesProto(

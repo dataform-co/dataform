@@ -129,7 +129,6 @@ function loadActionConfigs(session: Session, filePaths: string[]) {
             new Table(
               session,
               dataform.ActionConfig.TableConfig.create(actionConfig.table),
-              "table",
               actionConfigsPath
             )
           );
@@ -182,11 +181,11 @@ function loadActionConfigs(session: Session, filePaths: string[]) {
           );
         } else if (actionConfig.dataPreparation) {
           session.actions.push(
-              new DataPreparation(
-                  session,
-                  dataform.ActionConfig.DataPreparationConfig.create(actionConfig.dataPreparation),
-                  actionConfigsPath
-              )
+            new DataPreparation(
+              session,
+              dataform.ActionConfig.DataPreparationConfig.create(actionConfig.dataPreparation),
+              actionConfigsPath
+            )
           );
         } else {
           throw Error("Empty action configs are not permitted.");

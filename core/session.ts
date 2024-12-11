@@ -2,16 +2,16 @@ import { default as TarjanGraphConstructor, Graph as TarjanGraph } from "tarjan-
 
 import { encode64, verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { StringifiedMap, StringifiedSet } from "df/common/strings/stringifier";
-import { Action } from "df/core/actions";
+import { Action, ITableContext } from "df/core/actions";
 import { AContextable, Assertion, AssertionContext } from "df/core/actions/assertion";
 import { DataPreparation } from "df/core/actions/data_preparation";
 import { Declaration } from "df/core/actions/declaration";
-import { IncrementalTable } from "df/core/actions/incremental_table";
+import { ILegacyIncrementalTableConfig, IncrementalTable } from "df/core/actions/incremental_table";
 import { Notebook } from "df/core/actions/notebook";
 import { Operation, OperationContext } from "df/core/actions/operation";
-import { ITableConfig, ITableContext, Table, TableContext, TableType } from "df/core/actions/table";
+import { ILegacyTableConfig, Table, TableContext, TableType } from "df/core/actions/table";
 import { Test } from "df/core/actions/test";
-import { View } from "df/core/actions/view";
+import { ILegacyViewConfig, View } from "df/core/actions/view";
 import { Contextable, ICommonContext, ITarget, Resolvable } from "df/core/common";
 import { CompilationSql } from "df/core/compilation_sql";
 import { targetAsReadableString, targetStringifier } from "df/core/targets";
@@ -167,9 +167,10 @@ export class Session {
         this.actions.push(incrementalTable);
         break;
       case "table":
-        const table = this.publish(sqlxConfig.name)
-          .config(sqlxConfig)
-          .query(ctx => actionOptions.sqlContextable(ctx)[0]);
+        sqlxConfig.filename = utils.getCallerFile(this.rootDir);
+        const table = new Table(this, sqlxConfig).query(
+          ctx => actionOptions.sqlContextable(ctx)[0]
+        );
         if (actionOptions.incrementalWhereContextable) {
           table.where(actionOptions.incrementalWhereContextable);
         }
@@ -179,6 +180,7 @@ export class Session {
         if (actionOptions.postOperationsContextable) {
           table.postOps(actionOptions.postOperationsContextable);
         }
+        this.actions.push(table);
         break;
       case "assertion":
         sqlxConfig.filename = utils.getCallerFile(this.rootDir);
@@ -256,20 +258,32 @@ export class Session {
     return operation;
   }
 
+  // TODO(ekrekr): add new methods other than publish for the new action types.
   public publish(
     name: string,
-    queryOrConfig?: Contextable<ITableContext, string> | ITableConfig
-  ): Table {
-    const newTable = new Table();
-    newTable.session = this;
-    utils.setNameAndTarget(this, newTable.proto, name);
+    queryOrConfig?:
+      | Contextable<ITableContext, string>
+      | ILegacyTableConfig
+      | ILegacyViewConfig
+      | ILegacyIncrementalTableConfig
+  ): Table | IncrementalTable | View {
+    let newTable: Table | IncrementalTable | View = new View();
     if (!!queryOrConfig) {
       if (typeof queryOrConfig === "object") {
-        newTable.config(queryOrConfig);
+        if (queryOrConfig?.type === "table") {
+          newTable = new Table(this, queryOrConfig);
+        } else if (queryOrConfig?.type === "incremental") {
+          newTable = new IncrementalTable(this, queryOrConfig);
+        } else if (queryOrConfig?.type === "incremental") {
+          newTable = new View(this, queryOrConfig);
+        } else {
+          throw Error(`Unrecognized table type: ${queryOrConfig.type}`);
+        }
       } else {
         newTable.query(queryOrConfig);
       }
     }
+    utils.setNameAndTarget(this, newTable.proto, name);
     newTable.proto.fileName = utils.getCallerFile(this.rootDir);
     this.actions.push(newTable);
     return newTable;
@@ -555,6 +569,7 @@ export class Session {
     });
   }
 
+  // TODO(ekrekr): finish pushing config validation down to the classes.
   private checkTableConfigValidity(tables: dataform.ITable[]) {
     tables.forEach(table => {
       // type
