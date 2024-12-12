@@ -20,7 +20,7 @@ import { dataform } from "df/protos/ts";
  * This maintains backwards compatability with older versions.
  * TODO(ekrekr): consider breaking backwards compatability of these in v4.
  */
-interface ILegacyAssertionConfig extends dataform.ActionConfig.AssertionConfig {
+export interface ILegacyAssertionConfig extends dataform.ActionConfig.AssertionConfig {
   dependencies: Resolvable[];
   database: string;
   schema: string;
@@ -74,6 +74,10 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
     if (configPath) {
       config.filename = resolveActionsConfigFilename(config.filename, configPath);
       this.query(nativeRequire(config.filename).query);
+    }
+
+    if (config.query) {
+      this.query(config.query);
     }
 
     if (config.dependencyTargets) {
@@ -224,6 +228,10 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
     // config verifiers.
     if (unverifiedConfig.type) {
       delete unverifiedConfig.type;
+    }
+
+    if (!!unverifiedConfig.filename && !!unverifiedConfig.query) {
+      this.session.compileError("Both filename and query cannot be defined in the same config");
     }
 
     return verifyObjectMatchesProto(

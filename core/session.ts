@@ -19,6 +19,7 @@ import * as utils from "df/core/utils";
 import { toResolvable } from "df/core/utils";
 import { version as dataformCoreVersion } from "df/core/version";
 import { dataform } from "df/protos/ts";
+import { ILegacyAssertionConfig } from "df/core/actions/assertion";
 
 const DEFAULT_CONFIG = {
   defaultSchema: "dataform",
@@ -275,7 +276,7 @@ export class Session {
     return newTable;
   }
 
-  public assert(name: string, query?: AContextable<string>): Assertion {
+  public assert(name: string, query?: AContextable<string> | ILegacyAssertionConfig): Assertion {
     const assertion = new Assertion();
     assertion.session = this;
     utils.setNameAndTarget(this, assertion.proto, name, this.projectConfig.assertionSchema);

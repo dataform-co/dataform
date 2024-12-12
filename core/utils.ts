@@ -186,6 +186,7 @@ export function setNameAndTarget(
     overrideSchema,
     overrideDatabase
   );
+  console.log("ACTION NAME TARGET:", action.target.name);
   if (action.target.name.includes(".")) {
     session.compileError(
       new Error("Action target names cannot include '.'"),

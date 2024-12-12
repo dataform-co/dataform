@@ -5,13 +5,17 @@ import { dump as dumpYaml, load as loadYaml } from "js-yaml";
 import * as path from "path";
 import { CompilerFunction, NodeVM } from "vm2";
 
-import { decode64, encode64, verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
+import {
+  decode64,
+  encode64,
+  verifyObjectMatchesProto,
+  VerifyProtoErrorBehaviour
+} from "df/common/protos";
 import { compile } from "df/core/compilers";
 import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
 import { asPlainObject, suite, test } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
-
 
 const SOURCE_EXTENSIONS = ["js", "sql", "sqlx", "yaml", "ipynb"];
 
@@ -910,47 +914,47 @@ nodes:
         - name: a
           type: STRING
           mode: NULLABLE
-`
+`;
 
       fs.writeFileSync(
-          path.join(projectDir, "definitions/data_preparation.yaml"),
-          dataPreparationYaml
+        path.join(projectDir, "definitions/data_preparation.yaml"),
+        dataPreparationYaml
       );
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
       expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(asPlainObject(result.compile.compiledGraph.dataPreparations)).deep.equals(
-          asPlainObject([
-            {
-              target: {
+        asPlainObject([
+          {
+            target: {
+              database: "prj",
+              schema: "ds",
+              name: "dest"
+            },
+            canonicalTarget: {
+              database: "prj",
+              schema: "ds",
+              name: "dest"
+            },
+            targets: [
+              {
                 database: "prj",
                 schema: "ds",
                 name: "dest"
-              },
-              canonicalTarget: {
+              }
+            ],
+            canonicalTargets: [
+              {
                 database: "prj",
                 schema: "ds",
                 name: "dest"
-              },
-              targets: [
-                {
-                  database: "prj",
-                  schema: "ds",
-                  name: "dest"
-                }
-              ],
-              canonicalTargets: [
-                {
-                  database: "prj",
-                  schema: "ds",
-                  name: "dest"
-                }
-              ],
-              fileName: "definitions/data_preparation.yaml",
-              dataPreparationYaml: dumpYaml(loadYaml(dataPreparationYaml))
-            }
-          ])
+              }
+            ],
+            fileName: "definitions/data_preparation.yaml",
+            dataPreparationYaml: dumpYaml(loadYaml(dataPreparationYaml))
+          }
+        ])
       );
     });
 
@@ -1010,11 +1014,11 @@ nodes:
         - name: a
           type: STRING
           mode: NULLABLE
-`
+`;
 
       fs.writeFileSync(
-          path.join(projectDir, "definitions/data_preparation.yaml"),
-          dataPreparationYaml
+        path.join(projectDir, "definitions/data_preparation.yaml"),
+        dataPreparationYaml
       );
 
       const resolvedYaml = `
@@ -1070,42 +1074,42 @@ nodes:
         - name: a
           type: STRING
           mode: NULLABLE
-`
+`;
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
       expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(asPlainObject(result.compile.compiledGraph.dataPreparations)).deep.equals(
-          asPlainObject([
-            {
-              target: {
+        asPlainObject([
+          {
+            target: {
+              database: "defaultProject_projectSuffix",
+              schema: "defaultDataset_datasetSuffix",
+              name: "tablePrefix_dest"
+            },
+            canonicalTarget: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "dest"
+            },
+            targets: [
+              {
                 database: "defaultProject_projectSuffix",
                 schema: "defaultDataset_datasetSuffix",
                 name: "tablePrefix_dest"
-              },
-              canonicalTarget: {
+              }
+            ],
+            canonicalTargets: [
+              {
                 database: "defaultProject",
                 schema: "defaultDataset",
                 name: "dest"
-              },
-              targets: [
-                {
-                  database: "defaultProject_projectSuffix",
-                  schema: "defaultDataset_datasetSuffix",
-                  name: "tablePrefix_dest"
-                }
-              ],
-              canonicalTargets: [
-                {
-                  database: "defaultProject",
-                  schema: "defaultDataset",
-                  name: "dest"
-                }
-              ],
-              fileName: "definitions/data_preparation.yaml",
-              dataPreparationYaml: dumpYaml(loadYaml(resolvedYaml))
-            }
-          ])
+              }
+            ],
+            fileName: "definitions/data_preparation.yaml",
+            dataPreparationYaml: dumpYaml(loadYaml(resolvedYaml))
+          }
+        ])
       );
     });
   });
@@ -1768,20 +1772,8 @@ actions:
       ] as dataform.IAssertion[]
     };
 
-    test(`for assertions`, () => {
-      const projectDir = tmpDirFixture.createNewTmpDir();
-      fs.writeFileSync(
-        path.join(projectDir, "workflow_settings.yaml"),
-        VALID_WORKFLOW_SETTINGS_YAML
-      );
-      fs.mkdirSync(path.join(projectDir, "definitions"));
-      fs.writeFileSync(path.join(projectDir, "definitions/operation.sqlx"), "SELECT 1");
-      fs.writeFileSync(
-        path.join(projectDir, "definitions/assertion.sqlx"),
-        // If change, then change test "action configs assertions can be loaded".
-        `
-config {
-  type: "assertion",
+    // If change, then change test "action configs assertions can be loaded".
+    let assertionConfig = `
   name: "name",
   schema: "dataset",
   database: "project",
@@ -1790,45 +1782,77 @@ config {
   disabled: true,
   description: "description",
   hermetic: true,
-  dependOnDependencyAssertions: true,
+  dependOnDependencyAssertions: true`;
+    [
+      {
+        testNameSuffix: "SQLX",
+        filename: "assertion.sqlx",
+        fileContents: `
+config {
+  type: "assertion",
+  ${assertionConfig}
 }
 SELECT 1`
-      );
+      },
+      {
+        testNameSuffix: "the javascript API",
+        filename: "assertion.js",
+        fileContents: `assert(
+  {
+    ${assertionConfig},
+    query: "SELECT 1"
+  }
+)`
+      }
+    ].forEach(testParameters => {
+      test(`for assertions configured with ${testParameters.testNameSuffix}`, () => {
+        const projectDir = tmpDirFixture.createNewTmpDir();
+        fs.writeFileSync(
+          path.join(projectDir, "workflow_settings.yaml"),
+          VALID_WORKFLOW_SETTINGS_YAML
+        );
+        fs.mkdirSync(path.join(projectDir, "definitions"));
+        fs.writeFileSync(path.join(projectDir, "definitions/operation.sqlx"), "SELECT 1");
+        fs.writeFileSync(
+          path.join(projectDir, `definitions/${testParameters.filename}`),
+          testParameters.fileContents
+        );
 
-      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+        const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
-      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-      expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals(
-        asPlainObject([
-          {
-            target: {
-              database: "project",
-              schema: "dataset",
-              name: "name"
-            },
-            canonicalTarget: {
-              database: "project",
-              schema: "dataset",
-              name: "name"
-            },
-            actionDescriptor: {
-              description: "description"
-            },
-            dependencyTargets: [
-              {
-                database: "defaultProject",
-                schema: "defaultDataset",
-                name: "operation"
-              }
-            ],
-            disabled: true,
-            fileName: "definitions/assertion.sqlx",
-            hermeticity: "HERMETIC",
-            tags: ["tagA", "tagB"],
-            query: "\n\nSELECT 1"
-          }
-        ])
-      );
+        expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+        expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals(
+          asPlainObject([
+            {
+              target: {
+                database: "project",
+                schema: "dataset",
+                name: "name"
+              },
+              canonicalTarget: {
+                database: "project",
+                schema: "dataset",
+                name: "name"
+              },
+              actionDescriptor: {
+                description: "description"
+              },
+              dependencyTargets: [
+                {
+                  database: "defaultProject",
+                  schema: "defaultDataset",
+                  name: "operation"
+                }
+              ],
+              disabled: true,
+              fileName: "definitions/assertion.sqlx",
+              hermeticity: "HERMETIC",
+              tags: ["tagA", "tagB"],
+              query: "\n\nSELECT 1"
+            }
+          ])
+        );
+      });
     });
 
     test(`for declarations`, () => {
@@ -2103,7 +2127,7 @@ config {
   ${assertions}
   hermetic: true,
 }
-SELECT 1`
+SELECT 1`;
       const expectedCompiledTable = (name: string, fileName: string) => ({
         target: {
           database: "project",
@@ -2153,7 +2177,7 @@ SELECT 1`
             key: "val"
           }
         }
-      })
+      });
       fs.writeFileSync(
         path.join(projectDir, "workflow_settings.yaml"),
         VALID_WORKFLOW_SETTINGS_YAML
