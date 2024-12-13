@@ -361,8 +361,13 @@ message ActionConfig {
     // Targets of actions that this action is dependent on.
     repeated Target dependency_targets = 4;
 
-    // Path to the source file that the contents of the action is loaded from.
-    string filename = 5;
+    oneof query_contents {
+      // Path to the source file that the contents of the action is loaded from.
+      string filename = 5;
+
+      // A SQL query.
+      string query = 11;
+    }
 
     // A list of user-defined tags with which the action should be labeled.
     repeated string tags = 6;
