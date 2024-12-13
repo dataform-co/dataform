@@ -64,11 +64,9 @@ async function applySettings() {
 
 async function compileAndValidate() {
   let compilationFailed = false;
-  const spawnedProcess = spawn("dataform", [
-    "compile",
-    "--json",
-    ...settings.compilerOptions,
-  ], {shell: true});
+  const spawnedProcess = spawn("dataform", ["compile", "--json", ...settings.compilerOptions], {
+    shell: true
+  });
 
   const compileResult = await getProcessResult(spawnedProcess);
   if (compileResult.exitCode !== 0) {
