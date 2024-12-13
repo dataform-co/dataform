@@ -1,7 +1,7 @@
 import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
-import { ActionBuilder } from "df/core/actions";
+import { ActionBuilder, LegacyConfigConverter } from "df/core/actions";
 import { Assertion } from "df/core/actions/assertion";
-import { ITableContext, Table } from "df/core/actions/table";
+import { ITableContext } from "df/core/actions/table";
 import { ColumnDescriptors } from "df/core/column_descriptors";
 import { Contextable, Resolvable } from "df/core/common";
 import * as Path from "df/core/path";
@@ -24,7 +24,7 @@ import { dataform } from "df/protos/ts";
  * This maintains backwards compatability with older versions.
  * TODO(ekrekr): consider breaking backwards compatability of these in v4.
  */
-interface ILegacyViewConfig extends dataform.ActionConfig.ViewConfig {
+export interface ILegacyViewConfig extends dataform.ActionConfig.ViewConfig {
   dependencies: Resolvable[];
   database: string;
   schema: string;
@@ -412,21 +412,9 @@ export class View extends ActionBuilder<dataform.Table> {
           unverifiedConfig.columns as any
         );
       }
-      if (unverifiedConfig?.assertions) {
-        if (unverifiedConfig.assertions.uniqueKey) {
-          unverifiedConfig.assertions.uniqueKey = unverifiedConfig.assertions.uniqueKey;
-        }
-        // This determines if the uniqueKeys is of the legacy type.
-        if (unverifiedConfig.assertions.uniqueKeys?.[0]?.length > 0) {
-          unverifiedConfig.assertions.uniqueKeys = (unverifiedConfig.assertions
-            .uniqueKeys as string[][]).map(uniqueKey =>
-            dataform.ActionConfig.TableAssertionsConfig.UniqueKey.create({ uniqueKey })
-          );
-        }
-        if (typeof unverifiedConfig.assertions.nonNull === "string") {
-          unverifiedConfig.assertions.nonNull = [unverifiedConfig.assertions.nonNull];
-        }
-      }
+      unverifiedConfig = LegacyConfigConverter.insertLegacyInlineAssertionsToConfigProto(
+        unverifiedConfig
+      );
       if (unverifiedConfig?.bigquery) {
         if (!!unverifiedConfig.bigquery.labels) {
           unverifiedConfig.labels = unverifiedConfig.bigquery.labels;
