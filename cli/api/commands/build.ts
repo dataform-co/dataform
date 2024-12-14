@@ -74,10 +74,6 @@ export class Builder {
     tableMetadata: dataform.ITableMetadata,
     runConfig: dataform.IRunConfig
   ) {
-    if (table.protected && this.runConfig.fullRefresh) {
-      throw new Error("Protected datasets cannot be fully refreshed.");
-    }
-
     return {
       ...this.toPartialExecutionAction(table),
       type: "table",
