@@ -2253,6 +2253,46 @@ SELECT 1`
   });
 
   suite("action config options", () => {
+    const exampleActionDescriptor = {
+      inputActionConfigBlock: `
+    columns:
+    - path:
+      - column1Key
+      description: column1Val
+    - path:
+      - column2Key
+      tags:
+      - tag3
+      - tag4
+      bigqueryPolicyTags:
+      - bigqueryPolicyTag1
+      - bigqueryPolicyTag2
+      description: description
+    - path:
+      - column2Key
+      - nestedColumnKey
+      description: nestedColumnVal`,
+      outputActionDescriptor: {
+        columns: [
+          {
+            description: "column1Val",
+            path: ["column1Key"]
+          },
+          {
+            bigqueryPolicyTags: ["bigqueryPolicyTag1", "bigqueryPolicyTag2"],
+            description: "description",
+            path: ["column2Key"],
+            tags: ["tag3", "tag4"]
+          },
+          {
+            description: "nestedColumnVal",
+            path: ["column2Key", "nestedColumnKey"]
+          }
+        ],
+        description: "description"
+      }
+    };
+
     const exampleBuiltInAssertions = {
       inputActionConfigBlock: `
     assertions:
@@ -2414,7 +2454,7 @@ actions:
     dataset: dataset
     project: project
     description: description
-`
+${exampleActionDescriptor.inputActionConfigBlock}`
       );
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
@@ -2434,7 +2474,7 @@ actions:
               name: "name"
             },
             actionDescriptor: {
-              description: "description"
+              ...exampleActionDescriptor.outputActionDescriptor
             }
           }
         ])
@@ -2450,7 +2490,7 @@ actions:
       fs.mkdirSync(path.join(projectDir, "definitions"));
       fs.writeFileSync(path.join(projectDir, "definitions/operation.sqlx"), "SELECT 1");
       fs.writeFileSync(path.join(projectDir, "definitions/filename.sql"), "SELECT 1");
-      // TODO(ekrekr): add support for columns.
+      // TODO(ekrekr): add support for columns once table is its own unique action constructor.
       fs.writeFileSync(
         path.join(projectDir, "definitions/actions.yaml"),
         `
@@ -2528,10 +2568,10 @@ ${exampleBuiltInAssertions.inputActionConfigBlock}
           fileName: "definitions/filename.sql",
           query: "SELECT 1",
           actionDescriptor: {
+            description: "description",
             bigqueryLabels: {
               key: "val"
-            },
-            description: "description"
+            }
           }
         }
       ]);
@@ -2549,7 +2589,6 @@ ${exampleBuiltInAssertions.inputActionConfigBlock}
       fs.mkdirSync(path.join(projectDir, "definitions"));
       fs.writeFileSync(path.join(projectDir, "definitions/operation.sqlx"), "SELECT 1");
       fs.writeFileSync(path.join(projectDir, "definitions/filename.sql"), "SELECT 1");
-      // TODO(ekrekr): add support for columns.
       fs.writeFileSync(
         path.join(projectDir, "definitions/actions.yaml"),
         `
@@ -2567,6 +2606,7 @@ actions:
     disabled: true
     materialized: true
     description: description
+${exampleActionDescriptor.inputActionConfigBlock}
     labels:
       key: val
     additionalOptions:
@@ -2574,8 +2614,7 @@ actions:
       option2Key: option2
     dependOnDependencyAssertions: true
 ${exampleBuiltInAssertions.inputActionConfigBlock}
-    hermetic: true
-    `
+    hermetic: true`
       );
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
@@ -2619,10 +2658,10 @@ ${exampleBuiltInAssertions.inputActionConfigBlock}
           fileName: "definitions/filename.sql",
           query: "SELECT 1",
           actionDescriptor: {
+            ...exampleActionDescriptor.outputActionDescriptor,
             bigqueryLabels: {
               key: "val"
-            },
-            description: "description"
+            }
           },
           materialized: true
         }
@@ -2662,6 +2701,7 @@ actions:
     - key1
     - key2
     description: description
+${exampleActionDescriptor.inputActionConfigBlock}
     partitionBy: partitionBy
     partitionExpirationDays: 1
     requirePartitionFilter: true
@@ -2676,7 +2716,7 @@ actions:
     dependOnDependencyAssertions: true
 ${exampleBuiltInAssertions.inputActionConfigBlock}
     hermetic: true
-    `
+        `
       );
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
@@ -2726,6 +2766,7 @@ ${exampleBuiltInAssertions.inputActionConfigBlock}
           query: "SELECT 1",
           incrementalQuery: "SELECT 1",
           actionDescriptor: {
+            ...exampleActionDescriptor.outputActionDescriptor,
             bigqueryLabels: {
               key: "val"
             },
@@ -2768,9 +2809,9 @@ actions:
     disabled: true
     hasOutput: true
     description: description
+${exampleActionDescriptor.inputActionConfigBlock}
     dependOnDependencyAssertions: true
-    hermetic: true
-    `
+    hermetic: true`
       );
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
@@ -2803,7 +2844,7 @@ actions:
             tags: ["tagA", "tagB"],
             queries: ["SELECT 1"],
             actionDescriptor: {
-              description: "description"
+              ...exampleActionDescriptor.outputActionDescriptor
             }
           }
         ])
