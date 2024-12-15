@@ -59,6 +59,7 @@ message BigQueryOptions {
   int32 partition_expiration_days = 5;
   bool require_partition_filter = 6;
   map<string, string> additional_options = 7;
+  string withConnection = 8;
 }
 
 message GraphErrors {

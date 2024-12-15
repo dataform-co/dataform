@@ -1892,6 +1892,7 @@ ${exampleActionDescriptor.inputSqlxConfigBlock}
     partitionExpirationDays: 1,
     requirePartitionFilter: true,
     clusterBy: ["clusterBy"],
+    withConnection: "US.external_service_connection",
     labels: {"key": "val"},
     additionalOptions: {
       option1Key: "option1",
@@ -1928,7 +1929,8 @@ SELECT 1`;
           },
           partitionBy: "partitionBy",
           partitionExpirationDays: 1,
-          requirePartitionFilter: true
+          requirePartitionFilter: true,
+          withConnection: "US.external_service_connection"
         },
         tags: ["tag1", "tag2"],
         dependencyTargets: [

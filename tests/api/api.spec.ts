@@ -703,6 +703,73 @@ suite("@dataform/api", () => {
       );
     });
 
+    test("bigquery_with_connection", () => {
+        const testGraph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
+          projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb", defaultLocation: "US" },
+          tables: [
+            {
+              target: {
+                schema: "schema",
+                name: "with_connection"
+              },
+              type: "table",
+              query: "select 1 as test",
+              bigquery: {
+                withConnection: "with_connection"
+              }
+            },
+            {
+              target: {
+                schema: "schema",
+                name: "plain"
+              },
+              type: "table",
+              query: "select 1 as test"
+            }
+          ]
+        });
+        const expectedExecutionActions: dataform.IExecutionAction[] = [
+          {
+            type: "table",
+            tableType: "table",
+            target: {
+              schema: "schema",
+              name: "with_connection"
+            },
+            tasks: [
+              {
+                type: "statement",
+                statement:
+                  'create or replace table `deeb.schema.additional_options` WITH CONNECTION with_connection as select 1 as test'
+              }
+            ],
+            dependencyTargets: [],
+            hermeticity: dataform.ActionHermeticity.HERMETIC
+          },
+          {
+            type: "table",
+            tableType: "table",
+            target: {
+              schema: "schema",
+              name: "plain"
+            },
+            tasks: [
+              {
+                type: "statement",
+                statement: "create or replace table `deeb.schema.plain` as select 1 as test"
+              }
+            ],
+            dependencyTargets: [],
+            hermeticity: dataform.ActionHermeticity.HERMETIC
+          }
+        ];
+        const executionGraph = new Builder(testGraph, {}, dataform.WarehouseState.create({})).build();
+        expect(asPlainObject(executionGraph.actions)).deep.equals(
+          asPlainObject(expectedExecutionActions)
+        );
+      });
+    });
+
     test("bigquery_additional_options", () => {
       const testGraph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
         projectConfig: { warehouse: "bigquery", defaultDatabase: "deeb", defaultLocation: "US" },

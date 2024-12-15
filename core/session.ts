@@ -585,7 +585,9 @@ export class Session {
           (table.bigquery.partitionBy ||
             table.bigquery.clusterBy?.length ||
             table.bigquery.partitionExpirationDays ||
-            table.bigquery.requirePartitionFilter) &&
+            table.bigquery.requirePartitionFilter ||
+            table.bigquery.withConnection
+        ) &&
           table.enumType === dataform.TableType.VIEW &&
           !table.materialized
         ) {

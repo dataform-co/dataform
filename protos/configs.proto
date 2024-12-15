@@ -188,6 +188,8 @@ message ActionConfig {
     // the  action depends on data from a source which has not been declared as
     // a dependency.
     bool hermetic = 20;
+
+    string withConnection = 21;
   }
 
   message ViewConfig {
@@ -346,6 +348,8 @@ message ActionConfig {
     // the  action depends on data from a source which has not been declared as
     // a dependency.
     bool hermetic = 23;
+
+    string withConnection = 24;
   }
 
   message AssertionConfig {
