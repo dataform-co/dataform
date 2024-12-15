@@ -2096,6 +2096,7 @@ config {
     updatePartitionFilter: "updatePartitionFilter",
     clusterBy: ["clusterBy"],
     labels: {"key": "val"},
+    withConnection: "US.external_service_connection",
     additionalOptions: {
       option1Key: "option1",
       option2Key: "option2",
@@ -2133,7 +2134,8 @@ SELECT 1`
           partitionBy: "partitionBy",
           partitionExpirationDays: 1,
           requirePartitionFilter: true,
-          updatePartitionFilter: "updatePartitionFilter"
+          updatePartitionFilter: "updatePartitionFilter",
+          withConnection: "US.external_service_connection"
         },
         tags: ["tag1", "tag2"],
         uniqueKey: ["key1", "key2"],
