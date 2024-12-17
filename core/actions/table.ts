@@ -97,6 +97,11 @@ export interface IBigQueryOptions {
   requirePartitionFilter?: boolean;
 
   /**
+   * 
+   */
+  withConnection?: string;
+
+  /**
    * Key-value pairs for options [table](https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#table_option_list), [view](https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#view_option_list), [materialized view](https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#materialized_view_option_list).
    *
    * Some options (e.g. `partitionExpirationDays`) have dedicated type/validity checked fields; prefer using those.
@@ -114,6 +119,7 @@ const IBigQueryOptionsProperties = () =>
     "labels",
     "partitionExpirationDays",
     "requirePartitionFilter",
+    "withConnection",
     "additionalOptions"
   ]);
 
@@ -319,6 +325,7 @@ export class Table extends ActionBuilder<dataform.Table> {
         config.requirePartitionFilter ||
         config.clusterBy.length ||
         Object.keys(config.labels).length ||
+        config.withConnection ||
         Object.keys(config.additionalOptions).length
           ? {}
           : undefined;
@@ -337,6 +344,9 @@ export class Table extends ActionBuilder<dataform.Table> {
         }
         if (Object.keys(config.labels).length) {
           bigqueryOptions.labels = config.labels;
+        }
+        if (config.withConnection) {
+          bigqueryOptions.withConnection = config.withConnection;
         }
         if (Object.keys(config.additionalOptions).length) {
           bigqueryOptions.additionalOptions = config.additionalOptions;
@@ -402,6 +412,7 @@ export class Table extends ActionBuilder<dataform.Table> {
         config.updatePartitionFilter ||
         config.clusterBy.length ||
         Object.keys(config.labels).length ||
+        config.withConnection ||
         Object.keys(config.additionalOptions).length
           ? {}
           : undefined;
@@ -420,6 +431,9 @@ export class Table extends ActionBuilder<dataform.Table> {
         }
         if (config.clusterBy.length) {
           bigqueryOptions.clusterBy = config.clusterBy;
+        }
+        if (config.withConnection) {
+          bigqueryOptions.withConnection = config.withConnection
         }
         if (Object.keys(config.labels).length) {
           bigqueryOptions.labels = config.labels;
