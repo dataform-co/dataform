@@ -208,7 +208,7 @@ from (${query}) as insertions`;
         : ""
     }${
       table.bigquery && table.bigquery.withConnection
-        ? `with connection ${table.bigquery.withConnection} `
+        ? `WITH CONNECTION ${table.bigquery.withConnection} `
         : ""
     }
     ${options.length > 0 ? `OPTIONS(${options.join(",")})` : ""}as ${table.query}`;
