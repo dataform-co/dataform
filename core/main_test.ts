@@ -1845,7 +1845,7 @@ ${exampleActionDescriptor.inputSqlxConfigBlock}
       );
     });
 
-    let tableConfig = `{
+    const tableConfig = `{
   type: "table",
   name: "name",
   schema: "dataset",
@@ -1895,7 +1895,6 @@ SELECT 1`
           path.join(projectDir, `definitions/${testParameters.filename}`),
           testParameters.fileContents
         );
-        console.log("🚀 ~ test ~ testParameters.fileContents:", testParameters.fileContents);
 
         const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
@@ -1954,7 +1953,7 @@ SELECT 1`
       });
     });
 
-    let viewConfig = `{
+    const viewConfig = `{
   type: "view",
   name: "name",
   schema: "dataset",
@@ -2055,7 +2054,7 @@ SELECT 1`
       });
     });
 
-    let incrementalTableConfig = `{
+    const incrementalTableConfig = `{
   type: "incremental",
   name: "name",
   schema: "dataset",
