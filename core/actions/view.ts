@@ -1,5 +1,5 @@
 import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
-import { ActionBuilder, LegacyConfigConverter, ITableContext } from "df/core/actions";
+import { ActionBuilder, ITableContext, LegacyConfigConverter } from "df/core/actions";
 import { Assertion } from "df/core/actions/assertion";
 import { ColumnDescriptors } from "df/core/column_descriptors";
 import { Contextable, Resolvable } from "df/core/common";
