@@ -1,11 +1,11 @@
 import { Assertion } from "df/core/actions/assertion";
 import { DataPreparation } from "df/core/actions/data_preparation";
 import { Declaration } from "df/core/actions/declaration";
-import { IncrementalTable } from "df/core/actions/incremental_table";
+import { ILegacyIncrementalTableConfig, IncrementalTable } from "df/core/actions/incremental_table";
 import { Notebook } from "df/core/actions/notebook";
 import { Operation } from "df/core/actions/operation";
 import { Table } from "df/core/actions/table";
-import { View } from "df/core/actions/view";
+import { ILegacyViewConfig, View } from "df/core/actions/view";
 import { Session } from "df/core/session";
 import { dataform } from "df/protos/ts";
 
@@ -50,16 +50,16 @@ export abstract class ActionBuilder<T> {
     return target;
   }
 
-  public finalizeTarget(
-    targetFromConfig: dataform.Target
-  ): dataform.Target {
+  public finalizeTarget(targetFromConfig: dataform.Target): dataform.Target {
     return dataform.Target.create({
       name: this.session.finalizeName(targetFromConfig.name),
-      schema: targetFromConfig.schema ?
-          this.session.finalizeSchema(targetFromConfig.schema) : undefined,
-      database: targetFromConfig.database ?
-          this.session.finalizeDatabase(targetFromConfig.database) : undefined
-    })
+      schema: targetFromConfig.schema
+        ? this.session.finalizeSchema(targetFromConfig.schema)
+        : undefined,
+      database: targetFromConfig.database
+        ? this.session.finalizeDatabase(targetFromConfig.database)
+        : undefined
+    });
   }
 
   /** Retrieves the filename from the config. */
@@ -93,5 +93,30 @@ export abstract class ActionBuilder<T> {
         target
       );
     }
+  }
+}
+
+export class LegacyConfigConverter {
+  public static insertLegacyInlineAssertionsToConfigProto<
+    T extends ILegacyIncrementalTableConfig | ILegacyViewConfig
+  >(legacyConfig: T): T {
+    if (legacyConfig?.assertions) {
+      if (!!legacyConfig.assertions.uniqueKey) {
+        if (typeof legacyConfig.assertions.uniqueKey === "string") {
+          legacyConfig.assertions.uniqueKey = [legacyConfig.assertions.uniqueKey];
+        }
+      }
+      // This determines if the uniqueKeys is of the legacy type.
+      if (legacyConfig.assertions.uniqueKeys?.[0]?.length > 0) {
+        legacyConfig.assertions.uniqueKeys = (legacyConfig.assertions
+          .uniqueKeys as string[][]).map(uniqueKey =>
+          dataform.ActionConfig.TableAssertionsConfig.UniqueKey.create({ uniqueKey })
+        );
+      }
+      if (typeof legacyConfig.assertions.nonNull === "string") {
+        legacyConfig.assertions.nonNull = [legacyConfig.assertions.nonNull];
+      }
+    }
+    return legacyConfig;
   }
 }

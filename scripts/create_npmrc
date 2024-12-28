@@ -1,7 +1,7 @@
 set -e
 cat > ~/.npmrc <<EOL
 //registry.npmjs.org/:_authToken=$NPM_TOKEN
-registry=https://us-npm.pkg.dev/artifact-foundry-prod/ah-3p-staging-npm/
-//us-npm.pkg.dev/artifact-foundry-prod/ah-3p-staging-npm/:always-auth=true
-//us-npm.pkg.dev/artifact-foundry-prod/ah-3p-staging-npm/:_authToken=${REPO_TOKEN}
+registry=https://us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/
+//us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/:always-auth=true
+//us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/:_authToken=${REPO_TOKEN}
 EOL
