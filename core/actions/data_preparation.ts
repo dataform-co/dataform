@@ -38,23 +38,23 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     const dataPreparationAsJson = nativeRequire(config.filename).asJson;
 
     // Find targets
-    const targets = this.getTargets(dataPreparationAsJson as {
-      [key: string]: any;
-    });
-    const resolvedTargets = targets.map(target =>
-        this.applySessionToTarget(target, session.projectConfig, config.filename, true)
-    )
-    // Finalize list of targets.
-    this.proto.targets = resolvedTargets.map(target =>
-        this.finalizeTarget(target)
+    const targets = this.getTargets(
+      dataPreparationAsJson as {
+        [key: string]: any;
+      }
     );
+    const resolvedTargets = targets.map(target =>
+      this.applySessionToTarget(target, session.projectConfig, config.filename, true)
+    );
+    // Finalize list of targets.
+    this.proto.targets = resolvedTargets.map(target => this.finalizeTarget(target));
     this.proto.canonicalTargets = targets.map(target =>
       this.applySessionToTarget(target, session.canonicalProjectConfig)
     );
 
     // Resolve all table references with compilation overrides and encode resolved proto instance
     const resolvedDefinition = this.applySessionToDataPreparationContents(dataPreparationAsJson);
-    this.proto.dataPreparationYaml = dumpYaml(resolvedDefinition)
+    this.proto.dataPreparationYaml = dumpYaml(resolvedDefinition);
 
     // Set the unique target key as the first target defined.
     // TODO: Remove once multiple targets are supported.
@@ -116,34 +116,36 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     );
   }
 
-  private applySessionToDataPreparationContents(
-      definition: {[key: string]: any}
-  ): {[key: string]: any} {
+  private applySessionToDataPreparationContents(definition: {
+    [key: string]: any;
+  }): { [key: string]: any } {
     // Resolve error table, if set
     // @ts-ignore
     const errorTable = definition.configuration?.errorTable;
     if (errorTable) {
-      definition.configuration.errorTable =
-          this.applySessionToTableReference(errorTable as {[key: string]: string});
+      definition.configuration.errorTable = this.applySessionToTableReference(
+        errorTable as { [key: string]: string }
+      );
     }
 
     // Loop through all nodes and resolve the compilation overrides for
     // all source and destination tables.
     if (definition.nodes) {
       (definition.nodes as Array<{ [key: string]: any }>).forEach((node, index) => {
-
         // Resolve source tables, if set.
         const sourceTable = node.source?.table;
         if (sourceTable) {
-          definition.nodes[index].source.table =
-              this.applySessionToTableReference(sourceTable as {[key: string]: string});
+          definition.nodes[index].source.table = this.applySessionToTableReference(
+            sourceTable as { [key: string]: string }
+          );
         }
 
         // Resolve destination tables, if set.
         const destinationTable = node.destination?.table;
         if (destinationTable) {
-          definition.nodes[index].destination.table =
-              this.applySessionToTableReference(destinationTable as {[key: string]: string});
+          definition.nodes[index].destination.table = this.applySessionToTableReference(
+            destinationTable as { [key: string]: string }
+          );
         }
       });
     }
@@ -151,42 +153,38 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     return definition;
   }
 
-  private applySessionToTableReference(
-      tableReference: {[key: string]: string}
-  ): object {
+  private applySessionToTableReference(tableReference: { [key: string]: string }): object {
     const target: dataform.ITarget = {
       database: tableReference.project,
       schema: tableReference.dataset,
       name: tableReference.table
-    }
-    const resolvedTarget =
-        this.applySessionToTarget(
-            dataform.Target.create(target),
-            this.session.projectConfig)
+    };
+    const resolvedTarget = this.applySessionToTarget(
+      dataform.Target.create(target),
+      this.session.projectConfig
+    );
     // Convert resolved target into a Data Preparation Table Reference
-    let resolvedTableReference : {[key: string]: string} = {
-      table: this.session.finalizeName(resolvedTarget.name),
-    }
+    let resolvedTableReference: { [key: string]: string } = {
+      table: this.session.finalizeName(resolvedTarget.name)
+    };
 
     // Ensure project and dataset field are added in order
     if (resolvedTarget.schema) {
       resolvedTableReference = {
         dataset: this.session.finalizeSchema(resolvedTarget.schema),
         ...resolvedTableReference
-      }
+      };
     }
     if (resolvedTarget.database) {
       resolvedTableReference = {
         project: this.session.finalizeDatabase(resolvedTarget.database),
         ...resolvedTableReference
-      }
+      };
     }
     return resolvedTableReference;
   }
 
-  private getTargets(definition: {
-    [key: string]: any;
-  }): dataform.Target[] {
+  private getTargets(definition: { [key: string]: any }): dataform.Target[] {
     const targets: dataform.Target[] = [];
 
     if (definition.nodes) {
@@ -199,7 +197,6 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
             name: table.table
           };
           targets.push(dataform.Target.create(compiledGraphTarget));
-
         }
       });
     }
@@ -207,4 +204,3 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     return targets;
   }
 }
-
