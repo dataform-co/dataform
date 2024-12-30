@@ -1880,7 +1880,7 @@ SELECT 1`
       },
       {
         filename: "table.js",
-        fileContents: `publish ("name", ${tableConfig}).query(ctx => \`\n\nSELECT 1\`)`
+        fileContents: `publish("name", ${tableConfig}).query(ctx => \`\n\nSELECT 1\`)`
       }
     ].forEach(testParameters => {
       test(`for tables configured in a ${testParameters.filename} file`, () => {

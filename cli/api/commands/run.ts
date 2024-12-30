@@ -7,7 +7,6 @@ import { Flags } from "df/common/flags";
 import { retry } from "df/common/promises";
 import { deepClone, equals } from "df/common/protos";
 import { StringifiedMap, StringifiedSet } from "df/common/strings/stringifier";
-import { IBigQueryOptions } from "df/core/actions/table";
 import { targetStringifier } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 
@@ -399,7 +398,7 @@ export class Runner {
     client: dbadapters.IDbClient,
     task: dataform.IExecutionTask,
     parentAction: dataform.IActionResult,
-    options: { bigquery?: IBigQueryOptions & IBigQueryExecutionOptions }
+    options: { bigquery?: dataform.IBigQueryOptions & IBigQueryExecutionOptions }
   ): Promise<dataform.TaskResult.ExecutionStatus> {
     const timer = Timer.start();
     const taskResult: dataform.ITaskResult = {
