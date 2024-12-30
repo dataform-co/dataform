@@ -5,12 +5,7 @@ import { dump as dumpYaml, load as loadYaml } from "js-yaml";
 import * as path from "path";
 import { CompilerFunction, NodeVM } from "vm2";
 
-import {
-  decode64,
-  encode64,
-  verifyObjectMatchesProto,
-  VerifyProtoErrorBehaviour
-} from "df/common/protos";
+import { decode64, encode64 } from "df/common/protos";
 import { compile } from "df/core/compilers";
 import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
@@ -1984,7 +1979,7 @@ SELECT 1`
       },
       {
         filename: "view.js",
-        fileContents: `publish ("name", ${viewConfig}).query(ctx => \`\n\nSELECT 1\`)`
+        fileContents: `publish("name", ${viewConfig}).query(ctx => \`\n\nSELECT 1\`)`
       }
     ].forEach(testParameters => {
       test(`for views configured in a ${testParameters.filename} file`, () => {
@@ -2092,7 +2087,7 @@ SELECT 1`
       },
       {
         filename: "incremental.js",
-        fileContents: `publish ("name", ${incrementalTableConfig}).query(ctx => \`\n\n\nSELECT 1\`)`
+        fileContents: `publish("name", ${incrementalTableConfig}).query(ctx => \`\n\n\nSELECT 1\`)`
       }
     ].forEach(testParameters => {
       test(`for incremental tables configured in a ${testParameters.filename} file`, () => {
@@ -3436,6 +3431,80 @@ actions:
           expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).deep.equals(1);
           expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).deep.equals(
             `Conflicting "includeDependentAssertions" properties are not allowed. Dependency A has different values set for this property.`
+          );
+        });
+      });
+    });
+  });
+
+  suite("javascript API", () => {
+    suite("publish", () => {
+      ["table", "view", "incremental"].forEach(tableType => {
+        [
+          TestConfigs.bigqueryWithDefaultProjectAndDataset,
+          { ...TestConfigs.bigqueryWithDatasetSuffix, defaultProject: "defaultProject" },
+          { ...TestConfigs.bigqueryWithNamePrefix, defaultProject: "defaultProject" }
+        ].forEach(projectConfig => {
+          test(
+            `publish for table type ${tableType}, with project suffix ` +
+              `'${projectConfig.projectSuffix}', dataset suffix ` +
+              `'${projectConfig.datasetSuffix}', and name prefix '${projectConfig.namePrefix}'`,
+            () => {
+              const projectDir = tmpDirFixture.createNewTmpDir();
+              fs.writeFileSync(
+                path.join(projectDir, "workflow_settings.yaml"),
+                dumpYaml(dataform.WorkflowSettings.create(projectConfig))
+              );
+              fs.mkdirSync(path.join(projectDir, "definitions"));
+              fs.writeFileSync(
+                path.join(projectDir, "definitions/publish.js"),
+                `
+publish("name", {
+  type: "${tableType}",
+}).query(_ => "SELECT 1")
+  .preOps(_ => ["pre_op"])
+  .postOps(_ => ["post_op"])`
+              );
+
+              const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+              expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+              expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals(
+                asPlainObject([
+                  {
+                    type: tableType,
+                    target: {
+                      database: projectConfig.projectSuffix
+                        ? `${projectConfig.defaultProject}_${projectConfig.projectSuffix}`
+                        : projectConfig.defaultProject,
+                      schema: projectConfig.datasetSuffix
+                        ? `${projectConfig.defaultDataset}_${projectConfig.datasetSuffix}`
+                        : projectConfig.defaultDataset,
+                      name: projectConfig.namePrefix ? `${projectConfig.namePrefix}_name` : "name"
+                    },
+                    canonicalTarget: {
+                      database: projectConfig.defaultProject,
+                      schema: projectConfig.defaultDataset,
+                      name: "name"
+                    },
+                    disabled: false,
+                    enumType: tableType.toUpperCase(),
+                    fileName: "definitions/publish.js",
+                    query: "SELECT 1",
+                    postOps: ["post_op"],
+                    preOps: ["pre_op"],
+                    ...(tableType === "incremental"
+                      ? {
+                          incrementalPostOps: ["post_op"],
+                          incrementalPreOps: ["pre_op"],
+                          incrementalQuery: "SELECT 1",
+                          protected: true
+                        }
+                      : {})
+                  }
+                ])
+              );
+            }
           );
         });
       });
