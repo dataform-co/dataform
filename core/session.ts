@@ -732,7 +732,9 @@ export class Session {
       if (isNonUniqueTarget) {
         this.compileError(
           new Error(
-            `Duplicate action name detected. Names within a schema must be unique across tables, declarations, assertions, and operations`
+            `Duplicate action name detected. Names within a schema must be unique across tables, declarations, assertions, and operations:\n"${JSON.stringify(
+              action.target
+            )}"`
           ),
           action.fileName,
           action.target
