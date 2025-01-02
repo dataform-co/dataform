@@ -357,7 +357,7 @@ publish("b", "SELECT 1;");`
         const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
         expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-        expect(asPlainObject(getActionsFromResult(tableType, result)[0]?.disabled)).is.true;
+        expect(asPlainObject(getActionsFromResult(tableType, result)[0]?.disabled)).equals(true);
       });
 
       test(`${tableType} target can be overridden by project config override`, () => {
@@ -3975,10 +3975,6 @@ assert("name", {
     });
 
     suite("invalid options", () => {
-      // These tests are here for legacy purposes, and should be considered for deletion once all
-      // config options are strongly typed by protobuf definitions.
-      // TODO(ekrekr): these should also be tested as SQLX configs, but the errors for those seem to
-      // have been broken at some point - the previous tests only covered the JS API.
       [
         {
           testName: "partitionBy invalid for BigQuery views",
