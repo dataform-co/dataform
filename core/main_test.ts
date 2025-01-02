@@ -2488,43 +2488,6 @@ SELECT 2`
         });
       });
     });
-
-    // These tests are here for legacy purposes, and should be considered for deletion once all SQLX
-    // options are strongly typed by protobuf definitions.
-    [
-      {
-        testName: "partitions invalid for BigQuery views",
-        sqlxConfigBlock: {
-          type: "view",
-          bigquery: {
-            partitionBy: "some_partition"
-          }
-        },
-        expectedError:
-          "partitionBy/clusterBy/requirePartitionFilter/partitionExpirationDays are not valid for BigQuery views"
-      }
-    ].forEach(testParameters => {
-      test(testParameters.testName, () => {
-        const projectDir = tmpDirFixture.createNewTmpDir();
-        fs.writeFileSync(
-          path.join(projectDir, "workflow_settings.yaml"),
-          VALID_WORKFLOW_SETTINGS_YAML
-        );
-        fs.mkdirSync(path.join(projectDir, "definitions"));
-        fs.writeFileSync(path.join(projectDir, "definitions/operation.sqlx"), "SELECT 1");
-        const file = `config ${testParameters.sqlxConfigBlock}`;
-        console.log("🚀 ~ test ~ file:", file);
-        fs.writeFileSync(path.join(projectDir, `definitions/file.sqlx`), file);
-
-        const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
-
-        expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-        expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals([]);
-        expect(asPlainObject(result.compile.compiledGraph.operations)).deep.equals([]);
-        expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals([]);
-        expect(asPlainObject(result.compile.compiledGraph.declarations)).deep.equals([]);
-      });
-    });
   });
 
   suite("action config options", () => {
@@ -4008,6 +3971,166 @@ assert("name", {
             }
           }
         ]);
+      });
+    });
+
+    suite("invalid options", () => {
+      // These tests are here for legacy purposes, and should be considered for deletion once all
+      // config options are strongly typed by protobuf definitions.
+      // TODO(ekrekr): these should also be tested as SQLX configs, but the errors for those seem to
+      // have been broken at some point - the previous tests only covered the JS API.
+      [
+        {
+          testName: "partitionBy invalid for BigQuery views",
+          fileContents: `
+publish("name", {
+  type: "view",
+  bigquery: {
+    partitionBy: "some_partition"
+  }
+})`,
+          expectedError:
+            "partitionBy/clusterBy/requirePartitionFilter/partitionExpirationDays are not valid for BigQuery views"
+        },
+        {
+          testName: "clusterBy invalid for BigQuery views",
+          fileContents: `
+publish("name", {
+  type: "view",
+  bigquery: {
+    clusterBy: ["some_cluster"]
+  }
+})`,
+          expectedError:
+            "partitionBy/clusterBy/requirePartitionFilter/partitionExpirationDays are not valid for BigQuery views"
+        },
+        {
+          testName: "partitionExpirationDays invalid for BigQuery views",
+          fileContents: `
+publish("name", {
+  type: "view",
+  bigquery: {
+    partitionExpirationDays: 7
+  }
+})`,
+          expectedError:
+            "partitionBy/clusterBy/requirePartitionFilter/partitionExpirationDays are not valid for BigQuery views"
+        },
+        {
+          testName: "requirePartitionFilter invalid for BigQuery views",
+          fileContents: `
+publish("name", {
+  type: "view",
+  bigquery: {
+    requirePartitionFilter: true
+  }
+})`,
+          expectedError:
+            "partitionBy/clusterBy/requirePartitionFilter/partitionExpirationDays are not valid for BigQuery views"
+        },
+        {
+          testName: "partitionExpirationDays invalid for BigQuery materialized views",
+          fileContents: `
+publish("name", {
+  type: "view",
+  materialized: true,
+  bigquery: {
+    partitionBy: "some_partition",
+    clusterBy: ["some_cluster"],
+    partitionExpirationDays: 7
+  }
+})`,
+          expectedError:
+            "requirePartitionFilter/partitionExpirationDays are not valid for BigQuery materialized views"
+        },
+        {
+          testName: "requirePartitionFilter invalid for BigQuery materialized views",
+          fileContents: `
+publish("name", {
+  type: "view",
+  materialized: true,
+  bigquery: {
+    partitionBy: "some_partition",
+    clusterBy: ["some_cluster"],
+    requirePartitionFilter: true
+  }
+})`,
+          expectedError:
+            "requirePartitionFilter/partitionExpirationDays are not valid for BigQuery materialized views"
+        },
+        {
+          testName: "materialize invalid for BigQuery tables",
+          fileContents: `
+publish("name", {
+  type: "table",
+  materialized: true,
+})`,
+          expectedError: "The 'materialized' option is only valid for BigQuery views"
+        },
+        {
+          testName: "partitionExpirationDays invalid for BigQuery tables",
+          fileContents: `
+publish("name", {
+  type: "table",
+  bigquery: {
+    partitionExpirationDays: 7
+  }
+})`,
+          expectedError:
+            "requirePartitionFilter/partitionExpirationDays are not valid for non partitioned BigQuery tables"
+        },
+        {
+          testName: "duplicate partitionExpirationDays is invalid",
+          fileContents: `
+publish("name", {
+  type: "table",
+  bigquery: {
+    partitionBy: "partition",
+    partitionExpirationDays: 1,
+    additionalOptions: {
+      partition_expiration_days: "7"
+    }
+  }
+})`,
+          expectedError: "partitionExpirationDays has been declared twice"
+        },
+        {
+          testName: "duplicate requirePartitionFilter is invalid",
+          fileContents: `
+publish("name", {
+  type: "table",
+  bigquery: {
+    partitionBy: "partition",
+    requirePartitionFilter: true,
+    additionalOptions: {
+      require_partition_filter: "false"
+    }
+  }
+})`,
+          expectedError: "requirePartitionFilter has been declared twice"
+        }
+      ].forEach(testParameters => {
+        test(testParameters.testName, () => {
+          const projectDir = tmpDirFixture.createNewTmpDir();
+          fs.writeFileSync(
+            path.join(projectDir, "workflow_settings.yaml"),
+            VALID_WORKFLOW_SETTINGS_YAML
+          );
+          fs.mkdirSync(path.join(projectDir, "definitions"));
+          fs.writeFileSync(path.join(projectDir, "definitions/operation.sqlx"), "SELECT 1");
+          fs.writeFileSync(
+            path.join(projectDir, `definitions/file.js`),
+            testParameters.fileContents
+          );
+
+          const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+          expect(
+            result.compile.compiledGraph.graphErrors.compilationErrors.map(
+              compilationError => compilationError.message
+            )
+          ).deep.equals([testParameters.expectedError]);
+        });
       });
     });
   });
