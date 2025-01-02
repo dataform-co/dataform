@@ -2488,6 +2488,43 @@ SELECT 2`
         });
       });
     });
+
+    // These tests are here for legacy purposes, and should be considered for deletion once all SQLX
+    // options are strongly typed by protobuf definitions.
+    [
+      {
+        testName: "partitions invalid for BigQuery views",
+        sqlxConfigBlock: {
+          type: "view",
+          bigquery: {
+            partitionBy: "some_partition"
+          }
+        },
+        expectedError:
+          "partitionBy/clusterBy/requirePartitionFilter/partitionExpirationDays are not valid for BigQuery views"
+      }
+    ].forEach(testParameters => {
+      test(testParameters.testName, () => {
+        const projectDir = tmpDirFixture.createNewTmpDir();
+        fs.writeFileSync(
+          path.join(projectDir, "workflow_settings.yaml"),
+          VALID_WORKFLOW_SETTINGS_YAML
+        );
+        fs.mkdirSync(path.join(projectDir, "definitions"));
+        fs.writeFileSync(path.join(projectDir, "definitions/operation.sqlx"), "SELECT 1");
+        const file = `config ${testParameters.sqlxConfigBlock}`;
+        console.log("🚀 ~ test ~ file:", file);
+        fs.writeFileSync(path.join(projectDir, `definitions/file.sqlx`), file);
+
+        const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+        expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+        expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals([]);
+        expect(asPlainObject(result.compile.compiledGraph.operations)).deep.equals([]);
+        expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals([]);
+        expect(asPlainObject(result.compile.compiledGraph.declarations)).deep.equals([]);
+      });
+    });
   });
 
   suite("action config options", () => {
@@ -3707,6 +3744,270 @@ publish("name", {
             }
           );
         });
+
+        test("ref resolved correctly", () => {
+          const projectDir = tmpDirFixture.createNewTmpDir();
+          fs.writeFileSync(
+            path.join(projectDir, "workflow_settings.yaml"),
+            VALID_WORKFLOW_SETTINGS_YAML
+          );
+          fs.mkdirSync(path.join(projectDir, "definitions"));
+          fs.writeFileSync(
+            path.join(projectDir, "definitions/operation.sqlx"),
+            `
+config {
+  hasOutput: true
+}
+SELECT 1`
+          );
+          fs.writeFileSync(
+            path.join(projectDir, "definitions/publish.js"),
+            `
+publish("name", {
+  type: "${tableType}",
+}).query(ctx => \`SELECT * FROM \${ctx.ref('operation')}\`)`
+          );
+
+          const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+          expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+          expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals([
+            {
+              canonicalTarget: {
+                database: "defaultProject",
+                name: "name",
+                schema: "defaultDataset"
+              },
+              dependencyTargets: [
+                {
+                  database: "defaultProject",
+                  name: "operation",
+                  schema: "defaultDataset"
+                }
+              ],
+              disabled: false,
+              enumType: tableType.toUpperCase(),
+              fileName: "definitions/publish.js",
+              query: "SELECT * FROM `defaultProject.defaultDataset.operation`",
+              target: {
+                database: "defaultProject",
+                name: "name",
+                schema: "defaultDataset"
+              },
+              type: tableType,
+              ...(tableType === "incremental"
+                ? {
+                    incrementalQuery: "SELECT * FROM `defaultProject.defaultDataset.operation`",
+                    protected: true
+                  }
+                : {})
+            }
+          ]);
+        });
+      });
+    });
+
+    suite("operate", () => {
+      [
+        TestConfigs.bigqueryWithDefaultProjectAndDataset,
+        { ...TestConfigs.bigqueryWithDatasetSuffix, defaultProject: "defaultProject" },
+        { ...TestConfigs.bigqueryWithNamePrefix, defaultProject: "defaultProject" }
+      ].forEach(projectConfig => {
+        test(
+          `operate with project suffix ` +
+            `'${projectConfig.projectSuffix}', dataset suffix ` +
+            `'${projectConfig.datasetSuffix}', and name prefix '${projectConfig.namePrefix}'`,
+          () => {
+            const projectDir = tmpDirFixture.createNewTmpDir();
+            fs.writeFileSync(
+              path.join(projectDir, "workflow_settings.yaml"),
+              dumpYaml(dataform.WorkflowSettings.create(projectConfig))
+            );
+            fs.mkdirSync(path.join(projectDir, "definitions"));
+            fs.writeFileSync(
+              path.join(projectDir, "definitions/operate.js"),
+              `
+operate("name", {
+  type: "operations",
+}).queries(_ => ["SELECT 1", "SELECT 2"])`
+            );
+
+            const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+            expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+            expect(asPlainObject(result.compile.compiledGraph.operations)).deep.equals(
+              asPlainObject([
+                {
+                  target: {
+                    database: projectConfig.projectSuffix
+                      ? `${projectConfig.defaultProject}_${projectConfig.projectSuffix}`
+                      : projectConfig.defaultProject,
+                    schema: projectConfig.datasetSuffix
+                      ? `${projectConfig.defaultDataset}_${projectConfig.datasetSuffix}`
+                      : projectConfig.defaultDataset,
+                    name: projectConfig.namePrefix ? `${projectConfig.namePrefix}_name` : "name"
+                  },
+                  canonicalTarget: {
+                    database: projectConfig.defaultProject,
+                    schema: projectConfig.defaultDataset,
+                    name: "name"
+                  },
+                  fileName: "definitions/operate.js",
+                  queries: ["SELECT 1", "SELECT 2"]
+                }
+              ])
+            );
+          }
+        );
+      });
+
+      test("ref resolved correctly", () => {
+        const projectDir = tmpDirFixture.createNewTmpDir();
+        fs.writeFileSync(
+          path.join(projectDir, "workflow_settings.yaml"),
+          VALID_WORKFLOW_SETTINGS_YAML
+        );
+        fs.mkdirSync(path.join(projectDir, "definitions"));
+        fs.writeFileSync(
+          path.join(projectDir, "definitions/table.sqlx"),
+          `config {type: "table"} SELECT 1`
+        );
+        fs.writeFileSync(
+          path.join(projectDir, "definitions/operate.js"),
+          `
+operate("name", {
+  type: "operations",
+}).queries(ctx => [\`SELECT * FROM \${ctx.ref('table')}\`])`
+        );
+
+        const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+        expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+        expect(asPlainObject(result.compile.compiledGraph.operations)).deep.equals([
+          {
+            canonicalTarget: {
+              database: "defaultProject",
+              name: "name",
+              schema: "defaultDataset"
+            },
+            dependencyTargets: [
+              {
+                database: "defaultProject",
+                name: "table",
+                schema: "defaultDataset"
+              }
+            ],
+            fileName: "definitions/operate.js",
+            queries: ["SELECT * FROM `defaultProject.defaultDataset.table`"],
+            target: {
+              database: "defaultProject",
+              name: "name",
+              schema: "defaultDataset"
+            }
+          }
+        ]);
+      });
+    });
+
+    suite("assert", () => {
+      [
+        TestConfigs.bigqueryWithDefaultProjectAndDataset,
+        { ...TestConfigs.bigqueryWithDatasetSuffix, defaultProject: "defaultProject" },
+        { ...TestConfigs.bigqueryWithNamePrefix, defaultProject: "defaultProject" }
+      ].forEach(projectConfig => {
+        test(
+          `assert with project suffix ` +
+            `'${projectConfig.projectSuffix}', dataset suffix ` +
+            `'${projectConfig.datasetSuffix}', and name prefix '${projectConfig.namePrefix}'`,
+          () => {
+            const projectDir = tmpDirFixture.createNewTmpDir();
+            fs.writeFileSync(
+              path.join(projectDir, "workflow_settings.yaml"),
+              dumpYaml(dataform.WorkflowSettings.create(projectConfig))
+            );
+            fs.mkdirSync(path.join(projectDir, "definitions"));
+            fs.writeFileSync(
+              path.join(projectDir, "definitions/assert.js"),
+              `
+assert("name", {
+  type: "operations",
+}).query(_ => "SELECT 1")`
+            );
+
+            const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+            expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+            expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals(
+              asPlainObject([
+                {
+                  target: {
+                    database: projectConfig.projectSuffix
+                      ? `${projectConfig.defaultProject}_${projectConfig.projectSuffix}`
+                      : projectConfig.defaultProject,
+                    schema: projectConfig.datasetSuffix
+                      ? `${projectConfig.defaultDataset}_${projectConfig.datasetSuffix}`
+                      : projectConfig.defaultDataset,
+                    name: projectConfig.namePrefix ? `${projectConfig.namePrefix}_name` : "name"
+                  },
+                  canonicalTarget: {
+                    database: projectConfig.defaultProject,
+                    schema: projectConfig.defaultDataset,
+                    name: "name"
+                  },
+                  fileName: "definitions/assert.js",
+                  query: "SELECT 1"
+                }
+              ])
+            );
+          }
+        );
+      });
+
+      test("ref resolved correctly", () => {
+        const projectDir = tmpDirFixture.createNewTmpDir();
+        fs.writeFileSync(
+          path.join(projectDir, "workflow_settings.yaml"),
+          VALID_WORKFLOW_SETTINGS_YAML
+        );
+        fs.mkdirSync(path.join(projectDir, "definitions"));
+        fs.writeFileSync(
+          path.join(projectDir, "definitions/table.sqlx"),
+          `config {type: "table"} SELECT 1`
+        );
+        fs.writeFileSync(
+          path.join(projectDir, "definitions/assert.js"),
+          `
+assert("name", {
+  type: "assert",
+}).query(ctx => \`SELECT * FROM \${ctx.ref('table')}\`)`
+        );
+
+        const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+        expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+        expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals([
+          {
+            canonicalTarget: {
+              database: "defaultProject",
+              name: "name",
+              schema: "defaultDataset"
+            },
+            dependencyTargets: [
+              {
+                database: "defaultProject",
+                name: "table",
+                schema: "defaultDataset"
+              }
+            ],
+            fileName: "definitions/assert.js",
+            query: "SELECT * FROM `defaultProject.defaultDataset.table`",
+            target: {
+              database: "defaultProject",
+              name: "name",
+              schema: "defaultDataset"
+            }
+          }
+        ]);
       });
     });
   });
