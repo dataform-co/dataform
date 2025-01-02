@@ -131,12 +131,6 @@ export class Table extends ActionBuilder<dataform.Table> {
         )
       );
     }
-    if (config.project) {
-      this.database(config.project);
-    }
-    if (config.dataset) {
-      this.schema(config.dataset);
-    }
     if (config.assertions) {
       this.assertions(dataform.ActionConfig.TableAssertionsConfig.create(config.assertions));
     }
@@ -417,6 +411,11 @@ export class Table extends ActionBuilder<dataform.Table> {
     // The "type" field only exists on legacy table configs. Here we convert them to the
     // new format.
     if (unverifiedConfig.type) {
+      if (unverifiedConfig.type != "table") {
+        throw ReferenceError(
+          `Unexpected type for Table; want "table", got ${unverifiedConfig.type}`
+        );
+      }
       delete unverifiedConfig.type;
       if (unverifiedConfig.dependencies) {
         unverifiedConfig.dependencyTargets = unverifiedConfig.dependencies.map(
@@ -451,7 +450,7 @@ export class Table extends ActionBuilder<dataform.Table> {
     }
 
     return verifyObjectMatchesProto(
-      dataform.ActionConfig.IncrementalTableConfig,
+      dataform.ActionConfig.TableConfig,
       unverifiedConfig,
       VerifyProtoErrorBehaviour.SHOW_DOCS_LINK
     );

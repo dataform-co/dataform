@@ -243,6 +243,7 @@ export class Session {
     return "";
   }
 
+  // TODO(ekrekr): safely make this handle parameters more similarly to publish().
   public operate(
     name: string,
     queries?: Contextable<ICommonContext, string | string[]>
@@ -258,7 +259,6 @@ export class Session {
     return operation;
   }
 
-  // TODO(ekrekr): add new methods other than publish for the new action types.
   public publish(
     name: string,
     queryOrConfig?:
@@ -267,28 +267,32 @@ export class Session {
       | ILegacyViewConfig
       | ILegacyIncrementalTableConfig
   ): Table | IncrementalTable | View {
-    let newTable: Table | IncrementalTable | View = new View();
+    let newTable: Table | IncrementalTable | View = new View(this, { type: "view", name });
     if (!!queryOrConfig) {
       if (typeof queryOrConfig === "object") {
-        if (queryOrConfig?.type === "table") {
-          newTable = new Table(this, queryOrConfig);
+        // if (queryOrConfig?.type === undefined) {
+        // // Default to type view for `publish` when there's a config but type isn't specified.
+        // newTable = new Table(this, { type: "table", name, ...queryOrConfig });
+        if (queryOrConfig?.type === "table" || queryOrConfig.type === undefined) {
+          newTable = new Table(this, { type: "table", name, ...queryOrConfig });
         } else if (queryOrConfig?.type === "incremental") {
-          newTable = new IncrementalTable(this, queryOrConfig);
-        } else if (queryOrConfig?.type === "incremental") {
-          newTable = new View(this, queryOrConfig);
+          newTable = new IncrementalTable(this, { type: "incremental", name, ...queryOrConfig });
+        } else if (queryOrConfig?.type === "view") {
+          newTable = new View(this, { type: "view", name, ...queryOrConfig });
         } else {
           throw Error(`Unrecognized table type: ${queryOrConfig.type}`);
         }
       } else {
+        // The queryOrConfig is not an object, so it must be a string query.
         newTable.query(queryOrConfig);
       }
     }
-    utils.setNameAndTarget(this, newTable.proto, name);
     newTable.proto.fileName = utils.getCallerFile(this.rootDir);
     this.actions.push(newTable);
     return newTable;
   }
 
+  // TODO(ekrekr): safely make this handle parameters more similarly to publish().
   public assert(name: string, query?: AContextable<string>): Assertion {
     const assertion = new Assertion();
     assertion.session = this;
@@ -301,6 +305,7 @@ export class Session {
     return assertion;
   }
 
+  // TODO(ekrekr): safely make this handle parameters more similarly to publish().
   public declare(dataset: dataform.ITarget): Declaration {
     const declaration = new Declaration();
     declaration.session = this;
@@ -779,18 +784,6 @@ function getCanonicalProjectConfig(originalProjectConfig: dataform.ProjectConfig
 
 function joinQuoted(values: readonly string[]) {
   return values.map((value: string) => `"${value}"`).join(" | ");
-}
-
-function objectExistsOrIsNonEmpty(prop: any): boolean {
-  if (!prop) {
-    return false;
-  }
-
-  return (
-    (Array.isArray(prop) && !!prop.length) ||
-    (!Array.isArray(prop) && typeof prop === "object" && !!Object.keys(prop).length) ||
-    typeof prop !== "object"
-  );
 }
 
 class ActionMap {

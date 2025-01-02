@@ -228,8 +228,8 @@ actions:
       fs.writeFileSync(
         path.join(projectDir, "definitions/file.js"),
         `
-publish("table")
-publish("table")`
+publish("name")
+publish("name")`
       );
 
       const result = runMainInVm(
@@ -244,10 +244,10 @@ publish("table")`
       expect(
         result.compile.compiledGraph.graphErrors.compilationErrors?.map(error => error.message)
       ).deep.equals([
-        `Duplicate action name detected. Names within a schema must be unique across tables, declarations, assertions, and operations:\n\"{\"schema\":\"otherDataset\",\"name\":\"table\",\"database\":\"defaultProject\"}\"`,
-        `Duplicate canonical target detected. Canonical targets must be unique across tables, declarations, assertions, and operations:\n\"{\"schema\":\"otherDataset\",\"name\":\"table\",\"database\":\"defaultProject\"}\"`,
-        `Duplicate action name detected. Names within a schema must be unique across tables, declarations, assertions, and operations:\n\"{\"schema\":\"otherDataset\",\"name\":\"table\",\"database\":\"defaultProject\"}\"`,
-        `Duplicate canonical target detected. Canonical targets must be unique across tables, declarations, assertions, and operations:\n\"{\"schema\":\"otherDataset\",\"name\":\"table\",\"database\":\"defaultProject\"}\"`
+        `Duplicate action name detected. Names within a schema must be unique across tables, declarations, assertions, and operations:\n\"{\"schema\":\"otherDataset\",\"name\":\"name\",\"database\":\"defaultProject\"}\"`,
+        `Duplicate canonical target detected. Canonical targets must be unique across tables, declarations, assertions, and operations:\n\"{\"schema\":\"otherDataset\",\"name\":\"name\",\"database\":\"defaultProject\"}\"`,
+        `Duplicate action name detected. Names within a schema must be unique across tables, declarations, assertions, and operations:\n\"{\"schema\":\"otherDataset\",\"name\":\"name\",\"database\":\"defaultProject\"}\"`,
+        `Duplicate canonical target detected. Canonical targets must be unique across tables, declarations, assertions, and operations:\n\"{\"schema\":\"otherDataset\",\"name\":\"name\",\"database\":\"defaultProject\"}\"`
       ]);
     });
 
@@ -733,6 +733,7 @@ select 1 AS \${dataform.projectConfig.vars.selectVar}`
           },
           tables: [
             {
+              bigquery: {},
               canonicalTarget: {
                 database: "projectVal",
                 name: "file"
@@ -740,6 +741,7 @@ select 1 AS \${dataform.projectConfig.vars.selectVar}`
               disabled: false,
               enumType: "TABLE",
               fileName: "definitions/file.sqlx",
+              hermeticity: "NON_HERMETIC",
               query: "\n\nselect 1 AS selectVal",
               target: {
                 database: "projectVal",
@@ -911,6 +913,7 @@ select 1 AS \${dataform.projectConfig.vars.columnVar}`
                 actionDescriptor: {
                   description: "descriptionValue"
                 },
+                bigquery: {},
                 canonicalTarget: {
                   database: "databaseVal",
                   name: "file",
@@ -925,17 +928,18 @@ select 1 AS \${dataform.projectConfig.vars.columnVar}`
                   name: "file",
                   schema: "tableSchema"
                 },
-                type: "table"
+                type: "table",
+                hermeticity: "NON_HERMETIC"
               }
             ],
             targets: [
               {
+                name: "tableSchema_file_assertions_rowConditions"
+              },
+              {
                 database: "databaseVal",
                 name: "file",
                 schema: "tableSchema"
-              },
-              {
-                name: "tableSchema_file_assertions_rowConditions"
               }
             ]
           })
@@ -1449,6 +1453,7 @@ actions:
       expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals(
         asPlainObject([
           {
+            bigquery: {},
             target: {
               database: "defaultProject",
               schema: "defaultDataset",
@@ -1460,6 +1465,7 @@ actions:
               name: "action"
             },
             fileName: "definitions/action.sql",
+            hermeticity: "NON_HERMETIC",
             query: "SELECT 1",
             type: "table",
             enumType: "TABLE",
