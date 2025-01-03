@@ -2,8 +2,8 @@ import { dataform } from "df/protos/ts";
 
 export function concatenateQueries(statements: string[], modifier?: (mod: string) => string) {
   return statements
-    .filter(statement => !!statement)
     .map(statement => statement.trim())
+    .filter(statement => !!statement)
     .map(statement =>
       statement.length > 0 && statement.charAt(statement.length - 1) === ";"
         ? statement.substring(0, statement.length - 1)
