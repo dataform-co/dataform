@@ -411,7 +411,7 @@ export class Table extends ActionBuilder<dataform.Table> {
     // The "type" field only exists on legacy table configs. Here we convert them to the
     // new format.
     if (unverifiedConfig.type) {
-      if (unverifiedConfig.type != "table") {
+      if (unverifiedConfig.type !== "table") {
         throw ReferenceError(
           `Unexpected type for Table; want "table", got ${unverifiedConfig.type}`
         );

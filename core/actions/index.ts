@@ -117,9 +117,16 @@ export interface ITableContext extends ICommonContext {
 export class LegacyConfigConverter {
   // This is a workaround to make bigquery options output empty fields with the same behaviour as
   // they did previously.
-  public static legacyConvertBigQueryOptions(bigquery: dataform.IBigQueryOptions) {
+  public static legacyConvertBigQueryOptions(
+    bigquery: dataform.IBigQueryOptions
+  ): dataform.IBigQueryOptions {
     let bigqueryFiltered: dataform.IBigQueryOptions = {};
     Object.entries(bigquery).forEach(([key, value]) => {
+      if (Array.isArray(value) && value.length === 0) {
+        return;
+      } else if (typeof value === "object" && Object.entries(value).length === 0) {
+        return;
+      }
       if (value) {
         bigqueryFiltered = {
           ...bigqueryFiltered,
@@ -134,8 +141,8 @@ export class LegacyConfigConverter {
     T extends ILegacyTableConfig | ILegacyIncrementalTableConfig | ILegacyViewConfig
   >(legacyConfig: T): T {
     if (legacyConfig?.assertions) {
-      if (!!legacyConfig.assertions.uniqueKey?.length) {
-        legacyConfig.assertions.uniqueKey = legacyConfig.assertions.uniqueKey;
+      if (typeof legacyConfig.assertions?.uniqueKey === "string") {
+        legacyConfig.assertions.uniqueKey = [legacyConfig.assertions.uniqueKey];
       }
       // This determines if the uniqueKeys is of the legacy type.
       if (legacyConfig.assertions.uniqueKeys?.[0]?.length > 0) {

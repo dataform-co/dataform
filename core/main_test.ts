@@ -57,6 +57,8 @@ class TestConfigs {
 
 const EMPTY_NOTEBOOK_CONTENTS = '{ "cells": [] }';
 
+// INFO: if you want to see an overview of the tests in this file, press cmd-k-3 while in
+// VSCode, to collapse everything below the third level of indentation.
 suite("@dataform/core", ({ afterEach }) => {
   const tmpDirFixture = new TmpDirFixture(afterEach);
 
@@ -3679,6 +3681,8 @@ publish("name", {
                 asPlainObject([
                   {
                     type: tableType,
+                    hermeticity: "NON_HERMETIC",
+                    bigquery: {},
                     target: {
                       database: projectConfig.projectSuffix
                         ? `${projectConfig.defaultProject}_${projectConfig.projectSuffix}`

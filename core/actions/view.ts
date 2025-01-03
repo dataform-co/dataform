@@ -108,9 +108,6 @@ export class View extends ActionBuilder<dataform.Table> {
     if (config.disabled) {
       this.disabled();
     }
-    if (Object.keys(config.additionalOptions).length > 0) {
-      this.bigquery({ additionalOptions: config.additionalOptions });
-    }
     if (config.tags) {
       this.tags(config.tags);
     }
@@ -437,45 +434,45 @@ export class View extends ActionBuilder<dataform.Table> {
  * @hidden
  */
 export class ViewContext implements ITableContext {
-  constructor(private table: View, private isIncremental = false) {}
+  constructor(private view: View, private isIncremental = false) {}
 
   public self(): string {
-    return this.resolve(this.table.proto.target);
+    return this.resolve(this.view.proto.target);
   }
 
   public name(): string {
-    return this.table.session.finalizeName(this.table.proto.target.name);
+    return this.view.session.finalizeName(this.view.proto.target.name);
   }
 
   public ref(ref: Resolvable | string[], ...rest: string[]): string {
     ref = toResolvable(ref, rest);
     if (!resolvableAsTarget(ref)) {
-      this.table.session.compileError(new Error(`Action name is not specified`));
+      this.view.session.compileError(new Error(`Action name is not specified`));
       return "";
     }
-    this.table.dependencies(ref);
+    this.view.dependencies(ref);
     return this.resolve(ref);
   }
 
   public resolve(ref: Resolvable | string[], ...rest: string[]) {
-    return this.table.session.resolve(ref, ...rest);
+    return this.view.session.resolve(ref, ...rest);
   }
 
   public schema(): string {
-    return this.table.session.finalizeSchema(this.table.proto.target.schema);
+    return this.view.session.finalizeSchema(this.view.proto.target.schema);
   }
 
   public database(): string {
-    if (!this.table.proto.target.database) {
-      this.table.session.compileError(new Error(`Warehouse does not support multiple databases`));
+    if (!this.view.proto.target.database) {
+      this.view.session.compileError(new Error(`Warehouse does not support multiple databases`));
       return "";
     }
 
-    return this.table.session.finalizeDatabase(this.table.proto.target.database);
+    return this.view.session.finalizeDatabase(this.view.proto.target.database);
   }
 
   public where(where: Contextable<ITableContext, string>) {
-    this.table.where(where);
+    this.view.where(where);
     return "";
   }
 
@@ -488,27 +485,27 @@ export class ViewContext implements ITableContext {
   }
 
   public preOps(statement: Contextable<ITableContext, string | string[]>) {
-    this.table.preOps(statement);
+    this.view.preOps(statement);
     return "";
   }
 
   public postOps(statement: Contextable<ITableContext, string | string[]>) {
-    this.table.postOps(statement);
+    this.view.postOps(statement);
     return "";
   }
 
   public disabled() {
-    this.table.disabled();
+    this.view.disabled();
     return "";
   }
 
   public bigquery(bigquery: dataform.IBigQueryOptions) {
-    this.table.bigquery(bigquery);
+    this.view.bigquery(bigquery);
     return "";
   }
 
   public dependencies(res: Resolvable) {
-    this.table.dependencies(res);
+    this.view.dependencies(res);
     return "";
   }
 
@@ -521,7 +518,7 @@ export class ViewContext implements ITableContext {
   }
 
   public tags(tags: string[]) {
-    this.table.tags(tags);
+    this.view.tags(tags);
     return "";
   }
 }
