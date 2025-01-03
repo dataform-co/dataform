@@ -8,15 +8,27 @@ import { Session } from "df/core/session";
 import {
   actionConfigToCompiledGraphTarget,
   addDependenciesToActionDependencyTargets,
+  checkExcessProperties,
   configTargetToCompiledGraphTarget,
   nativeRequire,
   resolvableAsTarget,
   resolveActionsConfigFilename,
   setNameAndTarget,
+  strictKeysOf,
   toResolvable,
   validateQueryString
 } from "df/core/utils";
 import { dataform } from "df/protos/ts";
+
+/**
+ * @hidden
+ * This maintains backwards compatability with older versions.
+ * TODO(ekrekr): consider breaking backwards compatability of these in v4.
+ */
+export interface ILegacyViewBigqueryConfig {
+  labels: { [key: string]: string };
+  additionalOptions: { [key: string]: string };
+}
 
 /**
  * @hidden
@@ -29,10 +41,7 @@ export interface ILegacyViewConfig extends dataform.ActionConfig.ViewConfig {
   schema: string;
   fileName: string;
   type: string;
-  bigquery: {
-    labels: { [key: string]: string };
-    additionalOptions: { [key: string]: string };
-  };
+  bigquery: ILegacyViewBigqueryConfig;
   // Legacy view config's table assertions cannot directly extend the protobuf view config
   // definition because of legacy view config's flexible types.
   assertions: any;
@@ -414,11 +423,20 @@ export class View extends ActionBuilder<dataform.Table> {
       if (unverifiedConfig?.bigquery) {
         if (!!unverifiedConfig.bigquery.labels) {
           unverifiedConfig.labels = unverifiedConfig.bigquery.labels;
+          delete unverifiedConfig.bigquery.labels;
         }
         if (!!unverifiedConfig.bigquery.additionalOptions) {
           unverifiedConfig.additionalOptions = unverifiedConfig.bigquery.additionalOptions;
+          delete unverifiedConfig.bigquery.additionalOptions;
         }
-        delete unverifiedConfig.bigquery;
+        checkExcessProperties(
+          (e: Error) => {
+            throw e;
+          },
+          unverifiedConfig.bigquery,
+          strictKeysOf<ILegacyViewBigqueryConfig>()(["labels", "additionalOptions"]),
+          "BigQuery view config"
+        );
       }
     }
 

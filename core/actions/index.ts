@@ -164,27 +164,38 @@ export class LegacyConfigConverter {
     if (legacyConfig?.bigquery) {
       if (!!legacyConfig.bigquery.partitionBy) {
         legacyConfig.partitionBy = legacyConfig.bigquery.partitionBy;
+        delete legacyConfig.bigquery.partitionBy;
       }
       if (!!legacyConfig.bigquery.clusterBy) {
         legacyConfig.clusterBy = legacyConfig.bigquery.clusterBy;
+        delete legacyConfig.bigquery.clusterBy;
       }
       if (!!legacyConfig.bigquery.updatePartitionFilter) {
         (legacyConfig as ILegacyIncrementalTableConfig).updatePartitionFilter =
           legacyConfig.bigquery.updatePartitionFilter;
+        delete legacyConfig.bigquery.updatePartitionFilter;
       }
       if (!!legacyConfig.bigquery.labels) {
         legacyConfig.labels = legacyConfig.bigquery.labels;
+        delete legacyConfig.bigquery.labels;
       }
       if (!!legacyConfig.bigquery.partitionExpirationDays) {
         legacyConfig.partitionExpirationDays = legacyConfig.bigquery.partitionExpirationDays;
+        delete legacyConfig.bigquery.partitionExpirationDays;
       }
       if (!!legacyConfig.bigquery.requirePartitionFilter) {
         legacyConfig.requirePartitionFilter = legacyConfig.bigquery.requirePartitionFilter;
+        delete legacyConfig.bigquery.requirePartitionFilter;
       }
       if (!!legacyConfig.bigquery.additionalOptions) {
         legacyConfig.additionalOptions = legacyConfig.bigquery.additionalOptions;
+        delete legacyConfig.bigquery.additionalOptions;
       }
-      delete legacyConfig.bigquery;
+      // To prevent skipping throwing an error when there are additional, unused fields, only delete
+      // the legacy bigquery object if there are no more fields left on it.
+      if (Object.keys(legacyConfig.bigquery).length === 0) {
+        delete legacyConfig.bigquery;
+      }
     }
     return legacyConfig;
   }

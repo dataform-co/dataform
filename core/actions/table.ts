@@ -15,10 +15,12 @@ import { Session } from "df/core/session";
 import {
   actionConfigToCompiledGraphTarget,
   addDependenciesToActionDependencyTargets,
+  checkExcessProperties,
   nativeRequire,
   resolvableAsTarget,
   resolveActionsConfigFilename,
   setNameAndTarget,
+  strictKeysOf,
   toResolvable,
   validateQueryString
 } from "df/core/utils";
@@ -447,6 +449,24 @@ export class Table extends ActionBuilder<dataform.Table> {
       unverifiedConfig = LegacyConfigConverter.insertLegacyBigQueryOptionsToConfigProto(
         unverifiedConfig
       );
+      if (unverifiedConfig.bigquery) {
+        checkExcessProperties(
+          (e: Error) => {
+            throw e;
+          },
+          unverifiedConfig.bigquery,
+          strictKeysOf<ILegacyTableBigqueryConfig>()([
+            "partitionBy",
+            "clusterBy",
+            "updatePartitionFilter",
+            "labels",
+            "partitionExpirationDays",
+            "requirePartitionFilter",
+            "additionalOptions"
+          ]),
+          "BigQuery table config"
+        );
+      }
     }
 
     return verifyObjectMatchesProto(

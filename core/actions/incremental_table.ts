@@ -13,11 +13,13 @@ import { Session } from "df/core/session";
 import {
   actionConfigToCompiledGraphTarget,
   addDependenciesToActionDependencyTargets,
+  checkExcessProperties,
   configTargetToCompiledGraphTarget,
   nativeRequire,
   resolvableAsTarget,
   resolveActionsConfigFilename,
   setNameAndTarget,
+  strictKeysOf,
   toResolvable,
   validateQueryString
 } from "df/core/utils";
@@ -187,12 +189,8 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
     return this;
   }
 
-  public protected(defaultsToTrueProtected: boolean) {
-    // To prevent accidental data deletion, protected defaults to true if unspecified.
-    if (defaultsToTrueProtected === undefined || defaultsToTrueProtected === null) {
-      defaultsToTrueProtected = true;
-    }
-    this.proto.protected = defaultsToTrueProtected;
+  public protected(isProtected: boolean) {
+    this.proto.protected = isProtected;
     return this;
   }
 
@@ -436,6 +434,29 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
       unverifiedConfig = LegacyConfigConverter.insertLegacyBigQueryOptionsToConfigProto(
         unverifiedConfig
       );
+      if (unverifiedConfig.bigquery) {
+        checkExcessProperties(
+          (e: Error) => {
+            throw e;
+          },
+          unverifiedConfig.bigquery,
+          strictKeysOf<ILegacyTableBigqueryConfig>()([
+            "partitionBy",
+            "clusterBy",
+            "updatePartitionFilter",
+            "labels",
+            "partitionExpirationDays",
+            "requirePartitionFilter",
+            "additionalOptions"
+          ]),
+          "BigQuery table config"
+        );
+      }
+
+      // To prevent accidental data deletion, protected defaults to true if unspecified.
+      if (unverifiedConfig.protected === undefined || unverifiedConfig.protected === null) {
+        unverifiedConfig.protected = true;
+      }
     }
 
     return verifyObjectMatchesProto(
@@ -450,45 +471,49 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
  * @hidden
  */
 export class IncrementalTableContext implements ITableContext {
-  constructor(private table: IncrementalTable, private isIncremental = false) {}
+  constructor(private incrementalTable: IncrementalTable, private isIncremental = false) {}
 
   public self(): string {
-    return this.resolve(this.table.proto.target);
+    return this.resolve(this.incrementalTable.proto.target);
   }
 
   public name(): string {
-    return this.table.session.finalizeName(this.table.proto.target.name);
+    return this.incrementalTable.session.finalizeName(this.incrementalTable.proto.target.name);
   }
 
   public ref(ref: Resolvable | string[], ...rest: string[]): string {
     ref = toResolvable(ref, rest);
     if (!resolvableAsTarget(ref)) {
-      this.table.session.compileError(new Error(`Action name is not specified`));
+      this.incrementalTable.session.compileError(new Error(`Action name is not specified`));
       return "";
     }
-    this.table.dependencies(ref);
+    this.incrementalTable.dependencies(ref);
     return this.resolve(ref);
   }
 
   public resolve(ref: Resolvable | string[], ...rest: string[]) {
-    return this.table.session.resolve(ref, ...rest);
+    return this.incrementalTable.session.resolve(ref, ...rest);
   }
 
   public schema(): string {
-    return this.table.session.finalizeSchema(this.table.proto.target.schema);
+    return this.incrementalTable.session.finalizeSchema(this.incrementalTable.proto.target.schema);
   }
 
   public database(): string {
-    if (!this.table.proto.target.database) {
-      this.table.session.compileError(new Error(`Warehouse does not support multiple databases`));
+    if (!this.incrementalTable.proto.target.database) {
+      this.incrementalTable.session.compileError(
+        new Error(`Warehouse does not support multiple databases`)
+      );
       return "";
     }
 
-    return this.table.session.finalizeDatabase(this.table.proto.target.database);
+    return this.incrementalTable.session.finalizeDatabase(
+      this.incrementalTable.proto.target.database
+    );
   }
 
   public where(where: Contextable<ITableContext, string>) {
-    this.table.where(where);
+    this.incrementalTable.where(where);
     return "";
   }
 
@@ -501,27 +526,27 @@ export class IncrementalTableContext implements ITableContext {
   }
 
   public preOps(statement: Contextable<ITableContext, string | string[]>) {
-    this.table.preOps(statement);
+    this.incrementalTable.preOps(statement);
     return "";
   }
 
   public postOps(statement: Contextable<ITableContext, string | string[]>) {
-    this.table.postOps(statement);
+    this.incrementalTable.postOps(statement);
     return "";
   }
 
   public disabled() {
-    this.table.disabled();
+    this.incrementalTable.disabled();
     return "";
   }
 
   public bigquery(bigquery: dataform.IBigQueryOptions) {
-    this.table.bigquery(bigquery);
+    this.incrementalTable.bigquery(bigquery);
     return "";
   }
 
   public dependencies(res: Resolvable) {
-    this.table.dependencies(res);
+    this.incrementalTable.dependencies(res);
     return "";
   }
 
@@ -534,7 +559,7 @@ export class IncrementalTableContext implements ITableContext {
   }
 
   public tags(tags: string[]) {
-    this.table.tags(tags);
+    this.incrementalTable.tags(tags);
     return "";
   }
 }

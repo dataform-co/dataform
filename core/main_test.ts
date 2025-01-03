@@ -735,7 +735,6 @@ select 1 AS \${dataform.projectConfig.vars.selectVar}`
           },
           tables: [
             {
-              bigquery: {},
               canonicalTarget: {
                 database: "projectVal",
                 name: "file"
@@ -915,7 +914,6 @@ select 1 AS \${dataform.projectConfig.vars.columnVar}`
                 actionDescriptor: {
                   description: "descriptionValue"
                 },
-                bigquery: {},
                 canonicalTarget: {
                   database: "databaseVal",
                   name: "file",
@@ -1455,7 +1453,6 @@ actions:
       expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals(
         asPlainObject([
           {
-            bigquery: {},
             target: {
               database: "defaultProject",
               schema: "defaultDataset",
@@ -1503,7 +1500,6 @@ actions:
       expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals(
         asPlainObject([
           {
-            bigquery: {},
             target: {
               database: "defaultProject",
               schema: "defaultDataset",
@@ -3682,7 +3678,6 @@ publish("name", {
                   {
                     type: tableType,
                     hermeticity: "NON_HERMETIC",
-                    bigquery: {},
                     target: {
                       database: projectConfig.projectSuffix
                         ? `${projectConfig.defaultProject}_${projectConfig.projectSuffix}`
@@ -3761,6 +3756,7 @@ publish("name", {
               disabled: false,
               enumType: tableType.toUpperCase(),
               fileName: "definitions/publish.js",
+              hermeticity: "NON_HERMETIC",
               query: "SELECT * FROM `defaultProject.defaultDataset.operation`",
               target: {
                 database: "defaultProject",
@@ -3996,7 +3992,7 @@ publish("name", {
   }
 })`,
           expectedError:
-            "partitionBy/clusterBy/requirePartitionFilter/partitionExpirationDays are not valid for BigQuery views"
+            'Unexpected property "partitionBy" in BigQuery view config. Supported properties are: ["labels","additionalOptions"]'
         },
         {
           testName: "clusterBy invalid for BigQuery views",
@@ -4008,7 +4004,7 @@ publish("name", {
   }
 })`,
           expectedError:
-            "partitionBy/clusterBy/requirePartitionFilter/partitionExpirationDays are not valid for BigQuery views"
+            'Unexpected property "clusterBy" in BigQuery view config. Supported properties are: ["labels","additionalOptions"]'
         },
         {
           testName: "partitionExpirationDays invalid for BigQuery views",
@@ -4020,7 +4016,7 @@ publish("name", {
   }
 })`,
           expectedError:
-            "partitionBy/clusterBy/requirePartitionFilter/partitionExpirationDays are not valid for BigQuery views"
+            'Unexpected property "partitionExpirationDays" in BigQuery view config. Supported properties are: ["labels","additionalOptions"]'
         },
         {
           testName: "requirePartitionFilter invalid for BigQuery views",
@@ -4032,7 +4028,7 @@ publish("name", {
   }
 })`,
           expectedError:
-            "partitionBy/clusterBy/requirePartitionFilter/partitionExpirationDays are not valid for BigQuery views"
+            'Unexpected property "requirePartitionFilter" in BigQuery view config. Supported properties are: ["labels","additionalOptions"]'
         },
         {
           testName: "partitionExpirationDays invalid for BigQuery materialized views",
@@ -4041,13 +4037,11 @@ publish("name", {
   type: "view",
   materialized: true,
   bigquery: {
-    partitionBy: "some_partition",
-    clusterBy: ["some_cluster"],
     partitionExpirationDays: 7
   }
 })`,
           expectedError:
-            "requirePartitionFilter/partitionExpirationDays are not valid for BigQuery materialized views"
+            'Unexpected property "partitionExpirationDays" in BigQuery view config. Supported properties are: ["labels","additionalOptions"]'
         },
         {
           testName: "requirePartitionFilter invalid for BigQuery materialized views",
@@ -4056,22 +4050,21 @@ publish("name", {
   type: "view",
   materialized: true,
   bigquery: {
-    partitionBy: "some_partition",
-    clusterBy: ["some_cluster"],
     requirePartitionFilter: true
   }
 })`,
           expectedError:
-            "requirePartitionFilter/partitionExpirationDays are not valid for BigQuery materialized views"
+            'Unexpected property "requirePartitionFilter" in BigQuery view config. Supported properties are: ["labels","additionalOptions"]'
         },
         {
-          testName: "materialize invalid for BigQuery tables",
+          testName: "materialized invalid for BigQuery tables",
           fileContents: `
 publish("name", {
   type: "table",
   materialized: true,
 })`,
-          expectedError: "The 'materialized' option is only valid for BigQuery views"
+          expectedError:
+            'Unexpected property "materialized", or property value type of "boolean" is incorrect. See https://dataform-co.github.io/dataform/docs/configs-reference#dataform-ActionConfig-TableConfig for allowed properties.'
         },
         {
           testName: "partitionExpirationDays invalid for BigQuery tables",
