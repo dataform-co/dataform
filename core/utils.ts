@@ -128,10 +128,19 @@ function isResolvableArray(parts: any[]): parts is [string, string?, string?] {
   return parts.length > 0 && parts.length <= 3;
 }
 
-export function resolvableAsTarget(resolvable: Resolvable): dataform.ITarget {
+export function resolvableAsTarget(
+  resolvable: Resolvable | dataform.ActionConfig.Target
+): dataform.ITarget {
   if (typeof resolvable === "string") {
     return {
       name: resolvable
+    };
+  }
+  if (resolvable instanceof dataform.ActionConfig.Target) {
+    return {
+      name: resolvable.name,
+      schema: resolvable.dataset,
+      database: resolvable.project
     };
   }
   return resolvable;
@@ -326,6 +335,7 @@ export function actionConfigToCompiledGraphTarget(
     | dataform.ActionConfig.DeclarationConfig
     | dataform.ActionConfig.NotebookConfig
     | dataform.ActionConfig.DataPreparationConfig
+    | dataform.ActionConfig.Target
 ): dataform.Target {
   const compiledGraphTarget: dataform.ITarget = { name: actionConfig.name };
   if ("project" in actionConfig && actionConfig.project !== undefined) {

@@ -129,7 +129,6 @@ function loadActionConfigs(session: Session, filePaths: string[]) {
             new Table(
               session,
               dataform.ActionConfig.TableConfig.create(actionConfig.table),
-              "table",
               actionConfigsPath
             )
           );
