@@ -220,6 +220,7 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
           query: "\n\nselect 1 as testValue2\n",
           disabled: false,
           fileName: "definitions/example.sqlx",
+          hermeticity: "NON_HERMETIC",
           tags: ["someTag"]
         }
       ],
@@ -268,7 +269,7 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
       actions: [
         {
           fileName: "definitions/example.sqlx",
-          hermeticity: "HERMETIC",
+          hermeticity: "NON_HERMETIC",
           tableType: "table",
           target: {
             database: "dataform-open-source",
