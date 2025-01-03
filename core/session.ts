@@ -243,7 +243,7 @@ export class Session {
     return "";
   }
 
-  // TODO(ekrekr): safely make this handle parameters more similarly to publish().
+  // TODO(ekrekr): safely allow passing of config blocks as the second argument, similar to publish.
   public operate(
     name: string,
     queries?: Contextable<ICommonContext, string | string[]>
@@ -270,9 +270,6 @@ export class Session {
     let newTable: Table | IncrementalTable | View = new View(this, { type: "view", name });
     if (!!queryOrConfig) {
       if (typeof queryOrConfig === "object") {
-        // if (queryOrConfig?.type === undefined) {
-        // // Default to type view for `publish` when there's a config but type isn't specified.
-        // newTable = new Table(this, { type: "table", name, ...queryOrConfig });
         if (queryOrConfig?.type === "table" || queryOrConfig.type === undefined) {
           newTable = new Table(this, { type: "table", name, ...queryOrConfig });
         } else if (queryOrConfig?.type === "incremental") {
@@ -292,7 +289,7 @@ export class Session {
     return newTable;
   }
 
-  // TODO(ekrekr): safely make this handle parameters more similarly to publish().
+  // TODO(ekrekr): safely allow passing of config blocks as the second argument, similar to publish.
   public assert(name: string, query?: AContextable<string>): Assertion {
     const assertion = new Assertion();
     assertion.session = this;
@@ -305,7 +302,7 @@ export class Session {
     return assertion;
   }
 
-  // TODO(ekrekr): safely make this handle parameters more similarly to publish().
+  // TODO(ekrekr): safely allow passing of config blocks as the second argument, similar to publish.
   public declare(dataset: dataform.ITarget): Declaration {
     const declaration = new Declaration();
     declaration.session = this;
