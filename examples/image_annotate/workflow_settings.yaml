@@ -1,0 +1,4 @@
+defaultProject: dataform-demos
+defaultLocation: US
+defaultDataset: sample
+defaultAssertionDataset: sample_assertions
