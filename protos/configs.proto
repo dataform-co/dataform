@@ -523,4 +523,7 @@ message NotebookRuntimeOptionsConfig {
     // Storage bucket to output notebooks to after their execution.
     string output_bucket = 1;
   }
+
+  // Colab runtime template (https://cloud.google.com/colab/docs/runtimes), from which a runtime is created for notebook executions. 
+  string runtime_template_name = 2;
 }

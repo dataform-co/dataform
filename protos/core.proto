@@ -245,6 +245,8 @@ message NotebookRuntimeOptions {
   oneof output_sink {
     string output_bucket = 1;
   }
+
+  string runtime_template_name = 2;
 }
 
 // Data Preparation Related entries
