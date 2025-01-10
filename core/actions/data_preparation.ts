@@ -2,22 +2,66 @@ import { dump as dumpYaml } from "js-yaml";
 
 import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { ActionBuilder } from "df/core/actions";
-import { Resolvable } from "df/core/common";
+import { ITableContext } from "df/core/actions/index";
+import {
+  Contextable,
+  IActionConfig,
+  INamedConfig,
+  ITargetableConfig,
+  Resolvable
+} from "df/core/common";
 import * as Path from "df/core/path";
 import { Session } from "df/core/session";
 import {
+  actionConfigToCompiledGraphTarget,
   addDependenciesToActionDependencyTargets,
   configTargetToCompiledGraphTarget,
   nativeRequire,
-  resolveActionsConfigFilename
+  resolvableAsTarget,
+  resolveActionsConfigFilename,
+  setNameAndTarget,
+  toResolvable,
+  validateQueryString
 } from "df/core/utils";
 import { dataform } from "df/protos/ts";
+
+// Brings the properties for the destination table
+export interface IDataPreparationConfig
+  extends IActionConfig,
+    INamedConfig,
+    ITargetableConfig {
+  // Error Table Settings
+  errorTable?: IErrorTableConfig;
+
+  load?: ILoadConfig;
+}
+
+// Includes project, dataset, table settings, as well as retention for the table
+export interface IErrorTableConfig extends ITargetableConfig {
+  name: string;
+  retentionDays?: number;
+}
+
+
+// Enum for Load configuration settings
+export const LoadType = ["replace", "append", "maximum", "unique", "automatic"] as const;
+export type LoadType = typeof LoadType[number];
+
+// Properties for load configuration, including the column name for MAXIMUM and UNIQUE load configurations.
+export interface ILoadConfig {
+  type: LoadType;
+  column?: string;
+}
+
 
 /**
  * @hidden
  */
 export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
   public session: Session;
+
+  // We delay contextification until the final compile step, so hold these here for now.
+  public contextableQuery: Contextable<IDataPreparationContext, string>;
 
   // TODO: make this field private, to enforce proto update logic to happen in this class.
   public proto: dataform.IDataPreparation = dataform.DataPreparation.create();
@@ -45,36 +89,11 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
       }
     }
 
-    config.filename = resolveActionsConfigFilename(config.filename, configPath);
-    const dataPreparationAsJson = nativeRequire(config.filename).asJson;
-
-    // Find targets
-    const targets = this.getTargets(
-      dataPreparationAsJson as {
-        [key: string]: any;
-      }
-    );
-
-    // if there are targets in the data preparation, resolve and set targets.
-    // Otherwise, treat this as an empty data preparation.
-    if (targets.length > 0) {
-      this.resolveTargets(targets, dataPreparationAsJson, session, config);
-    } else {
-      // Handle the case where the data preparation is empty
-      this.resolveEmpty(dataPreparationAsJson, session, config);
-    }
-
-    this.proto.tags = config.tags;
-    if (config.dependencyTargets) {
-      this.dependencies(
-        config.dependencyTargets.map(dependencyTarget =>
-          configTargetToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget))
-        )
-      );
-    }
-    this.proto.fileName = config.filename;
-    if (config.disabled) {
-      this.proto.disabled = config.disabled;
+    const extension = Path.fileExtension(config.filename);
+    if (extension === "yaml") {
+      this.configureYaml(session, config, configPath);
+    } else if (extension === "sqlx") {
+      this.configureSqlx(session, config);
     }
   }
 
@@ -82,6 +101,17 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
    * @hidden
    */
   public config(config: any) {
+    if (config.database) {
+      this.database(config.database);
+    }
+    if (config.schema) {
+      this.schema(config.schema);
+    }
+    return this;
+  }
+
+  public query(query: Contextable<IDataPreparationContext, string>) {
+    this.contextableQuery = query;
     return this;
   }
 
@@ -112,6 +142,12 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
   }
 
   public compile() {
+    if (this.contextableQuery != null) {
+      const context = new DataPreparationContext(this);
+      this.proto.query = context.apply(this.contextableQuery).trim();
+      validateQueryString(this.session, this.proto.query, this.proto.fileName);
+    }
+
     return verifyObjectMatchesProto(
       dataform.DataPreparation,
       this.proto,
@@ -119,7 +155,29 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     );
   }
 
-  private resolveEmpty(
+  public database(database: string) {
+    setNameAndTarget(
+      this.session,
+      this.proto,
+      this.proto.target.name,
+      this.proto.target.schema,
+      database
+    );
+    return this;
+  }
+
+  public schema(schema: string) {
+    setNameAndTarget(
+      this.session,
+      this.proto,
+      this.proto.target.name,
+      schema,
+      this.proto.target.database
+    );
+    return this;
+  }
+
+  private configureYamlWithoutTargets(
       dataPreparationAsJson: {
         [key: string]: any;
       },
@@ -146,7 +204,7 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     this.proto.dataPreparationYaml = dumpYaml(resolvedDefinition);
   }
 
-  private resolveTargets(
+  private configureYamlWithTargets(
       targets: dataform.Target[],
       dataPreparationAsJson: {
         [key: string]: any;
@@ -263,5 +321,167 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     }
 
     return targets;
+  }
+  private configureYaml(
+      session?: Session,
+      config?: dataform.ActionConfig.DataPreparationConfig,
+      configPath?: string) {
+    config.filename = resolveActionsConfigFilename(config.filename, configPath);
+    const dataPreparationAsJson = nativeRequire(config.filename).asJson;
+
+    // Find targets
+    const targets = this.getTargets(
+        dataPreparationAsJson as {
+          [key: string]: any;
+        }
+    );
+
+    // if there are targets in the data preparation, resolve and set targets.
+    // Otherwise, treat this as an empty data preparation.
+    if (targets.length > 0) {
+      this.configureYamlWithTargets(targets, dataPreparationAsJson, session, config);
+    } else {
+      // Handle the case where the data preparation is empty
+      this.configureYamlWithoutTargets(dataPreparationAsJson, session, config);
+    }
+
+    this.proto.tags = config.tags;
+    if (config.dependencyTargets) {
+      this.dependencies(
+          config.dependencyTargets.map(dependencyTarget =>
+              configTargetToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget))
+          )
+      );
+    }
+    this.proto.fileName = config.filename;
+    if (config.disabled) {
+      this.proto.disabled = config.disabled;
+    }
+  }
+
+  private configureSqlx(
+      session?: Session,
+      config?: dataform.ActionConfig.DataPreparationConfig) {
+    const targets: dataform.Target[] = [];
+
+    // Add destination as target
+    targets.push(actionConfigToCompiledGraphTarget(config));
+    // Add Error Table if specified as a secondary target
+    if (config.errorTable != null) {
+      const errorTableConfig = dataform.ActionConfig.DataPreparationConfig.ErrorTableConfig.create(config.errorTable);
+      const errorTableTarget = actionConfigToCompiledGraphTarget(errorTableConfig);
+
+      this.proto.errorTableRetentionDays = errorTableConfig.retentionDays
+      targets.push(errorTableTarget);
+    }
+
+    // Resolve targets
+    this.proto.targets  = targets.map(target =>
+        this.applySessionToTarget(target, session.projectConfig, config.filename, true)
+    ).map(target =>
+        this.finalizeTarget(target)
+    );
+
+    // Add target and error table to proto
+    this.proto.target = this.proto.targets[0];
+    if (this.proto.targets.length > 1) {
+      this.proto.errorTable = this.proto.targets[1];
+    }
+
+    // resolve canonical targets
+    this.proto.canonicalTargets = targets.map(target =>
+        this.applySessionToTarget(target, session.canonicalProjectConfig)
+    );
+    this.proto.canonicalTarget = this.proto.canonicalTargets[0];
+
+    if (config.dependencyTargets) {
+      this.dependencies(
+          config.dependencyTargets.map(dependencyTarget =>
+              configTargetToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget))
+          )
+      );
+    }
+
+    this.proto.fileName = config.filename
+    this.query(nativeRequire(config.filename).query);
+  }
+}
+
+export interface IDataPreparationContext extends ITableContext {
+  /**
+   * Shorthand for a validation SQL expression. This converts the parameters
+   * into a validation call supported by Data Preparation.
+   */
+  validate: (exp: string) => string;
+}
+
+export class DataPreparationContext implements IDataPreparationContext {
+  constructor(private dataPreparation: DataPreparation, private isIncremental = false) {}
+
+  public config(config: IDataPreparationConfig) {
+    this.dataPreparation.config(config);
+    return "";
+  }
+
+  public self(): string {
+    return this.resolve(this.dataPreparation.proto.target);
+  }
+
+  public name(): string {
+    return this.dataPreparation.session.finalizeName(this.dataPreparation.proto.target.name);
+  }
+
+  public ref(ref: Resolvable | string[], ...rest: string[]): string {
+    ref = toResolvable(ref, rest);
+    if (!resolvableAsTarget(ref)) {
+      this.dataPreparation.session.compileError(new Error(`Action name is not specified`));
+      return "";
+    }
+    this.dataPreparation.dependencies(ref);
+    return this.resolve(ref);
+  }
+
+  public resolve(ref: Resolvable | string[], ...rest: string[]) {
+    return this.dataPreparation.session.resolve(ref, ...rest);
+  }
+
+  public schema(): string {
+    return this.dataPreparation.session.finalizeSchema(this.dataPreparation.proto.target.schema);
+  }
+
+  public database(): string {
+    if (!this.dataPreparation.proto.target.database) {
+      this.dataPreparation.session.compileError(new Error(`Warehouse does not support multiple databases`));
+      return "";
+    }
+
+    return this.dataPreparation.session.finalizeDatabase(this.dataPreparation.proto.target.database);
+  }
+
+  // TODO: Add support for incremental conditions in compilation output
+  public when(cond: boolean, trueCase: string, falseCase: string = "") {
+    return cond ? trueCase : falseCase;
+  }
+
+  // TODO: Add support for incremental conditions in compilation output
+  public incremental() {
+    return !!this.isIncremental;
+  }
+
+  public dependencies(res: Resolvable) {
+    this.dataPreparation.dependencies(res);
+    return "";
+  }
+
+  public validate(exp: string): string {
+    return `-- @@VALIDATION\n|> WHERE IF(${exp},true,ERROR(\"Validation Failed\"))`;
+  }
+
+  public apply<T>(value: Contextable<IDataPreparationContext, T>): T {
+    if (typeof value === "function") {
+      return (value as any)(this);
+    } else {
+      return value;
+    }
   }
 }

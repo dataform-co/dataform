@@ -520,6 +520,21 @@ message ActionConfig {
 
     // Description of the data preparation.
     string description = 8;
+
+    ErrorTableConfig error_table = 11;
+
+    message ErrorTableConfig {
+      // The name of the error table.
+      string name = 1;
+
+      // The dataset (schema) of the error table.
+      string dataset = 2;
+
+      // The Google Cloud project (database) of the error table.
+      string project = 3;
+
+      int32 retention_days = 4;
+    }
   }
 
   oneof action {

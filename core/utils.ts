@@ -335,6 +335,7 @@ export function actionConfigToCompiledGraphTarget(
     | dataform.ActionConfig.DeclarationConfig
     | dataform.ActionConfig.NotebookConfig
     | dataform.ActionConfig.DataPreparationConfig
+    | dataform.ActionConfig.DataPreparationConfig.ErrorTableConfig
     | dataform.ActionConfig.Target
 ): dataform.Target {
   const compiledGraphTarget: dataform.ITarget = { name: actionConfig.name };

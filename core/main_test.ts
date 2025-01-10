@@ -1067,18 +1067,22 @@ defaultNotebookRuntimeOptions:
 
   suite("data preparations", () => {
     const createSimpleDataPreparationProject = (
-      workflowSettingsYaml = VALID_WORKFLOW_SETTINGS_YAML
+      workflowSettingsYaml = VALID_WORKFLOW_SETTINGS_YAML,
+      writeActionsYaml = true,
     ): string => {
       const projectDir = tmpDirFixture.createNewTmpDir();
       fs.writeFileSync(path.join(projectDir, "workflow_settings.yaml"), workflowSettingsYaml);
       fs.mkdirSync(path.join(projectDir, "definitions"));
-      fs.writeFileSync(
-        path.join(projectDir, "definitions/actions.yaml"),
-        `
-actions:
-- dataPreparation:
-    filename: data_preparation.dp.yaml`
-      );
+
+      if (writeActionsYaml) {
+        fs.writeFileSync(
+          path.join(projectDir, "definitions/actions.yaml"),
+          `
+  actions:
+  - dataPreparation:
+      filename: data_preparation.dp.yaml`
+        );
+      }
       return projectDir;
     };
 
@@ -1193,6 +1197,162 @@ nodes:
               dataPreparationYaml: dumpYaml(loadYaml(dataPreparationYaml))
             }
           ])
+      );
+    });
+
+    test(`data preparations can be loaded via sqlx file`, () => {
+      const projectDir = createSimpleDataPreparationProject(VALID_WORKFLOW_SETTINGS_YAML, false);
+      const dataPreparationSqlx = `
+config {
+  type: "dataPreparation",
+  name: "dest",
+  dataset: "ds",
+  project: "prj",
+  errorTable: {
+    name: "errorTable",
+    dataset: "errorDs",
+    project: "errorPrj",
+  }
+}
+
+FROM x
+-- Ensure y is positive
+$\{validate("y > 0")\}
+|> SELECT *
+`;
+
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/data_preparation.sqlx"),
+        dataPreparationSqlx
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.dataPreparations)).deep.equals(
+        asPlainObject([
+          {
+            target: {
+              database: "prj",
+              schema: "ds",
+              name: "dest"
+            },
+            canonicalTarget: {
+              database: "prj",
+              schema: "ds",
+              name: "dest"
+            },
+            targets: [
+              {
+                database: "prj",
+                schema: "ds",
+                name: "dest"
+              },
+              {
+                database: "errorPrj",
+                schema: "errorDs",
+                name: "errorTable"
+              }
+            ],
+            canonicalTargets: [
+              {
+                database: "prj",
+                schema: "ds",
+                name: "dest"
+              },
+              {
+                database: "errorPrj",
+                schema: "errorDs",
+                name: "errorTable"
+              }
+            ],
+            fileName: "definitions/data_preparation.sqlx",
+            query: `FROM x
+-- Ensure y is positive
+-- @@VALIDATION
+|> WHERE IF(y > 0,true,ERROR(\"Validation Failed\"))
+|> SELECT *`,
+            errorTable: {
+              database: "errorPrj",
+              schema: "errorDs",
+              name: "errorTable"
+            },
+            errorTableRetentionDays: 0,
+          }
+        ])
+      );
+    });
+
+    test(`data preparations can be loaded via sqlx file with compilation overrides`, () => {
+      const projectDir = createSimpleDataPreparationProject(VALID_WORKFLOW_SETTINGS_YAML, false);
+      const dataPreparationSqlx = `
+config {
+  type: "dataPreparation",
+  name: "dest",
+  errorTable: {
+    name: "errorTable",
+  }
+}
+
+FROM x
+|> SELECT *
+`;
+
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/data_preparation.sqlx"),
+        dataPreparationSqlx
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.dataPreparations)).deep.equals(
+        asPlainObject([
+          {
+            target: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "dest"
+            },
+            canonicalTarget: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "dest"
+            },
+            targets: [
+              {
+                database: "defaultProject",
+                schema: "defaultDataset",
+                name: "dest"
+              },
+              {
+                database: "defaultProject",
+                schema: "defaultDataset",
+                name: "errorTable"
+              }
+            ],
+            canonicalTargets: [
+              {
+                database: "defaultProject",
+                schema: "defaultDataset",
+                name: "dest"
+              },
+              {
+                database: "defaultProject",
+                schema: "defaultDataset",
+                name: "errorTable"
+              }
+            ],
+            fileName: "definitions/data_preparation.sqlx",
+            query: "FROM x\n|> SELECT *",
+            errorTable: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "errorTable"
+            },
+            errorTableRetentionDays: 0,
+          }
+        ])
       );
     });
 

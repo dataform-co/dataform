@@ -282,8 +282,17 @@ message DataPreparation {
 
   bool disabled = 6;
 
-  // YAML file containing the data preparation YAML with resolved dependencies.
-  string data_preparation_yaml = 11;
+  oneof definition {
+    // YAML file containing the data preparation YAML with resolved dependencies.
+    string data_preparation_yaml = 11;
+
+    // SQL representing a compiled SQL string
+    string query = 15;
+  }
+
+  // Error table configuration
+  Target error_table = 12;
+  int32 error_table_retention_days = 13;
 
   reserved 7, 10;
 }
