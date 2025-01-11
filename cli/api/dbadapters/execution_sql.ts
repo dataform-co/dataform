@@ -206,7 +206,12 @@ from (${query}) as insertions`;
       table.bigquery && table.bigquery.clusterBy && table.bigquery.clusterBy.length > 0
         ? `cluster by ${table.bigquery.clusterBy.join(", ")} `
         : ""
-    }${options.length > 0 ? `OPTIONS(${options.join(",")})` : ""}as ${table.query}`;
+    }${
+      table.bigquery && table.bigquery.withConnection
+        ? `WITH CONNECTION ${table.bigquery.withConnection} `
+        : ""
+    }
+    ${options.length > 0 ? `OPTIONS(${options.join(",")})` : ""}as ${table.query}`;
   }
 
   private createOrReplaceView(target: dataform.ITarget, query: string) {

@@ -45,6 +45,7 @@ interface ILegacyIncrementalTableBigqueryConfig {
   labels?: { [key: string]: string };
   partitionExpirationDays?: number;
   requirePartitionFilter?: boolean;
+  withConnection?: string;
   additionalOptions?: { [key: string]: string };
 }
 
@@ -160,6 +161,7 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
       labels: config.labels,
       partitionExpirationDays: config.partitionExpirationDays,
       requirePartitionFilter: config.requirePartitionFilter,
+      withConnection: config.withConnection,
       additionalOptions: config.additionalOptions
     });
     if (config.filename) {
@@ -476,6 +478,10 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
         if (!!unverifiedConfig.bigquery.requirePartitionFilter) {
           unverifiedConfig.requirePartitionFilter =
             unverifiedConfig.bigquery.requirePartitionFilter;
+        }
+        if (!!unverifiedConfig.bigquery.withConnection) {
+            unverifiedConfig.withConnection =
+              unverifiedConfig.bigquery.withConnection;
         }
         if (!!unverifiedConfig.bigquery.additionalOptions) {
           unverifiedConfig.additionalOptions = unverifiedConfig.bigquery.additionalOptions;
