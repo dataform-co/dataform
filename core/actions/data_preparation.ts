@@ -415,7 +415,7 @@ export class DataPreparationContext implements IDataPreparationContext {
   }
 
   public validate(exp: string, msg: string): string {
-    return `#@@VALIDATION ${msg}\n|> WHERE IF(${exp},true,ERROR(\"${msg}\"))`;
+    return `# @@VALIDATION ${msg}\n|> WHERE IF(${exp},true,ERROR(\"${msg}\"))`;
   }
 
   public apply<T>(value: Contextable<IDataPreparationContext, T>): T {
