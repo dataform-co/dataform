@@ -4,7 +4,7 @@ import { encode64, verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "d
 import { StringifiedMap, StringifiedSet } from "df/common/strings/stringifier";
 import { Action } from "df/core/actions";
 import { AContextable, Assertion, AssertionContext } from "df/core/actions/assertion";
-import { DataPreparation, DataPreparationContext } from "df/core/actions/data_preparation";
+import { DataPreparation, DataPreparationContext, IDataPreparationContext } from "df/core/actions/data_preparation";
 import { Declaration } from "df/core/actions/declaration";
 import { IncrementalTable } from "df/core/actions/incremental_table";
 import { Notebook } from "df/core/actions/notebook";
@@ -93,7 +93,7 @@ export class Session {
     sqlxConfig: any;
     sqlStatementCount: number;
     sqlContextable: (
-      ctx: TableContext | AssertionContext | OperationContext | DataPreparationContext | ICommonContext
+      ctx: TableContext | AssertionContext | OperationContext | DataPreparationContext | IDataPreparationContext | ICommonContext
     ) => string[];
     incrementalWhereContextable: (ctx: ITableContext) => string;
     preOperationsContextable: (ctx: ITableContext) => string[];

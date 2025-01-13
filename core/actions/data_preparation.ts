@@ -62,7 +62,7 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
   public session: Session;
 
   // We delay contextification until the final compile step, so hold these here for now. 
-  public contextableQuery: Contextable<ITableContext, string>;
+  public contextableQuery: Contextable<IDataPreparationContext, string>;
 
   // TODO: make this field private, to enforce proto update logic to happen in this class.
   public proto: dataform.IDataPreparation = dataform.DataPreparation.create();
@@ -135,9 +135,6 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
   private configureSqlx(
     session?: Session,
     config?: dataform.ActionConfig.DataPreparationConfig) {
-      console.log("config")
-      console.log(config)
-
       const targets: dataform.Target[] = [];
       
       // Add destination as target
@@ -195,7 +192,7 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     return this;
   }
 
-  public query(query: Contextable<ITableContext, string>) {
+  public query(query: Contextable<IDataPreparationContext, string>) {
     this.contextableQuery = query;
     return this;
   }
@@ -351,7 +348,15 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
   }
 }
 
-export class DataPreparationContext implements ITableContext {
+export interface IDataPreparationContext extends ITableContext {
+  /**
+   * Shorthand for a validation SQL expression. This converts the parameters
+   * into a validation call supported by Data Preparation.
+   */
+  validate: (exp: string, message: string) => string;
+}
+
+export class DataPreparationContext implements IDataPreparationContext {
   constructor(private dataPreparation: DataPreparation, private isIncremental = false) {}
 
   public config(config: IDataPreparationConfig) {
@@ -409,7 +414,11 @@ export class DataPreparationContext implements ITableContext {
     return "";
   }
 
-  public apply<T>(value: Contextable<ITableContext, T>): T {
+  public validate(exp: string, msg: string): string {
+    return `#@@VALIDATION ${msg}\n|> WHERE IF(${exp},true,ERROR(\"${msg}\"))`;
+  }
+
+  public apply<T>(value: Contextable<IDataPreparationContext, T>): T {
     if (typeof value === "function") {
       return (value as any)(this);
     } else {
