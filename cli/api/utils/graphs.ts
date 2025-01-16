@@ -4,12 +4,13 @@ import { dataform } from "df/protos/ts";
 
 export const combineAllActions = (graph: dataform.ICompiledGraph) => {
   return ([] as Array<
-    dataform.ITable | dataform.IOperation | dataform.IAssertion | dataform.IDeclaration
+    dataform.ITable | dataform.IOperation | dataform.IAssertion | dataform.IDeclaration | dataform.IDataPreparation
   >).concat(
     graph.tables || ([] as dataform.ITable[]),
     graph.operations || ([] as dataform.IOperation[]),
     graph.assertions || ([] as dataform.IAssertion[]),
-    graph.declarations || ([] as dataform.IDeclaration[])
+    graph.declarations || ([] as dataform.IDeclaration[]),
+    graph.dataPreparations || ([] as dataform.IDataPreparation[])
   );
 };
 
