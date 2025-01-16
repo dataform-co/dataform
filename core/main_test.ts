@@ -900,7 +900,8 @@ config {
 }
 
 FROM x
-$\{validate("x","y")\}
+-- Ensure y is positive
+$\{validate("y > 0")\}
 |> SELECT *
 `;
 
@@ -951,8 +952,9 @@ $\{validate("x","y")\}
             ],
             fileName: "definitions/data_preparation.sqlx",
             query: `FROM x
-#@@VALIDATION y
-|> WHERE IF(x,true,ERROR(\"y\"))
+-- Ensure y is positive
+-- @@VALIDATION
+|> WHERE IF(y > 0,true,ERROR(\"Validation Failed\"))
 |> SELECT *`,
             errorTable: {
               database: "errorPrj",

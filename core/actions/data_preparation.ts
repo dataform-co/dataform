@@ -9,7 +9,6 @@ import {
   Contextable,
   IActionConfig,
   INamedConfig,
-  ITarget,
   ITargetableConfig,
   Resolvable
 } from "df/core/common";
@@ -353,7 +352,7 @@ export interface IDataPreparationContext extends ITableContext {
    * Shorthand for a validation SQL expression. This converts the parameters
    * into a validation call supported by Data Preparation.
    */
-  validate: (exp: string, message: string) => string;
+  validate: (exp: string) => string;
 }
 
 export class DataPreparationContext implements IDataPreparationContext {
@@ -414,8 +413,8 @@ export class DataPreparationContext implements IDataPreparationContext {
     return "";
   }
 
-  public validate(exp: string, msg: string): string {
-    return `# @@VALIDATION ${msg}\n|> WHERE IF(${exp},true,ERROR(\"${msg}\"))`;
+  public validate(exp: string): string {
+    return `-- @@VALIDATION\n|> WHERE IF(${exp},true,ERROR(\"Validation Failed\"))`;
   }
 
   public apply<T>(value: Contextable<IDataPreparationContext, T>): T {
