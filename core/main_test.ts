@@ -1042,7 +1042,9 @@ actions:
 defaultProject: dataform
 defaultLocation: US
 defaultNotebookRuntimeOptions:
-  outputBucket: gs://some-bucket`);
+  outputBucket: gs://some-bucket
+  runtimeTemplateName: projects/test-project/locations/us-central1/notebookRuntimeTemplates/test-template
+  `);
       fs.writeFileSync(
         path.join(projectDir, "definitions/notebook.ipynb"),
         EMPTY_NOTEBOOK_CONTENTS
@@ -1055,7 +1057,8 @@ defaultNotebookRuntimeOptions:
         defaultDatabase: "dataform",
         defaultLocation: "US",
         defaultNotebookRuntimeOptions: {
-          outputBucket: "gs://some-bucket"
+          outputBucket: "gs://some-bucket",
+          runtimeTemplateName: "projects/test-project/locations/us-central1/notebookRuntimeTemplates/test-template"
         },
         warehouse: "bigquery"
       });

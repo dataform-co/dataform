@@ -125,6 +125,10 @@ export function workflowSettingsAsProjectConfig(
       projectConfig.defaultNotebookRuntimeOptions.outputBucket =
         workflowSettings.defaultNotebookRuntimeOptions.outputBucket;
     }
+    if (workflowSettings.defaultNotebookRuntimeOptions.runtimeTemplateName) {
+      projectConfig.defaultNotebookRuntimeOptions.runtimeTemplateName =
+        workflowSettings.defaultNotebookRuntimeOptions.runtimeTemplateName;
+    }
   }
   projectConfig.warehouse = "bigquery";
   return projectConfig;
