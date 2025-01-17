@@ -51,7 +51,7 @@ export interface ILegacyTableConfig extends dataform.ActionConfig.TableConfig {
   type: string;
   bigquery?: ILegacyTableBigqueryConfig;
   // Legacy table config's table assertions cannot directly extend the protobuf table config
-  // definition because of legacy  table config's flexible types.
+  // definition because of legacy table config's flexible types.
   assertions: any;
 }
 
