@@ -4,8 +4,9 @@ import { Declaration } from "df/core/actions/declaration";
 import { ILegacyIncrementalTableConfig, IncrementalTable } from "df/core/actions/incremental_table";
 import { Notebook } from "df/core/actions/notebook";
 import { Operation } from "df/core/actions/operation";
-import { Table } from "df/core/actions/table";
+import { ILegacyTableConfig, Table } from "df/core/actions/table";
 import { ILegacyViewConfig, View } from "df/core/actions/view";
+import { ICommonContext } from "df/core/common";
 import { Session } from "df/core/session";
 import { dataform } from "df/protos/ts";
 
@@ -96,15 +97,52 @@ export abstract class ActionBuilder<T> {
   }
 }
 
+/**
+ * Context methods are available when evaluating contextable SQL code, such as
+ * within SQLX files, or when using a [Contextable](#Contextable) argument with the JS API.
+ */
+export interface ITableContext extends ICommonContext {
+  /**
+   * Shorthand for an `if` condition. Equivalent to `cond ? trueCase : falseCase`.
+   * `falseCase` is optional, and defaults to an empty string.
+   */
+  when: (cond: boolean, trueCase: string, falseCase?: string) => string;
+
+  /**
+   * Indicates whether the config indicates the file is dealing with an incremental table.
+   */
+  incremental: () => boolean;
+}
+
 export class LegacyConfigConverter {
+  // This is a workaround to make bigquery options output empty fields with the same behaviour as
+  // they did previously.
+  public static legacyConvertBigQueryOptions(
+    bigquery: dataform.IBigQueryOptions
+  ): dataform.IBigQueryOptions {
+    let bigqueryFiltered: dataform.IBigQueryOptions = {};
+    Object.entries(bigquery).forEach(([key, value]) => {
+      if (Array.isArray(value) && value.length === 0) {
+        return;
+      } else if (typeof value === "object" && Object.entries(value).length === 0) {
+        return;
+      }
+      if (value) {
+        bigqueryFiltered = {
+          ...bigqueryFiltered,
+          [key]: value
+        };
+      }
+    });
+    return bigqueryFiltered;
+  }
+
   public static insertLegacyInlineAssertionsToConfigProto<
-    T extends ILegacyIncrementalTableConfig | ILegacyViewConfig
+    T extends ILegacyTableConfig | ILegacyIncrementalTableConfig | ILegacyViewConfig
   >(legacyConfig: T): T {
     if (legacyConfig?.assertions) {
-      if (!!legacyConfig.assertions.uniqueKey) {
-        if (typeof legacyConfig.assertions.uniqueKey === "string") {
-          legacyConfig.assertions.uniqueKey = [legacyConfig.assertions.uniqueKey];
-        }
+      if (typeof legacyConfig.assertions?.uniqueKey === "string") {
+        legacyConfig.assertions.uniqueKey = [legacyConfig.assertions.uniqueKey];
       }
       // This determines if the uniqueKeys is of the legacy type.
       if (legacyConfig.assertions.uniqueKeys?.[0]?.length > 0) {
@@ -119,4 +157,57 @@ export class LegacyConfigConverter {
     }
     return legacyConfig;
   }
+
+  public static insertLegacyBigQueryOptionsToConfigProto<
+    T extends ILegacyTableConfig | ILegacyIncrementalTableConfig
+  >(legacyConfig: T): T {
+    if (!legacyConfig?.bigquery) {
+      return legacyConfig;
+    }
+    if (!!legacyConfig.bigquery.partitionBy) {
+      legacyConfig.partitionBy = legacyConfig.bigquery.partitionBy;
+      delete legacyConfig.bigquery.partitionBy;
+    }
+    if (!!legacyConfig.bigquery.clusterBy) {
+      legacyConfig.clusterBy = legacyConfig.bigquery.clusterBy;
+      delete legacyConfig.bigquery.clusterBy;
+    }
+    if (!!legacyConfig.bigquery.updatePartitionFilter) {
+      (legacyConfig as ILegacyIncrementalTableConfig).updatePartitionFilter =
+        legacyConfig.bigquery.updatePartitionFilter;
+      delete legacyConfig.bigquery.updatePartitionFilter;
+    }
+    if (!!legacyConfig.bigquery.labels) {
+      legacyConfig.labels = legacyConfig.bigquery.labels;
+      delete legacyConfig.bigquery.labels;
+    }
+    if (!!legacyConfig.bigquery.partitionExpirationDays) {
+      legacyConfig.partitionExpirationDays = legacyConfig.bigquery.partitionExpirationDays;
+      delete legacyConfig.bigquery.partitionExpirationDays;
+    }
+    if (!!legacyConfig.bigquery.requirePartitionFilter) {
+      legacyConfig.requirePartitionFilter = legacyConfig.bigquery.requirePartitionFilter;
+      delete legacyConfig.bigquery.requirePartitionFilter;
+    }
+    if (!!legacyConfig.bigquery.additionalOptions) {
+      legacyConfig.additionalOptions = legacyConfig.bigquery.additionalOptions;
+      delete legacyConfig.bigquery.additionalOptions;
+    }
+    // To prevent skipping throwing an error when there are additional, unused fields, only delete
+    // the legacy bigquery object if there are no more fields left on it.
+    if (Object.keys(legacyConfig.bigquery).length === 0) {
+      delete legacyConfig.bigquery;
+    }
+    return legacyConfig;
+  }
+}
+
+export interface ILegacyTableBigqueryConfig {
+  partitionBy?: string;
+  clusterBy?: string[];
+  updatePartitionFilter?: string;
+  labels?: { [key: string]: string };
+  partitionExpirationDays?: number;
+  requirePartitionFilter?: boolean;
+  additionalOptions?: { [key: string]: string };
 }

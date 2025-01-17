@@ -2,16 +2,16 @@ import { default as TarjanGraphConstructor, Graph as TarjanGraph } from "tarjan-
 
 import { encode64, verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { StringifiedMap, StringifiedSet } from "df/common/strings/stringifier";
-import { Action } from "df/core/actions";
+import { Action, ITableContext } from "df/core/actions";
 import { AContextable, Assertion, AssertionContext } from "df/core/actions/assertion";
 import { DataPreparation } from "df/core/actions/data_preparation";
 import { Declaration } from "df/core/actions/declaration";
-import { IncrementalTable } from "df/core/actions/incremental_table";
+import { ILegacyIncrementalTableConfig, IncrementalTable } from "df/core/actions/incremental_table";
 import { Notebook } from "df/core/actions/notebook";
 import { Operation, OperationContext } from "df/core/actions/operation";
-import { ITableConfig, ITableContext, Table, TableContext, TableType } from "df/core/actions/table";
+import { ILegacyTableConfig, Table, TableContext, TableType } from "df/core/actions/table";
 import { Test } from "df/core/actions/test";
-import { View } from "df/core/actions/view";
+import { ILegacyViewConfig, View } from "df/core/actions/view";
 import { Contextable, ICommonContext, ITarget, Resolvable } from "df/core/common";
 import { CompilationSql } from "df/core/compilation_sql";
 import { targetAsReadableString, targetStringifier } from "df/core/targets";
@@ -167,9 +167,10 @@ export class Session {
         this.actions.push(incrementalTable);
         break;
       case "table":
-        const table = this.publish(sqlxConfig.name)
-          .config(sqlxConfig)
-          .query(ctx => actionOptions.sqlContextable(ctx)[0]);
+        sqlxConfig.filename = utils.getCallerFile(this.rootDir);
+        const table = new Table(this, sqlxConfig).query(
+          ctx => actionOptions.sqlContextable(ctx)[0]
+        );
         if (actionOptions.incrementalWhereContextable) {
           table.where(actionOptions.incrementalWhereContextable);
         }
@@ -179,6 +180,7 @@ export class Session {
         if (actionOptions.postOperationsContextable) {
           table.postOps(actionOptions.postOperationsContextable);
         }
+        this.actions.push(table);
         break;
       case "assertion":
         sqlxConfig.filename = utils.getCallerFile(this.rootDir);
@@ -241,6 +243,7 @@ export class Session {
     return "";
   }
 
+  // TODO(ekrekr): safely allow passing of config blocks as the second argument, similar to publish.
   public operate(
     name: string,
     queries?: Contextable<ICommonContext, string | string[]>
@@ -258,15 +261,26 @@ export class Session {
 
   public publish(
     name: string,
-    queryOrConfig?: Contextable<ITableContext, string> | ITableConfig
-  ): Table {
-    const newTable = new Table();
-    newTable.session = this;
-    utils.setNameAndTarget(this, newTable.proto, name);
+    queryOrConfig?:
+      | Contextable<ITableContext, string>
+      | ILegacyTableConfig
+      | ILegacyViewConfig
+      | ILegacyIncrementalTableConfig
+  ): Table | IncrementalTable | View {
+    let newTable: Table | IncrementalTable | View = new View(this, { type: "view", name });
     if (!!queryOrConfig) {
       if (typeof queryOrConfig === "object") {
-        newTable.config(queryOrConfig);
+        if (queryOrConfig?.type === "table" || queryOrConfig.type === undefined) {
+          newTable = new Table(this, { type: "table", name, ...queryOrConfig });
+        } else if (queryOrConfig?.type === "incremental") {
+          newTable = new IncrementalTable(this, { type: "incremental", name, ...queryOrConfig });
+        } else if (queryOrConfig?.type === "view") {
+          newTable = new View(this, { type: "view", name, ...queryOrConfig });
+        } else {
+          throw Error(`Unrecognized table type: ${queryOrConfig.type}`);
+        }
       } else {
+        // The queryOrConfig is not an object, so it must be a string query.
         newTable.query(queryOrConfig);
       }
     }
@@ -275,6 +289,7 @@ export class Session {
     return newTable;
   }
 
+  // TODO(ekrekr): safely allow passing of config blocks as the second argument, similar to publish.
   public assert(name: string, query?: AContextable<string>): Assertion {
     const assertion = new Assertion();
     assertion.session = this;
@@ -287,6 +302,7 @@ export class Session {
     return assertion;
   }
 
+  // TODO(ekrekr): safely allow passing of config blocks as the second argument, similar to publish.
   public declare(dataset: dataform.ITarget): Declaration {
     const declaration = new Declaration();
     declaration.session = this;
@@ -555,6 +571,7 @@ export class Session {
     });
   }
 
+  // TODO(ekrekr): finish pushing config validation down to the classes.
   private checkTableConfigValidity(tables: dataform.ITable[]) {
     tables.forEach(table => {
       // type
@@ -764,18 +781,6 @@ function getCanonicalProjectConfig(originalProjectConfig: dataform.ProjectConfig
 
 function joinQuoted(values: readonly string[]) {
   return values.map((value: string) => `"${value}"`).join(" | ");
-}
-
-function objectExistsOrIsNonEmpty(prop: any): boolean {
-  if (!prop) {
-    return false;
-  }
-
-  return (
-    (Array.isArray(prop) && !!prop.length) ||
-    (!Array.isArray(prop) && typeof prop === "object" && !!Object.keys(prop).length) ||
-    typeof prop !== "object"
-  );
 }
 
 class ActionMap {

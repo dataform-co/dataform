@@ -1,5 +1,7 @@
 import { strictKeysOf } from "df/core/utils";
 
+// TODO(ekrekr): remove deprecated items from this file.
+
 /**
  * Context methods are available when evaluating contextable SQL code, such as
  * within SQLX files, or when using a [Contextable](#Contextable) argument with the JS API.

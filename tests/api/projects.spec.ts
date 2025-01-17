@@ -65,6 +65,11 @@ suite("examples", () => {
                 'Unexpected property "protected", or property value type of "boolean" is incorrect. See https://dataform-co.github.io/dataform/docs/configs-reference#dataform-ActionConfig-AssertionConfig for allowed properties.'
             },
             {
+              fileName: "definitions/has_compile_errors/table_with_materialized.sqlx",
+              message:
+                'Unexpected property "materialized", or property value type of "boolean" is incorrect. See https://dataform-co.github.io/dataform/docs/configs-reference#dataform-ActionConfig-TableConfig for allowed properties.'
+            },
+            {
               fileName: "definitions/has_compile_errors/view_with_incremental.sqlx",
               message:
                 "Actions may only include incremental_where if they are of type 'incremental'."
@@ -77,10 +82,6 @@ suite("examples", () => {
             {
               fileName: "definitions/has_compile_errors/view_with_semi_colon_at_end.sqlx",
               message: "Semi-colons are not allowed at the end of SQL statements."
-            },
-            {
-              fileName: "definitions/has_compile_errors/table_with_materialized.sqlx",
-              message: "The 'materialized' option is only valid for BigQuery views"
             }
           ]);
 

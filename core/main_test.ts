@@ -57,6 +57,8 @@ class TestConfigs {
 
 const EMPTY_NOTEBOOK_CONTENTS = '{ "cells": [] }';
 
+// INFO: if you want to see an overview of the tests in this file, press cmd-k-3 while in
+// VSCode, to collapse everything below the third level of indentation.
 suite("@dataform/core", ({ afterEach }) => {
   const tmpDirFixture = new TmpDirFixture(afterEach);
 
@@ -228,8 +230,8 @@ actions:
       fs.writeFileSync(
         path.join(projectDir, "definitions/file.js"),
         `
-publish("table")
-publish("table")`
+publish("name")
+publish("name")`
       );
 
       const result = runMainInVm(
@@ -244,10 +246,10 @@ publish("table")`
       expect(
         result.compile.compiledGraph.graphErrors.compilationErrors?.map(error => error.message)
       ).deep.equals([
-        `Duplicate action name detected. Names within a schema must be unique across tables, declarations, assertions, and operations:\n\"{\"schema\":\"otherDataset\",\"name\":\"table\",\"database\":\"defaultProject\"}\"`,
-        `Duplicate canonical target detected. Canonical targets must be unique across tables, declarations, assertions, and operations:\n\"{\"schema\":\"otherDataset\",\"name\":\"table\",\"database\":\"defaultProject\"}\"`,
-        `Duplicate action name detected. Names within a schema must be unique across tables, declarations, assertions, and operations:\n\"{\"schema\":\"otherDataset\",\"name\":\"table\",\"database\":\"defaultProject\"}\"`,
-        `Duplicate canonical target detected. Canonical targets must be unique across tables, declarations, assertions, and operations:\n\"{\"schema\":\"otherDataset\",\"name\":\"table\",\"database\":\"defaultProject\"}\"`
+        `Duplicate action name detected. Names within a schema must be unique across tables, declarations, assertions, and operations:\n\"{\"schema\":\"otherDataset\",\"name\":\"name\",\"database\":\"defaultProject\"}\"`,
+        `Duplicate canonical target detected. Canonical targets must be unique across tables, declarations, assertions, and operations:\n\"{\"schema\":\"otherDataset\",\"name\":\"name\",\"database\":\"defaultProject\"}\"`,
+        `Duplicate action name detected. Names within a schema must be unique across tables, declarations, assertions, and operations:\n\"{\"schema\":\"otherDataset\",\"name\":\"name\",\"database\":\"defaultProject\"}\"`,
+        `Duplicate canonical target detected. Canonical targets must be unique across tables, declarations, assertions, and operations:\n\"{\"schema\":\"otherDataset\",\"name\":\"name\",\"database\":\"defaultProject\"}\"`
       ]);
     });
 
@@ -740,6 +742,7 @@ select 1 AS \${dataform.projectConfig.vars.selectVar}`
               disabled: false,
               enumType: "TABLE",
               fileName: "definitions/file.sqlx",
+              hermeticity: "NON_HERMETIC",
               query: "\n\nselect 1 AS selectVal",
               target: {
                 database: "projectVal",
@@ -925,17 +928,18 @@ select 1 AS \${dataform.projectConfig.vars.columnVar}`
                   name: "file",
                   schema: "tableSchema"
                 },
-                type: "table"
+                type: "table",
+                hermeticity: "NON_HERMETIC"
               }
             ],
             targets: [
               {
+                name: "tableSchema_file_assertions_rowConditions"
+              },
+              {
                 database: "databaseVal",
                 name: "file",
                 schema: "tableSchema"
-              },
-              {
-                name: "tableSchema_file_assertions_rowConditions"
               }
             ]
           })
@@ -1463,6 +1467,7 @@ actions:
               name: "action"
             },
             fileName: "definitions/action.sql",
+            hermeticity: "NON_HERMETIC",
             query: "SELECT 1",
             type: "table",
             enumType: "TABLE",
@@ -1498,7 +1503,6 @@ actions:
       expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals(
         asPlainObject([
           {
-            bigquery: {},
             target: {
               database: "defaultProject",
               schema: "defaultDataset",
@@ -3676,6 +3680,7 @@ publish("name", {
                 asPlainObject([
                   {
                     type: tableType,
+                    hermeticity: "NON_HERMETIC",
                     target: {
                       database: projectConfig.projectSuffix
                         ? `${projectConfig.defaultProject}_${projectConfig.projectSuffix}`
@@ -3754,6 +3759,7 @@ publish("name", {
               disabled: false,
               enumType: tableType.toUpperCase(),
               fileName: "definitions/publish.js",
+              hermeticity: "NON_HERMETIC",
               query: "SELECT * FROM `defaultProject.defaultDataset.operation`",
               target: {
                 database: "defaultProject",
@@ -3989,7 +3995,7 @@ publish("name", {
   }
 })`,
           expectedError:
-            "partitionBy/clusterBy/requirePartitionFilter/partitionExpirationDays are not valid for BigQuery views"
+            'Unexpected property "partitionBy" in BigQuery view config. Supported properties are: ["labels","additionalOptions"]'
         },
         {
           testName: "clusterBy invalid for BigQuery views",
@@ -4001,7 +4007,7 @@ publish("name", {
   }
 })`,
           expectedError:
-            "partitionBy/clusterBy/requirePartitionFilter/partitionExpirationDays are not valid for BigQuery views"
+            'Unexpected property "clusterBy" in BigQuery view config. Supported properties are: ["labels","additionalOptions"]'
         },
         {
           testName: "partitionExpirationDays invalid for BigQuery views",
@@ -4013,7 +4019,7 @@ publish("name", {
   }
 })`,
           expectedError:
-            "partitionBy/clusterBy/requirePartitionFilter/partitionExpirationDays are not valid for BigQuery views"
+            'Unexpected property "partitionExpirationDays" in BigQuery view config. Supported properties are: ["labels","additionalOptions"]'
         },
         {
           testName: "requirePartitionFilter invalid for BigQuery views",
@@ -4025,7 +4031,7 @@ publish("name", {
   }
 })`,
           expectedError:
-            "partitionBy/clusterBy/requirePartitionFilter/partitionExpirationDays are not valid for BigQuery views"
+            'Unexpected property "requirePartitionFilter" in BigQuery view config. Supported properties are: ["labels","additionalOptions"]'
         },
         {
           testName: "partitionExpirationDays invalid for BigQuery materialized views",
@@ -4034,13 +4040,11 @@ publish("name", {
   type: "view",
   materialized: true,
   bigquery: {
-    partitionBy: "some_partition",
-    clusterBy: ["some_cluster"],
     partitionExpirationDays: 7
   }
 })`,
           expectedError:
-            "requirePartitionFilter/partitionExpirationDays are not valid for BigQuery materialized views"
+            'Unexpected property "partitionExpirationDays" in BigQuery view config. Supported properties are: ["labels","additionalOptions"]'
         },
         {
           testName: "requirePartitionFilter invalid for BigQuery materialized views",
@@ -4049,22 +4053,21 @@ publish("name", {
   type: "view",
   materialized: true,
   bigquery: {
-    partitionBy: "some_partition",
-    clusterBy: ["some_cluster"],
     requirePartitionFilter: true
   }
 })`,
           expectedError:
-            "requirePartitionFilter/partitionExpirationDays are not valid for BigQuery materialized views"
+            'Unexpected property "requirePartitionFilter" in BigQuery view config. Supported properties are: ["labels","additionalOptions"]'
         },
         {
-          testName: "materialize invalid for BigQuery tables",
+          testName: "materialized invalid for BigQuery tables",
           fileContents: `
 publish("name", {
   type: "table",
   materialized: true,
 })`,
-          expectedError: "The 'materialized' option is only valid for BigQuery views"
+          expectedError:
+            'Unexpected property "materialized", or property value type of "boolean" is incorrect. See https://dataform-co.github.io/dataform/docs/configs-reference#dataform-ActionConfig-TableConfig for allowed properties.'
         },
         {
           testName: "partitionExpirationDays invalid for BigQuery tables",

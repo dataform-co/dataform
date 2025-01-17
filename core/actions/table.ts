@@ -1,31 +1,26 @@
 import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
-import { ActionBuilder } from "df/core/actions";
-import { Assertion } from "df/core/actions/assertion";
-import { LegacyColumnDescriptors } from "df/core/column_descriptors";
 import {
-  Contextable,
-  IActionConfig,
-  IColumnsDescriptor,
-  ICommonContext,
-  IDependenciesConfig,
-  IDocumentableConfig,
-  INamedConfig,
-  ITargetableConfig,
-  Resolvable
-} from "df/core/common";
+  ActionBuilder,
+  ILegacyTableBigqueryConfig,
+  ITableContext,
+  LegacyConfigConverter
+} from "df/core/actions";
+import { Assertion } from "df/core/actions/assertion";
+import { IncrementalTable } from "df/core/actions/incremental_table";
+import { View } from "df/core/actions/view";
+import { ColumnDescriptors } from "df/core/column_descriptors";
+import { Contextable, Resolvable } from "df/core/common";
 import * as Path from "df/core/path";
 import { Session } from "df/core/session";
 import {
   actionConfigToCompiledGraphTarget,
   addDependenciesToActionDependencyTargets,
   checkExcessProperties,
-  configTargetToCompiledGraphTarget,
   nativeRequire,
   resolvableAsTarget,
   resolveActionsConfigFilename,
   setNameAndTarget,
   strictKeysOf,
-  tableTypeStringToEnum,
   toResolvable,
   validateQueryString
 } from "df/core/utils";
@@ -33,215 +28,31 @@ import { dataform } from "df/protos/ts";
 
 /**
  * @hidden
+ * @deprecated
+ * TODO(ekrekr): remove these in favor of the proto enum.
  */
 export const TableType = ["table", "view", "incremental"] as const;
 /**
- * Supported types of table actions.
- *
- * Tables of type `view` will be created as views.
- *
- * Tables of type `table` will be created as tables.
- *
- * Tables of type `incremental` must have a where clause provided. For more information, see the [incremental tables guide](guides/incremental-datasets).
+ * @hidden
+ * @deprecated
  */
 export type TableType = typeof TableType[number];
 
 /**
- * BigQuery-specific warehouse options.
+ * @hidden
+ * This maintains backwards compatability with older versions.
+ * TODO(ekrekr): consider breaking backwards compatability of these in v4.
  */
-export interface IBigQueryOptions {
-  /**
-   * The key with which to partition the table. Typically the name of a timestamp or date column.
-   *
-   * For more information, read the [BigQuery partitioned tables docs](https://cloud.google.com/bigquery/docs/partitioned-tables).
-   */
-  partitionBy?: string;
-
-  /**
-   * The keys by which to cluster partitions by.
-   *
-   * For more information, read the [BigQuery clustered tables docs](https://cloud.google.com/bigquery/docs/clustered-tables).
-   */
-  clusterBy?: string[];
-
-  /**
-   * SQL based filter for when incremental updates are applied.
-   *
-   * For more information, see our [incremental dataset docs](https://docs.dataform.co/guides/incremental-datasets).
-   */
-  updatePartitionFilter?: string;
-
-  /**
-   * Key-value pairs for [BigQuery labels](https://cloud.google.com/bigquery/docs/labels-intro).
-   *
-   * If the label name contains special characters, e.g. hyphens, then quote its name, e.g. labels: { "label-name": "value" }.
-   */
-  labels?: { [name: string]: string };
-
-  /**
-   * This setting specifies how long BigQuery keeps the data in each partition. The setting applies to all partitions in the table,
-   * but is calculated independently for each partition based on the partition time.
-   *
-   * For more information, see our [docs](https://cloud.google.com/bigquery/docs/managing-partitioned-tables#partition-expiration).
-   */
-  partitionExpirationDays?: number;
-
-  /**
-   * When you create a partitioned table, you can require that all queries on the table must include a predicate filter (
-   * a WHERE clause) that filters on the partitioning column.
-   * This setting can improve performance and reduce costs,
-   * because BigQuery can use the filter to prune partitions that don't match the predicate.
-   *
-   * For more information, see our [docs](https://cloud.google.com/bigquery/docs/managing-partitioned-tables#require-filter).
-   */
-  requirePartitionFilter?: boolean;
-
-  /**
-   * Key-value pairs for options [table](https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#table_option_list), [view](https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#view_option_list), [materialized view](https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#materialized_view_option_list).
-   *
-   * Some options (e.g. `partitionExpirationDays`) have dedicated type/validity checked fields; prefer using those.
-   * String values need double-quotes, e.g. additionalOptions: {numeric_option: "5", string_option: '"string-value"'}
-   * If the option name contains special characters, e.g. hyphens, then quote its name, e.g. additionalOptions: { "option-name": "value" }.
-   */
-  additionalOptions?: { [name: string]: string };
-}
-
-const IBigQueryOptionsProperties = () =>
-  strictKeysOf<IBigQueryOptions>()([
-    "partitionBy",
-    "clusterBy",
-    "updatePartitionFilter",
-    "labels",
-    "partitionExpirationDays",
-    "requirePartitionFilter",
-    "additionalOptions"
-  ]);
-
-/**
- * Options for creating assertions as part of a dataset definition.
- */
-export interface ITableAssertions {
-  /**
-   * Column(s) which constitute the dataset's unique key index.
-   *
-   * If set, the resulting assertion will fail if there is more than one row in the dataset with the same values for all of these column(s).
-   */
-  uniqueKey?: string | string[];
-
-  /**
-   * Combinations of column(s), each of which should constitute a unique key index for the dataset.
-   *
-   * If set, the resulting assertion(s) will fail if there is more than one row in the dataset with the same values for all of the column(s)
-   * in the unique key(s).
-   */
-  uniqueKeys?: string[][];
-
-  /**
-   * Column(s) which may never be `NULL`.
-   *
-   * If set, the resulting assertion will fail if any row contains `NULL` values for these column(s).
-   */
-  nonNull?: string | string[];
-
-  /**
-   * General condition(s) which should hold true for all rows in the dataset.
-   *
-   * If set, the resulting assertion will fail if any row violates any of these condition(s).
-   */
-  rowConditions?: string[];
-}
-
-const ITableAssertionsProperties = () =>
-  strictKeysOf<ITableAssertions>()(["uniqueKey", "uniqueKeys", "nonNull", "rowConditions"]);
-
-/**
- * Configuration options for `dataset` actions, including `table`, `view` and `incremental` action types.
- */
-export interface ITableConfig
-  extends IActionConfig,
-    IDependenciesConfig,
-    IDocumentableConfig,
-    INamedConfig,
-    ITargetableConfig {
-  /**
-   * The type of the dataset. For more information on how this setting works, check out some of the [guides](guides)
-   * on publishing different types of datasets with Dataform.
-   */
-  type?: TableType;
-
-  /**
-   * Only allowed when the table type is `incremental`.
-   *
-   * If set to true, running this action will ignore the full-refresh option.
-   * This is useful for tables which are built from transient data, to ensure that historical data is never lost.
-   */
-  protected?: boolean;
-
-  /**
-   * BigQuery-specific warehouse options.
-   */
-  bigquery?: IBigQueryOptions;
-
-  /**
-   * Assertions to be run on the dataset.
-   *
-   * If configured, relevant assertions will automatically be created and run as a dependency of this dataset.
-   */
-  assertions?: ITableAssertions;
-
-  /**
-   * Unique keys for merge criteria for incremental tables.
-   *
-   * If configured, records with matching unique key(s) will be updated, rather than new rows being inserted.
-   */
-  uniqueKey?: string[];
-
-  /**
-   * Only valid when the table type is `view`.
-   *
-   * If set to true, will make the view materialized.
-   *
-   * For more information, read the [BigQuery materialized view docs](https://cloud.google.com/bigquery/docs/materialized-views-intro).
-   */
-  materialized?: boolean;
-}
-
-// TODO: This needs to be a method, I'm really not sure why, but it hits a runtime failure otherwise.
-export const ITableConfigProperties = () =>
-  strictKeysOf<ITableConfig>()([
-    "type",
-    "disabled",
-    "protected",
-    "name",
-    "bigquery",
-    "tags",
-    "uniqueKey",
-    "dependencies",
-    "hermetic",
-    "schema",
-    "assertions",
-    "database",
-    "columns",
-    "description",
-    "materialized",
-    "dependOnDependencyAssertions"
-  ]);
-
-/**
- * Context methods are available when evaluating contextable SQL code, such as
- * within SQLX files, or when using a [Contextable](#Contextable) argument with the JS API.
- */
-export interface ITableContext extends ICommonContext {
-  /**
-   * Shorthand for an `if` condition. Equivalent to `cond ? trueCase : falseCase`.
-   * `falseCase` is optional, and defaults to an empty string.
-   */
-  when: (cond: boolean, trueCase: string, falseCase?: string) => string;
-
-  /**
-   * Indicates whether the config indicates the file is dealing with an incremental table.
-   */
-  incremental: () => boolean;
+export interface ILegacyTableConfig extends dataform.ActionConfig.TableConfig {
+  dependencies: Resolvable[];
+  database: string;
+  schema: string;
+  fileName: string;
+  type: string;
+  bigquery?: ILegacyTableBigqueryConfig;
+  // Legacy table config's table assertions cannot directly extend the protobuf table config
+  // definition because of legacy table config's flexible types.
+  assertions: any;
 }
 
 /**
@@ -250,8 +61,8 @@ export interface ITableContext extends ICommonContext {
 export class Table extends ActionBuilder<dataform.Table> {
   // TODO(ekrekr): make this field private, to enforce proto update logic to happen in this class.
   public proto: dataform.ITable = dataform.Table.create({
-    type: "view",
-    enumType: dataform.TableType.VIEW,
+    type: "table",
+    enumType: dataform.TableType.TABLE,
     disabled: false,
     tags: []
   });
@@ -271,204 +82,37 @@ export class Table extends ActionBuilder<dataform.Table> {
   private uniqueKeyAssertions: Assertion[] = [];
   private rowConditionsAssertion: Assertion;
 
-  constructor(
-    session?: Session,
-    tableTypeConfig?:
-      | dataform.ActionConfig.TableConfig
-      | dataform.ActionConfig.ViewConfig
-      | dataform.ActionConfig.IncrementalTableConfig,
-    // TODO(ekrekr): As part of JS API updates, instead of overloading, add new class files for the
-    // view and incremental action types, instead of using this table type workaround.
-    tableType?: TableType,
-    configPath?: string
-  ) {
+  constructor(session?: Session, unverifiedConfig?: any, configPath?: string) {
     super(session);
     this.session = session;
 
-    if (!tableTypeConfig) {
+    if (!unverifiedConfig) {
       return;
     }
-    if (!tableType) {
-      throw Error("Expected table type");
-    }
+    const config = this.verifyConfig(unverifiedConfig);
 
-    if (!tableTypeConfig.name) {
-      tableTypeConfig.name = Path.basename(tableTypeConfig.filename);
+    if (!config.name) {
+      config.name = Path.basename(config.filename);
     }
-    const target = actionConfigToCompiledGraphTarget(tableTypeConfig);
+    const target = actionConfigToCompiledGraphTarget(config);
     this.proto.target = this.applySessionToTarget(
       target,
       session.projectConfig,
-      tableTypeConfig.filename,
+      config.filename,
       true
     );
     this.proto.canonicalTarget = this.applySessionToTarget(target, session.canonicalProjectConfig);
 
-    tableTypeConfig.filename = resolveActionsConfigFilename(tableTypeConfig.filename, configPath);
-    this.proto.fileName = tableTypeConfig.filename;
-
-    // TODO(ekrekr): load config proto column descriptors.
-    if (tableType === "table") {
-      const config = tableTypeConfig as dataform.ActionConfig.TableConfig;
-
-      // TODO(ekrekr): this is a workaround for avoiding keys that aren't present, and should be
-      // cleaned up when the JS API is redone.
-      const bigqueryOptions: IBigQueryOptions | undefined =
-        config.partitionBy ||
-        config.partitionExpirationDays ||
-        config.requirePartitionFilter ||
-        config.clusterBy.length ||
-        Object.keys(config.labels).length ||
-        Object.keys(config.additionalOptions).length
-          ? {}
-          : undefined;
-      if (bigqueryOptions) {
-        if (config.partitionBy) {
-          bigqueryOptions.partitionBy = config.partitionBy;
-        }
-        if (config.partitionExpirationDays) {
-          bigqueryOptions.partitionExpirationDays = config.partitionExpirationDays;
-        }
-        if (config.requirePartitionFilter) {
-          bigqueryOptions.requirePartitionFilter = config.requirePartitionFilter;
-        }
-        if (config.clusterBy.length) {
-          bigqueryOptions.clusterBy = config.clusterBy;
-        }
-        if (Object.keys(config.labels).length) {
-          bigqueryOptions.labels = config.labels;
-        }
-        if (Object.keys(config.additionalOptions).length) {
-          bigqueryOptions.additionalOptions = config.additionalOptions;
-        }
-      }
-
-      this.config({
-        type: "table",
-        dependencies: config.dependencyTargets.map(dependencyTarget =>
-          configTargetToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget))
-        ),
-        tags: config.tags,
-        disabled: config.disabled,
-        description: config.description,
-        bigquery: bigqueryOptions,
-        dependOnDependencyAssertions: config.dependOnDependencyAssertions,
-        hermetic: config.hermetic === true ? true : undefined,
-        assertions: this.legacyMapConfigAssertions(config.assertions)
-      });
+    if (configPath) {
+      config.filename = resolveActionsConfigFilename(config.filename, configPath);
+      this.query(nativeRequire(config.filename).query);
     }
-    if (tableType === "view") {
-      const config = tableTypeConfig as dataform.ActionConfig.ViewConfig;
 
-      // TODO(ekrekr): this is a workaround for avoiding keys that aren't present, and should be
-      // cleaned up when the JS API is redone.
-      const bigqueryOptions: IBigQueryOptions | undefined =
-        Object.keys(config.labels).length || Object.keys(config.additionalOptions).length
-          ? {}
-          : undefined;
-      if (bigqueryOptions) {
-        if (Object.keys(config.labels).length) {
-          bigqueryOptions.labels = config.labels;
-        }
-        if (Object.keys(config.additionalOptions).length) {
-          bigqueryOptions.additionalOptions = config.additionalOptions;
-        }
-      }
-
-      this.config({
-        type: "view",
-        dependencies: config.dependencyTargets.map(dependencyTarget =>
-          configTargetToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget))
-        ),
-        disabled: config.disabled,
-        materialized: config.materialized,
-        tags: config.tags,
-        description: config.description,
-        bigquery: bigqueryOptions,
-        dependOnDependencyAssertions: config.dependOnDependencyAssertions,
-        hermetic: config.hermetic === true ? true : undefined,
-        assertions: this.legacyMapConfigAssertions(config.assertions)
-      });
-    }
-    if (tableType === "incremental") {
-      const config = tableTypeConfig as dataform.ActionConfig.IncrementalTableConfig;
-
-      // TODO(ekrekr): this is a workaround for avoiding keys that aren't present, and should be
-      // cleaned up when the JS API is redone.
-      const bigqueryOptions: IBigQueryOptions | undefined =
-        config.partitionBy ||
-        config.partitionExpirationDays ||
-        config.requirePartitionFilter ||
-        config.updatePartitionFilter ||
-        config.clusterBy.length ||
-        Object.keys(config.labels).length ||
-        Object.keys(config.additionalOptions).length
-          ? {}
-          : undefined;
-      if (bigqueryOptions) {
-        if (config.partitionBy) {
-          bigqueryOptions.partitionBy = config.partitionBy;
-        }
-        if (config.partitionExpirationDays) {
-          bigqueryOptions.partitionExpirationDays = config.partitionExpirationDays;
-        }
-        if (config.requirePartitionFilter) {
-          bigqueryOptions.requirePartitionFilter = config.requirePartitionFilter;
-        }
-        if (config.updatePartitionFilter) {
-          bigqueryOptions.updatePartitionFilter = config.updatePartitionFilter;
-        }
-        if (config.clusterBy.length) {
-          bigqueryOptions.clusterBy = config.clusterBy;
-        }
-        if (Object.keys(config.labels).length) {
-          bigqueryOptions.labels = config.labels;
-        }
-        if (Object.keys(config.additionalOptions).length) {
-          bigqueryOptions.additionalOptions = config.additionalOptions;
-        }
-      }
-
-      this.config({
-        type: "incremental",
-        dependencies: config.dependencyTargets.map(dependencyTarget =>
-          configTargetToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget))
-        ),
-        disabled: config.disabled,
-        protected: config.protected,
-        uniqueKey: config.uniqueKey,
-        tags: config.tags,
-        description: config.description,
-        bigquery: bigqueryOptions,
-        dependOnDependencyAssertions: config.dependOnDependencyAssertions,
-        hermetic: config.hermetic === true ? true : undefined,
-        assertions: this.legacyMapConfigAssertions(config.assertions)
-      });
-    }
-    this.query(nativeRequire(tableTypeConfig.filename).query);
-    if (tableTypeConfig.preOperations) {
-      this.preOps(tableTypeConfig.preOperations);
-    }
-    if (tableTypeConfig.postOperations) {
-      this.postOps(tableTypeConfig.postOperations);
-    }
-  }
-
-  public config(config: ITableConfig) {
-    checkExcessProperties(
-      (e: Error) => this.session.compileError(e),
-      config,
-      ITableConfigProperties(),
-      "table config"
-    );
-    if (config.type) {
-      this.type(config.type);
-    }
     if (config.dependOnDependencyAssertions) {
       this.setDependOnDependencyAssertions(config.dependOnDependencyAssertions);
     }
-    if (config.dependencies) {
-      this.dependencies(config.dependencies);
+    if (config.dependencyTargets) {
+      this.dependencies(config.dependencyTargets);
     }
     if (config.hermetic !== undefined) {
       this.hermetic(config.hermetic);
@@ -476,44 +120,62 @@ export class Table extends ActionBuilder<dataform.Table> {
     if (config.disabled) {
       this.disabled();
     }
-    if (config.type === "incremental") {
-      this.protected(config.protected);
-    }
-    if (config.bigquery && Object.keys(config.bigquery).length > 0) {
-      this.bigquery(config.bigquery);
-    }
     if (config.tags) {
       this.tags(config.tags);
     }
     if (config.description) {
       this.description(config.description);
     }
-    if (config.columns) {
-      this.columns(config.columns);
-    }
-    if (config.database) {
-      this.database(config.database);
-    }
-    if (config.schema) {
-      this.schema(config.schema);
+    if (config.columns?.length) {
+      this.columns(
+        config.columns.map(columnDescriptor =>
+          dataform.ActionConfig.ColumnDescriptor.create(columnDescriptor)
+        )
+      );
     }
     if (config.assertions) {
-      this.assertions(config.assertions);
+      this.assertions(dataform.ActionConfig.TableAssertionsConfig.create(config.assertions));
     }
-    if (config.uniqueKey) {
-      this.uniqueKey(config.uniqueKey);
+    if (config.preOperations) {
+      this.preOps(config.preOperations);
     }
-    if (config.materialized) {
-      this.materialized(config.materialized);
+    if (config.postOperations) {
+      this.postOps(config.postOperations);
+    }
+    this.bigquery({
+      partitionBy: config.partitionBy,
+      clusterBy: config.clusterBy,
+      labels: config.labels,
+      partitionExpirationDays: config.partitionExpirationDays,
+      requirePartitionFilter: config.requirePartitionFilter,
+      additionalOptions: config.additionalOptions
+    });
+    if (config.filename) {
+      this.proto.fileName = config.filename;
     }
 
     return this;
   }
 
+  /**
+   * @hidden
+   * TODO(ekrekr): deprecate type in favour of JS functions specific to different action types.
+   * Currently this is a workaround to preserve backwards compatability.
+   */
   public type(type: TableType) {
-    this.proto.type = type;
-    this.proto.enumType = tableTypeStringToEnum(type, false);
-    return this;
+    if (type === "table") {
+      return this;
+    }
+    if (type === "incremental") {
+      const incrementalTable = new IncrementalTable();
+      incrementalTable.proto = this.proto;
+      return incrementalTable;
+    }
+    if (type === "view") {
+      const view = new View();
+      view.proto = this.proto;
+      return view;
+    }
   }
 
   public query(query: Contextable<ITableContext, string>) {
@@ -543,36 +205,17 @@ export class Table extends ActionBuilder<dataform.Table> {
     return this;
   }
 
-  public protected(defaultsToTrueProtected: boolean) {
-    // To prevent accidental data deletion, protected defaults to true if unspecified.
-    if (defaultsToTrueProtected === undefined || defaultsToTrueProtected === null) {
-      defaultsToTrueProtected = true;
-    }
-    this.proto.protected = defaultsToTrueProtected;
-    return this;
-  }
-
-  public uniqueKey(uniqueKey: string[]) {
-    this.proto.uniqueKey = uniqueKey;
-  }
-
-  public materialized(materialized: boolean) {
-    this.proto.materialized = materialized;
-  }
-
   public bigquery(bigquery: dataform.IBigQueryOptions) {
-    checkExcessProperties(
-      (e: Error) => this.session.compileError(e),
-      bigquery,
-      IBigQueryOptionsProperties(),
-      "bigquery config"
-    );
-    this.proto.bigquery = dataform.BigQueryOptions.create(bigquery);
-    if (!!bigquery.labels) {
+    if (!!bigquery.labels && Object.keys(bigquery.labels).length > 0) {
       if (!this.proto.actionDescriptor) {
         this.proto.actionDescriptor = {};
       }
       this.proto.actionDescriptor.bigqueryLabels = bigquery.labels;
+    }
+
+    const bigqueryFiltered = LegacyConfigConverter.legacyConvertBigQueryOptions(bigquery);
+    if (Object.values(bigqueryFiltered).length > 0) {
+      this.proto.bigquery = dataform.BigQueryOptions.create(bigqueryFiltered);
     }
     return this;
   }
@@ -609,13 +252,12 @@ export class Table extends ActionBuilder<dataform.Table> {
     return this;
   }
 
-  public columns(columns: IColumnsDescriptor) {
+  public columns(columns: dataform.ActionConfig.ColumnDescriptor[]) {
     if (!this.proto.actionDescriptor) {
       this.proto.actionDescriptor = {};
     }
-    this.proto.actionDescriptor.columns = LegacyColumnDescriptors.mapToColumnProtoArray(
-      columns,
-      (e: Error) => this.session.compileError(e)
+    this.proto.actionDescriptor.columns = ColumnDescriptors.mapConfigProtoToCompilationProto(
+      columns
     );
     return this;
   }
@@ -642,28 +284,24 @@ export class Table extends ActionBuilder<dataform.Table> {
     return this;
   }
 
-  // TODO(ekrekr): update session JS assertions to action construtors instead.
-  public assertions(assertions: ITableAssertions) {
-    checkExcessProperties(
-      (e: Error) => this.session.compileError(e),
-      assertions,
-      ITableAssertionsProperties(),
-      "assertions config"
-    );
-    if (!!assertions.uniqueKey && !!assertions.uniqueKeys) {
+  public assertions(assertions: dataform.ActionConfig.TableAssertionsConfig) {
+    if (!!assertions.uniqueKey?.length && !!assertions.uniqueKeys?.length) {
       this.session.compileError(
         new Error("Specify at most one of 'assertions.uniqueKey' and 'assertions.uniqueKeys'.")
       );
     }
-    let uniqueKeys = assertions.uniqueKeys;
-    if (!!assertions.uniqueKey) {
-      uniqueKeys =
-        typeof assertions.uniqueKey === "string"
-          ? [[assertions.uniqueKey]]
-          : [assertions.uniqueKey];
+    let uniqueKeys = assertions.uniqueKeys.map(uniqueKey =>
+      dataform.ActionConfig.TableAssertionsConfig.UniqueKey.create(uniqueKey)
+    );
+    if (!!assertions.uniqueKey?.length) {
+      uniqueKeys = [
+        dataform.ActionConfig.TableAssertionsConfig.UniqueKey.create({
+          uniqueKey: assertions.uniqueKey
+        })
+      ];
     }
-    if (uniqueKeys) {
-      uniqueKeys.forEach((uniqueKey, index) => {
+    if (!!uniqueKeys?.length) {
+      uniqueKeys.forEach(({ uniqueKey }, index) => {
         const uniqueKeyAssertion = this.session.assert(
           `${this.proto.target.schema}_${this.proto.target.name}_assertions_uniqueKey_${index}`,
           ctx => this.session.compilationSql().indexAssertion(ctx.ref(this.proto.target), uniqueKey)
@@ -771,28 +409,71 @@ export class Table extends ActionBuilder<dataform.Table> {
     return protoOps;
   }
 
-  private legacyMapConfigAssertions(
-    configAssertions: dataform.ActionConfig.ITableAssertionsConfig
-  ): ITableAssertions | undefined {
-    let legacyAssertions: ITableAssertions | undefined;
-    if (configAssertions) {
-      legacyAssertions = {};
-      if (configAssertions.uniqueKey?.length > 0) {
-        legacyAssertions.uniqueKey = configAssertions.uniqueKey;
-      }
-      if (configAssertions.uniqueKeys) {
-        legacyAssertions.uniqueKeys = configAssertions.uniqueKeys.map(
-          uniqueKeys => uniqueKeys?.uniqueKey
+  private verifyConfig(unverifiedConfig: ILegacyTableConfig): dataform.ActionConfig.TableConfig {
+    // The "type" field only exists on legacy table configs. Here we convert them to the
+    // new format.
+    if (unverifiedConfig.type) {
+      if (unverifiedConfig.type !== "table") {
+        throw ReferenceError(
+          `Unexpected type for Table; want "table", got ${unverifiedConfig.type}`
         );
       }
-      if (configAssertions.nonNull?.length > 0) {
-        legacyAssertions.nonNull = configAssertions.nonNull;
+      delete unverifiedConfig.type;
+      if (unverifiedConfig.dependencies) {
+        unverifiedConfig.dependencyTargets = unverifiedConfig.dependencies.map(
+          (dependency: string | object) =>
+            typeof dependency === "string" ? { name: dependency } : dependency
+        );
+        delete unverifiedConfig.dependencies;
       }
-      if (configAssertions.rowConditions?.length > 0) {
-        legacyAssertions.rowConditions = configAssertions.rowConditions;
+      if (unverifiedConfig.database) {
+        unverifiedConfig.project = unverifiedConfig.database;
+        delete unverifiedConfig.database;
+      }
+      if (unverifiedConfig.schema) {
+        unverifiedConfig.dataset = unverifiedConfig.schema;
+        delete unverifiedConfig.schema;
+      }
+      if (unverifiedConfig.fileName) {
+        unverifiedConfig.filename = unverifiedConfig.fileName;
+        delete unverifiedConfig.fileName;
+      }
+      if (unverifiedConfig.columns) {
+        unverifiedConfig.columns = ColumnDescriptors.mapLegacyObjectToConfigProto(
+          unverifiedConfig.columns as any
+        );
+      }
+      unverifiedConfig = LegacyConfigConverter.insertLegacyInlineAssertionsToConfigProto(
+        unverifiedConfig
+      );
+      unverifiedConfig = LegacyConfigConverter.insertLegacyBigQueryOptionsToConfigProto(
+        unverifiedConfig
+      );
+      if (unverifiedConfig.bigquery) {
+        checkExcessProperties(
+          (e: Error) => {
+            throw e;
+          },
+          unverifiedConfig.bigquery,
+          strictKeysOf<ILegacyTableBigqueryConfig>()([
+            "partitionBy",
+            "clusterBy",
+            "updatePartitionFilter",
+            "labels",
+            "partitionExpirationDays",
+            "requirePartitionFilter",
+            "additionalOptions"
+          ]),
+          "BigQuery table config"
+        );
       }
     }
-    return legacyAssertions;
+
+    return verifyObjectMatchesProto(
+      dataform.ActionConfig.TableConfig,
+      unverifiedConfig,
+      VerifyProtoErrorBehaviour.SHOW_DOCS_LINK
+    );
   }
 }
 
@@ -801,11 +482,6 @@ export class Table extends ActionBuilder<dataform.Table> {
  */
 export class TableContext implements ITableContext {
   constructor(private table: Table, private isIncremental = false) {}
-
-  public config(config: ITableConfig) {
-    this.table.config(config);
-    return "";
-  }
 
   public self(): string {
     return this.resolve(this.table.proto.target);
