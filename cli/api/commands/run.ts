@@ -364,6 +364,8 @@ export class Runner {
       // (i.e. it must still be RUNNING, and not FAILED).
       actionResult.status === dataform.ActionResult.ExecutionStatus.RUNNING &&
       !(this.graph.runConfig && this.graph.runConfig.disableSetMetadata) &&
+      // Only set metadata if not using BigQuery dry run
+      !this.executionOptions.bigquery?.dryRun && 
       action.type === "table"
     ) {
       try {
