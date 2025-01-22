@@ -6,7 +6,7 @@
   "description": "Syntax highlighting, compilation, and intellisense for Dataform and SQLX projects.",
   "displayName": "Dataform",
   "publisher": "dataform",
-  "version": "0.0.15",
+  "version": "0.0.16",
   "icon": "dataform_logo.png",
   "repository": {
     "url": "https://github.com/dataform-co/dataform/tree/master/vscode"
