@@ -31,7 +31,13 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     this.session = session;
 
     if (!config.name) {
-      config.name = Path.basename(config.filename);
+      // Ensure we extract only the file name.
+      // This handles both .yaml and .dp.yaml extensions
+      let name = Path.basename(config.filename);
+      if (name.indexOf(".") > 0) {
+        name = name.substring(0, name.indexOf("."));
+      }
+      config.name = name;
     }
 
     config.filename = resolveActionsConfigFilename(config.filename, configPath);
@@ -43,23 +49,15 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
         [key: string]: any;
       }
     );
-    const resolvedTargets = targets.map(target =>
-      this.applySessionToTarget(target, session.projectConfig, config.filename, true)
-    );
-    // Finalize list of targets.
-    this.proto.targets = resolvedTargets.map(target => this.finalizeTarget(target));
-    this.proto.canonicalTargets = targets.map(target =>
-      this.applySessionToTarget(target, session.canonicalProjectConfig)
-    );
 
-    // Resolve all table references with compilation overrides and encode resolved proto instance
-    const resolvedDefinition = this.applySessionToDataPreparationContents(dataPreparationAsJson);
-    this.proto.dataPreparationYaml = dumpYaml(resolvedDefinition);
-
-    // Set the unique target key as the first target defined.
-    // TODO: Remove once multiple targets are supported.
-    this.proto.target = resolvedTargets[0];
-    this.proto.canonicalTarget = this.proto.canonicalTargets[0];
+    // if there are targets in the data preparation, resolve and set targets.
+    // Otherwise, treat this as an empty data preparation.
+    if (targets.length > 0) {
+      this.resolveTargets(targets, dataPreparationAsJson, session, config);
+    } else {
+      // Handle the case where the data preparation is empty
+      this.resolveEmpty(dataPreparationAsJson, session, config);
+    }
 
     this.proto.tags = config.tags;
     if (config.dependencyTargets) {
@@ -116,9 +114,66 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     );
   }
 
+  private resolveEmpty(
+      dataPreparationAsJson: {
+        [key: string]: any;
+      },
+      session?: Session,
+      config?: dataform.ActionConfig.DataPreparationConfig
+  ) {
+    const defaultTarget = dataform.Target.create({name: config.name});
+    this.proto.target = this.finalizeTarget(
+        this.applySessionToTarget(
+            defaultTarget,
+            session.projectConfig,
+            config.filename,
+            true
+        )
+    );
+    this.proto.targets = [this.proto.target];
+    this.proto.canonicalTarget =
+        this.applySessionToTarget(
+            defaultTarget,
+            session.canonicalProjectConfig
+        );
+    this.proto.canonicalTargets = [this.proto.canonicalTarget];
+    this.proto.dataPreparationYaml = dumpYaml(dataPreparationAsJson);
+  }
+
+  private resolveTargets(
+      targets: dataform.Target[],
+      dataPreparationAsJson: {
+        [key: string]: any;
+      },
+      session?: Session,
+      config?: dataform.ActionConfig.DataPreparationConfig
+      ) {
+    const resolvedTargets = targets.map(target =>
+        this.applySessionToTarget(target, session.projectConfig, config.filename, true)
+    );
+    // Finalize list of targets.
+    this.proto.targets = resolvedTargets.map(target => this.finalizeTarget(target));
+    this.proto.canonicalTargets = targets.map(target =>
+        this.applySessionToTarget(target, session.canonicalProjectConfig)
+    );
+    // Resolve all table references with compilation overrides and encode resolved proto instance
+    const resolvedDefinition = this.applySessionToDataPreparationContents(dataPreparationAsJson);
+    this.proto.dataPreparationYaml = dumpYaml(resolvedDefinition);
+
+    // Set the unique target key as the first target defined.
+    // TODO: Remove once multiple targets are supported.
+    this.proto.target = resolvedTargets[0];
+    this.proto.canonicalTarget = this.proto.canonicalTargets[0];
+  }
+
   private applySessionToDataPreparationContents(definition: {
     [key: string]: any;
   }): { [key: string]: any } {
+    // Handle empty definitions
+    if (!definition) {
+      return {};
+    }
+
     // Resolve error table, if set
     // @ts-ignore
     const errorTable = definition.configuration?.errorTable;
@@ -187,7 +242,7 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
   private getTargets(definition: { [key: string]: any }): dataform.Target[] {
     const targets: dataform.Target[] = [];
 
-    if (definition.nodes) {
+    if (definition && definition.nodes) {
       (definition.nodes as Array<{ [key: string]: any }>).forEach(node => {
         const table = node.destination?.table;
         if (table) {
