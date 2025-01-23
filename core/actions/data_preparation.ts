@@ -12,6 +12,7 @@ import {
   resolveActionsConfigFilename
 } from "df/core/utils";
 import { dataform } from "df/protos/ts";
+import {filename} from 'df/core/path';
 
 /**
  * @hidden
@@ -33,11 +34,16 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     if (!config.name) {
       // Ensure we extract only the file name.
       // This handles both .yaml and .dp.yaml extensions
-      let name = Path.basename(config.filename);
-      if (name.indexOf(".") > 0) {
-        name = name.substring(0, name.indexOf("."));
+      const fileName = Path.filename(config.filename);
+
+      if (fileName.toLowerCase().endsWith('.dp.yaml')) {
+        config.name = fileName.slice(0, -8);
+      } else if (fileName.toLowerCase().endsWith('.yaml')
+          || fileName.toLowerCase().endsWith('.sqlx')) {
+        config.name = fileName.slice(0, -5);
+      } else {
+        throw new Error("Only YAML and SQLX files are supported");
       }
-      config.name = name;
     }
 
     config.filename = resolveActionsConfigFilename(config.filename, configPath);
