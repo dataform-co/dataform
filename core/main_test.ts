@@ -1129,6 +1129,73 @@ actions:
       );
     });
 
+    test(`data preparation with no targets a default target`, () => {
+      const projectDir = createSimpleDataPreparationProject();
+      const dataPreparationYaml = `
+nodes:
+- id: node1
+  source:
+    table:
+      project: prj
+      dataset: ds
+      table: src
+  generated:
+    outputSchema:
+      field:
+      - name: a
+        type: INT64
+        mode: NULLABLE
+    sourceGenerated:
+      sourceSchema:
+        tableSchema:
+          field:
+          - name: a
+            type: STRING
+            mode: NULLABLE
+`;
+
+      fs.writeFileSync(
+          path.join(projectDir, "definitions/data_preparation.dp.yaml"),
+          dataPreparationYaml
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.dataPreparations)).deep.equals(
+          asPlainObject([
+            {
+              target: {
+                database: "defaultProject",
+                schema: "defaultDataset",
+                name: "data_preparation"
+              },
+              canonicalTarget: {
+                database: "defaultProject",
+                schema: "defaultDataset",
+                name: "data_preparation"
+              },
+              targets: [
+                {
+                  database: "defaultProject",
+                  schema: "defaultDataset",
+                  name: "data_preparation"
+                }
+              ],
+              canonicalTargets: [
+                {
+                  database: "defaultProject",
+                  schema: "defaultDataset",
+                  name: "data_preparation"
+                }
+              ],
+              fileName: "definitions/data_preparation.dp.yaml",
+              dataPreparationYaml: dumpYaml(loadYaml(dataPreparationYaml))
+            }
+          ])
+      );
+    });
+
     test(`data preparations can be loaded via an actions config file`, () => {
       const projectDir = createSimpleDataPreparationProject();
       const dataPreparationYaml = `

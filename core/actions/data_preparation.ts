@@ -143,7 +143,8 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
             session.canonicalProjectConfig
         );
     this.proto.canonicalTargets = [this.proto.canonicalTarget];
-    this.proto.dataPreparationYaml = dumpYaml(dataPreparationAsJson);
+    const resolvedDefinition = this.applySessionToDataPreparationContents(dataPreparationAsJson);
+    this.proto.dataPreparationYaml = dumpYaml(resolvedDefinition);
   }
 
   private resolveTargets(
@@ -177,7 +178,7 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
   }): { [key: string]: any } {
     // Handle empty definitions
     if (!definition) {
-      return {};
+      return definition;
     }
 
     // Resolve error table, if set
