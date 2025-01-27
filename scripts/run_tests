@@ -5,7 +5,7 @@ set -e
 bazel run @nodejs//:yarn
 bazel build @npm//tslint/bin:tslint && bazel-bin/external/npm/tslint/bin/tslint.sh --project .
 
-# Run all the tests
+# Run unit tests
 bazel test ... \
   --test_tag_filters=-integration \
   --build_tests_only
