@@ -1077,10 +1077,124 @@ defaultNotebookRuntimeOptions:
         `
 actions:
 - dataPreparation:
-    filename: data_preparation.yaml`
+    filename: data_preparation.dp.yaml`
       );
       return projectDir;
     };
+
+    test(`empty data preparation returns a default target`, () => {
+      const projectDir = createSimpleDataPreparationProject();
+      const dataPreparationYaml = `
+`;
+
+      fs.writeFileSync(
+          path.join(projectDir, "definitions/data_preparation.dp.yaml"),
+          dataPreparationYaml
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.dataPreparations)).deep.equals(
+          asPlainObject([
+            {
+              target: {
+                database: "defaultProject",
+                schema: "defaultDataset",
+                name: "data_preparation"
+              },
+              canonicalTarget: {
+                database: "defaultProject",
+                schema: "defaultDataset",
+                name: "data_preparation"
+              },
+              targets: [
+                {
+                  database: "defaultProject",
+                  schema: "defaultDataset",
+                  name: "data_preparation"
+                }
+              ],
+              canonicalTargets: [
+                {
+                  database: "defaultProject",
+                  schema: "defaultDataset",
+                  name: "data_preparation"
+                }
+              ],
+              fileName: "definitions/data_preparation.dp.yaml",
+              dataPreparationYaml: ""
+            }
+          ])
+      );
+    });
+
+    test(`data preparation with no targets a default target`, () => {
+      const projectDir = createSimpleDataPreparationProject();
+      const dataPreparationYaml = `
+nodes:
+- id: node1
+  source:
+    table:
+      project: prj
+      dataset: ds
+      table: src
+  generated:
+    outputSchema:
+      field:
+      - name: a
+        type: INT64
+        mode: NULLABLE
+    sourceGenerated:
+      sourceSchema:
+        tableSchema:
+          field:
+          - name: a
+            type: STRING
+            mode: NULLABLE
+`;
+
+      fs.writeFileSync(
+          path.join(projectDir, "definitions/data_preparation.dp.yaml"),
+          dataPreparationYaml
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.dataPreparations)).deep.equals(
+          asPlainObject([
+            {
+              target: {
+                database: "defaultProject",
+                schema: "defaultDataset",
+                name: "data_preparation"
+              },
+              canonicalTarget: {
+                database: "defaultProject",
+                schema: "defaultDataset",
+                name: "data_preparation"
+              },
+              targets: [
+                {
+                  database: "defaultProject",
+                  schema: "defaultDataset",
+                  name: "data_preparation"
+                }
+              ],
+              canonicalTargets: [
+                {
+                  database: "defaultProject",
+                  schema: "defaultDataset",
+                  name: "data_preparation"
+                }
+              ],
+              fileName: "definitions/data_preparation.dp.yaml",
+              dataPreparationYaml: dumpYaml(loadYaml(dataPreparationYaml))
+            }
+          ])
+      );
+    });
 
     test(`data preparations can be loaded via an actions config file`, () => {
       const projectDir = createSimpleDataPreparationProject();
@@ -1119,7 +1233,7 @@ nodes:
 `;
 
       fs.writeFileSync(
-        path.join(projectDir, "definitions/data_preparation.yaml"),
+        path.join(projectDir, "definitions/data_preparation.dp.yaml"),
         dataPreparationYaml
       );
 
@@ -1153,7 +1267,7 @@ nodes:
                 name: "dest"
               }
             ],
-            fileName: "definitions/data_preparation.yaml",
+            fileName: "definitions/data_preparation.dp.yaml",
             dataPreparationYaml: dumpYaml(loadYaml(dataPreparationYaml))
           }
         ])
@@ -1219,7 +1333,7 @@ nodes:
 `;
 
       fs.writeFileSync(
-        path.join(projectDir, "definitions/data_preparation.yaml"),
+        path.join(projectDir, "definitions/data_preparation.dp.yaml"),
         dataPreparationYaml
       );
 
@@ -1308,7 +1422,7 @@ nodes:
                 name: "dest"
               }
             ],
-            fileName: "definitions/data_preparation.yaml",
+            fileName: "definitions/data_preparation.dp.yaml",
             dataPreparationYaml: dumpYaml(loadYaml(resolvedYaml))
           }
         ])
