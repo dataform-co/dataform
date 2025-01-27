@@ -11,6 +11,7 @@ ts_test_suite(
         "//tests/api/projects/never_finishes_compiling:files",
         "//tests/api/projects/never_finishes_compiling:node_modules",
     ],
+    tags = ["integration"],
     deps = [
         "//cli/api",
         "//cli/api/utils",
