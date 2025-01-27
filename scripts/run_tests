@@ -8,4 +8,4 @@ bazel build @npm//tslint/bin:tslint && bazel-bin/external/npm/tslint/bin/tslint.
 # Run all the tests
 bazel test ... \
   --test_tag_filters=-integration \
-  --build_tests_only \
+  --build_tests_only
