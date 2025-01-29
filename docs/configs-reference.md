@@ -240,11 +240,11 @@ Action config defines the contents of `actions.yaml` configuration files.
 
 
 
-| Value       | Description                                                                                                                                               |
-|-------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|
-| IGNORE      | New columns will be ignored. Throws an error if columns are removed. *Default value*                                                                      |
-| FAIL        | Throws an error if schema is changed.                                                                                                                     |
-| EXTEND      | New columns will be added to the target table. Throws an error if columns are removed.                                                                    |
+| Value | Description |
+| ----- | ----------- |
+| IGNORE | New columns will be ignored. Throws an error if columns are removed. *Default value* |
+| FAIL | Throws an error if schema is changed. |
+| EXTEND | New columns will be added to the target table. Throws an error if columns are removed. |
 | SYNCHRONIZE | New columns will be added to the target table. Removed columns will be deleted from the target table. Partitioned or clustered columns cannot be deleted. |
 
 
