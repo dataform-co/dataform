@@ -158,6 +158,7 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
     if (config.filename) {
       this.proto.fileName = config.filename;
     }
+    this.proto.onSchemaChange = this.mapOnSchemaChange(config.onSchemaChange)
 
     return this;
   }
@@ -464,6 +465,30 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
       unverifiedConfig,
       VerifyProtoErrorBehaviour.SHOW_DOCS_LINK
     );
+  }
+
+  private mapOnSchemaChange(onSchemaChange?: string|number) : dataform.OnSchemaChange {
+    if (onSchemaChange === undefined) {
+      return dataform.OnSchemaChange.IGNORE;
+    }
+
+    if (typeof onSchemaChange === "number") {
+      switch (onSchemaChange) {
+        case dataform.ActionConfig.OnSchemaChange.IGNORE: return dataform.OnSchemaChange.IGNORE;
+        case dataform.ActionConfig.OnSchemaChange.FAIL: return dataform.OnSchemaChange.FAIL;
+        case dataform.ActionConfig.OnSchemaChange.EXTEND: return dataform.OnSchemaChange.EXTEND;
+        case dataform.ActionConfig.OnSchemaChange.SYNCHRONIZE: return dataform.OnSchemaChange.SYNCHRONIZE;
+        default: throw new Error(`OnSchemaChange value "${onSchemaChange}" is not supported`);
+      }
+    }
+
+    switch (onSchemaChange.toString().toUpperCase()) {
+      case "IGNORE": return dataform.OnSchemaChange.IGNORE;
+      case "FAIL": return dataform.OnSchemaChange.FAIL;
+      case "EXTEND": return dataform.OnSchemaChange.EXTEND;
+      case "SYNCHRONIZE": return dataform.OnSchemaChange.SYNCHRONIZE;
+      default: throw new Error(`OnSchemaChange value "${onSchemaChange}" is not supported`);
+    }
   }
 }
 

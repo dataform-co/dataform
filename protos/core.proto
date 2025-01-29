@@ -112,6 +112,17 @@ enum TableType {
   reserved 4;
 }
 
+enum OnSchemaChange {
+  // Ignore any schema changes (default).
+  IGNORE = 0;
+  // Fail if any schema changes introduced in the query.
+  FAIL = 1;
+  // Alter target table to add new columns.
+  EXTEND = 2;
+  // Alter target table to add new columns and remove missing columns.
+  SYNCHRONIZE = 3;
+}
+
 message Table {
   // For legacy compatability reasons, both incremental tables and views are
   // configured in compiled graphs via the Table proto.
@@ -138,6 +149,7 @@ message Table {
   string where = 8 [deprecated = true];
   string incremental_query = 26;
   repeated string unique_key = 30;
+  OnSchemaChange on_schema_change = 37;
 
   // Pre/post operations.
   repeated string pre_ops = 13;

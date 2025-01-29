@@ -255,6 +255,17 @@ message ActionConfig {
     TableAssertionsConfig assertions = 17;
   }
 
+  enum OnSchemaChange {
+    // Ignore any schema changes (default).
+    IGNORE = 0;
+    // Fail if any schema changes introduced in the query.
+    FAIL = 1;
+    // Alter target table to add new columns.
+    EXTEND = 2;
+    // Alter target table to add new columns and remove missing columns.
+    SYNCHRONIZE = 3;
+  }
+
   message IncrementalTableConfig {
     // The name of the incremental table.
     string name = 1;
@@ -346,6 +357,9 @@ message ActionConfig {
     // the  action depends on data from a source which has not been declared as
     // a dependency.
     bool hermetic = 23;
+
+    // Defines the action behavior if the selected columns in query doesn't match columns in the target table.
+    OnSchemaChange on_schema_change = 24;
   }
 
   message AssertionConfig {

@@ -12,7 +12,6 @@ import {
   resolveActionsConfigFilename
 } from "df/core/utils";
 import { dataform } from "df/protos/ts";
-import {filename} from 'df/core/path';
 
 /**
  * @hidden

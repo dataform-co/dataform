@@ -13,6 +13,7 @@
     - [ActionConfig.IncrementalTableConfig.AdditionalOptionsEntry](#dataform-ActionConfig-IncrementalTableConfig-AdditionalOptionsEntry)
     - [ActionConfig.IncrementalTableConfig.LabelsEntry](#dataform-ActionConfig-IncrementalTableConfig-LabelsEntry)
     - [ActionConfig.NotebookConfig](#dataform-ActionConfig-NotebookConfig)
+    - [ActionConfig.OnSchemaChange](#dataform-ActionConfig-OnSchemaChange)
     - [ActionConfig.OperationConfig](#dataform-ActionConfig-OperationConfig)
     - [ActionConfig.TableAssertionsConfig](#dataform-ActionConfig-TableAssertionsConfig)
     - [ActionConfig.TableAssertionsConfig.UniqueKey](#dataform-ActionConfig-TableAssertionsConfig-UniqueKey)
@@ -148,31 +149,32 @@ Action config defines the contents of `actions.yaml` configuration files.
 
 
 
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| name | [string](#string) |  | The name of the incremental table. |
-| dataset | [string](#string) |  | The dataset (schema) of the incremental table. |
-| project | [string](#string) |  | The Google Cloud project (database) of the incremental table. |
-| dependencyTargets | [ActionConfig.Target](#dataform-ActionConfig-Target) | repeated | Targets of actions that this action is dependent on. |
-| filename | [string](#string) |  | Path to the source file that the contents of the action is loaded from. |
-| tags | [string](#string) | repeated | A list of user-defined tags with which the action should be labeled. |
-| disabled | [bool](#bool) |  | If set to true, this action will not be executed. However, the action can still be depended upon. Useful for temporarily turning off broken actions. |
-| preOperations | [string](#string) | repeated | Queries to run before `query`. This can be useful for granting permissions. |
-| postOperations | [string](#string) | repeated | Queries to run after `query`. |
-| protected | [bool](#bool) |  | If true, prevents the dataset from being rebuilt from scratch. |
-| uniqueKey | [string](#string) | repeated | If set, unique key represents a set of names of columns that will act as a the unique key. To enforce this, when updating the incremental table, Dataform merges rows with `uniqueKey` instead of appending them. |
-| description | [string](#string) |  | Description of the incremental table. |
-| columns | [ActionConfig.ColumnDescriptor](#dataform-ActionConfig-ColumnDescriptor) | repeated | Descriptions of columns within the table. |
-| partitionBy | [string](#string) |  | The key by which to partition the table. Typically the name of a timestamp or the date column. See https://cloud.google.com/dataform/docs/partitions-clusters. |
-| partitionExpirationDays | [int32](#int32) |  | The number of days for which BigQuery stores data in each partition. The setting applies to all partitions in a table, but is calculated independently for each partition based on the partition time. |
-| requirePartitionFilter | [bool](#bool) |  | Declares whether the partitioned table requires a WHERE clause predicate filter that filters the partitioning column. |
-| updatePartitionFilter | [string](#string) |  | SQL-based filter for when incremental updates are applied. |
-| clusterBy | [string](#string) | repeated | The keys by which to cluster partitions by. See https://cloud.google.com/dataform/docs/partitions-clusters. |
-| labels | [ActionConfig.IncrementalTableConfig.LabelsEntry](#dataform-ActionConfig-IncrementalTableConfig-LabelsEntry) | repeated | Key-value pairs for BigQuery labels. |
-| additionalOptions | [ActionConfig.IncrementalTableConfig.AdditionalOptionsEntry](#dataform-ActionConfig-IncrementalTableConfig-AdditionalOptionsEntry) | repeated | Key-value pairs of additional options to pass to the BigQuery API. Some options, for example, partitionExpirationDays, have dedicated type/validity checked fields. For such options, use the dedicated fields. |
-| dependOnDependencyAssertions | [bool](#bool) |  | When set to true, assertions dependent upon any dependency will be add as dedpendency to this action |
-| assertions | [ActionConfig.TableAssertionsConfig](#dataform-ActionConfig-TableAssertionsConfig) |  | Assertions to be run on the dataset. If configured, relevant assertions will automatically be created and run as a dependency of this dataset. |
-| hermetic | [bool](#bool) |  | If true, this indicates that the action only depends on data from explicitly-declared dependencies. Otherwise if false, it indicates that the action depends on data from a source which has not been declared as a dependency. |
+| Field                        | Type                                                                                                                               | Label | Description                                                                                                                                                                                                                     |
+|------------------------------|------------------------------------------------------------------------------------------------------------------------------------| ----- |---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| name                         | [string](#string)                                                                                                                  |  | The name of the incremental table.                                                                                                                                                                                              |
+| dataset                      | [string](#string)                                                                                                                  |  | The dataset (schema) of the incremental table.                                                                                                                                                                                  |
+| project                      | [string](#string)                                                                                                                  |  | The Google Cloud project (database) of the incremental table.                                                                                                                                                                   |
+| dependencyTargets            | [ActionConfig.Target](#dataform-ActionConfig-Target)                                                                               | repeated | Targets of actions that this action is dependent on.                                                                                                                                                                            |
+| filename                     | [string](#string)                                                                                                                  |  | Path to the source file that the contents of the action is loaded from.                                                                                                                                                         |
+| tags                         | [string](#string)                                                                                                                  | repeated | A list of user-defined tags with which the action should be labeled.                                                                                                                                                            |
+| disabled                     | [bool](#bool)                                                                                                                      |  | If set to true, this action will not be executed. However, the action can still be depended upon. Useful for temporarily turning off broken actions.                                                                            |
+| preOperations                | [string](#string)                                                                                                                  | repeated | Queries to run before `query`. This can be useful for granting permissions.                                                                                                                                                     |
+| postOperations               | [string](#string)                                                                                                                  | repeated | Queries to run after `query`.                                                                                                                                                                                                   |
+| protected                    | [bool](#bool)                                                                                                                      |  | If true, prevents the dataset from being rebuilt from scratch.                                                                                                                                                                  |
+| uniqueKey                    | [string](#string)                                                                                                                  | repeated | If set, unique key represents a set of names of columns that will act as a the unique key. To enforce this, when updating the incremental table, Dataform merges rows with `uniqueKey` instead of appending them.               |
+| description                  | [string](#string)                                                                                                                  |  | Description of the incremental table.                                                                                                                                                                                           |
+| columns                      | [ActionConfig.ColumnDescriptor](#dataform-ActionConfig-ColumnDescriptor)                                                           | repeated | Descriptions of columns within the table.                                                                                                                                                                                       |
+| partitionBy                  | [string](#string)                                                                                                                  |  | The key by which to partition the table. Typically the name of a timestamp or the date column. See https://cloud.google.com/dataform/docs/partitions-clusters.                                                                  |
+| partitionExpirationDays      | [int32](#int32)                                                                                                                    |  | The number of days for which BigQuery stores data in each partition. The setting applies to all partitions in a table, but is calculated independently for each partition based on the partition time.                          |
+| requirePartitionFilter       | [bool](#bool)                                                                                                                      |  | Declares whether the partitioned table requires a WHERE clause predicate filter that filters the partitioning column.                                                                                                           |
+| updatePartitionFilter        | [string](#string)                                                                                                                  |  | SQL-based filter for when incremental updates are applied.                                                                                                                                                                      |
+| clusterBy                    | [string](#string)                                                                                                                  | repeated | The keys by which to cluster partitions by. See https://cloud.google.com/dataform/docs/partitions-clusters.                                                                                                                     |
+| labels                       | [ActionConfig.IncrementalTableConfig.LabelsEntry](#dataform-ActionConfig-IncrementalTableConfig-LabelsEntry)                       | repeated | Key-value pairs for BigQuery labels.                                                                                                                                                                                            |
+| additionalOptions            | [ActionConfig.IncrementalTableConfig.AdditionalOptionsEntry](#dataform-ActionConfig-IncrementalTableConfig-AdditionalOptionsEntry) | repeated | Key-value pairs of additional options to pass to the BigQuery API. Some options, for example, partitionExpirationDays, have dedicated type/validity checked fields. For such options, use the dedicated fields.                 |
+| dependOnDependencyAssertions | [bool](#bool)                                                                                                                      |  | When set to true, assertions dependent upon any dependency will be add as dedpendency to this action                                                                                                                            |
+| assertions                   | [ActionConfig.TableAssertionsConfig](#dataform-ActionConfig-TableAssertionsConfig)                                                 |  | Assertions to be run on the dataset. If configured, relevant assertions will automatically be created and run as a dependency of this dataset.                                                                                  |
+| hermetic                     | [bool](#bool)                                                                                                                      |  | If true, this indicates that the action only depends on data from explicitly-declared dependencies. Otherwise if false, it indicates that the action depends on data from a source which has not been declared as a dependency. |
+| onSchemaChange               | [ActionConfg.OnSchemaChange](#dataform-ActionConfig-OnSchemaChange)                                                                |  | Defines the behavior of the action if there are changes in the column list selected by the query. E.g. new columns are added or existing columns are removed.                                                                   |
 
 
 
@@ -210,7 +212,6 @@ Action config defines the contents of `actions.yaml` configuration files.
 
 
 
-
 <a name="dataform-ActionConfig-NotebookConfig"></a>
 
 ### ActionConfig.NotebookConfig
@@ -229,6 +230,22 @@ Action config defines the contents of `actions.yaml` configuration files.
 | description | [string](#string) |  | Description of the notebook. |
 | dependOnDependencyAssertions | [bool](#bool) |  | When set to true, assertions dependent upon any dependency will be add as dedpendency to this action |
 
+
+
+
+
+<a name="dataform-ActionConfig-OnSchemaChange"></a>
+
+### ActionConfig.OnSchemaChange
+
+
+
+| Value       | Description                                                                                                                                               |
+|-------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| IGNORE      | New columns will be ignored. Throws an error if columns are removed. *Default value*                                                                      |
+| FAIL        | Throws an error if schema is changed.                                                                                                                     |
+| EXTEND      | New columns will be added to the target table. Throws an error if columns are removed.                                                                    |
+| SYNCHRONIZE | New columns will be added to the target table. Removed columns will be deleted from the target table. Partitioned or clustered columns cannot be deleted. |
 
 
 
