@@ -1218,7 +1218,7 @@ config {
 FROM x
 -- Ensure y is positive
 $\{validate("y > 0")\}
-|> SELECT *
+$\{when(true, "|> SELECT *", "|> SELECT 1")\}
 `;
 
       fs.writeFileSync(
