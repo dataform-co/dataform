@@ -5,9 +5,6 @@ import { ActionBuilder } from "df/core/actions";
 import { ITableContext } from "df/core/actions/index";
 import {
   Contextable,
-  IActionConfig,
-  INamedConfig,
-  ITargetableConfig,
   Resolvable
 } from "df/core/common";
 import * as Path from "df/core/path";
@@ -24,24 +21,6 @@ import {
   validateQueryString
 } from "df/core/utils";
 import { dataform } from "df/protos/ts";
-
-// Brings the properties for the destination table
-export interface IDataPreparationConfig
-  extends IActionConfig,
-    INamedConfig,
-    ITargetableConfig {
-  // Error Table Settings
-  errorTable?: IErrorTableConfig;
-
-  load?: ILoadConfig;
-}
-
-// Includes project, dataset, table settings, as well as retention for the table
-export interface IErrorTableConfig extends ITargetableConfig {
-  name: string;
-  retentionDays?: number;
-}
-
 
 // Enum for Load configuration settings
 export const LoadType = ["replace", "append", "maximum", "unique", "automatic"] as const;
@@ -418,7 +397,7 @@ export interface IDataPreparationContext extends ITableContext {
 export class DataPreparationContext implements IDataPreparationContext {
   constructor(private dataPreparation: DataPreparation, private isIncremental = false) {}
 
-  public config(config: IDataPreparationConfig) {
+  public config(config: dataform.ActionConfig.DataPreparationConfig.ErrorTableConfig) {
     this.dataPreparation.config(config);
     return "";
   }
