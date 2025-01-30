@@ -13,6 +13,7 @@
     - [ActionConfig.IncrementalTableConfig.AdditionalOptionsEntry](#dataform-ActionConfig-IncrementalTableConfig-AdditionalOptionsEntry)
     - [ActionConfig.IncrementalTableConfig.LabelsEntry](#dataform-ActionConfig-IncrementalTableConfig-LabelsEntry)
     - [ActionConfig.NotebookConfig](#dataform-ActionConfig-NotebookConfig)
+    - [ActionConfig.OnSchemaChange](#dataform-ActionConfig-OnSchemaChange)
     - [ActionConfig.OperationConfig](#dataform-ActionConfig-OperationConfig)
     - [ActionConfig.TableAssertionsConfig](#dataform-ActionConfig-TableAssertionsConfig)
     - [ActionConfig.TableAssertionsConfig.UniqueKey](#dataform-ActionConfig-TableAssertionsConfig-UniqueKey)
@@ -173,6 +174,7 @@ Action config defines the contents of `actions.yaml` configuration files.
 | dependOnDependencyAssertions | [bool](#bool) |  | When set to true, assertions dependent upon any dependency will be add as dedpendency to this action |
 | assertions | [ActionConfig.TableAssertionsConfig](#dataform-ActionConfig-TableAssertionsConfig) |  | Assertions to be run on the dataset. If configured, relevant assertions will automatically be created and run as a dependency of this dataset. |
 | hermetic | [bool](#bool) |  | If true, this indicates that the action only depends on data from explicitly-declared dependencies. Otherwise if false, it indicates that the action depends on data from a source which has not been declared as a dependency. |
+| onSchemaChange | [ActionConfg.OnSchemaChange](#dataform-ActionConfig-OnSchemaChange) |  | Defines the action behavior if the selected columns in query doesn't match columns in the target table. |
 
 
 
@@ -210,7 +212,6 @@ Action config defines the contents of `actions.yaml` configuration files.
 
 
 
-
 <a name="dataform-ActionConfig-NotebookConfig"></a>
 
 ### ActionConfig.NotebookConfig
@@ -231,6 +232,20 @@ Action config defines the contents of `actions.yaml` configuration files.
 
 
 
+
+
+<a name="dataform-ActionConfig-OnSchemaChange"></a>
+
+### ActionConfig.OnSchemaChange
+
+
+
+| Value | Description |
+| ----- | ----------- |
+| IGNORE | New columns are ignored. Fails if columns are deleted or renamed. *Default value*. |
+| FAIL | Fails if the query would result in a new column(s) being added, deleted, or renamed. |
+| EXTEND | New columns will be added to the target table. Fails if columns are deleted or renamed. |
+| SYNCHRONIZE | Does not block any new column(s) from being added, deleted or renamed. Partitioned or clustered columns cannot be deleted or renamed. |
 
 
 

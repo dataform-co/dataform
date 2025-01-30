@@ -1629,6 +1629,7 @@ actions:
             },
             fileName: "definitions/action.sql",
             hermeticity: "NON_HERMETIC",
+            onSchemaChange: "IGNORE",
             query: "SELECT 1",
             incrementalQuery: "SELECT 1",
             type: "incremental",
@@ -2397,6 +2398,7 @@ SELECT 1`
   dependOnDependencyAssertions: true,
   ${exampleBuiltInAssertions.inputAssertionBlock}
   hermetic: true,
+  onSchemaChange: "SYNCHRONIZE",
 }
 `;
     [
@@ -2443,6 +2445,7 @@ SELECT 1`
             disabled: true,
             protected: false,
             hermeticity: "HERMETIC",
+            onSchemaChange: "SYNCHRONIZE",
             bigquery: {
               additionalOptions: {
                 option1Key: "option1",
@@ -3035,6 +3038,7 @@ actions:
     dependOnDependencyAssertions: true
 ${exampleBuiltInAssertions.inputActionConfigBlock}
     hermetic: true
+    onSchemaChange: FAIL
     `
       );
 
@@ -3057,6 +3061,7 @@ ${exampleBuiltInAssertions.inputActionConfigBlock}
           disabled: true,
           protected: true,
           hermeticity: "HERMETIC",
+          onSchemaChange: "FAIL",
           bigquery: {
             additionalOptions: {
               option1Key: "option1",
@@ -3820,7 +3825,8 @@ publish("name", {
                           incrementalPostOps: ["post_op"],
                           incrementalPreOps: ["pre_op"],
                           incrementalQuery: "SELECT 1",
-                          protected: true
+                          protected: true,
+                          onSchemaChange: "IGNORE",
                         }
                       : {})
                   }
@@ -3884,7 +3890,8 @@ publish("name", {
               ...(tableType === "incremental"
                 ? {
                     incrementalQuery: "SELECT * FROM `defaultProject.defaultDataset.operation`",
-                    protected: true
+                    protected: true,
+                    onSchemaChange: "IGNORE",
                   }
                 : {})
             }
