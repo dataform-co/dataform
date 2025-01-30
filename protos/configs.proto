@@ -258,11 +258,12 @@ message ActionConfig {
   enum OnSchemaChange {
     // Ignore any schema changes (default).
     IGNORE = 0;
-    // Fail if any schema changes introduced in the query.
+    // Fails if the query would result in a new column(s) being added, deleted,
+    // or renamed.
     FAIL = 1;
-    // Alter target table to add new columns.
+    // Does not block any new column(s) from being added.
     EXTEND = 2;
-    // Alter target table to add new columns and remove missing columns.
+    // Does not block any new column(s) from being added, deleted or renamed.
     SYNCHRONIZE = 3;
   }
 
@@ -358,7 +359,8 @@ message ActionConfig {
     // a dependency.
     bool hermetic = 23;
 
-    // Defines the action behavior if the selected columns in query doesn't match columns in the target table.
+    // Defines the action behavior if the selected columns in the query
+    // don't the match columns in the target table.
     OnSchemaChange on_schema_change = 24;
   }
 

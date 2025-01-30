@@ -467,8 +467,12 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
     );
   }
 
+  // The type of onSchemaChange depends on the source file:
+  // - for sqlx it will have type "string"
+  // - for action.yaml it will be converted to enum which is represented
+  // in TypeScript as a "number".
   private mapOnSchemaChange(onSchemaChange?: string|number) : dataform.OnSchemaChange {
-    if (onSchemaChange === undefined) {
+    if (!onSchemaChange) {
       return dataform.OnSchemaChange.IGNORE;
     }
 

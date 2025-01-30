@@ -2398,6 +2398,7 @@ SELECT 1`
   dependOnDependencyAssertions: true,
   ${exampleBuiltInAssertions.inputAssertionBlock}
   hermetic: true,
+  onSchemaChange: "SYNCHRONIZE",
 }
 `;
     [
@@ -2444,7 +2445,7 @@ SELECT 1`
             disabled: true,
             protected: false,
             hermeticity: "HERMETIC",
-            onSchemaChange: "IGNORE",
+            onSchemaChange: "SYNCHRONIZE",
             bigquery: {
               additionalOptions: {
                 option1Key: "option1",
@@ -2611,79 +2612,6 @@ SELECT 2`
         });
       });
     });
-
-    suite("incremental table on schema change", () => {
-      ["ignore", "FAIL", "extend", "SYNCHRONIZE"].forEach(onSchemaChange => {
-        test(`with allowed value in any case - onSchemaChange = '${onSchemaChange}'`, () => {
-          const projectDir = tmpDirFixture.createNewTmpDir();
-          fs.writeFileSync(
-              path.join(projectDir, "workflow_settings.yaml"),
-              VALID_WORKFLOW_SETTINGS_YAML
-          );
-          fs.mkdirSync(path.join(projectDir, "definitions"));
-          fs.writeFileSync(
-              path.join(projectDir, "definitions/filename.sqlx"),
-              `
-  config {
-    type: "incremental",
-    onSchemaChange: "${onSchemaChange}"
-  }
-  SELECT 1`
-          );
-
-          const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
-
-          expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-          expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals([
-            {
-              target: {
-                database: "defaultProject",
-                schema: "defaultDataset",
-                name: "filename"
-              },
-              canonicalTarget: {
-                database: "defaultProject",
-                schema: "defaultDataset",
-                name: "filename"
-              },
-              type: "incremental",
-              disabled: false,
-              enumType: "INCREMENTAL",
-              fileName: "definitions/filename.sqlx",
-              hermeticity: "NON_HERMETIC",
-              incrementalQuery: "\n  \n  SELECT 1",
-              query: "\n  \n  SELECT 1",
-              protected: true,
-              onSchemaChange: `${onSchemaChange.toUpperCase()}`,
-            }
-          ]);
-        })
-      })
-
-      test(`with not allowed value throws an error`, () => {
-        const projectDir = tmpDirFixture.createNewTmpDir();
-        fs.writeFileSync(
-            path.join(projectDir, "workflow_settings.yaml"),
-            VALID_WORKFLOW_SETTINGS_YAML
-        );
-        fs.mkdirSync(path.join(projectDir, "definitions"));
-        fs.writeFileSync(
-            path.join(projectDir, "definitions/filename.sqlx"),
-            `
-  config {
-    type: "incremental",
-    onSchemaChange: "NOT_SUPPORTED_VALUE"
-  }
-  SELECT 1`
-        );
-
-        const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
-
-        expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).equals(1)
-        expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).equals("OnSchemaChange value \"NOT_SUPPORTED_VALUE\" is not supported")
-        expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals([]);
-      })
-    })
   });
 
   suite("action config options", () => {
@@ -3110,6 +3038,7 @@ actions:
     dependOnDependencyAssertions: true
 ${exampleBuiltInAssertions.inputActionConfigBlock}
     hermetic: true
+    onSchemaChange: FAIL
     `
       );
 
@@ -3132,7 +3061,7 @@ ${exampleBuiltInAssertions.inputActionConfigBlock}
           disabled: true,
           protected: true,
           hermeticity: "HERMETIC",
-          onSchemaChange: "IGNORE",
+          onSchemaChange: "FAIL",
           bigquery: {
             additionalOptions: {
               option1Key: "option1",
@@ -3243,110 +3172,6 @@ actions:
           }
         ])
       );
-    });
-
-    suite("incremental table on schema change", () => {
-      ["IGNORE", "FAIL", "EXTEND", "SYNCHRONIZE"].forEach(onSchemaChange => {
-        test(`with allowed value - onSchemaChange = '${onSchemaChange}'`, () => {
-          const projectDir = tmpDirFixture.createNewTmpDir();
-          fs.writeFileSync(
-              path.join(projectDir, "workflow_settings.yaml"),
-              VALID_WORKFLOW_SETTINGS_YAML
-          );
-          fs.mkdirSync(path.join(projectDir, "definitions"));
-          fs.writeFileSync(path.join(projectDir, "definitions/operation.sqlx"), "SELECT 1");
-          fs.writeFileSync(path.join(projectDir, "definitions/filename.sql"), "SELECT 1");
-          fs.writeFileSync(
-              path.join(projectDir, "definitions/actions.yaml"),
-              `
-actions:
-- incrementalTable:
-    name: name
-    dataset: dataset
-    project: project
-    filename: filename.sql
-    onSchemaChange: ${onSchemaChange}
-    `
-          );
-
-          const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
-
-          expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-          expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals([
-            {
-              target: {
-                database: "project",
-                schema: "dataset",
-                name: "name"
-              },
-              canonicalTarget: {
-                database: "project",
-                schema: "dataset",
-                name: "name"
-              },
-              type: "incremental",
-              disabled: false,
-              protected: false,
-              hermeticity: "NON_HERMETIC",
-              onSchemaChange: `${onSchemaChange.toUpperCase()}`,
-              enumType: "INCREMENTAL",
-              fileName: "definitions/filename.sql",
-              query: "SELECT 1",
-              incrementalQuery: "SELECT 1",
-            }
-          ]);
-        })
-
-        test(`with not allowed value ignores it'`, () => {
-          const projectDir = tmpDirFixture.createNewTmpDir();
-          fs.writeFileSync(
-              path.join(projectDir, "workflow_settings.yaml"),
-              VALID_WORKFLOW_SETTINGS_YAML
-          );
-          fs.mkdirSync(path.join(projectDir, "definitions"));
-          fs.writeFileSync(path.join(projectDir, "definitions/operation.sqlx"), "SELECT 1");
-          fs.writeFileSync(path.join(projectDir, "definitions/filename.sql"), "SELECT 1");
-          fs.writeFileSync(
-              path.join(projectDir, "definitions/actions.yaml"),
-              `
-actions:
-- incrementalTable:
-    name: name
-    dataset: dataset
-    project: project
-    filename: filename.sql
-    onSchemaChange: NOT_SUPPORTED_VALUE
-    `
-          );
-
-          const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
-
-          expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-          expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals([
-            {
-              target: {
-                database: "project",
-                schema: "dataset",
-                name: "name"
-              },
-              canonicalTarget: {
-                database: "project",
-                schema: "dataset",
-                name: "name"
-              },
-              type: "incremental",
-              disabled: false,
-              protected: false,
-              hermeticity: "NON_HERMETIC",
-              onSchemaChange: "IGNORE",
-              enumType: "INCREMENTAL",
-              fileName: "definitions/filename.sql",
-              query: "SELECT 1",
-              incrementalQuery: "SELECT 1",
-            }
-          ]);
-        })
-      })
     });
   });
 

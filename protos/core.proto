@@ -115,11 +115,12 @@ enum TableType {
 enum OnSchemaChange {
   // Ignore any schema changes (default).
   IGNORE = 0;
-  // Fail if any schema changes introduced in the query.
+  // Fails if the query would result in a new column(s) being added, deleted,
+  // or renamed.
   FAIL = 1;
-  // Alter target table to add new columns.
+  // Does not block any new column(s) from being added.
   EXTEND = 2;
-  // Alter target table to add new columns and remove missing columns.
+  // Does not block any new column(s) from being added, deleted or renamed.
   SYNCHRONIZE = 3;
 }
 
