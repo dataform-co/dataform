@@ -381,7 +381,11 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
       );
     }
 
-    this.proto.fileName = config.filename
+    this.proto.tags = config.tags;
+    this.proto.fileName = config.filename;
+    if (config.disabled) {
+      this.proto.disabled = config.disabled;
+    }
     this.query(nativeRequire(config.filename).query);
   }
 }

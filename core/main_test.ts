@@ -1299,6 +1299,92 @@ FROM x
 `;
 
       fs.writeFileSync(
+          path.join(projectDir, "definitions/data_preparation.sqlx"),
+          dataPreparationSqlx
+      );
+
+      const coreExecutionRequest =  dataform.CoreExecutionRequest.create({
+        compile: {
+          compileConfig: {
+            projectDir,
+            filePaths: ["definitions/data_preparation.sqlx"],
+            projectConfigOverride: {
+              defaultDatabase: "projectOverride",
+              defaultSchema: "datasetOverride",
+            }
+          }
+        }
+      });
+
+      const result = runMainInVm(coreExecutionRequest);
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.dataPreparations)).deep.equals(
+          asPlainObject([
+            {
+              target: {
+                database: "projectOverride",
+                schema: "datasetOverride",
+                name: "dest"
+              },
+              canonicalTarget: {
+                database: "projectOverride",
+                schema: "datasetOverride",
+                name: "dest"
+              },
+              targets: [
+                {
+                  database: "projectOverride",
+                  schema: "datasetOverride",
+                  name: "dest"
+                },
+                {
+                  database: "projectOverride",
+                  schema: "datasetOverride",
+                  name: "errorTable"
+                }
+              ],
+              canonicalTargets: [
+                {
+                  database: "projectOverride",
+                  schema: "datasetOverride",
+                  name: "dest"
+                },
+                {
+                  database: "projectOverride",
+                  schema: "datasetOverride",
+                  name: "errorTable"
+                }
+              ],
+              fileName: "definitions/data_preparation.sqlx",
+              query: "FROM x\n|> SELECT *",
+              errorTable: {
+                database: "projectOverride",
+                schema: "datasetOverride",
+                name: "errorTable"
+              },
+              errorTableRetentionDays: 0,
+            }
+          ])
+      );
+    });
+
+    test(`data preparations can be loaded via sqlx file with project defaults`, () => {
+      const projectDir = createSimpleDataPreparationProject(VALID_WORKFLOW_SETTINGS_YAML, false);
+      const dataPreparationSqlx = `
+config {
+  type: "dataPreparation",
+  name: "dest",
+  errorTable: {
+    name: "errorTable",
+  }
+}
+
+FROM x
+|> SELECT *
+`;
+
+      fs.writeFileSync(
         path.join(projectDir, "definitions/data_preparation.sqlx"),
         dataPreparationSqlx
       );
