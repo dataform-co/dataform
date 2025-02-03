@@ -354,6 +354,9 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
       targets.push(errorTableTarget);
     }
 
+    // Add Load configuration
+    this.proto.load = this.mapLoadMode(config.load?.mode, config.load?.columnName);
+
     // Resolve targets
     this.proto.targets  = targets.map(target =>
         this.applySessionToTarget(target, session.projectConfig, config.filename, true)
@@ -388,6 +391,41 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     }
     this.query(nativeRequire(config.filename).query);
   }
+
+  // The type of onSchemaChange depends on the source file:
+  // - for sqlx it will have type "string"
+  // - for action.yaml it will be converted to enum which is represented
+  // in TypeScript as a "number".
+  private mapLoadMode(loadMode?: string|number, columnName?: string): dataform.LoadConfiguration {
+    if (!loadMode) {
+      return dataform.LoadConfiguration.create({"replace": {}});
+    }
+
+    if (typeof loadMode === "number") {
+      switch (loadMode) {
+        case dataform.ActionConfig.LoadMode.REPLACE: return dataform.LoadConfiguration.create({"replace": {}});
+        case dataform.ActionConfig.LoadMode.APPEND: return dataform.LoadConfiguration.create({"append": {}});
+        case dataform.ActionConfig.LoadMode.MAXIMUM: return dataform.LoadConfiguration.create({"maximum": {"columnName": this.validateLoadModeColumnName(columnName)}});
+        case dataform.ActionConfig.LoadMode.UNIQUE: return dataform.LoadConfiguration.create({"unique": {"columnName": this.validateLoadModeColumnName(columnName)}});
+        default: throw new Error(`LoadMode value "${loadMode}" is not supported`);
+      }
+    }
+
+    switch (loadMode.toString().toUpperCase()) {
+      case "REPLACE": return dataform.LoadConfiguration.create({"replace": {}});
+      case "APPEND": return dataform.LoadConfiguration.create({"append": {}});
+      case "MAXIMUM": return dataform.LoadConfiguration.create({"maximum": {"columnName": this.validateLoadModeColumnName(columnName)}});
+      case "UNIQUE": return dataform.LoadConfiguration.create({"unique": {"columnName": this.validateLoadModeColumnName(columnName)}});
+      default: throw new Error(`LoadMode value "${loadMode}" is not supported`);
+    }
+  }
+
+  private validateLoadModeColumnName(columnName?: string) : string {
+    if (!columnName || columnName === "") {
+      throw new Error(`columnName is required for MAXIMUM and UNIQUE load modes.`);
+    }
+    return columnName;
+  }
 }
 
 export interface IDataPreparationContext extends ITableContext {
@@ -401,7 +439,7 @@ export interface IDataPreparationContext extends ITableContext {
 export class DataPreparationContext implements IDataPreparationContext {
   constructor(private dataPreparation: DataPreparation, private isIncremental = false) {}
 
-  public config(config: dataform.ActionConfig.DataPreparationConfig.ErrorTableConfig) {
+  public config(config: dataform.ActionConfig.DataPreparationConfig) {
     this.dataPreparation.config(config);
     return "";
   }

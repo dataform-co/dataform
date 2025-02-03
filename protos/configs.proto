@@ -523,6 +523,8 @@ message ActionConfig {
 
     ErrorTableConfig error_table = 11;
 
+    LoadConfig load = 12;
+
     message ErrorTableConfig {
       // The name of the error table.
       string name = 1;
@@ -546,6 +548,23 @@ message ActionConfig {
     DeclarationConfig declaration = 6;
     NotebookConfig notebook = 7;
     DataPreparationConfig data_preparation = 8;
+  }
+
+  message LoadConfig {
+    LoadMode mode = 1;
+    // Required when mode is MAXIMUM or UNIQUE
+    string column_name = 2;
+  }
+
+  enum LoadMode {
+    // Replace existing table (default).
+    REPLACE = 0;
+    // Insert into destination table.
+    APPEND = 1;
+    // Insert only records where the specified column value exceeds the existing maximum value in the destination table.
+    MAXIMUM = 2;
+    // Insert only records where the specified column value is not already present in the destination column values.
+    UNIQUE = 3;
   }
 }
 
