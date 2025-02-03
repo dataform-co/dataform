@@ -4,7 +4,7 @@ import { encode64, verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "d
 import { StringifiedMap, StringifiedSet } from "df/common/strings/stringifier";
 import { Action, ITableContext } from "df/core/actions";
 import { AContextable, Assertion, AssertionContext } from "df/core/actions/assertion";
-import { DataPreparation } from "df/core/actions/data_preparation";
+import { DataPreparation, DataPreparationContext, IDataPreparationContext } from "df/core/actions/data_preparation";
 import { Declaration } from "df/core/actions/declaration";
 import { ILegacyIncrementalTableConfig, IncrementalTable } from "df/core/actions/incremental_table";
 import { Notebook } from "df/core/actions/notebook";
@@ -93,7 +93,7 @@ export class Session {
     sqlxConfig: any;
     sqlStatementCount: number;
     sqlContextable: (
-      ctx: TableContext | AssertionContext | OperationContext | ICommonContext
+      ctx: TableContext | AssertionContext | OperationContext | DataPreparationContext | IDataPreparationContext | ICommonContext
     ) => string[];
     incrementalWhereContextable: (ctx: ITableContext) => string;
     preOperationsContextable: (ctx: ITableContext) => string[];
@@ -187,6 +187,11 @@ export class Session {
         this.actions.push(
           new Assertion(this, sqlxConfig).query(ctx => actionOptions.sqlContextable(ctx)[0])
         );
+        break;
+      case "dataPreparation":
+        sqlxConfig.filename = utils.getCallerFile(this.rootDir);
+        const dataPreparation = new DataPreparation(this, sqlxConfig).query(ctx => actionOptions.sqlContextable(ctx)[0]);
+        this.actions.push(dataPreparation);
         break;
       case "operations":
         sqlxConfig.filename = utils.getCallerFile(this.rootDir);

@@ -11,7 +11,8 @@ const CONTEXT_FUNCTIONS = [
   "when",
   "incremental",
   "schema",
-  "database"
+  "database",
+  "validate"
 ]
   .map(name => `const ${name} = ctx.${name} ? ctx.${name}.bind(ctx) : undefined;`)
   .join("\n");
