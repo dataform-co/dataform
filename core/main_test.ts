@@ -4514,13 +4514,34 @@ publish("name", {
       fs.writeFileSync(
         path.join(projectDir, "definitions/publish.js"),
         `
-publish("name").type("incremental")`
+publish("name", {schema: "schemaOverride"}).type("incremental")`
       );
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
       expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-      expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals(asPlainObject([]));
+      expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals(
+        asPlainObject([
+          {
+            canonicalTarget: {
+              database: "defaultProject",
+              name: "name",
+              schema: "schemaOverride"
+            },
+            disabled: false,
+            enumType: "INCREMENTAL",
+            hermeticity: "NON_HERMETIC",
+            onSchemaChange: "IGNORE",
+            protected: false,
+            target: {
+              database: "defaultProject_suffix",
+              name: "name",
+              schema: "schemaOverride"
+            },
+            type: "incremental"
+          }
+        ])
+      );
     });
   });
 });

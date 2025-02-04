@@ -178,16 +178,26 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
    * functions.
    */
   public type(type: TableType) {
-    if (type === "table") {
-      return new Table(this.session, this.unverifiedConfig, this.configPath);
+    let newAction: View | Table;
+    switch (type) {
+      case "table":
+        newAction = new Table(this.session, this.unverifiedConfig, this.configPath);
+        break;
+      case "incremental":
+        return this;
+      case "view":
+        newAction = new View(this.session, this.unverifiedConfig, this.configPath);
+        break;
+      default:
+        new Error(`Unexpected table type: ${type}`);
     }
-    if (type === "incremental") {
-      return new IncrementalTable(this.session, this.unverifiedConfig, this.configPath);
+    const existingAction = this.session.actions.indexOf(this);
+    if (existingAction == -1) {
+      throw Error(
+        "Expected pre-existing action, but none found. Please report this to the Dataform team."
+      );
     }
-    if (type === "view") {
-      return new View(this.session, this.unverifiedConfig, this.configPath);
-    }
-    throw new Error(`Unexpected table type: ${type}`);
+    this.session.actions[existingAction] = newAction;
   }
 
   public query(query: Contextable<ITableContext, string>) {

@@ -288,12 +288,12 @@ export class Session {
     let newTable: Table | IncrementalTable | View = new View(this, { type: "view", name });
     if (!!queryOrConfig) {
       if (typeof queryOrConfig === "object") {
-        if (queryOrConfig?.type === "table" || queryOrConfig.type === undefined) {
-          newTable = new Table(this, { type: "table", name, ...queryOrConfig });
+        if (queryOrConfig?.type === "view" || queryOrConfig.type === undefined) {
+          newTable = new View(this, { type: "view", name, ...queryOrConfig });
         } else if (queryOrConfig?.type === "incremental") {
           newTable = new IncrementalTable(this, { type: "incremental", name, ...queryOrConfig });
-        } else if (queryOrConfig?.type === "view") {
-          newTable = new View(this, { type: "view", name, ...queryOrConfig });
+        } else if (queryOrConfig?.type === "table") {
+          newTable = new Table(this, { type: "table", name, ...queryOrConfig });
         } else {
           throw Error(`Unrecognized table type: ${queryOrConfig.type}`);
         }
