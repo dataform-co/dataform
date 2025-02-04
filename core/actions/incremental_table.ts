@@ -3,7 +3,8 @@ import {
   ActionBuilder,
   ILegacyTableBigqueryConfig,
   ITableContext,
-  LegacyConfigConverter
+  LegacyConfigConverter,
+  TableType
 } from "df/core/actions";
 import { Assertion } from "df/core/actions/assertion";
 import { ColumnDescriptors } from "df/core/column_descriptors";
@@ -56,6 +57,9 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
     tags: []
   });
 
+  private unverifiedConfig: any;
+  private configPath: string | undefined;
+
   // Hold a reference to the Session instance.
   public session: Session;
 
@@ -74,6 +78,8 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
   constructor(session?: Session, unverifiedConfig?: any, configPath?: string) {
     super(session);
     this.session = session;
+    this.unverifiedConfig = unverifiedConfig;
+    this.configPath = configPath;
 
     if (!unverifiedConfig) {
       return;
@@ -158,9 +164,24 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
     if (config.filename) {
       this.proto.fileName = config.filename;
     }
-    this.proto.onSchemaChange = this.mapOnSchemaChange(config.onSchemaChange)
+    this.proto.onSchemaChange = this.mapOnSchemaChange(config.onSchemaChange);
 
     return this;
+  }
+
+  /**
+   * @hidden
+   * @deprecated
+   * Deprecated in favor of action type can being set in the configs passed to action constructor
+   * functions.
+   */
+  public type(type: TableType) {
+    LegacyConfigConverter.resetTableType(
+      type,
+      this.session,
+      this.unverifiedConfig,
+      this.configPath
+    );
   }
 
   public query(query: Contextable<ITableContext, string>) {
@@ -471,27 +492,37 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
   // - for sqlx it will have type "string"
   // - for action.yaml it will be converted to enum which is represented
   // in TypeScript as a "number".
-  private mapOnSchemaChange(onSchemaChange?: string|number) : dataform.OnSchemaChange {
+  private mapOnSchemaChange(onSchemaChange?: string | number): dataform.OnSchemaChange {
     if (!onSchemaChange) {
       return dataform.OnSchemaChange.IGNORE;
     }
 
     if (typeof onSchemaChange === "number") {
       switch (onSchemaChange) {
-        case dataform.ActionConfig.OnSchemaChange.IGNORE: return dataform.OnSchemaChange.IGNORE;
-        case dataform.ActionConfig.OnSchemaChange.FAIL: return dataform.OnSchemaChange.FAIL;
-        case dataform.ActionConfig.OnSchemaChange.EXTEND: return dataform.OnSchemaChange.EXTEND;
-        case dataform.ActionConfig.OnSchemaChange.SYNCHRONIZE: return dataform.OnSchemaChange.SYNCHRONIZE;
-        default: throw new Error(`OnSchemaChange value "${onSchemaChange}" is not supported`);
+        case dataform.ActionConfig.OnSchemaChange.IGNORE:
+          return dataform.OnSchemaChange.IGNORE;
+        case dataform.ActionConfig.OnSchemaChange.FAIL:
+          return dataform.OnSchemaChange.FAIL;
+        case dataform.ActionConfig.OnSchemaChange.EXTEND:
+          return dataform.OnSchemaChange.EXTEND;
+        case dataform.ActionConfig.OnSchemaChange.SYNCHRONIZE:
+          return dataform.OnSchemaChange.SYNCHRONIZE;
+        default:
+          throw new Error(`OnSchemaChange value "${onSchemaChange}" is not supported`);
       }
     }
 
     switch (onSchemaChange.toString().toUpperCase()) {
-      case "IGNORE": return dataform.OnSchemaChange.IGNORE;
-      case "FAIL": return dataform.OnSchemaChange.FAIL;
-      case "EXTEND": return dataform.OnSchemaChange.EXTEND;
-      case "SYNCHRONIZE": return dataform.OnSchemaChange.SYNCHRONIZE;
-      default: throw new Error(`OnSchemaChange value "${onSchemaChange}" is not supported`);
+      case "IGNORE":
+        return dataform.OnSchemaChange.IGNORE;
+      case "FAIL":
+        return dataform.OnSchemaChange.FAIL;
+      case "EXTEND":
+        return dataform.OnSchemaChange.EXTEND;
+      case "SYNCHRONIZE":
+        return dataform.OnSchemaChange.SYNCHRONIZE;
+      default:
+        throw new Error(`OnSchemaChange value "${onSchemaChange}" is not supported`);
     }
   }
 }

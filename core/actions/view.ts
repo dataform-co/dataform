@@ -1,5 +1,5 @@
 import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
-import { ActionBuilder, ITableContext, LegacyConfigConverter } from "df/core/actions";
+import { ActionBuilder, ITableContext, LegacyConfigConverter, TableType } from "df/core/actions";
 import { Assertion } from "df/core/actions/assertion";
 import { ColumnDescriptors } from "df/core/column_descriptors";
 import { Contextable, Resolvable } from "df/core/common";
@@ -59,6 +59,9 @@ export class View extends ActionBuilder<dataform.Table> {
     tags: []
   });
 
+  private unverifiedConfig: any;
+  private configPath: string | undefined;
+
   // Hold a reference to the Session instance.
   public session: Session;
 
@@ -77,6 +80,8 @@ export class View extends ActionBuilder<dataform.Table> {
   constructor(session?: Session, unverifiedConfig?: any, configPath?: string) {
     super(session);
     this.session = session;
+    this.unverifiedConfig = unverifiedConfig;
+    this.configPath = configPath;
 
     if (!unverifiedConfig) {
       return;
@@ -156,6 +161,21 @@ export class View extends ActionBuilder<dataform.Table> {
     }
 
     return this;
+  }
+
+  /**
+   * @hidden
+   * @deprecated
+   * Deprecated in favor of action type can being set in the configs passed to action constructor
+   * functions.
+   */
+  public type(type: TableType) {
+    LegacyConfigConverter.resetTableType(
+      type,
+      this.session,
+      this.unverifiedConfig,
+      this.configPath
+    );
   }
 
   public query(query: Contextable<ITableContext, string>) {

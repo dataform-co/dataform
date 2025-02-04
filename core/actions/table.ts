@@ -3,11 +3,10 @@ import {
   ActionBuilder,
   ILegacyTableBigqueryConfig,
   ITableContext,
-  LegacyConfigConverter
+  LegacyConfigConverter,
+  TableType
 } from "df/core/actions";
 import { Assertion } from "df/core/actions/assertion";
-import { IncrementalTable } from "df/core/actions/incremental_table";
-import { View } from "df/core/actions/view";
 import { ColumnDescriptors } from "df/core/column_descriptors";
 import { Contextable, Resolvable } from "df/core/common";
 import * as Path from "df/core/path";
@@ -25,18 +24,6 @@ import {
   validateQueryString
 } from "df/core/utils";
 import { dataform } from "df/protos/ts";
-
-/**
- * @hidden
- * @deprecated
- * TODO(ekrekr): remove these in favor of the proto enum.
- */
-export const TableType = ["table", "view", "incremental"] as const;
-/**
- * @hidden
- * @deprecated
- */
-export type TableType = typeof TableType[number];
 
 /**
  * @hidden
@@ -67,6 +54,9 @@ export class Table extends ActionBuilder<dataform.Table> {
     tags: []
   });
 
+  private unverifiedConfig: any;
+  private configPath: string | undefined;
+
   // Hold a reference to the Session instance.
   public session: Session;
 
@@ -85,6 +75,8 @@ export class Table extends ActionBuilder<dataform.Table> {
   constructor(session?: Session, unverifiedConfig?: any, configPath?: string) {
     super(session);
     this.session = session;
+    this.unverifiedConfig = unverifiedConfig;
+    this.configPath = configPath;
 
     if (!unverifiedConfig) {
       return;
@@ -159,23 +151,17 @@ export class Table extends ActionBuilder<dataform.Table> {
 
   /**
    * @hidden
-   * TODO(ekrekr): deprecate type in favour of JS functions specific to different action types.
-   * Currently this is a workaround to preserve backwards compatability.
+   * @deprecated
+   * Deprecated in favor of action type can being set in the configs passed to action constructor
+   * functions.
    */
   public type(type: TableType) {
-    if (type === "table") {
-      return this;
-    }
-    if (type === "incremental") {
-      const incrementalTable = new IncrementalTable();
-      incrementalTable.proto = this.proto;
-      return incrementalTable;
-    }
-    if (type === "view") {
-      const view = new View();
-      view.proto = this.proto;
-      return view;
-    }
+    LegacyConfigConverter.resetTableType(
+      type,
+      this.session,
+      this.unverifiedConfig,
+      this.configPath
+    );
   }
 
   public query(query: Contextable<ITableContext, string>) {

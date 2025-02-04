@@ -114,6 +114,18 @@ export interface ITableContext extends ICommonContext {
   incremental: () => boolean;
 }
 
+/**
+ * @hidden
+ * @deprecated
+ * TODO(ekrekr): remove these in favor of the proto enum.
+ */
+export const TableType = ["table", "view", "incremental"] as const;
+/**
+ * @hidden
+ * @deprecated
+ */
+export type TableType = typeof TableType[number];
+
 export class LegacyConfigConverter {
   // This is a workaround to make bigquery options output empty fields with the same behaviour as
   // they did previously.
@@ -199,6 +211,28 @@ export class LegacyConfigConverter {
       delete legacyConfig.bigquery;
     }
     return legacyConfig;
+  }
+
+  // Used by the deprecated `.type()` method.
+  public static resetTableType(
+    type: TableType,
+    session: Session,
+    unverifiedConfig: any,
+    configPath?: string
+  ) {
+    console.log("🚀 ~ LegacyConfigConverter ~ configPath:", configPath);
+    console.log("🚀 ~ LegacyConfigConverter ~ unverifiedConfig:", unverifiedConfig);
+    console.log("🚀 ~ LegacyConfigConverter ~ session:", session);
+    console.log("🚀 ~ LegacyConfigConverter ~ type:", type);
+    if (type === "table") {
+      return new Table(session, unverifiedConfig, configPath);
+    }
+    if (type === "incremental") {
+      return new IncrementalTable(session, unverifiedConfig, configPath);
+    }
+    if (type === "view") {
+      return new View(session, unverifiedConfig, configPath);
+    }
   }
 }
 

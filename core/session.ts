@@ -2,14 +2,18 @@ import { default as TarjanGraphConstructor, Graph as TarjanGraph } from "tarjan-
 
 import { encode64, verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { StringifiedMap, StringifiedSet } from "df/common/strings/stringifier";
-import { Action, ITableContext } from "df/core/actions";
+import { Action, ITableContext, TableType } from "df/core/actions";
 import { AContextable, Assertion, AssertionContext } from "df/core/actions/assertion";
-import { DataPreparation, DataPreparationContext, IDataPreparationContext } from "df/core/actions/data_preparation";
+import {
+  DataPreparation,
+  DataPreparationContext,
+  IDataPreparationContext
+} from "df/core/actions/data_preparation";
 import { Declaration } from "df/core/actions/declaration";
 import { ILegacyIncrementalTableConfig, IncrementalTable } from "df/core/actions/incremental_table";
 import { Notebook } from "df/core/actions/notebook";
 import { Operation, OperationContext } from "df/core/actions/operation";
-import { ILegacyTableConfig, Table, TableContext, TableType } from "df/core/actions/table";
+import { ILegacyTableConfig, Table, TableContext } from "df/core/actions/table";
 import { Test } from "df/core/actions/test";
 import { ILegacyViewConfig, View } from "df/core/actions/view";
 import { Contextable, ICommonContext, ITarget, Resolvable } from "df/core/common";
@@ -93,7 +97,13 @@ export class Session {
     sqlxConfig: any;
     sqlStatementCount: number;
     sqlContextable: (
-      ctx: TableContext | AssertionContext | OperationContext | DataPreparationContext | IDataPreparationContext | ICommonContext
+      ctx:
+        | TableContext
+        | AssertionContext
+        | OperationContext
+        | DataPreparationContext
+        | IDataPreparationContext
+        | ICommonContext
     ) => string[];
     incrementalWhereContextable: (ctx: ITableContext) => string;
     preOperationsContextable: (ctx: ITableContext) => string[];
@@ -190,7 +200,9 @@ export class Session {
         break;
       case "dataPreparation":
         sqlxConfig.filename = utils.getCallerFile(this.rootDir);
-        const dataPreparation = new DataPreparation(this, sqlxConfig).query(ctx => actionOptions.sqlContextable(ctx)[0]);
+        const dataPreparation = new DataPreparation(this, sqlxConfig).query(
+          ctx => actionOptions.sqlContextable(ctx)[0]
+        );
         this.actions.push(dataPreparation);
         break;
       case "operations":
@@ -272,6 +284,7 @@ export class Session {
       | ILegacyViewConfig
       | ILegacyIncrementalTableConfig
   ): Table | IncrementalTable | View {
+    console.log("PUBLISH CALLED");
     let newTable: Table | IncrementalTable | View = new View(this, { type: "view", name });
     if (!!queryOrConfig) {
       if (typeof queryOrConfig === "object") {
