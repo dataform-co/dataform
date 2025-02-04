@@ -212,29 +212,6 @@ export class LegacyConfigConverter {
     }
     return legacyConfig;
   }
-
-  // Used by the deprecated `.type()` method.
-  public static resetTableType(
-    type: TableType,
-    session: Session,
-    unverifiedConfig: any,
-    configPath?: string
-  ) {
-    console.log("🚀 ~ LegacyConfigConverter ~ configPath:", configPath);
-    console.log("🚀 ~ LegacyConfigConverter ~ unverifiedConfig:", unverifiedConfig);
-    console.log("🚀 ~ LegacyConfigConverter ~ session:", session);
-    console.log("🚀 ~ LegacyConfigConverter ~ type:", type);
-    if (type === "table") {
-      return new Table(session, unverifiedConfig, configPath);
-    }
-    if (type === "incremental") {
-      return new IncrementalTable(session, unverifiedConfig, configPath);
-    }
-    if (type === "view") {
-      return new View(session, unverifiedConfig, configPath);
-    }
-    throw new Error(`Unexpected table type: ${type}`);
-  }
 }
 
 export interface ILegacyTableBigqueryConfig {

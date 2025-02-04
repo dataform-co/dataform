@@ -25,6 +25,8 @@ import {
   validateQueryString
 } from "df/core/utils";
 import { dataform } from "df/protos/ts";
+import { View } from "df/core/actions/view";
+import { Table } from "df/core/actions/table";
 
 /**
  * @hidden
@@ -176,12 +178,16 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
    * functions.
    */
   public type(type: TableType) {
-    return LegacyConfigConverter.resetTableType(
-      type,
-      this.session,
-      this.unverifiedConfig,
-      this.configPath
-    );
+    if (type === "table") {
+      return new Table(this.session, this.unverifiedConfig, this.configPath);
+    }
+    if (type === "incremental") {
+      return new IncrementalTable(this.session, this.unverifiedConfig, this.configPath);
+    }
+    if (type === "view") {
+      return new View(this.session, this.unverifiedConfig, this.configPath);
+    }
+    throw new Error(`Unexpected table type: ${type}`);
   }
 
   public query(query: Contextable<ITableContext, string>) {

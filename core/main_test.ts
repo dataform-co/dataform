@@ -4514,7 +4514,7 @@ publish("name", {
       fs.writeFileSync(
         path.join(projectDir, "definitions/publish.js"),
         `
-  publish("name").type("incremental")`
+publish("name").type("incremental")`
       );
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
