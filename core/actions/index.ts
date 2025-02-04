@@ -233,6 +233,7 @@ export class LegacyConfigConverter {
     if (type === "view") {
       return new View(session, unverifiedConfig, configPath);
     }
+    throw new Error(`Unexpected table type: ${type}`);
   }
 }
 

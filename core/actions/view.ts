@@ -170,7 +170,7 @@ export class View extends ActionBuilder<dataform.Table> {
    * functions.
    */
   public type(type: TableType) {
-    LegacyConfigConverter.resetTableType(
+    return LegacyConfigConverter.resetTableType(
       type,
       this.session,
       this.unverifiedConfig,
