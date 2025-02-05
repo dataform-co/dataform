@@ -213,7 +213,7 @@ export class LegacyConfigConverter {
     unverifiedConfig: T
   ): T {
     // Type `any` is used here to facilitate the type hacking for legacy compatibility.
-    let legacyConfig: any = unverifiedConfig;
+    const legacyConfig: any = unverifiedConfig;
     if (legacyConfig?.assertions) {
       if (typeof legacyConfig.assertions?.uniqueKey === "string") {
         legacyConfig.assertions.uniqueKey = [legacyConfig.assertions.uniqueKey];
@@ -236,7 +236,7 @@ export class LegacyConfigConverter {
     unverifiedConfig: T
   ): T {
     // Type `any` is used here to facilitate the type hacking for legacy compatibility.
-    let legacyConfig: any = unverifiedConfig;
+    const legacyConfig: any = unverifiedConfig;
     if (!legacyConfig?.bigquery) {
       return legacyConfig;
     }

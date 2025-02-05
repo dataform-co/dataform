@@ -8,6 +8,8 @@ import {
   TableType
 } from "df/core/actions";
 import { Assertion } from "df/core/actions/assertion";
+import { Table } from "df/core/actions/table";
+import { View } from "df/core/actions/view";
 import { ColumnDescriptors } from "df/core/column_descriptors";
 import { Contextable, Resolvable } from "df/core/common";
 import * as Path from "df/core/path";
@@ -26,8 +28,6 @@ import {
   validateQueryString
 } from "df/core/utils";
 import { dataform } from "df/protos/ts";
-import { View } from "df/core/actions/view";
-import { Table } from "df/core/actions/table";
 
 /**
  * @hidden
@@ -40,9 +40,6 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
     disabled: false,
     tags: []
   });
-
-  private unverifiedConfig: any;
-  private configPath: string | undefined;
 
   // Hold a reference to the Session instance.
   public session: Session;
@@ -58,6 +55,9 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
 
   private uniqueKeyAssertions: Assertion[] = [];
   private rowConditionsAssertion: Assertion;
+
+  private unverifiedConfig: any;
+  private configPath: string | undefined;
 
   constructor(session?: Session, unverifiedConfig?: any, configPath?: string) {
     super(session);
@@ -183,7 +183,7 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
         throw new Error(`Unexpected table type: ${type}`);
     }
     const existingAction = this.session.actions.indexOf(this);
-    if (existingAction == -1) {
+    if (existingAction === -1) {
       throw Error(
         "Expected pre-existing action, but none found. Please report this to the Dataform team."
       );

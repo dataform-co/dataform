@@ -4504,44 +4504,37 @@ publish("name", {
       });
     });
 
-    test(`legacy publish().type() can still be called`, () => {
-      const projectDir = tmpDirFixture.createNewTmpDir();
-      fs.writeFileSync(
-        path.join(projectDir, "workflow_settings.yaml"),
-        dumpYaml(dataform.WorkflowSettings.create(TestConfigs.bigqueryWithDefaultProjectAndDataset))
-      );
-      fs.mkdirSync(path.join(projectDir, "definitions"));
-      fs.writeFileSync(
-        path.join(projectDir, "definitions/publish.js"),
-        `
-publish("name", {schema: "schemaOverride"}).type("incremental")`
-      );
+    suite(`legacy publish().type() can still be called`, () => {
+      ["table", "incremental", "view"].forEach(fromType => {
+        ["table", "incremental", "view"].forEach(toType => {
+          test(`from type ${fromType} to ${toType}`, () => {
+            const projectDir = tmpDirFixture.createNewTmpDir();
+            fs.writeFileSync(
+              path.join(projectDir, "workflow_settings.yaml"),
+              dumpYaml(
+                dataform.WorkflowSettings.create(TestConfigs.bigqueryWithDefaultProjectAndDataset)
+              )
+            );
+            fs.mkdirSync(path.join(projectDir, "definitions"));
+            fs.writeFileSync(
+              path.join(projectDir, "definitions/publish.js"),
+              `
+publish("name", {type: "${fromType}", schema: "schemaOverride"}).type("${toType}")`
+            );
 
-      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+            const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
-      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-      expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals(
-        asPlainObject([
-          {
-            canonicalTarget: {
-              database: "defaultProject",
-              name: "name",
-              schema: "schemaOverride"
-            },
-            disabled: false,
-            enumType: "INCREMENTAL",
-            hermeticity: "NON_HERMETIC",
-            onSchemaChange: "IGNORE",
-            protected: false,
-            target: {
-              database: "defaultProject_suffix",
-              name: "name",
-              schema: "schemaOverride"
-            },
-            type: "incremental"
-          }
-        ])
-      );
+            expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+            const tables = asPlainObject(result.compile.compiledGraph.tables);
+            expect(tables.length).equals(1);
+            expect(tables[0].type).equals(toType);
+            expect(tables[0].enumType).equals(toType.toUpperCase());
+
+            // Config options are carried over to the new table type, where possible.
+            expect(tables[0].target.schema).equals("schemaOverride");
+          });
+        });
+      });
     });
   });
 });
