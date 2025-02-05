@@ -62,8 +62,9 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
   constructor(session?: Session, unverifiedConfig?: any, configPath?: string) {
     super(session);
     this.session = session;
-    this.unverifiedConfig = unverifiedConfig;
     this.configPath = configPath;
+    // A copy is used here to prevent manipulation of the original.
+    this.unverifiedConfig = Object.assign({}, unverifiedConfig);
 
     if (!unverifiedConfig) {
       return;
@@ -163,15 +164,23 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
     let newAction: View | Table;
     switch (type) {
       case "table":
-        newAction = new Table(this.session, this.unverifiedConfig, this.configPath);
+        newAction = new Table(
+          this.session,
+          { ...this.unverifiedConfig, type: "table" },
+          this.configPath
+        );
         break;
       case "incremental":
         return this;
       case "view":
-        newAction = new View(this.session, this.unverifiedConfig, this.configPath);
+        newAction = new View(
+          this.session,
+          { ...this.unverifiedConfig, type: "view" },
+          this.configPath
+        );
         break;
       default:
-        new Error(`Unexpected table type: ${type}`);
+        throw new Error(`Unexpected table type: ${type}`);
     }
     const existingAction = this.session.actions.indexOf(this);
     if (existingAction == -1) {

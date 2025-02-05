@@ -26,6 +26,7 @@ import {
 } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 import { View } from "df/core/actions/view";
+import { IncrementalTable } from "./incremental_table";
 
 /**
  * @hidden
@@ -60,8 +61,9 @@ export class Table extends ActionBuilder<dataform.Table> {
   constructor(session?: Session, unverifiedConfig?: any, configPath?: string) {
     super(session);
     this.session = session;
-    this.unverifiedConfig = unverifiedConfig;
     this.configPath = configPath;
+    // A copy is used here to prevent manipulation of the original.
+    this.unverifiedConfig = Object.assign({}, unverifiedConfig);
 
     if (!unverifiedConfig) {
       return;
@@ -141,18 +143,26 @@ export class Table extends ActionBuilder<dataform.Table> {
    * functions.
    */
   public type(type: TableType) {
-    let newAction: View | Table;
+    let newAction: View | IncrementalTable;
     switch (type) {
       case "table":
         return this;
       case "incremental":
-        newAction = new Table(this.session, this.unverifiedConfig, this.configPath);
+        newAction = new IncrementalTable(
+          this.session,
+          { ...this.unverifiedConfig, type: "incremental" },
+          this.configPath
+        );
         break;
       case "view":
-        newAction = new View(this.session, this.unverifiedConfig, this.configPath);
+        newAction = new View(
+          this.session,
+          { ...this.unverifiedConfig, type: "view" },
+          this.configPath
+        );
         break;
       default:
-        new Error(`Unexpected table type: ${type}`);
+        throw new Error(`Unexpected table type: ${type}`);
     }
     const existingAction = this.session.actions.indexOf(this);
     if (existingAction == -1) {
