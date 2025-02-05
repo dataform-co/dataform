@@ -2,16 +2,20 @@ import { default as TarjanGraphConstructor, Graph as TarjanGraph } from "tarjan-
 
 import { encode64, verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { StringifiedMap, StringifiedSet } from "df/common/strings/stringifier";
-import { Action, ITableContext } from "df/core/actions";
+import { Action, ILegacyTableConfig, ITableContext, TableType } from "df/core/actions";
 import { AContextable, Assertion, AssertionContext } from "df/core/actions/assertion";
-import { DataPreparation, DataPreparationContext, IDataPreparationContext } from "df/core/actions/data_preparation";
+import {
+  DataPreparation,
+  DataPreparationContext,
+  IDataPreparationContext
+} from "df/core/actions/data_preparation";
 import { Declaration } from "df/core/actions/declaration";
-import { ILegacyIncrementalTableConfig, IncrementalTable } from "df/core/actions/incremental_table";
+import { IncrementalTable } from "df/core/actions/incremental_table";
 import { Notebook } from "df/core/actions/notebook";
 import { Operation, OperationContext } from "df/core/actions/operation";
-import { ILegacyTableConfig, Table, TableContext, TableType } from "df/core/actions/table";
+import { Table, TableContext } from "df/core/actions/table";
 import { Test } from "df/core/actions/test";
-import { ILegacyViewConfig, View } from "df/core/actions/view";
+import { View } from "df/core/actions/view";
 import { Contextable, ICommonContext, ITarget, Resolvable } from "df/core/common";
 import { CompilationSql } from "df/core/compilation_sql";
 import { targetAsReadableString, targetStringifier } from "df/core/targets";
@@ -93,7 +97,13 @@ export class Session {
     sqlxConfig: any;
     sqlStatementCount: number;
     sqlContextable: (
-      ctx: TableContext | AssertionContext | OperationContext | DataPreparationContext | IDataPreparationContext | ICommonContext
+      ctx:
+        | TableContext
+        | AssertionContext
+        | OperationContext
+        | DataPreparationContext
+        | IDataPreparationContext
+        | ICommonContext
     ) => string[];
     incrementalWhereContextable: (ctx: ITableContext) => string;
     preOperationsContextable: (ctx: ITableContext) => string[];
@@ -190,7 +200,9 @@ export class Session {
         break;
       case "dataPreparation":
         sqlxConfig.filename = utils.getCallerFile(this.rootDir);
-        const dataPreparation = new DataPreparation(this, sqlxConfig).query(ctx => actionOptions.sqlContextable(ctx)[0]);
+        const dataPreparation = new DataPreparation(this, sqlxConfig).query(
+          ctx => actionOptions.sqlContextable(ctx)[0]
+        );
         this.actions.push(dataPreparation);
         break;
       case "operations":
@@ -264,23 +276,28 @@ export class Session {
     return operation;
   }
 
+  // In v4, consider replacing publish with separate methods for each action type.
   public publish(
     name: string,
     queryOrConfig?:
       | Contextable<ITableContext, string>
+      | dataform.ActionConfig.TableConfig
+      | dataform.ActionConfig.ViewConfig
+      | dataform.ActionConfig.IncrementalTableConfig
       | ILegacyTableConfig
-      | ILegacyViewConfig
-      | ILegacyIncrementalTableConfig
+      // `any` is used here to facilitate the type merging of legacy table configs, which are very
+      // different to the new structures.
+      | any
   ): Table | IncrementalTable | View {
     let newTable: Table | IncrementalTable | View = new View(this, { type: "view", name });
     if (!!queryOrConfig) {
       if (typeof queryOrConfig === "object") {
-        if (queryOrConfig?.type === "table" || queryOrConfig.type === undefined) {
-          newTable = new Table(this, { type: "table", name, ...queryOrConfig });
+        if (queryOrConfig?.type === "view" || queryOrConfig.type === undefined) {
+          newTable = new View(this, { type: "view", name, ...queryOrConfig });
         } else if (queryOrConfig?.type === "incremental") {
           newTable = new IncrementalTable(this, { type: "incremental", name, ...queryOrConfig });
-        } else if (queryOrConfig?.type === "view") {
-          newTable = new View(this, { type: "view", name, ...queryOrConfig });
+        } else if (queryOrConfig?.type === "table") {
+          newTable = new Table(this, { type: "table", name, ...queryOrConfig });
         } else {
           throw Error(`Unrecognized table type: ${queryOrConfig.type}`);
         }

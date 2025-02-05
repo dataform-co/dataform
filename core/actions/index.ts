@@ -1,12 +1,19 @@
 import { Assertion } from "df/core/actions/assertion";
 import { DataPreparation } from "df/core/actions/data_preparation";
 import { Declaration } from "df/core/actions/declaration";
-import { ILegacyIncrementalTableConfig, IncrementalTable } from "df/core/actions/incremental_table";
+import { IncrementalTable } from "df/core/actions/incremental_table";
 import { Notebook } from "df/core/actions/notebook";
 import { Operation } from "df/core/actions/operation";
-import { ILegacyTableConfig, Table } from "df/core/actions/table";
-import { ILegacyViewConfig, View } from "df/core/actions/view";
-import { ICommonContext } from "df/core/common";
+import { Table } from "df/core/actions/table";
+import { View } from "df/core/actions/view";
+import {
+  IActionConfig,
+  ICommonContext,
+  IDependenciesConfig,
+  IDocumentableConfig,
+  INamedConfig,
+  ITargetableConfig
+} from "df/core/common";
 import { Session } from "df/core/session";
 import { dataform } from "df/protos/ts";
 
@@ -114,6 +121,71 @@ export interface ITableContext extends ICommonContext {
   incremental: () => boolean;
 }
 
+/**
+ * @hidden
+ * @deprecated
+ * This is no longer needed other than for legacy backwards compatibility purposes, as tables are
+ * now configured in separate actions.
+ */
+export type TableType = typeof TableType[number];
+
+/**
+ * @hidden
+ * @deprecated
+ * This is no longer needed other than for legacy backwards compatibility purposes, as tables are
+ * now configured in separate actions.
+ */
+export const TableType = ["table", "view", "incremental"] as const;
+
+/**
+ * @hidden
+ * @deprecated
+ * These options are only here to preserve backwards compatibility of legacy config options.
+ * consider breaking backwards compatability of this in v4.
+ */
+export interface ILegacyTableConfig
+  extends IActionConfig,
+    IDependenciesConfig,
+    IDocumentableConfig,
+    INamedConfig,
+    ITargetableConfig {
+  type?: TableType;
+  protected?: boolean;
+  bigquery?: ILegacyBigQueryOptions;
+  assertions?: ILegacyTableAssertions;
+  uniqueKey?: string[];
+  materialized?: boolean;
+}
+
+/**
+ * @hidden
+ * @deprecated
+ * These options are only here to preserve backwards compatibility of legacy config options.
+ * consider breaking backwards compatability of this in v4.
+ */
+export interface ILegacyBigQueryOptions {
+  partitionBy?: string;
+  clusterBy?: string[];
+  updatePartitionFilter?: string;
+  labels?: { [name: string]: string };
+  partitionExpirationDays?: number;
+  requirePartitionFilter?: boolean;
+  additionalOptions?: { [name: string]: string };
+}
+
+/**
+ * @hidden
+ * @deprecated
+ * These options are only here to preserve backwards compatibility of legacy config options.
+ * consider breaking backwards compatability of this in v4.
+ */
+export interface ILegacyTableAssertions {
+  uniqueKey?: string | string[];
+  uniqueKeys?: string[][];
+  nonNull?: string | string[];
+  rowConditions?: string[];
+}
+
 export class LegacyConfigConverter {
   // This is a workaround to make bigquery options output empty fields with the same behaviour as
   // they did previously.
@@ -137,9 +209,11 @@ export class LegacyConfigConverter {
     return bigqueryFiltered;
   }
 
-  public static insertLegacyInlineAssertionsToConfigProto<
-    T extends ILegacyTableConfig | ILegacyIncrementalTableConfig | ILegacyViewConfig
-  >(legacyConfig: T): T {
+  public static insertLegacyInlineAssertionsToConfigProto<T extends ILegacyTableConfig>(
+    unverifiedConfig: T
+  ): T {
+    // Type `any` is used here to facilitate the type hacking for legacy compatibility.
+    const legacyConfig: any = unverifiedConfig;
     if (legacyConfig?.assertions) {
       if (typeof legacyConfig.assertions?.uniqueKey === "string") {
         legacyConfig.assertions.uniqueKey = [legacyConfig.assertions.uniqueKey];
@@ -158,9 +232,11 @@ export class LegacyConfigConverter {
     return legacyConfig;
   }
 
-  public static insertLegacyBigQueryOptionsToConfigProto<
-    T extends ILegacyTableConfig | ILegacyIncrementalTableConfig
-  >(legacyConfig: T): T {
+  public static insertLegacyBigQueryOptionsToConfigProto<T extends ILegacyTableConfig>(
+    unverifiedConfig: T
+  ): T {
+    // Type `any` is used here to facilitate the type hacking for legacy compatibility.
+    const legacyConfig: any = unverifiedConfig;
     if (!legacyConfig?.bigquery) {
       return legacyConfig;
     }
@@ -173,8 +249,7 @@ export class LegacyConfigConverter {
       delete legacyConfig.bigquery.clusterBy;
     }
     if (!!legacyConfig.bigquery.updatePartitionFilter) {
-      (legacyConfig as ILegacyIncrementalTableConfig).updatePartitionFilter =
-        legacyConfig.bigquery.updatePartitionFilter;
+      legacyConfig.updatePartitionFilter = legacyConfig.bigquery.updatePartitionFilter;
       delete legacyConfig.bigquery.updatePartitionFilter;
     }
     if (!!legacyConfig.bigquery.labels) {
@@ -200,14 +275,4 @@ export class LegacyConfigConverter {
     }
     return legacyConfig;
   }
-}
-
-export interface ILegacyTableBigqueryConfig {
-  partitionBy?: string;
-  clusterBy?: string[];
-  updatePartitionFilter?: string;
-  labels?: { [key: string]: string };
-  partitionExpirationDays?: number;
-  requirePartitionFilter?: boolean;
-  additionalOptions?: { [key: string]: string };
 }

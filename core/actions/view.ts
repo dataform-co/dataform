@@ -1,6 +1,14 @@
 import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
-import { ActionBuilder, ITableContext, LegacyConfigConverter } from "df/core/actions";
+import {
+  ActionBuilder,
+  ILegacyBigQueryOptions,
+  ITableContext,
+  LegacyConfigConverter,
+  TableType
+} from "df/core/actions";
 import { Assertion } from "df/core/actions/assertion";
+import { IncrementalTable } from "df/core/actions/incremental_table";
+import { Table } from "df/core/actions/table";
 import { ColumnDescriptors } from "df/core/column_descriptors";
 import { Contextable, Resolvable } from "df/core/common";
 import * as Path from "df/core/path";
@@ -22,29 +30,13 @@ import { dataform } from "df/protos/ts";
 
 /**
  * @hidden
- * This maintains backwards compatability with older versions.
- * TODO(ekrekr): consider breaking backwards compatability of these in v4.
+ * @deprecated
+ * These options are only here to preserve backwards compatibility of legacy config options.
+ * consider breaking backwards compatability of this in v4.
  */
 export interface ILegacyViewBigqueryConfig {
   labels: { [key: string]: string };
   additionalOptions: { [key: string]: string };
-}
-
-/**
- * @hidden
- * This maintains backwards compatability with older versions.
- * TODO(ekrekr): consider breaking backwards compatability of these in v4.
- */
-export interface ILegacyViewConfig extends dataform.ActionConfig.ViewConfig {
-  dependencies: Resolvable[];
-  database: string;
-  schema: string;
-  fileName: string;
-  type: string;
-  bigquery: ILegacyViewBigqueryConfig;
-  // Legacy view config's table assertions cannot directly extend the protobuf view config
-  // definition because of legacy view config's flexible types.
-  assertions: any;
 }
 
 /**
@@ -74,9 +66,15 @@ export class View extends ActionBuilder<dataform.Table> {
   private uniqueKeyAssertions: Assertion[] = [];
   private rowConditionsAssertion: Assertion;
 
+  private unverifiedConfig: any;
+  private configPath: string | undefined;
+
   constructor(session?: Session, unverifiedConfig?: any, configPath?: string) {
     super(session);
     this.session = session;
+    this.configPath = configPath;
+    // A copy is used here to prevent manipulation of the original.
+    this.unverifiedConfig = Object.assign({}, unverifiedConfig);
 
     if (!unverifiedConfig) {
       return;
@@ -156,6 +154,43 @@ export class View extends ActionBuilder<dataform.Table> {
     }
 
     return this;
+  }
+
+  /**
+   * @hidden
+   * @deprecated
+   * Deprecated in favor of action type can being set in the configs passed to action constructor
+   * functions.
+   */
+  public type(type: TableType) {
+    let newAction: IncrementalTable | Table;
+    switch (type) {
+      case "table":
+        newAction = new Table(
+          this.session,
+          { ...this.unverifiedConfig, type: "table" },
+          this.configPath
+        );
+        break;
+      case "incremental":
+        newAction = new IncrementalTable(
+          this.session,
+          { ...this.unverifiedConfig, type: "incremental" },
+          this.configPath
+        );
+        break;
+      case "view":
+        return this;
+      default:
+        throw new Error(`Unexpected table type: ${type}`);
+    }
+    const existingAction = this.session.actions.indexOf(this);
+    if (existingAction === -1) {
+      throw Error(
+        "Expected pre-existing action, but none found. Please report this to the Dataform team."
+      );
+    }
+    this.session.actions[existingAction] = newAction;
   }
 
   public query(query: Contextable<ITableContext, string>) {
@@ -389,7 +424,16 @@ export class View extends ActionBuilder<dataform.Table> {
     return protoOps;
   }
 
-  private verifyConfig(unverifiedConfig: ILegacyViewConfig): dataform.ActionConfig.ViewConfig {
+  /**
+   * Verify config checks that the constructor provided config matches the expected proto structure,
+   * or the previously accepted legacy structure. If the legacy structure is used, it is converted
+   * to the new structure.
+   */
+  private verifyConfig(
+    // `any` is used here to facilitate the type merging of the legacy table config, which is very
+    // different to the new structure.
+    unverifiedConfig: dataform.ActionConfig.ViewConfig | ILegacyBigQueryOptions | any
+  ): dataform.ActionConfig.ViewConfig {
     // The "type" field only exists on legacy view configs. Here we convert them to the new format.
     if (unverifiedConfig.type) {
       delete unverifiedConfig.type;

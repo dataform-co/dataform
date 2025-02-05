@@ -1,11 +1,15 @@
 import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import {
   ActionBuilder,
-  ILegacyTableBigqueryConfig,
+  ILegacyBigQueryOptions,
+  ILegacyTableConfig,
   ITableContext,
-  LegacyConfigConverter
+  LegacyConfigConverter,
+  TableType
 } from "df/core/actions";
 import { Assertion } from "df/core/actions/assertion";
+import { Table } from "df/core/actions/table";
+import { View } from "df/core/actions/view";
 import { ColumnDescriptors } from "df/core/column_descriptors";
 import { Contextable, Resolvable } from "df/core/common";
 import * as Path from "df/core/path";
@@ -24,25 +28,6 @@ import {
   validateQueryString
 } from "df/core/utils";
 import { dataform } from "df/protos/ts";
-
-/**
- * @hidden
- * This maintains backwards compatability with older versions.
- * TODO(ekrekr): consider breaking backwards compatability of these in v4.
- */
-export interface ILegacyIncrementalTableConfig
-  extends dataform.ActionConfig.IncrementalTableConfig {
-  dependencies: Resolvable[];
-  database: string;
-  schema: string;
-  fileName: string;
-  type: string;
-  bigquery?: ILegacyTableBigqueryConfig;
-  // Legacy incremental table config's table assertions cannot directly extend the protobuf
-  // incremental table config definition because of legacy incremental table config's flexible
-  // types.
-  assertions: any;
-}
 
 /**
  * @hidden
@@ -71,9 +56,15 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
   private uniqueKeyAssertions: Assertion[] = [];
   private rowConditionsAssertion: Assertion;
 
+  private unverifiedConfig: any;
+  private configPath: string | undefined;
+
   constructor(session?: Session, unverifiedConfig?: any, configPath?: string) {
     super(session);
     this.session = session;
+    this.configPath = configPath;
+    // A copy is used here to prevent manipulation of the original.
+    this.unverifiedConfig = Object.assign({}, unverifiedConfig);
 
     if (!unverifiedConfig) {
       return;
@@ -158,9 +149,46 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
     if (config.filename) {
       this.proto.fileName = config.filename;
     }
-    this.proto.onSchemaChange = this.mapOnSchemaChange(config.onSchemaChange)
+    this.proto.onSchemaChange = this.mapOnSchemaChange(config.onSchemaChange);
 
     return this;
+  }
+
+  /**
+   * @hidden
+   * @deprecated
+   * Deprecated in favor of action type can being set in the configs passed to action constructor
+   * functions.
+   */
+  public type(type: TableType) {
+    let newAction: View | Table;
+    switch (type) {
+      case "table":
+        newAction = new Table(
+          this.session,
+          { ...this.unverifiedConfig, type: "table" },
+          this.configPath
+        );
+        break;
+      case "incremental":
+        return this;
+      case "view":
+        newAction = new View(
+          this.session,
+          { ...this.unverifiedConfig, type: "view" },
+          this.configPath
+        );
+        break;
+      default:
+        throw new Error(`Unexpected table type: ${type}`);
+    }
+    const existingAction = this.session.actions.indexOf(this);
+    if (existingAction === -1) {
+      throw Error(
+        "Expected pre-existing action, but none found. Please report this to the Dataform team."
+      );
+    }
+    this.session.actions[existingAction] = newAction;
   }
 
   public query(query: Contextable<ITableContext, string>) {
@@ -398,8 +426,15 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
     return protoOps;
   }
 
+  /**
+   * Verify config checks that the constructor provided config matches the expected proto structure,
+   * or the previously accepted legacy structure. If the legacy structure is used, it is converted
+   * to the new structure.
+   */
   private verifyConfig(
-    unverifiedConfig: ILegacyIncrementalTableConfig
+    // `any` is used here to facilitate the type merging of the legacy table config, which is very
+    // different to the new structure.
+    unverifiedConfig: dataform.ActionConfig.IncrementalTableConfig | ILegacyTableConfig | any
   ): dataform.ActionConfig.IncrementalTableConfig {
     // The "type" field only exists on legacy incremental table configs. Here we convert them to the
     // new format.
@@ -441,7 +476,7 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
             throw e;
           },
           unverifiedConfig.bigquery,
-          strictKeysOf<ILegacyTableBigqueryConfig>()([
+          strictKeysOf<ILegacyBigQueryOptions>()([
             "partitionBy",
             "clusterBy",
             "updatePartitionFilter",
@@ -471,27 +506,37 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
   // - for sqlx it will have type "string"
   // - for action.yaml it will be converted to enum which is represented
   // in TypeScript as a "number".
-  private mapOnSchemaChange(onSchemaChange?: string|number) : dataform.OnSchemaChange {
+  private mapOnSchemaChange(onSchemaChange?: string | number): dataform.OnSchemaChange {
     if (!onSchemaChange) {
       return dataform.OnSchemaChange.IGNORE;
     }
 
     if (typeof onSchemaChange === "number") {
       switch (onSchemaChange) {
-        case dataform.ActionConfig.OnSchemaChange.IGNORE: return dataform.OnSchemaChange.IGNORE;
-        case dataform.ActionConfig.OnSchemaChange.FAIL: return dataform.OnSchemaChange.FAIL;
-        case dataform.ActionConfig.OnSchemaChange.EXTEND: return dataform.OnSchemaChange.EXTEND;
-        case dataform.ActionConfig.OnSchemaChange.SYNCHRONIZE: return dataform.OnSchemaChange.SYNCHRONIZE;
-        default: throw new Error(`OnSchemaChange value "${onSchemaChange}" is not supported`);
+        case dataform.ActionConfig.OnSchemaChange.IGNORE:
+          return dataform.OnSchemaChange.IGNORE;
+        case dataform.ActionConfig.OnSchemaChange.FAIL:
+          return dataform.OnSchemaChange.FAIL;
+        case dataform.ActionConfig.OnSchemaChange.EXTEND:
+          return dataform.OnSchemaChange.EXTEND;
+        case dataform.ActionConfig.OnSchemaChange.SYNCHRONIZE:
+          return dataform.OnSchemaChange.SYNCHRONIZE;
+        default:
+          throw new Error(`OnSchemaChange value "${onSchemaChange}" is not supported`);
       }
     }
 
     switch (onSchemaChange.toString().toUpperCase()) {
-      case "IGNORE": return dataform.OnSchemaChange.IGNORE;
-      case "FAIL": return dataform.OnSchemaChange.FAIL;
-      case "EXTEND": return dataform.OnSchemaChange.EXTEND;
-      case "SYNCHRONIZE": return dataform.OnSchemaChange.SYNCHRONIZE;
-      default: throw new Error(`OnSchemaChange value "${onSchemaChange}" is not supported`);
+      case "IGNORE":
+        return dataform.OnSchemaChange.IGNORE;
+      case "FAIL":
+        return dataform.OnSchemaChange.FAIL;
+      case "EXTEND":
+        return dataform.OnSchemaChange.EXTEND;
+      case "SYNCHRONIZE":
+        return dataform.OnSchemaChange.SYNCHRONIZE;
+      default:
+        throw new Error(`OnSchemaChange value "${onSchemaChange}" is not supported`);
     }
   }
 }
