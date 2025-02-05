@@ -1,7 +1,8 @@
 import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import {
   ActionBuilder,
-  ILegacyTableBigqueryConfig,
+  ILegacyBigQueryOptions,
+  ILegacyTableConfig,
   ITableContext,
   LegacyConfigConverter,
   TableType
@@ -27,25 +28,6 @@ import {
 import { dataform } from "df/protos/ts";
 import { View } from "df/core/actions/view";
 import { Table } from "df/core/actions/table";
-
-/**
- * @hidden
- * This maintains backwards compatability with older versions.
- * TODO(ekrekr): consider breaking backwards compatability of these in v4.
- */
-export interface ILegacyIncrementalTableConfig
-  extends dataform.ActionConfig.IncrementalTableConfig {
-  dependencies: Resolvable[];
-  database: string;
-  schema: string;
-  fileName: string;
-  type: string;
-  bigquery?: ILegacyTableBigqueryConfig;
-  // Legacy incremental table config's table assertions cannot directly extend the protobuf
-  // incremental table config definition because of legacy incremental table config's flexible
-  // types.
-  assertions: any;
-}
 
 /**
  * @hidden
@@ -435,8 +417,15 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
     return protoOps;
   }
 
+  /**
+   * Verify config checks that the constructor provided config matches the expected proto structure,
+   * or the previously accepted legacy structure. If the legacy structure is used, it is converted
+   * to the new structure.
+   */
   private verifyConfig(
-    unverifiedConfig: ILegacyIncrementalTableConfig
+    // `any` is used here to facilitate the type merging of the legacy table config, which is very
+    // different to the new structure.
+    unverifiedConfig: dataform.ActionConfig.IncrementalTableConfig | ILegacyTableConfig | any
   ): dataform.ActionConfig.IncrementalTableConfig {
     // The "type" field only exists on legacy incremental table configs. Here we convert them to the
     // new format.
@@ -478,7 +467,7 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
             throw e;
           },
           unverifiedConfig.bigquery,
-          strictKeysOf<ILegacyTableBigqueryConfig>()([
+          strictKeysOf<ILegacyBigQueryOptions>()([
             "partitionBy",
             "clusterBy",
             "updatePartitionFilter",

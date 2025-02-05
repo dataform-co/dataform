@@ -2,7 +2,7 @@ import { default as TarjanGraphConstructor, Graph as TarjanGraph } from "tarjan-
 
 import { encode64, verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { StringifiedMap, StringifiedSet } from "df/common/strings/stringifier";
-import { Action, ITableContext, TableType } from "df/core/actions";
+import { Action, ILegacyTableConfig, ITableContext, TableType } from "df/core/actions";
 import { AContextable, Assertion, AssertionContext } from "df/core/actions/assertion";
 import {
   DataPreparation,
@@ -10,12 +10,12 @@ import {
   IDataPreparationContext
 } from "df/core/actions/data_preparation";
 import { Declaration } from "df/core/actions/declaration";
-import { ILegacyIncrementalTableConfig, IncrementalTable } from "df/core/actions/incremental_table";
+import { IncrementalTable } from "df/core/actions/incremental_table";
 import { Notebook } from "df/core/actions/notebook";
 import { Operation, OperationContext } from "df/core/actions/operation";
-import { ILegacyTableConfig, Table, TableContext } from "df/core/actions/table";
+import { Table, TableContext } from "df/core/actions/table";
 import { Test } from "df/core/actions/test";
-import { ILegacyViewConfig, View } from "df/core/actions/view";
+import { View } from "df/core/actions/view";
 import { Contextable, ICommonContext, ITarget, Resolvable } from "df/core/common";
 import { CompilationSql } from "df/core/compilation_sql";
 import { targetAsReadableString, targetStringifier } from "df/core/targets";
@@ -276,15 +276,19 @@ export class Session {
     return operation;
   }
 
+  // In v4, consider replacing publish with separate methods for each action type.
   public publish(
     name: string,
     queryOrConfig?:
       | Contextable<ITableContext, string>
+      | dataform.ActionConfig.TableConfig
+      | dataform.ActionConfig.ViewConfig
+      | dataform.ActionConfig.IncrementalTableConfig
       | ILegacyTableConfig
-      | ILegacyViewConfig
-      | ILegacyIncrementalTableConfig
+      // `any` is used here to facilitate the type merging of legacy table configs, which are very
+      // different to the new structures.
+      | any
   ): Table | IncrementalTable | View {
-    console.log("PUBLISH CALLED");
     let newTable: Table | IncrementalTable | View = new View(this, { type: "view", name });
     if (!!queryOrConfig) {
       if (typeof queryOrConfig === "object") {

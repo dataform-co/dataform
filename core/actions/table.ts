@@ -1,7 +1,8 @@
 import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import {
   ActionBuilder,
-  ILegacyTableBigqueryConfig,
+  ILegacyBigQueryOptions,
+  ILegacyTableConfig,
   ITableContext,
   LegacyConfigConverter,
   TableType
@@ -24,25 +25,7 @@ import {
   validateQueryString
 } from "df/core/utils";
 import { dataform } from "df/protos/ts";
-import { IncrementalTable } from "df/core/actions/incremental_table";
 import { View } from "df/core/actions/view";
-
-/**
- * @hidden
- * This maintains backwards compatability with older versions.
- * TODO(ekrekr): consider breaking backwards compatability of these in v4.
- */
-export interface ILegacyTableConfig extends dataform.ActionConfig.TableConfig {
-  dependencies: Resolvable[];
-  database: string;
-  schema: string;
-  fileName: string;
-  type: string;
-  bigquery?: ILegacyTableBigqueryConfig;
-  // Legacy table config's table assertions cannot directly extend the protobuf table config
-  // definition because of legacy table config's flexible types.
-  assertions: any;
-}
 
 /**
  * @hidden
@@ -411,7 +394,16 @@ export class Table extends ActionBuilder<dataform.Table> {
     return protoOps;
   }
 
-  private verifyConfig(unverifiedConfig: ILegacyTableConfig): dataform.ActionConfig.TableConfig {
+  /**
+   * Verify config checks that the constructor provided config matches the expected proto structure,
+   * or the previously accepted legacy structure. If the legacy structure is used, it is converted
+   * to the new structure.
+   */
+  private verifyConfig(
+    // `any` is used here to facilitate the type merging of the legacy table config, which is very
+    // different to the new structure.
+    unverifiedConfig: dataform.ActionConfig.TableConfig | ILegacyTableConfig | any
+  ): dataform.ActionConfig.TableConfig {
     // The "type" field only exists on legacy table configs. Here we convert them to the
     // new format.
     if (unverifiedConfig.type) {
@@ -457,7 +449,7 @@ export class Table extends ActionBuilder<dataform.Table> {
             throw e;
           },
           unverifiedConfig.bigquery,
-          strictKeysOf<ILegacyTableBigqueryConfig>()([
+          strictKeysOf<ILegacyBigQueryOptions>()([
             "partitionBy",
             "clusterBy",
             "updatePartitionFilter",

@@ -61,6 +61,8 @@ export interface ICommonContext {
 
 /**
  * @hidden
+ * @deprecated
+ * Use core.proto config options instead.
  */
 export interface INamedConfig {
   /**
@@ -80,6 +82,8 @@ export interface INamedConfig {
 
 /**
  * @hidden
+ * @deprecated
+ * Use core.proto config options instead.
  */
 export interface IActionConfig {
   /**
@@ -103,6 +107,8 @@ export interface IActionConfig {
 
 /**
  * @hidden
+ * @deprecated
+ * Use core.proto config options instead.
  */
 export interface ITargetableConfig {
   /**
@@ -118,6 +124,8 @@ export interface ITargetableConfig {
 
 /**
  * @hidden
+ * @deprecated
+ * Use core.proto config options instead.
  */
 export interface IDependenciesConfig {
   /**
@@ -144,6 +152,8 @@ export interface IDependenciesConfig {
 
 /**
  * @hidden
+ * @deprecated
+ * Use core.proto config options instead.
  */
 export interface IDocumentableConfig {
   /**
@@ -158,6 +168,8 @@ export interface IDocumentableConfig {
 }
 
 /**
+ * @deprecated
+ * Use core.proto config options instead.
  * Describes columns in a dataset.
  */
 export interface IColumnsDescriptor {
@@ -165,6 +177,8 @@ export interface IColumnsDescriptor {
 }
 
 /**
+ * @deprecated
+ * Use core.proto config options instead.
  * Describes a struct, object or record in a dataset that has nested columns.
  */
 export interface IRecordDescriptor {
@@ -205,8 +219,8 @@ export interface IRecordDescriptor {
 
 /**
  * @hidden
- *
- * TODO: This needs to be a method, I'm really not sure why, but it hits a runtime failure otherwise.
+ * @deprecated
+ * Use core.proto config options instead.
  */
 export const IRecordDescriptorProperties = () =>
   strictKeysOf<IRecordDescriptor>()([
@@ -218,6 +232,8 @@ export const IRecordDescriptorProperties = () =>
   ]);
 
 /**
+ * @deprecated
+ * Use core.proto config options instead.
  * A reference to a dataset within the warehouse.
  */
 export interface ITarget {
