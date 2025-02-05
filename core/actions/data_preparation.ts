@@ -401,18 +401,8 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
       return dataform.LoadConfiguration.create({"replace": {}});
     }
 
-    if (typeof loadMode === "number") {
-      switch (loadMode) {
-        case dataform.ActionConfig.LoadMode.REPLACE: return dataform.LoadConfiguration.create({"replace": {}});
-        case dataform.ActionConfig.LoadMode.APPEND: return dataform.LoadConfiguration.create({"append": {}});
-        case dataform.ActionConfig.LoadMode.MAXIMUM: return dataform.LoadConfiguration.create({"maximum": {"columnName": this.validateLoadModeColumnName(columnName)}});
-        case dataform.ActionConfig.LoadMode.UNIQUE: return dataform.LoadConfiguration.create({"unique": {"columnName": this.validateLoadModeColumnName(columnName)}});
-        default: throw new Error(`LoadMode value "${loadMode}" is not supported`);
-      }
-    }
-
     switch (loadMode.toString().toUpperCase()) {
-      case "REPLACE": return dataform.LoadConfiguration.create({"replace": {}});
+      case "REPLACE_TABLE": return dataform.LoadConfiguration.create({"replace": {}});
       case "APPEND": return dataform.LoadConfiguration.create({"append": {}});
       case "MAXIMUM": return dataform.LoadConfiguration.create({"maximum": {"columnName": this.validateLoadModeColumnName(columnName)}});
       case "UNIQUE": return dataform.LoadConfiguration.create({"unique": {"columnName": this.validateLoadModeColumnName(columnName)}});
