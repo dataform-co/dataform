@@ -44,7 +44,7 @@ export interface IActionProto {
 }
 
 /**
- * @hidden
+ * Contains methods that are published globally, so can be invoked anywhere in a Dataform project.
  */
 export class Session {
   public rootDir: string;
@@ -275,7 +275,11 @@ export class Session {
     return operation;
   }
 
-  // In v4, consider replacing publish with separate methods for each action type.
+  /**
+   * Creates a table or view.
+   *
+   * Available only in the /definitions directory.
+   */
   public publish(
     name: string,
     queryOrConfig?:
@@ -288,6 +292,7 @@ export class Session {
       // different to the new structures.
       | any
   ): Table | IncrementalTable | View {
+    // In v4, consider replacing publish with separate methods for each action type.
     let newTable: Table | IncrementalTable | View = new View(this, { type: "view", name });
     if (!!queryOrConfig) {
       if (typeof queryOrConfig === "object") {
