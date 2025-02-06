@@ -1,5 +1,4 @@
 import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
-import { StringifiedMap } from "df/common/strings/stringifier";
 import { ActionBuilder, ITableContext, TableType } from "df/core/actions";
 import { Table } from "df/core/actions/table";
 import { View } from "df/core/actions/view";
@@ -36,10 +35,7 @@ export class Test extends ActionBuilder<dataform.Test> {
   public proto: dataform.ITest = dataform.Test.create();
 
   public session: Session;
-  public contextableInputs = new StringifiedMap<
-    dataform.ITarget,
-    Contextable<ICommonContext, string>
-  >(targetStringifier);
+  public contextableInputs = new Map<string, Contextable<ICommonContext, string>>();
 
   private datasetToTest: Resolvable;
   private contextableQuery: Contextable<ICommonContext, string>;
@@ -67,7 +63,10 @@ export class Test extends ActionBuilder<dataform.Test> {
   }
 
   public input(refName: string | string[], contextableQuery: Contextable<ICommonContext, string>) {
-    this.contextableInputs.set(resolvableAsTarget(toResolvable(refName)), contextableQuery);
+    this.contextableInputs.set(
+      targetStringifier.stringify(resolvableAsTarget(toResolvable(refName))),
+      contextableQuery
+    );
     return this;
   }
 
@@ -166,7 +165,7 @@ class RefReplacingContext implements ITableContext {
 
   public resolve(ref: Resolvable | string[], ...rest: string[]) {
     const target = resolvableAsTarget(toResolvable(ref, rest));
-    if (!this.testContext.test.contextableInputs.has(target)) {
+    if (!this.testContext.test.contextableInputs.has(targetStringifier.stringify(target))) {
       this.testContext.test.session.compileError(
         new Error(
           `Input for dataset "${JSON.stringify(
@@ -178,7 +177,9 @@ class RefReplacingContext implements ITableContext {
       );
       return "";
     }
-    return `(${this.testContext.apply(this.testContext.test.contextableInputs.get(target))})`;
+    return `(${this.testContext.apply(
+      this.testContext.test.contextableInputs.get(targetStringifier.stringify(target))
+    )})`;
   }
 
   public apply<T>(value: Contextable<ITableContext, T>): T {

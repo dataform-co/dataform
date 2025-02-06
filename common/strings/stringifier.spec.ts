@@ -1,11 +1,7 @@
 import { expect } from "chai";
 import { basename } from "path";
 
-import {
-  JSONObjectStringifier,
-  StringifiedMap,
-  StringifiedSet
-} from "df/common/strings/stringifier";
+import { JSONObjectStringifier, StringifiedSet } from "df/common/strings/stringifier";
 import { suite, test } from "df/testing";
 
 interface IKey {
@@ -48,47 +44,6 @@ suite(basename(__filename), () => {
         b: 123
       };
       expect(stringifier.stringify(value)).equals(stringifier.stringify(value2));
-    });
-  });
-
-  suite("stringified map", () => {
-    const jsonStringifiedMap = new StringifiedMap<IKey, string>(new JSONObjectStringifier(), [
-      [{ a: "1", b: 2 }, "x"],
-      [{ a: "2", b: 2 }, "y"],
-      [{ a: "2", b: 3 }, "z"]
-    ]);
-
-    test("has correct stringified keys", () => {
-      expect([...jsonStringifiedMap.keys()]).deep.equals([
-        { a: "1", b: 2 },
-        { a: "2", b: 2 },
-        { a: "2", b: 3 }
-      ]);
-    });
-
-    test("has correct stringified iterator", () => {
-      expect([...jsonStringifiedMap]).deep.equals([
-        [{ a: "1", b: 2 }, "x"],
-        [{ a: "2", b: 2 }, "y"],
-        [{ a: "2", b: 3 }, "z"]
-      ]);
-    });
-
-    test("set and get", () => {
-      const map = new StringifiedMap<IKey, string>(new JSONObjectStringifier());
-      map.set(
-        {
-          a: "1",
-          b: 2
-        },
-        "test"
-      );
-      expect(
-        map.get({
-          a: "1",
-          b: 2
-        })
-      ).equals("test");
     });
   });
 

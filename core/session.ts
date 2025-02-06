@@ -1,7 +1,7 @@
 import { default as TarjanGraphConstructor, Graph as TarjanGraph } from "tarjan-graph";
 
 import { encode64, verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
-import { StringifiedMap, StringifiedSet } from "df/common/strings/stringifier";
+import { StringifiedSet } from "df/common/strings/stringifier";
 import { Action, ILegacyTableConfig, ITableContext, TableType } from "df/core/actions";
 import { AContextable, Assertion, AssertionContext } from "df/core/actions/assertion";
 import {
@@ -556,15 +556,16 @@ export class Session {
       return;
     }
 
-    const newTargetByOriginalTarget = new StringifiedMap<dataform.ITarget, dataform.ITarget>(
-      targetStringifier
-    );
+    const newTargetByOriginalTarget = new Map<string, dataform.ITarget>();
     declarationTargets.forEach(declarationTarget =>
-      newTargetByOriginalTarget.set(declarationTarget, declarationTarget)
+      newTargetByOriginalTarget.set(
+        targetStringifier.stringify(declarationTarget),
+        declarationTarget
+      )
     );
 
     actions.forEach(action => {
-      newTargetByOriginalTarget.set(action.target, {
+      newTargetByOriginalTarget.set(targetStringifier.stringify(action.target), {
         ...action.target,
         database:
           action.target.database &&
@@ -572,17 +573,17 @@ export class Session {
         schema: `${action.target.schema}${this.getSchemaSuffixWithUnderscore()}`,
         name: `${this.getTablePrefixWithUnderscore()}${action.target.name}`
       });
-      action.target = newTargetByOriginalTarget.get(action.target);
+      action.target = newTargetByOriginalTarget.get(targetStringifier.stringify(action.target));
     });
 
     // Fix up dependencies in case those dependencies' names have changed.
     const getUpdatedTarget = (originalTarget: dataform.ITarget) => {
       // It's possible that we don't have a new Target for a dependency that failed to compile,
       // so fall back to the original Target.
-      if (!newTargetByOriginalTarget.has(originalTarget)) {
+      if (!newTargetByOriginalTarget.has(targetStringifier.stringify(originalTarget))) {
         return originalTarget;
       }
-      return newTargetByOriginalTarget.get(originalTarget);
+      return newTargetByOriginalTarget.get(targetStringifier.stringify(originalTarget));
     };
     actions.forEach(action => {
       action.dependencyTargets = (action.dependencyTargets || []).map(getUpdatedTarget);

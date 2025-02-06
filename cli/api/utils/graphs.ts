@@ -1,35 +1,39 @@
-import { StringifiedMap } from "df/common/strings/stringifier";
 import { targetStringifier } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 
-export const combineAllActions = (graph: dataform.ICompiledGraph) => {
-  return ([] as Array<
-    dataform.ITable | dataform.IOperation | dataform.IAssertion | dataform.IDeclaration | dataform.IDataPreparation
-  >).concat(
+type CoreProtoActionTypes =
+  | dataform.ITable
+  | dataform.IOperation
+  | dataform.IAssertion
+  | dataform.IDeclaration
+  | dataform.IDataPreparation;
+
+function combineAllActions(graph: dataform.ICompiledGraph) {
+  return ([] as Array<CoreProtoActionTypes>).concat(
     graph.tables || ([] as dataform.ITable[]),
     graph.operations || ([] as dataform.IOperation[]),
     graph.assertions || ([] as dataform.IAssertion[]),
     graph.declarations || ([] as dataform.IDeclaration[]),
     graph.dataPreparations || ([] as dataform.IDataPreparation[])
   );
-};
+}
 
 export function actionsByTarget(compiledGraph: dataform.ICompiledGraph) {
-  return new StringifiedMap(
-    targetStringifier,
-    combineAllActions(compiledGraph)
-      // Required for backwards compatibility with old versions of @dataform/core.
-      .filter(action => !!action.target)
-      .map(action => [action.target, action])
-  );
+  const actionsMap = new Map<string, CoreProtoActionTypes>();
+  combineAllActions(compiledGraph)
+    // Required for backwards compatibility with old versions of @dataform/core.
+    .filter(action => !!action.target)
+    .forEach(action => {
+      actionsMap.set(targetStringifier.stringify(action.target), action);
+    });
 }
 
 export function actionsByCanonicalTarget(compiledGraph: dataform.ICompiledGraph) {
-  return new StringifiedMap(
-    targetStringifier,
-    combineAllActions(compiledGraph)
-      // Required for backwards compatibility with old versions of @dataform/core.
-      .filter(action => !!action.canonicalTarget)
-      .map(action => [action.canonicalTarget, action])
-  );
+  const actionsMap = new Map<string, CoreProtoActionTypes>();
+  combineAllActions(compiledGraph)
+    // Required for backwards compatibility with old versions of @dataform/core.
+    .filter(action => !!action.canonicalTarget)
+    .forEach(action => {
+      actionsMap.set(targetStringifier.stringify(action.canonicalTarget), action);
+    });
 }

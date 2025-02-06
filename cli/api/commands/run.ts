@@ -6,7 +6,7 @@ import { IBigQueryExecutionOptions } from "df/cli/api/dbadapters/bigquery";
 import { Flags } from "df/common/flags";
 import { retry } from "df/common/promises";
 import { deepClone, equals } from "df/common/protos";
-import { StringifiedMap, StringifiedSet } from "df/common/strings/stringifier";
+import { StringifiedSet } from "df/common/strings/stringifier";
 import { targetStringifier } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 
@@ -45,10 +45,7 @@ export function run(
 }
 
 export class Runner {
-  private readonly warehouseStateByTarget: StringifiedMap<
-    dataform.ITarget,
-    dataform.ITableMetadata
-  >;
+  private readonly warehouseStateByTarget: Map<string, dataform.ITableMetadata>;
 
   private readonly allActionTargets: StringifiedSet<dataform.ITarget>;
   private readonly runResult: dataform.IRunResult;
@@ -79,9 +76,12 @@ export class Runner {
       actions: [],
       ...partiallyExecutedRunResult
     };
-    this.warehouseStateByTarget = new StringifiedMap(
-      targetStringifier,
-      graph.warehouseState.tables?.map(tableMetadata => [tableMetadata.target, tableMetadata])
+    this.warehouseStateByTarget = new Map<string, dataform.ITableMetadata>();
+    graph.warehouseState.tables?.forEach(tableMetadata =>
+      this.warehouseStateByTarget.set(
+        targetStringifier.stringify(tableMetadata.target),
+        tableMetadata
+      )
     );
     this.executedActionTargets = new StringifiedSet(
       targetStringifier,
@@ -383,7 +383,7 @@ export class Runner {
       }
     }
 
-    this.warehouseStateByTarget.delete(action.target);
+    this.warehouseStateByTarget.delete(targetStringifier.stringify(action.target));
 
     if (actionResult.status === dataform.ActionResult.ExecutionStatus.RUNNING) {
       actionResult.status = dataform.ActionResult.ExecutionStatus.SUCCESSFUL;
