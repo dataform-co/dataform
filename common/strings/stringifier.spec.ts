@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { basename } from "path";
 
-import { JSONObjectStringifier, StringifiedSet } from "df/common/strings/stringifier";
+import { JSONObjectStringifier } from "df/common/strings/stringifier";
 import { suite, test } from "df/testing";
 
 interface IKey {
@@ -44,44 +44,6 @@ suite(basename(__filename), () => {
         b: 123
       };
       expect(stringifier.stringify(value)).equals(stringifier.stringify(value2));
-    });
-  });
-
-  suite("stringified set", () => {
-    const jsonStringifiedSet = new StringifiedSet<IKey>(new JSONObjectStringifier(), [
-      { a: "1", b: 2 },
-      { a: "2", b: 2 },
-      { a: "2", b: 3 }
-    ]);
-
-    test("has correct stringified values", () => {
-      expect([...jsonStringifiedSet.values()]).deep.equals([
-        { a: "1", b: 2 },
-        { a: "2", b: 2 },
-        { a: "2", b: 3 }
-      ]);
-    });
-
-    test("has correct stringified iterator", () => {
-      expect([...jsonStringifiedSet]).deep.equals([
-        { a: "1", b: 2 },
-        { a: "2", b: 2 },
-        { a: "2", b: 3 }
-      ]);
-    });
-
-    test("add and has", () => {
-      const set = new StringifiedSet<IKey>(new JSONObjectStringifier());
-      set.add({
-        a: "1",
-        b: 2
-      });
-      expect(
-        set.has({
-          a: "1",
-          b: 2
-        })
-      ).equals(true);
     });
   });
 });

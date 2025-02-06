@@ -1,7 +1,6 @@
 import { default as TarjanGraphConstructor, Graph as TarjanGraph } from "tarjan-graph";
 
 import { encode64, verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
-import { StringifiedSet } from "df/common/strings/stringifier";
 import { Action, ILegacyTableConfig, ITableContext, TableType } from "df/core/actions";
 import { AContextable, Assertion, AssertionContext } from "df/core/actions/assertion";
 import {
@@ -720,15 +719,15 @@ export class Session {
   }
 
   private removeNonUniqueActionsFromCompiledGraph(compiledGraph: dataform.CompiledGraph) {
-    function getNonUniqueTargets(targets: dataform.ITarget[]): StringifiedSet<dataform.ITarget> {
-      const allTargets = new StringifiedSet<dataform.ITarget>(targetStringifier);
-      const nonUniqueTargets = new StringifiedSet<dataform.ITarget>(targetStringifier);
+    function getNonUniqueTargets(targets: dataform.ITarget[]): Set<string> {
+      const allTargets = new Set<string>();
+      const nonUniqueTargets = new Set<string>();
 
       targets.forEach(target => {
-        if (allTargets.has(target)) {
-          nonUniqueTargets.add(target);
+        if (allTargets.has(targetStringifier.stringify(target))) {
+          nonUniqueTargets.add(targetStringifier.stringify(target));
         }
-        allTargets.add(target);
+        allTargets.add(targetStringifier.stringify(target));
       });
 
       return nonUniqueTargets;
@@ -749,9 +748,11 @@ export class Session {
     );
 
     const isUniqueAction = (action: IActionProto) => {
-      const isNonUniqueTarget = nonUniqueActionsTargets.has(action.target);
+      const isNonUniqueTarget = nonUniqueActionsTargets.has(
+        targetStringifier.stringify(action.target)
+      );
       const isNonUniqueCanonicalTarget = nonUniqueActionsCanonicalTargets.has(
-        action.canonicalTarget
+        targetStringifier.stringify(action.canonicalTarget)
       );
 
       if (isNonUniqueTarget) {
