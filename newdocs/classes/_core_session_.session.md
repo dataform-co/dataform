@@ -2,7 +2,8 @@
 
 # Class: Session
 
-Contains methods that are published globally, so can be invoked anywhere in a Dataform project.
+Contains methods that are published globally, so can be invoked anywhere in the `/definitions`
+folder of a Dataform project.
 
 ## Hierarchy
 
@@ -10,21 +11,173 @@ Contains methods that are published globally, so can be invoked anywhere in a Da
 
 ## Index
 
+### Properties
+
+* [projectConfig](_core_session_.session.md#projectconfig)
+
 ### Methods
 
+* [assert](_core_session_.session.md#assert)
+* [declare](_core_session_.session.md#declare)
+* [notebook](_core_session_.session.md#notebook)
+* [operate](_core_session_.session.md#operate)
 * [publish](_core_session_.session.md#publish)
+* [test](_core_session_.session.md#test)
+
+## Properties
+
+###  projectConfig
+
+• **projectConfig**: *ProjectConfig*
+
+*Defined in [core/session.ts:57](https://github.com/dataform-co/dataform/blob/0115e7ef/core/session.ts#L57)*
+
+Global variable that contains the IProjectConfig object. Required for getting IProjectConfig
+properties, for example:
 
 ## Methods
+
+###  assert
+
+▸ **assert**(`name`: string, `query?`: AContextable‹string›): *Assertion*
+
+*Defined in [core/session.ts:362](https://github.com/dataform-co/dataform/blob/0115e7ef/core/session.ts#L362)*
+
+Adds a Dataform assertion the compiled graph.
+
+Available only in the `/definitions` directory.
+
+Example:
+```js
+// definitions/file.js
+
+assert("name").query(ctx => "select 1");
+```
+
+<!-- TODO(ekrekr): safely allow passing of config blocks as the second argument, similar to
+publish. -->
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`name` | string |
+`query?` | AContextable‹string› |
+
+**Returns:** *Assertion*
+
+___
+
+###  declare
+
+▸ **declare**(`dataset`: ITarget): *Declaration*
+
+*Defined in [core/session.ts:389](https://github.com/dataform-co/dataform/blob/0115e7ef/core/session.ts#L389)*
+
+Declares the dataset as a Dataform data source.
+
+Available only in the `/definitions` directory.
+
+Example:
+```js
+// definitions/file.js
+
+declare({name: "a-declaration"})
+```
+
+<!-- TODO(ekrekr): safely allow passing of config blocks as the second argument, similar to
+publish. -->
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`dataset` | ITarget |
+
+**Returns:** *Declaration*
+
+___
+
+###  notebook
+
+▸ **notebook**(`name`: string): *Notebook*
+
+*Defined in [core/session.ts:440](https://github.com/dataform-co/dataform/blob/0115e7ef/core/session.ts#L440)*
+
+Creates a Notebook action.
+
+Available only in the `/definitions` directory.
+
+Example:
+```js
+// definitions/file.js
+
+notebook("notebook-name")
+```
+
+<!-- TODO(ekrekr): safely allow passing of config blocks as the second argument, similar to
+publish. -->
+<!-- TODO(ekrekr): add tests for this method -->
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`name` | string |
+
+**Returns:** *Notebook*
+
+___
+
+###  operate
+
+▸ **operate**(`name`: string, `queries?`: Contextable‹ICommonContext, string | string[]›): *Operation*
+
+*Defined in [core/session.ts:283](https://github.com/dataform-co/dataform/blob/0115e7ef/core/session.ts#L283)*
+
+Defines a SQL operation.
+
+Available only in the `/definitions` directory.
+
+Example:
+
+```js
+// definitions/file.js
+
+publish("published-table", {
+  type: "table",
+  dependencies: ["a-declaration"],
+}).query(ctx => "SELECT 1 AS test");
+```
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`name` | string |
+`queries?` | Contextable‹ICommonContext, string &#124; string[]› |
+
+**Returns:** *Operation*
+
+___
 
 ###  publish
 
 ▸ **publish**(`name`: string, `queryOrConfig?`: Contextable‹ITableContext, string› | TableConfig | ViewConfig | IncrementalTableConfig | ILegacyTableConfig | any): *Table | IncrementalTable | View*
 
-*Defined in [core/session.ts:283](https://github.com/dataform-co/dataform/blob/699b3c4c/core/session.ts#L283)*
+*Defined in [core/session.ts:312](https://github.com/dataform-co/dataform/blob/0115e7ef/core/session.ts#L312)*
 
 Creates a table or view.
 
-Available only in the /definitions directory.
+Available only in the `/definitions` directory.
+
+Example:
+
+```js
+// definitions/file.js
+
+operate("an-operation", ["SELECT 1", "SELECT 2"])
+```
 
 **Parameters:**
 
@@ -34,3 +187,34 @@ Name | Type |
 `queryOrConfig?` | Contextable‹ITableContext, string› &#124; TableConfig &#124; ViewConfig &#124; IncrementalTableConfig &#124; ILegacyTableConfig &#124; any |
 
 **Returns:** *Table | IncrementalTable | View*
+
+___
+
+###  test
+
+▸ **test**(`name`: string): *Test*
+
+*Defined in [core/session.ts:414](https://github.com/dataform-co/dataform/blob/0115e7ef/core/session.ts#L414)*
+
+Creates a Test action.
+
+Available only in the `/definitions` directory.
+
+Example:
+```js
+// definitions/file.js
+
+test("test-name")
+```
+
+<!-- TODO(ekrekr): safely allow passing of config blocks as the second argument, similar to
+publish. -->
+<!-- TODO(ekrekr): add tests for this method -->
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`name` | string |
+
+**Returns:** *Test*

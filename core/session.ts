@@ -44,11 +44,22 @@ export interface IActionProto {
 }
 
 /**
- * Contains methods that are published globally, so can be invoked anywhere in a Dataform project.
+ * Contains methods that are published globally, so can be invoked anywhere in the `/definitions`
+ * folder of a Dataform project.
  */
 export class Session {
   public rootDir: string;
 
+  /**
+   * Stores the project configuration of the current Dataform project. Can be accessed via the
+   * `dataform` global variable.
+   *
+   * Example:
+   *
+   * ```js
+   * dataform.projectConfig.vars.myVariableName === "myVariableValue"
+   * ```
+   */
   public projectConfig: dataform.ProjectConfig;
   // The canonical project config contains the project config before schema and database overrides.
   public canonicalProjectConfig: dataform.ProjectConfig;
@@ -259,11 +270,27 @@ export class Session {
     return "";
   }
 
-  // TODO(ekrekr): safely allow passing of config blocks as the second argument, similar to publish.
+  /**
+   * Defines a SQL operation.
+   *
+   * Available only in the `/definitions` directory.
+   *
+   * Example:
+   *
+   * ```js
+   * // definitions/file.js
+   *
+   * publish("published-table", {
+   *   type: "table",
+   *   dependencies: ["a-declaration"],
+   * }).query(ctx => "SELECT 1 AS test");
+   * ```
+   */
   public operate(
     name: string,
     queries?: Contextable<ICommonContext, string | string[]>
   ): Operation {
+    // TODO(ekrekr): safely allow passing of config blocks as the second argument, similar to publish.
     const operation = new Operation();
     operation.session = this;
     utils.setNameAndTarget(this, operation.proto, name);
@@ -278,7 +305,15 @@ export class Session {
   /**
    * Creates a table or view.
    *
-   * Available only in the /definitions directory.
+   * Available only in the `/definitions` directory.
+   *
+   * Example:
+   *
+   * ```js
+   * // definitions/file.js
+   *
+   * operate("an-operation", ["SELECT 1", "SELECT 2"])
+   * ```
    */
   public publish(
     name: string,
@@ -315,7 +350,21 @@ export class Session {
     return newTable;
   }
 
-  // TODO(ekrekr): safely allow passing of config blocks as the second argument, similar to publish.
+  /**
+   * Adds a Dataform assertion the compiled graph.
+   *
+   * Available only in the `/definitions` directory.
+   *
+   * Example:
+   * ```js
+   * // definitions/file.js
+   *
+   * assert("name").query(ctx => "select 1");
+   * ```
+   *
+   * <!-- TODO(ekrekr): safely allow passing of config blocks as the second argument, similar to
+   * publish. -->
+   */
   public assert(name: string, query?: AContextable<string>): Assertion {
     const assertion = new Assertion();
     assertion.session = this;
@@ -328,7 +377,21 @@ export class Session {
     return assertion;
   }
 
-  // TODO(ekrekr): safely allow passing of config blocks as the second argument, similar to publish.
+  /**
+   * Declares the dataset as a Dataform data source.
+   *
+   * Available only in the `/definitions` directory.
+   *
+   * Example:
+   * ```js
+   * // definitions/file.js
+   *
+   * declare({name: "a-declaration"})
+   * ```
+   *
+   * <!-- TODO(ekrekr): safely allow passing of config blocks as the second argument, similar to
+   * publish. -->
+   */
   public declare(dataset: dataform.ITarget): Declaration {
     const declaration = new Declaration();
     declaration.session = this;
@@ -338,6 +401,22 @@ export class Session {
     return declaration;
   }
 
+  /**
+   * Creates a Test action.
+   *
+   * Available only in the `/definitions` directory.
+   *
+   * Example:
+   * ```js
+   * // definitions/file.js
+   *
+   * test("test-name")
+   * ```
+   *
+   * <!-- TODO(ekrekr): safely allow passing of config blocks as the second argument, similar to
+   * publish. -->
+   * <!-- TODO(ekrekr): add tests for this method -->
+   */
   public test(name: string): Test {
     const newTest = new Test();
     newTest.session = this;
@@ -348,6 +427,22 @@ export class Session {
     return newTest;
   }
 
+  /**
+   * Creates a Notebook action.
+   *
+   * Available only in the `/definitions` directory.
+   *
+   * Example:
+   * ```js
+   * // definitions/file.js
+   *
+   * notebook("notebook-name")
+   * ```
+   *
+   * <!-- TODO(ekrekr): safely allow passing of config blocks as the second argument, similar to
+   * publish. -->
+   * <!-- TODO(ekrekr): add tests for this method -->
+   */
   public notebook(name: string): Notebook {
     const notebook = new Notebook();
     notebook.session = this;
