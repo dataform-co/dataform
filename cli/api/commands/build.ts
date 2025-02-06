@@ -2,7 +2,6 @@ import { prune } from "df/cli/api/commands/prune";
 import { state } from "df/cli/api/commands/state";
 import * as dbadapters from "df/cli/api/dbadapters";
 import { ExecutionSql } from "df/cli/api/dbadapters/execution_sql";
-import { StringifiedMap, StringifiedSet } from "df/common/strings/stringifier";
 import { targetStringifier } from "df/core/targets";
 import * as utils from "df/core/utils";
 import { dataform } from "df/protos/ts";
@@ -14,15 +13,17 @@ export async function build(
 ) {
   const prunedGraph = prune(compiledGraph, runConfig);
 
-  const allInvolvedTargets = new StringifiedSet<dataform.ITarget>(
-    targetStringifier,
-    prunedGraph.tables.map(table => table.target)
+  const allInvolvedTargets = new Set<string>(
+    prunedGraph.tables.map(table => targetStringifier.stringify(table.target))
   );
 
   return new Builder(
     prunedGraph,
     runConfig,
-    await state(dbadapter, Array.from(allInvolvedTargets))
+    await state(
+      dbadapter,
+      Array.from(allInvolvedTargets).map(target => targetStringifier.parse(target))
+    )
   ).build();
 }
 
@@ -46,16 +47,19 @@ export class Builder {
       throw new Error(`Project has unresolved compilation or validation errors.`);
     }
 
-    const tableMetadataByTarget = new StringifiedMap<dataform.ITarget, dataform.ITableMetadata>(
-      targetStringifier
-    );
+    const tableMetadataByTarget = new Map<string, dataform.ITableMetadata>();
+
     this.warehouseState.tables.forEach(tableState => {
-      tableMetadataByTarget.set(tableState.target, tableState);
+      tableMetadataByTarget.set(targetStringifier.stringify(tableState.target), tableState);
     });
 
     const actions: dataform.IExecutionAction[] = [].concat(
       this.prunedGraph.tables.map(t =>
-        this.buildTable(t, tableMetadataByTarget.get(t.target), this.runConfig)
+        this.buildTable(
+          t,
+          tableMetadataByTarget.get(targetStringifier.stringify(t.target)),
+          this.runConfig
+        )
       ),
       this.prunedGraph.operations.map(o => this.buildOperation(o)),
       this.prunedGraph.assertions.map(a => this.buildAssertion(a))

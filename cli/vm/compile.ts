@@ -86,7 +86,7 @@ if (require.main === module) {
 }
 
 /**
- * @returns a base64 encoded {@see dataform.CoreExecutionRequest} proto.
+ * @returns a base64 encoded @see {@link dataform.CoreExecutionRequest} proto.
  */
 function createCoreExecutionRequest(compileConfig: dataform.ICompileConfig): string {
   const filePaths = Array.from(

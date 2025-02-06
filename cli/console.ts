@@ -404,7 +404,7 @@ function printExecutedActionErrors(
   executionAction: dataform.IExecutionAction
 ) {
   const failingTasks = executedAction.tasks.filter(
-    task => task.status === dataform.ActionResult.ExecutionStatus.FAILED
+    task => task.status === dataform.TaskResult.ExecutionStatus.FAILED
   );
   failingTasks.forEach((task, i) => {
     executionAction.tasks[i].statement.split("\n").forEach(line => {
