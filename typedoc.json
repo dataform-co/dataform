@@ -1,0 +1,7 @@
+{
+    "$schema": "https://typedoc-plugin-markdown.org/schema.json",
+    "entryPoints": ["./core/session.ts"],
+    "out": "newdocs",
+    "plugin": ["typedoc-plugin-markdown"],
+    "name": "Dataform Javascript API Reference",
+}
