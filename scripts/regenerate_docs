@@ -3,10 +3,15 @@
 # docker pull pseudomuto/protoc-gen-doc
 
 # docker run --rm \
-#   -v $(pwd)/docs:/out \
-#   -v $(pwd)/protos:/protos \
-#   pseudomuto/protoc-gen-doc configs.proto --doc_opt=markdown,configs-reference.md::camel_case_fields=true
+#     -v $(pwd)/docs:/out \
+#     -v $(pwd)/protos:/protos \
+#     pseudomuto/protoc-gen-doc configs.proto --doc_opt=markdown,configs-reference.md::camel_case_fields=true
 
 # TODO(ekrekr): Re-enable this script after camelCasing is merged.
-echo ERROR: generating docs with camel casing requires https://github.com/pseudomuto/protoc-gen-doc/pull/540 to be merged. Until this is merged, the updated image with camel casing can be built from the fork before running the above script.
+echo ERROR: Generating docs with camel casing requires https://github.com/pseudomuto/protoc-gen-doc/pull/540 to be merged.
+echo Until this is merged, the updated image with camel casing can be built from the fork before running the above script.
+echo This can be done via:
+echo $ git clone git@github.com:Ekrekr/protoc-gen-doc.git
+echo $ make dev/docker
+echo then uncommenting the "docker run" part of this script, and commenting the failure exit return code and prior warning.
 exit 1
