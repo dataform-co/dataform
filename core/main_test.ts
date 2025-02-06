@@ -1390,7 +1390,7 @@ config {
   },
   load: {
     mode: "MAXIMUM",
-    columnName: "xyz",
+    incrementalColumn: "xyz",
   },
 }
 

@@ -355,7 +355,7 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     }
 
     // Add Load configuration
-    this.proto.load = this.mapLoadMode(config.load?.mode, config.load?.columnName);
+    this.proto.load = this.mapLoadMode(config.load?.mode, config.load?.incrementalColumn);
 
     // Resolve targets
     this.proto.targets  = targets.map(target =>
@@ -396,7 +396,7 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
   // - for sqlx it will have type "string"
   // - for action.yaml it will be converted to enum which is represented
   // in TypeScript as a "number".
-  private mapLoadMode(loadMode?: string|number, columnName?: string): dataform.LoadConfiguration {
+  private mapLoadMode(loadMode?: string|number, incrementalColumn?: string): dataform.LoadConfiguration {
     if (!loadMode) {
       return dataform.LoadConfiguration.create({"replace": {}});
     }
@@ -404,8 +404,8 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     switch (loadMode.toString().toUpperCase()) {
       case "REPLACE_TABLE": return dataform.LoadConfiguration.create({"replace": {}});
       case "APPEND": return dataform.LoadConfiguration.create({"append": {}});
-      case "MAXIMUM": return dataform.LoadConfiguration.create({"maximum": {"columnName": this.validateLoadModeColumnName(columnName)}});
-      case "UNIQUE": return dataform.LoadConfiguration.create({"unique": {"columnName": this.validateLoadModeColumnName(columnName)}});
+      case "MAXIMUM": return dataform.LoadConfiguration.create({"maximum": {"columnName": this.validateLoadModeColumnName(incrementalColumn)}});
+      case "UNIQUE": return dataform.LoadConfiguration.create({"unique": {"columnName": this.validateLoadModeColumnName(incrementalColumn)}});
       default: throw new Error(`LoadMode value "${loadMode}" is not supported`);
     }
   }

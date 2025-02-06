@@ -553,7 +553,7 @@ message ActionConfig {
   message LoadConfig {
     LoadMode mode = 1;
     // Required when mode is MAXIMUM or UNIQUE
-    string column_name = 2;
+    string incremental_column = 2;
   }
 
   enum LoadMode {
