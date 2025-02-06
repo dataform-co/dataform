@@ -21,8 +21,8 @@ import { dataform } from "df/protos/ts";
 /**
  * This is the main entry point into the user space code that should be invoked by the compilation wrapper sandbox.
  *
- * @param coreExecutionRequest an encoded {@see dataform.CoreExecutionRequest} proto.
- * @returns an encoded {@see dataform.CoreExecutionResponse} proto.
+ * @param coreExecutionRequest an encoded @see {@link dataform.CoreExecutionRequest} proto.
+ * @returns an encoded @see {@link dataform.CoreExecutionResponse} proto.
  */
 export function main(coreExecutionRequest: Uint8Array | string): Uint8Array | string {
   const globalAny = global as any;
