@@ -9,7 +9,7 @@ type CoreProtoActionTypes =
   | dataform.IDataPreparation;
 
 function combineAllActions(graph: dataform.ICompiledGraph) {
-  return ([] as Array<CoreProtoActionTypes>).concat(
+  return ([] as CoreProtoActionTypes[]).concat(
     graph.tables || ([] as dataform.ITable[]),
     graph.operations || ([] as dataform.IOperation[]),
     graph.assertions || ([] as dataform.IAssertion[]),
