@@ -1296,7 +1296,7 @@ config {
   errorTable: {
     name: "errorTable",
   },
-  load: {
+  loadMode: {
     mode: "APPEND",
   },
 }
@@ -1327,55 +1327,55 @@ FROM x
 
       expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(asPlainObject(result.compile.compiledGraph.dataPreparations)).deep.equals(
-          asPlainObject([
-            {
-              target: {
+        asPlainObject([
+          {
+            target: {
+              database: "projectOverride",
+              schema: "datasetOverride",
+              name: "dest"
+            },
+            canonicalTarget: {
+              database: "projectOverride",
+              schema: "datasetOverride",
+              name: "dest"
+            },
+            targets: [
+              {
                 database: "projectOverride",
                 schema: "datasetOverride",
                 name: "dest"
               },
-              canonicalTarget: {
-                database: "projectOverride",
-                schema: "datasetOverride",
-                name: "dest"
-              },
-              targets: [
-                {
-                  database: "projectOverride",
-                  schema: "datasetOverride",
-                  name: "dest"
-                },
-                {
-                  database: "projectOverride",
-                  schema: "datasetOverride",
-                  name: "errorTable"
-                }
-              ],
-              canonicalTargets: [
-                {
-                  database: "projectOverride",
-                  schema: "datasetOverride",
-                  name: "dest"
-                },
-                {
-                  database: "projectOverride",
-                  schema: "datasetOverride",
-                  name: "errorTable"
-                }
-              ],
-              fileName: "definitions/data_preparation.sqlx",
-              load: {
-                append: {}
-              },
-              query: "FROM x\n|> SELECT *",
-              errorTable: {
+              {
                 database: "projectOverride",
                 schema: "datasetOverride",
                 name: "errorTable"
+              }
+            ],
+            canonicalTargets: [
+              {
+                database: "projectOverride",
+                schema: "datasetOverride",
+                name: "dest"
               },
-              errorTableRetentionDays: 0,
-            }
-          ])
+              {
+                database: "projectOverride",
+                schema: "datasetOverride",
+                name: "errorTable"
+              }
+            ],
+            fileName: "definitions/data_preparation.sqlx",
+            query: "FROM x\n|> SELECT *",
+            load: {
+              append: {}
+            },
+            errorTable: {
+              database: "projectOverride",
+              schema: "datasetOverride",
+              name: "errorTable"
+            },
+            errorTableRetentionDays: 0
+          }
+        ])
       );
     });
 
@@ -1388,7 +1388,7 @@ config {
   errorTable: {
     name: "errorTable",
   },
-  load: {
+  loadMode: {
     mode: "MAXIMUM",
     incrementalColumn: "xyz",
   },

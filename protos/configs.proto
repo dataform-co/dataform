@@ -523,7 +523,7 @@ message ActionConfig {
 
     ErrorTableConfig error_table = 11;
 
-    LoadConfig load = 12;
+    LoadModeConfig load_mode = 12;
 
     message ErrorTableConfig {
       // The name of the error table.
@@ -550,7 +550,7 @@ message ActionConfig {
     DataPreparationConfig data_preparation = 8;
   }
 
-  message LoadConfig {
+  message LoadModeConfig {
     LoadMode mode = 1;
     // Required when mode is MAXIMUM or UNIQUE
     string incremental_column = 2;

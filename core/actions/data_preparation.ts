@@ -355,7 +355,7 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     }
 
     // Add Load configuration
-    this.proto.load = this.mapLoadMode(config.load?.mode, config.load?.incrementalColumn);
+    this.proto.load = this.mapLoadMode(config.loadMode?.mode, config.loadMode?.incrementalColumn);
 
     // Resolve targets
     this.proto.targets  = targets.map(target =>
