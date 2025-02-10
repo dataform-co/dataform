@@ -8,12 +8,12 @@
     - [ActionConfig.AssertionConfig](#dataform-ActionConfig-AssertionConfig)
     - [ActionConfig.ColumnDescriptor](#dataform-ActionConfig-ColumnDescriptor)
     - [ActionConfig.DataPreparationConfig](#dataform-ActionConfig-DataPreparationConfig)
+    - [ActionConfig.DataPreparationConfig.ErrorTableConfig](#dataform-ActionConfig-DataPreparationConfig-ErrorTableConfig)
     - [ActionConfig.DeclarationConfig](#dataform-ActionConfig-DeclarationConfig)
     - [ActionConfig.IncrementalTableConfig](#dataform-ActionConfig-IncrementalTableConfig)
     - [ActionConfig.IncrementalTableConfig.AdditionalOptionsEntry](#dataform-ActionConfig-IncrementalTableConfig-AdditionalOptionsEntry)
     - [ActionConfig.IncrementalTableConfig.LabelsEntry](#dataform-ActionConfig-IncrementalTableConfig-LabelsEntry)
     - [ActionConfig.NotebookConfig](#dataform-ActionConfig-NotebookConfig)
-    - [ActionConfig.OnSchemaChange](#dataform-ActionConfig-OnSchemaChange)
     - [ActionConfig.OperationConfig](#dataform-ActionConfig-OperationConfig)
     - [ActionConfig.TableAssertionsConfig](#dataform-ActionConfig-TableAssertionsConfig)
     - [ActionConfig.TableAssertionsConfig.UniqueKey](#dataform-ActionConfig-TableAssertionsConfig-UniqueKey)
@@ -28,6 +28,8 @@
     - [NotebookRuntimeOptionsConfig](#dataform-NotebookRuntimeOptionsConfig)
     - [WorkflowSettings](#dataform-WorkflowSettings)
     - [WorkflowSettings.VarsEntry](#dataform-WorkflowSettings-VarsEntry)
+  
+    - [ActionConfig.OnSchemaChange](#dataform-ActionConfig-OnSchemaChange)
   
 - [Scalar Value Types](#scalar-value-types)
 
@@ -118,6 +120,25 @@ Action config defines the contents of `actions.yaml` configuration files.
 | tags | [string](#string) | repeated | A list of user-defined tags with which the action should be labeled. |
 | disabled | [bool](#bool) |  | If set to true, this action will not be executed. However, the action can still be depended upon. Useful for temporarily turning off broken actions. |
 | description | [string](#string) |  | Description of the data preparation. |
+| errorTable | [ActionConfig.DataPreparationConfig.ErrorTableConfig](#dataform-ActionConfig-DataPreparationConfig-ErrorTableConfig) |  |  |
+
+
+
+
+
+
+<a name="dataform-ActionConfig-DataPreparationConfig-ErrorTableConfig"></a>
+
+### ActionConfig.DataPreparationConfig.ErrorTableConfig
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| name | [string](#string) |  | The name of the error table. |
+| dataset | [string](#string) |  | The dataset (schema) of the error table. |
+| project | [string](#string) |  | The Google Cloud project (database) of the error table. |
+| retentionDays | [int32](#int32) |  |  |
 
 
 
@@ -174,7 +195,7 @@ Action config defines the contents of `actions.yaml` configuration files.
 | dependOnDependencyAssertions | [bool](#bool) |  | When set to true, assertions dependent upon any dependency will be add as dedpendency to this action |
 | assertions | [ActionConfig.TableAssertionsConfig](#dataform-ActionConfig-TableAssertionsConfig) |  | Assertions to be run on the dataset. If configured, relevant assertions will automatically be created and run as a dependency of this dataset. |
 | hermetic | [bool](#bool) |  | If true, this indicates that the action only depends on data from explicitly-declared dependencies. Otherwise if false, it indicates that the action depends on data from a source which has not been declared as a dependency. |
-| onSchemaChange | [ActionConfg.OnSchemaChange](#dataform-ActionConfig-OnSchemaChange) |  | Defines the action behavior if the selected columns in query doesn't match columns in the target table. |
+| onSchemaChange | [ActionConfig.OnSchemaChange](#dataform-ActionConfig-OnSchemaChange) |  | Defines the action behavior if the selected columns in the query don&#39;t the match columns in the target table. |
 
 
 
@@ -212,6 +233,7 @@ Action config defines the contents of `actions.yaml` configuration files.
 
 
 
+
 <a name="dataform-ActionConfig-NotebookConfig"></a>
 
 ### ActionConfig.NotebookConfig
@@ -232,20 +254,6 @@ Action config defines the contents of `actions.yaml` configuration files.
 
 
 
-
-
-<a name="dataform-ActionConfig-OnSchemaChange"></a>
-
-### ActionConfig.OnSchemaChange
-
-
-
-| Value | Description |
-| ----- | ----------- |
-| IGNORE | New columns are ignored. Fails if columns are deleted or renamed. *Default value*. |
-| FAIL | Fails if the query would result in a new column(s) being added, deleted, or renamed. |
-| EXTEND | New columns will be added to the target table. Fails if columns are deleted or renamed. |
-| SYNCHRONIZE | Does not block any new column(s) from being added, deleted or renamed. Partitioned or clustered columns cannot be deleted or renamed. |
 
 
 
@@ -483,6 +491,7 @@ Action configs defines the contents of `actions.yaml` configuration files.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | outputBucket | [string](#string) |  | Storage bucket to output notebooks to after their execution. |
+| runtimeTemplateName | [string](#string) |  | Colab runtime template (https://cloud.google.com/colab/docs/runtimes), from which a runtime is created for notebook executions. |
 
 
 
@@ -530,6 +539,20 @@ configuration file.
 
 
  
+
+
+<a name="dataform-ActionConfig-OnSchemaChange"></a>
+
+### ActionConfig.OnSchemaChange
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| IGNORE | 0 | Ignore any schema changes (default). |
+| FAIL | 1 | Fails if the query would result in a new column(s) being added, deleted, or renamed. |
+| EXTEND | 2 | Does not block any new column(s) from being added. |
+| SYNCHRONIZE | 3 | Does not block any new column(s) from being added, deleted or renamed. |
+
 
  
 
