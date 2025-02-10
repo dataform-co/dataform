@@ -51,8 +51,8 @@ export class Session {
   public rootDir: string;
 
   /**
-   * Stores the project configuration of the current Dataform project. Can be accessed via the
-   * `dataform` global variable.
+   * Stores the Dataform project configuration of the current Dataform project. Can be accessed via
+   * the `dataform` global variable.
    *
    * Example:
    *

@@ -8,11 +8,12 @@
 #   pseudomuto/protoc-gen-doc configs.proto --doc_opt=markdown,configs-reference.md::camel_case_fields=true
 
 # TODO(ekrekr): Re-enable this script after camelCasing is merged.
-echo ERROR: generating docs with camel casing requires https://github.com/pseudomuto/protoc-gen-doc/pull/540 to be merged. Until this is merged, the updated image with camel casing can be built from the fork before running the above script.
-exit 1
+# echo ERROR: generating docs with camel casing requires https://github.com/pseudomuto/protoc-gen-doc/pull/540 to be merged. Until this is merged, the updated image with camel casing can be built from the fork before running the above script.
+# exit 1
 
 npx typedoc
 
-mv newdocs/classes/_core_session_.session.md docs/session-reference.md
+mv newdocs/classes/_core_session_.session.md docs/reference/session.md
+mv newdocs/classes/_core_actions_assertion_.assertion.md docs/reference/assertion.md
 
 rm -rf newdocs

@@ -31,17 +31,37 @@ interface ILegacyAssertionConfig extends dataform.ActionConfig.AssertionConfig {
 /** @hidden */
 export type AContextable<T> = T | ((ctx: AssertionContext) => T);
 
-/** @hidden */
+/**
+ * An assertion is a data quality test query that finds rows that violate one or more conditions
+ * specified in the query. If the query returns any rows, the assertion fails.
+ *
+ * You can create assertions in the following ways:
+ * * Add built-in assertions to the config block of a table. @see [table](Table).
+ * * Add manual assertions in a separate SQLX file. Example: `config { type: "assertion" }`.
+ * * Use the Javascript API. Example: `assert("name")`.
+ *
+ * When using the Javascript API, methods in this class can be accessed by the returned value. For
+ * example, the query for an assertion can be set like this:
+ *
+ * ```
+ * assert.query("SELECT * FROM table WHERE a IS NULL")
+ * ```
+ */
 export class Assertion extends ActionBuilder<dataform.Assertion> {
-  // TODO(ekrekr): make this field private, to enforce proto update logic to happen in this class.
+  /**
+   * @hidden Stores the generated proto for the compiled graph.
+   * <!-- TODO(ekrekr): make this field private, to enforce proto update logic to happen in this
+   * class. -->
+   */
   public proto: dataform.IAssertion = dataform.Assertion.create();
 
-  // Hold a reference to the Session instance.
+  /** @hidden Hold a reference to the Session instance. */
   public session: Session;
 
-  // We delay contextification until the final compile step, so hold these here for now.
+  /** @hidden We delay contextification until the final compile step, so hold these here for now. */
   private contextableQuery: AContextable<string>;
 
+  /** @hidden */
   constructor(session?: Session, unverifiedConfig?: any, configPath?: string) {
     super(session);
     this.session = session;
@@ -107,11 +127,20 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
     return this;
   }
 
+  /**
+   * Sets the query to be run by the assertion.
+   */
   public query(query: AContextable<string>) {
     this.contextableQuery = query;
     return this;
   }
 
+  /**
+   * @deprecated Deprecated in favor of
+   * [AssertionConfig.dependencies](configs#dataform-ActionConfig-AssertionConfig).
+   *
+   * Sets dependencies of the assertion.
+   */
   public dependencies(value: Resolvable | Resolvable[]) {
     const newDependencies = Array.isArray(value) ? value : [value];
     newDependencies.forEach(resolvable => {
@@ -122,17 +151,36 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
     return this;
   }
 
+  /**
+   * @deprecated Deprecated in favor of
+   * [AssertionConfig.hermetic](configs#dataform-ActionConfig-AssertionConfig).
+   *
+   * Sets dependencies of the assertion.
+   */
   public hermetic(hermetic: boolean) {
     this.proto.hermeticity = hermetic
       ? dataform.ActionHermeticity.HERMETIC
       : dataform.ActionHermeticity.NON_HERMETIC;
   }
 
+  /**
+   * @deprecated Deprecated in favor of
+   * [AssertionConfig.disabled](configs#dataform-ActionConfig-AssertionConfig).
+   *
+   * If called with `true`, this action is not executed. The action can still be depended upon.
+   * Useful for temporarily turning off broken actions.
+   */
   public disabled(disabled = true) {
     this.proto.disabled = disabled;
     return this;
   }
 
+  /**
+   * @deprecated Deprecated in favor of
+   * [AssertionConfig.tags](configs#dataform-ActionConfig-AssertionConfig).
+   *
+   * Sets a list of user-defined tags applied to this action.
+   */
   public tags(value: string | string[]) {
     const newTags = typeof value === "string" ? [value] : value;
     newTags.forEach(t => {
@@ -143,11 +191,24 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
     return this;
   }
 
+  /**
+   * @deprecated Deprecated in favor of
+   * [AssertionConfig.description](configs#dataform-ActionConfig-AssertionConfig).
+   *
+   * Sets the description of this assertion.
+   */
   public description(description: string) {
     this.proto.actionDescriptor = { description };
     return this;
   }
 
+  /**
+   * @deprecated Deprecated in favor of
+   * [AssertionConfig.project](configs#dataform-ActionConfig-AssertionConfig).
+   *
+   * Sets the database (Google Cloud project ID) in which to create the corresponding view for this
+   * assertion.
+   */
   public database(database: string) {
     setNameAndTarget(
       this.session,
@@ -159,6 +220,13 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
     return this;
   }
 
+  /**
+   * @deprecated Deprecated in favor of
+   * [AssertionConfig.dataset](configs#dataform-ActionConfig-AssertionConfig).
+   *
+   * Sets the schema (BigQuery dataset) in which to create the corresponding view for this
+   * assertion.
+   */
   public schema(schema: string) {
     setNameAndTarget(
       this.session,
@@ -170,20 +238,17 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
     return this;
   }
 
-  /**
-   * @hidden
-   */
+  /** @hidden */
   public getFileName() {
     return this.proto.fileName;
   }
 
-  /**
-   * @hidden
-   */
+  /** @hidden */
   public getTarget() {
     return dataform.Target.create(this.proto.target);
   }
 
+  /** @hidden */
   public compile() {
     const context = new AssertionContext(this);
 
@@ -197,6 +262,10 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
     );
   }
 
+  /**
+   * @hidden Verifies that the config provided to the assertion has the expected fields and their
+   * corresponding types.
+   */
   private verifyConfig(
     unverifiedConfig: ILegacyAssertionConfig
   ): dataform.ActionConfig.AssertionConfig {

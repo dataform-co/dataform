@@ -4,7 +4,7 @@
     "name": "Dataform Javascript API Reference",
     "excludeExternals": true,
     "exclude": [
-        "*", "!core/session.ts"
+        "*", "!core/**"
     ],
     "excludeNotDocumented": true
 }
