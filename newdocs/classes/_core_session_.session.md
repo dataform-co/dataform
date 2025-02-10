@@ -30,10 +30,16 @@ folder of a Dataform project.
 
 • **projectConfig**: *ProjectConfig*
 
-*Defined in [core/session.ts:57](https://github.com/dataform-co/dataform/blob/0115e7ef/core/session.ts#L57)*
+*Defined in [core/session.ts:63](https://github.com/dataform-co/dataform/blob/e80f2e1c/core/session.ts#L63)*
 
-Global variable that contains the IProjectConfig object. Required for getting IProjectConfig
-properties, for example:
+Stores the project configuration of the current Dataform project. Can be accessed via the
+`dataform` global variable.
+
+Example:
+
+```js
+dataform.projectConfig.vars.myVariableName === "myVariableValue"
+```
 
 ## Methods
 
@@ -41,7 +47,7 @@ properties, for example:
 
 ▸ **assert**(`name`: string, `query?`: AContextable‹string›): *Assertion*
 
-*Defined in [core/session.ts:362](https://github.com/dataform-co/dataform/blob/0115e7ef/core/session.ts#L362)*
+*Defined in [core/session.ts:368](https://github.com/dataform-co/dataform/blob/e80f2e1c/core/session.ts#L368)*
 
 Adds a Dataform assertion the compiled graph.
 
@@ -72,7 +78,7 @@ ___
 
 ▸ **declare**(`dataset`: ITarget): *Declaration*
 
-*Defined in [core/session.ts:389](https://github.com/dataform-co/dataform/blob/0115e7ef/core/session.ts#L389)*
+*Defined in [core/session.ts:395](https://github.com/dataform-co/dataform/blob/e80f2e1c/core/session.ts#L395)*
 
 Declares the dataset as a Dataform data source.
 
@@ -102,7 +108,7 @@ ___
 
 ▸ **notebook**(`name`: string): *Notebook*
 
-*Defined in [core/session.ts:440](https://github.com/dataform-co/dataform/blob/0115e7ef/core/session.ts#L440)*
+*Defined in [core/session.ts:446](https://github.com/dataform-co/dataform/blob/e80f2e1c/core/session.ts#L446)*
 
 Creates a Notebook action.
 
@@ -133,7 +139,7 @@ ___
 
 ▸ **operate**(`name`: string, `queries?`: Contextable‹ICommonContext, string | string[]›): *Operation*
 
-*Defined in [core/session.ts:283](https://github.com/dataform-co/dataform/blob/0115e7ef/core/session.ts#L283)*
+*Defined in [core/session.ts:289](https://github.com/dataform-co/dataform/blob/e80f2e1c/core/session.ts#L289)*
 
 Defines a SQL operation.
 
@@ -165,7 +171,7 @@ ___
 
 ▸ **publish**(`name`: string, `queryOrConfig?`: Contextable‹ITableContext, string› | TableConfig | ViewConfig | IncrementalTableConfig | ILegacyTableConfig | any): *Table | IncrementalTable | View*
 
-*Defined in [core/session.ts:312](https://github.com/dataform-co/dataform/blob/0115e7ef/core/session.ts#L312)*
+*Defined in [core/session.ts:318](https://github.com/dataform-co/dataform/blob/e80f2e1c/core/session.ts#L318)*
 
 Creates a table or view.
 
@@ -194,7 +200,7 @@ ___
 
 ▸ **test**(`name`: string): *Test*
 
-*Defined in [core/session.ts:414](https://github.com/dataform-co/dataform/blob/0115e7ef/core/session.ts#L414)*
+*Defined in [core/session.ts:420](https://github.com/dataform-co/dataform/blob/e80f2e1c/core/session.ts#L420)*
 
 Creates a Test action.
 
