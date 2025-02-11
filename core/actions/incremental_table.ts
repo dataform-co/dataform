@@ -267,8 +267,8 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
   }
 
   /**
-   * Sets a post-operation to run before the query is run. This is often used for temporarily
-   * granting permission to access source tables.
+   * Sets a post-operation to run after the query is run. This is often used for revoking temporary
+   * permissions granted to access source tables.
    *
    * Example:
    *
@@ -392,7 +392,7 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
    * @deprecated Deprecated in favor of
    * [IncrementalTableConfig.description](configs#dataform-ActionConfig-IncrementalTableConfig).
    *
-   * Sets the description of this assertion.
+   * Sets the description of this incremental table.
    */
   public description(description: string) {
     if (!this.proto.actionDescriptor) {
@@ -422,8 +422,8 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
    * @deprecated Deprecated in favor of
    * [IncrementalTableConfig.project](configs#dataform-ActionConfig-IncrementalTableConfig).
    *
-   * Sets the database (Google Cloud project ID) in which to create the corresponding view for this
-   * assertion.
+   * Sets the
+   * Sets the database (Google Cloud project ID) in which to create the output of this action.
    */
   public database(database: string) {
     setNameAndTarget(

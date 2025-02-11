@@ -63,6 +63,7 @@ export class Notebook extends ActionBuilder<dataform.Notebook> {
    */
   public dependOnDependencyAssertions: boolean = false;
 
+  /** @hidden */
   constructor(
     session?: Session,
     config?: dataform.ActionConfig.NotebookConfig,

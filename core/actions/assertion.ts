@@ -17,6 +17,7 @@ import { dataform } from "df/protos/ts";
 
 /**
  * @hidden
+ * @deprecated
  * This maintains backwards compatability with older versions.
  * TODO(ekrekr): consider breaking backwards compatability of these in v4.
  */

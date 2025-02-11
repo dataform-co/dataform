@@ -61,7 +61,7 @@ declare("name")
 
 ▸ **columns**(`columns`: ColumnDescriptor[]): *this*
 
-*Defined in [core/actions/declaration.ts:124](https://github.com/dataform-co/dataform/blob/c51d616a/core/actions/declaration.ts#L124)*
+*Defined in [core/actions/declaration.ts:125](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/actions/declaration.ts#L125)*
 
 **`deprecated`** Deprecated in favor of
 [DeclarationConfig.columns](configs#dataform-ActionConfig-DeclarationConfig).
@@ -82,7 +82,7 @@ ___
 
 ▸ **description**(`description`: string): *this*
 
-*Defined in [core/actions/declaration.ts:110](https://github.com/dataform-co/dataform/blob/c51d616a/core/actions/declaration.ts#L110)*
+*Defined in [core/actions/declaration.ts:111](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/actions/declaration.ts#L111)*
 
 **`deprecated`** Deprecated in favor of
 [DeclarationConfig.description](configs#dataform-ActionConfig-DeclarationConfig).

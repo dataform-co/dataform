@@ -30,7 +30,7 @@ folder of a Dataform project.
 
 • **projectConfig**: *ProjectConfig*
 
-*Defined in [core/session.ts:63](https://github.com/dataform-co/dataform/blob/c51d616a/core/session.ts#L63)*
+*Defined in [core/session.ts:63](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/session.ts#L63)*
 
 Stores the Dataform project configuration of the current Dataform project. Can be accessed via
 the `dataform` global variable.
@@ -47,7 +47,7 @@ dataform.projectConfig.vars.myVariableName === "myVariableValue"
 
 ▸ **assert**(`name`: string, `query?`: AContextable‹string›): *[Assertion](_core_actions_assertion_.assertion.md)*
 
-*Defined in [core/session.ts:368](https://github.com/dataform-co/dataform/blob/c51d616a/core/session.ts#L368)*
+*Defined in [core/session.ts:368](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/session.ts#L368)*
 
 Adds a Dataform assertion the compiled graph.
 
@@ -78,7 +78,7 @@ ___
 
 ▸ **declare**(`dataset`: ITarget): *[Declaration](_core_actions_declaration_.declaration.md)*
 
-*Defined in [core/session.ts:395](https://github.com/dataform-co/dataform/blob/c51d616a/core/session.ts#L395)*
+*Defined in [core/session.ts:395](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/session.ts#L395)*
 
 Declares the dataset as a Dataform data source.
 
@@ -108,7 +108,7 @@ ___
 
 ▸ **notebook**(`name`: string): *[Notebook](_core_actions_notebook_.notebook.md)*
 
-*Defined in [core/session.ts:446](https://github.com/dataform-co/dataform/blob/c51d616a/core/session.ts#L446)*
+*Defined in [core/session.ts:446](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/session.ts#L446)*
 
 Creates a Notebook action.
 
@@ -137,9 +137,9 @@ ___
 
 ###  operate
 
-▸ **operate**(`name`: string, `queries?`: [Contextable](../modules/_core_common_.md#contextable)‹[ICommonContext](../interfaces/_core_common_.icommoncontext.md), string | string[]›): *Operation*
+▸ **operate**(`name`: string, `queries?`: [Contextable](../modules/_core_common_.md#contextable)‹[ICommonContext](../interfaces/_core_common_.icommoncontext.md), string | string[]›): *[Operation](_core_actions_operation_.operation.md)*
 
-*Defined in [core/session.ts:289](https://github.com/dataform-co/dataform/blob/c51d616a/core/session.ts#L289)*
+*Defined in [core/session.ts:289](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/session.ts#L289)*
 
 Defines a SQL operation.
 
@@ -163,15 +163,15 @@ Name | Type |
 `name` | string |
 `queries?` | [Contextable](../modules/_core_common_.md#contextable)‹[ICommonContext](../interfaces/_core_common_.icommoncontext.md), string &#124; string[]› |
 
-**Returns:** *Operation*
+**Returns:** *[Operation](_core_actions_operation_.operation.md)*
 
 ___
 
 ###  publish
 
-▸ **publish**(`name`: string, `queryOrConfig?`: [Contextable](../modules/_core_common_.md#contextable)‹[ITableContext](../interfaces/_core_actions_index_.itablecontext.md), string› | TableConfig | ViewConfig | IncrementalTableConfig | ILegacyTableConfig | any): *[Table](_core_actions_table_.table.md) | [IncrementalTable](_core_actions_incremental_table_.incrementaltable.md) | View*
+▸ **publish**(`name`: string, `queryOrConfig?`: [Contextable](../modules/_core_common_.md#contextable)‹[ITableContext](../interfaces/_core_actions_index_.itablecontext.md), string› | TableConfig | ViewConfig | IncrementalTableConfig | ILegacyTableConfig | any): *[Table](_core_actions_table_.table.md) | [IncrementalTable](_core_actions_incremental_table_.incrementaltable.md) | [View](_core_actions_view_.view.md)*
 
-*Defined in [core/session.ts:318](https://github.com/dataform-co/dataform/blob/c51d616a/core/session.ts#L318)*
+*Defined in [core/session.ts:318](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/session.ts#L318)*
 
 Creates a table or view.
 
@@ -192,15 +192,15 @@ Name | Type |
 `name` | string |
 `queryOrConfig?` | [Contextable](../modules/_core_common_.md#contextable)‹[ITableContext](../interfaces/_core_actions_index_.itablecontext.md), string› &#124; TableConfig &#124; ViewConfig &#124; IncrementalTableConfig &#124; ILegacyTableConfig &#124; any |
 
-**Returns:** *[Table](_core_actions_table_.table.md) | [IncrementalTable](_core_actions_incremental_table_.incrementaltable.md) | View*
+**Returns:** *[Table](_core_actions_table_.table.md) | [IncrementalTable](_core_actions_incremental_table_.incrementaltable.md) | [View](_core_actions_view_.view.md)*
 
 ___
 
 ###  test
 
-▸ **test**(`name`: string): *Test*
+▸ **test**(`name`: string): *[Test](_core_actions_test_.test.md)*
 
-*Defined in [core/session.ts:420](https://github.com/dataform-co/dataform/blob/c51d616a/core/session.ts#L420)*
+*Defined in [core/session.ts:420](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/session.ts#L420)*
 
 Creates a Test action.
 
@@ -223,4 +223,4 @@ Name | Type |
 ------ | ------ |
 `name` | string |
 
-**Returns:** *Test*
+**Returns:** *[Test](_core_actions_test_.test.md)*

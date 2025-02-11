@@ -1,13 +1,13 @@
-[Dataform Javascript API Reference](../README.md) › [Globals](../globals.md) › ["core/actions/incremental_table"](../modules/_core_actions_incremental_table_.md) › [IncrementalTable](_core_actions_incremental_table_.incrementaltable.md)
+[Dataform Javascript API Reference](../README.md) › [Globals](../globals.md) › ["core/actions/view"](../modules/_core_actions_view_.md) › [View](_core_actions_view_.view.md)
 
-# Class: IncrementalTable
+# Class: View
 
-When you define an incremental table, Dataform builds the incremental table from scratch only for
-the first time. During subsequent executions, Dataform only inserts or merges new rows into the
-incremental table according to the conditions that you configure.
+Views are virtualised tables. They are useful for creating a new structured table without having
+to copy the original data to it, which can result in significant cost savings for avoiding data
+processing and storage.
 
-You can create incremental tables in the following ways. Available config options are defined in
-[IncrementalTableConfig](configs#dataform-ActionConfig-IncrementalTableConfig), and are shared across all the
+You can create views in the following ways. Available config options are defined in
+[ViewConfig](configs#dataform-ActionConfig-ViewConfig), and are shared across all the
 following ways of creating tables.
 
 **Using a SQLX file:**
@@ -15,23 +15,30 @@ following ways of creating tables.
 ```sql
 -- definitions/name.sqlx
 config {
-  type: "incremental"
+  type: "view"
 }
--- This inserts `1` the first time running, and `2` on subsequent runs.
-SELECT ${when(incremental(), 1, 2) }
+SELECT column FROM someTable
 ```
 
-<!-- Action configs files are not yet supported, until a new field incrementalFilename is
-configured. Overall without JS templating supported in SQL files consumed by actions config
-files, the CUJ kind of sucks anyway. -->
+**Using action configs files:**
+
+```yaml
+# definitions/actions.yaml
+actions:
+- view:
+  filename: name.sql
+```
+
+```sql
+-- definitions/name.sql
+SELECT column FROM someTable
+```
 
 **Using the Javascript API:**
 
 ```js
 // definitions/file.js
-publish("name", { type: "incremental" }).query(
-  ctx => `SELECT ${ctx.when(ctx.incremental(), 1, 2) }`
-)
+table("name", { type: "view" }).query("SELECT column FROM someTable")
 ```
 
 Note: When using the Javascript API, methods in this class can be accessed by the returned value.
@@ -41,29 +48,28 @@ This is where `query` comes from.
 
 * ActionBuilder‹Table›
 
-  ↳ **IncrementalTable**
+  ↳ **View**
 
 ## Index
 
 ### Methods
 
-* [assertions](_core_actions_incremental_table_.incrementaltable.md#assertions)
-* [bigquery](_core_actions_incremental_table_.incrementaltable.md#bigquery)
-* [columns](_core_actions_incremental_table_.incrementaltable.md#columns)
-* [database](_core_actions_incremental_table_.incrementaltable.md#database)
-* [dependencies](_core_actions_incremental_table_.incrementaltable.md#dependencies)
-* [description](_core_actions_incremental_table_.incrementaltable.md#description)
-* [disabled](_core_actions_incremental_table_.incrementaltable.md#disabled)
-* [hermetic](_core_actions_incremental_table_.incrementaltable.md#hermetic)
-* [postOps](_core_actions_incremental_table_.incrementaltable.md#postops)
-* [preOps](_core_actions_incremental_table_.incrementaltable.md#preops)
-* [protected](_core_actions_incremental_table_.incrementaltable.md#protected)
-* [query](_core_actions_incremental_table_.incrementaltable.md#query)
-* [schema](_core_actions_incremental_table_.incrementaltable.md#schema)
-* [setDependOnDependencyAssertions](_core_actions_incremental_table_.incrementaltable.md#setdependondependencyassertions)
-* [tags](_core_actions_incremental_table_.incrementaltable.md#tags)
-* [type](_core_actions_incremental_table_.incrementaltable.md#type)
-* [uniqueKey](_core_actions_incremental_table_.incrementaltable.md#uniquekey)
+* [assertions](_core_actions_view_.view.md#assertions)
+* [bigquery](_core_actions_view_.view.md#bigquery)
+* [columns](_core_actions_view_.view.md#columns)
+* [database](_core_actions_view_.view.md#database)
+* [dependencies](_core_actions_view_.view.md#dependencies)
+* [description](_core_actions_view_.view.md#description)
+* [disabled](_core_actions_view_.view.md#disabled)
+* [hermetic](_core_actions_view_.view.md#hermetic)
+* [materialized](_core_actions_view_.view.md#materialized)
+* [postOps](_core_actions_view_.view.md#postops)
+* [preOps](_core_actions_view_.view.md#preops)
+* [query](_core_actions_view_.view.md#query)
+* [schema](_core_actions_view_.view.md#schema)
+* [setDependOnDependencyAssertions](_core_actions_view_.view.md#setdependondependencyassertions)
+* [tags](_core_actions_view_.view.md#tags)
+* [type](_core_actions_view_.view.md#type)
 
 ## Methods
 
@@ -71,7 +77,7 @@ This is where `query` comes from.
 
 ▸ **assertions**(`assertions`: TableAssertionsConfig): *this*
 
-*Defined in [core/actions/incremental_table.ts:466](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/actions/incremental_table.ts#L466)*
+*Defined in [core/actions/view.ts:458](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/actions/view.ts#L458)*
 
 **`deprecated`** Deprecated in favor of
 [IncrementalTableConfig.assertions](configs#dataform-ActionConfig-IncrementalTableConfig).
@@ -96,11 +102,10 @@ ___
 
 ▸ **bigquery**(`bigquery`: IBigQueryOptions): *this*
 
-*Defined in [core/actions/incremental_table.ts:332](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/actions/incremental_table.ts#L332)*
+*Defined in [core/actions/view.ts:328](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/actions/view.ts#L328)*
 
 **`deprecated`** Deprecated in favor of options available directly on
-[IncrementalTableConfig](configs#dataform-ActionConfig-IncrementalTableConfig). For example:
-`publish("name", { type: "table", partitionBy: "column" }`).
+[IncrementalTableConfig](configs#dataform-ActionConfig-IncrementalTableConfig).
 
 Sets bigquery options for the action.
 
@@ -118,12 +123,12 @@ ___
 
 ▸ **columns**(`columns`: ColumnDescriptor[]): *this*
 
-*Defined in [core/actions/incremental_table.ts:411](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/actions/incremental_table.ts#L411)*
+*Defined in [core/actions/view.ts:403](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/actions/view.ts#L403)*
 
 **`deprecated`** Deprecated in favor of
 [IncrementalTableConfig.columns](configs#dataform-ActionConfig-IncrementalTableConfig).
 
-Sets the column descriptors of columns in this incremental table.
+Sets the column descriptors of columns in this view.
 
 **Parameters:**
 
@@ -139,7 +144,7 @@ ___
 
 ▸ **database**(`database`: string): *this*
 
-*Defined in [core/actions/incremental_table.ts:428](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/actions/incremental_table.ts#L428)*
+*Defined in [core/actions/view.ts:420](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/actions/view.ts#L420)*
 
 **`deprecated`** Deprecated in favor of
 [IncrementalTableConfig.project](configs#dataform-ActionConfig-IncrementalTableConfig).
@@ -161,7 +166,7 @@ ___
 
 ▸ **dependencies**(`value`: [Resolvable](../modules/_core_common_.md#resolvable) | [Resolvable](../modules/_core_common_.md#resolvable)[]): *this*
 
-*Defined in [core/actions/incremental_table.ts:353](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/actions/incremental_table.ts#L353)*
+*Defined in [core/actions/view.ts:345](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/actions/view.ts#L345)*
 
 **`deprecated`** Deprecated in favor of
 [IncrementalTableConfig.dependencies](configs#dataform-ActionConfig-IncrementalTableConfig).
@@ -182,12 +187,12 @@ ___
 
 ▸ **description**(`description`: string): *this*
 
-*Defined in [core/actions/incremental_table.ts:397](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/actions/incremental_table.ts#L397)*
+*Defined in [core/actions/view.ts:389](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/actions/view.ts#L389)*
 
 **`deprecated`** Deprecated in favor of
 [IncrementalTableConfig.description](configs#dataform-ActionConfig-IncrementalTableConfig).
 
-Sets the description of this incremental table.
+Sets the description of this view.
 
 **Parameters:**
 
@@ -203,7 +208,7 @@ ___
 
 ▸ **disabled**(`disabled`: boolean): *this*
 
-*Defined in [core/actions/incremental_table.ts:295](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/actions/incremental_table.ts#L295)*
+*Defined in [core/actions/view.ts:304](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/actions/view.ts#L304)*
 
 **`deprecated`** Deprecated in favor of
 [IncrementalTableConfig.disabled](configs#dataform-ActionConfig-IncrementalTableConfig).
@@ -225,7 +230,7 @@ ___
 
 ▸ **hermetic**(`hermetic`: boolean): *void*
 
-*Defined in [core/actions/incremental_table.ts:369](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/actions/incremental_table.ts#L369)*
+*Defined in [core/actions/view.ts:361](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/actions/view.ts#L361)*
 
 **`deprecated`** Deprecated in favor of
 [IncrementalTableConfig.hermetic](configs#dataform-ActionConfig-IncrementalTableConfig).
@@ -244,11 +249,33 @@ Name | Type |
 
 ___
 
+###  materialized
+
+▸ **materialized**(`materialized`: boolean): *void*
+
+*Defined in [core/actions/view.ts:318](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/actions/view.ts#L318)*
+
+**`deprecated`** Deprecated in favor of
+[IncrementalTableConfig.materialized](configs#dataform-ActionConfig-IncrementalTableConfig).
+
+Applies the materialized view optimization, see
+https://cloud.google.com/bigquery/docs/materialized-views-intro.
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`materialized` | boolean |
+
+**Returns:** *void*
+
+___
+
 ###  postOps
 
 ▸ **postOps**(`posts`: [Contextable](../modules/_core_common_.md#contextable)‹[ITableContext](../interfaces/_core_actions_index_.itablecontext.md), string | string[]›): *this*
 
-*Defined in [core/actions/incremental_table.ts:283](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/actions/incremental_table.ts#L283)*
+*Defined in [core/actions/view.ts:292](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/actions/view.ts#L292)*
 
 Sets a post-operation to run after the query is run. This is often used for revoking temporary
 permissions granted to access source tables.
@@ -277,7 +304,7 @@ ___
 
 ▸ **preOps**(`pres`: [Contextable](../modules/_core_common_.md#contextable)‹[ITableContext](../interfaces/_core_actions_index_.itablecontext.md), string | string[]›): *this*
 
-*Defined in [core/actions/incremental_table.ts:264](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/actions/incremental_table.ts#L264)*
+*Defined in [core/actions/view.ts:273](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/actions/view.ts#L273)*
 
 Sets a pre-operation to run before the query is run. This is often used for temporarily
 granting permission to access source tables.
@@ -302,32 +329,11 @@ Name | Type |
 
 ___
 
-###  protected
-
-▸ **protected**(`isProtected`: boolean): *this*
-
-*Defined in [core/actions/incremental_table.ts:308](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/actions/incremental_table.ts#L308)*
-
-**`deprecated`** Deprecated in favor of
-[IncrementalTableConfig.protected](configs#dataform-ActionConfig-IncrementalTableConfig).
-
-If called with `true`, prevents the dataset from being rebuilt from scratch.
-
-**Parameters:**
-
-Name | Type |
------- | ------ |
-`isProtected` | boolean |
-
-**Returns:** *this*
-
-___
-
 ###  query
 
 ▸ **query**(`query`: [Contextable](../modules/_core_common_.md#contextable)‹[ITableContext](../interfaces/_core_actions_index_.itablecontext.md), string›): *this*
 
-*Defined in [core/actions/incremental_table.ts:239](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/actions/incremental_table.ts#L239)*
+*Defined in [core/actions/view.ts:248](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/actions/view.ts#L248)*
 
 Sets the query to generate the table from.
 
@@ -345,7 +351,7 @@ ___
 
 ▸ **schema**(`schema`: string): *this*
 
-*Defined in [core/actions/incremental_table.ts:445](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/actions/incremental_table.ts#L445)*
+*Defined in [core/actions/view.ts:437](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/actions/view.ts#L437)*
 
 **`deprecated`** Deprecated in favor of
 [IncrementalTableConfig.dataset](configs#dataform-ActionConfig-IncrementalTableConfig).
@@ -366,7 +372,7 @@ ___
 
 ▸ **setDependOnDependencyAssertions**(`dependOnDependencyAssertions`: boolean): *this*
 
-*Defined in [core/actions/incremental_table.ts:530](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/actions/incremental_table.ts#L530)*
+*Defined in [core/actions/view.ts:522](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/actions/view.ts#L522)*
 
 **`deprecated`** Deprecated in favor of
 [IncrementalTableConfig.dependOnDependencyAssertions](configs#dataform-ActionConfig-IncrementalTableConfig).
@@ -388,7 +394,7 @@ ___
 
 ▸ **tags**(`value`: string | string[]): *this*
 
-*Defined in [core/actions/incremental_table.ts:381](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/actions/incremental_table.ts#L381)*
+*Defined in [core/actions/view.ts:373](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/actions/view.ts#L373)*
 
 **`deprecated`** Deprecated in favor of
 [IncrementalTableConfig.tags](configs#dataform-ActionConfig-IncrementalTableConfig).
@@ -409,11 +415,11 @@ ___
 
 ▸ **type**(`type`: TableType): *this*
 
-*Defined in [core/actions/incremental_table.ts:205](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/actions/incremental_table.ts#L205)*
+*Defined in [core/actions/view.ts:214](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/actions/view.ts#L214)*
 
 **`deprecated`** 
 Deprecated in favor of action type can being set in the configs passed to action constructor
-functions, for example `publish("name", { type: "incremental" })`.
+functions, for example `publish("name", { type: "table" })`.
 
 **Parameters:**
 
@@ -422,26 +428,3 @@ Name | Type |
 `type` | TableType |
 
 **Returns:** *this*
-
-___
-
-###  uniqueKey
-
-▸ **uniqueKey**(`uniqueKey`: string[]): *void*
-
-*Defined in [core/actions/incremental_table.ts:321](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/actions/incremental_table.ts#L321)*
-
-**`deprecated`** Deprecated in favor of
-[IncrementalTableConfig.uniqueKey](configs#dataform-ActionConfig-IncrementalTableConfig).
-
-If set, unique key represents a set of names of columns that will act as a the unique key. To
-enforce this, when updating the incremental table, Dataform merges rows with `uniqueKey`
-instead of appending them.
-
-**Parameters:**
-
-Name | Type |
------- | ------ |
-`uniqueKey` | string[] |
-
-**Returns:** *void*
