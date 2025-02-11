@@ -121,7 +121,7 @@ export class Notebook extends ActionBuilder<dataform.Notebook> {
   }
 
   /** @hidden */
-  private dependencies(value: Resolvable | Resolvable[]) {
+  public dependencies(value: Resolvable | Resolvable[]) {
     const newDependencies = Array.isArray(value) ? value : [value];
     newDependencies.forEach(resolvable =>
       addDependenciesToActionDependencyTargets(this, resolvable)

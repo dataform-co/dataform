@@ -76,8 +76,8 @@ export class Test extends ActionBuilder<dataform.Test> {
   public session: Session;
 
   /** @hidden We delay contextification until the final compile step, so hold these here for now. */
-  private contextableQuery: Contextable<ICommonContext, string>;
   public contextableInputs = new Map<string, Contextable<ICommonContext, string>>();
+  private contextableQuery: Contextable<ICommonContext, string>;
   private datasetToTest: Resolvable;
 
   /** @hidden */
