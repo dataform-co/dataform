@@ -35,17 +35,47 @@ export type AContextable<T> = T | ((ctx: AssertionContext) => T);
  * An assertion is a data quality test query that finds rows that violate one or more conditions
  * specified in the query. If the query returns any rows, the assertion fails.
  *
- * You can create assertions in the following ways:
- * * Add built-in assertions to the config block of a table. @see [table](Table).
- * * Add manual assertions in a separate SQLX file. Example: `config { type: "assertion" }`.
- * * Use the Javascript API. Example: `assert("name")`.
+ * You can create assertions in the following ways. Available config options are defined in
+ * [AssertionConfig](configs#dataform-ActionConfig-AssertionConfig), and are shared across all the
+ * following ways of creating assertions.
  *
- * When using the Javascript API, methods in this class can be accessed by the returned value. For
- * example, the query for an assertion can be set like this:
+ * **Using a SQLX file:**
  *
+ * ```sql
+ * -- definitions/name.sqlx
+ * config {
+ *   type: "assertion"
+ * }
+ * SELECT * FROM table WHERE a IS NULL
  * ```
- * assert.query("SELECT * FROM table WHERE a IS NULL")
+ *
+ * **Using built-in assertions in the config block of a table:**
+ *
+ * See [TableConfig.assertions](configs#dataform-ActionConfig-TableConfig)
+ *
+ * **Using action configs files:**
+ *
+ * ```yaml
+ * # definitions/actions.yaml
+ * actions:
+ * - assertion:
+ *   filename: name.sql
  * ```
+ *
+ * ```sql
+ * -- definitions/name.sql
+ * SELECT * FROM table WHERE a IS NULL
+ * ```
+ *
+ * **Using the Javascript API:**
+ *
+ * ```js
+ * // definitions/file.js
+ * assert("name").query("SELECT * FROM table WHERE a IS NULL")
+ * ```
+ *
+ * Note: When using the Javascript API, methods in this class can be accessed by the returned value.
+ * This is where `query` comes from.
  */
 export class Assertion extends ActionBuilder<dataform.Assertion> {
   /**
@@ -155,7 +185,9 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
    * @deprecated Deprecated in favor of
    * [AssertionConfig.hermetic](configs#dataform-ActionConfig-AssertionConfig).
    *
-   * Sets dependencies of the assertion.
+   * If true, this indicates that the action only depends on data from explicitly-declared
+   * dependencies. Otherwise if false, it indicates that the  action depends on data from a source
+   * which has not been declared as a dependency.
    */
   public hermetic(hermetic: boolean) {
     this.proto.hermeticity = hermetic
@@ -263,8 +295,9 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
   }
 
   /**
-   * @hidden Verifies that the config provided to the assertion has the expected fields and their
-   * corresponding types.
+   * @hidden Verify config checks that the constructor provided config matches the expected proto
+   * structure, or the previously accepted legacy structure. If the legacy structure is used, it is
+   * converted to the new structure.
    */
   private verifyConfig(
     unverifiedConfig: ILegacyAssertionConfig

@@ -29,10 +29,54 @@ import {
 import { dataform } from "df/protos/ts";
 
 /**
- * @hidden
+ * Tables are the fundamental building block for storing data when using Dataform. Dataform compiles
+ * your Dataform core code into SQL, executes the SQL code, and creates your defined tables in
+ * BigQuery.
+ *
+ * You can create tables in the following ways. Available config options are defined in
+ * [TableConfig](configs#dataform-ActionConfig-TableConfig), and are shared across all the
+ * following ways of creating tables.
+ *
+ * **Using a SQLX file:**
+ *
+ * ```sql
+ * -- definitions/name.sqlx
+ * config {
+ *   type: "table"
+ * }
+ * SELECT 1
+ * ```
+ *
+ * **Using action configs files:**
+ *
+ * ```yaml
+ * # definitions/actions.yaml
+ * actions:
+ * - table:
+ *   filename: name.sql
+ * ```
+ *
+ * ```sql
+ * -- definitions/name.sql
+ * SELECT 1
+ * ```
+ *
+ * **Using the Javascript API:**
+ *
+ * ```js
+ * // definitions/file.js
+ * table("name", { type: "table" }).query("SELECT 1 AS TEST")
+ * ```
+ *
+ * Note: When using the Javascript API, methods in this class can be accessed by the returned value.
+ * This is where `query` comes from.
  */
 export class Table extends ActionBuilder<dataform.Table> {
-  // TODO(ekrekr): make this field private, to enforce proto update logic to happen in this class.
+  /**
+   * @hidden Stores the generated proto for the compiled graph.
+   * <!-- TODO(ekrekr): make this field private, to enforce proto update logic to happen in this
+   * class. -->
+   */
   public proto: dataform.ITable = dataform.Table.create({
     type: "table",
     enumType: dataform.TableType.TABLE,
@@ -40,24 +84,30 @@ export class Table extends ActionBuilder<dataform.Table> {
     tags: []
   });
 
-  // Hold a reference to the Session instance.
+  /** @hidden Hold a reference to the Session instance. */
   public session: Session;
 
-  // If true, adds the inline assertions of dependencies as direct dependencies for this action.
+  /**
+   * @hidden If true, adds the inline assertions of dependencies as direct dependencies for this
+   * action.
+   */
   public dependOnDependencyAssertions: boolean = false;
 
-  // We delay contextification until the final compile step, so hold these here for now.
+  /** @hidden We delay contextification until the final compile step, so hold these here for now. */
   public contextableQuery: Contextable<ITableContext, string>;
   private contextableWhere: Contextable<ITableContext, string>;
   private contextablePreOps: Array<Contextable<ITableContext, string | string[]>> = [];
   private contextablePostOps: Array<Contextable<ITableContext, string | string[]>> = [];
 
+  /** @hidden */
   private uniqueKeyAssertions: Assertion[] = [];
   private rowConditionsAssertion: Assertion;
 
+  /** @hidden */
   private unverifiedConfig: any;
   private configPath: string | undefined;
 
+  /** @hidden */
   constructor(session?: Session, unverifiedConfig?: any, configPath?: string) {
     super(session);
     this.session = session;
@@ -137,10 +187,9 @@ export class Table extends ActionBuilder<dataform.Table> {
   }
 
   /**
-   * @hidden
    * @deprecated
    * Deprecated in favor of action type can being set in the configs passed to action constructor
-   * functions.
+   * functions, for example `publish("name", { type: "table" })`.
    */
   public type(type: TableType) {
     let newAction: View | IncrementalTable;
@@ -173,26 +222,65 @@ export class Table extends ActionBuilder<dataform.Table> {
     this.session.actions[existingAction] = newAction;
   }
 
+  /**
+   * Sets the query to generate the table from.
+   */
   public query(query: Contextable<ITableContext, string>) {
     this.contextableQuery = query;
     return this;
   }
 
+  /** @hidden */
   public where(where: Contextable<ITableContext, string>) {
     this.contextableWhere = where;
     return this;
   }
 
+  /**
+   * Sets a pre-operation to run before the query is run. This is often used for temporarily
+   * granting permission to access source tables.
+   *
+   * Example:
+   *
+   * ```js
+   * // definitions/file.js
+   * publish("example")
+   *   .preOps(ctx => `GRANT \`roles/bigquery.dataViewer\` ON TABLE ${ctx.ref("other_table")} TO "group:automation@example.com"`)
+   *   .query(ctx => `SELECT * FROM ${ctx.ref("other_table")}`)
+   *   .postOps(ctx => `REVOKE \`roles/bigquery.dataViewer\` ON TABLE ${ctx.ref("other_table")} TO "group:automation@example.com"`)
+   * ```
+   */
   public preOps(pres: Contextable<ITableContext, string | string[]>) {
     this.contextablePreOps.push(pres);
     return this;
   }
 
+  /**
+   * Sets a post-operation to run before the query is run. This is often used for temporarily
+   * granting permission to access source tables.
+   *
+   * Example:
+   *
+   * ```js
+   * // definitions/file.js
+   * publish("example")
+   *   .preOps(ctx => `GRANT \`roles/bigquery.dataViewer\` ON TABLE ${ctx.ref("other_table")} TO "group:automation@example.com"`)
+   *   .query(ctx => `SELECT * FROM ${ctx.ref("other_table")}`)
+   *   .postOps(ctx => `REVOKE \`roles/bigquery.dataViewer\` ON TABLE ${ctx.ref("other_table")} TO "group:automation@example.com"`)
+   * ```
+   */
   public postOps(posts: Contextable<ITableContext, string | string[]>) {
     this.contextablePostOps.push(posts);
     return this;
   }
 
+  /**
+   * @deprecated Deprecated in favor of
+   * [TableConfig.disabled](configs#dataform-ActionConfig-TableConfig).
+   *
+   * If called with `true`, this action is not executed. The action can still be depended upon.
+   * Useful for temporarily turning off broken actions.
+   */
   public disabled(disabled = true) {
     this.proto.disabled = disabled;
     this.uniqueKeyAssertions.forEach(assertion => assertion.disabled(disabled));
@@ -200,6 +288,13 @@ export class Table extends ActionBuilder<dataform.Table> {
     return this;
   }
 
+  /**
+   * @deprecated Deprecated in favor of options available directly on
+   * [TableConfig](configs#dataform-ActionConfig-TableConfig). For example:
+   * `publish("name", { type: "table", partitionBy: "column" }`).
+   *
+   * Sets bigquery options for the action.
+   */
   public bigquery(bigquery: dataform.IBigQueryOptions) {
     if (!!bigquery.labels && Object.keys(bigquery.labels).length > 0) {
       if (!this.proto.actionDescriptor) {
@@ -215,6 +310,12 @@ export class Table extends ActionBuilder<dataform.Table> {
     return this;
   }
 
+  /**
+   * @deprecated Deprecated in favor of
+   * [TableConfig.dependencies](configs#dataform-ActionConfig-TableConfig).
+   *
+   * Sets dependencies of the table.
+   */
   public dependencies(value: Resolvable | Resolvable[]) {
     const newDependencies = Array.isArray(value) ? value : [value];
     newDependencies.forEach(resolvable =>
@@ -223,12 +324,26 @@ export class Table extends ActionBuilder<dataform.Table> {
     return this;
   }
 
+  /**
+   * @deprecated Deprecated in favor of
+   * [TableConfig.hermetic](configs#dataform-ActionConfig-TableConfig).
+   *
+   * If true, this indicates that the action only depends on data from explicitly-declared
+   * dependencies. Otherwise if false, it indicates that the  action depends on data from a source
+   * which has not been declared as a dependency.
+   */
   public hermetic(hermetic: boolean) {
     this.proto.hermeticity = hermetic
       ? dataform.ActionHermeticity.HERMETIC
       : dataform.ActionHermeticity.NON_HERMETIC;
   }
 
+  /**
+   * @deprecated Deprecated in favor of
+   * [TableConfig.tags](configs#dataform-ActionConfig-TableConfig).
+   *
+   * Sets a list of user-defined tags applied to this action.
+   */
   public tags(value: string | string[]) {
     const newTags = typeof value === "string" ? [value] : value;
     newTags.forEach(t => {
@@ -239,6 +354,12 @@ export class Table extends ActionBuilder<dataform.Table> {
     return this;
   }
 
+  /**
+   * @deprecated Deprecated in favor of
+   * [TableConfig.description](configs#dataform-ActionConfig-TableConfig).
+   *
+   * Sets the description of this assertion.
+   */
   public description(description: string) {
     if (!this.proto.actionDescriptor) {
       this.proto.actionDescriptor = {};
@@ -247,6 +368,12 @@ export class Table extends ActionBuilder<dataform.Table> {
     return this;
   }
 
+  /**
+   * @deprecated Deprecated in favor of
+   * [TableConfig.columns](configs#dataform-ActionConfig-TableConfig).
+   *
+   * Sets the column descriptors of columns in this table.
+   */
   public columns(columns: dataform.ActionConfig.ColumnDescriptor[]) {
     if (!this.proto.actionDescriptor) {
       this.proto.actionDescriptor = {};
@@ -257,6 +384,13 @@ export class Table extends ActionBuilder<dataform.Table> {
     return this;
   }
 
+  /**
+   * @deprecated Deprecated in favor of
+   * [TableConfig.project](configs#dataform-ActionConfig-TableConfig).
+   *
+   * Sets the database (Google Cloud project ID) in which to create the corresponding view for this
+   * assertion.
+   */
   public database(database: string) {
     setNameAndTarget(
       this.session,
@@ -268,6 +402,12 @@ export class Table extends ActionBuilder<dataform.Table> {
     return this;
   }
 
+  /**
+   * @deprecated Deprecated in favor of
+   * [TableConfig.dataset](configs#dataform-ActionConfig-TableConfig).
+   *
+   * Sets the schema (BigQuery dataset) in which to create the output of this action.
+   */
   public schema(schema: string) {
     setNameAndTarget(
       this.session,
@@ -279,6 +419,16 @@ export class Table extends ActionBuilder<dataform.Table> {
     return this;
   }
 
+  /**
+   * @deprecated Deprecated in favor of
+   * [TableConfig.assertions](configs#dataform-ActionConfig-TableConfig).
+   *
+   * Sets in-line assertions for this table.
+   *
+   * <!-- Note: this both applies in-line assertions, and acts as a method available via the JS API.
+   * Usage of it via the JS API is deprecated, but the way it applies in-line assertions is still
+   * needed -->
+   */
   public assertions(assertions: dataform.ActionConfig.TableAssertionsConfig) {
     if (!!assertions.uniqueKey?.length && !!assertions.uniqueKeys?.length) {
       this.session.compileError(
@@ -336,25 +486,29 @@ export class Table extends ActionBuilder<dataform.Table> {
     return this;
   }
 
+  /**
+   * @deprecated Deprecated in favor of
+   * [TableConfig.dependOnDependencyAssertions](configs#dataform-ActionConfig-TableConfig).
+   *
+   * When called with `true`, assertions dependent upon any dependency will be add as dedpendency
+   * to this action.
+   */
   public setDependOnDependencyAssertions(dependOnDependencyAssertions: boolean) {
     this.dependOnDependencyAssertions = dependOnDependencyAssertions;
     return this;
   }
 
-  /**
-   * @hidden
-   */
+  /** @hidden */
   public getFileName() {
     return this.proto.fileName;
   }
 
-  /**
-   * @hidden
-   */
+  /** @hidden */
   public getTarget() {
     return dataform.Target.create(this.proto.target);
   }
 
+  /** @hidden */
   public compile() {
     const context = new TableContext(this);
     const incrementalContext = new TableContext(this, true);
@@ -392,6 +546,7 @@ export class Table extends ActionBuilder<dataform.Table> {
     );
   }
 
+  /** @hidden */
   private contextifyOps(
     contextableOps: Array<Contextable<ITableContext, string | string[]>>,
     currentContext: TableContext
@@ -405,9 +560,9 @@ export class Table extends ActionBuilder<dataform.Table> {
   }
 
   /**
-   * Verify config checks that the constructor provided config matches the expected proto structure,
-   * or the previously accepted legacy structure. If the legacy structure is used, it is converted
-   * to the new structure.
+   * @hidden Verify config checks that the constructor provided config matches the expected proto
+   * structure, or the previously accepted legacy structure. If the legacy structure is used, it is
+   * converted to the new structure.
    */
   private verifyConfig(
     // `any` is used here to facilitate the type merging of the legacy table config, which is very

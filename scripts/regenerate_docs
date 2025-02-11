@@ -15,5 +15,9 @@ npx typedoc
 
 mv newdocs/classes/_core_session_.session.md docs/reference/session.md
 mv newdocs/classes/_core_actions_assertion_.assertion.md docs/reference/assertion.md
+mv newdocs/classes/_core_actions_table_.table.md docs/reference/table.md
+mv newdocs/classes/_core_actions_declaration_.declaration.md docs/reference/declaration.md
+mv newdocs/classes/_core_actions_incremental_table_.incrementaltable.md docs/reference/incrementaltable.md
+mv newdocs/classes/_core_actions_notebook_.notebook.md docs/reference/notebook.md
 
 rm -rf newdocs

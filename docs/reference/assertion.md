@@ -5,22 +5,51 @@
 An assertion is a data quality test query that finds rows that violate one or more conditions
 specified in the query. If the query returns any rows, the assertion fails.
 
-You can create assertions in the following ways:
+You can create assertions in the following ways. Available config options are defined in
+[AssertionConfig](configs#dataform-ActionConfig-AssertionConfig), and are shared across all the
+following ways of creating assertions.
 
-- Add built-in assertions to the config block of a table. @see [table](Table).
-- Add manual assertions in a separate SQLX file. Example: `config { type: "assertion" }`.
-- Use the Javascript API. Example: `assert("name")`.
+**Using a SQLX file:**
 
-When using the Javascript API, methods in this class can be accessed by the returned value. For
-example, the query for an assertion can be set like this:
-
+```sql
+-- definitions/name.sqlx
+config {
+  type: "assertion"
+}
+SELECT * FROM table WHERE a IS NULL
 ```
-assert.query("SELECT * FROM table WHERE a IS NULL")
+
+**Using built-in assertions in the config block of a table:**
+
+See [TableConfig.assertions](configs#dataform-ActionConfig-TableConfig)
+
+**Using action configs files:**
+
+```yaml
+# definitions/actions.yaml
+actions:
+- assertion:
+  filename: name.sql
 ```
+
+```sql
+-- definitions/name.sql
+SELECT * FROM table WHERE a IS NULL
+```
+
+**Using the Javascript API:**
+
+```js
+// definitions/file.js
+assert("name").query("SELECT * FROM table WHERE a IS NULL")
+```
+
+Note: When using the Javascript API, methods in this class can be accessed by the returned value.
+This is where `query` comes from.
 
 ## Hierarchy
 
-- ActionBuilder‹Assertion›
+* ActionBuilder‹Assertion›
 
   ↳ **Assertion**
 
@@ -28,44 +57,44 @@ assert.query("SELECT * FROM table WHERE a IS NULL")
 
 ### Methods
 
-- [database](_core_actions_assertion_.assertion.md#database)
-- [dependencies](_core_actions_assertion_.assertion.md#dependencies)
-- [description](_core_actions_assertion_.assertion.md#description)
-- [disabled](_core_actions_assertion_.assertion.md#disabled)
-- [hermetic](_core_actions_assertion_.assertion.md#hermetic)
-- [query](_core_actions_assertion_.assertion.md#query)
-- [schema](_core_actions_assertion_.assertion.md#schema)
-- [tags](_core_actions_assertion_.assertion.md#tags)
+* [database](_core_actions_assertion_.assertion.md#database)
+* [dependencies](_core_actions_assertion_.assertion.md#dependencies)
+* [description](_core_actions_assertion_.assertion.md#description)
+* [disabled](_core_actions_assertion_.assertion.md#disabled)
+* [hermetic](_core_actions_assertion_.assertion.md#hermetic)
+* [query](_core_actions_assertion_.assertion.md#query)
+* [schema](_core_actions_assertion_.assertion.md#schema)
+* [tags](_core_actions_assertion_.assertion.md#tags)
 
 ## Methods
 
-### database
+###  database
 
-▸ **database**(`database`: string): _this_
+▸ **database**(`database`: string): *this*
 
-_Defined in [core/actions/assertion.ts:209](https://github.com/dataform-co/dataform/blob/14a8a5d1/core/actions/assertion.ts#L209)_
+*Defined in [core/actions/assertion.ts:244](https://github.com/dataform-co/dataform/blob/c51d616a/core/actions/assertion.ts#L244)*
 
 **`deprecated`** Deprecated in favor of
-[Project](dataform.ActionConfigs.AssertionConfig.Project).
+[AssertionConfig.project](configs#dataform-ActionConfig-AssertionConfig).
 
 Sets the database (Google Cloud project ID) in which to create the corresponding view for this
 assertion.
 
 **Parameters:**
 
-| Name       | Type   |
-| ---------- | ------ |
-| `database` | string |
+Name | Type |
+------ | ------ |
+`database` | string |
 
-**Returns:** _this_
+**Returns:** *this*
 
----
+___
 
-### dependencies
+###  dependencies
 
-▸ **dependencies**(`value`: [Resolvable](../modules/_core_common_.md#resolvable) | [Resolvable](../modules/_core_common_.md#resolvable)[]): _this_
+▸ **dependencies**(`value`: [Resolvable](../modules/_core_common_.md#resolvable) | [Resolvable](../modules/_core_common_.md#resolvable)[]): *this*
 
-_Defined in [core/actions/assertion.ts:144](https://github.com/dataform-co/dataform/blob/14a8a5d1/core/actions/assertion.ts#L144)_
+*Defined in [core/actions/assertion.ts:174](https://github.com/dataform-co/dataform/blob/c51d616a/core/actions/assertion.ts#L174)*
 
 **`deprecated`** Deprecated in favor of
 [AssertionConfig.dependencies](configs#dataform-ActionConfig-AssertionConfig).
@@ -74,130 +103,135 @@ Sets dependencies of the assertion.
 
 **Parameters:**
 
-| Name    | Type                                                                                                               |
-| ------- | ------------------------------------------------------------------------------------------------------------------ |
-| `value` | [Resolvable](../modules/_core_common_.md#resolvable) &#124; [Resolvable](../modules/_core_common_.md#resolvable)[] |
+Name | Type |
+------ | ------ |
+`value` | [Resolvable](../modules/_core_common_.md#resolvable) &#124; [Resolvable](../modules/_core_common_.md#resolvable)[] |
 
-**Returns:** _this_
+**Returns:** *this*
 
----
+___
 
-### description
+###  description
 
-▸ **description**(`description`: string): _this_
+▸ **description**(`description`: string): *this*
 
-_Defined in [core/actions/assertion.ts:197](https://github.com/dataform-co/dataform/blob/14a8a5d1/core/actions/assertion.ts#L197)_
+*Defined in [core/actions/assertion.ts:232](https://github.com/dataform-co/dataform/blob/c51d616a/core/actions/assertion.ts#L232)*
 
 **`deprecated`** Deprecated in favor of
-[Description](dataform.ActionConfigs.AssertionConfig.Description).
+[AssertionConfig.description](configs#dataform-ActionConfig-AssertionConfig).
 
 Sets the description of this assertion.
 
 **Parameters:**
 
-| Name          | Type   |
-| ------------- | ------ |
-| `description` | string |
+Name | Type |
+------ | ------ |
+`description` | string |
 
-**Returns:** _this_
+**Returns:** *this*
 
----
+___
 
-### disabled
+###  disabled
 
-▸ **disabled**(`disabled`: boolean): _this_
+▸ **disabled**(`disabled`: boolean): *this*
 
-_Defined in [core/actions/assertion.ts:171](https://github.com/dataform-co/dataform/blob/14a8a5d1/core/actions/assertion.ts#L171)_
+*Defined in [core/actions/assertion.ts:205](https://github.com/dataform-co/dataform/blob/c51d616a/core/actions/assertion.ts#L205)*
 
-**`deprecated`** Deprecated in favor of [Disabled](dataform.ActionConfigs.AssertionConfig.Disabled).
+**`deprecated`** Deprecated in favor of
+[AssertionConfig.disabled](configs#dataform-ActionConfig-AssertionConfig).
 
 If called with `true`, this action is not executed. The action can still be depended upon.
 Useful for temporarily turning off broken actions.
 
 **Parameters:**
 
-| Name       | Type    | Default |
-| ---------- | ------- | ------- |
-| `disabled` | boolean | true    |
+Name | Type | Default |
+------ | ------ | ------ |
+`disabled` | boolean | true |
 
-**Returns:** _this_
+**Returns:** *this*
 
----
+___
 
-### hermetic
+###  hermetic
 
-▸ **hermetic**(`hermetic`: boolean): _void_
+▸ **hermetic**(`hermetic`: boolean): *void*
 
-_Defined in [core/actions/assertion.ts:159](https://github.com/dataform-co/dataform/blob/14a8a5d1/core/actions/assertion.ts#L159)_
+*Defined in [core/actions/assertion.ts:192](https://github.com/dataform-co/dataform/blob/c51d616a/core/actions/assertion.ts#L192)*
 
-**`deprecated`** Deprecated in favor of [Hermetic](dataform.ActionConfigs.AssertionConfig.Hermetic).
+**`deprecated`** Deprecated in favor of
+[AssertionConfig.hermetic](configs#dataform-ActionConfig-AssertionConfig).
 
-Sets dependencies of the assertion.
+If true, this indicates that the action only depends on data from explicitly-declared
+dependencies. Otherwise if false, it indicates that the  action depends on data from a source
+which has not been declared as a dependency.
 
 **Parameters:**
 
-| Name       | Type    |
-| ---------- | ------- |
-| `hermetic` | boolean |
+Name | Type |
+------ | ------ |
+`hermetic` | boolean |
 
-**Returns:** _void_
+**Returns:** *void*
 
----
+___
 
-### query
+###  query
 
-▸ **query**(`query`: AContextable‹string›): _this_
+▸ **query**(`query`: AContextable‹string›): *this*
 
-_Defined in [core/actions/assertion.ts:133](https://github.com/dataform-co/dataform/blob/14a8a5d1/core/actions/assertion.ts#L133)_
+*Defined in [core/actions/assertion.ts:163](https://github.com/dataform-co/dataform/blob/c51d616a/core/actions/assertion.ts#L163)*
 
 Sets the query to be run by the assertion.
 
 **Parameters:**
 
-| Name    | Type                 |
-| ------- | -------------------- |
-| `query` | AContextable‹string› |
+Name | Type |
+------ | ------ |
+`query` | AContextable‹string› |
 
-**Returns:** _this_
+**Returns:** *this*
 
----
+___
 
-### schema
+###  schema
 
-▸ **schema**(`schema`: string): _this_
+▸ **schema**(`schema`: string): *this*
 
-_Defined in [core/actions/assertion.ts:227](https://github.com/dataform-co/dataform/blob/14a8a5d1/core/actions/assertion.ts#L227)_
+*Defined in [core/actions/assertion.ts:262](https://github.com/dataform-co/dataform/blob/c51d616a/core/actions/assertion.ts#L262)*
 
 **`deprecated`** Deprecated in favor of
-[Dataset](dataform.ActionConfigs.AssertionConfig.Dataset).
+[AssertionConfig.dataset](configs#dataform-ActionConfig-AssertionConfig).
 
 Sets the schema (BigQuery dataset) in which to create the corresponding view for this
 assertion.
 
 **Parameters:**
 
-| Name     | Type   |
-| -------- | ------ |
-| `schema` | string |
+Name | Type |
+------ | ------ |
+`schema` | string |
 
-**Returns:** _this_
+**Returns:** *this*
 
----
+___
 
-### tags
+###  tags
 
-▸ **tags**(`value`: string | string[]): _this_
+▸ **tags**(`value`: string | string[]): *this*
 
-_Defined in [core/actions/assertion.ts:181](https://github.com/dataform-co/dataform/blob/14a8a5d1/core/actions/assertion.ts#L181)_
+*Defined in [core/actions/assertion.ts:216](https://github.com/dataform-co/dataform/blob/c51d616a/core/actions/assertion.ts#L216)*
 
-**`deprecated`** Deprecated in favor of [Tags](dataform.ActionConfigs.AssertionConfig.Tags).
+**`deprecated`** Deprecated in favor of
+[AssertionConfig.tags](configs#dataform-ActionConfig-AssertionConfig).
 
 Sets a list of user-defined tags applied to this action.
 
 **Parameters:**
 
-| Name    | Type                   |
-| ------- | ---------------------- |
-| `value` | string &#124; string[] |
+Name | Type |
+------ | ------ |
+`value` | string &#124; string[] |
 
-**Returns:** _this_
+**Returns:** *this*

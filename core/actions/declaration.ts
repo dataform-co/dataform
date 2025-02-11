@@ -5,6 +5,11 @@ import { Session } from "df/core/session";
 import { actionConfigToCompiledGraphTarget } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
+/**
+ * @hidden
+ * This maintains backwards compatability with older versions.
+ * TODO(ekrekr): consider breaking backwards compatability of these in v4.
+ */
 interface ILegacyDeclarationConfig extends dataform.ActionConfig.DeclarationConfig {
   database: string;
   schema: string;
@@ -13,14 +18,58 @@ interface ILegacyDeclarationConfig extends dataform.ActionConfig.DeclarationConf
 }
 
 /**
- * @hidden
+ * You can declare any BigQuery table as a data source in Dataform. Declaring BigQuery data
+ * sources that are external to Dataform lets you treat those data sources as Dataform objects.
+ *
+ * Declaring data sources is optional, but can be useful when you want to do the following:
+ * * Reference or resolve declared sources in the same way as any other table in Dataform.
+ * * View declared sources in the visualized Dataform graph.
+ * * Use Dataform to manage the table-level and column-level descriptions of externally created
+ *   tables.
+ * * Trigger workflow invocations that include all the dependents of an external data source.
+ *
+ * You can create declarations in the following ways. Available config options are defined in
+ * [DeclarationConfig](configs#dataform-ActionConfig-DeclarationConfig), and are shared across all
+ * the followiing ways of creating declarations.
+ *
+ * **Using a SQLX file:**
+ *
+ * ```sql
+ * -- definitions/name.sqlx
+ * config {
+ *   type: "declaration"
+ * }
+ * -- Note: no SQL should be present.
+ * ```
+ *
+ * **Using action configs files:**
+ *
+ * ```yaml
+ * # definitions/actions.yaml
+ * actions:
+ * - declare:
+ *   name: name
+ * ```
+ *
+ * **Using the Javascript API:**
+ *
+ * ```js
+ * // definitions/file.js
+ * declare("name")
+ * ```
  */
 export class Declaration extends ActionBuilder<dataform.Declaration> {
-  // TODO(ekrekr): make this field private, to enforce proto update logic to happen in this class.
+  /**
+   * @hidden Stores the generated proto for the compiled graph.
+   * <!-- TODO(ekrekr): make this field private, to enforce proto update logic to happen in this
+   * class. -->
+   */
   public proto: dataform.IDeclaration = dataform.Declaration.create();
 
+  /** @hidden Hold a reference to the Session instance. */
   public session: Session;
 
+  /** @hidden */
   constructor(session?: Session, unverifiedConfig?: any) {
     super(session);
     this.session = session;
@@ -52,6 +101,12 @@ export class Declaration extends ActionBuilder<dataform.Declaration> {
     return this;
   }
 
+  /**
+   * @deprecated Deprecated in favor of
+   * [DeclarationConfig.description](configs#dataform-ActionConfig-DeclarationConfig).
+   *
+   * Sets the description of this assertion.
+   */
   public description(description: string) {
     if (!this.proto.actionDescriptor) {
       this.proto.actionDescriptor = {};
@@ -60,6 +115,12 @@ export class Declaration extends ActionBuilder<dataform.Declaration> {
     return this;
   }
 
+  /**
+   * @deprecated Deprecated in favor of
+   * [DeclarationConfig.columns](configs#dataform-ActionConfig-DeclarationConfig).
+   *
+   * Sets the column descriptors of columns in this table.
+   */
   public columns(columns: dataform.ActionConfig.ColumnDescriptor[]) {
     if (!this.proto.actionDescriptor) {
       this.proto.actionDescriptor = {};
@@ -70,20 +131,17 @@ export class Declaration extends ActionBuilder<dataform.Declaration> {
     return this;
   }
 
-  /**
-   * @hidden
-   */
+  /** @hidden */
   public getFileName() {
     return this.proto.fileName;
   }
 
-  /**
-   * @hidden
-   */
+  /** @hidden */
   public getTarget() {
     return dataform.Target.create(this.proto.target);
   }
 
+  /** @hidden */
   public compile() {
     return verifyObjectMatchesProto(
       dataform.Declaration,
@@ -92,6 +150,11 @@ export class Declaration extends ActionBuilder<dataform.Declaration> {
     );
   }
 
+  /**
+   * @hidden Verify config checks that the constructor provided config matches the expected proto
+   * structure, or the previously accepted legacy structure. If the legacy structure is used, it is
+   * converted to the new structure.
+   */
   private verifyConfig(
     unverifiedConfig: ILegacyDeclarationConfig
   ): dataform.ActionConfig.DeclarationConfig {
