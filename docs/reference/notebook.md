@@ -53,7 +53,7 @@ notebook("name", { filename: "name.ipynb" })
 
 ▸ **ipynb**(`contents`: object): *[Notebook](_core_actions_notebook_.notebook.md)*
 
-*Defined in [core/actions/notebook.ts:112](https://github.com/dataform-co/dataform/blob/1a65ec82/core/actions/notebook.ts#L112)*
+*Defined in [core/actions/notebook.ts:112](https://github.com/dataform-co/dataform/blob/1eef2cde/core/actions/notebook.ts#L112)*
 
 Sets or overrides the contents of the notebook to run. Not recommended in general; using
 separate `.ipynb` files for notebooks is preferred.

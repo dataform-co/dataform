@@ -71,7 +71,7 @@ This is where `query` comes from.
 
 ▸ **columns**(`columns`: ColumnDescriptor[]): *this*
 
-*Defined in [core/actions/operation.ts:265](https://github.com/dataform-co/dataform/blob/1a65ec82/core/actions/operation.ts#L265)*
+*Defined in [core/actions/operation.ts:265](https://github.com/dataform-co/dataform/blob/1eef2cde/core/actions/operation.ts#L265)*
 
 **`deprecated`** Deprecated in favor of
 [OperationConfig.columns](configs#dataform-ActionConfig-OperationConfig).
@@ -92,7 +92,7 @@ ___
 
 ▸ **database**(`database`: string): *this*
 
-*Defined in [core/actions/operation.ts:282](https://github.com/dataform-co/dataform/blob/1a65ec82/core/actions/operation.ts#L282)*
+*Defined in [core/actions/operation.ts:282](https://github.com/dataform-co/dataform/blob/1eef2cde/core/actions/operation.ts#L282)*
 
 **`deprecated`** Deprecated in favor of
 [OperationConfig.project](configs#dataform-ActionConfig-OperationConfig).
@@ -114,7 +114,7 @@ ___
 
 ▸ **dependencies**(`value`: [Resolvable](../modules/_core_common_.md#resolvable) | [Resolvable](../modules/_core_common_.md#resolvable)[]): *this*
 
-*Defined in [core/actions/operation.ts:183](https://github.com/dataform-co/dataform/blob/1a65ec82/core/actions/operation.ts#L183)*
+*Defined in [core/actions/operation.ts:183](https://github.com/dataform-co/dataform/blob/1eef2cde/core/actions/operation.ts#L183)*
 
 **`deprecated`** Deprecated in favor of
 [OperationConfig.dependencies](configs#dataform-ActionConfig-OperationConfig).
@@ -135,7 +135,7 @@ ___
 
 ▸ **description**(`description`: string): *this*
 
-*Defined in [core/actions/operation.ts:251](https://github.com/dataform-co/dataform/blob/1a65ec82/core/actions/operation.ts#L251)*
+*Defined in [core/actions/operation.ts:251](https://github.com/dataform-co/dataform/blob/1eef2cde/core/actions/operation.ts#L251)*
 
 **`deprecated`** Deprecated in favor of
 [OperationConfig.description](configs#dataform-ActionConfig-OperationConfig).
@@ -156,7 +156,7 @@ ___
 
 ▸ **disabled**(`disabled`: boolean): *this*
 
-*Defined in [core/actions/operation.ts:212](https://github.com/dataform-co/dataform/blob/1a65ec82/core/actions/operation.ts#L212)*
+*Defined in [core/actions/operation.ts:212](https://github.com/dataform-co/dataform/blob/1eef2cde/core/actions/operation.ts#L212)*
 
 **`deprecated`** Deprecated in favor of
 [OperationConfig.disabled](configs#dataform-ActionConfig-OperationConfig).
@@ -178,7 +178,7 @@ ___
 
 ▸ **hasOutput**(`hasOutput`: boolean): *this*
 
-*Defined in [core/actions/operation.ts:240](https://github.com/dataform-co/dataform/blob/1a65ec82/core/actions/operation.ts#L240)*
+*Defined in [core/actions/operation.ts:240](https://github.com/dataform-co/dataform/blob/1eef2cde/core/actions/operation.ts#L240)*
 
 **`deprecated`** Deprecated in favor of
 [OperationConfig.hasOutput](configs#dataform-ActionConfig-OperationConfig).
@@ -200,7 +200,7 @@ ___
 
 ▸ **hermetic**(`hermetic`: boolean): *void*
 
-*Defined in [core/actions/operation.ts:199](https://github.com/dataform-co/dataform/blob/1a65ec82/core/actions/operation.ts#L199)*
+*Defined in [core/actions/operation.ts:199](https://github.com/dataform-co/dataform/blob/1eef2cde/core/actions/operation.ts#L199)*
 
 **`deprecated`** Deprecated in favor of
 [OperationConfig.hermetic](configs#dataform-ActionConfig-OperationConfig).
@@ -223,7 +223,7 @@ ___
 
 ▸ **queries**(`queries`: [Contextable](../modules/_core_common_.md#contextable)‹[ICommonContext](../interfaces/_core_common_.icommoncontext.md), string | string[]›): *this*
 
-*Defined in [core/actions/operation.ts:172](https://github.com/dataform-co/dataform/blob/1a65ec82/core/actions/operation.ts#L172)*
+*Defined in [core/actions/operation.ts:172](https://github.com/dataform-co/dataform/blob/1eef2cde/core/actions/operation.ts#L172)*
 
 Sets the query/queries to generate the operation from.
 
@@ -243,7 +243,7 @@ ___
 
 ▸ **schema**(`schema`: string): *this*
 
-*Defined in [core/actions/operation.ts:299](https://github.com/dataform-co/dataform/blob/1a65ec82/core/actions/operation.ts#L299)*
+*Defined in [core/actions/operation.ts:299](https://github.com/dataform-co/dataform/blob/1eef2cde/core/actions/operation.ts#L299)*
 
 **`deprecated`** Deprecated in favor of
 [OperationConfig.dataset](configs#dataform-ActionConfig-OperationConfig).
@@ -264,7 +264,7 @@ ___
 
 ▸ **setDependOnDependencyAssertions**(`dependOnDependencyAssertions`: boolean): *this*
 
-*Defined in [core/actions/operation.ts:317](https://github.com/dataform-co/dataform/blob/1a65ec82/core/actions/operation.ts#L317)*
+*Defined in [core/actions/operation.ts:317](https://github.com/dataform-co/dataform/blob/1eef2cde/core/actions/operation.ts#L317)*
 
 **`deprecated`** Deprecated in favor of
 [OperationConfig.dependOnDependencyAssertions](configs#dataform-ActionConfig-OperationConfig).
@@ -286,7 +286,7 @@ ___
 
 ▸ **tags**(`value`: string | string[]): *this*
 
-*Defined in [core/actions/operation.ts:223](https://github.com/dataform-co/dataform/blob/1a65ec82/core/actions/operation.ts#L223)*
+*Defined in [core/actions/operation.ts:223](https://github.com/dataform-co/dataform/blob/1eef2cde/core/actions/operation.ts#L223)*
 
 **`deprecated`** Deprecated in favor of
 [OperationConfig.tags](configs#dataform-ActionConfig-OperationConfig).

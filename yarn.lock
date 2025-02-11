@@ -2492,7 +2492,7 @@ gtoken@^5.0.4:
     jws "^4.0.0"
     mime "^2.2.0"
 
-handlebars@^4.5.3, handlebars@^4.7.6:
+handlebars@^4.7.3, handlebars@^4.7.6:
   version "4.7.8"
   resolved "https://registry.npmjs.org/handlebars/-/handlebars-4.7.8.tgz#41c42c18b1be2365439188c77c6afae71c0cd9e9"
   integrity sha512-vafaFqs8MZkRrSX7sFVUdo3ap/eNiLnb4IakshzvP56X5Nr1iGKAIqdX6tMlm6HcNRIkr6AxO5jFEoJzzpT8aQ==
@@ -5090,13 +5090,13 @@ typedoc-default-themes@^0.10.2:
   dependencies:
     lunr "^2.3.8"
 
-typedoc-plugin-markdown@2.2.16:
-  version "2.2.16"
-  resolved "https://registry.npmjs.org/typedoc-plugin-markdown/-/typedoc-plugin-markdown-2.2.16.tgz#baac77e7278e1417f645c063d25f285ec06afdb8"
-  integrity sha512-0Y1zBqL8EQGnwMGoh82LtvioaVs1BGMr1qzINXWwh0R769Awg17vjnKZ8pBY9VHVc6yINB6ZvrLhJsfZuzJxkw==
+typedoc-plugin-markdown@2.2.17:
+  version "2.2.17"
+  resolved "https://registry.npmjs.org/typedoc-plugin-markdown/-/typedoc-plugin-markdown-2.2.17.tgz#aaef7420e8268170e62c764f43740e10f842548d"
+  integrity sha512-eE6cTeqsZIbjur6RG91Lhx1vTwjR49OHwVPRlmsxY3dthS4FNRL8sHxT5Y9pkosBwv1kSmNGQEPHjMYy1Ag6DQ==
   dependencies:
     fs-extra "^8.1.0"
-    handlebars "^4.5.3"
+    handlebars "^4.7.3"
 
 typedoc@0.17.8:
   version "0.17.8"
