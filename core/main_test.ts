@@ -1268,6 +1268,9 @@ $\{when(true, "|> SELECT *", "|> SELECT 1")\}
               }
             ],
             fileName: "definitions/data_preparation.sqlx",
+            load: {
+              replace: {}
+            },
             query: `FROM x
 -- Ensure y is positive
 -- @@VALIDATION
@@ -1292,7 +1295,10 @@ config {
   name: "dest",
   errorTable: {
     name: "errorTable",
-  }
+  },
+  loadMode: {
+    mode: "APPEND",
+  },
 }
 
 FROM x
@@ -1359,6 +1365,9 @@ FROM x
             ],
             fileName: "definitions/data_preparation.sqlx",
             query: "FROM x\n|> SELECT *",
+            load: {
+              append: {}
+            },
             errorTable: {
               database: "projectOverride",
               schema: "datasetOverride",
@@ -1378,7 +1387,11 @@ config {
   name: "dest",
   errorTable: {
     name: "errorTable",
-  }
+  },
+  loadMode: {
+    mode: "MAXIMUM",
+    incrementalColumn: "xyz",
+  },
 }
 
 FROM x
@@ -1431,6 +1444,11 @@ FROM x
               }
             ],
             fileName: "definitions/data_preparation.sqlx",
+            load: {
+              maximum: {
+                columnName: "xyz"
+              }
+            },
             query: "FROM x\n|> SELECT *",
             errorTable: {
               database: "defaultProject",

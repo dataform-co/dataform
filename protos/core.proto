@@ -283,7 +283,7 @@ message DataPreparation {
   bool disabled = 6;
 
   oneof definition {
-    // YAML file containing the data preparation YAML with resolved dependencies.
+    // YAML file containing the data preparation YAML with resolved dependencies, as well as error table and load configuration information.
     string data_preparation_yaml = 11;
 
     // SQL representing a compiled SQL string
@@ -294,7 +294,25 @@ message DataPreparation {
   Target error_table = 12;
   int32 error_table_retention_days = 13;
 
+  LoadConfiguration load = 16;
+
   reserved 7, 10;
+}
+
+message LoadConfiguration {
+  oneof mode {
+    SimpleLoadMode replace = 1;
+    SimpleLoadMode append = 2;
+    IncrementalLoadMode maximum = 3;
+    IncrementalLoadMode unique = 4;
+    IncrementalLoadMode automatic = 5;
+  }
+}
+
+message SimpleLoadMode {}
+
+message IncrementalLoadMode {
+  string column_name = 1;
 }
 
 message CompiledGraph {
