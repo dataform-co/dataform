@@ -296,7 +296,7 @@ export class View extends ActionBuilder<dataform.Table> {
 
   /**
    * @deprecated Deprecated in favor of
-   * [IncrementalTableConfig.disabled](configs#dataform-ActionConfig-IncrementalTableConfig).
+   * [ViewConfig.disabled](configs#dataform-ActionConfig-ViewConfig).
    *
    * If called with `true`, this action is not executed. The action can still be depended upon.
    * Useful for temporarily turning off broken actions.
@@ -310,7 +310,7 @@ export class View extends ActionBuilder<dataform.Table> {
 
   /**
    * @deprecated Deprecated in favor of
-   * [IncrementalTableConfig.materialized](configs#dataform-ActionConfig-IncrementalTableConfig).
+   * [ViewConfig.materialized](configs#dataform-ActionConfig-ViewConfig).
    *
    * Applies the materialized view optimization, see
    * https://cloud.google.com/bigquery/docs/materialized-views-intro.
@@ -321,7 +321,7 @@ export class View extends ActionBuilder<dataform.Table> {
 
   /**
    * @deprecated Deprecated in favor of options available directly on
-   * [IncrementalTableConfig](configs#dataform-ActionConfig-IncrementalTableConfig).
+   * [ViewConfig](configs#dataform-ActionConfig-ViewConfig).
    *
    * Sets bigquery options for the action.
    */
@@ -338,9 +338,9 @@ export class View extends ActionBuilder<dataform.Table> {
 
   /**
    * @deprecated Deprecated in favor of
-   * [IncrementalTableConfig.dependencies](configs#dataform-ActionConfig-IncrementalTableConfig).
+   * [ViewConfig.dependencies](configs#dataform-ActionConfig-ViewConfig).
    *
-   * Sets dependencies of the incremental table.
+   * Sets dependencies of the view.
    */
   public dependencies(value: Resolvable | Resolvable[]) {
     const newDependencies = Array.isArray(value) ? value : [value];
@@ -352,7 +352,7 @@ export class View extends ActionBuilder<dataform.Table> {
 
   /**
    * @deprecated Deprecated in favor of
-   * [IncrementalTableConfig.hermetic](configs#dataform-ActionConfig-IncrementalTableConfig).
+   * [ViewConfig.hermetic](configs#dataform-ActionConfig-ViewConfig).
    *
    * If true, this indicates that the action only depends on data from explicitly-declared
    * dependencies. Otherwise if false, it indicates that the  action depends on data from a source
@@ -366,7 +366,7 @@ export class View extends ActionBuilder<dataform.Table> {
 
   /**
    * @deprecated Deprecated in favor of
-   * [IncrementalTableConfig.tags](configs#dataform-ActionConfig-IncrementalTableConfig).
+   * [ViewConfig.tags](configs#dataform-ActionConfig-ViewConfig).
    *
    * Sets a list of user-defined tags applied to this action.
    */
@@ -382,7 +382,7 @@ export class View extends ActionBuilder<dataform.Table> {
 
   /**
    * @deprecated Deprecated in favor of
-   * [IncrementalTableConfig.description](configs#dataform-ActionConfig-IncrementalTableConfig).
+   * [ViewConfig.description](configs#dataform-ActionConfig-ViewConfig).
    *
    * Sets the description of this view.
    */
@@ -396,7 +396,7 @@ export class View extends ActionBuilder<dataform.Table> {
 
   /**
    * @deprecated Deprecated in favor of
-   * [IncrementalTableConfig.columns](configs#dataform-ActionConfig-IncrementalTableConfig).
+   * [ViewConfig.columns](configs#dataform-ActionConfig-ViewConfig).
    *
    * Sets the column descriptors of columns in this view.
    */
@@ -412,7 +412,7 @@ export class View extends ActionBuilder<dataform.Table> {
 
   /**
    * @deprecated Deprecated in favor of
-   * [IncrementalTableConfig.project](configs#dataform-ActionConfig-IncrementalTableConfig).
+   * [ViewConfig.project](configs#dataform-ActionConfig-ViewConfig).
    *
    * Sets the
    * Sets the database (Google Cloud project ID) in which to create the output of this action.
@@ -430,7 +430,7 @@ export class View extends ActionBuilder<dataform.Table> {
 
   /**
    * @deprecated Deprecated in favor of
-   * [IncrementalTableConfig.dataset](configs#dataform-ActionConfig-IncrementalTableConfig).
+   * [ViewConfig.dataset](configs#dataform-ActionConfig-ViewConfig).
    *
    * Sets the schema (BigQuery dataset) in which to create the output of this action.
    */
@@ -447,9 +447,9 @@ export class View extends ActionBuilder<dataform.Table> {
 
   /**
    * @deprecated Deprecated in favor of
-   * [IncrementalTableConfig.assertions](configs#dataform-ActionConfig-IncrementalTableConfig).
+   * [ViewConfig.assertions](configs#dataform-ActionConfig-ViewConfig).
    *
-   * Sets in-line assertions for this incremental table.
+   * Sets in-line assertions for this view.
    *
    * <!-- Note: this both applies in-line assertions, and acts as a method available via the JS API.
    * Usage of it via the JS API is deprecated, but the way it applies in-line assertions is still
@@ -514,7 +514,7 @@ export class View extends ActionBuilder<dataform.Table> {
 
   /**
    * @deprecated Deprecated in favor of
-   * [IncrementalTableConfig.dependOnDependencyAssertions](configs#dataform-ActionConfig-IncrementalTableConfig).
+   * [ViewConfig.dependOnDependencyAssertions](configs#dataform-ActionConfig-ViewConfig).
    *
    * When called with `true`, assertions dependent upon any dependency will be add as dedpendency
    * to this action.

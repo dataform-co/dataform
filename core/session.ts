@@ -275,16 +275,7 @@ export class Session {
    *
    * Available only in the `/definitions` directory.
    *
-   * Example:
-   *
-   * ```js
-   * // definitions/file.js
-   *
-   * publish("published-table", {
-   *   type: "table",
-   *   dependencies: ["a-declaration"],
-   * }).query(ctx => "SELECT 1 AS test");
-   * ```
+   * @see [operation](Operation) for examples on how to use.
    */
   public operate(
     name: string,
@@ -303,17 +294,13 @@ export class Session {
   }
 
   /**
-   * Creates a table or view.
+   * Creates a table, view, or incremental table.
    *
    * Available only in the `/definitions` directory.
    *
-   * Example:
-   *
-   * ```js
-   * // definitions/file.js
-   *
-   * operate("an-operation", ["SELECT 1", "SELECT 2"])
-   * ```
+   * @see [Operation](Operation) for examples on how to make tables.
+   * @see [View](View) for examples on how to make views.
+   * @see [IncrementalTable](IncrementalTable) for examples on how to make incremental tables.
    */
   public publish(
     name: string,
@@ -355,15 +342,7 @@ export class Session {
    *
    * Available only in the `/definitions` directory.
    *
-   * Example:
-   * ```js
-   * // definitions/file.js
-   *
-   * assert("name").query(ctx => "select 1");
-   * ```
-   *
-   * <!-- TODO(ekrekr): safely allow passing of config blocks as the second argument, similar to
-   * publish. -->
+   * @see [assertion](Assertion) for examples on how to use.
    */
   public assert(name: string, query?: AContextable<string>): Assertion {
     const assertion = new Assertion();
@@ -382,12 +361,7 @@ export class Session {
    *
    * Available only in the `/definitions` directory.
    *
-   * Example:
-   * ```js
-   * // definitions/file.js
-   *
-   * declare({name: "a-declaration"})
-   * ```
+   * @see [Declaration](Declaration) for examples on how to use.
    *
    * <!-- TODO(ekrekr): safely allow passing of config blocks as the second argument, similar to
    * publish. -->
@@ -406,12 +380,7 @@ export class Session {
    *
    * Available only in the `/definitions` directory.
    *
-   * Example:
-   * ```js
-   * // definitions/file.js
-   *
-   * test("test-name")
-   * ```
+   * @see [Test](Test) for examples on how to use.
    *
    * <!-- TODO(ekrekr): safely allow passing of config blocks as the second argument, similar to
    * publish. -->
@@ -432,12 +401,7 @@ export class Session {
    *
    * Available only in the `/definitions` directory.
    *
-   * Example:
-   * ```js
-   * // definitions/file.js
-   *
-   * notebook("notebook-name")
-   * ```
+   * @see [Notebook](Notebook) for examples on how to use.
    *
    * <!-- TODO(ekrekr): safely allow passing of config blocks as the second argument, similar to
    * publish. -->

@@ -30,7 +30,7 @@ folder of a Dataform project.
 
 • **projectConfig**: *ProjectConfig*
 
-*Defined in [core/session.ts:63](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/session.ts#L63)*
+*Defined in [core/session.ts:63](https://github.com/dataform-co/dataform/blob/1a65ec82/core/session.ts#L63)*
 
 Stores the Dataform project configuration of the current Dataform project. Can be accessed via
 the `dataform` global variable.
@@ -47,21 +47,13 @@ dataform.projectConfig.vars.myVariableName === "myVariableValue"
 
 ▸ **assert**(`name`: string, `query?`: AContextable‹string›): *[Assertion](_core_actions_assertion_.assertion.md)*
 
-*Defined in [core/session.ts:368](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/session.ts#L368)*
+*Defined in [core/session.ts:347](https://github.com/dataform-co/dataform/blob/1a65ec82/core/session.ts#L347)*
 
 Adds a Dataform assertion the compiled graph.
 
 Available only in the `/definitions` directory.
 
-Example:
-```js
-// definitions/file.js
-
-assert("name").query(ctx => "select 1");
-```
-
-<!-- TODO(ekrekr): safely allow passing of config blocks as the second argument, similar to
-publish. -->
+**`see`** [assertion](Assertion) for examples on how to use.
 
 **Parameters:**
 
@@ -78,18 +70,13 @@ ___
 
 ▸ **declare**(`dataset`: ITarget): *[Declaration](_core_actions_declaration_.declaration.md)*
 
-*Defined in [core/session.ts:395](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/session.ts#L395)*
+*Defined in [core/session.ts:369](https://github.com/dataform-co/dataform/blob/1a65ec82/core/session.ts#L369)*
 
 Declares the dataset as a Dataform data source.
 
 Available only in the `/definitions` directory.
 
-Example:
-```js
-// definitions/file.js
-
-declare({name: "a-declaration"})
-```
+**`see`** [Declaration](Declaration) for examples on how to use.
 
 <!-- TODO(ekrekr): safely allow passing of config blocks as the second argument, similar to
 publish. -->
@@ -108,18 +95,13 @@ ___
 
 ▸ **notebook**(`name`: string): *[Notebook](_core_actions_notebook_.notebook.md)*
 
-*Defined in [core/session.ts:446](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/session.ts#L446)*
+*Defined in [core/session.ts:410](https://github.com/dataform-co/dataform/blob/1a65ec82/core/session.ts#L410)*
 
 Creates a Notebook action.
 
 Available only in the `/definitions` directory.
 
-Example:
-```js
-// definitions/file.js
-
-notebook("notebook-name")
-```
+**`see`** [Notebook](Notebook) for examples on how to use.
 
 <!-- TODO(ekrekr): safely allow passing of config blocks as the second argument, similar to
 publish. -->
@@ -139,22 +121,13 @@ ___
 
 ▸ **operate**(`name`: string, `queries?`: [Contextable](../modules/_core_common_.md#contextable)‹[ICommonContext](../interfaces/_core_common_.icommoncontext.md), string | string[]›): *[Operation](_core_actions_operation_.operation.md)*
 
-*Defined in [core/session.ts:289](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/session.ts#L289)*
+*Defined in [core/session.ts:280](https://github.com/dataform-co/dataform/blob/1a65ec82/core/session.ts#L280)*
 
 Defines a SQL operation.
 
 Available only in the `/definitions` directory.
 
-Example:
-
-```js
-// definitions/file.js
-
-publish("published-table", {
-  type: "table",
-  dependencies: ["a-declaration"],
-}).query(ctx => "SELECT 1 AS test");
-```
+**`see`** [operation](Operation) for examples on how to use.
 
 **Parameters:**
 
@@ -171,19 +144,17 @@ ___
 
 ▸ **publish**(`name`: string, `queryOrConfig?`: [Contextable](../modules/_core_common_.md#contextable)‹[ITableContext](../interfaces/_core_actions_index_.itablecontext.md), string› | TableConfig | ViewConfig | IncrementalTableConfig | ILegacyTableConfig | any): *[Table](_core_actions_table_.table.md) | [IncrementalTable](_core_actions_incremental_table_.incrementaltable.md) | [View](_core_actions_view_.view.md)*
 
-*Defined in [core/session.ts:318](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/session.ts#L318)*
+*Defined in [core/session.ts:305](https://github.com/dataform-co/dataform/blob/1a65ec82/core/session.ts#L305)*
 
-Creates a table or view.
+Creates a table, view, or incremental table.
 
 Available only in the `/definitions` directory.
 
-Example:
+**`see`** [Operation](Operation) for examples on how to make tables.
 
-```js
-// definitions/file.js
+**`see`** [View](View) for examples on how to make views.
 
-operate("an-operation", ["SELECT 1", "SELECT 2"])
-```
+**`see`** [IncrementalTable](IncrementalTable) for examples on how to make incremental tables.
 
 **Parameters:**
 
@@ -200,18 +171,13 @@ ___
 
 ▸ **test**(`name`: string): *[Test](_core_actions_test_.test.md)*
 
-*Defined in [core/session.ts:420](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/session.ts#L420)*
+*Defined in [core/session.ts:389](https://github.com/dataform-co/dataform/blob/1a65ec82/core/session.ts#L389)*
 
 Creates a Test action.
 
 Available only in the `/definitions` directory.
 
-Example:
-```js
-// definitions/file.js
-
-test("test-name")
-```
+**`see`** [Test](Test) for examples on how to use.
 
 <!-- TODO(ekrekr): safely allow passing of config blocks as the second argument, similar to
 publish. -->

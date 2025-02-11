@@ -77,12 +77,12 @@ This is where `query` comes from.
 
 ▸ **assertions**(`assertions`: TableAssertionsConfig): *this*
 
-*Defined in [core/actions/view.ts:458](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/actions/view.ts#L458)*
+*Defined in [core/actions/view.ts:458](https://github.com/dataform-co/dataform/blob/1a65ec82/core/actions/view.ts#L458)*
 
 **`deprecated`** Deprecated in favor of
-[IncrementalTableConfig.assertions](configs#dataform-ActionConfig-IncrementalTableConfig).
+[ViewConfig.assertions](configs#dataform-ActionConfig-ViewConfig).
 
-Sets in-line assertions for this incremental table.
+Sets in-line assertions for this view.
 
 <!-- Note: this both applies in-line assertions, and acts as a method available via the JS API.
 Usage of it via the JS API is deprecated, but the way it applies in-line assertions is still
@@ -102,10 +102,10 @@ ___
 
 ▸ **bigquery**(`bigquery`: IBigQueryOptions): *this*
 
-*Defined in [core/actions/view.ts:328](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/actions/view.ts#L328)*
+*Defined in [core/actions/view.ts:328](https://github.com/dataform-co/dataform/blob/1a65ec82/core/actions/view.ts#L328)*
 
 **`deprecated`** Deprecated in favor of options available directly on
-[IncrementalTableConfig](configs#dataform-ActionConfig-IncrementalTableConfig).
+[ViewConfig](configs#dataform-ActionConfig-ViewConfig).
 
 Sets bigquery options for the action.
 
@@ -123,10 +123,10 @@ ___
 
 ▸ **columns**(`columns`: ColumnDescriptor[]): *this*
 
-*Defined in [core/actions/view.ts:403](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/actions/view.ts#L403)*
+*Defined in [core/actions/view.ts:403](https://github.com/dataform-co/dataform/blob/1a65ec82/core/actions/view.ts#L403)*
 
 **`deprecated`** Deprecated in favor of
-[IncrementalTableConfig.columns](configs#dataform-ActionConfig-IncrementalTableConfig).
+[ViewConfig.columns](configs#dataform-ActionConfig-ViewConfig).
 
 Sets the column descriptors of columns in this view.
 
@@ -144,10 +144,10 @@ ___
 
 ▸ **database**(`database`: string): *this*
 
-*Defined in [core/actions/view.ts:420](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/actions/view.ts#L420)*
+*Defined in [core/actions/view.ts:420](https://github.com/dataform-co/dataform/blob/1a65ec82/core/actions/view.ts#L420)*
 
 **`deprecated`** Deprecated in favor of
-[IncrementalTableConfig.project](configs#dataform-ActionConfig-IncrementalTableConfig).
+[ViewConfig.project](configs#dataform-ActionConfig-ViewConfig).
 
 Sets the
 Sets the database (Google Cloud project ID) in which to create the output of this action.
@@ -166,12 +166,12 @@ ___
 
 ▸ **dependencies**(`value`: [Resolvable](../modules/_core_common_.md#resolvable) | [Resolvable](../modules/_core_common_.md#resolvable)[]): *this*
 
-*Defined in [core/actions/view.ts:345](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/actions/view.ts#L345)*
+*Defined in [core/actions/view.ts:345](https://github.com/dataform-co/dataform/blob/1a65ec82/core/actions/view.ts#L345)*
 
 **`deprecated`** Deprecated in favor of
-[IncrementalTableConfig.dependencies](configs#dataform-ActionConfig-IncrementalTableConfig).
+[ViewConfig.dependencies](configs#dataform-ActionConfig-ViewConfig).
 
-Sets dependencies of the incremental table.
+Sets dependencies of the view.
 
 **Parameters:**
 
@@ -187,10 +187,10 @@ ___
 
 ▸ **description**(`description`: string): *this*
 
-*Defined in [core/actions/view.ts:389](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/actions/view.ts#L389)*
+*Defined in [core/actions/view.ts:389](https://github.com/dataform-co/dataform/blob/1a65ec82/core/actions/view.ts#L389)*
 
 **`deprecated`** Deprecated in favor of
-[IncrementalTableConfig.description](configs#dataform-ActionConfig-IncrementalTableConfig).
+[ViewConfig.description](configs#dataform-ActionConfig-ViewConfig).
 
 Sets the description of this view.
 
@@ -208,10 +208,10 @@ ___
 
 ▸ **disabled**(`disabled`: boolean): *this*
 
-*Defined in [core/actions/view.ts:304](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/actions/view.ts#L304)*
+*Defined in [core/actions/view.ts:304](https://github.com/dataform-co/dataform/blob/1a65ec82/core/actions/view.ts#L304)*
 
 **`deprecated`** Deprecated in favor of
-[IncrementalTableConfig.disabled](configs#dataform-ActionConfig-IncrementalTableConfig).
+[ViewConfig.disabled](configs#dataform-ActionConfig-ViewConfig).
 
 If called with `true`, this action is not executed. The action can still be depended upon.
 Useful for temporarily turning off broken actions.
@@ -230,10 +230,10 @@ ___
 
 ▸ **hermetic**(`hermetic`: boolean): *void*
 
-*Defined in [core/actions/view.ts:361](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/actions/view.ts#L361)*
+*Defined in [core/actions/view.ts:361](https://github.com/dataform-co/dataform/blob/1a65ec82/core/actions/view.ts#L361)*
 
 **`deprecated`** Deprecated in favor of
-[IncrementalTableConfig.hermetic](configs#dataform-ActionConfig-IncrementalTableConfig).
+[ViewConfig.hermetic](configs#dataform-ActionConfig-ViewConfig).
 
 If true, this indicates that the action only depends on data from explicitly-declared
 dependencies. Otherwise if false, it indicates that the  action depends on data from a source
@@ -253,10 +253,10 @@ ___
 
 ▸ **materialized**(`materialized`: boolean): *void*
 
-*Defined in [core/actions/view.ts:318](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/actions/view.ts#L318)*
+*Defined in [core/actions/view.ts:318](https://github.com/dataform-co/dataform/blob/1a65ec82/core/actions/view.ts#L318)*
 
 **`deprecated`** Deprecated in favor of
-[IncrementalTableConfig.materialized](configs#dataform-ActionConfig-IncrementalTableConfig).
+[ViewConfig.materialized](configs#dataform-ActionConfig-ViewConfig).
 
 Applies the materialized view optimization, see
 https://cloud.google.com/bigquery/docs/materialized-views-intro.
@@ -275,7 +275,7 @@ ___
 
 ▸ **postOps**(`posts`: [Contextable](../modules/_core_common_.md#contextable)‹[ITableContext](../interfaces/_core_actions_index_.itablecontext.md), string | string[]›): *this*
 
-*Defined in [core/actions/view.ts:292](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/actions/view.ts#L292)*
+*Defined in [core/actions/view.ts:292](https://github.com/dataform-co/dataform/blob/1a65ec82/core/actions/view.ts#L292)*
 
 Sets a post-operation to run after the query is run. This is often used for revoking temporary
 permissions granted to access source tables.
@@ -304,7 +304,7 @@ ___
 
 ▸ **preOps**(`pres`: [Contextable](../modules/_core_common_.md#contextable)‹[ITableContext](../interfaces/_core_actions_index_.itablecontext.md), string | string[]›): *this*
 
-*Defined in [core/actions/view.ts:273](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/actions/view.ts#L273)*
+*Defined in [core/actions/view.ts:273](https://github.com/dataform-co/dataform/blob/1a65ec82/core/actions/view.ts#L273)*
 
 Sets a pre-operation to run before the query is run. This is often used for temporarily
 granting permission to access source tables.
@@ -333,7 +333,7 @@ ___
 
 ▸ **query**(`query`: [Contextable](../modules/_core_common_.md#contextable)‹[ITableContext](../interfaces/_core_actions_index_.itablecontext.md), string›): *this*
 
-*Defined in [core/actions/view.ts:248](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/actions/view.ts#L248)*
+*Defined in [core/actions/view.ts:248](https://github.com/dataform-co/dataform/blob/1a65ec82/core/actions/view.ts#L248)*
 
 Sets the query to generate the table from.
 
@@ -351,10 +351,10 @@ ___
 
 ▸ **schema**(`schema`: string): *this*
 
-*Defined in [core/actions/view.ts:437](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/actions/view.ts#L437)*
+*Defined in [core/actions/view.ts:437](https://github.com/dataform-co/dataform/blob/1a65ec82/core/actions/view.ts#L437)*
 
 **`deprecated`** Deprecated in favor of
-[IncrementalTableConfig.dataset](configs#dataform-ActionConfig-IncrementalTableConfig).
+[ViewConfig.dataset](configs#dataform-ActionConfig-ViewConfig).
 
 Sets the schema (BigQuery dataset) in which to create the output of this action.
 
@@ -372,10 +372,10 @@ ___
 
 ▸ **setDependOnDependencyAssertions**(`dependOnDependencyAssertions`: boolean): *this*
 
-*Defined in [core/actions/view.ts:522](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/actions/view.ts#L522)*
+*Defined in [core/actions/view.ts:522](https://github.com/dataform-co/dataform/blob/1a65ec82/core/actions/view.ts#L522)*
 
 **`deprecated`** Deprecated in favor of
-[IncrementalTableConfig.dependOnDependencyAssertions](configs#dataform-ActionConfig-IncrementalTableConfig).
+[ViewConfig.dependOnDependencyAssertions](configs#dataform-ActionConfig-ViewConfig).
 
 When called with `true`, assertions dependent upon any dependency will be add as dedpendency
 to this action.
@@ -394,10 +394,10 @@ ___
 
 ▸ **tags**(`value`: string | string[]): *this*
 
-*Defined in [core/actions/view.ts:373](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/actions/view.ts#L373)*
+*Defined in [core/actions/view.ts:373](https://github.com/dataform-co/dataform/blob/1a65ec82/core/actions/view.ts#L373)*
 
 **`deprecated`** Deprecated in favor of
-[IncrementalTableConfig.tags](configs#dataform-ActionConfig-IncrementalTableConfig).
+[ViewConfig.tags](configs#dataform-ActionConfig-ViewConfig).
 
 Sets a list of user-defined tags applied to this action.
 
@@ -415,7 +415,7 @@ ___
 
 ▸ **type**(`type`: TableType): *this*
 
-*Defined in [core/actions/view.ts:214](https://github.com/dataform-co/dataform/blob/c3e6f5c9/core/actions/view.ts#L214)*
+*Defined in [core/actions/view.ts:214](https://github.com/dataform-co/dataform/blob/1a65ec82/core/actions/view.ts#L214)*
 
 **`deprecated`** 
 Deprecated in favor of action type can being set in the configs passed to action constructor
