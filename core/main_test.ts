@@ -2384,47 +2384,60 @@ SELECT 1`
       );
     });
 
-    test(`for declarations`, () => {
-      const projectDir = tmpDirFixture.createNewTmpDir();
-      fs.writeFileSync(
-        path.join(projectDir, "workflow_settings.yaml"),
-        VALID_WORKFLOW_SETTINGS_YAML
-      );
-      fs.mkdirSync(path.join(projectDir, "definitions"));
-      fs.writeFileSync(
-        path.join(projectDir, "definitions/assertion.sqlx"),
-        `
-config {
+    const declarationConfig = `{
   type: "declaration",
   name: "name",
   schema: "dataset",
   database: "project",
   description: "description",
 ${exampleActionDescriptor.inputSqlxConfigBlock}
-}`
-      );
+}`;
 
-      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+    [
+      {
+        filename: "declaration.sqlx",
+        fileContents: `
+config ${declarationConfig}`
+      },
+      {
+        filename: "declaration.js",
+        fileContents: `declare(${declarationConfig})`
+      }
+    ].forEach(testParameters => {
+      test(`for declarations configured in a ${testParameters.filename} file`, () => {
+        const projectDir = tmpDirFixture.createNewTmpDir();
+        fs.writeFileSync(
+          path.join(projectDir, "workflow_settings.yaml"),
+          VALID_WORKFLOW_SETTINGS_YAML
+        );
+        fs.mkdirSync(path.join(projectDir, "definitions"));
+        fs.writeFileSync(
+          path.join(projectDir, `definitions/${testParameters.filename}`),
+          testParameters.fileContents
+        );
 
-      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-      expect(asPlainObject(result.compile.compiledGraph.declarations)).deep.equals(
-        asPlainObject([
-          {
-            target: {
-              database: "project",
-              schema: "dataset",
-              name: "name"
-            },
-            canonicalTarget: {
-              database: "project",
-              schema: "dataset",
-              name: "name"
-            },
-            fileName: "definitions/assertion.sqlx",
-            actionDescriptor: exampleActionDescriptor.outputActionDescriptor
-          }
-        ])
-      );
+        const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+        expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+        expect(asPlainObject(result.compile.compiledGraph.declarations)).deep.equals(
+          asPlainObject([
+            {
+              target: {
+                database: "project",
+                schema: "dataset",
+                name: "name"
+              },
+              canonicalTarget: {
+                database: "project",
+                schema: "dataset",
+                name: "name"
+              },
+              fileName: `definitions/${testParameters.filename}`,
+              actionDescriptor: exampleActionDescriptor.outputActionDescriptor
+            }
+          ])
+        );
+      });
     });
 
     const tableConfig = `{

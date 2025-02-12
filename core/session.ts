@@ -348,13 +348,17 @@ export class Session {
    *
    * @see [Declaration](Declaration) for examples on how to use.
    *
-   * <!-- TODO(ekrekr): safely allow passing of config blocks as the second argument, similar to
-   * publish. -->
+   * <!-- Note that the config fields in dataform.ITarget have been deprecated in favor of those in
+   * dataform.ActionConfig.DeclarationConfig. -->
    */
-  public declare(dataset: dataform.ITarget): Declaration {
-    const declaration = new Declaration();
-    declaration.session = this;
-    utils.setNameAndTarget(this, declaration.proto, dataset.name, dataset.schema, dataset.database);
+  public declare(
+    config:
+      | dataform.ActionConfig.DeclarationConfig
+      // `any` is used here to facilitate the type merging of legacy declaration configs options,
+      // without breaking typescript consumers of Dataform.
+      | any
+  ): Declaration {
+    const declaration = new Declaration(this, config);
     declaration.proto.fileName = utils.getCallerFile(this.rootDir);
     this.actions.push(declaration);
     return declaration;
