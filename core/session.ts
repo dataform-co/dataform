@@ -16,12 +16,12 @@ import { Table, TableContext } from "df/core/actions/table";
 import { Test } from "df/core/actions/test";
 import { View } from "df/core/actions/view";
 import { CompilationSql } from "df/core/compilation_sql";
+import { Contextable, IActionContext, ITableContext, Resolvable } from "df/core/contextables";
 import { targetAsReadableString, targetStringifier } from "df/core/targets";
 import * as utils from "df/core/utils";
 import { toResolvable } from "df/core/utils";
 import { version as dataformCoreVersion } from "df/core/version";
 import { dataform } from "df/protos/ts";
-import { Contextable, IActionContext, ITableContext, Resolvable } from "df/core/contextables";
 
 const DEFAULT_CONFIG = {
   defaultSchema: "dataform",

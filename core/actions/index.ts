@@ -6,10 +6,10 @@ import { Notebook } from "df/core/actions/notebook";
 import { Operation } from "df/core/actions/operation";
 import { Table } from "df/core/actions/table";
 import { View } from "df/core/actions/view";
+import { IColumnsDescriptor } from "df/core/column_descriptors";
+import { Resolvable } from "df/core/contextables";
 import { Session } from "df/core/session";
 import { dataform } from "df/protos/ts";
-import { IColumnsDescriptor } from "df/core/column_descriptors";
-import { IActionContext, Resolvable } from "df/core/contextables";
 
 export type Action =
   | Table

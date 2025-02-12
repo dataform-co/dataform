@@ -2,6 +2,7 @@ import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/p
 import { ActionBuilder, INamedConfig, TableType } from "df/core/actions";
 import { Table } from "df/core/actions/table";
 import { View } from "df/core/actions/view";
+import { Contextable, IActionContext, ITableContext, Resolvable } from "df/core/contextables";
 import { Session } from "df/core/session";
 import { targetStringifier } from "df/core/targets";
 import {
@@ -13,7 +14,6 @@ import {
   toResolvable
 } from "df/core/utils";
 import { dataform } from "df/protos/ts";
-import { Contextable, IActionContext, ITableContext, Resolvable } from "df/core/contextables";
 
 /**
  * Configuration options for unit tests.

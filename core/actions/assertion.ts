@@ -1,5 +1,6 @@
 import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { ActionBuilder } from "df/core/actions";
+import { IActionContext, Resolvable } from "df/core/contextables";
 import * as Path from "df/core/path";
 import { Session } from "df/core/session";
 import {
@@ -13,7 +14,6 @@ import {
   validateQueryString
 } from "df/core/utils";
 import { dataform } from "df/protos/ts";
-import { IActionContext, Resolvable } from "df/core/contextables";
 
 /**
  * @hidden
