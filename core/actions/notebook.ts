@@ -13,17 +13,57 @@ import {
 import { dataform } from "df/protos/ts";
 
 /**
- * @hidden
+ * Notebooks run Jupyter Notebook files, and can output content to the storage buckets defined in
+ * `workflow_settings.yaml` files.
+ *
+ * You can create notebooks in the following ways. Available config options are defined in
+ * [NotebookConfig](configs#dataform-ActionConfig-NotebookConfig), and are shared across all the
+ * following ways of creating notebooks.
+ *
+ * **Using action configs files:**
+ *
+ * ```yaml
+ * # definitions/actions.yaml
+ * actions:
+ * - notebook:
+ *   filename: name.ipynb
+ * ```
+ *
+ * ```ipynb
+ * # definitions/name.ipynb
+ * { "cells": [] }
+ * ```
+ *
+ * **Using the Javascript API:**
+ *
+ * ```js
+ * // definitions/file.js
+ * notebook("name", { filename: "name.ipynb" })
+ * ```
+ *
+ * ```ipynb
+ * # definitions/name.ipynb
+ * { "cells": [] }
+ * ```
  */
 export class Notebook extends ActionBuilder<dataform.Notebook> {
-  public session: Session;
-
-  // TODO: make this field private, to enforce proto update logic to happen in this class.
+  /**
+   * @hidden Stores the generated proto for the compiled graph.
+   * <!-- TODO(ekrekr): make this field private, to enforce proto update logic to happen in this
+   * class. -->
+   */
   public proto: dataform.INotebook = dataform.Notebook.create();
 
-  // If true, adds the inline assertions of dependencies as direct dependencies for this action.
+  /** @hidden Hold a reference to the Session instance. */
+  public session: Session;
+
+  /**
+   * @hidden If true, adds the inline assertions of dependencies as direct dependencies for this
+   * action.
+   */
   public dependOnDependencyAssertions: boolean = false;
 
+  /** @hidden */
   constructor(
     session?: Session,
     config?: dataform.ActionConfig.NotebookConfig,
@@ -65,21 +105,22 @@ export class Notebook extends ActionBuilder<dataform.Notebook> {
     );
   }
 
+  /**
+   * Sets or overrides the contents of the notebook to run. Not recommended in general; using
+   * separate `.ipynb` files for notebooks is preferred.
+   */
   public ipynb(contents: object): Notebook {
     this.proto.notebookContents = JSON.stringify(contents);
     return this;
   }
 
-  /**
-   * @hidden
-   */
+  /** @hidden Verifies that the passed action config is a valid Notebook action config. */
   public config(config: any) {
+    // TODO(ekrekr): call verifyObjectMatchesProto here.
     return this;
   }
 
-  /**
-   * @hidden
-   */
+  /** @hidden */
   public dependencies(value: Resolvable | Resolvable[]) {
     const newDependencies = Array.isArray(value) ? value : [value];
     newDependencies.forEach(resolvable =>
@@ -88,20 +129,17 @@ export class Notebook extends ActionBuilder<dataform.Notebook> {
     return this;
   }
 
-  /**
-   * @hidden
-   */
+  /** @hidden */
   public getFileName() {
     return this.proto.fileName;
   }
 
-  /**
-   * @hidden
-   */
+  /** @hidden */
   public getTarget() {
     return dataform.Target.create(this.proto.target);
   }
 
+  /** @hidden */
   public compile() {
     return verifyObjectMatchesProto(
       dataform.Notebook,
@@ -111,6 +149,7 @@ export class Notebook extends ActionBuilder<dataform.Notebook> {
   }
 }
 
+/** @hidden Removes all notebook cell outputs. */
 function stripNotebookOutputs(
   notebookAsJson: { [key: string]: unknown },
   path: string

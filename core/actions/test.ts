@@ -17,6 +17,8 @@ import { dataform } from "df/protos/ts";
 
 /**
  * Configuration options for unit tests.
+ *
+ * <-- TODO(ekrekr): replace this with an actions configs proto definition. -->
  */
 export interface ITestConfig extends INamedConfig {
   /**
@@ -25,25 +27,65 @@ export interface ITestConfig extends INamedConfig {
   dataset?: Resolvable;
 }
 
+/** @hidden */
 const ITestConfigProperties = strictKeysOf<ITestConfig>()(["type", "dataset", "name"]);
 
 /**
- * @hidden
+ * Dataform test actions can be used to write unit tests for your generated SQL
+ *
+ * You can create unit tests in the following ways.
+ *
+ * **Using a SQLX file:**
+ *
+ * ```sql
+ * -- definitions/name.sqlx
+ * config {
+ *   type: "test"
+ * }
+ *
+ * input "foo" {
+ *   SELECT 1 AS bar
+ * }
+ *
+ * SELECT 1 AS bar
+ * ```
+ *
+ * **Using the Javascript API:**
+ *
+ * ```js
+ * // definitions/file.js
+ * test("name")
+ *   .input("sample_data", `SELECT 1 AS bar`)
+ *   .expect(`SELECT 1 AS bar`);
+ *
+ * publish("sample_data", { type: "table" }).query("SELECT 1 AS bar")
+ * ```
+ *
+ * Note: When using the Javascript API, methods in this class can be accessed by the returned value.
+ * This is where `input` and `expect` come from.
  */
 export class Test extends ActionBuilder<dataform.Test> {
-  // TODO(ekrekr): make this field private, to enforce proto update logic to happen in this class.
+  /**
+   * @hidden Stores the generated proto for the compiled graph.
+   * <!-- TODO(ekrekr): make this field private, to enforce proto update logic to happen in this
+   * class. -->
+   */
   public proto: dataform.ITest = dataform.Test.create();
 
+  /** @hidden Hold a reference to the Session instance. */
   public session: Session;
+
+  /** @hidden We delay contextification until the final compile step, so hold these here for now. */
   public contextableInputs = new Map<string, Contextable<ICommonContext, string>>();
-
-  private datasetToTest: Resolvable;
   private contextableQuery: Contextable<ICommonContext, string>;
+  private datasetToTest: Resolvable;
 
+  /** @hidden */
   constructor(session?: Session) {
     super(session);
   }
 
+  /** @hidden */
   public config(config: ITestConfig) {
     checkExcessProperties(
       (e: Error) => this.session.compileError(e),
@@ -57,11 +99,17 @@ export class Test extends ActionBuilder<dataform.Test> {
     return this;
   }
 
+  /**
+   * Sets the schema (BigQuery dataset) in which to create the output of this action.
+   */
   public dataset(ref: Resolvable) {
     this.datasetToTest = ref;
     return this;
   }
 
+  /**
+   * Sets the input query to unit test against.
+   */
   public input(refName: string | string[], contextableQuery: Contextable<ICommonContext, string>) {
     this.contextableInputs.set(
       targetStringifier.stringify(resolvableAsTarget(toResolvable(refName))),
@@ -70,26 +118,26 @@ export class Test extends ActionBuilder<dataform.Test> {
     return this;
   }
 
+  /**
+   * Sets the expected output of the query to being tested against.
+   */
   public expect(contextableQuery: Contextable<ICommonContext, string>) {
     this.contextableQuery = contextableQuery;
     return this;
   }
 
-  /**
-   * @hidden
-   */
+  /** @hidden */
   public getFileName() {
     return this.proto.fileName;
   }
 
-  /**
-   * @hidden
-   */
+  /** @hidden */
   public getTarget(): undefined {
     // The test action type has no target because it is not processed during regular execution.
     return undefined;
   }
 
+  /** @hidden */
   public compile() {
     const testContext = new TestContext(this);
     if (!this.datasetToTest) {
@@ -131,9 +179,7 @@ export class Test extends ActionBuilder<dataform.Test> {
   }
 }
 
-/**
- * @hidden
- */
+/** @hidden */
 export class TestContext {
   public readonly test: Test;
   constructor(test: Test) {
@@ -149,9 +195,7 @@ export class TestContext {
   }
 }
 
-/**
- * @hidden
- */
+/** @hidden */
 class RefReplacingContext implements ITableContext {
   private readonly testContext: TestContext;
 

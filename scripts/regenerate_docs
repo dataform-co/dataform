@@ -1,5 +1,28 @@
 #!/bin/bash
 
+####################################################################################################
+# Generate documentation for the Javascript API.
+####################################################################################################
+
+npx typedoc
+
+mv newdocs/classes/_core_session_.session.md docs/reference/session.md
+mv newdocs/classes/_core_actions_assertion_.assertion.md docs/reference/assertion.md
+mv newdocs/classes/_core_actions_table_.table.md docs/reference/table.md
+mv newdocs/classes/_core_actions_declaration_.declaration.md docs/reference/declaration.md
+mv newdocs/classes/_core_actions_incremental_table_.incrementaltable.md docs/reference/incrementaltable.md
+mv newdocs/classes/_core_actions_notebook_.notebook.md docs/reference/notebook.md
+mv newdocs/classes/_core_actions_operation_.operation.md docs/reference/operation.md
+mv newdocs/classes/_core_actions_test_.test.md docs/reference/test.md
+mv newdocs/classes/_core_actions_view_.view.md docs/reference/view.md
+
+rm -rf newdocs
+
+####################################################################################################
+# Generate documentation for protobufs.
+# TODO(ekrekr): Re-enable this part of the script after camelCasing is merged.
+####################################################################################################
+
 # docker pull pseudomuto/protoc-gen-doc
 
 # docker run --rm \

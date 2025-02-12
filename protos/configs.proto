@@ -301,9 +301,6 @@ message ActionConfig {
     // If true, prevents the dataset from being rebuilt from scratch.
     bool protected = 10;
 
-    // is specified, if a row arrives whose key matches an existing row's key,
-    // then the existing row is overwritten with the new data.
-
     // If set, unique key represents a set of names of columns that will act as
     // a the unique key. To enforce this, when updating the incremental
     // table, Dataform merges rows with `uniqueKey` instead of appending them.
@@ -574,6 +571,7 @@ message NotebookRuntimeOptionsConfig {
     string output_bucket = 1;
   }
 
-  // Colab runtime template (https://cloud.google.com/colab/docs/runtimes), from which a runtime is created for notebook executions. 
+  // Colab runtime template (https://cloud.google.com/colab/docs/runtimes), from
+  // which a runtime is created for notebook executions.
   string runtime_template_name = 2;
 }

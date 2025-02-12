@@ -18,6 +18,7 @@ import { dataform } from "df/protos/ts";
 
 /**
  * @hidden
+ * @deprecated
  * This maintains backwards compatability with older versions.
  * TODO(ekrekr): consider breaking backwards compatability of these in v4.
  */
@@ -30,21 +31,68 @@ interface ILegacyOperationConfig extends dataform.ActionConfig.OperationConfig {
 }
 
 /**
- * @hidden
+ * Operations define custom SQL operations that don't fit into the Dataform model of publishing a
+ * table or writing an assertion.
+ *
+ * You can create operations in the following ways. Available config options are defined in
+ * [OperationConfig](configs#dataform-ActionConfig-OperationConfig), and are shared across all the
+ * following ways of creating operations.
+ *
+ * **Using a SQLX file:**
+ *
+ * ```sql
+ * -- definitions/name.sqlx
+ * config {
+ *   type: "operations"
+ * }
+ * DELETE FROM dataset.table WHERE country = 'GB'
+ * ```
+ *
+ * **Using action configs files:**
+ *
+ * ```yaml
+ * # definitions/actions.yaml
+ * actions:
+ * - operation:
+ *   filename: name.sql
+ * ```
+ *
+ * ```sql
+ * -- definitions/name.sql
+ * DELETE FROM dataset.table WHERE country = 'GB'
+ * ```
+ *
+ * **Using the Javascript API:**
+ *
+ * ```js
+ * // definitions/file.js
+ * operate("name").query("DELETE FROM dataset.table WHERE country = 'GB'")
+ * ```
+ *
+ * Note: When using the Javascript API, methods in this class can be accessed by the returned value.
+ * This is where `query` comes from.
  */
 export class Operation extends ActionBuilder<dataform.Operation> {
-  // TODO(ekrekr): make this field private, to enforce proto update logic to happen in this class.
+  /**
+   * @hidden Stores the generated proto for the compiled graph.
+   * <!-- TODO(ekrekr): make this field private, to enforce proto update logic to happen in this
+   * class. -->
+   */
   public proto: dataform.IOperation = dataform.Operation.create();
 
-  // Hold a reference to the Session instance.
+  /** @hidden Hold a reference to the Session instance. */
   public session: Session;
 
-  // If true, adds the inline assertions of dependencies as direct dependencies for this action.
+  /**
+   * @hidden If true, adds the inline assertions of dependencies as direct dependencies for this
+   * action.
+   */
   public dependOnDependencyAssertions: boolean = false;
 
-  // We delay contextification until the final compile step, so hold these here for now.
+  /** @hidden We delay contextification until the final compile step, so hold these here for now. */
   private contextableQueries: Contextable<ICommonContext, string | string[]>;
 
+  /** @hidden */
   constructor(session?: Session, unverifiedConfig?: any, configPath?: string) {
     super(session);
     this.session = session;
@@ -116,11 +164,22 @@ export class Operation extends ActionBuilder<dataform.Operation> {
     return this;
   }
 
+  /**
+   * Sets the query/queries to generate the operation from.
+   *
+   * <!-- TODO(ekrekr): deprecated this in favor of a single `query(` method -->
+   */
   public queries(queries: Contextable<ICommonContext, string | string[]>) {
     this.contextableQueries = queries;
     return this;
   }
 
+  /**
+   * @deprecated Deprecated in favor of
+   * [OperationConfig.dependencies](configs#dataform-ActionConfig-OperationConfig).
+   *
+   * Sets dependencies of the table.
+   */
   public dependencies(value: Resolvable | Resolvable[]) {
     const newDependencies = Array.isArray(value) ? value : [value];
     newDependencies.forEach(resolvable =>
@@ -129,17 +188,38 @@ export class Operation extends ActionBuilder<dataform.Operation> {
     return this;
   }
 
+  /**
+   * @deprecated Deprecated in favor of
+   * [OperationConfig.hermetic](configs#dataform-ActionConfig-OperationConfig).
+   *
+   * If true, this indicates that the action only depends on data from explicitly-declared
+   * dependencies. Otherwise if false, it indicates that the  action depends on data from a source
+   * which has not been declared as a dependency.
+   */
   public hermetic(hermetic: boolean) {
     this.proto.hermeticity = hermetic
       ? dataform.ActionHermeticity.HERMETIC
       : dataform.ActionHermeticity.NON_HERMETIC;
   }
 
+  /**
+   * @deprecated Deprecated in favor of
+   * [OperationConfig.disabled](configs#dataform-ActionConfig-OperationConfig).
+   *
+   * If called with `true`, this action is not executed. The action can still be depended upon.
+   * Useful for temporarily turning off broken actions.
+   */
   public disabled(disabled = true) {
     this.proto.disabled = disabled;
     return this;
   }
 
+  /**
+   * @deprecated Deprecated in favor of
+   * [OperationConfig.tags](configs#dataform-ActionConfig-OperationConfig).
+   *
+   * Sets a list of user-defined tags applied to this action.
+   */
   public tags(value: string | string[]) {
     const newTags = typeof value === "string" ? [value] : value;
     newTags.forEach(t => {
@@ -150,11 +230,24 @@ export class Operation extends ActionBuilder<dataform.Operation> {
     return this;
   }
 
+  /**
+   * @deprecated Deprecated in favor of
+   * [OperationConfig.hasOutput](configs#dataform-ActionConfig-OperationConfig).
+   *
+   * Declares that this action creates a dataset which should be referenceable as a dependency
+   * target, for example by using the `ref` function.
+   */
   public hasOutput(hasOutput: boolean) {
     this.proto.hasOutput = hasOutput;
     return this;
   }
 
+  /**
+   * @deprecated Deprecated in favor of
+   * [OperationConfig.description](configs#dataform-ActionConfig-OperationConfig).
+   *
+   * Sets the description of this assertion.
+   */
   public description(description: string) {
     if (!this.proto.actionDescriptor) {
       this.proto.actionDescriptor = {};
@@ -163,6 +256,12 @@ export class Operation extends ActionBuilder<dataform.Operation> {
     return this;
   }
 
+  /**
+   * @deprecated Deprecated in favor of
+   * [OperationConfig.columns](configs#dataform-ActionConfig-OperationConfig).
+   *
+   * Sets the column descriptors of columns in this table.
+   */
   public columns(columns: dataform.ActionConfig.ColumnDescriptor[]) {
     if (!this.proto.actionDescriptor) {
       this.proto.actionDescriptor = {};
@@ -173,6 +272,13 @@ export class Operation extends ActionBuilder<dataform.Operation> {
     return this;
   }
 
+  /**
+   * @deprecated Deprecated in favor of
+   * [OperationConfig.project](configs#dataform-ActionConfig-OperationConfig).
+   *
+   * Sets the database (Google Cloud project ID) in which to create the corresponding view for this
+   * operation.
+   */
   public database(database: string) {
     setNameAndTarget(
       this.session,
@@ -184,6 +290,12 @@ export class Operation extends ActionBuilder<dataform.Operation> {
     return this;
   }
 
+  /**
+   * @deprecated Deprecated in favor of
+   * [OperationConfig.dataset](configs#dataform-ActionConfig-OperationConfig).
+   *
+   * Sets the schema (BigQuery dataset) in which to create the output of this action.
+   */
   public schema(schema: string) {
     setNameAndTarget(
       this.session,
@@ -195,25 +307,29 @@ export class Operation extends ActionBuilder<dataform.Operation> {
     return this;
   }
 
+  /**
+   * @deprecated Deprecated in favor of
+   * [OperationConfig.dependOnDependencyAssertions](configs#dataform-ActionConfig-OperationConfig).
+   *
+   * When called with `true`, assertions dependent upon any dependency will be add as dedpendency
+   * to this action.
+   */
   public setDependOnDependencyAssertions(dependOnDependencyAssertions: boolean) {
     this.dependOnDependencyAssertions = dependOnDependencyAssertions;
     return this;
   }
 
-  /**
-   * @hidden
-   */
+  /** @hidden */
   public getFileName() {
     return this.proto.fileName;
   }
 
-  /**
-   * @hidden
-   */
+  /** @hidden */
   public getTarget() {
     return dataform.Target.create(this.proto.target);
   }
 
+  /** @hidden */
   public compile() {
     if (this.proto.actionDescriptor?.columns?.length > 0 && !this.proto.hasOutput) {
       this.session.compileError(
@@ -236,6 +352,11 @@ export class Operation extends ActionBuilder<dataform.Operation> {
     );
   }
 
+  /**
+   * @hidden Verify config checks that the constructor provided config matches the expected proto
+   * structure, or the previously accepted legacy structure. If the legacy structure is used, it is
+   * converted to the new structure.
+   */
   private verifyConfig(
     unverifiedConfig: ILegacyOperationConfig
   ): dataform.ActionConfig.OperationConfig {
