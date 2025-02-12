@@ -3,10 +3,7 @@ import { dump as dumpYaml } from "js-yaml";
 import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { ActionBuilder } from "df/core/actions";
 import { ITableContext } from "df/core/actions/index";
-import {
-  Contextable,
-  Resolvable
-} from "df/core/common";
+import { Contextable, Resolvable } from "df/core/common";
 import * as Path from "df/core/path";
 import { Session } from "df/core/session";
 import {
@@ -21,17 +18,6 @@ import {
   validateQueryString
 } from "df/core/utils";
 import { dataform } from "df/protos/ts";
-
-// Enum for Load configuration settings
-export const LoadType = ["replace", "append", "maximum", "unique", "automatic"] as const;
-export type LoadType = typeof LoadType[number];
-
-// Properties for load configuration, including the column name for MAXIMUM and UNIQUE load configurations.
-export interface ILoadConfig {
-  type: LoadType;
-  column?: string;
-}
-
 
 /**
  * @hidden
@@ -58,10 +44,12 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
       // This handles both .yaml and .dp.yaml extensions
       const fileName = Path.filename(config.filename);
 
-      if (fileName.toLowerCase().endsWith('.dp.yaml')) {
+      if (fileName.toLowerCase().endsWith(".dp.yaml")) {
         config.name = fileName.slice(0, -8);
-      } else if (fileName.toLowerCase().endsWith('.yaml')
-          || fileName.toLowerCase().endsWith('.sqlx')) {
+      } else if (
+        fileName.toLowerCase().endsWith(".yaml") ||
+        fileName.toLowerCase().endsWith(".sqlx")
+      ) {
         config.name = fileName.slice(0, -5);
       } else {
         throw new Error("Only YAML and SQLX files are supported");
@@ -157,47 +145,41 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
   }
 
   private configureYamlWithoutTargets(
-      dataPreparationAsJson: {
-        [key: string]: any;
-      },
-      session?: Session,
-      config?: dataform.ActionConfig.DataPreparationConfig
+    dataPreparationAsJson: {
+      [key: string]: any;
+    },
+    session?: Session,
+    config?: dataform.ActionConfig.DataPreparationConfig
   ) {
-    const defaultTarget = dataform.Target.create({name: config.name});
+    const defaultTarget = dataform.Target.create({ name: config.name });
     this.proto.target = this.finalizeTarget(
-        this.applySessionToTarget(
-            defaultTarget,
-            session.projectConfig,
-            config.filename,
-            true
-        )
+      this.applySessionToTarget(defaultTarget, session.projectConfig, config.filename, true)
     );
     this.proto.targets = [this.proto.target];
-    this.proto.canonicalTarget =
-        this.applySessionToTarget(
-            defaultTarget,
-            session.canonicalProjectConfig
-        );
+    this.proto.canonicalTarget = this.applySessionToTarget(
+      defaultTarget,
+      session.canonicalProjectConfig
+    );
     this.proto.canonicalTargets = [this.proto.canonicalTarget];
     const resolvedDefinition = this.applySessionToDataPreparationContents(dataPreparationAsJson);
     this.proto.dataPreparationYaml = dumpYaml(resolvedDefinition);
   }
 
   private configureYamlWithTargets(
-      targets: dataform.Target[],
-      dataPreparationAsJson: {
-        [key: string]: any;
-      },
-      session?: Session,
-      config?: dataform.ActionConfig.DataPreparationConfig
-      ) {
+    targets: dataform.Target[],
+    dataPreparationAsJson: {
+      [key: string]: any;
+    },
+    session?: Session,
+    config?: dataform.ActionConfig.DataPreparationConfig
+  ) {
     const resolvedTargets = targets.map(target =>
-        this.applySessionToTarget(target, session.projectConfig, config.filename, true)
+      this.applySessionToTarget(target, session.projectConfig, config.filename, true)
     );
     // Finalize list of targets.
     this.proto.targets = resolvedTargets.map(target => this.finalizeTarget(target));
     this.proto.canonicalTargets = targets.map(target =>
-        this.applySessionToTarget(target, session.canonicalProjectConfig)
+      this.applySessionToTarget(target, session.canonicalProjectConfig)
     );
     // Resolve all table references with compilation overrides and encode resolved proto instance
     const resolvedDefinition = this.applySessionToDataPreparationContents(dataPreparationAsJson);
@@ -302,17 +284,18 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     return targets;
   }
   private configureYaml(
-      session?: Session,
-      config?: dataform.ActionConfig.DataPreparationConfig,
-      configPath?: string) {
+    session?: Session,
+    config?: dataform.ActionConfig.DataPreparationConfig,
+    configPath?: string
+  ) {
     config.filename = resolveActionsConfigFilename(config.filename, configPath);
     const dataPreparationAsJson = nativeRequire(config.filename).asJson;
 
     // Find targets
     const targets = this.getTargets(
-        dataPreparationAsJson as {
-          [key: string]: any;
-        }
+      dataPreparationAsJson as {
+        [key: string]: any;
+      }
     );
 
     // if there are targets in the data preparation, resolve and set targets.
@@ -327,9 +310,9 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     this.proto.tags = config.tags;
     if (config.dependencyTargets) {
       this.dependencies(
-          config.dependencyTargets.map(dependencyTarget =>
-              configTargetToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget))
-          )
+        config.dependencyTargets.map(dependencyTarget =>
+          configTargetToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget))
+        )
       );
     }
     this.proto.fileName = config.filename;
@@ -338,19 +321,19 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     }
   }
 
-  private configureSqlx(
-      session?: Session,
-      config?: dataform.ActionConfig.DataPreparationConfig) {
+  private configureSqlx(session?: Session, config?: dataform.ActionConfig.DataPreparationConfig) {
     const targets: dataform.Target[] = [];
 
     // Add destination as target
     targets.push(actionConfigToCompiledGraphTarget(config));
     // Add Error Table if specified as a secondary target
     if (config.errorTable != null) {
-      const errorTableConfig = dataform.ActionConfig.DataPreparationConfig.ErrorTableConfig.create(config.errorTable);
+      const errorTableConfig = dataform.ActionConfig.DataPreparationConfig.ErrorTableConfig.create(
+        config.errorTable
+      );
       const errorTableTarget = actionConfigToCompiledGraphTarget(errorTableConfig);
 
-      this.proto.errorTableRetentionDays = errorTableConfig.retentionDays
+      this.proto.errorTableRetentionDays = errorTableConfig.retentionDays;
       targets.push(errorTableTarget);
     }
 
@@ -358,11 +341,11 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     this.proto.load = this.mapLoadMode(config.loadMode?.mode, config.loadMode?.incrementalColumn);
 
     // Resolve targets
-    this.proto.targets  = targets.map(target =>
+    this.proto.targets = targets
+      .map(target =>
         this.applySessionToTarget(target, session.projectConfig, config.filename, true)
-    ).map(target =>
-        this.finalizeTarget(target)
-    );
+      )
+      .map(target => this.finalizeTarget(target));
 
     // Add target and error table to proto
     this.proto.target = this.proto.targets[0];
@@ -372,15 +355,15 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
 
     // resolve canonical targets
     this.proto.canonicalTargets = targets.map(target =>
-        this.applySessionToTarget(target, session.canonicalProjectConfig)
+      this.applySessionToTarget(target, session.canonicalProjectConfig)
     );
     this.proto.canonicalTarget = this.proto.canonicalTargets[0];
 
     if (config.dependencyTargets) {
       this.dependencies(
-          config.dependencyTargets.map(dependencyTarget =>
-              configTargetToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget))
-          )
+        config.dependencyTargets.map(dependencyTarget =>
+          configTargetToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget))
+        )
       );
     }
 
@@ -396,21 +379,33 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
   // - for sqlx it will have type "string"
   // - for action.yaml it will be converted to enum which is represented
   // in TypeScript as a "number".
-  private mapLoadMode(loadMode?: string|number, incrementalColumn?: string): dataform.LoadConfiguration {
+  private mapLoadMode(
+    loadMode?: string | number,
+    incrementalColumn?: string
+  ): dataform.LoadConfiguration {
     if (!loadMode) {
-      return dataform.LoadConfiguration.create({"replace": {}});
+      return dataform.LoadConfiguration.create({ replace: {} });
     }
 
     switch (loadMode.toString().toUpperCase()) {
-      case "REPLACE_TABLE": return dataform.LoadConfiguration.create({"replace": {}});
-      case "APPEND": return dataform.LoadConfiguration.create({"append": {}});
-      case "MAXIMUM": return dataform.LoadConfiguration.create({"maximum": {"columnName": this.validateLoadModeColumnName(incrementalColumn)}});
-      case "UNIQUE": return dataform.LoadConfiguration.create({"unique": {"columnName": this.validateLoadModeColumnName(incrementalColumn)}});
-      default: throw new Error(`LoadMode value "${loadMode}" is not supported`);
+      case "REPLACE_TABLE":
+        return dataform.LoadConfiguration.create({ replace: {} });
+      case "APPEND":
+        return dataform.LoadConfiguration.create({ append: {} });
+      case "MAXIMUM":
+        return dataform.LoadConfiguration.create({
+          maximum: { columnName: this.validateLoadModeColumnName(incrementalColumn) }
+        });
+      case "UNIQUE":
+        return dataform.LoadConfiguration.create({
+          unique: { columnName: this.validateLoadModeColumnName(incrementalColumn) }
+        });
+      default:
+        throw new Error(`LoadMode value "${loadMode}" is not supported`);
     }
   }
 
-  private validateLoadModeColumnName(columnName?: string) : string {
+  private validateLoadModeColumnName(columnName?: string): string {
     if (!columnName || columnName === "") {
       throw new Error(`columnName is required for MAXIMUM and UNIQUE load modes.`);
     }
@@ -462,11 +457,15 @@ export class DataPreparationContext implements IDataPreparationContext {
 
   public database(): string {
     if (!this.dataPreparation.proto.target.database) {
-      this.dataPreparation.session.compileError(new Error(`Warehouse does not support multiple databases`));
+      this.dataPreparation.session.compileError(
+        new Error(`Warehouse does not support multiple databases`)
+      );
       return "";
     }
 
-    return this.dataPreparation.session.finalizeDatabase(this.dataPreparation.proto.target.database);
+    return this.dataPreparation.session.finalizeDatabase(
+      this.dataPreparation.proto.target.database
+    );
   }
 
   // TODO: Add support for incremental conditions in compilation output

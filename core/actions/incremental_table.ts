@@ -30,10 +30,47 @@ import {
 import { dataform } from "df/protos/ts";
 
 /**
- * @hidden
+ * When you define an incremental table, Dataform builds the incremental table from scratch only for
+ * the first time. During subsequent executions, Dataform only inserts or merges new rows into the
+ * incremental table according to the conditions that you configure.
+ *
+ * You can create incremental tables in the following ways. Available config options are defined in
+ * [IncrementalTableConfig](configs#dataform-ActionConfig-IncrementalTableConfig), and are shared across all the
+ * following ways of creating tables.
+ *
+ * **Using a SQLX file:**
+ *
+ * ```sql
+ * -- definitions/name.sqlx
+ * config {
+ *   type: "incremental"
+ * }
+ * -- This inserts `1` the first time running, and `2` on subsequent runs.
+ * SELECT ${when(incremental(), 1, 2) }
+ * ```
+ *
+ * <!-- Action configs files are not yet supported, until a new field incrementalFilename is
+ * configured. Overall without JS templating supported in SQL files consumed by actions config
+ * files, the CUJ kind of sucks anyway. -->
+ *
+ * **Using the Javascript API:**
+ *
+ * ```js
+ * // definitions/file.js
+ * publish("name", { type: "incremental" }).query(
+ *   ctx => `SELECT ${ctx.when(ctx.incremental(), 1, 2) }`
+ * )
+ * ```
+ *
+ * Note: When using the Javascript API, methods in this class can be accessed by the returned value.
+ * This is where `query` comes from.
  */
 export class IncrementalTable extends ActionBuilder<dataform.Table> {
-  // TODO(ekrekr): make this field private, to enforce proto update logic to happen in this class.
+  /**
+   * @hidden Stores the generated proto for the compiled graph.
+   * <!-- TODO(ekrekr): make this field private, to enforce proto update logic to happen in this
+   * class. -->
+   */
   public proto: dataform.ITable = dataform.Table.create({
     type: "incremental",
     enumType: dataform.TableType.INCREMENTAL,
@@ -41,24 +78,30 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
     tags: []
   });
 
-  // Hold a reference to the Session instance.
+  /** @hidden Hold a reference to the Session instance. */
   public session: Session;
 
-  // If true, adds the inline assertions of dependencies as direct dependencies for this action.
+  /**
+   * @hidden If true, adds the inline assertions of dependencies as direct dependencies for this
+   * action.
+   */
   public dependOnDependencyAssertions: boolean = false;
 
-  // We delay contextification until the final compile step, so hold these here for now.
+  /** @hidden We delay contextification until the final compile step, so hold these here for now. */
   public contextableQuery: Contextable<ITableContext, string>;
   private contextableWhere: Contextable<ITableContext, string>;
   private contextablePreOps: Array<Contextable<ITableContext, string | string[]>> = [];
   private contextablePostOps: Array<Contextable<ITableContext, string | string[]>> = [];
 
+  /** @hidden */
   private uniqueKeyAssertions: Assertion[] = [];
   private rowConditionsAssertion: Assertion;
 
+  /** @hidden */
   private unverifiedConfig: any;
   private configPath: string | undefined;
 
+  /** @hidden */
   constructor(session?: Session, unverifiedConfig?: any, configPath?: string) {
     super(session);
     this.session = session;
@@ -155,10 +198,9 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
   }
 
   /**
-   * @hidden
    * @deprecated
    * Deprecated in favor of action type can being set in the configs passed to action constructor
-   * functions.
+   * functions, for example `publish("name", { type: "incremental" })`.
    */
   public type(type: TableType) {
     let newAction: View | Table;
@@ -191,26 +233,65 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
     this.session.actions[existingAction] = newAction;
   }
 
+  /**
+   * Sets the query to generate the table from.
+   */
   public query(query: Contextable<ITableContext, string>) {
     this.contextableQuery = query;
     return this;
   }
 
+  /** @hidden */
   public where(where: Contextable<ITableContext, string>) {
     this.contextableWhere = where;
     return this;
   }
 
+  /**
+   * Sets a pre-operation to run before the query is run. This is often used for temporarily
+   * granting permission to access source tables.
+   *
+   * Example:
+   *
+   * ```js
+   * // definitions/file.js
+   * publish("example")
+   *   .preOps(ctx => `GRANT \`roles/bigquery.dataViewer\` ON TABLE ${ctx.ref("other_table")} TO "group:automation@example.com"`)
+   *   .query(ctx => `SELECT * FROM ${ctx.ref("other_table")}`)
+   *   .postOps(ctx => `REVOKE \`roles/bigquery.dataViewer\` ON TABLE ${ctx.ref("other_table")} TO "group:automation@example.com"`)
+   * ```
+   */
   public preOps(pres: Contextable<ITableContext, string | string[]>) {
     this.contextablePreOps.push(pres);
     return this;
   }
 
+  /**
+   * Sets a post-operation to run after the query is run. This is often used for revoking temporary
+   * permissions granted to access source tables.
+   *
+   * Example:
+   *
+   * ```js
+   * // definitions/file.js
+   * publish("example")
+   *   .preOps(ctx => `GRANT \`roles/bigquery.dataViewer\` ON TABLE ${ctx.ref("other_table")} TO "group:automation@example.com"`)
+   *   .query(ctx => `SELECT * FROM ${ctx.ref("other_table")}`)
+   *   .postOps(ctx => `REVOKE \`roles/bigquery.dataViewer\` ON TABLE ${ctx.ref("other_table")} TO "group:automation@example.com"`)
+   * ```
+   */
   public postOps(posts: Contextable<ITableContext, string | string[]>) {
     this.contextablePostOps.push(posts);
     return this;
   }
 
+  /**
+   * @deprecated Deprecated in favor of
+   * [IncrementalTableConfig.disabled](configs#dataform-ActionConfig-IncrementalTableConfig).
+   *
+   * If called with `true`, this action is not executed. The action can still be depended upon.
+   * Useful for temporarily turning off broken actions.
+   */
   public disabled(disabled = true) {
     this.proto.disabled = disabled;
     this.uniqueKeyAssertions.forEach(assertion => assertion.disabled(disabled));
@@ -218,15 +299,36 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
     return this;
   }
 
+  /**
+   * @deprecated Deprecated in favor of
+   * [IncrementalTableConfig.protected](configs#dataform-ActionConfig-IncrementalTableConfig).
+   *
+   * If called with `true`, prevents the dataset from being rebuilt from scratch.
+   */
   public protected(isProtected: boolean) {
     this.proto.protected = isProtected;
     return this;
   }
 
+  /**
+   * @deprecated Deprecated in favor of
+   * [IncrementalTableConfig.uniqueKey](configs#dataform-ActionConfig-IncrementalTableConfig).
+   *
+   * If set, unique key represents a set of names of columns that will act as a the unique key. To
+   * enforce this, when updating the incremental table, Dataform merges rows with `uniqueKey`
+   * instead of appending them.
+   */
   public uniqueKey(uniqueKey: string[]) {
     this.proto.uniqueKey = uniqueKey;
   }
 
+  /**
+   * @deprecated Deprecated in favor of options available directly on
+   * [IncrementalTableConfig](configs#dataform-ActionConfig-IncrementalTableConfig). For example:
+   * `publish("name", { type: "table", partitionBy: "column" }`).
+   *
+   * Sets bigquery options for the action.
+   */
   public bigquery(bigquery: dataform.IBigQueryOptions) {
     if (!!bigquery.labels && Object.keys(bigquery.labels).length > 0) {
       if (!this.proto.actionDescriptor) {
@@ -242,6 +344,12 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
     return this;
   }
 
+  /**
+   * @deprecated Deprecated in favor of
+   * [IncrementalTableConfig.dependencies](configs#dataform-ActionConfig-IncrementalTableConfig).
+   *
+   * Sets dependencies of the incremental table.
+   */
   public dependencies(value: Resolvable | Resolvable[]) {
     const newDependencies = Array.isArray(value) ? value : [value];
     newDependencies.forEach(resolvable =>
@@ -250,12 +358,26 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
     return this;
   }
 
+  /**
+   * @deprecated Deprecated in favor of
+   * [IncrementalTableConfig.hermetic](configs#dataform-ActionConfig-IncrementalTableConfig).
+   *
+   * If true, this indicates that the action only depends on data from explicitly-declared
+   * dependencies. Otherwise if false, it indicates that the  action depends on data from a source
+   * which has not been declared as a dependency.
+   */
   public hermetic(hermetic: boolean) {
     this.proto.hermeticity = hermetic
       ? dataform.ActionHermeticity.HERMETIC
       : dataform.ActionHermeticity.NON_HERMETIC;
   }
 
+  /**
+   * @deprecated Deprecated in favor of
+   * [IncrementalTableConfig.tags](configs#dataform-ActionConfig-IncrementalTableConfig).
+   *
+   * Sets a list of user-defined tags applied to this action.
+   */
   public tags(value: string | string[]) {
     const newTags = typeof value === "string" ? [value] : value;
     newTags.forEach(t => {
@@ -266,6 +388,12 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
     return this;
   }
 
+  /**
+   * @deprecated Deprecated in favor of
+   * [IncrementalTableConfig.description](configs#dataform-ActionConfig-IncrementalTableConfig).
+   *
+   * Sets the description of this incremental table.
+   */
   public description(description: string) {
     if (!this.proto.actionDescriptor) {
       this.proto.actionDescriptor = {};
@@ -274,6 +402,12 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
     return this;
   }
 
+  /**
+   * @deprecated Deprecated in favor of
+   * [IncrementalTableConfig.columns](configs#dataform-ActionConfig-IncrementalTableConfig).
+   *
+   * Sets the column descriptors of columns in this incremental table.
+   */
   public columns(columns: dataform.ActionConfig.ColumnDescriptor[]) {
     if (!this.proto.actionDescriptor) {
       this.proto.actionDescriptor = {};
@@ -284,6 +418,13 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
     return this;
   }
 
+  /**
+   * @deprecated Deprecated in favor of
+   * [IncrementalTableConfig.project](configs#dataform-ActionConfig-IncrementalTableConfig).
+   *
+   * Sets the
+   * Sets the database (Google Cloud project ID) in which to create the output of this action.
+   */
   public database(database: string) {
     setNameAndTarget(
       this.session,
@@ -295,6 +436,12 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
     return this;
   }
 
+  /**
+   * @deprecated Deprecated in favor of
+   * [IncrementalTableConfig.dataset](configs#dataform-ActionConfig-IncrementalTableConfig).
+   *
+   * Sets the schema (BigQuery dataset) in which to create the output of this action.
+   */
   public schema(schema: string) {
     setNameAndTarget(
       this.session,
@@ -306,6 +453,16 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
     return this;
   }
 
+  /**
+   * @deprecated Deprecated in favor of
+   * [IncrementalTableConfig.assertions](configs#dataform-ActionConfig-IncrementalTableConfig).
+   *
+   * Sets in-line assertions for this incremental table.
+   *
+   * <!-- Note: this both applies in-line assertions, and acts as a method available via the JS API.
+   * Usage of it via the JS API is deprecated, but the way it applies in-line assertions is still
+   * needed -->
+   */
   public assertions(assertions: dataform.ActionConfig.TableAssertionsConfig) {
     if (!!assertions.uniqueKey?.length && !!assertions.uniqueKeys?.length) {
       this.session.compileError(
@@ -363,25 +520,29 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
     return this;
   }
 
+  /**
+   * @deprecated Deprecated in favor of
+   * [IncrementalTableConfig.dependOnDependencyAssertions](configs#dataform-ActionConfig-IncrementalTableConfig).
+   *
+   * When called with `true`, assertions dependent upon any dependency will be add as dedpendency
+   * to this action.
+   */
   public setDependOnDependencyAssertions(dependOnDependencyAssertions: boolean) {
     this.dependOnDependencyAssertions = dependOnDependencyAssertions;
     return this;
   }
 
-  /**
-   * @hidden
-   */
+  /** @hidden */
   public getFileName() {
     return this.proto.fileName;
   }
 
-  /**
-   * @hidden
-   */
+  /** @hidden */
   public getTarget() {
     return dataform.Target.create(this.proto.target);
   }
 
+  /** @hidden */
   public compile() {
     const context = new IncrementalTableContext(this);
     const incrementalContext = new IncrementalTableContext(this, true);
@@ -414,6 +575,7 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
     );
   }
 
+  /** @hidden */
   private contextifyOps(
     contextableOps: Array<Contextable<ITableContext, string | string[]>>,
     currentContext: IncrementalTableContext
@@ -427,9 +589,9 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
   }
 
   /**
-   * Verify config checks that the constructor provided config matches the expected proto structure,
-   * or the previously accepted legacy structure. If the legacy structure is used, it is converted
-   * to the new structure.
+   * @hidden Verify config checks that the constructor provided config matches the expected proto
+   * structure, or the previously accepted legacy structure. If the legacy structure is used, it is
+   * converted to the new structure.
    */
   private verifyConfig(
     // `any` is used here to facilitate the type merging of the legacy table config, which is very

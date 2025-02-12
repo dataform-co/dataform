@@ -15,3 +15,5 @@ bazel-*
 go.sum
 
 .df-credentials.json
+
+yarn-error.log
