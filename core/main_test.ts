@@ -2766,21 +2766,7 @@ SELECT 1`
       });
     });
 
-    test(`for operations`, () => {
-      const projectDir = tmpDirFixture.createNewTmpDir();
-      fs.writeFileSync(
-        path.join(projectDir, "workflow_settings.yaml"),
-        VALID_WORKFLOW_SETTINGS_YAML
-      );
-      fs.mkdirSync(path.join(projectDir, "definitions"));
-      fs.writeFileSync(
-        path.join(projectDir, "definitions/table.sqlx"),
-        `config {type: "view"} SELECT 1`
-      );
-      fs.writeFileSync(
-        path.join(projectDir, "definitions/operation.sqlx"),
-        `
-config {
+    const operationConfig = `{
   type: "operations",
   name: "name",
   schema: "dataset",
@@ -2793,43 +2779,70 @@ config {
   hasOutput: true,
   dependOnDependencyAssertions: true,
 ${exampleActionDescriptor.inputSqlxConfigBlock}
-}
+}`;
+
+    [
+      {
+        filename: "operation.sqlx",
+        fileContents: `
+config ${operationConfig}
 SELECT 1`
-      );
+      },
+      {
+        filename: "operation.js",
+        fileContents: `operate("name", ${operationConfig}).queries(ctx => \`\n\nSELECT 1\`)`
+      }
+    ].forEach(testParameters => {
+      test(`for operations configured in a ${testParameters.filename} file`, () => {
+        const projectDir = tmpDirFixture.createNewTmpDir();
+        fs.writeFileSync(
+          path.join(projectDir, "workflow_settings.yaml"),
+          VALID_WORKFLOW_SETTINGS_YAML
+        );
+        fs.mkdirSync(path.join(projectDir, "definitions"));
+        fs.writeFileSync(
+          path.join(projectDir, "definitions/table.sqlx"),
+          `config {type: "view"} SELECT 1`
+        );
+        fs.writeFileSync(
+          path.join(projectDir, `definitions/${testParameters.filename}`),
+          testParameters.fileContents
+        );
 
-      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+        const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
-      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-      expect(asPlainObject(result.compile.compiledGraph.operations)).deep.equals(
-        asPlainObject([
-          {
-            target: {
-              database: "project",
-              schema: "dataset",
-              name: "name"
-            },
-            canonicalTarget: {
-              database: "project",
-              schema: "dataset",
-              name: "name"
-            },
-            dependencyTargets: [
-              {
-                database: "defaultProject",
-                schema: "defaultDataset",
-                name: "table"
-              }
-            ],
-            disabled: true,
-            fileName: "definitions/operation.sqlx",
-            hermeticity: "HERMETIC",
-            hasOutput: true,
-            tags: ["tagA", "tagB"],
-            queries: ["\n\nSELECT 1"],
-            actionDescriptor: exampleActionDescriptor.outputActionDescriptor
-          }
-        ])
-      );
+        expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+        expect(asPlainObject(result.compile.compiledGraph.operations)).deep.equals(
+          asPlainObject([
+            {
+              target: {
+                database: "project",
+                schema: "dataset",
+                name: "name"
+              },
+              canonicalTarget: {
+                database: "project",
+                schema: "dataset",
+                name: "name"
+              },
+              dependencyTargets: [
+                {
+                  database: "defaultProject",
+                  schema: "defaultDataset",
+                  name: "table"
+                }
+              ],
+              disabled: true,
+              fileName: `definitions/${testParameters.filename}`,
+              hermeticity: "HERMETIC",
+              hasOutput: true,
+              tags: ["tagA", "tagB"],
+              queries: ["\n\nSELECT 1"],
+              actionDescriptor: exampleActionDescriptor.outputActionDescriptor
+            }
+          ])
+        );
+      });
     });
 
     ["table", "view", "incremental"].forEach(tableType => {
@@ -4224,6 +4237,7 @@ operate("name", {
                     name: "name"
                   },
                   fileName: "definitions/operate.js",
+                  hermeticity: "NON_HERMETIC",
                   queries: ["SELECT 1", "SELECT 2"]
                 }
               ])
@@ -4269,6 +4283,7 @@ operate("name", {
               }
             ],
             fileName: "definitions/operate.js",
+            hermeticity: "NON_HERMETIC",
             queries: ["SELECT * FROM `defaultProject.defaultDataset.table`"],
             target: {
               database: "defaultProject",

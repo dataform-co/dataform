@@ -264,14 +264,19 @@ export class Session {
    */
   public operate(
     name: string,
-    queries?: Contextable<ICommonContext, string | string[]>
+    queryOrConfig?:
+      | Contextable<ICommonContext, string | string[]>
+      | dataform.ActionConfig.OperationConfig
   ): Operation {
-    // TODO(ekrekr): safely allow passing of config blocks as the second argument, similar to publish.
-    const operation = new Operation();
-    operation.session = this;
-    utils.setNameAndTarget(this, operation.proto, name);
-    if (queries) {
-      operation.queries(queries);
+    let operation = new Operation();
+    if (!!queryOrConfig && typeof queryOrConfig === "object") {
+      operation = new Operation(this, { name, ...queryOrConfig });
+    } else {
+      operation.session = this;
+      utils.setNameAndTarget(this, operation.proto, name, this.projectConfig.assertionSchema);
+      if (queryOrConfig) {
+        operation.queries(queryOrConfig as AContextable<string>);
+      }
     }
     operation.proto.fileName = utils.getCallerFile(this.rootDir);
     this.actions.push(operation);
@@ -347,9 +352,6 @@ export class Session {
    * Available only in the `/definitions` directory.
    *
    * @see [Declaration](Declaration) for examples on how to use.
-   *
-   * <!-- Note that the config fields in dataform.ITarget have been deprecated in favor of those in
-   * dataform.ActionConfig.DeclarationConfig. -->
    */
   public declare(
     config:
