@@ -24,8 +24,8 @@ DELETE FROM dataset.table WHERE country = 'GB'
 ```yaml
 # definitions/actions.yaml
 actions:
-- operation:
-  filename: name.sql
+  - operation:
+    filename: name.sql
 ```
 
 ```sql
@@ -37,7 +37,7 @@ DELETE FROM dataset.table WHERE country = 'GB'
 
 ```js
 // definitions/file.js
-operate("name").query("DELETE FROM dataset.table WHERE country = 'GB'")
+operate("name").query("DELETE FROM dataset.table WHERE country = 'GB'");
 ```
 
 Note: When using the Javascript API, methods in this class can be accessed by the returned value.
@@ -45,7 +45,7 @@ This is where `query` comes from.
 
 ## Hierarchy
 
-* ActionBuilder‹Operation›
+- ActionBuilder‹Operation›
 
   ↳ **Operation**
 
@@ -53,23 +53,23 @@ This is where `query` comes from.
 
 ### Methods
 
-* [columns](_core_actions_operation_.operation.md#columns)
-* [database](_core_actions_operation_.operation.md#database)
-* [dependencies](_core_actions_operation_.operation.md#dependencies)
-* [description](_core_actions_operation_.operation.md#description)
-* [disabled](_core_actions_operation_.operation.md#disabled)
-* [hasOutput](_core_actions_operation_.operation.md#hasoutput)
-* [hermetic](_core_actions_operation_.operation.md#hermetic)
-* [queries](_core_actions_operation_.operation.md#queries)
-* [schema](_core_actions_operation_.operation.md#schema)
-* [setDependOnDependencyAssertions](_core_actions_operation_.operation.md#setdependondependencyassertions)
-* [tags](_core_actions_operation_.operation.md#tags)
+- [columns](_core_actions_operation_.operation.md#columns)
+- [database](_core_actions_operation_.operation.md#database)
+- [dependencies](_core_actions_operation_.operation.md#dependencies)
+- [description](_core_actions_operation_.operation.md#description)
+- [disabled](_core_actions_operation_.operation.md#disabled)
+- [hasOutput](_core_actions_operation_.operation.md#hasoutput)
+- [hermetic](_core_actions_operation_.operation.md#hermetic)
+- [queries](_core_actions_operation_.operation.md#queries)
+- [schema](_core_actions_operation_.operation.md#schema)
+- [setDependOnDependencyAssertions](_core_actions_operation_.operation.md#setdependondependencyassertions)
+- [tags](_core_actions_operation_.operation.md#tags)
 
 ## Methods
 
-###  columns
+### columns
 
-▸ **columns**(`columns`: ColumnDescriptor[]): *this*
+▸ **columns**(`columns`: ColumnDescriptor[]): _this_
 
 **`deprecated`** Deprecated in favor of
 [OperationConfig.columns](configs#dataform-ActionConfig-OperationConfig).
@@ -78,17 +78,17 @@ Sets the column descriptors of columns in this table.
 
 **Parameters:**
 
-Name | Type |
------- | ------ |
-`columns` | ColumnDescriptor[] |
+| Name      | Type               |
+| --------- | ------------------ |
+| `columns` | ColumnDescriptor[] |
 
-**Returns:** *this*
+**Returns:** _this_
 
-___
+---
 
-###  database
+### database
 
-▸ **database**(`database`: string): *this*
+▸ **database**(`database`: string): _this_
 
 **`deprecated`** Deprecated in favor of
 [OperationConfig.project](configs#dataform-ActionConfig-OperationConfig).
@@ -98,17 +98,17 @@ operation.
 
 **Parameters:**
 
-Name | Type |
------- | ------ |
-`database` | string |
+| Name       | Type   |
+| ---------- | ------ |
+| `database` | string |
 
-**Returns:** *this*
+**Returns:** _this_
 
-___
+---
 
-###  dependencies
+### dependencies
 
-▸ **dependencies**(`value`: [Resolvable](../modules/_core_common_.md#resolvable) | [Resolvable](../modules/_core_common_.md#resolvable)[]): *this*
+▸ **dependencies**(`value`: [Resolvable](../modules/_core_common_.md#resolvable) | [Resolvable](../modules/_core_common_.md#resolvable)[]): _this_
 
 **`deprecated`** Deprecated in favor of
 [OperationConfig.dependencies](configs#dataform-ActionConfig-OperationConfig).
@@ -117,17 +117,17 @@ Sets dependencies of the table.
 
 **Parameters:**
 
-Name | Type |
------- | ------ |
-`value` | [Resolvable](../modules/_core_common_.md#resolvable) &#124; [Resolvable](../modules/_core_common_.md#resolvable)[] |
+| Name    | Type                                                                                                               |
+| ------- | ------------------------------------------------------------------------------------------------------------------ |
+| `value` | [Resolvable](../modules/_core_common_.md#resolvable) &#124; [Resolvable](../modules/_core_common_.md#resolvable)[] |
 
-**Returns:** *this*
+**Returns:** _this_
 
-___
+---
 
-###  description
+### description
 
-▸ **description**(`description`: string): *this*
+▸ **description**(`description`: string): _this_
 
 **`deprecated`** Deprecated in favor of
 [OperationConfig.description](configs#dataform-ActionConfig-OperationConfig).
@@ -136,17 +136,17 @@ Sets the description of this assertion.
 
 **Parameters:**
 
-Name | Type |
------- | ------ |
-`description` | string |
+| Name          | Type   |
+| ------------- | ------ |
+| `description` | string |
 
-**Returns:** *this*
+**Returns:** _this_
 
-___
+---
 
-###  disabled
+### disabled
 
-▸ **disabled**(`disabled`: boolean): *this*
+▸ **disabled**(`disabled`: boolean): _this_
 
 **`deprecated`** Deprecated in favor of
 [OperationConfig.disabled](configs#dataform-ActionConfig-OperationConfig).
@@ -156,17 +156,17 @@ Useful for temporarily turning off broken actions.
 
 **Parameters:**
 
-Name | Type | Default |
------- | ------ | ------ |
-`disabled` | boolean | true |
+| Name       | Type    | Default |
+| ---------- | ------- | ------- |
+| `disabled` | boolean | true    |
 
-**Returns:** *this*
+**Returns:** _this_
 
-___
+---
 
-###  hasOutput
+### hasOutput
 
-▸ **hasOutput**(`hasOutput`: boolean): *this*
+▸ **hasOutput**(`hasOutput`: boolean): _this_
 
 **`deprecated`** Deprecated in favor of
 [OperationConfig.hasOutput](configs#dataform-ActionConfig-OperationConfig).
@@ -176,38 +176,38 @@ target, for example by using the `ref` function.
 
 **Parameters:**
 
-Name | Type |
------- | ------ |
-`hasOutput` | boolean |
+| Name        | Type    |
+| ----------- | ------- |
+| `hasOutput` | boolean |
 
-**Returns:** *this*
+**Returns:** _this_
 
-___
+---
 
-###  hermetic
+### hermetic
 
-▸ **hermetic**(`hermetic`: boolean): *void*
+▸ **hermetic**(`hermetic`: boolean): _void_
 
 **`deprecated`** Deprecated in favor of
 [OperationConfig.hermetic](configs#dataform-ActionConfig-OperationConfig).
 
 If true, this indicates that the action only depends on data from explicitly-declared
-dependencies. Otherwise if false, it indicates that the  action depends on data from a source
+dependencies. Otherwise if false, it indicates that the action depends on data from a source
 which has not been declared as a dependency.
 
 **Parameters:**
 
-Name | Type |
------- | ------ |
-`hermetic` | boolean |
+| Name       | Type    |
+| ---------- | ------- |
+| `hermetic` | boolean |
 
-**Returns:** *void*
+**Returns:** _void_
 
-___
+---
 
-###  queries
+### queries
 
-▸ **queries**(`queries`: [Contextable](../modules/_core_common_.md#contextable)‹[ICommonContext](../interfaces/_core_common_.icommoncontext.md), string | string[]›): *this*
+▸ **queries**(`queries`: [Contextable](../modules/_core_common_.md#contextable)‹[IActionContext](../interfaces/_core_common_.IActionContext.md), string | string[]›): _this_
 
 Sets the query/queries to generate the operation from.
 
@@ -215,17 +215,17 @@ Sets the query/queries to generate the operation from.
 
 **Parameters:**
 
-Name | Type |
------- | ------ |
-`queries` | [Contextable](../modules/_core_common_.md#contextable)‹[ICommonContext](../interfaces/_core_common_.icommoncontext.md), string &#124; string[]› |
+| Name      | Type                                                                                                                                            |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `queries` | [Contextable](../modules/_core_common_.md#contextable)‹[IActionContext](../interfaces/_core_common_.IActionContext.md), string &#124; string[]› |
 
-**Returns:** *this*
+**Returns:** _this_
 
-___
+---
 
-###  schema
+### schema
 
-▸ **schema**(`schema`: string): *this*
+▸ **schema**(`schema`: string): _this_
 
 **`deprecated`** Deprecated in favor of
 [OperationConfig.dataset](configs#dataform-ActionConfig-OperationConfig).
@@ -234,17 +234,17 @@ Sets the schema (BigQuery dataset) in which to create the output of this action.
 
 **Parameters:**
 
-Name | Type |
------- | ------ |
-`schema` | string |
+| Name     | Type   |
+| -------- | ------ |
+| `schema` | string |
 
-**Returns:** *this*
+**Returns:** _this_
 
-___
+---
 
-###  setDependOnDependencyAssertions
+### setDependOnDependencyAssertions
 
-▸ **setDependOnDependencyAssertions**(`dependOnDependencyAssertions`: boolean): *this*
+▸ **setDependOnDependencyAssertions**(`dependOnDependencyAssertions`: boolean): _this_
 
 **`deprecated`** Deprecated in favor of
 [OperationConfig.dependOnDependencyAssertions](configs#dataform-ActionConfig-OperationConfig).
@@ -254,17 +254,17 @@ to this action.
 
 **Parameters:**
 
-Name | Type |
------- | ------ |
-`dependOnDependencyAssertions` | boolean |
+| Name                           | Type    |
+| ------------------------------ | ------- |
+| `dependOnDependencyAssertions` | boolean |
 
-**Returns:** *this*
+**Returns:** _this_
 
-___
+---
 
-###  tags
+### tags
 
-▸ **tags**(`value`: string | string[]): *this*
+▸ **tags**(`value`: string | string[]): _this_
 
 **`deprecated`** Deprecated in favor of
 [OperationConfig.tags](configs#dataform-ActionConfig-OperationConfig).
@@ -273,8 +273,8 @@ Sets a list of user-defined tags applied to this action.
 
 **Parameters:**
 
-Name | Type |
------- | ------ |
-`value` | string &#124; string[] |
+| Name    | Type                   |
+| ------- | ---------------------- |
+| `value` | string &#124; string[] |
 
-**Returns:** *this*
+**Returns:** _this_

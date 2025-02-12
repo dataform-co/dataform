@@ -3,7 +3,6 @@ import {
   ActionBuilder,
   ILegacyBigQueryOptions,
   ILegacyTableConfig,
-  ITableContext,
   LegacyConfigConverter,
   TableType
 } from "df/core/actions";
@@ -27,6 +26,7 @@ import {
   validateQueryString
 } from "df/core/utils";
 import { dataform } from "df/protos/ts";
+import { ITableContext } from "df/core/contextables";
 
 /**
  * Tables are the fundamental building block for storing data when using Dataform. Dataform compiles

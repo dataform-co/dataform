@@ -29,7 +29,7 @@ test("name")
   .input("sample_data", `SELECT 1 AS bar`)
   .expect(`SELECT 1 AS bar`);
 
-publish("sample_data", { type: "table" }).query("SELECT 1 AS bar")
+publish("sample_data", { type: "table" }).query("SELECT 1 AS bar");
 ```
 
 Note: When using the Javascript API, methods in this class can be accessed by the returned value.
@@ -37,7 +37,7 @@ This is where `input` and `expect` come from.
 
 ## Hierarchy
 
-* ActionBuilder‹Test›
+- ActionBuilder‹Test›
 
   ↳ **Test**
 
@@ -45,55 +45,55 @@ This is where `input` and `expect` come from.
 
 ### Methods
 
-* [dataset](_core_actions_test_.test.md#dataset)
-* [expect](_core_actions_test_.test.md#expect)
-* [input](_core_actions_test_.test.md#input)
+- [dataset](_core_actions_test_.test.md#dataset)
+- [expect](_core_actions_test_.test.md#expect)
+- [input](_core_actions_test_.test.md#input)
 
 ## Methods
 
-###  dataset
+### dataset
 
-▸ **dataset**(`ref`: [Resolvable](../modules/_core_common_.md#resolvable)): *this*
+▸ **dataset**(`ref`: [Resolvable](../modules/_core_common_.md#resolvable)): _this_
 
 Sets the schema (BigQuery dataset) in which to create the output of this action.
 
 **Parameters:**
 
-Name | Type |
------- | ------ |
-`ref` | [Resolvable](../modules/_core_common_.md#resolvable) |
+| Name  | Type                                                 |
+| ----- | ---------------------------------------------------- |
+| `ref` | [Resolvable](../modules/_core_common_.md#resolvable) |
 
-**Returns:** *this*
+**Returns:** _this_
 
-___
+---
 
-###  expect
+### expect
 
-▸ **expect**(`contextableQuery`: [Contextable](../modules/_core_common_.md#contextable)‹[ICommonContext](../interfaces/_core_common_.icommoncontext.md), string›): *this*
+▸ **expect**(`contextableQuery`: [Contextable](../modules/_core_common_.md#contextable)‹[IActionContext](../interfaces/_core_common_.IActionContext.md), string›): _this_
 
 Sets the expected output of the query to being tested against.
 
 **Parameters:**
 
-Name | Type |
------- | ------ |
-`contextableQuery` | [Contextable](../modules/_core_common_.md#contextable)‹[ICommonContext](../interfaces/_core_common_.icommoncontext.md), string› |
+| Name               | Type                                                                                                                            |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| `contextableQuery` | [Contextable](../modules/_core_common_.md#contextable)‹[IActionContext](../interfaces/_core_common_.IActionContext.md), string› |
 
-**Returns:** *this*
+**Returns:** _this_
 
-___
+---
 
-###  input
+### input
 
-▸ **input**(`refName`: string | string[], `contextableQuery`: [Contextable](../modules/_core_common_.md#contextable)‹[ICommonContext](../interfaces/_core_common_.icommoncontext.md), string›): *this*
+▸ **input**(`refName`: string | string[], `contextableQuery`: [Contextable](../modules/_core_common_.md#contextable)‹[IActionContext](../interfaces/_core_common_.IActionContext.md), string›): _this_
 
 Sets the input query to unit test against.
 
 **Parameters:**
 
-Name | Type |
------- | ------ |
-`refName` | string &#124; string[] |
-`contextableQuery` | [Contextable](../modules/_core_common_.md#contextable)‹[ICommonContext](../interfaces/_core_common_.icommoncontext.md), string› |
+| Name               | Type                                                                                                                            |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| `refName`          | string &#124; string[]                                                                                                          |
+| `contextableQuery` | [Contextable](../modules/_core_common_.md#contextable)‹[IActionContext](../interfaces/_core_common_.IActionContext.md), string› |
 
-**Returns:** *this*
+**Returns:** _this_

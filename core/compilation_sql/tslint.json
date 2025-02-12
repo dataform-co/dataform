@@ -1,5 +1,5 @@
 {
-  "extends": ["../../tslint.json"],
+  "extends": ["df/core/../tslint.json"],
   "rules": {
     "tsr-detect-sql-literal-injection": false
   }

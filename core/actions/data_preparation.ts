@@ -2,7 +2,6 @@ import { dump as dumpYaml } from "js-yaml";
 
 import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { ActionBuilder } from "df/core/actions";
-import { ITableContext } from "df/core/actions/index";
 import { Contextable, Resolvable } from "df/core/common";
 import * as Path from "df/core/path";
 import { Session } from "df/core/session";
@@ -18,6 +17,7 @@ import {
   validateQueryString
 } from "df/core/utils";
 import { dataform } from "df/protos/ts";
+import { ITableContext } from "df/core/contextables";
 
 /**
  * @hidden

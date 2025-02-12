@@ -6,16 +6,10 @@ import { Notebook } from "df/core/actions/notebook";
 import { Operation } from "df/core/actions/operation";
 import { Table } from "df/core/actions/table";
 import { View } from "df/core/actions/view";
-import {
-  IActionConfig,
-  ICommonContext,
-  IDependenciesConfig,
-  IDocumentableConfig,
-  INamedConfig,
-  ITargetableConfig
-} from "df/core/common";
 import { Session } from "df/core/session";
 import { dataform } from "df/protos/ts";
+import { IColumnsDescriptor } from "df/core/column_descriptors";
+import { IActionContext, Resolvable } from "df/core/contextables";
 
 export type Action =
   | Table
@@ -113,20 +107,111 @@ export abstract class ActionBuilder<T> {
 }
 
 /**
- * Context methods are available when evaluating contextable SQL code, such as
- * within SQLX files, or when using a [Contextable](#Contextable) argument with the JS API.
+ * @hidden
+ * @deprecated
+ * Use core.proto config options instead.
  */
-export interface ITableContext extends ICommonContext {
+export interface INamedConfig {
   /**
-   * Shorthand for an `if` condition. Equivalent to `cond ? trueCase : falseCase`.
-   * `falseCase` is optional, and defaults to an empty string.
+   * The type of the action.
+   *
+   * @hidden
    */
-  when: (cond: boolean, trueCase: string, falseCase?: string) => string;
+  type?: string;
 
   /**
-   * Indicates whether the config indicates the file is dealing with an incremental table.
+   * The name of the action.
+   *
+   * @hidden
    */
-  incremental: () => boolean;
+  name?: string;
+}
+
+/**
+ * @hidden
+ * @deprecated
+ * Use core.proto config options instead.
+ */
+export interface IActionConfig {
+  /**
+   * A list of user-defined tags with which the action should be labeled.
+   */
+  tags?: string[];
+
+  /**
+   * Dependencies of the action.
+   *
+   * @hidden
+   */
+  dependencies?: Resolvable | Resolvable[];
+
+  /**
+   * If set to true, this action will not be executed. However, the action may still be depended upon.
+   * Useful for temporarily turning off broken actions.
+   */
+  disabled?: boolean;
+}
+
+/**
+ * @hidden
+ * @deprecated
+ * Use core.proto config options instead.
+ */
+export interface ITargetableConfig {
+  /**
+   * The database in which the output of this action should be created.
+   */
+  database?: string;
+
+  /**
+   * The schema in which the output of this action should be created.
+   */
+  schema?: string;
+}
+
+/**
+ * @hidden
+ * @deprecated
+ * Use core.proto config options instead.
+ */
+export interface IDependenciesConfig {
+  /**
+   * One or more explicit dependencies for this action. Dependency actions will run before dependent actions.
+   * Typically this would remain unset, because most dependencies are declared as a by-product of using the `ref` function.
+   */
+  dependencies?: Resolvable | Resolvable[];
+
+  /**
+   * Declares whether or not this action is hermetic. An action is hermetic if all of its dependencies are explicitly
+   * declared.
+   *
+   * If this action depends on data from a source which has not been declared as a dependency, then `hermetic`
+   * should be explicitly set to `false`. Otherwise, if this action only depends on data from explicitly-declared
+   * dependencies, then it should be set to `true`.
+   */
+  hermetic?: boolean;
+
+  /**
+   * If this flag is set to true, assertions dependent upon any of the dependencies are added as dependencies as well.
+   */
+  dependOnDependencyAssertions?: boolean;
+}
+
+/**
+ * @hidden
+ * @deprecated
+ * Use core.proto config options instead.
+ */
+export interface IDocumentableConfig {
+  /**
+   * A description of columns within the dataset.
+   */
+  columns?: IColumnsDescriptor;
+
+  /**
+   * A description of the dataset.
+   */
+  description?: string;
 }
 
 /**

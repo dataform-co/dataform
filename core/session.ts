@@ -1,7 +1,7 @@
 import { default as TarjanGraphConstructor, Graph as TarjanGraph } from "tarjan-graph";
 
 import { encode64, verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
-import { Action, ActionProto, ILegacyTableConfig, ITableContext, TableType } from "df/core/actions";
+import { Action, ActionProto, ILegacyTableConfig, TableType } from "df/core/actions";
 import { AContextable, Assertion, AssertionContext } from "df/core/actions/assertion";
 import {
   DataPreparation,
@@ -15,13 +15,13 @@ import { Operation, OperationContext } from "df/core/actions/operation";
 import { Table, TableContext } from "df/core/actions/table";
 import { Test } from "df/core/actions/test";
 import { View } from "df/core/actions/view";
-import { Contextable, ICommonContext, ITarget, Resolvable } from "df/core/common";
 import { CompilationSql } from "df/core/compilation_sql";
 import { targetAsReadableString, targetStringifier } from "df/core/targets";
 import * as utils from "df/core/utils";
 import { toResolvable } from "df/core/utils";
 import { version as dataformCoreVersion } from "df/core/version";
 import { dataform } from "df/protos/ts";
+import { Contextable, IActionContext, ITableContext, Resolvable } from "df/core/contextables";
 
 const DEFAULT_CONFIG = {
   defaultSchema: "dataform",
@@ -98,7 +98,7 @@ export class Session {
         | OperationContext
         | DataPreparationContext
         | IDataPreparationContext
-        | ICommonContext
+        | IActionContext
     ) => string[];
     incrementalWhereContextable: (ctx: ITableContext) => string;
     preOperationsContextable: (ctx: ITableContext) => string[];
@@ -106,7 +106,7 @@ export class Session {
     inputContextables: [
       {
         refName: string[];
-        contextable: (ctx: ICommonContext) => string;
+        contextable: (ctx: IActionContext) => string;
       }
     ];
   }) {
@@ -264,7 +264,7 @@ export class Session {
    */
   public operate(
     name: string,
-    queries?: Contextable<ICommonContext, string | string[]>
+    queries?: Contextable<IActionContext, string | string[]>
   ): Operation {
     // TODO(ekrekr): safely allow passing of config blocks as the second argument, similar to publish.
     const operation = new Operation();
@@ -880,7 +880,7 @@ class ActionMap {
     }
   }
 
-  public set(actionTarget: ITarget, assertionTarget: Action) {
+  public set(actionTarget: dataform.ITarget, assertionTarget: Action) {
     this.setByNameLevel(this.byName, actionTarget.name, assertionTarget);
 
     if (!!actionTarget.schema) {
@@ -931,7 +931,7 @@ class ActionMap {
 
   private setBySchemaLevel(
     targetMap: Map<string, Map<string, Action[]>>,
-    actionTarget: ITarget,
+    actionTarget: dataform.ITarget,
     assertionTarget: Action
   ) {
     if (!targetMap.has(actionTarget.schema)) {

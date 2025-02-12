@@ -1,6 +1,69 @@
-import { IColumnsDescriptor, IRecordDescriptor, IRecordDescriptorProperties } from "df/core/common";
 import * as utils from "df/core/utils";
 import { dataform } from "df/protos/ts";
+
+/**
+ * @deprecated
+ * Use core.proto config options instead.
+ * Describes columns in a dataset.
+ */
+export interface IColumnsDescriptor {
+  [name: string]: string | IRecordDescriptor;
+}
+
+/**
+ * @deprecated
+ * Use core.proto config options instead.
+ * Describes a struct, object or record in a dataset that has nested columns.
+ */
+export interface IRecordDescriptor {
+  /**
+   * A description of the struct, object or record.
+   */
+  description?: string;
+
+  /**
+   * A description of columns within the struct, object or record.
+   */
+  columns?: IColumnsDescriptor;
+
+  /**
+   * @hidden
+   */
+  displayName?: string;
+
+  /**
+   * Tags that apply to this column (experimental).
+   *
+   * @hidden
+   */
+  tags?: string | string[];
+
+  /**
+   * BigQuery policy tags that should be applied to this column.
+   *
+   * These should be the fully qualified identifier of the tag, including the project name, location, and taxonomy,
+   * which can be copied from the policy tags page in GCP.
+   *
+   * For example: "projects/1/locations/eu/taxonomies/2/policyTags/3"
+   *
+   * Currently BigQuery supports only a single tag per column.
+   */
+  bigqueryPolicyTags?: string | string[];
+}
+
+/**
+ * @hidden
+ * @deprecated
+ * Use core.proto config options instead.
+ */
+export const IRecordDescriptorProperties = () =>
+  utils.strictKeysOf<IRecordDescriptor>()([
+    "description",
+    "columns",
+    "displayName",
+    "tags",
+    "bigqueryPolicyTags"
+  ]);
 
 /**
  * @hidden
