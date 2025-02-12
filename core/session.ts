@@ -557,7 +557,7 @@ export class Session {
   private fullyQualifyDependencies(actions: ActionProto[]) {
     actions.forEach(action => {
       const fullyQualifiedDependencies: { [name: string]: dataform.ITarget } = {};
-      if (action instanceof dataform.Declaration) {
+      if (action instanceof dataform.Declaration || !action.dependencyTargets) {
         // Declarations cannot have dependencies.
         return;
       }
@@ -757,7 +757,8 @@ export class Session {
     const tarjanGraph: TarjanGraph = new (TarjanGraphConstructor as any)();
     actions.forEach(action => {
       // Declarations cannot have dependencies.
-      const cleanedDependencies = (action instanceof dataform.Declaration
+      const cleanedDependencies = (action instanceof dataform.Declaration ||
+      !action.dependencyTargets
         ? []
         : action.dependencyTargets
       ).filter(
