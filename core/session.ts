@@ -643,7 +643,7 @@ export class Session {
         action.dependencyTargets = (action.dependencyTargets || []).map(getUpdatedTarget);
       }
 
-      if (action instanceof dataform.Assertion) {
+      if (action instanceof dataform.Assertion && !!action.parentAction) {
         action.parentAction = getUpdatedTarget(action.parentAction);
       }
     });
