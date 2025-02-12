@@ -43,7 +43,7 @@ dataform.projectConfig.vars.myVariableName === "myVariableValue"
 
 ###  assert
 
-▸ **assert**(`name`: string, `query?`: AContextable‹string›): *[Assertion](_core_actions_assertion_.assertion.md)*
+▸ **assert**(`name`: string, `queryOrConfig?`: AContextable‹string› | AssertionConfig): *[Assertion](_core_actions_assertion_.assertion.md)*
 
 Adds a Dataform assertion the compiled graph.
 
@@ -56,7 +56,7 @@ Available only in the `/definitions` directory.
 Name | Type |
 ------ | ------ |
 `name` | string |
-`query?` | AContextable‹string› |
+`queryOrConfig?` | AContextable‹string› &#124; AssertionConfig |
 
 **Returns:** *[Assertion](_core_actions_assertion_.assertion.md)*
 
