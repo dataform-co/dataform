@@ -71,7 +71,7 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
    * <!-- TODO(ekrekr): make this field private, to enforce proto update logic to happen in this
    * class. -->
    */
-  public proto: dataform.ITable = dataform.Table.create({
+  public proto = dataform.Table.create({
     type: "incremental",
     enumType: dataform.TableType.INCREMENTAL,
     disabled: false,

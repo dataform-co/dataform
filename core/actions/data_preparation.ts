@@ -29,7 +29,7 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
   public contextableQuery: Contextable<IDataPreparationContext, string>;
 
   // TODO: make this field private, to enforce proto update logic to happen in this class.
-  public proto: dataform.IDataPreparation = dataform.DataPreparation.create();
+  public proto = dataform.DataPreparation.create();
 
   constructor(
     session?: Session,

@@ -27,6 +27,14 @@ export type Action =
   | Notebook
   | DataPreparation;
 
+export type ActionProto =
+  | dataform.Table // core.proto's Table represents the Table, View or IncrementalTable action type.
+  | dataform.Operation
+  | dataform.Assertion
+  | dataform.Declaration
+  | dataform.Notebook
+  | dataform.DataPreparation;
+
 // TODO(ekrekr): In v4, make all method on inheritors of this private, forcing users to use
 // constructors in order to populate actions.
 export abstract class ActionBuilder<T> {
