@@ -7,5 +7,6 @@
         "*", "!core/**"
     ],
     "excludeNotDocumented": true,
-    "disableSources": true
+    "disableSources": true,
+    "excludePrivate": true
 }
