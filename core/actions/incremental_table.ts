@@ -10,7 +10,6 @@ import { Assertion } from "df/core/actions/assertion";
 import { Table } from "df/core/actions/table";
 import { View } from "df/core/actions/view";
 import { ColumnDescriptors } from "df/core/column_descriptors";
-import { Contextable, Resolvable } from "df/core/common";
 import * as Path from "df/core/path";
 import { Session } from "df/core/session";
 import {
@@ -27,7 +26,7 @@ import {
   validateQueryString
 } from "df/core/utils";
 import { dataform } from "df/protos/ts";
-import { ITableContext } from "df/core/contextables";
+import { Contextable, ITableContext, Resolvable } from "df/core/contextables";
 
 /**
  * When you define an incremental table, Dataform builds the incremental table from scratch only for

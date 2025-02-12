@@ -1,6 +1,5 @@
 import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { ActionBuilder } from "df/core/actions";
-import { Resolvable } from "df/core/common";
 import * as Path from "df/core/path";
 import { Session } from "df/core/session";
 import {
@@ -11,6 +10,7 @@ import {
   resolveActionsConfigFilename
 } from "df/core/utils";
 import { dataform } from "df/protos/ts";
+import { Resolvable } from "df/core/contextables";
 
 /**
  * Notebooks run Jupyter Notebook files, and can output content to the storage buckets defined in
