@@ -20,7 +20,6 @@ suite("examples", { parallel: true }, () => {
       // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(`${projectDir}/package.json`, "");
 
-      // TODO(ekrekr): make this test `run` instead.
       const processResult = await getProcessResult(
         execFile(nodePath, [cliEntryPointPath, "compile", projectDir, "--json"])
       );

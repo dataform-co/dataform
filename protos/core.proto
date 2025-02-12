@@ -283,7 +283,8 @@ message DataPreparation {
   bool disabled = 6;
 
   oneof definition {
-    // YAML file containing the data preparation YAML with resolved dependencies, as well as error table and load configuration information.
+    // YAML file containing the data preparation YAML with resolved
+    // dependencies, as well as error table and load configuration information.
     string data_preparation_yaml = 11;
 
     // SQL representing a compiled SQL string
@@ -322,8 +323,8 @@ message CompiledGraph {
   repeated Operation operations = 2;
   repeated Assertion assertions = 3;
   repeated Declaration declarations = 9;
-  // TODO(ekrekr): move the Test action outside of the compiled graph, because
-  // it is not used at runtime.
+  // Note that the Test action doesn't really belong in the compiled graph
+  // because it is not used at runtime. Consider moving it if useful.
   repeated Test tests = 8;
   repeated Notebook notebooks = 12;
   repeated DataPreparation data_preparations = 13;

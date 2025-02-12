@@ -44,8 +44,6 @@ message WorkflowSettings {
   NotebookRuntimeOptionsConfig default_notebook_runtime_options = 10;
 }
 
-// TODO(ekrekr): consolidate ActionsConfigs proto types in the JS API.
-
 // Action configs defines the contents of `actions.yaml` configuration files.
 message ActionConfigs {
   repeated ActionConfig actions = 1;
@@ -494,7 +492,8 @@ message ActionConfig {
     // be add as dedpendency to this action
     bool depend_on_dependency_assertions = 9;
 
-    // TODO(ekrekr): add a notebook runtime field definition.
+    // A notebook runtime field definition could be added here, to allow atomic
+    // runtime settings of notebooks.
   }
 
   message DataPreparationConfig {
@@ -558,9 +557,11 @@ message ActionConfig {
     REPLACE_TABLE = 0;
     // Insert into destination table.
     APPEND = 1;
-    // Insert only records where the specified column value exceeds the existing maximum value in the destination table.
+    // Insert only records where the specified column value exceeds the existing
+    // maximum value in the destination table.
     MAXIMUM = 2;
-    // Insert only records where the specified column value is not already present in the destination column values.
+    // Insert only records where the specified column value is not already
+    // present in the destination column values.
     UNIQUE = 3;
   }
 }
