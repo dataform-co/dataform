@@ -55,8 +55,6 @@ This is where `input` and `expect` come from.
 
 ▸ **dataset**(`ref`: [Resolvable](../modules/_core_common_.md#resolvable)): *this*
 
-*Defined in [core/actions/test.ts:105](https://github.com/dataform-co/dataform/blob/1eef2cde/core/actions/test.ts#L105)*
-
 Sets the schema (BigQuery dataset) in which to create the output of this action.
 
 **Parameters:**
@@ -73,8 +71,6 @@ ___
 
 ▸ **expect**(`contextableQuery`: [Contextable](../modules/_core_common_.md#contextable)‹[ICommonContext](../interfaces/_core_common_.icommoncontext.md), string›): *this*
 
-*Defined in [core/actions/test.ts:124](https://github.com/dataform-co/dataform/blob/1eef2cde/core/actions/test.ts#L124)*
-
 Sets the expected output of the query to being tested against.
 
 **Parameters:**
@@ -90,8 +86,6 @@ ___
 ###  input
 
 ▸ **input**(`refName`: string | string[], `contextableQuery`: [Contextable](../modules/_core_common_.md#contextable)‹[ICommonContext](../interfaces/_core_common_.icommoncontext.md), string›): *this*
-
-*Defined in [core/actions/test.ts:113](https://github.com/dataform-co/dataform/blob/1eef2cde/core/actions/test.ts#L113)*
 
 Sets the input query to unit test against.
 

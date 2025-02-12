@@ -72,8 +72,6 @@ This is where `query` comes from.
 
 ▸ **database**(`database`: string): *this*
 
-*Defined in [core/actions/assertion.ts:245](https://github.com/dataform-co/dataform/blob/1eef2cde/core/actions/assertion.ts#L245)*
-
 **`deprecated`** Deprecated in favor of
 [AssertionConfig.project](configs#dataform-ActionConfig-AssertionConfig).
 
@@ -94,8 +92,6 @@ ___
 
 ▸ **dependencies**(`value`: [Resolvable](../modules/_core_common_.md#resolvable) | [Resolvable](../modules/_core_common_.md#resolvable)[]): *this*
 
-*Defined in [core/actions/assertion.ts:175](https://github.com/dataform-co/dataform/blob/1eef2cde/core/actions/assertion.ts#L175)*
-
 **`deprecated`** Deprecated in favor of
 [AssertionConfig.dependencies](configs#dataform-ActionConfig-AssertionConfig).
 
@@ -114,8 +110,6 @@ ___
 ###  description
 
 ▸ **description**(`description`: string): *this*
-
-*Defined in [core/actions/assertion.ts:233](https://github.com/dataform-co/dataform/blob/1eef2cde/core/actions/assertion.ts#L233)*
 
 **`deprecated`** Deprecated in favor of
 [AssertionConfig.description](configs#dataform-ActionConfig-AssertionConfig).
@@ -136,8 +130,6 @@ ___
 
 ▸ **disabled**(`disabled`: boolean): *this*
 
-*Defined in [core/actions/assertion.ts:206](https://github.com/dataform-co/dataform/blob/1eef2cde/core/actions/assertion.ts#L206)*
-
 **`deprecated`** Deprecated in favor of
 [AssertionConfig.disabled](configs#dataform-ActionConfig-AssertionConfig).
 
@@ -157,8 +149,6 @@ ___
 ###  hermetic
 
 ▸ **hermetic**(`hermetic`: boolean): *void*
-
-*Defined in [core/actions/assertion.ts:193](https://github.com/dataform-co/dataform/blob/1eef2cde/core/actions/assertion.ts#L193)*
 
 **`deprecated`** Deprecated in favor of
 [AssertionConfig.hermetic](configs#dataform-ActionConfig-AssertionConfig).
@@ -181,8 +171,6 @@ ___
 
 ▸ **query**(`query`: AContextable‹string›): *this*
 
-*Defined in [core/actions/assertion.ts:164](https://github.com/dataform-co/dataform/blob/1eef2cde/core/actions/assertion.ts#L164)*
-
 Sets the query to be run by the assertion.
 
 **Parameters:**
@@ -198,8 +186,6 @@ ___
 ###  schema
 
 ▸ **schema**(`schema`: string): *this*
-
-*Defined in [core/actions/assertion.ts:263](https://github.com/dataform-co/dataform/blob/1eef2cde/core/actions/assertion.ts#L263)*
 
 **`deprecated`** Deprecated in favor of
 [AssertionConfig.dataset](configs#dataform-ActionConfig-AssertionConfig).
@@ -220,8 +206,6 @@ ___
 ###  tags
 
 ▸ **tags**(`value`: string | string[]): *this*
-
-*Defined in [core/actions/assertion.ts:217](https://github.com/dataform-co/dataform/blob/1eef2cde/core/actions/assertion.ts#L217)*
 
 **`deprecated`** Deprecated in favor of
 [AssertionConfig.tags](configs#dataform-ActionConfig-AssertionConfig).

@@ -76,8 +76,6 @@ This is where `query` comes from.
 
 ▸ **assertions**(`assertions`: TableAssertionsConfig): *this*
 
-*Defined in [core/actions/table.ts:431](https://github.com/dataform-co/dataform/blob/1eef2cde/core/actions/table.ts#L431)*
-
 **`deprecated`** Deprecated in favor of
 [TableConfig.assertions](configs#dataform-ActionConfig-TableConfig).
 
@@ -101,8 +99,6 @@ ___
 
 ▸ **bigquery**(`bigquery`: IBigQueryOptions): *this*
 
-*Defined in [core/actions/table.ts:298](https://github.com/dataform-co/dataform/blob/1eef2cde/core/actions/table.ts#L298)*
-
 **`deprecated`** Deprecated in favor of options available directly on
 [TableConfig](configs#dataform-ActionConfig-TableConfig). For example:
 `publish("name", { type: "table", partitionBy: "column" }`).
@@ -123,8 +119,6 @@ ___
 
 ▸ **columns**(`columns`: ColumnDescriptor[]): *this*
 
-*Defined in [core/actions/table.ts:377](https://github.com/dataform-co/dataform/blob/1eef2cde/core/actions/table.ts#L377)*
-
 **`deprecated`** Deprecated in favor of
 [TableConfig.columns](configs#dataform-ActionConfig-TableConfig).
 
@@ -143,8 +137,6 @@ ___
 ###  database
 
 ▸ **database**(`database`: string): *this*
-
-*Defined in [core/actions/table.ts:393](https://github.com/dataform-co/dataform/blob/1eef2cde/core/actions/table.ts#L393)*
 
 **`deprecated`** Deprecated in favor of
 [TableConfig.project](configs#dataform-ActionConfig-TableConfig).
@@ -165,8 +157,6 @@ ___
 
 ▸ **dependencies**(`value`: [Resolvable](../modules/_core_common_.md#resolvable) | [Resolvable](../modules/_core_common_.md#resolvable)[]): *this*
 
-*Defined in [core/actions/table.ts:319](https://github.com/dataform-co/dataform/blob/1eef2cde/core/actions/table.ts#L319)*
-
 **`deprecated`** Deprecated in favor of
 [TableConfig.dependencies](configs#dataform-ActionConfig-TableConfig).
 
@@ -186,8 +176,6 @@ ___
 
 ▸ **description**(`description`: string): *this*
 
-*Defined in [core/actions/table.ts:363](https://github.com/dataform-co/dataform/blob/1eef2cde/core/actions/table.ts#L363)*
-
 **`deprecated`** Deprecated in favor of
 [TableConfig.description](configs#dataform-ActionConfig-TableConfig).
 
@@ -206,8 +194,6 @@ ___
 ###  disabled
 
 ▸ **disabled**(`disabled`: boolean): *this*
-
-*Defined in [core/actions/table.ts:284](https://github.com/dataform-co/dataform/blob/1eef2cde/core/actions/table.ts#L284)*
 
 **`deprecated`** Deprecated in favor of
 [TableConfig.disabled](configs#dataform-ActionConfig-TableConfig).
@@ -229,8 +215,6 @@ ___
 
 ▸ **hermetic**(`hermetic`: boolean): *void*
 
-*Defined in [core/actions/table.ts:335](https://github.com/dataform-co/dataform/blob/1eef2cde/core/actions/table.ts#L335)*
-
 **`deprecated`** Deprecated in favor of
 [TableConfig.hermetic](configs#dataform-ActionConfig-TableConfig).
 
@@ -251,8 +235,6 @@ ___
 ###  postOps
 
 ▸ **postOps**(`posts`: [Contextable](../modules/_core_common_.md#contextable)‹[ITableContext](../interfaces/_core_actions_index_.itablecontext.md), string | string[]›): *this*
-
-*Defined in [core/actions/table.ts:272](https://github.com/dataform-co/dataform/blob/1eef2cde/core/actions/table.ts#L272)*
 
 Sets a post-operation to run after the query is run. This is often used for revoking temporary
 permissions granted to access source tables.
@@ -281,8 +263,6 @@ ___
 
 ▸ **preOps**(`pres`: [Contextable](../modules/_core_common_.md#contextable)‹[ITableContext](../interfaces/_core_actions_index_.itablecontext.md), string | string[]›): *this*
 
-*Defined in [core/actions/table.ts:253](https://github.com/dataform-co/dataform/blob/1eef2cde/core/actions/table.ts#L253)*
-
 Sets a pre-operation to run before the query is run. This is often used for temporarily
 granting permission to access source tables.
 
@@ -310,8 +290,6 @@ ___
 
 ▸ **query**(`query`: [Contextable](../modules/_core_common_.md#contextable)‹[ITableContext](../interfaces/_core_actions_index_.itablecontext.md), string›): *this*
 
-*Defined in [core/actions/table.ts:228](https://github.com/dataform-co/dataform/blob/1eef2cde/core/actions/table.ts#L228)*
-
 Sets the query to generate the table from.
 
 **Parameters:**
@@ -327,8 +305,6 @@ ___
 ###  schema
 
 ▸ **schema**(`schema`: string): *this*
-
-*Defined in [core/actions/table.ts:410](https://github.com/dataform-co/dataform/blob/1eef2cde/core/actions/table.ts#L410)*
 
 **`deprecated`** Deprecated in favor of
 [TableConfig.dataset](configs#dataform-ActionConfig-TableConfig).
@@ -348,8 +324,6 @@ ___
 ###  setDependOnDependencyAssertions
 
 ▸ **setDependOnDependencyAssertions**(`dependOnDependencyAssertions`: boolean): *this*
-
-*Defined in [core/actions/table.ts:495](https://github.com/dataform-co/dataform/blob/1eef2cde/core/actions/table.ts#L495)*
 
 **`deprecated`** Deprecated in favor of
 [TableConfig.dependOnDependencyAssertions](configs#dataform-ActionConfig-TableConfig).
@@ -371,8 +345,6 @@ ___
 
 ▸ **tags**(`value`: string | string[]): *this*
 
-*Defined in [core/actions/table.ts:347](https://github.com/dataform-co/dataform/blob/1eef2cde/core/actions/table.ts#L347)*
-
 **`deprecated`** Deprecated in favor of
 [TableConfig.tags](configs#dataform-ActionConfig-TableConfig).
 
@@ -391,8 +363,6 @@ ___
 ###  type
 
 ▸ **type**(`type`: TableType): *this*
-
-*Defined in [core/actions/table.ts:194](https://github.com/dataform-co/dataform/blob/1eef2cde/core/actions/table.ts#L194)*
 
 **`deprecated`** 
 Deprecated in favor of action type can being set in the configs passed to action constructor

@@ -6,5 +6,6 @@
     "exclude": [
         "*", "!core/**"
     ],
-    "excludeNotDocumented": true
+    "excludeNotDocumented": true,
+    "disableSources": true
 }
