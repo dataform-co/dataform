@@ -1,7 +1,7 @@
 import { default as TarjanGraphConstructor, Graph as TarjanGraph } from "tarjan-graph";
 
 import { encode64, verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
-import { Action, ILegacyTableConfig, ITableContext, TableType } from "df/core/actions";
+import { Action, ActionProto, ILegacyTableConfig, ITableContext, TableType } from "df/core/actions";
 import { AContextable, Assertion, AssertionContext } from "df/core/actions/assertion";
 import {
   DataPreparation,
@@ -27,21 +27,6 @@ const DEFAULT_CONFIG = {
   defaultSchema: "dataform",
   assertionSchema: "dataform_assertions"
 };
-
-/**
- * @hidden
- * @deprecated
- * TODO(ekrekr): the action type should be passed around rather than this proxy for the proto.
- */
-export interface IActionProto {
-  fileName?: string;
-  dependencyTargets?: dataform.ITarget[];
-  hermeticity?: dataform.ActionHermeticity;
-  target?: dataform.ITarget;
-  canonicalTarget?: dataform.ITarget;
-  parentAction?: dataform.ITarget;
-  config?: dataform.IActionConfig;
-}
 
 /**
  * Contains methods that are published globally, so can be invoked anywhere in the `/definitions`
@@ -569,9 +554,13 @@ export class Session {
     return compiledChunks;
   }
 
-  private fullyQualifyDependencies(actions: IActionProto[]) {
+  private fullyQualifyDependencies(actions: ActionProto[]) {
     actions.forEach(action => {
       const fullyQualifiedDependencies: { [name: string]: dataform.ITarget } = {};
+      if (action instanceof dataform.Declaration || !action.dependencyTargets) {
+        // Declarations cannot have dependencies.
+        return;
+      }
       for (const dependency of action.dependencyTargets) {
         const possibleDeps = this.indexedActions.find(dependency);
         if (possibleDeps.length === 0) {
@@ -612,7 +601,7 @@ export class Session {
     });
   }
 
-  private alterActionName(actions: IActionProto[], declarationTargets: dataform.ITarget[]) {
+  private alterActionName(actions: ActionProto[], declarationTargets: dataform.ITarget[]) {
     const { tablePrefix, schemaSuffix, databaseSuffix } = this.projectConfig;
 
     if (!tablePrefix && !schemaSuffix && !databaseSuffix) {
@@ -649,9 +638,12 @@ export class Session {
       return newTargetByOriginalTarget.get(targetStringifier.stringify(originalTarget));
     };
     actions.forEach(action => {
-      action.dependencyTargets = (action.dependencyTargets || []).map(getUpdatedTarget);
+      if (!(action instanceof dataform.Declaration)) {
+        // Declarations cannot have dependencies.
+        action.dependencyTargets = (action.dependencyTargets || []).map(getUpdatedTarget);
+      }
 
-      if (!!action.parentAction) {
+      if (action instanceof dataform.Assertion && !!action.parentAction) {
         action.parentAction = getUpdatedTarget(action.parentAction);
       }
     });
@@ -756,15 +748,20 @@ export class Session {
     });
   }
 
-  private checkCircularity(actions: IActionProto[]) {
-    const allActionsByStringifiedTarget = new Map<string, IActionProto>(
+  private checkCircularity(actions: ActionProto[]) {
+    const allActionsByStringifiedTarget = new Map<string, ActionProto>(
       actions.map(action => [targetStringifier.stringify(action.target), action])
     );
 
     // Type exports for tarjan-graph are unfortunately wrong, so we have to do this minor hack.
     const tarjanGraph: TarjanGraph = new (TarjanGraphConstructor as any)();
     actions.forEach(action => {
-      const cleanedDependencies = (action.dependencyTargets || []).filter(
+      // Declarations cannot have dependencies.
+      const cleanedDependencies = (action instanceof dataform.Declaration ||
+      !action.dependencyTargets
+        ? []
+        : action.dependencyTargets
+      ).filter(
         dependency => !!allActionsByStringifiedTarget.get(targetStringifier.stringify(dependency))
       );
       tarjanGraph.add(
@@ -811,7 +808,7 @@ export class Session {
       actions.map(action => action.canonicalTarget)
     );
 
-    const isUniqueAction = (action: IActionProto) => {
+    const isUniqueAction = (action: ActionProto) => {
       const isNonUniqueTarget = nonUniqueActionsTargets.has(
         targetStringifier.stringify(action.target)
       );

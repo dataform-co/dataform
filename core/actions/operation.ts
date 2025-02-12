@@ -78,7 +78,7 @@ export class Operation extends ActionBuilder<dataform.Operation> {
    * <!-- TODO(ekrekr): make this field private, to enforce proto update logic to happen in this
    * class. -->
    */
-  public proto: dataform.IOperation = dataform.Operation.create();
+  public proto = dataform.Operation.create();
 
   /** @hidden Hold a reference to the Session instance. */
   public session: Session;
