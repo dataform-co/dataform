@@ -264,14 +264,18 @@ export class Session {
    */
   public operate(
     name: string,
-    queries?: Contextable<ICommonContext, string | string[]>
+    queryOrConfig?:
+      | Contextable<ICommonContext, string | string[]>
+      | dataform.ActionConfig.OperationConfig
   ): Operation {
-    // TODO(ekrekr): safely allow passing of config blocks as the second argument, similar to publish.
-    const operation = new Operation();
-    operation.session = this;
-    utils.setNameAndTarget(this, operation.proto, name);
-    if (queries) {
-      operation.queries(queries);
+    let operation: Operation;
+    if (!!queryOrConfig && typeof queryOrConfig === "object") {
+      operation = new Operation(this, { name, ...queryOrConfig });
+    } else {
+      operation = new Operation(this, { name });
+      if (queryOrConfig) {
+        operation.queries(queryOrConfig as AContextable<string>);
+      }
     }
     operation.proto.fileName = utils.getCallerFile(this.rootDir);
     this.actions.push(operation);
@@ -333,12 +337,11 @@ export class Session {
     name: string,
     queryOrConfig?: AContextable<string> | dataform.ActionConfig.AssertionConfig
   ): Assertion {
-    let assertion = new Assertion();
+    let assertion: Assertion;
     if (!!queryOrConfig && typeof queryOrConfig === "object") {
       assertion = new Assertion(this, { name, ...queryOrConfig });
     } else {
-      assertion.session = this;
-      utils.setNameAndTarget(this, assertion.proto, name, this.projectConfig.assertionSchema);
+      assertion = new Assertion(this, { name });
       if (queryOrConfig) {
         assertion.query(queryOrConfig as AContextable<string>);
       }
@@ -354,14 +357,15 @@ export class Session {
    * Available only in the `/definitions` directory.
    *
    * @see [Declaration](Declaration) for examples on how to use.
-   *
-   * <!-- TODO(ekrekr): safely allow passing of config blocks as the second argument, similar to
-   * publish. -->
    */
-  public declare(dataset: dataform.ITarget): Declaration {
-    const declaration = new Declaration();
-    declaration.session = this;
-    utils.setNameAndTarget(this, declaration.proto, dataset.name, dataset.schema, dataset.database);
+  public declare(
+    config:
+      | dataform.ActionConfig.DeclarationConfig
+      // `any` is used here to facilitate the type merging of legacy declaration configs options,
+      // without breaking typescript consumers of Dataform.
+      | any
+  ): Declaration {
+    const declaration = new Declaration(this, config);
     declaration.proto.fileName = utils.getCallerFile(this.rootDir);
     this.actions.push(declaration);
     return declaration;
@@ -400,9 +404,7 @@ export class Session {
    * <!-- TODO(ekrekr): add tests for this method -->
    */
   public notebook(name: string): Notebook {
-    const notebook = new Notebook();
-    notebook.session = this;
-    utils.setNameAndTarget(this, notebook.proto, name);
+    const notebook = new Notebook(this, { name });
     notebook.proto.fileName = utils.getCallerFile(this.rootDir);
     this.actions.push(notebook);
     return notebook;
