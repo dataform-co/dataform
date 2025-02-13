@@ -64,7 +64,7 @@ ___
 
 ###  declare
 
-▸ **declare**(`dataset`: ITarget): *[Declaration](_core_actions_declaration_.declaration.md)*
+▸ **declare**(`config`: DeclarationConfig | any): *[Declaration](_core_actions_declaration_.declaration.md)*
 
 Declares the dataset as a Dataform data source.
 
@@ -72,14 +72,11 @@ Available only in the `/definitions` directory.
 
 **`see`** [Declaration](Declaration) for examples on how to use.
 
-<!-- TODO(ekrekr): safely allow passing of config blocks as the second argument, similar to
-publish. -->
-
 **Parameters:**
 
 Name | Type |
 ------ | ------ |
-`dataset` | ITarget |
+`config` | DeclarationConfig &#124; any |
 
 **Returns:** *[Declaration](_core_actions_declaration_.declaration.md)*
 
@@ -111,7 +108,7 @@ ___
 
 ###  operate
 
-▸ **operate**(`name`: string, `queries?`: [Contextable](../modules/_core_contextables_.md#contextable)‹[IActionContext](../interfaces/_core_contextables_.iactioncontext.md), string | string[]›): *[Operation](_core_actions_operation_.operation.md)*
+▸ **operate**(`name`: string, `queryOrConfig?`: [Contextable](../modules/_core_contextables_.md#contextable)‹[IActionContext](../interfaces/_core_contextables_.iactioncontext.md), string | string[]› | OperationConfig): *[Operation](_core_actions_operation_.operation.md)*
 
 Defines a SQL operation.
 
@@ -124,7 +121,7 @@ Available only in the `/definitions` directory.
 Name | Type |
 ------ | ------ |
 `name` | string |
-`queries?` | [Contextable](../modules/_core_contextables_.md#contextable)‹[IActionContext](../interfaces/_core_contextables_.iactioncontext.md), string &#124; string[]› |
+`queryOrConfig?` | [Contextable](../modules/_core_contextables_.md#contextable)‹[IActionContext](../interfaces/_core_contextables_.iactioncontext.md), string &#124; string[]› &#124; OperationConfig |
 
 **Returns:** *[Operation](_core_actions_operation_.operation.md)*
 

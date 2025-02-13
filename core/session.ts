@@ -264,14 +264,19 @@ export class Session {
    */
   public operate(
     name: string,
-    queries?: Contextable<IActionContext, string | string[]>
+    queryOrConfig?:
+      | Contextable<IActionContext, string | string[]>
+      | dataform.ActionConfig.OperationConfig
   ): Operation {
-    // TODO(ekrekr): safely allow passing of config blocks as the second argument, similar to publish.
-    const operation = new Operation();
-    operation.session = this;
-    utils.setNameAndTarget(this, operation.proto, name);
-    if (queries) {
-      operation.queries(queries);
+    let operation = new Operation();
+    if (!!queryOrConfig && typeof queryOrConfig === "object") {
+      operation = new Operation(this, { name, ...queryOrConfig });
+    } else {
+      operation.session = this;
+      utils.setNameAndTarget(this, operation.proto, name, this.projectConfig.assertionSchema);
+      if (queryOrConfig) {
+        operation.queries(queryOrConfig as AContextable<string>);
+      }
     }
     operation.proto.fileName = utils.getCallerFile(this.rootDir);
     this.actions.push(operation);
@@ -354,14 +359,15 @@ export class Session {
    * Available only in the `/definitions` directory.
    *
    * @see [Declaration](Declaration) for examples on how to use.
-   *
-   * <!-- TODO(ekrekr): safely allow passing of config blocks as the second argument, similar to
-   * publish. -->
    */
-  public declare(dataset: dataform.ITarget): Declaration {
-    const declaration = new Declaration();
-    declaration.session = this;
-    utils.setNameAndTarget(this, declaration.proto, dataset.name, dataset.schema, dataset.database);
+  public declare(
+    config:
+      | dataform.ActionConfig.DeclarationConfig
+      // `any` is used here to facilitate the type merging of legacy declaration configs options,
+      // without breaking typescript consumers of Dataform.
+      | any
+  ): Declaration {
+    const declaration = new Declaration(this, config);
     declaration.proto.fileName = utils.getCallerFile(this.rootDir);
     this.actions.push(declaration);
     return declaration;
