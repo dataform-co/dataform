@@ -2321,19 +2321,8 @@ actions:
         ] as dataform.IAssertion[]
     };
 
-    test(`for assertions`, () => {
-      const projectDir = tmpDirFixture.createNewTmpDir();
-      fs.writeFileSync(
-        path.join(projectDir, "workflow_settings.yaml"),
-        VALID_WORKFLOW_SETTINGS_YAML
-      );
-      fs.mkdirSync(path.join(projectDir, "definitions"));
-      fs.writeFileSync(path.join(projectDir, "definitions/operation.sqlx"), "SELECT 1");
-      fs.writeFileSync(
-        path.join(projectDir, "definitions/assertion.sqlx"),
-        // If change, then change test "action configs assertions can be loaded".
-        `
-config {
+    // If change, then change test "action configs assertions can be loaded".
+    const assertionConfig = `{
   type: "assertion",
   name: "name",
   schema: "dataset",
@@ -2344,44 +2333,67 @@ config {
   description: "description",
   hermetic: true,
   dependOnDependencyAssertions: true,
-}
+}`;
+    [
+      {
+        filename: "assertion.sqlx",
+        fileContents: `
+config ${assertionConfig}
 SELECT 1`
-      );
+      },
+      {
+        filename: "assertion.js",
+        fileContents: `assert("name", ${assertionConfig}).query(ctx => \`\n\nSELECT 1\`)`
+      }
+    ].forEach(testParameters => {
+      test(`for assertions configured in a ${testParameters.filename} file`, () => {
+        const projectDir = tmpDirFixture.createNewTmpDir();
+        fs.writeFileSync(
+          path.join(projectDir, "workflow_settings.yaml"),
+          VALID_WORKFLOW_SETTINGS_YAML
+        );
+        fs.mkdirSync(path.join(projectDir, "definitions"));
+        fs.writeFileSync(path.join(projectDir, "definitions/operation.sqlx"), "SELECT 1");
+        fs.writeFileSync(
+          path.join(projectDir, `definitions/${testParameters.filename}`),
+          testParameters.fileContents
+        );
 
-      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+        const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
-      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-      expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals(
-        asPlainObject([
-          {
-            target: {
-              database: "project",
-              schema: "dataset",
-              name: "name"
-            },
-            canonicalTarget: {
-              database: "project",
-              schema: "dataset",
-              name: "name"
-            },
-            actionDescriptor: {
-              description: "description"
-            },
-            dependencyTargets: [
-              {
-                database: "defaultProject",
-                schema: "defaultDataset",
-                name: "operation"
-              }
-            ],
-            disabled: true,
-            fileName: "definitions/assertion.sqlx",
-            hermeticity: "HERMETIC",
-            tags: ["tagA", "tagB"],
-            query: "\n\nSELECT 1"
-          }
-        ])
-      );
+        expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+        expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals(
+          asPlainObject([
+            {
+              target: {
+                database: "project",
+                schema: "dataset",
+                name: "name"
+              },
+              canonicalTarget: {
+                database: "project",
+                schema: "dataset",
+                name: "name"
+              },
+              actionDescriptor: {
+                description: "description"
+              },
+              dependencyTargets: [
+                {
+                  database: "defaultProject",
+                  schema: "defaultDataset",
+                  name: "operation"
+                }
+              ],
+              disabled: true,
+              fileName: `definitions/${testParameters.filename}`,
+              hermeticity: "HERMETIC",
+              tags: ["tagA", "tagB"],
+              query: "\n\nSELECT 1"
+            }
+          ])
+        );
+      });
     });
 
     test(`for declarations`, () => {

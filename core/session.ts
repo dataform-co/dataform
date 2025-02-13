@@ -329,12 +329,19 @@ export class Session {
    *
    * @see [assertion](Assertion) for examples on how to use.
    */
-  public assert(name: string, query?: AContextable<string>): Assertion {
-    const assertion = new Assertion();
-    assertion.session = this;
-    utils.setNameAndTarget(this, assertion.proto, name, this.projectConfig.assertionSchema);
-    if (query) {
-      assertion.query(query);
+  public assert(
+    name: string,
+    queryOrConfig?: AContextable<string> | dataform.ActionConfig.AssertionConfig
+  ): Assertion {
+    let assertion = new Assertion();
+    if (!!queryOrConfig && typeof queryOrConfig === "object") {
+      assertion = new Assertion(this, { name, ...queryOrConfig });
+    } else {
+      assertion.session = this;
+      utils.setNameAndTarget(this, assertion.proto, name, this.projectConfig.assertionSchema);
+      if (queryOrConfig) {
+        assertion.query(queryOrConfig as AContextable<string>);
+      }
     }
     assertion.proto.fileName = utils.getCallerFile(this.rootDir);
     this.actions.push(assertion);
