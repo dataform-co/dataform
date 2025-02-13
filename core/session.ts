@@ -453,7 +453,6 @@ export class Session {
       throw new Error("Custom variables defined in workflow settings can only be strings.");
     }
 
-    // TODO(ekrekr): replace verify here with something that actually works.
     const compiledGraph = dataform.CompiledGraph.create({
       projectConfig: this.projectConfig,
       tables: this.compileGraphChunk(
