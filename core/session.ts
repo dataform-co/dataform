@@ -404,7 +404,9 @@ export class Session {
    * <!-- TODO(ekrekr): add tests for this method -->
    */
   public notebook(name: string): Notebook {
-    const notebook = new Notebook(this, { name });
+    const notebook = new Notebook();
+    notebook.session = this;
+    utils.setNameAndTarget(this, notebook.proto, name);
     notebook.proto.fileName = utils.getCallerFile(this.rootDir);
     this.actions.push(notebook);
     return notebook;
