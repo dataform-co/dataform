@@ -64,12 +64,10 @@ export class Notebook extends ActionBuilder<dataform.Notebook> {
   public dependOnDependencyAssertions: boolean = false;
 
   /** @hidden */
-  constructor(
-    session?: Session,
-    config?: dataform.ActionConfig.NotebookConfig,
-    configPath?: string
-  ) {
+  constructor(session?: Session, unverifiedConfig?: any, configPath?: string) {
     super(session);
+
+    const config = this.verifyConfig(unverifiedConfig);
 
     if (!config.name) {
       config.name = Path.basename(config.filename);
@@ -114,10 +112,16 @@ export class Notebook extends ActionBuilder<dataform.Notebook> {
     return this;
   }
 
-  /** @hidden Verifies that the passed action config is a valid Notebook action config. */
-  public config(config: any) {
-    // TODO(ekrekr): call verifyObjectMatchesProto here.
-    return this;
+  /**
+   * @hidden Verify config checks that the constructor provided config matches the expected proto
+   * structure.
+   */
+  private verifyConfig(unverifiedConfig: any): dataform.ActionConfig.NotebookConfig {
+    return verifyObjectMatchesProto(
+      dataform.ActionConfig.NotebookConfig,
+      unverifiedConfig,
+      VerifyProtoErrorBehaviour.SHOW_DOCS_LINK
+    );
   }
 
   /** @hidden */

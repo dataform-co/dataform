@@ -2217,7 +2217,7 @@ actions:
     });
   });
 
-  suite("sqlx config options", () => {
+  suite("sqlx and JS API config options", () => {
     const exampleActionDescriptor = {
       inputSqlxConfigBlock: `
   columns: {
@@ -2889,6 +2889,68 @@ SELECT 2`
         });
       });
     });
+
+    test(`for notebooks`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(path.join(projectDir, "definitions/operation.sqlx"), "SELECT 1");
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/filename.ipynb"),
+        EMPTY_NOTEBOOK_CONTENTS
+      );
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/notebook.js"),
+        `
+notebook({
+  name: "name",
+  location: "location",
+  project: "project",
+  dependencyTargets: [{
+    name: "operation",
+  }],
+  filename: "filename.ipynb",
+  tags: ["tagA", "tagB"],
+  disabled: true,
+  description: "description",
+  dependOnDependencyAssertions: true
+})`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.notebooks)).deep.equals(
+        asPlainObject([
+          {
+            target: {
+              database: "project",
+              schema: "location",
+              name: "name"
+            },
+            canonicalTarget: {
+              database: "project",
+              schema: "location",
+              name: "name"
+            },
+            dependencyTargets: [
+              {
+                database: "defaultProject",
+                schema: "defaultDataset",
+                name: "operation"
+              }
+            ],
+            disabled: true,
+            fileName: "definitions/filename.ipynb",
+            tags: ["tagA", "tagB"],
+            notebookContents: `{"cells":[]}`
+          }
+        ])
+      );
+    });
   });
 
   suite("action config options", () => {
@@ -3446,6 +3508,70 @@ actions:
             actionDescriptor: {
               description: "description"
             }
+          }
+        ])
+      );
+    });
+
+    test(`for notebooks`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+
+      fs.writeFileSync(path.join(projectDir, "definitions/operation.sqlx"), "SELECT 1");
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/filename.ipynb"),
+        EMPTY_NOTEBOOK_CONTENTS
+      );
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/actions.yaml"),
+        `
+actions:
+- notebook:
+    name: name
+    location: location
+    project: project
+    dependencyTargets:
+    - name: operation
+    filename: filename.ipynb
+    tags:
+    - tagA
+    - tagB
+    disabled: true
+    description: description
+    dependOnDependencyAssertions: true`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.notebooks)).deep.equals(
+        asPlainObject([
+          {
+            target: {
+              database: "project",
+              schema: "location",
+              name: "name"
+            },
+            canonicalTarget: {
+              database: "project",
+              schema: "location",
+              name: "name"
+            },
+            dependencyTargets: [
+              {
+                database: "defaultProject",
+                schema: "defaultDataset",
+                name: "operation"
+              }
+            ],
+            disabled: true,
+            fileName: "definitions/filename.ipynb",
+            tags: ["tagA", "tagB"],
+            notebookContents: `{"cells":[]}`
           }
         ])
       );
