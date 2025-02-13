@@ -179,46 +179,6 @@ export function target(
 }
 
 /**
- * @deprecated use ActionBuilder.applySessionToTarget() instead.
- */
-export function setNameAndTarget(
-  session: Session,
-  action: ActionProto,
-  name: string,
-  overrideSchema?: string,
-  overrideDatabase?: string
-) {
-  action.target = target(session.projectConfig, name, overrideSchema, overrideDatabase);
-  action.canonicalTarget = target(
-    session.canonicalProjectConfig,
-    name,
-    overrideSchema,
-    overrideDatabase
-  );
-  if (action.target.name.includes(".")) {
-    session.compileError(
-      new Error("Action target names cannot include '.'"),
-      undefined,
-      action.target
-    );
-  }
-  if (action.target.schema.includes(".")) {
-    session.compileError(
-      new Error("Action target datasets cannot include '.'"),
-      undefined,
-      action.target
-    );
-  }
-  if (action.target.database.includes(".")) {
-    session.compileError(
-      new Error("Action target projects cannot include '.'"),
-      undefined,
-      action.target
-    );
-  }
-}
-
-/**
  * Checks that the given list of keys completely covers all supported keys in the given interface.
  */
 export function strictKeysOf<T>() {

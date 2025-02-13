@@ -9,7 +9,6 @@ import {
   nativeRequire,
   resolvableAsTarget,
   resolveActionsConfigFilename,
-  setNameAndTarget,
   toResolvable,
   validateQueryString
 } from "df/core/utils";
@@ -243,12 +242,12 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
    * assertion.
    */
   public database(database: string) {
-    setNameAndTarget(
-      this.session,
-      this.proto,
-      this.proto.target.name,
-      this.proto.target.schema,
-      database
+    this.proto.target = this.applySessionToTarget(
+      dataform.Target.create({ ...this.proto.target, database }),
+      this.session.projectConfig,
+      this.proto.fileName,
+      true,
+      true
     );
     return this;
   }
@@ -261,12 +260,12 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
    * assertion.
    */
   public schema(schema: string) {
-    setNameAndTarget(
-      this.session,
-      this.proto,
-      this.proto.target.name,
-      schema,
-      this.proto.target.database
+    this.proto.target = this.applySessionToTarget(
+      dataform.Target.create({ ...this.proto.target, schema }),
+      this.session.projectConfig,
+      this.proto.fileName,
+      true,
+      true
     );
     return this;
   }
