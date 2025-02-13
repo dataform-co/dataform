@@ -53,7 +53,7 @@ export abstract class ActionBuilder<T> {
     useDefaultAssertionDataset = false
   ): dataform.Target {
     const defaultSchema = useDefaultAssertionDataset
-      ? projectConfig.assertionSchema
+      ? projectConfig.assertionSchema || projectConfig.defaultSchema
       : projectConfig.defaultSchema;
     const target = dataform.Target.create({
       name: targetFromConfig.name,
