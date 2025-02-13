@@ -112,18 +112,6 @@ export class Notebook extends ActionBuilder<dataform.Notebook> {
     return this;
   }
 
-  /**
-   * @hidden Verify config checks that the constructor provided config matches the expected proto
-   * structure.
-   */
-  private verifyConfig(unverifiedConfig: any): dataform.ActionConfig.NotebookConfig {
-    return verifyObjectMatchesProto(
-      dataform.ActionConfig.NotebookConfig,
-      unverifiedConfig,
-      VerifyProtoErrorBehaviour.SHOW_DOCS_LINK
-    );
-  }
-
   /** @hidden */
   public dependencies(value: Resolvable | Resolvable[]) {
     const newDependencies = Array.isArray(value) ? value : [value];
@@ -149,6 +137,18 @@ export class Notebook extends ActionBuilder<dataform.Notebook> {
       dataform.Notebook,
       this.proto,
       VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM
+    );
+  }
+
+  /**
+   * @hidden Verify config checks that the constructor provided config matches the expected proto
+   * structure.
+   */
+  private verifyConfig(unverifiedConfig: any): dataform.ActionConfig.NotebookConfig {
+    return verifyObjectMatchesProto(
+      dataform.ActionConfig.NotebookConfig,
+      unverifiedConfig,
+      VerifyProtoErrorBehaviour.SHOW_DOCS_LINK
     );
   }
 }
