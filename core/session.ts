@@ -398,16 +398,10 @@ export class Session {
    * Available only in the `/definitions` directory.
    *
    * @see [Notebook](Notebook) for examples on how to use.
-   *
-   * <!-- TODO(ekrekr): safely allow passing of config blocks as the second argument, similar to
-   * publish. -->
-   * <!-- TODO(ekrekr): add tests for this method -->
    */
-  public notebook(name: string): Notebook {
-    const notebook = new Notebook();
-    notebook.session = this;
-    utils.setNameAndTarget(this, notebook.proto, name);
-    notebook.proto.fileName = utils.getCallerFile(this.rootDir);
+  public notebook(config: dataform.ActionConfig.NotebookConfig): Notebook {
+    const configFileName = utils.getCallerFile(this.rootDir);
+    const notebook = new Notebook(this, config, configFileName);
     this.actions.push(notebook);
     return notebook;
   }
