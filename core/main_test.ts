@@ -2217,7 +2217,7 @@ actions:
     });
   });
 
-  suite("sqlx config options", () => {
+  suite("sqlx and JS API config options", () => {
     const exampleActionDescriptor = {
       inputSqlxConfigBlock: `
   columns: {
@@ -2321,19 +2321,8 @@ actions:
         ] as dataform.IAssertion[]
     };
 
-    test(`for assertions`, () => {
-      const projectDir = tmpDirFixture.createNewTmpDir();
-      fs.writeFileSync(
-        path.join(projectDir, "workflow_settings.yaml"),
-        VALID_WORKFLOW_SETTINGS_YAML
-      );
-      fs.mkdirSync(path.join(projectDir, "definitions"));
-      fs.writeFileSync(path.join(projectDir, "definitions/operation.sqlx"), "SELECT 1");
-      fs.writeFileSync(
-        path.join(projectDir, "definitions/assertion.sqlx"),
-        // If change, then change test "action configs assertions can be loaded".
-        `
-config {
+    // If change, then change test "action configs assertions can be loaded".
+    const assertionConfig = `{
   type: "assertion",
   name: "name",
   schema: "dataset",
@@ -2344,87 +2333,123 @@ config {
   description: "description",
   hermetic: true,
   dependOnDependencyAssertions: true,
-}
+}`;
+    [
+      {
+        filename: "assertion.sqlx",
+        fileContents: `
+config ${assertionConfig}
 SELECT 1`
-      );
+      },
+      {
+        filename: "assertion.js",
+        fileContents: `assert("name", ${assertionConfig}).query(ctx => \`\n\nSELECT 1\`)`
+      }
+    ].forEach(testParameters => {
+      test(`for assertions configured in a ${testParameters.filename} file`, () => {
+        const projectDir = tmpDirFixture.createNewTmpDir();
+        fs.writeFileSync(
+          path.join(projectDir, "workflow_settings.yaml"),
+          VALID_WORKFLOW_SETTINGS_YAML
+        );
+        fs.mkdirSync(path.join(projectDir, "definitions"));
+        fs.writeFileSync(path.join(projectDir, "definitions/operation.sqlx"), "SELECT 1");
+        fs.writeFileSync(
+          path.join(projectDir, `definitions/${testParameters.filename}`),
+          testParameters.fileContents
+        );
 
-      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+        const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
-      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-      expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals(
-        asPlainObject([
-          {
-            target: {
-              database: "project",
-              schema: "dataset",
-              name: "name"
-            },
-            canonicalTarget: {
-              database: "project",
-              schema: "dataset",
-              name: "name"
-            },
-            actionDescriptor: {
-              description: "description"
-            },
-            dependencyTargets: [
-              {
-                database: "defaultProject",
-                schema: "defaultDataset",
-                name: "operation"
-              }
-            ],
-            disabled: true,
-            fileName: "definitions/assertion.sqlx",
-            hermeticity: "HERMETIC",
-            tags: ["tagA", "tagB"],
-            query: "\n\nSELECT 1"
-          }
-        ])
-      );
+        expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+        expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals(
+          asPlainObject([
+            {
+              target: {
+                database: "project",
+                schema: "dataset",
+                name: "name"
+              },
+              canonicalTarget: {
+                database: "project",
+                schema: "dataset",
+                name: "name"
+              },
+              actionDescriptor: {
+                description: "description"
+              },
+              dependencyTargets: [
+                {
+                  database: "defaultProject",
+                  schema: "defaultDataset",
+                  name: "operation"
+                }
+              ],
+              disabled: true,
+              fileName: `definitions/${testParameters.filename}`,
+              hermeticity: "HERMETIC",
+              tags: ["tagA", "tagB"],
+              query: "\n\nSELECT 1"
+            }
+          ])
+        );
+      });
     });
 
-    test(`for declarations`, () => {
-      const projectDir = tmpDirFixture.createNewTmpDir();
-      fs.writeFileSync(
-        path.join(projectDir, "workflow_settings.yaml"),
-        VALID_WORKFLOW_SETTINGS_YAML
-      );
-      fs.mkdirSync(path.join(projectDir, "definitions"));
-      fs.writeFileSync(
-        path.join(projectDir, "definitions/assertion.sqlx"),
-        `
-config {
+    const declarationConfig = `{
   type: "declaration",
   name: "name",
   schema: "dataset",
   database: "project",
   description: "description",
 ${exampleActionDescriptor.inputSqlxConfigBlock}
-}`
-      );
+}`;
 
-      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+    [
+      {
+        filename: "declaration.sqlx",
+        fileContents: `
+config ${declarationConfig}`
+      },
+      {
+        filename: "declaration.js",
+        fileContents: `declare(${declarationConfig})`
+      }
+    ].forEach(testParameters => {
+      test(`for declarations configured in a ${testParameters.filename} file`, () => {
+        const projectDir = tmpDirFixture.createNewTmpDir();
+        fs.writeFileSync(
+          path.join(projectDir, "workflow_settings.yaml"),
+          VALID_WORKFLOW_SETTINGS_YAML
+        );
+        fs.mkdirSync(path.join(projectDir, "definitions"));
+        fs.writeFileSync(
+          path.join(projectDir, `definitions/${testParameters.filename}`),
+          testParameters.fileContents
+        );
 
-      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-      expect(asPlainObject(result.compile.compiledGraph.declarations)).deep.equals(
-        asPlainObject([
-          {
-            target: {
-              database: "project",
-              schema: "dataset",
-              name: "name"
-            },
-            canonicalTarget: {
-              database: "project",
-              schema: "dataset",
-              name: "name"
-            },
-            fileName: "definitions/assertion.sqlx",
-            actionDescriptor: exampleActionDescriptor.outputActionDescriptor
-          }
-        ])
-      );
+        const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+        expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+        expect(asPlainObject(result.compile.compiledGraph.declarations)).deep.equals(
+          asPlainObject([
+            {
+              target: {
+                database: "project",
+                schema: "dataset",
+                name: "name"
+              },
+              canonicalTarget: {
+                database: "project",
+                schema: "dataset",
+                name: "name"
+              },
+              fileName: `definitions/${testParameters.filename}`,
+              actionDescriptor: exampleActionDescriptor.outputActionDescriptor
+            }
+          ])
+        );
+      });
     });
 
     const tableConfig = `{
@@ -2753,21 +2778,7 @@ SELECT 1`
       });
     });
 
-    test(`for operations`, () => {
-      const projectDir = tmpDirFixture.createNewTmpDir();
-      fs.writeFileSync(
-        path.join(projectDir, "workflow_settings.yaml"),
-        VALID_WORKFLOW_SETTINGS_YAML
-      );
-      fs.mkdirSync(path.join(projectDir, "definitions"));
-      fs.writeFileSync(
-        path.join(projectDir, "definitions/table.sqlx"),
-        `config {type: "view"} SELECT 1`
-      );
-      fs.writeFileSync(
-        path.join(projectDir, "definitions/operation.sqlx"),
-        `
-config {
+    const operationConfig = `{
   type: "operations",
   name: "name",
   schema: "dataset",
@@ -2780,43 +2791,70 @@ config {
   hasOutput: true,
   dependOnDependencyAssertions: true,
 ${exampleActionDescriptor.inputSqlxConfigBlock}
-}
+}`;
+
+    [
+      {
+        filename: "operation.sqlx",
+        fileContents: `
+config ${operationConfig}
 SELECT 1`
-      );
+      },
+      {
+        filename: "operation.js",
+        fileContents: `operate("name", ${operationConfig}).queries(ctx => \`\n\nSELECT 1\`)`
+      }
+    ].forEach(testParameters => {
+      test(`for operations configured in a ${testParameters.filename} file`, () => {
+        const projectDir = tmpDirFixture.createNewTmpDir();
+        fs.writeFileSync(
+          path.join(projectDir, "workflow_settings.yaml"),
+          VALID_WORKFLOW_SETTINGS_YAML
+        );
+        fs.mkdirSync(path.join(projectDir, "definitions"));
+        fs.writeFileSync(
+          path.join(projectDir, "definitions/table.sqlx"),
+          `config {type: "view"} SELECT 1`
+        );
+        fs.writeFileSync(
+          path.join(projectDir, `definitions/${testParameters.filename}`),
+          testParameters.fileContents
+        );
 
-      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+        const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
-      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-      expect(asPlainObject(result.compile.compiledGraph.operations)).deep.equals(
-        asPlainObject([
-          {
-            target: {
-              database: "project",
-              schema: "dataset",
-              name: "name"
-            },
-            canonicalTarget: {
-              database: "project",
-              schema: "dataset",
-              name: "name"
-            },
-            dependencyTargets: [
-              {
-                database: "defaultProject",
-                schema: "defaultDataset",
-                name: "table"
-              }
-            ],
-            disabled: true,
-            fileName: "definitions/operation.sqlx",
-            hermeticity: "HERMETIC",
-            hasOutput: true,
-            tags: ["tagA", "tagB"],
-            queries: ["\n\nSELECT 1"],
-            actionDescriptor: exampleActionDescriptor.outputActionDescriptor
-          }
-        ])
-      );
+        expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+        expect(asPlainObject(result.compile.compiledGraph.operations)).deep.equals(
+          asPlainObject([
+            {
+              target: {
+                database: "project",
+                schema: "dataset",
+                name: "name"
+              },
+              canonicalTarget: {
+                database: "project",
+                schema: "dataset",
+                name: "name"
+              },
+              dependencyTargets: [
+                {
+                  database: "defaultProject",
+                  schema: "defaultDataset",
+                  name: "table"
+                }
+              ],
+              disabled: true,
+              fileName: `definitions/${testParameters.filename}`,
+              hermeticity: "HERMETIC",
+              hasOutput: true,
+              tags: ["tagA", "tagB"],
+              queries: ["\n\nSELECT 1"],
+              actionDescriptor: exampleActionDescriptor.outputActionDescriptor
+            }
+          ])
+        );
+      });
     });
 
     ["table", "view", "incremental"].forEach(tableType => {
@@ -2876,6 +2914,68 @@ SELECT 2`
           ]);
         });
       });
+    });
+
+    test(`for notebooks`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(path.join(projectDir, "definitions/operation.sqlx"), "SELECT 1");
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/filename.ipynb"),
+        EMPTY_NOTEBOOK_CONTENTS
+      );
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/notebook.js"),
+        `
+notebook({
+  name: "name",
+  location: "location",
+  project: "project",
+  dependencyTargets: [{
+    name: "operation",
+  }],
+  filename: "filename.ipynb",
+  tags: ["tagA", "tagB"],
+  disabled: true,
+  description: "description",
+  dependOnDependencyAssertions: true
+})`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.notebooks)).deep.equals(
+        asPlainObject([
+          {
+            target: {
+              database: "project",
+              schema: "location",
+              name: "name"
+            },
+            canonicalTarget: {
+              database: "project",
+              schema: "location",
+              name: "name"
+            },
+            dependencyTargets: [
+              {
+                database: "defaultProject",
+                schema: "defaultDataset",
+                name: "operation"
+              }
+            ],
+            disabled: true,
+            fileName: "definitions/filename.ipynb",
+            tags: ["tagA", "tagB"],
+            notebookContents: `{"cells":[]}`
+          }
+        ])
+      );
     });
   });
 
@@ -3427,6 +3527,70 @@ actions:
             actionDescriptor: {
               description: "description"
             }
+          }
+        ])
+      );
+    });
+
+    test(`for notebooks`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+
+      fs.writeFileSync(path.join(projectDir, "definitions/operation.sqlx"), "SELECT 1");
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/filename.ipynb"),
+        EMPTY_NOTEBOOK_CONTENTS
+      );
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/actions.yaml"),
+        `
+actions:
+- notebook:
+    name: name
+    location: location
+    project: project
+    dependencyTargets:
+    - name: operation
+    filename: filename.ipynb
+    tags:
+    - tagA
+    - tagB
+    disabled: true
+    description: description
+    dependOnDependencyAssertions: true`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.notebooks)).deep.equals(
+        asPlainObject([
+          {
+            target: {
+              database: "project",
+              schema: "location",
+              name: "name"
+            },
+            canonicalTarget: {
+              database: "project",
+              schema: "location",
+              name: "name"
+            },
+            dependencyTargets: [
+              {
+                database: "defaultProject",
+                schema: "defaultDataset",
+                name: "operation"
+              }
+            ],
+            disabled: true,
+            fileName: "definitions/filename.ipynb",
+            tags: ["tagA", "tagB"],
+            notebookContents: `{"cells":[]}`
           }
         ])
       );
@@ -4204,6 +4368,7 @@ operate("name", {
                     name: "name"
                   },
                   fileName: "definitions/operate.js",
+                  hermeticity: "NON_HERMETIC",
                   queries: ["SELECT 1", "SELECT 2"]
                 }
               ])
@@ -4249,6 +4414,7 @@ operate("name", {
               }
             ],
             fileName: "definitions/operate.js",
+            hermeticity: "NON_HERMETIC",
             queries: ["SELECT * FROM `defaultProject.defaultDataset.table`"],
             target: {
               database: "defaultProject",

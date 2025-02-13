@@ -1,7 +1,7 @@
 import { default as TarjanGraphConstructor, Graph as TarjanGraph } from "tarjan-graph";
 
 import { encode64, verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
-import { Action, ILegacyTableConfig, ITableContext, TableType } from "df/core/actions";
+import { Action, ActionProto, ILegacyTableConfig, ITableContext, TableType } from "df/core/actions";
 import { AContextable, Assertion, AssertionContext } from "df/core/actions/assertion";
 import {
   DataPreparation,
@@ -27,21 +27,6 @@ const DEFAULT_CONFIG = {
   defaultSchema: "dataform",
   assertionSchema: "dataform_assertions"
 };
-
-/**
- * @hidden
- * @deprecated
- * TODO(ekrekr): the action type should be passed around rather than this proxy for the proto.
- */
-export interface IActionProto {
-  fileName?: string;
-  dependencyTargets?: dataform.ITarget[];
-  hermeticity?: dataform.ActionHermeticity;
-  target?: dataform.ITarget;
-  canonicalTarget?: dataform.ITarget;
-  parentAction?: dataform.ITarget;
-  config?: dataform.IActionConfig;
-}
 
 /**
  * Contains methods that are published globally, so can be invoked anywhere in the `/definitions`
@@ -279,14 +264,19 @@ export class Session {
    */
   public operate(
     name: string,
-    queries?: Contextable<ICommonContext, string | string[]>
+    queryOrConfig?:
+      | Contextable<ICommonContext, string | string[]>
+      | dataform.ActionConfig.OperationConfig
   ): Operation {
-    // TODO(ekrekr): safely allow passing of config blocks as the second argument, similar to publish.
-    const operation = new Operation();
-    operation.session = this;
-    utils.setNameAndTarget(this, operation.proto, name);
-    if (queries) {
-      operation.queries(queries);
+    let operation = new Operation();
+    if (!!queryOrConfig && typeof queryOrConfig === "object") {
+      operation = new Operation(this, { name, ...queryOrConfig });
+    } else {
+      operation.session = this;
+      utils.setNameAndTarget(this, operation.proto, name, this.projectConfig.assertionSchema);
+      if (queryOrConfig) {
+        operation.queries(queryOrConfig as AContextable<string>);
+      }
     }
     operation.proto.fileName = utils.getCallerFile(this.rootDir);
     this.actions.push(operation);
@@ -344,12 +334,19 @@ export class Session {
    *
    * @see [assertion](Assertion) for examples on how to use.
    */
-  public assert(name: string, query?: AContextable<string>): Assertion {
-    const assertion = new Assertion();
-    assertion.session = this;
-    utils.setNameAndTarget(this, assertion.proto, name, this.projectConfig.assertionSchema);
-    if (query) {
-      assertion.query(query);
+  public assert(
+    name: string,
+    queryOrConfig?: AContextable<string> | dataform.ActionConfig.AssertionConfig
+  ): Assertion {
+    let assertion = new Assertion();
+    if (!!queryOrConfig && typeof queryOrConfig === "object") {
+      assertion = new Assertion(this, { name, ...queryOrConfig });
+    } else {
+      assertion.session = this;
+      utils.setNameAndTarget(this, assertion.proto, name, this.projectConfig.assertionSchema);
+      if (queryOrConfig) {
+        assertion.query(queryOrConfig as AContextable<string>);
+      }
     }
     assertion.proto.fileName = utils.getCallerFile(this.rootDir);
     this.actions.push(assertion);
@@ -362,14 +359,15 @@ export class Session {
    * Available only in the `/definitions` directory.
    *
    * @see [Declaration](Declaration) for examples on how to use.
-   *
-   * <!-- TODO(ekrekr): safely allow passing of config blocks as the second argument, similar to
-   * publish. -->
    */
-  public declare(dataset: dataform.ITarget): Declaration {
-    const declaration = new Declaration();
-    declaration.session = this;
-    utils.setNameAndTarget(this, declaration.proto, dataset.name, dataset.schema, dataset.database);
+  public declare(
+    config:
+      | dataform.ActionConfig.DeclarationConfig
+      // `any` is used here to facilitate the type merging of legacy declaration configs options,
+      // without breaking typescript consumers of Dataform.
+      | any
+  ): Declaration {
+    const declaration = new Declaration(this, config);
     declaration.proto.fileName = utils.getCallerFile(this.rootDir);
     this.actions.push(declaration);
     return declaration;
@@ -402,16 +400,10 @@ export class Session {
    * Available only in the `/definitions` directory.
    *
    * @see [Notebook](Notebook) for examples on how to use.
-   *
-   * <!-- TODO(ekrekr): safely allow passing of config blocks as the second argument, similar to
-   * publish. -->
-   * <!-- TODO(ekrekr): add tests for this method -->
    */
-  public notebook(name: string): Notebook {
-    const notebook = new Notebook();
-    notebook.session = this;
-    utils.setNameAndTarget(this, notebook.proto, name);
-    notebook.proto.fileName = utils.getCallerFile(this.rootDir);
+  public notebook(config: dataform.ActionConfig.NotebookConfig): Notebook {
+    const configFileName = utils.getCallerFile(this.rootDir);
+    const notebook = new Notebook(this, config, configFileName);
     this.actions.push(notebook);
     return notebook;
   }
@@ -568,9 +560,13 @@ export class Session {
     return compiledChunks;
   }
 
-  private fullyQualifyDependencies(actions: IActionProto[]) {
+  private fullyQualifyDependencies(actions: ActionProto[]) {
     actions.forEach(action => {
       const fullyQualifiedDependencies: { [name: string]: dataform.ITarget } = {};
+      if (action instanceof dataform.Declaration || !action.dependencyTargets) {
+        // Declarations cannot have dependencies.
+        return;
+      }
       for (const dependency of action.dependencyTargets) {
         const possibleDeps = this.indexedActions.find(dependency);
         if (possibleDeps.length === 0) {
@@ -611,7 +607,7 @@ export class Session {
     });
   }
 
-  private alterActionName(actions: IActionProto[], declarationTargets: dataform.ITarget[]) {
+  private alterActionName(actions: ActionProto[], declarationTargets: dataform.ITarget[]) {
     const { tablePrefix, schemaSuffix, databaseSuffix } = this.projectConfig;
 
     if (!tablePrefix && !schemaSuffix && !databaseSuffix) {
@@ -648,9 +644,12 @@ export class Session {
       return newTargetByOriginalTarget.get(targetStringifier.stringify(originalTarget));
     };
     actions.forEach(action => {
-      action.dependencyTargets = (action.dependencyTargets || []).map(getUpdatedTarget);
+      if (!(action instanceof dataform.Declaration)) {
+        // Declarations cannot have dependencies.
+        action.dependencyTargets = (action.dependencyTargets || []).map(getUpdatedTarget);
+      }
 
-      if (!!action.parentAction) {
+      if (action instanceof dataform.Assertion && !!action.parentAction) {
         action.parentAction = getUpdatedTarget(action.parentAction);
       }
     });
@@ -755,15 +754,20 @@ export class Session {
     });
   }
 
-  private checkCircularity(actions: IActionProto[]) {
-    const allActionsByStringifiedTarget = new Map<string, IActionProto>(
+  private checkCircularity(actions: ActionProto[]) {
+    const allActionsByStringifiedTarget = new Map<string, ActionProto>(
       actions.map(action => [targetStringifier.stringify(action.target), action])
     );
 
     // Type exports for tarjan-graph are unfortunately wrong, so we have to do this minor hack.
     const tarjanGraph: TarjanGraph = new (TarjanGraphConstructor as any)();
     actions.forEach(action => {
-      const cleanedDependencies = (action.dependencyTargets || []).filter(
+      // Declarations cannot have dependencies.
+      const cleanedDependencies = (action instanceof dataform.Declaration ||
+      !action.dependencyTargets
+        ? []
+        : action.dependencyTargets
+      ).filter(
         dependency => !!allActionsByStringifiedTarget.get(targetStringifier.stringify(dependency))
       );
       tarjanGraph.add(
@@ -810,7 +814,7 @@ export class Session {
       actions.map(action => action.canonicalTarget)
     );
 
-    const isUniqueAction = (action: IActionProto) => {
+    const isUniqueAction = (action: ActionProto) => {
       const isNonUniqueTarget = nonUniqueActionsTargets.has(
         targetStringifier.stringify(action.target)
       );

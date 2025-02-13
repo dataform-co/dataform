@@ -84,7 +84,7 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
    * <!-- TODO(ekrekr): make this field private, to enforce proto update logic to happen in this
    * class. -->
    */
-  public proto: dataform.IAssertion = dataform.Assertion.create();
+  public proto = dataform.Assertion.create();
 
   /** @hidden Hold a reference to the Session instance. */
   public session: Session;

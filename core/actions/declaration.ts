@@ -65,7 +65,7 @@ export class Declaration extends ActionBuilder<dataform.Declaration> {
    * <!-- TODO(ekrekr): make this field private, to enforce proto update logic to happen in this
    * class. -->
    */
-  public proto: dataform.IDeclaration = dataform.Declaration.create();
+  public proto = dataform.Declaration.create();
 
   /** @hidden Hold a reference to the Session instance. */
   public session: Session;

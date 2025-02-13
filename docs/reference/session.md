@@ -43,7 +43,7 @@ dataform.projectConfig.vars.myVariableName === "myVariableValue"
 
 ###  assert
 
-▸ **assert**(`name`: string, `query?`: AContextable‹string›): *[Assertion](_core_actions_assertion_.assertion.md)*
+▸ **assert**(`name`: string, `queryOrConfig?`: AContextable‹string› | AssertionConfig): *[Assertion](_core_actions_assertion_.assertion.md)*
 
 Adds a Dataform assertion the compiled graph.
 
@@ -56,7 +56,7 @@ Available only in the `/definitions` directory.
 Name | Type |
 ------ | ------ |
 `name` | string |
-`query?` | AContextable‹string› |
+`queryOrConfig?` | AContextable‹string› &#124; AssertionConfig |
 
 **Returns:** *[Assertion](_core_actions_assertion_.assertion.md)*
 
@@ -87,7 +87,7 @@ ___
 
 ###  notebook
 
-▸ **notebook**(`name`: string): *[Notebook](_core_actions_notebook_.notebook.md)*
+▸ **notebook**(`config`: NotebookConfig): *[Notebook](_core_actions_notebook_.notebook.md)*
 
 Creates a Notebook action.
 
@@ -95,15 +95,11 @@ Available only in the `/definitions` directory.
 
 **`see`** [Notebook](Notebook) for examples on how to use.
 
-<!-- TODO(ekrekr): safely allow passing of config blocks as the second argument, similar to
-publish. -->
-<!-- TODO(ekrekr): add tests for this method -->
-
 **Parameters:**
 
 Name | Type |
 ------ | ------ |
-`name` | string |
+`config` | NotebookConfig |
 
 **Returns:** *[Notebook](_core_actions_notebook_.notebook.md)*
 

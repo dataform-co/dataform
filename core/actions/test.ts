@@ -70,7 +70,7 @@ export class Test extends ActionBuilder<dataform.Test> {
    * <!-- TODO(ekrekr): make this field private, to enforce proto update logic to happen in this
    * class. -->
    */
-  public proto: dataform.ITest = dataform.Test.create();
+  public proto = dataform.Test.create();
 
   /** @hidden Hold a reference to the Session instance. */
   public session: Session;
