@@ -1,7 +1,7 @@
 import { default as TarjanGraphConstructor, Graph as TarjanGraph } from "tarjan-graph";
 
 import { encode64, verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
-import { Action, ActionProto, ILegacyTableConfig, ITableContext, TableType } from "df/core/actions";
+import { Action, ActionProto, ILegacyTableConfig, TableType } from "df/core/actions";
 import { AContextable, Assertion, AssertionContext } from "df/core/actions/assertion";
 import {
   DataPreparation,
@@ -15,8 +15,8 @@ import { Operation, OperationContext } from "df/core/actions/operation";
 import { Table, TableContext } from "df/core/actions/table";
 import { Test } from "df/core/actions/test";
 import { View } from "df/core/actions/view";
-import { Contextable, ICommonContext, ITarget, Resolvable } from "df/core/common";
 import { CompilationSql } from "df/core/compilation_sql";
+import { Contextable, IActionContext, ITableContext, Resolvable } from "df/core/contextables";
 import { targetAsReadableString, targetStringifier } from "df/core/targets";
 import * as utils from "df/core/utils";
 import { toResolvable } from "df/core/utils";
@@ -98,7 +98,7 @@ export class Session {
         | OperationContext
         | DataPreparationContext
         | IDataPreparationContext
-        | ICommonContext
+        | IActionContext
     ) => string[];
     incrementalWhereContextable: (ctx: ITableContext) => string;
     preOperationsContextable: (ctx: ITableContext) => string[];
@@ -106,7 +106,7 @@ export class Session {
     inputContextables: [
       {
         refName: string[];
-        contextable: (ctx: ICommonContext) => string;
+        contextable: (ctx: IActionContext) => string;
       }
     ];
   }) {
@@ -265,7 +265,7 @@ export class Session {
   public operate(
     name: string,
     queryOrConfig?:
-      | Contextable<ICommonContext, string | string[]>
+      | Contextable<IActionContext, string | string[]>
       | dataform.ActionConfig.OperationConfig
   ): Operation {
     let operation = new Operation();
@@ -799,7 +799,7 @@ class ActionMap {
     }
   }
 
-  public set(actionTarget: ITarget, assertionTarget: Action) {
+  public set(actionTarget: dataform.ITarget, assertionTarget: Action) {
     this.setByNameLevel(this.byName, actionTarget.name, assertionTarget);
 
     if (!!actionTarget.schema) {
@@ -850,7 +850,7 @@ class ActionMap {
 
   private setBySchemaLevel(
     targetMap: Map<string, Map<string, Action[]>>,
-    actionTarget: ITarget,
+    actionTarget: dataform.ITarget,
     assertionTarget: Action
   ) {
     if (!targetMap.has(actionTarget.schema)) {

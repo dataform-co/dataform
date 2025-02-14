@@ -90,7 +90,7 @@ ___
 
 ###  dependencies
 
-▸ **dependencies**(`value`: [Resolvable](../modules/_core_common_.md#resolvable) | [Resolvable](../modules/_core_common_.md#resolvable)[]): *this*
+▸ **dependencies**(`value`: [Resolvable](../modules/_core_contextables_.md#resolvable) | [Resolvable](../modules/_core_contextables_.md#resolvable)[]): *this*
 
 **`deprecated`** Deprecated in favor of
 [AssertionConfig.dependencies](configs#dataform-ActionConfig-AssertionConfig).
@@ -101,7 +101,7 @@ Sets dependencies of the assertion.
 
 Name | Type |
 ------ | ------ |
-`value` | [Resolvable](../modules/_core_common_.md#resolvable) &#124; [Resolvable](../modules/_core_common_.md#resolvable)[] |
+`value` | [Resolvable](../modules/_core_contextables_.md#resolvable) &#124; [Resolvable](../modules/_core_contextables_.md#resolvable)[] |
 
 **Returns:** *this*
 

@@ -108,7 +108,7 @@ ___
 
 ###  dependencies
 
-▸ **dependencies**(`value`: [Resolvable](../modules/_core_common_.md#resolvable) | [Resolvable](../modules/_core_common_.md#resolvable)[]): *this*
+▸ **dependencies**(`value`: [Resolvable](../modules/_core_contextables_.md#resolvable) | [Resolvable](../modules/_core_contextables_.md#resolvable)[]): *this*
 
 **`deprecated`** Deprecated in favor of
 [OperationConfig.dependencies](configs#dataform-ActionConfig-OperationConfig).
@@ -119,7 +119,7 @@ Sets dependencies of the table.
 
 Name | Type |
 ------ | ------ |
-`value` | [Resolvable](../modules/_core_common_.md#resolvable) &#124; [Resolvable](../modules/_core_common_.md#resolvable)[] |
+`value` | [Resolvable](../modules/_core_contextables_.md#resolvable) &#124; [Resolvable](../modules/_core_contextables_.md#resolvable)[] |
 
 **Returns:** *this*
 
@@ -207,7 +207,7 @@ ___
 
 ###  queries
 
-▸ **queries**(`queries`: [Contextable](../modules/_core_common_.md#contextable)‹[ICommonContext](../interfaces/_core_common_.icommoncontext.md), string | string[]›): *this*
+▸ **queries**(`queries`: [Contextable](../modules/_core_contextables_.md#contextable)‹[IActionContext](../interfaces/_core_contextables_.iactioncontext.md), string | string[]›): *this*
 
 Sets the query/queries to generate the operation from.
 
@@ -217,7 +217,7 @@ Sets the query/queries to generate the operation from.
 
 Name | Type |
 ------ | ------ |
-`queries` | [Contextable](../modules/_core_common_.md#contextable)‹[ICommonContext](../interfaces/_core_common_.icommoncontext.md), string &#124; string[]› |
+`queries` | [Contextable](../modules/_core_contextables_.md#contextable)‹[IActionContext](../interfaces/_core_contextables_.iactioncontext.md), string &#124; string[]› |
 
 **Returns:** *this*
 
