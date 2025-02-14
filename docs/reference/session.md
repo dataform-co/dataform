@@ -84,7 +84,7 @@ ___
 
 ###  notebook
 
-▸ **notebook**(`name`: string): *[Notebook](_core_actions_notebook_.notebook.md)*
+▸ **notebook**(`config`: NotebookConfig): *[Notebook](_core_actions_notebook_.notebook.md)*
 
 Creates a Notebook action.
 
@@ -92,15 +92,11 @@ Available only in the `/definitions` directory.
 
 **`see`** [Notebook](Notebook) for examples on how to use.
 
-<!-- TODO(ekrekr): safely allow passing of config blocks as the second argument, similar to
-publish. -->
-<!-- TODO(ekrekr): add tests for this method -->
-
 **Parameters:**
 
 Name | Type |
 ------ | ------ |
-`name` | string |
+`config` | NotebookConfig |
 
 **Returns:** *[Notebook](_core_actions_notebook_.notebook.md)*
 
