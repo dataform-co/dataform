@@ -24,7 +24,7 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
   public session: Session;
 
   // We delay contextification until the final compile step, so hold these here for now.
-  public contextableQuery: Contextable<IDataPreparationContext, string>;
+  public contextableQuery: Contextable<ITableContext, string>;
 
   // TODO: make this field private, to enforce proto update logic to happen in this class.
   public proto = dataform.DataPreparation.create();
@@ -75,7 +75,7 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     return this;
   }
 
-  public query(query: Contextable<IDataPreparationContext, string>) {
+  public query(query: Contextable<ITableContext, string>) {
     this.contextableQuery = query;
     return this;
   }
@@ -415,15 +415,9 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
   }
 }
 
-export interface IDataPreparationContext extends ITableContext {
-  /**
-   * Shorthand for a validation SQL expression. This converts the parameters
-   * into a validation call supported by Data Preparation.
-   */
-  validate: (exp: string) => string;
-}
+export class DataPreparationContext implements ITableContext {
+  public EXPECT : string = " /* @@VALIDATION */ WHERE ";
 
-export class DataPreparationContext implements IDataPreparationContext {
   constructor(private dataPreparation: DataPreparation, private isIncremental = false) {}
 
   public config(config: dataform.ActionConfig.DataPreparationConfig) {
@@ -485,11 +479,7 @@ export class DataPreparationContext implements IDataPreparationContext {
     return "";
   }
 
-  public validate(exp: string): string {
-    return `-- @@VALIDATION\n|> WHERE IF(${exp},true,ERROR(\"Validation Failed\"))`;
-  }
-
-  public apply<T>(value: Contextable<IDataPreparationContext, T>): T {
+  public apply<T>(value: Contextable<ITableContext, T>): T {
     if (typeof value === "function") {
       return (value as any)(this);
     } else {

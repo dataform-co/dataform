@@ -1218,7 +1218,7 @@ config {
 
 FROM x
 -- Ensure y is positive
-$\{validate("y > 0")\}
+|> $\{EXPECT\} y > 0
 $\{when(true, "|> SELECT *", "|> SELECT 1")\}
 `;
 
@@ -1273,8 +1273,7 @@ $\{when(true, "|> SELECT *", "|> SELECT 1")\}
             },
             query: `FROM x
 -- Ensure y is positive
--- @@VALIDATION
-|> WHERE IF(y > 0,true,ERROR(\"Validation Failed\"))
+|>  /* @@VALIDATION */ WHERE  y > 0
 |> SELECT *`,
             errorTable: {
               database: "errorPrj",
