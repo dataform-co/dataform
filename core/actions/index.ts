@@ -112,6 +112,27 @@ export abstract class ActionBuilder<T> {
   }
 }
 
+export function checkConfigAdditionalOptionsOverlap(
+  config: dataform.ActionConfig.TableConfig | dataform.ActionConfig.IncrementalTableConfig,
+  session: Session
+) {
+  const target = dataform.Target.create({
+    database: config.project,
+    schema: config.dataset,
+    name: config.name
+  });
+  if (config.partitionExpirationDays && config.additionalOptions.partition_expiration_days) {
+    session.compileError(
+      `partitionExpirationDays has been declared twice`,
+      config.filename,
+      target
+    );
+  }
+  if (config.requirePartitionFilter && config.additionalOptions.require_partition_filter) {
+    session.compileError(`requirePartitionFilter has been declared twice`, config.filename, target);
+  }
+}
+
 /**
  * Context methods are available when evaluating contextable SQL code, such as
  * within SQLX files, or when using a [Contextable](#Contextable) argument with the JS API.
