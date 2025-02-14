@@ -134,12 +134,9 @@ export class View extends ActionBuilder<dataform.Table> {
       config.name = Path.basename(config.filename);
     }
     const target = actionConfigToCompiledGraphTarget(config);
-    this.proto.target = this.applySessionToTarget(
-      target,
-      session.projectConfig,
-      config.filename,
-      true
-    );
+    this.proto.target = this.applySessionToTarget(target, session.projectConfig, config.filename, {
+      validateTarget: true
+    });
     this.proto.canonicalTarget = this.applySessionToTarget(target, session.canonicalProjectConfig);
 
     if (configPath) {
@@ -420,7 +417,7 @@ export class View extends ActionBuilder<dataform.Table> {
       dataform.Target.create({ ...this.proto.target, database }),
       this.session.projectConfig,
       this.proto.fileName,
-      true
+      { validateTarget: true }
     );
     return this;
   }
@@ -436,7 +433,7 @@ export class View extends ActionBuilder<dataform.Table> {
       dataform.Target.create({ ...this.proto.target, schema }),
       this.session.projectConfig,
       this.proto.fileName,
-      true
+      { validateTarget: true }
     );
     return this;
   }

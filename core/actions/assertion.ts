@@ -106,19 +106,15 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
       config.name = Path.basename(config.filename);
     }
     const target = actionConfigToCompiledGraphTarget(config);
-    this.proto.target = this.applySessionToTarget(
-      target,
-      session.projectConfig,
-      config.filename,
-      true,
-      true
-    );
+    this.proto.target = this.applySessionToTarget(target, session.projectConfig, config.filename, {
+      validateTarget: true,
+      useDefaultAssertionDataset: true
+    });
     this.proto.canonicalTarget = this.applySessionToTarget(
       target,
       session.canonicalProjectConfig,
       undefined,
-      false,
-      true
+      { validateTarget: false, useDefaultAssertionDataset: true }
     );
 
     if (configPath) {
@@ -246,8 +242,7 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
       dataform.Target.create({ ...this.proto.target, database }),
       this.session.projectConfig,
       this.proto.fileName,
-      true,
-      true
+      { validateTarget: true, useDefaultAssertionDataset: true }
     );
     return this;
   }
@@ -264,8 +259,7 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
       dataform.Target.create({ ...this.proto.target, schema }),
       this.session.projectConfig,
       this.proto.fileName,
-      true,
-      true
+      { validateTarget: true, useDefaultAssertionDataset: true }
     );
     return this;
   }
