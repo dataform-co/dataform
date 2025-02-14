@@ -2,7 +2,6 @@ import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/p
 import {
   ActionBuilder,
   ILegacyBigQueryOptions,
-  ITableContext,
   LegacyConfigConverter,
   TableType
 } from "df/core/actions";
@@ -10,7 +9,7 @@ import { Assertion } from "df/core/actions/assertion";
 import { IncrementalTable } from "df/core/actions/incremental_table";
 import { Table } from "df/core/actions/table";
 import { ColumnDescriptors } from "df/core/column_descriptors";
-import { Contextable, Resolvable } from "df/core/common";
+import { Contextable, ITableContext, Resolvable } from "df/core/contextables";
 import * as Path from "df/core/path";
 import { Session } from "df/core/session";
 import {

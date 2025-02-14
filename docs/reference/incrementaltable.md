@@ -151,7 +151,7 @@ ___
 
 ###  dependencies
 
-▸ **dependencies**(`value`: [Resolvable](../modules/_core_common_.md#resolvable) | [Resolvable](../modules/_core_common_.md#resolvable)[]): *this*
+▸ **dependencies**(`value`: [Resolvable](../modules/_core_contextables_.md#resolvable) | [Resolvable](../modules/_core_contextables_.md#resolvable)[]): *this*
 
 **`deprecated`** Deprecated in favor of
 [IncrementalTableConfig.dependencies](configs#dataform-ActionConfig-IncrementalTableConfig).
@@ -162,7 +162,7 @@ Sets dependencies of the incremental table.
 
 Name | Type |
 ------ | ------ |
-`value` | [Resolvable](../modules/_core_common_.md#resolvable) &#124; [Resolvable](../modules/_core_common_.md#resolvable)[] |
+`value` | [Resolvable](../modules/_core_contextables_.md#resolvable) &#124; [Resolvable](../modules/_core_contextables_.md#resolvable)[] |
 
 **Returns:** *this*
 
@@ -230,7 +230,7 @@ ___
 
 ###  postOps
 
-▸ **postOps**(`posts`: [Contextable](../modules/_core_common_.md#contextable)‹[ITableContext](../interfaces/_core_actions_index_.itablecontext.md), string | string[]›): *this*
+▸ **postOps**(`posts`: [Contextable](../modules/_core_contextables_.md#contextable)‹[ITableContext](../interfaces/_core_contextables_.itablecontext.md), string | string[]›): *this*
 
 Sets a post-operation to run after the query is run. This is often used for revoking temporary
 permissions granted to access source tables.
@@ -249,7 +249,7 @@ publish("example")
 
 Name | Type |
 ------ | ------ |
-`posts` | [Contextable](../modules/_core_common_.md#contextable)‹[ITableContext](../interfaces/_core_actions_index_.itablecontext.md), string &#124; string[]› |
+`posts` | [Contextable](../modules/_core_contextables_.md#contextable)‹[ITableContext](../interfaces/_core_contextables_.itablecontext.md), string &#124; string[]› |
 
 **Returns:** *this*
 
@@ -257,7 +257,7 @@ ___
 
 ###  preOps
 
-▸ **preOps**(`pres`: [Contextable](../modules/_core_common_.md#contextable)‹[ITableContext](../interfaces/_core_actions_index_.itablecontext.md), string | string[]›): *this*
+▸ **preOps**(`pres`: [Contextable](../modules/_core_contextables_.md#contextable)‹[ITableContext](../interfaces/_core_contextables_.itablecontext.md), string | string[]›): *this*
 
 Sets a pre-operation to run before the query is run. This is often used for temporarily
 granting permission to access source tables.
@@ -276,7 +276,7 @@ publish("example")
 
 Name | Type |
 ------ | ------ |
-`pres` | [Contextable](../modules/_core_common_.md#contextable)‹[ITableContext](../interfaces/_core_actions_index_.itablecontext.md), string &#124; string[]› |
+`pres` | [Contextable](../modules/_core_contextables_.md#contextable)‹[ITableContext](../interfaces/_core_contextables_.itablecontext.md), string &#124; string[]› |
 
 **Returns:** *this*
 
@@ -303,7 +303,7 @@ ___
 
 ###  query
 
-▸ **query**(`query`: [Contextable](../modules/_core_common_.md#contextable)‹[ITableContext](../interfaces/_core_actions_index_.itablecontext.md), string›): *this*
+▸ **query**(`query`: [Contextable](../modules/_core_contextables_.md#contextable)‹[ITableContext](../interfaces/_core_contextables_.itablecontext.md), string›): *this*
 
 Sets the query to generate the table from.
 
@@ -311,7 +311,7 @@ Sets the query to generate the table from.
 
 Name | Type |
 ------ | ------ |
-`query` | [Contextable](../modules/_core_common_.md#contextable)‹[ITableContext](../interfaces/_core_actions_index_.itablecontext.md), string› |
+`query` | [Contextable](../modules/_core_contextables_.md#contextable)‹[ITableContext](../interfaces/_core_contextables_.itablecontext.md), string› |
 
 **Returns:** *this*
 

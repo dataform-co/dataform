@@ -1,8 +1,8 @@
 import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
-import { ActionBuilder, ITableContext, TableType } from "df/core/actions";
+import { ActionBuilder, INamedConfig, TableType } from "df/core/actions";
 import { Table } from "df/core/actions/table";
 import { View } from "df/core/actions/view";
-import { Contextable, ICommonContext, INamedConfig, Resolvable } from "df/core/common";
+import { Contextable, IActionContext, ITableContext, Resolvable } from "df/core/contextables";
 import { Session } from "df/core/session";
 import { targetStringifier } from "df/core/targets";
 import {
@@ -76,8 +76,8 @@ export class Test extends ActionBuilder<dataform.Test> {
   public session: Session;
 
   /** @hidden We delay contextification until the final compile step, so hold these here for now. */
-  public contextableInputs = new Map<string, Contextable<ICommonContext, string>>();
-  private contextableQuery: Contextable<ICommonContext, string>;
+  public contextableInputs = new Map<string, Contextable<IActionContext, string>>();
+  private contextableQuery: Contextable<IActionContext, string>;
   private datasetToTest: Resolvable;
 
   /** @hidden */
@@ -110,7 +110,7 @@ export class Test extends ActionBuilder<dataform.Test> {
   /**
    * Sets the input query to unit test against.
    */
-  public input(refName: string | string[], contextableQuery: Contextable<ICommonContext, string>) {
+  public input(refName: string | string[], contextableQuery: Contextable<IActionContext, string>) {
     this.contextableInputs.set(
       targetStringifier.stringify(resolvableAsTarget(toResolvable(refName))),
       contextableQuery
@@ -121,7 +121,7 @@ export class Test extends ActionBuilder<dataform.Test> {
   /**
    * Sets the expected output of the query to being tested against.
    */
-  public expect(contextableQuery: Contextable<ICommonContext, string>) {
+  public expect(contextableQuery: Contextable<IActionContext, string>) {
     this.contextableQuery = contextableQuery;
     return this;
   }
@@ -186,7 +186,7 @@ export class TestContext {
     this.test = test;
   }
 
-  public apply<T>(value: Contextable<ICommonContext, T>): T {
+  public apply<T>(value: Contextable<IActionContext, T>): T {
     if (typeof value === "function") {
       return (value as any)(this);
     } else {

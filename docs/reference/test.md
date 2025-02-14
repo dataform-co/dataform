@@ -53,7 +53,7 @@ This is where `input` and `expect` come from.
 
 ###  dataset
 
-▸ **dataset**(`ref`: [Resolvable](../modules/_core_common_.md#resolvable)): *this*
+▸ **dataset**(`ref`: [Resolvable](../modules/_core_contextables_.md#resolvable)): *this*
 
 Sets the schema (BigQuery dataset) in which to create the output of this action.
 
@@ -61,7 +61,7 @@ Sets the schema (BigQuery dataset) in which to create the output of this action.
 
 Name | Type |
 ------ | ------ |
-`ref` | [Resolvable](../modules/_core_common_.md#resolvable) |
+`ref` | [Resolvable](../modules/_core_contextables_.md#resolvable) |
 
 **Returns:** *this*
 
@@ -69,7 +69,7 @@ ___
 
 ###  expect
 
-▸ **expect**(`contextableQuery`: [Contextable](../modules/_core_common_.md#contextable)‹[ICommonContext](../interfaces/_core_common_.icommoncontext.md), string›): *this*
+▸ **expect**(`contextableQuery`: [Contextable](../modules/_core_contextables_.md#contextable)‹[IActionContext](../interfaces/_core_contextables_.iactioncontext.md), string›): *this*
 
 Sets the expected output of the query to being tested against.
 
@@ -77,7 +77,7 @@ Sets the expected output of the query to being tested against.
 
 Name | Type |
 ------ | ------ |
-`contextableQuery` | [Contextable](../modules/_core_common_.md#contextable)‹[ICommonContext](../interfaces/_core_common_.icommoncontext.md), string› |
+`contextableQuery` | [Contextable](../modules/_core_contextables_.md#contextable)‹[IActionContext](../interfaces/_core_contextables_.iactioncontext.md), string› |
 
 **Returns:** *this*
 
@@ -85,7 +85,7 @@ ___
 
 ###  input
 
-▸ **input**(`refName`: string | string[], `contextableQuery`: [Contextable](../modules/_core_common_.md#contextable)‹[ICommonContext](../interfaces/_core_common_.icommoncontext.md), string›): *this*
+▸ **input**(`refName`: string | string[], `contextableQuery`: [Contextable](../modules/_core_contextables_.md#contextable)‹[IActionContext](../interfaces/_core_contextables_.iactioncontext.md), string›): *this*
 
 Sets the input query to unit test against.
 
@@ -94,6 +94,6 @@ Sets the input query to unit test against.
 Name | Type |
 ------ | ------ |
 `refName` | string &#124; string[] |
-`contextableQuery` | [Contextable](../modules/_core_common_.md#contextable)‹[ICommonContext](../interfaces/_core_common_.icommoncontext.md), string› |
+`contextableQuery` | [Contextable](../modules/_core_contextables_.md#contextable)‹[IActionContext](../interfaces/_core_contextables_.iactioncontext.md), string› |
 
 **Returns:** *this*
