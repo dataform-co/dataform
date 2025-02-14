@@ -498,8 +498,6 @@ export class Session {
 
     this.checkTestNameUniqueness(compiledGraph.tests);
 
-    this.checkTableConfigValidity(compiledGraph.tables);
-
     this.checkCircularity(
       [].concat(
         compiledGraph.tables,
@@ -652,92 +650,6 @@ export class Session {
 
       if (action instanceof dataform.Assertion && !!action.parentAction) {
         action.parentAction = getUpdatedTarget(action.parentAction);
-      }
-    });
-  }
-
-  // TODO(ekrekr): finish pushing config validation down to the classes.
-  private checkTableConfigValidity(tables: dataform.ITable[]) {
-    tables.forEach(table => {
-      // type
-      if (table.enumType === dataform.TableType.UNKNOWN_TYPE) {
-        this.compileError(
-          `Wrong type of table detected. Should only use predefined types: ${joinQuoted(
-            TableType
-          )}`,
-          table.fileName,
-          table.target
-        );
-      }
-
-      // materialized
-      if (!!table.materialized) {
-        if (table.enumType !== dataform.TableType.VIEW) {
-          this.compileError(
-            new Error(`The 'materialized' option is only valid for BigQuery views`),
-            table.fileName,
-            table.target
-          );
-        }
-      }
-
-      // BigQuery config
-      if (!!table.bigquery) {
-        if (
-          (table.bigquery.partitionBy ||
-            table.bigquery.clusterBy?.length ||
-            table.bigquery.partitionExpirationDays ||
-            table.bigquery.requirePartitionFilter) &&
-          table.enumType === dataform.TableType.VIEW &&
-          !table.materialized
-        ) {
-          this.compileError(
-            `partitionBy/clusterBy/requirePartitionFilter/partitionExpirationDays are not valid for BigQuery views`,
-            table.fileName,
-            table.target
-          );
-        } else if (
-          (table.bigquery.partitionExpirationDays || table.bigquery.requirePartitionFilter) &&
-          table.enumType === dataform.TableType.VIEW &&
-          table.materialized
-        ) {
-          this.compileError(
-            `requirePartitionFilter/partitionExpirationDays are not valid for BigQuery materialized views`,
-            table.fileName,
-            table.target
-          );
-        } else if (
-          !table.bigquery.partitionBy &&
-          (table.bigquery.partitionExpirationDays || table.bigquery.requirePartitionFilter) &&
-          table.enumType === dataform.TableType.TABLE
-        ) {
-          this.compileError(
-            `requirePartitionFilter/partitionExpirationDays are not valid for non partitioned BigQuery tables`,
-            table.fileName,
-            table.target
-          );
-        } else if (table.bigquery.additionalOptions) {
-          if (
-            table.bigquery.partitionExpirationDays &&
-            table.bigquery.additionalOptions.partition_expiration_days
-          ) {
-            this.compileError(
-              `partitionExpirationDays has been declared twice`,
-              table.fileName,
-              table.target
-            );
-          }
-          if (
-            table.bigquery.requirePartitionFilter &&
-            table.bigquery.additionalOptions.require_partition_filter
-          ) {
-            this.compileError(
-              `requirePartitionFilter has been declared twice`,
-              table.fileName,
-              table.target
-            );
-          }
-        }
       }
     });
   }

@@ -1,6 +1,7 @@
 import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import {
   ActionBuilder,
+  checkConfigAdditionalOptionsOverlap,
   ILegacyBigQueryOptions,
   ILegacyTableConfig,
   LegacyConfigConverter,
@@ -626,11 +627,29 @@ export class Table extends ActionBuilder<dataform.Table> {
       }
     }
 
-    return verifyObjectMatchesProto(
+    const config = verifyObjectMatchesProto(
       dataform.ActionConfig.TableConfig,
       unverifiedConfig,
       VerifyProtoErrorBehaviour.SHOW_DOCS_LINK
     );
+
+    if (!config.partitionBy && (config.partitionExpirationDays || config.requirePartitionFilter)) {
+      this.session.compileError(
+        `requirePartitionFilter/partitionExpirationDays are not valid for non partitioned BigQuery tables`,
+        config.filename,
+        dataform.Target.create({
+          database: config.project,
+          schema: config.dataset,
+          name: config.name
+        })
+      );
+    }
+
+    if (config.additionalOptions) {
+      checkConfigAdditionalOptionsOverlap(config, this.session);
+    }
+
+    return config;
   }
 }
 

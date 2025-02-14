@@ -1,6 +1,7 @@
 import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import {
   ActionBuilder,
+  checkConfigAdditionalOptionsOverlap,
   ILegacyBigQueryOptions,
   ILegacyTableConfig,
   LegacyConfigConverter,
@@ -656,11 +657,17 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
       }
     }
 
-    return verifyObjectMatchesProto(
+    const config = verifyObjectMatchesProto(
       dataform.ActionConfig.IncrementalTableConfig,
       unverifiedConfig,
       VerifyProtoErrorBehaviour.SHOW_DOCS_LINK
     );
+
+    if (config.additionalOptions) {
+      checkConfigAdditionalOptionsOverlap(config, this.session);
+    }
+
+    return config;
   }
 
   // The type of onSchemaChange depends on the source file:
