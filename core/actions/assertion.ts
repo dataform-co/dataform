@@ -1,6 +1,6 @@
 import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { ActionBuilder } from "df/core/actions";
-import { ICommonContext, Resolvable } from "df/core/common";
+import { IActionContext, Resolvable } from "df/core/contextables";
 import * as Path from "df/core/path";
 import { Session } from "df/core/session";
 import {
@@ -339,7 +339,7 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
 /**
  * @hidden
  */
-export class AssertionContext implements ICommonContext {
+export class AssertionContext implements IActionContext {
   private assertion?: Assertion;
 
   constructor(assertion: Assertion) {
