@@ -29,7 +29,7 @@ ts_library(
         "actions/test.ts",
         "actions/view.ts",
         "column_descriptors.ts",
-        "common.ts",
+        "contextables.ts",
         "compilers.ts",
         "index.ts",
         "main.ts",

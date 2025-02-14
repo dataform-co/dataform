@@ -6,7 +6,7 @@ import { Notebook } from "df/core/actions/notebook";
 import { Operation } from "df/core/actions/operation";
 import { Table } from "df/core/actions/table";
 import { View } from "df/core/actions/view";
-import { Resolvable } from "df/core/common";
+import { Resolvable } from "df/core/contextables";
 import * as Path from "df/core/path";
 import { Session } from "df/core/session";
 import { dataform } from "df/protos/ts";

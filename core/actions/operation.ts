@@ -1,7 +1,7 @@
 import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { ActionBuilder } from "df/core/actions";
 import { ColumnDescriptors } from "df/core/column_descriptors";
-import { Contextable, ICommonContext, Resolvable } from "df/core/common";
+import { Contextable, IActionContext, Resolvable } from "df/core/contextables";
 import * as Path from "df/core/path";
 import { Session } from "df/core/session";
 import {
@@ -90,7 +90,7 @@ export class Operation extends ActionBuilder<dataform.Operation> {
   public dependOnDependencyAssertions: boolean = false;
 
   /** @hidden We delay contextification until the final compile step, so hold these here for now. */
-  private contextableQueries: Contextable<ICommonContext, string | string[]>;
+  private contextableQueries: Contextable<IActionContext, string | string[]>;
 
   /** @hidden */
   constructor(session?: Session, unverifiedConfig?: any, configPath?: string) {
@@ -169,7 +169,7 @@ export class Operation extends ActionBuilder<dataform.Operation> {
    *
    * <!-- TODO(ekrekr): deprecated this in favor of a single `query(` method -->
    */
-  public queries(queries: Contextable<ICommonContext, string | string[]>) {
+  public queries(queries: Contextable<IActionContext, string | string[]>) {
     this.contextableQueries = queries;
     return this;
   }
@@ -399,7 +399,7 @@ export class Operation extends ActionBuilder<dataform.Operation> {
 /**
  * @hidden
  */
-export class OperationContext implements ICommonContext {
+export class OperationContext implements IActionContext {
   private operation?: Operation;
 
   constructor(operation: Operation) {
@@ -462,7 +462,7 @@ export class OperationContext implements ICommonContext {
     return cond ? trueCase : falseCase;
   }
 
-  public apply<T>(value: Contextable<ICommonContext, T>): T {
+  public apply<T>(value: Contextable<IActionContext, T>): T {
     if (typeof value === "function") {
       return (value as any)(this);
     } else {
