@@ -76,12 +76,9 @@ export class Notebook extends ActionBuilder<dataform.Notebook> {
     config.filename = resolveActionsConfigFilename(config.filename, configPath);
 
     this.session = session;
-    this.proto.target = this.applySessionToTarget(
-      target,
-      session.projectConfig,
-      config.filename,
-      true
-    );
+    this.proto.target = this.applySessionToTarget(target, session.projectConfig, config.filename, {
+      validateTarget: true
+    });
     this.proto.canonicalTarget = this.applySessionToTarget(target, session.canonicalProjectConfig);
     this.proto.tags = config.tags;
     this.dependOnDependencyAssertions = config.dependOnDependencyAssertions;

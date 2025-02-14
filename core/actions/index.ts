@@ -43,10 +43,12 @@ export abstract class ActionBuilder<T> {
     targetFromConfig: dataform.Target,
     projectConfig: dataform.ProjectConfig,
     fileName?: string,
-    validateTarget = false,
-    useDefaultAssertionDataset = false
+    options?: {
+      validateTarget?: boolean;
+      useDefaultAssertionDataset?: boolean;
+    }
   ): dataform.Target {
-    const defaultSchema = useDefaultAssertionDataset
+    const defaultSchema = options?.useDefaultAssertionDataset
       ? projectConfig.assertionSchema || projectConfig.defaultSchema
       : projectConfig.defaultSchema;
     const target = dataform.Target.create({
@@ -54,7 +56,7 @@ export abstract class ActionBuilder<T> {
       schema: targetFromConfig.schema || defaultSchema || undefined,
       database: targetFromConfig.database || projectConfig.defaultDatabase || undefined
     });
-    if (validateTarget) {
+    if (options?.validateTarget) {
       this.validateTarget(targetFromConfig, fileName);
     }
     return target;

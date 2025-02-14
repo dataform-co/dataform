@@ -11,7 +11,6 @@ import {
   nativeRequire,
   resolvableAsTarget,
   resolveActionsConfigFilename,
-  setNameAndTarget,
   toResolvable
 } from "df/core/utils";
 import { dataform } from "df/protos/ts";
@@ -107,12 +106,9 @@ export class Operation extends ActionBuilder<dataform.Operation> {
       config.name = Path.basename(config.filename);
     }
     const target = actionConfigToCompiledGraphTarget(config);
-    this.proto.target = this.applySessionToTarget(
-      target,
-      session.projectConfig,
-      config.filename,
-      true
-    );
+    this.proto.target = this.applySessionToTarget(target, session.projectConfig, config.filename, {
+      validateTarget: true
+    });
     this.proto.canonicalTarget = this.applySessionToTarget(target, session.canonicalProjectConfig);
 
     if (configPath) {
@@ -280,12 +276,11 @@ export class Operation extends ActionBuilder<dataform.Operation> {
    * operation.
    */
   public database(database: string) {
-    setNameAndTarget(
-      this.session,
-      this.proto,
-      this.proto.target.name,
-      this.proto.target.schema,
-      database
+    this.proto.target = this.applySessionToTarget(
+      dataform.Target.create({ ...this.proto.target, database }),
+      this.session.projectConfig,
+      this.proto.fileName,
+      { validateTarget: true }
     );
     return this;
   }
@@ -297,12 +292,11 @@ export class Operation extends ActionBuilder<dataform.Operation> {
    * Sets the schema (BigQuery dataset) in which to create the output of this action.
    */
   public schema(schema: string) {
-    setNameAndTarget(
-      this.session,
-      this.proto,
-      this.proto.target.name,
-      schema,
-      this.proto.target.database
+    this.proto.target = this.applySessionToTarget(
+      dataform.Target.create({ ...this.proto.target, schema }),
+      this.session.projectConfig,
+      this.proto.fileName,
+      { validateTarget: true }
     );
     return this;
   }

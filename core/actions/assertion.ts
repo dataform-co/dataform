@@ -9,7 +9,6 @@ import {
   nativeRequire,
   resolvableAsTarget,
   resolveActionsConfigFilename,
-  setNameAndTarget,
   toResolvable,
   validateQueryString
 } from "df/core/utils";
@@ -107,19 +106,15 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
       config.name = Path.basename(config.filename);
     }
     const target = actionConfigToCompiledGraphTarget(config);
-    this.proto.target = this.applySessionToTarget(
-      target,
-      session.projectConfig,
-      config.filename,
-      true,
-      true
-    );
+    this.proto.target = this.applySessionToTarget(target, session.projectConfig, config.filename, {
+      validateTarget: true,
+      useDefaultAssertionDataset: true
+    });
     this.proto.canonicalTarget = this.applySessionToTarget(
       target,
       session.canonicalProjectConfig,
       undefined,
-      false,
-      true
+      { validateTarget: false, useDefaultAssertionDataset: true }
     );
 
     if (configPath) {
@@ -243,12 +238,11 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
    * assertion.
    */
   public database(database: string) {
-    setNameAndTarget(
-      this.session,
-      this.proto,
-      this.proto.target.name,
-      this.proto.target.schema,
-      database
+    this.proto.target = this.applySessionToTarget(
+      dataform.Target.create({ ...this.proto.target, database }),
+      this.session.projectConfig,
+      this.proto.fileName,
+      { validateTarget: true, useDefaultAssertionDataset: true }
     );
     return this;
   }
@@ -261,12 +255,11 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
    * assertion.
    */
   public schema(schema: string) {
-    setNameAndTarget(
-      this.session,
-      this.proto,
-      this.proto.target.name,
-      schema,
-      this.proto.target.database
+    this.proto.target = this.applySessionToTarget(
+      dataform.Target.create({ ...this.proto.target, schema }),
+      this.session.projectConfig,
+      this.proto.fileName,
+      { validateTarget: true, useDefaultAssertionDataset: true }
     );
     return this;
   }

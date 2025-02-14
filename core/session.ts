@@ -268,12 +268,11 @@ export class Session {
       | Contextable<IActionContext, string | string[]>
       | dataform.ActionConfig.OperationConfig
   ): Operation {
-    let operation = new Operation();
+    let operation: Operation;
     if (!!queryOrConfig && typeof queryOrConfig === "object") {
       operation = new Operation(this, { name, ...queryOrConfig });
     } else {
-      operation.session = this;
-      utils.setNameAndTarget(this, operation.proto, name, this.projectConfig.assertionSchema);
+      operation = new Operation(this, { name });
       if (queryOrConfig) {
         operation.queries(queryOrConfig as AContextable<string>);
       }
@@ -338,12 +337,11 @@ export class Session {
     name: string,
     queryOrConfig?: AContextable<string> | dataform.ActionConfig.AssertionConfig
   ): Assertion {
-    let assertion = new Assertion();
+    let assertion: Assertion;
     if (!!queryOrConfig && typeof queryOrConfig === "object") {
       assertion = new Assertion(this, { name, ...queryOrConfig });
     } else {
-      assertion.session = this;
-      utils.setNameAndTarget(this, assertion.proto, name, this.projectConfig.assertionSchema);
+      assertion = new Assertion(this, { name });
       if (queryOrConfig) {
         assertion.query(queryOrConfig as AContextable<string>);
       }

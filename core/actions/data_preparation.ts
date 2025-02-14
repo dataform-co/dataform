@@ -12,7 +12,6 @@ import {
   nativeRequire,
   resolvableAsTarget,
   resolveActionsConfigFilename,
-  setNameAndTarget,
   toResolvable,
   validateQueryString
 } from "df/core/utils";
@@ -122,23 +121,21 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
   }
 
   public database(database: string) {
-    setNameAndTarget(
-      this.session,
-      this.proto,
-      this.proto.target.name,
-      this.proto.target.schema,
-      database
+    this.proto.target = this.applySessionToTarget(
+      dataform.Target.create({ ...this.proto.target, database }),
+      this.session.projectConfig,
+      this.proto.fileName,
+      { validateTarget: true }
     );
     return this;
   }
 
   public schema(schema: string) {
-    setNameAndTarget(
-      this.session,
-      this.proto,
-      this.proto.target.name,
-      schema,
-      this.proto.target.database
+    this.proto.target = this.applySessionToTarget(
+      dataform.Target.create({ ...this.proto.target, schema }),
+      this.session.projectConfig,
+      this.proto.fileName,
+      { validateTarget: true }
     );
     return this;
   }
@@ -152,7 +149,9 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
   ) {
     const defaultTarget = dataform.Target.create({ name: config.name });
     this.proto.target = this.finalizeTarget(
-      this.applySessionToTarget(defaultTarget, session.projectConfig, config.filename, true)
+      this.applySessionToTarget(defaultTarget, session.projectConfig, config.filename, {
+        validateTarget: true
+      })
     );
     this.proto.targets = [this.proto.target];
     this.proto.canonicalTarget = this.applySessionToTarget(
@@ -173,7 +172,9 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     config?: dataform.ActionConfig.DataPreparationConfig
   ) {
     const resolvedTargets = targets.map(target =>
-      this.applySessionToTarget(target, session.projectConfig, config.filename, true)
+      this.applySessionToTarget(target, session.projectConfig, config.filename, {
+        validateTarget: true
+      })
     );
     // Finalize list of targets.
     this.proto.targets = resolvedTargets.map(target => this.finalizeTarget(target));
@@ -342,7 +343,9 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     // Resolve targets
     this.proto.targets = targets
       .map(target =>
-        this.applySessionToTarget(target, session.projectConfig, config.filename, true)
+        this.applySessionToTarget(target, session.projectConfig, config.filename, {
+          validateTarget: true
+        })
       )
       .map(target => this.finalizeTarget(target));
 
