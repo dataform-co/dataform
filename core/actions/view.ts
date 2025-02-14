@@ -14,7 +14,7 @@ import * as Path from "df/core/path";
 import { Session } from "df/core/session";
 import {
   actionConfigToCompiledGraphTarget,
-  addDependenciesToActionDependencyTargets,
+  checkAssertionsForDependency,
   checkExcessProperties,
   configTargetToCompiledGraphTarget,
   nativeRequire,
@@ -340,7 +340,7 @@ export class View extends ActionBuilder<dataform.Table> {
   public dependencies(value: Resolvable | Resolvable[]) {
     const newDependencies = Array.isArray(value) ? value : [value];
     newDependencies.forEach(resolvable =>
-      addDependenciesToActionDependencyTargets(this, resolvable)
+      this.proto.dependencyTargets.push(checkAssertionsForDependency(this, resolvable))
     );
     return this;
   }

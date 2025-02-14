@@ -231,7 +231,7 @@ export class Session {
     }
     const resolved = allResolved.length > 0 ? allResolved[0] : undefined;
 
-    if (resolved && resolved instanceof Operation && !resolved.proto.hasOutput) {
+    if (resolved && resolved instanceof Operation && !resolved.getHasOutput()) {
       this.compileError(
         new Error("Actions cannot resolve operations which do not produce output.")
       );
@@ -243,11 +243,11 @@ export class Session {
         return this.compilationSql().resolveTarget(resolved.proto.target);
       }
       return this.compilationSql().resolveTarget({
-        ...resolved.proto.target,
+        ...resolved.getTarget(),
         database:
-          resolved.proto.target.database && this.finalizeDatabase(resolved.proto.target.database),
-        schema: this.finalizeSchema(resolved.proto.target.schema),
-        name: this.finalizeName(resolved.proto.target.name)
+          resolved.getTarget().database && this.finalizeDatabase(resolved.getTarget().database),
+        schema: this.finalizeSchema(resolved.getTarget().schema),
+        name: this.finalizeName(resolved.getTarget().name)
       });
     }
 
@@ -269,15 +269,15 @@ export class Session {
       | dataform.ActionConfig.OperationConfig
   ): Operation {
     let operation: Operation;
+    const filename = utils.getCallerFile(this.rootDir);
     if (!!queryOrConfig && typeof queryOrConfig === "object") {
-      operation = new Operation(this, { name, ...queryOrConfig });
+      operation = new Operation(this, { name, ...queryOrConfig, filename });
     } else {
-      operation = new Operation(this, { name });
+      operation = new Operation(this, { name, filename });
       if (queryOrConfig) {
         operation.queries(queryOrConfig as AContextable<string>);
       }
     }
-    operation.proto.fileName = utils.getCallerFile(this.rootDir);
     this.actions.push(operation);
     return operation;
   }
@@ -468,7 +468,7 @@ export class Session {
       ),
       graphErrors: this.graphErrors,
       dataformCoreVersion,
-      targets: this.actions.map(action => action.proto.target)
+      targets: this.actions.map(action => action.getTarget())
     });
 
     this.fullyQualifyDependencies(
@@ -579,16 +579,17 @@ export class Session {
           );
         } else if (possibleDeps.length === 1) {
           // We found a single matching target, and fully-qualify it if it's a normal dependency.
-          const protoDep = possibleDeps[0].proto;
-          fullyQualifiedDependencies[targetAsReadableString(protoDep.target)] = protoDep.target;
+          const dependencyTarget = possibleDeps[0].getTarget();
+          fullyQualifiedDependencies[targetAsReadableString(dependencyTarget)] = dependencyTarget;
 
           if (dependency.includeDependentAssertions) {
             this.actionAssertionMap
               .find(dependency)
               .forEach(
                 assertion =>
-                  (fullyQualifiedDependencies[targetAsReadableString(assertion.proto.target)] =
-                    assertion.proto.target)
+                  (fullyQualifiedDependencies[
+                    targetAsReadableString(assertion.getTarget())
+                  ] = assertion.getTarget())
               );
           }
         } else {
@@ -781,10 +782,6 @@ function getCanonicalProjectConfig(originalProjectConfig: dataform.ProjectConfig
   });
 }
 
-function joinQuoted(values: readonly string[]) {
-  return values.map((value: string) => `"${value}"`).join(" | ");
-}
-
 class ActionMap {
   private byName: Map<string, Action[]> = new Map();
   private bySchemaAndName: Map<string, Map<string, Action[]>> = new Map();
@@ -793,7 +790,7 @@ class ActionMap {
 
   public constructor(actions: Action[]) {
     for (const action of actions) {
-      this.set(action.proto.target, action);
+      this.set(action.getTarget(), action);
     }
   }
 
