@@ -176,9 +176,12 @@ export class Operation extends ActionBuilder<dataform.Operation> {
    */
   public dependencies(value: Resolvable | Resolvable[]) {
     const newDependencies = Array.isArray(value) ? value : [value];
-    newDependencies.forEach(resolvable =>
-      this.proto.dependencyTargets.push(checkAssertionsForDependency(this, resolvable))
-    );
+    newDependencies.forEach(resolvable => {
+      const dependencyTarget = checkAssertionsForDependency(this, resolvable);
+      if (!!dependencyTarget) {
+        this.proto.dependencyTargets.push(dependencyTarget);
+      }
+    });
     return this;
   }
 
