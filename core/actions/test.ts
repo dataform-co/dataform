@@ -69,11 +69,6 @@ const ITestConfigProperties = strictKeysOf<ITestConfig>()(["type", "dataset", "n
  * This is where `input` and `expect` come from.
  */
 export class Test extends ActionBuilder<dataform.Test> {
-  /**
-   * @hidden Stores the generated proto for the compiled graph.
-   */
-  private proto = dataform.Test.create();
-
   /** @hidden Hold a reference to the Session instance. */
   public session: Session;
 
@@ -81,6 +76,11 @@ export class Test extends ActionBuilder<dataform.Test> {
   public contextableInputs = new Map<string, Contextable<IActionContext, string>>();
   private contextableQuery: Contextable<IActionContext, string>;
   private datasetToTest: Resolvable;
+
+  /**
+   * @hidden Stores the generated proto for the compiled graph.
+   */
+  private proto = dataform.Test.create();
 
   /** @hidden */
   constructor(session?: Session, config?: ITestConfig) {

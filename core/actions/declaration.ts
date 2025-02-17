@@ -60,13 +60,13 @@ interface ILegacyDeclarationConfig extends dataform.ActionConfig.DeclarationConf
  * ```
  */
 export class Declaration extends ActionBuilder<dataform.Declaration> {
+  /** @hidden Hold a reference to the Session instance. */
+  public session: Session;
+
   /**
    * @hidden Stores the generated proto for the compiled graph.
    */
   private proto = dataform.Declaration.create();
-
-  /** @hidden Hold a reference to the Session instance. */
-  public session: Session;
 
   /** @hidden */
   constructor(session?: Session, unverifiedConfig?: any) {

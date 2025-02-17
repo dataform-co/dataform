@@ -47,19 +47,18 @@ import { dataform } from "df/protos/ts";
  * ```
  */
 export class Notebook extends ActionBuilder<dataform.Notebook> {
-  /**
-   * @hidden Stores the generated proto for the compiled graph.
-   */
-  private proto = dataform.Notebook.create();
-
   /** @hidden Hold a reference to the Session instance. */
   public session: Session;
-
   /**
    * @hidden If true, adds the inline assertions of dependencies as direct dependencies for this
    * action.
    */
   public dependOnDependencyAssertions: boolean = false;
+
+  /**
+   * @hidden Stores the generated proto for the compiled graph.
+   */
+  private proto = dataform.Notebook.create();
 
   /** @hidden */
   constructor(session?: Session, unverifiedConfig?: any, configPath?: string) {

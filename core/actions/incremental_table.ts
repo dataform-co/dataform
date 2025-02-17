@@ -65,16 +65,6 @@ import { dataform } from "df/protos/ts";
  * This is where `query` comes from.
  */
 export class IncrementalTable extends ActionBuilder<dataform.Table> {
-  /**
-   * @hidden Stores the generated proto for the compiled graph.
-   */
-  private proto = dataform.Table.create({
-    type: "incremental",
-    enumType: dataform.TableType.INCREMENTAL,
-    disabled: false,
-    tags: []
-  });
-
   /** @hidden Hold a reference to the Session instance. */
   public session: Session;
 
@@ -89,6 +79,16 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
   private contextableWhere: Contextable<ITableContext, string>;
   private contextablePreOps: Array<Contextable<ITableContext, string | string[]>> = [];
   private contextablePostOps: Array<Contextable<ITableContext, string | string[]>> = [];
+
+  /**
+   * @hidden Stores the generated proto for the compiled graph.
+   */
+  private proto = dataform.Table.create({
+    type: "incremental",
+    enumType: dataform.TableType.INCREMENTAL,
+    disabled: false,
+    tags: []
+  });
 
   /** @hidden */
   private uniqueKeyAssertions: Assertion[] = [];

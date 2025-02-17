@@ -72,11 +72,6 @@ interface ILegacyOperationConfig extends dataform.ActionConfig.OperationConfig {
  * This is where `query` comes from.
  */
 export class Operation extends ActionBuilder<dataform.Operation> {
-  /**
-   * @hidden Stores the generated proto for the compiled graph.
-   */
-  private proto = dataform.Operation.create();
-
   /** @hidden Hold a reference to the Session instance. */
   public session: Session;
 
@@ -85,6 +80,11 @@ export class Operation extends ActionBuilder<dataform.Operation> {
    * action.
    */
   public dependOnDependencyAssertions: boolean = false;
+
+  /**
+   * @hidden Stores the generated proto for the compiled graph.
+   */
+  private proto = dataform.Operation.create();
 
   /** @hidden We delay contextification until the final compile step, so hold these here for now. */
   private contextableQueries: Contextable<IActionContext, string | string[]>;

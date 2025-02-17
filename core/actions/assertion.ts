@@ -78,13 +78,13 @@ export type AContextable<T> = T | ((ctx: AssertionContext) => T);
  * This is where `query` comes from.
  */
 export class Assertion extends ActionBuilder<dataform.Assertion> {
+  /** @hidden Hold a reference to the Session instance. */
+  public session: Session;
+
   /**
    * @hidden Stores the generated proto for the compiled graph.
    */
   private proto = dataform.Assertion.create();
-
-  /** @hidden Hold a reference to the Session instance. */
-  public session: Session;
 
   /** @hidden We delay contextification until the final compile step, so hold these here for now. */
   private contextableQuery: AContextable<string>;
