@@ -206,7 +206,7 @@ export class Session {
         break;
       case "declaration":
         const declaration = new Declaration(this, sqlxConfig);
-        declaration.proto.fileName = utils.getCallerFile(this.rootDir);
+        declaration.setFilename(utils.getCallerFile(this.rootDir));
         this.actions.push(declaration);
         break;
       case "test":
@@ -240,7 +240,7 @@ export class Session {
 
     if (resolved) {
       if (resolved instanceof Declaration) {
-        return this.compilationSql().resolveTarget(resolved.proto.target);
+        return this.compilationSql().resolveTarget(resolved.getTarget());
       }
       return this.compilationSql().resolveTarget({
         ...resolved.getTarget(),
@@ -321,7 +321,7 @@ export class Session {
         newTable.query(queryOrConfig);
       }
     }
-    newTable.proto.fileName = utils.getCallerFile(this.rootDir);
+    newTable.setFilename(utils.getCallerFile(this.rootDir));
     this.actions.push(newTable);
     return newTable;
   }
@@ -346,7 +346,7 @@ export class Session {
         assertion.query(queryOrConfig as AContextable<string>);
       }
     }
-    assertion.proto.fileName = utils.getCallerFile(this.rootDir);
+    assertion.setFilename(utils.getCallerFile(this.rootDir));
     this.actions.push(assertion);
     return assertion;
   }
@@ -366,7 +366,7 @@ export class Session {
       | any
   ): Declaration {
     const declaration = new Declaration(this, config);
-    declaration.proto.fileName = utils.getCallerFile(this.rootDir);
+    declaration.setFilename(utils.getCallerFile(this.rootDir));
     this.actions.push(declaration);
     return declaration;
   }
@@ -383,10 +383,9 @@ export class Session {
    * <!-- TODO(ekrekr): add tests for this method -->
    */
   public test(name: string): Test {
-    const newTest = new Test();
+    const newTest = new Test(this, { name });
     newTest.session = this;
-    newTest.proto.name = name;
-    newTest.proto.fileName = utils.getCallerFile(this.rootDir);
+    newTest.setFilename(utils.getCallerFile(this.rootDir));
     // Add it to global index.
     this.tests[name] = newTest;
     return newTest;

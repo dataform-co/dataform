@@ -83,10 +83,8 @@ export interface ILegacyViewBigqueryConfig {
 export class View extends ActionBuilder<dataform.Table> {
   /**
    * @hidden Stores the generated proto for the compiled graph.
-   * <!-- TODO(ekrekr): make this field private, to enforce proto update logic to happen in this
-   * class. -->
    */
-  public proto = dataform.Table.create({
+  private proto = dataform.Table.create({
     type: "view",
     enumType: dataform.TableType.VIEW,
     disabled: false,
@@ -450,6 +448,7 @@ export class View extends ActionBuilder<dataform.Table> {
    * <!-- Note: this both applies in-line assertions, and acts as a method available via the JS API.
    * Usage of it via the JS API is deprecated, but the way it applies in-line assertions is still
    * needed -->
+   * <!-- TODO(ekrekr): move this to a shared definition -->
    */
   public assertions(assertions: dataform.ActionConfig.TableAssertionsConfig) {
     if (!!assertions.uniqueKey?.length && !!assertions.uniqueKeys?.length) {
@@ -476,7 +475,7 @@ export class View extends ActionBuilder<dataform.Table> {
         if (this.proto.tags) {
           uniqueKeyAssertion.tags(this.proto.tags);
         }
-        uniqueKeyAssertion.proto.parentAction = this.proto.target;
+        uniqueKeyAssertion.setParentAction(dataform.Target.create(this.proto.target));
         if (this.proto.disabled) {
           uniqueKeyAssertion.disabled();
         }
@@ -497,7 +496,7 @@ export class View extends ActionBuilder<dataform.Table> {
             .compilationSql()
             .rowConditionsAssertion(ctx.ref(this.proto.target), mergedRowConditions)
       );
-      this.rowConditionsAssertion.proto.parentAction = this.proto.target;
+      this.rowConditionsAssertion.setParentAction(dataform.Target.create(this.proto.target));
       if (this.proto.disabled) {
         this.rowConditionsAssertion.disabled();
       }
@@ -528,6 +527,11 @@ export class View extends ActionBuilder<dataform.Table> {
   /** @hidden */
   public getTarget() {
     return dataform.Target.create(this.proto.target);
+  }
+
+  /** @hidden */
+  public setFilename(filename: string) {
+    return (this.proto.fileName = filename);
   }
 
   /** @hidden */
@@ -656,11 +660,11 @@ export class ViewContext implements ITableContext {
   constructor(private view: View, private isIncremental = false) {}
 
   public self(): string {
-    return this.resolve(this.view.proto.target);
+    return this.resolve(this.view.getTarget());
   }
 
   public name(): string {
-    return this.view.session.finalizeName(this.view.proto.target.name);
+    return this.view.session.finalizeName(this.view.getTarget().name);
   }
 
   public ref(ref: Resolvable | string[], ...rest: string[]): string {
@@ -678,16 +682,16 @@ export class ViewContext implements ITableContext {
   }
 
   public schema(): string {
-    return this.view.session.finalizeSchema(this.view.proto.target.schema);
+    return this.view.session.finalizeSchema(this.view.getTarget().schema);
   }
 
   public database(): string {
-    if (!this.view.proto.target.database) {
+    if (!this.view.getTarget().database) {
       this.view.session.compileError(new Error(`Warehouse does not support multiple databases`));
       return "";
     }
 
-    return this.view.session.finalizeDatabase(this.view.proto.target.database);
+    return this.view.session.finalizeDatabase(this.view.getTarget().database);
   }
 
   public where(where: Contextable<ITableContext, string>) {

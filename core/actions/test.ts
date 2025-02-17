@@ -1,5 +1,6 @@
 import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { ActionBuilder, INamedConfig, TableType } from "df/core/actions";
+import { IncrementalTable } from "df/core/actions/incremental_table";
 import { Table } from "df/core/actions/table";
 import { View } from "df/core/actions/view";
 import { Contextable, IActionContext, ITableContext, Resolvable } from "df/core/contextables";
@@ -25,6 +26,9 @@ export interface ITestConfig extends INamedConfig {
    * The dataset that this unit test tests.
    */
   dataset?: Resolvable;
+
+  /** Name of this action. */
+  name?: string;
 }
 
 /** @hidden */
@@ -67,10 +71,8 @@ const ITestConfigProperties = strictKeysOf<ITestConfig>()(["type", "dataset", "n
 export class Test extends ActionBuilder<dataform.Test> {
   /**
    * @hidden Stores the generated proto for the compiled graph.
-   * <!-- TODO(ekrekr): make this field private, to enforce proto update logic to happen in this
-   * class. -->
    */
-  public proto = dataform.Test.create();
+  private proto = dataform.Test.create();
 
   /** @hidden Hold a reference to the Session instance. */
   public session: Session;
@@ -81,8 +83,13 @@ export class Test extends ActionBuilder<dataform.Test> {
   private datasetToTest: Resolvable;
 
   /** @hidden */
-  constructor(session?: Session) {
+  constructor(session?: Session, config?: ITestConfig) {
     super(session);
+    this.session = session;
+
+    if (config) {
+      this.config(config);
+    }
   }
 
   /** @hidden */
@@ -93,6 +100,9 @@ export class Test extends ActionBuilder<dataform.Test> {
       ITestConfigProperties,
       "test config"
     );
+    if (config.name) {
+      this.proto.name = config.name;
+    }
     if (config.dataset) {
       this.dataset(config.dataset);
     }
@@ -138,6 +148,11 @@ export class Test extends ActionBuilder<dataform.Test> {
   }
 
   /** @hidden */
+  public setFilename(filename: string) {
+    return (this.proto.fileName = filename);
+  }
+
+  /** @hidden */
   public compile() {
     const testContext = new TestContext(this);
     if (!this.datasetToTest) {
@@ -159,7 +174,7 @@ export class Test extends ActionBuilder<dataform.Test> {
           new Error(`Dataset ${stringifyResolvable(this.datasetToTest)} could not be found.`),
           this.proto.fileName
         );
-      } else if (dataset.proto.enumType === dataform.TableType.INCREMENTAL) {
+      } else if (dataset instanceof IncrementalTable) {
         this.session.compileError(
           new Error("Running tests on incremental datasets is not yet supported."),
           this.proto.fileName

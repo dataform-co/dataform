@@ -67,10 +67,8 @@ import { dataform } from "df/protos/ts";
 export class IncrementalTable extends ActionBuilder<dataform.Table> {
   /**
    * @hidden Stores the generated proto for the compiled graph.
-   * <!-- TODO(ekrekr): make this field private, to enforce proto update logic to happen in this
-   * class. -->
    */
-  public proto = dataform.Table.create({
+  private proto = dataform.Table.create({
     type: "incremental",
     enumType: dataform.TableType.INCREMENTAL,
     disabled: false,
@@ -456,6 +454,7 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
    * <!-- Note: this both applies in-line assertions, and acts as a method available via the JS API.
    * Usage of it via the JS API is deprecated, but the way it applies in-line assertions is still
    * needed -->
+   * <!-- TODO(ekrekr): move this to a shared definition -->
    */
   public assertions(assertions: dataform.ActionConfig.TableAssertionsConfig) {
     if (!!assertions.uniqueKey?.length && !!assertions.uniqueKeys?.length) {
@@ -482,7 +481,7 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
         if (this.proto.tags) {
           uniqueKeyAssertion.tags(this.proto.tags);
         }
-        uniqueKeyAssertion.proto.parentAction = this.proto.target;
+        uniqueKeyAssertion.setParentAction(dataform.Target.create(this.proto.target));
         if (this.proto.disabled) {
           uniqueKeyAssertion.disabled();
         }
@@ -503,7 +502,7 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
             .compilationSql()
             .rowConditionsAssertion(ctx.ref(this.proto.target), mergedRowConditions)
       );
-      this.rowConditionsAssertion.proto.parentAction = this.proto.target;
+      this.rowConditionsAssertion.setParentAction(dataform.Target.create(this.proto.target));
       if (this.proto.disabled) {
         this.rowConditionsAssertion.disabled();
       }
@@ -534,6 +533,11 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
   /** @hidden */
   public getTarget() {
     return dataform.Target.create(this.proto.target);
+  }
+
+  /** @hidden */
+  public setFilename(filename: string) {
+    return (this.proto.fileName = filename);
   }
 
   /** @hidden */
@@ -710,11 +714,11 @@ export class IncrementalTableContext implements ITableContext {
   constructor(private incrementalTable: IncrementalTable, private isIncremental = false) {}
 
   public self(): string {
-    return this.resolve(this.incrementalTable.proto.target);
+    return this.resolve(this.incrementalTable.getTarget());
   }
 
   public name(): string {
-    return this.incrementalTable.session.finalizeName(this.incrementalTable.proto.target.name);
+    return this.incrementalTable.session.finalizeName(this.incrementalTable.getTarget().name);
   }
 
   public ref(ref: Resolvable | string[], ...rest: string[]): string {
@@ -732,11 +736,11 @@ export class IncrementalTableContext implements ITableContext {
   }
 
   public schema(): string {
-    return this.incrementalTable.session.finalizeSchema(this.incrementalTable.proto.target.schema);
+    return this.incrementalTable.session.finalizeSchema(this.incrementalTable.getTarget().schema);
   }
 
   public database(): string {
-    if (!this.incrementalTable.proto.target.database) {
+    if (!this.incrementalTable.getTarget().database) {
       this.incrementalTable.session.compileError(
         new Error(`Warehouse does not support multiple databases`)
       );
@@ -744,7 +748,7 @@ export class IncrementalTableContext implements ITableContext {
     }
 
     return this.incrementalTable.session.finalizeDatabase(
-      this.incrementalTable.proto.target.database
+      this.incrementalTable.getTarget().database
     );
   }
 

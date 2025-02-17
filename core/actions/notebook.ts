@@ -49,10 +49,8 @@ import { dataform } from "df/protos/ts";
 export class Notebook extends ActionBuilder<dataform.Notebook> {
   /**
    * @hidden Stores the generated proto for the compiled graph.
-   * <!-- TODO(ekrekr): make this field private, to enforce proto update logic to happen in this
-   * class. -->
    */
-  public proto = dataform.Notebook.create();
+  private proto = dataform.Notebook.create();
 
   /** @hidden Hold a reference to the Session instance. */
   public session: Session;

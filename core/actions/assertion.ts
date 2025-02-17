@@ -80,10 +80,8 @@ export type AContextable<T> = T | ((ctx: AssertionContext) => T);
 export class Assertion extends ActionBuilder<dataform.Assertion> {
   /**
    * @hidden Stores the generated proto for the compiled graph.
-   * <!-- TODO(ekrekr): make this field private, to enforce proto update logic to happen in this
-   * class. -->
    */
-  public proto = dataform.Assertion.create();
+  private proto = dataform.Assertion.create();
 
   /** @hidden Hold a reference to the Session instance. */
   public session: Session;
@@ -275,6 +273,21 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
   }
 
   /** @hidden */
+  public getParentAction() {
+    return dataform.Target.create(this.proto.parentAction);
+  }
+
+  /** @hidden */
+  public setParentAction(target: dataform.Target) {
+    return (this.proto.parentAction = target);
+  }
+
+  /** @hidden */
+  public setFilename(filename: string) {
+    return (this.proto.fileName = filename);
+  }
+
+  /** @hidden */
   public compile() {
     const context = new AssertionContext(this);
 
@@ -341,11 +354,11 @@ export class AssertionContext implements IActionContext {
   }
 
   public self(): string {
-    return this.resolve(this.assertion.proto.target);
+    return this.resolve(this.assertion.getTarget());
   }
 
   public name(): string {
-    return this.assertion.session.finalizeName(this.assertion.proto.target.name);
+    return this.assertion.session.finalizeName(this.assertion.getTarget().name);
   }
 
   public ref(ref: Resolvable | string[], ...rest: string[]) {
@@ -363,18 +376,18 @@ export class AssertionContext implements IActionContext {
   }
 
   public schema(): string {
-    return this.assertion.session.finalizeSchema(this.assertion.proto.target.schema);
+    return this.assertion.session.finalizeSchema(this.assertion.getTarget().schema);
   }
 
   public database(): string {
-    if (!this.assertion.proto.target.database) {
+    if (!this.assertion.getTarget().database) {
       this.assertion.session.compileError(
         new Error(`Warehouse does not support multiple databases`)
       );
       return "";
     }
 
-    return this.assertion.session.finalizeDatabase(this.assertion.proto.target.database);
+    return this.assertion.session.finalizeDatabase(this.assertion.getTarget().database);
   }
 
   public dependencies(name: Resolvable | Resolvable[]) {
