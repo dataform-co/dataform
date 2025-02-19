@@ -19,7 +19,7 @@ import { dataform } from "df/protos/ts";
 /**
  * Configuration options for unit tests.
  *
- * <-- TODO(ekrekr): replace this with an actions configs proto definition. -->
+ * <!-- In v4, this could be replaced with a proto definition, similar to other actions. -->
  */
 export interface ITestConfig extends INamedConfig {
   /**

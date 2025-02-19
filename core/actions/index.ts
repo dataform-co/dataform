@@ -29,8 +29,8 @@ export type ActionProto =
   | dataform.Notebook
   | dataform.DataPreparation;
 
-// TODO(ekrekr): In v4, make all method on inheritors of this private, forcing users to use
-// constructors in order to populate actions.
+// In v4, methods on inheritors of this private, forcing users to use constructors in order to
+// populate actions.
 export abstract class ActionBuilder<T> {
   public session: Session;
   public includeAssertionsForDependency: Map<string, boolean> = new Map();

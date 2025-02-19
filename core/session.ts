@@ -385,9 +385,9 @@ export class Session {
    *
    * @see [Test](Test) for examples on how to use.
    *
-   * <!-- TODO(ekrekr): safely allow passing of config blocks as the second argument, similar to
-   * publish. -->
-   * <!-- TODO(ekrekr): add tests for this method -->
+   * <!-- This doesn't currently support passing of config blocks as the second argument, but it
+   * could in the future. -->
+   * <!-- Note: this action type isn't very thoroughly tested, so careful with changes -->
    */
   public test(name: string): Test {
     const newTest = new Test(this, { name });

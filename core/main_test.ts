@@ -3317,8 +3317,6 @@ ${exampleBuiltInAssertions.inputActionConfigBlock}
           },
           type: "view",
           disabled: true,
-          // TODO(ekrekr): finish fixing this in https://github.com/dataform-co/dataform/pull/1718.
-          // protected: false,
           hermeticity: "HERMETIC",
           bigquery: {
             additionalOptions: {
