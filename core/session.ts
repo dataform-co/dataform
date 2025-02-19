@@ -205,8 +205,7 @@ export class Session {
         this.actions.push(new Operation(this, sqlxConfig).queries(actionOptions.sqlContextable));
         break;
       case "declaration":
-        const declaration = new Declaration(this, sqlxConfig);
-        declaration.setFilename(utils.getCallerFile(this.rootDir));
+        const declaration = new Declaration(this, sqlxConfig, utils.getCallerFile(this.rootDir));
         this.actions.push(declaration);
         break;
       case "test":
@@ -268,8 +267,8 @@ export class Session {
       | Contextable<IActionContext, string | string[]>
       | dataform.ActionConfig.OperationConfig
   ): Operation {
-    let operation: Operation;
     const filename = utils.getCallerFile(this.rootDir);
+    let operation: Operation;
     if (!!queryOrConfig && typeof queryOrConfig === "object") {
       operation = new Operation(this, { name, ...queryOrConfig, filename });
     } else {
@@ -304,15 +303,25 @@ export class Session {
       | any
   ): Table | IncrementalTable | View {
     // In v4, consider replacing publish with separate methods for each action type.
-    let newTable: Table | IncrementalTable | View = new View(this, { type: "view", name });
+    const filename = utils.getCallerFile(this.rootDir);
+    let newTable: Table | IncrementalTable | View = new View(this, {
+      type: "view",
+      name,
+      filename
+    });
     if (!!queryOrConfig) {
       if (typeof queryOrConfig === "object") {
         if (queryOrConfig?.type === "view" || queryOrConfig.type === undefined) {
-          newTable = new View(this, { type: "view", name, ...queryOrConfig });
+          newTable = new View(this, { type: "view", name, ...queryOrConfig, filename });
         } else if (queryOrConfig?.type === "incremental") {
-          newTable = new IncrementalTable(this, { type: "incremental", name, ...queryOrConfig });
+          newTable = new IncrementalTable(this, {
+            type: "incremental",
+            name,
+            ...queryOrConfig,
+            filename
+          });
         } else if (queryOrConfig?.type === "table") {
-          newTable = new Table(this, { type: "table", name, ...queryOrConfig });
+          newTable = new Table(this, { type: "table", name, ...queryOrConfig, filename });
         } else {
           throw Error(`Unrecognized table type: ${queryOrConfig.type}`);
         }
@@ -321,7 +330,6 @@ export class Session {
         newTable.query(queryOrConfig);
       }
     }
-    newTable.setFilename(utils.getCallerFile(this.rootDir));
     this.actions.push(newTable);
     return newTable;
   }
@@ -337,16 +345,16 @@ export class Session {
     name: string,
     queryOrConfig?: AContextable<string> | dataform.ActionConfig.AssertionConfig
   ): Assertion {
+    const filename = utils.getCallerFile(this.rootDir);
     let assertion: Assertion;
     if (!!queryOrConfig && typeof queryOrConfig === "object") {
-      assertion = new Assertion(this, { name, ...queryOrConfig });
+      assertion = new Assertion(this, { name, ...queryOrConfig, filename });
     } else {
-      assertion = new Assertion(this, { name });
+      assertion = new Assertion(this, { name, filename });
       if (queryOrConfig) {
         assertion.query(queryOrConfig as AContextable<string>);
       }
     }
-    assertion.setFilename(utils.getCallerFile(this.rootDir));
     this.actions.push(assertion);
     return assertion;
   }
@@ -365,8 +373,7 @@ export class Session {
       // without breaking typescript consumers of Dataform.
       | any
   ): Declaration {
-    const declaration = new Declaration(this, config);
-    declaration.setFilename(utils.getCallerFile(this.rootDir));
+    const declaration = new Declaration(this, config, utils.getCallerFile(this.rootDir));
     this.actions.push(declaration);
     return declaration;
   }

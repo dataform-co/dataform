@@ -325,12 +325,7 @@ export class Operation extends ActionBuilder<dataform.Operation> {
   }
 
   /** @hidden */
-  public getHasOutput() {
-    return this.proto.hasOutput;
-  }
-
-  /** @hidden */
-  public setFilename() {
+  public getHasOutput(): Boolean {
     return this.proto.hasOutput;
   }
 

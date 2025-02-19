@@ -536,11 +536,6 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
   }
 
   /** @hidden */
-  public setFilename(filename: string) {
-    return (this.proto.fileName = filename);
-  }
-
-  /** @hidden */
   public compile() {
     const context = new IncrementalTableContext(this);
     const incrementalContext = new IncrementalTableContext(this, true);

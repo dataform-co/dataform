@@ -279,12 +279,7 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
 
   /** @hidden */
   public setParentAction(target: dataform.Target) {
-    return (this.proto.parentAction = target);
-  }
-
-  /** @hidden */
-  public setFilename(filename: string) {
-    return (this.proto.fileName = filename);
+    this.proto.parentAction = target;
   }
 
   /** @hidden */

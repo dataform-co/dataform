@@ -503,11 +503,6 @@ export class Table extends ActionBuilder<dataform.Table> {
   }
 
   /** @hidden */
-  public setFilename(filename: string) {
-    return (this.proto.fileName = filename);
-  }
-
-  /** @hidden */
   public compile() {
     const context = new TableContext(this);
     const incrementalContext = new TableContext(this, true);

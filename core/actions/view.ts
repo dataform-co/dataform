@@ -530,11 +530,6 @@ export class View extends ActionBuilder<dataform.Table> {
   }
 
   /** @hidden */
-  public setFilename(filename: string) {
-    return (this.proto.fileName = filename);
-  }
-
-  /** @hidden */
   public compile() {
     const context = new ViewContext(this);
     const incrementalContext = new ViewContext(this, true);

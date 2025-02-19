@@ -69,7 +69,7 @@ export class Declaration extends ActionBuilder<dataform.Declaration> {
   private proto = dataform.Declaration.create();
 
   /** @hidden */
-  constructor(session?: Session, unverifiedConfig?: any) {
+  constructor(session?: Session, unverifiedConfig?: any, filename?: string) {
     super(session);
     this.session = session;
 
@@ -97,6 +97,7 @@ export class Declaration extends ActionBuilder<dataform.Declaration> {
         )
       );
     }
+    this.proto.fileName = filename;
     return this;
   }
 
@@ -138,11 +139,6 @@ export class Declaration extends ActionBuilder<dataform.Declaration> {
   /** @hidden */
   public getTarget() {
     return dataform.Target.create(this.proto.target);
-  }
-
-  /** @hidden */
-  public setFilename(filename: string) {
-    return (this.proto.fileName = filename);
   }
 
   /** @hidden */
