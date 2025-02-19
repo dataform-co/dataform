@@ -149,7 +149,7 @@ export class Test extends ActionBuilder<dataform.Test> {
 
   /** @hidden */
   public setFilename(filename: string) {
-    return (this.proto.fileName = filename);
+    this.proto.fileName = filename;
   }
 
   /** @hidden */
