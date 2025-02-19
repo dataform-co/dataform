@@ -5,7 +5,7 @@ import * as Path from "df/core/path";
 import { Session } from "df/core/session";
 import {
   actionConfigToCompiledGraphTarget,
-  addDependenciesToActionDependencyTargets,
+  checkAssertionsForDependency,
   configTargetToCompiledGraphTarget,
   nativeRequire,
   resolveActionsConfigFilename
@@ -47,21 +47,18 @@ import { dataform } from "df/protos/ts";
  * ```
  */
 export class Notebook extends ActionBuilder<dataform.Notebook> {
-  /**
-   * @hidden Stores the generated proto for the compiled graph.
-   * <!-- TODO(ekrekr): make this field private, to enforce proto update logic to happen in this
-   * class. -->
-   */
-  public proto = dataform.Notebook.create();
-
   /** @hidden Hold a reference to the Session instance. */
   public session: Session;
-
   /**
    * @hidden If true, adds the inline assertions of dependencies as direct dependencies for this
    * action.
    */
   public dependOnDependencyAssertions: boolean = false;
+
+  /**
+   * @hidden Stores the generated proto for the compiled graph.
+   */
+  private proto = dataform.Notebook.create();
 
   /** @hidden */
   constructor(session?: Session, unverifiedConfig?: any, configPath?: string) {
@@ -76,12 +73,9 @@ export class Notebook extends ActionBuilder<dataform.Notebook> {
     config.filename = resolveActionsConfigFilename(config.filename, configPath);
 
     this.session = session;
-    this.proto.target = this.applySessionToTarget(
-      target,
-      session.projectConfig,
-      config.filename,
-      true
-    );
+    this.proto.target = this.applySessionToTarget(target, session.projectConfig, config.filename, {
+      validateTarget: true
+    });
     this.proto.canonicalTarget = this.applySessionToTarget(target, session.canonicalProjectConfig);
     this.proto.tags = config.tags;
     this.dependOnDependencyAssertions = config.dependOnDependencyAssertions;
@@ -115,9 +109,12 @@ export class Notebook extends ActionBuilder<dataform.Notebook> {
   /** @hidden */
   public dependencies(value: Resolvable | Resolvable[]) {
     const newDependencies = Array.isArray(value) ? value : [value];
-    newDependencies.forEach(resolvable =>
-      addDependenciesToActionDependencyTargets(this, resolvable)
-    );
+    newDependencies.forEach(resolvable => {
+      const dependencyTarget = checkAssertionsForDependency(this, resolvable);
+      if (!!dependencyTarget) {
+        this.proto.dependencyTargets.push(dependencyTarget);
+      }
+    });
     return this;
   }
 

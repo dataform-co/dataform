@@ -1,6 +1,7 @@
 import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import {
   ActionBuilder,
+  checkConfigAdditionalOptionsOverlap,
   ILegacyBigQueryOptions,
   ILegacyTableConfig,
   LegacyConfigConverter,
@@ -15,12 +16,11 @@ import * as Path from "df/core/path";
 import { Session } from "df/core/session";
 import {
   actionConfigToCompiledGraphTarget,
-  addDependenciesToActionDependencyTargets,
+  checkAssertionsForDependency,
   checkExcessProperties,
   nativeRequire,
   resolvableAsTarget,
   resolveActionsConfigFilename,
-  setNameAndTarget,
   strictKeysOf,
   toResolvable,
   validateQueryString
@@ -71,21 +71,8 @@ import { dataform } from "df/protos/ts";
  * This is where `query` comes from.
  */
 export class Table extends ActionBuilder<dataform.Table> {
-  /**
-   * @hidden Stores the generated proto for the compiled graph.
-   * <!-- TODO(ekrekr): make this field private, to enforce proto update logic to happen in this
-   * class. -->
-   */
-  public proto = dataform.Table.create({
-    type: "table",
-    enumType: dataform.TableType.TABLE,
-    disabled: false,
-    tags: []
-  });
-
   /** @hidden Hold a reference to the Session instance. */
   public session: Session;
-
   /**
    * @hidden If true, adds the inline assertions of dependencies as direct dependencies for this
    * action.
@@ -97,6 +84,16 @@ export class Table extends ActionBuilder<dataform.Table> {
   private contextableWhere: Contextable<ITableContext, string>;
   private contextablePreOps: Array<Contextable<ITableContext, string | string[]>> = [];
   private contextablePostOps: Array<Contextable<ITableContext, string | string[]>> = [];
+
+  /**
+   * @hidden Stores the generated proto for the compiled graph.
+   */
+  private proto = dataform.Table.create({
+    type: "table",
+    enumType: dataform.TableType.TABLE,
+    disabled: false,
+    tags: []
+  });
 
   /** @hidden */
   private uniqueKeyAssertions: Assertion[] = [];
@@ -123,12 +120,9 @@ export class Table extends ActionBuilder<dataform.Table> {
       config.name = Path.basename(config.filename);
     }
     const target = actionConfigToCompiledGraphTarget(config);
-    this.proto.target = this.applySessionToTarget(
-      target,
-      session.projectConfig,
-      config.filename,
-      true
-    );
+    this.proto.target = this.applySessionToTarget(target, session.projectConfig, config.filename, {
+      validateTarget: true
+    });
     this.proto.canonicalTarget = this.applySessionToTarget(target, session.canonicalProjectConfig);
 
     if (configPath) {
@@ -317,9 +311,12 @@ export class Table extends ActionBuilder<dataform.Table> {
    */
   public dependencies(value: Resolvable | Resolvable[]) {
     const newDependencies = Array.isArray(value) ? value : [value];
-    newDependencies.forEach(resolvable =>
-      addDependenciesToActionDependencyTargets(this, resolvable)
-    );
+    newDependencies.forEach(resolvable => {
+      const dependencyTarget = checkAssertionsForDependency(this, resolvable);
+      if (!!dependencyTarget) {
+        this.proto.dependencyTargets.push(dependencyTarget);
+      }
+    });
     return this;
   }
 
@@ -390,12 +387,11 @@ export class Table extends ActionBuilder<dataform.Table> {
    * Sets the database (Google Cloud project ID) in which to create the output of this action.
    */
   public database(database: string) {
-    setNameAndTarget(
-      this.session,
-      this.proto,
-      this.proto.target.name,
-      this.proto.target.schema,
-      database
+    this.proto.target = this.applySessionToTarget(
+      dataform.Target.create({ ...this.proto.target, database }),
+      this.session.projectConfig,
+      this.proto.fileName,
+      { validateTarget: true }
     );
     return this;
   }
@@ -407,12 +403,11 @@ export class Table extends ActionBuilder<dataform.Table> {
    * Sets the schema (BigQuery dataset) in which to create the output of this action.
    */
   public schema(schema: string) {
-    setNameAndTarget(
-      this.session,
-      this.proto,
-      this.proto.target.name,
-      schema,
-      this.proto.target.database
+    this.proto.target = this.applySessionToTarget(
+      dataform.Target.create({ ...this.proto.target, schema }),
+      this.session.projectConfig,
+      this.proto.fileName,
+      { validateTarget: true }
     );
     return this;
   }
@@ -426,6 +421,7 @@ export class Table extends ActionBuilder<dataform.Table> {
    * <!-- Note: this both applies in-line assertions, and acts as a method available via the JS API.
    * Usage of it via the JS API is deprecated, but the way it applies in-line assertions is still
    * needed -->
+   * <!-- TODO(ekrekr): move this to a shared definition -->
    */
   public assertions(assertions: dataform.ActionConfig.TableAssertionsConfig) {
     if (!!assertions.uniqueKey?.length && !!assertions.uniqueKeys?.length) {
@@ -452,7 +448,7 @@ export class Table extends ActionBuilder<dataform.Table> {
         if (this.proto.tags) {
           uniqueKeyAssertion.tags(this.proto.tags);
         }
-        uniqueKeyAssertion.proto.parentAction = this.proto.target;
+        uniqueKeyAssertion.setParentAction(dataform.Target.create(this.proto.target));
         if (this.proto.disabled) {
           uniqueKeyAssertion.disabled();
         }
@@ -473,7 +469,7 @@ export class Table extends ActionBuilder<dataform.Table> {
             .compilationSql()
             .rowConditionsAssertion(ctx.ref(this.proto.target), mergedRowConditions)
       );
-      this.rowConditionsAssertion.proto.parentAction = this.proto.target;
+      this.rowConditionsAssertion.setParentAction(dataform.Target.create(this.proto.target));
       if (this.proto.disabled) {
         this.rowConditionsAssertion.disabled();
       }
@@ -626,11 +622,29 @@ export class Table extends ActionBuilder<dataform.Table> {
       }
     }
 
-    return verifyObjectMatchesProto(
+    const config = verifyObjectMatchesProto(
       dataform.ActionConfig.TableConfig,
       unverifiedConfig,
       VerifyProtoErrorBehaviour.SHOW_DOCS_LINK
     );
+
+    if (!config.partitionBy && (config.partitionExpirationDays || config.requirePartitionFilter)) {
+      this.session.compileError(
+        `requirePartitionFilter/partitionExpirationDays are not valid for non partitioned BigQuery tables`,
+        config.filename,
+        dataform.Target.create({
+          database: config.project,
+          schema: config.dataset,
+          name: config.name
+        })
+      );
+    }
+
+    if (config.additionalOptions) {
+      checkConfigAdditionalOptionsOverlap(config, this.session);
+    }
+
+    return config;
   }
 }
 
@@ -641,11 +655,11 @@ export class TableContext implements ITableContext {
   constructor(private table: Table, private isIncremental = false) {}
 
   public self(): string {
-    return this.resolve(this.table.proto.target);
+    return this.resolve(this.table.getTarget());
   }
 
   public name(): string {
-    return this.table.session.finalizeName(this.table.proto.target.name);
+    return this.table.session.finalizeName(this.table.getTarget().name);
   }
 
   public ref(ref: Resolvable | string[], ...rest: string[]): string {
@@ -663,16 +677,16 @@ export class TableContext implements ITableContext {
   }
 
   public schema(): string {
-    return this.table.session.finalizeSchema(this.table.proto.target.schema);
+    return this.table.session.finalizeSchema(this.table.getTarget().schema);
   }
 
   public database(): string {
-    if (!this.table.proto.target.database) {
+    if (!this.table.getTarget().database) {
       this.table.session.compileError(new Error(`Warehouse does not support multiple databases`));
       return "";
     }
 
-    return this.table.session.finalizeDatabase(this.table.proto.target.database);
+    return this.table.session.finalizeDatabase(this.table.getTarget().database);
   }
 
   public type(type: TableType) {

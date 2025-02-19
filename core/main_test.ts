@@ -4211,7 +4211,9 @@ publish("name", {
   type: "${tableType}",
 }).query(_ => "SELECT 1")
   .preOps(_ => ["pre_op"])
-  .postOps(_ => ["post_op"])`
+  .postOps(_ => ["post_op"])
+  .database("otherProject")
+  .schema("otherDataset")`
               );
 
               const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
@@ -4224,11 +4226,11 @@ publish("name", {
                     hermeticity: "NON_HERMETIC",
                     target: {
                       database: projectConfig.projectSuffix
-                        ? `${projectConfig.defaultProject}_${projectConfig.projectSuffix}`
-                        : projectConfig.defaultProject,
+                        ? `otherProject_${projectConfig.projectSuffix}`
+                        : "otherProject",
                       schema: projectConfig.datasetSuffix
-                        ? `${projectConfig.defaultDataset}_${projectConfig.datasetSuffix}`
-                        : projectConfig.defaultDataset,
+                        ? `otherDataset_${projectConfig.datasetSuffix}`
+                        : "otherDataset",
                       name: projectConfig.namePrefix ? `${projectConfig.namePrefix}_name` : "name"
                     },
                     canonicalTarget: {
@@ -4344,7 +4346,9 @@ publish("name", {
               `
 operate("name", {
   type: "operations",
-}).queries(_ => ["SELECT 1", "SELECT 2"])`
+}).queries(_ => ["SELECT 1", "SELECT 2"])
+  .database("otherProject")
+  .schema("otherDataset")`
             );
 
             const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
@@ -4355,11 +4359,11 @@ operate("name", {
                 {
                   target: {
                     database: projectConfig.projectSuffix
-                      ? `${projectConfig.defaultProject}_${projectConfig.projectSuffix}`
-                      : projectConfig.defaultProject,
+                      ? `otherProject_${projectConfig.projectSuffix}`
+                      : "otherProject",
                     schema: projectConfig.datasetSuffix
-                      ? `${projectConfig.defaultDataset}_${projectConfig.datasetSuffix}`
-                      : projectConfig.defaultDataset,
+                      ? `otherDataset_${projectConfig.datasetSuffix}`
+                      : "otherDataset",
                     name: projectConfig.namePrefix ? `${projectConfig.namePrefix}_name` : "name"
                   },
                   canonicalTarget: {
@@ -4448,7 +4452,9 @@ operate("name", {
               `
 assert("name", {
   type: "operations",
-}).query(_ => "SELECT 1")`
+}).query(_ => "SELECT 1")
+  .database("otherProject")
+  .schema("otherDataset")`
             );
 
             const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
@@ -4459,11 +4465,11 @@ assert("name", {
                 {
                   target: {
                     database: projectConfig.projectSuffix
-                      ? `${projectConfig.defaultProject}_${projectConfig.projectSuffix}`
-                      : projectConfig.defaultProject,
+                      ? `otherProject_${projectConfig.projectSuffix}`
+                      : "otherProject",
                     schema: projectConfig.datasetSuffix
-                      ? `${projectConfig.defaultDataset}_${projectConfig.datasetSuffix}`
-                      : projectConfig.defaultDataset,
+                      ? `otherDataset_${projectConfig.datasetSuffix}`
+                      : "otherDataset",
                     name: projectConfig.namePrefix ? `${projectConfig.namePrefix}_name` : "name"
                   },
                   canonicalTarget: {

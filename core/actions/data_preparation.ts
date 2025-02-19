@@ -7,12 +7,11 @@ import * as Path from "df/core/path";
 import { Session } from "df/core/session";
 import {
   actionConfigToCompiledGraphTarget,
-  addDependenciesToActionDependencyTargets,
+  checkAssertionsForDependency,
   configTargetToCompiledGraphTarget,
   nativeRequire,
   resolvableAsTarget,
   resolveActionsConfigFilename,
-  setNameAndTarget,
   toResolvable,
   validateQueryString
 } from "df/core/utils";
@@ -27,8 +26,7 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
   // We delay contextification until the final compile step, so hold these here for now.
   public contextableQuery: Contextable<IDataPreparationContext, string>;
 
-  // TODO: make this field private, to enforce proto update logic to happen in this class.
-  public proto = dataform.DataPreparation.create();
+  private proto = dataform.DataPreparation.create();
 
   constructor(
     session?: Session,
@@ -87,7 +85,7 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
   public dependencies(value: Resolvable | Resolvable[]) {
     const newDependencies = Array.isArray(value) ? value : [value];
     newDependencies.forEach(resolvable =>
-      addDependenciesToActionDependencyTargets(this, resolvable)
+      this.proto.dependencyTargets.push(checkAssertionsForDependency(this, resolvable))
     );
     return this;
   }
@@ -122,23 +120,21 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
   }
 
   public database(database: string) {
-    setNameAndTarget(
-      this.session,
-      this.proto,
-      this.proto.target.name,
-      this.proto.target.schema,
-      database
+    this.proto.target = this.applySessionToTarget(
+      dataform.Target.create({ ...this.proto.target, database }),
+      this.session.projectConfig,
+      this.proto.fileName,
+      { validateTarget: true }
     );
     return this;
   }
 
   public schema(schema: string) {
-    setNameAndTarget(
-      this.session,
-      this.proto,
-      this.proto.target.name,
-      schema,
-      this.proto.target.database
+    this.proto.target = this.applySessionToTarget(
+      dataform.Target.create({ ...this.proto.target, schema }),
+      this.session.projectConfig,
+      this.proto.fileName,
+      { validateTarget: true }
     );
     return this;
   }
@@ -152,7 +148,9 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
   ) {
     const defaultTarget = dataform.Target.create({ name: config.name });
     this.proto.target = this.finalizeTarget(
-      this.applySessionToTarget(defaultTarget, session.projectConfig, config.filename, true)
+      this.applySessionToTarget(defaultTarget, session.projectConfig, config.filename, {
+        validateTarget: true
+      })
     );
     this.proto.targets = [this.proto.target];
     this.proto.canonicalTarget = this.applySessionToTarget(
@@ -173,7 +171,9 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     config?: dataform.ActionConfig.DataPreparationConfig
   ) {
     const resolvedTargets = targets.map(target =>
-      this.applySessionToTarget(target, session.projectConfig, config.filename, true)
+      this.applySessionToTarget(target, session.projectConfig, config.filename, {
+        validateTarget: true
+      })
     );
     // Finalize list of targets.
     this.proto.targets = resolvedTargets.map(target => this.finalizeTarget(target));
@@ -342,7 +342,9 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     // Resolve targets
     this.proto.targets = targets
       .map(target =>
-        this.applySessionToTarget(target, session.projectConfig, config.filename, true)
+        this.applySessionToTarget(target, session.projectConfig, config.filename, {
+          validateTarget: true
+        })
       )
       .map(target => this.finalizeTarget(target));
 
@@ -429,11 +431,11 @@ export class DataPreparationContext implements IDataPreparationContext {
   }
 
   public self(): string {
-    return this.resolve(this.dataPreparation.proto.target);
+    return this.resolve(this.dataPreparation.getTarget());
   }
 
   public name(): string {
-    return this.dataPreparation.session.finalizeName(this.dataPreparation.proto.target.name);
+    return this.dataPreparation.session.finalizeName(this.dataPreparation.getTarget().name);
   }
 
   public ref(ref: Resolvable | string[], ...rest: string[]): string {
@@ -451,20 +453,18 @@ export class DataPreparationContext implements IDataPreparationContext {
   }
 
   public schema(): string {
-    return this.dataPreparation.session.finalizeSchema(this.dataPreparation.proto.target.schema);
+    return this.dataPreparation.session.finalizeSchema(this.dataPreparation.getTarget().schema);
   }
 
   public database(): string {
-    if (!this.dataPreparation.proto.target.database) {
+    if (!this.dataPreparation.getTarget().database) {
       this.dataPreparation.session.compileError(
         new Error(`Warehouse does not support multiple databases`)
       );
       return "";
     }
 
-    return this.dataPreparation.session.finalizeDatabase(
-      this.dataPreparation.proto.target.database
-    );
+    return this.dataPreparation.session.finalizeDatabase(this.dataPreparation.getTarget().database);
   }
 
   // TODO: Add support for incremental conditions in compilation output

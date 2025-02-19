@@ -130,20 +130,20 @@ function isResolvableArray(parts: any[]): parts is [string, string?, string?] {
 
 export function resolvableAsTarget(
   resolvable: Resolvable | dataform.ActionConfig.Target
-): dataform.ITarget {
+): dataform.Target {
   if (typeof resolvable === "string") {
-    return {
+    return dataform.Target.create({
       name: resolvable
-    };
+    });
   }
   if (resolvable instanceof dataform.ActionConfig.Target) {
-    return {
+    return dataform.Target.create({
       name: resolvable.name,
       schema: resolvable.dataset,
       database: resolvable.project
-    };
+    });
   }
-  return resolvable;
+  return dataform.Target.create(resolvable);
 }
 
 export function stringifyResolvable(res: Resolvable) {
@@ -155,7 +155,7 @@ export function ambiguousActionNameMsg(act: Resolvable, allActs: Action[] | stri
     typeof allActs[0] === "string"
       ? allActs
       : (allActs as Array<Table | Operation | Assertion>).map(
-          r => `${r.proto.target.schema}.${r.proto.target.name}`
+          r => `${r.getTarget().schema}.${r.getTarget().name}`
         );
   return `Ambiguous Action name: ${stringifyResolvable(
     act
@@ -176,46 +176,6 @@ export function target(
     schema: schema || config.defaultSchema || undefined,
     database: database || config.defaultDatabase || undefined
   });
-}
-
-/**
- * @deprecated use ActionBuilder.applySessionToTarget() instead.
- */
-export function setNameAndTarget(
-  session: Session,
-  action: ActionProto,
-  name: string,
-  overrideSchema?: string,
-  overrideDatabase?: string
-) {
-  action.target = target(session.projectConfig, name, overrideSchema, overrideDatabase);
-  action.canonicalTarget = target(
-    session.canonicalProjectConfig,
-    name,
-    overrideSchema,
-    overrideDatabase
-  );
-  if (action.target.name.includes(".")) {
-    session.compileError(
-      new Error("Action target names cannot include '.'"),
-      undefined,
-      action.target
-    );
-  }
-  if (action.target.schema.includes(".")) {
-    session.compileError(
-      new Error("Action target datasets cannot include '.'"),
-      undefined,
-      action.target
-    );
-  }
-  if (action.target.database.includes(".")) {
-    session.compileError(
-      new Error("Action target projects cannot include '.'"),
-      undefined,
-      action.target
-    );
-  }
 }
 
 /**
@@ -338,7 +298,7 @@ export function actionConfigToCompiledGraphTarget(
     | dataform.ActionConfig.DataPreparationConfig.ErrorTableConfig
     | dataform.ActionConfig.Target
 ): dataform.Target {
-  const compiledGraphTarget: dataform.ITarget = { name: actionConfig.name };
+  const compiledGraphTarget = dataform.Target.create({ name: actionConfig.name });
   if ("project" in actionConfig && actionConfig.project !== undefined) {
     compiledGraphTarget.database = actionConfig.project;
   }
@@ -350,17 +310,17 @@ export function actionConfigToCompiledGraphTarget(
   if ("dataset" in actionConfig && actionConfig.dataset !== undefined) {
     compiledGraphTarget.schema = actionConfig.dataset;
   }
-  return dataform.Target.create(compiledGraphTarget);
+  return compiledGraphTarget;
 }
 
 export function resolveActionsConfigFilename(configFilename: string, configPath: string) {
   return Path.normalize(Path.join(Path.dirName(configPath), configFilename));
 }
 
-export function addDependenciesToActionDependencyTargets(
+export function checkAssertionsForDependency(
   action: actionsWithDependencies,
   resolvable: Resolvable
-) {
+): dataform.Target {
   const dependencyTarget = resolvableAsTarget(resolvable);
   if (
     !dependencyTarget.hasOwnProperty("includeDependentAssertions") &&
@@ -380,15 +340,15 @@ export function addDependenciesToActionDependencyTargets(
     ) {
       action.session.compileError(
         `Conflicting "includeDependentAssertions" properties are not allowed. Dependency ${dependencyTarget.name} has different values set for this property.`,
-        action.proto.fileName,
-        action.proto.target
+        action.getFileName(),
+        action.getTarget()
       );
-      return action;
+      return;
     }
   }
-  action.proto.dependencyTargets.push(dependencyTarget);
   action.includeAssertionsForDependency.set(
     dependencyTargetString,
     dependencyTarget.includeDependentAssertions
   );
+  return dependencyTarget;
 }

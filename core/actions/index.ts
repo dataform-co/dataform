@@ -43,10 +43,12 @@ export abstract class ActionBuilder<T> {
     targetFromConfig: dataform.Target,
     projectConfig: dataform.ProjectConfig,
     fileName?: string,
-    validateTarget = false,
-    useDefaultAssertionDataset = false
+    options?: {
+      validateTarget?: boolean;
+      useDefaultAssertionDataset?: boolean;
+    }
   ): dataform.Target {
-    const defaultSchema = useDefaultAssertionDataset
+    const defaultSchema = options?.useDefaultAssertionDataset
       ? projectConfig.assertionSchema || projectConfig.defaultSchema
       : projectConfig.defaultSchema;
     const target = dataform.Target.create({
@@ -54,7 +56,7 @@ export abstract class ActionBuilder<T> {
       schema: targetFromConfig.schema || defaultSchema || undefined,
       database: targetFromConfig.database || projectConfig.defaultDatabase || undefined
     });
-    if (validateTarget) {
+    if (options?.validateTarget) {
       this.validateTarget(targetFromConfig, fileName);
     }
     return target;
@@ -103,6 +105,27 @@ export abstract class ActionBuilder<T> {
         target
       );
     }
+  }
+}
+
+export function checkConfigAdditionalOptionsOverlap(
+  config: dataform.ActionConfig.TableConfig | dataform.ActionConfig.IncrementalTableConfig,
+  session: Session
+) {
+  const target = dataform.Target.create({
+    database: config.project,
+    schema: config.dataset,
+    name: config.name
+  });
+  if (config.partitionExpirationDays && config.additionalOptions.partition_expiration_days) {
+    session.compileError(
+      `partitionExpirationDays has been declared twice`,
+      config.filename,
+      target
+    );
+  }
+  if (config.requirePartitionFilter && config.additionalOptions.require_partition_filter) {
+    session.compileError(`requirePartitionFilter has been declared twice`, config.filename, target);
   }
 }
 
