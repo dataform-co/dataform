@@ -205,8 +205,7 @@ export class Session {
         this.actions.push(new Operation(this, sqlxConfig).queries(actionOptions.sqlContextable));
         break;
       case "declaration":
-        const declaration = new Declaration(this, sqlxConfig);
-        declaration.proto.fileName = utils.getCallerFile(this.rootDir);
+        const declaration = new Declaration(this, sqlxConfig, utils.getCallerFile(this.rootDir));
         this.actions.push(declaration);
         break;
       case "test":
@@ -231,7 +230,7 @@ export class Session {
     }
     const resolved = allResolved.length > 0 ? allResolved[0] : undefined;
 
-    if (resolved && resolved instanceof Operation && !resolved.proto.hasOutput) {
+    if (resolved && resolved instanceof Operation && !resolved.getHasOutput()) {
       this.compileError(
         new Error("Actions cannot resolve operations which do not produce output.")
       );
@@ -240,14 +239,14 @@ export class Session {
 
     if (resolved) {
       if (resolved instanceof Declaration) {
-        return this.compilationSql().resolveTarget(resolved.proto.target);
+        return this.compilationSql().resolveTarget(resolved.getTarget());
       }
       return this.compilationSql().resolveTarget({
-        ...resolved.proto.target,
+        ...resolved.getTarget(),
         database:
-          resolved.proto.target.database && this.finalizeDatabase(resolved.proto.target.database),
-        schema: this.finalizeSchema(resolved.proto.target.schema),
-        name: this.finalizeName(resolved.proto.target.name)
+          resolved.getTarget().database && this.finalizeDatabase(resolved.getTarget().database),
+        schema: this.finalizeSchema(resolved.getTarget().schema),
+        name: this.finalizeName(resolved.getTarget().name)
       });
     }
 
@@ -268,16 +267,16 @@ export class Session {
       | Contextable<IActionContext, string | string[]>
       | dataform.ActionConfig.OperationConfig
   ): Operation {
+    const filename = utils.getCallerFile(this.rootDir);
     let operation: Operation;
     if (!!queryOrConfig && typeof queryOrConfig === "object") {
-      operation = new Operation(this, { name, ...queryOrConfig });
+      operation = new Operation(this, { name, ...queryOrConfig, filename });
     } else {
-      operation = new Operation(this, { name });
+      operation = new Operation(this, { name, filename });
       if (queryOrConfig) {
         operation.queries(queryOrConfig as AContextable<string>);
       }
     }
-    operation.proto.fileName = utils.getCallerFile(this.rootDir);
     this.actions.push(operation);
     return operation;
   }
@@ -304,15 +303,25 @@ export class Session {
       | any
   ): Table | IncrementalTable | View {
     // In v4, consider replacing publish with separate methods for each action type.
-    let newTable: Table | IncrementalTable | View = new View(this, { type: "view", name });
+    const filename = utils.getCallerFile(this.rootDir);
+    let newTable: Table | IncrementalTable | View = new View(this, {
+      type: "view",
+      name,
+      filename
+    });
     if (!!queryOrConfig) {
       if (typeof queryOrConfig === "object") {
         if (queryOrConfig?.type === "view" || queryOrConfig.type === undefined) {
-          newTable = new View(this, { type: "view", name, ...queryOrConfig });
+          newTable = new View(this, { type: "view", name, ...queryOrConfig, filename });
         } else if (queryOrConfig?.type === "incremental") {
-          newTable = new IncrementalTable(this, { type: "incremental", name, ...queryOrConfig });
+          newTable = new IncrementalTable(this, {
+            type: "incremental",
+            name,
+            ...queryOrConfig,
+            filename
+          });
         } else if (queryOrConfig?.type === "table") {
-          newTable = new Table(this, { type: "table", name, ...queryOrConfig });
+          newTable = new Table(this, { type: "table", name, ...queryOrConfig, filename });
         } else {
           throw Error(`Unrecognized table type: ${queryOrConfig.type}`);
         }
@@ -321,7 +330,6 @@ export class Session {
         newTable.query(queryOrConfig);
       }
     }
-    newTable.proto.fileName = utils.getCallerFile(this.rootDir);
     this.actions.push(newTable);
     return newTable;
   }
@@ -337,16 +345,16 @@ export class Session {
     name: string,
     queryOrConfig?: AContextable<string> | dataform.ActionConfig.AssertionConfig
   ): Assertion {
+    const filename = utils.getCallerFile(this.rootDir);
     let assertion: Assertion;
     if (!!queryOrConfig && typeof queryOrConfig === "object") {
-      assertion = new Assertion(this, { name, ...queryOrConfig });
+      assertion = new Assertion(this, { name, ...queryOrConfig, filename });
     } else {
-      assertion = new Assertion(this, { name });
+      assertion = new Assertion(this, { name, filename });
       if (queryOrConfig) {
         assertion.query(queryOrConfig as AContextable<string>);
       }
     }
-    assertion.proto.fileName = utils.getCallerFile(this.rootDir);
     this.actions.push(assertion);
     return assertion;
   }
@@ -365,8 +373,7 @@ export class Session {
       // without breaking typescript consumers of Dataform.
       | any
   ): Declaration {
-    const declaration = new Declaration(this, config);
-    declaration.proto.fileName = utils.getCallerFile(this.rootDir);
+    const declaration = new Declaration(this, config, utils.getCallerFile(this.rootDir));
     this.actions.push(declaration);
     return declaration;
   }
@@ -383,10 +390,9 @@ export class Session {
    * <!-- TODO(ekrekr): add tests for this method -->
    */
   public test(name: string): Test {
-    const newTest = new Test();
+    const newTest = new Test(this, { name });
     newTest.session = this;
-    newTest.proto.name = name;
-    newTest.proto.fileName = utils.getCallerFile(this.rootDir);
+    newTest.setFilename(utils.getCallerFile(this.rootDir));
     // Add it to global index.
     this.tests[name] = newTest;
     return newTest;
@@ -468,7 +474,7 @@ export class Session {
       ),
       graphErrors: this.graphErrors,
       dataformCoreVersion,
-      targets: this.actions.map(action => action.proto.target)
+      targets: this.actions.map(action => action.getTarget())
     });
 
     this.fullyQualifyDependencies(
@@ -579,16 +585,17 @@ export class Session {
           );
         } else if (possibleDeps.length === 1) {
           // We found a single matching target, and fully-qualify it if it's a normal dependency.
-          const protoDep = possibleDeps[0].proto;
-          fullyQualifiedDependencies[targetAsReadableString(protoDep.target)] = protoDep.target;
+          const dependencyTarget = possibleDeps[0].getTarget();
+          fullyQualifiedDependencies[targetAsReadableString(dependencyTarget)] = dependencyTarget;
 
           if (dependency.includeDependentAssertions) {
             this.actionAssertionMap
               .find(dependency)
               .forEach(
                 assertion =>
-                  (fullyQualifiedDependencies[targetAsReadableString(assertion.proto.target)] =
-                    assertion.proto.target)
+                  (fullyQualifiedDependencies[
+                    targetAsReadableString(assertion.getTarget())
+                  ] = assertion.getTarget())
               );
           }
         } else {
@@ -781,10 +788,6 @@ function getCanonicalProjectConfig(originalProjectConfig: dataform.ProjectConfig
   });
 }
 
-function joinQuoted(values: readonly string[]) {
-  return values.map((value: string) => `"${value}"`).join(" | ");
-}
-
 class ActionMap {
   private byName: Map<string, Action[]> = new Map();
   private bySchemaAndName: Map<string, Map<string, Action[]>> = new Map();
@@ -793,7 +796,7 @@ class ActionMap {
 
   public constructor(actions: Action[]) {
     for (const action of actions) {
-      this.set(action.proto.target, action);
+      this.set(action.getTarget(), action);
     }
   }
 

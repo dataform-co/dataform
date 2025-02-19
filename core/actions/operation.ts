@@ -6,7 +6,7 @@ import * as Path from "df/core/path";
 import { Session } from "df/core/session";
 import {
   actionConfigToCompiledGraphTarget,
-  addDependenciesToActionDependencyTargets,
+  checkAssertionsForDependency,
   configTargetToCompiledGraphTarget,
   nativeRequire,
   resolvableAsTarget,
@@ -72,13 +72,6 @@ interface ILegacyOperationConfig extends dataform.ActionConfig.OperationConfig {
  * This is where `query` comes from.
  */
 export class Operation extends ActionBuilder<dataform.Operation> {
-  /**
-   * @hidden Stores the generated proto for the compiled graph.
-   * <!-- TODO(ekrekr): make this field private, to enforce proto update logic to happen in this
-   * class. -->
-   */
-  public proto = dataform.Operation.create();
-
   /** @hidden Hold a reference to the Session instance. */
   public session: Session;
 
@@ -87,6 +80,11 @@ export class Operation extends ActionBuilder<dataform.Operation> {
    * action.
    */
   public dependOnDependencyAssertions: boolean = false;
+
+  /**
+   * @hidden Stores the generated proto for the compiled graph.
+   */
+  private proto = dataform.Operation.create();
 
   /** @hidden We delay contextification until the final compile step, so hold these here for now. */
   private contextableQueries: Contextable<IActionContext, string | string[]>;
@@ -178,9 +176,12 @@ export class Operation extends ActionBuilder<dataform.Operation> {
    */
   public dependencies(value: Resolvable | Resolvable[]) {
     const newDependencies = Array.isArray(value) ? value : [value];
-    newDependencies.forEach(resolvable =>
-      addDependenciesToActionDependencyTargets(this, resolvable)
-    );
+    newDependencies.forEach(resolvable => {
+      const dependencyTarget = checkAssertionsForDependency(this, resolvable);
+      if (!!dependencyTarget) {
+        this.proto.dependencyTargets.push(dependencyTarget);
+      }
+    });
     return this;
   }
 
@@ -324,6 +325,11 @@ export class Operation extends ActionBuilder<dataform.Operation> {
   }
 
   /** @hidden */
+  public getHasOutput(): boolean {
+    return this.proto.hasOutput;
+  }
+
+  /** @hidden */
   public compile() {
     if (this.proto.actionDescriptor?.columns?.length > 0 && !this.proto.hasOutput) {
       this.session.compileError(
@@ -401,11 +407,11 @@ export class OperationContext implements IActionContext {
   }
 
   public self(): string {
-    return this.resolve(this.operation.proto.target);
+    return this.resolve(this.operation.getTarget());
   }
 
   public name(): string {
-    return this.operation.session.finalizeName(this.operation.proto.target.name);
+    return this.operation.session.finalizeName(this.operation.getTarget().name);
   }
 
   public ref(ref: Resolvable | string[], ...rest: string[]) {
@@ -423,18 +429,18 @@ export class OperationContext implements IActionContext {
   }
 
   public schema(): string {
-    return this.operation.session.finalizeSchema(this.operation.proto.target.schema);
+    return this.operation.session.finalizeSchema(this.operation.getTarget().schema);
   }
 
   public database(): string {
-    if (!this.operation.proto.target.database) {
+    if (!this.operation.getTarget().database) {
       this.operation.session.compileError(
         new Error(`Warehouse does not support multiple databases`)
       );
       return "";
     }
 
-    return this.operation.session.finalizeDatabase(this.operation.proto.target.database);
+    return this.operation.session.finalizeDatabase(this.operation.getTarget().database);
   }
 
   public dependencies(name: Resolvable | Resolvable[]) {

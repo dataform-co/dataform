@@ -60,18 +60,16 @@ interface ILegacyDeclarationConfig extends dataform.ActionConfig.DeclarationConf
  * ```
  */
 export class Declaration extends ActionBuilder<dataform.Declaration> {
-  /**
-   * @hidden Stores the generated proto for the compiled graph.
-   * <!-- TODO(ekrekr): make this field private, to enforce proto update logic to happen in this
-   * class. -->
-   */
-  public proto = dataform.Declaration.create();
-
   /** @hidden Hold a reference to the Session instance. */
   public session: Session;
 
+  /**
+   * @hidden Stores the generated proto for the compiled graph.
+   */
+  private proto = dataform.Declaration.create();
+
   /** @hidden */
-  constructor(session?: Session, unverifiedConfig?: any) {
+  constructor(session?: Session, unverifiedConfig?: any, filename?: string) {
     super(session);
     this.session = session;
 
@@ -99,6 +97,7 @@ export class Declaration extends ActionBuilder<dataform.Declaration> {
         )
       );
     }
+    this.proto.fileName = filename;
     return this;
   }
 

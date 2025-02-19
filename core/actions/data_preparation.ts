@@ -7,7 +7,7 @@ import * as Path from "df/core/path";
 import { Session } from "df/core/session";
 import {
   actionConfigToCompiledGraphTarget,
-  addDependenciesToActionDependencyTargets,
+  checkAssertionsForDependency,
   configTargetToCompiledGraphTarget,
   nativeRequire,
   resolvableAsTarget,
@@ -26,8 +26,7 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
   // We delay contextification until the final compile step, so hold these here for now.
   public contextableQuery: Contextable<IDataPreparationContext, string>;
 
-  // TODO: make this field private, to enforce proto update logic to happen in this class.
-  public proto = dataform.DataPreparation.create();
+  private proto = dataform.DataPreparation.create();
 
   constructor(
     session?: Session,
@@ -86,7 +85,7 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
   public dependencies(value: Resolvable | Resolvable[]) {
     const newDependencies = Array.isArray(value) ? value : [value];
     newDependencies.forEach(resolvable =>
-      addDependenciesToActionDependencyTargets(this, resolvable)
+      this.proto.dependencyTargets.push(checkAssertionsForDependency(this, resolvable))
     );
     return this;
   }
@@ -432,11 +431,11 @@ export class DataPreparationContext implements IDataPreparationContext {
   }
 
   public self(): string {
-    return this.resolve(this.dataPreparation.proto.target);
+    return this.resolve(this.dataPreparation.getTarget());
   }
 
   public name(): string {
-    return this.dataPreparation.session.finalizeName(this.dataPreparation.proto.target.name);
+    return this.dataPreparation.session.finalizeName(this.dataPreparation.getTarget().name);
   }
 
   public ref(ref: Resolvable | string[], ...rest: string[]): string {
@@ -454,20 +453,18 @@ export class DataPreparationContext implements IDataPreparationContext {
   }
 
   public schema(): string {
-    return this.dataPreparation.session.finalizeSchema(this.dataPreparation.proto.target.schema);
+    return this.dataPreparation.session.finalizeSchema(this.dataPreparation.getTarget().schema);
   }
 
   public database(): string {
-    if (!this.dataPreparation.proto.target.database) {
+    if (!this.dataPreparation.getTarget().database) {
       this.dataPreparation.session.compileError(
         new Error(`Warehouse does not support multiple databases`)
       );
       return "";
     }
 
-    return this.dataPreparation.session.finalizeDatabase(
-      this.dataPreparation.proto.target.database
-    );
+    return this.dataPreparation.session.finalizeDatabase(this.dataPreparation.getTarget().database);
   }
 
   // TODO: Add support for incremental conditions in compilation output
