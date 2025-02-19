@@ -6,7 +6,6 @@ import { AContextable, Assertion, AssertionContext } from "df/core/actions/asser
 import {
   DataPreparation,
   DataPreparationContext,
-  IDataPreparationContext
 } from "df/core/actions/data_preparation";
 import { Declaration } from "df/core/actions/declaration";
 import { IncrementalTable } from "df/core/actions/incremental_table";
@@ -97,7 +96,6 @@ export class Session {
         | AssertionContext
         | OperationContext
         | DataPreparationContext
-        | IDataPreparationContext
         | IActionContext
     ) => string[];
     incrementalWhereContextable: (ctx: ITableContext) => string;
