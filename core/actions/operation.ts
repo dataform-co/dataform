@@ -325,7 +325,7 @@ export class Operation extends ActionBuilder<dataform.Operation> {
   }
 
   /** @hidden */
-  public getHasOutput(): Boolean {
+  public getHasOutput(): boolean {
     return this.proto.hasOutput;
   }
 
