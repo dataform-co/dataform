@@ -238,7 +238,6 @@ $\{when(true, "|> SELECT *", "|> SELECT 1")\}
 
     test(`data preparations can be loaded via sqlx file with file name as action name`, () => {
       const projectDir = createSimpleDataPreparationProject(VALID_WORKFLOW_SETTINGS_YAML, false);
-      // TODO(fernst): decide on future of `validate(`.
       const dataPreparationSqlx = `
 config {
     type: "dataPreparation",
@@ -252,6 +251,7 @@ config {
 }
 
 FROM x
+|> $\{EXPECT\} y > 0
 $\{when(true, "|> SELECT *", "|> SELECT 1")\}
 `;
 
@@ -305,6 +305,7 @@ $\{when(true, "|> SELECT *", "|> SELECT 1")\}
               replace: {}
             },
             query: `FROM x
+|>  /* @@VALIDATION */ WHERE  y > 0
 |> SELECT *`,
             errorTable: {
               database: "errorPrj",
@@ -319,7 +320,6 @@ $\{when(true, "|> SELECT *", "|> SELECT 1")\}
 
     test(`data preparations can be loaded via dp.sqlx file with file name as action name`, () => {
       const projectDir = createSimpleDataPreparationProject(VALID_WORKFLOW_SETTINGS_YAML, false);
-      // TODO(fernst): decide on future of `validate(`.
       const dataPreparationSqlx = `
 config {
     type: "dataPreparation",
@@ -333,6 +333,7 @@ config {
 }
 
 FROM x
+|> $\{EXPECT\} y > 0
 $\{when(true, "|> SELECT *", "|> SELECT 1")\}
 `;
 
@@ -386,6 +387,7 @@ $\{when(true, "|> SELECT *", "|> SELECT 1")\}
               replace: {}
             },
             query: `FROM x
+|>  /* @@VALIDATION */ WHERE  y > 0
 |> SELECT *`,
             errorTable: {
               database: "errorPrj",
