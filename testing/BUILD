@@ -1,8 +1,9 @@
+load("//testing:index.bzl", "ts_test_suite")
+load("//tools:ts_library.bzl", "ts_library")
+
 package(default_visibility = ["//visibility:public"])
 
 exports_files(["build_test.sh"])
-
-load("//tools:ts_library.bzl", "ts_library")
 
 ts_library(
     name = "testing",
@@ -28,7 +29,21 @@ ts_library(
     ],
 )
 
-load("//testing:index.bzl", "ts_test_suite")
+ts_library(
+    name = "run_core",
+    srcs = [
+        "run_core.ts",
+    ],
+    deps = [
+        "//common/protos",
+        "//core",
+        "//protos:ts",
+        "@npm//@types/fs-extra",
+        "@npm//@types/node",
+        "@npm//fs-extra",
+        "@npm//vm2",
+    ],
+)
 
 ts_test_suite(
     name = "tests",
