@@ -11,8 +11,6 @@ export const targetStringifier = new JSONObjectStringifier<dataform.ITarget>();
  *
  * This is an ambiguous transformation, multiple targets may map to the same string
  * and it should not be used for indexing. Use @see {@link targetStringifier} instead.
- *
- * TODO(ekrekr): replace remaining incorrect usage of this with targetStringifier.
  */
 export function targetAsReadableString(target: dataform.ITarget): string {
   const nameParts = [target.name, target.schema];
