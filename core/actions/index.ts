@@ -29,8 +29,8 @@ export type ActionProto =
   | dataform.Notebook
   | dataform.DataPreparation;
 
-// TODO(ekrekr): In v4, make all method on inheritors of this private, forcing users to use
-// constructors in order to populate actions.
+// In v4, consider making methods on inheritors of this private, forcing users to use constructors
+// in order to populate actions.
 export abstract class ActionBuilder<T> {
   public session: Session;
   public includeAssertionsForDependency: Map<string, boolean> = new Map();
@@ -82,6 +82,79 @@ export abstract class ActionBuilder<T> {
 
   /** Creates the final protobuf representation. */
   public abstract compile(): T;
+
+  protected generateInlineAssertions(
+    tableAssertionsConfig: dataform.ActionConfig.TableAssertionsConfig,
+    proto: dataform.Table
+  ): { uniqueKeyAssertions: Assertion[]; rowConditionsAssertion?: Assertion } {
+    const inlineAssertions: {
+      uniqueKeyAssertions: Assertion[];
+      rowConditionsAssertion?: Assertion;
+    } = { uniqueKeyAssertions: [] };
+
+    if (!!tableAssertionsConfig.uniqueKey?.length && !!tableAssertionsConfig.uniqueKeys?.length) {
+      this.session.compileError(
+        new Error("Specify at most one of 'assertions.uniqueKey' and 'assertions.uniqueKeys'.")
+      );
+    }
+    let uniqueKeys = tableAssertionsConfig.uniqueKeys.map(uniqueKey =>
+      dataform.ActionConfig.TableAssertionsConfig.UniqueKey.create(uniqueKey)
+    );
+    if (!!tableAssertionsConfig.uniqueKey?.length) {
+      uniqueKeys = [
+        dataform.ActionConfig.TableAssertionsConfig.UniqueKey.create({
+          uniqueKey: tableAssertionsConfig.uniqueKey
+        })
+      ];
+    }
+    if (uniqueKeys) {
+      uniqueKeys.forEach(({ uniqueKey }, index) => {
+        const uniqueKeyAssertion = this.session
+          .assert(
+            `${proto.target.schema}_${proto.target.name}_assertions_uniqueKey_${index}`,
+            dataform.ActionConfig.AssertionConfig.create({ filename: proto.fileName })
+          )
+          .query(ctx =>
+            this.session.compilationSql().indexAssertion(ctx.ref(proto.target), uniqueKey)
+          );
+        if (proto.tags) {
+          uniqueKeyAssertion.tags(proto.tags);
+        }
+        uniqueKeyAssertion.setParentAction(dataform.Target.create(proto.target));
+        if (proto.disabled) {
+          uniqueKeyAssertion.disabled();
+        }
+        inlineAssertions.uniqueKeyAssertions.push(uniqueKeyAssertion);
+      });
+    }
+    const mergedRowConditions = tableAssertionsConfig.rowConditions || [];
+    if (!!tableAssertionsConfig.nonNull) {
+      const nonNullCols =
+        typeof tableAssertionsConfig.nonNull === "string"
+          ? [tableAssertionsConfig.nonNull]
+          : tableAssertionsConfig.nonNull;
+      nonNullCols.forEach(nonNullCol => mergedRowConditions.push(`${nonNullCol} IS NOT NULL`));
+    }
+    if (!!mergedRowConditions && mergedRowConditions.length > 0) {
+      inlineAssertions.rowConditionsAssertion = this.session
+        .assert(`${proto.target.schema}_${proto.target.name}_assertions_rowConditions`, {
+          filename: proto.fileName
+        } as dataform.ActionConfig.AssertionConfig)
+        .query(ctx =>
+          this.session
+            .compilationSql()
+            .rowConditionsAssertion(ctx.ref(proto.target), mergedRowConditions)
+        );
+      inlineAssertions.rowConditionsAssertion.setParentAction(dataform.Target.create(proto.target));
+      if (proto.disabled) {
+        inlineAssertions.rowConditionsAssertion.disabled();
+      }
+      if (proto.tags) {
+        inlineAssertions.rowConditionsAssertion.tags(proto.tags);
+      }
+    }
+    return inlineAssertions;
+  }
 
   private validateTarget(target: dataform.Target, fileName: string) {
     if (target.name.includes(".")) {

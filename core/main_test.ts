@@ -3182,8 +3182,9 @@ notebook({
             }
           ],
           disabled: true,
-          // TODO(ekrekr): fix this through action constructors.
-          fileName: "index.js",
+          // It would make more sense for this to be the path to the config, but we haven't yet
+          // introduced a configFilename field.
+          fileName: "definitions/filename.sql",
           parentAction: {
             database: "project",
             schema: "dataset",
@@ -3212,8 +3213,9 @@ notebook({
             }
           ],
           disabled: true,
-          // TODO(ekrekr): fix this through action constructors.
-          fileName: "index.js",
+          // It would make more sense for this to be the path to the config, but we haven't yet
+          // introduced a configFilename field.
+          fileName: "definitions/filename.sql",
           parentAction: {
             database: "project",
             schema: "dataset",
@@ -3300,7 +3302,6 @@ actions:
       );
       fs.mkdirSync(path.join(projectDir, "definitions"));
       fs.writeFileSync(path.join(projectDir, "definitions/operation.sqlx"), "SELECT 1");
-      // TODO(ekrekr): add support for columns.
       fs.writeFileSync(
         path.join(projectDir, "definitions/actions.yaml"),
         `
@@ -3346,7 +3347,6 @@ actions:
       fs.mkdirSync(path.join(projectDir, "definitions"));
       fs.writeFileSync(path.join(projectDir, "definitions/operation.sqlx"), "SELECT 1");
       fs.writeFileSync(path.join(projectDir, "definitions/filename.sql"), "SELECT 1");
-      // TODO(ekrekr): add support for columns.
       fs.writeFileSync(
         path.join(projectDir, "definitions/actions.yaml"),
         `
@@ -3396,8 +3396,6 @@ ${exampleBuiltInAssertions.inputActionConfigBlock}
           },
           type: "table",
           disabled: true,
-          // TODO(ekrekr): finish fixing this in https://github.com/dataform-co/dataform/pull/1718.
-          // protected: false,
           hermeticity: "HERMETIC",
           bigquery: {
             additionalOptions: {
@@ -3445,7 +3443,6 @@ ${exampleBuiltInAssertions.inputActionConfigBlock}
       fs.mkdirSync(path.join(projectDir, "definitions"));
       fs.writeFileSync(path.join(projectDir, "definitions/operation.sqlx"), "SELECT 1");
       fs.writeFileSync(path.join(projectDir, "definitions/filename.sql"), "SELECT 1");
-      // TODO(ekrekr): add support for columns.
       fs.writeFileSync(
         path.join(projectDir, "definitions/actions.yaml"),
         `
@@ -3491,8 +3488,6 @@ ${exampleBuiltInAssertions.inputActionConfigBlock}
           },
           type: "view",
           disabled: true,
-          // TODO(ekrekr): finish fixing this in https://github.com/dataform-co/dataform/pull/1718.
-          // protected: false,
           hermeticity: "HERMETIC",
           bigquery: {
             additionalOptions: {
@@ -3537,7 +3532,6 @@ ${exampleBuiltInAssertions.inputActionConfigBlock}
       fs.mkdirSync(path.join(projectDir, "definitions"));
       fs.writeFileSync(path.join(projectDir, "definitions/operation.sqlx"), "SELECT 1");
       fs.writeFileSync(path.join(projectDir, "definitions/filename.sql"), "SELECT 1");
-      // TODO(ekrekr): add support for columns.
       fs.writeFileSync(
         path.join(projectDir, "definitions/actions.yaml"),
         `
@@ -3648,7 +3642,6 @@ ${exampleBuiltInAssertions.inputActionConfigBlock}
         `config {type: "view"} SELECT 1`
       );
       fs.writeFileSync(path.join(projectDir, "definitions/filename.sql"), "SELECT 1");
-      // TODO(ekrekr): add support for columns.
       fs.writeFileSync(
         path.join(projectDir, "definitions/actions.yaml"),
         `

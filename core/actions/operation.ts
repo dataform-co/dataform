@@ -19,7 +19,7 @@ import { dataform } from "df/protos/ts";
  * @hidden
  * @deprecated
  * This maintains backwards compatability with older versions.
- * TODO(ekrekr): consider breaking backwards compatability of these in v4.
+ * Consider breaking backwards compatability of these in v4.
  */
 interface ILegacyOperationConfig extends dataform.ActionConfig.OperationConfig {
   dependencies: Resolvable[];
@@ -161,7 +161,8 @@ export class Operation extends ActionBuilder<dataform.Operation> {
   /**
    * Sets the query/queries to generate the operation from.
    *
-   * <!-- TODO(ekrekr): deprecated this in favor of a single `query(` method -->
+   * <!-- This is called queries for legacy reasons; now this could be better replaced as a single
+   * `query(` method -->
    */
   public queries(queries: Contextable<IActionContext, string | string[]>) {
     this.contextableQueries = queries;

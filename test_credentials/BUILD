@@ -10,7 +10,6 @@ package(default_visibility = ["//visibility:public"])
 # * Download the key, and run the `dataform init-creds` CLI command on the JSON.
 # * Copy the resulting `.df-credentials` file to here as `bigquery.json`.
 # * Run the "scripts/create_secret" script.
-# TODO(ekrekr): make this process easier, as keys invalidate themselves fairly frequently now.
 gcloud_secret(
     name = "bigquery.json",
     testonly = 1,

@@ -18,7 +18,7 @@ import { dataform } from "df/protos/ts";
  * @hidden
  * @deprecated
  * This maintains backwards compatability with older versions.
- * TODO(ekrekr): consider breaking backwards compatability of these in v4.
+ * Consider breaking backwards compatability of these in v4.
  */
 interface ILegacyAssertionConfig extends dataform.ActionConfig.AssertionConfig {
   dependencies: Resolvable[];
@@ -324,8 +324,6 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
       delete unverifiedConfig.fileName;
     }
 
-    // TODO(ekrekr): consider moving this to a shared location after all action builders have proto
-    // config verifiers.
     if (unverifiedConfig.type) {
       delete unverifiedConfig.type;
     }

@@ -268,7 +268,7 @@ export class Session {
     const filename = utils.getCallerFile(this.rootDir);
     let operation: Operation;
     if (!!queryOrConfig && typeof queryOrConfig === "object") {
-      operation = new Operation(this, { name, ...queryOrConfig, filename });
+      operation = new Operation(this, { name, filename, ...queryOrConfig });
     } else {
       operation = new Operation(this, { name, filename });
       if (queryOrConfig) {
@@ -310,7 +310,7 @@ export class Session {
     if (!!queryOrConfig) {
       if (typeof queryOrConfig === "object") {
         if (queryOrConfig?.type === "view" || queryOrConfig.type === undefined) {
-          newTable = new View(this, { type: "view", name, ...queryOrConfig, filename });
+          newTable = new View(this, { type: "view", name, filename, ...queryOrConfig });
         } else if (queryOrConfig?.type === "incremental") {
           newTable = new IncrementalTable(this, {
             type: "incremental",
@@ -319,7 +319,7 @@ export class Session {
             filename
           });
         } else if (queryOrConfig?.type === "table") {
-          newTable = new Table(this, { type: "table", name, ...queryOrConfig, filename });
+          newTable = new Table(this, { type: "table", name, filename, ...queryOrConfig });
         } else {
           throw Error(`Unrecognized table type: ${queryOrConfig.type}`);
         }
@@ -342,11 +342,14 @@ export class Session {
   public assert(
     name: string,
     queryOrConfig?: AContextable<string> | dataform.ActionConfig.AssertionConfig
+    // // `any` is used here to facilitate the type merging of legacy declaration configs options,
+    // // without breaking typescript consumers of Dataform.
+    // | any
   ): Assertion {
     const filename = utils.getCallerFile(this.rootDir);
     let assertion: Assertion;
     if (!!queryOrConfig && typeof queryOrConfig === "object") {
-      assertion = new Assertion(this, { name, ...queryOrConfig, filename });
+      assertion = new Assertion(this, { name, filename, ...queryOrConfig });
     } else {
       assertion = new Assertion(this, { name, filename });
       if (queryOrConfig) {
@@ -383,9 +386,9 @@ export class Session {
    *
    * @see [Test](Test) for examples on how to use.
    *
-   * <!-- TODO(ekrekr): safely allow passing of config blocks as the second argument, similar to
-   * publish. -->
-   * <!-- TODO(ekrekr): add tests for this method -->
+   * <!-- This doesn't currently support passing of config blocks as the second argument, but it
+   * could in the future. -->
+   * <!-- Note: this action type isn't very thoroughly tested, so careful with changes -->
    */
   public test(name: string): Test {
     const newTest = new Test(this, { name });
@@ -447,7 +450,6 @@ export class Session {
       throw new Error("Custom variables defined in workflow settings can only be strings.");
     }
 
-    // TODO(ekrekr): replace verify here with something that actually works.
     const compiledGraph = dataform.CompiledGraph.create({
       projectConfig: this.projectConfig,
       tables: this.compileGraphChunk(
@@ -509,7 +511,6 @@ export class Session {
         compiledGraph.dataPreparations
       )
     );
-
     verifyObjectMatchesProto(
       dataform.CompiledGraph,
       compiledGraph,

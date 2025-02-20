@@ -9,7 +9,7 @@ import { dataform } from "df/protos/ts";
  * @hidden
  * @deprecated
  * This maintains backwards compatability with older versions.
- * TODO(ekrekr): consider breaking backwards compatability of these in v4.
+ * Consider breaking backwards compatability of these in v4.
  */
 interface ILegacyDeclarationConfig extends dataform.ActionConfig.DeclarationConfig {
   database: string;
@@ -167,16 +167,11 @@ export class Declaration extends ActionBuilder<dataform.Declaration> {
       delete unverifiedConfig.schema;
     }
     if (unverifiedConfig.columns) {
-      // TODO(ekrekr) columns in their current config format are a difficult structure to represent
-      // as protos. They are nested, and use the object keys as the names. Consider a forced
-      // migration to the proto style column names.
       unverifiedConfig.columns = ColumnDescriptors.mapLegacyObjectToConfigProto(
         unverifiedConfig.columns as any
       );
     }
 
-    // TODO(ekrekr): consider moving this to a shared location after all action builders have proto
-    // config verifiers.
     if (unverifiedConfig.type) {
       delete unverifiedConfig.type;
     }
