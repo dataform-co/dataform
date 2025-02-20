@@ -1288,6 +1288,7 @@ $\{when(true, "|> SELECT *", "|> SELECT 1")\}
 
     test(`data preparations can be loaded via sqlx file with file name as action name`, () => {
       const projectDir = createSimpleDataPreparationProject(VALID_WORKFLOW_SETTINGS_YAML, false);
+      // TODO(fernst): decide on future of `validate(`.
       const dataPreparationSqlx = `
 config {
   type: "dataPreparation",
@@ -1301,78 +1302,74 @@ config {
 }
 
 FROM x
--- Ensure y is positive
-$\{validate("y > 0")\}
 $\{when(true, "|> SELECT *", "|> SELECT 1")\}
 `;
 
       fs.writeFileSync(
-          path.join(projectDir, "definitions/this_is_the_file_name.sqlx"),
-          dataPreparationSqlx
+        path.join(projectDir, "definitions/this_is_the_file_name.sqlx"),
+        dataPreparationSqlx
       );
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
       expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(asPlainObject(result.compile.compiledGraph.dataPreparations)).deep.equals(
-          asPlainObject([
-            {
-              target: {
+        asPlainObject([
+          {
+            target: {
+              database: "prj",
+              schema: "ds",
+              name: "this_is_the_file_name"
+            },
+            canonicalTarget: {
+              database: "prj",
+              schema: "ds",
+              name: "this_is_the_file_name"
+            },
+            targets: [
+              {
                 database: "prj",
                 schema: "ds",
                 name: "this_is_the_file_name"
               },
-              canonicalTarget: {
-                database: "prj",
-                schema: "ds",
-                name: "this_is_the_file_name"
-              },
-              targets: [
-                {
-                  database: "prj",
-                  schema: "ds",
-                  name: "this_is_the_file_name"
-                },
-                {
-                  database: "errorPrj",
-                  schema: "errorDs",
-                  name: "errorTable"
-                }
-              ],
-              canonicalTargets: [
-                {
-                  database: "prj",
-                  schema: "ds",
-                  name: "this_is_the_file_name"
-                },
-                {
-                  database: "errorPrj",
-                  schema: "errorDs",
-                  name: "errorTable"
-                }
-              ],
-              fileName: "definitions/this_is_the_file_name.sqlx",
-              load: {
-                replace: {}
-              },
-              query: `FROM x
--- Ensure y is positive
--- @@VALIDATION
-|> WHERE IF(y > 0,true,ERROR(\"Validation Failed\"))
-|> SELECT *`,
-              errorTable: {
+              {
                 database: "errorPrj",
                 schema: "errorDs",
                 name: "errorTable"
+              }
+            ],
+            canonicalTargets: [
+              {
+                database: "prj",
+                schema: "ds",
+                name: "this_is_the_file_name"
               },
-              errorTableRetentionDays: 0
-            }
-          ])
+              {
+                database: "errorPrj",
+                schema: "errorDs",
+                name: "errorTable"
+              }
+            ],
+            fileName: "definitions/this_is_the_file_name.sqlx",
+            load: {
+              replace: {}
+            },
+            query: `FROM x
+|> SELECT *`,
+            errorTable: {
+              database: "errorPrj",
+              schema: "errorDs",
+              name: "errorTable"
+            },
+            errorTableRetentionDays: 0
+          }
+        ])
       );
     });
 
     test(`data preparations can be loaded via dp.sqlx file with file name as action name`, () => {
       const projectDir = createSimpleDataPreparationProject(VALID_WORKFLOW_SETTINGS_YAML, false);
+      // TODO(fernst): decide on future of `validate(`.
       const dataPreparationSqlx = `
 config {
   type: "dataPreparation",
@@ -1386,73 +1383,68 @@ config {
 }
 
 FROM x
--- Ensure y is positive
-$\{validate("y > 0")\}
 $\{when(true, "|> SELECT *", "|> SELECT 1")\}
 `;
 
       fs.writeFileSync(
-          path.join(projectDir, "definitions/this_is_the_file_name.dp.sqlx"),
-          dataPreparationSqlx
+        path.join(projectDir, "definitions/this_is_the_file_name.dp.sqlx"),
+        dataPreparationSqlx
       );
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
       expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(asPlainObject(result.compile.compiledGraph.dataPreparations)).deep.equals(
-          asPlainObject([
-            {
-              target: {
+        asPlainObject([
+          {
+            target: {
+              database: "prj",
+              schema: "ds",
+              name: "this_is_the_file_name"
+            },
+            canonicalTarget: {
+              database: "prj",
+              schema: "ds",
+              name: "this_is_the_file_name"
+            },
+            targets: [
+              {
                 database: "prj",
                 schema: "ds",
                 name: "this_is_the_file_name"
               },
-              canonicalTarget: {
-                database: "prj",
-                schema: "ds",
-                name: "this_is_the_file_name"
-              },
-              targets: [
-                {
-                  database: "prj",
-                  schema: "ds",
-                  name: "this_is_the_file_name"
-                },
-                {
-                  database: "errorPrj",
-                  schema: "errorDs",
-                  name: "errorTable"
-                }
-              ],
-              canonicalTargets: [
-                {
-                  database: "prj",
-                  schema: "ds",
-                  name: "this_is_the_file_name"
-                },
-                {
-                  database: "errorPrj",
-                  schema: "errorDs",
-                  name: "errorTable"
-                }
-              ],
-              fileName: "definitions/this_is_the_file_name.dp.sqlx",
-              load: {
-                replace: {}
-              },
-              query: `FROM x
--- Ensure y is positive
--- @@VALIDATION
-|> WHERE IF(y > 0,true,ERROR(\"Validation Failed\"))
-|> SELECT *`,
-              errorTable: {
+              {
                 database: "errorPrj",
                 schema: "errorDs",
                 name: "errorTable"
+              }
+            ],
+            canonicalTargets: [
+              {
+                database: "prj",
+                schema: "ds",
+                name: "this_is_the_file_name"
               },
-              errorTableRetentionDays: 0
-            }
-          ])
+              {
+                database: "errorPrj",
+                schema: "errorDs",
+                name: "errorTable"
+              }
+            ],
+            fileName: "definitions/this_is_the_file_name.dp.sqlx",
+            load: {
+              replace: {}
+            },
+            query: `FROM x
+|> SELECT *`,
+            errorTable: {
+              database: "errorPrj",
+              schema: "errorDs",
+              name: "errorTable"
+            },
+            errorTableRetentionDays: 0
+          }
+        ])
       );
     });
 
