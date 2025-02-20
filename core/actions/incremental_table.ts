@@ -125,6 +125,9 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
       config.filename = resolveActionsConfigFilename(config.filename, configPath);
       this.query(nativeRequire(config.filename).query);
     }
+    if (config.filename) {
+      this.proto.fileName = config.filename;
+    }
 
     if (config.dependOnDependencyAssertions) {
       this.setDependOnDependencyAssertions(config.dependOnDependencyAssertions);
@@ -183,9 +186,6 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
       requirePartitionFilter: config.requirePartitionFilter,
       additionalOptions: config.additionalOptions
     });
-    if (config.filename) {
-      this.proto.fileName = config.filename;
-    }
     this.proto.onSchemaChange = this.mapOnSchemaChange(config.onSchemaChange);
 
     return this;
@@ -474,10 +474,14 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
     }
     if (uniqueKeys) {
       uniqueKeys.forEach(({ uniqueKey }, index) => {
-        const uniqueKeyAssertion = this.session.assert(
-          `${this.proto.target.schema}_${this.proto.target.name}_assertions_uniqueKey_${index}`,
-          ctx => this.session.compilationSql().indexAssertion(ctx.ref(this.proto.target), uniqueKey)
-        );
+        const uniqueKeyAssertion = this.session
+          .assert(
+            `${this.proto.target.schema}_${this.proto.target.name}_assertions_uniqueKey_${index}`,
+            dataform.ActionConfig.AssertionConfig.create({ filename: this.proto.fileName })
+          )
+          .query(ctx =>
+            this.session.compilationSql().indexAssertion(ctx.ref(this.proto.target), uniqueKey)
+          );
         if (this.proto.tags) {
           uniqueKeyAssertion.tags(this.proto.tags);
         }
@@ -495,13 +499,15 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
       nonNullCols.forEach(nonNullCol => mergedRowConditions.push(`${nonNullCol} IS NOT NULL`));
     }
     if (!!mergedRowConditions && mergedRowConditions.length > 0) {
-      this.rowConditionsAssertion = this.session.assert(
-        `${this.proto.target.schema}_${this.proto.target.name}_assertions_rowConditions`,
-        ctx =>
+      this.rowConditionsAssertion = this.session
+        .assert(`${this.proto.target.schema}_${this.proto.target.name}_assertions_rowConditions`, {
+          filename: this.proto.fileName
+        } as dataform.ActionConfig.AssertionConfig)
+        .query(ctx =>
           this.session
             .compilationSql()
             .rowConditionsAssertion(ctx.ref(this.proto.target), mergedRowConditions)
-      );
+        );
       this.rowConditionsAssertion.setParentAction(dataform.Target.create(this.proto.target));
       if (this.proto.disabled) {
         this.rowConditionsAssertion.disabled();

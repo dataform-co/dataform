@@ -3013,8 +3013,9 @@ notebook({
             }
           ],
           disabled: true,
-          // TODO(ekrekr): fix this through action constructors.
-          fileName: "index.js",
+          // It would make more sense for this to be the path to the config, but we haven't yet
+          // introduced a configFilename field.
+          fileName: "definitions/filename.sql",
           parentAction: {
             database: "project",
             schema: "dataset",
@@ -3043,8 +3044,9 @@ notebook({
             }
           ],
           disabled: true,
-          // TODO(ekrekr): fix this through action constructors.
-          fileName: "index.js",
+          // It would make more sense for this to be the path to the config, but we haven't yet
+          // introduced a configFilename field.
+          fileName: "definitions/filename.sql",
           parentAction: {
             database: "project",
             schema: "dataset",
