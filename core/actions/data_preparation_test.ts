@@ -1,9 +1,10 @@
 // tslint:disable tsr-detect-non-literal-fs-filename
 import { expect } from "chai";
 import * as fs from "fs-extra";
+import { dump as dumpYaml, load as loadYaml } from "js-yaml";
 import * as path from "path";
 
-import { dump as dumpYaml, load as loadYaml } from "js-yaml";
+import { dataform } from "df/protos/ts";
 import { asPlainObject, suite, test } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
 import {
@@ -11,7 +12,6 @@ import {
   runMainInVm,
   VALID_WORKFLOW_SETTINGS_YAML
 } from "df/testing/run_core";
-import { dataform } from "df/protos/ts";
 
 suite("data preparation", ({ afterEach }) => {
   const tmpDirFixture = new TmpDirFixture(afterEach);

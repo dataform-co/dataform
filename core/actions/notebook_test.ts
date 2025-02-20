@@ -143,17 +143,17 @@ defaultNotebookRuntimeOptions:
         path.join(projectDir, "definitions/notebook.js"),
         `
 notebook({
-name: "name",
-location: "location",
-project: "project",
-dependencyTargets: [{
-  name: "operation",
-}],
-filename: "filename.ipynb",
-tags: ["tagA", "tagB"],
-disabled: true,
-description: "description",
-dependOnDependencyAssertions: true
+    name: "name",
+    location: "location",
+    project: "project",
+    dependencyTargets: [{
+    name: "operation",
+    }],
+    filename: "filename.ipynb",
+    tags: ["tagA", "tagB"],
+    disabled: true,
+    description: "description",
+    dependOnDependencyAssertions: true
 })`
       );
 

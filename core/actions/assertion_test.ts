@@ -1,18 +1,18 @@
 // tslint:disable tsr-detect-non-literal-fs-filename
 import { expect } from "chai";
 import * as fs from "fs-extra";
+import { dump as dumpYaml } from "js-yaml";
 import * as path from "path";
 
+import { dataform } from "df/protos/ts";
 import { asPlainObject, suite, test } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
-import { dump as dumpYaml, load as loadYaml } from "js-yaml";
 import {
   coreExecutionRequestFromPath,
   runMainInVm,
   VALID_WORKFLOW_SETTINGS_YAML,
   WorkflowSettingsTemplates
 } from "df/testing/run_core";
-import { dataform } from "df/protos/ts";
 
 const EMPTY_NOTEBOOK_CONTENTS = '{ "cells": [] }';
 

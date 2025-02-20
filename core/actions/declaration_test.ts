@@ -3,6 +3,7 @@ import { expect } from "chai";
 import * as fs from "fs-extra";
 import * as path from "path";
 
+import { exampleActionDescriptor } from "df/core/actions/index_test";
 import { asPlainObject, suite, test } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
 import {
@@ -10,7 +11,6 @@ import {
   runMainInVm,
   VALID_WORKFLOW_SETTINGS_YAML
 } from "df/testing/run_core";
-import { exampleActionDescriptor } from "df/core/actions/index_test";
 
 suite("declaration", ({ afterEach }) => {
   const tmpDirFixture = new TmpDirFixture(afterEach);
