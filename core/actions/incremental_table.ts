@@ -454,68 +454,13 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
    * <!-- Note: this both applies in-line assertions, and acts as a method available via the JS API.
    * Usage of it via the JS API is deprecated, but the way it applies in-line assertions is still
    * needed -->
-   * <!-- TODO(ekrekr): move this to a shared definition -->
    */
-  public assertions(assertions: dataform.ActionConfig.TableAssertionsConfig) {
-    if (!!assertions.uniqueKey?.length && !!assertions.uniqueKeys?.length) {
-      this.session.compileError(
-        new Error("Specify at most one of 'assertions.uniqueKey' and 'assertions.uniqueKeys'.")
-      );
-    }
-    let uniqueKeys = assertions.uniqueKeys.map(uniqueKey =>
-      dataform.ActionConfig.TableAssertionsConfig.UniqueKey.create(uniqueKey)
-    );
-    if (!!assertions.uniqueKey?.length) {
-      uniqueKeys = [
-        dataform.ActionConfig.TableAssertionsConfig.UniqueKey.create({
-          uniqueKey: assertions.uniqueKey
-        })
-      ];
-    }
-    if (uniqueKeys) {
-      uniqueKeys.forEach(({ uniqueKey }, index) => {
-        const uniqueKeyAssertion = this.session
-          .assert(
-            `${this.proto.target.schema}_${this.proto.target.name}_assertions_uniqueKey_${index}`,
-            dataform.ActionConfig.AssertionConfig.create({ filename: this.proto.fileName })
-          )
-          .query(ctx =>
-            this.session.compilationSql().indexAssertion(ctx.ref(this.proto.target), uniqueKey)
-          );
-        if (this.proto.tags) {
-          uniqueKeyAssertion.tags(this.proto.tags);
-        }
-        uniqueKeyAssertion.setParentAction(dataform.Target.create(this.proto.target));
-        if (this.proto.disabled) {
-          uniqueKeyAssertion.disabled();
-        }
-        this.uniqueKeyAssertions.push(uniqueKeyAssertion);
-      });
-    }
-    const mergedRowConditions = assertions.rowConditions || [];
-    if (!!assertions.nonNull) {
-      const nonNullCols =
-        typeof assertions.nonNull === "string" ? [assertions.nonNull] : assertions.nonNull;
-      nonNullCols.forEach(nonNullCol => mergedRowConditions.push(`${nonNullCol} IS NOT NULL`));
-    }
-    if (!!mergedRowConditions && mergedRowConditions.length > 0) {
-      this.rowConditionsAssertion = this.session
-        .assert(`${this.proto.target.schema}_${this.proto.target.name}_assertions_rowConditions`, {
-          filename: this.proto.fileName
-        } as dataform.ActionConfig.AssertionConfig)
-        .query(ctx =>
-          this.session
-            .compilationSql()
-            .rowConditionsAssertion(ctx.ref(this.proto.target), mergedRowConditions)
-        );
-      this.rowConditionsAssertion.setParentAction(dataform.Target.create(this.proto.target));
-      if (this.proto.disabled) {
-        this.rowConditionsAssertion.disabled();
-      }
-      if (this.proto.tags) {
-        this.rowConditionsAssertion.tags(this.proto.tags);
-      }
-    }
+  public assertions(
+    tableAssertionsConfig: dataform.ActionConfig.TableAssertionsConfig
+  ): IncrementalTable {
+    const inlineAssertions = this.generateInlineAssertions(tableAssertionsConfig, this.proto);
+    this.uniqueKeyAssertions = inlineAssertions.uniqueKeyAssertions;
+    this.rowConditionsAssertion = inlineAssertions.rowConditionsAssertion;
     return this;
   }
 
