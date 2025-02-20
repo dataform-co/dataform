@@ -29,8 +29,8 @@ export type ActionProto =
   | dataform.Notebook
   | dataform.DataPreparation;
 
-// In v4, methods on inheritors of this private, forcing users to use constructors in order to
-// populate actions.
+// In v4, consider making methods on inheritors of this private, forcing users to use constructors
+// in order to populate actions.
 export abstract class ActionBuilder<T> {
   public session: Session;
   public includeAssertionsForDependency: Map<string, boolean> = new Map();
@@ -82,30 +82,6 @@ export abstract class ActionBuilder<T> {
 
   /** Creates the final protobuf representation. */
   public abstract compile(): T;
-
-  private validateTarget(target: dataform.Target, fileName: string) {
-    if (target.name.includes(".")) {
-      this.session.compileError(
-        new Error("Action target names cannot include '.'"),
-        fileName,
-        target
-      );
-    }
-    if (target.schema.includes(".")) {
-      this.session.compileError(
-        new Error("Action target datasets cannot include '.'"),
-        fileName,
-        target
-      );
-    }
-    if (target.database.includes(".")) {
-      this.session.compileError(
-        new Error("Action target projects cannot include '.'"),
-        fileName,
-        target
-      );
-    }
-  }
 
   protected generateInlineAssertions(
     tableAssertionsConfig: dataform.ActionConfig.TableAssertionsConfig,
@@ -178,6 +154,30 @@ export abstract class ActionBuilder<T> {
       }
     }
     return inlineAssertions;
+  }
+
+  private validateTarget(target: dataform.Target, fileName: string) {
+    if (target.name.includes(".")) {
+      this.session.compileError(
+        new Error("Action target names cannot include '.'"),
+        fileName,
+        target
+      );
+    }
+    if (target.schema.includes(".")) {
+      this.session.compileError(
+        new Error("Action target datasets cannot include '.'"),
+        fileName,
+        target
+      );
+    }
+    if (target.database.includes(".")) {
+      this.session.compileError(
+        new Error("Action target projects cannot include '.'"),
+        fileName,
+        target
+      );
+    }
   }
 }
 
