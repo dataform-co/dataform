@@ -176,7 +176,7 @@ from (${query}) as insertions`;
     // Create the view to check syntax of assertion
     tasks.add(Task.statement(this.createOrReplaceView(target, assertion.query)));
 
-    // Add assertion check with special placeholder that will be recognized during execution
+    // Add assertion check
     tasks.add(Task.assertion(`select sum(1) as row_count from ${this.resolveTarget(target)}`));
     return tasks;
   }
