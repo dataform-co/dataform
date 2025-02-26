@@ -177,10 +177,7 @@ from (${query}) as insertions`;
     tasks.add(Task.statement(this.createOrReplaceView(target, assertion.query)));
 
     // Add assertion check with special placeholder that will be recognized during execution
-    tasks.add(Task.assertion(`
-      -- @dry-run:skip-results-check
-      select sum(1) as row_count from ${this.resolveTarget(target)}
-    `));
+    tasks.add(Task.assertion(`select sum(1) as row_count from ${this.resolveTarget(target)}`));
     return tasks;
   }
 

@@ -330,79 +330,72 @@ export class BigQueryDbAdapter implements IDbAdapter {
     return retry(
       async () => {
         try {
-          if (dryRun && query.includes('-- @dry-run:skip-results-check')) {
-            // If the above evaluated to true, this means we would be running the row count query of an assertion (see execution_sql.ts).
-            // This must be stopped during a dry run, as the view is not actually created. Therefore we skip the creation of a query job
-            // and instead directly return.
-            return { rows: [], metadata: {} };
-          } else {
-            const job = await this.getClient().createQueryJob({
-              useLegacySql: false,
-              jobPrefix: "dataform-" + (jobPrefix ? `${jobPrefix}-` : ""),
-              query,
-              params,
-              labels,
-              location,
-              dryRun
+          const job = await this.getClient().createQueryJob({
+            useLegacySql: false,
+            jobPrefix: "dataform-" + (jobPrefix ? `${jobPrefix}-` : ""),
+            query,
+            params,
+            labels,
+            location,
+            dryRun
+          });
+          const resultStream = job[0].getQueryResultsStream();
+          return new Promise<IExecutionResult>((resolve, reject) => {
+            if (isCancelled) {
+              resultStream.end();
+              reject(new Error("Query cancelled."));
+              return;
+            }
+            onCancel?.(() => {
+              resultStream.end();
+              reject(new Error("Query cancelled."));
             });
-            const resultStream = job[0].getQueryResultsStream();
-            return new Promise<IExecutionResult>((resolve, reject) => {
-              if (isCancelled) {
-                resultStream.end();
-                reject(new Error("Query cancelled."));
-                return;
-              }
-              onCancel?.(() => {
-                resultStream.end();
-                reject(new Error("Query cancelled."));
-              });
 
-              const results = new LimitedResultSet({
-                rowLimit,
-                byteLimit
-              });
-              resultStream
-                .on("error", e => {
-                  // Dry run queries against BigQuery done by this package eagerly fail with
-                  // "Not found: job". This is a workaround to avoid that.
-                  // Example: https://github.com/googleapis/python-bigquery/issues/118.
-                  if (dryRun && e.message?.includes("Not found: Job")) {
-                    resolve({ rows: [], metadata: {} });
-                  }
-                  reject(e);
-                })
-                .on("data", row => {
-                  if (!results.push(row)) {
-                    resultStream.end();
-                  }
-                })
-                .on("end", async () => {
-                  try {
-                    const [jobMetadata] = await job[0].getMetadata();
-                    if (!!jobMetadata.status?.errorResult) {
-                      reject(new Error(jobMetadata.status.errorResult.message));
-                      return;
-                    }
-                    resolve({
-                      rows: results.rows,
-                      metadata: {
-                        bigquery: {
-                          jobId: jobMetadata.jobReference.jobId,
-                          totalBytesBilled: jobMetadata.statistics.query.totalBytesBilled
-                            ? Long.fromString(jobMetadata.statistics.query.totalBytesBilled)
-                            : Long.ZERO,
-                          totalBytesProcessed: jobMetadata.statistics.query.totalBytesProcessed
-                            ? Long.fromString(jobMetadata.statistics.query.totalBytesProcessed)
-                            : Long.ZERO
-                        }
-                      }
-                    });
-                  } catch (e) {
-                    reject(e);
-                  }
-                });
+            const results = new LimitedResultSet({
+              rowLimit,
+              byteLimit
             });
-          }
+            resultStream
+              .on("error", e => {
+                // Dry run queries against BigQuery done by this package eagerly fail with
+                // "Not found: job". This is a workaround to avoid that.
+                // Example: https://github.com/googleapis/python-bigquery/issues/118.
+                if (dryRun && e.message?.includes("Not found: Job")) {
+                  resolve({ rows: [], metadata: {} });
+                }
+                reject(e);
+              })
+              .on("data", row => {
+                if (!results.push(row)) {
+                  resultStream.end();
+                }
+              })
+              .on("end", async () => {
+                try {
+                  const [jobMetadata] = await job[0].getMetadata();
+                  if (!!jobMetadata.status?.errorResult) {
+                    reject(new Error(jobMetadata.status.errorResult.message));
+                    return;
+                  }
+                  resolve({
+                    rows: results.rows,
+                    metadata: {
+                      bigquery: {
+                        jobId: jobMetadata.jobReference.jobId,
+                        totalBytesBilled: jobMetadata.statistics.query.totalBytesBilled
+                          ? Long.fromString(jobMetadata.statistics.query.totalBytesBilled)
+                          : Long.ZERO,
+                        totalBytesProcessed: jobMetadata.statistics.query.totalBytesProcessed
+                          ? Long.fromString(jobMetadata.statistics.query.totalBytesProcessed)
+                          : Long.ZERO
+                      }
+                    }
+                  });
+                } catch (e) {
+                  reject(e);
+                }
+              });
+          });
         } catch (e) {
           throw coerceAsError(e);
         }
