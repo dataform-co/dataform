@@ -365,6 +365,8 @@ export class Runner {
       // (i.e. it must still be RUNNING, and not FAILED).
       actionResult.status === dataform.ActionResult.ExecutionStatus.RUNNING &&
       !(this.graph.runConfig && this.graph.runConfig.disableSetMetadata) &&
+      // Only set metadata if not using BigQuery dry run
+      !this.executionOptions.bigquery?.dryRun && 
       action.type === "table"
     ) {
       try {
@@ -409,32 +411,37 @@ export class Runner {
     };
     parentAction.tasks.push(taskResult);
     this.notifyListeners();
-    try {
-      // Retry this function a given number of times, configurable by user
-      const { rows, metadata } = await retry(
-        () =>
-          client.execute(task.statement, {
-            onCancel: handleCancel => this.eEmitter.on(CANCEL_EVENT, handleCancel),
-            rowLimit: 1,
-            bigquery: options.bigquery
-          }),
-        task.type === "operation" ? 1 : options.bigquery.actionRetryLimit + 1 || 1
-      );
-      taskResult.metadata = metadata;
-      if (task.type === "assertion") {
-        // We expect that an assertion query returns 1 row, with 1 field that is the row count.
-        // We don't really care what that field/column is called.
-        const rowCount = rows[0]?.[Object.keys(rows[0])[0]];
-        if (rowCount > 0) {
-          throw new Error(`Assertion failed: query returned ${rowCount} row(s).`);
-        }
-      }
+    if(options.bigquery?.dryRun && task.type === "assertion") {
       taskResult.status = dataform.TaskResult.ExecutionStatus.SUCCESSFUL;
-    } catch (e) {
-      taskResult.status = this.cancelled
-        ? dataform.TaskResult.ExecutionStatus.CANCELLED
-        : dataform.TaskResult.ExecutionStatus.FAILED;
-      taskResult.errorMessage = `${this.graph.projectConfig.warehouse} error: ${e.message}`;
+    } 
+    else {
+      try {
+        // Retry this function a given number of times, configurable by user
+        const { rows, metadata } = await retry(
+          () =>
+            client.execute(task.statement, {
+              onCancel: handleCancel => this.eEmitter.on(CANCEL_EVENT, handleCancel),
+              rowLimit: 1,
+              bigquery: options.bigquery
+            }),
+          task.type === "operation" ? 1 : options.bigquery.actionRetryLimit + 1 || 1
+        );
+        taskResult.metadata = metadata;
+        if (task.type === "assertion") {
+          // We expect that an assertion query returns 1 row, with 1 field that is the row count.
+          // We don't really care what that field/column is called.
+          const rowCount = rows[0]?.[Object.keys(rows[0])[0]];
+          if (rowCount > 0) {
+            throw new Error(`Assertion failed: query returned ${rowCount} row(s).`);
+          }
+        }
+        taskResult.status = dataform.TaskResult.ExecutionStatus.SUCCESSFUL;
+      } catch (e) {
+        taskResult.status = this.cancelled
+          ? dataform.TaskResult.ExecutionStatus.CANCELLED
+          : dataform.TaskResult.ExecutionStatus.FAILED;
+        taskResult.errorMessage = `${this.graph.projectConfig.warehouse} error: ${e.message}`;
+      }
     }
     taskResult.timing = timer.end();
     this.notifyListeners();

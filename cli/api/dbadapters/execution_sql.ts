@@ -169,11 +169,14 @@ from (${query}) as insertions`;
 
   public assertTasks(
     assertion: dataform.IAssertion,
-    projectConfig: dataform.IProjectConfig
+    projectConfig: dataform.IProjectConfig,
   ): Tasks {
     const tasks = new Tasks();
     const target = assertion.target;
+    // Create the view to check syntax of assertion
     tasks.add(Task.statement(this.createOrReplaceView(target, assertion.query)));
+
+    // Add assertion check
     tasks.add(Task.assertion(`select sum(1) as row_count from ${this.resolveTarget(target)}`));
     return tasks;
   }
