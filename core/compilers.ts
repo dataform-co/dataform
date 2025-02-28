@@ -13,8 +13,14 @@ const CONTEXT_FUNCTIONS = [
   "schema",
   "database"
 ]
-  .map(name => `const ${name} = ctx.${name} ? ctx.${name}.bind(ctx) : undefined;`)
-  .join("\n");
+    .map(name => `const ${name} = ctx.${name} ? ctx.${name}.bind(ctx) : undefined;`)
+    .join("\n");
+
+const CONTEXT_CONSTANTS = [
+  "EXPECT"
+]
+    .map(name => `const ${name} = ctx.${name} ? ctx.${name} : undefined;`)
+    .join("\n");
 
 export const INVALID_YAML_ERROR_STRING = "is not a valid YAML file";
 
@@ -90,6 +96,7 @@ function compileSqlx(rootNode: SyntaxTreeNode, path: string): string {
   sqlStatementCount: ${sql.length},
   sqlContextable: (ctx) => {
     ${CONTEXT_FUNCTIONS}
+    ${CONTEXT_CONSTANTS}
     ${js}
     return [${sql.map(sqlOp => `\`${sqlOp}\``)}];
   },
@@ -97,6 +104,7 @@ function compileSqlx(rootNode: SyntaxTreeNode, path: string): string {
     !!incremental
       ? `(ctx) => {
     ${CONTEXT_FUNCTIONS}
+    ${CONTEXT_CONSTANTS}
     ${js}
     return \`${incremental}\`
   }`
@@ -106,6 +114,7 @@ function compileSqlx(rootNode: SyntaxTreeNode, path: string): string {
     preOperations.length > 0
       ? `(ctx) => {
     ${CONTEXT_FUNCTIONS}
+    ${CONTEXT_CONSTANTS}
     ${js}
     return [${preOperations.map(preOpSql => `\`${preOpSql}\``)}];
   }`
@@ -115,6 +124,7 @@ function compileSqlx(rootNode: SyntaxTreeNode, path: string): string {
     postOperations.length > 0
       ? `(ctx) => {
     ${CONTEXT_FUNCTIONS}
+    ${CONTEXT_CONSTANTS}
     ${js}
     return [${postOperations.map(postOpSql => `\`${postOpSql}\``)}];
   }`

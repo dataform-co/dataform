@@ -6,7 +6,6 @@ import { IBigQueryExecutionOptions } from "df/cli/api/dbadapters/bigquery";
 import { Flags } from "df/common/flags";
 import { retry } from "df/common/promises";
 import { deepClone, equals } from "df/common/protos";
-import { StringifiedMap, StringifiedSet } from "df/common/strings/stringifier";
 import { targetStringifier } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 
@@ -45,17 +44,14 @@ export function run(
 }
 
 export class Runner {
-  private readonly warehouseStateByTarget: StringifiedMap<
-    dataform.ITarget,
-    dataform.ITableMetadata
-  >;
+  private readonly warehouseStateByTarget: Map<string, dataform.ITableMetadata>;
 
-  private readonly allActionTargets: StringifiedSet<dataform.ITarget>;
+  private readonly allActionTargets: Set<string>;
   private readonly runResult: dataform.IRunResult;
   private readonly changeListeners: Array<(graph: dataform.IRunResult) => void> = [];
   private readonly eEmitter: EventEmitter;
-  private executedActionTargets: StringifiedSet<dataform.ITarget>;
-  private successfullyExecutedActionTargets: StringifiedSet<dataform.ITarget>;
+  private executedActionTargets: Set<string>;
+  private successfullyExecutedActionTargets: Set<string>;
   private pendingActions: dataform.IExecutionAction[];
   private lastNotificationTimestampMillis = 0;
   private stopped = false;
@@ -71,30 +67,32 @@ export class Runner {
     partiallyExecutedRunResult: dataform.IRunResult = {},
     private readonly runnerNotificationPeriodMillis: number = flags.runnerNotificationPeriodMillis.get()
   ) {
-    this.allActionTargets = new StringifiedSet<dataform.ITarget>(
-      targetStringifier,
-      graph.actions.map(action => action.target)
+    this.allActionTargets = new Set<string>(
+      graph.actions.map(action => targetStringifier.stringify(action.target))
     );
     this.runResult = {
       actions: [],
       ...partiallyExecutedRunResult
     };
-    this.warehouseStateByTarget = new StringifiedMap(
-      targetStringifier,
-      graph.warehouseState.tables?.map(tableMetadata => [tableMetadata.target, tableMetadata])
+    this.warehouseStateByTarget = new Map<string, dataform.ITableMetadata>();
+    graph.warehouseState.tables?.forEach(tableMetadata =>
+      this.warehouseStateByTarget.set(
+        targetStringifier.stringify(tableMetadata.target),
+        tableMetadata
+      )
     );
-    this.executedActionTargets = new StringifiedSet(
-      targetStringifier,
+    this.executedActionTargets = new Set(
       this.runResult.actions
         .filter(action => action.status !== dataform.ActionResult.ExecutionStatus.RUNNING)
-        .map(action => action.target)
+        .map(action => targetStringifier.stringify(action.target))
     );
-    this.successfullyExecutedActionTargets = new StringifiedSet(
-      targetStringifier,
-      this.runResult.actions.filter(isSuccessfulAction).map(action => action.target)
+    this.successfullyExecutedActionTargets = new Set<string>(
+      this.runResult.actions
+        .filter(isSuccessfulAction)
+        .map(action => targetStringifier.stringify(action.target))
     );
     this.pendingActions = graph.actions.filter(
-      action => !this.executedActionTargets.has(action.target)
+      action => !this.executedActionTargets.has(targetStringifier.stringify(action.target))
     );
     this.eEmitter = new EventEmitter();
     // There could feasibly be thousands of listeners to this, 0 makes the limit infinite.
@@ -247,8 +245,8 @@ export class Runner {
         // have executed successfully.
         pendingAction.dependencyTargets.every(
           dependency =>
-            !this.allActionTargets.has(dependency) ||
-            this.successfullyExecutedActionTargets.has(dependency)
+            !this.allActionTargets.has(targetStringifier.stringify(dependency)) ||
+            this.successfullyExecutedActionTargets.has(targetStringifier.stringify(dependency))
         )
       ) {
         executableActions.push(pendingAction);
@@ -257,7 +255,8 @@ export class Runner {
         // exist in the graph, or have completed execution.
         pendingAction.dependencyTargets.every(
           dependency =>
-            !this.allActionTargets.has(dependency) || this.executedActionTargets.has(dependency)
+            !this.allActionTargets.has(targetStringifier.stringify(dependency)) ||
+            this.executedActionTargets.has(targetStringifier.stringify(dependency))
         )
       ) {
         skippableActions.push(pendingAction);
@@ -287,9 +286,11 @@ export class Runner {
       Promise.all(
         executableActions.map(async executableAction => {
           const actionResult = await this.executeAction(executableAction);
-          this.executedActionTargets.add(executableAction.target);
+          this.executedActionTargets.add(targetStringifier.stringify(executableAction.target));
           if (isSuccessfulAction(actionResult)) {
-            this.successfullyExecutedActionTargets.add(executableAction.target);
+            this.successfullyExecutedActionTargets.add(
+              targetStringifier.stringify(executableAction.target)
+            );
           }
           await this.executeAllActionsReadyForExecution();
         })
@@ -385,7 +386,7 @@ export class Runner {
       }
     }
 
-    this.warehouseStateByTarget.delete(action.target);
+    this.warehouseStateByTarget.delete(targetStringifier.stringify(action.target));
 
     if (actionResult.status === dataform.ActionResult.ExecutionStatus.RUNNING) {
       actionResult.status = dataform.ActionResult.ExecutionStatus.SUCCESSFUL;

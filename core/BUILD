@@ -29,8 +29,8 @@ ts_library(
         "actions/test.ts",
         "actions/view.ts",
         "column_descriptors.ts",
-        "common.ts",
         "compilers.ts",
+        "contextables.ts",
         "index.ts",
         "main.ts",
         "path.ts",
@@ -63,6 +63,16 @@ ts_test_suite(
     name = "tests",
     srcs = [
         "main_test.ts",
+        "actions/assertion_test.ts",
+        "actions/data_preparation_test.ts",
+        "actions/declaration_test.ts",
+        "actions/incremental_table_test.ts",
+        "actions/index_test.ts",
+        "actions/notebook_test.ts",
+        "actions/operation_test.ts",
+        "actions/table_test.ts",
+        "actions/test_test.ts",
+        "actions/view_test.ts",
     ],
     data = [
         ":node_modules",
@@ -72,6 +82,7 @@ ts_test_suite(
         "//common/protos",
         "//protos:ts",
         "//testing",
+        "//testing:run_core",
         "@npm//@types/chai",
         "@npm//@types/fs-extra",
         "@npm//@types/js-yaml",
@@ -79,7 +90,6 @@ ts_test_suite(
         "@npm//chai",
         "@npm//fs-extra",
         "@npm//js-yaml",
-        "@npm//vm2",
     ],
 )
 

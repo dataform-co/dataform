@@ -1,19 +1,21 @@
 import { default as TarjanGraphConstructor, Graph as TarjanGraph } from "tarjan-graph";
 
 import { encode64, verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
-import { StringifiedMap, StringifiedSet } from "df/common/strings/stringifier";
-import { Action, ITableContext } from "df/core/actions";
+import { Action, ActionProto, ILegacyTableConfig, TableType } from "df/core/actions";
 import { AContextable, Assertion, AssertionContext } from "df/core/actions/assertion";
-import { DataPreparation } from "df/core/actions/data_preparation";
+import {
+  DataPreparation,
+  DataPreparationContext,
+} from "df/core/actions/data_preparation";
 import { Declaration } from "df/core/actions/declaration";
-import { ILegacyIncrementalTableConfig, IncrementalTable } from "df/core/actions/incremental_table";
+import { IncrementalTable } from "df/core/actions/incremental_table";
 import { Notebook } from "df/core/actions/notebook";
 import { Operation, OperationContext } from "df/core/actions/operation";
-import { ILegacyTableConfig, Table, TableContext, TableType } from "df/core/actions/table";
+import { Table, TableContext } from "df/core/actions/table";
 import { Test } from "df/core/actions/test";
-import { ILegacyViewConfig, View } from "df/core/actions/view";
-import { Contextable, ICommonContext, ITarget, Resolvable } from "df/core/common";
+import { View } from "df/core/actions/view";
 import { CompilationSql } from "df/core/compilation_sql";
+import { Contextable, IActionContext, ITableContext, Resolvable } from "df/core/contextables";
 import { targetAsReadableString, targetStringifier } from "df/core/targets";
 import * as utils from "df/core/utils";
 import { toResolvable } from "df/core/utils";
@@ -26,26 +28,22 @@ const DEFAULT_CONFIG = {
 };
 
 /**
- * @hidden
- * @deprecated
- * TODO(ekrekr): the action type should be passed around rather than this proxy for the proto.
- */
-export interface IActionProto {
-  fileName?: string;
-  dependencyTargets?: dataform.ITarget[];
-  hermeticity?: dataform.ActionHermeticity;
-  target?: dataform.ITarget;
-  canonicalTarget?: dataform.ITarget;
-  parentAction?: dataform.ITarget;
-  config?: dataform.IActionConfig;
-}
-
-/**
- * @hidden
+ * Contains methods that are published globally, so can be invoked anywhere in the `/definitions`
+ * folder of a Dataform project.
  */
 export class Session {
   public rootDir: string;
 
+  /**
+   * Stores the Dataform project configuration of the current Dataform project. Can be accessed via
+   * the `dataform` global variable.
+   *
+   * Example:
+   *
+   * ```js
+   * dataform.projectConfig.vars.myVariableName === "myVariableValue"
+   * ```
+   */
   public projectConfig: dataform.ProjectConfig;
   // The canonical project config contains the project config before schema and database overrides.
   public canonicalProjectConfig: dataform.ProjectConfig;
@@ -93,7 +91,12 @@ export class Session {
     sqlxConfig: any;
     sqlStatementCount: number;
     sqlContextable: (
-      ctx: TableContext | AssertionContext | OperationContext | ICommonContext
+      ctx:
+        | TableContext
+        | AssertionContext
+        | OperationContext
+        | DataPreparationContext
+        | IActionContext
     ) => string[];
     incrementalWhereContextable: (ctx: ITableContext) => string;
     preOperationsContextable: (ctx: ITableContext) => string[];
@@ -101,7 +104,7 @@ export class Session {
     inputContextables: [
       {
         refName: string[];
-        contextable: (ctx: ICommonContext) => string;
+        contextable: (ctx: IActionContext) => string;
       }
     ];
   }) {
@@ -188,13 +191,19 @@ export class Session {
           new Assertion(this, sqlxConfig).query(ctx => actionOptions.sqlContextable(ctx)[0])
         );
         break;
+      case "dataPreparation":
+        sqlxConfig.filename = utils.getCallerFile(this.rootDir);
+        const dataPreparation = new DataPreparation(this, sqlxConfig).query(
+          ctx => actionOptions.sqlContextable(ctx)[0]
+        );
+        this.actions.push(dataPreparation);
+        break;
       case "operations":
         sqlxConfig.filename = utils.getCallerFile(this.rootDir);
         this.actions.push(new Operation(this, sqlxConfig).queries(actionOptions.sqlContextable));
         break;
       case "declaration":
-        const declaration = new Declaration(this, sqlxConfig);
-        declaration.proto.fileName = utils.getCallerFile(this.rootDir);
+        const declaration = new Declaration(this, sqlxConfig, utils.getCallerFile(this.rootDir));
         this.actions.push(declaration);
         break;
       case "test":
@@ -219,7 +228,7 @@ export class Session {
     }
     const resolved = allResolved.length > 0 ? allResolved[0] : undefined;
 
-    if (resolved && resolved instanceof Operation && !resolved.proto.hasOutput) {
+    if (resolved && resolved instanceof Operation && !resolved.getHasOutput()) {
       this.compileError(
         new Error("Actions cannot resolve operations which do not produce output.")
       );
@@ -228,14 +237,14 @@ export class Session {
 
     if (resolved) {
       if (resolved instanceof Declaration) {
-        return this.compilationSql().resolveTarget(resolved.proto.target);
+        return this.compilationSql().resolveTarget(resolved.getTarget());
       }
       return this.compilationSql().resolveTarget({
-        ...resolved.proto.target,
+        ...resolved.getTarget(),
         database:
-          resolved.proto.target.database && this.finalizeDatabase(resolved.proto.target.database),
-        schema: this.finalizeSchema(resolved.proto.target.schema),
-        name: this.finalizeName(resolved.proto.target.name)
+          resolved.getTarget().database && this.finalizeDatabase(resolved.getTarget().database),
+        schema: this.finalizeSchema(resolved.getTarget().schema),
+        name: this.finalizeName(resolved.getTarget().name)
       });
     }
 
@@ -243,39 +252,74 @@ export class Session {
     return "";
   }
 
-  // TODO(ekrekr): safely allow passing of config blocks as the second argument, similar to publish.
+  /**
+   * Defines a SQL operation.
+   *
+   * Available only in the `/definitions` directory.
+   *
+   * @see [operation](Operation) for examples on how to use.
+   */
   public operate(
     name: string,
-    queries?: Contextable<ICommonContext, string | string[]>
+    queryOrConfig?:
+      | Contextable<IActionContext, string | string[]>
+      | dataform.ActionConfig.OperationConfig
   ): Operation {
-    const operation = new Operation();
-    operation.session = this;
-    utils.setNameAndTarget(this, operation.proto, name);
-    if (queries) {
-      operation.queries(queries);
+    const filename = utils.getCallerFile(this.rootDir);
+    let operation: Operation;
+    if (!!queryOrConfig && typeof queryOrConfig === "object") {
+      operation = new Operation(this, { name, filename, ...queryOrConfig });
+    } else {
+      operation = new Operation(this, { name, filename });
+      if (queryOrConfig) {
+        operation.queries(queryOrConfig as AContextable<string>);
+      }
     }
-    operation.proto.fileName = utils.getCallerFile(this.rootDir);
     this.actions.push(operation);
     return operation;
   }
 
+  /**
+   * Creates a table, view, or incremental table.
+   *
+   * Available only in the `/definitions` directory.
+   *
+   * @see [Operation](Operation) for examples on how to make tables.
+   * @see [View](View) for examples on how to make views.
+   * @see [IncrementalTable](IncrementalTable) for examples on how to make incremental tables.
+   */
   public publish(
     name: string,
     queryOrConfig?:
       | Contextable<ITableContext, string>
+      | dataform.ActionConfig.TableConfig
+      | dataform.ActionConfig.ViewConfig
+      | dataform.ActionConfig.IncrementalTableConfig
       | ILegacyTableConfig
-      | ILegacyViewConfig
-      | ILegacyIncrementalTableConfig
+      // `any` is used here to facilitate the type merging of legacy table configs, which are very
+      // different to the new structures.
+      | any
   ): Table | IncrementalTable | View {
-    let newTable: Table | IncrementalTable | View = new View(this, { type: "view", name });
+    // In v4, consider replacing publish with separate methods for each action type.
+    const filename = utils.getCallerFile(this.rootDir);
+    let newTable: Table | IncrementalTable | View = new View(this, {
+      type: "view",
+      name,
+      filename
+    });
     if (!!queryOrConfig) {
       if (typeof queryOrConfig === "object") {
-        if (queryOrConfig?.type === "table" || queryOrConfig.type === undefined) {
-          newTable = new Table(this, { type: "table", name, ...queryOrConfig });
+        if (queryOrConfig?.type === "view" || queryOrConfig.type === undefined) {
+          newTable = new View(this, { type: "view", name, filename, ...queryOrConfig });
         } else if (queryOrConfig?.type === "incremental") {
-          newTable = new IncrementalTable(this, { type: "incremental", name, ...queryOrConfig });
-        } else if (queryOrConfig?.type === "view") {
-          newTable = new View(this, { type: "view", name, ...queryOrConfig });
+          newTable = new IncrementalTable(this, {
+            type: "incremental",
+            name,
+            ...queryOrConfig,
+            filename
+          });
+        } else if (queryOrConfig?.type === "table") {
+          newTable = new Table(this, { type: "table", name, filename, ...queryOrConfig });
         } else {
           throw Error(`Unrecognized table type: ${queryOrConfig.type}`);
         }
@@ -284,49 +328,87 @@ export class Session {
         newTable.query(queryOrConfig);
       }
     }
-    newTable.proto.fileName = utils.getCallerFile(this.rootDir);
     this.actions.push(newTable);
     return newTable;
   }
 
-  // TODO(ekrekr): safely allow passing of config blocks as the second argument, similar to publish.
-  public assert(name: string, query?: AContextable<string>): Assertion {
-    const assertion = new Assertion();
-    assertion.session = this;
-    utils.setNameAndTarget(this, assertion.proto, name, this.projectConfig.assertionSchema);
-    if (query) {
-      assertion.query(query);
+  /**
+   * Adds a Dataform assertion the compiled graph.
+   *
+   * Available only in the `/definitions` directory.
+   *
+   * @see [assertion](Assertion) for examples on how to use.
+   */
+  public assert(
+    name: string,
+    queryOrConfig?: AContextable<string> | dataform.ActionConfig.AssertionConfig
+    // // `any` is used here to facilitate the type merging of legacy declaration configs options,
+    // // without breaking typescript consumers of Dataform.
+    // | any
+  ): Assertion {
+    const filename = utils.getCallerFile(this.rootDir);
+    let assertion: Assertion;
+    if (!!queryOrConfig && typeof queryOrConfig === "object") {
+      assertion = new Assertion(this, { name, filename, ...queryOrConfig });
+    } else {
+      assertion = new Assertion(this, { name, filename });
+      if (queryOrConfig) {
+        assertion.query(queryOrConfig as AContextable<string>);
+      }
     }
-    assertion.proto.fileName = utils.getCallerFile(this.rootDir);
     this.actions.push(assertion);
     return assertion;
   }
 
-  // TODO(ekrekr): safely allow passing of config blocks as the second argument, similar to publish.
-  public declare(dataset: dataform.ITarget): Declaration {
-    const declaration = new Declaration();
-    declaration.session = this;
-    utils.setNameAndTarget(this, declaration.proto, dataset.name, dataset.schema, dataset.database);
-    declaration.proto.fileName = utils.getCallerFile(this.rootDir);
+  /**
+   * Declares the dataset as a Dataform data source.
+   *
+   * Available only in the `/definitions` directory.
+   *
+   * @see [Declaration](Declaration) for examples on how to use.
+   */
+  public declare(
+    config:
+      | dataform.ActionConfig.DeclarationConfig
+      // `any` is used here to facilitate the type merging of legacy declaration configs options,
+      // without breaking typescript consumers of Dataform.
+      | any
+  ): Declaration {
+    const declaration = new Declaration(this, config, utils.getCallerFile(this.rootDir));
     this.actions.push(declaration);
     return declaration;
   }
 
+  /**
+   * Creates a Test action.
+   *
+   * Available only in the `/definitions` directory.
+   *
+   * @see [Test](Test) for examples on how to use.
+   *
+   * <!-- This doesn't currently support passing of config blocks as the second argument, but it
+   * could in the future. -->
+   * <!-- Note: this action type isn't very thoroughly tested, so careful with changes -->
+   */
   public test(name: string): Test {
-    const newTest = new Test();
+    const newTest = new Test(this, { name });
     newTest.session = this;
-    newTest.proto.name = name;
-    newTest.proto.fileName = utils.getCallerFile(this.rootDir);
+    newTest.setFilename(utils.getCallerFile(this.rootDir));
     // Add it to global index.
     this.tests[name] = newTest;
     return newTest;
   }
 
-  public notebook(name: string): Notebook {
-    const notebook = new Notebook();
-    notebook.session = this;
-    utils.setNameAndTarget(this, notebook.proto, name);
-    notebook.proto.fileName = utils.getCallerFile(this.rootDir);
+  /**
+   * Creates a Notebook action.
+   *
+   * Available only in the `/definitions` directory.
+   *
+   * @see [Notebook](Notebook) for examples on how to use.
+   */
+  public notebook(config: dataform.ActionConfig.NotebookConfig): Notebook {
+    const configFileName = utils.getCallerFile(this.rootDir);
+    const notebook = new Notebook(this, config, configFileName);
     this.actions.push(notebook);
     return notebook;
   }
@@ -368,7 +450,6 @@ export class Session {
       throw new Error("Custom variables defined in workflow settings can only be strings.");
     }
 
-    // TODO(ekrekr): replace verify here with something that actually works.
     const compiledGraph = dataform.CompiledGraph.create({
       projectConfig: this.projectConfig,
       tables: this.compileGraphChunk(
@@ -393,7 +474,7 @@ export class Session {
       ),
       graphErrors: this.graphErrors,
       dataformCoreVersion,
-      targets: this.actions.map(action => action.proto.target)
+      targets: this.actions.map(action => action.getTarget())
     });
 
     this.fullyQualifyDependencies(
@@ -421,8 +502,6 @@ export class Session {
 
     this.checkTestNameUniqueness(compiledGraph.tests);
 
-    this.checkTableConfigValidity(compiledGraph.tables);
-
     this.checkCircularity(
       [].concat(
         compiledGraph.tables,
@@ -432,7 +511,6 @@ export class Session {
         compiledGraph.dataPreparations
       )
     );
-
     verifyObjectMatchesProto(
       dataform.CompiledGraph,
       compiledGraph,
@@ -484,9 +562,13 @@ export class Session {
     return compiledChunks;
   }
 
-  private fullyQualifyDependencies(actions: IActionProto[]) {
+  private fullyQualifyDependencies(actions: ActionProto[]) {
     actions.forEach(action => {
       const fullyQualifiedDependencies: { [name: string]: dataform.ITarget } = {};
+      if (action instanceof dataform.Declaration || !action.dependencyTargets) {
+        // Declarations cannot have dependencies.
+        return;
+      }
       for (const dependency of action.dependencyTargets) {
         const possibleDeps = this.indexedActions.find(dependency);
         if (possibleDeps.length === 0) {
@@ -502,16 +584,17 @@ export class Session {
           );
         } else if (possibleDeps.length === 1) {
           // We found a single matching target, and fully-qualify it if it's a normal dependency.
-          const protoDep = possibleDeps[0].proto;
-          fullyQualifiedDependencies[targetAsReadableString(protoDep.target)] = protoDep.target;
+          const dependencyTarget = possibleDeps[0].getTarget();
+          fullyQualifiedDependencies[targetAsReadableString(dependencyTarget)] = dependencyTarget;
 
           if (dependency.includeDependentAssertions) {
             this.actionAssertionMap
               .find(dependency)
               .forEach(
                 assertion =>
-                  (fullyQualifiedDependencies[targetAsReadableString(assertion.proto.target)] =
-                    assertion.proto.target)
+                  (fullyQualifiedDependencies[
+                    targetAsReadableString(assertion.getTarget())
+                  ] = assertion.getTarget())
               );
           }
         } else {
@@ -527,22 +610,23 @@ export class Session {
     });
   }
 
-  private alterActionName(actions: IActionProto[], declarationTargets: dataform.ITarget[]) {
+  private alterActionName(actions: ActionProto[], declarationTargets: dataform.ITarget[]) {
     const { tablePrefix, schemaSuffix, databaseSuffix } = this.projectConfig;
 
     if (!tablePrefix && !schemaSuffix && !databaseSuffix) {
       return;
     }
 
-    const newTargetByOriginalTarget = new StringifiedMap<dataform.ITarget, dataform.ITarget>(
-      targetStringifier
-    );
+    const newTargetByOriginalTarget = new Map<string, dataform.ITarget>();
     declarationTargets.forEach(declarationTarget =>
-      newTargetByOriginalTarget.set(declarationTarget, declarationTarget)
+      newTargetByOriginalTarget.set(
+        targetStringifier.stringify(declarationTarget),
+        declarationTarget
+      )
     );
 
     actions.forEach(action => {
-      newTargetByOriginalTarget.set(action.target, {
+      newTargetByOriginalTarget.set(targetStringifier.stringify(action.target), {
         ...action.target,
         database:
           action.target.database &&
@@ -550,109 +634,26 @@ export class Session {
         schema: `${action.target.schema}${this.getSchemaSuffixWithUnderscore()}`,
         name: `${this.getTablePrefixWithUnderscore()}${action.target.name}`
       });
-      action.target = newTargetByOriginalTarget.get(action.target);
+      action.target = newTargetByOriginalTarget.get(targetStringifier.stringify(action.target));
     });
 
     // Fix up dependencies in case those dependencies' names have changed.
     const getUpdatedTarget = (originalTarget: dataform.ITarget) => {
       // It's possible that we don't have a new Target for a dependency that failed to compile,
       // so fall back to the original Target.
-      if (!newTargetByOriginalTarget.has(originalTarget)) {
+      if (!newTargetByOriginalTarget.has(targetStringifier.stringify(originalTarget))) {
         return originalTarget;
       }
-      return newTargetByOriginalTarget.get(originalTarget);
+      return newTargetByOriginalTarget.get(targetStringifier.stringify(originalTarget));
     };
     actions.forEach(action => {
-      action.dependencyTargets = (action.dependencyTargets || []).map(getUpdatedTarget);
+      if (!(action instanceof dataform.Declaration)) {
+        // Declarations cannot have dependencies.
+        action.dependencyTargets = (action.dependencyTargets || []).map(getUpdatedTarget);
+      }
 
-      if (!!action.parentAction) {
+      if (action instanceof dataform.Assertion && !!action.parentAction) {
         action.parentAction = getUpdatedTarget(action.parentAction);
-      }
-    });
-  }
-
-  // TODO(ekrekr): finish pushing config validation down to the classes.
-  private checkTableConfigValidity(tables: dataform.ITable[]) {
-    tables.forEach(table => {
-      // type
-      if (table.enumType === dataform.TableType.UNKNOWN_TYPE) {
-        this.compileError(
-          `Wrong type of table detected. Should only use predefined types: ${joinQuoted(
-            TableType
-          )}`,
-          table.fileName,
-          table.target
-        );
-      }
-
-      // materialized
-      if (!!table.materialized) {
-        if (table.enumType !== dataform.TableType.VIEW) {
-          this.compileError(
-            new Error(`The 'materialized' option is only valid for BigQuery views`),
-            table.fileName,
-            table.target
-          );
-        }
-      }
-
-      // BigQuery config
-      if (!!table.bigquery) {
-        if (
-          (table.bigquery.partitionBy ||
-            table.bigquery.clusterBy?.length ||
-            table.bigquery.partitionExpirationDays ||
-            table.bigquery.requirePartitionFilter) &&
-          table.enumType === dataform.TableType.VIEW &&
-          !table.materialized
-        ) {
-          this.compileError(
-            `partitionBy/clusterBy/requirePartitionFilter/partitionExpirationDays are not valid for BigQuery views`,
-            table.fileName,
-            table.target
-          );
-        } else if (
-          (table.bigquery.partitionExpirationDays || table.bigquery.requirePartitionFilter) &&
-          table.enumType === dataform.TableType.VIEW &&
-          table.materialized
-        ) {
-          this.compileError(
-            `requirePartitionFilter/partitionExpirationDays are not valid for BigQuery materialized views`,
-            table.fileName,
-            table.target
-          );
-        } else if (
-          !table.bigquery.partitionBy &&
-          (table.bigquery.partitionExpirationDays || table.bigquery.requirePartitionFilter) &&
-          table.enumType === dataform.TableType.TABLE
-        ) {
-          this.compileError(
-            `requirePartitionFilter/partitionExpirationDays are not valid for non partitioned BigQuery tables`,
-            table.fileName,
-            table.target
-          );
-        } else if (table.bigquery.additionalOptions) {
-          if (
-            table.bigquery.partitionExpirationDays &&
-            table.bigquery.additionalOptions.partition_expiration_days
-          ) {
-            this.compileError(
-              `partitionExpirationDays has been declared twice`,
-              table.fileName,
-              table.target
-            );
-          }
-          if (
-            table.bigquery.requirePartitionFilter &&
-            table.bigquery.additionalOptions.require_partition_filter
-          ) {
-            this.compileError(
-              `requirePartitionFilter has been declared twice`,
-              table.fileName,
-              table.target
-            );
-          }
-        }
       }
     });
   }
@@ -670,15 +671,20 @@ export class Session {
     });
   }
 
-  private checkCircularity(actions: IActionProto[]) {
-    const allActionsByStringifiedTarget = new Map<string, IActionProto>(
+  private checkCircularity(actions: ActionProto[]) {
+    const allActionsByStringifiedTarget = new Map<string, ActionProto>(
       actions.map(action => [targetStringifier.stringify(action.target), action])
     );
 
     // Type exports for tarjan-graph are unfortunately wrong, so we have to do this minor hack.
     const tarjanGraph: TarjanGraph = new (TarjanGraphConstructor as any)();
     actions.forEach(action => {
-      const cleanedDependencies = (action.dependencyTargets || []).filter(
+      // Declarations cannot have dependencies.
+      const cleanedDependencies = (action instanceof dataform.Declaration ||
+      !action.dependencyTargets
+        ? []
+        : action.dependencyTargets
+      ).filter(
         dependency => !!allActionsByStringifiedTarget.get(targetStringifier.stringify(dependency))
       );
       tarjanGraph.add(
@@ -697,15 +703,15 @@ export class Session {
   }
 
   private removeNonUniqueActionsFromCompiledGraph(compiledGraph: dataform.CompiledGraph) {
-    function getNonUniqueTargets(targets: dataform.ITarget[]): StringifiedSet<dataform.ITarget> {
-      const allTargets = new StringifiedSet<dataform.ITarget>(targetStringifier);
-      const nonUniqueTargets = new StringifiedSet<dataform.ITarget>(targetStringifier);
+    function getNonUniqueTargets(targets: dataform.ITarget[]): Set<string> {
+      const allTargets = new Set<string>();
+      const nonUniqueTargets = new Set<string>();
 
       targets.forEach(target => {
-        if (allTargets.has(target)) {
-          nonUniqueTargets.add(target);
+        if (allTargets.has(targetStringifier.stringify(target))) {
+          nonUniqueTargets.add(targetStringifier.stringify(target));
         }
-        allTargets.add(target);
+        allTargets.add(targetStringifier.stringify(target));
       });
 
       return nonUniqueTargets;
@@ -725,10 +731,12 @@ export class Session {
       actions.map(action => action.canonicalTarget)
     );
 
-    const isUniqueAction = (action: IActionProto) => {
-      const isNonUniqueTarget = nonUniqueActionsTargets.has(action.target);
+    const isUniqueAction = (action: ActionProto) => {
+      const isNonUniqueTarget = nonUniqueActionsTargets.has(
+        targetStringifier.stringify(action.target)
+      );
       const isNonUniqueCanonicalTarget = nonUniqueActionsCanonicalTargets.has(
-        action.canonicalTarget
+        targetStringifier.stringify(action.canonicalTarget)
       );
 
       if (isNonUniqueTarget) {
@@ -779,10 +787,6 @@ function getCanonicalProjectConfig(originalProjectConfig: dataform.ProjectConfig
   });
 }
 
-function joinQuoted(values: readonly string[]) {
-  return values.map((value: string) => `"${value}"`).join(" | ");
-}
-
 class ActionMap {
   private byName: Map<string, Action[]> = new Map();
   private bySchemaAndName: Map<string, Map<string, Action[]>> = new Map();
@@ -791,11 +795,11 @@ class ActionMap {
 
   public constructor(actions: Action[]) {
     for (const action of actions) {
-      this.set(action.proto.target, action);
+      this.set(action.getTarget(), action);
     }
   }
 
-  public set(actionTarget: ITarget, assertionTarget: Action) {
+  public set(actionTarget: dataform.ITarget, assertionTarget: Action) {
     this.setByNameLevel(this.byName, actionTarget.name, assertionTarget);
 
     if (!!actionTarget.schema) {
@@ -846,7 +850,7 @@ class ActionMap {
 
   private setBySchemaLevel(
     targetMap: Map<string, Map<string, Action[]>>,
-    actionTarget: ITarget,
+    actionTarget: dataform.ITarget,
     assertionTarget: Action
   ) {
     if (!targetMap.has(actionTarget.schema)) {

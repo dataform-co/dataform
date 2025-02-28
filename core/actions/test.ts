@@ -1,9 +1,9 @@
 import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
-import { StringifiedMap } from "df/common/strings/stringifier";
-import { ActionBuilder, ITableContext } from "df/core/actions";
-import * as table from "df/core/actions/table";
+import { ActionBuilder, INamedConfig, TableType } from "df/core/actions";
+import { IncrementalTable } from "df/core/actions/incremental_table";
+import { Table } from "df/core/actions/table";
 import { View } from "df/core/actions/view";
-import { Contextable, ICommonContext, INamedConfig, Resolvable } from "df/core/common";
+import { Contextable, IActionContext, ITableContext, Resolvable } from "df/core/contextables";
 import { Session } from "df/core/session";
 import { targetStringifier } from "df/core/targets";
 import {
@@ -18,36 +18,81 @@ import { dataform } from "df/protos/ts";
 
 /**
  * Configuration options for unit tests.
+ *
+ * <!-- In v4, this could be replaced with a proto definition, similar to other actions. -->
  */
 export interface ITestConfig extends INamedConfig {
   /**
    * The dataset that this unit test tests.
    */
   dataset?: Resolvable;
+
+  /** Name of this action. */
+  name?: string;
 }
 
+/** @hidden */
 const ITestConfigProperties = strictKeysOf<ITestConfig>()(["type", "dataset", "name"]);
 
 /**
- * @hidden
+ * Dataform test actions can be used to write unit tests for your generated SQL
+ *
+ * You can create unit tests in the following ways.
+ *
+ * **Using a SQLX file:**
+ *
+ * ```sql
+ * -- definitions/name.sqlx
+ * config {
+ *   type: "test"
+ * }
+ *
+ * input "foo" {
+ *   SELECT 1 AS bar
+ * }
+ *
+ * SELECT 1 AS bar
+ * ```
+ *
+ * **Using the Javascript API:**
+ *
+ * ```js
+ * // definitions/file.js
+ * test("name")
+ *   .input("sample_data", `SELECT 1 AS bar`)
+ *   .expect(`SELECT 1 AS bar`);
+ *
+ * publish("sample_data", { type: "table" }).query("SELECT 1 AS bar")
+ * ```
+ *
+ * Note: When using the Javascript API, methods in this class can be accessed by the returned value.
+ * This is where `input` and `expect` come from.
  */
 export class Test extends ActionBuilder<dataform.Test> {
-  // TODO(ekrekr): make this field private, to enforce proto update logic to happen in this class.
-  public proto: dataform.ITest = dataform.Test.create();
-
+  /** @hidden Hold a reference to the Session instance. */
   public session: Session;
-  public contextableInputs = new StringifiedMap<
-    dataform.ITarget,
-    Contextable<ICommonContext, string>
-  >(targetStringifier);
 
+  /** @hidden We delay contextification until the final compile step, so hold these here for now. */
+  public contextableInputs = new Map<string, Contextable<IActionContext, string>>();
+  private contextableQuery: Contextable<IActionContext, string>;
   private datasetToTest: Resolvable;
-  private contextableQuery: Contextable<ICommonContext, string>;
 
-  constructor(session?: Session) {
+  /**
+   * @hidden Stores the generated proto for the compiled graph.
+   */
+  private proto = dataform.Test.create();
+
+  /** @hidden */
+  constructor(session?: Session, config?: ITestConfig) {
     super(session);
+    this.session = session;
+
+    if (config) {
+      this.config(config);
+    }
   }
 
+  /** @hidden */
   public config(config: ITestConfig) {
     checkExcessProperties(
       (e: Error) => this.session.compileError(e),
@@ -55,42 +100,59 @@ export class Test extends ActionBuilder<dataform.Test> {
       ITestConfigProperties,
       "test config"
     );
+    if (config.name) {
+      this.proto.name = config.name;
+    }
     if (config.dataset) {
       this.dataset(config.dataset);
     }
     return this;
   }
 
+  /**
+   * Sets the schema (BigQuery dataset) in which to create the output of this action.
+   */
   public dataset(ref: Resolvable) {
     this.datasetToTest = ref;
     return this;
   }
 
-  public input(refName: string | string[], contextableQuery: Contextable<ICommonContext, string>) {
-    this.contextableInputs.set(resolvableAsTarget(toResolvable(refName)), contextableQuery);
+  /**
+   * Sets the input query to unit test against.
+   */
+  public input(refName: string | string[], contextableQuery: Contextable<IActionContext, string>) {
+    this.contextableInputs.set(
+      targetStringifier.stringify(resolvableAsTarget(toResolvable(refName))),
+      contextableQuery
+    );
     return this;
   }
 
-  public expect(contextableQuery: Contextable<ICommonContext, string>) {
+  /**
+   * Sets the expected output of the query to being tested against.
+   */
+  public expect(contextableQuery: Contextable<IActionContext, string>) {
     this.contextableQuery = contextableQuery;
     return this;
   }
 
-  /**
-   * @hidden
-   */
+  /** @hidden */
   public getFileName() {
     return this.proto.fileName;
   }
 
-  /**
-   * @hidden
-   */
+  /** @hidden */
   public getTarget(): undefined {
     // The test action type has no target because it is not processed during regular execution.
     return undefined;
   }
 
+  /** @hidden */
+  public setFilename(filename: string) {
+    this.proto.fileName = filename;
+  }
+
+  /** @hidden */
   public compile() {
     const testContext = new TestContext(this);
     if (!this.datasetToTest) {
@@ -107,12 +169,12 @@ export class Test extends ActionBuilder<dataform.Test> {
         );
       }
       const dataset = allResolved.length > 0 ? allResolved[0] : undefined;
-      if (!(dataset && (dataset instanceof table.Table || dataset instanceof View))) {
+      if (!(dataset && (dataset instanceof Table || dataset instanceof View))) {
         this.session.compileError(
           new Error(`Dataset ${stringifyResolvable(this.datasetToTest)} could not be found.`),
           this.proto.fileName
         );
-      } else if (dataset.proto.enumType === dataform.TableType.INCREMENTAL) {
+      } else if (dataset instanceof IncrementalTable) {
         this.session.compileError(
           new Error("Running tests on incremental datasets is not yet supported."),
           this.proto.fileName
@@ -132,16 +194,14 @@ export class Test extends ActionBuilder<dataform.Test> {
   }
 }
 
-/**
- * @hidden
- */
+/** @hidden */
 export class TestContext {
   public readonly test: Test;
   constructor(test: Test) {
     this.test = test;
   }
 
-  public apply<T>(value: Contextable<ICommonContext, T>): T {
+  public apply<T>(value: Contextable<IActionContext, T>): T {
     if (typeof value === "function") {
       return (value as any)(this);
     } else {
@@ -150,9 +210,7 @@ export class TestContext {
   }
 }
 
-/**
- * @hidden
- */
+/** @hidden */
 class RefReplacingContext implements ITableContext {
   private readonly testContext: TestContext;
 
@@ -166,7 +224,7 @@ class RefReplacingContext implements ITableContext {
 
   public resolve(ref: Resolvable | string[], ...rest: string[]) {
     const target = resolvableAsTarget(toResolvable(ref, rest));
-    if (!this.testContext.test.contextableInputs.has(target)) {
+    if (!this.testContext.test.contextableInputs.has(targetStringifier.stringify(target))) {
       this.testContext.test.session.compileError(
         new Error(
           `Input for dataset "${JSON.stringify(
@@ -178,7 +236,9 @@ class RefReplacingContext implements ITableContext {
       );
       return "";
     }
-    return `(${this.testContext.apply(this.testContext.test.contextableInputs.get(target))})`;
+    return `(${this.testContext.apply(
+      this.testContext.test.contextableInputs.get(targetStringifier.stringify(target))
+    )})`;
   }
 
   public apply<T>(value: Contextable<ITableContext, T>): T {
@@ -201,7 +261,7 @@ class RefReplacingContext implements ITableContext {
     return "";
   }
 
-  public type(type: table.TableType) {
+  public type(type: TableType) {
     return "";
   }
 

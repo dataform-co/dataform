@@ -1,12 +1,38 @@
 #!/bin/bash
 
+####################################################################################################
+# Generate documentation for the Javascript API.
+####################################################################################################
+
+npx typedoc
+
+mv newdocs/classes/_core_session_.session.md docs/reference/session.md
+mv newdocs/classes/_core_actions_assertion_.assertion.md docs/reference/assertion.md
+mv newdocs/classes/_core_actions_table_.table.md docs/reference/table.md
+mv newdocs/classes/_core_actions_declaration_.declaration.md docs/reference/declaration.md
+mv newdocs/classes/_core_actions_incremental_table_.incrementaltable.md docs/reference/incrementaltable.md
+mv newdocs/classes/_core_actions_notebook_.notebook.md docs/reference/notebook.md
+mv newdocs/classes/_core_actions_operation_.operation.md docs/reference/operation.md
+mv newdocs/classes/_core_actions_test_.test.md docs/reference/test.md
+mv newdocs/classes/_core_actions_view_.view.md docs/reference/view.md
+
+rm -rf newdocs
+
+####################################################################################################
+# Generate documentation for protobufs.
+####################################################################################################
+
 # docker pull pseudomuto/protoc-gen-doc
 
 # docker run --rm \
-#   -v $(pwd)/docs:/out \
-#   -v $(pwd)/protos:/protos \
-#   pseudomuto/protoc-gen-doc configs.proto --doc_opt=markdown,configs-reference.md::camel_case_fields=true
+#     -v $(pwd)/docs:/out \
+#     -v $(pwd)/protos:/protos \
+#     pseudomuto/protoc-gen-doc configs.proto --doc_opt=markdown,configs-reference.md::camel_case_fields=true
 
-# TODO(ekrekr): Re-enable this script after camelCasing is merged.
-echo ERROR: generating docs with camel casing requires https://github.com/pseudomuto/protoc-gen-doc/pull/540 to be merged. Until this is merged, the updated image with camel casing can be built from the fork before running the above script.
+echo ERROR: Generating docs with camel casing requires https://github.com/pseudomuto/protoc-gen-doc/pull/540 to be merged.
+echo Until this is merged, the updated image with camel casing can be built from the fork before running the above script.
+echo This can be done via:
+echo $ git clone git@github.com:Ekrekr/protoc-gen-doc.git
+echo $ make dev/docker
+echo then uncommenting the "docker run" part of this script, and commenting the failure exit return code and prior warning.
 exit 1

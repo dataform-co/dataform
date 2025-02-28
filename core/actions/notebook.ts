@@ -1,11 +1,11 @@
 import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { ActionBuilder } from "df/core/actions";
-import { Resolvable } from "df/core/common";
+import { Resolvable } from "df/core/contextables";
 import * as Path from "df/core/path";
 import { Session } from "df/core/session";
 import {
   actionConfigToCompiledGraphTarget,
-  addDependenciesToActionDependencyTargets,
+  checkAssertionsForDependency,
   configTargetToCompiledGraphTarget,
   nativeRequire,
   resolveActionsConfigFilename
@@ -13,23 +13,58 @@ import {
 import { dataform } from "df/protos/ts";
 
 /**
- * @hidden
+ * Notebooks run Jupyter Notebook files, and can output content to the storage buckets defined in
+ * `workflow_settings.yaml` files.
+ *
+ * You can create notebooks in the following ways. Available config options are defined in
+ * [NotebookConfig](configs#dataform-ActionConfig-NotebookConfig), and are shared across all the
+ * following ways of creating notebooks.
+ *
+ * **Using action configs files:**
+ *
+ * ```yaml
+ * # definitions/actions.yaml
+ * actions:
+ * - notebook:
+ *   filename: name.ipynb
+ * ```
+ *
+ * ```ipynb
+ * # definitions/name.ipynb
+ * { "cells": [] }
+ * ```
+ *
+ * **Using the Javascript API:**
+ *
+ * ```js
+ * // definitions/file.js
+ * notebook("name", { filename: "name.ipynb" })
+ * ```
+ *
+ * ```ipynb
+ * # definitions/name.ipynb
+ * { "cells": [] }
+ * ```
  */
 export class Notebook extends ActionBuilder<dataform.Notebook> {
+  /** @hidden Hold a reference to the Session instance. */
   public session: Session;
-
-  // TODO: make this field private, to enforce proto update logic to happen in this class.
-  public proto: dataform.INotebook = dataform.Notebook.create();
-
-  // If true, adds the inline assertions of dependencies as direct dependencies for this action.
+  /**
+   * @hidden If true, adds the inline assertions of dependencies as direct dependencies for this
+   * action.
+   */
   public dependOnDependencyAssertions: boolean = false;
 
-  constructor(
-    session?: Session,
-    config?: dataform.ActionConfig.NotebookConfig,
-    configPath?: string
-  ) {
+  /**
+   * @hidden Stores the generated proto for the compiled graph.
+   */
+  private proto = dataform.Notebook.create();
+
+  /** @hidden */
+  constructor(session?: Session, unverifiedConfig?: any, configPath?: string) {
     super(session);
+
+    const config = this.verifyConfig(unverifiedConfig);
 
     if (!config.name) {
       config.name = Path.basename(config.filename);
@@ -38,12 +73,9 @@ export class Notebook extends ActionBuilder<dataform.Notebook> {
     config.filename = resolveActionsConfigFilename(config.filename, configPath);
 
     this.session = session;
-    this.proto.target = this.applySessionToTarget(
-      target,
-      session.projectConfig,
-      config.filename,
-      true
-    );
+    this.proto.target = this.applySessionToTarget(target, session.projectConfig, config.filename, {
+      validateTarget: true
+    });
     this.proto.canonicalTarget = this.applySessionToTarget(target, session.canonicalProjectConfig);
     this.proto.tags = config.tags;
     this.dependOnDependencyAssertions = config.dependOnDependencyAssertions;
@@ -65,43 +97,38 @@ export class Notebook extends ActionBuilder<dataform.Notebook> {
     );
   }
 
+  /**
+   * Sets or overrides the contents of the notebook to run. Not recommended in general; using
+   * separate `.ipynb` files for notebooks is preferred.
+   */
   public ipynb(contents: object): Notebook {
     this.proto.notebookContents = JSON.stringify(contents);
     return this;
   }
 
-  /**
-   * @hidden
-   */
-  public config(config: any) {
-    return this;
-  }
-
-  /**
-   * @hidden
-   */
+  /** @hidden */
   public dependencies(value: Resolvable | Resolvable[]) {
     const newDependencies = Array.isArray(value) ? value : [value];
-    newDependencies.forEach(resolvable =>
-      addDependenciesToActionDependencyTargets(this, resolvable)
-    );
+    newDependencies.forEach(resolvable => {
+      const dependencyTarget = checkAssertionsForDependency(this, resolvable);
+      if (!!dependencyTarget) {
+        this.proto.dependencyTargets.push(dependencyTarget);
+      }
+    });
     return this;
   }
 
-  /**
-   * @hidden
-   */
+  /** @hidden */
   public getFileName() {
     return this.proto.fileName;
   }
 
-  /**
-   * @hidden
-   */
+  /** @hidden */
   public getTarget() {
     return dataform.Target.create(this.proto.target);
   }
 
+  /** @hidden */
   public compile() {
     return verifyObjectMatchesProto(
       dataform.Notebook,
@@ -109,8 +136,21 @@ export class Notebook extends ActionBuilder<dataform.Notebook> {
       VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM
     );
   }
+
+  /**
+   * @hidden Verify config checks that the constructor provided config matches the expected proto
+   * structure.
+   */
+  private verifyConfig(unverifiedConfig: any): dataform.ActionConfig.NotebookConfig {
+    return verifyObjectMatchesProto(
+      dataform.ActionConfig.NotebookConfig,
+      unverifiedConfig,
+      VerifyProtoErrorBehaviour.SHOW_DOCS_LINK
+    );
+  }
 }
 
+/** @hidden Removes all notebook cell outputs. */
 function stripNotebookOutputs(
   notebookAsJson: { [key: string]: unknown },
   path: string

@@ -112,6 +112,18 @@ enum TableType {
   reserved 4;
 }
 
+enum OnSchemaChange {
+  // Ignore any schema changes (default).
+  IGNORE = 0;
+  // Fails if the query would result in a new column(s) being added, deleted,
+  // or renamed.
+  FAIL = 1;
+  // Does not block any new column(s) from being added.
+  EXTEND = 2;
+  // Does not block any new column(s) from being added, deleted or renamed.
+  SYNCHRONIZE = 3;
+}
+
 message Table {
   // For legacy compatability reasons, both incremental tables and views are
   // configured in compiled graphs via the Table proto.
@@ -138,6 +150,7 @@ message Table {
   string where = 8 [deprecated = true];
   string incremental_query = 26;
   repeated string unique_key = 30;
+  OnSchemaChange on_schema_change = 37;
 
   // Pre/post operations.
   repeated string pre_ops = 13;
@@ -269,10 +282,38 @@ message DataPreparation {
 
   bool disabled = 6;
 
-  // YAML file containing the data preparation YAML with resolved dependencies.
-  string data_preparation_yaml = 11;
+  oneof definition {
+    // YAML file containing the data preparation YAML with resolved
+    // dependencies, as well as error table and load configuration information.
+    string data_preparation_yaml = 11;
+
+    // SQL representing a compiled SQL string
+    string query = 15;
+  }
+
+  // Error table configuration
+  Target error_table = 12;
+  int32 error_table_retention_days = 13;
+
+  LoadConfiguration load = 16;
 
   reserved 7, 10;
+}
+
+message LoadConfiguration {
+  oneof mode {
+    SimpleLoadMode replace = 1;
+    SimpleLoadMode append = 2;
+    IncrementalLoadMode maximum = 3;
+    IncrementalLoadMode unique = 4;
+    IncrementalLoadMode automatic = 5;
+  }
+}
+
+message SimpleLoadMode {}
+
+message IncrementalLoadMode {
+  string column_name = 1;
 }
 
 message CompiledGraph {
@@ -282,8 +323,8 @@ message CompiledGraph {
   repeated Operation operations = 2;
   repeated Assertion assertions = 3;
   repeated Declaration declarations = 9;
-  // TODO(ekrekr): move the Test action outside of the compiled graph, because
-  // it is not used at runtime.
+  // Note that the Test action doesn't really belong in the compiled graph
+  // because it is not used at runtime. Consider moving it if useful.
   repeated Test tests = 8;
   repeated Notebook notebooks = 12;
   repeated DataPreparation data_preparations = 13;

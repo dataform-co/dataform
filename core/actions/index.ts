@@ -1,12 +1,13 @@
 import { Assertion } from "df/core/actions/assertion";
 import { DataPreparation } from "df/core/actions/data_preparation";
 import { Declaration } from "df/core/actions/declaration";
-import { ILegacyIncrementalTableConfig, IncrementalTable } from "df/core/actions/incremental_table";
+import { IncrementalTable } from "df/core/actions/incremental_table";
 import { Notebook } from "df/core/actions/notebook";
 import { Operation } from "df/core/actions/operation";
-import { ILegacyTableConfig, Table } from "df/core/actions/table";
-import { ILegacyViewConfig, View } from "df/core/actions/view";
-import { ICommonContext } from "df/core/common";
+import { Table } from "df/core/actions/table";
+import { View } from "df/core/actions/view";
+import { IColumnsDescriptor } from "df/core/column_descriptors";
+import { Resolvable } from "df/core/contextables";
 import { Session } from "df/core/session";
 import { dataform } from "df/protos/ts";
 
@@ -20,8 +21,16 @@ export type Action =
   | Notebook
   | DataPreparation;
 
-// TODO(ekrekr): In v4, make all method on inheritors of this private, forcing users to use
-// constructors in order to populate actions.
+export type ActionProto =
+  | dataform.Table // core.proto's Table represents the Table, View or IncrementalTable action type.
+  | dataform.Operation
+  | dataform.Assertion
+  | dataform.Declaration
+  | dataform.Notebook
+  | dataform.DataPreparation;
+
+// In v4, consider making methods on inheritors of this private, forcing users to use constructors
+// in order to populate actions.
 export abstract class ActionBuilder<T> {
   public session: Session;
   public includeAssertionsForDependency: Map<string, boolean> = new Map();
@@ -34,18 +43,20 @@ export abstract class ActionBuilder<T> {
     targetFromConfig: dataform.Target,
     projectConfig: dataform.ProjectConfig,
     fileName?: string,
-    validateTarget = false,
-    useDefaultAssertionDataset = false
+    options?: {
+      validateTarget?: boolean;
+      useDefaultAssertionDataset?: boolean;
+    }
   ): dataform.Target {
-    const defaultSchema = useDefaultAssertionDataset
-      ? projectConfig.assertionSchema
+    const defaultSchema = options?.useDefaultAssertionDataset
+      ? projectConfig.assertionSchema || projectConfig.defaultSchema
       : projectConfig.defaultSchema;
     const target = dataform.Target.create({
       name: targetFromConfig.name,
       schema: targetFromConfig.schema || defaultSchema || undefined,
       database: targetFromConfig.database || projectConfig.defaultDatabase || undefined
     });
-    if (validateTarget) {
+    if (options?.validateTarget) {
       this.validateTarget(targetFromConfig, fileName);
     }
     return target;
@@ -72,6 +83,79 @@ export abstract class ActionBuilder<T> {
   /** Creates the final protobuf representation. */
   public abstract compile(): T;
 
+  protected generateInlineAssertions(
+    tableAssertionsConfig: dataform.ActionConfig.TableAssertionsConfig,
+    proto: dataform.Table
+  ): { uniqueKeyAssertions: Assertion[]; rowConditionsAssertion?: Assertion } {
+    const inlineAssertions: {
+      uniqueKeyAssertions: Assertion[];
+      rowConditionsAssertion?: Assertion;
+    } = { uniqueKeyAssertions: [] };
+
+    if (!!tableAssertionsConfig.uniqueKey?.length && !!tableAssertionsConfig.uniqueKeys?.length) {
+      this.session.compileError(
+        new Error("Specify at most one of 'assertions.uniqueKey' and 'assertions.uniqueKeys'.")
+      );
+    }
+    let uniqueKeys = tableAssertionsConfig.uniqueKeys.map(uniqueKey =>
+      dataform.ActionConfig.TableAssertionsConfig.UniqueKey.create(uniqueKey)
+    );
+    if (!!tableAssertionsConfig.uniqueKey?.length) {
+      uniqueKeys = [
+        dataform.ActionConfig.TableAssertionsConfig.UniqueKey.create({
+          uniqueKey: tableAssertionsConfig.uniqueKey
+        })
+      ];
+    }
+    if (uniqueKeys) {
+      uniqueKeys.forEach(({ uniqueKey }, index) => {
+        const uniqueKeyAssertion = this.session
+          .assert(
+            `${proto.target.schema}_${proto.target.name}_assertions_uniqueKey_${index}`,
+            dataform.ActionConfig.AssertionConfig.create({ filename: proto.fileName })
+          )
+          .query(ctx =>
+            this.session.compilationSql().indexAssertion(ctx.ref(proto.target), uniqueKey)
+          );
+        if (proto.tags) {
+          uniqueKeyAssertion.tags(proto.tags);
+        }
+        uniqueKeyAssertion.setParentAction(dataform.Target.create(proto.target));
+        if (proto.disabled) {
+          uniqueKeyAssertion.disabled();
+        }
+        inlineAssertions.uniqueKeyAssertions.push(uniqueKeyAssertion);
+      });
+    }
+    const mergedRowConditions = tableAssertionsConfig.rowConditions || [];
+    if (!!tableAssertionsConfig.nonNull) {
+      const nonNullCols =
+        typeof tableAssertionsConfig.nonNull === "string"
+          ? [tableAssertionsConfig.nonNull]
+          : tableAssertionsConfig.nonNull;
+      nonNullCols.forEach(nonNullCol => mergedRowConditions.push(`${nonNullCol} IS NOT NULL`));
+    }
+    if (!!mergedRowConditions && mergedRowConditions.length > 0) {
+      inlineAssertions.rowConditionsAssertion = this.session
+        .assert(`${proto.target.schema}_${proto.target.name}_assertions_rowConditions`, {
+          filename: proto.fileName
+        } as dataform.ActionConfig.AssertionConfig)
+        .query(ctx =>
+          this.session
+            .compilationSql()
+            .rowConditionsAssertion(ctx.ref(proto.target), mergedRowConditions)
+        );
+      inlineAssertions.rowConditionsAssertion.setParentAction(dataform.Target.create(proto.target));
+      if (proto.disabled) {
+        inlineAssertions.rowConditionsAssertion.disabled();
+      }
+      if (proto.tags) {
+        inlineAssertions.rowConditionsAssertion.tags(proto.tags);
+      }
+    }
+    return inlineAssertions;
+  }
+
   private validateTarget(target: dataform.Target, fileName: string) {
     if (target.name.includes(".")) {
       this.session.compileError(
@@ -97,21 +181,198 @@ export abstract class ActionBuilder<T> {
   }
 }
 
+export function checkConfigAdditionalOptionsOverlap(
+  config: dataform.ActionConfig.TableConfig | dataform.ActionConfig.IncrementalTableConfig,
+  session: Session
+) {
+  const target = dataform.Target.create({
+    database: config.project,
+    schema: config.dataset,
+    name: config.name
+  });
+  if (config.partitionExpirationDays && config.additionalOptions.partition_expiration_days) {
+    session.compileError(
+      `partitionExpirationDays has been declared twice`,
+      config.filename,
+      target
+    );
+  }
+  if (config.requirePartitionFilter && config.additionalOptions.require_partition_filter) {
+    session.compileError(`requirePartitionFilter has been declared twice`, config.filename, target);
+  }
+}
+
 /**
- * Context methods are available when evaluating contextable SQL code, such as
- * within SQLX files, or when using a [Contextable](#Contextable) argument with the JS API.
+ * @hidden
+ * @deprecated
+ * Use core.proto config options instead.
  */
-export interface ITableContext extends ICommonContext {
+export interface INamedConfig {
   /**
-   * Shorthand for an `if` condition. Equivalent to `cond ? trueCase : falseCase`.
-   * `falseCase` is optional, and defaults to an empty string.
+   * The type of the action.
+   *
+   * @hidden
    */
-  when: (cond: boolean, trueCase: string, falseCase?: string) => string;
+  type?: string;
 
   /**
-   * Indicates whether the config indicates the file is dealing with an incremental table.
+   * The name of the action.
+   *
+   * @hidden
    */
-  incremental: () => boolean;
+  name?: string;
+}
+
+/**
+ * @hidden
+ * @deprecated
+ * Use core.proto config options instead.
+ */
+export interface IActionConfig {
+  /**
+   * A list of user-defined tags with which the action should be labeled.
+   */
+  tags?: string[];
+
+  /**
+   * Dependencies of the action.
+   *
+   * @hidden
+   */
+  dependencies?: Resolvable | Resolvable[];
+
+  /**
+   * If set to true, this action will not be executed. However, the action may still be depended upon.
+   * Useful for temporarily turning off broken actions.
+   */
+  disabled?: boolean;
+}
+
+/**
+ * @hidden
+ * @deprecated
+ * Use core.proto config options instead.
+ */
+export interface ITargetableConfig {
+  /**
+   * The database in which the output of this action should be created.
+   */
+  database?: string;
+
+  /**
+   * The schema in which the output of this action should be created.
+   */
+  schema?: string;
+}
+
+/**
+ * @hidden
+ * @deprecated
+ * Use core.proto config options instead.
+ */
+export interface IDependenciesConfig {
+  /**
+   * One or more explicit dependencies for this action. Dependency actions will run before dependent actions.
+   * Typically this would remain unset, because most dependencies are declared as a by-product of using the `ref` function.
+   */
+  dependencies?: Resolvable | Resolvable[];
+
+  /**
+   * Declares whether or not this action is hermetic. An action is hermetic if all of its dependencies are explicitly
+   * declared.
+   *
+   * If this action depends on data from a source which has not been declared as a dependency, then `hermetic`
+   * should be explicitly set to `false`. Otherwise, if this action only depends on data from explicitly-declared
+   * dependencies, then it should be set to `true`.
+   */
+  hermetic?: boolean;
+
+  /**
+   * If this flag is set to true, assertions dependent upon any of the dependencies are added as dependencies as well.
+   */
+  dependOnDependencyAssertions?: boolean;
+}
+
+/**
+ * @hidden
+ * @deprecated
+ * Use core.proto config options instead.
+ */
+export interface IDocumentableConfig {
+  /**
+   * A description of columns within the dataset.
+   */
+  columns?: IColumnsDescriptor;
+
+  /**
+   * A description of the dataset.
+   */
+  description?: string;
+}
+
+/**
+ * @hidden
+ * @deprecated
+ * This is no longer needed other than for legacy backwards compatibility purposes, as tables are
+ * now configured in separate actions.
+ */
+export type TableType = typeof TableType[number];
+
+/**
+ * @hidden
+ * @deprecated
+ * This is no longer needed other than for legacy backwards compatibility purposes, as tables are
+ * now configured in separate actions.
+ */
+export const TableType = ["table", "view", "incremental"] as const;
+
+/**
+ * @hidden
+ * @deprecated
+ * These options are only here to preserve backwards compatibility of legacy config options.
+ * consider breaking backwards compatability of this in v4.
+ */
+export interface ILegacyTableConfig
+  extends IActionConfig,
+    IDependenciesConfig,
+    IDocumentableConfig,
+    INamedConfig,
+    ITargetableConfig {
+  type?: TableType;
+  protected?: boolean;
+  bigquery?: ILegacyBigQueryOptions;
+  assertions?: ILegacyTableAssertions;
+  uniqueKey?: string[];
+  materialized?: boolean;
+}
+
+/**
+ * @hidden
+ * @deprecated
+ * These options are only here to preserve backwards compatibility of legacy config options.
+ * consider breaking backwards compatability of this in v4.
+ */
+export interface ILegacyBigQueryOptions {
+  partitionBy?: string;
+  clusterBy?: string[];
+  updatePartitionFilter?: string;
+  labels?: { [name: string]: string };
+  partitionExpirationDays?: number;
+  requirePartitionFilter?: boolean;
+  additionalOptions?: { [name: string]: string };
+}
+
+/**
+ * @hidden
+ * @deprecated
+ * These options are only here to preserve backwards compatibility of legacy config options.
+ * consider breaking backwards compatability of this in v4.
+ */
+export interface ILegacyTableAssertions {
+  uniqueKey?: string | string[];
+  uniqueKeys?: string[][];
+  nonNull?: string | string[];
+  rowConditions?: string[];
 }
 
 export class LegacyConfigConverter {
@@ -137,9 +398,11 @@ export class LegacyConfigConverter {
     return bigqueryFiltered;
   }
 
-  public static insertLegacyInlineAssertionsToConfigProto<
-    T extends ILegacyTableConfig | ILegacyIncrementalTableConfig | ILegacyViewConfig
-  >(legacyConfig: T): T {
+  public static insertLegacyInlineAssertionsToConfigProto<T extends ILegacyTableConfig>(
+    unverifiedConfig: T
+  ): T {
+    // Type `any` is used here to facilitate the type hacking for legacy compatibility.
+    const legacyConfig: any = unverifiedConfig;
     if (legacyConfig?.assertions) {
       if (typeof legacyConfig.assertions?.uniqueKey === "string") {
         legacyConfig.assertions.uniqueKey = [legacyConfig.assertions.uniqueKey];
@@ -158,9 +421,11 @@ export class LegacyConfigConverter {
     return legacyConfig;
   }
 
-  public static insertLegacyBigQueryOptionsToConfigProto<
-    T extends ILegacyTableConfig | ILegacyIncrementalTableConfig
-  >(legacyConfig: T): T {
+  public static insertLegacyBigQueryOptionsToConfigProto<T extends ILegacyTableConfig>(
+    unverifiedConfig: T
+  ): T {
+    // Type `any` is used here to facilitate the type hacking for legacy compatibility.
+    const legacyConfig: any = unverifiedConfig;
     if (!legacyConfig?.bigquery) {
       return legacyConfig;
     }
@@ -173,8 +438,7 @@ export class LegacyConfigConverter {
       delete legacyConfig.bigquery.clusterBy;
     }
     if (!!legacyConfig.bigquery.updatePartitionFilter) {
-      (legacyConfig as ILegacyIncrementalTableConfig).updatePartitionFilter =
-        legacyConfig.bigquery.updatePartitionFilter;
+      legacyConfig.updatePartitionFilter = legacyConfig.bigquery.updatePartitionFilter;
       delete legacyConfig.bigquery.updatePartitionFilter;
     }
     if (!!legacyConfig.bigquery.labels) {
@@ -200,14 +464,4 @@ export class LegacyConfigConverter {
     }
     return legacyConfig;
   }
-}
-
-export interface ILegacyTableBigqueryConfig {
-  partitionBy?: string;
-  clusterBy?: string[];
-  updatePartitionFilter?: string;
-  labels?: { [key: string]: string };
-  partitionExpirationDays?: number;
-  requirePartitionFilter?: boolean;
-  additionalOptions?: { [key: string]: string };
 }

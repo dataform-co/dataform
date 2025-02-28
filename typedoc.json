@@ -1,0 +1,12 @@
+{
+    "out": "newdocs",
+    "plugin": ["typedoc-plugin-markdown"],
+    "name": "Dataform Javascript API Reference",
+    "excludeExternals": true,
+    "exclude": [
+        "*", "!core/**"
+    ],
+    "excludeNotDocumented": true,
+    "disableSources": true,
+    "excludePrivate": true
+}
