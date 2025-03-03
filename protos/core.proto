@@ -306,8 +306,9 @@ message LoadConfiguration {
     SimpleLoadMode append = 2;
     IncrementalLoadMode maximum = 3;
     IncrementalLoadMode unique = 4;
-    IncrementalLoadMode automatic = 5;
   }
+
+  reserved 5;
 }
 
 message SimpleLoadMode {}
