@@ -405,6 +405,8 @@ $\{when(true, "|> SELECT *", "|> SELECT 1")\}
       const dataPreparationSqlx = `
 config {
     type: "dataPreparation",
+    dataset: "compilation_override_dataset",
+    project: "compilation_override_project",
     name: "dest",
     errorTable: {
         name: "errorTable",
@@ -438,19 +440,19 @@ FROM x
         asPlainObject([
           {
             target: {
-              database: "projectOverride",
-              schema: "datasetOverride",
+              database: "compilation_override_project",
+              schema: "compilation_override_dataset",
               name: "dest"
             },
             canonicalTarget: {
-              database: "projectOverride",
-              schema: "datasetOverride",
+              database: "compilation_override_project",
+              schema: "compilation_override_dataset",
               name: "dest"
             },
             targets: [
               {
-                database: "projectOverride",
-                schema: "datasetOverride",
+                database: "compilation_override_project",
+                schema: "compilation_override_dataset",
                 name: "dest"
               },
               {
@@ -461,8 +463,8 @@ FROM x
             ],
             canonicalTargets: [
               {
-                database: "projectOverride",
-                schema: "datasetOverride",
+                database: "compilation_override_project",
+                schema: "compilation_override_dataset",
                 name: "dest"
               },
               {

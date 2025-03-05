@@ -500,6 +500,12 @@ message ActionConfig {
     // The name of the data preparation.
     string name = 1;
 
+    // The dataset (schema) of the destination table.
+    string dataset = 13;
+
+    // The Google Cloud project (database) of the destination table.
+    string project = 14;
+
     // Targets of actions that this action is dependent on.
     repeated Target dependency_targets = 2;
 
