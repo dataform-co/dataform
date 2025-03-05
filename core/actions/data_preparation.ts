@@ -74,8 +74,14 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     if (config.database) {
       this.database(config.database);
     }
+    if (config.project) {
+      this.database(config.project);
+    }
     if (config.schema) {
       this.schema(config.schema);
+    }
+    if (config.dataset) {
+      this.schema(config.dataset);
     }
     return this;
   }
