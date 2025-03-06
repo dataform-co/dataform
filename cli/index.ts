@@ -28,6 +28,8 @@ import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 import { formatFile } from "df/sqlx/format";
 import parseDuration from "parse-duration";
+import { promisify } from "util";
+import * as childProcess from "child_process";
 
 const RECOMPILE_DELAY = 500;
 
@@ -168,6 +170,7 @@ const jobPrefixOption: INamedOption<yargs.Options> = {
 const testConnectionOptionName = "test-connection";
 
 const watchOptionName = "watch";
+const replaceCoreOptionName = "replace-core";
 
 const dryRunOptionName = "dry-run";
 const runTestsOptionName = "run-tests";
@@ -316,6 +319,15 @@ export function runCli() {
               default: false
             }
           },
+          {
+            name: replaceCoreOptionName,
+            option: {
+              describe: `For Dataform core development purposes. Whether to replace the @dataform/core build in the
+                project directory with code changes present in the current directory.`,
+              type: "boolean",
+              default: false
+            }
+          },
           jsonOutputOption,
           timeoutOption,
           ...ProjectConfigOptions.allYargsOptions
@@ -324,6 +336,12 @@ export function runCli() {
           const projectDir = argv[projectDirMustExistOption.name];
 
           async function compileAndPrint() {
+            if (argv[replaceCoreOptionName]) {
+              print("Building & replacing @dataform/core in project directory...\n");
+              await promisify(childProcess.exec)(`bazel build packages/@dataform/core:bundle.js \
+                && cp bazel-bin/packages/@dataform/core/bundle.js ${projectDir}/node_modules/@dataform/core/`);
+              print("@dataform/core replacement complete\n");
+            }
             if (!argv[jsonOutputOption.name]) {
               print("Compiling...\n");
             }
