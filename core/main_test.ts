@@ -1208,13 +1208,9 @@ publish("name", {
                   schema: "defaultDataset"
                 },
                 type: tableType,
-                ...(tableType === "incremental"
-                  ? {
-                      incrementalQuery: "SELECT 1",
-                      protected: true,
-                      onSchemaChange: "IGNORE"
-                    }
-                  : {})
+                incrementalQuery: "SELECT 1",
+                protected: true,
+                onSchemaChange: "IGNORE",
               }
             ]);
           }); 
