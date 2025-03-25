@@ -1097,7 +1097,7 @@ publish("name", {
                           incrementalPostOps: ["post_op"],
                           incrementalPreOps: ["pre_op"],
                           incrementalQuery: "SELECT 1",
-                          protected: true,
+                          protected: false,
                           onSchemaChange: "IGNORE"
                         }
                       : {})
@@ -1162,13 +1162,59 @@ publish("name", {
               ...(tableType === "incremental"
                 ? {
                     incrementalQuery: "SELECT * FROM `defaultProject.defaultDataset.operation`",
-                    protected: true,
+                    protected: false,
                     onSchemaChange: "IGNORE"
                   }
                 : {})
             }
           ]);
         });
+
+        if (tableType === "incremental") {
+          test("protected resolved correctly", () => {
+            const projectDir = tmpDirFixture.createNewTmpDir();
+            fs.writeFileSync(
+              path.join(projectDir, "workflow_settings.yaml"),
+              VALID_WORKFLOW_SETTINGS_YAML
+            );
+            fs.mkdirSync(path.join(projectDir, "definitions"));
+            fs.writeFileSync(
+              path.join(projectDir, "definitions/publish.js"),
+              `
+publish("name", {
+  type: "incremental",
+}).query(_ => "SELECT 1")
+  .protected()`
+            );
+  
+            const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+  
+            expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+            expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals([
+              {
+                canonicalTarget: {
+                  database: "defaultProject",
+                  name: "name",
+                  schema: "defaultDataset"
+                },
+                disabled: false,
+                enumType: tableType.toUpperCase(),
+                fileName: "definitions/publish.js",
+                hermeticity: "NON_HERMETIC",
+                query: "SELECT 1",
+                target: {
+                  database: "defaultProject",
+                  name: "name",
+                  schema: "defaultDataset"
+                },
+                type: tableType,
+                incrementalQuery: "SELECT 1",
+                protected: true,
+                onSchemaChange: "IGNORE",
+              }
+            ]);
+          }); 
+        }
       });
     });
 
