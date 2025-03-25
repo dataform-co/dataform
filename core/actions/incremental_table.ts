@@ -300,7 +300,8 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
    * If called with `true`, prevents the dataset from being rebuilt from scratch.
    */
   public protected(isProtected: boolean) {
-    this.proto.protected = isProtected;
+    // To prevent accidental data deletion, protected defaults to true if unspecified.
+    this.proto.protected = isProtected === undefined || isProtected === null || isProtected;
     return this;
   }
 
@@ -593,11 +594,6 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
           ]),
           "BigQuery table config"
         );
-      }
-
-      // To prevent accidental data deletion, protected defaults to true if unspecified.
-      if (unverifiedConfig.protected === undefined || unverifiedConfig.protected === null) {
-        unverifiedConfig.protected = true;
       }
     }
 
