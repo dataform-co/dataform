@@ -230,6 +230,11 @@ export function printExecutedAction(
 ) {
   switch (executedAction.status) {
     case dataform.ActionResult.ExecutionStatus.SUCCESSFUL: {
+      const jobIds = executedAction.tasks
+        .filter(task => task.metadata?.bigquery?.jobId)
+        .map(task => task.metadata.bigquery.jobId);
+      const jobIdSuffix = jobIds.length > 0 ? ` (jobId: ${jobIds.join(", ")})` : "";
+      
       switch (executionAction.type) {
         case "table": {
           writeStdOut(
@@ -237,7 +242,7 @@ export function printExecutedAction(
               executionAction.target,
               executionAction.tableType,
               executionAction.tasks.length === 0
-            )}`
+            )}${jobIdSuffix}`
           );
           return;
         }
@@ -245,7 +250,7 @@ export function printExecutedAction(
           writeStdOut(
             `${successOutput(
               `Assertion ${dryRun ? "dry run success" : "passed"}: `
-            )} ${assertionString(executionAction.target, executionAction.tasks.length === 0)}`
+            )} ${assertionString(executionAction.target, executionAction.tasks.length === 0)}${jobIdSuffix}`
           );
           return;
         }
@@ -253,7 +258,7 @@ export function printExecutedAction(
           writeStdOut(
             `${successOutput(
               `Operation ${dryRun ? "dry run success" : "completed successfully"}: `
-            )} ${operationString(executionAction.target, executionAction.tasks.length === 0)}`
+            )} ${operationString(executionAction.target, executionAction.tasks.length === 0)}${jobIdSuffix}`
           );
           return;
         }
