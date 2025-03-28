@@ -265,6 +265,11 @@ export function printExecutedAction(
       }
     }
     case dataform.ActionResult.ExecutionStatus.FAILED: {
+      const jobIds = executedAction.tasks
+        .filter(task => task.metadata?.bigquery?.jobId)
+        .map(task => task.metadata.bigquery.jobId);
+      const jobIdSuffix = jobIds.length > 0 ? ` (jobId: ${jobIds.join(", ")})` : "";
+      
       switch (executionAction.type) {
         case "table": {
           writeStdErr(
@@ -272,7 +277,7 @@ export function printExecutedAction(
               executionAction.target,
               executionAction.tableType,
               executionAction.tasks.length === 0
-            )}`
+            )}${jobIdSuffix}`
           );
           break;
         }
@@ -281,7 +286,7 @@ export function printExecutedAction(
             `${errorOutput("Assertion failed: ")} ${assertionString(
               executionAction.target,
               executionAction.tasks.length === 0
-            )}`
+            )}${jobIdSuffix}`
           );
           break;
         }
@@ -290,7 +295,7 @@ export function printExecutedAction(
             `${errorOutput("Operation failed: ")} ${operationString(
               executionAction.target,
               executionAction.tasks.length === 0
-            )}`
+            )}${jobIdSuffix}`
           );
           break;
         }

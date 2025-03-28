@@ -356,12 +356,26 @@ export class BigQueryDbAdapter implements IDbAdapter {
               byteLimit
             });
             resultStream
-              .on("error", e => {
+              .on("error", async (e: any) => {
                 // Dry run queries against BigQuery done by this package eagerly fail with
                 // "Not found: job". This is a workaround to avoid that.
                 // Example: https://github.com/googleapis/python-bigquery/issues/118.
                 if (dryRun && e.message?.includes("Not found: Job")) {
                   resolve({ rows: [], metadata: {} });
+                  return;
+                }
+                
+                try {
+                  const [jobMetadata] = await job[0].getMetadata();
+                  if (jobMetadata && jobMetadata.jobReference && jobMetadata.jobReference.jobId) {
+                    e.metadata = {
+                      bigquery: {
+                        jobId: jobMetadata.jobReference.jobId,
+                      }
+                    };
+                  }
+                } catch (metadataError) {
+                  reject(e);
                 }
                 reject(e);
               })
@@ -374,7 +388,13 @@ export class BigQueryDbAdapter implements IDbAdapter {
                 try {
                   const [jobMetadata] = await job[0].getMetadata();
                   if (!!jobMetadata.status?.errorResult) {
-                    reject(new Error(jobMetadata.status.errorResult.message));
+                    const error: any = new Error(jobMetadata.status.errorResult.message);
+                    error.metadata = {
+                      bigquery: {
+                        jobId: jobMetadata.jobReference.jobId,
+                      }
+                    };
+                    reject(error);
                     return;
                   }
                   resolve({
