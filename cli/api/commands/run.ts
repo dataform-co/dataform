@@ -441,11 +441,13 @@ export class Runner {
           ? dataform.TaskResult.ExecutionStatus.CANCELLED
           : dataform.TaskResult.ExecutionStatus.FAILED;
         taskResult.errorMessage = `${this.graph.projectConfig.warehouse} error: ${e.message}`;
-        taskResult.metadata = {
-          bigquery: {
-            jobId: e.metadata?.bigquery?.jobId
-          }
-        };
+        if (e.metadata?.bigquery?.jobId) {
+          taskResult.metadata = {
+            bigquery: {
+              jobId: e.metadata.bigquery.jobId
+            }
+          };
+        }
       }
     }
     taskResult.timing = timer.end();
