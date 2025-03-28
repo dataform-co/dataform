@@ -228,12 +228,12 @@ export function printExecutedAction(
   executionAction: dataform.IExecutionAction,
   dryRun?: boolean
 ) {
+  const jobIds = executedAction.tasks
+    .filter(task => task.metadata?.bigquery?.jobId)
+    .map(task => task.metadata.bigquery.jobId);
+  const jobIdSuffix = jobIds.length > 0 ? ` (jobId: ${jobIds.join(", ")})` : "";
   switch (executedAction.status) {
     case dataform.ActionResult.ExecutionStatus.SUCCESSFUL: {
-      const jobIds = executedAction.tasks
-        .filter(task => task.metadata?.bigquery?.jobId)
-        .map(task => task.metadata.bigquery.jobId);
-      const jobIdSuffix = jobIds.length > 0 ? ` (jobId: ${jobIds.join(", ")})` : "";
 
       switch (executionAction.type) {
         case "table": {
@@ -265,11 +265,6 @@ export function printExecutedAction(
       }
     }
     case dataform.ActionResult.ExecutionStatus.FAILED: {
-      const jobIds = executedAction.tasks
-        .filter(task => task.metadata?.bigquery?.jobId)
-        .map(task => task.metadata.bigquery.jobId);
-      const jobIdSuffix = jobIds.length > 0 ? ` (jobId: ${jobIds.join(", ")})` : "";
-      
       switch (executionAction.type) {
         case "table": {
           writeStdErr(
