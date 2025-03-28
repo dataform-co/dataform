@@ -3,7 +3,7 @@ import { PromisePoolExecutor } from "promise-pool-executor";
 
 import { BigQuery, GetTablesResponse, TableField, TableMetadata } from "@google-cloud/bigquery";
 import { collectEvaluationQueries, QueryOrAction } from "df/cli/api/dbadapters/execution_sql";
-import { IDbAdapter, IDbClient, IExecutionResult, OnCancel } from "df/cli/api/dbadapters/index";
+import { IDbAdapter, IDbClient, IExecutionResult, OnCancel, BigQueryError } from "df/cli/api/dbadapters/index";
 import { parseBigqueryEvalError } from "df/cli/api/utils/error_parsing";
 import { LimitedResultSet } from "df/cli/api/utils/results";
 import { coerceAsError } from "df/common/errors/errors";
@@ -356,7 +356,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
               byteLimit
             });
             resultStream
-              .on("error", async (e: any) => {
+              .on("error", async (e: BigQueryError) => {
                 // Dry run queries against BigQuery done by this package eagerly fail with
                 // "Not found: job". This is a workaround to avoid that.
                 // Example: https://github.com/googleapis/python-bigquery/issues/118.
@@ -367,15 +367,12 @@ export class BigQueryDbAdapter implements IDbAdapter {
                 
                 try {
                   const [jobMetadata] = await job[0].getMetadata();
-                  if (jobMetadata && jobMetadata.jobReference && jobMetadata.jobReference.jobId) {
-                    e.metadata = {
-                      bigquery: {
-                        jobId: jobMetadata.jobReference.jobId,
-                      }
-                    };
+                  if (!!jobMetadata.status?.errorResult) {
+                    const error = createBigQueryError(jobMetadata);
+                    reject(error);
                   }
                 } catch (metadataError) {
-                  reject(e);
+                  reject(metadataError);
                 }
                 reject(e);
               })
@@ -388,14 +385,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
                 try {
                   const [jobMetadata] = await job[0].getMetadata();
                   if (!!jobMetadata.status?.errorResult) {
-                    const error: any = new Error(jobMetadata.status.errorResult.message);
-                    if (jobMetadata.jobReference && jobMetadata.jobReference.jobId) {
-                    error.metadata = {
-                      bigquery: {
-                          jobId: jobMetadata.jobReference.jobId,
-                        }
-                      };
-                    }
+                    const error = createBigQueryError(jobMetadata);
                     reject(error);
                     return;
                   }
@@ -526,4 +516,16 @@ function addDescriptionToMetadata(
     mapDescriptionToMetadata(metaItem, [metaItem.name])
   );
   return newMetadata;
+}
+
+function createBigQueryError(jobMetadata: any): BigQueryError {
+  const error: BigQueryError = new Error(jobMetadata.status.errorResult.message);
+  if (jobMetadata.jobReference && jobMetadata.jobReference.jobId) {
+    error.metadata = {
+      bigquery: {
+        jobId: jobMetadata.jobReference.jobId,
+      }
+    };
+  }
+  return error;
 }
