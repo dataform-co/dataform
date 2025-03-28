@@ -389,11 +389,13 @@ export class BigQueryDbAdapter implements IDbAdapter {
                   const [jobMetadata] = await job[0].getMetadata();
                   if (!!jobMetadata.status?.errorResult) {
                     const error: any = new Error(jobMetadata.status.errorResult.message);
+                    if (jobMetadata.jobReference && jobMetadata.jobReference.jobId) {
                     error.metadata = {
                       bigquery: {
-                        jobId: jobMetadata.jobReference.jobId,
-                      }
-                    };
+                          jobId: jobMetadata.jobReference.jobId,
+                        }
+                      };
+                    }
                     reject(error);
                     return;
                   }
