@@ -33,6 +33,7 @@
     "chokidar": "^3.5.3",
     "deepmerge": "^4.2.2",
     "diff": "^4.0.2",
+    "electron-to-chromium": "1.5.118",
     "escodegen": "^1.13.0",
     "espree": "^7.0.0",
     "estraverse": "^5.1.0",
