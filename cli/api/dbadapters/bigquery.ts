@@ -3,7 +3,7 @@ import { PromisePoolExecutor } from "promise-pool-executor";
 
 import { BigQuery, GetTablesResponse, TableField, TableMetadata } from "@google-cloud/bigquery";
 import { collectEvaluationQueries, QueryOrAction } from "df/cli/api/dbadapters/execution_sql";
-import { IDbAdapter, IDbClient, IExecutionResult, OnCancel } from "df/cli/api/dbadapters/index";
+import { IBigQueryError, IDbAdapter, IDbClient, IExecutionResult, OnCancel } from "df/cli/api/dbadapters/index";
 import { parseBigqueryEvalError } from "df/cli/api/utils/error_parsing";
 import { LimitedResultSet } from "df/cli/api/utils/results";
 import { coerceAsError } from "df/common/errors/errors";
@@ -356,12 +356,23 @@ export class BigQueryDbAdapter implements IDbAdapter {
               byteLimit
             });
             resultStream
-              .on("error", e => {
+              .on("error", async (e: IBigQueryError) => {
                 // Dry run queries against BigQuery done by this package eagerly fail with
                 // "Not found: job". This is a workaround to avoid that.
                 // Example: https://github.com/googleapis/python-bigquery/issues/118.
                 if (dryRun && e.message?.includes("Not found: Job")) {
                   resolve({ rows: [], metadata: {} });
+                  return;
+                }
+                
+                try {
+                  const [jobMetadata] = await job[0].getMetadata();
+                  if (!!jobMetadata.status?.errorResult) {
+                    const error = createBigQueryError(jobMetadata);
+                    reject(error);
+                  }
+                } catch (metadataError) {
+                  reject(metadataError);
                 }
                 reject(e);
               })
@@ -374,7 +385,8 @@ export class BigQueryDbAdapter implements IDbAdapter {
                 try {
                   const [jobMetadata] = await job[0].getMetadata();
                   if (!!jobMetadata.status?.errorResult) {
-                    reject(new Error(jobMetadata.status.errorResult.message));
+                    const error = createBigQueryError(jobMetadata);
+                    reject(error);
                     return;
                   }
                   resolve({
@@ -504,4 +516,16 @@ function addDescriptionToMetadata(
     mapDescriptionToMetadata(metaItem, [metaItem.name])
   );
   return newMetadata;
+}
+
+function createBigQueryError(jobMetadata: any): IBigQueryError {
+  const error: IBigQueryError = new Error(jobMetadata.status.errorResult.message);
+  if (jobMetadata.jobReference && jobMetadata.jobReference.jobId) {
+    error.metadata = {
+      bigquery: {
+        jobId: jobMetadata.jobReference.jobId,
+      }
+    };
+  }
+  return error;
 }
