@@ -31,7 +31,7 @@ npm_package_bin(
     ],
     args = [
         "--config=$(location webpack.config.js)",
-        "--output=$(location bundle_no_license.js)",
+        "--output-path=$(location bundle_no_license.js)",
         "--mode=production",
     ],
     data = [

@@ -99,6 +99,8 @@
     "**/json-schema": "^0.4.0",
     "**/nth-check": "^2.0.1",
     "**/node-fetch": "^2.6.7",
-    "**/markdown-it": "^12.3.2"
+    "**/markdown-it": "^12.3.2",
+    "**/wrap-ansi": "7.0.0",
+    "**/string-width": "4.1.0"
   }
 }
