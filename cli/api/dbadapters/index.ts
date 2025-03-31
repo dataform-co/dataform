@@ -8,7 +8,7 @@ export interface IExecutionResult {
   metadata: dataform.IExecutionMetadata;
 }
 
-export interface BigQueryError extends Error {
+export interface IBigQueryError extends Error {
   metadata?: dataform.IExecutionMetadata
 }
 

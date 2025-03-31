@@ -3,7 +3,7 @@ import { PromisePoolExecutor } from "promise-pool-executor";
 
 import { BigQuery, GetTablesResponse, TableField, TableMetadata } from "@google-cloud/bigquery";
 import { collectEvaluationQueries, QueryOrAction } from "df/cli/api/dbadapters/execution_sql";
-import { IDbAdapter, IDbClient, IExecutionResult, OnCancel, BigQueryError } from "df/cli/api/dbadapters/index";
+import { IBigQueryError, IDbAdapter, IDbClient, IExecutionResult, OnCancel } from "df/cli/api/dbadapters/index";
 import { parseBigqueryEvalError } from "df/cli/api/utils/error_parsing";
 import { LimitedResultSet } from "df/cli/api/utils/results";
 import { coerceAsError } from "df/common/errors/errors";
@@ -356,7 +356,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
               byteLimit
             });
             resultStream
-              .on("error", async (e: BigQueryError) => {
+              .on("error", async (e: IBigQueryError) => {
                 // Dry run queries against BigQuery done by this package eagerly fail with
                 // "Not found: job". This is a workaround to avoid that.
                 // Example: https://github.com/googleapis/python-bigquery/issues/118.
@@ -518,8 +518,8 @@ function addDescriptionToMetadata(
   return newMetadata;
 }
 
-function createBigQueryError(jobMetadata: any): BigQueryError {
-  const error: BigQueryError = new Error(jobMetadata.status.errorResult.message);
+function createBigQueryError(jobMetadata: any): IBigQueryError {
+  const error: IBigQueryError = new Error(jobMetadata.status.errorResult.message);
   if (jobMetadata.jobReference && jobMetadata.jobReference.jobId) {
     error.metadata = {
       bigquery: {

@@ -42,6 +42,14 @@ bazel test //core/...
 
 If you need to run integration tests, that rely on encrypted secrets, please [get in touch](mailto:opensource@dataform.co) with the team.
 
+### Lint
+
+The following command to check for any linting errors
+
+```bash
+./scripts/lint
+```
+
 ### Building
 
 Building the CLI will build most of the required components.
