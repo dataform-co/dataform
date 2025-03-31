@@ -27,6 +27,7 @@
     "@types/tmp": "^0.2.0",
     "@types/vscode": "^1.45.1",
     "@types/yargs": "^15.0.5",
+    "caniuse-lite": "1.0.30001704",
     "chai": "^4.2.0",
     "chalk": "^4.0.0",
     "chokidar": "^3.5.3",
