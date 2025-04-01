@@ -24,6 +24,7 @@ webpack(
     ],
 )
 
+# RULEDIR explanation: https://bazel.build/reference/be/make-variables#predefined_genrule_variables
 npm_package_bin(
     name = "bundle",
     outs = [
@@ -31,7 +32,8 @@ npm_package_bin(
     ],
     args = [
         "--config=$(location webpack.config.js)",
-        "--output=$(location bundle_no_license.js)",
+        "--output-path=$(RULEDIR)",
+        "--output-filename=bundle_no_license.js",
         "--mode=production",
     ],
     data = [
