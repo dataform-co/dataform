@@ -7,9 +7,9 @@ module.exports = (env, argv) => {
     target: 'node',
     entry: [path.resolve(process.env.RUNFILES, "df/packages/@dataform/core/index")],
     output: {
-      path: path.dirname(path.resolve(argv.outputPath)),
-      filename: path.basename(argv.outputPath),
-      libraryTarget: "commonjs-module",
+      path: path.resolve(argv.outputPath),
+      filename: path.basename(argv.outputFilename),
+      libraryTarget: "commonjs",
     },
     optimization: {
       minimize: true
