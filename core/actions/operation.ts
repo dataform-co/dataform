@@ -9,6 +9,7 @@ import {
   checkAssertionsForDependency,
   configTargetToCompiledGraphTarget,
   nativeRequire,
+  resolvableAsActionConfigTarget,
   resolvableAsTarget,
   resolveActionsConfigFilename,
   toResolvable
@@ -366,8 +367,7 @@ export class Operation extends ActionBuilder<dataform.Operation> {
       delete unverifiedConfig.type;
       if (unverifiedConfig.dependencies) {
         unverifiedConfig.dependencyTargets = unverifiedConfig.dependencies.map(
-          (dependency: string | object) =>
-            typeof dependency === "string" ? { name: dependency } : dependency
+          (dependency: string | object) => resolvableAsActionConfigTarget(dependency)
         );
         delete unverifiedConfig.dependencies;
       }
