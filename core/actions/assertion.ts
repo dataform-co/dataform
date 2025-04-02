@@ -308,7 +308,6 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
     if (unverifiedConfig.dependencies) {
       unverifiedConfig.dependencyTargets = unverifiedConfig.dependencies.map(
         (dependency: string | object) => resolvableAsActionConfigTarget(dependency)
-        // typeof dependency === "string" ? { name: dependency } : dependency
       );
       delete unverifiedConfig.dependencies;
     }
