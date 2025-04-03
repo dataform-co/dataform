@@ -119,6 +119,9 @@ export function workflowSettingsAsProjectConfig(
   if (workflowSettings.namePrefix) {
     projectConfig.tablePrefix = workflowSettings.namePrefix;
   }
+  if (workflowSettings.builtinAssertionNamePrefix) {
+    projectConfig.builtinAssertionNamePrefix = workflowSettings.builtinAssertionNamePrefix;
+  }
   if (workflowSettings.defaultNotebookRuntimeOptions) {
     projectConfig.defaultNotebookRuntimeOptions = {};
     if (workflowSettings.defaultNotebookRuntimeOptions.outputBucket) {

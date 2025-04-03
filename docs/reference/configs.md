@@ -368,6 +368,7 @@ configuration file.
 | datasetSuffix                 | [string](#string)                                                      |          | Optional. The suffix to append to all dataset references.                                                                                               |
 | namePrefix                    | [string](#string)                                                      |          | Optional. The prefix to append to all action names.                                                                                                     |
 | defaultNotebookRuntimeOptions | [NotebookRuntimeOptionsConfig](#dataform-NotebookRuntimeOptionsConfig) |          | Optional. Default runtime options for Notebook actions.                                                                                                 |
+| builtinAssertionNamePrefix    | [string](#string)                                                      |          | Optional. The prefix to append to built-in assertion names.
 
 <a name="dataform-WorkflowSettings-VarsEntry"></a>
 

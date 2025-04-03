@@ -258,4 +258,106 @@ SELECT 1`
       });
     });
   });
+
+  ["table", "view", "incremental"].forEach(tableType => {
+      test(`${tableType} target with builtin assertion and builtinAssertionNamePrefix set"`, () => {
+        const projectDir = tmpDirFixture.createNewTmpDir();
+        fs.writeFileSync(
+          path.join(projectDir, "workflow_settings.yaml"),
+          `
+defaultProject: defaultProject
+defaultDataset: defaultDataset
+defaultLocation: US
+builtinAssertionNamePrefix: builtin
+`
+        );
+        fs.mkdirSync(path.join(projectDir, "definitions"));
+        fs.writeFileSync(
+          path.join(projectDir, "definitions/file.sqlx"),
+          `
+config {
+  type: "${tableType}",
+  database: "project",
+  schema: "dataset",
+  name: "name",
+  assertions: {
+    uniqueKeys: [["key1", "key2"]],
+    nonNull: "nonNull",
+    rowConditions: ["condition"],
+  }
+}
+  
+SELECT 1`);
+
+        const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+        expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals(
+          asPlainObject(
+            [
+              {
+                target: {
+                  database: "defaultProject",
+                  schema: "defaultDataset",
+                  name: `builtin_dataset_name_assertions_uniqueKey_0`
+                },
+                canonicalTarget: {
+                  database: "defaultProject",
+                  schema: "defaultDataset",
+                  name: `builtin_dataset_name_assertions_uniqueKey_0`
+                },
+                dependencyTargets: [
+                  {
+                    database: "project",
+                    schema: "dataset",
+                    name: "name"
+                  }
+                ],
+                fileName: `definitions/file.sqlx`,
+                parentAction: {
+                  database: "project",
+                  schema: "dataset",
+                  name: "name"
+                },
+                query:
+                  "\nSELECT\n  *\nFROM (\n  SELECT\n    key1, key2,\n    COUNT(1) AS index_row_count\n  FROM `project.dataset.name`\n  GROUP BY key1, key2\n  ) AS data\nWHERE index_row_count > 1\n",
+              },
+              {
+                target: {
+                  database: "defaultProject",
+                  schema: "defaultDataset",
+                  name: `builtin_dataset_name_assertions_rowConditions`
+                },
+                canonicalTarget: {
+                  database: "defaultProject",
+                  schema: "defaultDataset",
+                  name: `builtin_dataset_name_assertions_rowConditions`
+                },
+                dependencyTargets: [
+                  {
+                    database: "project",
+                    schema: "dataset",
+                    name: "name"
+                  }
+                ],
+                fileName: `definitions/file.sqlx`,
+                parentAction: {
+                  database: "project",
+                  schema: "dataset",
+                  name: "name"
+                },
+                query:
+                  "\nSELECT\n  'condition' AS failing_row_condition,\n  *\nFROM `project.dataset.name`\nWHERE NOT (condition)\nUNION ALL\nSELECT\n  'nonNull IS NOT NULL' AS failing_row_condition,\n  *\nFROM `project.dataset.name`\nWHERE NOT (nonNull IS NOT NULL)\n",
+              }
+            ]
+          )
+        );
+        expect(asPlainObject(result.compile.compiledGraph.projectConfig)).deep.equals(asPlainObject({
+          warehouse: "bigquery",
+          defaultDatabase: "defaultProject",
+          defaultSchema: "defaultDataset",
+          defaultLocation: "US",
+          builtinAssertionNamePrefix: "builtin",
+        }));
+      });
+  });
 });

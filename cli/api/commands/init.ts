@@ -64,6 +64,9 @@ export async function init(
   if (projectConfig.vars) {
     workflowSettings.vars = projectConfig.vars;
   }
+  if (projectConfig.builtinAssertionNamePrefix) {
+    workflowSettings.builtinAssertionNamePrefix = projectConfig.builtinAssertionNamePrefix;
+  }
 
   fs.writeFileSync(workflowSettingsYamlPath, dumpYaml(workflowSettings));
   filesWritten.push(workflowSettingsYamlPath);
