@@ -91,12 +91,12 @@ export abstract class ActionBuilder<T> {
       uniqueKeyAssertions: Assertion[];
       rowConditionsAssertion?: Assertion;
     } = { uniqueKeyAssertions: [] };
-
     if (!!tableAssertionsConfig.uniqueKey?.length && !!tableAssertionsConfig.uniqueKeys?.length) {
       this.session.compileError(
         new Error("Specify at most one of 'assertions.uniqueKey' and 'assertions.uniqueKeys'.")
       );
     }
+    const assertionPrefix = !!this.session.projectConfig.builtinAssertionNamePrefix ? `${this.session.projectConfig.builtinAssertionNamePrefix}_` : "";
     let uniqueKeys = tableAssertionsConfig.uniqueKeys.map(uniqueKey =>
       dataform.ActionConfig.TableAssertionsConfig.UniqueKey.create(uniqueKey)
     );
@@ -111,7 +111,7 @@ export abstract class ActionBuilder<T> {
       uniqueKeys.forEach(({ uniqueKey }, index) => {
         const uniqueKeyAssertion = this.session
           .assert(
-            `${proto.target.schema}_${proto.target.name}_assertions_uniqueKey_${index}`,
+            `${proto.target.schema}_${proto.target.name}_assertions_${assertionPrefix}uniqueKey_${index}`,
             dataform.ActionConfig.AssertionConfig.create({ filename: proto.fileName })
           )
           .query(ctx =>
@@ -137,7 +137,7 @@ export abstract class ActionBuilder<T> {
     }
     if (!!mergedRowConditions && mergedRowConditions.length > 0) {
       inlineAssertions.rowConditionsAssertion = this.session
-        .assert(`${proto.target.schema}_${proto.target.name}_assertions_rowConditions`, {
+        .assert(`${proto.target.schema}_${proto.target.name}_assertions_${assertionPrefix}rowConditions`, {
           filename: proto.fileName
         } as dataform.ActionConfig.AssertionConfig)
         .query(ctx =>

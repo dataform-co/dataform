@@ -22,6 +22,7 @@ message ProjectConfig {
   string database_suffix = 15;
   string schema_suffix = 7;
   string table_prefix = 11;
+  string builtin_assertion_name_prefix = 18;
 
   NotebookRuntimeOptions default_notebook_runtime_options = 17;
 

@@ -42,6 +42,9 @@ message WorkflowSettings {
 
   // Optional. Default runtime options for Notebook actions.
   NotebookRuntimeOptionsConfig default_notebook_runtime_options = 10;
+
+  // Optional. The prefix to append to assertion built-in names.
+  string builtin_assertion_name_prefix = 11;
 }
 
 // Action configs defines the contents of `actions.yaml` configuration files.
