@@ -46,6 +46,11 @@ export class WorkflowSettingsTemplates {
     ...WorkflowSettingsTemplates.bigquery,
     namePrefix: "prefix"
   });
+
+  public static bigqueryWithBuiltinAssertionNamePrefix = dataform.WorkflowSettings.create({
+    ...WorkflowSettingsTemplates.bigqueryWithDefaultProject,
+    builtinAssertionNamePrefix: "builtin",
+  })
 }
 
 const SOURCE_EXTENSIONS = ["js", "sql", "sqlx", "yaml", "ipynb"];

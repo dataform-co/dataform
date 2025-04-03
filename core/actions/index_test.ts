@@ -1,6 +1,7 @@
 // tslint:disable tsr-detect-non-literal-fs-filename
 import { expect } from "chai";
 import * as fs from "fs-extra";
+import { dump as dumpYaml } from "js-yaml";
 import * as path from "path";
 
 import { dataform } from "df/protos/ts";
@@ -9,7 +10,8 @@ import { TmpDirFixture } from "df/testing/fixtures";
 import {
   coreExecutionRequestFromPath,
   runMainInVm,
-  VALID_WORKFLOW_SETTINGS_YAML
+  VALID_WORKFLOW_SETTINGS_YAML,
+  WorkflowSettingsTemplates
 } from "df/testing/run_core";
 
 export const exampleActionDescriptor = {
@@ -260,6 +262,43 @@ SELECT 1`
         database: "otherProject",
         schema: "otherDataset",
         name: "name"
+      });
+    });
+  });
+
+  ["table", "view", "incremental"].forEach(tableType => {
+    [
+      WorkflowSettingsTemplates.bigqueryWithDefaultProject,
+      WorkflowSettingsTemplates.bigqueryWithBuiltinAssertionNamePrefix,
+    ].forEach(workflowSettings => {
+      test(`${tableType} target with builtin assertion and builtinAssertionNamePrefix = "${workflowSettings.builtinAssertionNamePrefix}"`, () => {
+        const projectDir = tmpDirFixture.createNewTmpDir();
+        fs.writeFileSync(
+          path.join(projectDir, "workflow_settings.yaml"),
+          dumpYaml(workflowSettings),
+        );
+        fs.mkdirSync(path.join(projectDir, "definitions"));
+        fs.writeFileSync(
+          path.join(projectDir, "definitions/file.sqlx"),
+          `
+  config {
+    type: "${tableType}",
+    database: "project",
+    schema: "dataset",
+    name: "name",
+    tags: ["tag1", "tag2"],
+    disabled: true,
+    ${exampleBuiltInAssertions.inputAssertionBlock}
+  }
+  
+  SELECT 1`
+        );
+
+        const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+        expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals(
+          exampleBuiltInAssertions.outputAssertions("file.sqlx", workflowSettings.builtinAssertionNamePrefix)
+        );
       });
     });
   });
