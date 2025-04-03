@@ -249,7 +249,7 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
       }
     ]);
     expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals(
-      exampleBuiltInAssertionsAsYaml.outputAssertions()
+      exampleBuiltInAssertionsAsYaml.outputAssertions
     );
   });
 });

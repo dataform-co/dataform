@@ -111,7 +111,7 @@ export abstract class ActionBuilder<T> {
       uniqueKeys.forEach(({ uniqueKey }, index) => {
         const uniqueKeyAssertion = this.session
           .assert(
-            `${proto.target.schema}_${proto.target.name}_assertions_${assertionPrefix}uniqueKey_${index}`,
+            `${assertionPrefix}${proto.target.schema}_${proto.target.name}_assertions_uniqueKey_${index}`,
             dataform.ActionConfig.AssertionConfig.create({ filename: proto.fileName })
           )
           .query(ctx =>
@@ -137,7 +137,7 @@ export abstract class ActionBuilder<T> {
     }
     if (!!mergedRowConditions && mergedRowConditions.length > 0) {
       inlineAssertions.rowConditionsAssertion = this.session
-        .assert(`${proto.target.schema}_${proto.target.name}_assertions_${assertionPrefix}rowConditions`, {
+        .assert(`${assertionPrefix}${proto.target.schema}_${proto.target.name}_assertions_rowConditions`, {
           filename: proto.fileName
         } as dataform.ActionConfig.AssertionConfig)
         .query(ctx =>
