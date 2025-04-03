@@ -9,7 +9,7 @@ import { TmpDirFixture } from "df/testing/fixtures";
 import {
   coreExecutionRequestFromPath,
   runMainInVm,
-  VALID_WORKFLOW_SETTINGS_YAML,
+  VALID_WORKFLOW_SETTINGS_YAML
 } from "df/testing/run_core";
 
 export const exampleActionDescriptor = {
@@ -52,7 +52,7 @@ export const exampleBuiltInAssertions = {
     nonNull: "nonNull",
     rowConditions: ["rowConditions1", "rowConditions2"],
   },`,
-  outputAssertions: (filename: string) => 
+  outputAssertions: (filename: string) =>
     [
       {
         target: {
