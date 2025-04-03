@@ -54,68 +54,66 @@ export const exampleBuiltInAssertions = {
     nonNull: "nonNull",
     rowConditions: ["rowConditions1", "rowConditions2"],
   },`,
-  outputAssertions: (filename: string) => {
-    return [
-      {
-        target: {
-          database: "defaultProject",
-          schema: "defaultDataset",
-          name: `dataset_name_assertions_uniqueKey_0`
-        },
-        canonicalTarget: {
-          database: "defaultProject",
-          schema: "defaultDataset",
-          name: `dataset_name_assertions_uniqueKey_0`
-        },
-        dependencyTargets: [
-          {
-            database: "project",
-            schema: "dataset",
-            name: "name"
-          }
-        ],
-        disabled: true,
-        fileName: `definitions/${filename}`,
-        parentAction: {
-          database: "project",
-          schema: "dataset",
-          name: "name"
-        },
-        query:
-          "\nSELECT\n  *\nFROM (\n  SELECT\n    uniqueKey1, uniqueKey2,\n    COUNT(1) AS index_row_count\n  FROM `project.dataset.name`\n  GROUP BY uniqueKey1, uniqueKey2\n  ) AS data\nWHERE index_row_count > 1\n",
-        tags: ["tag1", "tag2"]
+  outputAssertions: (filename: string) => [
+    {
+      target: {
+        database: "defaultProject",
+        schema: "defaultDataset",
+        name: "dataset_name_assertions_uniqueKey_0"
       },
-      {
-        target: {
-          database: "defaultProject",
-          schema: "defaultDataset",
-          name: `dataset_name_assertions_rowConditions`
-        },
-        canonicalTarget: {
-          database: "defaultProject",
-          schema: "defaultDataset",
-          name: `dataset_name_assertions_rowConditions`
-        },
-        dependencyTargets: [
-          {
-            database: "project",
-            schema: "dataset",
-            name: "name"
-          }
-        ],
-        disabled: true,
-        fileName: `definitions/${filename}`,
-        parentAction: {
+      canonicalTarget: {
+        database: "defaultProject",
+        schema: "defaultDataset",
+        name: "dataset_name_assertions_uniqueKey_0"
+      },
+      dependencyTargets: [
+        {
           database: "project",
           schema: "dataset",
           name: "name"
-        },
-        query:
-          "\nSELECT\n  'rowConditions1' AS failing_row_condition,\n  *\nFROM `project.dataset.name`\nWHERE NOT (rowConditions1)\nUNION ALL\nSELECT\n  'rowConditions2' AS failing_row_condition,\n  *\nFROM `project.dataset.name`\nWHERE NOT (rowConditions2)\nUNION ALL\nSELECT\n  'nonNull IS NOT NULL' AS failing_row_condition,\n  *\nFROM `project.dataset.name`\nWHERE NOT (nonNull IS NOT NULL)\n",
-        tags: ["tag1", "tag2"]
-      }
-    ] as dataform.IAssertion[]
-  }
+        }
+      ],
+      disabled: true,
+      fileName: `definitions/${filename}`,
+      parentAction: {
+        database: "project",
+        schema: "dataset",
+        name: "name"
+      },
+      query:
+        "\nSELECT\n  *\nFROM (\n  SELECT\n    uniqueKey1, uniqueKey2,\n    COUNT(1) AS index_row_count\n  FROM `project.dataset.name`\n  GROUP BY uniqueKey1, uniqueKey2\n  ) AS data\nWHERE index_row_count > 1\n",
+      tags: ["tag1", "tag2"]
+    },
+    {
+      target: {
+        database: "defaultProject",
+        schema: "defaultDataset",
+        name: "dataset_name_assertions_rowConditions"
+      },
+      canonicalTarget: {
+        database: "defaultProject",
+        schema: "defaultDataset",
+        name: "dataset_name_assertions_rowConditions"
+      },
+      dependencyTargets: [
+        {
+          database: "project",
+          schema: "dataset",
+          name: "name"
+        }
+      ],
+      disabled: true,
+      fileName: `definitions/${filename}`,
+      parentAction: {
+        database: "project",
+        schema: "dataset",
+        name: "name"
+      },
+      query:
+        "\nSELECT\n  'rowConditions1' AS failing_row_condition,\n  *\nFROM `project.dataset.name`\nWHERE NOT (rowConditions1)\nUNION ALL\nSELECT\n  'rowConditions2' AS failing_row_condition,\n  *\nFROM `project.dataset.name`\nWHERE NOT (rowConditions2)\nUNION ALL\nSELECT\n  'nonNull IS NOT NULL' AS failing_row_condition,\n  *\nFROM `project.dataset.name`\nWHERE NOT (nonNull IS NOT NULL)\n",
+      tags: ["tag1", "tag2"]
+    }
+  ] as dataform.IAssertion[]
 };
 
 export const exampleBuiltInAssertionsAsYaml = {
@@ -136,12 +134,12 @@ export const exampleBuiltInAssertionsAsYaml = {
       target: {
         database: "defaultProject",
         schema: "defaultDataset",
-        name: `dataset_name_assertions_uniqueKey_0`
+        name: "dataset_name_assertions_uniqueKey_0"
       },
       canonicalTarget: {
         database: "defaultProject",
         schema: "defaultDataset",
-        name: `dataset_name_assertions_uniqueKey_0`
+        name: "dataset_name_assertions_uniqueKey_0"
       },
       dependencyTargets: [
         {
@@ -167,12 +165,12 @@ export const exampleBuiltInAssertionsAsYaml = {
       target: {
         database: "defaultProject",
         schema: "defaultDataset",
-        name: `dataset_name_assertions_rowConditions`
+        name: "dataset_name_assertions_rowConditions"
       },
       canonicalTarget: {
         database: "defaultProject",
         schema: "defaultDataset",
-        name: `dataset_name_assertions_rowConditions`
+        name: "dataset_name_assertions_rowConditions"
       },
       dependencyTargets: [
         {
