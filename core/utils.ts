@@ -136,14 +136,36 @@ export function resolvableAsTarget(
       name: resolvable
     });
   }
-  if (resolvable instanceof dataform.ActionConfig.Target) {
+  const actionConfigTarget = (resolvable as dataform.ActionConfig.ITarget);
+  if (actionConfigTarget instanceof dataform.ActionConfig.Target || actionConfigTarget.dataset !== undefined || actionConfigTarget.project !== undefined) {
     return dataform.Target.create({
-      name: resolvable.name,
-      schema: resolvable.dataset,
-      database: resolvable.project
+      name: actionConfigTarget.name,
+      schema: actionConfigTarget.dataset,
+      database: actionConfigTarget.project,
+      includeDependentAssertions: actionConfigTarget.includeDependentAssertions,
     });
   }
   return dataform.Target.create(resolvable);
+}
+
+export function resolvableAsActionConfigTarget(
+  resolvable: string | object
+): dataform.ActionConfig.ITarget {
+  if (typeof resolvable === "string") {
+    const parts = resolvable.split(".").reverse();
+    if (!isResolvableArray(parts)) {
+      throw new Error(invalidRefInputMessage);
+    }
+
+    const [name, schema, database] = parts;
+    return {
+      name,
+      dataset: schema,
+      project: database,
+    };
+  }
+
+  return resolvable as dataform.ActionConfig.ITarget;
 }
 
 export function stringifyResolvable(res: Resolvable) {
@@ -332,7 +354,6 @@ export function checkAssertionsForDependency(
 
   // check if same dependency already exist in this action but with opposite value for includeDependentAssertions
   const dependencyTargetString = action.session.compilationSql().resolveTarget(dependencyTarget);
-
   if (action.includeAssertionsForDependency.has(dependencyTargetString)) {
     if (
       action.includeAssertionsForDependency.get(dependencyTargetString) !==

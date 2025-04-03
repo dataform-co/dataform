@@ -20,6 +20,7 @@ import {
   checkExcessProperties,
   configTargetToCompiledGraphTarget,
   nativeRequire,
+  resolvableAsActionConfigTarget,
   resolvableAsTarget,
   resolveActionsConfigFilename,
   strictKeysOf,
@@ -549,8 +550,7 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
       delete unverifiedConfig.type;
       if (unverifiedConfig.dependencies) {
         unverifiedConfig.dependencyTargets = unverifiedConfig.dependencies.map(
-          (dependency: string | object) =>
-            typeof dependency === "string" ? { name: dependency } : dependency
+          (dependency: string | object) => resolvableAsActionConfigTarget(dependency)
         );
         delete unverifiedConfig.dependencies;
       }

@@ -18,6 +18,34 @@ import {
 
 const EMPTY_NOTEBOOK_CONTENTS = '{ "cells": [] }';
 
+interface IVerifiableAction {
+  type?: string | null,
+  target?: dataform.ITarget | null;
+  canonicalTarget?: dataform.ITarget | null;
+  dependencyTargets?: dataform.ITarget[] | null
+}
+
+function toVerifiableAction(graph: dataform.ICompiledGraph, actionType: string): IVerifiableAction {
+  let action: dataform.IAssertion | dataform.ITable
+  switch (actionType) {
+    case "assertion":
+      action = graph.assertions[0];
+      break;
+    case "operations":
+      action = graph.operations[0];
+      break;
+    default:
+      action = graph.tables[0];
+  }
+
+  return {
+    type: actionType,
+    target: action.target,
+    canonicalTarget: action.canonicalTarget,
+    dependencyTargets: action.dependencyTargets,
+  };
+}
+
 // INFO: if you want to see an overview of the tests in this file, press cmd-k-3 while in
 // VSCode, to collapse everything below the third level of indentation.
 suite("@dataform/core", ({ afterEach }) => {
@@ -47,6 +75,78 @@ suite("@dataform/core", ({ afterEach }) => {
           expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
           expect(result.compile.compiledGraph.operations[0].queries[0]).deep.equals(
             `\`defaultDataset${suffix}.${prefix}e\``
+          );
+        });
+      });
+    });
+
+    suite("resolve with legacy dependencies", () => {
+      [
+        "assertion",
+        "incremental",
+        "operations",
+        "table",
+        "view",
+      ].forEach(actionType => {
+        test(`for action type: "${actionType}"`, () => {
+          const projectDir = tmpDirFixture.createNewTmpDir();
+          fs.writeFileSync(
+            path.join(projectDir, "workflow_settings.yaml"),
+            VALID_WORKFLOW_SETTINGS_YAML
+          );
+          fs.mkdirSync(path.join(projectDir, "definitions"));
+          fs.writeFileSync(path.join(projectDir, "definitions/source_a.sqlx"),
+            `
+config {
+type: "table",
+schema: "schema_a",
+name: "tbl",
+}
+
+SELECT 1`);
+          fs.writeFileSync(path.join(projectDir, "definitions/source_b.sqlx"),
+            `
+config {
+type: "table",
+schema: "schema_b",
+name: "tbl",
+}
+
+SELECT 1`);
+          fs.writeFileSync(path.join(projectDir, "definitions/file_with_dependencies.sqlx"),
+          `
+config {
+type: "${actionType}",
+dependencies: ["schema_a.tbl"]
+}
+
+SELECT 1`);        
+
+          const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+          expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+          const compiledAction = toVerifiableAction(result.compile.compiledGraph, actionType);
+          expect(asPlainObject(compiledAction)).deep.equals(
+            asPlainObject({
+              type: actionType,
+              target: {
+                database: "defaultProject",
+                schema: "defaultDataset",
+                name: "file_with_dependencies",
+              },
+              canonicalTarget: {
+                database:"defaultProject",
+                schema: "defaultDataset",
+                name: "file_with_dependencies"
+              },
+              dependencyTargets: [
+                {
+                  database: "defaultProject",
+                  schema: "schema_a",
+                  name: "tbl",
+                }
+              ],
+            })
           );
         });
       });

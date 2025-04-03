@@ -18,11 +18,12 @@ import {
   checkExcessProperties,
   configTargetToCompiledGraphTarget,
   nativeRequire,
+  resolvableAsActionConfigTarget,
   resolvableAsTarget,
   resolveActionsConfigFilename,
   strictKeysOf,
   toResolvable,
-  validateQueryString
+  validateQueryString,
 } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
@@ -544,8 +545,7 @@ export class View extends ActionBuilder<dataform.Table> {
       delete unverifiedConfig.type;
       if (unverifiedConfig.dependencies) {
         unverifiedConfig.dependencyTargets = unverifiedConfig.dependencies.map(
-          (dependency: string | object) =>
-            typeof dependency === "string" ? { name: dependency } : dependency
+          (dependency: string | object) => resolvableAsActionConfigTarget(dependency)
         );
         delete unverifiedConfig.dependencies;
       }

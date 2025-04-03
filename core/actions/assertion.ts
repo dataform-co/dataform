@@ -7,6 +7,7 @@ import {
   actionConfigToCompiledGraphTarget,
   configTargetToCompiledGraphTarget,
   nativeRequire,
+  resolvableAsActionConfigTarget,
   resolvableAsTarget,
   resolveActionsConfigFilename,
   toResolvable,
@@ -306,8 +307,7 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
   ): dataform.ActionConfig.AssertionConfig {
     if (unverifiedConfig.dependencies) {
       unverifiedConfig.dependencyTargets = unverifiedConfig.dependencies.map(
-        (dependency: string | object) =>
-          typeof dependency === "string" ? { name: dependency } : dependency
+        (dependency: string | object) => resolvableAsActionConfigTarget(dependency)
       );
       delete unverifiedConfig.dependencies;
     }
