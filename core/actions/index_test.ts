@@ -299,6 +299,13 @@ SELECT 1`
         expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals(
           exampleBuiltInAssertions.outputAssertions("file.sqlx", workflowSettings.builtinAssertionNamePrefix)
         );
+        expect(asPlainObject(result.compile.compiledGraph.projectConfig)).deep.equals(asPlainObject({
+          warehouse: "bigquery",
+          defaultDatabase: "defaultProject",
+          defaultSchema: "defaultDataset",
+          defaultLocation: "US",
+          builtinAssertionNamePrefix: !!workflowSettings.builtinAssertionNamePrefix ? workflowSettings.builtinAssertionNamePrefix : undefined,
+        }));
       });
     });
   });
