@@ -171,6 +171,7 @@ const watchOptionName = "watch";
 
 const dryRunOptionName = "dry-run";
 const runTestsOptionName = "run-tests";
+const checkOptionName = "check";
 
 const actionRetryLimitName = "action-retry-limit";
 
@@ -586,7 +587,17 @@ export function runCli() {
         format: `format [${projectDirMustExistOption.name}]`,
         description: "Format the dataform project's files.",
         positionalOptions: [projectDirMustExistOption],
-        options: [actionsOption],
+        options: [
+          actionsOption,
+          {
+            name: checkOptionName,
+            option: {
+              describe: "Check if files are formatted correctly without modifying them.",
+              type: "boolean",
+              default: false
+            }
+          }
+        ],
         processFn: async argv => {
           let actions = ["{definitions,includes}/**/*.{js,sqlx}"];
           if (actionsOption.name in argv && argv[actionsOption.name].length > 0) {
@@ -597,15 +608,35 @@ export function runCli() {
               glob.sync(action, { cwd: argv[projectDirMustExistOption.name] })
             )
             .flat();
-          const results: Array<{ filename: string; err?: Error }> = await Promise.all(
+
+          const isCheckMode = argv[checkOptionName];
+          const results: Array<{
+            filename: string;
+            err?: Error;
+            needsFormatting?: boolean;
+          }> = await Promise.all(
             filenames.map(async (filename: string) => {
               try {
-                await formatFile(path.resolve(argv[projectDirMustExistOption.name], filename), {
-                  overwriteFile: true
-                });
-                return {
-                  filename
-                };
+                const filePath = path.resolve(argv[projectDirMustExistOption.name], filename);
+                if (isCheckMode) {
+                  // In check mode, we don't modify files, just check if they need formatting
+                  const fileContent = fs.readFileSync(filePath).toString();
+                  const formattedContent = await formatFile(filePath, {
+                    overwriteFile: false
+                  });
+                  return {
+                    filename,
+                    needsFormatting: fileContent !== formattedContent
+                  };
+                } else {
+                  // Normal formatting mode
+                  await formatFile(filePath, {
+                    overwriteFile: true
+                  });
+                  return {
+                    filename
+                  };
+                }
               } catch (e) {
                 return {
                   filename,
@@ -614,7 +645,21 @@ export function runCli() {
               }
             })
           );
+
           printFormatFilesResult(results);
+
+          // In check mode, return an error code if any files need formatting
+          if (isCheckMode) {
+            const filesNeedingFormatting = results.filter(result => result.needsFormatting);
+            if (filesNeedingFormatting.length > 0) {
+              printError(
+                `${filesNeedingFormatting.length} file(s) would be reformatted. Run the format command without --check to update.`
+              );
+              return 1;
+            }
+            printSuccess("All files are formatted correctly!");
+          }
+
           return 0;
         }
       }
