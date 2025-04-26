@@ -648,6 +648,12 @@ export function runCli() {
 
           printFormatFilesResult(results);
 
+          // Return error code if there are any formatting errors
+          const failedFormatResults = results.filter(result => !!result.err);
+          if (failedFormatResults.length > 0) {
+            return 1;
+          }
+
           // In check mode, return an error code if any files need formatting
           if (isCheckMode) {
             const filesNeedingFormatting = results.filter(result => result.needsFormatting);
