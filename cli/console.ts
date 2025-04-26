@@ -391,7 +391,7 @@ export function printFormatFilesResult(
 
   if (needsFormattingResults.length > 0) {
     printError("Files that need formatting:");
-    needsFormattingResults.forEach(result => writeStdOut(result.filename, 1));
+    needsFormattingResults.forEach(result => writeStdErr(result.filename, 1));
   }
 
   if (failedFormatResults.length > 0) {
