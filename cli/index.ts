@@ -651,6 +651,7 @@ export function runCli() {
           // Return error code if there are any formatting errors
           const failedFormatResults = results.filter(result => !!result.err);
           if (failedFormatResults.length > 0) {
+            printError(`${failedFormatResults.length} file(s) failed to format.`);
             return 1;
           }
 
