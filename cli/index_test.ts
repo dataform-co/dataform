@@ -303,5 +303,53 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
       },
       warehouseState: {}
     });
+
+    // Create a correctly formatted file
+    const formattedFilePath = path.join(projectDir, "definitions", "formatted.sqlx");
+    fs.ensureFileSync(formattedFilePath);
+    fs.writeFileSync(
+      formattedFilePath,
+      `
+config {
+  type: "table"
+}
+
+SELECT
+  1 AS test
+`
+    );
+
+    // Create a file that needs formatting (extra spaces, inconsistent indentation)
+    const unformattedFilePath = path.join(projectDir, "definitions", "unformatted.sqlx");
+    fs.ensureFileSync(unformattedFilePath);
+    fs.writeFileSync(
+      unformattedFilePath,
+      `
+config {   type:  "table"   }
+SELECT  1  as   test
+`
+    );
+
+    // Test with --check flag on a project with files needing formatting
+    const checkResult = await getProcessResult(
+      execFile(nodePath, [cliEntryPointPath, "format", projectDir, "--check"])
+    );
+
+    // Should exit with code 1 when files need formatting
+    expect(checkResult.exitCode).equals(1);
+    expect(checkResult.stderr).contains("Files that need formatting");
+    expect(checkResult.stderr).contains("unformatted.sqlx");
+
+    // Format the files (without check flag)
+    await getProcessResult(execFile(nodePath, [cliEntryPointPath, "format", projectDir]));
+
+    // Test with --check flag after formatting
+    const afterFormatCheckResult = await getProcessResult(
+      execFile(nodePath, [cliEntryPointPath, "format", projectDir, "--check"])
+    );
+
+    // Should exit with code 0 when all files are properly formatted
+    expect(afterFormatCheckResult.exitCode).equals(0);
+    expect(afterFormatCheckResult.stdout).contains("All files are formatted correctly");
   });
 });
