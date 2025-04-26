@@ -304,4 +304,92 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
       warehouseState: {}
     });
   });
+
+  test("test for format command", async () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    const npmCacheDir = tmpDirFixture.createNewTmpDir();
+    const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
+    const packageJsonPath = path.join(projectDir, "package.json");
+
+    // Initialize a project using the CLI, don't install packages.
+    await getProcessResult(
+      execFile(nodePath, [cliEntryPointPath, "init", projectDir, "dataform-open-source", "US"])
+    );
+
+    // Install packages manually to get around bazel read-only sandbox issues.
+    const workflowSettings = dataform.WorkflowSettings.create(
+      loadYaml(fs.readFileSync(workflowSettingsPath, "utf8"))
+    );
+    delete workflowSettings.dataformCoreVersion;
+    fs.writeFileSync(workflowSettingsPath, dumpYaml(workflowSettings));
+    fs.writeFileSync(
+      packageJsonPath,
+      `{
+  "dependencies":{
+    "@dataform/core": "${version}"
+  }
+}`
+    );
+    await getProcessResult(
+      execFile(npmPath, [
+        "install",
+        "--prefix",
+        projectDir,
+        "--cache",
+        npmCacheDir,
+        corePackageTarPath
+      ])
+    );
+
+    // Create a correctly formatted file
+    const formattedFilePath = path.join(projectDir, "definitions", "formatted.sqlx");
+    fs.ensureFileSync(formattedFilePath);
+    fs.writeFileSync(
+      formattedFilePath,
+      `
+config {
+  type: "table"
+}
+
+SELECT
+  1 AS test
+`
+    );
+
+    // Create a file that needs formatting (extra spaces, inconsistent indentation)
+    const unformattedFilePath = path.join(projectDir, "definitions", "unformatted.sqlx");
+    fs.ensureFileSync(unformattedFilePath);
+    fs.writeFileSync(
+      unformattedFilePath,
+      `
+config {   type:  "table"   }
+SELECT  1  as   test
+`
+    );
+
+    // Test with --check flag on a project with files needing formatting
+    const beforeFormatCheckResult = await getProcessResult(
+      execFile(nodePath, [cliEntryPointPath, "format", projectDir, "--check"])
+    );
+
+    // Should exit with code 1 when files need formatting
+    expect(beforeFormatCheckResult.exitCode).equals(1);
+    expect(beforeFormatCheckResult.stderr).contains("Files that need formatting");
+    expect(beforeFormatCheckResult.stderr).contains("unformatted.sqlx");
+
+    // Format the files (without check flag)
+    const formatCheckResult = await getProcessResult(
+      execFile(nodePath, [cliEntryPointPath, "format", projectDir])
+    );
+    expect(formatCheckResult.exitCode).equals(0);
+
+    // Test with --check flag after formatting
+    const afterFormatCheckResult = await getProcessResult(
+      execFile(nodePath, [cliEntryPointPath, "format", projectDir, "--check"])
+    );
+
+    // Should exit with code 0 when all files are properly formatted
+    expect(afterFormatCheckResult.exitCode).equals(0);
+    expect(afterFormatCheckResult.stdout).contains("All files are formatted correctly");
+  });
 });

@@ -234,7 +234,6 @@ export function printExecutedAction(
   const jobIdSuffix = jobIds.length > 0 ? ` (jobId: ${jobIds.join(", ")})` : "";
   switch (executedAction.status) {
     case dataform.ActionResult.ExecutionStatus.SUCCESSFUL: {
-
       switch (executionAction.type) {
         case "table": {
           writeStdOut(
@@ -250,7 +249,10 @@ export function printExecutedAction(
           writeStdOut(
             `${successOutput(
               `Assertion ${dryRun ? "dry run success" : "passed"}: `
-            )} ${assertionString(executionAction.target, executionAction.tasks.length === 0)}${jobIdSuffix}`
+            )} ${assertionString(
+              executionAction.target,
+              executionAction.tasks.length === 0
+            )}${jobIdSuffix}`
           );
           return;
         }
@@ -258,7 +260,10 @@ export function printExecutedAction(
           writeStdOut(
             `${successOutput(
               `Operation ${dryRun ? "dry run success" : "completed successfully"}: `
-            )} ${operationString(executionAction.target, executionAction.tasks.length === 0)}${jobIdSuffix}`
+            )} ${operationString(
+              executionAction.target,
+              executionAction.tasks.length === 0
+            )}${jobIdSuffix}`
           );
           return;
         }
@@ -371,15 +376,24 @@ export function printFormatFilesResult(
   formatResults: Array<{
     filename: string;
     err?: Error;
+    needsFormatting?: boolean;
   }>
 ) {
   const sorted = formatResults.sort((a, b) => a.filename.localeCompare(b.filename));
-  const successfulFormatResults = sorted.filter(result => !result.err);
+  const successfulFormatResults = sorted.filter(result => !result.err && !result.needsFormatting);
+  const needsFormattingResults = sorted.filter(result => !result.err && result.needsFormatting);
   const failedFormatResults = sorted.filter(result => !!result.err);
+
   if (successfulFormatResults.length > 0) {
     printSuccess("Successfully formatted:");
     successfulFormatResults.forEach(result => writeStdOut(result.filename, 1));
   }
+
+  if (needsFormattingResults.length > 0) {
+    printError("Files that need formatting:");
+    needsFormattingResults.forEach(result => writeStdErr(result.filename, 1));
+  }
+
   if (failedFormatResults.length > 0) {
     printError("Errors encountered during formatting:");
     failedFormatResults.forEach(result =>
