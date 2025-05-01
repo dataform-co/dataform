@@ -532,11 +532,6 @@ export function runCli() {
             printSuccess("Unit tests completed successfully.\n");
           }
 
-          if (argv[dryRunOptionName]) {
-            print("Dry running (no changes to the warehouse will be applied)...");
-          } else {
-            print("Running...\n");
-          }
           let bigqueryOptions: {} = {
             actionRetryLimit: argv[actionRetryLimitName]
           };
@@ -555,6 +550,18 @@ export function runCli() {
           executionGraph.actions.forEach(action => {
             actionsByName.set(targetAsReadableString(action.target), action);
           });
+
+          if (actionsByName.size === 0) {
+            print("No actions to run...\n");
+            return 0;
+          } 
+
+          if (argv[dryRunOptionName]) {
+            print("Dry running (no changes to the warehouse will be applied)...");
+          } else {
+            print("Running...\n");
+          }
+
           const alreadyPrintedActions = new Set<string>();
 
           const printExecutedGraph = (executedGraph: dataform.IRunResult) => {
