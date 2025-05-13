@@ -532,11 +532,6 @@ export function runCli() {
             printSuccess("Unit tests completed successfully.\n");
           }
 
-          if (argv[dryRunOptionName]) {
-            print("Dry running (no changes to the warehouse will be applied)...");
-          } else {
-            print("Running...\n");
-          }
           let bigqueryOptions: {} = {
             actionRetryLimit: argv[actionRetryLimitName]
           };
@@ -546,15 +541,28 @@ export function runCli() {
           if (argv[jobPrefixOption.name]) {
             bigqueryOptions = { ...bigqueryOptions, jobPrefix: argv[jobPrefixOption.name] };
           }
-          const runner = run(dbadapter, executionGraph, { bigquery: bigqueryOptions });
-          process.on("SIGINT", () => {
-            runner.cancel();
-          });
 
           const actionsByName = new Map<string, dataform.IExecutionAction>();
           executionGraph.actions.forEach(action => {
             actionsByName.set(targetAsReadableString(action.target), action);
           });
+
+          if (actionsByName.size === 0) {
+            print("No actions to run.\n");
+            return 0;
+          }
+
+          if (argv[dryRunOptionName]) {
+            print("Dry running (no changes to the warehouse will be applied)...");
+          } else {
+            print("Running...\n");
+          }
+
+          const runner = run(dbadapter, executionGraph, { bigquery: bigqueryOptions });
+          process.on("SIGINT", () => {
+            runner.cancel();
+          });
+
           const alreadyPrintedActions = new Set<string>();
 
           const printExecutedGraph = (executedGraph: dataform.IRunResult) => {
