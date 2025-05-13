@@ -541,10 +541,6 @@ export function runCli() {
           if (argv[jobPrefixOption.name]) {
             bigqueryOptions = { ...bigqueryOptions, jobPrefix: argv[jobPrefixOption.name] };
           }
-          const runner = run(dbadapter, executionGraph, { bigquery: bigqueryOptions });
-          process.on("SIGINT", () => {
-            runner.cancel();
-          });
 
           const actionsByName = new Map<string, dataform.IExecutionAction>();
           executionGraph.actions.forEach(action => {
@@ -552,9 +548,14 @@ export function runCli() {
           });
 
           if (actionsByName.size === 0) {
-            print("No actions to run...\n");
+            print("No actions to run.\n");
             return 0;
-          } 
+          }
+
+          const runner = run(dbadapter, executionGraph, { bigquery: bigqueryOptions });
+          process.on("SIGINT", () => {
+            runner.cancel();
+          });
 
           if (argv[dryRunOptionName]) {
             print("Dry running (no changes to the warehouse will be applied)...");
