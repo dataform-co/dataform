@@ -552,16 +552,16 @@ export function runCli() {
             return 0;
           }
 
-          const runner = run(dbadapter, executionGraph, { bigquery: bigqueryOptions });
-          process.on("SIGINT", () => {
-            runner.cancel();
-          });
-
           if (argv[dryRunOptionName]) {
             print("Dry running (no changes to the warehouse will be applied)...");
           } else {
             print("Running...\n");
           }
+
+          const runner = run(dbadapter, executionGraph, { bigquery: bigqueryOptions });
+          process.on("SIGINT", () => {
+            runner.cancel();
+          });
 
           const alreadyPrintedActions = new Set<string>();
 
