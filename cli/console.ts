@@ -1,6 +1,6 @@
 import { IInitResult } from "df/cli/api/commands/init";
 import { prettyJsonStringify } from "df/cli/api/utils";
-import { setOrValidateTableEnumType, tableTypeEnumToString } from "df/core/utils";
+import { formatBytesInHumanReadableFormat, setOrValidateTableEnumType, tableTypeEnumToString } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 import * as readlineSync from "readline-sync";
 
@@ -231,7 +231,16 @@ export function printExecutedAction(
   const jobIds = executedAction.tasks
     .filter(task => task.metadata?.bigquery?.jobId)
     .map(task => task.metadata.bigquery.jobId);
+  const bytestBilled = executedAction.tasks
+    .filter(task => task.metadata?.bigquery?.jobId)
+    .map(task => {
+        return task.metadata.bigquery?.totalBytesBilled
+        ? formatBytesInHumanReadableFormat(task.metadata.bigquery.totalBytesBilled.toNumber()) : "0 B"
+    });
+
   const jobIdSuffix = jobIds.length > 0 ? ` (jobId: ${jobIds.join(", ")})` : "";
+  const bytesBilledSuffix = bytestBilled.length > 0 ? ` (Bytes billed: ${bytestBilled.join(", ")})` : "";
+
   switch (executedAction.status) {
     case dataform.ActionResult.ExecutionStatus.SUCCESSFUL: {
       switch (executionAction.type) {
@@ -241,7 +250,7 @@ export function printExecutedAction(
               executionAction.target,
               executionAction.tableType,
               executionAction.tasks.length === 0
-            )}${jobIdSuffix}`
+            )}${jobIdSuffix} | ${bytesBilledSuffix}`
           );
           return;
         }
@@ -252,7 +261,7 @@ export function printExecutedAction(
             )} ${assertionString(
               executionAction.target,
               executionAction.tasks.length === 0
-            )}${jobIdSuffix}`
+            )}${jobIdSuffix} | ${bytesBilledSuffix}`
           );
           return;
         }
@@ -263,7 +272,7 @@ export function printExecutedAction(
             )} ${operationString(
               executionAction.target,
               executionAction.tasks.length === 0
-            )}${jobIdSuffix}`
+            )}${jobIdSuffix} | ${bytesBilledSuffix}`
           );
           return;
         }
