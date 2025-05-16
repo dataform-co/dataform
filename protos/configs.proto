@@ -226,6 +226,14 @@ message ActionConfig {
     // https://cloud.google.com/bigquery/docs/materialized-views-intro.
     bool materialized = 10;
 
+    // Optional. Applicable only to materialized view. The key by which to partition the materialized view. Typically the name of a
+    // timestamp or the date column. See https://cloud.google.com/bigquery/docs/materialized-views-create#partitioned_materialized_views.
+    string partition_by = 18;
+
+    // Optional. Applicable only to materialized view. The keys by which to cluster partitions by. See
+    // https://cloud.google.com/bigquery/docs/materialized-views-create#cluster_materialized_views.
+    repeated string cluster_by = 19;
+
     // Description of the view.
     string description = 11;
 
