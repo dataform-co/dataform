@@ -364,7 +364,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
                   resolve({ rows: [], metadata: {} });
                   return;
                 }
-                
+
                 try {
                   const [jobMetadata] = await job[0].getMetadata();
                   if (!!jobMetadata.status?.errorResult) {
@@ -399,7 +399,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
                           : Long.ZERO,
                         totalBytesProcessed: jobMetadata.statistics.query.totalBytesProcessed
                           ? Long.fromString(jobMetadata.statistics.query.totalBytesProcessed)
-                          : Long.ZERO
+                          : Long.ZERO,
                       }
                     }
                   });
