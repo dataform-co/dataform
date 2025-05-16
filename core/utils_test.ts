@@ -4,8 +4,8 @@ import { expect } from "chai";
 import { formatBytesInHumanReadableFormat } from "df/core/utils";
 import { suite, test } from "df/testing";
 
-suite('format bytes from dry run in human readable format', () => {
-    test('format bytes from dry run in human readable format', () => {
+suite('format bytes in human readable format', () => {
+    test('format bytes in human readable format', () => {
         expect(formatBytesInHumanReadableFormat(0)).deep.equals('0 B');
         expect(formatBytesInHumanReadableFormat(1)).deep.equals('1.00 B');
         expect(formatBytesInHumanReadableFormat(500)).deep.equals('500.00 B');
