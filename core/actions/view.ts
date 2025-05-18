@@ -34,6 +34,8 @@ import { dataform } from "df/protos/ts";
  * Consider breaking backwards compatability of these in v4.
  */
 export interface ILegacyViewBigqueryConfig {
+  partitionBy?: string;
+  clusterBy?: string[];
   labels: { [key: string]: string };
   additionalOptions: { [key: string]: string };
 }
@@ -193,8 +195,13 @@ export class View extends ActionBuilder<dataform.Table> {
     if (config.postOperations) {
       this.postOps(config.postOperations);
     }
-    if (Object.keys(config.labels).length || Object.keys(config.additionalOptions).length) {
-      this.bigquery({ labels: config.labels, additionalOptions: config.additionalOptions });
+    if (Object.keys(config.labels).length || Object.keys(config.additionalOptions).length || config.partitionBy.length > 0 || config.clusterBy.length > 0) {
+      this.bigquery({ 
+        partitionBy: config.partitionBy,
+        clusterBy: config.clusterBy,
+        labels: config.labels,
+        additionalOptions: config.additionalOptions,
+      });
     }
 
     return this;
@@ -570,6 +577,14 @@ export class View extends ActionBuilder<dataform.Table> {
         unverifiedConfig
       );
       if (unverifiedConfig?.bigquery) {
+        checkExcessProperties(
+          (e: Error) => {
+            throw e;
+          },
+          unverifiedConfig.bigquery,
+          strictKeysOf<ILegacyViewBigqueryConfig>()(["labels", "additionalOptions", "partitionBy", "clusterBy",]),
+          "BigQuery view config"
+        );
         if (!!unverifiedConfig.bigquery.labels) {
           unverifiedConfig.labels = unverifiedConfig.bigquery.labels;
           delete unverifiedConfig.bigquery.labels;
@@ -578,22 +593,36 @@ export class View extends ActionBuilder<dataform.Table> {
           unverifiedConfig.additionalOptions = unverifiedConfig.bigquery.additionalOptions;
           delete unverifiedConfig.bigquery.additionalOptions;
         }
-        checkExcessProperties(
-          (e: Error) => {
-            throw e;
-          },
-          unverifiedConfig.bigquery,
-          strictKeysOf<ILegacyViewBigqueryConfig>()(["labels", "additionalOptions"]),
-          "BigQuery view config"
-        );
+        if (!!unverifiedConfig.bigquery.partitionBy) {
+          unverifiedConfig.partitionBy = unverifiedConfig.bigquery.partitionBy;
+          delete unverifiedConfig.bigquery.partitionBy;
+        }
+        if (!!unverifiedConfig.bigquery.clusterBy) {
+          unverifiedConfig.clusterBy = unverifiedConfig.bigquery.clusterBy;
+          delete unverifiedConfig.bigquery.clusterBy;
+        }
       }
     }
 
-    return verifyObjectMatchesProto(
+    const config = verifyObjectMatchesProto(
       dataform.ActionConfig.ViewConfig,
       unverifiedConfig,
       VerifyProtoErrorBehaviour.SHOW_DOCS_LINK
     );
+
+    if (!config.materialized && (config.partitionBy.length > 0 || config.clusterBy.length > 0)) {
+      this.session.compileError(
+        `partitionBy/clusterBy can be applied only to materialized views`,
+        config.filename,
+        dataform.Target.create({
+          database: config.project,
+          schema: config.dataset,
+          name: config.name
+        })
+      );
+    }
+
+    return config;
   }
 }
 

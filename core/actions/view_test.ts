@@ -77,6 +77,8 @@ actions:
     description: "description",
     ${exampleActionDescriptor.inputSqlxConfigBlock}
     bigquery: {
+    partitionBy: "partitionBy",
+    clusterBy: ["clusterBy"],
     labels: {"key": "val"},
     additionalOptions: {
         option1Key: "option1",
@@ -131,6 +133,8 @@ SELECT 1`
             disabled: true,
             hermeticity: "HERMETIC",
             bigquery: {
+              clusterBy: ["clusterBy"],
+              partitionBy: "partitionBy",
               additionalOptions: {
                 option1Key: "option1",
                 option2Key: "option2"
@@ -189,6 +193,9 @@ actions:
     - tag2
     disabled: true
     materialized: true
+    partitionBy: partitionBy
+    clusterBy:
+    - clusterBy
     description: description
     labels:
       key: val
@@ -220,6 +227,8 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
         disabled: true,
         hermeticity: "HERMETIC",
         bigquery: {
+          clusterBy: ["clusterBy"],
+          partitionBy: "partitionBy",
           additionalOptions: {
             option1Key: "option1",
             option2Key: "option2"
