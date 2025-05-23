@@ -165,6 +165,15 @@ const jobPrefixOption: INamedOption<yargs.Options> = {
   }
 };
 
+const quietCompileOption: INamedOption<yargs.Options> = {
+  name: "quiet",
+  option: {
+    describe: "Less verbose compilation output. Example usage: 'dataform compile --quiet'",
+    type: "boolean",
+    default: false
+  }
+};
+
 const testConnectionOptionName = "test-connection";
 
 const watchOptionName = "watch";
@@ -319,6 +328,7 @@ export function runCli() {
           },
           jsonOutputOption,
           timeoutOption,
+          quietCompileOption,
           ...ProjectConfigOptions.allYargsOptions
         ],
         processFn: async argv => {
@@ -333,7 +343,7 @@ export function runCli() {
               projectConfigOverride: ProjectConfigOptions.constructProjectConfigOverride(argv),
               timeoutMillis: argv[timeoutOption.name] || undefined
             });
-            printCompiledGraph(compiledGraph, argv[jsonOutputOption.name]);
+            printCompiledGraph(compiledGraph, argv[jsonOutputOption.name], argv[quietCompileOption.name]);
             if (compiledGraphHasErrors(compiledGraph)) {
               print("");
               printCompiledGraphErrors(compiledGraph.graphErrors);
