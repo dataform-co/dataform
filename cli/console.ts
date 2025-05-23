@@ -117,7 +117,7 @@ export function printInitCredsResult(writtenFilePath: string) {
   writeStdOut("To change connection settings, edit this file directly.");
 }
 
-export function printCompiledGraph(graph: dataform.ICompiledGraph, asJson: boolean) {
+export function printCompiledGraph(graph: dataform.ICompiledGraph, asJson: boolean, quietCompilation: boolean) {
   if (asJson) {
     writeStdOut(prettyJsonStringify(graph));
   } else {
@@ -129,29 +129,35 @@ export function printCompiledGraph(graph: dataform.ICompiledGraph, asJson: boole
     writeStdOut(successOutput(`Compiled ${actionCount} action(s).`));
     if (graph.tables && graph.tables.length) {
       graph.tables.forEach(setOrValidateTableEnumType);
-      writeStdOut(`${graph.tables.length} dataset(s):`);
-      graph.tables.forEach(compiledTable => {
-        writeStdOut(
-          `${datasetString(
-            compiledTable.target,
-            tableTypeEnumToString(compiledTable.enumType),
-            compiledTable.disabled
-          )}`,
-          1
-        );
-      });
+      writeStdOut(`${graph.tables.length} dataset(s)${quietCompilation ? "." : ":"}`);
+      if(quietCompilation === false){
+          graph.tables.forEach(compiledTable => {
+            writeStdOut(
+              `${datasetString(
+                compiledTable.target,
+                tableTypeEnumToString(compiledTable.enumType),
+                compiledTable.disabled
+              )}`,
+              1
+            );
+          });
+      }
     }
     if (graph.assertions && graph.assertions.length) {
-      writeStdOut(`${graph.assertions.length} assertion(s):`);
-      graph.assertions.forEach(assertion => {
-        writeStdOut(assertionString(assertion.target, assertion.disabled), 1);
-      });
+      writeStdOut(`${graph.assertions.length} assertion(s)${quietCompilation ? "." : ":"}`);
+      if(quietCompilation === false){
+          graph.assertions.forEach(assertion => {
+            writeStdOut(assertionString(assertion.target, assertion.disabled), 1);
+          });
+      }
     }
     if (graph.operations && graph.operations.length) {
-      writeStdOut(`${graph.operations.length} operation(s):`);
-      graph.operations.forEach(operation => {
-        writeStdOut(operationString(operation.target, operation.disabled), 1);
-      });
+      writeStdOut(`${graph.operations.length} operation(s)${quietCompilation ? "." : ":"}`);
+      if(quietCompilation === false){
+          graph.operations.forEach(operation => {
+            writeStdOut(operationString(operation.target, operation.disabled), 1);
+          });
+      }
     }
   }
 }
