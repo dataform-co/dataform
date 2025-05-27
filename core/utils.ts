@@ -377,7 +377,7 @@ export function checkAssertionsForDependency(
 export function formatBytesInHumanReadableFormat(bytes: number): string {
     if (bytes === 0) {return '0 B';}
 
-    const units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
+    const units = ['B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB'];
     const k = 1024;
 
     // Find the appropriate unit level
