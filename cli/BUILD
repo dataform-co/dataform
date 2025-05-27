@@ -44,7 +44,10 @@ node_modules(
 
 ts_test_suite(
     name = "tests",
-    srcs = ["index_test.ts"],
+    srcs = [
+        "index_test.ts",
+        "console_test.ts"
+    ],
     data = [
         ":node_modules",
         "//packages/@dataform/core:package_tar",
