@@ -168,7 +168,7 @@ export function printCompiledGraphErrors(graphErrors: dataform.IGraphErrors) {
     graphErrors.compilationErrors.forEach(compileError => {
       writeStdErr(
         `${calloutOutput(compileError.fileName)}: ${errorOutput(
-          compileError.stack || compileError.message
+          compileError.message || compileError.stack
         )}`,
         1
       );
