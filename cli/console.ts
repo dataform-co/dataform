@@ -231,15 +231,15 @@ export function printExecutedAction(
   const jobIds = executedAction.tasks
     .filter(task => task.metadata?.bigquery?.jobId)
     .map(task => task.metadata.bigquery.jobId);
-  const bytestBilled = executedAction.tasks
+  const bytesBilled = executedAction.tasks
     .filter(task => task.metadata?.bigquery?.jobId)
     .map(task => {
-        const bytes = task.metadata.bigquery?.totalBytesBilled ?? 0;
+        const bytes = task.metadata.bigquery?.totalBytesBilled?.toNumber() ?? 0;
         return formatBytesInHumanReadableFormat(bytes);
     });
 
   const jobIdSuffix = jobIds.length > 0 ? ` (jobId: ${jobIds.join(", ")})` : "";
-  const bytesBilledSuffix = bytestBilled.length > 0 ? ` (Bytes billed: ${bytestBilled.join(", ")})` : "";
+  const bytesBilledSuffix = bytesBilled.length > 0 ? ` (Bytes billed: ${bytesBilled.join(", ")})` : "";
 
   switch (executedAction.status) {
     case dataform.ActionResult.ExecutionStatus.SUCCESSFUL: {
