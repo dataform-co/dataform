@@ -6,6 +6,7 @@ import { suite, test } from "df/testing";
 
 suite('format bytes in human readable format', () => {
     test('format bytes in human readable format', () => {
+        expect(formatBytesInHumanReadableFormat(-1)).deep.equals('0 B');
         expect(formatBytesInHumanReadableFormat(0)).deep.equals('0 B');
         expect(formatBytesInHumanReadableFormat(1)).deep.equals('1.00 B');
         expect(formatBytesInHumanReadableFormat(500)).deep.equals('500.00 B');

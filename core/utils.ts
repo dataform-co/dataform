@@ -375,7 +375,9 @@ export function checkAssertionsForDependency(
 }
 
 export function formatBytesInHumanReadableFormat(bytes: number): string {
-    if (bytes === 0) {return '0 B';}
+    // we do not want to raise an error when bytes < 0
+    // because it will fail Dataform run command when in fact the BQ job was executed.
+    if (bytes <= 0) {return '0 B';}
 
     const units = ['B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB'];
     const k = 1024;
