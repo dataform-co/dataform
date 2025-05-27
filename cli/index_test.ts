@@ -259,7 +259,8 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
         "--json",
         "--vars=testVar1=testValue1,testVar2=testValue2",
         "--default-location=europe",
-        "--tags=someTag,someOtherTag"
+        "--tags=someTag,someOtherTag",
+        "--actions=example,someOtherAction"
       ])
     );
 
@@ -299,7 +300,8 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
       },
       runConfig: {
         fullRefresh: false,
-        tags: ["someTag", "someOtherTag"]
+        tags: ["someTag", "someOtherTag"],
+        actions: ["example", "someOtherAction"]
       },
       warehouseState: {}
     });
