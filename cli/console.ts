@@ -223,6 +223,17 @@ export function printExecutionGraph(executionGraph: dataform.ExecutionGraph, asJ
   }
 }
 
+export function formatExecutionSuffix(jobIds: string[], bytesBilled: string[]): string {
+  const jobMetadataParts: string[] = [];
+  if (jobIds.length > 0) {
+    jobMetadataParts.push(`jobId: ${jobIds.join(", ")}`);
+  }
+  if (bytesBilled.length > 0) {
+    jobMetadataParts.push(`Bytes billed: ${bytesBilled.join(", ")}`);
+  }
+  return jobMetadataParts.length > 0 ? ` (${jobMetadataParts.join(" | ")})` : "";
+}
+
 export function printExecutedAction(
   executedAction: dataform.IActionResult,
   executionAction: dataform.IExecutionAction,
@@ -238,8 +249,7 @@ export function printExecutedAction(
         return formatBytesInHumanReadableFormat(bytes);
     });
 
-  const jobIdSuffix = jobIds.length > 0 ? ` (jobId: ${jobIds.join(", ")})` : "";
-  const bytesBilledSuffix = bytesBilled.length > 0 ? ` (Bytes billed: ${bytesBilled.join(", ")})` : "";
+  const executionSuffix = formatExecutionSuffix(jobIds, bytesBilled);
 
   switch (executedAction.status) {
     case dataform.ActionResult.ExecutionStatus.SUCCESSFUL: {
@@ -250,7 +260,7 @@ export function printExecutedAction(
               executionAction.target,
               executionAction.tableType,
               executionAction.tasks.length === 0
-            )}${jobIdSuffix} | ${bytesBilledSuffix}`
+            )}${executionSuffix}`
           );
           return;
         }
@@ -261,7 +271,7 @@ export function printExecutedAction(
             )} ${assertionString(
               executionAction.target,
               executionAction.tasks.length === 0
-            )}${jobIdSuffix} | ${bytesBilledSuffix}`
+            )}${executionSuffix}`
           );
           return;
         }
@@ -272,7 +282,7 @@ export function printExecutedAction(
             )} ${operationString(
               executionAction.target,
               executionAction.tasks.length === 0
-            )}${jobIdSuffix} | ${bytesBilledSuffix}`
+            )}${executionSuffix}`
           );
           return;
         }
@@ -286,7 +296,7 @@ export function printExecutedAction(
               executionAction.target,
               executionAction.tableType,
               executionAction.tasks.length === 0
-            )}${jobIdSuffix}`
+            )}${executionSuffix}`
           );
           break;
         }
@@ -295,7 +305,7 @@ export function printExecutedAction(
             `${errorOutput("Assertion failed: ")} ${assertionString(
               executionAction.target,
               executionAction.tasks.length === 0
-            )}${jobIdSuffix}`
+            )}${executionSuffix}`
           );
           break;
         }
@@ -304,7 +314,7 @@ export function printExecutedAction(
             `${errorOutput("Operation failed: ")} ${operationString(
               executionAction.target,
               executionAction.tasks.length === 0
-            )}${jobIdSuffix}`
+            )}${executionSuffix}`
           );
           break;
         }
