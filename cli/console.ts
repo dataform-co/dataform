@@ -130,7 +130,7 @@ export function printCompiledGraph(graph: dataform.ICompiledGraph, asJson: boole
     if (graph.tables && graph.tables.length) {
       graph.tables.forEach(setOrValidateTableEnumType);
       writeStdOut(`${graph.tables.length} dataset(s)${quietCompilation ? "." : ":"}`);
-      if(quietCompilation === false){
+      if(!quietCompilation){
           graph.tables.forEach(compiledTable => {
             writeStdOut(
               `${datasetString(
