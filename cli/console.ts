@@ -234,8 +234,8 @@ export function printExecutedAction(
   const bytestBilled = executedAction.tasks
     .filter(task => task.metadata?.bigquery?.jobId)
     .map(task => {
-        return task.metadata.bigquery?.totalBytesBilled
-        ? formatBytesInHumanReadableFormat(task.metadata.bigquery.totalBytesBilled.toNumber()) : "0 B"
+        const bytes = task.metadata.bigquery?.totalBytesBilled ?? 0;
+        return formatBytesInHumanReadableFormat(bytes);
     });
 
   const jobIdSuffix = jobIds.length > 0 ? ` (jobId: ${jobIds.join(", ")})` : "";

@@ -374,11 +374,11 @@ export function checkAssertionsForDependency(
   return dependencyTarget;
 }
 
-export function formatBytesInHumanReadableFormat(bytes: number) {
+export function formatBytesInHumanReadableFormat(bytes: number): string {
     if (bytes === 0) {return '0 B';}
 
     const units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
-    const k = 1024; // Use 1024 for binary prefixes (e.g., KiB) or 1000 for decimal
+    const k = 1024;
 
     // Find the appropriate unit level
     const i = Math.floor(Math.log(bytes) / Math.log(k));
