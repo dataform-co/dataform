@@ -1,6 +1,6 @@
 import { IInitResult } from "df/cli/api/commands/init";
 import { prettyJsonStringify } from "df/cli/api/utils";
-import { formatExecutionSuffix } from "df/cli/util";
+import { formatExecutionSuffix } from "df/cli/utils";
 import { formatBytesInHumanReadableFormat, setOrValidateTableEnumType, tableTypeEnumToString } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 import * as readlineSync from "readline-sync";
