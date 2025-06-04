@@ -162,13 +162,13 @@ export function printCompiledGraph(graph: dataform.ICompiledGraph, asJson: boole
   }
 }
 
-export function printCompiledGraphErrors(graphErrors: dataform.IGraphErrors) {
+export function printCompiledGraphErrors(graphErrors: dataform.IGraphErrors, quietCompilation: boolean) {
   if (graphErrors.compilationErrors && graphErrors.compilationErrors.length > 0) {
     printError("Compilation errors:", 1);
     graphErrors.compilationErrors.forEach(compileError => {
       writeStdErr(
         `${calloutOutput(compileError.fileName)}: ${errorOutput(
-          compileError.message || compileError.stack
+          quietCompilation ? (compileError.message || compileError.stack) : (compileError.stack || compileError.message)
         )}`,
         1
       );

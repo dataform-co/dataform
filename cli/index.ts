@@ -346,7 +346,7 @@ export function runCli() {
             printCompiledGraph(compiledGraph, argv[jsonOutputOption.name], argv[quietCompileOption.name]);
             if (compiledGraphHasErrors(compiledGraph)) {
               print("");
-              printCompiledGraphErrors(compiledGraph.graphErrors);
+              printCompiledGraphErrors(compiledGraph.graphErrors, argv[quietCompileOption.name]);
               return true;
             }
             return false;
@@ -426,7 +426,7 @@ export function runCli() {
             timeoutMillis: argv[timeoutOption.name] || undefined
           });
           if (compiledGraphHasErrors(compiledGraph)) {
-            printCompiledGraphErrors(compiledGraph.graphErrors);
+            printCompiledGraphErrors(compiledGraph.graphErrors, argv[quietCompileOption.name]);
             return 1;
           }
           printSuccess("Compiled successfully.\n");
@@ -503,7 +503,7 @@ export function runCli() {
             timeoutMillis: argv[timeoutOption.name] || undefined
           });
           if (compiledGraphHasErrors(compiledGraph)) {
-            printCompiledGraphErrors(compiledGraph.graphErrors);
+            printCompiledGraphErrors(compiledGraph.graphErrors, argv[quietCompileOption.name]);
             return 1;
           }
           if (!argv[jsonOutputOption.name]) {
