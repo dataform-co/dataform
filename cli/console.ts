@@ -145,7 +145,7 @@ export function printCompiledGraph(graph: dataform.ICompiledGraph, asJson: boole
     }
     if (graph.assertions && graph.assertions.length) {
       writeStdOut(`${graph.assertions.length} assertion(s)${quietCompilation ? "." : ":"}`);
-      if(quietCompilation === false){
+      if(!quietCompilation){
           graph.assertions.forEach(assertion => {
             writeStdOut(assertionString(assertion.target, assertion.disabled), 1);
           });
@@ -153,7 +153,7 @@ export function printCompiledGraph(graph: dataform.ICompiledGraph, asJson: boole
     }
     if (graph.operations && graph.operations.length) {
       writeStdOut(`${graph.operations.length} operation(s)${quietCompilation ? "." : ":"}`);
-      if(quietCompilation === false){
+      if(!quietCompilation){
           graph.operations.forEach(operation => {
             writeStdOut(operationString(operation.target, operation.disabled), 1);
           });
