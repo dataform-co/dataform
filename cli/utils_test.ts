@@ -1,9 +1,9 @@
 import { expect } from "chai";
 
-import { formatExecutionSuffix } from "df/cli/console";
+import { formatExecutionSuffix } from "df/cli/util";
 import { suite, test } from "df/testing";
 
-suite('format execution suffix', () => {
+suite('format execution suffix', () => {    
     test('format execution suffix', () => {
         expect(formatExecutionSuffix([], [])).deep.equals('');
         expect(formatExecutionSuffix(["dataform-915a03fe1"], [])).deep.equals(" (jobId: dataform-915a03fe1)");

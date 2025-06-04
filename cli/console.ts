@@ -1,5 +1,6 @@
 import { IInitResult } from "df/cli/api/commands/init";
 import { prettyJsonStringify } from "df/cli/api/utils";
+import { formatExecutionSuffix } from "df/cli/util";
 import { formatBytesInHumanReadableFormat, setOrValidateTableEnumType, tableTypeEnumToString } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 import * as readlineSync from "readline-sync";
@@ -221,17 +222,6 @@ export function printExecutionGraph(executionGraph: dataform.ExecutionGraph, asJ
       );
     }
   }
-}
-
-export function formatExecutionSuffix(jobIds: string[], bytesBilled: string[]): string {
-  const jobMetadataParts: string[] = [];
-  if (jobIds.length > 0) {
-    jobMetadataParts.push(`jobId: ${jobIds.join(", ")}`);
-  }
-  if (bytesBilled.length > 0) {
-    jobMetadataParts.push(`Bytes billed: ${bytesBilled.join(", ")}`);
-  }
-  return jobMetadataParts.length > 0 ? ` (${jobMetadataParts.join(" | ")})` : "";
 }
 
 export function printExecutedAction(

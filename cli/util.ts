@@ -17,3 +17,14 @@ export function assertPathExists(checkPath: string) {
 export function compiledGraphHasErrors(graph: dataform.ICompiledGraph) {
   return graph.graphErrors?.compilationErrors?.length > 0;
 }
+
+export function formatExecutionSuffix(jobIds: string[], bytesBilled: string[]): string {
+  const jobMetadataParts: string[] = [];
+  if (jobIds.length > 0) {
+    jobMetadataParts.push(`jobId: ${jobIds.join(", ")}`);
+  }
+  if (bytesBilled.length > 0) {
+    jobMetadataParts.push(`Bytes billed: ${bytesBilled.join(", ")}`);
+  }
+  return jobMetadataParts.length > 0 ? ` (${jobMetadataParts.join(" | ")})` : "";
+}
