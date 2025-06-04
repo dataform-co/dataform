@@ -1537,28 +1537,30 @@ assert("name", {
     suite("invalid options", () => {
       [
         {
-          testName: "partitionBy invalid for BigQuery views",
+          testName: "partitionBy invalid for BigQuery non-materialized views",
           fileContents: `
 publish("name", {
   type: "view",
+  materialized: false,
   bigquery: {
     partitionBy: "some_partition"
   }
 })`,
           expectedError:
-            'Unexpected property "partitionBy" in BigQuery view config. Supported properties are: ["labels","additionalOptions"]'
+            'partitionBy/clusterBy can be applied only to materialized views'
         },
         {
-          testName: "clusterBy invalid for BigQuery views",
+          testName: "clusterBy invalid for BigQuery non-materialized views",
           fileContents: `
 publish("name", {
   type: "view",
+  materialized: false,
   bigquery: {
     clusterBy: ["some_cluster"]
   }
 })`,
           expectedError:
-            'Unexpected property "clusterBy" in BigQuery view config. Supported properties are: ["labels","additionalOptions"]'
+            'partitionBy/clusterBy can be applied only to materialized views'
         },
         {
           testName: "partitionExpirationDays invalid for BigQuery views",
@@ -1570,7 +1572,7 @@ publish("name", {
   }
 })`,
           expectedError:
-            'Unexpected property "partitionExpirationDays" in BigQuery view config. Supported properties are: ["labels","additionalOptions"]'
+            'Unexpected property "partitionExpirationDays" in BigQuery view config. Supported properties are: ["labels","additionalOptions","partitionBy","clusterBy"]'
         },
         {
           testName: "requirePartitionFilter invalid for BigQuery views",
@@ -1582,7 +1584,7 @@ publish("name", {
   }
 })`,
           expectedError:
-            'Unexpected property "requirePartitionFilter" in BigQuery view config. Supported properties are: ["labels","additionalOptions"]'
+            'Unexpected property "requirePartitionFilter" in BigQuery view config. Supported properties are: ["labels","additionalOptions","partitionBy","clusterBy"]'
         },
         {
           testName: "partitionExpirationDays invalid for BigQuery materialized views",
@@ -1595,7 +1597,7 @@ publish("name", {
   }
 })`,
           expectedError:
-            'Unexpected property "partitionExpirationDays" in BigQuery view config. Supported properties are: ["labels","additionalOptions"]'
+            'Unexpected property "partitionExpirationDays" in BigQuery view config. Supported properties are: ["labels","additionalOptions","partitionBy","clusterBy"]'
         },
         {
           testName: "requirePartitionFilter invalid for BigQuery materialized views",
@@ -1608,7 +1610,7 @@ publish("name", {
   }
 })`,
           expectedError:
-            'Unexpected property "requirePartitionFilter" in BigQuery view config. Supported properties are: ["labels","additionalOptions"]'
+            'Unexpected property "requirePartitionFilter" in BigQuery view config. Supported properties are: ["labels","additionalOptions","partitionBy","clusterBy"]'
         },
         {
           testName: "materialized invalid for BigQuery tables",

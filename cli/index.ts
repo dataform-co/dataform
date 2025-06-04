@@ -78,7 +78,8 @@ const actionsOption: INamedOption<yargs.Options> = {
   name: "actions",
   option: {
     describe: "A list of action names or patterns to run. Can include '*' wildcards.",
-    type: "array"
+    type: "array",
+    coerce: (rawActions: string[] | null) => rawActions.map(actions => actions.split(",")).flat()
   }
 };
 
