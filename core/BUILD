@@ -63,7 +63,6 @@ ts_test_suite(
     name = "tests",
     srcs = [
         "main_test.ts",
-        "utils_test.ts",
         "actions/assertion_test.ts",
         "actions/data_preparation_test.ts",
         "actions/declaration_test.ts",
