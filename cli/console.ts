@@ -92,6 +92,19 @@ export function print(text: string) {
   writeStdOut(text);
 }
 
+export function formatStackTraceForQuietCompilation(compileError: dataform.ICompilationError): string {
+    // Show only first 3 or available lines for cleaner error output
+    // which contains the information on the file where the error occurred and the additional information on the error sufficient for the user to fix the error
+    if (compileError?.message?.includes("Unexpected identifier")) {
+      if (!compileError.stack) {
+        return "";
+      }
+      const stackLines = compileError.stack?.split("\n") || [];
+      return stackLines.slice(0, Math.min(3, stackLines.length)).join("\n");
+  }
+  return "";
+}
+
 export function printSuccess(text: string) {
   writeStdOut(successOutput(text));
 }
@@ -165,12 +178,8 @@ export function printCompiledGraph(graph: dataform.ICompiledGraph, asJson: boole
 export function printCompiledGraphErrors(graphErrors: dataform.IGraphErrors, quietCompilation: boolean) {
   if (graphErrors.compilationErrors && graphErrors.compilationErrors.length > 0) {
     printError("Compilation errors:", 1);
-    graphErrors.compilationErrors.forEach((compileError, index) => {
-      let errorMeta = ""
-
-      if (compileError.message.includes("Unexpected identifier")) {
-        errorMeta = compileError.stack.split("\n").slice(0, 3).join("\n");
-      }
+    graphErrors.compilationErrors.forEach(compileError => {
+      const errorMeta = formatStackTraceForQuietCompilation(compileError);
       writeStdErr(
         `${calloutOutput(compileError.fileName)}: ${errorOutput(
           quietCompilation ? (compileError.message + " " + errorMeta || compileError.stack) : (compileError.stack || compileError.message)
