@@ -46,7 +46,7 @@ ts_test_suite(
     name = "tests",
     srcs = [
         "index_test.ts",
-        "utils_test.ts"
+        "util_test.ts"
     ],
     data = [
         ":node_modules",
