@@ -44,7 +44,10 @@ node_modules(
 
 ts_test_suite(
     name = "tests",
-    srcs = ["index_test.ts"],
+    srcs = [
+        "index_test.ts",
+        "util_test.ts"
+    ],
     data = [
         ":node_modules",
         "//packages/@dataform/core:package_tar",
@@ -53,6 +56,7 @@ ts_test_suite(
         "@nodejs//:npm",
     ],
     deps = [
+        "//cli",
         "//core",
         "//protos:ts",
         "//testing",

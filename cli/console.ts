@@ -1,5 +1,6 @@
 import { IInitResult } from "df/cli/api/commands/init";
 import { prettyJsonStringify } from "df/cli/api/utils";
+import { formatBytesInHumanReadableFormat, formatExecutionSuffix } from "df/cli/util";
 import { setOrValidateTableEnumType, tableTypeEnumToString } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 import * as readlineSync from "readline-sync";
@@ -231,7 +232,15 @@ export function printExecutedAction(
   const jobIds = executedAction.tasks
     .filter(task => task.metadata?.bigquery?.jobId)
     .map(task => task.metadata.bigquery.jobId);
-  const jobIdSuffix = jobIds.length > 0 ? ` (jobId: ${jobIds.join(", ")})` : "";
+  const bytesBilled = executedAction.tasks
+    .filter(task => task.metadata?.bigquery?.jobId)
+    .map(task => {
+        const bytes = task.metadata.bigquery?.totalBytesBilled?.toNumber() ?? 0;
+        return formatBytesInHumanReadableFormat(bytes);
+    });
+
+  const executionSuffix = formatExecutionSuffix(jobIds, bytesBilled);
+
   switch (executedAction.status) {
     case dataform.ActionResult.ExecutionStatus.SUCCESSFUL: {
       switch (executionAction.type) {
@@ -241,7 +250,7 @@ export function printExecutedAction(
               executionAction.target,
               executionAction.tableType,
               executionAction.tasks.length === 0
-            )}${jobIdSuffix}`
+            )}${executionSuffix}`
           );
           return;
         }
@@ -252,7 +261,7 @@ export function printExecutedAction(
             )} ${assertionString(
               executionAction.target,
               executionAction.tasks.length === 0
-            )}${jobIdSuffix}`
+            )}${executionSuffix}`
           );
           return;
         }
@@ -263,7 +272,7 @@ export function printExecutedAction(
             )} ${operationString(
               executionAction.target,
               executionAction.tasks.length === 0
-            )}${jobIdSuffix}`
+            )}${executionSuffix}`
           );
           return;
         }
@@ -277,7 +286,7 @@ export function printExecutedAction(
               executionAction.target,
               executionAction.tableType,
               executionAction.tasks.length === 0
-            )}${jobIdSuffix}`
+            )}${executionSuffix}`
           );
           break;
         }
@@ -286,7 +295,7 @@ export function printExecutedAction(
             `${errorOutput("Assertion failed: ")} ${assertionString(
               executionAction.target,
               executionAction.tasks.length === 0
-            )}${jobIdSuffix}`
+            )}${executionSuffix}`
           );
           break;
         }
@@ -295,7 +304,7 @@ export function printExecutedAction(
             `${errorOutput("Operation failed: ")} ${operationString(
               executionAction.target,
               executionAction.tasks.length === 0
-            )}${jobIdSuffix}`
+            )}${executionSuffix}`
           );
           break;
         }
