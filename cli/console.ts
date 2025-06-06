@@ -163,17 +163,17 @@ export function printCompiledGraph(graph: dataform.ICompiledGraph, asJson: boole
 }
 
 function formatStackTraceForQuietCompilation(compileError: dataform.ICompilationError): string {
-    // Show only first 3 or available lines for cleaner error output
-    // which contains the information on the file where the error occurred and the sufficient metadata for the user to fix the error. For e.g.
-    // (line: 1) Unexpected identifier <file_path>: <line_number>
-    // (line: 2) tags: ["<tag_name>"]
-    // (line: 3) ^^^^
-    if (compileError?.message?.includes("Unexpected identifier")) {
-      if (!compileError.stack) {
-        return "";
-      }
-      const stackLines = compileError.stack?.split("\n") || [];
-      return stackLines.slice(0, Math.min(3, stackLines.length)).join("\n");
+  // Show only first 3 or available lines for cleaner error output
+  // which contains the information on the file where the error occurred and the sufficient metadata for the user to fix the error. For e.g.
+  // (line: 1) Unexpected identifier <file_path>: <line_number>
+  // (line: 2) tags: ["<tag_name>"]
+  // (line: 3) ^^^^
+  if (compileError?.message?.includes("Unexpected identifier")) {
+    if (!compileError.stack) {
+      return "";
+    }
+    const stackLines = compileError.stack?.split("\n") || [];
+    return stackLines.slice(0, Math.min(3, stackLines.length)).join("\n");
   }
   return "";
 }
