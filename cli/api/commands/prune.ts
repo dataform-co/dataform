@@ -44,6 +44,7 @@ function computeIncludedActionNames(
 
   const hasActionSelector = runConfig.actions?.length > 0;
   const hasTagSelector = runConfig.tags?.length > 0;
+  const hasFlterTagsAsIntersectionSelector = runConfig.filterTagsAsIntersection?.valueOf();
 
   // If no selectors, return all actions.
   if (!hasActionSelector && !hasTagSelector) {
@@ -61,9 +62,18 @@ function computeIncludedActionNames(
 
   // Determine actions selected with --tag option and update applicable actions
   if (hasTagSelector) {
-    allActions
-      .filter(action => action.tags.some(tag => runConfig.tags.includes(tag)))
-      .forEach(action => includedActionNames.add(targetAsReadableString(action.target)));
+    // Select actions which match the intersection of the set of tags.
+    if (hasFlterTagsAsIntersectionSelector) {
+      allActions
+        .filter(action => runConfig.tags.every(tag => action.tags.includes(tag)))
+        .forEach(action => includedActionNames.add(targetAsReadableString(action.target)));
+    }
+    // Select actions which match the union of the set of tags.
+    else {
+      allActions
+        .filter(action => action.tags.some(tag => runConfig.tags.includes(tag)))
+        .forEach(action => includedActionNames.add(targetAsReadableString(action.target)));
+    }
   }
 
   // Compute all transitive dependencies.

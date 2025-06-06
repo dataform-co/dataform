@@ -287,6 +287,11 @@ suite("@dataform/api", () => {
           target: { schema: "schema", name: "op_d" },
           tags: ["tag3"],
           queries: ["create or replace view schema.someview as select 1 as test"]
+        },
+        {
+          target: { schema: "schema", name: "op_e" },
+          tags: ["tag1", "tag2"],
+          queries: ["create or replace view schema.someview as select 1 as test"]
         }
       ],
       tables: [
@@ -360,6 +365,22 @@ suite("@dataform/api", () => {
       expect(actionNames).not.includes("schema.op_c");
       expect(actionNames).not.includes("schema.op_d");
       expect(actionNames).includes("schema.tab_a");
+    });
+
+    test("prune actions with --tags (with include all tags)", () => {
+      const prunedGraph = prune(TEST_GRAPH_WITH_TAGS, {
+        tags: ["tag1", "tag2"],
+        includeAllTags: true
+      });
+      const actionNames = [
+        ...prunedGraph.tables.map(action => targetAsReadableString(action.target)),
+        ...prunedGraph.operations.map(action => targetAsReadableString(action.target))
+      ];
+      expect(actionNames).deep.equals(["schema.op_e", "schema.op_a"]);
+      expect(actionNames).not.includes("schema.op_a");
+      expect(actionNames).not.includes("schema.op_b");
+      expect(actionNames).not.includes("schema.op_c");
+      expect(actionNames).not.includes("schema.op_d");
     });
 
     test("prune actions with --actions with dependencies", () => {
