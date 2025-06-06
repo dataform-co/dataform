@@ -162,7 +162,7 @@ export function printCompiledGraph(graph: dataform.ICompiledGraph, asJson: boole
   }
 }
 
-export function formatStackTraceForQuietCompilation(compileError: dataform.ICompilationError): string {
+function formatStackTraceForQuietCompilation(compileError: dataform.ICompilationError): string {
     // Show only first 3 or available lines for cleaner error output
     // which contains the information on the file where the error occurred and the sufficient metadata for the user to fix the error. For e.g.
     // (line: 1) Unexpected identifier <file_path>: <line_number>
