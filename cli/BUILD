@@ -56,6 +56,7 @@ ts_test_suite(
         "@nodejs//:npm",
     ],
     deps = [
+        "//cli",
         "//core",
         "//protos:ts",
         "//testing",
