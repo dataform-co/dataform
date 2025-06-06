@@ -30,18 +30,17 @@ export function formatExecutionSuffix(jobIds: string[], bytesBilled: string[]): 
 }
 
 export function formatBytesInHumanReadableFormat(bytes: number): string {
-    // we do not want to raise an error when bytes < 0
-    // because it will fail Dataform run command when in fact the BQ job was executed.
-    if (bytes <= 0) {return '0 B';}
+  // we do not want to raise an error when bytes < 0
+  // because it will fail Dataform run command when in fact the BQ job was executed.
+  if (bytes <= 0) {return '0 B';}
 
-    const units = ['B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB'];
-    const k = 1024;
+  const units = ['B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB'];
+  const k = 1024;
 
-    // Find the appropriate unit level
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
+  // Find the appropriate unit level
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
 
-    const value = (bytes / Math.pow(k, i)).toFixed(2);
+  const value = (bytes / Math.pow(k, i)).toFixed(2);
 
-    return `${value} ${units[i]}`;
-  }
-  
+  return `${value} ${units[i]}`;
+}
