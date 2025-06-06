@@ -28,3 +28,4 @@ suite('format bytes in human readable format', () => {
         expect(formatBytesInHumanReadableFormat(1125899906842624)).deep.equals('1.00 PiB');
     });
 });
+
