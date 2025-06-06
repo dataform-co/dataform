@@ -118,7 +118,7 @@ export function printInitCredsResult(writtenFilePath: string) {
   writeStdOut("To change connection settings, edit this file directly.");
 }
 
-export function printCompiledGraph(graph: dataform.ICompiledGraph, asJson: boolean) {
+export function printCompiledGraph(graph: dataform.ICompiledGraph, asJson: boolean, quietCompilation: boolean) {
   if (asJson) {
     writeStdOut(prettyJsonStringify(graph));
   } else {
@@ -130,40 +130,62 @@ export function printCompiledGraph(graph: dataform.ICompiledGraph, asJson: boole
     writeStdOut(successOutput(`Compiled ${actionCount} action(s).`));
     if (graph.tables && graph.tables.length) {
       graph.tables.forEach(setOrValidateTableEnumType);
-      writeStdOut(`${graph.tables.length} dataset(s):`);
-      graph.tables.forEach(compiledTable => {
-        writeStdOut(
-          `${datasetString(
-            compiledTable.target,
-            tableTypeEnumToString(compiledTable.enumType),
-            compiledTable.disabled
-          )}`,
-          1
-        );
-      });
+      writeStdOut(`${graph.tables.length} dataset(s)${quietCompilation ? "." : ":"}`);
+      if(!quietCompilation){
+          graph.tables.forEach(compiledTable => {
+            writeStdOut(
+              `${datasetString(
+                compiledTable.target,
+                tableTypeEnumToString(compiledTable.enumType),
+                compiledTable.disabled
+              )}`,
+              1
+            );
+          });
+      }
     }
     if (graph.assertions && graph.assertions.length) {
-      writeStdOut(`${graph.assertions.length} assertion(s):`);
-      graph.assertions.forEach(assertion => {
-        writeStdOut(assertionString(assertion.target, assertion.disabled), 1);
-      });
+      writeStdOut(`${graph.assertions.length} assertion(s)${quietCompilation ? "." : ":"}`);
+      if(!quietCompilation){
+          graph.assertions.forEach(assertion => {
+            writeStdOut(assertionString(assertion.target, assertion.disabled), 1);
+          });
+      }
     }
     if (graph.operations && graph.operations.length) {
-      writeStdOut(`${graph.operations.length} operation(s):`);
-      graph.operations.forEach(operation => {
-        writeStdOut(operationString(operation.target, operation.disabled), 1);
-      });
+      writeStdOut(`${graph.operations.length} operation(s)${quietCompilation ? "." : ":"}`);
+      if(!quietCompilation){
+          graph.operations.forEach(operation => {
+            writeStdOut(operationString(operation.target, operation.disabled), 1);
+          });
+      }
     }
   }
 }
 
-export function printCompiledGraphErrors(graphErrors: dataform.IGraphErrors) {
+function formatStackTraceForQuietCompilation(compileError: dataform.ICompilationError): string {
+  // Show only first 3 or available lines for cleaner error output
+  // which contains the information on the file where the error occurred and the sufficient metadata for the user to fix the error. For e.g.
+  // (line: 1) Unexpected identifier <file_path>: <line_number>
+  // (line: 2) tags: ["<tag_name>"]
+  // (line: 3) ^^^^
+  if (compileError?.message?.includes("Unexpected identifier")) {
+    if (!compileError.stack) {
+      return "";
+    }
+    const stackLines = compileError.stack?.split("\n") || [];
+    return stackLines.slice(0, Math.min(3, stackLines.length)).join("\n");
+  }
+  return "";
+}
+
+export function printCompiledGraphErrors(graphErrors: dataform.IGraphErrors, quietCompilation: boolean) {
   if (graphErrors.compilationErrors && graphErrors.compilationErrors.length > 0) {
     printError("Compilation errors:", 1);
     graphErrors.compilationErrors.forEach(compileError => {
       writeStdErr(
         `${calloutOutput(compileError.fileName)}: ${errorOutput(
-          compileError.stack || compileError.message
+          quietCompilation ? (compileError.message + " " + formatStackTraceForQuietCompilation(compileError) || compileError.stack) : (compileError.stack || compileError.message)
         )}`,
         1
       );
