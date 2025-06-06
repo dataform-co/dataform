@@ -182,10 +182,9 @@ export function printCompiledGraphErrors(graphErrors: dataform.IGraphErrors, qui
   if (graphErrors.compilationErrors && graphErrors.compilationErrors.length > 0) {
     printError("Compilation errors:", 1);
     graphErrors.compilationErrors.forEach(compileError => {
-      const errorMeta = formatStackTraceForQuietCompilation(compileError);
       writeStdErr(
         `${calloutOutput(compileError.fileName)}: ${errorOutput(
-          quietCompilation ? (compileError.message + " " + errorMeta || compileError.stack) : (compileError.stack || compileError.message)
+          quietCompilation ? (compileError.message + " " + formatStackTraceForQuietCompilation(compileError) || compileError.stack) : (compileError.stack || compileError.message)
         )}`,
         1
       );
