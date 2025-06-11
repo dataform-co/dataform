@@ -92,6 +92,15 @@ const tagsOption: INamedOption<yargs.Options> = {
   }
 };
 
+const flterTagsAsIntersectionSelectorOption: INamedOption<yargs.Options> = {
+  name: "filter-tags-as-intersection",
+  option: {
+    describe: "If set, only actions that include every user-specified tags will be run",
+    type: "boolean",
+    default: false
+  }
+}
+
 const includeDepsOption: INamedOption<yargs.Options> = {
   name: "include-deps",
   option: {
@@ -480,6 +489,7 @@ export function runCli() {
           credentialsOption,
           fullRefreshOption,
           includeDepsOption,
+          flterTagsAsIntersectionSelectorOption,
           includeDependentsOption,
           credentialsOption,
           jsonOutputOption,
@@ -522,7 +532,9 @@ export function runCli() {
               actions: argv[actionsOption.name],
               includeDependencies: argv[includeDepsOption.name],
               includeDependents: argv[includeDependentsOption.name],
-              tags: argv[tagsOption.name]
+              tags: argv[tagsOption.name],
+              flterTagsAsIntersectionSelector: argv[flterTagsAsIntersectionSelectorOption.name]
+
             },
             dbadapter
           );
