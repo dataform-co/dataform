@@ -74,11 +74,12 @@ from (${query}) as insertions`;
   }
 
   public shouldWriteIncrementally(
+    table: dataform.ITable,
     runConfig: dataform.IRunConfig,
     tableMetadata?: dataform.ITableMetadata
   ) {
     return (
-      !runConfig.fullRefresh &&
+      (!runConfig.fullRefresh || table.protected) &&
       tableMetadata &&
       tableMetadata.type !== dataform.TableMetadata.Type.VIEW
     );
@@ -93,7 +94,7 @@ from (${query}) as insertions`;
     if (
       semver.gt(this.dataformCoreVersion, "1.4.8") &&
       table.enumType === dataform.TableType.INCREMENTAL &&
-      this.shouldWriteIncrementally(runConfig, tableMetadata)
+      this.shouldWriteIncrementally(table, runConfig, tableMetadata)
     ) {
       preOps = table.incrementalPreOps;
     }
@@ -109,7 +110,7 @@ from (${query}) as insertions`;
     if (
       semver.gt(this.dataformCoreVersion, "1.4.8") &&
       table.enumType === dataform.TableType.INCREMENTAL &&
-      this.shouldWriteIncrementally(runConfig, tableMetadata)
+      this.shouldWriteIncrementally(table, runConfig, tableMetadata)
     ) {
       postOps = table.incrementalPostOps;
     }
@@ -137,7 +138,7 @@ from (${query}) as insertions`;
     }
 
     if (table.enumType === dataform.TableType.INCREMENTAL) {
-      if (!this.shouldWriteIncrementally(runConfig, tableMetadata)) {
+      if (!this.shouldWriteIncrementally(table, runConfig, tableMetadata)) {
         tasks.add(Task.statement(this.createOrReplace(table)));
       } else {
         tasks.add(
