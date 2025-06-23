@@ -333,6 +333,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
           const job = await this.getClient().createQueryJob({
             useLegacySql: false,
             jobPrefix: "dataform-" + (jobPrefix ? `${jobPrefix}-` : ""),
+            priority: "BATCH",
             query,
             params,
             labels,
