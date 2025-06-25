@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "baseUrl": ".",
+    "declaration": true,
     "paths": {
       "df/*": [
         "*",
@@ -8,12 +9,12 @@
         "bazel-genfiles/*"
       ]
     },
-    "module": "commonjs",
+    "module": "ESNext",
     "noImplicitAny": true,
     "noImplicitThis": true,
     "preserveConstEnums": true,
     "removeComments": true,
-    "target": "es2017",
+    "target": "ESNext",
     "sourceMap": true,
     "skipLibCheck": true,
     "experimentalDecorators": true,

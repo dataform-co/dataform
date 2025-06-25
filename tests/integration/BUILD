@@ -1,9 +1,8 @@
-load("//testing:index.bzl", "ts_test_suite")
+load("//tools:ts_library.bzl", "ts_test_suite")
 
 package(default_visibility = ["//visibility:public"])
 
 ts_test_suite(
-    name = "tests",
     srcs = [
         "bigquery.spec.ts",
         "utils.ts",
@@ -21,9 +20,9 @@ ts_test_suite(
         "//core",
         "//protos:ts",
         "//testing",
-        "@npm//@types/chai",
-        "@npm//@types/long",
-        "@npm//@types/node",
-        "@npm//chai",
+        "//:node_modules/@types/chai",
+        "//:node_modules/@types/long",
+        "//:node_modules/@types/node",
+        "//:node_modules/chai",
     ],
 )

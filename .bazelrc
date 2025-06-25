@@ -1,3 +1,7 @@
+# Passes an argument `--skipLibCheck` to *every* spawn of tsc
+# Bazel 6.4 or greater: 'common' means 'any command that supports this flag'
+common --@aspect_rules_ts//ts:skipLibCheck=always
+
 build --test_output=errors --action_env="GTEST_COLOR=1"
 
 build --incompatible_py3_is_default=false

@@ -10,7 +10,7 @@ ts_library(
         "//common/strings",
         "//core",
         "//protos:ts",
-        "@npm//@types/node",
-        "@npm//object-sizeof",
+        "//:node_modules/@types/node",
+        "//:node_modules/object-sizeof",
     ],
 )

@@ -1,4 +1,4 @@
-load("@npm//@bazel/rollup:index.bzl", "rollup_bundle")
+load("//:node_modules/@bazel/rollup:index.bzl", "rollup_bundle")
 load(":rollup_bundle_dts.bzl", "rollup_bundle_dts")
 load("@build_bazel_rules_nodejs//:index.bzl", "pkg_npm")
 
@@ -37,7 +37,7 @@ def pkg_bundle(deps, externals, allow_node_builtins = False, args = [], **kwargs
         format = "cjs",
         sourcemap = "false",
         deps = [
-            "@npm//@rollup/plugin-node-resolve",
+            "//:node_modules/@rollup/plugin-node-resolve",
         ] + deps,
         **kwargs
     )
@@ -49,7 +49,7 @@ def pkg_bundle_dts(deps, externals, args = [], **kwargs):
         format = "cjs",
         sourcemap = "false",
         deps = [
-            "@npm//rollup-plugin-dts",
+            "//:node_modules/rollup-plugin-dts",
         ] + deps,
         **kwargs
     )

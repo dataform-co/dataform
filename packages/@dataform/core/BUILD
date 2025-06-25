@@ -20,7 +20,7 @@ webpack(
     data = [
         ":core",
         ":webpack.config.js",
-        "@npm//webpack-cli",
+        "//:node_modules/webpack-cli",
     ],
 )
 

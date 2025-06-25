@@ -6,8 +6,6 @@ bazel-*
 .vscode/
 .history/
 
-bazel-*
-
 **/.DS_Store
 
 **/*.orig

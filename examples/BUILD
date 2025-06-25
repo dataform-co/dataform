@@ -1,4 +1,4 @@
-load("//testing:index.bzl", "ts_test_suite")
+load("//tools:ts_library.bzl", "ts_test_suite")
 load("//tools:node_modules.bzl", "node_modules")
 
 package(default_visibility = ["//visibility:private"])
@@ -17,7 +17,6 @@ filegroup(
 )
 
 ts_test_suite(
-    name = "tests",
     srcs = ["examples_test.ts"],
     data = [
         ":all_projects",
@@ -31,11 +30,11 @@ ts_test_suite(
         "//common/protos",
         "//protos:ts",
         "//testing",
-        "@npm//@types/chai",
-        "@npm//@types/fs-extra",
-        "@npm//@types/node",
-        "@npm//chai",
-        "@npm//fs-extra",
+        "//:node_modules/@types/chai",
+        "//:node_modules/@types/fs-extra",
+        "//:node_modules/@types/node",
+        "//:node_modules/chai",
+        "//:node_modules/fs-extra",
     ],
 )
 
