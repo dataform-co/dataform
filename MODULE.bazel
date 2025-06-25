@@ -1,3 +1,7 @@
+"""
+MODULE.bazel file configures Bazel modules and dependencies for the Dataform project.
+"""
+
 module(
     name = "df",
     version = "3.0.2",  # TODO: update automatically.
