@@ -100,7 +100,8 @@ actions:
     dependOnDependencyAssertions: true,
     ${exampleBuiltInAssertions.inputAssertionBlock}
     hermetic: true,
-    onSchemaChange: "SYNCHRONIZE",
+    // Re-enable when Incremental Schema Update will be officially released on Dataform GCP.
+    // onSchemaChange: "SYNCHRONIZE",
 }
 `;
     [
@@ -147,7 +148,8 @@ SELECT 1`
             disabled: true,
             protected: false,
             hermeticity: "HERMETIC",
-            onSchemaChange: "SYNCHRONIZE",
+            // Replace when Incremental Schema Update will be officially released on Dataform GCP.
+            onSchemaChange: "IGNORE", // onSchemaChange: "SYNCHRONIZE",
             bigquery: {
               additionalOptions: {
                 option1Key: "option1",
@@ -277,7 +279,8 @@ actions:
     dependOnDependencyAssertions: true
     ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
     hermetic: true
-    onSchemaChange: FAIL
+    # Re-enable when Incremental Schema Update will be officially released on Dataform GCP.
+    # onSchemaChange: FAIL
   `
     );
 
@@ -300,7 +303,8 @@ actions:
         disabled: true,
         protected: true,
         hermeticity: "HERMETIC",
-        onSchemaChange: "FAIL",
+        // Replace when Incremental Schema Update will be officially released on Dataform GCP.
+        onSchemaChange: "IGNORE", // onSchemaChange: "FAIL",
         bigquery: {
           additionalOptions: {
             option1Key: "option1",

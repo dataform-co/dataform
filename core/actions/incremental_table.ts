@@ -607,6 +607,12 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
       checkConfigAdditionalOptionsOverlap(config, this.session);
     }
 
+    // Temporary fail the compilation if non-default `onSchemaChange` value is provided until the official release of the feature on Dataform GCP.
+    const onSchemaChange = this.mapOnSchemaChange(config.onSchemaChange)
+    if (onSchemaChange != dataform.OnSchemaChange.IGNORE) {
+      throw new Error(`OnSchemaChange is not supported yet. It will be available as soon as Dataform GCP will officially release this feature.`);
+    }
+
     return config;
   }
 
