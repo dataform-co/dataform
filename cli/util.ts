@@ -21,12 +21,12 @@ export function compiledGraphHasErrors(graph: dataform.ICompiledGraph) {
 export function formatExecutionSuffix(jobIds: string[], bytesBilled: string[]): string {
   const jobMetadataParts: string[] = [];
   if (jobIds.length > 0) {
-    jobMetadataParts.push(`jobId: ${jobIds.join(", ")}`);
+    jobMetadataParts.push(`\n \t jobId: ${jobIds.join(", ")}`);
   }
   if (bytesBilled.length > 0) {
-    jobMetadataParts.push(`Bytes billed: ${bytesBilled.join(", ")}`);
+    jobMetadataParts.push(`\n \t Bytes billed: ${bytesBilled.join(", ")}`);
   }
-  return jobMetadataParts.length > 0 ? ` (${jobMetadataParts.join(" | ")})` : "";
+  return jobMetadataParts.length > 0 ? ` ${jobMetadataParts}` : "";
 }
 
 export function formatBytesInHumanReadableFormat(bytes: number): string {
