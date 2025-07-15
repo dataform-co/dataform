@@ -3200,10 +3200,10 @@ p-try@^2.0.0:
   resolved "https://registry.yarnpkg.com/p-try/-/p-try-2.2.0.tgz#cb2868540e313d61de58fafbe35ce9004d5540e6"
   integrity "sha1-yyhoVA4xPWHeWPr741zpAE1VQOY= sha512-R4nPAVTAU0B9D35/Gk3uJf/7XYbQcyohSKdvAxIRSNghFl4e71hVoGnBNQz9cWaXxO2I10KTC+3jMdvvoKw6dQ=="
 
-parse-duration@^1.0.0:
-  version "1.0.0"
-  resolved "https://registry.yarnpkg.com/parse-duration/-/parse-duration-1.0.0.tgz#8605651745f61088f6fb14045c887526c291858c"
-  integrity "sha1-hgVlF0X2EIj2+xQEXIh1JsKRhYw= sha512-X4kUkCTHU1N/kEbwK9FpUJ0UZQa90VzeczfS704frR30gljxDG0pSziws06XlK+CGRSo/1wtG1mFIdBFQTMQNw=="
+parse-duration@^2.1.3:
+  version "2.1.3"
+  resolved "https://registry.yarnpkg.com/parse-duration/-/parse-duration-2.1.3.tgz#79a61a3ae224a5f4d1b71a8fa79e53d5aa90c902"
+  integrity sha512-MtbharL7Bets65qDBXuDOHHWyY1BxTJZmJ/xGmS90iEbKE0gZ6yZpZtCda7O79GeOi/f0NwBaplIuReExIoVsw==
 
 parse-semver@^1.1.1:
   version "1.1.1"
