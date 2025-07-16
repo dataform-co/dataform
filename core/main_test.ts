@@ -645,22 +645,24 @@ someKey: and an extra: colon
       );
     });
 
-    test("fails when defaultLocation is not present in workflow_settings.yaml", () => {
+    test(`does not fail when defaultLocation is not present in workflow_settings.yaml`, () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
       fs.writeFileSync(
         path.join(projectDir, "workflow_settings.yaml"),
         `
-defaultProject: defaultProject
-defaultDataset: defaultDataset`
+dataformCoreVersion: ${version}
+defaultProject: project`
       );
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
-      expect(
-        result.compile.compiledGraph.graphErrors.compilationErrors?.map(error => error.message)
-      ).deep.equals([
-        `A defaultLocation is required for BigQuery. This can be configured in workflow_settings.yaml.`
-      ]);
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.projectConfig)).deep.equals(
+        asPlainObject({
+          warehouse: "bigquery",
+          defaultDatabase: "project"
+        })
+      );
     });
 
     test(`workflow settings and project config overrides are merged and applied within SQLX files`, () => {
