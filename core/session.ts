@@ -433,15 +433,7 @@ export class Session {
   public compile(): dataform.CompiledGraph {
     this.indexedActions = new ActionMap(this.actions);
 
-    if (
-      (this.projectConfig.warehouse === "bigquery" || this.projectConfig.warehouse === "") &&
-      !this.projectConfig.defaultLocation
-    ) {
-      this.compileError(
-        "A defaultLocation is required for BigQuery. This can be configured in workflow_settings.yaml.",
-        "workflow_settings.yaml"
-      );
-    }
+    // defaultLocation is no longer a required parameter to support location auto-selection.
 
     if (
       !!this.projectConfig.vars &&
