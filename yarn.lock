@@ -79,7 +79,7 @@
   resolved "https://registry.npmjs.org/@discoveryjs/json-ext/-/json-ext-0.5.7.tgz#1d572bfbbe14b7704e0ba0f39b74815b84870d70"
   integrity sha512-dBVuXR082gk3jsFp7Rd/JI4kytwGHecnCoTtXFb7DB6CNHp4rg5k1bhg0nWdLGLnOV71lmDzGQaLMy8iPLY0pw==
 
-"@google-cloud/bigquery@7.1.1":
+"@google-cloud/bigquery@~7.1.1":
   version "7.1.1"
   resolved "https://registry.yarnpkg.com/@google-cloud/bigquery/-/bigquery-7.1.1.tgz#953a670b45844f7fbab4937fb707ffe87d255dae"
   integrity sha512-dxyF/GuTUNJSuEwtvQO4zPjoAg7SEF5E5XWiCLGrdDaldqAUduzxCAmCyoLozPuxXHK00AsxUIlbR0+k9ZdNXA==
@@ -3963,6 +3963,7 @@ string_decoder@~1.1.1:
     safe-buffer "~5.1.0"
 
 "strip-ansi-cjs@npm:strip-ansi@^6.0.1", strip-ansi@^6.0.1:
+  name strip-ansi-cjs
   version "6.0.1"
   resolved "https://registry.yarnpkg.com/strip-ansi/-/strip-ansi-6.0.1.tgz#9e26c63d30f53443e9489495b2105d37b67a85d9"
   integrity sha512-Y38VPSHcqkFrCpFnQ9vuSXmquuv5oXOKpGeT6aGrr3o3Gc9AlVa6JBfUSOCnbxGGZF+/0ooI7KrPuUSztUdU5A==
