@@ -106,7 +106,8 @@ export class View extends ActionBuilder<dataform.Table> {
     type: "view",
     enumType: dataform.TableType.VIEW,
     disabled: false,
-    tags: []
+    tags: [],
+    inputParams: [],
   });
 
   /** @hidden */
@@ -486,6 +487,12 @@ export class View extends ActionBuilder<dataform.Table> {
     return dataform.Target.create(this.proto.target);
   }
 
+  public addInputParam(paramName: string) {
+    if (!this.proto.inputParams.includes(paramName)) {
+      this.proto.inputParams.push(paramName);
+    }
+  }
+
   /** @hidden */
   public compile() {
     const context = new ViewContext(this);
@@ -648,6 +655,11 @@ export class ViewContext implements ITableContext {
     }
     this.view.dependencies(ref);
     return this.resolve(ref);
+  }
+
+  public param(paramName: string): string {
+    this.view.addInputParam(paramName);
+    return `\{${paramName}\}`;
   }
 
   public resolve(ref: Resolvable | string[], ...rest: string[]) {

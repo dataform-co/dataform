@@ -425,6 +425,10 @@ export class OperationContext implements IActionContext {
     return this.resolve(ref);
   }
 
+  public param(paramName: string): string {
+    return ""
+  }
+
   public resolve(ref: Resolvable | string[], ...rest: string[]) {
     return this.operation.session.resolve(ref, ...rest);
   }

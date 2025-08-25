@@ -663,6 +663,10 @@ export class IncrementalTableContext implements ITableContext {
     return this.incrementalTable.session.finalizeName(this.incrementalTable.getTarget().name);
   }
 
+  public param(paramName: string): string {
+    return ""
+  }
+
   public ref(ref: Resolvable | string[], ...rest: string[]): string {
     ref = toResolvable(ref, rest);
     if (!resolvableAsTarget(ref)) {
