@@ -364,6 +364,10 @@ export class AssertionContext implements IActionContext {
     return this.resolve(ref);
   }
 
+  public param(paramName: string): string {
+    return ""
+  }
+
   public resolve(ref: Resolvable | string[], ...rest: string[]) {
     return this.assertion.session.resolve(ref, ...rest);
   }

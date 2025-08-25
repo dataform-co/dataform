@@ -58,6 +58,8 @@ export class Session {
 
   public graphErrors: dataform.IGraphErrors;
 
+  private inputParams: Set<string> = new Set();
+
   constructor(
     rootDir?: string,
     projectConfig?: dataform.ProjectConfig,
@@ -466,7 +468,8 @@ export class Session {
       ),
       graphErrors: this.graphErrors,
       dataformCoreVersion,
-      targets: this.actions.map(action => action.getTarget())
+      targets: this.actions.map(action => action.getTarget()),
+      inputParams: Array.from(this.inputParams).sort(),
     });
 
     this.fullyQualifyDependencies(
@@ -545,6 +548,7 @@ export class Session {
     actions.forEach(action => {
       try {
         const compiledChunk = action.compile();
+        compiledChunk.inputParams.forEach(param => this.inputParams.add(param));
         compiledChunks.push(compiledChunk as any);
       } catch (e) {
         this.compileError(e, action.getFileName(), action.getTarget());

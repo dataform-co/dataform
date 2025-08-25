@@ -93,7 +93,8 @@ export class Table extends ActionBuilder<dataform.Table> {
     type: "table",
     enumType: dataform.TableType.TABLE,
     disabled: false,
-    tags: []
+    tags: [],
+    inputParams: [],
   });
 
   /** @hidden */
@@ -609,6 +610,10 @@ export class TableContext implements ITableContext {
 
   public name(): string {
     return this.table.session.finalizeName(this.table.getTarget().name);
+  }
+
+  public param(paramName: string): string {
+    return ""
   }
 
   public ref(ref: Resolvable | string[], ...rest: string[]): string {

@@ -221,7 +221,11 @@ class RefReplacingContext implements ITableContext {
   public ref(ref: Resolvable | string[], ...rest: string[]) {
     return this.resolve(ref, ...rest);
   }
-
+  
+  public param(paramName: string): string {
+    return ""
+  }
+  
   public resolve(ref: Resolvable | string[], ...rest: string[]) {
     const target = resolvableAsTarget(toResolvable(ref, rest));
     if (!this.testContext.test.contextableInputs.has(targetStringifier.stringify(target))) {

@@ -454,6 +454,10 @@ export class DataPreparationContext implements ITableContext {
     return this.resolve(ref);
   }
 
+  public param(paramName: string): string {
+    return ""
+  }
+
   public resolve(ref: Resolvable | string[], ...rest: string[]) {
     return this.dataPreparation.session.resolve(ref, ...rest);
   }
