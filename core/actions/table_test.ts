@@ -15,6 +15,7 @@ import {
   runMainInVm,
   VALID_WORKFLOW_SETTINGS_YAML
 } from "df/testing/run_core";
+import {dataform} from "df/protos/ts";
 
 suite("table", ({ afterEach }) => {
   const tmpDirFixture = new TmpDirFixture(afterEach);
@@ -265,5 +266,177 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
     expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals(
       exampleBuiltInAssertionsAsYaml.outputAssertions
     );
+  });
+
+  suite("Iceberg table options", () => {
+    const setupFiles = (projectDir: string, filename: string, fileContents: string) => {
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(path.join(projectDir, `definitions/${filename}`), fileContents);
+    };
+
+    const testCases = [
+      {
+        testName: "with provided storage_uri",
+        icebergConfigBlock: `
+        fileFormat: "PARQUET",
+        iceberg: {
+            connection: "projects/gcp/locations/us/connections/conn-id",
+            storageUri: "gs://my-bucket/table-data",
+        }`,
+        expected: {
+          fileFormat: dataform.FileFormat.PARQUET,
+          connection: "projects/gcp/locations/us/connections/conn-id",
+          storageUri: "gs://my-bucket/table-data",
+        },
+        expectError: false,
+      },
+      {
+        testName: "with constructed storage_uri",
+        icebergConfigBlock: `
+        fileFormat: "PARQUET",
+        iceberg: {
+            connection: "projects/gcp/locations/us/connections/conn-id",
+            bucketName: "my-bucket",
+            tableFolderRoot: "root",
+            tableFolderSubpath: "subpath",
+        }`,
+        expected: {
+          fileFormat: dataform.FileFormat.PARQUET,
+          connection: "projects/gcp/locations/us/connections/conn-id",
+          storageUri: "gs://my-bucket/root/subpath",
+        },
+        expectError: false,
+      },
+      {
+        testName: "takes the provided storage_uri and does not construct",
+        icebergConfigBlock: `
+        fileFormat: "PARQUET",
+        iceberg: {
+            connection: "projects/gcp/locations/us/connections/conn-id",
+            bucketName: "my-bucket",
+            tableFolderRoot: "root",
+            tableFolderSubpath: "subpath",
+            storageUri: "gs://provided/storage/uri",
+        }`,
+        expected: {
+          fileFormat: dataform.FileFormat.PARQUET,
+          connection: "projects/gcp/locations/us/connections/conn-id",
+          storageUri: "gs://provided/storage/uri",
+        },
+        expectError: false,
+      },
+      {
+        testName: "with dot form connection",
+        icebergConfigBlock: `
+        fileFormat: "PARQUET",
+        iceberg: {
+            connection: "gcp.us.conn-id",
+            storageUri: "gs://my-bucket/root/subpath",
+        }`,
+        expected: {
+          fileFormat: dataform.FileFormat.PARQUET,
+          connection: "gcp.us.conn-id",
+          storageUri: "gs://my-bucket/root/subpath",
+        },
+        expectError: false,
+      },
+      {
+        testName: "defaults to PARQUET file format",
+        icebergConfigBlock: `
+        iceberg: {
+            connection: "projects/gcp/locations/us/connections/conn-id",
+            storageUri: "gs://my-bucket/root/subpath",
+        }`,
+        expected: {
+          fileFormat: dataform.FileFormat.PARQUET,
+          connection: "projects/gcp/locations/us/connections/conn-id",
+          storageUri: "gs://my-bucket/root/subpath",
+        },
+        expectError: false,
+      },
+      {
+        testName: "defaults to DEFAULT connection",
+        icebergConfigBlock: `
+        fileFormat: "PARQUET",
+        iceberg: {
+            storageUri: "gs://my-bucket/root/subpath",
+        }`,
+        expected: {
+          fileFormat: dataform.FileFormat.PARQUET,
+          connection: "DEFAULT",
+          storageUri: "gs://my-bucket/root/subpath",
+        },
+        expectError: false,
+      },
+      {
+        testName: "invalid connection format",
+        icebergConfigBlock: `
+        iceberg: {
+            connection: "invalid",
+            storageUri: "gs://my-bucket/root/subpath",
+        }`,
+        expected: {},
+        expectError: "The connection must be in the format `{project}.{location}.{connection_id}` or `projects/{project}/locations/{location}/connections/{connection_id}`, or be set to `DEFAULT`.",
+      },
+      {
+        testName: "invalid storageUri format",
+        icebergConfigBlock: `
+        iceberg: {
+            storageUri: "invalid"
+        }`,
+        expected: {},
+        expectError: "The storage URI must be in the format `gs://{bucket_name}/{path_to_data}`.",
+      },
+    ];
+
+    testCases.forEach(testCase => {
+      const uniqueName = `iceberg_${testCase.testName.replace(/ /g, "_")}`;
+      const tableConfig = `{
+          type: "table",
+          name: "${uniqueName}",
+          schema: "dataset",
+          database: "project",
+          ${testCase.icebergConfigBlock}
+      }`;
+
+      const paramsToTest = [
+        {
+          filename: `${uniqueName}.sqlx`,
+          fileContents: `config ${tableConfig}\nSELECT 1`,
+        },
+        {
+          filename: `${uniqueName}.js`,
+          fileContents: `publish("${uniqueName}", ${tableConfig}).query(ctx => "SELECT 1")`,
+        },
+      ];
+
+      paramsToTest.forEach(params => {
+        test(`${testCase.testName} in ${params.filename}`, () => {
+          const projectDir = tmpDirFixture.createNewTmpDir();
+          setupFiles(projectDir, params.filename, params.fileContents);
+
+          const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+          if (testCase.expectError) {
+            expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).greaterThan(0);
+            const error = result.compile.compiledGraph.graphErrors.compilationErrors[0];
+            expect(error.message).contains(testCase.expectError);
+            expect(error.fileName).equals(`definitions/${params.filename}`);
+          } else {
+            expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+            const compiledTable = result.compile.compiledGraph.tables[0];
+            expect(compiledTable.target.name).equals(uniqueName);
+            expect(compiledTable.bigquery.tableFormat).equals(dataform.TableFormat.ICEBERG);
+            expect(compiledTable.bigquery.fileFormat).equals(testCase.expected.fileFormat);
+            expect(compiledTable.bigquery.connection).equals(testCase.expected.connection);
+            expect(compiledTable.bigquery.storageUri).equals(testCase.expected.storageUri);
+          }
+        });
+      });
+    });
   });
 });

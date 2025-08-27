@@ -11,7 +11,12 @@ import { Assertion } from "df/core/actions/assertion";
 import { IncrementalTable } from "df/core/actions/incremental_table";
 import { View } from "df/core/actions/view";
 import { ColumnDescriptors } from "df/core/column_descriptors";
-import { Contextable, ITableContext, Resolvable } from "df/core/contextables";
+import {
+  Contextable,
+  ITableContext,
+  Resolvable,
+  IIcebergConfigItem
+} from "df/core/contextables";
 import * as Path from "df/core/path";
 import { Session } from "df/core/session";
 import {
@@ -24,7 +29,15 @@ import {
   resolveActionsConfigFilename,
   strictKeysOf,
   toResolvable,
-  validateQueryString
+  validateQueryString,
+  validateConnectionFormat,
+  validateStorageUriFormat,
+  getFileFormatValueForIcebergTable,
+  getConnectionForIcebergTable,
+  getStorageUriForIcebergTable,
+  ICEBERG_CONNECTION_CONFIG_KEY,
+  ICEBERG_FILE_FORMAT_CONFIG_KEY,
+  ICEBERG_STORAGE_URI_CONFIG_KEY,
 } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
@@ -85,6 +98,7 @@ export class Table extends ActionBuilder<dataform.Table> {
   private contextableWhere: Contextable<ITableContext, string>;
   private contextablePreOps: Array<Contextable<ITableContext, string | string[]>> = [];
   private contextablePostOps: Array<Contextable<ITableContext, string | string[]>> = [];
+  private contextableIcebergOpts: Array<IIcebergConfigItem> = [];
 
   /**
    * @hidden Stores the generated proto for the compiled graph.
@@ -167,6 +181,9 @@ export class Table extends ActionBuilder<dataform.Table> {
     }
     if (config.postOperations) {
       this.postOps(config.postOperations);
+    }
+    if (config.iceberg) {
+      this.iceberg(config.name, config.iceberg, config.fileFormat);
     }
     this.bigquery({
       partitionBy: config.partitionBy,
@@ -266,6 +283,38 @@ export class Table extends ActionBuilder<dataform.Table> {
   public postOps(posts: Contextable<ITableContext, string | string[]>) {
     this.contextablePostOps.push(posts);
     return this;
+  }
+
+
+  /**
+   * Sets the configuration options for the creation of Apache Iceberg tables.
+   * @param tableName Table name. Used to construct the storage URI for the Iceberg table if no alternative value is provided.
+   * @param icebergOptions Iceberg options provided in the iceberg {} subblock of the config file.
+   * @param fileFormat File format provided in the config file.
+   */
+  public iceberg(
+    tableName: string,
+    icebergOptions: dataform.ActionConfig.IIcebergTableConfig,
+    fileFormat?: dataform.ActionConfig.TableConfig.FileFormat,
+  ) {
+    this.contextableIcebergOpts.push({
+      icebergConfigKey: ICEBERG_FILE_FORMAT_CONFIG_KEY,
+      icebergConfigValue: getFileFormatValueForIcebergTable(fileFormat),
+    });
+    this.contextableIcebergOpts.push({
+      icebergConfigKey: ICEBERG_CONNECTION_CONFIG_KEY,
+      icebergConfigValue: getConnectionForIcebergTable(icebergOptions.connection),
+    });
+    this.contextableIcebergOpts.push({
+      icebergConfigKey: ICEBERG_STORAGE_URI_CONFIG_KEY,
+      icebergConfigValue: getStorageUriForIcebergTable(
+        tableName,
+        icebergOptions.storageUri,
+        icebergOptions.bucketName,
+        icebergOptions.tableFolderRoot,
+        icebergOptions.tableFolderSubpath,
+      ),
+    });
   }
 
   /**
@@ -473,6 +522,22 @@ export class Table extends ActionBuilder<dataform.Table> {
       this.proto.where = context.apply(this.contextableWhere);
     }
 
+    if (this.contextableIcebergOpts && this.contextableIcebergOpts.length > 0) {
+      if (!this.proto.bigquery) {
+        this.proto.bigquery = dataform.BigQueryOptions.create({});
+      }
+      this.proto.bigquery.tableFormat = dataform.TableFormat.ICEBERG;
+      this.proto.bigquery.fileFormat = this.contextableIcebergOpts.find(
+        (item) => item.icebergConfigKey === ICEBERG_FILE_FORMAT_CONFIG_KEY,
+      ).icebergConfigValue;
+      this.proto.bigquery.connection = this.contextableIcebergOpts.find(
+        (item) => item.icebergConfigKey === ICEBERG_CONNECTION_CONFIG_KEY,
+      ).icebergConfigValue;
+      this.proto.bigquery.storageUri = this.contextableIcebergOpts.find(
+        (item) => item.icebergConfigKey === ICEBERG_STORAGE_URI_CONFIG_KEY,
+      ).icebergConfigValue;
+    }
+
     this.proto.preOps = this.contextifyOps(this.contextablePreOps, context).filter(
       op => !!op.trim()
     );
@@ -482,6 +547,10 @@ export class Table extends ActionBuilder<dataform.Table> {
 
     validateQueryString(this.session, this.proto.query, this.proto.fileName);
     validateQueryString(this.session, this.proto.incrementalQuery, this.proto.fileName);
+    if (this.contextableIcebergOpts && this.contextableIcebergOpts.length > 0) {
+      validateConnectionFormat(this.session, this.proto.bigquery.connection, this.proto.fileName);
+      validateStorageUriFormat(this.session, this.proto.bigquery.storageUri, this.proto.fileName);
+    }
 
     return verifyObjectMatchesProto(
       dataform.Table,
@@ -557,15 +626,18 @@ export class Table extends ActionBuilder<dataform.Table> {
             throw e;
           },
           unverifiedConfig.bigquery,
-          strictKeysOf<ILegacyBigQueryOptions>()([
-            "partitionBy",
-            "clusterBy",
-            "updatePartitionFilter",
-            "labels",
-            "partitionExpirationDays",
-            "requirePartitionFilter",
-            "additionalOptions"
+          [
+            ...strictKeysOf<ILegacyBigQueryOptions>()([
+              "partitionBy",
+              "clusterBy",
+              "updatePartitionFilter",
+              "labels",
+              "partitionExpirationDays",
+              "requirePartitionFilter",
+              "additionalOptions",
           ]),
+            "iceberg"
+          ],
           "BigQuery table config"
         );
       }
