@@ -85,3 +85,15 @@ export interface ITableContext extends IActionContext {
    */
   incremental: () => boolean;
 }
+
+/**
+ * Used for storing config values for an Iceberg-formatted table.
+ */
+export interface IIcebergConfigItem {
+  // Key for an Iceberg config item. Can be one of the following: tableFormat,
+  // fileFormat, storageUri and connection.
+  icebergConfigKey: string;
+
+  // Corresponding value of the config item.
+  icebergConfigValue: any;
+}

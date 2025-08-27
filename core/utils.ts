@@ -245,6 +245,116 @@ export function validateQueryString(session: Session, query: string, filename: s
   }
 }
 
+/**
+ * Checks if the Cloud Resource connection has a valid format.
+ * @param session Used to throw a compile error if connection is not valid.
+ * @param connection String to be validated.
+ * @param filename Used to throw a compile error if connection is not valid.
+ */
+export function validateConnectionFormat(
+  session: Session,
+  connection: string,
+  filename: string,
+) {
+  // Connection pattern of the form project.location.connection_id. Example:
+  // my-project.us-central1.my-connection
+  const dotPattern = /^[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+$/;
+
+  // Connection pattern of the form projects/<substring>/locations/<substring>/connections/<substring>
+  // Example: projects/my-project/locations/us-central1/connections/my-connection
+  // Substrings cannot contain '/'.
+  const resourcePattern =
+    /^projects\/[^/]+\/locations\/[^/]+\/connections\/[^/]+$/;
+
+  const isValidFormat =
+    dotPattern.test(connection) || resourcePattern.test(connection);
+
+  if (connection !== 'DEFAULT' && !isValidFormat) {
+    session.compileError(
+      new Error(
+        'The connection must be in the format `{project}.{location}.{connection_id}` or `projects/{project}/locations/{location}/connections/{connection_id}`, or be set to `DEFAULT`.',
+      ),
+      filename,
+    );
+  }
+
+}
+
+/**
+ * Checks if the storageUri is a valid GCS path.
+ * @param session Used to throw a compile error if storageUri is not valid.
+ * @param storageUri String to be validated.
+ * @param filename Used to throw a compile error if storageUri is not valid.
+ */
+export function validateStorageUriFormat(
+  session: Session,
+  storageUri: string,
+  filename: string,
+) {
+  // storageUri must have format gs://<bucket_name>/<path_to_data>
+  const gcsPathPattern = /^gs:\/\/([^/]+)\/(.+)$/;
+
+  if (!gcsPathPattern.test(storageUri)) {
+    session.compileError(
+      new Error(
+        'The storage URI must be in the format `gs://{bucket_name}/{path_to_data}`.',
+      ),
+      filename,
+    );
+  }
+}
+
+/**
+ * Returns a file format for an Iceberg table, as specified in the user's config file.
+ * @param configFileFormat User-provided file format, if it exists.
+ * @return File format used when creating an Iceberg table.
+ */
+export function getFileFormatValueForIcebergTable(
+  configFileFormat?: dataform.ActionConfig.TableConfig.FileFormat,
+): dataform.FileFormat {
+  // Default to PARQUET until we introduce other file formats.
+  return dataform.FileFormat.PARQUET;
+}
+
+/**
+ * Returns the connection for an Iceberg table, as specified in the user's config file.
+ * Defaults to "DEFAULT" if no connection is provided.
+ * @param connection User-provided connection, if it exists.
+ * @returns Connection used when creating an Iceberg table.
+ */
+export function getConnectionForIcebergTable(connection?: string): string {
+  return connection || "DEFAULT";
+}
+
+/**
+ * Constructs the storage URI for an Iceberg table from storageUri, bucketName,
+ * tableFolderRoot, and tableFolderSubpath provided in the config file. Returns
+ * undefined if a complete URI cannot be formed.
+ * @param tableName Might be used to construct the
+ * @param storageUri User-provided storage UI, if it exists.
+ * @param bucketName User-provided Cloud Storage bucket name, if it exists.
+ * @param tableFolderRoot User-provided table folder root, if it exists.
+ * @param tableFolderSubpath User-provided table folder subpath, if it exists.
+ * @returns Storage URI used when creating an Iceberg table.
+ */
+export function getStorageUriForIcebergTable(
+  tableName: string,
+  storageUri?: string,
+  bucketName?: string,
+  tableFolderRoot?: string,
+  tableFolderSubpath?: string,
+): string | undefined {
+  if (storageUri) {
+    // If storage_uri is provided, use it.
+    return storageUri;
+  } else if (bucketName) {
+    const effectiveTableFolderRoot = tableFolderRoot || 'dataform';
+    const effectiveTableFolderSubpath = tableFolderSubpath || tableName;
+    return `gs://${bucketName}/${effectiveTableFolderRoot}/${effectiveTableFolderSubpath}`;
+  }
+  return undefined;
+}
+
 export function tableTypeStringToEnum(type: string, throwIfUnknown: boolean) {
   switch (type) {
     case "table":
@@ -373,3 +483,18 @@ export function checkAssertionsForDependency(
   );
   return dependencyTarget;
 }
+
+/**
+ * Configuration key used to identify the connection when creating an Iceberg table.
+ */
+export const ICEBERG_CONNECTION_CONFIG_KEY = "iceberg-connection-config-key";
+
+/**
+ * Configuration key used to identify the storage URI when creating an Iceberg table.
+ */
+export const ICEBERG_STORAGE_URI_CONFIG_KEY = "iceberg-storage-uri-config-key";
+
+/**
+ * Configuration key used to identify the file format when creating an Iceberg table.
+ */
+export const ICEBERG_FILE_FORMAT_CONFIG_KEY = "iceberg-file-format-config-key";
