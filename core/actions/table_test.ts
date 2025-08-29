@@ -280,137 +280,173 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
 
     const testCases = [
       {
-        testName: "with provided storage_uri",
-        icebergConfigBlock: `
-        fileFormat: "PARQUET",
-        iceberg: {
-            connection: "projects/gcp/locations/us/connections/conn-id",
-            storageUri: "gs://my-bucket/table-data",
-        }`,
-        expected: {
-          fileFormat: dataform.FileFormat.PARQUET,
-          connection: "projects/gcp/locations/us/connections/conn-id",
-          storageUri: "gs://my-bucket/table-data",
-        },
-        expectError: false,
-      },
-      {
-        testName: "with constructed storage_uri",
-        icebergConfigBlock: `
+        testName: "with all values provided and resource form connection",
+        configBlock: `
+        name: "table1",
+        dataset: "dataset1",
         fileFormat: "PARQUET",
         iceberg: {
             connection: "projects/gcp/locations/us/connections/conn-id",
             bucketName: "my-bucket",
-            tableFolderRoot: "root",
-            tableFolderSubpath: "subpath",
+            tableFolderRoot: "my-root",
+            tableFolderSubpath: "my-subpath",
         }`,
         expected: {
+          target: {name: "table1", schema: "dataset1", database: "project"},
           fileFormat: dataform.FileFormat.PARQUET,
           connection: "projects/gcp/locations/us/connections/conn-id",
-          storageUri: "gs://my-bucket/root/subpath",
+          storageUri: "gs://my-bucket/my-root/my-subpath",
         },
         expectError: false,
       },
       {
-        testName: "takes the provided storage_uri and does not construct",
-        icebergConfigBlock: `
-        fileFormat: "PARQUET",
-        iceberg: {
-            connection: "projects/gcp/locations/us/connections/conn-id",
-            bucketName: "my-bucket",
-            tableFolderRoot: "root",
-            tableFolderSubpath: "subpath",
-            storageUri: "gs://provided/storage/uri",
-        }`,
-        expected: {
-          fileFormat: dataform.FileFormat.PARQUET,
-          connection: "projects/gcp/locations/us/connections/conn-id",
-          storageUri: "gs://provided/storage/uri",
-        },
-        expectError: false,
-      },
-      {
-        testName: "with dot form connection",
-        icebergConfigBlock: `
+        testName: "with all values provided and dot form connection",
+        configBlock: `
+        name: "table2",
+        dataset: "dataset2",
         fileFormat: "PARQUET",
         iceberg: {
             connection: "gcp.us.conn-id",
-            storageUri: "gs://my-bucket/root/subpath",
+            bucketName: "my-bucket",
+            tableFolderRoot: "my-root",
+            tableFolderSubpath: "my-subpath",
         }`,
         expected: {
+          target: {name: "table2", schema: "dataset2", database: "project"},
           fileFormat: dataform.FileFormat.PARQUET,
           connection: "gcp.us.conn-id",
-          storageUri: "gs://my-bucket/root/subpath",
+          storageUri: "gs://my-bucket/my-root/my-subpath",
+        },
+        expectError: false,
+      },
+      {
+        testName: "defaults to `_dataform` for tableFolderRoot",
+        configBlock: `
+        name: "table3",
+        dataset: "dataset3",
+        fileFormat: "PARQUET",
+        iceberg: {
+            connection: "gcp.us.conn-id",
+            bucketName: "my-bucket",
+            tableFolderSubpath: "my-subpath",
+        }`,
+        expected: {
+          target: {name: "table3", schema: "dataset3", database: "project"},
+          fileFormat: dataform.FileFormat.PARQUET,
+          connection: "gcp.us.conn-id",
+          storageUri: "gs://my-bucket/_dataform/my-subpath",
+        },
+        expectError: false,
+      },
+      {
+        testName: "defaults to dataset and name for tableFolderSubpath with dataset and table name provided",
+        configBlock: `
+        name: "my-table",
+        dataset: "my-dataset",
+        fileFormat: "PARQUET",
+        iceberg: {
+            connection: "gcp.us.conn-id",
+            bucketName: "my-bucket",
+            tableFolderRoot: "my-root",
+        }`,
+        expected: {
+          target: {name: "my-table", schema: "my-dataset", database: "project"},
+          fileFormat: dataform.FileFormat.PARQUET,
+          connection: "gcp.us.conn-id",
+          storageUri: "gs://my-bucket/my-root/my-dataset/my-table",
+        },
+        expectError: false,
+      },
+      {
+        testName: "defaults to dataset and name for tableFolderSubpath with dataset from workflow settings",
+        configBlock: `
+        name: "my-table",
+        fileFormat: "PARQUET",
+        iceberg: {
+            connection: "gcp.us.conn-id",
+            bucketName: "my-bucket",
+            tableFolderRoot: "my-root",
+        }`,
+        expected: {
+          target: {name: "my-table", schema: "defaultDataset", database: "project"},
+          fileFormat: dataform.FileFormat.PARQUET,
+          connection: "gcp.us.conn-id",
+          storageUri: "gs://my-bucket/my-root/defaultDataset/my-table",
         },
         expectError: false,
       },
       {
         testName: "defaults to PARQUET file format",
-        icebergConfigBlock: `
+        configBlock: `
+        name: "table6",
+        dataset: "dataset6",
         iceberg: {
             connection: "projects/gcp/locations/us/connections/conn-id",
-            storageUri: "gs://my-bucket/root/subpath",
+            bucketName: "my-bucket",
+            tableFolderRoot: "my-root",
+            tableFolderSubpath: "my-subpath",
         }`,
         expected: {
+          target: {name: "table6", schema: "dataset6", database: "project"},
           fileFormat: dataform.FileFormat.PARQUET,
           connection: "projects/gcp/locations/us/connections/conn-id",
-          storageUri: "gs://my-bucket/root/subpath",
+          storageUri: "gs://my-bucket/my-root/my-subpath",
         },
         expectError: false,
       },
       {
         testName: "defaults to DEFAULT connection",
-        icebergConfigBlock: `
+        configBlock: `
+        name: "table7",
+        dataset: "dataset7",
         fileFormat: "PARQUET",
         iceberg: {
-            storageUri: "gs://my-bucket/root/subpath",
+            bucketName: "my-bucket",
+            tableFolderRoot: "my-root",
+            tableFolderSubpath: "my-subpath",
         }`,
         expected: {
+          target: {name: "table7", schema: "dataset7", database: "project"},
           fileFormat: dataform.FileFormat.PARQUET,
           connection: "DEFAULT",
-          storageUri: "gs://my-bucket/root/subpath",
+          storageUri: "gs://my-bucket/my-root/my-subpath",
         },
         expectError: false,
       },
       {
         testName: "invalid connection format",
-        icebergConfigBlock: `
+        configBlock: `
+        name: "table8",
+        dataset: "dataset8",
         iceberg: {
             connection: "invalid",
-            storageUri: "gs://my-bucket/root/subpath",
+            bucketName: "my-bucket",
+            tableFolderRoot: "my-root",
+            tableFolderSubpath: "my-subpath",
         }`,
         expected: {},
         expectError: "The connection must be in the format `{project}.{location}.{connection_id}` or `projects/{project}/locations/{location}/connections/{connection_id}`, or be set to `DEFAULT`.",
       },
-      {
-        testName: "invalid storageUri format",
-        icebergConfigBlock: `
-        iceberg: {
-            storageUri: "invalid"
-        }`,
-        expected: {},
-        expectError: "The storage URI must be in the format `gs://{bucket_name}/{path_to_data}`.",
-      },
     ];
 
-    testCases.forEach(testCase => {
-      const uniqueName = `iceberg_${testCase.testName.replace(/ /g, "_")}`;
+    testCases.forEach((testCase, index) => {
+      const fileName = `iceberg_test_${index}`;
       const tableConfig = `{
           type: "table",
-          name: "${uniqueName}",
-          schema: "dataset",
           database: "project",
-          ${testCase.icebergConfigBlock}
+          ${testCase.configBlock}
       }`;
 
       const paramsToTest = [
         {
-          filename: `${uniqueName}.sqlx`,
+          filename: `${fileName}.sqlx`,
           fileContents: `config ${tableConfig}\nSELECT 1`,
         },
         {
-          filename: `${uniqueName}.js`,
-          fileContents: `publish("${uniqueName}", ${tableConfig}).query(ctx => "SELECT 1")`,
+          filename: `${fileName}.js`,
+          // The first argument to publish is a fallback name if not specified in the config.
+          // Since name is always specified in configBlock, this first argument doesn't affect the final target name.
+          fileContents: `publish("${fileName}", ${tableConfig}).query(ctx => "SELECT 1")`,
         },
       ];
 
@@ -429,7 +465,9 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
           } else {
             expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
             const compiledTable = result.compile.compiledGraph.tables[0];
-            expect(compiledTable.target.name).equals(uniqueName);
+            expect(compiledTable.target.name).equals(testCase.expected.target.name);
+            expect(compiledTable.target.schema).equals(testCase.expected.target.schema);
+            expect(compiledTable.target.database).equals(testCase.expected.target.database);
             expect(compiledTable.bigquery.tableFormat).equals(dataform.TableFormat.ICEBERG);
             expect(compiledTable.bigquery.fileFormat).equals(testCase.expected.fileFormat);
             expect(compiledTable.bigquery.connection).equals(testCase.expected.connection);
