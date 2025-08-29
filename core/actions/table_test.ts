@@ -427,6 +427,16 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
         expected: {},
         expectError: "The connection must be in the format `{project}.{location}.{connection_id}` or `projects/{project}/locations/{location}/connections/{connection_id}`, or be set to `DEFAULT`.",
       },
+      {
+        testName: "invalid file format",
+        configBlock: `
+        fileFormat: "AVRO",
+        iceberg: {
+            bucketName: "my-bucket",
+        }`,
+        expected: {},
+        expectError: "Unexpected file format; only \"PARQUET\" is allowed, got \"AVRO\".",
+      },
     ];
 
     testCases.forEach((testCase, index) => {
