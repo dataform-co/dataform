@@ -624,6 +624,11 @@ export class Table extends ActionBuilder<dataform.Table> {
           );
         }
       }
+      if (unverifiedConfig.iceberg && !unverifiedConfig.iceberg.bucketName) {
+        throw ReferenceError(
+          `Reference error: bucket_name must be defined in an iceberg subblock.`
+        );
+      }
       unverifiedConfig = LegacyConfigConverter.insertLegacyInlineAssertionsToConfigProto(
         unverifiedConfig
       );
