@@ -376,7 +376,7 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
         expectError: false,
       },
       {
-        testName: "defaults to PARQUET file format",
+        testName: "defaults to PARQUET when file format is not set",
         configBlock: `
         name: "table6",
         dataset: "dataset6",
@@ -426,6 +426,26 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
         }`,
         expected: {},
         expectError: "The connection must be in the format `{project}.{location}.{connection_id}` or `projects/{project}/locations/{location}/connections/{connection_id}`, or be set to `DEFAULT`.",
+      },
+      {
+        testName: "defaults to PARQUET when file format is empty",
+        configBlock: `
+        name: "table6",
+        dataset: "dataset6",
+        fileFormat: "",
+        iceberg: {
+            connection: "projects/gcp/locations/us/connections/conn-id",
+            bucketName: "my-bucket",
+            tableFolderRoot: "my-root",
+            tableFolderSubpath: "my-subpath",
+        }`,
+        expected: {
+          target: {name: "table6", schema: "dataset6", database: "project"},
+          fileFormat: dataform.FileFormat.PARQUET,
+          connection: "projects/gcp/locations/us/connections/conn-id",
+          storageUri: "gs://my-bucket/my-root/my-subpath",
+        },
+        expectError: false,
       },
       {
         testName: "invalid file format",
