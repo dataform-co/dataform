@@ -120,31 +120,25 @@ message ActionConfig {
     // or be set to DEFAULT.
     string connection = 1;
 
-    // The fully qualified location prefix of the external folder where table
-    // data is stored. The URI should be in the format
-    // `gs://bucket/path_to_table/`. If this value is provided, `bucket_name`,
-    // `table_folder_root` and `table_folder_subpath` are ignored.
-    string storage_uri = 2;
-
     // The name of the Cloud Storage bucket where table data is stored. This
     // value is be used to construct the storage URI in the following way:
     // `gs://{bucket_name}/{table_folder_root}/{table_folder_subpath}``.
     // If `storage_uri` is provided, this value is ignored.
-    string bucket_name = 3;
+    string bucket_name = 2;
 
     // The name of the first-level folder inside the Cloud Storage bucket where
     // table data is stored. This value will be used to construct the storage
     // URI in the following way:
     // `gs://{bucket_name}/{table_folder_root}/{table_folder_subpath}``.
     // If `storage_uri` is provided, this value is ignored.
-    string table_folder_root = 4;
+    string table_folder_root = 3;
 
     // The path under the first-level folder of the Cloud Storage bucket where
     // table data is stored. This value will be used to construct the storage URI
     // in the following way:
     // `gs://{bucket_name}/{table_folder_root}/{table_folder_subpath}``.
     // If `storage_uri` is provided, this value is ignored.
-    string table_folder_subpath = 5;
+    string table_folder_subpath = 4;
   }
 
   message TableConfig {

@@ -330,29 +330,23 @@ export function getConnectionForIcebergTable(connection?: string): string {
  * Constructs the storage URI for an Iceberg table from storageUri, bucketName,
  * tableFolderRoot, and tableFolderSubpath provided in the config file. Returns
  * undefined if a complete URI cannot be formed.
- * @param tableName Might be used to construct the
- * @param storageUri User-provided storage UI, if it exists.
+ * @param datasetName Might be used to construct the storage URI if no alternative value is provided.
+ * @param tableName Might be used to construct the storage URI if no alternative value is provided.
  * @param bucketName User-provided Cloud Storage bucket name, if it exists.
  * @param tableFolderRoot User-provided table folder root, if it exists.
  * @param tableFolderSubpath User-provided table folder subpath, if it exists.
  * @returns Storage URI used when creating an Iceberg table.
  */
 export function getStorageUriForIcebergTable(
+  datasetName: string,
   tableName: string,
-  storageUri?: string,
   bucketName?: string,
   tableFolderRoot?: string,
   tableFolderSubpath?: string,
 ): string | undefined {
-  if (storageUri) {
-    // If storage_uri is provided, use it.
-    return storageUri;
-  } else if (bucketName) {
-    const effectiveTableFolderRoot = tableFolderRoot || 'dataform';
-    const effectiveTableFolderSubpath = tableFolderSubpath || tableName;
-    return `gs://${bucketName}/${effectiveTableFolderRoot}/${effectiveTableFolderSubpath}`;
-  }
-  return undefined;
+  const effectiveTableFolderRoot = tableFolderRoot || '_dataform';
+  const effectiveTableFolderSubpath = tableFolderSubpath || `${datasetName}/${tableName}`;
+  return `gs://${bucketName}/${effectiveTableFolderRoot}/${effectiveTableFolderSubpath}`;
 }
 
 export function tableTypeStringToEnum(type: string, throwIfUnknown: boolean) {

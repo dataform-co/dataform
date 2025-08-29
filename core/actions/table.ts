@@ -183,7 +183,7 @@ export class Table extends ActionBuilder<dataform.Table> {
       this.postOps(config.postOperations);
     }
     if (config.iceberg) {
-      this.iceberg(config.name, config.iceberg, config.fileFormat);
+      this.iceberg(config.iceberg, config.fileFormat);
     }
     this.bigquery({
       partitionBy: config.partitionBy,
@@ -288,12 +288,10 @@ export class Table extends ActionBuilder<dataform.Table> {
 
   /**
    * Sets the configuration options for the creation of Apache Iceberg tables.
-   * @param tableName Table name. Used to construct the storage URI for the Iceberg table if no alternative value is provided.
    * @param icebergOptions Iceberg options provided in the iceberg {} subblock of the config file.
    * @param fileFormat File format provided in the config file.
    */
   public iceberg(
-    tableName: string,
     icebergOptions: dataform.ActionConfig.IIcebergTableConfig,
     fileFormat?: dataform.ActionConfig.TableConfig.FileFormat,
   ) {
@@ -305,11 +303,16 @@ export class Table extends ActionBuilder<dataform.Table> {
       icebergConfigKey: ICEBERG_CONNECTION_CONFIG_KEY,
       icebergConfigValue: getConnectionForIcebergTable(icebergOptions.connection),
     });
+
+    // Dataset and table name are used as defaults when constructing storage URI
+    const datasetName = this.proto.target.schema;
+    const tableName = this.proto.target.name;
+
     this.contextableIcebergOpts.push({
       icebergConfigKey: ICEBERG_STORAGE_URI_CONFIG_KEY,
       icebergConfigValue: getStorageUriForIcebergTable(
+        datasetName,
         tableName,
-        icebergOptions.storageUri,
         icebergOptions.bucketName,
         icebergOptions.tableFolderRoot,
         icebergOptions.tableFolderSubpath,
