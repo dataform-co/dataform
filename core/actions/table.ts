@@ -617,6 +617,13 @@ export class Table extends ActionBuilder<dataform.Table> {
           unverifiedConfig.columns as any
         );
       }
+      if (unverifiedConfig.fileFormat) {
+        if (unverifiedConfig.fileFormat.toUpperCase() !== "PARQUET") {
+          throw ReferenceError(
+            `Unexpected file format; only "PARQUET" is allowed, got "${unverifiedConfig.fileFormat}".`
+          );
+        }
+      }
       unverifiedConfig = LegacyConfigConverter.insertLegacyInlineAssertionsToConfigProto(
         unverifiedConfig
       );
