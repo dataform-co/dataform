@@ -8,6 +8,7 @@ import {
   exampleBuiltInAssertions,
   exampleBuiltInAssertionsAsYaml
 } from "df/core/actions/index_test";
+import {dataform} from "df/protos/ts";
 import { asPlainObject, suite, test } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
 import {
@@ -15,7 +16,6 @@ import {
   runMainInVm,
   VALID_WORKFLOW_SETTINGS_YAML
 } from "df/testing/run_core";
-import {dataform} from "df/protos/ts";
 
 suite("table", ({ afterEach }) => {
   const tmpDirFixture = new TmpDirFixture(afterEach);
