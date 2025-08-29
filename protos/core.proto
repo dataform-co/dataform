@@ -52,6 +52,16 @@ message Target {
   bool include_dependent_assertions = 4;
 }
 
+enum FileFormat {
+  UNKNOWN = 0;
+  PARQUET = 1;
+}
+
+enum TableFormat {
+  UNKNOWN = 0;
+  ICEBERG = 1;
+}
+
 message BigQueryOptions {
   string partition_by = 1;
   repeated string cluster_by = 2;
@@ -60,6 +70,10 @@ message BigQueryOptions {
   int32 partition_expiration_days = 5;
   bool require_partition_filter = 6;
   map<string, string> additional_options = 7;
+  string connection = 8;
+  TableFormat table_format = 9;
+  FileFormat file_format = 10;
+  string storage_uri = 11;
 }
 
 message GraphErrors {
