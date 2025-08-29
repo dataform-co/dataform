@@ -437,6 +437,18 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
         expected: {},
         expectError: "Unexpected file format; only \"PARQUET\" is allowed, got \"AVRO\".",
       },
+      {
+        testName: "bucketName not defined",
+        configBlock: `
+        fileFormat: "PARQUET",
+        iceberg: {
+            connection: "projects/gcp/locations/us/connections/conn-id",
+            tableFolderRoot: "my-root",
+            tableFolderSubpath: "my-subpath",
+        }`,
+        expected: {},
+        expectError: "Reference error: bucket_name must be defined in an iceberg subblock.",
+      },
     ];
 
     testCases.forEach((testCase, index) => {
