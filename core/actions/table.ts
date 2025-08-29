@@ -13,9 +13,9 @@ import { View } from "df/core/actions/view";
 import { ColumnDescriptors } from "df/core/column_descriptors";
 import {
   Contextable,
+  IIcebergConfigItem,
   ITableContext,
   Resolvable,
-  IIcebergConfigItem
 } from "df/core/contextables";
 import * as Path from "df/core/path";
 import { Session } from "df/core/session";
@@ -23,21 +23,21 @@ import {
   actionConfigToCompiledGraphTarget,
   checkAssertionsForDependency,
   checkExcessProperties,
+  getConnectionForIcebergTable,
+  getFileFormatValueForIcebergTable,
+  getStorageUriForIcebergTable,
+  ICEBERG_CONNECTION_CONFIG_KEY,
+  ICEBERG_FILE_FORMAT_CONFIG_KEY,
+  ICEBERG_STORAGE_URI_CONFIG_KEY,
   nativeRequire,
   resolvableAsActionConfigTarget,
   resolvableAsTarget,
   resolveActionsConfigFilename,
   strictKeysOf,
   toResolvable,
-  validateQueryString,
   validateConnectionFormat,
+  validateQueryString,
   validateStorageUriFormat,
-  getFileFormatValueForIcebergTable,
-  getConnectionForIcebergTable,
-  getStorageUriForIcebergTable,
-  ICEBERG_CONNECTION_CONFIG_KEY,
-  ICEBERG_FILE_FORMAT_CONFIG_KEY,
-  ICEBERG_STORAGE_URI_CONFIG_KEY,
 } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
@@ -98,7 +98,7 @@ export class Table extends ActionBuilder<dataform.Table> {
   private contextableWhere: Contextable<ITableContext, string>;
   private contextablePreOps: Array<Contextable<ITableContext, string | string[]>> = [];
   private contextablePostOps: Array<Contextable<ITableContext, string | string[]>> = [];
-  private contextableIcebergOpts: Array<IIcebergConfigItem> = [];
+  private contextableIcebergOpts: IIcebergConfigItem[] = [];
 
   /**
    * @hidden Stores the generated proto for the compiled graph.
