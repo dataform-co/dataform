@@ -183,7 +183,7 @@ export class Table extends ActionBuilder<dataform.Table> {
       this.postOps(config.postOperations);
     }
     if (config.iceberg) {
-      this.iceberg(config.iceberg, config.fileFormat);
+      this.iceberg(config.iceberg);
     }
     this.bigquery({
       partitionBy: config.partitionBy,
@@ -289,15 +289,13 @@ export class Table extends ActionBuilder<dataform.Table> {
   /**
    * Sets the configuration options for the creation of Apache Iceberg tables.
    * @param icebergOptions Iceberg options provided in the iceberg {} subblock of the config file.
-   * @param fileFormat File format provided in the config file.
    */
   public iceberg(
     icebergOptions: dataform.ActionConfig.IIcebergTableConfig,
-    fileFormat?: dataform.ActionConfig.TableConfig.FileFormat,
   ) {
     this.contextableIcebergOpts.push({
       icebergConfigKey: ICEBERG_FILE_FORMAT_CONFIG_KEY,
-      icebergConfigValue: getFileFormatValueForIcebergTable(fileFormat),
+      icebergConfigValue: getFileFormatValueForIcebergTable(icebergOptions.fileFormat),
     });
     this.contextableIcebergOpts.push({
       icebergConfigKey: ICEBERG_CONNECTION_CONFIG_KEY,
@@ -617,18 +615,22 @@ export class Table extends ActionBuilder<dataform.Table> {
           unverifiedConfig.columns as any
         );
       }
-      if (unverifiedConfig.fileFormat) {
-        if (unverifiedConfig.fileFormat.toUpperCase() !== "PARQUET") {
-          throw ReferenceError(
-            `Unexpected file format; only "PARQUET" is allowed, got "${unverifiedConfig.fileFormat}".`
+      if (unverifiedConfig.iceberg) {
+        if (
+          unverifiedConfig.iceberg.fileFormat &&
+          unverifiedConfig.iceberg.fileFormat.toUpperCase() !== 'PARQUET'
+        ) {
+          throw new ReferenceError(
+            `Unexpected file format; only "PARQUET" is allowed, got "${unverifiedConfig.iceberg.fileFormat}".`
+          );
+        }
+        if (!unverifiedConfig.iceberg.bucketName) {
+          throw new ReferenceError(
+            'Reference error: bucket_name must be defined in an iceberg subblock.'
           );
         }
       }
-      if (unverifiedConfig.iceberg && !unverifiedConfig.iceberg.bucketName) {
-        throw ReferenceError(
-          `Reference error: bucket_name must be defined in an iceberg subblock.`
-        );
-      }
+
       unverifiedConfig = LegacyConfigConverter.insertLegacyInlineAssertionsToConfigProto(
         unverifiedConfig
       );

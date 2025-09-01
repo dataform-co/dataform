@@ -284,8 +284,8 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
         configBlock: `
         name: "table1",
         dataset: "dataset1",
-        fileFormat: "PARQUET",
         iceberg: {
+            fileFormat: "PARQUET",
             connection: "projects/gcp/locations/us/connections/conn-id",
             bucketName: "my-bucket",
             tableFolderRoot: "my-root",
@@ -304,8 +304,8 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
         configBlock: `
         name: "table2",
         dataset: "dataset2",
-        fileFormat: "PARQUET",
         iceberg: {
+            fileFormat: "PARQUET",
             connection: "gcp.us.conn-id",
             bucketName: "my-bucket",
             tableFolderRoot: "my-root",
@@ -324,9 +324,9 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
         configBlock: `
         name: "table3",
         dataset: "dataset3",
-        fileFormat: "PARQUET",
         iceberg: {
-            connection: "gcp.us.conn-id",
+          fileFormat: "PARQUET",
+          connection: "gcp.us.conn-id",
             bucketName: "my-bucket",
             tableFolderSubpath: "my-subpath",
         }`,
@@ -343,8 +343,8 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
         configBlock: `
         name: "my-table",
         dataset: "my-dataset",
-        fileFormat: "PARQUET",
         iceberg: {
+            fileFormat: "PARQUET",
             connection: "gcp.us.conn-id",
             bucketName: "my-bucket",
             tableFolderRoot: "my-root",
@@ -361,8 +361,8 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
         testName: "defaults to dataset and name for tableFolderSubpath with dataset from workflow settings",
         configBlock: `
         name: "my-table",
-        fileFormat: "PARQUET",
         iceberg: {
+            fileFormat: "PARQUET",
             connection: "gcp.us.conn-id",
             bucketName: "my-bucket",
             tableFolderRoot: "my-root",
@@ -399,8 +399,8 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
         configBlock: `
         name: "table7",
         dataset: "dataset7",
-        fileFormat: "PARQUET",
         iceberg: {
+            fileFormat: "PARQUET",
             bucketName: "my-bucket",
             tableFolderRoot: "my-root",
             tableFolderSubpath: "my-subpath",
@@ -432,8 +432,8 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
         configBlock: `
         name: "table6",
         dataset: "dataset6",
-        fileFormat: "",
         iceberg: {
+            fileFormat: "",
             connection: "projects/gcp/locations/us/connections/conn-id",
             bucketName: "my-bucket",
             tableFolderRoot: "my-root",
@@ -450,8 +450,8 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
       {
         testName: "invalid file format",
         configBlock: `
-        fileFormat: "AVRO",
         iceberg: {
+            fileFormat: "AVRO",
             bucketName: "my-bucket",
         }`,
         expected: {},
@@ -460,8 +460,8 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
       {
         testName: "bucketName not defined",
         configBlock: `
-        fileFormat: "PARQUET",
         iceberg: {
+            fileFormat: "PARQUET",
             connection: "projects/gcp/locations/us/connections/conn-id",
             tableFolderRoot: "my-root",
             tableFolderSubpath: "my-subpath",
