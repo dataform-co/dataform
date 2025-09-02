@@ -26,7 +26,9 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
   // We delay contextification until the final compile step, so hold these here for now.
   public contextableQuery: Contextable<ITableContext, string>;
 
-  private proto = dataform.DataPreparation.create();
+  private proto = dataform.DataPreparation.create({
+    dynamicVars: [],
+  });
 
   constructor(
     session?: Session,
@@ -424,6 +426,11 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     }
     return columnName;
   }
+  public addInputDynamicVar(varName: string) {
+    if (!this.proto.dynamicVars.includes(varName)) {
+      this.proto.dynamicVars.push(varName);
+    }
+  }
 }
 
 export class DataPreparationContext implements ITableContext {
@@ -454,8 +461,9 @@ export class DataPreparationContext implements ITableContext {
     return this.resolve(ref);
   }
 
-  public param(paramName: string): string {
-    return ""
+  public dynamicVar(varName: string): string {
+    this.dataPreparation.addInputDynamicVar(varName);
+    return `\{${varName}\}`;
   }
 
   public resolve(ref: Resolvable | string[], ...rest: string[]) {

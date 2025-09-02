@@ -107,7 +107,7 @@ export class View extends ActionBuilder<dataform.Table> {
     enumType: dataform.TableType.VIEW,
     disabled: false,
     tags: [],
-    inputParams: [],
+    dynamicVars: [],
   });
 
   /** @hidden */
@@ -487,9 +487,9 @@ export class View extends ActionBuilder<dataform.Table> {
     return dataform.Target.create(this.proto.target);
   }
 
-  public addInputParam(paramName: string) {
-    if (!this.proto.inputParams.includes(paramName)) {
-      this.proto.inputParams.push(paramName);
+  public addInputDynamicVar(varName: string) {
+    if (!this.proto.dynamicVars.includes(varName)) {
+      this.proto.dynamicVars.push(varName);
     }
   }
 
@@ -657,9 +657,9 @@ export class ViewContext implements ITableContext {
     return this.resolve(ref);
   }
 
-  public param(paramName: string): string {
-    this.view.addInputParam(paramName);
-    return `\{${paramName}\}`;
+  public dynamicVar(varName: string): string {
+    this.view.addInputDynamicVar(varName);
+    return `\{${varName}\}`;
   }
 
   public resolve(ref: Resolvable | string[], ...rest: string[]) {
