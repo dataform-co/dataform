@@ -53,12 +53,12 @@ message Target {
 }
 
 enum FileFormat {
-  UNKNOWN = 0;
+  FILE_FORMAT_UNSPECIFIED = 0;
   PARQUET = 1;
 }
 
 enum TableFormat {
-  UNKNOWN = 0;
+  TABLE_FORMAT_UNSPECIFIED = 0;
   ICEBERG = 1;
 }
 
