@@ -306,14 +306,33 @@ export function validateStorageUriFormat(
 
 /**
  * Returns a file format for an Iceberg table, as specified in the user's config file.
+ * @param session Used to throw a compile error if fileFormat is not valid.
+ * @param filename Used to throw a compile error if fileFormat is not valid.
  * @param configFileFormat User-provided file format, if it exists.
  * @return File format used when creating an Iceberg table.
  */
 export function getFileFormatValueForIcebergTable(
-  configFileFormat?: dataform.ActionConfig.IcebergTableConfig.FileFormat,
+  session: Session,
+  filename: string,
+  configFileFormat?: string,
 ): dataform.FileFormat {
-  // Default to PARQUET until we introduce other file formats.
-  return dataform.FileFormat.PARQUET;
+  if (configFileFormat === undefined || configFileFormat === "") {
+    // Default to PARQUET if fileFormat is undefined.
+    return dataform.FileFormat.PARQUET;
+  }
+
+  switch (configFileFormat) {
+    case "PARQUET":
+      return dataform.FileFormat.PARQUET;
+
+    default:
+      session.compileError(
+        new Error(
+          `File format ${configFileFormat} is not supported.`,
+        ),
+        filename,
+      );
+  }
 }
 
 /**

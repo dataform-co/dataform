@@ -183,7 +183,7 @@ export class Table extends ActionBuilder<dataform.Table> {
       this.postOps(config.postOperations);
     }
     if (config.iceberg) {
-      this.iceberg(config.iceberg);
+      this.iceberg(session, config.filename, config.iceberg);
     }
     this.bigquery({
       partitionBy: config.partitionBy,
@@ -288,14 +288,22 @@ export class Table extends ActionBuilder<dataform.Table> {
 
   /**
    * Sets the configuration options for the creation of Apache Iceberg tables.
+   * @param session Used to throw a compile error.
+   * @param filename Used to throw a compile error.
    * @param icebergOptions Iceberg options provided in the iceberg {} subblock of the config file.
    */
   public iceberg(
+    session: Session,
+    filename: string,
     icebergOptions: dataform.ActionConfig.IIcebergTableConfig,
   ) {
     this.contextableIcebergOpts.push({
       icebergConfigKey: ICEBERG_FILE_FORMAT_CONFIG_KEY,
-      icebergConfigValue: getFileFormatValueForIcebergTable(icebergOptions.fileFormat),
+      icebergConfigValue: getFileFormatValueForIcebergTable(
+        session,
+        filename,
+        icebergOptions.fileFormat?.toString()
+      ),
     });
     this.contextableIcebergOpts.push({
       icebergConfigKey: ICEBERG_CONNECTION_CONFIG_KEY,
