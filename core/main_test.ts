@@ -52,7 +52,7 @@ suite("@dataform/core", ({ afterEach }) => {
   const tmpDirFixture = new TmpDirFixture(afterEach);
 
   suite("session", () => {
-    test("param resolved correctly", () => {
+    test("dynamic variable resolved correctly", () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
       fs.writeFileSync(
         path.join(projectDir, "workflow_settings.yaml"),
@@ -63,7 +63,7 @@ suite("@dataform/core", ({ afterEach }) => {
         path.join(projectDir, "definitions/view.sqlx"),
         `
 config { type: "view" }
-SELECT 1 AS col WHERE \${param("myvar")} == 1`
+SELECT 1 AS col WHERE \${dynamicVar("myvar")} == 1`
       );
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
@@ -81,7 +81,7 @@ SELECT 1 AS col WHERE \${param("myvar")} == 1`
           fileName: "definitions/view.sqlx",
           hermeticity: "NON_HERMETIC",
           query: "\n\nSELECT 1 AS col WHERE {myvar} == 1",
-          inputParams: ["myvar"],
+          dynamicVars: ["myvar"],
           target: {
             database: "defaultProject",
             name: "view",

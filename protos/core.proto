@@ -165,7 +165,7 @@ message Table {
   // Generated.
   string file_name = 18;
 
-  repeated string input_params = 38;
+  repeated string dynamic_vars = 38;
 
   reserved 1, 2, 7, 12, 16;
 }
@@ -188,7 +188,7 @@ message Operation {
   // Generated.
   string file_name = 7;
 
-  repeated string input_params = 15;
+  repeated string dynamic_vars = 15;
 
   reserved 1, 2, 4, 5;
 }
@@ -214,7 +214,7 @@ message Assertion {
   // Generated.
   string file_name = 7;
 
-  repeated string input_params = 16;
+  repeated string dynamic_vars = 16;
 
   reserved 1, 2, 4, 5, 6;
 }
@@ -231,7 +231,7 @@ message Declaration {
 
   ActionDescriptor action_descriptor = 3;
 
-  repeated string input_params = 6;
+  repeated string dynamic_vars = 6;
 
   // Generated.
   string file_name = 4;
@@ -243,7 +243,7 @@ message Test {
   string test_query = 2;
   string expected_output_query = 3;
 
-  repeated string input_params = 6;
+  repeated string dynamic_vars = 6;
 
   // Generated.
   string file_name = 4;
@@ -264,7 +264,7 @@ message Notebook {
 
   string notebook_contents = 7;
 
-  repeated string input_params = 8;
+  repeated string dynamic_vars = 8;
 }
 
 message NotebookRuntimeOptions {
@@ -310,7 +310,7 @@ message DataPreparation {
 
   LoadConfiguration load = 16;
 
-  repeated string input_params = 14;
+  repeated string dynamic_vars = 14;
 
   reserved 7, 10;
 }
@@ -352,7 +352,7 @@ message CompiledGraph {
 
   reserved 5, 6;
 
-  repeated string input_params = 14;
+  repeated string dynamic_vars = 14;
 }
 
 message CoreExecutionRequest {

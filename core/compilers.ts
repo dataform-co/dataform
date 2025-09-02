@@ -12,7 +12,7 @@ const CONTEXT_FUNCTIONS = [
   "incremental",
   "schema",
   "database",
-  "param",
+  "dynamicVar",
 ]
     .map(name => `const ${name} = ctx.${name} ? ctx.${name}.bind(ctx) : undefined;`)
     .join("\n");

@@ -68,7 +68,7 @@ export interface IActionContext {
    */
   database: () => string;
 
-  param: (paramName: string) => string;
+  dynamicVar: (varName: string) => string;
 }
 
 /**
