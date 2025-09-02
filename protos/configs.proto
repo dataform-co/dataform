@@ -113,6 +113,14 @@ message ActionConfig {
   }
 
   message IcebergTableConfig {
+    // Supported file formats for BigQuery tables.
+    enum FileFormat {
+      // Default value.
+      FILE_FORMAT_UNSPECIFIED = 0;
+      // Apache Parquet format.
+      PARQUET = 1;
+    }
+
     // The file format for the BigQuery table.
     FileFormat file_format = 1;
 
@@ -221,14 +229,6 @@ message ActionConfig {
     // the  action depends on data from a source which has not been declared as
     // a dependency.
     bool hermetic = 20;
-
-    // Supported file formats for BigQuery tables.
-    enum FileFormat {
-      // Default value.
-      FILE_FORMAT_UNSPECIFIED = 0;
-      // Apache Parquet format.
-      PARQUET = 1;
-    }
 
     // Configuration options for an Iceberg table.
     IcebergTableConfig iceberg = 22;

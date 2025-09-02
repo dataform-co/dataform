@@ -310,7 +310,7 @@ export function validateStorageUriFormat(
  * @return File format used when creating an Iceberg table.
  */
 export function getFileFormatValueForIcebergTable(
-  configFileFormat?: dataform.ActionConfig.TableConfig.FileFormat,
+  configFileFormat?: dataform.ActionConfig.IcebergTableConfig.FileFormat,
 ): dataform.FileFormat {
   // Default to PARQUET until we introduce other file formats.
   return dataform.FileFormat.PARQUET;
