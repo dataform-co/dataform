@@ -349,23 +349,25 @@ export function getConnectionForIcebergTable(connection?: string): string {
  * Constructs the storage URI for an Iceberg table from storageUri, bucketName,
  * tableFolderRoot, and tableFolderSubpath provided in the config file. Returns
  * undefined if a complete URI cannot be formed.
- * @param datasetName Might be used to construct the storage URI if no alternative value is provided.
- * @param tableName Might be used to construct the storage URI if no alternative value is provided.
- * @param bucketName User-provided Cloud Storage bucket name, if it exists.
- * @param tableFolderRoot User-provided table folder root, if it exists.
- * @param tableFolderSubpath User-provided table folder subpath, if it exists.
  * @returns Storage URI used when creating an Iceberg table.
  */
 export function getStorageUriForIcebergTable(
-  datasetName: string,
-  tableName: string,
-  bucketName?: string,
-  tableFolderRoot?: string,
-  tableFolderSubpath?: string,
+  bucketName: string,
+  tableFolderSubpath: string,
+  tableFolderRoot: string = "_dataform",
 ): string | undefined {
-  const effectiveTableFolderRoot = tableFolderRoot || '_dataform';
-  const effectiveTableFolderSubpath = tableFolderSubpath || `${datasetName}/${tableName}`;
-  return `gs://${bucketName}/${effectiveTableFolderRoot}/${effectiveTableFolderSubpath}`;
+  return `gs://${bucketName}/${tableFolderRoot}/${tableFolderSubpath}`;
+}
+
+/**
+ * Handles defaulting logic for the tableFolderSubpath variable used to construct
+ * storage URI for Iceberg tables.
+ * @param datasetName Might be used to construct the tableFolderSubpath if no alternative value is provided.
+ * @param tableName Might be used to construct the tableFolderSubpath if no alternative value is provided.
+ * @param tableFolderSubpath User-provided tableFolderSubpath, if it exists.
+ */
+export function getEffectiveTableFolderSubpath(datasetName: string, tableName: string, tableFolderSubpath?: string): string {
+  return tableFolderSubpath || `${datasetName}/${tableName}`;
 }
 
 export function tableTypeStringToEnum(type: string, throwIfUnknown: boolean) {

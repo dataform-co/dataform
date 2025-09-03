@@ -23,6 +23,7 @@ import {
   checkAssertionsForDependency,
   checkExcessProperties,
   getConnectionForIcebergTable,
+  getEffectiveTableFolderSubpath,
   getFileFormatValueForIcebergTable,
   getStorageUriForIcebergTable,
   nativeRequire,
@@ -299,11 +300,9 @@ export class Table extends ActionBuilder<dataform.Table> {
     this.proto.bigquery.fileFormat = getFileFormatValueForIcebergTable(session, filename, icebergOptions?.fileFormat?.toString());
     this.proto.bigquery.connection = getConnectionForIcebergTable(icebergOptions.connection);
     this.proto.bigquery.storageUri = getStorageUriForIcebergTable(
-      this.proto.target.schema,
-      this.proto.target.name,
-        icebergOptions.bucketName,
-        icebergOptions.tableFolderRoot,
-        icebergOptions.tableFolderSubpath,
+      icebergOptions.bucketName,
+      getEffectiveTableFolderSubpath(this.proto.target.schema, this.proto.target.name, icebergOptions.tableFolderSubpath),
+      icebergOptions.tableFolderRoot,
     );
   }
 
