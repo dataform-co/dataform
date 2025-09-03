@@ -496,18 +496,3 @@ export function checkAssertionsForDependency(
   );
   return dependencyTarget;
 }
-
-/**
- * Configuration key used to identify the connection when creating an Iceberg table.
- */
-export const ICEBERG_CONNECTION_CONFIG_KEY = "iceberg-connection-config-key";
-
-/**
- * Configuration key used to identify the storage URI when creating an Iceberg table.
- */
-export const ICEBERG_STORAGE_URI_CONFIG_KEY = "iceberg-storage-uri-config-key";
-
-/**
- * Configuration key used to identify the file format when creating an Iceberg table.
- */
-export const ICEBERG_FILE_FORMAT_CONFIG_KEY = "iceberg-file-format-config-key";

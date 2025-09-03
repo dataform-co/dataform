@@ -13,7 +13,6 @@ import { View } from "df/core/actions/view";
 import { ColumnDescriptors } from "df/core/column_descriptors";
 import {
   Contextable,
-  IIcebergConfigItem,
   ITableContext,
   Resolvable,
 } from "df/core/contextables";
@@ -26,9 +25,6 @@ import {
   getConnectionForIcebergTable,
   getFileFormatValueForIcebergTable,
   getStorageUriForIcebergTable,
-  ICEBERG_CONNECTION_CONFIG_KEY,
-  ICEBERG_FILE_FORMAT_CONFIG_KEY,
-  ICEBERG_STORAGE_URI_CONFIG_KEY,
   nativeRequire,
   resolvableAsActionConfigTarget,
   resolvableAsTarget,
@@ -98,7 +94,6 @@ export class Table extends ActionBuilder<dataform.Table> {
   private contextableWhere: Contextable<ITableContext, string>;
   private contextablePreOps: Array<Contextable<ITableContext, string | string[]>> = [];
   private contextablePostOps: Array<Contextable<ITableContext, string | string[]>> = [];
-  private contextableIcebergOpts: IIcebergConfigItem[] = [];
 
   /**
    * @hidden Stores the generated proto for the compiled graph.
@@ -182,9 +177,6 @@ export class Table extends ActionBuilder<dataform.Table> {
     if (config.postOperations) {
       this.postOps(config.postOperations);
     }
-    if (config.iceberg) {
-      this.iceberg(session, config.filename, config.iceberg);
-    }
     this.bigquery({
       partitionBy: config.partitionBy,
       clusterBy: config.clusterBy,
@@ -193,6 +185,9 @@ export class Table extends ActionBuilder<dataform.Table> {
       requirePartitionFilter: config.requirePartitionFilter,
       additionalOptions: config.additionalOptions
     });
+    if (config.iceberg) {
+      this.iceberg(session, config.filename, config.iceberg);
+    }
 
     return this;
   }
@@ -297,33 +292,19 @@ export class Table extends ActionBuilder<dataform.Table> {
     filename: string,
     icebergOptions: dataform.ActionConfig.IIcebergTableConfig,
   ) {
-    this.contextableIcebergOpts.push({
-      icebergConfigKey: ICEBERG_FILE_FORMAT_CONFIG_KEY,
-      icebergConfigValue: getFileFormatValueForIcebergTable(
-        session,
-        filename,
-        icebergOptions.fileFormat?.toString()
-      ),
-    });
-    this.contextableIcebergOpts.push({
-      icebergConfigKey: ICEBERG_CONNECTION_CONFIG_KEY,
-      icebergConfigValue: getConnectionForIcebergTable(icebergOptions.connection),
-    });
-
-    // Dataset and table name are used as defaults when constructing storage URI
-    const datasetName = this.proto.target.schema;
-    const tableName = this.proto.target.name;
-
-    this.contextableIcebergOpts.push({
-      icebergConfigKey: ICEBERG_STORAGE_URI_CONFIG_KEY,
-      icebergConfigValue: getStorageUriForIcebergTable(
-        datasetName,
-        tableName,
+    if (!this.proto.bigquery) {
+      this.proto.bigquery = dataform.BigQueryOptions.create();
+    }
+    this.proto.bigquery.tableFormat = dataform.TableFormat.ICEBERG;
+    this.proto.bigquery.fileFormat = getFileFormatValueForIcebergTable(session, filename, icebergOptions?.fileFormat?.toString());
+    this.proto.bigquery.connection = getConnectionForIcebergTable(icebergOptions.connection);
+    this.proto.bigquery.storageUri = getStorageUriForIcebergTable(
+      this.proto.target.schema,
+      this.proto.target.name,
         icebergOptions.bucketName,
         icebergOptions.tableFolderRoot,
         icebergOptions.tableFolderSubpath,
-      ),
-    });
+    );
   }
 
   /**
@@ -531,22 +512,6 @@ export class Table extends ActionBuilder<dataform.Table> {
       this.proto.where = context.apply(this.contextableWhere);
     }
 
-    if (this.contextableIcebergOpts && this.contextableIcebergOpts.length > 0) {
-      if (!this.proto.bigquery) {
-        this.proto.bigquery = dataform.BigQueryOptions.create({});
-      }
-      this.proto.bigquery.tableFormat = dataform.TableFormat.ICEBERG;
-      this.proto.bigquery.fileFormat = this.contextableIcebergOpts.find(
-        (item) => item.icebergConfigKey === ICEBERG_FILE_FORMAT_CONFIG_KEY,
-      ).icebergConfigValue;
-      this.proto.bigquery.connection = this.contextableIcebergOpts.find(
-        (item) => item.icebergConfigKey === ICEBERG_CONNECTION_CONFIG_KEY,
-      ).icebergConfigValue;
-      this.proto.bigquery.storageUri = this.contextableIcebergOpts.find(
-        (item) => item.icebergConfigKey === ICEBERG_STORAGE_URI_CONFIG_KEY,
-      ).icebergConfigValue;
-    }
-
     this.proto.preOps = this.contextifyOps(this.contextablePreOps, context).filter(
       op => !!op.trim()
     );
@@ -556,8 +521,12 @@ export class Table extends ActionBuilder<dataform.Table> {
 
     validateQueryString(this.session, this.proto.query, this.proto.fileName);
     validateQueryString(this.session, this.proto.incrementalQuery, this.proto.fileName);
-    if (this.contextableIcebergOpts && this.contextableIcebergOpts.length > 0) {
+
+    if (this.proto.bigquery?.connection) {
       validateConnectionFormat(this.session, this.proto.bigquery.connection, this.proto.fileName);
+    }
+
+    if (this.proto.bigquery?.storageUri) {
       validateStorageUriFormat(this.session, this.proto.bigquery.storageUri, this.proto.fileName);
     }
 
