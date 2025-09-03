@@ -1,5 +1,7 @@
-import {validateConnectionFormat, validateStorageUriFormat} from './utils';
+import {validateConnectionFormat, validateStorageUriFormat, getConnectionForIcebergTable, getEffectiveTableFolderSubpath, getFileFormatValueForIcebergTable, getStorageUriForIcebergTable} from './utils';
 import { suite, test } from 'df/testing';
+import {expect} from "chai";
+import {dataform} from "df/protos/ts";
 
 /**
  * Executes a function and returns the Error if one is thrown, otherwise returns undefined.
@@ -87,8 +89,6 @@ suite('Dataform Utility Validations', () => {
   });
 
   suite('validateStorageUriFormat', () => {
-    const expectedStorageError = new Error(STORAGE_ERROR_MSG);
-
     test('does not throw for a valid gs:// URI', () => {
       assertNoThrow(() => validateStorageUriFormat('gs://my-bucket/path/to/data'));
     });
@@ -115,6 +115,82 @@ suite('Dataform Utility Validations', () => {
 
     test('throws for an empty storage URI string', () => {
       assertThrowsWithMessage(() => validateStorageUriFormat(''), STORAGE_ERROR_MSG);
+    });
+  });
+
+  suite('getConnectionForIcebergTable', () => {
+    test('returns the provided connection string if it exists', () => {
+      expect(getConnectionForIcebergTable('my-custom-conn')).to.equal('my-custom-conn');
+    });
+
+    test('returns "DEFAULT" when the connection is undefined', () => {
+      expect(getConnectionForIcebergTable(undefined)).to.equal('DEFAULT');
+    });
+
+    test('returns "DEFAULT" when the connection is an empty string', () => {
+      expect(getConnectionForIcebergTable('')).to.equal('DEFAULT');
+    });
+  });
+
+  suite('getEffectiveTableFolderSubpath', () => {
+    const testDataset = 'my_dataset';
+    const testTable = 'my_table';
+
+    test('returns the provided tableFolderSubpath when it exists', () => {
+      expect(getEffectiveTableFolderSubpath(testDataset, testTable, 'custom/sub/path')).to.equal('custom/sub/path');
+    });
+
+    test('constructs a path from dataset and table when tableFolderSubpath is undefined', () => {
+      expect(getEffectiveTableFolderSubpath(testDataset, testTable, undefined)).to.equal('my_dataset/my_table');
+    });
+
+    test('constructs a path from dataset and table when tableFolderSubpath is an empty string', () => {
+      expect(getEffectiveTableFolderSubpath(testDataset, testTable, '')).to.equal('my_dataset/my_table');
+    });
+  });
+
+  suite('getFileFormatValueForIcebergTable', () => {
+    test('returns PARQUET when configFileFormat is undefined', () => {
+      expect(getFileFormatValueForIcebergTable(undefined)).to.equal(dataform.FileFormat.PARQUET);
+    });
+
+    test('returns PARQUET when configFileFormat is "PARQUET"', () => {
+      expect(getFileFormatValueForIcebergTable('PARQUET')).to.equal(dataform.FileFormat.PARQUET);
+    });
+
+    test('returns PARQUET when fileFormat is an empty string', () => {
+      expect(getFileFormatValueForIcebergTable('')).to.equal(dataform.FileFormat.PARQUET);
+    });
+
+    test('throws an error for an unsupported file format string', () => {
+      assertThrowsWithMessage(
+        () => getFileFormatValueForIcebergTable('CSV'),
+        'File format CSV is not supported.'
+      );
+    });
+
+
+  });
+
+  suite('getStorageUriForIcebergTable', () => {
+    const testBucket = 'my-iceberg-bucket';
+    const testSubpath = 'data/v1';
+    const customRoot = '_my_custom_root';
+
+    test('constructs the URI with a provided tableFolderRoot', () => {
+      expect(getStorageUriForIcebergTable(testBucket, testSubpath, customRoot)).to.equal('gs://my-iceberg-bucket/_my_custom_root/data/v1');
+    });
+
+    test('constructs the URI with the default tableFolderRoot when omitted', () => {
+      expect(getStorageUriForIcebergTable(testBucket, testSubpath)).to.equal('gs://my-iceberg-bucket/_dataform/data/v1');
+    });
+
+    test('handles empty bucket name, resulting in an invalid but formed URI', () => {
+      expect(getStorageUriForIcebergTable('', testSubpath)).to.equal('gs:///_dataform/data/v1');
+    });
+
+    test('handles empty tableFolderSubpath', () => {
+      expect(getStorageUriForIcebergTable(testBucket, '')).to.equal('gs://my-iceberg-bucket/_dataform/');
     });
   });
 });

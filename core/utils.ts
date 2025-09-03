@@ -1,3 +1,4 @@
+import {table} from "console";
 import { Action, ActionProto } from "df/core/actions";
 import { Assertion } from "df/core/actions/assertion";
 import { DataPreparation } from "df/core/actions/data_preparation";
@@ -334,7 +335,7 @@ export function getStorageUriForIcebergTable(
   bucketName: string,
   tableFolderSubpath: string,
   tableFolderRoot: string = "_dataform",
-): string | undefined {
+): string {
   return `gs://${bucketName}/${tableFolderRoot}/${tableFolderSubpath}`;
 }
 
@@ -346,7 +347,7 @@ export function getStorageUriForIcebergTable(
  * @param tableFolderSubpath User-provided tableFolderSubpath, if it exists.
  */
 export function getEffectiveTableFolderSubpath(datasetName: string, tableName: string, tableFolderSubpath?: string): string {
-  return tableFolderSubpath || `${datasetName}/${tableName}`;
+  return tableFolderSubpath ? tableFolderSubpath : `${datasetName}/${tableName}`;
 }
 
 export function tableTypeStringToEnum(type: string, throwIfUnknown: boolean) {
