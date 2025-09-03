@@ -293,9 +293,12 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
         }`,
         expected: {
           target: {name: "table1", schema: "dataset1", database: "project"},
-          fileFormat: dataform.FileFormat.PARQUET,
+          bigquery: {
+            tableFormat: "ICEBERG",
+            fileFormat: "PARQUET",
           connection: "projects/gcp/locations/us/connections/conn-id",
           storageUri: "gs://my-bucket/my-root/my-subpath",
+        },
         },
         expectError: false,
       },
@@ -313,14 +316,17 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
         }`,
         expected: {
           target: {name: "table2", schema: "dataset2", database: "project"},
-          fileFormat: dataform.FileFormat.PARQUET,
+          bigquery: {
+            tableFormat: "ICEBERG",
+            fileFormat: "PARQUET",
           connection: "gcp.us.conn-id",
           storageUri: "gs://my-bucket/my-root/my-subpath",
+        },
         },
         expectError: false,
       },
       {
-        testName: "defaults to `_dataform` for tableFolderRoot",
+        testName: "defaults to \`_dataform\` for tableFolderRoot",
         configBlock: `
         name: "table3",
         dataset: "dataset3",
@@ -332,9 +338,12 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
         }`,
         expected: {
           target: {name: "table3", schema: "dataset3", database: "project"},
-          fileFormat: dataform.FileFormat.PARQUET,
+          bigquery: {
+            tableFormat: "ICEBERG",
+            fileFormat: "PARQUET",
           connection: "gcp.us.conn-id",
           storageUri: "gs://my-bucket/_dataform/my-subpath",
+        },
         },
         expectError: false,
       },
@@ -351,9 +360,12 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
         }`,
         expected: {
           target: {name: "my-table", schema: "my-dataset", database: "project"},
-          fileFormat: dataform.FileFormat.PARQUET,
+          bigquery: {
+            tableFormat: "ICEBERG",
+            fileFormat: "PARQUET",
           connection: "gcp.us.conn-id",
           storageUri: "gs://my-bucket/my-root/my-dataset/my-table",
+        },
         },
         expectError: false,
       },
@@ -369,9 +381,12 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
         }`,
         expected: {
           target: {name: "my-table", schema: "defaultDataset", database: "project"},
-          fileFormat: dataform.FileFormat.PARQUET,
+          bigquery: {
+            tableFormat: "ICEBERG",
+            fileFormat: "PARQUET",
           connection: "gcp.us.conn-id",
           storageUri: "gs://my-bucket/my-root/defaultDataset/my-table",
+        },
         },
         expectError: false,
       },
@@ -388,9 +403,12 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
         }`,
         expected: {
           target: {name: "table6", schema: "dataset6", database: "project"},
-          fileFormat: dataform.FileFormat.PARQUET,
+          bigquery: {
+            tableFormat: "ICEBERG",
+            fileFormat: "PARQUET",
           connection: "projects/gcp/locations/us/connections/conn-id",
           storageUri: "gs://my-bucket/my-root/my-subpath",
+        },
         },
         expectError: false,
       },
@@ -407,25 +425,14 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
         }`,
         expected: {
           target: {name: "table7", schema: "dataset7", database: "project"},
-          fileFormat: dataform.FileFormat.PARQUET,
+          bigquery: {
+            tableFormat: "ICEBERG",
+            fileFormat: "PARQUET",
           connection: "DEFAULT",
           storageUri: "gs://my-bucket/my-root/my-subpath",
         },
+        },
         expectError: false,
-      },
-      {
-        testName: "invalid connection format",
-        configBlock: `
-        name: "table8",
-        dataset: "dataset8",
-        iceberg: {
-            connection: "invalid",
-            bucketName: "my-bucket",
-            tableFolderRoot: "my-root",
-            tableFolderSubpath: "my-subpath",
-        }`,
-        expected: {},
-        expectError: "The connection must be in the format `{project}.{location}.{connection_id}` or `projects/{project}/locations/{location}/connections/{connection_id}`, or be set to `DEFAULT`.",
       },
       {
         testName: "defaults to PARQUET when file format is empty",
@@ -441,11 +448,27 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
         }`,
         expected: {
           target: {name: "table6", schema: "dataset6", database: "project"},
-          fileFormat: dataform.FileFormat.PARQUET,
+          bigquery: {
+            tableFormat: "ICEBERG",
+            fileFormat: "PARQUET",
           connection: "projects/gcp/locations/us/connections/conn-id",
           storageUri: "gs://my-bucket/my-root/my-subpath",
         },
+        },
         expectError: false,
+      },
+      {
+        testName: "invalid connection format",
+        configBlock: `
+        name: "table8",
+        dataset: "dataset8",
+        iceberg: {
+            connection: "invalid",
+            bucketName: "my-bucket",
+            tableFolderRoot: "my-root",
+            tableFolderSubpath: "my-subpath",
+        }`,
+        expectError: "The connection must be in the format `{project}.{location}.{connection_id}` or `projects/{project}/locations/{location}/connections/{connection_id}`, or be set to `DEFAULT`.",
       },
       {
         testName: "invalid file format",
@@ -454,7 +477,6 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
             fileFormat: "AVRO",
             bucketName: "my-bucket",
         }`,
-        expected: {},
         expectError: "Unexpected file format; only \"PARQUET\" is allowed, got \"AVRO\".",
       },
       {
@@ -466,18 +488,50 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
             tableFolderRoot: "my-root",
             tableFolderSubpath: "my-subpath",
         }`,
-        expected: {},
         expectError: "Reference error: bucket_name must be defined in an iceberg subblock.",
+      },
+      {
+        testName: "with Iceberg options and other BigQuery options",
+        configBlock: `
+        name: "iceberg_mixed",
+        dataset: "mixed_dataset",
+        iceberg: {
+            fileFormat: "PARQUET",
+            connection: "gcp.us.conn-id",
+            bucketName: "my-bucket",
+            tableFolderRoot: "my-root",
+            tableFolderSubpath: "my-subpath",
+        },
+        bigquery: {
+            partitionBy: "partition_col",
+            clusterBy: ["cluster_col1", "cluster_col2"],
+            labels: {"env": "test", "type": "iceberg"},
+            additionalOptions: { "key1": "val1", "key2": "val2" }
+        }`,
+        expected: {
+          target: {name: "iceberg_mixed", schema: "mixed_dataset", database: "project"},
+          bigquery: {
+            tableFormat: "ICEBERG",
+            fileFormat: "PARQUET",
+            connection: "gcp.us.conn-id",
+            storageUri: "gs://my-bucket/my-root/my-subpath",
+            partitionBy: "partition_col",
+            clusterBy: ["cluster_col1", "cluster_col2"],
+            labels: {"env": "test", "type": "iceberg"},
+            additionalOptions: {"key1": "val1", "key2": "val2"},
+          },
+        },
+        expectError: false,
       },
     ];
 
     testCases.forEach((testCase, index) => {
       const fileName = `iceberg_test_${index}`;
       const tableConfig = `{
-          type: "table",
-          database: "project",
-          ${testCase.configBlock}
-      }`;
+        type: "table",
+        database: "project",
+        ${testCase.configBlock}
+    }`;
 
       const paramsToTest = [
         {
@@ -486,8 +540,6 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
         },
         {
           filename: `${fileName}.js`,
-          // The first argument to publish is a fallback name if not specified in the config.
-          // Since name is always specified in configBlock, this first argument doesn't affect the final target name.
           fileContents: `publish("${fileName}", ${tableConfig}).query(ctx => "SELECT 1")`,
         },
       ];
@@ -507,13 +559,14 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
           } else {
             expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
             const compiledTable = result.compile.compiledGraph.tables[0];
-            expect(compiledTable.target.name).equals(testCase.expected.target.name);
-            expect(compiledTable.target.schema).equals(testCase.expected.target.schema);
-            expect(compiledTable.target.database).equals(testCase.expected.target.database);
-            expect(compiledTable.bigquery.tableFormat).equals(dataform.TableFormat.ICEBERG);
-            expect(compiledTable.bigquery.fileFormat).equals(testCase.expected.fileFormat);
-            expect(compiledTable.bigquery.connection).equals(testCase.expected.connection);
-            expect(compiledTable.bigquery.storageUri).equals(testCase.expected.storageUri);
+            expect(compiledTable.target.name).equals(testCase.expected!.target.name);
+            expect(compiledTable.target.schema).equals(testCase.expected!.target.schema);
+            expect(compiledTable.target.database).equals(testCase.expected!.target.database);
+
+            // Compare the entire bigquery object
+            expect(asPlainObject(compiledTable.bigquery)).deep.equals(
+              asPlainObject(testCase.expected!.bigquery)
+            );
           }
         });
       });
