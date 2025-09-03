@@ -187,7 +187,7 @@ export class Table extends ActionBuilder<dataform.Table> {
       additionalOptions: config.additionalOptions
     });
     if (config.iceberg) {
-      this.iceberg(session, config.filename, config.iceberg);
+      this.iceberg(config.iceberg);
     }
 
     return this;
@@ -284,20 +284,16 @@ export class Table extends ActionBuilder<dataform.Table> {
 
   /**
    * Sets the configuration options for the creation of Apache Iceberg tables.
-   * @param session Used to throw a compile error.
-   * @param filename Used to throw a compile error.
    * @param icebergOptions Iceberg options provided in the iceberg {} subblock of the config file.
    */
   public iceberg(
-    session: Session,
-    filename: string,
     icebergOptions: dataform.ActionConfig.IIcebergTableConfig,
   ) {
     if (!this.proto.bigquery) {
       this.proto.bigquery = dataform.BigQueryOptions.create();
     }
     this.proto.bigquery.tableFormat = dataform.TableFormat.ICEBERG;
-    this.proto.bigquery.fileFormat = getFileFormatValueForIcebergTable(session, filename, icebergOptions?.fileFormat?.toString());
+    this.proto.bigquery.fileFormat = getFileFormatValueForIcebergTable(icebergOptions?.fileFormat?.toString());
     this.proto.bigquery.connection = getConnectionForIcebergTable(icebergOptions.connection);
     this.proto.bigquery.storageUri = getStorageUriForIcebergTable(
       icebergOptions.bucketName,
@@ -522,11 +518,11 @@ export class Table extends ActionBuilder<dataform.Table> {
     validateQueryString(this.session, this.proto.incrementalQuery, this.proto.fileName);
 
     if (this.proto.bigquery?.connection) {
-      validateConnectionFormat(this.session, this.proto.bigquery.connection, this.proto.fileName);
+      validateConnectionFormat(this.proto.bigquery.connection);
     }
 
     if (this.proto.bigquery?.storageUri) {
-      validateStorageUriFormat(this.session, this.proto.bigquery.storageUri, this.proto.fileName);
+      validateStorageUriFormat(this.proto.bigquery.storageUri);
     }
 
     return verifyObjectMatchesProto(

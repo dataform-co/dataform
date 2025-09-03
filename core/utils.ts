@@ -247,14 +247,10 @@ export function validateQueryString(session: Session, query: string, filename: s
 
 /**
  * Checks if the Cloud Resource connection has a valid format.
- * @param session Used to throw a compile error if connection is not valid.
  * @param connection String to be validated.
- * @param filename Used to throw a compile error if connection is not valid.
  */
 export function validateConnectionFormat(
-  session: Session,
   connection: string,
-  filename: string,
 ) {
   // Connection pattern of the form project.location.connection_id. Example:
   // my-project.us-central1.my-connection
@@ -270,11 +266,8 @@ export function validateConnectionFormat(
     dotPattern.test(connection) || resourcePattern.test(connection);
 
   if (connection !== 'DEFAULT' && !isValidFormat) {
-    session.compileError(
-      new Error(
-        'The connection must be in the format `{project}.{location}.{connection_id}` or `projects/{project}/locations/{location}/connections/{connection_id}`, or be set to `DEFAULT`.',
-      ),
-      filename,
+    throw new Error(
+      'The connection must be in the format `{project}.{location}.{connection_id}` or `projects/{project}/locations/{location}/connections/{connection_id}`, or be set to `DEFAULT`.',
     );
   }
 
@@ -282,41 +275,30 @@ export function validateConnectionFormat(
 
 /**
  * Checks if the storageUri is a valid GCS path.
- * @param session Used to throw a compile error if storageUri is not valid.
  * @param storageUri String to be validated.
- * @param filename Used to throw a compile error if storageUri is not valid.
  */
 export function validateStorageUriFormat(
-  session: Session,
   storageUri: string,
-  filename: string,
 ) {
   // storageUri must have format gs://<bucket_name>/<path_to_data>
   const gcsPathPattern = /^gs:\/\/([^/]+)\/(.+)$/;
 
   if (!gcsPathPattern.test(storageUri)) {
-    session.compileError(
-      new Error(
-        'The storage URI must be in the format `gs://{bucket_name}/{path_to_data}`.',
-      ),
-      filename,
+    throw new Error(
+      'The storage URI must be in the format `gs://{bucket_name}/{path_to_data}`.',
     );
   }
 }
 
 /**
  * Returns a file format for an Iceberg table, as specified in the user's config file.
- * @param session Used to throw a compile error if fileFormat is not valid.
- * @param filename Used to throw a compile error if fileFormat is not valid.
  * @param configFileFormat User-provided file format, if it exists.
  * @return File format used when creating an Iceberg table.
  */
 export function getFileFormatValueForIcebergTable(
-  session: Session,
-  filename: string,
   configFileFormat?: string,
 ): dataform.FileFormat {
-  if (configFileFormat === undefined || configFileFormat === "") {
+  if (!configFileFormat) {
     // Default to PARQUET if fileFormat is undefined.
     return dataform.FileFormat.PARQUET;
   }
@@ -326,11 +308,8 @@ export function getFileFormatValueForIcebergTable(
       return dataform.FileFormat.PARQUET;
 
     default:
-      session.compileError(
-        new Error(
-          `File format ${configFileFormat} is not supported.`,
-        ),
-        filename,
+      throw new Error(
+        `File format ${configFileFormat} is not supported.`,
       );
   }
 }

@@ -1,169 +1,120 @@
-import { validateConnectionFormat, validateStorageUriFormat } from './utils';
-
-import { Session } from 'df/core/session';
+import {validateConnectionFormat, validateStorageUriFormat} from './utils';
 import { suite, test } from 'df/testing';
 
-// Manual Mock for Session to track calls to compileError
-class MockSession {
-  private readonly compileErrorCalls: Array<{ error: Error; filename: string }> = [];
-
-  public getCompileErrorCalls(): ReadonlyArray<{ error: Error; filename: string }> {
-    return this.compileErrorCalls;
-  }
-
-  public reset() {
-    this.compileErrorCalls.length = 0;
-  }
-
-  private compileError(error: Error, filename: string) {
-    this.compileErrorCalls.push({ error, filename });
-  }
-}
-
-// Helper assertion function for compileErrors
-function assertCompileErrorNotCalled(mock: MockSession) {
-  if (mock.getCompileErrorCalls().length > 0) {
-    throw new Error(`Expected compileError not to be called, but it was. Calls: ${JSON.stringify(mock.getCompileErrorCalls())}`);
+/**
+ * Executes a function and returns the Error if one is thrown, otherwise returns undefined.
+ * Assumes all caught values are Error instances.
+ */
+function getThrownError(fn: () => void): Error | undefined {
+  try {
+    fn();
+    return undefined;
+  } catch (e) {
+    // All thrown values should be instances of Error.
+    if (e instanceof Error) {
+      return e;
+    }
+    // Fallback for unexpected non-Error throws.
+    return new Error(`Caught non-Error: ${e}`);
   }
 }
 
-// Helper assertion function for compileErrors
-function assertCompileErrorCalledWith(mock: MockSession, expectedError: Error, expectedFilename: string) {
-  const calls = mock.getCompileErrorCalls();
-  if (calls.length === 0) {
-    throw new Error(`Expected compileError to be called, but it was not.`);
-  }
-  const lastCall = calls[calls.length - 1];
-  if (lastCall.error.message !== expectedError.message || lastCall.filename !== expectedFilename) {
-    throw new Error(`Expected compileError to be called with message "${expectedError.message}" and filename "${expectedFilename}", but got message "${lastCall.error.message}" and filename "${lastCall.filename}"`);
+/**
+ * Asserts that the provided function does NOT throw any error.
+ */
+function assertNoThrow(testFn: () => void) {
+  const error = getThrownError(testFn);
+  if (error) {
+    throw new Error(`Expected no error to be thrown, but caught: "${error.message}"`);
   }
 }
 
-// Helper assertion function for compileErrors
-function assertCompileErrorCalledTimes(mock: MockSession, expectedCount: number) {
-  const calls = mock.getCompileErrorCalls();
-  if (calls.length !== expectedCount) {
-    throw new Error(`Expected compileError to be called ${expectedCount} times, but was called ${calls.length} times.`);
+/**
+ * Asserts that the provided function throws an error with a specific message.
+ */
+function assertThrowsWithMessage(testFn: () => void, expectedMessage: string) {
+  const error = getThrownError(testFn);
+  if (!error) {
+    throw new Error(`Expected an error to be thrown with message "${expectedMessage}", but no error was caught.`);
+  }
+  if (error.message !== expectedMessage) {
+    throw new Error(`Expected error message "${expectedMessage}", but got "${error.message}"`);
   }
 }
 
 suite('Dataform Utility Validations', () => {
-  const TEST_FILENAME = 'test_config.yaml';
-  let mockSession: MockSession;
-
-  function setup() {
-    mockSession = new MockSession();
-  }
+  const CONNECTION_ERROR_MSG = 'The connection must be in the format `{project}.{location}.{connection_id}` or `projects/{project}/locations/{location}/connections/{connection_id}`, or be set to `DEFAULT`.';
+  const STORAGE_ERROR_MSG = 'The storage URI must be in the format `gs://{bucket_name}/{path_to_data}`.';
 
   suite('validateConnectionFormat', () => {
-    test('does not call compileError for the "DEFAULT" connection', () => {
-      setup();
-      validateConnectionFormat(mockSession as unknown as Session, 'DEFAULT', TEST_FILENAME);
-      assertCompileErrorNotCalled(mockSession);
+    test('does not throw for the "DEFAULT" connection', () => {
+      assertNoThrow(() => validateConnectionFormat('DEFAULT'));
     });
 
-    test('does not call compileError for a valid dot-separated connection format', () => {
-      setup();
-      validateConnectionFormat(mockSession as unknown as Session, 'my-project.us-central1.my-connection', TEST_FILENAME);
-      assertCompileErrorNotCalled(mockSession);
-      mockSession.reset();
-      validateConnectionFormat(mockSession as unknown as Session, 'gcp-proj-123.europe-west4.dataform-conn_id', TEST_FILENAME);
-      assertCompileErrorNotCalled(mockSession);
+    test('does not throw for a valid dot-separated connection format', () => {
+      assertNoThrow(() => validateConnectionFormat('my-project.us-central1.my-connection'));
+      assertNoThrow(() => validateConnectionFormat('gcp-proj-123.europe-west4.dataform-conn_id'));
     });
 
-    test('does not call compileError for a valid resource-formatted connection format', () => {
-      setup();
-      validateConnectionFormat(mockSession as unknown as Session, 'projects/my-project/locations/us-central1/connections/my-connection', TEST_FILENAME);
-      assertCompileErrorNotCalled(mockSession);
-      mockSession.reset();
-      validateConnectionFormat(mockSession as unknown as Session, 'projects/gcp-proj-123/locations/europe-west4/connections/dataform-conn_id', TEST_FILENAME);
-      assertCompileErrorNotCalled(mockSession);
+    test('does not throw for a valid resource-formatted connection format', () => {
+      assertNoThrow(() => validateConnectionFormat('projects/my-project/locations/us-central1/connections/my-connection'));
+      assertNoThrow(() => validateConnectionFormat('projects/gcp-proj-123/locations/europe-west4/connections/dataform-conn_id'));
     });
 
-    test('calls compileError for an empty connection string', () => {
-      setup();
-      validateConnectionFormat(mockSession as unknown as Session, '', TEST_FILENAME);
-      assertCompileErrorCalledWith(
-        mockSession,
-        new Error('The connection must be in the format `{project}.{location}.{connection_id}` or `projects/{project}/locations/{location}/connections/{connection_id}`, or be set to `DEFAULT`.'),
-        TEST_FILENAME
-      );
+    test('throws for an empty connection string', () => {
+      assertThrowsWithMessage(() => validateConnectionFormat(''), CONNECTION_ERROR_MSG);
     });
 
-    test('calls compileError for an invalid dot-separated format (too few parts)', () => {
-      setup();
-      validateConnectionFormat(mockSession as unknown as Session, 'my-project.my-connection', TEST_FILENAME);
-      assertCompileErrorCalledTimes(mockSession, 1);
+    test('throws for an invalid dot-separated format (too few parts)', () => {
+      assertThrowsWithMessage(() => validateConnectionFormat('my-project.my-connection'), CONNECTION_ERROR_MSG);
     });
 
-    test('calls compileError for an invalid dot-separated format (too many parts)', () => {
-      setup();
-      validateConnectionFormat(mockSession as unknown as Session, 'a.b.c.d', TEST_FILENAME);
-      assertCompileErrorCalledTimes(mockSession, 1);
+    test('throws for an invalid dot-separated format (too many parts)', () => {
+      assertThrowsWithMessage(() => validateConnectionFormat('a.b.c.d'), CONNECTION_ERROR_MSG);
     });
 
-    test('calls compileError for an invalid resource format (missing segment value)', () => {
-      setup();
-      validateConnectionFormat(mockSession as unknown as Session, 'projects/my-project/locations//connections/my-connection', TEST_FILENAME);
-      assertCompileErrorCalledTimes(mockSession, 1);
+    test('throws for an invalid resource format (missing segment value)', () => {
+      assertThrowsWithMessage(() => validateConnectionFormat('projects/my-project/locations//connections/my-connection'), CONNECTION_ERROR_MSG);
     });
 
-    test('calls compileError for an invalid resource format (incorrect separators)', () => {
-      setup();
-      validateConnectionFormat(mockSession as unknown as Session, 'projects/my-project/locations-us-central1/connections/my-connection', TEST_FILENAME);
-      assertCompileErrorCalledTimes(mockSession, 1);
+    test('throws for an invalid resource format (incorrect separators)', () => {
+      assertThrowsWithMessage(() => validateConnectionFormat('projects/my-project/locations-us-central1/connections/my-connection'), CONNECTION_ERROR_MSG);
     });
 
-    test('calls compileError for a completely unmatching string', () => {
-      setup();
-      validateConnectionFormat(mockSession as unknown as Session, 'some-other-format', TEST_FILENAME);
-      assertCompileErrorCalledTimes(mockSession, 1);
+    test('throws for a completely unmatching string', () => {
+      assertThrowsWithMessage(() => validateConnectionFormat('some-other-format'), CONNECTION_ERROR_MSG);
     });
   });
 
   suite('validateStorageUriFormat', () => {
-    const expectedStorageError = new Error('The storage URI must be in the format `gs://{bucket_name}/{path_to_data}`.');
+    const expectedStorageError = new Error(STORAGE_ERROR_MSG);
 
-    test('does not call compileError for a valid gs:// URI', () => {
-      setup();
-      validateStorageUriFormat(mockSession as unknown as Session, 'gs://my-bucket/path/to/data', TEST_FILENAME);
-      assertCompileErrorNotCalled(mockSession);
+    test('does not throw for a valid gs:// URI', () => {
+      assertNoThrow(() => validateStorageUriFormat('gs://my-bucket/path/to/data'));
     });
 
-    test('does not call compileError for a valid gs:// URI with just a bucket and root path', () => {
-      setup();
-      validateStorageUriFormat(mockSession as unknown as Session, 'gs://another-bucket/file.csv', TEST_FILENAME);
-      assertCompileErrorNotCalled(mockSession);
+    test('does not throw for a valid gs:// URI with just a bucket and root path', () => {
+      assertNoThrow(() => validateStorageUriFormat('gs://another-bucket/file.csv'));
     });
 
-    test('calls compileError for a URI missing the gs:// prefix', () => {
-      setup();
-      validateStorageUriFormat(mockSession as unknown as Session, 'my-bucket/path/to/data', TEST_FILENAME);
-      assertCompileErrorCalledWith(mockSession, expectedStorageError, TEST_FILENAME);
+    test('throws for a URI missing the gs:// prefix', () => {
+      assertThrowsWithMessage(() => validateStorageUriFormat('my-bucket/path/to/data'), STORAGE_ERROR_MSG);
     });
 
-    test('calls compileError for an incorrect scheme prefix', () => {
-      setup();
-      validateStorageUriFormat(mockSession as unknown as Session, 's3://my-bucket/path', TEST_FILENAME);
-      assertCompileErrorCalledWith(mockSession, expectedStorageError, TEST_FILENAME);
+    test('throws for an incorrect scheme prefix', () => {
+      assertThrowsWithMessage(() => validateStorageUriFormat('s3://my-bucket/path'), STORAGE_ERROR_MSG);
     });
 
-    test('calls compileError for a URI with no bucket name', () => {
-      setup();
-      validateStorageUriFormat(mockSession as unknown as Session, 'gs:///path/to/data', TEST_FILENAME);
-      assertCompileErrorCalledWith(mockSession, expectedStorageError, TEST_FILENAME);
+    test('throws for a URI with no bucket name', () => {
+      assertThrowsWithMessage(() => validateStorageUriFormat('gs:///path/to/data'), STORAGE_ERROR_MSG);
     });
 
-    test('calls compileError for a URI with no path after the bucket', () => {
-      setup();
-      validateStorageUriFormat(mockSession as unknown as Session, 'gs://my-bucket/', TEST_FILENAME);
-      assertCompileErrorCalledWith(mockSession, expectedStorageError, TEST_FILENAME);
+    test('throws for a URI with no path after the bucket', () => {
+      assertThrowsWithMessage(() => validateStorageUriFormat('gs://my-bucket/'), STORAGE_ERROR_MSG);
     });
 
-    test('calls compileError for an empty storage URI string', () => {
-      setup();
-      validateStorageUriFormat(mockSession as unknown as Session, '', TEST_FILENAME);
-      assertCompileErrorCalledWith(mockSession, expectedStorageError, TEST_FILENAME);
+    test('throws for an empty storage URI string', () => {
+      assertThrowsWithMessage(() => validateStorageUriFormat(''), STORAGE_ERROR_MSG);
     });
   });
 });
