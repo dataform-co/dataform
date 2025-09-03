@@ -1,7 +1,15 @@
-import {validateConnectionFormat, validateStorageUriFormat, getConnectionForIcebergTable, getEffectiveTableFolderSubpath, getFileFormatValueForIcebergTable, getStorageUriForIcebergTable} from './utils';
-import { suite, test } from 'df/testing';
 import {expect} from "chai";
+import {
+  getConnectionForIcebergTable,
+  getEffectiveTableFolderSubpath,
+  getFileFormatValueForIcebergTable,
+  getStorageUriForIcebergTable,
+  validateConnectionFormat,
+  validateStorageUriFormat,
+} from './utils';
+
 import {dataform} from "df/protos/ts";
+import {suite, test} from 'df/testing';
 
 /**
  * Executes a function and returns the Error if one is thrown, otherwise returns undefined.

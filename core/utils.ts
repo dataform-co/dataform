@@ -1,4 +1,3 @@
-import {table} from "console";
 import { Action, ActionProto } from "df/core/actions";
 import { Assertion } from "df/core/actions/assertion";
 import { DataPreparation } from "df/core/actions/data_preparation";
