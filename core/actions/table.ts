@@ -615,18 +615,15 @@ export class Table extends ActionBuilder<dataform.Table> {
             throw e;
           },
           unverifiedConfig.bigquery,
-          [
-            ...strictKeysOf<ILegacyBigQueryOptions>()([
-              "partitionBy",
-              "clusterBy",
-              "updatePartitionFilter",
-              "labels",
-              "partitionExpirationDays",
-              "requirePartitionFilter",
-              "additionalOptions",
+          strictKeysOf<ILegacyBigQueryOptions>()([
+            "partitionBy",
+            "clusterBy",
+            "updatePartitionFilter",
+            "labels",
+            "partitionExpirationDays",
+            "requirePartitionFilter",
+            "additionalOptions"
           ]),
-            "iceberg"
-          ],
           "BigQuery table config"
         );
       }
