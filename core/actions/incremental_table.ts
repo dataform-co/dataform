@@ -191,11 +191,18 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
       labels: config.labels,
       partitionExpirationDays: config.partitionExpirationDays,
       requirePartitionFilter: config.requirePartitionFilter,
-      additionalOptions: config.additionalOptions
+      additionalOptions: config.additionalOptions,
+      ...(config.iceberg ? {
+        connection: getConnectionForIcebergTable(config.iceberg.connection),
+        fileFormat: getFileFormatValueForIcebergTable(config.iceberg.fileFormat?.toString()),
+        tableFormat: dataform.TableFormat.ICEBERG,
+        storageUri: getStorageUriForIcebergTable(
+          config.iceberg.bucketName,
+          getEffectiveTableFolderSubpath(this.proto.target.schema, this.proto.target.name, config.iceberg.tableFolderSubpath),
+          config.iceberg.tableFolderRoot,
+        ),
+      } : {}),
     });
-    if (config.iceberg) {
-      this.iceberg(config.iceberg);
-    }
     this.proto.onSchemaChange = this.mapOnSchemaChange(config.onSchemaChange);
 
     return this;
@@ -287,26 +294,6 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
   public postOps(posts: Contextable<ITableContext, string | string[]>) {
     this.contextablePostOps.push(posts);
     return this;
-  }
-
-  /**
-   * Sets the configuration options for the creation of Apache Iceberg tables.
-   * @param icebergOptions Iceberg options provided in the iceberg {} subblock of the config file.
-   */
-  public iceberg(
-    icebergOptions: dataform.ActionConfig.IIcebergTableConfig,
-  ) {
-    if (!this.proto.bigquery) {
-      this.proto.bigquery = dataform.BigQueryOptions.create();
-    }
-    this.proto.bigquery.tableFormat = dataform.TableFormat.ICEBERG;
-    this.proto.bigquery.fileFormat = getFileFormatValueForIcebergTable(icebergOptions?.fileFormat?.toString());
-    this.proto.bigquery.connection = getConnectionForIcebergTable(icebergOptions.connection);
-    this.proto.bigquery.storageUri = getStorageUriForIcebergTable(
-      icebergOptions.bucketName,
-      getEffectiveTableFolderSubpath(this.proto.target.schema, this.proto.target.name, icebergOptions.tableFolderSubpath),
-      icebergOptions.tableFolderRoot,
-    );
   }
 
   /**
