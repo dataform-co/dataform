@@ -19,13 +19,19 @@ import {
   checkAssertionsForDependency,
   checkExcessProperties,
   configTargetToCompiledGraphTarget,
+  getConnectionForIcebergTable,
+  getEffectiveTableFolderSubpath,
+  getFileFormatValueForIcebergTable,
+  getStorageUriForIcebergTable,
   nativeRequire,
   resolvableAsActionConfigTarget,
   resolvableAsTarget,
   resolveActionsConfigFilename,
   strictKeysOf,
   toResolvable,
-  validateQueryString
+  validateConnectionFormat,
+  validateQueryString,
+  validateStorageUriFormat,
 } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
@@ -185,7 +191,17 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
       labels: config.labels,
       partitionExpirationDays: config.partitionExpirationDays,
       requirePartitionFilter: config.requirePartitionFilter,
-      additionalOptions: config.additionalOptions
+      additionalOptions: config.additionalOptions,
+      ...(config.iceberg ? {
+        connection: getConnectionForIcebergTable(config.iceberg.connection),
+        fileFormat: getFileFormatValueForIcebergTable(config.iceberg.fileFormat?.toString()),
+        tableFormat: dataform.TableFormat.ICEBERG,
+        storageUri: getStorageUriForIcebergTable(
+          config.iceberg.bucketName,
+          getEffectiveTableFolderSubpath(this.proto.target.schema, this.proto.target.name, config.iceberg.tableFolderSubpath),
+          config.iceberg.tableFolderRoot,
+        ),
+      } : {}),
     });
     this.proto.onSchemaChange = this.mapOnSchemaChange(config.onSchemaChange);
 
@@ -514,6 +530,14 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
     validateQueryString(this.session, this.proto.query, this.proto.fileName);
     validateQueryString(this.session, this.proto.incrementalQuery, this.proto.fileName);
 
+    if (this.proto.bigquery?.connection) {
+      validateConnectionFormat(this.proto.bigquery.connection);
+    }
+
+    if (this.proto.bigquery?.storageUri) {
+      validateStorageUriFormat(this.proto.bigquery.storageUri);
+    }
+
     return verifyObjectMatchesProto(
       dataform.Table,
       this.proto,
@@ -570,6 +594,21 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
         unverifiedConfig.columns = ColumnDescriptors.mapLegacyObjectToConfigProto(
           unverifiedConfig.columns as any
         );
+      }
+      if (unverifiedConfig.iceberg) {
+        if (
+          unverifiedConfig.iceberg.fileFormat &&
+          unverifiedConfig.iceberg.fileFormat.toUpperCase() !== 'PARQUET'
+        ) {
+          throw new ReferenceError(
+            `Unexpected file format; only "PARQUET" is allowed, got "${unverifiedConfig.iceberg.fileFormat}".`
+          );
+        }
+        if (!unverifiedConfig.iceberg.bucketName) {
+          throw new ReferenceError(
+            'Reference error: bucket_name must be defined in an iceberg subblock.'
+          );
+        }
       }
       unverifiedConfig = LegacyConfigConverter.insertLegacyInlineAssertionsToConfigProto(
         unverifiedConfig

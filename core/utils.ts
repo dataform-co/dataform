@@ -245,6 +245,110 @@ export function validateQueryString(session: Session, query: string, filename: s
   }
 }
 
+/**
+ * Checks if the Cloud Resource connection has a valid format.
+ * @param connection String to be validated.
+ */
+export function validateConnectionFormat(
+  connection: string,
+) {
+  // Connection pattern of the form project.location.connection_id. Example:
+  // my-project.us-central1.my-connection
+  const dotPattern = /^[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+$/;
+
+  // Connection pattern of the form projects/<substring>/locations/<substring>/connections/<substring>
+  // Example: projects/my-project/locations/us-central1/connections/my-connection
+  // Substrings cannot contain '/'.
+  const resourcePattern =
+    /^projects\/[^/]+\/locations\/[^/]+\/connections\/[^/]+$/;
+
+  const isValidFormat =
+    dotPattern.test(connection) || resourcePattern.test(connection);
+
+  if (connection !== 'DEFAULT' && !isValidFormat) {
+    throw new Error(
+      'The connection must be in the format `{project}.{location}.{connection_id}` or `projects/{project}/locations/{location}/connections/{connection_id}`, or be set to `DEFAULT`.',
+    );
+  }
+
+}
+
+/**
+ * Checks if the storageUri is a valid GCS path.
+ * @param storageUri String to be validated.
+ */
+export function validateStorageUriFormat(
+  storageUri: string,
+) {
+  // storageUri must have format gs://<bucket_name>/<path_to_data>
+  const gcsPathPattern = /^gs:\/\/([^/]+)\/(.+)$/;
+
+  if (!gcsPathPattern.test(storageUri)) {
+    throw new Error(
+      'The storage URI must be in the format `gs://{bucket_name}/{path_to_data}`.',
+    );
+  }
+}
+
+/**
+ * Returns a file format for an Iceberg table, as specified in the user's config file.
+ * @param configFileFormat User-provided file format, if it exists.
+ * @return File format used when creating an Iceberg table.
+ */
+export function getFileFormatValueForIcebergTable(
+  configFileFormat?: string,
+): dataform.FileFormat {
+  if (!configFileFormat) {
+    // Default to PARQUET if fileFormat is undefined.
+    return dataform.FileFormat.PARQUET;
+  }
+
+  switch (configFileFormat) {
+    case "PARQUET":
+      return dataform.FileFormat.PARQUET;
+
+    default:
+      throw new Error(
+        `File format ${configFileFormat} is not supported.`,
+      );
+  }
+}
+
+/**
+ * Returns the connection for an Iceberg table, as specified in the user's config file.
+ * Defaults to "DEFAULT" if no connection is provided.
+ * @param connection User-provided connection, if it exists.
+ * @returns Connection used when creating an Iceberg table.
+ */
+export function getConnectionForIcebergTable(connection?: string): string {
+  return connection || "DEFAULT";
+}
+
+/**
+ * Constructs the storage URI for an Iceberg table from storageUri, bucketName,
+ * tableFolderRoot, and tableFolderSubpath provided in the config file. Returns
+ * undefined if a complete URI cannot be formed.
+ * @returns Storage URI used when creating an Iceberg table.
+ */
+export function getStorageUriForIcebergTable(
+  bucketName: string,
+  tableFolderSubpath: string,
+  tableFolderRoot: string = "_dataform",
+): string {
+  return `gs://${bucketName}/${tableFolderRoot}/${tableFolderSubpath}`;
+}
+
+/**
+ * Handles defaulting logic for the tableFolderSubpath variable used to construct
+ * storage URI for Iceberg tables.
+ * @param datasetName Might be used to construct the tableFolderSubpath if no alternative value is provided.
+ * @param tableName Might be used to construct the tableFolderSubpath if no alternative value is provided.
+ * @param tableFolderSubpath User-provided tableFolderSubpath, if it exists.
+ */
+export function getEffectiveTableFolderSubpath(datasetName: string, tableName: string, tableFolderSubpath?: string): string {
+  return tableFolderSubpath ? tableFolderSubpath : `${datasetName}/${tableName}`;
+}
+
 export function tableTypeStringToEnum(type: string, throwIfUnknown: boolean) {
   switch (type) {
     case "table":
