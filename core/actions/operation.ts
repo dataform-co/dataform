@@ -85,7 +85,9 @@ export class Operation extends ActionBuilder<dataform.Operation> {
   /**
    * @hidden Stores the generated proto for the compiled graph.
    */
-  private proto = dataform.Operation.create();
+  private proto = dataform.Operation.create({
+    dynamicVars: [],
+  });
 
   /** @hidden We delay contextification until the final compile step, so hold these here for now. */
   private contextableQueries: Contextable<IActionContext, string | string[]>;
@@ -395,6 +397,11 @@ export class Operation extends ActionBuilder<dataform.Operation> {
       VerifyProtoErrorBehaviour.SHOW_DOCS_LINK
     );
   }
+  public addInputDynamicVar(varName: string) {
+    if (!this.proto.dynamicVars.includes(varName)) {
+      this.proto.dynamicVars.push(varName);
+    }
+  }
 }
 
 /**
@@ -423,6 +430,11 @@ export class OperationContext implements IActionContext {
     }
     this.operation.dependencies(ref);
     return this.resolve(ref);
+  }
+
+  public dynamicVar(varName: string): string {
+    this.operation.addInputDynamicVar(varName);
+    return `\{${varName}\}`;
   }
 
   public resolve(ref: Resolvable | string[], ...rest: string[]) {

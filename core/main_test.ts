@@ -52,6 +52,46 @@ suite("@dataform/core", ({ afterEach }) => {
   const tmpDirFixture = new TmpDirFixture(afterEach);
 
   suite("session", () => {
+    test("dynamic variable resolved correctly", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/view.sqlx"),
+        `
+config { type: "view" }
+SELECT 1 AS col WHERE \${dynamicVar("myvar")} == 1`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals([
+        {
+          canonicalTarget: {
+            database: "defaultProject",
+            name: "view",
+            schema: "defaultDataset"
+          },
+          disabled: false,
+          enumType: "VIEW",
+          fileName: "definitions/view.sqlx",
+          hermeticity: "NON_HERMETIC",
+          query: "\n\nSELECT 1 AS col WHERE {myvar} == 1",
+          dynamicVars: ["myvar"],
+          target: {
+            database: "defaultProject",
+            name: "view",
+            schema: "defaultDataset"
+          },
+          type: "view",
+        }
+      ]);
+    });
+
     suite("resolve succeeds", () => {
       [
         WorkflowSettingsTemplates.bigquery,

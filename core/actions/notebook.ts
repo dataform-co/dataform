@@ -58,7 +58,9 @@ export class Notebook extends ActionBuilder<dataform.Notebook> {
   /**
    * @hidden Stores the generated proto for the compiled graph.
    */
-  private proto = dataform.Notebook.create();
+  private proto = dataform.Notebook.create({
+    dynamicVars: [],
+  });
 
   /** @hidden */
   constructor(session?: Session, unverifiedConfig?: any, configPath?: string) {

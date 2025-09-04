@@ -133,6 +133,10 @@ export function workflowSettingsAsProjectConfig(
         workflowSettings.defaultNotebookRuntimeOptions.runtimeTemplateName;
     }
   }
+  if (workflowSettings.dynamicVars) {
+    // logic of converting dynamicVars from WorkflowSettings to ProjectConfig 
+    // projectConfig.dynamicVars = workflowSettings.dynamicVars;
+  }
   projectConfig.warehouse = "bigquery";
   return projectConfig;
 }

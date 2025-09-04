@@ -66,7 +66,9 @@ export class Declaration extends ActionBuilder<dataform.Declaration> {
   /**
    * @hidden Stores the generated proto for the compiled graph.
    */
-  private proto = dataform.Declaration.create();
+  private proto = dataform.Declaration.create({
+    dynamicVars: [],
+  });
 
   /** @hidden */
   constructor(session?: Session, unverifiedConfig?: any, filename?: string) {

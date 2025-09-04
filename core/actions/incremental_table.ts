@@ -94,7 +94,8 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
     type: "incremental",
     enumType: dataform.TableType.INCREMENTAL,
     disabled: false,
-    tags: []
+    tags: [],
+    dynamicVars: [],
   });
 
   /** @hidden */
@@ -506,7 +507,7 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
 
   /** @hidden */
   public compile() {
-    const context = new IncrementalTableContext(this);
+    const context = new IncrementalTableContext(this);f
     const incrementalContext = new IncrementalTableContext(this, true);
 
     this.proto.query = context.apply(this.contextableQuery);
@@ -686,6 +687,11 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
         throw new Error(`OnSchemaChange value "${onSchemaChange}" is not supported`);
     }
   }
+  public addInputDynamicVar(varName: string) {
+    if (!this.proto.dynamicVars.includes(varName)) {
+      this.proto.dynamicVars.push(varName);
+    }
+  }
 }
 
 /**
@@ -700,6 +706,11 @@ export class IncrementalTableContext implements ITableContext {
 
   public name(): string {
     return this.incrementalTable.session.finalizeName(this.incrementalTable.getTarget().name);
+  }
+
+  public dynamicVar(varName: string): string {
+    this.incrementalTable.addInputDynamicVar(varName);
+    return `\{${varName}\}`;
   }
 
   public ref(ref: Resolvable | string[], ...rest: string[]): string {

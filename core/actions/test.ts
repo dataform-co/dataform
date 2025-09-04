@@ -80,7 +80,9 @@ export class Test extends ActionBuilder<dataform.Test> {
   /**
    * @hidden Stores the generated proto for the compiled graph.
    */
-  private proto = dataform.Test.create();
+  private proto = dataform.Test.create({
+    dynamicVars: [],
+  });
 
   /** @hidden */
   constructor(session?: Session, config?: ITestConfig) {
@@ -192,6 +194,11 @@ export class Test extends ActionBuilder<dataform.Test> {
       VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM
     );
   }
+  public addInputDynamicVar(varName: string) {
+    if (!this.proto.dynamicVars.includes(varName)) {
+      this.proto.dynamicVars.push(varName);
+    }
+  }
 }
 
 /** @hidden */
@@ -221,7 +228,12 @@ class RefReplacingContext implements ITableContext {
   public ref(ref: Resolvable | string[], ...rest: string[]) {
     return this.resolve(ref, ...rest);
   }
-
+  
+  public dynamicVar(varName: string): string {
+    this.testContext.addInputDynamicVar(varName);
+    return `\{${varName}\}`;
+  }
+  
   public resolve(ref: Resolvable | string[], ...rest: string[]) {
     const target = resolvableAsTarget(toResolvable(ref, rest));
     if (!this.testContext.test.contextableInputs.has(targetStringifier.stringify(target))) {

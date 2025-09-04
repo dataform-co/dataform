@@ -18,6 +18,18 @@ message ProjectConfig {
   string assertion_schema = 5;
 
   map<string, string> vars = 14;
+  enum type {
+    STRING = 1,
+    INT64 = 2,
+    BOOL = 3,
+    DATE = 4,
+    DOUBLE = 5,
+  }
+  message dynamicVar {
+    type var_type = 1;
+    string var_value = 2;
+  }
+  map<string, dynamicVar> dynamic_vars = 19
 
   string database_suffix = 15;
   string schema_suffix = 7;
@@ -179,6 +191,8 @@ message Table {
   // Generated.
   string file_name = 18;
 
+  repeated string dynamic_vars = 38;
+
   reserved 1, 2, 7, 12, 16;
 }
 
@@ -199,6 +213,8 @@ message Operation {
 
   // Generated.
   string file_name = 7;
+
+  repeated string dynamic_vars = 15;
 
   reserved 1, 2, 4, 5;
 }
@@ -224,6 +240,8 @@ message Assertion {
   // Generated.
   string file_name = 7;
 
+  repeated string dynamic_vars = 16;
+
   reserved 1, 2, 4, 5, 6;
 }
 
@@ -239,6 +257,8 @@ message Declaration {
 
   ActionDescriptor action_descriptor = 3;
 
+  repeated string dynamic_vars = 6;
+
   // Generated.
   string file_name = 4;
 }
@@ -248,6 +268,8 @@ message Test {
 
   string test_query = 2;
   string expected_output_query = 3;
+
+  repeated string dynamic_vars = 6;
 
   // Generated.
   string file_name = 4;
@@ -267,6 +289,8 @@ message Notebook {
   bool disabled = 6;
 
   string notebook_contents = 7;
+
+  repeated string dynamic_vars = 8;
 }
 
 message NotebookRuntimeOptions {
@@ -312,6 +336,8 @@ message DataPreparation {
 
   LoadConfiguration load = 16;
 
+  repeated string dynamic_vars = 14;
+
   reserved 7, 10;
 }
 
@@ -351,6 +377,8 @@ message CompiledGraph {
   repeated Target targets = 11;
 
   reserved 5, 6;
+
+  repeated string dynamic_vars = 14;
 }
 
 message CoreExecutionRequest {
