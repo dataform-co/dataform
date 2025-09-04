@@ -18,6 +18,18 @@ message ProjectConfig {
   string assertion_schema = 5;
 
   map<string, string> vars = 14;
+  enum type {
+    STRING = 1,
+    INT64 = 2,
+    BOOL = 3,
+    DATE = 4,
+    DOUBLE = 5,
+  }
+  message dynamicVar {
+    type var_type = 1;
+    string var_value = 2;
+  }
+  map<string, dynamicVar> dynamic_vars = 19
 
   string database_suffix = 15;
   string schema_suffix = 7;
