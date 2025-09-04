@@ -19,13 +19,19 @@ import {
   checkAssertionsForDependency,
   checkExcessProperties,
   configTargetToCompiledGraphTarget,
+  getConnectionForIcebergTable,
+  getEffectiveTableFolderSubpath,
+  getFileFormatValueForIcebergTable,
+  getStorageUriForIcebergTable,
   nativeRequire,
   resolvableAsActionConfigTarget,
   resolvableAsTarget,
   resolveActionsConfigFilename,
   strictKeysOf,
   toResolvable,
-  validateQueryString
+  validateConnectionFormat,
+  validateQueryString,
+  validateStorageUriFormat,
 } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
@@ -187,6 +193,9 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
       requirePartitionFilter: config.requirePartitionFilter,
       additionalOptions: config.additionalOptions
     });
+    if (config.iceberg) {
+      this.iceberg(config.iceberg);
+    }
     this.proto.onSchemaChange = this.mapOnSchemaChange(config.onSchemaChange);
 
     return this;
@@ -278,6 +287,26 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
   public postOps(posts: Contextable<ITableContext, string | string[]>) {
     this.contextablePostOps.push(posts);
     return this;
+  }
+
+  /**
+   * Sets the configuration options for the creation of Apache Iceberg tables.
+   * @param icebergOptions Iceberg options provided in the iceberg {} subblock of the config file.
+   */
+  public iceberg(
+    icebergOptions: dataform.ActionConfig.IIcebergTableConfig,
+  ) {
+    if (!this.proto.bigquery) {
+      this.proto.bigquery = dataform.BigQueryOptions.create();
+    }
+    this.proto.bigquery.tableFormat = dataform.TableFormat.ICEBERG;
+    this.proto.bigquery.fileFormat = getFileFormatValueForIcebergTable(icebergOptions?.fileFormat?.toString());
+    this.proto.bigquery.connection = getConnectionForIcebergTable(icebergOptions.connection);
+    this.proto.bigquery.storageUri = getStorageUriForIcebergTable(
+      icebergOptions.bucketName,
+      getEffectiveTableFolderSubpath(this.proto.target.schema, this.proto.target.name, icebergOptions.tableFolderSubpath),
+      icebergOptions.tableFolderRoot,
+    );
   }
 
   /**
@@ -514,6 +543,14 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
     validateQueryString(this.session, this.proto.query, this.proto.fileName);
     validateQueryString(this.session, this.proto.incrementalQuery, this.proto.fileName);
 
+    if (this.proto.bigquery?.connection) {
+      validateConnectionFormat(this.proto.bigquery.connection);
+    }
+
+    if (this.proto.bigquery?.storageUri) {
+      validateStorageUriFormat(this.proto.bigquery.storageUri);
+    }
+
     return verifyObjectMatchesProto(
       dataform.Table,
       this.proto,
@@ -570,6 +607,21 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
         unverifiedConfig.columns = ColumnDescriptors.mapLegacyObjectToConfigProto(
           unverifiedConfig.columns as any
         );
+      }
+      if (unverifiedConfig.iceberg) {
+        if (
+          unverifiedConfig.iceberg.fileFormat &&
+          unverifiedConfig.iceberg.fileFormat.toUpperCase() !== 'PARQUET'
+        ) {
+          throw new ReferenceError(
+            `Unexpected file format; only "PARQUET" is allowed, got "${unverifiedConfig.iceberg.fileFormat}".`
+          );
+        }
+        if (!unverifiedConfig.iceberg.bucketName) {
+          throw new ReferenceError(
+            'Reference error: bucket_name must be defined in an iceberg subblock.'
+          );
+        }
       }
       unverifiedConfig = LegacyConfigConverter.insertLegacyInlineAssertionsToConfigProto(
         unverifiedConfig
