@@ -541,7 +541,16 @@ export class Session {
   private getTablePrefixWithUnderscore() {
     return !!this.projectConfig.tablePrefix ? `${this.projectConfig.tablePrefix}_` : "";
   }
-
+  // function to check, if variable was provided in workflow_settings.yaml by user
+  private static isUserProvidedDynamicVar(
+    projectConfig: dataform.ProjectConfig,
+    varName: string
+  ): boolean {
+    return (
+      projectConfig.vars !== undefined &&
+      Object.prototype.hasOwnProperty.call(projectConfig.dynamicVars, varName)
+    );
+  }
   private compileGraphChunk<T>(actions: Array<Action | Test>): T[] {
     const compiledChunks: T[] = [];
 
@@ -549,12 +558,22 @@ export class Session {
       try {
         const compiledChunk = action.compile();
         compiledChunk.dynamicVars.forEach(dynamicVar => this.dynamicVars.add(dynamicVar));
+        compiledChunk.dynamicVars.forEach(dynamicVar => {
+          if (!Session.isUserProvidedDynamicVar(this.canonicalProjectConfig, dynamicVar)) {
+            this.compileError(
+              new Error(
+                `The dynamic variable '${dynamicVar}' used in '${action.getFileName()}' is not defined in the workflow settings.`
+              ),
+              action.getFileName(),
+              action.getTarget()
+            );
+          }
+        });
         compiledChunks.push(compiledChunk as any);
       } catch (e) {
         this.compileError(e, action.getFileName(), action.getTarget());
       }
     });
-
     return compiledChunks;
   }
 
