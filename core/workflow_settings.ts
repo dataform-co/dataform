@@ -133,6 +133,15 @@ export function workflowSettingsAsProjectConfig(
         workflowSettings.defaultNotebookRuntimeOptions.runtimeTemplateName;
     }
   }
+  if(workflowSettings.defaultBucketName) {
+    projectConfig.defaultBucketName = workflowSettings.defaultBucketName;
+  }
+  if(workflowSettings.defaultTableFolderRoot) {
+    projectConfig.defaultTableFolderRoot = workflowSettings.defaultTableFolderRoot;
+  }
+  if(workflowSettings.defaultTableFolderSubpath) {
+    projectConfig.defaultTableFolderSubpath = workflowSettings.defaultTableFolderSubpath;
+  }
   projectConfig.warehouse = "bigquery";
   return projectConfig;
 }
