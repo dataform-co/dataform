@@ -45,6 +45,13 @@ message WorkflowSettings {
 
   // Optional. The prefix to append to built-in assertion names.
   string builtin_assertion_name_prefix = 11;
+
+  // Optional.
+  string default_bucket_name = 12;
+
+  string default_table_folder_root = 13;
+
+  string default_table_folder_subpath = 14;
 }
 
 // Action configs defines the contents of `actions.yaml` configuration files.

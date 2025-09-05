@@ -26,6 +26,10 @@ message ProjectConfig {
 
   NotebookRuntimeOptions default_notebook_runtime_options = 17;
 
+  string default_bucket_name = 19;
+  string default_table_folder_root = 20;
+  string default_table_folder_subpath = 21;
+
   reserved 3, 4, 6, 8, 10, 12, 13;
 }
 
