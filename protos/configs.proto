@@ -46,11 +46,16 @@ message WorkflowSettings {
   // Optional. The prefix to append to built-in assertion names.
   string builtin_assertion_name_prefix = 11;
 
-  // Optional.
+  // Optional. Bucket name used to construct a storage URI when creating an
+  // Iceberg table.
   string default_bucket_name = 12;
 
+  // Optional. Table folder root used to construct a storage URI when creating
+  // an Iceberg table.
   string default_table_folder_root = 13;
 
+  // Optional. Table folder subpath used to construct a storage URI when
+  // creating an Iceberg table.
   string default_table_folder_subpath = 14;
 }
 
