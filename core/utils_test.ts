@@ -1,6 +1,8 @@
 import {expect} from "chai";
 import {
   getConnectionForIcebergTable,
+  getEffectiveBucketName,
+  getEffectiveTableFolderRoot,
   getEffectiveTableFolderSubpath,
   getFileFormatValueForIcebergTable,
   getStorageUriForIcebergTable,
@@ -126,6 +128,81 @@ suite('Dataform Utility Validations', () => {
     });
   });
 
+  suite('getEffectiveBucketName', () => {
+    test('returns configBucketName if provided', () => {
+      expect(getEffectiveBucketName('ws-default', 'config-bucket')).to.equal('config-bucket');
+    });
+
+    test('returns defaultBucketName when configBucketName is undefined', () => {
+      expect(getEffectiveBucketName('ws-default', undefined)).to.equal('ws-default');
+    });
+
+    test('returns defaultBucketName when configBucketName is an empty string', () => {
+      expect(getEffectiveBucketName('ws-default', '')).to.equal('ws-default');
+    });
+
+    test('throws error if both configBucketName and defaultBucketName are undefined', () => {
+      assertThrowsWithMessage(
+        () => getEffectiveBucketName(undefined, undefined),
+        'When defining an Iceberg table, bucket name must be defined in workspace_settings.yaml or the config block.'
+      );
+    });
+
+    test('throws error if both configBucketName and defaultBucketName are empty strings', () => {
+      assertThrowsWithMessage(
+        () => getEffectiveBucketName('', ''),
+        'When defining an Iceberg table, bucket name must be defined in workspace_settings.yaml or the config block.'
+      );
+    });
+  });
+
+  suite('getEffectiveTableFolderRoot', () => {
+    test('returns configTableFolderRoot if provided', () => {
+      expect(getEffectiveTableFolderRoot('ws-root', 'config-root')).to.equal('config-root');
+    });
+
+    test('returns defaultTableFolderRoot when configTableFolderRoot is undefined', () => {
+      expect(getEffectiveTableFolderRoot('ws-root', undefined)).to.equal('ws-root');
+    });
+
+    test('returns defaultTableFolderRoot when configTableFolderRoot is an empty string', () => {
+      expect(getEffectiveTableFolderRoot('ws-root', '')).to.equal('ws-root');
+    });
+
+    test('returns "_dataform" when both config and default are undefined', () => {
+      expect(getEffectiveTableFolderRoot(undefined, undefined)).to.equal('_dataform');
+    });
+
+     test('returns "_dataform" when both config and default are empty strings', () => {
+      expect(getEffectiveTableFolderRoot('', '')).to.equal('_dataform');
+    });
+  });
+
+  suite('getEffectiveTableFolderSubpath', () => {
+    const testDataset = 'my_dataset';
+    const testTable = 'my_table';
+
+    test('returns configTableFolderSubpath when provided', () => {
+      expect(getEffectiveTableFolderSubpath(testDataset, testTable, 'ws/sub', 'config/sub')).to.equal('config/sub');
+    });
+
+    test('returns defaultTableFolderSubpath when configTableFolderSubpath is undefined', () => {
+      expect(getEffectiveTableFolderSubpath(testDataset, testTable, 'ws/sub', undefined)).to.equal('ws/sub');
+    });
+
+    test('returns defaultTableFolderSubpath when configTableFolderSubpath is an empty string', () => {
+      expect(getEffectiveTableFolderSubpath(testDataset, testTable, 'ws/sub', '')).to.equal('ws/sub');
+    });
+
+    test('constructs from dataset/table when both config and default are undefined', () => {
+      expect(getEffectiveTableFolderSubpath(testDataset, testTable, undefined, undefined)).to.equal('my_dataset/my_table');
+    });
+
+    test('constructs from dataset/table when both config and default are empty strings', () => {
+      expect(getEffectiveTableFolderSubpath(testDataset, testTable, '', '')).to.equal('my_dataset/my_table');
+    });
+  });
+
   suite('getConnectionForIcebergTable', () => {
     test('returns the provided connection string if it exists', () => {
       expect(getConnectionForIcebergTable('my-custom-conn')).to.equal('my-custom-conn');
@@ -137,23 +214,6 @@ suite('Dataform Utility Validations', () => {
 
     test('returns "DEFAULT" when the connection is an empty string', () => {
       expect(getConnectionForIcebergTable('')).to.equal('DEFAULT');
-    });
-  });
-
-  suite('getEffectiveTableFolderSubpath', () => {
-    const testDataset = 'my_dataset';
-    const testTable = 'my_table';
-
-    test('returns the provided tableFolderSubpath when it exists', () => {
-      expect(getEffectiveTableFolderSubpath(testDataset, testTable, 'custom/sub/path')).to.equal('custom/sub/path');
-    });
-
-    test('constructs a path from dataset and table when tableFolderSubpath is undefined', () => {
-      expect(getEffectiveTableFolderSubpath(testDataset, testTable, undefined)).to.equal('my_dataset/my_table');
-    });
-
-    test('constructs a path from dataset and table when tableFolderSubpath is an empty string', () => {
-      expect(getEffectiveTableFolderSubpath(testDataset, testTable, '')).to.equal('my_dataset/my_table');
     });
   });
 
@@ -176,29 +236,27 @@ suite('Dataform Utility Validations', () => {
         'File format CSV is not supported.'
       );
     });
-
-
   });
 
   suite('getStorageUriForIcebergTable', () => {
     const testBucket = 'my-iceberg-bucket';
+    const testRoot = '_dataform';
     const testSubpath = 'data/v1';
-    const customRoot = '_my_custom_root';
 
     test('constructs the URI with a provided tableFolderRoot', () => {
-      expect(getStorageUriForIcebergTable(testBucket, testSubpath, customRoot)).to.equal('gs://my-iceberg-bucket/_my_custom_root/data/v1');
-    });
-
-    test('constructs the URI with the default tableFolderRoot when omitted', () => {
-      expect(getStorageUriForIcebergTable(testBucket, testSubpath)).to.equal('gs://my-iceberg-bucket/_dataform/data/v1');
+      expect(getStorageUriForIcebergTable(testBucket, testRoot, testSubpath)).to.equal('gs://my-iceberg-bucket/_dataform/data/v1');
     });
 
     test('handles empty bucket name, resulting in an invalid but formed URI', () => {
-      expect(getStorageUriForIcebergTable('', testSubpath)).to.equal('gs:///_dataform/data/v1');
+      expect(getStorageUriForIcebergTable('', testRoot, testSubpath)).to.equal('gs:///_dataform/data/v1');
+    });
+
+    test('handles empty tableFolderRoot, resulting in an invalid but formed URI', () => {
+      expect(getStorageUriForIcebergTable(testBucket, '', testSubpath)).to.equal('gs://my-iceberg-bucket//data/v1');
     });
 
     test('handles empty tableFolderSubpath', () => {
-      expect(getStorageUriForIcebergTable(testBucket, '')).to.equal('gs://my-iceberg-bucket/_dataform/');
+      expect(getStorageUriForIcebergTable(testBucket, testRoot, '')).to.equal('gs://my-iceberg-bucket/_dataform/');
     });
   });
 });
