@@ -191,6 +191,14 @@ const bigqueryJobLabelsOption: INamedOption<yargs.Options> = {
   }
 };
 
+const impersonateServiceAccountOption: INamedOption<yargs.Options> = {
+  name: "impersonate-service-account",
+  option: {
+    describe: "Service account email to impersonate during authentication.",
+    type: "string"
+  }
+};
+
 const quietCompileOption: INamedOption<yargs.Options> = {
   name: "quiet",
   option: {
@@ -478,7 +486,7 @@ export function runCli() {
         format: `test [${projectDirMustExistOption.name}]`,
         description: "Run the dataform project's unit tests.",
         positionalOptions: [projectDirMustExistOption],
-        options: [credentialsOption, timeoutOption, ...ProjectConfigOptions.allYargsOptions],
+        options: [credentialsOption, impersonateServiceAccountOption, timeoutOption, ...ProjectConfigOptions.allYargsOptions],
         processFn: async argv => {
           print("Compiling...\n");
           const compiledGraph = await compile({
@@ -494,6 +502,10 @@ export function runCli() {
           const readCredentials = credentials.read(
             getCredentialsPath(argv[projectDirOption.name], argv[credentialsOption.name])
           );
+          if (argv[impersonateServiceAccountOption.name]) {
+            (readCredentials as any).impersonateServiceAccount =
+              argv[impersonateServiceAccountOption.name];
+          }
 
           if (!compiledGraph.tests.length) {
             printError("No unit tests found.");
@@ -538,10 +550,10 @@ export function runCli() {
           },
           actionsOption,
           credentialsOption,
+          impersonateServiceAccountOption,
           fullRefreshOption,
           includeDepsOption,
           includeDependentsOption,
-          credentialsOption,
           jsonOutputOption,
           timeoutOption,
           tagsOption,
@@ -574,6 +586,10 @@ export function runCli() {
           const readCredentials = credentials.read(
             getCredentialsPath(argv[projectDirOption.name], argv[credentialsOption.name])
           );
+          if (argv[impersonateServiceAccountOption.name]) {
+            (readCredentials as any).impersonateServiceAccount =
+              argv[impersonateServiceAccountOption.name];
+          }
 
           const dbadapter = new BigQueryDbAdapter(readCredentials);
           const executionGraph = await build(
