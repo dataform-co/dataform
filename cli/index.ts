@@ -214,7 +214,6 @@ const impersonateServiceAccountOption: INamedOption<yargs.Options> = {
     type: "string"
   }
 };
-
 const quietCompileOption: INamedOption<yargs.Options> = {
   name: "quiet",
   option: {
