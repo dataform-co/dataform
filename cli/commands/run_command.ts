@@ -93,6 +93,9 @@ export const runCommand: ICommand<IRunArgs> = {
     const readCredentials = credentials.read(
       actuallyResolve(argv.projectDir, argv.credentials)
     );
+    if (argv.impersonateServiceAccount) {
+      (readCredentials as any).impersonateServiceAccount = argv.impersonateServiceAccount;
+    }
 
     const dbadapter = new BigQueryDbAdapter(readCredentials);
     const executionGraph = await build(

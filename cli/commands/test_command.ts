@@ -5,6 +5,8 @@ import {
   assertProjectDirExists,
   credentialsOption,
   ICredentialsArgs,
+  IImpersonateServiceAccountArgs,
+  impersonateServiceAccountOption,
   IJsonOutputArgs,
   IProjectDirArgs,
   ITimeoutArgs,
@@ -26,6 +28,7 @@ import { ICommand } from "df/cli/yargswrapper";
 export interface ITestArgs
   extends IProjectDirArgs,
     ICredentialsArgs,
+    IImpersonateServiceAccountArgs,
     ITimeoutArgs,
     IJsonOutputArgs,
     IProjectConfigArgs {}
@@ -37,6 +40,7 @@ export const testCommand: ICommand<ITestArgs> = {
   check: [assertProjectDirExists],
   options: [
     credentialsOption,
+    impersonateServiceAccountOption,
     timeoutOption,
     jsonOutputOption,
     ...ProjectConfigOptions.allYargsOptions
@@ -60,6 +64,9 @@ export const testCommand: ICommand<ITestArgs> = {
     const readCredentials = credentials.read(
       actuallyResolve(argv.projectDir, argv.credentials)
     );
+    if (argv.impersonateServiceAccount) {
+      (readCredentials as any).impersonateServiceAccount = argv.impersonateServiceAccount;
+    }
 
     if (!compiledGraph.tests.length) {
       printError("No unit tests found.");

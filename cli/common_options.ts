@@ -63,6 +63,18 @@ export const credentialsOption: INamedOption<yargs.Options, ICredentialsArgs> = 
     actuallyResolve(argv.projectDir, argv.credentials)
 };
 
+export interface IImpersonateServiceAccountArgs {
+  impersonateServiceAccount?: string;
+}
+
+export const impersonateServiceAccountOption: INamedOption<yargs.Options, IImpersonateServiceAccountArgs> = {
+  name: "impersonate-service-account",
+  option: {
+    describe: "Service account email to impersonate during authentication.",
+    type: "string"
+  }
+};
+
 export interface IJsonOutputArgs {
   json: boolean;
 }
