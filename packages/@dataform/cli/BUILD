@@ -33,6 +33,7 @@ externals = [
     "deepmerge",
     "fs-extra",
     "glob",
+    "google-auth-library",
     "google-sql-syntax-ts",
     "js-beautify",
     "js-yaml",
