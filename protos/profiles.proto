@@ -11,6 +11,8 @@ message BigQuery {
   string credentials = 3;
   // Options are listed here: https://cloud.google.com/bigquery/docs/locations
   string location = 4;
+  // Service account email to impersonate during authentication
+  string impersonate_service_account = 5;
 
   reserved 2;
 }

@@ -2,6 +2,7 @@ import Long from "long";
 import { PromisePoolExecutor } from "promise-pool-executor";
 
 import { BigQuery, GetTablesResponse, TableField, TableMetadata } from "@google-cloud/bigquery";
+import { GoogleAuth, Impersonated } from "google-auth-library";
 import { collectEvaluationQueries, QueryOrAction } from "df/cli/api/dbadapters/execution_sql";
 import { IBigQueryError, IDbAdapter, IDbClient, IExecutionResult, OnCancel } from "df/cli/api/dbadapters/index";
 import { parseBigqueryEvalError } from "df/cli/api/utils/error_parsing";
@@ -102,8 +103,8 @@ export class BigQueryDbAdapter implements IDbAdapter {
         try {
           await this.pool
             .addSingleTask({
-              generator: () =>
-                this.getClient().query({
+              generator: async () =>
+                (await this.getClient()).query({
                   useLegacySql: false,
                   query,
                   dryRun: true
@@ -128,7 +129,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
   }
 
   public async tables(): Promise<dataform.ITarget[]> {
-    const datasets = await this.getClient().getDatasets({ autoPaginate: true, maxResults: 1000 });
+    const datasets = await (await this.getClient()).getDatasets({ autoPaginate: true, maxResults: 1000 });
     const tables = await Promise.all(
       datasets[0].map(dataset => dataset.getTables({ autoPaginate: true, maxResults: 1000 }))
     );
@@ -218,7 +219,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
   }
 
   public async schemas(database: string): Promise<string[]> {
-    const data = await this.getClient(database).getDatasets();
+    const data = await (await this.getClient(database)).getDatasets();
     return data[0].map(dataset => dataset.id);
   }
 
@@ -238,7 +239,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
       metadata.schema.fields
     );
 
-    await this.getClient(target.database)
+    await (await this.getClient(target.database))
       .dataset(target.schema)
       .table(target.name)
       .setMetadata({
@@ -250,7 +251,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
 
   private async getMetadata(target: dataform.ITarget): Promise<TableMetadata> {
     try {
-      const table = await this.getClient(target.database)
+      const table = await (await this.getClient(target.database))
         .dataset(target.schema)
         .table(target.name)
         .getMetadata();
@@ -265,19 +266,36 @@ export class BigQueryDbAdapter implements IDbAdapter {
     }
   }
 
-  private getClient(projectId?: string) {
+  private async getClient(projectId?: string) {
     projectId = projectId || this.bigQueryCredentials.projectId;
     if (!this.clients.has(projectId)) {
-      this.clients.set(
+      let clientConfig: any = {
         projectId,
-        new BigQuery({
-          projectId,
-          scopes: EXTRA_GOOGLE_SCOPES,
-          location: this.bigQueryCredentials.location,
-          credentials:
-            this.bigQueryCredentials.credentials && JSON.parse(this.bigQueryCredentials.credentials)
+        scopes: EXTRA_GOOGLE_SCOPES,
+        location: this.bigQueryCredentials.location
+      };
+
+      if (this.bigQueryCredentials.impersonateServiceAccount) {
+        // For impersonation, create an Impersonated credential directly
+        const sourceAuth = new GoogleAuth({
+          scopes: ['https://www.googleapis.com/auth/cloud-platform'],
+          projectId: projectId,
+          credentials: this.bigQueryCredentials.credentials && JSON.parse(this.bigQueryCredentials.credentials),
+        });
+
+        const authClient = await sourceAuth.getClient();
+
+        clientConfig.authClient = new Impersonated({
+          sourceClient: authClient,
+          targetPrincipal: this.bigQueryCredentials.impersonateServiceAccount,
+          targetScopes: ['https://www.googleapis.com/auth/cloud-platform']
         })
-      );
+    } else {
+        clientConfig.credentials =
+          this.bigQueryCredentials.credentials && JSON.parse(this.bigQueryCredentials.credentials);
+      }
+
+      this.clients.set(projectId, new BigQuery(clientConfig));
     }
     return this.clients.get(projectId);
   }
@@ -289,12 +307,12 @@ export class BigQueryDbAdapter implements IDbAdapter {
     byteLimit?: number,
     location?: string
   ) {
-    const results = await new Promise<any[]>((resolve, reject) => {
+    const results = await new Promise<any[]>(async (resolve, reject) => {
       const allRows = new LimitedResultSet({
         rowLimit,
         byteLimit
       });
-      const stream = this.getClient().createQueryStream({
+      const stream = (await this.getClient()).createQueryStream({
         query,
         params,
         location
@@ -330,7 +348,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
     return retry(
       async () => {
         try {
-          const job = await this.getClient().createQueryJob({
+          const job = await (await this.getClient()).createQueryJob({
             useLegacySql: false,
             jobPrefix: "dataform-" + (jobPrefix ? `${jobPrefix}-` : ""),
             query,
