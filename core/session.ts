@@ -125,9 +125,6 @@ export class Session {
         "Actions may only include incremental_where if they are of type 'incremental'."
       );
     }
-    if (!sqlxConfig.hasOwnProperty("schema") && actionType === "declaration") {
-      this.compileError("Actions of type 'declaration' must specify a value for 'schema'.");
-    }
     if (actionOptions.inputContextables.length > 0 && actionType !== "test") {
       this.compileError("Actions may only include input blocks if they are of type 'test'.");
     }
