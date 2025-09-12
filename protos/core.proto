@@ -322,6 +322,7 @@ message LoadConfiguration {
     IncrementalLoadMode maximum = 3;
     IncrementalLoadMode unique = 4;
     IncrementalLoadMode automatic = 5;
+    MergeLoadMode merge = 6;
   }
 }
 
@@ -329,6 +330,10 @@ message SimpleLoadMode {}
 
 message IncrementalLoadMode {
   string column_name = 1;
+}
+
+message MergeLoadMode {
+  repeated string unique_key = 1;
 }
 
 message CompiledGraph {

@@ -613,6 +613,8 @@ message ActionConfig {
     LoadMode mode = 1;
     // Required when mode is MAXIMUM or UNIQUE
     string incremental_column = 2;
+    // required when mode is MERGE
+    repeated string unique_key = 3;
   }
 
   enum LoadMode {
@@ -626,6 +628,8 @@ message ActionConfig {
     // Insert only records where the specified column value is not already
     // present in the destination column values.
     UNIQUE = 3;
+    // Merge records into the destination table, deduplicating using 1+ unique keys
+    MERGE = 4;
   }
 }
 
