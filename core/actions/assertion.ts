@@ -85,7 +85,9 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
   /**
    * @hidden Stores the generated proto for the compiled graph.
    */
-  private proto = dataform.Assertion.create();
+  private proto = dataform.Assertion.create({
+    dynamicVars: [],
+  });
 
   /** @hidden We delay contextification until the final compile step, so hold these here for now. */
   private contextableQuery: AContextable<string>;
@@ -334,6 +336,11 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
       VerifyProtoErrorBehaviour.SHOW_DOCS_LINK
     );
   }
+  public addInputDynamicVar(varName: string) {
+    if (!this.proto.dynamicVars.includes(varName)) {
+      this.proto.dynamicVars.push(varName);
+    }
+  }
 }
 
 /**
@@ -362,6 +369,11 @@ export class AssertionContext implements IActionContext {
     }
     this.assertion.dependencies(ref);
     return this.resolve(ref);
+  }
+
+  public dynamicVar(varName: string): string {
+    this.assertion.addInputDynamicVar(varName);
+    return `\{${varName}\}`;
   }
 
   public resolve(ref: Resolvable | string[], ...rest: string[]) {

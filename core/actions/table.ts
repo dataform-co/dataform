@@ -103,7 +103,8 @@ export class Table extends ActionBuilder<dataform.Table> {
     type: "table",
     enumType: dataform.TableType.TABLE,
     disabled: false,
-    tags: []
+    tags: [],
+    dynamicVars: [],
   });
 
   /** @hidden */
@@ -639,6 +640,11 @@ export class Table extends ActionBuilder<dataform.Table> {
 
     return config;
   }
+  public addInputDynamicVar(varName: string) {
+    if (!this.proto.dynamicVars.includes(varName)) {
+      this.proto.dynamicVars.push(varName);
+    }
+  }
 }
 
 /**
@@ -653,6 +659,11 @@ export class TableContext implements ITableContext {
 
   public name(): string {
     return this.table.session.finalizeName(this.table.getTarget().name);
+  }
+
+  public dynamicVar(varName: string): string {
+    this.table.addInputDynamicVar(varName);
+    return `\{${varName}\}`;
   }
 
   public ref(ref: Resolvable | string[], ...rest: string[]): string {

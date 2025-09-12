@@ -67,6 +67,8 @@ export interface IActionContext {
    * Returns the database of this dataset, if applicable.
    */
   database: () => string;
+
+  dynamicVar: (varName: string) => string;
 }
 
 /**
