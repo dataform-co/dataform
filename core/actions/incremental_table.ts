@@ -199,9 +199,9 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
         fileFormat: getFileFormatValueForIcebergTable(config.iceberg.fileFormat?.toString()),
         tableFormat: dataform.TableFormat.ICEBERG,
         storageUri: getStorageUriForIcebergTable(
-          getEffectiveBucketName(session.projectConfig.defaultBucketName, config.iceberg.bucketName),
-          getEffectiveTableFolderRoot(session.projectConfig.defaultTableFolderRoot, config.iceberg.tableFolderRoot),
-          getEffectiveTableFolderSubpath(this.proto.target.schema, this.proto.target.name, session.projectConfig.defaultTableFolderSubpath, config.iceberg.tableFolderSubpath),
+          getEffectiveBucketName(session.projectConfig.defaultIcebergConfigs?.defaultBucketName, config.iceberg.bucketName),
+          getEffectiveTableFolderRoot(session.projectConfig.defaultIcebergConfigs?.defaultTableFolderRoot, config.iceberg.tableFolderRoot),
+          getEffectiveTableFolderSubpath(this.proto.target.schema, this.proto.target.name, session.projectConfig.defaultIcebergConfigs?.defaultTableFolderSubpath, config.iceberg.tableFolderSubpath),
         ),
       } : {}),
     });

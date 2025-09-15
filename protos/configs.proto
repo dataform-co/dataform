@@ -46,17 +46,22 @@ message WorkflowSettings {
   // Optional. The prefix to append to built-in assertion names.
   string builtin_assertion_name_prefix = 11;
 
+  // Optional. Default config options for Iceberg tables.
+  DefaultIcebergConfigs default_iceberg_configs = 12;
+}
+
+message DefaultIcebergConfigs {
   // Optional. Bucket name used to construct a storage URI when creating an
   // Iceberg table.
-  string default_bucket_name = 12;
+  string default_bucket_name = 1;
 
   // Optional. Table folder root used to construct a storage URI when creating
   // an Iceberg table.
-  string default_table_folder_root = 13;
+  string default_table_folder_root = 2;
 
   // Optional. Table folder subpath used to construct a storage URI when
   // creating an Iceberg table.
-  string default_table_folder_subpath = 14;
+  string default_table_folder_subpath = 3;
 }
 
 // Action configs defines the contents of `actions.yaml` configuration files.
