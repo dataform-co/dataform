@@ -269,17 +269,12 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
   });
 
   suite("Iceberg table options", () => {
-    const setupFiles = (projectDir: string, filename: string, fileContents: string) => {
-      fs.writeFileSync(
-        path.join(projectDir, "workflow_settings.yaml"),
-        VALID_WORKFLOW_SETTINGS_YAML
-      );
-      fs.mkdirSync(path.join(projectDir, "definitions"));
-      fs.writeFileSync(path.join(projectDir, `definitions/${filename}`), fileContents);
-    };
-
-    // Set up files with custom workflow settings
-    const setupFilesWithCustomWs = (projectDir: string, filename: string, fileContents: string, wsContent: string) => {
+    const setupFiles = (
+      projectDir: string,
+      filename: string,
+      fileContents: string,
+      wsContent: string = VALID_WORKFLOW_SETTINGS_YAML
+    ) => {
       fs.writeFileSync(
         path.join(projectDir, "workflow_settings.yaml"),
         wsContent
@@ -693,12 +688,7 @@ defaultIcebergConfigs:
       paramsToTest.forEach(params => {
         test(`${testCase.testName} in ${params.filename}`, () => {
           const projectDir = tmpDirFixture.createNewTmpDir();
-          // Use the custom setup function if wsContent is specified, otherwise default to VALID_WORKFLOW_SETTINGS_YAML
-          if (testCase.wsContent) {
-            setupFilesWithCustomWs(projectDir, params.filename, params.fileContents, testCase.wsContent);
-          } else {
-             setupFiles(projectDir, params.filename, params.fileContents);
-          }
+          setupFiles(projectDir, params.filename, params.fileContents, testCase.wsContent);
 
           const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
