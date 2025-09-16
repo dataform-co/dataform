@@ -269,14 +269,29 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
   });
 
   suite("Iceberg table options", () => {
-    const setupFiles = (projectDir: string, filename: string, fileContents: string) => {
+    const setupFiles = (
+      projectDir: string,
+      filename: string,
+      fileContents: string,
+      wsContent: string = VALID_WORKFLOW_SETTINGS_YAML
+    ) => {
       fs.writeFileSync(
         path.join(projectDir, "workflow_settings.yaml"),
-        VALID_WORKFLOW_SETTINGS_YAML
+        wsContent
       );
       fs.mkdirSync(path.join(projectDir, "definitions"));
       fs.writeFileSync(path.join(projectDir, `definitions/${filename}`), fileContents);
     };
+
+    const CUSTOM_WORKFLOW_SETTINGS_WITH_ICEBERG_DEFAULTS = `
+defaultProject: "defaultProject"
+defaultDataset: "defaultDataset"
+defaultLocation: "us-central1"
+defaultIcebergConfig:
+  defaultBucketName: "ws-default-bucket"
+  defaultTableFolderRoot: "ws-default-root"
+  defaultTableFolderSubpath: "ws-default-sub"
+`;
 
     const testCases = [
       {
@@ -301,6 +316,7 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
         },
         },
         expectError: false,
+        wsContent: VALID_WORKFLOW_SETTINGS_YAML,
       },
       {
         testName: "with all values provided and dot form connection",
@@ -324,6 +340,7 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
         },
         },
         expectError: false,
+        wsContent: VALID_WORKFLOW_SETTINGS_YAML,
       },
       {
         testName: "defaults to \`_dataform\` for tableFolderRoot",
@@ -346,6 +363,7 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
         },
         },
         expectError: false,
+        wsContent: VALID_WORKFLOW_SETTINGS_YAML,
       },
       {
         testName: "defaults to dataset and name for tableFolderSubpath with dataset and table name provided",
@@ -368,6 +386,7 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
         },
         },
         expectError: false,
+        wsContent: VALID_WORKFLOW_SETTINGS_YAML,
       },
       {
         testName: "defaults to dataset and name for tableFolderSubpath with dataset from workflow settings",
@@ -389,6 +408,7 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
         },
         },
         expectError: false,
+        wsContent: VALID_WORKFLOW_SETTINGS_YAML,
       },
       {
         testName: "defaults to PARQUET when file format is not set",
@@ -411,6 +431,7 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
         },
         },
         expectError: false,
+        wsContent: VALID_WORKFLOW_SETTINGS_YAML,
       },
       {
         testName: "defaults to DEFAULT connection",
@@ -433,6 +454,7 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
         },
         },
         expectError: false,
+        wsContent: VALID_WORKFLOW_SETTINGS_YAML,
       },
       {
         testName: "defaults to PARQUET when file format is empty",
@@ -456,6 +478,7 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
         },
         },
         expectError: false,
+        wsContent: VALID_WORKFLOW_SETTINGS_YAML,
       },
       {
         testName: "invalid connection format",
@@ -469,6 +492,7 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
             tableFolderSubpath: "my-subpath",
         }`,
         expectError: "The connection must be in the format `{project}.{location}.{connection_id}` or `projects/{project}/locations/{location}/connections/{connection_id}`, or be set to `DEFAULT`.",
+        wsContent: VALID_WORKFLOW_SETTINGS_YAML,
       },
       {
         testName: "invalid file format",
@@ -478,6 +502,7 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
             bucketName: "my-bucket",
         }`,
         expectError: "Unexpected file format; only \"PARQUET\" is allowed, got \"AVRO\".",
+        wsContent: VALID_WORKFLOW_SETTINGS_YAML,
       },
       {
         testName: "bucketName not defined",
@@ -488,7 +513,8 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
             tableFolderRoot: "my-root",
             tableFolderSubpath: "my-subpath",
         }`,
-        expectError: "Reference error: bucket_name must be defined in an iceberg subblock.",
+        expectError: "When defining an Iceberg table, bucket name must be defined in workspace_settings.yaml or the config block.",
+        wsContent: VALID_WORKFLOW_SETTINGS_YAML,
       },
       {
         testName: "with Iceberg options and other BigQuery options",
@@ -522,6 +548,121 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
           },
         },
         expectError: false,
+        wsContent: VALID_WORKFLOW_SETTINGS_YAML,
+      },
+      {
+        testName: "uses defaultBucketName from workspace_settings.yaml",
+        wsContent: CUSTOM_WORKFLOW_SETTINGS_WITH_ICEBERG_DEFAULTS,
+        configBlock: `
+          name: "table_ws_bucket",
+          dataset: "dataset_ws",
+          iceberg: {
+              fileFormat: "PARQUET",
+              connection: "gcp.us.conn-id",
+              tableFolderRoot: "my-root",
+              tableFolderSubpath: "my-subpath",
+          }`,
+        expected: {
+          target: { name: "table_ws_bucket", schema: "dataset_ws", database: "project" },
+          bigquery: {
+            tableFormat: "ICEBERG",
+            fileFormat: "PARQUET",
+            connection: "gcp.us.conn-id",
+            storageUri: "gs://ws-default-bucket/my-root/my-subpath",
+          },
+        },
+        expectError: false,
+      },
+      {
+        testName: "uses defaultTableFolderRoot from workspace_settings.yaml",
+        wsContent: CUSTOM_WORKFLOW_SETTINGS_WITH_ICEBERG_DEFAULTS,
+        configBlock: `
+          name: "table_ws_root",
+          dataset: "dataset_ws",
+          iceberg: {
+              fileFormat: "PARQUET",
+              connection: "gcp.us.conn-id",
+              bucketName: "my-bucket",
+              tableFolderSubpath: "my-subpath",
+          }`,
+        expected: {
+          target: { name: "table_ws_root", schema: "dataset_ws", database: "project" },
+          bigquery: {
+            tableFormat: "ICEBERG",
+            fileFormat: "PARQUET",
+            connection: "gcp.us.conn-id",
+            storageUri: "gs://my-bucket/ws-default-root/my-subpath",
+          },
+        },
+        expectError: false,
+      },
+      {
+        testName: "uses defaultTableFolderSubpath from workspace_settings.yaml",
+        wsContent: CUSTOM_WORKFLOW_SETTINGS_WITH_ICEBERG_DEFAULTS,
+        configBlock: `
+          name: "table_ws_sub",
+          dataset: "dataset_ws",
+          iceberg: {
+              fileFormat: "PARQUET",
+              connection: "gcp.us.conn-id",
+              bucketName: "my-bucket",
+              tableFolderRoot: "my-root",
+          }`,
+        expected: {
+          target: { name: "table_ws_sub", schema: "dataset_ws", database: "project" },
+          bigquery: {
+            tableFormat: "ICEBERG",
+            fileFormat: "PARQUET",
+            connection: "gcp.us.conn-id",
+            storageUri: "gs://my-bucket/my-root/ws-default-sub",
+          },
+        },
+        expectError: false,
+      },
+      {
+        testName: "uses all Iceberg defaults from workspace_settings.yaml",
+        wsContent: CUSTOM_WORKFLOW_SETTINGS_WITH_ICEBERG_DEFAULTS,
+        configBlock: `
+          name: "table_ws_all",
+          dataset: "dataset_ws",
+          iceberg: {
+              fileFormat: "PARQUET",
+              connection: "gcp.us.conn-id",
+          }`,
+        expected: {
+          target: { name: "table_ws_all", schema: "dataset_ws", database: "project" },
+          bigquery: {
+            tableFormat: "ICEBERG",
+            fileFormat: "PARQUET",
+            connection: "gcp.us.conn-id",
+            storageUri: "gs://ws-default-bucket/ws-default-root/ws-default-sub",
+          },
+        },
+        expectError: false,
+      },
+      {
+        testName: "config values override workspace defaults for Iceberg paths",
+        wsContent: CUSTOM_WORKFLOW_SETTINGS_WITH_ICEBERG_DEFAULTS,
+        configBlock: `
+          name: "table_override",
+          dataset: "dataset_ovr",
+          iceberg: {
+              fileFormat: "PARQUET",
+              connection: "gcp.us.conn-id",
+              bucketName: "config-bucket",
+              tableFolderRoot: "config-root",
+              tableFolderSubpath: "config-sub",
+          }`,
+        expected: {
+          target: { name: "table_override", schema: "dataset_ovr", database: "project" },
+          bigquery: {
+            tableFormat: "ICEBERG",
+            fileFormat: "PARQUET",
+            connection: "gcp.us.conn-id",
+            storageUri: "gs://config-bucket/config-root/config-sub",
+          },
+        },
+        expectError: false,
       },
     ];
 
@@ -547,7 +688,7 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
       paramsToTest.forEach(params => {
         test(`${testCase.testName} in ${params.filename}`, () => {
           const projectDir = tmpDirFixture.createNewTmpDir();
-          setupFiles(projectDir, params.filename, params.fileContents);
+          setupFiles(projectDir, params.filename, params.fileContents, testCase.wsContent);
 
           const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 

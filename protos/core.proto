@@ -26,6 +26,8 @@ message ProjectConfig {
 
   NotebookRuntimeOptions default_notebook_runtime_options = 17;
 
+  DefaultIcebergConfig default_iceberg_config = 19;
+
   reserved 3, 4, 6, 8, 10, 12, 13;
 }
 

@@ -133,6 +133,19 @@ export function workflowSettingsAsProjectConfig(
         workflowSettings.defaultNotebookRuntimeOptions.runtimeTemplateName;
     }
   }
+  if(workflowSettings.defaultIcebergConfig) {
+    projectConfig.defaultIcebergConfig = {};
+    if(workflowSettings.defaultIcebergConfig.defaultBucketName) {
+      projectConfig.defaultIcebergConfig.defaultBucketName = workflowSettings.defaultIcebergConfig.defaultBucketName;
+    }
+    if(workflowSettings.defaultIcebergConfig.defaultTableFolderRoot) {
+      projectConfig.defaultIcebergConfig.defaultTableFolderRoot = workflowSettings.defaultIcebergConfig.defaultTableFolderRoot;
+    }
+    if(workflowSettings.defaultIcebergConfig.defaultTableFolderSubpath) {
+      projectConfig.defaultIcebergConfig.defaultTableFolderSubpath = workflowSettings.defaultIcebergConfig.defaultTableFolderSubpath;
+    }
+  }
+
   projectConfig.warehouse = "bigquery";
   return projectConfig;
 }

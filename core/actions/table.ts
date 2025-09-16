@@ -23,6 +23,8 @@ import {
   checkAssertionsForDependency,
   checkExcessProperties,
   getConnectionForIcebergTable,
+  getEffectiveBucketName,
+  getEffectiveTableFolderRoot,
   getEffectiveTableFolderSubpath,
   getFileFormatValueForIcebergTable,
   getStorageUriForIcebergTable,
@@ -190,9 +192,9 @@ export class Table extends ActionBuilder<dataform.Table> {
         fileFormat: getFileFormatValueForIcebergTable(config.iceberg.fileFormat?.toString()),
         tableFormat: dataform.TableFormat.ICEBERG,
         storageUri: getStorageUriForIcebergTable(
-          config.iceberg.bucketName,
-          getEffectiveTableFolderSubpath(this.proto.target.schema, this.proto.target.name, config.iceberg.tableFolderSubpath),
-          config.iceberg.tableFolderRoot,
+          getEffectiveBucketName(session.projectConfig.defaultIcebergConfig?.defaultBucketName, config.iceberg.bucketName),
+          getEffectiveTableFolderRoot(session.projectConfig.defaultIcebergConfig?.defaultTableFolderRoot, config.iceberg.tableFolderRoot),
+          getEffectiveTableFolderSubpath(this.proto.target.schema, this.proto.target.name, session.projectConfig.defaultIcebergConfig?.defaultTableFolderSubpath, config.iceberg.tableFolderSubpath),
         ),
       } : {}),
     });
@@ -580,11 +582,6 @@ export class Table extends ActionBuilder<dataform.Table> {
         ) {
           throw new ReferenceError(
             `Unexpected file format; only "PARQUET" is allowed, got "${unverifiedConfig.iceberg.fileFormat}".`
-          );
-        }
-        if (!unverifiedConfig.iceberg.bucketName) {
-          throw new ReferenceError(
-            'Reference error: bucket_name must be defined in an iceberg subblock.'
           );
         }
       }
