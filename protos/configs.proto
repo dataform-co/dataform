@@ -47,10 +47,10 @@ message WorkflowSettings {
   string builtin_assertion_name_prefix = 11;
 
   // Optional. Default config options for Iceberg tables.
-  DefaultIcebergConfigs default_iceberg_configs = 12;
+  DefaultIcebergConfig default_iceberg_config = 12;
 }
 
-message DefaultIcebergConfigs {
+message DefaultIcebergConfig {
   // Optional. Bucket name used to construct a storage URI when creating an
   // Iceberg table.
   string default_bucket_name = 1;

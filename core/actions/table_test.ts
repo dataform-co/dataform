@@ -287,7 +287,7 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
 defaultProject: "defaultProject"
 defaultDataset: "defaultDataset"
 defaultLocation: "us-central1"
-defaultIcebergConfigs:
+defaultIcebergConfig:
   defaultBucketName: "ws-default-bucket"
   defaultTableFolderRoot: "ws-default-root"
   defaultTableFolderSubpath: "ws-default-sub"
