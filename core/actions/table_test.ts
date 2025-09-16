@@ -299,12 +299,14 @@ defaultIcebergConfig:
         configBlock: `
         name: "table1",
         dataset: "dataset1",
-        iceberg: {
+        bigquery: {
+          iceberg: {
             fileFormat: "PARQUET",
             connection: "projects/gcp/locations/us/connections/conn-id",
             bucketName: "my-bucket",
             tableFolderRoot: "my-root",
             tableFolderSubpath: "my-subpath",
+          }
         }`,
         expected: {
           target: {name: "table1", schema: "dataset1", database: "project"},
@@ -323,12 +325,14 @@ defaultIcebergConfig:
         configBlock: `
         name: "table2",
         dataset: "dataset2",
-        iceberg: {
+        bigquery: {
+          iceberg: {
             fileFormat: "PARQUET",
             connection: "gcp.us.conn-id",
             bucketName: "my-bucket",
             tableFolderRoot: "my-root",
             tableFolderSubpath: "my-subpath",
+          }
         }`,
         expected: {
           target: {name: "table2", schema: "dataset2", database: "project"},
@@ -347,11 +351,13 @@ defaultIcebergConfig:
         configBlock: `
         name: "table3",
         dataset: "dataset3",
-        iceberg: {
-          fileFormat: "PARQUET",
-          connection: "gcp.us.conn-id",
+        bigquery: {
+          iceberg: {
+            fileFormat: "PARQUET",
+            connection: "gcp.us.conn-id",
             bucketName: "my-bucket",
             tableFolderSubpath: "my-subpath",
+          }
         }`,
         expected: {
           target: {name: "table3", schema: "dataset3", database: "project"},
@@ -370,11 +376,13 @@ defaultIcebergConfig:
         configBlock: `
         name: "my-table",
         dataset: "my-dataset",
-        iceberg: {
+        bigquery: {
+          iceberg: {
             fileFormat: "PARQUET",
             connection: "gcp.us.conn-id",
             bucketName: "my-bucket",
             tableFolderRoot: "my-root",
+          }
         }`,
         expected: {
           target: {name: "my-table", schema: "my-dataset", database: "project"},
@@ -392,11 +400,13 @@ defaultIcebergConfig:
         testName: "defaults to dataset and name for tableFolderSubpath with dataset from workflow settings",
         configBlock: `
         name: "my-table",
-        iceberg: {
+        bigquery: {
+          iceberg: {
             fileFormat: "PARQUET",
             connection: "gcp.us.conn-id",
             bucketName: "my-bucket",
             tableFolderRoot: "my-root",
+          }
         }`,
         expected: {
           target: {name: "my-table", schema: "defaultDataset", database: "project"},
@@ -415,11 +425,13 @@ defaultIcebergConfig:
         configBlock: `
         name: "table6",
         dataset: "dataset6",
-        iceberg: {
+        bigquery: {
+          iceberg: {
             connection: "projects/gcp/locations/us/connections/conn-id",
             bucketName: "my-bucket",
             tableFolderRoot: "my-root",
             tableFolderSubpath: "my-subpath",
+          }
         }`,
         expected: {
           target: {name: "table6", schema: "dataset6", database: "project"},
@@ -438,11 +450,13 @@ defaultIcebergConfig:
         configBlock: `
         name: "table7",
         dataset: "dataset7",
-        iceberg: {
+        bigquery: {
+          iceberg: {
             fileFormat: "PARQUET",
             bucketName: "my-bucket",
             tableFolderRoot: "my-root",
             tableFolderSubpath: "my-subpath",
+          }
         }`,
         expected: {
           target: {name: "table7", schema: "dataset7", database: "project"},
@@ -461,12 +475,14 @@ defaultIcebergConfig:
         configBlock: `
         name: "table6",
         dataset: "dataset6",
-        iceberg: {
+        bigquery: {
+          iceberg: {
             fileFormat: "",
             connection: "projects/gcp/locations/us/connections/conn-id",
             bucketName: "my-bucket",
             tableFolderRoot: "my-root",
             tableFolderSubpath: "my-subpath",
+          }
         }`,
         expected: {
           target: {name: "table6", schema: "dataset6", database: "project"},
@@ -485,11 +501,13 @@ defaultIcebergConfig:
         configBlock: `
         name: "table8",
         dataset: "dataset8",
-        iceberg: {
+        bigquery: {
+          iceberg: {
             connection: "invalid",
             bucketName: "my-bucket",
             tableFolderRoot: "my-root",
             tableFolderSubpath: "my-subpath",
+          }
         }`,
         expectError: "The connection must be in the format `{project}.{location}.{connection_id}` or `projects/{project}/locations/{location}/connections/{connection_id}`, or be set to `DEFAULT`.",
         wsContent: VALID_WORKFLOW_SETTINGS_YAML,
@@ -497,9 +515,11 @@ defaultIcebergConfig:
       {
         testName: "invalid file format",
         configBlock: `
-        iceberg: {
+        bigquery: {
+          iceberg: {
             fileFormat: "AVRO",
             bucketName: "my-bucket",
+          }
         }`,
         expectError: "Unexpected file format; only \"PARQUET\" is allowed, got \"AVRO\".",
         wsContent: VALID_WORKFLOW_SETTINGS_YAML,
@@ -507,11 +527,13 @@ defaultIcebergConfig:
       {
         testName: "bucketName not defined",
         configBlock: `
-        iceberg: {
+        bigquery: {
+          iceberg: {
             fileFormat: "PARQUET",
             connection: "projects/gcp/locations/us/connections/conn-id",
             tableFolderRoot: "my-root",
             tableFolderSubpath: "my-subpath",
+          }
         }`,
         expectError: "When defining an Iceberg table, bucket name must be defined in workspace_settings.yaml or the config block.",
         wsContent: VALID_WORKFLOW_SETTINGS_YAML,
@@ -521,18 +543,18 @@ defaultIcebergConfig:
         configBlock: `
         name: "iceberg_mixed",
         dataset: "mixed_dataset",
-        iceberg: {
+        bigquery: {
+          partitionBy: "partition_col",
+          clusterBy: ["cluster_col1", "cluster_col2"],
+          labels: {"env": "test", "type": "iceberg"},
+          additionalOptions: { "key1": "val1", "key2": "val2" },
+          iceberg: {
             fileFormat: "PARQUET",
             connection: "gcp.us.conn-id",
             bucketName: "my-bucket",
             tableFolderRoot: "my-root",
             tableFolderSubpath: "my-subpath",
-        },
-        bigquery: {
-            partitionBy: "partition_col",
-            clusterBy: ["cluster_col1", "cluster_col2"],
-            labels: {"env": "test", "type": "iceberg"},
-            additionalOptions: { "key1": "val1", "key2": "val2" }
+          },
         }`,
         expected: {
           target: {name: "iceberg_mixed", schema: "mixed_dataset", database: "project"},
@@ -554,14 +576,16 @@ defaultIcebergConfig:
         testName: "uses defaultBucketName from workspace_settings.yaml",
         wsContent: CUSTOM_WORKFLOW_SETTINGS_WITH_ICEBERG_DEFAULTS,
         configBlock: `
-          name: "table_ws_bucket",
-          dataset: "dataset_ws",
+        name: "table_ws_bucket",
+        dataset: "dataset_ws",
+        bigquery: {
           iceberg: {
-              fileFormat: "PARQUET",
-              connection: "gcp.us.conn-id",
-              tableFolderRoot: "my-root",
-              tableFolderSubpath: "my-subpath",
-          }`,
+            fileFormat: "PARQUET",
+            connection: "gcp.us.conn-id",
+            tableFolderRoot: "my-root",
+            tableFolderSubpath: "my-subpath",
+          }
+        }`,
         expected: {
           target: { name: "table_ws_bucket", schema: "dataset_ws", database: "project" },
           bigquery: {
@@ -577,14 +601,16 @@ defaultIcebergConfig:
         testName: "uses defaultTableFolderRoot from workspace_settings.yaml",
         wsContent: CUSTOM_WORKFLOW_SETTINGS_WITH_ICEBERG_DEFAULTS,
         configBlock: `
-          name: "table_ws_root",
-          dataset: "dataset_ws",
+        name: "table_ws_root",
+        dataset: "dataset_ws",
+        bigquery: {
           iceberg: {
-              fileFormat: "PARQUET",
-              connection: "gcp.us.conn-id",
-              bucketName: "my-bucket",
-              tableFolderSubpath: "my-subpath",
-          }`,
+            fileFormat: "PARQUET",
+            connection: "gcp.us.conn-id",
+            bucketName: "my-bucket",
+            tableFolderSubpath: "my-subpath",
+          }
+        }`,
         expected: {
           target: { name: "table_ws_root", schema: "dataset_ws", database: "project" },
           bigquery: {
@@ -600,14 +626,16 @@ defaultIcebergConfig:
         testName: "uses defaultTableFolderSubpath from workspace_settings.yaml",
         wsContent: CUSTOM_WORKFLOW_SETTINGS_WITH_ICEBERG_DEFAULTS,
         configBlock: `
-          name: "table_ws_sub",
-          dataset: "dataset_ws",
+        name: "table_ws_sub",
+        dataset: "dataset_ws",
+        bigquery: {
           iceberg: {
-              fileFormat: "PARQUET",
-              connection: "gcp.us.conn-id",
-              bucketName: "my-bucket",
-              tableFolderRoot: "my-root",
-          }`,
+            fileFormat: "PARQUET",
+            connection: "gcp.us.conn-id",
+            bucketName: "my-bucket",
+            tableFolderRoot: "my-root",
+          }
+        }`,
         expected: {
           target: { name: "table_ws_sub", schema: "dataset_ws", database: "project" },
           bigquery: {
@@ -623,12 +651,14 @@ defaultIcebergConfig:
         testName: "uses all Iceberg defaults from workspace_settings.yaml",
         wsContent: CUSTOM_WORKFLOW_SETTINGS_WITH_ICEBERG_DEFAULTS,
         configBlock: `
-          name: "table_ws_all",
-          dataset: "dataset_ws",
+        name: "table_ws_all",
+        dataset: "dataset_ws",
+        bigquery: {
           iceberg: {
-              fileFormat: "PARQUET",
-              connection: "gcp.us.conn-id",
-          }`,
+            fileFormat: "PARQUET",
+            connection: "gcp.us.conn-id",
+          }
+        }`,
         expected: {
           target: { name: "table_ws_all", schema: "dataset_ws", database: "project" },
           bigquery: {
@@ -644,15 +674,17 @@ defaultIcebergConfig:
         testName: "config values override workspace defaults for Iceberg paths",
         wsContent: CUSTOM_WORKFLOW_SETTINGS_WITH_ICEBERG_DEFAULTS,
         configBlock: `
-          name: "table_override",
-          dataset: "dataset_ovr",
+        name: "table_override",
+        dataset: "dataset_ovr",
+        bigquery: {
           iceberg: {
-              fileFormat: "PARQUET",
-              connection: "gcp.us.conn-id",
-              bucketName: "config-bucket",
-              tableFolderRoot: "config-root",
-              tableFolderSubpath: "config-sub",
-          }`,
+            fileFormat: "PARQUET",
+            connection: "gcp.us.conn-id",
+            bucketName: "config-bucket",
+            tableFolderRoot: "config-root",
+            tableFolderSubpath: "config-sub",
+          }
+        }`,
         expected: {
           target: { name: "table_override", schema: "dataset_ovr", database: "project" },
           bigquery: {
