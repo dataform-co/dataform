@@ -597,16 +597,6 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
           unverifiedConfig.columns as any
         );
       }
-      if (unverifiedConfig.iceberg) {
-        if (
-          unverifiedConfig.iceberg.fileFormat &&
-          unverifiedConfig.iceberg.fileFormat.toUpperCase() !== 'PARQUET'
-        ) {
-          throw new ReferenceError(
-            `Unexpected file format; only "PARQUET" is allowed, got "${unverifiedConfig.iceberg.fileFormat}".`
-          );
-        }
-      }
       unverifiedConfig = LegacyConfigConverter.insertLegacyInlineAssertionsToConfigProto(
         unverifiedConfig
       );
@@ -626,12 +616,23 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
             "labels",
             "partitionExpirationDays",
             "requirePartitionFilter",
-            "additionalOptions"
+            "additionalOptions",
+            "iceberg"
           ]),
           "BigQuery table config"
         );
       }
     }
+    if (unverifiedConfig.iceberg) {
+        if (
+          unverifiedConfig.iceberg.fileFormat &&
+          unverifiedConfig.iceberg.fileFormat.toUpperCase() !== 'PARQUET'
+        ) {
+          throw new ReferenceError(
+            `Unexpected file format; only "PARQUET" is allowed, got "${unverifiedConfig.iceberg.fileFormat}".`
+          );
+        }
+      }
 
     const config = verifyObjectMatchesProto(
       dataform.ActionConfig.IncrementalTableConfig,

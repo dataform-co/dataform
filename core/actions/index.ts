@@ -360,6 +360,14 @@ export interface ILegacyBigQueryOptions {
   partitionExpirationDays?: number;
   requirePartitionFilter?: boolean;
   additionalOptions?: { [name: string]: string };
+  iceberg?: {
+    fileFormat?: string;
+    tableFormat?: string;
+    connection?: string;
+    bucketName?: string;
+    tableFolderRoot?: string;
+    tableFolderSubpath?: string;
+  }
 }
 
 /**
@@ -456,6 +464,10 @@ export class LegacyConfigConverter {
     if (!!legacyConfig.bigquery.additionalOptions) {
       legacyConfig.additionalOptions = legacyConfig.bigquery.additionalOptions;
       delete legacyConfig.bigquery.additionalOptions;
+    }
+    if(!!legacyConfig.bigquery.iceberg) {
+      legacyConfig.iceberg = legacyConfig.bigquery.iceberg;
+      delete legacyConfig.bigquery.iceberg;
     }
     // To prevent skipping throwing an error when there are additional, unused fields, only delete
     // the legacy bigquery object if there are no more fields left on it.
