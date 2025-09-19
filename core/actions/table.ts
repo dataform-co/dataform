@@ -192,9 +192,9 @@ export class Table extends ActionBuilder<dataform.Table> {
         fileFormat: getFileFormatValueForIcebergTable(config.iceberg.fileFormat?.toString()),
         tableFormat: dataform.TableFormat.ICEBERG,
         storageUri: getStorageUriForIcebergTable(
-          getEffectiveBucketName(session.projectConfig.icebergConfig?.defaultBucketName, config.iceberg.bucketName),
-          getEffectiveTableFolderRoot(session.projectConfig.icebergConfig?.defaultTableFolderRoot, config.iceberg.tableFolderRoot),
-          getEffectiveTableFolderSubpath(this.proto.target.schema, this.proto.target.name, session.projectConfig.icebergConfig?.defaultTableFolderSubpath, config.iceberg.tableFolderSubpath),
+          getEffectiveBucketName(session.projectConfig.defaultIcebergConfig?.bucketName, config.iceberg.bucketName),
+          getEffectiveTableFolderRoot(session.projectConfig.defaultIcebergConfig?.tableFolderRoot, config.iceberg.tableFolderRoot),
+          getEffectiveTableFolderSubpath(this.proto.target.schema, this.proto.target.name, session.projectConfig.defaultIcebergConfig?.tableFolderSubpath, config.iceberg.tableFolderSubpath),
         ),
       } : {}),
     });

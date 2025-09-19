@@ -287,10 +287,10 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
 defaultProject: "defaultProject"
 defaultDataset: "defaultDataset"
 defaultLocation: "us-central1"
-icebergConfig:
-  defaultBucketName: "ws-default-bucket"
-  defaultTableFolderRoot: "ws-default-root"
-  defaultTableFolderSubpath: "ws-default-sub"
+defaultIcebergConfig:
+  bucketName: "ws-default-bucket"
+  tableFolderRoot: "ws-default-root"
+  tableFolderSubpath: "ws-default-sub"
 `;
 
     const testCases = [
