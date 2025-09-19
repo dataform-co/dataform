@@ -356,7 +356,7 @@ actions:
 defaultProject: "defaultProject"
 defaultDataset: "defaultDataset"
 defaultLocation: "us-central1"
-defaultIcebergConfig:
+icebergConfig:
   defaultBucketName: "ws-default-bucket"
   defaultTableFolderRoot: "ws-default-root"
   defaultTableFolderSubpath: "ws-default-sub"

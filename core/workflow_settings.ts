@@ -133,16 +133,16 @@ export function workflowSettingsAsProjectConfig(
         workflowSettings.defaultNotebookRuntimeOptions.runtimeTemplateName;
     }
   }
-  if(workflowSettings.defaultIcebergConfig) {
-    projectConfig.defaultIcebergConfig = {};
-    if(workflowSettings.defaultIcebergConfig.defaultBucketName) {
-      projectConfig.defaultIcebergConfig.defaultBucketName = workflowSettings.defaultIcebergConfig.defaultBucketName;
+  if(workflowSettings.icebergConfig) {
+    projectConfig.icebergConfig = {};
+    if(workflowSettings.icebergConfig.defaultBucketName) {
+      projectConfig.icebergConfig.defaultBucketName = workflowSettings.icebergConfig.defaultBucketName;
     }
-    if(workflowSettings.defaultIcebergConfig.defaultTableFolderRoot) {
-      projectConfig.defaultIcebergConfig.defaultTableFolderRoot = workflowSettings.defaultIcebergConfig.defaultTableFolderRoot;
+    if(workflowSettings.icebergConfig.defaultTableFolderRoot) {
+      projectConfig.icebergConfig.defaultTableFolderRoot = workflowSettings.icebergConfig.defaultTableFolderRoot;
     }
-    if(workflowSettings.defaultIcebergConfig.defaultTableFolderSubpath) {
-      projectConfig.defaultIcebergConfig.defaultTableFolderSubpath = workflowSettings.defaultIcebergConfig.defaultTableFolderSubpath;
+    if(workflowSettings.icebergConfig.defaultTableFolderSubpath) {
+      projectConfig.icebergConfig.defaultTableFolderSubpath = workflowSettings.icebergConfig.defaultTableFolderSubpath;
     }
   }
 
