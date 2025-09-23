@@ -875,6 +875,99 @@ actions:
       });
     });
   });
+
+  suite("disableAssertions", () => {
+    [
+      {
+        testName: "sqlx file assertions",
+        setupFiles: (projectDir: string) => {
+          fs.writeFileSync(
+            path.join(projectDir, "definitions/assertion.sqlx"),
+            `config { type: "assertion" }\nSELECT 1 WHERE FALSE`
+          );
+        }
+      },
+      {
+        testName: "JavaScript API assertions",
+        setupFiles: (projectDir: string) => {
+          fs.writeFileSync(
+            path.join(projectDir, "definitions/assertion.js"),
+            `assert("test_assertion").query("SELECT 1 WHERE FALSE");`
+          );
+        }
+      },
+      {
+        testName: "YAML action config assertions",
+        setupFiles: (projectDir: string) => {
+          fs.writeFileSync(
+            path.join(projectDir, "definitions/actions.yaml"),
+            `
+actions:
+- assertion:
+    name: yaml_assertion
+    filename: assertion.sql`
+          );
+          fs.writeFileSync(
+            path.join(projectDir, "definitions/assertion.sql"),
+            "SELECT 1 WHERE FALSE"
+          );
+        }
+      }
+    ].forEach(testCase => {
+      test(`disables ${testCase.testName} when disableAssertions is true`, () => {
+        const projectDir = tmpDirFixture.createNewTmpDir();
+        fs.writeFileSync(
+          path.join(projectDir, "workflow_settings.yaml"),
+          VALID_WORKFLOW_SETTINGS_YAML
+        );
+        fs.mkdirSync(path.join(projectDir, "definitions"));
+        
+        testCase.setupFiles(projectDir);
+
+        const coreRequest = coreExecutionRequestFromPath(projectDir);
+        coreRequest.compile.compileConfig.disableAssertions = true;
+        const result = runMainInVm(coreRequest);
+
+        expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+        expect(result.compile.compiledGraph.assertions).deep.equals([]);
+      });
+    });
+
+    [
+      "table",
+      "view",
+      "incremental"
+    ].forEach(tableType => {
+      test(`disables inline ${tableType} assertions when disableAssertions is true`, () => {
+        const projectDir = tmpDirFixture.createNewTmpDir();
+        fs.writeFileSync(
+          path.join(projectDir, "workflow_settings.yaml"),
+          VALID_WORKFLOW_SETTINGS_YAML
+        );
+        fs.mkdirSync(path.join(projectDir, "definitions"));
+        fs.writeFileSync(
+          path.join(projectDir, `definitions/${tableType}.sqlx`),
+          `config {
+            type: "${tableType}",
+            assertions: {
+              uniqueKey: ["id"],
+              nonNull: ["name"],
+              rowConditions: ["id > 0"]
+            }
+          }
+          SELECT 1 as id, 'test' as name`
+        );
+
+        const coreRequest = coreExecutionRequestFromPath(projectDir);
+        coreRequest.compile.compileConfig.disableAssertions = true;
+        const result = runMainInVm(coreRequest);
+
+        expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+        expect(result.compile.compiledGraph.assertions).deep.equals([]);
+        expect(result.compile.compiledGraph.tables.length).equals(1);
+      });
+    });
+  });
 });
 
 function prefixAdjustedName(prefix: string | undefined, name: string) {

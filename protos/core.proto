@@ -44,6 +44,9 @@ message CompileConfig {
   // Override compilation timeout settings.
   int32 timeout_millis = 6;
 
+  // Disables all assertions during compilation.
+  bool disable_assertions = 10;
+
   reserved 2, 4, 5, 7, 9;
 }
 

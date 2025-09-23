@@ -175,6 +175,15 @@ const quietCompileOption: INamedOption<yargs.Options> = {
   }
 };
 
+const disableAssertionsOption: INamedOption<yargs.Options> = {
+  name: "disable-assertions",
+  option: {
+    describe: "Disables all assertions including built-in assertions (uniqueKey, nonNull, rowConditions) and manual assertions (type: assertion).",
+    type: "boolean",
+    default: false
+  }
+};
+
 const testConnectionOptionName = "test-connection";
 
 const watchOptionName = "watch";
@@ -330,6 +339,7 @@ export function runCli() {
           jsonOutputOption,
           timeoutOption,
           quietCompileOption,
+          disableAssertionsOption,
           ...ProjectConfigOptions.allYargsOptions
         ],
         processFn: async argv => {
@@ -342,7 +352,8 @@ export function runCli() {
             const compiledGraph = await compile({
               projectDir,
               projectConfigOverride: ProjectConfigOptions.constructProjectConfigOverride(argv),
-              timeoutMillis: argv[timeoutOption.name] || undefined
+              timeoutMillis: argv[timeoutOption.name] || undefined,
+              disableAssertions: argv[disableAssertionsOption.name] || false
             });
             printCompiledGraph(compiledGraph, argv[jsonOutputOption.name], argv[quietCompileOption.name]);
             if (compiledGraphHasErrors(compiledGraph)) {
@@ -485,6 +496,7 @@ export function runCli() {
           jsonOutputOption,
           timeoutOption,
           tagsOption,
+          disableAssertionsOption,
           ...ProjectConfigOptions.allYargsOptions
         ],
         processFn: async argv => {
@@ -501,7 +513,8 @@ export function runCli() {
           const compiledGraph = await compile({
             projectDir: argv[projectDirOption.name],
             projectConfigOverride: ProjectConfigOptions.constructProjectConfigOverride(argv),
-            timeoutMillis: argv[timeoutOption.name] || undefined
+            timeoutMillis: argv[timeoutOption.name] || undefined,
+            disableAssertions: argv[disableAssertionsOption.name] || false
           });
           if (compiledGraphHasErrors(compiledGraph)) {
             printCompiledGraphErrors(compiledGraph.graphErrors, argv[quietCompileOption.name]);

@@ -50,7 +50,12 @@ export function main(coreExecutionRequest: Uint8Array | string): Uint8Array | st
 
   // Initialize the compilation session.
   const session = nativeRequire("@dataform/core").session as Session;
-  session.init(compileRequest.compileConfig.projectDir, projectConfig, projectConfig);
+  session.init(
+    compileRequest.compileConfig.projectDir, 
+    projectConfig, 
+    projectConfig,
+    compileRequest.compileConfig.disableAssertions
+  );
 
   // Allow "includes" files to use the current session object.
   globalAny.dataform = session;

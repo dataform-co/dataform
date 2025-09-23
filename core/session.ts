@@ -47,6 +47,7 @@ export class Session {
   public projectConfig: dataform.ProjectConfig;
   // The canonical project config contains the project config before schema and database overrides.
   public canonicalProjectConfig: dataform.ProjectConfig;
+  public disableAssertions: boolean;
 
   public actions: Action[];
   public indexedActions: ActionMap;
@@ -61,21 +62,24 @@ export class Session {
   constructor(
     rootDir?: string,
     projectConfig?: dataform.ProjectConfig,
-    originalProjectConfig?: dataform.ProjectConfig
+    originalProjectConfig?: dataform.ProjectConfig,
+    disableAssertions?: boolean
   ) {
-    this.init(rootDir, projectConfig, originalProjectConfig);
+    this.init(rootDir, projectConfig, originalProjectConfig, disableAssertions);
   }
 
   public init(
     rootDir: string,
     projectConfig?: dataform.ProjectConfig,
-    originalProjectConfig?: dataform.ProjectConfig
+    originalProjectConfig?: dataform.ProjectConfig,
+    disableAssertions?: boolean
   ) {
     this.rootDir = rootDir;
     this.projectConfig = dataform.ProjectConfig.create(projectConfig || DEFAULT_CONFIG);
     this.canonicalProjectConfig = getCanonicalProjectConfig(
       dataform.ProjectConfig.create(originalProjectConfig || projectConfig || DEFAULT_CONFIG)
     );
+    this.disableAssertions = disableAssertions || false;
     this.actions = [];
     this.tests = {};
     this.graphErrors = { compilationErrors: [] };
@@ -451,7 +455,7 @@ export class Session {
         this.actions.filter(action => action instanceof Operation)
       ),
       assertions: this.compileGraphChunk(
-        this.actions.filter(action => action instanceof Assertion)
+        this.disableAssertions ? [] : this.actions.filter(action => action instanceof Assertion)
       ),
       declarations: this.compileGraphChunk(
         this.actions.filter(action => action instanceof Declaration)

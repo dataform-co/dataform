@@ -99,6 +99,10 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
       return;
     }
 
+    if (session?.disableAssertions) {
+      return;
+    }
+
     const config = this.verifyConfig(unverifiedConfig);
 
     if (!config.name) {
