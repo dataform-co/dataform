@@ -13,11 +13,12 @@ suite(basename(__filename), () => {
       test(`by default, acts the same as Error, ${testCase.name}`, () => {
         const errorWithCause = new ErrorWithCause(testCase.message);
         const normalError = new Error(testCase.message);
+        const errorWithCauseStackMatch = errorWithCause.stack?.match(/errors\.spec\.ts:\d{1,3}:\d{1,3}/);
         expect(errorWithCause.message).eql(normalError.message);
         expect(errorWithCause.stack).eql(
-          normalError.stack.replace(
+          normalError.stack?.replace(
             /errors\.spec\.ts:\d{1,3}:\d{1,3}/,
-            errorWithCause.stack.match(/errors\.spec\.ts:\d{1,3}:\d{1,3}/)[0]
+            errorWithCauseStackMatch!![0]
           )
         );
         expect(errorWithCause.toString()).eql(normalError.toString());
@@ -29,9 +30,9 @@ suite(basename(__filename), () => {
       const errorWithCause = new ErrorWithCause("top-level error", cause);
 
       // Full stacktrace should be double the length of a single Error's stacktrace.
-      expect(errorWithCause.stack.split("\n").length).eql(cause.stack.split("\n").length * 2);
-      expect(errorWithCause.stack.startsWith("Error: top-level error")).eql(true);
-      expect(errorWithCause.stack.endsWith(cause.stack)).eql(true);
+      expect(errorWithCause.stack?.split("\n").length).eql(cause.stack!!.split("\n").length * 2);
+      expect(errorWithCause.stack?.startsWith("Error: top-level error")).eql(true);
+      expect(errorWithCause.stack?.endsWith(cause.stack!!)).eql(true);
     });
   });
 

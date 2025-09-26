@@ -48,7 +48,7 @@ export class Suite {
     } else {
       options = { ...options, ...optionsOrFn };
     }
-    return new Suite(options, fn);
+    return new Suite(options, fn || (() => {}));
   }
 
   private suites: Suite[] = [];
@@ -59,7 +59,7 @@ export class Suite {
   private beforeEaches: Hook[] = [];
   private afterEaches: Hook[] = [];
 
-  private runStarted: boolean;
+  private runStarted: boolean = false;
 
   constructor(public readonly options: ISuiteOptions, fn: (ctx?: ISuiteContext) => void) {
     if (Suite.globalStack) {

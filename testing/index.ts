@@ -29,6 +29,10 @@ export const npmPath = `external/${platformPath()}/bin/npm`;
 export const corePackageTarPath = "packages/@dataform/core/package.tar.gz";
 
 export async function getProcessResult(childProcess: ChildProcess) {
+  if (!childProcess.stdout || !childProcess.stderr) {
+    throw new Error("Child process has no stdout or stderr");
+  }
+
   let stderr = "";
   childProcess.stderr.pipe(process.stderr);
   childProcess.stderr.on("data", chunk => (stderr += String(chunk)));

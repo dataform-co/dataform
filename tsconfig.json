@@ -1,7 +1,6 @@
 {
   "compilerOptions": {
     "baseUrl": ".",
-    "declaration": true,
     "paths": {
       "df/*": [
         "*",
@@ -9,21 +8,26 @@
         "bazel-genfiles/*"
       ]
     },
-    "module": "ESNext",
+    "module": "esnext",
+    
     "noImplicitAny": true,
     "noImplicitThis": true,
     "preserveConstEnums": true,
     "removeComments": true,
-    "target": "ESNext",
+    "target": "esnext",
     "sourceMap": true,
     "skipLibCheck": true,
+    "declaration": true,
     "experimentalDecorators": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
     "lib": [
-      "es2019",
+      "esnext",
       "dom"
     ],
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
+    "typeRoots": ["node_modules/@types"],
     "plugins": [
       {
         "name": "@bazel/tsetse",

@@ -1,6 +1,6 @@
 # Passes an argument `--skipLibCheck` to *every* spawn of tsc
 # Bazel 6.4 or greater: 'common' means 'any command that supports this flag'
-common --@aspect_rules_ts//ts:skipLibCheck=always
+common --@aspect_rules_ts//ts:skipLibCheck=always --@aspect_rules_ts//ts:default_to_tsc_transpiler
 
 build --test_output=errors --action_env="GTEST_COLOR=1"
 

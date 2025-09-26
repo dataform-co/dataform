@@ -18,6 +18,10 @@ export class TmpDirFixture {
 
   public createNewTmpDir() {
     // TEST_TMPDIR is set by bazel.
+    if (!process.env.TEST_TMPDIR) {
+      throw new Error("TEST_TMPDIR is not set");
+    }
+
     const tmpDirPath = path.resolve(
       path.join(process.env.TEST_TMPDIR, `tmp_dir_${TmpDirFixture.dirCounter++}`)
     );

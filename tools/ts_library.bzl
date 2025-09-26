@@ -1,9 +1,6 @@
 load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
 # load("@npm//:mocha/package_json.bzl", mocha = "bin")
 load("@aspect_rules_js//js:defs.bzl", "js_test")
-load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
-# load("@npm//:mocha/package_json.bzl", mocha = "bin")
-load("@aspect_rules_js//js:defs.bzl", "js_test")
 
 def ts_library(**kwargs):
     ts_project(

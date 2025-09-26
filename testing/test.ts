@@ -40,7 +40,7 @@ export class Test {
     } else {
       options = { ...options, ...optionsOrFn };
     }
-    return new Test(options, fn);
+    return new Test(options, fn || (() => {}));
   }
 
   constructor(public readonly options: ITestOptions, private readonly fn: () => any) {}
@@ -51,9 +51,9 @@ export class Test {
       return;
     }
     const retries = this.options.retries || 0;
-    let lastResult: IRunResult;
+    let lastResult: IRunResult | undefined = undefined;
     for (let i = 0; i <= retries; i++) {
-      let timer: NodeJS.Timer;
+      let timer: NodeJS.Timer | undefined = undefined;
       const timeout = this.options.timeout || Test.DEFAULT_TIMEOUT_MILLIS;
       const result: IRunResult = {
         path,
@@ -99,6 +99,8 @@ export class Test {
       }
     }
 
-    ctx.results.push(lastResult);
+    if (lastResult) {
+      ctx.results.push(lastResult);
+    } 
   }
 }

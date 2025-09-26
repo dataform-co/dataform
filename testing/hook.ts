@@ -34,13 +34,13 @@ export class Hook {
     } else {
       options = { ...options, ...optionsOrFn };
     }
-    return new Hook(options, fn);
+    return new Hook(options, fn || (() => {}));
   }
 
   constructor(public readonly options: IHookOptions, private readonly fn: IHookFunction) {}
 
   public async run(ctx: IRunContext) {
-    let timer: NodeJS.Timer;
+    let timer: NodeJS.Timer | undefined = undefined;
     const timeout = this.options.timeout || Hook.DEFAULT_TIMEOUT_MILLIS;
     const result: IRunResult = {
       path: [...ctx.path, `${this.options.name} (hook)`],

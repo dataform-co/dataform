@@ -40,6 +40,10 @@ export class Runner {
   public static async run() {
     chalk.level = 3;
     try {
+      if (!process.env.TESTBRIDGE_TEST_ONLY) {
+        throw new Error("TESTBRIDGE_TEST_ONLY is not set");
+      }
+
       // We tell the runner to start running at the end of current block of
       // synchronously executed code. This will typically be after all the
       // suite definitions are evaluated. This is equivalent to setTimeout(..., 0).

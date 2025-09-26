@@ -19,3 +19,5 @@ bigquery.json
 yarn-error.log
 
 tmp/
+
+.aspect/
