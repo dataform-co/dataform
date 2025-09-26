@@ -5,6 +5,10 @@ import { dump as dumpYaml, load as loadYaml } from "js-yaml";
 import * as path from "path";
 
 import { execFile } from "child_process";
+import {
+  ICEBERG_CONFIG_COLLECTED_TEXT,
+  ICEBERG_CONFIG_PROMPT_TEXT,
+} from "df/cli/util";
 import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
 import { corePackageTarPath, getProcessResult, nodePath, npmPath, suite, test } from "df/testing";
@@ -86,6 +90,81 @@ defaultLocation: us-central1
 defaultDataset: dataform
 defaultAssertionDataset: dataform_assertions
 `);
+  });
+
+  test("init with --iceberg sets defaultIcebergConfig with all fields", async () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    const stdinInputs = [
+      "my-iceberg-bucket",    // Answer for "Enter the default Iceberg bucket name:"
+      "tables/root",          // Answer for "Enter the default Iceberg table folder root:"
+      "v1"                    // Answer for "Enter the default Iceberg table folder subpath:"
+    ];
+
+    const result = await getProcessResult(
+      execFile(nodePath, [
+        cliEntryPointPath,
+        "init",
+        projectDir,
+        "dataform-iceberg-test",
+        "us-central1",
+        "--iceberg"
+      ], {
+        // Inject test inputs via environment variable for the child process
+        env: { ...process.env, DATAFORM_CLI_TEST_INPUTS: JSON.stringify(stdinInputs) }
+      })
+    );
+
+    expect(result.exitCode).equals(0);
+    expect(result.stdout).contains(ICEBERG_CONFIG_PROMPT_TEXT);
+    expect(result.stdout).contains(ICEBERG_CONFIG_COLLECTED_TEXT);
+
+    const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
+    const workflowSettings = dataform.WorkflowSettings.create(
+      loadYaml(fs.readFileSync(workflowSettingsPath, "utf8"))
+    );
+
+    expect(workflowSettings.defaultIcebergConfig).to.deep.equal({
+      bucketName: "my-iceberg-bucket",
+      tableFolderRoot: "tables/root",
+      tableFolderSubpath: "v1"
+    });
+  });
+
+  test("init with --iceberg handles empty inputs for some fields", async () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    const stdinInputs = [
+      "another-bucket", // Bucket name
+      "",               // Table folder root (empty)
+      "subpath-only"    // Table folder subpath
+    ];
+
+    const result = await getProcessResult(
+      execFile(nodePath, [
+        cliEntryPointPath,
+        "init",
+        projectDir,
+        "dataform-iceberg-partial",
+        "us-east1",
+        "--iceberg"
+      ], {
+        env: { ...process.env, DATAFORM_CLI_TEST_INPUTS: JSON.stringify(stdinInputs) }
+      })
+    );
+
+    expect(result.exitCode).equals(0);
+    expect(result.stdout).contains(ICEBERG_CONFIG_PROMPT_TEXT);
+    expect(result.stdout).contains(ICEBERG_CONFIG_COLLECTED_TEXT);
+
+    const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
+    const workflowSettings = dataform.WorkflowSettings.create(
+      loadYaml(fs.readFileSync(workflowSettingsPath, "utf8"))
+    );
+
+    expect(workflowSettings.defaultIcebergConfig).to.deep.equal({
+      bucketName: "another-bucket",
+      // tableFolderRoot is omitted
+      tableFolderSubpath: "subpath-only"
+    });
   });
 
   test("install throws an error when dataformCoreVersion in workflow_settings.yaml", async () => {

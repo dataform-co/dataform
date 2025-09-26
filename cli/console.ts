@@ -45,6 +45,100 @@ export function question(questionText: string) {
   return prompt(questionText);
 }
 
+/**
+ * Test-friendly function that prompts the user for input. If running in a
+ * non-TTY (i.e. test) environment and DATAFORM_CLI_TEST_INPUTS is set,
+ * it consumes inputs from the environment variable.
+ * @param questionText The question text to display.
+ * @returns Users's input or test input.
+ */
+export function interactiveQuestion(questionText: string): string {
+    // If running in a non-TTY environment and test inputs are provided
+  if (!process.stdin.isTTY && process.env.DATAFORM_CLI_TEST_INPUTS !== undefined) {
+    const testInput = getTestInput();
+    if (testInput !== undefined) {
+      print(`${questionText} ${testInput}\n`); // Echo the test input for clarity in logs
+      return testInput;
+    }
+    throw new Error("Not enough test inputs provided in DATAFORM_CLI_TEST_INPUTS.");
+  }
+
+  // If running in TTY environment or if testInputs are not available in non-TTY
+  print(`${questionText} `);
+  return readlineSync.question("");
+}
+
+/**
+ * Represents the state for managing test inputs provided via environment
+ * variables. This state is used to simulate user input during tests in non-TTY
+ * environments.
+ */
+interface ITestInputsState {
+  /**
+   * An array of strings, where each string is a pre-defined input
+   * to be used in place of interactive prompts. These values are typically
+   * parsed from the `DATAFORM_CLI_TEST_INPUTS` environment variable.
+   */
+  inputs: string[] | undefined;
+  /**
+   * The index of the next element to be read from the `inputs` array.
+   * This index is incremented each time an input is consumed.
+   */
+  currentIndex: number;
+}
+let testInputsState: ITestInputsState | undefined;
+
+/**
+ * Helper function to enable testing interactive CLI. Initializes
+ * testInputsState by parsing the DATAFORM_CLI_TEST_INPUTS environment variable.
+ * This function ensures the parsing happens only once.
+ */
+function ensureTestInputsInitialized(): void {
+  if (testInputsState !== undefined) {
+    return; // Already initialized
+  }
+
+  const envVar = process.env.DATAFORM_CLI_TEST_INPUTS;
+  if (!envVar) {
+    return; // Environment variable not set
+  }
+
+  try {
+    const parsed = JSON.parse(envVar);
+    if (Array.isArray(parsed)) {
+      testInputsState = {
+        inputs: parsed.map(String), // Ensure all elements are strings
+        currentIndex: 0,
+      };
+      printError("Using DATAFORM_CLI_TEST_INPUTS for console prompts");
+    } else {
+      printError(`Failed to parse DATAFORM_CLI_TEST_INPUTS: Expected a JSON array, but got ${typeof parsed}.`);
+      testInputsState = undefined;
+    }
+  } catch (e) {
+    printError("Failed to parse DATAFORM_CLI_TEST_INPUTS:", e);
+    testInputsState = undefined;
+  }
+}
+
+/**
+ * Helper function to enable testing interactive CLI. Retrieves testInput from
+ * the testInputState.
+ * @returns Test input, or undefined if no test inputs are available.
+ */
+function getTestInput(): string | undefined {
+  ensureTestInputsInitialized();
+
+  if (!testInputsState || testInputsState.currentIndex >= testInputsState.inputs.length) {
+    return undefined;
+  }
+
+  const input = testInputsState.inputs[testInputsState.currentIndex];
+  printError(`[TEST_INPUT ${testInputsState.currentIndex}]: "${input}"`);
+  testInputsState.currentIndex++;
+  return input;
+}
+
 export function passwordQuestion(questionText: string) {
   return prompt(questionText, {
     hideEchoBack: true,
