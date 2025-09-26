@@ -1,6 +1,11 @@
 import * as fs from "fs";
 import * as path from "path";
 
+import {
+  interactiveQuestion,
+  print,
+  printSuccess,
+} from "df/cli/console";
 import { dataform } from "df/protos/ts";
 import untildify from "untildify";
 
@@ -45,3 +50,37 @@ export function formatBytesInHumanReadableFormat(bytes: number): string {
   return `${value} ${units[i]}`;
 }
 
+export function promptForIcebergConfig(): dataform.IDefaultIcebergConfig | undefined {
+  print(ICEBERG_CONFIG_PROMPT_TEXT);
+
+  const tempIcebergConfig: dataform.IDefaultIcebergConfig = {};
+
+  const bucketName = interactiveQuestion(ICEBERG_BUCKET_NAME_PROMPT_TEXT);
+  if (bucketName !== "") {
+    tempIcebergConfig.bucketName = bucketName;
+  }
+
+  const tableFolderRoot = interactiveQuestion(ICEBERG_TABLE_FOLDER_ROOT_PROMPT_TEXT);
+  if (tableFolderRoot !== "") {
+    tempIcebergConfig.tableFolderRoot = tableFolderRoot;
+  }
+
+  const tableFolderSubpath = interactiveQuestion(ICEBERG_TABLE_FOLDER_SUBPATH_PROMPT_TEXT);
+  if (tableFolderSubpath !== "") {
+    tempIcebergConfig.tableFolderSubpath = tableFolderSubpath;
+  }
+
+  printSuccess(ICEBERG_CONFIG_COLLECTED_TEXT);
+
+  // Only return the config object if at least one field was set.
+  if (Object.keys(tempIcebergConfig).length > 0) {
+    return tempIcebergConfig;
+  }
+  return undefined;
+}
+
+export const ICEBERG_CONFIG_PROMPT_TEXT = "\nSet repository-level configuration for Iceberg bucket name, table folder root and table folder subpath. If you do not want to set a field, enter an empty string in response to the prompt.\n";
+export const ICEBERG_CONFIG_COLLECTED_TEXT = "Default Iceberg configuration collected.\n";
+const ICEBERG_BUCKET_NAME_PROMPT_TEXT = "Enter the default Iceberg bucket name:";
+const ICEBERG_TABLE_FOLDER_ROOT_PROMPT_TEXT = "Enter the default Iceberg table folder root:";
+const ICEBERG_TABLE_FOLDER_SUBPATH_PROMPT_TEXT = "Enter the default Iceberg table folder subpath:";

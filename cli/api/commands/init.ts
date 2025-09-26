@@ -50,7 +50,8 @@ export async function init(
     defaultProject: projectConfig.defaultDatabase,
     defaultLocation: projectConfig.defaultLocation,
     defaultDataset: projectConfig.defaultSchema || "dataform",
-    defaultAssertionDataset: projectConfig.assertionSchema || "dataform_assertions"
+    defaultAssertionDataset: projectConfig.assertionSchema || "dataform_assertions",
+    defaultIcebergConfig: projectConfig.defaultIcebergConfig,
   };
   if (projectConfig.databaseSuffix) {
     workflowSettings.projectSuffix = projectConfig.databaseSuffix;
@@ -66,6 +67,9 @@ export async function init(
   }
   if (projectConfig.builtinAssertionNamePrefix) {
     workflowSettings.builtinAssertionNamePrefix = projectConfig.builtinAssertionNamePrefix;
+  }
+  if(projectConfig.defaultIcebergConfig) {
+    workflowSettings.defaultIcebergConfig = projectConfig.defaultIcebergConfig;
   }
 
   fs.writeFileSync(workflowSettingsYamlPath, dumpYaml(workflowSettings));
