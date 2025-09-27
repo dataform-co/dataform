@@ -1535,7 +1535,7 @@ assert("name", {
         ]);
       });
 
-      test("assert API returns empty when disableAssertions is true", () => {
+      test("assert API returns disabled assertions when disableAssertions is true", () => {
         const projectDir = tmpDirFixture.createNewTmpDir();
         fs.writeFileSync(
           path.join(projectDir, "workflow_settings.yaml"),
@@ -1559,7 +1559,32 @@ assert("name", {
         const result = runMainInVm(coreRequest);
 
         expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-        expect(result.compile.compiledGraph.assertions).deep.equals([]);
+        expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals(
+          asPlainObject([
+            {
+              canonicalTarget: {
+                database: "defaultProject",
+                name: "name",
+                schema: "defaultDataset"
+              },
+              dependencyTargets: [
+                {
+                  database: "defaultProject",
+                  name: "table",
+                  schema: "defaultDataset"
+                }
+              ],
+              disabled: true,
+              fileName: "definitions/assert.js",
+              query: "SELECT * FROM `defaultProject.defaultDataset.table`",
+              target: {
+                database: "defaultProject",
+                name: "name",
+                schema: "defaultDataset"
+              }
+            }
+          ])
+        );
         expect(result.compile.compiledGraph.tables.length).equals(1);
       });
     });

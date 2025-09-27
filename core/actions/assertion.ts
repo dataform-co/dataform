@@ -99,10 +99,6 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
       return;
     }
 
-    if (session?.disableAssertions) {
-      return;
-    }
-
     const config = this.verifyConfig(unverifiedConfig);
 
     if (!config.name) {
@@ -135,7 +131,7 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
     if (config.hermetic) {
       this.hermetic(config.hermetic);
     }
-    if (config.disabled) {
+    if (config.disabled || session?.disableAssertions) {
       this.disabled();
     }
     if (config.tags) {

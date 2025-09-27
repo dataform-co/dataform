@@ -489,7 +489,55 @@ SELECT 1 as id
       ],
       views: [],
       incrementalTables: [],
-      assertions: [],
+      assertions: [
+        {
+          target: {
+            database: "dataform-open-source",
+            schema: "dataform_assertions",
+            name: "test_assertion"
+          },
+          canonicalTarget: {
+            database: "dataform-open-source",
+            schema: "dataform_assertions",
+            name: "test_assertion"
+          },
+          query: "SELECT 1 WHERE FALSE",
+          disabled: true,
+          fileName: "definitions/test_assertion.sqlx",
+          hermeticity: "HERMETIC",
+          tags: []
+        },
+        {
+          target: {
+            database: "dataform-open-source",
+            schema: "dataform_assertions",
+            name: "dataform_example_table_assertions_uniqueKey_0"
+          },
+          canonicalTarget: {
+            database: "dataform-open-source",
+            schema: "dataform_assertions",
+            name: "dataform_example_table_assertions_uniqueKey_0"
+          },
+          parentAction: {
+            database: "dataform-open-source",
+            schema: "dataform",
+            name: "example_table"
+          },
+          dependencyTargets: [
+            {
+              database: "dataform-open-source",
+              schema: "dataform",
+              name: "example_table"
+            }
+          ],
+          query:
+            "\nSELECT\n  *\nFROM (\n  SELECT\n    id,\n    COUNT(1) AS index_row_count\n  FROM `dataform-open-source.dataform.example_table`\n  GROUP BY id\n  ) AS data\nWHERE index_row_count > 1\n",
+          disabled: true,
+          fileName: "definitions/example_table.sqlx",
+          hermeticity: "HERMETIC",
+          tags: []
+        }
+      ],
       operations: [],
       tests: [],
       notebooks: [],
@@ -536,11 +584,34 @@ SELECT 1 as id
           },
           tasks: [
             {
-              statement: "create or replace table `dataform-open-source.dataform.example_table` as \n\nSELECT 1 as id",
+              statement:
+                "create or replace table `dataform-open-source.dataform.example_table` as \n\nSELECT 1 as id",
               type: "statement"
             }
           ],
           type: "table"
+        },
+        {
+          fileName: "definitions/test_assertion.sqlx",
+          hermeticity: "HERMETIC",
+          target: {
+            database: "dataform-open-source",
+            name: "test_assertion",
+            schema: "dataform_assertions"
+          },
+          tasks: [],
+          type: "assertion"
+        },
+        {
+          fileName: "definitions/example_table.sqlx",
+          hermeticity: "HERMETIC",
+          target: {
+            database: "dataform-open-source",
+            name: "dataform_example_table_assertions_uniqueKey_0",
+            schema: "dataform_assertions"
+          },
+          tasks: [],
+          type: "assertion"
         }
       ],
       projectConfig: {

@@ -455,7 +455,7 @@ export class Session {
         this.actions.filter(action => action instanceof Operation)
       ),
       assertions: this.compileGraphChunk(
-        this.disableAssertions ? [] : this.actions.filter(action => action instanceof Assertion)
+        this.actions.filter(action => action instanceof Assertion)
       ),
       declarations: this.compileGraphChunk(
         this.actions.filter(action => action instanceof Declaration)
