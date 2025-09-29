@@ -53,13 +53,14 @@ export function question(questionText: string) {
  * @returns Users's input or test input.
  */
 export function interactiveQuestion(questionText: string): string {
-    // If running in a non-TTY environment and test inputs are provided
+  // If running in a non-TTY environment and test inputs are provided
   if (!process.stdin.isTTY && process.env.DATAFORM_CLI_TEST_INPUTS !== undefined) {
-    const testInput = getTestInput();
+    const testInput = getTestInput(questionText);
     if (testInput !== undefined) {
       print(`${questionText} ${testInput}\n`); // Echo the test input for clarity in logs
       return testInput;
     }
+    // If we are in a non-TTY  (i.e. test) environment and not enough test inputs were provided
     throw new Error("Not enough test inputs provided in DATAFORM_CLI_TEST_INPUTS.");
   }
 
@@ -70,21 +71,13 @@ export function interactiveQuestion(questionText: string): string {
 
 /**
  * Represents the state for managing test inputs provided via environment
- * variables. This state is used to simulate user input during tests in non-TTY
- * environments.
+ * variables. This state uses a map to associate question texts with answers.
  */
 interface ITestInputsState {
   /**
-   * An array of strings, where each string is a pre-defined input
-   * to be used in place of interactive prompts. These values are typically
-   * parsed from the `DATAFORM_CLI_TEST_INPUTS` environment variable.
+   * A map where keys are question strings and values are the pre-defined answers.
    */
-  inputs: string[] | undefined;
-  /**
-   * The index of the next element to be read from the `inputs` array.
-   * This index is incremented each time an input is consumed.
-   */
-  currentIndex: number;
+  inputs: Map<string, string>;
 }
 let testInputsState: ITestInputsState | undefined;
 
@@ -105,14 +98,14 @@ function ensureTestInputsInitialized(): void {
 
   try {
     const parsed = JSON.parse(envVar);
-    if (Array.isArray(parsed)) {
+    // Expect a JSON object where keys are questions and values are answers.
+    if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
       testInputsState = {
-        inputs: parsed.map(String), // Ensure all elements are strings
-        currentIndex: 0,
+        inputs: new Map<string, string>(Object.entries(parsed).map(([key, value]) => [key, String(value)])),
       };
-      printError("Using DATAFORM_CLI_TEST_INPUTS for console prompts");
+      printError("Using DATAFORM_CLI_TEST_INPUTS map for console prompts");
     } else {
-      printError(`Failed to parse DATAFORM_CLI_TEST_INPUTS: Expected a JSON array, but got ${typeof parsed}.`);
+      printError(`Failed to parse DATAFORM_CLI_TEST_INPUTS: Expected a JSON object, but got ${typeof parsed}.`);
       testInputsState = undefined;
     }
   } catch (e) {
@@ -123,21 +116,28 @@ function ensureTestInputsInitialized(): void {
 
 /**
  * Helper function to enable testing interactive CLI. Retrieves testInput from
- * the testInputState.
- * @returns Test input, or undefined if no test inputs are available.
+ * the testInputsState map using the question text as the key.
+ * @param questionText The exact question text displayed to the user.
+ * @returns Test input, or undefined if no test inputs are available for this question.
  */
-function getTestInput(): string | undefined {
+function getTestInput(questionText: string): string | undefined {
   ensureTestInputsInitialized();
 
-  if (!testInputsState || testInputsState.currentIndex >= testInputsState.inputs.length) {
-    return undefined;
+  if (!testInputsState) {
+    return undefined; // Not in test input mode
   }
 
-  const input = testInputsState.inputs[testInputsState.currentIndex];
-  printError(`[TEST_INPUT ${testInputsState.currentIndex}]: "${input}"`);
-  testInputsState.currentIndex++;
-  return input;
+  const trimmedQuestion = questionText.trim();
+  const answer = testInputsState.inputs.get(trimmedQuestion);
+
+  if (answer !== undefined) {
+    printError(`[TEST_INPUT for "${trimmedQuestion}"]: "${answer}"`);
+  } else {
+    printError(`[MISSING TEST_INPUT for "${trimmedQuestion}"]`);
+  }
+  return answer;
 }
+
 
 export function passwordQuestion(questionText: string) {
   return prompt(questionText, {

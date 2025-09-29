@@ -1,13 +1,16 @@
 // tslint:disable tsr-detect-non-literal-fs-filename
-import { expect } from "chai";
+import { assert, expect } from "chai";
 import * as fs from "fs-extra";
 import { dump as dumpYaml, load as loadYaml } from "js-yaml";
 import * as path from "path";
 
 import { execFile } from "child_process";
 import {
+  ICEBERG_BUCKET_NAME_PROMPT_TEXT,
   ICEBERG_CONFIG_COLLECTED_TEXT,
   ICEBERG_CONFIG_PROMPT_TEXT,
+  ICEBERG_TABLE_FOLDER_ROOT_PROMPT_TEXT,
+  ICEBERG_TABLE_FOLDER_SUBPATH_PROMPT_TEXT,
 } from "df/cli/util";
 import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
@@ -92,78 +95,84 @@ defaultAssertionDataset: dataform_assertions
 `);
   });
 
-  test("init with --iceberg sets defaultIcebergConfig with all fields", async () => {
-    const projectDir = tmpDirFixture.createNewTmpDir();
-    const stdinInputs = [
-      "my-iceberg-bucket",    // Answer for "Enter the default Iceberg bucket name:"
-      "tables/root",          // Answer for "Enter the default Iceberg table folder root:"
-      "v1"                    // Answer for "Enter the default Iceberg table folder subpath:"
-    ];
+  suite("init command with --iceberg", () => {
+    test("init with --iceberg sets defaultIcebergConfig with all fields", async () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      const testInputs = {
+        [ICEBERG_BUCKET_NAME_PROMPT_TEXT]: "my-iceberg-bucket",
+        [ICEBERG_TABLE_FOLDER_ROOT_PROMPT_TEXT]: "tables/root",
+        [ICEBERG_TABLE_FOLDER_SUBPATH_PROMPT_TEXT]: "v1"
+      };
 
-    const result = await getProcessResult(
-      execFile(nodePath, [
-        cliEntryPointPath,
-        "init",
-        projectDir,
-        "dataform-iceberg-test",
-        "us-central1",
-        "--iceberg"
-      ], {
-        // Inject test inputs via environment variable for the child process
-        env: { ...process.env, DATAFORM_CLI_TEST_INPUTS: JSON.stringify(stdinInputs) }
-      })
-    );
+      const result = await getProcessResult(
+        execFile(nodePath, [
+          cliEntryPointPath,
+          "init",
+          projectDir,
+          "dataform-iceberg-test",
+          "us-central1",
+          "--iceberg"
+        ], {
+          // Inject test inputs via environment variable
+          env: { ...process.env, DATAFORM_CLI_TEST_INPUTS: JSON.stringify(testInputs) }
+        })
+      );
 
-    expect(result.exitCode).equals(0);
-    expect(result.stdout).contains(ICEBERG_CONFIG_PROMPT_TEXT);
-    expect(result.stdout).contains(ICEBERG_CONFIG_COLLECTED_TEXT);
+      expect(result.exitCode).equals(0);
+      expect(result.stdout).contains(ICEBERG_CONFIG_PROMPT_TEXT);
+      expect(result.stdout).contains(ICEBERG_CONFIG_COLLECTED_TEXT);
 
-    const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
-    const workflowSettings = dataform.WorkflowSettings.create(
-      loadYaml(fs.readFileSync(workflowSettingsPath, "utf8"))
-    );
+      const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
+      assert.isTrue(fs.existsSync(workflowSettingsPath));
 
-    expect(workflowSettings.defaultIcebergConfig).to.deep.equal({
-      bucketName: "my-iceberg-bucket",
-      tableFolderRoot: "tables/root",
-      tableFolderSubpath: "v1"
+      const workflowSettings = dataform.WorkflowSettings.create(
+        loadYaml(fs.readFileSync(workflowSettingsPath, "utf8"))
+      );
+
+      expect(workflowSettings.defaultIcebergConfig).to.deep.equal({
+        bucketName: "my-iceberg-bucket",
+        tableFolderRoot: "tables/root",
+        tableFolderSubpath: "v1"
+      });
     });
-  });
 
-  test("init with --iceberg handles empty inputs for some fields", async () => {
-    const projectDir = tmpDirFixture.createNewTmpDir();
-    const stdinInputs = [
-      "another-bucket", // Bucket name
-      "",               // Table folder root (empty)
-      "subpath-only"    // Table folder subpath
-    ];
+    test("init with --iceberg handles empty inputs for some fields", async () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      const testInputs = {
+        [ICEBERG_BUCKET_NAME_PROMPT_TEXT]: "another-bucket",
+        [ICEBERG_TABLE_FOLDER_ROOT_PROMPT_TEXT]: "", // Empty input
+        [ICEBERG_TABLE_FOLDER_SUBPATH_PROMPT_TEXT]: "subpath-only"
+      };
 
-    const result = await getProcessResult(
-      execFile(nodePath, [
-        cliEntryPointPath,
-        "init",
-        projectDir,
-        "dataform-iceberg-partial",
-        "us-east1",
-        "--iceberg"
-      ], {
-        env: { ...process.env, DATAFORM_CLI_TEST_INPUTS: JSON.stringify(stdinInputs) }
-      })
-    );
+      const result = await getProcessResult(
+        execFile(nodePath, [
+          cliEntryPointPath,
+          "init",
+          projectDir,
+          "dataform-iceberg-partial",
+          "us-east1",
+          "--iceberg"
+        ], {
+          // Inject test inputs via environment variable
+          env: { ...process.env, DATAFORM_CLI_TEST_INPUTS: JSON.stringify(testInputs) }
+        })
+      );
 
-    expect(result.exitCode).equals(0);
-    expect(result.stdout).contains(ICEBERG_CONFIG_PROMPT_TEXT);
-    expect(result.stdout).contains(ICEBERG_CONFIG_COLLECTED_TEXT);
+      expect(result.exitCode).equals(0);
+      expect(result.stdout).contains(ICEBERG_CONFIG_PROMPT_TEXT);
+      expect(result.stdout).contains(ICEBERG_CONFIG_COLLECTED_TEXT);
 
-    const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
-    const workflowSettings = dataform.WorkflowSettings.create(
-      loadYaml(fs.readFileSync(workflowSettingsPath, "utf8"))
-    );
+      const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
+      assert.isTrue(fs.existsSync(workflowSettingsPath));
 
-    expect(workflowSettings.defaultIcebergConfig).to.deep.equal({
-      bucketName: "another-bucket",
-      // tableFolderRoot is omitted
-      tableFolderSubpath: "subpath-only"
+      const workflowSettings = dataform.WorkflowSettings.create(
+        loadYaml(fs.readFileSync(workflowSettingsPath, "utf8"))
+      );
+
+      expect(workflowSettings.defaultIcebergConfig).to.deep.equal({
+        bucketName: "another-bucket",
+        tableFolderSubpath: "subpath-only"
+      });
     });
   });
 

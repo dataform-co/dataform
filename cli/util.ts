@@ -81,6 +81,6 @@ export function promptForIcebergConfig(): dataform.IDefaultIcebergConfig | undef
 
 export const ICEBERG_CONFIG_PROMPT_TEXT = "\nSet repository-level configuration for Iceberg bucket name, table folder root and table folder subpath. If you do not want to set a field, enter an empty string in response to the prompt.\n";
 export const ICEBERG_CONFIG_COLLECTED_TEXT = "Default Iceberg configuration collected.\n";
-const ICEBERG_BUCKET_NAME_PROMPT_TEXT = "Enter the default Iceberg bucket name:";
-const ICEBERG_TABLE_FOLDER_ROOT_PROMPT_TEXT = "Enter the default Iceberg table folder root:";
-const ICEBERG_TABLE_FOLDER_SUBPATH_PROMPT_TEXT = "Enter the default Iceberg table folder subpath:";
+export const ICEBERG_BUCKET_NAME_PROMPT_TEXT = "Enter the default Iceberg bucket name:";
+export const ICEBERG_TABLE_FOLDER_ROOT_PROMPT_TEXT = "Enter the default Iceberg table folder root:";
+export const ICEBERG_TABLE_FOLDER_SUBPATH_PROMPT_TEXT = "Enter the default Iceberg table folder subpath:";
