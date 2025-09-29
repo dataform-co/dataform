@@ -4,6 +4,7 @@ import * as path from "path";
 import {
   interactiveQuestion,
   print,
+  printError,
   printSuccess,
 } from "df/cli/console";
 import { dataform } from "df/protos/ts";
@@ -50,24 +51,62 @@ export function formatBytesInHumanReadableFormat(bytes: number): string {
   return `${value} ${units[i]}`;
 }
 
+/**
+ * Handles prompting and validation for defaultBucketName, defaultTableFolderRoot
+ * and defaultTableFolderSubpath if the user provides the --iceberg flag when
+ * running init.
+ *
+ * @returns Constructed DefaultIcebergConfig object, or undefined if no inputs
+ * were provided.
+ */
 export function promptForIcebergConfig(): dataform.IDefaultIcebergConfig | undefined {
   print(ICEBERG_CONFIG_PROMPT_TEXT);
 
   const tempIcebergConfig: dataform.IDefaultIcebergConfig = {};
 
-  const bucketName = interactiveQuestion(ICEBERG_BUCKET_NAME_PROMPT_TEXT);
-  if (bucketName !== "") {
-    tempIcebergConfig.bucketName = bucketName;
+  let bucketName: string;
+  while (true) {
+    bucketName = interactiveQuestion(ICEBERG_BUCKET_NAME_PROMPT_TEXT);
+    try {
+      if(bucketName) {
+        validateIcebergConfigBucketName(bucketName);
+        tempIcebergConfig.bucketName = bucketName;
+      }
+      break;
+    } catch (e) {
+      printError(`Validation Error: ${e.message}`);
+      print("Please try again.");
+    }
   }
 
-  const tableFolderRoot = interactiveQuestion(ICEBERG_TABLE_FOLDER_ROOT_PROMPT_TEXT);
-  if (tableFolderRoot !== "") {
-    tempIcebergConfig.tableFolderRoot = tableFolderRoot;
+  let tableFolderRoot: string;
+  while (true) {
+    tableFolderRoot = interactiveQuestion(ICEBERG_TABLE_FOLDER_ROOT_PROMPT_TEXT);
+    try {
+      if (tableFolderRoot) {
+        validateIcebergConfigTableFolderRoot(tableFolderRoot);
+        tempIcebergConfig.tableFolderRoot = tableFolderRoot;
+      }
+      break;
+    } catch (e) {
+      printError(`Validation Error: ${e.message}`);
+      print("Please try again.");
+    }
   }
 
-  const tableFolderSubpath = interactiveQuestion(ICEBERG_TABLE_FOLDER_SUBPATH_PROMPT_TEXT);
-  if (tableFolderSubpath !== "") {
-    tempIcebergConfig.tableFolderSubpath = tableFolderSubpath;
+  let tableFolderSubpath: string;
+  while (true) {
+    tableFolderSubpath = interactiveQuestion(ICEBERG_TABLE_FOLDER_SUBPATH_PROMPT_TEXT);
+    try {
+      if (tableFolderSubpath) {
+        validateIcebergConfigTableFolderSubpath(tableFolderSubpath);
+        tempIcebergConfig.tableFolderSubpath = tableFolderSubpath;
+      }
+      break;
+    } catch (e) {
+      printError(`Validation Error: ${e.message}`);
+      print("Please try again.");
+    }
   }
 
   printSuccess(ICEBERG_CONFIG_COLLECTED_TEXT);
@@ -77,6 +116,73 @@ export function promptForIcebergConfig(): dataform.IDefaultIcebergConfig | undef
     return tempIcebergConfig;
   }
   return undefined;
+}
+
+/**
+ * Validates a string to ensure it is a valid name for a GCS bucket. Based on
+ * https://cloud.google.com/storage/docs/buckets#naming.
+ *
+ * @param bucketName The name of the bucket to validate.
+ * @throws {Error} If the bucket name does not meet the following criteria:
+ *     -   Must be between 3 and 63 characters long.
+ *     -   Must start and end with a letter or number.
+ *     -   Can only contain lowercase letters, numbers, hyphens (-), underscores (_), and periods (.).
+ *     -   Cannot contain the sequence "..".
+ *     -   Cannot start with "goog".
+ *     -   Cannot contain "--".
+ */
+export function validateIcebergConfigBucketName(bucketName: string): void {
+  if (bucketName.length < 3 || bucketName.length > 63) {
+    throw new Error("Bucket name must be between 3 and 63 characters long.");
+  }
+  if (!/^[a-z0-9][a-z0-9-._]{1,220}[a-z0-9]$/.test(bucketName) || bucketName.includes("..")) {
+    throw new Error(
+      "Invalid bucket name. Must start and end with a letter or number, contain only lowercase letters, numbers, hyphens (-), underscores (_), and periods (.)."
+    );
+  }
+  if (bucketName.startsWith("goog") || bucketName.includes("--")) {
+    throw new Error("Bucket names cannot start with 'goog' or contain '--'.");
+  }
+}
+
+/**
+ * Validates a string to ensure it is a valid table folder root for an Iceberg
+ * table.
+ *
+ * @param tableFolderRoot The root folder path to validate.
+ * @throws {Error} If the root folder does not meet the following criteria:
+ *     -   Must start and end with a letter or number.
+ *     -   Can only contain letters, numbers, hyphens (-), underscores (_), and periods (.).
+ *     -   Cannot contain the sequence "..".
+ */
+export function validateIcebergConfigTableFolderRoot(tableFolderRoot: string): void {
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9-._]{1,220}[a-zA-Z0-9]$/.test(tableFolderRoot) || tableFolderRoot.includes("..")) {
+    throw new Error(
+      "Invalid input. Must start and end with a letter or number, contain only letters (a-z, A-Z), numbers, hyphens (-), underscores (_), and periods (.)."
+    );
+  }
+}
+
+/**
+ * Validates a string to ensure it is a valid subpath within an Iceberg table folder.
+ *
+ * @param tableFolderSubpath The subpath to validate.
+ * @throws {Error} If the subpath does not meet the following criteria:
+ *     -   Must start and end with a letter or number.
+ *     -   Can only contain letters, numbers, hyphens (-), underscores (_), periods (.), and forward slashes (/).
+ *     -   Cannot contain the sequence "..".
+ *     -   Cannot contain "./".
+ *     -   Cannot contain "../".
+ */
+export function validateIcebergConfigTableFolderSubpath(tableFolderSubpath: string): void {
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9-._/]{1,220}[a-zA-Z0-9]$/.test(tableFolderSubpath) || tableFolderSubpath.includes("..")) {
+    throw new Error(
+      "Invalid input. Must start and end with a letter or number, contain only letters (a-z, A-Z), numbers, hyphens (-), underscores (_), periods (.), and forward slashes (/). The sequence '..' is also disallowed."
+    );
+  }
+  if (tableFolderSubpath.includes("./") || tableFolderSubpath.includes("../")) {
+    throw new Error("Input cannot contain './' or '../'.");
+  }
 }
 
 export const ICEBERG_CONFIG_PROMPT_TEXT = "\nSet repository-level configuration for Iceberg bucket name, table folder root and table folder subpath. If you do not want to set a field, enter an empty string in response to the prompt.\n";

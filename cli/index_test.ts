@@ -100,8 +100,8 @@ defaultAssertionDataset: dataform_assertions
       const projectDir = tmpDirFixture.createNewTmpDir();
       const testInputs = {
         [ICEBERG_BUCKET_NAME_PROMPT_TEXT]: "my-iceberg-bucket",
-        [ICEBERG_TABLE_FOLDER_ROOT_PROMPT_TEXT]: "tables/root",
-        [ICEBERG_TABLE_FOLDER_SUBPATH_PROMPT_TEXT]: "v1"
+        [ICEBERG_TABLE_FOLDER_ROOT_PROMPT_TEXT]: "my-iceberg-root",
+        [ICEBERG_TABLE_FOLDER_SUBPATH_PROMPT_TEXT]: "my-iceberg-subpath"
       };
 
       const result = await getProcessResult(
@@ -131,8 +131,8 @@ defaultAssertionDataset: dataform_assertions
 
       expect(workflowSettings.defaultIcebergConfig).to.deep.equal({
         bucketName: "my-iceberg-bucket",
-        tableFolderRoot: "tables/root",
-        tableFolderSubpath: "v1"
+        tableFolderRoot: "my-iceberg-root",
+        tableFolderSubpath: "my-iceberg-subpath"
       });
     });
 
