@@ -70,12 +70,17 @@ suite('Iceberg Config Validation', () => {
     });
 
     test('invalidates bucket names starting with "goog"', () => {
-      expect(() => validateIcebergConfigBucketName("goog-bucket")).to.throw("Bucket names cannot start with 'goog' or contain '--'.");
-      expect(() => validateIcebergConfigBucketName("googlebucket")).to.throw("Bucket names cannot start with 'goog' or contain '--'.");
+      expect(() => validateIcebergConfigBucketName("goog-bucket")).to.throw("Bucket name cannot start with 'goog' or contain '--'.");
+      expect(() => validateIcebergConfigBucketName("googlebucket")).to.throw("Bucket name cannot start with 'goog' or contain '--'.");
     });
 
     test('invalidates bucket names containing "--"', () => {
-      expect(() => validateIcebergConfigBucketName("buck--et")).to.throw("Bucket names cannot start with 'goog' or contain '--'.");
+      expect(() => validateIcebergConfigBucketName("buck--et")).to.throw("Bucket name cannot start with 'goog' or contain '--'.");
+    });
+
+    test('invalidates bucket names containing "google" or "g00gle"', () => {
+      expect(() => validateIcebergConfigBucketName("bucket-google")).to.throw("Bucket name cannot contain 'google' or close misspellings such as 'g00gle'.");
+      expect(() => validateIcebergConfigBucketName("g00glebucket")).to.throw("Bucket name cannot contain 'google' or close misspellings such as 'g00gle'.");
     });
 
     test('invalidates bucket names that are under 3 or over 63 characters', () => {

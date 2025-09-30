@@ -134,6 +134,7 @@ export function promptForIcebergConfig(): dataform.IDefaultIcebergConfig | undef
  *     -   Cannot contain the sequence "..".
  *     -   Cannot start with "goog".
  *     -   Cannot contain "--".
+ *     -   Cannot contain "google" or close misspellings such as "g00gle".
  */
 export function validateIcebergConfigBucketName(bucketName: string): void {
   if (bucketName.length < 3 || bucketName.length > 63) {
@@ -145,7 +146,10 @@ export function validateIcebergConfigBucketName(bucketName: string): void {
     );
   }
   if (bucketName.startsWith("goog") || bucketName.includes("--")) {
-    throw new Error("Bucket names cannot start with 'goog' or contain '--'.");
+    throw new Error("Bucket name cannot start with 'goog' or contain '--'.");
+  }
+  if(bucketName.includes("google") || bucketName.includes("g00gle")) {
+    throw new Error("Bucket name cannot contain 'google' or close misspellings such as 'g00gle'.");
   }
 }
 
