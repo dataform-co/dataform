@@ -56,12 +56,8 @@ export function interactiveQuestion(questionText: string): string {
   // If running in a non-TTY environment and test inputs are provided
   if (!process.stdin.isTTY && process.env.DATAFORM_CLI_TEST_INPUTS !== undefined) {
     const testInput = getTestInput(questionText);
-    if (testInput !== undefined) {
-      print(`${questionText} ${testInput}\n`); // Echo the test input for clarity in logs
-      return testInput;
-    }
-    // If we are in a non-TTY  (i.e. test) environment and not enough test inputs were provided
-    throw new Error("Not enough test inputs provided in DATAFORM_CLI_TEST_INPUTS.");
+    print(`${questionText} ${testInput}\n`); // Echo the test input for clarity in logs
+    return testInput;
   }
 
   // If running in TTY environment or if testInputs are not available in non-TTY
@@ -73,12 +69,12 @@ export function interactiveQuestion(questionText: string): string {
  * Helper function to enable testing interactive CLI. Retrieves testInput from
  * the DATAFORM_CLI_TEST_INPUTS environment variable.
  * @param questionText The exact question text displayed to the user.
- * @returns Test input, or undefined if no test inputs are available for this question.
+ * @returns Test input for the provided question.
  */
-function getTestInput(questionText: string): string | undefined {
+function getTestInput(questionText: string): string {
   const envVar = process.env.DATAFORM_CLI_TEST_INPUTS;
   if(!envVar) {
-    return undefined; // Environment variable not set
+    throw new Error("Environment variable DATAFORM_CLI_TEST_INPUTS not set.");
   }
 
   try {
@@ -89,18 +85,16 @@ function getTestInput(questionText: string): string | undefined {
       const answer = inputs.get(trimmedQuestion);
 
       if (answer !== undefined) {
-        printError(`[TEST_INPUT for "${trimmedQuestion}"]: "${answer}"`);
+        print(`[TEST_INPUT for "${trimmedQuestion}"]: "${answer}"`);
+        return answer;
       } else {
-        printError(`[MISSING TEST_INPUT for "${trimmedQuestion}"]`);
+        throw new Error(`[MISSING TEST_INPUT for "${trimmedQuestion}"]`);
       }
-      return answer;
     } else {
-      printError(`Failed to parse DATAFORM_CLI_TEST_INPUTS: Expected a JSON object, but got ${typeof parsed}.`);
-      return undefined;
+      throw new Error(`Failed to parse DATAFORM_CLI_TEST_INPUTS: Expected a JSON object, but got ${typeof parsed}.`);
     }
   } catch (e) {
-    printError(`Failed to parse DATAFORM_CLI_TEST_INPUTS: ${e.message || e}`);
-    return undefined;
+    throw new Error(`Failed to parse DATAFORM_CLI_TEST_INPUTS: ${e.message || e}`);
   }
 }
 
