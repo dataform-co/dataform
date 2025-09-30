@@ -70,72 +70,38 @@ export function interactiveQuestion(questionText: string): string {
 }
 
 /**
- * Represents the state for managing test inputs provided via environment
- * variables. This state uses a map to associate question texts with answers.
- */
-interface ITestInputsState {
-  /**
-   * A map where keys are question strings and values are the pre-defined answers.
-   */
-  inputs: Map<string, string>;
-}
-let testInputsState: ITestInputsState | undefined;
-
-/**
- * Helper function to enable testing interactive CLI. Initializes
- * testInputsState by parsing the DATAFORM_CLI_TEST_INPUTS environment variable.
- * This function ensures the parsing happens only once.
- */
-function ensureTestInputsInitialized(): void {
-  if (testInputsState !== undefined) {
-    return; // Already initialized
-  }
-
-  const envVar = process.env.DATAFORM_CLI_TEST_INPUTS;
-  if (!envVar) {
-    return; // Environment variable not set
-  }
-
-  try {
-    const parsed = JSON.parse(envVar);
-    // Expect a JSON object where keys are questions and values are answers.
-    if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
-      testInputsState = {
-        inputs: new Map<string, string>(Object.entries(parsed).map(([key, value]) => [key, String(value)])),
-      };
-      printError("Using DATAFORM_CLI_TEST_INPUTS map for console prompts");
-    } else {
-      printError(`Failed to parse DATAFORM_CLI_TEST_INPUTS: Expected a JSON object, but got ${typeof parsed}.`);
-      testInputsState = undefined;
-    }
-  } catch (e) {
-    printError("Failed to parse DATAFORM_CLI_TEST_INPUTS:", e);
-    testInputsState = undefined;
-  }
-}
-
-/**
  * Helper function to enable testing interactive CLI. Retrieves testInput from
- * the testInputsState map using the question text as the key.
+ * the DATAFORM_CLI_TEST_INPUTS environment variable.
  * @param questionText The exact question text displayed to the user.
  * @returns Test input, or undefined if no test inputs are available for this question.
  */
 function getTestInput(questionText: string): string | undefined {
-  ensureTestInputsInitialized();
-
-  if (!testInputsState) {
-    return undefined; // Not in test input mode
+  const envVar = process.env.DATAFORM_CLI_TEST_INPUTS;
+  if(!envVar) {
+    return undefined; // Environment variable not set
   }
 
-  const trimmedQuestion = questionText.trim();
-  const answer = testInputsState.inputs.get(trimmedQuestion);
+  try {
+    const parsed = JSON.parse(envVar);
+    if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+      const inputs = new Map<string, string>(Object.entries(parsed).map(([key, value]) => [key, String(value)]));
+      const trimmedQuestion = questionText.trim();
+      const answer = inputs.get(trimmedQuestion);
 
-  if (answer !== undefined) {
-    printError(`[TEST_INPUT for "${trimmedQuestion}"]: "${answer}"`);
-  } else {
-    printError(`[MISSING TEST_INPUT for "${trimmedQuestion}"]`);
+      if (answer !== undefined) {
+        printError(`[TEST_INPUT for "${trimmedQuestion}"]: "${answer}"`);
+      } else {
+        printError(`[MISSING TEST_INPUT for "${trimmedQuestion}"]`);
+      }
+      return answer;
+    } else {
+      printError(`Failed to parse DATAFORM_CLI_TEST_INPUTS: Expected a JSON object, but got ${typeof parsed}.`);
+      return undefined;
+    }
+  } catch (e) {
+    printError(`Failed to parse DATAFORM_CLI_TEST_INPUTS: ${e.message || e}`);
+    return undefined;
   }
-  return answer;
 }
 
 
