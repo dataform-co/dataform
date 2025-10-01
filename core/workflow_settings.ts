@@ -135,14 +135,14 @@ export function workflowSettingsAsProjectConfig(
   }
   if(workflowSettings.defaultIcebergConfig) {
     projectConfig.defaultIcebergConfig = {};
-    if(workflowSettings.defaultIcebergConfig.defaultBucketName) {
-      projectConfig.defaultIcebergConfig.defaultBucketName = workflowSettings.defaultIcebergConfig.defaultBucketName;
+    if(workflowSettings.defaultIcebergConfig.bucketName) {
+      projectConfig.defaultIcebergConfig.bucketName = workflowSettings.defaultIcebergConfig.bucketName;
     }
-    if(workflowSettings.defaultIcebergConfig.defaultTableFolderRoot) {
-      projectConfig.defaultIcebergConfig.defaultTableFolderRoot = workflowSettings.defaultIcebergConfig.defaultTableFolderRoot;
+    if(workflowSettings.defaultIcebergConfig.tableFolderRoot) {
+      projectConfig.defaultIcebergConfig.tableFolderRoot = workflowSettings.defaultIcebergConfig.tableFolderRoot;
     }
-    if(workflowSettings.defaultIcebergConfig.defaultTableFolderSubpath) {
-      projectConfig.defaultIcebergConfig.defaultTableFolderSubpath = workflowSettings.defaultIcebergConfig.defaultTableFolderSubpath;
+    if(workflowSettings.defaultIcebergConfig.tableFolderSubpath) {
+      projectConfig.defaultIcebergConfig.tableFolderSubpath = workflowSettings.defaultIcebergConfig.tableFolderSubpath;
     }
   }
 

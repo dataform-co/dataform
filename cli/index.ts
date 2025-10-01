@@ -22,7 +22,12 @@ import {
   printTestResult
 } from "df/cli/console";
 import { getBigQueryCredentials } from "df/cli/credentials";
-import { actuallyResolve, assertPathExists, compiledGraphHasErrors } from "df/cli/util";
+import {
+  actuallyResolve,
+  assertPathExists,
+  compiledGraphHasErrors,
+  promptForIcebergConfig,
+} from "df/cli/util";
 import { createYargsCli, INamedOption } from "df/cli/yargswrapper";
 import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
@@ -184,6 +189,15 @@ const disableAssertionsOption: INamedOption<yargs.Options> = {
   }
 };
 
+const icebergOption: INamedOption<yargs.Options> = {
+  name: "iceberg",
+  option: {
+    describe: "Initialize the project with workflow-level Iceberg tables configuration.",
+    type: "boolean",
+    default: false,
+  },
+};
+
 const testConnectionOptionName = "test-connection";
 
 const watchOptionName = "watch";
@@ -250,13 +264,24 @@ export function runCli() {
             }
           }
         ],
-        options: [],
+        options: [icebergOption],
         processFn: async argv => {
-          print("Writing project files...\n");
-          const initResult = await init(argv[projectDirOption.name], {
+          const projectDir = argv[projectDirOption.name];
+          const projectConfig: dataform.IProjectConfig = {
             defaultDatabase: argv[ProjectConfigOptions.defaultDatabase.name],
-            defaultLocation: argv[ProjectConfigOptions.defaultLocation.name]
-          });
+            defaultLocation: argv[ProjectConfigOptions.defaultLocation.name],
+          };
+
+          if (argv[icebergOption.name]) {
+            const icebergConfig = promptForIcebergConfig();
+            if(icebergConfig) {
+              projectConfig.defaultIcebergConfig = icebergConfig;
+            }
+          }
+
+          print("Writing project files...\n");
+
+          const initResult = await init(projectDir, projectConfig);
           printInitResult(initResult);
           return 0;
         }
