@@ -924,8 +924,12 @@ actions:
 
         testCase.setupFiles(projectDir);
 
-        const coreRequest = coreExecutionRequestFromPath(projectDir);
-        coreRequest.compile.compileConfig.disableAssertions = true;
+        const coreRequest = coreExecutionRequestFromPath(
+          projectDir,
+          dataform.ProjectConfig.create({
+            disableAssertions: true
+          })
+        );
         const result = runMainInVm(coreRequest);
 
         expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
@@ -972,8 +976,12 @@ actions:
           SELECT 1 as id, 'test' as name`
         );
 
-        const coreRequest = coreExecutionRequestFromPath(projectDir);
-        coreRequest.compile.compileConfig.disableAssertions = true;
+        const coreRequest = coreExecutionRequestFromPath(
+          projectDir,
+          dataform.ProjectConfig.create({
+            disableAssertions: true
+          })
+        );
         const result = runMainInVm(coreRequest);
 
         expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);

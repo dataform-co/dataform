@@ -1554,8 +1554,12 @@ assert("name", {
 }).query(ctx => \`SELECT * FROM \${ctx.ref('table')}\`)`
         );
 
-        const coreRequest = coreExecutionRequestFromPath(projectDir);
-        coreRequest.compile.compileConfig.disableAssertions = true;
+        const coreRequest = coreExecutionRequestFromPath(
+          projectDir,
+          dataform.ProjectConfig.create({
+            disableAssertions: true
+          })
+        );
         const result = runMainInVm(coreRequest);
 
         expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);

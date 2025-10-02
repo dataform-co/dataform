@@ -180,15 +180,6 @@ const quietCompileOption: INamedOption<yargs.Options> = {
   }
 };
 
-const disableAssertionsOption: INamedOption<yargs.Options> = {
-  name: "disable-assertions",
-  option: {
-    describe: "Disables all assertions including built-in assertions (uniqueKey, nonNull, rowConditions) and manual assertions (type: assertion).",
-    type: "boolean",
-    default: false
-  }
-};
-
 const icebergOption: INamedOption<yargs.Options> = {
   name: "iceberg",
   option: {
@@ -364,7 +355,6 @@ export function runCli() {
           jsonOutputOption,
           timeoutOption,
           quietCompileOption,
-          disableAssertionsOption,
           ...ProjectConfigOptions.allYargsOptions
         ],
         processFn: async argv => {
@@ -377,8 +367,7 @@ export function runCli() {
             const compiledGraph = await compile({
               projectDir,
               projectConfigOverride: ProjectConfigOptions.constructProjectConfigOverride(argv),
-              timeoutMillis: argv[timeoutOption.name] || undefined,
-              disableAssertions: argv[disableAssertionsOption.name] || false
+              timeoutMillis: argv[timeoutOption.name] || undefined
             });
             printCompiledGraph(compiledGraph, argv[jsonOutputOption.name], argv[quietCompileOption.name]);
             if (compiledGraphHasErrors(compiledGraph)) {
@@ -521,7 +510,6 @@ export function runCli() {
           jsonOutputOption,
           timeoutOption,
           tagsOption,
-          disableAssertionsOption,
           ...ProjectConfigOptions.allYargsOptions
         ],
         processFn: async argv => {
@@ -538,8 +526,7 @@ export function runCli() {
           const compiledGraph = await compile({
             projectDir: argv[projectDirOption.name],
             projectConfigOverride: ProjectConfigOptions.constructProjectConfigOverride(argv),
-            timeoutMillis: argv[timeoutOption.name] || undefined,
-            disableAssertions: argv[disableAssertionsOption.name] || false
+            timeoutMillis: argv[timeoutOption.name] || undefined
           });
           if (compiledGraphHasErrors(compiledGraph)) {
             printCompiledGraphErrors(compiledGraph.graphErrors, argv[quietCompileOption.name]);
@@ -842,6 +829,16 @@ class ProjectConfigOptions {
     }
   };
 
+  public static disableAssertions: INamedOption<yargs.Options> = {
+    name: "disable-assertions",
+    option: {
+      describe:
+        "Disables all assertions including built-in assertions (uniqueKey, nonNull, rowConditions) and manual assertions (type: assertion).",
+      type: "boolean",
+      default: false
+    }
+  };
+
   public static allYargsOptions = [
     ProjectConfigOptions.defaultDatabase,
     ProjectConfigOptions.defaultSchema,
@@ -850,7 +847,8 @@ class ProjectConfigOptions {
     ProjectConfigOptions.vars,
     ProjectConfigOptions.databaseSuffix,
     ProjectConfigOptions.schemaSuffix,
-    ProjectConfigOptions.tablePrefix
+    ProjectConfigOptions.tablePrefix,
+    ProjectConfigOptions.disableAssertions
   ];
 
   public static constructProjectConfigOverride(
@@ -881,6 +879,9 @@ class ProjectConfigOptions {
     }
     if (argv[ProjectConfigOptions.tablePrefix.name]) {
       projectConfigOptions.tablePrefix = argv[ProjectConfigOptions.tablePrefix.name];
+    }
+    if (argv[ProjectConfigOptions.disableAssertions.name]) {
+      projectConfigOptions.disableAssertions = argv[ProjectConfigOptions.disableAssertions.name];
     }
     return projectConfigOptions;
   }

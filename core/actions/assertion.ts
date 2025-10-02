@@ -131,7 +131,7 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
     if (config.hermetic) {
       this.hermetic(config.hermetic);
     }
-    if (config.disabled || session?.disableAssertions) {
+    if (config.disabled || session.projectConfig.disableAssertions) {
       this.disabled();
     }
     if (config.tags) {

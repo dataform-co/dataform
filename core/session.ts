@@ -47,7 +47,6 @@ export class Session {
   public projectConfig: dataform.ProjectConfig;
   // The canonical project config contains the project config before schema and database overrides.
   public canonicalProjectConfig: dataform.ProjectConfig;
-  public disableAssertions: boolean;
 
   public actions: Action[];
   public indexedActions: ActionMap;
@@ -62,24 +61,21 @@ export class Session {
   constructor(
     rootDir?: string,
     projectConfig?: dataform.ProjectConfig,
-    originalProjectConfig?: dataform.ProjectConfig,
-    disableAssertions?: boolean
+    originalProjectConfig?: dataform.ProjectConfig
   ) {
-    this.init(rootDir, projectConfig, originalProjectConfig, disableAssertions);
+    this.init(rootDir, projectConfig, originalProjectConfig);
   }
 
   public init(
     rootDir: string,
     projectConfig?: dataform.ProjectConfig,
-    originalProjectConfig?: dataform.ProjectConfig,
-    disableAssertions?: boolean
+    originalProjectConfig?: dataform.ProjectConfig
   ) {
     this.rootDir = rootDir;
     this.projectConfig = dataform.ProjectConfig.create(projectConfig || DEFAULT_CONFIG);
     this.canonicalProjectConfig = getCanonicalProjectConfig(
       dataform.ProjectConfig.create(originalProjectConfig || projectConfig || DEFAULT_CONFIG)
     );
-    this.disableAssertions = disableAssertions || false;
     this.actions = [];
     this.tests = {};
     this.graphErrors = { compilationErrors: [] };
