@@ -576,4 +576,248 @@ SELECT  1  as   test
     expect(afterFormatCheckResult.exitCode).equals(0);
     expect(afterFormatCheckResult.stdout).contains("All files are formatted correctly");
   });
+
+  suite("disable-assertions flag excludes assertions", ({ beforeEach }) => {
+    let projectDir: string;
+    let npmCacheDir: string;
+
+    async function setupTestProject(): Promise<void> {
+      projectDir = tmpDirFixture.createNewTmpDir();
+      npmCacheDir = tmpDirFixture.createNewTmpDir();
+      const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
+      const packageJsonPath = path.join(projectDir, "package.json");
+
+      await getProcessResult(
+        execFile(nodePath, [cliEntryPointPath, "init", projectDir, "dataform-open-source", "US"])
+      );
+
+      const workflowSettings = dataform.WorkflowSettings.create(
+        loadYaml(fs.readFileSync(workflowSettingsPath, "utf8"))
+      );
+      delete workflowSettings.dataformCoreVersion;
+      fs.writeFileSync(workflowSettingsPath, dumpYaml(workflowSettings));
+      fs.writeFileSync(
+        packageJsonPath,
+        `{
+  "dependencies":{
+    "@dataform/core": "${version}"
+  }
+}`
+      );
+      await getProcessResult(
+        execFile(npmPath, [
+          "install",
+          "--prefix",
+          projectDir,
+          "--cache",
+          npmCacheDir,
+          corePackageTarPath
+        ])
+      );
+
+      const assertionFilePath = path.join(projectDir, "definitions", "test_assertion.sqlx");
+      fs.ensureFileSync(assertionFilePath);
+      fs.writeFileSync(
+        assertionFilePath,
+        `
+config { type: "assertion" }
+SELECT 1 WHERE FALSE
+`
+      );
+
+      const tableFilePath = path.join(projectDir, "definitions", "example_table.sqlx");
+      fs.ensureFileSync(tableFilePath);
+      fs.writeFileSync(
+        tableFilePath,
+        `
+config { 
+  type: "table",
+  assertions: {
+    uniqueKey: ["id"]
+  }
+}
+SELECT 1 as id
+`
+      );
+    }
+
+    beforeEach("setup test project", async () => await setupTestProject());
+
+    test("from compilation", async () => {
+      const compileResult = await getProcessResult(
+        execFile(nodePath, [
+          cliEntryPointPath,
+          "compile",
+          projectDir,
+          "--json",
+          "--disable-assertions"
+        ])
+      );
+
+      expect(compileResult.exitCode).equals(0);
+      expect(JSON.parse(compileResult.stdout)).deep.equals({
+        tables: [
+          {
+            type: "table",
+            enumType: "TABLE",
+            target: {
+              database: "dataform-open-source",
+              schema: "dataform",
+              name: "example_table"
+            },
+            canonicalTarget: {
+              database: "dataform-open-source",
+              schema: "dataform",
+              name: "example_table"
+            },
+            query: "\n\nSELECT 1 as id\n",
+            disabled: false,
+            fileName: "definitions/example_table.sqlx",
+            hermeticity: "NON_HERMETIC",
+            tags: []
+          }
+        ],
+        views: [],
+        incrementalTables: [],
+        assertions: [
+          {
+            target: {
+              database: "dataform-open-source",
+              schema: "dataform_assertions",
+              name: "test_assertion"
+            },
+            canonicalTarget: {
+              database: "dataform-open-source",
+              schema: "dataform_assertions",
+              name: "test_assertion"
+            },
+            query: "SELECT 1 WHERE FALSE",
+            disabled: true,
+            fileName: "definitions/test_assertion.sqlx",
+            hermeticity: "HERMETIC",
+            tags: []
+          },
+          {
+            target: {
+              database: "dataform-open-source",
+              schema: "dataform_assertions",
+              name: "dataform_example_table_assertions_uniqueKey_0"
+            },
+            canonicalTarget: {
+              database: "dataform-open-source",
+              schema: "dataform_assertions",
+              name: "dataform_example_table_assertions_uniqueKey_0"
+            },
+            parentAction: {
+              database: "dataform-open-source",
+              schema: "dataform",
+              name: "example_table"
+            },
+            dependencyTargets: [
+              {
+                database: "dataform-open-source",
+                schema: "dataform",
+                name: "example_table"
+              }
+            ],
+            query:
+              "\nSELECT\n  *\nFROM (\n  SELECT\n    id,\n    COUNT(1) AS index_row_count\n  FROM `dataform-open-source.dataform.example_table`\n  GROUP BY id\n  ) AS data\nWHERE index_row_count > 1\n",
+            disabled: true,
+            fileName: "definitions/example_table.sqlx",
+            hermeticity: "HERMETIC",
+            tags: []
+          }
+        ],
+        operations: [],
+        tests: [],
+        notebooks: [],
+        projectConfig: {
+          warehouse: "bigquery",
+          defaultSchema: "dataform",
+          assertionSchema: "dataform_assertions",
+          defaultDatabase: "dataform-open-source",
+          defaultLocation: "US"
+        },
+        graphErrors: {},
+        dataformCoreVersion: version,
+        targets: [
+          {
+            database: "dataform-open-source",
+            schema: "dataform",
+            name: "example_table"
+          }
+        ]
+      });
+    });
+
+    test("from run", async () => {
+      const runResult = await getProcessResult(
+        execFile(nodePath, [
+          cliEntryPointPath,
+          "run",
+          projectDir,
+          "--dry-run",
+          "--disable-assertions",
+          "--json"
+        ])
+      );
+
+      expect(runResult.exitCode).equals(0);
+      expect(JSON.parse(runResult.stdout)).deep.equals({
+        actions: [
+          {
+            fileName: "definitions/example_table.sqlx",
+            hermeticity: "NON_HERMETIC",
+            tableType: "table",
+            target: {
+              database: "dataform-open-source",
+              name: "example_table",
+              schema: "dataform"
+            },
+            tasks: [
+              {
+                statement:
+                  "create or replace table `dataform-open-source.dataform.example_table` as \n\nSELECT 1 as id",
+                type: "statement"
+              }
+            ],
+            type: "table"
+          },
+          {
+            fileName: "definitions/test_assertion.sqlx",
+            hermeticity: "HERMETIC",
+            target: {
+              database: "dataform-open-source",
+              name: "test_assertion",
+              schema: "dataform_assertions"
+            },
+            tasks: [],
+            type: "assertion"
+          },
+          {
+            fileName: "definitions/example_table.sqlx",
+            hermeticity: "HERMETIC",
+            target: {
+              database: "dataform-open-source",
+              name: "dataform_example_table_assertions_uniqueKey_0",
+              schema: "dataform_assertions"
+            },
+            tasks: [],
+            type: "assertion"
+          }
+        ],
+        projectConfig: {
+          assertionSchema: "dataform_assertions",
+          defaultDatabase: "dataform-open-source",
+          defaultLocation: "US",
+          defaultSchema: "dataform",
+          warehouse: "bigquery"
+        },
+        runConfig: {
+          fullRefresh: false
+        },
+        warehouseState: {}
+      });
+    });
+  });
 });
