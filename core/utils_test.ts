@@ -230,6 +230,11 @@ suite('Dataform Utility Validations', () => {
       expect(getFileFormatValueForIcebergTable('')).to.equal(dataform.FileFormat.PARQUET);
     });
 
+    test('is case insensitive ', () => {
+      expect(getFileFormatValueForIcebergTable('parquet')).to.equal(dataform.FileFormat.PARQUET);
+      expect(getFileFormatValueForIcebergTable('pArQuEt')).to.equal(dataform.FileFormat.PARQUET);
+    });
+
     test('throws an error for an unsupported file format string', () => {
       assertThrowsWithMessage(
         () => getFileFormatValueForIcebergTable('CSV'),
