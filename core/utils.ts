@@ -303,7 +303,7 @@ export function getFileFormatValueForIcebergTable(
     return dataform.FileFormat.PARQUET;
   }
 
-  switch (configFileFormat) {
+  switch (configFileFormat.toUpperCase()) {
     case "PARQUET":
       return dataform.FileFormat.PARQUET;
 
