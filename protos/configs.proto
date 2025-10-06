@@ -62,6 +62,10 @@ message DefaultIcebergConfig {
   // Optional. Table folder subpath used to construct a storage URI when
   // creating an Iceberg table.
   string table_folder_subpath = 3;
+
+  // Optional. The connection specifying the credentials to be used to read and
+  // write to external storage, such as Cloud Storage.
+  string connection = 4;
 }
 
 // Action configs defines the contents of `actions.yaml` configuration files.

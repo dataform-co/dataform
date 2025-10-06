@@ -360,6 +360,7 @@ defaultIcebergConfig:
   bucketName: "ws-default-bucket"
   tableFolderRoot: "ws-default-root"
   tableFolderSubpath: "ws-default-sub"
+  connection: "ws.default.connection"
 `;
 
     const testCases = [
@@ -737,6 +738,32 @@ defaultIcebergConfig:
         expectError: false,
       },
       {
+        testName: "uses default connection from workflow_settings.yaml",
+        wsContent: CUSTOM_WORKFLOW_SETTINGS_WITH_ICEBERG_DEFAULTS,
+        configBlock: `
+        type: "incremental",
+        name: "incremental_ws_sub",
+        dataset: "dataset_ws",
+        bigquery: {
+          iceberg: {
+            fileFormat: "PARQUET",
+            bucketName: "my-bucket",
+            tableFolderRoot: "my-root",
+            tableFolderSubpath: "my-subpath"
+          }
+        }`,
+        expected: {
+          target: { name: "incremental_ws_sub", schema: "dataset_ws", database: "defaultProject" },
+          bigquery: {
+            tableFormat: "ICEBERG",
+            fileFormat: "PARQUET",
+            connection: "ws.default.connection",
+            storageUri: "gs://my-bucket/my-root/my-subpath",
+          },
+        },
+        expectError: false,
+      },
+      {
         testName: "uses all Iceberg defaults from workspace_settings.yaml",
         wsContent: CUSTOM_WORKFLOW_SETTINGS_WITH_ICEBERG_DEFAULTS,
         configBlock: `
@@ -746,8 +773,6 @@ defaultIcebergConfig:
         bigquery: {
           iceberg: {
             fileFormat: "PARQUET",
-            connection: "gcp.us.conn-id",
-            // All path components omitted
           }
         }`,
         expected: {
@@ -755,7 +780,7 @@ defaultIcebergConfig:
           bigquery: {
             tableFormat: "ICEBERG",
             fileFormat: "PARQUET",
-            connection: "gcp.us.conn-id",
+            connection: "ws.default.connection",
             storageUri: "gs://ws-default-bucket/ws-default-root/ws-default-sub",
           },
         },

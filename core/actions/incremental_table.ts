@@ -195,7 +195,10 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
       requirePartitionFilter: config.requirePartitionFilter,
       additionalOptions: config.additionalOptions,
       ...(config.iceberg ? {
-        connection: getConnectionForIcebergTable(config.iceberg.connection),
+        connection: getConnectionForIcebergTable(
+          session.projectConfig.defaultIcebergConfig?.connection,
+          config.iceberg.connection
+        ),
         fileFormat: getFileFormatValueForIcebergTable(config.iceberg.fileFormat?.toString()),
         tableFormat: dataform.TableFormat.ICEBERG,
         storageUri: getStorageUriForIcebergTable(

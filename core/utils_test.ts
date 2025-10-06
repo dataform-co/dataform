@@ -204,16 +204,24 @@ suite('Dataform Utility Validations', () => {
   });
 
   suite('getConnectionForIcebergTable', () => {
-    test('returns the provided connection string if it exists', () => {
-      expect(getConnectionForIcebergTable('my-custom-conn')).to.equal('my-custom-conn');
+    test('returns the config connection string if it exists', () => {
+      expect(getConnectionForIcebergTable('default-connection', 'config-connection')).to.equal('config-connection');
     });
 
-    test('returns "DEFAULT" when the connection is undefined', () => {
-      expect(getConnectionForIcebergTable(undefined)).to.equal('DEFAULT');
+    test('returns the default connection string if the config connection is undefined', () => {
+      expect(getConnectionForIcebergTable('default-connection', undefined)).to.equal('default-connection');
     });
 
-    test('returns "DEFAULT" when the connection is an empty string', () => {
-      expect(getConnectionForIcebergTable('')).to.equal('DEFAULT');
+    test('returns the default connection string if the config connection is an empty string', () => {
+      expect(getConnectionForIcebergTable('default-connection', '')).to.equal('default-connection');
+    });
+
+    test('returns "DEFAULT" when the connections are undefined', () => {
+      expect(getConnectionForIcebergTable(undefined, undefined)).to.equal('DEFAULT');
+    });
+
+    test('returns "DEFAULT" when the connections are empty strings', () => {
+      expect(getConnectionForIcebergTable('', '')).to.equal('DEFAULT');
     });
   });
 
