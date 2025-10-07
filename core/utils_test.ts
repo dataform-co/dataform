@@ -205,15 +205,15 @@ suite('Dataform Utility Validations', () => {
 
   suite('getConnectionForIcebergTable', () => {
     test('returns the config connection string if it exists', () => {
-      expect(getConnectionForIcebergTable('default-connection', 'config-connection')).to.equal('config-connection');
+      expect(getConnectionForIcebergTable('config-connection', 'default-connection')).to.equal('config-connection');
     });
 
     test('returns the default connection string if the config connection is undefined', () => {
-      expect(getConnectionForIcebergTable('default-connection', undefined)).to.equal('default-connection');
+      expect(getConnectionForIcebergTable(undefined, 'default-connection')).to.equal('default-connection');
     });
 
     test('returns the default connection string if the config connection is an empty string', () => {
-      expect(getConnectionForIcebergTable('default-connection', '')).to.equal('default-connection');
+      expect(getConnectionForIcebergTable('', 'default-connection')).to.equal('default-connection');
     });
 
     test('returns "DEFAULT" when the connections are undefined', () => {

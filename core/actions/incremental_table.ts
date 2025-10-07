@@ -196,8 +196,8 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
       additionalOptions: config.additionalOptions,
       ...(config.iceberg ? {
         connection: getConnectionForIcebergTable(
-          session.projectConfig.defaultIcebergConfig?.connection,
-          config.iceberg.connection
+          config.iceberg.connection,
+          session.projectConfig.defaultIcebergConfig?.connection
         ),
         fileFormat: getFileFormatValueForIcebergTable(config.iceberg.fileFormat?.toString()),
         tableFormat: dataform.TableFormat.ICEBERG,
