@@ -536,7 +536,7 @@ defaultIcebergConfig:
             tableFolderSubpath: "my-subpath",
           }
         }`,
-        expectError: "When defining an Iceberg table, bucket name must be defined in workspace_settings.yaml or the config block.",
+        expectError: "When defining an Iceberg table, bucket name must be defined in workflow_settings.yaml or the config block.",
         wsContent: VALID_WORKFLOW_SETTINGS_YAML,
       },
       {
@@ -574,7 +574,7 @@ defaultIcebergConfig:
         wsContent: VALID_WORKFLOW_SETTINGS_YAML,
       },
       {
-        testName: "uses defaultBucketName from workspace_settings.yaml",
+        testName: "uses defaultBucketName from workflow_settings.yaml",
         wsContent: CUSTOM_WORKFLOW_SETTINGS_WITH_ICEBERG_DEFAULTS,
         configBlock: `
         name: "table_ws_bucket",
@@ -599,7 +599,7 @@ defaultIcebergConfig:
         expectError: false,
       },
       {
-        testName: "uses defaultTableFolderRoot from workspace_settings.yaml",
+        testName: "uses defaultTableFolderRoot from workflow_settings.yaml",
         wsContent: CUSTOM_WORKFLOW_SETTINGS_WITH_ICEBERG_DEFAULTS,
         configBlock: `
         name: "table_ws_root",
@@ -624,7 +624,7 @@ defaultIcebergConfig:
         expectError: false,
       },
       {
-        testName: "uses defaultTableFolderSubpath from workspace_settings.yaml",
+        testName: "uses defaultTableFolderSubpath from workflow_settings.yaml",
         wsContent: CUSTOM_WORKFLOW_SETTINGS_WITH_ICEBERG_DEFAULTS,
         configBlock: `
         name: "table_ws_sub",
@@ -674,7 +674,7 @@ defaultIcebergConfig:
         expectError: false,
       },
       {
-        testName: "uses all Iceberg defaults from workspace_settings.yaml",
+        testName: "uses all Iceberg defaults from workflow_settings.yaml",
         wsContent: CUSTOM_WORKFLOW_SETTINGS_WITH_ICEBERG_DEFAULTS,
         configBlock: `
         name: "table_ws_all",

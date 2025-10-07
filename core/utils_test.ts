@@ -144,14 +144,14 @@ suite('Dataform Utility Validations', () => {
     test('throws error if both configBucketName and defaultBucketName are undefined', () => {
       assertThrowsWithMessage(
         () => getEffectiveBucketName(undefined, undefined),
-        'When defining an Iceberg table, bucket name must be defined in workspace_settings.yaml or the config block.'
+        'When defining an Iceberg table, bucket name must be defined in workflow_settings.yaml or the config block.'
       );
     });
 
     test('throws error if both configBucketName and defaultBucketName are empty strings', () => {
       assertThrowsWithMessage(
         () => getEffectiveBucketName('', ''),
-        'When defining an Iceberg table, bucket name must be defined in workspace_settings.yaml or the config block.'
+        'When defining an Iceberg table, bucket name must be defined in workflow_settings.yaml or the config block.'
       );
     });
   });
