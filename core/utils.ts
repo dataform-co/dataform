@@ -317,11 +317,21 @@ export function getFileFormatValueForIcebergTable(
 /**
  * Returns the connection for an Iceberg table, as specified in the user's config file.
  * Defaults to "DEFAULT" if no connection is provided.
- * @param connection User-provided connection, if it exists.
+ * @param configConnection defined in the config block
+ * @param defaultConnection defined in workflow_settings.yaml.
  * @returns Connection used when creating an Iceberg table.
  */
-export function getConnectionForIcebergTable(connection?: string): string {
-  return connection || "DEFAULT";
+export function getConnectionForIcebergTable(
+  configConnection?: string,
+  defaultConnection?: string,
+): string {
+  if(configConnection) {
+    return configConnection;
+  } else if(defaultConnection) {
+    return defaultConnection;
+  } else {
+    return "DEFAULT";
+  }
 }
 
 /**

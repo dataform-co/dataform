@@ -144,6 +144,9 @@ export function workflowSettingsAsProjectConfig(
     if(workflowSettings.defaultIcebergConfig.tableFolderSubpath) {
       projectConfig.defaultIcebergConfig.tableFolderSubpath = workflowSettings.defaultIcebergConfig.tableFolderSubpath;
     }
+    if(workflowSettings.defaultIcebergConfig.connection) {
+      projectConfig.defaultIcebergConfig.connection = workflowSettings.defaultIcebergConfig.connection;
+    }
   }
 
   projectConfig.warehouse = "bigquery";
