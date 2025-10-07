@@ -7,6 +7,7 @@ import {
   printError,
   printSuccess,
 } from "df/cli/console";
+import {validateConnectionFormat} from "df/core/utils"
 import { dataform } from "df/protos/ts";
 import untildify from "untildify";
 
@@ -113,6 +114,22 @@ export function promptForIcebergConfig(): dataform.IDefaultIcebergConfig | undef
     }
   }
 
+  let connection: string;
+  while (true) {
+    print(ICEBERG_CONNECTION_HINT)
+    connection = interactiveQuestion(ICEBERG_CONNECTION_QUESTION);
+    try {
+      if (connection) {
+        validateConnectionFormat(connection);
+        tempIcebergConfig.connection = connection;
+      }
+      break;
+    } catch (e) {
+      printError(`Validation Error: ${e.message}`);
+      print("Please try again.");
+    }
+  }
+
   printSuccess(ICEBERG_CONFIG_COLLECTED_TEXT);
 
   // Only return the config object if at least one field was set.
@@ -202,3 +219,5 @@ export const ICEBERG_CONFIG_COLLECTED_TEXT = "Iceberg configuration collected.\n
 export const ICEBERG_BUCKET_NAME_PROMPT_QUESTION = "Enter the default Iceberg bucket name:";
 export const ICEBERG_TABLE_FOLDER_ROOT_PROMPT_QUESTION = "Enter the default Iceberg table folder root:";
 export const ICEBERG_TABLE_FOLDER_SUBPATH_PROMPT_QUESTION = "Enter the default Iceberg table folder subpath:";
+export const ICEBERG_CONNECTION_HINT = "The connection can have the form `{project}.{location}.{connection_id}` or `projects/{project}/locations/{location}/connections/{connection_id} or be set to DEFAULT. If you do not want to provide a workflow-level default connection, leave this input empty.\n";
+export const ICEBERG_CONNECTION_QUESTION = "Enter the default connection:";
