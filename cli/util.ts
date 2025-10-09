@@ -213,7 +213,7 @@ export function validateIcebergConfigTableFolderSubpath(tableFolderSubpath: stri
 export const ICEBERG_BUCKET_NAME_HINT = "The bucket name must comply with https://cloud.google.com/storage/docs/buckets#naming. If you do not want to provide a workflow-level default bucket name, leave this input empty.\n";
 export const ICEBERG_TABLE_FOLDER_ROOT_HINT = "Table folder root must start and end with a letter or a number. It can only contain letters, numbers, hyphens, underscores and periods. If you do not want to provide a workflow_level default table folder root, leave this input empty.\n"
 export const ICEBERG_TABLE_FOLDER_ROOT_SUBPATH_HINT = "Table folder subpath must start and end with a letter or a number. It can only contain letters, numbers, hyphens, underscores, periods and forward slashes. If you do not want to provide a workflow_level default table folder subpath, leave this input empty.\n"
-export const ICEBERG_CONFIG_PROMPT_HINT = "Set repository-level configuration for Iceberg bucket name, table folder root and table folder subpath. If you do not want to set a field, enter an empty string in response to the prompt.\n";
+export const ICEBERG_CONFIG_PROMPT_HINT = "Set repository-level configuration for Iceberg bucket name, table folder root,  table folder subpath and connection. If you do not want to set a field, enter an empty string in response to the prompt.\n";
 export const ICEBERG_CONFIG_PROMPT_TEXT = "\n--- Iceberg Configuration ---\n"
 export const ICEBERG_CONFIG_COLLECTED_TEXT = "Iceberg configuration collected.\n";
 export const ICEBERG_BUCKET_NAME_PROMPT_QUESTION = "Enter the default Iceberg bucket name:";
