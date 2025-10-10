@@ -478,6 +478,19 @@ defaultAssertionDataset: dataform_assertions
     });
   });
 
+  suite("init-creds command", () => {
+    test("init-creds fails for directory without dataform config", async () => {
+      const emptyDir = tmpDirFixture.createNewTmpDir();
+      const result = await getProcessResult(
+        execFile(nodePath, [cliEntryPointPath, "init-creds", emptyDir])
+      );
+      expect(result.exitCode).to.not.equal(0);
+      expect(result.stderr).to.include(
+        `${emptyDir} does not appear to be a dataform directory (missing workflow_settings.yaml file).`
+      );
+    });
+  });
+
   suite("format command", () => {
     test("test for format command", async () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
