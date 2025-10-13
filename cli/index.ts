@@ -829,6 +829,16 @@ class ProjectConfigOptions {
     }
   };
 
+  public static disableAssertions: INamedOption<yargs.Options> = {
+    name: "disable-assertions",
+    option: {
+      describe:
+        "Disables all assertions including built-in assertions (uniqueKey, nonNull, rowConditions) and manual assertions (type: assertion).",
+      type: "boolean",
+      default: false
+    }
+  };
+
   public static allYargsOptions = [
     ProjectConfigOptions.defaultDatabase,
     ProjectConfigOptions.defaultSchema,
@@ -837,7 +847,8 @@ class ProjectConfigOptions {
     ProjectConfigOptions.vars,
     ProjectConfigOptions.databaseSuffix,
     ProjectConfigOptions.schemaSuffix,
-    ProjectConfigOptions.tablePrefix
+    ProjectConfigOptions.tablePrefix,
+    ProjectConfigOptions.disableAssertions
   ];
 
   public static constructProjectConfigOverride(
@@ -868,6 +879,9 @@ class ProjectConfigOptions {
     }
     if (argv[ProjectConfigOptions.tablePrefix.name]) {
       projectConfigOptions.tablePrefix = argv[ProjectConfigOptions.tablePrefix.name];
+    }
+    if (argv[ProjectConfigOptions.disableAssertions.name]) {
+      projectConfigOptions.disableAssertions = argv[ProjectConfigOptions.disableAssertions.name];
     }
     return projectConfigOptions;
   }

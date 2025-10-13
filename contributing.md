@@ -40,7 +40,41 @@ The following command runs tests for @dataform/core:
 bazel test //core/...
 ```
 
-If you need to run integration tests, that rely on encrypted secrets, please [get in touch](mailto:opensource@dataform.co) with the team.
+### Integration Test
+
+To run the CLI integration test against your own GCP project:
+
+1. Comment out the following dependency in `cli/BUILD`:
+
+   - `//test_credentials:bigquery.json`
+
+2. Update the following constants in `cli/index_test.ts` to match your project:
+
+   - `DEFAULT_DATABASE`
+   - `DEFAULT_LOCATION`
+   - `CREDENTIALS_PATH`
+
+   Prepare a credentials JSON file referenced by `CREDENTIALS_PATH`. Set values as follows:
+
+   - `projectId`: the same string as `DEFAULT_DATABASE`.
+   - `credentials`: the entire content of your GCP service account key JSON file as a single string (you can generate it with `jq -Rsa < path/to/key.json`).
+   - `location`: the same string as `DEFAULT_LOCATION`.
+
+   Example:
+
+   ```json
+   {
+     "projectId": "my-gcp-project",
+     "credentials": "{\"type\":\"service_account\",...}",
+     "location": "US"
+   }
+   ```
+
+3. Run the test:
+
+   ```bash
+   bazel test //cli:index_test
+   ```
 
 ### Lint
 
