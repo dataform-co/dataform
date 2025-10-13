@@ -145,6 +145,9 @@ export function workflowSettingsAsProjectConfig(
       projectConfig.defaultIcebergConfig.tableFolderSubpath = workflowSettings.defaultIcebergConfig.tableFolderSubpath;
     }
   }
+  if(workflowSettings.disableAssertions) {
+    projectConfig.disableAssertions = workflowSettings.disableAssertions;
+  }
 
   projectConfig.warehouse = "bigquery";
   return projectConfig;
