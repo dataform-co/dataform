@@ -188,7 +188,10 @@ export class Table extends ActionBuilder<dataform.Table> {
       requirePartitionFilter: config.requirePartitionFilter,
       additionalOptions: config.additionalOptions,
       ...(config.iceberg ? {
-        connection: getConnectionForIcebergTable(config.iceberg.connection),
+        connection: getConnectionForIcebergTable(
+          config.iceberg.connection,
+          session.projectConfig.defaultIcebergConfig?.connection
+        ),
         fileFormat: getFileFormatValueForIcebergTable(config.iceberg.fileFormat?.toString()),
         tableFormat: dataform.TableFormat.ICEBERG,
         storageUri: getStorageUriForIcebergTable(

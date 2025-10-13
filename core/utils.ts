@@ -303,7 +303,7 @@ export function getFileFormatValueForIcebergTable(
     return dataform.FileFormat.PARQUET;
   }
 
-  switch (configFileFormat) {
+  switch (configFileFormat.toUpperCase()) {
     case "PARQUET":
       return dataform.FileFormat.PARQUET;
 
@@ -317,11 +317,21 @@ export function getFileFormatValueForIcebergTable(
 /**
  * Returns the connection for an Iceberg table, as specified in the user's config file.
  * Defaults to "DEFAULT" if no connection is provided.
- * @param connection User-provided connection, if it exists.
+ * @param configConnection defined in the config block
+ * @param defaultConnection defined in workflow_settings.yaml.
  * @returns Connection used when creating an Iceberg table.
  */
-export function getConnectionForIcebergTable(connection?: string): string {
-  return connection || "DEFAULT";
+export function getConnectionForIcebergTable(
+  configConnection?: string,
+  defaultConnection?: string,
+): string {
+  if(configConnection) {
+    return configConnection;
+  } else if(defaultConnection) {
+    return defaultConnection;
+  } else {
+    return "DEFAULT";
+  }
 }
 
 /**
@@ -341,9 +351,9 @@ export function getStorageUriForIcebergTable(
 /**
  * Returns the bucketName which will be used to construct storageUri for an
  * Iceberg table. If the bucketName is provided in the config block, that value
- * will be used. Otherwise, defaultBucketName defined in workspace_settings.yaml
+ * will be used. Otherwise, defaultBucketName defined in workflow_settings.yaml
  * will be used. If none of those two values are defined, we throw an error.
- * @param defaultBucketName defined in workspace_settings.yaml
+ * @param defaultBucketName defined in workflow_settings.yaml
  * @param configBucketName defined in the config block
  * @returns bucketName used to construct storageUri for Iceberg tables
  */
@@ -357,7 +367,7 @@ export function getEffectiveBucketName(
     return defaultBucketName;
   } else {
     throw new Error(
-      "When defining an Iceberg table, bucket name must be defined in workspace_settings.yaml or the config block."
+      "When defining an Iceberg table, bucket name must be defined in workflow_settings.yaml or the config block."
     );
   }
 }
@@ -366,9 +376,9 @@ export function getEffectiveBucketName(
  * Returns the tableFolderRoot which will be used to construct storageUri for an
  * Iceberg table. If the tableFolderRoot is provided in the config block, that
  * value will be used. Otherwise, defaultTableFolderRoot defined in
- * workspace_settings.yaml will be used. If none of those two values are
+ * workflow_settings.yaml will be used. If none of those two values are
  * defined, "_dataform" will be used.
- * @param defaultTableFolderRoot defined in workspace_settings.yaml
+ * @param defaultTableFolderRoot defined in workflow_settings.yaml
  * @param configTableFolderRoot defined in the config block
  * @returns tableFolderRoot used to construct storageUri for Iceberg tables
  */
@@ -389,11 +399,11 @@ export function getEffectiveTableFolderRoot(
  * Returns the tableFolderSubpath which will be used to construct storageUri for
  * an Iceberg table. If the tableFolderSubpath is provided in the config block,
  * that value will be used. Otherwise, defaultTableFolderSubpath defined in
- * workspace_settings.yaml will be used. If none of those two values are
+ * workflow_settings.yaml will be used. If none of those two values are
  * defined, "{dataset_name}/{table_name}"" will be used.
  * @param datasetName Might be used to construct the tableFolderSubpath if no alternative value is available.
  * @param tableName Might be used to construct the tableFolderSubpath if no alternative value is available.
- * @param defaultTableFolderSubpath defined in workspace_settings.yaml
+ * @param defaultTableFolderSubpath defined in workflow_settings.yaml
  * @param configTableFolderSubpath defined in the config block
  */
 export function getEffectiveTableFolderSubpath(

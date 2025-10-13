@@ -144,14 +144,14 @@ suite('Dataform Utility Validations', () => {
     test('throws error if both configBucketName and defaultBucketName are undefined', () => {
       assertThrowsWithMessage(
         () => getEffectiveBucketName(undefined, undefined),
-        'When defining an Iceberg table, bucket name must be defined in workspace_settings.yaml or the config block.'
+        'When defining an Iceberg table, bucket name must be defined in workflow_settings.yaml or the config block.'
       );
     });
 
     test('throws error if both configBucketName and defaultBucketName are empty strings', () => {
       assertThrowsWithMessage(
         () => getEffectiveBucketName('', ''),
-        'When defining an Iceberg table, bucket name must be defined in workspace_settings.yaml or the config block.'
+        'When defining an Iceberg table, bucket name must be defined in workflow_settings.yaml or the config block.'
       );
     });
   });
@@ -204,16 +204,24 @@ suite('Dataform Utility Validations', () => {
   });
 
   suite('getConnectionForIcebergTable', () => {
-    test('returns the provided connection string if it exists', () => {
-      expect(getConnectionForIcebergTable('my-custom-conn')).to.equal('my-custom-conn');
+    test('returns the config connection string if it exists', () => {
+      expect(getConnectionForIcebergTable('config-connection', 'default-connection')).to.equal('config-connection');
     });
 
-    test('returns "DEFAULT" when the connection is undefined', () => {
-      expect(getConnectionForIcebergTable(undefined)).to.equal('DEFAULT');
+    test('returns the default connection string if the config connection is undefined', () => {
+      expect(getConnectionForIcebergTable(undefined, 'default-connection')).to.equal('default-connection');
     });
 
-    test('returns "DEFAULT" when the connection is an empty string', () => {
-      expect(getConnectionForIcebergTable('')).to.equal('DEFAULT');
+    test('returns the default connection string if the config connection is an empty string', () => {
+      expect(getConnectionForIcebergTable('', 'default-connection')).to.equal('default-connection');
+    });
+
+    test('returns "DEFAULT" when the connections are undefined', () => {
+      expect(getConnectionForIcebergTable(undefined, undefined)).to.equal('DEFAULT');
+    });
+
+    test('returns "DEFAULT" when the connections are empty strings', () => {
+      expect(getConnectionForIcebergTable('', '')).to.equal('DEFAULT');
     });
   });
 
@@ -228,6 +236,11 @@ suite('Dataform Utility Validations', () => {
 
     test('returns PARQUET when fileFormat is an empty string', () => {
       expect(getFileFormatValueForIcebergTable('')).to.equal(dataform.FileFormat.PARQUET);
+    });
+
+    test('is case insensitive ', () => {
+      expect(getFileFormatValueForIcebergTable('parquet')).to.equal(dataform.FileFormat.PARQUET);
+      expect(getFileFormatValueForIcebergTable('pArQuEt')).to.equal(dataform.FileFormat.PARQUET);
     });
 
     test('throws an error for an unsupported file format string', () => {

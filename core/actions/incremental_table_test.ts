@@ -360,6 +360,7 @@ defaultIcebergConfig:
   bucketName: "ws-default-bucket"
   tableFolderRoot: "ws-default-root"
   tableFolderSubpath: "ws-default-sub"
+  connection: "ws.default.connection"
 `;
 
     const testCases = [
@@ -617,7 +618,7 @@ defaultIcebergConfig:
             tableFolderSubpath: "my-subpath",
           }
         }`,
-        expectError: "When defining an Iceberg table, bucket name must be defined in workspace_settings.yaml or the config block.",
+        expectError: "When defining an Iceberg table, bucket name must be defined in workflow_settings.yaml or the config block.",
         wsContent: VALID_WORKFLOW_SETTINGS_YAML,
       },
       {
@@ -656,7 +657,7 @@ defaultIcebergConfig:
         wsContent: VALID_WORKFLOW_SETTINGS_YAML,
       },
       {
-        testName: "uses defaultBucketName from workspace_settings.yaml",
+        testName: "uses defaultBucketName from workflow_settings.yaml",
         wsContent: CUSTOM_WORKFLOW_SETTINGS_WITH_ICEBERG_DEFAULTS,
         configBlock: `
         type: "incremental",
@@ -683,7 +684,7 @@ defaultIcebergConfig:
         expectError: false,
       },
       {
-        testName: "uses defaultTableFolderRoot from workspace_settings.yaml",
+        testName: "uses defaultTableFolderRoot from workflow_settings.yaml",
         wsContent: CUSTOM_WORKFLOW_SETTINGS_WITH_ICEBERG_DEFAULTS,
         configBlock: `
         type: "incremental",
@@ -710,7 +711,7 @@ defaultIcebergConfig:
         expectError: false,
       },
       {
-        testName: "uses defaultTableFolderSubpath from workspace_settings.yaml",
+        testName: "uses defaultTableFolderSubpath from workflow_settings.yaml",
         wsContent: CUSTOM_WORKFLOW_SETTINGS_WITH_ICEBERG_DEFAULTS,
         configBlock: `
         type: "incremental",
@@ -737,7 +738,33 @@ defaultIcebergConfig:
         expectError: false,
       },
       {
-        testName: "uses all Iceberg defaults from workspace_settings.yaml",
+        testName: "uses default connection from workflow_settings.yaml",
+        wsContent: CUSTOM_WORKFLOW_SETTINGS_WITH_ICEBERG_DEFAULTS,
+        configBlock: `
+        type: "incremental",
+        name: "incremental_ws_sub",
+        dataset: "dataset_ws",
+        bigquery: {
+          iceberg: {
+            fileFormat: "PARQUET",
+            bucketName: "my-bucket",
+            tableFolderRoot: "my-root",
+            tableFolderSubpath: "my-subpath"
+          }
+        }`,
+        expected: {
+          target: { name: "incremental_ws_sub", schema: "dataset_ws", database: "defaultProject" },
+          bigquery: {
+            tableFormat: "ICEBERG",
+            fileFormat: "PARQUET",
+            connection: "ws.default.connection",
+            storageUri: "gs://my-bucket/my-root/my-subpath",
+          },
+        },
+        expectError: false,
+      },
+      {
+        testName: "uses all Iceberg defaults from workflow_settings.yaml",
         wsContent: CUSTOM_WORKFLOW_SETTINGS_WITH_ICEBERG_DEFAULTS,
         configBlock: `
         type: "incremental",
@@ -746,8 +773,6 @@ defaultIcebergConfig:
         bigquery: {
           iceberg: {
             fileFormat: "PARQUET",
-            connection: "gcp.us.conn-id",
-            // All path components omitted
           }
         }`,
         expected: {
@@ -755,7 +780,7 @@ defaultIcebergConfig:
           bigquery: {
             tableFormat: "ICEBERG",
             fileFormat: "PARQUET",
-            connection: "gcp.us.conn-id",
+            connection: "ws.default.connection",
             storageUri: "gs://ws-default-bucket/ws-default-root/ws-default-sub",
           },
         },
@@ -801,7 +826,7 @@ defaultIcebergConfig:
             tableFolderSubpath: "my-subpath",
           }
         }`,
-        expectError: "When defining an Iceberg table, bucket name must be defined in workspace_settings.yaml or the config block.",
+        expectError: "When defining an Iceberg table, bucket name must be defined in workflow_settings.yaml or the config block.",
         wsContent: VALID_WORKFLOW_SETTINGS_YAML, // Ensure no defaults are set here
       },
     ];
