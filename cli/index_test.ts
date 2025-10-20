@@ -725,6 +725,7 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
             tasks: [
               {
                 statement:
+                  // tslint:disable-next-line:tsr-detect-sql-literal-injection
                   `create or replace table \`${DEFAULT_DATABASE}.dataform.example\` as \n\nselect 1 as testValue2`,
                 type: "statement"
               }
@@ -844,6 +845,7 @@ SELECT 1 as id
               schema: "dataform"
             },
             query:
+              // tslint:disable-next-line:tsr-detect-sql-literal-injection
               `\nSELECT\n  *\nFROM (\n  SELECT\n    id,\n    COUNT(1) AS index_row_count\n  FROM \`${DEFAULT_DATABASE}.dataform.example_table\`\n  GROUP BY id\n  ) AS data\nWHERE index_row_count > 1\n`,
             target: {
               database: DEFAULT_DATABASE,
@@ -960,6 +962,7 @@ SELECT 1 as id
             tasks: [
               {
                 statement:
+                  // tslint:disable-next-line:tsr-detect-sql-literal-injection
                   `create or replace table \`${DEFAULT_DATABASE}.dataform.example_table\` as \n\nSELECT 1 as id`,
                 type: "statement"
               }
