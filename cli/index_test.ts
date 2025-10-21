@@ -23,6 +23,10 @@ import { dataform } from "df/protos/ts";
 import { corePackageTarPath, getProcessResult, nodePath, npmPath, suite, test } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
 
+const DEFAULT_DATABASE = "dataform-open-source";
+const DEFAULT_LOCATION = "US";
+const CREDENTIALS_PATH = path.resolve(process.env.RUNFILES, "df/test_credentials/bigquery.json");
+
 suite("@dataform/cli", ({ afterEach }) => {
   const tmpDirFixture = new TmpDirFixture(afterEach);
   const cliEntryPointPath = "cli/node_modules/@dataform/cli/bundle.js";
@@ -154,7 +158,7 @@ suite("@dataform/cli", ({ afterEach }) => {
   "defaultDatabase": "tada-analytics",
   "defaultSchema": "df_integration_test",
   "assertionSchema": "df_integration_test_assertions",
-  "defaultLocation": "US"
+  "defaultLocation": "${DEFAULT_LOCATION}"
 }
 `
       );
@@ -500,7 +504,7 @@ defaultAssertionDataset: dataform_assertions
 
       // Initialize a project using the CLI, don't install packages.
       await getProcessResult(
-        execFile(nodePath, [cliEntryPointPath, "init", projectDir, "dataform-open-source", "US"])
+        execFile(nodePath, [cliEntryPointPath, "init", projectDir, DEFAULT_DATABASE, DEFAULT_LOCATION])
       );
 
       // Install packages manually to get around bazel read-only sandbox issues.
@@ -590,7 +594,7 @@ SELECT  1  as   test
 
       // Initialize a project using the CLI, don't install packages.
       await getProcessResult(
-        execFile(nodePath, [cliEntryPointPath, "init", projectDir, "dataform-open-source", "US"])
+        execFile(nodePath, [cliEntryPointPath, "init", projectDir, DEFAULT_DATABASE, DEFAULT_LOCATION])
       );
 
       // Install packages manually to get around bazel read-only sandbox issues.
@@ -649,14 +653,14 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
             type: "table",
             enumType: "TABLE",
             target: {
-              database: "dataform-open-source",
+              database: DEFAULT_DATABASE,
               schema: "dataform_test_schema_suffix",
               name: "example"
             },
             canonicalTarget: {
               schema: "dataform",
               name: "example",
-              database: "dataform-open-source"
+              database: DEFAULT_DATABASE
             },
             query: "\n\nselect 1 as testValue2\n",
             disabled: false,
@@ -669,8 +673,8 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
           warehouse: "bigquery",
           defaultSchema: "dataform",
           assertionSchema: "dataform_assertions",
-          defaultDatabase: "dataform-open-source",
-          defaultLocation: "US",
+          defaultDatabase: DEFAULT_DATABASE,
+          defaultLocation: DEFAULT_LOCATION,
           vars: {
             testVar1: "testValue1",
             testVar2: "testValue2"
@@ -681,7 +685,7 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
         dataformCoreVersion: version,
         targets: [
           {
-            database: "dataform-open-source",
+            database: DEFAULT_DATABASE,
             schema: "dataform",
             name: "example"
           }
@@ -695,7 +699,7 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
           "run",
           projectDir,
           "--credentials",
-          path.resolve(process.env.RUNFILES, "df/test_credentials/bigquery.json"),
+          CREDENTIALS_PATH,
           "--dry-run",
           "--json",
           "--vars=testVar1=testValue1,testVar2=testValue2",
@@ -714,14 +718,15 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
             hermeticity: "NON_HERMETIC",
             tableType: "table",
             target: {
-              database: "dataform-open-source",
+              database: DEFAULT_DATABASE,
               name: "example",
               schema: "dataform"
             },
             tasks: [
               {
                 statement:
-                  "create or replace table `dataform-open-source.dataform.example` as \n\nselect 1 as testValue2",
+                  // tslint:disable-next-line:tsr-detect-sql-literal-injection
+                  `create or replace table \`${DEFAULT_DATABASE}.dataform.example\` as \n\nselect 1 as testValue2`,
                 type: "statement"
               }
             ],
@@ -730,7 +735,7 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
         ],
         projectConfig: {
           assertionSchema: "dataform_assertions",
-          defaultDatabase: "dataform-open-source",
+          defaultDatabase: DEFAULT_DATABASE,
           defaultLocation: "europe",
           defaultSchema: "dataform",
           warehouse: "bigquery",
@@ -745,6 +750,290 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
           actions: ["example", "someOtherAction"]
         },
         warehouseState: {}
+      });
+    });
+  });
+
+  suite("disable-assertions flag excludes assertions", ({ beforeEach }) => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+
+    async function setupTestProject(): Promise<void> {
+      const npmCacheDir = tmpDirFixture.createNewTmpDir();
+      const packageJsonPath = path.join(projectDir, "package.json");
+
+      await getProcessResult(
+        execFile(nodePath, [cliEntryPointPath, "init", projectDir, DEFAULT_DATABASE, DEFAULT_LOCATION])
+      );
+      fs.writeFileSync(
+        packageJsonPath,
+        `{
+  "dependencies":{
+    "@dataform/core": "${version}"
+  }
+}`
+      );
+      await getProcessResult(
+        execFile(npmPath, [
+          "install",
+          "--prefix",
+          projectDir,
+          "--cache",
+          npmCacheDir,
+          corePackageTarPath
+        ])
+      );
+
+      const assertionFilePath = path.join(projectDir, "definitions", "test_assertion.sqlx");
+      fs.ensureFileSync(assertionFilePath);
+      fs.writeFileSync(
+        assertionFilePath,
+        `
+config { type: "assertion" }
+SELECT 1 WHERE FALSE
+`
+      );
+
+      const tableFilePath = path.join(projectDir, "definitions", "example_table.sqlx");
+      fs.ensureFileSync(tableFilePath);
+      fs.writeFileSync(
+        tableFilePath,
+        `
+config { 
+  type: "table",
+  assertions: {
+    uniqueKey: ["id"]
+  }
+}
+SELECT 1 as id
+`
+      );
+    }
+
+    async function setUpWorkflowSettings(disableAssertions: boolean): Promise<void> {
+      const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
+      const workflowSettings = dataform.WorkflowSettings.create(
+        loadYaml(fs.readFileSync(workflowSettingsPath, "utf8"))
+      );
+      delete workflowSettings.dataformCoreVersion;
+      workflowSettings.disableAssertions = disableAssertions;
+      fs.writeFileSync(workflowSettingsPath, dumpYaml(workflowSettings));
+    }
+
+    beforeEach("setup test project", async () => await setupTestProject());
+
+    suite("from compilation", () => {
+      const expectedCompileResult = {
+        assertions: [
+          {
+            canonicalTarget: {
+              database: DEFAULT_DATABASE,
+              name: "dataform_example_table_assertions_uniqueKey_0",
+              schema: "dataform_assertions"
+            },
+            dependencyTargets: [
+              {
+                database: DEFAULT_DATABASE,
+                name: "example_table",
+                schema: "dataform"
+              }
+            ],
+            disabled: true,
+            fileName: "definitions/example_table.sqlx",
+            parentAction: {
+              database: DEFAULT_DATABASE,
+              name: "example_table",
+              schema: "dataform"
+            },
+            query:
+              // tslint:disable-next-line:tsr-detect-sql-literal-injection
+              `\nSELECT\n  *\nFROM (\n  SELECT\n    id,\n    COUNT(1) AS index_row_count\n  FROM \`${DEFAULT_DATABASE}.dataform.example_table\`\n  GROUP BY id\n  ) AS data\nWHERE index_row_count > 1\n`,
+            target: {
+              database: DEFAULT_DATABASE,
+              name: "dataform_example_table_assertions_uniqueKey_0",
+              schema: "dataform_assertions"
+            }
+          },
+          {
+            canonicalTarget: {
+              database: DEFAULT_DATABASE,
+              name: "test_assertion",
+              schema: "dataform_assertions"
+            },
+            disabled: true,
+            fileName: "definitions/test_assertion.sqlx",
+            query: "\n\nSELECT 1 WHERE FALSE\n",
+            target: {
+              database: DEFAULT_DATABASE,
+              name: "test_assertion",
+              schema: "dataform_assertions"
+            }
+          }
+        ],
+        dataformCoreVersion: version,
+        graphErrors: {},
+        projectConfig: {
+          assertionSchema: "dataform_assertions",
+          defaultDatabase: DEFAULT_DATABASE,
+          defaultLocation: DEFAULT_LOCATION,
+          defaultSchema: "dataform",
+          disableAssertions: true,
+          warehouse: "bigquery"
+        },
+        tables: [
+          {
+            canonicalTarget: {
+              database: DEFAULT_DATABASE,
+              name: "example_table",
+              schema: "dataform"
+            },
+            disabled: false,
+            enumType: "TABLE",
+            fileName: "definitions/example_table.sqlx",
+            hermeticity: "NON_HERMETIC",
+            query: "\n\nSELECT 1 as id\n",
+            target: {
+              database: DEFAULT_DATABASE,
+              name: "example_table",
+              schema: "dataform"
+            },
+            type: "table"
+          }
+        ],
+        targets: [
+          {
+            database: DEFAULT_DATABASE,
+            name: "dataform_example_table_assertions_uniqueKey_0",
+            schema: "dataform_assertions"
+          },
+          {
+            database: DEFAULT_DATABASE,
+            name: "example_table",
+            schema: "dataform"
+          },
+          {
+            database: DEFAULT_DATABASE,
+            name: "test_assertion",
+            schema: "dataform_assertions"
+          }
+        ]
+      };
+
+      test("with --disable-assertions flag", async () => {
+        await setUpWorkflowSettings(false);
+
+        const compileResult = await getProcessResult(
+          execFile(nodePath, [
+            cliEntryPointPath,
+            "compile",
+            projectDir,
+            "--json",
+            "--disable-assertions"
+          ])
+        );
+
+        expect(compileResult.exitCode).equals(0);
+        expect(JSON.parse(compileResult.stdout)).deep.equals(expectedCompileResult);
+      });
+
+      test("with disableAssertions set in workflow_settings.yaml", async () => {
+        await setUpWorkflowSettings(true);
+
+        const compileResult = await getProcessResult(
+          execFile(nodePath, [cliEntryPointPath, "compile", projectDir, "--json"])
+        );
+
+        expect(compileResult.exitCode).equals(0);
+        expect(JSON.parse(compileResult.stdout)).deep.equals(expectedCompileResult);
+      });
+    });
+
+    suite("from run", () => {
+      const expectedRunResult = {
+        actions: [
+          {
+            fileName: "definitions/example_table.sqlx",
+            hermeticity: "NON_HERMETIC",
+            tableType: "table",
+            target: {
+              database: DEFAULT_DATABASE,
+              name: "example_table",
+              schema: "dataform"
+            },
+            tasks: [
+              {
+                statement:
+                  // tslint:disable-next-line:tsr-detect-sql-literal-injection
+                  `create or replace table \`${DEFAULT_DATABASE}.dataform.example_table\` as \n\nSELECT 1 as id`,
+                type: "statement"
+              }
+            ],
+            type: "table"
+          },
+          {
+            fileName: "definitions/test_assertion.sqlx",
+            hermeticity: "HERMETIC",
+            target: {
+              database: DEFAULT_DATABASE,
+              name: "test_assertion",
+              schema: "dataform_assertions"
+            },
+            type: "assertion"
+          }
+        ],
+        projectConfig: {
+          assertionSchema: "dataform_assertions",
+          defaultDatabase: DEFAULT_DATABASE,
+          defaultLocation: DEFAULT_LOCATION,
+          defaultSchema: "dataform",
+          disableAssertions: true,
+          warehouse: "bigquery"
+        },
+        runConfig: {
+          actions: ["test_assertion", "example_table"],
+          fullRefresh: false
+        },
+        warehouseState: {}
+      };
+
+      test("with --disable-assertions flag", async () => {
+        await setUpWorkflowSettings(false);
+
+        const runResult = await getProcessResult(
+          execFile(nodePath, [
+            cliEntryPointPath,
+            "run",
+            projectDir,
+            "--credentials",
+            CREDENTIALS_PATH,
+            "--dry-run",
+            "--json",
+            "--disable-assertions",
+            "--actions=test_assertion,example_table"
+          ])
+        );
+
+        expect(runResult.exitCode).equals(0);
+        expect(JSON.parse(runResult.stdout)).deep.equals(expectedRunResult);
+      });
+
+      test("with disableAssertions set in workflow_settings.yaml", async () => {
+        await setUpWorkflowSettings(true);
+
+        const runResult = await getProcessResult(
+          execFile(nodePath, [
+            cliEntryPointPath,
+            "run",
+            projectDir,
+            "--credentials",
+            CREDENTIALS_PATH,
+            "--dry-run",
+            "--json",
+            "--actions=test_assertion,example_table"
+          ])
+        );
+
+        expect(runResult.exitCode).equals(0);
+        expect(JSON.parse(runResult.stdout)).deep.equals(expectedRunResult);
       });
     });
   });

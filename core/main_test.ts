@@ -1534,6 +1534,63 @@ assert("name", {
           }
         ]);
       });
+
+      test("assert API returns disabled assertions when disableAssertions is true", () => {
+        const projectDir = tmpDirFixture.createNewTmpDir();
+        fs.writeFileSync(
+          path.join(projectDir, "workflow_settings.yaml"),
+          VALID_WORKFLOW_SETTINGS_YAML
+        );
+        fs.mkdirSync(path.join(projectDir, "definitions"));
+        fs.writeFileSync(
+          path.join(projectDir, "definitions/table.sqlx"),
+          `config {type: "table"} SELECT 1`
+        );
+        fs.writeFileSync(
+          path.join(projectDir, "definitions/assert.js"),
+          `
+assert("name", {
+  type: "assert",
+}).query(ctx => \`SELECT * FROM \${ctx.ref('table')}\`)`
+        );
+
+        const coreRequest = coreExecutionRequestFromPath(
+          projectDir,
+          dataform.ProjectConfig.create({
+            disableAssertions: true
+          })
+        );
+        const result = runMainInVm(coreRequest);
+
+        expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+        expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals(
+          asPlainObject([
+            {
+              canonicalTarget: {
+                database: "defaultProject",
+                name: "name",
+                schema: "defaultDataset"
+              },
+              dependencyTargets: [
+                {
+                  database: "defaultProject",
+                  name: "table",
+                  schema: "defaultDataset"
+                }
+              ],
+              disabled: true,
+              fileName: "definitions/assert.js",
+              query: "SELECT * FROM `defaultProject.defaultDataset.table`",
+              target: {
+                database: "defaultProject",
+                name: "name",
+                schema: "defaultDataset"
+              }
+            }
+          ])
+        );
+        expect(result.compile.compiledGraph.tables.length).equals(1);
+      });
     });
 
     suite("invalid options", () => {

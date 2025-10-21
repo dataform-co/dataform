@@ -148,6 +148,9 @@ export function workflowSettingsAsProjectConfig(
       projectConfig.defaultIcebergConfig.connection = workflowSettings.defaultIcebergConfig.connection;
     }
   }
+  if(workflowSettings.disableAssertions) {
+    projectConfig.disableAssertions = workflowSettings.disableAssertions;
+  }
 
   projectConfig.warehouse = "bigquery";
   return projectConfig;
