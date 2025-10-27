@@ -31,6 +31,7 @@ ts_library(
         "column_descriptors.ts",
         "compilers.ts",
         "contextables.ts",
+        "extension.ts",
         "index.ts",
         "main.ts",
         "path.ts",
