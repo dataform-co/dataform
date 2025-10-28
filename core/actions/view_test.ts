@@ -89,7 +89,7 @@ actions:
     hermetic: true,
     ${exampleBuiltInAssertions.inputAssertionBlock}
     metadata: {
-	overview: "view overview",
+        overview: "view overview",
     },
 }`;
     [
@@ -164,7 +164,7 @@ SELECT 1`
                 key: "val"
               },
 	      metadata: {
-		overview: "view overview"
+                overview: "view overview"
 	      },
             },
             materialized: true

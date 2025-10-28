@@ -185,9 +185,9 @@ SELECT 1`
               bigqueryLabels: {
                 key: "val"
               },
-	      metadata: {
+              metadata: {
                 overview: "incremental table overview"
-	      }
+              }
             }
           }
         ]);

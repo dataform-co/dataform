@@ -168,9 +168,9 @@ SELECT 1`
               bigqueryLabels: {
                 key: "val"
               },
-	      metadata: {
-		overview: "table overview"
-	      }
+              metadata: {
+                overview: "table overview"
+              }
             }
           }
         ]);
