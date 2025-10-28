@@ -103,7 +103,7 @@ actions:
     hermetic: true,
     onSchemaChange: "SYNCHRONIZE",
     metadata: {
-	overview: "incremental table overview",
+        overview: "incremental table overview",
     },
 }
 `;

@@ -91,7 +91,7 @@ actions:
     dependOnDependencyAssertions: true,
     hermetic: true,
     metadata: {
-	overview: "table overview",
+        overview: "table overview",
     }
 }`;
 

@@ -163,9 +163,9 @@ SELECT 1`
               bigqueryLabels: {
                 key: "val"
               },
-	      metadata: {
+              metadata: {
                 overview: "view overview"
-	      },
+              },
             },
             materialized: true
           }
