@@ -101,6 +101,11 @@ message ActionDescriptor {
   // For Assertions, 'columns' will always be empty.
   repeated ColumnDescriptor columns = 2;
   map<string, string> bigquery_labels = 3;
+  Metadata metadata = 4;
+}
+
+message Metadata {
+  string overview = 1;
 }
 
 message ColumnDescriptor {
