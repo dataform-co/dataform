@@ -1813,7 +1813,7 @@ publish("name", {type: "${fromType}", schema: "schemaOverride"}).type("${toType}
       const request = coreExecutionRequestFromPath(projectDir);
       request.compile.compileConfig.extension = {
         name: "some-extension",
-        compilationMode: dataform.CompileConfig.Extension.CompilationMode.COMPILATION_MODE_UNSPECIFIED,
+        compilationMode: dataform.ExtensionCompilationMode.COMPILATION_MODE_UNSPECIFIED,
       };
 
       const result = runMainInVm(request);
@@ -1827,7 +1827,7 @@ publish("name", {type: "${fromType}", schema: "schemaOverride"}).type("${toType}
       const request = coreExecutionRequestFromPath(projectDir);
       request.compile.compileConfig.extension = {
         name: "@dataform/sample-extension",
-        compilationMode: dataform.CompileConfig.Extension.CompilationMode.PROLOGUE,
+        compilationMode: dataform.ExtensionCompilationMode.PROLOGUE,
       };
 
       const result = runMainInVm(request);
@@ -1841,7 +1841,7 @@ publish("name", {type: "${fromType}", schema: "schemaOverride"}).type("${toType}
       const request = coreExecutionRequestFromPath(projectDir);
       request.compile.compileConfig.extension = {
         name: "@dataform/sample-extension",
-        compilationMode: dataform.CompileConfig.Extension.CompilationMode.APPLICATION_CODE,
+        compilationMode: dataform.ExtensionCompilationMode.APPLICATION_CODE,
       };
 
       const result = runMainInVm(request);
@@ -1855,7 +1855,7 @@ publish("name", {type: "${fromType}", schema: "schemaOverride"}).type("${toType}
       const request = coreExecutionRequestFromPath(projectDir);
       request.compile.compileConfig.extension = {
         name: "does-not-exist",
-        compilationMode: dataform.CompileConfig.Extension.CompilationMode.PROLOGUE,
+        compilationMode: dataform.ExtensionCompilationMode.PROLOGUE,
       };
 
       const result = runMainInVm(request);

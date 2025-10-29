@@ -177,13 +177,13 @@ function loadActionConfigsFile(
 }
 
 function prologueCompile(compileRequest: dataform.ICompileExecutionRequest, session: Session) {
-  if (compileRequest?.compileConfig?.extension?.compilationMode === dataform.CompileConfig.Extension.CompilationMode.PROLOGUE) {
+  if (compileRequest?.compileConfig?.extension?.compilationMode === dataform.ExtensionCompilationMode.PROLOGUE) {
     extensionCompile(compileRequest, session);
   }
 }
 
 function mainCompile(compileRequest: dataform.ICompileExecutionRequest, session: Session) {
-  if (compileRequest?.compileConfig?.extension?.compilationMode === dataform.CompileConfig.Extension.CompilationMode.APPLICATION_CODE) {
+  if (compileRequest?.compileConfig?.extension?.compilationMode === dataform.ExtensionCompilationMode.APPLICATION_CODE) {
     extensionCompile(compileRequest, session);
     return;
   }
