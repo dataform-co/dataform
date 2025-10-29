@@ -1850,7 +1850,7 @@ publish("name", {type: "${fromType}", schema: "schemaOverride"}).type("${toType}
       expect(result.compile.compiledGraph.targets?.map(t => t.name)).deep.equals(["sample-action"]);
     });
 
-    test("catches extension exceptions", () => {
+    test("catches extension import exceptions", () => {
       const projectDir = setUpProjectWithExtension();
       const request = coreExecutionRequestFromPath(projectDir);
       request.compile.compileConfig.extension = {
@@ -1863,6 +1863,36 @@ publish("name", {type: "${fromType}", schema: "schemaOverride"}).type("${toType}
       expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).equals(1);
       expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).contains("Cannot find module");
       expect(result.compile.compiledGraph.targets?.map(t => t.name)).deep.equals(["e", "file"]);
+    });
+
+    test("catches exceptions thrown from extension", () => {
+      const projectDir = setUpProjectWithExtension();
+      const request = coreExecutionRequestFromPath(projectDir, dataform.ProjectConfig.create({vars: {"throw-error": "true"}}));
+      request.compile.compileConfig.extension = {
+        name: "@dataform/sample-extension",
+        compilationMode: dataform.ExtensionCompilationMode.PROLOGUE,
+      };
+
+      const result = runMainInVm(request);
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).equals(1);
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).contains("throwing exception as requested!");
+      expect(result.compile.compiledGraph.targets?.map(t => t.name)).deep.equals(["e", "file"]);
+    });
+
+    test("persists extension compilation errors", () => {
+      const projectDir = setUpProjectWithExtension();
+      const request = coreExecutionRequestFromPath(projectDir, dataform.ProjectConfig.create({vars: {"store-compile-error": "true"}}));
+      request.compile.compileConfig.extension = {
+        name: "@dataform/sample-extension",
+        compilationMode: dataform.ExtensionCompilationMode.PROLOGUE,
+      };
+
+      const result = runMainInVm(request);
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).equals(1);
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).contains("storing compilation error as requested!");
+      expect(result.compile.compiledGraph.targets?.map(t => t.name)).deep.equals(["sample-action", "e", "file"]);
     });
   });
 });
