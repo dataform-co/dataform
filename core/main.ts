@@ -12,6 +12,7 @@ import { Notebook } from "df/core/actions/notebook";
 import { Operation } from "df/core/actions/operation";
 import { Table } from "df/core/actions/table";
 import { View } from "df/core/actions/view";
+import { IDataformExtension } from "df/core/extension";
 import * as Path from "df/core/path";
 import { Session } from "df/core/session";
 import { nativeRequire } from "df/core/utils";
@@ -55,47 +56,9 @@ export function main(coreExecutionRequest: Uint8Array | string): Uint8Array | st
   // Allow "includes" files to use the current session object.
   globalAny.dataform = session;
 
-  // Require "includes/*.js" files, attaching them (by file basename) to the `global` object.
-  // We delay attaching them to `global` until after all have been required, to prevent
-  // "includes" files from implicitly depending on other "includes" files.
-  const topLevelIncludes: { [key: string]: any } = {};
-  compileRequest.compileConfig.filePaths
-    .filter(path => path.startsWith(`includes${Path.separator}`))
-    .filter(path => path.split(Path.separator).length === 2) // Only include top-level "includes" files.
-    .filter(path => Path.fileExtension(path) === "js")
-    .forEach(includePath => {
-      try {
-        // tslint:disable-next-line: tsr-detect-non-literal-require
-        topLevelIncludes[Path.basename(includePath)] = nativeRequire(includePath);
-      } catch (e) {
-        session.compileError(e, includePath);
-      }
-    });
-  Object.assign(globalAny, topLevelIncludes);
+  prologueCompile(compileRequest, session);
 
-  // Bind various @dataform/core APIs to the 'global' object.
-  globalAny.publish = session.publish.bind(session);
-  globalAny.operate = session.operate.bind(session);
-  globalAny.assert = session.assert.bind(session);
-  globalAny.declare = session.declare.bind(session);
-  globalAny.notebook = session.notebook.bind(session);
-  globalAny.test = session.test.bind(session);
-
-  loadActionConfigs(session, compileRequest.compileConfig.filePaths);
-
-  // Require all "definitions" files (attaching them to the session).
-  compileRequest.compileConfig.filePaths
-    .filter(path => path.startsWith(`definitions${Path.separator}`))
-    .filter(path => Path.fileExtension(path) === "js" || Path.fileExtension(path) === "sqlx")
-    .sort()
-    .forEach(definitionPath => {
-      try {
-        // tslint:disable-next-line: tsr-detect-non-literal-require
-        nativeRequire(definitionPath);
-      } catch (e) {
-        session.compileError(e, definitionPath);
-      }
-    });
+  mainCompile(compileRequest, session);
 
   const coreExecutionResponse = dataform.CoreExecutionResponse.create({
     compile: { compiledGraph: session.compile() }
@@ -211,4 +174,75 @@ function loadActionConfigsFile(
     VerifyProtoErrorBehaviour.SHOW_DOCS_LINK
   );
   return dataform.ActionConfigs.fromObject(actionConfigsAsJson);
+}
+
+function prologueCompile(compileRequest: dataform.ICompileExecutionRequest, session: Session) {
+  if (compileRequest?.compileConfig?.extension?.compilationMode === dataform.ExtensionCompilationMode.PROLOGUE) {
+    extensionCompile(compileRequest, session);
+  }
+}
+
+function mainCompile(compileRequest: dataform.ICompileExecutionRequest, session: Session) {
+  if (compileRequest?.compileConfig?.extension?.compilationMode === dataform.ExtensionCompilationMode.APPLICATION_CODE) {
+    extensionCompile(compileRequest, session);
+    return;
+  }
+
+  dataformCompile(compileRequest, session);
+}
+
+function extensionCompile(compileRequest: dataform.ICompileExecutionRequest, session: Session) {
+  try {
+    const module = nativeRequire(compileRequest?.compileConfig?.extension.name);
+    const extension: () => IDataformExtension = module.extension;
+    extension().compile(compileRequest, session);
+  } catch (e) {
+    session.compileError(e, compileRequest?.compileConfig?.extension.name);
+  }
+}
+
+function dataformCompile(compileRequest: dataform.ICompileExecutionRequest, session: Session) {
+  const globalAny = global as any;
+
+  // Require "includes/*.js" files, attaching them (by file basename) to the `global` object.
+  // We delay attaching them to `global` until after all have been required, to prevent
+  // "includes" files from implicitly depending on other "includes" files.
+  const topLevelIncludes: { [key: string]: any } = {};
+  compileRequest.compileConfig.filePaths
+    .filter(path => path.startsWith(`includes${Path.separator}`))
+    .filter(path => path.split(Path.separator).length === 2) // Only include top-level "includes" files.
+    .filter(path => Path.fileExtension(path) === "js")
+    .forEach(includePath => {
+      try {
+        // tslint:disable-next-line: tsr-detect-non-literal-require
+        topLevelIncludes[Path.basename(includePath)] = nativeRequire(includePath);
+      } catch (e) {
+        session.compileError(e, includePath);
+      }
+    });
+  Object.assign(globalAny, topLevelIncludes);
+
+  // Bind various @dataform/core APIs to the 'global' object.
+  globalAny.publish = session.publish.bind(session);
+  globalAny.operate = session.operate.bind(session);
+  globalAny.assert = session.assert.bind(session);
+  globalAny.declare = session.declare.bind(session);
+  globalAny.notebook = session.notebook.bind(session);
+  globalAny.test = session.test.bind(session);
+
+  loadActionConfigs(session, compileRequest.compileConfig.filePaths);
+
+  // Require all "definitions" files (attaching them to the session).
+  compileRequest.compileConfig.filePaths
+    .filter(path => path.startsWith(`definitions${Path.separator}`))
+    .filter(path => Path.fileExtension(path) === "js" || Path.fileExtension(path) === "sqlx")
+    .sort()
+    .forEach(definitionPath => {
+      try {
+        // tslint:disable-next-line: tsr-detect-non-literal-require
+        nativeRequire(definitionPath);
+      } catch (e) {
+        session.compileError(e, definitionPath);
+      }
+    });
 }
