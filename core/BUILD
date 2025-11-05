@@ -31,6 +31,7 @@ ts_library(
         "column_descriptors.ts",
         "compilers.ts",
         "contextables.ts",
+        "extension.ts",
         "index.ts",
         "main.ts",
         "path.ts",
@@ -98,5 +99,6 @@ node_modules(
     name = "node_modules",
     deps = [
         "//packages/@dataform/core:package_tar",
+        "//packages/sample-extension:package_tar",
     ],
 )
