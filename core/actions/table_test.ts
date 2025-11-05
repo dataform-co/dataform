@@ -89,7 +89,10 @@ actions:
     },
     ${exampleBuiltInAssertions.inputAssertionBlock}
     dependOnDependencyAssertions: true,
-    hermetic: true
+    hermetic: true,
+    metadata: {
+        overview: "table overview",
+    }
 }`;
 
     [
@@ -164,6 +167,9 @@ SELECT 1`
               // sqlxConfig.bigquery.labels are placed as bigqueryLabels.
               bigqueryLabels: {
                 key: "val"
+              },
+              metadata: {
+                overview: "table overview"
               }
             }
           }

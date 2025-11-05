@@ -258,6 +258,14 @@ message ActionConfig {
 
     // Configuration options for an Iceberg table.
     IcebergTableConfig iceberg = 22;
+
+    // Metadata for this table.
+    Metadata metadata = 23;
+  }
+
+  message Metadata {
+    // A detailed description of the data object.
+    string overview = 1;
   }
 
   message ViewConfig {
@@ -331,6 +339,9 @@ message ActionConfig {
     // If configured, relevant assertions will automatically be created and run
     // as a dependency of this dataset.
     TableAssertionsConfig assertions = 17;
+
+    // Metadata for this view.
+    Metadata metadata = 20;
   }
 
   enum OnSchemaChange {
@@ -440,6 +451,9 @@ message ActionConfig {
 
     // Configuration options for an Iceberg table.
     IcebergTableConfig iceberg = 25;
+
+    // Metadata for this incremental table.
+    Metadata metadata = 26;
   }
 
   message AssertionConfig {

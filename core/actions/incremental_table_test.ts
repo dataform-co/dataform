@@ -102,6 +102,9 @@ actions:
     ${exampleBuiltInAssertions.inputAssertionBlock}
     hermetic: true,
     onSchemaChange: "SYNCHRONIZE",
+    metadata: {
+        overview: "incremental table overview",
+    },
 }
 `;
     [
@@ -181,6 +184,9 @@ SELECT 1`
               // sqlxConfig.bigquery.labels are placed as bigqueryLabels.
               bigqueryLabels: {
                 key: "val"
+              },
+              metadata: {
+                overview: "incremental table overview"
               }
             }
           }
