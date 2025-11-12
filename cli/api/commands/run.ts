@@ -24,7 +24,12 @@ export interface IExecutedAction {
 }
 
 export interface IExecutionOptions {
-  bigquery?: { jobPrefix?: string; actionRetryLimit?: number; dryRun?: boolean };
+  bigquery?: {
+    jobPrefix?: string;
+    actionRetryLimit?: number;
+    dryRun?: boolean;
+    labels?: { [label: string]: string };
+  };
 }
 
 export function run(
@@ -336,7 +341,11 @@ export class Runner {
         ) {
           const taskStatus = await this.executeTask(client, task, actionResult, {
             bigquery: {
-              labels: action.actionDescriptor?.bigqueryLabels,
+              // Merge global run-level labels with action-level labels. Action-level labels take precedence.
+              labels: {
+                ...(this.executionOptions?.bigquery?.labels || {}),
+                ...(action.actionDescriptor?.bigqueryLabels || {})
+              },
               actionRetryLimit: this.executionOptions?.bigquery?.actionRetryLimit,
               jobPrefix: this.executionOptions?.bigquery?.jobPrefix,
               dryRun: this.executionOptions?.bigquery?.dryRun

@@ -171,6 +171,26 @@ const jobPrefixOption: INamedOption<yargs.Options> = {
   }
 };
 
+const bigqueryLabelsOption: INamedOption<yargs.Options> = {
+  name: "bigquery-labels",
+  option: {
+    describe:
+      "Comma-separated list of labels to add to BigQuery jobs, e.g. 'key1=val1,key2=val2'.",
+    type: "string",
+    coerce: (raw: string | null) => {
+      const labels: { [key: string]: string } = {};
+      raw?.split(",").forEach(kv => {
+        if (!kv) {
+          return;
+        }
+        const [key, ...rest] = kv.split("=");
+        labels[key] = rest.join("=") || "";
+      });
+      return labels;
+    }
+  }
+};
+
 const quietCompileOption: INamedOption<yargs.Options> = {
   name: "quiet",
   option: {
@@ -510,6 +530,7 @@ export function runCli() {
           jsonOutputOption,
           timeoutOption,
           tagsOption,
+          bigqueryLabelsOption,
           ...ProjectConfigOptions.allYargsOptions
         ],
         processFn: async argv => {
@@ -576,6 +597,9 @@ export function runCli() {
           }
           if (argv[jobPrefixOption.name]) {
             bigqueryOptions = { ...bigqueryOptions, jobPrefix: argv[jobPrefixOption.name] };
+          }
+          if (argv[bigqueryLabelsOption.name]) {
+            bigqueryOptions = { ...bigqueryOptions, labels: argv[bigqueryLabelsOption.name] };
           }
 
           const actionsByName = new Map<string, dataform.IExecutionAction>();
