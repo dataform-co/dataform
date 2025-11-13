@@ -107,7 +107,7 @@ suite("@dataform/cli", ({ afterEach }) => {
       expect(output).to.include("--include-deps");
       expect(output).to.include("--include-dependents");
       expect(output).to.include("--tags");
-      expect(output).to.include("--bigquery-labels");
+      expect(output).to.include("--job-labels");
     });
 
      test("shows help for 'format' command", async () => {
@@ -1037,7 +1037,7 @@ SELECT 1 as id
         expect(JSON.parse(runResult.stdout)).deep.equals(expectedRunResult);
       });
 
-      test("with --bigquery-labels flag", async () => {
+      test("with --job-labels flag", async () => {
         await setUpWorkflowSettings(false);
 
         const runResult = await getProcessResult(
@@ -1051,7 +1051,7 @@ SELECT 1 as id
             "--json",
             "--disable-assertions",
             "--actions=test_assertion,example_table",
-            "--bigquery-labels=env=testing,team=dataform"
+            "--job-labels=env=testing,team=dataform"
           ])
         );
 
