@@ -107,6 +107,7 @@ suite("@dataform/cli", ({ afterEach }) => {
       expect(output).to.include("--include-deps");
       expect(output).to.include("--include-dependents");
       expect(output).to.include("--tags");
+      expect(output).to.include("--job-labels");
     });
 
      test("shows help for 'format' command", async () => {
@@ -1029,6 +1030,28 @@ SELECT 1 as id
             "--dry-run",
             "--json",
             "--actions=test_assertion,example_table"
+          ])
+        );
+
+        expect(runResult.exitCode).equals(0);
+        expect(JSON.parse(runResult.stdout)).deep.equals(expectedRunResult);
+      });
+
+      test("with --job-labels flag", async () => {
+        await setUpWorkflowSettings(false);
+
+        const runResult = await getProcessResult(
+          execFile(nodePath, [
+            cliEntryPointPath,
+            "run",
+            projectDir,
+            "--credentials",
+            CREDENTIALS_PATH,
+            "--dry-run",
+            "--json",
+            "--disable-assertions",
+            "--actions=test_assertion,example_table",
+            "--job-labels=env=testing,team=dataform"
           ])
         );
 
