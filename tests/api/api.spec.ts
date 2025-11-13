@@ -1382,12 +1382,12 @@ suite("@dataform/api", () => {
         });
         
         // For the second action (assertion), verify only global labels (no action-level labels)
-  const assertionCall = executionOptions[2];
-  expect(assertionCall?.bigquery?.labels).to.not.equal(undefined);
-        expect(assertionCall.bigquery.labels.env).to.equal("testing");
-        expect(assertionCall.bigquery.labels.team).to.equal("dataform");
-  // This action doesn't have action-level labels
-  expect(assertionCall.bigquery.labels.action_level).to.equal(undefined);
+        const assertionCall = executionOptions[2];
+        expect(assertionCall?.bigquery?.labels).to.not.equal(undefined);
+              expect(assertionCall.bigquery.labels.env).to.equal("testing");
+              expect(assertionCall.bigquery.labels.team).to.equal("dataform");
+        // This action doesn't have action-level labels
+        expect(assertionCall.bigquery.labels.action_level).to.equal(undefined);
       });
     });
 
