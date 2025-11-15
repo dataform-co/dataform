@@ -38,7 +38,7 @@
     "glob": "^10.3.3",
     "google-sql-syntax-ts": "^1.0.3",
     "js-beautify": "^1.10.2",
-    "js-yaml": "^4.1.0",
+    "js-yaml": "^4.1.1",
     "jsdoc": "^3.6.11",
     "json-stable-stringify": "^1.0.1",
     "long": "^4.0.0",
