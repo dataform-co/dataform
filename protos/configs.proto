@@ -556,6 +556,9 @@ message ActionConfig {
 
     // Descriptions of columns within the declaration.
     repeated ColumnDescriptor columns = 5;
+
+    // Path to the source file that the contents of the action is loaded from.
+    string filename = 6;
   }
 
   message NotebookConfig {
