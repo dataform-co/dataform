@@ -1,7 +1,7 @@
 import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { ActionBuilder } from "df/core/actions";
 import { ColumnDescriptors } from "df/core/column_descriptors";
-import { Contextable, IActionContext, Resolvable } from "df/core/contextables";
+import { Contextable, IActionContext, JitContextable, Resolvable } from "df/core/contextables";
 import * as Path from "df/core/path";
 import { Session } from "df/core/session";
 import {
@@ -29,6 +29,8 @@ interface ILegacyOperationConfig extends dataform.ActionConfig.OperationConfig {
   fileName: string;
   type: string;
 }
+
+export type JitOperationResult = string | string[] | dataform.IJitOperationResult;
 
 /**
  * Operations define custom SQL operations that don't fit into the Dataform model of publishing a
@@ -89,6 +91,7 @@ export class Operation extends ActionBuilder<dataform.Operation> {
 
   /** @hidden We delay contextification until the final compile step, so hold these here for now. */
   private contextableQueries: Contextable<IActionContext, string | string[]>;
+  private contextableJitCode: JitContextable<IActionContext, JitOperationResult>|undefined;
 
   /** @hidden */
   constructor(session?: Session, unverifiedConfig?: any, configPath?: string) {
@@ -169,6 +172,15 @@ export class Operation extends ActionBuilder<dataform.Operation> {
     this.contextableQueries = queries;
     return this;
   }
+
+  public jitCode(jitCode: JitContextable<IActionContext, JitOperationResult>) {
+      if (!this.proto.actionDescriptor) {
+        this.proto.actionDescriptor = {};
+      }
+      this.proto.actionDescriptor.compilationMode = dataform.ActionCompilationMode.ACTION_COMPILATION_MODE_JIT;
+      this.contextableJitCode = jitCode;
+      return this;
+    }
 
   /**
    * @deprecated Deprecated in favor of
@@ -342,16 +354,32 @@ export class Operation extends ActionBuilder<dataform.Operation> {
       );
     }
 
-    const context = new OperationContext(this);
 
-    const appliedQueries = context.apply(this.contextableQueries);
-    this.proto.queries = typeof appliedQueries === "string" ? [appliedQueries] : appliedQueries;
+    if (this.contextableJitCode) {
+      this.compileJit();
+    } else {
+      const context = new OperationContext(this);
+      const appliedQueries = context.apply(this.contextableQueries);
+      this.proto.queries = typeof appliedQueries === "string" ? [appliedQueries] : appliedQueries;
+    }
 
     return verifyObjectMatchesProto(
       dataform.Operation,
       this.proto,
       VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM
     );
+  }
+
+  private compileJit() {
+    if (!!this.contextableQueries) {
+      const err = new Error(`Cannot mix AoT and JiT compilation in action: ${this.contextableQueries}`);
+      this.session.compileError(err, this.getFileName());
+      throw err;
+    }
+    if (!this.proto.actionDescriptor) {
+      this.proto.actionDescriptor = {};
+    }
+    this.proto.jitCode = this.contextableJitCode.toString();
   }
 
   /**

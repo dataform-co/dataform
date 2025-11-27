@@ -8,10 +8,10 @@ import {
   TableType
 } from "df/core/actions";
 import { Assertion } from "df/core/actions/assertion";
-import { Table } from "df/core/actions/table";
+import { JitTableResult, Table } from "df/core/actions/table";
 import { View } from "df/core/actions/view";
 import { ColumnDescriptors } from "df/core/column_descriptors";
-import { Contextable, ITableContext, Resolvable } from "df/core/contextables";
+import { Contextable, ITableContext, JitContextable, Resolvable } from "df/core/contextables";
 import * as Path from "df/core/path";
 import { Session } from "df/core/session";
 import {
@@ -32,6 +32,7 @@ import {
   strictKeysOf,
   toResolvable,
   validateConnectionFormat,
+  validateNoMixedCompilationMode,
   validateQueryString,
   validateStorageUriFormat,
 } from "df/core/utils";
@@ -86,6 +87,7 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
   /** @hidden We delay contextification until the final compile step, so hold these here for now. */
   public contextableQuery: Contextable<ITableContext, string>;
   private contextableWhere: Contextable<ITableContext, string>;
+  private contextableJitCode: JitContextable<ITableContext, JitTableResult> | undefined;
   private contextablePreOps: Array<Contextable<ITableContext, string | string[]>> = [];
   private contextablePostOps: Array<Contextable<ITableContext, string | string[]>> = [];
 
@@ -266,6 +268,15 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
   /** @hidden */
   public where(where: Contextable<ITableContext, string>) {
     this.contextableWhere = where;
+    return this;
+  }
+
+  public jitCode(jitCode: JitContextable<ITableContext, JitTableResult>) {
+    if (!this.proto.actionDescriptor) {
+      this.proto.actionDescriptor = {};
+    }
+    this.proto.actionDescriptor.compilationMode = dataform.ActionCompilationMode.ACTION_COMPILATION_MODE_JIT;
+    this.contextableJitCode = jitCode;
     return this;
   }
 
@@ -517,6 +528,45 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
 
   /** @hidden */
   public compile() {
+    if (this.contextableJitCode) {
+      this.compileJit();
+    } else {
+      this.compileAot();
+    }
+
+
+    if (this.proto.bigquery?.connection) {
+      validateConnectionFormat(this.proto.bigquery.connection);
+    }
+
+    if (this.proto.bigquery?.storageUri) {
+      validateStorageUriFormat(this.proto.bigquery.storageUri);
+    }
+
+    return verifyObjectMatchesProto(
+      dataform.Table,
+      this.proto,
+      VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM
+    );
+  }
+
+  private compileJit() {
+    validateNoMixedCompilationMode(
+      this.session,
+      this.getFileName(),
+      this.contextableQuery,
+      this.contextableWhere,
+      this.contextablePostOps,
+      this.contextablePreOps
+    );
+
+    if (!this.proto.actionDescriptor) {
+      this.proto.actionDescriptor = {};
+    }
+    this.proto.jitCode = this.contextableJitCode.toString();
+  }
+
+  private compileAot() {
     const context = new IncrementalTableContext(this);
     const incrementalContext = new IncrementalTableContext(this, true);
 
@@ -540,20 +590,6 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
 
     validateQueryString(this.session, this.proto.query, this.proto.fileName);
     validateQueryString(this.session, this.proto.incrementalQuery, this.proto.fileName);
-
-    if (this.proto.bigquery?.connection) {
-      validateConnectionFormat(this.proto.bigquery.connection);
-    }
-
-    if (this.proto.bigquery?.storageUri) {
-      validateStorageUriFormat(this.proto.bigquery.storageUri);
-    }
-
-    return verifyObjectMatchesProto(
-      dataform.Table,
-      this.proto,
-      VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM
-    );
   }
 
   /** @hidden */
@@ -633,15 +669,15 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
       }
     }
     if (unverifiedConfig.iceberg) {
-        if (
-          unverifiedConfig.iceberg.fileFormat &&
-          unverifiedConfig.iceberg.fileFormat.toUpperCase() !== 'PARQUET'
-        ) {
-          throw new ReferenceError(
-            `Unexpected file format; only "PARQUET" is allowed, got "${unverifiedConfig.iceberg.fileFormat}".`
-          );
-        }
+      if (
+        unverifiedConfig.iceberg.fileFormat &&
+        unverifiedConfig.iceberg.fileFormat.toUpperCase() !== 'PARQUET'
+      ) {
+        throw new ReferenceError(
+          `Unexpected file format; only "PARQUET" is allowed, got "${unverifiedConfig.iceberg.fileFormat}".`
+        );
       }
+    }
 
     const config = verifyObjectMatchesProto(
       dataform.ActionConfig.IncrementalTableConfig,
@@ -699,7 +735,7 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
  * @hidden
  */
 export class IncrementalTableContext implements ITableContext {
-  constructor(private incrementalTable: IncrementalTable, private isIncremental = false) {}
+  constructor(private incrementalTable: IncrementalTable, private isIncremental = false) { }
 
   public self(): string {
     return this.resolve(this.incrementalTable.getTarget());

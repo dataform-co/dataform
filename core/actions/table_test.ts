@@ -8,7 +8,7 @@ import {
   exampleBuiltInAssertions,
   exampleBuiltInAssertionsAsYaml
 } from "df/core/actions/index_test";
-import {dataform} from "df/protos/ts";
+import { dataform } from "df/protos/ts";
 import { asPlainObject, suite, test } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
 import {
@@ -326,13 +326,13 @@ defaultIcebergConfig:
           }
         }`,
         expected: {
-          target: {name: "table1", schema: "dataset1", database: "project"},
+          target: { name: "table1", schema: "dataset1", database: "project" },
           bigquery: {
             tableFormat: "ICEBERG",
             fileFormat: "PARQUET",
-          connection: "projects/gcp/locations/us/connections/conn-id",
-          storageUri: "gs://my-bucket/my-root/my-subpath",
-        },
+            connection: "projects/gcp/locations/us/connections/conn-id",
+            storageUri: "gs://my-bucket/my-root/my-subpath",
+          },
         },
         expectError: false,
         wsContent: VALID_WORKFLOW_SETTINGS_YAML,
@@ -352,13 +352,13 @@ defaultIcebergConfig:
           }
         }`,
         expected: {
-          target: {name: "table2", schema: "dataset2", database: "project"},
+          target: { name: "table2", schema: "dataset2", database: "project" },
           bigquery: {
             tableFormat: "ICEBERG",
             fileFormat: "PARQUET",
-          connection: "gcp.us.conn-id",
-          storageUri: "gs://my-bucket/my-root/my-subpath",
-        },
+            connection: "gcp.us.conn-id",
+            storageUri: "gs://my-bucket/my-root/my-subpath",
+          },
         },
         expectError: false,
         wsContent: VALID_WORKFLOW_SETTINGS_YAML,
@@ -377,13 +377,13 @@ defaultIcebergConfig:
           }
         }`,
         expected: {
-          target: {name: "table3", schema: "dataset3", database: "project"},
+          target: { name: "table3", schema: "dataset3", database: "project" },
           bigquery: {
             tableFormat: "ICEBERG",
             fileFormat: "PARQUET",
-          connection: "gcp.us.conn-id",
-          storageUri: "gs://my-bucket/_dataform/my-subpath",
-        },
+            connection: "gcp.us.conn-id",
+            storageUri: "gs://my-bucket/_dataform/my-subpath",
+          },
         },
         expectError: false,
         wsContent: VALID_WORKFLOW_SETTINGS_YAML,
@@ -402,13 +402,13 @@ defaultIcebergConfig:
           }
         }`,
         expected: {
-          target: {name: "my-table", schema: "my-dataset", database: "project"},
+          target: { name: "my-table", schema: "my-dataset", database: "project" },
           bigquery: {
             tableFormat: "ICEBERG",
             fileFormat: "PARQUET",
-          connection: "gcp.us.conn-id",
-          storageUri: "gs://my-bucket/my-root/my-dataset/my-table",
-        },
+            connection: "gcp.us.conn-id",
+            storageUri: "gs://my-bucket/my-root/my-dataset/my-table",
+          },
         },
         expectError: false,
         wsContent: VALID_WORKFLOW_SETTINGS_YAML,
@@ -426,13 +426,13 @@ defaultIcebergConfig:
           }
         }`,
         expected: {
-          target: {name: "my-table", schema: "defaultDataset", database: "project"},
+          target: { name: "my-table", schema: "defaultDataset", database: "project" },
           bigquery: {
             tableFormat: "ICEBERG",
             fileFormat: "PARQUET",
-          connection: "gcp.us.conn-id",
-          storageUri: "gs://my-bucket/my-root/defaultDataset/my-table",
-        },
+            connection: "gcp.us.conn-id",
+            storageUri: "gs://my-bucket/my-root/defaultDataset/my-table",
+          },
         },
         expectError: false,
         wsContent: VALID_WORKFLOW_SETTINGS_YAML,
@@ -451,13 +451,13 @@ defaultIcebergConfig:
           }
         }`,
         expected: {
-          target: {name: "table6", schema: "dataset6", database: "project"},
+          target: { name: "table6", schema: "dataset6", database: "project" },
           bigquery: {
             tableFormat: "ICEBERG",
             fileFormat: "PARQUET",
-          connection: "projects/gcp/locations/us/connections/conn-id",
-          storageUri: "gs://my-bucket/my-root/my-subpath",
-        },
+            connection: "projects/gcp/locations/us/connections/conn-id",
+            storageUri: "gs://my-bucket/my-root/my-subpath",
+          },
         },
         expectError: false,
         wsContent: VALID_WORKFLOW_SETTINGS_YAML,
@@ -476,13 +476,13 @@ defaultIcebergConfig:
           }
         }`,
         expected: {
-          target: {name: "table7", schema: "dataset7", database: "project"},
+          target: { name: "table7", schema: "dataset7", database: "project" },
           bigquery: {
             tableFormat: "ICEBERG",
             fileFormat: "PARQUET",
-          connection: "DEFAULT",
-          storageUri: "gs://my-bucket/my-root/my-subpath",
-        },
+            connection: "DEFAULT",
+            storageUri: "gs://my-bucket/my-root/my-subpath",
+          },
         },
         expectError: false,
         wsContent: VALID_WORKFLOW_SETTINGS_YAML,
@@ -502,13 +502,13 @@ defaultIcebergConfig:
           }
         }`,
         expected: {
-          target: {name: "table6", schema: "dataset6", database: "project"},
+          target: { name: "table6", schema: "dataset6", database: "project" },
           bigquery: {
             tableFormat: "ICEBERG",
             fileFormat: "PARQUET",
-          connection: "projects/gcp/locations/us/connections/conn-id",
-          storageUri: "gs://my-bucket/my-root/my-subpath",
-        },
+            connection: "projects/gcp/locations/us/connections/conn-id",
+            storageUri: "gs://my-bucket/my-root/my-subpath",
+          },
         },
         expectError: false,
         wsContent: VALID_WORKFLOW_SETTINGS_YAML,
@@ -574,7 +574,7 @@ defaultIcebergConfig:
           },
         }`,
         expected: {
-          target: {name: "iceberg_mixed", schema: "mixed_dataset", database: "project"},
+          target: { name: "iceberg_mixed", schema: "mixed_dataset", database: "project" },
           bigquery: {
             tableFormat: "ICEBERG",
             fileFormat: "PARQUET",
@@ -582,8 +582,8 @@ defaultIcebergConfig:
             storageUri: "gs://my-bucket/my-root/my-subpath",
             partitionBy: "partition_col",
             clusterBy: ["cluster_col1", "cluster_col2"],
-            labels: {"env": "test", "type": "iceberg"},
-            additionalOptions: {"key1": "val1", "key2": "val2"},
+            labels: { "env": "test", "type": "iceberg" },
+            additionalOptions: { "key1": "val1", "key2": "val2" },
           },
         },
         expectError: false,
@@ -784,6 +784,60 @@ defaultIcebergConfig:
           }
         });
       });
+    });
+  });
+
+  suite("jit compilation", () => {
+    test("jit compilation is supported", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(path.join(projectDir, "workflow_settings.yaml"), VALID_WORKFLOW_SETTINGS_YAML);
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/table.js"),
+        `publish("table", {type: "table"}).jitCode((ctx) => Promise.resolve({query: "select 1"}))`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals([
+        {
+          target: {
+            database: "defaultProject",
+            schema: "defaultDataset",
+            name: "table"
+          },
+          canonicalTarget: {
+            database: "defaultProject",
+            schema: "defaultDataset",
+            name: "table"
+          },
+          type: "table",
+          enumType: "TABLE",
+          disabled: false,
+          hermeticity: "NON_HERMETIC",
+          fileName: "definitions/table.js",
+          jitCode: '(ctx) => Promise.resolve({query: "select 1"})',
+          actionDescriptor: {
+            compilationMode: "ACTION_COMPILATION_MODE_JIT"
+          }
+        }
+      ]);
+    });
+
+    test("jit compilation fails if query is also provided", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(path.join(projectDir, "workflow_settings.yaml"), VALID_WORKFLOW_SETTINGS_YAML);
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/table.js"),
+        `publish("table", {type: "table"}).jitCode((ctx) => Promise.resolve({query: "select 1"})).query("select 1")`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).greaterThan(0);
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors.some(e => e.message.includes("Cannot mix AoT and JiT compilation"))).equals(true);
     });
   });
 });
