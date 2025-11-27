@@ -22,6 +22,25 @@ const CONTEXT_CONSTANTS = [
     .map(name => `const ${name} = ctx.${name} ? ctx.${name} : undefined;`)
     .join("\n");
 
+const JIT_CONTEXT_FUNCTIONS = [
+  "self",
+  "ref",
+  "resolve",
+  "name",
+  "when",
+  "incremental",
+  "schema",
+  "database"
+].map(name => `const ${name} = jctx.${name} ? jctx.${name}.bind(jctx) : undefined;`)
+  .join("\n    ");
+
+const JIT_CONTEXT_CONSTANTS = [
+  "adapter",
+  "data",
+]
+  .map(name => `const ${name} = jctx.${name} ? jctx.${name} : undefined;`)
+  .join("\n    ");
+
 export const INVALID_YAML_ERROR_STRING = "is not a valid YAML file";
 
 export function compile(code: string, path: string): string {
@@ -83,9 +102,84 @@ export function extractJsBlocks(code: string): { sql: string; js: string } {
 }
 
 function compileSqlx(rootNode: SyntaxTreeNode, path: string): string {
-  const { config, js, sql, incremental, preOperations, postOperations, inputs } = extractSqlxParts(
+  const sqlxParts = extractSqlxParts(
     rootNode
   );
+  const { config } = sqlxParts;
+  try {
+    // Part of the compilation, to be evalled in main compilation via require anyway.
+    // tslint:disable-next-line: tsr-detect-eval-with-expression
+    const sqlxConfig: { [key: string]: unknown } | undefined = new Function(`return ${config || "{}"}`)();
+    if (!!sqlxConfig && sqlxConfig.hasOwnProperty("compilation_mode") && sqlxConfig.compilation_mode === "jit") {
+      const actionType = sqlxConfig.hasOwnProperty("type") ? sqlxConfig.type : "operations";
+      if (typeof actionType !== "string") {
+        throw new Error(`Invalid action type: ${actionType} at ${path}.`);
+      }
+      return compileSqlxJit(sqlxParts, path, actionType);
+    }
+  } catch (_) {
+    // Let AoT compiler handle JS parsing errors
+  }
+
+  return compileSqlxAot(sqlxParts, path);
+}
+
+function makeSqlxJitReturnBlock(parts: SqlxParts, actionType: string): string {
+  const { sql, preOperations, postOperations } = parts;
+  switch (actionType) {
+    case "operations":
+      return `return {
+        queries: [
+          ${sql.map(sqlOp => `\`${sqlOp}\``)}
+        ],
+      };`;
+    case "incremental":
+    case "table":
+    case "view":
+      if (sql.length > 1) {
+        throw new Error("Table and views must have at most 1 SQL statement.");
+      }
+      return `return {
+        query: (
+          \`${sql[0]}\`
+        ),
+        postOps: (
+          ${postOperations.length > 0 ? ('[' + postOperations.map(postOpSql => `\`${postOpSql}\``) + ']') : 'undefined'}
+        ),
+        preOps: (
+          ${preOperations.length > 0 ? ('[' + preOperations.map(preOpSql => `\`${preOpSql}\``) + ']') : 'undefined'}
+        ),
+      };`;
+    default:
+      throw new Error(`Invalid action type: ${actionType}`);
+  }
+}
+
+function compileSqlxJit(parts: SqlxParts, path: string, actionType: string): string {
+  const { config, js } = parts;
+  const returnBlock = makeSqlxJitReturnBlock(parts, actionType);
+
+  return `dataform.sqlxJitAction({
+  sqlxConfig: {
+    name: "${Path.escapedBasename(path)}",
+    type: "operations",
+    ...${config || "{}"}
+  },
+  jitCode: "` + `async (jctx) => {
+    ${JIT_CONTEXT_FUNCTIONS}
+    ${JIT_CONTEXT_CONSTANTS}
+    ${js}
+    ${returnBlock}
+    }`
+    .replace(/\\/, "\\\\")
+    .replace(/\r?\n/g, "\\n")
+    .replace(/\"/g, "\\\"") + `"
+  });
+  `;
+}
+
+function compileSqlxAot(parts: SqlxParts, path: string): string {
+  const { config, js, sql, incremental, preOperations, postOperations, inputs } = parts;
 
   return `dataform.sqlxAction({
   sqlxConfig: {
@@ -147,6 +241,8 @@ function compileSqlx(rootNode: SyntaxTreeNode, path: string): string {
 });
 `;
 }
+
+type SqlxParts = ReturnType<typeof extractSqlxParts>;
 
 function extractSqlxParts(rootNode: SyntaxTreeNode) {
   let config = "";
