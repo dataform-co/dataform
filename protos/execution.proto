@@ -1,11 +1,11 @@
-syntax="proto3";
+syntax = "proto3";
 
 package dataform;
 
 import "protos/core.proto";
+import "protos/db_adapter.proto";
 
 option go_package = "github.com/dataform-co/dataform/protos/dataform";
-
 
 message RunConfig {
   repeated string actions = 1;
@@ -14,7 +14,7 @@ message RunConfig {
   bool include_dependents = 11;
   bool full_refresh = 2;
   int32 timeout_millis = 7;
-  
+
   // For internal use only, will be removed at a later date.
   bool disable_set_metadata = 9;
 
@@ -36,7 +36,6 @@ message ExecutionAction {
   string type = 4;
   string table_type = 6;
 
-  
   repeated Target dependency_targets = 11;
   ActionHermeticity hermeticity = 10;
 
@@ -82,7 +81,6 @@ message RunResult {
 }
 
 message ActionResult {
-  
   Target target = 5;
 
   enum ExecutionStatus {
@@ -103,24 +101,14 @@ message ActionResult {
   reserved 1, 6, 7;
 }
 
-
-message ExecutionMetadata {
-  message BigqueryMetadata {
-    string job_id = 1;
-    int64 total_bytes_processed = 2;
-    int64 total_bytes_billed = 3;  
-  }
-  BigqueryMetadata bigquery = 1;
-}
-
 message TaskResult {
   enum ExecutionStatus {
-      UNKNOWN = 0;
-      RUNNING = 1;
-      SUCCESSFUL = 2;
-      FAILED = 3;
-      SKIPPED = 4;
-      CANCELLED = 5;
+    UNKNOWN = 0;
+    RUNNING = 1;
+    SUCCESSFUL = 2;
+    FAILED = 3;
+    SKIPPED = 4;
+    CANCELLED = 5;
   }
   ExecutionStatus status = 1;
   string error_message = 2;
@@ -132,67 +120,4 @@ message TestResult {
   string name = 1;
   bool successful = 2;
   repeated string messages = 3;
-}
-
-message Field {
-
-  enum Primitive {
-    UNKNOWN = 0;
-    INTEGER = 1;
-    FLOAT = 2;
-    NUMERIC = 5;
-    BOOLEAN = 3;
-    STRING = 4;
-    DATE = 6;
-    DATETIME = 7;
-    TIMESTAMP = 8;
-    TIME = 9;
-    BYTES = 10;
-    ANY = 11;
-    GEOGRAPHY = 12;
-  }
-
-  enum Flag {
-    UNKNOWN_FLAG = 0;
-    REPEATED = 1;
-  }
-
-  string name = 1;
-  
-  repeated Flag flags = 6;
-
-  oneof type {
-    Primitive primitive = 7;
-    Fields struct = 3;
-  }
-
-  string description = 5;
-
-  reserved 2, 4;
-}
-
-message Fields {
-  repeated Field fields = 1;
-}
-
-message TableMetadata {
-  Target target = 1;
-  enum Type {
-    UNKNOWN = 0;
-    TABLE = 1;
-    VIEW = 2;
-  }
-  Type type = 6;
-
-  repeated Field fields = 3;
-  string description = 5;
-  map<string, string> labels = 7;
-  int64 last_updated_millis = 4;
-
-  message BigQuery {
-    bool has_streaming_buffer = 1;
-  }
-  BigQuery bigquery = 8;
-
-  reserved 2;
 }
