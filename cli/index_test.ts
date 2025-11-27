@@ -683,6 +683,7 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
           schemaSuffix: "test_schema_suffix"
         },
         graphErrors: {},
+        jitData: {},
         dataformCoreVersion: version,
         targets: [
           {
@@ -872,6 +873,7 @@ SELECT 1 as id
         ],
         dataformCoreVersion: version,
         graphErrors: {},
+        jitData: {},
         projectConfig: {
           assertionSchema: "dataform_assertions",
           defaultDatabase: DEFAULT_DATABASE,

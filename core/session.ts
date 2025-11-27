@@ -20,7 +20,7 @@ import { targetAsReadableString, targetStringifier } from "df/core/targets";
 import * as utils from "df/core/utils";
 import { toResolvable } from "df/core/utils";
 import { version as dataformCoreVersion } from "df/core/version";
-import { dataform } from "df/protos/ts";
+import { dataform, google } from "df/protos/ts";
 
 const DEFAULT_CONFIG = {
   defaultSchema: "dataform",
@@ -58,6 +58,9 @@ export class Session {
 
   public graphErrors: dataform.IGraphErrors;
 
+  // jit_context.data, avilable at jit stage.
+  public jitContextData: google.protobuf.Struct | undefined;
+
   constructor(
     rootDir?: string,
     projectConfig?: dataform.ProjectConfig,
@@ -79,6 +82,7 @@ export class Session {
     this.actions = [];
     this.tests = {};
     this.graphErrors = { compilationErrors: [] };
+    this.jitContextData = new google.protobuf.Struct();
   }
 
   public compilationSql(): CompilationSql {
@@ -408,6 +412,49 @@ export class Session {
     return notebook;
   }
 
+  public jitData(key: string, data: unknown): void {
+    function unknownToValue(raw: unknown): google.protobuf.Value {
+      if (raw === null || typeof raw === "undefined") {
+        return google.protobuf.Value.create({ nullValue: google.protobuf.NullValue.NULL_VALUE });
+      }
+      if (typeof raw === "string") {
+        return google.protobuf.Value.create({ stringValue: raw as string });
+      }
+      if (typeof raw === "number") {
+        return google.protobuf.Value.create({ numberValue: raw as number });
+      }
+      if (typeof raw === "boolean") {
+        return google.protobuf.Value.create({ boolValue: raw as boolean });
+      }
+      if (typeof raw === "object" && raw instanceof Array) {
+        return google.protobuf.Value.create({
+          listValue: google.protobuf.ListValue.create({
+            values: (raw as unknown[]).map(unknownToValue)
+          })
+        });
+      }
+      if (typeof raw === "object") {
+        return google.protobuf.Value.create({
+          structValue: google.protobuf.Struct.create({
+            fields: Object.fromEntries(Object.entries(raw).map(
+              ([fieldKey, fieldValue]) => ([
+                fieldKey,
+                unknownToValue(fieldValue)
+              ])
+            ))
+          })
+        })
+      }
+      throw new Error(`Unsupported context object: ${raw}`);
+    }
+
+    if (this.jitContextData.fields[key] !== undefined) {
+      throw new Error(`JiT context data with key ${key} already exists.`);
+    }
+
+    this.jitContextData.fields[key] = unknownToValue(data);
+
+  }
   public compileError(err: Error | string, path?: string, actionTarget?: dataform.ITarget) {
     const fileName = path || utils.getCallerFile(this.rootDir) || __filename;
 
@@ -461,7 +508,8 @@ export class Session {
       ),
       graphErrors: this.graphErrors,
       dataformCoreVersion,
-      targets: this.actions.map(action => action.getTarget())
+      targets: this.actions.map(action => action.getTarget()),
+      jitData: this.jitContextData,
     });
 
     this.fullyQualifyDependencies(
@@ -579,9 +627,9 @@ export class Session {
               .find(dependency)
               .forEach(
                 assertion =>
-                  (fullyQualifiedDependencies[
-                    targetAsReadableString(assertion.getTarget())
-                  ] = assertion.getTarget())
+                (fullyQualifiedDependencies[
+                  targetAsReadableString(assertion.getTarget())
+                ] = assertion.getTarget())
               );
           }
         } else {
@@ -668,7 +716,7 @@ export class Session {
     actions.forEach(action => {
       // Declarations cannot have dependencies.
       const cleanedDependencies = (action instanceof dataform.Declaration ||
-      !action.dependencyTargets
+        !action.dependencyTargets
         ? []
         : action.dependencyTargets
       ).filter(

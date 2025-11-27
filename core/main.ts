@@ -229,6 +229,7 @@ function dataformCompile(compileRequest: dataform.ICompileExecutionRequest, sess
   globalAny.declare = session.declare.bind(session);
   globalAny.notebook = session.notebook.bind(session);
   globalAny.test = session.test.bind(session);
+  globalAny.jitData = session.jitData.bind(session);
 
   loadActionConfigs(session, compileRequest.compileConfig.filePaths);
 

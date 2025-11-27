@@ -404,7 +404,7 @@ message CompiledGraph {
 
   repeated Target targets = 11;
 
-  google.protobuf.Struct jit_context = 15;
+  google.protobuf.Struct jit_data = 15;
 
   reserved 5, 6;
 }
