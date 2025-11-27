@@ -579,3 +579,83 @@ export function checkAssertionsForDependency(
   );
   return dependencyTarget;
 }
+
+/** 
+ * Multimap of resolvable targets to values. 
+ * Allows the lookup by name/schema/database and their subsets.
+ */
+export class ResolvableMap<T> {
+  private byName: Map<string, T[]> = new Map();
+  private bySchemaAndName: Map<string, Map<string, T[]>> = new Map();
+  private byDatabaseAndName: Map<string, Map<string, T[]>> = new Map();
+  private byDatabaseSchemaAndName: Map<string, Map<string, Map<string, T[]>>> = new Map();
+
+  public constructor(values?: Array<{ actionTarget: dataform.ITarget, value: T }>) {
+    if (values) {
+      for (const { actionTarget, value } of values) {
+        this.set(actionTarget, value);
+      }
+    }
+  }
+
+  public set(actionTarget: dataform.ITarget, value: T) {
+    this.setByNameLevel(this.byName, actionTarget.name, value);
+
+    if (!!actionTarget.schema) {
+      this.setBySchemaLevel(this.bySchemaAndName, actionTarget, value);
+    }
+
+    if (!!actionTarget.database) {
+      if (!this.byDatabaseAndName.has(actionTarget.database)) {
+        this.byDatabaseAndName.set(actionTarget.database, new Map());
+      }
+      const forDatabaseNoSchema = this.byDatabaseAndName.get(actionTarget.database);
+      this.setByNameLevel(forDatabaseNoSchema, actionTarget.name, value);
+
+      if (!!actionTarget.schema) {
+        if (!this.byDatabaseSchemaAndName.has(actionTarget.database)) {
+          this.byDatabaseSchemaAndName.set(actionTarget.database, new Map());
+        }
+        const forDatabase = this.byDatabaseSchemaAndName.get(actionTarget.database);
+        this.setBySchemaLevel(forDatabase, actionTarget, value);
+      }
+    }
+  }
+
+  public find(actionTarget: dataform.ITarget): T[] {
+    if (!!actionTarget.database) {
+      if (!!actionTarget.schema) {
+        return (
+          this.byDatabaseSchemaAndName
+            .get(actionTarget.database)
+            ?.get(actionTarget.schema)
+            ?.get(actionTarget.name) || []
+        );
+      }
+      return this.byDatabaseAndName.get(actionTarget.database)?.get(actionTarget.name) || [];
+    }
+    if (!!actionTarget.schema) {
+      return this.bySchemaAndName.get(actionTarget.schema)?.get(actionTarget.name) || [];
+    }
+    return this.byName.get(actionTarget.name) || [];
+  }
+
+  private setByNameLevel(targetMap: Map<string, T[]>, name: string, value: T) {
+    if (!targetMap.has(name)) {
+      targetMap.set(name, []);
+    }
+    targetMap.get(name).push(value);
+  }
+
+  private setBySchemaLevel(
+    targetMap: Map<string, Map<string, T[]>>,
+    actionTarget: dataform.ITarget,
+    value: T
+  ) {
+    if (!targetMap.has(actionTarget.schema)) {
+      targetMap.set(actionTarget.schema, new Map());
+    }
+    const forSchema = targetMap.get(actionTarget.schema);
+    this.setByNameLevel(forSchema, actionTarget.name, value);
+  }
+}
