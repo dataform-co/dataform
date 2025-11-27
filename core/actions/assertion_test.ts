@@ -386,4 +386,117 @@ SELECT * FROM \${ref("p", "c", "n", "t")} WHERE id IS NULL
       ]);
     });
   });
+
+  suite("jit compilation", () => {
+    test("jit compilation is supported", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
+      writeDefinitionFile(
+        projectDir,
+        "assertion.js",
+        `assert("assertion").jitCode((ctx) => Promise.resolve({query: "SELECT * FROM t WHERE invalid"}))`,
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals([
+        {
+          target: {
+            database: "defaultProject",
+            schema: "defaultDataset",
+            name: "assertion",
+          },
+          canonicalTarget: {
+            database: "defaultProject",
+            schema: "defaultDataset",
+            name: "assertion",
+          },
+          fileName: "definitions/assertion.js",
+          jitCode: '(ctx) => Promise.resolve({query: "SELECT * FROM t WHERE invalid"})',
+          actionDescriptor: {
+            compilationMode: "ACTION_COMPILATION_MODE_JIT",
+          },
+        },
+      ]);
+    });
+
+    test("jit compilation fails if query is also provided", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
+      writeDefinitionFile(
+        projectDir,
+        "assertion.js",
+        `assert("assertion").jitCode((ctx) => Promise.resolve("SELECT 1")).query("SELECT 1")`,
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).greaterThan(0);
+      expect(
+        result.compile.compiledGraph.graphErrors.compilationErrors.some((e) =>
+          e.message.includes("Assertion may set either .jitCode() or .query(), but not both."),
+        ),
+      ).equals(true);
+    });
+
+    test("jit compilation is supported in sqlx", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
+      writeDefinitionFile(
+        projectDir,
+        "assertion.sqlx",
+        `config { type: "assertion", compilation_mode: "jit" }
+js {
+  const foo = "bar";
+}
+SELECT 1 WHERE FALSE`,
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals([
+        {
+          target: {
+            database: "defaultProject",
+            schema: "defaultDataset",
+            name: "assertion",
+          },
+          canonicalTarget: {
+            database: "defaultProject",
+            schema: "defaultDataset",
+            name: "assertion",
+          },
+          fileName: "definitions/assertion.sqlx",
+          jitCode: `async (jctx) => {
+    const self = jctx.self ? jctx.self.bind(jctx) : undefined;
+    const ref = jctx.ref ? jctx.ref.bind(jctx) : undefined;
+    const resolve = jctx.resolve ? jctx.resolve.bind(jctx) : undefined;
+    const name = jctx.name ? jctx.name.bind(jctx) : undefined;
+    const when = jctx.when ? jctx.when.bind(jctx) : undefined;
+    const incremental = jctx.incremental ? jctx.incremental.bind(jctx) : undefined;
+    const schema = jctx.schema ? jctx.schema.bind(jctx) : undefined;
+    const database = jctx.database ? jctx.database.bind(jctx) : undefined;
+    const adapter = jctx.adapter ? jctx.adapter : undefined;
+    const data = jctx.data ? jctx.data : undefined;
+    const executionData = jctx.executionData ? jctx.executionData : undefined;
+    
+  const foo = "bar";
+
+    return {
+        query: (
+          \`
+
+SELECT 1 WHERE FALSE\`
+        ),
+      };
+    }`,
+          actionDescriptor: {
+            compilationMode: "ACTION_COMPILATION_MODE_JIT",
+          },
+        },
+      ]);
+    });
+  });
 });
