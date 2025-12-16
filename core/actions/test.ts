@@ -77,8 +77,10 @@ export class Test extends ActionBuilder<dataform.Test> {
 
   /** @hidden We delay contextification until the final compile step, so hold these here for now. */
   public contextableInputs = new Map<string, Contextable<IActionContext, string>>();
-  private contextableQuery: Contextable<IActionContext, string>;
+  private inputToTargets = new Map<string, dataform.Target>();
+  private contextableQuery: Contextable<IActionContext, string>; 
   private datasetToTest: Resolvable;
+  private testTarget: dataform.ITarget;
 
   /**
    * @hidden Stores the generated proto for the compiled graph.
@@ -93,6 +95,13 @@ export class Test extends ActionBuilder<dataform.Test> {
     if (config) {
       this.config(config);
     }
+
+    // Initialize target, ensuring we can compile the dag and add this test as a dependency to the tested action.
+    this.proto.target = this.applySessionToTarget(
+      dataform.Target.create({ name: config.name }), 
+      session.projectConfig,
+      config.filename
+    );
   }
 
   /** @hidden */
@@ -127,10 +136,13 @@ export class Test extends ActionBuilder<dataform.Test> {
    * Sets the input query to unit test against.
    */
   public input(refName: string | string[], contextableQuery: Contextable<IActionContext, string>) {
+    const target = resolvableAsTarget(toResolvable(refName));
+    const inputName = targetStringifier.stringify(target);
     this.contextableInputs.set(
-      targetStringifier.stringify(resolvableAsTarget(toResolvable(refName))),
+      inputName,
       contextableQuery
     );
+    this.inputToTargets.set(inputName, target); 
     return this;
   }
 
@@ -143,17 +155,19 @@ export class Test extends ActionBuilder<dataform.Test> {
   }
 
   /** @hidden */
-  public getFileName() {
+  public getFileName(): string {
     return this.proto.fileName;
   }
 
   /** @hidden */
-  public getTarget(): undefined {
-    // The test action type has no target because it is not processed during regular execution.
-    return undefined;
+  public getTarget(): dataform.Target {
+    return dataform.Target.create(this.proto.target);
   }
 
-  /** @hidden */
+  public getTestTarget(): dataform.Target {
+    return dataform.Target.create(this.testTarget);
+  }
+
   public setFilename(filename: string) {
     this.proto.fileName = filename;
   }
@@ -188,6 +202,28 @@ export class Test extends ActionBuilder<dataform.Test> {
       } else {
         const refReplacingContext = new RefReplacingContext(testContext);
         this.proto.testQuery = refReplacingContext.apply(dataset.contextableQuery);
+        this.testTarget = dataform.Target.create(dataset.getTarget());
+
+        // Set the test query with the fully qualified table references.
+        if (dataset instanceof Table) {
+          this.proto.target = this.replaceTestNameInTarget(
+            dataset.getTarget(),
+            this.proto.name
+          );
+          this.proto.canonicalTarget = this.replaceTestNameInTarget(
+            dataset.getCanonicalTarget(),
+            this.proto.name
+          );
+        } else {
+          this.proto.target = this.replaceTestNameInTarget(
+            dataset.getTarget(),
+            this.proto.name 
+          );
+          this.proto.canonicalTarget = this.replaceTestNameInTarget(
+            dataset.getCanonicalTarget(),
+            this.proto.name
+          );
+        }
       }
     }
     this.proto.expectedOutputQuery = testContext.apply(this.contextableQuery);
@@ -197,6 +233,14 @@ export class Test extends ActionBuilder<dataform.Test> {
       this.proto,
       VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM
     );
+  }
+
+  private replaceTestNameInTarget(target: dataform.Target, testName: string): dataform.Target {
+    return dataform.Target.create({
+      database: target.database, 
+      schema: target.schema,
+      name: testName
+    });
   }
 }
 
