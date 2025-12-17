@@ -105,10 +105,9 @@ actions:
     metadata: {
         overview: "incremental table overview",
         customAttributes: {
-            genericKey1: "genericValue1",
-            genericKey2: {
-                nestedKey1: "nestedValue1",
-	    },
+            fields: {
+                priority: { stringValue: "high" }
+	    }
         }
     },
 }
@@ -194,12 +193,11 @@ SELECT 1`
               metadata: {
                 overview: "incremental table overview",
                 customAttributes: {
-                    genericKey1: "genericValue1",
-                    genericKey2: {
-                        nestedKey1: "nestedValue1",
-	            },
+                  fields: {
+                    priority: { stringValue: "high" }
+	          }
                 }
-              }
+              },
             }
           }
         ]);
