@@ -157,21 +157,21 @@ export abstract class ActionBuilder<T> {
   }
 
   private validateTarget(target: dataform.Target, fileName: string) {
-    if (target.name.includes(".")) {
+    if (target.name && target.name.includes(".")) {
       this.session.compileError(
         new Error("Action target names cannot include '.'"),
         fileName,
         target
       );
     }
-    if (target.schema.includes(".")) {
+    if (target.schema && target.schema.includes(".")) {
       this.session.compileError(
         new Error("Action target datasets cannot include '.'"),
         fileName,
         target
       );
     }
-    if (target.database.includes(".")) {
+    if (target.database && target.database.includes(".")) {
       this.session.compileError(
         new Error("Action target projects cannot include '.'"),
         fileName,
