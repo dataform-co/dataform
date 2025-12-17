@@ -8,6 +8,8 @@ option java_multiple_files = true;
 
 option go_package = "github.com/dataform-co/dataform/protos/dataform";
 
+import "google/protobuf/struct.proto";
+
 // Workflow Settings defines the contents of the `workflow_settings.yaml`
 // configuration file.
 message WorkflowSettings {
@@ -266,6 +268,8 @@ message ActionConfig {
   message Metadata {
     // A detailed description of the data object.
     string overview = 1;
+    // Custom attributes of the data object.
+    google.protobuf.Struct custom_attributes = 2;
   }
 
   message ViewConfig {

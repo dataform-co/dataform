@@ -104,6 +104,12 @@ actions:
     onSchemaChange: "SYNCHRONIZE",
     metadata: {
         overview: "incremental table overview",
+        customAttributes: {
+            genericKey1: "genericValue1",
+            genericKey2: {
+                nestedKey1: "nestedValue1",
+	    },
+        }
     },
 }
 `;
@@ -186,7 +192,13 @@ SELECT 1`
                 key: "val"
               },
               metadata: {
-                overview: "incremental table overview"
+                overview: "incremental table overview",
+                customAttributes: {
+                    genericKey1: "genericValue1",
+                    genericKey2: {
+                        nestedKey1: "nestedValue1",
+	            },
+                }
               }
             }
           }
