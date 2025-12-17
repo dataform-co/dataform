@@ -882,4 +882,47 @@ defaultIcebergConfig:
       });
     });
   });
+
+  test("incremental() function works correctly when defaultProject is not in workflow_settings", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    // Create workflow_settings WITHOUT defaultProject - but override it during compilation
+    const workflowSettingsWithoutProject = `
+defaultLocation: europe-west2
+defaultDataset: dataform
+defaultAssertionDataset: dataform_assertions
+`;
+    fs.writeFileSync(
+      path.join(projectDir, "workflow_settings.yaml"),
+      workflowSettingsWithoutProject
+    );
+    fs.mkdirSync(path.join(projectDir, "definitions"));
+    fs.writeFileSync(
+      path.join(projectDir, "definitions/third.sqlx"),
+      `config {
+        type: "incremental",
+        name: "third"
+      }
+      select current_timestamp as col1, \${incremental()} as col2`
+    );
+
+    // Pass projectConfigOverride with defaultDatabase
+    const coreRequest = coreExecutionRequestFromPath(projectDir);
+    coreRequest.compile.compileConfig.projectConfigOverride = {
+      defaultDatabase: "myproject"
+    };
+    
+    const result = runMainInVm(coreRequest);
+
+    // Should compile successfully even without defaultProject in workflow_settings
+    expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+    const table = result.compile.compiledGraph.tables[0];
+    expect(table.type).equals("incremental");
+    expect(table.target.database).equals("myproject");
+    
+    // The query should have incremental() as false (non-incremental version)
+    expect(table.query).contains("false");
+    
+    // The incremental query should have incremental() as true
+    expect(table.incrementalQuery).contains("true");
+  });
 });
