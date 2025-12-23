@@ -49,8 +49,13 @@ export class Builder {
 
     const tableMetadataByTarget = new Map<string, dataform.ITableMetadata>();
 
+    // Normalize warehouse state targets to match compiled targets for consistent lookups.
+    // This is necessary because targets from the warehouse may have a database field set
+    // (from BigQuery credentials) while compiled targets may not have a database field
+    // if defaultDatabase is not specified in workflow_settings.yaml.
     this.warehouseState.tables.forEach(tableState => {
-      tableMetadataByTarget.set(targetStringifier.stringify(tableState.target), tableState);
+      const normalizedTarget = this.normalizeWarehouseTarget(tableState.target);
+      tableMetadataByTarget.set(targetStringifier.stringify(normalizedTarget), tableState);
     });
 
     const actions: dataform.IExecutionAction[] = [].concat(
@@ -120,5 +125,23 @@ export class Builder {
       dependencyTargets: action.dependencyTargets,
       actionDescriptor: action.actionDescriptor
     });
+  }
+
+  private normalizeWarehouseTarget(warehouseTarget: dataform.ITarget): dataform.ITarget {
+    // If the warehouse target has a database field and the compiled graph doesn't have a
+    // defaultDatabase, we should remove the database field from the warehouse target
+    // to match the format of the compiled targets. This ensures consistent lookups
+    // when defaultDatabase is not specified in workflow_settings.yaml.
+    if (
+      warehouseTarget.database &&
+      !this.prunedGraph.projectConfig.defaultDatabase
+    ) {
+      return dataform.Target.create({
+        schema: warehouseTarget.schema,
+        name: warehouseTarget.name
+      });
+    }
+    // Otherwise return the warehouse target as-is
+    return warehouseTarget;
   }
 }
