@@ -35,7 +35,7 @@
     "espree": "^7.0.0",
     "estraverse": "^5.1.0",
     "fs-extra": "^9.0.0",
-    "glob": "^10.3.3",
+    "glob": "^10.5.0",
     "google-sql-syntax-ts": "^1.0.3",
     "js-beautify": "^1.10.2",
     "js-yaml": "^4.1.0",
