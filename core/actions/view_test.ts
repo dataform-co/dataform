@@ -90,6 +90,11 @@ actions:
     ${exampleBuiltInAssertions.inputAssertionBlock}
     metadata: {
         overview: "view overview",
+        customAttributes: {
+            fields: {
+                priority: { stringValue: "high" }
+	    }
+        }
     },
 }`;
     [
@@ -164,7 +169,12 @@ SELECT 1`
                 key: "val"
               },
               metadata: {
-                overview: "view overview"
+                overview: "view overview",
+                customAttributes: {
+                  fields: {
+                    priority: { stringValue: "high" }
+	          }
+                }
               },
             },
             materialized: true
