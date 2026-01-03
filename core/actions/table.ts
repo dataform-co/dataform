@@ -11,20 +11,32 @@ import { Assertion } from "df/core/actions/assertion";
 import { IncrementalTable } from "df/core/actions/incremental_table";
 import { View } from "df/core/actions/view";
 import { ColumnDescriptors } from "df/core/column_descriptors";
-import { Contextable, ITableContext, Resolvable } from "df/core/contextables";
+import {
+  Contextable,
+  ITableContext,
+  Resolvable,
+} from "df/core/contextables";
 import * as Path from "df/core/path";
 import { Session } from "df/core/session";
 import {
   actionConfigToCompiledGraphTarget,
   checkAssertionsForDependency,
   checkExcessProperties,
+  getConnectionForIcebergTable,
+  getEffectiveBucketName,
+  getEffectiveTableFolderRoot,
+  getEffectiveTableFolderSubpath,
+  getFileFormatValueForIcebergTable,
+  getStorageUriForIcebergTable,
   nativeRequire,
   resolvableAsActionConfigTarget,
   resolvableAsTarget,
   resolveActionsConfigFilename,
   strictKeysOf,
   toResolvable,
-  validateQueryString
+  validateConnectionFormat,
+  validateQueryString,
+  validateStorageUriFormat,
 } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
@@ -152,6 +164,12 @@ export class Table extends ActionBuilder<dataform.Table> {
     if (config.description) {
       this.description(config.description);
     }
+    if (config.metadata) {
+      if (!this.proto.actionDescriptor) {
+        this.proto.actionDescriptor = {};
+      }
+      this.proto.actionDescriptor.metadata = config.metadata;
+    }
     if (config.columns?.length) {
       this.columns(
         config.columns.map(columnDescriptor =>
@@ -174,7 +192,20 @@ export class Table extends ActionBuilder<dataform.Table> {
       labels: config.labels,
       partitionExpirationDays: config.partitionExpirationDays,
       requirePartitionFilter: config.requirePartitionFilter,
-      additionalOptions: config.additionalOptions
+      additionalOptions: config.additionalOptions,
+      ...(config.iceberg ? {
+        connection: getConnectionForIcebergTable(
+          config.iceberg.connection,
+          session.projectConfig.defaultIcebergConfig?.connection
+        ),
+        fileFormat: getFileFormatValueForIcebergTable(config.iceberg.fileFormat?.toString()),
+        tableFormat: dataform.TableFormat.ICEBERG,
+        storageUri: getStorageUriForIcebergTable(
+          getEffectiveBucketName(session.projectConfig.defaultIcebergConfig?.bucketName, config.iceberg.bucketName),
+          getEffectiveTableFolderRoot(session.projectConfig.defaultIcebergConfig?.tableFolderRoot, config.iceberg.tableFolderRoot),
+          getEffectiveTableFolderSubpath(this.proto.target.schema, this.proto.target.name, session.projectConfig.defaultIcebergConfig?.tableFolderSubpath, config.iceberg.tableFolderSubpath),
+        ),
+      } : {}),
     });
 
     return this;
@@ -483,6 +514,14 @@ export class Table extends ActionBuilder<dataform.Table> {
     validateQueryString(this.session, this.proto.query, this.proto.fileName);
     validateQueryString(this.session, this.proto.incrementalQuery, this.proto.fileName);
 
+    if (this.proto.bigquery?.connection) {
+      validateConnectionFormat(this.proto.bigquery.connection);
+    }
+
+    if (this.proto.bigquery?.storageUri) {
+      validateStorageUriFormat(this.proto.bigquery.storageUri);
+    }
+
     return verifyObjectMatchesProto(
       dataform.Table,
       this.proto,
@@ -545,6 +584,7 @@ export class Table extends ActionBuilder<dataform.Table> {
           unverifiedConfig.columns as any
         );
       }
+
       unverifiedConfig = LegacyConfigConverter.insertLegacyInlineAssertionsToConfigProto(
         unverifiedConfig
       );
@@ -564,10 +604,21 @@ export class Table extends ActionBuilder<dataform.Table> {
             "labels",
             "partitionExpirationDays",
             "requirePartitionFilter",
-            "additionalOptions"
+            "additionalOptions",
+            "iceberg"
           ]),
           "BigQuery table config"
         );
+      }
+      if (unverifiedConfig.iceberg) {
+        if (
+          unverifiedConfig.iceberg.fileFormat &&
+          unverifiedConfig.iceberg.fileFormat.toUpperCase() !== 'PARQUET'
+        ) {
+          throw new ReferenceError(
+            `Unexpected file format; only "PARQUET" is allowed, got "${unverifiedConfig.iceberg.fileFormat}".`
+          );
+        }
       }
     }
 

@@ -1,5 +1,4 @@
 import { ChildProcess, spawn } from "child_process";
-import { ITarget } from "df/core/common";
 import { dataform } from "df/protos/ts";
 import {
   createConnection,
@@ -190,7 +189,7 @@ connection.onDefinition(
       })[0].refContent;
 
     // split to dataset, schema and name
-    const linkedTable: ITarget = { database: null, schema: null, name: null };
+    const linkedTable: dataform.ITarget = { database: null, schema: null, name: null };
     const splitMatch = clickedRef.match(
       /^ref\s*\(\s*(["'](.+?)["'])\s*(,\s*["'](.+?)["']\s*)?(,\s*["'](.+?)["']\s*)?,?\s*\)$/ // tslint:disable-line
     );

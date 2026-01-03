@@ -1257,6 +1257,140 @@ suite("@dataform/api", () => {
       expect(result.actions[0].tasks[0].errorMessage).to.match(/cancelled/);
     });
 
+    suite("execute with bigquery labels", () => {
+      test("should pass labels to executeTask", async () => {
+        const executionOptions: Array<{ bigquery?: any }> = [];
+        
+        const mockedDbAdapter = mock(BigQueryDbAdapter);
+        const NEW_TEST_GRAPH = RUN_TEST_GRAPH;
+        when(mockedDbAdapter.createSchema(anyString(), anyString())).thenResolve(null);
+        when(
+          mockedDbAdapter.execute(NEW_TEST_GRAPH.actions[0].tasks[0].statement, anything())
+        ).thenCall((statement: string, options: any) => {
+          executionOptions.push(options);
+          return Promise.resolve({
+            rows: [],
+            metadata: {
+              bigquery: {
+                jobId: "abc",
+                totalBytesBilled: Long.fromNumber(0),
+                totalBytesProcessed: Long.fromNumber(0)
+              }
+            }
+          });
+        });
+        when(
+          mockedDbAdapter.execute(RUN_TEST_GRAPH.actions[0].tasks[1].statement, anything())
+        ).thenCall((statement: string, options: any) => {
+          executionOptions.push(options);
+          return Promise.resolve({ rows: [], metadata: {} });
+        });
+        when(mockedDbAdapter.execute(NEW_TEST_GRAPH.actions[1].tasks[0].statement, anything()))
+          .thenCall((statement: string, options: any) => {
+            executionOptions.push(options);
+            return Promise.resolve({ rows: [], metadata: {} });
+          });
+
+        const mockDbAdapterInstance = instance(mockedDbAdapter);
+        mockDbAdapterInstance.withClientLock = async callback =>
+          await callback(mockDbAdapterInstance);
+
+        const labels = { env: "testing", team: "dataform" };
+        const runner = new Runner(mockDbAdapterInstance, NEW_TEST_GRAPH, {
+          bigquery: { labels }
+        });
+
+        const result = await runner.execute().result();
+        expect(result.status).to.equal(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
+
+        // Verify that execute was called at least 3 times (for both tasks in first action and assertion)
+        expect(executionOptions.length).to.equal(3);
+        
+        // Verify that at least some calls included labels in the options
+        const callsWithLabels = executionOptions.filter(
+          opts => opts?.bigquery?.labels && 
+                  opts.bigquery.labels.env === "testing" && 
+                  opts.bigquery.labels.team === "dataform"
+        );
+        expect(callsWithLabels.length).to.equal(3, 
+          "Expected 3 execute calls to include the labels in options");
+      });
+
+      test("should merge global and action-level labels", async () => {
+        const executionOptions: Array<{ bigquery?: any }> = [];
+        
+        const mockedDbAdapter = mock(BigQueryDbAdapter);
+        const NEW_TEST_GRAPH = RUN_TEST_GRAPH;
+        // Set action-level labels on the first action
+        NEW_TEST_GRAPH.actions[0].actionDescriptor = {
+          bigqueryLabels: { action_level: "specific_value" }
+        };
+
+        when(mockedDbAdapter.createSchema(anyString(), anyString())).thenResolve(null);
+        when(
+          mockedDbAdapter.execute(NEW_TEST_GRAPH.actions[0].tasks[0].statement, anything())
+        ).thenCall((statement: string, options: any) => {
+          executionOptions.push(options);
+          return Promise.resolve({
+            rows: [],
+            metadata: {
+              bigquery: {
+                jobId: "abc",
+                totalBytesBilled: Long.fromNumber(0),
+                totalBytesProcessed: Long.fromNumber(0)
+              }
+            }
+          });
+        });
+        when(
+          mockedDbAdapter.execute(RUN_TEST_GRAPH.actions[0].tasks[1].statement, anything())
+        ).thenCall((statement: string, options: any) => {
+          executionOptions.push(options);
+          return Promise.resolve({ rows: [], metadata: {} });
+        });
+        when(mockedDbAdapter.execute(NEW_TEST_GRAPH.actions[1].tasks[0].statement, anything()))
+          .thenCall((statement: string, options: any) => {
+            executionOptions.push(options);
+            return Promise.resolve({ rows: [], metadata: {} });
+          });
+
+        const mockDbAdapterInstance = instance(mockedDbAdapter);
+        mockDbAdapterInstance.withClientLock = async callback =>
+          await callback(mockDbAdapterInstance);
+
+        const globalLabels = { env: "testing", team: "dataform" };
+        const runner = new Runner(mockDbAdapterInstance, NEW_TEST_GRAPH, {
+          bigquery: { labels: globalLabels }
+        });
+
+        const result = await runner.execute().result();
+        expect(result.status).to.equal(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
+
+        // Verify that execute was called 3 times
+        expect(executionOptions.length).to.equal(3);
+        
+        // For the first two calls (action with both task types), verify merged labels
+        const firstActionCalls = executionOptions.slice(0, 2);
+        firstActionCalls.forEach((opts, index) => {
+          expect(opts?.bigquery?.labels).to.not.equal(undefined);
+          // Should have global labels
+          expect(opts.bigquery.labels.env).to.equal("testing", `Call ${index} should have global label 'env'`);
+          expect(opts.bigquery.labels.team).to.equal("dataform", `Call ${index} should have global label 'team'`);
+          // Should have action-level label
+          expect(opts.bigquery.labels.action_level).to.equal("specific_value", 
+            `Call ${index} should have action-level label 'action_level'`);
+        });
+        
+        // For the second action (assertion), verify only global labels (no action-level labels)
+        const assertionCall = executionOptions[2];
+        expect(assertionCall?.bigquery?.labels).to.not.equal(undefined);
+              expect(assertionCall.bigquery.labels.env).to.equal("testing");
+              expect(assertionCall.bigquery.labels.team).to.equal("dataform");
+        // This action doesn't have action-level labels
+        expect(assertionCall.bigquery.labels.action_level).to.equal(undefined);
+      });
+    });
+
     test("continues after setMetadata fails", async () => {
       const METADATA_TEST_GRAPH: dataform.IExecutionGraph = dataform.ExecutionGraph.create({
         projectConfig: {

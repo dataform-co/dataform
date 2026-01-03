@@ -245,6 +245,182 @@ export function validateQueryString(session: Session, query: string, filename: s
   }
 }
 
+/**
+ * Checks if the Cloud Resource connection has a valid format.
+ * @param connection String to be validated.
+ */
+export function validateConnectionFormat(
+  connection: string,
+) {
+  // Connection pattern of the form project.location.connection_id. Example:
+  // my-project.us-central1.my-connection
+  const dotPattern = /^[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+$/;
+
+  // Connection pattern of the form projects/<substring>/locations/<substring>/connections/<substring>
+  // Example: projects/my-project/locations/us-central1/connections/my-connection
+  // Substrings cannot contain '/'.
+  const resourcePattern =
+    /^projects\/[^/]+\/locations\/[^/]+\/connections\/[^/]+$/;
+
+  const isValidFormat =
+    dotPattern.test(connection) || resourcePattern.test(connection);
+
+  if (connection !== 'DEFAULT' && !isValidFormat) {
+    throw new Error(
+      'The connection must be in the format `{project}.{location}.{connection_id}` or `projects/{project}/locations/{location}/connections/{connection_id}`, or be set to `DEFAULT`.',
+    );
+  }
+
+}
+
+/**
+ * Checks if the storageUri is a valid GCS path.
+ * @param storageUri String to be validated.
+ */
+export function validateStorageUriFormat(
+  storageUri: string,
+) {
+  // storageUri must have format gs://<bucket_name>/<path_to_data>
+  const gcsPathPattern = /^gs:\/\/([^/]+)\/(.+)$/;
+
+  if (!gcsPathPattern.test(storageUri)) {
+    throw new Error(
+      'The storage URI must be in the format `gs://{bucket_name}/{path_to_data}`.',
+    );
+  }
+}
+
+/**
+ * Returns a file format for an Iceberg table, as specified in the user's config file.
+ * @param configFileFormat User-provided file format, if it exists.
+ * @return File format used when creating an Iceberg table.
+ */
+export function getFileFormatValueForIcebergTable(
+  configFileFormat?: string,
+): dataform.FileFormat {
+  if (!configFileFormat) {
+    // Default to PARQUET if fileFormat is undefined.
+    return dataform.FileFormat.PARQUET;
+  }
+
+  switch (configFileFormat.toUpperCase()) {
+    case "PARQUET":
+      return dataform.FileFormat.PARQUET;
+
+    default:
+      throw new Error(
+        `File format ${configFileFormat} is not supported.`,
+      );
+  }
+}
+
+/**
+ * Returns the connection for an Iceberg table, as specified in the user's config file.
+ * Defaults to "DEFAULT" if no connection is provided.
+ * @param configConnection defined in the config block
+ * @param defaultConnection defined in workflow_settings.yaml.
+ * @returns Connection used when creating an Iceberg table.
+ */
+export function getConnectionForIcebergTable(
+  configConnection?: string,
+  defaultConnection?: string,
+): string {
+  if(configConnection) {
+    return configConnection;
+  } else if(defaultConnection) {
+    return defaultConnection;
+  } else {
+    return "DEFAULT";
+  }
+}
+
+/**
+ * Constructs the storage URI for an Iceberg table from storageUri, bucketName,
+ * tableFolderRoot, and tableFolderSubpath provided in the config file. Returns
+ * undefined if a complete URI cannot be formed.
+ * @returns Storage URI used when creating an Iceberg table.
+ */
+export function getStorageUriForIcebergTable(
+  bucketName: string,
+  tableFolderRoot: string,
+  tableFolderSubpath: string,
+): string {
+  return `gs://${bucketName}/${tableFolderRoot}/${tableFolderSubpath}`;
+}
+
+/**
+ * Returns the bucketName which will be used to construct storageUri for an
+ * Iceberg table. If the bucketName is provided in the config block, that value
+ * will be used. Otherwise, defaultBucketName defined in workflow_settings.yaml
+ * will be used. If none of those two values are defined, we throw an error.
+ * @param defaultBucketName defined in workflow_settings.yaml
+ * @param configBucketName defined in the config block
+ * @returns bucketName used to construct storageUri for Iceberg tables
+ */
+export function getEffectiveBucketName(
+  defaultBucketName?: string,
+  configBucketName?: string,
+): string {
+  if(configBucketName) {
+    return configBucketName;
+  } else if(defaultBucketName) {
+    return defaultBucketName;
+  } else {
+    throw new Error(
+      "When defining an Iceberg table, bucket name must be defined in workflow_settings.yaml or the config block."
+    );
+  }
+}
+
+/**
+ * Returns the tableFolderRoot which will be used to construct storageUri for an
+ * Iceberg table. If the tableFolderRoot is provided in the config block, that
+ * value will be used. Otherwise, defaultTableFolderRoot defined in
+ * workflow_settings.yaml will be used. If none of those two values are
+ * defined, "_dataform" will be used.
+ * @param defaultTableFolderRoot defined in workflow_settings.yaml
+ * @param configTableFolderRoot defined in the config block
+ * @returns tableFolderRoot used to construct storageUri for Iceberg tables
+ */
+export function getEffectiveTableFolderRoot(
+  defaultTableFolderRoot?: string,
+  configTableFolderRoot?: string,
+): string {
+  if(configTableFolderRoot) {
+    return configTableFolderRoot;
+  } else if(defaultTableFolderRoot) {
+    return defaultTableFolderRoot;
+  } else {
+    return "_dataform";
+  }
+}
+
+/**
+ * Returns the tableFolderSubpath which will be used to construct storageUri for
+ * an Iceberg table. If the tableFolderSubpath is provided in the config block,
+ * that value will be used. Otherwise, defaultTableFolderSubpath defined in
+ * workflow_settings.yaml will be used. If none of those two values are
+ * defined, "{dataset_name}/{table_name}"" will be used.
+ * @param datasetName Might be used to construct the tableFolderSubpath if no alternative value is available.
+ * @param tableName Might be used to construct the tableFolderSubpath if no alternative value is available.
+ * @param defaultTableFolderSubpath defined in workflow_settings.yaml
+ * @param configTableFolderSubpath defined in the config block
+ */
+export function getEffectiveTableFolderSubpath(
+  datasetName: string,
+  tableName: string,
+  defaultTableFolderSubpath?: string,
+  configTableFolderSubpath?: string,
+): string {
+  if(configTableFolderSubpath) {
+    return configTableFolderSubpath;
+  } else if(defaultTableFolderSubpath) {
+    return defaultTableFolderSubpath;
+  } else {
+    return `${datasetName}/${tableName}`;
+  }
+}
+
 export function tableTypeStringToEnum(type: string, throwIfUnknown: boolean) {
   switch (type) {
     case "table":

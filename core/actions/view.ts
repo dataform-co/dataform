@@ -170,6 +170,12 @@ export class View extends ActionBuilder<dataform.Table> {
     if (config.description) {
       this.description(config.description);
     }
+    if (config.metadata) {
+      if (!this.proto.actionDescriptor) {
+        this.proto.actionDescriptor = {};
+      }
+      this.proto.actionDescriptor.metadata = config.metadata;
+    }
     if (config.columns?.length) {
       this.columns(
         config.columns.map(columnDescriptor =>
