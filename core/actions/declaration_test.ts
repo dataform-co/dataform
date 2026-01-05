@@ -180,4 +180,62 @@ actions:
       ])
     );
   });
+
+  test(`SQLx backward compatible with LegacyConfig`, () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    fs.writeFileSync(path.join(projectDir, "workflow_settings.yaml"), VALID_WORKFLOW_SETTINGS_YAML);
+    fs.mkdirSync(path.join(projectDir, "definitions"));
+    fs.writeFileSync(
+      path.join(projectDir, "definitions/legacy.sqlx"),
+      `config { 
+  type: "declaration",
+  name: "legacy",
+  dataset: "legacyDataset",
+  project: "legacyProject"
+}`
+    );
+    fs.writeFileSync(
+      path.join(projectDir, "definitions/current.sqlx"),
+      `config { 
+  type: "declaration",
+  name: "current",
+  schema: "currentSchema",
+  database: "currentDatabase"
+}`
+    );    
+
+    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+    expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+    expect(asPlainObject(result.compile.compiledGraph.declarations)).deep.equals(
+      asPlainObject([
+        {
+          target: {
+            database: "currentDatabase",
+            schema: "currentSchema",
+            name: "current"
+          },
+          canonicalTarget: {
+            database: "currentDatabase",
+            schema: "currentSchema",
+            name: "current"
+          },
+          fileName: "definitions/current.sqlx"
+        },
+        {
+          target: {
+            database: "legacyProject",
+            schema: "legacyDataset",
+            name: "legacy"
+          },
+          canonicalTarget: {
+            database: "legacyProject",
+            schema: "legacyDataset",
+            name: "legacy"
+          },
+          fileName: "definitions/legacy.sqlx"
+        },
+      ])
+    );
+  });
 });

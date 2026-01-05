@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package dataform;
 
+import "protos/configs.proto";
+
 option java_package = "com.dataform.protos";
 option java_outer_classname = "CoreMeta";
 option java_multiple_files = true;
@@ -26,6 +28,10 @@ message ProjectConfig {
 
   NotebookRuntimeOptions default_notebook_runtime_options = 17;
 
+  DefaultIcebergConfig default_iceberg_config = 19;
+
+  bool disable_assertions = 20;
+
   reserved 3, 4, 6, 8, 10, 12, 13;
 }
 
@@ -41,6 +47,8 @@ message CompileConfig {
 
   // Override compilation timeout settings.
   int32 timeout_millis = 6;
+
+  Extension extension = 10;
 
   reserved 2, 4, 5, 7, 9;
 }
@@ -97,6 +105,11 @@ message ActionDescriptor {
   // For Assertions, 'columns' will always be empty.
   repeated ColumnDescriptor columns = 2;
   map<string, string> bigquery_labels = 3;
+  Metadata metadata = 4;
+}
+
+message Metadata {
+  string overview = 1;
 }
 
 message ColumnDescriptor {
@@ -322,6 +335,7 @@ message LoadConfiguration {
     IncrementalLoadMode maximum = 3;
     IncrementalLoadMode unique = 4;
     IncrementalLoadMode automatic = 5;
+    MergeLoadMode merge = 6;
   }
 }
 
@@ -329,6 +343,10 @@ message SimpleLoadMode {}
 
 message IncrementalLoadMode {
   string column_name = 1;
+}
+
+message MergeLoadMode {
+  repeated string unique_key = 1;
 }
 
 message CompiledGraph {
@@ -379,4 +397,22 @@ message CompileExecutionResponse {
 enum SupportedFeatures {
   UNKNOWN_FEATURE = 0;
   ARRAY_BUFFER_IPC = 1;
+}
+
+// Execution mode of compilation extension.
+enum ExtensionCompilationMode {
+  // Unspecified compiled mode - extension will be skipped.
+  COMPILATION_MODE_UNSPECIFIED = 0;
+  // Execute before regular Dataform compilation.
+  PROLOGUE = 1;
+  // Replace regular Dataform compilation.
+  APPLICATION_CODE = 2;
+}
+
+message Extension {
+  // Name of the extension (JS module) to delegate the compilation to.
+  string name = 1;
+
+  // Compilation mode of the extension, required.
+  ExtensionCompilationMode compilation_mode = 2;
 }

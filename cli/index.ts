@@ -22,7 +22,12 @@ import {
   printTestResult
 } from "df/cli/console";
 import { getBigQueryCredentials } from "df/cli/credentials";
-import { actuallyResolve, assertPathExists, compiledGraphHasErrors } from "df/cli/util";
+import {
+  actuallyResolve,
+  assertPathExists,
+  compiledGraphHasErrors,
+  promptForIcebergConfig,
+} from "df/cli/util";
 import { createYargsCli, INamedOption } from "df/cli/yargswrapper";
 import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
@@ -174,6 +179,27 @@ const impersonateServiceAccountOption: INamedOption<yargs.Options> = {
   }
 };
 
+const bigqueryJobLabelsOption: INamedOption<yargs.Options> = {
+  name: "job-labels",
+  option: {
+    describe:
+      "Comma-separated list of labels to add to BigQuery jobs, e.g. 'key1=val1,key2=val2'.",
+    type: "string",
+    coerce: (raw: string | null) => {
+      const labels: { [key: string]: string } = {};
+      raw?.split(",").forEach(kv => {
+        if (!kv) {
+          return;
+        }
+        const [key, ...rest] = kv.split("=");
+        labels[key] = rest.join("=") || "";
+      });
+      return labels;
+    }
+  }
+};
+
+
 const quietCompileOption: INamedOption<yargs.Options> = {
   name: "quiet",
   option: {
@@ -181,6 +207,15 @@ const quietCompileOption: INamedOption<yargs.Options> = {
     type: "boolean",
     default: false
   }
+};
+
+const icebergOption: INamedOption<yargs.Options> = {
+  name: "iceberg",
+  option: {
+    describe: "Initialize the project with workflow-level Iceberg tables configuration.",
+    type: "boolean",
+    default: false,
+  },
 };
 
 const testConnectionOptionName = "test-connection";
@@ -249,13 +284,24 @@ export function runCli() {
             }
           }
         ],
-        options: [],
+        options: [icebergOption],
         processFn: async argv => {
-          print("Writing project files...\n");
-          const initResult = await init(argv[projectDirOption.name], {
+          const projectDir = argv[projectDirOption.name];
+          const projectConfig: dataform.IProjectConfig = {
             defaultDatabase: argv[ProjectConfigOptions.defaultDatabase.name],
-            defaultLocation: argv[ProjectConfigOptions.defaultLocation.name]
-          });
+            defaultLocation: argv[ProjectConfigOptions.defaultLocation.name],
+          };
+
+          if (argv[icebergOption.name]) {
+            const icebergConfig = promptForIcebergConfig();
+            if(icebergConfig) {
+              projectConfig.defaultIcebergConfig = icebergConfig;
+            }
+          }
+
+          print("Writing project files...\n");
+
+          const initResult = await init(projectDir, projectConfig);
           printInitResult(initResult);
           return 0;
         }
@@ -498,6 +544,7 @@ export function runCli() {
           jsonOutputOption,
           timeoutOption,
           tagsOption,
+          bigqueryJobLabelsOption,
           ...ProjectConfigOptions.allYargsOptions
         ],
         processFn: async argv => {
@@ -568,6 +615,9 @@ export function runCli() {
           }
           if (argv[jobPrefixOption.name]) {
             bigqueryOptions = { ...bigqueryOptions, jobPrefix: argv[jobPrefixOption.name] };
+          }
+          if (argv[bigqueryJobLabelsOption.name]) {
+            bigqueryOptions = { ...bigqueryOptions, labels: argv[bigqueryJobLabelsOption.name] };
           }
 
           const actionsByName = new Map<string, dataform.IExecutionAction>();
@@ -821,6 +871,16 @@ class ProjectConfigOptions {
     }
   };
 
+  public static disableAssertions: INamedOption<yargs.Options> = {
+    name: "disable-assertions",
+    option: {
+      describe:
+        "Disables all assertions including built-in assertions (uniqueKey, nonNull, rowConditions) and manual assertions (type: assertion).",
+      type: "boolean",
+      default: false
+    }
+  };
+
   public static allYargsOptions = [
     ProjectConfigOptions.defaultDatabase,
     ProjectConfigOptions.defaultSchema,
@@ -829,7 +889,8 @@ class ProjectConfigOptions {
     ProjectConfigOptions.vars,
     ProjectConfigOptions.databaseSuffix,
     ProjectConfigOptions.schemaSuffix,
-    ProjectConfigOptions.tablePrefix
+    ProjectConfigOptions.tablePrefix,
+    ProjectConfigOptions.disableAssertions
   ];
 
   public static constructProjectConfigOverride(
@@ -860,6 +921,9 @@ class ProjectConfigOptions {
     }
     if (argv[ProjectConfigOptions.tablePrefix.name]) {
       projectConfigOptions.tablePrefix = argv[ProjectConfigOptions.tablePrefix.name];
+    }
+    if (argv[ProjectConfigOptions.disableAssertions.name]) {
+      projectConfigOptions.disableAssertions = argv[ProjectConfigOptions.disableAssertions.name];
     }
     return projectConfigOptions;
   }

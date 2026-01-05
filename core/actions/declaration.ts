@@ -84,7 +84,11 @@ export class Declaration extends ActionBuilder<dataform.Declaration> {
     }
 
     const target = actionConfigToCompiledGraphTarget(config);
-    this.proto.target = this.applySessionToTarget(target, session.projectConfig);
+    this.proto.target = this.applySessionToTarget(
+      target,
+      session.projectConfig,
+      config.filename || filename
+    );
     this.proto.canonicalTarget = this.applySessionToTarget(target, session.canonicalProjectConfig);
 
     if (config.description) {
@@ -97,7 +101,7 @@ export class Declaration extends ActionBuilder<dataform.Declaration> {
         )
       );
     }
-    this.proto.fileName = filename;
+    this.proto.fileName = config.filename || filename;
     return this;
   }
 

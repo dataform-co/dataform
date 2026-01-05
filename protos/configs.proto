@@ -45,6 +45,32 @@ message WorkflowSettings {
 
   // Optional. The prefix to append to built-in assertion names.
   string builtin_assertion_name_prefix = 11;
+
+  // Optional. Default config options for Iceberg tables.
+  DefaultIcebergConfig default_iceberg_config = 12;
+
+  // Optional. Disables all assertions including built-in assertions 
+  // (uniqueKey, nonNull, rowConditions) and manual assertions (type: assertion).
+  // When true, assertions will still be compiled but marked as disabled.
+  bool disable_assertions = 13;
+}
+
+message DefaultIcebergConfig {
+  // Optional. Bucket name used to construct a storage URI when creating an
+  // Iceberg table.
+  string bucket_name = 1;
+
+  // Optional. Table folder root used to construct a storage URI when creating
+  // an Iceberg table.
+  string table_folder_root = 2;
+
+  // Optional. Table folder subpath used to construct a storage URI when
+  // creating an Iceberg table.
+  string table_folder_subpath = 3;
+
+  // Optional. The connection specifying the credentials to be used to read and
+  // write to external storage, such as Cloud Storage.
+  string connection = 4;
 }
 
 // Action configs defines the contents of `actions.yaml` configuration files.
@@ -232,6 +258,14 @@ message ActionConfig {
 
     // Configuration options for an Iceberg table.
     IcebergTableConfig iceberg = 22;
+
+    // Metadata for this table.
+    Metadata metadata = 23;
+  }
+
+  message Metadata {
+    // A detailed description of the data object.
+    string overview = 1;
   }
 
   message ViewConfig {
@@ -305,6 +339,9 @@ message ActionConfig {
     // If configured, relevant assertions will automatically be created and run
     // as a dependency of this dataset.
     TableAssertionsConfig assertions = 17;
+
+    // Metadata for this view.
+    Metadata metadata = 20;
   }
 
   enum OnSchemaChange {
@@ -414,6 +451,9 @@ message ActionConfig {
 
     // Configuration options for an Iceberg table.
     IcebergTableConfig iceberg = 25;
+
+    // Metadata for this incremental table.
+    Metadata metadata = 26;
   }
 
   message AssertionConfig {
@@ -516,6 +556,9 @@ message ActionConfig {
 
     // Descriptions of columns within the declaration.
     repeated ColumnDescriptor columns = 5;
+
+    // Path to the source file that the contents of the action is loaded from.
+    string filename = 6;
   }
 
   message NotebookConfig {
@@ -613,6 +656,8 @@ message ActionConfig {
     LoadMode mode = 1;
     // Required when mode is MAXIMUM or UNIQUE
     string incremental_column = 2;
+    // required when mode is MERGE
+    repeated string unique_key = 3;
   }
 
   enum LoadMode {
@@ -626,6 +671,8 @@ message ActionConfig {
     // Insert only records where the specified column value is not already
     // present in the destination column values.
     UNIQUE = 3;
+    // Merge records into the destination table, deduplicating using 1+ unique keys
+    MERGE = 4;
   }
 }
 

@@ -1534,6 +1534,63 @@ assert("name", {
           }
         ]);
       });
+
+      test("assert API returns disabled assertions when disableAssertions is true", () => {
+        const projectDir = tmpDirFixture.createNewTmpDir();
+        fs.writeFileSync(
+          path.join(projectDir, "workflow_settings.yaml"),
+          VALID_WORKFLOW_SETTINGS_YAML
+        );
+        fs.mkdirSync(path.join(projectDir, "definitions"));
+        fs.writeFileSync(
+          path.join(projectDir, "definitions/table.sqlx"),
+          `config {type: "table"} SELECT 1`
+        );
+        fs.writeFileSync(
+          path.join(projectDir, "definitions/assert.js"),
+          `
+assert("name", {
+  type: "assert",
+}).query(ctx => \`SELECT * FROM \${ctx.ref('table')}\`)`
+        );
+
+        const coreRequest = coreExecutionRequestFromPath(
+          projectDir,
+          dataform.ProjectConfig.create({
+            disableAssertions: true
+          })
+        );
+        const result = runMainInVm(coreRequest);
+
+        expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+        expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals(
+          asPlainObject([
+            {
+              canonicalTarget: {
+                database: "defaultProject",
+                name: "name",
+                schema: "defaultDataset"
+              },
+              dependencyTargets: [
+                {
+                  database: "defaultProject",
+                  name: "table",
+                  schema: "defaultDataset"
+                }
+              ],
+              disabled: true,
+              fileName: "definitions/assert.js",
+              query: "SELECT * FROM `defaultProject.defaultDataset.table`",
+              target: {
+                database: "defaultProject",
+                name: "name",
+                schema: "defaultDataset"
+              }
+            }
+          ])
+        );
+        expect(result.compile.compiledGraph.tables.length).equals(1);
+      });
     });
 
     suite("invalid options", () => {
@@ -1724,6 +1781,118 @@ publish("name", {type: "${fromType}", schema: "schemaOverride"}).type("${toType}
           });
         });
       });
+    });
+  });
+
+  suite("extensions interface", () => {
+    function setUpProjectWithExtension() {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        dumpYaml(dataform.WorkflowSettings.create(WorkflowSettingsTemplates.bigquery))
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(path.join(projectDir, "definitions/e.sqlx"), `config {type: "view"}`);
+      fs.writeFileSync(path.join(projectDir, "definitions/file.sqlx"), "${resolve('e')}");
+
+      return projectDir;
+    }
+
+    test("keeps regular compilation flow if unspecified", () => {
+      const projectDir = setUpProjectWithExtension();
+      const request = coreExecutionRequestFromPath(projectDir);
+
+      const result = runMainInVm(request);
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(result.compile.compiledGraph.targets?.map(t => t.name)).deep.equals(["e", "file"]);
+    });
+
+    test("keeps regular compilation flow if extension is disabled", () => {
+      const projectDir = setUpProjectWithExtension();
+      const request = coreExecutionRequestFromPath(projectDir);
+      request.compile.compileConfig.extension = {
+        name: "some-extension",
+        compilationMode: dataform.ExtensionCompilationMode.COMPILATION_MODE_UNSPECIFIED,
+      };
+
+      const result = runMainInVm(request);
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(result.compile.compiledGraph.targets?.map(t => t.name)).deep.equals(["e", "file"]);
+    });
+
+    test("runs prologue before regular compilation", () => {
+      const projectDir = setUpProjectWithExtension();
+      const request = coreExecutionRequestFromPath(projectDir);
+      request.compile.compileConfig.extension = {
+        name: "@dataform/sample-extension",
+        compilationMode: dataform.ExtensionCompilationMode.PROLOGUE,
+      };
+
+      const result = runMainInVm(request);
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(result.compile.compiledGraph.targets?.map(t => t.name)).deep.equals(["sample-action", "e", "file"]);
+    });
+
+    test("replaces regular compilation in application code mode", () => {
+      const projectDir = setUpProjectWithExtension();
+      const request = coreExecutionRequestFromPath(projectDir);
+      request.compile.compileConfig.extension = {
+        name: "@dataform/sample-extension",
+        compilationMode: dataform.ExtensionCompilationMode.APPLICATION_CODE,
+      };
+
+      const result = runMainInVm(request);
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(result.compile.compiledGraph.targets?.map(t => t.name)).deep.equals(["sample-action"]);
+    });
+
+    test("catches extension import exceptions", () => {
+      const projectDir = setUpProjectWithExtension();
+      const request = coreExecutionRequestFromPath(projectDir);
+      request.compile.compileConfig.extension = {
+        name: "does-not-exist",
+        compilationMode: dataform.ExtensionCompilationMode.PROLOGUE,
+      };
+
+      const result = runMainInVm(request);
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).equals(1);
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).contains("Cannot find module");
+      expect(result.compile.compiledGraph.targets?.map(t => t.name)).deep.equals(["e", "file"]);
+    });
+
+    test("catches exceptions thrown from extension", () => {
+      const projectDir = setUpProjectWithExtension();
+      const request = coreExecutionRequestFromPath(projectDir, dataform.ProjectConfig.create({vars: {"throw-error": "true"}}));
+      request.compile.compileConfig.extension = {
+        name: "@dataform/sample-extension",
+        compilationMode: dataform.ExtensionCompilationMode.PROLOGUE,
+      };
+
+      const result = runMainInVm(request);
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).equals(1);
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).contains("throwing exception as requested!");
+      expect(result.compile.compiledGraph.targets?.map(t => t.name)).deep.equals(["e", "file"]);
+    });
+
+    test("persists extension compilation errors", () => {
+      const projectDir = setUpProjectWithExtension();
+      const request = coreExecutionRequestFromPath(projectDir, dataform.ProjectConfig.create({vars: {"store-compile-error": "true"}}));
+      request.compile.compileConfig.extension = {
+        name: "@dataform/sample-extension",
+        compilationMode: dataform.ExtensionCompilationMode.PROLOGUE,
+      };
+
+      const result = runMainInVm(request);
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).equals(1);
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).contains("storing compilation error as requested!");
+      expect(result.compile.compiledGraph.targets?.map(t => t.name)).deep.equals(["sample-action", "e", "file"]);
     });
   });
 });

@@ -31,6 +31,7 @@ ts_library(
         "column_descriptors.ts",
         "compilers.ts",
         "contextables.ts",
+        "extension.ts",
         "index.ts",
         "main.ts",
         "path.ts",
@@ -67,6 +68,7 @@ ts_test_suite(
         "actions/assertion_test.ts",
         "actions/data_preparation_test.ts",
         "actions/declaration_test.ts",
+        "actions/filename_override_test.ts",
         "actions/incremental_table_test.ts",
         "actions/index_test.ts",
         "actions/notebook_test.ts",
@@ -98,5 +100,6 @@ node_modules(
     name = "node_modules",
     deps = [
         "//packages/@dataform/core:package_tar",
+        "//packages/sample-extension:package_tar",
     ],
 )

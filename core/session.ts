@@ -125,9 +125,6 @@ export class Session {
         "Actions may only include incremental_where if they are of type 'incremental'."
       );
     }
-    if (!sqlxConfig.hasOwnProperty("schema") && actionType === "declaration") {
-      this.compileError("Actions of type 'declaration' must specify a value for 'schema'.");
-    }
     if (actionOptions.inputContextables.length > 0 && actionType !== "test") {
       this.compileError("Actions may only include input blocks if they are of type 'test'.");
     }
@@ -138,9 +135,12 @@ export class Session {
       this.compileError("Actions may only include post_operations if they create a dataset.");
     }
 
+    if (!sqlxConfig.filename) {
+      sqlxConfig.filename = utils.getCallerFile(this.rootDir);
+    }
+
     switch (actionType) {
       case "view":
-        sqlxConfig.filename = utils.getCallerFile(this.rootDir);
         const view = new View(this, sqlxConfig).query(ctx => actionOptions.sqlContextable(ctx)[0]);
         if (actionOptions.incrementalWhereContextable) {
           view.where(actionOptions.incrementalWhereContextable);
@@ -154,7 +154,6 @@ export class Session {
         this.actions.push(view);
         break;
       case "incremental":
-        sqlxConfig.filename = utils.getCallerFile(this.rootDir);
         const incrementalTable = new IncrementalTable(this, sqlxConfig).query(
           ctx => actionOptions.sqlContextable(ctx)[0]
         );
@@ -170,7 +169,6 @@ export class Session {
         this.actions.push(incrementalTable);
         break;
       case "table":
-        sqlxConfig.filename = utils.getCallerFile(this.rootDir);
         const table = new Table(this, sqlxConfig).query(
           ctx => actionOptions.sqlContextable(ctx)[0]
         );
@@ -186,24 +184,21 @@ export class Session {
         this.actions.push(table);
         break;
       case "assertion":
-        sqlxConfig.filename = utils.getCallerFile(this.rootDir);
         this.actions.push(
           new Assertion(this, sqlxConfig).query(ctx => actionOptions.sqlContextable(ctx)[0])
         );
         break;
       case "dataPreparation":
-        sqlxConfig.filename = utils.getCallerFile(this.rootDir);
         const dataPreparation = new DataPreparation(this, sqlxConfig).query(
           ctx => actionOptions.sqlContextable(ctx)[0]
         );
         this.actions.push(dataPreparation);
         break;
       case "operations":
-        sqlxConfig.filename = utils.getCallerFile(this.rootDir);
         this.actions.push(new Operation(this, sqlxConfig).queries(actionOptions.sqlContextable));
         break;
       case "declaration":
-        const declaration = new Declaration(this, sqlxConfig, utils.getCallerFile(this.rootDir));
+        const declaration = new Declaration(this, sqlxConfig, sqlxConfig.filename);
         this.actions.push(declaration);
         break;
       case "test":
@@ -315,8 +310,8 @@ export class Session {
           newTable = new IncrementalTable(this, {
             type: "incremental",
             name,
-            ...queryOrConfig,
-            filename
+            filename,
+            ...queryOrConfig
           });
         } else if (queryOrConfig?.type === "table") {
           newTable = new Table(this, { type: "table", name, filename, ...queryOrConfig });

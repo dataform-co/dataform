@@ -303,7 +303,7 @@ export function getFileFormatValueForIcebergTable(
     return dataform.FileFormat.PARQUET;
   }
 
-  switch (configFileFormat) {
+  switch (configFileFormat.toUpperCase()) {
     case "PARQUET":
       return dataform.FileFormat.PARQUET;
 
@@ -317,11 +317,21 @@ export function getFileFormatValueForIcebergTable(
 /**
  * Returns the connection for an Iceberg table, as specified in the user's config file.
  * Defaults to "DEFAULT" if no connection is provided.
- * @param connection User-provided connection, if it exists.
+ * @param configConnection defined in the config block
+ * @param defaultConnection defined in workflow_settings.yaml.
  * @returns Connection used when creating an Iceberg table.
  */
-export function getConnectionForIcebergTable(connection?: string): string {
-  return connection || "DEFAULT";
+export function getConnectionForIcebergTable(
+  configConnection?: string,
+  defaultConnection?: string,
+): string {
+  if(configConnection) {
+    return configConnection;
+  } else if(defaultConnection) {
+    return defaultConnection;
+  } else {
+    return "DEFAULT";
+  }
 }
 
 /**
@@ -332,21 +342,83 @@ export function getConnectionForIcebergTable(connection?: string): string {
  */
 export function getStorageUriForIcebergTable(
   bucketName: string,
+  tableFolderRoot: string,
   tableFolderSubpath: string,
-  tableFolderRoot: string = "_dataform",
 ): string {
   return `gs://${bucketName}/${tableFolderRoot}/${tableFolderSubpath}`;
 }
 
 /**
- * Handles defaulting logic for the tableFolderSubpath variable used to construct
- * storage URI for Iceberg tables.
- * @param datasetName Might be used to construct the tableFolderSubpath if no alternative value is provided.
- * @param tableName Might be used to construct the tableFolderSubpath if no alternative value is provided.
- * @param tableFolderSubpath User-provided tableFolderSubpath, if it exists.
+ * Returns the bucketName which will be used to construct storageUri for an
+ * Iceberg table. If the bucketName is provided in the config block, that value
+ * will be used. Otherwise, defaultBucketName defined in workflow_settings.yaml
+ * will be used. If none of those two values are defined, we throw an error.
+ * @param defaultBucketName defined in workflow_settings.yaml
+ * @param configBucketName defined in the config block
+ * @returns bucketName used to construct storageUri for Iceberg tables
  */
-export function getEffectiveTableFolderSubpath(datasetName: string, tableName: string, tableFolderSubpath?: string): string {
-  return tableFolderSubpath ? tableFolderSubpath : `${datasetName}/${tableName}`;
+export function getEffectiveBucketName(
+  defaultBucketName?: string,
+  configBucketName?: string,
+): string {
+  if(configBucketName) {
+    return configBucketName;
+  } else if(defaultBucketName) {
+    return defaultBucketName;
+  } else {
+    throw new Error(
+      "When defining an Iceberg table, bucket name must be defined in workflow_settings.yaml or the config block."
+    );
+  }
+}
+
+/**
+ * Returns the tableFolderRoot which will be used to construct storageUri for an
+ * Iceberg table. If the tableFolderRoot is provided in the config block, that
+ * value will be used. Otherwise, defaultTableFolderRoot defined in
+ * workflow_settings.yaml will be used. If none of those two values are
+ * defined, "_dataform" will be used.
+ * @param defaultTableFolderRoot defined in workflow_settings.yaml
+ * @param configTableFolderRoot defined in the config block
+ * @returns tableFolderRoot used to construct storageUri for Iceberg tables
+ */
+export function getEffectiveTableFolderRoot(
+  defaultTableFolderRoot?: string,
+  configTableFolderRoot?: string,
+): string {
+  if(configTableFolderRoot) {
+    return configTableFolderRoot;
+  } else if(defaultTableFolderRoot) {
+    return defaultTableFolderRoot;
+  } else {
+    return "_dataform";
+  }
+}
+
+/**
+ * Returns the tableFolderSubpath which will be used to construct storageUri for
+ * an Iceberg table. If the tableFolderSubpath is provided in the config block,
+ * that value will be used. Otherwise, defaultTableFolderSubpath defined in
+ * workflow_settings.yaml will be used. If none of those two values are
+ * defined, "{dataset_name}/{table_name}"" will be used.
+ * @param datasetName Might be used to construct the tableFolderSubpath if no alternative value is available.
+ * @param tableName Might be used to construct the tableFolderSubpath if no alternative value is available.
+ * @param defaultTableFolderSubpath defined in workflow_settings.yaml
+ * @param configTableFolderSubpath defined in the config block
+ */
+export function getEffectiveTableFolderSubpath(
+  datasetName: string,
+  tableName: string,
+  defaultTableFolderSubpath?: string,
+  configTableFolderSubpath?: string,
+): string {
+  if(configTableFolderSubpath) {
+    return configTableFolderSubpath;
+  } else if(defaultTableFolderSubpath) {
+    return defaultTableFolderSubpath;
+  } else {
+    return `${datasetName}/${tableName}`;
+  }
 }
 
 export function tableTypeStringToEnum(type: string, throwIfUnknown: boolean) {

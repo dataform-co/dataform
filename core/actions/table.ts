@@ -23,6 +23,8 @@ import {
   checkAssertionsForDependency,
   checkExcessProperties,
   getConnectionForIcebergTable,
+  getEffectiveBucketName,
+  getEffectiveTableFolderRoot,
   getEffectiveTableFolderSubpath,
   getFileFormatValueForIcebergTable,
   getStorageUriForIcebergTable,
@@ -162,6 +164,12 @@ export class Table extends ActionBuilder<dataform.Table> {
     if (config.description) {
       this.description(config.description);
     }
+    if (config.metadata) {
+      if (!this.proto.actionDescriptor) {
+        this.proto.actionDescriptor = {};
+      }
+      this.proto.actionDescriptor.metadata = config.metadata;
+    }
     if (config.columns?.length) {
       this.columns(
         config.columns.map(columnDescriptor =>
@@ -186,13 +194,16 @@ export class Table extends ActionBuilder<dataform.Table> {
       requirePartitionFilter: config.requirePartitionFilter,
       additionalOptions: config.additionalOptions,
       ...(config.iceberg ? {
-        connection: getConnectionForIcebergTable(config.iceberg.connection),
+        connection: getConnectionForIcebergTable(
+          config.iceberg.connection,
+          session.projectConfig.defaultIcebergConfig?.connection
+        ),
         fileFormat: getFileFormatValueForIcebergTable(config.iceberg.fileFormat?.toString()),
         tableFormat: dataform.TableFormat.ICEBERG,
         storageUri: getStorageUriForIcebergTable(
-          config.iceberg.bucketName,
-          getEffectiveTableFolderSubpath(this.proto.target.schema, this.proto.target.name, config.iceberg.tableFolderSubpath),
-          config.iceberg.tableFolderRoot,
+          getEffectiveBucketName(session.projectConfig.defaultIcebergConfig?.bucketName, config.iceberg.bucketName),
+          getEffectiveTableFolderRoot(session.projectConfig.defaultIcebergConfig?.tableFolderRoot, config.iceberg.tableFolderRoot),
+          getEffectiveTableFolderSubpath(this.proto.target.schema, this.proto.target.name, session.projectConfig.defaultIcebergConfig?.tableFolderSubpath, config.iceberg.tableFolderSubpath),
         ),
       } : {}),
     });
@@ -573,21 +584,6 @@ export class Table extends ActionBuilder<dataform.Table> {
           unverifiedConfig.columns as any
         );
       }
-      if (unverifiedConfig.iceberg) {
-        if (
-          unverifiedConfig.iceberg.fileFormat &&
-          unverifiedConfig.iceberg.fileFormat.toUpperCase() !== 'PARQUET'
-        ) {
-          throw new ReferenceError(
-            `Unexpected file format; only "PARQUET" is allowed, got "${unverifiedConfig.iceberg.fileFormat}".`
-          );
-        }
-        if (!unverifiedConfig.iceberg.bucketName) {
-          throw new ReferenceError(
-            'Reference error: bucket_name must be defined in an iceberg subblock.'
-          );
-        }
-      }
 
       unverifiedConfig = LegacyConfigConverter.insertLegacyInlineAssertionsToConfigProto(
         unverifiedConfig
@@ -608,10 +604,21 @@ export class Table extends ActionBuilder<dataform.Table> {
             "labels",
             "partitionExpirationDays",
             "requirePartitionFilter",
-            "additionalOptions"
+            "additionalOptions",
+            "iceberg"
           ]),
           "BigQuery table config"
         );
+      }
+      if (unverifiedConfig.iceberg) {
+        if (
+          unverifiedConfig.iceberg.fileFormat &&
+          unverifiedConfig.iceberg.fileFormat.toUpperCase() !== 'PARQUET'
+        ) {
+          throw new ReferenceError(
+            `Unexpected file format; only "PARQUET" is allowed, got "${unverifiedConfig.iceberg.fileFormat}".`
+          );
+        }
       }
     }
 

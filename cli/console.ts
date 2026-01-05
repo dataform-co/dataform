@@ -45,6 +45,60 @@ export function question(questionText: string) {
   return prompt(questionText);
 }
 
+/**
+ * Test-friendly function that prompts the user for input. If running in a
+ * non-TTY (i.e. test) environment and DATAFORM_CLI_TEST_INPUTS is set,
+ * it consumes inputs from the environment variable.
+ * @param questionText The question text to display.
+ * @returns Users's input or test input.
+ */
+export function interactiveQuestion(questionText: string): string {
+  // If running in a non-TTY environment and test inputs are provided
+  if (!process.stdin.isTTY && process.env.DATAFORM_CLI_TEST_INPUTS !== undefined) {
+    const testInput = getTestInput(questionText);
+    print(`${questionText} ${testInput}\n`); // Echo the test input for clarity in logs
+    return testInput;
+  }
+
+  // If running in TTY environment or if testInputs are not available in non-TTY
+  print(`${questionText} `);
+  return readlineSync.question("");
+}
+
+/**
+ * Helper function to enable testing interactive CLI. Retrieves testInput from
+ * the DATAFORM_CLI_TEST_INPUTS environment variable.
+ * @param questionText The exact question text displayed to the user.
+ * @returns Test input for the provided question.
+ */
+function getTestInput(questionText: string): string {
+  const envVar = process.env.DATAFORM_CLI_TEST_INPUTS;
+  if(!envVar) {
+    throw new Error("Environment variable DATAFORM_CLI_TEST_INPUTS not set.");
+  }
+
+  try {
+    const parsed = JSON.parse(envVar);
+    if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+      const inputs = new Map<string, string>(Object.entries(parsed).map(([key, value]) => [key, String(value)]));
+      const trimmedQuestion = questionText.trim();
+      const answer = inputs.get(trimmedQuestion);
+
+      if (answer !== undefined) {
+        print(`[TEST_INPUT for "${trimmedQuestion}"]: "${answer}"`);
+        return answer;
+      } else {
+        throw new Error(`[MISSING TEST_INPUT for "${trimmedQuestion}"]`);
+      }
+    } else {
+      throw new Error(`Failed to parse DATAFORM_CLI_TEST_INPUTS: Expected a JSON object, but got ${typeof parsed}.`);
+    }
+  } catch (e) {
+    throw new Error(`Failed to parse DATAFORM_CLI_TEST_INPUTS: ${e.message || e}`);
+  }
+}
+
+
 export function passwordQuestion(questionText: string) {
   return prompt(questionText, {
     hideEchoBack: true,

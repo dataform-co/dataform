@@ -803,5 +803,87 @@ nodes:
         ])
       );
     });
+
+    test(`data preparation supports merge incremental config`, () => {
+      const projectDir = createSimpleDataPreparationProject(VALID_WORKFLOW_SETTINGS_YAML, false);
+      const dataPreparationSqlx = `
+config {
+    type: "dataPreparation",
+    name: "dest",
+    errorTable: {
+        name: "errorTable",
+    },
+    loadMode: {
+        mode: "MERGE",
+        uniqueKey: ["a", "b"],
+    },
+}
+
+FROM x
+|> SELECT *
+`;
+
+      fs.writeFileSync(
+          path.join(projectDir, "definitions/data_preparation.sqlx"),
+          dataPreparationSqlx
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.dataPreparations)).deep.equals(
+          asPlainObject([
+            {
+              target: {
+                database: "defaultProject",
+                schema: "defaultDataset",
+                name: "dest"
+              },
+              canonicalTarget: {
+                database: "defaultProject",
+                schema: "defaultDataset",
+                name: "dest"
+              },
+              targets: [
+                {
+                  database: "defaultProject",
+                  schema: "defaultDataset",
+                  name: "dest"
+                },
+                {
+                  database: "defaultProject",
+                  schema: "defaultDataset",
+                  name: "errorTable"
+                }
+              ],
+              canonicalTargets: [
+                {
+                  database: "defaultProject",
+                  schema: "defaultDataset",
+                  name: "dest"
+                },
+                {
+                  database: "defaultProject",
+                  schema: "defaultDataset",
+                  name: "errorTable"
+                }
+              ],
+              fileName: "definitions/data_preparation.sqlx",
+              load: {
+                merge: {
+                  uniqueKey: ["a", "b"]
+                }
+              },
+              query: "FROM x\n|> SELECT *",
+              errorTable: {
+                database: "defaultProject",
+                schema: "defaultDataset",
+                name: "errorTable"
+              },
+              errorTableRetentionDays: 0
+            }
+          ])
+      );
+    });
   });
 });
