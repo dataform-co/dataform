@@ -209,11 +209,12 @@ export class BigQueryDbAdapter implements IDbAdapter {
 
   public async tables(database: string, schema?: string): Promise<dataform.ITableMetadata[]> {
     const datasetIds = schema ? [schema] : await this.schemas(database);
+    const client = await this.getClient(database);
     const tablesMetadata: dataform.ITableMetadata[] = [];
 
     await Promise.all(
       datasetIds.map(async datasetId => {
-        const [tables] = await (await this.getClient(database))
+        const [tables] = await client
           .dataset(datasetId)
           .getTables({ autoPaginate: true, maxResults: 1000 });
         await Promise.all(
