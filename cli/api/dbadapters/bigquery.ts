@@ -129,7 +129,8 @@ export class BigQueryDbAdapter implements IDbAdapter {
   }
 
   public async tables(): Promise<dataform.ITarget[]> {
-    const datasets = await (await this.getClient()).getDatasets({ autoPaginate: true, maxResults: 1000 });
+    const client = await this.getClient();
+    const datasets = await client.getDatasets({ autoPaginate: true, maxResults: 1000 });
     const tables = await Promise.all(
       datasets[0].map(dataset => dataset.getTables({ autoPaginate: true, maxResults: 1000 }))
     );
@@ -279,7 +280,6 @@ export class BigQueryDbAdapter implements IDbAdapter {
         // For impersonation, create an Impersonated credential directly
         const sourceAuth = new GoogleAuth({
           scopes: ['https://www.googleapis.com/auth/cloud-platform'],
-          projectId: projectId,
           credentials: this.bigQueryCredentials.credentials && JSON.parse(this.bigQueryCredentials.credentials),
         });
 
