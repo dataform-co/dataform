@@ -130,7 +130,8 @@ export class BigQueryDbAdapter implements IDbAdapter {
   }
 
   public async tables(): Promise<dataform.ITarget[]> {
-    const datasets = await (await this.getClient()).getDatasets({ autoPaginate: true, maxResults: 1000 });
+    const client = await this.getClient();
+    const datasets = await client.getDatasets({ autoPaginate: true, maxResults: 1000 });
     const tables = await Promise.all(
       datasets[0].map(dataset => dataset.getTables({ autoPaginate: true, maxResults: 1000 }))
     );
