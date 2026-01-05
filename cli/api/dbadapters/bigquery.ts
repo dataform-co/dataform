@@ -54,8 +54,8 @@ export function createBigQueryClientProvider(
 
       if (credentials.impersonateServiceAccount) {
         const sourceAuth = new GoogleAuth({
-          scopes: ["https://www.googleapis.com/auth/cloud-platform"],
           projectId,
+          scopes: ["https://www.googleapis.com/auth/cloud-platform"],
           credentials: credentials.credentials && JSON.parse(credentials.credentials)
         });
 
