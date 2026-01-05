@@ -2,6 +2,7 @@ import { BigQuery, GetTablesResponse, TableField, TableMetadata } from "@google-
 import { GoogleAuth, Impersonated } from "google-auth-library";
 import Long from "long";
 import { PromisePoolExecutor } from "promise-pool-executor";
+
 import { collectEvaluationQueries, QueryOrAction } from "df/cli/api/dbadapters/execution_sql";
 import {
   IBigQueryError,
@@ -54,6 +55,7 @@ export function createBigQueryClientProvider(
 
       if (credentials.impersonateServiceAccount) {
         const sourceAuth = new GoogleAuth({
+          projectId,
           scopes: ["https://www.googleapis.com/auth/cloud-platform"],
           credentials: credentials.credentials && JSON.parse(credentials.credentials)
         });
