@@ -279,7 +279,6 @@ export class BigQueryDbAdapter implements IDbAdapter {
       if (this.bigQueryCredentials.impersonateServiceAccount) {
         // For impersonation, create an Impersonated credential directly
         const sourceAuth = new GoogleAuth({
-          projectId,
           scopes: ["https://www.googleapis.com/auth/cloud-platform"],
           credentials:
             this.bigQueryCredentials.credentials &&
