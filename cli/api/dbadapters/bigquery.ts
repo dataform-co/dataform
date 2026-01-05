@@ -348,7 +348,8 @@ export class BigQueryDbAdapter implements IDbAdapter {
     return retry(
       async () => {
         try {
-          const job = await (await this.getClient()).createQueryJob({
+          const client = await this.getClient();
+          const job = await client.createQueryJob({
             useLegacySql: false,
             jobPrefix: "dataform-" + (jobPrefix ? `${jobPrefix}-` : ""),
             query,
