@@ -270,7 +270,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
   private async getClient(projectId?: string) {
     projectId = projectId || this.bigQueryCredentials.projectId;
     if (!this.clients.has(projectId)) {
-      let clientConfig: any = {
+      const clientConfig: any = {
         projectId,
         scopes: EXTRA_GOOGLE_SCOPES,
         location: this.bigQueryCredentials.location
@@ -279,8 +279,8 @@ export class BigQueryDbAdapter implements IDbAdapter {
       if (this.bigQueryCredentials.impersonateServiceAccount) {
         // For impersonation, create an Impersonated credential directly
         const sourceAuth = new GoogleAuth({
-          scopes: ["https://www.googleapis.com/auth/cloud-platform"],
           projectId,
+          scopes: ["https://www.googleapis.com/auth/cloud-platform"],
           credentials:
             this.bigQueryCredentials.credentials &&
             JSON.parse(this.bigQueryCredentials.credentials)
