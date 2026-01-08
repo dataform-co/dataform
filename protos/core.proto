@@ -264,6 +264,16 @@ message Test {
 
   // Generated.
   string file_name = 4;
+
+  Target test_target = 5;
+  repeated TestInput inputs = 6; 
+  string query = 7;
+  bool resolve_schema = 8;
+
+  message TestInput {
+    Target target = 1;
+    string query = 2;
+  }
 }
 
 message Notebook {

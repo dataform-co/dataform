@@ -1,8 +1,8 @@
 import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { ActionBuilder, INamedConfig, TableType } from "df/core/actions";
 import { IncrementalTable } from "df/core/actions/incremental_table";
-import { Table } from "df/core/actions/table";
-import { View } from "df/core/actions/view";
+import { Table, TableContext } from "df/core/actions/table";
+import { View, ViewContext } from "df/core/actions/view";
 import { Contextable, IActionContext, ITableContext, Resolvable } from "df/core/contextables";
 import { Session } from "df/core/session";
 import { targetStringifier } from "df/core/targets";
@@ -77,7 +77,8 @@ export class Test extends ActionBuilder<dataform.Test> {
 
   /** @hidden We delay contextification until the final compile step, so hold these here for now. */
   public contextableInputs = new Map<string, Contextable<IActionContext, string>>();
-  private contextableQuery: Contextable<IActionContext, string>;
+  private inputToTargets = new Map<string, dataform.Target>();
+  private contextableQuery: Contextable<IActionContext, string>; 
   private datasetToTest: Resolvable;
 
   /**
@@ -127,11 +128,18 @@ export class Test extends ActionBuilder<dataform.Test> {
    * Sets the input query to unit test against.
    */
   public input(refName: string | string[], contextableQuery: Contextable<IActionContext, string>) {
+    const target = resolvableAsTarget(toResolvable(refName));
+    const inputName = targetStringifier.stringify(target);
     this.contextableInputs.set(
-      targetStringifier.stringify(resolvableAsTarget(toResolvable(refName))),
+      inputName,
       contextableQuery
     );
+    this.inputToTargets.set(inputName, target); 
     return this;
+  }
+
+  public resolveSchema(resolveSchema: boolean) {
+    this.proto.resolveSchema = resolveSchema;
   }
 
   /**
@@ -188,7 +196,34 @@ export class Test extends ActionBuilder<dataform.Test> {
       } else {
         const refReplacingContext = new RefReplacingContext(testContext);
         this.proto.testQuery = refReplacingContext.apply(dataset.contextableQuery);
+
+        // Set the test query with the fully qualified table references.
+        if (dataset instanceof Table) {
+          const tableContext = new TableContext(dataset);
+          this.proto.query = tableContext.apply(dataset.contextableQuery);
+        } else {
+          const viewContext = new ViewContext(dataset);
+          this.proto.query = viewContext.apply(dataset.contextableQuery);
+        }
       }
+
+      // Build the inputs list with the fully qualified input names and the input query to mock each input.
+      this.contextableInputs.forEach((inputContextable, inputName) => {        
+        const testInput = dataform.Test.TestInput.create();
+        testInput.query = testContext.apply(inputContextable);
+        testInput.target = this.applySessionToTarget(
+          this.inputToTargets.get(inputName), 
+          this.session.projectConfig, 
+          this.getFileName(), 
+          {
+            validateTarget: true
+          });
+        this.proto.inputs.push(testInput); 
+      });
+
+      // Add target property/
+      this.proto.testTarget = dataset.getTarget();
+      this.proto.resolveSchema = false;
     }
     this.proto.expectedOutputQuery = testContext.apply(this.contextableQuery);
 
