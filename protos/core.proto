@@ -111,7 +111,7 @@ message ActionDescriptor {
 
 message Metadata {
   string overview = 1;
-  google.protobuf.Struct custom_attributes = 2;
+  google.protobuf.Struct extra_properties = 2;
 }
 
 message ColumnDescriptor {

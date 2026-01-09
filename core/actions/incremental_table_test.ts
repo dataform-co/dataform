@@ -104,10 +104,10 @@ actions:
     onSchemaChange: "SYNCHRONIZE",
     metadata: {
         overview: "incremental table overview",
-        customAttributes: {
+        extraProperties: {
             fields: {
                 priority: { stringValue: "high" }
-	    }
+            }
         }
     },
 }
@@ -192,10 +192,10 @@ SELECT 1`
               },
               metadata: {
                 overview: "incremental table overview",
-                customAttributes: {
+                extraProperties: {
                   fields: {
                     priority: { stringValue: "high" }
-	          }
+                  }
                 }
               },
             }

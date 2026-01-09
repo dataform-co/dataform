@@ -268,8 +268,8 @@ message ActionConfig {
   message Metadata {
     // A detailed description of the data object.
     string overview = 1;
-    // Custom attributes of the data object.
-    google.protobuf.Struct custom_attributes = 2;
+    // Extra properties of the data object.
+    google.protobuf.Struct extra_properties = 2;
   }
 
   message ViewConfig {

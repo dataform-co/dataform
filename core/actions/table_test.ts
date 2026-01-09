@@ -92,10 +92,10 @@ actions:
     hermetic: true,
     metadata: {
         overview: "table overview",
-        customAttributes: {
+        extraProperties: {
             fields: {
                 priority: { stringValue: "high" }
-	    }
+            }
         }
     }
 }`;
@@ -175,11 +175,10 @@ SELECT 1`
               },
               metadata: {
                 overview: "table overview",
-
-                customAttributes: {
+                extraProperties: {
                   fields: {
                     priority: { stringValue: "high" }
-	          }
+                  }
                 }
               }
             }

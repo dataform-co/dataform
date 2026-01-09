@@ -90,10 +90,10 @@ actions:
     ${exampleBuiltInAssertions.inputAssertionBlock}
     metadata: {
         overview: "view overview",
-        customAttributes: {
+        extraProperties: {
             fields: {
                 priority: { stringValue: "high" }
-	    }
+            }
         }
     },
 }`;
@@ -170,10 +170,10 @@ SELECT 1`
               },
               metadata: {
                 overview: "view overview",
-                customAttributes: {
+                extraProperties: {
                   fields: {
                     priority: { stringValue: "high" }
-	          }
+                  }
                 }
               },
             },
