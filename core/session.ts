@@ -50,7 +50,6 @@ export class Session {
 
   public actions: Action[];
   public indexedActions: ActionMap;
-  public tests: { [name: string]: Test };
 
   // This map holds information about what assertions are dependent
   // upon a certain action in our actions list. We use this later to resolve dependencies.
@@ -77,7 +76,6 @@ export class Session {
       dataform.ProjectConfig.create(originalProjectConfig || projectConfig || DEFAULT_CONFIG)
     );
     this.actions = [];
-    this.tests = {};
     this.graphErrors = { compilationErrors: [] };
   }
 
@@ -390,7 +388,7 @@ export class Session {
     newTest.session = this;
     newTest.setFilename(utils.getCallerFile(this.rootDir));
     // Add it to global index.
-    this.tests[name] = newTest;
+    this.actions.push(newTest)
     return newTest;
   }
 
@@ -429,7 +427,6 @@ export class Session {
     this.indexedActions = new ActionMap(this.actions);
 
     // defaultLocation is no longer a required parameter to support location auto-selection.
-
     if (
       !!this.projectConfig.vars &&
       !Object.values(this.projectConfig.vars).every(value => typeof value === "string")
@@ -454,7 +451,9 @@ export class Session {
       declarations: this.compileGraphChunk(
         this.actions.filter(action => action instanceof Declaration)
       ),
-      tests: this.compileGraphChunk(Object.values(this.tests)),
+      tests: this.compileGraphChunk(
+        this.actions.filter(action => action instanceof Test)
+      ),
       notebooks: this.compileGraphChunk(this.actions.filter(action => action instanceof Notebook)),
       dataPreparations: this.compileGraphChunk(
         this.actions.filter(action => action instanceof DataPreparation)
@@ -464,13 +463,16 @@ export class Session {
       targets: this.actions.map(action => action.getTarget())
     });
 
+    this.addTestsAsDependenciesToTestedActions(this.actions);
+
     this.fullyQualifyDependencies(
       [].concat(
         compiledGraph.tables,
         compiledGraph.assertions,
         compiledGraph.operations,
         compiledGraph.notebooks,
-        compiledGraph.dataPreparations
+        compiledGraph.dataPreparations,
+        compiledGraph.tests
       )
     );
 
@@ -480,7 +482,8 @@ export class Session {
         compiledGraph.assertions,
         compiledGraph.operations,
         compiledGraph.notebooks,
-        compiledGraph.dataPreparations
+        compiledGraph.dataPreparations,
+        compiledGraph.tests
       ),
       [].concat(compiledGraph.declarations.map(declaration => declaration.target))
     );
@@ -495,7 +498,8 @@ export class Session {
         compiledGraph.assertions,
         compiledGraph.operations,
         compiledGraph.notebooks,
-        compiledGraph.dataPreparations
+        compiledGraph.dataPreparations,
+        compiledGraph.tests
       )
     );
     verifyObjectMatchesProto(
@@ -534,7 +538,7 @@ export class Session {
     return !!this.projectConfig.tablePrefix ? `${this.projectConfig.tablePrefix}_` : "";
   }
 
-  private compileGraphChunk<T>(actions: Array<Action | Test>): T[] {
+  private compileGraphChunk<T>(actions: Action[]): T[] {
     const compiledChunks: T[] = [];
 
     actions.forEach(action => {
@@ -549,11 +553,24 @@ export class Session {
     return compiledChunks;
   }
 
+  private addTestsAsDependenciesToTestedActions(actions: Action[]) {
+    actions
+      .filter(action => action instanceof Test)
+      .map(test => test as Test)
+      .forEach(test => {
+        this.indexedActions
+          .find(test.getTestTarget())
+          .filter(action => action instanceof Table || action instanceof View)
+          .map(action => action as Table | View)
+          .forEach(tableOrViewAction => tableOrViewAction.dependencies(utils.resolvableAsTarget(test.getTarget())));
+      });
+  }
+
   private fullyQualifyDependencies(actions: ActionProto[]) {
     actions.forEach(action => {
       const fullyQualifiedDependencies: { [name: string]: dataform.ITarget } = {};
       if (action instanceof dataform.Declaration || !action.dependencyTargets) {
-        // Declarations cannot have dependencies.
+        // Declarations cannot have dependencies. 
         return;
       }
       for (const dependency of action.dependencyTargets) {

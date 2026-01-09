@@ -264,6 +264,13 @@ message Test {
   string test_query = 2;
   string expected_output_query = 3;
 
+  repeated string tags = 5;
+
+  Target target = 6;
+  Target canonical_target = 7;
+
+  repeated Target dependency_targets = 9;
+
   // Generated.
   string file_name = 4;
 }
