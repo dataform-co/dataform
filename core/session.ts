@@ -52,7 +52,6 @@ export class Session {
   public canonicalProjectConfig: dataform.ProjectConfig;
 
   public actions: Action[];
-  public tests: Test[];
   public indexedActions: ResolvableMap<Action>;
 
   // This map holds information about what assertions are dependent
@@ -83,7 +82,6 @@ export class Session {
       dataform.ProjectConfig.create(originalProjectConfig || projectConfig || DEFAULT_CONFIG)
     );
     this.actions = [];
-    this.tests = [];
     this.graphErrors = { compilationErrors: [] };
     this.jitContextData = new google.protobuf.Struct();
   }
@@ -422,7 +420,6 @@ export class Session {
     newTest.setFilename(utils.getCallerFile(this.rootDir));
     // Add it to global index.
     this.actions.push(newTest)
-    this.tests.push(newTest);
     return newTest;
   }
 
@@ -509,7 +506,6 @@ export class Session {
       jitData: this.jitContextData,
     });
 
-    // Add unit tests as dependencies to the parent actions
     this.addTestsAsDependenciesToTestedActions(this.actions);
 
     this.fullyQualifyDependencies(
