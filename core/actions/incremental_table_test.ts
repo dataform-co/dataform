@@ -892,4 +892,39 @@ defaultIcebergConfig:
       });
     });
   });
+
+  test("incremental table without defaultProject in workflow_settings", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    // Create workflow_settings without defaultProject (only defaultDataset and defaultLocation)
+    fs.writeFileSync(
+      path.join(projectDir, "workflow_settings.yaml"),
+      `defaultDataset: dataform
+defaultLocation: europe-west2
+`
+    );
+    fs.mkdirSync(path.join(projectDir, "definitions"));
+    fs.writeFileSync(
+      path.join(projectDir, "definitions/incremental_table_without_default_project.sqlx"),
+      `config {
+    type: "incremental",
+    name: "incremental_table_without_default_project"
+}
+
+select \${incremental()} as is_incremental`
+    );
+
+    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+    expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+    const compiledTable = result.compile.compiledGraph.tables[0];
+    // Verify the table compiles without database field since defaultProject is not set.
+    // The BigQuery adapter's table() method uses the input target (which doesn't have a database)
+    // when defaultProject is not specified, ensuring that warehouse state targets match compiled targets.
+    // This allows incremental appends to work correctly even when defaultProject is not in workflow_settings.yaml.
+    expect(compiledTable.type).equals("incremental");
+    expect(compiledTable.enumType).equals(dataform.TableType.INCREMENTAL);
+    expect(compiledTable.target.schema).equals("dataform");
+    expect(compiledTable.target.name).equals("incremental_table_without_default_project");
+    expect(compiledTable.target.database).equals("");
+  });
 });

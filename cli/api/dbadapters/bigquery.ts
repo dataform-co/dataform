@@ -180,18 +180,17 @@ export class BigQueryDbAdapter implements IDbAdapter {
       return null;
     }
 
-    const metadataTarget = {
-      database: metadata.tableReference.projectId,
-      schema: metadata.tableReference.datasetId,
-      name: metadata.tableReference.tableId
-    };
-
     // Database isn't checked for equality as it's not always presented to the compiled graph, but
     // IS always available in the warehouse.
     if (
       metadata.tableReference.datasetId !== target.schema ||
       metadata.tableReference.tableId !== target.name
     ) {
+      const metadataTarget = {
+        database: metadata.tableReference.projectId,
+        schema: metadata.tableReference.datasetId,
+        name: metadata.tableReference.tableId
+      };
       throw new Error(
         `Target ${JSON.stringify(metadataTarget)} does not match requested target ${JSON.stringify(
           target
@@ -206,7 +205,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
           : metadata.type === "VIEW"
           ? dataform.TableMetadata.Type.VIEW
           : dataform.TableMetadata.Type.UNKNOWN,
-      target: metadataTarget,
+      target,
       fields: metadata.schema.fields?.map(field => convertField(field)),
       lastUpdatedMillis: Long.fromString(metadata.lastModifiedTime),
       description: metadata.description,
