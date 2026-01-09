@@ -202,28 +202,19 @@ export class Test extends ActionBuilder<dataform.Test> {
       } else {
         const refReplacingContext = new RefReplacingContext(testContext);
         this.proto.testQuery = refReplacingContext.apply(dataset.contextableQuery);
-        this.testTarget = dataform.Target.create(dataset.getTarget());
+
+        const testTarget = dataset as Table | View;
+        this.testTarget = dataform.Target.create(testTarget.getTarget());
 
         // Set the test query with the fully qualified table references.
-        if (dataset instanceof Table) {
-          this.proto.target = this.replaceTestNameInTarget(
-            dataset.getTarget(),
-            this.proto.name
-          );
-          this.proto.canonicalTarget = this.replaceTestNameInTarget(
-            dataset.getCanonicalTarget(),
-            this.proto.name
-          );
-        } else {
-          this.proto.target = this.replaceTestNameInTarget(
-            dataset.getTarget(),
-            this.proto.name 
-          );
-          this.proto.canonicalTarget = this.replaceTestNameInTarget(
-            dataset.getCanonicalTarget(),
-            this.proto.name
-          );
-        }
+        this.proto.target = this.replaceTestNameInTarget(
+          testTarget.getTarget(),
+          this.proto.name
+        );
+        this.proto.canonicalTarget = this.replaceTestNameInTarget(
+          testTarget.getCanonicalTarget(),
+          this.proto.name
+        );
       }
     }
     this.proto.expectedOutputQuery = testContext.apply(this.contextableQuery);
