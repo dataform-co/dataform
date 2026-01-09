@@ -206,12 +206,12 @@ export class Test extends ActionBuilder<dataform.Test> {
         const testTarget = dataset as Table | View;
         this.testTarget = dataform.Target.create(testTarget.getTarget());
 
-        // Set the test query with the fully qualified table references.
-        this.proto.target = this.replaceTestNameInTarget(
+        // Set the target and canonical target. This inherits the database and schema from the tested action, but uses the test's name.
+        this.proto.target = this.overrideTargetWithNewName(
           testTarget.getTarget(),
           this.proto.name
         );
-        this.proto.canonicalTarget = this.replaceTestNameInTarget(
+        this.proto.canonicalTarget = this.overrideTargetWithNewName(
           testTarget.getCanonicalTarget(),
           this.proto.name
         );
@@ -226,7 +226,7 @@ export class Test extends ActionBuilder<dataform.Test> {
     );
   }
 
-  private replaceTestNameInTarget(target: dataform.Target, testName: string): dataform.Target {
+  private overrideTargetWithNewName(target: dataform.Target, testName: string): dataform.Target {
     return dataform.Target.create({
       database: target.database, 
       schema: target.schema,
