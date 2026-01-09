@@ -3,6 +3,7 @@ syntax = "proto3";
 package dataform;
 
 import "protos/configs.proto";
+import "google/protobuf/struct.proto";
 
 option java_package = "com.dataform.protos";
 option java_outer_classname = "CoreMeta";
@@ -110,6 +111,7 @@ message ActionDescriptor {
 
 message Metadata {
   string overview = 1;
+  google.protobuf.Struct extra_properties = 2;
 }
 
 message ColumnDescriptor {

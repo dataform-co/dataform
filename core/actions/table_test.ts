@@ -92,6 +92,11 @@ actions:
     hermetic: true,
     metadata: {
         overview: "table overview",
+        extraProperties: {
+            fields: {
+                priority: { stringValue: "high" }
+            }
+        }
     }
 }`;
 
@@ -169,7 +174,12 @@ SELECT 1`
                 key: "val"
               },
               metadata: {
-                overview: "table overview"
+                overview: "table overview",
+                extraProperties: {
+                  fields: {
+                    priority: { stringValue: "high" }
+                  }
+                }
               }
             }
           }

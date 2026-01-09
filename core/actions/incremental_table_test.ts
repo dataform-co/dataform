@@ -104,6 +104,11 @@ actions:
     onSchemaChange: "SYNCHRONIZE",
     metadata: {
         overview: "incremental table overview",
+        extraProperties: {
+            fields: {
+                priority: { stringValue: "high" }
+            }
+        }
     },
 }
 `;
@@ -186,8 +191,13 @@ SELECT 1`
                 key: "val"
               },
               metadata: {
-                overview: "incremental table overview"
-              }
+                overview: "incremental table overview",
+                extraProperties: {
+                  fields: {
+                    priority: { stringValue: "high" }
+                  }
+                }
+              },
             }
           }
         ]);
