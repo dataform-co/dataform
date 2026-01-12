@@ -51,6 +51,9 @@ export class Session {
   public actions: Action[];
   public indexedActions: ActionMap;
 
+  // Tests need to be resolved after config is applied, which is why we keep them separate from other actions.
+  public tests: Action[];
+
   // This map holds information about what assertions are dependent
   // upon a certain action in our actions list. We use this later to resolve dependencies.
   public actionAssertionMap = new ActionMap([]);
@@ -76,6 +79,7 @@ export class Session {
       dataform.ProjectConfig.create(originalProjectConfig || projectConfig || DEFAULT_CONFIG)
     );
     this.actions = [];
+    this.tests = [];
     this.graphErrors = { compilationErrors: [] };
   }
 
@@ -388,7 +392,7 @@ export class Session {
     newTest.session = this;
     newTest.setFilename(utils.getCallerFile(this.rootDir));
     // Add it to global index.
-    this.actions.push(newTest)
+    this.tests.push(newTest)
     return newTest;
   }
 
@@ -424,6 +428,7 @@ export class Session {
   }
 
   public compile(): dataform.CompiledGraph {
+    this.actions.push(...this.tests);
     this.indexedActions = new ActionMap(this.actions);
 
     // defaultLocation is no longer a required parameter to support location auto-selection.

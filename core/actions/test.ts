@@ -79,8 +79,8 @@ export class Test extends ActionBuilder<dataform.Test> {
   public contextableInputs = new Map<string, Contextable<IActionContext, string>>();
   private inputToTargets = new Map<string, dataform.Target>();
   private contextableQuery: Contextable<IActionContext, string>; 
-  private datasetToTest: Resolvable;
   private testTarget: dataform.ITarget;
+  private canonicalTestTarget:  dataform.ITarget;
 
   /**
    * @hidden Stores the generated proto for the compiled graph.
@@ -95,13 +95,6 @@ export class Test extends ActionBuilder<dataform.Test> {
     if (config) {
       this.config(config);
     }
-
-    // Initialize target, ensuring we can compile the dag and add this test as a dependency to the tested action.
-    this.proto.target = this.applySessionToTarget(
-      dataform.Target.create({ name: config.name }), 
-      session.projectConfig,
-      config.filename
-    );
   }
 
   /** @hidden */
@@ -116,7 +109,15 @@ export class Test extends ActionBuilder<dataform.Test> {
       this.proto.name = config.name;
     }
     if (config.dataset) {
-      this.dataset(config.dataset);
+      // Determine target from the parent dataset name
+      const datasetToTest = this.applySessionToTarget(resolvableAsTarget(toResolvable(config.dataset)), this.session.projectConfig);
+      this.testTarget = dataform.Target.create(datasetToTest);
+      const canonicalDatasetToTest = this.applySessionToTarget(resolvableAsTarget(toResolvable(config.dataset)), this.session.canonicalProjectConfig);
+      this.canonicalTestTarget = dataform.Target.create(canonicalDatasetToTest);
+      
+      // Set the target as the test name, with the tested action database and schema.
+      this.proto.target = this.overrideTargetWithNewName(this.testTarget, config.name || "unnamed_test")
+      this.proto.canonicalTarget = this.overrideTargetWithNewName(this.canonicalTestTarget, config.name || "unnamed_test")
     }
     if (config.filename) {
       this.proto.fileName = config.filename;
@@ -128,7 +129,7 @@ export class Test extends ActionBuilder<dataform.Test> {
    * Sets the schema (BigQuery dataset) in which to create the output of this action.
    */
   public dataset(ref: Resolvable) {
-    this.datasetToTest = ref;
+    this.config({ dataset: ref });
     return this;
   }
 
@@ -175,23 +176,23 @@ export class Test extends ActionBuilder<dataform.Test> {
   /** @hidden */
   public compile() {
     const testContext = new TestContext(this);
-    if (!this.datasetToTest) {
+    if (!this.testTarget) {
       this.session.compileError(
         new Error("Tests must operate upon a specified dataset."),
         this.proto.fileName
       );
     } else {
-      const allResolved = this.session.indexedActions.find(resolvableAsTarget(this.datasetToTest));
+      const allResolved = this.session.indexedActions.find(this.testTarget);
       if (allResolved.length > 1) {
         this.session.compileError(
-          new Error(ambiguousActionNameMsg(this.datasetToTest, allResolved)),
+          new Error(ambiguousActionNameMsg(this.testTarget, allResolved)),
           this.proto.fileName
         );
       }
       const dataset = allResolved.length > 0 ? allResolved[0] : undefined;
       if (!(dataset && (dataset instanceof Table || dataset instanceof View))) {
         this.session.compileError(
-          new Error(`Dataset ${stringifyResolvable(this.datasetToTest)} could not be found.`),
+          new Error(`Dataset ${stringifyResolvable(this.testTarget)} could not be found.`),
           this.proto.fileName
         );
       } else if (dataset instanceof IncrementalTable) {
@@ -202,19 +203,6 @@ export class Test extends ActionBuilder<dataform.Test> {
       } else {
         const refReplacingContext = new RefReplacingContext(testContext);
         this.proto.testQuery = refReplacingContext.apply(dataset.contextableQuery);
-
-        const testTarget = dataset as Table | View;
-        this.testTarget = dataform.Target.create(testTarget.getTarget());
-
-        // Set the target and canonical target. This inherits the database and schema from the tested action, but uses the test's name.
-        this.proto.target = this.overrideTargetWithNewName(
-          testTarget.getTarget(),
-          this.proto.name
-        );
-        this.proto.canonicalTarget = this.overrideTargetWithNewName(
-          testTarget.getCanonicalTarget(),
-          this.proto.name
-        );
       }
     }
     this.proto.expectedOutputQuery = testContext.apply(this.contextableQuery);
@@ -226,7 +214,7 @@ export class Test extends ActionBuilder<dataform.Test> {
     );
   }
 
-  private overrideTargetWithNewName(target: dataform.Target, testName: string): dataform.Target {
+  private overrideTargetWithNewName(target: dataform.ITarget, testName: string): dataform.Target {
     return dataform.Target.create({
       database: target.database, 
       schema: target.schema,
