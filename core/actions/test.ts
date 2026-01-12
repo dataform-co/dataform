@@ -110,14 +110,26 @@ export class Test extends ActionBuilder<dataform.Test> {
     }
     if (config.dataset) {
       // Determine target from the parent dataset name
-      const datasetToTest = this.applySessionToTarget(resolvableAsTarget(toResolvable(config.dataset)), this.session.projectConfig);
-      this.testTarget = dataform.Target.create(datasetToTest);
-      const canonicalDatasetToTest = this.applySessionToTarget(resolvableAsTarget(toResolvable(config.dataset)), this.session.canonicalProjectConfig);
-      this.canonicalTestTarget = dataform.Target.create(canonicalDatasetToTest);
+      this.testTarget = dataform.Target.create(
+        this.applySessionToTarget(
+          resolvableAsTarget(
+            toResolvable(config.dataset)
+          ), 
+          this.session.projectConfig
+        )
+      );
+      const canonicalTestTarget = dataform.Target.create(
+        this.applySessionToTarget(
+          resolvableAsTarget(
+            toResolvable(config.dataset)
+          ), 
+          this.session.canonicalProjectConfig
+        )
+      );
       
       // Set the target as the test name, with the tested action database and schema.
       this.proto.target = this.overrideTargetWithNewName(this.testTarget, config.name || "unnamed_test")
-      this.proto.canonicalTarget = this.overrideTargetWithNewName(this.canonicalTestTarget, config.name || "unnamed_test")
+      this.proto.canonicalTarget = this.overrideTargetWithNewName(canonicalTestTarget, config.name || "unnamed_test")
     }
     if (config.filename) {
       this.proto.fileName = config.filename;
