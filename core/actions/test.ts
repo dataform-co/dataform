@@ -77,10 +77,8 @@ export class Test extends ActionBuilder<dataform.Test> {
 
   /** @hidden We delay contextification until the final compile step, so hold these here for now. */
   public contextableInputs = new Map<string, Contextable<IActionContext, string>>();
-  private inputToTargets = new Map<string, dataform.Target>();
   private contextableQuery: Contextable<IActionContext, string>; 
   private testTarget: dataform.ITarget;
-  private canonicalTestTarget:  dataform.ITarget;
 
   /**
    * @hidden Stores the generated proto for the compiled graph.
@@ -149,13 +147,10 @@ export class Test extends ActionBuilder<dataform.Test> {
    * Sets the input query to unit test against.
    */
   public input(refName: string | string[], contextableQuery: Contextable<IActionContext, string>) {
-    const target = resolvableAsTarget(toResolvable(refName));
-    const inputName = targetStringifier.stringify(target);
     this.contextableInputs.set(
-      inputName,
+      targetStringifier.stringify(resolvableAsTarget(toResolvable(refName))),
       contextableQuery
     );
-    this.inputToTargets.set(inputName, target); 
     return this;
   }
 
