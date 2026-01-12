@@ -33,7 +33,8 @@ actions:
       fs.writeFileSync(actionTestSqlxPath, `
 config {
   type: "test",
-  dataset: "action"
+  dataset: "action",
+  tags: ["tag1", "tag2"]
 }
 SELECT 1`);
 
@@ -60,6 +61,7 @@ SELECT 1`);
               schema: "defaultDataset",
               name: "action_test"
             },
+            tags: ["tag1", "tag2"],
           }
         ])
       );
