@@ -32,10 +32,13 @@ export interface ITestConfig extends INamedConfig {
 
   /** Path to the source file that the contents of the action is loaded from. */
   filename?: string;
+
+  /** Tags for this test action. */
+  tags?: string[];
 }
 
 /** @hidden */
-const ITestConfigProperties = strictKeysOf<ITestConfig>()(["type", "dataset", "name", "filename"]);
+const ITestConfigProperties = strictKeysOf<ITestConfig>()(["type", "dataset", "name", "filename", "tags"]);
 
 /**
  * Dataform test actions can be used to write unit tests for your generated SQL
@@ -131,6 +134,9 @@ export class Test extends ActionBuilder<dataform.Test> {
     }
     if (config.filename) {
       this.proto.fileName = config.filename;
+    }
+    if (config.tags) {
+      this.proto.tags = config.tags;
     }
     return this;
   }
