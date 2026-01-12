@@ -126,8 +126,8 @@ export class Test extends ActionBuilder<dataform.Test> {
       );
       
       // Set the target as the test name, with the tested action database and schema.
-      this.proto.target = this.overrideTargetWithNewName(this.testTarget, config.name || "unnamed_test")
-      this.proto.canonicalTarget = this.overrideTargetWithNewName(canonicalTestTarget, config.name || "unnamed_test")
+      this.proto.target = this.overrideTargetWithNewName(this.testTarget, this.proto.name);
+      this.proto.canonicalTarget = this.overrideTargetWithNewName(canonicalTestTarget, this.proto.name);
     }
     if (config.filename) {
       this.proto.fileName = config.filename;
