@@ -484,16 +484,6 @@ export class Table extends ActionBuilder<dataform.Table> {
   }
 
   /** @hidden */
-  public getCanonicalTarget() {
-    return dataform.Target.create(this.proto.canonicalTarget);
-  }
-
-  /** @hidden */
-  public getDependencyTargets(): dataform.Target[] {
-    return this.proto.dependencyTargets.map(target => dataform.Target.create(target));
-  }
-
-  /** @hidden */
   public compile() {
     const context = new TableContext(this);
     const incrementalContext = new TableContext(this, true);
