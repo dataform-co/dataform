@@ -266,6 +266,15 @@ message Test {
 
   // Generated.
   string file_name = 4;
+
+  bool disabled = 5;
+
+  repeated string tags = 6;
+
+  Target target = 7;
+  Target canonical_target = 8;
+
+  repeated Target dependency_targets = 9;
 }
 
 message Notebook {
