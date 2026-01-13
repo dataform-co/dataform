@@ -5,6 +5,7 @@ import { IncrementalTable } from "df/core/actions/incremental_table";
 import { Notebook } from "df/core/actions/notebook";
 import { Operation } from "df/core/actions/operation";
 import { Table } from "df/core/actions/table";
+import { Test } from "df/core/actions/test";
 import { View } from "df/core/actions/view";
 import { IColumnsDescriptor } from "df/core/column_descriptors";
 import { Resolvable } from "df/core/contextables";
@@ -19,7 +20,8 @@ export type Action =
   | Assertion
   | Declaration
   | Notebook
-  | DataPreparation;
+  | DataPreparation
+  | Test;
 
 export type ActionProto =
   | dataform.Table // core.proto's Table represents the Table, View or IncrementalTable action type.
@@ -27,7 +29,8 @@ export type ActionProto =
   | dataform.Assertion
   | dataform.Declaration
   | dataform.Notebook
-  | dataform.DataPreparation;
+  | dataform.DataPreparation
+  | dataform.Test;
 
 // In v4, consider making methods on inheritors of this private, forcing users to use constructors
 // in order to populate actions.

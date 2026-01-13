@@ -32,10 +32,13 @@ export interface ITestConfig extends INamedConfig {
 
   /** Path to the source file that the contents of the action is loaded from. */
   filename?: string;
+
+  /** Tags for this test action. */
+  tags?: string[];
 }
 
 /** @hidden */
-const ITestConfigProperties = strictKeysOf<ITestConfig>()(["type", "dataset", "name", "filename"]);
+const ITestConfigProperties = strictKeysOf<ITestConfig>()(["type", "dataset", "name", "filename", "tags"]);
 
 /**
  * Dataform test actions can be used to write unit tests for your generated SQL
@@ -77,8 +80,8 @@ export class Test extends ActionBuilder<dataform.Test> {
 
   /** @hidden We delay contextification until the final compile step, so hold these here for now. */
   public contextableInputs = new Map<string, Contextable<IActionContext, string>>();
-  private contextableQuery: Contextable<IActionContext, string>;
-  private datasetToTest: Resolvable;
+  private contextableQuery: Contextable<IActionContext, string>; 
+  private testTarget: dataform.ITarget;
 
   /**
    * @hidden Stores the generated proto for the compiled graph.
@@ -107,10 +110,33 @@ export class Test extends ActionBuilder<dataform.Test> {
       this.proto.name = config.name;
     }
     if (config.dataset) {
-      this.dataset(config.dataset);
+      // Determine target from the parent dataset name
+      this.testTarget = dataform.Target.create(
+        this.applySessionToTarget(
+          resolvableAsTarget(
+            toResolvable(config.dataset)
+          ), 
+          this.session.projectConfig
+        )
+      );
+      const canonicalTestTarget = dataform.Target.create(
+        this.applySessionToTarget(
+          resolvableAsTarget(
+            toResolvable(config.dataset)
+          ), 
+          this.session.canonicalProjectConfig
+        )
+      );
+      
+      // Set the target as the test name, with the tested action database and schema.
+      this.proto.target = overrideTargetWithNewName(this.testTarget, this.proto.name);
+      this.proto.canonicalTarget = overrideTargetWithNewName(canonicalTestTarget, this.proto.name);
     }
     if (config.filename) {
       this.proto.fileName = config.filename;
+    }
+    if (config.tags) {
+      this.proto.tags = config.tags;
     }
     return this;
   }
@@ -119,7 +145,7 @@ export class Test extends ActionBuilder<dataform.Test> {
    * Sets the schema (BigQuery dataset) in which to create the output of this action.
    */
   public dataset(ref: Resolvable) {
-    this.datasetToTest = ref;
+    this.config({ dataset: ref });
     return this;
   }
 
@@ -143,17 +169,19 @@ export class Test extends ActionBuilder<dataform.Test> {
   }
 
   /** @hidden */
-  public getFileName() {
+  public getFileName(): string {
     return this.proto.fileName;
   }
 
   /** @hidden */
-  public getTarget(): undefined {
-    // The test action type has no target because it is not processed during regular execution.
-    return undefined;
+  public getTarget(): dataform.Target {
+    return dataform.Target.create(this.proto.target);
   }
 
-  /** @hidden */
+  public getTestTarget(): dataform.Target {
+    return dataform.Target.create(this.testTarget);
+  }
+
   public setFilename(filename: string) {
     this.proto.fileName = filename;
   }
@@ -161,23 +189,23 @@ export class Test extends ActionBuilder<dataform.Test> {
   /** @hidden */
   public compile() {
     const testContext = new TestContext(this);
-    if (!this.datasetToTest) {
+    if (!this.testTarget) {
       this.session.compileError(
         new Error("Tests must operate upon a specified dataset."),
         this.proto.fileName
       );
     } else {
-      const allResolved = this.session.indexedActions.find(resolvableAsTarget(this.datasetToTest));
+      const allResolved = this.session.indexedActions.find(this.testTarget);
       if (allResolved.length > 1) {
         this.session.compileError(
-          new Error(ambiguousActionNameMsg(this.datasetToTest, allResolved)),
+          new Error(ambiguousActionNameMsg(this.testTarget, allResolved)),
           this.proto.fileName
         );
       }
       const dataset = allResolved.length > 0 ? allResolved[0] : undefined;
       if (!(dataset && (dataset instanceof Table || dataset instanceof View))) {
         this.session.compileError(
-          new Error(`Dataset ${stringifyResolvable(this.datasetToTest)} could not be found.`),
+          new Error(`Dataset ${stringifyResolvable(this.testTarget)} could not be found.`),
           this.proto.fileName
         );
       } else if (dataset instanceof IncrementalTable) {
@@ -310,4 +338,12 @@ class RefReplacingContext implements ITableContext {
   public tags(tags: string[]) {
     return "";
   }
+}
+
+function overrideTargetWithNewName(target: dataform.ITarget, testName: string): dataform.Target {
+  return dataform.Target.create({
+    database: target.database,
+    schema: target.schema,
+    name: testName
+  });
 }
