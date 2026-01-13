@@ -328,16 +328,6 @@ suite("examples", () => {
               database: databaseWithSuffix("tada-analytics"),
               schema: schemaWithSuffix("df_integration_test"),
               name: "sample_data"
-            }),
-            dataform.Target.create({
-              database: databaseWithSuffix("tada-analytics"),
-              schema: schemaWithSuffix("df_integration_test"),
-              name: "example_test_case"
-            }),
-            dataform.Target.create({
-              database: databaseWithSuffix("tada-analytics"),
-              schema: schemaWithSuffix("df_integration_test"),
-              name: "example_test_case_fq_ref"
             })
           ]);
           expect(exampleTable.preOps).to.eql([]);

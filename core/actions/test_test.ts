@@ -78,13 +78,6 @@ SELECT 1`);
               "name": "action",
               "schema": "defaultDataset"
             },
-            "dependencyTargets": [
-              {
-                "database": "defaultProject",
-                "name": "action_test",
-                "schema": "defaultDataset"
-              }
-            ],
             "disabled": false,
             "enumType": "TABLE",
             "fileName": "definitions/action.sql",
@@ -213,11 +206,6 @@ SELECT 1 AS a, 2 AS b`);
                 "database": "defaultProject",
                 "name": "a_declaration",
                 "schema": "defaultDataset"
-              },
-              {
-                "database": "defaultProject",
-                "name": "action1_test",
-                "schema": "defaultDataset"
               }
             ],
             "disabled": false,
@@ -242,11 +230,6 @@ SELECT 1 AS a, 2 AS b`);
               {
                 "database": "defaultProject",
                 "name": "action1",
-                "schema": "defaultDataset"
-              },
-              {
-                "database": "defaultProject",
-                "name": "action2_test",
                 "schema": "defaultDataset"
               }
             ],
@@ -365,13 +348,6 @@ SELECT 2`);
               "name": "action",
               "schema": "schema1"
             },
-            "dependencyTargets": [
-              {
-                "database": "defaultProject",
-                "name": "schema1_action_test",
-                "schema": "schema1"
-              }
-            ],
             "disabled": false,
             "enumType": "TABLE",
             "fileName": "definitions/schema1_action.sqlx",
@@ -390,13 +366,6 @@ SELECT 2`);
               "name": "action",
               "schema": "schema2"
             },
-            "dependencyTargets": [
-              {
-                "database": "defaultProject",
-                "name": "schema2_action_test",
-                "schema": "schema2"
-              }
-            ],
             "disabled": false,
             "enumType": "TABLE",
             "fileName": "definitions/schema2_action.sqlx",

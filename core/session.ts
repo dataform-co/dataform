@@ -468,8 +468,6 @@ export class Session {
       targets: this.actions.map(action => action.getTarget())
     });
 
-    this.addTestsAsDependenciesToTestedActions(this.actions);
-
     this.fullyQualifyDependencies(
       [].concat(
         compiledGraph.tables,
@@ -556,19 +554,6 @@ export class Session {
     });
 
     return compiledChunks;
-  }
-
-  private addTestsAsDependenciesToTestedActions(actions: Action[]) {
-    actions
-      .filter(action => action instanceof Test)
-      .map(test => test as Test)
-      .forEach(test => {
-        this.indexedActions
-          .find(test.getTestTarget())
-          .filter(action => action instanceof Table || action instanceof View)
-          .map(action => action as Table | View)
-          .forEach(tableOrViewAction => tableOrViewAction.dependencies(utils.resolvableAsTarget(test.getTarget())));
-      });
   }
 
   private fullyQualifyDependencies(actions: ActionProto[]) {
