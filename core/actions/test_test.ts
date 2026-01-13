@@ -312,13 +312,6 @@ SELECT 2`);
               "name": "action",
               "schema": "schema1"
             },
-            "dependencyTargets": [
-              {
-                "database": "defaultProject",
-                "name": "schema1_action_test",
-                "schema": "schema1"
-              }
-            ],
             "disabled": false,
             "enumType": "TABLE",
             "fileName": "definitions/schema1_action.sqlx",
@@ -337,13 +330,6 @@ SELECT 2`);
               "name": "action",
               "schema": "schema2"
             },
-            "dependencyTargets": [
-              {
-                "database": "defaultProject",
-                "name": "schema2_action_test",
-                "schema": "schema2"
-              }
-            ],
             "disabled": false,
             "enumType": "TABLE",
             "fileName": "definitions/schema2_action.sqlx",
