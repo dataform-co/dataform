@@ -560,7 +560,7 @@ export class Session {
     actions.forEach(action => {
       const fullyQualifiedDependencies: { [name: string]: dataform.ITarget } = {};
       if (action instanceof dataform.Declaration || !action.dependencyTargets) {
-        // Declarations cannot have dependencies. 
+        // Declarations cannot have dependencies.
         return;
       }
       for (const dependency of action.dependencyTargets) {

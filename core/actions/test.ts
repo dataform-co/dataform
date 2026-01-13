@@ -129,8 +129,8 @@ export class Test extends ActionBuilder<dataform.Test> {
       );
       
       // Set the target as the test name, with the tested action database and schema.
-      this.proto.target = this.overrideTargetWithNewName(this.testTarget, this.proto.name);
-      this.proto.canonicalTarget = this.overrideTargetWithNewName(canonicalTestTarget, this.proto.name);
+      this.proto.target = overrideTargetWithNewName(this.testTarget, this.proto.name);
+      this.proto.canonicalTarget = overrideTargetWithNewName(canonicalTestTarget, this.proto.name);
     }
     if (config.filename) {
       this.proto.fileName = config.filename;
@@ -225,14 +225,6 @@ export class Test extends ActionBuilder<dataform.Test> {
       this.proto,
       VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM
     );
-  }
-
-  private overrideTargetWithNewName(target: dataform.ITarget, testName: string): dataform.Target {
-    return dataform.Target.create({
-      database: target.database, 
-      schema: target.schema,
-      name: testName
-    });
   }
 }
 
@@ -346,4 +338,12 @@ class RefReplacingContext implements ITableContext {
   public tags(tags: string[]) {
     return "";
   }
+}
+
+function overrideTargetWithNewName(target: dataform.ITarget, testName: string): dataform.Target {
+  return dataform.Target.create({
+    database: target.database,
+    schema: target.schema,
+    name: testName
+  });
 }
