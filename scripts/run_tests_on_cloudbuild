@@ -2,7 +2,9 @@
 set -e
 
 bazel run @nodejs//:yarn config set registry https://us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/
-bazel run @nodejs//:npm install
+bazel run //tools/registry-tools:switch_registry -- $(pwd)/yarn.lock https://us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/
+# Install from trusted registry, prohibit lockfile changes.
+bazel run @nodejs//:yarn install -- --frozen-lockfile
 
 # Run unit tests
 ./scripts/run_tests
