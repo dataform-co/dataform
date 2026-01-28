@@ -15,8 +15,9 @@ if [ "$(git status --porcelain)" ]; then
 fi
 
 # Run all the tests.
-bazel run @nodejs//:yarn config set registry https://us-npm.pkg.dev/artifact-foundry-prod/ah-3p-staging-npm/
-bazel run @nodejs//:npm install
+bazel run @nodejs//:npm config set registry https://us-npm.pkg.dev/artifact-foundry-prod/ah-3p-staging-npm/
+rm ./package-lock.json # Use repository versions instead
+bazel run @nodejs//:npm install -- --legacy-peer-deps
 bazel test //... --build_tests_only
 
 # After the code is build with Airlock dependencies, we change the registry to public npmjs

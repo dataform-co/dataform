@@ -39,7 +39,7 @@ http_archive(
     urls = ["https://github.com/bazelbuild/rules_nodejs/releases/download/3.8.0/rules_nodejs-3.8.0.tar.gz"],
 )
 
-load("@build_bazel_rules_nodejs//:index.bzl", "node_repositories", "yarn_install")
+load("@build_bazel_rules_nodejs//:index.bzl", "node_repositories", "npm_install")
 
 node_repositories(
     node_repositories = {
@@ -51,14 +51,13 @@ node_repositories(
     },
     node_version = "24.13.0",
     package_json = ["//:package.json"],
-    yarn_version = "1.13.0",
 )
 
-yarn_install(
+npm_install(
     name = "npm",
     package_json = "//:package.json",
     symlink_node_modules = False,
-    yarn_lock = "//:yarn.lock",
+    package_lock_json = "//:package-lock.json",
 )
 
 # Go/Gazelle requirements/dependencies.

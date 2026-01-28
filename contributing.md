@@ -96,10 +96,10 @@ The projects folder here is not built as it requires an environment file, which 
 
 ### Add New NPM Dependencies
 
-Global yarn installations will throw errors when installing packages, instead you should use:
+Global npm installations will throw errors when installing packages, instead you should use:
 
 ```bash
-$ bazel run @nodejs//:yarn add ...
+$ bazel run @nodejs//:npm install ...
 ```
 
 Additionally, installed NPM dependencies need to be added to the `deps` of `ts_library` rules by
