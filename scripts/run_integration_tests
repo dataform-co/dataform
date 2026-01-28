@@ -2,7 +2,7 @@
 set -e
 
 # Run tslint.
-bazel run @nodejs//:yarn
+bazel run @nodejs//:npm install
 bazel build @npm//tslint/bin:tslint && bazel-bin/external/npm/tslint/bin/tslint.sh --project .
 
 # Run integration tests

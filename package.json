@@ -54,7 +54,7 @@
     "request": "^2.88.0",
     "rimraf": "^2.6.2",
     "rollup": "^2.79.2",
-    "rollup-plugin-dts": "^1.4.0",
+    "rollup-plugin-dts": "^1.4.0 <1.4.11",
     "semver": "^7.5.2",
     "source-map-support": "^0.5.21",
     "tarjan-graph": "^2.0.0",
