@@ -2,7 +2,9 @@
 set -e
 
 bazel run @nodejs//:yarn config set registry https://us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/
-bazel run @nodejs//:npm install
+rm ./yarn.lock
+bazel run @nodejs//:yarn install
+cat ./yarn.lock
 
 # Run unit tests
 ./scripts/run_tests
