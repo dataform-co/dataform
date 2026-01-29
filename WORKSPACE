@@ -43,13 +43,13 @@ load("@build_bazel_rules_nodejs//:index.bzl", "node_repositories", "yarn_install
 
 node_repositories(
     node_repositories = {
-        "16.16.0-darwin_amd64": ("node-v16.16.0-darwin-x64.tar.gz", "node-v16.16.0-darwin-x64", "982edd0fad364ad6e2d72161671544ab9399bd0ca8c726bde3cd07775c4c709a"),
-        "16.16.0-darwin_arm64": ("node-v16.16.0-darwin-arm64.tar.gz", "node-v16.16.0-darwin-arm64", "167721c2d72402e54adc0f8c87ca840796216c4d98946509d73221b771ad3e4c"),
-        "16.16.0-linux_amd64": ("node-v16.16.0-linux-x64.tar.xz", "node-v16.16.0-linux-x64", "edcb6e9bb049ae365611aa209fc03c4bfc7e0295dbcc5b2f1e710ac70384a8ec"),
-        "16.16.0-linux_arm64": ("node-v16.16.0-linux-arm64.tar.xz", "node-v16.16.0-linux-arm64", "6cb8f1353480646c1cd8ab9911995e5591e1a97811f43ea4ab3e946a57e7c80e"),
-        "16.16.0-windows_amd64": ("node-v16.16.0-win-x64.zip", "node-v16.16.0-win-x64", "c657acc98af55018c8fd6113c7e08d67c8083af75ba0306f9561b0117abc39d4"),
+        "24.13.0-darwin_amd64": ("node-v24.13.0-darwin-x64.tar.xz", "node-v24.13.0-darwin-x64", "4ca0a48233f091a2a69ec28dd58e59f394a1b2d4f052b6c6b10f760377fe266f"), 
+        "24.13.0-darwin_arm64" : ("node-v24.13.0-darwin-arm64.tar.xz", "node-v24.13.0-darwin-arm64", "c59a517e9147f25c6167426875a571432f1478c1d7ee7ecc10baa46b0d0e8545"),
+        "24.13.0-linux_amd64" : ("node-v24.13.0-linux-x64.tar.xz", "node-v24.13.0-linux-x64", "e798599612f4bb71333a3397ab0d095fd62214e115aea45aa858a145fc72d67e"),
+        "24.13.0-linux_arm64" : ("node-v24.13.0-linux-arm64.tar.xz", "node-v24.13.0-linux-arm64", "e798599612f4bb71333a3397ab0d095fd62214e115aea45aa858a145fc72d67e"),
+        "24.13.0-windows_amd64" : ("node-v24.13.0-win-x64.zip", "node-v24.13.0-win-x64", "ca2742695be8de44027d71b3f53a4bdb36009b95575fe1ae6f7f0b5ce091cb88"),
     },
-    node_version = "16.16.0",
+    node_version = "24.13.0",
     package_json = ["//:package.json"],
     yarn_version = "1.13.0",
 )
