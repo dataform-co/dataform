@@ -50,7 +50,9 @@ export class Session {
 
   public actions: Action[];
   public indexedActions: ActionMap;
-  public tests: { [name: string]: Test };
+
+  // Tests need to be resolved after config is applied, which is why we keep them separate from other actions.
+  public tests: Action[];
 
   // This map holds information about what assertions are dependent
   // upon a certain action in our actions list. We use this later to resolve dependencies.
@@ -77,7 +79,7 @@ export class Session {
       dataform.ProjectConfig.create(originalProjectConfig || projectConfig || DEFAULT_CONFIG)
     );
     this.actions = [];
-    this.tests = {};
+    this.tests = [];
     this.graphErrors = { compilationErrors: [] };
   }
 
@@ -390,7 +392,7 @@ export class Session {
     newTest.session = this;
     newTest.setFilename(utils.getCallerFile(this.rootDir));
     // Add it to global index.
-    this.tests[name] = newTest;
+    this.tests.push(newTest)
     return newTest;
   }
 
@@ -426,10 +428,10 @@ export class Session {
   }
 
   public compile(): dataform.CompiledGraph {
+    this.actions.push(...this.tests);
     this.indexedActions = new ActionMap(this.actions);
 
     // defaultLocation is no longer a required parameter to support location auto-selection.
-
     if (
       !!this.projectConfig.vars &&
       !Object.values(this.projectConfig.vars).every(value => typeof value === "string")
@@ -454,7 +456,9 @@ export class Session {
       declarations: this.compileGraphChunk(
         this.actions.filter(action => action instanceof Declaration)
       ),
-      tests: this.compileGraphChunk(Object.values(this.tests)),
+      tests: this.compileGraphChunk(
+        this.actions.filter(action => action instanceof Test)
+      ),
       notebooks: this.compileGraphChunk(this.actions.filter(action => action instanceof Notebook)),
       dataPreparations: this.compileGraphChunk(
         this.actions.filter(action => action instanceof DataPreparation)
@@ -470,7 +474,8 @@ export class Session {
         compiledGraph.assertions,
         compiledGraph.operations,
         compiledGraph.notebooks,
-        compiledGraph.dataPreparations
+        compiledGraph.dataPreparations,
+        compiledGraph.tests
       )
     );
 
@@ -480,7 +485,8 @@ export class Session {
         compiledGraph.assertions,
         compiledGraph.operations,
         compiledGraph.notebooks,
-        compiledGraph.dataPreparations
+        compiledGraph.dataPreparations,
+        compiledGraph.tests
       ),
       [].concat(compiledGraph.declarations.map(declaration => declaration.target))
     );
@@ -495,7 +501,8 @@ export class Session {
         compiledGraph.assertions,
         compiledGraph.operations,
         compiledGraph.notebooks,
-        compiledGraph.dataPreparations
+        compiledGraph.dataPreparations,
+        compiledGraph.tests
       )
     );
     verifyObjectMatchesProto(
@@ -534,7 +541,7 @@ export class Session {
     return !!this.projectConfig.tablePrefix ? `${this.projectConfig.tablePrefix}_` : "";
   }
 
-  private compileGraphChunk<T>(actions: Array<Action | Test>): T[] {
+  private compileGraphChunk<T>(actions: Action[]): T[] {
     const compiledChunks: T[] = [];
 
     actions.forEach(action => {
