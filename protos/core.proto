@@ -100,6 +100,17 @@ message CompilationError {
   string stack = 3;
 }
 
+// Compilation mode, unspecified is interpreted to AoT.
+enum ActionCompilationMode {
+  ACTION_COMPILATION_MODE_UNSPECIFIED = 0;
+  // Ahead-of-time compilation (regular Dataform compilation).
+  ACTION_COMPILATION_MODE_AOT = 1;
+  // Just-in-time compilation.
+  // Will only populate jit_code fields in compiled graph,
+  // to be re-compiled at execution time.
+  ACTION_COMPILATION_MODE_JIT = 2;
+}
+
 message ActionDescriptor {
   string description = 1;
   // For Operations, 'columns' may be set iff has_output == true.
@@ -107,6 +118,7 @@ message ActionDescriptor {
   repeated ColumnDescriptor columns = 2;
   map<string, string> bigquery_labels = 3;
   Metadata metadata = 4;
+  ActionCompilationMode compilation_mode = 5;
 }
 
 message Metadata {
@@ -188,6 +200,8 @@ message Table {
   repeated string incremental_pre_ops = 28;
   repeated string incremental_post_ops = 29;
 
+  string jit_code = 38;
+
   // Warehouse specific features.
   BigQueryOptions bigquery = 22;
 
@@ -207,6 +221,7 @@ message Operation {
   bool disabled = 14;
 
   repeated string queries = 6;
+  string jit_code = 15;
   bool has_output = 8;
   repeated string tags = 9;
 
@@ -263,6 +278,8 @@ message Test {
 
   string test_query = 2;
   string expected_output_query = 3;
+
+  string jit_code = 10;
 
   // Generated.
   string file_name = 4;
@@ -378,6 +395,8 @@ message CompiledGraph {
   string dataform_core_version = 10;
 
   repeated Target targets = 11;
+
+  google.protobuf.Struct jit_context = 15;
 
   reserved 5, 6;
 }

@@ -13,6 +13,7 @@ proto_library(
         "execution.proto",
         "profiles.proto",
     ],
+    deps = ["@com_google_protobuf//:struct_proto"],
 )
 
 ts_proto_library(
