@@ -310,12 +310,20 @@ message Notebook {
   string notebook_contents = 7;
 }
 
+message RepositorySnapshotDestination {
+  string repository_snapshot_uri = 1;
+}
+
 message NotebookRuntimeOptions {
   oneof output_sink {
     string output_bucket = 1;
   }
 
   string runtime_template_name = 2;
+
+  oneof repository_snapshot_storage {
+    RepositorySnapshotDestination repository_snapshot_destination = 3;
+  }
 }
 
 // Data Preparation Related entries

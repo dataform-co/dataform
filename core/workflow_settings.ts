@@ -132,6 +132,16 @@ export function workflowSettingsAsProjectConfig(
       projectConfig.defaultNotebookRuntimeOptions.runtimeTemplateName =
         workflowSettings.defaultNotebookRuntimeOptions.runtimeTemplateName;
     }
+    if (workflowSettings.defaultNotebookRuntimeOptions.repositorySnapshotDestination) {
+      projectConfig.defaultNotebookRuntimeOptions.repositorySnapshotDestination = {};
+      if (workflowSettings.defaultNotebookRuntimeOptions.repositorySnapshotDestination.repositorySnapshotUri) {
+        projectConfig.defaultNotebookRuntimeOptions.repositorySnapshotDestination.repositorySnapshotUri =
+          workflowSettings.defaultNotebookRuntimeOptions.repositorySnapshotDestination.repositorySnapshotUri;
+      } else if (workflowSettings.defaultNotebookRuntimeOptions.outputBucket) {
+        projectConfig.defaultNotebookRuntimeOptions.repositorySnapshotDestination.repositorySnapshotUri =
+          workflowSettings.defaultNotebookRuntimeOptions.outputBucket;
+      }
+    }
   }
   if(workflowSettings.defaultIcebergConfig) {
     projectConfig.defaultIcebergConfig = {};

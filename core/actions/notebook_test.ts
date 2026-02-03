@@ -108,6 +108,8 @@ defaultLocation: US
 defaultNotebookRuntimeOptions:
   outputBucket: gs://some-bucket
   runtimeTemplateName: projects/test-project/locations/us-central1/notebookRuntimeTemplates/test-template
+  repositorySnapshotDestination:
+    repositorySnapshotUri: gs://some-other-bucket
   `);
     fs.writeFileSync(path.join(projectDir, "definitions/notebook.ipynb"), EMPTY_NOTEBOOK_CONTENTS);
 
@@ -120,7 +122,10 @@ defaultNotebookRuntimeOptions:
       defaultNotebookRuntimeOptions: {
         outputBucket: "gs://some-bucket",
         runtimeTemplateName:
-          "projects/test-project/locations/us-central1/notebookRuntimeTemplates/test-template"
+          "projects/test-project/locations/us-central1/notebookRuntimeTemplates/test-template",
+        repositorySnapshotDestination: {
+          repositorySnapshotUri: "gs://some-other-bucket"
+        }
       },
       warehouse: "bigquery"
     });
