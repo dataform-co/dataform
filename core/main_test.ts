@@ -608,7 +608,7 @@ someKey: and an extra: colon
       fs.writeFileSync(path.join(projectDir, "dataform.json"), '{keyWithNoQuotes: "validValue"}');
 
       expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
-        "Unexpected token k in JSON at position 1"
+        "Expected property name or '}' in JSON at position 1 (line 1 column 2)"
       );
     });
 
