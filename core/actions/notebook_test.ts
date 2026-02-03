@@ -108,6 +108,8 @@ defaultLocation: US
 defaultNotebookRuntimeOptions:
   outputBucket: gs://some-bucket
   runtimeTemplateName: projects/test-project/locations/us-central1/notebookRuntimeTemplates/test-template
+  repositorySnapshotDestination:
+    repositorySnapshotUri: gs://some-other-bucket
   `);
     fs.writeFileSync(path.join(projectDir, "definitions/notebook.ipynb"), EMPTY_NOTEBOOK_CONTENTS);
 
@@ -120,10 +122,57 @@ defaultNotebookRuntimeOptions:
       defaultNotebookRuntimeOptions: {
         outputBucket: "gs://some-bucket",
         runtimeTemplateName:
-          "projects/test-project/locations/us-central1/notebookRuntimeTemplates/test-template"
+          "projects/test-project/locations/us-central1/notebookRuntimeTemplates/test-template",
+        repositorySnapshotDestination: {
+          repositorySnapshotUri: "gs://some-other-bucket"
+        }
       },
       warehouse: "bigquery"
     });
+  });
+
+  test(`notebook default runtime options snapshot destination defaults to output bucket`, () => {
+    const projectDir = createSimpleNotebookProject(`
+defaultProject: dataform
+defaultLocation: US
+defaultNotebookRuntimeOptions:
+  outputBucket: gs://some-bucket
+  runtimeTemplateName: projects/test-project/locations/us-central1/notebookRuntimeTemplates/test-template
+  repositorySnapshotDestination: {}
+  `);
+    fs.writeFileSync(path.join(projectDir, "definitions/notebook.ipynb"), EMPTY_NOTEBOOK_CONTENTS);
+
+    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+    expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+    expect(asPlainObject(result.compile.compiledGraph.projectConfig)).deep.equals({
+      defaultDatabase: "dataform",
+      defaultLocation: "US",
+      defaultNotebookRuntimeOptions: {
+        outputBucket: "gs://some-bucket",
+        runtimeTemplateName:
+          "projects/test-project/locations/us-central1/notebookRuntimeTemplates/test-template",
+        repositorySnapshotDestination: {
+          repositorySnapshotUri: "gs://some-bucket"
+        }
+      },
+      warehouse: "bigquery"
+    });
+  });
+
+  test(`notebook default runtime options throw for snapshot destination with no uri or output bucket`, () => {
+    const projectDir = createSimpleNotebookProject(`
+defaultProject: dataform
+defaultLocation: US
+defaultNotebookRuntimeOptions:
+  runtimeTemplateName: projects/test-project/locations/us-central1/notebookRuntimeTemplates/test-template
+  repositorySnapshotDestination: {}
+  `);
+    fs.writeFileSync(path.join(projectDir, "definitions/notebook.ipynb"), EMPTY_NOTEBOOK_CONTENTS);
+
+    expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
+      "Invalid repository_snapshot_destination: either repository_snapshot_uri or output_bucket has to be defined"
+    );
   });
 
   suite("sqlx and JS API config options", () => {

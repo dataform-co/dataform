@@ -5,3 +5,5 @@ defaultAssertionDataset: dataform_extreme_weather_programming_example_assertions
 defaultNotebookRuntimeOptions:
   outputBucket: gs://some-bucket
   runtimeTemplateName: projects/test-project/locations/us-central1/notebookRuntimeTemplates/test-template
+  repositorySnapshotDestination:
+    repositorySnapshotUri: gs://some-other-bucket

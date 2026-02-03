@@ -680,6 +680,11 @@ message ActionConfig {
   }
 }
 
+message RepositorySnapshotDestinationConfig {
+  // Storage URI to upload the repository snapshot to.
+  string repository_snapshot_uri = 1;
+}
+
 message NotebookRuntimeOptionsConfig {
   oneof output_sink {
     // Storage bucket to output notebooks to after their execution.
@@ -689,4 +694,13 @@ message NotebookRuntimeOptionsConfig {
   // Colab runtime template (https://cloud.google.com/colab/docs/runtimes), from
   // which a runtime is created for notebook executions.
   string runtime_template_name = 2;
+
+  // The destination for the snapshot of repository files to be available for
+  // read-only access inside a notebook runtime.
+  oneof repository_snapshot_storage {
+    // Storage URI to upload the snapshot to.
+    // For empty URI it defaults to the provided output_bucket.
+    RepositorySnapshotDestinationConfig repository_snapshot_destination = 3;
+  }
+
 }

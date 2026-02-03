@@ -124,13 +124,27 @@ export function workflowSettingsAsProjectConfig(
   }
   if (workflowSettings.defaultNotebookRuntimeOptions) {
     projectConfig.defaultNotebookRuntimeOptions = {};
-    if (workflowSettings.defaultNotebookRuntimeOptions.outputBucket) {
-      projectConfig.defaultNotebookRuntimeOptions.outputBucket =
-        workflowSettings.defaultNotebookRuntimeOptions.outputBucket;
+    const {outputBucket, runtimeTemplateName, repositorySnapshotDestination} =
+      workflowSettings.defaultNotebookRuntimeOptions;
+    if (outputBucket) {
+      projectConfig.defaultNotebookRuntimeOptions.outputBucket = outputBucket;
     }
-    if (workflowSettings.defaultNotebookRuntimeOptions.runtimeTemplateName) {
-      projectConfig.defaultNotebookRuntimeOptions.runtimeTemplateName =
-        workflowSettings.defaultNotebookRuntimeOptions.runtimeTemplateName;
+    if (runtimeTemplateName) {
+      projectConfig.defaultNotebookRuntimeOptions.runtimeTemplateName = runtimeTemplateName;
+    }
+    if (repositorySnapshotDestination) {
+      projectConfig.defaultNotebookRuntimeOptions.repositorySnapshotDestination = {};
+      if (repositorySnapshotDestination.repositorySnapshotUri) {
+        projectConfig.defaultNotebookRuntimeOptions.repositorySnapshotDestination.repositorySnapshotUri =
+          repositorySnapshotDestination.repositorySnapshotUri;
+      } else if (outputBucket) {
+        projectConfig.defaultNotebookRuntimeOptions.repositorySnapshotDestination.repositorySnapshotUri =
+          outputBucket;
+      } else {
+        throw Error(
+          "Invalid repository_snapshot_destination: either repository_snapshot_uri or output_bucket " +
+            "has to be defined");
+      }
     }
   }
   if(workflowSettings.defaultIcebergConfig) {
