@@ -5,7 +5,7 @@ import { dump as dumpYaml } from "js-yaml";
 import * as path from "path";
 
 import { version } from "df/core/version";
-import { dataform } from "df/protos/ts";
+import { dataform, google } from "df/protos/ts";
 import { asPlainObject, suite, test } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
 import {
@@ -708,6 +708,7 @@ select 1 AS \${dataform.projectConfig.vars.selectVar}`
         asPlainObject({
           dataformCoreVersion: version,
           graphErrors: {},
+          jitData: {},
           projectConfig: {
             defaultDatabase: "defaultProject",
             defaultLocation: "locationInOverride",
@@ -884,6 +885,7 @@ select 1 AS \${dataform.projectConfig.vars.columnVar}`
             ],
             dataformCoreVersion: version,
             graphErrors: {},
+            jitData: {},
             projectConfig: {
               defaultLocation: "us",
               vars: {
@@ -1590,6 +1592,117 @@ assert("name", {
           ])
         );
         expect(result.compile.compiledGraph.tables.length).equals(1);
+      });
+    });
+
+    suite("jitData", () => {
+      test("jitData is added to the compiled graph", () => {
+        const projectDir = tmpDirFixture.createNewTmpDir();
+        fs.writeFileSync(
+          path.join(projectDir, "workflow_settings.yaml"),
+          VALID_WORKFLOW_SETTINGS_YAML
+        );
+        fs.mkdirSync(path.join(projectDir, "definitions"));
+        fs.writeFileSync(
+          path.join(projectDir, "definitions/jit.js"),
+          `
+dataform.jitData("key", {
+  "number": 123,
+  "string": "value",
+  "boolean": true,
+  "struct": {
+    "nestedKey": "nestedValue"
+  },
+  "list": [
+    "a",
+    "b",
+    "c"
+  ],
+  "null": null,
+  "undef": undefined,
+});`
+        );
+        const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+        expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+        expect(result.compile.compiledGraph.jitData).to.deep.equal(
+          google.protobuf.Struct.create({
+            fields: {
+              key: google.protobuf.Value.create({
+                structValue: google.protobuf.Struct.create({
+                  fields: {
+                    number: google.protobuf.Value.create({ numberValue: 123 }),
+                    string: google.protobuf.Value.create({ stringValue: "value" }),
+                    boolean: google.protobuf.Value.create({ boolValue: true }),
+                    struct: google.protobuf.Value.create({
+                      structValue: google.protobuf.Struct.create({
+                        fields: {
+                          nestedKey: google.protobuf.Value.create({ stringValue: "nestedValue" })
+                        }
+                      })
+                    }),
+                    list: google.protobuf.Value.create({
+                      listValue: google.protobuf.ListValue.create({
+                        values: [
+                          google.protobuf.Value.create({ stringValue: "a" }),
+                          google.protobuf.Value.create({ stringValue: "b" }),
+                          google.protobuf.Value.create({ stringValue: "c" })
+                        ]
+                      })
+                    }),
+                    null: google.protobuf.Value.create({
+                      nullValue: google.protobuf.NullValue.NULL_VALUE
+                    }),
+                    undef: google.protobuf.Value.create({
+                      nullValue: google.protobuf.NullValue.NULL_VALUE
+                    }),
+                  }
+                })
+              })
+            }
+          })
+        );
+      });
+
+      test("jitData with duplicate key throws error", () => {
+        const projectDir = tmpDirFixture.createNewTmpDir();
+        fs.writeFileSync(
+          path.join(projectDir, "workflow_settings.yaml"),
+          VALID_WORKFLOW_SETTINGS_YAML
+        );
+        fs.mkdirSync(path.join(projectDir, "definitions"));
+        fs.writeFileSync(
+          path.join(projectDir, "definitions/jit.js"),
+          `
+dataform.jitData("key", 1);
+dataform.jitData("key", 2);
+`
+        );
+        const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+        expect(
+          result.compile.compiledGraph.graphErrors.compilationErrors.map(e => e.message)
+        ).to.deep.equal(["JiT context data with key key already exists."]);
+      });
+
+      test("jitData with unsupported type throws error", () => {
+        const projectDir = tmpDirFixture.createNewTmpDir();
+        fs.writeFileSync(
+          path.join(projectDir, "workflow_settings.yaml"),
+          VALID_WORKFLOW_SETTINGS_YAML
+        );
+        fs.mkdirSync(path.join(projectDir, "definitions"));
+        fs.writeFileSync(
+          path.join(projectDir, "definitions/jit.js"),
+          `
+dataform.jitData("key", {test: () => {}});
+`
+        );
+        const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+        expect(
+          result.compile.compiledGraph.graphErrors.compilationErrors.map(e => e.message)
+        ).to.deep.equal(["Unsupported context object: () => {}"]);
       });
     });
 
