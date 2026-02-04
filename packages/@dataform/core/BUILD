@@ -68,6 +68,18 @@ add_license_header_to_file(
 )
 
 add_license_header_to_file(
+    name = "db_adapter_proto_with_license",
+    from_file = "//protos:db_adapter.proto",
+    to_file = "db_adapter.proto",
+)
+
+add_license_header_to_file(
+    name = "jit_proto_with_license",
+    from_file = "//protos:jit.proto",
+    to_file = "jit.proto",
+)
+
+add_license_header_to_file(
     name = "bundle_with_license",
     from_file = "bundle",
     to_file = "bundle.js",
@@ -95,6 +107,8 @@ pkg_npm_tar(
         ":bundle_with_license",
         ":configs_proto_with_license",
         ":core_proto_with_license",
+        ":db_adapter_proto_with_license",
+        ":jit_proto_with_license",
         ":package.json",
         "//:version.bzl",
     ],

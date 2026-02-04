@@ -1,0 +1,108 @@
+syntax = "proto3";
+
+package dataform;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/struct.proto";
+import "protos/core.proto";
+import "protos/db_adapter.proto";
+
+// Database adapter, available in JiT compilation context.
+service DbAdapter {
+  // Executes a query.
+  rpc Execute(ExecuteRequest) returns (ExecuteResponse) {}
+
+  // Lists table in schema.
+  rpc ListTables(ListTablesRequest) returns (ListTablesResponse) {}
+
+  // Gets table for target.
+  rpc GetTable(GetTableRequest) returns (TableMetadata) {}
+
+  // Drops table of specified target.
+  rpc DeleteTable(DeleteTableRequest) returns (google.protobuf.Empty) {}
+}
+
+// Request to execute synchronous SQL query.
+message ExecuteRequest {
+  // SQL statement query.
+  string statement = 1;
+  // Max rows to return in the job.
+  int64 row_limit = 2;
+  // Max bytes to process.
+  int64 byte_limit = 3;
+  // Whether or not fetch result rows.
+  bool fetch_results = 4;
+
+  BigQueryExecuteOptions big_query_options = 5;
+}
+
+message BigQueryExecuteOptions {
+  // Priority - interactive if true or batch if false (default).
+  bool interactive = 1;
+  // See https://docs.cloud.google.com/bigquery/docs/reference/legacy-sql.
+  bool use_legacy_sql = 2;
+  // Labels to add to the job.
+  map<string, string> labels = 3;
+  // Location to execute the job at.
+  string location = 4;
+  // Job prefix to add.
+  string job_prefix = 5;
+  // Is dry run job.
+  bool dry_run = 6;
+}
+
+// Synchronous execution response result.
+message ExecuteResponse {
+  // Job metadata.
+  ExecutionMetadata execution_metadata = 1;
+  // Rows. For BigQuery, see
+  // https://docs.cloud.google.com/bigquery/docs/reference/rest/v2/jobs/getQueryResults.
+  repeated google.protobuf.Struct rows = 2;
+  repeated string errors = 3;
+}
+
+// Request to list tables in schema.
+message ListTablesRequest {
+  string database = 1;
+  string schema = 2;
+}
+
+// Tables metadata in schema.
+message ListTablesResponse {
+  repeated TableMetadata tables = 1;
+}
+
+// Request to get table metadata for target.
+message GetTableRequest {
+  Target target = 1;
+}
+
+// Request to drop the table for target.
+message DeleteTableRequest {
+  Target target = 1;
+}
+
+// JiT compilation result for table actions (including views).
+// Fields match the Table message.
+message JitTableResult {
+  // SQL Select query of the table.
+  string query = 1;
+  // Optional pre-operation statements.
+  repeated string pre_ops = 3;
+  // Optional post-operation statements.
+  repeated string post_ops = 4;
+}
+
+// JiT compilation result for incremental table actions.
+message JitIncrementalTableResult {
+  // Fields match the Table message.
+  JitTableResult regular = 1;
+  // Fields match incremental_ fields in the Table message.
+  JitTableResult incremental = 2;
+}
+
+// JiT compilation result for operation actions.
+message JitOperationResult {
+  // Sequence of SQL operations.
+  repeated string queries = 1;
+}
