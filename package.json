@@ -72,7 +72,7 @@
     "uglify-js": "^3.7.7",
     "untildify": "^4.0.0",
     "url": "^0.11.0",
-    "vm2": "3.9.19",
+    "vm2": "3.10.2",
     "vsce": "^1.79.5",
     "vscode-jsonrpc": "^5.0.1",
     "vscode-languageclient": "^6.1.3",
