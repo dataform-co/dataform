@@ -193,13 +193,13 @@ export class Test extends ActionBuilder<dataform.Test> {
     this.proto.expectedOutputQuery = testContext.apply(this.contextableQuery);
 
     // Check if the test query and expected output query are non-empty.
-    if (!this.proto.testQuery || this.proto.testQuery.trim() === "") {
+    if (!this.proto.testQuery.trim()) {
       this.session.compileError(
         new Error("Test query is empty."),
         this.proto.fileName
       );
     }
-    if (!this.proto.expectedOutputQuery || this.proto.expectedOutputQuery.trim() === "") {
+    if (!this.proto.expectedOutputQuery.trim()) {
       this.session.compileError(
         new Error("Expected query is empty."),
         this.proto.fileName
