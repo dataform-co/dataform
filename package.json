@@ -80,7 +80,7 @@
     "vscode-languageserver-protocol": "^3.15.3",
     "vscode-languageserver-textdocument": "^1.0.1",
     "vscode-languageserver-types": "3.15.1",
-    "webpack": "5.94.0",
+    "webpack": "5.104.1",
     "webpack-cli": "4.10.0",
     "yargs": "^16.2.0"
   },
