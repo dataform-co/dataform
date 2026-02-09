@@ -82,6 +82,41 @@ message DeleteTableRequest {
   Target target = 1;
 }
 
+// JiT compilation target type.
+enum JitCompilationTargetType {
+  // Unspecified - will result in error.
+  JIT_COMPILATION_TARGET_TYPE_UNSPECIFIED = 0;
+  // Table/view target.
+  JIT_COMPILATION_TARGET_TYPE_TABLE = 1;
+  // Operation target.
+  JIT_COMPILATION_TARGET_TYPE_OPERATION = 2;
+  // Incremental table target.
+  JIT_COMPILATION_TARGET_TYPE_INCREMENTAL_TABLE = 3;
+}
+
+// JiT compilation request.
+message JitCompilationRequest {
+  // Canonical target being compiled.
+  Target target = 1;
+  // Canonical target dependencies.
+  repeated Target dependencies = 2;
+  // JiT code to compile.
+  string jit_code = 3;
+  // JiT data, exposed to code in context.
+  google.protobuf.Struct jit_data = 4;
+  // JiT compilation target type.
+  JitCompilationTargetType compilation_target_type = 5;
+}
+
+// JiT compilation response.
+message JitCompilationResponse {
+  oneof response {
+    JitTableResult table = 1;
+    JitOperationResult operation = 2;
+    JitIncrementalTableResult incremental_table = 3;
+  }
+}
+
 // JiT compilation result for table actions (including views).
 // Fields match the Table message.
 message JitTableResult {
