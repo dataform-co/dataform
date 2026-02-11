@@ -28,7 +28,7 @@ export function compile(code: string, path: string): string {
   if (Path.fileExtension(path) === "sqlx") {
     return compileSqlx(SyntaxTreeNode.create(code), path);
   }
-  if (Path.fileExtension(path) === "yaml") {
+  if (Path.fileExtension(path) === "yaml" || Path.fileExtension(path) === "yml") {
     try {
       const yamlAsJson = loadYaml(code);
       return `exports.asJson = ${JSON.stringify(yamlAsJson)}`;
