@@ -7,6 +7,7 @@ import {
   getFileFormatValueForIcebergTable,
   getStorageUriForIcebergTable,
   validateConnectionFormat,
+  validateNoMixedCompilationMode,
   validateStorageUriFormat,
 } from './utils';
 
@@ -270,6 +271,32 @@ suite('Dataform Utility Validations', () => {
 
     test('handles empty tableFolderSubpath', () => {
       expect(getStorageUriForIcebergTable(testBucket, testRoot, '')).to.equal('gs://my-iceberg-bucket/_dataform/');
+    });
+  });
+
+  suite('validateNoMixedCompilationMode', () => {
+    const sessionStub = {
+      compileError: (_: Error, __: string) => {
+        return;
+      }
+    } as any;
+
+    test('does not throw when no AoT properties are present', () => {
+      assertNoThrow(() => validateNoMixedCompilationMode(sessionStub, 'filename', undefined, undefined, [], []));
+    });
+
+    test('throws when query is present', () => {
+      assertThrowsWithMessage(
+        () => validateNoMixedCompilationMode(sessionStub, 'filename', 'query', undefined, [], []),
+        'Cannot mix AoT and JiT compilation in action. The following AoT properties were found: query'
+      );
+    });
+
+    test('throws correct error message listing all conflicting properties', () => {
+      assertThrowsWithMessage(
+        () => validateNoMixedCompilationMode(sessionStub, 'filename', 'query', 'where', ['op'], ['op']),
+        'Cannot mix AoT and JiT compilation in action. The following AoT properties were found: query, where, postOps, preOps'
+      );
     });
   });
 });

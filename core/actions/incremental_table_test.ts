@@ -8,7 +8,7 @@ import {
   exampleBuiltInAssertions,
   exampleBuiltInAssertionsAsYaml
 } from "df/core/actions/index_test";
-import {dataform} from "df/protos/ts";
+import { dataform } from "df/protos/ts";
 import { asPlainObject, suite, test } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
 import {
@@ -396,7 +396,7 @@ defaultIcebergConfig:
           }
         }`,
         expected: {
-          target: {name: "incremental_table1", schema: "dataset1", database: "defaultProject"},
+          target: { name: "incremental_table1", schema: "dataset1", database: "defaultProject" },
           bigquery: {
             tableFormat: "ICEBERG",
             fileFormat: "PARQUET",
@@ -423,7 +423,7 @@ defaultIcebergConfig:
           }
         }`,
         expected: {
-          target: {name: "incremental_table2", schema: "dataset2", database: "defaultProject"},
+          target: { name: "incremental_table2", schema: "dataset2", database: "defaultProject" },
           bigquery: {
             tableFormat: "ICEBERG",
             fileFormat: "PARQUET",
@@ -449,7 +449,7 @@ defaultIcebergConfig:
           }
         }`,
         expected: {
-          target: {name: "incremental_table3", schema: "dataset3", database: "defaultProject"},
+          target: { name: "incremental_table3", schema: "dataset3", database: "defaultProject" },
           bigquery: {
             tableFormat: "ICEBERG",
             fileFormat: "PARQUET",
@@ -475,7 +475,7 @@ defaultIcebergConfig:
           }
         }`,
         expected: {
-          target: {name: "my-incremental", schema: "my-dataset", database: "defaultProject"},
+          target: { name: "my-incremental", schema: "my-dataset", database: "defaultProject" },
           bigquery: {
             tableFormat: "ICEBERG",
             fileFormat: "PARQUET",
@@ -500,7 +500,7 @@ defaultIcebergConfig:
           }
         }`,
         expected: {
-          target: {name: "my-incremental", schema: "defaultDataset", database: "defaultProject"},
+          target: { name: "my-incremental", schema: "defaultDataset", database: "defaultProject" },
           bigquery: {
             tableFormat: "ICEBERG",
             fileFormat: "PARQUET",
@@ -526,7 +526,7 @@ defaultIcebergConfig:
           }
         }`,
         expected: {
-          target: {name: "incremental_table6", schema: "dataset6", database: "defaultProject"},
+          target: { name: "incremental_table6", schema: "dataset6", database: "defaultProject" },
           bigquery: {
             tableFormat: "ICEBERG",
             fileFormat: "PARQUET",
@@ -552,7 +552,7 @@ defaultIcebergConfig:
           }
         }`,
         expected: {
-          target: {name: "incremental_table7", schema: "dataset7", database: "defaultProject"},
+          target: { name: "incremental_table7", schema: "dataset7", database: "defaultProject" },
           bigquery: {
             tableFormat: "ICEBERG",
             fileFormat: "PARQUET",
@@ -579,7 +579,7 @@ defaultIcebergConfig:
           }
         }`,
         expected: {
-          target: {name: "incremental_table8", schema: "dataset8", database: "defaultProject"},
+          target: { name: "incremental_table8", schema: "dataset8", database: "defaultProject" },
           bigquery: {
             tableFormat: "ICEBERG",
             fileFormat: "PARQUET",
@@ -657,7 +657,7 @@ defaultIcebergConfig:
           }
         }`,
         expected: {
-          target: {name: "iceberg_incremental_mixed", schema: "mixed_dataset", database: "defaultProject"},
+          target: { name: "iceberg_incremental_mixed", schema: "mixed_dataset", database: "defaultProject" },
           bigquery: {
             tableFormat: "ICEBERG",
             fileFormat: "PARQUET",
@@ -665,8 +665,8 @@ defaultIcebergConfig:
             storageUri: "gs://my-bucket/my-root/my-subpath",
             partitionBy: "partition_col",
             clusterBy: ["cluster_col1", "cluster_col2"],
-            labels: {"env": "test", "type": "iceberg"},
-            additionalOptions: {"key1": "val1", "key2": "val2"},
+            labels: { "env": "test", "type": "iceberg" },
+            additionalOptions: { "key1": "val1", "key2": "val2" },
           },
         },
         expectError: false,
@@ -829,7 +829,7 @@ defaultIcebergConfig:
         },
         expectError: false,
       },
-       {
+      {
         testName: "bucketName not defined in config or workspace settings",
         configBlock: `
         type: "incremental",
@@ -926,5 +926,61 @@ select \${incremental()} as is_incremental`
     expect(compiledTable.target.schema).equals("dataform");
     expect(compiledTable.target.name).equals("incremental_table_without_default_project");
     expect(compiledTable.target.database).equals("");
+  });
+
+  suite("jit compilation", () => {
+    test("jit compilation is supported", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(path.join(projectDir, "workflow_settings.yaml"), VALID_WORKFLOW_SETTINGS_YAML);
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/incremental.js"),
+        `publish("incremental", {type: "incremental"}).jitCode((ctx) => Promise.resolve({query: "select 1", incrementalQuery: "select 1"}))`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals([
+        {
+          target: {
+            database: "defaultProject",
+            schema: "defaultDataset",
+            name: "incremental"
+          },
+          canonicalTarget: {
+            database: "defaultProject",
+            schema: "defaultDataset",
+            name: "incremental"
+          },
+          type: "incremental",
+          enumType: "INCREMENTAL",
+          disabled: false,
+          protected: false,
+          hermeticity: "NON_HERMETIC",
+          onSchemaChange: "IGNORE",
+          fileName: "definitions/incremental.js",
+          jitCode: '(ctx) => Promise.resolve({query: "select 1", incrementalQuery: "select 1"})',
+          actionDescriptor: {
+            compilationMode: "ACTION_COMPILATION_MODE_JIT"
+          }
+        }
+      ]);
+    });
+
+    test("jit compilation fails if query is also provided", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(path.join(projectDir, "workflow_settings.yaml"), VALID_WORKFLOW_SETTINGS_YAML);
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/incremental.js"),
+        `publish("incremental", {type: "incremental"}).jitCode((ctx) => ({query: "select 1", incrementalQuery: "select 1"})).query("select 1")`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).greaterThan(0);
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors.some(e => e.message.includes("Cannot mix AoT and JiT compilation"))).equals(true);
+    });
   });
 });

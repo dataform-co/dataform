@@ -6,7 +6,7 @@ import { Notebook } from "df/core/actions/notebook";
 import { Operation } from "df/core/actions/operation";
 import { Table } from "df/core/actions/table";
 import { View } from "df/core/actions/view";
-import { Resolvable } from "df/core/contextables";
+import { Contextable, Resolvable } from "df/core/contextables";
 import * as Path from "df/core/path";
 import { Session } from "df/core/session";
 import { dataform } from "df/protos/ts";
@@ -177,8 +177,8 @@ export function ambiguousActionNameMsg(act: Resolvable, allActs: Action[] | stri
     typeof allActs[0] === "string"
       ? allActs
       : (allActs as Array<Table | Operation | Assertion>).map(
-          r => `${r.getTarget().schema}.${r.getTarget().name}`
-        );
+        r => `${r.getTarget().schema}.${r.getTarget().name}`
+      );
   return `Ambiguous Action name: ${stringifyResolvable(
     act
   )}. Did you mean one of: ${allActNames.join(", ")}.`;
@@ -225,8 +225,7 @@ export function checkExcessProperties<T>(
   if (extraProperties.length > 0) {
     reportError(
       new Error(
-        `Unexpected property "${extraProperties[0]}"${
-          !!name ? ` in ${name}` : ""
+        `Unexpected property "${extraProperties[0]}"${!!name ? ` in ${name}` : ""
         }. Supported properties are: ${JSON.stringify(supportedProperties)}`
       )
     );
@@ -242,6 +241,37 @@ export function validateQueryString(session: Session, query: string, filename: s
       ),
       filename
     );
+  }
+}
+
+export function validateNoMixedCompilationMode(
+  session: Session,
+  filename: string,
+  contextableQuery: Contextable<any, any>,
+  contextableWhere: Contextable<any, any>,
+  contextablePostOps: Array<Contextable<any, any>>,
+  contextablePreOps: Array<Contextable<any, any>>
+) {
+  let flattenPostOps: unknown[] = [];
+  contextablePostOps.forEach(op => {
+    flattenPostOps = flattenPostOps.concat(typeof op === "object" ? op : [op]);
+  });
+  let flattenPreOps: unknown[] = [];
+  contextablePreOps.forEach(op => {
+    flattenPreOps = flattenPreOps.concat(typeof op === "object" ? op : [op]);
+  });
+  const conflictingProperties: string[] = [];
+  if (!!contextableQuery) { conflictingProperties.push("query"); }
+  if (!!contextableWhere) { conflictingProperties.push("where"); }
+  if (!!flattenPostOps.length) { conflictingProperties.push("postOps"); }
+  if (!!flattenPreOps.length) { conflictingProperties.push("preOps"); }
+  if (conflictingProperties.length) {
+    const err = new Error(
+      `Cannot mix AoT and JiT compilation in action. The following AoT properties were found: ${conflictingProperties.join(", ")
+      }`
+    );
+    session.compileError(err, filename);
+    throw err;
   }
 }
 
@@ -325,9 +355,9 @@ export function getConnectionForIcebergTable(
   configConnection?: string,
   defaultConnection?: string,
 ): string {
-  if(configConnection) {
+  if (configConnection) {
     return configConnection;
-  } else if(defaultConnection) {
+  } else if (defaultConnection) {
     return defaultConnection;
   } else {
     return "DEFAULT";
@@ -361,9 +391,9 @@ export function getEffectiveBucketName(
   defaultBucketName?: string,
   configBucketName?: string,
 ): string {
-  if(configBucketName) {
+  if (configBucketName) {
     return configBucketName;
-  } else if(defaultBucketName) {
+  } else if (defaultBucketName) {
     return defaultBucketName;
   } else {
     throw new Error(
@@ -386,9 +416,9 @@ export function getEffectiveTableFolderRoot(
   defaultTableFolderRoot?: string,
   configTableFolderRoot?: string,
 ): string {
-  if(configTableFolderRoot) {
+  if (configTableFolderRoot) {
     return configTableFolderRoot;
-  } else if(defaultTableFolderRoot) {
+  } else if (defaultTableFolderRoot) {
     return defaultTableFolderRoot;
   } else {
     return "_dataform";
@@ -412,9 +442,9 @@ export function getEffectiveTableFolderSubpath(
   defaultTableFolderSubpath?: string,
   configTableFolderSubpath?: string,
 ): string {
-  if(configTableFolderSubpath) {
+  if (configTableFolderSubpath) {
     return configTableFolderSubpath;
-  } else if(defaultTableFolderSubpath) {
+  } else if (defaultTableFolderSubpath) {
     return defaultTableFolderSubpath;
   } else {
     return `${datasetName}/${tableName}`;

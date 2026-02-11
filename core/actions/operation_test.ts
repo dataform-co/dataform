@@ -205,4 +205,55 @@ actions:
       ])
     );
   });
+
+  suite("jit compilation", () => {
+    test("jit compilation is supported", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(path.join(projectDir, "workflow_settings.yaml"), VALID_WORKFLOW_SETTINGS_YAML);
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/op.js"),
+        `operate("op").jitCode((ctx) => Promise.resolve("select 1"))`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.operations)).deep.equals([
+        {
+          target: {
+            database: "defaultProject",
+            schema: "defaultDataset",
+            name: "op"
+          },
+          canonicalTarget: {
+            database: "defaultProject",
+            schema: "defaultDataset",
+            name: "op"
+          },
+          hermeticity: "NON_HERMETIC",
+          fileName: "definitions/op.js",
+          jitCode: '(ctx) => Promise.resolve("select 1")',
+          actionDescriptor: {
+            compilationMode: "ACTION_COMPILATION_MODE_JIT"
+          }
+        }
+      ]);
+    });
+
+    test("jit compilation fails if queries is also provided", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(path.join(projectDir, "workflow_settings.yaml"), VALID_WORKFLOW_SETTINGS_YAML);
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/op.js"),
+        `operate("op").jitCode((ctx) => "select 1").queries("select 1")`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).greaterThan(0);
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors.some(e => e.message.includes("Cannot mix AoT and JiT compilation"))).equals(true);
+    });
+  });
 });
