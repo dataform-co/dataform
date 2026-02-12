@@ -106,6 +106,8 @@ message JitCompilationRequest {
   google.protobuf.Struct jit_data = 4;
   // JiT compilation target type.
   JitCompilationTargetType compilation_target_type = 5;
+  // List of additional file paths accessible at compilation.
+  repeated string file_paths = 6;
 }
 
 // JiT compilation response.
