@@ -92,6 +92,8 @@ export type JitContext<T> = T & {
   adapter: dataform.DbAdapter,
   /** JiT data object. */
   data?: { [k: string]: any },
+  /** Original JiT compilation request. */
+  request: dataform.IJitCompilationRequest,
 };
 
 /** 

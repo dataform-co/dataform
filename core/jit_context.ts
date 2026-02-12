@@ -6,25 +6,25 @@ function canonicalTargetValue(target: dataform.ITarget): string {
     return `${target.database}.${target.schema}.${target.name}`;
 }
 
-function schemaTargetValue(target: dataform.ITarget): string {
-    return `${target.schema}.${target.name}`;
-}
-
 /** Generate SQL action JiT context. */
 export class SqlActionJitContext implements JitContext<IActionContext> {
+    public readonly data: { [k: string]: any } | undefined;
+
+    private readonly target: dataform.ITarget;
     private readonly resolvableMap: ResolvableMap<string>;
 
     constructor(
         public readonly adapter: dataform.DbAdapter,
-        public readonly data: { [k: string]: any } | undefined,
-        private readonly target: dataform.ITarget,
-        dependencies: dataform.ITarget[],
+        public readonly request: dataform.IJitCompilationRequest,
     ) {
-        const resolvables = [target, ...dependencies];
+        this.target = request.target;
+        const dependencies = request.dependencies;
+        const resolvables = [this.target, ...dependencies];
         this.resolvableMap = new ResolvableMap(resolvables.map(dep => ({
             actionTarget: dep,
             value: canonicalTargetValue(dep)
         })));
+        this.data = request.jitData;
     }
 
     public self(): string {
@@ -75,11 +75,9 @@ export class SqlActionJitContext implements JitContext<IActionContext> {
 export class TableJitContext extends SqlActionJitContext implements JitContext<ITableContext> {
     constructor(
         adapter: dataform.DbAdapter,
-        data: { [k: string]: any } | undefined,
-        target: dataform.ITarget,
-        dependencies: dataform.ITarget[],
+        request: dataform.IJitCompilationRequest,
     ) {
-        super(adapter, data, target, dependencies);
+        super(adapter, request);
     }
 
     public when(cond: boolean, trueCase: string, falseCase?: string) {
@@ -94,12 +92,10 @@ export class TableJitContext extends SqlActionJitContext implements JitContext<I
 /** JiT context for incremental table actions. */
 export class IncrementalTableJitContext extends TableJitContext {
     constructor(adapter: dataform.DbAdapter,
-        data: { [k: string]: any } | undefined,
-        target: dataform.ITarget,
-        dependencies: dataform.ITarget[],
+        request: dataform.IJitCompilationRequest,
         private readonly isIncrementalContext: boolean,
     ) {
-        super(adapter, data, target, dependencies);
+        super(adapter, request);
     }
 
     public incremental(): boolean {
