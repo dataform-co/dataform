@@ -33,6 +33,7 @@ ts_library(
         "contextables.ts",
         "extension.ts",
         "index.ts",
+        "jit_compiler.ts",
         "jit_context.ts",
         "main.ts",
         "path.ts",
@@ -77,6 +78,7 @@ ts_test_suite(
         "actions/table_test.ts",
         "actions/test_test.ts",
         "actions/view_test.ts",
+        "jit_compiler_test.ts",
         "jit_context_test.ts",
     ],
     data = [

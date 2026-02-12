@@ -1,5 +1,6 @@
 import { compile as compiler } from "df/core/compilers";
 import { IDataformExtension } from "df/core/extension";
+import { IJitCompiler, jitCompiler } from "df/core/jit_compiler";
 import { main } from "df/core/main";
 import { Session } from "df/core/session";
 import { version } from "df/core/version";
@@ -29,4 +30,4 @@ function indexFileGenerator() {
 // These exports constitute the public API of @dataform/core.
 // They must also be listed in packages/@dataform/core/index.ts.
 // Changes to these will break @dataform/cli, so take care!
-export { compiler, IDataformExtension, indexFileGenerator, main, session, supportedFeatures, version };
+export { compiler, IDataformExtension, indexFileGenerator, IJitCompiler, jitCompiler, main, session, supportedFeatures, version };
