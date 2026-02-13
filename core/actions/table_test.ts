@@ -839,5 +839,153 @@ defaultIcebergConfig:
       expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).greaterThan(0);
       expect(result.compile.compiledGraph.graphErrors.compilationErrors.some(e => e.message.includes("Cannot mix AoT and JiT compilation"))).equals(true);
     });
+
+    test("jit compilation is supported in sqlx", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(path.join(projectDir, "workflow_settings.yaml"), VALID_WORKFLOW_SETTINGS_YAML);
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/table.sqlx"),
+        `config { type: "table", compilation_mode: "jit" }
+js {
+  const foo = "bar";
+}
+SELECT 1`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals([
+        {
+          target: {
+            database: "defaultProject",
+            schema: "defaultDataset",
+            name: "table"
+          },
+          canonicalTarget: {
+            database: "defaultProject",
+            schema: "defaultDataset",
+            name: "table"
+          },
+          type: "table",
+          enumType: "TABLE",
+          disabled: false,
+          hermeticity: "NON_HERMETIC",
+          fileName: "definitions/table.sqlx",
+          jitCode: `async (jctx) => {
+    const self = jctx.self ? jctx.self.bind(jctx) : undefined;
+    const ref = jctx.ref ? jctx.ref.bind(jctx) : undefined;
+    const resolve = jctx.resolve ? jctx.resolve.bind(jctx) : undefined;
+    const name = jctx.name ? jctx.name.bind(jctx) : undefined;
+    const when = jctx.when ? jctx.when.bind(jctx) : undefined;
+    const incremental = jctx.incremental ? jctx.incremental.bind(jctx) : undefined;
+    const schema = jctx.schema ? jctx.schema.bind(jctx) : undefined;
+    const database = jctx.database ? jctx.database.bind(jctx) : undefined;
+    const adapter = jctx.adapter ? jctx.adapter : undefined;
+    const data = jctx.data ? jctx.data : undefined;
+    
+  const foo = "bar";
+
+    return {
+        query: (
+          \`
+
+SELECT 1\`
+        ),
+        postOps: (
+          undefined
+        ),
+        preOps: (
+          undefined
+        ),
+      };
+    }`,
+          actionDescriptor: {
+            compilationMode: "ACTION_COMPILATION_MODE_JIT"
+          }
+        }
+      ]);
+    });
+
+    test("jit compilation with pre/post ops is supported in sqlx", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(path.join(projectDir, "workflow_settings.yaml"), VALID_WORKFLOW_SETTINGS_YAML);
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/table.sqlx"),
+        `config { type: "table", compilation_mode: "jit" }
+js {
+  const foo = "bar";
+}
+SELECT 1
+pre_operations {
+  SELECT 10;
+}
+post_operations {
+  SELECT 20;
+}`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals([
+        {
+          target: {
+            database: "defaultProject",
+            schema: "defaultDataset",
+            name: "table"
+          },
+          canonicalTarget: {
+            database: "defaultProject",
+            schema: "defaultDataset",
+            name: "table"
+          },
+          type: "table",
+          enumType: "TABLE",
+          disabled: false,
+          hermeticity: "NON_HERMETIC",
+          fileName: "definitions/table.sqlx",
+          jitCode: `async (jctx) => {
+    const self = jctx.self ? jctx.self.bind(jctx) : undefined;
+    const ref = jctx.ref ? jctx.ref.bind(jctx) : undefined;
+    const resolve = jctx.resolve ? jctx.resolve.bind(jctx) : undefined;
+    const name = jctx.name ? jctx.name.bind(jctx) : undefined;
+    const when = jctx.when ? jctx.when.bind(jctx) : undefined;
+    const incremental = jctx.incremental ? jctx.incremental.bind(jctx) : undefined;
+    const schema = jctx.schema ? jctx.schema.bind(jctx) : undefined;
+    const database = jctx.database ? jctx.database.bind(jctx) : undefined;
+    const adapter = jctx.adapter ? jctx.adapter : undefined;
+    const data = jctx.data ? jctx.data : undefined;
+    
+  const foo = "bar";
+
+    return {
+        query: (
+          \`
+
+SELECT 1
+
+\`
+        ),
+        postOps: (
+          [\`
+  SELECT 20;
+\`]
+        ),
+        preOps: (
+          [\`
+  SELECT 10;
+\`]
+        ),
+      };
+    }`,
+          actionDescriptor: {
+            compilationMode: "ACTION_COMPILATION_MODE_JIT"
+          }
+        }
+      ]);
+    });
   });
 });
