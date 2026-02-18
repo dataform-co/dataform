@@ -1963,6 +1963,44 @@ publish("name", {type: "${fromType}", schema: "schemaOverride"}).type("${toType}
       expect(result.compile.compiledGraph.targets?.map(t => t.name)).deep.equals(["sample-action"]);
     });
 
+    test("works in application mode without workflow settings", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(path.join(projectDir, "definitions/e.sqlx"), `config {type: "view"}`);
+      fs.writeFileSync(path.join(projectDir, "definitions/file.sqlx"), "${resolve('e')}");
+
+      const request = coreExecutionRequestFromPath(projectDir);
+      request.compile.compileConfig.extension = {
+        name: "@dataform/sample-extension",
+        compilationMode: dataform.ExtensionCompilationMode.APPLICATION_CODE
+      };
+
+      const result = runMainInVm(request);
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(result.compile.compiledGraph.targets?.map(t => t.name)).deep.equals([
+        "sample-action"
+      ]);
+    });
+
+    test("works in prologue mode without workflow settings", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(path.join(projectDir, "definitions/e.sqlx"), `config {type: "view"}`);
+      fs.writeFileSync(path.join(projectDir, "definitions/file.sqlx"), "${resolve('e')}");
+
+      const request = coreExecutionRequestFromPath(projectDir);
+      request.compile.compileConfig.extension = {
+        name: "@dataform/sample-extension",
+        compilationMode: dataform.ExtensionCompilationMode.PROLOGUE,
+      };
+
+      const result = runMainInVm(request);
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(result.compile.compiledGraph.targets?.map(t => t.name)).deep.equals(["sample-action", "e", "file"]);
+    });
+
     test("catches extension import exceptions", () => {
       const projectDir = setUpProjectWithExtension();
       const request = coreExecutionRequestFromPath(projectDir);

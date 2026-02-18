@@ -38,8 +38,10 @@ export function main(coreExecutionRequest: Uint8Array | string): Uint8Array | st
   }
   const compileRequest = request.compile;
 
+  // Allow extensions to populate settings by themselves.
+  const failIfMissing = !compileRequest?.compileConfig?.extension?.compilationMode;
   // Read the workflow settings from the root of the project.
-  let projectConfig = readWorkflowSettings();
+  let projectConfig = readWorkflowSettings(failIfMissing);
 
   // Merge in project config overrides.
   const projectConfigOverride = compileRequest.compileConfig.projectConfigOverride ?? {};
