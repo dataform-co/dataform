@@ -800,7 +800,7 @@ SELECT 1 WHERE FALSE
       fs.writeFileSync(
         tableFilePath,
         `
-config { 
+config {
   type: "table",
   assertions: {
     uniqueKey: ["id"]
@@ -1060,6 +1060,92 @@ SELECT 1 as id
         expect(runResult.exitCode).equals(0);
         expect(JSON.parse(runResult.stdout)).deep.equals(expectedRunResult);
       });
+    });
+  });
+  suite("--default-reservation flag", ({ beforeEach }) => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    const RESERVATION = "projects/my-project/locations/us/reservations/my-reservation";
+
+    beforeEach("setup test project", async () => {
+      const npmCacheDir = tmpDirFixture.createNewTmpDir();
+      const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
+      const packageJsonPath = path.join(projectDir, "package.json");
+
+      await getProcessResult(
+        execFile(nodePath, [cliEntryPointPath, "init", projectDir, DEFAULT_DATABASE, DEFAULT_LOCATION])
+      );
+
+      // Remove dataformCoreVersion so we can use the local package.
+      const workflowSettings = dataform.WorkflowSettings.create(
+        loadYaml(fs.readFileSync(workflowSettingsPath, "utf8"))
+      );
+      delete workflowSettings.dataformCoreVersion;
+      fs.writeFileSync(workflowSettingsPath, dumpYaml(workflowSettings));
+
+      fs.writeFileSync(
+        packageJsonPath,
+        `{
+  "dependencies":{
+    "@dataform/core": "${version}"
+  }
+}`
+      );
+      await getProcessResult(
+        execFile(npmPath, [
+          "install",
+          "--prefix",
+          projectDir,
+          "--cache",
+          npmCacheDir,
+          corePackageTarPath
+        ])
+      );
+
+      const tableFilePath = path.join(projectDir, "definitions", "example_table.sqlx");
+      fs.ensureFileSync(tableFilePath);
+      fs.writeFileSync(
+        tableFilePath,
+        `
+config { type: "table" }
+SELECT 1 as id
+`
+      );
+    });
+
+    test("--default-reservation flag is applied to projectConfig in compile output", async () => {
+      const compileResult = await getProcessResult(
+        execFile(nodePath, [
+          cliEntryPointPath,
+          "compile",
+          projectDir,
+          "--json",
+          `--default-reservation=${RESERVATION}`
+        ])
+      );
+
+      expect(compileResult.exitCode).equals(0);
+      const compiledGraph = JSON.parse(compileResult.stdout);
+      expect(compiledGraph.projectConfig.defaultReservation).equals(RESERVATION);
+    });
+
+    test("--default-reservation flag is applied to projectConfig in run (dry-run) output", async () => {
+      const runResult = await getProcessResult(
+        execFile(nodePath, [
+          cliEntryPointPath,
+          "run",
+          projectDir,
+          "--credentials",
+          CREDENTIALS_PATH,
+          "--dry-run",
+          "--json",
+          `--default-reservation=${RESERVATION}`,
+          "--actions=example_table"
+        ])
+      );
+
+      expect(runResult.exitCode).equals(0);
+      const executionGraph = JSON.parse(runResult.stdout);
+      expect(executionGraph.projectConfig.defaultReservation).equals(RESERVATION);
     });
   });
 });

@@ -90,6 +90,7 @@ actions:
     ${exampleBuiltInAssertions.inputAssertionBlock}
     dependOnDependencyAssertions: true,
     hermetic: true,
+    bigqueryReservation: "reservation",
     metadata: {
         overview: "table overview",
         extraProperties: {
@@ -169,6 +170,7 @@ SELECT 1`
             query: "\n\nSELECT 1",
             actionDescriptor: {
               ...exampleActionDescriptor.outputActionDescriptor,
+              bigqueryReservation: "reservation",
               // sqlxConfig.bigquery.labels are placed as bigqueryLabels.
               bigqueryLabels: {
                 key: "val"
@@ -225,6 +227,7 @@ actions:
         option2Key: option2
     dependOnDependencyAssertions: true
     hermetic: true
+    bigqueryReservation: reservation
 ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
 `
     );
@@ -275,7 +278,8 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
           bigqueryLabels: {
             key: "val"
           },
-          description: "description"
+          description: "description",
+          bigqueryReservation: "reservation"
         }
       }
     ]);
@@ -838,6 +842,80 @@ defaultIcebergConfig:
 
       expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).greaterThan(0);
       expect(result.compile.compiledGraph.graphErrors.compilationErrors.some(e => e.message.includes("Cannot mix AoT and JiT compilation"))).equals(true);
+    });
+  });
+
+  suite("bigqueryReservation", () => {
+    test("defaultReservation in workflow settings is applied to projectConfig", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        `
+defaultProject: defaultProject
+defaultDataset: defaultDataset
+defaultLocation: US
+defaultReservation: projects/my-project/locations/us/reservations/my-reservation
+`
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/table.sqlx"),
+        `
+config {
+  type: "table"
+}
+SELECT 1`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.projectConfig)).deep.equals({
+        defaultDatabase: "defaultProject",
+        defaultSchema: "defaultDataset",
+        defaultLocation: "US",
+        defaultReservation: "projects/my-project/locations/us/reservations/my-reservation",
+        warehouse: "bigquery"
+      });
+      // The action itself should have no actionDescriptor (no action-level reservation set).
+      expect(asPlainObject(result.compile.compiledGraph.tables[0].actionDescriptor)).to.be.null;
+    });
+
+    test("action-level bigqueryReservation overrides the default reservation from workflow settings", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        `
+defaultProject: defaultProject
+defaultDataset: defaultDataset
+defaultLocation: US
+defaultReservation: projects/my-project/locations/us/reservations/default-reservation
+`
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/table.sqlx"),
+        `
+config {
+  type: "table",
+  bigqueryReservation: "projects/my-project/locations/us/reservations/action-reservation"
+}
+SELECT 1`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      // The default reservation is available in projectConfig.
+      expect(
+        asPlainObject(result.compile.compiledGraph.projectConfig).defaultReservation
+      ).deep.equals("projects/my-project/locations/us/reservations/default-reservation");
+      // The action-level reservation is stored in actionDescriptor, taking precedence at runtime.
+      expect(
+        asPlainObject(result.compile.compiledGraph.tables[0].actionDescriptor)
+      ).deep.equals({
+        bigqueryReservation: "projects/my-project/locations/us/reservations/action-reservation"
+      });
     });
   });
 });

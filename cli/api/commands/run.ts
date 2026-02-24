@@ -348,7 +348,10 @@ export class Runner {
               },
               actionRetryLimit: this.executionOptions?.bigquery?.actionRetryLimit,
               jobPrefix: this.executionOptions?.bigquery?.jobPrefix,
-              dryRun: this.executionOptions?.bigquery?.dryRun
+              dryRun: this.executionOptions?.bigquery?.dryRun,
+              reservation:
+                action.actionDescriptor?.bigqueryReservation ||
+                this.graph.projectConfig?.defaultReservation
             }
           });
           if (taskStatus === dataform.TaskResult.ExecutionStatus.FAILED) {
@@ -375,7 +378,7 @@ export class Runner {
       actionResult.status === dataform.ActionResult.ExecutionStatus.RUNNING &&
       !(this.graph.runConfig && this.graph.runConfig.disableSetMetadata) &&
       // Only set metadata if not using BigQuery dry run
-      !this.executionOptions.bigquery?.dryRun && 
+      !this.executionOptions.bigquery?.dryRun &&
       action.type === "table"
     ) {
       try {
@@ -420,9 +423,9 @@ export class Runner {
     };
     parentAction.tasks.push(taskResult);
     this.notifyListeners();
-    if(options.bigquery?.dryRun && task.type === "assertion") {
+    if (options.bigquery?.dryRun && task.type === "assertion") {
       taskResult.status = dataform.TaskResult.ExecutionStatus.SUCCESSFUL;
-    } 
+    }
     else {
       try {
         // Retry this function a given number of times, configurable by user
@@ -469,7 +472,7 @@ class Timer {
   public static start(existingTiming?: dataform.ITiming) {
     return new Timer(existingTiming?.startTimeMillis.toNumber() || new Date().valueOf());
   }
-  private constructor(readonly startTimeMillis: number) {}
+  private constructor(readonly startTimeMillis: number) { }
 
   public current(): dataform.ITiming {
     return {

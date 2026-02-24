@@ -168,6 +168,9 @@ export function workflowSettingsAsProjectConfig(
   if(workflowSettings.disableAssertions) {
     projectConfig.disableAssertions = workflowSettings.disableAssertions;
   }
+  if (workflowSettings.defaultReservation) {
+    projectConfig.defaultReservation = workflowSettings.defaultReservation;
+  }
 
   projectConfig.warehouse = "bigquery";
   return projectConfig;
