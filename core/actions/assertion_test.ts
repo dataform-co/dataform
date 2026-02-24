@@ -46,8 +46,9 @@ actions:
       - tagB
     disabled: true,
     description: description
-    hermetic: true,
-    dependOnDependencyAssertions: true`
+    hermetic: true
+    dependOnDependencyAssertions: true
+    bigqueryReservation: reservation`
       );
       fs.writeFileSync(path.join(projectDir, "definitions/action.sql"), "SELECT 1");
       fs.writeFileSync(path.join(projectDir, "definitions/operation.sqlx"), "SELECT 1");
@@ -69,7 +70,8 @@ actions:
               name: "name"
             },
             actionDescriptor: {
-              description: "description"
+              description: "description",
+              bigqueryReservation: "reservation"
             },
             disabled: true,
             fileName: "definitions/action.sql",

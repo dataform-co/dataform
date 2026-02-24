@@ -863,6 +863,16 @@ class ProjectConfigOptions {
     }
   };
 
+  public static defaultReservation: INamedOption<yargs.Options> = {
+    name: "default-reservation",
+    option: {
+      describe:
+        "The default BigQuery reservation to use for execution. If unset, the value from " +
+        "workflow_settings.yaml is used.",
+      type: "string"
+    }
+  };
+
   public static allYargsOptions = [
     ProjectConfigOptions.defaultDatabase,
     ProjectConfigOptions.defaultSchema,
@@ -872,7 +882,8 @@ class ProjectConfigOptions {
     ProjectConfigOptions.databaseSuffix,
     ProjectConfigOptions.schemaSuffix,
     ProjectConfigOptions.tablePrefix,
-    ProjectConfigOptions.disableAssertions
+    ProjectConfigOptions.disableAssertions,
+    ProjectConfigOptions.defaultReservation
   ];
 
   public static constructProjectConfigOverride(
@@ -906,6 +917,9 @@ class ProjectConfigOptions {
     }
     if (argv[ProjectConfigOptions.disableAssertions.name]) {
       projectConfigOptions.disableAssertions = argv[ProjectConfigOptions.disableAssertions.name];
+    }
+    if (argv[ProjectConfigOptions.defaultReservation.name]) {
+      projectConfigOptions.defaultReservation = argv[ProjectConfigOptions.defaultReservation.name];
     }
     return projectConfigOptions;
   }

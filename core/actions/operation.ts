@@ -159,6 +159,12 @@ export class Operation extends ActionBuilder<dataform.Operation> {
     if (config.filename) {
       this.proto.fileName = config.filename;
     }
+    if (config.bigqueryReservation) {
+      if (!this.proto.actionDescriptor) {
+        this.proto.actionDescriptor = {};
+      }
+      this.proto.actionDescriptor.bigqueryReservation = config.bigqueryReservation;
+    }
     return this;
   }
 
@@ -174,13 +180,13 @@ export class Operation extends ActionBuilder<dataform.Operation> {
   }
 
   public jitCode(jitCode: JitContextable<IActionContext, JitOperationResult>) {
-      if (!this.proto.actionDescriptor) {
-        this.proto.actionDescriptor = {};
-      }
-      this.proto.actionDescriptor.compilationMode = dataform.ActionCompilationMode.ACTION_COMPILATION_MODE_JIT;
-      this.contextableJitCode = jitCode;
-      return this;
+    if (!this.proto.actionDescriptor) {
+      this.proto.actionDescriptor = {};
     }
+    this.proto.actionDescriptor.compilationMode = dataform.ActionCompilationMode.ACTION_COMPILATION_MODE_JIT;
+    this.contextableJitCode = jitCode;
+    return this;
+  }
 
   /**
    * @deprecated Deprecated in favor of

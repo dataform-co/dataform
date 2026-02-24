@@ -27,6 +27,7 @@ export interface IBigQueryExecutionOptions {
   location?: string;
   jobPrefix?: string;
   dryRun?: boolean;
+  reservation?: string;
 }
 
 export class BigQueryDbAdapter implements IDbAdapter {
@@ -69,23 +70,24 @@ export class BigQueryDbAdapter implements IDbAdapter {
         generator: () =>
           options?.interactive
             ? this.runQuery(
-                statement,
-                options?.params,
-                options?.rowLimit,
-                options?.byteLimit,
-                options.bigquery?.location
-              )
+              statement,
+              options?.params,
+              options?.rowLimit,
+              options?.byteLimit,
+              options.bigquery?.location
+            )
             : this.createQueryJob(
-                statement,
-                options?.params,
-                options?.rowLimit,
-                options?.byteLimit,
-                options?.onCancel,
-                options?.bigquery?.labels,
-                options?.bigquery?.location,
-                options?.bigquery?.jobPrefix,
-                options?.bigquery?.dryRun
-              )
+              statement,
+              options?.params,
+              options?.rowLimit,
+              options?.byteLimit,
+              options?.onCancel,
+              options?.bigquery?.labels,
+              options?.bigquery?.location,
+              options?.bigquery?.jobPrefix,
+              options?.bigquery?.dryRun,
+              options?.bigquery?.reservation
+            )
       })
       .promise();
   }
@@ -203,8 +205,8 @@ export class BigQueryDbAdapter implements IDbAdapter {
         metadata.type === "TABLE"
           ? dataform.TableMetadata.Type.TABLE
           : metadata.type === "VIEW"
-          ? dataform.TableMetadata.Type.VIEW
-          : dataform.TableMetadata.Type.UNKNOWN,
+            ? dataform.TableMetadata.Type.VIEW
+            : dataform.TableMetadata.Type.UNKNOWN,
       target,
       fields: metadata.schema.fields?.map(field => convertField(field)),
       lastUpdatedMillis: Long.fromString(metadata.lastModifiedTime),
@@ -321,7 +323,8 @@ export class BigQueryDbAdapter implements IDbAdapter {
     labels?: { [label: string]: string },
     location?: string,
     jobPrefix?: string,
-    dryRun?: boolean
+    dryRun?: boolean,
+    reservation?: string
   ) {
     let isCancelled = false;
     onCancel?.(() => (isCancelled = true));
@@ -336,8 +339,9 @@ export class BigQueryDbAdapter implements IDbAdapter {
             params,
             labels,
             location,
-            dryRun
-          });
+            dryRun,
+            reservation
+          } as any);
           const resultStream = job[0].getQueryResultsStream();
           return new Promise<IExecutionResult>((resolve, reject) => {
             if (isCancelled) {

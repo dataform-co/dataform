@@ -87,6 +87,7 @@ actions:
     },
     dependOnDependencyAssertions: true,
     hermetic: true,
+    bigqueryReservation: "reservation",
     ${exampleBuiltInAssertions.inputAssertionBlock}
     metadata: {
         overview: "view overview",
@@ -164,6 +165,7 @@ SELECT 1`
             query: "\n\nSELECT 1",
             actionDescriptor: {
               ...exampleActionDescriptor.outputActionDescriptor,
+              bigqueryReservation: "reservation",
               // sqlxConfig.bigquery.labels are placed as bigqueryLabels.
               bigqueryLabels: {
                 key: "val"
@@ -221,6 +223,7 @@ actions:
     dependOnDependencyAssertions: true
 ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
     hermetic: true
+    bigqueryReservation: reservation
 `
     );
 
@@ -268,7 +271,8 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
           bigqueryLabels: {
             key: "val"
           },
-          description: "description"
+          description: "description",
+          bigqueryReservation: "reservation"
         },
         materialized: true
       }

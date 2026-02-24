@@ -218,6 +218,13 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
     });
     this.proto.onSchemaChange = this.mapOnSchemaChange(config.onSchemaChange);
 
+    if (config.bigqueryReservation) {
+      if (!this.proto.actionDescriptor) {
+        this.proto.actionDescriptor = {};
+      }
+      this.proto.actionDescriptor.bigqueryReservation = config.bigqueryReservation;
+    }
+
     return this;
   }
 
