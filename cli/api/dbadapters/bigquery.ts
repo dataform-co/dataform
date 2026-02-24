@@ -1,3 +1,4 @@
+import { GoogleAuth, Impersonated } from "google-auth-library";
 import Long from "long";
 import { PromisePoolExecutor } from "promise-pool-executor";
 
@@ -102,8 +103,8 @@ export class BigQueryDbAdapter implements IDbAdapter {
         try {
           await this.pool
             .addSingleTask({
-              generator: () =>
-                this.getClient().query({
+              generator: async () =>
+                (await this.getClient()).query({
                   useLegacySql: false,
                   query,
                   dryRun: true
@@ -128,7 +129,8 @@ export class BigQueryDbAdapter implements IDbAdapter {
   }
 
   public async tables(): Promise<dataform.ITarget[]> {
-    const datasets = await this.getClient().getDatasets({ autoPaginate: true, maxResults: 1000 });
+    const client = await this.getClient();
+    const datasets = await client.getDatasets({ autoPaginate: true, maxResults: 1000 });
     const tables = await Promise.all(
       datasets[0].map(dataset => dataset.getTables({ autoPaginate: true, maxResults: 1000 }))
     );
@@ -217,7 +219,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
   }
 
   public async schemas(database: string): Promise<string[]> {
-    const data = await this.getClient(database).getDatasets();
+    const data = await (await this.getClient(database)).getDatasets();
     return data[0].map(dataset => dataset.id);
   }
 
@@ -237,7 +239,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
       metadata.schema.fields
     );
 
-    await this.getClient(target.database)
+    await (await this.getClient(target.database))
       .dataset(target.schema)
       .table(target.name)
       .setMetadata({
@@ -249,7 +251,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
 
   private async getMetadata(target: dataform.ITarget): Promise<TableMetadata> {
     try {
-      const table = await this.getClient(target.database)
+      const table = await (await this.getClient(target.database))
         .dataset(target.schema)
         .table(target.name)
         .getMetadata();
@@ -264,19 +266,36 @@ export class BigQueryDbAdapter implements IDbAdapter {
     }
   }
 
-  private getClient(projectId?: string) {
+  private async getClient(projectId?: string) {
     projectId = projectId || this.bigQueryCredentials.projectId;
     if (!this.clients.has(projectId)) {
-      this.clients.set(
+      const clientConfig: any = {
         projectId,
-        new BigQuery({
+        scopes: EXTRA_GOOGLE_SCOPES,
+        location: this.bigQueryCredentials.location
+      };
+
+      if (this.bigQueryCredentials.impersonateServiceAccount) {
+        // For impersonation, create an Impersonated credential directly
+        const sourceAuth = new GoogleAuth({
           projectId,
-          scopes: EXTRA_GOOGLE_SCOPES,
-          location: this.bigQueryCredentials.location,
-          credentials:
-            this.bigQueryCredentials.credentials && JSON.parse(this.bigQueryCredentials.credentials)
+          scopes: ['https://www.googleapis.com/auth/cloud-platform'],
+          credentials: this.bigQueryCredentials.credentials && JSON.parse(this.bigQueryCredentials.credentials),
+        });
+
+        const authClient = await sourceAuth.getClient();
+
+        clientConfig.authClient = new Impersonated({
+          sourceClient: authClient,
+          targetPrincipal: this.bigQueryCredentials.impersonateServiceAccount,
+          targetScopes: ['https://www.googleapis.com/auth/cloud-platform']
         })
-      );
+    } else {
+        clientConfig.credentials =
+          this.bigQueryCredentials.credentials && JSON.parse(this.bigQueryCredentials.credentials);
+      }
+
+      this.clients.set(projectId, new BigQuery(clientConfig));
     }
     return this.clients.get(projectId);
   }
@@ -288,12 +307,12 @@ export class BigQueryDbAdapter implements IDbAdapter {
     byteLimit?: number,
     location?: string
   ) {
-    const results = await new Promise<any[]>((resolve, reject) => {
+    const results = await new Promise<any[]>(async (resolve, reject) => {
       const allRows = new LimitedResultSet({
         rowLimit,
         byteLimit
       });
-      const stream = this.getClient().createQueryStream({
+      const stream = (await this.getClient()).createQueryStream({
         query,
         params,
         location
@@ -329,7 +348,8 @@ export class BigQueryDbAdapter implements IDbAdapter {
     return retry(
       async () => {
         try {
-          const job = await this.getClient().createQueryJob({
+          const client = await this.getClient();
+          const job = await client.createQueryJob({
             useLegacySql: false,
             jobPrefix: "dataform-" + (jobPrefix ? `${jobPrefix}-` : ""),
             query,
