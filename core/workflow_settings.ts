@@ -9,7 +9,7 @@ declare var __webpack_require__: any;
 declare var __non_webpack_require__: any;
 const nativeRequire = typeof __webpack_require__ === "function" ? __non_webpack_require__ : require;
 
-export function readWorkflowSettings(): dataform.ProjectConfig {
+export function readWorkflowSettings(failIfMissing: boolean = true): dataform.ProjectConfig {
   const workflowSettingsYaml = maybeRequire("workflow_settings.yaml");
   // `dataform.json` is deprecated; new versions of Dataform Core prefer `workflow_settings.yaml`.
   const dataformJson = maybeRequire("dataform.json");
@@ -42,7 +42,10 @@ export function readWorkflowSettings(): dataform.ProjectConfig {
     }
   }
 
-  throw Error("Failed to resolve workflow_settings.yaml");
+  if (failIfMissing) {
+    throw Error("Failed to resolve workflow_settings.yaml");
+  }
+  return dataform.ProjectConfig.create();
 }
 
 function verifyWorkflowSettingsAsJson(workflowSettingsAsJson: object): dataform.WorkflowSettings {
