@@ -4,6 +4,8 @@ load("//tools:node_modules.bzl", "node_modules")
 
 package(default_visibility = ["//visibility:public"])
 
+load("//tools:ts_library.bzl", "ts_library")
+
 ts_library(
     name = "api",
     srcs = glob(
@@ -54,6 +56,19 @@ node_modules(
         "//packages/@dataform/core:package_tar",
     ],
 )
+
+# ts_test_suite(
+#     name = "tests",
+#     srcs = ["dbadapters/execution_sql_test.ts"],
+#     deps = [
+#         ":api",
+#         "//core",
+#         "//protos:ts",
+#         "//testing",
+#         "@npm//@types/chai",
+#         "@npm//chai",
+#     ],
+# )
 
 ts_test_suite(
     name = "tests",
