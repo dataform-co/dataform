@@ -878,7 +878,7 @@ SELECT 1`
         warehouse: "bigquery"
       });
       // The action itself should have no actionDescriptor (no action-level reservation set).
-      expect(asPlainObject(result.compile.compiledGraph.tables[0].actionDescriptor)).to.be.null;
+      expect(asPlainObject(result.compile.compiledGraph.tables[0].actionDescriptor)).equals(null);
     });
 
     test("action-level bigqueryReservation overrides the default reservation from workflow settings", () => {
