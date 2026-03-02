@@ -49,10 +49,10 @@ export async function compile(
       print(`Using isolated environment for @dataform/core@${workflowSettingsDataformCoreVersion}\n`);
       print(`Copying project to temporary directory: ${temporaryProjectPath}\n`);
     }
-    const copyStartTime = Date.now();
+    const copyStartTime = performance.now();
     fs.copySync(resolvedProjectPath, temporaryProjectPath);
     if (compileConfig.verbose) {
-      print(`Project copy completed in ${Date.now() - copyStartTime}ms\n`);
+      print(`Project copy completed in ${performance.now() - copyStartTime}ms\n`);
     }
 
     if (compileConfig.verbose) {
@@ -71,14 +71,14 @@ export async function compile(
     if (compileConfig.verbose) {
       print(`Running '${npmCommand}' in temporary directory...\n`);
     }
-    const npmStartTime = Date.now();
+    const npmStartTime = performance.now();
     const { stdout, stderr } = await promisify(exec)(npmCommand, {
       cwd: temporaryProjectPath
     });
     
     if (compileConfig.verbose) {
       print(`NPM HTTP Logs:\n${stderr}\n`);
-      print(`NPM install completed in ${Date.now() - npmStartTime}ms\n`);
+      print(`NPM install completed in ${performance.now() - npmStartTime}ms\n`);
     }
 
     compileConfig.projectDir = temporaryProjectPath;
