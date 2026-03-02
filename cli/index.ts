@@ -213,6 +213,7 @@ const testConnectionOptionName = "test-connection";
 
 const watchOptionName = "watch";
 
+const verboseOptionName = "verbose";
 const dryRunOptionName = "dry-run";
 const runTestsOptionName = "run-tests";
 const checkOptionName = "check";
@@ -375,6 +376,14 @@ export function runCli() {
           jsonOutputOption,
           timeoutOption,
           quietCompileOption,
+          {
+            name: verboseOptionName,
+            option: {
+              describe: "Enable verbose compilation output. Example usage: 'dataform compile --verbose'",
+              type: "boolean",
+              default: false
+            }
+          },
           ...ProjectConfigOptions.allYargsOptions
         ],
         processFn: async argv => {
@@ -387,7 +396,8 @@ export function runCli() {
             const compiledGraph = await compile({
               projectDir,
               projectConfigOverride: ProjectConfigOptions.constructProjectConfigOverride(argv),
-              timeoutMillis: argv[timeoutOption.name] || undefined
+              timeoutMillis: argv[timeoutOption.name] || undefined,
+              verbose: argv[verboseOptionName] || false
             });
             printCompiledGraph(compiledGraph, argv[jsonOutputOption.name], argv[quietCompileOption.name]);
             if (compiledGraphHasErrors(compiledGraph)) {

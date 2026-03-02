@@ -12,6 +12,10 @@ import { dataform } from "df/protos/ts";
 
 export class CompilationTimeoutError extends Error {}
 
+export function print(text: string) {
+  process.stdout.write(text);
+}
+
 export async function compile(
   compileConfig: dataform.ICompileConfig = {}
 ): Promise<dataform.CompiledGraph> {
@@ -41,8 +45,19 @@ export async function compile(
       }
     });
 
+    if (compileConfig.verbose) {
+      print(`Using isolated environment for @dataform/core@${workflowSettingsDataformCoreVersion}\n`);
+      print(`Copying project to temporary directory: ${temporaryProjectPath}\n`);
+    }
+    const copyStartTime = Date.now();
     fs.copySync(resolvedProjectPath, temporaryProjectPath);
+    if (compileConfig.verbose) {
+      print(`Project copy completed in ${Date.now() - copyStartTime}ms\n`);
+    }
 
+    if (compileConfig.verbose) {
+      print(`Generating temporary package.json\n`);
+    }
     fs.writeFileSync(
       path.join(temporaryProjectPath, "package.json"),
       `{
@@ -52,9 +67,19 @@ export async function compile(
 }`
     );
 
-    await promisify(exec)("npm i --ignore-scripts", {
+    const npmCommand = `npm i --ignore-scripts${compileConfig.verbose ? " --loglevel=http" : ""}`;
+    if (compileConfig.verbose) {
+      print(`Running '${npmCommand}' in temporary directory...\n`);
+    }
+    const npmStartTime = Date.now();
+    const { stdout, stderr } = await promisify(exec)(npmCommand, {
       cwd: temporaryProjectPath
     });
+    
+    if (compileConfig.verbose) {
+      print(`NPM HTTP Logs:\n${stderr}\n`);
+      print(`NPM install completed in ${Date.now() - npmStartTime}ms\n`);
+    }
 
     compileConfig.projectDir = temporaryProjectPath;
   }
@@ -77,7 +102,7 @@ export class CompileChildProcess {
     // if it exists, otherwise run the bazel compile loader target.
     const findForkScript = () => {
       try {
-        const workerBundlePath = require.resolve("./worker_bundle");
+        const workerBundlePath = require.resolve("./worker_bundle.js");
         return workerBundlePath;
       } catch (e) {
         return require.resolve("../../vm/compile_loader");

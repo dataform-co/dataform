@@ -51,6 +51,9 @@ message CompileConfig {
 
   Extension extension = 10;
 
+  // Whether to emit compilation debug logs.
+  bool verbose = 11;
+
   reserved 2, 4, 5, 7, 9;
 }
 
