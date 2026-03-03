@@ -122,7 +122,116 @@ from (${query}) as insertions`;
     return this.CompilationSql.resolveTarget(target);
   }
 
-  private createProcedureName(target: dataform.ITarget, uniqueId: string): string {
+  public publishTasks(
+    table: dataform.ITable,
+    runConfig: dataform.IRunConfig,
+    tableMetadata?: dataform.ITableMetadata
+  ): Tasks {
+    const tasks = new Tasks();
+
+    this.preOps(table, runConfig, tableMetadata).forEach(statement => tasks.add(statement));
+
+    const baseTableType = this.baseTableType(table.enumType);
+    if (tableMetadata && tableMetadata.type !== baseTableType) {
+      tasks.add(
+        Task.statement(this.dropIfExists(table.target, this.oppositeTableType(baseTableType)))
+      );
+    }
+
+    if (table.enumType === dataform.TableType.INCREMENTAL) {
+      if (!this.shouldWriteIncrementally(table, runConfig, tableMetadata)) {
+        tasks.add(Task.statement(this.createOrReplace(table)));
+      } else {
+        const onSchemaChange = table.onSchemaChange || dataform.OnSchemaChange.IGNORE;
+        switch (onSchemaChange) {
+          case dataform.OnSchemaChange.FAIL:
+          case dataform.OnSchemaChange.EXTEND:
+          case dataform.OnSchemaChange.SYNCHRONIZE:
+            const uniqueId = crypto.randomUUID().replace(/-/g, "_");
+
+            const shortEmptyTableName = `${table.target.name}_df_temp_${uniqueId}_empty`;
+            const emptyTempTableName = this.resolveTarget({
+              ...table.target,
+              name: shortEmptyTableName
+            });
+
+            const shortDataTableName = shortEmptyTableName.replace("_empty", "_data");
+            const dataTempTableName = this.resolveTarget({
+              ...table.target,
+              name: shortDataTableName
+            });
+
+            const procedureName = this.createProcedureName(table.target, uniqueId);
+            const procedureBody = this.incrementalSchemaChangeBody(
+              table,
+              this.resolveTarget(table.target),
+              emptyTempTableName,
+              dataTempTableName,
+              shortEmptyTableName
+            );
+
+            const createProcedureSql = `CREATE OR REPLACE PROCEDURE ${procedureName}()
+OPTIONS(strict_mode=false)
+BEGIN
+${procedureBody}
+END;`;
+            const callProcedureSql = this.safeCallProcedure(
+              procedureName,
+              emptyTempTableName,
+              dataTempTableName
+            );
+            tasks.add(Task.statement(createProcedureSql + "\n" + callProcedureSql));
+            break;
+          case dataform.OnSchemaChange.IGNORE:
+          default:
+            tasks.add(
+              Task.statement(
+                table.uniqueKey && table.uniqueKey.length > 0
+                  ? this.mergeInto(
+                      table.target,
+                      tableMetadata?.fields.map(f => f.name),
+                      this.where(table.incrementalQuery || table.query, table.where),
+                      table.uniqueKey,
+                      table.bigquery && table.bigquery.updatePartitionFilter
+                    )
+                  : this.insertInto(
+                      table.target,
+                      tableMetadata?.fields.map(f => f.name).map(column => `\`${column}\``),
+                      this.where(table.incrementalQuery || table.query, table.where)
+                    )
+              )
+            );
+            break;
+        }
+      }
+    } else {
+      tasks.add(Task.statement(this.createOrReplace(table)));
+    }
+
+    this.postOps(table, runConfig, tableMetadata).forEach(statement => tasks.add(statement));
+
+    return tasks.concatenate();
+  }
+
+  public assertTasks(
+    assertion: dataform.IAssertion,
+    projectConfig: dataform.IProjectConfig,
+  ): Tasks {
+    const tasks = new Tasks();
+    const target = assertion.target;
+    // Create the view to check syntax of assertion
+    tasks.add(Task.statement(this.createOrReplaceView(target, assertion.query)));
+
+    // Add assertion check
+    tasks.add(Task.assertion(`select sum(1) as row_count from ${this.resolveTarget(target)}`));
+    return tasks;
+  }
+
+  public dropIfExists(target: dataform.ITarget, type: dataform.TableMetadata.Type) {
+    return `drop ${this.tableTypeAsSql(type)} if exists ${this.resolveTarget(target)}`;
+  }
+
+    private createProcedureName(target: dataform.ITarget, uniqueId: string): string {
     // Procedure names cannot contain hyphens.
     const sanitizedUniqueId = uniqueId.replace(/-/g, "_");
     return this.resolveTarget({
@@ -346,115 +455,6 @@ DROP TABLE IF EXISTS ${dataTempTableName};
     ];
 
     return statements.join("\n\n");
-  }
-
-  public publishTasks(
-    table: dataform.ITable,
-    runConfig: dataform.IRunConfig,
-    tableMetadata?: dataform.ITableMetadata
-  ): Tasks {
-    const tasks = new Tasks();
-
-    this.preOps(table, runConfig, tableMetadata).forEach(statement => tasks.add(statement));
-
-    const baseTableType = this.baseTableType(table.enumType);
-    if (tableMetadata && tableMetadata.type !== baseTableType) {
-      tasks.add(
-        Task.statement(this.dropIfExists(table.target, this.oppositeTableType(baseTableType)))
-      );
-    }
-
-    if (table.enumType === dataform.TableType.INCREMENTAL) {
-      if (!this.shouldWriteIncrementally(table, runConfig, tableMetadata)) {
-        tasks.add(Task.statement(this.createOrReplace(table)));
-      } else {
-        const onSchemaChange = table.onSchemaChange || dataform.OnSchemaChange.IGNORE;
-        switch (onSchemaChange) {
-          case dataform.OnSchemaChange.FAIL:
-          case dataform.OnSchemaChange.EXTEND:
-          case dataform.OnSchemaChange.SYNCHRONIZE:
-            const uniqueId = crypto.randomUUID().replace(/-/g, "_");
-
-            const shortEmptyTableName = `${table.target.name}_df_temp_${uniqueId}_empty`;
-            const emptyTempTableName = this.resolveTarget({
-              ...table.target,
-              name: shortEmptyTableName
-            });
-
-            const shortDataTableName = shortEmptyTableName.replace("_empty", "_data");
-            const dataTempTableName = this.resolveTarget({
-              ...table.target,
-              name: shortDataTableName
-            });
-
-            const procedureName = this.createProcedureName(table.target, uniqueId);
-            const procedureBody = this.incrementalSchemaChangeBody(
-              table,
-              this.resolveTarget(table.target),
-              emptyTempTableName,
-              dataTempTableName,
-              shortEmptyTableName
-            );
-
-            const createProcedureSql = `CREATE OR REPLACE PROCEDURE ${procedureName}()
-OPTIONS(strict_mode=false)
-BEGIN
-${procedureBody}
-END;`;
-            const callProcedureSql = this.safeCallProcedure(
-              procedureName,
-              emptyTempTableName,
-              dataTempTableName
-            );
-            tasks.add(Task.statement(createProcedureSql + "\n" + callProcedureSql));
-            break;
-          case dataform.OnSchemaChange.IGNORE:
-          default:
-            tasks.add(
-              Task.statement(
-                table.uniqueKey && table.uniqueKey.length > 0
-                  ? this.mergeInto(
-                      table.target,
-                      tableMetadata?.fields.map(f => f.name),
-                      this.where(table.incrementalQuery || table.query, table.where),
-                      table.uniqueKey,
-                      table.bigquery && table.bigquery.updatePartitionFilter
-                    )
-                  : this.insertInto(
-                      table.target,
-                      tableMetadata?.fields.map(f => f.name).map(column => `\`${column}\``),
-                      this.where(table.incrementalQuery || table.query, table.where)
-                    )
-              )
-            );
-            break;
-        }
-      }
-    } else {
-      tasks.add(Task.statement(this.createOrReplace(table)));
-    }
-
-    this.postOps(table, runConfig, tableMetadata).forEach(statement => tasks.add(statement));
-
-    return tasks.concatenate();
-  }
-
-  public assertTasks(
-    assertion: dataform.IAssertion,
-    projectConfig: dataform.IProjectConfig,
-  ): Tasks {
-    const tasks = new Tasks();
-    const target = assertion.target;
-    // Create the view to check syntax of assertion
-    tasks.add(Task.statement(this.createOrReplaceView(target, assertion.query)));
-
-    // Add assertion check
-    tasks.add(Task.assertion(`select sum(1) as row_count from ${this.resolveTarget(target)}`));
-    return tasks;
-  }
-
-  public dropIfExists(target: dataform.ITarget, type: dataform.TableMetadata.Type) {
-    return `drop ${this.tableTypeAsSql(type)} if exists ${this.resolveTarget(target)}`;
   }
 
   private createOrReplace(table: dataform.ITable) {
