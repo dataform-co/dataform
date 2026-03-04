@@ -25,7 +25,7 @@ import { TmpDirFixture } from "df/testing/fixtures";
 
 const DEFAULT_DATABASE = "dataform-open-source";
 const DEFAULT_LOCATION = "US";
-const DEFAULT_RESERVATION = "projects/dataform-open-source/locations/us-central1/reservations/dataform-test";
+const DEFAULT_RESERVATION = "projects/dataform-open-source/locations/us/reservations/dataform-test";
 const CREDENTIALS_PATH = path.resolve(process.env.RUNFILES, "df/test_credentials/bigquery.json");
 
 suite("@dataform/cli", ({ afterEach }) => {

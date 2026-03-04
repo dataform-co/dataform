@@ -69,7 +69,7 @@ To run the CLI integration test against your own GCP project:
      "projectId": "my-gcp-project",
      "credentials": "{\"type\":\"service_account\",...}",
      "location": "US",
-     "reservation": "projects/my-gcp-project/locations/us-central1/reservations/my-reservation"
+     "reservation": "projects/my-gcp-project/locations/us/reservations/my-reservation"
    }
    ```
 
