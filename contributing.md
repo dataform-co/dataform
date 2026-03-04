@@ -52,7 +52,6 @@ To run the CLI integration test against your own GCP project:
 
    - `DEFAULT_DATABASE`
    - `DEFAULT_LOCATION`
-   - `DEFAULT_RESERVATION`
    - `CREDENTIALS_PATH`
 
    Prepare a credentials JSON file referenced by `CREDENTIALS_PATH`. Set values as follows:
@@ -60,7 +59,6 @@ To run the CLI integration test against your own GCP project:
    - `projectId`: the same string as `DEFAULT_DATABASE`.
    - `credentials`: the entire content of your GCP service account key JSON file as a single string (you can generate it with `jq -Rsa < path/to/key.json`).
    - `location`: the same string as `DEFAULT_LOCATION`.
-   - `reservation`: the same string as `DEFAULT_RESERVATION`.
 
    Example:
 
@@ -68,8 +66,7 @@ To run the CLI integration test against your own GCP project:
    {
      "projectId": "my-gcp-project",
      "credentials": "{\"type\":\"service_account\",...}",
-     "location": "US",
-     "reservation": "projects/my-gcp-project/locations/us/reservations/my-reservation"
+     "location": "US"
    }
    ```
 
