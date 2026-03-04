@@ -197,11 +197,6 @@ const quietCompileOption: INamedOption<yargs.Options> = {
     describe: "Less verbose compilation output. Example usage: 'dataform compile --quiet'",
     type: "boolean",
     default: false
-  },
-  check: (argv: yargs.Arguments) => {
-    if (argv.quiet && argv.verbose) {
-      throw new Error("Arguments --verbose and --quiet are mutually exclusive.");
-    }
   }
 };
 
