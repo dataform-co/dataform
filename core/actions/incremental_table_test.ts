@@ -101,7 +101,7 @@ actions:
     dependOnDependencyAssertions: true,
     ${exampleBuiltInAssertions.inputAssertionBlock}
     hermetic: true,
-    bigqueryReservation: "reservation",
+    reservation: "reservation",
     onSchemaChange: "SYNCHRONIZE",
     metadata: {
         overview: "incremental table overview",
@@ -187,7 +187,7 @@ SELECT 1`
             incrementalQuery: "\n\n\nSELECT 1",
             actionDescriptor: {
               ...exampleActionDescriptor.outputActionDescriptor,
-              bigqueryReservation: "reservation",
+              reservation: "reservation",
               // sqlxConfig.bigquery.labels are placed as bigqueryLabels.
               bigqueryLabels: {
                 key: "val"
@@ -296,7 +296,7 @@ actions:
     dependOnDependencyAssertions: true
     ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
     hermetic: true
-    bigqueryReservation: reservation
+    reservation: reservation
     onSchemaChange: FAIL
   `
     );
@@ -353,7 +353,7 @@ actions:
             key: "val"
           },
           description: "description",
-          bigqueryReservation: "reservation"
+          reservation: "reservation"
         }
       }
     ]);

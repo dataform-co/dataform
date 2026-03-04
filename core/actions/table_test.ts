@@ -90,7 +90,7 @@ actions:
     ${exampleBuiltInAssertions.inputAssertionBlock}
     dependOnDependencyAssertions: true,
     hermetic: true,
-    bigqueryReservation: "reservation",
+    reservation: "reservation",
     metadata: {
         overview: "table overview",
         extraProperties: {
@@ -170,7 +170,7 @@ SELECT 1`
             query: "\n\nSELECT 1",
             actionDescriptor: {
               ...exampleActionDescriptor.outputActionDescriptor,
-              bigqueryReservation: "reservation",
+              reservation: "reservation",
               // sqlxConfig.bigquery.labels are placed as bigqueryLabels.
               bigqueryLabels: {
                 key: "val"
@@ -227,7 +227,7 @@ actions:
         option2Key: option2
     dependOnDependencyAssertions: true
     hermetic: true
-    bigqueryReservation: reservation
+    reservation: reservation
 ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
 `
     );
@@ -279,7 +279,7 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
             key: "val"
           },
           description: "description",
-          bigqueryReservation: "reservation"
+          reservation: "reservation"
         }
       }
     ]);
@@ -845,7 +845,7 @@ defaultIcebergConfig:
     });
   });
 
-  suite("bigqueryReservation", () => {
+  suite("reservation", () => {
     test("defaultReservation in workflow settings is applied to projectConfig", () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
       fs.writeFileSync(
@@ -881,7 +881,7 @@ SELECT 1`
       expect(asPlainObject(result.compile.compiledGraph.tables[0].actionDescriptor)).equals(null);
     });
 
-    test("action-level bigqueryReservation overrides the default reservation from workflow settings", () => {
+    test("action-level reservation overrides the default reservation from workflow settings", () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
       fs.writeFileSync(
         path.join(projectDir, "workflow_settings.yaml"),
@@ -898,7 +898,7 @@ defaultReservation: projects/my-project/locations/us/reservations/default-reserv
         `
 config {
   type: "table",
-  bigqueryReservation: "projects/my-project/locations/us/reservations/action-reservation"
+  reservation: "projects/my-project/locations/us/reservations/action-reservation"
 }
 SELECT 1`
       );
@@ -914,7 +914,7 @@ SELECT 1`
       expect(
         asPlainObject(result.compile.compiledGraph.tables[0].actionDescriptor)
       ).deep.equals({
-        bigqueryReservation: "projects/my-project/locations/us/reservations/action-reservation"
+        reservation: "projects/my-project/locations/us/reservations/action-reservation"
       });
     });
   });

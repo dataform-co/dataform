@@ -121,7 +121,7 @@ message ActionDescriptor {
   map<string, string> bigquery_labels = 3;
   Metadata metadata = 4;
   ActionCompilationMode compilation_mode = 5;
-  string bigquery_reservation = 6;
+  string reservation = 6;
 }
 
 message Metadata {

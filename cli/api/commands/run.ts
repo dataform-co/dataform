@@ -350,7 +350,7 @@ export class Runner {
               jobPrefix: this.executionOptions?.bigquery?.jobPrefix,
               dryRun: this.executionOptions?.bigquery?.dryRun,
               reservation:
-                action.actionDescriptor?.bigqueryReservation ||
+                action.actionDescriptor?.reservation ||
                 this.graph.projectConfig?.defaultReservation
             }
           });

@@ -70,7 +70,7 @@ actions:
     hermetic: true,
     hasOutput: true,
     dependOnDependencyAssertions: true,
-    bigqueryReservation: "reservation",
+    reservation: "reservation",
     ${exampleActionDescriptor.inputSqlxConfigBlock}
 }`;
 
@@ -133,7 +133,7 @@ SELECT 1`
               queries: ["\n\nSELECT 1"],
               actionDescriptor: {
                 ...exampleActionDescriptor.outputActionDescriptor,
-                bigqueryReservation: "reservation"
+                reservation: "reservation"
               }
             }
           ])
@@ -170,7 +170,7 @@ actions:
     description: description
     dependOnDependencyAssertions: true
     hermetic: true
-    bigqueryReservation: reservation
+    reservation: reservation
 `
     );
 
@@ -205,7 +205,7 @@ actions:
           queries: ["SELECT 1"],
           actionDescriptor: {
             description: "description",
-            bigqueryReservation: "reservation"
+            reservation: "reservation"
           }
         }
       ])

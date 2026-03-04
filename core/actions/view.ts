@@ -213,11 +213,11 @@ export class View extends ActionBuilder<dataform.Table> {
         additionalOptions: config.additionalOptions,
       });
     }
-    if (config.bigqueryReservation) {
+    if (config.reservation) {
       if (!this.proto.actionDescriptor) {
         this.proto.actionDescriptor = {};
       }
-      this.proto.actionDescriptor.bigqueryReservation = config.bigqueryReservation;
+      this.proto.actionDescriptor.reservation = config.reservation;
     }
 
     return this;

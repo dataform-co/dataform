@@ -268,7 +268,7 @@ message ActionConfig {
     Metadata metadata = 23;
 
     // Optional. The BigQuery reservation to use for execution.
-    string bigquery_reservation = 24;
+    string reservation = 24;
   }
 
   message Metadata {
@@ -354,7 +354,7 @@ message ActionConfig {
     Metadata metadata = 20;
 
     // Optional. The BigQuery reservation to use for execution.
-    string bigquery_reservation = 21;
+    string reservation = 21;
   }
 
   enum OnSchemaChange {
@@ -469,7 +469,7 @@ message ActionConfig {
     Metadata metadata = 26;
 
     // Optional. The BigQuery reservation to use for execution.
-    string bigquery_reservation = 27;
+    string reservation = 27;
   }
 
   message AssertionConfig {
@@ -510,7 +510,7 @@ message ActionConfig {
     bool depend_on_dependency_assertions = 10;
 
     // Optional. The BigQuery reservation to use for execution.
-    string bigquery_reservation = 11;
+    string reservation = 11;
   }
 
   message OperationConfig {
@@ -560,7 +560,7 @@ message ActionConfig {
     bool hermetic = 12;
 
     // Optional. The BigQuery reservation to use for execution.
-    string bigquery_reservation = 13;
+    string reservation = 13;
   }
 
   message DeclarationConfig {

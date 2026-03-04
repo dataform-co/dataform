@@ -159,11 +159,11 @@ export class Operation extends ActionBuilder<dataform.Operation> {
     if (config.filename) {
       this.proto.fileName = config.filename;
     }
-    if (config.bigqueryReservation) {
+    if (config.reservation) {
       if (!this.proto.actionDescriptor) {
         this.proto.actionDescriptor = {};
       }
-      this.proto.actionDescriptor.bigqueryReservation = config.bigqueryReservation;
+      this.proto.actionDescriptor.reservation = config.reservation;
     }
     return this;
   }
