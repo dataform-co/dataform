@@ -12,7 +12,7 @@ import { dataform } from "df/protos/ts";
 
 export class CompilationTimeoutError extends Error {}
 
-export function print(text: string) {
+function print(text: string) {
   process.stdout.write(text);
 }
 
