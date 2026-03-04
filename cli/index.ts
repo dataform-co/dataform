@@ -868,7 +868,7 @@ class ProjectConfigOptions {
     option: {
       describe:
         "The default BigQuery reservation to use for execution. If unset, the value from " +
-        "workflow_settings.yaml is used.",
+        "workflow_settings.yaml is used. If neither is set, default BigQuery behavior applies.",
       type: "string"
     }
   };

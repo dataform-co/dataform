@@ -57,6 +57,7 @@ message WorkflowSettings {
   bool disable_assertions = 13;
 
   // Optional. The default BigQuery reservation to use for execution.
+  // If unset, default BigQuery behavior applies.
   string default_reservation = 14;
 }
 
@@ -268,6 +269,7 @@ message ActionConfig {
     Metadata metadata = 23;
 
     // Optional. The BigQuery reservation to use for execution.
+    // If unset, the value from workflow_settings.yaml is used. If neither is set, default BigQuery behavior applies.
     string reservation = 24;
   }
 
@@ -354,6 +356,7 @@ message ActionConfig {
     Metadata metadata = 20;
 
     // Optional. The BigQuery reservation to use for execution.
+    // If unset, the value from workflow_settings.yaml is used. If neither is set, default BigQuery behavior applies.
     string reservation = 21;
   }
 
@@ -469,6 +472,7 @@ message ActionConfig {
     Metadata metadata = 26;
 
     // Optional. The BigQuery reservation to use for execution.
+    // If unset, the value from workflow_settings.yaml is used. If neither is set, default BigQuery behavior applies.
     string reservation = 27;
   }
 
@@ -510,6 +514,7 @@ message ActionConfig {
     bool depend_on_dependency_assertions = 10;
 
     // Optional. The BigQuery reservation to use for execution.
+    // If unset, the value from workflow_settings.yaml is used. If neither is set, default BigQuery behavior applies.
     string reservation = 11;
   }
 
@@ -560,6 +565,7 @@ message ActionConfig {
     bool hermetic = 12;
 
     // Optional. The BigQuery reservation to use for execution.
+    // If unset, the value from workflow_settings.yaml is used. If neither is set, default BigQuery behavior applies.
     string reservation = 13;
   }
 
