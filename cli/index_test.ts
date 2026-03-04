@@ -25,6 +25,7 @@ import { TmpDirFixture } from "df/testing/fixtures";
 
 const DEFAULT_DATABASE = "dataform-open-source";
 const DEFAULT_LOCATION = "US";
+const DEFAULT_RESERVATION = "projects/dataform-open-source/locations/us-central1/reservations/";
 const CREDENTIALS_PATH = path.resolve(process.env.RUNFILES, "df/test_credentials/bigquery.json");
 
 suite("@dataform/cli", ({ afterEach }) => {
@@ -1062,9 +1063,9 @@ SELECT 1 as id
       });
     });
   });
+
   suite("--default-reservation flag", ({ beforeEach }) => {
     const projectDir = tmpDirFixture.createNewTmpDir();
-    const RESERVATION = "projects/my-project/locations/us/reservations/my-reservation";
 
     beforeEach("setup test project", async () => {
       const npmCacheDir = tmpDirFixture.createNewTmpDir();
@@ -1119,13 +1120,20 @@ SELECT 1 as id
           "compile",
           projectDir,
           "--json",
-          `--default-reservation=${RESERVATION}`
+          `--default-reservation=${DEFAULT_RESERVATION}`
         ])
       );
 
       expect(compileResult.exitCode).equals(0);
       const compiledGraph = JSON.parse(compileResult.stdout);
-      expect(compiledGraph.projectConfig.defaultReservation).equals(RESERVATION);
+      expect(compiledGraph.projectConfig).deep.equals({
+        warehouse: "bigquery",
+        defaultSchema: "dataform",
+        assertionSchema: "dataform_assertions",
+        defaultDatabase: DEFAULT_DATABASE,
+        defaultLocation: DEFAULT_LOCATION,
+        defaultReservation: DEFAULT_RESERVATION
+      });
     });
 
     test("--default-reservation flag is applied to projectConfig in run (dry-run) output", async () => {
@@ -1138,14 +1146,21 @@ SELECT 1 as id
           CREDENTIALS_PATH,
           "--dry-run",
           "--json",
-          `--default-reservation=${RESERVATION}`,
+          `--default-reservation=${DEFAULT_RESERVATION}`,
           "--actions=example_table"
         ])
       );
 
       expect(runResult.exitCode).equals(0);
       const executionGraph = JSON.parse(runResult.stdout);
-      expect(executionGraph.projectConfig.defaultReservation).equals(RESERVATION);
+      expect(executionGraph.projectConfig).deep.equals({
+        warehouse: "bigquery",
+        defaultSchema: "dataform",
+        assertionSchema: "dataform_assertions",
+        defaultDatabase: DEFAULT_DATABASE,
+        defaultLocation: DEFAULT_LOCATION,
+        defaultReservation: DEFAULT_RESERVATION
+      });
     });
   });
 });
