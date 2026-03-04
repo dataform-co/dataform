@@ -13,7 +13,7 @@ import { dataform } from "df/protos/ts";
 export class CompilationTimeoutError extends Error {}
 
 function print(text: string) {
-  process.stdout.write(text);
+  process.stderr.write(text);
 }
 
 export async function compile(
