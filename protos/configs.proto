@@ -51,10 +51,15 @@ message WorkflowSettings {
   // Optional. Default config options for Iceberg tables.
   DefaultIcebergConfig default_iceberg_config = 12;
 
-  // Optional. Disables all assertions including built-in assertions 
+  // Optional. Disables all assertions including built-in assertions
   // (uniqueKey, nonNull, rowConditions) and manual assertions (type: assertion).
   // When true, assertions will still be compiled but marked as disabled.
   bool disable_assertions = 13;
+
+  // Optional. The default BigQuery reservation to use for execution.
+  // If unset, default BigQuery behavior applies.
+  // Dataform CLI only (GCP Dataform support pending).
+  string default_reservation = 14;
 }
 
 message DefaultIcebergConfig {
@@ -263,6 +268,11 @@ message ActionConfig {
 
     // Metadata for this table.
     Metadata metadata = 23;
+
+    // Optional. The BigQuery reservation to use for execution.
+    // If unset, the value from workflow_settings.yaml is used. If neither is set, default BigQuery behavior applies.
+    // Dataform CLI only (GCP Dataform support pending).
+    string reservation = 24;
   }
 
   message Metadata {
@@ -346,6 +356,11 @@ message ActionConfig {
 
     // Metadata for this view.
     Metadata metadata = 20;
+
+    // Optional. The BigQuery reservation to use for execution.
+    // If unset, the value from workflow_settings.yaml is used. If neither is set, default BigQuery behavior applies.
+    // Dataform CLI only (GCP Dataform support pending).
+    string reservation = 21;
   }
 
   enum OnSchemaChange {
@@ -458,6 +473,11 @@ message ActionConfig {
 
     // Metadata for this incremental table.
     Metadata metadata = 26;
+
+    // Optional. The BigQuery reservation to use for execution.
+    // If unset, the value from workflow_settings.yaml is used. If neither is set, default BigQuery behavior applies.
+    // Dataform CLI only (GCP Dataform support pending).
+    string reservation = 27;
   }
 
   message AssertionConfig {
@@ -496,6 +516,11 @@ message ActionConfig {
     // If true, assertions dependent upon any of the dependencies are added as
     // dependencies as well.
     bool depend_on_dependency_assertions = 10;
+
+    // Optional. The BigQuery reservation to use for execution.
+    // If unset, the value from workflow_settings.yaml is used. If neither is set, default BigQuery behavior applies.
+    // Dataform CLI only (GCP Dataform support pending).
+    string reservation = 11;
   }
 
   message OperationConfig {
@@ -543,6 +568,11 @@ message ActionConfig {
     // the  action depends on data from a source which has not been declared as
     // a dependency.
     bool hermetic = 12;
+
+    // Optional. The BigQuery reservation to use for execution.
+    // If unset, the value from workflow_settings.yaml is used. If neither is set, default BigQuery behavior applies.
+    // Dataform CLI only (GCP Dataform support pending).
+    string reservation = 13;
   }
 
   message DeclarationConfig {

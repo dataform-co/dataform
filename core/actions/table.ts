@@ -214,6 +214,13 @@ export class Table extends ActionBuilder<dataform.Table> {
       } : {}),
     });
 
+    if (config.reservation) {
+      if (!this.proto.actionDescriptor) {
+        this.proto.actionDescriptor = {};
+      }
+      this.proto.actionDescriptor.reservation = config.reservation;
+    }
+
     return this;
   }
 
