@@ -9,6 +9,7 @@ option java_multiple_files = true;
 option go_package = "github.com/dataform-co/dataform/protos/dataform";
 
 import "google/protobuf/struct.proto";
+import "protos/core.proto";
 
 // Workflow Settings defines the contents of the `workflow_settings.yaml`
 // configuration file.
@@ -55,24 +56,6 @@ message WorkflowSettings {
   // (uniqueKey, nonNull, rowConditions) and manual assertions (type: assertion).
   // When true, assertions will still be compiled but marked as disabled.
   bool disable_assertions = 13;
-}
-
-message DefaultIcebergConfig {
-  // Optional. Bucket name used to construct a storage URI when creating an
-  // Iceberg table.
-  string bucket_name = 1;
-
-  // Optional. Table folder root used to construct a storage URI when creating
-  // an Iceberg table.
-  string table_folder_root = 2;
-
-  // Optional. Table folder subpath used to construct a storage URI when
-  // creating an Iceberg table.
-  string table_folder_subpath = 3;
-
-  // Optional. The connection specifying the credentials to be used to read and
-  // write to external storage, such as Cloud Storage.
-  string connection = 4;
 }
 
 // Action configs defines the contents of `actions.yaml` configuration files.
