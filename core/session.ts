@@ -113,17 +113,14 @@ export class Session {
     ];
   }) {
     const { sqlxConfig } = actionOptions;
-    const actionType = sqlxConfig.hasOwnProperty("type") ? sqlxConfig.type : "operations";
+    const actionType = this.processSqlxConfig(actionOptions);
+
     if (actionOptions.sqlStatementCount > 1 && actionType !== "operations") {
       this.compileError(
         "Actions may only contain more than one SQL statement if they are of type 'operations'."
       );
     }
-    if (sqlxConfig.hasOwnProperty("protected") && actionType !== "incremental") {
-      this.compileError(
-        "Actions may only specify 'protected: true' if they are of type 'incremental'."
-      );
-    }
+    
     if (actionOptions.incrementalWhereContextable && actionType !== "incremental") {
       this.compileError(
         "Actions may only include incremental_where if they are of type 'incremental'."
@@ -215,6 +212,44 @@ export class Session {
         break;
       default:
         throw new Error(`Unrecognized action type: ${sqlxConfig.type}`);
+    }
+  }
+
+  public sqlxJitAction(actionOptions: {
+    sqlxConfig: any,
+    jitCode: string,
+  }) {
+    const { sqlxConfig, jitCode } = actionOptions;
+    const actionType = this.processSqlxConfig(actionOptions);
+    
+    if (!sqlxConfig.filename) {
+      sqlxConfig.filename = utils.getCallerFile(this.rootDir);
+    }
+    const jitConfig = {...sqlxConfig};
+    delete jitConfig.compilation_mode;
+
+    switch (actionType) {
+      case "view":
+        const view = new View(this, jitConfig).jitCode(jitCode);
+        this.actions.push(view);
+        break;
+      case "incremental":
+        const incrementalTable = new IncrementalTable(this, jitConfig).jitCode(jitCode);
+        this.actions.push(incrementalTable);
+        break;
+      case "table":
+        const table = new Table(this, jitConfig).jitCode(jitCode);
+        this.actions.push(table);
+        break;
+      case "operations":
+        this.actions.push(new Operation(this, jitConfig).jitCode(jitCode));
+        break;
+      case "declaration":
+        const declaration = new Declaration(this, jitConfig, jitConfig.filename);
+        this.actions.push(declaration);
+        break;
+      default:
+        throw new Error(`Unsupported by JiT compilation mode action type: ${jitConfig.type}`);
     }
   }
 
@@ -645,6 +680,21 @@ export class Session {
       }
       action.dependencyTargets = Object.values(fullyQualifiedDependencies);
     });
+  }
+
+  private processSqlxConfig(actionOptions: {
+    sqlxConfig: any;
+  }): string {
+    const { sqlxConfig } = actionOptions;
+
+    const actionType = sqlxConfig.hasOwnProperty("type") ? sqlxConfig.type : "operations";
+    if (sqlxConfig.hasOwnProperty("protected") && actionType !== "incremental") {
+      this.compileError(
+        "Actions may only specify 'protected: true' if they are of type 'incremental'."
+      );
+    }
+
+    return actionType;
   }
 
   private alterActionName(actions: ActionProto[], declarationTargets: dataform.ITarget[]) {
