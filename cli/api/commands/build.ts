@@ -83,9 +83,7 @@ export class Builder {
       ...this.toPartialExecutionAction(table),
       type: "table",
       tableType: utils.tableTypeEnumToString(table.enumType),
-      tasks: table.disabled
-        ? []
-        : this.executionSql.publishTasks(table, runConfig, tableMetadata).build(),
+      tasks: this.executionSql.createTableTasks(table, runConfig, tableMetadata),
       hermeticity: table.hermeticity || dataform.ActionHermeticity.HERMETIC
     };
   }
@@ -94,9 +92,7 @@ export class Builder {
     return {
       ...this.toPartialExecutionAction(operation),
       type: "operation",
-      tasks: operation.disabled
-        ? []
-        : operation.queries.map(statement => ({ type: "statement", statement })),
+      tasks: this.executionSql.createOperationTasks(operation),
       hermeticity: operation.hermeticity || dataform.ActionHermeticity.NON_HERMETIC
     };
   }
@@ -105,9 +101,7 @@ export class Builder {
     return {
       ...this.toPartialExecutionAction(assertion),
       type: "assertion",
-      tasks: assertion.disabled
-        ? []
-        : this.executionSql.assertTasks(assertion, this.prunedGraph.projectConfig).build(),
+      tasks: this.executionSql.createAssertionTasks(assertion),
       hermeticity: assertion.hermeticity || dataform.ActionHermeticity.HERMETIC
     };
   }
@@ -125,9 +119,6 @@ export class Builder {
     });
     if (jitCode) {
       executionAction.jitCode = jitCode;
-    }
-    if (this.prunedGraph.jitData) {
-      executionAction.jitData = this.prunedGraph.jitData;
     }
     return executionAction;
   }

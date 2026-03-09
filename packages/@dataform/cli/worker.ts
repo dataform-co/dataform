@@ -9,16 +9,8 @@ process.on("message", async (message: any) => {
       await handleJitRequest(message);
     } else {
       // It's an AoT compile request
-      const compiledGraphJson = compile(message);
-
-      // AoT compile() in cli/vm/compile.ts returns a JSON string of CompiledGraph.
-      // We need to wrap it in a CoreExecutionResponse and Base64 encode it
-      // to match what cli/api/commands/compile.ts expects.
-      const compiledGraph = dataform.CompiledGraph.create(JSON.parse(compiledGraphJson));
-      const response = dataform.CoreExecutionResponse.create({
-        compile: { compiledGraph }
-      });
-      const responseBase64 = Buffer.from(dataform.CoreExecutionResponse.encode(response).finish()).toString("base64");
+      // compile() in cli/vm/compile.ts returns a base64-encoded CoreExecutionResponse string.
+      const responseBase64 = compile(message);
       process.send(responseBase64);
     }
   } catch (e) {

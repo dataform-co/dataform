@@ -37,19 +37,52 @@ export interface IBigQueryExecutionOptions {
   reservation?: string;
 }
 
+export interface IBigQueryClientProvider {
+  get(projectId?: string): BigQuery;
+}
+
+export class BigQueryClientProvider implements IBigQueryClientProvider {
+  private readonly clients = new Map<string, BigQuery>();
+
+  constructor(private readonly credentials: dataform.IBigQuery) {}
+
+  public get(projectId?: string): BigQuery {
+    projectId = projectId || this.credentials.projectId;
+    if (!this.clients.has(projectId)) {
+      this.clients.set(
+        projectId,
+        new BigQuery({
+          projectId,
+          scopes: EXTRA_GOOGLE_SCOPES,
+          location: this.credentials.location,
+          credentials: this.credentials.credentials && JSON.parse(this.credentials.credentials)
+        })
+      );
+    }
+    return this.clients.get(projectId);
+  }
+}
+
 export class BigQueryDbAdapter implements IDbAdapter {
   private bigQueryCredentials: dataform.IBigQuery;
   private pool: PromisePoolExecutor;
-
-  private readonly clients = new Map<string, BigQuery>();
-  private readonly bigqueryClient?: BigQuery;
+  private clientProvider: IBigQueryClientProvider;
 
   constructor(
     credentials: dataform.IBigQuery,
-    options?: { concurrencyLimit?: number; bigqueryClient?: BigQuery }
+    options?: {
+      concurrencyLimit?: number;
+      bigqueryClient?: BigQuery;
+      clientProvider?: IBigQueryClientProvider;
+    }
   ) {
     this.bigQueryCredentials = credentials;
-    this.bigqueryClient = options?.bigqueryClient;
+    this.clientProvider =
+      options?.clientProvider ||
+      (options?.bigqueryClient
+        ? { get: () => options.bigqueryClient }
+        : new BigQueryClientProvider(credentials));
+
     // Bigquery allows 50 concurrent queries, and a rate limit of 100/user/second by default.
     // These limits should be safely low enough for most projects.
     this.pool = new PromisePoolExecutor({
@@ -129,10 +162,6 @@ export class BigQueryDbAdapter implements IDbAdapter {
       .promise();
   }
 
-  public async withClientLock<T>(callback: (client: IDbClient) => Promise<T>) {
-    return await callback(this);
-  }
-
   public async evaluate(queryOrAction: QueryOrAction) {
     const validationQueries = collectEvaluationQueries(queryOrAction, true);
 
@@ -174,7 +203,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
       datasetIds.map(async datasetId => {
         const [tables] = await this.getClient(database)
           .dataset(datasetId)
-          .getTables();
+          .getTables({ autoPaginate: true, maxResults: 1000 });
         await Promise.all(
           tables.map(async table => {
             const metadata = await this.table({
@@ -272,14 +301,14 @@ export class BigQueryDbAdapter implements IDbAdapter {
   }
 
   public async schemas(database: string): Promise<string[]> {
-    const data = await this.getClient(database).getDatasets();
+    const data = await this.getClient(database).getDatasets({ autoPaginate: true, maxResults: 1000 });
     return data[0].map(dataset => dataset.id);
   }
 
   public async createSchema(database: string, schema: string): Promise<void> {
     await this.execute(
       `create schema if not exists \`${database || this.bigQueryCredentials.projectId}.${schema}\``,
-      { bigquery: { location: this.bigQueryCredentials.location } }
+      { bigquery: { location: this.bigQueryCredentials.location || "US" } }
     );
   }
 
@@ -320,23 +349,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
   }
 
   private getClient(projectId?: string) {
-    if (this.bigqueryClient) {
-      return this.bigqueryClient;
-    }
-    projectId = projectId || this.bigQueryCredentials.projectId;
-    if (!this.clients.has(projectId)) {
-      this.clients.set(
-        projectId,
-        new BigQuery({
-          projectId,
-          scopes: EXTRA_GOOGLE_SCOPES,
-          location: this.bigQueryCredentials.location,
-          credentials:
-            this.bigQueryCredentials.credentials && JSON.parse(this.bigQueryCredentials.credentials)
-        })
-      );
-    }
-    return this.clients.get(projectId);
+    return this.clientProvider.get(projectId);
   }
 
   private async runQuery(
