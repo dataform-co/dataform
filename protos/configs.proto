@@ -9,7 +9,6 @@ option java_multiple_files = true;
 option go_package = "github.com/dataform-co/dataform/protos/dataform";
 
 import "google/protobuf/struct.proto";
-import "protos/core.proto";
 
 // Workflow Settings defines the contents of the `workflow_settings.yaml`
 // configuration file.
