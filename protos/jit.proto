@@ -113,6 +113,8 @@ message JitCompilationRequest {
   JitCompilationTargetType compilation_target_type = 5;
   // List of additional file paths accessible at compilation.
   repeated string file_paths = 6;
+  // File name where the target is defined.
+  string file_name = 7;
 }
 
 // JiT compilation response.
