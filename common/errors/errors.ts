@@ -15,10 +15,10 @@ export function coerceAsError<T extends Error | any>(errorLike: T): T extends Er
   if ((errorLike as any) instanceof Error) {
     return errorLike as any;
   }
-  const error = (errorLike as any) as Error;
+  const error = errorLike as any;
   // Otherwise, attempt to reconstruct an error class from the object.
-  const message = error.message ? String(error.message) : String(errorLike);
-  const coercedError = new Error(message);
+  const message = error.message || error.error || (typeof errorLike === "string" ? errorLike : JSON.stringify(errorLike));
+  const coercedError = new Error(String(message));
   if (error.stack) {
     coercedError.stack = error.stack;
   }
