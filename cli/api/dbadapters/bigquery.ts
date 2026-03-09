@@ -92,6 +92,34 @@ export class BigQueryDbAdapter implements IDbAdapter {
       .promise();
   }
 
+  public async executeRaw(
+    statement: string,
+    options: {
+      rowLimit?: number;
+      bigquery?: IBigQueryExecutionOptions;
+    } = { rowLimit: 1000 }
+  ): Promise<IExecutionResult> {
+    if (!statement) {
+      throw new Error("Query string cannot be empty");
+    }
+    return this.pool
+      .addSingleTask({
+        generator: async () => {
+          const [rows, , apiResponse] = (await this.getClient().query({
+            query: statement,
+            location: options.bigquery?.location,
+            maxResults: options.rowLimit,
+            useLegacySql: false,
+            labels: options.bigquery?.labels,
+            jobPrefix: options.bigquery?.jobPrefix,
+            dryRun: options.bigquery?.dryRun
+          })) as any;
+          return { rows: cleanRows(rows), rawRows: apiResponse?.rows, metadata: {} };
+        }
+      })
+      .promise();
+  }
+
   public async withClientLock<T>(callback: (client: IDbClient) => Promise<T>) {
     return await callback(this);
   }
@@ -216,6 +244,13 @@ export class BigQueryDbAdapter implements IDbAdapter {
         hasStreamingBuffer: !!metadata.streamingBuffer
       }
     });
+  }
+
+  public async deleteTable(target: dataform.ITarget): Promise<void> {
+    await this.getClient(target.database)
+      .dataset(target.schema)
+      .table(target.name)
+      .delete({ ignoreNotFound: true });
   }
 
   public async schemas(database: string): Promise<string[]> {
@@ -392,8 +427,13 @@ export class BigQueryDbAdapter implements IDbAdapter {
                     reject(error);
                     return;
                   }
+                  const [, , apiResponse] = (await job[0].getQueryResults({
+                    maxResults: rowLimit,
+                    location
+                  })) as any;
                   resolve({
                     rows: results.rows,
+                    rawRows: apiResponse?.rows,
                     metadata: {
                       bigquery: {
                         jobId: jobMetadata.jobReference.jobId,
@@ -492,6 +532,9 @@ function addDescriptionToMetadata(
   columnDescriptions: dataform.IColumnDescriptor[],
   metadataArray: TableField[]
 ): TableField[] {
+  if (!columnDescriptions) {
+    return metadataArray;
+  }
   const findDescription = (path: string[]) =>
     columnDescriptions.find(column => column.path.join("") === path.join(""));
 

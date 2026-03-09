@@ -5,6 +5,7 @@ export type OnCancel = (handleCancel: () => void) => void;
 
 export interface IExecutionResult {
   rows: any[];
+  rawRows?: any[];
   metadata: dataform.IExecutionMetadata;
 }
 
@@ -28,6 +29,19 @@ export interface IDbClient {
       };
     }
   ): Promise<IExecutionResult>;
+
+  executeRaw(
+    statement: string,
+    options?: {
+      rowLimit?: number;
+      bigquery?: {
+        labels?: { [label: string]: string };
+        location?: string;
+        jobPrefix?: string;
+        dryRun?: boolean;
+      };
+    }
+  ): Promise<IExecutionResult>;
 }
 
 export interface IDbAdapter extends IDbClient {
@@ -42,6 +56,7 @@ export interface IDbAdapter extends IDbClient {
   tables(): Promise<dataform.ITarget[]>;
   search(searchText: string, options?: { limit: number }): Promise<dataform.ITableMetadata[]>;
   table(target: dataform.ITarget): Promise<dataform.ITableMetadata>;
+  deleteTable(target: dataform.ITarget): Promise<void>;
 
   setMetadata(action: dataform.IExecutionAction): Promise<void>;
 }
