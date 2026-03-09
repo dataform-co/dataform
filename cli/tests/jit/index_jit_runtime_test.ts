@@ -1,8 +1,8 @@
 import { expect } from "chai";
+import { execFile } from "child_process";
 import * as fs from "fs-extra";
 import * as path from "path";
 
-import { execFile } from "child_process";
 import {
   cliEntryPointPath,
   CREDENTIALS_PATH,
@@ -48,7 +48,7 @@ suite("JiT support runtime", ({ afterEach }) => {
     expect(runResult.exitCode).equals(0);
     const executedGraph = JSON.parse(runResult.stdout);
     const reqAction = executedGraph.actions.find((a: any) => a.target.name === "jit_require_test");
-    expect(reqAction.tasks[0].statement).to.include("required_value");
+    expect(reqAction.tasks[0].compiledSql).to.include("required_value");
   });
 
   test("JiT worker timeout handling", { timeout: 15000 }, async () => {

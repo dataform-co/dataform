@@ -10,6 +10,7 @@ import { CREDENTIALS_FILENAME } from "df/cli/api/commands/credentials";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 import { prettyJsonStringify } from "df/cli/api/utils";
 import {
+  Logger,
   print,
   printCompiledGraph,
   printCompiledGraphErrors,
@@ -393,11 +394,10 @@ export function runCli() {
         ],
         processFn: async argv => {
           const projectDir = argv[projectDirMustExistOption.name];
+          const logger = new Logger(!argv[jsonOutputOption.name]);
 
           async function compileAndPrint() {
-            if (!argv[jsonOutputOption.name]) {
-              print("Compiling...\n");
-            }
+            logger.log("Compiling...\n");
             const compiledGraph = await compile({
               projectDir,
               projectConfigOverride: ProjectConfigOptions.constructProjectConfigOverride(argv),
@@ -549,6 +549,8 @@ export function runCli() {
         ],
         processFn: async argv => {
           const isJsonOutput = argv[jsonOutputOption.name];
+          const logger = new Logger(!isJsonOutput);
+
           if (isJsonOutput && !argv[dryRunOptionName]) {
             printError(
               `For execution, the --${jsonOutputOption.name} option is only supported if the ` +
@@ -556,9 +558,7 @@ export function runCli() {
             );
             return;
           }
-          if (!isJsonOutput) {
-            print("Compiling...\n");
-          }
+          logger.log("Compiling...\n");
           const compiledGraph = await compile({
             projectDir: argv[projectDirOption.name],
             projectConfigOverride: ProjectConfigOptions.constructProjectConfigOverride(argv),
@@ -568,9 +568,7 @@ export function runCli() {
             printCompiledGraphErrors(compiledGraph.graphErrors, argv[quietCompileOption.name]);
             return 1;
           }
-          if (!isJsonOutput) {
-            printSuccess("Compiled successfully.\n");
-          }
+          logger.success("Compiled successfully.\n");
           const readCredentials = credentials.read(
             getCredentialsPath(argv[projectDirOption.name], argv[credentialsOption.name])
           );
@@ -599,18 +597,14 @@ export function runCli() {
           }
 
           if (argv[runTestsOptionName]) {
-            if (!isJsonOutput) {
-              print(`Running ${compiledGraph.tests.length} unit tests...\n`);
-            }
+            logger.log(`Running ${compiledGraph.tests.length} unit tests...\n`);
             const testResults = await test(dbadapter, compiledGraph.tests);
             testResults.forEach(testResult => printTestResult(testResult));
             if (testResults.some(testResult => !testResult.successful)) {
               printError("\nUnit tests did not pass; aborting run.");
               return 1;
             }
-            if (!isJsonOutput) {
-              printSuccess("Unit tests completed successfully.\n");
-            }
+            logger.success("Unit tests completed successfully.\n");
           }
 
           let bigqueryOptions: {} = {
@@ -632,25 +626,20 @@ export function runCli() {
           });
 
           if (actionsByName.size === 0) {
-            if (!isJsonOutput) {
-              print("No actions to run.\n");
-            }
+            logger.log("No actions to run.\n");
             return 0;
           }
 
-          if (!isJsonOutput) {
-            if (argv[dryRunOptionName]) {
-              print("Dry running (no changes to the warehouse will be applied)...");
-            } else {
-              print("Running...\n");
-            }
+          if (argv[dryRunOptionName]) {
+            logger.log("Dry running (no changes to the warehouse will be applied)...");
+          } else {
+            logger.log("Running...\n");
           }
 
           const runner = run(
             dbadapter,
             executionGraph,
-            argv[projectDirOption.name],
-            { bigquery: bigqueryOptions }
+            { projectDir: argv[projectDirOption.name], bigquery: bigqueryOptions }
           );
           process.on("SIGINT", () => {
             runner.cancel();

@@ -1,5 +1,7 @@
 import { expect } from "chai";
+import * as fs from "fs-extra";
 import Long from "long";
+import * as path from "path";
 
 import * as dfapi from "df/cli/api";
 import * as dbadapters from "df/cli/api/dbadapters";
@@ -32,7 +34,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
 
       // Run the project.
       const executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
-      const executedGraph = await dfapi.run(dbadapter, executionGraph, ".").result();
+      const executedGraph = await dfapi.run(dbadapter, executionGraph).result();
 
       const actionMap = keyBy(executedGraph.actions, v => targetAsReadableString(v.target));
       expect(Object.keys(actionMap).length).eql(17);
@@ -97,7 +99,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
         }
       ]) {
         const executionGraph = await dfapi.build(compiledGraph, runIteration.runConfig, dbadapter);
-        const runResult = await dfapi.run(dbadapter, executionGraph, ".").result();
+        const runResult = await dfapi.run(dbadapter, executionGraph).result();
         expect(dataform.RunResult.ExecutionStatus[runResult.status]).eql(
           dataform.RunResult.ExecutionStatus[dataform.RunResult.ExecutionStatus.SUCCESSFUL]
         );
@@ -141,7 +143,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
         },
         dbadapter
       );
-      const runResult = await dfapi.run(dbadapter, executionGraph, ".").result();
+      const runResult = await dfapi.run(dbadapter, executionGraph).result();
       expect(dataform.RunResult.ExecutionStatus[runResult.status]).eql(
         dataform.RunResult.ExecutionStatus[dataform.RunResult.ExecutionStatus.SUCCESSFUL]
       );
@@ -255,7 +257,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       // Create and run the project.
       const compiledGraph = await compile("tests/integration/bigquery_project", "evaluate");
       const executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
-      await dfapi.run(dbadapter, executionGraph, ".").result();
+      await dfapi.run(dbadapter, executionGraph).result();
 
       const view = keyBy(compiledGraph.tables, t => targetAsReadableString(t.target))[
         "dataform-open-source.df_integration_test_evaluate.example_view"
@@ -471,7 +473,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       },
       dbadapter
     );
-    const runResult = await dfapi.run(dbadapter, executionGraph, ".").result();
+    const runResult = await dfapi.run(dbadapter, executionGraph).result();
     expect(dataform.RunResult.ExecutionStatus[runResult.status]).eql(
       dataform.RunResult.ExecutionStatus[dataform.RunResult.ExecutionStatus.SUCCESSFUL]
     );
@@ -485,6 +487,129 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
     expect(fullSearch.length).equals(2);
     expect(partialSearch.length).equals(2);
     expect(columnSearch.length).greaterThan(0);
+  });
+
+  test("JiT execution e2e", { timeout: 120000 }, async () => {
+    // Create a simple project with a JiT table
+    const projectDir = "tests/integration/jit_project";
+    if (fs.existsSync(projectDir)) {
+      fs.removeSync(projectDir);
+    }
+    fs.mkdirpSync(path.join(projectDir, "definitions"));
+    fs.writeFileSync(
+      path.join(projectDir, "workflow_settings.yaml"),
+      `
+defaultProject: dataform-open-source
+defaultLocation: US
+defaultDataset: df_integration_test_jit
+`
+    );
+    fs.writeFileSync(
+      path.join(projectDir, "definitions/jit_table.js"),
+      `publish("jit_table", { type: "table" }).jitCode(async (jctx) => "SELECT 1 as id")`
+    );
+
+    // Mock @dataform/core to avoid npm install and 403 error
+    const nodeModulesDir = path.join(projectDir, "node_modules", "@dataform", "core");
+    fs.mkdirpSync(nodeModulesDir);
+    const coreBundlePath = path.resolve("packages/@dataform/core/bundle.js");
+    fs.copyFileSync(coreBundlePath, path.join(nodeModulesDir, "bundle.js"));
+    const corePackageJsonPath = path.resolve("packages/@dataform/core/package.json");
+    fs.copyFileSync(corePackageJsonPath, path.join(nodeModulesDir, "package.json"));
+    // We also need a package.json in the project root to bypass the dataformCoreVersion check
+    fs.writeFileSync(
+      path.join(projectDir, "package.json"),
+      JSON.stringify({ dependencies: { "@dataform/core": "3.0.0-alpha.0" } })
+    );
+
+    try {
+      const compiledGraph = await dfapi.compile({ projectDir });
+      
+      // Drop dataset to start fresh
+      await dbadapter.execute(
+        "drop schema if exists `dataform-open-source.df_integration_test_jit` cascade"
+      );
+
+      const executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
+      const runResult = await dfapi.run(dbadapter, executionGraph, { projectDir }).result();
+
+      expect(dataform.RunResult.ExecutionStatus[runResult.status]).eql(
+        dataform.RunResult.ExecutionStatus[dataform.RunResult.ExecutionStatus.SUCCESSFUL]
+      );
+
+      const rows = await dbadapter.execute("SELECT * FROM `dataform-open-source.df_integration_test_jit.jit_table`").then(res => res.rows);
+      expect(rows).to.eql([{ id: 1 }]);
+    } finally {
+      if (fs.existsSync(projectDir)) {
+        fs.removeSync(projectDir);
+      }
+    }
+  });
+
+  test("JiT dry run integration", { timeout: 120000 }, async () => {
+    // Create a simple project with a JiT table
+    const projectDir = "tests/integration/jit_dry_run_project";
+    if (fs.existsSync(projectDir)) {
+      fs.removeSync(projectDir);
+    }
+    fs.mkdirpSync(path.join(projectDir, "definitions"));
+    fs.writeFileSync(
+      path.join(projectDir, "workflow_settings.yaml"),
+      `
+defaultProject: dataform-open-source
+defaultLocation: US
+defaultDataset: df_integration_test_jit_dry_run
+`
+    );
+    fs.writeFileSync(
+      path.join(projectDir, "definitions/jit_table.js"),
+      `publish("jit_table_dry_run", { type: "table" }).jitCode(async (jctx) => "SELECT 1 as id")`
+    );
+
+    // Mock @dataform/core
+    const nodeModulesDir = path.join(projectDir, "node_modules", "@dataform", "core");
+    fs.mkdirpSync(nodeModulesDir);
+    const coreBundlePath = path.resolve("packages/@dataform/core/bundle.js");
+    fs.copyFileSync(coreBundlePath, path.join(nodeModulesDir, "bundle.js"));
+    const corePackageJsonPath = path.resolve("packages/@dataform/core/package.json");
+    fs.copyFileSync(corePackageJsonPath, path.join(nodeModulesDir, "package.json"));
+    fs.writeFileSync(
+      path.join(projectDir, "package.json"),
+      JSON.stringify({ dependencies: { "@dataform/core": "3.0.0-alpha.0" } })
+    );
+
+    try {
+      const compiledGraph = await dfapi.compile({ projectDir });
+      
+      // Drop dataset to start fresh
+      await dbadapter.execute(
+        "drop schema if exists `dataform-open-source.df_integration_test_jit_dry_run` cascade"
+      );
+
+      const executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
+      
+      const runResult = await dfapi.run(dbadapter, executionGraph, { 
+        projectDir, 
+        bigquery: { dryRun: true } 
+      }).result();
+
+      expect(dataform.RunResult.ExecutionStatus[runResult.status]).eql(
+        dataform.RunResult.ExecutionStatus[dataform.RunResult.ExecutionStatus.SUCCESSFUL]
+      );
+
+      // Verify that the table was NOT created
+      const tables = await dbadapter.schemas("dataform-open-source").then(schemas => {
+        if (!schemas.includes("df_integration_test_jit_dry_run")) {
+          return [];
+        }
+        return dbadapter.tables("dataform-open-source", "df_integration_test_jit_dry_run");
+      });
+      expect(tables.length).to.equal(0);
+    } finally {
+      if (fs.existsSync(projectDir)) {
+        fs.removeSync(projectDir);
+      }
+    }
   });
 });
 

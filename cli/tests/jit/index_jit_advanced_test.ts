@@ -1,8 +1,8 @@
 import { expect } from "chai";
+import { execFile } from "child_process";
 import * as fs from "fs-extra";
 import * as path from "path";
 
-import { execFile } from "child_process";
 import {
   cliEntryPointPath,
   CREDENTIALS_PATH,
@@ -45,7 +45,7 @@ suite("JiT support advanced", ({ afterEach }) => {
     expect(runResult.exitCode).equals(0);
     const executedGraph = JSON.parse(runResult.stdout);
     const prePostAction = executedGraph.actions.find((a: any) => a.target.name === "pre_post_jit");
-    const statement = prePostAction.tasks[0].statement;
+    const statement = prePostAction.tasks[0].compiledSql;
     expect(statement).to.include("SELECT 'pre' as p");
     expect(statement).to.include("SELECT 1 as id");
     expect(statement).to.include("SELECT 'post' as p");
@@ -89,9 +89,89 @@ suite("JiT support advanced", ({ afterEach }) => {
     expect(runResult.exitCode).equals(0);
     const executedGraph = JSON.parse(runResult.stdout);
     const incAction = executedGraph.actions.find((a: any) => a.target.name === "inc_pre_post_jit");
-    const statement = incAction.tasks[0].statement;
+    const statement = incAction.tasks[0].compiledSql;
     expect(statement).to.include("SELECT 'reg_path_pre' as p");
     expect(statement).to.include("SELECT 'reg_path_query' as q");
+
+    // Also validate when not using full-refresh.
+    // Since the table doesn't exist, jctx.incremental() should still be false.
+    const runResultIncremental = await getProcessResult(
+      execFile(nodePath, [
+        cliEntryPointPath,
+        "run",
+        projectDir,
+        "--credentials",
+        CREDENTIALS_PATH,
+        "--dry-run",
+        "--json",
+        "--actions=inc_pre_post_jit"
+      ])
+    );
+
+    expect(runResultIncremental.exitCode).equals(0);
+    const executedGraphInc = JSON.parse(runResultIncremental.stdout);
+    const incActionInc = executedGraphInc.actions.find((a: any) => a.target.name === "inc_pre_post_jit");
+    const statementInc = incActionInc.tasks[0].compiledSql;
+    expect(statementInc).to.include("SELECT 'reg_path_pre' as p");
+    expect(statementInc).to.include("SELECT 'reg_path_query' as q");
+  });
+
+  test("JiT incremental mode validation with consecutive runs", async () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    await setupJitProject(tmpDirFixture, projectDir);
+    const incPath = path.join(projectDir, "definitions", "inc_jit.js");
+    fs.writeFileSync(
+      incPath,
+      `publish("inc_jit", { type: "incremental" }).jitCode(async (jctx) => {
+        if (jctx.incremental()) {
+          return {
+            query: "SELECT 'inc_query' as q",
+            preOps: ["SELECT 'inc_pre' as p"]
+          };
+        } else {
+          return {
+            query: "SELECT 'reg_query' as q",
+            preOps: ["SELECT 'reg_pre' as p"]
+          };
+        }
+      })`
+    );
+
+    // 1. Initial run with full-refresh to create the table.
+    const firstRun = await getProcessResult(
+      execFile(nodePath, [
+        cliEntryPointPath,
+        "run",
+        projectDir,
+        "--credentials",
+        CREDENTIALS_PATH,
+        "--actions=inc_jit",
+        "--full-refresh"
+      ])
+    );
+    expect(firstRun.exitCode).equals(0);
+
+    // 2. Second run without full-refresh.
+    // The table now exists, so it should use the incremental path.
+    const secondRun = await getProcessResult(
+      execFile(nodePath, [
+        cliEntryPointPath,
+        "run",
+        projectDir,
+        "--credentials",
+        CREDENTIALS_PATH,
+        "--dry-run",
+        "--json",
+        "--actions=inc_jit"
+      ])
+    );
+
+    expect(secondRun.exitCode).equals(0);
+    const secondGraph = JSON.parse(secondRun.stdout);
+    const secondAction = secondGraph.actions.find((a: any) => a.target.name === "inc_jit");
+    // Assert second run is INCREMENTAL
+    expect(secondAction.tasks[0].compiledSql).to.include("SELECT 'inc_pre' as p");
+    expect(secondAction.tasks[0].compiledSql).to.include("SELECT 'inc_query' as q");
   });
 
   test("JiT project-level data support", async () => {
@@ -104,7 +184,7 @@ suite("JiT support advanced", ({ afterEach }) => {
     fs.writeFileSync(
       path.join(projectDir, "definitions", "jit_data_test.js"),
       `publish("jit_data_test", { type: "table" }).jitCode(async (jctx) => {
-        const secret = jctx.data.fields.app_secret.stringValue;
+        const secret = jctx.data.app_secret;
         return "SELECT '" + secret + "' as val";
       })`
     );
@@ -125,7 +205,7 @@ suite("JiT support advanced", ({ afterEach }) => {
     expect(runResult.exitCode).equals(0);
     const executedGraph = JSON.parse(runResult.stdout);
     const dataAction = executedGraph.actions.find((a: any) => a.target.name === "jit_data_test");
-    expect(dataAction.tasks[0].statement).to.include("e2e_secret_value");
+    expect(dataAction.tasks[0].compiledSql).to.include("e2e_secret_value");
   });
 
   test("JiT complex session data support", async () => {
@@ -143,8 +223,8 @@ suite("JiT support advanced", ({ afterEach }) => {
     fs.writeFileSync(
       path.join(projectDir, "definitions", "jit_complex_data_test.js"),
       "publish('jit_complex_data_test', { type: 'table' }).jitCode(async (jctx) => {\n" +
-      "  const config = jctx.data.fields.app_config.structValue.fields;\n" +
-      "  return 'SELECT \\'' + config.env.stringValue + '\\' as env, ' + config.version.numberValue + ' as ver, \\'' + config.tags.listValue.values[0].stringValue + '\\' as tag';\n" +
+      "  const config = jctx.data.app_config;\n" +
+      "  return 'SELECT \\'' + config.env + '\\' as env, ' + config.version + ' as ver, \\'' + config.tags[0] + '\\' as tag';\n" +
       "})"
     );
 
@@ -164,6 +244,6 @@ suite("JiT support advanced", ({ afterEach }) => {
     expect(runResult.exitCode).equals(0);
     const executedGraph = JSON.parse(runResult.stdout);
     const dataAction = executedGraph.actions.find((a: any) => a.target.name === "jit_complex_data_test");
-    expect(dataAction.tasks[0].statement).to.include("SELECT 'test-env' as env, 1.2 as ver, 't1' as tag");
+    expect(dataAction.tasks[0].compiledSql).to.include("SELECT 'test-env' as env, 1.2 as ver, 't1' as tag");
   });
 });

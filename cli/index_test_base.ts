@@ -1,9 +1,9 @@
 // tslint:disable tsr-detect-non-literal-fs-filename
+import { execFile } from "child_process";
 import * as fs from "fs-extra";
 import { dump as dumpYaml, load as loadYaml } from "js-yaml";
 import * as path from "path";
 
-import { execFile } from "child_process";
 import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
 import { corePackageTarPath, getProcessResult, nodePath, npmPath } from "df/testing";
