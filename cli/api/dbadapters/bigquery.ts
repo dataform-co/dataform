@@ -129,10 +129,6 @@ export class BigQueryDbAdapter implements IDbAdapter {
       .promise();
   }
 
-  public async withClientLock<T>(callback: (client: IDbClient) => Promise<T>) {
-    return await callback(this);
-  }
-
   public async evaluate(queryOrAction: QueryOrAction) {
     const validationQueries = collectEvaluationQueries(queryOrAction, true);
 

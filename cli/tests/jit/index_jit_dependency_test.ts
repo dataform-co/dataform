@@ -1,8 +1,8 @@
 import { expect } from "chai";
+import { execFile } from "child_process";
 import * as fs from "fs-extra";
 import * as path from "path";
 
-import { execFile } from "child_process";
 import {
   cliEntryPointPath,
   CREDENTIALS_PATH,
@@ -49,7 +49,9 @@ suite("JiT support dependencies", ({ afterEach }) => {
     // Should have BOTH tables because of --include-deps
     expect(executedGraph.actions.length).to.equal(2);
     expect(executedGraph.actions.some((a: any) => a.target.name === "table_a")).to.equal(true);
-    expect(executedGraph.actions.some((a: any) => a.target.name === "table_b")).to.equal(true);
+    const actionB = executedGraph.actions.find((a: any) => a.target.name === "table_b");
+    expect(actionB).to.not.equal(undefined);
+    expect(actionB.tasks[0].statement).to.include("SELECT '`dataform-open-source.dataform.table_a`' as ref_name");
   });
 
   test("JiT to JiT dependency chain", async () => {
