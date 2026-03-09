@@ -649,8 +649,7 @@ export function runCli() {
           const runner = run(
             dbadapter,
             executionGraph,
-            argv[projectDirOption.name],
-            { bigquery: bigqueryOptions }
+            { projectDir: argv[projectDirOption.name], bigquery: bigqueryOptions }
           );
           process.on("SIGINT", () => {
             runner.cancel();

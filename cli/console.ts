@@ -514,7 +514,7 @@ function printExecutedActionErrors(
   failingTasks.forEach((task, i) => {
     // For JiT actions, the original executionAction.tasks might be empty
     // since they are generated during re-compilation.
-    const statement = (executionAction.tasks[i] || (task as any)).statement;
+    const statement = task.compiledSql || (executionAction.tasks[i] || (task as any)).statement;
     if (statement) {
       statement.split("\n").forEach((line: string) => {
         writeStdErr(`${DEFAULT_PROMPT}${line}`, 1);

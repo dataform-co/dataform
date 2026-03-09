@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { anything, capture, instance, mock, verify, when } from "ts-mockito";
 
-import { handleRpc } from "df/cli/api/commands/jit_rpc";
+import { handleDbRequest as handleRpc } from "df/cli/api/commands/jit/rpc";
 import { Runner } from "df/cli/api/commands/run";
 import { IDbAdapter, IDbClient } from "df/cli/api/dbadapters";
 import { jitCompile } from "df/core/jit_compiler";
@@ -10,7 +10,7 @@ import { suite, test } from "df/testing";
 
 suite("run", () => {
   test("JiT compilation is performed for Table actions", async () => {
-    const { mockClient, adapterInstance } = createMocks();
+    const { mockAdapter, adapterInstance } = createMocks();
 
     const executionGraph = createGraph([
       {
@@ -22,7 +22,8 @@ suite("run", () => {
       }
     ]);
 
-    const runner = new Runner(adapterInstance, executionGraph, ".", {
+    const runner = new Runner(adapterInstance, executionGraph, {
+      projectDir: ".",
       jitCompiler: async (req, pdir, adapter) => {
         return await jitCompile(req, (method, internalReq, callback) => {
           // RPC callback bridge for tests
@@ -33,6 +34,9 @@ suite("run", () => {
     const result = await runner.execute().result();
 
     // Verify overall run status
+    if (result.status !== dataform.RunResult.ExecutionStatus.SUCCESSFUL) {
+      process.stderr.write("Run failed with actions: " + JSON.stringify(result.actions, null, 2) + "\n");
+    }
     expect(result.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
 
     // Verify action result
@@ -45,11 +49,11 @@ suite("run", () => {
     expect(actionResult.tasks[0].status).equals(dataform.TaskResult.ExecutionStatus.SUCCESSFUL);
 
     // Verifying that it used the database to generate the task (via createRpcCallback in jitCompile)
-    verify(mockClient.execute(anything(), anything())).atLeast(1);
+    verify(mockAdapter.execute(anything(), anything())).atLeast(1);
   });
 
   test("JiT compilation is performed for Operation actions", async () => {
-    const { mockClient, adapterInstance } = createMocks();
+    const { mockAdapter, adapterInstance } = createMocks();
 
     const executionGraph = createGraph([
       {
@@ -60,7 +64,8 @@ suite("run", () => {
       }
     ]);
 
-    const runner = new Runner(adapterInstance, executionGraph, ".", {
+    const runner = new Runner(adapterInstance, executionGraph, {
+      projectDir: ".",
       jitCompiler: async (req, pdir, adapter) => {
         return await jitCompile(req, (method, internalReq, callback) => {
           // RPC callback bridge for tests
@@ -78,8 +83,8 @@ suite("run", () => {
     expect(actionResult.tasks[0].status).equals(dataform.TaskResult.ExecutionStatus.SUCCESSFUL);
     expect(actionResult.tasks[1].status).equals(dataform.TaskResult.ExecutionStatus.SUCCESSFUL);
 
-    verify(mockClient.execute("SELECT 1", anything())).once();
-    verify(mockClient.execute("SELECT 2", anything())).once();
+    verify(mockAdapter.execute("SELECT 1", anything())).once();
+    verify(mockAdapter.execute("SELECT 2", anything())).once();
   });
 
   test("Mixed run with JiT and AoT actions", async () => {
@@ -102,7 +107,8 @@ suite("run", () => {
       }
     ]);
 
-    const runner = new Runner(adapterInstance, executionGraph, ".", {
+    const runner = new Runner(adapterInstance, executionGraph, {
+      projectDir: ".",
       jitCompiler: async (req, pdir, adapter) => {
         return await jitCompile(req, (method, internalReq, callback) => {
           // RPC callback bridge for tests
@@ -140,7 +146,8 @@ suite("run", () => {
       }
     ]);
 
-    const runner = new Runner(adapterInstance, executionGraph, ".", {
+    const runner = new Runner(adapterInstance, executionGraph, {
+      projectDir: ".",
       jitCompiler: async (req, pdir, adapter) => {
         return await jitCompile(req, (method, internalReq, callback) => {
           // RPC callback bridge for tests
@@ -173,7 +180,8 @@ suite("run", () => {
       }
     ]);
 
-    const runner = new Runner(adapterInstance, executionGraph, ".", {
+    const runner = new Runner(adapterInstance, executionGraph, {
+      projectDir: ".",
       jitCompiler: async (req, pdir, adapter) => {
         return await jitCompile(req, (method, internalReq, callback) => {
           // RPC callback bridge for tests
@@ -194,7 +202,7 @@ suite("run", () => {
   });
 
   test("Handles JiT incremental table compilation", async () => {
-    const { mockClient, adapterInstance } = createMocks();
+    const { mockAdapter, adapterInstance } = createMocks();
 
     const executionGraph = createGraph([
       {
@@ -208,7 +216,8 @@ suite("run", () => {
       }
     ]);
 
-    const runner = new Runner(adapterInstance, executionGraph, ".", {
+    const runner = new Runner(adapterInstance, executionGraph, {
+      projectDir: ".",
       jitCompiler: async (req, pdir, adapter) => {
         return await jitCompile(req, (method, internalReq, callback) => {
           // RPC callback bridge for tests
@@ -223,17 +232,17 @@ suite("run", () => {
 
     // In our test createGraph, warehouseState.tables is empty, so incremental() should be false.
     // Thus it should have used the 'regular' query.
-    verify(mockClient.execute(anything(), anything())).once();
-    const [executedSql] = capture(mockClient.execute).last();
+    verify(mockAdapter.execute(anything(), anything())).once();
+    const [executedSql] = capture(mockAdapter.execute).last();
     expect(executedSql).to.contain("create or replace table `db.sch.incremental_jit` as");
     expect(executedSql).to.contain("SELECT 'full' as t");
   });
 
   test("JiT compilation with RPC calls (ListTables, GetTable, DeleteTable)", async () => {
-    const { mockAdapter, mockClient, adapterInstance } = createMocks();
+    const { mockAdapter, adapterInstance } = createMocks();
 
     const target = { database: "db", schema: "sch", name: "existing_table" };
-    when(mockAdapter.tables()).thenResolve([target]);
+    when(mockAdapter.tables(anything(), anything())).thenResolve([{ target }]);
     when(mockAdapter.table(anything())).thenResolve({
       target,
       type: dataform.TableMetadata.Type.TABLE
@@ -254,7 +263,8 @@ suite("run", () => {
       }
     ]);
 
-    const runner = new Runner(adapterInstance, executionGraph, ".", {
+    const runner = new Runner(adapterInstance, executionGraph, {
+      projectDir: ".",
       jitCompiler: async (req, pdir, adapter) => {
         return await jitCompile(req, (method, internalReq, callback) => {
           (adapter as any).rpcImpl(method, internalReq, callback);
@@ -271,8 +281,8 @@ suite("run", () => {
     const [deletedTarget] = capture(mockAdapter.deleteTable).last();
     expect(deletedTarget.name).equals("existing_table");
 
-    verify(mockClient.execute(anything(), anything())).once();
-    const [executedSql] = capture(mockClient.execute).last();
+    verify(mockAdapter.execute(anything(), anything())).once();
+    const [executedSql] = capture(mockAdapter.execute).last();
     expect(executedSql).to.contain("SELECT 'existing_table' as deleted_table");
   });
 });
@@ -282,9 +292,24 @@ function createMocks() {
   const mockClient = mock<IDbClient>();
 
   when(mockAdapter.schemas(anything())).thenResolve([]);
-  when(mockAdapter.withClientLock(anything())).thenCall(
-    (callback: (client: IDbClient) => Promise<any>) => callback(instance(mockClient))
-  );
+  when(mockAdapter.execute(anything(), anything())).thenCall((statement: string) => {
+    if (statement.includes("fail") || statement.includes("nonexistent")) {
+      throw new Error("RPC DB Fail");
+    }
+    return Promise.resolve({
+      rows: [],
+      metadata: {}
+    });
+  });
+  when(mockClient.executeRaw(anything(), anything())).thenCall((statement: string) => {
+    if (statement.includes("fail") || statement.includes("nonexistent")) {
+      throw new Error("RPC DB Fail");
+    }
+    return Promise.resolve({
+      rows: [],
+      metadata: {}
+    });
+  });
   when(mockClient.execute(anything(), anything())).thenCall((statement: string) => {
     if (statement.includes("fail") || statement.includes("nonexistent")) {
       throw new Error("RPC DB Fail");
@@ -298,8 +323,8 @@ function createMocks() {
   const adapterInstance = instance(mockAdapter);
   (adapterInstance as any).rpcImpl = (method: string, req: Uint8Array, callback: any) => {
     handleRpc(instance(mockAdapter), instance(mockClient), method, req)
-      .then(res => callback(null, res))
-      .catch(err => callback(err, null));
+      .then((res: Uint8Array) => callback(null, res))
+      .catch((err: Error) => callback(err, null));
   };
 
   return { mockAdapter, mockClient, adapterInstance };

@@ -169,7 +169,6 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
             }
           ],
           type: "table",
-          jitData: {},
           disabled: false
         }
       ],
@@ -289,7 +288,6 @@ SELECT 1 as id
             }
           ],
           type: "table",
-          jitData: {},
           disabled: false
         },
         {
@@ -301,7 +299,6 @@ SELECT 1 as id
             schema: "dataform_assertions"
           },
           type: "assertion",
-          jitData: {},
           disabled: true
         }
       ],

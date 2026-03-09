@@ -694,10 +694,13 @@ suite("examples", () => {
 
   test("times out after timeout period during compilation", async () => {
     try {
-      await compile({ projectDir: "tests/api/projects/never_finishes_compiling" });
+      await compile({
+        projectDir: "tests/api/projects/never_finishes_compiling",
+        timeoutMillis: 1000
+      });
       fail("Compilation timeout Error expected.");
     } catch (e) {
-      expect(e.message).to.equal("Worker timed out after 30 seconds");
+      expect(e.message).to.equal("Worker timed out after 1 seconds");
     }
   });
 

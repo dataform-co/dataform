@@ -71,9 +71,7 @@ ts_test_suite(
         "index_jit_runtime_test.ts",
         "util_test.ts",
         "jit_build_test.ts",
-        "jit_rpc_test.ts",
         "jit_run_test.ts",
-        "bigquery_test.ts"
     ],
     data = [
         ":node_modules",

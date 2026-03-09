@@ -79,4 +79,63 @@ suite("BigQueryDbAdapter", () => {
     expect(result[0].target.schema).to.equal(schemaName);
     expect(result[0].target.name).to.equal(tableName);
   });
+
+  test("setMetadata handles action without columns", async () => {
+    // Partial mock for BigQuery client to avoid real network calls
+    const mockBigQuery: any = {
+      dataset: () => ({
+        table: () => ({
+          getMetadata: () => Promise.resolve([{ schema: { fields: [] } }]),
+          setMetadata: (metadata: any) => {
+            expect(metadata.description).to.equal("test");
+            return Promise.resolve([]);
+          }
+        })
+      })
+    };
+
+    const credentials = dataform.BigQuery.create({ projectId: "p", location: "US" });
+    const adapter = new BigQueryDbAdapter(credentials, { concurrencyLimit: 1 });
+    (adapter as any).getClient = () => mockBigQuery;
+
+    const action = dataform.ExecutionAction.create({
+      target: { database: "db", schema: "sch", name: "tab" },
+      actionDescriptor: { description: "test" }
+      // columns is missing/null in this action
+    });
+
+    // This should not throw "cannot read property 'find' of undefined"
+    await adapter.setMetadata(action);
+  });
+
+  test("setMetadata correctly maps column descriptions", async () => {
+    const mockBigQuery: any = {
+      dataset: () => ({
+        table: () => ({
+          getMetadata: () => Promise.resolve([{
+            schema: {
+              fields: [{ name: "id", type: "INTEGER" }]
+            }
+          }]),
+          setMetadata: (metadata: any) => {
+            expect(metadata.schema[0].description).to.equal("id desc");
+            return Promise.resolve([]);
+          }
+        })
+      })
+    };
+
+    const credentials = dataform.BigQuery.create({ projectId: "p", location: "US" });
+    const adapter = new BigQueryDbAdapter(credentials, { concurrencyLimit: 1 });
+    (adapter as any).getClient = () => mockBigQuery;
+
+    const action = dataform.ExecutionAction.create({
+      target: { database: "db", schema: "sch", name: "tab" },
+      actionDescriptor: {
+        columns: [{ path: ["id"], description: "id desc" }]
+      }
+    });
+
+    await adapter.setMetadata(action);
+  });
 });
