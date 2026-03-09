@@ -528,7 +528,7 @@ export class Runner {
       jitCode: action.jitCode,
       fileName: action.fileName,
       compilationTargetType,
-      jitData: action.jitData
+      jitData: this.graph.jitData
     });
 
     const timeoutMillis = this.graph.runConfig?.timeoutMillis || DEFAULT_COMPILATION_TIMEOUT_MILLIS;

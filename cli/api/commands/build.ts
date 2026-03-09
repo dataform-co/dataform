@@ -126,9 +126,6 @@ export class Builder {
     if (jitCode) {
       executionAction.jitCode = jitCode;
     }
-    if (this.prunedGraph.jitData) {
-      executionAction.jitData = this.prunedGraph.jitData;
-    }
     return executionAction;
   }
 }

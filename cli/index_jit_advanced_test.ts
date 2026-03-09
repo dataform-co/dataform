@@ -104,7 +104,7 @@ suite("JiT support advanced", ({ afterEach }) => {
     fs.writeFileSync(
       path.join(projectDir, "definitions", "jit_data_test.js"),
       `publish("jit_data_test", { type: "table" }).jitCode(async (jctx) => {
-        const secret = jctx.data.fields.app_secret.stringValue;
+        const secret = jctx.data.app_secret;
         return "SELECT '" + secret + "' as val";
       })`
     );
@@ -143,8 +143,8 @@ suite("JiT support advanced", ({ afterEach }) => {
     fs.writeFileSync(
       path.join(projectDir, "definitions", "jit_complex_data_test.js"),
       "publish('jit_complex_data_test', { type: 'table' }).jitCode(async (jctx) => {\n" +
-      "  const config = jctx.data.fields.app_config.structValue.fields;\n" +
-      "  return 'SELECT \\'' + config.env.stringValue + '\\' as env, ' + config.version.numberValue + ' as ver, \\'' + config.tags.listValue.values[0].stringValue + '\\' as tag';\n" +
+      "  const config = jctx.data.app_config;\n" +
+      "  return 'SELECT \\'' + config.env + '\\' as env, ' + config.version + ' as ver, \\'' + config.tags[0] + '\\' as tag';\n" +
       "})"
     );
 
