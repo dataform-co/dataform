@@ -218,6 +218,13 @@ export class BigQueryDbAdapter implements IDbAdapter {
     });
   }
 
+  public async deleteTable(target: dataform.ITarget): Promise<void> {
+    await this.getClient(target.database)
+      .dataset(target.schema)
+      .table(target.name)
+      .delete({ ignoreNotFound: true });
+  }
+
   public async schemas(database: string): Promise<string[]> {
     const data = await this.getClient(database).getDatasets();
     return data[0].map(dataset => dataset.id);
@@ -492,6 +499,9 @@ function addDescriptionToMetadata(
   columnDescriptions: dataform.IColumnDescriptor[],
   metadataArray: TableField[]
 ): TableField[] {
+  if (!columnDescriptions) {
+    return metadataArray;
+  }
   const findDescription = (path: string[]) =>
     columnDescriptions.find(column => column.path.join("") === path.join(""));
 
