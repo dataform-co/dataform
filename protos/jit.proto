@@ -34,6 +34,8 @@ message ExecuteRequest {
   bool fetch_results = 4;
 
   BigQueryExecuteOptions big_query_options = 5;
+  // Query parameters for parameterized queries.
+  google.protobuf.Struct params = 6;
 }
 
 message BigQueryExecuteOptions {
@@ -49,6 +51,8 @@ message BigQueryExecuteOptions {
   string job_prefix = 5;
   // Is dry run job.
   bool dry_run = 6;
+  // BigQuery reservation to use for the job.
+  string reservation = 7;
 }
 
 // Synchronous execution response result.

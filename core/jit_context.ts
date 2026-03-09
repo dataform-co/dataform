@@ -1,3 +1,4 @@
+import { Structs } from "df/common/protos/structs";
 import { IActionContext, ITableContext, JitContext, Resolvable } from "df/core/contextables";
 import { ambiguousActionNameMsg, resolvableAsTarget, ResolvableMap, stringifyResolvable, toResolvable } from "df/core/utils";
 import { dataform, google } from "df/protos/ts";
@@ -24,7 +25,7 @@ export class SqlActionJitContext implements JitContext<IActionContext> {
             actionTarget: dep,
             value: canonicalTargetValue(dep)
         })));
-        this.data = jitDataToJsValue(request.jitData);
+        this.data = Structs.toObject(request.jitData);
     }
 
     public self(): string {
@@ -103,46 +104,3 @@ export class IncrementalTableJitContext extends TableJitContext {
     }
 }
 
-function jitDataToJsValue(value?: google.protobuf.IStruct): { [key: string]: {} } | undefined {
-    if (value === undefined || value === null) {
-        return
-    }
-    function protobufValueToJs(val: google.protobuf.IValue): {} {
-        if (val.nullValue != null) {
-            return null;
-        }
-        if (val.stringValue != null) {
-            return val.stringValue;
-        }
-        if (val.numberValue != null) {
-            return val.numberValue;
-        }
-        if (val.boolValue != null) {
-            return val.boolValue;
-        }
-        if (val.listValue != null) {
-            return (val.listValue.values || []).map(protobufValueToJs);
-        }
-        if (val.structValue != null) {
-            return Object.fromEntries(
-                Object.entries(val.structValue.fields || {}).map(
-                    ([fieldKey, fieldValue]) => ([
-                        fieldKey,
-                        protobufValueToJs(fieldValue)
-                    ])
-                )
-            );
-        }
-
-        throw new Error(`Unsupported protobuf value: ${JSON.stringify(val)}`);
-    }
-
-    return Object.fromEntries(
-        Object.entries(value.fields || {}).map(
-            ([fieldKey, fieldValue]) => [
-                fieldKey,
-                protobufValueToJs(fieldValue)
-            ]
-        )
-    );
-}
