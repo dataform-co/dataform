@@ -28,7 +28,10 @@ export async function handleJitRequest(message: {
   try {
     const { request, projectDir } = message;
 
-    if (!fs.existsSync(path.join(projectDir, "node_modules", "@dataform", "core", "bundle.js"))) {
+    const projectLocalCorePath = path.join(projectDir, "node_modules", "@dataform", "core", "bundle.js");
+    const hasProjectLocalCore = fs.existsSync(projectLocalCorePath);
+
+    if (!hasProjectLocalCore && !fs.existsSync(path.join(projectDir, "node_modules", "@dataform", "core", "package.json"))) {
       throw new Error(
         "Could not find a recent installed version of @dataform/core in the project. Check that " +
           "either `dataformCoreVersion` is specified in `workflow_settings.yaml`, or " +
@@ -52,17 +55,27 @@ export async function handleJitRequest(message: {
     const requestMessage = dataform.JitCompilationRequest.fromObject(request);
     const requestBytes = dataform.JitCompilationRequest.encode(requestMessage).finish();
 
-    const vmFileName = path.resolve(projectDir, "index.js");
+    // Use the action's file name as the VM filename for correct relative requires.
+    const vmFileName = requestMessage.fileName
+      ? path.resolve(projectDir, requestMessage.fileName)
+      : path.resolve(projectDir, "index.js");
 
     const vm = new NodeVM({
       env: process.env,
       require: {
-        builtin: [],
+        builtin: ["path", "fs"],
         context: "sandbox",
-        external: {
-          modules: ["@dataform/*"]
+        external: true,
+        root: projectDir,
+        mock: hasProjectLocalCore ? {} : {
+          "@dataform/core": require("@dataform/core")
         },
-        root: projectDir
+        resolve: (moduleName, parentDirName) => {
+          if (moduleName.startsWith(".")) {
+            return path.resolve(parentDirName, moduleName);
+          }
+          return moduleName;
+        }
       },
       sourceExtensions: ["js", "json"]
     });
