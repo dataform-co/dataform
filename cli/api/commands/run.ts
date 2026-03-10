@@ -1,12 +1,16 @@
 import EventEmitter from "events";
 import Long from "long";
 
+import { JitCompileChildProcess } from "df/cli/api/commands/jit_compile_child_process";
 import * as dbadapters from "df/cli/api/dbadapters";
 import { IBigQueryExecutionOptions } from "df/cli/api/dbadapters/bigquery";
+import { ExecutionSql } from "df/cli/api/dbadapters/execution_sql";
+import { DEFAULT_COMPILATION_TIMEOUT_MILLIS } from "df/cli/api/utils/constants";
 import { Flags } from "df/common/flags";
 import { retry } from "df/common/promises";
 import { deepClone, equals } from "df/common/protos";
 import { targetStringifier } from "df/core/targets";
+import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
 
 const CANCEL_EVENT = "jobCancel";
@@ -24,24 +28,35 @@ export interface IExecutedAction {
 }
 
 export interface IExecutionOptions {
+  projectDir?: string;
   bigquery?: {
     jobPrefix?: string;
     actionRetryLimit?: number;
     dryRun?: boolean;
     labels?: { [label: string]: string };
   };
+  jitCompiler?: (
+    request: dataform.IJitCompilationRequest,
+    projectDir: string,
+    dbadapter: dbadapters.IDbAdapter,
+    dbclient: dbadapters.IDbClient,
+    timeoutMillis?: number,
+    dryRun?: boolean
+  ) => Promise<dataform.IJitCompilationResponse>;
 }
 
 export function run(
   dbadapter: dbadapters.IDbAdapter,
   graph: dataform.IExecutionGraph,
-  executionOptions?: IExecutionOptions,
+  projectDir: string,
+  executionOptions: IExecutionOptions = { projectDir },
   partiallyExecutedRunResult: dataform.IRunResult = {},
   runnerNotificationPeriodMillis: number = flags.runnerNotificationPeriodMillis.get()
 ): Runner {
   return new Runner(
     dbadapter,
     graph,
+    projectDir,
     executionOptions,
     partiallyExecutedRunResult,
     runnerNotificationPeriodMillis
@@ -50,6 +65,7 @@ export function run(
 
 export class Runner {
   private readonly warehouseStateByTarget: Map<string, dataform.ITableMetadata>;
+  private readonly executionSql: ExecutionSql;
 
   private readonly allActionTargets: Set<string>;
   private readonly runResult: dataform.IRunResult;
@@ -68,10 +84,15 @@ export class Runner {
   constructor(
     private readonly dbadapter: dbadapters.IDbAdapter,
     private readonly graph: dataform.IExecutionGraph,
-    private readonly executionOptions: IExecutionOptions = {},
+    private readonly projectDir: string,
+    private readonly executionOptions: IExecutionOptions = { projectDir: "." },
     partiallyExecutedRunResult: dataform.IRunResult = {},
     private readonly runnerNotificationPeriodMillis: number = flags.runnerNotificationPeriodMillis.get()
   ) {
+    if (!this.executionOptions.jitCompiler) {
+      this.executionOptions.jitCompiler = JitCompileChildProcess.compile;
+    }
+    this.executionSql = new ExecutionSql(graph.projectConfig, version);
     this.allActionTargets = new Set<string>(
       graph.actions.map(action => targetStringifier.stringify(action.target))
     );
@@ -309,7 +330,7 @@ export class Runner {
       tasks: []
     };
 
-    if (action.tasks.length === 0) {
+    if ((action.tasks.length === 0 && !action.jitCode) || action.disabled) {
       actionResult.status = dataform.ActionResult.ExecutionStatus.DISABLED;
       this.runResult.actions.push(actionResult);
       this.notifyListeners();
@@ -329,43 +350,58 @@ export class Runner {
     actionResult.timing = timer.current();
     this.notifyListeners();
 
-    await this.dbadapter.withClientLock(async client => {
-      // Start running tasks from the last executed task (if any), onwards.
-      for (const task of action.tasks.slice(actionResult.tasks.length)) {
-        if (this.stopped) {
-          return actionResult;
-        }
-        if (
-          actionResult.status === dataform.ActionResult.ExecutionStatus.RUNNING &&
-          !this.cancelled
-        ) {
-          const taskStatus = await this.executeTask(client, task, actionResult, {
-            bigquery: {
-              // Merge global run-level labels with action-level labels. Action-level labels take precedence.
-              labels: {
-                ...(this.executionOptions?.bigquery?.labels || {}),
-                ...(action.actionDescriptor?.bigqueryLabels || {})
-              },
-              actionRetryLimit: this.executionOptions?.bigquery?.actionRetryLimit,
-              jobPrefix: this.executionOptions?.bigquery?.jobPrefix,
-              dryRun: this.executionOptions?.bigquery?.dryRun,
-              reservation:
-                action.actionDescriptor?.reservation ||
-                this.graph.projectConfig?.defaultReservation
-            }
-          });
-          if (taskStatus === dataform.TaskResult.ExecutionStatus.FAILED) {
-            actionResult.status = dataform.ActionResult.ExecutionStatus.FAILED;
-          } else if (taskStatus === dataform.TaskResult.ExecutionStatus.CANCELLED) {
-            actionResult.status = dataform.ActionResult.ExecutionStatus.CANCELLED;
+    try {
+      await this.dbadapter.withClientLock(async client => {
+        if (action.jitCode) {
+          await this.compileJitAction(action, actionResult, client);
+          if (actionResult.status === dataform.ActionResult.ExecutionStatus.FAILED) {
+            return;
           }
-        } else {
-          actionResult.tasks.push({
-            status: dataform.TaskResult.ExecutionStatus.SKIPPED
-          });
         }
-      }
-    });
+
+        // Start running tasks from the last executed task (if any), onwards.
+        for (const task of action.tasks.slice(actionResult.tasks.length)) {
+          if (this.stopped) {
+            return actionResult;
+          }
+          if (
+            actionResult.status === dataform.ActionResult.ExecutionStatus.RUNNING &&
+            !this.cancelled
+          ) {
+            const taskStatus = await this.executeTask(client, task, actionResult, {
+              bigquery: {
+                // Merge global run-level labels with action-level labels. Action-level labels take precedence.
+                labels: {
+                  ...(this.executionOptions?.bigquery?.labels || {}),
+                  ...(action.actionDescriptor?.bigqueryLabels || {})
+                },
+                actionRetryLimit: this.executionOptions?.bigquery?.actionRetryLimit,
+                jobPrefix: this.executionOptions?.bigquery?.jobPrefix,
+                dryRun: this.executionOptions?.bigquery?.dryRun,
+                reservation:
+                  action.actionDescriptor?.reservation ||
+                  this.graph.projectConfig?.defaultReservation
+              }
+            });
+            if (taskStatus === dataform.TaskResult.ExecutionStatus.FAILED) {
+              actionResult.status = dataform.ActionResult.ExecutionStatus.FAILED;
+            } else if (taskStatus === dataform.TaskResult.ExecutionStatus.CANCELLED) {
+              actionResult.status = dataform.ActionResult.ExecutionStatus.CANCELLED;
+            }
+          } else {
+            actionResult.tasks.push({
+              status: dataform.TaskResult.ExecutionStatus.SKIPPED
+            });
+          }
+        }
+      });
+    } catch (e) {
+      actionResult.status = dataform.ActionResult.ExecutionStatus.FAILED;
+      actionResult.tasks.push({
+        status: dataform.TaskResult.ExecutionStatus.FAILED,
+        errorMessage: `withClientLock error: ${e.message}`
+      });
+    }
 
     if (this.stopped) {
       return actionResult;
@@ -423,6 +459,9 @@ export class Runner {
     };
     parentAction.tasks.push(taskResult);
     this.notifyListeners();
+    if (options.bigquery?.dryRun) {
+      (taskResult as any).statement = task.statement;
+    }
     if (options.bigquery?.dryRun && task.type === "assertion") {
       taskResult.status = dataform.TaskResult.ExecutionStatus.SUCCESSFUL;
     }
@@ -465,6 +504,72 @@ export class Runner {
     taskResult.timing = timer.end();
     this.notifyListeners();
     return taskResult.status;
+  }
+
+  private async compileJitAction(
+    action: dataform.IExecutionAction,
+    actionResult: dataform.IActionResult,
+    client: dbadapters.IDbClient
+  ) {
+    let compilationTargetType =
+      dataform.JitCompilationTargetType.JIT_COMPILATION_TARGET_TYPE_UNSPECIFIED;
+    if (action.type === "table") {
+      compilationTargetType =
+        action.tableType === "incremental"
+          ? dataform.JitCompilationTargetType.JIT_COMPILATION_TARGET_TYPE_INCREMENTAL_TABLE
+          : dataform.JitCompilationTargetType.JIT_COMPILATION_TARGET_TYPE_TABLE;
+    } else if (action.type === "operation") {
+      compilationTargetType = dataform.JitCompilationTargetType.JIT_COMPILATION_TARGET_TYPE_OPERATION;
+    }
+
+    const jitRequest = dataform.JitCompilationRequest.create({
+      target: action.target,
+      dependencies: action.dependencyTargets,
+      jitCode: action.jitCode,
+      fileName: action.fileName,
+      compilationTargetType,
+      jitData: this.graph.jitData
+    });
+
+    const timeoutMillis = this.graph.runConfig?.timeoutMillis || DEFAULT_COMPILATION_TIMEOUT_MILLIS;
+
+    try {
+      const jitResponse = await this.executionOptions.jitCompiler(
+        jitRequest,
+        this.projectDir,
+        this.dbadapter,
+        client,
+        timeoutMillis,
+        this.executionOptions.bigquery?.dryRun
+      );
+
+      if (jitResponse.table) {
+        const table = dataform.Table.create({
+          ...action,
+          ...jitResponse.table,
+          enumType: action.tableType === "view" ? dataform.TableType.VIEW : (action.tableType === "incremental" ? dataform.TableType.INCREMENTAL : dataform.TableType.TABLE)
+        });
+        action.tasks = this.executionSql.publishTasks(table, this.graph.runConfig, this.warehouseStateByTarget.get(targetStringifier.stringify(action.target))).build();
+      } else if (jitResponse.operation) {
+        action.tasks = jitResponse.operation.queries.map(statement => dataform.ExecutionTask.create({ type: "statement", statement }));
+      } else if (jitResponse.incrementalTable) {
+        const table = dataform.Table.create({
+          ...action,
+          ...jitResponse.incrementalTable.regular,
+          incrementalQuery: jitResponse.incrementalTable.incremental?.query,
+          incrementalPreOps: jitResponse.incrementalTable.incremental?.preOps,
+          incrementalPostOps: jitResponse.incrementalTable.incremental?.postOps,
+          enumType: dataform.TableType.INCREMENTAL
+        });
+        action.tasks = this.executionSql.publishTasks(table, this.graph.runConfig, this.warehouseStateByTarget.get(targetStringifier.stringify(action.target))).build();
+      }
+    } catch (e) {
+      actionResult.status = dataform.ActionResult.ExecutionStatus.FAILED;
+      actionResult.tasks.push({
+        status: dataform.TaskResult.ExecutionStatus.FAILED,
+        errorMessage: `JiT compilation error: ${e.message}`
+      });
+    }
   }
 }
 

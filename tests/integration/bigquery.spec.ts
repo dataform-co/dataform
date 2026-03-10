@@ -32,7 +32,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
 
       // Run the project.
       const executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
-      const executedGraph = await dfapi.run(dbadapter, executionGraph).result();
+      const executedGraph = await dfapi.run(dbadapter, executionGraph, ".").result();
 
       const actionMap = keyBy(executedGraph.actions, v => targetAsReadableString(v.target));
       expect(Object.keys(actionMap).length).eql(17);
@@ -97,7 +97,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
         }
       ]) {
         const executionGraph = await dfapi.build(compiledGraph, runIteration.runConfig, dbadapter);
-        const runResult = await dfapi.run(dbadapter, executionGraph).result();
+        const runResult = await dfapi.run(dbadapter, executionGraph, ".").result();
         expect(dataform.RunResult.ExecutionStatus[runResult.status]).eql(
           dataform.RunResult.ExecutionStatus[dataform.RunResult.ExecutionStatus.SUCCESSFUL]
         );
@@ -141,7 +141,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
         },
         dbadapter
       );
-      const runResult = await dfapi.run(dbadapter, executionGraph).result();
+      const runResult = await dfapi.run(dbadapter, executionGraph, ".").result();
       expect(dataform.RunResult.ExecutionStatus[runResult.status]).eql(
         dataform.RunResult.ExecutionStatus[dataform.RunResult.ExecutionStatus.SUCCESSFUL]
       );
@@ -255,7 +255,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       // Create and run the project.
       const compiledGraph = await compile("tests/integration/bigquery_project", "evaluate");
       const executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
-      await dfapi.run(dbadapter, executionGraph).result();
+      await dfapi.run(dbadapter, executionGraph, ".").result();
 
       const view = keyBy(compiledGraph.tables, t => targetAsReadableString(t.target))[
         "dataform-open-source.df_integration_test_evaluate.example_view"
@@ -471,7 +471,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       },
       dbadapter
     );
-    const runResult = await dfapi.run(dbadapter, executionGraph).result();
+    const runResult = await dfapi.run(dbadapter, executionGraph, ".").result();
     expect(dataform.RunResult.ExecutionStatus[runResult.status]).eql(
       dataform.RunResult.ExecutionStatus[dataform.RunResult.ExecutionStatus.SUCCESSFUL]
     );

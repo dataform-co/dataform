@@ -69,7 +69,8 @@ export class Builder {
       runConfig: this.runConfig,
       warehouseState: this.warehouseState,
       declarationTargets: this.prunedGraph.declarations.map(declaration => declaration.target),
-      actions
+      actions,
+      jitData: this.prunedGraph.jitData
     });
   }
 
@@ -114,11 +115,17 @@ export class Builder {
   private toPartialExecutionAction(
     action: dataform.ITable | dataform.IOperation | dataform.IAssertion
   ) {
-    return dataform.ExecutionAction.create({
+    const jitCode = (action as any).jitCode;
+    const executionAction = dataform.ExecutionAction.create({
       target: action.target,
       fileName: action.fileName,
       dependencyTargets: action.dependencyTargets,
-      actionDescriptor: action.actionDescriptor
+      actionDescriptor: action.actionDescriptor,
+      disabled: action.disabled
     });
+    if (jitCode) {
+      executionAction.jitCode = jitCode;
+    }
+    return executionAction;
   }
 }
