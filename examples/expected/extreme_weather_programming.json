@@ -1,0 +1,132 @@
+{
+  "tables": [
+    {
+      "type": "view",
+      "target": {
+        "schema": "dataform_extreme_weather_programming_example",
+        "name": "repositories_created_during_extreme_weather",
+        "database": "dataform-open-source"
+      },
+      "query": "SELECT\n    *\nFROM\n    `dataform-open-source.was_there_extreme_weather`\n    LEFT OUTER JOIN `dataform-open-source.repositories_that_mention_extreme_weather` USING (date)\nORDER BY\n    date\n",
+      "disabled": false,
+      "fileName": "definitions/repositories_created_during_extreme_weather.sql",
+      "dependencyTargets": [
+        {
+          "schema": "dataform_extreme_weather_programming_example",
+          "name": "was_there_extreme_weather",
+          "database": "dataform-open-source"
+        },
+        {
+          "schema": "dataform_extreme_weather_programming_example",
+          "name": "repositories_that_mention_extreme_weather",
+          "database": "dataform-open-source"
+        }
+      ],
+      "hermeticity": 2,
+      "canonicalTarget": {
+        "schema": "dataform_extreme_weather_programming_example",
+        "name": "repositories_created_during_extreme_weather",
+        "database": "dataform-open-source"
+      },
+      "enumType": 3
+    },
+    {
+      "type": "view",
+      "target": {
+        "schema": "dataform_extreme_weather_programming_example",
+        "name": "repositories_that_mention_extreme_weather",
+        "database": "dataform-open-source"
+      },
+      "query": "SELECT\n    DATE_TRUNC(DATE(repository_created_at), MONTH) AS date,\n    COUNT(*) AS repository_count\nFROM\n    `bigquery-public-data.samples.github_timeline`\nWHERE\n    REGEXP_CONTAINS(\n        repository_description,\n        \"snow | hail | thunder | tornado\"\n    )\nGROUP BY\n    date\nORDER BY\n    date\n",
+      "disabled": false,
+      "fileName": "definitions/repositories_that_mention_extreme_weather.sql",
+      "hermeticity": 2,
+      "canonicalTarget": {
+        "schema": "dataform_extreme_weather_programming_example",
+        "name": "repositories_that_mention_extreme_weather",
+        "database": "dataform-open-source"
+      },
+      "enumType": 3
+    },
+    {
+      "type": "view",
+      "target": {
+        "schema": "dataform_extreme_weather_programming_example",
+        "name": "was_there_extreme_weather",
+        "database": "dataform-open-source"
+      },
+      "query": "SELECT\n    DATE_TRUNC(DATE(year, month, day), MONTH) AS date,\n    COUNT(*) AS extreme_weather_count\nFROM\n    `bigquery-public-data.samples.gsod`\nWHERE\n    (\n        snow = TRUE\n        OR hail = TRUE\n        OR thunder = TRUE\n        OR tornado = TRUE\n    ) -- The GitHub data only ranges from 2007 to 2012.\n    -- The weather data is only available up to 2010.\n    AND year >= 2007\nGROUP BY\n    date\nORDER BY\n    date\nLIMIT\n    50\n",
+      "disabled": false,
+      "fileName": "definitions/was_there_extreme_weather.sql",
+      "hermeticity": 2,
+      "canonicalTarget": {
+        "schema": "dataform_extreme_weather_programming_example",
+        "name": "was_there_extreme_weather",
+        "database": "dataform-open-source"
+      },
+      "enumType": 3
+    }
+  ],
+  "projectConfig": {
+    "warehouse": "bigquery",
+    "defaultSchema": "dataform_extreme_weather_programming_example",
+    "assertionSchema": "dataform_extreme_weather_programming_example_assertions",
+    "defaultDatabase": "dataform-open-source",
+    "defaultLocation": "us",
+    "defaultNotebookRuntimeOptions": {
+      "outputBucket": "gs://some-bucket",
+      "runtimeTemplateName": "projects/test-project/locations/us-central1/notebookRuntimeTemplates/test-template",
+      "repositorySnapshotDestination": {
+        "repositorySnapshotUri": "gs://some-other-bucket"
+      }
+    }
+  },
+  "graphErrors": {},
+  "dataformCoreVersion": "3.0.48",
+  "targets": [
+    {
+      "schema": "dataform_extreme_weather_programming_example",
+      "name": "repositories_created_during_extreme_weather",
+      "database": "dataform-open-source"
+    },
+    {
+      "schema": "dataform_extreme_weather_programming_example",
+      "name": "repositories_that_mention_extreme_weather",
+      "database": "dataform-open-source"
+    },
+    {
+      "schema": "dataform_extreme_weather_programming_example",
+      "name": "was_there_extreme_weather",
+      "database": "dataform-open-source"
+    },
+    {
+      "schema": "dataform_extreme_weather_programming_example",
+      "name": "snowy_repository_creation",
+      "database": "dataform-open-source"
+    }
+  ],
+  "notebooks": [
+    {
+      "target": {
+        "schema": "dataform_extreme_weather_programming_example",
+        "name": "snowy_repository_creation",
+        "database": "dataform-open-source"
+      },
+      "canonicalTarget": {
+        "schema": "dataform_extreme_weather_programming_example",
+        "name": "snowy_repository_creation",
+        "database": "dataform-open-source"
+      },
+      "dependencyTargets": [
+        {
+          "schema": "dataform_extreme_weather_programming_example",
+          "name": "repositories_created_during_extreme_weather",
+          "database": "dataform-open-source"
+        }
+      ],
+      "fileName": "definitions/snowy_repository_creation.ipynb",
+      "notebookContents": "{\"cells\":[{\"cell_type\":\"markdown\",\"metadata\":{},\"source\":[\"# Extreme Weather Programming\"]},{\"cell_type\":\"code\",\"execution_count\":null,\"metadata\":{},\"outputs\":[],\"source\":[\"import numpy as np\"]},{\"cell_type\":\"code\",\"execution_count\":null,\"metadata\":{},\"outputs\":[],\"source\":[\"%%bigquery results --project dataform-open-source\\n\",\"SELECT * FROM `dataform-open-source.dataform_examples.repositories_created_during_extreme_weather`\"]},{\"cell_type\":\"code\",\"execution_count\":null,\"metadata\":{},\"outputs\":[],\"source\":[\"results.head()\"]},{\"cell_type\":\"markdown\",\"metadata\":{},\"source\":[\"results[\\\"mention_ratio\\\"] = (results[\\\"repository_count\\\"] / results[\\\"extreme_weather_count\\\"]).replace(np.nan, 0)\"]},{\"cell_type\":\"markdown\",\"metadata\":{},\"source\":[\"results.plot(x=\\\"date\\\", y=\\\"extreme_weather_count\\\", rot=90)\"]},{\"cell_type\":\"markdown\",\"metadata\":{},\"source\":[\"results.plot(x=\\\"date\\\", y=\\\"repository_count\\\", rot=90)\"]}],\"metadata\":{\"language_info\":{\"name\":\"python\"}},\"nbformat\":4,\"nbformat_minor\":2}"
+    }
+  ],
+  "jitData": {}
+}

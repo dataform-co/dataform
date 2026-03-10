@@ -1,0 +1,77 @@
+{
+  "tables": [
+    {
+      "type": "view",
+      "target": {
+        "schema": "dataform_jit_showcase_example",
+        "name": "jit_regional_summary",
+        "database": "dataform-open-source"
+      },
+      "disabled": false,
+      "fileName": "definitions/jit_regional_summary.js",
+      "actionDescriptor": {
+        "description": "JiT-powered regional summary showing dynamic grouping logic.",
+        "compilationMode": 2
+      },
+      "hermeticity": 2,
+      "canonicalTarget": {
+        "schema": "dataform_jit_showcase_example",
+        "name": "jit_regional_summary",
+        "database": "dataform-open-source"
+      },
+      "enumType": 3,
+      "jitCode": "async (ctx) => {\n    // Branch grouping logic based on variables\n    const groupByMonth = ctx.projectConfig.vars.groupByMonth === \"true\";\n    const selectDate = groupByMonth \n        ? \"DATE_TRUNC(DATE(year, month, day), MONTH) AS period\" \n        : \"DATE(year, month, day) AS period\";\n\n    return `\n        SELECT\n            ${selectDate},\n            station_number,\n            AVG(mean_temp) AS avg_temp\n        FROM\n            \\`bigquery-public-data.samples.gsod\\`\n        WHERE\n            year >= 2010\n        GROUP BY\n            1, 2\n        ORDER BY\n            period DESC, avg_temp DESC\n        LIMIT 100\n    `;\n}"
+    },
+    {
+      "type": "view",
+      "target": {
+        "schema": "dataform_jit_showcase_example",
+        "name": "jit_weather_analysis",
+        "database": "dataform-open-source"
+      },
+      "disabled": false,
+      "fileName": "definitions/jit_weather_analysis.js",
+      "actionDescriptor": {
+        "description": "JiT-powered weather analysis demonstrating dynamic structure and math.",
+        "compilationMode": 2
+      },
+      "hermeticity": 2,
+      "canonicalTarget": {
+        "schema": "dataform_jit_showcase_example",
+        "name": "jit_weather_analysis",
+        "database": "dataform-open-source"
+      },
+      "enumType": 3,
+      "jitCode": "async (ctx) => {\n    const table = \"`bigquery-public-data.samples.gsod`\";\n    \n    // Programmatically select columns based on requested metrics from vars\n    const metricsStr = ctx.projectConfig.vars.metrics || \"snow,thunder,tornado\";\n    const metrics = metricsStr.split(\",\");\n    const metricColumns = metrics.map(m => `SUM(CAST(${m} AS INT64)) AS ${m}_days_count`).join(\",\\n            \");\n    const metricsFilter = metrics.map(m => `${m} = TRUE`).join(\" OR \");\n\n    // Inject different math formulas and thresholds based on unit preference\n    const tempUnit = ctx.projectConfig.vars.tempUnit || \"F\"; // F or C\n    const threshold = parseFloat(ctx.projectConfig.vars.tempThreshold) || 80.0;\n    \n    const tempExpr = tempUnit === \"C\" \n        ? \"((max_temp - 32) * 5 / 9)\" \n        : \"max_temp\";\n    \n    const limit = ctx.projectConfig.vars.environment === \"test\" ? 10 : 1000;\n\n    return `\n        SELECT\n            DATE_TRUNC(DATE(year, month, day), MONTH) AS date,\n            ${metricColumns},\n            AVG(${tempExpr}) AS avg_max_temp_${tempUnit},\n            COUNTIF(${tempExpr} > ${threshold}) AS days_above_threshold\n        FROM\n            ${table}\n        WHERE\n            (${metricsFilter})\n            AND year >= 2007\n        GROUP BY\n            date\n        ORDER BY\n            date\n        LIMIT\n            ${limit}\n    `;\n}"
+    }
+  ],
+  "projectConfig": {
+    "warehouse": "bigquery",
+    "defaultSchema": "dataform_jit_showcase_example",
+    "assertionSchema": "dataform_jit_showcase_example_assertions",
+    "defaultDatabase": "dataform-open-source",
+    "vars": {
+      "environment": "test",
+      "metrics": "snow",
+      "tempUnit": "C",
+      "tempThreshold": "25",
+      "groupByMonth": "true"
+    },
+    "defaultLocation": "us"
+  },
+  "graphErrors": {},
+  "dataformCoreVersion": "3.0.48",
+  "targets": [
+    {
+      "schema": "dataform_jit_showcase_example",
+      "name": "jit_regional_summary",
+      "database": "dataform-open-source"
+    },
+    {
+      "schema": "dataform_jit_showcase_example",
+      "name": "jit_weather_analysis",
+      "database": "dataform-open-source"
+    }
+  ],
+  "jitData": {}
+}

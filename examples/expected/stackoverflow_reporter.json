@@ -1,0 +1,440 @@
+{
+  "tables": [
+    {
+      "type": "table",
+      "target": {
+        "schema": "reporting",
+        "name": "posts_combined",
+        "database": "dataform-open-source"
+      },
+      "query": "\n\nselect\n  post_id,\n  created_at,\n  type,\n  title,\n  body,\n  owner_user_id,\n  parent_id\nfrom\n  `dataform-open-source.staging.stg_posts_answers`\n\nunion all\n\nselect\n  post_id,\n  created_at,\n  type,\n  title,\n  body,\n  owner_user_id,\n  parent_id\nfrom\n  `dataform-open-source.staging.stg_posts_questions`",
+      "disabled": false,
+      "fileName": "definitions/reporting/posts_combined.sqlx",
+      "bigquery": {
+        "partitionBy": "date(created_at)"
+      },
+      "tags": [
+        "daily"
+      ],
+      "actionDescriptor": {
+        "description": "Combine both questions and answers into a single posts_all table"
+      },
+      "dependencyTargets": [
+        {
+          "schema": "staging",
+          "name": "stg_posts_answers",
+          "database": "dataform-open-source"
+        },
+        {
+          "schema": "staging",
+          "name": "stg_posts_questions",
+          "database": "dataform-open-source"
+        }
+      ],
+      "hermeticity": 2,
+      "canonicalTarget": {
+        "schema": "reporting",
+        "name": "posts_combined",
+        "database": "dataform-open-source"
+      },
+      "enumType": 1
+    },
+    {
+      "type": "table",
+      "target": {
+        "schema": "reporting",
+        "name": "user_stats",
+        "database": "dataform-open-source"
+      },
+      "query": "\n\nselect\n  stg_users.user_id,\n  stg_users.age,\n  stg_users.creation_date,\n  stg_users.user_tenure,\n  count(distinct stg_badges.badge_id) as badge_count,\n  count(distinct posts_all.post_id) as questions_and_answer_count,\n  count(distinct if(type=\"question\", posts_all.post_id, null)) as question_count,\n  count(distinct if(type=\"answer\", posts_all.post_id, null)) as answer_count,\n  max(stg_badges.award_timestamp) as last_badge_received_at,\n  max(posts_all.created_at) as last_posted_at,\n  max(if(type=\"question\", posts_all.created_at, null)) as last_question_posted_at,\n  max(if(type=\"answer\", posts_all.created_at, null)) as last_answer_posted_at\nfrom\n  `dataform-open-source.staging.stg_users` as stg_users\n  left join `dataform-open-source.staging.stg_badges` as stg_badges\n    on stg_users.user_id = stg_badges.user_id\n  left join `dataform-open-source.reporting.posts_combined` as posts_all\n    on stg_users.user_id = posts_all.owner_user_id\ngroup by\n  1,2,3,4",
+      "disabled": false,
+      "fileName": "definitions/reporting/user_stats.sqlx",
+      "tags": [
+        "daily"
+      ],
+      "actionDescriptor": {
+        "description": "Create a summary table for all users including statistics on questions, answeers and badges received."
+      },
+      "dependencyTargets": [
+        {
+          "schema": "staging",
+          "name": "stg_users",
+          "database": "dataform-open-source"
+        },
+        {
+          "schema": "staging",
+          "name": "stg_badges",
+          "database": "dataform-open-source"
+        },
+        {
+          "schema": "reporting",
+          "name": "posts_combined",
+          "database": "dataform-open-source"
+        }
+      ],
+      "hermeticity": 2,
+      "canonicalTarget": {
+        "schema": "reporting",
+        "name": "user_stats",
+        "database": "dataform-open-source"
+      },
+      "enumType": 1
+    },
+    {
+      "type": "view",
+      "target": {
+        "schema": "staging",
+        "name": "stg_badges",
+        "database": "dataform-open-source"
+      },
+      "query": "\n\nselect\n  id as badge_id,\n  name as badge_name,\n  date as award_timestamp,\n  user_id\nfrom\n  `bigquery-public-data.stackoverflow.badges`\n",
+      "disabled": false,
+      "fileName": "definitions/staging/stg_badges.sqlx",
+      "tags": [
+        "staging"
+      ],
+      "actionDescriptor": {
+        "description": "Cleaned version of stackoverflow.badges"
+      },
+      "dependencyTargets": [
+        {
+          "schema": "stackoverflow",
+          "name": "badges",
+          "database": "bigquery-public-data"
+        }
+      ],
+      "hermeticity": 2,
+      "canonicalTarget": {
+        "schema": "staging",
+        "name": "stg_badges",
+        "database": "dataform-open-source"
+      },
+      "enumType": 3
+    },
+    {
+      "type": "view",
+      "target": {
+        "schema": "staging",
+        "name": "stg_posts_answers",
+        "database": "dataform-open-source"
+      },
+      "query": "\n\nselect\n  id as post_id,\n  creation_date as created_at,\n  'answer' as type,\n  title,\n  body,\n  owner_user_id,\n  cast(parent_id as string) as parent_id\nfrom\n  `bigquery-public-data.stackoverflow.posts_answers`\nwhere\n  -- limit to recent data for the purposes of this demo project\n  creation_date >= timestamp(\"2019-01-01\")\n",
+      "disabled": false,
+      "fileName": "definitions/staging/stg_posts_answers.sqlx",
+      "tags": [
+        "staging"
+      ],
+      "actionDescriptor": {
+        "description": "Cleaned version of stackoverflow.posts_answers"
+      },
+      "dependencyTargets": [
+        {
+          "schema": "stackoverflow",
+          "name": "posts_answers",
+          "database": "bigquery-public-data"
+        }
+      ],
+      "hermeticity": 2,
+      "canonicalTarget": {
+        "schema": "staging",
+        "name": "stg_posts_answers",
+        "database": "dataform-open-source"
+      },
+      "enumType": 3
+    },
+    {
+      "type": "view",
+      "target": {
+        "schema": "staging",
+        "name": "stg_posts_questions",
+        "database": "dataform-open-source"
+      },
+      "query": "\n\nselect\n  id as post_id,\n  creation_date as created_at,\n  'question' as type,\n  title,\n  body,\n  owner_user_id,\n  parent_id\nfrom\n  `bigquery-public-data.stackoverflow.posts_questions`\nwhere\n  -- limit to recent data for the purposes of this demo project\n  creation_date >= timestamp(\"2019-01-01\")\n",
+      "disabled": false,
+      "fileName": "definitions/staging/stg_posts_questions.sqlx",
+      "tags": [
+        "staging"
+      ],
+      "actionDescriptor": {
+        "description": "Cleaned version of stackoverflow.posts_questions"
+      },
+      "dependencyTargets": [
+        {
+          "schema": "stackoverflow",
+          "name": "posts_questions",
+          "database": "bigquery-public-data"
+        }
+      ],
+      "hermeticity": 2,
+      "canonicalTarget": {
+        "schema": "staging",
+        "name": "stg_posts_questions",
+        "database": "dataform-open-source"
+      },
+      "enumType": 3
+    },
+    {
+      "type": "view",
+      "target": {
+        "schema": "staging",
+        "name": "stg_users",
+        "database": "dataform-open-source"
+      },
+      "query": "\n\nselect\n  id as user_id,\n  age,\n  creation_date,\n  round(timestamp_diff(current_timestamp(), creation_date, day)/365) as user_tenure\nfrom\n  `bigquery-public-data.stackoverflow.users`\n",
+      "disabled": false,
+      "fileName": "definitions/staging/stg_users.sqlx",
+      "tags": [
+        "staging"
+      ],
+      "actionDescriptor": {
+        "description": "Cleaned version of stackoverflow.users table"
+      },
+      "dependencyTargets": [
+        {
+          "schema": "stackoverflow",
+          "name": "users",
+          "database": "bigquery-public-data"
+        }
+      ],
+      "hermeticity": 2,
+      "canonicalTarget": {
+        "schema": "staging",
+        "name": "stg_users",
+        "database": "dataform-open-source"
+      },
+      "enumType": 3
+    }
+  ],
+  "assertions": [
+    {
+      "query": "\nSELECT\n  *\nFROM (\n  SELECT\n    post_id,\n    COUNT(1) AS index_row_count\n  FROM `dataform-open-source.reporting.posts_combined`\n  GROUP BY post_id\n  ) AS data\nWHERE index_row_count > 1\n",
+      "fileName": "definitions/reporting/posts_combined.sqlx",
+      "target": {
+        "schema": "dataform_stackoverflow_reporter_example_assertions",
+        "name": "reporting_posts_combined_assertions_uniqueKey_0",
+        "database": "dataform-open-source"
+      },
+      "tags": [
+        "daily"
+      ],
+      "dependencyTargets": [
+        {
+          "schema": "reporting",
+          "name": "posts_combined",
+          "database": "dataform-open-source"
+        }
+      ],
+      "canonicalTarget": {
+        "schema": "dataform_stackoverflow_reporter_example_assertions",
+        "name": "reporting_posts_combined_assertions_uniqueKey_0",
+        "database": "dataform-open-source"
+      },
+      "parentAction": {
+        "schema": "reporting",
+        "name": "posts_combined",
+        "database": "dataform-open-source"
+      }
+    },
+    {
+      "query": "\nSELECT\n  *\nFROM (\n  SELECT\n    user_id,\n    COUNT(1) AS index_row_count\n  FROM `dataform-open-source.reporting.user_stats`\n  GROUP BY user_id\n  ) AS data\nWHERE index_row_count > 1\n",
+      "fileName": "definitions/reporting/user_stats.sqlx",
+      "target": {
+        "schema": "dataform_stackoverflow_reporter_example_assertions",
+        "name": "reporting_user_stats_assertions_uniqueKey_0",
+        "database": "dataform-open-source"
+      },
+      "tags": [
+        "daily"
+      ],
+      "dependencyTargets": [
+        {
+          "schema": "reporting",
+          "name": "user_stats",
+          "database": "dataform-open-source"
+        }
+      ],
+      "canonicalTarget": {
+        "schema": "dataform_stackoverflow_reporter_example_assertions",
+        "name": "reporting_user_stats_assertions_uniqueKey_0",
+        "database": "dataform-open-source"
+      },
+      "parentAction": {
+        "schema": "reporting",
+        "name": "user_stats",
+        "database": "dataform-open-source"
+      }
+    },
+    {
+      "query": "\nSELECT\n  'badge_count >= 0' AS failing_row_condition,\n  *\nFROM `dataform-open-source.reporting.user_stats`\nWHERE NOT (badge_count >= 0)\n",
+      "fileName": "definitions/reporting/user_stats.sqlx",
+      "target": {
+        "schema": "dataform_stackoverflow_reporter_example_assertions",
+        "name": "reporting_user_stats_assertions_rowConditions",
+        "database": "dataform-open-source"
+      },
+      "tags": [
+        "daily"
+      ],
+      "dependencyTargets": [
+        {
+          "schema": "reporting",
+          "name": "user_stats",
+          "database": "dataform-open-source"
+        }
+      ],
+      "canonicalTarget": {
+        "schema": "dataform_stackoverflow_reporter_example_assertions",
+        "name": "reporting_user_stats_assertions_rowConditions",
+        "database": "dataform-open-source"
+      },
+      "parentAction": {
+        "schema": "reporting",
+        "name": "user_stats",
+        "database": "dataform-open-source"
+      }
+    }
+  ],
+  "projectConfig": {
+    "warehouse": "bigquery",
+    "defaultSchema": "dataform_stackoverflow_reporter_example",
+    "assertionSchema": "dataform_stackoverflow_reporter_example_assertions",
+    "defaultDatabase": "dataform-open-source",
+    "defaultLocation": "us"
+  },
+  "graphErrors": {},
+  "declarations": [
+    {
+      "target": {
+        "schema": "stackoverflow",
+        "name": "badges",
+        "database": "bigquery-public-data"
+      },
+      "actionDescriptor": {
+        "description": "raw badges table"
+      },
+      "fileName": "definitions/sources/badges.sqlx",
+      "canonicalTarget": {
+        "schema": "stackoverflow",
+        "name": "badges",
+        "database": "bigquery-public-data"
+      }
+    },
+    {
+      "target": {
+        "schema": "stackoverflow",
+        "name": "posts_answers",
+        "database": "bigquery-public-data"
+      },
+      "actionDescriptor": {
+        "description": "raw posts_answers table"
+      },
+      "fileName": "definitions/sources/posts_answers.sqlx",
+      "canonicalTarget": {
+        "schema": "stackoverflow",
+        "name": "posts_answers",
+        "database": "bigquery-public-data"
+      }
+    },
+    {
+      "target": {
+        "schema": "stackoverflow",
+        "name": "posts_questions",
+        "database": "bigquery-public-data"
+      },
+      "actionDescriptor": {
+        "description": "raw posts_questions table"
+      },
+      "fileName": "definitions/sources/posts_questions.sqlx",
+      "canonicalTarget": {
+        "schema": "stackoverflow",
+        "name": "posts_questions",
+        "database": "bigquery-public-data"
+      }
+    },
+    {
+      "target": {
+        "schema": "stackoverflow",
+        "name": "users",
+        "database": "bigquery-public-data"
+      },
+      "actionDescriptor": {
+        "description": "raw users table"
+      },
+      "fileName": "definitions/sources/users.sqlx",
+      "canonicalTarget": {
+        "schema": "stackoverflow",
+        "name": "users",
+        "database": "bigquery-public-data"
+      }
+    }
+  ],
+  "dataformCoreVersion": "3.0.48",
+  "targets": [
+    {
+      "schema": "dataform_stackoverflow_reporter_example_assertions",
+      "name": "reporting_posts_combined_assertions_uniqueKey_0",
+      "database": "dataform-open-source"
+    },
+    {
+      "schema": "reporting",
+      "name": "posts_combined",
+      "database": "dataform-open-source"
+    },
+    {
+      "schema": "dataform_stackoverflow_reporter_example_assertions",
+      "name": "reporting_user_stats_assertions_uniqueKey_0",
+      "database": "dataform-open-source"
+    },
+    {
+      "schema": "dataform_stackoverflow_reporter_example_assertions",
+      "name": "reporting_user_stats_assertions_rowConditions",
+      "database": "dataform-open-source"
+    },
+    {
+      "schema": "reporting",
+      "name": "user_stats",
+      "database": "dataform-open-source"
+    },
+    {
+      "schema": "stackoverflow",
+      "name": "badges",
+      "database": "bigquery-public-data"
+    },
+    {
+      "schema": "stackoverflow",
+      "name": "posts_answers",
+      "database": "bigquery-public-data"
+    },
+    {
+      "schema": "stackoverflow",
+      "name": "posts_questions",
+      "database": "bigquery-public-data"
+    },
+    {
+      "schema": "stackoverflow",
+      "name": "users",
+      "database": "bigquery-public-data"
+    },
+    {
+      "schema": "staging",
+      "name": "stg_badges",
+      "database": "dataform-open-source"
+    },
+    {
+      "schema": "staging",
+      "name": "stg_posts_answers",
+      "database": "dataform-open-source"
+    },
+    {
+      "schema": "staging",
+      "name": "stg_posts_questions",
+      "database": "dataform-open-source"
+    },
+    {
+      "schema": "staging",
+      "name": "stg_users",
+      "database": "dataform-open-source"
+    }
+  ],
+  "jitData": {}
+}
