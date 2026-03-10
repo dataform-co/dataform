@@ -82,6 +82,9 @@ export function listenForCompileRequest() {
 }
 
 if (require.main === module) {
+  if (process.send) {
+    process.send({ type: "worker_booted" });
+  }
   listenForCompileRequest();
 }
 

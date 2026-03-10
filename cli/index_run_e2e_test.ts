@@ -169,8 +169,11 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
             }
           ],
           type: "table",
+          jitData: {},
+          disabled: false
         }
       ],
+      jitData: {},
       projectConfig: {
         assertionSchema: "dataform_assertions",
         defaultDatabase: DEFAULT_DATABASE,
@@ -286,6 +289,8 @@ SELECT 1 as id
             }
           ],
           type: "table",
+          jitData: {},
+          disabled: false
         },
         {
           fileName: "definitions/test_assertion.sqlx",
@@ -296,8 +301,11 @@ SELECT 1 as id
             schema: "dataform_assertions"
           },
           type: "assertion",
+          jitData: {},
+          disabled: true
         }
       ],
+      jitData: {},
       projectConfig: {
         assertionSchema: "dataform_assertions",
         defaultDatabase: DEFAULT_DATABASE,
