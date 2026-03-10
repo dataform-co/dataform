@@ -697,7 +697,7 @@ suite("examples", () => {
       await compile({ projectDir: "tests/api/projects/never_finishes_compiling" });
       fail("Compilation timeout Error expected.");
     } catch (e) {
-      expect(e.message).to.equal("Compilation timed out");
+      expect(e.message).to.equal("Worker timed out after 30 seconds");
     }
   });
 

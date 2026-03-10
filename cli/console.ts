@@ -512,9 +512,14 @@ function printExecutedActionErrors(
     task => task.status === dataform.TaskResult.ExecutionStatus.FAILED
   );
   failingTasks.forEach((task, i) => {
-    executionAction.tasks[i].statement.split("\n").forEach(line => {
-      writeStdErr(`${DEFAULT_PROMPT}${line}`, 1);
-    });
+    // For JiT actions, the original executionAction.tasks might be empty
+    // since they are generated during re-compilation.
+    const statement = (executionAction.tasks[i] || (task as any)).statement;
+    if (statement) {
+      statement.split("\n").forEach((line: string) => {
+        writeStdErr(`${DEFAULT_PROMPT}${line}`, 1);
+      });
+    }
     printError(task.errorMessage, 1);
   });
 }
