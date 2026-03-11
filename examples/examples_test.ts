@@ -1,7 +1,7 @@
 import { expect } from "chai";
+import { execFile } from "child_process";
 import * as fs from "fs-extra";
 
-import { execFile } from "child_process";
 import { verifyObjectMatchesProto } from "df/common/protos";
 import { dataform } from "df/protos/ts";
 import { getProcessResult, nodePath, suite, test } from "df/testing";

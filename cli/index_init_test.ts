@@ -1,9 +1,9 @@
 import { assert, expect } from "chai";
+import { execFile } from "child_process";
 import * as fs from "fs-extra";
 import { load as loadYaml } from "js-yaml";
 import * as path from "path";
 
-import { execFile } from "child_process";
 import { cliEntryPointPath } from "df/cli/index_test_base";
 import {
   ICEBERG_BUCKET_NAME_HINT,
