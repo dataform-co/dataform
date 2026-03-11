@@ -1,9 +1,10 @@
+import * as chokidar from "chokidar";
 import * as fs from "fs";
 import * as glob from "glob";
+import parseDuration from "parse-duration";
 import * as path from "path";
 import yargs from "yargs";
 
-import * as chokidar from "chokidar";
 import { build, compile, credentials, init, install, run, test } from "df/cli/api";
 import { CREDENTIALS_FILENAME } from "df/cli/api/commands/credentials";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
@@ -32,7 +33,6 @@ import { createYargsCli, INamedOption } from "df/cli/yargswrapper";
 import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 import { formatFile } from "df/sqlx/format";
-import parseDuration from "parse-duration";
 
 const RECOMPILE_DELAY = 500;
 

@@ -1,5 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
+import untildify from "untildify";
 
 import {
   interactiveQuestion,
@@ -9,7 +10,6 @@ import {
 } from "df/cli/console";
 import {validateConnectionFormat} from "df/core/utils"
 import { dataform } from "df/protos/ts";
-import untildify from "untildify";
 
 export function actuallyResolve(...filePaths: string[]) {
   return path.resolve(...filePaths.map(filePath => untildify(filePath)));

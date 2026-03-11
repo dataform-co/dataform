@@ -1,9 +1,9 @@
 import chalk from "chalk";
+import * as Diff from "diff";
 import DeterministicStringify from "json-stable-stringify";
 import { promisify } from "util";
 
 import { Hook, Suite } from "df/testing";
-import * as Diff from "diff";
 
 export interface IRunResult {
   path: string[];

@@ -1,9 +1,10 @@
+import * as readlineSync from "readline-sync";
+
 import { IInitResult } from "df/cli/api/commands/init";
 import { prettyJsonStringify } from "df/cli/api/utils";
 import { formatBytesInHumanReadableFormat, formatExecutionSuffix } from "df/cli/util";
 import { setOrValidateTableEnumType, tableTypeEnumToString } from "df/core/utils";
 import { dataform } from "df/protos/ts";
-import * as readlineSync from "readline-sync";
 
 // Support disabling colors in CLI output by using informal standard from https://no-color.org/
 // NO_COLOR=1, NO_COLOR=true, NO_COLOR=yes
