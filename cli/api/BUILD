@@ -33,6 +33,7 @@ ts_library(
         "@npm//deepmerge",
         "@npm//fs-extra",
         "@npm//glob",
+        "@npm//google-auth-library",
         "@npm//google-sql-syntax-ts",
         "@npm//js-beautify",
         "@npm//js-yaml",
