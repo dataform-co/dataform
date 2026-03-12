@@ -1,12 +1,16 @@
 package(default_visibility = ["//visibility:public"])
 
 load("//tools:ts_library.bzl", "ts_library")
+load("//testing:index.bzl", "ts_test_suite")
 
 ts_library(
     name = "api",
     srcs = glob(
         ["**/*.ts"],
-        exclude = ["utils/**/*.*"],
+        exclude = [
+            "utils/**/*.*",
+            "**/*_test.ts",
+        ],
     ),
     deps = [
         "//cli/api/utils",
@@ -40,5 +44,17 @@ ts_library(
         "@npm//protobufjs",
         "@npm//semver",
         "@npm//tmp",
+    ],
+)
+
+ts_test_suite(
+    name = "tests",
+    srcs = ["tasks_test.ts"],
+    deps = [
+        "//cli/api",
+        "//protos:ts",
+        "//testing",
+        "@npm//@types/chai",
+        "@npm//chai",
     ],
 )

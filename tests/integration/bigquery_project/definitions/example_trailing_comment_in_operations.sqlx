@@ -1,0 +1,13 @@
+config {
+  "type": "table",
+  "description": "Verifies fix for https://github.com/dataform-co/dataform/issues/2103"
+}
+
+SELECT 1 AS foo
+
+pre_operations {
+
+  DECLARE bar DATE DEFAULT DATE_TRUNC(CURRENT_DATE(), WEEK(MONDAY));
+
+  -- DECLARE bar DATE DEFAULT DATE_TRUNC(DATE('2026-01-01'), WEEK(MONDAY))
+}
