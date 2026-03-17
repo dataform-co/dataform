@@ -173,9 +173,11 @@ export function printInitCredsResult(writtenFilePath: string) {
   writeStdOut("To change connection settings, edit this file directly.");
 }
 
-export function printCompiledGraph(graph: dataform.ICompiledGraph, asJson: boolean, quietCompilation: boolean) {
+export function printCompiledGraph(graph: dataform.ICompiledGraph, asJson: boolean, asDot: boolean, quietCompilation: boolean) {
   if (asJson) {
     writeStdOut(prettyJsonStringify(graph));
+  } else if (asDot) {
+    writeStdOut(dotRepresentation(graph));
   } else {
     const actionCount =
       0 +
@@ -502,6 +504,37 @@ function operationString(target: dataform.ITarget, disabled: boolean) {
 
 function targetString(target: dataform.ITarget) {
   return calloutOutput(`${target.schema}.${target.name}`);
+}
+
+export function dotRepresentation(graph: dataform.ICompiledGraph): string {
+  const nodes: string[] = [];
+  const edges: string[] = [];
+
+  graph.tables?.forEach(table => {
+    const nodeName = `${targetString(table.target)}`;
+    nodes.push(`"${nodeName}" [label="${targetString(table.target)}", shape=box]`);
+    table.dependencyTargets?.forEach(dependencyTarget => {
+      edges.push(`"${targetString(dependencyTarget)}" -> "${nodeName}"`);
+    });
+  });
+
+  graph.assertions?.forEach(assertion => {
+    const nodeName = `${targetString(assertion.target)}`;
+    nodes.push(`"${nodeName}" [label="${targetString(assertion.target)}", shape=ellipse]`);
+    assertion.dependencyTargets?.forEach(dependencyTarget => {
+      edges.push(`"${targetString(dependencyTarget)}" -> "${nodeName}"`);
+    });
+  });
+
+  graph.operations?.forEach(operation => {
+    const nodeName = `${targetString(operation.target)}`;
+    nodes.push(`"${nodeName}" [label="${targetString(operation.target)}", shape=diamond]`);
+    operation.dependencyTargets?.forEach(dependencyTarget => {
+      edges.push(`"${targetString(dependencyTarget)}" -> "${nodeName}"`);
+    });
+  });
+
+  return `digraph {\n${nodes.join(";\n")};\n${edges.join(";\n")};\n}`;
 }
 
 function printExecutedActionErrors(

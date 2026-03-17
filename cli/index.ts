@@ -151,6 +151,21 @@ const jsonOutputOption: INamedOption<yargs.Options> = {
   }
 };
 
+const dotOutputOption: INamedOption<yargs.Options> = {
+  name: "dot",
+  option: {
+    describe: "Outputs a dot representation of the compiled project.",
+    type: "boolean",
+    default: false,
+  },
+    check: (argv: yargs.Arguments<any>) => {
+      if (argv.json && argv.dot) {
+        throw new Error("Arguments --json and --dot are mutually exclusive.");
+      }
+    }
+  
+};
+
 const timeoutOption: INamedOption<yargs.Options> = {
   name: "timeout",
   option: {
@@ -374,6 +389,7 @@ export function runCli() {
             }
           },
           jsonOutputOption,
+          dotOutputOption,
           timeoutOption,
           quietCompileOption,
           {
@@ -404,7 +420,7 @@ export function runCli() {
               timeoutMillis: argv[timeoutOption.name] || undefined,
               verbose: argv[verboseOptionName] || false
             });
-            printCompiledGraph(compiledGraph, argv[jsonOutputOption.name], argv[quietCompileOption.name]);
+            printCompiledGraph(compiledGraph, argv[jsonOutputOption.name], argv[dotOutputOption.name], argv[quietCompileOption.name]);
             if (compiledGraphHasErrors(compiledGraph)) {
               print("");
               printCompiledGraphErrors(compiledGraph.graphErrors, argv[quietCompileOption.name]);
