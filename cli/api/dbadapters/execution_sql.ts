@@ -142,45 +142,12 @@ from (${query}) as insertions`;
       if (!this.shouldWriteIncrementally(table, runConfig, tableMetadata)) {
         tasks.add(Task.statement(this.createOrReplace(table)));
       } else {
-        const onSchemaChange = table.onSchemaChange || dataform.OnSchemaChange.IGNORE;
+        const onSchemaChange = table.onSchemaChange ?? dataform.OnSchemaChange.IGNORE;
         switch (onSchemaChange) {
           case dataform.OnSchemaChange.FAIL:
           case dataform.OnSchemaChange.EXTEND:
           case dataform.OnSchemaChange.SYNCHRONIZE:
-            const uniqueId = crypto.randomUUID().replace(/-/g, "_");
-
-            const shortEmptyTableName = `${table.target.name}_df_temp_${uniqueId}_empty`;
-            const emptyTempTableName = this.resolveTarget({
-              ...table.target,
-              name: shortEmptyTableName
-            });
-
-            const shortDataTableName = shortEmptyTableName.replace("_empty", "_data");
-            const dataTempTableName = this.resolveTarget({
-              ...table.target,
-              name: shortDataTableName
-            });
-
-            const procedureName = this.createProcedureName(table.target, uniqueId);
-            const procedureBody = this.incrementalSchemaChangeBody(
-              table,
-              this.resolveTarget(table.target),
-              emptyTempTableName,
-              dataTempTableName,
-              shortEmptyTableName
-            );
-
-            const createProcedureSql = `CREATE OR REPLACE PROCEDURE ${procedureName}()
-OPTIONS(strict_mode=false)
-BEGIN
-${procedureBody}
-END;`;
-            const callProcedureSql = this.safeCallProcedure(
-              procedureName,
-              emptyTempTableName,
-              dataTempTableName
-            );
-            tasks.add(Task.statement(createProcedureSql + "\n" + callProcedureSql));
+            this.buildIncrementalSchemaChangeTasks(tasks, table);
             break;
           case dataform.OnSchemaChange.IGNORE:
           default:
@@ -231,7 +198,47 @@ END;`;
     return `drop ${this.tableTypeAsSql(type)} if exists ${this.resolveTarget(target)}`;
   }
 
-    private createProcedureName(target: dataform.ITarget, uniqueId: string): string {
+  private buildIncrementalSchemaChangeTasks(tasks: Tasks, table: dataform.ITable) {
+    const uniqueId = crypto.randomUUID().replace(/-/g, "_");
+
+    const shortEmptyTableName = `${table.target.name}_df_temp_${uniqueId}_empty`;
+    const emptyTempTableName = this.resolveTarget({
+      ...table.target,
+      name: shortEmptyTableName
+    });
+
+    const shortDataTableName = shortEmptyTableName.replace("_empty", "_data");
+    const dataTempTableName = this.resolveTarget({
+      ...table.target,
+      name: shortDataTableName
+    });
+
+    const procedureName = this.createProcedureName(table.target, uniqueId);
+    const procedureBody = this.incrementalSchemaChangeBody(
+      table,
+      this.resolveTarget(table.target),
+      emptyTempTableName,
+      dataTempTableName,
+      shortEmptyTableName
+    );
+
+    const createProcedureSql = `CREATE OR REPLACE PROCEDURE ${procedureName}()
+OPTIONS(strict_mode=false)
+BEGIN
+${procedureBody}
+END;`;
+
+    const callProcedureSql = this.safeCallAndDropProcedure(
+      procedureName,
+      emptyTempTableName,
+      dataTempTableName
+    );
+    tasks.add(Task.statement(createProcedureSql));
+    tasks.add(Task.statement(callProcedureSql));
+    tasks.add(Task.statement(`DROP PROCEDURE IF EXISTS ${procedureName};`));
+  }
+
+  private createProcedureName(target: dataform.ITarget, uniqueId: string): string {
     // Procedure names cannot contain hyphens.
     const sanitizedUniqueId = uniqueId.replace(/-/g, "_");
     return this.resolveTarget({
@@ -240,7 +247,7 @@ END;`;
     });
   }
 
-  private safeCallProcedure(
+  private safeCallAndDropProcedure(
     procedureName: string,
     emptyTempTableName: string,
     dataTempTableName: string
@@ -375,26 +382,42 @@ END FOR;
     qualifiedTargetTableName: string,
     dataTempTableName: string
   ): string {
-    let finalDmlSql = "\n-- Run final MERGE/INSERT.";
+    return [
+      this.createIncrementalDataTempTableSql(table, dataTempTableName),
+      this.declareDataformColumnsListSql(),
+      this.executeMergeOrInsertSql(table, qualifiedTargetTableName, dataTempTableName)
+    ].join("\n");
+  }
 
-    // Create temp table for incremental data.
-    finalDmlSql += `
+  private createIncrementalDataTempTableSql(table: dataform.ITable, dataTempTableName: string): string {
+    return `
 CREATE OR REPLACE TEMP TABLE ${dataTempTableName} AS (
-  SELECT * FROM (${table.incrementalQuery || table.query})
+  ${this.where(table.incrementalQuery || table.query, table.where)}
 );`;
+  }
 
-    // Generate dynamic column lists from temp_table_columns.
-    finalDmlSql += `
+  private declareDataformColumnsListSql(): string {
+    return `
 DECLARE dataform_columns_list STRING;
 SET dataform_columns_list = (
   SELECT IFNULL(STRING_AGG(CONCAT('\`', column_name, '\`'), ', '), '')
   FROM UNNEST(temp_table_columns)
 );`;
+  }
 
-    // Run final MERGE/INSERT.
+  private executeMergeOrInsertSql(
+    table: dataform.ITable,
+    qualifiedTargetTableName: string,
+    dataTempTableName: string
+  ): string {
     if (table.uniqueKey && table.uniqueKey.length > 0) {
       const mergeOnClause = table.uniqueKey.map(k => `T.\`${k}\` = S.\`${k}\``).join(" and ");
-      finalDmlSql += `
+      const updatePartitionFilter = table.bigquery && table.bigquery.updatePartitionFilter;
+      const mergeOnClauseWithFilter = updatePartitionFilter
+        ? `${mergeOnClause} and T.${updatePartitionFilter}`
+        : mergeOnClause;
+
+      return `
 DECLARE dataform_columns_merge STRING;
 SET dataform_columns_merge = (
   SELECT IFNULL(STRING_AGG(CONCAT('\`', column_name, '\` = S.\`', column_name, '\`'), ', '), '')
@@ -405,25 +428,22 @@ IF ARRAY_LENGTH(temp_table_columns) > 0 THEN
   EXECUTE IMMEDIATE (
     "MERGE \`${qualifiedTargetTableName}\` T " ||
     "USING \`${dataTempTableName}\` S " ||
-    "ON ${mergeOnClause} " ||
+    "ON ${mergeOnClauseWithFilter} " ||
     "WHEN MATCHED THEN " ||
     "  UPDATE SET " || dataform_columns_merge || " " ||
     "WHEN NOT MATCHED THEN " ||
     "  INSERT (" || dataform_columns_list || ") VALUES (" || dataform_columns_list || ")"
   );
-END IF;
-`;
+END IF;`;
     } else {
-      finalDmlSql += `
+      return `
 IF ARRAY_LENGTH(temp_table_columns) > 0 THEN
   EXECUTE IMMEDIATE (
     "INSERT INTO \`${qualifiedTargetTableName}\` (" || dataform_columns_list || ") " ||
     "SELECT " || dataform_columns_list || " FROM \`${dataTempTableName}\`"
   );
-END IF;
-`;
+END IF;`;
     }
-    return finalDmlSql;
   }
 
   private cleanupSql(emptyTempTableName: string, dataTempTableName: string): string {
