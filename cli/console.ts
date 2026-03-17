@@ -511,8 +511,9 @@ export function dotRepresentation(graph: dataform.ICompiledGraph): string {
   const edges: string[] = [];
 
   graph.tables?.forEach(table => {
+    setOrValidateTableEnumType(table);
     const nodeName = `${targetString(table.target)}`;
-    nodes.push(`"${nodeName}" [label="${targetString(table.target)}", shape=box]`);
+    nodes.push(`"${nodeName}" [label="${targetString(table.target)} [${tableTypeEnumToString(table.enumType)}]",\n shape=box]`);
     table.dependencyTargets?.forEach(dependencyTarget => {
       edges.push(`"${targetString(dependencyTarget)}" -> "${nodeName}"`);
     });
