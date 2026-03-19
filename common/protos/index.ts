@@ -41,8 +41,13 @@ export function verifyObjectMatchesProto<Proto>(
     throw ReferenceError(`Expected a top-level object, but found an array`);
   }
 
+  let objectToVerify = object;
+  if (protoType.getTypeUrl("").endsWith("google.protobuf.Struct")) {
+    objectToVerify = jsonToStruct(object);
+  }
+
   // Calling toObject on the object/JSON creates a version only contains the valid proto fields.
-  const proto = protoType.create(object);
+  const proto = protoType.create(objectToVerify);
   const protoCastObject = protoType.toObject(proto);
 
   function checkFields(present: { [k: string]: any }, desired: { [k: string]: any }) {
@@ -139,4 +144,33 @@ function fromBase64(value: string): Uint8Array {
   const buf = new Uint8Array(util.base64.length(value));
   util.base64.decode(value, buf, 0);
   return buf;
+}
+
+function jsonToStruct(obj: any): any {
+  if (obj === null || typeof obj !== "object" || Array.isArray(obj)) {
+    throw new Error(`Expected a JSON object for Struct, but found ${typeof obj}`);
+  }
+  const fields: { [key: string]: any } = {};
+  for (const [key, value] of Object.entries(obj)) {
+    fields[key] = jsonToValue(value);
+  }
+  return { fields };
+}
+
+function jsonToValue(value: any): any {
+  if (value === null) {
+    return { nullValue: 0 };
+  } else if (typeof value === "number") {
+    return { numberValue: value };
+  } else if (typeof value === "string") {
+    return { stringValue: value };
+  } else if (typeof value === "boolean") {
+    return { boolValue: value };
+  } else if (Array.isArray(value)) {
+    return { listValue: { values: value.map(jsonToValue) } };
+  } else if (typeof value === "object") {
+    return { structValue: jsonToStruct(value) };
+  } else {
+    throw new Error(`Unsupported JSON value type: ${typeof value}`);
+  }
 }
