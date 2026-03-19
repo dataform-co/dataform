@@ -268,4 +268,35 @@ SELECT 1 AS a, 2 AS b`);
         `Expected query is empty.`
       );
     });
+
+    test(`test with incremental table`, () => { 
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
+      const definitionsDir = path.join(projectDir, "definitions");
+      const actionSqlxPath = path.join(definitionsDir, "action.sqlx");
+      const actionTestSqlxPath = path.join(definitionsDir, "action_test.sqlx");
+
+      fs.writeFileSync(workflowSettingsPath, VALID_WORKFLOW_SETTINGS_YAML);
+      fs.mkdirSync(definitionsDir);
+
+      fs.writeFileSync(actionSqlxPath, `
+config {
+  type: "incremental",
+}
+SELECT 1 AS a
+    `);
+      fs.writeFileSync(actionTestSqlxPath, `
+config {
+  type: "test",
+  dataset: "action"
+}
+SELECT 1 AS a`);
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).equals(1);
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).contains(
+        `Running tests on incremental datasets is not yet supported.`
+      );
+    });
 });
