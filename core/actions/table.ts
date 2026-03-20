@@ -1,4 +1,4 @@
-import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
+import { jsonToStruct, verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import {
   ActionBuilder,
   checkConfigAdditionalOptionsOverlap,
@@ -133,7 +133,10 @@ export class Table extends ActionBuilder<dataform.Table> {
     if (!unverifiedConfig) {
       return;
     }
-    const config = this.verifyConfig(unverifiedConfig);
+    if (this.unverifiedConfig.metadata?.extraProperties) {
+      this.unverifiedConfig.metadata.extraProperties = jsonToStruct(this.unverifiedConfig.metadata.extraProperties);
+    }
+    const config = this.verifyConfig(this.unverifiedConfig);
 
     if (!config.name) {
       config.name = Path.basename(config.filename);

@@ -193,6 +193,32 @@ SELECT 1`
     });
   });
 
+  test("plain JSON in extraProperties works", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    fs.writeFileSync(path.join(projectDir, "workflow_settings.yaml"), VALID_WORKFLOW_SETTINGS_YAML);
+    fs.mkdirSync(path.join(projectDir, "definitions"));
+    fs.writeFileSync(
+      path.join(projectDir, "definitions/table.js"),
+      `publish("name", {
+        type: "table",
+        metadata: {
+          extraProperties: {
+            priority: "high"
+          }
+        }
+      }).query("SELECT 1")`
+    );
+
+    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+    expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+    expect(asPlainObject(result.compile.compiledGraph.tables[0].actionDescriptor.metadata.extraProperties)).deep.equals({
+      fields: {
+        priority: { stringValue: "high" }
+      }
+    });
+  });
+
   test("action config options", () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
     fs.writeFileSync(path.join(projectDir, "workflow_settings.yaml"), VALID_WORKFLOW_SETTINGS_YAML);
