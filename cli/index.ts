@@ -20,7 +20,8 @@ import {
   printInitCredsResult,
   printInitResult,
   printSuccess,
-  printTestResult
+  printTestResult,
+  compiledGraphOutputType
 } from "df/cli/console";
 import { getBigQueryCredentials } from "df/cli/credentials";
 import {
@@ -411,7 +412,15 @@ export function runCli() {
           const projectDir = argv[projectDirMustExistOption.name];
 
           async function compileAndPrint() {
-            if (!argv[jsonOutputOption.name]) {
+
+            let outputType = compiledGraphOutputType.Summary;
+            if (argv[jsonOutputOption.name]) {
+              outputType = compiledGraphOutputType.Json;
+            } else if (argv[dotOutputOption.name]) {
+              outputType = compiledGraphOutputType.Dot;
+            } 
+            
+            if (outputType == compiledGraphOutputType.Summary) {
               print("Compiling...\n");
             }
             const compiledGraph = await compile({
@@ -420,7 +429,7 @@ export function runCli() {
               timeoutMillis: argv[timeoutOption.name] || undefined,
               verbose: argv[verboseOptionName] || false
             });
-            printCompiledGraph(compiledGraph, argv[jsonOutputOption.name], argv[dotOutputOption.name], argv[quietCompileOption.name]);
+            printCompiledGraph(compiledGraph, outputType, argv[quietCompileOption.name], );
             if (compiledGraphHasErrors(compiledGraph)) {
               print("");
               printCompiledGraphErrors(compiledGraph.graphErrors, argv[quietCompileOption.name]);

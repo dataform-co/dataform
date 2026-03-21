@@ -173,11 +173,28 @@ export function printInitCredsResult(writtenFilePath: string) {
   writeStdOut("To change connection settings, edit this file directly.");
 }
 
-export function printCompiledGraph(graph: dataform.ICompiledGraph, asJson: boolean, asDot: boolean, quietCompilation: boolean) {
-  if (asJson) {
+export function isInteractive({stream = process.stdout} = {}) {
+	return Boolean(
+		stream && stream.isTTY &&
+		process.env.TERM !== 'dumb' &&
+		!('CI' in process.env)
+	);
+}
+
+export enum compiledGraphOutputType {
+  Json = "json",
+  Dot = "dot",
+  Summary = "summary"
+}
+
+export function printCompiledGraph(graph: dataform.ICompiledGraph, output: compiledGraphOutputType, quietCompilation: boolean) {
+  
+  const interactive = isInteractive();
+  
+  if (output === compiledGraphOutputType.Json) {
     writeStdOut(prettyJsonStringify(graph));
-  } else if (asDot) {
-    writeStdOut(dotRepresentation(graph));
+  } else if (output === compiledGraphOutputType.Dot) {
+    writeStdOut(dotRepresentation(graph, interactive));
   } else {
     const actionCount =
       0 +
@@ -502,36 +519,41 @@ function operationString(target: dataform.ITarget, disabled: boolean) {
   return `${targetString(target)}${disabled ? " [disabled]" : ""}`;
 }
 
+function plainTargetString(target: dataform.ITarget) {
+  return `${target.schema}.${target.name}`;
+}
+
 function targetString(target: dataform.ITarget) {
   return calloutOutput(`${target.schema}.${target.name}`);
 }
 
-export function dotRepresentation(graph: dataform.ICompiledGraph): string {
+export function dotRepresentation(graph: dataform.ICompiledGraph, interactive: boolean): string {
   const nodes: string[] = [];
   const edges: string[] = [];
 
+  const formatTarget = interactive ? targetString : plainTargetString;
+
   graph.tables?.forEach(table => {
-    setOrValidateTableEnumType(table);
-    const nodeName = `${targetString(table.target)}`;
-    nodes.push(`"${nodeName}" [label="${targetString(table.target)} [${tableTypeEnumToString(table.enumType)}]",\n shape=box]`);
+    const nodeName = `${formatTarget(table.target)}`;
+    nodes.push(`"${nodeName}" [label="${formatTarget(table.target)} [${tableTypeEnumToString(table.enumType)}]"]`);
     table.dependencyTargets?.forEach(dependencyTarget => {
-      edges.push(`"${targetString(dependencyTarget)}" -> "${nodeName}"`);
+      edges.push(`"${formatTarget(dependencyTarget)}" -> "${nodeName}"`);
     });
   });
 
   graph.assertions?.forEach(assertion => {
-    const nodeName = `${targetString(assertion.target)}`;
-    nodes.push(`"${nodeName}" [label="${targetString(assertion.target)}", shape=ellipse]`);
+    const nodeName = `${formatTarget(assertion.target)}`;
+    nodes.push(`"${nodeName}" [label="${formatTarget(assertion.target)}"]`);
     assertion.dependencyTargets?.forEach(dependencyTarget => {
-      edges.push(`"${targetString(dependencyTarget)}" -> "${nodeName}"`);
+      edges.push(`"${formatTarget(dependencyTarget)}" -> "${nodeName}"`);
     });
   });
 
   graph.operations?.forEach(operation => {
-    const nodeName = `${targetString(operation.target)}`;
-    nodes.push(`"${nodeName}" [label="${targetString(operation.target)}", shape=diamond]`);
+    const nodeName = `${formatTarget(operation.target)}`;
+    nodes.push(`"${nodeName}" [label="${formatTarget(operation.target)}"`);
     operation.dependencyTargets?.forEach(dependencyTarget => {
-      edges.push(`"${targetString(dependencyTarget)}" -> "${nodeName}"`);
+      edges.push(`"${formatTarget(dependencyTarget)}" -> "${nodeName}"`);
     });
   });
 
