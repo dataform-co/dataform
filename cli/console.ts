@@ -187,13 +187,13 @@ export enum compiledGraphOutputType {
   Summary = "summary"
 }
 
-export function printCompiledGraph(graph: dataform.ICompiledGraph, output: compiledGraphOutputType, quietCompilation: boolean) {
+export function printCompiledGraph(graph: dataform.ICompiledGraph, outputType: compiledGraphOutputType, quietCompilation: boolean) {
   
   const interactive = isInteractive();
   
-  if (output === compiledGraphOutputType.Json) {
+  if (outputType === compiledGraphOutputType.Json) {
     writeStdOut(prettyJsonStringify(graph));
-  } else if (output === compiledGraphOutputType.Dot) {
+  } else if (outputType === compiledGraphOutputType.Dot) {
     writeStdOut(dotRepresentation(graph, interactive));
   } else {
     const actionCount =

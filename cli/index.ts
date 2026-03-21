@@ -10,6 +10,7 @@ import { CREDENTIALS_FILENAME } from "df/cli/api/commands/credentials";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 import { prettyJsonStringify } from "df/cli/api/utils";
 import {
+  compiledGraphOutputType,
   print,
   printCompiledGraph,
   printCompiledGraphErrors,
@@ -20,8 +21,7 @@ import {
   printInitCredsResult,
   printInitResult,
   printSuccess,
-  printTestResult,
-  compiledGraphOutputType
+  printTestResult
 } from "df/cli/console";
 import { getBigQueryCredentials } from "df/cli/credentials";
 import {
@@ -420,7 +420,7 @@ export function runCli() {
               outputType = compiledGraphOutputType.Dot;
             } 
             
-            if (outputType == compiledGraphOutputType.Summary) {
+            if (outputType === compiledGraphOutputType.Summary) {
               print("Compiling...\n");
             }
             const compiledGraph = await compile({
@@ -429,7 +429,7 @@ export function runCli() {
               timeoutMillis: argv[timeoutOption.name] || undefined,
               verbose: argv[verboseOptionName] || false
             });
-            printCompiledGraph(compiledGraph, outputType, argv[quietCompileOption.name], );
+            printCompiledGraph(compiledGraph, outputType, argv[quietCompileOption.name]);
             if (compiledGraphHasErrors(compiledGraph)) {
               print("");
               printCompiledGraphErrors(compiledGraph.graphErrors, argv[quietCompileOption.name]);
