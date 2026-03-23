@@ -43,7 +43,11 @@ export function verifyObjectMatchesProto<Proto>(
 
   let objectToVerify = object;
   if (protoType.getTypeUrl("").endsWith("google.protobuf.Struct")) {
-    objectToVerify = jsonToStruct(object);
+    const converted = unknownToValue(object);
+    if (!converted.structValue) {
+      throw new Error(`Expected a JSON object for Struct, but found ${typeof object}`);
+    }
+    objectToVerify = converted.structValue;
   }
 
   // Calling toObject on the object/JSON creates a version only contains the valid proto fields.
@@ -146,31 +150,30 @@ function fromBase64(value: string): Uint8Array {
   return buf;
 }
 
-function jsonToStruct(obj: any): any {
-  if (obj === null || typeof obj !== "object" || Array.isArray(obj)) {
-    throw new Error(`Expected a JSON object for Struct, but found ${typeof obj}`);
-  }
-  const fields: { [key: string]: any } = {};
-  for (const [key, value] of Object.entries(obj)) {
-    fields[key] = jsonToValue(value);
-  }
-  return { fields };
-}
-
-function jsonToValue(value: any): any {
-  if (value === null) {
+export function unknownToValue(raw: unknown): any {
+  if (raw === null || typeof raw === "undefined") {
     return { nullValue: 0 };
-  } else if (typeof value === "number") {
-    return { numberValue: value };
-  } else if (typeof value === "string") {
-    return { stringValue: value };
-  } else if (typeof value === "boolean") {
-    return { boolValue: value };
-  } else if (Array.isArray(value)) {
-    return { listValue: { values: value.map(jsonToValue) } };
-  } else if (typeof value === "object") {
-    return { structValue: jsonToStruct(value) };
-  } else {
-    throw new Error(`Unsupported JSON value type: ${typeof value}`);
   }
+  if (typeof raw === "string") {
+    return { stringValue: raw };
+  }
+  if (typeof raw === "number") {
+    return { numberValue: raw };
+  }
+  if (typeof raw === "boolean") {
+    return { boolValue: raw };
+  }
+  if (Array.isArray(raw)) {
+    return { listValue: { values: raw.map(unknownToValue) } };
+  }
+  if (typeof raw === "object") {
+    return {
+      structValue: {
+        fields: Object.fromEntries(
+          Object.entries(raw as object).map(([key, value]) => [key, unknownToValue(value)])
+        )
+      }
+    };
+  }
+  throw new Error(`Unsupported value: ${raw}`);
 }
