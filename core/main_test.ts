@@ -1702,7 +1702,7 @@ dataform.jitData("key", {test: () => {}});
 
         expect(
           result.compile.compiledGraph.graphErrors.compilationErrors.map(e => e.message)
-        ).to.deep.equal(["Unsupported JSON value type: function"]);
+        ).to.deep.equal(["Unsupported context object: () => {}"]);
       });
     });
 
