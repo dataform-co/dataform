@@ -146,7 +146,7 @@ function fromBase64(value: string): Uint8Array {
   return buf;
 }
 
-export function jsonToStruct(obj: any): any {
+function jsonToStruct(obj: any): any {
   if (obj === null || typeof obj !== "object" || Array.isArray(obj)) {
     throw new Error(`Expected a JSON object for Struct, but found ${typeof obj}`);
   }
@@ -157,8 +157,8 @@ export function jsonToStruct(obj: any): any {
   return { fields };
 }
 
-export function jsonToValue(value: any): any {
-  if (value === null || typeof value === "undefined") {
+function jsonToValue(value: any): any {
+  if (value === null) {
     return { nullValue: 0 };
   } else if (typeof value === "number") {
     return { numberValue: value };

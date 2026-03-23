@@ -1,6 +1,6 @@
 import { default as TarjanGraphConstructor, Graph as TarjanGraph } from "tarjan-graph";
 
-import { encode64, jsonToValue, verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
+import { encode64, verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { Action, ActionProto, ILegacyTableConfig, TableType } from "df/core/actions";
 import { AContextable, Assertion, AssertionContext } from "df/core/actions/assertion";
 import {
@@ -413,11 +413,46 @@ export class Session {
   }
 
   public jitData(key: string, data: unknown): void {
+    function unknownToValue(raw: unknown): google.protobuf.Value {
+      if (raw === null || typeof raw === "undefined") {
+        return google.protobuf.Value.create({ nullValue: google.protobuf.NullValue.NULL_VALUE });
+      }
+      if (typeof raw === "string") {
+        return google.protobuf.Value.create({ stringValue: raw as string });
+      }
+      if (typeof raw === "number") {
+        return google.protobuf.Value.create({ numberValue: raw as number });
+      }
+      if (typeof raw === "boolean") {
+        return google.protobuf.Value.create({ boolValue: raw as boolean });
+      }
+      if (typeof raw === "object" && raw instanceof Array) {
+        return google.protobuf.Value.create({
+          listValue: google.protobuf.ListValue.create({
+            values: (raw as unknown[]).map(unknownToValue)
+          })
+        });
+      }
+      if (typeof raw === "object") {
+        return google.protobuf.Value.create({
+          structValue: google.protobuf.Struct.create({
+            fields: Object.fromEntries(Object.entries(raw).map(
+              ([fieldKey, fieldValue]) => ([
+                fieldKey,
+                unknownToValue(fieldValue)
+              ])
+            ))
+          })
+        })
+      }
+      throw new Error(`Unsupported context object: ${raw}`);
+    }
+
     if (this.jitContextData.fields[key] !== undefined) {
       throw new Error(`JiT context data with key ${key} already exists.`);
     }
 
-    this.jitContextData.fields[key] = google.protobuf.Value.create(jsonToValue(data));
+    this.jitContextData.fields[key] = unknownToValue(data);
 
   }
   public compileError(err: Error | string, path?: string, actionTarget?: dataform.ITarget) {
