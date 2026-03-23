@@ -77,10 +77,18 @@ message GetTableRequest {
   Target target = 1;
 }
 
+// Response containing table metadata.
+message GetTableResponse {
+  TableMetadata table = 1;
+}
+
 // Request to drop the table for target.
 message DeleteTableRequest {
   Target target = 1;
 }
+
+// Response to drop table request.
+message DeleteTableResponse {}
 
 // JiT compilation target type.
 enum JitCompilationTargetType {
