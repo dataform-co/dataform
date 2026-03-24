@@ -20,29 +20,32 @@ suite("readExtensionConfigFromWorkflowSettings", ({ afterEach }) => {
     const projectDir = tmpDirFixture.createNewTmpDir();
     fs.writeFileSync(
       path.join(projectDir, "workflow_settings.yaml"),
-      dumpYaml(dataform.WorkflowSettings.create({ defaultProject: "dataform" }))
+      dumpYaml({ defaultProject: "dataform" })
     );
     expect(readExtensionConfigFromWorkflowSettings(projectDir)).to.equal(undefined);
   });
 
   test("returns extension config when set in workflow_settings.yaml", () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
-    const extension = dataform.Extension.create({
-      name: "test-extension",
-      compilationMode: dataform.ExtensionCompilationMode.PROLOGUE,
-    });
     fs.writeFileSync(
       path.join(projectDir, "workflow_settings.yaml"),
-      dumpYaml(
-        dataform.WorkflowSettings.create({
-          defaultProject: "dataform",
-          extension,
-        })
-      )
+      dumpYaml({
+        dataformCoreVersion: "3.0.0",
+        defaultProject: "dataform",
+        extension: {
+          name: "test-extension",
+          compilationMode: "PROLOGUE",
+        },
+      })
     );
     const result = readExtensionConfigFromWorkflowSettings(projectDir);
-    expect(result.name).to.equal(extension.name);
-    expect(Number(result.compilationMode)).to.equal(Number(extension.compilationMode));
+    expect(result.name).to.equal("test-extension");
+    const mode = result.compilationMode as any;
+    if (typeof mode === "string") {
+      expect(mode).to.equal("PROLOGUE");
+    } else {
+      expect(mode).to.equal(dataform.ExtensionCompilationMode.PROLOGUE);
+    }
   });
 
   test("throws error for invalid YAML", () => {

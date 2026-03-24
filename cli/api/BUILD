@@ -48,12 +48,20 @@ ts_library(
     ],
 )
 
+node_modules(
+    name = "node_modules",
+    deps = [
+        "//packages/@dataform/core:package_tar",
+    ],
+)
+
 ts_test_suite(
     name = "tests",
     srcs = [
         "utils_test.ts",
     ],
     data = [
+        ":node_modules",
         "//packages/@dataform/core:package_tar",
         "//test_credentials:bigquery.json",
         "@nodejs//:node",

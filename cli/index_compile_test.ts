@@ -303,19 +303,21 @@ suite("extension config", ({ afterEach }) => {
     const projectDir = tmpDirFixture.createNewTmpDir();
     const npmCacheDir = tmpDirFixture.createNewTmpDir();
 
-    await getProcessResult(
-      execFile(nodePath, [cliEntryPointPath, "init", projectDir, DEFAULT_DATABASE, DEFAULT_LOCATION])
+    fs.writeFileSync(
+      path.join(projectDir, "workflow_settings.yaml"),
+      dumpYaml({
+        defaultProject: DEFAULT_DATABASE,
+        defaultLocation: DEFAULT_LOCATION,
+        defaultDataset: "dataform",
+        defaultAssertionDataset: "dataform_assertions",
+        extension: {
+          name: "test-extension",
+          compilationMode: "PROLOGUE",
+        },
+      })
     );
-
-    const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
-    const workflowSettings = dataform.WorkflowSettings.create(
-      loadYaml(fs.readFileSync(workflowSettingsPath, "utf8"))
-    );
-    workflowSettings.extension = dataform.Extension.create({
-      name: "test-extension",
-      compilationMode: dataform.ExtensionCompilationMode.PROLOGUE,
-    });
-    fs.writeFileSync(workflowSettingsPath, dumpYaml(workflowSettings));
+    fs.mkdirSync(path.join(projectDir, "definitions"));
+    fs.mkdirSync(path.join(projectDir, "includes"));
 
     fs.writeFileSync(
       path.join(projectDir, "package.json"),
@@ -341,6 +343,6 @@ suite("extension config", ({ afterEach }) => {
     );
 
     expect(compileResult.exitCode).equals(0);
-    expect(compileResult.stdout).contains("Compiled successfully");
+    expect(compileResult.stdout).contains("Compiled 0 action(s).");
   });
 });

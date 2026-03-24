@@ -47,6 +47,5 @@ export function readExtensionConfigFromWorkflowSettings(
     }
     throw e;
   }
-  const workflowSettings = dataform.WorkflowSettings.create(workflowSettingsAsJson);
-  return workflowSettings.extension ?? undefined;
+  return dataform.WorkflowSettings.create(workflowSettingsAsJson).extension ?? undefined;
 }
