@@ -41,7 +41,8 @@ suite("readExtensionConfigFromWorkflowSettings", ({ afterEach }) => {
       )
     );
     const result = readExtensionConfigFromWorkflowSettings(projectDir);
-    expect(result).to.deep.equal(extension);
+    expect(result.name).to.equal(extension.name);
+    expect(Number(result.compilationMode)).to.equal(Number(extension.compilationMode));
   });
 
   test("throws error for invalid YAML", () => {

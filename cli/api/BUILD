@@ -8,7 +8,10 @@ ts_library(
     name = "api",
     srcs = glob(
         ["**/*.ts"],
-        exclude = ["utils/**/*.*"],
+        exclude = [
+            "utils/**/*.*",
+            "**/*_test.ts",
+        ],
     ),
     deps = [
         "//cli/api/utils",
@@ -45,10 +48,17 @@ ts_library(
     ],
 )
 
+node_modules(
+    name = "node_modules",
+    deps = [
+        "//packages/@dataform/core:package_tar",
+    ],
+)
+
 ts_test_suite(
     name = "tests",
     srcs = [
-        "util_test.ts"
+        "utils_test.ts",
     ],
     data = [
         ":node_modules",
@@ -58,8 +68,6 @@ ts_test_suite(
         "@nodejs//:npm",
     ],
     deps = [
-        ":index_test_base",
-        "//cli",
         "//cli/api",
         "//core",
         "//protos:ts",
