@@ -13,7 +13,7 @@ suite("readExtensionConfigFromWorkflowSettings", ({ afterEach }) => {
 
   test("returns undefined when workflow_settings.yaml does not exist", () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
-    expect(readExtensionConfigFromWorkflowSettings(projectDir)).to.be.undefined;
+    expect(readExtensionConfigFromWorkflowSettings(projectDir)).to.equal(undefined);
   });
 
   test("returns undefined when extension is not set in workflow_settings.yaml", () => {
@@ -22,7 +22,7 @@ suite("readExtensionConfigFromWorkflowSettings", ({ afterEach }) => {
       path.join(projectDir, "workflow_settings.yaml"),
       dumpYaml(dataform.WorkflowSettings.create({ defaultProject: "dataform" }))
     );
-    expect(readExtensionConfigFromWorkflowSettings(projectDir)).to.be.undefined;
+    expect(readExtensionConfigFromWorkflowSettings(projectDir)).to.equal(undefined);
   });
 
   test("returns extension config when set in workflow_settings.yaml", () => {
