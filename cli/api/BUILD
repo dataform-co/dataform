@@ -42,3 +42,34 @@ ts_library(
         "@npm//tmp",
     ],
 )
+
+ts_test_suite(
+    name = "tests",
+    srcs = [
+        "util_test.ts"
+    ],
+    data = [
+        ":node_modules",
+        "//packages/@dataform/core:package_tar",
+        "//test_credentials:bigquery.json",
+        "@nodejs//:node",
+        "@nodejs//:npm",
+    ],
+    deps = [
+        ":index_test_base",
+        "//cli",
+        "//cli/api",
+        "//core",
+        "//protos:ts",
+        "//testing",
+        "@npm//@types/chai",
+        "@npm//@types/fs-extra",
+        "@npm//@types/js-yaml",
+        "@npm//@types/long",
+        "@npm//@types/node",
+        "@npm//chai",
+        "@npm//fs-extra",
+        "@npm//js-yaml",
+        "@npm//ts-mockito",
+    ],
+)
