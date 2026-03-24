@@ -6,7 +6,14 @@ package(default_visibility = ["//visibility:public"])
 proto_library(
     name = "dataform_proto",
     srcs = [
-        "*.proto",
+        "configs.proto",
+        "core.proto",
+        "db_adapter.proto",
+        "evaluation.proto",
+        "execution.proto",
+        "jit.proto",
+        "profiles.proto",
+        "extension.proto",
     ],
     deps = [
       "@com_google_protobuf//:empty_proto",
