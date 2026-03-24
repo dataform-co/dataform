@@ -3,6 +3,7 @@ syntax = "proto3";
 package dataform;
 
 import "protos/configs.proto";
+import "protos/extension.proto";
 import "google/protobuf/struct.proto";
 
 option java_package = "com.dataform.protos";
@@ -441,22 +442,4 @@ message CompileExecutionResponse {
 enum SupportedFeatures {
   UNKNOWN_FEATURE = 0;
   ARRAY_BUFFER_IPC = 1;
-}
-
-// Execution mode of compilation extension.
-enum ExtensionCompilationMode {
-  // Unspecified compiled mode - extension will be skipped.
-  COMPILATION_MODE_UNSPECIFIED = 0;
-  // Execute before regular Dataform compilation.
-  PROLOGUE = 1;
-  // Replace regular Dataform compilation.
-  APPLICATION_CODE = 2;
-}
-
-message Extension {
-  // Name of the extension (JS module) to delegate the compilation to.
-  string name = 1;
-
-  // Compilation mode of the extension, required.
-  ExtensionCompilationMode compilation_mode = 2;
 }

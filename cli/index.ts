@@ -8,7 +8,7 @@ import yargs from "yargs";
 import { build, compile, credentials, init, install, run, test } from "df/cli/api";
 import { CREDENTIALS_FILENAME } from "df/cli/api/commands/credentials";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
-import { prettyJsonStringify } from "df/cli/api/utils";
+import { prettyJsonStringify, readExtensionConfigFromWorkflowSettings } from "df/cli/api/utils";
 import {
   print,
   printCompiledGraph,
@@ -398,10 +398,17 @@ export function runCli() {
             if (!argv[jsonOutputOption.name]) {
               print("Compiling...\n");
             }
+            const extensionConfig = readExtensionConfigFromWorkflowSettings(projectDir);
             const compiledGraph = await compile({
               projectDir,
               projectConfigOverride: ProjectConfigOptions.constructProjectConfigOverride(argv),
               timeoutMillis: argv[timeoutOption.name] || undefined,
+              extension: extensionConfig
+                ? {
+                    name: extensionConfig.name,
+                  compilationMode: extensionConfig.compilationMode
+                  }
+                : undefined,
               verbose: argv[verboseOptionName] || false
             });
             printCompiledGraph(compiledGraph, argv[jsonOutputOption.name], argv[quietCompileOption.name]);

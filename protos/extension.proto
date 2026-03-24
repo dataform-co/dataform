@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package dataform;
+
+option java_package = "com.dataform.protos";
+option java_outer_classname = "ExtensionMeta";
+option java_multiple_files = true;
+
+option go_package = "github.com/dataform-co/dataform/protos/dataform";
+
+// Execution mode of compilation extension.
+enum ExtensionCompilationMode {
+  // Unspecified compiled mode - extension will be skipped.
+  COMPILATION_MODE_UNSPECIFIED = 0;
+  // Execute before regular Dataform compilation.
+  PROLOGUE = 1;
+  // Replace regular Dataform compilation.
+  APPLICATION_CODE = 2;
+}
+
+message Extension {
+  // Name of the extension (JS module) to delegate the compilation to.
+  string name = 1;
+
+  // Compilation mode of the extension, required.
+  ExtensionCompilationMode compilation_mode = 2;
+}

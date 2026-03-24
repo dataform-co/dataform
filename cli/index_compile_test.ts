@@ -295,3 +295,52 @@ SELECT 1 as id
     expect(JSON.parse(compileResult.stdout)).deep.equals(expectedCompileResult);
   });
 });
+
+suite("extension config", ({ afterEach }) => {
+  const tmpDirFixture = new TmpDirFixture(afterEach);
+
+  test("compile succeeds with extension set in workflow_settings.yaml", async () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    const npmCacheDir = tmpDirFixture.createNewTmpDir();
+
+    await getProcessResult(
+      execFile(nodePath, [cliEntryPointPath, "init", projectDir, DEFAULT_DATABASE, DEFAULT_LOCATION])
+    );
+
+    const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
+    const workflowSettings = dataform.WorkflowSettings.create(
+      loadYaml(fs.readFileSync(workflowSettingsPath, "utf8"))
+    );
+    workflowSettings.extension = dataform.Extension.create({
+      name: "test-extension",
+      compilationMode: dataform.ExtensionCompilationMode.PROLOGUE,
+    });
+    fs.writeFileSync(workflowSettingsPath, dumpYaml(workflowSettings));
+
+    fs.writeFileSync(
+      path.join(projectDir, "package.json"),
+      `{
+  "dependencies":{
+    "@dataform/core": "${version}"
+  }
+}`
+    );
+    await getProcessResult(
+      execFile(npmPath, [
+        "install",
+        "--prefix",
+        projectDir,
+        "--cache",
+        npmCacheDir,
+        corePackageTarPath
+      ])
+    );
+
+    const compileResult = await getProcessResult(
+      execFile(nodePath, [cliEntryPointPath, "compile", projectDir])
+    );
+
+    expect(compileResult.exitCode).equals(0);
+    expect(compileResult.stdout).contains("Compiled successfully");
+  });
+});
