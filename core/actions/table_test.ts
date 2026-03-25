@@ -225,6 +225,86 @@ SELECT 1`
         }
       });
     });
+
+    test("tables can be configured with a complex nested plain object for extraProperties", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/table.sqlx"),
+        `config {
+      type: "table",
+      metadata: {
+        overview: "The test overview",
+        extraProperties: {
+          glossary_terms: [
+            {
+              column_name: "trip_id",
+              project: "bq-dataworkeragent-test",
+              location: "us-central1"
+            },
+            {
+              project: "bq-dataworkeragent-test",
+              glossary_id: "jebmjilij-9c85ee94"
+            }
+          ],
+          generic: {
+            system: "yo",
+            type: "yo yo"
+          }
+        }
+      }
+    }
+    SELECT 1`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      const metadata = result.compile.compiledGraph.tables[0].actionDescriptor.metadata;
+      expect(metadata.overview).equals("The test overview");
+
+      expect(asPlainObject(metadata.extraProperties)).deep.equals({
+        fields: {
+          glossary_terms: {
+            listValue: {
+              values: [
+                {
+                  structValue: {
+                    fields: {
+                      column_name: { stringValue: "trip_id" },
+                      project: { stringValue: "bq-dataworkeragent-test" },
+                      location: { stringValue: "us-central1" }
+                    }
+                  }
+                },
+                {
+                  structValue: {
+                    fields: {
+                      project: { stringValue: "bq-dataworkeragent-test" },
+                      glossary_id: { stringValue: "jebmjilij-9c85ee94" }
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          generic: {
+            structValue: {
+              fields: {
+                system: { stringValue: "yo" },
+                type: { stringValue: "yo yo" }
+              }
+            }
+          }
+        }
+      });
+    });
+
+
   });
 
   test("action config options", () => {
