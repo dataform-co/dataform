@@ -3,13 +3,17 @@ import * as fs from "fs-extra";
 import { dump as dumpYaml } from "js-yaml";
 import * as path from "path";
 
-import { readExtensionConfigFromWorkflowSettings } from "df/cli/api/utils";
+import { readConfigFromWorkflowSettings } from "df/cli/api/utils";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
 
 suite("readExtensionConfigFromWorkflowSettings", ({ afterEach }) => {
   const tmpDirFixture = new TmpDirFixture(afterEach);
+
+  function readExtensionConfigFromWorkflowSettings(projectDir: string) {
+    return readConfigFromWorkflowSettings(projectDir)?.extension ?? undefined;
+  }
 
   test("returns undefined when workflow_settings.yaml does not exist", () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
