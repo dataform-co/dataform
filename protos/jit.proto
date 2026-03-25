@@ -59,6 +59,7 @@ message ExecuteResponse {
   // https://docs.cloud.google.com/bigquery/docs/reference/rest/v2/jobs/getQueryResults.
   repeated google.protobuf.Struct rows = 2;
   repeated string errors = 3;
+  repeated Field schema_fields = 4;
 }
 
 // Request to list tables in schema.
