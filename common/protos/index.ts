@@ -60,6 +60,9 @@ export function verifyObjectMatchesProto<Proto>(
     // Only the entries of `present` need to be iterated through as `desired` is guaranteed to be a
     // strict subset of `present`.
     Object.entries(present).forEach(([presentKey, presentValue]) => {
+      if (presentKey === "extraProperties") {
+        return;
+      }
       const desiredValue = desired[presentKey];
       if (typeof desiredValue !== typeof presentValue) {
         if (Array.isArray(presentValue) && presentValue.length === 0) {
