@@ -1,4 +1,5 @@
 import { util } from "protobufjs";
+import { google } from "df/protos/ts";
 
 const CONFIGS_PROTO_DOCUMENTATION_URL =
   "https://dataform-co.github.io/dataform/docs/configs-reference";
@@ -150,16 +151,7 @@ function fromBase64(value: string): Uint8Array {
   return buf;
 }
 
-export interface IValue {
-  nullValue?: number;
-  stringValue?: string;
-  numberValue?: number;
-  boolValue?: boolean;
-  structValue?: { fields: { [key: string]: IValue } };
-  listValue?: { values: IValue[] };
-}
-
-export function unknownToValue(raw: unknown): IValue {
+export function unknownToValue(raw: unknown): google.protobuf.IValue {
   if (raw === null || typeof raw === "undefined") {
     return { nullValue: 0 };
   }
