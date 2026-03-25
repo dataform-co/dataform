@@ -5,6 +5,8 @@ import { google } from "df/protos/ts";
 const CONFIGS_PROTO_DOCUMENTATION_URL =
   "https://dataform-co.github.io/dataform/docs/configs-reference";
 const REPORT_ISSUE_URL = "https://github.com/dataform-co/dataform/issues";
+const STRUCT_FIELD_NAMES = new Set(["extraProperties", "contexts", "glossary_terms"]);
+
 
 export interface IProtoClass<IProto, Proto> {
   new (): Proto;
@@ -37,20 +39,14 @@ export enum VerifyProtoErrorBehaviour {
 export function verifyObjectMatchesProto<Proto>(
   protoType: IProtoClass<any, Proto>,
   object: object,
-  errorBehaviour: VerifyProtoErrorBehaviour = VerifyProtoErrorBehaviour.DEFAULT
+  errorBehaviour: VerifyProtoErrorBehaviour = VerifyProtoErrorBehaviour.DEFAULT,
+  structFieldNames: Set<string> = STRUCT_FIELD_NAMES
 ): Proto {
   if (Array.isArray(object)) {
     throw ReferenceError(`Expected a top-level object, but found an array`);
   }
 
-  let objectToVerify = object;
-  if (protoType.getTypeUrl("").endsWith("google.protobuf.Struct")) {
-    const converted = unknownToValue(object);
-    if (!converted.structValue) {
-      throw new Error(`Expected a JSON object for Struct, but found ${typeof object}`);
-    }
-    objectToVerify = converted.structValue;
-  }
+  const objectToVerify = applyStructConversions(object);
 
   // Calling toObject on the object/JSON creates a version only contains the valid proto fields.
   const proto = protoType.create(objectToVerify);
@@ -60,7 +56,7 @@ export function verifyObjectMatchesProto<Proto>(
     // Only the entries of `present` need to be iterated through as `desired` is guaranteed to be a
     // strict subset of `present`.
     Object.entries(present).forEach(([presentKey, presentValue]) => {
-      if (presentKey === "extraProperties") {
+      if (structFieldNames.has(presentKey)) {
         return;
       }
       const desiredValue = desired[presentKey];
@@ -101,6 +97,36 @@ export function verifyObjectMatchesProto<Proto>(
 
   checkFields(object, protoCastObject);
   return proto;
+}
+
+function applyStructConversions(obj: any): any {
+  if (!obj || typeof obj !== "object" || Array.isArray(obj)) {
+    return obj;
+  }
+
+  const result = { ...obj };
+
+  for (const key of Object.keys(obj)) {
+    const value = obj[key];
+    if (value === undefined || value === null) continue;
+
+    if (STRUCT_FIELD_NAMES.has(key)) {
+      if (Array.isArray(value)) {
+        result[key] = {
+          listValue: {
+            values: value.map(item => unknownToValue(item))
+          }
+        };
+      } else if (typeof value === "object" && !value.fields) {
+        const converted = unknownToValue(value);
+        result[key] = converted.structValue;
+      }
+    } else if (typeof value === "object") {
+      result[key] = applyStructConversions(value);
+    }
+  }
+
+  return result;
 }
 
 function maybeGetDocsLinkPrefix<Proto>(
