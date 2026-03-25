@@ -310,10 +310,10 @@ publish("name")`
       expect(
         result.compile.compiledGraph.graphErrors.compilationErrors?.map(error => error.message)
       ).deep.equals([
-        `Duplicate action name detected. Names within a schema must be unique across tables, declarations, assertions, and operations:\n\"{\"schema\":\"otherDataset\",\"name\":\"name\",\"database\":\"defaultProject\"}\"`,
-        `Duplicate canonical target detected. Canonical targets must be unique across tables, declarations, assertions, and operations:\n\"{\"schema\":\"otherDataset\",\"name\":\"name\",\"database\":\"defaultProject\"}\"`,
-        `Duplicate action name detected. Names within a schema must be unique across tables, declarations, assertions, and operations:\n\"{\"schema\":\"otherDataset\",\"name\":\"name\",\"database\":\"defaultProject\"}\"`,
-        `Duplicate canonical target detected. Canonical targets must be unique across tables, declarations, assertions, and operations:\n\"{\"schema\":\"otherDataset\",\"name\":\"name\",\"database\":\"defaultProject\"}\"`
+        `Duplicate action name detected. Names within a schema must be unique across tables, declarations, assertions, and operations:\n\"{\"name\":\"name\",\"schema\":\"otherDataset\",\"database\":\"defaultProject\"}\"`,
+        `Duplicate canonical target detected. Canonical targets must be unique across tables, declarations, assertions, and operations:\n\"{\"name\":\"name\",\"schema\":\"otherDataset\",\"database\":\"defaultProject\"}\"`,
+        `Duplicate action name detected. Names within a schema must be unique across tables, declarations, assertions, and operations:\n\"{\"name\":\"name\",\"schema\":\"otherDataset\",\"database\":\"defaultProject\"}\"`,
+        `Duplicate canonical target detected. Canonical targets must be unique across tables, declarations, assertions, and operations:\n\"{\"name\":\"name\",\"schema\":\"otherDataset\",\"database\":\"defaultProject\"}\"`
       ]);
     });
 
