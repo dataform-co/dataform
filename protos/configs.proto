@@ -9,6 +9,7 @@ option java_multiple_files = true;
 option go_package = "github.com/dataform-co/dataform/protos/dataform";
 
 import "google/protobuf/struct.proto";
+import "protos/extension.proto";
 
 // Workflow Settings defines the contents of the `workflow_settings.yaml`
 // configuration file.
@@ -60,6 +61,9 @@ message WorkflowSettings {
   // If unset, default BigQuery behavior applies.
   // Dataform CLI only (GCP Dataform support pending).
   string default_reservation = 14;
+
+  // Optional. An external package that provides an extension.
+  Extension extension = 15;
 }
 
 message DefaultIcebergConfig {

@@ -1,12 +1,17 @@
-package(default_visibility = ["//visibility:public"])
-
 load("//tools:ts_library.bzl", "ts_library")
+load("//testing:index.bzl", "ts_test_suite")
+load("//tools:node_modules.bzl", "node_modules")
+
+package(default_visibility = ["//visibility:public"])
 
 ts_library(
     name = "api",
     srcs = glob(
         ["**/*.ts"],
-        exclude = ["utils/**/*.*"],
+        exclude = [
+            "utils/**/*.*",
+            "**/*_test.ts",
+        ],
     ),
     deps = [
         "//cli/api/utils",
@@ -40,5 +45,41 @@ ts_library(
         "@npm//protobufjs",
         "@npm//semver",
         "@npm//tmp",
+    ],
+)
+
+node_modules(
+    name = "node_modules",
+    deps = [
+        "//packages/@dataform/core:package_tar",
+    ],
+)
+
+ts_test_suite(
+    name = "tests",
+    srcs = [
+        "utils_test.ts",
+    ],
+    data = [
+        ":node_modules",
+        "//packages/@dataform/core:package_tar",
+        "//test_credentials:bigquery.json",
+        "@nodejs//:node",
+        "@nodejs//:npm",
+    ],
+    deps = [
+        "//cli/api",
+        "//core",
+        "//protos:ts",
+        "//testing",
+        "@npm//@types/chai",
+        "@npm//@types/fs-extra",
+        "@npm//@types/js-yaml",
+        "@npm//@types/long",
+        "@npm//@types/node",
+        "@npm//chai",
+        "@npm//fs-extra",
+        "@npm//js-yaml",
+        "@npm//ts-mockito",
     ],
 )

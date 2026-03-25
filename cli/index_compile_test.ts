@@ -295,3 +295,54 @@ SELECT 1 as id
     expect(JSON.parse(compileResult.stdout)).deep.equals(expectedCompileResult);
   });
 });
+
+suite("extension config", ({ afterEach }) => {
+  const tmpDirFixture = new TmpDirFixture(afterEach);
+
+  test("compile succeeds with extension set in workflow_settings.yaml", async () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    const npmCacheDir = tmpDirFixture.createNewTmpDir();
+
+    fs.writeFileSync(
+      path.join(projectDir, "workflow_settings.yaml"),
+      dumpYaml({
+        defaultProject: DEFAULT_DATABASE,
+        defaultLocation: DEFAULT_LOCATION,
+        defaultDataset: "dataform",
+        defaultAssertionDataset: "dataform_assertions",
+        extension: {
+          name: "test-extension",
+          compilationMode: "PROLOGUE",
+        },
+      })
+    );
+    fs.mkdirSync(path.join(projectDir, "definitions"));
+    fs.mkdirSync(path.join(projectDir, "includes"));
+
+    fs.writeFileSync(
+      path.join(projectDir, "package.json"),
+      `{
+  "dependencies":{
+    "@dataform/core": "${version}"
+  }
+}`
+    );
+    await getProcessResult(
+      execFile(npmPath, [
+        "install",
+        "--prefix",
+        projectDir,
+        "--cache",
+        npmCacheDir,
+        corePackageTarPath
+      ])
+    );
+
+    const compileResult = await getProcessResult(
+      execFile(nodePath, [cliEntryPointPath, "compile", projectDir])
+    );
+
+    expect(compileResult.exitCode).equals(0);
+    expect(compileResult.stdout).contains("Compiled 0 action(s).");
+  });
+});
