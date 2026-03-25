@@ -108,7 +108,9 @@ function applyStructConversions(obj: any): any {
 
   for (const key of Object.keys(obj)) {
     const value = obj[key];
-    if (value === undefined || value === null) continue;
+    if (value === undefined || value === null) {
+      continue;
+    }
 
     if (STRUCT_FIELD_NAMES.has(key)) {
       if (Array.isArray(value)) {
