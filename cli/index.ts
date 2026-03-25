@@ -171,6 +171,14 @@ const jobPrefixOption: INamedOption<yargs.Options> = {
   }
 };
 
+const impersonateServiceAccountOption: INamedOption<yargs.Options> = {
+  name: "impersonate-service-account",
+  option: {
+    describe: "Service account email to impersonate during authentication.",
+    type: "string"
+  }
+};
+
 const bigqueryJobLabelsOption: INamedOption<yargs.Options> = {
   name: "job-labels",
   option: {
@@ -191,13 +199,7 @@ const bigqueryJobLabelsOption: INamedOption<yargs.Options> = {
   }
 };
 
-const impersonateServiceAccountOption: INamedOption<yargs.Options> = {
-  name: "impersonate-service-account",
-  option: {
-    describe: "Service account email to impersonate during authentication.",
-    type: "string"
-  }
-};
+
 
 const quietCompileOption: INamedOption<yargs.Options> = {
   name: "quiet",
