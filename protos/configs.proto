@@ -597,6 +597,9 @@ message ActionConfig {
 
     // Path to the source file that the contents of the action is loaded from.
     string filename = 6;
+
+    // A list of user-defined tags with which the action should be labeled.
+    repeated string tags = 7;
   }
 
   message NotebookConfig {

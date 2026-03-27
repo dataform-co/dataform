@@ -48,6 +48,41 @@ actions:
     );
   });
 
+  test(`declarations can be loaded with tags`, () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    fs.writeFileSync(path.join(projectDir, "workflow_settings.yaml"), VALID_WORKFLOW_SETTINGS_YAML);
+    fs.mkdirSync(path.join(projectDir, "definitions"));
+    fs.writeFileSync(
+      path.join(projectDir, "definitions/actions.yaml"),
+      `
+actions:
+- declaration:
+    name: action
+    tags: ["tag1"]`
+    );
+
+    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+    expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+    expect(asPlainObject(result.compile.compiledGraph.declarations)).deep.equals(
+      asPlainObject([
+        {
+          target: {
+            database: "defaultProject",
+            schema: "defaultDataset",
+            name: "action"
+          },
+          canonicalTarget: {
+            database: "defaultProject",
+            schema: "defaultDataset",
+            name: "action"
+          },
+          tags: ["tag1"]
+        }
+      ])
+    );
+  });
+
   test(`fails when filename is defined for declaration`, () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
     fs.writeFileSync(path.join(projectDir, "workflow_settings.yaml"), VALID_WORKFLOW_SETTINGS_YAML);
