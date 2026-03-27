@@ -278,6 +278,8 @@ message Declaration {
 
   // Generated.
   string file_name = 4;
+
+  repeated string tags = 6;
 }
 
 message Test {
