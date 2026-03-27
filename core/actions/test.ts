@@ -166,6 +166,7 @@ export class Test extends ActionBuilder<dataform.Test> {
         new Error("Tests must operate upon a specified dataset."),
         this.proto.fileName
       );
+      return this.proto;
     } else {
       const allResolved = this.session.indexedActions.find(resolvableAsTarget(this.datasetToTest));
       if (allResolved.length > 1) {
@@ -173,18 +174,21 @@ export class Test extends ActionBuilder<dataform.Test> {
           new Error(ambiguousActionNameMsg(this.datasetToTest, allResolved)),
           this.proto.fileName
         );
+        return this.proto;
       }
       const dataset = allResolved.length > 0 ? allResolved[0] : undefined;
-      if (!(dataset && (dataset instanceof Table || dataset instanceof View))) {
+      if (!(dataset && (dataset instanceof Table || dataset instanceof View || dataset instanceof IncrementalTable))) {
         this.session.compileError(
           new Error(`Dataset ${stringifyResolvable(this.datasetToTest)} could not be found.`),
           this.proto.fileName
         );
+        return this.proto;
       } else if (dataset instanceof IncrementalTable) {
         this.session.compileError(
           new Error("Running tests on incremental datasets is not yet supported."),
           this.proto.fileName
         );
+        return this.proto;
       } else {
         const refReplacingContext = new RefReplacingContext(testContext);
         this.proto.testQuery = refReplacingContext.apply(dataset.contextableQuery);
