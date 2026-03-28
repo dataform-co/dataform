@@ -173,9 +173,28 @@ export function printInitCredsResult(writtenFilePath: string) {
   writeStdOut("To change connection settings, edit this file directly.");
 }
 
-export function printCompiledGraph(graph: dataform.ICompiledGraph, asJson: boolean, quietCompilation: boolean) {
-  if (asJson) {
+export function isInteractive({stream = process.stdout} = {}) {
+	return Boolean(
+		stream && stream.isTTY &&
+		process.env.TERM !== 'dumb' &&
+		!('CI' in process.env)
+	);
+}
+
+export enum compiledGraphOutputType {
+  Json = "json",
+  Dot = "dot",
+  Summary = "summary"
+}
+
+export function printCompiledGraph(graph: dataform.ICompiledGraph, outputType: compiledGraphOutputType, quietCompilation: boolean) {
+  
+  const interactive = isInteractive();
+  
+  if (outputType === compiledGraphOutputType.Json) {
     writeStdOut(prettyJsonStringify(graph));
+  } else if (outputType === compiledGraphOutputType.Dot) {
+    writeStdOut(dotRepresentation(graph, interactive));
   } else {
     const actionCount =
       0 +
@@ -500,8 +519,45 @@ function operationString(target: dataform.ITarget, disabled: boolean) {
   return `${targetString(target)}${disabled ? " [disabled]" : ""}`;
 }
 
+function plainTargetString(target: dataform.ITarget) {
+  return `${target.schema}.${target.name}`;
+}
+
 function targetString(target: dataform.ITarget) {
   return calloutOutput(`${target.schema}.${target.name}`);
+}
+
+export function dotRepresentation(graph: dataform.ICompiledGraph, interactive: boolean): string {
+  const nodes: string[] = [];
+  const edges: string[] = [];
+
+  const formatTarget = interactive ? targetString : plainTargetString;
+
+  graph.tables?.forEach(table => {
+    const nodeName = `${formatTarget(table.target)}`;
+    nodes.push(`"${nodeName}" [label="${formatTarget(table.target)} [${tableTypeEnumToString(table.enumType)}]"]`);
+    table.dependencyTargets?.forEach(dependencyTarget => {
+      edges.push(`"${formatTarget(dependencyTarget)}" -> "${nodeName}"`);
+    });
+  });
+
+  graph.assertions?.forEach(assertion => {
+    const nodeName = `${formatTarget(assertion.target)}`;
+    nodes.push(`"${nodeName}" [label="${formatTarget(assertion.target)}"]`);
+    assertion.dependencyTargets?.forEach(dependencyTarget => {
+      edges.push(`"${formatTarget(dependencyTarget)}" -> "${nodeName}"`);
+    });
+  });
+
+  graph.operations?.forEach(operation => {
+    const nodeName = `${formatTarget(operation.target)}`;
+    nodes.push(`"${nodeName}" [label="${formatTarget(operation.target)}"`);
+    operation.dependencyTargets?.forEach(dependencyTarget => {
+      edges.push(`"${formatTarget(dependencyTarget)}" -> "${nodeName}"`);
+    });
+  });
+
+  return `digraph {\n${nodes.join(";\n")};\n${edges.join(";\n")};\n}`;
 }
 
 function printExecutedActionErrors(

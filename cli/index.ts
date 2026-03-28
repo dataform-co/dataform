@@ -10,6 +10,7 @@ import { CREDENTIALS_FILENAME } from "df/cli/api/commands/credentials";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 import { prettyJsonStringify } from "df/cli/api/utils";
 import {
+  compiledGraphOutputType,
   print,
   printCompiledGraph,
   printCompiledGraphErrors,
@@ -149,6 +150,21 @@ const jsonOutputOption: INamedOption<yargs.Options> = {
     type: "boolean",
     default: false
   }
+};
+
+const dotOutputOption: INamedOption<yargs.Options> = {
+  name: "dot",
+  option: {
+    describe: "Outputs a dot representation of the compiled project.",
+    type: "boolean",
+    default: false,
+  },
+    check: (argv: yargs.Arguments<any>) => {
+      if (argv.json && argv.dot) {
+        throw new Error("Arguments --json and --dot are mutually exclusive.");
+      }
+    }
+  
 };
 
 const timeoutOption: INamedOption<yargs.Options> = {
@@ -374,6 +390,7 @@ export function runCli() {
             }
           },
           jsonOutputOption,
+          dotOutputOption,
           timeoutOption,
           quietCompileOption,
           {
@@ -395,7 +412,15 @@ export function runCli() {
           const projectDir = argv[projectDirMustExistOption.name];
 
           async function compileAndPrint() {
-            if (!argv[jsonOutputOption.name]) {
+
+            let outputType = compiledGraphOutputType.Summary;
+            if (argv[jsonOutputOption.name]) {
+              outputType = compiledGraphOutputType.Json;
+            } else if (argv[dotOutputOption.name]) {
+              outputType = compiledGraphOutputType.Dot;
+            } 
+            
+            if (outputType === compiledGraphOutputType.Summary) {
               print("Compiling...\n");
             }
             const compiledGraph = await compile({
@@ -404,7 +429,7 @@ export function runCli() {
               timeoutMillis: argv[timeoutOption.name] || undefined,
               verbose: argv[verboseOptionName] || false
             });
-            printCompiledGraph(compiledGraph, argv[jsonOutputOption.name], argv[quietCompileOption.name]);
+            printCompiledGraph(compiledGraph, outputType, argv[quietCompileOption.name]);
             if (compiledGraphHasErrors(compiledGraph)) {
               print("");
               printCompiledGraphErrors(compiledGraph.graphErrors, argv[quietCompileOption.name]);
