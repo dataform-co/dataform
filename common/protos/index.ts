@@ -5,7 +5,7 @@ import { google } from "df/protos/ts";
 const CONFIGS_PROTO_DOCUMENTATION_URL =
   "https://dataform-co.github.io/dataform/docs/configs-reference";
 const REPORT_ISSUE_URL = "https://github.com/dataform-co/dataform/issues";
-const STRUCT_FIELD_NAMES = new Set(["extraProperties", "contexts", "glossary_terms"]);
+
 
 
 export interface IProtoClass<IProto, Proto> {
@@ -39,30 +39,41 @@ export enum VerifyProtoErrorBehaviour {
 export function verifyObjectMatchesProto<Proto>(
   protoType: IProtoClass<any, Proto>,
   object: object,
-  errorBehaviour: VerifyProtoErrorBehaviour = VerifyProtoErrorBehaviour.DEFAULT,
-  structFieldNames: Set<string> = STRUCT_FIELD_NAMES
+  errorBehaviour: VerifyProtoErrorBehaviour = VerifyProtoErrorBehaviour.DEFAULT
 ): Proto {
   if (Array.isArray(object)) {
     throw ReferenceError(`Expected a top-level object, but found an array`);
   }
 
-  const objectToVerify = applyStructConversions(object);
+  // 1. First Pass (The Probe)
+  const probeProto = protoType.create(object);
+  const probeObject = (protoType as any).toObject(probeProto, { defaults: true });
 
-  // Calling toObject on the object/JSON creates a version only contains the valid proto fields.
-  const proto = protoType.create(objectToVerify);
-  const protoCastObject = protoType.toObject(proto);
+  // 2. Detection
+  const lostPaths = findLostPaths(object, probeObject);
+  const lostPathsSet = new Set(lostPaths);
+
+  // 3. Targeted Conversion
+  const convertedObject = applyStructConversions(object, lostPathsSet);
+
+  // 4. Final Build
+  const finalProto = protoType.create(convertedObject);
+  const finalProtoObject = protoType.toObject(finalProto);
 
   function checkFields(present: { [k: string]: any }, desired: { [k: string]: any }) {
-    // Only the entries of `present` need to be iterated through as `desired` is guaranteed to be a
-    // strict subset of `present`.
     Object.entries(present).forEach(([presentKey, presentValue]) => {
-      if (structFieldNames.has(presentKey)) {
-        return;
+      let desiredKey = presentKey;
+      if (desired[presentKey] === undefined) {
+        if (desired[toSnakeCase(presentKey)] !== undefined) {
+          desiredKey = toSnakeCase(presentKey);
+        } else if (desired[toCamelCase(presentKey)] !== undefined) {
+          desiredKey = toCamelCase(presentKey);
+        }
       }
-      const desiredValue = desired[presentKey];
+      const desiredValue = desired[desiredKey];
+
       if (typeof desiredValue !== typeof presentValue) {
         if (Array.isArray(presentValue) && presentValue.length === 0) {
-          // Empty arrays are assigned to empty proto array fields by ProtobufJS.
           return;
         }
         if (!presentValue) {
@@ -72,7 +83,6 @@ export function verifyObjectMatchesProto<Proto>(
           );
         }
         if (typeof presentValue === "object" && Object.keys(presentValue).length === 0) {
-          // Empty objects are assigned to empty object fields by ProtobufJS.
           return;
         }
         if (errorBehaviour === VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM) {
@@ -95,11 +105,11 @@ export function verifyObjectMatchesProto<Proto>(
     });
   }
 
-  checkFields(object, protoCastObject);
-  return proto;
+  checkFields(convertedObject, finalProtoObject);
+  return finalProto;
 }
 
-function applyStructConversions(obj: any): any {
+function applyStructConversions(obj: any, lostPaths: Set<string>, currentPath: string = ""): any {
   if (!obj || typeof obj !== "object" || Array.isArray(obj)) {
     return obj;
   }
@@ -112,7 +122,9 @@ function applyStructConversions(obj: any): any {
       continue;
     }
 
-    if (STRUCT_FIELD_NAMES.has(key)) {
+    const path = currentPath ? `${currentPath}.${key}` : key;
+
+    if (lostPaths.has(path)) {
       if (Array.isArray(value)) {
         result[key] = {
           listValue: {
@@ -124,7 +136,7 @@ function applyStructConversions(obj: any): any {
         result[key] = converted.structValue;
       }
     } else if (typeof value === "object") {
-      result[key] = applyStructConversions(value);
+      result[key] = applyStructConversions(value, lostPaths, path);
     }
   }
 
@@ -209,4 +221,60 @@ export function unknownToValue(raw: unknown): google.protobuf.IValue {
     };
   }
   throw new Error(`Unsupported value: ${raw}`);
+}
+
+function findLostPaths(raw: any, probe: any, path: string = ""): string[] {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return [];
+  }
+
+  let lost: string[] = [];
+
+  for (const key of Object.keys(raw)) {
+    const rawVal = raw[key];
+    if (!rawVal || typeof rawVal !== "object" || Object.keys(rawVal).length === 0) {
+      continue;
+    }
+
+    const currentPath = path ? `${path}.${key}` : key;
+    const probeVal = probe ? (probe[key] || probe[toSnakeCase(key)] || probe[toCamelCase(key)]) : undefined;
+
+    if (probeVal === undefined) {
+      lost.push(currentPath);
+    } else {
+      // Heuristic 1: If raw is an object, probe has a 'fields' property that is an empty object,
+      // and raw does not have 'fields', it's likely a plain JSON object for a Struct.
+      // Heuristic 2: If raw is a non-empty array and probe is an empty array or missing, it's lost.
+      if (
+        typeof rawVal === "object" &&
+        !Array.isArray(rawVal) &&
+        probeVal &&
+        typeof probeVal === "object" &&
+        probeVal.fields &&
+        typeof probeVal.fields === "object" &&
+        Object.keys(probeVal.fields).length === 0 &&
+        !rawVal.fields
+      ) {
+        lost.push(currentPath);
+      } else if (
+        Array.isArray(rawVal) &&
+        rawVal.length > 0 &&
+        (!probeVal || (Array.isArray(probeVal) && probeVal.length === 0))
+      ) {
+        lost.push(currentPath);
+      } else {
+        lost.push(...findLostPaths(rawVal, probeVal, currentPath));
+      }
+    }
+  }
+
+  return lost;
+}
+
+function toSnakeCase(str: string): string {
+  return str.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase();
+}
+
+function toCamelCase(str: string): string {
+  return str.replace(/_([a-z])/g, (_, char) => char.toUpperCase());
 }
