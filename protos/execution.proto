@@ -46,6 +46,8 @@ message ExecutionAction {
 
   string jit_code = 12;
 
+  bool disabled = 15;
+
   reserved 1, 3, 7;
 }
 
@@ -118,6 +120,7 @@ message TaskResult {
   string error_message = 2;
   Timing timing = 3;
   ExecutionMetadata metadata = 4;
+  string compiled_sql = 5;
 }
 
 message TestResult {

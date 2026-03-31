@@ -65,7 +65,13 @@ ts_test_suite(
         "index_project_test.ts",
         "index_compile_test.ts",
         "index_run_e2e_test.ts",
-        "util_test.ts"
+        "index_jit_main_test.ts",
+        "index_jit_advanced_test.ts",
+        "index_jit_dependency_test.ts",
+        "index_jit_runtime_test.ts",
+        "util_test.ts",
+        "jit_build_test.ts",
+        "jit_run_test.ts",
     ],
     data = [
         ":node_modules",

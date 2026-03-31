@@ -566,7 +566,6 @@ export function runCli() {
           fullRefreshOption,
           includeDepsOption,
           includeDependentsOption,
-          credentialsOption,
           jsonOutputOption,
           timeoutOption,
           tagsOption,
@@ -574,14 +573,15 @@ export function runCli() {
           ...ProjectConfigOptions.allYargsOptions
         ],
         processFn: async argv => {
-          if (argv[jsonOutputOption.name] && !argv[dryRunOptionName]) {
-            print(
+          const isJsonOutput = argv[jsonOutputOption.name];
+          if (isJsonOutput && !argv[dryRunOptionName]) {
+            printError(
               `For execution, the --${jsonOutputOption.name} option is only supported if the ` +
                 `--${dryRunOptionName} option is enabled`
             );
             return;
           }
-          if (!argv[jsonOutputOption.name]) {
+          if (!isJsonOutput) {
             print("Compiling...\n");
           }
           const compiledGraph = await compile({
@@ -593,7 +593,7 @@ export function runCli() {
             printCompiledGraphErrors(compiledGraph.graphErrors, argv[quietCompileOption.name]);
             return 1;
           }
-          if (!argv[jsonOutputOption.name]) {
+          if (!isJsonOutput) {
             printSuccess("Compiled successfully.\n");
           }
           const readCredentials = credentials.read(
@@ -608,25 +608,34 @@ export function runCli() {
               actions: argv[actionsOption.name],
               includeDependencies: argv[includeDepsOption.name],
               includeDependents: argv[includeDependentsOption.name],
-              tags: argv[tagsOption.name]
+              tags: argv[tagsOption.name],
+              timeoutMillis: argv[timeoutOption.name] || undefined
             },
             dbadapter
           );
 
-          if (argv[dryRunOptionName] && argv[jsonOutputOption.name]) {
-            printExecutionGraph(executionGraph, argv[jsonOutputOption.name]);
+          if (
+            argv[dryRunOptionName] &&
+            isJsonOutput &&
+            !executionGraph.actions.some(action => !!action.jitCode)
+          ) {
+            printExecutionGraph(executionGraph, isJsonOutput);
             return;
           }
 
           if (argv[runTestsOptionName]) {
-            print(`Running ${compiledGraph.tests.length} unit tests...\n`);
+            if (!isJsonOutput) {
+              print(`Running ${compiledGraph.tests.length} unit tests...\n`);
+            }
             const testResults = await test(dbadapter, compiledGraph.tests);
             testResults.forEach(testResult => printTestResult(testResult));
             if (testResults.some(testResult => !testResult.successful)) {
               printError("\nUnit tests did not pass; aborting run.");
               return 1;
             }
-            printSuccess("Unit tests completed successfully.\n");
+            if (!isJsonOutput) {
+              printSuccess("Unit tests completed successfully.\n");
+            }
           }
 
           let bigqueryOptions: {} = {
@@ -648,17 +657,25 @@ export function runCli() {
           });
 
           if (actionsByName.size === 0) {
-            print("No actions to run.\n");
+            if (!isJsonOutput) {
+              print("No actions to run.\n");
+            }
             return 0;
           }
 
-          if (argv[dryRunOptionName]) {
-            print("Dry running (no changes to the warehouse will be applied)...");
-          } else {
-            print("Running...\n");
+          if (!isJsonOutput) {
+            if (argv[dryRunOptionName]) {
+              print("Dry running (no changes to the warehouse will be applied)...");
+            } else {
+              print("Running...\n");
+            }
           }
 
-          const runner = run(dbadapter, executionGraph, { bigquery: bigqueryOptions });
+          const runner = run(
+            dbadapter,
+            executionGraph,
+            { projectDir: argv[projectDirOption.name], bigquery: bigqueryOptions }
+          );
           process.on("SIGINT", () => {
             runner.cancel();
           });
@@ -685,9 +702,16 @@ export function runCli() {
               });
           };
 
-          runner.onChange(printExecutedGraph);
+          if (!isJsonOutput) {
+            runner.onChange(printExecutedGraph);
+          }
           const runResult = await runner.result();
-          printExecutedGraph(runResult);
+          if (!isJsonOutput) {
+            printExecutedGraph(runResult);
+          }
+          if (isJsonOutput) {
+            print(prettyJsonStringify(runResult));
+          }
           return runResult.status === dataform.RunResult.ExecutionStatus.SUCCESSFUL ? 0 : 1;
         }
       },
