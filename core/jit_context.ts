@@ -9,6 +9,7 @@ function canonicalTargetValue(target: dataform.ITarget): string {
 /** Generate SQL action JiT context. */
 export class SqlActionJitContext implements JitContext<IActionContext> {
     public readonly data: { [k: string]: any } | undefined;
+    public readonly executionData: dataform.IRunningExecutionData;
 
     private readonly target: dataform.ITarget;
     private readonly resolvableMap: ResolvableMap<string>;
@@ -25,6 +26,7 @@ export class SqlActionJitContext implements JitContext<IActionContext> {
             value: canonicalTargetValue(dep)
         })));
         this.data = jitDataToJsValue(request.jitData);
+        this.executionData = request.executionData;
     }
 
     public self(): string {

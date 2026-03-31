@@ -4,6 +4,7 @@ package dataform;
 
 import "google/protobuf/empty.proto";
 import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
 import "protos/core.proto";
 import "protos/db_adapter.proto";
 
@@ -83,6 +84,16 @@ message DeleteTableRequest {
   Target target = 1;
 }
 
+// Execution information for introspection.
+message RunningExecutionData {
+  // Targets that are being run in the current execution.
+  repeated Target run_targets = 1;
+  // ID of the current execution.
+  string execution_id = 2;
+  // Start time of the current execution.
+  google.protobuf.Timestamp execution_start_time = 3;
+}
+
 // JiT compilation target type.
 enum JitCompilationTargetType {
   // Unspecified - will result in error.
@@ -109,6 +120,8 @@ message JitCompilationRequest {
   JitCompilationTargetType compilation_target_type = 5;
   // List of additional file paths accessible at compilation.
   repeated string file_paths = 6;
+  // Current execution information for introspection.
+  RunningExecutionData execution_data = 7;
 }
 
 // JiT compilation response.

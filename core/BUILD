@@ -65,9 +65,6 @@ ts_library(
 ts_test_suite(
     name = "tests",
     srcs = [
-        "main_test.ts",
-        "utils_test.ts",
-        "compilers_test.ts",
         "actions/assertion_test.ts",
         "actions/data_preparation_test.ts",
         "actions/declaration_test.ts",
@@ -79,8 +76,11 @@ ts_test_suite(
         "actions/table_test.ts",
         "actions/test_test.ts",
         "actions/view_test.ts",
+        "compilers_test.ts",
         "jit_compiler_test.ts",
         "jit_context_test.ts",
+        "main_test.ts",
+        "utils_test.ts",
     ],
     data = [
         ":node_modules",
@@ -94,10 +94,12 @@ ts_test_suite(
         "@npm//@types/chai",
         "@npm//@types/fs-extra",
         "@npm//@types/js-yaml",
+        "@npm//@types/long",
         "@npm//@types/node",
         "@npm//chai",
         "@npm//fs-extra",
         "@npm//js-yaml",
+        "@npm//long",
     ],
 )
 
