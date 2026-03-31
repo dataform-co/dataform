@@ -228,7 +228,7 @@ function findLostPaths(raw: any, probe: any, path: string = ""): string[] {
     return [];
   }
 
-  let lost: string[] = [];
+  const lost: string[] = [];
 
   for (const key of Object.keys(raw)) {
     const rawVal = raw[key];
