@@ -62,6 +62,7 @@ function checkAndConvertFields(
   errorBehaviour: VerifyProtoErrorBehaviour,
   protoType: any
 ) {
+  const docLinkPrefix = maybeGetDocsLinkPrefix(errorBehaviour, protoType);
   Object.entries(raw).forEach(([rawKey, rawValue]) => {
     if (rawValue === undefined) {
       return;
@@ -88,7 +89,6 @@ function checkAndConvertFields(
       rawValue === null &&
       errorBehaviour === VerifyProtoErrorBehaviour.SHOW_DOCS_LINK
     ) {
-      const docLinkPrefix = maybeGetDocsLinkPrefix(errorBehaviour, protoType);
       throw ReferenceError(`Unexpected empty value for "${rawKey}".${docLinkPrefix}`);
     }
 
@@ -128,7 +128,6 @@ function checkAndConvertFields(
         return;
       }
       if (!rawValue) {
-        const docLinkPrefix = maybeGetDocsLinkPrefix(errorBehaviour, protoType);
         throw ReferenceError(
           `Unexpected empty value for "${rawKey}".${docLinkPrefix}`
         );
@@ -143,7 +142,6 @@ function checkAndConvertFields(
             .replace("/", "")}", please report this to the Dataform team at ${REPORT_ISSUE_URL}.`
         );
       }
-      const docLinkPrefix = maybeGetDocsLinkPrefix(errorBehaviour, protoType);
       throw ReferenceError(
         `Unexpected property "${rawKey}", or property value type of "${typeof rawValue}" is incorrect.${docLinkPrefix}`
       );
