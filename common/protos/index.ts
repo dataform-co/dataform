@@ -45,103 +45,116 @@ export function verifyObjectMatchesProto<Proto>(
     throw ReferenceError(`Expected a top-level object, but found an array`);
   }
 
-  // 1. First Pass (The Probe)
-  const probeProto = protoType.create(object);
-  const probeObject = (protoType as any).toObject(probeProto, { defaults: true });
+  // 1. Single Pass Create
+  const proto = protoType.create(object);
+  const probeObject = (protoType as any).toObject(proto, { defaults: true });
 
-  // 2. Detection
-  const lostPaths = findLostPaths(object, probeObject);
-  const lostPathsSet = new Set(lostPaths);
+  // 2. Validate and Convert In-Place
+  checkAndConvertFields(object, probeObject, proto, errorBehaviour, protoType);
 
-  // 3. Targeted Conversion
-  const convertedObject = applyStructConversions(object, lostPathsSet);
+  return proto;
+}
 
-  // 4. Final Build
-  const finalProto = protoType.create(convertedObject);
-  const finalProtoObject = protoType.toObject(finalProto);
+function checkAndConvertFields(
+  raw: { [k: string]: any },
+  probe: { [k: string]: any },
+  protoInstance: any,
+  errorBehaviour: VerifyProtoErrorBehaviour,
+  protoType: any
+) {
+  Object.entries(raw).forEach(([rawKey, rawValue]) => {
+    if (rawValue === undefined) {
+      return;
+    }
+    if (
+      rawValue === null &&
+      errorBehaviour === VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM
+    ) {
+      return;
+    }
 
-  function checkFields(present: { [k: string]: any }, desired: { [k: string]: any }) {
-    Object.entries(present).forEach(([presentKey, presentValue]) => {
-      let desiredKey = presentKey;
-      if (desired[presentKey] === undefined) {
-        if (desired[toSnakeCase(presentKey)] !== undefined) {
-          desiredKey = toSnakeCase(presentKey);
-        } else if (desired[toCamelCase(presentKey)] !== undefined) {
-          desiredKey = toCamelCase(presentKey);
-        }
+    let probeKey = rawKey;
+    if (probe[rawKey] === undefined) {
+      if (probe[toSnakeCase(rawKey)] !== undefined) {
+        probeKey = toSnakeCase(rawKey);
+      } else if (probe[toCamelCase(rawKey)] !== undefined) {
+        probeKey = toCamelCase(rawKey);
       }
-      const desiredValue = desired[desiredKey];
+    }
+    const probeValue = probe[probeKey];
 
-      if (typeof desiredValue !== typeof presentValue) {
-        if (Array.isArray(presentValue) && presentValue.length === 0) {
-          return;
+    if (
+      Array.isArray(probeValue) &&
+      rawValue === null &&
+      errorBehaviour === VerifyProtoErrorBehaviour.SHOW_DOCS_LINK
+    ) {
+      const docLinkPrefix = maybeGetDocsLinkPrefix(errorBehaviour, protoType);
+      throw ReferenceError(`Unexpected empty value for "${rawKey}".${docLinkPrefix}`);
+    }
+
+    // Heuristic 1: Object Struct Detection
+    if (
+      typeof rawValue === "object" &&
+      !Array.isArray(rawValue) &&
+      probeValue &&
+      typeof probeValue === "object" &&
+      probeValue.fields &&
+      typeof probeValue.fields === "object" &&
+      Object.keys(probeValue.fields).length === 0 &&
+      !rawValue.fields
+    ) {
+      protoInstance[probeKey] = unknownToValue(rawValue).structValue;
+      return;
+    }
+
+    // Heuristic 2: Array List/Struct Detection
+    if (
+      Array.isArray(rawValue) &&
+      rawValue.length > 0 &&
+      probeValue &&
+      Array.isArray(probeValue) &&
+      probeValue.length === 0
+    ) {
+      protoInstance[probeKey] = {
+        listValue: {
+          values: rawValue.map(item => unknownToValue(item))
         }
-        if (!presentValue) {
-          throw ReferenceError(
-            `Unexpected empty value for "${presentKey}".` +
-              maybeGetDocsLinkPrefix(errorBehaviour, protoType)
-          );
-        }
-        if (typeof presentValue === "object" && Object.keys(presentValue).length === 0) {
-          return;
-        }
-        if (errorBehaviour === VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM) {
-          throw ReferenceError(
-            `Unexpected property "${presentKey}" for "${protoType
-              .getTypeUrl("")
-              .replace("/", "")}", please report this to the Dataform team at ` +
-              `${REPORT_ISSUE_URL}.`
-          );
-        }
+      };
+      return;
+    }
+
+    if (typeof probeValue !== typeof rawValue) {
+      if (Array.isArray(rawValue) && rawValue.length === 0) {
+        return;
+      }
+      if (!rawValue) {
+        const docLinkPrefix = maybeGetDocsLinkPrefix(errorBehaviour, protoType);
         throw ReferenceError(
-          `Unexpected property "${presentKey}", or property value type of ` +
-            `"${typeof presentValue}" is incorrect.` +
-            maybeGetDocsLinkPrefix(errorBehaviour, protoType)
+          `Unexpected empty value for "${rawKey}".${docLinkPrefix}`
         );
       }
-      if (typeof presentValue === "object") {
-        checkFields(presentValue, desiredValue);
+      if (typeof rawValue === "object" && Object.keys(rawValue).length === 0) {
+        return;
       }
-    });
-  }
-
-  checkFields(convertedObject, finalProtoObject);
-  return finalProto;
-}
-
-function applyStructConversions(obj: any, lostPaths: Set<string>, currentPath: string = ""): any {
-  if (!obj || typeof obj !== "object" || Array.isArray(obj)) {
-    return obj;
-  }
-
-  const result = { ...obj };
-
-  for (const key of Object.keys(obj)) {
-    const value = obj[key];
-    if (value === undefined || value === null) {
-      continue;
+      if (errorBehaviour === VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM) {
+        throw ReferenceError(
+          `Unexpected property "${rawKey}" for "${protoType
+            .getTypeUrl("")
+            .replace("/", "")}", please report this to the Dataform team at ${REPORT_ISSUE_URL}.`
+        );
+      }
+      const docLinkPrefix = maybeGetDocsLinkPrefix(errorBehaviour, protoType);
+      throw ReferenceError(
+        `Unexpected property "${rawKey}", or property value type of "${typeof rawValue}" is incorrect.${docLinkPrefix}`
+      );
     }
 
-    const path = currentPath ? `${currentPath}.${key}` : key;
-
-    if (lostPaths.has(path)) {
-      if (Array.isArray(value)) {
-        result[key] = {
-          listValue: {
-            values: value.map(item => unknownToValue(item))
-          }
-        };
-      } else if (typeof value === "object" && !value.fields) {
-        const converted = unknownToValue(value);
-        result[key] = converted.structValue;
-      }
-    } else if (typeof value === "object") {
-      result[key] = applyStructConversions(value, lostPaths, path);
+    if (typeof rawValue === "object" && rawValue !== null) {
+      checkAndConvertFields(rawValue, probeValue, protoInstance[probeKey], errorBehaviour, protoType);
     }
-  }
-
-  return result;
+  });
 }
+
 
 function maybeGetDocsLinkPrefix<Proto>(
   errorBehaviour: VerifyProtoErrorBehaviour,
@@ -223,53 +236,7 @@ export function unknownToValue(raw: unknown): google.protobuf.IValue {
   throw new Error(`Unsupported value: ${raw}`);
 }
 
-function findLostPaths(raw: any, probe: any, path: string = ""): string[] {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
-    return [];
-  }
 
-  const lost: string[] = [];
-
-  for (const key of Object.keys(raw)) {
-    const rawVal = raw[key];
-    if (!rawVal || typeof rawVal !== "object" || Object.keys(rawVal).length === 0) {
-      continue;
-    }
-
-    const currentPath = path ? `${path}.${key}` : key;
-    const probeVal = probe ? (probe[key] || probe[toSnakeCase(key)] || probe[toCamelCase(key)]) : undefined;
-
-    if (probeVal === undefined) {
-      lost.push(currentPath);
-    } else {
-      // Heuristic 1: If raw is an object, probe has a 'fields' property that is an empty object,
-      // and raw does not have 'fields', it's likely a plain JSON object for a Struct.
-      // Heuristic 2: If raw is a non-empty array and probe is an empty array or missing, it's lost.
-      if (
-        typeof rawVal === "object" &&
-        !Array.isArray(rawVal) &&
-        probeVal &&
-        typeof probeVal === "object" &&
-        probeVal.fields &&
-        typeof probeVal.fields === "object" &&
-        Object.keys(probeVal.fields).length === 0 &&
-        !rawVal.fields
-      ) {
-        lost.push(currentPath);
-      } else if (
-        Array.isArray(rawVal) &&
-        rawVal.length > 0 &&
-        (!probeVal || (Array.isArray(probeVal) && probeVal.length === 0))
-      ) {
-        lost.push(currentPath);
-      } else {
-        lost.push(...findLostPaths(rawVal, probeVal, currentPath));
-      }
-    }
-  }
-
-  return lost;
-}
 
 function toSnakeCase(str: string): string {
   return str.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase();
