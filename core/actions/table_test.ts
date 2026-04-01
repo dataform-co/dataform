@@ -243,17 +243,17 @@ SELECT 1`
           glossary_terms: [
             {
               column_name: "trip_id",
-              project: "bq-dataworkeragent-test",
+              project: "project_identifier",
               location: "us-central1"
             },
             {
-              project: "bq-dataworkeragent-test",
+              project: "project_identifier",
               glossary_id: "jebmjilij-9c85ee94"
             }
           ],
           generic: {
-            system: "yo",
-            type: "yo yo"
+            system: "my custom system value",
+            type: "my custom type value"
           }
         }
       }
@@ -276,7 +276,7 @@ SELECT 1`
                   structValue: {
                     fields: {
                       column_name: { stringValue: "trip_id" },
-                      project: { stringValue: "bq-dataworkeragent-test" },
+                      project: { stringValue: "project_identifier" },
                       location: { stringValue: "us-central1" }
                     }
                   }
@@ -284,7 +284,7 @@ SELECT 1`
                 {
                   structValue: {
                     fields: {
-                      project: { stringValue: "bq-dataworkeragent-test" },
+                      project: { stringValue: "project_identifier" },
                       glossary_id: { stringValue: "jebmjilij-9c85ee94" }
                     }
                   }
@@ -295,8 +295,8 @@ SELECT 1`
           generic: {
             structValue: {
               fields: {
-                system: { stringValue: "yo" },
-                type: { stringValue: "yo yo" }
+                system: { stringValue: "my custom system value" },
+                type: { stringValue: "my custom type value" }
               }
             }
           }
