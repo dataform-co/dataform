@@ -1706,6 +1706,62 @@ dataform.jitData("key", {test: () => {}});
       });
     });
 
+    suite("markedown descriptions", () => {
+      test("markedown contents added to descrtiption in js file", () => {
+        const projectDir = tmpDirFixture.createNewTmpDir();
+        fs.writeFileSync(
+          path.join(projectDir, "workflow_settings.yaml"),
+          VALID_WORKFLOW_SETTINGS_YAML
+        );
+        fs.mkdirSync(path.join(projectDir, "definitions"));
+        fs.writeFileSync(
+          path.join(projectDir, "definitions/description.md"),
+          `# This table contains data about`
+        );
+        fs.writeFileSync(
+          path.join(projectDir, "definitions/table.js"),
+          `publish("published-table", {
+          type: "table",
+          description: getContents('./descriptions.md')"],
+        }).query(ctx => "SELECT 1 AS test");`
+        );
+
+        const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+        expect(
+          result.compile.compiledGraph.tables[0].actionDescriptor.description
+        ).to.equal([`# This table contains data about`]);
+
+    });
+
+    test("markedown contents added to descrtiption in sqlx", () => {
+        const projectDir = tmpDirFixture.createNewTmpDir();
+        fs.writeFileSync(
+          path.join(projectDir, "workflow_settings.yaml"),
+          VALID_WORKFLOW_SETTINGS_YAML
+        );
+        fs.mkdirSync(path.join(projectDir, "definitions"));
+        fs.writeFileSync(
+          path.join(projectDir, "definitions/description.md"),
+          `# This table contains data about`
+        );
+        fs.writeFileSync(
+          path.join(projectDir, "definitions/table.sqlx"),
+          `config {
+          type: "table",
+          description: getContents('./descriptions.md')"],
+        }
+          SELECT 1 AS test;`
+        );
+
+        const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+        expect(
+          result.compile.compiledGraph.tables[0].actionDescriptor.description
+        ).to.equal([`# This table contains data about`]);
+
+    });
+  })
     suite("invalid options", () => {
       [
         {

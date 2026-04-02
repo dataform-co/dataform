@@ -56,6 +56,13 @@ export function compile(code: string, path: string): string {
       .replace(/\${/g, "\\${");
     return `exports.query = \`${escapedCode}\`;`;
   }
+  if (Path.fileExtension(path) === "md") {
+    const contents = code
+      .replace(/\\/g, "\\\\")
+      .replace(/`/g, "\\`")
+      .replace(/\${/g, "\\${");
+    return `exports.contents = \`${contents}\`;`;
+  }
   return code;
 }
 

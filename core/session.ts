@@ -1,5 +1,6 @@
 import { default as TarjanGraphConstructor, Graph as TarjanGraph } from "tarjan-graph";
 
+
 import { encode64, verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { Action, ActionProto, ILegacyTableConfig, TableType } from "df/core/actions";
 import { AContextable, Assertion, AssertionContext } from "df/core/actions/assertion";
@@ -16,6 +17,7 @@ import { Test } from "df/core/actions/test";
 import { View } from "df/core/actions/view";
 import { CompilationSql } from "df/core/compilation_sql";
 import { Contextable, IActionContext, ITableContext, Resolvable } from "df/core/contextables";
+import * as Path from "df/core/path";
 import { targetAsReadableString, targetStringifier } from "df/core/targets";
 import * as utils from "df/core/utils";
 import { ResolvableMap, toResolvable } from "df/core/utils";
@@ -89,6 +91,19 @@ export class Session {
     return new CompilationSql(this.projectConfig, dataformCoreVersion);
   }
 
+  public getContents(filePath: string): string {
+    const callerFile = utils.getCallerFile(this.rootDir);
+    const callerDir = Path.dirName(callerFile);
+
+    const resolvedPath = Path.normalize(Path.join(callerDir,filePath));
+
+    const module = utils.nativeRequire(resolvedPath);
+    if (!module || typeof module.contents !== "string") {
+      throw new Error(`Could not read markdown content from "${resolvedPath}".`);
+    }
+  return module.contents;
+
+  }
   public sqlxAction(actionOptions: {
     // sqlxConfig has type any here because any object can be passed in from the compiler - the
     // structure of it is verified at later steps.
