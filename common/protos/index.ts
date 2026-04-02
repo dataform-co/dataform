@@ -226,7 +226,7 @@ export function unknownToValue(raw: unknown): google.protobuf.IValue {
     return {
       structValue: {
         fields: Object.fromEntries(
-          Object.entries(raw as object).map(([key, value]) => [key, unknownToValue(value)])
+          Object.entries(raw).map(([key, value]) => [key, unknownToValue(value)])
         )
       }
     };
