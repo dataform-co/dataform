@@ -240,7 +240,30 @@ SELECT 1`
     metadata: {
         extraProperties: {
             fields: {
-                priority: { stringValue: "high" }
+                priority: { stringValue: "high" },
+                glossary_terms: {
+                    listValue: {
+                        values: [
+                            {
+                                structValue: {
+                                    fields: {
+                                        column_name: { stringValue: "trip_id" },
+                                        project: { stringValue: "project_identifier" },
+                                        location: { stringValue: "us-central1" }
+                                    }
+                                }
+                            },
+                            {
+                                structValue: {
+                                    fields: {
+                                        project: { stringValue: "project_identifier" },
+                                        glossary_id: { stringValue: "jebmjilij-9c85ee94" }
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
             }
         }
     }
@@ -256,7 +279,30 @@ SELECT 1`
       ).deep.equals({
         extraProperties: {
           fields: {
-            priority: { stringValue: "high" }
+            priority: { stringValue: "high" },
+            glossary_terms: {
+              listValue: {
+                values: [
+                  {
+                    structValue: {
+                      fields: {
+                        column_name: { stringValue: "trip_id" },
+                        project: { stringValue: "project_identifier" },
+                        location: { stringValue: "us-central1" }
+                      }
+                    }
+                  },
+                  {
+                    structValue: {
+                      fields: {
+                        project: { stringValue: "project_identifier" },
+                        glossary_id: { stringValue: "jebmjilij-9c85ee94" }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
           }
         }
       });
