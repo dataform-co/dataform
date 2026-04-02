@@ -92,5 +92,28 @@ suite("core/compilers", () => {
             const result = compile(code, path);
             expect(result).to.equal(code);
         });
+
+        test("compiles md to js contents export",() => {
+            const code = '# this table defines';
+            const path = "definitions/foo.md"
+            const result = compile(code, path);
+            expect(result).to.equal("export.contents = `# this table defines`;");
+
+        })
+
+        test("escapes backslashes in md", () => {
+            const code = "select ''";
+            const path = "definitions/foo.sql";
+            const result = compile(code, path);
+            expect(result).to.equal("exports.contents = `select ''`;");
+        });
+
+        test("escapes backticks in md", () => {
+            const code = "select `a` from `b`";
+            const path = "definitions/foo.sql";
+            const result = compile(code, path);
+            expect(result).to.equal("exports.contents = `select \\`a\\` from \\`b\\``;");
+        });
+
     });
 });
