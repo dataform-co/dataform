@@ -91,31 +91,16 @@ function checkAndConvertFields(
     }
 
     // Heuristic 1: Object Struct Detection
-    if (
-      typeof rawValue === "object" &&
-      !Array.isArray(rawValue) &&
-      probeValue &&
-      typeof probeValue === "object" &&
-      probeValue.fields &&
-      typeof probeValue.fields === "object" &&
-      Object.keys(probeValue.fields).length === 0 &&
-      !rawValue.fields
-    ) {
+    if (isUnconvertedStruct(rawValue, probeValue)) {
       protoInstance[probeKey] = unknownToValue(rawValue).structValue;
       return;
     }
 
     // Heuristic 2: Array List/Struct Detection
-    if (
-      Array.isArray(rawValue) &&
-      rawValue.length > 0 &&
-      probeValue &&
-      Array.isArray(probeValue) &&
-      probeValue.length === 0
-    ) {
+    if (isUnconvertedList(rawValue, probeValue)) {
       protoInstance[probeKey] = {
         listValue: {
-          values: rawValue.map(item => unknownToValue(item))
+          values: rawValue.map((item: any) => unknownToValue(item))
         }
       };
       return;
@@ -240,4 +225,48 @@ function toSnakeCase(str: string): string {
 
 function toCamelCase(str: string): string {
   return str.replace(/_([a-z])/g, (_, char) => char.toUpperCase());
+}
+
+/**
+ * Heuristic to detect if a raw value should be converted to a google.protobuf.Struct.
+ * We use this heuristic because our static-stripped Protobuf build removes $type and
+ * fields metadata at runtime, making reflection impossible.
+ */
+function isUnconvertedStruct(raw: any, probe: any): boolean {
+  return (
+    // 1. The user provided a plain object (not an array).
+    typeof raw === "object" &&
+    !Array.isArray(raw) &&
+    // 2. The probe (created via ProtobufJS) is an object.
+    probe &&
+    typeof probe === "object" &&
+    // 3. The probe has a 'fields' property which is an object. This is how
+    // ProtobufJS represents an empty/default google.protobuf.Struct.
+    probe.fields &&
+    typeof probe.fields === "object" &&
+    // 4. The 'fields' object is empty, indicating ProtobufJS couldn't map the raw data.
+    Object.keys(probe.fields).length === 0 &&
+    // 5. The user didn't already provide a pre-converted struct (with 'fields').
+    !raw.fields
+  );
+}
+
+/**
+ * Heuristic to detect if a raw value should be converted to a google.protobuf.ListValue.
+ * We use this heuristic because our static-stripped Protobuf build removes $type and
+ * fields metadata at runtime, making reflection impossible.
+ */
+function isUnconvertedList(raw: any, probe: any): boolean {
+  return (
+    // 1. The user provided a non-empty array.
+    Array.isArray(raw) &&
+    raw.length > 0 &&
+    // 2. The probe exists and is an array.
+    probe &&
+    Array.isArray(probe) &&
+    // 3. The probe is empty. This suggests that the field is defined as a
+    // google.protobuf.ListValue, and ProtobufJS fallback to an empty default
+    // array because it couldn't map the raw array directly.
+    probe.length === 0
+  );
 }
