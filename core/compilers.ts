@@ -58,6 +58,7 @@ export function compile(code: string, path: string): string {
   }
   if (Path.fileExtension(path) === "md") {
     const contents = code
+      .replace(/\r\n/g, "\n")
       .replace(/\\/g, "\\\\")
       .replace(/`/g, "\\`")
       .replace(/\${/g, "\\${");
