@@ -1,5 +1,5 @@
+import * as nodePath from "path";
 import { default as TarjanGraphConstructor, Graph as TarjanGraph } from "tarjan-graph";
-
 
 import { encode64, verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { Action, ActionProto, ILegacyTableConfig, TableType } from "df/core/actions";
@@ -23,6 +23,7 @@ import * as utils from "df/core/utils";
 import { ResolvableMap, toResolvable } from "df/core/utils";
 import { version as dataformCoreVersion } from "df/core/version";
 import { dataform, google } from "df/protos/ts";
+
 
 const DEFAULT_CONFIG = {
   defaultSchema: "dataform",
@@ -96,14 +97,19 @@ export class Session {
     const callerDir = Path.dirName(callerFile);
 
     const resolvedPath = Path.normalize(Path.join(callerDir,filePath));
+    const absolutePath = nodePath.isAbsolute(resolvedPath) ? resolvedPath : nodePath.join(this.rootDir, resolvedPath);
+    try {
+      const module = utils.nativeRequire(absolutePath);
+      if (!module || typeof module.contents !== "string") {
+        throw new Error(`Could not read markdown content from "${absolutePath}".`);
+      }
+    return module.contents;
 
-    const module = utils.nativeRequire(resolvedPath);
-    if (!module || typeof module.contents !== "string") {
-      throw new Error(`Could not read markdown content from "${resolvedPath}".`);
+    } catch (error) {
+      throw new Error(`Could not read markdown content from: ${absolutePath}`);
     }
-  return module.contents;
-
   }
+
   public sqlxAction(actionOptions: {
     // sqlxConfig has type any here because any object can be passed in from the compiler - the
     // structure of it is verified at later steps.
