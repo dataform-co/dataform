@@ -107,16 +107,14 @@ function checkAndConvertFields(
     }
 
     if (typeof probeValue !== typeof rawValue) {
-      if (Array.isArray(rawValue) && rawValue.length === 0) {
+      // Ignore empty containers (arrays or objects) as they are valid fallback states.
+      if (isEmptyObjectOrArray(rawValue)) {
         return;
       }
       if (!rawValue) {
         throw ReferenceError(
           `Unexpected empty value for "${rawKey}".${docLinkPrefix}`
         );
-      }
-      if (typeof rawValue === "object" && Object.keys(rawValue).length === 0) {
-        return;
       }
       if (errorBehaviour === VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM) {
         throw ReferenceError(
@@ -269,4 +267,19 @@ function isUnconvertedList(raw: any, probe: any): boolean {
     // array because it couldn't map the raw array directly.
     probe.length === 0
   );
+}
+
+/**
+ * Checks if a value is an empty array or an empty object.
+ * We ignore these during type mismatch checks to allow users to provide empty
+ * containers as valid fallback values.
+ */
+function isEmptyObjectOrArray(val: any): boolean {
+  if (Array.isArray(val)) {
+    return val.length === 0;
+  }
+  if (typeof val === "object" && val !== null) {
+    return Object.keys(val).length === 0;
+  }
+  return false;
 }
