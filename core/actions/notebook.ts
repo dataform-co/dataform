@@ -93,7 +93,7 @@ export class Notebook extends ActionBuilder<dataform.Notebook> {
 
     const notebookContents = nativeRequire(config.filename).asJson;
     this.proto.notebookContents = JSON.stringify(
-      stripNotebookOutputs(notebookContents, config.filename)
+      stripNotebookOutputsAndMetadata(notebookContents, config.filename)
     );
   }
 
@@ -150,19 +150,28 @@ export class Notebook extends ActionBuilder<dataform.Notebook> {
   }
 }
 
-/** @hidden Removes all notebook cell outputs. */
-function stripNotebookOutputs(
+/** @hidden Removes all notebook cell outputs and metadata. */
+function stripNotebookOutputsAndMetadata(
   notebookAsJson: { [key: string]: unknown },
   path: string
 ): { [key: string]: unknown } {
   if (!("cells" in notebookAsJson)) {
     throw new Error(`Notebook at ${path} is invalid: cells field not present`);
   }
-  (notebookAsJson.cells as Array<{ [key: string]: unknown }>).forEach((cell, index) => {
+  if ("metadata" in notebookAsJson) {
+    notebookAsJson.metadata = {};
+  }
+  (notebookAsJson.cells as Array<{ [key: string]: unknown }>).forEach((cell) => {
     if ("outputs" in cell) {
       cell.outputs = [];
-      (notebookAsJson.cells as Array<{ [key: string]: unknown }>)[index] = cell;
+    }
+    if ("execution_count" in cell) {
+      cell.execution_count = null;
+    }
+    if ("metadata" in cell) {
+      cell.metadata = {};
     }
   });
+
   return notebookAsJson;
 }
