@@ -95,19 +95,14 @@ export class Session {
   public getContents(filePath: string): string {
     const callerFile = utils.getCallerFile(this.rootDir);
     const callerDir = Path.dirName(callerFile);
-
     const resolvedPath = Path.normalize(Path.join(callerDir,filePath));
-    const absolutePath = nodePath.isAbsolute(resolvedPath) ? resolvedPath : nodePath.join(this.rootDir, resolvedPath);
-    try {
-      const module = utils.nativeRequire(absolutePath);
-      if (!module || typeof module.contents !== "string") {
-        throw new Error(`Could not read markdown content from "${absolutePath}".`);
-      }
-    return module.contents;
+    const absolutePath = nodePath.join(this.rootDir, resolvedPath);
 
-    } catch (error) {
-      throw new Error(`Could not read markdown content from: ${absolutePath}`);
+    const module = utils.nativeRequire(absolutePath);
+    if (!module || typeof module.contents !== "string") {
+      throw new Error(`Could not read markdown content from "${absolutePath}".`);
     }
+    return module.contents;
   }
 
   public sqlxAction(actionOptions: {
