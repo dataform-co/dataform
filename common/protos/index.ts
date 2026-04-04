@@ -53,7 +53,7 @@ export function verifyObjectMatchesProto<Proto>(
   return proto;
 }
 
-interface ValidationContext {
+interface IValidationContext {
   errorBehaviour: VerifyProtoErrorBehaviour;
   protoType: IProtoClass<any, any>;
 }
@@ -62,7 +62,7 @@ function checkAndConvertFields(
   raw: { [k: string]: any },
   probe: { [k: string]: any },
   protoInstance: any,
-  context: ValidationContext
+  context: IValidationContext
 ) {
   const docLinkPrefix = maybeGetDocsLinkPrefix(context.errorBehaviour, context.protoType);
   Object.entries(raw).forEach(([rawKey, rawValue]) => {
@@ -76,7 +76,7 @@ function checkAndConvertFields(
       return;
     }
 
-    let probeKey = rawKey;
+    const probeKey = rawKey;
     const probeValue = probe[probeKey];
 
     if (
