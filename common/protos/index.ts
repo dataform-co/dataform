@@ -58,7 +58,7 @@ function checkAndConvertFields(
   probe: { [k: string]: any },
   protoInstance: any,
   errorBehaviour: VerifyProtoErrorBehaviour,
-  protoType: any
+  protoType: IProtoClass<any, any>
 ) {
   const docLinkPrefix = maybeGetDocsLinkPrefix(errorBehaviour, protoType);
   Object.entries(raw).forEach(([rawKey, rawValue]) => {
