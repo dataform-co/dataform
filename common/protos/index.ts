@@ -73,13 +73,6 @@ function checkAndConvertFields(
     }
 
     let probeKey = rawKey;
-    if (probe[rawKey] === undefined) {
-      if (probe[toSnakeCase(rawKey)] !== undefined) {
-        probeKey = toSnakeCase(rawKey);
-      } else if (probe[toCamelCase(rawKey)] !== undefined) {
-        probeKey = toCamelCase(rawKey);
-      }
-    }
     const probeValue = probe[probeKey];
 
     if (
@@ -213,16 +206,6 @@ export function unknownToValue(raw: unknown): google.protobuf.IValue {
     };
   }
   throw new Error(`Unsupported value: ${raw}`);
-}
-
-
-
-function toSnakeCase(str: string): string {
-  return str.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase();
-}
-
-function toCamelCase(str: string): string {
-  return str.replace(/_([a-z])/g, (_, char) => char.toUpperCase());
 }
 
 /**
