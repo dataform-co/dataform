@@ -1705,7 +1705,59 @@ dataform.jitData("key", {test: () => {}});
         ).to.deep.equal(["Unsupported context object: () => {}"]);
       });
     });
+    suite("markdown in description", () => {
+      test("markdown contents added to description in sqlx", () => {
+          const projectDir = tmpDirFixture.createNewTmpDir();
+          fs.writeFileSync(
+            path.join(projectDir, "workflow_settings.yaml"),
+            VALID_WORKFLOW_SETTINGS_YAML
+          );
+          fs.mkdirSync(path.join(projectDir, "definitions"));
+          fs.writeFileSync(
+            path.join(projectDir, "definitions/descriptions.md"),
+            `# This table contains data about`
+          );
+          fs.writeFileSync(
+            path.join(projectDir, "definitions/table.sqlx"),
+            `config {
+            type: "table",
+            description: getContents('./descriptions.md'),
+          }
+            SELECT 1 AS test`
+          );
 
+          const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+          expect(
+            result.compile.compiledGraph.tables[0].actionDescriptor.description
+          ).to.equal(`# This table contains data about`);
+
+      });
+
+       test("throws error for invalid missing markedown", () => {
+          const projectDir = tmpDirFixture.createNewTmpDir();
+          fs.writeFileSync(
+            path.join(projectDir, "workflow_settings.yaml"),
+            VALID_WORKFLOW_SETTINGS_YAML
+          );
+          fs.mkdirSync(path.join(projectDir, "definitions"));
+          fs.writeFileSync(
+            path.join(projectDir, "definitions/table.sqlx"),
+            `config {
+            type: "table",
+            description: getContents('./nonexistent.md'),
+          }
+            SELECT 1 AS test`
+          );
+
+          const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+          expect(
+            result.compile.compiledGraph.graphErrors.compilationErrors[0].message
+          ).to.include("nonexistent.md");
+
+      });
+    });
     suite("invalid options", () => {
       [
         {

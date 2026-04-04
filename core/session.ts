@@ -1,3 +1,4 @@
+import * as nodePath from "path";
 import { default as TarjanGraphConstructor, Graph as TarjanGraph } from "tarjan-graph";
 
 import { encode64, verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
@@ -16,11 +17,13 @@ import { Test } from "df/core/actions/test";
 import { View } from "df/core/actions/view";
 import { CompilationSql } from "df/core/compilation_sql";
 import { Contextable, IActionContext, ITableContext, Resolvable } from "df/core/contextables";
+import * as Path from "df/core/path";
 import { targetAsReadableString, targetStringifier } from "df/core/targets";
 import * as utils from "df/core/utils";
 import { ResolvableMap, toResolvable } from "df/core/utils";
 import { version as dataformCoreVersion } from "df/core/version";
 import { dataform, google } from "df/protos/ts";
+
 
 const DEFAULT_CONFIG = {
   defaultSchema: "dataform",
@@ -87,6 +90,19 @@ export class Session {
 
   public compilationSql(): CompilationSql {
     return new CompilationSql(this.projectConfig, dataformCoreVersion);
+  }
+
+  public getContents(filePath: string): string {
+    const callerFile = utils.getCallerFile(this.rootDir);
+    const callerDir = Path.dirName(callerFile);
+    const resolvedPath = Path.normalize(Path.join(callerDir,filePath));
+    const absolutePath = nodePath.join(this.rootDir, resolvedPath);
+
+    const module = utils.nativeRequire(absolutePath);
+    if (!module || typeof module.contents !== "string") {
+      throw new Error(`Could not read markdown content from "${absolutePath}".`);
+    }
+    return module.contents;
   }
 
   public sqlxAction(actionOptions: {
