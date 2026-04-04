@@ -48,26 +48,30 @@ export function verifyObjectMatchesProto<Proto>(
   const probeObject = (protoType as any).toObject(proto, { defaults: true });
 
   // 2. Validate and Convert In-Place
-  checkAndConvertFields(object, probeObject, proto, errorBehaviour, protoType);
+  checkAndConvertFields(object, probeObject, proto, { errorBehaviour, protoType });
 
   return proto;
+}
+
+interface ValidationContext {
+  errorBehaviour: VerifyProtoErrorBehaviour;
+  protoType: IProtoClass<any, any>;
 }
 
 function checkAndConvertFields(
   raw: { [k: string]: any },
   probe: { [k: string]: any },
   protoInstance: any,
-  errorBehaviour: VerifyProtoErrorBehaviour,
-  protoType: IProtoClass<any, any>
+  context: ValidationContext
 ) {
-  const docLinkPrefix = maybeGetDocsLinkPrefix(errorBehaviour, protoType);
+  const docLinkPrefix = maybeGetDocsLinkPrefix(context.errorBehaviour, context.protoType);
   Object.entries(raw).forEach(([rawKey, rawValue]) => {
     if (rawValue === undefined) {
       return;
     }
     if (
       rawValue === null &&
-      errorBehaviour === VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM
+      context.errorBehaviour === VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM
     ) {
       return;
     }
@@ -78,7 +82,7 @@ function checkAndConvertFields(
     if (
       Array.isArray(probeValue) &&
       rawValue === null &&
-      errorBehaviour === VerifyProtoErrorBehaviour.SHOW_DOCS_LINK
+      context.errorBehaviour === VerifyProtoErrorBehaviour.SHOW_DOCS_LINK
     ) {
       throw ReferenceError(`Unexpected empty value for "${rawKey}".${docLinkPrefix}`);
     }
@@ -109,9 +113,9 @@ function checkAndConvertFields(
           `Unexpected empty value for "${rawKey}".${docLinkPrefix}`
         );
       }
-      if (errorBehaviour === VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM) {
+      if (context.errorBehaviour === VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM) {
         throw ReferenceError(
-          `Unexpected property "${rawKey}" for "${protoType
+          `Unexpected property "${rawKey}" for "${context.protoType
             .getTypeUrl("")
             .replace("/", "")}", please report this to the Dataform team at ${REPORT_ISSUE_URL}.`
         );
@@ -122,7 +126,7 @@ function checkAndConvertFields(
     }
 
     if (typeof rawValue === "object" && rawValue !== null) {
-      checkAndConvertFields(rawValue, probeValue, protoInstance[probeKey], errorBehaviour, protoType);
+      checkAndConvertFields(rawValue, probeValue, protoInstance[probeKey], context);
     }
   });
 }
