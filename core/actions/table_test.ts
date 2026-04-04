@@ -191,6 +191,202 @@ SELECT 1`
         );
       });
     });
+
+    test("tables can be configured with a plain object for extraProperties", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/table.sqlx"),
+        `config {
+    type: "table",
+    metadata: {
+        extraProperties: {
+            priority: "high"
+        }
+    }
+}
+SELECT 1`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(
+        asPlainObject(result.compile.compiledGraph.tables[0].actionDescriptor.metadata)
+      ).deep.equals({
+        extraProperties: {
+          fields: {
+            priority: { stringValue: "high" }
+          }
+        }
+      });
+    });
+
+    test("tables can be configured with a Struct already for extraProperties", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/table.sqlx"),
+        `config {
+    type: "table",
+    metadata: {
+        extraProperties: {
+            fields: {
+                priority: { stringValue: "high" },
+                glossary_terms: {
+                    listValue: {
+                        values: [
+                            {
+                                structValue: {
+                                    fields: {
+                                        column_name: { stringValue: "trip_id" },
+                                        project: { stringValue: "project_identifier" },
+                                        location: { stringValue: "us-central1" }
+                                    }
+                                }
+                            },
+                            {
+                                structValue: {
+                                    fields: {
+                                        project: { stringValue: "project_identifier" },
+                                        glossary_id: { stringValue: "jebmjilij-9c85ee94" }
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+    }
+}
+SELECT 1`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(
+        asPlainObject(result.compile.compiledGraph.tables[0].actionDescriptor.metadata)
+      ).deep.equals({
+        extraProperties: {
+          fields: {
+            priority: { stringValue: "high" },
+            glossary_terms: {
+              listValue: {
+                values: [
+                  {
+                    structValue: {
+                      fields: {
+                        column_name: { stringValue: "trip_id" },
+                        project: { stringValue: "project_identifier" },
+                        location: { stringValue: "us-central1" }
+                      }
+                    }
+                  },
+                  {
+                    structValue: {
+                      fields: {
+                        project: { stringValue: "project_identifier" },
+                        glossary_id: { stringValue: "jebmjilij-9c85ee94" }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      });
+    });
+
+    test("tables can be configured with a complex nested plain object for extraProperties", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/table.sqlx"),
+        `config {
+      type: "table",
+      metadata: {
+        overview: "The test overview",
+        extraProperties: {
+          glossary_terms: [
+            {
+              column_name: "trip_id",
+              project: "project_identifier",
+              location: "us-central1"
+            },
+            {
+              project: "project_identifier",
+              glossary_id: "jebmjilij-9c85ee94"
+            }
+          ],
+          generic: {
+            system: "my custom system value",
+            type: "my custom type value"
+          }
+        }
+      }
+    }
+    SELECT 1`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      const metadata = result.compile.compiledGraph.tables[0].actionDescriptor.metadata;
+      expect(metadata.overview).equals("The test overview");
+
+      expect(asPlainObject(metadata.extraProperties)).deep.equals({
+        fields: {
+          glossary_terms: {
+            listValue: {
+              values: [
+                {
+                  structValue: {
+                    fields: {
+                      column_name: { stringValue: "trip_id" },
+                      project: { stringValue: "project_identifier" },
+                      location: { stringValue: "us-central1" }
+                    }
+                  }
+                },
+                {
+                  structValue: {
+                    fields: {
+                      project: { stringValue: "project_identifier" },
+                      glossary_id: { stringValue: "jebmjilij-9c85ee94" }
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          generic: {
+            structValue: {
+              fields: {
+                system: { stringValue: "my custom system value" },
+                type: { stringValue: "my custom type value" }
+              }
+            }
+          }
+        }
+      });
+    });
+
+
   });
 
   test("action config options", () => {
