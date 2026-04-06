@@ -1,4 +1,5 @@
 import { expect } from "chai";
+
 import { suite, test } from "df/testing";
 import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "./index";
 
