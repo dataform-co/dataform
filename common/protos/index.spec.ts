@@ -1,7 +1,7 @@
 import { expect } from "chai";
+import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "./index";
 
 import { suite, test } from "df/testing";
-import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "./index";
 
 suite("verifyObjectMatchesProto", () => {
   test("throws error when top-level object is an array", () => {
