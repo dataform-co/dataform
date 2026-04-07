@@ -146,7 +146,7 @@ const credentialsOption: INamedOption<yargs.Options> = {
 const jsonOutputOption: INamedOption<yargs.Options> = {
   name: "json",
   option: {
-    describe: "Outputs a JSON representation of the compiled project.",
+    describe: "Outputs a JSON representation of the compiled project or test results.",
     type: "boolean",
     default: false
   }
@@ -503,9 +503,11 @@ export function runCli() {
         format: `test [${projectDirMustExistOption.name}]`,
         description: "Run the dataform project's unit tests.",
         positionalOptions: [projectDirMustExistOption],
-        options: [credentialsOption, timeoutOption, ...ProjectConfigOptions.allYargsOptions],
+        options: [credentialsOption, timeoutOption, jsonOutputOption, ...ProjectConfigOptions.allYargsOptions],
         processFn: async argv => {
-          print("Compiling...\n");
+          if (!argv[jsonOutputOption.name]) {
+            print("Compiling...\n");
+          }          
           const compiledGraph = await compile({
             projectDir: argv[projectDirMustExistOption.name],
             projectConfigOverride: ProjectConfigOptions.constructProjectConfigOverride(argv),
@@ -515,7 +517,9 @@ export function runCli() {
             printCompiledGraphErrors(compiledGraph.graphErrors, argv[quietCompileOption.name]);
             return 1;
           }
-          printSuccess("Compiled successfully.\n");
+          if (!argv[jsonOutputOption.name]) {
+            printSuccess("Compiled successfully.\n");
+          }   
           const readCredentials = credentials.read(
             getCredentialsPath(argv[projectDirOption.name], argv[credentialsOption.name])
           );
@@ -525,10 +529,17 @@ export function runCli() {
             return 1;
           }
 
-          print(`Running ${compiledGraph.tests.length} unit tests...\n`);
+          if (!argv[jsonOutputOption.name]) {
+            print(`Running ${compiledGraph.tests.length} unit tests...\n`);
+          }
           const dbadapter = new BigQueryDbAdapter(readCredentials);
           const testResults = await test(dbadapter, compiledGraph.tests);
-          testResults.forEach(testResult => printTestResult(testResult));
+            // Print all results as JSON if the option is set.
+          if (!argv[jsonOutputOption.name]) {
+            testResults.forEach(testResult => printTestResult(testResult)); // There is no option to output test results as JSON in this command, so pass false.
+          } else {
+            print(prettyJsonStringify(testResults));
+          }
           return testResults.every(testResult => testResult.successful) ? 0 : 1;
         }
       },
@@ -619,11 +630,11 @@ export function runCli() {
           }
 
           if (argv[runTestsOptionName]) {
-            print(`Running ${compiledGraph.tests.length} unit tests...\n`);
+              print(`Running ${compiledGraph.tests.length} unit tests...\n`);
             const testResults = await test(dbadapter, compiledGraph.tests);
             testResults.forEach(testResult => printTestResult(testResult));
             if (testResults.some(testResult => !testResult.successful)) {
-              printError("\nUnit tests did not pass; aborting run.");
+                printError("\nUnit tests did not pass; aborting run.");
               return 1;
             }
             printSuccess("Unit tests completed successfully.\n");
