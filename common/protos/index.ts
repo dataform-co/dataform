@@ -14,7 +14,7 @@ export interface IProtoClass<IProto, Proto> {
   encode(proto: IProto | Proto): { finish(): Uint8Array };
   decode(bytes: Uint8Array): Proto;
 
-  toObject(proto: Proto): { [k: string]: any };
+  toObject(proto: Proto, options?: any): { [k: string]: any };
   fromObject(obj: { [k: string]: any }): Proto;
 
   getTypeUrl(prefix: string): string;
@@ -45,7 +45,7 @@ export function verifyObjectMatchesProto<Proto>(
 
   // 1. Single Pass Create
   const proto = protoType.create(object);
-  const probeObject = (protoType as any).toObject(proto, { defaults: true });
+  const probeObject = protoType.toObject(proto, { defaults: true });
 
   // 2. Validate and Convert In-Place
   checkAndConvertFields(object, probeObject, proto, { errorBehaviour, protoType });
@@ -53,16 +53,16 @@ export function verifyObjectMatchesProto<Proto>(
   return proto;
 }
 
-interface IValidationContext {
+interface IValidationContext<Proto = any> {
   errorBehaviour: VerifyProtoErrorBehaviour;
-  protoType: IProtoClass<any, any>;
+  protoType: IProtoClass<any, Proto>;
 }
 
-function checkAndConvertFields(
+function checkAndConvertFields<Proto = any>(
   raw: { [k: string]: any },
   probe: { [k: string]: any },
-  protoInstance: any,
-  context: IValidationContext
+  protoInstance: Proto,
+  context: IValidationContext<Proto>
 ) {
   const docLinkPrefix = maybeGetDocsLinkPrefix(context.errorBehaviour, context.protoType);
   Object.entries(raw).forEach(([rawKey, rawValue]) => {
@@ -89,13 +89,13 @@ function checkAndConvertFields(
 
     // Heuristic 1: Object Struct Detection
     if (isUnconvertedStruct(rawValue, probeValue)) {
-      protoInstance[probeKey] = unknownToValue(rawValue).structValue;
+      (protoInstance as any)[probeKey] = unknownToValue(rawValue).structValue;
       return;
     }
 
     // Heuristic 2: Array List/Struct Detection
     if (isUnconvertedList(rawValue, probeValue)) {
-      protoInstance[probeKey] = {
+      (protoInstance as any)[probeKey] = {
         listValue: {
           values: rawValue.map((item: any) => unknownToValue(item))
         }
@@ -126,7 +126,7 @@ function checkAndConvertFields(
     }
 
     if (typeof rawValue === "object" && rawValue !== null) {
-      checkAndConvertFields(rawValue, probeValue, protoInstance[probeKey], context);
+      checkAndConvertFields(rawValue, probeValue, (protoInstance as any)[probeKey], context);
     }
   });
 }
