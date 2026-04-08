@@ -7,7 +7,7 @@ ts_library(
     name = "protos",
     srcs = glob(
         ["*.ts"],
-        exclude = ["*.spec.ts"],
+        exclude = ["*_test.ts", "*.spec.ts"],
     ),
     deps = [
         "//:modules-fix",
@@ -19,7 +19,7 @@ ts_library(
 
 ts_test_suite(
     name = "tests",
-    srcs = glob(["*.spec.ts"]),
+    srcs = glob(["*_test.ts"]),
     data = [
         "@npm//source-map-support",
     ],
@@ -29,6 +29,7 @@ ts_test_suite(
     ],
     deps = [
         ":protos",
+        "//protos:ts",
         "@df//testing",
         "@npm//@types/chai",
         "@npm//@types/node",
