@@ -1,5 +1,7 @@
 import { util } from "protobufjs";
 
+import { google, dataform } from "df/protos/ts";
+
 const CONFIGS_PROTO_DOCUMENTATION_URL =
   "https://dataform-co.github.io/dataform/docs/configs-reference";
 const REPORT_ISSUE_URL = "https://github.com/dataform-co/dataform/issues";
@@ -14,6 +16,8 @@ export interface IProtoClass<IProto, Proto> {
 
   toObject(proto: Proto): { [k: string]: any };
   fromObject(obj: { [k: string]: any }): Proto;
+  
+  verify(obj: any): (string | null);
 
   getTypeUrl(prefix: string): string;
 }
@@ -23,6 +27,27 @@ export enum VerifyProtoErrorBehaviour {
   SUGGEST_REPORTING_TO_DATAFORM_TEAM,
   SHOW_DOCS_LINK
 }
+
+const Struct = google.protobuf.Struct;
+
+// Save references to the original generated methods
+const originalVerify = Struct.verify;
+
+// ------------------------------------------------------------------------
+// Monkey Patching Methods
+// ------------------------------------------------------------------------
+
+Struct.verify = function (object: any) {
+  if (object && typeof object === "object" && !("fields" in object)) {
+    const fields: { [key: string]: any } = {};
+    for (const [k, v] of Object.entries(object)) {
+      fields[k] = unknownToValue(v);
+    }
+    Object.keys(object).forEach(key => delete object[key]);
+    object["fields"] = fields;
+  }
+  return originalVerify.call(this, object);
+};
 
 // This is a minimalist Typescript equivalent for the validation part of Profobuf's JsonFormat's
 // mergeMessage method:
@@ -40,8 +65,9 @@ export function verifyObjectMatchesProto<Proto>(
   if (Array.isArray(object)) {
     throw ReferenceError(`Expected a top-level object, but found an array`);
   }
-
+  
   // Calling toObject on the object/JSON creates a version only contains the valid proto fields.
+  protoType.verify(object);
   const proto = protoType.create(object);
   const protoCastObject = protoType.toObject(proto);
 
@@ -140,3 +166,32 @@ function fromBase64(value: string): Uint8Array {
   util.base64.decode(value, buf, 0);
   return buf;
 }
+
+export function unknownToValue(raw: unknown): google.protobuf.IValue {
+  if (raw === null || typeof raw === "undefined") {
+    return { nullValue: 0 };
+  }
+  if (typeof raw === "string") {
+    return { stringValue: raw };
+  }
+  if (typeof raw === "number") {
+    return { numberValue: raw };
+  }
+  if (typeof raw === "boolean") {
+    return { boolValue: raw };
+  }
+  if (Array.isArray(raw)) {
+    return { listValue: { values: raw.map(unknownToValue) } };
+  }
+  if (typeof raw === "object") {
+    return {
+      structValue: {
+        fields: Object.fromEntries(
+          Object.entries(raw).map(([key, value]) => [key, unknownToValue(value)])
+        )
+      }
+    };
+  }
+  throw new Error(`Unsupported value: ${raw}`);
+}
+
