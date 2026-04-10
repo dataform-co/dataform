@@ -52,6 +52,74 @@ export function formatBytesInHumanReadableFormat(bytes: number): string {
   return `${value} ${units[i]}`;
 }
 
+const DURATION_UNITS_IN_MILLIS: { [unit: string]: number } = {
+  ms: 1,
+  msec: 1,
+  msecs: 1,
+  millisecond: 1,
+  milliseconds: 1,
+  s: 1000,
+  sec: 1000,
+  secs: 1000,
+  second: 1000,
+  seconds: 1000,
+  m: 60 * 1000,
+  min: 60 * 1000,
+  mins: 60 * 1000,
+  minute: 60 * 1000,
+  minutes: 60 * 1000,
+  h: 60 * 60 * 1000,
+  hr: 60 * 60 * 1000,
+  hrs: 60 * 60 * 1000,
+  hour: 60 * 60 * 1000,
+  hours: 60 * 60 * 1000,
+  d: 24 * 60 * 60 * 1000,
+  day: 24 * 60 * 60 * 1000,
+  days: 24 * 60 * 60 * 1000,
+  w: 7 * 24 * 60 * 60 * 1000,
+  week: 7 * 24 * 60 * 60 * 1000,
+  weeks: 7 * 24 * 60 * 60 * 1000
+};
+
+export function parseCliDuration(rawDuration: string): number {
+  const normalizedDuration = rawDuration?.trim().toLowerCase();
+  if (!normalizedDuration) {
+    throw new Error("Duration cannot be empty.");
+  }
+
+  if (/^[+-]?\d+(\.\d+)?$/.test(normalizedDuration)) {
+    return Number(normalizedDuration);
+  }
+
+  let totalDurationMillis = 0;
+  let matchFound = false;
+  let cursor = 0;
+  const durationPattern = /([+-]?\d+(?:\.\d+)?)\s*([a-z]+)/g;
+
+  for (let match = durationPattern.exec(normalizedDuration); match; match = durationPattern.exec(normalizedDuration)) {
+    if (normalizedDuration.slice(cursor, match.index).trim()) {
+      throw new Error(`Invalid duration: ${rawDuration}`);
+    }
+
+    const durationValue = Number(match[1]);
+    const durationUnit = match[2];
+    const unitMillis = DURATION_UNITS_IN_MILLIS[durationUnit];
+    if (unitMillis === undefined) {
+      throw new Error(`Unsupported duration unit: ${durationUnit}`);
+    }
+
+    totalDurationMillis += durationValue * unitMillis;
+    cursor = durationPattern.lastIndex;
+    matchFound = true;
+  }
+
+  if (!matchFound || normalizedDuration.slice(cursor).trim()) {
+    throw new Error(`Invalid duration: ${rawDuration}`);
+  }
+
+  return totalDurationMillis;
+}
+
 /**
  * Handles prompting and validation for defaultBucketName, defaultTableFolderRoot
  * and defaultTableFolderSubpath if the user provides the --iceberg flag when

@@ -1,10 +1,9 @@
 import * as fs from "fs";
-import parseDuration from "parse-duration";
 import * as path from "path";
 import yargs from "yargs";
 
 import { CREDENTIALS_FILENAME } from "df/cli/api/commands/credentials";
-import { actuallyResolve, assertPathExists } from "df/cli/util";
+import { actuallyResolve, assertPathExists, parseCliDuration } from "df/cli/util";
 import { INamedOption } from "df/cli/yargswrapper";
 
 export interface IProjectDirArgs {
@@ -89,7 +88,7 @@ export const jsonOutputOption: INamedOption<yargs.Options, IJsonOutputArgs> = {
 };
 
 export const coerceTimeout = (rawTimeoutString: string | null) =>
-  rawTimeoutString ? parseDuration(rawTimeoutString) : null;
+  rawTimeoutString ? parseCliDuration(rawTimeoutString) : null;
 
 export interface ITimeoutArgs {
   timeout: number | null;
