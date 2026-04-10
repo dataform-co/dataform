@@ -18,7 +18,9 @@ import { coerceAsError } from "df/common/errors/errors";
 import { retry } from "df/common/promises";
 import { dataform } from "df/protos/ts";
 
+const GOOGLE_CLOUD_PLATFORM_SCOPE = "https://www.googleapis.com/auth/cloud-platform";
 const EXTRA_GOOGLE_SCOPES = ["https://www.googleapis.com/auth/drive"];
+const IMPERSONATION_GOOGLE_SCOPES = [GOOGLE_CLOUD_PLATFORM_SCOPE, ...EXTRA_GOOGLE_SCOPES];
 
 const BIGQUERY_DATE_RELATED_FIELDS = [
   "BigQueryDate",
@@ -56,7 +58,7 @@ export function createBigQueryClientProvider(
       if (credentials.impersonateServiceAccount) {
         const sourceAuth = new GoogleAuth({
           projectId,
-          scopes: ["https://www.googleapis.com/auth/cloud-platform"],
+          scopes: IMPERSONATION_GOOGLE_SCOPES,
           credentials: credentials.credentials && JSON.parse(credentials.credentials)
         });
 
@@ -65,7 +67,7 @@ export function createBigQueryClientProvider(
         clientConfig.authClient = new Impersonated({
           sourceClient: authClient,
           targetPrincipal: credentials.impersonateServiceAccount,
-          targetScopes: ["https://www.googleapis.com/auth/cloud-platform"]
+          targetScopes: IMPERSONATION_GOOGLE_SCOPES
         });
       } else {
         clientConfig.credentials = credentials.credentials && JSON.parse(credentials.credentials);
