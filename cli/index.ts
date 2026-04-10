@@ -1,7 +1,6 @@
 import * as chokidar from "chokidar";
 import * as fs from "fs";
 import * as glob from "glob";
-import parseDuration from "parse-duration";
 import * as path from "path";
 import yargs from "yargs";
 
@@ -28,6 +27,7 @@ import {
   actuallyResolve,
   assertPathExists,
   compiledGraphHasErrors,
+  parseCliDuration,
   promptForIcebergConfig,
 } from "df/cli/util";
 import { createYargsCli, INamedOption } from "df/cli/yargswrapper";
@@ -174,7 +174,7 @@ const timeoutOption: INamedOption<yargs.Options> = {
     type: "string",
     default: null,
     coerce: (rawTimeoutString: string | null) =>
-      rawTimeoutString ? parseDuration(rawTimeoutString) : null
+      rawTimeoutString ? parseCliDuration(rawTimeoutString) : null
   }
 };
 
