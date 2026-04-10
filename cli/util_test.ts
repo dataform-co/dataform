@@ -3,6 +3,7 @@ import { expect } from "chai";
 import {
   formatBytesInHumanReadableFormat,
   formatExecutionSuffix,
+  parseCliDuration,
   validateIcebergConfigBucketName,
   validateIcebergConfigTableFolderRoot,
   validateIcebergConfigTableFolderSubpath,
@@ -33,6 +34,30 @@ suite('format bytes in human readable format', () => {
         expect(formatBytesInHumanReadableFormat(1099511627776)).deep.equals('1.00 TiB');
         expect(formatBytesInHumanReadableFormat(1125899906842624)).deep.equals('1.00 PiB');
     });
+});
+
+suite("parse cli duration", () => {
+  test("parses numeric durations as milliseconds", () => {
+    expect(parseCliDuration("1500")).equals(1500);
+  });
+
+  test("parses single-unit durations", () => {
+    expect(parseCliDuration("1s")).equals(1000);
+    expect(parseCliDuration("10m")).equals(600000);
+    expect(parseCliDuration("2 hours")).equals(7200000);
+  });
+
+  test("parses compound and fractional durations", () => {
+    expect(parseCliDuration("1h30m")).equals(5400000);
+    expect(parseCliDuration("1.5m")).equals(90000);
+    expect(parseCliDuration("1 week 2 days")).equals(777600000);
+  });
+
+  test("rejects invalid durations", () => {
+    expect(() => parseCliDuration("")).to.throw("Duration cannot be empty.");
+    expect(() => parseCliDuration("tomorrow")).to.throw("Invalid duration: tomorrow");
+    expect(() => parseCliDuration("1fortnight")).to.throw("Unsupported duration unit: fortnight");
+  });
 });
 
 suite('Iceberg Config Validation', () => {
