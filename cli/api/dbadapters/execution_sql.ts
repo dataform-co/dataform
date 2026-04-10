@@ -1,4 +1,3 @@
-import * as crypto from "crypto";
 import * as semver from "semver";
 
 import { concatenateQueries, Task, Tasks } from "df/cli/api/dbadapters/tasks";
@@ -122,6 +121,10 @@ from (${query}) as insertions`;
     return this.CompilationSql.resolveTarget(target);
   }
 
+  public getIncrementalQuery(table: dataform.ITable): string {
+    return this.where(table.incrementalQuery || table.query, table.where);
+  }
+
   public publishTasks(
     table: dataform.ITable,
     runConfig: dataform.IRunConfig,
@@ -157,14 +160,14 @@ from (${query}) as insertions`;
                   ? this.mergeInto(
                       table.target,
                       tableMetadata?.fields.map(f => f.name),
-                      this.where(table.incrementalQuery || table.query, table.where),
+                      this.getIncrementalQuery(table),
                       table.uniqueKey,
                       table.bigquery && table.bigquery.updatePartitionFilter
                     )
                   : this.insertInto(
                       table.target,
                       tableMetadata?.fields.map(f => f.name).map(column => `\`${column}\``),
-                      this.where(table.incrementalQuery || table.query, table.where)
+                      this.getIncrementalQuery(table)
                     )
               )
             );
@@ -199,7 +202,7 @@ from (${query}) as insertions`;
   }
 
   private buildIncrementalSchemaChangeTasks(tasks: Tasks, table: dataform.ITable) {
-    const uniqueId = crypto.randomUUID().replace(/-/g, "_");
+    const uniqueId = Math.random().toString(36).substring(2);
 
     const shortEmptyTableName = `${table.target.name}_df_temp_${uniqueId}_empty`;
     const emptyTempTableName = this.resolveTarget({
@@ -207,18 +210,11 @@ from (${query}) as insertions`;
       name: shortEmptyTableName
     });
 
-    const shortDataTableName = shortEmptyTableName.replace("_empty", "_data");
-    const dataTempTableName = this.resolveTarget({
-      ...table.target,
-      name: shortDataTableName
-    });
-
     const procedureName = this.createProcedureName(table.target, uniqueId);
     const procedureBody = this.incrementalSchemaChangeBody(
       table,
       this.resolveTarget(table.target),
       emptyTempTableName,
-      dataTempTableName,
       shortEmptyTableName
     );
 
@@ -230,43 +226,37 @@ END;`;
 
     const callProcedureSql = this.safeCallAndDropProcedure(
       procedureName,
-      emptyTempTableName,
-      dataTempTableName
+      emptyTempTableName
     );
     tasks.add(Task.statement(createProcedureSql));
     tasks.add(Task.statement(callProcedureSql));
-    tasks.add(Task.statement(`DROP PROCEDURE IF EXISTS ${procedureName};`));
   }
 
   private createProcedureName(target: dataform.ITarget, uniqueId: string): string {
-    // Procedure names cannot contain hyphens.
-    const sanitizedUniqueId = uniqueId.replace(/-/g, "_");
     return this.resolveTarget({
       ...target,
-      name: `df_osc_${sanitizedUniqueId}`
+      name: `df_osc_${uniqueId}`
     });
   }
 
   private safeCallAndDropProcedure(
     procedureName: string,
-    emptyTempTableName: string,
-    dataTempTableName: string
+    emptyTempTableName: string
   ): string {
     return `
 BEGIN
   CALL ${procedureName}();
 EXCEPTION WHEN ERROR THEN
   DROP TABLE IF EXISTS ${emptyTempTableName};
-  DROP TABLE IF EXISTS ${dataTempTableName};
   DROP PROCEDURE IF EXISTS ${procedureName};
   RAISE;
 END;
 DROP PROCEDURE IF EXISTS ${procedureName};`;
   }
 
-  private inferSchemaSql(emptyTempTableName: string, query: string): string {
+  private createEmptyTempTableSql(emptyTempTableName: string, query: string): string {
     return `
--- Infer schema of new query.
+-- Create empty table to extract schema of new query.
 CREATE OR REPLACE TABLE ${emptyTempTableName} AS (
   SELECT * FROM (${query}) AS insertions LIMIT 0
 );`;
@@ -322,7 +312,7 @@ SET columns_removed = (
         sql += `
 IF ARRAY_LENGTH(columns_added) > 0 OR ARRAY_LENGTH(columns_removed) > 0 THEN
   RAISE USING MESSAGE = FORMAT(
-    "Schema mismatch defined by on_schema_change = 'FAIL'. Added columns: %t, removed columns: %t",
+    "Schema mismatch defined by on_schema_change = 'FAIL'. Added columns: %T, removed columns: %T",
     columns_added,
     columns_removed
   );
@@ -333,67 +323,71 @@ END IF;
         sql += `
 IF ARRAY_LENGTH(columns_removed) > 0 THEN
   RAISE USING MESSAGE = FORMAT(
-    "Column removals are not allowed when on_schema_change = 'EXTEND'. Removed columns: %t",
+    "Column removals are not allowed when on_schema_change = 'EXTEND'. Removed columns: %T",
     columns_removed
   );
 END IF;
 
-FOR column_info IN (SELECT * FROM UNNEST(columns_added)) DO
-  EXECUTE IMMEDIATE FORMAT(
-    "ALTER TABLE ${qualifiedTargetTableName} ADD COLUMN IF NOT EXISTS %s %s",
-    column_info.column_name,
-    column_info.data_type
-  );
-END FOR;
+${this.alterTableAddColumnsSql(qualifiedTargetTableName)}
 `;
         break;
       case dataform.OnSchemaChange.SYNCHRONIZE:
         const uniqueKeys = table.uniqueKey || [];
         sql += `
-FOR removed_column_name IN (SELECT * FROM UNNEST(columns_removed)) DO
-  IF removed_column_name IN UNNEST(${JSON.stringify(uniqueKeys)}) THEN
-    RAISE USING MESSAGE = FORMAT(
-      "Cannot drop column %s as it is part of the unique key for table ${qualifiedTargetTableName}",
-      removed_column_name
-    );
-  ELSE
-    EXECUTE IMMEDIATE FORMAT(
-      "ALTER TABLE ${qualifiedTargetTableName} DROP COLUMN IF EXISTS %s",
-      removed_column_name
-    );
-  END IF;
-END FOR;
+DECLARE invalid_removed_columns ARRAY<STRING>;
+SET invalid_removed_columns = (
+  SELECT IFNULL(ARRAY_AGG(col), []) FROM UNNEST(columns_removed) AS col WHERE col IN UNNEST(${JSON.stringify(uniqueKeys)})
+);
 
-FOR column_info IN (SELECT * FROM UNNEST(columns_added)) DO
-  EXECUTE IMMEDIATE FORMAT(
-    "ALTER TABLE ${qualifiedTargetTableName} ADD COLUMN IF NOT EXISTS %s %s",
-    column_info.column_name,
-    column_info.data_type
+IF ARRAY_LENGTH(invalid_removed_columns) > 0 THEN
+  RAISE USING MESSAGE = FORMAT(
+    "Cannot drop columns %T as they are part of the unique key for table ${qualifiedTargetTableName}",
+    invalid_removed_columns
   );
-END FOR;
+END IF;
+
+IF ARRAY_LENGTH(columns_removed) > 0 THEN
+  EXECUTE IMMEDIATE (
+    "ALTER TABLE ${qualifiedTargetTableName} " ||
+    (
+      SELECT STRING_AGG(FORMAT("DROP COLUMN IF EXISTS %s", col), ", ")
+      FROM UNNEST(columns_removed) AS col
+    )
+  );
+END IF;
+
+${this.alterTableAddColumnsSql(qualifiedTargetTableName)}
 `;
         break;
     }
     return sql;
   }
 
-  private runFinalDmlSql(
-    table: dataform.ITable,
-    qualifiedTargetTableName: string,
-    dataTempTableName: string
-  ): string {
-    return [
-      this.createIncrementalDataTempTableSql(table, dataTempTableName),
-      this.declareDataformColumnsListSql(),
-      this.executeMergeOrInsertSql(table, qualifiedTargetTableName, dataTempTableName)
-    ].join("\n");
+  private alterTableAddColumnsSql(qualifiedTargetTableName: string): string {
+    return `IF ARRAY_LENGTH(columns_added) > 0 THEN
+  EXECUTE IMMEDIATE (
+    "ALTER TABLE ${qualifiedTargetTableName} " ||
+    (
+      SELECT STRING_AGG(FORMAT("ADD COLUMN IF NOT EXISTS %s %s", column_info.column_name, column_info.data_type), ", ")
+      FROM UNNEST(columns_added) AS column_info
+    )
+  );
+END IF;`;
   }
 
-  private createIncrementalDataTempTableSql(table: dataform.ITable, dataTempTableName: string): string {
-    return `
-CREATE OR REPLACE TEMP TABLE ${dataTempTableName} AS (
-  ${this.where(table.incrementalQuery || table.query, table.where)}
-);`;
+  private runFinalDmlSql(
+    table: dataform.ITable,
+    qualifiedTargetTableName: string
+  ): string {
+    const query = this.getIncrementalQuery(table);
+    const escapedQuery = query.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+
+    return [
+      this.declareDataformColumnsListSql(),
+      table.uniqueKey && table.uniqueKey.length > 0
+        ? this.buildDynamicMergeSql(table, qualifiedTargetTableName, escapedQuery)
+        : this.buildDynamicInsertSql(table, qualifiedTargetTableName, escapedQuery)
+    ].join("\n");
   }
 
   private declareDataformColumnsListSql(): string {
@@ -405,52 +399,56 @@ SET dataform_columns_list = (
 );`;
   }
 
-  private executeMergeOrInsertSql(
+  private buildDynamicMergeSql(
     table: dataform.ITable,
     qualifiedTargetTableName: string,
-    dataTempTableName: string
+    escapedQuery: string
   ): string {
-    if (table.uniqueKey && table.uniqueKey.length > 0) {
-      const mergeOnClause = table.uniqueKey.map(k => `T.\`${k}\` = S.\`${k}\``).join(" and ");
-      const updatePartitionFilter = table.bigquery && table.bigquery.updatePartitionFilter;
-      const mergeOnClauseWithFilter = updatePartitionFilter
-        ? `${mergeOnClause} and T.${updatePartitionFilter}`
-        : mergeOnClause;
+    const mergeOnClause = table.uniqueKey.map(k => `T.\`${k}\` = S.\`${k}\``).join(" and ");
+    const updatePartitionFilter = table.bigquery && table.bigquery.updatePartitionFilter;
+    const mergeOnClauseWithFilter = updatePartitionFilter
+      ? `${mergeOnClause} and T.${updatePartitionFilter}`
+      : mergeOnClause;
+    const escapedMergeOnClauseWithFilter = mergeOnClauseWithFilter.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 
-      return `
+    return `
 DECLARE dataform_columns_merge STRING;
 SET dataform_columns_merge = (
   SELECT IFNULL(STRING_AGG(CONCAT('\`', column_name, '\` = S.\`', column_name, '\`'), ', '), '')
   FROM UNNEST(temp_table_columns)
 );
 
-IF ARRAY_LENGTH(temp_table_columns) > 0 THEN
   EXECUTE IMMEDIATE (
-    "MERGE \`${qualifiedTargetTableName}\` T " ||
-    "USING \`${dataTempTableName}\` S " ||
-    "ON ${mergeOnClauseWithFilter} " ||
+    "MERGE ${qualifiedTargetTableName} T " ||
+    "USING (" ||
+    """${escapedQuery}""" ||
+    ") S " ||
+    "ON ${escapedMergeOnClauseWithFilter} " ||
     "WHEN MATCHED THEN " ||
     "  UPDATE SET " || dataform_columns_merge || " " ||
     "WHEN NOT MATCHED THEN " ||
     "  INSERT (" || dataform_columns_list || ") VALUES (" || dataform_columns_list || ")"
-  );
-END IF;`;
-    } else {
-      return `
-IF ARRAY_LENGTH(temp_table_columns) > 0 THEN
-  EXECUTE IMMEDIATE (
-    "INSERT INTO \`${qualifiedTargetTableName}\` (" || dataform_columns_list || ") " ||
-    "SELECT " || dataform_columns_list || " FROM \`${dataTempTableName}\`"
-  );
-END IF;`;
-    }
+  );`;
   }
 
-  private cleanupSql(emptyTempTableName: string, dataTempTableName: string): string {
+  private buildDynamicInsertSql(
+    table: dataform.ITable,
+    qualifiedTargetTableName: string,
+    escapedQuery: string
+  ): string {
+    return `
+  EXECUTE IMMEDIATE (
+    "INSERT INTO ${qualifiedTargetTableName} (" || dataform_columns_list || ") " ||
+    "SELECT " || dataform_columns_list || " FROM (" ||
+    """${escapedQuery}""" ||
+    ")"
+  );`;
+  }
+
+  private cleanupSql(emptyTempTableName: string): string {
     return `
 -- Cleanup temporary tables.
 DROP TABLE IF EXISTS ${emptyTempTableName};
-DROP TABLE IF EXISTS ${dataTempTableName};
     `;
   }
 
@@ -458,11 +456,10 @@ DROP TABLE IF EXISTS ${dataTempTableName};
     table: dataform.ITable,
     qualifiedTargetTableName: string,
     emptyTempTableName: string,
-    dataTempTableName: string,
     shortEmptyTableName: string
   ): string {
     const statements: string[] = [
-      this.inferSchemaSql(emptyTempTableName, table.incrementalQuery || table.query),
+      this.createEmptyTempTableSql(emptyTempTableName, this.getIncrementalQuery(table)),
       this.compareSchemasSql(
         table.target.database,
         table.target.schema,
@@ -470,8 +467,8 @@ DROP TABLE IF EXISTS ${dataTempTableName};
         shortEmptyTableName
       ),
       this.applySchemaChangeStrategySql(table, qualifiedTargetTableName),
-      this.runFinalDmlSql(table, qualifiedTargetTableName, dataTempTableName),
-      this.cleanupSql(emptyTempTableName, dataTempTableName)
+      this.runFinalDmlSql(table, qualifiedTargetTableName),
+      this.cleanupSql(emptyTempTableName)
     ];
 
     return statements.join("\n\n");

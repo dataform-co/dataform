@@ -50,7 +50,7 @@ suite("ExecutionSql with 'onSchemaChange'", () => {
       /create or replace procedure `project-id.dataset-id.df_osc_.*`\(\)\s+options\(strict_mode=false\)/i
     );
     expect(procedureSql).to.include(
-      `"Schema mismatch defined by on_schema_change = 'FAIL'. Added columns: %t, removed columns: %t"`
+      `"Schema mismatch defined by on_schema_change = 'FAIL'. Added columns: %T, removed columns: %T"`
     );
     expect(procedureSql).to.match(/call `project-id.dataset-id.df_osc_.*`\(\)/i);
     expect(procedureSql).to.include("EXCEPTION WHEN ERROR THEN");
@@ -69,9 +69,17 @@ suite("ExecutionSql with 'onSchemaChange'", () => {
       /create or replace procedure `project-id.dataset-id.df_osc_.*`\(\)\s+options\(strict_mode=false\)/i
     );
     expect(procedureSql).to.include(
-      `"Column removals are not allowed when on_schema_change = 'EXTEND'. Removed columns: %t"`
+      `"Column removals are not allowed when on_schema_change = 'EXTEND'. Removed columns: %T"`
     );
-    expect(procedureSql).to.include("ADD COLUMN IF NOT EXISTS");
+    expect(procedureSql).to.include(
+      `SELECT STRING_AGG(FORMAT("ADD COLUMN IF NOT EXISTS %s %s", column_info.column_name, column_info.data_type), ", ")`
+    );
+    expect(procedureSql).to.include(
+      `"INSERT INTO \`project-id.dataset-id.incremental_on_schema_change\` (" || dataform_columns_list || ") " ||`
+    );
+    expect(procedureSql).to.include(
+      `"""select 1 as id, 'a' as field1, 'new' as field2"""`
+    );
   });
 
   test("generates procedure for SYNCHRONIZE strategy", () => {
@@ -86,8 +94,21 @@ suite("ExecutionSql with 'onSchemaChange'", () => {
     expect(procedureSql).to.match(
       /create or replace procedure `project-id.dataset-id.df_osc_.*`\(\)\s+options\(strict_mode=false\)/i
     );
-    expect(procedureSql).to.include("ADD COLUMN IF NOT EXISTS");
-    expect(procedureSql).to.include("DROP COLUMN IF EXISTS");
+    expect(procedureSql).to.include(
+      `SELECT STRING_AGG(FORMAT("DROP COLUMN IF EXISTS %s", col), ", ")`
+    );
+    expect(procedureSql).to.include(
+      `SELECT STRING_AGG(FORMAT("ADD COLUMN IF NOT EXISTS %s %s", column_info.column_name, column_info.data_type), ", ")`
+    );
+    expect(procedureSql).to.include(
+      `"MERGE \`project-id.dataset-id.incremental_on_schema_change\` T " ||`
+    );
+    expect(procedureSql).to.include(
+      `"ON T.\`id\` = S.\`id\` " ||`
+    );
+    expect(procedureSql).to.include(
+      `"""select 1 as id, 'a' as field1, 'new' as field2"""`
+    );
   });
 
   test("SYNCHRONIZE strategy prevents dropping unique keys", () => {
@@ -108,7 +129,7 @@ suite("ExecutionSql with 'onSchemaChange'", () => {
     );
     const procedureSql = tasks.build()[0].statement;
     expect(procedureSql).to.include(
-      `"Cannot drop column %s as it is part of the unique key for table`
+      `"Cannot drop columns %T as they are part of the unique key for table`
     );
   });
 
