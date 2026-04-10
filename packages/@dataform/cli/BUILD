@@ -39,7 +39,6 @@ externals = [
     "js-yaml",
     "moo",
     "object-sizeof",
-    "parse-duration",
     "promise-pool-executor",
     "protobufjs",
     "readline-sync",
