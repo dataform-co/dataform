@@ -98,9 +98,19 @@ export class Session {
     const resolvedPath = Path.normalize(Path.join(callerDir,filePath));
     const absolutePath = nodePath.join(this.rootDir, resolvedPath);
 
-    const module = utils.nativeRequire(absolutePath);
+    if (!absolutePath.startsWith(this.rootDir)){
+      throw new Error(`Cannot read "${filePath}": path resolves outside the project directory.`);
+    }
+
+    let module: any;
+    try {
+      module = utils.nativeRequire(absolutePath);
+    } catch {
+      throw new Error(`Cannot read "${filePath}": file not found.`);
+    }
+
     if (!module || typeof module.contents !== "string") {
-      throw new Error(`Could not read markdown content from "${absolutePath}".`);
+      throw new Error (`Cannot read "${filePath}": only .md files are supported.`)
     }
     return module.contents;
   }

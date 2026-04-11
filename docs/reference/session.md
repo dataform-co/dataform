@@ -87,9 +87,7 @@ ___
 
 ▸ **getContents**(`filePath`: string): *string*
 
-Reads the contents of an external file and returns it as a string. The path is resolved relative to the file that calls `getContents`.
-
-Intended for use with `.md` files to source action descriptions externally, keeping `.sqlx` files smaller and enabling reusable, renderable descriptions across the project.
+Reads the contents of an external markdown file and returns it as a string. The path is resolved relative to the file that calls `getContents`.
 
 Available only in the `/definitions` directory.
 

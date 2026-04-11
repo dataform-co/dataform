@@ -1757,6 +1757,30 @@ dataform.jitData("key", {test: () => {}});
           ).to.include("nonexistent.md");
 
       });
+
+      test("throws error for file outisde of rootDir", () => {
+          const projectDir = tmpDirFixture.createNewTmpDir();
+          fs.writeFileSync(
+            path.join(projectDir, "workflow_settings.yaml"),
+            VALID_WORKFLOW_SETTINGS_YAML
+          );
+          fs.mkdirSync(path.join(projectDir, "definitions"));
+          fs.writeFileSync(
+            path.join(projectDir, "definitions/table.sqlx"),
+            `config {
+            type: "table",
+            description: getContents('../../description.md'),
+          }
+            SELECT 1 AS test`
+          );
+
+          const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+          expect(
+            result.compile.compiledGraph.graphErrors.compilationErrors[0].message
+          ).to.include("outside the project directory");
+
+      });
     });
     suite("invalid options", () => {
       [
