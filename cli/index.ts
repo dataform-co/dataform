@@ -534,10 +534,10 @@ export function runCli() {
           }
           const dbadapter = new BigQueryDbAdapter(readCredentials);
           const testResults = await test(dbadapter, compiledGraph.tests);
-            // Print all results as JSON if the option is set.
           if (!argv[jsonOutputOption.name]) {
-            testResults.forEach(testResult => printTestResult(testResult)); // There is no option to output test results as JSON in this command, so pass false.
+            testResults.forEach(testResult => printTestResult(testResult));
           } else {
+            // Print all results as JSON if the option is set.
             print(prettyJsonStringify(testResults));
           }
           return testResults.every(testResult => testResult.successful) ? 0 : 1;
