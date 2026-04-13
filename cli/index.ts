@@ -630,11 +630,11 @@ export function runCli() {
           }
 
           if (argv[runTestsOptionName]) {
-              print(`Running ${compiledGraph.tests.length} unit tests...\n`);
+            print(`Running ${compiledGraph.tests.length} unit tests...\n`);
             const testResults = await test(dbadapter, compiledGraph.tests);
             testResults.forEach(testResult => printTestResult(testResult));
             if (testResults.some(testResult => !testResult.successful)) {
-                printError("\nUnit tests did not pass; aborting run.");
+              printError("\nUnit tests did not pass; aborting run.");
               return 1;
             }
             printSuccess("Unit tests completed successfully.\n");
