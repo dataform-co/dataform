@@ -1,6 +1,6 @@
 import { util } from "protobufjs";
 
-import { google } from "df/protos/ts";
+import { google, dataform } from "df/protos/ts";
 
 const CONFIGS_PROTO_DOCUMENTATION_URL =
   "https://dataform-co.github.io/dataform/docs/configs-reference";
@@ -14,8 +14,10 @@ export interface IProtoClass<IProto, Proto> {
   encode(proto: IProto | Proto): { finish(): Uint8Array };
   decode(bytes: Uint8Array): Proto;
 
-  toObject(proto: Proto, options?: any): { [k: string]: any };
+  toObject(proto: Proto): { [k: string]: any };
   fromObject(obj: { [k: string]: any }): Proto;
+
+  verify(obj: any): (string | null);
 
   getTypeUrl(prefix: string): string;
 }
@@ -25,6 +27,27 @@ export enum VerifyProtoErrorBehaviour {
   SUGGEST_REPORTING_TO_DATAFORM_TEAM,
   SHOW_DOCS_LINK
 }
+
+const Struct = google.protobuf.Struct;
+
+// Save references to the original generated methods
+const originalVerify = Struct.verify;
+
+// ------------------------------------------------------------------------
+// Monkey Patching Methods
+// ------------------------------------------------------------------------
+
+Struct.verify = function (object: any) {
+  if (object && typeof object === "object" && !("fields" in object)) {
+    const fields: { [key: string]: any } = {};
+    for (const [k, v] of Object.entries(object)) {
+      fields[k] = unknownToValue(v);
+    }
+    Object.keys(object).forEach(key => delete object[key]);
+    object["fields"] = fields;
+  }
+  return originalVerify.call(this, object);
+};
 
 // This is a minimalist Typescript equivalent for the validation part of Profobuf's JsonFormat's
 // mergeMessage method:
@@ -43,94 +66,54 @@ export function verifyObjectMatchesProto<Proto>(
     throw ReferenceError(`Expected a top-level object, but found an array`);
   }
 
-  // 1. Single Pass Create
+  // Calling toObject on the object/JSON creates a version only contains the valid proto fields.
+  protoType.verify(object);
   const proto = protoType.create(object);
-  const probeObject = protoType.toObject(proto, { defaults: true });
+  const protoCastObject = protoType.toObject(proto);
 
-  // 2. Validate and Convert In-Place
-  checkAndConvertFields(object, probeObject, proto, { errorBehaviour, protoType });
+  function checkFields(present: { [k: string]: any }, desired: { [k: string]: any }) {
+    // Only the entries of `present` need to be iterated through as `desired` is guaranteed to be a
+    // strict subset of `present`.
+    Object.entries(present).forEach(([presentKey, presentValue]) => {
+      const desiredValue = desired[presentKey];
+      if (typeof desiredValue !== typeof presentValue) {
+        if (Array.isArray(presentValue) && presentValue.length === 0) {
+          // Empty arrays are assigned to empty proto array fields by ProtobufJS.
+          return;
+        }
+        if (!presentValue) {
+          throw ReferenceError(
+            `Unexpected empty value for "${presentKey}".` +
+            maybeGetDocsLinkPrefix(errorBehaviour, protoType)
+          );
+        }
+        if (typeof presentValue === "object" && Object.keys(presentValue).length === 0) {
+          // Empty objects are assigned to empty object fields by ProtobufJS.
+          return;
+        }
+        if (errorBehaviour === VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM) {
+          throw ReferenceError(
+            `Unexpected property "${presentKey}" for "${protoType
+              .getTypeUrl("")
+              .replace("/", "")}", please report this to the Dataform team at ` +
+            `${REPORT_ISSUE_URL}.`
+          );
+        }
+        throw ReferenceError(
+          `Unexpected property "${presentKey}", or property value type of ` +
+          `"${typeof presentValue}" is incorrect.` +
+          maybeGetDocsLinkPrefix(errorBehaviour, protoType)
+        );
+      }
+      if (typeof presentValue === "object") {
+        checkFields(presentValue, desiredValue);
+      }
+    });
+  }
 
+  checkFields(object, protoCastObject);
   return proto;
 }
-
-interface IValidationContext<Proto = any> {
-  errorBehaviour: VerifyProtoErrorBehaviour;
-  protoType: IProtoClass<any, Proto>;
-}
-
-function checkAndConvertFields<Proto = any>(
-  raw: { [k: string]: any },
-  probe: { [k: string]: any },
-  protoInstance: Proto,
-  context: IValidationContext<Proto>
-) {
-  const docLinkPrefix = maybeGetDocsLinkPrefix(context.errorBehaviour, context.protoType);
-  Object.entries(raw).forEach(([rawKey, rawValue]) => {
-    if (rawValue === undefined) {
-      return;
-    }
-    if (
-      rawValue === null &&
-      context.errorBehaviour === VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM
-    ) {
-      return;
-    }
-
-    const probeKey = rawKey;
-    const probeValue = probe[probeKey];
-
-    if (
-      Array.isArray(probeValue) &&
-      rawValue === null &&
-      context.errorBehaviour === VerifyProtoErrorBehaviour.SHOW_DOCS_LINK
-    ) {
-      throw ReferenceError(`Unexpected empty value for "${rawKey}".${docLinkPrefix}`);
-    }
-
-    // Heuristic 1: Object Struct Detection
-    if (isUnconvertedStruct(rawValue, probeValue)) {
-      (protoInstance as any)[probeKey] = unknownToValue(rawValue).structValue;
-      return;
-    }
-
-    // Heuristic 2: Array List/Struct Detection
-    if (isUnconvertedList(rawValue, probeValue)) {
-      (protoInstance as any)[probeKey] = {
-        listValue: {
-          values: rawValue.map((item: any) => unknownToValue(item))
-        }
-      };
-      return;
-    }
-
-    if (typeof probeValue !== typeof rawValue) {
-      // Ignore empty containers (arrays or objects) as they are valid fallback states.
-      if (isEmptyObjectOrArray(rawValue)) {
-        return;
-      }
-      if (!rawValue) {
-        throw ReferenceError(
-          `Unexpected empty value for "${rawKey}".${docLinkPrefix}`
-        );
-      }
-      if (context.errorBehaviour === VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM) {
-        throw ReferenceError(
-          `Unexpected property "${rawKey}" for "${context.protoType
-            .getTypeUrl("")
-            .replace("/", "")}", please report this to the Dataform team at ${REPORT_ISSUE_URL}.`
-        );
-      }
-      throw ReferenceError(
-        `Unexpected property "${rawKey}", or property value type of "${typeof rawValue}" is incorrect.${docLinkPrefix}`
-      );
-    }
-
-    if (typeof rawValue === "object" && rawValue !== null) {
-      checkAndConvertFields(rawValue, probeValue, (protoInstance as any)[probeKey], context);
-    }
-  });
-}
-
 
 function maybeGetDocsLinkPrefix<Proto>(
   errorBehaviour: VerifyProtoErrorBehaviour,
@@ -210,63 +193,4 @@ export function unknownToValue(raw: unknown): google.protobuf.IValue {
     };
   }
   throw new Error(`Unsupported value: ${raw}`);
-}
-
-/**
- * Heuristic to detect if a raw value should be converted to a google.protobuf.Struct.
- * We use this heuristic because our static-stripped Protobuf build removes $type and
- * fields metadata at runtime, making reflection impossible.
- */
-function isUnconvertedStruct(raw: any, probe: any): boolean {
-  return (
-    // 1. The user provided a plain object (not an array).
-    typeof raw === "object" &&
-    !Array.isArray(raw) &&
-    // 2. The probe (created via ProtobufJS) is an object.
-    probe &&
-    typeof probe === "object" &&
-    // 3. The probe has a 'fields' property which is an object. This is how
-    // ProtobufJS represents an empty/default google.protobuf.Struct.
-    probe.fields &&
-    typeof probe.fields === "object" &&
-    // 4. The 'fields' object is empty, indicating ProtobufJS couldn't map the raw data.
-    Object.keys(probe.fields).length === 0 &&
-    // 5. The user didn't already provide a pre-converted struct (with 'fields').
-    !raw.fields
-  );
-}
-
-/**
- * Heuristic to detect if a raw value should be converted to a google.protobuf.ListValue.
- * We use this heuristic because our static-stripped Protobuf build removes $type and
- * fields metadata at runtime, making reflection impossible.
- */
-function isUnconvertedList(raw: any, probe: any): boolean {
-  return (
-    // 1. The user provided a non-empty array.
-    Array.isArray(raw) &&
-    raw.length > 0 &&
-    // 2. The probe exists and is an array.
-    probe &&
-    Array.isArray(probe) &&
-    // 3. The probe is empty. This suggests that the field is defined as a
-    // google.protobuf.ListValue, and ProtobufJS fallback to an empty default
-    // array because it couldn't map the raw array directly.
-    probe.length === 0
-  );
-}
-
-/**
- * Checks if a value is an empty array or an empty object.
- * We ignore these during type mismatch checks to allow users to provide empty
- * containers as valid fallback values.
- */
-function isEmptyObjectOrArray(val: any): boolean {
-  if (Array.isArray(val)) {
-    return val.length === 0;
-  }
-  if (typeof val === "object" && val !== null) {
-    return Object.keys(val).length === 0;
-  }
-  return false;
 }
