@@ -1,6 +1,6 @@
 import { util } from "protobufjs";
 
-import { google, dataform } from "df/protos/ts";
+import { google } from "df/protos/ts";
 
 const CONFIGS_PROTO_DOCUMENTATION_URL =
   "https://dataform-co.github.io/dataform/docs/configs-reference";
@@ -33,10 +33,7 @@ const Struct = google.protobuf.Struct;
 // Save references to the original generated methods
 const originalVerify = Struct.verify;
 
-// ------------------------------------------------------------------------
 // Monkey Patching Methods
-// ------------------------------------------------------------------------
-
 Struct.verify = function (object: any) {
   if (object && typeof object === "object" && !("fields" in object)) {
     const fields: { [key: string]: any } = {};
@@ -44,7 +41,7 @@ Struct.verify = function (object: any) {
       fields[k] = unknownToValue(v);
     }
     Object.keys(object).forEach(key => delete object[key]);
-    object["fields"] = fields;
+    object.fields = fields;
   }
   return originalVerify.call(this, object);
 };
