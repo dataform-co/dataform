@@ -21,6 +21,9 @@ message Field {
     BYTES = 10;
     ANY = 11;
     GEOGRAPHY = 12;
+    BIGNUMERIC = 13;
+    JSON = 14;
+    INTERVAL = 15;
   }
 
   enum Flag {
