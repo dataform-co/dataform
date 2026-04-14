@@ -38,7 +38,7 @@ Struct.verify = function (object: any) {
   if (object && typeof object === "object" && !("fields" in object)) {
     const fields: { [key: string]: any } = {};
     for (const [k, v] of Object.entries(object)) {
-      fields[k] = unknownToValue(v);
+      fields[k] = unknownToValueShallow(v);
     }
     Object.keys(object).forEach(key => delete object[key]);
     object.fields = fields;
@@ -162,6 +162,28 @@ function fromBase64(value: string): Uint8Array {
   const buf = new Uint8Array(util.base64.length(value));
   util.base64.decode(value, buf, 0);
   return buf;
+}
+
+function unknownToValueShallow(raw: unknown): google.protobuf.IValue {
+  if (raw === null || typeof raw === "undefined") {
+    return { nullValue: 0 };
+  }
+  if (typeof raw === "string") {
+    return { stringValue: raw };
+  }
+  if (typeof raw === "number") {
+    return { numberValue: raw };
+  }
+  if (typeof raw === "boolean") {
+    return { boolValue: raw };
+  }
+  if (Array.isArray(raw)) {
+    return { listValue: { values: raw.map(unknownToValueShallow) } };
+  }
+  if (typeof raw === "object") {
+    return { structValue: raw as any };
+  }
+  throw new Error(`Unsupported value: ${raw}`);
 }
 
 export function unknownToValue(raw: unknown): google.protobuf.IValue {
