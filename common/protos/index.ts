@@ -46,24 +46,28 @@ Struct.verify = function (object: any) {
   return originalVerify.call(this, object);
 };
 function patchNamespace(ns: any) {
-  if (!ns || typeof ns !== "object") return;
+  if (!ns || typeof ns !== "object") {
+    return;
+  }
 
   if (typeof ns.verify === "function" && !ns.verify._isPatched) {
     const dummy = new ns();
     const validKeys = new Set(Object.keys(ns.toObject(dummy, { defaults: true })));
-    const originalVerify = ns.verify;
+    const baseVerify = ns.verify;
 
     ns.verify = function(message: any): string | null {
       if (message && typeof message === "object" && !Array.isArray(message)) {
         for (const key of Object.keys(message)) {
-          if (key.startsWith('$')) continue;
+          if (key.startsWith('$')) {
+            continue;
+          }
           if (message[key] === null || message[key] === undefined) {
             return `Unexpected empty value for "${key}"`;
           }
         }
       }
 
-      const err = originalVerify.call(this, message);
+      const err = baseVerify.call(this, message);
       if (err) return err;
 
       if (message && typeof message === "object" && !Array.isArray(message)) {
