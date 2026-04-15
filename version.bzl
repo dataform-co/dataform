@@ -1,1 +1,1 @@
-DF_VERSION = "3.0.51"
+DF_VERSION = "3.0.52"
