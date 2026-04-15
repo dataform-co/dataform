@@ -68,15 +68,11 @@ function patchNamespace(ns: any) {
       }
 
       const err = baseVerify.call(this, message);
-      if (err) {
-        return err;
-      }
+      if (err) return err;
 
       if (message && typeof message === "object" && !Array.isArray(message)) {
         for (const key of Object.keys(message)) {
-          if (key.startsWith('$')) {
-            continue;
-          }
+          if (key.startsWith('$')) continue;
           if (!validKeys.has(key)) {
             return `Unexpected property "${key}"`;
           }
