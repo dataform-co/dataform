@@ -45,47 +45,6 @@ Struct.verify = function (object: any) {
   }
   return originalVerify.call(this, object);
 };
-function patchNamespace(ns: any) {
-  if (!ns || typeof ns !== "object") return;
-
-  if (typeof ns.verify === "function" && !ns.verify._isPatched) {
-    const dummy = new ns();
-    const validKeys = new Set(Object.keys(ns.toObject(dummy, { defaults: true })));
-    const originalVerify = ns.verify;
-
-    ns.verify = function(message: any): string | null {
-      if (message && typeof message === "object" && !Array.isArray(message)) {
-        for (const key of Object.keys(message)) {
-          if (key.startsWith('$')) continue;
-          if (message[key] === null || message[key] === undefined) {
-            return `Unexpected empty value for "${key}"`;
-          }
-        }
-      }
-
-      const err = originalVerify.call(this, message);
-      if (err) return err;
-
-      if (message && typeof message === "object" && !Array.isArray(message)) {
-        for (const key of Object.keys(message)) {
-          if (key.startsWith('$')) continue;
-          if (!validKeys.has(key)) {
-            return `Unexpected property "${key}"`;
-          }
-        }
-      }
-      return null;
-    };
-    ns.verify._isPatched = true;
-  }
-
-  for (const key in ns) {
-    if (Object.prototype.hasOwnProperty.call(ns, key)) {
-      patchNamespace(ns[key]);
-    }
-  }
-}
-
 
 // This is a minimalist Typescript equivalent for the validation part of Profobuf's JsonFormat's
 // mergeMessage method:
@@ -104,35 +63,53 @@ export function verifyObjectMatchesProto<Proto>(
     throw ReferenceError(`Expected a top-level object, but found an array`);
   }
 
-  // Patch the proto type and its nested types lazily.
-  patchNamespace(protoType);
+  // Calling toObject on the object/JSON creates a version only contains the valid proto fields.
+  protoType.verify(object);
+  const proto = protoType.create(object);
+  const protoCastObject = protoType.toObject(proto);
 
-  const err = protoType.verify(object);
-  if (err) {
-    if (err.startsWith("Unexpected")) {
-      throw ReferenceError(err + maybeGetDocsLinkPrefix(errorBehaviour, protoType));
-    }
-
-    const parts = err.split(/[:.]/);
-    const fieldName = parts[0];
-    
-    if (errorBehaviour === VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM) {
-      throw ReferenceError(
-        `Unexpected property "${fieldName}" for "${protoType
-          .getTypeUrl("")
-          .replace("/", "")}", please report this to the Dataform team at ` +
-        `https://github.com/dataform-co/dataform/issues.`
-      );
-    }
-    
-    throw ReferenceError(
-      `Unexpected property "${fieldName}", or property value type of ` +
-      `"${typeof (object as any)[fieldName]}" is incorrect.` +
-      maybeGetDocsLinkPrefix(errorBehaviour, protoType)
-    );
+  function checkFields(present: { [k: string]: any }, desired: { [k: string]: any }) {
+    // Only the entries of `present` need to be iterated through as `desired` is guaranteed to be a
+    // strict subset of `present`.
+    Object.entries(present).forEach(([presentKey, presentValue]) => {
+      const desiredValue = desired[presentKey];
+      if (typeof desiredValue !== typeof presentValue) {
+        if (Array.isArray(presentValue) && presentValue.length === 0) {
+          // Empty arrays are assigned to empty proto array fields by ProtobufJS.
+          return;
+        }
+        if (!presentValue) {
+          throw ReferenceError(
+            `Unexpected empty value for "${presentKey}".` +
+            maybeGetDocsLinkPrefix(errorBehaviour, protoType)
+          );
+        }
+        if (typeof presentValue === "object" && Object.keys(presentValue).length === 0) {
+          // Empty objects are assigned to empty object fields by ProtobufJS.
+          return;
+        }
+        if (errorBehaviour === VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM) {
+          throw ReferenceError(
+            `Unexpected property "${presentKey}" for "${protoType
+              .getTypeUrl("")
+              .replace("/", "")}", please report this to the Dataform team at ` +
+            `${REPORT_ISSUE_URL}.`
+          );
+        }
+        throw ReferenceError(
+          `Unexpected property "${presentKey}", or property value type of ` +
+          `"${typeof presentValue}" is incorrect.` +
+          maybeGetDocsLinkPrefix(errorBehaviour, protoType)
+        );
+      }
+      if (typeof presentValue === "object") {
+        checkFields(presentValue, desiredValue);
+      }
+    });
   }
 
-  return protoType.create(object);
+  checkFields(object, protoCastObject);
+  return proto;
 }
 
 function maybeGetDocsLinkPrefix<Proto>(
