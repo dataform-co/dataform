@@ -1,6 +1,6 @@
-load("//tools:ts_library.bzl", "ts_library")
 load("//testing:index.bzl", "ts_test_suite")
 load("//tools:node_modules.bzl", "node_modules")
+load("//tools:ts_library.bzl", "ts_library")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -59,6 +59,7 @@ ts_test_suite(
     name = "tests",
     srcs = [
         "utils_test.ts",
+        "execution_sql_test.ts",
     ],
     data = [
         ":node_modules",
