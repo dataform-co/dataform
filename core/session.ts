@@ -22,7 +22,6 @@ import { targetAsReadableString, targetStringifier } from "df/core/targets";
 import * as utils from "df/core/utils";
 import { ResolvableMap, toResolvable } from "df/core/utils";
 import { version as dataformCoreVersion } from "df/core/version";
-import { separator } from "df/core/path";
 import { dataform, google } from "df/protos/ts";
 
 
@@ -98,8 +97,9 @@ export class Session {
     const callerDir = Path.dirName(callerFile);
     const resolvedPath = Path.normalize(Path.join(callerDir,filePath));
     const absolutePath = nodePath.join(this.rootDir, resolvedPath);
+    const root = this.rootDir.endsWith(Path.separator) ? this.rootDir : this.rootDir + Path.separator;
 
-    if (!absolutePath.startsWith(`${Path.normalize(this.rootDir) + separator}`)){
+    if (!absolutePath.startsWith(root)){
       throw new Error(`Cannot read "${filePath}": path resolves outside the project directory.`);
     }
 
