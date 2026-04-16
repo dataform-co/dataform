@@ -1705,7 +1705,83 @@ dataform.jitData("key", {test: () => {}});
         ).to.deep.equal(["Unsupported value: () => {}"]);
       });
     });
+    suite("markdown in description", () => {
+      test("markdown contents added to description in sqlx", () => {
+          const projectDir = tmpDirFixture.createNewTmpDir();
+          fs.writeFileSync(
+            path.join(projectDir, "workflow_settings.yaml"),
+            VALID_WORKFLOW_SETTINGS_YAML
+          );
+          fs.mkdirSync(path.join(projectDir, "definitions"));
+          fs.writeFileSync(
+            path.join(projectDir, "definitions/descriptions.md"),
+            `# This table contains data about`
+          );
+          fs.writeFileSync(
+            path.join(projectDir, "definitions/table.sqlx"),
+            `config {
+            type: "table",
+            description: getContents('./descriptions.md'),
+          }
+            SELECT 1 AS test`
+          );
 
+          const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+          expect(
+            result.compile.compiledGraph.tables[0].actionDescriptor.description
+          ).to.equal(`# This table contains data about`);
+
+      });
+
+       test("throws error for invalid missing markedown", () => {
+          const projectDir = tmpDirFixture.createNewTmpDir();
+          fs.writeFileSync(
+            path.join(projectDir, "workflow_settings.yaml"),
+            VALID_WORKFLOW_SETTINGS_YAML
+          );
+          fs.mkdirSync(path.join(projectDir, "definitions"));
+          fs.writeFileSync(
+            path.join(projectDir, "definitions/table.sqlx"),
+            `config {
+            type: "table",
+            description: getContents('./nonexistent.md'),
+          }
+            SELECT 1 AS test`
+          );
+
+          const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+          expect(
+            result.compile.compiledGraph.graphErrors.compilationErrors[0].message
+          ).to.include("nonexistent.md");
+
+      });
+
+      test("throws error for file outisde of rootDir", () => {
+          const projectDir = tmpDirFixture.createNewTmpDir();
+          fs.writeFileSync(
+            path.join(projectDir, "workflow_settings.yaml"),
+            VALID_WORKFLOW_SETTINGS_YAML
+          );
+          fs.mkdirSync(path.join(projectDir, "definitions"));
+          fs.writeFileSync(
+            path.join(projectDir, "definitions/table.sqlx"),
+            `config {
+            type: "table",
+            description: getContents('../../description.md'),
+          }
+            SELECT 1 AS test`
+          );
+
+          const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+          expect(
+            result.compile.compiledGraph.graphErrors.compilationErrors[0].message
+          ).to.include("outside the project directory");
+
+      });
+    });
     suite("invalid options", () => {
       [
         {
