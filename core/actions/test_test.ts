@@ -463,4 +463,88 @@ SELECT 1 AS a`);
         `Running tests on incremental datasets is not yet supported.`
       );
     });
+
+    test(`test with includeTestsInCompiledGraph set`, () => { 
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
+      const definitionsDir = path.join(projectDir, "definitions");
+      const actionsYamlPath = path.join(definitionsDir, "actions.yaml");
+      const actionSqlPath = path.join(definitionsDir, "action.sql");
+      const actionTestSqlxPath = path.join(definitionsDir, "action_test.sqlx");
+
+      fs.writeFileSync(workflowSettingsPath, `
+defaultProject: defaultProject
+defaultDataset: defaultDataset
+defaultLocation: US
+includeTestsInCompiledGraph: true
+`);
+      fs.mkdirSync(definitionsDir);
+      fs.writeFileSync(actionsYamlPath, `
+actions:
+- table:
+    filename: action.sql`
+      );
+      fs.writeFileSync(actionSqlPath, "SELECT 1");
+      fs.writeFileSync(actionTestSqlxPath, `
+config {
+  type: "test",
+  dataset: "action",
+  tags: ["tag1", "tag2"]
+}
+SELECT 1`);
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.tests)).deep.equals(
+        asPlainObject([
+          {
+            // Original test properties
+            name: "action_test",
+            testQuery: "SELECT 1",
+            expectedOutputQuery: "\n\nSELECT 1",
+            fileName: "definitions/action_test.sqlx",
+            tags: ["tag1", "tag2"],
+            target: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "action_test"
+            },
+            canonicalTarget: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "action_test"
+            },
+          }
+        ])
+      );
+      expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals(
+        asPlainObject([
+          {
+             "target": {
+              "database": "defaultProject",
+              "name": "action",
+              "schema": "defaultDataset"
+            },
+            "canonicalTarget": {
+              "database": "defaultProject",
+              "name": "action",
+              "schema": "defaultDataset"
+            },
+            "disabled": false,
+            "enumType": "TABLE",
+            "fileName": "definitions/action.sql",
+            "hermeticity": "NON_HERMETIC",
+            "query": "SELECT 1",
+            "type": "table",
+            dependencyTargets: [
+              {
+                database: "defaultProject",
+                schema: "defaultDataset",
+                name: "action_test"
+              }
+            ]
+          }
+      ]));
+    });
 });

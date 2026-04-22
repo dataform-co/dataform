@@ -64,6 +64,9 @@ message WorkflowSettings {
 
   // Optional. An external package that provides an extension.
   Extension extension = 15;
+
+  // Optional. If set to true, unit tests will be included in the compiled graph.
+  bool include_tests_in_compiled_graph = 16;
 }
 
 message DefaultIcebergConfig {

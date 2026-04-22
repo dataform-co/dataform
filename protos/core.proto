@@ -36,6 +36,8 @@ message ProjectConfig {
 
   string default_reservation = 21;
 
+  bool include_tests_in_compiled_graph = 22;
+
   reserved 3, 4, 6, 8, 10, 12, 13;
 }
 

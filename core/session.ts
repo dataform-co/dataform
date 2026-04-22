@@ -511,6 +511,10 @@ export class Session {
       jitData: this.jitContextData,
     });
 
+    if (this.projectConfig.includeTestsInCompiledGraph) {
+      this.addTestsToCompiledGraph(this.actions);
+    }
+
     this.fullyQualifyDependencies(
       [].concat(
         compiledGraph.tables,
@@ -737,6 +741,19 @@ export class Session {
         .join(" > ")} > ${targetAsReadableString(firstActionInCycle.target)}]`;
       this.compileError(new Error(message), firstActionInCycle.fileName, firstActionInCycle.target);
     });
+  }
+
+  private addTestsToCompiledGraph(actions: Action[]) {
+    actions
+      .filter(action => action instanceof Test)
+      .map(test => test as Test)
+      .forEach(test => {
+        this.indexedActions
+          .find(test.getTestTarget())
+          .filter(action => action instanceof Table || action instanceof View)
+          .map(action => action as Table | View)
+          .forEach(tableOrViewAction => tableOrViewAction.dependencies(utils.resolvableAsTarget(test.getTarget())));
+      });
   }
 
   private removeNonUniqueActionsFromCompiledGraph(compiledGraph: dataform.CompiledGraph) {
