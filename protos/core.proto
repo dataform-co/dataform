@@ -57,13 +57,7 @@ message CompileConfig {
   // Whether to emit compilation debug logs.
   bool verbose = 11;
 
-  // Supplementary key-value options for the compilation process,
-  // distinct from `project_config_override.vars` (which holds user vars).
-  // This can be used to pass environment-specific parameters or
-  // auxiliary configuration paths to the underlying execution engine.
-  map<string, string> additional_options = 12;
-
-  reserved 2, 4, 5, 7, 9;
+  reserved 2, 4, 5, 7, 9, 12;
 }
 
 message Target {
