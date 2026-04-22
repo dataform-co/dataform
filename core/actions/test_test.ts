@@ -50,6 +50,16 @@ SELECT 1`);
             expectedOutputQuery: "\n\nSELECT 1",
             fileName: "definitions/action_test.sqlx",
             tags: ["tag1", "tag2"],
+            target: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "action_test"
+            },
+            canonicalTarget: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "action_test"
+            },
           }
         ])
       );
@@ -142,6 +152,16 @@ SELECT 1 AS a, 2 AS b`);
             testQuery: "\n\nSELECT a,b,c FROM (\n  SELECT 1 AS a, 2 AS b, 3 AS c, 4 AS d\n)\n    ",
             expectedOutputQuery: "\n\n\nSELECT 1 AS a, 2 AS b, 3 AS c",
             fileName: "definitions/action1_test.sqlx",
+            target: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "action1_test"
+            },
+            canonicalTarget: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "action1_test"
+            },
           },
           {
             // Original test properties
@@ -149,6 +169,16 @@ SELECT 1 AS a, 2 AS b`);
             testQuery: "\n\nSELECT a,b FROM (\n  SELECT 1 AS a, 2 AS b, 3 AS c\n)\n    ",
             expectedOutputQuery: "\n\n\nSELECT 1 AS a, 2 AS b",
             fileName: "definitions/action2_test.sqlx",
+            target: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "action2_test"
+            },
+            canonicalTarget: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "action2_test"
+            },
           }
         ])
       );
