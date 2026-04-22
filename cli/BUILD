@@ -28,7 +28,6 @@ ts_library(
         "@npm//@types/yargs",
         "@npm//chokidar",
         "@npm//glob",
-        "@npm//parse-duration",
         "@npm//readline-sync",
         "@npm//untildify",
         "@npm//yargs",
