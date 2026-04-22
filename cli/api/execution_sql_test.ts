@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import * as fs from "fs-extra";
 
 import { ExecutionSql } from "df/cli/api/dbadapters/execution_sql";
 import { dataform } from "df/protos/ts";
@@ -10,7 +11,8 @@ suite("ExecutionSql with 'onSchemaChange'", () => {
       defaultDatabase: "project-id",
       defaultSchema: "dataset-id"
     },
-    "2.0.0"
+    "2.0.0",
+    () => "test_uuid"
   );
 
   const baseTable: dataform.ITable = {
@@ -45,16 +47,9 @@ suite("ExecutionSql with 'onSchemaChange'", () => {
       onSchemaChange: dataform.OnSchemaChange.FAIL
     };
     const tasks = executionSql.publishTasks(table, { fullRefresh: false }, tableMetadata);
-    const procedureSql = tasks.build()[0].statement;
-    expect(procedureSql).to.match(
-      /create or replace procedure `project-id.dataset-id.df_osc_.*`\(\)\s+options\(strict_mode=false\)/i
-    );
-    expect(procedureSql).to.include(
-      `"Schema mismatch defined by on_schema_change = 'FAIL'. Added columns: %T, removed columns: %T"`
-    );
-    expect(procedureSql).to.match(/call `project-id.dataset-id.df_osc_.*`\(\)/i);
-    expect(procedureSql).to.include("EXCEPTION WHEN ERROR THEN");
-    expect(procedureSql).to.match(/drop procedure if exists `project-id.dataset-id.df_osc_.*`/i);
+    const procedureSql = tasks.build().map(t => t.statement).join("\n;\n");
+    const expectedSql = fs.readFileSync("cli/api/goldens/on_schema_change_fail.sql", "utf8");
+    expect(procedureSql).to.equal(expectedSql.trim());
   });
 
   test("generates procedure for EXTEND strategy", () => {
@@ -63,23 +58,9 @@ suite("ExecutionSql with 'onSchemaChange'", () => {
       onSchemaChange: dataform.OnSchemaChange.EXTEND
     };
     const tasks = executionSql.publishTasks(table, { fullRefresh: false }, tableMetadata);
-    const procedureSql = tasks.build()[0].statement;
-
-    expect(procedureSql).to.match(
-      /create or replace procedure `project-id.dataset-id.df_osc_.*`\(\)\s+options\(strict_mode=false\)/i
-    );
-    expect(procedureSql).to.include(
-      `"Column removals are not allowed when on_schema_change = 'EXTEND'. Removed columns: %T"`
-    );
-    expect(procedureSql).to.include(
-      `SELECT STRING_AGG(FORMAT("ADD COLUMN IF NOT EXISTS %s %s", column_info.column_name, column_info.data_type), ", ")`
-    );
-    expect(procedureSql).to.include(
-      `"INSERT INTO \`project-id.dataset-id.incremental_on_schema_change\` (" || dataform_columns_list || ") " ||`
-    );
-    expect(procedureSql).to.include(
-      `"""select 1 as id, 'a' as field1, 'new' as field2"""`
-    );
+    const procedureSql = tasks.build().map(t => t.statement).join("\n;\n");
+    const expectedSql = fs.readFileSync("cli/api/goldens/on_schema_change_extend.sql", "utf8");
+    expect(procedureSql).to.equal(expectedSql.trim());
   });
 
   test("generates procedure for SYNCHRONIZE strategy", () => {
@@ -89,48 +70,9 @@ suite("ExecutionSql with 'onSchemaChange'", () => {
       uniqueKey: ["id"]
     };
     const tasks = executionSql.publishTasks(table, { fullRefresh: false }, tableMetadata);
-    const procedureSql = tasks.build()[0].statement;
-
-    expect(procedureSql).to.match(
-      /create or replace procedure `project-id.dataset-id.df_osc_.*`\(\)\s+options\(strict_mode=false\)/i
-    );
-    expect(procedureSql).to.include(
-      `SELECT STRING_AGG(FORMAT("DROP COLUMN IF EXISTS %s", col), ", ")`
-    );
-    expect(procedureSql).to.include(
-      `SELECT STRING_AGG(FORMAT("ADD COLUMN IF NOT EXISTS %s %s", column_info.column_name, column_info.data_type), ", ")`
-    );
-    expect(procedureSql).to.include(
-      `"MERGE \`project-id.dataset-id.incremental_on_schema_change\` T " ||`
-    );
-    expect(procedureSql).to.include(
-      `"ON T.\`id\` = S.\`id\` " ||`
-    );
-    expect(procedureSql).to.include(
-      `"""select 1 as id, 'a' as field1, 'new' as field2"""`
-    );
-  });
-
-  test("SYNCHRONIZE strategy prevents dropping unique keys", () => {
-    const tableWithExtraField = {
-      ...baseTable,
-      onSchemaChange: dataform.OnSchemaChange.SYNCHRONIZE,
-      uniqueKey: ["field_to_be_removed"]
-    };
-    const tasks = executionSql.publishTasks(
-      tableWithExtraField,
-      { fullRefresh: false },
-      {
-        ...tableMetadata,
-        fields: [
-          { name: "field_to_be_removed", primitive: dataform.Field.Primitive.STRING }
-        ]
-      }
-    );
-    const procedureSql = tasks.build()[0].statement;
-    expect(procedureSql).to.include(
-      `"Cannot drop columns %T as they are part of the unique key for table`
-    );
+    const procedureSql = tasks.build().map(t => t.statement).join("\n;\n");
+    const expectedSql = fs.readFileSync("cli/api/goldens/on_schema_change_synchronize.sql", "utf8");
+    expect(procedureSql).to.equal(expectedSql.trim());
   });
 
   test("generates simple merge for IGNORE strategy", () => {
@@ -140,8 +82,8 @@ suite("ExecutionSql with 'onSchemaChange'", () => {
       uniqueKey: ["id"]
     };
     const tasks = executionSql.publishTasks(table, { fullRefresh: false }, tableMetadata);
-    const mergeSql = tasks.build()[0].statement;
-    expect(mergeSql).to.include("merge `project-id.dataset-id.incremental_on_schema_change` T");
-    expect(mergeSql).to.not.include("create or replace procedure");
+    const procedureSql = tasks.build().map(t => t.statement).join("\n;\n");
+    const expectedSql = fs.readFileSync("cli/api/goldens/on_schema_change_ignore.sql", "utf8");
+    expect(procedureSql).to.equal(expectedSql.trim());
   });
 });

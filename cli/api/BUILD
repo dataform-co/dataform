@@ -67,7 +67,7 @@ ts_test_suite(
         "//test_credentials:bigquery.json",
         "@nodejs//:node",
         "@nodejs//:npm",
-    ],
+    ] + glob(["goldens/**"]),
     deps = [
         "//cli/api",
         "//core",
