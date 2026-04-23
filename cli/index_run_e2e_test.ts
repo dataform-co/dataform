@@ -553,6 +553,8 @@ select 1
         cliEntryPointPath,
         "test",
         projectDir,
+        "--credentials",
+        CREDENTIALS_PATH,
         "--json",
       ])
     );
