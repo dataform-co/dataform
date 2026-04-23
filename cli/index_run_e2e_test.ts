@@ -636,13 +636,13 @@ select 2
       ])
     );
 
-    expect(testResult.exitCode).equals(0);
+    expect(testResult.exitCode).equals(1);
 
     expect(JSON.parse(testResult.stdout)).deep.equals([{
       "name": "example_test",
       "successful": false,
       messages: [
-        "Expected:\n1\nReceived:\n2"
+        "For row 0 and column \"f0_\": expected \"2\", but saw \"1\"."
       ]
     }]);
   });
