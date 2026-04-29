@@ -2,3 +2,4 @@ defaultProject: dataform-open-source
 defaultLocation: us
 defaultDataset: dataform_stackoverflow_reporter_example
 defaultAssertionDataset: dataform_stackoverflow_reporter_example_assertions
+dataformCoreVersion: 3.0.50
