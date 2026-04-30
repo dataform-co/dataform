@@ -646,4 +646,167 @@ select 2
       ]
     }]);
   });
+
+  suite("onSchemaChange", ({ beforeEach }) => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    const uniqueDataset = `dataform_e2e_osc_${Math.random().toString(36).substring(7)}`;
+
+    beforeEach("setup test project", async () => {
+      const npmCacheDir = tmpDirFixture.createNewTmpDir();
+      const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
+      const packageJsonPath = path.join(projectDir, "package.json");
+
+      await getProcessResult(
+        execFile(nodePath, [cliEntryPointPath, "init", projectDir, DEFAULT_DATABASE, DEFAULT_LOCATION])
+      );
+
+      const workflowSettings = dataform.WorkflowSettings.create(
+        loadYaml(fs.readFileSync(workflowSettingsPath, "utf8"))
+      );
+      delete workflowSettings.dataformCoreVersion;
+      workflowSettings.defaultDataset = uniqueDataset;
+      fs.writeFileSync(workflowSettingsPath, dumpYaml(workflowSettings));
+
+      fs.writeFileSync(
+        packageJsonPath,
+        `{
+  "dependencies":{
+    "@dataform/core": "${version}"
+  }
+}`
+      );
+      await getProcessResult(
+        execFile(npmPath, [
+          "install",
+          "--prefix",
+          projectDir,
+          "--cache",
+          npmCacheDir,
+          corePackageTarPath
+        ])
+      );
+
+      fs.ensureFileSync(path.join(projectDir, "definitions", "setup_table.sqlx"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions", "setup_table.sqlx"),
+        `
+config { 
+  type: "operations"
+}
+CREATE OR REPLACE TABLE \`\${dataform.projectConfig.defaultDatabase}.\${dataform.projectConfig.defaultSchema}.example_incremental\` AS SELECT 1 AS id, 'old' AS field1
+`
+      );
+
+      fs.ensureFileSync(path.join(projectDir, "definitions", "example_incremental.sqlx"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions", "example_incremental.sqlx"),
+        `
+config { 
+  type: "incremental",
+  onSchemaChange: "EXTEND"
+}
+SELECT 1 as id, 'new' as field1, 'new2' as field2
+`
+      );
+
+      fs.ensureFileSync(path.join(projectDir, "definitions", "teardown_schema.sqlx"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions", "teardown_schema.sqlx"),
+        `
+config { 
+  type: "operations"
+}
+DROP SCHEMA IF EXISTS \`\${dataform.projectConfig.defaultDatabase}.\${dataform.projectConfig.defaultSchema}\` CASCADE
+`
+      );
+    });
+
+    test("generates dynamic SQL for EXTEND when table exists in BigQuery", async () => {
+      try {
+        // Run setup operation to create the table in BigQuery.
+        // Dataform will automatically create the uniqueDataset schema.
+        await getProcessResult(
+          execFile(nodePath, [
+            cliEntryPointPath,
+            "run",
+            projectDir,
+            "--credentials",
+            CREDENTIALS_PATH,
+            "--actions=setup_table"
+          ])
+        );
+
+        // Run the incremental table in dry-run mode. 
+        // Dataform will detect the table exists and generate the dynamic procedural SQL.
+        const runResult = await getProcessResult(
+          execFile(nodePath, [
+            cliEntryPointPath,
+            "run",
+            projectDir,
+            "--credentials",
+            CREDENTIALS_PATH,
+            "--dry-run",
+            "--json",
+            "--actions=example_incremental"
+          ])
+        );
+
+        expect(runResult.exitCode).equals(0);
+        const executionGraph = JSON.parse(runResult.stdout);
+        const statement = executionGraph.actions[0].tasks[0].statement;
+
+        const expectedRunResult = {
+          projectConfig: {
+            warehouse: "bigquery",
+            defaultSchema: uniqueDataset,
+            assertionSchema: "dataform_assertions",
+            defaultDatabase: DEFAULT_DATABASE,
+            defaultLocation: DEFAULT_LOCATION
+          },
+          runConfig: {
+            actions: ["example_incremental"],
+            fullRefresh: false
+          },
+          actions: [
+            {
+              fileName: "definitions/example_incremental.sqlx",
+              hermeticity: "NON_HERMETIC",
+              tableType: "incremental",
+              target: {
+                database: DEFAULT_DATABASE,
+                name: "example_incremental",
+                schema: uniqueDataset
+              },
+              tasks: [
+                {
+                  statement,
+                  type: "statement"
+                }
+              ],
+              type: "table"
+            }
+          ],
+          warehouseState: executionGraph.warehouseState
+        };
+        
+        expect(executionGraph).deep.equals(expectedRunResult);
+        expect(statement).to.include("CREATE OR REPLACE PROCEDURE");
+        expect(statement).to.include("Column removals are not allowed when on_schema_change = 'EXTEND'.");
+        expect(statement).to.include("ALTER TABLE");
+        expect(statement).to.include("ADD COLUMN IF NOT EXISTS");
+      } finally {
+        // Teardown the schema completely, regardless of test success or failure.
+        await getProcessResult(
+          execFile(nodePath, [
+            cliEntryPointPath,
+            "run",
+            projectDir,
+            "--credentials",
+            CREDENTIALS_PATH,
+            "--actions=teardown_schema"
+          ])
+        );
+      }
+    });
+  });
 });
