@@ -5,8 +5,8 @@ package dataform;
 import "google/protobuf/empty.proto";
 import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
-import "protos/core.proto";
-import "protos/db_adapter.proto";
+import "core.proto";
+import "db_adapter.proto";
 
 // Database adapter, available in JiT compilation context.
 service DbAdapter {

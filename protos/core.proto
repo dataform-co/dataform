@@ -2,8 +2,8 @@ syntax = "proto3";
 
 package dataform;
 
-import "protos/configs.proto";
-import "protos/extension.proto";
+import "configs.proto";
+import "extension.proto";
 import "google/protobuf/struct.proto";
 
 option java_package = "com.dataform.protos";
