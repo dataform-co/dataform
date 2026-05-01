@@ -79,10 +79,10 @@
   resolved "https://registry.npmjs.org/@discoveryjs/json-ext/-/json-ext-0.5.7.tgz#1d572bfbbe14b7704e0ba0f39b74815b84870d70"
   integrity sha512-dBVuXR082gk3jsFp7Rd/JI4kytwGHecnCoTtXFb7DB6CNHp4rg5k1bhg0nWdLGLnOV71lmDzGQaLMy8iPLY0pw==
 
-"@google-cloud/bigquery@~8.2.0":
-  version "8.2.0"
-  resolved "https://registry.yarnpkg.com/@google-cloud/bigquery/-/bigquery-8.2.0.tgz#ee73db20ff38c1d3cce4222f5716012fa1dd281c"
-  integrity sha512-hxKxtmCEd9z61OxagcTosZksTRX0CqNGdnF2uNXH7c+0uWHC/o9QseAxrAY9qImoo9jsaw4rzDI9dLc/a5Jgww==
+"@google-cloud/bigquery@~8.3.0":
+  version "8.3.0"
+  resolved "https://registry.yarnpkg.com/@google-cloud/bigquery/-/bigquery-8.3.0.tgz#95edad5af7764b6c0020a96695d4a016d616465c"
+  integrity sha512-aAOWE/tGQkcnbsmglMW4fz7wpT0PnD3kTcBp7C8KPhLgYKjtVn/i0Ya/mHzfdRQdeMGQO4ApzQBiW24ZBa49Xw==
   dependencies:
     "@google-cloud/common" "^6.0.0"
     "@google-cloud/paginator" "^6.0.0"
@@ -4096,6 +4096,7 @@ string_decoder@~1.1.1:
     safe-buffer "~5.1.0"
 
 "strip-ansi-cjs@npm:strip-ansi@^6.0.1", strip-ansi@^6.0.1:
+  name strip-ansi-cjs
   version "6.0.1"
   resolved "https://registry.yarnpkg.com/strip-ansi/-/strip-ansi-6.0.1.tgz#9e26c63d30f53443e9489495b2105d37b67a85d9"
   integrity sha512-Y38VPSHcqkFrCpFnQ9vuSXmquuv5oXOKpGeT6aGrr3o3Gc9AlVa6JBfUSOCnbxGGZF+/0ooI7KrPuUSztUdU5A==
