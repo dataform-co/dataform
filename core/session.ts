@@ -747,12 +747,23 @@ export class Session {
     actions
       .filter(action => action instanceof Test)
       .map(test => test as Test)
-      .forEach(test => {
-        this.indexedActions
-          .find(test.getTestTarget())
-          .filter(action => action instanceof Table || action instanceof View)
+      .forEach(currentTest => {
+        const testTargets = this.indexedActions.find(currentTest.getTestTarget());
+        testTargets
+          .forEach(action => {
+            if (!(action instanceof Table || action instanceof View)) {
+              this.compileError(
+                new Error(
+                  `Tests are only supported for Tables and Views. Action "${targetAsReadableString(action.getTarget())}" is not a table or view".`
+                ),
+                action.getFileName(),
+                action.getTarget()
+              );
+            }
+          });
+        testTargets
           .map(action => action as Table | View)
-          .forEach(tableOrViewAction => tableOrViewAction.dependencies(utils.resolvableAsTarget(test.getTarget())));
+          .forEach(tableOrViewAction => tableOrViewAction.dependencies(utils.resolvableAsTarget(currentTest.getTarget())));
       });
   }
 
