@@ -171,6 +171,9 @@ export function workflowSettingsAsProjectConfig(
   if (workflowSettings.defaultReservation) {
     projectConfig.defaultReservation = workflowSettings.defaultReservation;
   }
+  if (workflowSettings.includeTestsInCompiledGraph) {
+    projectConfig.includeTestsInCompiledGraph = workflowSettings.includeTestsInCompiledGraph;
+  }
 
   projectConfig.warehouse = "bigquery";
   return projectConfig;

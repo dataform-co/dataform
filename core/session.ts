@@ -53,7 +53,9 @@ export class Session {
 
   public actions: Action[];
   public indexedActions: ResolvableMap<Action>;
-  public tests: { [name: string]: Test };
+
+  // Tests need to be resolved after config is applied, which is why we keep them separate from other actions.
+  public tests: Action[];
 
   // This map holds information about what assertions are dependent
   // upon a certain action in our actions list. We use this later to resolve dependencies.
@@ -83,7 +85,7 @@ export class Session {
       dataform.ProjectConfig.create(originalProjectConfig || projectConfig || DEFAULT_CONFIG)
     );
     this.actions = [];
-    this.tests = {};
+    this.tests = [];
     this.graphErrors = { compilationErrors: [] };
     this.jitContextData = new google.protobuf.Struct();
   }
@@ -421,7 +423,7 @@ export class Session {
     newTest.session = this;
     newTest.setFilename(utils.getCallerFile(this.rootDir));
     // Add it to global index.
-    this.tests[name] = newTest;
+    this.tests.push(newTest)
     return newTest;
   }
 
@@ -466,12 +468,12 @@ export class Session {
   }
 
   public compile(): dataform.CompiledGraph {
+    this.actions.push(...this.tests);
     this.indexedActions = new ResolvableMap(
       this.actions.map(action => ({ actionTarget: action.getTarget(), value: action }))
     );
 
     // defaultLocation is no longer a required parameter to support location auto-selection.
-
     if (
       !!this.projectConfig.vars &&
       !Object.values(this.projectConfig.vars).every(value => typeof value === "string")
@@ -496,7 +498,9 @@ export class Session {
       declarations: this.compileGraphChunk(
         this.actions.filter(action => action instanceof Declaration)
       ),
-      tests: this.compileGraphChunk(Object.values(this.tests)),
+      tests: this.compileGraphChunk(
+        this.actions.filter(action => action instanceof Test)
+      ),
       notebooks: this.compileGraphChunk(this.actions.filter(action => action instanceof Notebook)),
       dataPreparations: this.compileGraphChunk(
         this.actions.filter(action => action instanceof DataPreparation)
@@ -507,13 +511,18 @@ export class Session {
       jitData: this.jitContextData,
     });
 
+    if (this.projectConfig.includeTestsInCompiledGraph) {
+      this.addTestsToCompiledGraph(this.actions);
+    }
+
     this.fullyQualifyDependencies(
       [].concat(
         compiledGraph.tables,
         compiledGraph.assertions,
         compiledGraph.operations,
         compiledGraph.notebooks,
-        compiledGraph.dataPreparations
+        compiledGraph.dataPreparations,
+        compiledGraph.tests
       )
     );
 
@@ -523,7 +532,8 @@ export class Session {
         compiledGraph.assertions,
         compiledGraph.operations,
         compiledGraph.notebooks,
-        compiledGraph.dataPreparations
+        compiledGraph.dataPreparations,
+        compiledGraph.tests
       ),
       [].concat(compiledGraph.declarations.map(declaration => declaration.target))
     );
@@ -538,7 +548,8 @@ export class Session {
         compiledGraph.assertions,
         compiledGraph.operations,
         compiledGraph.notebooks,
-        compiledGraph.dataPreparations
+        compiledGraph.dataPreparations,
+        compiledGraph.tests
       )
     );
     verifyObjectMatchesProto(
@@ -577,7 +588,7 @@ export class Session {
     return !!this.projectConfig.tablePrefix ? `${this.projectConfig.tablePrefix}_` : "";
   }
 
-  private compileGraphChunk<T>(actions: Array<Action | Test>): T[] {
+  private compileGraphChunk<T>(actions: Action[]): T[] {
     const compiledChunks: T[] = [];
 
     actions.forEach(action => {
@@ -730,6 +741,19 @@ export class Session {
         .join(" > ")} > ${targetAsReadableString(firstActionInCycle.target)}]`;
       this.compileError(new Error(message), firstActionInCycle.fileName, firstActionInCycle.target);
     });
+  }
+
+  private addTestsToCompiledGraph(actions: Action[]) {
+    actions
+      .filter(action => action instanceof Test)
+      .map(test => test as Test)
+      .forEach(test => {
+        this.indexedActions
+          .find(test.getTestTarget())
+          .filter(action => action instanceof Table || action instanceof View)
+          .map(action => action as Table | View)
+          .forEach(tableOrViewAction => tableOrViewAction.dependencies(utils.resolvableAsTarget(test.getTarget())));
+      });
   }
 
   private removeNonUniqueActionsFromCompiledGraph(compiledGraph: dataform.CompiledGraph) {
