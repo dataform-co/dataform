@@ -739,7 +739,7 @@ acorn@^7.4.0:
   resolved "https://registry.yarnpkg.com/acorn/-/acorn-7.4.1.tgz#feaed255973d2e77555b83dbc08851a6c63520fa"
   integrity "sha1-/q7SVZc9LndVW4PbwIhRpsY1IPo= sha512-nQyp0o1/mNdbTO1PO6kHkwSrmgZ0MT/jCCpNiwbUjGoRN4dlBhqJtoQuCnEOKzgTVwg0ZWiCoQy6SxMebQVh8A=="
 
-acorn@^8.11.0, acorn@^8.14.1, acorn@^8.15.0, acorn@^8.7.1, acorn@^8.8.2:
+acorn@^8.11.0, acorn@^8.15.0, acorn@^8.7.1, acorn@^8.8.2:
   version "8.15.0"
   resolved "https://registry.yarnpkg.com/acorn/-/acorn-8.15.0.tgz#a360898bc415edaac46c8241f6383975b930b816"
   integrity sha512-NZyJarBfL7nWwIq+FDL6Zp/yHEhePMNnnJ0y3qfieCrmNvYct8uvtiV41UvlSe6apAfk0fY1FbWx+NwfmpvtTg==
@@ -4095,7 +4095,7 @@ string_decoder@~1.1.1:
   dependencies:
     safe-buffer "~5.1.0"
 
-"strip-ansi-cjs@npm:strip-ansi@^6.0.1", strip-ansi@^6.0.1:
+"strip-ansi-cjs@npm:strip-ansi@^6.0.1":
   version "6.0.1"
   resolved "https://registry.yarnpkg.com/strip-ansi/-/strip-ansi-6.0.1.tgz#9e26c63d30f53443e9489495b2105d37b67a85d9"
   integrity sha512-Y38VPSHcqkFrCpFnQ9vuSXmquuv5oXOKpGeT6aGrr3o3Gc9AlVa6JBfUSOCnbxGGZF+/0ooI7KrPuUSztUdU5A==
@@ -4115,6 +4115,13 @@ strip-ansi@^6.0.0:
   integrity "sha1-CxVx3XZpzNTz4G4U7x7tJiJa5TI= sha512-AuvKTrTfQNYNIctbR1K/YGTR1756GycPsg7b9bdV9Duqur4gv6aKqHXah67Z8ImS7WEz5QVcOtlfW2rZEugt6w=="
   dependencies:
     ansi-regex "^5.0.0"
+
+strip-ansi@^6.0.1:
+  version "6.0.1"
+  resolved "https://registry.yarnpkg.com/strip-ansi/-/strip-ansi-6.0.1.tgz#9e26c63d30f53443e9489495b2105d37b67a85d9"
+  integrity sha512-Y38VPSHcqkFrCpFnQ9vuSXmquuv5oXOKpGeT6aGrr3o3Gc9AlVa6JBfUSOCnbxGGZF+/0ooI7KrPuUSztUdU5A==
+  dependencies:
+    ansi-regex "^5.0.1"
 
 strip-ansi@^7.0.1:
   version "7.1.0"
@@ -4590,12 +4597,12 @@ verror@1.10.0:
     core-util-is "1.0.2"
     extsprintf "^1.2.0"
 
-vm2@3.10.2:
-  version "3.10.2"
-  resolved "https://registry.yarnpkg.com/vm2/-/vm2-3.10.2.tgz#b41dbe9c928b03e8a83c9b0a973f60dc7c80c5be"
-  integrity sha512-qTnbvpada8qlEEyIPFwhTcF5Ns+k83fVlOSE8XvAtHkhcQ+okMnbvryVQBfP/ExRT1CRsQpYusdATR+FBJfrnQ==
+vm2@3.10.5:
+  version "3.10.5"
+  resolved "https://registry.yarnpkg.com/vm2/-/vm2-3.10.5.tgz#cc79e75bc344805bc9796a28dc91baa388dc944f"
+  integrity sha512-3P/2QDccVFBcujfCOeP8vVNuGfuBJHEuvGR8eMmI10p/iwLL2UwF5PDaNaoOS2pRGQEDmJRyeEcc8kmm2Z59RA==
   dependencies:
-    acorn "^8.14.1"
+    acorn "^8.15.0"
     acorn-walk "^8.3.4"
 
 vsce@^1.79.5:
