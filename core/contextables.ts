@@ -94,6 +94,8 @@ export type JitContext<T> = T & {
   data?: { [k: string]: any },
   /** Original JiT compilation request. */
   request: dataform.IJitCompilationRequest,
+  /** Current execution information for introspection. */
+  executionData: dataform.IRunningExecutionData,
 };
 
 /** 

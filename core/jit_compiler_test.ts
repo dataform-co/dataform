@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import Long from "long";
 
 import { jitCompile } from "df/core/jit_compiler";
 import { dataform } from "df/protos/ts";
@@ -121,7 +122,7 @@ suite("jit_compiler", () => {
 
   suite("jitCompileIncrementalTable", () => {
     test("compiles incremental table", async () => {
-       const request = dataform.JitCompilationRequest.create({
+      const request = dataform.JitCompilationRequest.create({
         jitCode: `async (ctx) => {
           if (ctx.incremental()) {
             return { query: "SELECT INC" };
@@ -129,12 +130,46 @@ suite("jit_compiler", () => {
           return { query: "SELECT REG" };
         }`,
         target,
-         jitData: {},
-         compilationTargetType: dataform.JitCompilationTargetType.JIT_COMPILATION_TARGET_TYPE_INCREMENTAL_TABLE,
+        jitData: {},
+        compilationTargetType: dataform.JitCompilationTargetType.JIT_COMPILATION_TARGET_TYPE_INCREMENTAL_TABLE,
       });
       const result = await jitCompile(request, rpcCallback);
       expect(result.incrementalTable.incremental?.query).to.equal("SELECT INC");
       expect(result.incrementalTable.regular?.query).to.equal("SELECT REG");
+    });
+  });
+
+  suite("jitCompileContext", () => {
+    test("can reference self and other tables", async () => {
+      const request = dataform.JitCompilationRequest.create({
+        jitCode: `async (jctx) => \`$\{jctx.self()\}\n$\{jctx.ref('other')\}\``,
+        target,
+        jitData: {},
+        dependencies: [dataform.Target.create({
+          database: "db",
+          schema: "schema",
+          name: "other",
+        })],
+        compilationTargetType: dataform.JitCompilationTargetType.JIT_COMPILATION_TARGET_TYPE_TABLE,
+
+      });
+      const result = await jitCompile(request, rpcCallback);
+      expect(result.table.query).to.equal("`db.schema.name`\n`db.schema.other`");
+    });
+
+  test("can reference execution info data", async () => {
+      const request = dataform.JitCompilationRequest.create({
+        jitCode: `async (jctx) => \`$\{jctx.executionData.executionStartTime.seconds\}\n$\{jctx.executionData.executionId\}\``,
+        target,
+        jitData: {},
+        compilationTargetType: dataform.JitCompilationTargetType.JIT_COMPILATION_TARGET_TYPE_TABLE,
+        executionData: {
+          executionId: "test-id",
+          executionStartTime: {seconds: Long.fromNumber(1774974514), nanos: 481},
+        }
+      });
+      const result = await jitCompile(request, rpcCallback);
+      expect(result.table.query).to.equal("1774974514\ntest-id");
     });
   });
 });

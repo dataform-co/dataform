@@ -2,8 +2,8 @@ syntax = "proto3";
 
 package dataform;
 
-import "protos/configs.proto";
-import "protos/extension.proto";
+import "configs.proto";
+import "extension.proto";
 import "google/protobuf/struct.proto";
 
 option java_package = "com.dataform.protos";
@@ -36,6 +36,8 @@ message ProjectConfig {
 
   string default_reservation = 21;
 
+  bool include_tests_in_compiled_graph = 22;
+
   reserved 3, 4, 6, 8, 10, 12, 13;
 }
 
@@ -57,7 +59,7 @@ message CompileConfig {
   // Whether to emit compilation debug logs.
   bool verbose = 11;
 
-  reserved 2, 4, 5, 7, 9;
+  reserved 2, 4, 5, 7, 9, 12;
 }
 
 message Target {
@@ -278,6 +280,8 @@ message Declaration {
 
   // Generated.
   string file_name = 4;
+
+  repeated string tags = 6;
 }
 
 message Test {

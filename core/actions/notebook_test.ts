@@ -59,15 +59,32 @@ actions:
     );
   });
 
-  test(`notebook cell output is removed`, () => {
+  test(`notebook cell output and metadata are removed`, () => {
     const projectDir = createSimpleNotebookProject();
+
     fs.writeFileSync(
       path.join(projectDir, "definitions/notebook.ipynb"),
       JSON.stringify({
+        metadata: { kernelspec: { name: "python3" }, language_info: { name: "python" } },
         cells: [
-          { cell_type: "markdown", source: ["# Some title"], outputs: ["something"] },
-          { cell_type: "code", source: ["print('hi')"], outputs: ["hi"] },
-          { cell_type: "raw", source: ["print('hi')"] }
+          {
+            cell_type: "markdown",
+            source: ["# Some title"],
+            outputs: ["something"],
+            metadata: { id: "cell-1" }
+          },
+          {
+            cell_type: "code",
+            source: ["print('hi')"],
+            outputs: ["hi"],
+            execution_count: 5,
+            metadata: { scrolled: true }
+          },
+          {
+            cell_type: "raw",
+            source: ["print('hi')"],
+            metadata: {}
+          }
         ]
       })
     );
@@ -90,10 +107,26 @@ actions:
           },
           fileName: "definitions/notebook.ipynb",
           notebookContents: JSON.stringify({
+            metadata: {},
             cells: [
-              { cell_type: "markdown", source: ["# Some title"], outputs: [] },
-              { cell_type: "code", source: ["print('hi')"], outputs: [] },
-              { cell_type: "raw", source: ["print('hi')"] }
+              {
+                cell_type: "markdown",
+                source: ["# Some title"],
+                outputs: [],
+                metadata: {}
+              },
+              {
+                cell_type: "code",
+                source: ["print('hi')"],
+                outputs: [],
+                execution_count: null,
+                metadata: {}
+              },
+              {
+                cell_type: "raw",
+                source: ["print('hi')"],
+                metadata: {}
+              }
             ]
           })
         }

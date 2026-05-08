@@ -2,8 +2,8 @@ syntax = "proto3";
 
 package dataform;
 
-import "protos/core.proto";
-import "protos/db_adapter.proto";
+import "core.proto";
+import "db_adapter.proto";
 import "google/protobuf/struct.proto";
 
 option go_package = "github.com/dataform-co/dataform/protos/dataform";

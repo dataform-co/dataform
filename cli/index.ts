@@ -10,6 +10,7 @@ import { CREDENTIALS_FILENAME } from "df/cli/api/commands/credentials";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 import { prettyJsonStringify } from "df/cli/api/utils";
 import {
+  compiledGraphOutputType,
   print,
   printCompiledGraph,
   printCompiledGraphErrors,
@@ -145,10 +146,25 @@ const credentialsOption: INamedOption<yargs.Options> = {
 const jsonOutputOption: INamedOption<yargs.Options> = {
   name: "json",
   option: {
-    describe: "Outputs a JSON representation of the compiled project.",
+    describe: "Outputs a JSON representation of the compiled project or test results.",
     type: "boolean",
     default: false
   }
+};
+
+const dotOutputOption: INamedOption<yargs.Options> = {
+  name: "dot",
+  option: {
+    describe: "Outputs a dot representation of the compiled project.",
+    type: "boolean",
+    default: false,
+  },
+    check: (argv: yargs.Arguments<any>) => {
+      if (argv.json && argv.dot) {
+        throw new Error("Arguments --json and --dot are mutually exclusive.");
+      }
+    }
+  
 };
 
 const timeoutOption: INamedOption<yargs.Options> = {
@@ -374,6 +390,7 @@ export function runCli() {
             }
           },
           jsonOutputOption,
+          dotOutputOption,
           timeoutOption,
           quietCompileOption,
           {
@@ -395,7 +412,15 @@ export function runCli() {
           const projectDir = argv[projectDirMustExistOption.name];
 
           async function compileAndPrint() {
-            if (!argv[jsonOutputOption.name]) {
+
+            let outputType = compiledGraphOutputType.Summary;
+            if (argv[jsonOutputOption.name]) {
+              outputType = compiledGraphOutputType.Json;
+            } else if (argv[dotOutputOption.name]) {
+              outputType = compiledGraphOutputType.Dot;
+            } 
+            
+            if (outputType === compiledGraphOutputType.Summary) {
               print("Compiling...\n");
             }
             const compiledGraph = await compile({
@@ -404,7 +429,7 @@ export function runCli() {
               timeoutMillis: argv[timeoutOption.name] || undefined,
               verbose: argv[verboseOptionName] || false
             });
-            printCompiledGraph(compiledGraph, argv[jsonOutputOption.name], argv[quietCompileOption.name]);
+            printCompiledGraph(compiledGraph, outputType, argv[quietCompileOption.name]);
             if (compiledGraphHasErrors(compiledGraph)) {
               print("");
               printCompiledGraphErrors(compiledGraph.graphErrors, argv[quietCompileOption.name]);
@@ -478,9 +503,11 @@ export function runCli() {
         format: `test [${projectDirMustExistOption.name}]`,
         description: "Run the dataform project's unit tests.",
         positionalOptions: [projectDirMustExistOption],
-        options: [credentialsOption, timeoutOption, ...ProjectConfigOptions.allYargsOptions],
+        options: [credentialsOption, timeoutOption, jsonOutputOption, ...ProjectConfigOptions.allYargsOptions],
         processFn: async argv => {
-          print("Compiling...\n");
+          if (!argv[jsonOutputOption.name]) {
+            print("Compiling...\n");
+          }          
           const compiledGraph = await compile({
             projectDir: argv[projectDirMustExistOption.name],
             projectConfigOverride: ProjectConfigOptions.constructProjectConfigOverride(argv),
@@ -490,7 +517,9 @@ export function runCli() {
             printCompiledGraphErrors(compiledGraph.graphErrors, argv[quietCompileOption.name]);
             return 1;
           }
-          printSuccess("Compiled successfully.\n");
+          if (!argv[jsonOutputOption.name]) {
+            printSuccess("Compiled successfully.\n");
+          }   
           const readCredentials = credentials.read(
             getCredentialsPath(argv[projectDirOption.name], argv[credentialsOption.name])
           );
@@ -500,10 +529,17 @@ export function runCli() {
             return 1;
           }
 
-          print(`Running ${compiledGraph.tests.length} unit tests...\n`);
+          if (!argv[jsonOutputOption.name]) {
+            print(`Running ${compiledGraph.tests.length} unit tests...\n`);
+          }
           const dbadapter = new BigQueryDbAdapter(readCredentials);
           const testResults = await test(dbadapter, compiledGraph.tests);
-          testResults.forEach(testResult => printTestResult(testResult));
+          if (!argv[jsonOutputOption.name]) {
+            testResults.forEach(testResult => printTestResult(testResult));
+          } else {
+            // Print all results as JSON if the option is set.
+            print(prettyJsonStringify(testResults));
+          }
           return testResults.every(testResult => testResult.successful) ? 0 : 1;
         }
       },

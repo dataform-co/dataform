@@ -9,7 +9,7 @@ option java_multiple_files = true;
 option go_package = "github.com/dataform-co/dataform/protos/dataform";
 
 import "google/protobuf/struct.proto";
-import "protos/extension.proto";
+import "extension.proto";
 
 // Workflow Settings defines the contents of the `workflow_settings.yaml`
 // configuration file.
@@ -64,6 +64,9 @@ message WorkflowSettings {
 
   // Optional. An external package that provides an extension.
   Extension extension = 15;
+
+  // Optional. If set to true, unit tests will be included in the compiled graph.
+  bool include_tests_in_compiled_graph = 16;
 }
 
 message DefaultIcebergConfig {
@@ -597,6 +600,9 @@ message ActionConfig {
 
     // Path to the source file that the contents of the action is loaded from.
     string filename = 6;
+
+    // A list of user-defined tags with which the action should be labeled.
+    repeated string tags = 7;
   }
 
   message NotebookConfig {
