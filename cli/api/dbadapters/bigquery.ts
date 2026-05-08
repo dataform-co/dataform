@@ -483,6 +483,12 @@ function convertFieldType(type: string) {
       return dataform.Field.Primitive.BYTES;
     case "GEOGRAPHY":
       return dataform.Field.Primitive.GEOGRAPHY;
+    case "BIGNUMERIC":
+      return dataform.Field.Primitive.BIGNUMERIC;
+    case "JSON":
+      return dataform.Field.Primitive.JSON;
+    case "INTERVAL":
+      return dataform.Field.Primitive.INTERVAL;
     default:
       return dataform.Field.Primitive.UNKNOWN;
   }

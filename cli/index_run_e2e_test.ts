@@ -489,4 +489,161 @@ SELECT 1 as id
       });
     });
   });
+
+  test("golden with successful unit test", async () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    const npmCacheDir = tmpDirFixture.createNewTmpDir();
+    const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
+    const packageJsonPath = path.join(projectDir, "package.json");
+
+    // Initialize a project using the CLI, don't install packages.
+    await getProcessResult(
+      execFile(nodePath, [cliEntryPointPath, "init", projectDir, DEFAULT_DATABASE, DEFAULT_LOCATION])
+    );
+
+    // Install packages manually to get around bazel read-only sandbox issues.
+    const workflowSettings = dataform.WorkflowSettings.create(
+      loadYaml(fs.readFileSync(workflowSettingsPath, "utf8"))
+    );
+    delete workflowSettings.dataformCoreVersion;
+    fs.writeFileSync(workflowSettingsPath, dumpYaml(workflowSettings));
+    fs.writeFileSync(
+      packageJsonPath,
+      `{
+  "dependencies":{
+    "@dataform/core": "${version}"
+  }
+}`
+    );
+    await getProcessResult(
+      execFile(npmPath, [
+        "install",
+        "--prefix",
+        projectDir,
+        "--cache",
+        npmCacheDir,
+        corePackageTarPath
+      ])
+    );
+
+    // Write a simple file to the project.
+    const filePath = path.join(projectDir, "definitions", "example.sqlx");
+    fs.ensureFileSync(filePath);
+    fs.writeFileSync(
+      filePath,
+      `
+config { type: "table" }
+select 1
+`
+    );
+    // Write a simple test to the project.
+    const unitTestPath = path.join(projectDir, "definitions", "example_test.sqlx");
+    fs.ensureFileSync(unitTestPath);
+    fs.writeFileSync(
+      unitTestPath,
+      `
+config { type: "test", dataset: "example" }
+select 1
+`
+    );
+
+    // Run tests using the CLI.
+    const testResult = await getProcessResult(
+      execFile(nodePath, [
+        cliEntryPointPath,
+        "test",
+        projectDir,
+        "--credentials",
+        CREDENTIALS_PATH,
+        "--json",
+      ])
+    );
+
+    expect(testResult.exitCode).equals(0);
+
+    expect(JSON.parse(testResult.stdout)).deep.equals([    {
+      "name": "example_test",
+      "successful": true,
+    }]);
+  });
+
+  test("golden with failed unit test", async () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    const npmCacheDir = tmpDirFixture.createNewTmpDir();
+    const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
+    const packageJsonPath = path.join(projectDir, "package.json");
+
+    // Initialize a project using the CLI, don't install packages.
+    await getProcessResult(
+      execFile(nodePath, [cliEntryPointPath, "init", projectDir, DEFAULT_DATABASE, DEFAULT_LOCATION])
+    );
+
+    // Install packages manually to get around bazel read-only sandbox issues.
+    const workflowSettings = dataform.WorkflowSettings.create(
+      loadYaml(fs.readFileSync(workflowSettingsPath, "utf8"))
+    );
+    delete workflowSettings.dataformCoreVersion;
+    fs.writeFileSync(workflowSettingsPath, dumpYaml(workflowSettings));
+    fs.writeFileSync(
+      packageJsonPath,
+      `{
+  "dependencies":{
+    "@dataform/core": "${version}"
+  }
+}`
+    );
+    await getProcessResult(
+      execFile(npmPath, [
+        "install",
+        "--prefix",
+        projectDir,
+        "--cache",
+        npmCacheDir,
+        corePackageTarPath
+      ])
+    );
+
+    // Write a simple file to the project.
+    const filePath = path.join(projectDir, "definitions", "example.sqlx");
+    fs.ensureFileSync(filePath);
+    fs.writeFileSync(
+      filePath,
+      `
+config { type: "table" }
+select 1
+`
+    );
+    // Write a simple test to the project.
+    const unitTestPath = path.join(projectDir, "definitions", "example_test.sqlx");
+    fs.ensureFileSync(unitTestPath);
+    fs.writeFileSync(
+      unitTestPath,
+      `
+config { type: "test", dataset: "example" }
+select 2
+`
+    );
+
+    // Run tests using the CLI.
+    const testResult = await getProcessResult(
+      execFile(nodePath, [
+        cliEntryPointPath,
+        "test",
+        projectDir,
+        "--credentials",
+        CREDENTIALS_PATH,
+        "--json",
+      ])
+    );
+
+    expect(testResult.exitCode).equals(1);
+
+    expect(JSON.parse(testResult.stdout)).deep.equals([{
+      "name": "example_test",
+      "successful": false,
+      messages: [
+        "For row 0 and column \"f0_\": expected \"2\", but saw \"1\"."
+      ]
+    }]);
+  });
 });

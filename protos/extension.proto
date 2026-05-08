@@ -24,4 +24,9 @@ message Extension {
 
   // Compilation mode of the extension, required.
   ExtensionCompilationMode compilation_mode = 2;
+
+  // Supplementary key-value options for the extension execution.
+  // This can be used to pass environment-specific parameters or
+  // auxiliary configuration paths to the underlying extension engine.
+  map<string, string> options = 3;
 }
