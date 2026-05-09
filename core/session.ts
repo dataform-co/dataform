@@ -1,4 +1,3 @@
-import * as nodePath from "path";
 import { default as TarjanGraphConstructor, Graph as TarjanGraph } from "tarjan-graph";
 
 import { encode64, verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
@@ -96,9 +95,9 @@ export class Session {
     const callerFile = utils.getCallerFile(this.rootDir);
     const callerDir = Path.dirName(callerFile);
     const resolvedPath = Path.normalize(Path.join(callerDir,filePath));
-    const absolutePath = nodePath.join(this.rootDir, resolvedPath);
+    const absolutePath = Path.separator + Path.normalize(Path.join(this.rootDir, resolvedPath));
     const root = this.rootDir.endsWith(Path.separator) ? this.rootDir : this.rootDir + Path.separator;
-
+    
     if (!absolutePath.startsWith(root)){
       throw new Error(`Cannot read "${filePath}": path resolves outside the project directory.`);
     }
