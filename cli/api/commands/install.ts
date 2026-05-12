@@ -1,8 +1,8 @@
+import * as childProcess from "child_process";
 import * as fs from "fs";
 import * as path from "path";
 import { promisify } from "util";
 
-import * as childProcess from "child_process";
 import { readDataformCoreVersionFromWorkflowSettings } from "df/cli/api/utils";
 
 export const MISSING_CORE_VERSION_ERROR =

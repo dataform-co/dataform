@@ -1,11 +1,11 @@
+import { ChildProcess, exec, fork } from "child_process";
 import * as fs from "fs-extra";
 import * as path from "path";
 import * as tmp from "tmp";
 import { promisify } from "util";
 
-import { ChildProcess, exec, fork } from "child_process";
 import { MISSING_CORE_VERSION_ERROR } from "df/cli/api/commands/install";
-import { readDataformCoreVersionFromWorkflowSettings } from "df/cli/api/utils";
+import { readConfigFromWorkflowSettings } from "df/cli/api/utils";
 import { coerceAsError } from "df/common/errors/errors";
 import { decode64 } from "df/common/protos";
 import { dataform } from "df/protos/ts";
@@ -28,9 +28,11 @@ export async function compile(
 
   const temporaryProjectPath = tmp.dirSync().name;
 
-  const workflowSettingsDataformCoreVersion = readDataformCoreVersionFromWorkflowSettings(
-    resolvedProjectPath
-  );
+  const workflowSettings = readConfigFromWorkflowSettings(resolvedProjectPath);
+  const workflowSettingsDataformCoreVersion = workflowSettings?.dataformCoreVersion;
+  const workflowSettingsExtension = workflowSettings?.extension ?? undefined;
+
+  compileConfig.extension = workflowSettingsExtension;
 
   if (!workflowSettingsDataformCoreVersion && !fs.existsSync(packageJsonPath)) {
     throw new Error(MISSING_CORE_VERSION_ERROR);

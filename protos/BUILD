@@ -13,6 +13,7 @@ proto_library(
         "execution.proto",
         "jit.proto",
         "profiles.proto",
+        "extension.proto",
     ],
     deps = [
       "@com_google_protobuf//:empty_proto",

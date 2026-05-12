@@ -2,7 +2,8 @@ syntax = "proto3";
 
 package dataform;
 
-import "protos/configs.proto";
+import "configs.proto";
+import "extension.proto";
 import "google/protobuf/struct.proto";
 
 option java_package = "com.dataform.protos";
@@ -35,6 +36,8 @@ message ProjectConfig {
 
   string default_reservation = 21;
 
+  bool include_tests_in_compiled_graph = 22;
+
   reserved 3, 4, 6, 8, 10, 12, 13;
 }
 
@@ -56,7 +59,7 @@ message CompileConfig {
   // Whether to emit compilation debug logs.
   bool verbose = 11;
 
-  reserved 2, 4, 5, 7, 9;
+  reserved 2, 4, 5, 7, 9, 12;
 }
 
 message Target {
@@ -277,6 +280,8 @@ message Declaration {
 
   // Generated.
   string file_name = 4;
+
+  repeated string tags = 6;
 }
 
 message Test {
@@ -441,22 +446,4 @@ message CompileExecutionResponse {
 enum SupportedFeatures {
   UNKNOWN_FEATURE = 0;
   ARRAY_BUFFER_IPC = 1;
-}
-
-// Execution mode of compilation extension.
-enum ExtensionCompilationMode {
-  // Unspecified compiled mode - extension will be skipped.
-  COMPILATION_MODE_UNSPECIFIED = 0;
-  // Execute before regular Dataform compilation.
-  PROLOGUE = 1;
-  // Replace regular Dataform compilation.
-  APPLICATION_CODE = 2;
-}
-
-message Extension {
-  // Name of the extension (JS module) to delegate the compilation to.
-  string name = 1;
-
-  // Compilation mode of the extension, required.
-  ExtensionCompilationMode compilation_mode = 2;
 }

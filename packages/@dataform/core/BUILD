@@ -80,6 +80,12 @@ add_license_header_to_file(
 )
 
 add_license_header_to_file(
+    name = "extension_proto_with_license",
+    from_file = "//protos:extension.proto",
+    to_file = "extension.proto",
+)
+
+add_license_header_to_file(
     name = "bundle_with_license",
     from_file = "bundle",
     to_file = "bundle.js",
@@ -109,6 +115,7 @@ pkg_npm_tar(
         ":core_proto_with_license",
         ":db_adapter_proto_with_license",
         ":jit_proto_with_license",
+        ":extension_proto_with_license",
         ":package.json",
         "//:version.bzl",
     ],

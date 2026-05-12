@@ -1,7 +1,7 @@
+import { BigQuery, GetTablesResponse, TableField, TableMetadata } from "@google-cloud/bigquery";
 import Long from "long";
 import { PromisePoolExecutor } from "promise-pool-executor";
 
-import { BigQuery, GetTablesResponse, TableField, TableMetadata } from "@google-cloud/bigquery";
 import { collectEvaluationQueries, QueryOrAction } from "df/cli/api/dbadapters/execution_sql";
 import { IBigQueryError, IDbAdapter, IDbClient, IExecutionResult, OnCancel } from "df/cli/api/dbadapters/index";
 import { parseBigqueryEvalError } from "df/cli/api/utils/error_parsing";
@@ -483,6 +483,12 @@ function convertFieldType(type: string) {
       return dataform.Field.Primitive.BYTES;
     case "GEOGRAPHY":
       return dataform.Field.Primitive.GEOGRAPHY;
+    case "BIGNUMERIC":
+      return dataform.Field.Primitive.BIGNUMERIC;
+    case "JSON":
+      return dataform.Field.Primitive.JSON;
+    case "INTERVAL":
+      return dataform.Field.Primitive.INTERVAL;
     default:
       return dataform.Field.Primitive.UNKNOWN;
   }

@@ -1,11 +1,11 @@
 import * as fs from "fs";
 import { GoogleSqlDefinition, QueryFormatter } from "google-sql-syntax-ts";
 import * as jsBeautify from "js-beautify";
+import { typeid } from "typeid-js";
 import { promisify } from "util";
 
 import { ErrorWithCause } from "df/common/errors/errors";
 import { SyntaxTreeNode, SyntaxTreeNodeType } from "df/sqlx/lexer";
-import { typeid } from "typeid-js";
 
 const JS_BEAUTIFY_OPTIONS = {
   indent_size: 2,
