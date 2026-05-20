@@ -16,11 +16,13 @@ import { Test } from "df/core/actions/test";
 import { View } from "df/core/actions/view";
 import { CompilationSql } from "df/core/compilation_sql";
 import { Contextable, IActionContext, ITableContext, Resolvable } from "df/core/contextables";
+import * as Path from "df/core/path";
 import { targetAsReadableString, targetStringifier } from "df/core/targets";
 import * as utils from "df/core/utils";
 import { ResolvableMap, toResolvable } from "df/core/utils";
 import { version as dataformCoreVersion } from "df/core/version";
 import { dataform, google } from "df/protos/ts";
+
 
 const DEFAULT_CONFIG = {
   defaultSchema: "dataform",
@@ -89,6 +91,29 @@ export class Session {
 
   public compilationSql(): CompilationSql {
     return new CompilationSql(this.projectConfig, dataformCoreVersion);
+  }
+
+  public getContents(filePath: string): string {
+    const callerFile = utils.getCallerFile(this.rootDir);
+    const callerDir = Path.dirName(callerFile);
+    const resolvedPath = Path.join(callerDir,filePath);
+    const absolutePath = Path.separator + Path.normalize(Path.join(this.rootDir, resolvedPath));
+    
+    if (!absolutePath.startsWith(this.rootDir)){
+      throw new Error(`Cannot read "${filePath}": path resolves outside the project directory.`);
+    }
+
+    let module: any;
+    try {
+      module = utils.nativeRequire(absolutePath);
+    } catch {
+      throw new Error(`Cannot read "${filePath}": file not found.`);
+    }
+
+    if (!module || typeof module.contents !== "string") {
+      throw new Error (`Cannot read "${filePath}": only .md files are supported.`)
+    }
+    return module.contents;
   }
 
   public sqlxAction(actionOptions: {
