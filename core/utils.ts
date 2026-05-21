@@ -75,9 +75,13 @@ export function getCallerFile(rootDir: string) {
     break;
   }
   if (!lastfile) {
-    // This is likely caused by Session.compileError() being called inside Session.compile().
-    // If so, explicitly pass the filename to Session.compileError().
-    throw new Error("Unable to find valid caller file; please report this issue.");
+    if ((global as any).__dataform_current_file) {
+      lastfile = (global as any).__dataform_current_file;
+    } else {
+      // This is likely caused by Session.compileError() being called inside Session.compile().
+      // If so, explicitly pass the filename to Session.compileError().
+      throw new Error("Unable to find valid caller file; please report this issue.");
+    }
   }
   return Path.relativePath(lastfile, rootDir);
 }
