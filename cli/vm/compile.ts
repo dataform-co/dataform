@@ -67,7 +67,11 @@ export function compile(compileConfig: dataform.ICompileConfig) {
 }
 
 export function listenForCompileRequest() {
-  process.on("message", (compileConfig: dataform.ICompileConfig) => {
+  process.on("message", (compileConfig: dataform.ICompileConfig & { type?: string }) => {
+    // JiT messages are handled by handleJitRequest in worker.ts; skip them here.
+    if ((compileConfig as { type?: string })?.type === "jit_compile") {
+      return;
+    }
     try {
       const compiledResult = compile(compileConfig);
       process.send(compiledResult);
@@ -82,6 +86,9 @@ export function listenForCompileRequest() {
 }
 
 if (require.main === module) {
+  if (process.send) {
+    process.send({ type: "worker_booted" });
+  }
   listenForCompileRequest();
 }
 

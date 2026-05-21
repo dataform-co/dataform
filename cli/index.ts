@@ -11,6 +11,7 @@ import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 import { prettyJsonStringify } from "df/cli/api/utils";
 import {
   compiledGraphOutputType,
+  Logger,
   print,
   printCompiledGraph,
   printCompiledGraphErrors,
@@ -170,7 +171,24 @@ const dotOutputOption: INamedOption<yargs.Options> = {
 const timeoutOption: INamedOption<yargs.Options> = {
   name: "timeout",
   option: {
-    describe: "Duration to allow project compilation to complete. Examples: '1s', '10m', etc.",
+    describe:
+      "Maximum duration for the entire command (project compilation and, for 'run' " +
+      "/ 'build', the run wall-clock deadline). JiT compilation of each model uses " +
+      "--jit-timeout instead. Examples: '1s', '10m'.",
+    type: "string",
+    default: null,
+    coerce: (rawTimeoutString: string | null) =>
+      rawTimeoutString ? parseDuration(rawTimeoutString) : null
+  }
+};
+
+const jitTimeoutOption: INamedOption<yargs.Options> = {
+  name: "jit-timeout",
+  option: {
+    describe:
+      "Per-model JiT compilation timeout. Each action with jitCode gets its own " +
+      "fresh budget; this is per-model, not a shared budget across the run. " +
+      "Defaults to 60s. Examples: '30s', '2m'.",
     type: "string",
     default: null,
     coerce: (rawTimeoutString: string | null) =>
@@ -410,6 +428,7 @@ export function runCli() {
         ],
         processFn: async argv => {
           const projectDir = argv[projectDirMustExistOption.name];
+          const logger = new Logger(!argv[jsonOutputOption.name]);
 
           async function compileAndPrint() {
 
@@ -418,10 +437,10 @@ export function runCli() {
               outputType = compiledGraphOutputType.Json;
             } else if (argv[dotOutputOption.name]) {
               outputType = compiledGraphOutputType.Dot;
-            } 
-            
+            }
+
             if (outputType === compiledGraphOutputType.Summary) {
-              print("Compiling...\n");
+              logger.log("Compiling...\n");
             }
             const compiledGraph = await compile({
               projectDir,
@@ -577,24 +596,25 @@ export function runCli() {
           fullRefreshOption,
           includeDepsOption,
           includeDependentsOption,
-          credentialsOption,
           jsonOutputOption,
           timeoutOption,
+          jitTimeoutOption,
           tagsOption,
           bigqueryJobLabelsOption,
           ...ProjectConfigOptions.allYargsOptions
         ],
         processFn: async argv => {
-          if (argv[jsonOutputOption.name] && !argv[dryRunOptionName]) {
-            print(
+          const isJsonOutput = argv[jsonOutputOption.name];
+          const logger = new Logger(!isJsonOutput);
+
+          if (isJsonOutput && !argv[dryRunOptionName]) {
+            printError(
               `For execution, the --${jsonOutputOption.name} option is only supported if the ` +
                 `--${dryRunOptionName} option is enabled`
             );
             return;
           }
-          if (!argv[jsonOutputOption.name]) {
-            print("Compiling...\n");
-          }
+          logger.log("Compiling...\n");
           const compiledGraph = await compile({
             projectDir: argv[projectDirOption.name],
             projectConfigOverride: ProjectConfigOptions.constructProjectConfigOverride(argv),
@@ -604,9 +624,7 @@ export function runCli() {
             printCompiledGraphErrors(compiledGraph.graphErrors, argv[quietCompileOption.name]);
             return 1;
           }
-          if (!argv[jsonOutputOption.name]) {
-            printSuccess("Compiled successfully.\n");
-          }
+          logger.success("Compiled successfully.\n");
           const readCredentials = credentials.read(
             getCredentialsPath(argv[projectDirOption.name], argv[credentialsOption.name])
           );
@@ -619,25 +637,35 @@ export function runCli() {
               actions: argv[actionsOption.name],
               includeDependencies: argv[includeDepsOption.name],
               includeDependents: argv[includeDependentsOption.name],
-              tags: argv[tagsOption.name]
+              tags: argv[tagsOption.name],
+              timeoutMillis: argv[timeoutOption.name] || undefined,
+              jitTimeoutMillis: argv[jitTimeoutOption.name] || undefined
             },
             dbadapter
           );
 
-          if (argv[dryRunOptionName] && argv[jsonOutputOption.name]) {
-            printExecutionGraph(executionGraph, argv[jsonOutputOption.name]);
+          if (
+            argv[dryRunOptionName] &&
+            isJsonOutput &&
+            // Skip the early graph print when JiT actions are present: their compiled
+            // SQL is only produced once the Runner triggers JiT compilation, so falling
+            // through ensures the JSON dry-run output includes the generated SQL rather
+            // than the raw jitCode.
+            !executionGraph.actions.some(action => !!action.jitCode)
+          ) {
+            printExecutionGraph(executionGraph, isJsonOutput);
             return;
           }
 
           if (argv[runTestsOptionName]) {
-            print(`Running ${compiledGraph.tests.length} unit tests...\n`);
+            logger.log(`Running ${compiledGraph.tests.length} unit tests...\n`);
             const testResults = await test(dbadapter, compiledGraph.tests);
             testResults.forEach(testResult => printTestResult(testResult));
             if (testResults.some(testResult => !testResult.successful)) {
               printError("\nUnit tests did not pass; aborting run.");
               return 1;
             }
-            printSuccess("Unit tests completed successfully.\n");
+            logger.success("Unit tests completed successfully.\n");
           }
 
           let bigqueryOptions: {} = {
@@ -659,17 +687,21 @@ export function runCli() {
           });
 
           if (actionsByName.size === 0) {
-            print("No actions to run.\n");
+            logger.log("No actions to run.\n");
             return 0;
           }
 
           if (argv[dryRunOptionName]) {
-            print("Dry running (no changes to the warehouse will be applied)...");
+            logger.log("Dry running (no changes to the warehouse will be applied)...");
           } else {
-            print("Running...\n");
+            logger.log("Running...\n");
           }
 
-          const runner = run(dbadapter, executionGraph, { bigquery: bigqueryOptions });
+          const runner = run(
+            dbadapter,
+            executionGraph,
+            { projectDir: argv[projectDirOption.name], bigquery: bigqueryOptions }
+          );
           process.on("SIGINT", () => {
             runner.cancel();
           });
@@ -696,9 +728,16 @@ export function runCli() {
               });
           };
 
-          runner.onChange(printExecutedGraph);
+          if (!isJsonOutput) {
+            runner.onChange(printExecutedGraph);
+          }
           const runResult = await runner.result();
-          printExecutedGraph(runResult);
+          if (!isJsonOutput) {
+            printExecutedGraph(runResult);
+          }
+          if (isJsonOutput) {
+            print(prettyJsonStringify(runResult));
+          }
           return runResult.status === dataform.RunResult.ExecutionStatus.SUCCESSFUL ? 0 : 1;
         }
       },

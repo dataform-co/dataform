@@ -168,9 +168,29 @@ from (${query}) as insertions`;
     return tasks.concatenate();
   }
 
+  public createTableTasks(
+    table: dataform.ITable,
+    runConfig: dataform.IRunConfig,
+    tableMetadata?: dataform.ITableMetadata
+  ): dataform.IExecutionTask[] {
+    return table.disabled ? [] : this.publishTasks(table, runConfig, tableMetadata).build();
+  }
+
+  public createOperationTasks(operation: dataform.IOperation): dataform.IExecutionTask[] {
+    return operation.disabled
+      ? []
+      : operation.queries.map(statement =>
+          dataform.ExecutionTask.create({ type: "statement", statement })
+        );
+  }
+
+  public createAssertionTasks(assertion: dataform.IAssertion): dataform.IExecutionTask[] {
+    return assertion.disabled ? [] : this.assertTasks(assertion, this.project).build();
+  }
+
   public assertTasks(
     assertion: dataform.IAssertion,
-    projectConfig: dataform.IProjectConfig,
+    projectConfig: dataform.IProjectConfig
   ): Tasks {
     const tasks = new Tasks();
     const target = assertion.target;
