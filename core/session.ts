@@ -134,11 +134,11 @@ export class Session {
     if (actionOptions.inputContextables.length > 0 && actionType !== "test") {
       this.compileError("Actions may only include input blocks if they are of type 'test'.");
     }
-    if (actionOptions.preOperationsContextable && !definesDataset(actionType)) {
-      this.compileError("Actions may only include pre_operations if they create a dataset.");
+    if (actionOptions.preOperationsContextable && !definesDataset(actionType) && actionType !== "assertion") {
+      this.compileError("Actions may only include pre_operations if they create a dataset or are assertions.");
     }
-    if (actionOptions.postOperationsContextable && !definesDataset(actionType)) {
-      this.compileError("Actions may only include post_operations if they create a dataset.");
+    if (actionOptions.postOperationsContextable && !definesDataset(actionType) && actionType !== "assertion") {
+      this.compileError("Actions may only include post_operations if they create a dataset or are assertions.");
     }
 
     if (!sqlxConfig.filename) {
@@ -190,9 +190,16 @@ export class Session {
         this.actions.push(table);
         break;
       case "assertion":
-        this.actions.push(
-          new Assertion(this, sqlxConfig).query(ctx => actionOptions.sqlContextable(ctx)[0])
+        const assertion = new Assertion(this, sqlxConfig).query(
+          ctx => actionOptions.sqlContextable(ctx)[0]
         );
+        if (actionOptions.preOperationsContextable) {
+          assertion.preOps(actionOptions.preOperationsContextable as any);
+        }
+        if (actionOptions.postOperationsContextable) {
+          assertion.postOps(actionOptions.postOperationsContextable as any);
+        }
+        this.actions.push(assertion);
         break;
       case "dataPreparation":
         const dataPreparation = new DataPreparation(this, sqlxConfig).query(

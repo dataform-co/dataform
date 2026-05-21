@@ -47,14 +47,6 @@ suite("examples", () => {
                 'Unexpected property "hasOutput", or property value type of "boolean" is incorrect. See https://dataform-co.github.io/dataform/docs/configs-reference#dataform-ActionConfig-AssertionConfig for allowed properties.'
             },
             {
-              fileName: "definitions/has_compile_errors/assertion_with_postops.sqlx",
-              message: "Actions may only include post_operations if they create a dataset."
-            },
-            {
-              fileName: "definitions/has_compile_errors/assertion_with_preops.sqlx",
-              message: "Actions may only include pre_operations if they create a dataset."
-            },
-            {
               fileName: "definitions/has_compile_errors/protected_assertion.sqlx",
               message:
                 "Actions may only specify 'protected: true' if they are of type 'incremental'."

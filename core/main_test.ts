@@ -442,6 +442,44 @@ SELECT 1`);
 `);
     });
 
+    test("extract assertion blocks", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        dumpYaml(dataform.WorkflowSettings.create(WorkflowSettingsTemplates.bigquery))
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/file.sqlx"),
+        `
+config {
+  type: "assertion"
+}
+pre_operations {
+  SELECT 2;
+}
+post_operations {
+  SELECT 3;
+}
+SELECT 1`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(result.compile.compiledGraph.assertions[0].query).equals(`
+
+
+
+SELECT 1`);
+      expect(result.compile.compiledGraph.assertions[0].preOps[0]).equals(`
+  SELECT 2;
+`);
+      expect(result.compile.compiledGraph.assertions[0].postOps[0]).equals(`
+  SELECT 3;
+`);
+    });
+
     test("backticks appear to users as written", () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
       fs.writeFileSync(
@@ -1132,6 +1170,34 @@ actions:
 
       expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
     });
+
+    test(`extract assertion blocks`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/actions.yaml"),
+        `
+actions:
+- assertion:
+    filename: file.sql
+    preOperations:
+    - SELECT 2
+    postOperations:
+    - SELECT 3`
+      );
+      fs.writeFileSync(path.join(projectDir, "definitions/file.sql"), "SELECT 1");
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(result.compile.compiledGraph.assertions[0].query).equals("SELECT 1");
+      expect(result.compile.compiledGraph.assertions[0].preOps[0]).equals("SELECT 2");
+      expect(result.compile.compiledGraph.assertions[0].postOps[0]).equals("SELECT 3");
+    });
   });
 
   suite("javascript API", () => {
@@ -1457,6 +1523,8 @@ operate("name", {
 assert("name", {
   type: "operations",
 }).query(_ => "SELECT 1")
+  .preOps(_ => ["pre_op"])
+  .postOps(_ => ["post_op"])
   .database("otherProject")
   .schema("otherDataset")`
             );
@@ -1482,7 +1550,9 @@ assert("name", {
                     name: "name"
                   },
                   fileName: "definitions/assert.js",
-                  query: "SELECT 1"
+                  query: "SELECT 1",
+                  postOps: ["post_op"],
+                  preOps: ["pre_op"]
                 }
               ])
             );

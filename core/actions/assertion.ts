@@ -89,6 +89,8 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
 
   /** @hidden We delay contextification until the final compile step, so hold these here for now. */
   private contextableQuery: AContextable<string>;
+  private contextablePreOps: Array<AContextable<string | string[]>> = [];
+  private contextablePostOps: Array<AContextable<string | string[]>> = [];
 
   /** @hidden */
   constructor(session?: Session, unverifiedConfig?: any, configPath?: string) {
@@ -155,6 +157,12 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
       }
       this.proto.actionDescriptor.reservation = config.reservation;
     }
+    if (config.preOperations) {
+      this.preOps(config.preOperations);
+    }
+    if (config.postOperations) {
+      this.postOps(config.postOperations);
+    }
     return this;
   }
 
@@ -163,6 +171,16 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
    */
   public query(query: AContextable<string>) {
     this.contextableQuery = query;
+    return this;
+  }
+
+  public preOps(pres: AContextable<string | string[]>) {
+    this.contextablePreOps.push(pres);
+    return this;
+  }
+
+  public postOps(posts: AContextable<string | string[]>) {
+    this.contextablePostOps.push(posts);
     return this;
   }
 
@@ -296,6 +314,18 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
     this.proto.query = context.apply(this.contextableQuery);
     validateQueryString(this.session, this.proto.query, this.proto.fileName);
 
+    this.contextablePreOps.forEach(contextablePreOp => {
+      const appliedPreOp = context.apply(contextablePreOp);
+      const preOps = typeof appliedPreOp === "string" ? [appliedPreOp] : appliedPreOp;
+      preOps.forEach(preOp => this.proto.preOps.push(preOp));
+    });
+
+    this.contextablePostOps.forEach(contextablePostOp => {
+      const appliedPostOp = context.apply(contextablePostOp);
+      const postOps = typeof appliedPostOp === "string" ? [appliedPostOp] : appliedPostOp;
+      postOps.forEach(postOp => this.proto.postOps.push(postOp));
+    });
+
     return verifyObjectMatchesProto(
       dataform.Assertion,
       this.proto,
@@ -396,6 +426,16 @@ export class AssertionContext implements IActionContext {
 
   public tags(name: string | string[]) {
     this.assertion.tags(name);
+    return "";
+  }
+
+  public preOps(statement: string | string[]) {
+    this.assertion.preOps(statement);
+    return "";
+  }
+
+  public postOps(statement: string | string[]) {
+    this.assertion.postOps(statement);
     return "";
   }
 
