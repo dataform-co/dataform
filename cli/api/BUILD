@@ -1,6 +1,6 @@
-load("//tools:ts_library.bzl", "ts_library")
 load("//testing:index.bzl", "ts_test_suite")
 load("//tools:node_modules.bzl", "node_modules")
+load("//tools:ts_library.bzl", "ts_library")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -62,6 +62,8 @@ ts_test_suite(
         "utils_test.ts",
         "commands/jit/rpc_test.ts",
         "dbadapters/bigquery_test.ts",
+        "execution_sql_test.ts",
+        "utils_test.ts",
     ],
     data = [
         ":node_modules",
@@ -69,7 +71,7 @@ ts_test_suite(
         "//test_credentials:bigquery.json",
         "@nodejs//:node",
         "@nodejs//:npm",
-    ],
+    ] + glob(["goldens/**"]),
     deps = [
         ":api",
         "//core",
