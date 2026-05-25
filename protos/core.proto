@@ -2,8 +2,8 @@ syntax = "proto3";
 
 package dataform;
 
-import "protos/configs.proto";
-import "protos/extension.proto";
+import "configs.proto";
+import "extension.proto";
 import "google/protobuf/struct.proto";
 
 option java_package = "com.dataform.protos";
@@ -35,6 +35,8 @@ message ProjectConfig {
   bool disable_assertions = 20;
 
   string default_reservation = 21;
+
+  bool include_tests_in_compiled_graph = 22;
 
   reserved 3, 4, 6, 8, 10, 12, 13;
 }

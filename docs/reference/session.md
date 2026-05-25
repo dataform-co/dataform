@@ -19,7 +19,6 @@ folder of a Dataform project.
 
 * [assert](_core_session_.session.md#assert)
 * [declare](_core_session_.session.md#declare)
-* [getContents](_core_session_.session.md#getcontents)
 * [notebook](_core_session_.session.md#notebook)
 * [operate](_core_session_.session.md#operate)
 * [publish](_core_session_.session.md#publish)
@@ -80,34 +79,6 @@ Name | Type |
 `config` | DeclarationConfig &#124; any |
 
 **Returns:** *[Declaration](_core_actions_declaration_.declaration.md)*
-
-___
-
-###  getContents
-
-▸ **getContents**(`filePath`: string): *string*
-
-Reads the contents of an external markdown file and returns it as a string. The path is resolved relative to the file that calls `getContents`.
-
-Available only in the `/definitions` directory.
-
-**Example:**
-
-```sqlx
-config {
-  type: "table",
-  description: getContents('./my_table_description.md')
-}
-SELECT ...
-```
-
-**Parameters:**
-
-Name | Type | Description |
------- | ------ | ------ |
-`filePath` | string | Path to the file, relative to the calling file. |
-
-**Returns:** *string*
 
 ___
 

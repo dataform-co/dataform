@@ -8,6 +8,7 @@ import { encode64 } from "df/common/protos";
 import { dataform } from "df/protos/ts";
 
 export function compile(compileConfig: dataform.ICompileConfig) {
+  compileConfig.projectDir = fs.realpathSync(path.resolve(compileConfig.projectDir));
   if (
     !fs.existsSync(
       path.join(compileConfig.projectDir, "node_modules", "@dataform", "core", "bundle.js")
@@ -48,8 +49,24 @@ export function compile(compileConfig: dataform.ICompileConfig) {
       resolve: (moduleName, parentDirName) =>
         path.join(parentDirName, path.relative(parentDirName, compileConfig.projectDir), moduleName)
     },
-    sourceExtensions: ["js", "sql", "sqlx", "yaml", "yml","md"],
-    compiler
+    sourceExtensions: ["js", "sql", "sqlx", "yaml", "yml"],
+    // vm2 3.11.3 strips file paths from V8 CallSite objects inside the sandbox,
+    // which breaks getCallerFile() in @dataform/core. Wrap each compiled module so
+    // the current file path is exposed via a global, used as a fallback when the
+    // stack-trace path is unavailable. The try/finally restores the previous value
+    // to keep nested requires (macros) consistent.
+    compiler: (code, filePath) => {
+      const compiledCode = compiler(code, filePath);
+      return `
+        var __old_file = global.__dataform_current_file;
+        global.__dataform_current_file = ${JSON.stringify(filePath)};
+        try {
+          ${compiledCode}
+        } finally {
+          global.__dataform_current_file = __old_file;
+        }
+      `;
+    }
   });
 
   const dataformCoreVersion: string = userCodeVm.run(
@@ -61,7 +78,11 @@ export function compile(compileConfig: dataform.ICompileConfig) {
   }
 
   return userCodeVm.run(
-    `return require("@dataform/core").main("${createCoreExecutionRequest(compileConfig)}")`,
+    `
+      global.workflowSettingsYaml = (function() { try { return require("./workflow_settings.yaml"); } catch(e) { console.error("YAML require failed:", e); } })();
+      global.dataformJson = (function() { try { return require("./dataform.json"); } catch(e) {} })();
+      return require("@dataform/core").main("${createCoreExecutionRequest(compileConfig)}")
+    `,
     vmIndexFileName
   );
 }

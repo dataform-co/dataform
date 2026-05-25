@@ -48,17 +48,18 @@ export class WorkflowSettingsTemplates {
   });
 }
 
-const SOURCE_EXTENSIONS = ["js", "sql", "sqlx", "yaml", "ipynb","md"];
+const SOURCE_EXTENSIONS = ["js", "sql", "sqlx", "yaml", "ipynb"];
 
 export function coreExecutionRequestFromPath(
   projectDir: string,
   projectConfigOverride?: dataform.ProjectConfig
 ): dataform.CoreExecutionRequest {
+  const resolvedProjectDir = fs.realpathSync(path.resolve(projectDir));
   return dataform.CoreExecutionRequest.create({
     compile: {
       compileConfig: {
-        projectDir,
-        filePaths: walkDirectoryForFilenames(projectDir),
+        projectDir: resolvedProjectDir,
+        filePaths: walkDirectoryForFilenames(resolvedProjectDir),
         projectConfigOverride
       }
     }
@@ -90,13 +91,28 @@ export function runMainInVm(
         path.join(parentDirName, path.relative(parentDirName, projectDir), moduleName)
     },
     sourceExtensions: SOURCE_EXTENSIONS,
-    compiler
+    compiler: (code, filePath) => {
+      const compiledCode = compiler(code, filePath);
+      return `
+        var __old_file = global.__dataform_current_file;
+        global.__dataform_current_file = ${JSON.stringify(filePath)};
+        try {
+          ${compiledCode}
+        } finally {
+          global.__dataform_current_file = __old_file;
+        }
+      `;
+    }
   });
 
   const encodedCoreExecutionRequest = encode64(dataform.CoreExecutionRequest, coreExecutionRequest);
   const vmIndexFileName = path.resolve(path.join(projectDir, "index.js"));
   const encodedCoreExecutionResponse = nodeVm.run(
-    `return require("@dataform/core").main("${encodedCoreExecutionRequest}")`,
+    `
+      global.workflowSettingsYaml = (function() { try { return require("./workflow_settings.yaml"); } catch(e) { console.error("YAML require failed run_core:", e); } })();
+      global.dataformJson = (function() { try { return require("./dataform.json"); } catch(e) {} })();
+      return require("@dataform/core").main("${encodedCoreExecutionRequest}")
+    `,
     vmIndexFileName
   );
   return decode64(dataform.CoreExecutionResponse, encodedCoreExecutionResponse);

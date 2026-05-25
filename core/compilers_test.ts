@@ -92,47 +92,5 @@ suite("core/compilers", () => {
             const result = compile(code, path);
             expect(result).to.equal(code);
         });
-
-        test("compiles md to js contents export",() => {
-            const code = '# this table defines';
-            const path = "definitions/foo.md";
-            const result = compile(code, path);
-            expect(result).to.equal("exports.contents = `# this table defines`;");
-
-        })
-
-        test("escapes backslashes in md", () => {
-            const code = "select ''";
-            const path = "definitions/foo.md";
-            const result = compile(code, path);
-            expect(result).to.equal("exports.contents = `select ''`;");
-        });
-        test("escapes newlines in md", () => {
-            const code = `
-- item1
-- item2`;
-            const path = "definitions/foo.md";
-            const result = compile(code, path);
-            expect(result).to.equal("exports.contents = `\n- item1\n- item2`;");
-        });
-        test ("escapes template literals in md", () => {
-            const code = "select ${foo}";
-            const path = "definitions/foo.md";
-            const result = compile(code, path);
-            expect(result).to.equal("exports.contents = `select \\${foo}`;");
-        });
-        test("escapes backslashes and backticks in md", () => {
-            const code = "c = '\\'";
-            const path = "definitions/foo.md";
-            const result = compile(code, path);
-            expect(result).to.equal("exports.contents = `c = '\\\\'`;");
-        });
-        test("escapes backticks in md", () => {
-            const code = "select `a` from `b`";
-            const path = "definitions/foo.md";
-            const result = compile(code, path);
-            expect(result).to.equal("exports.contents = `select \\`a\\` from \\`b\\``;");
-        });
-
     });
 });

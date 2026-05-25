@@ -1,4 +1,3 @@
-import * as nodePath from "path";
 import { default as TarjanGraphConstructor, Graph as TarjanGraph } from "tarjan-graph";
 
 import { encode64, unknownToValue, verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
@@ -17,13 +16,11 @@ import { Test } from "df/core/actions/test";
 import { View } from "df/core/actions/view";
 import { CompilationSql } from "df/core/compilation_sql";
 import { Contextable, IActionContext, ITableContext, Resolvable } from "df/core/contextables";
-import * as Path from "df/core/path";
 import { targetAsReadableString, targetStringifier } from "df/core/targets";
 import * as utils from "df/core/utils";
 import { ResolvableMap, toResolvable } from "df/core/utils";
 import { version as dataformCoreVersion } from "df/core/version";
 import { dataform, google } from "df/protos/ts";
-
 
 const DEFAULT_CONFIG = {
   defaultSchema: "dataform",
@@ -53,7 +50,9 @@ export class Session {
 
   public actions: Action[];
   public indexedActions: ResolvableMap<Action>;
-  public tests: { [name: string]: Test };
+
+  // Tests need to be resolved after config is applied, which is why we keep them separate from other actions.
+  public tests: Action[];
 
   // This map holds information about what assertions are dependent
   // upon a certain action in our actions list. We use this later to resolve dependencies.
@@ -83,37 +82,13 @@ export class Session {
       dataform.ProjectConfig.create(originalProjectConfig || projectConfig || DEFAULT_CONFIG)
     );
     this.actions = [];
-    this.tests = {};
+    this.tests = [];
     this.graphErrors = { compilationErrors: [] };
     this.jitContextData = new google.protobuf.Struct();
   }
 
   public compilationSql(): CompilationSql {
     return new CompilationSql(this.projectConfig, dataformCoreVersion);
-  }
-
-  public getContents(filePath: string): string {
-    const callerFile = utils.getCallerFile(this.rootDir);
-    const callerDir = Path.dirName(callerFile);
-    const resolvedPath = Path.normalize(Path.join(callerDir,filePath));
-    const absolutePath = nodePath.join(this.rootDir, resolvedPath);
-    const root = this.rootDir.endsWith(Path.separator) ? this.rootDir : this.rootDir + Path.separator;
-
-    if (!absolutePath.startsWith(root)){
-      throw new Error(`Cannot read "${filePath}": path resolves outside the project directory.`);
-    }
-
-    let module: any;
-    try {
-      module = utils.nativeRequire(absolutePath);
-    } catch {
-      throw new Error(`Cannot read "${filePath}": file not found.`);
-    }
-
-    if (!module || typeof module.contents !== "string") {
-      throw new Error (`Cannot read "${filePath}": only .md files are supported.`)
-    }
-    return module.contents;
   }
 
   public sqlxAction(actionOptions: {
@@ -421,7 +396,7 @@ export class Session {
     newTest.session = this;
     newTest.setFilename(utils.getCallerFile(this.rootDir));
     // Add it to global index.
-    this.tests[name] = newTest;
+    this.tests.push(newTest)
     return newTest;
   }
 
@@ -466,12 +441,12 @@ export class Session {
   }
 
   public compile(): dataform.CompiledGraph {
+    this.actions.push(...this.tests);
     this.indexedActions = new ResolvableMap(
       this.actions.map(action => ({ actionTarget: action.getTarget(), value: action }))
     );
 
     // defaultLocation is no longer a required parameter to support location auto-selection.
-
     if (
       !!this.projectConfig.vars &&
       !Object.values(this.projectConfig.vars).every(value => typeof value === "string")
@@ -496,7 +471,9 @@ export class Session {
       declarations: this.compileGraphChunk(
         this.actions.filter(action => action instanceof Declaration)
       ),
-      tests: this.compileGraphChunk(Object.values(this.tests)),
+      tests: this.compileGraphChunk(
+        this.actions.filter(action => action instanceof Test)
+      ),
       notebooks: this.compileGraphChunk(this.actions.filter(action => action instanceof Notebook)),
       dataPreparations: this.compileGraphChunk(
         this.actions.filter(action => action instanceof DataPreparation)
@@ -507,13 +484,18 @@ export class Session {
       jitData: this.jitContextData,
     });
 
+    if (this.projectConfig.includeTestsInCompiledGraph) {
+      this.addTestsToCompiledGraph(this.actions);
+    }
+
     this.fullyQualifyDependencies(
       [].concat(
         compiledGraph.tables,
         compiledGraph.assertions,
         compiledGraph.operations,
         compiledGraph.notebooks,
-        compiledGraph.dataPreparations
+        compiledGraph.dataPreparations,
+        compiledGraph.tests
       )
     );
 
@@ -523,7 +505,8 @@ export class Session {
         compiledGraph.assertions,
         compiledGraph.operations,
         compiledGraph.notebooks,
-        compiledGraph.dataPreparations
+        compiledGraph.dataPreparations,
+        compiledGraph.tests
       ),
       [].concat(compiledGraph.declarations.map(declaration => declaration.target))
     );
@@ -538,7 +521,8 @@ export class Session {
         compiledGraph.assertions,
         compiledGraph.operations,
         compiledGraph.notebooks,
-        compiledGraph.dataPreparations
+        compiledGraph.dataPreparations,
+        compiledGraph.tests
       )
     );
     verifyObjectMatchesProto(
@@ -577,7 +561,7 @@ export class Session {
     return !!this.projectConfig.tablePrefix ? `${this.projectConfig.tablePrefix}_` : "";
   }
 
-  private compileGraphChunk<T>(actions: Array<Action | Test>): T[] {
+  private compileGraphChunk<T>(actions: Action[]): T[] {
     const compiledChunks: T[] = [];
 
     actions.forEach(action => {
@@ -730,6 +714,30 @@ export class Session {
         .join(" > ")} > ${targetAsReadableString(firstActionInCycle.target)}]`;
       this.compileError(new Error(message), firstActionInCycle.fileName, firstActionInCycle.target);
     });
+  }
+
+  private addTestsToCompiledGraph(actions: Action[]) {
+    actions
+      .filter(action => action instanceof Test)
+      .map(test => test as Test)
+      .forEach(currentTest => {
+        const testTargets = this.indexedActions.find(currentTest.getTestTarget());
+        testTargets
+          .forEach(action => {
+            if (!(action instanceof Table || action instanceof View)) {
+              this.compileError(
+                new Error(
+                  `Tests are only supported for Tables and Views. Action "${targetAsReadableString(action.getTarget())}" is not a table or view".`
+                ),
+                action.getFileName(),
+                action.getTarget()
+              );
+            }
+          });
+        testTargets
+          .map(action => action as Table | View)
+          .forEach(tableOrViewAction => tableOrViewAction.dependencies(utils.resolvableAsTarget(currentTest.getTarget())));
+      });
   }
 
   private removeNonUniqueActionsFromCompiledGraph(compiledGraph: dataform.CompiledGraph) {

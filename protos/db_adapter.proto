@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package dataform;
 
-import "protos/core.proto";
+import "core.proto";
 
 // Common structures for Evaluation, execution and compilation.
 

@@ -58,8 +58,10 @@ node_modules(
 ts_test_suite(
     name = "tests",
     srcs = [
-        "utils_test.ts",
+        "commands/jit/rpc_test.ts",
+        "dbadapters/bigquery_test.ts",
         "execution_sql_test.ts",
+        "utils_test.ts",
     ],
     data = [
         ":node_modules",
@@ -69,10 +71,11 @@ ts_test_suite(
         "@nodejs//:npm",
     ] + glob(["goldens/**"]),
     deps = [
-        "//cli/api",
+        ":api",
         "//core",
         "//protos:ts",
         "//testing",
+        "@npm//@google-cloud/bigquery",
         "@npm//@types/chai",
         "@npm//@types/fs-extra",
         "@npm//@types/js-yaml",
