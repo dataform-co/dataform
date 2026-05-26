@@ -77,10 +77,21 @@ export function compile(compileConfig: dataform.ICompileConfig) {
     throw new Error("@dataform/core ^3.0.0 required.");
   }
 
+  const hasWorkflowSettingsYaml = fs.existsSync(
+    path.join(compileConfig.projectDir, "workflow_settings.yaml")
+  );
+  const hasDataformJson = fs.existsSync(
+    path.join(compileConfig.projectDir, "dataform.json")
+  );
+
   return userCodeVm.run(
     `
-      global.workflowSettingsYaml = (function() { try { return require("./workflow_settings.yaml"); } catch(e) { console.error("YAML require failed:", e); } })();
-      global.dataformJson = (function() { try { return require("./dataform.json"); } catch(e) {} })();
+      ${hasWorkflowSettingsYaml
+        ? 'global.workflowSettingsYaml = require("./workflow_settings.yaml");'
+        : ''}
+      ${hasDataformJson
+        ? 'global.dataformJson = require("./dataform.json");'
+        : ''}
       return require("@dataform/core").main("${createCoreExecutionRequest(compileConfig)}")
     `,
     vmIndexFileName
