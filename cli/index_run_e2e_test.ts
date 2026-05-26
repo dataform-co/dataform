@@ -721,7 +721,7 @@ DROP SCHEMA IF EXISTS \`\${dataform.projectConfig.defaultDatabase}.\${dataform.p
       );
     });
 
-    test("generates dynamic SQL for EXTEND when table exists in BigQuery", async () => {
+    test("generates dynamic SQL for EXTEND when table exists in BigQuery", { timeout: 120000 }, async () => {
       try {
         // Run setup operation to create the table in BigQuery.
         // Dataform will automatically create the uniqueDataset schema.
