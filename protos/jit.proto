@@ -130,6 +130,8 @@ message JitCompilationRequest {
   repeated string file_paths = 6;
   // Current execution information for introspection.
   RunningExecutionData execution_data = 7;
+  // File name where the target is defined.
+  string file_name = 8;
 }
 
 // JiT compilation response.
