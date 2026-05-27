@@ -51,7 +51,8 @@ message CompileConfig {
   // Project configuration overrides.
   ProjectConfig project_config_override = 3;
 
-  // Override compilation timeout settings.
+  // Override top-level compilation timeout (the single compile worker that
+  // runs once per invocation).
   int32 timeout_millis = 6;
 
   Extension extension = 10;
