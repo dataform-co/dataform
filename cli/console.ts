@@ -42,6 +42,22 @@ const writeStdErr = (text: string, indentCount: number = 0) =>
 
 const DEFAULT_PROMPT = "> ";
 
+export class Logger {
+  constructor(private readonly shouldLog: boolean) {}
+
+  public log(text: string) {
+    if (this.shouldLog) {
+      print(text);
+    }
+  }
+
+  public success(text: string) {
+    if (this.shouldLog) {
+      printSuccess(text);
+    }
+  }
+}
+
 export function question(questionText: string) {
   return prompt(questionText);
 }
@@ -568,9 +584,14 @@ function printExecutedActionErrors(
     task => task.status === dataform.TaskResult.ExecutionStatus.FAILED
   );
   failingTasks.forEach((task, i) => {
-    executionAction.tasks[i].statement.split("\n").forEach(line => {
-      writeStdErr(`${DEFAULT_PROMPT}${line}`, 1);
-    });
+    // For JiT actions, the original executionAction.tasks might be empty
+    // since they are generated during re-compilation.
+    const statement = task.compiledSql || executionAction.tasks[i]?.statement;
+    if (statement) {
+      statement.split("\n").forEach((line: string) => {
+        writeStdErr(`${DEFAULT_PROMPT}${line}`, 1);
+      });
+    }
     printError(task.errorMessage, 1);
   });
 }
