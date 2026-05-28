@@ -114,9 +114,9 @@ export class CompileChildProcess extends BaseWorker<string, string | Error> {
       (message, child, resolve, reject) => {
         if (typeof message === "string") {
           resolve(message);
-        } else {
-          reject(coerceAsError(message));
+          return;
         }
+        reject(coerceAsError(message));
       }
     );
   }
