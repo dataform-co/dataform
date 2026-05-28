@@ -2,7 +2,7 @@ import { Dataset, Table } from "@google-cloud/bigquery";
 import { expect } from "chai";
 import { anything, instance, mock, verify, when } from "ts-mockito";
 
-import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
+import { BigQueryDbAdapter, StaticBigQueryClientProvider } from "df/cli/api/dbadapters/bigquery";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 
@@ -17,12 +17,12 @@ suite("BigQueryDbAdapter", () => {
     const projectId = "project1";
 
     const credentials = dataform.BigQuery.create({ projectId, location: "US" });
-    const adapter = new BigQueryDbAdapter(credentials, { bigqueryClient: instance(mockBigQuery) });
+    const adapter = new BigQueryDbAdapter(credentials, { clientProvider: new StaticBigQueryClientProvider(instance(mockBigQuery)) });
 
     when(mockBigQuery.dataset(schemaName)).thenReturn(instance(mockDataset));
     // getTables returns an array where the first element is an array of tables.
     // Each table object needs an 'id' property.
-    when(mockDataset.getTables()).thenReturn(Promise.resolve([[{ id: tableName }]] as any));
+    when(mockDataset.getTables(anything())).thenReturn(Promise.resolve([[{ id: tableName }]] as any));
     when(mockDataset.table(tableName)).thenReturn(instance(mockTable));
     when(mockTable.getMetadata()).thenReturn(
       Promise.resolve([
@@ -54,10 +54,10 @@ suite("BigQueryDbAdapter", () => {
     const projectId = "project";
 
     const credentials = dataform.BigQuery.create({ projectId, location: "US" });
-    const adapter = new BigQueryDbAdapter(credentials, { bigqueryClient: instance(mockBigQuery) });
+    const adapter = new BigQueryDbAdapter(credentials, { clientProvider: new StaticBigQueryClientProvider(instance(mockBigQuery)) });
 
     when(mockBigQuery.dataset(schemaName)).thenReturn(instance(mockDataset));
-    when(mockDataset.getTables()).thenReturn(Promise.resolve([[{ id: tableName }]] as any));
+    when(mockDataset.getTables(anything())).thenReturn(Promise.resolve([[{ id: tableName }]] as any));
     when(mockDataset.table(tableName)).thenReturn(instance(mockTable));
     when(mockTable.getMetadata()).thenReturn(
       Promise.resolve([
@@ -70,7 +70,7 @@ suite("BigQueryDbAdapter", () => {
       ] as any)
     );
 
-    when(mockBigQuery.getDatasets()).thenReturn(Promise.resolve([[{ id: schemaName }]] as any));
+    when(mockBigQuery.getDatasets(anything())).thenReturn(Promise.resolve([[{ id: schemaName }]] as any));
 
     const result = await adapter.tables(projectId);
 
@@ -78,5 +78,68 @@ suite("BigQueryDbAdapter", () => {
     expect(result[0].target.database).to.equal(projectId);
     expect(result[0].target.schema).to.equal(schemaName);
     expect(result[0].target.name).to.equal(tableName);
+  });
+
+  test("setMetadata handles action without columns", async () => {
+    // Partial mock for BigQuery client to avoid real network calls
+    const mockBigQuery: any = {
+      dataset: () => ({
+        table: () => ({
+          getMetadata: () => Promise.resolve([{ schema: { fields: [] } }]),
+          setMetadata: (metadata: any) => {
+            expect(metadata.description).to.equal("test");
+            return Promise.resolve([]);
+          }
+        })
+      })
+    };
+
+    const credentials = dataform.BigQuery.create({ projectId: "p", location: "US" });
+    const adapter = new BigQueryDbAdapter(credentials, {
+      concurrencyLimit: 1,
+      clientProvider: { get: () => mockBigQuery }
+    });
+
+    const action = dataform.ExecutionAction.create({
+      target: { database: "db", schema: "sch", name: "tab" },
+      actionDescriptor: { description: "test" }
+      // columns is missing/null in this action
+    });
+
+    // This should not throw "cannot read property 'find' of undefined"
+    await adapter.setMetadata(action);
+  });
+
+  test("setMetadata correctly maps column descriptions", async () => {
+    const mockBigQuery: any = {
+      dataset: () => ({
+        table: () => ({
+          getMetadata: () => Promise.resolve([{
+            schema: {
+              fields: [{ name: "id", type: "INTEGER" }]
+            }
+          }]),
+          setMetadata: (metadata: any) => {
+            expect(metadata.schema[0].description).to.equal("id desc");
+            return Promise.resolve([]);
+          }
+        })
+      })
+    };
+
+    const credentials = dataform.BigQuery.create({ projectId: "p", location: "US" });
+    const adapter = new BigQueryDbAdapter(credentials, {
+      concurrencyLimit: 1,
+      clientProvider: { get: () => mockBigQuery }
+    });
+
+    const action = dataform.ExecutionAction.create({
+      target: { database: "db", schema: "sch", name: "tab" },
+      actionDescriptor: {
+        columns: [{ path: ["id"], description: "id desc" }]
+      }
+    });
+
+    await adapter.setMetadata(action);
   });
 });

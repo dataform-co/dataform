@@ -5,7 +5,7 @@ import { BaseWorker } from "df/cli/api/commands/base_worker";
 import { handleDbRequest } from "df/cli/api/commands/jit/rpc";
 import { IDbAdapter, IDbClient } from "df/cli/api/dbadapters";
 import { IBigQueryExecutionOptions } from "df/cli/api/dbadapters/bigquery";
-import { DEFAULT_COMPILATION_TIMEOUT_MILLIS } from "df/cli/api/utils/constants";
+import { DEFAULT_JIT_COMPILATION_TIMEOUT_MILLIS } from "df/cli/api/utils/constants";
 import { dataform } from "df/protos/ts";
 
 export interface IJitWorkerMessage {
@@ -26,7 +26,7 @@ export class JitCompileChildProcess extends BaseWorker<
     projectDir: string,
     dbadapter: IDbAdapter,
     dbclient: IDbClient,
-    timeoutMillis: number = DEFAULT_COMPILATION_TIMEOUT_MILLIS,
+    timeoutMillis: number = DEFAULT_JIT_COMPILATION_TIMEOUT_MILLIS,
     options?: IBigQueryExecutionOptions
   ): Promise<dataform.IJitCompilationResponse> {
     return await new JitCompileChildProcess().run(
