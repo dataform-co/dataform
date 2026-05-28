@@ -973,8 +973,6 @@ suite("@dataform/api", () => {
       ).thenReject(new Error("bad statement"));
 
       const mockDbAdapterInstance = instance(mockedDbAdapter);
-      mockDbAdapterInstance.withClientLock = async callback =>
-        await callback(mockDbAdapterInstance);
 
       const runner = new Runner(mockDbAdapterInstance, RUN_TEST_GRAPH);
 
@@ -1018,8 +1016,6 @@ suite("@dataform/api", () => {
       ).thenReject(new Error("bad statement"));
 
       const mockDbAdapterInstance = instance(mockedDbAdapter);
-      mockDbAdapterInstance.withClientLock = async callback =>
-        await callback(mockDbAdapterInstance);
 
       let runner = new Runner(mockDbAdapterInstance, RUN_TEST_GRAPH);
       runner.execute();
@@ -1041,7 +1037,7 @@ suite("@dataform/api", () => {
         }).toJSON()
       );
 
-      runner = new Runner(mockDbAdapterInstance, RUN_TEST_GRAPH, undefined, result);
+      runner = Runner.resume(mockDbAdapterInstance, RUN_TEST_GRAPH, result);
 
       expect(
         dataform.RunResult.create(cleanTiming(await runner.execute().result())).toJSON()
@@ -1079,8 +1075,6 @@ suite("@dataform/api", () => {
           .thenResolve({ rows: [], metadata: {} });
 
         const mockDbAdapterInstance = instance(mockedDbAdapter);
-        mockDbAdapterInstance.withClientLock = async callback =>
-          await callback(mockDbAdapterInstance);
 
         const runner = new Runner(mockDbAdapterInstance, NEW_TEST_GRAPH, {
           bigquery: { actionRetryLimit: 1 }
@@ -1119,8 +1113,6 @@ suite("@dataform/api", () => {
           .thenResolve({ rows: [], metadata: {} });
 
         const mockDbAdapterInstance = instance(mockedDbAdapter);
-        mockDbAdapterInstance.withClientLock = async callback =>
-          await callback(mockDbAdapterInstance);
 
         const runner = new Runner(mockDbAdapterInstance, NEW_TEST_GRAPH, {
           bigquery: { actionRetryLimit: 2 }
@@ -1183,8 +1175,6 @@ suite("@dataform/api", () => {
           .thenResolve({ rows: [], metadata: {} });
 
         const mockDbAdapterInstance = instance(mockedDbAdapter);
-        mockDbAdapterInstance.withClientLock = async callback =>
-          await callback(mockDbAdapterInstance);
 
         const runner = new Runner(mockDbAdapterInstance, NEW_TEST_GRAPH_WITH_OPERATION, {
           bigquery: { actionRetryLimit: 3 }
@@ -1235,7 +1225,6 @@ suite("@dataform/api", () => {
               reject(new Error("Run cancelled"));
             });
           }),
-        withClientLock: callback => callback(mockDbAdapter),
         schemas: _ => Promise.resolve([]),
         createSchema: (_, __) => Promise.resolve(),
         table: _ => undefined
@@ -1292,8 +1281,6 @@ suite("@dataform/api", () => {
           });
 
         const mockDbAdapterInstance = instance(mockedDbAdapter);
-        mockDbAdapterInstance.withClientLock = async callback =>
-          await callback(mockDbAdapterInstance);
 
         const labels = { env: "testing", team: "dataform" };
         const runner = new Runner(mockDbAdapterInstance, NEW_TEST_GRAPH, {
@@ -1355,8 +1342,6 @@ suite("@dataform/api", () => {
           });
 
         const mockDbAdapterInstance = instance(mockedDbAdapter);
-        mockDbAdapterInstance.withClientLock = async callback =>
-          await callback(mockDbAdapterInstance);
 
         const globalLabels = { env: "testing", team: "dataform" };
         const runner = new Runner(mockDbAdapterInstance, NEW_TEST_GRAPH, {
@@ -1434,8 +1419,6 @@ suite("@dataform/api", () => {
       );
 
       const mockDbAdapterInstance = instance(mockedDbAdapter);
-      mockDbAdapterInstance.withClientLock = async callback =>
-        await callback(mockDbAdapterInstance);
 
       const runner = new Runner(mockDbAdapterInstance, METADATA_TEST_GRAPH);
 
