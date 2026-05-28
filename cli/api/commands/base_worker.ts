@@ -29,7 +29,7 @@ export abstract class BaseWorker<TResponse, TMessage = any> {
 
       const timeout = setTimeout(() => {
         terminate(() =>
-          reject(new Error(`Worker timed out after ${timeoutMillis / 1000} seconds`))
+          reject(new Error(`Compilation timed out after ${timeoutMillis / 1000} seconds`))
         );
       }, timeoutMillis);
 

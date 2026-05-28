@@ -700,7 +700,7 @@ suite("examples", () => {
       });
       fail("Compilation timeout Error expected.");
     } catch (e) {
-      expect(e.message).to.equal("Worker timed out after 1 seconds");
+      expect(e.message).to.equal("Compilation timed out after 1 seconds");
     }
   });
 
