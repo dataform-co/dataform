@@ -5,7 +5,6 @@ import { JitCompileChildProcess } from "df/cli/api/commands/jit/compiler";
 import * as dbadapters from "df/cli/api/dbadapters";
 import { IBigQueryExecutionOptions } from "df/cli/api/dbadapters/bigquery";
 import { ExecutionSql } from "df/cli/api/dbadapters/execution_sql";
-import { DEFAULT_JIT_COMPILATION_TIMEOUT_MILLIS } from "df/cli/api/utils/constants";
 import { Flags } from "df/common/flags";
 import { retry } from "df/common/promises";
 import { deepClone, equals } from "df/common/protos";
@@ -41,7 +40,8 @@ export interface IExecutionOptions {
     dbadapter: dbadapters.IDbAdapter,
     dbclient: dbadapters.IDbClient,
     timeoutMillis?: number,
-    options?: IBigQueryExecutionOptions
+    options?: IBigQueryExecutionOptions,
+    onCancel?: (cancel: () => void) => void
   ) => Promise<dataform.IJitCompilationResponse>;
 }
 
@@ -435,7 +435,7 @@ export class Runner {
       tasks: []
     };
 
-    if ((action.tasks.length === 0 && !action.jitCode) || action.disabled) {
+    if (action.tasks.length === 0 && !action.jitCode) {
       actionResult.status = dataform.ActionResult.ExecutionStatus.DISABLED;
       this.runResult.actions.push(actionResult);
       this.notifyListeners();
@@ -630,16 +630,14 @@ export class Runner {
       jitData: this.graph.jitData
     });
 
-    const timeoutMillis =
-      this.graph.runConfig?.jitTimeoutMillis || DEFAULT_JIT_COMPILATION_TIMEOUT_MILLIS;
-
     const jitResponse = await this.executionOptions.jitCompiler(
       jitRequest,
       this.executionOptions.projectDir,
       this.dbadapter,
       client,
-      timeoutMillis,
-      this.getBigQueryExecutionOptions(action)
+      this.graph.runConfig?.jitTimeoutMillis || undefined,
+      this.getBigQueryExecutionOptions(action),
+      handleCancel => this.eEmitter.on(CANCEL_EVENT, handleCancel)
     );
 
     action.tasks = this.createTasksFromJitResponse(action, jitResponse);
