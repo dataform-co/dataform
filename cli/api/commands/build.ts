@@ -69,7 +69,8 @@ export class Builder {
       runConfig: this.runConfig,
       warehouseState: this.warehouseState,
       declarationTargets: this.prunedGraph.declarations.map(declaration => declaration.target),
-      actions
+      actions,
+      jitData: this.prunedGraph.jitData
     });
   }
 
@@ -82,9 +83,7 @@ export class Builder {
       ...this.toPartialExecutionAction(table),
       type: "table",
       tableType: utils.tableTypeEnumToString(table.enumType),
-      tasks: table.disabled
-        ? []
-        : this.executionSql.publishTasks(table, runConfig, tableMetadata).build(),
+      tasks: this.executionSql.createTableTasks(table, runConfig, tableMetadata),
       hermeticity: table.hermeticity || dataform.ActionHermeticity.HERMETIC
     };
   }
@@ -93,9 +92,7 @@ export class Builder {
     return {
       ...this.toPartialExecutionAction(operation),
       type: "operation",
-      tasks: operation.disabled
-        ? []
-        : operation.queries.map(statement => ({ type: "statement", statement })),
+      tasks: this.executionSql.createOperationTasks(operation),
       hermeticity: operation.hermeticity || dataform.ActionHermeticity.NON_HERMETIC
     };
   }
@@ -104,9 +101,7 @@ export class Builder {
     return {
       ...this.toPartialExecutionAction(assertion),
       type: "assertion",
-      tasks: assertion.disabled
-        ? []
-        : this.executionSql.assertTasks(assertion, this.prunedGraph.projectConfig).build(),
+      tasks: this.executionSql.createAssertionTasks(assertion),
       hermeticity: assertion.hermeticity || dataform.ActionHermeticity.HERMETIC
     };
   }
@@ -114,11 +109,17 @@ export class Builder {
   private toPartialExecutionAction(
     action: dataform.ITable | dataform.IOperation | dataform.IAssertion
   ) {
-    return dataform.ExecutionAction.create({
+    const jitCode = (action as any).jitCode;
+    const executionAction = dataform.ExecutionAction.create({
       target: action.target,
       fileName: action.fileName,
       dependencyTargets: action.dependencyTargets,
-      actionDescriptor: action.actionDescriptor
+      actionDescriptor: action.actionDescriptor,
+      disabled: action.disabled
     });
+    if (jitCode) {
+      executionAction.jitCode = jitCode;
+    }
+    return executionAction;
   }
 }

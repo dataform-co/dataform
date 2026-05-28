@@ -51,8 +51,15 @@ message CompileConfig {
   // Project configuration overrides.
   ProjectConfig project_config_override = 3;
 
-  // Override compilation timeout settings.
+  // Override top-level compilation timeout (the single compile worker that
+  // runs once per invocation). Does not bound per-model JiT compilation;
+  // see jit_timeout_millis.
   int32 timeout_millis = 6;
+
+  // Per-model JiT compilation worker timeout. Each model with JiT code gets
+  // its own fresh budget; this is per-model, not a shared budget across the
+  // compile.
+  int32 jit_timeout_millis = 13;
 
   Extension extension = 10;
 
