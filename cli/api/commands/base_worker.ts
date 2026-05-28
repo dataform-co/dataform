@@ -15,6 +15,7 @@ export abstract class BaseWorker<TResponse, TMessage = any> {
 
     return new Promise((resolve, reject) => {
       let completed = false;
+      let booted = false;
 
       const terminate = (fn: () => void) => {
         if (completed) {
@@ -22,7 +23,7 @@ export abstract class BaseWorker<TResponse, TMessage = any> {
         }
         completed = true;
         clearTimeout(timeout);
-        child.kill();
+        child.kill("SIGKILL");
         fn();
       };
 
@@ -34,7 +35,10 @@ export abstract class BaseWorker<TResponse, TMessage = any> {
 
       child.on("message", (message: any) => {
         if (message.type === "worker_booted") {
-          onBoot(child);
+          if (!booted) {
+            booted = true;
+            onBoot(child);
+          }
           return;
         }
         onMessage(message, child, (res) => terminate(() => resolve(res)), (err) => terminate(() => reject(err)));
@@ -57,7 +61,7 @@ export abstract class BaseWorker<TResponse, TMessage = any> {
   }
 
   private resolveScript() {
-    const pathsToTry = [this.loaderPath, "./worker_bundle.js"];
+    const pathsToTry = ["./worker_bundle.js", this.loaderPath];
     for (const p of pathsToTry) {
       try {
         return require.resolve(p);
