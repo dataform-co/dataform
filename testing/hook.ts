@@ -20,7 +20,7 @@ export function hook(
 export type IHookHandler = typeof Hook.create;
 
 export class Hook {
-  public static readonly DEFAULT_TIMEOUT_MILLIS = 30000;
+  public static readonly DEFAULT_TIMEOUT_MILLIS = 300000;
 
   public static create(
     nameOrOptions: IHookOptions | string,
