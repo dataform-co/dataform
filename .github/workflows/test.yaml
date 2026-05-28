@@ -12,13 +12,13 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run unit tests
-        uses: gcr.io/cloud-builders/bazel:5.4.0
+        uses: gcr.io/cloud-builders/bazel:7.3.2
         entrypoint: bash
         with:
           args: ./scripts/run_tests
 
       - name: Run integration tests
-        uses: gcr.io/cloud-builders/bazel:5.4.0
+        uses: gcr.io/cloud-builders/bazel:7.3.2
         entrypoint: bash
         with:
           args: ./scripts/run_integration_tests
