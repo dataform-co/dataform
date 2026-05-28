@@ -1,0 +1,12 @@
+config { 
+    type: "table", 
+    schema: "test", 
+    name: "testtab",
+    description: "Verifies fix for https://github.com/dataform-co/dataform/issues/1231" 
+} 
+
+post_operations { 
+    drop table ${self()} 
+}
+
+select 1 as col1 -- test comment

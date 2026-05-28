@@ -1,16 +1,44 @@
 import { dataform } from "df/protos/ts";
 
 export function concatenateQueries(statements: string[], modifier?: (mod: string) => string) {
-  return statements
+  const processed = statements
     .filter(statement => !!statement)
     .map(statement => statement.trim())
-    .map(statement =>
-      statement.length > 0 && statement.charAt(statement.length - 1) === ";"
-        ? statement.substring(0, statement.length - 1)
-        : statement
-    )
-    .map(statement => (!!modifier ? modifier(statement) : statement))
-    .join("\n;\n");
+    .filter(statement => statement.length > 0);
+
+  return processed
+    .map((statement, index) => {
+      const isLast = index === processed.length - 1;
+      const commentIndex = statement.indexOf("--");
+
+      let code: string;
+      let comment: string;
+
+      if (commentIndex === 0) {
+        code = "";
+        comment = statement;
+      } else if (commentIndex > 0) {
+        code = statement.substring(0, commentIndex).trimEnd();
+        comment = statement.substring(commentIndex);
+      } else {
+        code = statement;
+        comment = "";
+      }
+
+      if (modifier && code.length > 0) {
+        code = modifier(code);
+      }
+
+      if (!isLast && code.length > 0 && !code.endsWith(";")) {
+        code = code + ";";
+      }
+
+      if (code.length > 0 && comment.length > 0) {
+        return code + " " + comment;
+      }
+      return code || comment;
+    })
+    .join("\n");
 }
 
 export class Tasks {
