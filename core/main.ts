@@ -75,6 +75,53 @@ export function main(coreExecutionRequest: Uint8Array | string): Uint8Array | st
   return dataform.CoreExecutionResponse.encode(coreExecutionResponse).finish();
 }
 
+// Action types that load their query from a plain .sql file via `filename`.
+// Listing .sqlx files here is unsupported: .sqlx files are loaded directly
+// from the definitions/ directory by the sqlx compiler, not through the
+// `actions.yaml` config. Putting a .sqlx file under `filename:` produces a
+// cryptic `nativeRequire` error rather than a useful diagnostic - so we
+// emit a clear compilation error up front. See issue #1785.
+//
+// Data preparations are intentionally excluded - they accept .dp.sqlx files
+// (handled inside core/actions/data_preparation.ts).
+const ACTION_TYPES_REJECTING_SQLX_FILENAMES: string[] = [
+  "table",
+  "view",
+  "incrementalTable",
+  "assertion",
+  "operation",
+  "declaration",
+  "notebook"
+];
+
+function actionConfigFilenameIsInvalidSqlx(
+  session: Session,
+  actionConfig: dataform.ActionConfig,
+  actionConfigsPath: string
+): boolean {
+  for (const actionType of ACTION_TYPES_REJECTING_SQLX_FILENAMES) {
+    const subConfig = (actionConfig as any)[actionType] as
+      | { filename?: string }
+      | undefined
+      | null;
+    const filename = subConfig?.filename;
+    if (filename && filename.toLowerCase().endsWith(".sqlx")) {
+      session.compileError(
+        new Error(
+          `Action config "${actionType}" has filename "${filename}", but .sqlx ` +
+            `files cannot be referenced from actions.yaml. .sqlx files are ` +
+            `compiled directly from the definitions/ directory. Either use a ` +
+            `.sql file with the same contents, or remove the actions.yaml ` +
+            `entry and let Dataform pick up the .sqlx file automatically.`
+        ),
+        actionConfigsPath
+      );
+      return true;
+    }
+  }
+  return false;
+}
+
 function loadActionConfigs(session: Session, filePaths: string[]) {
   filePaths
     .filter(
@@ -88,6 +135,10 @@ function loadActionConfigs(session: Session, filePaths: string[]) {
       const actionConfigs = loadActionConfigsFile(session, actionConfigsPath);
       actionConfigs.actions.forEach(nonProtoActionConfig => {
         const actionConfig = dataform.ActionConfig.create(nonProtoActionConfig);
+
+        if (actionConfigFilenameIsInvalidSqlx(session, actionConfig, actionConfigsPath)) {
+          return;
+        }
 
         if (actionConfig.table) {
           session.actions.push(
