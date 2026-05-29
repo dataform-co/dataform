@@ -994,6 +994,133 @@ actions:`
       );
     });
 
+    suite(`.sqlx filenames in actions.yaml are rejected with a clear error`, () => {
+      [
+        {
+          actionType: "table",
+          yamlBody: `
+actions:
+- table:
+    filename: table.sqlx`
+        },
+        {
+          actionType: "view",
+          yamlBody: `
+actions:
+- view:
+    filename: view.sqlx`
+        },
+        {
+          actionType: "incrementalTable",
+          yamlBody: `
+actions:
+- incrementalTable:
+    filename: incremental.sqlx`
+        },
+        {
+          actionType: "assertion",
+          yamlBody: `
+actions:
+- assertion:
+    filename: assertion.sqlx`
+        },
+        {
+          actionType: "operation",
+          yamlBody: `
+actions:
+- operation:
+    filename: operation.sqlx`
+        },
+        {
+          actionType: "declaration",
+          yamlBody: `
+actions:
+- declaration:
+    name: declaration
+    filename: declaration.sqlx`
+        },
+        {
+          actionType: "notebook",
+          yamlBody: `
+actions:
+- notebook:
+    filename: notebook.sqlx`
+        }
+      ].forEach(({ actionType, yamlBody }) => {
+        test(`for action type "${actionType}"`, () => {
+          const projectDir = tmpDirFixture.createNewTmpDir();
+          fs.writeFileSync(
+            path.join(projectDir, "workflow_settings.yaml"),
+            VALID_WORKFLOW_SETTINGS_YAML
+          );
+          fs.mkdirSync(path.join(projectDir, "definitions"));
+          fs.writeFileSync(path.join(projectDir, "definitions/actions.yaml"), yamlBody);
+
+          const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+          const errorMessages = result.compile.compiledGraph.graphErrors.compilationErrors.map(
+            ({ message }) => message
+          );
+          expect(errorMessages).to.have.lengthOf(1);
+          expect(errorMessages[0]).to.include(`Action config "${actionType}" has filename`);
+          expect(errorMessages[0]).to.include(
+            ".sqlx files cannot be referenced from actions.yaml"
+          );
+        });
+      });
+
+      test(`is case-insensitive`, () => {
+        const projectDir = tmpDirFixture.createNewTmpDir();
+        fs.writeFileSync(
+          path.join(projectDir, "workflow_settings.yaml"),
+          VALID_WORKFLOW_SETTINGS_YAML
+        );
+        fs.mkdirSync(path.join(projectDir, "definitions"));
+        fs.writeFileSync(
+          path.join(projectDir, "definitions/actions.yaml"),
+          `
+actions:
+- table:
+    filename: table.SQLX`
+        );
+
+        const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+        expect(
+          result.compile.compiledGraph.graphErrors.compilationErrors.map(({ message }) => message)
+        ).to.have.lengthOf(1);
+      });
+
+      test(`for data preparations referencing a .dp.sqlx file`, () => {
+        // .dp.sqlx data preparations are compiled directly from the definitions/
+        // directory, so referencing one from actions.yaml is the same mistake as
+        // for any other action type and must produce the same clear error rather
+        // than silently loading a malformed, duplicated action.
+        const projectDir = tmpDirFixture.createNewTmpDir();
+        fs.writeFileSync(
+          path.join(projectDir, "workflow_settings.yaml"),
+          VALID_WORKFLOW_SETTINGS_YAML
+        );
+        fs.mkdirSync(path.join(projectDir, "definitions"));
+        fs.writeFileSync(
+          path.join(projectDir, "definitions/actions.yaml"),
+          `
+actions:
+- dataPreparation:
+    filename: prep.dp.sqlx`
+        );
+
+        const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+        const errorMessages = result.compile.compiledGraph.graphErrors.compilationErrors.map(
+          ({ message }) => message
+        );
+        expect(errorMessages).to.have.lengthOf(1);
+        expect(errorMessages[0]).to.include(`Action config "dataPreparation" has filename`);
+        expect(errorMessages[0]).to.include(".sqlx files cannot be referenced from actions.yaml");
+      });
+    });
+
     test(`filenames with non-UTF8 characters are valid`, () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
       fs.writeFileSync(
