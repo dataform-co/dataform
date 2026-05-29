@@ -14,4 +14,4 @@ if (!fs.existsSync(path.resolve(runfilesDir, "df"))) {
 
 export const CREDENTIALS_PATH = path.resolve(runfilesDir, workspaceName, "test_credentials/bigquery.json");
 
-export const cliEntryPointPath = "cli/node_modules/@dataform/cli/bundle.js";
+export const cliEntryPointPath = path.resolve(runfilesDir, workspaceName, "packages/@dataform/cli/bundle.js");

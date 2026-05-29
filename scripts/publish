@@ -15,14 +15,7 @@ if [ "$(git status --porcelain)" ]; then
 fi
 
 # Run all the tests.
-bazel run @nodejs//:yarn config set registry https://us-npm.pkg.dev/artifact-foundry-prod/ah-3p-staging-npm/
-bazel run //tools/registry-tools:switch_registry -- $(pwd)/yarn.lock https://us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/
-bazel run @nodejs//:yarn install -- --frozen-lockfile
 bazel test //... --build_tests_only
-
-# After the code is build with Airlock dependencies, we change the registry to public npmjs
-# to publish our npm package.
-bazel run @nodejs//:npm config set registry https://registry.npmjs.org/
 
 VERSION=$(cat version.bzl | grep DF_VERSION | awk '{ print $3 }' | sed "s/\"//g")
 

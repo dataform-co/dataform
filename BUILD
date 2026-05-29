@@ -1,68 +1,61 @@
+load("@aspect_bazel_lib//lib:copy_to_bin.bzl", "copy_to_bin")
+load("@bazel_gazelle//:def.bzl", "gazelle")
+load("@npm//:defs.bzl", "npm_link_all_packages")
+load("@npm//:protobufjs-cli/package_json.bzl", "bin")
+load("@npm//:tslint/package_json.bzl", tslint_bin = "bin")
+
 package(default_visibility = ["//visibility:public"])
 
-load("@build_bazel_rules_nodejs//:index.bzl", "nodejs_binary")
+npm_link_all_packages(name = "node_modules")
+
+copy_to_bin(
+    name = "tsconfig",
+    srcs = ["tsconfig.json"],
+    visibility = ["//visibility:public"],
+)
+
+copy_to_bin(
+    name = "tsconfig_esm",
+    srcs = ["tsconfig.esm.json"],
+    visibility = ["//visibility:public"],
+)
+
+copy_to_bin(
+    name = "package_json",
+    srcs = ["package.json"],
+    visibility = ["//visibility:public"],
+)
 
 exports_files([
     "tsconfig.json",
+    "tsconfig.esm.json",
     "package.json",
     "readme.md",
     "version.bzl",
 ])
 
-PROTOBUF_DEPS = [
-    "@npm//protobufjs",
-    "@npm//protobufjs-cli",
-    # these deps are needed even though they are not automatic transitive deps of
-    # protobufjs since if they are not in the runfiles then protobufjs attempts to
-    # run `npm install` at runtime to get thhem which fails as it tries to access
-    # the npm cache outside of the sandbox
-    "@npm//semver",
-    "@npm//chalk",
-    "@npm//glob",
-    "@npm//jsdoc",
-    "@npm//minimist",
-    "@npm//tmp",
-    "@npm//uglify-js",
-    "@npm//uglify-es",
-    "@npm//espree",
-    "@npm//escodegen",
-    "@npm//estraverse",
-]
-
-nodejs_binary(
+bin.pbjs_binary(
     name = "pbjs",
-    data = PROTOBUF_DEPS,
-    entry_point = "@npm//:node_modules/protobufjs-cli/bin/pbjs",
+    chdir = ".",
+    visibility = ["//visibility:public"],
 )
 
-nodejs_binary(
+bin.pbts_binary(
     name = "pbts",
-    data = PROTOBUF_DEPS,
-    entry_point = "@npm//:node_modules/protobufjs-cli/bin/pbts",
+    chdir = ".",
+    visibility = ["//visibility:public"],
 )
 
-nodejs_binary(
+tslint_bin.tslint_binary(
     name = "tslint",
     data = [
-        "@npm//tslint",
+        "//:node_modules/tslint-config-prettier",
+        "//:node_modules/tslint-config-security",
     ],
-    entry_point = "@npm//:node_modules/tslint/bin/tslint",
-    templated_args = ["--node_options=--preserve-symlinks"],
+    visibility = ["//visibility:public"],
 )
-
-load("@bazel_gazelle//:def.bzl", "gazelle")
 
 # gazelle:prefix github.com/dataform-co/dataform
 # gazelle:proto package
 # gazelle:proto_group go_package
 gazelle(name = "gazelle")
-
-load("//tools:ts_library.bzl", "ts_library")
-
-# TODO: This is only here in order to workaround a bug in the way bazel resolves
-# workspace imports when in nested repositories, and can be removed once that is fixed.
-ts_library(
-    name = "modules-fix",
-    srcs = [],
-    module_name = "df",
-)

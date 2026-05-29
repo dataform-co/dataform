@@ -1,6 +1,7 @@
-package(default_visibility = ["//visibility:public"])
-
+load("@aspect_rules_js//js:defs.bzl", "js_binary")
 load("//tools:ts_library.bzl", "ts_library")
+
+package(default_visibility = ["//visibility:public"])
 
 ts_library(
     name = "vm",
@@ -9,61 +10,34 @@ ts_library(
         "jit_worker.ts",
     ],
     deps = [
+        "//:node_modules/@types/glob",
+        "//:node_modules/@types/node",
+        "//:node_modules/@types/semver",
+        "//:node_modules/glob",
+        "//:node_modules/semver",
+        "//:node_modules/vm2",
         "//common/protos",
         "//core",
         "//protos:ts",
-        "@npm//@types/glob",
-        "@npm//@types/node",
-        "@npm//@types/semver",
-        "@npm//glob",
-        "@npm//semver",
-        "@npm//vm2",
     ],
 )
 
-ts_library(
+js_binary(
     name = "compile_loader",
-    srcs = [],
-    data = [
-        ":compile_loader.js",
-        ":jit_loader.js",
-    ],
-    deps = [
-        ":vm",
-        "@npm//source-map-support",
-    ],
-)
-
-load("@build_bazel_rules_nodejs//:index.bzl", "nodejs_binary")
-
-# This is a bit nuts. As we fork a process when compiling projects, we
-# start a new node instance but within bazel, modules will fail to load in the
-# forked process as we don't have a loader script available.
-# To fix this, we use the binary rules to generate the bazel loader scripts
-# and then execute these scripts instead, so module resulution works.
-
-nodejs_binary(
-    name = "compile",
+    chdir = "../..",
     data = [
         ":vm",
-        "@npm//source-map-support",
+        "//:node_modules/source-map-support",
     ],
-    entry_point = ":compile.ts",
-    templated_args = [
-        "--node_options=--require=source-map-support/register",
-        "--bazel_patch_module_resolver",
-    ],
+    entry_point = "compile.js",
 )
 
-nodejs_binary(
+js_binary(
     name = "jit_worker_bin",
+    chdir = "../..",
     data = [
         ":vm",
-        "@npm//source-map-support",
+        "//:node_modules/source-map-support",
     ],
-    entry_point = ":jit_worker.ts",
-    templated_args = [
-        "--node_options=--require=source-map-support/register",
-        "--bazel_patch_module_resolver",
-    ],
+    entry_point = "jit_worker.js",
 )

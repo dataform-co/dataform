@@ -3,17 +3,54 @@ module(
     version = "1.0.0",
 )
 
-# 1. bazel_skylib
+# 1. Core Aspect Build Rules
+bazel_dep(name = "aspect_rules_js", version = "2.0.1")
+bazel_dep(name = "aspect_rules_ts", version = "3.0.0")
+bazel_dep(name = "aspect_rules_webpack", version = "0.16.0")
+bazel_dep(name = "aspect_rules_rollup", version = "2.0.0")
+bazel_dep(name = "aspect_bazel_lib", version = "2.7.7")
+
+# 2. Node.js Toolchain Configuration
+bazel_dep(name = "rules_nodejs", version = "6.2.0")
+bazel_dep(name = "platforms", version = "0.0.10")
+
+node_ext = use_extension("//tools:node_extension.bzl", "node_ext")
+use_repo(
+    node_ext,
+    "nodejs",
+    "nodejs_darwin_amd64",
+    "nodejs_darwin_arm64",
+    "nodejs_linux_amd64",
+    "nodejs_linux_arm64",
+    "nodejs_windows_amd64",
+    node_toolchains = "nodejs_toolchains",
+)
+
+register_toolchains(
+    "@node_toolchains//:all",
+)
+
+# 3. NPM Lock File Translation to Bzlmod Package Trees
+npm = use_extension("@aspect_rules_js//npm:extensions.bzl", "npm", dev_dependency = True)
+npm.npm_translate_lock(
+    name = "npm",
+    pnpm_lock = "//:pnpm-lock.yaml",
+)
+use_repo(npm, "npm")
+
+pnpm = use_extension("@aspect_rules_js//npm:extensions.bzl", "pnpm")
+use_repo(pnpm, "pnpm")
+
+# 4. bazel_skylib
 bazel_dep(name = "bazel_skylib", version = "1.7.1")
 
-# 2. com_google_protobuf
+# 5. com_google_protobuf
 bazel_dep(name = "protobuf", version = "27.3", repo_name = "com_google_protobuf")
 
-
-# 4. rules_go
+# 6. rules_go
 bazel_dep(name = "rules_go", version = "0.49.0", repo_name = "io_bazel_rules_go")
 
-# 5. bazel_gazelle
+# 7. bazel_gazelle
 bazel_dep(name = "gazelle", version = "0.37.0", repo_name = "bazel_gazelle")
 
 # Go dependencies via Gazelle's go_deps extension
@@ -40,6 +77,11 @@ use_repo(
     "org_golang_x_text",
 )
 
-# 6. Custom gcloud SDK extension
+# 8. Custom gcloud SDK extension
 gcloud_sdk_ext = use_extension("//tools/gcloud:extensions.bzl", "gcloud_sdk_extension")
 use_repo(gcloud_sdk_ext, "gcloud_sdk")
+
+# 9. TypeScript Compiler Repository Setup
+rules_ts_ext = use_extension("@aspect_rules_ts//ts:extensions.bzl", "ext")
+rules_ts_ext.deps()
+use_repo(rules_ts_ext, "npm_typescript")

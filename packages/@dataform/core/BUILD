@@ -1,9 +1,7 @@
-load("@build_bazel_rules_nodejs//:index.bzl", "npm_package_bin")
-load("@npm//webpack:index.bzl", "webpack")
+load("@aspect_rules_webpack//webpack:defs.bzl", "webpack_bundle")
 load("//:version.bzl", "DF_VERSION")
-load("//packages:index.bzl", "add_license_header_to_file", "pkg_bundle", "pkg_bundle_dts", "pkg_json", "pkg_npm_tar")
+load("//packages:index.bzl", "add_license_header_to_file", "pkg_bundle_dts", "pkg_json", "pkg_npm_tar")
 load("//tools:ts_library.bzl", "ts_library")
-load("//tools/common:copy.bzl", "copy_file")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -15,31 +13,28 @@ ts_library(
     ],
 )
 
-webpack(
-    name = "bundler",
-    data = [
-        ":core",
-        ":webpack.config.js",
-        "@npm//webpack-cli",
-    ],
-)
-
-# RULEDIR explanation: https://bazel.build/reference/be/make-variables#predefined_genrule_variables
-npm_package_bin(
-    name = "bundle",
-    outs = [
-        "bundle_no_license.js",
-    ],
+webpack_bundle(
+    name = "bundle_no_license",
     args = [
-        "--config=$(location webpack.config.js)",
-        "--output-path=$(RULEDIR)",
-        "--output-filename=bundle_no_license.js",
         "--mode=production",
     ],
     data = [
         ":webpack.config.js",
+        "//:node_modules/webpack-cli",
     ],
-    tool = ":bundler",
+    entry_point = "index.js",
+    node_modules = "//:node_modules",
+    webpack_config = ":webpack.config.js",
+    deps = [
+        ":core",
+        "//common/errors",
+        "//common/protos",
+        "//common/strings",
+        "//core",
+        "//core/compilation_sql",
+        "//protos:ts",
+        "//sqlx:lexer",
+    ],
 )
 
 pkg_json(
@@ -48,8 +43,8 @@ pkg_json(
     description = "Dataform core API.",
     external_deps = [],
     layers = [
-        "//:package.json",
-        "//packages/@dataform:package.layer.json",
+        "//:package_json",
+        "//packages/@dataform:package_layer",
     ],
     main = "bundle.js",
     version = DF_VERSION,
@@ -87,13 +82,13 @@ add_license_header_to_file(
 
 add_license_header_to_file(
     name = "bundle_with_license",
-    from_file = "bundle",
+    from_file = ":bundle_no_license",
     to_file = "bundle.js",
 )
 
 pkg_bundle_dts(
     name = "bundle.d",
-    entry_point = "index.ts",
+    entry_point = "index.d.ts",
     externals = [
         "protobufjs",
         "tarjan-graph",
@@ -114,8 +109,8 @@ pkg_npm_tar(
         ":configs_proto_with_license",
         ":core_proto_with_license",
         ":db_adapter_proto_with_license",
-        ":jit_proto_with_license",
         ":extension_proto_with_license",
+        ":jit_proto_with_license",
         ":package.json",
         "//:version.bzl",
     ],

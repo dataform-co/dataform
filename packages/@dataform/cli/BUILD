@@ -1,9 +1,16 @@
-load("//tools:ts_library.bzl", "ts_library")
+load("@aspect_rules_js//js:defs.bzl", "js_binary")
 load("//:version.bzl", "DF_VERSION")
-load("//packages:index.bzl", "LICENSE_HEADER", "add_license_header_to_file", "pkg_bundle", "pkg_json", "pkg_npm_tar")
-load("@build_bazel_rules_nodejs//:index.bzl", "nodejs_binary")
+load("//packages:index.bzl", "add_license_header_to_file", "pkg_bundle", "pkg_json", "pkg_npm_tar")
+load("//tools:ts_library.bzl", "ts_library")
 
 package(default_visibility = ["//visibility:public"])
+
+genrule(
+    name = "register_loader_gen",
+    srcs = ["//testing:resolver-patch.js"],
+    outs = ["register_loader.js"],
+    cmd = "cat $(SRCS) > $@",
+)
 
 ts_library(
     name = "cli",
@@ -14,17 +21,16 @@ ts_library(
     ],
 )
 
-nodejs_binary(
+js_binary(
     name = "bin",
+    chdir = "../../..",
     data = [
+        "bin_loader.js",
+        ":register_loader.js",
         ":cli",
-        "@npm//source-map-support",
+        "//:node_modules/source-map-support",
     ],
-    entry_point = ":index.ts",
-    templated_args = [
-        "--node_options=--require=source-map-support/register",
-        "--bazel_patch_module_resolver",
-    ],
+    entry_point = "bin_loader.js",
 )
 
 externals = [
@@ -57,8 +63,8 @@ pkg_json(
     description = "Dataform command line interface.",
     external_deps = externals,
     layers = [
-        "//:package.json",
-        "//packages/@dataform:package.layer.json",
+        "//:package_json",
+        "//packages/@dataform:package_layer",
         "//packages/@dataform/cli:package.layer.json",
     ],
     main = "bundle.js",
@@ -66,25 +72,37 @@ pkg_json(
 )
 
 pkg_bundle(
-    name = "bundle",
+    name = "bundle_no_license",
     allow_node_builtins = True,
-    args = ["--banner='#!/usr/bin/env node\n" + LICENSE_HEADER + "'"],
-    entry_point = "index.ts",
+    entry_point = "esm/index.js",
     externals = externals,
     deps = [
         ":cli",
     ],
 )
 
+add_license_header_to_file(
+    name = "bundle",
+    from_file = ":bundle_no_license",
+    to_file = "bundle.js",
+    use_shebang = True,
+)
+
 pkg_bundle(
-    name = "worker_bundle",
+    name = "worker_bundle_no_license",
     allow_node_builtins = True,
-    args = ["--banner='#!/usr/bin/env node\n" + LICENSE_HEADER + "'"],
-    entry_point = "worker.ts",
+    entry_point = "esm/worker.js",
     externals = externals,
     deps = [
         ":cli",
     ],
+)
+
+add_license_header_to_file(
+    name = "worker_bundle",
+    from_file = ":worker_bundle_no_license",
+    to_file = "worker_bundle.js",
+    use_shebang = True,
 )
 
 pkg_npm_tar(

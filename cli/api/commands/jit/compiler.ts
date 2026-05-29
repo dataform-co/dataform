@@ -40,7 +40,7 @@ export class JitCompileChildProcess extends BaseWorker<
   }
 
   constructor() {
-    super(path.resolve(__dirname, "../../../vm/jit_loader"));
+    super(path.resolve(__dirname, "../../../vm/jit_worker"));
   }
 
   private async run(

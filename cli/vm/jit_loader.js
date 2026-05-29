@@ -1,5 +1,7 @@
 'use strict';
 
+require('../../testing/resolver-patch.js');
+
 if (require.main === module) {
   var entryPointPath = 'df/cli/vm/jit_worker.js';
   var mainScript = process.argv[1] = entryPointPath;

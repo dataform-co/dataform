@@ -1,5 +1,7 @@
 import { ChildProcess } from "child_process";
+import * as fs from "fs";
 import * as os from "os";
+import * as path from "path";
 
 export * from "df/testing/hook";
 export * from "df/testing/suite";
@@ -22,10 +24,64 @@ export const platformPath = () => {
   }
 };
 
-// Note: it would be more correct for these to be injected by blaze at run time.
-export const nodePath = `external/${platformPath()}/bin/node`;
-export const npmPath = `external/${platformPath()}/bin/npm`;
-export const corePackageTarPath = "packages/@dataform/core/package.tar.gz";
+const runfilesDir = process.env.RUNFILES || "";
+let workspaceName = "df";
+if (runfilesDir && !fileExists(path.resolve(runfilesDir, "df"))) {
+  workspaceName = "_main";
+}
+
+function fileExists(filePath: string): boolean {
+  try {
+    fs.accessSync(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+const getBzlmodNpmPath = () => {
+  if (!runfilesDir) {
+    return "";
+  }
+  const canonicalRepoName = `_main~node_ext~${platformPath()}`;
+  const bzlmodPath = path.resolve(runfilesDir, canonicalRepoName, "bin/nodejs/bin/npm");
+  if (fileExists(bzlmodPath)) {
+    return bzlmodPath;
+  }
+  const legacyPath = path.resolve(runfilesDir, platformPath(), "bin/npm");
+  if (fileExists(legacyPath)) {
+    return legacyPath;
+  }
+  return "";
+};
+
+const getBzlmodNodePath = () => {
+  if (!runfilesDir) {
+    return process.execPath;
+  }
+  const canonicalRepoName = `_main~node_ext~${platformPath()}`;
+  const bzlmodPath = path.resolve(runfilesDir, canonicalRepoName, "bin/nodejs/bin/node");
+  if (fileExists(bzlmodPath)) {
+    return bzlmodPath;
+  }
+  const legacyPath = path.resolve(runfilesDir, platformPath(), "bin/node");
+  if (fileExists(legacyPath)) {
+    return legacyPath;
+  }
+  return process.execPath;
+};
+
+export const nodePath = getBzlmodNodePath();
+const bzlmodNpm = getBzlmodNpmPath();
+export const npmPath = bzlmodNpm || "npm";
+
+if (npmPath !== "npm") {
+  process.env.PATH = `${path.dirname(npmPath)}:${process.env.PATH}`;
+}
+
+export const corePackageTarPath = runfilesDir
+  ? path.resolve(runfilesDir, workspaceName, "packages/@dataform/core/package.tar.gz")
+  : "packages/@dataform/core/package.tar.gz";
 
 export async function getProcessResult(childProcess: ChildProcess) {
   let stderr = "";
