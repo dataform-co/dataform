@@ -108,6 +108,8 @@ enum JitCompilationTargetType {
   JIT_COMPILATION_TARGET_TYPE_OPERATION = 2;
   // Incremental table target.
   JIT_COMPILATION_TARGET_TYPE_INCREMENTAL_TABLE = 3;
+  // Assertion target.
+  JIT_COMPILATION_TARGET_TYPE_ASSERTION = 4;
 }
 
 // JiT compilation request.
@@ -134,6 +136,7 @@ message JitCompilationResponse {
     JitTableResult table = 1;
     JitOperationResult operation = 2;
     JitIncrementalTableResult incremental_table = 3;
+    JitAssertionResult assertion = 4;
   }
 }
 
@@ -160,4 +163,10 @@ message JitIncrementalTableResult {
 message JitOperationResult {
   // Sequence of SQL operations.
   repeated string queries = 1;
+}
+
+// JiT compilation result for assertion actions.
+message JitAssertionResult {
+  // SQL Select query that returns rows iff the assertion fails.
+  string query = 1;
 }
