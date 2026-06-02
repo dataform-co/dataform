@@ -120,6 +120,35 @@ suite("jit_compiler", () => {
     });
   });
 
+  suite("jitCompileAssertion", () => {
+    test("compiles assertion returning string", async () => {
+      const request = dataform.JitCompilationRequest.create({
+        jitCode: `async (ctx) => "SELECT * FROM t WHERE invalid"`,
+        target,
+        jitData: {},
+        compilationTargetType: dataform.JitCompilationTargetType.JIT_COMPILATION_TARGET_TYPE_ASSERTION,
+      });
+      const result = await jitCompile(request, rpcCallback);
+      expect(result.assertion.query).to.equal("SELECT * FROM t WHERE invalid");
+    });
+
+    test("compiles assertion using context", async () => {
+      const request = dataform.JitCompilationRequest.create({
+        jitCode: `async (ctx) => \`SELECT * FROM \${ctx.ref('other')} WHERE invalid\``,
+        target,
+        jitData: {},
+        dependencies: [dataform.Target.create({
+          database: "db",
+          schema: "schema",
+          name: "other",
+        })],
+        compilationTargetType: dataform.JitCompilationTargetType.JIT_COMPILATION_TARGET_TYPE_ASSERTION,
+      });
+      const result = await jitCompile(request, rpcCallback);
+      expect(result.assertion.query).to.equal("SELECT * FROM `db.schema.other` WHERE invalid");
+    });
+  });
+
   suite("jitCompileIncrementalTable", () => {
     test("compiles incremental table", async () => {
       const request = dataform.JitCompilationRequest.create({
