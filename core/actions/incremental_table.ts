@@ -217,6 +217,9 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
       } : {}),
     });
     this.proto.onSchemaChange = this.mapOnSchemaChange(config.onSchemaChange);
+    this.proto.incrementalStrategy = this.mapIncrementalStrategy(config.incrementalStrategy);
+
+    this.checkIncrementalStrategyRequirements(config);
 
     if (config.reservation) {
       if (!this.proto.actionDescriptor) {
@@ -734,6 +737,63 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
         return dataform.OnSchemaChange.SYNCHRONIZE;
       default:
         throw new Error(`OnSchemaChange value "${onSchemaChange}" is not supported`);
+    }
+  }
+
+  private mapIncrementalStrategy(
+    incrementalStrategy?: string | number
+  ): dataform.IncrementalStrategy {
+    if (!incrementalStrategy) {
+      return dataform.IncrementalStrategy.INCREMENTAL_STRATEGY_UNSPECIFIED;
+    }
+
+    if (typeof incrementalStrategy === "number") {
+      switch (incrementalStrategy) {
+        case dataform.ActionConfig.IncrementalStrategy.INCREMENTAL_STRATEGY_UNSPECIFIED:
+          return dataform.IncrementalStrategy.INCREMENTAL_STRATEGY_UNSPECIFIED;
+        case dataform.ActionConfig.IncrementalStrategy.INCREMENTAL_STRATEGY_MERGE:
+          return dataform.IncrementalStrategy.MERGE;
+        case dataform.ActionConfig.IncrementalStrategy.INCREMENTAL_STRATEGY_INSERT_OVERWRITE:
+          return dataform.IncrementalStrategy.INSERT_OVERWRITE;
+        default:
+          throw new Error(`IncrementalStrategy value "${incrementalStrategy}" is not supported`);
+      }
+    }
+
+    switch (incrementalStrategy.toString().toUpperCase()) {
+      case "INCREMENTAL_STRATEGY_UNSPECIFIED":
+        return dataform.IncrementalStrategy.INCREMENTAL_STRATEGY_UNSPECIFIED;
+      case "MERGE":
+        return dataform.IncrementalStrategy.MERGE;
+      case "INSERT_OVERWRITE":
+        return dataform.IncrementalStrategy.INSERT_OVERWRITE;
+      default:
+        throw new Error(`IncrementalStrategy value "${incrementalStrategy}" is not supported`);
+    }
+  }
+
+  private checkIncrementalStrategyRequirements(config: dataform.ActionConfig.IIncrementalTableConfig) {
+    switch (this.proto.incrementalStrategy) {
+      case dataform.IncrementalStrategy.INSERT_OVERWRITE:
+        if (!this.proto.bigquery || !this.proto.bigquery.partitionBy) {
+          this.session.compileError(
+            new Error(`IncrementalStrategy 'insert_overwrite' requires 'partitionBy' to be set`),
+            config.filename,
+            this.proto.target
+          );
+        }
+        break;
+      case dataform.IncrementalStrategy.MERGE:
+        if (!this.proto.uniqueKey || this.proto.uniqueKey.length === 0) {
+          this.session.compileError(
+            new Error(`IncrementalStrategy 'merge' requires 'uniqueKey' to be set`),
+            config.filename,
+            this.proto.target
+          );
+        }
+        break;
+      default:
+        break;
     }
   }
 }

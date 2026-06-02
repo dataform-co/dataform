@@ -86,4 +86,34 @@ suite("ExecutionSql with 'onSchemaChange'", () => {
     const expectedSql = fs.readFileSync("cli/api/goldens/on_schema_change_ignore.sql", "utf8");
     expect(procedureSql).to.equal(expectedSql.trim());
   });
+
+  test("generates INSERT_OVERWRITE script for IGNORE strategy", () => {
+    const table = {
+      ...baseTable,
+      incrementalStrategy: dataform.IncrementalStrategy.INSERT_OVERWRITE,
+      bigquery: {
+        partitionBy: "DATE(ts)",
+        updatePartitionFilter: "ts >= '2024-01-01'"
+      }
+    };
+    const tasks = executionSql.publishTasks(table, { fullRefresh: false }, tableMetadata);
+    const sql = tasks.build().map(t => t.statement).join("\n;\n");
+    const expectedSql = fs.readFileSync("cli/api/goldens/insert_overwrite_ignore.sql", "utf8");
+    expect(sql).to.equal(expectedSql.trim());
+  });
+
+  test("generates INSERT_OVERWRITE script for EXTEND strategy", () => {
+    const table = {
+      ...baseTable,
+      incrementalStrategy: dataform.IncrementalStrategy.INSERT_OVERWRITE,
+      onSchemaChange: dataform.OnSchemaChange.EXTEND,
+      bigquery: {
+        partitionBy: "DATE(ts)"
+      }
+    };
+    const tasks = executionSql.publishTasks(table, { fullRefresh: false }, tableMetadata);
+    const sql = tasks.build().map(t => t.statement).join("\n;\n");
+    const expectedSql = fs.readFileSync("cli/api/goldens/insert_overwrite_extend.sql", "utf8");
+    expect(sql).to.equal(expectedSql.trim());
+  });
 });
