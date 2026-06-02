@@ -65,6 +65,71 @@ suite("compile command", ({ afterEach }) => {
     );
   });
 
+  test("compile rejects @dataform/core with incompatible version", async () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    // dataformCoreVersion in workflow_settings.yaml triggers the stateless
+    // install path (compile.ts copies to a tmp dir and runs `npm i`), so the
+    // test exercises the same flow real users hit. 2.9.0 is the latest 2.x on
+    // the registry; its major (2) is incompatible with the current CLI (3.x).
+    fs.writeFileSync(
+      path.join(projectDir, "workflow_settings.yaml"),
+      dumpYaml(
+        dataform.WorkflowSettings.create({
+          defaultProject: "dataform",
+          dataformCoreVersion: "2.9.0"
+        })
+      )
+    );
+
+    // npm needs a writable cache; ~/.npm is read-only in the bazel sandbox.
+    const npmCacheDir = tmpDirFixture.createNewTmpDir();
+    const stderr = (
+      await getProcessResult(
+        execFile(nodePath, [cliEntryPointPath, "compile", projectDir], {
+          env: { ...process.env, NPM_CONFIG_CACHE: npmCacheDir }
+        })
+      )
+    ).stderr;
+    expect(stderr).contains("@dataform/core 2.9.0 is not compatible with @dataform/cli");
+    expect(stderr).contains("matching major.minor");
+    expect(stderr).contains("Set `dataformCoreVersion:");
+  });
+
+  test("compile succeeds with @dataform/core <= 3.0.56 via caller-file shim", async () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    // 3.0.50 predates 3.0.57, which is when @dataform/core started reading
+    // global.__dataform_current_file as a fallback in getCallerFile(). The
+    // compile path text-patches the bundle to add that fallback; this test
+    // proves the patch + host-side file stack drive a real action's
+    // fileName from inside vm2 3.11.3's path-stripped sandbox.
+    fs.writeFileSync(
+      path.join(projectDir, "workflow_settings.yaml"),
+      dumpYaml({
+        defaultProject: DEFAULT_DATABASE,
+        defaultLocation: DEFAULT_LOCATION,
+        defaultDataset: "dataform",
+        dataformCoreVersion: "3.0.50"
+      })
+    );
+    fs.ensureFileSync(path.join(projectDir, "definitions", "example.sqlx"));
+    fs.writeFileSync(
+      path.join(projectDir, "definitions", "example.sqlx"),
+      `config { type: "table" }\nSELECT 1 AS id`
+    );
+
+    const npmCacheDir = tmpDirFixture.createNewTmpDir();
+    const result = await getProcessResult(
+      execFile(nodePath, [cliEntryPointPath, "compile", projectDir, "--json"], {
+        env: { ...process.env, NPM_CONFIG_CACHE: npmCacheDir }
+      })
+    );
+
+    expect(result.exitCode, `compile failed: ${result.stderr}`).equals(0);
+    const compiled = JSON.parse(result.stdout);
+    expect(compiled.tables).to.have.lengthOf(1);
+    expect(compiled.tables[0].fileName).equals("definitions/example.sqlx");
+  });
+
   ["package.json", "package-lock.json", "node_modules"].forEach(npmFile => {
     test(`compile throws an error when dataformCoreVersion in workflow_settings.yaml and ${npmFile} is present`, async () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
