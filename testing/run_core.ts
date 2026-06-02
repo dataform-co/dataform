@@ -76,12 +76,21 @@ export function runMainInVm(
   fs.copySync(`${process.cwd()}/core/node_modules`, `${projectDir}/node_modules`);
 
   const compiler = compile as CompilerFunction;
+  // See cli/vm/compile.ts for why we use a host-side stack + enter/exit helpers
+  // instead of writing to `global.__dataform_current_file` inside every module.
+  const fileStack: string[] = [];
+
   // Then use vm2's native compiler integration to apply the compiler to files.
   const nodeVm = new NodeVM({
     // Inheriting the console makes console.logs show when tests are running, which is useful for
     // debugging.
     console: "inherit",
     wrapper: "none",
+    sandbox: {
+      __df_enter: (p: string) => { fileStack.push(p); },
+      __df_exit: () => { fileStack.pop(); },
+      __df_current: () => fileStack.length > 0 ? fileStack[fileStack.length - 1] : null
+    },
     require: {
       builtin: ["path"],
       context: "sandbox",
@@ -94,12 +103,11 @@ export function runMainInVm(
     compiler: (code, filePath) => {
       const compiledCode = compiler(code, filePath);
       return `
-        var __old_file = global.__dataform_current_file;
-        global.__dataform_current_file = ${JSON.stringify(filePath)};
+        __df_enter(${JSON.stringify(filePath)});
         try {
           ${compiledCode}
         } finally {
-          global.__dataform_current_file = __old_file;
+          __df_exit();
         }
       `;
     }
@@ -109,6 +117,10 @@ export function runMainInVm(
   const vmIndexFileName = path.resolve(path.join(projectDir, "index.js"));
   const encodedCoreExecutionResponse = nodeVm.run(
     `
+      Object.defineProperty(global, '__dataform_current_file', {
+        configurable: true,
+        get: function() { return __df_current(); }
+      });
       global.workflowSettingsYaml = (function() { try { return require("./workflow_settings.yaml"); } catch(e) { console.error("YAML require failed run_core:", e); } })();
       global.dataformJson = (function() { try { return require("./dataform.json"); } catch(e) {} })();
       return require("@dataform/core").main("${encodedCoreExecutionRequest}")
