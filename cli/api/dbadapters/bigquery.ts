@@ -37,54 +37,43 @@ export interface IBigQueryExecutionOptions {
   reservation?: string;
 }
 
-export interface IBigQueryClientProvider {
-  get(projectId?: string): BigQuery;
-}
+export type BigQueryClientProvider = (projectId?: string) => BigQuery;
 
-export class BigQueryClientProvider implements IBigQueryClientProvider {
-  private readonly clients = new Map<string, BigQuery>();
-
-  constructor(private readonly credentials: dataform.IBigQuery) {}
-
-  public get(projectId?: string): BigQuery {
-    projectId = projectId || this.credentials.projectId;
-    if (!this.clients.has(projectId)) {
-      this.clients.set(
+export function createBigQueryClientProvider(
+  credentials: dataform.IBigQuery
+): BigQueryClientProvider {
+  const clients = new Map<string, BigQuery>();
+  return (projectId?: string) => {
+    projectId = projectId || credentials.projectId;
+    if (!clients.has(projectId)) {
+      clients.set(
         projectId,
         new BigQuery({
           projectId,
           scopes: EXTRA_GOOGLE_SCOPES,
-          location: this.credentials.location,
-          credentials: this.credentials.credentials && JSON.parse(this.credentials.credentials)
+          location: credentials.location,
+          credentials: credentials.credentials && JSON.parse(credentials.credentials)
         })
       );
     }
-    return this.clients.get(projectId);
-  }
-}
-
-export class StaticBigQueryClientProvider implements IBigQueryClientProvider {
-  constructor(private readonly client: BigQuery) {}
-
-  public get(projectId?: string): BigQuery {
-    return this.client;
-  }
+    return clients.get(projectId);
+  };
 }
 
 export class BigQueryDbAdapter implements IDbAdapter {
   private bigQueryCredentials: dataform.IBigQuery;
   private pool: PromisePoolExecutor;
-  private clientProvider: IBigQueryClientProvider;
+  private clientProvider: BigQueryClientProvider;
 
   constructor(
     credentials: dataform.IBigQuery,
     options?: {
       concurrencyLimit?: number;
-      clientProvider?: IBigQueryClientProvider;
+      clientProvider?: BigQueryClientProvider;
     }
   ) {
     this.bigQueryCredentials = credentials;
-    this.clientProvider = options?.clientProvider || new BigQueryClientProvider(credentials);
+    this.clientProvider = options?.clientProvider || createBigQueryClientProvider(credentials);
 
     // Bigquery allows 50 concurrent queries, and a rate limit of 100/user/second by default.
     // These limits should be safely low enough for most projects.
@@ -356,7 +345,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
   }
 
   private getClient(projectId?: string) {
-    return this.clientProvider.get(projectId);
+    return this.clientProvider(projectId);
   }
 
   private async runQuery(

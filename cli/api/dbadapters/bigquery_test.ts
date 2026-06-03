@@ -2,7 +2,7 @@ import { Dataset, Table } from "@google-cloud/bigquery";
 import { expect } from "chai";
 import { anything, instance, mock, verify, when } from "ts-mockito";
 
-import { BigQueryDbAdapter, StaticBigQueryClientProvider } from "df/cli/api/dbadapters/bigquery";
+import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 
@@ -17,7 +17,9 @@ suite("BigQueryDbAdapter", () => {
     const projectId = "project1";
 
     const credentials = dataform.BigQuery.create({ projectId, location: "US" });
-    const adapter = new BigQueryDbAdapter(credentials, { clientProvider: new StaticBigQueryClientProvider(instance(mockBigQuery)) });
+    const adapter = new BigQueryDbAdapter(credentials, {
+      clientProvider: () => instance(mockBigQuery)
+    });
 
     when(mockBigQuery.dataset(schemaName)).thenReturn(instance(mockDataset));
     // getTables returns an array where the first element is an array of tables.
@@ -54,7 +56,9 @@ suite("BigQueryDbAdapter", () => {
     const projectId = "project";
 
     const credentials = dataform.BigQuery.create({ projectId, location: "US" });
-    const adapter = new BigQueryDbAdapter(credentials, { clientProvider: new StaticBigQueryClientProvider(instance(mockBigQuery)) });
+    const adapter = new BigQueryDbAdapter(credentials, {
+      clientProvider: () => instance(mockBigQuery)
+    });
 
     when(mockBigQuery.dataset(schemaName)).thenReturn(instance(mockDataset));
     when(mockDataset.getTables(anything())).thenReturn(Promise.resolve([[{ id: tableName }]] as any));
@@ -97,7 +101,7 @@ suite("BigQueryDbAdapter", () => {
     const credentials = dataform.BigQuery.create({ projectId: "p", location: "US" });
     const adapter = new BigQueryDbAdapter(credentials, {
       concurrencyLimit: 1,
-      clientProvider: { get: () => mockBigQuery }
+      clientProvider: () => mockBigQuery
     });
 
     const action = dataform.ExecutionAction.create({
@@ -130,7 +134,7 @@ suite("BigQueryDbAdapter", () => {
     const credentials = dataform.BigQuery.create({ projectId: "p", location: "US" });
     const adapter = new BigQueryDbAdapter(credentials, {
       concurrencyLimit: 1,
-      clientProvider: { get: () => mockBigQuery }
+      clientProvider: () => mockBigQuery
     });
 
     const action = dataform.ExecutionAction.create({
