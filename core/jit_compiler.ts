@@ -1,5 +1,6 @@
 import * as $protobuf from "protobufjs";
 
+import { JitAssertionResult } from "df/core/actions/assertion";
 import { JitOperationResult } from "df/core/actions/operation";
 import { JitTableResult } from "df/core/actions/table";
 import { IActionContext, ITableContext, JitContext } from "df/core/contextables";
@@ -63,6 +64,18 @@ function jitCompileTable(
   return mainBody(jctx).then(makeJitTableResult);
 }
 
+function jitCompileAssertion(
+  request: dataform.IJitCompilationRequest,
+  adapter: dataform.DbAdapter,
+): Promise<dataform.IJitAssertionResult> {
+  const mainBody = makeMainBody<IActionContext, JitAssertionResult>(request.jitCode);
+
+  const jctx: JitContext<IActionContext> = new SqlActionJitContext(
+    adapter, request,
+  );
+  return mainBody(jctx).then(query => dataform.JitAssertionResult.create({ query }));
+}
+
 function jitCompileIncrementalTable(
   request: dataform.IJitCompilationRequest,
   adapter: dataform.DbAdapter,
@@ -110,6 +123,9 @@ export function jitCompile(request: dataform.IJitCompilationRequest, rpcCallback
     case dataform.JitCompilationTargetType.JIT_COMPILATION_TARGET_TYPE_INCREMENTAL_TABLE:
       return jitCompileIncrementalTable(request, dbAdapter).then(
         incrementalTable => dataform.JitCompilationResponse.create({ incrementalTable }));
+    case dataform.JitCompilationTargetType.JIT_COMPILATION_TARGET_TYPE_ASSERTION:
+      return jitCompileAssertion(request, dbAdapter).then(
+        assertion => dataform.JitCompilationResponse.create({ assertion }));
     default:
       throw new Error(`Unrecognized compilation target type: ${request.compilationTargetType}`);
   }

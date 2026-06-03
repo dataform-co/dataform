@@ -1537,6 +1537,65 @@ assert("name", {
         ]);
       });
 
+      test("jitCode correctly populates the jitCode field", () => {
+        const projectDir = tmpDirFixture.createNewTmpDir();
+        fs.writeFileSync(
+          path.join(projectDir, "workflow_settings.yaml"),
+          VALID_WORKFLOW_SETTINGS_YAML
+        );
+        fs.mkdirSync(path.join(projectDir, "definitions"));
+        fs.writeFileSync(
+          path.join(projectDir, "definitions/assert.js"),
+          `
+assert("name").jitCode(ctx => "jit");`
+        );
+
+        const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+        expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+        expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals([
+          {
+            actionDescriptor: {
+              compilationMode: "ACTION_COMPILATION_MODE_JIT"
+            },
+            canonicalTarget: {
+              database: "defaultProject",
+              name: "name",
+              schema: "defaultDataset"
+            },
+            fileName: "definitions/assert.js",
+            jitCode: 'ctx => "jit"',
+            target: {
+              database: "defaultProject",
+              name: "name",
+              schema: "defaultDataset"
+            }
+          }
+        ]);
+      });
+
+      test("fails when both jitCode and query are set on an assertion", () => {
+        const projectDir = tmpDirFixture.createNewTmpDir();
+        fs.writeFileSync(
+          path.join(projectDir, "workflow_settings.yaml"),
+          VALID_WORKFLOW_SETTINGS_YAML
+        );
+        fs.mkdirSync(path.join(projectDir, "definitions"));
+        fs.writeFileSync(
+          path.join(projectDir, "definitions/assert.js"),
+          `
+assert("name").query("SELECT 1").jitCode(ctx => "jit");`
+        );
+
+        const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+        expect(
+          result.compile.compiledGraph.graphErrors.compilationErrors?.map(error => error.message)
+        ).deep.equals([
+          "Assertion may set either .jitCode() or .query(), but not both."
+        ]);
+      });
+
       test("assert API returns disabled assertions when disableAssertions is true", () => {
         const projectDir = tmpDirFixture.createNewTmpDir();
         fs.writeFileSync(
@@ -1702,7 +1761,7 @@ dataform.jitData("key", {test: () => {}});
 
         expect(
           result.compile.compiledGraph.graphErrors.compilationErrors.map(e => e.message)
-        ).to.deep.equal(["Unsupported context object: () => {}"]);
+        ).to.deep.equal(["Unsupported value: () => {}"]);
       });
     });
     suite("markdown in description", () => {

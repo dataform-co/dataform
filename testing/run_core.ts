@@ -54,11 +54,12 @@ export function coreExecutionRequestFromPath(
   projectDir: string,
   projectConfigOverride?: dataform.ProjectConfig
 ): dataform.CoreExecutionRequest {
+  const resolvedProjectDir = fs.realpathSync(path.resolve(projectDir));
   return dataform.CoreExecutionRequest.create({
     compile: {
       compileConfig: {
-        projectDir,
-        filePaths: walkDirectoryForFilenames(projectDir),
+        projectDir: resolvedProjectDir,
+        filePaths: walkDirectoryForFilenames(resolvedProjectDir),
         projectConfigOverride
       }
     }
@@ -75,12 +76,21 @@ export function runMainInVm(
   fs.copySync(`${process.cwd()}/core/node_modules`, `${projectDir}/node_modules`);
 
   const compiler = compile as CompilerFunction;
+  // See cli/vm/compile.ts for why we use a host-side stack + enter/exit helpers
+  // instead of writing to `global.__dataform_current_file` inside every module.
+  const fileStack: string[] = [];
+
   // Then use vm2's native compiler integration to apply the compiler to files.
   const nodeVm = new NodeVM({
     // Inheriting the console makes console.logs show when tests are running, which is useful for
     // debugging.
     console: "inherit",
     wrapper: "none",
+    sandbox: {
+      __df_enter: (p: string) => { fileStack.push(p); },
+      __df_exit: () => { fileStack.pop(); },
+      __df_current: () => fileStack.length > 0 ? fileStack[fileStack.length - 1] : null
+    },
     require: {
       builtin: ["path"],
       context: "sandbox",
@@ -90,13 +100,31 @@ export function runMainInVm(
         path.join(parentDirName, path.relative(parentDirName, projectDir), moduleName)
     },
     sourceExtensions: SOURCE_EXTENSIONS,
-    compiler
+    compiler: (code, filePath) => {
+      const compiledCode = compiler(code, filePath);
+      return `
+        __df_enter(${JSON.stringify(filePath)});
+        try {
+          ${compiledCode}
+        } finally {
+          __df_exit();
+        }
+      `;
+    }
   });
 
   const encodedCoreExecutionRequest = encode64(dataform.CoreExecutionRequest, coreExecutionRequest);
   const vmIndexFileName = path.resolve(path.join(projectDir, "index.js"));
   const encodedCoreExecutionResponse = nodeVm.run(
-    `return require("@dataform/core").main("${encodedCoreExecutionRequest}")`,
+    `
+      Object.defineProperty(global, '__dataform_current_file', {
+        configurable: true,
+        get: function() { return __df_current(); }
+      });
+      global.workflowSettingsYaml = (function() { try { return require("./workflow_settings.yaml"); } catch(e) { console.error("YAML require failed run_core:", e); } })();
+      global.dataformJson = (function() { try { return require("./dataform.json"); } catch(e) {} })();
+      return require("@dataform/core").main("${encodedCoreExecutionRequest}")
+    `,
     vmIndexFileName
   );
   return decode64(dataform.CoreExecutionResponse, encodedCoreExecutionResponse);

@@ -11,7 +11,13 @@ suite("examples", { parallel: true }, () => {
 
   ["stackoverflow_reporter", "extreme_weather_programming"].forEach(exampleProject => {
     test(`${exampleProject} runs`, async () => {
-      const projectDir = `examples/${exampleProject}`;
+      // compile() calls realpath on projectDir, which would jump out of bazel's
+      // symlinked runfiles tree and leave the project without its sibling
+      // node_modules. Materialize a real copy (dereference symlinks) so the
+      // project and node_modules below resolve under a single real path.
+      const originalProjectDir = `examples/${exampleProject}`;
+      const projectDir = `examples/${exampleProject}_copy`;
+      fs.copySync(originalProjectDir, projectDir, { dereference: true });
       fs.copySync(
         "examples/node_modules/@dataform/core",
         `${projectDir}/node_modules/@dataform/core`
