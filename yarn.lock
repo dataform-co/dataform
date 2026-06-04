@@ -4437,10 +4437,10 @@ verror@1.10.0:
     core-util-is "1.0.2"
     extsprintf "^1.2.0"
 
-vm2@3.11.3:
-  version "3.11.3"
-  resolved "https://registry.yarnpkg.com/vm2/-/vm2-3.11.3.tgz#5323018a93ae2862c9d52b07b658ebb8d74903f0"
-  integrity sha512-DO1TTKuOc+veL11VNOvJwRab80mghFKE40Av3bl6pdXs11bdiDMuR73owy+dS2EsTZEvRUeBkkBuDVRjV/RgEw==
+vm2@3.11.4:
+  version "3.11.4"
+  resolved "https://registry.yarnpkg.com/vm2/-/vm2-3.11.4.tgz#e68ca77fb420bbbd9dc8d25cf54718067df5949b"
+  integrity sha512-3assDRyB+A9/5rjECD2e2FAlezOfzCqejZy0L36zij4LgzoWZRA3a26q3PZnl6o5PmNjrTBRbAWACpdK/Y3qOQ==
   dependencies:
     acorn "^8.15.0"
     acorn-walk "^8.3.4"
