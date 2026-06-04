@@ -50,6 +50,19 @@
                 "type": "string",
                 "description": "Storage bucket to output notebooks to after their execution."
             }
+        },
+        "defaultManagedSparkExecutionOptions": {
+            "type": "object",
+            "description": "Default Managed Spark execution options for Notebook actions.",
+            "properties": {
+                "stagingBucketUri": {
+                    "type": "string",
+                    "description": "A GCS bucket URI to stage the notebook file before execution."
+                }
+            },
+            "required": [
+                "stagingBucketUri"
+            ]
         }
     },
     "required": [

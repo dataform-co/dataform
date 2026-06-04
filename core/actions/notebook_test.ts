@@ -329,4 +329,137 @@ actions:
       ])
     );
   });
+
+  test(`notebook default managed spark execution options are loaded`, () => {
+    const projectDir = createSimpleNotebookProject(`
+defaultProject: dataform
+defaultLocation: US
+defaultManagedSparkExecutionOptions:
+  stagingBucketUri: gs://some-bucket
+  `);
+    fs.writeFileSync(path.join(projectDir, "definitions/notebook.ipynb"), EMPTY_NOTEBOOK_CONTENTS);
+
+    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+    expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+    expect(asPlainObject(result.compile.compiledGraph.projectConfig)).deep.equals({
+      defaultDatabase: "dataform",
+      defaultLocation: "US",
+      defaultManagedSparkExecutionOptions: {
+        stagingBucketUri: "gs://some-bucket"
+      },
+      warehouse: "bigquery"
+    });
+  });
+
+  test(`notebook default managed spark execution options throw if stagingBucketUri is missing`, () => {
+    const projectDir = createSimpleNotebookProject(`
+defaultProject: dataform
+defaultLocation: US
+defaultManagedSparkExecutionOptions: {}
+  `);
+    fs.writeFileSync(path.join(projectDir, "definitions/notebook.ipynb"), EMPTY_NOTEBOOK_CONTENTS);
+
+    expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
+      "Invalid default_managed_spark_execution_options: staging_bucket_uri is required"
+    );
+  });
+
+  test(`notebook action executionEngine is propagated`, () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    fs.writeFileSync(
+      path.join(projectDir, "workflow_settings.yaml"),
+      `
+defaultProject: defaultProject
+defaultDataset: defaultDataset
+defaultLocation: US
+defaultManagedSparkExecutionOptions:
+  stagingBucketUri: gs://some-bucket
+`
+    );
+    fs.mkdirSync(path.join(projectDir, "definitions"));
+    fs.writeFileSync(path.join(projectDir, "definitions/notebook.ipynb"), EMPTY_NOTEBOOK_CONTENTS);
+    fs.writeFileSync(
+      path.join(projectDir, "definitions/actions.yaml"),
+      `
+actions:
+- notebook:
+    filename: notebook.ipynb
+    executionEngine: MANAGED_SPARK`
+    );
+
+    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+    expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+    expect(asPlainObject(result.compile.compiledGraph.notebooks)).deep.equals(
+      asPlainObject([
+        {
+          target: {
+            database: "defaultProject",
+            schema: "defaultDataset",
+            name: "notebook"
+          },
+          canonicalTarget: {
+            database: "defaultProject",
+            schema: "defaultDataset",
+            name: "notebook"
+          },
+          fileName: "definitions/notebook.ipynb",
+          notebookContents: JSON.stringify({ cells: [] }),
+          executionEngine: "MANAGED_SPARK"
+        }
+      ])
+    );
+  });
+
+  test(`notebook action executionEngine MANAGED_SPARK throws if defaultManagedSparkExecutionOptions is not defined at project level`, () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    fs.writeFileSync(
+      path.join(projectDir, "workflow_settings.yaml"),
+      `
+defaultProject: dataform
+defaultLocation: US
+`
+    );
+    fs.mkdirSync(path.join(projectDir, "definitions"));
+    fs.writeFileSync(path.join(projectDir, "definitions/notebook.ipynb"), EMPTY_NOTEBOOK_CONTENTS);
+    fs.writeFileSync(
+      path.join(projectDir, "definitions/actions.yaml"),
+      `
+actions:
+- notebook:
+    filename: notebook.ipynb
+    executionEngine: MANAGED_SPARK`
+    );
+
+    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+    expect(result.compile.compiledGraph.graphErrors.compilationErrors.map(err => err.message)).to.include(
+      "defaultManagedSparkExecutionOptions must be defined at the project level when execution engine is MANAGED_SPARK"
+    );
+  });
+
+  test(`notebook action executionEngine COLAB compiles successfully without project defaults`, () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    fs.writeFileSync(
+      path.join(projectDir, "workflow_settings.yaml"),
+      `
+defaultProject: dataform
+defaultLocation: US
+`
+    );
+    fs.mkdirSync(path.join(projectDir, "definitions"));
+    fs.writeFileSync(path.join(projectDir, "definitions/notebook.ipynb"), EMPTY_NOTEBOOK_CONTENTS);
+    fs.writeFileSync(
+      path.join(projectDir, "definitions/actions.yaml"),
+      `
+actions:
+- notebook:
+    filename: notebook.ipynb
+    executionEngine: COLAB`
+    );
+
+    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+    expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+  });
 });
+

@@ -38,6 +38,8 @@ message ProjectConfig {
 
   bool include_tests_in_compiled_graph = 22;
 
+  ManagedSparkExecutionOptions default_managed_spark_execution_options = 23;
+
   reserved 3, 4, 6, 8, 10, 12, 13;
 }
 
@@ -321,6 +323,14 @@ message Notebook {
   bool disabled = 6;
 
   string notebook_contents = 7;
+
+  enum ExecutionEngine {
+    EXECUTION_ENGINE_UNSPECIFIED = 0;
+    COLAB = 1;
+    MANAGED_SPARK = 2;
+  }
+
+  ExecutionEngine execution_engine = 8;
 }
 
 message RepositorySnapshotDestination {
@@ -337,6 +347,10 @@ message NotebookRuntimeOptions {
   oneof repository_snapshot_storage {
     RepositorySnapshotDestination repository_snapshot_destination = 3;
   }
+}
+
+message ManagedSparkExecutionOptions {
+  string staging_bucket_uri = 1;
 }
 
 // Data Preparation Related entries

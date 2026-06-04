@@ -67,6 +67,9 @@ message WorkflowSettings {
 
   // Optional. If set to true, unit tests will be included in the compiled graph.
   bool include_tests_in_compiled_graph = 16;
+
+  // Optional. Default Managed Spark execution options for Notebook actions.
+  ManagedSparkExecutionOptionsConfig default_managed_spark_execution_options = 17;
 }
 
 message DefaultIcebergConfig {
@@ -638,6 +641,15 @@ message ActionConfig {
 
     // A notebook runtime field definition could be added here, to allow atomic
     // runtime settings of notebooks.
+
+    enum ExecutionEngine {
+      EXECUTION_ENGINE_UNSPECIFIED = 0;
+      COLAB = 1;
+      MANAGED_SPARK = 2;
+    }
+
+    // Optional. The execution engine to use for this notebook.
+    ExecutionEngine execution_engine = 10;
   }
 
   message DataPreparationConfig {
@@ -743,4 +755,9 @@ message NotebookRuntimeOptionsConfig {
     RepositorySnapshotDestinationConfig repository_snapshot_destination = 3;
   }
 
+}
+
+message ManagedSparkExecutionOptionsConfig {
+  // Required: A GCS bucket URI to stage the notebook file before execution.
+  string staging_bucket_uri = 1;
 }

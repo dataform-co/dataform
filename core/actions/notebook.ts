@@ -12,6 +12,19 @@ import {
 } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
+function mapConfigEngineToCoreEngine(
+  engine: dataform.ActionConfig.NotebookConfig.ExecutionEngine
+): dataform.Notebook.ExecutionEngine {
+  switch (engine) {
+    case dataform.ActionConfig.NotebookConfig.ExecutionEngine.COLAB:
+      return dataform.Notebook.ExecutionEngine.COLAB;
+    case dataform.ActionConfig.NotebookConfig.ExecutionEngine.MANAGED_SPARK:
+      return dataform.Notebook.ExecutionEngine.MANAGED_SPARK;
+    default:
+      return dataform.Notebook.ExecutionEngine.EXECUTION_ENGINE_UNSPECIFIED;
+  }
+}
+
 /**
  * Notebooks run Jupyter Notebook files, and can output content to the storage buckets defined in
  * `workflow_settings.yaml` files.
@@ -90,6 +103,9 @@ export class Notebook extends ActionBuilder<dataform.Notebook> {
     if (config.disabled) {
       this.proto.disabled = config.disabled;
     }
+    if (config.executionEngine) {
+      this.proto.executionEngine = mapConfigEngineToCoreEngine(config.executionEngine);
+    }
 
     const notebookContents = nativeRequire(config.filename).asJson;
     this.proto.notebookContents = JSON.stringify(
@@ -130,6 +146,13 @@ export class Notebook extends ActionBuilder<dataform.Notebook> {
 
   /** @hidden */
   public compile() {
+    if (this.proto.executionEngine === dataform.Notebook.ExecutionEngine.MANAGED_SPARK) {
+      if (!this.session?.projectConfig?.defaultManagedSparkExecutionOptions) {
+        throw new Error(
+          "defaultManagedSparkExecutionOptions must be defined at the project level when execution engine is MANAGED_SPARK"
+        );
+      }
+    }
     return verifyObjectMatchesProto(
       dataform.Notebook,
       this.proto,

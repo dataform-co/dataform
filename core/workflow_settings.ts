@@ -175,6 +175,16 @@ export function workflowSettingsAsProjectConfig(
   if (workflowSettings.includeTestsInCompiledGraph) {
     projectConfig.includeTestsInCompiledGraph = workflowSettings.includeTestsInCompiledGraph;
   }
+  if (workflowSettings.defaultManagedSparkExecutionOptions) {
+    projectConfig.defaultManagedSparkExecutionOptions = {};
+    const { stagingBucketUri } = workflowSettings.defaultManagedSparkExecutionOptions;
+    if (!stagingBucketUri) {
+      throw Error(
+        "Invalid default_managed_spark_execution_options: staging_bucket_uri is required"
+      );
+    }
+    projectConfig.defaultManagedSparkExecutionOptions.stagingBucketUri = stagingBucketUri;
+  }
 
   projectConfig.warehouse = "bigquery";
   return projectConfig;
