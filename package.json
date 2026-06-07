@@ -49,7 +49,7 @@
     "prettier": "^1.14.2",
     "promise-pool-executor": "^1.1.1",
     "protobufjs": "^7.5.8",
-    "protobufjs-cli": "^1.0.0",
+    "protobufjs-cli": "^1.2.1",
     "readline-sync": "^1.4.9",
     "request": "^2.88.0",
     "rimraf": "^2.6.2",
