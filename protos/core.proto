@@ -265,6 +265,11 @@ message Assertion {
   // Generated.
   string file_name = 7;
 
+  // Optional. Path to the user-visible source declaration for this action,
+  // when distinct from `file_name`. If unset, consumers should treat
+  // `file_name` as the source.
+  string original_file_path = 17;
+
   reserved 1, 2, 4, 5, 6;
 }
 

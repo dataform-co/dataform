@@ -46,6 +46,11 @@ message ExecutionAction {
 
   string jit_code = 12;
 
+  // Optional. Path to the user-visible source declaration for this action,
+  // when distinct from `file_name`. If unset, consumers should treat
+  // `file_name` as the source.
+  string original_file_path = 13;
+
   reserved 1, 3, 7;
 }
 
