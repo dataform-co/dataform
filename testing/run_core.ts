@@ -48,7 +48,7 @@ export class WorkflowSettingsTemplates {
   });
 }
 
-const SOURCE_EXTENSIONS = ["js", "sql", "sqlx", "yaml", "ipynb"];
+const SOURCE_EXTENSIONS = ["js", "sql", "sqlx", "yaml", "yml", "ipynb"];
 
 export function coreExecutionRequestFromPath(
   projectDir: string,
@@ -60,7 +60,11 @@ export function coreExecutionRequestFromPath(
       compileConfig: {
         projectDir: resolvedProjectDir,
         filePaths: walkDirectoryForFilenames(resolvedProjectDir),
-        projectConfigOverride
+        projectConfigOverride,
+        extension: {
+          name: "none",
+          compilationMode: dataform.ExtensionCompilationMode.COMPILATION_MODE_UNSPECIFIED
+        }
       }
     }
   });
@@ -92,12 +96,16 @@ export function runMainInVm(
       __df_current: () => fileStack.length > 0 ? fileStack[fileStack.length - 1] : null
     },
     require: {
-      builtin: ["path"],
+      builtin: ["path", "fs"],
       context: "sandbox",
       external: true,
       root: projectDir,
-      resolve: (moduleName, parentDirName) =>
-        path.join(parentDirName, path.relative(parentDirName, projectDir), moduleName)
+      resolve: (moduleName: string, parentDirName: string) => {
+        if (moduleName === "path" || moduleName === "fs") {
+          return moduleName;
+        }
+        return path.join(parentDirName, path.relative(parentDirName, projectDir), moduleName);
+      }
     },
     sourceExtensions: SOURCE_EXTENSIONS,
     compiler: (code, filePath) => {
@@ -135,14 +143,15 @@ function walkDirectoryForFilenames(projectDir: string, relativePath: string = ""
   fs.readdirSync(path.join(projectDir, relativePath), { withFileTypes: true })
     .filter(directoryEntry => directoryEntry.name !== "node_modules")
     .forEach(directoryEntry => {
+      const entryRelativePath = path.join(relativePath, directoryEntry.name);
       if (directoryEntry.isDirectory()) {
-        paths = paths.concat(walkDirectoryForFilenames(projectDir, directoryEntry.name));
+        paths = paths.concat(walkDirectoryForFilenames(projectDir, entryRelativePath));
         return;
       }
       const fileExtension = directoryEntry.name.split(".").slice(-1)[0];
       if (directoryEntry.isFile() && SOURCE_EXTENSIONS.includes(fileExtension)) {
-        paths.push(directoryEntry.name);
+        paths.push(entryRelativePath);
       }
     });
-  return paths.map(filename => path.join(relativePath, filename));
+  return paths;
 }

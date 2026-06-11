@@ -108,5 +108,6 @@ node_modules(
     deps = [
         "//packages/@dataform/core:package_tar",
         "//packages/sample-extension:package_tar",
+        "//packages/op-to-dataform:package_tar",
     ],
 )

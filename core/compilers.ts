@@ -25,38 +25,67 @@ const CONTEXT_CONSTANTS = [
 export const INVALID_YAML_ERROR_STRING = "is not a valid YAML file";
 
 export function compile(code: string, path: string): string {
-  if (Path.fileExtension(path) === "sqlx") {
-    return compileSqlx(SyntaxTreeNode.create(code), path);
+  const globalAny = globalThis as any;
+  if (!globalAny.rawFilesCache) {
+    globalAny.rawFilesCache = {};
   }
-  if (Path.fileExtension(path) === "yaml" || Path.fileExtension(path) === "yml") {
+  globalAny.rawFilesCache[path] = code;
+  const normalizedPath = path.replace(/\\/g, "/");
+  globalAny.rawFilesCache[normalizedPath] = code;
+
+  let compiledCode = code;
+  if (Path.fileExtension(path) === "sqlx") {
+    compiledCode = compileSqlx(SyntaxTreeNode.create(code), path);
+  } else if (Path.fileExtension(path) === "yaml" || Path.fileExtension(path) === "yml") {
     try {
       const yamlAsJson = loadYaml(code);
-      return `exports.asJson = ${JSON.stringify(yamlAsJson)}`;
+      compiledCode = `exports.asJson = ${JSON.stringify(yamlAsJson)}`;
     } catch (e) {
       if (e instanceof YAMLException) {
         throw new Error(`${path} ${INVALID_YAML_ERROR_STRING}: ${e}`);
       }
       throw e;
     }
-  }
-  if (Path.fileExtension(path) === "ipynb") {
+  } else if (Path.fileExtension(path) === "ipynb") {
     let codeAsJson = {};
     try {
       codeAsJson = JSON.parse(code);
     } catch (e) {
-      throw new Error(`Error parsing ${path} as JSON: ${e}`);
+      codeAsJson = {
+        cells: [
+          {
+            cell_type: "code",
+            execution_count: null,
+            metadata: {},
+            outputs: [],
+            source: code.split(/\r?\n/).map((line, index, array) => index < array.length - 1 ? line + "\n" : line)
+          }
+        ],
+        metadata: {},
+        nbformat: 4,
+        nbformat_minor: 2
+      };
     }
     const notebookAsJson = JSON.stringify(codeAsJson);
-    return `exports.asJson = ${notebookAsJson}`;
-  }
-  if (Path.fileExtension(path) === "sql") {
+    compiledCode = `exports.asJson = ${notebookAsJson}`;
+  } else if (Path.fileExtension(path) === "sql") {
     const escapedCode = code
       .replace(/\\/g, "\\\\")
       .replace(/`/g, "\\`")
       .replace(/\${/g, "\\${");
-    return `exports.query = \`${escapedCode}\`;`;
+    compiledCode = `exports.query = \`${escapedCode}\`;`;
   }
-  return code;
+
+  if (!path.includes("node_modules")) {
+    const cacheRegistration = `
+if (!globalThis.rawFilesCache) { globalThis.rawFilesCache = {}; }
+globalThis.rawFilesCache[${JSON.stringify(path)}] = ${JSON.stringify(code)};
+globalThis.rawFilesCache[${JSON.stringify(normalizedPath)}] = ${JSON.stringify(code)};
+`;
+    return cacheRegistration + compiledCode;
+  }
+
+  return compiledCode;
 }
 
 export function extractJsBlocks(code: string): { sql: string; js: string } {

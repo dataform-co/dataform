@@ -39,6 +39,7 @@ node_modules(
     name = "node_modules",
     deps = [
         "//packages/@dataform/cli:package_tar",
+        "//packages/op-to-dataform:package_tar",
     ],
 )
 

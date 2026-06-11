@@ -696,6 +696,10 @@ select 1 AS \${dataform.projectConfig.vars.selectVar}`
               vars: {
                 projectVar: "projectVal"
               }
+            },
+            extension: {
+              name: "none",
+              compilationMode: dataform.ExtensionCompilationMode.COMPILATION_MODE_UNSPECIFIED
             }
           }
         }
@@ -848,6 +852,10 @@ select 1 AS \${dataform.projectConfig.vars.columnVar}`
                 vars: {
                   databaseVar: "databaseVal"
                 }
+              },
+              extension: {
+                name: "none",
+                compilationMode: dataform.ExtensionCompilationMode.COMPILATION_MODE_UNSPECIFIED
               }
             }
           }
@@ -2104,5 +2112,432 @@ publish("name", {type: "${fromType}", schema: "schemaOverride"}).type("${toType}
       expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).contains("storing compilation error as requested!");
       expect(result.compile.compiledGraph.targets?.map(t => t.name)).deep.equals(["sample-action", "e", "file"]);
     });
+
+    test("op-to-dataform reads only YAML files and transpiles them to Dataform actions", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        dumpYaml(
+          dataform.WorkflowSettings.create(
+            WorkflowSettingsTemplates.bigqueryWithDefaultProject
+          )
+        )
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/file1.yaml"),
+        `
+actions:
+  - sql:
+      name: my_action
+      query:
+        inline: SELECT 1 as val
+      engine:
+        bigquery:
+          destinationTable: defaultProject.defaultDataset.my_action
+`
+      );
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/file2.yml"),
+        `
+actions:
+  - sql:
+      name: my_operate_action
+      query:
+        inline: SELECT 2 as val
+      dependsOn:
+        - my_action
+`
+      );
+      fs.writeFileSync(path.join(projectDir, "definitions/file3.sql"), "SELECT 1 as id;");
+
+      const request = coreExecutionRequestFromPath(projectDir);
+      request.compile.compileConfig.extension = {
+        name: "@dataform/op-to-dataform",
+        compilationMode: dataform.ExtensionCompilationMode.APPLICATION_CODE,
+      };
+
+      const result = runMainInVm(request);
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+
+      const tables = result.compile.compiledGraph.tables || [];
+      expect(tables.length).equals(1);
+      expect(tables[0].target.name).equals("my_action");
+      expect(tables[0].query).equals("SELECT 1 as val");
+
+      const operations = result.compile.compiledGraph.operations || [];
+      expect(operations.length).equals(1);
+      expect(operations[0].target.name).equals("my_operate_action");
+      expect(operations[0].queries).deep.equals(["SELECT 2 as val"]);
+      expect(asPlainObject(operations[0].dependencyTargets)).deep.equals([
+        {
+          database: "defaultProject",
+          schema: "defaultDataset",
+          name: "my_action"
+        }
+      ]);
+    });
+
+    test("op-to-dataform resolves dependencies when action name differs from its destination table name", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        dumpYaml(
+          dataform.WorkflowSettings.create(
+            WorkflowSettingsTemplates.bigqueryWithDefaultProject
+          )
+        )
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/file1.yaml"),
+        `
+actions:
+  - sql:
+      name: extract_top_en_pages
+      query:
+        inline: SELECT 1 as val
+      engine:
+        bigquery:
+          destinationTable: swalk-composer-1.my_dataset.top_en_pages
+  - sql:
+      name: compare_shared_top_pages
+      dependsOn:
+        - extract_top_en_pages
+      engine:
+        bigquery:
+          destinationTable: swalk-composer-1.my_dataset.shared_top_pages
+      query:
+        inline: SELECT * FROM swalk-composer-1.my_dataset.top_en_pages
+`
+      );
+
+      const request = coreExecutionRequestFromPath(projectDir);
+      request.compile.compileConfig.extension = {
+        name: "@dataform/op-to-dataform",
+        compilationMode: dataform.ExtensionCompilationMode.APPLICATION_CODE,
+      };
+
+      const result = runMainInVm(request);
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+
+      const tables = result.compile.compiledGraph.tables || [];
+      expect(tables.length).equals(2);
+
+      const topEnPages = tables.find(t => t.target.name === "top_en_pages");
+      expect(topEnPages).to.not.be.undefined;
+      expect(topEnPages.target.database).equals("swalk-composer-1");
+      expect(topEnPages.target.schema).equals("my_dataset");
+
+      const sharedTopPages = tables.find(t => t.target.name === "shared_top_pages");
+      expect(sharedTopPages).to.not.be.undefined;
+      expect(sharedTopPages.target.database).equals("swalk-composer-1");
+      expect(sharedTopPages.target.schema).equals("my_dataset");
+      expect(asPlainObject(sharedTopPages.dependencyTargets)).deep.equals([
+        {
+          database: "swalk-composer-1",
+          schema: "my_dataset",
+          name: "top_en_pages"
+        }
+      ]);
+    });
+
+    test("op-to-dataform resolves query from path in YAML file", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        dumpYaml(
+          dataform.WorkflowSettings.create(
+            WorkflowSettingsTemplates.bigqueryWithDefaultProject
+          )
+        )
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.mkdirSync(path.join(projectDir, "definitions/sql-scripts"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/sql-scripts/count_rows.sql"),
+        "SELECT COUNT(*) AS row_count FROM `my_table` LIMIT 1;\n-- comment1;\n/* comment 2; */\n-- comment 3;\n  "
+      );
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/file.yaml"),
+        `
+actions:
+  - sql:
+      name: my_action
+      query:
+        path: sql-scripts/count_rows.sql
+      engine:
+        bigquery:
+          destinationTable: defaultProject.defaultDataset.my_action
+`
+      );
+
+      const request = coreExecutionRequestFromPath(projectDir);
+      request.compile.compileConfig.extension = {
+        name: "@dataform/op-to-dataform",
+        compilationMode: dataform.ExtensionCompilationMode.APPLICATION_CODE,
+      };
+
+      const result = runMainInVm(request);
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+
+      const tables = result.compile.compiledGraph.tables || [];
+      expect(tables.length).equals(1);
+      expect(tables[0].target.name).equals("my_action");
+      expect(tables[0].query).equals("SELECT COUNT(*) AS row_count FROM `my_table` LIMIT 1\n-- comment1;\n/* comment 2; */\n-- comment 3\n  ");
+    });
+
+    test("op-to-dataform supports string enum values like runner: airflow", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        dumpYaml(
+          dataform.WorkflowSettings.create(
+            WorkflowSettingsTemplates.bigqueryWithDefaultProject
+          )
+        )
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/file.yaml"),
+        `
+modelVersion: "1.0"
+pipelineId: "test-pipeline"
+runner: "airflow"
+owner: "data-eng"
+defaults:
+  projectId: "gcp-project"
+  location: "US"
+  executionConfig:
+    retries: 0
+actions:
+  - sql:
+      name: my_action
+      query:
+        inline: SELECT 1 as val
+`
+      );
+
+      const request = coreExecutionRequestFromPath(projectDir);
+      request.compile.compileConfig.extension = {
+        name: "@dataform/op-to-dataform",
+        compilationMode: dataform.ExtensionCompilationMode.APPLICATION_CODE,
+      };
+
+      const result = runMainInVm(request);
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+
+      const operations = result.compile.compiledGraph.operations || [];
+      expect(operations.length).equals(1);
+      expect(operations[0].target.name).equals("my_action");
+    });
+
+    test("op-to-dataform compilation fails if YAML fails validation", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        dumpYaml(
+          dataform.WorkflowSettings.create(
+            WorkflowSettingsTemplates.bigqueryWithDefaultProject
+          )
+        )
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/invalid_file.yaml"),
+        `
+actions:
+  - sql:
+      name: my_action
+      query:
+        inline: SELECT 1 as val
+      engine:
+        bigquery:
+          destinationTable: 12345
+`
+      );
+
+      const request = coreExecutionRequestFromPath(projectDir);
+      request.compile.compileConfig.extension = {
+        name: "@dataform/op-to-dataform",
+        compilationMode: dataform.ExtensionCompilationMode.APPLICATION_CODE,
+      };
+
+      const result = runMainInVm(request);
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).equals(1);
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).contains(
+        "Pipeline validation failed: actions.sql.engine.bigquery.destinationTable: string expected"
+      );
+    });
+
+    test("op-to-dataform compilation fails if YAML has unknown fields", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        dumpYaml(
+          dataform.WorkflowSettings.create(
+            WorkflowSettingsTemplates.bigqueryWithDefaultProject
+          )
+        )
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/invalid_file.yaml"),
+        `
+actions:
+  - sql:
+      name: my_action
+      query:
+        inline: SELECT 1 as val
+      someUnknownField: true
+`
+      );
+
+      const request = coreExecutionRequestFromPath(projectDir);
+      request.compile.compileConfig.extension = {
+        name: "@dataform/op-to-dataform",
+        compilationMode: dataform.ExtensionCompilationMode.APPLICATION_CODE,
+      };
+
+      const result = runMainInVm(request);
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).equals(1);
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).contains(
+        "someUnknownField"
+      );
+    });
+
+    test("op-to-dataform transpiles notebook actions", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        dumpYaml(
+          dataform.WorkflowSettings.create(
+            WorkflowSettingsTemplates.bigqueryWithDefaultProject
+          )
+        )
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/my_notebook.ipynb"),
+        '{"cells": []}'
+      );
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/file.yaml"),
+        `
+actions:
+  - sql:
+      name: parent_action
+      query:
+        inline: SELECT 1 as val
+  - notebook:
+      name: my_notebook_action
+      mainFilePath: definitions/my_notebook.ipynb
+      dependsOn:
+        - parent_action
+      stagingBucket: gs://test-staging-bucket
+      engine:
+        dataprocServerless:
+          location: us-central1
+`
+      );
+
+      const request = coreExecutionRequestFromPath(projectDir);
+      request.compile.compileConfig.extension = {
+        name: "@dataform/op-to-dataform",
+        compilationMode: dataform.ExtensionCompilationMode.APPLICATION_CODE,
+      };
+
+      const result = runMainInVm(request);
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+
+      expect(asPlainObject(result.compile.compiledGraph.projectConfig)).deep.equals({
+        defaultDatabase: "defaultProject",
+        defaultLocation: "US",
+        defaultManagedSparkExecutionOptions: {
+          stagingBucketUri: "gs://test-staging-bucket"
+        },
+        defaultSchema: "defaultDataset",
+        warehouse: "bigquery"
+      });
+
+      const notebooks = result.compile.compiledGraph.notebooks || [];
+      expect(notebooks.length).equals(1);
+      expect(notebooks[0].target.name).equals("my_notebook_action");
+      expect(notebooks[0].fileName).equals("definitions/my_notebook.ipynb");
+      expect(notebooks[0].notebookContents).equals('{"cells":[]}');
+      expect(notebooks[0].executionEngine).equals(dataform.Notebook.ExecutionEngine.MANAGED_SPARK);
+
+      expect(asPlainObject(notebooks[0].dependencyTargets)).deep.equals([
+        {
+          database: "defaultProject",
+          schema: "defaultDataset",
+          name: "parent_action"
+        }
+      ]);
+    });
+
+    test("op-to-dataform transpiles notebook actions with dataprocServerless resourceProfile configurations", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        dumpYaml(
+          dataform.WorkflowSettings.create(
+            WorkflowSettingsTemplates.bigqueryWithDefaultProject
+          )
+        )
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/my_notebook.ipynb"),
+        '{"cells": []}'
+      );
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/file.yaml"),
+        `
+actions:
+  - notebook:
+      name: my_notebook_action
+      mainFilePath: definitions/my_notebook.ipynb
+      stagingBucket: gs://test-staging-bucket
+      engine:
+        dataprocServerless:
+          location: us-central1
+          resourceProfile:
+            inline:
+              runtimeConfig:
+                version: "2.1"
+              environmentConfig:
+                executionConfig:
+                  serviceAccount: foo@bar.com
+`
+      );
+
+      const request = coreExecutionRequestFromPath(projectDir);
+      request.compile.compileConfig.extension = {
+        name: "@dataform/op-to-dataform",
+        compilationMode: dataform.ExtensionCompilationMode.APPLICATION_CODE,
+      };
+
+      const result = runMainInVm(request);
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+
+      expect(asPlainObject(result.compile.compiledGraph.projectConfig.defaultManagedSparkExecutionOptions)).deep.equals({
+        stagingBucketUri: "gs://test-staging-bucket"
+      });
+
+      const notebooks = result.compile.compiledGraph.notebooks || [];
+      expect(notebooks.length).equals(1);
+      expect(notebooks[0].target.name).equals("my_notebook_action");
+      expect(notebooks[0].executionEngine).equals(dataform.Notebook.ExecutionEngine.MANAGED_SPARK);
+    });
   });
 });
+

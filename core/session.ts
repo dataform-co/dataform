@@ -157,7 +157,7 @@ export class Session {
         if (actionOptions.postOperationsContextable) {
           view.postOps(actionOptions.postOperationsContextable);
         }
-        this.actions.push(view);
+        this.pushAction(view);
         break;
       case "incremental":
         const incrementalTable = new IncrementalTable(this, sqlxConfig).query(
@@ -172,7 +172,7 @@ export class Session {
         if (actionOptions.postOperationsContextable) {
           incrementalTable.postOps(actionOptions.postOperationsContextable);
         }
-        this.actions.push(incrementalTable);
+        this.pushAction(incrementalTable);
         break;
       case "table":
         const table = new Table(this, sqlxConfig).query(
@@ -187,10 +187,10 @@ export class Session {
         if (actionOptions.postOperationsContextable) {
           table.postOps(actionOptions.postOperationsContextable);
         }
-        this.actions.push(table);
+        this.pushAction(table);
         break;
       case "assertion":
-        this.actions.push(
+        this.pushAction(
           new Assertion(this, sqlxConfig).query(ctx => actionOptions.sqlContextable(ctx)[0])
         );
         break;
@@ -198,14 +198,14 @@ export class Session {
         const dataPreparation = new DataPreparation(this, sqlxConfig).query(
           ctx => actionOptions.sqlContextable(ctx)[0]
         );
-        this.actions.push(dataPreparation);
+        this.pushAction(dataPreparation);
         break;
       case "operations":
-        this.actions.push(new Operation(this, sqlxConfig).queries(actionOptions.sqlContextable));
+        this.pushAction(new Operation(this, sqlxConfig).queries(actionOptions.sqlContextable));
         break;
       case "declaration":
         const declaration = new Declaration(this, sqlxConfig, sqlxConfig.filename);
-        this.actions.push(declaration);
+        this.pushAction(declaration);
         break;
       case "test":
         const testCase = this.test(sqlxConfig.name)
@@ -253,6 +253,18 @@ export class Session {
     return "";
   }
 
+  public pushAction(action: Action) {
+    if (!(globalThis as any).tempDisableActionRegistration) {
+      this.actions.push(action);
+    }
+  }
+
+  public pushTest(testCase: Test) {
+    if (!(globalThis as any).tempDisableActionRegistration) {
+      this.tests.push(testCase);
+    }
+  }
+
   /**
    * Defines a SQL operation.
    *
@@ -276,7 +288,7 @@ export class Session {
         operation.queries(queryOrConfig as AContextable<string>);
       }
     }
-    this.actions.push(operation);
+    this.pushAction(operation);
     return operation;
   }
 
@@ -329,7 +341,7 @@ export class Session {
         newTable.query(queryOrConfig);
       }
     }
-    this.actions.push(newTable);
+    this.pushAction(newTable);
     return newTable;
   }
 
@@ -357,7 +369,7 @@ export class Session {
         assertion.query(queryOrConfig as AContextable<string>);
       }
     }
-    this.actions.push(assertion);
+    this.pushAction(assertion);
     return assertion;
   }
 
@@ -376,7 +388,7 @@ export class Session {
       | any
   ): Declaration {
     const declaration = new Declaration(this, config, utils.getCallerFile(this.rootDir));
-    this.actions.push(declaration);
+    this.pushAction(declaration);
     return declaration;
   }
 
@@ -396,7 +408,7 @@ export class Session {
     newTest.session = this;
     newTest.setFilename(utils.getCallerFile(this.rootDir));
     // Add it to global index.
-    this.tests.push(newTest)
+    this.pushTest(newTest)
     return newTest;
   }
 
@@ -410,7 +422,7 @@ export class Session {
   public notebook(config: dataform.ActionConfig.NotebookConfig): Notebook {
     const configFileName = utils.getCallerFile(this.rootDir);
     const notebook = new Notebook(this, config, configFileName);
-    this.actions.push(notebook);
+    this.pushAction(notebook);
     return notebook;
   }
 

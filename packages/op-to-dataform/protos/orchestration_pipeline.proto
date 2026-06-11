@@ -1,0 +1,427 @@
+// Copyright 2026 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package pipeline_models;
+
+import "google/protobuf/struct.proto";
+import "orchestration_pipelines_models/pipeline_v1_model/protos/validation.proto";
+
+/////////////////////////
+// Pipeline Models
+////////////////////////
+message OrchestrationPipeline {
+  string model_version = 1 [(pipeline_models.validation.is_required) = true];
+  string pipeline_id = 2 [
+    (pipeline_models.validation.is_required) = true,
+    (pipeline_models.validation.regex) = "^[a-zA-Z0-9_-]+$",
+    (pipeline_models.validation.min_len) = 1,
+    (pipeline_models.validation.max_len) = 64
+  ];
+  string description = 3;
+  PipelineRunner runner = 4 [(pipeline_models.validation.disallow_zero_enum) = true];
+  string owner = 5 [
+    (pipeline_models.validation.is_required) = true,
+    (pipeline_models.validation.regex) = "^[a-zA-Z0-9_#-]+$",
+    (pipeline_models.validation.min_len) = 1,
+    (pipeline_models.validation.max_len) = 32
+  ];
+  Defaults defaults = 6 [(pipeline_models.validation.is_required) = true];
+  repeated Trigger triggers = 7; // Can be empty.
+  repeated Action actions = 8 [(pipeline_models.validation.min_items) = 1];
+  // Validation for items in repeated fields (e.g. regex for each tag) is not
+  // supported by field options and should be handled in custom logic.
+  // Each tag should match: ^[a-zA-Z0-9_-]{1,32}$
+  repeated string tags = 9; // Can be empty.
+  Notification notifications = 10;
+}
+
+enum PipelineRunner {
+  pipeline_runner_undefined = 0;
+  airflow = 1;
+}
+
+message Defaults {
+  string project_id = 1 [(pipeline_models.validation.is_required) = true];
+  string location = 2 [(pipeline_models.validation.is_required) = true];
+  ExecutionConfig execution_config = 3 [(pipeline_models.validation.is_required) = true];
+}
+
+message ExecutionConfig {
+  // Per proto3 design, scalar fields like int32 have a default value (0) and
+  // cannot be truly 'required'. The `min_value` option is used instead.
+  int32 retries = 1 [(pipeline_models.validation.min_value) = 0];
+}
+
+message OnPipelineFailure {
+  repeated string email = 1;
+}
+
+message Notification {
+  OnPipelineFailure on_pipeline_failure = 1;
+}
+
+/////////////////////////
+// Triggers
+////////////////////////
+message ScheduleTrigger {
+  string interval = 1 [
+    (pipeline_models.validation.is_required) = true,
+    (pipeline_models.validation.is_cron_expression) = true
+  ];
+  string start_time = 2 [(pipeline_models.validation.is_required) = true, (pipeline_models.validation.is_iso8601_timestamp) = true];
+  // Cross-field validation (e.g. end_time > start_time) should be handled
+  // in custom validation logic.
+  string end_time = 3 [(pipeline_models.validation.is_iso8601_timestamp) = true];
+  bool catchup = 4; // Default: false.
+  string timezone = 5 [(pipeline_models.validation.is_iana_timezone) = true]; // Defaults to "UTC" if not provided.
+}
+
+message Trigger {
+  oneof trigger {
+    ScheduleTrigger schedule = 1;
+  }
+}
+
+/////////////////////////
+// Engines
+////////////////////////
+message LocalEngine {
+}
+
+message BigQueryEngine {
+  string location = 1;
+  string destination_table = 2;
+  repeated string impersonation_chain = 3;
+}
+
+message DataprocOnGceEngine {
+  oneof config {
+    DataprocExistingClusterConfiguration existing_cluster = 1;
+    DataprocEphemeralConfiguration ephemeral_cluster = 2;
+  }
+}
+
+message DataprocExistingClusterConfiguration {
+  string cluster_name = 1 [(pipeline_models.validation.is_required) = true];
+  string location = 2;
+  string project_id = 3;
+  repeated string impersonation_chain = 4;
+  map<string, string> properties = 5;
+}
+
+message DataprocEphemeralConfiguration {
+  string cluster_name = 1 [(pipeline_models.validation.is_required) = true];
+  string location = 2;
+  string project_id = 3;
+  DataprocClusterResourceProfile resource_profile = 4 [(pipeline_models.validation.is_required) = true];
+  map<string, string> properties = 5;
+  repeated string impersonation_chain = 6;
+}
+
+message DataprocClusterResourceProfile {
+  message InlineConfig {
+      oneof config_alias {
+        // A Dataproc cluster config.
+        // See: https://docs.cloud.google.com/dataproc/docs/reference/rest/v1/ClusterConfig
+        google.protobuf.Struct cluster_config = 1 [deprecated = true];
+
+        // A Dataproc cluster config.
+        // See: https://docs.cloud.google.com/dataproc/docs/reference/rest/v1/ClusterConfig
+        google.protobuf.Struct config = 2;
+      }
+  }
+  oneof config {
+      InlineConfig inline = 1;
+      string path = 2;
+      string external_config_path = 3;
+   }
+  // Overrides are applied with deep merge onto the provided config. Works with inline, path and external config path.
+  InlineConfig overrides = 4;
+}
+
+message DataprocBatchResourceProfile {
+  message InlineConfig {
+    // A Dataproc runtime config for a batch job.
+    // See: https://docs.cloud.google.com/dataproc-serverless/docs/reference/rest/v1/RuntimeConfig
+    google.protobuf.Struct runtime_config = 1;
+    // A Dataproc environment config for a batch job.
+    // See: https://docs.cloud.google.com/dataproc-serverless/docs/reference/rest/v1/EnvironmentConfig
+    google.protobuf.Struct environment_config = 2;
+  }
+  oneof config {
+    InlineConfig inline = 1;
+    string path = 2;
+    string external_config_path = 3;
+  }
+  // Overrides are applied with deep merge onto the provided config. Works with inline, path and external config path.
+  InlineConfig overrides = 4;
+}
+
+message DataprocServerlessBatchEngine {
+  string location = 1;
+  DataprocBatchResourceProfile resource_profile = 2 [(pipeline_models.validation.is_required) = true];
+  repeated string impersonation_chain = 3;
+}
+
+
+/////////////////////////
+// Actions
+////////////////////////
+message Action {
+  oneof action {
+    PythonAction python = 1;
+    PysparkAction pyspark = 2;
+    NotebookAction notebook = 3;
+    SqlAction sql = 4;
+    PipelineAction pipeline = 5;
+    DataIngestionAction data_ingestion = 6;
+  }
+}
+
+/////////////////////////
+// Python Action
+////////////////////////
+message PythonAction {
+  string name = 1 [
+    (pipeline_models.validation.is_required) = true,
+    (pipeline_models.validation.regex) = "^[a-zA-Z0-9_.-]+$",
+    (pipeline_models.validation.min_len) = 1,
+    (pipeline_models.validation.max_len) = 64
+  ];
+  repeated string depends_on = 2;
+  string execution_timeout = 3 [(pipeline_models.validation.is_iso8601_duration) = true];
+  string main_file_path = 4 [(pipeline_models.validation.is_required) = true];
+  string python_callable = 5 [(pipeline_models.validation.is_required) = true];
+  google.protobuf.Struct op_kwargs = 6;
+  PythonEnvironment environment = 7;
+  PythonEngine engine = 8 [(pipeline_models.validation.is_required) = true];
+}
+
+message PythonEnvironment {
+  message InlineRequirements {
+    repeated string list = 1;
+  }
+  message Requirements {
+    oneof requirements {
+      InlineRequirements inline = 1;
+      string path = 2;
+    }
+  }
+
+  Requirements requirements = 1;
+  bool system_site_packages = 2; // Default: false.
+}
+
+message PythonEngine {
+  oneof engine {
+    LocalEngine local = 1;
+  }
+}
+
+
+/////////////////////////
+// PySpark Action
+////////////////////////
+message PysparkAction {
+  string name = 1 [
+    (pipeline_models.validation.is_required) = true,
+    (pipeline_models.validation.regex) = "^[a-zA-Z0-9_.-]+$",
+    (pipeline_models.validation.min_len) = 1,
+    (pipeline_models.validation.max_len) = 64
+  ];
+  repeated string depends_on = 2;
+  string execution_timeout = 3 [(pipeline_models.validation.is_iso8601_duration) = true];
+  PysparkEngine engine = 4 [(pipeline_models.validation.is_required) = true];
+  string main_file_path = 5 [(pipeline_models.validation.is_required) = true];
+  repeated string archive_uris = 6;
+  string staging_bucket = 7;
+  repeated string py_files = 8;
+  PysparkEnvironment environment = 9;
+}
+
+message PysparkEngine {
+  oneof engine {
+    DataprocOnGceEngine dataproc_on_gce = 1;
+    DataprocServerlessBatchEngine dataproc_serverless = 2;
+  }
+}
+
+message PysparkEnvironment {
+  message Requirements {
+    oneof requirements {
+      string path = 1;
+    }
+  }
+  Requirements requirements = 1;
+}
+
+/////////////////////////
+// Notebook Action
+////////////////////////
+message NotebookAction {
+  string name = 1 [
+    (pipeline_models.validation.is_required) = true,
+    (pipeline_models.validation.regex) = "^[a-zA-Z0-9_.-]+$",
+    (pipeline_models.validation.min_len) = 1,
+    (pipeline_models.validation.max_len) = 64
+  ];
+  repeated string depends_on = 2;
+  string execution_timeout = 3 [(pipeline_models.validation.is_iso8601_duration) = true];
+  NotebookEngine engine = 4 [(pipeline_models.validation.is_required) = true];
+  string main_file_path = 5 [(pipeline_models.validation.is_required) = true];
+  repeated string archive_uris = 6;
+  string staging_bucket = 7;
+  NotebookEnvironment environment = 8;
+}
+
+message NotebookEngine {
+  oneof engine {
+    DataprocOnGceEngine dataproc_on_gce = 1;
+    DataprocServerlessBatchEngine dataproc_serverless = 2;
+  }
+}
+
+message NotebookEnvironment {
+  message Requirements {
+    oneof requirements {
+      string path = 1;
+    }
+  }
+  Requirements requirements = 1;
+}
+
+/////////////////////////
+// SQL Action
+////////////////////////
+message SqlAction {
+  string name = 1 [
+    (pipeline_models.validation.is_required) = true,
+    (pipeline_models.validation.regex) = "^[a-zA-Z0-9_.-]+$",
+    (pipeline_models.validation.min_len) = 1,
+    (pipeline_models.validation.max_len) = 64
+  ];
+  repeated string depends_on = 2;
+  string execution_timeout = 3 [(pipeline_models.validation.is_iso8601_duration) = true];
+  SqlEngine engine = 4 [(pipeline_models.validation.is_required) = true];
+  Query query = 5 [(pipeline_models.validation.is_required) = true];
+}
+
+message Query {
+  oneof query {
+    string inline = 1;
+    string path = 2;
+   }
+}
+
+message SqlEngine {
+  oneof engine {
+    BigQueryEngine bigquery = 1;
+    DataprocServerlessBatchEngine dataproc_serverless = 2;
+    DataprocOnGceEngine dataproc_on_gce = 3;
+  }
+}
+
+
+/////////////////////////
+// Pipeline
+////////////////////////
+message PipelineAction {
+  string name = 1 [
+    (pipeline_models.validation.is_required) = true,
+    (pipeline_models.validation.regex) = "^[a-zA-Z0-9_.-]+$",
+    (pipeline_models.validation.min_len) = 1,
+    (pipeline_models.validation.max_len) = 64
+  ];
+  repeated string depends_on = 2;
+  string execution_timeout = 3 [(pipeline_models.validation.is_iso8601_duration) = true];
+  PipelineFramework framework = 4 [(pipeline_models.validation.is_required) = true];
+}
+
+message PipelineFramework {
+  oneof framework {
+    DbtFrameworkSpec dbt = 1;
+    DataformFrameworkSpec dataform = 2;
+  }
+}
+
+message DbtFrameworkSpec {
+  oneof execution {
+    // Execute DBT using Airflow Worker (local execution).
+    DbtAirflowExecution airflow_worker = 1;
+  }
+}
+
+message DataformFrameworkSpec {
+  oneof execution {
+    // Execute Dataform using Dataform Service.
+    DataformServiceExecution dataform_service = 1;
+    // Execute Dataform using Airflow Worker (local execution).
+    DataformAirflowExecution airflow_worker = 2;
+  }
+}
+
+// Configuration for executing on Dataform Service.
+message DataformServiceExecution {
+  string location = 1;
+  string project_id = 2;
+  string repository_id = 3 [(pipeline_models.validation.is_required) = true];
+  // Configuration for the workflow invocation, which specifies which actions to run.
+  // See: https://docs.cloud.google.com/php/docs/reference/cloud-dataform/latest/V1beta1.WorkflowInvocation
+  google.protobuf.Struct workflow_invocation = 4;
+}
+
+// Configuration for executing DBT on Airflow Worker.
+message DbtAirflowExecution {
+  // Relative path to folder containing DBT project.
+  string project_directory_path = 1 [(pipeline_models.validation.is_required) = true];
+  // List of models to include in the run (equivalent to dbt --select).
+  repeated string select_models = 2;
+  repeated string tags = 3;
+}
+
+// Configuration for executing Dataform on Airflow Worker.
+message DataformAirflowExecution {
+  string project_directory_path = 1 [(pipeline_models.validation.is_required) = true];
+}
+
+/////////////////////////
+// Data Ingestion Action
+////////////////////////
+message DataIngestionAction {
+  string name = 1 [
+    (pipeline_models.validation.is_required) = true,
+    (pipeline_models.validation.regex) = "^[a-zA-Z0-9_.-]+$",
+    (pipeline_models.validation.min_len) = 1,
+    (pipeline_models.validation.max_len) = 64
+  ];
+  repeated string depends_on = 2;
+  string execution_timeout = 3 [(pipeline_models.validation.is_iso8601_duration) = true];
+
+  oneof config {
+    BigQueryDtsSpec bigquery_dts = 4;
+  }
+}
+
+message BigQueryDtsSpec {
+  oneof transfer_config {
+    string transfer_config_id = 1 [(pipeline_models.validation.is_required) = true];
+  }
+
+  google.protobuf.Struct runtime_params = 2;
+  repeated string impersonation_chain = 3;
+  string project_id = 4;
+  string location = 5;
+}

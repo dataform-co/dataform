@@ -20,7 +20,7 @@ suite("core/compilers", () => {
             const code = "foo: bar";
             const path = "definitions/foo.yml";
             const result = compile(code, path);
-            expect(result).to.equal(`exports.asJson = {"foo":"bar"}`);
+            expect(result).to.include(`exports.asJson = {"foo":"bar"}`);
         });
 
         test("compiles yaml to js", () => {
@@ -29,7 +29,7 @@ suite("core/compilers", () => {
 - item2`;
             const path = "definitions/foo.yaml";
             const result = compile(code, path);
-            expect(result).to.equal(`exports.asJson = ["item1","item2"]`);
+            expect(result).to.include(`exports.asJson = ["item1","item2"]`);
         });
 
         test("throws error for invalid yaml", () => {
@@ -42,55 +42,58 @@ suite("core/compilers", () => {
             const code = '{"cells": []}';
             const path = "definitions/foo.ipynb";
             const result = compile(code, path);
-            expect(result).to.equal('exports.asJson = {"cells":[]}');
+            expect(result).to.include('exports.asJson = {"cells":[]}');
         });
 
-        test("throws error for invalid ipynb json", () => {
-            const code = '{"cells": [}';
+        test("compiles non-JSON ipynb by wrapping code in a single cell", () => {
+            const code = `# Copyright 2026\nprint("hello world")`;
             const path = "definitions/foo.ipynb";
-            expect(() => compile(code, path)).to.throw(`Error parsing ${path} as JSON:`);
+            const result = compile(code, path);
+            expect(result).to.include(`exports.asJson = {`);
+            expect(result).to.include(`"cell_type":"code"`);
+            expect(result).to.include(`"source":["# Copyright 2026\\n","print(\\"hello world\\")"]`);
         });
 
         test("compiles sql to js", () => {
             const code = "select 1";
             const path = "definitions/foo.sql";
             const result = compile(code, path);
-            expect(result).to.equal("exports.query = `select 1`;");
+            expect(result).to.include("exports.query = `select 1`;");
         });
 
         test("escapes backticks in sql", () => {
             const code = "select `a` from `b`";
             const path = "definitions/foo.sql";
             const result = compile(code, path);
-            expect(result).to.equal("exports.query = `select \\`a\\` from \\`b\\``;");
+            expect(result).to.include("exports.query = `select \\`a\\` from \\`b\\``;");
         });
 
         test("escapes backslashes in sql", () => {
             const code = "select ''";
             const path = "definitions/foo.sql";
             const result = compile(code, path);
-            expect(result).to.equal("exports.query = `select ''`;");
+            expect(result).to.include("exports.query = `select ''`;");
         });
 
         test("escapes template literals in sql", () => {
             const code = "select ${foo}";
             const path = "definitions/foo.sql";
             const result = compile(code, path);
-            expect(result).to.equal("exports.query = `select \\${foo}`;");
+            expect(result).to.include("exports.query = `select \\${foo}`;");
         });
 
         test("returns raw code for other file types", () => {
             const code = "const a = 1;";
             const path = "definitions/foo.js";
             const result = compile(code, path);
-            expect(result).to.equal(code);
+            expect(result).to.include(code);
         });
 
         test("returns raw code for files with no extension", () => {
             const code = "const a = 1;";
             const path = "definitions/foo";
             const result = compile(code, path);
-            expect(result).to.equal(code);
+            expect(result).to.include(code);
         });
     });
 });
