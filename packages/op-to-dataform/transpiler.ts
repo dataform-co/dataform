@@ -55,9 +55,75 @@ export function transpilePipeline(pipeline: IPipeline, session: Session = defaul
   }
 
   const pipelineMessage = OrchestrationPipeline.fromObject(pipeline) as any;
+
+  configureSessionDefaults(pipelineMessage, session);
+
   const actions = pipelineMessage.actions || [];
   resolveDependencies(actions);
   actions.forEach((action: any) => transpileAction(action, session, yamlPath));
+}
+
+function configureSessionDefaults(pipelineMessage: any, session: Session) {
+  if (pipelineMessage.defaults) {
+    const { projectId, location } = pipelineMessage.defaults;
+    if (projectId) {
+      if (!session.projectConfig.defaultDatabase) {
+        session.projectConfig.defaultDatabase = projectId;
+      }
+      if (!session.canonicalProjectConfig.defaultDatabase) {
+        session.canonicalProjectConfig.defaultDatabase = projectId;
+      }
+    }
+    if (location) {
+      if (!session.projectConfig.defaultLocation) {
+        session.projectConfig.defaultLocation = location;
+      }
+      if (!session.canonicalProjectConfig.defaultLocation) {
+        session.canonicalProjectConfig.defaultLocation = location;
+      }
+    }
+  }
+  if (!session.projectConfig.warehouse) {
+    session.projectConfig.warehouse = "bigquery";
+  }
+  if (!session.canonicalProjectConfig.warehouse) {
+    session.canonicalProjectConfig.warehouse = "bigquery";
+  }
+  if (!session.projectConfig.defaultManagedSparkExecutionOptions?.stagingBucketUri) {
+    const actions = pipelineMessage.actions || [];
+    for (const action of actions) {
+      const stagingBucket = action.notebook?.stagingBucket || action.pyspark?.stagingBucket;
+      if (stagingBucket) {
+        if (!session.projectConfig.defaultManagedSparkExecutionOptions) {
+          session.projectConfig.defaultManagedSparkExecutionOptions = {};
+        }
+        session.projectConfig.defaultManagedSparkExecutionOptions.stagingBucketUri = stagingBucket;
+        if (!session.canonicalProjectConfig.defaultManagedSparkExecutionOptions) {
+          session.canonicalProjectConfig.defaultManagedSparkExecutionOptions = {};
+        }
+        session.canonicalProjectConfig.defaultManagedSparkExecutionOptions.stagingBucketUri = stagingBucket;
+        break;
+      }
+    }
+  }
+  if (!session.projectConfig.defaultNotebookRuntimeOptions?.runtimeTemplateName) {
+    const actions = pipelineMessage.actions || [];
+    for (const action of actions) {
+      const runtimeTemplateName =
+        action.notebook?.engine?.dataprocOnGce?.ephemeralCluster?.properties?.runtimeTemplateName;
+      if (runtimeTemplateName) {
+        if (!session.projectConfig.defaultNotebookRuntimeOptions) {
+          session.projectConfig.defaultNotebookRuntimeOptions = {};
+        }
+        session.projectConfig.defaultNotebookRuntimeOptions.runtimeTemplateName = runtimeTemplateName;
+        if (!session.canonicalProjectConfig.defaultNotebookRuntimeOptions) {
+          session.canonicalProjectConfig.defaultNotebookRuntimeOptions = {};
+        }
+        session.canonicalProjectConfig.defaultNotebookRuntimeOptions.runtimeTemplateName = runtimeTemplateName;
+        break;
+      }
+    }
+  }
 }
 
 function resolveDependencies(actions: any[]) {

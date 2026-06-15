@@ -23,6 +23,12 @@ export function readWorkflowSettings(failIfMissing: boolean = true): dataform.Pr
 
   if (workflowSettingsYaml) {
     const workflowSettingsAsJson = workflowSettingsYaml.asJson;
+    if (workflowSettingsAsJson === undefined) {
+      if (failIfMissing) {
+        throw Error("workflow_settings.yaml is invalid");
+      }
+      return workflowSettingsAsProjectConfig(dataform.WorkflowSettings.create());
+    }
     if (!workflowSettingsAsJson) {
       throw Error("workflow_settings.yaml is invalid");
     }
@@ -46,7 +52,7 @@ export function readWorkflowSettings(failIfMissing: boolean = true): dataform.Pr
   if (failIfMissing) {
     throw Error("Failed to resolve workflow_settings.yaml");
   }
-  return dataform.ProjectConfig.create();
+  return workflowSettingsAsProjectConfig(dataform.WorkflowSettings.create());
 }
 
 function verifyWorkflowSettingsAsJson(workflowSettingsAsJson: object): dataform.WorkflowSettings {

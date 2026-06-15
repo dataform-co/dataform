@@ -580,6 +580,15 @@ quotes
       );
     });
 
+    test(`fails when workflow_settings.yaml is empty`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(path.join(projectDir, "workflow_settings.yaml"), "");
+
+      expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
+        "workflow_settings.yaml is invalid"
+      );
+    });
+
     test(`fails when workflow_settings.yaml cannot be represented in JSON format`, () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
       fs.writeFileSync(path.join(projectDir, "workflow_settings.yaml"), "&*19132sdS:asd:");
@@ -2179,6 +2188,89 @@ actions:
       ]);
     });
 
+    test("op-to-dataform compiles successfully without workflow_settings.yaml when defaults are specified in pipeline", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/file1.yaml"),
+        `
+defaults:
+  projectId: my-pipeline-project
+  location: US
+  executionConfig:
+    retries: 2
+actions:
+  - sql:
+      name: my_action
+      query:
+        inline: SELECT 1 as val
+      engine:
+        bigquery:
+          destinationTable: my_dataset.my_action
+`
+      );
+
+      const request = coreExecutionRequestFromPath(projectDir);
+      request.compile.compileConfig.extension = {
+        name: "@dataform/op-to-dataform",
+        compilationMode: dataform.ExtensionCompilationMode.APPLICATION_CODE,
+      };
+
+      const result = runMainInVm(request);
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+
+      const tables = result.compile.compiledGraph.tables || [];
+      expect(tables.length).equals(1);
+      expect(tables[0].target.name).equals("my_action");
+      expect(tables[0].target.database).equals("my-pipeline-project");
+      expect(tables[0].target.schema).equals("my_dataset");
+      expect(result.compile.compiledGraph.projectConfig.defaultDatabase).equals("my-pipeline-project");
+      expect(result.compile.compiledGraph.projectConfig.defaultLocation).equals("US");
+    });
+
+    test("op-to-dataform compiles successfully with empty workflow_settings.yaml when defaults are specified in pipeline", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(path.join(projectDir, "workflow_settings.yaml"), "");
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/file1.yaml"),
+        `
+defaults:
+  projectId: my-pipeline-project
+  location: US
+  executionConfig:
+    retries: 2
+actions:
+  - sql:
+      name: my_action
+      query:
+        inline: SELECT 1 as val
+      engine:
+        bigquery:
+          destinationTable: my_dataset.my_action
+`
+      );
+
+      const request = coreExecutionRequestFromPath(projectDir);
+      request.compile.compileConfig.extension = {
+        name: "@dataform/op-to-dataform",
+        compilationMode: dataform.ExtensionCompilationMode.APPLICATION_CODE,
+      };
+
+      const result = runMainInVm(request);
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+
+      const tables = result.compile.compiledGraph.tables || [];
+      expect(tables.length).equals(1);
+      expect(tables[0].target.name).equals("my_action");
+      expect(tables[0].target.database).equals("my-pipeline-project");
+      expect(tables[0].target.schema).equals("my_dataset");
+      expect(result.compile.compiledGraph.projectConfig.defaultDatabase).equals("my-pipeline-project");
+      expect(result.compile.compiledGraph.projectConfig.defaultLocation).equals("US");
+    });
+
     test("op-to-dataform resolves dependencies when action name differs from its destination table name", () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
       fs.writeFileSync(
@@ -2537,6 +2629,101 @@ actions:
       expect(notebooks.length).equals(1);
       expect(notebooks[0].target.name).equals("my_notebook_action");
       expect(notebooks[0].executionEngine).equals(dataform.Notebook.ExecutionEngine.MANAGED_SPARK);
+    });
+
+    test("op-to-dataform transpiles notebook actions without workflow_settings.yaml, using stagingBucket defined in pipeline actions", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/my_notebook.ipynb"),
+        '{"cells": []}'
+      );
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/file.yaml"),
+        `
+defaults:
+  projectId: my-pipeline-project
+  location: US
+  executionConfig:
+    retries: 2
+actions:
+  - notebook:
+      name: my_notebook_action
+      mainFilePath: definitions/my_notebook.ipynb
+      stagingBucket: gs://test-staging-bucket
+      engine:
+        dataprocServerless:
+          location: us-central1
+`
+      );
+
+      const request = coreExecutionRequestFromPath(projectDir);
+      request.compile.compileConfig.extension = {
+        name: "@dataform/op-to-dataform",
+        compilationMode: dataform.ExtensionCompilationMode.APPLICATION_CODE,
+      };
+
+      const result = runMainInVm(request);
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+
+      expect(asPlainObject(result.compile.compiledGraph.projectConfig.defaultManagedSparkExecutionOptions)).deep.equals({
+        stagingBucketUri: "gs://test-staging-bucket"
+      });
+
+      const notebooks = result.compile.compiledGraph.notebooks || [];
+      expect(notebooks.length).equals(1);
+      expect(notebooks[0].target.name).equals("my_notebook_action");
+      expect(notebooks[0].executionEngine).equals(dataform.Notebook.ExecutionEngine.MANAGED_SPARK);
+    });
+
+    test("op-to-dataform transpiles notebook actions without workflow_settings.yaml, using runtimeTemplateName defined in pipeline actions dataprocOnGce engine", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/my_notebook.ipynb"),
+        '{"cells": []}'
+      );
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/file.yaml"),
+        `
+defaults:
+  projectId: my-pipeline-project
+  location: US
+  executionConfig:
+    retries: 2
+actions:
+  - notebook:
+      name: my_notebook_action
+      mainFilePath: definitions/my_notebook.ipynb
+      stagingBucket: gs://test-staging-bucket
+      engine:
+        dataprocOnGce:
+          ephemeralCluster:
+            clusterName: test-cluster
+            properties:
+              runtimeTemplateName: projects/1031557682594/locations/us-central1/notebookRuntimeTemplates/8694152901150375936
+`
+      );
+
+      const request = coreExecutionRequestFromPath(projectDir);
+      request.compile.compileConfig.extension = {
+        name: "@dataform/op-to-dataform",
+        compilationMode: dataform.ExtensionCompilationMode.APPLICATION_CODE,
+      };
+
+      const result = runMainInVm(request);
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+
+      expect(asPlainObject(result.compile.compiledGraph.projectConfig.defaultNotebookRuntimeOptions)).deep.equals({
+        outputBucket: "gs://test-staging-bucket",
+        runtimeTemplateName: "projects/1031557682594/locations/us-central1/notebookRuntimeTemplates/8694152901150375936"
+      });
+
+      const notebooks = result.compile.compiledGraph.notebooks || [];
+      expect(notebooks.length).equals(1);
+      expect(notebooks[0].target.name).equals("my_notebook_action");
     });
   });
 });
