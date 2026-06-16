@@ -57,6 +57,8 @@ message Defaults {
   string project_id = 1 [(pipeline_models.validation.is_required) = true];
   string location = 2 [(pipeline_models.validation.is_required) = true];
   ExecutionConfig execution_config = 3 [(pipeline_models.validation.is_required) = true];
+  string staging_bucket = 4;
+  string runtime_template_name = 5;
 }
 
 message ExecutionConfig {
@@ -188,6 +190,7 @@ message Action {
     SqlAction sql = 4;
     PipelineAction pipeline = 5;
     DataIngestionAction data_ingestion = 6;
+    AirflowOperatorAction airflow_operator = 7;
   }
 }
 
@@ -424,4 +427,22 @@ message BigQueryDtsSpec {
   repeated string impersonation_chain = 3;
   string project_id = 4;
   string location = 5;
+}
+
+/////////////////////////
+// Airflow Operator Action
+////////////////////////
+message AirflowOperatorAction {
+  string name = 1 [
+    (pipeline_models.validation.is_required) = true,
+    (pipeline_models.validation.regex) = "^[a-zA-Z0-9_.-]+$",
+    (pipeline_models.validation.min_len) = 1,
+    (pipeline_models.validation.max_len) = 64
+  ];
+  repeated string depends_on = 2;
+  string execution_timeout = 3 [(pipeline_models.validation.is_iso8601_duration) = true];
+
+  string operator_class = 4 [(pipeline_models.validation.is_required) = true];
+  google.protobuf.Struct params = 5;
+  string staging_bucket = 6;
 }

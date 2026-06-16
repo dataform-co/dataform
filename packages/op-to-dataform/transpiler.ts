@@ -4,10 +4,122 @@ import * as $protobuf from "protobufjs";
 import { IAction, IPipeline } from "./types";
 import { transpileSql } from "./actions/sql";
 import { transpileNotebook } from "./actions/notebook";
+import { transpileAirflowOperator } from "./actions/airflow_operator";
 
 export * from "./types";
 
+function registerStructWrappers() {
+  $protobuf.wrappers[".google.protobuf.Struct"] = {
+    fromObject(object: any) {
+      if (object && object.fields) {
+        return this.create(object);
+      }
+      return this.create(structFromObject(object));
+    },
+    toObject(message: any, options: any) {
+      return structToObject(message);
+    }
+  } as any;
+
+  $protobuf.wrappers[".google.protobuf.Value"] = {
+    fromObject(object: any) {
+      if (object && (
+        object.nullValue !== undefined ||
+        object.numberValue !== undefined ||
+        object.stringValue !== undefined ||
+        object.boolValue !== undefined ||
+        object.structValue !== undefined ||
+        object.listValue !== undefined
+      )) {
+        return this.create(object);
+      }
+      return this.create(valueFromObject(object));
+    },
+    toObject(message: any, options: any) {
+      return valueToObject(message);
+    }
+  } as any;
+
+  $protobuf.wrappers[".google.protobuf.ListValue"] = {
+    fromObject(object: any) {
+      if (object && object.values) {
+        return this.create(object);
+      }
+      return this.create({ values: object.map(valueFromObject) });
+    },
+    toObject(message: any, options: any) {
+      return listValueToObject(message);
+    }
+  } as any;
+}
+
+function valueFromObject(value: any): any {
+  if (value === null || value === undefined) {
+    return { nullValue: 0 };
+  }
+  if (typeof value === "number") {
+    return { numberValue: value };
+  }
+  if (typeof value === "string") {
+    return { stringValue: value };
+  }
+  if (typeof value === "boolean") {
+    return { boolValue: value };
+  }
+  if (Array.isArray(value)) {
+    return { listValue: { values: value.map(valueFromObject) } };
+  }
+  if (typeof value === "object") {
+    return { structValue: structFromObject(value) };
+  }
+  return {};
+}
+
+function structFromObject(object: any): any {
+  const fields: any = {};
+  for (const key of Object.keys(object)) {
+    fields[key] = valueFromObject(object[key]);
+  }
+  return { fields };
+}
+
+function structToObject(message: any): any {
+  const obj: any = {};
+  const fields = message.fields || {};
+  for (const key of Object.keys(fields)) {
+    obj[key] = valueToObject(fields[key]);
+  }
+  return obj;
+}
+
+function valueToObject(message: any): any {
+  if (message.nullValue !== undefined && message.nullValue !== null) {
+    return null;
+  }
+  if (message.numberValue !== undefined && message.numberValue !== null) {
+    return message.numberValue;
+  }
+  if (message.stringValue !== undefined && message.stringValue !== null) {
+    return message.stringValue;
+  }
+  if (message.boolValue !== undefined && message.boolValue !== null) {
+    return message.boolValue;
+  }
+  if (message.structValue !== undefined && message.structValue !== null) {
+    return structToObject(message.structValue);
+  }
+  if (message.listValue !== undefined && message.listValue !== null) {
+    return listValueToObject(message.listValue);
+  }
+  return undefined;
+}
+
+function listValueToObject(message: any): any {
+  return (message.values || []).map(valueToObject);
+}
+
 function loadOrchestrationPipelineSchema(): $protobuf.Type {
+  registerStructWrappers();
   const root = new $protobuf.Root();
 
   // Load google/protobuf/struct.proto
@@ -39,6 +151,8 @@ export function transpileAction(action: IAction, session: Session = defaultSessi
     transpileSql(action, session, yamlPath);
   } else if (action.notebook) {
     transpileNotebook(action, session, yamlPath);
+  } else if (action.airflowOperator) {
+    transpileAirflowOperator(action, session, yamlPath);
   }
 }
 
@@ -65,7 +179,7 @@ export function transpilePipeline(pipeline: IPipeline, session: Session = defaul
 
 function configureSessionDefaults(pipelineMessage: any, session: Session) {
   if (pipelineMessage.defaults) {
-    const { projectId, location } = pipelineMessage.defaults;
+    const { projectId, location, stagingBucket, runtimeTemplateName } = pipelineMessage.defaults;
     if (projectId) {
       if (!session.projectConfig.defaultDatabase) {
         session.projectConfig.defaultDatabase = projectId;
@@ -80,6 +194,34 @@ function configureSessionDefaults(pipelineMessage: any, session: Session) {
       }
       if (!session.canonicalProjectConfig.defaultLocation) {
         session.canonicalProjectConfig.defaultLocation = location;
+      }
+    }
+    if (stagingBucket) {
+      if (!session.projectConfig.defaultNotebookRuntimeOptions) {
+        session.projectConfig.defaultNotebookRuntimeOptions = {};
+      }
+      if (!session.projectConfig.defaultNotebookRuntimeOptions.outputBucket) {
+        session.projectConfig.defaultNotebookRuntimeOptions.outputBucket = stagingBucket;
+      }
+      if (!session.canonicalProjectConfig.defaultNotebookRuntimeOptions) {
+        session.canonicalProjectConfig.defaultNotebookRuntimeOptions = {};
+      }
+      if (!session.canonicalProjectConfig.defaultNotebookRuntimeOptions.outputBucket) {
+        session.canonicalProjectConfig.defaultNotebookRuntimeOptions.outputBucket = stagingBucket;
+      }
+    }
+    if (runtimeTemplateName) {
+      if (!session.projectConfig.defaultNotebookRuntimeOptions) {
+        session.projectConfig.defaultNotebookRuntimeOptions = {};
+      }
+      if (!session.projectConfig.defaultNotebookRuntimeOptions.runtimeTemplateName) {
+        session.projectConfig.defaultNotebookRuntimeOptions.runtimeTemplateName = runtimeTemplateName;
+      }
+      if (!session.canonicalProjectConfig.defaultNotebookRuntimeOptions) {
+        session.canonicalProjectConfig.defaultNotebookRuntimeOptions = {};
+      }
+      if (!session.canonicalProjectConfig.defaultNotebookRuntimeOptions.runtimeTemplateName) {
+        session.canonicalProjectConfig.defaultNotebookRuntimeOptions.runtimeTemplateName = runtimeTemplateName;
       }
     }
   }
@@ -151,6 +293,9 @@ function resolveDependencies(actions: any[]) {
     } else if (action.notebook) {
       const name = action.notebook.name;
       logicalToResolved.set(name, { name });
+    } else if (action.airflowOperator) {
+      const name = action.airflowOperator.name;
+      logicalToResolved.set(name, { name });
     }
   }
 
@@ -162,6 +307,11 @@ function resolveDependencies(actions: any[]) {
       });
     } else if (action.notebook && action.notebook.dependsOn) {
       action.notebook.dependsOn = action.notebook.dependsOn.map((dep: string) => {
+        const resolved = logicalToResolved.get(dep);
+        return resolved ? resolved : dep;
+      });
+    } else if (action.airflowOperator && action.airflowOperator.dependsOn) {
+      action.airflowOperator.dependsOn = action.airflowOperator.dependsOn.map((dep: string) => {
         const resolved = logicalToResolved.get(dep);
         return resolved ? resolved : dep;
       });

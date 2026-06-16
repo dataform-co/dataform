@@ -57,13 +57,37 @@ export interface INotebookConfig {
   environment?: INotebookEnvironment;
 }
 
+export interface IAirflowOperatorConfig {
+  name: string;
+  dependsOn?: Array<string | any>;
+  executionTimeout?: string;
+  operatorClass: string;
+  params?: Record<string, any>;
+  stagingBucket?: string;
+}
+
 export interface IAction {
   sql?: ISqlConfig;
   notebook?: INotebookConfig;
+  airflowOperator?: IAirflowOperatorConfig;
   tags?: string[];
+}
+
+export interface IExecutionConfig {
+  retries?: number;
+}
+
+export interface IDefaults {
+  projectId: string;
+  location: string;
+  executionConfig?: IExecutionConfig;
+  stagingBucket?: string;
+  runtimeTemplateName?: string;
 }
 
 export interface IPipeline {
   actions?: IAction[];
+  defaults?: IDefaults;
 }
+
 

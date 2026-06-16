@@ -12,6 +12,7 @@ ts_library(
     data = [
         "protos/orchestration_pipeline.proto",
         "protos/validation.proto",
+        "notebooks/run_airflow_operator.ipynb",
     ],
     deps = [
         "//core",
@@ -85,6 +86,9 @@ pkg_bundle_dts(
 
 pkg_npm_tar(
     name = "package",
+    srcs = [
+        "notebooks/run_airflow_operator.ipynb",
+    ],
     deps = [
         ":bundle.d",
         ":bundle_with_license",
