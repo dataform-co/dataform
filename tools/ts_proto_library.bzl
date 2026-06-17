@@ -1,20 +1,20 @@
 load("@aspect_rules_js//js:providers.bzl", "js_info")
 
 def _ts_proto_library_impl(ctx):
-    # 1. Collect all plain-text .proto source files from dependencies
+    # Collect all plain-text .proto source files from dependencies
     proto_files = []
     for dep in ctx.attr.deps:
         if ProtoInfo not in dep:
             fail("ts_proto_library dependency %s must be a proto_library rule" % dep.label)
         proto_files.extend(dep[ProtoInfo].direct_sources)
 
-    # 2. Declare compiled JS and TypeScript declaration output files
+    # Declare compiled JS and TypeScript declaration output files
     output_name = ctx.attr.output_name or ctx.label.name
     js_out = ctx.actions.declare_file(output_name + ".js")
     dts_out = ctx.actions.declare_file(output_name + ".d.ts")
     esm_js_out = ctx.actions.declare_file("esm/" + output_name + ".js")
 
-    # 3. Execute the compiled binary inside the execroot sandbox
+    # Execute the compiled binary inside the execroot sandbox
     ctx.actions.run(
         inputs = proto_files,
         outputs = [js_out, dts_out, esm_js_out],
@@ -31,7 +31,7 @@ def _ts_proto_library_impl(ctx):
         mnemonic = "ProtoCompile",
     )
 
-    # 4. Return standard Bzlmod JS providers
+    # Return standard Bzlmod JS providers
     return [
         DefaultInfo(files = depset([js_out, dts_out, esm_js_out])),
         js_info(

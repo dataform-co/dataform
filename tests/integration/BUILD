@@ -9,6 +9,8 @@ ts_test_suite(
         "utils.ts",
     ],
     data = [
+        "//cli/vm:bazel_compile_loader",
+        "//cli/vm:bazel_jit_worker_loader",
         "//test_credentials:bigquery.json",
         "//tests/integration/bigquery_project:files",
         "//tests/integration/bigquery_project:node_modules",

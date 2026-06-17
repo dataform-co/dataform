@@ -4,6 +4,8 @@ ts_test_suite(
     name = "tests",
     srcs = glob(["**/*.ts"]),
     data = [
+        "//cli/vm:bazel_compile_loader",
+        "//cli/vm:bazel_jit_worker_loader",
         "//tests/api/projects/common_v2:files",
         "//tests/api/projects/common_v2:node_modules",
         "//tests/api/projects/invalid_dataform_json:files",

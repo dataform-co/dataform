@@ -1,6 +1,6 @@
 load("@aspect_rules_webpack//webpack:defs.bzl", "webpack_bundle")
 load("//:version.bzl", "DF_VERSION")
-load("//packages:index.bzl", "add_license_header_to_file", "pkg_bundle_dts", "pkg_json", "pkg_npm_tar")
+load("//packages:index.bzl", "add_license_header_to_file", "pkg_bundle_dts", "pkg_json", "pkg_npm_tar", "pkg_transitive_types")
 load("//tools:ts_library.bzl", "ts_library")
 
 package(default_visibility = ["//visibility:public"])
@@ -86,6 +86,13 @@ add_license_header_to_file(
     to_file = "bundle.js",
 )
 
+pkg_transitive_types(
+    name = "core_transitive_types",
+    deps = [
+        ":core",
+    ],
+)
+
 pkg_bundle_dts(
     name = "bundle.d",
     entry_point = "index.d.ts",
@@ -98,6 +105,7 @@ pkg_bundle_dts(
     ],
     deps = [
         ":core",
+        ":core_transitive_types",
     ],
 )
 

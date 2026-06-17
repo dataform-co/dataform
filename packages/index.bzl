@@ -1,5 +1,6 @@
 load("@aspect_bazel_lib//lib:directory_path.bzl", "directory_path")
 load("@aspect_rules_js//js:defs.bzl", "js_binary", "js_run_binary")
+load("@aspect_rules_js//js:providers.bzl", "JsInfo")
 load("@aspect_rules_js//npm:defs.bzl", "npm_package")
 load("@aspect_rules_rollup//rollup:defs.bzl", "rollup")
 
@@ -138,3 +139,26 @@ def add_license_header_to_file(name, from_file, to_file, use_shebang = False, **
             .format(from_file = from_file, to_file = to_file, header = header),
         **kwargs
     )
+
+def _pkg_transitive_types_impl(ctx):
+    transitive_types = []
+    for dep in ctx.attr.deps:
+        if JsInfo in dep:
+            transitive_types.append(dep[JsInfo].transitive_types)
+        elif DefaultInfo in dep:
+            transitive_types.append(dep[DefaultInfo].files)
+            
+    return [
+        DefaultInfo(
+            files = depset(transitive = transitive_types)
+        )
+    ]
+
+pkg_transitive_types = rule(
+    implementation = _pkg_transitive_types_impl,
+    attrs = {
+        "deps": attr.label_list(
+            mandatory = True,
+        ),
+    },
+)

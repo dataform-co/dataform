@@ -30,7 +30,7 @@ if (!jsOut || !esmJsOut || !dtsOut || protoFiles.length === 0) {
 const pbjsPath = require.resolve("protobufjs-cli/pbjs");
 const pbtsPath = require.resolve("protobufjs-cli/pbts");
 
-// 1. Run pbjs for CommonJS static-module programmatically in an isolated process
+// Run pbjs for CommonJS static-module programmatically in an isolated process
 const pbjsJsScript = `
 const pbjs = require("${pbjsPath.replace(/\\/g, '/')}");
 const fs = require("fs");
@@ -50,7 +50,7 @@ if (pbjsJsRun.status !== 0) {
     process.exit(pbjsJsRun.status || 1);
 }
 
-// 2. Run pbjs for ES6 static-module programmatically in an isolated process
+// Run pbjs for ES6 static-module programmatically in an isolated process
 const pbjsEsmScript = `
 const pbjs = require("${pbjsPath.replace(/\\/g, '/')}");
 const fs = require("fs");
@@ -70,7 +70,7 @@ if (pbjsEsmRun.status !== 0) {
     process.exit(pbjsEsmRun.status || 1);
 }
 
-// 3. Run pbts programmatically in an isolated process
+// Run pbts programmatically in an isolated process
 const pbtsScript = `
 const pbts = require("${pbtsPath.replace(/\\/g, '/')}");
 const fs = require("fs");
