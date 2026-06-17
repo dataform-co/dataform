@@ -528,6 +528,9 @@ message ActionConfig {
     // If unset, the value from workflow_settings.yaml is used. If neither is set, default BigQuery behavior applies.
     // Dataform CLI only (GCP Dataform support pending).
     string reservation = 11;
+
+    // Metadata for this assertion.
+    Metadata metadata = 12;
   }
 
   message OperationConfig {
