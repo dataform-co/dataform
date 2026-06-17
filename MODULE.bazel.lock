@@ -95,7 +95,7 @@
   "moduleExtensions": {
     "//tools/gcloud:extensions.bzl%gcloud_sdk_extension": {
       "general": {
-        "bzlTransitiveDigest": "VrQN9AjKy3YKE3oOI90UXljo6ZU+VuyVKhDJ/6fJnk0=",
+        "bzlTransitiveDigest": "kvgSakWSAojqjpVE9x4s5Cr2/DcTP4DJDorH/EkVOnU=",
         "usagesDigest": "G9567r7BOo4v/0F+Q6wGrEvu7How52VjLhNqFE/f/yk=",
         "recordedFileInputs": {},
         "recordedDirentsInputs": {},
