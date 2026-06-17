@@ -87,37 +87,110 @@ export function parseCliDuration(rawDuration: string): number {
     throw new Error("Duration cannot be empty.");
   }
 
-  if (/^[+-]?\d+(\.\d+)?$/.test(normalizedDuration)) {
+  if (isCliDurationNumber(normalizedDuration)) {
     return Number(normalizedDuration);
   }
 
   let totalDurationMillis = 0;
   let matchFound = false;
   let cursor = 0;
-  const durationPattern = /([+-]?\d+(?:\.\d+)?)\s*([a-z]+)/g;
 
-  for (let match = durationPattern.exec(normalizedDuration); match; match = durationPattern.exec(normalizedDuration)) {
-    if (normalizedDuration.slice(cursor, match.index).trim()) {
+  while (cursor < normalizedDuration.length) {
+    while (normalizedDuration[cursor] === " ") {
+      cursor++;
+    }
+    if (cursor >= normalizedDuration.length) {
+      break;
+    }
+
+    const numberStart = cursor;
+    if (normalizedDuration[cursor] === "+" || normalizedDuration[cursor] === "-") {
+      cursor++;
+    }
+
+    const integerStart = cursor;
+    while (isAsciiDigit(normalizedDuration[cursor])) {
+      cursor++;
+    }
+    if (cursor === integerStart) {
       throw new Error(`Invalid duration: ${rawDuration}`);
     }
 
-    const durationValue = Number(match[1]);
-    const durationUnit = match[2];
+    if (normalizedDuration[cursor] === ".") {
+      cursor++;
+      const fractionStart = cursor;
+      while (isAsciiDigit(normalizedDuration[cursor])) {
+        cursor++;
+      }
+      if (cursor === fractionStart) {
+        throw new Error(`Invalid duration: ${rawDuration}`);
+      }
+    }
+
+    while (normalizedDuration[cursor] === " ") {
+      cursor++;
+    }
+
+    const unitStart = cursor;
+    while (isAsciiLetter(normalizedDuration[cursor])) {
+      cursor++;
+    }
+    if (cursor === unitStart) {
+      throw new Error(`Invalid duration: ${rawDuration}`);
+    }
+
+    const durationValue = Number(normalizedDuration.slice(numberStart, unitStart).trim());
+    const durationUnit = normalizedDuration.slice(unitStart, cursor);
     const unitMillis = DURATION_UNITS_IN_MILLIS[durationUnit];
     if (unitMillis === undefined) {
       throw new Error(`Unsupported duration unit: ${durationUnit}`);
     }
 
     totalDurationMillis += durationValue * unitMillis;
-    cursor = durationPattern.lastIndex;
     matchFound = true;
   }
 
-  if (!matchFound || normalizedDuration.slice(cursor).trim()) {
+  if (!matchFound) {
     throw new Error(`Invalid duration: ${rawDuration}`);
   }
 
   return totalDurationMillis;
+}
+
+function isCliDurationNumber(value: string): boolean {
+  let cursor = 0;
+  if (value[cursor] === "+" || value[cursor] === "-") {
+    cursor++;
+  }
+
+  const integerStart = cursor;
+  while (isAsciiDigit(value[cursor])) {
+    cursor++;
+  }
+  if (cursor === integerStart) {
+    return false;
+  }
+
+  if (value[cursor] === ".") {
+    cursor++;
+    const fractionStart = cursor;
+    while (isAsciiDigit(value[cursor])) {
+      cursor++;
+    }
+    if (cursor === fractionStart) {
+      return false;
+    }
+  }
+
+  return cursor === value.length;
+}
+
+function isAsciiDigit(value: string): boolean {
+  return value >= "0" && value <= "9";
+}
+
+function isAsciiLetter(value: string): boolean {
+  return value >= "a" && value <= "z";
 }
 
 /**
