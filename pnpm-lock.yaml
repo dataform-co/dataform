@@ -247,8 +247,8 @@ dependencies:
     specifier: ^0.11.0
     version: 0.11.0
   vm2:
-    specifier: 3.11.3
-    version: 3.11.3
+    specifier: 3.11.4
+    version: 3.11.4
   vsce:
     specifier: ^1.79.5
     version: 1.88.0
@@ -4607,8 +4607,8 @@ packages:
       extsprintf: 1.4.0
     dev: false
 
-  /vm2@3.11.3:
-    resolution: {integrity: sha512-DO1TTKuOc+veL11VNOvJwRab80mghFKE40Av3bl6pdXs11bdiDMuR73owy+dS2EsTZEvRUeBkkBuDVRjV/RgEw==}
+  /vm2@3.11.4:
+    resolution: {integrity: sha512-3assDRyB+A9/5rjECD2e2FAlezOfzCqejZy0L36zij4LgzoWZRA3a26q3PZnl6o5PmNjrTBRbAWACpdK/Y3qOQ==}
     engines: {node: '>=6.0'}
     hasBin: true
     dependencies:
