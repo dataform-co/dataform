@@ -17,7 +17,6 @@ ts_library(
     srcs = glob(["*.ts"]),
     deps = [
         "//cli",
-        "//cli/vm:compile_loader",
     ],
 )
 
@@ -31,6 +30,7 @@ js_binary(
         "//:node_modules/source-map-support",
     ],
     entry_point = "bin_loader.js",
+    testonly = True,
 )
 
 externals = [

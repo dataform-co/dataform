@@ -102,7 +102,7 @@ export async function compile(
 
 export class CompileChildProcess extends BaseWorker<string, string | Error> {
   constructor() {
-    super(path.resolve(__dirname, "../../vm/compile"));
+    super("vm/compile");
   }
 
   public async compile(compileConfig: dataform.ICompileConfig) {

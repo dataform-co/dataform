@@ -1,7 +1,13 @@
 import { ChildProcess, fork } from "child_process";
+import * as path from "path";
 
 export abstract class BaseWorker<TResponse, TMessage = any> {
-  protected constructor(private readonly loaderPath: string) {}
+  // Loader path for tests. Unit tests need a patched loader to correctly load the worker script.
+  private readonly bazelLoaderRelativePath: string;
+
+  protected constructor(bazelLoaderPath: string) {
+    this.bazelLoaderRelativePath = path.resolve(__dirname, "../..", bazelLoaderPath);
+  }
 
   protected async runWorker(
     timeoutMillis: number,
@@ -65,7 +71,7 @@ export abstract class BaseWorker<TResponse, TMessage = any> {
   }
 
   private resolveScript() {
-    const pathsToTry = ["./worker_bundle.js", this.loaderPath];
+    const pathsToTry = ["./worker_bundle.js", this.bazelLoaderRelativePath];
     for (const p of pathsToTry) {
       try {
         return require.resolve(p);

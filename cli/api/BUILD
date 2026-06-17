@@ -34,7 +34,6 @@ ts_library(
         "//:node_modules/tmp",
         "//cli/api/utils",
         "//cli/vm",
-        "//cli/vm:compile_loader",
         "//common/errors",
         "//common/flags",
         "//common/promises",

@@ -22,6 +22,12 @@ ts_library(
     ],
 )
 
+# This is a bit nuts. As we fork a process when compiling projects, we
+# start a new node instance but within bazel, modules will fail to load in the
+# forked process as we don't have a loader script available.
+# To fix this, we use the binary rules to generate the bazel loader scripts
+# and then execute these scripts instead, so module resulution works.
+
 js_binary(
     name = "compile_loader",
     chdir = "../..",
@@ -30,6 +36,7 @@ js_binary(
         "//:node_modules/source-map-support",
     ],
     entry_point = "compile.js",
+    testonly = True,
 )
 
 js_binary(
@@ -40,4 +47,5 @@ js_binary(
         "//:node_modules/source-map-support",
     ],
     entry_point = "jit_worker.js",
+    testonly = True,
 )
