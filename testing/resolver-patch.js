@@ -1,4 +1,4 @@
-{
+(function() {
   const Module = require('module');
   const path = require('path');
 
@@ -51,4 +51,4 @@
       throw err;
     }
   }
-};
+})();
