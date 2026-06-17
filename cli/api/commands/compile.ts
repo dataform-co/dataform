@@ -102,7 +102,7 @@ export async function compile(
 
 export class CompileChildProcess extends BaseWorker<string, string | Error> {
   constructor() {
-    super("vm/compile");
+    super("vm/bazel_compile_loader");
   }
 
   public async compile(compileConfig: dataform.ICompileConfig) {

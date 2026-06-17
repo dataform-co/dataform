@@ -6,13 +6,13 @@ package(default_visibility = ["//visibility:public"])
 
 exports_files([
     "build_test.sh",
-    "resolver-patch.js",
 ])
 
 js_library(
     name = "resolver-patch",
     srcs = ["resolver-patch.js"],
     visibility = ["//visibility:public"],
+    testonly = True,
 )
 
 ts_library(

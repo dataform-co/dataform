@@ -39,7 +39,7 @@ export class JitCompileChildProcess extends BaseWorker<
   }
 
   constructor() {
-    super("vm/jit_worker");
+    super("vm/bazel_jit_worker_loader");
   }
 
   private async run(

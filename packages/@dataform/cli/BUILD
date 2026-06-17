@@ -27,6 +27,7 @@ js_binary(
         "bin_loader.js",
         ":register_loader.js",
         ":cli",
+        "//cli/vm:bazel_compile_loader",
         "//:node_modules/source-map-support",
     ],
     entry_point = "bin_loader.js",

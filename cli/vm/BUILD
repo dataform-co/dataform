@@ -28,14 +28,19 @@ ts_library(
 # To fix this, we use the binary rules to generate the bazel loader scripts
 # and then execute these scripts instead, so module resulution works.
 
-js_binary(
-    name = "compile_loader",
-    chdir = "../..",
-    data = [
-        ":vm",
-        "//:node_modules/source-map-support",
-    ],
-    entry_point = "compile.js",
+genrule(
+    name = "bazel_compile_loader",
+    srcs = ["//testing:resolver-patch.js", "compile.js"],
+    outs = ["bazel_compile_loader.js"],
+    cmd = "cat $(SRCS) > $@",
+    testonly = True,
+)
+
+genrule(
+    name = "bazel_jit_worker_loader",
+    srcs = ["//testing:resolver-patch.js", "jit_worker.js"],
+    outs = ["bazel_jit_worker_loader.js"],
+    cmd = "cat $(SRCS) > $@",
     testonly = True,
 )
 
