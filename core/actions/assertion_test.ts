@@ -104,6 +104,14 @@ actions:
   description: "description",
   hermetic: true,
   dependOnDependencyAssertions: true,
+  metadata: {
+      overview: "assertion overview",
+      extraProperties: {
+          fields: {
+              priority: { stringValue: "high" }
+          }
+      }
+  }
 }`;
     [
       {
@@ -147,7 +155,15 @@ SELECT 1`
                 name: "name"
               },
               actionDescriptor: {
-                description: "description"
+                description: "description",
+                metadata: {
+                  overview: "assertion overview",
+                  extraProperties: {
+                    fields: {
+                      priority: { stringValue: "high" }
+                    }
+                  }
+                }
               },
               dependencyTargets: [
                 {
