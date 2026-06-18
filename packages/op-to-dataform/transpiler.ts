@@ -212,6 +212,18 @@ function configureSessionDefaults(pipelineMessage: any, session: Session) {
       if (!session.canonicalProjectConfig.defaultNotebookRuntimeOptions.outputBucket) {
         session.canonicalProjectConfig.defaultNotebookRuntimeOptions.outputBucket = stagingBucket;
       }
+      if (!session.projectConfig.defaultManagedSparkExecutionOptions) {
+        session.projectConfig.defaultManagedSparkExecutionOptions = {};
+      }
+      if (!session.projectConfig.defaultManagedSparkExecutionOptions.stagingBucketUri) {
+        session.projectConfig.defaultManagedSparkExecutionOptions.stagingBucketUri = stagingBucket;
+      }
+      if (!session.canonicalProjectConfig.defaultManagedSparkExecutionOptions) {
+        session.canonicalProjectConfig.defaultManagedSparkExecutionOptions = {};
+      }
+      if (!session.canonicalProjectConfig.defaultManagedSparkExecutionOptions.stagingBucketUri) {
+        session.canonicalProjectConfig.defaultManagedSparkExecutionOptions.stagingBucketUri = stagingBucket;
+      }
     }
     if (runtimeTemplateName) {
       if (!session.projectConfig.defaultNotebookRuntimeOptions) {
