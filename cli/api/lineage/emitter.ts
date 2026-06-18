@@ -42,6 +42,7 @@ export class LineageEmitter {
   private apiDisabledThisRun = false;
   private workdirHash: string = "";
   private readonly activeRunIds = new Map<string, string>();
+  private readonly parentRunId: string;
 
   constructor(
     credentials: dataform.IBigQuery,
@@ -52,6 +53,7 @@ export class LineageEmitter {
     this.emitterOptions = emitterOptions;
     this.clientProvider =
       clientProvider || createLineageClientProvider(credentials, emitterOptions.apiEndpoint);
+    this.parentRunId = this.generateUuid();
   }
 
   public emitForAction(
@@ -148,20 +150,33 @@ export class LineageEmitter {
     // Job and Run names
     const repositoryName = this.workdirHash || "unknown-repo";
     const canonicalActionTarget = `${action.target.schema}.${action.target.name}`;
-    const jobName = `${projectId}/${location}/cli/${repositoryName}/${canonicalActionTarget}`;
+    const jobName = `${projectId}.${location}.cli.${repositoryName}.${canonicalActionTarget}`;
+    const parentJobName = `${projectId}.${location}.cli.${repositoryName}.run`;
 
-    // Retrieve SQL facets if tasks exist
-    const sqlStatements = action.tasks
-      ?.map(task => task.statement)
-      .filter(stmt => !!stmt)
-      .join(";\n");
+    const nominalTime: any = {
+      _schemaURL: "https://openlineage.io/spec/facets/1-0-1/NominalTimeRunFacet.json",
+      nominalStartTime: new Date(
+        actionResult.timing?.startTimeMillis?.toNumber?.() || Date.now()
+      ).toISOString()
+    };
+    if (actionResult.timing?.endTimeMillis) {
+      nominalTime.nominalEndTime = new Date(
+        actionResult.timing.endTimeMillis.toNumber()
+      ).toISOString();
+    }
 
     const runFacets: any = {
-      nominalTime: {
-        _schemaURL: "https://openlineage.io/spec/facets/1-0-1/NominalTimeRunFacet.json",
-        nominalStartTime: new Date(
-          actionResult.timing?.startTimeMillis?.toNumber?.() || Date.now()
-        ).toISOString()
+      nominalTime,
+      parent: {
+        _producer: "https://github.com/dataform-co/dataform",
+        _schemaURL: "https://openlineage.io/spec/facets/1-0-1/ParentRunFacet.json#/$defs/ParentRunFacet",
+        job: {
+          namespace: "dataform",
+          name: parentJobName
+        },
+        run: {
+          runId: this.parentRunId
+        }
       }
     };
 
@@ -178,6 +193,12 @@ export class LineageEmitter {
         };
       }
     }
+
+    // Retrieve SQL facets if tasks exist
+    const sqlStatements = action.tasks
+      ?.map(task => task.statement)
+      .filter(stmt => !!stmt)
+      .join(";\n");
 
     const jobFacets: any = {};
     if (sqlStatements) {
