@@ -12,7 +12,8 @@ ts_library(
     data = [
         "protos/orchestration_pipeline.proto",
         "protos/validation.proto",
-        "notebooks/run_airflow_operator.ipynb",
+        "notebooks/run_airflow_operator_job.ipynb",
+        "notebooks/run_airflow_operator_service.ipynb",
     ],
     deps = [
         "//core",
@@ -87,7 +88,8 @@ pkg_bundle_dts(
 pkg_npm_tar(
     name = "package",
     srcs = [
-        "notebooks/run_airflow_operator.ipynb",
+        "notebooks/run_airflow_operator_job.ipynb",
+        "notebooks/run_airflow_operator_service.ipynb",
     ],
     deps = [
         ":bundle.d",

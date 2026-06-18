@@ -2,7 +2,7 @@ import { Session } from "df/core/session";
 import { resolvableAsActionConfigTarget, nativeRequire } from "df/core/utils";
 import { IAction } from "../types";
 
-export function transpileAirflowOperator(action: IAction, session: Session, yamlPath?: string) {
+export function transpileAirflowOperator(action: IAction, session: Session, yamlPath?: string, runner?: string) {
   const config = action.airflowOperator;
   if (!config) {
     return;
@@ -14,7 +14,10 @@ export function transpileAirflowOperator(action: IAction, session: Session, yaml
   const lastSlash = normalizedYaml.lastIndexOf("/");
   const yamlDir = lastSlash !== -1 ? normalizedYaml.substring(0, lastSlash) : "definitions";
 
-  const targetNotebookPath = "@dataform/op-to-dataform/notebooks/run_airflow_operator.ipynb";
+  const targetNotebookPath =
+    runner === "dataform_notebook_cloud_run_service"
+      ? "@dataform/op-to-dataform/notebooks/run_airflow_operator_service.ipynb"
+      : "@dataform/op-to-dataform/notebooks/run_airflow_operator_job.ipynb";
   const resolvedPathForSession = getRelativePath(yamlDir, targetNotebookPath);
 
   const stagingBucket = config.stagingBucket;
@@ -78,11 +81,33 @@ ${paramLines.join("\n")}
     let modified = false;
     for (const cell of notebookJson.cells) {
       if (cell.cell_type === "code" && cell.source) {
-        const sourceStr = Array.isArray(cell.source) ? cell.source.join("") : cell.source;
+        let sourceStr = Array.isArray(cell.source) ? cell.source.join("") : cell.source;
+        let cellModified = false;
         if (sourceStr.includes("SERVERLESS_DAG_FILE")) {
           const regex = /("name":\s*"SERVERLESS_DAG_FILE",\s*\n?\s*"value":\s*")[^"]*(")/;
-          const updatedSourceStr = sourceStr.replace(regex, `$1${base64DagCode}$2`);
-          cell.source = [updatedSourceStr];
+          sourceStr = sourceStr.replace(regex, `$1${base64DagCode}$2`);
+          cellModified = true;
+        }
+        if (sourceStr.includes("dag_file")) {
+          const regex = /("dag_file":\s*")[^"]*(")/g;
+          sourceStr = sourceStr.replace(regex, `$1${base64DagCode}$2`);
+          cellModified = true;
+        }
+        if (sourceStr.includes("__PLACEHOLDER_SERVERLESS_DAG_FILE_B64__")) {
+          sourceStr = sourceStr.replace(/__PLACEHOLDER_SERVERLESS_DAG_FILE_B64__/g, base64DagCode);
+          cellModified = true;
+        }
+        if (sourceStr.includes("PROJECT_ID =") && sourceStr.includes("Parameter Cell")) {
+          const projectId = session.projectConfig.defaultDatabase || "";
+          sourceStr = sourceStr.replace(/PROJECT_ID = "[^"]*"/, `PROJECT_ID = "${projectId}"`);
+          sourceStr = sourceStr.replace(
+            /SERVICE_ACCOUNT = "dataform-compiler@[^"]*"/,
+            `SERVICE_ACCOUNT = "dataform-compiler@${projectId}.iam.gserviceaccount.com"`
+          );
+          cellModified = true;
+        }
+        if (cellModified) {
+          cell.source = [sourceStr];
           modified = true;
         }
       }

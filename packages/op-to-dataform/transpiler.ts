@@ -146,13 +146,13 @@ function loadOrchestrationPipelineSchema(): $protobuf.Type {
 
 const OrchestrationPipeline = loadOrchestrationPipelineSchema();
 
-export function transpileAction(action: IAction, session: Session = defaultSession, yamlPath?: string) {
+export function transpileAction(action: IAction, session: Session = defaultSession, yamlPath?: string, runner?: string) {
   if (action.sql) {
     transpileSql(action, session, yamlPath);
   } else if (action.notebook) {
     transpileNotebook(action, session, yamlPath);
   } else if (action.airflowOperator) {
-    transpileAirflowOperator(action, session, yamlPath);
+    transpileAirflowOperator(action, session, yamlPath, runner);
   }
 }
 
@@ -172,9 +172,12 @@ export function transpilePipeline(pipeline: IPipeline, session: Session = defaul
 
   configureSessionDefaults(pipelineMessage, session);
 
+  const runnerEnum = OrchestrationPipeline.lookupEnum("PipelineRunner");
+  const runnerName = runnerEnum.valuesById[pipelineMessage.runner];
+
   const actions = pipelineMessage.actions || [];
   resolveDependencies(actions);
-  actions.forEach((action: any) => transpileAction(action, session, yamlPath));
+  actions.forEach((action: any) => transpileAction(action, session, yamlPath, runnerName));
 }
 
 function configureSessionDefaults(pipelineMessage: any, session: Session) {
@@ -384,7 +387,8 @@ function resolveEnumStrings(obj: any, type: any) {
       if (field.resolvedType.values) {
         // It's an Enum!
         if (typeof val === "string") {
-          const numVal = field.resolvedType.values[val];
+          const normalizedVal = val.replace(/-/g, "_");
+          const numVal = field.resolvedType.values[normalizedVal];
           if (numVal !== undefined) {
             obj[fieldName] = numVal;
           }

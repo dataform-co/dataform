@@ -2763,7 +2763,7 @@ actions:
       const notebooks = result.compile.compiledGraph.notebooks || [];
       expect(notebooks.length).equals(1);
       expect(notebooks[0].target.name).equals("my_operator_action");
-      expect(notebooks[0].fileName).to.contain("run_airflow_operator.ipynb");
+      expect(notebooks[0].fileName).to.contain("run_airflow_operator_job.ipynb");
 
       const notebookContents = JSON.parse(notebooks[0].notebookContents);
       let foundDagFile = false;
@@ -2787,6 +2787,193 @@ actions:
         }
       }
       expect(foundDagFile).to.be.true;
+    });
+
+    test("op-to-dataform transpiles airflowOperator actions with runner 'dataform-notebook-cloud-run-service'", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        dumpYaml(
+          dataform.WorkflowSettings.create(
+            WorkflowSettingsTemplates.bigqueryWithDefaultProject
+          )
+        )
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/file.yaml"),
+        `
+runner: "dataform-notebook-cloud-run-service"
+actions:
+  - airflowOperator:
+      name: my_operator_action
+      operatorClass: airflow.providers.google.cloud.operators.gcs.GCSCreateBucketOperator
+      params:
+        bucket_name: my-bucket
+        storage_class: STANDARD
+`
+      );
+
+      const request = coreExecutionRequestFromPath(projectDir);
+      request.compile.compileConfig.extension = {
+        name: "@dataform/op-to-dataform",
+        compilationMode: dataform.ExtensionCompilationMode.APPLICATION_CODE,
+      };
+
+      const result = runMainInVm(request);
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+
+      const notebooks = result.compile.compiledGraph.notebooks || [];
+      expect(notebooks.length).equals(1);
+      expect(notebooks[0].target.name).equals("my_operator_action");
+      expect(notebooks[0].fileName).to.contain("run_airflow_operator_service.ipynb");
+
+      const notebookContents = JSON.parse(notebooks[0].notebookContents);
+      let foundDagFile = false;
+      for (const cell of notebookContents.cells) {
+        if (cell.cell_type === "code" && cell.source) {
+          const sourceStr = Array.isArray(cell.source) ? cell.source.join("") : cell.source;
+          if (sourceStr.includes("dag_file")) {
+            const match = sourceStr.match(/"dag_file":\s*"([^"]*)"/);
+            if (match) {
+              const base64Code = match[1];
+              const decodedCode = Buffer.from(base64Code, "base64").toString("utf-8");
+              expect(decodedCode).to.contain("from airflow.providers.google.cloud.operators.gcs import GCSCreateBucketOperator");
+              expect(decodedCode).to.contain("GCSCreateBucketOperator(");
+              expect(decodedCode).to.contain("bucket_name=\"my-bucket\"");
+              expect(decodedCode).to.contain("storage_class=\"STANDARD\"");
+              expect(decodedCode).to.contain("task_id=\"my-serverless-task\"");
+              expect(decodedCode).to.contain("dag_id=\"my-serverless-dag\"");
+              foundDagFile = true;
+            }
+          }
+        }
+      }
+      expect(foundDagFile).to.be.true;
+    });
+
+    test("op-to-dataform transpiles airflowOperator actions with runner 'dataform-notebook-cloud-run-job'", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        dumpYaml(
+          dataform.WorkflowSettings.create(
+            WorkflowSettingsTemplates.bigqueryWithDefaultProject
+          )
+        )
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/file.yaml"),
+        `
+runner: "dataform-notebook-cloud-run-job"
+actions:
+  - airflowOperator:
+      name: my_operator_action
+      operatorClass: airflow.providers.google.cloud.operators.gcs.GCSCreateBucketOperator
+      params:
+        bucket_name: my-bucket
+`
+      );
+
+      const request = coreExecutionRequestFromPath(projectDir);
+      request.compile.compileConfig.extension = {
+        name: "@dataform/op-to-dataform",
+        compilationMode: dataform.ExtensionCompilationMode.APPLICATION_CODE,
+      };
+
+      const result = runMainInVm(request);
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+
+      const notebooks = result.compile.compiledGraph.notebooks || [];
+      expect(notebooks.length).equals(1);
+      expect(notebooks[0].target.name).equals("my_operator_action");
+      expect(notebooks[0].fileName).to.contain("run_airflow_operator_job.ipynb");
+    });
+
+    test("op-to-dataform transpiles multiple airflowOperator actions with runner 'dataform-notebook-cloud-run-service' correctly", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        dumpYaml(
+          dataform.WorkflowSettings.create(
+            WorkflowSettingsTemplates.bigqueryWithDefaultProject
+          )
+        )
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/file.yaml"),
+        `
+runner: "dataform-notebook-cloud-run-service"
+actions:
+  - airflowOperator:
+      name: action_one
+      operatorClass: airflow.providers.google.cloud.operators.gcs.GCSCreateBucketOperator
+      params:
+        bucket_name: bucket-one
+  - airflowOperator:
+      name: action_two
+      operatorClass: airflow.providers.google.cloud.operators.gcs.GCSDeleteBucketOperator
+      dependsOn:
+        - action_one
+      params:
+        bucket_name: bucket-two
+`
+      );
+
+      const request = coreExecutionRequestFromPath(projectDir);
+      request.compile.compileConfig.extension = {
+        name: "@dataform/op-to-dataform",
+        compilationMode: dataform.ExtensionCompilationMode.APPLICATION_CODE,
+      };
+
+      const result = runMainInVm(request);
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+
+      const notebooks = result.compile.compiledGraph.notebooks || [];
+      expect(notebooks.length).equals(2);
+
+      // Verify action_one notebook contains GCSCreateBucketOperator
+      const notebookOneContents = JSON.parse(notebooks.find(n => n.target.name === "action_one").notebookContents);
+      let foundDagFileOne = false;
+      for (const cell of notebookOneContents.cells) {
+        if (cell.cell_type === "code" && cell.source) {
+          const sourceStr = Array.isArray(cell.source) ? cell.source.join("") : cell.source;
+          if (sourceStr.includes("dag_file")) {
+            const match = sourceStr.match(/"dag_file":\s*"([^"]*)"/);
+            if (match) {
+              const decodedCode = Buffer.from(match[1], "base64").toString("utf-8");
+              expect(decodedCode).to.contain("GCSCreateBucketOperator");
+              expect(decodedCode).to.contain("bucket_name=\"bucket-one\"");
+              foundDagFileOne = true;
+            }
+          }
+        }
+      }
+      expect(foundDagFileOne).to.be.true;
+
+      // Verify action_two notebook contains GCSDeleteBucketOperator
+      const notebookTwoContents = JSON.parse(notebooks.find(n => n.target.name === "action_two").notebookContents);
+      let foundDagFileTwo = false;
+      for (const cell of notebookTwoContents.cells) {
+        if (cell.cell_type === "code" && cell.source) {
+          const sourceStr = Array.isArray(cell.source) ? cell.source.join("") : cell.source;
+          if (sourceStr.includes("dag_file")) {
+            const match = sourceStr.match(/"dag_file":\s*"([^"]*)"/);
+            if (match) {
+              const decodedCode = Buffer.from(match[1], "base64").toString("utf-8");
+              expect(decodedCode).to.contain("GCSDeleteBucketOperator");
+              expect(decodedCode).to.contain("bucket_name=\"bucket-two\"");
+              foundDagFileTwo = true;
+            }
+          }
+        }
+      }
+      expect(foundDagFileTwo).to.be.true;
     });
 
     test("op-to-dataform supports stagingBucket in defaults", () => {

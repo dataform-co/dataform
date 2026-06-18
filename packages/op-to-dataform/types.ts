@@ -85,9 +85,15 @@ export interface IDefaults {
   runtimeTemplateName?: string;
 }
 
+export type PipelineRunner =
+  | "airflow"
+  | "dataform-notebook-cloud-run-job"
+  | "dataform-notebook-cloud-run-service";
+
 export interface IPipeline {
   actions?: IAction[];
   defaults?: IDefaults;
+  runner?: PipelineRunner;
 }
 
 

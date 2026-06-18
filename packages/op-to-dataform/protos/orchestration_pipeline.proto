@@ -51,6 +51,8 @@ message OrchestrationPipeline {
 enum PipelineRunner {
   pipeline_runner_undefined = 0;
   airflow = 1;
+  dataform_notebook_cloud_run_job = 2;
+  dataform_notebook_cloud_run_service = 3;
 }
 
 message Defaults {
