@@ -175,6 +175,9 @@ export function workflowSettingsAsProjectConfig(
   if (workflowSettings.includeTestsInCompiledGraph) {
     projectConfig.includeTestsInCompiledGraph = workflowSettings.includeTestsInCompiledGraph;
   }
+  if (workflowSettings.lineage) {
+    projectConfig.lineage = workflowSettings.lineage;
+  }
 
   projectConfig.warehouse = "bigquery";
   return projectConfig;

@@ -29,6 +29,7 @@ nodejs_binary(
 
 externals = [
     "@google-cloud/bigquery",
+    "@google-cloud/lineage",
     "chokidar",
     "deepmerge",
     "fs-extra",

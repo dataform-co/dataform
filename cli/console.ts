@@ -156,6 +156,10 @@ export function printError(errorText: string, indentCount: number = 0) {
   writeStdErr(errorOutput(errorText), indentCount);
 }
 
+export function printWarning(warningText: string, indentCount: number = 0) {
+  writeStdErr(warningOutput(warningText), indentCount);
+}
+
 export function printInitResult(result: IInitResult) {
   if (result.dirsCreated && result.dirsCreated.length) {
     writeStdOut(successOutput("Directories successfully created:"));
