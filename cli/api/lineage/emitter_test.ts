@@ -101,6 +101,7 @@ suite("LineageEmitter", () => {
     expect(startPayload.parent).to.equal("projects/target-project/locations/us");
     const startOpenLineage = fromProtoStruct(startPayload.openLineage);
     expect(startOpenLineage.eventType).to.equal("START");
+    expect(startOpenLineage.job.name).to.equal("target-project.us.cli.0b5d3e86239e91e3.target_dataset.target_table");
 
     // Assert COMPLETE event
     const completePayload = mockClient.processOpenLineageRunEventCalledWith[1];
@@ -109,14 +110,22 @@ suite("LineageEmitter", () => {
     expect(openLineage.run.runId).to.equal(startOpenLineage.run.runId);
     expect(openLineage.eventType).to.equal("COMPLETE");
     expect(openLineage.producer).to.equal("https://github.com/dataform-co/dataform");
+    expect(openLineage.job.name).to.equal("target-project.us.cli.0b5d3e86239e91e3.target_dataset.target_table");
     expect(openLineage.inputs[0].namespace).to.equal("bigquery");
     expect(openLineage.inputs[0].name).to.equal("source-project.source_dataset.source_table");
     expect(openLineage.outputs[0].namespace).to.equal("bigquery");
     expect(openLineage.outputs[0].name).to.equal("target-project.target_dataset.target_table");
 
+    // Assert Parent run facet
+    expect(openLineage.run.facets.parent.job.name).to.equal("target-project.us.cli.0b5d3e86239e91e3.run");
+    expect(openLineage.run.facets.parent.run.runId).to.be.a("string");
+
     // Nominal time run facet verified
     expect(openLineage.run.facets.nominalTime.nominalStartTime).to.equal(
       new Date(1000).toISOString()
+    );
+    expect(openLineage.run.facets.nominalTime.nominalEndTime).to.equal(
+      new Date(2000).toISOString()
     );
 
     // SQL job facet verified
