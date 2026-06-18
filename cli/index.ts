@@ -8,6 +8,7 @@ import yargs from "yargs";
 import { build, compile, credentials, init, install, run, test } from "df/cli/api";
 import { CREDENTIALS_FILENAME } from "df/cli/api/commands/credentials";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
+import { LineageEmitter } from "df/cli/api/lineage/emitter";
 import { prettyJsonStringify } from "df/cli/api/utils";
 import {
   compiledGraphOutputType,
@@ -141,6 +142,14 @@ const credentialsOption: INamedOption<yargs.Options> = {
   },
   check: (argv: yargs.Arguments<any>) =>
     getCredentialsPath(argv[projectDirOption.name], argv[credentialsOption.name])
+};
+
+const emitLineageOption: INamedOption<yargs.Options> = {
+  name: "emit-lineage",
+  option: {
+    describe: "If set, table-level lineage events will be emitted to Dataplex Lineage API.",
+    type: "boolean"
+  }
 };
 
 const jsonOutputOption: INamedOption<yargs.Options> = {
@@ -582,6 +591,7 @@ export function runCli() {
           timeoutOption,
           tagsOption,
           bigqueryJobLabelsOption,
+          emitLineageOption,
           ...ProjectConfigOptions.allYargsOptions
         ],
         processFn: async argv => {
@@ -669,7 +679,14 @@ export function runCli() {
             print("Running...\n");
           }
 
-          const runner = run(dbadapter, executionGraph, { bigquery: bigqueryOptions });
+          const projectDir = argv[projectDirOption.name] || process.cwd();
+          const lineageEmitter = createLineageEmitter(argv, executionGraph, readCredentials);
+
+          const runner = run(dbadapter, executionGraph, {
+            bigquery: bigqueryOptions,
+            projectDir,
+            lineageEmitter
+          });
           process.on("SIGINT", () => {
             runner.cancel();
           });
@@ -699,6 +716,9 @@ export function runCli() {
           runner.onChange(printExecutedGraph);
           const runResult = await runner.result();
           printExecutedGraph(runResult);
+          if (lineageEmitter) {
+            await lineageEmitter.drain(10000);
+          }
           return runResult.status === dataform.RunResult.ExecutionStatus.SUCCESSFUL ? 0 : 1;
         }
       },
@@ -975,3 +995,28 @@ class ProjectConfigOptions {
     return projectConfigOptions;
   }
 }
+
+function createLineageEmitter(
+  argv: yargs.Arguments<any>,
+  executionGraph: dataform.IExecutionGraph,
+  readCredentials: dataform.IBigQuery | undefined
+): LineageEmitter | undefined {
+  const lineageEnabled =
+    (argv[emitLineageOption.name] as boolean) ??
+    executionGraph.projectConfig?.lineage?.enabled ??
+    false;
+  if (!lineageEnabled || !readCredentials) {
+    return undefined;
+  }
+
+  const projectDir = argv[projectDirOption.name] || process.cwd();
+  const apiEndpoint = executionGraph.projectConfig?.lineage?.apiEndpoint || undefined;
+
+  return new LineageEmitter(readCredentials, {
+    lineageEnabled,
+    dryRun: !!argv[dryRunOptionName],
+    projectDir,
+    apiEndpoint
+  });
+}
+

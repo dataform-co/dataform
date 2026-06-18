@@ -3,6 +3,7 @@ import Long from "long";
 
 import * as dbadapters from "df/cli/api/dbadapters";
 import { IBigQueryExecutionOptions } from "df/cli/api/dbadapters/bigquery";
+import { LineageEmitter } from "df/cli/api/lineage/emitter";
 import { Flags } from "df/common/flags";
 import { retry } from "df/common/promises";
 import { deepClone, equals } from "df/common/protos";
@@ -30,6 +31,11 @@ export interface IExecutionOptions {
     dryRun?: boolean;
     labels?: { [label: string]: string };
   };
+  lineage?: {
+    enabled?: boolean;
+  };
+  projectDir?: string;
+  lineageEmitter?: LineageEmitter;
 }
 
 export function run(
@@ -64,6 +70,7 @@ export class Runner {
   private timeout: NodeJS.Timer;
   private timedOut = false;
   private executionTask: Promise<dataform.IRunResult>;
+  private readonly lineageEmitter?: LineageEmitter;
 
   constructor(
     private readonly dbadapter: dbadapters.IDbAdapter,
@@ -102,6 +109,8 @@ export class Runner {
     this.eEmitter = new EventEmitter();
     // There could feasibly be thousands of listeners to this, 0 makes the limit infinite.
     this.eEmitter.setMaxListeners(0);
+
+    this.lineageEmitter = executionOptions.lineageEmitter;
   }
 
   public onChange(listener: (graph: dataform.IRunResult) => void): Runner {
@@ -327,6 +336,9 @@ export class Runner {
     actionResult.status = dataform.ActionResult.ExecutionStatus.RUNNING;
     const timer = Timer.start(resumedActionResult?.timing);
     actionResult.timing = timer.current();
+    if (this.lineageEmitter) {
+      this.lineageEmitter.emitForAction(action, actionResult);
+    }
     this.notifyListeners();
 
     await this.dbadapter.withClientLock(async client => {
@@ -405,6 +417,11 @@ export class Runner {
     }
 
     actionResult.timing = timer.end();
+
+    if (this.lineageEmitter) {
+      this.lineageEmitter.emitForAction(action, actionResult);
+    }
+
     this.notifyListeners();
     return actionResult;
   }

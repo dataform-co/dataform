@@ -38,6 +38,8 @@ message ProjectConfig {
 
   bool include_tests_in_compiled_graph = 22;
 
+  LineageSettings lineage = 23;
+
   reserved 3, 4, 6, 8, 10, 12, 13;
 }
 
