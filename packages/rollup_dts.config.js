@@ -3,21 +3,19 @@ import * as path from "path";
 import * as fs from "fs";
 
 function findBazelBin() {
-  let dir = process.cwd();
-  const bazelOutDir = path.join(dir, "bazel-out");
-  if (fs.existsSync(bazelOutDir) && fs.statSync(bazelOutDir).isDirectory()) {
-    const configs = fs.readdirSync(bazelOutDir);
-    for (const config of configs) {
-      const binPath = path.join(bazelOutDir, config, "bin");
-      if (fs.existsSync(binPath) && fs.statSync(binPath).isDirectory()) {
-        return binPath;
-      }
-    }
+  if (!process.env.BAZEL_BINDIR) {
+    return undefined;
   }
-  return dir;
+  let dir = process.cwd();
+  while (dir && !fs.existsSync(path.join(dir, "bazel-out"))) {
+    const parent = path.dirname(dir);
+    if (parent === dir) {
+      break;
+    }
+    dir = parent;
+  }
+  return path.resolve(dir, process.env.BAZEL_BINDIR);
 }
-
-const bazelBin = findBazelBin();
 
 function resolveDtsPlugin() {
   return {
@@ -25,22 +23,20 @@ function resolveDtsPlugin() {
     resolveId(source) {
       if (source.startsWith("df/") || source.startsWith("packages/")) {
         const relPath = source.startsWith("df/") ? source.slice(3) : source;
-        const candidates = [
-          path.resolve(bazelBin, relPath),
-          path.resolve(process.cwd(), relPath),
-        ];
-        
-        for (const candidate of candidates) {
-          if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
-            return candidate;
-          }
-          if (fs.existsSync(candidate + ".d.ts") && fs.statSync(candidate + ".d.ts").isFile()) {
-            return candidate + ".d.ts";
-          }
-          const indexCandidate = path.resolve(candidate, "index.d.ts");
-          if (fs.existsSync(indexCandidate) && fs.statSync(indexCandidate).isFile()) {
-            return indexCandidate;
-          }
+        const bazelBin = findBazelBin();
+        const candidate = bazelBin
+          ? path.resolve(bazelBin, relPath)
+          : path.resolve(process.cwd(), relPath);
+
+        if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+          return candidate;
+        }
+        if (fs.existsSync(candidate + ".d.ts") && fs.statSync(candidate + ".d.ts").isFile()) {
+          return candidate + ".d.ts";
+        }
+        const indexCandidate = path.resolve(candidate, "index.d.ts");
+        if (fs.existsSync(indexCandidate) && fs.statSync(indexCandidate).isFile()) {
+          return indexCandidate;
         }
       }
       return null;

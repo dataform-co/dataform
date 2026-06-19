@@ -2,6 +2,21 @@ import resolve from "@rollup/plugin-node-resolve";
 import * as path from "path";
 import * as fs from "fs";
 
+function findBazelBin() {
+  if (!process.env.BAZEL_BINDIR) {
+    return undefined;
+  }
+  let dir = process.cwd();
+  while (dir && !fs.existsSync(path.join(dir, "bazel-out"))) {
+    const parent = path.dirname(dir);
+    if (parent === dir) {
+      break;
+    }
+    dir = parent;
+  }
+  return path.resolve(dir, process.env.BAZEL_BINDIR);
+}
+
 function convertToRegex(pattern) {
   if (pattern instanceof RegExp) {
     return pattern;
@@ -45,14 +60,8 @@ const checkImports = imports => {
       if (source.startsWith("df/") || source.startsWith("packages/")) {
         const relPath = source.startsWith("df/") ? source.slice(3) : source;
 
-        const candidate = path.resolve(
-          process.cwd(),
-          "../../..",
-          "bazel-out",
-          "k8-fastbuild-py2",
-          "bin",
-          relPath
-        );
+        const bazelBin = findBazelBin();
+        const candidate = bazelBin ? path.resolve(bazelBin, relPath) : path.resolve(process.cwd(), relPath);
 
         const esmCandidates = [];
         // Generate ESM variants by walking up the directory tree
