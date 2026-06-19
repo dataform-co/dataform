@@ -90,7 +90,7 @@ export class JitCompileChildProcess extends BaseWorker<
       child.send({
         type: "rpc_response",
         correlationId: message.correlationId,
-        response
+        response: Array.from(response)
       });
     } catch (e) {
       child.send({

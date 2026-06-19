@@ -46,6 +46,7 @@ export interface IExecutionOptions {
 }
 
 export type RunOptionsOrResult = IExecutionOptions | dataform.IRunResult;
+export type CancelReason = "timeout" | "user" | "cancellation";
 
 export function run(
   dbadapter: dbadapters.IDbAdapter,
@@ -54,39 +55,60 @@ export function run(
   partiallyExecutedRunResult: dataform.IRunResult = {},
   runnerNotificationPeriodMillis: number = flags.runnerNotificationPeriodMillis.get()
 ): Runner {
+  const { options, runResult } = handleParamsOverloads(optionsOrResult, partiallyExecutedRunResult);
   return new Runner(
     dbadapter,
     graph,
-    optionsOrResult,
-    partiallyExecutedRunResult,
+    options,
+    runResult,
     runnerNotificationPeriodMillis
   ).execute();
 }
 
-export class Runner {
-  private static handleParamsOverloads(
-    optionsOrResult: RunOptionsOrResult,
-    partiallyExecutedRunResult: dataform.IRunResult
-  ): { options: IExecutionOptions; runResult: dataform.IRunResult } {
-    if (optionsOrResult && "actions" in optionsOrResult) {
-      return {
-        runResult: {
-          ...(optionsOrResult as dataform.IRunResult)
-        },
-        options: { projectDir: "." }
-      };
-    }
-    const options = { ...(optionsOrResult as IExecutionOptions) };
-    if (!options.projectDir) {
-      options.projectDir = ".";
-    }
+function handleParamsOverloads(
+  optionsOrResult: RunOptionsOrResult,
+  partiallyExecutedRunResult: dataform.IRunResult
+): { options: IExecutionOptions; runResult: dataform.IRunResult } {
+  if (optionsOrResult && (optionsOrResult as dataform.IRunResult).actions !== undefined) {
     return {
-      options,
       runResult: {
-        actions: [],
-        ...partiallyExecutedRunResult
-      }
+        ...(optionsOrResult as dataform.IRunResult)
+      },
+      options: { projectDir: "." }
     };
+  }
+  const options: IExecutionOptions = {
+    projectDir: ".",
+    ...(optionsOrResult as IExecutionOptions)
+  };
+  return {
+    options,
+    runResult: {
+      actions: [],
+      ...partiallyExecutedRunResult
+    }
+  };
+}
+
+export class Runner {
+  public static create(
+    dbadapter: dbadapters.IDbAdapter,
+    graph: dataform.IExecutionGraph,
+    options: IExecutionOptions = {},
+    runnerNotificationPeriodMillis: number = flags.runnerNotificationPeriodMillis.get()
+  ): Runner {
+    const { options: parsedOptions, runResult } = handleParamsOverloads(options, {});
+    return new Runner(dbadapter, graph, parsedOptions, runResult, runnerNotificationPeriodMillis);
+  }
+
+  public static resume(
+    dbadapter: dbadapters.IDbAdapter,
+    graph: dataform.IExecutionGraph,
+    runResult: dataform.IRunResult,
+    runnerNotificationPeriodMillis: number = flags.runnerNotificationPeriodMillis.get()
+  ): Runner {
+    const { options, runResult: parsedRunResult } = handleParamsOverloads(runResult, {});
+    return new Runner(dbadapter, graph, options, parsedRunResult, runnerNotificationPeriodMillis);
   }
 
   private readonly warehouseStateByTarget: Map<string, dataform.ITableMetadata>;
@@ -112,13 +134,27 @@ export class Runner {
   private executionTask: Promise<dataform.IRunResult>;
 
   constructor(
+    dbadapter: dbadapters.IDbAdapter,
+    graph: dataform.IExecutionGraph,
+    options: IExecutionOptions,
+    runResult: dataform.IRunResult,
+    runnerNotificationPeriodMillis?: number
+  );
+  constructor(
+    dbadapter: dbadapters.IDbAdapter,
+    graph: dataform.IExecutionGraph,
+    optionsOrResult?: RunOptionsOrResult,
+    partiallyExecutedRunResult?: dataform.IRunResult,
+    runnerNotificationPeriodMillis?: number
+  );
+  constructor(
     private readonly dbadapter: dbadapters.IDbAdapter,
     private readonly graph: dataform.IExecutionGraph,
     optionsOrResult: RunOptionsOrResult = {},
     partiallyExecutedRunResult: dataform.IRunResult = {},
     private readonly runnerNotificationPeriodMillis: number = flags.runnerNotificationPeriodMillis.get()
   ) {
-    const { options, runResult } = Runner.handleParamsOverloads(
+    const { options, runResult } = handleParamsOverloads(
       optionsOrResult,
       partiallyExecutedRunResult
     );
@@ -174,7 +210,7 @@ export class Runner {
       const timeoutMillis = this.graph.runConfig.timeoutMillis - elapsedTimeMillis;
       this.timeout = setTimeout(() => {
         this.timedOut = true;
-        this.cancel(`Run timed out after ${this.graph.runConfig.timeoutMillis / 1000} seconds`);
+        this.cancel("timeout");
       }, timeoutMillis);
     }
     return this;
@@ -184,9 +220,15 @@ export class Runner {
     this.stopped = true;
   }
 
-  public cancel(reason: string = "Run cancelled") {
+  public cancel(reason: CancelReason = "user") {
     if (!this.skipReason) {
-      this.skipReason = reason;
+      if (reason === "timeout") {
+        this.skipReason = `Run timed out after ${this.graph.runConfig.timeoutMillis / 1000} seconds`;
+      } else if (reason === "user") {
+        this.skipReason = "Run cancelled";
+      } else {
+        this.skipReason = "Run cancelled before action started";
+      }
     }
     this.cancelled = true;
     this.eEmitter.emit(CANCEL_EVENT, undefined, undefined);
@@ -285,25 +327,27 @@ export class Runner {
       const allPendingActions = this.pendingActions;
       this.pendingActions = [];
       const skipErrorMessage = this.skipReason || "Run cancelled before action started";
-      allPendingActions.forEach(pendingAction =>
+      allPendingActions.forEach(pendingAction => {
+        let tasks: dataform.ITaskResult[];
+        if (pendingAction.tasks && pendingAction.tasks.length > 0) {
+          tasks = pendingAction.tasks.map((_, i) => ({
+            status: dataform.TaskResult.ExecutionStatus.SKIPPED,
+            ...(i === 0 ? { errorMessage: skipErrorMessage } : {})
+          }));
+        } else {
+          tasks = [
+            {
+              status: dataform.TaskResult.ExecutionStatus.SKIPPED,
+              errorMessage: skipErrorMessage
+            }
+          ];
+        }
         this.runResult.actions.push({
           target: pendingAction.target,
           status: dataform.ActionResult.ExecutionStatus.SKIPPED,
-          // Surface at least one task carrying the skip reason; matches the
-          // shape of tasks the action would have produced. If the action has
-          // no built tasks (e.g. JiT-only), still emit one so the cause is
-          // visible in the JSON output.
-          tasks: (pendingAction.tasks && pendingAction.tasks.length > 0
-            ? pendingAction.tasks.map((_, i) => ({
-                status: dataform.TaskResult.ExecutionStatus.SKIPPED,
-                ...(i === 0 ? { errorMessage: skipErrorMessage } : {})
-              }))
-            : [{
-                status: dataform.TaskResult.ExecutionStatus.SKIPPED,
-                errorMessage: skipErrorMessage
-              }])
-        })
-      );
+          tasks
+        });
+      });
       this.notifyListeners();
       return;
     }
@@ -599,19 +643,35 @@ export class Runner {
       this.getBigQueryExecutionOptions(action)
     );
 
+    action.tasks = this.createTasksFromJitResponse(action, jitResponse);
+  }
+
+  private createTasksFromJitResponse(
+    action: dataform.IExecutionAction,
+    jitResponse: dataform.IJitCompilationResponse
+  ): dataform.IExecutionTask[] {
     if (jitResponse.table) {
       const table = dataform.Table.create({
         ...action,
         ...jitResponse.table,
-        enumType: action.tableType === "view" ? dataform.TableType.VIEW : (action.tableType === "incremental" ? dataform.TableType.INCREMENTAL : dataform.TableType.TABLE)
+        enumType:
+          action.tableType === "view"
+            ? dataform.TableType.VIEW
+            : action.tableType === "incremental"
+            ? dataform.TableType.INCREMENTAL
+            : dataform.TableType.TABLE
       });
-      action.tasks = this.executionSql.createTableTasks(table, this.graph.runConfig, this.warehouseStateByTarget.get(targetStringifier.stringify(action.target)));
+      return this.executionSql.createTableTasks(
+        table,
+        this.graph.runConfig,
+        this.warehouseStateByTarget.get(targetStringifier.stringify(action.target))
+      );
     } else if (jitResponse.operation) {
       const operation = dataform.Operation.create({
         ...action,
         ...jitResponse.operation
       });
-      action.tasks = this.executionSql.createOperationTasks(operation);
+      return this.executionSql.createOperationTasks(operation);
     } else if (jitResponse.incrementalTable) {
       const table = dataform.Table.create({
         ...action,
@@ -621,8 +681,13 @@ export class Runner {
         incrementalPostOps: jitResponse.incrementalTable.incremental?.postOps,
         enumType: dataform.TableType.INCREMENTAL
       });
-      action.tasks = this.executionSql.createTableTasks(table, this.graph.runConfig, this.warehouseStateByTarget.get(targetStringifier.stringify(action.target)));
+      return this.executionSql.createTableTasks(
+        table,
+        this.graph.runConfig,
+        this.warehouseStateByTarget.get(targetStringifier.stringify(action.target))
+      );
     }
+    return [];
   }
 }
 
