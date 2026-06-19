@@ -1,12 +1,16 @@
 import EventEmitter from "events";
 import Long from "long";
 
+import { JitCompileChildProcess } from "df/cli/api/commands/jit/compiler";
 import * as dbadapters from "df/cli/api/dbadapters";
 import { IBigQueryExecutionOptions } from "df/cli/api/dbadapters/bigquery";
+import { ExecutionSql } from "df/cli/api/dbadapters/execution_sql";
+import { DEFAULT_JIT_COMPILATION_TIMEOUT_MILLIS } from "df/cli/api/utils/constants";
 import { Flags } from "df/common/flags";
 import { retry } from "df/common/promises";
 import { deepClone, equals } from "df/common/protos";
 import { targetStringifier } from "df/core/targets";
+import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
 
 const CANCEL_EVENT = "jobCancel";
@@ -24,32 +28,92 @@ export interface IExecutedAction {
 }
 
 export interface IExecutionOptions {
+  projectDir?: string;
   bigquery?: {
     jobPrefix?: string;
     actionRetryLimit?: number;
     dryRun?: boolean;
     labels?: { [label: string]: string };
   };
+  jitCompiler?: (
+    request: dataform.IJitCompilationRequest,
+    projectDir: string,
+    dbadapter: dbadapters.IDbAdapter,
+    dbclient: dbadapters.IDbClient,
+    timeoutMillis?: number,
+    options?: IBigQueryExecutionOptions
+  ) => Promise<dataform.IJitCompilationResponse>;
 }
+
+export type RunOptionsOrResult = IExecutionOptions | dataform.IRunResult;
+export type CancelReason = "timeout" | "user" | "cancellation";
 
 export function run(
   dbadapter: dbadapters.IDbAdapter,
   graph: dataform.IExecutionGraph,
-  executionOptions?: IExecutionOptions,
+  optionsOrResult: RunOptionsOrResult = {},
   partiallyExecutedRunResult: dataform.IRunResult = {},
   runnerNotificationPeriodMillis: number = flags.runnerNotificationPeriodMillis.get()
 ): Runner {
+  const { options, runResult } = handleParamsOverloads(optionsOrResult, partiallyExecutedRunResult);
   return new Runner(
     dbadapter,
     graph,
-    executionOptions,
-    partiallyExecutedRunResult,
+    options,
+    runResult,
     runnerNotificationPeriodMillis
   ).execute();
 }
 
+function handleParamsOverloads(
+  optionsOrResult: RunOptionsOrResult,
+  partiallyExecutedRunResult: dataform.IRunResult
+): { options: IExecutionOptions; runResult: dataform.IRunResult } {
+  if (optionsOrResult && (optionsOrResult as dataform.IRunResult).actions !== undefined) {
+    return {
+      runResult: {
+        ...(optionsOrResult as dataform.IRunResult)
+      },
+      options: { projectDir: "." }
+    };
+  }
+  const options: IExecutionOptions = {
+    projectDir: ".",
+    ...(optionsOrResult as IExecutionOptions)
+  };
+  return {
+    options,
+    runResult: {
+      actions: [],
+      ...partiallyExecutedRunResult
+    }
+  };
+}
+
 export class Runner {
+  public static create(
+    dbadapter: dbadapters.IDbAdapter,
+    graph: dataform.IExecutionGraph,
+    options: IExecutionOptions = {},
+    runnerNotificationPeriodMillis: number = flags.runnerNotificationPeriodMillis.get()
+  ): Runner {
+    const { options: parsedOptions, runResult } = handleParamsOverloads(options, {});
+    return new Runner(dbadapter, graph, parsedOptions, runResult, runnerNotificationPeriodMillis);
+  }
+
+  public static resume(
+    dbadapter: dbadapters.IDbAdapter,
+    graph: dataform.IExecutionGraph,
+    runResult: dataform.IRunResult,
+    runnerNotificationPeriodMillis: number = flags.runnerNotificationPeriodMillis.get()
+  ): Runner {
+    const { options, runResult: parsedRunResult } = handleParamsOverloads(runResult, {});
+    return new Runner(dbadapter, graph, options, parsedRunResult, runnerNotificationPeriodMillis);
+  }
+
   private readonly warehouseStateByTarget: Map<string, dataform.ITableMetadata>;
+  private readonly executionSql: ExecutionSql;
+  private readonly executionOptions: IExecutionOptions;
 
   private readonly allActionTargets: Set<string>;
   private readonly runResult: dataform.IRunResult;
@@ -63,22 +127,47 @@ export class Runner {
   private cancelled = false;
   private timeout: NodeJS.Timer;
   private timedOut = false;
+  // Populated when the runner cancels execution (timeout or external cancel).
+  // Surfaced as errorMessage on SKIPPED tasks so users can see why an action
+  // never ran or stopped mid-flight.
+  private skipReason: string = "";
   private executionTask: Promise<dataform.IRunResult>;
 
   constructor(
+    dbadapter: dbadapters.IDbAdapter,
+    graph: dataform.IExecutionGraph,
+    options: IExecutionOptions,
+    runResult: dataform.IRunResult,
+    runnerNotificationPeriodMillis?: number
+  );
+  constructor(
+    dbadapter: dbadapters.IDbAdapter,
+    graph: dataform.IExecutionGraph,
+    optionsOrResult?: RunOptionsOrResult,
+    partiallyExecutedRunResult?: dataform.IRunResult,
+    runnerNotificationPeriodMillis?: number
+  );
+  constructor(
     private readonly dbadapter: dbadapters.IDbAdapter,
     private readonly graph: dataform.IExecutionGraph,
-    private readonly executionOptions: IExecutionOptions = {},
+    optionsOrResult: RunOptionsOrResult = {},
     partiallyExecutedRunResult: dataform.IRunResult = {},
     private readonly runnerNotificationPeriodMillis: number = flags.runnerNotificationPeriodMillis.get()
   ) {
+    const { options, runResult } = handleParamsOverloads(
+      optionsOrResult,
+      partiallyExecutedRunResult
+    );
+    this.executionOptions = options;
+    this.runResult = runResult;
+
+    if (!this.executionOptions.jitCompiler) {
+      this.executionOptions.jitCompiler = JitCompileChildProcess.compile;
+    }
+    this.executionSql = new ExecutionSql(graph.projectConfig, version);
     this.allActionTargets = new Set<string>(
       graph.actions.map(action => targetStringifier.stringify(action.target))
     );
-    this.runResult = {
-      actions: [],
-      ...partiallyExecutedRunResult
-    };
     this.warehouseStateByTarget = new Map<string, dataform.ITableMetadata>();
     graph.warehouseState.tables?.forEach(tableMetadata =>
       this.warehouseStateByTarget.set(
@@ -121,7 +210,7 @@ export class Runner {
       const timeoutMillis = this.graph.runConfig.timeoutMillis - elapsedTimeMillis;
       this.timeout = setTimeout(() => {
         this.timedOut = true;
-        this.cancel();
+        this.cancel("timeout");
       }, timeoutMillis);
     }
     return this;
@@ -131,7 +220,16 @@ export class Runner {
     this.stopped = true;
   }
 
-  public cancel() {
+  public cancel(reason: CancelReason = "user") {
+    if (!this.skipReason) {
+      if (reason === "timeout") {
+        this.skipReason = `Run timed out after ${this.graph.runConfig.timeoutMillis / 1000} seconds`;
+      } else if (reason === "user") {
+        this.skipReason = "Run cancelled";
+      } else {
+        this.skipReason = "Run cancelled before action started";
+      }
+    }
     this.cancelled = true;
     this.eEmitter.emit(CANCEL_EVENT, undefined, undefined);
   }
@@ -228,15 +326,28 @@ export class Runner {
     if (this.cancelled) {
       const allPendingActions = this.pendingActions;
       this.pendingActions = [];
-      allPendingActions.forEach(pendingAction =>
+      const skipErrorMessage = this.skipReason || "Run cancelled before action started";
+      allPendingActions.forEach(pendingAction => {
+        let tasks: dataform.ITaskResult[];
+        if (pendingAction.tasks && pendingAction.tasks.length > 0) {
+          tasks = pendingAction.tasks.map((_, i) => ({
+            status: dataform.TaskResult.ExecutionStatus.SKIPPED,
+            ...(i === 0 ? { errorMessage: skipErrorMessage } : {})
+          }));
+        } else {
+          tasks = [
+            {
+              status: dataform.TaskResult.ExecutionStatus.SKIPPED,
+              errorMessage: skipErrorMessage
+            }
+          ];
+        }
         this.runResult.actions.push({
           target: pendingAction.target,
           status: dataform.ActionResult.ExecutionStatus.SKIPPED,
-          tasks: pendingAction.tasks.map(() => ({
-            status: dataform.TaskResult.ExecutionStatus.SKIPPED
-          }))
-        })
-      );
+          tasks
+        });
+      });
       this.notifyListeners();
       return;
     }
@@ -303,13 +414,28 @@ export class Runner {
     ]);
   }
 
+  private getBigQueryExecutionOptions(action: dataform.IExecutionAction): IBigQueryExecutionOptions {
+    return {
+      dryRun: this.executionOptions.bigquery?.dryRun,
+      jobPrefix: this.executionOptions.bigquery?.jobPrefix,
+      labels: {
+        ...(this.executionOptions?.bigquery?.labels || {}),
+        ...(action.actionDescriptor?.bigqueryLabels || {})
+      },
+      actionRetryLimit: this.executionOptions.bigquery?.actionRetryLimit,
+      reservation:
+        action.actionDescriptor?.reservation ||
+        this.graph.projectConfig?.defaultReservation
+    };
+  }
+
   private async executeAction(action: dataform.IExecutionAction): Promise<dataform.IActionResult> {
     let actionResult: dataform.IActionResult = {
       target: action.target,
       tasks: []
     };
 
-    if (action.tasks.length === 0) {
+    if ((action.tasks.length === 0 && !action.jitCode) || action.disabled) {
       actionResult.status = dataform.ActionResult.ExecutionStatus.DISABLED;
       this.runResult.actions.push(actionResult);
       this.notifyListeners();
@@ -329,7 +455,20 @@ export class Runner {
     actionResult.timing = timer.current();
     this.notifyListeners();
 
-    await this.dbadapter.withClientLock(async client => {
+    try {
+      if (action.jitCode) {
+        try {
+          await this.compileJitAction(action, this.dbadapter);
+        } catch (e) {
+          actionResult.status = dataform.ActionResult.ExecutionStatus.FAILED;
+          actionResult.tasks.push({
+            status: dataform.TaskResult.ExecutionStatus.FAILED,
+            errorMessage: `JiT compilation error: ${e.message}`
+          });
+          return actionResult;
+        }
+      }
+
       // Start running tasks from the last executed task (if any), onwards.
       for (const task of action.tasks.slice(actionResult.tasks.length)) {
         if (this.stopped) {
@@ -339,20 +478,8 @@ export class Runner {
           actionResult.status === dataform.ActionResult.ExecutionStatus.RUNNING &&
           !this.cancelled
         ) {
-          const taskStatus = await this.executeTask(client, task, actionResult, {
-            bigquery: {
-              // Merge global run-level labels with action-level labels. Action-level labels take precedence.
-              labels: {
-                ...(this.executionOptions?.bigquery?.labels || {}),
-                ...(action.actionDescriptor?.bigqueryLabels || {})
-              },
-              actionRetryLimit: this.executionOptions?.bigquery?.actionRetryLimit,
-              jobPrefix: this.executionOptions?.bigquery?.jobPrefix,
-              dryRun: this.executionOptions?.bigquery?.dryRun,
-              reservation:
-                action.actionDescriptor?.reservation ||
-                this.graph.projectConfig?.defaultReservation
-            }
+          const taskStatus = await this.executeTask(this.dbadapter, task, actionResult, {
+            bigquery: this.getBigQueryExecutionOptions(action)
           });
           if (taskStatus === dataform.TaskResult.ExecutionStatus.FAILED) {
             actionResult.status = dataform.ActionResult.ExecutionStatus.FAILED;
@@ -361,11 +488,20 @@ export class Runner {
           }
         } else {
           actionResult.tasks.push({
-            status: dataform.TaskResult.ExecutionStatus.SKIPPED
+            status: dataform.TaskResult.ExecutionStatus.SKIPPED,
+            errorMessage: this.skipReason || "Task skipped after cancellation"
           });
         }
       }
-    });
+    } catch (e) {
+      if ((actionResult.status as dataform.ActionResult.ExecutionStatus) !== dataform.ActionResult.ExecutionStatus.FAILED) {
+        actionResult.status = dataform.ActionResult.ExecutionStatus.FAILED;
+        actionResult.tasks.push({
+          status: dataform.TaskResult.ExecutionStatus.FAILED,
+          errorMessage: `Unexpected execution error: ${e.message}`
+        });
+      }
+    }
 
     if (this.stopped) {
       return actionResult;
@@ -423,6 +559,10 @@ export class Runner {
     };
     parentAction.tasks.push(taskResult);
     this.notifyListeners();
+    if (options.bigquery?.dryRun) {
+      taskResult.compiledSql = task.statement;
+      
+    }
     if (options.bigquery?.dryRun && task.type === "assertion") {
       taskResult.status = dataform.TaskResult.ExecutionStatus.SUCCESSFUL;
     }
@@ -465,6 +605,88 @@ export class Runner {
     taskResult.timing = timer.end();
     this.notifyListeners();
     return taskResult.status;
+  }
+
+  private async compileJitAction(
+    action: dataform.IExecutionAction,
+    client: dbadapters.IDbClient
+  ) {
+    let compilationTargetType =
+      dataform.JitCompilationTargetType.JIT_COMPILATION_TARGET_TYPE_UNSPECIFIED;
+    if (action.type === "table") {
+      compilationTargetType =
+        action.tableType === "incremental"
+          ? dataform.JitCompilationTargetType.JIT_COMPILATION_TARGET_TYPE_INCREMENTAL_TABLE
+          : dataform.JitCompilationTargetType.JIT_COMPILATION_TARGET_TYPE_TABLE;
+    } else if (action.type === "operation") {
+      compilationTargetType = dataform.JitCompilationTargetType.JIT_COMPILATION_TARGET_TYPE_OPERATION;
+    }
+
+    const jitRequest = dataform.JitCompilationRequest.create({
+      target: action.target,
+      dependencies: action.dependencyTargets,
+      jitCode: action.jitCode,
+      compilationTargetType,
+      jitData: this.graph.jitData
+    });
+
+    const timeoutMillis =
+      this.graph.runConfig?.jitTimeoutMillis || DEFAULT_JIT_COMPILATION_TIMEOUT_MILLIS;
+
+    const jitResponse = await this.executionOptions.jitCompiler(
+      jitRequest,
+      this.executionOptions.projectDir,
+      this.dbadapter,
+      client,
+      timeoutMillis,
+      this.getBigQueryExecutionOptions(action)
+    );
+
+    action.tasks = this.createTasksFromJitResponse(action, jitResponse);
+  }
+
+  private createTasksFromJitResponse(
+    action: dataform.IExecutionAction,
+    jitResponse: dataform.IJitCompilationResponse
+  ): dataform.IExecutionTask[] {
+    if (jitResponse.table) {
+      const table = dataform.Table.create({
+        ...action,
+        ...jitResponse.table,
+        enumType:
+          action.tableType === "view"
+            ? dataform.TableType.VIEW
+            : action.tableType === "incremental"
+            ? dataform.TableType.INCREMENTAL
+            : dataform.TableType.TABLE
+      });
+      return this.executionSql.createTableTasks(
+        table,
+        this.graph.runConfig,
+        this.warehouseStateByTarget.get(targetStringifier.stringify(action.target))
+      );
+    } else if (jitResponse.operation) {
+      const operation = dataform.Operation.create({
+        ...action,
+        ...jitResponse.operation
+      });
+      return this.executionSql.createOperationTasks(operation);
+    } else if (jitResponse.incrementalTable) {
+      const table = dataform.Table.create({
+        ...action,
+        ...jitResponse.incrementalTable.regular,
+        incrementalQuery: jitResponse.incrementalTable.incremental?.query,
+        incrementalPreOps: jitResponse.incrementalTable.incremental?.preOps,
+        incrementalPostOps: jitResponse.incrementalTable.incremental?.postOps,
+        enumType: dataform.TableType.INCREMENTAL
+      });
+      return this.executionSql.createTableTasks(
+        table,
+        this.graph.runConfig,
+        this.warehouseStateByTarget.get(targetStringifier.stringify(action.target))
+      );
+    }
+    return [];
   }
 }
 
