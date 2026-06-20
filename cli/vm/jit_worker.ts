@@ -6,12 +6,7 @@ import { dataform } from "df/protos/ts";
 
 const pendingRpcCallbacks = new Map<string, (err: string | null, resBytes: Uint8Array | null) => void>();
 
-// Guard against double-initialization in some environments (e.g. Bazel)
-const globalObj = global as any;
-if (!globalObj._dataform_jit_worker_initialized) {
-  globalObj._dataform_jit_worker_initialized = true;
-  globalObj._has_started_processing = false;
-
+export function registerRpcResponseHandler() {
   process.on("message", (res: any) => {
     if (res.type === "rpc_response") {
       const callback = pendingRpcCallbacks.get(res.correlationId);
@@ -21,25 +16,23 @@ if (!globalObj._dataform_jit_worker_initialized) {
       }
     }
   });
+}
 
-  if (require.main === module || globalObj._dataform_jit_worker_force_main) {
-    if (process.send) {
-      process.send({ type: "worker_booted" });
-    }
-    process.on("message", async (message: any) => {
-      if (message.type === "jit_compile") {
-        if (globalObj._has_started_processing) {
-          process.send({
-            type: "jit_error",
-            error: "Worker process received multiple JiT compilation requests. Subsequent requests are rejected."
-          });
-          return;
-        }
-        globalObj._has_started_processing = true;
-        await handleJitRequest(message);
+export function registerJitCompileHandler() {
+  let hasStartedProcessing = false;
+  process.on("message", async (message: any) => {
+    if (message.type === "jit_compile") {
+      if (hasStartedProcessing) {
+        process.send({
+          type: "jit_error",
+          error: "Worker process received multiple JiT compilation requests. Subsequent requests are rejected."
+        });
+        return;
       }
-    });
-  }
+      hasStartedProcessing = true;
+      await handleJitRequest(message);
+    }
+  });
 }
 
 export async function handleJitRequest(message: {

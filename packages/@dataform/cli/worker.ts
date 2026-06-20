@@ -1,12 +1,8 @@
 import { listenForCompileRequest } from "df/cli/vm/compile";
-import { handleJitRequest } from "df/cli/vm/jit_worker";
+import { registerJitCompileHandler, registerRpcResponseHandler } from "df/cli/vm/jit_worker";
 
-process.on("message", async (message: any) => {
-  if (message?.type === "jit_compile") {
-    await handleJitRequest(message);
-  }
-});
-
+registerRpcResponseHandler();
+registerJitCompileHandler();
 listenForCompileRequest();
 
 if (process.send) {
