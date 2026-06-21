@@ -5,7 +5,7 @@ import parseDuration from "parse-duration";
 import * as path from "path";
 import yargs from "yargs";
 
-import { build, compile, credentials, init, install, run, test } from "df/cli/api";
+import { build, compile, credentials, init, install, prune, run, test } from "df/cli/api";
 import { CREDENTIALS_FILENAME } from "df/cli/api/commands/credentials";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 import { prettyJsonStringify } from "df/cli/api/utils";
@@ -393,6 +393,10 @@ export function runCli() {
           dotOutputOption,
           timeoutOption,
           quietCompileOption,
+          actionsOption,
+          tagsOption,
+          includeDepsOption,
+          includeDependentsOption,
           {
             name: verboseOptionName,
             option: {
@@ -429,7 +433,24 @@ export function runCli() {
               timeoutMillis: argv[timeoutOption.name] || undefined,
               verbose: argv[verboseOptionName] || false
             });
-            printCompiledGraph(compiledGraph, outputType, argv[quietCompileOption.name]);
+
+            // The whole project must compile (ref() resolution needs every action
+            // registered), but the printed output can be filtered to the selected
+            // action(s) -- mirroring how `run`/`build` prune the graph. We only prune
+            // a clean graph; if compilation produced errors we print the full graph
+            // plus the errors, keeping graph-level errors as-is.
+            const hasSelector =
+              argv[actionsOption.name]?.length > 0 || argv[tagsOption.name]?.length > 0;
+            const outputGraph =
+              hasSelector && !compiledGraphHasErrors(compiledGraph)
+                ? prune(compiledGraph, {
+                    actions: argv[actionsOption.name],
+                    tags: argv[tagsOption.name],
+                    includeDependencies: argv[includeDepsOption.name],
+                    includeDependents: argv[includeDependentsOption.name]
+                  })
+                : compiledGraph;
+            printCompiledGraph(outputGraph, outputType, argv[quietCompileOption.name]);
             if (compiledGraphHasErrors(compiledGraph)) {
               print("");
               printCompiledGraphErrors(compiledGraph.graphErrors, argv[quietCompileOption.name]);
