@@ -216,6 +216,24 @@ export class LineageEmitter {
       };
     }
 
+    jobFacets.gcp_lineage = {
+      _producer: "https://github.com/dataform-co/dataform",
+      _schemaURL: "https://openlineage.io/spec/facets/1-0-0/GcpLineageJobFacet.json#/$defs/GcpLineageJobFacet",
+      displayName: `BQ Pipelines action ${canonicalActionTarget}`,
+      origin: {
+        name: `projects/${projectId}/locations/${location}/cli/${repositoryName}`,
+        sourceType: "BQ_PIPELINES"
+      }
+    };
+
+    jobFacets.jobType = {
+      _producer: "https://github.com/dataform-co/dataform",
+      _schemaURL: "https://openlineage.io/spec/facets/2-0-3/JobTypeJobFacet.json#/$defs/JobTypeJobFacet",
+      integration: "BQ_PIPELINES",
+      jobType: "ACTION",
+      processingType: "BATCH"
+    };
+
     const openLineagePayload = {
       eventType,
       eventTime,

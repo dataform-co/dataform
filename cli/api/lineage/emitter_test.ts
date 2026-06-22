@@ -135,6 +135,87 @@ suite("LineageEmitter", () => {
 
     // Source code location job facet verified
     expect(openLineage.job.facets.sourceCodeLocation.url).to.equal("definitions/target_table.sqlx");
+
+    // GCP lineage job facet verified
+    expect(openLineage.job.facets.gcp_lineage.displayName).to.equal("BQ Pipelines action target_dataset.target_table");
+    expect(openLineage.job.facets.gcp_lineage.origin.sourceType).to.equal("BQ_PIPELINES");
+    expect(openLineage.job.facets.gcp_lineage.origin.name).to.equal("projects/target-project/locations/us/cli/0b5d3e86239e91e3");
+
+    // Job type facet verified
+    expect(openLineage.job.facets.jobType.integration).to.equal("BQ_PIPELINES");
+    expect(openLineage.job.facets.jobType.jobType).to.equal("ACTION");
+    expect(openLineage.job.facets.jobType.processingType).to.equal("BATCH");
+  });
+
+  test("emits open lineage run event with correct payload on action failure", async () => {
+    const mockClient = new MockLineageClient();
+    const emitter = new LineageEmitter(
+      credentials,
+      { lineageEnabled: true, projectDir: "/workspaces/my-dataform-project" },
+      () => mockClient as any
+    );
+
+    const action = dataform.ExecutionAction.create({
+      target: {
+        database: "target-project",
+        schema: "target_dataset",
+        name: "failing_table"
+      },
+      type: "table",
+      fileName: "definitions/failing_table.sqlx"
+    });
+
+    // 1. Emit START event
+    const startResult = dataform.ActionResult.create({
+      status: dataform.ActionResult.ExecutionStatus.RUNNING,
+      timing: {
+        startTimeMillis: Long.fromNumber(1000)
+      }
+    });
+    emitter.emitForAction(action, startResult);
+
+    // 2. Emit FAIL event with error message
+    const failResult = dataform.ActionResult.create({
+      status: dataform.ActionResult.ExecutionStatus.FAILED,
+      timing: {
+        startTimeMillis: Long.fromNumber(1000),
+        endTimeMillis: Long.fromNumber(1500)
+      },
+      tasks: [
+        {
+          status: dataform.TaskResult.ExecutionStatus.FAILED,
+          errorMessage: "bigquery error: Syntax error: Unexpected \"\\\" at [3:15]"
+        }
+      ]
+    });
+    emitter.emitForAction(action, failResult);
+
+    // Wait for background emissions to drain
+    await emitter.drain();
+
+    expect(mockClient.processOpenLineageRunEventCalledWith.length).to.equal(2);
+
+    // Assert FAIL event payload
+    const failPayload = mockClient.processOpenLineageRunEventCalledWith[1];
+    expect(failPayload.parent).to.equal("projects/target-project/locations/us");
+    
+    const openLineage = fromProtoStruct(failPayload.openLineage);
+    expect(openLineage.eventType).to.equal("FAIL");
+    expect(openLineage.job.name).to.equal("target-project.us.cli.0b5d3e86239e91e3.target_dataset.failing_table");
+
+    // Error message run facet verified
+    expect(openLineage.run.facets.errorMessage.message).to.equal(
+      "bigquery error: Syntax error: Unexpected \"\\\" at [3:15]"
+    );
+    expect(openLineage.run.facets.errorMessage.programmingLanguage).to.equal("typescript");
+
+    // Nominal time run facet verified (nominalEndTime matches failure timing)
+    expect(openLineage.run.facets.nominalTime.nominalStartTime).to.equal(
+      new Date(1000).toISOString()
+    );
+    expect(openLineage.run.facets.nominalTime.nominalEndTime).to.equal(
+      new Date(1500).toISOString()
+    );
   });
 
   test("handles permission denied error by disabling emission on subsequent calls", async () => {
