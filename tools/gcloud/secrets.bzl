@@ -14,6 +14,7 @@ def _gcloud_secret_impl(ctx):
             "--location=%s" % ctx.attr.location,
             "--project=%s" % ctx.attr.project,
         ],
+        use_default_shell_env = True,
         execution_requirements = {
             "local": "1",
         },
