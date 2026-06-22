@@ -51,13 +51,17 @@ def _ts_proto_library(ctx):
 
     output_name = ctx.attr.output_name or ctx.label.name
 
+    workspace_name = ctx.workspace_name
+    if workspace_name == "_main" or not workspace_name:
+        workspace_name = "df"
+
     js_es5 = _run_pbjs(
         ctx.actions,
         ctx.executable,
         output_name,
         sources,
         amd_name = "/".join([p for p in [
-            ctx.workspace_name,
+            workspace_name,
             ctx.label.package,
         ] if p]),
     )
@@ -109,6 +113,8 @@ def _ts_proto_library(ctx):
 ts_proto_library = rule(
     implementation = _ts_proto_library,
     attrs = {
+        "module_name": attr.string(),
+        "module_root": attr.string(),
         "output_name": attr.string(
             doc = """Name of the resulting module, which you will import from.
             If not specified, the name will match the target's name.""",
