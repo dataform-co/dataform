@@ -1,15 +1,30 @@
 import resolve from "@rollup/plugin-node-resolve";
+import * as path from "path";
+import * as fs from "fs";
+
+function findBazelBin() {
+  if (!process.env.BAZEL_BINDIR) {
+    return undefined;
+  }
+  let dir = process.cwd();
+  while (dir && !fs.existsSync(path.join(dir, "bazel-out"))) {
+    const parent = path.dirname(dir);
+    if (parent === dir) {
+      break;
+    }
+    dir = parent;
+  }
+  return path.resolve(dir, process.env.BAZEL_BINDIR);
+}
 
 function convertToRegex(pattern) {
   if (pattern instanceof RegExp) {
     return pattern;
   }
-  // If it's a string, turn it into a regex, by escaping any regex characters in the string.
   const normalized = pattern.replace(/[\\^$*+?.()|[\]{}]/g, "\\$&");
   return new RegExp(`^${normalized}$`);
 }
 
-// Add new node built ins here if they are used.
 const knownNodeBuiltins = [
   "path",
   "fs",
@@ -27,8 +42,6 @@ const importsToBundle = ["df", /df\/.*$/, /^bazel\-.*$/];
 
 const checkImports = imports => {
   const allowedImports = [...imports].map(pattern => convertToRegex(pattern));
-
-  // We're going to read these from the arguments.
   let externals = () => false;
   let allowNodeBuiltins = process.env.ALLOW_NODE_BUILTINS;
 
@@ -37,9 +50,57 @@ const checkImports = imports => {
       externals = options.external || (() => false);
     },
     resolveId(source) {
-      // Either this is an internal import, or explicitly listed in externals or we fail.
       if (
-        allowedImports.some(pattern => pattern.test(source)) || externals(source) || externals(source.split("/")[0]) || 
+        path.isAbsolute(source) ||
+        source.startsWith(".")
+      ) {
+        return undefined;
+      }
+
+      if (source.startsWith("df/") || source.startsWith("packages/")) {
+        const relPath = source.startsWith("df/") ? source.slice(3) : source;
+
+        const bazelBin = findBazelBin();
+        const candidate = bazelBin ? path.resolve(bazelBin, relPath) : path.resolve(process.cwd(), relPath);
+
+        const esmCandidates = [];
+        // Generate ESM variants by walking up the directory tree
+        let dir = candidate;
+        let suffix = "";
+        while (dir && dir !== "/" && dir !== ".") {
+          const esmDir = path.join(dir, "esm");
+          if (fs.existsSync(esmDir) && fs.statSync(esmDir).isDirectory()) {
+            const esmPath = suffix ? path.join(esmDir, suffix) : esmDir;
+            esmCandidates.push(esmPath);
+          }
+
+          const base = path.basename(dir);
+          if (base === "bin") {
+            break;
+          }
+          suffix = suffix ? path.join(base, suffix) : base;
+          dir = path.dirname(dir);
+        }
+
+        const allCandidates = [...esmCandidates, candidate];
+
+        for (const candidate of allCandidates) {
+          if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+            return candidate;
+          }
+          if (fs.existsSync(candidate + ".js") && fs.statSync(candidate + ".js").isFile()) {
+            return candidate + ".js";
+          }
+          const indexCandidate = path.resolve(candidate, "index.js");
+          if (fs.existsSync(indexCandidate) && fs.statSync(indexCandidate).isFile()) {
+            return indexCandidate;
+          }
+        }
+      }
+
+      if (
+        allowedImports.some(pattern => pattern.test(source)) ||
+        externals(source) ||
         (allowNodeBuiltins && knownNodeBuiltins.some(pattern => pattern.test(source)))
       ) {
         return null;
@@ -50,10 +111,15 @@ const checkImports = imports => {
 };
 
 export default {
+  external: id => {
+    if (id.startsWith("df/") || id === "df") return false;
+    if (id.startsWith(".") || path.isAbsolute(id)) return false;
+    return true;
+  },
   plugins: [
     checkImports(importsToBundle),
     resolve({
       resolveOnly: importsToBundle
     })
-  ]
+  ],
 };

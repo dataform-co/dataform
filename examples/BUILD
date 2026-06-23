@@ -24,18 +24,17 @@ ts_test_suite(
         ":node_modules",
         "//packages/@dataform/core:package_tar",
         "//test_credentials:bigquery.json",
-        "@nodejs//:node",
     ],
     deps = [
+        "//:node_modules/@types/chai",
+        "//:node_modules/@types/fs-extra",
+        "//:node_modules/@types/node",
+        "//:node_modules/chai",
+        "//:node_modules/fs-extra",
         "//cli/api",
         "//common/protos",
         "//protos:ts",
         "//testing",
-        "@npm//@types/chai",
-        "@npm//@types/fs-extra",
-        "@npm//@types/node",
-        "@npm//chai",
-        "@npm//fs-extra",
     ],
 )
 

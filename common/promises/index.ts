@@ -28,7 +28,7 @@ export async function runWithTimeout<T>(
 }
 
 export async function sleep(sleepMillis: number) {
-  await new Promise(resolve => setTimeout(() => resolve(), sleepMillis));
+  await new Promise<void>(resolve => setTimeout(() => resolve(), sleepMillis));
 }
 
 export async function sleepUntil(
@@ -41,7 +41,7 @@ export async function sleepUntil(
 }
 
 export async function sleepImmediate() {
-  await new Promise(resolve => setImmediate(resolve));
+  await new Promise<void>(resolve => setImmediate(resolve));
 }
 
 export async function retry<T>(

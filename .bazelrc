@@ -1,4 +1,5 @@
 common --enable_bzlmod
+common --@aspect_rules_ts//ts:skipLibCheck=honor_tsconfig
 
 build --test_output=errors --action_env="GTEST_COLOR=1"
 

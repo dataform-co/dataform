@@ -1,134 +1,83 @@
-# Stolen entirely from: https://github.com/bazelbuild/rules_nodejs/blob/master/packages/labs/src/protobufjs/ts_proto_library.bzl
-# TODO: Use the rules in the labs package. They are currently broken.
+load("@aspect_rules_js//js:providers.bzl", "js_info")
 
-load("@build_bazel_rules_nodejs//:providers.bzl", "DeclarationInfo", "JSEcmaScriptModuleInfo", "JSNamedModuleInfo")
-
-def _run_pbjs(actions, executable, output_name, proto_files, suffix = ".js", wrap = "default", amd_name = ""):
-    js_file = actions.declare_file(output_name + suffix)
-
-    # Reference of arguments:
-    # https://github.com/dcodeIO/ProtoBuf.js/#pbjs-for-javascript
-    args = actions.args()
-    args.add_all(["--target", "static-module"])
-    args.add_all(["--wrap", wrap])
-    args.add("--strict-long")  # Force usage of Long type with int64 fields
-    args.add_all(["--out", js_file.path])
-    args.add_all(proto_files)
-
-    actions.run(
-        executable = executable._pbjs,
-        inputs = proto_files,
-        outputs = [js_file],
-        arguments = [args],
-    )
-    return js_file
-
-def _run_pbts(actions, executable, js_file):
-    ts_file = actions.declare_file(js_file.basename[:-len(".js")] + ".d.ts")
-
-    # Reference of arguments:
-    # https://github.com/dcodeIO/ProtoBuf.js/#pbts-for-typescript
-    args = actions.args()
-    args.add_all(["--out", ts_file.path])
-    args.add(js_file.path)
-
-    actions.run(
-        executable = executable._pbts,
-        progress_message = "Generating typings from %s" % js_file.short_path,
-        inputs = [js_file],
-        outputs = [ts_file],
-        arguments = [args],
-    )
-    return ts_file
-
-def _ts_proto_library(ctx):
-    sources = depset()
+def _ts_proto_library_impl(ctx):
+    # Collect all plain-text .proto source files from dependencies
+    proto_files = []
     for dep in ctx.attr.deps:
         if ProtoInfo not in dep:
-            fail("ts_proto_library dep %s must be a proto_library rule" % dep.label)
+            fail("ts_proto_library dependency %s must be a proto_library rule" % dep.label)
+        proto_files.extend(dep[ProtoInfo].direct_sources)
 
-        sources = depset(transitive = [sources, dep[ProtoInfo].transitive_sources])
-
+    # Declare compiled JS and TypeScript declaration output files
     output_name = ctx.attr.output_name or ctx.label.name
+    js_out = ctx.actions.declare_file(output_name + ".js")
+    dts_out = ctx.actions.declare_file(output_name + ".d.ts")
+    esm_js_out = ctx.actions.declare_file("esm/" + output_name + ".js")
 
-    workspace_name = ctx.workspace_name
-    if workspace_name == "_main" or not workspace_name:
-        workspace_name = "df"
-
-    js_es5 = _run_pbjs(
-        ctx.actions,
-        ctx.executable,
-        output_name,
-        sources,
-        amd_name = "/".join([p for p in [
-            workspace_name,
-            ctx.label.package,
-        ] if p]),
-    )
-    js_es6 = _run_pbjs(
-        ctx.actions,
-        ctx.executable,
-        output_name,
-        sources,
-        suffix = ".mjs",
-        wrap = "es6",
+    # Execute the compiled binary inside the execroot sandbox
+    ctx.actions.run(
+        inputs = proto_files,
+        outputs = [js_out, dts_out, esm_js_out],
+        executable = ctx.executable._compiler,
+        arguments = [
+            "--js-out", js_out.path,
+            "--esm-js-out", esm_js_out.path,
+            "--dts-out", dts_out.path,
+        ] + [f.path for f in proto_files],
+        env = {
+            "BAZEL_BINDIR": ctx.bin_dir.path,
+        },
+        progress_message = "Compiling Protos to JS and TS typings inside sandbox",
+        mnemonic = "ProtoCompile",
     )
 
-    # pbts doesn't understand '.mjs' extension so give it the es5 file
-    dts = _run_pbts(ctx.actions, ctx.executable, js_es5)
-
-    # Return a structure that is compatible with the deps[] of a ts_library.
-    declarations = depset([dts])
-    es5_sources = depset([js_es5])
-    es6_sources = depset([js_es6])
-
-    return struct(
-        providers = [
-            DefaultInfo(files = declarations),
-            DeclarationInfo(
-                declarations = declarations,
-                transitive_declarations = declarations,
-                type_blacklisted_declarations = depset(),
-            ),
-            JSNamedModuleInfo(
-                direct_sources = es5_sources,
-                sources = es5_sources,
-            ),
-            JSEcmaScriptModuleInfo(
-                direct_sources = es6_sources,
-                sources = es6_sources,
-            ),
-        ],
-        typescript = struct(
-            declarations = declarations,
-            transitive_declarations = declarations,
-            es5_sources = es5_sources,
-            es6_sources = es6_sources,
-            transitive_es5_sources = es5_sources,
-            transitive_es6_sources = es6_sources,
-            type_blacklisted_declarations = depset(),
+    # Return standard Bzlmod JS providers
+    return [
+        DefaultInfo(files = depset([js_out, dts_out, esm_js_out])),
+        js_info(
+            target = ctx.label,
+            types = depset([dts_out]),
+            transitive_types = depset([dts_out]),
+            sources = depset([js_out, esm_js_out]),
+            transitive_sources = depset([js_out, esm_js_out]),
         ),
-    )
+    ]
 
-ts_proto_library = rule(
-    implementation = _ts_proto_library,
+_ts_proto_library_rule = rule(
+    implementation = _ts_proto_library_impl,
     attrs = {
-        "module_name": attr.string(),
-        "module_root": attr.string(),
+        "deps": attr.label_list(
+            doc = "proto_library targets to compile",
+            mandatory = True,
+            providers = [ProtoInfo],
+        ),
         "output_name": attr.string(
-            doc = """Name of the resulting module, which you will import from.
-            If not specified, the name will match the target's name.""",
+            doc = "Base name of the generated files",
+            mandatory = True,
         ),
-        "deps": attr.label_list(doc = "proto_library targets"),
-        "_pbjs": attr.label(
-            default = Label("//:pbjs"),
+        "_compiler": attr.label(
+            default = Label("//tools:compile_protos"),
             executable = True,
-            cfg = "host",
-        ),
-        "_pbts": attr.label(
-            default = Label("//:pbts"),
-            executable = True,
-            cfg = "host",
+            cfg = "exec",
         ),
     },
 )
+
+# Public Starlark Macro wrapping the rule and stripping legacy rules_nodejs-specific kwargs
+def ts_proto_library(name, deps, output_name = None, **kwargs):
+    if not output_name:
+        output_name = name
+
+    kwargs.pop("module_name", None)
+    kwargs.pop("module_root", None)
+    kwargs.pop("devmode_target", None)
+    kwargs.pop("prodmode_target", None)
+    kwargs.pop("devmode_module", None)
+    kwargs.pop("prodmode_module", None)
+
+    _ts_proto_library_rule(
+        name = name,
+        deps = deps,
+        output_name = output_name,
+        **kwargs
+    )

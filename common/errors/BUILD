@@ -10,7 +10,6 @@ ts_library(
         exclude = ["*.spec.ts"],
     ),
     deps = [
-        "//:modules-fix",
     ],
 )
 
@@ -18,7 +17,7 @@ ts_test_suite(
     name = "tests",
     srcs = glob(["*.spec.ts"]),
     data = [
-        "@npm//source-map-support",
+        "//:node_modules/source-map-support",
     ],
     templated_args = [
         "--node_options=--require=source-map-support/register",
@@ -26,9 +25,9 @@ ts_test_suite(
     ],
     deps = [
         ":errors",
+        "//:node_modules/@types/chai",
+        "//:node_modules/@types/node",
+        "//:node_modules/chai",
         "@df//testing",
-        "@npm//@types/chai",
-        "@npm//@types/node",
-        "@npm//chai",
     ],
 )
