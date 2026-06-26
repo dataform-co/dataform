@@ -206,6 +206,16 @@ from (${query}) as insertions`;
     return `drop ${this.tableTypeAsSql(type)} if exists ${this.resolveTarget(target)}`;
   }
 
+  private buildIncrementalPredicatesString(
+    incrementalPredicates?: string[] | null
+  ): string {
+    const validPredicates = incrementalPredicates ? incrementalPredicates.filter(p => p.trim() !== "") : [];
+    if (validPredicates.length === 0) {
+      return "";
+    }
+    return `and ${validPredicates.map(p => `(${p})`).join(" and ")}`;
+  }
+
   private buildIncrementalSchemaChangeTasks(tasks: Tasks, table: dataform.ITable) {
     const uniqueId = this.uniqueIdGenerator();
 
@@ -440,17 +450,20 @@ DROP TABLE IF EXISTS ${emptyTempTableName};
     columns: string[],
     query: string,
     uniqueKey: string[],
-    updatePartitionFilter: string
+    bigquery: dataform.IBigQueryOptions
   ) {
+    const updatePartitionFilter = bigquery && bigquery.updatePartitionFilter;
+    const incrementalPredicates = bigquery && bigquery.incrementalPredicates;
+    const incrementalPredicatesString = this.buildIncrementalPredicatesString(incrementalPredicates);
     const backtickedColumns = columns.map(column => `\`${column}\``);
     return `
-merge ${this.resolveTarget(target)} T
+merge ${this.resolveTarget(target)} DATAFORM_DEST
 using (${query}
-) S
-on ${uniqueKey.map(uniqueKeyCol => `T.${uniqueKeyCol} = S.${uniqueKeyCol}`).join(` and `)}
-  ${updatePartitionFilter ? `and T.${updatePartitionFilter}` : ""}
+) DATAFORM_SOURCE
+on ${uniqueKey.map(uniqueKeyCol => `DATAFORM_DEST.${uniqueKeyCol} = DATAFORM_SOURCE.${uniqueKeyCol}`).join(` and `)} ${updatePartitionFilter ? `and DATAFORM_DEST.${updatePartitionFilter}` : ""}
+${incrementalPredicatesString ? ` ${incrementalPredicatesString}` : ""}
 when matched then
-  update set ${columns.map(column => `\`${column}\` = S.${column}`).join(",")}
+  update set ${columns.map(column => `\`${column}\` = DATAFORM_SOURCE.${column}`).join(",")}
 when not matched then
   insert (${backtickedColumns.join(",")}) values (${backtickedColumns.join(",")})`;
   }
@@ -459,9 +472,12 @@ when not matched then
     target: dataform.ITarget,
     columns: string[],
     query: string,
-    partitionBy: string,
-    updatePartitionFilter: string
+    bigquery: dataform.IBigQueryOptions
   ): string {
+    const partitionBy = bigquery && bigquery.partitionBy;
+    const updatePartitionFilter = bigquery && bigquery.updatePartitionFilter;
+    const incrementalPredicates = bigquery && bigquery.incrementalPredicates;
+    const incrementalPredicatesString = this.buildIncrementalPredicatesString(incrementalPredicates);
     const uniqueId = this.uniqueIdGenerator();
     const stagingTableUnqualified = `staging_table_temp_${uniqueId}`;
     const backtickedColumns = columns.map(column => `\`${column}\``);
@@ -480,10 +496,12 @@ BEGIN
     )
   );
 
-  MERGE ${resolveTargetTable} T
-  USING \`${stagingTableUnqualified}\` S
+  MERGE ${resolveTargetTable} DATAFORM_DEST
+  USING \`${stagingTableUnqualified}\` DATAFORM_SOURCE
   ON FALSE
-  WHEN NOT MATCHED BY SOURCE AND ${partitionBy} IN UNNEST(partitions_for_replacement) ${updatePartitionFilter ? `and T.${updatePartitionFilter}` : ""} THEN
+  WHEN NOT MATCHED BY SOURCE AND ${partitionBy} IN UNNEST(partitions_for_replacement) ${updatePartitionFilter ? `and DATAFORM_DEST.${updatePartitionFilter}` : ""}
+  ${incrementalPredicatesString ? ` ${incrementalPredicatesString}` : ""}
+  THEN
     DELETE
   WHEN NOT MATCHED BY TARGET THEN
     INSERT (${backtickedColumns.join(",")}) VALUES (${backtickedColumns.join(",")});
@@ -504,8 +522,7 @@ DROP TABLE IF EXISTS \`${stagingTableUnqualified}\`;`;
           table.target,
           columns,
           incrementalQuery,
-          table.bigquery && table.bigquery.partitionBy,
-          table.bigquery && table.bigquery.updatePartitionFilter
+          table.bigquery
         );
       case dataform.IncrementalStrategy.MERGE:
       default:
@@ -515,7 +532,7 @@ DROP TABLE IF EXISTS \`${stagingTableUnqualified}\`;`;
             columns,
             incrementalQuery,
             table.uniqueKey,
-            table.bigquery && table.bigquery.updatePartitionFilter
+            table.bigquery
           );
         }
         return this.insertInto(

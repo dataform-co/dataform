@@ -110,6 +110,7 @@ message BigQueryOptions {
   TableFormat table_format = 9;
   FileFormat file_format = 10;
   string storage_uri = 11;
+  repeated string incremental_predicates = 12;
 }
 
 message GraphErrors {

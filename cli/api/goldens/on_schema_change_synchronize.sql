@@ -87,12 +87,12 @@ EXCEPTION WHEN ERROR THEN
 END;
 DROP PROCEDURE IF EXISTS `project-id.dataset-id.df_osc_test_uuid`
 ;
-merge `project-id.dataset-id.incremental_on_schema_change` T
+merge `project-id.dataset-id.incremental_on_schema_change` DATAFORM_DEST
 using (select 1 as id, 'a' as field1, 'new' as field2
-) S
-on T.id = S.id
-  
+) DATAFORM_SOURCE
+on DATAFORM_DEST.id = DATAFORM_SOURCE.id 
+
 when matched then
-  update set `id` = S.id,`field1` = S.field1
+  update set `id` = DATAFORM_SOURCE.id,`field1` = DATAFORM_SOURCE.field1
 when not matched then
   insert (`id`,`field1`) values (`id`,`field1`)

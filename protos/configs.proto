@@ -482,6 +482,9 @@ message ActionConfig {
 
     // Optional. The incremental strategy to use when updating the table.
     IncrementalStrategy incremental_strategy = 28;
+
+    // Array of SQL-based predicates for when incremental updates are applied.
+    repeated string incremental_predicates = 29;
   }
 
   message AssertionConfig {

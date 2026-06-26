@@ -202,6 +202,7 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
       partitionExpirationDays: config.partitionExpirationDays,
       requirePartitionFilter: config.requirePartitionFilter,
       additionalOptions: config.additionalOptions,
+      incrementalPredicates: config.incrementalPredicates,
       ...(config.iceberg ? {
         connection: getConnectionForIcebergTable(
           config.iceberg.connection,
@@ -220,6 +221,7 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
     this.proto.incrementalStrategy = this.mapIncrementalStrategy(config.incrementalStrategy);
 
     this.checkIncrementalStrategyRequirements(config);
+    this.checkMutuallyExclusivePredicates(config);
 
     if (config.reservation) {
       if (!this.proto.actionDescriptor) {
@@ -672,6 +674,7 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
             "partitionExpirationDays",
             "requirePartitionFilter",
             "additionalOptions",
+            "incrementalPredicates",
             "iceberg"
           ]),
           "BigQuery table config"
@@ -794,6 +797,23 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
         break;
       default:
         break;
+    }
+  }
+
+  private checkMutuallyExclusivePredicates(config: dataform.ActionConfig.IIncrementalTableConfig) {
+    if (
+      this.proto.bigquery &&
+      this.proto.bigquery.updatePartitionFilter &&
+      this.proto.bigquery.incrementalPredicates &&
+      this.proto.bigquery.incrementalPredicates.length > 0
+    ) {
+      this.session.compileError(
+        new Error(
+          `incrementalPredicates and updatePartitionFilter cannot be both set. Use only incrementalPredicates.`
+        ),
+        config.filename,
+        this.proto.target
+      );
     }
   }
 }

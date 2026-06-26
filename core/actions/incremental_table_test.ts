@@ -257,6 +257,32 @@ SELECT 1`;
         }
       ]);
     })
+
+    test("throws an error when incrementalPredicates is not an array", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/invalid_predicates.sqlx"),
+        `config {
+  type: "incremental",
+  bigquery: {
+    incrementalPredicates: "not_an_array"
+  }
+}
+SELECT 1`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).equals(1);
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).contains("incrementalPredicates");
+    });
+
+
   });
 
   test("action config options", () => {
@@ -1163,6 +1189,33 @@ select \${incremental()} as is_incremental`
       expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).greaterThan(0);
       expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).contains(
         'IncrementalStrategy value "invalid_strategy" is not supported'
+      );
+    });
+
+    test("compilation fails when both incrementalPredicates and updatePartitionFilter are provided", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/incremental.sqlx"),
+        `config {
+          type: "incremental",
+          bigquery: {
+            updatePartitionFilter: "T.foo = 1",
+            incrementalPredicates: ["bar = 2"]
+          }
+        }
+        SELECT 1`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).equals(1);
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).contains(
+        "incrementalPredicates and updatePartitionFilter cannot be both set. Use only incrementalPredicates."
       );
     });
   });

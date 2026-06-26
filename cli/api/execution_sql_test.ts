@@ -93,7 +93,7 @@ suite("ExecutionSql with 'onSchemaChange'", () => {
       incrementalStrategy: dataform.IncrementalStrategy.INSERT_OVERWRITE,
       bigquery: {
         partitionBy: "DATE(ts)",
-        updatePartitionFilter: "ts >= '2024-01-01'"
+        incrementalPredicates: ["DATAFORM_DEST.ts >= '2024-01-01'", "DATAFORM_SOURCE.ts >= '2024-01-01'"]
       }
     };
     const tasks = executionSql.publishTasks(table, { fullRefresh: false }, tableMetadata);

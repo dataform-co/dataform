@@ -11,10 +11,12 @@ BEGIN
     )
   );
 
-  MERGE `project-id.dataset-id.incremental_on_schema_change` T
-  USING `staging_table_temp_test_uuid` S
+  MERGE `project-id.dataset-id.incremental_on_schema_change` DATAFORM_DEST
+  USING `staging_table_temp_test_uuid` DATAFORM_SOURCE
   ON FALSE
-  WHEN NOT MATCHED BY SOURCE AND date_col IN UNNEST(partitions_for_replacement)  THEN
+  WHEN NOT MATCHED BY SOURCE AND date_col IN UNNEST(partitions_for_replacement) 
+  
+  THEN
     DELETE
   WHEN NOT MATCHED BY TARGET THEN
     INSERT (`id`,`field1`) VALUES (`id`,`field1`);
