@@ -232,7 +232,8 @@ function dataformCompile(compileRequest: dataform.ICompileExecutionRequest, sess
   globalAny.notebook = session.notebook.bind(session);
   globalAny.test = session.test.bind(session);
   globalAny.jitData = session.jitData.bind(session);
-
+  globalAny.getContents = session.getContents.bind(session);
+  
   loadActionConfigs(session, compileRequest.compileConfig.filePaths);
 
   // Require all "definitions" files (attaching them to the session).
