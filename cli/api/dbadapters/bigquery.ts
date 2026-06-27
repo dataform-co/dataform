@@ -3,7 +3,14 @@ import Long from "long";
 import { PromisePoolExecutor } from "promise-pool-executor";
 
 import { collectEvaluationQueries, QueryOrAction } from "df/cli/api/dbadapters/execution_sql";
-import { IBigQueryError, IDbAdapter, IDbClient, IExecutionResult, OnCancel } from "df/cli/api/dbadapters/index";
+import {
+  IBigQueryError,
+  IDbAdapter,
+  IDbClient,
+  IExecutionResult,
+  IExecutionResultRaw,
+  OnCancel
+} from "df/cli/api/dbadapters/index";
 import { parseBigqueryEvalError } from "df/cli/api/utils/error_parsing";
 import { LimitedResultSet } from "df/cli/api/utils/results";
 import { coerceAsError } from "df/common/errors/errors";
@@ -30,14 +37,44 @@ export interface IBigQueryExecutionOptions {
   reservation?: string;
 }
 
+export type BigQueryClientProvider = (projectId?: string) => BigQuery;
+
+export function createBigQueryClientProvider(
+  credentials: dataform.IBigQuery
+): BigQueryClientProvider {
+  const clients = new Map<string, BigQuery>();
+  return (projectId?: string) => {
+    projectId = projectId || credentials.projectId;
+    if (!clients.has(projectId)) {
+      clients.set(
+        projectId,
+        new BigQuery({
+          projectId,
+          scopes: EXTRA_GOOGLE_SCOPES,
+          location: credentials.location,
+          credentials: credentials.credentials && JSON.parse(credentials.credentials)
+        })
+      );
+    }
+    return clients.get(projectId);
+  };
+}
+
 export class BigQueryDbAdapter implements IDbAdapter {
   private bigQueryCredentials: dataform.IBigQuery;
   private pool: PromisePoolExecutor;
+  private clientProvider: BigQueryClientProvider;
 
-  private readonly clients = new Map<string, BigQuery>();
-
-  constructor(credentials: dataform.IBigQuery, options?: { concurrencyLimit: number }) {
+  constructor(
+    credentials: dataform.IBigQuery,
+    options?: {
+      concurrencyLimit?: number;
+      clientProvider?: BigQueryClientProvider;
+    }
+  ) {
     this.bigQueryCredentials = credentials;
+    this.clientProvider = options?.clientProvider || createBigQueryClientProvider(credentials);
+
     // Bigquery allows 50 concurrent queries, and a rate limit of 100/user/second by default.
     // These limits should be safely low enough for most projects.
     this.pool = new PromisePoolExecutor({
@@ -92,6 +129,31 @@ export class BigQueryDbAdapter implements IDbAdapter {
       .promise();
   }
 
+  public async executeRaw(
+    statement: string,
+    options: {
+      params?: { [name: string]: any };
+      rowLimit?: number;
+      bigquery?: IBigQueryExecutionOptions;
+    } = { rowLimit: 1000 }
+  ): Promise<IExecutionResultRaw> {
+    if (!statement) {
+      throw new Error("Query string cannot be empty");
+    }
+    return this.pool
+      .addSingleTask({
+        generator: async () => {
+          const [rows, , apiResponse] = await this.getClient().query({
+            ...this.prepareQueryOptions(statement, options.rowLimit, options.bigquery, options.params),
+            skipParsing: true
+          } as any);
+          const schema = apiResponse?.schema?.fields?.map((field: any) => convertField(field));
+          return { rows, schema, metadata: {} };
+        }
+      })
+      .promise();
+  }
+
   public async withClientLock<T>(callback: (client: IDbClient) => Promise<T>) {
     return await callback(this);
   }
@@ -129,22 +191,31 @@ export class BigQueryDbAdapter implements IDbAdapter {
     );
   }
 
-  public async tables(): Promise<dataform.ITarget[]> {
-    const datasets = await this.getClient().getDatasets({ autoPaginate: true, maxResults: 1000 });
-    const tables = await Promise.all(
-      datasets[0].map(dataset => dataset.getTables({ autoPaginate: true, maxResults: 1000 }))
+  public async tables(database: string, schema?: string): Promise<dataform.ITableMetadata[]> {
+    const datasetIds = schema ? [schema] : await this.schemas(database);
+    const tablesMetadata: dataform.ITableMetadata[] = [];
+
+    await Promise.all(
+      datasetIds.map(async datasetId => {
+        const [tables] = await this.getClient(database)
+          .dataset(datasetId)
+          .getTables({ autoPaginate: true, maxResults: 1000 });
+        await Promise.all(
+          tables.map(async table => {
+            const metadata = await this.table({
+              database,
+              schema: datasetId,
+              name: table.id
+            });
+            if (metadata) {
+              tablesMetadata.push(metadata);
+            }
+          })
+        );
+      })
     );
-    const allTables: dataform.ITarget[] = [];
-    tables.forEach((tablesResult: GetTablesResponse) =>
-      tablesResult[0].forEach(table =>
-        allTables.push({
-          database: table.bigQuery.projectId,
-          schema: table.dataset.id,
-          name: table.id
-        })
-      )
-    );
-    return allTables;
+
+    return tablesMetadata;
   }
 
   public async search(
@@ -218,8 +289,15 @@ export class BigQueryDbAdapter implements IDbAdapter {
     });
   }
 
+  public async deleteTable(target: dataform.ITarget): Promise<void> {
+    await this.getClient(target.database)
+      .dataset(target.schema)
+      .table(target.name)
+      .delete({ ignoreNotFound: true });
+  }
+
   public async schemas(database: string): Promise<string[]> {
-    const data = await this.getClient(database).getDatasets();
+    const data = await this.getClient(database).getDatasets({ autoPaginate: true, maxResults: 1000 });
     return data[0].map(dataset => dataset.id);
   }
 
@@ -267,20 +345,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
   }
 
   private getClient(projectId?: string) {
-    projectId = projectId || this.bigQueryCredentials.projectId;
-    if (!this.clients.has(projectId)) {
-      this.clients.set(
-        projectId,
-        new BigQuery({
-          projectId,
-          scopes: EXTRA_GOOGLE_SCOPES,
-          location: this.bigQueryCredentials.location,
-          credentials:
-            this.bigQueryCredentials.credentials && JSON.parse(this.bigQueryCredentials.credentials)
-        })
-      );
-    }
-    return this.clients.get(projectId);
+    return this.clientProvider(projectId);
   }
 
   private async runQuery(
@@ -289,7 +354,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
     rowLimit?: number,
     byteLimit?: number,
     location?: string
-  ) {
+  ): Promise<IExecutionResult> {
     const results = await new Promise<any[]>((resolve, reject) => {
       const allRows = new LimitedResultSet({
         rowLimit,
@@ -314,6 +379,25 @@ export class BigQueryDbAdapter implements IDbAdapter {
     return { rows: cleanRows(results), metadata: {} };
   }
 
+  private prepareQueryOptions(
+    query: string,
+    rowLimit?: number,
+    bigqueryOptions?: IBigQueryExecutionOptions,
+    params?: { [name: string]: any }
+  ) {
+    return {
+      query,
+      useLegacySql: false,
+      jobPrefix: "dataform-" + (bigqueryOptions?.jobPrefix ? `${bigqueryOptions.jobPrefix}-` : ""),
+      location: bigqueryOptions?.location,
+      maxResults: rowLimit,
+      labels: bigqueryOptions?.labels,
+      dryRun: bigqueryOptions?.dryRun,
+      reservation: bigqueryOptions?.reservation,
+      params
+    };
+  }
+
   private async createQueryJob(
     query: string,
     params?: { [name: string]: any },
@@ -325,23 +409,27 @@ export class BigQueryDbAdapter implements IDbAdapter {
     jobPrefix?: string,
     dryRun?: boolean,
     reservation?: string
-  ) {
+  ): Promise<IExecutionResult> {
     let isCancelled = false;
     onCancel?.(() => (isCancelled = true));
 
     return retry(
       async () => {
         try {
-          const job = await this.getClient().createQueryJob({
-            useLegacySql: false,
-            jobPrefix: "dataform-" + (jobPrefix ? `${jobPrefix}-` : ""),
-            query,
-            params,
-            labels,
-            location,
-            dryRun,
-            reservation
-          } as any);
+          const job = await this.getClient().createQueryJob(
+            this.prepareQueryOptions(
+              query,
+              rowLimit,
+              {
+                labels,
+                location,
+                jobPrefix,
+                dryRun,
+                reservation
+              },
+              params
+            ) as any
+          );
           const resultStream = job[0].getQueryResultsStream();
           return new Promise<IExecutionResult>((resolve, reject) => {
             if (isCancelled) {
@@ -465,11 +553,14 @@ function convertFieldType(type: string) {
     case "INT64":
       return dataform.Field.Primitive.INTEGER;
     case "NUMERIC":
+    case "BIGNUMERIC":
       return dataform.Field.Primitive.NUMERIC;
     case "BOOL":
     case "BOOLEAN":
       return dataform.Field.Primitive.BOOLEAN;
     case "STRING":
+    case "JSON":
+    case "INTERVAL":
       return dataform.Field.Primitive.STRING;
     case "DATE":
       return dataform.Field.Primitive.DATE;
@@ -498,6 +589,9 @@ function addDescriptionToMetadata(
   columnDescriptions: dataform.IColumnDescriptor[],
   metadataArray: TableField[]
 ): TableField[] {
+  if (!columnDescriptions) {
+    return metadataArray;
+  }
   const findDescription = (path: string[]) =>
     columnDescriptions.find(column => column.path.join("") === path.join(""));
 

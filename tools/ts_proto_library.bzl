@@ -28,16 +28,21 @@ def _run_pbts(actions, executable, js_file):
 
     # Reference of arguments:
     # https://github.com/dcodeIO/ProtoBuf.js/#pbts-for-typescript
-    args = actions.args()
-    args.add_all(["--out", ts_file.path])
-    args.add(js_file.path)
+    #
+    # Run pbts and then patch 'import Long = require("long");' to 'import Long from "long";'
+    # to avoid syntax errors in older rollup-plugin-dts.
+    command = "{pbts} --out {out} {input} && sed -i 's/import Long = require(\"long\");/import Long from \"long\";/g' {out}".format(
+        pbts = executable._pbts.path,
+        out = ts_file.path,
+        input = js_file.path
+    )
 
-    actions.run(
-        executable = executable._pbts,
-        progress_message = "Generating typings from %s" % js_file.short_path,
+    actions.run_shell(
         inputs = [js_file],
         outputs = [ts_file],
-        arguments = [args],
+        tools = [executable._pbts],
+        command = command,
+        progress_message = "Generating typings from %s" % js_file.short_path,
     )
     return ts_file
 
@@ -51,13 +56,17 @@ def _ts_proto_library(ctx):
 
     output_name = ctx.attr.output_name or ctx.label.name
 
+    workspace_name = ctx.workspace_name
+    if workspace_name == "_main" or not workspace_name:
+        workspace_name = "df"
+
     js_es5 = _run_pbjs(
         ctx.actions,
         ctx.executable,
         output_name,
         sources,
         amd_name = "/".join([p for p in [
-            ctx.workspace_name,
+            workspace_name,
             ctx.label.package,
         ] if p]),
     )
@@ -109,6 +118,8 @@ def _ts_proto_library(ctx):
 ts_proto_library = rule(
     implementation = _ts_proto_library,
     attrs = {
+        "module_name": attr.string(),
+        "module_root": attr.string(),
         "output_name": attr.string(
             doc = """Name of the resulting module, which you will import from.
             If not specified, the name will match the target's name.""",
