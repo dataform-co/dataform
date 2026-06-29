@@ -121,7 +121,23 @@ export function compile(compileConfig: dataform.ICompileConfig) {
         get: function() { return __df_current(); }
       });
       ${hasWorkflowSettingsYaml
-        ? 'global.workflowSettingsYaml = require("./workflow_settings.yaml");'
+        ? `
+          global.workflowSettingsYaml = require("./workflow_settings.yaml");
+          if (global.workflowSettingsYaml && global.workflowSettingsYaml.lineage) {
+            const coreVersion = require("@dataform/core").version || "0.0.0";
+            const parseVersion = (v) => String(v).split(".").map(p => parseInt(p, 10) || 0);
+            const vParts = parseVersion(coreVersion);
+            const tParts = parseVersion("3.0.60");
+            let isOlder = false;
+            for (let i = 0; i < 3; i++) {
+              if (vParts[i] < tParts[i]) { isOlder = true; break; }
+              if (vParts[i] > tParts[i]) { break; }
+            }
+            if (isOlder) {
+              delete global.workflowSettingsYaml.lineage;
+            }
+          }
+        `
         : ''}
       ${hasDataformJson
         ? 'global.dataformJson = require("./dataform.json");'
