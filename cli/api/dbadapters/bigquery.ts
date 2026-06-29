@@ -52,7 +52,8 @@ export function createBigQueryClientProvider(
           projectId,
           scopes: EXTRA_GOOGLE_SCOPES,
           location: credentials.location,
-          credentials: credentials.credentials && JSON.parse(credentials.credentials)
+          credentials: credentials.credentials && JSON.parse(credentials.credentials),
+          apiEndpoint: process.env.BIGQUERY_API_ENDPOINT
         })
       );
     }
