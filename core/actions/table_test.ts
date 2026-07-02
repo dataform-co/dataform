@@ -90,6 +90,7 @@ actions:
     ${exampleBuiltInAssertions.inputAssertionBlock}
     dependOnDependencyAssertions: true,
     hermetic: true,
+    reservation: "reservation",
     metadata: {
         overview: "table overview",
         extraProperties: {
@@ -169,6 +170,7 @@ SELECT 1`
             query: "\n\nSELECT 1",
             actionDescriptor: {
               ...exampleActionDescriptor.outputActionDescriptor,
+              reservation: "reservation",
               // sqlxConfig.bigquery.labels are placed as bigqueryLabels.
               bigqueryLabels: {
                 key: "val"
@@ -189,6 +191,202 @@ SELECT 1`
         );
       });
     });
+
+    test("tables can be configured with a plain object for extraProperties", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/table.sqlx"),
+        `config {
+    type: "table",
+    metadata: {
+        extraProperties: {
+            priority: "high"
+        }
+    }
+}
+SELECT 1`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(
+        asPlainObject(result.compile.compiledGraph.tables[0].actionDescriptor.metadata)
+      ).deep.equals({
+        extraProperties: {
+          fields: {
+            priority: { stringValue: "high" }
+          }
+        }
+      });
+    });
+
+    test("tables can be configured with a Struct already for extraProperties", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/table.sqlx"),
+        `config {
+    type: "table",
+    metadata: {
+        extraProperties: {
+            fields: {
+                priority: { stringValue: "high" },
+                glossary_terms: {
+                    listValue: {
+                        values: [
+                            {
+                                structValue: {
+                                    fields: {
+                                        column_name: { stringValue: "trip_id" },
+                                        project: { stringValue: "project_identifier" },
+                                        location: { stringValue: "us-central1" }
+                                    }
+                                }
+                            },
+                            {
+                                structValue: {
+                                    fields: {
+                                        project: { stringValue: "project_identifier" },
+                                        glossary_id: { stringValue: "jebmjilij-9c85ee94" }
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+    }
+}
+SELECT 1`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(
+        asPlainObject(result.compile.compiledGraph.tables[0].actionDescriptor.metadata)
+      ).deep.equals({
+        extraProperties: {
+          fields: {
+            priority: { stringValue: "high" },
+            glossary_terms: {
+              listValue: {
+                values: [
+                  {
+                    structValue: {
+                      fields: {
+                        column_name: { stringValue: "trip_id" },
+                        project: { stringValue: "project_identifier" },
+                        location: { stringValue: "us-central1" }
+                      }
+                    }
+                  },
+                  {
+                    structValue: {
+                      fields: {
+                        project: { stringValue: "project_identifier" },
+                        glossary_id: { stringValue: "jebmjilij-9c85ee94" }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      });
+    });
+
+    test("tables can be configured with a complex nested plain object for extraProperties", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/table.sqlx"),
+        `config {
+      type: "table",
+      metadata: {
+        overview: "The test overview",
+        extraProperties: {
+          glossary_terms: [
+            {
+              column_name: "trip_id",
+              project: "project_identifier",
+              location: "us-central1"
+            },
+            {
+              project: "project_identifier",
+              glossary_id: "jebmjilij-9c85ee94"
+            }
+          ],
+          generic: {
+            system: "my custom system value",
+            type: "my custom type value"
+          }
+        }
+      }
+    }
+    SELECT 1`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      const metadata = result.compile.compiledGraph.tables[0].actionDescriptor.metadata;
+      expect(metadata.overview).equals("The test overview");
+
+      expect(asPlainObject(metadata.extraProperties)).deep.equals({
+        fields: {
+          glossary_terms: {
+            listValue: {
+              values: [
+                {
+                  structValue: {
+                    fields: {
+                      column_name: { stringValue: "trip_id" },
+                      project: { stringValue: "project_identifier" },
+                      location: { stringValue: "us-central1" }
+                    }
+                  }
+                },
+                {
+                  structValue: {
+                    fields: {
+                      project: { stringValue: "project_identifier" },
+                      glossary_id: { stringValue: "jebmjilij-9c85ee94" }
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          generic: {
+            structValue: {
+              fields: {
+                system: { stringValue: "my custom system value" },
+                type: { stringValue: "my custom type value" }
+              }
+            }
+          }
+        }
+      });
+    });
+
+
   });
 
   test("action config options", () => {
@@ -225,6 +423,7 @@ actions:
         option2Key: option2
     dependOnDependencyAssertions: true
     hermetic: true
+    reservation: reservation
 ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
 `
     );
@@ -275,7 +474,8 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
           bigqueryLabels: {
             key: "val"
           },
-          description: "description"
+          description: "description",
+          reservation: "reservation"
         }
       }
     ]);
@@ -838,6 +1038,80 @@ defaultIcebergConfig:
 
       expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).greaterThan(0);
       expect(result.compile.compiledGraph.graphErrors.compilationErrors.some(e => e.message.includes("Cannot mix AoT and JiT compilation"))).equals(true);
+    });
+  });
+
+  suite("reservation", () => {
+    test("defaultReservation in workflow settings is applied to projectConfig", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        `
+defaultProject: defaultProject
+defaultDataset: defaultDataset
+defaultLocation: US
+defaultReservation: projects/my-project/locations/us/reservations/my-reservation
+`
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/table.sqlx"),
+        `
+config {
+  type: "table"
+}
+SELECT 1`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.projectConfig)).deep.equals({
+        defaultDatabase: "defaultProject",
+        defaultSchema: "defaultDataset",
+        defaultLocation: "US",
+        defaultReservation: "projects/my-project/locations/us/reservations/my-reservation",
+        warehouse: "bigquery"
+      });
+      // The action itself should have no actionDescriptor (no action-level reservation set).
+      expect(asPlainObject(result.compile.compiledGraph.tables[0].actionDescriptor)).equals(null);
+    });
+
+    test("action-level reservation overrides the default reservation from workflow settings", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        `
+defaultProject: defaultProject
+defaultDataset: defaultDataset
+defaultLocation: US
+defaultReservation: projects/my-project/locations/us/reservations/default-reservation
+`
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/table.sqlx"),
+        `
+config {
+  type: "table",
+  reservation: "projects/my-project/locations/us/reservations/action-reservation"
+}
+SELECT 1`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      // The default reservation is available in projectConfig.
+      expect(
+        asPlainObject(result.compile.compiledGraph.projectConfig).defaultReservation
+      ).deep.equals("projects/my-project/locations/us/reservations/default-reservation");
+      // The action-level reservation is stored in actionDescriptor, taking precedence at runtime.
+      expect(
+        asPlainObject(result.compile.compiledGraph.tables[0].actionDescriptor)
+      ).deep.equals({
+        reservation: "projects/my-project/locations/us/reservations/action-reservation"
+      });
     });
   });
 });

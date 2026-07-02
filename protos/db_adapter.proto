@@ -2,7 +2,9 @@ syntax = "proto3";
 
 package dataform;
 
-import "protos/core.proto";
+option go_package = "github.com/dataform-co/dataform/protos/dataform";
+
+import "core.proto";
 
 // Common structures for Evaluation, execution and compilation.
 
@@ -21,6 +23,9 @@ message Field {
     BYTES = 10;
     ANY = 11;
     GEOGRAPHY = 12;
+    BIGNUMERIC = 13;
+    JSON = 14;
+    INTERVAL = 15;
   }
 
   enum Flag {

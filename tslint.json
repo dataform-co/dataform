@@ -20,7 +20,7 @@
         "groups": [
           {
             "name": "internal",
-            "match": "df*/*",
+            "match": "^df/*",
             "order": 2
           },
           {

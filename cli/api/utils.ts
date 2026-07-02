@@ -11,6 +11,12 @@ export function prettyJsonStringify(obj: object) {
 export function readDataformCoreVersionFromWorkflowSettings(
   resolvedProjectPath: string
 ): string | undefined {
+  return readConfigFromWorkflowSettings(resolvedProjectPath)?.dataformCoreVersion;
+}
+
+export function readConfigFromWorkflowSettings(
+  resolvedProjectPath: string
+): dataform.WorkflowSettings | undefined {
   const workflowSettingsPath = path.join(resolvedProjectPath, "workflow_settings.yaml");
   if (!fs.existsSync(workflowSettingsPath)) {
     return;
@@ -22,9 +28,9 @@ export function readDataformCoreVersionFromWorkflowSettings(
     workflowSettingsAsJson = loadYaml(workflowSettingsContent);
   } catch (e) {
     if (e instanceof YAMLException) {
-      throw new Error(`${path} is not a valid YAML file: ${e}`);
+      throw new Error(`${workflowSettingsPath} is not a valid YAML file: ${e}`);
     }
     throw e;
   }
-  return dataform.WorkflowSettings.create(workflowSettingsAsJson).dataformCoreVersion;
+  return dataform.WorkflowSettings.create(workflowSettingsAsJson);
 }

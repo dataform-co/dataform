@@ -70,6 +70,7 @@ actions:
     hermetic: true,
     hasOutput: true,
     dependOnDependencyAssertions: true,
+    reservation: "reservation",
     ${exampleActionDescriptor.inputSqlxConfigBlock}
 }`;
 
@@ -130,7 +131,10 @@ SELECT 1`
               hasOutput: true,
               tags: ["tagA", "tagB"],
               queries: ["\n\nSELECT 1"],
-              actionDescriptor: exampleActionDescriptor.outputActionDescriptor
+              actionDescriptor: {
+                ...exampleActionDescriptor.outputActionDescriptor,
+                reservation: "reservation"
+              }
             }
           ])
         );
@@ -166,6 +170,7 @@ actions:
     description: description
     dependOnDependencyAssertions: true
     hermetic: true
+    reservation: reservation
 `
     );
 
@@ -199,7 +204,8 @@ actions:
           tags: ["tagA", "tagB"],
           queries: ["SELECT 1"],
           actionDescriptor: {
-            description: "description"
+            description: "description",
+            reservation: "reservation"
           }
         }
       ])

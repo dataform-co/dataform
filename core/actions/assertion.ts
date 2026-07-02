@@ -1,6 +1,6 @@
 import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { ActionBuilder } from "df/core/actions";
-import { IActionContext, Resolvable } from "df/core/contextables";
+import { IActionContext, JitContextable, Resolvable } from "df/core/contextables";
 import * as Path from "df/core/path";
 import { Session } from "df/core/session";
 import {
@@ -31,6 +31,9 @@ interface ILegacyAssertionConfig extends dataform.ActionConfig.AssertionConfig {
 
 /** @hidden */
 export type AContextable<T> = T | ((ctx: AssertionContext) => T);
+
+/** JiT compilation stage result for assertions. */
+export type JitAssertionResult = string;
 
 /**
  * An assertion is a data quality test query that finds rows that violate one or more conditions
@@ -91,6 +94,9 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
   private contextableQuery: AContextable<string>;
 
   /** @hidden */
+  private contextableJitCode: JitContextable<AssertionContext, JitAssertionResult> | undefined;
+
+  /** @hidden */
   constructor(session?: Session, unverifiedConfig?: any, configPath?: string) {
     super(session);
     this.session = session;
@@ -149,6 +155,18 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
     if (config.filename) {
       this.proto.fileName = config.filename;
     }
+    if (config.reservation) {
+      if (!this.proto.actionDescriptor) {
+        this.proto.actionDescriptor = {};
+      }
+      this.proto.actionDescriptor.reservation = config.reservation;
+    }
+    if (config.metadata) {
+      if (!this.proto.actionDescriptor) {
+        this.proto.actionDescriptor = {};
+      }
+      this.proto.actionDescriptor.metadata = config.metadata;
+    }
     return this;
   }
 
@@ -157,6 +175,15 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
    */
   public query(query: AContextable<string>) {
     this.contextableQuery = query;
+    return this;
+  }
+
+  public jitCode(jitCode: JitContextable<AssertionContext, JitAssertionResult>) {
+    if (!this.proto.actionDescriptor) {
+      this.proto.actionDescriptor = {};
+    }
+    this.proto.actionDescriptor.compilationMode = dataform.ActionCompilationMode.ACTION_COMPILATION_MODE_JIT;
+    this.contextableJitCode = jitCode;
     return this;
   }
 
@@ -287,8 +314,24 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
   public compile() {
     const context = new AssertionContext(this);
 
-    this.proto.query = context.apply(this.contextableQuery);
-    validateQueryString(this.session, this.proto.query, this.proto.fileName);
+    if (this.contextableJitCode && this.contextableQuery) {
+      this.session.compileError(
+        new Error("Assertion may set either .jitCode() or .query(), but not both."),
+        this.proto.fileName,
+        this.proto.target
+      );
+      return this.proto;
+    }
+
+    if (this.contextableJitCode) {
+      if (!this.proto.actionDescriptor) {
+        this.proto.actionDescriptor = {};
+      }
+      this.proto.jitCode = this.contextableJitCode.toString();
+    } else {
+      this.proto.query = context.apply(this.contextableQuery);
+      validateQueryString(this.session, this.proto.query, this.proto.fileName);
+    }
 
     return verifyObjectMatchesProto(
       dataform.Assertion,

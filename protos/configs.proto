@@ -9,6 +9,7 @@ option java_multiple_files = true;
 option go_package = "github.com/dataform-co/dataform/protos/dataform";
 
 import "google/protobuf/struct.proto";
+import "extension.proto";
 
 // Workflow Settings defines the contents of the `workflow_settings.yaml`
 // configuration file.
@@ -51,10 +52,21 @@ message WorkflowSettings {
   // Optional. Default config options for Iceberg tables.
   DefaultIcebergConfig default_iceberg_config = 12;
 
-  // Optional. Disables all assertions including built-in assertions 
+  // Optional. Disables all assertions including built-in assertions
   // (uniqueKey, nonNull, rowConditions) and manual assertions (type: assertion).
   // When true, assertions will still be compiled but marked as disabled.
   bool disable_assertions = 13;
+
+  // Optional. The default BigQuery reservation to use for execution.
+  // If unset, default BigQuery behavior applies.
+  // Dataform CLI only (GCP Dataform support pending).
+  string default_reservation = 14;
+
+  // Optional. An external package that provides an extension.
+  Extension extension = 15;
+
+  // Optional. If set to true, unit tests will be included in the compiled graph.
+  bool include_tests_in_compiled_graph = 16;
 }
 
 // Action configs defines the contents of `actions.yaml` configuration files.
@@ -245,6 +257,11 @@ message ActionConfig {
 
     // Metadata for this table.
     Metadata metadata = 23;
+
+    // Optional. The BigQuery reservation to use for execution.
+    // If unset, the value from workflow_settings.yaml is used. If neither is set, default BigQuery behavior applies.
+    // Dataform CLI only (GCP Dataform support pending).
+    string reservation = 24;
   }
 
   message Metadata {
@@ -328,6 +345,11 @@ message ActionConfig {
 
     // Metadata for this view.
     Metadata metadata = 20;
+
+    // Optional. The BigQuery reservation to use for execution.
+    // If unset, the value from workflow_settings.yaml is used. If neither is set, default BigQuery behavior applies.
+    // Dataform CLI only (GCP Dataform support pending).
+    string reservation = 21;
   }
 
   enum OnSchemaChange {
@@ -440,6 +462,11 @@ message ActionConfig {
 
     // Metadata for this incremental table.
     Metadata metadata = 26;
+
+    // Optional. The BigQuery reservation to use for execution.
+    // If unset, the value from workflow_settings.yaml is used. If neither is set, default BigQuery behavior applies.
+    // Dataform CLI only (GCP Dataform support pending).
+    string reservation = 27;
   }
 
   message AssertionConfig {
@@ -478,6 +505,14 @@ message ActionConfig {
     // If true, assertions dependent upon any of the dependencies are added as
     // dependencies as well.
     bool depend_on_dependency_assertions = 10;
+
+    // Optional. The BigQuery reservation to use for execution.
+    // If unset, the value from workflow_settings.yaml is used. If neither is set, default BigQuery behavior applies.
+    // Dataform CLI only (GCP Dataform support pending).
+    string reservation = 11;
+
+    // Metadata for this assertion.
+    Metadata metadata = 12;
   }
 
   message OperationConfig {
@@ -525,6 +560,11 @@ message ActionConfig {
     // the  action depends on data from a source which has not been declared as
     // a dependency.
     bool hermetic = 12;
+
+    // Optional. The BigQuery reservation to use for execution.
+    // If unset, the value from workflow_settings.yaml is used. If neither is set, default BigQuery behavior applies.
+    // Dataform CLI only (GCP Dataform support pending).
+    string reservation = 13;
   }
 
   message DeclarationConfig {
@@ -545,6 +585,9 @@ message ActionConfig {
 
     // Path to the source file that the contents of the action is loaded from.
     string filename = 6;
+
+    // A list of user-defined tags with which the action should be labeled.
+    repeated string tags = 7;
   }
 
   message NotebookConfig {

@@ -1,5 +1,4 @@
 import { ChildProcess, spawn } from "child_process";
-import { dataform } from "df/protos/ts";
 import {
   createConnection,
   DidChangeConfigurationNotification,
@@ -10,6 +9,8 @@ import {
   TextDocumentSyncKind
 } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
+
+import { dataform } from "df/protos/ts";
 
 const connection = createConnection(ProposedFeatures.all);
 const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);

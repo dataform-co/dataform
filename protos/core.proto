@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package dataform;
 
+import "extension.proto";
+
 import "google/protobuf/struct.proto";
 
 option java_package = "com.dataform.protos";
@@ -31,6 +33,10 @@ message ProjectConfig {
   DefaultIcebergConfig default_iceberg_config = 19;
 
   bool disable_assertions = 20;
+
+  string default_reservation = 21;
+
+  bool include_tests_in_compiled_graph = 22;
 
   reserved 3, 4, 6, 8, 10, 12, 13;
 }
@@ -63,12 +69,16 @@ message CompileConfig {
   // Project configuration overrides.
   ProjectConfig project_config_override = 3;
 
-  // Override compilation timeout settings.
+  // Override top-level compilation timeout (the single compile worker that
+  // runs once per invocation).
   int32 timeout_millis = 6;
 
   Extension extension = 10;
 
-  reserved 2, 4, 5, 7, 9;
+  // Whether to emit compilation debug logs.
+  bool verbose = 11;
+
+  reserved 2, 4, 5, 7, 9, 12;
 }
 
 message Target {
@@ -136,6 +146,7 @@ message ActionDescriptor {
   map<string, string> bigquery_labels = 3;
   Metadata metadata = 4;
   ActionCompilationMode compilation_mode = 5;
+  string reservation = 6;
 }
 
 message Metadata {
@@ -268,6 +279,8 @@ message Assertion {
   // Only present for auto assertions.
   Target parent_action = 15;
 
+  string jit_code = 16;
+
   // Generated.
   string file_name = 7;
 
@@ -288,6 +301,8 @@ message Declaration {
 
   // Generated.
   string file_name = 4;
+
+  repeated string tags = 6;
 }
 
 message Test {
@@ -452,22 +467,4 @@ message CompileExecutionResponse {
 enum SupportedFeatures {
   UNKNOWN_FEATURE = 0;
   ARRAY_BUFFER_IPC = 1;
-}
-
-// Execution mode of compilation extension.
-enum ExtensionCompilationMode {
-  // Unspecified compiled mode - extension will be skipped.
-  COMPILATION_MODE_UNSPECIFIED = 0;
-  // Execute before regular Dataform compilation.
-  PROLOGUE = 1;
-  // Replace regular Dataform compilation.
-  APPLICATION_CODE = 2;
-}
-
-message Extension {
-  // Name of the extension (JS module) to delegate the compilation to.
-  string name = 1;
-
-  // Compilation mode of the extension, required.
-  ExtensionCompilationMode compilation_mode = 2;
 }

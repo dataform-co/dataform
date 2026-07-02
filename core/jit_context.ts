@@ -1,6 +1,7 @@
+import { Structs } from "df/common/protos/structs";
 import { IActionContext, ITableContext, JitContext, Resolvable } from "df/core/contextables";
 import { ambiguousActionNameMsg, resolvableAsTarget, ResolvableMap, stringifyResolvable, toResolvable } from "df/core/utils";
-import { dataform } from "df/protos/ts";
+import { dataform, google } from "df/protos/ts";
 
 function canonicalTargetValue(target: dataform.ITarget): string {
     return `${target.database}.${target.schema}.${target.name}`;
@@ -9,6 +10,7 @@ function canonicalTargetValue(target: dataform.ITarget): string {
 /** Generate SQL action JiT context. */
 export class SqlActionJitContext implements JitContext<IActionContext> {
     public readonly data: { [k: string]: any } | undefined;
+    public readonly executionData: dataform.IRunningExecutionData;
 
     private readonly target: dataform.ITarget;
     private readonly resolvableMap: ResolvableMap<string>;
@@ -24,7 +26,8 @@ export class SqlActionJitContext implements JitContext<IActionContext> {
             actionTarget: dep,
             value: canonicalTargetValue(dep)
         })));
-        this.data = request.jitData;
+        this.data = Structs.toObject(request.jitData);
+        this.executionData = request.executionData;
     }
 
     public self(): string {
@@ -102,3 +105,4 @@ export class IncrementalTableJitContext extends TableJitContext {
         return this.isIncrementalContext;
     }
 }
+

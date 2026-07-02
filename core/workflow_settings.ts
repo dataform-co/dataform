@@ -10,9 +10,10 @@ declare var __non_webpack_require__: any;
 const nativeRequire = typeof __webpack_require__ === "function" ? __non_webpack_require__ : require;
 
 export function readWorkflowSettings(failIfMissing: boolean = true): dataform.ProjectConfig {
-  const workflowSettingsYaml = maybeRequire("workflow_settings.yaml");
+  const globalAny = global as any;
+  const workflowSettingsYaml = globalAny.workflowSettingsYaml || maybeRequire("workflow_settings.yaml");
   // `dataform.json` is deprecated; new versions of Dataform Core prefer `workflow_settings.yaml`.
-  const dataformJson = maybeRequire("dataform.json");
+  const dataformJson = globalAny.dataformJson || maybeRequire("dataform.json");
 
   if (workflowSettingsYaml && dataformJson) {
     throw Error(
@@ -167,6 +168,12 @@ export function workflowSettingsAsProjectConfig(
   }
   if(workflowSettings.disableAssertions) {
     projectConfig.disableAssertions = workflowSettings.disableAssertions;
+  }
+  if (workflowSettings.defaultReservation) {
+    projectConfig.defaultReservation = workflowSettings.defaultReservation;
+  }
+  if (workflowSettings.includeTestsInCompiledGraph) {
+    projectConfig.includeTestsInCompiledGraph = workflowSettings.includeTestsInCompiledGraph;
   }
 
   projectConfig.warehouse = "bigquery";

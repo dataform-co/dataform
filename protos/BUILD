@@ -13,15 +13,20 @@ proto_library(
         "execution.proto",
         "jit.proto",
         "profiles.proto",
+        "extension.proto",
     ],
+    strip_import_prefix = "/protos",
     deps = [
       "@com_google_protobuf//:empty_proto",
       "@com_google_protobuf//:struct_proto",
+      "@com_google_protobuf//:timestamp_proto",
     ],
 )
 
 ts_proto_library(
     name = "ts",
+    module_name = "df/protos/ts",
+    module_root = "ts",
     deps = [
         ":dataform_proto",
     ],

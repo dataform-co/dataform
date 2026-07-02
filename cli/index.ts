@@ -1,14 +1,16 @@
+import * as chokidar from "chokidar";
 import * as fs from "fs";
 import * as glob from "glob";
+import parseDuration from "parse-duration";
 import * as path from "path";
 import yargs from "yargs";
 
-import * as chokidar from "chokidar";
 import { build, compile, credentials, init, install, run, test } from "df/cli/api";
 import { CREDENTIALS_FILENAME } from "df/cli/api/commands/credentials";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 import { prettyJsonStringify } from "df/cli/api/utils";
 import {
+  compiledGraphOutputType,
   print,
   printCompiledGraph,
   printCompiledGraphErrors,
@@ -32,7 +34,6 @@ import { createYargsCli, INamedOption } from "df/cli/yargswrapper";
 import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 import { formatFile } from "df/sqlx/format";
-import parseDuration from "parse-duration";
 
 const RECOMPILE_DELAY = 500;
 
@@ -145,10 +146,25 @@ const credentialsOption: INamedOption<yargs.Options> = {
 const jsonOutputOption: INamedOption<yargs.Options> = {
   name: "json",
   option: {
-    describe: "Outputs a JSON representation of the compiled project.",
+    describe: "Outputs a JSON representation of the compiled project or test results.",
     type: "boolean",
     default: false
   }
+};
+
+const dotOutputOption: INamedOption<yargs.Options> = {
+  name: "dot",
+  option: {
+    describe: "Outputs a dot representation of the compiled project.",
+    type: "boolean",
+    default: false,
+  },
+    check: (argv: yargs.Arguments<any>) => {
+      if (argv.json && argv.dot) {
+        throw new Error("Arguments --json and --dot are mutually exclusive.");
+      }
+    }
+  
 };
 
 const timeoutOption: INamedOption<yargs.Options> = {
@@ -213,6 +229,7 @@ const testConnectionOptionName = "test-connection";
 
 const watchOptionName = "watch";
 
+const verboseOptionName = "verbose";
 const dryRunOptionName = "dry-run";
 const runTestsOptionName = "run-tests";
 const checkOptionName = "check";
@@ -373,23 +390,46 @@ export function runCli() {
             }
           },
           jsonOutputOption,
+          dotOutputOption,
           timeoutOption,
           quietCompileOption,
+          {
+            name: verboseOptionName,
+            option: {
+              describe: "Enable verbose compilation output. Example usage: 'dataform compile --verbose'",
+              type: "boolean",
+              default: false
+            },
+            check: (argv: yargs.Arguments) => {
+              if (argv.quiet && argv.verbose) {
+                throw new Error("Arguments --verbose and --quiet are mutually exclusive.");
+              }
+            }
+          },
           ...ProjectConfigOptions.allYargsOptions
         ],
         processFn: async argv => {
           const projectDir = argv[projectDirMustExistOption.name];
 
           async function compileAndPrint() {
-            if (!argv[jsonOutputOption.name]) {
+
+            let outputType = compiledGraphOutputType.Summary;
+            if (argv[jsonOutputOption.name]) {
+              outputType = compiledGraphOutputType.Json;
+            } else if (argv[dotOutputOption.name]) {
+              outputType = compiledGraphOutputType.Dot;
+            } 
+            
+            if (outputType === compiledGraphOutputType.Summary) {
               print("Compiling...\n");
             }
             const compiledGraph = await compile({
               projectDir,
               projectConfigOverride: ProjectConfigOptions.constructProjectConfigOverride(argv),
-              timeoutMillis: argv[timeoutOption.name] || undefined
+              timeoutMillis: argv[timeoutOption.name] || undefined,
+              verbose: argv[verboseOptionName] || false
             });
-            printCompiledGraph(compiledGraph, argv[jsonOutputOption.name], argv[quietCompileOption.name]);
+            printCompiledGraph(compiledGraph, outputType, argv[quietCompileOption.name]);
             if (compiledGraphHasErrors(compiledGraph)) {
               print("");
               printCompiledGraphErrors(compiledGraph.graphErrors, argv[quietCompileOption.name]);
@@ -463,9 +503,11 @@ export function runCli() {
         format: `test [${projectDirMustExistOption.name}]`,
         description: "Run the dataform project's unit tests.",
         positionalOptions: [projectDirMustExistOption],
-        options: [credentialsOption, timeoutOption, ...ProjectConfigOptions.allYargsOptions],
+        options: [credentialsOption, timeoutOption, jsonOutputOption, ...ProjectConfigOptions.allYargsOptions],
         processFn: async argv => {
-          print("Compiling...\n");
+          if (!argv[jsonOutputOption.name]) {
+            print("Compiling...\n");
+          }          
           const compiledGraph = await compile({
             projectDir: argv[projectDirMustExistOption.name],
             projectConfigOverride: ProjectConfigOptions.constructProjectConfigOverride(argv),
@@ -475,7 +517,9 @@ export function runCli() {
             printCompiledGraphErrors(compiledGraph.graphErrors, argv[quietCompileOption.name]);
             return 1;
           }
-          printSuccess("Compiled successfully.\n");
+          if (!argv[jsonOutputOption.name]) {
+            printSuccess("Compiled successfully.\n");
+          }   
           const readCredentials = credentials.read(
             getCredentialsPath(argv[projectDirOption.name], argv[credentialsOption.name])
           );
@@ -485,10 +529,17 @@ export function runCli() {
             return 1;
           }
 
-          print(`Running ${compiledGraph.tests.length} unit tests...\n`);
+          if (!argv[jsonOutputOption.name]) {
+            print(`Running ${compiledGraph.tests.length} unit tests...\n`);
+          }
           const dbadapter = new BigQueryDbAdapter(readCredentials);
           const testResults = await test(dbadapter, compiledGraph.tests);
-          testResults.forEach(testResult => printTestResult(testResult));
+          if (!argv[jsonOutputOption.name]) {
+            testResults.forEach(testResult => printTestResult(testResult));
+          } else {
+            // Print all results as JSON if the option is set.
+            print(prettyJsonStringify(testResults));
+          }
           return testResults.every(testResult => testResult.successful) ? 0 : 1;
         }
       },
@@ -863,6 +914,16 @@ class ProjectConfigOptions {
     }
   };
 
+  public static defaultReservation: INamedOption<yargs.Options> = {
+    name: "default-reservation",
+    option: {
+      describe:
+        "The default BigQuery reservation to use for execution. If unset, the value from " +
+        "workflow_settings.yaml is used. If neither is set, default BigQuery behavior applies.",
+      type: "string"
+    }
+  };
+
   public static allYargsOptions = [
     ProjectConfigOptions.defaultDatabase,
     ProjectConfigOptions.defaultSchema,
@@ -872,7 +933,8 @@ class ProjectConfigOptions {
     ProjectConfigOptions.databaseSuffix,
     ProjectConfigOptions.schemaSuffix,
     ProjectConfigOptions.tablePrefix,
-    ProjectConfigOptions.disableAssertions
+    ProjectConfigOptions.disableAssertions,
+    ProjectConfigOptions.defaultReservation
   ];
 
   public static constructProjectConfigOverride(
@@ -906,6 +968,9 @@ class ProjectConfigOptions {
     }
     if (argv[ProjectConfigOptions.disableAssertions.name]) {
       projectConfigOptions.disableAssertions = argv[ProjectConfigOptions.disableAssertions.name];
+    }
+    if (argv[ProjectConfigOptions.defaultReservation.name]) {
+      projectConfigOptions.defaultReservation = argv[ProjectConfigOptions.defaultReservation.name];
     }
     return projectConfigOptions;
   }

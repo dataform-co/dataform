@@ -102,6 +102,7 @@ export class Declaration extends ActionBuilder<dataform.Declaration> {
       );
     }
     this.proto.fileName = config.filename || filename;
+    this.proto.tags = config.tags || [];
     return this;
   }
 
