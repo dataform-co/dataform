@@ -14,7 +14,15 @@ message RunConfig {
   bool include_dependencies = 3;
   bool include_dependents = 11;
   bool full_refresh = 2;
+
+  // Wall-clock deadline for the entire run. When it fires, in-flight actions
+  // (including any running JiT compilation worker) are cancelled.
   int32 timeout_millis = 7;
+
+  // Per-model JiT compilation worker timeout. Each action with JiT code gets
+  // its own fresh deadline; independent of timeout_millis. When unset, no
+  // per-model cap is applied and only timeout_millis bounds JiT work.
+  int32 jit_timeout_millis = 10;
 
   // For internal use only, will be removed at a later date.
   bool disable_set_metadata = 9;
@@ -118,6 +126,10 @@ message TaskResult {
   string error_message = 2;
   Timing timing = 3;
   ExecutionMetadata metadata = 4;
+  // SQL that would be executed. Populated only during --dry-run so that
+  // dry-run output can include the query — particularly for JiT actions
+  // whose SQL is only available after runtime compilation.
+  string compiled_sql = 5;
 }
 
 message TestResult {
