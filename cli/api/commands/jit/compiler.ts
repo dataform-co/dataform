@@ -5,7 +5,6 @@ import { BaseWorker } from "df/cli/api/commands/base_worker";
 import { handleDbRequest } from "df/cli/api/commands/jit/rpc";
 import { IDbAdapter, IDbClient } from "df/cli/api/dbadapters";
 import { IBigQueryExecutionOptions } from "df/cli/api/dbadapters/bigquery";
-import { DEFAULT_COMPILATION_TIMEOUT_MILLIS } from "df/cli/api/utils/constants";
 import { dataform } from "df/protos/ts";
 
 export interface IJitWorkerMessage {
@@ -26,8 +25,9 @@ export class JitCompileChildProcess extends BaseWorker<
     projectDir: string,
     dbadapter: IDbAdapter,
     dbclient: IDbClient,
-    timeoutMillis: number = DEFAULT_COMPILATION_TIMEOUT_MILLIS,
-    options?: IBigQueryExecutionOptions
+    timeoutMillis?: number,
+    options?: IBigQueryExecutionOptions,
+    onCancel?: (cancel: () => void) => void
   ): Promise<dataform.IJitCompilationResponse> {
     return await new JitCompileChildProcess().run(
       request,
@@ -35,7 +35,8 @@ export class JitCompileChildProcess extends BaseWorker<
       dbadapter,
       dbclient,
       timeoutMillis,
-      options
+      options,
+      onCancel
     );
   }
 
@@ -48,8 +49,9 @@ export class JitCompileChildProcess extends BaseWorker<
     projectDir: string,
     dbadapter: IDbAdapter,
     dbclient: IDbClient,
-    timeoutMillis: number,
-    options?: IBigQueryExecutionOptions
+    timeoutMillis: number | undefined,
+    options: IBigQueryExecutionOptions | undefined,
+    onCancel: ((cancel: () => void) => void) | undefined
   ): Promise<dataform.IJitCompilationResponse> {
     return await this.runWorker(
       timeoutMillis,
@@ -68,7 +70,8 @@ export class JitCompileChildProcess extends BaseWorker<
         } else if (message.type === "jit_error") {
           reject(new Error(message.error));
         }
-      }
+      },
+      onCancel
     );
   }
 
@@ -90,7 +93,7 @@ export class JitCompileChildProcess extends BaseWorker<
       child.send({
         type: "rpc_response",
         correlationId: message.correlationId,
-        response
+        response: Array.from(response)
       });
     } catch (e) {
       child.send({
