@@ -62,6 +62,7 @@ actions:
             onSchemaChange: "IGNORE",
             query: "SELECT 1",
             incrementalQuery: "SELECT 1",
+            incrementalStrategy: "INCREMENTAL_STRATEGY_UNSPECIFIED",
             type: "incremental",
             enumType: "INCREMENTAL",
             protected: true,
@@ -185,6 +186,7 @@ SELECT 1`
             fileName: `definitions/${testParameters.filename}`,
             query: "\n\n\nSELECT 1",
             incrementalQuery: "\n\n\nSELECT 1",
+            incrementalStrategy: "INCREMENTAL_STRATEGY_UNSPECIFIED",
             actionDescriptor: {
               ...exampleActionDescriptor.outputActionDescriptor,
               reservation: "reservation",
@@ -251,6 +253,7 @@ SELECT 1`;
           fileName: `definitions/${minimalIncrementalTableName}.sqlx`,
           query: "\n\n\nSELECT 1",
           incrementalQuery: "\n\n\nSELECT 1",
+          incrementalStrategy: "INCREMENTAL_STRATEGY_UNSPECIFIED",
         }
       ]);
     })
@@ -348,6 +351,7 @@ actions:
         fileName: "definitions/filename.sql",
         query: "SELECT 1",
         incrementalQuery: "SELECT 1",
+        incrementalStrategy: "INCREMENTAL_STRATEGY_UNSPECIFIED",
         actionDescriptor: {
           bigqueryLabels: {
             key: "val"
@@ -964,6 +968,7 @@ select \${incremental()} as is_incremental`
           hermeticity: "NON_HERMETIC",
           onSchemaChange: "IGNORE",
           fileName: "definitions/incremental.js",
+          incrementalStrategy: "INCREMENTAL_STRATEGY_UNSPECIFIED",
           jitCode: '(ctx) => Promise.resolve({query: "select 1", incrementalQuery: "select 1"})',
           actionDescriptor: {
             compilationMode: "ACTION_COMPILATION_MODE_JIT"
@@ -985,6 +990,180 @@ select \${incremental()} as is_incremental`
 
       expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).greaterThan(0);
       expect(result.compile.compiledGraph.graphErrors.compilationErrors.some(e => e.message.includes("Cannot mix AoT and JiT compilation"))).equals(true);
+    });
+  });
+
+  suite("incrementalStrategy", () => {
+    test("compiles successfully with insert_overwrite and partitionBy", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/incremental.sqlx"),
+        `config {
+          type: "incremental",
+          incrementalStrategy: "insert_overwrite",
+          partitionBy: "DATE(ts)"
+        }
+        SELECT 1`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals(
+        asPlainObject([
+          {
+            target: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "incremental"
+            },
+            canonicalTarget: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "incremental"
+            },
+            fileName: "definitions/incremental.sqlx",
+            hermeticity: "NON_HERMETIC",
+            onSchemaChange: "IGNORE",
+            query: "\n        SELECT 1",
+            incrementalQuery: "\n        SELECT 1",
+            incrementalStrategy: "INSERT_OVERWRITE",
+            type: "incremental",
+            enumType: "INCREMENTAL",
+            protected: false,
+            disabled: false,
+            bigquery: {
+              partitionBy: "DATE(ts)"
+            }
+          }
+        ])
+      );
+    });
+
+    test("compilation fails with insert_overwrite and missing partitionBy", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/incremental.sqlx"),
+        `config {
+          type: "incremental",
+          incrementalStrategy: "insert_overwrite"
+        }
+        SELECT 1`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).greaterThan(0);
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).contains(
+        "IncrementalStrategy 'insert_overwrite' requires 'partitionBy' to be set"
+      );
+    });
+
+    test("compiles successfully with merge and uniqueKey", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/incremental.sqlx"),
+        `config {
+          type: "incremental",
+          incrementalStrategy: "merge",
+          uniqueKey: ["id"]
+        }
+        SELECT 1`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals(
+        asPlainObject([
+          {
+            target: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "incremental"
+            },
+            canonicalTarget: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "incremental"
+            },
+            fileName: "definitions/incremental.sqlx",
+            hermeticity: "NON_HERMETIC",
+            onSchemaChange: "IGNORE",
+            query: "\n        SELECT 1",
+            incrementalQuery: "\n        SELECT 1",
+            incrementalStrategy: "MERGE",
+            type: "incremental",
+            enumType: "INCREMENTAL",
+            protected: false,
+            disabled: false,
+            uniqueKey: ["id"]
+          }
+        ])
+      );
+    });
+
+    test("compilation fails with merge and missing uniqueKey", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/incremental.sqlx"),
+        `config {
+          type: "incremental",
+          incrementalStrategy: "merge"
+        }
+        SELECT 1`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).greaterThan(0);
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).contains(
+        "IncrementalStrategy 'merge' requires 'uniqueKey' to be set"
+      );
+    });
+
+    test("compilation fails with invalid incrementalStrategy", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/incremental.sqlx"),
+        `config {
+          type: "incremental",
+          incrementalStrategy: "invalid_strategy"
+        }
+        SELECT 1`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).greaterThan(0);
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).contains(
+        'IncrementalStrategy value "invalid_strategy" is not supported'
+      );
     });
   });
 });
