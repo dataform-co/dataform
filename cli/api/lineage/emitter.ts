@@ -2,6 +2,7 @@ import { LineageClient } from "@google-cloud/lineage";
 import { createHash } from "crypto";
 
 import { coerceAsError } from "df/common/errors/errors";
+import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
 
 export interface IEmitterOptions {
@@ -177,6 +178,9 @@ export class LineageEmitter {
         run: {
           runId: this.parentRunId
         }
+      },
+      gcp_bq_pipelines_run: {
+        runType: "cli"
       }
     };
 
@@ -232,6 +236,12 @@ export class LineageEmitter {
       integration: "BQ_PIPELINES",
       jobType: "ACTION",
       processingType: "BATCH"
+    };
+
+    jobFacets.gcp_bq_pipelines_job = {
+      dataformCoreVersion: version,
+      actionType: action.type,
+      actionName: canonicalActionTarget
     };
 
     const openLineagePayload = {
