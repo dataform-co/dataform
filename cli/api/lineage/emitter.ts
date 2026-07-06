@@ -273,10 +273,13 @@ export class LineageEmitter {
       attempts++;
       try {
         const client = this.clientProvider(projectId);
-        await client.processOpenLineageRunEvent({
-          parent,
-          openLineage: toProtoStruct(openLineagePayload) as any
-        });
+        await client.processOpenLineageRunEvent(
+          {
+            parent,
+            openLineage: toProtoStruct(openLineagePayload) as any
+          },
+          { timeout: 2000 }
+        );
         break;
       } catch (e) {
         const err = coerceAsError(e);
