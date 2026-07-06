@@ -12,27 +12,35 @@ export interface IEmitterOptions {
   apiEndpoint?: string;
 }
 
-export type LineageClientProvider = (projectId?: string) => LineageClient;
+export type LineageClientProvider = (projectId: string, endpoint: string) => LineageClient;
 
 export function createLineageClientProvider(
   credentials: dataform.IBigQuery,
-  apiEndpoint?: string
+  apiEndpointOverride?: string
 ): LineageClientProvider {
   const clients = new Map<string, LineageClient>();
-  return (projectId?: string) => {
+  return (projectId: string, endpoint: string) => {
     const targetProjectId = projectId || credentials.projectId;
-    if (!clients.has(targetProjectId)) {
+    const effectiveEndpoint = apiEndpointOverride || endpoint;
+    const cacheKey = `${targetProjectId}::${effectiveEndpoint}`;
+    if (!clients.has(cacheKey)) {
       clients.set(
-        targetProjectId,
+        cacheKey,
         new LineageClient({
           projectId: targetProjectId,
-          apiEndpoint,
+          apiEndpoint: effectiveEndpoint,
           credentials: credentials.credentials && JSON.parse(credentials.credentials)
         })
       );
     }
-    return clients.get(targetProjectId);
+    return clients.get(cacheKey);
   };
+}
+
+const GLOBAL_LINEAGE_ENDPOINT = "datalineage.googleapis.com";
+
+function regionalEndpointFor(location: string): string {
+  return `datalineage.${location}.rep.googleapis.com`;
 }
 
 export class LineageEmitter {
@@ -44,6 +52,7 @@ export class LineageEmitter {
   private workdirHash: string = "";
   private readonly activeRunIds = new Map<string, string>();
   private readonly parentRunId: string;
+  private readonly repUnavailableForLocation = new Set<string>();
 
   constructor(
     credentials: dataform.IBigQuery,
@@ -266,13 +275,19 @@ export class LineageEmitter {
       `[lineage-debug] Sending OpenLineage event:\n${JSON.stringify(openLineagePayload, null, 2)}\n`
     );
 
-    // 2. Emit payload via ProcessOpenLineageRunEvent RPC with retry logic
+    // 2. Emit payload via ProcessOpenLineageRunEvent RPC with retry logic.
+    // Uses REP endpoint (data-residency-preserving) by default and falls back
+    // to the global endpoint if REP for this location is not resolvable — some
+    // locations (e.g. certain multi-regions, Omni) are not turned up in REP
+    // infrastructure. The fallback decision is cached per-location for the
+    // lifetime of the emitter so subsequent emits skip the failing lookup.
+    let currentEndpoint = this.endpointForLocation(location);
     let attempts = 0;
     const maxAttempts = 2;
     while (attempts < maxAttempts) {
       attempts++;
       try {
-        const client = this.clientProvider(projectId);
+        const client = this.clientProvider(projectId, currentEndpoint);
         await client.processOpenLineageRunEvent(
           {
             parent,
@@ -284,6 +299,23 @@ export class LineageEmitter {
       } catch (e) {
         const err = coerceAsError(e);
         const code = (err as any).code;
+
+        // Fall back from REP to global if the REP hostname isn't resolvable.
+        const overrideActive = !!this.emitterOptions.apiEndpoint;
+        const onRepEndpoint = currentEndpoint !== GLOBAL_LINEAGE_ENDPOINT;
+        if (
+          !overrideActive &&
+          onRepEndpoint &&
+          this.isEndpointUnresolvable(err)
+        ) {
+          process.stderr.write(
+            `[lineage] Regional endpoint ${currentEndpoint} is not resolvable for location ${location}. Falling back to ${GLOBAL_LINEAGE_ENDPOINT} for this and subsequent emits in this location.\n`
+          );
+          this.repUnavailableForLocation.add(location);
+          currentEndpoint = GLOBAL_LINEAGE_ENDPOINT;
+          attempts--;
+          continue;
+        }
 
         // Check for permission or API disabled status codes
         if (code === 7 || err.message?.includes("PERMISSION_DENIED")) {
@@ -317,6 +349,29 @@ export class LineageEmitter {
         throw err;
       }
     }
+  }
+
+  private endpointForLocation(location: string): string {
+    if (this.emitterOptions.apiEndpoint) {
+      return this.emitterOptions.apiEndpoint;
+    }
+    if (this.repUnavailableForLocation.has(location)) {
+      return GLOBAL_LINEAGE_ENDPOINT;
+    }
+    return regionalEndpointFor(location);
+  }
+
+  private isEndpointUnresolvable(err: Error): boolean {
+    // Match on the DNS signature in the message string rather than the outer
+    // grpc code. google-gax wraps repeated UNAVAILABLE(14) errors from the
+    // grpc DNS resolver in an outer DEADLINE_EXCEEDED(4) once its retry
+    // budget expires; the inner "Name resolution failed" text is only in the
+    // message. The signatures below are unique enough on their own that a
+    // false positive is not a concern.
+    const cause = (err as any).cause;
+    const causeMessage = typeof cause === "object" && cause ? String(cause.message || cause.code || "") : "";
+    const combined = `${err.message || ""} ${causeMessage}`;
+    return /ENOTFOUND|EAI_AGAIN|getaddrinfo|(?:DNS|Name) resolution failed/i.test(combined);
   }
 
   private generateUuid(): string {

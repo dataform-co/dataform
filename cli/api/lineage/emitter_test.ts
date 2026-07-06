@@ -273,8 +273,161 @@ suite("LineageEmitter", () => {
 
   test("creates lineage client provider with custom endpoint", () => {
     const provider = createLineageClientProvider(credentials, "my-custom-endpoint.googleapis.com");
-    const client = provider("test-project");
+    const client = provider("test-project", "datalineage.us.rep.googleapis.com");
     expect(client).to.not.equal(undefined);
+  });
+
+  test("falls back from regional endpoint to global on DNS-unresolvable REP", async () => {
+    const mockClient = new MockLineageClient();
+    const dnsError: any = new Error("14 UNAVAILABLE: DNS resolution failed for datalineage.us.rep.googleapis.com");
+    dnsError.code = 14;
+    dnsError.cause = { code: "ENOTFOUND", message: "getaddrinfo ENOTFOUND datalineage.us.rep.googleapis.com" };
+
+    let callCount = 0;
+    const endpointsUsed: string[] = [];
+    const provider = (projectId: string, endpoint: string) => {
+      endpointsUsed.push(endpoint);
+      callCount++;
+      mockClient.processOpenLineageRunEventError = callCount === 1 ? dnsError : null;
+      return mockClient as any;
+    };
+
+    const emitter = new LineageEmitter(credentials, { lineageEnabled: true }, provider);
+
+    const action = dataform.ExecutionAction.create({
+      target: { database: "proj", schema: "schema", name: "table" },
+      type: "table"
+    });
+    const startResult = dataform.ActionResult.create({
+      status: dataform.ActionResult.ExecutionStatus.RUNNING
+    });
+
+    emitter.emitForAction(action, startResult);
+    await emitter.drain();
+
+    expect(endpointsUsed).to.deep.equal([
+      "datalineage.us.rep.googleapis.com",
+      "datalineage.googleapis.com"
+    ]);
+    expect(mockClient.processOpenLineageRunEventCalledWith.length).to.equal(2);
+  });
+
+  test("caches REP-unavailable decision across subsequent emits", async () => {
+    const mockClient = new MockLineageClient();
+    const dnsError: any = new Error("14 UNAVAILABLE: getaddrinfo ENOTFOUND datalineage.us.rep.googleapis.com");
+    dnsError.code = 14;
+    dnsError.cause = { code: "ENOTFOUND", message: "getaddrinfo ENOTFOUND" };
+
+    let callCount = 0;
+    const endpointsUsed: string[] = [];
+    const provider = (projectId: string, endpoint: string) => {
+      endpointsUsed.push(endpoint);
+      callCount++;
+      mockClient.processOpenLineageRunEventError = callCount === 1 ? dnsError : null;
+      return mockClient as any;
+    };
+
+    const emitter = new LineageEmitter(credentials, { lineageEnabled: true }, provider);
+
+    const action = dataform.ExecutionAction.create({
+      target: { database: "proj", schema: "schema", name: "table" },
+      type: "table"
+    });
+    const startResult = dataform.ActionResult.create({
+      status: dataform.ActionResult.ExecutionStatus.RUNNING
+    });
+
+    // First emit: REP fails with ENOTFOUND, falls back to global.
+    emitter.emitForAction(action, startResult);
+    await emitter.drain();
+
+    // Second emit: should skip REP entirely and go straight to global.
+    emitter.emitForAction(action, startResult);
+    await emitter.drain();
+
+    expect(endpointsUsed).to.deep.equal([
+      "datalineage.us.rep.googleapis.com",
+      "datalineage.googleapis.com",
+      "datalineage.googleapis.com"
+    ]);
+  });
+
+  test("falls back on real gRPC 'Name resolution failed' error shape", async () => {
+    // Reproduces the exact error shape emitted by the @grpc/grpc-js DNS resolver
+    // when a REP hostname does not exist. This locks in that isEndpointUnresolvable
+    // matches the production message (regression: earlier regex only matched
+    // 'DNS resolution', missing the gRPC 'Name resolution failed' phrasing).
+    const mockClient = new MockLineageClient();
+    // Exact shape observed in a live run: google-gax wraps the underlying
+    // UNAVAILABLE(14) into a DEADLINE_EXCEEDED(4) after its retry budget
+    // expires. The DNS signature is only in the message string.
+    const grpcDnsError: any = new Error(
+      "Total timeout of API google.cloud.datacatalog.lineage.v1.Lineage exceeded 2000 milliseconds retrying error Error: 14 UNAVAILABLE: Name resolution failed for target dns:datalineage.bogusregion.rep.googleapis.com:443"
+    );
+    grpcDnsError.code = 4;
+
+    let callCount = 0;
+    const endpointsUsed: string[] = [];
+    const provider = (projectId: string, endpoint: string) => {
+      endpointsUsed.push(endpoint);
+      callCount++;
+      mockClient.processOpenLineageRunEventError = callCount === 1 ? grpcDnsError : null;
+      return mockClient as any;
+    };
+
+    const emitter = new LineageEmitter(credentials, { lineageEnabled: true }, provider);
+
+    const action = dataform.ExecutionAction.create({
+      target: { database: "proj", schema: "schema", name: "table" },
+      type: "table"
+    });
+    const startResult = dataform.ActionResult.create({
+      status: dataform.ActionResult.ExecutionStatus.RUNNING
+    });
+
+    emitter.emitForAction(action, startResult);
+    await emitter.drain();
+
+    expect(endpointsUsed).to.deep.equal([
+      "datalineage.us.rep.googleapis.com",
+      "datalineage.googleapis.com"
+    ]);
+  });
+
+  test("does not fall back to global when apiEndpoint override is set", async () => {
+    const mockClient = new MockLineageClient();
+    const dnsError: any = new Error("14 UNAVAILABLE: getaddrinfo ENOTFOUND staging-datalineage.sandbox.googleapis.com");
+    dnsError.code = 14;
+    dnsError.cause = { code: "ENOTFOUND", message: "getaddrinfo ENOTFOUND" };
+    mockClient.processOpenLineageRunEventError = dnsError;
+
+    const endpointsUsed: string[] = [];
+    const provider = (projectId: string, endpoint: string) => {
+      endpointsUsed.push(endpoint);
+      return mockClient as any;
+    };
+
+    const emitter = new LineageEmitter(
+      credentials,
+      { lineageEnabled: true, apiEndpoint: "staging-datalineage.sandbox.googleapis.com" },
+      provider
+    );
+
+    const action = dataform.ExecutionAction.create({
+      target: { database: "proj", schema: "schema", name: "table" },
+      type: "table"
+    });
+    const startResult = dataform.ActionResult.create({
+      status: dataform.ActionResult.ExecutionStatus.RUNNING
+    });
+
+    emitter.emitForAction(action, startResult);
+    await emitter.drain();
+
+    // Every attempt used the override; no fallback to global was attempted.
+    for (const used of endpointsUsed) {
+      expect(used).to.equal("staging-datalineage.sandbox.googleapis.com");
+    }
   });
 });
 
