@@ -31,7 +31,7 @@ def _run_pbts(actions, executable, js_file):
     #
     # Run pbts and then patch 'import Long = require("long");' to 'import Long from "long";'
     # to avoid syntax errors in older rollup-plugin-dts.
-    command = "{pbts} --out {out} {input} && sed -i 's/import Long = require(\"long\");/import Long from \"long\";/g' {out}".format(
+    command = "{pbts} --out {out} {input} && sed 's/import Long = require(\"long\");/import Long from \"long\";/g' {out} > {out}.tmp && mv {out}.tmp {out}".format(
         pbts = executable._pbts.path,
         out = ts_file.path,
         input = js_file.path
