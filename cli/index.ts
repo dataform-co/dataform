@@ -9,6 +9,7 @@ import { build, compile, credentials, init, install, run, test } from "df/cli/ap
 import { CREDENTIALS_FILENAME } from "df/cli/api/commands/credentials";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 import { LineageEmitter } from "df/cli/api/lineage/emitter";
+import { createLineageEmitter as createLineageEmitterFromFactory } from "df/cli/api/lineage/emitter_factory";
 import { prettyJsonStringify } from "df/cli/api/utils";
 import {
   compiledGraphOutputType,
@@ -1001,22 +1002,13 @@ function createLineageEmitter(
   executionGraph: dataform.IExecutionGraph,
   readCredentials: dataform.IBigQuery | undefined
 ): LineageEmitter | undefined {
-  const lineageEnabled =
-    (argv[emitLineageOption.name] as boolean) ??
-    executionGraph.projectConfig?.lineage?.enabled ??
-    false;
-  if (!lineageEnabled || !readCredentials) {
-    return undefined;
-  }
-
-  const projectDir = argv[projectDirOption.name] || process.cwd();
-  const apiEndpoint = executionGraph.projectConfig?.lineage?.apiEndpoint || undefined;
-
-  return new LineageEmitter(readCredentials, {
-    lineageEnabled,
+  return createLineageEmitterFromFactory({
+    cliEmitLineage: argv[emitLineageOption.name] as boolean | undefined,
+    workflowLineageEnabled: executionGraph.projectConfig?.lineage?.enabled ?? undefined,
+    workflowApiEndpoint: executionGraph.projectConfig?.lineage?.apiEndpoint || undefined,
     dryRun: !!argv[dryRunOptionName],
-    projectDir,
-    apiEndpoint
+    projectDir: argv[projectDirOption.name] || process.cwd(),
+    readCredentials
   });
 }
 
