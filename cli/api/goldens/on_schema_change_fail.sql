@@ -52,8 +52,7 @@ END IF;
 -- Cleanup temporary tables.
 DROP TABLE IF EXISTS `project-id.dataset-id.incremental_on_schema_change_df_temp_test_uuid_empty`;
     
-END
-;
+END;
 BEGIN
   CALL `project-id.dataset-id.df_osc_test_uuid`();
 EXCEPTION WHEN ERROR THEN
@@ -61,8 +60,7 @@ EXCEPTION WHEN ERROR THEN
   DROP PROCEDURE IF EXISTS `project-id.dataset-id.df_osc_test_uuid`;
   RAISE;
 END;
-DROP PROCEDURE IF EXISTS `project-id.dataset-id.df_osc_test_uuid`
-;
+DROP PROCEDURE IF EXISTS `project-id.dataset-id.df_osc_test_uuid`;
 insert into `project-id.dataset-id.incremental_on_schema_change`	
 (`id`,`field1`)	
 select `id`,`field1`	
