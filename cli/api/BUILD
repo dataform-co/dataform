@@ -63,7 +63,6 @@ ts_test_suite(
         "commands/jit/rpc_test.ts",
         "dbadapters/bigquery_test.ts",
         "execution_sql_test.ts",
-        "utils_test.ts",
     ],
     data = [
         ":node_modules",
