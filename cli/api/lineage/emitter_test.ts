@@ -5,6 +5,14 @@ import { createLineageClientProvider, LineageEmitter } from "df/cli/api/lineage/
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 
+class StderrCapture {
+  public writes: string[] = [];
+  public write(msg: string): boolean {
+    this.writes.push(msg);
+    return true;
+  }
+}
+
 class MockLineageClient {
   public listProcessesCalledWith: any[] = [];
   public processOpenLineageRunEventCalledWith: any[] = [];
@@ -392,6 +400,124 @@ suite("LineageEmitter", () => {
       "datalineage.us.rep.googleapis.com",
       "datalineage.googleapis.com"
     ]);
+  });
+
+  test("skip_reason=dry_run is logged once per run, not once per action", async () => {
+    const mockClient = new MockLineageClient();
+    const stderr = new StderrCapture();
+    const emitter = new LineageEmitter(
+      credentials,
+      { lineageEnabled: true, dryRun: true },
+      () => mockClient as any,
+      stderr
+    );
+
+    const action = dataform.ExecutionAction.create({
+      target: { database: "proj", schema: "schema", name: "table" },
+      type: "table"
+    });
+    const startResult = dataform.ActionResult.create({
+      status: dataform.ActionResult.ExecutionStatus.RUNNING
+    });
+
+    emitter.emitForAction(action, startResult);
+    emitter.emitForAction(action, startResult);
+    emitter.emitForAction(action, startResult);
+    await emitter.drain();
+
+    const dryRunLines = stderr.writes.filter(w => w.includes("skip_reason=dry_run"));
+    expect(dryRunLines.length).to.equal(1);
+    expect(dryRunLines[0]).to.contain("dry-run mode");
+    expect(mockClient.processOpenLineageRunEventCalledWith.length).to.equal(0);
+  });
+
+  test("ineligible action types are skipped silently (no stderr line, no emission)", async () => {
+    const mockClient = new MockLineageClient();
+    const stderr = new StderrCapture();
+    const emitter = new LineageEmitter(
+      credentials,
+      { lineageEnabled: true },
+      () => mockClient as any,
+      stderr
+    );
+
+    const assertion = dataform.ExecutionAction.create({
+      target: { database: "proj", schema: "schema", name: "assertion" },
+      type: "assertion"
+    });
+    const declaration = dataform.ExecutionAction.create({
+      target: { database: "proj", schema: "schema", name: "declaration" },
+      type: "declaration"
+    });
+    const startResult = dataform.ActionResult.create({
+      status: dataform.ActionResult.ExecutionStatus.RUNNING
+    });
+
+    emitter.emitForAction(assertion, startResult);
+    emitter.emitForAction(declaration, startResult);
+    await emitter.drain();
+
+    expect(stderr.writes).to.deep.equal([]);
+    expect(mockClient.processOpenLineageRunEventCalledWith.length).to.equal(0);
+  });
+
+  test("skip_reason=api_disabled is logged when the API returns PERMISSION_DENIED", async () => {
+    const mockClient = new MockLineageClient();
+    const stderr = new StderrCapture();
+    const permissionError: any = new Error("Permission Denied");
+    permissionError.code = 7;
+    mockClient.processOpenLineageRunEventError = permissionError;
+
+    const emitter = new LineageEmitter(
+      credentials,
+      { lineageEnabled: true },
+      () => mockClient as any,
+      stderr
+    );
+    const action = dataform.ExecutionAction.create({
+      target: { database: "proj", schema: "schema", name: "table" },
+      type: "table"
+    });
+    const startResult = dataform.ActionResult.create({
+      status: dataform.ActionResult.ExecutionStatus.RUNNING
+    });
+
+    emitter.emitForAction(action, startResult);
+    await emitter.drain();
+
+    const apiDisabledLines = stderr.writes.filter(w => w.includes("skip_reason=api_disabled"));
+    expect(apiDisabledLines.length).to.equal(1);
+    expect(apiDisabledLines[0]).to.contain("permission check failed");
+  });
+
+  test("skip_reason=api_disabled is logged when the API returns SERVICE_DISABLED", async () => {
+    const mockClient = new MockLineageClient();
+    const stderr = new StderrCapture();
+    const serviceDisabledError: any = new Error("SERVICE_DISABLED: Data Lineage API is disabled");
+    serviceDisabledError.code = 9;
+    mockClient.processOpenLineageRunEventError = serviceDisabledError;
+
+    const emitter = new LineageEmitter(
+      credentials,
+      { lineageEnabled: true },
+      () => mockClient as any,
+      stderr
+    );
+    const action = dataform.ExecutionAction.create({
+      target: { database: "target-proj", schema: "schema", name: "table" },
+      type: "table"
+    });
+    const startResult = dataform.ActionResult.create({
+      status: dataform.ActionResult.ExecutionStatus.RUNNING
+    });
+
+    emitter.emitForAction(action, startResult);
+    await emitter.drain();
+
+    const apiDisabledLines = stderr.writes.filter(w => w.includes("skip_reason=api_disabled"));
+    expect(apiDisabledLines.length).to.equal(1);
+    expect(apiDisabledLines[0]).to.contain("gcloud services enable datalineage.googleapis.com");
+    expect(apiDisabledLines[0]).to.contain("target-proj");
   });
 
   test("does not fall back to global when apiEndpoint override is set", async () => {

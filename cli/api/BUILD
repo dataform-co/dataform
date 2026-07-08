@@ -64,6 +64,7 @@ ts_test_suite(
         "commands/jit/rpc_test.ts",
         "dbadapters/bigquery_test.ts",
         "execution_sql_test.ts",
+        "lineage/emitter_factory_test.ts",
         "lineage/emitter_test.ts",
     ],
     data = [

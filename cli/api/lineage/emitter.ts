@@ -12,6 +12,14 @@ export interface IEmitterOptions {
   apiEndpoint?: string;
 }
 
+/**
+ * Minimal writable stream shape used for stderr output. Injectable so tests can
+ * capture emitted skip-reason lines deterministically.
+ */
+export interface IStderrLike {
+  write(msg: string): unknown;
+}
+
 export type LineageClientProvider = (projectId: string, endpoint: string) => LineageClient;
 
 export function createLineageClientProvider(
@@ -47,8 +55,10 @@ export class LineageEmitter {
   private readonly clientProvider: LineageClientProvider;
   private readonly credentials: dataform.IBigQuery;
   private readonly emitterOptions: IEmitterOptions;
+  private readonly stderr: IStderrLike;
   private readonly pending = new Set<Promise<void>>();
   private apiDisabledThisRun = false;
+  private dryRunSkipLogged = false;
   private workdirHash: string = "";
   private readonly activeRunIds = new Map<string, string>();
   private readonly parentRunId: string;
@@ -57,10 +67,12 @@ export class LineageEmitter {
   constructor(
     credentials: dataform.IBigQuery,
     emitterOptions: IEmitterOptions,
-    clientProvider?: LineageClientProvider
+    clientProvider?: LineageClientProvider,
+    stderr: IStderrLike = process.stderr
   ) {
     this.credentials = credentials;
     this.emitterOptions = emitterOptions;
+    this.stderr = stderr;
     this.clientProvider =
       clientProvider || createLineageClientProvider(credentials, emitterOptions.apiEndpoint);
     this.parentRunId = this.generateUuid();
@@ -74,18 +86,27 @@ export class LineageEmitter {
       return;
     }
 
-    // Eligibility check
-    const isEnabled = this.emitterOptions.lineageEnabled ?? false;
-    const isDryRun = this.emitterOptions.dryRun ?? false;
-    const isEligibleType = action.type === "table" || action.type === "operation";
+    if (this.emitterOptions.dryRun) {
+      if (!this.dryRunSkipLogged) {
+        this.stderr.write(
+          "[lineage] Skipped lineage emission (dry-run mode; once-per-run): skip_reason=dry_run\n"
+        );
+        this.dryRunSkipLogged = true;
+      }
+      return;
+    }
 
-    if (!isEnabled || isDryRun || !isEligibleType) {
+    // Non-table/non-operation actions (e.g., assertions, declarations) are not
+    // emitted. This is a scope decision, not a user-visible misconfiguration,
+    // so it is intentionally silent.
+    const isEligibleType = action.type === "table" || action.type === "operation";
+    if (!isEligibleType) {
       return;
     }
 
     const p = this.emitForActionInternal(action, actionResult)
       .catch(e => {
-        process.stderr.write(
+        this.stderr.write(
           `[lineage] Failed to emit lineage for action ${action.target.schema}.${action.target.name}: ${e.message}\n`
         );
       })
@@ -271,7 +292,7 @@ export class LineageEmitter {
       schemaURL: "https://openlineage.io/spec/1-0-2/OpenLineage.json#/definitions/RunEvent"
     };
 
-    process.stderr.write(
+    this.stderr.write(
       `[lineage-debug] Sending OpenLineage event:\n${JSON.stringify(openLineagePayload, null, 2)}\n`
     );
 
@@ -308,7 +329,7 @@ export class LineageEmitter {
           onRepEndpoint &&
           this.isEndpointUnresolvable(err)
         ) {
-          process.stderr.write(
+          this.stderr.write(
             `[lineage] Regional endpoint ${currentEndpoint} is not resolvable for location ${location}. Falling back to ${GLOBAL_LINEAGE_ENDPOINT} for this and subsequent emits in this location.\n`
           );
           this.repUnavailableForLocation.add(location);
@@ -319,8 +340,8 @@ export class LineageEmitter {
 
         // Check for permission or API disabled status codes
         if (code === 7 || err.message?.includes("PERMISSION_DENIED")) {
-          process.stderr.write(
-            `[lineage] Permission check failed. Ensure the credential has 'datalineage.googleapis.com/locations.processOpenLineageMessage'. Disabling lineage for this run.\n`
+          this.stderr.write(
+            "[lineage] Skipped lineage emission for the rest of this run: skip_reason=api_disabled (permission check failed; ensure the credential has 'datalineage.googleapis.com/locations.processOpenLineageMessage')\n"
           );
           this.apiDisabledThisRun = true;
           return;
@@ -329,8 +350,8 @@ export class LineageEmitter {
           err.message?.includes("SERVICE_DISABLED") ||
           err.message?.includes("FAILED_PRECONDITION")
         ) {
-          process.stderr.write(
-            `[lineage] Lineage API is not enabled in project ${projectId}. Run 'gcloud services enable datalineage.googleapis.com'. Disabling lineage for this run.\n`
+          this.stderr.write(
+            `[lineage] Skipped lineage emission for the rest of this run: skip_reason=api_disabled (Lineage API is not enabled in project ${projectId}; run 'gcloud services enable datalineage.googleapis.com')\n`
           );
           this.apiDisabledThisRun = true;
           return;
