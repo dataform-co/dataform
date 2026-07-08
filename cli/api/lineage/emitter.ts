@@ -338,22 +338,28 @@ export class LineageEmitter {
           continue;
         }
 
-        // Check for permission or API disabled status codes
+        // Check for permission or API disabled status codes. Multiple in-flight
+        // calls can hit the same failure concurrently; guard the write so the
+        // skip line is printed at most once per run.
         if (code === 7 || err.message?.includes("PERMISSION_DENIED")) {
-          this.stderr.write(
-            "[lineage] Skipped lineage emission for the rest of this run: skip_reason=api_disabled (permission check failed; ensure the credential has 'datalineage.googleapis.com/locations.processOpenLineageMessage')\n"
-          );
-          this.apiDisabledThisRun = true;
+          if (!this.apiDisabledThisRun) {
+            this.apiDisabledThisRun = true;
+            this.stderr.write(
+              "[lineage] Skipped lineage emission for the rest of this run: skip_reason=api_disabled (permission check failed; ensure the credential has 'datalineage.googleapis.com/locations.processOpenLineageMessage')\n"
+            );
+          }
           return;
         } else if (
           code === 9 ||
           err.message?.includes("SERVICE_DISABLED") ||
           err.message?.includes("FAILED_PRECONDITION")
         ) {
-          this.stderr.write(
-            `[lineage] Skipped lineage emission for the rest of this run: skip_reason=api_disabled (Lineage API is not enabled in project ${projectId}; run 'gcloud services enable datalineage.googleapis.com')\n`
-          );
-          this.apiDisabledThisRun = true;
+          if (!this.apiDisabledThisRun) {
+            this.apiDisabledThisRun = true;
+            this.stderr.write(
+              `[lineage] Skipped lineage emission for the rest of this run: skip_reason=api_disabled (Lineage API is not enabled in project ${projectId}; run 'gcloud services enable datalineage.googleapis.com')\n`
+            );
+          }
           return;
         }
 
