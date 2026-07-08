@@ -6,7 +6,7 @@ config {
 } 
 
 post_operations { 
-    drop table ${self()} 
+    select * from ${self()} 
 }
 
 select 1 as col1 -- test comment
