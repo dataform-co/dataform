@@ -40,9 +40,15 @@ suite("concatenateQueries", () => {
     );
   });
 
-  test("preserves comment-only lines within a query", () => {
+  test("preserves single line comments within a query", () => {
     expect(concatenateQueries(["SELECT 1\n--test\nFROM UNNEST([]);"])).deep.equals(
       "SELECT 1\n--test\nFROM UNNEST([]);"
+    );
+  });
+
+  test("preserves multi line comments within a query", () => {
+    expect(concatenateQueries(["SELECT 1\n\*multi\nline\ncomment\n*/\nFROM UNNEST([]);"])).deep.equals(
+      "SELECT 1\n\*multi\nline\ncomment\n*/\nFROM UNNEST([]);"
     );
   });
 

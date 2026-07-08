@@ -44,7 +44,7 @@ export function concatenateQueries(statements: string[], modifier?: (mod: string
     .filter(statement => !!statement)
     .map(statement => statement.trim())
     .filter(statement => statement.length > 0);
-  let formattedStatements = processed.map((statement, index) =>
+  const formattedStatements = processed.map((statement, index) =>
     formatStatement(statement, index === processed.length - 1, modifier)
   );
   return formattedStatements.join("\n");

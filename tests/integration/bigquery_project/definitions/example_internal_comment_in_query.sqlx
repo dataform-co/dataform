@@ -4,9 +4,21 @@ config {
 } 
 
 post_operations { 
-    select * from ${self()} 
+    select *
+    -- single line comment
+    /*
+    multi
+    line
+    comment
+    */ 
+    from ${self()} 
 }
 
 select 1 as col1 
--- test comment
+-- single line comment
+/*
+multi
+line
+comment
+*/
 FROM UNNEST([])
