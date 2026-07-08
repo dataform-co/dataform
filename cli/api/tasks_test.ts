@@ -40,6 +40,12 @@ suite("concatenateQueries", () => {
     );
   });
 
+  test("preserves comment-only lines within a query", () => {
+    expect(concatenateQueries(["SELECT 1\n--test\nFROM UNNEST([]);"])).deep.equals(
+      "SELECT 1\n--test\nFROM UNNEST([]);"
+    );
+  });
+
   test("trims whitespace from statements", () => {
     expect(concatenateQueries(["  SELECT 1  ", "  SELECT 2  ", "  SELECT 3 -- blah"])).deep.equals(
       "SELECT 1;\nSELECT 2;\nSELECT 3 -- blah"
