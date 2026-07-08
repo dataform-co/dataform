@@ -520,6 +520,40 @@ suite("LineageEmitter", () => {
     expect(apiDisabledLines[0]).to.contain("target-proj");
   });
 
+  test("skip_reason=api_disabled is logged once when many in-flight calls all fail", async () => {
+    // Regression: when the first RPC has not yet returned before subsequent
+    // emit calls dispatch their own RPCs, the public-method guard cannot
+    // short-circuit them. All N rejections then hit the catch. Without a guard
+    // inside the catch, N stderr lines are printed. The guard must dedupe.
+    const mockClient = new MockLineageClient();
+    const stderr = new StderrCapture();
+    const permissionError: any = new Error("Permission Denied");
+    permissionError.code = 7;
+    mockClient.processOpenLineageRunEventError = permissionError;
+
+    const emitter = new LineageEmitter(
+      credentials,
+      { lineageEnabled: true },
+      () => mockClient as any,
+      stderr
+    );
+    const action = dataform.ExecutionAction.create({
+      target: { database: "proj", schema: "schema", name: "table" },
+      type: "table"
+    });
+    const startResult = dataform.ActionResult.create({
+      status: dataform.ActionResult.ExecutionStatus.RUNNING
+    });
+
+    for (let i = 0; i < 5; i++) {
+      emitter.emitForAction(action, startResult);
+    }
+    await emitter.drain();
+
+    const apiDisabledLines = stderr.writes.filter(w => w.includes("skip_reason=api_disabled"));
+    expect(apiDisabledLines.length).to.equal(1);
+  });
+
   test("does not fall back to global when apiEndpoint override is set", async () => {
     const mockClient = new MockLineageClient();
     const dnsError: any = new Error("14 UNAVAILABLE: getaddrinfo ENOTFOUND staging-datalineage.sandbox.googleapis.com");
