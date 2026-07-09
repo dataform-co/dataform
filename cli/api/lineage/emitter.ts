@@ -214,6 +214,20 @@ export class LineageEmitter {
       }
     };
 
+    // Enables the Dataplex Lineage UI's "BigQuery Job ID" field for CLI runs.
+    if (eventType !== "START") {
+      const bqJobId = LineageEmitter.extractBqJobId(actionResult);
+      const jobProjectId = this.credentials.projectId;
+      if (bqJobId && jobProjectId) {
+        runFacets.externalQuery = {
+          _producer: "https://github.com/dataform-co/dataform",
+          _schemaURL: "https://openlineage.io/spec/facets/1-0-0/ExternalQueryRunFacet.json",
+          externalQueryId: `${jobProjectId}.${location}.${bqJobId}`,
+          source: "bigquery"
+        };
+      }
+    }
+
     if (eventType === "FAIL") {
       const errorMessages = actionResult.tasks
         ?.map(t => t.errorMessage)
@@ -399,6 +413,19 @@ export class LineageEmitter {
     const causeMessage = typeof cause === "object" && cause ? String(cause.message || cause.code || "") : "";
     const combined = `${err.message || ""} ${causeMessage}`;
     return /ENOTFOUND|EAI_AGAIN|getaddrinfo|(?:DNS|Name) resolution failed/i.test(combined);
+  }
+
+  private static extractBqJobId(actionResult: dataform.IActionResult): string | undefined {
+    if (!actionResult.tasks) {
+      return undefined;
+    }
+    for (let i = actionResult.tasks.length - 1; i >= 0; i--) {
+      const jobId = actionResult.tasks[i]?.metadata?.bigquery?.jobId;
+      if (jobId) {
+        return jobId;
+      }
+    }
+    return undefined;
   }
 
   private generateUuid(): string {
