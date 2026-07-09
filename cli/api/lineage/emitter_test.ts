@@ -226,6 +226,107 @@ suite("LineageEmitter", () => {
     );
   });
 
+  test("emits externalQuery run facet on COMPLETE when a task carries bigquery.jobId", async () => {
+    const mockClient = new MockLineageClient();
+    const emitter = new LineageEmitter(credentials, { lineageEnabled: true }, () => mockClient as any);
+
+    const action = dataform.ExecutionAction.create({
+      target: { database: "target-project", schema: "s", name: "t" },
+      type: "table",
+      tasks: [{ statement: "SELECT 1" }]
+    });
+
+    emitter.emitForAction(action, dataform.ActionResult.create({
+      status: dataform.ActionResult.ExecutionStatus.RUNNING
+    }));
+    emitter.emitForAction(action, dataform.ActionResult.create({
+      status: dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
+      tasks: [
+        {
+          status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL,
+          metadata: { bigquery: { jobId: "job_abc123" } }
+        }
+      ]
+    }));
+    await emitter.drain();
+
+    const startFacets = fromProtoStruct(mockClient.processOpenLineageRunEventCalledWith[0].openLineage).run.facets;
+    expect(startFacets.externalQuery).to.equal(undefined);
+
+    const completeFacets = fromProtoStruct(mockClient.processOpenLineageRunEventCalledWith[1].openLineage).run.facets;
+    expect(completeFacets.externalQuery.externalQueryId).to.equal("test-project.us.job_abc123");
+    expect(completeFacets.externalQuery.source).to.equal("bigquery");
+    expect(completeFacets.externalQuery._producer).to.equal("https://github.com/dataform-co/dataform");
+  });
+
+  test("emits externalQuery run facet on FAIL when a task carries bigquery.jobId", async () => {
+    const mockClient = new MockLineageClient();
+    const emitter = new LineageEmitter(credentials, { lineageEnabled: true }, () => mockClient as any);
+
+    const action = dataform.ExecutionAction.create({
+      target: { database: "target-project", schema: "s", name: "t" },
+      type: "table"
+    });
+
+    emitter.emitForAction(action, dataform.ActionResult.create({
+      status: dataform.ActionResult.ExecutionStatus.FAILED,
+      tasks: [
+        {
+          status: dataform.TaskResult.ExecutionStatus.FAILED,
+          metadata: { bigquery: { jobId: "job_xyz789" } },
+          errorMessage: "bigquery error: something"
+        }
+      ]
+    }));
+    await emitter.drain();
+
+    const failFacets = fromProtoStruct(mockClient.processOpenLineageRunEventCalledWith[0].openLineage).run.facets;
+    expect(failFacets.externalQuery.externalQueryId).to.equal("test-project.us.job_xyz789");
+    expect(failFacets.externalQuery.source).to.equal("bigquery");
+  });
+
+  test("picks the last non-empty jobId when the action has multiple tasks", async () => {
+    const mockClient = new MockLineageClient();
+    const emitter = new LineageEmitter(credentials, { lineageEnabled: true }, () => mockClient as any);
+
+    const action = dataform.ExecutionAction.create({
+      target: { database: "target-project", schema: "s", name: "t" },
+      type: "table"
+    });
+
+    emitter.emitForAction(action, dataform.ActionResult.create({
+      status: dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
+      tasks: [
+        { status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL, metadata: { bigquery: { jobId: "job_preop" } } },
+        { status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL, metadata: { bigquery: { jobId: "job_main" } } },
+        { status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL, metadata: {} }
+      ]
+    }));
+    await emitter.drain();
+
+    const facets = fromProtoStruct(mockClient.processOpenLineageRunEventCalledWith[0].openLineage).run.facets;
+    expect(facets.externalQuery.externalQueryId).to.equal("test-project.us.job_main");
+  });
+
+  test("omits externalQuery run facet when no task carries bigquery.jobId", async () => {
+    const mockClient = new MockLineageClient();
+    const emitter = new LineageEmitter(credentials, { lineageEnabled: true }, () => mockClient as any);
+
+    const action = dataform.ExecutionAction.create({
+      target: { database: "target-project", schema: "s", name: "t" },
+      type: "table"
+    });
+
+    emitter.emitForAction(action, dataform.ActionResult.create({
+      status: dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
+      tasks: [{ status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL, metadata: {} }]
+    }));
+    await emitter.drain();
+
+    const facets = fromProtoStruct(mockClient.processOpenLineageRunEventCalledWith[0].openLineage).run.facets;
+    expect(facets.externalQuery).to.equal(undefined);
+  });
+
   test("handles permission denied error by disabling emission on subsequent calls", async () => {
     const mockClient = new MockLineageClient();
     const permissionError: any = new Error("Permission Denied");
