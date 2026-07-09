@@ -51,6 +51,36 @@ function regionalEndpointFor(location: string): string {
   return `datalineage.${location}.rep.googleapis.com`;
 }
 
+/**
+ * Retry policy for ProcessOpenLineageRunEvent, delegated to google-gax.
+ *
+ * Transient set per gRPC canonical retry semantics (https://google.aip.dev/194):
+ *   4  DEADLINE_EXCEEDED    – RPC timed out
+ *   8  RESOURCE_EXHAUSTED   – quota/rate-limit (needs backoff, hence gax)
+ *   10 ABORTED              – concurrency conflict
+ *   13 INTERNAL             – transient server error
+ *   14 UNAVAILABLE          – server briefly unreachable
+ *
+ * Backoff: 1s / 2s / 4s exponential; total budget 15s. Per-attempt RPC
+ * timeout 2s (matches prior CallOptions.timeout).
+ *
+ * REP→global endpoint fallback is NOT expressed here — gax cannot reconfigure
+ * the client's endpoint on error. That logic stays in the outer try/catch in
+ * emitOpenLineageEvent.
+ */
+export const LINEAGE_RETRY_CONFIG = {
+  retryCodes: [4, 8, 10, 13, 14],
+  backoffSettings: {
+    initialRetryDelayMillis: 1000,
+    retryDelayMultiplier: 2.0,
+    maxRetryDelayMillis: 4000,
+    initialRpcTimeoutMillis: 2000,
+    rpcTimeoutMultiplier: 1.0,
+    maxRpcTimeoutMillis: 2000,
+    totalTimeoutMillis: 15000
+  }
+};
+
 export class LineageEmitter {
   private readonly clientProvider: LineageClientProvider;
   private readonly credentials: dataform.IBigQuery;
@@ -216,7 +246,7 @@ export class LineageEmitter {
 
     // Enables the Dataplex Lineage UI's "BigQuery Job ID" field for CLI runs.
     if (eventType !== "START") {
-      const bqJobId = LineageEmitter.extractBqJobId(actionResult);
+      const bqJobId = this.extractBqJobId(actionResult);
       const jobProjectId = this.credentials.projectId;
       if (bqJobId && jobProjectId) {
         runFacets.externalQuery = {
@@ -310,17 +340,14 @@ export class LineageEmitter {
       `[lineage-debug] Sending OpenLineage event:\n${JSON.stringify(openLineagePayload, null, 2)}\n`
     );
 
-    // 2. Emit payload via ProcessOpenLineageRunEvent RPC with retry logic.
-    // Uses REP endpoint (data-residency-preserving) by default and falls back
-    // to the global endpoint if REP for this location is not resolvable — some
-    // locations (e.g. certain multi-regions, Omni) are not turned up in REP
-    // infrastructure. The fallback decision is cached per-location for the
-    // lifetime of the emitter so subsequent emits skip the failing lookup.
+    // 2. Emit payload via ProcessOpenLineageRunEvent. Retry policy is
+    // delegated to google-gax (see LINEAGE_RETRY_CONFIG). Outer loop only
+    // handles behaviors gax cannot express: REP→global endpoint fallback
+    // (requires reconfiguring the client) and PERMISSION_DENIED /
+    // SERVICE_DISABLED skip-with-reason (error-swallow-with-stderr).
+    // Runs at most twice — initial invocation + one REP fallback.
     let currentEndpoint = this.endpointForLocation(location);
-    let attempts = 0;
-    const maxAttempts = 2;
-    while (attempts < maxAttempts) {
-      attempts++;
+    for (let repFallbackAttempts = 0; repFallbackAttempts < 2; repFallbackAttempts++) {
       try {
         const client = this.clientProvider(projectId, currentEndpoint);
         await client.processOpenLineageRunEvent(
@@ -328,9 +355,9 @@ export class LineageEmitter {
             parent,
             openLineage: toProtoStruct(openLineagePayload) as any
           },
-          { timeout: 2000 }
+          { retry: LINEAGE_RETRY_CONFIG }
         );
-        break;
+        return;
       } catch (e) {
         const err = coerceAsError(e);
         const code = (err as any).code;
@@ -348,7 +375,6 @@ export class LineageEmitter {
           );
           this.repUnavailableForLocation.add(location);
           currentEndpoint = GLOBAL_LINEAGE_ENDPOINT;
-          attempts--;
           continue;
         }
 
@@ -363,7 +389,8 @@ export class LineageEmitter {
             );
           }
           return;
-        } else if (
+        }
+        if (
           code === 9 ||
           err.message?.includes("SERVICE_DISABLED") ||
           err.message?.includes("FAILED_PRECONDITION")
@@ -377,16 +404,7 @@ export class LineageEmitter {
           return;
         }
 
-        const isTransient =
-          code === 14 ||
-          code === 4 ||
-          err.message?.includes("UNAVAILABLE") ||
-          err.message?.includes("DEADLINE_EXCEEDED");
-
-        if (isTransient && attempts < maxAttempts) {
-          await new Promise(resolve => setTimeout(resolve, 500));
-          continue;
-        }
+        // gax has already exhausted retries on transient codes; propagate.
         throw err;
       }
     }
@@ -415,7 +433,7 @@ export class LineageEmitter {
     return /ENOTFOUND|EAI_AGAIN|getaddrinfo|(?:DNS|Name) resolution failed/i.test(combined);
   }
 
-  private static extractBqJobId(actionResult: dataform.IActionResult): string | undefined {
+  private extractBqJobId(actionResult: dataform.IActionResult): string | undefined {
     if (!actionResult.tasks) {
       return undefined;
     }

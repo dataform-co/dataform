@@ -1,7 +1,11 @@
 import { expect } from "chai";
 import Long from "long";
 
-import { createLineageClientProvider, LineageEmitter } from "df/cli/api/lineage/emitter";
+import {
+  createLineageClientProvider,
+  LINEAGE_RETRY_CONFIG,
+  LineageEmitter
+} from "df/cli/api/lineage/emitter";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 
@@ -357,11 +361,22 @@ suite("LineageEmitter", () => {
     expect(mockClient.processOpenLineageRunEventCalledWith.length).to.equal(1);
   });
 
-  test("handles transient errors with retry", async () => {
+  test("LINEAGE_RETRY_CONFIG declares canonical transient set + exponential backoff", () => {
+    expect(LINEAGE_RETRY_CONFIG.retryCodes).to.deep.equal([4, 8, 10, 13, 14]);
+    expect(LINEAGE_RETRY_CONFIG.backoffSettings).to.deep.include({
+      initialRetryDelayMillis: 1000,
+      retryDelayMultiplier: 2.0,
+      maxRetryDelayMillis: 4000,
+      maxRpcTimeoutMillis: 2000,
+      totalTimeoutMillis: 15000
+    });
+  });
+
+  test("non-transient errors propagate without outer-loop retry", async () => {
     const mockClient = new MockLineageClient();
-    const transientError: any = new Error("Service Unavailable");
-    transientError.code = 14;
-    mockClient.processOpenLineageRunEventError = transientError;
+    const invalidArgErr: any = new Error("bad request");
+    invalidArgErr.code = 3; // INVALID_ARGUMENT — not in LINEAGE_RETRY_CONFIG.retryCodes
+    mockClient.processOpenLineageRunEventError = invalidArgErr;
 
     const emitter = new LineageEmitter(credentials, { lineageEnabled: true }, () => mockClient as any);
 
@@ -376,8 +391,9 @@ suite("LineageEmitter", () => {
     emitter.emitForAction(action, startResult);
     await emitter.drain();
 
-    // Retries once (attempts = 1, then attempts = 2), so 2 total calls before swallowing
-    expect(mockClient.processOpenLineageRunEventCalledWith.length).to.equal(2);
+    // Mock bypasses gax, so gax retry never engages. Outer loop makes exactly
+    // one call for non-transient errors (no REP fallback, no skip code).
+    expect(mockClient.processOpenLineageRunEventCalledWith.length).to.equal(1);
   });
 
   test("creates lineage client provider with custom endpoint", () => {
