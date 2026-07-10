@@ -10,6 +10,7 @@ ts_library(
         ["**/*.ts"],
         exclude = [
             "utils/**/*.*",
+            "lineage/testing/**/*.*",
             "**/*_test.ts",
         ],
     ),
@@ -64,6 +65,7 @@ ts_test_suite(
         "execution_sql_test.ts",
         "lineage/emitter_factory_test.ts",
         "lineage/emitter_test.ts",
+        "lineage/lineage_integration_test.ts",
         "utils_test.ts",
     ],
     data = [
@@ -75,10 +77,12 @@ ts_test_suite(
     ] + glob(["goldens/**"]),
     deps = [
         ":api",
+        "//cli/api/lineage/testing",
         "//core",
         "//protos:ts",
         "//testing",
         "@npm//@google-cloud/bigquery",
+        "@npm//@google-cloud/lineage",
         "@npm//@types/chai",
         "@npm//@types/fs-extra",
         "@npm//@types/js-yaml",
