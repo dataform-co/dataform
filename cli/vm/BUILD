@@ -1,5 +1,6 @@
 package(default_visibility = ["//visibility:public"])
 
+load("//testing:index.bzl", "ts_test_suite")
 load("//tools:ts_library.bzl", "ts_library")
 
 ts_library(
@@ -18,6 +19,25 @@ ts_library(
         "@npm//glob",
         "@npm//semver",
         "@npm//vm2",
+    ],
+)
+
+ts_test_suite(
+    name = "tests",
+    srcs = [
+        "backwards_compat_test.ts",
+    ],
+    deps = [
+        ":vm",
+        "//protos:ts",
+        "//testing",
+        "@npm//@types/chai",
+        "@npm//@types/fs-extra",
+        "@npm//@types/js-yaml",
+        "@npm//@types/node",
+        "@npm//chai",
+        "@npm//fs-extra",
+        "@npm//js-yaml",
     ],
 )
 
