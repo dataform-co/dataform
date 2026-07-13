@@ -113,7 +113,7 @@ suite("LineageEmitter", () => {
     expect(startPayload.parent).to.equal("projects/target-project/locations/us");
     const startOpenLineage = fromProtoStruct(startPayload.openLineage);
     expect(startOpenLineage.eventType).to.equal("START");
-    expect(startOpenLineage.job.name).to.equal("target-project.us.cli.0b5d3e86239e91e3.target_dataset.target_table");
+    expect(startOpenLineage.job.name).to.equal("target-project.us.cli.my-dataform-project-0b5d3e86.target_dataset.target_table");
 
     // Assert COMPLETE event
     const completePayload = mockClient.processOpenLineageRunEventCalledWith[1];
@@ -122,14 +122,14 @@ suite("LineageEmitter", () => {
     expect(openLineage.run.runId).to.equal(startOpenLineage.run.runId);
     expect(openLineage.eventType).to.equal("COMPLETE");
     expect(openLineage.producer).to.equal("https://github.com/dataform-co/dataform");
-    expect(openLineage.job.name).to.equal("target-project.us.cli.0b5d3e86239e91e3.target_dataset.target_table");
+    expect(openLineage.job.name).to.equal("target-project.us.cli.my-dataform-project-0b5d3e86.target_dataset.target_table");
     expect(openLineage.inputs[0].namespace).to.equal("bigquery");
     expect(openLineage.inputs[0].name).to.equal("source-project.source_dataset.source_table");
     expect(openLineage.outputs[0].namespace).to.equal("bigquery");
     expect(openLineage.outputs[0].name).to.equal("target-project.target_dataset.target_table");
 
     // Assert Parent run facet
-    expect(openLineage.run.facets.parent.job.name).to.equal("target-project.us.cli.0b5d3e86239e91e3.run");
+    expect(openLineage.run.facets.parent.job.name).to.equal("target-project.us.cli.my-dataform-project-0b5d3e86.run");
     expect(openLineage.run.facets.parent.run.runId).to.be.a("string");
 
     // Nominal time run facet verified
@@ -148,7 +148,7 @@ suite("LineageEmitter", () => {
     // GCP lineage job facet verified
     expect(openLineage.job.facets.gcp_lineage.displayName).to.equal("BQ Pipelines action target_dataset.target_table");
     expect(openLineage.job.facets.gcp_lineage.origin.sourceType).to.equal("BQ_PIPELINES");
-    expect(openLineage.job.facets.gcp_lineage.origin.name).to.equal("projects/target-project/locations/us/cli/0b5d3e86239e91e3");
+    expect(openLineage.job.facets.gcp_lineage.origin.name).to.equal("projects/target-project/locations/us/cli/my-dataform-project-0b5d3e86");
 
     // Job type facet verified
     expect(openLineage.job.facets.jobType.integration).to.equal("BQ_PIPELINES");
@@ -210,7 +210,7 @@ suite("LineageEmitter", () => {
     
     const openLineage = fromProtoStruct(failPayload.openLineage);
     expect(openLineage.eventType).to.equal("FAIL");
-    expect(openLineage.job.name).to.equal("target-project.us.cli.0b5d3e86239e91e3.target_dataset.failing_table");
+    expect(openLineage.job.name).to.equal("target-project.us.cli.my-dataform-project-0b5d3e86.target_dataset.failing_table");
 
     // Error message run facet verified
     expect(openLineage.run.facets.errorMessage.message).to.equal(
@@ -702,6 +702,63 @@ suite("LineageEmitter", () => {
     for (const used of endpointsUsed) {
       expect(used).to.equal("staging-datalineage.sandbox.googleapis.com");
     }
+  });
+
+  test("sanitizes projectDir basename with special chars in workdirIdentifier", async () => {
+    const mockClient = new MockLineageClient();
+    const emitter = new LineageEmitter(
+      credentials,
+      { lineageEnabled: true, projectDir: "/workspaces/My Project! v2" },
+      () => mockClient as any
+    );
+
+    const action = dataform.ExecutionAction.create({
+      target: { database: "target-project", schema: "s", name: "t" },
+      type: "table",
+      tasks: [{ statement: "SELECT 1" }]
+    });
+
+    emitter.emitForAction(action, dataform.ActionResult.create({
+      status: dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
+      tasks: [{ status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL }]
+    }));
+    await emitter.drain();
+
+    const openLineage = fromProtoStruct(
+      mockClient.processOpenLineageRunEventCalledWith[0].openLineage
+    );
+    // "My Project! v2" -> "my-project-v2" + "-" + 8-hex hash slice.
+    expect(openLineage.job.facets.gcp_lineage.origin.name).to.match(
+      /^projects\/target-project\/locations\/us\/cli\/my-project-v2-[0-9a-f]{8}$/
+    );
+  });
+
+  test("falls back to 'unknown-workdir' when projectDir is not provided", async () => {
+    const mockClient = new MockLineageClient();
+    const emitter = new LineageEmitter(
+      credentials,
+      { lineageEnabled: true },
+      () => mockClient as any
+    );
+
+    const action = dataform.ExecutionAction.create({
+      target: { database: "target-project", schema: "s", name: "t" },
+      type: "table",
+      tasks: [{ statement: "SELECT 1" }]
+    });
+
+    emitter.emitForAction(action, dataform.ActionResult.create({
+      status: dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
+      tasks: [{ status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL }]
+    }));
+    await emitter.drain();
+
+    const openLineage = fromProtoStruct(
+      mockClient.processOpenLineageRunEventCalledWith[0].openLineage
+    );
+    expect(openLineage.job.facets.gcp_lineage.origin.name).to.equal(
+      "projects/target-project/locations/us/cli/unknown-workdir"
+    );
   });
 });
 

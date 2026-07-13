@@ -1,5 +1,6 @@
 import { LineageClient } from "@google-cloud/lineage";
 import { createHash } from "crypto";
+import * as path from "path";
 
 import { coerceAsError } from "df/common/errors/errors";
 import { version } from "df/core/version";
@@ -208,11 +209,12 @@ export class LineageEmitter {
       }
     ];
 
-    // Job and Run names
-    const repositoryName = this.workdirHash || "unknown-repo";
+    // Producer-instance identifier for KC UI display and process uniqueness.
+    // Format: `{sanitizedBasename}-{shortHash}` — readable + collision-resistant per user.
+    const workdirIdentifier = this.buildWorkdirIdentifier();
     const canonicalActionTarget = `${action.target.schema}.${action.target.name}`;
-    const jobName = `${projectId}.${location}.cli.${repositoryName}.${canonicalActionTarget}`;
-    const parentJobName = `${projectId}.${location}.cli.${repositoryName}.run`;
+    const jobName = `${projectId}.${location}.cli.${workdirIdentifier}.${canonicalActionTarget}`;
+    const parentJobName = `${projectId}.${location}.cli.${workdirIdentifier}.run`;
 
     const nominalTime: any = {
       _schemaURL: "https://openlineage.io/spec/facets/1-0-1/NominalTimeRunFacet.json",
@@ -291,7 +293,7 @@ export class LineageEmitter {
       _schemaURL: "https://openlineage.io/spec/facets/1-0-0/GcpLineageJobFacet.json#/$defs/GcpLineageJobFacet",
       displayName: `BQ Pipelines action ${canonicalActionTarget}`,
       origin: {
-        name: `projects/${projectId}/locations/${location}/cli/${repositoryName}`,
+        name: `projects/${projectId}/locations/${location}/cli/${workdirIdentifier}`,
         sourceType: "BQ_PIPELINES"
       }
     };
@@ -423,6 +425,20 @@ export class LineageEmitter {
     const causeMessage = typeof cause === "object" && cause ? String(cause.message || cause.code || "") : "";
     const combined = `${err.message || ""} ${causeMessage}`;
     return /ENOTFOUND|EAI_AGAIN|getaddrinfo|(?:DNS|Name) resolution failed/i.test(combined);
+  }
+
+  private buildWorkdirIdentifier(): string {
+    if (!this.workdirHash || !this.emitterOptions.projectDir) {
+      return "unknown-workdir";
+    }
+    const rawBase = path.basename(this.emitterOptions.projectDir);
+    const sanitized = rawBase
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+    const base = sanitized || "workdir";
+    const shortHash = this.workdirHash.slice(0, 8);
+    return `${base}-${shortHash}`;
   }
 
   private extractBqJobId(actionResult: dataform.IActionResult): string | undefined {
