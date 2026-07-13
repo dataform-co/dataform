@@ -84,8 +84,7 @@ EXCEPTION WHEN ERROR THEN
   DROP PROCEDURE IF EXISTS `project-id.dataset-id.df_osc_test_uuid`;
   RAISE;
 END;
-DROP PROCEDURE IF EXISTS `project-id.dataset-id.df_osc_test_uuid`
-;
+DROP PROCEDURE IF EXISTS `project-id.dataset-id.df_osc_test_uuid`;
 merge `project-id.dataset-id.incremental_on_schema_change` DATAFORM_DEST
 using (select 1 as id, 'a' as field1, 'new' as field2
 ) DATAFORM_SOURCE
