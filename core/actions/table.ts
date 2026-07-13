@@ -651,6 +651,7 @@ export class Table extends ActionBuilder<dataform.Table> {
             "partitionExpirationDays",
             "requirePartitionFilter",
             "additionalOptions",
+            "incrementalPredicates",
             "iceberg"
           ]),
           "BigQuery table config"

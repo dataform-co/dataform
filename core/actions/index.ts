@@ -371,6 +371,7 @@ export interface ILegacyBigQueryOptions {
     tableFolderRoot?: string;
     tableFolderSubpath?: string;
   }
+  incrementalPredicates?: string[];
 }
 
 /**
@@ -471,6 +472,10 @@ export class LegacyConfigConverter {
     if(!!legacyConfig.bigquery.iceberg) {
       legacyConfig.iceberg = legacyConfig.bigquery.iceberg;
       delete legacyConfig.bigquery.iceberg;
+    }
+    if (!!legacyConfig.bigquery.incrementalPredicates) {
+      legacyConfig.incrementalPredicates = legacyConfig.bigquery.incrementalPredicates;
+      delete legacyConfig.bigquery.incrementalPredicates;
     }
     // To prevent skipping throwing an error when there are additional, unused fields, only delete
     // the legacy bigquery object if there are no more fields left on it.

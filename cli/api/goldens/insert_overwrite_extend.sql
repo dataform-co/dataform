@@ -38,26 +38,11 @@ SET columns_removed = (
 );
 
 
--- Apply schema change strategy (SYNCHRONIZE).
-DECLARE invalid_removed_columns ARRAY<STRING>;
-SET invalid_removed_columns = (
-  SELECT IFNULL(ARRAY_AGG(col), []) FROM UNNEST(columns_removed) AS col WHERE col IN UNNEST(["id"])
-);
-
-IF ARRAY_LENGTH(invalid_removed_columns) > 0 THEN
-  RAISE USING MESSAGE = FORMAT(
-    "Cannot drop columns %T as they are part of the unique key for table `project-id.dataset-id.incremental_on_schema_change`",
-    invalid_removed_columns
-  );
-END IF;
-
+-- Apply schema change strategy (EXTEND).
 IF ARRAY_LENGTH(columns_removed) > 0 THEN
-  EXECUTE IMMEDIATE (
-    "ALTER TABLE `project-id.dataset-id.incremental_on_schema_change` " ||
-    (
-      SELECT STRING_AGG(FORMAT("DROP COLUMN IF EXISTS %s", col), ", ")
-      FROM UNNEST(columns_removed) AS col
-    )
+  RAISE USING MESSAGE = FORMAT(
+    "Column removals are not allowed when on_schema_change = 'EXTEND'. Removed columns: %T",
+    columns_removed
   );
 END IF;
 
@@ -87,12 +72,28 @@ EXCEPTION WHEN ERROR THEN
 END;
 DROP PROCEDURE IF EXISTS `project-id.dataset-id.df_osc_test_uuid`
 ;
-merge `project-id.dataset-id.incremental_on_schema_change` DATAFORM_DEST
-using (select 1 as id, 'a' as field1, 'new' as field2
-) DATAFORM_SOURCE
-on DATAFORM_DEST.id = DATAFORM_SOURCE.id 
+CREATE OR REPLACE TEMP TABLE `staging_table_temp_test_uuid` AS (
+  select 1 as id, 'a' as field1, 'new' as field2
+);
 
-when matched then
-  update set `id` = DATAFORM_SOURCE.id,`field1` = DATAFORM_SOURCE.field1
-when not matched then
-  insert (`id`,`field1`) values (`id`,`field1`)
+BEGIN
+  DECLARE partitions_for_replacement DEFAULT (
+    ARRAY(
+      SELECT DISTINCT DATE(ts)
+      FROM `staging_table_temp_test_uuid`
+      WHERE DATE(ts) IS NOT NULL
+    )
+  );
+
+  MERGE `project-id.dataset-id.incremental_on_schema_change` DATAFORM_DEST
+  USING `staging_table_temp_test_uuid` DATAFORM_SOURCE
+  ON FALSE
+  WHEN NOT MATCHED BY SOURCE AND DATE(ts) IN UNNEST(partitions_for_replacement) 
+  
+  THEN
+    DELETE
+  WHEN NOT MATCHED BY TARGET THEN
+    INSERT (`id`,`field1`) VALUES (`id`,`field1`);
+END;
+
+DROP TABLE IF EXISTS `staging_table_temp_test_uuid`

@@ -110,6 +110,7 @@ message BigQueryOptions {
   TableFormat table_format = 9;
   FileFormat file_format = 10;
   string storage_uri = 11;
+  repeated string incremental_predicates = 12;
 }
 
 message GraphErrors {
@@ -194,6 +195,18 @@ enum OnSchemaChange {
   SYNCHRONIZE = 3;
 }
 
+enum IncrementalStrategy {
+  // Strategy is unspecified. Defaults to MERGE if uniqueKey is configured,
+  // or APPEND otherwise.
+  INCREMENTAL_STRATEGY_UNSPECIFIED = 0;
+  // MERGE strategy. Matches rows based on uniqueKey to update existing row
+  // or insert new ones.
+  MERGE = 1;
+  // INSERT_OVERWRITE strategy. Overwrites entire partitions in the target
+  // table that are present in the new staging data.
+  INSERT_OVERWRITE = 2;
+}
+
 message Table {
   // For legacy compatability reasons, both incremental tables and views are
   // configured in compiled graphs via the Table proto.
@@ -229,6 +242,9 @@ message Table {
   repeated string incremental_post_ops = 29;
 
   string jit_code = 38;
+
+  // The incremental strategy to use when updating the incremental table.
+  IncrementalStrategy incremental_strategy = 39;
 
   // Warehouse specific features.
   BigQueryOptions bigquery = 22;
