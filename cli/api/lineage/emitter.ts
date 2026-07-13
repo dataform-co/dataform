@@ -286,14 +286,6 @@ export class LineageEmitter {
       };
     }
 
-    if (action.fileName) {
-      jobFacets.sourceCodeLocation = {
-        _schemaURL: "https://openlineage.io/spec/facets/1-0-0/SourceCodeLocationJobFacet.json",
-        type: "git",
-        url: action.fileName
-      };
-    }
-
     jobFacets.gcp_lineage = {
       _producer: "https://github.com/dataform-co/dataform",
       _schemaURL: "https://openlineage.io/spec/facets/1-0-0/GcpLineageJobFacet.json#/$defs/GcpLineageJobFacet",
