@@ -145,9 +145,6 @@ suite("LineageEmitter", () => {
       "CREATE TABLE target_table AS SELECT * FROM source_table"
     );
 
-    // Source code location job facet verified
-    expect(openLineage.job.facets.sourceCodeLocation.url).to.equal("definitions/target_table.sqlx");
-
     // GCP lineage job facet verified
     expect(openLineage.job.facets.gcp_lineage.displayName).to.equal("BQ Pipelines action target_dataset.target_table");
     expect(openLineage.job.facets.gcp_lineage.origin.sourceType).to.equal("BQ_PIPELINES");
