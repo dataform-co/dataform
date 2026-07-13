@@ -306,6 +306,38 @@ actions:
     );
   });
 
+  test(`multiline rowConditions compile to single-line failing_row_condition literals`, () => {
+    // Regression test for #2201: a multiline rowConditions entry must not produce a
+    // multiline single-quoted string literal, which BigQuery rejects.
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    fs.writeFileSync(path.join(projectDir, "workflow_settings.yaml"), VALID_WORKFLOW_SETTINGS_YAML);
+    fs.mkdirSync(path.join(projectDir, "definitions"));
+    fs.writeFileSync(
+      path.join(projectDir, "definitions/test.sqlx"),
+      `config {
+        type: "table",
+        assertions: {
+          rowConditions: ["a > 0\n  AND b > 0"]
+        }
+      }
+      SELECT 1 AS a, 1 AS b`
+    );
+
+    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+    expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+    const rowConditionsAssertion = result.compile.compiledGraph.assertions.find(
+      assertion => assertion.target.name === "defaultDataset_test_assertions_rowConditions"
+    );
+    // The failing_row_condition string literal has its newline escaped, so the
+    // single-quoted literal stays on one line...
+    expect(rowConditionsAssertion.query).contains(
+      "'a > 0\\n  AND b > 0' AS failing_row_condition"
+    );
+    // ...while the WHERE NOT (...) clause keeps the raw, multiline expression.
+    expect(rowConditionsAssertion.query).contains("WHERE NOT (a > 0\n  AND b > 0)");
+  });
+
   suite("Assertions as dependencies", ({ beforeEach }) => {
     [
       WorkflowSettingsTemplates.bigquery,
