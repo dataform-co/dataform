@@ -72,24 +72,6 @@ message WorkflowSettings {
   ManagedSparkExecutionOptionsConfig default_managed_spark_execution_options = 17;
 }
 
-message DefaultIcebergConfig {
-  // Optional. Bucket name used to construct a storage URI when creating an
-  // Iceberg table.
-  string bucket_name = 1;
-
-  // Optional. Table folder root used to construct a storage URI when creating
-  // an Iceberg table.
-  string table_folder_root = 2;
-
-  // Optional. Table folder subpath used to construct a storage URI when
-  // creating an Iceberg table.
-  string table_folder_subpath = 3;
-
-  // Optional. The connection specifying the credentials to be used to read and
-  // write to external storage, such as Cloud Storage.
-  string connection = 4;
-}
-
 // Action configs defines the contents of `actions.yaml` configuration files.
 message ActionConfigs {
   repeated ActionConfig actions = 1;
@@ -385,6 +367,18 @@ message ActionConfig {
     SYNCHRONIZE = 3;
   }
 
+  enum IncrementalStrategy {
+    // Strategy is unspecified. Defaults to MERGE if uniqueKey is configured,
+    // or APPEND otherwise.
+    INCREMENTAL_STRATEGY_UNSPECIFIED = 0;
+    // MERGE strategy. Matches rows based on uniqueKey to update existing rows
+    // or insert new ones.
+    INCREMENTAL_STRATEGY_MERGE = 1;
+    // INSERT_OVERWRITE strategy. Overwrites entire partitions in the target
+    // table that are present in the new staging data.
+    INCREMENTAL_STRATEGY_INSERT_OVERWRITE = 2;
+  }
+
   message IncrementalTableConfig {
     // The name of the incremental table.
     string name = 1;
@@ -488,6 +482,12 @@ message ActionConfig {
     // If unset, the value from workflow_settings.yaml is used. If neither is set, default BigQuery behavior applies.
     // Dataform CLI only (GCP Dataform support pending).
     string reservation = 27;
+
+    // Optional. The incremental strategy to use when updating the table.
+    IncrementalStrategy incremental_strategy = 28;
+
+    // Array of SQL-based predicates for when incremental updates are applied.
+    repeated string incremental_predicates = 29;
   }
 
   message AssertionConfig {

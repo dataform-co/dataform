@@ -2,8 +2,8 @@ syntax = "proto3";
 
 package dataform;
 
-import "configs.proto";
 import "extension.proto";
+
 import "google/protobuf/struct.proto";
 
 option java_package = "com.dataform.protos";
@@ -43,6 +43,24 @@ message ProjectConfig {
   reserved 3, 4, 6, 8, 10, 12, 13;
 }
 
+message DefaultIcebergConfig {
+  // Optional. Bucket name used to construct a storage URI when creating an
+  // Iceberg table.
+  string bucket_name = 1;
+
+  // Optional. Table folder root used to construct a storage URI when creating
+  // an Iceberg table.
+  string table_folder_root = 2;
+
+  // Optional. Table folder subpath used to construct a storage URI when
+  // creating an Iceberg table.
+  string table_folder_subpath = 3;
+
+  // Optional. The connection specifying the credentials to be used to read and
+  // write to external storage, such as Cloud Storage.
+  string connection = 4;
+}
+
 message CompileConfig {
   // Required.
   string project_dir = 1;
@@ -53,7 +71,8 @@ message CompileConfig {
   // Project configuration overrides.
   ProjectConfig project_config_override = 3;
 
-  // Override compilation timeout settings.
+  // Override top-level compilation timeout (the single compile worker that
+  // runs once per invocation).
   int32 timeout_millis = 6;
 
   Extension extension = 10;
@@ -93,6 +112,7 @@ message BigQueryOptions {
   TableFormat table_format = 9;
   FileFormat file_format = 10;
   string storage_uri = 11;
+  repeated string incremental_predicates = 12;
 }
 
 message GraphErrors {
@@ -177,6 +197,18 @@ enum OnSchemaChange {
   SYNCHRONIZE = 3;
 }
 
+enum IncrementalStrategy {
+  // Strategy is unspecified. Defaults to MERGE if uniqueKey is configured,
+  // or APPEND otherwise.
+  INCREMENTAL_STRATEGY_UNSPECIFIED = 0;
+  // MERGE strategy. Matches rows based on uniqueKey to update existing row
+  // or insert new ones.
+  MERGE = 1;
+  // INSERT_OVERWRITE strategy. Overwrites entire partitions in the target
+  // table that are present in the new staging data.
+  INSERT_OVERWRITE = 2;
+}
+
 message Table {
   // For legacy compatability reasons, both incremental tables and views are
   // configured in compiled graphs via the Table proto.
@@ -212,6 +244,9 @@ message Table {
   repeated string incremental_post_ops = 29;
 
   string jit_code = 38;
+
+  // The incremental strategy to use when updating the incremental table.
+  IncrementalStrategy incremental_strategy = 39;
 
   // Warehouse specific features.
   BigQueryOptions bigquery = 22;

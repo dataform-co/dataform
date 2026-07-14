@@ -225,7 +225,7 @@ suite("@dataform/api", () => {
           expect(action.tasks).eql([
             dataform.ExecutionTask.create({
               type: "statement",
-              statement: "preOp\n;\ncreate or replace table `schema.a` as foo\n;\npostOp"
+              statement: "preOp;\ncreate or replace table `schema.a` as foo;\npostOp"
             })
           ]);
         });
@@ -242,7 +242,7 @@ suite("@dataform/api", () => {
             dataform.ExecutionTask.create({
               type: "statement",
               statement:
-                "incremental preOp\n;\ndrop view if exists `schema.a`\n;\ninsert into `schema.a`\t\n()\t\nselect \t\nfrom (incremental foo) as insertions\n;\nincremental postOp"
+                "incremental preOp;\ndrop view if exists `schema.a`;\ninsert into `schema.a`\t\n()\t\nselect \t\nfrom (incremental foo) as insertions;\nincremental postOp"
             })
           ]);
         });

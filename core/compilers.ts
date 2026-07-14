@@ -85,6 +85,15 @@ globalThis.rawFilesCache[${JSON.stringify(normalizedPath)}] = ${JSON.stringify(c
     return cacheRegistration + compiledCode;
   }
 
+  if (Path.fileExtension(path) === "md") {
+    const contents = code
+      .replace(/\r\n/g, "\n")
+      .replace(/\\/g, "\\\\")
+      .replace(/`/g, "\\`")
+      .replace(/\${/g, "\\${");
+    return `exports.contents = \`${contents}\`;`;
+  }
+
   return compiledCode;
 }
 
