@@ -73,7 +73,9 @@ function jitCompileAssertion(
   const jctx: JitContext<IActionContext> = new SqlActionJitContext(
     adapter, request,
   );
-  return mainBody(jctx).then(query => dataform.JitAssertionResult.create({ query }));
+  return mainBody(jctx).then(result =>
+    typeof result === "string" ? { query: result } : result
+  );
 }
 
 function jitCompileIncrementalTable(
