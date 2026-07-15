@@ -111,6 +111,7 @@ message BigQueryOptions {
   FileFormat file_format = 10;
   string storage_uri = 11;
   repeated string incremental_predicates = 12;
+  bool preserve_governance_controls = 13;
 }
 
 message GraphErrors {

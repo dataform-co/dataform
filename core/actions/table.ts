@@ -199,6 +199,7 @@ export class Table extends ActionBuilder<dataform.Table> {
       partitionExpirationDays: config.partitionExpirationDays,
       requirePartitionFilter: config.requirePartitionFilter,
       additionalOptions: config.additionalOptions,
+      preserveGovernanceControls: config.preserveGovernanceControls,
       ...(config.iceberg ? {
         connection: getConnectionForIcebergTable(
           config.iceberg.connection,
