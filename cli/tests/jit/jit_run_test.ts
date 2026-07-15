@@ -86,6 +86,44 @@ suite("run", () => {
     verify(mockAdapter.execute("SELECT 2", anything())).once();
   });
 
+  test("JiT compilation is performed for Assertion actions", async () => {
+    const { mockAdapter, adapterInstance } = createMocks();
+
+    const executionGraph = createGraph([
+      {
+        target: { database: "db", schema: "sch", name: "jit_assertion" },
+        type: "assertion",
+        jitCode: "async (jctx) => { return 'SELECT * FROM t WHERE bad'; }",
+        tasks: []
+      }
+    ]);
+
+    const runner = new Runner(adapterInstance, executionGraph, {
+      jitCompiler: async (req, pdir, adapter) => {
+        return await jitCompile(req, (method, internalReq, callback) => {
+          (adapter as any).rpcImpl(method, internalReq, callback);
+        });
+      }
+    });
+    const result = await runner.execute().result();
+
+    if (result.status !== dataform.RunResult.ExecutionStatus.SUCCESSFUL) {
+      process.stderr.write("Run failed with actions: " + JSON.stringify(result.actions, null, 2) + "\n");
+    }
+    expect(result.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
+
+    const actionResult = result.actions[0];
+    expect(actionResult.target.name).equals("jit_assertion");
+    expect(actionResult.status).equals(dataform.ActionResult.ExecutionStatus.SUCCESSFUL);
+
+    // createAssertionTasks emits 2 tasks: create-or-replace view + row-count check.
+    expect(actionResult.tasks.length).equals(2);
+    expect(actionResult.tasks[0].status).equals(dataform.TaskResult.ExecutionStatus.SUCCESSFUL);
+    expect(actionResult.tasks[1].status).equals(dataform.TaskResult.ExecutionStatus.SUCCESSFUL);
+
+    verify(mockAdapter.execute(anything(), anything())).atLeast(1);
+  });
+
   test("Mixed run with JiT and AoT actions", async () => {
     const { mockAdapter, adapterInstance } = createMocks();
 

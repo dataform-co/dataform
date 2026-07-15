@@ -120,6 +120,38 @@ suite("JiT support runtime", ({ afterEach }) => {
     );
   });
 
+  test("JiT compilation of an Assertion action", async () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    await setupJitProject(tmpDirFixture, projectDir);
+
+    fs.writeFileSync(
+      path.join(projectDir, "definitions", "jit_assertion.js"),
+      `assert("jit_assertion").jitCode(async (jctx) => "SELECT 1 as row_count")`
+    );
+
+    const runResult = await getProcessResult(
+      execFile(nodePath, [
+        cliEntryPointPath,
+        "run",
+        projectDir,
+        "--credentials",
+        CREDENTIALS_PATH,
+        "--dry-run",
+        "--json",
+        "--actions=jit_assertion"
+      ])
+    );
+
+    expect(runResult.exitCode).equals(0);
+    const executedGraph = JSON.parse(runResult.stdout);
+    const assertionAction = executedGraph.actions.find(
+      (a: any) => a.target.name === "jit_assertion"
+    );
+    expect(assertionAction.status).to.equal(2); // SUCCESSFUL
+    // createAssertionTasks emits 2 tasks: create-or-replace view + row-count check.
+    expect(assertionAction.tasks.length).equals(2);
+  });
+
   test("JiT parallel execution robustness", async () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
     await setupJitProject(tmpDirFixture, projectDir);
