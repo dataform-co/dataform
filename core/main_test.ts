@@ -2310,5 +2310,26 @@ publish("name", {type: "${fromType}", schema: "schemaOverride"}).type("${toType}
       expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).contains("storing compilation error as requested!");
       expect(result.compile.compiledGraph.targets?.map(t => t.name)).deep.equals(["sample-action", "e", "file"]);
     });
+
+    test("preserveGovernanceControls propagates to compiled graph", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/file.sqlx"),
+        `
+config {
+  type: "table",
+  preserveGovernanceControls: true
+}
+select 1 as a`
+      );
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(result.compile.compiledGraph.tables[0].bigquery.preserveGovernanceControls).equals(true);
+    });
   });
 });

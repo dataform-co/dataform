@@ -262,6 +262,10 @@ message ActionConfig {
     // If unset, the value from workflow_settings.yaml is used. If neither is set, default BigQuery behavior applies.
     // Dataform CLI only (GCP Dataform support pending).
     string reservation = 24;
+
+    // Optional. If true, preserves existing BigQuery column governance controls
+    // (e.g. data policy) when recreating a table.
+    bool preserve_governance_controls = 25;
   }
 
   message Metadata {
