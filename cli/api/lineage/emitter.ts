@@ -23,6 +23,8 @@ export interface IStderrLike {
 
 export type LineageClientProvider = (projectId: string, endpoint: string) => LineageClient;
 
+const LINEAGE_CLIENT_LIB_NAME = "dataform-cli";
+
 export function createLineageClientProvider(
   credentials: dataform.IBigQuery,
   apiEndpointOverride?: string
@@ -38,7 +40,9 @@ export function createLineageClientProvider(
         new LineageClient({
           projectId: targetProjectId,
           apiEndpoint: effectiveEndpoint,
-          credentials: credentials.credentials && JSON.parse(credentials.credentials)
+          credentials: credentials.credentials && JSON.parse(credentials.credentials),
+          libName: LINEAGE_CLIENT_LIB_NAME,
+          libVersion: version
         })
       );
     }
