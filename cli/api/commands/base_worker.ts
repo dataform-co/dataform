@@ -4,7 +4,7 @@ export abstract class BaseWorker<TResponse, TMessage = any> {
   protected constructor(private readonly loaderPath: string) {}
 
   protected async runWorker(
-    timeoutMillis: number | undefined,
+    timeoutMillis: number,
     onBoot: (child: ChildProcess) => void,
     onMessage: (message: TMessage, child: ChildProcess, resolve: (res: TResponse) => void, reject: (err: Error) => void) => void,
     onCancel?: (cancel: () => void) => void
@@ -23,24 +23,20 @@ export abstract class BaseWorker<TResponse, TMessage = any> {
           return;
         }
         completed = true;
-        if (timeout !== undefined) {
-          clearTimeout(timeout);
-        }
+        clearTimeout(timeout);
         child.kill("SIGKILL");
         fn();
       };
 
-      const timeout = timeoutMillis !== undefined
-        ? setTimeout(() => {
-            terminate(() =>
-              reject(new Error(
-                `Compilation timed out after ${timeoutMillis / 1000} seconds. ` +
-                `To allow more time, re-run with a longer --timeout ` +
-                `(e.g. --timeout=2m, --timeout=1h).`
-              ))
-            );
-          }, timeoutMillis)
-        : undefined;
+      const timeout = setTimeout(() => {
+        terminate(() =>
+          reject(new Error(
+            `Compilation timed out after ${timeoutMillis / 1000} seconds. ` +
+            `To allow more time, re-run with a longer --timeout ` +
+            `(e.g. --timeout=2m, --timeout=1h).`
+          ))
+        );
+      }, timeoutMillis);
 
       onCancel?.(() =>
         terminate(() => reject(new Error("Run cancelled while worker was in flight.")))

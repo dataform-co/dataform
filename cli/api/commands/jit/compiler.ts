@@ -5,6 +5,7 @@ import { BaseWorker } from "df/cli/api/commands/base_worker";
 import { handleDbRequest } from "df/cli/api/commands/jit/rpc";
 import { IDbAdapter, IDbClient } from "df/cli/api/dbadapters";
 import { IBigQueryExecutionOptions } from "df/cli/api/dbadapters/bigquery";
+import { DEFAULT_COMPILATION_TIMEOUT_MILLIS } from "df/cli/api/utils/constants";
 import { dataform } from "df/protos/ts";
 
 export interface IJitWorkerMessage {
@@ -34,7 +35,7 @@ export class JitCompileChildProcess extends BaseWorker<
       projectDir,
       dbadapter,
       dbclient,
-      timeoutMillis,
+      timeoutMillis || DEFAULT_COMPILATION_TIMEOUT_MILLIS,
       options,
       onCancel
     );
@@ -49,7 +50,7 @@ export class JitCompileChildProcess extends BaseWorker<
     projectDir: string,
     dbadapter: IDbAdapter,
     dbclient: IDbClient,
-    timeoutMillis: number | undefined,
+    timeoutMillis: number,
     options: IBigQueryExecutionOptions | undefined,
     onCancel: ((cancel: () => void) => void) | undefined
   ): Promise<dataform.IJitCompilationResponse> {
@@ -93,7 +94,9 @@ export class JitCompileChildProcess extends BaseWorker<
       child.send({
         type: "rpc_response",
         correlationId: message.correlationId,
-        response: Array.from(response)
+        // Convert to plain array — child.send uses JSON IPC by default, which
+        // serializes Uint8Array as {"0":n,...} and Buffer.from() rejects that.
+        response: response ? Array.from(response) : response
       });
     } catch (e) {
       child.send({

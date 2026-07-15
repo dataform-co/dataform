@@ -414,20 +414,20 @@ export class Runner {
     actionResult.timing = timer.current();
     this.notifyListeners();
 
-    try {
-      if (action.jitCode) {
-        try {
-          await this.compileJitAction(action, this.dbadapter);
-        } catch (e) {
-          actionResult.status = dataform.ActionResult.ExecutionStatus.FAILED;
-          actionResult.tasks.push({
-            status: dataform.TaskResult.ExecutionStatus.FAILED,
-            errorMessage: `JiT compilation error: ${e.message}`
-          });
-          return actionResult;
-        }
+    if (action.jitCode) {
+      try {
+        await this.compileJitAction(action, this.dbadapter);
+      } catch (e) {
+        actionResult.status = dataform.ActionResult.ExecutionStatus.FAILED;
+        actionResult.tasks.push({
+          status: dataform.TaskResult.ExecutionStatus.FAILED,
+          errorMessage: `JiT compilation error: ${e?.message || String(e)}`
+        });
+        return actionResult;
       }
+    }
 
+    try {
       // Start running tasks from the last executed task (if any), onwards.
       for (const task of action.tasks.slice(actionResult.tasks.length)) {
         if (this.stopped) {
@@ -610,12 +610,7 @@ export class Runner {
       const table = dataform.Table.create({
         ...action,
         ...jitResponse.table,
-        enumType:
-          action.tableType === "view"
-            ? dataform.TableType.VIEW
-            : action.tableType === "incremental"
-            ? dataform.TableType.INCREMENTAL
-            : dataform.TableType.TABLE
+        enumType: this.tableTypeEnum(action.tableType)
       });
       return this.executionSql.createTableTasks(
         table,
@@ -644,6 +639,17 @@ export class Runner {
       );
     }
     return [];
+  }
+
+  private tableTypeEnum(tableType?: string): dataform.TableType {
+    switch (tableType) {
+      case "view":
+        return dataform.TableType.VIEW;
+      case "incremental":
+        return dataform.TableType.INCREMENTAL;
+      default:
+        return dataform.TableType.TABLE;
+    }
   }
 }
 

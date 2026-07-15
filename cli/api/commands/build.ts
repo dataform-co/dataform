@@ -109,7 +109,7 @@ export class Builder {
   private toPartialExecutionAction(
     action: dataform.ITable | dataform.IOperation | dataform.IAssertion
   ) {
-    const jitCode = (action as any).jitCode;
+    const jitCode = "jitCode" in action ? action.jitCode : undefined;
     const executionAction = dataform.ExecutionAction.create({
       target: action.target,
       fileName: action.fileName,
