@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import { EventEmitter } from "events";
 import { anything, capture, instance, mock, verify, when } from "ts-mockito";
 
 import { handleDbRequest as handleRpc } from "df/cli/api/commands/jit/rpc";
@@ -396,6 +397,62 @@ suite("run", () => {
     expect(actionResult.tasks[0].errorMessage).to.match(
       /JiT compilation error.*Run cancelled while worker was in flight/
     );
+  });
+
+  test("JiT compilation cleans up CANCEL_EVENT listeners after each action", async () => {
+    const { adapterInstance } = createMocks();
+
+    const executionGraph = createGraph([
+      {
+        target: { database: "db", schema: "sch", name: "jit_a" },
+        type: "table",
+        tableType: "table",
+        jitCode: "async (jctx) => { return 'SELECT 1'; }",
+        tasks: []
+      },
+      {
+        target: { database: "db", schema: "sch", name: "jit_b" },
+        type: "table",
+        tableType: "table",
+        jitCode: "async (jctx) => { return 'SELECT 2'; }",
+        tasks: []
+      },
+      {
+        target: { database: "db", schema: "sch", name: "jit_c" },
+        type: "table",
+        tableType: "table",
+        jitCode: "async (jctx) => { return 'SELECT 3'; }",
+        tasks: []
+      },
+      {
+        target: { database: "db", schema: "sch", name: "jit_d" },
+        type: "table",
+        tableType: "table",
+        jitCode: "async (jctx) => { return 'SELECT 4'; }",
+        tasks: []
+      }
+    ]);
+
+    const runner = new Runner(adapterInstance, executionGraph, {
+      jitCompiler: async (req, pdir, adapter, client, timeoutMs, opts, onCancel) => {
+        // Mirror the real compile worker: register a cancel handler on every
+        // invocation so we can observe whether Runner unregisters it once the
+        // compile completes.
+        onCancel(() => undefined);
+        return await jitCompile(req, (method, internalReq, callback) => {
+          (adapter as any).rpcImpl(method, internalReq, callback);
+        });
+      }
+    });
+    const result = await runner.execute().result();
+
+    expect(result.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
+
+    // Each JiT compile registers a cancel listener; those listeners must be
+    // removed once the compile finishes. Otherwise a run with many actions
+    // leaks listeners and eventually triggers MaxListenersExceededWarning.
+    const emitter = (runner as any).eEmitter as EventEmitter;
+    expect(emitter.listenerCount("jobCancel")).equals(0);
   });
 });
 
