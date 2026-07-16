@@ -520,7 +520,6 @@ export class Runner {
     this.notifyListeners();
     if (options.bigquery?.dryRun) {
       taskResult.compiledSql = task.statement;
-      
     }
     if (options.bigquery?.dryRun && task.type === "assertion") {
       taskResult.status = dataform.TaskResult.ExecutionStatus.SUCCESSFUL;
@@ -589,17 +588,26 @@ export class Runner {
       jitData: this.graph.jitData
     });
 
-    const jitResponse = await this.executionOptions.jitCompiler(
-      jitRequest,
-      this.executionOptions.projectDir,
-      this.dbadapter,
-      client,
-      this.graph.runConfig?.jitTimeoutMillis || undefined,
-      this.getBigQueryExecutionOptions(action),
-      handleCancel => this.eEmitter.on(CANCEL_EVENT, handleCancel)
-    );
-
-    action.tasks = this.createTasksFromJitResponse(action, jitResponse);
+    let cancelHandler: ((...args: any[]) => void) | undefined;
+    try {
+      const jitResponse = await this.executionOptions.jitCompiler(
+        jitRequest,
+        this.executionOptions.projectDir,
+        this.dbadapter,
+        client,
+        this.graph.runConfig?.jitTimeoutMillis || undefined,
+        this.getBigQueryExecutionOptions(action),
+        handleCancel => {
+          cancelHandler = handleCancel;
+          this.eEmitter.on(CANCEL_EVENT, handleCancel);
+        }
+      );
+      action.tasks = this.createTasksFromJitResponse(action, jitResponse);
+    } finally {
+      if (cancelHandler) {
+        this.eEmitter.removeListener(CANCEL_EVENT, cancelHandler);
+      }
+    }
   }
 
   private createTasksFromJitResponse(
