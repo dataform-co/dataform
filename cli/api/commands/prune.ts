@@ -2,7 +2,12 @@ import { targetAsReadableString } from "df/core/targets";
 import * as utils from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
-type CompileAction = dataform.ITable | dataform.IOperation | dataform.IAssertion;
+type CompileAction =
+  | dataform.ITable
+  | dataform.IOperation
+  | dataform.IAssertion
+  | dataform.INotebook
+  | dataform.IDataPreparation;
 
 export function prune(
   compiledGraph: dataform.ICompiledGraph,
@@ -20,6 +25,12 @@ export function prune(
     ),
     operations: compiledGraph.operations.filter(action =>
       includedActionNames.has(targetAsReadableString(action.target))
+    ),
+    notebooks: compiledGraph.notebooks.filter(action =>
+      includedActionNames.has(targetAsReadableString(action.target))
+    ),
+    dataPreparations: compiledGraph.dataPreparations.filter(action =>
+      includedActionNames.has(targetAsReadableString(action.target))
     )
   };
 }
@@ -28,11 +39,13 @@ function computeIncludedActionNames(
   compiledGraph: dataform.ICompiledGraph,
   runConfig: dataform.IRunConfig
 ): Set<string> {
-  // Union all tables, operations, assertions.
+  // Union all tables, operations, assertions, notebooks and data preparations.
   const allActions: CompileAction[] = [].concat(
     compiledGraph.tables,
     compiledGraph.operations,
-    compiledGraph.assertions
+    compiledGraph.assertions,
+    compiledGraph.notebooks,
+    compiledGraph.dataPreparations
   );
 
   const allActionNames = new Set<string>(
