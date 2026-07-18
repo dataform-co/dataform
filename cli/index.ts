@@ -225,6 +225,15 @@ const icebergOption: INamedOption<yargs.Options> = {
   },
 };
 
+const fmtIgnoreJsOptionName: INamedOption<yargs.Options> = {
+  name: "ignore-js-files",
+  option: {
+    describe: "If set, the formatter will not consider javascript files (.js)",
+    type: "boolean",
+    default: false,
+  },
+};
+
 const testConnectionOptionName = "test-connection";
 
 const watchOptionName = "watch";
@@ -718,7 +727,8 @@ export function runCli() {
           }
         ],
         processFn: async argv => {
-          let actions = ["{definitions,includes}/**/*.{js,sqlx}"];
+          const extensions = argv[fmtIgnoreJsOptionName.name] ? "*.sqlx" : "*.{js,sqlx}"
+          let actions = [`{definitions,includes}/**/${extensions}`];
           if (actionsOption.name in argv && argv[actionsOption.name].length > 0) {
             actions = argv[actionsOption.name];
           }
