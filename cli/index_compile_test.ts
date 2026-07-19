@@ -423,25 +423,25 @@ suite("compile node selection", ({ afterEach }) => {
     expect(tableNames(result.stdout)).deep.equals(["downstream", "midstream", "upstream"]);
   });
 
-  test("--actions filters output to the selected action", async () => {
+  test("--output-actions filters output to the selected action", async () => {
     const projectDir = await setupSelectionProject();
     const result = await getProcessResult(
-      execFile(nodePath, [cliEntryPointPath, "compile", projectDir, "--actions", "midstream", "--json"])
+      execFile(nodePath, [cliEntryPointPath, "compile", projectDir, "--output-actions", "midstream", "--json"])
     );
     expect(result.exitCode, result.stderr).equals(0);
     expect(tableNames(result.stdout)).deep.equals(["midstream"]);
   });
 
-  test("--actions --include-deps pulls in upstream dependencies", async () => {
+  test("--output-actions --output-include-deps pulls in upstream dependencies", async () => {
     const projectDir = await setupSelectionProject();
     const result = await getProcessResult(
       execFile(nodePath, [
         cliEntryPointPath,
         "compile",
         projectDir,
-        "--actions",
+        "--output-actions",
         "midstream",
-        "--include-deps",
+        "--output-include-deps",
         "--json"
       ])
     );
@@ -449,16 +449,16 @@ suite("compile node selection", ({ afterEach }) => {
     expect(tableNames(result.stdout)).deep.equals(["midstream", "upstream"]);
   });
 
-  test("--actions --include-dependents pulls in downstream dependents", async () => {
+  test("--output-actions --output-include-dependents pulls in downstream dependents", async () => {
     const projectDir = await setupSelectionProject();
     const result = await getProcessResult(
       execFile(nodePath, [
         cliEntryPointPath,
         "compile",
         projectDir,
-        "--actions",
+        "--output-actions",
         "midstream",
-        "--include-dependents",
+        "--output-include-dependents",
         "--json"
       ])
     );
@@ -466,10 +466,10 @@ suite("compile node selection", ({ afterEach }) => {
     expect(tableNames(result.stdout)).deep.equals(["downstream", "midstream"]);
   });
 
-  test("--tags filters output to actions carrying the tag", async () => {
+  test("--output-tags filters output to actions carrying the tag", async () => {
     const projectDir = await setupSelectionProject();
     const result = await getProcessResult(
-      execFile(nodePath, [cliEntryPointPath, "compile", projectDir, "--tags", "daily", "--json"])
+      execFile(nodePath, [cliEntryPointPath, "compile", projectDir, "--output-tags", "daily", "--json"])
     );
     expect(result.exitCode, result.stderr).equals(0);
     expect(tableNames(result.stdout)).deep.equals(["upstream"]);
@@ -478,19 +478,19 @@ suite("compile node selection", ({ afterEach }) => {
   test("selector matching nothing emits an empty graph and exits zero", async () => {
     const projectDir = await setupSelectionProject();
     const result = await getProcessResult(
-      execFile(nodePath, [cliEntryPointPath, "compile", projectDir, "--actions", "nope", "--json"])
+      execFile(nodePath, [cliEntryPointPath, "compile", projectDir, "--output-actions", "nope", "--json"])
     );
     expect(result.exitCode, result.stderr).equals(0);
     expect(tableNames(result.stdout)).deep.equals([]);
   });
 
-  test("--include-deps without a selector is rejected", async () => {
+  test("--output-include-deps without a selector is rejected", async () => {
     const projectDir = await setupSelectionProject();
     const result = await getProcessResult(
-      execFile(nodePath, [cliEntryPointPath, "compile", projectDir, "--include-deps", "--json"])
+      execFile(nodePath, [cliEntryPointPath, "compile", projectDir, "--output-include-deps", "--json"])
     );
     expect(result.exitCode).not.equals(0);
-    expect(result.stderr).contains("--include-deps");
+    expect(result.stderr).contains("--output-include-deps");
   });
 });
 

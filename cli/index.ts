@@ -133,6 +133,65 @@ const includeDependentsOption: INamedOption<yargs.Options> = {
   }
 };
 
+// `compile` reuses the same prune() filtering as run/build, but these flags only
+// filter the *printed output* -- the whole project still compiles. The `output-`
+// prefix makes that distinction explicit (see PR #2212).
+const outputActionsOption: INamedOption<yargs.Options> = {
+  name: "output-actions",
+  option: {
+    describe:
+      "A list of action names or patterns to filter the compiled output to. Can include '*' wildcards.",
+    type: "array",
+    coerce: (rawActions: string[] | null) => rawActions.map(actions => actions.split(",")).flat()
+  }
+};
+
+const outputTagsOption: INamedOption<yargs.Options> = {
+  name: "output-tags",
+  option: {
+    describe: "A list of tags to filter the compiled output to.",
+    type: "array",
+    coerce: (rawTags: string[] | null) => rawTags.map(tags => tags.split(",")).flat()
+  }
+};
+
+const outputIncludeDepsOption: INamedOption<yargs.Options> = {
+  name: "output-include-deps",
+  option: {
+    describe: "If set, dependencies of the selected actions are also included in the output.",
+    type: "boolean"
+  },
+  check: (argv: yargs.Arguments) => {
+    if (
+      argv[outputIncludeDepsOption.name] &&
+      !(argv[outputActionsOption.name] || argv[outputTagsOption.name])
+    ) {
+      throw new Error(
+        `The --${outputIncludeDepsOption.name} flag should only be supplied along with --${outputActionsOption.name} or --${outputTagsOption.name}.`
+      );
+    }
+  }
+};
+
+const outputIncludeDependentsOption: INamedOption<yargs.Options> = {
+  name: "output-include-dependents",
+  option: {
+    describe:
+      "If set, dependents (downstream) of the selected actions are also included in the output.",
+    type: "boolean"
+  },
+  check: (argv: yargs.Arguments) => {
+    if (
+      argv[outputIncludeDependentsOption.name] &&
+      !(argv[outputActionsOption.name] || argv[outputTagsOption.name])
+    ) {
+      throw new Error(
+        `The --${outputIncludeDependentsOption.name} flag should only be supplied along with --${outputActionsOption.name} or --${outputTagsOption.name}.`
+      );
+    }
+  }
+};
+
 const credentialsOption: INamedOption<yargs.Options> = {
   name: "credentials",
   option: {
@@ -393,10 +452,10 @@ export function runCli() {
           dotOutputOption,
           timeoutOption,
           quietCompileOption,
-          actionsOption,
-          tagsOption,
-          includeDepsOption,
-          includeDependentsOption,
+          outputActionsOption,
+          outputTagsOption,
+          outputIncludeDepsOption,
+          outputIncludeDependentsOption,
           {
             name: verboseOptionName,
             option: {
@@ -440,14 +499,14 @@ export function runCli() {
             // a clean graph; if compilation produced errors we print the full graph
             // plus the errors, keeping graph-level errors as-is.
             const hasSelector =
-              argv[actionsOption.name]?.length > 0 || argv[tagsOption.name]?.length > 0;
+              argv[outputActionsOption.name]?.length > 0 || argv[outputTagsOption.name]?.length > 0;
             const outputGraph =
               hasSelector && !compiledGraphHasErrors(compiledGraph)
                 ? prune(compiledGraph, {
-                    actions: argv[actionsOption.name],
-                    tags: argv[tagsOption.name],
-                    includeDependencies: argv[includeDepsOption.name],
-                    includeDependents: argv[includeDependentsOption.name]
+                    actions: argv[outputActionsOption.name],
+                    tags: argv[outputTagsOption.name],
+                    includeDependencies: argv[outputIncludeDepsOption.name],
+                    includeDependents: argv[outputIncludeDependentsOption.name]
                   })
                 : compiledGraph;
             printCompiledGraph(outputGraph, outputType, argv[quietCompileOption.name]);
