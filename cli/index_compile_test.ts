@@ -361,6 +361,139 @@ SELECT 1 as id
   });
 });
 
+suite("compile node selection", ({ afterEach }) => {
+  const tmpDirFixture = new TmpDirFixture(afterEach);
+
+  // Builds a project with three tables: upstream -> midstream -> downstream.
+  async function setupSelectionProject(): Promise<string> {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    const npmCacheDir = tmpDirFixture.createNewTmpDir();
+
+    await getProcessResult(
+      execFile(nodePath, [cliEntryPointPath, "init", projectDir, DEFAULT_DATABASE, DEFAULT_LOCATION])
+    );
+
+    const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
+    const workflowSettings = dataform.WorkflowSettings.create(
+      loadYaml(fs.readFileSync(workflowSettingsPath, "utf8"))
+    );
+    delete workflowSettings.dataformCoreVersion;
+    fs.writeFileSync(workflowSettingsPath, dumpYaml(workflowSettings));
+
+    fs.writeFileSync(
+      path.join(projectDir, "package.json"),
+      `{
+  "dependencies":{
+    "@dataform/core": "${version}"
+  }
+}`
+    );
+    await getProcessResult(
+      execFile(npmPath, [
+        "install",
+        "--prefix",
+        projectDir,
+        "--cache",
+        npmCacheDir,
+        corePackageTarPath
+      ])
+    );
+
+    const def = (name: string, contents: string) => {
+      const filePath = path.join(projectDir, "definitions", `${name}.sqlx`);
+      fs.ensureFileSync(filePath);
+      fs.writeFileSync(filePath, contents);
+    };
+    def("upstream", `config { type: "table", tags: ["daily"] }\nSELECT 1 AS id`);
+    def("midstream", `config { type: "table" }\nSELECT * FROM \${ref("upstream")}`);
+    def("downstream", `config { type: "table" }\nSELECT * FROM \${ref("midstream")}`);
+
+    return projectDir;
+  }
+
+  const tableNames = (stdout: string): string[] =>
+    JSON.parse(stdout).tables.map((table: any) => table.target.name).sort();
+
+  test("no selector emits the entire graph", async () => {
+    const projectDir = await setupSelectionProject();
+    const result = await getProcessResult(
+      execFile(nodePath, [cliEntryPointPath, "compile", projectDir, "--json"])
+    );
+    expect(result.exitCode, result.stderr).equals(0);
+    expect(tableNames(result.stdout)).deep.equals(["downstream", "midstream", "upstream"]);
+  });
+
+  test("--output-actions filters output to the selected action", async () => {
+    const projectDir = await setupSelectionProject();
+    const result = await getProcessResult(
+      execFile(nodePath, [cliEntryPointPath, "compile", projectDir, "--output-actions", "midstream", "--json"])
+    );
+    expect(result.exitCode, result.stderr).equals(0);
+    expect(tableNames(result.stdout)).deep.equals(["midstream"]);
+  });
+
+  test("--output-actions --output-include-deps pulls in upstream dependencies", async () => {
+    const projectDir = await setupSelectionProject();
+    const result = await getProcessResult(
+      execFile(nodePath, [
+        cliEntryPointPath,
+        "compile",
+        projectDir,
+        "--output-actions",
+        "midstream",
+        "--output-include-deps",
+        "--json"
+      ])
+    );
+    expect(result.exitCode, result.stderr).equals(0);
+    expect(tableNames(result.stdout)).deep.equals(["midstream", "upstream"]);
+  });
+
+  test("--output-actions --output-include-dependents pulls in downstream dependents", async () => {
+    const projectDir = await setupSelectionProject();
+    const result = await getProcessResult(
+      execFile(nodePath, [
+        cliEntryPointPath,
+        "compile",
+        projectDir,
+        "--output-actions",
+        "midstream",
+        "--output-include-dependents",
+        "--json"
+      ])
+    );
+    expect(result.exitCode, result.stderr).equals(0);
+    expect(tableNames(result.stdout)).deep.equals(["downstream", "midstream"]);
+  });
+
+  test("--output-tags filters output to actions carrying the tag", async () => {
+    const projectDir = await setupSelectionProject();
+    const result = await getProcessResult(
+      execFile(nodePath, [cliEntryPointPath, "compile", projectDir, "--output-tags", "daily", "--json"])
+    );
+    expect(result.exitCode, result.stderr).equals(0);
+    expect(tableNames(result.stdout)).deep.equals(["upstream"]);
+  });
+
+  test("selector matching nothing emits an empty graph and exits zero", async () => {
+    const projectDir = await setupSelectionProject();
+    const result = await getProcessResult(
+      execFile(nodePath, [cliEntryPointPath, "compile", projectDir, "--output-actions", "nope", "--json"])
+    );
+    expect(result.exitCode, result.stderr).equals(0);
+    expect(tableNames(result.stdout)).deep.equals([]);
+  });
+
+  test("--output-include-deps without a selector is rejected", async () => {
+    const projectDir = await setupSelectionProject();
+    const result = await getProcessResult(
+      execFile(nodePath, [cliEntryPointPath, "compile", projectDir, "--output-include-deps", "--json"])
+    );
+    expect(result.exitCode).not.equals(0);
+    expect(result.stderr).contains("--output-include-deps");
+  });
+});
+
 suite("extension config", ({ afterEach }) => {
   const tmpDirFixture = new TmpDirFixture(afterEach);
 
