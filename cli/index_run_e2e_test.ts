@@ -168,9 +168,10 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
               type: "statement"
             }
           ],
-          type: "table",
+          type: "table"
         }
       ],
+      jitData: {},
       projectConfig: {
         assertionSchema: "dataform_assertions",
         defaultDatabase: DEFAULT_DATABASE,
@@ -285,7 +286,7 @@ SELECT 1 as id
               type: "statement"
             }
           ],
-          type: "table",
+          type: "table"
         },
         {
           fileName: "definitions/test_assertion.sqlx",
@@ -295,9 +296,10 @@ SELECT 1 as id
             name: "test_assertion",
             schema: "dataform_assertions"
           },
-          type: "assertion",
+          type: "assertion"
         }
       ],
+      jitData: {},
       projectConfig: {
         assertionSchema: "dataform_assertions",
         defaultDatabase: DEFAULT_DATABASE,
@@ -786,6 +788,7 @@ DROP SCHEMA IF EXISTS \`\${dataform.projectConfig.defaultDatabase}.\${dataform.p
               type: "table"
             }
           ],
+          jitData: {},
           warehouseState: executionGraph.warehouseState
         };
         
