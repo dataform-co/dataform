@@ -51,8 +51,6 @@ export interface IDbClient {
 }
 
 export interface IDbAdapter extends IDbClient {
-  withClientLock<T>(callback: (client: IDbClient) => Promise<T>): Promise<T>;
-
   evaluate(queryOrAction: QueryOrAction): Promise<dataform.IQueryEvaluation[]>;
 
   schemas(database: string): Promise<string[]>;
