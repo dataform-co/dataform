@@ -175,7 +175,9 @@ export function workflowSettingsAsProjectConfig(
   if (workflowSettings.includeTestsInCompiledGraph) {
     projectConfig.includeTestsInCompiledGraph = workflowSettings.includeTestsInCompiledGraph;
   }
-
+  if (workflowSettings.preserveGovernanceControls) {
+    projectConfig.preserveGovernanceControls = workflowSettings.preserveGovernanceControls;
+  }
   projectConfig.warehouse = "bigquery";
   return projectConfig;
 }
