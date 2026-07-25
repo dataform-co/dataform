@@ -74,6 +74,13 @@ export function compile(code: string, path: string): string {
       .replace(/`/g, "\\`")
       .replace(/\${/g, "\\${");
     compiledCode = `exports.query = \`${escapedCode}\`;`;
+  } else if (Path.fileExtension(path) === "md") {
+    const contents = code
+      .replace(/\r\n/g, "\n")
+      .replace(/\\/g, "\\\\")
+      .replace(/`/g, "\\`")
+      .replace(/\${/g, "\\${");
+    compiledCode = `exports.contents = \`${contents}\`;`;
   }
 
   if (!path.includes("node_modules")) {

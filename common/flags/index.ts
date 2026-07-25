@@ -39,45 +39,46 @@ export class Flags {
     Flags.parsedArgv[flagName] = value;
   }
 
-  private static readonly parsedArgv = (() => {
-    const parsedArgv: { [flagName: string]: string } = {};
-
-    const splitArgv = [];
-    for (let arg of process.argv) {
-      // TODO: This is a temporary hack to be backwards-compatible with yargs behaviour, where
-      // to switch off a boolean flag, it requires a 'no-' prefix in front of the flag name.
-      if (arg.startsWith("--no-")) {
-        arg = `--${arg.slice(5)}=false`;
-      }
-      if (arg.startsWith("--") && arg.includes("=")) {
-        splitArgv.push(arg.slice(0, arg.indexOf("=")));
-        splitArgv.push(arg.slice(arg.indexOf("=") + 1));
-      } else {
-        splitArgv.push(arg);
-      }
-    }
-
-    let flagsStarted = false;
-    let currentFlagName = "";
-    for (const splitArg of splitArgv) {
-      if (splitArg.startsWith("--")) {
-        flagsStarted = true;
-        currentFlagName = splitArg.slice(2);
-        parsedArgv[currentFlagName] = "";
-      } else if (currentFlagName) {
-        parsedArgv[currentFlagName] = splitArg;
-        currentFlagName = "";
-      } else if (flagsStarted) {
-        throw new Error(`Arg neither flag name nor flag value: ${splitArg}`);
-      }
-    }
-
-    return parsedArgv;
-  })();
+  private static readonly parsedArgv = parseArgv(process.argv);
 
   private static invalidFlagValueError(flagName: string) {
     return new Error(`Invalid flag value: ${Flags.getRawFlagValue(flagName)} [${flagName}]`);
   }
+}
+
+// Parses an argv array into a map of flag name to flag value. Any token that is neither a flag
+// nor a flag value (for example the command and its positional arguments) is ignored, as yargs
+// is responsible for parsing those.
+export function parseArgv(argv: string[]): { [flagName: string]: string } {
+  const parsedArgv: { [flagName: string]: string } = {};
+
+  const splitArgv = [];
+  for (let arg of argv) {
+    // TODO: This is a temporary hack to be backwards-compatible with yargs behaviour, where
+    // to switch off a boolean flag, it requires a 'no-' prefix in front of the flag name.
+    if (arg.startsWith("--no-")) {
+      arg = `--${arg.slice(5)}=false`;
+    }
+    if (arg.startsWith("--") && arg.includes("=")) {
+      splitArgv.push(arg.slice(0, arg.indexOf("=")));
+      splitArgv.push(arg.slice(arg.indexOf("=") + 1));
+    } else {
+      splitArgv.push(arg);
+    }
+  }
+
+  let currentFlagName = "";
+  for (const splitArg of splitArgv) {
+    if (splitArg.startsWith("--")) {
+      currentFlagName = splitArg.slice(2);
+      parsedArgv[currentFlagName] = "";
+    } else if (currentFlagName) {
+      parsedArgv[currentFlagName] = splitArg;
+      currentFlagName = "";
+    }
+  }
+
+  return parsedArgv;
 }
 
 export interface IFlag<T> {
