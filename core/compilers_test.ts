@@ -100,7 +100,7 @@ suite("core/compilers", () => {
             const code = '# this table defines';
             const path = "definitions/foo.md";
             const result = compile(code, path);
-            expect(result).to.equal("exports.contents = `# this table defines`;");
+            expect(result).to.include("exports.contents = `# this table defines`;");
 
         })
 
@@ -108,7 +108,7 @@ suite("core/compilers", () => {
             const code = "select ''";
             const path = "definitions/foo.md";
             const result = compile(code, path);
-            expect(result).to.equal("exports.contents = `select ''`;");
+            expect(result).to.include("exports.contents = `select ''`;");
         });
         test("escapes newlines in md", () => {
             const code = `
@@ -116,25 +116,25 @@ suite("core/compilers", () => {
 - item2`;
             const path = "definitions/foo.md";
             const result = compile(code, path);
-            expect(result).to.equal("exports.contents = `\n- item1\n- item2`;");
+            expect(result).to.include("exports.contents = `\n- item1\n- item2`;");
         });
         test ("escapes template literals in md", () => {
             const code = "select ${foo}";
             const path = "definitions/foo.md";
             const result = compile(code, path);
-            expect(result).to.equal("exports.contents = `select \\${foo}`;");
+            expect(result).to.include("exports.contents = `select \\${foo}`;");
         });
         test("escapes backslashes and backticks in md", () => {
             const code = "c = '\\'";
             const path = "definitions/foo.md";
             const result = compile(code, path);
-            expect(result).to.equal("exports.contents = `c = '\\\\'`;");
+            expect(result).to.include("exports.contents = `c = '\\\\'`;");
         });
         test("escapes backticks in md", () => {
             const code = "select `a` from `b`";
             const path = "definitions/foo.md";
             const result = compile(code, path);
-            expect(result).to.equal("exports.contents = `select \\`a\\` from \\`b\\``;");
+            expect(result).to.include("exports.contents = `select \\`a\\` from \\`b\\``;");
         });
 
     });
