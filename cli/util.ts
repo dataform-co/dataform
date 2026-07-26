@@ -52,6 +52,147 @@ export function formatBytesInHumanReadableFormat(bytes: number): string {
   return `${value} ${units[i]}`;
 }
 
+const DURATION_UNITS_IN_MILLIS: { [unit: string]: number } = {
+  ms: 1,
+  msec: 1,
+  msecs: 1,
+  millisecond: 1,
+  milliseconds: 1,
+  s: 1000,
+  sec: 1000,
+  secs: 1000,
+  second: 1000,
+  seconds: 1000,
+  m: 60 * 1000,
+  min: 60 * 1000,
+  mins: 60 * 1000,
+  minute: 60 * 1000,
+  minutes: 60 * 1000,
+  h: 60 * 60 * 1000,
+  hr: 60 * 60 * 1000,
+  hrs: 60 * 60 * 1000,
+  hour: 60 * 60 * 1000,
+  hours: 60 * 60 * 1000,
+  d: 24 * 60 * 60 * 1000,
+  day: 24 * 60 * 60 * 1000,
+  days: 24 * 60 * 60 * 1000,
+  w: 7 * 24 * 60 * 60 * 1000,
+  week: 7 * 24 * 60 * 60 * 1000,
+  weeks: 7 * 24 * 60 * 60 * 1000
+};
+
+export function parseCliDuration(rawDuration: string): number {
+  const normalizedDuration = rawDuration?.trim().toLowerCase();
+  if (!normalizedDuration) {
+    throw new Error("Duration cannot be empty.");
+  }
+
+  if (isCliDurationNumber(normalizedDuration)) {
+    return Number(normalizedDuration);
+  }
+
+  let totalDurationMillis = 0;
+  let matchFound = false;
+  let cursor = 0;
+
+  while (cursor < normalizedDuration.length) {
+    while (normalizedDuration[cursor] === " ") {
+      cursor++;
+    }
+    if (cursor >= normalizedDuration.length) {
+      break;
+    }
+
+    const numberStart = cursor;
+    if (normalizedDuration[cursor] === "+" || normalizedDuration[cursor] === "-") {
+      cursor++;
+    }
+
+    const integerStart = cursor;
+    while (isAsciiDigit(normalizedDuration[cursor])) {
+      cursor++;
+    }
+    if (cursor === integerStart) {
+      throw new Error(`Invalid duration: ${rawDuration}`);
+    }
+
+    if (normalizedDuration[cursor] === ".") {
+      cursor++;
+      const fractionStart = cursor;
+      while (isAsciiDigit(normalizedDuration[cursor])) {
+        cursor++;
+      }
+      if (cursor === fractionStart) {
+        throw new Error(`Invalid duration: ${rawDuration}`);
+      }
+    }
+
+    while (normalizedDuration[cursor] === " ") {
+      cursor++;
+    }
+
+    const unitStart = cursor;
+    while (isAsciiLetter(normalizedDuration[cursor])) {
+      cursor++;
+    }
+    if (cursor === unitStart) {
+      throw new Error(`Invalid duration: ${rawDuration}`);
+    }
+
+    const durationValue = Number(normalizedDuration.slice(numberStart, unitStart).trim());
+    const durationUnit = normalizedDuration.slice(unitStart, cursor);
+    const unitMillis = DURATION_UNITS_IN_MILLIS[durationUnit];
+    if (unitMillis === undefined) {
+      throw new Error(`Unsupported duration unit: ${durationUnit}`);
+    }
+
+    totalDurationMillis += durationValue * unitMillis;
+    matchFound = true;
+  }
+
+  if (!matchFound) {
+    throw new Error(`Invalid duration: ${rawDuration}`);
+  }
+
+  return totalDurationMillis;
+}
+
+function isCliDurationNumber(value: string): boolean {
+  let cursor = 0;
+  if (value[cursor] === "+" || value[cursor] === "-") {
+    cursor++;
+  }
+
+  const integerStart = cursor;
+  while (isAsciiDigit(value[cursor])) {
+    cursor++;
+  }
+  if (cursor === integerStart) {
+    return false;
+  }
+
+  if (value[cursor] === ".") {
+    cursor++;
+    const fractionStart = cursor;
+    while (isAsciiDigit(value[cursor])) {
+      cursor++;
+    }
+    if (cursor === fractionStart) {
+      return false;
+    }
+  }
+
+  return cursor === value.length;
+}
+
+function isAsciiDigit(value: string): boolean {
+  return value >= "0" && value <= "9";
+}
+
+function isAsciiLetter(value: string): boolean {
+  return value >= "a" && value <= "z";
+}
+
 /**
  * Handles prompting and validation for defaultBucketName, defaultTableFolderRoot
  * and defaultTableFolderSubpath if the user provides the --iceberg flag when
