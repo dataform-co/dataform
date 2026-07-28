@@ -1,3 +1,5 @@
+common --enable_bzlmod
+
 build --test_output=errors --action_env="GTEST_COLOR=1"
 
 build --incompatible_py3_is_default=false

@@ -1,0 +1,24 @@
+config { 
+    type: "table", 
+    description: "Verifies fix for https://github.com/dataform-co/dataform/issues/1231" 
+} 
+
+post_operations { 
+    select *
+    -- single line comment
+    /*
+    multi
+    line
+    comment
+    */ 
+    from ${self()} 
+}
+
+select 1 as col1 
+-- single line comment
+/*
+multi
+line
+comment
+*/
+FROM UNNEST([])

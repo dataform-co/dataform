@@ -4,7 +4,10 @@ load("//tools:ts_library.bzl", "ts_library")
 
 ts_library(
     name = "vm",
-    srcs = ["compile.ts"],
+    srcs = [
+        "compile.ts",
+        "jit_worker.ts",
+    ],
     deps = [
         "//common/protos",
         "//core",
@@ -23,6 +26,7 @@ ts_library(
     srcs = [],
     data = [
         ":compile_loader.js",
+        ":jit_loader.js",
     ],
     deps = [
         ":vm",
@@ -45,6 +49,19 @@ nodejs_binary(
         "@npm//source-map-support",
     ],
     entry_point = ":compile.ts",
+    templated_args = [
+        "--node_options=--require=source-map-support/register",
+        "--bazel_patch_module_resolver",
+    ],
+)
+
+nodejs_binary(
+    name = "jit_worker_bin",
+    data = [
+        ":vm",
+        "@npm//source-map-support",
+    ],
+    entry_point = ":jit_worker.ts",
     templated_args = [
         "--node_options=--require=source-map-support/register",
         "--bazel_patch_module_resolver",

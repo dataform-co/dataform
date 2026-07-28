@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package dataform;
 
+option go_package = "github.com/dataform-co/dataform/protos/dataform";
+
 import "google/protobuf/empty.proto";
 import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
@@ -35,6 +37,8 @@ message ExecuteRequest {
   bool fetch_results = 4;
 
   BigQueryExecuteOptions big_query_options = 5;
+  // Query parameters for parameterized queries.
+  google.protobuf.Struct params = 6;
 }
 
 message BigQueryExecuteOptions {
@@ -50,6 +54,8 @@ message BigQueryExecuteOptions {
   string job_prefix = 5;
   // Is dry run job.
   bool dry_run = 6;
+  // BigQuery reservation to use for the job.
+  string reservation = 7;
 }
 
 // Synchronous execution response result.
@@ -104,6 +110,8 @@ enum JitCompilationTargetType {
   JIT_COMPILATION_TARGET_TYPE_OPERATION = 2;
   // Incremental table target.
   JIT_COMPILATION_TARGET_TYPE_INCREMENTAL_TABLE = 3;
+  // Assertion target.
+  JIT_COMPILATION_TARGET_TYPE_ASSERTION = 4;
 }
 
 // JiT compilation request.
@@ -130,6 +138,7 @@ message JitCompilationResponse {
     JitTableResult table = 1;
     JitOperationResult operation = 2;
     JitIncrementalTableResult incremental_table = 3;
+    JitAssertionResult assertion = 4;
   }
 }
 
@@ -156,4 +165,10 @@ message JitIncrementalTableResult {
 message JitOperationResult {
   // Sequence of SQL operations.
   repeated string queries = 1;
+}
+
+// JiT compilation result for assertion actions.
+message JitAssertionResult {
+  // SQL Select query that returns rows iff the assertion fails.
+  string query = 1;
 }

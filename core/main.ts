@@ -75,6 +75,46 @@ export function main(coreExecutionRequest: Uint8Array | string): Uint8Array | st
   return dataform.CoreExecutionResponse.encode(coreExecutionResponse).finish();
 }
 
+// Every action type that accepts a `filename` in actions.yaml, paired with its
+// statically-typed sub-config. Referencing a .sqlx file (including a
+// data-preparation .dp.sqlx file) is unsupported: .sqlx files are compiled
+// directly from the definitions/ directory by the sqlx compiler, not through the
+// `actions.yaml` config. Without this check a .sqlx filename produces a cryptic
+// `nativeRequire` error rather than a useful diagnostic, so we emit a clear
+// compilation error up front. See issue #1785.
+function actionConfigFilenameIsInvalidSqlx(
+  session: Session,
+  actionConfig: dataform.ActionConfig,
+  actionConfigsPath: string
+): boolean {
+  const filenamesByActionType: Array<[string, string | null | undefined]> = [
+    ["table", actionConfig.table?.filename],
+    ["view", actionConfig.view?.filename],
+    ["incrementalTable", actionConfig.incrementalTable?.filename],
+    ["assertion", actionConfig.assertion?.filename],
+    ["operation", actionConfig.operation?.filename],
+    ["declaration", actionConfig.declaration?.filename],
+    ["notebook", actionConfig.notebook?.filename],
+    ["dataPreparation", actionConfig.dataPreparation?.filename]
+  ];
+  for (const [actionType, filename] of filenamesByActionType) {
+    if (filename && filename.toLowerCase().endsWith(".sqlx")) {
+      session.compileError(
+        new Error(
+          `Action config "${actionType}" has filename "${filename}", but .sqlx ` +
+            `files cannot be referenced from actions.yaml. .sqlx files are ` +
+            `compiled directly from the definitions/ directory. Either use a ` +
+            `.sql file with the same contents, or remove the actions.yaml ` +
+            `entry and let Dataform pick up the .sqlx file automatically.`
+        ),
+        actionConfigsPath
+      );
+      return true;
+    }
+  }
+  return false;
+}
+
 function loadActionConfigs(session: Session, filePaths: string[]) {
   filePaths
     .filter(
@@ -88,6 +128,10 @@ function loadActionConfigs(session: Session, filePaths: string[]) {
       const actionConfigs = loadActionConfigsFile(session, actionConfigsPath);
       actionConfigs.actions.forEach(nonProtoActionConfig => {
         const actionConfig = dataform.ActionConfig.create(nonProtoActionConfig);
+
+        if (actionConfigFilenameIsInvalidSqlx(session, actionConfig, actionConfigsPath)) {
+          return;
+        }
 
         if (actionConfig.table) {
           session.actions.push(
@@ -232,7 +276,8 @@ function dataformCompile(compileRequest: dataform.ICompileExecutionRequest, sess
   globalAny.notebook = session.notebook.bind(session);
   globalAny.test = session.test.bind(session);
   globalAny.jitData = session.jitData.bind(session);
-
+  globalAny.getContents = session.getContents.bind(session);
+  
   loadActionConfigs(session, compileRequest.compileConfig.filePaths);
 
   // Require all "definitions" files (attaching them to the session).

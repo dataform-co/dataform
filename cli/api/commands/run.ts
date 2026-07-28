@@ -24,6 +24,7 @@ export interface IExecutedAction {
 }
 
 export interface IExecutionOptions {
+  projectDir?: string;
   bigquery?: {
     jobPrefix?: string;
     actionRetryLimit?: number;
@@ -32,10 +33,12 @@ export interface IExecutionOptions {
   };
 }
 
+export type CancelReason = "timeout" | "user" | "cancellation";
+
 export function run(
   dbadapter: dbadapters.IDbAdapter,
   graph: dataform.IExecutionGraph,
-  executionOptions?: IExecutionOptions,
+  executionOptions: IExecutionOptions = {},
   partiallyExecutedRunResult: dataform.IRunResult = {},
   runnerNotificationPeriodMillis: number = flags.runnerNotificationPeriodMillis.get()
 ): Runner {
@@ -49,6 +52,24 @@ export function run(
 }
 
 export class Runner {
+  public static create(
+    dbadapter: dbadapters.IDbAdapter,
+    graph: dataform.IExecutionGraph,
+    options: IExecutionOptions = {},
+    runnerNotificationPeriodMillis: number = flags.runnerNotificationPeriodMillis.get()
+  ): Runner {
+    return new Runner(dbadapter, graph, options, {}, runnerNotificationPeriodMillis);
+  }
+
+  public static resume(
+    dbadapter: dbadapters.IDbAdapter,
+    graph: dataform.IExecutionGraph,
+    runResult: dataform.IRunResult,
+    runnerNotificationPeriodMillis: number = flags.runnerNotificationPeriodMillis.get()
+  ): Runner {
+    return new Runner(dbadapter, graph, {}, runResult, runnerNotificationPeriodMillis);
+  }
+
   private readonly warehouseStateByTarget: Map<string, dataform.ITableMetadata>;
 
   private readonly allActionTargets: Set<string>;
@@ -63,22 +84,25 @@ export class Runner {
   private cancelled = false;
   private timeout: NodeJS.Timer;
   private timedOut = false;
+  private skipReason: string = "";
   private executionTask: Promise<dataform.IRunResult>;
+  private readonly executionOptions: IExecutionOptions;
 
   constructor(
     private readonly dbadapter: dbadapters.IDbAdapter,
     private readonly graph: dataform.IExecutionGraph,
-    private readonly executionOptions: IExecutionOptions = {},
+    executionOptions: IExecutionOptions = {},
     partiallyExecutedRunResult: dataform.IRunResult = {},
     private readonly runnerNotificationPeriodMillis: number = flags.runnerNotificationPeriodMillis.get()
   ) {
-    this.allActionTargets = new Set<string>(
-      graph.actions.map(action => targetStringifier.stringify(action.target))
-    );
+    this.executionOptions = { projectDir: ".", ...executionOptions };
     this.runResult = {
       actions: [],
       ...partiallyExecutedRunResult
     };
+    this.allActionTargets = new Set<string>(
+      graph.actions.map(action => targetStringifier.stringify(action.target))
+    );
     this.warehouseStateByTarget = new Map<string, dataform.ITableMetadata>();
     graph.warehouseState.tables?.forEach(tableMetadata =>
       this.warehouseStateByTarget.set(
@@ -121,7 +145,7 @@ export class Runner {
       const timeoutMillis = this.graph.runConfig.timeoutMillis - elapsedTimeMillis;
       this.timeout = setTimeout(() => {
         this.timedOut = true;
-        this.cancel();
+        this.cancel("timeout");
       }, timeoutMillis);
     }
     return this;
@@ -131,7 +155,22 @@ export class Runner {
     this.stopped = true;
   }
 
-  public cancel() {
+  public cancel(reason: CancelReason = "user") {
+    if (!this.skipReason) {
+      switch (reason) {
+        case "timeout":
+          this.skipReason = this.graph.runConfig?.timeoutMillis
+            ? `Run timed out after ${this.graph.runConfig.timeoutMillis / 1000} seconds`
+            : "Run timed out";
+          break;
+        case "user":
+          this.skipReason = "Run cancelled";
+          break;
+        case "cancellation":
+          this.skipReason = "Run cancelled before action started";
+          break;
+      }
+    }
     this.cancelled = true;
     this.eEmitter.emit(CANCEL_EVENT, undefined, undefined);
   }
@@ -228,15 +267,28 @@ export class Runner {
     if (this.cancelled) {
       const allPendingActions = this.pendingActions;
       this.pendingActions = [];
-      allPendingActions.forEach(pendingAction =>
+      const skipErrorMessage = this.skipReason || "Run cancelled before action started";
+      allPendingActions.forEach(pendingAction => {
+        let tasks: dataform.ITaskResult[];
+        if (pendingAction.tasks && pendingAction.tasks.length > 0) {
+          tasks = pendingAction.tasks.map((_, i) => ({
+            status: dataform.TaskResult.ExecutionStatus.SKIPPED,
+            ...(i === 0 ? { errorMessage: skipErrorMessage } : {})
+          }));
+        } else {
+          tasks = [
+            {
+              status: dataform.TaskResult.ExecutionStatus.SKIPPED,
+              errorMessage: skipErrorMessage
+            }
+          ];
+        }
         this.runResult.actions.push({
           target: pendingAction.target,
           status: dataform.ActionResult.ExecutionStatus.SKIPPED,
-          tasks: pendingAction.tasks.map(() => ({
-            status: dataform.TaskResult.ExecutionStatus.SKIPPED
-          }))
-        })
-      );
+          tasks
+        });
+      });
       this.notifyListeners();
       return;
     }
@@ -361,7 +413,8 @@ export class Runner {
           }
         } else {
           actionResult.tasks.push({
-            status: dataform.TaskResult.ExecutionStatus.SKIPPED
+            status: dataform.TaskResult.ExecutionStatus.SKIPPED,
+            errorMessage: this.skipReason || "Task skipped after cancellation"
           });
         }
       }

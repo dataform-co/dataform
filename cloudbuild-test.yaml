@@ -3,7 +3,7 @@ steps:
     script: |
       #!/usr/bin/env bash
       REPO_TOKEN="$(gcloud auth print-access-token)" NPM_TOKEN="test_only" ./scripts/create_npmrc
-  - name: gcr.io/cloud-builders/bazel:5.4.0
+  - name: gcr.io/cloud-builders/bazel:7.3.2
     script: |
       #!/usr/bin/env bash
       ./scripts/run_tests_on_cloudbuild

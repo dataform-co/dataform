@@ -67,24 +67,10 @@ message WorkflowSettings {
 
   // Optional. If set to true, unit tests will be included in the compiled graph.
   bool include_tests_in_compiled_graph = 16;
-}
 
-message DefaultIcebergConfig {
-  // Optional. Bucket name used to construct a storage URI when creating an
-  // Iceberg table.
-  string bucket_name = 1;
-
-  // Optional. Table folder root used to construct a storage URI when creating
-  // an Iceberg table.
-  string table_folder_root = 2;
-
-  // Optional. Table folder subpath used to construct a storage URI when
-  // creating an Iceberg table.
-  string table_folder_subpath = 3;
-
-  // Optional. The connection specifying the credentials to be used to read and
-  // write to external storage, such as Cloud Storage.
-  string connection = 4;
+  // Optional. If set to true, governance controls (e.g. Data Policies) will be
+  // preserved on BigQuery tables.
+  bool preserve_governance_controls = 18;
 }
 
 // Action configs defines the contents of `actions.yaml` configuration files.
@@ -280,6 +266,10 @@ message ActionConfig {
     // If unset, the value from workflow_settings.yaml is used. If neither is set, default BigQuery behavior applies.
     // Dataform CLI only (GCP Dataform support pending).
     string reservation = 24;
+
+    // Optional. If true, preserves existing BigQuery column governance controls
+    // (e.g. data policy) when recreating a table.
+    optional bool preserve_governance_controls = 25;
   }
 
   message Metadata {
@@ -380,6 +370,18 @@ message ActionConfig {
     EXTEND = 2;
     // Does not block any new column(s) from being added, deleted or renamed.
     SYNCHRONIZE = 3;
+  }
+
+  enum IncrementalStrategy {
+    // Strategy is unspecified. Defaults to MERGE if uniqueKey is configured,
+    // or APPEND otherwise.
+    INCREMENTAL_STRATEGY_UNSPECIFIED = 0;
+    // MERGE strategy. Matches rows based on uniqueKey to update existing rows
+    // or insert new ones.
+    INCREMENTAL_STRATEGY_MERGE = 1;
+    // INSERT_OVERWRITE strategy. Overwrites entire partitions in the target
+    // table that are present in the new staging data.
+    INCREMENTAL_STRATEGY_INSERT_OVERWRITE = 2;
   }
 
   message IncrementalTableConfig {
@@ -485,6 +487,12 @@ message ActionConfig {
     // If unset, the value from workflow_settings.yaml is used. If neither is set, default BigQuery behavior applies.
     // Dataform CLI only (GCP Dataform support pending).
     string reservation = 27;
+
+    // Optional. The incremental strategy to use when updating the table.
+    IncrementalStrategy incremental_strategy = 28;
+
+    // Array of SQL-based predicates for when incremental updates are applied.
+    repeated string incremental_predicates = 29;
   }
 
   message AssertionConfig {
@@ -528,6 +536,9 @@ message ActionConfig {
     // If unset, the value from workflow_settings.yaml is used. If neither is set, default BigQuery behavior applies.
     // Dataform CLI only (GCP Dataform support pending).
     string reservation = 11;
+
+    // Metadata for this assertion.
+    Metadata metadata = 12;
   }
 
   message OperationConfig {

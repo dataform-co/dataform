@@ -5,7 +5,7 @@ steps:
       gcloud secrets versions access latest --secret=github-token-access --format='get(payload.data)' | tr '_-' '/+' | base64 -d > ~/token.txt
       REPO_TOKEN="$(gcloud auth print-access-token)" NPM_TOKEN=$NPM_TOKEN ./scripts/create_npmrc
     secretEnv: ['NPM_TOKEN']
-  - name: gcr.io/cloud-builders/bazel:5.4.0
+  - name: gcr.io/cloud-builders/bazel:7.3.2
     script: |
       #!/usr/bin/env bash
       ./scripts/publish

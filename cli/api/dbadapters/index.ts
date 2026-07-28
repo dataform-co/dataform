@@ -8,6 +8,10 @@ export interface IExecutionResult {
   metadata: dataform.IExecutionMetadata;
 }
 
+export interface IExecutionResultRaw extends IExecutionResult {
+  schema?: dataform.IField[];
+}
+
 export interface IBigQueryError extends Error {
   metadata?: dataform.IExecutionMetadata
 }
@@ -25,9 +29,25 @@ export interface IDbClient {
         location?: string;
         jobPrefix?: string;
         dryRun?: boolean;
+        reservation?: string;
       };
     }
   ): Promise<IExecutionResult>;
+
+  executeRaw(
+    statement: string,
+    options?: {
+      params?: { [name: string]: any };
+      rowLimit?: number;
+      bigquery?: {
+        labels?: { [label: string]: string };
+        location?: string;
+        jobPrefix?: string;
+        dryRun?: boolean;
+        reservation?: string;
+      };
+    }
+  ): Promise<IExecutionResultRaw>;
 }
 
 export interface IDbAdapter extends IDbClient {
@@ -38,10 +58,10 @@ export interface IDbAdapter extends IDbClient {
   schemas(database: string): Promise<string[]>;
   createSchema(database: string, schema: string): Promise<void>;
 
-  // TODO: This should take parameters to allow for retrieving from a specific database/schema.
-  tables(): Promise<dataform.ITarget[]>;
+  tables(database: string, schema?: string): Promise<dataform.ITableMetadata[]>;
   search(searchText: string, options?: { limit: number }): Promise<dataform.ITableMetadata[]>;
   table(target: dataform.ITarget): Promise<dataform.ITableMetadata>;
+  deleteTable(target: dataform.ITarget): Promise<void>;
 
   setMetadata(action: dataform.IExecutionAction): Promise<void>;
 }

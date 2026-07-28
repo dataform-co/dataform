@@ -199,6 +199,7 @@ export class Table extends ActionBuilder<dataform.Table> {
       partitionExpirationDays: config.partitionExpirationDays,
       requirePartitionFilter: config.requirePartitionFilter,
       additionalOptions: config.additionalOptions,
+      preserveGovernanceControls: config.preserveGovernanceControls ?? session.projectConfig.preserveGovernanceControls ?? false,
       ...(config.iceberg ? {
         connection: getConnectionForIcebergTable(
           config.iceberg.connection,
@@ -651,6 +652,7 @@ export class Table extends ActionBuilder<dataform.Table> {
             "partitionExpirationDays",
             "requirePartitionFilter",
             "additionalOptions",
+            "incrementalPredicates",
             "iceberg"
           ]),
           "BigQuery table config"

@@ -282,6 +282,30 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
     );
   });
 
+  test("fails compilation if incrementalStrategy is set on view", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    fs.writeFileSync(
+      path.join(projectDir, "workflow_settings.yaml"),
+      VALID_WORKFLOW_SETTINGS_YAML
+    );
+    fs.mkdirSync(path.join(projectDir, "definitions"));
+    fs.writeFileSync(
+      path.join(projectDir, "definitions/view.sqlx"),
+      `config {
+        type: "view",
+        incrementalStrategy: "merge"
+      }
+      SELECT 1`
+    );
+
+    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+    expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).greaterThan(0);
+    expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).contains(
+      'Unexpected property "incrementalStrategy"'
+    );
+  });
+
   suite("jit compilation", () => {
     test("jit compilation is supported", () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
