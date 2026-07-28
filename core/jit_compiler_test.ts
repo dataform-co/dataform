@@ -147,6 +147,29 @@ suite("jit_compiler", () => {
       const result = await jitCompile(request, rpcCallback);
       expect(result.assertion.query).to.equal("SELECT * FROM `db.schema.other` WHERE invalid");
     });
+
+    test("compiles assertion returning bare object", async () => {
+      const request = dataform.JitCompilationRequest.create({
+        jitCode: `async (ctx) => ({ query: "SELECT * FROM t WHERE invalid" })`,
+        target,
+        jitData: {},
+        compilationTargetType: dataform.JitCompilationTargetType.JIT_COMPILATION_TARGET_TYPE_ASSERTION,
+      });
+      const result = await jitCompile(request, rpcCallback);
+      expect(result.assertion.query).to.equal("SELECT * FROM t WHERE invalid");
+    });
+
+    test("compiles assertion returning object with extra fields", async () => {
+      const request = dataform.JitCompilationRequest.create({
+        jitCode:
+          `async (ctx) => ({ query: "SELECT * FROM t WHERE invalid", preOps: [], postOps: [] })`,
+        target,
+        jitData: {},
+        compilationTargetType: dataform.JitCompilationTargetType.JIT_COMPILATION_TARGET_TYPE_ASSERTION,
+      });
+      const result = await jitCompile(request, rpcCallback);
+      expect(result.assertion.query).to.equal("SELECT * FROM t WHERE invalid");
+    });
   });
 
   suite("jitCompileIncrementalTable", () => {

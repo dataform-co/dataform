@@ -38,12 +38,21 @@ SET columns_removed = (
 );
 
 
--- Apply schema change strategy (FAIL).
-IF ARRAY_LENGTH(columns_added) > 0 OR ARRAY_LENGTH(columns_removed) > 0 THEN
+-- Apply schema change strategy (EXTEND).
+IF ARRAY_LENGTH(columns_removed) > 0 THEN
   RAISE USING MESSAGE = FORMAT(
-    "Schema mismatch defined by on_schema_change = 'FAIL'. Added columns: %T, removed columns: %T",
-    columns_added,
+    "Column removals are not allowed when on_schema_change = 'EXTEND'. Removed columns: %T",
     columns_removed
+  );
+END IF;
+
+IF ARRAY_LENGTH(columns_added) > 0 THEN
+  EXECUTE IMMEDIATE (
+    "ALTER TABLE `project-id.dataset-id.incremental_on_schema_change` " ||
+    (
+      SELECT STRING_AGG(FORMAT("ADD COLUMN IF NOT EXISTS %s %s", column_info.column_name, column_info.data_type), ", ")
+      FROM UNNEST(columns_added) AS column_info
+    )
   );
 END IF;
 
@@ -61,7 +70,28 @@ EXCEPTION WHEN ERROR THEN
   RAISE;
 END;
 DROP PROCEDURE IF EXISTS `project-id.dataset-id.df_osc_test_uuid`;
-insert into `project-id.dataset-id.incremental_on_schema_change`	
-(`id`,`field1`)	
-select `id`,`field1`	
-from (select 1 as id, 'a' as field1, 'new' as field2) as insertions
+CREATE OR REPLACE TEMP TABLE `staging_table_temp_test_uuid` AS (
+  select 1 as id, 'a' as field1, 'new' as field2
+);
+
+BEGIN
+  DECLARE partitions_for_replacement DEFAULT (
+    ARRAY(
+      SELECT DISTINCT DATE(ts)
+      FROM `staging_table_temp_test_uuid`
+      WHERE DATE(ts) IS NOT NULL
+    )
+  );
+
+  MERGE `project-id.dataset-id.incremental_on_schema_change` DATAFORM_DEST
+  USING `staging_table_temp_test_uuid` DATAFORM_SOURCE
+  ON FALSE
+  WHEN NOT MATCHED BY SOURCE AND DATE(ts) IN UNNEST(partitions_for_replacement) 
+  
+  THEN
+    DELETE
+  WHEN NOT MATCHED BY TARGET THEN
+    INSERT (`id`,`field1`) VALUES (`id`,`field1`);
+END;
+
+DROP TABLE IF EXISTS `staging_table_temp_test_uuid`;

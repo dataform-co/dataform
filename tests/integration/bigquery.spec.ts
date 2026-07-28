@@ -35,7 +35,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       const executedGraph = await dfapi.run(dbadapter, executionGraph).result();
 
       const actionMap = keyBy(executedGraph.actions, v => targetAsReadableString(v.target));
-      expect(Object.keys(actionMap).length).eql(17);
+      expect(Object.keys(actionMap).length).eql(20);
 
       // Check the status of action execution.
       const expectedFailedActions = [
@@ -384,20 +384,24 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       const bqadapter = new ExecutionSql({ warehouse: "bigquery" }, "1.4.8");
 
       const refresh = bqadapter.publishTasks(table, { fullRefresh: true }, { fields: [] }).build();
-      const splitRefresh = refresh[0].statement.split("\n;\n");
+      const splitRefresh = refresh[0].statement.split("\n");
       expect([...splitRefresh.slice(0, 2), ...splitRefresh.slice(-2)]).to.eql([
-        ...table.preOps,
-        ...table.postOps
+        "preop task1;",
+        "preop task2;",
+        "postop task1;",
+        "postop task2"
       ]);
 
       const increment = bqadapter
         .publishTasks(table, { fullRefresh: false }, { fields: [] })
         .build();
 
-      const splitIncrement = increment[0].statement.split("\n;\n");
+      const splitIncrement = increment[0].statement.split("\n");
       expect([...splitIncrement.slice(0, 2), ...splitIncrement.slice(-2)]).to.eql([
-        ...table.preOps,
-        ...table.postOps
+        "preop task1;",
+        "preop task2;",
+        "postop task1;",
+        "postop task2"
       ]);
     });
   });

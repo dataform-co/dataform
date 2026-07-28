@@ -33,7 +33,7 @@ interface ILegacyAssertionConfig extends dataform.ActionConfig.AssertionConfig {
 export type AContextable<T> = T | ((ctx: AssertionContext) => T);
 
 /** JiT compilation stage result for assertions. */
-export type JitAssertionResult = string;
+export type JitAssertionResult = string | { query: string };
 
 /**
  * An assertion is a data quality test query that finds rows that violate one or more conditions

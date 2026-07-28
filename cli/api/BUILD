@@ -58,15 +58,15 @@ node_modules(
 ts_test_suite(
     name = "tests",
     srcs = [
+        "tasks_test.ts",
+        "utils_test.ts",
         "commands/jit/rpc_test.ts",
         "dbadapters/bigquery_test.ts",
         "execution_sql_test.ts",
-        "utils_test.ts",
     ],
     data = [
         ":node_modules",
         "//packages/@dataform/core:package_tar",
-        "//test_credentials:bigquery.json",
         "@nodejs//:node",
         "@nodejs//:npm",
     ] + glob(["goldens/**"]),
