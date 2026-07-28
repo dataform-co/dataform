@@ -71,6 +71,15 @@ message WorkflowSettings {
   // Optional. If set to true, governance controls (e.g. Data Policies) will be
   // preserved on BigQuery tables.
   bool preserve_governance_controls = 18;
+
+  // Optional. Configuration for Knowledge Catalog lineage emission.
+  LineageSettings lineage = 19;
+}
+
+message LineageSettings {
+  // If true, emit OpenLineage events to Knowledge Catalog
+  // (datalineage.googleapis.com) after each Dataform action completes.
+  bool enabled = 1;
 }
 
 // Action configs defines the contents of `actions.yaml` configuration files.

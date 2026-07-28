@@ -178,6 +178,9 @@ export function workflowSettingsAsProjectConfig(
   if (workflowSettings.preserveGovernanceControls) {
     projectConfig.preserveGovernanceControls = workflowSettings.preserveGovernanceControls;
   }
+  if (workflowSettings.lineage) {
+    projectConfig.lineage = workflowSettings.lineage;
+  }
   projectConfig.warehouse = "bigquery";
   return projectConfig;
 }

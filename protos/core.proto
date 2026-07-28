@@ -40,6 +40,8 @@ message ProjectConfig {
 
   bool preserve_governance_controls = 24;
 
+  LineageSettings lineage = 25;
+
   reserved 3, 4, 6, 8, 10, 12, 13;
 }
 
