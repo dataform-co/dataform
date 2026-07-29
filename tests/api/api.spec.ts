@@ -377,6 +377,98 @@ suite("@dataform/api", () => {
       expect(actionNames).not.includes("schema.b");
       expect(actionNames).not.includes("schema.d");
     });
+
+    // Mirrors a project that registers a notebook and a data preparation with a tag via the
+    // JS API, e.g. notebook({ name: "nb_a", filename: "...", tags: ["tag1"] }), alongside
+    // operations/tables that share the same tag. "tag1" actions depend on an untagged
+    // operation (op_dep) to exercise dependency traversal; "tag2" actions are unrelated.
+    const TEST_GRAPH_WITH_NOTEBOOK_TAGS: dataform.ICompiledGraph = dataform.CompiledGraph.create({
+      projectConfig: { warehouse: "bigquery", defaultLocation: "US" },
+      operations: [
+        {
+          target: { schema: "schema", name: "op_a" },
+          tags: ["tag1"],
+          queries: ["create or replace view schema.someview as select 1 as test"]
+        },
+        {
+          target: { schema: "schema", name: "op_b" },
+          tags: ["tag2"],
+          queries: ["create or replace view schema.someview as select 1 as test"]
+        },
+        {
+          target: { schema: "schema", name: "op_dep" },
+          tags: [],
+          queries: ["create or replace view schema.someview as select 1 as test"]
+        }
+      ],
+      notebooks: [
+        {
+          target: { schema: "schema", name: "nb_a" },
+          tags: ["tag1"],
+          dependencyTargets: [{ schema: "schema", name: "op_dep" }]
+        },
+        {
+          target: { schema: "schema", name: "nb_b" },
+          tags: ["tag2"]
+        }
+      ],
+      dataPreparations: [
+        {
+          target: { schema: "schema", name: "dp_a" },
+          tags: ["tag1"]
+        },
+        {
+          target: { schema: "schema", name: "dp_b" },
+          tags: ["tag2"]
+        }
+      ]
+    });
+
+    const prunedActionNames = (prunedGraph: dataform.ICompiledGraph) => [
+      ...prunedGraph.tables.map(action => targetAsReadableString(action.target)),
+      ...prunedGraph.operations.map(action => targetAsReadableString(action.target)),
+      ...prunedGraph.assertions.map(action => targetAsReadableString(action.target)),
+      ...prunedGraph.notebooks.map(action => targetAsReadableString(action.target)),
+      ...prunedGraph.dataPreparations.map(action => targetAsReadableString(action.target))
+    ];
+
+    test("prune notebooks and data preparations with --tags", () => {
+      const prunedGraph = prune(TEST_GRAPH_WITH_NOTEBOOK_TAGS, {
+        tags: ["tag1"],
+        includeDependencies: false,
+        includeDependents: false
+      });
+      const actionNames = prunedActionNames(prunedGraph);
+
+      // Operations are filtered by tag correctly: the "tag1" operation is kept and the
+      // "tag2" operation is dropped.
+      expect(actionNames).includes("schema.op_a");
+      expect(actionNames).not.includes("schema.op_b");
+
+      // Notebooks behave identically: a notebook tagged "tag1" is selected, and a notebook
+      // tagged "tag2" is dropped.
+      expect(actionNames).includes("schema.nb_a");
+      expect(actionNames).not.includes("schema.nb_b");
+
+      // Data preparations behave identically.
+      expect(actionNames).includes("schema.dp_a");
+      expect(actionNames).not.includes("schema.dp_b");
+    });
+
+    test("prune notebooks with --tags pulls in dependencies", () => {
+      const prunedGraph = prune(TEST_GRAPH_WITH_NOTEBOOK_TAGS, {
+        tags: ["tag1"],
+        includeDependencies: true,
+        includeDependents: false
+      });
+      const actionNames = prunedActionNames(prunedGraph);
+
+      // The tag-selected notebook is included, along with its (untagged) dependency.
+      expect(actionNames).includes("schema.nb_a");
+      expect(actionNames).includes("schema.op_dep");
+      // Unrelated "tag2" actions remain excluded.
+      expect(actionNames).not.includes("schema.nb_b");
+    });
   });
 
   suite("sql_generating", () => {
