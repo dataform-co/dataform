@@ -3310,6 +3310,75 @@ actions:
         outputBucket: "gs://my-action-staging-bucket"
       });
     });
+
+ test("preserveGovernanceControls propagates to compiled graph", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/file.sqlx"),
+        `
+config {
+  type: "table",
+  preserveGovernanceControls: true
+}
+select 1 as a`
+      );
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(result.compile.compiledGraph.tables[0].bigquery.preserveGovernanceControls).equals(true);
+    });
+
+    test("preserveGovernanceControls in workflow_settings.yaml propagates to compiled graph", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        `
+defaultProject: "project"
+defaultDataset: "dataset"
+preserveGovernanceControls: true`
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/file.sqlx"),
+        `
+config {
+  type: "table"
+}
+select 1 as a`
+      );
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(result.compile.compiledGraph.tables[0].bigquery.preserveGovernanceControls).equals(true);
+    });
+
+    test("preserveGovernanceControls on table overrides workflow_settings.yaml", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        `
+defaultProject: "project"
+defaultDataset: "dataset"
+preserveGovernanceControls: true`
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/file.sqlx"),
+        `
+config {
+  type: "table",
+  partitionBy: "somePartition",
+  preserveGovernanceControls: false
+}
+select 1 as a`
+      );
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(result.compile.compiledGraph.tables[0].bigquery.preserveGovernanceControls).equals(false);
+    });
   });
 });
 

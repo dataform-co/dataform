@@ -191,7 +191,9 @@ export function workflowSettingsAsProjectConfig(
     }
     projectConfig.defaultManagedSparkExecutionOptions.stagingBucketUri = stagingBucketUri;
   }
-
+  if (workflowSettings.preserveGovernanceControls) {
+    projectConfig.preserveGovernanceControls = workflowSettings.preserveGovernanceControls;
+  }
   projectConfig.warehouse = "bigquery";
   return projectConfig;
 }

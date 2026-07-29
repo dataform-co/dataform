@@ -40,6 +40,8 @@ message ProjectConfig {
 
   ManagedSparkExecutionOptions default_managed_spark_execution_options = 23;
 
+  bool preserve_governance_controls = 24;
+
   reserved 3, 4, 6, 8, 10, 12, 13;
 }
 
@@ -94,6 +96,7 @@ message BigQueryOptions {
   TableFormat table_format = 9;
   FileFormat file_format = 10;
   string storage_uri = 11;
+  bool preserve_governance_controls = 13;
 }
 
 message GraphErrors {
