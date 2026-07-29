@@ -295,17 +295,17 @@ export class LineageEmitter {
     jobFacets.gcp_lineage = {
       _producer: "https://github.com/dataform-co/dataform",
       _schemaURL: "https://openlineage.io/spec/facets/1-0-0/GcpLineageJobFacet.json#/$defs/GcpLineageJobFacet",
-      displayName: `BQ Pipelines action ${canonicalActionTarget}`,
+      displayName: `BigQuery Pipelines action ${canonicalActionTarget}`,
       origin: {
         name: `projects/${projectId}/locations/${location}/cli/${workdirIdentifier}`,
-        sourceType: "BQ_PIPELINES"
+        sourceType: "BIGQUERY_PIPELINES"
       }
     };
 
     jobFacets.jobType = {
       _producer: "https://github.com/dataform-co/dataform",
       _schemaURL: "https://openlineage.io/spec/facets/2-0-3/JobTypeJobFacet.json#/$defs/JobTypeJobFacet",
-      integration: "BQ_PIPELINES",
+      integration: "BIGQUERY_PIPELINES",
       jobType: "ACTION",
       processingType: "BATCH"
     };

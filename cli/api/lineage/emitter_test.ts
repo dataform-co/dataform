@@ -146,12 +146,12 @@ suite("LineageEmitter", () => {
     );
 
     // GCP lineage job facet verified
-    expect(openLineage.job.facets.gcp_lineage.displayName).to.equal("BQ Pipelines action target_dataset.target_table");
-    expect(openLineage.job.facets.gcp_lineage.origin.sourceType).to.equal("BQ_PIPELINES");
+    expect(openLineage.job.facets.gcp_lineage.displayName).to.equal("BigQuery Pipelines action target_dataset.target_table");
+    expect(openLineage.job.facets.gcp_lineage.origin.sourceType).to.equal("BIGQUERY_PIPELINES");
     expect(openLineage.job.facets.gcp_lineage.origin.name).to.equal("projects/target-project/locations/us/cli/my-dataform-project-0b5d3e86");
 
     // Job type facet verified
-    expect(openLineage.job.facets.jobType.integration).to.equal("BQ_PIPELINES");
+    expect(openLineage.job.facets.jobType.integration).to.equal("BIGQUERY_PIPELINES");
     expect(openLineage.job.facets.jobType.jobType).to.equal("ACTION");
     expect(openLineage.job.facets.jobType.processingType).to.equal("BATCH");
   });
