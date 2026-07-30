@@ -80,12 +80,29 @@ const fullRefreshOption: INamedOption<yargs.Options> = {
   }
 };
 
+// Splits repeated and comma-separated values into a flat list, e.g.
+// `--actions a,b --actions c` -> ["a", "b", "c"].
+const splitCommas = (raw: string[] | null) => raw.map(value => value.split(",")).flat();
+
+// It would be nice to use yargs' "implies" to implement this, but it doesn't work for some reason.
+const requiresSelection = (
+  name: string,
+  actionsName: string,
+  tagsName: string
+): INamedOption<yargs.Options>["check"] => (argv: yargs.Arguments) => {
+  if (argv[name] && !(argv[actionsName] || argv[tagsName])) {
+    throw new Error(
+      `The --${name} flag should only be supplied along with --${actionsName} or --${tagsName}.`
+    );
+  }
+};
+
 const actionsOption: INamedOption<yargs.Options> = {
   name: "actions",
   option: {
     describe: "A list of action names or patterns to run. Can include '*' wildcards.",
     type: "array",
-    coerce: (rawActions: string[] | null) => rawActions.map(actions => actions.split(",")).flat()
+    coerce: splitCommas
   }
 };
 
@@ -94,7 +111,7 @@ const tagsOption: INamedOption<yargs.Options> = {
   option: {
     describe: "A list of tags to filter the actions to run.",
     type: "array",
-    coerce: (rawTags: string[] | null) => rawTags.map(tags => tags.split(",")).flat()
+    coerce: splitCommas
   }
 };
 
@@ -104,14 +121,7 @@ const includeDepsOption: INamedOption<yargs.Options> = {
     describe: "If set, dependencies for selected actions will also be run.",
     type: "boolean"
   },
-  // It would be nice to use yargs' "implies" to implement this, but it doesn't work for some reason.
-  check: (argv: yargs.Arguments) => {
-    if (argv[includeDepsOption.name] && !(argv[actionsOption.name] || argv[tagsOption.name])) {
-      throw new Error(
-        `The --${includeDepsOption.name} flag should only be supplied along with --${actionsOption.name} or --${tagsOption.name}.`
-      );
-    }
-  }
+  check: requiresSelection("include-deps", "actions", "tags")
 };
 
 const includeDependentsOption: INamedOption<yargs.Options> = {
@@ -120,29 +130,19 @@ const includeDependentsOption: INamedOption<yargs.Options> = {
     describe: "If set, dependents (downstream) for selected actions will also be run.",
     type: "boolean"
   },
-  // It would be nice to use yargs' "implies" to implement this, but it doesn't work for some reason.
-  check: (argv: yargs.Arguments) => {
-    if (
-      argv[includeDependentsOption.name] &&
-      !(argv[actionsOption.name] || argv[tagsOption.name])
-    ) {
-      throw new Error(
-        `The --${includeDependentsOption.name} flag should only be supplied along with --${actionsOption.name} or --${tagsOption.name}.`
-      );
-    }
-  }
+  check: requiresSelection("include-dependents", "actions", "tags")
 };
 
 // `compile` reuses the same prune() filtering as run/build, but these flags only
 // filter the *printed output* -- the whole project still compiles. The `output-`
-// prefix makes that distinction explicit (see PR #2212).
+// prefix makes that distinction explicit.
 const outputActionsOption: INamedOption<yargs.Options> = {
   name: "output-actions",
   option: {
     describe:
       "A list of action names or patterns to filter the compiled output to. Can include '*' wildcards.",
     type: "array",
-    coerce: (rawActions: string[] | null) => rawActions.map(actions => actions.split(",")).flat()
+    coerce: splitCommas
   }
 };
 
@@ -151,7 +151,7 @@ const outputTagsOption: INamedOption<yargs.Options> = {
   option: {
     describe: "A list of tags to filter the compiled output to.",
     type: "array",
-    coerce: (rawTags: string[] | null) => rawTags.map(tags => tags.split(",")).flat()
+    coerce: splitCommas
   }
 };
 
@@ -161,16 +161,7 @@ const outputIncludeDepsOption: INamedOption<yargs.Options> = {
     describe: "If set, dependencies of the selected actions are also included in the output.",
     type: "boolean"
   },
-  check: (argv: yargs.Arguments) => {
-    if (
-      argv[outputIncludeDepsOption.name] &&
-      !(argv[outputActionsOption.name] || argv[outputTagsOption.name])
-    ) {
-      throw new Error(
-        `The --${outputIncludeDepsOption.name} flag should only be supplied along with --${outputActionsOption.name} or --${outputTagsOption.name}.`
-      );
-    }
-  }
+  check: requiresSelection("output-include-deps", "output-actions", "output-tags")
 };
 
 const outputIncludeDependentsOption: INamedOption<yargs.Options> = {
@@ -180,16 +171,7 @@ const outputIncludeDependentsOption: INamedOption<yargs.Options> = {
       "If set, dependents (downstream) of the selected actions are also included in the output.",
     type: "boolean"
   },
-  check: (argv: yargs.Arguments) => {
-    if (
-      argv[outputIncludeDependentsOption.name] &&
-      !(argv[outputActionsOption.name] || argv[outputTagsOption.name])
-    ) {
-      throw new Error(
-        `The --${outputIncludeDependentsOption.name} flag should only be supplied along with --${outputActionsOption.name} or --${outputTagsOption.name}.`
-      );
-    }
-  }
+  check: requiresSelection("output-include-dependents", "output-actions", "output-tags")
 };
 
 const credentialsOption: INamedOption<yargs.Options> = {
