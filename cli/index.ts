@@ -87,12 +87,12 @@ const splitCommas = (raw: string[] | null) => raw.map(value => value.split(","))
 // It would be nice to use yargs' "implies" to implement this, but it doesn't work for some reason.
 const requiresSelection = (
   name: string,
-  actionsName: string,
-  tagsName: string
+  actions: INamedOption<yargs.Options>,
+  tags: INamedOption<yargs.Options>
 ): INamedOption<yargs.Options>["check"] => (argv: yargs.Arguments) => {
-  if (argv[name] && !(argv[actionsName] || argv[tagsName])) {
+  if (argv[name] && !(argv[actions.name] || argv[tags.name])) {
     throw new Error(
-      `The --${name} flag should only be supplied along with --${actionsName} or --${tagsName}.`
+      `The --${name} flag should only be supplied along with --${actions.name} or --${tags.name}.`
     );
   }
 };
@@ -121,7 +121,7 @@ const includeDepsOption: INamedOption<yargs.Options> = {
     describe: "If set, dependencies for selected actions will also be run.",
     type: "boolean"
   },
-  check: requiresSelection("include-deps", "actions", "tags")
+  check: requiresSelection("include-deps", actionsOption, tagsOption)
 };
 
 const includeDependentsOption: INamedOption<yargs.Options> = {
@@ -130,7 +130,7 @@ const includeDependentsOption: INamedOption<yargs.Options> = {
     describe: "If set, dependents (downstream) for selected actions will also be run.",
     type: "boolean"
   },
-  check: requiresSelection("include-dependents", "actions", "tags")
+  check: requiresSelection("include-dependents", actionsOption, tagsOption)
 };
 
 // `compile` reuses the same prune() filtering as run/build, but these flags only
@@ -139,8 +139,9 @@ const includeDependentsOption: INamedOption<yargs.Options> = {
 const outputActionsOption: INamedOption<yargs.Options> = {
   name: "output-actions",
   option: {
-    describe:
-      "A list of action names or patterns to filter the compiled output to. Can include '*' wildcards.",
+    // No wildcard support: prune()'s matchPatterns() does exact matching on the
+    // action name or its fully-qualified `database.schema.name`.
+    describe: "A list of action names to filter the compiled output to.",
     type: "array",
     coerce: splitCommas
   }
@@ -161,7 +162,7 @@ const outputIncludeDepsOption: INamedOption<yargs.Options> = {
     describe: "If set, dependencies of the selected actions are also included in the output.",
     type: "boolean"
   },
-  check: requiresSelection("output-include-deps", "output-actions", "output-tags")
+  check: requiresSelection("output-include-deps", outputActionsOption, outputTagsOption)
 };
 
 const outputIncludeDependentsOption: INamedOption<yargs.Options> = {
@@ -171,7 +172,7 @@ const outputIncludeDependentsOption: INamedOption<yargs.Options> = {
       "If set, dependents (downstream) of the selected actions are also included in the output.",
     type: "boolean"
   },
-  check: requiresSelection("output-include-dependents", "output-actions", "output-tags")
+  check: requiresSelection("output-include-dependents", outputActionsOption, outputTagsOption)
 };
 
 const credentialsOption: INamedOption<yargs.Options> = {

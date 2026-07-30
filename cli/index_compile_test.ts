@@ -430,6 +430,10 @@ suite("compile node selection", ({ afterEach }) => {
     );
     expect(result.exitCode, result.stderr).equals(0);
     expect(tableNames(result.stdout)).deep.equals(["midstream"]);
+    // `targets` is printed alongside the actions, so it must be pruned too.
+    expect(JSON.parse(result.stdout).targets.map((target: any) => target.name)).deep.equals([
+      "midstream"
+    ]);
   });
 
   test("--output-actions --output-include-deps pulls in upstream dependencies", async () => {
