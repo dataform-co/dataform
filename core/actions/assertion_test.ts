@@ -314,10 +314,13 @@ actions:
     fs.mkdirSync(path.join(projectDir, "definitions"));
     fs.writeFileSync(
       path.join(projectDir, "definitions/test.sqlx"),
+      // The condition is authored as a multiline template literal, matching the
+      // repro in #2201; a double-quoted JS string cannot span lines.
       `config {
         type: "table",
         assertions: {
-          rowConditions: ["a > 0\n  AND b > 0"]
+          rowConditions: [\`a > 0
+  AND b > 0\`]
         }
       }
       SELECT 1 AS a, 1 AS b`
