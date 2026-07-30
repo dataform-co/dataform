@@ -246,7 +246,7 @@ export class LineageEmitter {
         }
       },
       gcp_bq_pipelines_run: {
-        runType: "cli"
+        runType: "cli-manual"
       }
     };
 
