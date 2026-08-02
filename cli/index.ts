@@ -5,7 +5,7 @@ import parseDuration from "parse-duration";
 import * as path from "path";
 import yargs from "yargs";
 
-import { build, compile, credentials, init, install, run, test } from "df/cli/api";
+import { build, compile, credentials, init, install, prune, run, test } from "df/cli/api";
 import { CREDENTIALS_FILENAME } from "df/cli/api/commands/credentials";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 import { prettyJsonStringify } from "df/cli/api/utils";
@@ -80,12 +80,29 @@ const fullRefreshOption: INamedOption<yargs.Options> = {
   }
 };
 
+// Splits repeated and comma-separated values into a flat list, e.g.
+// `--actions a,b --actions c` -> ["a", "b", "c"].
+const splitCommas = (raw: string[] | null) => raw.map(value => value.split(",")).flat();
+
+// It would be nice to use yargs' "implies" to implement this, but it doesn't work for some reason.
+const requiresSelection = (
+  name: string,
+  actions: INamedOption<yargs.Options>,
+  tags: INamedOption<yargs.Options>
+): INamedOption<yargs.Options>["check"] => (argv: yargs.Arguments) => {
+  if (argv[name] && !(argv[actions.name] || argv[tags.name])) {
+    throw new Error(
+      `The --${name} flag should only be supplied along with --${actions.name} or --${tags.name}.`
+    );
+  }
+};
+
 const actionsOption: INamedOption<yargs.Options> = {
   name: "actions",
   option: {
     describe: "A list of action names or patterns to run. Can include '*' wildcards.",
     type: "array",
-    coerce: (rawActions: string[] | null) => rawActions.map(actions => actions.split(",")).flat()
+    coerce: splitCommas
   }
 };
 
@@ -94,7 +111,7 @@ const tagsOption: INamedOption<yargs.Options> = {
   option: {
     describe: "A list of tags to filter the actions to run.",
     type: "array",
-    coerce: (rawTags: string[] | null) => rawTags.map(tags => tags.split(",")).flat()
+    coerce: splitCommas
   }
 };
 
@@ -104,14 +121,7 @@ const includeDepsOption: INamedOption<yargs.Options> = {
     describe: "If set, dependencies for selected actions will also be run.",
     type: "boolean"
   },
-  // It would be nice to use yargs' "implies" to implement this, but it doesn't work for some reason.
-  check: (argv: yargs.Arguments) => {
-    if (argv[includeDepsOption.name] && !(argv[actionsOption.name] || argv[tagsOption.name])) {
-      throw new Error(
-        `The --${includeDepsOption.name} flag should only be supplied along with --${actionsOption.name} or --${tagsOption.name}.`
-      );
-    }
-  }
+  check: requiresSelection("include-deps", actionsOption, tagsOption)
 };
 
 const includeDependentsOption: INamedOption<yargs.Options> = {
@@ -120,17 +130,49 @@ const includeDependentsOption: INamedOption<yargs.Options> = {
     describe: "If set, dependents (downstream) for selected actions will also be run.",
     type: "boolean"
   },
-  // It would be nice to use yargs' "implies" to implement this, but it doesn't work for some reason.
-  check: (argv: yargs.Arguments) => {
-    if (
-      argv[includeDependentsOption.name] &&
-      !(argv[actionsOption.name] || argv[tagsOption.name])
-    ) {
-      throw new Error(
-        `The --${includeDependentsOption.name} flag should only be supplied along with --${actionsOption.name} or --${tagsOption.name}.`
-      );
-    }
+  check: requiresSelection("include-dependents", actionsOption, tagsOption)
+};
+
+// `compile` reuses the same prune() filtering as run/build, but these flags only
+// filter the *printed output* -- the whole project still compiles. The `output-`
+// prefix makes that distinction explicit.
+const outputActionsOption: INamedOption<yargs.Options> = {
+  name: "output-actions",
+  option: {
+    // No wildcard support: prune()'s matchPatterns() does exact matching on the
+    // action name or its fully-qualified `database.schema.name`.
+    describe: "A list of action names to filter the compiled output to.",
+    type: "array",
+    coerce: splitCommas
   }
+};
+
+const outputTagsOption: INamedOption<yargs.Options> = {
+  name: "output-tags",
+  option: {
+    describe: "A list of tags to filter the compiled output to.",
+    type: "array",
+    coerce: splitCommas
+  }
+};
+
+const outputIncludeDepsOption: INamedOption<yargs.Options> = {
+  name: "output-include-deps",
+  option: {
+    describe: "If set, dependencies of the selected actions are also included in the output.",
+    type: "boolean"
+  },
+  check: requiresSelection("output-include-deps", outputActionsOption, outputTagsOption)
+};
+
+const outputIncludeDependentsOption: INamedOption<yargs.Options> = {
+  name: "output-include-dependents",
+  option: {
+    describe:
+      "If set, dependents (downstream) of the selected actions are also included in the output.",
+    type: "boolean"
+  },
+  check: requiresSelection("output-include-dependents", outputActionsOption, outputTagsOption)
 };
 
 const credentialsOption: INamedOption<yargs.Options> = {
@@ -393,6 +435,10 @@ export function runCli() {
           dotOutputOption,
           timeoutOption,
           quietCompileOption,
+          outputActionsOption,
+          outputTagsOption,
+          outputIncludeDepsOption,
+          outputIncludeDependentsOption,
           {
             name: verboseOptionName,
             option: {
@@ -429,7 +475,24 @@ export function runCli() {
               timeoutMillis: argv[timeoutOption.name] || undefined,
               verbose: argv[verboseOptionName] || false
             });
-            printCompiledGraph(compiledGraph, outputType, argv[quietCompileOption.name]);
+
+            // The whole project must compile (ref() resolution needs every action
+            // registered), but the printed output can be filtered to the selected
+            // action(s) -- mirroring how `run`/`build` prune the graph. We only prune
+            // a clean graph; if compilation produced errors we print the full graph
+            // plus the errors, keeping graph-level errors as-is.
+            const hasSelector =
+              argv[outputActionsOption.name]?.length > 0 || argv[outputTagsOption.name]?.length > 0;
+            const outputGraph =
+              hasSelector && !compiledGraphHasErrors(compiledGraph)
+                ? prune(compiledGraph, {
+                    actions: argv[outputActionsOption.name],
+                    tags: argv[outputTagsOption.name],
+                    includeDependencies: argv[outputIncludeDepsOption.name],
+                    includeDependents: argv[outputIncludeDependentsOption.name]
+                  })
+                : compiledGraph;
+            printCompiledGraph(outputGraph, outputType, argv[quietCompileOption.name]);
             if (compiledGraphHasErrors(compiledGraph)) {
               print("");
               printCompiledGraphErrors(compiledGraph.graphErrors, argv[quietCompileOption.name]);

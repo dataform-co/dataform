@@ -20,6 +20,11 @@ export function prune(
     ),
     operations: compiledGraph.operations.filter(action =>
       includedActionNames.has(targetAsReadableString(action.target))
+    ),
+    // `targets` is declarative output only (nothing downstream reads it), but
+    // `compile` prints it, so it has to agree with the filtered action lists.
+    targets: compiledGraph.targets?.filter(target =>
+      includedActionNames.has(targetAsReadableString(target))
     )
   };
 }
