@@ -26,13 +26,25 @@ type actionsWithDependencies =
 export const nativeRequire =
   typeof __webpack_require__ === "function" ? __non_webpack_require__ : require;
 
-// Turn a selector pattern containing '*' wildcards into an anchored RegExp.
-// Every character except '*' is matched literally (regex metacharacters are
-// escaped); each '*' matches any run of characters, so "mrd*" -> /^mrd.*$/ and
+// Turns a selector pattern into an anchored RegExp in which "*" is a wildcard and
+// everything else is literal text, e.g. "mrd*" -> /^mrd.*$/ and
 // "*features*" -> /^.*features.*$/.
+//
+// Splitting on "*" first is what keeps the rest simple: every "*" in a pattern is a
+// wildcard by definition, so the pieces between them are pure literal text and can be
+// escaped wholesale, then rejoined with ".*".
+//
+// The escape is needed because an action name is not regex-safe. Names are
+// dot-separated ("project.dataset.name"), and "." in a regex matches any character, so
+// without escaping "schema.*" would also select "schemaXtable" - see the "literal dot"
+// case in utils_test.ts. The set below is the usual list of JavaScript regex
+// metacharacters with one deliberate omission: "*", which is left out because the split
+// above has already consumed every "*", so none can reach here. ("]" and "\" carry
+// backslashes for the character class's own syntax; "-" and "/" are not metacharacters
+// outside a class and so need no escaping.)
 function globToRegExp(pattern: string): RegExp {
-  const escaped = pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\\\*/g, ".*");
-  return new RegExp(`^${escaped}$`);
+  const escapeLiteral = (literal: string) => literal.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`^${pattern.split("*").map(escapeLiteral).join(".*")}$`);
 }
 
 export function matchPatterns(patterns: string[], values: string[]) {
