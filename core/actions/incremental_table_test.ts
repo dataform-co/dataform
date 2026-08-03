@@ -219,7 +219,7 @@ config {
   onSchemaChange: "IGNORE",
   metadata: {
     extraProperties: {
-      myField: "example"
+      priority: "high"
     }
   }
 }
@@ -265,7 +265,7 @@ SELECT 1`;
             metadata: {
               extraProperties: {
                 fields: {
-                  myField: { stringValue: "example" }
+                  priority: { stringValue: "high" }
                 }
               }
             }

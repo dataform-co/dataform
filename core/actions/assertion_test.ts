@@ -183,6 +183,40 @@ SELECT 1`
       });
     });
 
+    test("assertions can be configured with a plain object for extraProperties", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/assertion.sqlx"),
+        `config {
+    type: "assertion",
+    metadata: {
+        extraProperties: {
+            priority: "high"
+        }
+    }
+}
+SELECT 1`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(
+        asPlainObject(result.compile.compiledGraph.assertions[0].actionDescriptor.metadata)
+      ).deep.equals({
+        extraProperties: {
+          fields: {
+            priority: { stringValue: "high" }
+          }
+        }
+      });
+    });
+
     ["table", "view", "incremental"].forEach(tableType => {
       [`"fieldValue"`, `["fieldValue"]`].forEach(uniqueKeyField => {
         test(`for ${tableType} built-in assertions uniqueKey with value ${uniqueKeyField}`, () => {
