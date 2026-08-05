@@ -1345,6 +1345,7 @@ publish("name", {
                           incrementalPostOps: ["post_op"],
                           incrementalPreOps: ["pre_op"],
                           incrementalQuery: "SELECT 1",
+                          incrementalStrategy: "INCREMENTAL_STRATEGY_UNSPECIFIED",
                           protected: false,
                           onSchemaChange: "IGNORE"
                         }
@@ -1410,6 +1411,7 @@ publish("name", {
               ...(tableType === "incremental"
                 ? {
                     incrementalQuery: "SELECT * FROM `defaultProject.defaultDataset.operation`",
+                    incrementalStrategy: "INCREMENTAL_STRATEGY_UNSPECIFIED",
                     protected: false,
                     onSchemaChange: "IGNORE"
                   }
@@ -1459,6 +1461,7 @@ publish("name", {
                 incrementalQuery: "SELECT 1",
                 protected: true,
                 onSchemaChange: "IGNORE",
+                incrementalStrategy: "INCREMENTAL_STRATEGY_UNSPECIFIED",
               }
             ]);
           }); 

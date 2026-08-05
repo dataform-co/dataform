@@ -154,24 +154,8 @@ from (${query}) as insertions`;
             this.buildIncrementalSchemaChangeTasks(tasks, table);
             // Fall through to run the static DML after the procedure alters the schema
           case dataform.OnSchemaChange.IGNORE:
-          default:
-            tasks.add(
-              Task.statement(
-                table.uniqueKey && table.uniqueKey.length > 0
-                  ? this.mergeInto(
-                      table.target,
-                      tableMetadata?.fields.map(f => f.name),
-                      this.getIncrementalQuery(table),
-                      table.uniqueKey,
-                      table.bigquery && table.bigquery.updatePartitionFilter
-                    )
-                  : this.insertInto(
-                      table.target,
-                      tableMetadata?.fields.map(f => f.name).map(column => `\`${column}\``),
-                      this.getIncrementalQuery(table)
-                    )
-              )
-            );
+            const columns = tableMetadata?.fields.map(f => f.name) || [];
+            tasks.add(Task.statement(this.getIncrementalDmlStatement(table, columns)));
             break;
         }
       }
@@ -220,6 +204,16 @@ from (${query}) as insertions`;
 
   public dropIfExists(target: dataform.ITarget, type: dataform.TableMetadata.Type) {
     return `drop ${this.tableTypeAsSql(type)} if exists ${this.resolveTarget(target)}`;
+  }
+
+  private buildIncrementalPredicatesString(
+    incrementalPredicates?: string[] | null
+  ): string {
+    const validPredicates = incrementalPredicates ? incrementalPredicates.filter(p => p.trim() !== "") : [];
+    if (validPredicates.length === 0) {
+      return "";
+    }
+    return `and ${validPredicates.map(p => `(${p})`).join(" and ")}`;
   }
 
   private buildIncrementalSchemaChangeTasks(tasks: Tasks, table: dataform.ITable) {
@@ -451,24 +445,102 @@ DROP TABLE IF EXISTS ${emptyTempTableName};
       create or replace view ${this.resolveTarget(target)} as ${query}`;
   }
 
-    private mergeInto(
+  private mergeInto(
     target: dataform.ITarget,
     columns: string[],
     query: string,
     uniqueKey: string[],
-    updatePartitionFilter: string
+    bigquery: dataform.IBigQueryOptions
   ) {
+    const updatePartitionFilter = bigquery && bigquery.updatePartitionFilter;
+    const incrementalPredicates = bigquery && bigquery.incrementalPredicates;
+    const incrementalPredicatesString = this.buildIncrementalPredicatesString(incrementalPredicates);
     const backtickedColumns = columns.map(column => `\`${column}\``);
     return `
-merge ${this.resolveTarget(target)} T
+merge ${this.resolveTarget(target)} DATAFORM_DEST
 using (${query}
-) S
-on ${uniqueKey.map(uniqueKeyCol => `T.${uniqueKeyCol} = S.${uniqueKeyCol}`).join(` and `)}
-  ${updatePartitionFilter ? `and T.${updatePartitionFilter}` : ""}
+) DATAFORM_SOURCE
+on ${uniqueKey.map(uniqueKeyCol => `DATAFORM_DEST.${uniqueKeyCol} = DATAFORM_SOURCE.${uniqueKeyCol}`).join(` and `)} ${updatePartitionFilter ? `and DATAFORM_DEST.${updatePartitionFilter}` : ""}
+${incrementalPredicatesString ? ` ${incrementalPredicatesString}` : ""}
 when matched then
-  update set ${columns.map(column => `\`${column}\` = S.${column}`).join(",")}
+  update set ${columns.map(column => `\`${column}\` = DATAFORM_SOURCE.${column}`).join(",")}
 when not matched then
   insert (${backtickedColumns.join(",")}) values (${backtickedColumns.join(",")})`;
+  }
+
+  private insertOverwrite(
+    target: dataform.ITarget,
+    columns: string[],
+    query: string,
+    bigquery: dataform.IBigQueryOptions
+  ): string {
+    const partitionBy = bigquery && bigquery.partitionBy;
+    const updatePartitionFilter = bigquery && bigquery.updatePartitionFilter;
+    const incrementalPredicates = bigquery && bigquery.incrementalPredicates;
+    const incrementalPredicatesString = this.buildIncrementalPredicatesString(incrementalPredicates);
+    const uniqueId = this.uniqueIdGenerator();
+    const stagingTableUnqualified = `staging_table_temp_${uniqueId}`;
+    const backtickedColumns = columns.map(column => `\`${column}\``);
+    const resolveTargetTable = this.resolveTarget(target);
+
+    return `CREATE OR REPLACE TEMP TABLE \`${stagingTableUnqualified}\` AS (
+  ${query}
+);
+
+BEGIN
+  DECLARE partitions_for_replacement DEFAULT (
+    ARRAY(
+      SELECT DISTINCT ${partitionBy}
+      FROM \`${stagingTableUnqualified}\`
+      WHERE ${partitionBy} IS NOT NULL
+    )
+  );
+
+  MERGE ${resolveTargetTable} DATAFORM_DEST
+  USING \`${stagingTableUnqualified}\` DATAFORM_SOURCE
+  ON FALSE
+  WHEN NOT MATCHED BY SOURCE AND ${partitionBy} IN UNNEST(partitions_for_replacement) ${updatePartitionFilter ? `and DATAFORM_DEST.${updatePartitionFilter}` : ""}
+  ${incrementalPredicatesString ? ` ${incrementalPredicatesString}` : ""}
+  THEN
+    DELETE
+  WHEN NOT MATCHED BY TARGET THEN
+    INSERT (${backtickedColumns.join(",")}) VALUES (${backtickedColumns.join(",")});
+END;
+
+DROP TABLE IF EXISTS \`${stagingTableUnqualified}\`;`;
+  }
+
+  private getIncrementalDmlStatement(
+    table: dataform.ITable,
+    columns: string[]
+  ): string {
+    const incrementalQuery = this.getIncrementalQuery(table);
+
+    switch (table.incrementalStrategy) {
+      case dataform.IncrementalStrategy.INSERT_OVERWRITE:
+        return this.insertOverwrite(
+          table.target,
+          columns,
+          incrementalQuery,
+          table.bigquery
+        );
+      case dataform.IncrementalStrategy.MERGE:
+      default:
+        if (table.uniqueKey && table.uniqueKey.length > 0) {
+          return this.mergeInto(
+            table.target,
+            columns,
+            incrementalQuery,
+            table.uniqueKey,
+            table.bigquery
+          );
+        }
+        return this.insertInto(
+          table.target,
+          columns.map(column => `\`${column}\``),
+          incrementalQuery
+        );
+    }
   }
 }
 
