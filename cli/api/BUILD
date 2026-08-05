@@ -67,7 +67,9 @@ ts_test_suite(
         "execution_sql_test.ts",
         "lineage/emitter_factory_test.ts",
         "lineage/emitter_test.ts",
+        "lineage/endpoint_router_test.ts",
         "lineage/lineage_integration_test.ts",
+        "lineage/payload_builder_test.ts",
     ],
     data = [
         ":node_modules",

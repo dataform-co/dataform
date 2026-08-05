@@ -730,7 +730,7 @@ export function runCli() {
           const runResult = await runner.result();
           printExecutedGraph(runResult);
           if (lineageEmitter) {
-            await lineageEmitter.drain(10000);
+            await lineageEmitter.drain(15000);
           }
           return runResult.status === dataform.RunResult.ExecutionStatus.SUCCESSFUL ? 0 : 1;
         }

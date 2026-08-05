@@ -344,13 +344,13 @@ suite("LineageEmitter", () => {
       status: dataform.ActionResult.ExecutionStatus.RUNNING
     });
 
-    // Run first action (fails on write, setting apiDisabledThisRun to true)
+    // Run first action (fails on write, setting emissionDisabledThisRun to true)
     emitter.emitForAction(action, startResult);
     await emitter.drain();
 
     expect(mockClient.processOpenLineageRunEventCalledWith.length).to.equal(1);
 
-    // Run second action (should skip immediately because apiDisabledThisRun is true)
+    // Run second action (should skip immediately because emissionDisabledThisRun is true)
     emitter.emitForAction(action, startResult);
     await emitter.drain();
 
@@ -575,7 +575,10 @@ suite("LineageEmitter", () => {
     expect(mockClient.processOpenLineageRunEventCalledWith.length).to.equal(0);
   });
 
-  test("skip_reason=api_disabled is logged when the API returns PERMISSION_DENIED", async () => {
+  test("skip_reason=api_disabled on PERMISSION_DENIED surfaces both IAM and API-enable hints", async () => {
+    // PERMISSION_DENIED is ambiguous on GCP — it fires for missing IAM roles
+    // AND for "API not enabled" (enablement checks often surface as code 7,
+    // not 9). The hint must cover both so users don't chase the wrong cause.
     const mockClient = new MockLineageClient();
     const stderr = new StderrCapture();
     const permissionError: any = new Error("Permission Denied");
@@ -589,7 +592,7 @@ suite("LineageEmitter", () => {
       stderr
     );
     const action = dataform.ExecutionAction.create({
-      target: { database: "proj", schema: "schema", name: "table" },
+      target: { database: "target-proj", schema: "schema", name: "table" },
       type: "table"
     });
     const startResult = dataform.ActionResult.create({
@@ -601,7 +604,12 @@ suite("LineageEmitter", () => {
 
     const apiDisabledLines = stderr.writes.filter(w => w.includes("skip_reason=api_disabled"));
     expect(apiDisabledLines.length).to.equal(1);
-    expect(apiDisabledLines[0]).to.contain("permission check failed");
+    expect(apiDisabledLines[0]).to.contain(
+      "datalineage.googleapis.com/locations.processOpenLineageMessage"
+    );
+    expect(apiDisabledLines[0]).to.contain("gcloud services enable datalineage.googleapis.com");
+    expect(apiDisabledLines[0]).to.contain(" OR ");
+    expect(apiDisabledLines[0]).to.contain("target-proj");
   });
 
   test("skip_reason=api_disabled is logged when the API returns SERVICE_DISABLED", async () => {
@@ -759,6 +767,342 @@ suite("LineageEmitter", () => {
     expect(openLineage.job.facets.gcp_lineage.origin.name).to.equal(
       "projects/target-project/locations/us/cli/unknown-workdir"
     );
+  });
+
+  test("skip_reason=endpoint_region_mismatch is logged when the endpoint returns HTTP 302", async () => {
+    // Reproduces the shape observed on `staging-datalineage.sandbox.googleapis.com`
+    // when called against an EU location: grpc surfaces the GFE redirect as
+    // UNKNOWN(2) with "302:Found" in the message (no gRPC canonical status is
+    // attached because no backend produced a response).
+    const mockClient = new MockLineageClient();
+    const stderr = new StderrCapture();
+    const redirectError: any = new Error("302:Found");
+    redirectError.code = 2;
+    mockClient.processOpenLineageRunEventError = redirectError;
+
+    const emitter = new LineageEmitter(
+      credentials,
+      { lineageEnabled: true, apiEndpoint: "staging-datalineage.sandbox.googleapis.com" },
+      () => mockClient as any,
+      stderr
+    );
+    const action = dataform.ExecutionAction.create({
+      target: { database: "proj", schema: "schema", name: "table" },
+      type: "table"
+    });
+    const startResult = dataform.ActionResult.create({
+      status: dataform.ActionResult.ExecutionStatus.RUNNING
+    });
+
+    emitter.emitForAction(action, startResult);
+    await emitter.drain();
+
+    const skipLines = stderr.writes.filter(w =>
+      w.includes("skip_reason=endpoint_region_mismatch")
+    );
+    expect(skipLines.length).to.equal(1);
+    expect(skipLines[0]).to.contain("staging-datalineage.sandbox.googleapis.com");
+    expect(skipLines[0]).to.contain("us");
+    expect(skipLines[0]).to.contain("HTTP 302");
+  });
+
+  test("skip_reason=endpoint_region_mismatch also matches the grpc-js 'http2 header 302' shape", async () => {
+    // The other observed shape: grpc-js exposes the underlying http2 header
+    // directly rather than the stringified "302:Found". Both must map to the
+    // same skip reason so the user experience is uniform across grpc-js
+    // versions.
+    const mockClient = new MockLineageClient();
+    const stderr = new StderrCapture();
+    const redirectError: any = new Error("Received http2 header with status: 302");
+    redirectError.code = 2;
+    mockClient.processOpenLineageRunEventError = redirectError;
+
+    const emitter = new LineageEmitter(
+      credentials,
+      { lineageEnabled: true, apiEndpoint: "staging-datalineage.sandbox.googleapis.com" },
+      () => mockClient as any,
+      stderr
+    );
+    const action = dataform.ExecutionAction.create({
+      target: { database: "proj", schema: "schema", name: "table" },
+      type: "table"
+    });
+    const startResult = dataform.ActionResult.create({
+      status: dataform.ActionResult.ExecutionStatus.RUNNING
+    });
+
+    emitter.emitForAction(action, startResult);
+    await emitter.drain();
+
+    const skipLines = stderr.writes.filter(w =>
+      w.includes("skip_reason=endpoint_region_mismatch")
+    );
+    expect(skipLines.length).to.equal(1);
+  });
+
+  test("endpoint_region_mismatch disables emission for the rest of the run", async () => {
+    // Deterministic per-endpoint failure should short-circuit like
+    // PERMISSION_DENIED does — retrying it for every action wastes API calls
+    // and floods stderr with identical lines.
+    const mockClient = new MockLineageClient();
+    const redirectError: any = new Error("302:Found");
+    redirectError.code = 2;
+    mockClient.processOpenLineageRunEventError = redirectError;
+
+    const emitter = new LineageEmitter(
+      credentials,
+      { lineageEnabled: true, apiEndpoint: "staging-datalineage.sandbox.googleapis.com" },
+      () => mockClient as any
+    );
+    const action = dataform.ExecutionAction.create({
+      target: { database: "proj", schema: "schema", name: "table" },
+      type: "table"
+    });
+    const startResult = dataform.ActionResult.create({
+      status: dataform.ActionResult.ExecutionStatus.RUNNING
+    });
+
+    emitter.emitForAction(action, startResult);
+    await emitter.drain();
+    expect(mockClient.processOpenLineageRunEventCalledWith.length).to.equal(1);
+
+    // Subsequent emits must not hit the client.
+    for (let i = 0; i < 4; i++) {
+      emitter.emitForAction(action, startResult);
+    }
+    await emitter.drain();
+    expect(mockClient.processOpenLineageRunEventCalledWith.length).to.equal(1);
+  });
+
+  test("REP endpoint falls back to global on HTTP 302 (region mismatch)", async () => {
+    // Symmetric to the DNS-unresolvable fallback: if a REP hostname is
+    // reachable but returns 302 (no backend route for the location), we
+    // should still fall through to the global endpoint rather than skip.
+    const mockClient = new MockLineageClient();
+    const redirectError: any = new Error("302:Found");
+    redirectError.code = 2;
+
+    let callCount = 0;
+    const endpointsUsed: string[] = [];
+    const provider = (projectId: string, endpoint: string) => {
+      endpointsUsed.push(endpoint);
+      callCount++;
+      mockClient.processOpenLineageRunEventError = callCount === 1 ? redirectError : null;
+      return mockClient as any;
+    };
+
+    const emitter = new LineageEmitter(credentials, { lineageEnabled: true }, provider);
+    const action = dataform.ExecutionAction.create({
+      target: { database: "proj", schema: "schema", name: "table" },
+      type: "table"
+    });
+    const startResult = dataform.ActionResult.create({
+      status: dataform.ActionResult.ExecutionStatus.RUNNING
+    });
+
+    emitter.emitForAction(action, startResult);
+    await emitter.drain();
+
+    expect(endpointsUsed).to.deep.equal([
+      "datalineage.us.rep.googleapis.com",
+      "datalineage.googleapis.com"
+    ]);
+    expect(mockClient.processOpenLineageRunEventCalledWith.length).to.equal(2);
+  });
+
+  test("Failed to emit line carries code name, endpoint, location, and message", async () => {
+    // Unhandled error kinds (anything other than DNS-unresolvable, 302,
+    // PERMISSION_DENIED, FAILED_PRECONDITION/SERVICE_DISABLED) reach the
+    // outer catch. That line is the diagnostic surface for the user — it
+    // must name the gRPC code, endpoint, and location so support can triage
+    // without asking for the transport log.
+    const mockClient = new MockLineageClient();
+    const stderr = new StderrCapture();
+    const invalidArgErr: any = new Error("bad request");
+    invalidArgErr.code = 3; // INVALID_ARGUMENT — not in any handled bucket
+    mockClient.processOpenLineageRunEventError = invalidArgErr;
+
+    const emitter = new LineageEmitter(
+      credentials,
+      { lineageEnabled: true },
+      () => mockClient as any,
+      stderr
+    );
+    const action = dataform.ExecutionAction.create({
+      target: { database: "proj", schema: "myschema", name: "mytable" },
+      type: "table"
+    });
+    const startResult = dataform.ActionResult.create({
+      status: dataform.ActionResult.ExecutionStatus.RUNNING
+    });
+
+    emitter.emitForAction(action, startResult);
+    await emitter.drain();
+
+    const failLines = stderr.writes.filter(w => w.includes("[lineage] Failed to emit"));
+    expect(failLines.length).to.equal(1);
+    expect(failLines[0]).to.contain("myschema.mytable");
+    expect(failLines[0]).to.contain("code=INVALID_ARGUMENT(3)");
+    expect(failLines[0]).to.contain("endpoint=datalineage.us.rep.googleapis.com");
+    expect(failLines[0]).to.contain("location=us");
+    expect(failLines[0]).to.contain("message=bad request");
+  });
+
+  test("emit failures never surface as unhandled rejections", async () => {
+    // Isolation contract: lineage errors must never propagate to the
+    // surrounding BQ executor. Regression guard so a future refactor of the
+    // .catch/.finally chain (or of drain()) can't silently break it. Uses a
+    // non-handled error kind so the promise chain has to catch it explicitly.
+    const rejections: unknown[] = [];
+    const onUnhandled = (r: unknown) => rejections.push(r);
+    process.on("unhandledRejection", onUnhandled);
+    try {
+      const mockClient = new MockLineageClient();
+      const genericError: any = new Error("something broke");
+      genericError.code = 13; // INTERNAL — handled by gax retry, then propagates
+      mockClient.processOpenLineageRunEventError = genericError;
+
+      const emitter = new LineageEmitter(
+        credentials,
+        { lineageEnabled: true },
+        () => mockClient as any
+      );
+      const action = dataform.ExecutionAction.create({
+        target: { database: "proj", schema: "s", name: "t" },
+        type: "table"
+      });
+      const startResult = dataform.ActionResult.create({
+        status: dataform.ActionResult.ExecutionStatus.RUNNING
+      });
+
+      for (let i = 0; i < 5; i++) {
+        emitter.emitForAction(action, startResult);
+      }
+      await emitter.drain();
+      // Yield one more microtask cycle so any late rejections settle.
+      await new Promise(r => setImmediate(r));
+
+      expect(rejections).to.deep.equal([]);
+    } finally {
+      process.removeListener("unhandledRejection", onUnhandled);
+    }
+  });
+
+  test("caches REP-unavailable decision after HTTP 302 fallback", async () => {
+    // Symmetric to the DNS-unresolvable cache test above: after a 302
+    // triggers REP -> global fallback, subsequent emits for the same
+    // location must skip REP entirely instead of re-probing it every time.
+    const mockClient = new MockLineageClient();
+    const redirectError: any = new Error("302:Found");
+    redirectError.code = 2;
+
+    let callCount = 0;
+    const endpointsUsed: string[] = [];
+    const provider = (projectId: string, endpoint: string) => {
+      endpointsUsed.push(endpoint);
+      callCount++;
+      mockClient.processOpenLineageRunEventError = callCount === 1 ? redirectError : null;
+      return mockClient as any;
+    };
+
+    const emitter = new LineageEmitter(credentials, { lineageEnabled: true }, provider);
+    const action = dataform.ExecutionAction.create({
+      target: { database: "proj", schema: "schema", name: "table" },
+      type: "table"
+    });
+    const startResult = dataform.ActionResult.create({
+      status: dataform.ActionResult.ExecutionStatus.RUNNING
+    });
+
+    emitter.emitForAction(action, startResult);
+    await emitter.drain();
+
+    emitter.emitForAction(action, startResult);
+    await emitter.drain();
+
+    expect(endpointsUsed).to.deep.equal([
+      "datalineage.us.rep.googleapis.com",
+      "datalineage.googleapis.com",
+      "datalineage.googleapis.com"
+    ]);
+  });
+
+  test("Failed to emit line names the global endpoint after REP fallback also fails", async () => {
+    // When REP -> global fallback is triggered but the global attempt also
+    // fails with an unhandled error, the structured error line must name
+    // the endpoint that was actually attempted last (global), not the
+    // original REP hostname. Regression guard: proves the per-attempt
+    // metadata on the error object is refreshed for the fallback attempt.
+    const mockClient = new MockLineageClient();
+    const stderr = new StderrCapture();
+    const dnsError: any = new Error(
+      "14 UNAVAILABLE: Name resolution failed for target dns:datalineage.us.rep.googleapis.com:443"
+    );
+    dnsError.code = 4;
+    const invalidArgErr: any = new Error("bad request");
+    invalidArgErr.code = 3;
+
+    let callCount = 0;
+    const provider = (projectId: string, endpoint: string) => {
+      callCount++;
+      mockClient.processOpenLineageRunEventError = callCount === 1 ? dnsError : invalidArgErr;
+      return mockClient as any;
+    };
+
+    const emitter = new LineageEmitter(
+      credentials,
+      { lineageEnabled: true },
+      provider,
+      stderr
+    );
+    const action = dataform.ExecutionAction.create({
+      target: { database: "proj", schema: "myschema", name: "mytable" },
+      type: "table"
+    });
+    const startResult = dataform.ActionResult.create({
+      status: dataform.ActionResult.ExecutionStatus.RUNNING
+    });
+
+    emitter.emitForAction(action, startResult);
+    await emitter.drain();
+
+    const failLines = stderr.writes.filter(w => w.includes("[lineage] Failed to emit"));
+    expect(failLines.length).to.equal(1);
+    expect(failLines[0]).to.contain("endpoint=datalineage.googleapis.com");
+    expect(failLines[0]).to.not.contain("endpoint=datalineage.us.rep.googleapis.com");
+    expect(failLines[0]).to.contain("code=INVALID_ARGUMENT(3)");
+  });
+
+  test("non-DNS / non-302 error from REP does not trigger fallback to global", async () => {
+    // Only two error shapes trigger REP -> global fallback: DNS-unresolvable
+    // and HTTP 302. An INTERNAL from REP means REP itself is reachable and
+    // serving; it should propagate to the structured error line without
+    // ever calling the global endpoint. Locks in that the fallback
+    // conditions can't quietly broaden.
+    const mockClient = new MockLineageClient();
+    const internalErr: any = new Error("upstream broke");
+    internalErr.code = 13;
+    mockClient.processOpenLineageRunEventError = internalErr;
+
+    const endpointsUsed: string[] = [];
+    const provider = (projectId: string, endpoint: string) => {
+      endpointsUsed.push(endpoint);
+      return mockClient as any;
+    };
+
+    const emitter = new LineageEmitter(credentials, { lineageEnabled: true }, provider);
+    const action = dataform.ExecutionAction.create({
+      target: { database: "proj", schema: "schema", name: "table" },
+      type: "table"
+    });
+    const startResult = dataform.ActionResult.create({
+      status: dataform.ActionResult.ExecutionStatus.RUNNING
+    });
+
+    emitter.emitForAction(action, startResult);
+    await emitter.drain();
+
+    expect(endpointsUsed).to.deep.equal(["datalineage.us.rep.googleapis.com"]);
   });
 });
 

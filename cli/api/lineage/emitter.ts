@@ -1,7 +1,10 @@
 import { LineageClient } from "@google-cloud/lineage";
-import { createHash } from "crypto";
-import * as path from "path";
 
+import {
+  GLOBAL_LINEAGE_ENDPOINT,
+  LineageEndpointRouter
+} from "df/cli/api/lineage/endpoint_router";
+import { LineagePayloadBuilder, toProtoStruct } from "df/cli/api/lineage/payload_builder";
 import { coerceAsError } from "df/common/errors/errors";
 import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
@@ -50,10 +53,31 @@ export function createLineageClientProvider(
   };
 }
 
-const GLOBAL_LINEAGE_ENDPOINT = "datalineage.googleapis.com";
+const GRPC_CODE_NAMES: { [k: number]: string } = {
+  0: "OK",
+  1: "CANCELLED",
+  2: "UNKNOWN",
+  3: "INVALID_ARGUMENT",
+  4: "DEADLINE_EXCEEDED",
+  5: "NOT_FOUND",
+  6: "ALREADY_EXISTS",
+  7: "PERMISSION_DENIED",
+  8: "RESOURCE_EXHAUSTED",
+  9: "FAILED_PRECONDITION",
+  10: "ABORTED",
+  11: "OUT_OF_RANGE",
+  12: "UNIMPLEMENTED",
+  13: "INTERNAL",
+  14: "UNAVAILABLE",
+  15: "DATA_LOSS",
+  16: "UNAUTHENTICATED"
+};
 
-function regionalEndpointFor(location: string): string {
-  return `datalineage.${location}.rep.googleapis.com`;
+function gRpcCodeName(code: number | undefined): string {
+  if (code === undefined) {
+    return "UNKNOWN";
+  }
+  return GRPC_CODE_NAMES[code] || "UNKNOWN";
 }
 
 /**
@@ -91,13 +115,11 @@ export class LineageEmitter {
   private readonly credentials: dataform.IBigQuery;
   private readonly emitterOptions: IEmitterOptions;
   private readonly stderr: IStderrLike;
+  private readonly payloadBuilder: LineagePayloadBuilder;
+  private readonly endpointRouter: LineageEndpointRouter;
   private readonly pending = new Set<Promise<void>>();
-  private apiDisabledThisRun = false;
+  private emissionDisabledThisRun = false;
   private dryRunSkipLogged = false;
-  private workdirHash: string = "";
-  private readonly activeRunIds = new Map<string, string>();
-  private readonly parentRunId: string;
-  private readonly repUnavailableForLocation = new Set<string>();
 
   constructor(
     credentials: dataform.IBigQuery,
@@ -110,14 +132,15 @@ export class LineageEmitter {
     this.stderr = stderr;
     this.clientProvider =
       clientProvider || createLineageClientProvider(credentials, emitterOptions.apiEndpoint);
-    this.parentRunId = this.generateUuid();
+    this.payloadBuilder = new LineagePayloadBuilder(emitterOptions.projectDir);
+    this.endpointRouter = new LineageEndpointRouter(emitterOptions.apiEndpoint);
   }
 
   public emitForAction(
     action: dataform.IExecutionAction,
     actionResult: dataform.IActionResult
   ): void {
-    if (this.apiDisabledThisRun) {
+    if (this.emissionDisabledThisRun) {
       return;
     }
 
@@ -141,8 +164,12 @@ export class LineageEmitter {
 
     const p = this.emitForActionInternal(action, actionResult)
       .catch(e => {
+        const code = (e as any).code;
+        const endpoint = (e as any).lineageEndpoint || "unknown";
+        const location = (e as any).lineageLocation || "unknown";
         this.stderr.write(
-          `[lineage] Failed to emit lineage for action ${action.target.schema}.${action.target.name}: ${e.message}\n`
+          `[lineage] Failed to emit lineage for action ${action.target.schema}.${action.target.name}: ` +
+            `code=${gRpcCodeName(code)}(${code ?? "?"}) endpoint=${endpoint} location=${location} message=${e.message}\n`
         );
       })
       .finally(() => {
@@ -151,7 +178,7 @@ export class LineageEmitter {
     this.pending.add(p);
   }
 
-  public async drain(maxWaitMs = 10000): Promise<void> {
+  public async drain(maxWaitMs = 15000): Promise<void> {
     if (this.pending.size === 0) {
       return;
     }
@@ -169,182 +196,21 @@ export class LineageEmitter {
     const location = (this.credentials.location || "US").toLowerCase();
     const parent = `projects/${projectId}/locations/${location}`;
 
-    // Initialize workdir hash if not done
-    if (!this.workdirHash && this.emitterOptions.projectDir) {
-      this.workdirHash = createHash("sha256")
-        .update(this.emitterOptions.projectDir)
-        .digest("hex")
-        .slice(0, 16);
-    }
-
-    // 1. Build OpenLineage payload
-    const eventTime = new Date().toISOString();
-    const actionKey = `${action.target.database || ""}.${action.target.schema}.${action.target.name}`;
-    let runId = this.activeRunIds.get(actionKey);
-    if (!runId) {
-      runId = this.generateUuid();
-      this.activeRunIds.set(actionKey, runId);
-    }
-
-    // Map Action Status to OpenLineage eventType
-    let eventType: "START" | "COMPLETE" | "FAIL" | "ABORT" = "START";
-    if (actionResult.status === dataform.ActionResult.ExecutionStatus.RUNNING) {
-      eventType = "START";
-    } else {
-      this.activeRunIds.delete(actionKey);
-      if (actionResult.status === dataform.ActionResult.ExecutionStatus.FAILED) {
-        eventType = "FAIL";
-      } else if (actionResult.status === dataform.ActionResult.ExecutionStatus.CANCELLED) {
-        eventType = "ABORT";
-      } else if (actionResult.status === dataform.ActionResult.ExecutionStatus.SUCCESSFUL) {
-        eventType = "COMPLETE";
-      }
-    }
-
-    const inputs = (action.dependencyTargets || []).map(dep => ({
-      namespace: "bigquery",
-      name: `${dep.database}.${dep.schema}.${dep.name}`
-    }));
-
-    const outputs = [
-      {
-        namespace: "bigquery",
-        name: `${action.target.database}.${action.target.schema}.${action.target.name}`
-      }
-    ];
-
-    // Producer-instance identifier for KC UI display and process uniqueness.
-    // Format: `{sanitizedBasename}-{shortHash}` — readable + collision-resistant per user.
-    const workdirIdentifier = this.buildWorkdirIdentifier();
-    const canonicalActionTarget = `${action.target.schema}.${action.target.name}`;
-    const jobName = `${projectId}.${location}.cli.${workdirIdentifier}.${canonicalActionTarget}`;
-    const parentJobName = `${projectId}.${location}.cli.${workdirIdentifier}.run`;
-
-    const nominalTime: any = {
-      _schemaURL: "https://openlineage.io/spec/facets/1-0-1/NominalTimeRunFacet.json",
-      nominalStartTime: new Date(
-        actionResult.timing?.startTimeMillis?.toNumber?.() || Date.now()
-      ).toISOString()
-    };
-    if (actionResult.timing?.endTimeMillis) {
-      nominalTime.nominalEndTime = new Date(
-        actionResult.timing.endTimeMillis.toNumber()
-      ).toISOString();
-    }
-
-    const runFacets: any = {
-      nominalTime,
-      parent: {
-        _producer: "https://github.com/dataform-co/dataform",
-        _schemaURL: "https://openlineage.io/spec/facets/1-0-1/ParentRunFacet.json#/$defs/ParentRunFacet",
-        job: {
-          namespace: "dataform",
-          name: parentJobName
-        },
-        run: {
-          runId: this.parentRunId
-        }
-      },
-      gcp_bq_pipelines_run: {
-        runType: "cli-manual"
-      }
-    };
-
-    // Enables the Dataplex Lineage UI's "BigQuery Job ID" field for CLI runs.
-    if (eventType !== "START") {
-      const bqJobId = this.extractBqJobId(actionResult);
-      const jobProjectId = this.credentials.projectId;
-      if (bqJobId && jobProjectId) {
-        runFacets.externalQuery = {
-          _producer: "https://github.com/dataform-co/dataform",
-          _schemaURL: "https://openlineage.io/spec/facets/1-0-0/ExternalQueryRunFacet.json",
-          externalQueryId: `${jobProjectId}.${location}.${bqJobId}`,
-          source: "bigquery"
-        };
-      }
-    }
-
-    if (eventType === "FAIL") {
-      const errorMessages = actionResult.tasks
-        ?.map(t => t.errorMessage)
-        .filter(msg => !!msg)
-        .join("; ");
-      if (errorMessages) {
-        runFacets.errorMessage = {
-          _schemaURL: "https://openlineage.io/spec/facets/1-0-0/ErrorMessageRunFacet.json",
-          message: errorMessages,
-          programmingLanguage: "typescript"
-        };
-      }
-    }
-
-    // Retrieve SQL facets if tasks exist
-    const sqlStatements = action.tasks
-      ?.map(task => task.statement)
-      .filter(stmt => !!stmt)
-      .join(";\n");
-
-    const jobFacets: any = {};
-    if (sqlStatements) {
-      jobFacets.sql = {
-        _schemaURL: "https://openlineage.io/spec/facets/1-0-0/SqlJobFacet.json",
-        query: sqlStatements
-      };
-    }
-
-    jobFacets.gcp_lineage = {
-      _producer: "https://github.com/dataform-co/dataform",
-      _schemaURL: "https://openlineage.io/spec/facets/1-0-0/GcpLineageJobFacet.json#/$defs/GcpLineageJobFacet",
-      displayName: `BigQuery Pipelines action ${canonicalActionTarget}`,
-      origin: {
-        name: `projects/${projectId}/locations/${location}/cli/${workdirIdentifier}`,
-        sourceType: "BIGQUERY_PIPELINES"
-      }
-    };
-
-    jobFacets.jobType = {
-      _producer: "https://github.com/dataform-co/dataform",
-      _schemaURL: "https://openlineage.io/spec/facets/2-0-3/JobTypeJobFacet.json#/$defs/JobTypeJobFacet",
-      integration: "BIGQUERY_PIPELINES",
-      jobType: "ACTION",
-      processingType: "BATCH"
-    };
-
-    jobFacets.gcp_bq_pipelines_job = {
-      dataformCoreVersion: version,
-      actionType: action.type,
-      actionName: canonicalActionTarget
-    };
-
-    const openLineagePayload = {
-      eventType,
-      eventTime,
-      run: {
-        runId,
-        facets: runFacets
-      },
-      job: {
-        namespace: "dataform",
-        name: jobName,
-        facets: jobFacets
-      },
-      inputs,
-      outputs,
-      producer: "https://github.com/dataform-co/dataform",
-      schemaURL: "https://openlineage.io/spec/1-0-2/OpenLineage.json#/definitions/RunEvent"
-    };
-
-    this.stderr.write(
-      `[lineage-debug] Sending OpenLineage event:\n${JSON.stringify(openLineagePayload, null, 2)}\n`
+    const openLineagePayload = this.payloadBuilder.build(
+      action,
+      actionResult,
+      projectId,
+      location,
+      this.credentials.projectId
     );
 
-    // 2. Emit payload via ProcessOpenLineageRunEvent. Retry policy is
-    // delegated to google-gax (see LINEAGE_RETRY_CONFIG). Outer loop only
-    // handles behaviors gax cannot express: REP→global endpoint fallback
-    // (requires reconfiguring the client) and PERMISSION_DENIED /
-    // SERVICE_DISABLED skip-with-reason (error-swallow-with-stderr).
+    // Emit payload via ProcessOpenLineageRunEvent. Retry policy is delegated
+    // to google-gax (see LINEAGE_RETRY_CONFIG). Outer loop only handles
+    // behaviors gax cannot express: REP→global endpoint fallback (requires
+    // reconfiguring the client) and PERMISSION_DENIED / SERVICE_DISABLED
+    // skip-with-reason (error-swallow-with-stderr).
     // Runs at most twice — initial invocation + one REP fallback.
-    let currentEndpoint = this.endpointForLocation(location);
+    let currentEndpoint = this.endpointRouter.endpointForLocation(location);
     for (let repFallbackAttempts = 0; repFallbackAttempts < 2; repFallbackAttempts++) {
       try {
         const client = this.clientProvider(projectId, currentEndpoint);
@@ -360,30 +226,50 @@ export class LineageEmitter {
         const err = coerceAsError(e);
         const code = (err as any).code;
 
-        // Fall back from REP to global if the REP hostname isn't resolvable.
-        const overrideActive = !!this.emitterOptions.apiEndpoint;
+        // Fall back from REP to global when the endpoint isn't serving this
+        // location — either unresolvable via DNS or reachable-but-returning
+        // an HTTP 302 (GFE routing signal that the endpoint has no route for
+        // this region).
         const onRepEndpoint = currentEndpoint !== GLOBAL_LINEAGE_ENDPOINT;
         if (
-          !overrideActive &&
+          !this.endpointRouter.isUsingOverride() &&
           onRepEndpoint &&
-          this.isEndpointUnresolvable(err)
+          (this.isEndpointUnresolvable(err) || this.isEndpointRegionMismatch(err))
         ) {
           this.stderr.write(
-            `[lineage] Regional endpoint ${currentEndpoint} is not resolvable for location ${location}. Falling back to ${GLOBAL_LINEAGE_ENDPOINT} for this and subsequent emits in this location.\n`
+            `[lineage] Regional endpoint ${currentEndpoint} is not serving location ${location}. Falling back to ${GLOBAL_LINEAGE_ENDPOINT} for this and subsequent emits in this location.\n`
           );
-          this.repUnavailableForLocation.add(location);
+          this.endpointRouter.markRepUnavailable(location);
           currentEndpoint = GLOBAL_LINEAGE_ENDPOINT;
           continue;
+        }
+
+        // Endpoint returned HTTP 302 (region mismatch) and we can't retry from
+        // here — skip the rest of this run so we don't repeat a guaranteed
+        // failure for every action.
+        if (this.isEndpointRegionMismatch(err)) {
+          if (!this.emissionDisabledThisRun) {
+            this.emissionDisabledThisRun = true;
+            this.stderr.write(
+              `[lineage] Skipped lineage emission for the rest of this run: skip_reason=endpoint_region_mismatch (endpoint '${currentEndpoint}' returned HTTP 302 for location '${location}'; the endpoint does not serve this region)\n`
+            );
+          }
+          return;
         }
 
         // Check for permission or API disabled status codes. Multiple in-flight
         // calls can hit the same failure concurrently; guard the write so the
         // skip line is printed at most once per run.
+        //
+        // PERMISSION_DENIED is ambiguous on Google Cloud: it fires both for
+        // missing IAM and for "API not enabled" (the enablement check often
+        // returns 7 rather than 9). Surface both hints so the user doesn't
+        // chase one root cause when the other is at fault.
         if (code === 7 || err.message?.includes("PERMISSION_DENIED")) {
-          if (!this.apiDisabledThisRun) {
-            this.apiDisabledThisRun = true;
+          if (!this.emissionDisabledThisRun) {
+            this.emissionDisabledThisRun = true;
             this.stderr.write(
-              "[lineage] Skipped lineage emission for the rest of this run: skip_reason=api_disabled (permission check failed; ensure the credential has 'datalineage.googleapis.com/locations.processOpenLineageMessage')\n"
+              `[lineage] Skipped lineage emission for the rest of this run: skip_reason=api_disabled (ensure the credential has 'datalineage.googleapis.com/locations.processOpenLineageMessage' OR that the Lineage API is enabled in project ${projectId} via 'gcloud services enable datalineage.googleapis.com')\n`
             );
           }
           return;
@@ -393,8 +279,8 @@ export class LineageEmitter {
           err.message?.includes("SERVICE_DISABLED") ||
           err.message?.includes("FAILED_PRECONDITION")
         ) {
-          if (!this.apiDisabledThisRun) {
-            this.apiDisabledThisRun = true;
+          if (!this.emissionDisabledThisRun) {
+            this.emissionDisabledThisRun = true;
             this.stderr.write(
               `[lineage] Skipped lineage emission for the rest of this run: skip_reason=api_disabled (Lineage API is not enabled in project ${projectId}; run 'gcloud services enable datalineage.googleapis.com')\n`
             );
@@ -402,20 +288,14 @@ export class LineageEmitter {
           return;
         }
 
-        // gax has already exhausted retries on transient codes; propagate.
+        // gax has already exhausted retries on transient codes; propagate to
+        // the outer catch with endpoint/location metadata attached so the
+        // structured `[lineage] Failed to emit ...` line can name them.
+        (err as any).lineageEndpoint = currentEndpoint;
+        (err as any).lineageLocation = location;
         throw err;
       }
     }
-  }
-
-  private endpointForLocation(location: string): string {
-    if (this.emitterOptions.apiEndpoint) {
-      return this.emitterOptions.apiEndpoint;
-    }
-    if (this.repUnavailableForLocation.has(location)) {
-      return GLOBAL_LINEAGE_ENDPOINT;
-    }
-    return regionalEndpointFor(location);
   }
 
   private isEndpointUnresolvable(err: Error): boolean {
@@ -426,76 +306,27 @@ export class LineageEmitter {
     // message. The signatures below are unique enough on their own that a
     // false positive is not a concern.
     const cause = (err as any).cause;
-    const causeMessage = typeof cause === "object" && cause ? String(cause.message || cause.code || "") : "";
+    const causeMessage =
+      typeof cause === "object" && cause ? String(cause.message || cause.code || "") : "";
     const combined = `${err.message || ""} ${causeMessage}`;
     return /ENOTFOUND|EAI_AGAIN|getaddrinfo|(?:DNS|Name) resolution failed/i.test(combined);
   }
 
-  private buildWorkdirIdentifier(): string {
-    if (!this.workdirHash || !this.emitterOptions.projectDir) {
-      return "unknown-workdir";
+  private isEndpointRegionMismatch(err: Error): boolean {
+    // HTTP 302 to a gRPC client is a GFE / uberproxy redirect — the endpoint
+    // has no backend route for this region, so the frontend responds with a
+    // Location header instead of gRPC frames. gRPC surfaces this as
+    // UNKNOWN(2) because there is no canonical status attached.
+    if ((err as any).code !== 2) {
+      return false;
     }
-    const rawBase = path.basename(this.emitterOptions.projectDir);
-    const sanitized = rawBase
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "");
-    const base = sanitized || "workdir";
-    const shortHash = this.workdirHash.slice(0, 8);
-    return `${base}-${shortHash}`;
+    const cause = (err as any).cause;
+    const causeMessage =
+      typeof cause === "object" && cause ? String(cause.message || cause.code || "") : "";
+    const combined = `${err.message || ""} ${causeMessage}`;
+    // Two shapes seen in practice: "Received http2 header with status: 302"
+    // (grpc-js internal wrap) and "302:Found" (stringified HTTP status, as
+    // returned by our observed live run).
+    return /Received http2 header with status: 30[12]|\b30[12]:\s*Found\b/i.test(combined);
   }
-
-  private extractBqJobId(actionResult: dataform.IActionResult): string | undefined {
-    if (!actionResult.tasks) {
-      return undefined;
-    }
-    for (let i = actionResult.tasks.length - 1; i >= 0; i--) {
-      const jobId = actionResult.tasks[i]?.metadata?.bigquery?.jobId;
-      if (jobId) {
-        return jobId;
-      }
-    }
-    return undefined;
-  }
-
-  private generateUuid(): string {
-    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => {
-      const r = Math.floor(Math.random() * 16);
-      const v = c === "x" ? r : (r % 4) + 8;
-      return v.toString(16);
-    });
-  }
-}
-
-function toProtoStruct(obj: { [key: string]: any }): any {
-  const fields: { [key: string]: any } = {};
-  for (const key of Object.keys(obj)) {
-    const val = obj[key];
-    if (val !== undefined) {
-      fields[key] = toProtoValue(val);
-    }
-  }
-  return { fields };
-}
-
-function toProtoValue(val: any): any {
-  if (val === null) {
-    return { nullValue: 0 };
-  }
-  if (typeof val === "string") {
-    return { stringValue: val };
-  }
-  if (typeof val === "number") {
-    return { numberValue: val };
-  }
-  if (typeof val === "boolean") {
-    return { boolValue: val };
-  }
-  if (Array.isArray(val)) {
-    return { listValue: { values: val.map(toProtoValue) } };
-  }
-  if (typeof val === "object") {
-    return { structValue: toProtoStruct(val) };
-  }
-  return { nullValue: 0 };
 }
