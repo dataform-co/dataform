@@ -56,6 +56,33 @@ function regionalEndpointFor(location: string): string {
   return `datalineage.${location}.rep.googleapis.com`;
 }
 
+const GRPC_CODE_NAMES: { [k: number]: string } = {
+  0: "OK",
+  1: "CANCELLED",
+  2: "UNKNOWN",
+  3: "INVALID_ARGUMENT",
+  4: "DEADLINE_EXCEEDED",
+  5: "NOT_FOUND",
+  6: "ALREADY_EXISTS",
+  7: "PERMISSION_DENIED",
+  8: "RESOURCE_EXHAUSTED",
+  9: "FAILED_PRECONDITION",
+  10: "ABORTED",
+  11: "OUT_OF_RANGE",
+  12: "UNIMPLEMENTED",
+  13: "INTERNAL",
+  14: "UNAVAILABLE",
+  15: "DATA_LOSS",
+  16: "UNAUTHENTICATED"
+};
+
+function gRpcCodeName(code: number | undefined): string {
+  if (code === undefined) {
+    return "UNKNOWN";
+  }
+  return GRPC_CODE_NAMES[code] || "UNKNOWN";
+}
+
 /**
  * Retry policy for ProcessOpenLineageRunEvent, delegated to google-gax.
  *
@@ -92,7 +119,7 @@ export class LineageEmitter {
   private readonly emitterOptions: IEmitterOptions;
   private readonly stderr: IStderrLike;
   private readonly pending = new Set<Promise<void>>();
-  private apiDisabledThisRun = false;
+  private emissionDisabledThisRun = false;
   private dryRunSkipLogged = false;
   private workdirHash: string = "";
   private readonly activeRunIds = new Map<string, string>();
@@ -117,7 +144,7 @@ export class LineageEmitter {
     action: dataform.IExecutionAction,
     actionResult: dataform.IActionResult
   ): void {
-    if (this.apiDisabledThisRun) {
+    if (this.emissionDisabledThisRun) {
       return;
     }
 
@@ -141,8 +168,12 @@ export class LineageEmitter {
 
     const p = this.emitForActionInternal(action, actionResult)
       .catch(e => {
+        const code = (e as any).code;
+        const endpoint = (e as any).lineageEndpoint || "unknown";
+        const location = (e as any).lineageLocation || "unknown";
         this.stderr.write(
-          `[lineage] Failed to emit lineage for action ${action.target.schema}.${action.target.name}: ${e.message}\n`
+          `[lineage] Failed to emit lineage for action ${action.target.schema}.${action.target.name}: ` +
+            `code=${gRpcCodeName(code)}(${code ?? "?"}) endpoint=${endpoint} location=${location} message=${e.message}\n`
         );
       })
       .finally(() => {
@@ -360,30 +391,51 @@ export class LineageEmitter {
         const err = coerceAsError(e);
         const code = (err as any).code;
 
-        // Fall back from REP to global if the REP hostname isn't resolvable.
+        // Fall back from REP to global when the endpoint isn't serving this
+        // location — either unresolvable via DNS or reachable-but-returning
+        // an HTTP 302 (GFE routing signal that the endpoint has no route for
+        // this region).
         const overrideActive = !!this.emitterOptions.apiEndpoint;
         const onRepEndpoint = currentEndpoint !== GLOBAL_LINEAGE_ENDPOINT;
         if (
           !overrideActive &&
           onRepEndpoint &&
-          this.isEndpointUnresolvable(err)
+          (this.isEndpointUnresolvable(err) || this.isEndpointRegionMismatch(err))
         ) {
           this.stderr.write(
-            `[lineage] Regional endpoint ${currentEndpoint} is not resolvable for location ${location}. Falling back to ${GLOBAL_LINEAGE_ENDPOINT} for this and subsequent emits in this location.\n`
+            `[lineage] Regional endpoint ${currentEndpoint} is not serving location ${location}. Falling back to ${GLOBAL_LINEAGE_ENDPOINT} for this and subsequent emits in this location.\n`
           );
           this.repUnavailableForLocation.add(location);
           currentEndpoint = GLOBAL_LINEAGE_ENDPOINT;
           continue;
         }
 
+        // Endpoint returned HTTP 302 (region mismatch) and we can't retry from
+        // here — skip the rest of this run so we don't repeat a guaranteed
+        // failure for every action.
+        if (this.isEndpointRegionMismatch(err)) {
+          if (!this.emissionDisabledThisRun) {
+            this.emissionDisabledThisRun = true;
+            this.stderr.write(
+              `[lineage] Skipped lineage emission for the rest of this run: skip_reason=endpoint_region_mismatch (endpoint '${currentEndpoint}' returned HTTP 302 for location '${location}'; the endpoint does not serve this region)\n`
+            );
+          }
+          return;
+        }
+
         // Check for permission or API disabled status codes. Multiple in-flight
         // calls can hit the same failure concurrently; guard the write so the
         // skip line is printed at most once per run.
+        //
+        // PERMISSION_DENIED is ambiguous on Google Cloud: it fires both for
+        // missing IAM and for "API not enabled" (the enablement check often
+        // returns 7 rather than 9). Surface both hints so the user doesn't
+        // chase one root cause when the other is at fault.
         if (code === 7 || err.message?.includes("PERMISSION_DENIED")) {
-          if (!this.apiDisabledThisRun) {
-            this.apiDisabledThisRun = true;
+          if (!this.emissionDisabledThisRun) {
+            this.emissionDisabledThisRun = true;
             this.stderr.write(
-              "[lineage] Skipped lineage emission for the rest of this run: skip_reason=api_disabled (permission check failed; ensure the credential has 'datalineage.googleapis.com/locations.processOpenLineageMessage')\n"
+              `[lineage] Skipped lineage emission for the rest of this run: skip_reason=api_disabled (ensure the credential has 'datalineage.googleapis.com/locations.processOpenLineageMessage' OR that the Lineage API is enabled in project ${projectId} via 'gcloud services enable datalineage.googleapis.com')\n`
             );
           }
           return;
@@ -393,8 +445,8 @@ export class LineageEmitter {
           err.message?.includes("SERVICE_DISABLED") ||
           err.message?.includes("FAILED_PRECONDITION")
         ) {
-          if (!this.apiDisabledThisRun) {
-            this.apiDisabledThisRun = true;
+          if (!this.emissionDisabledThisRun) {
+            this.emissionDisabledThisRun = true;
             this.stderr.write(
               `[lineage] Skipped lineage emission for the rest of this run: skip_reason=api_disabled (Lineage API is not enabled in project ${projectId}; run 'gcloud services enable datalineage.googleapis.com')\n`
             );
@@ -402,7 +454,11 @@ export class LineageEmitter {
           return;
         }
 
-        // gax has already exhausted retries on transient codes; propagate.
+        // gax has already exhausted retries on transient codes; propagate to
+        // the outer catch with endpoint/location metadata attached so the
+        // structured `[lineage] Failed to emit ...` line can name them.
+        (err as any).lineageEndpoint = currentEndpoint;
+        (err as any).lineageLocation = location;
         throw err;
       }
     }
@@ -429,6 +485,23 @@ export class LineageEmitter {
     const causeMessage = typeof cause === "object" && cause ? String(cause.message || cause.code || "") : "";
     const combined = `${err.message || ""} ${causeMessage}`;
     return /ENOTFOUND|EAI_AGAIN|getaddrinfo|(?:DNS|Name) resolution failed/i.test(combined);
+  }
+
+  private isEndpointRegionMismatch(err: Error): boolean {
+    // HTTP 302 to a gRPC client is a GFE / uberproxy redirect — the endpoint
+    // has no backend route for this region, so the frontend responds with a
+    // Location header instead of gRPC frames. gRPC surfaces this as
+    // UNKNOWN(2) because there is no canonical status attached.
+    if ((err as any).code !== 2) {
+      return false;
+    }
+    const cause = (err as any).cause;
+    const causeMessage = typeof cause === "object" && cause ? String(cause.message || cause.code || "") : "";
+    const combined = `${err.message || ""} ${causeMessage}`;
+    // Two shapes seen in practice: "Received http2 header with status: 302"
+    // (grpc-js internal wrap) and "302:Found" (stringified HTTP status, as
+    // returned by our observed live run).
+    return /Received http2 header with status: 30[12]|\b30[12]:\s*Found\b/i.test(combined);
   }
 
   private buildWorkdirIdentifier(): string {
