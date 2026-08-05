@@ -10,7 +10,10 @@ ts_library(
     srcs = glob(["*.ts"]),
     deps = [
         "//cli",
+        "//cli/api",
+        "//cli/vm",
         "//cli/vm:compile_loader",
+        "//protos:ts",
     ],
 )
 

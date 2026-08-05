@@ -26,16 +26,18 @@ export class JitCompileChildProcess extends BaseWorker<
     projectDir: string,
     dbadapter: IDbAdapter,
     dbclient: IDbClient,
-    timeoutMillis: number = DEFAULT_COMPILATION_TIMEOUT_MILLIS,
-    options?: IBigQueryExecutionOptions
+    timeoutMillis?: number,
+    options?: IBigQueryExecutionOptions,
+    onCancel?: (cancel: () => void) => void
   ): Promise<dataform.IJitCompilationResponse> {
     return await new JitCompileChildProcess().run(
       request,
       projectDir,
       dbadapter,
       dbclient,
-      timeoutMillis,
-      options
+      timeoutMillis || DEFAULT_COMPILATION_TIMEOUT_MILLIS,
+      options,
+      onCancel
     );
   }
 
@@ -49,7 +51,8 @@ export class JitCompileChildProcess extends BaseWorker<
     dbadapter: IDbAdapter,
     dbclient: IDbClient,
     timeoutMillis: number,
-    options?: IBigQueryExecutionOptions
+    options: IBigQueryExecutionOptions | undefined,
+    onCancel: ((cancel: () => void) => void) | undefined
   ): Promise<dataform.IJitCompilationResponse> {
     return await this.runWorker(
       timeoutMillis,
@@ -68,7 +71,8 @@ export class JitCompileChildProcess extends BaseWorker<
         } else if (message.type === "jit_error") {
           reject(new Error(message.error));
         }
-      }
+      },
+      onCancel
     );
   }
 
@@ -90,7 +94,9 @@ export class JitCompileChildProcess extends BaseWorker<
       child.send({
         type: "rpc_response",
         correlationId: message.correlationId,
-        response
+        // Convert to plain array — child.send uses JSON IPC by default, which
+        // serializes Uint8Array as {"0":n,...} and Buffer.from() rejects that.
+        response: response ? Array.from(response) : response
       });
     } catch (e) {
       child.send({

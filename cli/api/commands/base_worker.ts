@@ -6,7 +6,8 @@ export abstract class BaseWorker<TResponse, TMessage = any> {
   protected async runWorker(
     timeoutMillis: number,
     onBoot: (child: ChildProcess) => void,
-    onMessage: (message: TMessage, child: ChildProcess, resolve: (res: TResponse) => void, reject: (err: Error) => void) => void
+    onMessage: (message: TMessage, child: ChildProcess, resolve: (res: TResponse) => void, reject: (err: Error) => void) => void,
+    onCancel?: (cancel: () => void) => void
   ): Promise<TResponse> {
     const forkScript = this.resolveScript();
     const child = fork(forkScript, [], {
@@ -36,6 +37,10 @@ export abstract class BaseWorker<TResponse, TMessage = any> {
           ))
         );
       }, timeoutMillis);
+
+      onCancel?.(() =>
+        terminate(() => reject(new Error("Run cancelled while worker was in flight.")))
+      );
 
       child.on("message", (message: any) => {
         if (message.type === "worker_booted") {
