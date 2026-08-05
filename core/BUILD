@@ -81,6 +81,7 @@ ts_test_suite(
         "jit_context_test.ts",
         "main_test.ts",
         "utils_test.ts",
+        "workflow_settings_test.ts",
     ],
     data = [
         ":node_modules",

@@ -74,6 +74,16 @@ message WorkflowSettings {
   // Optional. If set to true, governance controls (e.g. Data Policies) will be
   // preserved on BigQuery tables.
   bool preserve_governance_controls = 18;
+
+  // Optional. Configuration for Knowledge Catalog lineage emission.
+  LineageSettings lineage = 19;
+}
+
+// Configuration for Knowledge Catalog lineage emission.
+message LineageSettings {
+  // If true, downstream runners will emit OpenLineage events to Knowledge
+  // Catalog for actions executed from this project.
+  bool enabled = 1;
 }
 
 message DefaultIcebergConfig {
