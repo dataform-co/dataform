@@ -33,8 +33,7 @@ const Struct = google.protobuf.Struct;
 // Save references to the original generated methods
 const originalVerify = Struct.verify;
 
-// Monkey Patching Methods
-Struct.verify = function (object: any) {
+export function verifyStruct(this: any, object: any) {
   if (object && typeof object === "object" && !("fields" in object)) {
     const fields: { [key: string]: any } = {};
     for (const [k, v] of Object.entries(object)) {
@@ -44,7 +43,10 @@ Struct.verify = function (object: any) {
     object.fields = fields;
   }
   return originalVerify.call(this, object);
-};
+}
+
+// Monkey Patching Methods
+Struct.verify = verifyStruct;
 
 // This is a minimalist Typescript equivalent for the validation part of Profobuf's JsonFormat's
 // mergeMessage method:
