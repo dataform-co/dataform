@@ -26,10 +26,33 @@ type actionsWithDependencies =
 export const nativeRequire =
   typeof __webpack_require__ === "function" ? __non_webpack_require__ : require;
 
+// Turn a selector pattern containing '*' wildcards into an anchored RegExp.
+// Every character except '*' is matched literally (regex metacharacters are
+// escaped); each '*' matches any run of characters, so "mrd*" -> /^mrd.*$/ and
+// "*features*" -> /^.*features.*$/.
+function globToRegExp(pattern: string): RegExp {
+  const escaped = pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\\\*/g, ".*");
+  return new RegExp(`^${escaped}$`);
+}
+
 export function matchPatterns(patterns: string[], values: string[]) {
   const fullyQualifiedActions: string[] = [];
   patterns.forEach(pattern => {
-    if (pattern.includes(".")) {
+    if (pattern.includes("*")) {
+      // Wildcard selector. A pattern that contains "." matches against the
+      // fully-qualified action name; otherwise it matches against the unqualified
+      // name (last segment), mirroring the exact-match branches below. Wildcards
+      // are expected to select many actions, so no ambiguity error applies here.
+      const regExp = globToRegExp(pattern);
+      const scope = pattern.includes(".")
+        ? values
+        : values.map(value => value.split(".").slice(-1)[0]);
+      values.forEach((value, i) => {
+        if (regExp.test(scope[i])) {
+          fullyQualifiedActions.push(value);
+        }
+      });
+    } else if (pattern.includes(".")) {
       if (values.includes(pattern)) {
         fullyQualifiedActions.push(pattern);
       }
