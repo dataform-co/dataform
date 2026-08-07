@@ -578,6 +578,8 @@ export class Runner {
           : dataform.JitCompilationTargetType.JIT_COMPILATION_TARGET_TYPE_TABLE;
     } else if (action.type === "operation") {
       compilationTargetType = dataform.JitCompilationTargetType.JIT_COMPILATION_TARGET_TYPE_OPERATION;
+    } else if (action.type === "assertion") {
+      compilationTargetType = dataform.JitCompilationTargetType.JIT_COMPILATION_TARGET_TYPE_ASSERTION;
     }
 
     const jitRequest = dataform.JitCompilationRequest.create({
@@ -631,6 +633,12 @@ export class Runner {
         ...jitResponse.operation
       });
       return this.executionSql.createOperationTasks(operation);
+    } else if (jitResponse.assertion) {
+      const assertion = dataform.Assertion.create({
+        ...action,
+        ...jitResponse.assertion
+      });
+      return this.executionSql.createAssertionTasks(assertion);
     } else if (jitResponse.incrementalTable) {
       const table = dataform.Table.create({
         ...action,

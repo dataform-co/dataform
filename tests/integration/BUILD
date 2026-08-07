@@ -12,6 +12,8 @@ ts_test_suite(
         "//test_credentials:bigquery.json",
         "//tests/integration/bigquery_project:files",
         "//tests/integration/bigquery_project:node_modules",
+        "//packages/@dataform/core:bundle.js",
+        "//packages/@dataform/core:package.json",
     ],
     tags = ["integration"],
     deps = [
@@ -22,8 +24,10 @@ ts_test_suite(
         "//protos:ts",
         "//testing",
         "@npm//@types/chai",
+        "@npm//@types/fs-extra",
         "@npm//@types/long",
         "@npm//@types/node",
         "@npm//chai",
+        "@npm//fs-extra",
     ],
 )
