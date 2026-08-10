@@ -211,6 +211,69 @@ SELECT 1`
       });
     });
 
+    test("onSchemaChange combined with metadata.extraProperties as a plain object", () => {
+      const tableName = "on_schema_change_with_metadata";
+      const tableContent = `
+config {
+  type: "incremental",
+  onSchemaChange: "IGNORE",
+  metadata: {
+    extraProperties: {
+      priority: "high"
+    }
+  }
+}
+
+SELECT 1`;
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, `definitions/${tableName}.sqlx`),
+        tableContent
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals([
+        {
+          target: {
+            database: "defaultProject",
+            schema: "defaultDataset",
+            name: tableName
+          },
+          canonicalTarget: {
+            database: "defaultProject",
+            schema: "defaultDataset",
+            name: tableName
+          },
+          type: "incremental",
+          disabled: false,
+          protected: false,
+          hermeticity: "NON_HERMETIC",
+          onSchemaChange: "IGNORE",
+          enumType: "INCREMENTAL",
+          fileName: `definitions/${tableName}.sqlx`,
+          query: "\n\n\nSELECT 1",
+          incrementalQuery: "\n\n\nSELECT 1",
+          incrementalStrategy: "INCREMENTAL_STRATEGY_UNSPECIFIED",
+          actionDescriptor: {
+            metadata: {
+              extraProperties: {
+                fields: {
+                  priority: { stringValue: "high" }
+                }
+              }
+            }
+          }
+        }
+      ]);
+    });
+
     test("sqlx minimal config", () => {
       const minimalIncrementalTableName = "minimal_incremental";
       const minimalIncrementalTableContent = `
