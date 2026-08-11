@@ -1,4 +1,4 @@
-import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour, verifyStruct } from "df/common/protos";
+import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import {
   ActionBuilder,
   checkConfigAdditionalOptionsOverlap,
@@ -690,12 +690,6 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
           `Unexpected file format; only "PARQUET" is allowed, got "${unverifiedConfig.iceberg.fileFormat}".`
         );
       }
-    }
-
-    // Since IncrementalTableConfig.metadata.extraProperties expects IMetadata,
-    // we will normalize the expression into google.protobuf.IStruct here.
-    if (unverifiedConfig.metadata?.extraProperties) {
-      verifyStruct(unverifiedConfig.metadata.extraProperties);
     }
 
     const config = verifyObjectMatchesProto(
