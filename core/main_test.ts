@@ -2380,4 +2380,250 @@ select 1 as a`
       expect(result.compile.compiledGraph.tables[0].bigquery.preserveGovernanceControls).equals(false);
     });
   });
+
+  suite("property graphs", () => {
+    test("valid graph.yaml compiles end-to-end", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/graph.yaml"),
+        `
+name: SimpleGraph
+entities:
+- name: Customer
+  dataSourceString: defaultProject.defaultDataset.customers
+  keys:
+  - id
+`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(result.compile.compiledGraph.propertyGraphs).to.have.lengthOf(1);
+      expect(asPlainObject(result.compile.compiledGraph.propertyGraphs[0].target)).deep.equals({
+        database: "defaultProject",
+        schema: "defaultDataset",
+        name: "SimpleGraph"
+      });
+      expect(result.compile.compiledGraph.propertyGraphs[0].graphBody).to.include(
+        "NODE TABLES"
+      );
+    });
+
+    test("more than one graph.yaml is rejected", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.mkdirSync(path.join(projectDir, "definitions/subdir"));
+      const graphBody = `
+name: MultiGraph
+entities:
+- name: Node
+  dataSourceString: defaultProject.defaultDataset.t
+  keys:
+  - id
+`;
+      fs.writeFileSync(path.join(projectDir, "definitions/graph.yaml"), graphBody);
+      fs.writeFileSync(path.join(projectDir, "definitions/subdir/graph.yaml"), graphBody);
+
+      const request = dataform.CoreExecutionRequest.create({
+        compile: {
+          compileConfig: {
+            projectDir: fs.realpathSync(projectDir),
+            filePaths: [
+              "workflow_settings.yaml",
+              "definitions/graph.yaml",
+              "definitions/subdir/graph.yaml"
+            ]
+          }
+        }
+      });
+
+      const result = runMainInVm(request);
+
+      const errorMessages = result.compile.compiledGraph.graphErrors.compilationErrors.map(
+        ({ message }) => message
+      );
+      expect(errorMessages).to.have.lengthOf(1);
+      expect(errorMessages[0]).to.include("At most one graph.yaml is allowed per project");
+      expect(result.compile.compiledGraph.propertyGraphs).to.have.lengthOf(0);
+    });
+
+    test("nodes-only graph compiles without EDGE TABLES", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/graph.yaml"),
+        `
+name: NodesOnly
+entities:
+- name: Customer
+  dataSourceString: defaultProject.defaultDataset.customers
+  keys:
+  - id
+- name: Product
+  dataSourceString: defaultProject.defaultDataset.products
+  keys:
+  - sku
+`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(result.compile.compiledGraph.propertyGraphs).to.have.lengthOf(1);
+      expect(result.compile.compiledGraph.propertyGraphs[0].relationships).to.have.lengthOf(0);
+      expect(result.compile.compiledGraph.propertyGraphs[0].graphBody).to.include(
+        "NODE TABLES"
+      );
+      expect(result.compile.compiledGraph.propertyGraphs[0].graphBody).to.not.include(
+        "EDGE TABLES"
+      );
+    });
+
+    test("targetDataset overrides the schema on the graph target", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/graph.yaml"),
+        `
+name: CustomDsGraph
+targetDataset:
+  datasetId: customDs
+entities:
+- name: Customer
+  dataSourceString: defaultProject.defaultDataset.customers
+  keys:
+  - id
+`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(result.compile.compiledGraph.propertyGraphs).to.have.lengthOf(1);
+      expect(asPlainObject(result.compile.compiledGraph.propertyGraphs[0].target)).deep.equals({
+        database: "defaultProject",
+        schema: "customDs",
+        name: "CustomDsGraph"
+      });
+    });
+
+    test("graph.yaml missing entities produces a compilation error", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/graph.yaml"),
+        `
+name: EmptyGraph
+`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      const errorMessages = result.compile.compiledGraph.graphErrors.compilationErrors.map(
+        ({ message }) => message
+      );
+      expect(errorMessages).to.have.lengthOf(1);
+      expect(errorMessages[0]).to.include("must declare at least one entity");
+    });
+
+    test("graph with relationships emits EDGE TABLES", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/graph.yaml"),
+        `
+name: RelGraph
+entities:
+- name: Customer
+  dataSourceString: defaultProject.defaultDataset.customers
+  keys:
+  - id
+- name: Order
+  dataSourceString: defaultProject.defaultDataset.orders
+  keys:
+  - id
+relationships:
+- name: PlacedBy
+  dataSourceString: defaultProject.defaultDataset.orders
+  source:
+    entity: Order
+    joinKeys:
+    - order_id
+  destination:
+    entity: Customer
+    joinKeys:
+    - customer_id
+`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(result.compile.compiledGraph.propertyGraphs).to.have.lengthOf(1);
+      expect(result.compile.compiledGraph.propertyGraphs[0].relationships).to.have.lengthOf(1);
+      expect(result.compile.compiledGraph.propertyGraphs[0].graphBody).to.include(
+        "EDGE TABLES"
+      );
+    });
+
+    test("graph target colliding with a table target is flagged as duplicate", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/collision.sqlx"),
+        `config {type: "table", name: "CollisionName"}
+select 1 as a`
+      );
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/graph.yaml"),
+        `
+name: CollisionName
+entities:
+- name: Customer
+  dataSourceString: defaultProject.defaultDataset.customers
+  keys:
+  - id
+`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      const errorMessages = result.compile.compiledGraph.graphErrors.compilationErrors.map(
+        ({ message }) => message
+      );
+      expect(errorMessages.some(m => m.includes("Duplicate action name detected"))).equals(true);
+      expect(result.compile.compiledGraph.tables).to.have.lengthOf(0);
+      expect(result.compile.compiledGraph.propertyGraphs).to.have.lengthOf(0);
+    });
+  });
 });

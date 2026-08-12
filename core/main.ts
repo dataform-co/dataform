@@ -10,6 +10,7 @@ import { Declaration } from "df/core/actions/declaration";
 import { IncrementalTable } from "df/core/actions/incremental_table";
 import { Notebook } from "df/core/actions/notebook";
 import { Operation } from "df/core/actions/operation";
+import { PropertyGraph } from "df/core/actions/property_graph";
 import { Table } from "df/core/actions/table";
 import { View } from "df/core/actions/view";
 import { IDataformExtension } from "df/core/extension";
@@ -222,6 +223,44 @@ function loadActionConfigsFile(
   return dataform.ActionConfigs.fromObject(actionConfigsAsJson);
 }
 
+function loadPropertyGraphs(session: Session, filePaths: string[]) {
+  const graphPaths = filePaths
+    .filter(
+      path =>
+        path.startsWith(`definitions${Path.separator}`) &&
+        Path.basename(path) === "graph" &&
+        Path.fileExtension(path) === "yaml"
+    )
+    .sort();
+  if (graphPaths.length === 0) {
+    return;
+  }
+  if (graphPaths.length > 1) {
+    session.compileError(
+      new Error(
+        `At most one graph.yaml is allowed per project (found ${graphPaths.length}: ` +
+          `${graphPaths.join(", ")}).`
+      ),
+      graphPaths[0]
+    );
+    return;
+  }
+  const graphPath = graphPaths[0];
+  let configAsJson = {};
+  try {
+    // tslint:disable-next-line: tsr-detect-non-literal-require
+    configAsJson = nativeRequire(graphPath).asJson;
+  } catch (e) {
+    session.compileError(e, graphPath);
+    return;
+  }
+  try {
+    session.actions.push(new PropertyGraph(session, configAsJson, graphPath));
+  } catch (e) {
+    session.compileError(e, graphPath);
+  }
+}
+
 function prologueCompile(compileRequest: dataform.ICompileExecutionRequest, session: Session) {
   if (compileRequest?.compileConfig?.extension?.compilationMode === dataform.ExtensionCompilationMode.PROLOGUE) {
     extensionCompile(compileRequest, session);
@@ -279,6 +318,7 @@ function dataformCompile(compileRequest: dataform.ICompileExecutionRequest, sess
   globalAny.getContents = session.getContents.bind(session);
   
   loadActionConfigs(session, compileRequest.compileConfig.filePaths);
+  loadPropertyGraphs(session, compileRequest.compileConfig.filePaths);
 
   // Require all "definitions" files (attaching them to the session).
   compileRequest.compileConfig.filePaths
