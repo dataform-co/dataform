@@ -3025,5 +3025,114 @@ entities:
       expect(result.compile.compiledGraph.tables).to.have.lengthOf(0);
       expect(result.compile.compiledGraph.propertyGraphs).to.have.lengthOf(0);
     });
+
+    test("dataSourceString path matching a managed table target adds no dependency", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/books.sqlx"),
+        `config {type: "table"}
+select 1 as id`
+      );
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/graph.yaml"),
+        `
+name: StringMatchGraph
+entities:
+- name: Book
+  dataSourceString: defaultProject.defaultDataset.books
+  keys:
+  - id
+`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      const graph = result.compile.compiledGraph.propertyGraphs[0];
+      expect(graph.graphBody).to.include("`defaultProject.defaultDataset.books`");
+      expect(asPlainObject(graph.dependencyTargets)).deep.equals([]);
+    });
+
+    test("dataSourceDataset matching a managed table target adds no dependency", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/books.sqlx"),
+        `config {type: "table"}
+select 1 as id`
+      );
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/graph.yaml"),
+        `
+name: DatasetMatchGraph
+entities:
+- name: Book
+  dataSourceDataset:
+    project: defaultProject
+    dataset: defaultDataset
+    table: books
+  keys:
+  - id
+`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      const graph = result.compile.compiledGraph.propertyGraphs[0];
+      expect(graph.graphBody).to.include("`defaultProject.defaultDataset.books`");
+      expect(asPlainObject(graph.dependencyTargets)).deep.equals([]);
+    });
+
+    test("mixed ref and dataSourceString: only ref target appears in dependencyTargets", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/books.sqlx"),
+        `config {type: "table"}
+select 1 as id`
+      );
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/authors.sqlx"),
+        `config {type: "table"}
+select 1 as id`
+      );
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/graph.yaml"),
+        `
+name: MixedRefStringGraph
+entities:
+- name: Book
+  ref: books
+  keys:
+  - id
+- name: Author
+  dataSourceString: defaultProject.defaultDataset.authors
+  keys:
+  - id
+`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      const graph = result.compile.compiledGraph.propertyGraphs[0];
+      expect(asPlainObject(graph.dependencyTargets)).deep.equals([
+        { database: "defaultProject", schema: "defaultDataset", name: "books" }
+      ]);
+    });
   });
 });
