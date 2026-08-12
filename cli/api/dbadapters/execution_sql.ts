@@ -184,6 +184,15 @@ from (${query}) as insertions`;
         );
   }
 
+  public createPropertyGraphTasks(
+    propertyGraph: dataform.IPropertyGraph
+  ): dataform.IExecutionTask[] {
+    const statement =
+      `CREATE OR REPLACE PROPERTY GRAPH ${this.resolveTarget(propertyGraph.target)} ` +
+      `${propertyGraph.graphBody}`;
+    return [dataform.ExecutionTask.create({ type: "statement", statement })];
+  }
+
   public createAssertionTasks(assertion: dataform.IAssertion): dataform.IExecutionTask[] {
     return assertion.disabled ? [] : this.assertTasks(assertion, this.project).build();
   }
