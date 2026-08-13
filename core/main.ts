@@ -249,7 +249,7 @@ function loadPropertyGraphs(session: Session, filePaths: string[]) {
   let configAsJson = {};
   try {
     // tslint:disable-next-line: tsr-detect-non-literal-require
-    configAsJson = nativeRequire(graphPath).asJson;
+    configAsJson = snakeToCamelKeys(nativeRequire(graphPath).asJson);
   } catch (e) {
     session.compileError(e, graphPath);
     return;
@@ -259,6 +259,21 @@ function loadPropertyGraphs(session: Session, filePaths: string[]) {
   } catch (e) {
     session.compileError(e, graphPath);
   }
+}
+
+function snakeToCamelKeys(value: any): any {
+  if (Array.isArray(value)) {
+    return value.map(snakeToCamelKeys);
+  }
+  if (value && typeof value === "object") {
+    const out: { [key: string]: any } = {};
+    for (const [key, val] of Object.entries(value)) {
+      const camel = key.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+      out[camel] = snakeToCamelKeys(val);
+    }
+    return out;
+  }
+  return value;
 }
 
 function prologueCompile(compileRequest: dataform.ICompileExecutionRequest, session: Session) {

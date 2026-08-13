@@ -3137,5 +3137,65 @@ entities:
         { database: "defaultProject", schema: "defaultDataset", name: "books" }
       ]);
     });
+
+    test("graph.yaml accepts snake_case keys per BQ spec", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/graph.yaml"),
+        `
+name: SnakeGraph
+description: end to end snake case
+target_dataset:
+  project_id: defaultProject
+  dataset_id: defaultDataset
+entities:
+- name: Account
+  data_source_string: defaultProject.defaultDataset.accounts
+  keys:
+  - id
+  fields:
+    import_all: true
+    except:
+    - secret
+relationships:
+- name: Owns
+  data_source_string: defaultProject.defaultDataset.ownership
+  source:
+    entity: Account
+    join_keys:
+      relationship_columns:
+      - owner_id
+  destination:
+    entity: Account
+    join_keys:
+      relationship_columns:
+      - owned_id
+`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      const graph = result.compile.compiledGraph.propertyGraphs[0];
+      expect(graph.entities[0].labels[0].importAll).equals(true);
+      expect(graph.entities[0].labels[0].importExcept).deep.equals(["secret"]);
+      expect(graph.graphBody).contains(
+        `OPTIONS(description="end to end snake case")`
+      );
+      expect(graph.graphBody).contains(
+        "PROPERTIES ARE ALL COLUMNS EXCEPT (secret)"
+      );
+      expect(graph.graphBody).contains(
+        "SOURCE KEY (owner_id) REFERENCES Account (id)"
+      );
+      expect(graph.graphBody).contains(
+        "DESTINATION KEY (owned_id) REFERENCES Account (id)"
+      );
+    });
   });
 });
