@@ -26,13 +26,16 @@ interface IVerifiableAction {
 }
 
 function toVerifiableAction(graph: dataform.ICompiledGraph, actionType: string): IVerifiableAction {
-  let action: dataform.IAssertion | dataform.ITable
+  let action: dataform.IAssertion | dataform.ITable | dataform.IPropertyGraph
   switch (actionType) {
     case "assertion":
       action = graph.assertions[0];
       break;
     case "operations":
       action = graph.operations[0];
+      break;
+    case "propertyGraph":
+      action = graph.propertyGraphs[0];
       break;
     default:
       action = graph.tables[0];
