@@ -666,7 +666,7 @@ suite("property_graph", () => {
     expect(compiled.graphBody).not.contains("DEFAULT LABEL");
   });
 
-  test("label description and synonyms render as OPTIONS(description=..., synonyms=[...])", () => {
+  test("named label description and synonyms are not emitted as inline LABEL OPTIONS", () => {
     const compiled = compile({
       name: "G",
       entities: [
@@ -686,9 +686,12 @@ suite("property_graph", () => {
       ]
     });
 
-    expect(compiled.graphBody).contains(
-      `OPTIONS(description="customer accounts", synonyms=["customer", "user_account"])`
+    expect(compiled.entities[0].labels[0].description).equals("customer accounts");
+    expect(compiled.entities[0].labels[0].synonyms).deep.equals(["customer", "user_account"]);
+    expect(compiled.graphBody).not.contains(
+      `OPTIONS(description="customer accounts"`
     );
+    expect(compiled.graphBody).contains("LABEL Account PROPERTIES (id)");
   });
 
   test("field description and synonyms render as per-field OPTIONS(...)", () => {
@@ -716,7 +719,7 @@ suite("property_graph", () => {
     );
   });
 
-  test("graph-level description prepends OPTIONS(description=...) to graphBody", () => {
+  test("graph-level description appends OPTIONS(description=...) after NODE/EDGE TABLES", () => {
     const compiled = compile({
       name: "G",
       description: "high-value customer graph",
@@ -726,7 +729,7 @@ suite("property_graph", () => {
     });
 
     expect(compiled.graphBody).matches(
-      /^OPTIONS\(description="high-value customer graph"\)\nNODE TABLES/
+      /^NODE TABLES \([\s\S]*\)\nOPTIONS\(description="high-value customer graph"\)$/
     );
   });
 
@@ -766,5 +769,20 @@ suite("property_graph", () => {
     expect(compiled.graphBody).contains(
       `OPTIONS(description="has \\"quotes\\" and \\\\ backslash")`
     );
+  });
+
+  test("string quoting in OPTIONS escapes newlines carriage returns and tabs", () => {
+    const compiled = compile({
+      name: "G",
+      description: "line1\nline2\r\nline3\ttab",
+      entities: [
+        { name: "A", dataSourceString: "p.d.A", keys: ["id"] }
+      ]
+    });
+
+    expect(compiled.graphBody).contains(
+      `OPTIONS(description="line1\\nline2\\r\\nline3\\ttab")`
+    );
+    expect(compiled.graphBody).not.matches(/description="[^"]*\n/);
   });
 });

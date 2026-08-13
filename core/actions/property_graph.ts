@@ -355,15 +355,15 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
 
   private emitGraphBody(): string {
     const parts: string[] = [];
-    const options = renderOptionsClause(this.proto.description, undefined);
-    if (options) {
-      parts.push(options);
-    }
     const nodeEntries = this.proto.entities.map(entity => renderNode(entity));
     parts.push(`NODE TABLES (\n  ${nodeEntries.join(",\n  ")}\n)`);
     if (this.proto.relationships.length > 0) {
       const edgeEntries = this.proto.relationships.map(rel => renderEdge(rel));
       parts.push(`EDGE TABLES (\n  ${edgeEntries.join(",\n  ")}\n)`);
+    }
+    const options = renderOptionsClause(this.proto.description, undefined);
+    if (options) {
+      parts.push(options);
     }
     return parts.join("\n");
   }
@@ -582,9 +582,11 @@ function renderEndpoint(role: "SOURCE" | "DESTINATION", endpoint: dataform.IGrap
 function renderLabelClause(label: dataform.IGraphLabel): string {
   const head = label.isDefault ? "DEFAULT LABEL" : `LABEL ${label.name}`;
   const parts: string[] = [head];
-  const options = renderOptionsClause(label.description, label.synonyms);
-  if (options) {
-    parts.push(options);
+  if (label.isDefault) {
+    const options = renderOptionsClause(label.description, label.synonyms);
+    if (options) {
+      parts.push(options);
+    }
   }
   const properties = renderPropertiesClause(label);
   if (properties) {
@@ -631,5 +633,11 @@ function renderOptionsClause(
 }
 
 function quoteString(value: string): string {
-  return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+  const escaped = value
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, "\\n")
+    .replace(/\r/g, "\\r")
+    .replace(/\t/g, "\\t");
+  return `"${escaped}"`;
 }
