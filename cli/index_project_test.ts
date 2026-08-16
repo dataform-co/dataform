@@ -125,5 +125,80 @@ SELECT  1  as   test
       expect(afterFormatCheckResult.exitCode).equals(0);
       expect(afterFormatCheckResult.stdout).contains("All files are formatted correctly");
     });
+
+    test("test for format command ignore js files", async () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      const npmCacheDir = tmpDirFixture.createNewTmpDir();
+      const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
+      const packageJsonPath = path.join(projectDir, "package.json");
+
+      // Initialize a project using the CLI, don't install packages.
+      await getProcessResult(
+        execFile(nodePath, [cliEntryPointPath, "init", projectDir, DEFAULT_DATABASE, DEFAULT_LOCATION])
+      );
+
+      // Install packages manually to get around bazel read-only sandbox issues.
+      const workflowSettings = dataform.WorkflowSettings.create(
+        loadYaml(fs.readFileSync(workflowSettingsPath, "utf8"))
+      );
+      delete workflowSettings.dataformCoreVersion;
+      fs.writeFileSync(workflowSettingsPath, dumpYaml(workflowSettings));
+      fs.writeFileSync(
+        packageJsonPath,
+        `{
+  "dependencies":{
+    "@dataform/core": "${version}"
+  }
+}`
+      );
+      await getProcessResult(
+        execFile(npmPath, [
+          "install",
+          "--prefix",
+          projectDir,
+          "--cache",
+          npmCacheDir,
+          corePackageTarPath
+        ])
+      );
+
+      // Create files that need formatting and ensure that the js file is not modified
+      const unformattedFilePath = path.join(projectDir, "definitions", "unformatted.sqlx");
+      fs.ensureFileSync(unformattedFilePath);
+      fs.writeFileSync(
+        unformattedFilePath,
+        `
+config {   type:  "table"   }
+SELECT  1  as   test
+`
+      );
+
+
+      const jsContents = `
+function myCoolFn() {
+  return true; }
+
+modules.exports = {
+  myCoolFn, }
+`
+      const unformattedJsFilePath = path.join(projectDir, "includes", "someMod.js");
+      fs.ensureFileSync(unformattedJsFilePath);
+      fs.writeFileSync(
+        unformattedJsFilePath,
+        jsContents,
+      );
+
+      // Run formatter
+      const formatCmdRun = await getProcessResult(
+        execFile(nodePath, [cliEntryPointPath, "format", "--ignore-js-files", projectDir])
+      );
+
+      expect(formatCmdRun.exitCode).equals(0);
+
+      // Ensure the js file didn't change
+      const bufFromFile = fs.readFileSync(unformattedJsFilePath);
+      const bufFromContents = Buffer.from(jsContents, 'utf-8');
+      expect(bufFromContents.equals(bufFromFile)).equals(true)
+    });
   });
 });
