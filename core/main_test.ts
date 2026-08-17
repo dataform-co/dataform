@@ -2528,6 +2528,62 @@ entities:
       });
     });
 
+    test("empty graph.yaml produces a compilation error", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(path.join(projectDir, "definitions/graph.yaml"), "");
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      const errors = result.compile.compiledGraph.graphErrors.compilationErrors;
+      expect(errors).to.have.lengthOf(1);
+      expect(errors[0].message).to.include("Property graph config is empty or malformed");
+      expect(errors[0].fileName).to.include("definitions/graph.yaml");
+      expect(result.compile.compiledGraph.propertyGraphs).to.have.lengthOf(0);
+    });
+
+    test("graph.yaml with only a comment produces a compilation error", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/graph.yaml"),
+        "# nothing here\n"
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      const errors = result.compile.compiledGraph.graphErrors.compilationErrors;
+      expect(errors).to.have.lengthOf(1);
+      expect(errors[0].message).to.include("Property graph config is empty or malformed");
+    });
+
+    test("graph.yaml with a top-level scalar produces a compilation error", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/graph.yaml"),
+        "just a string\n"
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      const errors = result.compile.compiledGraph.graphErrors.compilationErrors;
+      expect(errors).to.have.lengthOf(1);
+      expect(errors[0].message).to.include("Property graph config is empty or malformed");
+    });
+
     test("graph.yaml missing entities produces a compilation error", () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
       fs.writeFileSync(

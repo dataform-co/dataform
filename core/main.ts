@@ -246,12 +246,22 @@ function loadPropertyGraphs(session: Session, filePaths: string[]) {
     return;
   }
   const graphPath = graphPaths[0];
-  let configAsJson = {};
+  let configAsJson: any;
   try {
     // tslint:disable-next-line: tsr-detect-non-literal-require
     configAsJson = snakeToCamelKeys(nativeRequire(graphPath).asJson);
   } catch (e) {
     session.compileError(e, graphPath);
+    return;
+  }
+  if (!configAsJson || typeof configAsJson !== "object" || Array.isArray(configAsJson)) {
+    session.compileError(
+      new Error(
+        "Property graph config is empty or malformed. " +
+          "Expected a top-level object with 'name' and 'entities'."
+      ),
+      graphPath
+    );
     return;
   }
   try {
