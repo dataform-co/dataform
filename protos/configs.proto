@@ -10,6 +10,7 @@ option go_package = "github.com/dataform-co/dataform/protos/dataform";
 
 import "google/protobuf/struct.proto";
 import "extension.proto";
+import "property_graph_config.proto";
 
 // Workflow Settings defines the contents of the `workflow_settings.yaml`
 // configuration file.
@@ -727,6 +728,7 @@ message ActionConfig {
     DeclarationConfig declaration = 6;
     NotebookConfig notebook = 7;
     DataPreparationConfig data_preparation = 8;
+    PropertyGraphConfig property_graph = 9;
   }
 
   message LoadModeConfig {

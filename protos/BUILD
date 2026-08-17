@@ -14,6 +14,7 @@ proto_library(
         "jit.proto",
         "profiles.proto",
         "extension.proto",
+        "property_graph_config.proto",
     ],
     strip_import_prefix = "/protos",
     deps = [
