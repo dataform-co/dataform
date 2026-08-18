@@ -452,6 +452,55 @@ message MergeLoadMode {
   repeated string unique_key = 1;
 }
 
+message PropertyGraph {
+  Target target = 1;
+  Target canonical_target = 2;
+  repeated Target dependency_targets = 3;
+  string file_name = 4;
+  string description = 5;
+  repeated GraphEntity entities = 6;
+  repeated GraphRelationship relationships = 7;
+  string graph_body = 8;
+}
+
+message GraphEntity {
+  string name = 1;
+  Target data_source = 2;
+  repeated string keys = 3;
+  repeated GraphLabel labels = 4;
+}
+
+message GraphRelationship {
+  string name = 1;
+  Target data_source = 2;
+  repeated string keys = 3;
+  GraphEndpoint source = 4;
+  GraphEndpoint destination = 5;
+  repeated GraphLabel labels = 6;
+}
+
+message GraphLabel {
+  string name = 1;
+  string description = 2;
+  repeated string synonyms = 3;
+  repeated GraphField fields = 4;
+  bool import_all = 5;
+  repeated string import_except = 6;
+}
+
+message GraphField {
+  string name = 1;
+  string expression = 2;
+  string description = 3;
+  repeated string synonyms = 4;
+}
+
+message GraphEndpoint {
+  string entity = 1;
+  repeated string relationship_columns = 2;
+  repeated string entity_columns = 3;
+}
+
 message CompiledGraph {
   ProjectConfig project_config = 4;
 
@@ -464,6 +513,7 @@ message CompiledGraph {
   repeated Test tests = 8;
   repeated Notebook notebooks = 12;
   repeated DataPreparation data_preparations = 13;
+  repeated PropertyGraph property_graphs = 16;
 
   GraphErrors graph_errors = 7;
 

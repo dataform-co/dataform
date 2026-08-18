@@ -1,0 +1,105 @@
+syntax = "proto3";
+
+package dataform;
+
+option java_package = "com.dataform.protos";
+option java_outer_classname = "PropertyGraphConfigMeta";
+option java_multiple_files = true;
+
+option go_package = "github.com/dataform-co/dataform/protos/dataform";
+
+message PropertyGraphConfig {
+  string name = 1;
+  string description = 2;
+  TargetDataset target_dataset = 3;
+  repeated GraphEntityConfig entities = 4;
+  repeated GraphRelationshipConfig relationships = 5;
+
+  message TargetDataset {
+    string project_id = 1;
+    string dataset_id = 2;
+  }
+}
+
+message GraphEntityConfig {
+  string name = 1;
+  oneof data_source {
+    string data_source_string = 2;
+    DatasetDataSource data_source_dataset = 3;
+    CatalogDataSource data_source_catalog = 4;
+    GraphRef data_source_ref = 11;
+  }
+  repeated string keys = 5;
+  string description = 6;
+  repeated string synonyms = 7;
+  repeated GraphFieldConfig fields = 8;
+  GraphFieldWildcard field_wildcard = 9;
+  repeated GraphLabelConfig labels = 10;
+}
+
+message GraphRelationshipConfig {
+  string name = 1;
+  oneof data_source {
+    string data_source_string = 2;
+    DatasetDataSource data_source_dataset = 3;
+    CatalogDataSource data_source_catalog = 4;
+    GraphRef data_source_ref = 13;
+  }
+  repeated string keys = 5;
+  string description = 6;
+  repeated string synonyms = 7;
+  GraphEndpointConfig source = 8;
+  GraphEndpointConfig destination = 9;
+  repeated GraphFieldConfig fields = 10;
+  GraphFieldWildcard field_wildcard = 11;
+  repeated GraphLabelConfig labels = 12;
+}
+
+message GraphLabelConfig {
+  string name = 1;
+  string description = 2;
+  repeated string synonyms = 3;
+  repeated GraphFieldConfig fields = 4;
+  GraphFieldWildcard field_wildcard = 5;
+}
+
+message GraphFieldConfig {
+  string name = 1;
+  string expression = 2;
+  string description = 3;
+  repeated string synonyms = 4;
+}
+
+message GraphFieldWildcard {
+  bool import_all = 1;
+  repeated string except = 2;
+}
+
+message GraphEndpointConfig {
+  string entity = 1;
+  GraphJoinKeysConfig join_keys = 2;
+}
+
+message GraphJoinKeysConfig {
+  repeated string relationship_columns = 1;
+  repeated string entity_columns = 2;
+}
+
+message DatasetDataSource {
+  string project = 1;
+  string dataset = 2;
+  string table = 3;
+}
+
+message CatalogDataSource {
+  string project = 1;
+  string catalog = 2;
+  string namespace = 3;
+  string table = 4;
+}
+
+message GraphRef {
+  string name = 1;
+  string schema = 2;
+  string database = 3;
+}
