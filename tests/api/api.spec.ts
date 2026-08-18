@@ -1391,6 +1391,133 @@ suite("@dataform/api", () => {
       });
     });
 
+    suite("dry-run property graph skip", () => {
+      const TABLE_TARGET: dataform.ITarget = { schema: "schema1", name: "upstream_table" };
+      const GRAPH_TARGET: dataform.ITarget = { schema: "schema1", name: "graph" };
+      const TABLE_STATEMENT = "CREATE TABLE upstream_table AS SELECT 1";
+      const GRAPH_STATEMENT =
+        "CREATE OR REPLACE PROPERTY GRAPH graph NODE TABLES (upstream_table)";
+
+      function buildGraph(graphDependencies: dataform.ITarget[]): dataform.IExecutionGraph {
+        return dataform.ExecutionGraph.create({
+          projectConfig: {
+            warehouse: "bigquery",
+            defaultSchema: "foo",
+            assertionSchema: "bar",
+            defaultLocation: "US"
+          },
+          warehouseState: { tables: [] },
+          actions: [
+            {
+              tasks: [{ type: "statement", statement: TABLE_STATEMENT }],
+              type: "table",
+              target: TABLE_TARGET,
+              tableType: "table",
+              dependencyTargets: []
+            },
+            {
+              tasks: [{ type: "statement", statement: GRAPH_STATEMENT }],
+              type: "propertyGraph",
+              target: GRAPH_TARGET,
+              dependencyTargets: graphDependencies
+            }
+          ]
+        });
+      }
+
+      test("skips property graph when dry-run and a dep is an action in this run", async () => {
+        const mockedDbAdapter = mock(BigQueryDbAdapter);
+        when(mockedDbAdapter.createSchema(anyString(), anyString())).thenResolve(null);
+        when(mockedDbAdapter.execute(TABLE_STATEMENT, anything())).thenResolve({
+          rows: [],
+          metadata: {}
+        });
+
+        const mockDbAdapterInstance = instance(mockedDbAdapter);
+        mockDbAdapterInstance.withClientLock = async callback =>
+          await callback(mockDbAdapterInstance);
+
+        const runner = new Runner(mockDbAdapterInstance, buildGraph([TABLE_TARGET]), {
+          bigquery: { dryRun: true }
+        });
+        const result = cleanTiming(await runner.execute().result());
+
+        expect(result.status).to.equal(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
+        const graphActionResult = result.actions.find(a =>
+          equals(dataform.Target, a.target, GRAPH_TARGET)
+        );
+        expect(graphActionResult.status).to.equal(
+          dataform.ActionResult.ExecutionStatus.SKIPPED
+        );
+        expect(graphActionResult.tasks).to.have.lengthOf(1);
+        expect(graphActionResult.tasks[0].status).to.equal(
+          dataform.TaskResult.ExecutionStatus.SKIPPED
+        );
+        verify(mockedDbAdapter.execute(GRAPH_STATEMENT, anything())).never();
+      });
+
+      test("runs property graph dry-run when no dep is an action in this run", async () => {
+        const mockedDbAdapter = mock(BigQueryDbAdapter);
+        when(mockedDbAdapter.createSchema(anyString(), anyString())).thenResolve(null);
+        when(mockedDbAdapter.execute(TABLE_STATEMENT, anything())).thenResolve({
+          rows: [],
+          metadata: {}
+        });
+        when(mockedDbAdapter.execute(GRAPH_STATEMENT, anything())).thenResolve({
+          rows: [],
+          metadata: {}
+        });
+
+        const mockDbAdapterInstance = instance(mockedDbAdapter);
+        mockDbAdapterInstance.withClientLock = async callback =>
+          await callback(mockDbAdapterInstance);
+
+        const externalDep: dataform.ITarget = { schema: "external", name: "raw_table" };
+        const runner = new Runner(mockDbAdapterInstance, buildGraph([externalDep]), {
+          bigquery: { dryRun: true }
+        });
+        const result = cleanTiming(await runner.execute().result());
+
+        expect(result.status).to.equal(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
+        const graphActionResult = result.actions.find(a =>
+          equals(dataform.Target, a.target, GRAPH_TARGET)
+        );
+        expect(graphActionResult.status).to.equal(
+          dataform.ActionResult.ExecutionStatus.SUCCESSFUL
+        );
+        verify(mockedDbAdapter.execute(GRAPH_STATEMENT, anything())).once();
+      });
+
+      test("runs property graph in non-dry-run mode even when deps are in this run", async () => {
+        const mockedDbAdapter = mock(BigQueryDbAdapter);
+        when(mockedDbAdapter.createSchema(anyString(), anyString())).thenResolve(null);
+        when(mockedDbAdapter.execute(TABLE_STATEMENT, anything())).thenResolve({
+          rows: [],
+          metadata: {}
+        });
+        when(mockedDbAdapter.execute(GRAPH_STATEMENT, anything())).thenResolve({
+          rows: [],
+          metadata: {}
+        });
+
+        const mockDbAdapterInstance = instance(mockedDbAdapter);
+        mockDbAdapterInstance.withClientLock = async callback =>
+          await callback(mockDbAdapterInstance);
+
+        const runner = new Runner(mockDbAdapterInstance, buildGraph([TABLE_TARGET]));
+        const result = cleanTiming(await runner.execute().result());
+
+        expect(result.status).to.equal(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
+        const graphActionResult = result.actions.find(a =>
+          equals(dataform.Target, a.target, GRAPH_TARGET)
+        );
+        expect(graphActionResult.status).to.equal(
+          dataform.ActionResult.ExecutionStatus.SUCCESSFUL
+        );
+        verify(mockedDbAdapter.execute(GRAPH_STATEMENT, anything())).once();
+      });
+    });
+
     test("continues after setMetadata fails", async () => {
       const METADATA_TEST_GRAPH: dataform.IExecutionGraph = dataform.ExecutionGraph.create({
         projectConfig: {

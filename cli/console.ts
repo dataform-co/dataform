@@ -424,7 +424,9 @@ export function printExecutedAction(
       switch (executionAction.type) {
         case "table": {
           writeStdErr(
-            `${errorOutput("Dataset creation failed: ")} ${datasetString(
+            `${errorOutput(
+              `Dataset ${dryRun ? "dry run" : "creation"} failed: `
+            )} ${datasetString(
               executionAction.target,
               executionAction.tableType,
               executionAction.tasks.length === 0
@@ -434,7 +436,9 @@ export function printExecutedAction(
         }
         case "assertion": {
           writeStdErr(
-            `${errorOutput("Assertion failed: ")} ${assertionString(
+            `${errorOutput(
+              `Assertion ${dryRun ? "dry run " : ""}failed: `
+            )} ${assertionString(
               executionAction.target,
               executionAction.tasks.length === 0
             )}${executionSuffix}`
@@ -443,7 +447,9 @@ export function printExecutedAction(
         }
         case "operation": {
           writeStdErr(
-            `${errorOutput("Operation failed: ")} ${operationString(
+            `${errorOutput(
+              `Operation ${dryRun ? "dry run " : ""}failed: `
+            )} ${operationString(
               executionAction.target,
               executionAction.tasks.length === 0
             )}${executionSuffix}`
@@ -452,7 +458,9 @@ export function printExecutedAction(
         }
         case "propertyGraph": {
           writeStdErr(
-            `${errorOutput("Property graph creation failed: ")} ${propertyGraphString(
+            `${errorOutput(
+              `Property graph ${dryRun ? "dry run" : "creation"} failed: `
+            )} ${propertyGraphString(
               executionAction.target,
               executionAction.tasks.length === 0
             )}${executionSuffix}`
@@ -495,7 +503,11 @@ export function printExecutedAction(
         }
         case "propertyGraph": {
           writeStdOut(
-            `${warningOutput("Skipping property graph creation: ")} ${propertyGraphString(
+            `${warningOutput(
+              dryRun
+                ? "Property graph dry run skipped (upstream tables not materialised): "
+                : "Skipping property graph creation: "
+            )} ${propertyGraphString(
               executionAction.target,
               executionAction.tasks.length === 0
             )}`
