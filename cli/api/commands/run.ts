@@ -5,6 +5,7 @@ import { JitCompileChildProcess } from "df/cli/api/commands/jit/compiler";
 import * as dbadapters from "df/cli/api/dbadapters";
 import { IBigQueryExecutionOptions } from "df/cli/api/dbadapters/bigquery";
 import { ExecutionSql } from "df/cli/api/dbadapters/execution_sql";
+import { LineageEmitter } from "df/cli/api/lineage/emitter";
 import { Flags } from "df/common/flags";
 import { retry } from "df/common/promises";
 import { deepClone, equals } from "df/common/protos";
@@ -43,6 +44,7 @@ export interface IExecutionOptions {
     options?: IBigQueryExecutionOptions,
     onCancel?: (cancel: () => void) => void
   ) => Promise<dataform.IJitCompilationResponse>;
+  lineageEmitter?: LineageEmitter;
 }
 
 export type CancelReason = "timeout" | "user" | "cancellation";
@@ -412,6 +414,9 @@ export class Runner {
     actionResult.status = dataform.ActionResult.ExecutionStatus.RUNNING;
     const timer = Timer.start(resumedActionResult?.timing);
     actionResult.timing = timer.current();
+    if (this.executionOptions.lineageEmitter) {
+      this.executionOptions.lineageEmitter.emitForAction(action, actionResult);
+    }
     this.notifyListeners();
 
     if (action.jitCode) {
@@ -423,6 +428,11 @@ export class Runner {
           status: dataform.TaskResult.ExecutionStatus.FAILED,
           errorMessage: `JiT compilation error: ${e?.message || String(e)}`
         });
+        actionResult.timing = timer.end();
+        if (this.executionOptions.lineageEmitter) {
+          this.executionOptions.lineageEmitter.emitForAction(action, actionResult);
+        }
+        this.notifyListeners();
         return actionResult;
       }
     }
@@ -500,6 +510,9 @@ export class Runner {
     }
 
     actionResult.timing = timer.end();
+    if (this.executionOptions.lineageEmitter) {
+      this.executionOptions.lineageEmitter.emitForAction(action, actionResult);
+    }
     this.notifyListeners();
     return actionResult;
   }
