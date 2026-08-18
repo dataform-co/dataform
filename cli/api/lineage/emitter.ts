@@ -128,7 +128,8 @@ export class LineageEmitter {
       action,
       actionResult,
       projectId,
-      location
+      location,
+      this.credentials.projectId
     );
 
     const client = this.clientProvider(projectId, GLOBAL_LINEAGE_ENDPOINT);
