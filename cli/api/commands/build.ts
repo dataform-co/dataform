@@ -62,7 +62,8 @@ export class Builder {
         )
       ),
       this.prunedGraph.operations.map(o => this.buildOperation(o)),
-      this.prunedGraph.assertions.map(a => this.buildAssertion(a))
+      this.prunedGraph.assertions.map(a => this.buildAssertion(a)),
+      this.prunedGraph.propertyGraphs.map(g => this.buildPropertyGraph(g))
     );
     return dataform.ExecutionGraph.create({
       projectConfig: this.prunedGraph.projectConfig,
@@ -106,17 +107,31 @@ export class Builder {
     };
   }
 
+  private buildPropertyGraph(propertyGraph: dataform.IPropertyGraph) {
+    return {
+      ...this.toPartialExecutionAction(propertyGraph),
+      type: "propertyGraph",
+      tasks: this.executionSql.createPropertyGraphTasks(propertyGraph)
+    };
+  }
+
   private toPartialExecutionAction(
-    action: dataform.ITable | dataform.IOperation | dataform.IAssertion
+    action:
+      | dataform.ITable
+      | dataform.IOperation
+      | dataform.IAssertion
+      | dataform.IPropertyGraph
   ) {
     const jitCode = "jitCode" in action ? action.jitCode : undefined;
+    const actionDescriptor = "actionDescriptor" in action ? action.actionDescriptor : undefined;
+    const disabled = !!action.disabled;
     const executionAction = dataform.ExecutionAction.create({
       target: action.target,
       fileName: action.fileName,
       dependencyTargets: action.dependencyTargets,
-      actionDescriptor: action.actionDescriptor
+      actionDescriptor
     });
-    if (jitCode && !action.disabled) {
+    if (jitCode && !disabled) {
       executionAction.jitCode = jitCode;
     }
     return executionAction;
