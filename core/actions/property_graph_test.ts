@@ -514,6 +514,201 @@ suite("property_graph", () => {
           }
         ]
       })
-    ).to.throw("must declare at least one field or a wildcard");
+    ).to.throw("must declare at least one of: 'fields', 'fieldWildcard', 'description'");
+  });
+  test("fields:{importAll:true} map form hoists to fieldWildcard", () => {
+    const compiled = compile({
+      name: "G",
+      entities: [
+        {
+          name: "A",
+          dataSourceString: "p.d.A",
+          keys: ["id"],
+          fields: { importAll: true }
+        }
+      ]
+    });
+
+    expect(compiled.entities[0].labels).length(1);
+    expect(compiled.entities[0].labels[0].importAll).equals(true);
+    expect(compiled.graphBody).contains("PROPERTIES ARE ALL COLUMNS");
+  });
+
+  test("fields:{importAll:true, except:[...]} map form hoists with except", () => {
+    const compiled = compile({
+      name: "G",
+      entities: [
+        {
+          name: "A",
+          dataSourceString: "p.d.A",
+          keys: ["id"],
+          fields: { importAll: true, except: ["secret"] }
+        }
+      ]
+    });
+
+    expect(compiled.entities[0].labels[0].importAll).equals(true);
+    expect(compiled.entities[0].labels[0].importExcept).deep.equals(["secret"]);
+    expect(compiled.graphBody).contains(
+      "PROPERTIES ARE ALL COLUMNS EXCEPT (secret)"
+    );
+  });
+
+  test("synthesized default label sets isDefault=true and renders DEFAULT LABEL", () => {
+    const compiled = compile({
+      name: "G",
+      entities: [
+        {
+          name: "Account",
+          dataSourceString: "p.d.A",
+          keys: ["id"],
+          fields: [{ name: "balance", expression: "balance" }]
+        }
+      ]
+    });
+
+    expect(compiled.entities[0].labels[0].isDefault).equals(true);
+    expect(compiled.graphBody).contains("DEFAULT LABEL");
+    expect(compiled.graphBody).not.contains("LABEL Account");
+  });
+
+  test("explicitly configured labels set isDefault=false and render LABEL <name>", () => {
+    const compiled = compile({
+      name: "G",
+      entities: [
+        {
+          name: "Account",
+          dataSourceString: "p.d.A",
+          keys: ["id"],
+          labels: [
+            { name: "Account", fields: [{ name: "id", expression: "id" }] }
+          ]
+        }
+      ]
+    });
+
+    expect(compiled.entities[0].labels[0].isDefault).equals(false);
+    expect(compiled.graphBody).contains("LABEL Account");
+    expect(compiled.graphBody).not.contains("DEFAULT LABEL");
+  });
+
+  test("named label description and synonyms are not emitted as inline LABEL OPTIONS", () => {
+    const compiled = compile({
+      name: "G",
+      entities: [
+        {
+          name: "Account",
+          dataSourceString: "p.d.A",
+          keys: ["id"],
+          labels: [
+            {
+              name: "Account",
+              description: "customer accounts",
+              synonyms: ["customer", "user_account"],
+              fields: [{ name: "id", expression: "id" }]
+            }
+          ]
+        }
+      ]
+    });
+
+    expect(compiled.entities[0].labels[0].description).equals("customer accounts");
+    expect(compiled.entities[0].labels[0].synonyms).deep.equals(["customer", "user_account"]);
+    expect(compiled.graphBody).not.contains(
+      `OPTIONS(description="customer accounts"`
+    );
+    expect(compiled.graphBody).contains("LABEL Account PROPERTIES (id)");
+  });
+
+  test("field description and synonyms render as per-field OPTIONS(...)", () => {
+    const compiled = compile({
+      name: "G",
+      entities: [
+        {
+          name: "A",
+          dataSourceString: "p.d.A",
+          keys: ["id"],
+          fields: [
+            {
+              name: "balance",
+              expression: "balance",
+              description: "current balance in USD",
+              synonyms: ["amount"]
+            }
+          ]
+        }
+      ]
+    });
+
+    expect(compiled.graphBody).contains(
+      `balance OPTIONS(description="current balance in USD", synonyms=["amount"])`
+    );
+  });
+
+  test("graph-level description appends OPTIONS(description=...) after NODE/EDGE TABLES", () => {
+    const compiled = compile({
+      name: "G",
+      description: "high-value customer graph",
+      entities: [
+        { name: "A", dataSourceString: "p.d.A", keys: ["id"] }
+      ]
+    });
+
+    expect(compiled.graphBody).matches(
+      /^NODE TABLES \([\s\S]*\)\nOPTIONS\(description="high-value customer graph"\)$/
+    );
+  });
+
+  test("entity with only description synthesizes a DEFAULT LABEL with OPTIONS", () => {
+    const compiled = compile({
+      name: "G",
+      entities: [
+        {
+          name: "Account",
+          dataSourceString: "p.d.A",
+          keys: ["id"],
+          description: "customer account entity"
+        }
+      ]
+    });
+
+    expect(compiled.entities[0].labels).length(1);
+    expect(compiled.entities[0].labels[0].isDefault).equals(true);
+    expect(compiled.graphBody).contains(
+      `DEFAULT LABEL OPTIONS(description="customer account entity")`
+    );
+  });
+
+  test("string quoting in OPTIONS escapes embedded double quotes and backslashes", () => {
+    const compiled = compile({
+      name: "G",
+      entities: [
+        {
+          name: "A",
+          dataSourceString: "p.d.A",
+          keys: ["id"],
+          description: `has "quotes" and \\ backslash`
+        }
+      ]
+    });
+
+    expect(compiled.graphBody).contains(
+      `OPTIONS(description="has \\"quotes\\" and \\\\ backslash")`
+    );
+  });
+
+  test("string quoting in OPTIONS escapes newlines carriage returns and tabs", () => {
+    const compiled = compile({
+      name: "G",
+      description: "line1\nline2\r\nline3\ttab",
+      entities: [
+        { name: "A", dataSourceString: "p.d.A", keys: ["id"] }
+      ]
+    });
+
+    expect(compiled.graphBody).contains(
+      `OPTIONS(description="line1\\nline2\\r\\nline3\\ttab")`
+    );
+    expect(compiled.graphBody).not.matches(/description="[^"]*\n/);
   });
 });
