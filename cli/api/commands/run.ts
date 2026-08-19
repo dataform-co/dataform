@@ -390,6 +390,18 @@ export class Runner {
     };
   }
 
+  private shouldSkipPropertyGraphDryRun(action: dataform.IExecutionAction): boolean {
+    if (!this.executionOptions.bigquery?.dryRun) {
+      return false;
+    }
+    if (action.type !== "propertyGraph") {
+      return false;
+    }
+    return (action.dependencyTargets || []).some(dep =>
+      this.allActionTargets.has(targetStringifier.stringify(dep))
+    );
+  }
+
   private async executeAction(action: dataform.IExecutionAction): Promise<dataform.IActionResult> {
     let actionResult: dataform.IActionResult = {
       target: action.target,
@@ -398,6 +410,16 @@ export class Runner {
 
     if (action.tasks.length === 0 && !action.jitCode) {
       actionResult.status = dataform.ActionResult.ExecutionStatus.DISABLED;
+      this.runResult.actions.push(actionResult);
+      this.notifyListeners();
+      return actionResult;
+    }
+
+    if (this.shouldSkipPropertyGraphDryRun(action)) {
+      actionResult.status = dataform.ActionResult.ExecutionStatus.SKIPPED;
+      actionResult.tasks = action.tasks.map(() => ({
+        status: dataform.TaskResult.ExecutionStatus.SKIPPED
+      }));
       this.runResult.actions.push(actionResult);
       this.notifyListeners();
       return actionResult;
