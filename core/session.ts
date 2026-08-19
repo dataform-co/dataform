@@ -545,6 +545,8 @@ export class Session {
 
     this.removeNonUniqueActionsFromCompiledGraph(compiledGraph);
 
+    this.finalizePropertyGraphs();
+
     this.checkTestNameUniqueness(compiledGraph.tests);
 
     this.checkCircularity(
@@ -771,6 +773,14 @@ export class Session {
           .map(action => action as Table | View)
           .forEach(tableOrViewAction => tableOrViewAction.dependencies(utils.resolvableAsTarget(currentTest.getTarget())));
       });
+  }
+
+  private finalizePropertyGraphs() {
+    for (const action of this.actions) {
+      if (action instanceof PropertyGraph) {
+        action.finalize();
+      }
+    }
   }
 
   private removeNonUniqueActionsFromCompiledGraph(compiledGraph: dataform.CompiledGraph) {

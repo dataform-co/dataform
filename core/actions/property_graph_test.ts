@@ -16,7 +16,14 @@ function makeSession(): Session {
 }
 
 function compile(config: any, filename = "definitions/graph.yaml"): dataform.PropertyGraph {
-  return new PropertyGraph(makeSession(), config, filename).compile();
+  const action = new PropertyGraph(makeSession(), config, filename);
+  const compiled = action.compile();
+  action.finalize();
+  return compiled;
+}
+
+function build(config: any, filename = "definitions/graph.yaml"): PropertyGraph {
+  return new PropertyGraph(makeSession(), config, filename);
 }
 
 const graphTarget = (name: string) => ({
@@ -1351,5 +1358,139 @@ suite("property_graph", () => {
         graphBody: "NODE TABLES (\n  `p.d.A` AS A KEY (id)\n)"
       })
     );
+  });
+
+  test("scalar ref normalizes to dataSourceRef and populates dependencyTargets", () => {
+    const compiled = build({
+      name: "G",
+      entities: [
+        {
+          name: "A",
+          ref: "books",
+          keys: ["id"]
+        }
+      ]
+    }).compile();
+
+    expect(asPlainObject(compiled)).deep.equals(
+      asPlainObject({
+        target: graphTarget("G"),
+        canonicalTarget: graphTarget("G"),
+        dependencyTargets: [{ name: "books", includeDependentAssertions: false }],
+        fileName: "definitions/graph.yaml",
+        description: "",
+        disabled: false,
+        entities: [{ name: "A", keys: ["id"] }]
+      })
+    );
+  });
+
+  test("object ref preserves schema and database in dependencyTargets", () => {
+    const compiled = build({
+      name: "G",
+      entities: [
+        {
+          name: "A",
+          ref: { name: "books", schema: "analytics", database: "proj" },
+          keys: ["id"]
+        }
+      ]
+    }).compile();
+
+    expect(asPlainObject(compiled)).deep.equals(
+      asPlainObject({
+        target: graphTarget("G"),
+        canonicalTarget: graphTarget("G"),
+        dependencyTargets: [
+          { database: "proj", schema: "analytics", name: "books", includeDependentAssertions: false }
+        ],
+        fileName: "definitions/graph.yaml",
+        description: "",
+        disabled: false,
+        entities: [{ name: "A", keys: ["id"] }]
+      })
+    );
+  });
+
+  test("duplicate refs across entities dedupe in dependencyTargets", () => {
+    const compiled = build({
+      name: "G",
+      entities: [
+        { name: "A", ref: "books", keys: ["id"] },
+        { name: "B", ref: "books", keys: ["id"] }
+      ]
+    }).compile();
+
+    expect(asPlainObject(compiled)).deep.equals(
+      asPlainObject({
+        target: graphTarget("G"),
+        canonicalTarget: graphTarget("G"),
+        dependencyTargets: [{ name: "books", includeDependentAssertions: false }],
+        fileName: "definitions/graph.yaml",
+        description: "",
+        disabled: false,
+        entities: [
+          { name: "A", keys: ["id"] },
+          { name: "B", keys: ["id"] }
+        ]
+      })
+    );
+  });
+
+  test("ref on relationship also normalizes and populates dependencyTargets", () => {
+    const compiled = build({
+      name: "G",
+      entities: [
+        { name: "A", dataSourceString: "p.d.A", keys: ["id"] },
+        { name: "B", dataSourceString: "p.d.B", keys: ["id"] }
+      ],
+      relationships: [
+        {
+          name: "R",
+          ref: "wrote",
+          keys: ["a_id", "b_id"],
+          source: { entity: "A", joinKeys: ["a_id"] },
+          destination: { entity: "B", joinKeys: ["b_id"] }
+        }
+      ]
+    }).compile();
+
+    expect(asPlainObject(compiled)).deep.equals(
+      asPlainObject({
+        target: graphTarget("G"),
+        canonicalTarget: graphTarget("G"),
+        dependencyTargets: [{ name: "wrote", includeDependentAssertions: false }],
+        fileName: "definitions/graph.yaml",
+        description: "",
+        disabled: false,
+        entities: [
+          { name: "A", dataSource: { database: "p", schema: "d", name: "A" }, keys: ["id"] },
+          { name: "B", dataSource: { database: "p", schema: "d", name: "B" }, keys: ["id"] }
+        ],
+        relationships: [
+          {
+            name: "R",
+            keys: ["a_id", "b_id"],
+            source: { entity: "A", relationshipColumns: ["a_id"], entityColumns: ["id"] },
+            destination: { entity: "B", relationshipColumns: ["b_id"], entityColumns: ["id"] }
+          }
+        ]
+      })
+    );
+  });
+
+  test("errors when ref has no name", () => {
+    expect(() =>
+      compile({
+        name: "G",
+        entities: [
+          {
+            name: "A",
+            ref: { schema: "s" },
+            keys: ["id"]
+          }
+        ]
+      })
+    ).to.throw("'ref' must include a 'name'");
   });
 });
