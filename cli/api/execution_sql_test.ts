@@ -117,3 +117,51 @@ suite("ExecutionSql with 'onSchemaChange'", () => {
     expect(sql).to.equal(expectedSql.trim());
   });
 });
+
+suite("ExecutionSql for property graphs", () => {
+  const executionSql = new ExecutionSql(
+    {
+      defaultDatabase: "project-id",
+      defaultSchema: "dataset-id"
+    },
+    "2.0.0",
+    () => "test_uuid"
+  );
+
+  test("emits CREATE OR REPLACE PROPERTY GRAPH for FinGraph", () => {
+    const graphBody = `NODE TABLES (
+  \`project-id.dataset-id.account\` AS Account KEY (id) LABEL Account PROPERTIES ARE ALL COLUMNS,
+  \`project-id.dataset-id.person\` AS Person KEY (id) LABEL Person PROPERTIES ARE ALL COLUMNS
+)
+EDGE TABLES (
+  \`project-id.dataset-id.person_own_account\` AS PersonOwnAccount SOURCE KEY (id) REFERENCES Person (id) DESTINATION KEY (account_id) REFERENCES Account (id) LABEL Owns PROPERTIES ARE ALL COLUMNS,
+  \`project-id.dataset-id.account_transfer_account\` AS AccountTransferAccount SOURCE KEY (id) REFERENCES Account (id) DESTINATION KEY (to_id) REFERENCES Account (id) LABEL Transfers PROPERTIES (amount, create_time)
+)`;
+    const propertyGraph: dataform.IPropertyGraph = {
+      target: { database: "project-id", schema: "dataset-id", name: "FinGraph" },
+      graphBody
+    };
+    const tasks = executionSql.createPropertyGraphTasks(propertyGraph);
+    const sql = tasks.map(t => t.statement).join("\n;\n");
+    const expectedSql = fs.readFileSync("cli/api/goldens/property_graph_fingraph.sql", "utf8");
+    expect(sql).to.equal(expectedSql.trim());
+  });
+
+  test("emits CREATE OR REPLACE PROPERTY GRAPH for HRGraph", () => {
+    const graphBody = `NODE TABLES (
+  \`project-id.dataset-id.employee\` AS Employee KEY (id) LABEL Employee PROPERTIES ARE ALL COLUMNS EXCEPT (ssn, salary),
+  \`project-id.dataset-id.manager\` AS Manager KEY (id) LABEL Manager PROPERTIES ARE ALL COLUMNS EXCEPT (bonus)
+)
+EDGE TABLES (
+  \`project-id.dataset-id.reports\` AS Reports SOURCE KEY (employee_id) REFERENCES Employee (id) DESTINATION KEY (manager_id) REFERENCES Manager (id) LABEL Reports PROPERTIES ARE ALL COLUMNS
+)`;
+    const propertyGraph: dataform.IPropertyGraph = {
+      target: { database: "project-id", schema: "dataset-id", name: "HRGraph" },
+      graphBody
+    };
+    const tasks = executionSql.createPropertyGraphTasks(propertyGraph);
+    const sql = tasks.map(t => t.statement).join("\n;\n");
+    const expectedSql = fs.readFileSync("cli/api/goldens/property_graph_hrgraph.sql", "utf8");
+    expect(sql).to.equal(expectedSql.trim());
+  });
+});
