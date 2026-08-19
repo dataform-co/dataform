@@ -61,6 +61,7 @@ ts_test_suite(
         "tasks_test.ts",
         "utils_test.ts",
         "commands/jit/rpc_test.ts",
+        "commands/prune_test.ts",
         "dbadapters/bigquery_test.ts",
         "execution_sql_test.ts",
     ],

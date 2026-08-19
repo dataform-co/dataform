@@ -6,7 +6,8 @@ type CoreProtoActionTypes =
   | dataform.IOperation
   | dataform.IAssertion
   | dataform.IDeclaration
-  | dataform.IDataPreparation;
+  | dataform.IDataPreparation
+  | dataform.IPropertyGraph;
 
 function combineAllActions(graph: dataform.ICompiledGraph) {
   return ([] as CoreProtoActionTypes[]).concat(
@@ -14,7 +15,8 @@ function combineAllActions(graph: dataform.ICompiledGraph) {
     graph.operations || ([] as dataform.IOperation[]),
     graph.assertions || ([] as dataform.IAssertion[]),
     graph.declarations || ([] as dataform.IDeclaration[]),
-    graph.dataPreparations || ([] as dataform.IDataPreparation[])
+    graph.dataPreparations || ([] as dataform.IDataPreparation[]),
+    graph.propertyGraphs || ([] as dataform.IPropertyGraph[])
   );
 }
 
