@@ -65,11 +65,7 @@ ts_test_suite(
         "commands/jit/rpc_test.ts",
         "dbadapters/bigquery_test.ts",
         "execution_sql_test.ts",
-        "lineage/emitter_factory_test.ts",
-        "lineage/emitter_test.ts",
-        "lineage/lineage_integration_test.ts",
-        "lineage/payload_builder_test.ts",
-    ],
+    ] + glob(["lineage/*_test.ts"]),
     data = [
         ":node_modules",
         "//packages/@dataform/core:package_tar",

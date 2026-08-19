@@ -194,10 +194,12 @@ suite("--emit-lineage integration", { parallel: true }, () => {
     expect(stderr.contains("skip_reason=invocation_override")).to.equal(true);
   });
 
-  test("Case 5 — lineage emit failure is fail-open (run exits SUCCESSFUL)", async () => {
+  test("Case 5 — lineage emit failure is fail-open (run exits SUCCESSFUL), skip_reason=api_disabled printed once", async () => {
     // Fail-open contract: any lineage emission failure — whatever the gRPC
     // code — must not affect the workflow status. The dataform run continues,
-    // dbadapter still executes every action.
+    // dbadapter still executes every action. When multiple in-flight emits
+    // hit the same PERMISSION_DENIED, the skip_reason line is dedup'd to a
+    // single stderr write via `emissionDisabledThisRun`.
     const recorder = new RecordingLineageClient();
     recorder.throwOnNextCallWith(7, "Permission Denied");
     const stderr = new StderrCapture();
@@ -214,6 +216,8 @@ suite("--emit-lineage integration", { parallel: true }, () => {
 
     expect(runResult.status).to.equal(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
     expect(dbadapter.executed.length).to.equal(2);
+    const skipLines = stderr.writes.filter(w => w.includes("skip_reason=api_disabled"));
+    expect(skipLines.length).to.equal(1);
   });
 
   test("Case 6 — drain is bounded when the client hangs indefinitely", async () => {
