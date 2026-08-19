@@ -472,6 +472,7 @@ message GraphLabel {
   repeated GraphField fields = 4;
   bool import_all = 5;
   repeated string import_except = 6;
+  bool is_default = 7;
 }
 
 message GraphField {

@@ -4,6 +4,7 @@ import { Declaration } from "df/core/actions/declaration";
 import { IncrementalTable } from "df/core/actions/incremental_table";
 import { Notebook } from "df/core/actions/notebook";
 import { Operation } from "df/core/actions/operation";
+import { PropertyGraph } from "df/core/actions/property_graph";
 import { Table } from "df/core/actions/table";
 import { Test } from "df/core/actions/test";
 import { View } from "df/core/actions/view";
@@ -21,6 +22,7 @@ export type Action =
   | Declaration
   | Notebook
   | DataPreparation
+  | PropertyGraph
   | Test;
 
 export type ActionProto =
@@ -30,6 +32,7 @@ export type ActionProto =
   | dataform.Declaration
   | dataform.Notebook
   | dataform.DataPreparation
+  | dataform.PropertyGraph
   | dataform.Test;
 
 // In v4, consider making methods on inheritors of this private, forcing users to use constructors
