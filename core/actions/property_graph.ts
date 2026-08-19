@@ -267,8 +267,8 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
         if (endpoint.entityColumns.length !== endpoint.relationshipColumns.length) {
           throw new Error(
             `Property graph '${graphName}': relationship '${rel.name}' ${role} join_keys arity ` +
-              `(${endpoint.relationshipColumns.length}) does not match entity ` +
-              `'${endpoint.entity}' key arity (${endpoint.entityColumns.length}).`
+              `mismatch: relationshipColumns has ${endpoint.relationshipColumns.length}, ` +
+              `entityColumns has ${endpoint.entityColumns.length}.`
           );
         }
       }
@@ -335,12 +335,6 @@ function buildEndpoint(
   const entityCols = endpointConfig.joinKeys.entityColumns || [];
   if (relCols.length === 0) {
     throw new Error(`${where}: 'joinKeys.relationshipColumns' must be non-empty.`);
-  }
-  if (entityCols.length > 0 && entityCols.length !== relCols.length) {
-    throw new Error(
-      `${where}: 'joinKeys.relationshipColumns' and 'joinKeys.entityColumns' must have equal ` +
-        `length when both are provided (got ${relCols.length} vs ${entityCols.length}).`
-    );
   }
   return dataform.GraphEndpoint.create({
     entity: endpointConfig.entity,

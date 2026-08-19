@@ -32,26 +32,29 @@ suite("property_graph", () => {
       ]
     });
 
-    expect(asPlainObject(compiled.target)).deep.equals({
-      database: "defaultProject",
-      schema: "defaultDataset",
-      name: "Simple"
-    });
-    expect(asPlainObject(compiled.canonicalTarget)).deep.equals({
-      database: "defaultProject",
-      schema: "defaultDataset",
-      name: "Simple"
-    });
-    expect(compiled.fileName).equals("definitions/graph.yaml");
-    expect(compiled.entities).length(1);
-    expect(compiled.relationships).length(0);
-    expect(asPlainObject(compiled.entities[0].dataSource)).deep.equals({
-      database: "proj",
-      schema: "ds",
-      name: "Accounts"
-    });
-    expect(compiled.graphBody).contains("NODE TABLES");
-    expect(compiled.graphBody).not.contains("EDGE TABLES");
+    expect(asPlainObject(compiled)).deep.equals(
+      asPlainObject({
+        target: {
+          database: "defaultProject",
+          schema: "defaultDataset",
+          name: "Simple"
+        },
+        canonicalTarget: {
+          database: "defaultProject",
+          schema: "defaultDataset",
+          name: "Simple"
+        },
+        fileName: "definitions/graph.yaml",
+        entities: [
+          {
+            name: "Account",
+            dataSource: { database: "proj", schema: "ds", name: "Accounts" },
+            keys: ["id"]
+          }
+        ],
+        graphBody: "NODE TABLES (\n  `proj.ds.Accounts` AS Account KEY (id)\n)"
+      })
+    );
   });
 
   test("normalizes scalar keys to a single-element list", () => {
@@ -216,12 +219,48 @@ suite("property_graph", () => {
       ]
     });
 
-    expect(compiled.relationships).length(1);
-    expect(compiled.graphBody).contains(
-      "SOURCE KEY (sender_id) REFERENCES Account (id)"
-    );
-    expect(compiled.graphBody).contains(
-      "DESTINATION KEY (receiver_id) REFERENCES Account (id)"
+    expect(asPlainObject(compiled)).deep.equals(
+      asPlainObject({
+        target: {
+          database: "defaultProject",
+          schema: "defaultDataset",
+          name: "FinGraph"
+        },
+        canonicalTarget: {
+          database: "defaultProject",
+          schema: "defaultDataset",
+          name: "FinGraph"
+        },
+        fileName: "definitions/graph.yaml",
+        entities: [
+          {
+            name: "Account",
+            dataSource: { database: "p", schema: "d", name: "Accounts" },
+            keys: ["id"]
+          }
+        ],
+        relationships: [
+          {
+            name: "Transfer",
+            dataSource: { database: "p", schema: "d", name: "Transfers" },
+            source: {
+              entity: "Account",
+              relationshipColumns: ["sender_id"],
+              entityColumns: ["id"]
+            },
+            destination: {
+              entity: "Account",
+              relationshipColumns: ["receiver_id"],
+              entityColumns: ["id"]
+            }
+          }
+        ],
+        graphBody:
+          "NODE TABLES (\n  `p.d.Accounts` AS Account KEY (id)\n)\n" +
+          "EDGE TABLES (\n  `p.d.Transfers` AS Transfer " +
+          "SOURCE KEY (sender_id) REFERENCES Account (id) " +
+          "DESTINATION KEY (receiver_id) REFERENCES Account (id)\n)"
+      })
     );
   });
 
