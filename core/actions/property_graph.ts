@@ -1,5 +1,6 @@
 import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { ActionBuilder } from "df/core/actions";
+import { Declaration } from "df/core/actions/declaration";
 import { Session } from "df/core/session";
 import { dataform } from "df/protos/ts";
 
@@ -10,6 +11,8 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
   public session: Session;
 
   private proto = dataform.PropertyGraph.create({ description: "", disabled: false });
+  private pendingRefs = new Map<string, dataform.ITarget>();
+  private dependencyKeys = new Set<string>();
 
   constructor(session?: Session, unverifiedConfig?: any, filename?: string) {
     super(session);
@@ -61,8 +64,6 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
     this.validateUniqueNames(config.name);
     this.resolveEndpointDefaults();
     this.validateEndpointReferences(config.name);
-
-    this.proto.graphBody = this.emitGraphBody();
   }
 
   public getFileName() {
@@ -74,20 +75,66 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
   }
 
   public compile() {
-    return verifyObjectMatchesProto(
+    this.proto = verifyObjectMatchesProto(
       dataform.PropertyGraph,
       this.proto,
       VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM
     );
+    return this.proto;
+  }
+
+  public finalize() {
+    let allResolved = true;
+    for (const entity of this.proto.entities) {
+      if (!this.resolveRefIntoDataSource(entity, `entity:${entity.name}`)) {
+        allResolved = false;
+      }
+    }
+    for (const rel of this.proto.relationships) {
+      if (!this.resolveRefIntoDataSource(rel, `relationship:${rel.name}`)) {
+        allResolved = false;
+      }
+    }
+    if (allResolved) {
+      this.proto.graphBody = this.emitGraphBody();
+    }
+  }
+
+  private resolveRefIntoDataSource(
+    entityOrRel: dataform.IGraphEntity | dataform.IGraphRelationship,
+    key: string
+  ): boolean {
+    const rawRef = this.pendingRefs.get(key);
+    if (!rawRef) {
+      return true;
+    }
+    const resolved = this.session.indexedActions.find(rawRef);
+    if (resolved.length !== 1) {
+      return false;
+    }
+    const resolvedAction = resolved[0];
+    const target = resolvedAction.getTarget();
+    if (resolvedAction instanceof Declaration) {
+      entityOrRel.dataSource = target;
+    } else {
+      entityOrRel.dataSource = dataform.Target.create({
+        database: target.database && this.session.finalizeDatabase(target.database),
+        schema: this.session.finalizeSchema(target.schema),
+        name: this.session.finalizeName(target.name)
+      });
+    }
+    return true;
   }
 
   private normalizeEntitiesAndRelationships(unverifiedConfig: any) {
     for (const entity of unverifiedConfig.entities || []) {
+      normalizeRef(entity);
       normalizeKeys(entity);
       normalizeFields(entity);
       normalizeFieldsOnLabels(entity);
     }
     for (const relationship of unverifiedConfig.relationships || []) {
+      normalizeRef(relationship);
       normalizeKeys(relationship);
       normalizeFields(relationship);
       normalizeFieldsOnLabels(relationship);
@@ -113,7 +160,7 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
     }
     const entityName = entityConfig.name;
     const where = `Property graph '${graphName}': entity '${entityName}'`;
-    const dataSource = this.resolveDataSource(entityConfig, where);
+    const dataSource = this.resolveDataSource(entityConfig, `entity:${entityName}`, where);
     if (!entityConfig.keys || entityConfig.keys.length === 0) {
       throw new Error(`${where} must declare 'keys'.`);
     }
@@ -137,7 +184,7 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
     }
     const relName = relConfig.name;
     const where = `Property graph '${graphName}': relationship '${relName}'`;
-    const dataSource = this.resolveDataSource(relConfig, where);
+    const dataSource = this.resolveDataSource(relConfig, `relationship:${relName}`, where);
 
     if (!relConfig.source) {
       throw new Error(`${where} must declare 'source'.`);
@@ -163,6 +210,7 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
 
   private resolveDataSource(
     entityOrRel: dataform.IGraphEntityConfig | dataform.IGraphRelationshipConfig,
+    pendingKey: string,
     where: string
   ): dataform.Target {
     if (entityOrRel.dataSourceCatalog) {
@@ -186,6 +234,26 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
         );
       }
       return dataform.Target.create({ name: ds.table, schema: dataset, database: project });
+    }
+    if (entityOrRel.dataSourceRef) {
+      const ref = entityOrRel.dataSourceRef;
+      if (!ref.name) {
+        throw new Error(`${where}: 'ref' must include a 'name'.`);
+      }
+      const rawRef: dataform.ITarget = { name: ref.name };
+      if (ref.schema) {
+        rawRef.schema = ref.schema;
+      }
+      if (ref.database) {
+        rawRef.database = ref.database;
+      }
+      this.pendingRefs.set(pendingKey, rawRef);
+      const depKey = `${rawRef.database || ""}.${rawRef.schema || ""}.${rawRef.name}`;
+      if (!this.dependencyKeys.has(depKey)) {
+        this.dependencyKeys.add(depKey);
+        this.proto.dependencyTargets.push(dataform.Target.create(rawRef));
+      }
+      return undefined;
     }
     throw new Error(`${where}: must declare a data source.`);
   }
@@ -265,6 +333,21 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
       parts.push(`EDGE TABLES (\n  ${edgeEntries.join(",\n  ")}\n)`);
     }
     return parts.join("\n");
+  }
+}
+
+function normalizeRef(entityOrRel: any) {
+  if (entityOrRel.ref === undefined || entityOrRel.ref === null) {
+    return;
+  }
+  if (typeof entityOrRel.ref === "string") {
+    entityOrRel.dataSourceRef = { name: entityOrRel.ref };
+    delete entityOrRel.ref;
+    return;
+  }
+  if (typeof entityOrRel.ref === "object") {
+    entityOrRel.dataSourceRef = entityOrRel.ref;
+    delete entityOrRel.ref;
   }
 }
 
