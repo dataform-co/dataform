@@ -567,7 +567,7 @@ export function dotRepresentation(graph: dataform.ICompiledGraph, interactive: b
 
   graph.operations?.forEach(operation => {
     const nodeName = `${formatTarget(operation.target)}`;
-    nodes.push(`"${nodeName}" [label="${formatTarget(operation.target)}"`);
+    nodes.push(`"${nodeName}" [label="${formatTarget(operation.target)}"]`);
     operation.dependencyTargets?.forEach(dependencyTarget => {
       edges.push(`"${formatTarget(dependencyTarget)}" -> "${nodeName}"`);
     });
