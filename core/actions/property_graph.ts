@@ -113,22 +113,7 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
       throw new Error(`${where} must declare 'keys'.`);
     }
 
-    const rootFields = entityConfig.fields || [];
-    const rootWildcard = entityConfig.fieldWildcard;
-    const configuredLabels = entityConfig.labels || [];
-    if ((rootFields.length > 0 || rootWildcard) && configuredLabels.length > 0) {
-      throw new Error(
-        `${where} cannot combine root-level 'fields'/'fieldWildcard' with a 'labels' list.`
-      );
-    }
-
-    const labels = buildLabels(
-      entityName,
-      rootFields,
-      rootWildcard,
-      configuredLabels,
-      where
-    );
+    const labels = buildLabels(entityName, entityConfig, where);
 
     return dataform.GraphEntity.create({
       name: entityName,
@@ -159,16 +144,7 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
     const source = buildEndpoint(relConfig.source, `${where} source`);
     const destination = buildEndpoint(relConfig.destination, `${where} destination`);
 
-    const rootFields = relConfig.fields || [];
-    const rootWildcard = relConfig.fieldWildcard;
-    const configuredLabels = relConfig.labels || [];
-    if ((rootFields.length > 0 || rootWildcard) && configuredLabels.length > 0) {
-      throw new Error(
-        `${where} cannot combine root-level 'fields'/'fieldWildcard' with a 'labels' list.`
-      );
-    }
-
-    const labels = buildLabels(relName, rootFields, rootWildcard, configuredLabels, where);
+    const labels = buildLabels(relName, relConfig, where);
 
     return dataform.GraphRelationship.create({
       name: relName,
@@ -276,12 +252,16 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
   }
 
   private emitGraphBody(): string {
-    const nodeEntries = this.proto.entities.map(entity => renderNode(entity));
     const parts: string[] = [];
+    const nodeEntries = this.proto.entities.map(entity => renderNode(entity));
     parts.push(`NODE TABLES (\n  ${nodeEntries.join(",\n  ")}\n)`);
     if (this.proto.relationships.length > 0) {
       const edgeEntries = this.proto.relationships.map(rel => renderEdge(rel));
       parts.push(`EDGE TABLES (\n  ${edgeEntries.join(",\n  ")}\n)`);
+    }
+    const options = renderOptionsClause(this.proto.description, undefined);
+    if (options) {
+      parts.push(options);
     }
     return parts.join("\n");
   }
@@ -294,8 +274,14 @@ function normalizeKeys(entityOrRel: any) {
 }
 
 function normalizeFields(container: any) {
-  if (Array.isArray(container.fields)) {
-    container.fields = container.fields.map((field: string | dataform.IGraphFieldConfig) =>
+  const f = container.fields;
+  if (f && !Array.isArray(f) && typeof f === "object" && "importAll" in f) {
+    container.fieldWildcard = f;
+    delete container.fields;
+    return;
+  }
+  if (Array.isArray(f)) {
+    container.fields = f.map((field: string | dataform.IGraphFieldConfig) =>
       typeof field === "string" ? { name: field, expression: field } : field
     );
   }
@@ -351,26 +337,43 @@ function buildEndpoint(
 
 function buildLabels(
   defaultLabelName: string,
-  rootFields: dataform.IGraphFieldConfig[],
-  rootWildcard: dataform.IGraphFieldWildcard | undefined | null,
-  configuredLabels: dataform.IGraphLabelConfig[],
+  config: dataform.IGraphEntityConfig | dataform.IGraphRelationshipConfig,
   where: string
 ): dataform.GraphLabel[] {
-  if (configuredLabels.length > 0) {
-    return configuredLabels.map(label => buildLabel(label, where));
+  const rootFields = config.fields || [];
+  const rootWildcard = config.fieldWildcard;
+  const configuredLabels = config.labels || [];
+  if ((rootFields.length > 0 || rootWildcard) && configuredLabels.length > 0) {
+    throw new Error(
+      `${where} cannot combine root-level 'fields'/'fieldWildcard' with a 'labels' list.`
+    );
   }
-  if (rootFields.length === 0 && !rootWildcard) {
+  if (configuredLabels.length > 0) {
+    return configuredLabels.map(label => buildLabel(label, where, false));
+  }
+  const hasRootData =
+    rootFields.length > 0 ||
+    !!rootWildcard ||
+    !!config.description ||
+    (config.synonyms && config.synonyms.length > 0);
+  if (!hasRootData) {
     return [];
   }
   const synthesized = dataform.GraphLabelConfig.create({
     name: defaultLabelName,
+    description: config.description || undefined,
+    synonyms: config.synonyms || [],
     fields: rootFields,
     fieldWildcard: rootWildcard
   });
-  return [buildLabel(synthesized, where)];
+  return [buildLabel(synthesized, where, true)];
 }
 
-function buildLabel(label: dataform.IGraphLabelConfig, where: string): dataform.GraphLabel {
+function buildLabel(
+  label: dataform.IGraphLabelConfig,
+  where: string,
+  isDefault: boolean
+): dataform.GraphLabel {
   if (!label.name) {
     throw new Error(`${where}: every label must have a 'name'.`);
   }
@@ -382,9 +385,11 @@ function buildLabel(label: dataform.IGraphLabelConfig, where: string): dataform.
   }
   const hasFields = !!(label.fields && label.fields.length > 0);
   const hasWildcard = !!(wildcard && wildcard.importAll);
-  if (!hasFields && !hasWildcard) {
+  const hasOptions = !!label.description || !!(label.synonyms && label.synonyms.length > 0);
+  if (!hasFields && !hasWildcard && !hasOptions) {
     throw new Error(
-      `${where}: label '${label.name}' must declare at least one field or a wildcard.`
+      `${where}: label '${label.name}' must declare at least one of: 'fields', ` +
+        `'fieldWildcard', 'description', or 'synonyms'.`
     );
   }
   return dataform.GraphLabel.create({
@@ -400,7 +405,8 @@ function buildLabel(label: dataform.IGraphLabelConfig, where: string): dataform.
       })
     ),
     importAll: !!wildcard?.importAll,
-    importExcept: wildcard?.except || []
+    importExcept: wildcard?.except || [],
+    isDefault
   });
 }
 
@@ -461,7 +467,17 @@ function renderEndpoint(role: "SOURCE" | "DESTINATION", endpoint: dataform.IGrap
 }
 
 function renderLabelClause(label: dataform.IGraphLabel): string {
-  return `LABEL ${label.name} ${renderPropertiesClause(label)}`;
+  const head = label.isDefault ? "DEFAULT LABEL" : `LABEL ${label.name}`;
+  const parts: string[] = [head];
+  const options = renderOptionsClause(label.description, label.synonyms);
+  if (options) {
+    parts.push(options);
+  }
+  const properties = renderPropertiesClause(label);
+  if (properties) {
+    parts.push(properties);
+  }
+  return parts.join(" ");
 }
 
 function renderPropertiesClause(label: dataform.IGraphLabel): string {
@@ -471,10 +487,32 @@ function renderPropertiesClause(label: dataform.IGraphLabel): string {
     }
     return "PROPERTIES ARE ALL COLUMNS";
   }
-  const rendered = label.fields.map(field =>
+  if (label.fields.length === 0) {
+    return "";
+  }
+  const rendered = label.fields.map(field => renderField(field));
+  return `PROPERTIES (${rendered.join(", ")})`;
+}
+
+function renderField(field: dataform.IGraphField): string {
+  const expr =
     field.expression && field.expression !== field.name
       ? `${field.expression} AS ${field.name}`
-      : field.name
-  );
-  return `PROPERTIES (${rendered.join(", ")})`;
+      : field.name;
+  const options = renderOptionsClause(field.description, field.synonyms);
+  return options ? `${expr} ${options}` : expr;
+}
+
+function renderOptionsClause(
+  description: string | null | undefined,
+  synonyms: string[] | null | undefined
+): string {
+  const parts: string[] = [];
+  if (description) {
+    parts.push(`description=${JSON.stringify(description)}`);
+  }
+  if (synonyms && synonyms.length > 0) {
+    parts.push(`synonyms=[${synonyms.map(s => JSON.stringify(s)).join(", ")}]`);
+  }
+  return parts.length > 0 ? `OPTIONS(${parts.join(", ")})` : "";
 }
