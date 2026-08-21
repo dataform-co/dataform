@@ -3,6 +3,7 @@ syntax = "proto3";
 package dataform;
 
 import "extension.proto";
+import "property_graph_config.proto";
 
 import "google/protobuf/struct.proto";
 
@@ -475,6 +476,7 @@ message GraphLabel {
   bool import_all = 5;
   repeated string import_except = 6;
   bool is_default = 7;
+  repeated GraphExtension extensions = 8;
 }
 
 message GraphField {
@@ -482,6 +484,7 @@ message GraphField {
   string expression = 2;
   string description = 3;
   repeated string synonyms = 4;
+  repeated GraphExtension extensions = 5;
 }
 
 message GraphEndpoint {

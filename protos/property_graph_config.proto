@@ -38,6 +38,7 @@ message GraphEntityConfig {
   repeated GraphFieldConfig fields = 8;
   GraphFieldWildcard field_wildcard = 9;
   repeated GraphLabelConfig labels = 10;
+  repeated GraphExtension extensions = 12;
 }
 
 message GraphRelationshipConfig {
@@ -56,6 +57,7 @@ message GraphRelationshipConfig {
   repeated GraphFieldConfig fields = 10;
   GraphFieldWildcard field_wildcard = 11;
   repeated GraphLabelConfig labels = 12;
+  repeated GraphExtension extensions = 14;
 }
 
 message GraphLabelConfig {
@@ -64,6 +66,7 @@ message GraphLabelConfig {
   repeated string synonyms = 3;
   repeated GraphFieldConfig fields = 4;
   GraphFieldWildcard field_wildcard = 5;
+  repeated GraphExtension extensions = 6;
 }
 
 message GraphFieldConfig {
@@ -71,6 +74,7 @@ message GraphFieldConfig {
   string expression = 2;
   string description = 3;
   repeated string synonyms = 4;
+  repeated GraphExtension extensions = 5;
 }
 
 message GraphFieldWildcard {
@@ -106,4 +110,9 @@ message DataSourceRef {
   string schema = 2;
   string database = 3;
   bool include_dependent_assertions = 4;
+}
+
+message GraphExtension {
+  string key = 1;
+  string value = 2;
 }
