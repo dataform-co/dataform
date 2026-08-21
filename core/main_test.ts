@@ -2441,6 +2441,8 @@ entities:
               database: "defaultProject"
             },
             fileName: "definitions/graph.yaml",
+            description: "",
+            disabled: false,
             entities: [
               {
                 name: "Customer",
@@ -2558,6 +2560,8 @@ entities:
               database: "defaultProject"
             },
             fileName: "definitions/graph.yaml",
+            description: "",
+            disabled: false,
             entities: [
               {
                 name: "Customer",
@@ -2632,6 +2636,8 @@ entities:
               database: "defaultProject"
             },
             fileName: "definitions/graph.yaml",
+            description: "",
+            disabled: false,
             entities: [
               {
                 name: "Customer",
@@ -2827,6 +2833,8 @@ relationships:
               database: "defaultProject"
             },
             fileName: "definitions/graph.yaml",
+            description: "",
+            disabled: false,
             entities: [
               {
                 name: "Customer",
@@ -3015,6 +3023,7 @@ relationships:
             },
             fileName: "definitions/graph.yaml",
             description: "end to end snake case",
+            disabled: false,
             entities: [
               {
                 name: "Account",
@@ -3064,8 +3073,7 @@ relationships:
               "  `defaultProject.defaultDataset.ownership` AS Owns " +
               "SOURCE KEY (owner_id) REFERENCES Account (id) " +
               "DESTINATION KEY (owned_id) REFERENCES Account (id)\n" +
-              ")\n" +
-              `OPTIONS(description="end to end snake case")`
+              ")"
           }
         ]
       }));

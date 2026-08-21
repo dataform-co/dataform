@@ -14,6 +14,7 @@ message PropertyGraphConfig {
   TargetDataset target_dataset = 3;
   repeated GraphEntityConfig entities = 4;
   repeated GraphRelationshipConfig relationships = 5;
+  bool disabled = 6;
 
   message TargetDataset {
     string project_id = 1;
@@ -27,7 +28,7 @@ message GraphEntityConfig {
     string data_source_string = 2;
     DatasetDataSource data_source_dataset = 3;
     CatalogDataSource data_source_catalog = 4;
-    GraphRef data_source_ref = 11;
+    DataSourceRef data_source_ref = 11;
   }
   repeated string keys = 5;
   string description = 6;
@@ -43,7 +44,7 @@ message GraphRelationshipConfig {
     string data_source_string = 2;
     DatasetDataSource data_source_dataset = 3;
     CatalogDataSource data_source_catalog = 4;
-    GraphRef data_source_ref = 13;
+    DataSourceRef data_source_ref = 13;
   }
   repeated string keys = 5;
   string description = 6;
@@ -98,7 +99,7 @@ message CatalogDataSource {
   string table = 4;
 }
 
-message GraphRef {
+message DataSourceRef {
   string name = 1;
   string schema = 2;
   string database = 3;
