@@ -75,7 +75,10 @@ suite("@dataform/integration/property_graph", { parallel: true }, ({ before, aft
     for (const needle of [
       "NODE TABLES", "EDGE TABLES",
       "Author", "Book", "Wrote",
-      "authors", "books", "wrote"
+      "authors", "books", "wrote",
+      `extensions=[("domain", "library")]`,
+      `extensions=[("pii", "true")]`,
+      `extensions=[("kind", "authorship")]`
     ]) {
       expect(row.ddl).to.contain(needle);
     }

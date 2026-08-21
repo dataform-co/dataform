@@ -6,11 +6,17 @@ entities:
 - name: "Author"
   ref: "authors"
   keys: "id"
+  extensions:
+  - key: "domain"
+    value: "library"
   fields:
   - name: "id"
     expression: "id"
   - name: "name"
     expression: "name"
+    extensions:
+    - key: "pii"
+      value: "true"
 
 - name: "Book"
   ref: "books"
@@ -25,6 +31,9 @@ relationships:
 - name: "Wrote"
   ref: "wrote"
   keys: ["author_id", "book_id"]
+  extensions:
+  - key: "kind"
+    value: "authorship"
   source:
     entity: "Author"
     join_keys: ["author_id"]

@@ -164,4 +164,21 @@ EDGE TABLES (
     const expectedSql = fs.readFileSync("cli/api/goldens/property_graph_hrgraph.sql", "utf8");
     expect(sql).to.equal(expectedSql.trim());
   });
+
+  test("emits CREATE OR REPLACE PROPERTY GRAPH with extensions on labels and fields", () => {
+    const graphBody = `NODE TABLES (
+  \`project-id.dataset-id.a\` AS A KEY (id) DEFAULT LABEL OPTIONS(extensions=[("owner", "team-a"), ("tier", "gold")]) PROPERTIES (id, balance OPTIONS(extensions=[("unit", "USD")]))
+)
+EDGE TABLES (
+  \`project-id.dataset-id.a_edge\` AS AtoA SOURCE KEY (src) REFERENCES A (id) DESTINATION KEY (dst) REFERENCES A (id) DEFAULT LABEL OPTIONS(extensions=[("kind", "self_loop")])
+)`;
+    const propertyGraph: dataform.IPropertyGraph = {
+      target: { database: "project-id", schema: "dataset-id", name: "ExtGraph" },
+      graphBody
+    };
+    const tasks = executionSql.createPropertyGraphTasks(propertyGraph);
+    const sql = tasks.map(t => t.statement).join("\n;\n");
+    const expectedSql = fs.readFileSync("cli/api/goldens/property_graph_extensions.sql", "utf8");
+    expect(sql).to.equal(expectedSql.trim());
+  });
 });

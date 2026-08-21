@@ -1538,7 +1538,6 @@ suite("property_graph", () => {
         {
           name: "AtoB",
           dataSourceString: "p.d.AtoB",
-          keys: ["id"],
           source: { entity: "A", joinKeys: ["a_id"] },
           destination: { entity: "B", joinKeys: ["b_id"] },
           extensions: [{ key: "audit_level", value: "high" }]
@@ -1546,14 +1545,58 @@ suite("property_graph", () => {
       ]
     });
 
-    const graphBody = compiled.graphBody;
-    expect(graphBody).to.contain(
-      `DEFAULT LABEL OPTIONS(extensions=[("audit_level", "high")])`
+    expect(asPlainObject(compiled)).deep.equals(
+      asPlainObject({
+        target: graphTarget("G"),
+        canonicalTarget: graphTarget("G"),
+        fileName: "definitions/graph.yaml",
+        description: "",
+        disabled: false,
+        entities: [
+          {
+            name: "A",
+            dataSource: { database: "p", schema: "d", name: "A" },
+            keys: ["id"]
+          },
+          {
+            name: "B",
+            dataSource: { database: "p", schema: "d", name: "B" },
+            keys: ["id"]
+          }
+        ],
+        relationships: [
+          {
+            name: "AtoB",
+            dataSource: { database: "p", schema: "d", name: "AtoB" },
+            source: {
+              entity: "A",
+              relationshipColumns: ["a_id"],
+              entityColumns: ["id"]
+            },
+            destination: {
+              entity: "B",
+              relationshipColumns: ["b_id"],
+              entityColumns: ["id"]
+            },
+            labels: [
+              {
+                name: "AtoB",
+                description: "",
+                importAll: false,
+                isDefault: true,
+                extensions: [{ key: "audit_level", value: "high" }]
+              }
+            ]
+          }
+        ],
+        graphBody:
+          "NODE TABLES (\n  `p.d.A` AS A KEY (id),\n  `p.d.B` AS B KEY (id)\n)\n" +
+          "EDGE TABLES (\n  `p.d.AtoB` AS AtoB " +
+          "SOURCE KEY (a_id) REFERENCES A (id) " +
+          "DESTINATION KEY (b_id) REFERENCES B (id) " +
+          `DEFAULT LABEL OPTIONS(extensions=[("audit_level", "high")])\n)`
+      })
     );
-    expect(compiled.relationships[0].labels[0].isDefault).to.equal(true);
-    expect(compiled.relationships[0].labels[0].extensions).to.deep.equal([
-      { key: "audit_level", value: "high" }
-    ]);
   });
 
   test("errors when a non-default label declares extensions", () => {
@@ -1595,13 +1638,37 @@ suite("property_graph", () => {
       ]
     });
 
-    expect(compiled.entities[0].labels[0].extensions).to.deep.equal([
-      { key: "tag", value: "first" },
-      { key: "owner", value: "alice" },
-      { key: "tag", value: "second" }
-    ]);
-    expect(compiled.graphBody).to.contain(
-      `extensions=[("tag", "first"), ("owner", "alice"), ("tag", "second")]`
+    expect(asPlainObject(compiled)).deep.equals(
+      asPlainObject({
+        target: graphTarget("G"),
+        canonicalTarget: graphTarget("G"),
+        fileName: "definitions/graph.yaml",
+        description: "",
+        disabled: false,
+        entities: [
+          {
+            name: "A",
+            dataSource: { database: "p", schema: "d", name: "A" },
+            keys: ["id"],
+            labels: [
+              {
+                name: "A",
+                description: "",
+                importAll: false,
+                isDefault: true,
+                extensions: [
+                  { key: "tag", value: "first" },
+                  { key: "owner", value: "alice" },
+                  { key: "tag", value: "second" }
+                ]
+              }
+            ]
+          }
+        ],
+        graphBody:
+          "NODE TABLES (\n  `p.d.A` AS A KEY (id) DEFAULT LABEL " +
+          `OPTIONS(extensions=[("tag", "first"), ("owner", "alice"), ("tag", "second")])\n)`
+      })
     );
   });
 
@@ -1620,9 +1687,35 @@ suite("property_graph", () => {
       ]
     });
 
-    expect(compiled.graphBody).to.contain(
-      `DEFAULT LABEL OPTIONS(description="primary account", synonyms=["BankAccount"], ` +
-        `extensions=[("owner", "core-ledger")])`
+    expect(asPlainObject(compiled)).deep.equals(
+      asPlainObject({
+        target: graphTarget("G"),
+        canonicalTarget: graphTarget("G"),
+        fileName: "definitions/graph.yaml",
+        description: "",
+        disabled: false,
+        entities: [
+          {
+            name: "Account",
+            dataSource: { database: "p", schema: "d", name: "A" },
+            keys: ["id"],
+            labels: [
+              {
+                name: "Account",
+                description: "primary account",
+                synonyms: ["BankAccount"],
+                importAll: false,
+                isDefault: true,
+                extensions: [{ key: "owner", value: "core-ledger" }]
+              }
+            ]
+          }
+        ],
+        graphBody:
+          "NODE TABLES (\n  `p.d.A` AS Account KEY (id) DEFAULT LABEL " +
+          `OPTIONS(description="primary account", synonyms=["BankAccount"], ` +
+          `extensions=[("owner", "core-ledger")])\n)`
+      })
     );
   });
 
