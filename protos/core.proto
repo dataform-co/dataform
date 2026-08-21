@@ -447,6 +447,7 @@ message PropertyGraph {
   repeated GraphEntity entities = 6;
   repeated GraphRelationship relationships = 7;
   string graph_body = 8;
+  bool disabled = 9;
 }
 
 message GraphEntity {

@@ -43,6 +43,8 @@ suite("property_graph", () => {
         target: graphTarget("Simple"),
         canonicalTarget: graphTarget("Simple"),
         fileName: "definitions/graph.yaml",
+        description: "",
+        disabled: false,
         entities: [
           {
             name: "Account",
@@ -68,6 +70,8 @@ suite("property_graph", () => {
         target: graphTarget("G"),
         canonicalTarget: graphTarget("G"),
         fileName: "definitions/graph.yaml",
+        description: "",
+        disabled: false,
         entities: [
           {
             name: "A",
@@ -93,6 +97,8 @@ suite("property_graph", () => {
         target: graphTarget("G"),
         canonicalTarget: graphTarget("G"),
         fileName: "definitions/graph.yaml",
+        description: "",
+        disabled: false,
         entities: [
           {
             name: "A",
@@ -122,6 +128,8 @@ suite("property_graph", () => {
         target: graphTarget("G"),
         canonicalTarget: graphTarget("G"),
         fileName: "definitions/graph.yaml",
+        description: "",
+        disabled: false,
         entities: [
           {
             name: "A",
@@ -152,6 +160,8 @@ suite("property_graph", () => {
         target: graphTarget("G"),
         canonicalTarget: graphTarget("G"),
         fileName: "definitions/graph.yaml",
+        description: "",
+        disabled: false,
         entities: [
           {
             name: "Account",
@@ -192,6 +202,8 @@ suite("property_graph", () => {
         target: graphTarget("G"),
         canonicalTarget: graphTarget("G"),
         fileName: "definitions/graph.yaml",
+        description: "",
+        disabled: false,
         entities: [
           {
             name: "A",
@@ -235,6 +247,8 @@ suite("property_graph", () => {
         target: graphTarget("G"),
         canonicalTarget: graphTarget("G"),
         fileName: "definitions/graph.yaml",
+        description: "",
+        disabled: false,
         entities: [
           {
             name: "A",
@@ -269,6 +283,8 @@ suite("property_graph", () => {
         target: graphTarget("G"),
         canonicalTarget: graphTarget("G"),
         fileName: "definitions/graph.yaml",
+        description: "",
+        disabled: false,
         entities: [
           {
             name: "A",
@@ -313,6 +329,8 @@ suite("property_graph", () => {
         target: graphTarget("G"),
         canonicalTarget: graphTarget("G"),
         fileName: "definitions/graph.yaml",
+        description: "",
+        disabled: false,
         entities: [
           {
             name: "Account",
@@ -369,6 +387,8 @@ suite("property_graph", () => {
         target: graphTarget("FinGraph"),
         canonicalTarget: graphTarget("FinGraph"),
         fileName: "definitions/graph.yaml",
+        description: "",
+        disabled: false,
         entities: [
           {
             name: "Account",
@@ -428,6 +448,8 @@ suite("property_graph", () => {
         target: graphTarget("G"),
         canonicalTarget: graphTarget("G"),
         fileName: "definitions/graph.yaml",
+        description: "",
+        disabled: false,
         entities: [
           {
             name: "Account",
@@ -488,6 +510,8 @@ suite("property_graph", () => {
         target: graphTarget("G"),
         canonicalTarget: graphTarget("G"),
         fileName: "definitions/graph.yaml",
+        description: "",
+        disabled: false,
         entities: [
           {
             name: "Account",
@@ -688,6 +712,8 @@ suite("property_graph", () => {
         target: graphTarget("G"),
         canonicalTarget: graphTarget("G"),
         fileName: "definitions/graph.yaml",
+        description: "",
+        disabled: false,
         entities: [
           {
             name: "A",
@@ -721,6 +747,8 @@ suite("property_graph", () => {
         target: graphTarget("G"),
         canonicalTarget: graphTarget("G"),
         fileName: "definitions/graph.yaml",
+        description: "",
+        disabled: false,
         entities: [
           {
             name: "Account",
@@ -787,6 +815,8 @@ suite("property_graph", () => {
         target: graphTarget("G"),
         canonicalTarget: graphTarget("G"),
         fileName: "definitions/graph.yaml",
+        description: "",
+        disabled: false,
         entities: [
           {
             name: "A",
@@ -821,6 +851,8 @@ suite("property_graph", () => {
         target: graphTarget("G"),
         canonicalTarget: graphTarget("G"),
         fileName: "definitions/graph.yaml",
+        description: "",
+        disabled: false,
         entities: [
           {
             name: "A",
@@ -862,6 +894,8 @@ suite("property_graph", () => {
         target: graphTarget("G"),
         canonicalTarget: graphTarget("G"),
         fileName: "definitions/graph.yaml",
+        description: "",
+        disabled: false,
         entities: [
           {
             name: "Account",
@@ -904,6 +938,8 @@ suite("property_graph", () => {
         target: graphTarget("G"),
         canonicalTarget: graphTarget("G"),
         fileName: "definitions/graph.yaml",
+        description: "",
+        disabled: false,
         entities: [
           {
             name: "Account",
@@ -925,54 +961,46 @@ suite("property_graph", () => {
     );
   });
 
-  test("named label description and synonyms render as inline LABEL OPTIONS", () => {
-    const compiled = compile({
-      name: "G",
-      entities: [
-        {
-          name: "Account",
-          dataSourceString: "p.d.A",
-          keys: ["id"],
-          labels: [
-            {
-              name: "Account",
-              description: "customer accounts",
-              synonyms: ["customer", "user_account"],
-              fields: [{ name: "id", expression: "id" }]
-            }
-          ]
-        }
-      ]
-    });
-
-    expect(asPlainObject(compiled)).deep.equals(
-      asPlainObject({
-        target: graphTarget("G"),
-        canonicalTarget: graphTarget("G"),
-        fileName: "definitions/graph.yaml",
+  test("errors when a non-default label declares description or synonyms", () => {
+    expect(() =>
+      compile({
+        name: "G",
         entities: [
           {
             name: "Account",
-            dataSource: { database: "p", schema: "d", name: "A" },
+            dataSourceString: "p.d.A",
             keys: ["id"],
             labels: [
               {
                 name: "Account",
                 description: "customer accounts",
-                synonyms: ["customer", "user_account"],
-                fields: [{ name: "id", expression: "id" }],
-                importAll: false,
-                isDefault: false
+                fields: [{ name: "id", expression: "id" }]
               }
             ]
           }
-        ],
-        graphBody:
-          "NODE TABLES (\n  `p.d.A` AS Account KEY (id) LABEL Account " +
-          `OPTIONS(description="customer accounts", ` +
-          `synonyms=["customer", "user_account"]) PROPERTIES (id)\n)`
+        ]
       })
-    );
+    ).to.throw("only allowed on the DEFAULT label");
+
+    expect(() =>
+      compile({
+        name: "G",
+        entities: [
+          {
+            name: "Account",
+            dataSourceString: "p.d.A",
+            keys: ["id"],
+            labels: [
+              {
+                name: "Account",
+                synonyms: ["customer"],
+                fields: [{ name: "id", expression: "id" }]
+              }
+            ]
+          }
+        ]
+      })
+    ).to.throw("only allowed on the DEFAULT label");
   });
 
   test("field description and synonyms render as per-field OPTIONS(...)", () => {
@@ -1000,6 +1028,8 @@ suite("property_graph", () => {
         target: graphTarget("G"),
         canonicalTarget: graphTarget("G"),
         fileName: "definitions/graph.yaml",
+        description: "",
+        disabled: false,
         entities: [
           {
             name: "A",
@@ -1030,13 +1060,11 @@ suite("property_graph", () => {
     );
   });
 
-  test("graph-level description appends OPTIONS(description=...) after NODE/EDGE TABLES", () => {
+  test("graph-level description is stored on the compiled proto but not emitted to graphBody", () => {
     const compiled = compile({
       name: "G",
       description: "high-value customer graph",
-      entities: [
-        { name: "A", dataSourceString: "p.d.A", keys: ["id"] }
-      ]
+      entities: [{ name: "A", dataSourceString: "p.d.A", keys: ["id"] }]
     });
 
     expect(asPlainObject(compiled)).deep.equals(
@@ -1044,6 +1072,7 @@ suite("property_graph", () => {
         target: graphTarget("G"),
         canonicalTarget: graphTarget("G"),
         fileName: "definitions/graph.yaml",
+        disabled: false,
         description: "high-value customer graph",
         entities: [
           {
@@ -1052,9 +1081,7 @@ suite("property_graph", () => {
             keys: ["id"]
           }
         ],
-        graphBody:
-          "NODE TABLES (\n  `p.d.A` AS A KEY (id)\n)\n" +
-          `OPTIONS(description="high-value customer graph")`
+        graphBody: "NODE TABLES (\n  `p.d.A` AS A KEY (id)\n)"
       })
     );
   });
@@ -1077,6 +1104,8 @@ suite("property_graph", () => {
         target: graphTarget("G"),
         canonicalTarget: graphTarget("G"),
         fileName: "definitions/graph.yaml",
+        description: "",
+        disabled: false,
         entities: [
           {
             name: "Account",
@@ -1117,6 +1146,8 @@ suite("property_graph", () => {
         target: graphTarget("G"),
         canonicalTarget: graphTarget("G"),
         fileName: "definitions/graph.yaml",
+        description: "",
+        disabled: false,
         entities: [
           {
             name: "A",
@@ -1142,9 +1173,13 @@ suite("property_graph", () => {
   test("string quoting in OPTIONS escapes newlines carriage returns and tabs", () => {
     const compiled = compile({
       name: "G",
-      description: "line1\nline2\r\nline3\ttab",
       entities: [
-        { name: "A", dataSourceString: "p.d.A", keys: ["id"] }
+        {
+          name: "A",
+          dataSourceString: "p.d.A",
+          keys: ["id"],
+          description: "line1\nline2\r\nline3\ttab"
+        }
       ]
     });
 
@@ -1153,7 +1188,138 @@ suite("property_graph", () => {
         target: graphTarget("G"),
         canonicalTarget: graphTarget("G"),
         fileName: "definitions/graph.yaml",
-        description: "line1\nline2\r\nline3\ttab",
+        description: "",
+        disabled: false,
+        entities: [
+          {
+            name: "A",
+            dataSource: { database: "p", schema: "d", name: "A" },
+            keys: ["id"],
+            labels: [
+              {
+                name: "A",
+                description: "line1\nline2\r\nline3\ttab",
+                importAll: false,
+                isDefault: true
+              }
+            ]
+          }
+        ],
+        graphBody:
+          "NODE TABLES (\n  `p.d.A` AS A KEY (id) DEFAULT LABEL " +
+          `OPTIONS(description="line1\\nline2\\r\\nline3\\ttab")\n)`
+      })
+    );
+  });
+
+  test("label with name 'DEFAULT' is treated as DEFAULT LABEL", () => {
+    const compiled = compile({
+      name: "G",
+      entities: [
+        {
+          name: "A",
+          dataSourceString: "p.d.A",
+          keys: ["id"],
+          labels: [
+            {
+              name: "DEFAULT",
+              description: "the default",
+              synonyms: ["main"],
+              fields: [{ name: "id", expression: "id" }]
+            }
+          ]
+        }
+      ]
+    });
+
+    expect(asPlainObject(compiled)).deep.equals(
+      asPlainObject({
+        target: graphTarget("G"),
+        canonicalTarget: graphTarget("G"),
+        fileName: "definitions/graph.yaml",
+        description: "",
+        disabled: false,
+        entities: [
+          {
+            name: "A",
+            dataSource: { database: "p", schema: "d", name: "A" },
+            keys: ["id"],
+            labels: [
+              {
+                name: "A",
+                description: "the default",
+                synonyms: ["main"],
+                fields: [{ name: "id", expression: "id" }],
+                importAll: false,
+                isDefault: true
+              }
+            ]
+          }
+        ],
+        graphBody:
+          "NODE TABLES (\n  `p.d.A` AS A KEY (id) DEFAULT LABEL " +
+          `OPTIONS(description="the default", synonyms=["main"]) PROPERTIES (id)\n)`
+      })
+    );
+  });
+
+  test("label name 'default' is case-insensitive and treated as DEFAULT LABEL", () => {
+    const compiled = compile({
+      name: "G",
+      entities: [
+        {
+          name: "A",
+          dataSourceString: "p.d.A",
+          keys: ["id"],
+          labels: [
+            {
+              name: "default",
+              fields: [{ name: "id", expression: "id" }]
+            }
+          ]
+        }
+      ]
+    });
+
+    expect(asPlainObject(compiled).entities[0].labels[0].isDefault).equals(true);
+    expect(asPlainObject(compiled).graphBody).equals(
+      "NODE TABLES (\n  `p.d.A` AS A KEY (id) DEFAULT LABEL PROPERTIES (id)\n)"
+    );
+  });
+
+  test("errors when more than one DEFAULT label is declared", () => {
+    expect(() =>
+      compile({
+        name: "G",
+        entities: [
+          {
+            name: "A",
+            dataSourceString: "p.d.A",
+            keys: ["id"],
+            labels: [
+              { name: "DEFAULT", fields: [{ name: "id", expression: "id" }] },
+              { name: "default", fields: [{ name: "id", expression: "id" }] }
+            ]
+          }
+        ]
+      })
+    ).to.throw("only one DEFAULT label is allowed");
+  });
+
+  test("disabled=true propagates onto the compiled PropertyGraph", () => {
+    const compiled = compile({
+      name: "G",
+      disabled: true,
+      entities: [{ name: "A", dataSourceString: "p.d.A", keys: ["id"] }]
+    });
+
+    expect(asPlainObject(compiled)).deep.equals(
+      asPlainObject({
+        target: graphTarget("G"),
+        canonicalTarget: graphTarget("G"),
+        fileName: "definitions/graph.yaml",
+        description: "",
+        disabled: true,
         entities: [
           {
             name: "A",
@@ -1161,9 +1327,7 @@ suite("property_graph", () => {
             keys: ["id"]
           }
         ],
-        graphBody:
-          "NODE TABLES (\n  `p.d.A` AS A KEY (id)\n)\n" +
-          `OPTIONS(description="line1\\nline2\\r\\nline3\\ttab")`
+        graphBody: "NODE TABLES (\n  `p.d.A` AS A KEY (id)\n)"
       })
     );
   });
