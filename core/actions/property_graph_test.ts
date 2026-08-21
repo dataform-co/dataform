@@ -1367,6 +1367,265 @@ suite("property_graph", () => {
     ).to.throw("only one DEFAULT label is allowed");
   });
 
+  test("extensions on DEFAULT label render as OPTIONS(extensions=[...])", () => {
+    const compiled = compile({
+      name: "G",
+      entities: [
+        {
+          name: "Account",
+          dataSourceString: "p.d.A",
+          keys: ["id"],
+          labels: [
+            {
+              name: "DEFAULT",
+              fields: [{ name: "id", expression: "id" }],
+              extensions: [
+                { key: "owner", value: "finance-team" },
+                { key: "retention", value: "7_years" }
+              ]
+            }
+          ]
+        }
+      ]
+    });
+
+    expect(asPlainObject(compiled)).deep.equals(
+      asPlainObject({
+        target: graphTarget("G"),
+        canonicalTarget: graphTarget("G"),
+        fileName: "definitions/graph.yaml",
+        description: "",
+        disabled: false,
+        entities: [
+          {
+            name: "Account",
+            dataSource: { database: "p", schema: "d", name: "A" },
+            keys: ["id"],
+            labels: [
+              {
+                name: "Account",
+                fields: [{ name: "id", expression: "id" }],
+                importAll: false,
+                isDefault: true,
+                extensions: [
+                  { key: "owner", value: "finance-team" },
+                  { key: "retention", value: "7_years" }
+                ]
+              }
+            ]
+          }
+        ],
+        graphBody:
+          "NODE TABLES (\n  `p.d.A` AS Account KEY (id) DEFAULT LABEL " +
+          `OPTIONS(extensions=[("owner", "finance-team"), ("retention", "7_years")]) ` +
+          "PROPERTIES (id)\n)"
+      })
+    );
+  });
+
+  test("extensions on a field render inside the per-field OPTIONS clause", () => {
+    const compiled = compile({
+      name: "G",
+      entities: [
+        {
+          name: "A",
+          dataSourceString: "p.d.A",
+          keys: ["id"],
+          fields: [
+            {
+              name: "balance",
+              expression: "balance",
+              extensions: [
+                { key: "unit", value: "USD" },
+                { key: "source", value: "salesforce" }
+              ]
+            }
+          ]
+        }
+      ]
+    });
+
+    expect(asPlainObject(compiled)).deep.equals(
+      asPlainObject({
+        target: graphTarget("G"),
+        canonicalTarget: graphTarget("G"),
+        fileName: "definitions/graph.yaml",
+        description: "",
+        disabled: false,
+        entities: [
+          {
+            name: "A",
+            dataSource: { database: "p", schema: "d", name: "A" },
+            keys: ["id"],
+            labels: [
+              {
+                name: "A",
+                description: "",
+                fields: [
+                  {
+                    name: "balance",
+                    expression: "balance",
+                    extensions: [
+                      { key: "unit", value: "USD" },
+                      { key: "source", value: "salesforce" }
+                    ]
+                  }
+                ],
+                importAll: false,
+                isDefault: true
+              }
+            ]
+          }
+        ],
+        graphBody:
+          "NODE TABLES (\n  `p.d.A` AS A KEY (id) DEFAULT LABEL PROPERTIES " +
+          `(balance OPTIONS(extensions=[("unit", "USD"), ("source", "salesforce")]))\n)`
+      })
+    );
+  });
+
+  test("root-level extensions on entity fold into the synthesized DEFAULT label", () => {
+    const compiled = compile({
+      name: "G",
+      entities: [
+        {
+          name: "Account",
+          dataSourceString: "p.d.A",
+          keys: ["id"],
+          extensions: [{ key: "tier", value: "gold" }]
+        }
+      ]
+    });
+
+    expect(asPlainObject(compiled)).deep.equals(
+      asPlainObject({
+        target: graphTarget("G"),
+        canonicalTarget: graphTarget("G"),
+        fileName: "definitions/graph.yaml",
+        description: "",
+        disabled: false,
+        entities: [
+          {
+            name: "Account",
+            dataSource: { database: "p", schema: "d", name: "A" },
+            keys: ["id"],
+            labels: [
+              {
+                name: "Account",
+                description: "",
+                importAll: false,
+                isDefault: true,
+                extensions: [{ key: "tier", value: "gold" }]
+              }
+            ]
+          }
+        ],
+        graphBody:
+          "NODE TABLES (\n  `p.d.A` AS Account KEY (id) DEFAULT LABEL " +
+          `OPTIONS(extensions=[("tier", "gold")])\n)`
+      })
+    );
+  });
+
+  test("root-level extensions on relationship fold into the synthesized DEFAULT label", () => {
+    const compiled = compile({
+      name: "G",
+      entities: [
+        { name: "A", dataSourceString: "p.d.A", keys: ["id"] },
+        { name: "B", dataSourceString: "p.d.B", keys: ["id"] }
+      ],
+      relationships: [
+        {
+          name: "AtoB",
+          dataSourceString: "p.d.AtoB",
+          keys: ["id"],
+          source: { entity: "A", joinKeys: ["a_id"] },
+          destination: { entity: "B", joinKeys: ["b_id"] },
+          extensions: [{ key: "audit_level", value: "high" }]
+        }
+      ]
+    });
+
+    const graphBody = compiled.graphBody;
+    expect(graphBody).to.contain(
+      `DEFAULT LABEL OPTIONS(extensions=[("audit_level", "high")])`
+    );
+    expect(compiled.relationships[0].labels[0].isDefault).to.equal(true);
+    expect(compiled.relationships[0].labels[0].extensions).to.deep.equal([
+      { key: "audit_level", value: "high" }
+    ]);
+  });
+
+  test("errors when a non-default label declares extensions", () => {
+    expect(() =>
+      compile({
+        name: "G",
+        entities: [
+          {
+            name: "A",
+            dataSourceString: "p.d.A",
+            keys: ["id"],
+            labels: [
+              {
+                name: "Premium",
+                fields: [{ name: "id", expression: "id" }],
+                extensions: [{ key: "tier", value: "gold" }]
+              }
+            ]
+          }
+        ]
+      })
+    ).to.throw(/label 'Premium' cannot declare 'description', 'synonyms', or 'extensions'/);
+  });
+
+  test("extensions preserve declared order and permit duplicate keys", () => {
+    const compiled = compile({
+      name: "G",
+      entities: [
+        {
+          name: "A",
+          dataSourceString: "p.d.A",
+          keys: ["id"],
+          extensions: [
+            { key: "tag", value: "first" },
+            { key: "owner", value: "alice" },
+            { key: "tag", value: "second" }
+          ]
+        }
+      ]
+    });
+
+    expect(compiled.entities[0].labels[0].extensions).to.deep.equal([
+      { key: "tag", value: "first" },
+      { key: "owner", value: "alice" },
+      { key: "tag", value: "second" }
+    ]);
+    expect(compiled.graphBody).to.contain(
+      `extensions=[("tag", "first"), ("owner", "alice"), ("tag", "second")]`
+    );
+  });
+
+  test("extensions combine with description and synonyms in a single OPTIONS block", () => {
+    const compiled = compile({
+      name: "G",
+      entities: [
+        {
+          name: "Account",
+          dataSourceString: "p.d.A",
+          keys: ["id"],
+          description: "primary account",
+          synonyms: ["BankAccount"],
+          extensions: [{ key: "owner", value: "core-ledger" }]
+        }
+      ]
+    });
+
+    expect(compiled.graphBody).to.contain(
+      `DEFAULT LABEL OPTIONS(description="primary account", synonyms=["BankAccount"], ` +
+        `extensions=[("owner", "core-ledger")])`
+    );
+  });
+
   test("disabled=true propagates onto the compiled PropertyGraph", () => {
     const compiled = compile({
       name: "G",

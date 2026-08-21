@@ -453,7 +453,8 @@ function buildLabels(
     rootFields.length > 0 ||
     !!rootWildcard ||
     !!config.description ||
-    (config.synonyms && config.synonyms.length > 0);
+    (config.synonyms && config.synonyms.length > 0) ||
+    (config.extensions && config.extensions.length > 0);
   if (!hasRootData) {
     return [];
   }
@@ -461,6 +462,7 @@ function buildLabels(
     name: defaultLabelName,
     description: config.description || undefined,
     synonyms: config.synonyms || [],
+    extensions: config.extensions || [],
     fields: rootFields,
     fieldWildcard: rootWildcard
   });
@@ -488,29 +490,32 @@ function buildLabel(
   const hasWildcard = !!(wildcard && wildcard.importAll);
   const hasDescription = !!label.description;
   const hasSynonyms = !!(label.synonyms && label.synonyms.length > 0);
-  const hasOptions = hasDescription || hasSynonyms;
+  const hasExtensions = !!(label.extensions && label.extensions.length > 0);
+  const hasOptions = hasDescription || hasSynonyms || hasExtensions;
   if (!isDefault && hasOptions) {
     throw new Error(
-      `${where}: label ${labelId} cannot declare 'description' or 'synonyms'; ` +
+      `${where}: label ${labelId} cannot declare 'description', 'synonyms', or 'extensions'; ` +
         `these are only allowed on the DEFAULT label (name absent or 'DEFAULT').`
     );
   }
   if (!hasFields && !hasWildcard && !hasOptions) {
     throw new Error(
       `${where}: label ${labelId} must declare at least one of: 'fields', ` +
-        `'fieldWildcard', 'description', or 'synonyms'.`
+        `'fieldWildcard', 'description', 'synonyms', or 'extensions'.`
     );
   }
   return dataform.GraphLabel.create({
     name: isDefault ? defaultLabelName : label.name,
     description: label.description,
     synonyms: label.synonyms || [],
+    extensions: label.extensions || [],
     fields: (label.fields || []).map(field =>
       dataform.GraphField.create({
         name: field.name,
         expression: field.expression || field.name,
         description: field.description,
-        synonyms: field.synonyms || []
+        synonyms: field.synonyms || [],
+        extensions: field.extensions || []
       })
     ),
     importAll: !!wildcard?.importAll,
@@ -579,7 +584,7 @@ function renderLabelClause(label: dataform.IGraphLabel): string {
   const head = label.isDefault ? "DEFAULT LABEL" : `LABEL ${label.name}`;
   const parts: string[] = [head];
   if (label.isDefault) {
-    const options = renderOptionsClause(label.description, label.synonyms);
+    const options = renderOptionsClause(label.description, label.synonyms, label.extensions);
     if (options) {
       parts.push(options);
     }
@@ -610,13 +615,14 @@ function renderField(field: dataform.IGraphField): string {
     field.expression && field.expression !== field.name
       ? `${field.expression} AS ${field.name}`
       : field.name;
-  const options = renderOptionsClause(field.description, field.synonyms);
+  const options = renderOptionsClause(field.description, field.synonyms, field.extensions);
   return options ? `${expr} ${options}` : expr;
 }
 
 function renderOptionsClause(
   description: string | null | undefined,
-  synonyms: string[] | null | undefined
+  synonyms: string[] | null | undefined,
+  extensions: dataform.IGraphExtension[] | null | undefined
 ): string {
   const parts: string[] = [];
   if (description) {
@@ -624,6 +630,12 @@ function renderOptionsClause(
   }
   if (synonyms && synonyms.length > 0) {
     parts.push(`synonyms=[${synonyms.map(s => JSON.stringify(s)).join(", ")}]`);
+  }
+  if (extensions && extensions.length > 0) {
+    const rendered = extensions
+      .map(ext => `(${JSON.stringify(ext.key || "")}, ${JSON.stringify(ext.value || "")})`)
+      .join(", ");
+    parts.push(`extensions=[${rendered}]`);
   }
   return parts.length > 0 ? `OPTIONS(${parts.join(", ")})` : "";
 }
