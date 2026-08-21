@@ -8,6 +8,8 @@ import yargs from "yargs";
 import { build, compile, credentials, init, install, prune, run, test } from "df/cli/api";
 import { CREDENTIALS_FILENAME } from "df/cli/api/commands/credentials";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
+import { LineageEmitter } from "df/cli/api/lineage/emitter";
+import { createLineageEmitter as createLineageEmitterFromFactory } from "df/cli/api/lineage/emitter_factory";
 import { prettyJsonStringify } from "df/cli/api/utils";
 import {
   compiledGraphOutputType,
@@ -37,6 +39,12 @@ import { dataform } from "df/protos/ts";
 import { formatFile } from "df/sqlx/format";
 
 const RECOMPILE_DELAY = 500;
+
+// Maximum time to wait for outstanding lineage emissions to complete before
+// `dataform run` returns. Lineage emission is fail-open — if we don't drain
+// within this window, in-flight requests are abandoned and the run status is
+// unaffected.
+const LINEAGE_DRAIN_TIMEOUT_MS = 15_000;
 
 process.on("unhandledRejection", async (reason: any) => {
   printError(`Unhandled promise rejection: ${reason?.stack || reason}`);
@@ -184,6 +192,16 @@ const credentialsOption: INamedOption<yargs.Options> = {
   },
   check: (argv: yargs.Arguments<any>) =>
     getCredentialsPath(argv[projectDirOption.name], argv[credentialsOption.name])
+};
+
+const emitLineageOption: INamedOption<yargs.Options> = {
+  name: "emit-lineage",
+  option: {
+    describe:
+      "If set, emit OpenLineage RunEvents to Knowledge Catalog Lineage for each executed action. " +
+      "Overrides workflow_settings.yaml lineage.enabled when specified.",
+    type: "boolean"
+  }
 };
 
 const jsonOutputOption: INamedOption<yargs.Options> = {
@@ -665,6 +683,7 @@ export function runCli() {
           },
           actionsOption,
           credentialsOption,
+          emitLineageOption,
           fullRefreshOption,
           includeDepsOption,
           includeDependentsOption,
@@ -769,10 +788,16 @@ export function runCli() {
             logger.log("Running...\n");
           }
 
+          const lineageEmitter = createLineageEmitter(argv, executionGraph, readCredentials);
+
           const runner = run(
             dbadapter,
             executionGraph,
-            { projectDir: argv[projectDirOption.name], bigquery: bigqueryOptions }
+            {
+              projectDir: argv[projectDirOption.name],
+              bigquery: bigqueryOptions,
+              lineageEmitter
+            }
           );
           process.on("SIGINT", () => {
             runner.cancel();
@@ -804,6 +829,9 @@ export function runCli() {
             runner.onChange(printExecutedGraph);
           }
           const runResult = await runner.result();
+          if (lineageEmitter) {
+            await lineageEmitter.drain(LINEAGE_DRAIN_TIMEOUT_MS);
+          }
           if (!isJsonOutput) {
             printExecutedGraph(runResult);
           }
@@ -925,6 +953,20 @@ export function runCli() {
   if (!builtYargs._[0]) {
     yargs.showHelp();
   }
+}
+
+function createLineageEmitter(
+  argv: yargs.Arguments<any>,
+  executionGraph: dataform.IExecutionGraph,
+  readCredentials: dataform.IBigQuery | undefined
+): LineageEmitter | undefined {
+  return createLineageEmitterFromFactory({
+    cliEmitLineage: argv[emitLineageOption.name] as boolean | undefined,
+    workflowLineageEnabled: executionGraph.projectConfig?.lineageEnabled ?? undefined,
+    dryRun: !!argv[dryRunOptionName],
+    projectDir: argv[projectDirOption.name] || process.cwd(),
+    readCredentials
+  });
 }
 
 class ProjectConfigOptions {

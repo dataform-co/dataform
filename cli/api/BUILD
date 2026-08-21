@@ -10,6 +10,7 @@ ts_library(
         ["**/*.ts"],
         exclude = [
             "utils/**/*.*",
+            "lineage/testing/**/*.*",
             "**/*_test.ts",
         ],
     ),
@@ -27,6 +28,7 @@ ts_library(
         "//sqlx:lexer",
         "//cli/vm:vm",
         "@npm//@google-cloud/bigquery",
+        "@npm//@google-cloud/lineage",
         "@npm//@types/fs-extra",
         "@npm//@types/glob",
         "@npm//@types/js-beautify",
@@ -63,6 +65,10 @@ ts_test_suite(
         "commands/jit/rpc_test.ts",
         "dbadapters/bigquery_test.ts",
         "execution_sql_test.ts",
+        "lineage/emitter_factory_test.ts",
+        "lineage/emitter_test.ts",
+        "lineage/lineage_integration_test.ts",
+        "lineage/payload_builder_test.ts",
     ],
     data = [
         ":node_modules",
@@ -72,10 +78,12 @@ ts_test_suite(
     ] + glob(["goldens/**"]),
     deps = [
         ":api",
+        "//cli/api/lineage/testing",
         "//core",
         "//protos:ts",
         "//testing",
         "@npm//@google-cloud/bigquery",
+        "@npm//@google-cloud/lineage",
         "@npm//@types/chai",
         "@npm//@types/fs-extra",
         "@npm//@types/js-yaml",
@@ -84,6 +92,7 @@ ts_test_suite(
         "@npm//chai",
         "@npm//fs-extra",
         "@npm//js-yaml",
+        "@npm//long",
         "@npm//ts-mockito",
     ],
 )
