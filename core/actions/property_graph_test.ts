@@ -19,6 +19,12 @@ function compile(config: any, filename = "definitions/graph.yaml"): dataform.Pro
   return new PropertyGraph(makeSession(), config, filename).compile();
 }
 
+const graphTarget = (name: string) => ({
+  database: "defaultProject",
+  schema: "defaultDataset",
+  name
+});
+
 suite("property_graph", () => {
   test("compiles a minimal graph with one entity and no relationships", () => {
     const compiled = compile({
@@ -34,16 +40,8 @@ suite("property_graph", () => {
 
     expect(asPlainObject(compiled)).deep.equals(
       asPlainObject({
-        target: {
-          database: "defaultProject",
-          schema: "defaultDataset",
-          name: "Simple"
-        },
-        canonicalTarget: {
-          database: "defaultProject",
-          schema: "defaultDataset",
-          name: "Simple"
-        },
+        target: graphTarget("Simple"),
+        canonicalTarget: graphTarget("Simple"),
         fileName: "definitions/graph.yaml",
         entities: [
           {
@@ -65,7 +63,21 @@ suite("property_graph", () => {
       ]
     });
 
-    expect(compiled.entities[0].keys).deep.equals(["id"]);
+    expect(asPlainObject(compiled)).deep.equals(
+      asPlainObject({
+        target: graphTarget("G"),
+        canonicalTarget: graphTarget("G"),
+        fileName: "definitions/graph.yaml",
+        entities: [
+          {
+            name: "A",
+            dataSource: { database: "p", schema: "d", name: "A" },
+            keys: ["id"]
+          }
+        ],
+        graphBody: "NODE TABLES (\n  `p.d.A` AS A KEY (id)\n)"
+      })
+    );
   });
 
   test("parses 3-part dataSourceString into database.schema.name", () => {
@@ -76,11 +88,21 @@ suite("property_graph", () => {
       ]
     });
 
-    expect(asPlainObject(compiled.entities[0].dataSource)).deep.equals({
-      database: "myProj",
-      schema: "myDs",
-      name: "MyTable"
-    });
+    expect(asPlainObject(compiled)).deep.equals(
+      asPlainObject({
+        target: graphTarget("G"),
+        canonicalTarget: graphTarget("G"),
+        fileName: "definitions/graph.yaml",
+        entities: [
+          {
+            name: "A",
+            dataSource: { database: "myProj", schema: "myDs", name: "MyTable" },
+            keys: ["id"]
+          }
+        ],
+        graphBody: "NODE TABLES (\n  `myProj.myDs.MyTable` AS A KEY (id)\n)"
+      })
+    );
   });
 
   test("resolves dataSourceDataset map form with default project fallback", () => {
@@ -95,11 +117,21 @@ suite("property_graph", () => {
       ]
     });
 
-    expect(asPlainObject(compiled.entities[0].dataSource)).deep.equals({
-      database: "defaultProject",
-      schema: "customDs",
-      name: "MyTable"
-    });
+    expect(asPlainObject(compiled)).deep.equals(
+      asPlainObject({
+        target: graphTarget("G"),
+        canonicalTarget: graphTarget("G"),
+        fileName: "definitions/graph.yaml",
+        entities: [
+          {
+            name: "A",
+            dataSource: { database: "defaultProject", schema: "customDs", name: "MyTable" },
+            keys: ["id"]
+          }
+        ],
+        graphBody: "NODE TABLES (\n  `defaultProject.customDs.MyTable` AS A KEY (id)\n)"
+      })
+    );
   });
 
   test("synthesizes default label named after entity when root-level fields set", () => {
@@ -115,10 +147,31 @@ suite("property_graph", () => {
       ]
     });
 
-    expect(compiled.entities[0].labels).length(1);
-    expect(compiled.entities[0].labels[0].name).equals("Account");
-    expect(compiled.entities[0].labels[0].fields).length(1);
-    expect(compiled.entities[0].labels[0].fields[0].name).equals("balance");
+    expect(asPlainObject(compiled)).deep.equals(
+      asPlainObject({
+        target: graphTarget("G"),
+        canonicalTarget: graphTarget("G"),
+        fileName: "definitions/graph.yaml",
+        entities: [
+          {
+            name: "Account",
+            dataSource: { database: "p", schema: "d", name: "A" },
+            keys: ["id"],
+            labels: [
+              {
+                name: "Account",
+                description: "",
+                fields: [{ name: "balance", expression: "balance" }],
+                importAll: false,
+                isDefault: true
+              }
+            ]
+          }
+        ],
+        graphBody:
+          "NODE TABLES (\n  `p.d.A` AS Account KEY (id) DEFAULT LABEL PROPERTIES (balance)\n)"
+      })
+    );
   });
 
   test("expands field shorthand strings into {name, expression} objects", () => {
@@ -134,11 +187,34 @@ suite("property_graph", () => {
       ]
     });
 
-    const fields = compiled.entities[0].labels[0].fields;
-    expect(fields.map(f => ({ name: f.name, expression: f.expression }))).deep.equals([
-      { name: "balance", expression: "balance" },
-      { name: "owner", expression: "owner" }
-    ]);
+    expect(asPlainObject(compiled)).deep.equals(
+      asPlainObject({
+        target: graphTarget("G"),
+        canonicalTarget: graphTarget("G"),
+        fileName: "definitions/graph.yaml",
+        entities: [
+          {
+            name: "A",
+            dataSource: { database: "p", schema: "d", name: "A" },
+            keys: ["id"],
+            labels: [
+              {
+                name: "A",
+                description: "",
+                fields: [
+                  { name: "balance", expression: "balance" },
+                  { name: "owner", expression: "owner" }
+                ],
+                importAll: false,
+                isDefault: true
+              }
+            ]
+          }
+        ],
+        graphBody:
+          "NODE TABLES (\n  `p.d.A` AS A KEY (id) DEFAULT LABEL PROPERTIES (balance, owner)\n)"
+      })
+    );
   });
 
   test("fieldWildcard.importAll renders as PROPERTIES ARE ALL COLUMNS", () => {
@@ -154,8 +230,25 @@ suite("property_graph", () => {
       ]
     });
 
-    expect(compiled.graphBody).contains("PROPERTIES ARE ALL COLUMNS");
-    expect(compiled.graphBody).not.contains("EXCEPT");
+    expect(asPlainObject(compiled)).deep.equals(
+      asPlainObject({
+        target: graphTarget("G"),
+        canonicalTarget: graphTarget("G"),
+        fileName: "definitions/graph.yaml",
+        entities: [
+          {
+            name: "A",
+            dataSource: { database: "p", schema: "d", name: "A" },
+            keys: ["id"],
+            labels: [
+              { name: "A", description: "", importAll: true, isDefault: true }
+            ]
+          }
+        ],
+        graphBody:
+          "NODE TABLES (\n  `p.d.A` AS A KEY (id) DEFAULT LABEL PROPERTIES ARE ALL COLUMNS\n)"
+      })
+    );
   });
 
   test("fieldWildcard with except renders as PROPERTIES ARE ALL COLUMNS EXCEPT (...)", () => {
@@ -171,8 +264,31 @@ suite("property_graph", () => {
       ]
     });
 
-    expect(compiled.graphBody).contains(
-      "PROPERTIES ARE ALL COLUMNS EXCEPT (secret, internal)"
+    expect(asPlainObject(compiled)).deep.equals(
+      asPlainObject({
+        target: graphTarget("G"),
+        canonicalTarget: graphTarget("G"),
+        fileName: "definitions/graph.yaml",
+        entities: [
+          {
+            name: "A",
+            dataSource: { database: "p", schema: "d", name: "A" },
+            keys: ["id"],
+            labels: [
+              {
+                name: "A",
+                description: "",
+                importAll: true,
+                importExcept: ["secret", "internal"],
+                isDefault: true
+              }
+            ]
+          }
+        ],
+        graphBody:
+          "NODE TABLES (\n  `p.d.A` AS A KEY (id) DEFAULT LABEL " +
+          "PROPERTIES ARE ALL COLUMNS EXCEPT (secret, internal)\n)"
+      })
     );
   });
 
@@ -192,9 +308,38 @@ suite("property_graph", () => {
       ]
     });
 
-    expect(compiled.entities[0].labels.map(l => l.name)).deep.equals(["Account", "Auditable"]);
-    const fragment = compiled.graphBody;
-    expect(fragment.indexOf("LABEL Account")).below(fragment.indexOf("LABEL Auditable"));
+    expect(asPlainObject(compiled)).deep.equals(
+      asPlainObject({
+        target: graphTarget("G"),
+        canonicalTarget: graphTarget("G"),
+        fileName: "definitions/graph.yaml",
+        entities: [
+          {
+            name: "Account",
+            dataSource: { database: "p", schema: "d", name: "A" },
+            keys: ["id"],
+            labels: [
+              {
+                name: "Account",
+                fields: [{ name: "id", expression: "id" }],
+                importAll: false,
+                isDefault: false
+              },
+              {
+                name: "Auditable",
+                fields: [{ name: "createdAt", expression: "created_at" }],
+                importAll: false,
+                isDefault: false
+              }
+            ]
+          }
+        ],
+        graphBody:
+          "NODE TABLES (\n  `p.d.A` AS Account KEY (id) " +
+          "LABEL Account PROPERTIES (id) " +
+          "LABEL Auditable PROPERTIES (created_at AS createdAt)\n)"
+      })
+    );
   });
 
   test("relationship endpoints render SOURCE/DESTINATION KEY REFERENCES clauses", () => {
@@ -221,16 +366,8 @@ suite("property_graph", () => {
 
     expect(asPlainObject(compiled)).deep.equals(
       asPlainObject({
-        target: {
-          database: "defaultProject",
-          schema: "defaultDataset",
-          name: "FinGraph"
-        },
-        canonicalTarget: {
-          database: "defaultProject",
-          schema: "defaultDataset",
-          name: "FinGraph"
-        },
+        target: graphTarget("FinGraph"),
+        canonicalTarget: graphTarget("FinGraph"),
         fileName: "definitions/graph.yaml",
         entities: [
           {
@@ -286,8 +423,41 @@ suite("property_graph", () => {
       ]
     });
 
-    expect(compiled.relationships[0].source.entityColumns).deep.equals(["id"]);
-    expect(compiled.relationships[0].destination.entityColumns).deep.equals(["id"]);
+    expect(asPlainObject(compiled)).deep.equals(
+      asPlainObject({
+        target: graphTarget("G"),
+        canonicalTarget: graphTarget("G"),
+        fileName: "definitions/graph.yaml",
+        entities: [
+          {
+            name: "Account",
+            dataSource: { database: "p", schema: "d", name: "A" },
+            keys: ["id"]
+          }
+        ],
+        relationships: [
+          {
+            name: "SelfLink",
+            dataSource: { database: "p", schema: "d", name: "Links" },
+            source: {
+              entity: "Account",
+              relationshipColumns: ["from_id"],
+              entityColumns: ["id"]
+            },
+            destination: {
+              entity: "Account",
+              relationshipColumns: ["to_id"],
+              entityColumns: ["id"]
+            }
+          }
+        ],
+        graphBody:
+          "NODE TABLES (\n  `p.d.A` AS Account KEY (id)\n)\n" +
+          "EDGE TABLES (\n  `p.d.Links` AS SelfLink " +
+          "SOURCE KEY (from_id) REFERENCES Account (id) " +
+          "DESTINATION KEY (to_id) REFERENCES Account (id)\n)"
+      })
+    );
   });
 
   test("every emitted NODE and EDGE table has explicit AS alias", () => {
@@ -313,9 +483,47 @@ suite("property_graph", () => {
       ]
     });
 
-    expect(compiled.graphBody).contains("`p.d.Accounts` AS Account");
-    expect(compiled.graphBody).contains("`p.d.Persons` AS Person");
-    expect(compiled.graphBody).contains("`p.d.Ownership` AS Owns");
+    expect(asPlainObject(compiled)).deep.equals(
+      asPlainObject({
+        target: graphTarget("G"),
+        canonicalTarget: graphTarget("G"),
+        fileName: "definitions/graph.yaml",
+        entities: [
+          {
+            name: "Account",
+            dataSource: { database: "p", schema: "d", name: "Accounts" },
+            keys: ["id"]
+          },
+          {
+            name: "Person",
+            dataSource: { database: "p", schema: "d", name: "Persons" },
+            keys: ["id"]
+          }
+        ],
+        relationships: [
+          {
+            name: "Owns",
+            dataSource: { database: "p", schema: "d", name: "Ownership" },
+            source: {
+              entity: "Person",
+              relationshipColumns: ["person_id"],
+              entityColumns: ["id"]
+            },
+            destination: {
+              entity: "Account",
+              relationshipColumns: ["account_id"],
+              entityColumns: ["id"]
+            }
+          }
+        ],
+        graphBody:
+          "NODE TABLES (\n  `p.d.Accounts` AS Account KEY (id),\n" +
+          "  `p.d.Persons` AS Person KEY (id)\n)\n" +
+          "EDGE TABLES (\n  `p.d.Ownership` AS Owns " +
+          "SOURCE KEY (person_id) REFERENCES Person (id) " +
+          "DESTINATION KEY (account_id) REFERENCES Account (id)\n)"
+      })
+    );
   });
 
   test("errors when graph name is missing", () => {
@@ -475,8 +683,21 @@ suite("property_graph", () => {
       ]
     });
 
-    expect(compiled.entities[0].keys).deep.equals(["id", "date"]);
-    expect(compiled.graphBody).contains("KEY (id, date)");
+    expect(asPlainObject(compiled)).deep.equals(
+      asPlainObject({
+        target: graphTarget("G"),
+        canonicalTarget: graphTarget("G"),
+        fileName: "definitions/graph.yaml",
+        entities: [
+          {
+            name: "A",
+            dataSource: { database: "p", schema: "d", name: "A" },
+            keys: ["id", "date"]
+          }
+        ],
+        graphBody: "NODE TABLES (\n  `p.d.A` AS A KEY (id, date)\n)"
+      })
+    );
   });
 
   test("joinKeys array shorthand expands to relationshipColumns with defaulted entityColumns", () => {
@@ -495,10 +716,41 @@ suite("property_graph", () => {
       ]
     });
 
-    expect(compiled.relationships[0].source.relationshipColumns).deep.equals(["from_id"]);
-    expect(compiled.relationships[0].source.entityColumns).deep.equals(["id"]);
-    expect(compiled.relationships[0].destination.relationshipColumns).deep.equals(["to_id"]);
-    expect(compiled.relationships[0].destination.entityColumns).deep.equals(["id"]);
+    expect(asPlainObject(compiled)).deep.equals(
+      asPlainObject({
+        target: graphTarget("G"),
+        canonicalTarget: graphTarget("G"),
+        fileName: "definitions/graph.yaml",
+        entities: [
+          {
+            name: "Account",
+            dataSource: { database: "p", schema: "d", name: "A" },
+            keys: ["id"]
+          }
+        ],
+        relationships: [
+          {
+            name: "Link",
+            dataSource: { database: "p", schema: "d", name: "L" },
+            source: {
+              entity: "Account",
+              relationshipColumns: ["from_id"],
+              entityColumns: ["id"]
+            },
+            destination: {
+              entity: "Account",
+              relationshipColumns: ["to_id"],
+              entityColumns: ["id"]
+            }
+          }
+        ],
+        graphBody:
+          "NODE TABLES (\n  `p.d.A` AS Account KEY (id)\n)\n" +
+          "EDGE TABLES (\n  `p.d.L` AS Link " +
+          "SOURCE KEY (from_id) REFERENCES Account (id) " +
+          "DESTINATION KEY (to_id) REFERENCES Account (id)\n)"
+      })
+    );
   });
 
   test("errors when label declares neither fields nor a wildcard", () => {
@@ -514,6 +766,405 @@ suite("property_graph", () => {
           }
         ]
       })
-    ).to.throw("must declare at least one field or a wildcard");
+    ).to.throw("must declare at least one of: 'fields', 'fieldWildcard', 'description'");
+  });
+
+  test("fields:{importAll:true} map form hoists to fieldWildcard", () => {
+    const compiled = compile({
+      name: "G",
+      entities: [
+        {
+          name: "A",
+          dataSourceString: "p.d.A",
+          keys: ["id"],
+          fields: { importAll: true }
+        }
+      ]
+    });
+
+    expect(asPlainObject(compiled)).deep.equals(
+      asPlainObject({
+        target: graphTarget("G"),
+        canonicalTarget: graphTarget("G"),
+        fileName: "definitions/graph.yaml",
+        entities: [
+          {
+            name: "A",
+            dataSource: { database: "p", schema: "d", name: "A" },
+            keys: ["id"],
+            labels: [
+              { name: "A", description: "", importAll: true, isDefault: true }
+            ]
+          }
+        ],
+        graphBody:
+          "NODE TABLES (\n  `p.d.A` AS A KEY (id) DEFAULT LABEL PROPERTIES ARE ALL COLUMNS\n)"
+      })
+    );
+  });
+
+  test("fields:{importAll:true, except:[...]} map form hoists with except", () => {
+    const compiled = compile({
+      name: "G",
+      entities: [
+        {
+          name: "A",
+          dataSourceString: "p.d.A",
+          keys: ["id"],
+          fields: { importAll: true, except: ["secret"] }
+        }
+      ]
+    });
+
+    expect(asPlainObject(compiled)).deep.equals(
+      asPlainObject({
+        target: graphTarget("G"),
+        canonicalTarget: graphTarget("G"),
+        fileName: "definitions/graph.yaml",
+        entities: [
+          {
+            name: "A",
+            dataSource: { database: "p", schema: "d", name: "A" },
+            keys: ["id"],
+            labels: [
+              {
+                name: "A",
+                description: "",
+                importAll: true,
+                importExcept: ["secret"],
+                isDefault: true
+              }
+            ]
+          }
+        ],
+        graphBody:
+          "NODE TABLES (\n  `p.d.A` AS A KEY (id) DEFAULT LABEL " +
+          "PROPERTIES ARE ALL COLUMNS EXCEPT (secret)\n)"
+      })
+    );
+  });
+
+  test("synthesized default label sets isDefault=true and renders DEFAULT LABEL", () => {
+    const compiled = compile({
+      name: "G",
+      entities: [
+        {
+          name: "Account",
+          dataSourceString: "p.d.A",
+          keys: ["id"],
+          fields: [{ name: "balance", expression: "balance" }]
+        }
+      ]
+    });
+
+    expect(asPlainObject(compiled)).deep.equals(
+      asPlainObject({
+        target: graphTarget("G"),
+        canonicalTarget: graphTarget("G"),
+        fileName: "definitions/graph.yaml",
+        entities: [
+          {
+            name: "Account",
+            dataSource: { database: "p", schema: "d", name: "A" },
+            keys: ["id"],
+            labels: [
+              {
+                name: "Account",
+                description: "",
+                fields: [{ name: "balance", expression: "balance" }],
+                importAll: false,
+                isDefault: true
+              }
+            ]
+          }
+        ],
+        graphBody:
+          "NODE TABLES (\n  `p.d.A` AS Account KEY (id) DEFAULT LABEL PROPERTIES (balance)\n)"
+      })
+    );
+  });
+
+  test("explicitly configured labels set isDefault=false and render LABEL <name>", () => {
+    const compiled = compile({
+      name: "G",
+      entities: [
+        {
+          name: "Account",
+          dataSourceString: "p.d.A",
+          keys: ["id"],
+          labels: [
+            { name: "Account", fields: [{ name: "id", expression: "id" }] }
+          ]
+        }
+      ]
+    });
+
+    expect(asPlainObject(compiled)).deep.equals(
+      asPlainObject({
+        target: graphTarget("G"),
+        canonicalTarget: graphTarget("G"),
+        fileName: "definitions/graph.yaml",
+        entities: [
+          {
+            name: "Account",
+            dataSource: { database: "p", schema: "d", name: "A" },
+            keys: ["id"],
+            labels: [
+              {
+                name: "Account",
+                fields: [{ name: "id", expression: "id" }],
+                importAll: false,
+                isDefault: false
+              }
+            ]
+          }
+        ],
+        graphBody:
+          "NODE TABLES (\n  `p.d.A` AS Account KEY (id) LABEL Account PROPERTIES (id)\n)"
+      })
+    );
+  });
+
+  test("named label description and synonyms render as inline LABEL OPTIONS", () => {
+    const compiled = compile({
+      name: "G",
+      entities: [
+        {
+          name: "Account",
+          dataSourceString: "p.d.A",
+          keys: ["id"],
+          labels: [
+            {
+              name: "Account",
+              description: "customer accounts",
+              synonyms: ["customer", "user_account"],
+              fields: [{ name: "id", expression: "id" }]
+            }
+          ]
+        }
+      ]
+    });
+
+    expect(asPlainObject(compiled)).deep.equals(
+      asPlainObject({
+        target: graphTarget("G"),
+        canonicalTarget: graphTarget("G"),
+        fileName: "definitions/graph.yaml",
+        entities: [
+          {
+            name: "Account",
+            dataSource: { database: "p", schema: "d", name: "A" },
+            keys: ["id"],
+            labels: [
+              {
+                name: "Account",
+                description: "customer accounts",
+                synonyms: ["customer", "user_account"],
+                fields: [{ name: "id", expression: "id" }],
+                importAll: false,
+                isDefault: false
+              }
+            ]
+          }
+        ],
+        graphBody:
+          "NODE TABLES (\n  `p.d.A` AS Account KEY (id) LABEL Account " +
+          `OPTIONS(description="customer accounts", ` +
+          `synonyms=["customer", "user_account"]) PROPERTIES (id)\n)`
+      })
+    );
+  });
+
+  test("field description and synonyms render as per-field OPTIONS(...)", () => {
+    const compiled = compile({
+      name: "G",
+      entities: [
+        {
+          name: "A",
+          dataSourceString: "p.d.A",
+          keys: ["id"],
+          fields: [
+            {
+              name: "balance",
+              expression: "balance",
+              description: "current balance in USD",
+              synonyms: ["amount"]
+            }
+          ]
+        }
+      ]
+    });
+
+    expect(asPlainObject(compiled)).deep.equals(
+      asPlainObject({
+        target: graphTarget("G"),
+        canonicalTarget: graphTarget("G"),
+        fileName: "definitions/graph.yaml",
+        entities: [
+          {
+            name: "A",
+            dataSource: { database: "p", schema: "d", name: "A" },
+            keys: ["id"],
+            labels: [
+              {
+                name: "A",
+                description: "",
+                fields: [
+                  {
+                    name: "balance",
+                    expression: "balance",
+                    description: "current balance in USD",
+                    synonyms: ["amount"]
+                  }
+                ],
+                importAll: false,
+                isDefault: true
+              }
+            ]
+          }
+        ],
+        graphBody:
+          "NODE TABLES (\n  `p.d.A` AS A KEY (id) DEFAULT LABEL PROPERTIES " +
+          `(balance OPTIONS(description="current balance in USD", synonyms=["amount"]))\n)`
+      })
+    );
+  });
+
+  test("graph-level description appends OPTIONS(description=...) after NODE/EDGE TABLES", () => {
+    const compiled = compile({
+      name: "G",
+      description: "high-value customer graph",
+      entities: [
+        { name: "A", dataSourceString: "p.d.A", keys: ["id"] }
+      ]
+    });
+
+    expect(asPlainObject(compiled)).deep.equals(
+      asPlainObject({
+        target: graphTarget("G"),
+        canonicalTarget: graphTarget("G"),
+        fileName: "definitions/graph.yaml",
+        description: "high-value customer graph",
+        entities: [
+          {
+            name: "A",
+            dataSource: { database: "p", schema: "d", name: "A" },
+            keys: ["id"]
+          }
+        ],
+        graphBody:
+          "NODE TABLES (\n  `p.d.A` AS A KEY (id)\n)\n" +
+          `OPTIONS(description="high-value customer graph")`
+      })
+    );
+  });
+
+  test("entity with only description synthesizes a DEFAULT LABEL with OPTIONS", () => {
+    const compiled = compile({
+      name: "G",
+      entities: [
+        {
+          name: "Account",
+          dataSourceString: "p.d.A",
+          keys: ["id"],
+          description: "customer account entity"
+        }
+      ]
+    });
+
+    expect(asPlainObject(compiled)).deep.equals(
+      asPlainObject({
+        target: graphTarget("G"),
+        canonicalTarget: graphTarget("G"),
+        fileName: "definitions/graph.yaml",
+        entities: [
+          {
+            name: "Account",
+            dataSource: { database: "p", schema: "d", name: "A" },
+            keys: ["id"],
+            labels: [
+              {
+                name: "Account",
+                description: "customer account entity",
+                importAll: false,
+                isDefault: true
+              }
+            ]
+          }
+        ],
+        graphBody:
+          "NODE TABLES (\n  `p.d.A` AS Account KEY (id) DEFAULT LABEL " +
+          `OPTIONS(description="customer account entity")\n)`
+      })
+    );
+  });
+
+  test("string quoting in OPTIONS escapes embedded double quotes and backslashes", () => {
+    const compiled = compile({
+      name: "G",
+      entities: [
+        {
+          name: "A",
+          dataSourceString: "p.d.A",
+          keys: ["id"],
+          description: `has "quotes" and \\ backslash`
+        }
+      ]
+    });
+
+    expect(asPlainObject(compiled)).deep.equals(
+      asPlainObject({
+        target: graphTarget("G"),
+        canonicalTarget: graphTarget("G"),
+        fileName: "definitions/graph.yaml",
+        entities: [
+          {
+            name: "A",
+            dataSource: { database: "p", schema: "d", name: "A" },
+            keys: ["id"],
+            labels: [
+              {
+                name: "A",
+                description: `has "quotes" and \\ backslash`,
+                importAll: false,
+                isDefault: true
+              }
+            ]
+          }
+        ],
+        graphBody:
+          "NODE TABLES (\n  `p.d.A` AS A KEY (id) DEFAULT LABEL " +
+          `OPTIONS(description="has \\"quotes\\" and \\\\ backslash")\n)`
+      })
+    );
+  });
+
+  test("string quoting in OPTIONS escapes newlines carriage returns and tabs", () => {
+    const compiled = compile({
+      name: "G",
+      description: "line1\nline2\r\nline3\ttab",
+      entities: [
+        { name: "A", dataSourceString: "p.d.A", keys: ["id"] }
+      ]
+    });
+
+    expect(asPlainObject(compiled)).deep.equals(
+      asPlainObject({
+        target: graphTarget("G"),
+        canonicalTarget: graphTarget("G"),
+        fileName: "definitions/graph.yaml",
+        description: "line1\nline2\r\nline3\ttab",
+        entities: [
+          {
+            name: "A",
+            dataSource: { database: "p", schema: "d", name: "A" },
+            keys: ["id"]
+          }
+        ],
+        graphBody:
+          "NODE TABLES (\n  `p.d.A` AS A KEY (id)\n)\n" +
+          `OPTIONS(description="line1\\nline2\\r\\nline3\\ttab")`
+      })
+    );
   });
 });

@@ -26,13 +26,16 @@ interface IVerifiableAction {
 }
 
 function toVerifiableAction(graph: dataform.ICompiledGraph, actionType: string): IVerifiableAction {
-  let action: dataform.IAssertion | dataform.ITable
+  let action: dataform.IAssertion | dataform.ITable | dataform.IPropertyGraph
   switch (actionType) {
     case "assertion":
       action = graph.assertions[0];
       break;
     case "operations":
       action = graph.operations[0];
+      break;
+    case "propertyGraph":
+      action = graph.propertyGraphs[0];
       break;
     default:
       action = graph.tables[0];
@@ -2378,6 +2381,694 @@ select 1 as a`
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
       expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(result.compile.compiledGraph.tables[0].bigquery.preserveGovernanceControls).equals(false);
+    });
+  });
+
+  suite("property graphs", () => {
+    const graphProjectConfig = {
+      warehouse: "bigquery",
+      defaultSchema: "defaultDataset",
+      defaultDatabase: "defaultProject",
+      defaultLocation: "US"
+    };
+    const graphStackTail = "\n    at CallSite {}".repeat(10);
+    const graphError = (fileName: string, message: string, extra: object = {}) => ({
+      fileName,
+      message,
+      stack: `Error: ${message}${graphStackTail}`,
+      ...extra
+    });
+
+    test("valid graph.yaml compiles end-to-end", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/graph.yaml"),
+        `
+name: SimpleGraph
+entities:
+- name: Customer
+  dataSourceString: defaultProject.defaultDataset.customers
+  keys:
+  - id
+`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(asPlainObject(result.compile.compiledGraph)).deep.equals(asPlainObject({
+        projectConfig: graphProjectConfig,
+        graphErrors: {},
+        dataformCoreVersion: version,
+        targets: [
+          { schema: "defaultDataset", name: "SimpleGraph", database: "defaultProject" }
+        ],
+        jitData: {},
+        propertyGraphs: [
+          {
+            target: {
+              schema: "defaultDataset",
+              name: "SimpleGraph",
+              database: "defaultProject"
+            },
+            canonicalTarget: {
+              schema: "defaultDataset",
+              name: "SimpleGraph",
+              database: "defaultProject"
+            },
+            fileName: "definitions/graph.yaml",
+            entities: [
+              {
+                name: "Customer",
+                dataSource: {
+                  schema: "defaultDataset",
+                  name: "customers",
+                  database: "defaultProject"
+                },
+                keys: ["id"]
+              }
+            ],
+            graphBody:
+              "NODE TABLES (\n" +
+              "  `defaultProject.defaultDataset.customers` AS Customer KEY (id)\n" +
+              ")"
+          }
+        ]
+      }));
+    });
+
+    test("more than one graph.yaml is rejected", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.mkdirSync(path.join(projectDir, "definitions/subdir"));
+      const graphBody = `
+name: MultiGraph
+entities:
+- name: Node
+  dataSourceString: defaultProject.defaultDataset.t
+  keys:
+  - id
+`;
+      fs.writeFileSync(path.join(projectDir, "definitions/graph.yaml"), graphBody);
+      fs.writeFileSync(path.join(projectDir, "definitions/subdir/graph.yaml"), graphBody);
+
+      const request = dataform.CoreExecutionRequest.create({
+        compile: {
+          compileConfig: {
+            projectDir: fs.realpathSync(projectDir),
+            filePaths: [
+              "workflow_settings.yaml",
+              "definitions/graph.yaml",
+              "definitions/subdir/graph.yaml"
+            ]
+          }
+        }
+      });
+
+      const result = runMainInVm(request);
+
+      expect(asPlainObject(result.compile.compiledGraph)).deep.equals(asPlainObject({
+        projectConfig: graphProjectConfig,
+        graphErrors: {
+          compilationErrors: [
+            graphError(
+              "definitions/graph.yaml",
+              "At most one graph.yaml is allowed per project (found 2: " +
+                "definitions/graph.yaml, definitions/subdir/graph.yaml). This " +
+                "restriction may be relaxed in a future version."
+            )
+          ]
+        },
+        dataformCoreVersion: version,
+        jitData: {}
+      }));
+    });
+
+    test("nodes-only graph compiles without EDGE TABLES", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/graph.yaml"),
+        `
+name: NodesOnly
+entities:
+- name: Customer
+  dataSourceString: defaultProject.defaultDataset.customers
+  keys:
+  - id
+- name: Product
+  dataSourceString: defaultProject.defaultDataset.products
+  keys:
+  - sku
+`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(asPlainObject(result.compile.compiledGraph)).deep.equals(asPlainObject({
+        projectConfig: graphProjectConfig,
+        graphErrors: {},
+        dataformCoreVersion: version,
+        targets: [
+          { schema: "defaultDataset", name: "NodesOnly", database: "defaultProject" }
+        ],
+        jitData: {},
+        propertyGraphs: [
+          {
+            target: {
+              schema: "defaultDataset",
+              name: "NodesOnly",
+              database: "defaultProject"
+            },
+            canonicalTarget: {
+              schema: "defaultDataset",
+              name: "NodesOnly",
+              database: "defaultProject"
+            },
+            fileName: "definitions/graph.yaml",
+            entities: [
+              {
+                name: "Customer",
+                dataSource: {
+                  schema: "defaultDataset",
+                  name: "customers",
+                  database: "defaultProject"
+                },
+                keys: ["id"]
+              },
+              {
+                name: "Product",
+                dataSource: {
+                  schema: "defaultDataset",
+                  name: "products",
+                  database: "defaultProject"
+                },
+                keys: ["sku"]
+              }
+            ],
+            graphBody:
+              "NODE TABLES (\n" +
+              "  `defaultProject.defaultDataset.customers` AS Customer KEY (id),\n" +
+              "  `defaultProject.defaultDataset.products` AS Product KEY (sku)\n" +
+              ")"
+          }
+        ]
+      }));
+    });
+
+    test("targetDataset overrides the schema on the graph target", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/graph.yaml"),
+        `
+name: CustomDsGraph
+targetDataset:
+  datasetId: customDs
+entities:
+- name: Customer
+  dataSourceString: defaultProject.defaultDataset.customers
+  keys:
+  - id
+`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(asPlainObject(result.compile.compiledGraph)).deep.equals(asPlainObject({
+        projectConfig: graphProjectConfig,
+        graphErrors: {},
+        dataformCoreVersion: version,
+        targets: [
+          { schema: "customDs", name: "CustomDsGraph", database: "defaultProject" }
+        ],
+        jitData: {},
+        propertyGraphs: [
+          {
+            target: {
+              schema: "customDs",
+              name: "CustomDsGraph",
+              database: "defaultProject"
+            },
+            canonicalTarget: {
+              schema: "customDs",
+              name: "CustomDsGraph",
+              database: "defaultProject"
+            },
+            fileName: "definitions/graph.yaml",
+            entities: [
+              {
+                name: "Customer",
+                dataSource: {
+                  schema: "defaultDataset",
+                  name: "customers",
+                  database: "defaultProject"
+                },
+                keys: ["id"]
+              }
+            ],
+            graphBody:
+              "NODE TABLES (\n" +
+              "  `defaultProject.defaultDataset.customers` AS Customer KEY (id)\n" +
+              ")"
+          }
+        ]
+      }));
+    });
+
+    test("empty graph.yaml produces a compilation error", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(path.join(projectDir, "definitions/graph.yaml"), "");
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(asPlainObject(result.compile.compiledGraph)).deep.equals(asPlainObject({
+        projectConfig: graphProjectConfig,
+        graphErrors: {
+          compilationErrors: [
+            graphError(
+              "definitions/graph.yaml",
+              "Property graph config is empty or malformed. Expected a top-level " +
+                "object with 'name' and 'entities'."
+            )
+          ]
+        },
+        dataformCoreVersion: version,
+        jitData: {}
+      }));
+    });
+
+    test("graph.yaml with only a comment produces a compilation error", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/graph.yaml"),
+        "# nothing here\n"
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(asPlainObject(result.compile.compiledGraph)).deep.equals(asPlainObject({
+        projectConfig: graphProjectConfig,
+        graphErrors: {
+          compilationErrors: [
+            graphError(
+              "definitions/graph.yaml",
+              "Property graph config is empty or malformed. Expected a top-level " +
+                "object with 'name' and 'entities'."
+            )
+          ]
+        },
+        dataformCoreVersion: version,
+        jitData: {}
+      }));
+    });
+
+    test("graph.yaml with a top-level scalar produces a compilation error", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/graph.yaml"),
+        "just a string\n"
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(asPlainObject(result.compile.compiledGraph)).deep.equals(asPlainObject({
+        projectConfig: graphProjectConfig,
+        graphErrors: {
+          compilationErrors: [
+            graphError(
+              "definitions/graph.yaml",
+              "Property graph config is empty or malformed. Expected a top-level " +
+                "object with 'name' and 'entities'."
+            )
+          ]
+        },
+        dataformCoreVersion: version,
+        jitData: {}
+      }));
+    });
+
+    test("graph.yaml missing entities produces a compilation error", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/graph.yaml"),
+        `
+name: EmptyGraph
+`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(asPlainObject(result.compile.compiledGraph)).deep.equals(asPlainObject({
+        projectConfig: graphProjectConfig,
+        graphErrors: {
+          compilationErrors: [
+            graphError(
+              "definitions/graph.yaml",
+              "Property graph 'EmptyGraph' must declare at least one entity."
+            )
+          ]
+        },
+        dataformCoreVersion: version,
+        jitData: {}
+      }));
+    });
+
+    test("graph with relationships emits EDGE TABLES", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/graph.yaml"),
+        `
+name: RelGraph
+entities:
+- name: Customer
+  dataSourceString: defaultProject.defaultDataset.customers
+  keys:
+  - id
+- name: Order
+  dataSourceString: defaultProject.defaultDataset.orders
+  keys:
+  - id
+relationships:
+- name: PlacedBy
+  dataSourceString: defaultProject.defaultDataset.orders
+  source:
+    entity: Order
+    joinKeys:
+    - order_id
+  destination:
+    entity: Customer
+    joinKeys:
+    - customer_id
+`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(asPlainObject(result.compile.compiledGraph)).deep.equals(asPlainObject({
+        projectConfig: graphProjectConfig,
+        graphErrors: {},
+        dataformCoreVersion: version,
+        targets: [
+          { schema: "defaultDataset", name: "RelGraph", database: "defaultProject" }
+        ],
+        jitData: {},
+        propertyGraphs: [
+          {
+            target: {
+              schema: "defaultDataset",
+              name: "RelGraph",
+              database: "defaultProject"
+            },
+            canonicalTarget: {
+              schema: "defaultDataset",
+              name: "RelGraph",
+              database: "defaultProject"
+            },
+            fileName: "definitions/graph.yaml",
+            entities: [
+              {
+                name: "Customer",
+                dataSource: {
+                  schema: "defaultDataset",
+                  name: "customers",
+                  database: "defaultProject"
+                },
+                keys: ["id"]
+              },
+              {
+                name: "Order",
+                dataSource: {
+                  schema: "defaultDataset",
+                  name: "orders",
+                  database: "defaultProject"
+                },
+                keys: ["id"]
+              }
+            ],
+            relationships: [
+              {
+                name: "PlacedBy",
+                dataSource: {
+                  schema: "defaultDataset",
+                  name: "orders",
+                  database: "defaultProject"
+                },
+                source: {
+                  entity: "Order",
+                  relationshipColumns: ["order_id"],
+                  entityColumns: ["id"]
+                },
+                destination: {
+                  entity: "Customer",
+                  relationshipColumns: ["customer_id"],
+                  entityColumns: ["id"]
+                }
+              }
+            ],
+            graphBody:
+              "NODE TABLES (\n" +
+              "  `defaultProject.defaultDataset.customers` AS Customer KEY (id),\n" +
+              "  `defaultProject.defaultDataset.orders` AS Order KEY (id)\n" +
+              ")\n" +
+              "EDGE TABLES (\n" +
+              "  `defaultProject.defaultDataset.orders` AS PlacedBy " +
+              "SOURCE KEY (order_id) REFERENCES Order (id) " +
+              "DESTINATION KEY (customer_id) REFERENCES Customer (id)\n" +
+              ")"
+          }
+        ]
+      }));
+    });
+
+    test("graph target colliding with a table target is flagged as duplicate", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/collision.sqlx"),
+        `config {type: "table", name: "CollisionName"}
+select 1 as a`
+      );
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/graph.yaml"),
+        `
+name: CollisionName
+entities:
+- name: Customer
+  dataSourceString: defaultProject.defaultDataset.customers
+  keys:
+  - id
+`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      const collisionTarget = {
+        schema: "defaultDataset",
+        name: "CollisionName",
+        database: "defaultProject"
+      };
+      const collisionActionName = "defaultProject.defaultDataset.CollisionName";
+      const collisionTargetJson =
+        `{"schema":"defaultDataset","name":"CollisionName","database":"defaultProject"}`;
+      const duplicateActionMessage =
+        "Duplicate action name detected. Names within a schema must be unique " +
+        "across tables, declarations, assertions, and operations:\n" +
+        `"${collisionTargetJson}"`;
+      const duplicateCanonicalMessage =
+        "Duplicate canonical target detected. Canonical targets must be unique " +
+        "across tables, declarations, assertions, and operations:\n" +
+        `"${collisionTargetJson}"`;
+      expect(asPlainObject(result.compile.compiledGraph)).deep.equals(asPlainObject({
+        projectConfig: graphProjectConfig,
+        graphErrors: {
+          compilationErrors: [
+            graphError("definitions/collision.sqlx", duplicateActionMessage, {
+              actionName: collisionActionName,
+              actionTarget: collisionTarget
+            }),
+            graphError("definitions/collision.sqlx", duplicateCanonicalMessage, {
+              actionName: collisionActionName,
+              actionTarget: collisionTarget
+            }),
+            graphError("definitions/graph.yaml", duplicateActionMessage, {
+              actionName: collisionActionName,
+              actionTarget: collisionTarget
+            }),
+            graphError("definitions/graph.yaml", duplicateCanonicalMessage, {
+              actionName: collisionActionName,
+              actionTarget: collisionTarget
+            })
+          ]
+        },
+        dataformCoreVersion: version,
+        targets: [collisionTarget, collisionTarget],
+        jitData: {}
+      }));
+    });
+    test("graph.yaml accepts snake_case keys per BQ spec", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/graph.yaml"),
+        `
+name: SnakeGraph
+description: end to end snake case
+target_dataset:
+  project_id: defaultProject
+  dataset_id: defaultDataset
+entities:
+- name: Account
+  data_source_string: defaultProject.defaultDataset.accounts
+  keys:
+  - id
+  fields:
+    import_all: true
+    except:
+    - secret
+relationships:
+- name: Owns
+  data_source_string: defaultProject.defaultDataset.ownership
+  source:
+    entity: Account
+    join_keys:
+      relationship_columns:
+      - owner_id
+  destination:
+    entity: Account
+    join_keys:
+      relationship_columns:
+      - owned_id
+`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(asPlainObject(result.compile.compiledGraph)).deep.equals(asPlainObject({
+        projectConfig: graphProjectConfig,
+        graphErrors: {},
+        dataformCoreVersion: version,
+        targets: [
+          { schema: "defaultDataset", name: "SnakeGraph", database: "defaultProject" }
+        ],
+        jitData: {},
+        propertyGraphs: [
+          {
+            target: {
+              schema: "defaultDataset",
+              name: "SnakeGraph",
+              database: "defaultProject"
+            },
+            canonicalTarget: {
+              schema: "defaultDataset",
+              name: "SnakeGraph",
+              database: "defaultProject"
+            },
+            fileName: "definitions/graph.yaml",
+            description: "end to end snake case",
+            entities: [
+              {
+                name: "Account",
+                dataSource: {
+                  schema: "defaultDataset",
+                  name: "accounts",
+                  database: "defaultProject"
+                },
+                keys: ["id"],
+                labels: [
+                  {
+                    name: "Account",
+                    description: "",
+                    importAll: true,
+                    importExcept: ["secret"],
+                    isDefault: true
+                  }
+                ]
+              }
+            ],
+            relationships: [
+              {
+                name: "Owns",
+                dataSource: {
+                  schema: "defaultDataset",
+                  name: "ownership",
+                  database: "defaultProject"
+                },
+                source: {
+                  entity: "Account",
+                  relationshipColumns: ["owner_id"],
+                  entityColumns: ["id"]
+                },
+                destination: {
+                  entity: "Account",
+                  relationshipColumns: ["owned_id"],
+                  entityColumns: ["id"]
+                }
+              }
+            ],
+            graphBody:
+              "NODE TABLES (\n" +
+              "  `defaultProject.defaultDataset.accounts` AS Account KEY (id) " +
+              "DEFAULT LABEL PROPERTIES ARE ALL COLUMNS EXCEPT (secret)\n" +
+              ")\n" +
+              "EDGE TABLES (\n" +
+              "  `defaultProject.defaultDataset.ownership` AS Owns " +
+              "SOURCE KEY (owner_id) REFERENCES Account (id) " +
+              "DESTINATION KEY (owned_id) REFERENCES Account (id)\n" +
+              ")\n" +
+              `OPTIONS(description="end to end snake case")`
+          }
+        ]
+      }));
     });
   });
 });

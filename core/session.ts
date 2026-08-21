@@ -11,6 +11,7 @@ import { Declaration } from "df/core/actions/declaration";
 import { IncrementalTable } from "df/core/actions/incremental_table";
 import { Notebook } from "df/core/actions/notebook";
 import { Operation, OperationContext } from "df/core/actions/operation";
+import { PropertyGraph } from "df/core/actions/property_graph";
 import { Table, TableContext } from "df/core/actions/table";
 import { Test } from "df/core/actions/test";
 import { View } from "df/core/actions/view";
@@ -504,6 +505,9 @@ export class Session {
       dataPreparations: this.compileGraphChunk(
         this.actions.filter(action => action instanceof DataPreparation)
       ),
+      propertyGraphs: this.compileGraphChunk(
+        this.actions.filter(action => action instanceof PropertyGraph)
+      ),
       graphErrors: this.graphErrors,
       dataformCoreVersion,
       targets: this.actions.map(action => action.getTarget()),
@@ -521,6 +525,7 @@ export class Session {
         compiledGraph.operations,
         compiledGraph.notebooks,
         compiledGraph.dataPreparations,
+        compiledGraph.propertyGraphs,
         compiledGraph.tests
       )
     );
@@ -532,6 +537,7 @@ export class Session {
         compiledGraph.operations,
         compiledGraph.notebooks,
         compiledGraph.dataPreparations,
+        compiledGraph.propertyGraphs,
         compiledGraph.tests
       ),
       [].concat(compiledGraph.declarations.map(declaration => declaration.target))
@@ -548,6 +554,7 @@ export class Session {
         compiledGraph.operations,
         compiledGraph.notebooks,
         compiledGraph.dataPreparations,
+        compiledGraph.propertyGraphs,
         compiledGraph.tests
       )
     );
@@ -787,7 +794,8 @@ export class Session {
       compiledGraph.operations,
       compiledGraph.declarations,
       compiledGraph.notebooks,
-      compiledGraph.dataPreparations
+      compiledGraph.dataPreparations,
+      compiledGraph.propertyGraphs
     );
 
     const nonUniqueActionsTargets = getNonUniqueTargets(actions.map(action => action.target));
@@ -835,6 +843,7 @@ export class Session {
     compiledGraph.assertions = compiledGraph.assertions.filter(isUniqueAction);
     compiledGraph.notebooks = compiledGraph.notebooks.filter(isUniqueAction);
     compiledGraph.dataPreparations = compiledGraph.dataPreparations.filter(isUniqueAction);
+    compiledGraph.propertyGraphs = compiledGraph.propertyGraphs.filter(isUniqueAction);
   }
 }
 
