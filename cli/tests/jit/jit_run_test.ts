@@ -437,6 +437,46 @@ suite("run", () => {
     );
   });
 
+  test("Global timeout surfaces reason on skipped pending actions", async () => {
+    const { adapterInstance } = createMocks();
+
+    const executionGraph = createGraph([
+      {
+        target: { database: "db", schema: "sch", name: "hang_jit" },
+        type: "table",
+        tableType: "table",
+        jitCode: "async (jctx) => { /* hangs forever in mock */ }",
+        tasks: []
+      },
+      {
+        target: { database: "db", schema: "sch", name: "downstream" },
+        type: "table",
+        tableType: "table",
+        jitCode: "async (jctx) => { return 'SELECT 1'; }",
+        tasks: [],
+        dependencyTargets: [{ database: "db", schema: "sch", name: "hang_jit" }]
+      }
+    ]);
+    executionGraph.runConfig.timeoutMillis = 200;
+
+    const runner = new Runner(adapterInstance, executionGraph, {
+      jitCompiler: (req, pdir, adapter, client, timeoutMs, opts, onCancel) =>
+        new Promise((resolve, reject) => {
+          onCancel(() => reject(new Error("Run cancelled while worker was in flight.")));
+        })
+    });
+
+    const result = await runner.execute().result();
+
+    expect(result.status).equals(dataform.RunResult.ExecutionStatus.TIMED_OUT);
+
+    const downstream = result.actions.find(a => a.target.name === "downstream");
+    expect(downstream).to.not.equal(undefined);
+    expect(downstream.status).equals(dataform.ActionResult.ExecutionStatus.SKIPPED);
+    expect(downstream.tasks.length).to.be.greaterThan(0);
+    expect(downstream.tasks[0].errorMessage).to.match(/Run timed out after 0\.2 seconds/);
+  });
+
   test("JiT compilation cleans up CANCEL_EVENT listeners after each action", async () => {
     const { adapterInstance } = createMocks();
 
