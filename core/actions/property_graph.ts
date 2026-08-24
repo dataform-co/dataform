@@ -9,7 +9,7 @@ const CATALOG_NOT_SUPPORTED_MESSAGE =
 export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
   public session: Session;
 
-  private proto = dataform.PropertyGraph.create();
+  private proto = dataform.PropertyGraph.create({ description: "", disabled: false });
 
   constructor(session?: Session, unverifiedConfig?: any, filename?: string) {
     super(session);
@@ -43,7 +43,12 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
 
     this.proto.fileName = filename;
     if (config.description) {
+      // Stored on the compiled proto but not yet emitted to graphBody OPTIONS;
+      // DDL propagation is planned.
       this.proto.description = config.description;
+    }
+    if (config.disabled) {
+      this.proto.disabled = config.disabled;
     }
 
     this.proto.entities = config.entities.map(entityConfig =>
@@ -259,10 +264,6 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
       const edgeEntries = this.proto.relationships.map(rel => renderEdge(rel));
       parts.push(`EDGE TABLES (\n  ${edgeEntries.join(",\n  ")}\n)`);
     }
-    const options = renderOptionsClause(this.proto.description, undefined);
-    if (options) {
-      parts.push(options);
-    }
     return parts.join("\n");
   }
 }
@@ -349,7 +350,12 @@ function buildLabels(
     );
   }
   if (configuredLabels.length > 0) {
-    return configuredLabels.map(label => buildLabel(label, where, false));
+    const built = configuredLabels.map(label => buildLabel(label, where, defaultLabelName));
+    const defaultCount = built.filter(label => label.isDefault).length;
+    if (defaultCount > 1) {
+      throw new Error(`${where}: only one DEFAULT label is allowed.`);
+    }
+    return built;
   }
   const hasRootData =
     rootFields.length > 0 ||
@@ -366,34 +372,45 @@ function buildLabels(
     fields: rootFields,
     fieldWildcard: rootWildcard
   });
-  return [buildLabel(synthesized, where, true)];
+  return [buildLabel(synthesized, where, defaultLabelName, true)];
 }
 
 function buildLabel(
   label: dataform.IGraphLabelConfig,
   where: string,
-  isDefault: boolean
+  defaultLabelName: string,
+  forceDefault = false
 ): dataform.GraphLabel {
-  if (!label.name) {
-    throw new Error(`${where}: every label must have a 'name'.`);
+  const isDefault = forceDefault || !label.name || label.name.toUpperCase() === "DEFAULT";
+  if (!isDefault && !label.name) {
+    throw new Error(`${where}: every non-default label must have a 'name'.`);
   }
+  const labelId = isDefault ? "DEFAULT" : `'${label.name}'`;
   const wildcard = label.fieldWildcard;
   if (wildcard && wildcard.importAll === false && wildcard.except && wildcard.except.length > 0) {
     throw new Error(
-      `${where}: label '${label.name}' has 'fieldWildcard.except' set but 'importAll' is false.`
+      `${where}: label ${labelId} has 'fieldWildcard.except' set but 'importAll' is false.`
     );
   }
   const hasFields = !!(label.fields && label.fields.length > 0);
   const hasWildcard = !!(wildcard && wildcard.importAll);
-  const hasOptions = !!label.description || !!(label.synonyms && label.synonyms.length > 0);
+  const hasDescription = !!label.description;
+  const hasSynonyms = !!(label.synonyms && label.synonyms.length > 0);
+  const hasOptions = hasDescription || hasSynonyms;
+  if (!isDefault && hasOptions) {
+    throw new Error(
+      `${where}: label ${labelId} cannot declare 'description' or 'synonyms'; ` +
+        `these are only allowed on the DEFAULT label (name absent or 'DEFAULT').`
+    );
+  }
   if (!hasFields && !hasWildcard && !hasOptions) {
     throw new Error(
-      `${where}: label '${label.name}' must declare at least one of: 'fields', ` +
+      `${where}: label ${labelId} must declare at least one of: 'fields', ` +
         `'fieldWildcard', 'description', or 'synonyms'.`
     );
   }
   return dataform.GraphLabel.create({
-    name: label.name,
+    name: isDefault ? defaultLabelName : label.name,
     description: label.description,
     synonyms: label.synonyms || [],
     fields: (label.fields || []).map(field =>
@@ -469,9 +486,11 @@ function renderEndpoint(role: "SOURCE" | "DESTINATION", endpoint: dataform.IGrap
 function renderLabelClause(label: dataform.IGraphLabel): string {
   const head = label.isDefault ? "DEFAULT LABEL" : `LABEL ${label.name}`;
   const parts: string[] = [head];
-  const options = renderOptionsClause(label.description, label.synonyms);
-  if (options) {
-    parts.push(options);
+  if (label.isDefault) {
+    const options = renderOptionsClause(label.description, label.synonyms);
+    if (options) {
+      parts.push(options);
+    }
   }
   const properties = renderPropertiesClause(label);
   if (properties) {
