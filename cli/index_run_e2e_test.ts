@@ -812,4 +812,57 @@ DROP SCHEMA IF EXISTS \`\${dataform.projectConfig.defaultDatabase}.\${dataform.p
       }
     });
   });
+
+  test("--timeout on run emits deprecation notice pointing to --execution-timeout", async () => {
+    // The notice fires in the run handler before compile. Yargs validation
+    // requires workflow_settings.yaml to exist, but compile can fail after that
+    // — we only assert on stderr for the notice line.
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    fs.writeFileSync(
+      path.join(projectDir, "workflow_settings.yaml"),
+      `defaultProject: ${DEFAULT_DATABASE}\ndefaultLocation: ${DEFAULT_LOCATION}\n`
+    );
+
+    const runResult = await getProcessResult(
+      execFile(nodePath, [
+        cliEntryPointPath,
+        "run",
+        projectDir,
+        "--credentials",
+        CREDENTIALS_PATH,
+        "--timeout",
+        "30s"
+      ])
+    );
+
+    expect(runResult.stderr).to.match(
+      /--timeout only bounds project compilation[\s\S]*use --execution-timeout/
+    );
+  });
+
+  test("--timeout on run does NOT emit notice when --execution-timeout is also set", async () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    fs.writeFileSync(
+      path.join(projectDir, "workflow_settings.yaml"),
+      `defaultProject: ${DEFAULT_DATABASE}\ndefaultLocation: ${DEFAULT_LOCATION}\n`
+    );
+
+    const runResult = await getProcessResult(
+      execFile(nodePath, [
+        cliEntryPointPath,
+        "run",
+        projectDir,
+        "--credentials",
+        CREDENTIALS_PATH,
+        "--timeout",
+        "30s",
+        "--execution-timeout",
+        "10m"
+      ])
+    );
+
+    expect(runResult.stderr).to.not.match(
+      /--timeout only bounds project compilation/
+    );
+  });
 });

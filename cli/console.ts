@@ -172,6 +172,10 @@ export function printError(errorText: string, indentCount: number = 0) {
   writeStdErr(errorOutput(errorText), indentCount);
 }
 
+export function printWarning(warningText: string, indentCount: number = 0) {
+  writeStdErr(warningOutput(warningText), indentCount);
+}
+
 export function printInitResult(result: IInitResult) {
   if (result.dirsCreated && result.dirsCreated.length) {
     writeStdOut(successOutput("Directories successfully created:"));
@@ -425,6 +429,8 @@ export function printExecutedAction(
       return;
     }
     case dataform.ActionResult.ExecutionStatus.SKIPPED: {
+      const skipReason = executedAction.tasks?.[0]?.errorMessage;
+      const skipSuffix = skipReason ? ` (${skipReason})` : "";
       switch (executionAction.type) {
         case "table": {
           writeStdOut(
@@ -432,7 +438,7 @@ export function printExecutedAction(
               executionAction.target,
               executionAction.tableType,
               executionAction.tasks.length === 0
-            )}`
+            )}${skipSuffix}`
           );
           return;
         }
@@ -441,7 +447,7 @@ export function printExecutedAction(
             `${warningOutput("Skipping assertion execution: ")} ${assertionString(
               executionAction.target,
               executionAction.tasks.length === 0
-            )}`
+            )}${skipSuffix}`
           );
           return;
         }
@@ -450,7 +456,7 @@ export function printExecutedAction(
             `${warningOutput("Skipping operation execution: ")} ${operationString(
               executionAction.target,
               executionAction.tasks.length === 0
-            )}`
+            )}${skipSuffix}`
           );
           return;
         }

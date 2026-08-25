@@ -24,7 +24,8 @@ import {
   printInitCredsResult,
   printInitResult,
   printSuccess,
-  printTestResult
+  printTestResult,
+  printWarning
 } from "df/cli/console";
 import { getBigQueryCredentials } from "df/cli/credentials";
 import {
@@ -231,10 +232,21 @@ const dotOutputOption: INamedOption<yargs.Options> = {
 const timeoutOption: INamedOption<yargs.Options> = {
   name: "timeout",
   option: {
+    describe: "Duration to allow project compilation to complete. Examples: '1s', '10m', etc.",
+    type: "string",
+    default: null,
+    coerce: (rawTimeoutString: string | null) =>
+      rawTimeoutString ? parseDuration(rawTimeoutString) : null
+  }
+};
+
+const executionTimeoutOption: INamedOption<yargs.Options> = {
+  name: "execution-timeout",
+  option: {
     describe:
-      "Wall-clock deadline for the entire command. When it fires, in-flight work " +
-      "(including any running JiT compilation worker) is cancelled. Examples: " +
-      "'1s', '10m'.",
+      "Wall-clock deadline for the entire run (compile + all actions). When it fires, " +
+      "in-flight actions are cancelled and pending actions are skipped. Off by default. " +
+      "Examples: '10m', '2h'.",
     type: "string",
     default: null,
     coerce: (rawTimeoutString: string | null) =>
@@ -247,8 +259,9 @@ const jitTimeoutOption: INamedOption<yargs.Options> = {
   option: {
     describe:
       "Per-model JiT compilation worker timeout. Each action with jitCode gets " +
-      "its own fresh deadline; independent of --timeout. When unset, no per-model " +
-      "cap is applied and only --timeout bounds JiT work. Examples: '30s', '2m'.",
+      "its own fresh deadline; independent of --execution-timeout. When unset, no " +
+      "per-model cap is applied and only --execution-timeout bounds JiT work. " +
+      "Examples: '30s', '2m'.",
     type: "string",
     default: null,
     coerce: (rawTimeoutString: string | null) =>
@@ -689,6 +702,7 @@ export function runCli() {
           includeDependentsOption,
           jsonOutputOption,
           timeoutOption,
+          executionTimeoutOption,
           jitTimeoutOption,
           tagsOption,
           bigqueryJobLabelsOption,
@@ -704,6 +718,16 @@ export function runCli() {
                 `--${dryRunOptionName} option is enabled`
             );
             return;
+          }
+          if (
+            !isJsonOutput &&
+            argv[timeoutOption.name] != null &&
+            argv[executionTimeoutOption.name] == null
+          ) {
+            printWarning(
+              "Note: --timeout only bounds project compilation. " +
+                "For a whole-run wall-clock deadline, use --execution-timeout.\n"
+            );
           }
           logger.log("Compiling...\n");
           const compiledGraph = await compile({
@@ -729,7 +753,7 @@ export function runCli() {
               includeDependencies: argv[includeDepsOption.name],
               includeDependents: argv[includeDependentsOption.name],
               tags: argv[tagsOption.name],
-              timeoutMillis: argv[timeoutOption.name] || undefined,
+              timeoutMillis: argv[executionTimeoutOption.name] || undefined,
               jitTimeoutMillis: argv[jitTimeoutOption.name] || undefined
             },
             dbadapter
@@ -837,6 +861,17 @@ export function runCli() {
           }
           if (isJsonOutput) {
             print(prettyJsonStringify(runResult));
+          }
+          if (!isJsonOutput) {
+            if (runResult.status === dataform.RunResult.ExecutionStatus.TIMED_OUT) {
+              const executionTimeoutMillis = argv[executionTimeoutOption.name];
+              const suffix = executionTimeoutMillis
+                ? ` after ${executionTimeoutMillis / 1000} seconds (--execution-timeout)`
+                : "";
+              printError(`Run timed out${suffix}.`);
+            } else if (runResult.status === dataform.RunResult.ExecutionStatus.CANCELLED) {
+              printError("Run cancelled.");
+            }
           }
           return runResult.status === dataform.RunResult.ExecutionStatus.SUCCESSFUL ? 0 : 1;
         }

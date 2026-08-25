@@ -80,7 +80,7 @@ suite("JiT support runtime", ({ afterEach }) => {
     expect(runResult.stdout).to.include("Compilation timed out");
   });
 
-  test("Global --timeout cancels in-flight JiT worker", { timeout: 90000 }, async () => {
+  test("Global --execution-timeout cancels in-flight JiT worker", { timeout: 90000 }, async () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
     await setupJitProject(tmpDirFixture, projectDir);
 
@@ -91,8 +91,8 @@ suite("JiT support runtime", ({ afterEach }) => {
         return "SELECT 1";
       })`
     );
-    // --timeout must exceed BQ schema-prep time; smaller values fire the
-    // timer before the JiT compile starts, leaving the action SKIPPED and
+    // --execution-timeout must exceed BQ schema-prep time; smaller values fire
+    // the timer before the JiT compile starts, leaving the action SKIPPED and
     // defeating the assertions below.
     const runResult = await getProcessResult(
       execFile(nodePath, [
@@ -104,7 +104,7 @@ suite("JiT support runtime", ({ afterEach }) => {
         "--dry-run",
         "--json",
         "--actions=hang_jit_global",
-        "--timeout=15s"
+        "--execution-timeout=15s"
       ], { timeout: 80000 })
     );
 
