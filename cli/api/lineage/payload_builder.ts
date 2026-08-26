@@ -2,9 +2,25 @@ import { createHash, randomUUID } from "crypto";
 import Long from "long";
 import * as path from "path";
 
+import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
 
 const PRODUCER_URL = "https://github.com/dataform-co/dataform";
+
+const NOMINAL_TIME_FACET_SCHEMA =
+  "https://openlineage.io/spec/facets/1-0-1/NominalTimeRunFacet.json";
+const PARENT_RUN_FACET_SCHEMA =
+  "https://openlineage.io/spec/facets/1-2-0/ParentRunFacet.json#/$defs/ParentRunFacet";
+const EXTERNAL_QUERY_FACET_SCHEMA =
+  "https://openlineage.io/spec/facets/1-0-2/ExternalQueryRunFacet.json";
+const ERROR_MESSAGE_FACET_SCHEMA =
+  "https://openlineage.io/spec/facets/1-0-1/ErrorMessageRunFacet.json";
+const SQL_JOB_FACET_SCHEMA = "https://openlineage.io/spec/facets/1-1-0/SQLJobFacet.json";
+const GCP_LINEAGE_JOB_FACET_SCHEMA =
+  "https://openlineage.io/spec/facets/1-0-0/GcpLineageJobFacet.json#/$defs/GcpLineageJobFacet";
+const JOB_TYPE_FACET_SCHEMA =
+  "https://openlineage.io/spec/facets/2-0-4/JobTypeJobFacet.json#/$defs/JobTypeJobFacet";
+const RUN_EVENT_SCHEMA = "https://openlineage.io/spec/2-0-2/OpenLineage.json#/$defs/RunEvent";
 
 /**
  * Assembles OpenLineage RunEvent payloads for Dataform actions.
@@ -32,7 +48,8 @@ export class LineagePayloadBuilder {
     action: dataform.IExecutionAction,
     actionResult: dataform.IActionResult,
     projectId: string,
-    location: string
+    location: string,
+    credentialsProjectId?: string
   ): { [key: string]: any } {
     if (!this.workdirHash && this.projectDir) {
       this.workdirHash = createHash("sha256").update(this.projectDir).digest("hex").slice(0, 16);
@@ -78,7 +95,7 @@ export class LineagePayloadBuilder {
     const parentJobName = `${projectId}.${location}.cli.${workdirIdentifier}.run`;
 
     const nominalTime: any = {
-      _schemaURL: "https://openlineage.io/spec/facets/1-0-1/NominalTimeRunFacet.json",
+      _schemaURL: NOMINAL_TIME_FACET_SCHEMA,
       nominalStartTime: new Date(
         toMillis(actionResult.timing?.startTimeMillis) ?? Date.now()
       ).toISOString()
@@ -93,8 +110,7 @@ export class LineagePayloadBuilder {
       nominalTime,
       parent: {
         _producer: PRODUCER_URL,
-        _schemaURL:
-          "https://openlineage.io/spec/facets/1-0-1/ParentRunFacet.json#/$defs/ParentRunFacet",
+        _schemaURL: PARENT_RUN_FACET_SCHEMA,
         job: {
           namespace: "dataform",
           name: parentJobName
@@ -108,16 +124,67 @@ export class LineagePayloadBuilder {
       }
     };
 
+    if (eventType !== "START") {
+      const bqJobId = extractBqJobId(actionResult);
+      if (bqJobId && credentialsProjectId) {
+        runFacets.externalQuery = {
+          _producer: PRODUCER_URL,
+          _schemaURL: EXTERNAL_QUERY_FACET_SCHEMA,
+          externalQueryId: `${credentialsProjectId}.${location}.${bqJobId}`,
+          source: "bigquery"
+        };
+      }
+    }
+
+    if (eventType === "FAIL") {
+      const errorMessages = actionResult.tasks
+        ?.map(t => t.errorMessage)
+        .filter(msg => !!msg)
+        .join("; ");
+      if (errorMessages) {
+        runFacets.errorMessage = {
+          _schemaURL: ERROR_MESSAGE_FACET_SCHEMA,
+          message: errorMessages,
+          programmingLanguage: "typescript"
+        };
+      }
+    }
+
+    const sqlStatements = action.tasks
+      ?.map(task => task.statement)
+      .filter(stmt => !!stmt)
+      .join(";\n");
+
     const jobFacets: any = {};
+    if (sqlStatements) {
+      jobFacets.sql = {
+        _schemaURL: SQL_JOB_FACET_SCHEMA,
+        query: sqlStatements
+      };
+    }
+
     jobFacets.gcp_lineage = {
       _producer: PRODUCER_URL,
-      _schemaURL:
-        "https://openlineage.io/spec/facets/1-0-0/GcpLineageJobFacet.json#/$defs/GcpLineageJobFacet",
+      _schemaURL: GCP_LINEAGE_JOB_FACET_SCHEMA,
       displayName: `BigQuery Pipelines action ${canonicalActionTarget}`,
       origin: {
         name: `projects/${projectId}/locations/${location}/cli/${workdirIdentifier}`,
         sourceType: "BIGQUERY_PIPELINES"
       }
+    };
+
+    jobFacets.jobType = {
+      _producer: PRODUCER_URL,
+      _schemaURL: JOB_TYPE_FACET_SCHEMA,
+      integration: "BIGQUERY_PIPELINES",
+      jobType: "ACTION",
+      processingType: "BATCH"
+    };
+
+    jobFacets.gcp_bq_pipelines_job = {
+      dataformCoreVersion: version,
+      actionType: action.type,
+      actionName: canonicalActionTarget
     };
 
     return {
@@ -135,7 +202,7 @@ export class LineagePayloadBuilder {
       inputs,
       outputs,
       producer: PRODUCER_URL,
-      schemaURL: "https://openlineage.io/spec/1-0-2/OpenLineage.json#/definitions/RunEvent"
+      schemaURL: RUN_EVENT_SCHEMA
     };
   }
 
@@ -160,6 +227,19 @@ function toMillis(val: Long | number | undefined | null): number | undefined {
   }
   if (val && typeof (val as Long).toNumber === "function") {
     return (val as Long).toNumber();
+  }
+  return undefined;
+}
+
+function extractBqJobId(actionResult: dataform.IActionResult): string | undefined {
+  if (!actionResult.tasks) {
+    return undefined;
+  }
+  for (let i = actionResult.tasks.length - 1; i >= 0; i--) {
+    const jobId = actionResult.tasks[i]?.metadata?.bigquery?.jobId;
+    if (jobId) {
+      return jobId;
+    }
   }
   return undefined;
 }
