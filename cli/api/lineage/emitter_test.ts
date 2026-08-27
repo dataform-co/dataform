@@ -926,6 +926,92 @@ suite("LineageEmitter", () => {
     expect(failLines[0]).to.contain("code=INVALID_ARGUMENT(3)");
   });
 
+  test("DATAFORM_LINEAGE_DEBUG=1 writes [lineage-debug] emit and emit_ok lines", async () => {
+    const originalDebug = process.env.DATAFORM_LINEAGE_DEBUG;
+    process.env.DATAFORM_LINEAGE_DEBUG = "1";
+    try {
+      const mockClient = new MockLineageClient();
+      const stderr = new StderrCapture();
+      const emitter = new LineageEmitter(
+        credentials,
+        { lineageEnabled: true },
+        () => mockClient as any,
+        stderr
+      );
+      const action = dataform.ExecutionAction.create({
+        target: { database: "proj", schema: "schema", name: "table" },
+        type: "table"
+      });
+      const startResult = dataform.ActionResult.create({
+        status: dataform.ActionResult.ExecutionStatus.RUNNING
+      });
+
+      emitter.emitForAction(action, startResult);
+      await emitter.drain();
+
+      // Full-array stderr assertion. The emit line contains per-run UUIDs
+      // (runId, parentRunId) and a JSON payload with an eventTime timestamp;
+      // extract those from the actual write to reconstruct the expected
+      // string, so every other character (prefix, endpoint, location, action
+      // key, eventType, key order) is locked in.
+      expect(stderr.writes.length).to.equal(2);
+      const runIdMatch = stderr.writes[0].match(
+        /^\[lineage-debug\] emit endpoint=(\S+) location=(\S+) action=schema\.table eventType=START runId=(\S+) parentRunId=(\S+) payload=(.+)\n$/
+      );
+      expect(runIdMatch).to.not.equal(null);
+      const [, endpoint, location, runId, parentRunId, payload] = runIdMatch!;
+      expect(stderr.writes).to.deep.equal([
+        `[lineage-debug] emit endpoint=${endpoint} location=${location} action=schema.table eventType=START runId=${runId} parentRunId=${parentRunId} payload=${payload}\n`,
+        "[lineage-debug] emit_ok action=schema.table eventType=START\n"
+      ]);
+    } finally {
+      if (originalDebug === undefined) {
+        delete process.env.DATAFORM_LINEAGE_DEBUG;
+      } else {
+        process.env.DATAFORM_LINEAGE_DEBUG = originalDebug;
+      }
+    }
+  });
+
+  test("DATAFORM_LINEAGE_DEBUG unset/other value emits no [lineage-debug] lines", async () => {
+    const originalDebug = process.env.DATAFORM_LINEAGE_DEBUG;
+    // Try both "unset" and "not 1" to lock in that only "1" turns it on.
+    for (const value of [undefined, "0", "true", ""]) {
+      if (value === undefined) {
+        delete process.env.DATAFORM_LINEAGE_DEBUG;
+      } else {
+        process.env.DATAFORM_LINEAGE_DEBUG = value;
+      }
+      const mockClient = new MockLineageClient();
+      const stderr = new StderrCapture();
+      const emitter = new LineageEmitter(
+        credentials,
+        { lineageEnabled: true },
+        () => mockClient as any,
+        stderr
+      );
+      const action = dataform.ExecutionAction.create({
+        target: { database: "proj", schema: "schema", name: "table" },
+        type: "table"
+      });
+      const startResult = dataform.ActionResult.create({
+        status: dataform.ActionResult.ExecutionStatus.RUNNING
+      });
+
+      emitter.emitForAction(action, startResult);
+      await emitter.drain();
+
+      // Full stderr assertion — no writes at all on a happy-path emit with
+      // debug disabled (stronger than filtering to just [lineage-debug]).
+      expect(stderr.writes).to.deep.equal([]);
+    }
+    if (originalDebug === undefined) {
+      delete process.env.DATAFORM_LINEAGE_DEBUG;
+    } else {
+      process.env.DATAFORM_LINEAGE_DEBUG = originalDebug;
+    }
+  });
+
   test("non-DNS / non-302 error from REP does not trigger fallback to global", async () => {
     // Only two error shapes trigger REP -> global fallback: DNS-unresolvable
     // and HTTP 302. An INTERNAL from REP means REP itself is reachable and
