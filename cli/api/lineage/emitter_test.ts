@@ -539,6 +539,49 @@ suite("LineageEmitter", () => {
     expect(mockClient.processOpenLineageRunEventCalledWith.length).to.equal(0);
   });
 
+  test("emits for operation-type actions and propagates action.type to gcp_bq_pipelines_job facet", async () => {
+    // Positive counterpart to "ineligible action types are skipped": operation
+    // is a first-class Dataform action (raw SQL block that runs but produces no
+    // modeled table). It must not be caught by the eligibility filter, and its
+    // action.type string must reach the gcp_bq_pipelines_job.actionType facet
+    // verbatim so downstream consumers can distinguish tables from operations.
+    const mockClient = new MockLineageClient();
+    const emitter = new LineageEmitter(
+      credentials,
+      { lineageEnabled: true, projectDir: "/workspaces/my-dataform-project" },
+      () => mockClient as any
+    );
+
+    const action = dataform.ExecutionAction.create({
+      target: { database: "target-project", schema: "s", name: "op_action" },
+      type: "operation",
+      tasks: [{ statement: "CREATE OR REPLACE PROCEDURE p() BEGIN SELECT 1; END" }]
+    });
+    const startResult = dataform.ActionResult.create({
+      status: dataform.ActionResult.ExecutionStatus.RUNNING
+    });
+
+    emitter.emitForAction(action, startResult);
+    await emitter.drain();
+
+    expect(mockClient.processOpenLineageRunEventCalledWith.length).to.equal(1);
+    const openLineage = fromProtoStruct(
+      mockClient.processOpenLineageRunEventCalledWith[0].openLineage
+    );
+    // Full-object assertion on the gcp_bq_pipelines_job facet: proves
+    // actionType propagation AND that no unexpected keys were added on the
+    // operation-type path. dataformCoreVersion is a runtime-derived string
+    // (from df/core/version); capture the actual to keep the test decoupled
+    // from that value.
+    const gcpBqPipelinesJob = openLineage.job.facets.gcp_bq_pipelines_job;
+    expect(gcpBqPipelinesJob.dataformCoreVersion).to.be.a("string");
+    expect(gcpBqPipelinesJob).to.deep.equal({
+      dataformCoreVersion: gcpBqPipelinesJob.dataformCoreVersion,
+      actionType: "operation",
+      actionName: "s.op_action"
+    });
+  });
+
   test("ineligible action types are skipped silently (no stderr line, no emission)", async () => {
     const mockClient = new MockLineageClient();
     const stderr = new StderrCapture();
