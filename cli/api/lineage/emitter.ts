@@ -115,6 +115,7 @@ export class LineageEmitter {
   private readonly payloadBuilder: LineagePayloadBuilder;
   private readonly endpointRouter: LineageEndpointRouter;
   private readonly pending = new Set<Promise<void>>();
+  private readonly debugEnabled: boolean;
   private emissionDisabledThisRun = false;
   private dryRunSkipLogged = false;
 
@@ -130,6 +131,7 @@ export class LineageEmitter {
     this.clientProvider = clientProvider || createLineageClientProvider(credentials);
     this.payloadBuilder = new LineagePayloadBuilder(emitterOptions.projectDir);
     this.endpointRouter = new LineageEndpointRouter();
+    this.debugEnabled = process.env.DATAFORM_LINEAGE_DEBUG === "1";
   }
 
   public emitForAction(
@@ -210,6 +212,17 @@ export class LineageEmitter {
     for (let repFallbackAttempts = 0; repFallbackAttempts < 2; repFallbackAttempts++) {
       try {
         const client = this.clientProvider(projectId, currentEndpoint);
+        if (this.debugEnabled) {
+          const runId = (openLineagePayload as any).run?.runId;
+          const parentRunId = (openLineagePayload as any).run?.facets?.parent?.run?.runId;
+          this.stderr.write(
+            `[lineage-debug] emit endpoint=${currentEndpoint} location=${location} ` +
+              `action=${action.target.schema}.${action.target.name} ` +
+              `eventType=${(openLineagePayload as any).eventType} ` +
+              `runId=${runId} parentRunId=${parentRunId} ` +
+              `payload=${JSON.stringify(openLineagePayload)}\n`
+          );
+        }
         await client.processOpenLineageRunEvent(
           {
             parent,
@@ -217,6 +230,12 @@ export class LineageEmitter {
           },
           { retry: LINEAGE_RETRY_CONFIG }
         );
+        if (this.debugEnabled) {
+          this.stderr.write(
+            `[lineage-debug] emit_ok action=${action.target.schema}.${action.target.name} ` +
+              `eventType=${(openLineagePayload as any).eventType}\n`
+          );
+        }
         return;
       } catch (e) {
         const err = coerceAsError(e);
