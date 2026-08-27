@@ -419,6 +419,8 @@ export class LegacyConfigConverter {
     // Type `any` is used here to facilitate the type hacking for legacy compatibility.
     const legacyConfig: any = unverifiedConfig;
     if (legacyConfig?.assertions) {
+      // Shallow-clone before in-place coercions so we don't mutate a caller-shared object.
+      legacyConfig.assertions = { ...legacyConfig.assertions };
       if (typeof legacyConfig.assertions?.uniqueKey === "string") {
         legacyConfig.assertions.uniqueKey = [legacyConfig.assertions.uniqueKey];
       }
@@ -444,6 +446,8 @@ export class LegacyConfigConverter {
     if (!legacyConfig?.bigquery) {
       return legacyConfig;
     }
+    // Shallow-clone before the delete-loop below so we don't mutate a caller-shared object.
+    legacyConfig.bigquery = { ...legacyConfig.bigquery };
     if (!!legacyConfig.bigquery.partitionBy) {
       legacyConfig.partitionBy = legacyConfig.bigquery.partitionBy;
       delete legacyConfig.bigquery.partitionBy;
