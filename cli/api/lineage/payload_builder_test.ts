@@ -132,6 +132,43 @@ suite("LineagePayloadBuilder", () => {
     expect(failedWithoutMsg.run.facets.errorMessage).to.equal(undefined);
   });
 
+  test("errorMessage aggregates non-empty task messages across multi-task action", () => {
+    const builder = new LineagePayloadBuilder("/tmp/proj");
+    const failed = builder.build(
+      ACTION,
+      dataform.ActionResult.create({
+        status: dataform.ActionResult.ExecutionStatus.FAILED,
+        tasks: [
+          { errorMessage: "pre_operations failed: table not found" },
+          { errorMessage: "" },
+          { errorMessage: "main statement failed: syntax error at line 3" }
+        ]
+      }),
+      "proj",
+      "us"
+    );
+    expect(failed.run.facets.errorMessage).to.deep.equal({
+      _schemaURL: "https://openlineage.io/spec/facets/1-0-1/ErrorMessageRunFacet.json",
+      message:
+        "pre_operations failed: table not found; main statement failed: syntax error at line 3",
+      programmingLanguage: "typescript"
+    });
+  });
+
+  test("errorMessage facet omitted when every task has empty or undefined errorMessage", () => {
+    const builder = new LineagePayloadBuilder("/tmp/proj");
+    const failed = builder.build(
+      ACTION,
+      dataform.ActionResult.create({
+        status: dataform.ActionResult.ExecutionStatus.FAILED,
+        tasks: [{ errorMessage: "" }, {}, { errorMessage: "" }]
+      }),
+      "proj",
+      "us"
+    );
+    expect(failed.run.facets.errorMessage).to.equal(undefined);
+  });
+
   test("sql job facet emits joined task statements", () => {
     const multiTaskAction = dataform.ExecutionAction.create({
       target: { database: "proj", schema: "schema", name: "table" },
