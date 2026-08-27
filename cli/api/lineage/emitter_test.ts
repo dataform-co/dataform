@@ -679,6 +679,49 @@ suite("LineageEmitter", () => {
     expect(apiDisabledLines[0]).to.contain("target-proj");
   });
 
+  test("skip_reason=unauthenticated is logged on UNAUTHENTICATED and disables emission for the rest of the run", async () => {
+    // UNAUTHENTICATED (code 16) is non-recoverable within a single CLI run —
+    // credentials are loaded once at startup. Match the PERMISSION_DENIED /
+    // SERVICE_DISABLED shape: flip the kill-switch, print exactly one hint,
+    // and suppress the generic [lineage] Failed to emit line for follow-up
+    // emits.
+    const mockClient = new MockLineageClient();
+    const stderr = new StderrCapture();
+    const unauthenticatedError: any = new Error("UNAUTHENTICATED: Request had invalid authentication credentials");
+    unauthenticatedError.code = 16;
+    mockClient.processOpenLineageRunEventError = unauthenticatedError;
+
+    const emitter = new LineageEmitter(
+      credentials,
+      { lineageEnabled: true },
+      () => mockClient as any,
+      stderr
+    );
+    const action = dataform.ExecutionAction.create({
+      target: { database: "target-proj", schema: "schema", name: "table" },
+      type: "table"
+    });
+    const startResult = dataform.ActionResult.create({
+      status: dataform.ActionResult.ExecutionStatus.RUNNING
+    });
+
+    // First emit — RPC fires, fails with UNAUTHENTICATED, kill-switch flips.
+    emitter.emitForAction(action, startResult);
+    await emitter.drain();
+
+    // Second emit — kill-switch is set, so no client call should happen.
+    emitter.emitForAction(action, startResult);
+    await emitter.drain();
+
+    // Exactly one RPC (kill-switch prevented the second) and exactly one
+    // stderr line — the fully-static skip_reason=unauthenticated hint. No
+    // generic "[lineage] Failed to emit" line is written.
+    expect(mockClient.processOpenLineageRunEventCalledWith.length).to.equal(1);
+    expect(stderr.writes).to.deep.equal([
+      "[lineage] Skipped lineage emission for the rest of this run: skip_reason=unauthenticated (the credential used to reach the Lineage API is missing, invalid, or expired; re-authenticate and rerun — e.g., 'gcloud auth application-default login')\n"
+    ]);
+  });
+
   test("skip_reason=api_disabled is logged once when many in-flight calls all fail", async () => {
     // Regression: when the first RPC has not yet returned before subsequent
     // emit calls dispatch their own RPCs, the public-method guard cannot

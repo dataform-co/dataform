@@ -301,6 +301,19 @@ export class LineageEmitter {
           }
           return;
         }
+        // UNAUTHENTICATED is non-recoverable within a single CLI run — the
+        // credential is loaded once at startup and does not refresh mid-run,
+        // so continuing to emit would just produce N identical failure lines.
+        // Flip the same kill-switch as 7/9 and print exactly one hint.
+        if (code === 16 || err.message?.includes("UNAUTHENTICATED")) {
+          if (!this.emissionDisabledThisRun) {
+            this.emissionDisabledThisRun = true;
+            this.stderr.write(
+              `[lineage] Skipped lineage emission for the rest of this run: skip_reason=unauthenticated (the credential used to reach the Lineage API is missing, invalid, or expired; re-authenticate and rerun — e.g., 'gcloud auth application-default login')\n`
+            );
+          }
+          return;
+        }
 
         // gax has already exhausted retries on transient codes; propagate to
         // the outer catch with endpoint/location metadata attached so the
