@@ -1,6 +1,5 @@
 import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { ActionBuilder } from "df/core/actions";
-import { Declaration } from "df/core/actions/declaration";
 import { Session } from "df/core/session";
 import { checkAssertionsForDependency } from "df/core/utils";
 import { dataform } from "df/protos/ts";
@@ -122,21 +121,11 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
     if (!rawRef) {
       return true;
     }
-    const resolved = this.session.indexedActions.find(rawRef);
-    if (resolved.length !== 1) {
+    const target = this.session.resolveTarget(rawRef);
+    if (!target) {
       return false;
     }
-    const resolvedAction = resolved[0];
-    const target = resolvedAction.getTarget();
-    if (resolvedAction instanceof Declaration) {
-      entityOrRel.dataSource = target;
-    } else {
-      entityOrRel.dataSource = dataform.Target.create({
-        database: target.database && this.session.finalizeDatabase(target.database),
-        schema: this.session.finalizeSchema(target.schema),
-        name: this.session.finalizeName(target.name)
-      });
-    }
+    entityOrRel.dataSource = dataform.Target.create(target);
     return true;
   }
 
