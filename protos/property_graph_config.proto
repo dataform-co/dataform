@@ -15,6 +15,7 @@ message PropertyGraphConfig {
   repeated GraphEntityConfig entities = 4;
   repeated GraphRelationshipConfig relationships = 5;
   bool disabled = 6;
+  bool depend_on_dependency_assertions = 7;
 
   message TargetDataset {
     string project_id = 1;
@@ -103,4 +104,5 @@ message DataSourceRef {
   string name = 1;
   string schema = 2;
   string database = 3;
+  bool include_dependent_assertions = 4;
 }

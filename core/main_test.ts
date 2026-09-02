@@ -3041,6 +3041,165 @@ entities:
       );
     });
 
+    test("ref with includeDependentAssertions pulls the dependency's assertions", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/books.sqlx"),
+        `config {
+  type: "table",
+  assertions: { rowConditions: ["id > 0"] }
+}
+select 1 as id`
+      );
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/graph.yaml"),
+        `
+name: AssertRefGraph
+entities:
+- name: Book
+  ref:
+    name: books
+    includeDependentAssertions: true
+  keys:
+  - id
+`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.propertyGraphs)).deep.equals(
+        asPlainObject([
+          {
+            target: {
+              schema: "defaultDataset",
+              name: "AssertRefGraph",
+              database: "defaultProject"
+            },
+            canonicalTarget: {
+              schema: "defaultDataset",
+              name: "AssertRefGraph",
+              database: "defaultProject"
+            },
+            dependencyTargets: [
+              {
+                database: "defaultProject",
+                schema: "defaultDataset",
+                name: "books"
+              },
+              {
+                database: "defaultProject",
+                schema: "defaultDataset",
+                name: "defaultDataset_books_assertions_rowConditions"
+              }
+            ],
+            fileName: "definitions/graph.yaml",
+            description: "",
+            disabled: false,
+            entities: [
+              {
+                name: "Book",
+                dataSource: {
+                  schema: "defaultDataset",
+                  name: "books",
+                  database: "defaultProject"
+                },
+                keys: ["id"]
+              }
+            ],
+            graphBody:
+              "NODE TABLES (\n" +
+              "  `defaultProject.defaultDataset.books` AS Book KEY (id)\n" +
+              ")"
+          }
+        ])
+      );
+    });
+
+    test("graph-level dependOnDependencyAssertions pulls every ref's assertions", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/books.sqlx"),
+        `config {
+  type: "table",
+  assertions: { rowConditions: ["id > 0"] }
+}
+select 1 as id`
+      );
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/graph.yaml"),
+        `
+name: GraphAssertDefaultGraph
+dependOnDependencyAssertions: true
+entities:
+- name: Book
+  ref: books
+  keys:
+  - id
+`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.propertyGraphs)).deep.equals(
+        asPlainObject([
+          {
+            target: {
+              schema: "defaultDataset",
+              name: "GraphAssertDefaultGraph",
+              database: "defaultProject"
+            },
+            canonicalTarget: {
+              schema: "defaultDataset",
+              name: "GraphAssertDefaultGraph",
+              database: "defaultProject"
+            },
+            dependencyTargets: [
+              {
+                database: "defaultProject",
+                schema: "defaultDataset",
+                name: "books"
+              },
+              {
+                database: "defaultProject",
+                schema: "defaultDataset",
+                name: "defaultDataset_books_assertions_rowConditions"
+              }
+            ],
+            fileName: "definitions/graph.yaml",
+            description: "",
+            disabled: false,
+            entities: [
+              {
+                name: "Book",
+                dataSource: {
+                  schema: "defaultDataset",
+                  name: "books",
+                  database: "defaultProject"
+                },
+                keys: ["id"]
+              }
+            ],
+            graphBody:
+              "NODE TABLES (\n" +
+              "  `defaultProject.defaultDataset.books` AS Book KEY (id)\n" +
+              ")"
+          }
+        ])
+      );
+    });
+
     test("missing ref emits a compilation error and leaves graphBody empty", () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
       fs.writeFileSync(

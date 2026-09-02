@@ -66,6 +66,9 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
     if (config.disabled) {
       this.proto.disabled = config.disabled;
     }
+    if (config.dependOnDependencyAssertions) {
+      this.dependOnDependencyAssertions = config.dependOnDependencyAssertions;
+    }
 
     this.proto.entities = config.entities.map(entityConfig =>
       this.buildEntity(entityConfig, config.name)
@@ -249,6 +252,9 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
       }
       if (ref.database) {
         rawRef.database = ref.database;
+      }
+      if (ref.includeDependentAssertions) {
+        rawRef.includeDependentAssertions = ref.includeDependentAssertions;
       }
       this.pendingRefs.set(pendingKey, rawRef);
       const depKey = `${rawRef.database || ""}.${rawRef.schema || ""}.${rawRef.name}`;

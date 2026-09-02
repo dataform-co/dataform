@@ -1437,6 +1437,57 @@ suite("property_graph", () => {
     );
   });
 
+  test("graph-level dependOnDependencyAssertions propagates to every ref dependency", () => {
+    const compiled = build({
+      name: "G",
+      dependOnDependencyAssertions: true,
+      entities: [
+        { name: "A", ref: "books", keys: ["id"] },
+        { name: "B", ref: "authors", keys: ["id"] }
+      ]
+    }).compile();
+
+    expect(asPlainObject(compiled)).deep.equals(
+      asPlainObject({
+        target: graphTarget("G"),
+        canonicalTarget: graphTarget("G"),
+        dependencyTargets: [
+          { name: "books", includeDependentAssertions: true },
+          { name: "authors", includeDependentAssertions: true }
+        ],
+        fileName: "definitions/graph.yaml",
+        description: "",
+        disabled: false,
+        entities: [{ name: "A", keys: ["id"] }, { name: "B", keys: ["id"] }]
+      })
+    );
+  });
+
+  test("ref-level includeDependentAssertions propagates to that dependency only", () => {
+    const compiled = build({
+      name: "G",
+      entities: [
+        { name: "A", ref: { name: "books", includeDependentAssertions: true }, keys: ["id"] },
+        { name: "B", ref: "authors", keys: ["id"] }
+      ]
+    }).compile();
+
+    expect(asPlainObject(compiled)).deep.equals(
+      asPlainObject({
+        target: graphTarget("G"),
+        canonicalTarget: graphTarget("G"),
+        dependencyTargets: [
+          { name: "books", includeDependentAssertions: true },
+          { name: "authors", includeDependentAssertions: false }
+        ],
+        fileName: "definitions/graph.yaml",
+        description: "",
+        disabled: false,
+        entities: [{ name: "A", keys: ["id"] }, { name: "B", keys: ["id"] }]
+      })
+    );
+  });
+
   test("ref on relationship also normalizes and populates dependencyTargets", () => {
     const compiled = build({
       name: "G",
