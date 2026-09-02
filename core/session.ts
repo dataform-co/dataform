@@ -263,21 +263,37 @@ export class Session {
       return "";
     }
 
-    if (resolved) {
-      if (resolved instanceof Declaration) {
-        return this.compilationSql().resolveTarget(resolved.getTarget());
-      }
-      return this.compilationSql().resolveTarget({
-        ...resolved.getTarget(),
-        database:
-          resolved.getTarget().database && this.finalizeDatabase(resolved.getTarget().database),
-        schema: this.finalizeSchema(resolved.getTarget().schema),
-        name: this.finalizeName(resolved.getTarget().name)
-      });
+    const target = this.resolveTarget(ref);
+    if (!target) {
+      this.compileError(new Error(`Could not resolve ${JSON.stringify(ref)}`));
+      return "";
     }
+    return this.compilationSql().resolveTarget(target);
+  }
 
-    this.compileError(new Error(`Could not resolve ${JSON.stringify(ref)}`));
-    return "";
+  public resolveTarget(
+    ref: Resolvable | string[],
+    ...rest: string[]
+  ): dataform.ITarget | undefined {
+    ref = toResolvable(ref, rest);
+    const allResolved = this.indexedActions.find(utils.resolvableAsTarget(ref));
+    if (allResolved.length !== 1) {
+      return undefined;
+    }
+    const resolved = allResolved[0];
+    if (resolved instanceof Operation && !resolved.getHasOutput()) {
+      return undefined;
+    }
+    if (resolved instanceof Declaration) {
+      return resolved.getTarget();
+    }
+    const target = resolved.getTarget();
+    return {
+      ...target,
+      database: target.database && this.finalizeDatabase(target.database),
+      schema: this.finalizeSchema(target.schema),
+      name: this.finalizeName(target.name)
+    };
   }
 
   /**
@@ -545,6 +561,8 @@ export class Session {
 
     this.removeNonUniqueActionsFromCompiledGraph(compiledGraph);
 
+    this.finalizePropertyGraphs();
+
     this.checkTestNameUniqueness(compiledGraph.tests);
 
     this.checkCircularity(
@@ -771,6 +789,14 @@ export class Session {
           .map(action => action as Table | View)
           .forEach(tableOrViewAction => tableOrViewAction.dependencies(utils.resolvableAsTarget(currentTest.getTarget())));
       });
+  }
+
+  private finalizePropertyGraphs() {
+    for (const action of this.actions) {
+      if (action instanceof PropertyGraph) {
+        action.finalize();
+      }
+    }
   }
 
   private removeNonUniqueActionsFromCompiledGraph(compiledGraph: dataform.CompiledGraph) {
