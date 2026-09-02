@@ -66,6 +66,12 @@ export class Session {
   // jit_context.data, avilable at jit stage.
   public jitContextData: google.protobuf.Struct | undefined;
 
+  // The file of the action currently being compiled by compileGraphChunk.
+  // Populated only while an action's callback is running so that errors raised
+  // from user code (e.g. failed refs) can be attributed without relying on
+  // getCallerFile(), which is unreliable under vm2's sandbox stack stripping.
+  private currentActionFile: string | undefined;
+
   constructor(
     rootDir?: string,
     projectConfig?: dataform.ProjectConfig,
@@ -467,7 +473,8 @@ export class Session {
 
   }
   public compileError(err: Error | string, path?: string, actionTarget?: dataform.ITarget) {
-    const fileName = path || utils.getCallerFile(this.rootDir) || __filename;
+    const fileName =
+      path || this.currentActionFile || utils.getCallerFile(this.rootDir) || __filename;
 
     const compileError = dataform.CompilationError.create({
       fileName,
@@ -616,11 +623,17 @@ export class Session {
     const compiledChunks: T[] = [];
 
     actions.forEach(action => {
+      // Track the action's file so that compileError() called synchronously
+      // from within the action's callback (e.g. Session.resolve) can attribute
+      // the error without depending on getCallerFile / the vm2 sandbox stack.
+      this.currentActionFile = action.getFileName() || undefined;
       try {
         const compiledChunk = action.compile();
         compiledChunks.push(compiledChunk as any);
       } catch (e) {
-        this.compileError(e, action.getFileName(), action.getTarget());
+        this.compileError(e, this.currentActionFile, action.getTarget());
+      } finally {
+        this.currentActionFile = undefined;
       }
     });
 
