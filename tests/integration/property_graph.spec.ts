@@ -29,7 +29,7 @@ suite("@dataform/integration/property_graph", { parallel: true }, ({ before, aft
   const credentials = dfapi.credentials.read("test_credentials/bigquery.json");
   const schemaSuffix = `e2e_${makeSuffix()}`;
   const dataset = `df_integration_test_pg_${schemaSuffix}`;
-  const graphTarget = `${PROJECT}.${dataset}.${GRAPH_NAME}`;
+  const graphTarget = `${dataset}.${GRAPH_NAME}`;
   let dbadapter: BigQueryDbAdapter;
 
   before("create adapter", async () => {
