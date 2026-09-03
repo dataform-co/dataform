@@ -2528,12 +2528,12 @@ actions:
       expect(tables.length).equals(2);
 
       const topEnPages = tables.find(t => t.target.name === "top_en_pages");
-      expect(topEnPages).to.not.be.undefined;
+      expect(topEnPages).to.not.equal(undefined);
       expect(topEnPages.target.database).equals("swalk-composer-1");
       expect(topEnPages.target.schema).equals("my_dataset");
 
       const sharedTopPages = tables.find(t => t.target.name === "shared_top_pages");
-      expect(sharedTopPages).to.not.be.undefined;
+      expect(sharedTopPages).to.not.equal(undefined);
       expect(sharedTopPages.target.database).equals("swalk-composer-1");
       expect(sharedTopPages.target.schema).equals("my_dataset");
       expect(asPlainObject(sharedTopPages.dependencyTargets)).deep.equals([
@@ -2995,7 +2995,7 @@ actions:
           }
         }
       }
-      expect(foundDagFile).to.be.true;
+      expect(foundDagFile).to.equal(true);
     });
 
     test("op-to-dataform transpiles airflowOperator actions with runner 'dataform-notebook-cloud-run-service'", () => {
@@ -3059,7 +3059,7 @@ actions:
           }
         }
       }
-      expect(foundDagFile).to.be.true;
+      expect(foundDagFile).to.equal(true);
     });
 
     test("op-to-dataform transpiles airflowOperator actions with runner 'dataform-notebook-cloud-run-job'", () => {
@@ -3163,7 +3163,7 @@ actions:
           }
         }
       }
-      expect(foundDagFileOne).to.be.true;
+      expect(foundDagFileOne).to.equal(true);
 
       // Verify action_two notebook contains GCSDeleteBucketOperator
       const notebookTwoContents = JSON.parse(notebooks.find(n => n.target.name === "action_two").notebookContents);
@@ -3182,7 +3182,7 @@ actions:
           }
         }
       }
-      expect(foundDagFileTwo).to.be.true;
+      expect(foundDagFileTwo).to.equal(true);
     });
 
     test("op-to-dataform supports stagingBucket in defaults", () => {
