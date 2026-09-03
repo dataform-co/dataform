@@ -65,7 +65,7 @@ export const testCommand: ICommand<ITestArgs> = {
       actuallyResolve(argv.projectDir, argv.credentials)
     );
     if (argv.impersonateServiceAccount) {
-      (readCredentials as any).impersonateServiceAccount = argv.impersonateServiceAccount;
+      readCredentials.impersonateServiceAccount = argv.impersonateServiceAccount;
     }
 
     if (!compiledGraph.tests.length) {
