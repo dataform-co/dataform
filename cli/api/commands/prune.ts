@@ -2,7 +2,11 @@ import { targetAsReadableString } from "df/core/targets";
 import * as utils from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
-type CompileAction = dataform.ITable | dataform.IOperation | dataform.IAssertion;
+type CompileAction =
+  | dataform.ITable
+  | dataform.IOperation
+  | dataform.IAssertion
+  | dataform.IPropertyGraph;
 
 export function prune(
   compiledGraph: dataform.ICompiledGraph,
@@ -20,6 +24,14 @@ export function prune(
     ),
     operations: compiledGraph.operations.filter(action =>
       includedActionNames.has(targetAsReadableString(action.target))
+    ),
+    propertyGraphs: compiledGraph.propertyGraphs?.filter(action =>
+      includedActionNames.has(targetAsReadableString(action.target))
+    ),
+    // `targets` is declarative output only (nothing downstream reads it), but
+    // `compile` prints it, so it has to agree with the filtered action lists.
+    targets: compiledGraph.targets?.filter(target =>
+      includedActionNames.has(targetAsReadableString(target))
     )
   };
 }
@@ -28,11 +40,12 @@ function computeIncludedActionNames(
   compiledGraph: dataform.ICompiledGraph,
   runConfig: dataform.IRunConfig
 ): Set<string> {
-  // Union all tables, operations, assertions.
+  // Union all tables, operations, assertions, property graphs.
   const allActions: CompileAction[] = [].concat(
     compiledGraph.tables,
     compiledGraph.operations,
-    compiledGraph.assertions
+    compiledGraph.assertions,
+    compiledGraph.propertyGraphs
   );
 
   const allActionNames = new Set<string>(
@@ -62,7 +75,7 @@ function computeIncludedActionNames(
   // Determine actions selected with --tag option and update applicable actions
   if (hasTagSelector) {
     allActions
-      .filter(action => action.tags.some(tag => runConfig.tags.includes(tag)))
+      .filter(action => "tags" in action && action.tags?.some(tag => runConfig.tags.includes(tag)))
       .forEach(action => includedActionNames.add(targetAsReadableString(action.target)));
   }
 
