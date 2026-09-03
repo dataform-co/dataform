@@ -172,6 +172,32 @@ SELECT 1`);
       ).deep.equals(`Could not resolve "e"`);
     });
 
+    test("failed ref attributes the compilation error to the source sqlx file", () => {
+      // Regression test: after the vm2 3.11.3 upgrade, V8 CallSite objects
+      // inside the sandbox lose their file paths, so utils.getCallerFile
+      // cannot recover the caller during a callback invocation. Errors from
+      // Session.resolve were therefore attributed to the sandbox entry
+      // ("index.js") instead of the action's source file. This test locks
+      // the fileName on the emitted CompilationError to the sqlx file.
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/mytable.sqlx"),
+        `config { type: "view" }\nSELECT 1 FROM \${ref("FOO")}`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      const errors = result.compile.compiledGraph.graphErrors.compilationErrors;
+      const resolveError = errors.find(e => e.message === `Could not resolve "FOO"`);
+      expect(resolveError, "expected a 'Could not resolve' error").to.not.equal(undefined);
+      expect(resolveError.fileName).equals("definitions/mytable.sqlx");
+    });
+
     test("fails when ambiguous resolve", () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
       fs.writeFileSync(
