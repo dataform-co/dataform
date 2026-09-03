@@ -635,6 +635,8 @@ export class View extends ActionBuilder<dataform.Table> {
           strictKeysOf<ILegacyViewBigqueryConfig>()(["labels", "additionalOptions", "partitionBy", "clusterBy",]),
           "BigQuery view config"
         );
+        // Shallow-clone before the delete-loop below so we don't mutate a caller-shared object.
+        unverifiedConfig.bigquery = { ...unverifiedConfig.bigquery };
         if (!!unverifiedConfig.bigquery.labels) {
           unverifiedConfig.labels = unverifiedConfig.bigquery.labels;
           delete unverifiedConfig.bigquery.labels;
