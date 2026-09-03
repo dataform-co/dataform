@@ -2489,6 +2489,74 @@ entities:
       }));
     });
 
+    test("graph.yaml tags propagate into the compiled proto", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/graph.yaml"),
+        `
+name: TaggedGraph
+tags:
+- nightly
+- reporting
+entities:
+- name: Customer
+  dataSourceString: defaultProject.defaultDataset.customers
+  keys:
+  - id
+`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(asPlainObject(result.compile.compiledGraph)).deep.equals(asPlainObject({
+        projectConfig: graphProjectConfig,
+        graphErrors: {},
+        dataformCoreVersion: version,
+        targets: [
+          { schema: "defaultDataset", name: "TaggedGraph", database: "defaultProject" }
+        ],
+        jitData: {},
+        propertyGraphs: [
+          {
+            target: {
+              schema: "defaultDataset",
+              name: "TaggedGraph",
+              database: "defaultProject"
+            },
+            canonicalTarget: {
+              schema: "defaultDataset",
+              name: "TaggedGraph",
+              database: "defaultProject"
+            },
+            fileName: "definitions/graph.yaml",
+            description: "",
+            disabled: false,
+            tags: ["nightly", "reporting"],
+            entities: [
+              {
+                name: "Customer",
+                dataSource: {
+                  schema: "defaultDataset",
+                  name: "customers",
+                  database: "defaultProject"
+                },
+                keys: ["id"]
+              }
+            ],
+            graphBody:
+              "NODE TABLES (\n" +
+              "  `defaultProject.defaultDataset.customers` AS Customer KEY (id)\n" +
+              ")"
+          }
+        ]
+      }));
+    });
+
     test("more than one graph.yaml is rejected", () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
       fs.writeFileSync(

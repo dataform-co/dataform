@@ -75,7 +75,7 @@ function computeIncludedActionNames(
   // Determine actions selected with --tag option and update applicable actions
   if (hasTagSelector) {
     allActions
-      .filter(action => "tags" in action && action.tags?.some(tag => runConfig.tags.includes(tag)))
+      .filter(action => action.tags?.some(tag => runConfig.tags.includes(tag)))
       .forEach(action => includedActionNames.add(targetAsReadableString(action.target)));
   }
 

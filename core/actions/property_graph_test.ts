@@ -64,6 +64,39 @@ suite("property_graph", () => {
     );
   });
 
+  test("propagates tags into the compiled proto", () => {
+    const compiled = compile({
+      name: "Tagged",
+      tags: ["nightly", "reporting"],
+      entities: [
+        {
+          name: "Account",
+          dataSourceString: "proj.ds.Accounts",
+          keys: ["id"]
+        }
+      ]
+    });
+
+    expect(asPlainObject(compiled)).deep.equals(
+      asPlainObject({
+        target: graphTarget("Tagged"),
+        canonicalTarget: graphTarget("Tagged"),
+        fileName: "definitions/graph.yaml",
+        description: "",
+        disabled: false,
+        tags: ["nightly", "reporting"],
+        entities: [
+          {
+            name: "Account",
+            dataSource: { database: "proj", schema: "ds", name: "Accounts" },
+            keys: ["id"]
+          }
+        ],
+        graphBody: "NODE TABLES (\n  `proj.ds.Accounts` AS Account KEY (id)\n)"
+      })
+    );
+  });
+
   test("normalizes scalar keys to a single-element list", () => {
     const compiled = compile({
       name: "G",
