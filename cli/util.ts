@@ -81,6 +81,10 @@ const DURATION_UNITS_IN_MILLIS: { [unit: string]: number } = {
   weeks: 7 * 24 * 60 * 60 * 1000
 };
 
+// Security-fixed parse-duration releases (2.1.3 and later) are ESM-only, but this Bazel
+// TypeScript target emits CommonJS for unbundled CLI and test execution. Keep this parser as a
+// linear scanner so those entrypoints remain compatible without reintroducing CVE-2025-25283's
+// unsafe regular-expression behavior.
 export function parseCliDuration(rawDuration: string): number {
   const normalizedDuration = rawDuration?.trim().toLowerCase();
   if (!normalizedDuration) {

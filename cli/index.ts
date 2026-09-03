@@ -250,7 +250,7 @@ const executionTimeoutOption: INamedOption<yargs.Options> = {
     type: "string",
     default: null,
     coerce: (rawTimeoutString: string | null) =>
-      rawTimeoutString ? parseDuration(rawTimeoutString) : null
+      rawTimeoutString ? parseCliDuration(rawTimeoutString) : null
   }
 };
 
@@ -265,7 +265,7 @@ const jitTimeoutOption: INamedOption<yargs.Options> = {
     type: "string",
     default: null,
     coerce: (rawTimeoutString: string | null) =>
-      rawTimeoutString ? parseDuration(rawTimeoutString) : null
+      rawTimeoutString ? parseCliDuration(rawTimeoutString) : null
   }
 };
 
@@ -659,8 +659,7 @@ export function runCli() {
             getCredentialsPath(argv[projectDirOption.name], argv[credentialsOption.name])
           );
           if (argv[impersonateServiceAccountOption.name]) {
-            (readCredentials as any).impersonateServiceAccount =
-              argv[impersonateServiceAccountOption.name];
+            readCredentials.impersonateServiceAccount = argv[impersonateServiceAccountOption.name];
           }
 
           if (!compiledGraph.tests.length) {
@@ -762,8 +761,7 @@ export function runCli() {
             getCredentialsPath(argv[projectDirOption.name], argv[credentialsOption.name])
           );
           if (argv[impersonateServiceAccountOption.name]) {
-            (readCredentials as any).impersonateServiceAccount =
-              argv[impersonateServiceAccountOption.name];
+            readCredentials.impersonateServiceAccount = argv[impersonateServiceAccountOption.name];
           }
 
           const dbadapter = new BigQueryDbAdapter(readCredentials);

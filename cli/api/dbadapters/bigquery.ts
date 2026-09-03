@@ -1,4 +1,4 @@
-import { BigQuery, GetTablesResponse, TableField, TableMetadata } from "@google-cloud/bigquery";
+import { BigQuery, BigQueryOptions, GetTablesResponse, TableField, TableMetadata } from "@google-cloud/bigquery";
 import { GoogleAuth, Impersonated } from "google-auth-library";
 import Long from "long";
 import { PromisePoolExecutor } from "promise-pool-executor";
@@ -49,13 +49,14 @@ export function createBigQueryClientProvider(
   return async (projectId?: string) => {
     projectId = projectId || credentials.projectId;
     if (!clients.has(projectId)) {
-      const clientConfig: any = {
+      const clientConfig: BigQueryOptions = {
         projectId,
-        scopes: EXTRA_GOOGLE_SCOPES,
         location: credentials.location
       };
 
       if (credentials.impersonateServiceAccount) {
+        // Impersonation requires cloud-platform for the source and target credentials, while the
+        // Drive scope remains necessary for BigQuery external tables backed by Google Drive.
         const sourceAuth = new GoogleAuth({
           projectId,
           scopes: IMPERSONATION_GOOGLE_SCOPES,
@@ -70,6 +71,7 @@ export function createBigQueryClientProvider(
           targetScopes: IMPERSONATION_GOOGLE_SCOPES
         });
       } else {
+        clientConfig.scopes = EXTRA_GOOGLE_SCOPES;
         clientConfig.credentials = credentials.credentials && JSON.parse(credentials.credentials);
       }
 
