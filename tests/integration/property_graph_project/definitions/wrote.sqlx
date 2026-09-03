@@ -1,0 +1,7 @@
+config {
+    type: "table"
+}
+
+select 1 as author_id, 1 as book_id union all
+select 2 as author_id, 2 as book_id union all
+select 3 as author_id, 3 as book_id

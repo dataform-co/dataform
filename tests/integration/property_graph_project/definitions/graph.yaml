@@ -1,0 +1,31 @@
+name: "LibraryGraph"
+
+entities:
+- name: "Author"
+  ref: "authors"
+  keys: "id"
+  fields:
+  - name: "id"
+    expression: "id"
+  - name: "name"
+    expression: "name"
+
+- name: "Book"
+  ref: "books"
+  keys: "id"
+  fields:
+  - name: "id"
+    expression: "id"
+  - name: "title"
+    expression: "title"
+
+relationships:
+- name: "Wrote"
+  ref: "wrote"
+  keys: ["author_id", "book_id"]
+  source:
+    entity: "Author"
+    join_keys: ["author_id"]
+  destination:
+    entity: "Book"
+    join_keys: ["book_id"]
