@@ -4,6 +4,7 @@ import { DataPreparation } from "df/core/actions/data_preparation";
 import { IncrementalTable } from "df/core/actions/incremental_table";
 import { Notebook } from "df/core/actions/notebook";
 import { Operation } from "df/core/actions/operation";
+import { PropertyGraph } from "df/core/actions/property_graph";
 import { Table } from "df/core/actions/table";
 import { View } from "df/core/actions/view";
 import { Contextable, Resolvable } from "df/core/contextables";
@@ -20,7 +21,8 @@ type actionsWithDependencies =
   | IncrementalTable
   | Operation
   | Notebook
-  | DataPreparation;
+  | DataPreparation
+  | PropertyGraph;
 
 // This side-steps webpack's require in favour of the real require.
 export const nativeRequire =

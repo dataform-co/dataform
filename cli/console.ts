@@ -200,7 +200,8 @@ export function printCompiledGraph(graph: dataform.ICompiledGraph, outputType: c
       0 +
       (graph.tables ? graph.tables.length : 0) +
       (graph.assertions ? graph.assertions.length : 0) +
-      (graph.operations ? graph.operations.length : 0);
+      (graph.operations ? graph.operations.length : 0) +
+      (graph.propertyGraphs ? graph.propertyGraphs.length : 0);
     writeStdOut(successOutput(`Compiled ${actionCount} action(s).`));
     if (graph.tables && graph.tables.length) {
       graph.tables.forEach(setOrValidateTableEnumType);
@@ -231,6 +232,16 @@ export function printCompiledGraph(graph: dataform.ICompiledGraph, outputType: c
       if(!quietCompilation){
           graph.operations.forEach(operation => {
             writeStdOut(operationString(operation.target, operation.disabled), 1);
+          });
+      }
+    }
+    if (graph.propertyGraphs && graph.propertyGraphs.length) {
+      writeStdOut(
+        `${graph.propertyGraphs.length} property graph(s)${quietCompilation ? "." : ":"}`
+      );
+      if(!quietCompilation){
+          graph.propertyGraphs.forEach(propertyGraph => {
+            writeStdOut(propertyGraphString(propertyGraph.target, false), 1);
           });
       }
     }
@@ -283,11 +294,17 @@ export function printExecutionGraph(executionGraph: dataform.ExecutionGraph, asJ
     const actionsByType = {
       table: [] as dataform.IExecutionAction[],
       assertion: [] as dataform.IExecutionAction[],
-      operation: [] as dataform.IExecutionAction[]
+      operation: [] as dataform.IExecutionAction[],
+      propertyGraph: [] as dataform.IExecutionAction[]
     };
     executionGraph.actions.forEach(action => {
       if (
-        !(action.type === "table" || action.type === "assertion" || action.type === "operation")
+        !(
+          action.type === "table" ||
+          action.type === "assertion" ||
+          action.type === "operation" ||
+          action.type === "propertyGraph"
+        )
       ) {
         throw new Error(`Unrecognized action type: ${action.type}`);
       }
@@ -315,6 +332,19 @@ export function printExecutionGraph(executionGraph: dataform.ExecutionGraph, asJ
       writeStdOut(`${operationActions.length} operation(s):`);
       operationActions.forEach(operationAction =>
         writeStdOut(operationString(operationAction.target, operationAction.tasks.length === 0), 1)
+      );
+    }
+    const propertyGraphActions = actionsByType.propertyGraph;
+    if (propertyGraphActions && propertyGraphActions.length) {
+      writeStdOut(`${propertyGraphActions.length} property graph(s):`);
+      propertyGraphActions.forEach(propertyGraphAction =>
+        writeStdOut(
+          propertyGraphString(
+            propertyGraphAction.target,
+            propertyGraphAction.tasks.length === 0
+          ),
+          1
+        )
       );
     }
   }
@@ -372,13 +402,26 @@ export function printExecutedAction(
           );
           return;
         }
+        case "propertyGraph": {
+          writeStdOut(
+            `${successOutput(
+              `Property graph ${dryRun ? "dry run success" : "created"}: `
+            )} ${propertyGraphString(
+              executionAction.target,
+              executionAction.tasks.length === 0
+            )}${executionSuffix}`
+          );
+          return;
+        }
       }
     }
     case dataform.ActionResult.ExecutionStatus.FAILED: {
       switch (executionAction.type) {
         case "table": {
           writeStdErr(
-            `${errorOutput("Dataset creation failed: ")} ${datasetString(
+            `${errorOutput(
+              `Dataset ${dryRun ? "dry run" : "creation"} failed: `
+            )} ${datasetString(
               executionAction.target,
               executionAction.tableType,
               executionAction.tasks.length === 0
@@ -388,7 +431,9 @@ export function printExecutedAction(
         }
         case "assertion": {
           writeStdErr(
-            `${errorOutput("Assertion failed: ")} ${assertionString(
+            `${errorOutput(
+              `Assertion ${dryRun ? "dry run " : ""}failed: `
+            )} ${assertionString(
               executionAction.target,
               executionAction.tasks.length === 0
             )}${executionSuffix}`
@@ -397,7 +442,20 @@ export function printExecutedAction(
         }
         case "operation": {
           writeStdErr(
-            `${errorOutput("Operation failed: ")} ${operationString(
+            `${errorOutput(
+              `Operation ${dryRun ? "dry run " : ""}failed: `
+            )} ${operationString(
+              executionAction.target,
+              executionAction.tasks.length === 0
+            )}${executionSuffix}`
+          );
+          break;
+        }
+        case "propertyGraph": {
+          writeStdErr(
+            `${errorOutput(
+              `Property graph ${dryRun ? "dry run" : "creation"} failed: `
+            )} ${propertyGraphString(
               executionAction.target,
               executionAction.tasks.length === 0
             )}${executionSuffix}`
@@ -438,6 +496,19 @@ export function printExecutedAction(
           );
           return;
         }
+        case "propertyGraph": {
+          writeStdOut(
+            `${warningOutput(
+              dryRun
+                ? "Property graph dry run skipped (upstream tables not materialised): "
+                : "Skipping property graph creation: "
+            )} ${propertyGraphString(
+              executionAction.target,
+              executionAction.tasks.length === 0
+            )}`
+          );
+          return;
+        }
       }
       return;
     }
@@ -465,6 +536,15 @@ export function printExecutedAction(
         case "operation": {
           writeStdOut(
             `${warningOutput(`Operation execution disabled: `)} ${operationString(
+              executionAction.target,
+              executionAction.tasks.length === 0
+            )}`
+          );
+          return;
+        }
+        case "propertyGraph": {
+          writeStdOut(
+            `${warningOutput(`Property graph creation disabled: `)} ${propertyGraphString(
               executionAction.target,
               executionAction.tasks.length === 0
             )}`
@@ -516,6 +596,10 @@ function assertionString(target: dataform.ITarget, disabled: boolean) {
 }
 
 function operationString(target: dataform.ITarget, disabled: boolean) {
+  return `${targetString(target)}${disabled ? " [disabled]" : ""}`;
+}
+
+function propertyGraphString(target: dataform.ITarget, disabled: boolean) {
   return `${targetString(target)}${disabled ? " [disabled]" : ""}`;
 }
 

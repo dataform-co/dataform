@@ -59,6 +59,7 @@ ts_test_suite(
     name = "tests",
     srcs = [
         "commands/jit/rpc_test.ts",
+        "commands/prune_test.ts",
         "dbadapters/bigquery_test.ts",
         "execution_sql_test.ts",
         "utils_test.ts",

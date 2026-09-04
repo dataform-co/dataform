@@ -1,15 +1,31 @@
 import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { ActionBuilder } from "df/core/actions";
 import { Session } from "df/core/session";
+import { checkAssertionsForDependency } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
 const CATALOG_NOT_SUPPORTED_MESSAGE =
   "Catalog-based data sources (BigLake/Iceberg/external catalogs) are not yet supported.";
 
+function entityRefKey(name: string): string {
+  return `entity:${name}`;
+}
+
+function relationshipRefKey(name: string): string {
+  return `relationship:${name}`;
+}
+
 export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
   public session: Session;
+  public dependOnDependencyAssertions: boolean = false;
 
   private proto = dataform.PropertyGraph.create({ description: "", disabled: false });
+  // Populated during construction for entity/relationship configs that use a ref-style
+  // dataSource; drained in finalize() once all actions are indexed, since the target
+  // schema/database of a ref cannot be resolved until every action is known.
+  // Keys are produced by entityRefKey / relationshipRefKey.
+  private pendingRefs = new Map<string, dataform.ITarget>();
+  private dependencyKeys = new Set<string>();
 
   constructor(session?: Session, unverifiedConfig?: any, filename?: string) {
     super(session);
@@ -50,6 +66,9 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
     if (config.disabled) {
       this.proto.disabled = config.disabled;
     }
+    if (config.dependOnDependencyAssertions) {
+      this.dependOnDependencyAssertions = config.dependOnDependencyAssertions;
+    }
 
     this.proto.entities = config.entities.map(entityConfig =>
       this.buildEntity(entityConfig, config.name)
@@ -61,8 +80,6 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
     this.validateUniqueNames(config.name);
     this.resolveEndpointDefaults();
     this.validateEndpointReferences(config.name);
-
-    this.proto.graphBody = this.emitGraphBody();
   }
 
   public getFileName() {
@@ -74,20 +91,56 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
   }
 
   public compile() {
-    return verifyObjectMatchesProto(
+    this.proto = verifyObjectMatchesProto(
       dataform.PropertyGraph,
       this.proto,
       VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM
     );
+    return this.proto;
+  }
+
+  public finalize() {
+    let allResolved = true;
+    for (const entity of this.proto.entities) {
+      if (!this.resolveRefIntoDataSource(entity, entityRefKey(entity.name))) {
+        allResolved = false;
+      }
+    }
+    for (const rel of this.proto.relationships) {
+      if (!this.resolveRefIntoDataSource(rel, relationshipRefKey(rel.name))) {
+        allResolved = false;
+      }
+    }
+    if (allResolved) {
+      this.proto.graphBody = this.emitGraphBody();
+    }
+  }
+
+  private resolveRefIntoDataSource(
+    entityOrRel: dataform.IGraphEntity | dataform.IGraphRelationship,
+    key: string
+  ): boolean {
+    const rawRef = this.pendingRefs.get(key);
+    if (!rawRef) {
+      return true;
+    }
+    const target = this.session.resolveTarget(rawRef);
+    if (!target) {
+      return false;
+    }
+    entityOrRel.dataSource = dataform.Target.create(target);
+    return true;
   }
 
   private normalizeEntitiesAndRelationships(unverifiedConfig: any) {
     for (const entity of unverifiedConfig.entities || []) {
+      normalizeRef(entity);
       normalizeKeys(entity);
       normalizeFields(entity);
       normalizeFieldsOnLabels(entity);
     }
     for (const relationship of unverifiedConfig.relationships || []) {
+      normalizeRef(relationship);
       normalizeKeys(relationship);
       normalizeFields(relationship);
       normalizeFieldsOnLabels(relationship);
@@ -113,7 +166,7 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
     }
     const entityName = entityConfig.name;
     const where = `Property graph '${graphName}': entity '${entityName}'`;
-    const dataSource = this.resolveDataSource(entityConfig, where);
+    const dataSource = this.resolveDataSource(entityConfig, entityRefKey(entityName), where);
     if (!entityConfig.keys || entityConfig.keys.length === 0) {
       throw new Error(`${where} must declare 'keys'.`);
     }
@@ -137,7 +190,7 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
     }
     const relName = relConfig.name;
     const where = `Property graph '${graphName}': relationship '${relName}'`;
-    const dataSource = this.resolveDataSource(relConfig, where);
+    const dataSource = this.resolveDataSource(relConfig, relationshipRefKey(relName), where);
 
     if (!relConfig.source) {
       throw new Error(`${where} must declare 'source'.`);
@@ -163,6 +216,7 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
 
   private resolveDataSource(
     entityOrRel: dataform.IGraphEntityConfig | dataform.IGraphRelationshipConfig,
+    pendingKey: string,
     where: string
   ): dataform.Target {
     if (entityOrRel.dataSourceCatalog) {
@@ -186,6 +240,32 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
         );
       }
       return dataform.Target.create({ name: ds.table, schema: dataset, database: project });
+    }
+    if (entityOrRel.dataSourceRef) {
+      const ref = entityOrRel.dataSourceRef;
+      if (!ref.name) {
+        throw new Error(`${where}: 'ref' must include a 'name'.`);
+      }
+      const rawRef: dataform.ITarget = { name: ref.name };
+      if (ref.schema) {
+        rawRef.schema = ref.schema;
+      }
+      if (ref.database) {
+        rawRef.database = ref.database;
+      }
+      if (ref.includeDependentAssertions) {
+        rawRef.includeDependentAssertions = ref.includeDependentAssertions;
+      }
+      this.pendingRefs.set(pendingKey, rawRef);
+      const depKey = `${rawRef.database || ""}.${rawRef.schema || ""}.${rawRef.name}`;
+      if (!this.dependencyKeys.has(depKey)) {
+        this.dependencyKeys.add(depKey);
+        const depTarget = checkAssertionsForDependency(this, rawRef);
+        if (depTarget) {
+          this.proto.dependencyTargets.push(depTarget);
+        }
+      }
+      return undefined;
     }
     throw new Error(`${where}: must declare a data source.`);
   }
@@ -265,6 +345,21 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
       parts.push(`EDGE TABLES (\n  ${edgeEntries.join(",\n  ")}\n)`);
     }
     return parts.join("\n");
+  }
+}
+
+function normalizeRef(entityOrRel: any) {
+  if (entityOrRel.ref === undefined || entityOrRel.ref === null) {
+    return;
+  }
+  if (typeof entityOrRel.ref === "string") {
+    entityOrRel.dataSourceRef = { name: entityOrRel.ref };
+    delete entityOrRel.ref;
+    return;
+  }
+  if (typeof entityOrRel.ref === "object") {
+    entityOrRel.dataSourceRef = entityOrRel.ref;
+    delete entityOrRel.ref;
   }
 }
 

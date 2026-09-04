@@ -6,12 +6,17 @@ ts_test_suite(
     name = "tests",
     srcs = [
         "bigquery.spec.ts",
+        "property_graph.spec.ts",
         "utils.ts",
     ],
     data = [
         "//test_credentials:bigquery.json",
         "//tests/integration/bigquery_project:files",
         "//tests/integration/bigquery_project:node_modules",
+        "//packages/@dataform/core:bundle.js",
+        "//packages/@dataform/core:package.json",
+        "//tests/integration/property_graph_project:files",
+        "//tests/integration/property_graph_project:node_modules",
     ],
     tags = ["integration"],
     deps = [
