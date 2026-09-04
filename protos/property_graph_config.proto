@@ -16,6 +16,7 @@ message PropertyGraphConfig {
   repeated GraphRelationshipConfig relationships = 5;
   bool disabled = 6;
   bool depend_on_dependency_assertions = 7;
+  repeated string tags = 8;
 
   message TargetDataset {
     string project_id = 1;
