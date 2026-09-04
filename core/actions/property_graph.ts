@@ -66,6 +66,9 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
     if (config.disabled) {
       this.proto.disabled = config.disabled;
     }
+    if (config.tags) {
+      this.proto.tags = config.tags;
+    }
     if (config.dependOnDependencyAssertions) {
       this.dependOnDependencyAssertions = config.dependOnDependencyAssertions;
     }

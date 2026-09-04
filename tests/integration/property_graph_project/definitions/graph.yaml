@@ -1,5 +1,7 @@
 name: "LibraryGraph"
 
+tags: ["integration"]
+
 entities:
 - name: "Author"
   ref: "authors"
