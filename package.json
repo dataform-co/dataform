@@ -40,6 +40,7 @@
     "fs-extra": "^9.0.0",
     "glob": "13.0.6",
     "google-sql-syntax-ts": "^1.0.3",
+    "ignore": "^5.2.0",
     "js-beautify": "^1.10.2",
     "js-yaml": "^4.2.0",
     "jsdoc": "^3.6.11",

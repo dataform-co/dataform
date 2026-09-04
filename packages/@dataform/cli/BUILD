@@ -38,6 +38,7 @@ externals = [
     "fs-extra",
     "glob",
     "google-sql-syntax-ts",
+    "ignore",
     "js-beautify",
     "js-yaml",
     "moo",
