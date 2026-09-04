@@ -12,6 +12,7 @@ ts_library(
         "console.ts",
         "credentials.ts",
         "index.ts",
+        "project_config_options.ts",
         "util.ts",
         "yargswrapper.ts",
     ],
