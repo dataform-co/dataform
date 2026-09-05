@@ -256,7 +256,7 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
       if (ref.database) {
         rawRef.database = ref.database;
       }
-      if (ref.includeDependentAssertions) {
+      if (ref.hasOwnProperty("includeDependentAssertions")) {
         rawRef.includeDependentAssertions = ref.includeDependentAssertions;
       }
       this.pendingRefs.set(pendingKey, rawRef);
