@@ -1,7 +1,6 @@
 import * as chokidar from "chokidar";
 import * as fs from "fs";
 import * as glob from "glob";
-import parseDuration from "parse-duration";
 import * as path from "path";
 import yargs from "yargs";
 
@@ -32,6 +31,7 @@ import {
   actuallyResolve,
   assertPathExists,
   compiledGraphHasErrors,
+  parseCliDuration,
   promptForIcebergConfig,
 } from "df/cli/util";
 import { createYargsCli, INamedOption } from "df/cli/yargswrapper";
@@ -236,7 +236,7 @@ const timeoutOption: INamedOption<yargs.Options> = {
     type: "string",
     default: null,
     coerce: (rawTimeoutString: string | null) =>
-      rawTimeoutString ? parseDuration(rawTimeoutString) : null
+      rawTimeoutString ? parseCliDuration(rawTimeoutString) : null
   }
 };
 
@@ -250,7 +250,7 @@ const executionTimeoutOption: INamedOption<yargs.Options> = {
     type: "string",
     default: null,
     coerce: (rawTimeoutString: string | null) =>
-      rawTimeoutString ? parseDuration(rawTimeoutString) : null
+      rawTimeoutString ? parseCliDuration(rawTimeoutString) : null
   }
 };
 
@@ -265,7 +265,7 @@ const jitTimeoutOption: INamedOption<yargs.Options> = {
     type: "string",
     default: null,
     coerce: (rawTimeoutString: string | null) =>
-      rawTimeoutString ? parseDuration(rawTimeoutString) : null
+      rawTimeoutString ? parseCliDuration(rawTimeoutString) : null
   }
 };
 
@@ -298,6 +298,13 @@ const bigqueryJobLabelsOption: INamedOption<yargs.Options> = {
   }
 };
 
+const impersonateServiceAccountOption: INamedOption<yargs.Options> = {
+  name: "impersonate-service-account",
+  option: {
+    describe: "Service account email to impersonate during authentication.",
+    type: "string"
+  }
+};
 const quietCompileOption: INamedOption<yargs.Options> = {
   name: "quiet",
   option: {
@@ -625,7 +632,13 @@ export function runCli() {
         format: `test [${projectDirMustExistOption.name}]`,
         description: "Run the dataform project's unit tests.",
         positionalOptions: [projectDirMustExistOption],
-        options: [credentialsOption, timeoutOption, jsonOutputOption, ...ProjectConfigOptions.allYargsOptions],
+        options: [
+          credentialsOption,
+          impersonateServiceAccountOption,
+          timeoutOption,
+          jsonOutputOption,
+          ...ProjectConfigOptions.allYargsOptions
+        ],
         processFn: async argv => {
           if (!argv[jsonOutputOption.name]) {
             print("Compiling...\n");
@@ -645,6 +658,9 @@ export function runCli() {
           const readCredentials = credentials.read(
             getCredentialsPath(argv[projectDirOption.name], argv[credentialsOption.name])
           );
+          if (argv[impersonateServiceAccountOption.name]) {
+            readCredentials.impersonateServiceAccount = argv[impersonateServiceAccountOption.name];
+          }
 
           if (!compiledGraph.tests.length) {
             printError("No unit tests found.");
@@ -697,6 +713,7 @@ export function runCli() {
           actionsOption,
           credentialsOption,
           emitLineageOption,
+          impersonateServiceAccountOption,
           fullRefreshOption,
           includeDepsOption,
           includeDependentsOption,
@@ -743,6 +760,9 @@ export function runCli() {
           const readCredentials = credentials.read(
             getCredentialsPath(argv[projectDirOption.name], argv[credentialsOption.name])
           );
+          if (argv[impersonateServiceAccountOption.name]) {
+            readCredentials.impersonateServiceAccount = argv[impersonateServiceAccountOption.name];
+          }
 
           const dbadapter = new BigQueryDbAdapter(readCredentials);
           const executionGraph = await build(
