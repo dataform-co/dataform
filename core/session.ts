@@ -424,7 +424,13 @@ export class Session {
       // without breaking typescript consumers of Dataform.
       | any
   ): Declaration {
-    const declaration = new Declaration(this, config, utils.getCallerFile(this.rootDir));
+    // Shallow-clone so verifyConfig's in-place renames/deletes don't mutate a caller-shared object,
+    // matching how publish(), operate() and assert() spread their configs.
+    const declaration = new Declaration(
+      this,
+      !!config && typeof config === "object" ? { ...config } : config,
+      utils.getCallerFile(this.rootDir)
+    );
     this.actions.push(declaration);
     return declaration;
   }
