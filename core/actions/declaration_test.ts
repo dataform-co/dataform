@@ -216,6 +216,47 @@ actions:
     );
   });
 
+  suite("shared config", () => {
+    test("declare() does not mutate the caller's config object", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/shared.js"),
+        `
+const src = {
+  database: "defaultProject",
+  schema: "defaultDataset",
+  name: "orders",
+  columns: { id: "Order id", total: "Order total" }
+};
+declare(src);
+
+publish("stg_orders", { type: "view", columns: src.columns })
+  .query(_ => \`SELECT '\${src.database}.\${src.schema}.\${src.name}' AS declared_from\`);
+`
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+
+      const stgOrders = result.compile.compiledGraph.tables.find(
+        t => t.target.name === "stg_orders"
+      );
+      expect(stgOrders.query).equals(
+        "SELECT 'defaultProject.defaultDataset.orders' AS declared_from"
+      );
+      expect(asPlainObject(stgOrders.actionDescriptor.columns)).deep.equals([
+        { path: ["id"], description: "Order id" },
+        { path: ["total"], description: "Order total" }
+      ]);
+    });
+  });
+
   test(`SQLx backward compatible with LegacyConfig`, () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
     fs.writeFileSync(path.join(projectDir, "workflow_settings.yaml"), VALID_WORKFLOW_SETTINGS_YAML);
