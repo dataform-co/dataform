@@ -9,6 +9,7 @@ package(default_visibility = ["//visibility:public"])
 ts_library(
     name = "cli",
     srcs = [
+        "commands/compile_command.ts",
         "commands/format_command.ts",
         "commands/help_command.ts",
         "commands/index.ts",

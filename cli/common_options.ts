@@ -91,3 +91,16 @@ export const quietCompileOption: INamedOption<yargs.Options> = {
   }
 };
 
+// It would be nice to use yargs' "implies" to implement this, but it doesn't work for some reason.
+export const requiresSelection = (
+  name: string,
+  actions: INamedOption<yargs.Options>,
+  tags: INamedOption<yargs.Options>
+): INamedOption<yargs.Options>["check"] => (argv: yargs.Arguments) => {
+  if (argv[name] && !(argv[actions.name] || argv[tags.name])) {
+    throw new Error(
+      `The --${name} flag should only be supplied along with --${actions.name} or --${tags.name}.`
+    );
+  }
+};
+
