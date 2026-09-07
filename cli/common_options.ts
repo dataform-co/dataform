@@ -32,3 +32,17 @@ export const projectDirMustExistOption: INamedOption<yargs.PositionalOptions> = 
     }
   }
 };
+
+// Splits repeated and comma-separated values into a flat list, e.g.
+// `--actions a,b --actions c` -> ["a", "b", "c"].
+export const splitCommas = (raw: string[] | null) => raw.map(value => value.split(",")).flat();
+
+export const actionsOption: INamedOption<yargs.Options> = {
+  name: "actions",
+  option: {
+    describe: "A list of action names or patterns to run. Can include '*' wildcards.",
+    type: "array",
+    coerce: splitCommas
+  }
+};
+

@@ -8,7 +8,7 @@ import { promptForIcebergConfig } from "df/cli/util";
 import { ICommand, INamedOption } from "df/cli/yargswrapper";
 import { dataform } from "df/protos/ts";
 
-export const icebergOption: INamedOption<yargs.Options> = {
+const icebergOption: INamedOption<yargs.Options> = {
   name: "iceberg",
   option: {
     describe: "Initialize the project with workflow-level Iceberg tables configuration.",

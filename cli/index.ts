@@ -1,6 +1,5 @@
 import * as chokidar from "chokidar";
 import * as fs from "fs";
-import * as glob from "glob";
 import parseDuration from "parse-duration";
 import * as path from "path";
 import yargs from "yargs";
@@ -11,8 +10,19 @@ import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 import { LineageEmitter } from "df/cli/api/lineage/emitter";
 import { createLineageEmitter as createLineageEmitterFromFactory } from "df/cli/api/lineage/emitter_factory";
 import { prettyJsonStringify } from "df/cli/api/utils";
-import { helpCommand, initCommand, installCommand } from "df/cli/commands";
-import { projectDirMustExistOption, projectDirOption } from "df/cli/common_options";
+import {
+  formatCommand,
+  helpCommand,
+  initCommand,
+  initCredsCommand,
+  installCommand
+} from "df/cli/commands";
+import {
+  actionsOption,
+  projectDirMustExistOption,
+  projectDirOption,
+  splitCommas
+} from "df/cli/common_options";
 import {
   compiledGraphOutputType,
   Logger,
@@ -22,13 +32,10 @@ import {
   printError,
   printExecutedAction,
   printExecutionGraph,
-  printFormatFilesResult,
-  printInitCredsResult,
   printSuccess,
   printTestResult,
   printWarning
 } from "df/cli/console";
-import { getBigQueryCredentials } from "df/cli/credentials";
 import { ProjectConfigOptions } from "df/cli/project_config_options";
 import {
   actuallyResolve,
@@ -37,7 +44,6 @@ import {
 import { createYargsCli, INamedOption } from "df/cli/yargswrapper";
 import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
-import { formatFile } from "df/sqlx/format";
 
 const RECOMPILE_DELAY = 500;
 
@@ -63,10 +69,6 @@ const fullRefreshOption: INamedOption<yargs.Options> = {
   }
 };
 
-// Splits repeated and comma-separated values into a flat list, e.g.
-// `--actions a,b --actions c` -> ["a", "b", "c"].
-const splitCommas = (raw: string[] | null) => raw.map(value => value.split(",")).flat();
-
 // It would be nice to use yargs' "implies" to implement this, but it doesn't work for some reason.
 const requiresSelection = (
   name: string,
@@ -77,15 +79,6 @@ const requiresSelection = (
     throw new Error(
       `The --${name} flag should only be supplied along with --${actions.name} or --${tags.name}.`
     );
-  }
-};
-
-const actionsOption: INamedOption<yargs.Options> = {
-  name: "actions",
-  option: {
-    describe: "A list of action names or patterns to run. Can include '*' wildcards.",
-    type: "array",
-    coerce: splitCommas
   }
 };
 
@@ -280,23 +273,11 @@ const quietCompileOption: INamedOption<yargs.Options> = {
   }
 };
 
-const fmtIgnoreJsOption: INamedOption<yargs.Options> = {
-  name: "ignore-js-files",
-  option: {
-    describe: "If set, the formatter will not consider javascript files (.js)",
-    type: "boolean",
-    default: false,
-  },
-};
-
-const testConnectionOptionName = "test-connection";
-
 const watchOptionName = "watch";
 
 const verboseOptionName = "verbose";
 const dryRunOptionName = "dry-run";
 const runTestsOptionName = "run-tests";
-const checkOptionName = "check";
 
 const actionRetryLimitName = "action-retry-limit";
 
@@ -310,55 +291,7 @@ export function runCli() {
       helpCommand,
       initCommand,
       installCommand,
-      {
-        format: `init-creds [${projectDirMustExistOption.name}]`,
-        description:
-          `Create a ${credentials.CREDENTIALS_FILENAME} file for Dataform to use when ` +
-          `accessing BigQuery.`,
-        positionalOptions: [projectDirMustExistOption],
-        options: [
-          {
-            name: testConnectionOptionName,
-            option: {
-              describe: "If true, a test query will be run using your final credentials.",
-              type: "boolean",
-              default: true
-            }
-          }
-        ],
-        processFn: async argv => {
-          const finalCredentials = getBigQueryCredentials();
-          if (argv[testConnectionOptionName]) {
-            print("\nRunning connection test...");
-            const dbadapter = new BigQueryDbAdapter(finalCredentials);
-            const testResult = await credentials.test(dbadapter);
-            switch (testResult.status) {
-              case credentials.TestResultStatus.SUCCESSFUL: {
-                printSuccess("\nCredentials test query completed successfully.\n");
-                break;
-              }
-              case credentials.TestResultStatus.TIMED_OUT: {
-                throw new Error("Credentials test connection timed out.");
-              }
-              case credentials.TestResultStatus.OTHER_ERROR: {
-                throw new Error(
-                  `Credentials test query failed: ${testResult.error.stack ||
-                    testResult.error.message}`
-                );
-              }
-            }
-          } else {
-            print("\nCredentials test query was not run.\n");
-          }
-          const filePath = path.resolve(
-            argv[projectDirMustExistOption.name],
-            credentials.CREDENTIALS_FILENAME
-          );
-          fs.writeFileSync(filePath, prettyJsonStringify(finalCredentials));
-          printInitCredsResult(filePath);
-          return 0;
-        }
-      },
+      initCredsCommand,
       {
         format: `compile [${projectDirMustExistOption.name}]`,
         description:
@@ -760,95 +693,7 @@ export function runCli() {
           return runResult.status === dataform.RunResult.ExecutionStatus.SUCCESSFUL ? 0 : 1;
         }
       },
-      {
-        format: `format [${projectDirMustExistOption.name}]`,
-        description: "Format the dataform project's files.",
-        positionalOptions: [projectDirMustExistOption],
-        options: [
-          actionsOption,
-          fmtIgnoreJsOption,
-          {
-            name: checkOptionName,
-            option: {
-              describe: "Check if files are formatted correctly without modifying them.",
-              type: "boolean",
-              default: false
-            }
-          }
-        ],
-        processFn: async argv => {
-          const extensions = argv[fmtIgnoreJsOption.name] ? "*.sqlx" : "*.{js,sqlx}";
-          let actions = [`{definitions,includes}/**/${extensions}`];
-          if (actionsOption.name in argv && argv[actionsOption.name].length > 0) {
-            actions = argv[actionsOption.name];
-          }
-          const filenames = actions
-            .map((action: string) =>
-              glob.sync(action, { cwd: argv[projectDirMustExistOption.name] })
-            )
-            .flat();
-
-          const isCheckMode = argv[checkOptionName];
-          const results: Array<{
-            filename: string;
-            err?: Error;
-            needsFormatting?: boolean;
-          }> = await Promise.all(
-            filenames.map(async (filename: string) => {
-              try {
-                const filePath = path.resolve(argv[projectDirMustExistOption.name], filename);
-                if (isCheckMode) {
-                  // In check mode, we don't modify files, just check if they need formatting
-                  const fileContent = fs.readFileSync(filePath).toString();
-                  const formattedContent = await formatFile(filePath, {
-                    overwriteFile: false
-                  });
-                  return {
-                    filename,
-                    needsFormatting: fileContent !== formattedContent
-                  };
-                } else {
-                  // Normal formatting mode
-                  await formatFile(filePath, {
-                    overwriteFile: true
-                  });
-                  return {
-                    filename
-                  };
-                }
-              } catch (e) {
-                return {
-                  filename,
-                  err: e
-                };
-              }
-            })
-          );
-
-          printFormatFilesResult(results);
-
-          // Return error code if there are any formatting errors
-          const failedFormatResults = results.filter(result => !!result.err);
-          if (failedFormatResults.length > 0) {
-            printError(`${failedFormatResults.length} file(s) failed to format.`);
-            return 1;
-          }
-
-          // In check mode, return an error code if any files need formatting
-          if (isCheckMode) {
-            const filesNeedingFormatting = results.filter(result => result.needsFormatting);
-            if (filesNeedingFormatting.length > 0) {
-              printError(
-                `${filesNeedingFormatting.length} file(s) would be reformatted. Run the format command without --check to update.`
-              );
-              return 1;
-            }
-            printSuccess("All files are formatted correctly!");
-          }
-
-          return 0;
-        }
-      }
+      formatCommand
     ]
   })
     .scriptName("dataform")
