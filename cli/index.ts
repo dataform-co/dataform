@@ -5,7 +5,6 @@ import * as path from "path";
 import yargs from "yargs";
 
 import { build, compile, credentials, prune, run, test } from "df/cli/api";
-import { CREDENTIALS_FILENAME } from "df/cli/api/commands/credentials";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 import { LineageEmitter } from "df/cli/api/lineage/emitter";
 import { createLineageEmitter as createLineageEmitterFromFactory } from "df/cli/api/lineage/emitter_factory";
@@ -15,13 +14,19 @@ import {
   helpCommand,
   initCommand,
   initCredsCommand,
-  installCommand
+  installCommand,
+  testCommand
 } from "df/cli/commands";
 import {
   actionsOption,
+  credentialsOption,
+  getCredentialsPath,
+  jsonOutputOption,
   projectDirMustExistOption,
   projectDirOption,
-  splitCommas
+  quietCompileOption,
+  splitCommas,
+  timeoutOption
 } from "df/cli/common_options";
 import {
   compiledGraphOutputType,
@@ -38,7 +43,6 @@ import {
 } from "df/cli/console";
 import { ProjectConfigOptions } from "df/cli/project_config_options";
 import {
-  actuallyResolve,
   compiledGraphHasErrors,
 } from "df/cli/util";
 import { createYargsCli, INamedOption } from "df/cli/yargswrapper";
@@ -151,16 +155,6 @@ const outputIncludeDependentsOption: INamedOption<yargs.Options> = {
   check: requiresSelection("output-include-dependents", outputActionsOption, outputTagsOption)
 };
 
-const credentialsOption: INamedOption<yargs.Options> = {
-  name: "credentials",
-  option: {
-    describe: "The location of the credentials JSON file to use.",
-    default: CREDENTIALS_FILENAME
-  },
-  check: (argv: yargs.Arguments<any>) =>
-    getCredentialsPath(argv[projectDirOption.name], argv[credentialsOption.name])
-};
-
 const emitLineageOption: INamedOption<yargs.Options> = {
   name: "emit-lineage",
   option: {
@@ -168,15 +162,6 @@ const emitLineageOption: INamedOption<yargs.Options> = {
       "If set, emit OpenLineage RunEvents to Knowledge Catalog Lineage for each executed action. " +
       "Overrides workflow_settings.yaml lineage.enabled when specified.",
     type: "boolean"
-  }
-};
-
-const jsonOutputOption: INamedOption<yargs.Options> = {
-  name: "json",
-  option: {
-    describe: "Outputs a JSON representation of the compiled project or test results.",
-    type: "boolean",
-    default: false
   }
 };
 
@@ -193,17 +178,6 @@ const dotOutputOption: INamedOption<yargs.Options> = {
       }
     }
   
-};
-
-const timeoutOption: INamedOption<yargs.Options> = {
-  name: "timeout",
-  option: {
-    describe: "Duration to allow project compilation to complete. Examples: '1s', '10m', etc.",
-    type: "string",
-    default: null,
-    coerce: (rawTimeoutString: string | null) =>
-      rawTimeoutString ? parseDuration(rawTimeoutString) : null
-  }
 };
 
 const executionTimeoutOption: INamedOption<yargs.Options> = {
@@ -264,15 +238,6 @@ const bigqueryJobLabelsOption: INamedOption<yargs.Options> = {
   }
 };
 
-const quietCompileOption: INamedOption<yargs.Options> = {
-  name: "quiet",
-  option: {
-    describe: "Less verbose compilation output. Example usage: 'dataform compile --quiet'",
-    type: "boolean",
-    default: false
-  }
-};
-
 const watchOptionName = "watch";
 
 const verboseOptionName = "verbose";
@@ -280,10 +245,6 @@ const dryRunOptionName = "dry-run";
 const runTestsOptionName = "run-tests";
 
 const actionRetryLimitName = "action-retry-limit";
-
-function getCredentialsPath(projectDir: string, credentialsPath: string) {
-  return actuallyResolve(projectDir, credentialsPath);
-}
 
 export function runCli() {
   const builtYargs = createYargsCli({
@@ -438,50 +399,7 @@ export function runCli() {
           }
         }
       },
-      {
-        format: `test [${projectDirMustExistOption.name}]`,
-        description: "Run the dataform project's unit tests.",
-        positionalOptions: [projectDirMustExistOption],
-        options: [credentialsOption, timeoutOption, jsonOutputOption, ...ProjectConfigOptions.allYargsOptions],
-        processFn: async argv => {
-          if (!argv[jsonOutputOption.name]) {
-            print("Compiling...\n");
-          }          
-          const compiledGraph = await compile({
-            projectDir: argv[projectDirMustExistOption.name],
-            projectConfigOverride: ProjectConfigOptions.constructProjectConfigOverride(argv),
-            timeoutMillis: argv[timeoutOption.name] || undefined
-          });
-          if (compiledGraphHasErrors(compiledGraph)) {
-            printCompiledGraphErrors(compiledGraph.graphErrors, argv[quietCompileOption.name]);
-            return 1;
-          }
-          if (!argv[jsonOutputOption.name]) {
-            printSuccess("Compiled successfully.\n");
-          }   
-          const readCredentials = credentials.read(
-            getCredentialsPath(argv[projectDirOption.name], argv[credentialsOption.name])
-          );
-
-          if (!compiledGraph.tests.length) {
-            printError("No unit tests found.");
-            return 1;
-          }
-
-          if (!argv[jsonOutputOption.name]) {
-            print(`Running ${compiledGraph.tests.length} unit tests...\n`);
-          }
-          const dbadapter = new BigQueryDbAdapter(readCredentials);
-          const testResults = await test(dbadapter, compiledGraph.tests);
-          if (!argv[jsonOutputOption.name]) {
-            testResults.forEach(testResult => printTestResult(testResult));
-          } else {
-            // Print all results as JSON if the option is set.
-            print(prettyJsonStringify(testResults));
-          }
-          return testResults.every(testResult => testResult.successful) ? 0 : 1;
-        }
-      },
+      testCommand,
       {
         format: `run [${projectDirMustExistOption.name}]`,
         description: "Run the dataform project.",

@@ -1,7 +1,9 @@
 import * as fs from "fs";
+import parseDuration from "parse-duration";
 import * as path from "path";
 import yargs from "yargs";
 
+import { CREDENTIALS_FILENAME } from "df/cli/api/commands/credentials";
 import { actuallyResolve, assertPathExists } from "df/cli/util";
 import { INamedOption } from "df/cli/yargswrapper";
 
@@ -43,6 +45,49 @@ export const actionsOption: INamedOption<yargs.Options> = {
     describe: "A list of action names or patterns to run. Can include '*' wildcards.",
     type: "array",
     coerce: splitCommas
+  }
+};
+
+export function getCredentialsPath(projectDir: string, credentialsPath: string) {
+  return actuallyResolve(projectDir, credentialsPath);
+}
+
+export const credentialsOption: INamedOption<yargs.Options> = {
+  name: "credentials",
+  option: {
+    describe: "The location of the credentials JSON file to use.",
+    default: CREDENTIALS_FILENAME
+  },
+  check: (argv: yargs.Arguments<any>) =>
+    getCredentialsPath(argv[projectDirOption.name], argv[credentialsOption.name])
+};
+
+export const jsonOutputOption: INamedOption<yargs.Options> = {
+  name: "json",
+  option: {
+    describe: "Outputs a JSON representation of the compiled project or test results.",
+    type: "boolean",
+    default: false
+  }
+};
+
+export const timeoutOption: INamedOption<yargs.Options> = {
+  name: "timeout",
+  option: {
+    describe: "Duration to allow project compilation to complete. Examples: '1s', '10m', etc.",
+    type: "string",
+    default: null,
+    coerce: (rawTimeoutString: string | null) =>
+      rawTimeoutString ? parseDuration(rawTimeoutString) : null
+  }
+};
+
+export const quietCompileOption: INamedOption<yargs.Options> = {
+  name: "quiet",
+  option: {
+    describe: "Less verbose compilation output. Example usage: 'dataform compile --quiet'",
+    type: "boolean",
+    default: false
   }
 };
 
