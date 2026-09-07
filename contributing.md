@@ -44,21 +44,18 @@ bazel test //core/...
 
 To run the CLI integration test against your own GCP project:
 
-1. Comment out the following dependency in `cli/BUILD`:
+1. Overwrite the contents of `test_credentials/BUILD` with:
 
-   - `//test_credentials:bigquery.json`
+   ```
+   package(default_visibility = ["//visibility:public"])
+   exports_files(["bigquery.json"])
+   ```
 
-2. Update the following constants in `cli/index_test.ts` to match your project:
+2. Prepare a credentials JSON file at `test_credentials/bigquery.json`. Set values as follows:
 
-   - `DEFAULT_DATABASE`
-   - `DEFAULT_LOCATION`
-   - `CREDENTIALS_PATH`
-
-   Prepare a credentials JSON file referenced by `CREDENTIALS_PATH`. Set values as follows:
-
-   - `projectId`: the same string as `DEFAULT_DATABASE`.
+   - `projectId`: your GCP project id
    - `credentials`: the entire content of your GCP service account key JSON file as a single string (you can generate it with `jq -Rsa < path/to/key.json`).
-   - `location`: the same string as `DEFAULT_LOCATION`.
+   - `location`: location to use in your project
 
    Example:
 
@@ -70,10 +67,10 @@ To run the CLI integration test against your own GCP project:
    }
    ```
 
-3. Run the test:
+3. Run the tests:
 
    ```bash
-   bazel test //cli:index_test
+   ./scripts/run_integration_tests
    ```
 
 ### Lint

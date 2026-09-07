@@ -20,6 +20,7 @@ ts_test_suite(
     ],
     tags = ["integration"],
     deps = [
+        "//cli:index_test_base",
         "//cli/api",
         "//cli/api/utils",
         "//common/promises",

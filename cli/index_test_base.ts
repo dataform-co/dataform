@@ -9,10 +9,6 @@ import { dataform } from "df/protos/ts";
 import { corePackageTarPath, getProcessResult, nodePath, npmPath } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
 
-export const DEFAULT_DATABASE = "dataform-open-source";
-export const DEFAULT_LOCATION = "US";
-export const DEFAULT_RESERVATION = "projects/dataform-open-source/locations/us/reservations/dataform-test";
-
 const runfilesDir = process.env.RUNFILES;
 let workspaceName = "df";
 if (!fs.existsSync(path.resolve(runfilesDir, "df"))) {
@@ -20,6 +16,38 @@ if (!fs.existsSync(path.resolve(runfilesDir, "df"))) {
 }
 
 export const CREDENTIALS_PATH = path.resolve(runfilesDir, workspaceName, "test_credentials/bigquery.json");
+
+function getCredentialsProjectId(): string {
+  try {
+    if (fs.existsSync(CREDENTIALS_PATH)) {
+      const parsed = JSON.parse(fs.readFileSync(CREDENTIALS_PATH, "utf8"));
+      if (parsed?.projectId) {
+        return parsed.projectId;
+      }
+    }
+  } catch (e) {
+    // Fall back to default
+  }
+  return "dataform-open-source";
+}
+
+function getCredentialsLocation(): string {
+  try {
+    if (fs.existsSync(CREDENTIALS_PATH)) {
+      const parsed = JSON.parse(fs.readFileSync(CREDENTIALS_PATH, "utf8"));
+      if (parsed?.location) {
+        return parsed.location;
+      }
+    }
+  } catch (e) {
+    // Fall back to default
+  }
+  return "US";
+}
+
+export const DEFAULT_DATABASE = getCredentialsProjectId();
+export const DEFAULT_LOCATION = getCredentialsLocation();
+export const DEFAULT_RESERVATION = `projects/${DEFAULT_DATABASE}/locations/${DEFAULT_LOCATION.toLowerCase()}/reservations/dataform-test`;
 
 export const cliEntryPointPath = "cli/node_modules/@dataform/cli/bundle.js";
 

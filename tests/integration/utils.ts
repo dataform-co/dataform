@@ -3,6 +3,7 @@ import { expect } from "chai";
 import * as dfapi from "df/cli/api";
 import * as dbadapters from "df/cli/api/dbadapters";
 import { ExecutionSql } from "df/cli/api/dbadapters/execution_sql";
+import { DEFAULT_DATABASE } from "df/cli/index_test_base";
 import { dataform } from "df/protos/ts";
 
 export function keyBy<V>(values: V[], keyFn: (value: V) => string): { [key: string]: V } {
@@ -37,7 +38,10 @@ export async function compile(
 ) {
   const compiledGraph = await dfapi.compile({
     projectDir,
-    projectConfigOverride: { schemaSuffix: schemaSuffixOverride }
+    projectConfigOverride: {
+      defaultDatabase: DEFAULT_DATABASE,
+      schemaSuffix: schemaSuffixOverride
+    }
   });
 
   expect(compiledGraph.graphErrors.compilationErrors).to.eql([]);

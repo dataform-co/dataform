@@ -3,12 +3,12 @@ import { randomBytes } from "crypto";
 
 import * as dfapi from "df/cli/api";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
+import { DEFAULT_DATABASE } from "df/cli/index_test_base";
 import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { compile, keyBy } from "df/tests/integration/utils";
 
-const PROJECT = "dataform-open-source";
 const GRAPH_NAME = "LibraryGraph";
 
 function makeSuffix() {
@@ -21,7 +21,7 @@ function makeSuffix() {
 
 async function dropDataset(dbadapter: BigQueryDbAdapter, dataset: string) {
   await dbadapter.execute(
-    `drop schema if exists \`${PROJECT}.${dataset}\` cascade`
+    `drop schema if exists \`${DEFAULT_DATABASE}.${dataset}\` cascade`
   );
 }
 
@@ -29,7 +29,7 @@ suite("@dataform/integration/property_graph", { parallel: true }, ({ before, aft
   const credentials = dfapi.credentials.read("test_credentials/bigquery.json");
   const schemaSuffix = `e2e_${makeSuffix()}`;
   const dataset = `df_integration_test_pg_${schemaSuffix}`;
-  const graphTarget = `${dataset}.${GRAPH_NAME}`;
+  const graphTarget = `${DEFAULT_DATABASE}.${dataset}.${GRAPH_NAME}`;
   let dbadapter: BigQueryDbAdapter;
 
   before("create adapter", async () => {
@@ -65,11 +65,11 @@ suite("@dataform/integration/property_graph", { parallel: true }, ({ before, aft
     const rows = (await dbadapter.execute(
       `select property_graph_catalog, property_graph_schema,
               property_graph_name, ddl
-       from \`${PROJECT}.${dataset}\`.INFORMATION_SCHEMA.PROPERTY_GRAPHS`
+       from \`${DEFAULT_DATABASE}.${dataset}\`.INFORMATION_SCHEMA.PROPERTY_GRAPHS`
     )).rows;
     expect(rows).to.have.lengthOf(1);
     const [row] = rows;
-    expect(row.property_graph_catalog).equals(PROJECT);
+    expect(row.property_graph_catalog).equals(DEFAULT_DATABASE);
     expect(row.property_graph_schema).equals(dataset);
     expect(row.property_graph_name).equals(GRAPH_NAME);
     for (const needle of [
