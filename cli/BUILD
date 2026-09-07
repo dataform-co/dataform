@@ -16,6 +16,7 @@ ts_library(
         "commands/init_command.ts",
         "commands/init_creds_command.ts",
         "commands/install_command.ts",
+        "commands/run_command.ts",
         "commands/test_command.ts",
         "common_options.ts",
         "console.ts",
