@@ -5,12 +5,14 @@ import parseDuration from "parse-duration";
 import * as path from "path";
 import yargs from "yargs";
 
-import { build, compile, credentials, init, install, prune, run, test } from "df/cli/api";
+import { build, compile, credentials, prune, run, test } from "df/cli/api";
 import { CREDENTIALS_FILENAME } from "df/cli/api/commands/credentials";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 import { LineageEmitter } from "df/cli/api/lineage/emitter";
 import { createLineageEmitter as createLineageEmitterFromFactory } from "df/cli/api/lineage/emitter_factory";
 import { prettyJsonStringify } from "df/cli/api/utils";
+import { helpCommand, initCommand, installCommand } from "df/cli/commands";
+import { projectDirMustExistOption, projectDirOption } from "df/cli/common_options";
 import {
   compiledGraphOutputType,
   Logger,
@@ -22,7 +24,6 @@ import {
   printExecutionGraph,
   printFormatFilesResult,
   printInitCredsResult,
-  printInitResult,
   printSuccess,
   printTestResult,
   printWarning
@@ -31,9 +32,7 @@ import { getBigQueryCredentials } from "df/cli/credentials";
 import { ProjectConfigOptions } from "df/cli/project_config_options";
 import {
   actuallyResolve,
-  assertPathExists,
   compiledGraphHasErrors,
-  promptForIcebergConfig,
 } from "df/cli/util";
 import { createYargsCli, INamedOption } from "df/cli/yargswrapper";
 import { targetAsReadableString } from "df/core/targets";
@@ -54,33 +53,6 @@ process.on("unhandledRejection", async (reason: any) => {
 
 // TODO: Since yargs launched an actually well typed API in version 12, let's use it as this file is currently not type checked.
 
-const projectDirOption: INamedOption<yargs.PositionalOptions> = {
-  name: "project-dir",
-  option: {
-    describe: "The Dataform project directory.",
-    default: ".",
-    coerce: actuallyResolve
-  }
-};
-
-const projectDirMustExistOption = {
-  ...projectDirOption,
-  check: (argv: yargs.Arguments<any>) => {
-    assertPathExists(argv[projectDirOption.name]);
-    const dataformJsonPath = path.resolve(argv[projectDirOption.name], "dataform.json");
-    const workflowSettingsYamlPath = path.resolve(
-      argv[projectDirOption.name],
-      "workflow_settings.yaml"
-    );
-    if (!fs.existsSync(dataformJsonPath) && !fs.existsSync(workflowSettingsYamlPath)) {
-      throw new Error(
-        `${
-          argv[projectDirOption.name]
-        } does not appear to be a dataform directory (missing workflow_settings.yaml file).`
-      );
-    }
-  }
-};
 
 const fullRefreshOption: INamedOption<yargs.Options> = {
   name: "full-refresh",
@@ -308,15 +280,6 @@ const quietCompileOption: INamedOption<yargs.Options> = {
   }
 };
 
-const icebergOption: INamedOption<yargs.Options> = {
-  name: "iceberg",
-  option: {
-    describe: "Initialize the project with workflow-level Iceberg tables configuration.",
-    type: "boolean",
-    default: false,
-  },
-};
-
 const fmtIgnoreJsOption: INamedOption<yargs.Options> = {
   name: "ignore-js-files",
   option: {
@@ -344,89 +307,9 @@ function getCredentialsPath(projectDir: string, credentialsPath: string) {
 export function runCli() {
   const builtYargs = createYargsCli({
     commands: [
-      {
-        // This dummy command is a hack with the only goal of displaying "help" as a command in the CLI
-        // and we need it because of the limitations of yargs considering "help" as an option and not as a command.
-        format: "help [command]",
-        description: "Show help. If [command] is specified, the help is for the given command.",
-        positionalOptions: [],
-        options: [],
-        processFn: async argv => {
-          return 0;
-        }
-      },
-      {
-        format:
-          `init [${projectDirOption.name}] [${ProjectConfigOptions.defaultDatabase.name}]` +
-          ` [${ProjectConfigOptions.defaultLocation.name}]`,
-        description: "Create a new dataform project.",
-        positionalOptions: [
-          projectDirOption,
-          {
-            name: ProjectConfigOptions.defaultDatabase.name,
-            option: {
-              describe: "The default database to use, equivalent to Google Cloud Project ID."
-            },
-            check: (argv: yargs.Arguments<any>) => {
-              if (!argv[ProjectConfigOptions.defaultDatabase.name]) {
-                throw new Error(
-                  `The ${ProjectConfigOptions.defaultDatabase.name} positional argument is ` +
-                    `required. Use "dataform help init" for more info.`
-                );
-              }
-            }
-          },
-          {
-            name: ProjectConfigOptions.defaultLocation.name,
-            option: {
-              describe:
-                "The default location to use. See " +
-                "https://cloud.google.com/bigquery/docs/locations for supported values."
-            },
-            check: (argv: yargs.Arguments<any>) => {
-              if (!argv[ProjectConfigOptions.defaultLocation.name]) {
-                throw new Error(
-                  `The ${ProjectConfigOptions.defaultLocation.name} positional argument is ` +
-                    `required. Use "dataform help init" for more info.`
-                );
-              }
-            }
-          }
-        ],
-        options: [icebergOption],
-        processFn: async argv => {
-          const projectDir = argv[projectDirOption.name];
-          const projectConfig: dataform.IProjectConfig = {
-            defaultDatabase: argv[ProjectConfigOptions.defaultDatabase.name],
-            defaultLocation: argv[ProjectConfigOptions.defaultLocation.name],
-          };
-
-          if (argv[icebergOption.name]) {
-            const icebergConfig = promptForIcebergConfig();
-            if(icebergConfig) {
-              projectConfig.defaultIcebergConfig = icebergConfig;
-            }
-          }
-
-          print("Writing project files...\n");
-
-          const initResult = await init(projectDir, projectConfig);
-          printInitResult(initResult);
-          return 0;
-        }
-      },
-      {
-        format: `install [${projectDirMustExistOption.name}]`,
-        description: "Install a project's NPM dependencies.",
-        positionalOptions: [projectDirMustExistOption],
-        options: [],
-        processFn: async argv => {
-          print("Installing NPM dependencies...\n");
-          await install(argv[projectDirMustExistOption.name]);
-          printSuccess("Project dependencies successfully installed.");
-          return 0;
-        }
-      },
+      helpCommand,
+      initCommand,
+      installCommand,
       {
         format: `init-creds [${projectDirMustExistOption.name}]`,
         description:
