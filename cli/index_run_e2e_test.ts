@@ -1,19 +1,21 @@
 import { expect } from "chai";
-import { execFile } from "child_process";
 import * as fs from "fs-extra";
 import { dump as dumpYaml, load as loadYaml } from "js-yaml";
 import * as path from "path";
 
 import {
-  cliEntryPointPath,
+  alterWorkflowSettings,
   CREDENTIALS_PATH,
   INTEGRATION_TEST_LOCATION,
   INTEGRATION_TEST_PROJECT,
-  INTEGRATION_TEST_RESERVATION
+  INTEGRATION_TEST_RESERVATION,
+  runCli,
+  setupProject,
+  writeDefinitionFile
 } from "df/cli/index_test_base";
 import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
-import { corePackageTarPath, getProcessResult, nodePath, npmPath, suite, test } from "df/testing";
+import { suite, test } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
 
 suite("run e2e", ({ afterEach }) => {
@@ -21,45 +23,12 @@ suite("run e2e", ({ afterEach }) => {
 
   test("golden path with package.json", async () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
-    const npmCacheDir = tmpDirFixture.createNewTmpDir();
-    const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
-    const packageJsonPath = path.join(projectDir, "package.json");
-
-    // Initialize a project using the CLI, don't install packages.
-    await getProcessResult(
-      execFile(nodePath, [cliEntryPointPath, "init", projectDir, INTEGRATION_TEST_PROJECT, INTEGRATION_TEST_LOCATION])
-    );
-
-    // Install packages manually to get around bazel read-only sandbox issues.
-    const workflowSettings = dataform.WorkflowSettings.create(
-      loadYaml(fs.readFileSync(workflowSettingsPath, "utf8"))
-    );
-    delete workflowSettings.dataformCoreVersion;
-    fs.writeFileSync(workflowSettingsPath, dumpYaml(workflowSettings));
-    fs.writeFileSync(
-      packageJsonPath,
-      `{
-  "dependencies":{
-    "@dataform/core": "${version}"
-  }
-}`
-    );
-    await getProcessResult(
-      execFile(npmPath, [
-        "install",
-        "--prefix",
-        projectDir,
-        "--cache",
-        npmCacheDir,
-        corePackageTarPath
-      ])
-    );
+    await setupProject(tmpDirFixture, projectDir);
 
     // Write a simple file to the project.
-    const filePath = path.join(projectDir, "definitions", "example.sqlx");
-    fs.ensureFileSync(filePath);
-    fs.writeFileSync(
-      filePath,
+    writeDefinitionFile(
+      projectDir,
+      "example.sqlx",
       `
 config { type: "table", tags: ["someTag"] }
 select 1 as \${dataform.projectConfig.vars.testVar2}
@@ -67,15 +36,14 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
     );
 
     // Compile the project using the CLI.
-    const compileResult = await getProcessResult(
-      execFile(nodePath, [
-        cliEntryPointPath,
-        "compile",
-        projectDir,
+    const compileResult = await runCli(
+      "compile", 
+      projectDir, 
+      [
         "--json",
         "--vars=testVar1=testValue1,testVar2=testValue2",
         "--schema-suffix=test_schema_suffix"
-      ])
+      ]
     );
 
     expect(compileResult.exitCode).equals(0);
@@ -127,11 +95,10 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
     });
 
     // Dry run the project.
-    const runResult = await getProcessResult(
-      execFile(nodePath, [
-        cliEntryPointPath,
-        "run",
-        projectDir,
+    const runResult = await runCli(
+      "run", 
+      projectDir, 
+      [
         "--credentials",
         CREDENTIALS_PATH,
         "--dry-run",
@@ -140,7 +107,7 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
         "--default-location=europe",
         "--tags=someTag,someOtherTag",
         "--actions=example,someOtherAction"
-      ])
+      ]
     );
 
     if (runResult.exitCode !== 0 || runResult.stdout.trim().length === 0) {
@@ -193,56 +160,24 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
   });
 
   suite("disable-assertions flag (run)", ({ beforeEach }) => {
-    const projectDir = tmpDirFixture.createNewTmpDir();
+    let projectDir: string;
 
-    async function setupTestProject(): Promise<void> {
-      const npmCacheDir = tmpDirFixture.createNewTmpDir();
-      const packageJsonPath = path.join(projectDir, "package.json");
+    beforeEach("setup test project", async () => {
+      projectDir = tmpDirFixture.createNewTmpDir()
+      await setupProject(tmpDirFixture, projectDir);
 
-      await getProcessResult(
-        execFile(nodePath, [cliEntryPointPath, "init", projectDir, INTEGRATION_TEST_PROJECT, INTEGRATION_TEST_LOCATION])
-      );
-
-      const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
-      const workflowSettings = dataform.WorkflowSettings.create(
-        loadYaml(fs.readFileSync(workflowSettingsPath, "utf8"))
-      );
-      delete workflowSettings.dataformCoreVersion;
-      fs.writeFileSync(workflowSettingsPath, dumpYaml(workflowSettings));
-
-      fs.writeFileSync(
-        packageJsonPath,
-        `{
-  "dependencies":{
-    "@dataform/core": "${version}"
-  }
-}`
-      );
-      await getProcessResult(
-        execFile(npmPath, [
-          "install",
-          "--prefix",
-          projectDir,
-          "--cache",
-          npmCacheDir,
-          corePackageTarPath
-        ])
-      );
-
-      const assertionFilePath = path.join(projectDir, "definitions", "test_assertion.sqlx");
-      fs.ensureFileSync(assertionFilePath);
-      fs.writeFileSync(
-        assertionFilePath,
+      writeDefinitionFile(
+        projectDir,
+        "test_assertion.sqlx",
         `
 config { type: "assertion" }
 SELECT 1 WHERE FALSE
 `
       );
 
-      const tableFilePath = path.join(projectDir, "definitions", "example_table.sqlx");
-      fs.ensureFileSync(tableFilePath);
-      fs.writeFileSync(
-        tableFilePath,
+      writeDefinitionFile(
+        projectDir,
+        "example_table.sqlx",
         `
 config {
   type: "table",
@@ -253,19 +188,7 @@ config {
 SELECT 1 as id
 `
       );
-    }
-
-    async function setUpWorkflowSettings(disableAssertions: boolean): Promise<void> {
-      const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
-      const workflowSettings = dataform.WorkflowSettings.create(
-        loadYaml(fs.readFileSync(workflowSettingsPath, "utf8"))
-      );
-      delete workflowSettings.dataformCoreVersion;
-      workflowSettings.disableAssertions = disableAssertions;
-      fs.writeFileSync(workflowSettingsPath, dumpYaml(workflowSettings));
-    }
-
-    beforeEach("setup test project", async () => await setupTestProject());
+    });
 
     const expectedRunResult = {
       actions: [
@@ -316,20 +239,19 @@ SELECT 1 as id
     };
 
     test("with --disable-assertions flag", async () => {
-      await setUpWorkflowSettings(false);
+      await alterWorkflowSettings(projectDir, { disableAssertions : false });
 
-      const runResult = await getProcessResult(
-        execFile(nodePath, [
-          cliEntryPointPath,
-          "run",
-          projectDir,
+      const runResult = await runCli(
+        "run",
+        projectDir,
+        [
           "--credentials",
           CREDENTIALS_PATH,
           "--dry-run",
           "--json",
           "--disable-assertions",
           "--actions=test_assertion,example_table"
-        ])
+        ]
       );
 
       if (runResult.exitCode !== 0 || runResult.stdout.trim().length === 0) {
@@ -341,19 +263,18 @@ SELECT 1 as id
     });
 
     test("with disableAssertions set in workflow_settings.yaml", async () => {
-      await setUpWorkflowSettings(true);
+      await alterWorkflowSettings(projectDir, { disableAssertions : true });
 
-      const runResult = await getProcessResult(
-        execFile(nodePath, [
-          cliEntryPointPath,
-          "run",
-          projectDir,
+      const runResult = await runCli(
+        "run",
+        projectDir,
+        [
           "--credentials",
           CREDENTIALS_PATH,
           "--dry-run",
           "--json",
           "--actions=test_assertion,example_table"
-        ])
+        ]
       );
 
       if (runResult.exitCode !== 0 || runResult.stdout.trim().length === 0) {
@@ -365,13 +286,12 @@ SELECT 1 as id
     });
 
     test("with --job-labels flag", async () => {
-      await setUpWorkflowSettings(false);
+      await alterWorkflowSettings(projectDir, { disableAssertions : false });
 
-      const runResult = await getProcessResult(
-        execFile(nodePath, [
-          cliEntryPointPath,
-          "run",
-          projectDir,
+      const runResult = await runCli(
+        "run",
+        projectDir,
+        [
           "--credentials",
           CREDENTIALS_PATH,
           "--dry-run",
@@ -379,7 +299,7 @@ SELECT 1 as id
           "--disable-assertions",
           "--actions=test_assertion,example_table",
           "--job-labels=env=testing,team=dataform"
-        ])
+        ]
       );
 
       if (runResult.exitCode !== 0 || runResult.stdout.trim().length === 0) {
@@ -393,47 +313,15 @@ SELECT 1 as id
 
 
   suite("--default-reservation flag", ({ beforeEach }) => {
-    const projectDir = tmpDirFixture.createNewTmpDir();
+    let projectDir: string;
 
     beforeEach("setup test project", async () => {
-      const npmCacheDir = tmpDirFixture.createNewTmpDir();
-      const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
-      const packageJsonPath = path.join(projectDir, "package.json");
+      projectDir = tmpDirFixture.createNewTmpDir();
+      await setupProject(tmpDirFixture, projectDir);
 
-      await getProcessResult(
-        execFile(nodePath, [cliEntryPointPath, "init", projectDir, INTEGRATION_TEST_PROJECT, INTEGRATION_TEST_LOCATION])
-      );
-
-      // Remove dataformCoreVersion so we can use the local package.
-      const workflowSettings = dataform.WorkflowSettings.create(
-        loadYaml(fs.readFileSync(workflowSettingsPath, "utf8"))
-      );
-      delete workflowSettings.dataformCoreVersion;
-      fs.writeFileSync(workflowSettingsPath, dumpYaml(workflowSettings));
-
-      fs.writeFileSync(
-        packageJsonPath,
-        `{
-  "dependencies":{
-    "@dataform/core": "${version}"
-  }
-}`
-      );
-      await getProcessResult(
-        execFile(npmPath, [
-          "install",
-          "--prefix",
-          projectDir,
-          "--cache",
-          npmCacheDir,
-          corePackageTarPath
-        ])
-      );
-
-      const tableFilePath = path.join(projectDir, "definitions", "example_table.sqlx");
-      fs.ensureFileSync(tableFilePath);
-      fs.writeFileSync(
-        tableFilePath,
+      writeDefinitionFile(
+        projectDir,
+        "example_table.sqlx",
         `
 config { type: "table" }
 SELECT 1 as id
@@ -442,14 +330,13 @@ SELECT 1 as id
     });
 
     test("--default-reservation flag is applied to projectConfig in compile output", async () => {
-      const compileResult = await getProcessResult(
-        execFile(nodePath, [
-          cliEntryPointPath,
-          "compile",
-          projectDir,
+      const compileResult = await runCli(
+        "compile",
+        projectDir,
+        [
           "--json",
           `--default-reservation=${INTEGRATION_TEST_RESERVATION}`
-        ])
+        ]
       );
 
       expect(compileResult.exitCode).equals(0);
@@ -465,18 +352,17 @@ SELECT 1 as id
     });
 
     test("--default-reservation flag is applied to projectConfig in run (dry-run) output", async () => {
-      const runResult = await getProcessResult(
-        execFile(nodePath, [
-          cliEntryPointPath,
-          "run",
-          projectDir,
+      const runResult = await runCli(
+        "run",
+        projectDir,
+        [
           "--credentials",
           CREDENTIALS_PATH,
           "--dry-run",
           "--json",
           `--default-reservation=${INTEGRATION_TEST_RESERVATION}`,
           "--actions=example_table"
-        ])
+        ]
       );
 
       expect(runResult.exitCode).equals(0);
@@ -492,205 +378,99 @@ SELECT 1 as id
     });
   });
 
-  test("golden with successful unit test", async () => {
-    const projectDir = tmpDirFixture.createNewTmpDir();
-    const npmCacheDir = tmpDirFixture.createNewTmpDir();
-    const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
-    const packageJsonPath = path.join(projectDir, "package.json");
+  suite("unit tests", ({ beforeEach }) => {
+    let projectDir: string;
 
-    // Initialize a project using the CLI, don't install packages.
-    await getProcessResult(
-      execFile(nodePath, [cliEntryPointPath, "init", projectDir, INTEGRATION_TEST_PROJECT, INTEGRATION_TEST_LOCATION])
-    );
-
-    // Install packages manually to get around bazel read-only sandbox issues.
-    const workflowSettings = dataform.WorkflowSettings.create(
-      loadYaml(fs.readFileSync(workflowSettingsPath, "utf8"))
-    );
-    delete workflowSettings.dataformCoreVersion;
-    fs.writeFileSync(workflowSettingsPath, dumpYaml(workflowSettings));
-    fs.writeFileSync(
-      packageJsonPath,
-      `{
-  "dependencies":{
-    "@dataform/core": "${version}"
-  }
-}`
-    );
-    await getProcessResult(
-      execFile(npmPath, [
-        "install",
-        "--prefix",
-        projectDir,
-        "--cache",
-        npmCacheDir,
-        corePackageTarPath
-      ])
-    );
-
-    // Write a simple file to the project.
-    const filePath = path.join(projectDir, "definitions", "example.sqlx");
-    fs.ensureFileSync(filePath);
-    fs.writeFileSync(
-      filePath,
-      `
+    beforeEach("setup test project", async () => {
+      projectDir = tmpDirFixture.createNewTmpDir();
+      await setupProject(tmpDirFixture, projectDir);
+      // Write a simple file to the project.
+      writeDefinitionFile(
+          projectDir,
+          "example.sqlx",
+          `
 config { type: "table" }
 select 1
 `
-    );
-    // Write a simple test to the project.
-    const unitTestPath = path.join(projectDir, "definitions", "example_test.sqlx");
-    fs.ensureFileSync(unitTestPath);
-    fs.writeFileSync(
-      unitTestPath,
+      );
+    });
+
+    test("golden with successful unit test", async () => {
+      // Write a simple passing test to the project.
+      writeDefinitionFile(
+        projectDir,
+        "example_test.sqlx",
       `
 config { type: "test", dataset: "example" }
 select 1
 `
-    );
+      );
 
-    // Run tests using the CLI.
-    const testResult = await getProcessResult(
-      execFile(nodePath, [
-        cliEntryPointPath,
+      // Run tests using the CLI.
+      const testResult = await runCli(
         "test",
         projectDir,
-        "--credentials",
-        CREDENTIALS_PATH,
-        "--json",
-      ])
-    );
+        [
+          "--credentials",
+          CREDENTIALS_PATH,
+          "--json"
+        ]
+      );
 
-    expect(testResult.exitCode).equals(0);
+      expect(testResult.exitCode).equals(0);
 
-    expect(JSON.parse(testResult.stdout)).deep.equals([    {
-      "name": "example_test",
-      "successful": true,
-    }]);
+      expect(JSON.parse(testResult.stdout)).deep.equals([    {
+        "name": "example_test",
+        "successful": true,
+      }]);
   });
 
-  test("golden with failed unit test", async () => {
-    const projectDir = tmpDirFixture.createNewTmpDir();
-    const npmCacheDir = tmpDirFixture.createNewTmpDir();
-    const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
-    const packageJsonPath = path.join(projectDir, "package.json");
-
-    // Initialize a project using the CLI, don't install packages.
-    await getProcessResult(
-      execFile(nodePath, [cliEntryPointPath, "init", projectDir, INTEGRATION_TEST_PROJECT, INTEGRATION_TEST_LOCATION])
-    );
-
-    // Install packages manually to get around bazel read-only sandbox issues.
-    const workflowSettings = dataform.WorkflowSettings.create(
-      loadYaml(fs.readFileSync(workflowSettingsPath, "utf8"))
-    );
-    delete workflowSettings.dataformCoreVersion;
-    fs.writeFileSync(workflowSettingsPath, dumpYaml(workflowSettings));
-    fs.writeFileSync(
-      packageJsonPath,
-      `{
-  "dependencies":{
-    "@dataform/core": "${version}"
-  }
-}`
-    );
-    await getProcessResult(
-      execFile(npmPath, [
-        "install",
-        "--prefix",
+    test("golden with failed unit test", async () => {
+      // Write a simple failing test to the project.
+      writeDefinitionFile(
         projectDir,
-        "--cache",
-        npmCacheDir,
-        corePackageTarPath
-      ])
-    );
-
-    // Write a simple file to the project.
-    const filePath = path.join(projectDir, "definitions", "example.sqlx");
-    fs.ensureFileSync(filePath);
-    fs.writeFileSync(
-      filePath,
-      `
-config { type: "table" }
-select 1
-`
-    );
-    // Write a simple test to the project.
-    const unitTestPath = path.join(projectDir, "definitions", "example_test.sqlx");
-    fs.ensureFileSync(unitTestPath);
-    fs.writeFileSync(
-      unitTestPath,
-      `
+        "example_test.sqlx",
+        `
 config { type: "test", dataset: "example" }
 select 2
 `
-    );
+      );
 
-    // Run tests using the CLI.
-    const testResult = await getProcessResult(
-      execFile(nodePath, [
-        cliEntryPointPath,
+      // Run tests using the CLI.
+      const testResult = await runCli(
         "test",
         projectDir,
-        "--credentials",
-        CREDENTIALS_PATH,
-        "--json",
-      ])
-    );
+        [
+          "--credentials",
+          CREDENTIALS_PATH,
+          "--json"
+        ]
+      );
 
-    expect(testResult.exitCode).equals(1);
+      expect(testResult.exitCode).equals(1);
 
-    expect(JSON.parse(testResult.stdout)).deep.equals([{
-      "name": "example_test",
-      "successful": false,
-      messages: [
-        "For row 0 and column \"f0_\": expected \"2\", but saw \"1\"."
-      ]
-    }]);
+      expect(JSON.parse(testResult.stdout)).deep.equals([{
+        "name": "example_test",
+        "successful": false,
+        messages: [
+          "For row 0 and column \"f0_\": expected \"2\", but saw \"1\"."
+        ]
+      }]);
+    });
+
   });
 
   suite("onSchemaChange", ({ beforeEach }) => {
-    const projectDir = tmpDirFixture.createNewTmpDir();
+    let projectDir: string;
     const uniqueDataset = `dataform_e2e_osc_${Math.random().toString(36).substring(7)}`;
 
     beforeEach("setup test project", async () => {
-      const npmCacheDir = tmpDirFixture.createNewTmpDir();
-      const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
-      const packageJsonPath = path.join(projectDir, "package.json");
+      projectDir = tmpDirFixture.createNewTmpDir();
+      await setupProject(tmpDirFixture, projectDir, { defaultDataset: uniqueDataset });
 
-      await getProcessResult(
-        execFile(nodePath, [cliEntryPointPath, "init", projectDir, INTEGRATION_TEST_PROJECT, INTEGRATION_TEST_LOCATION])
-      );
-
-      const workflowSettings = dataform.WorkflowSettings.create(
-        loadYaml(fs.readFileSync(workflowSettingsPath, "utf8"))
-      );
-      delete workflowSettings.dataformCoreVersion;
-      workflowSettings.defaultDataset = uniqueDataset;
-      fs.writeFileSync(workflowSettingsPath, dumpYaml(workflowSettings));
-
-      fs.writeFileSync(
-        packageJsonPath,
-        `{
-  "dependencies":{
-    "@dataform/core": "${version}"
-  }
-}`
-      );
-      await getProcessResult(
-        execFile(npmPath, [
-          "install",
-          "--prefix",
-          projectDir,
-          "--cache",
-          npmCacheDir,
-          corePackageTarPath
-        ])
-      );
-
-      fs.ensureFileSync(path.join(projectDir, "definitions", "setup_table.sqlx"));
-      fs.writeFileSync(
-        path.join(projectDir, "definitions", "setup_table.sqlx"),
+      writeDefinitionFile(
+        projectDir,
+        "setup_table.sqlx",
         `
 config { 
   type: "operations"
@@ -699,9 +479,9 @@ CREATE OR REPLACE TABLE \`\${dataform.projectConfig.defaultDatabase}.\${dataform
 `
       );
 
-      fs.ensureFileSync(path.join(projectDir, "definitions", "example_incremental.sqlx"));
-      fs.writeFileSync(
-        path.join(projectDir, "definitions", "example_incremental.sqlx"),
+      writeDefinitionFile(
+        projectDir,
+        "example_incremental.sqlx",
         `
 config { 
   type: "incremental",
@@ -711,9 +491,9 @@ SELECT 1 as id, 'new' as field1, 'new2' as field2
 `
       );
 
-      fs.ensureFileSync(path.join(projectDir, "definitions", "teardown_schema.sqlx"));
-      fs.writeFileSync(
-        path.join(projectDir, "definitions", "teardown_schema.sqlx"),
+      writeDefinitionFile(
+        projectDir,
+        "teardown_schema.sqlx",
         `
 config { 
   type: "operations"
@@ -727,30 +507,28 @@ DROP SCHEMA IF EXISTS \`\${dataform.projectConfig.defaultDatabase}.\${dataform.p
       try {
         // Run setup operation to create the table in BigQuery.
         // Dataform will automatically create the uniqueDataset schema.
-        await getProcessResult(
-          execFile(nodePath, [
-            cliEntryPointPath,
-            "run",
-            projectDir,
+        await runCli(
+          "run",
+          projectDir,
+          [
             "--credentials",
             CREDENTIALS_PATH,
             "--actions=setup_table"
-          ])
+          ]
         );
 
         // Run the incremental table in dry-run mode. 
         // Dataform will detect the table exists and generate the dynamic procedural SQL.
-        const runResult = await getProcessResult(
-          execFile(nodePath, [
-            cliEntryPointPath,
-            "run",
-            projectDir,
+        const runResult = await runCli(
+          "run",
+          projectDir,
+          [
             "--credentials",
             CREDENTIALS_PATH,
             "--dry-run",
             "--json",
             "--actions=example_incremental"
-          ])
+          ]
         );
 
         expect(runResult.exitCode).equals(0);
@@ -799,70 +577,67 @@ DROP SCHEMA IF EXISTS \`\${dataform.projectConfig.defaultDatabase}.\${dataform.p
         expect(statement).to.include("ADD COLUMN IF NOT EXISTS");
       } finally {
         // Teardown the schema completely, regardless of test success or failure.
-        await getProcessResult(
-          execFile(nodePath, [
-            cliEntryPointPath,
-            "run",
-            projectDir,
+        await runCli(
+          "run",
+          projectDir,
+          [
             "--credentials",
             CREDENTIALS_PATH,
             "--actions=teardown_schema"
-          ])
+          ]
         );
       }
     });
   });
 
-  test("--timeout on run emits deprecation notice pointing to --execution-timeout", async () => {
-    // The notice fires in the run handler before compile. Yargs validation
-    // requires workflow_settings.yaml to exist, but compile can fail after that
-    // — we only assert on stderr for the notice line.
-    const projectDir = tmpDirFixture.createNewTmpDir();
-    fs.writeFileSync(
-      path.join(projectDir, "workflow_settings.yaml"),
-      `defaultProject: ${INTEGRATION_TEST_PROJECT}\ndefaultLocation: ${INTEGRATION_TEST_LOCATION}\n`
-    );
+  suite("run --timeout deprecation", ({ beforeEach }) => {
+    let projectDir: string;
 
-    const runResult = await getProcessResult(
-      execFile(nodePath, [
-        cliEntryPointPath,
+    beforeEach("setup test project", () => {
+      projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        `defaultProject: ${INTEGRATION_TEST_PROJECT}\ndefaultLocation: ${INTEGRATION_TEST_LOCATION}\n`
+      );
+    });
+
+    test("--timeout on run emits deprecation notice pointing to --execution-timeout", async () => {
+      // The notice fires in the run handler before compile. Yargs validation
+      // requires workflow_settings.yaml to exist, but compile can fail after that
+      // — we only assert on stderr for the notice line.
+      const runResult = await runCli(
         "run",
         projectDir,
-        "--credentials",
-        CREDENTIALS_PATH,
-        "--timeout",
-        "30s"
-      ])
-    );
+        [
+          "--credentials",
+          CREDENTIALS_PATH,
+          "--timeout",
+          "30s"
+        ]
+      );
 
-    expect(runResult.stderr).to.match(
-      /--timeout only bounds project compilation[\s\S]*use --execution-timeout/
-    );
-  });
+      expect(runResult.stderr).to.match(
+        /--timeout only bounds project compilation[\s\S]*use --execution-timeout/
+      );
+    });
 
-  test("--timeout on run does NOT emit notice when --execution-timeout is also set", async () => {
-    const projectDir = tmpDirFixture.createNewTmpDir();
-    fs.writeFileSync(
-      path.join(projectDir, "workflow_settings.yaml"),
-      `defaultProject: ${INTEGRATION_TEST_PROJECT}\ndefaultLocation: ${INTEGRATION_TEST_LOCATION}\n`
-    );
-
-    const runResult = await getProcessResult(
-      execFile(nodePath, [
-        cliEntryPointPath,
+    test("--timeout on run does NOT emit notice when --execution-timeout is also set", async () => {
+      const runResult = await runCli(
         "run",
         projectDir,
-        "--credentials",
-        CREDENTIALS_PATH,
-        "--timeout",
-        "30s",
-        "--execution-timeout",
-        "10m"
-      ])
-    );
+        [
+          "--credentials",
+          CREDENTIALS_PATH,
+          "--timeout",
+          "30s",
+          "--execution-timeout",
+          "10m"
+        ]
+      );
 
-    expect(runResult.stderr).to.not.match(
-      /--timeout only bounds project compilation/
-    );
-  });
+      expect(runResult.stderr).to.not.match(
+        /--timeout only bounds project compilation/
+      );
+    });
+  })
 });

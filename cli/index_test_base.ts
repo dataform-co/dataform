@@ -1,5 +1,5 @@
 // tslint:disable tsr-detect-non-literal-fs-filename
-import { execFile } from "child_process";
+import { execFile, ExecFileOptions } from "child_process";
 import * as fs from "fs-extra";
 import { dump as dumpYaml, load as loadYaml } from "js-yaml";
 import * as path from "path";
@@ -59,24 +59,28 @@ export const INTEGRATION_TEST_RESERVATION = `projects/${INTEGRATION_TEST_PROJECT
 
 export const cliEntryPointPath = "cli/node_modules/@dataform/cli/bundle.js";
 
-export async function setupJitProject(
+export async function setupProject(
   tmpDirFixture: TmpDirFixture,
-  projectDir: string
-): Promise<void> {
+  projectDir: string,
+  workflowSettingsOverrides?: Partial<dataform.IWorkflowSettings>
+): Promise<string> {
   const npmCacheDir = tmpDirFixture.createNewTmpDir();
+  const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
   const packageJsonPath = path.join(projectDir, "package.json");
 
-  await getProcessResult(
-    execFile(nodePath, [cliEntryPointPath, "init", projectDir, INTEGRATION_TEST_PROJECT, INTEGRATION_TEST_LOCATION])
-  );
+  // Initialize a project using the CLI, don't install packages.
+  await runCli("init", projectDir, [INTEGRATION_TEST_PROJECT, INTEGRATION_TEST_LOCATION]);
 
-  const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
-  const workflowSettings = dataform.WorkflowSettings.create(
-    loadYaml(fs.readFileSync(workflowSettingsPath, "utf8"))
-  );
+  // Install packages manually to get around bazel read-only sandbox issues.
+  const workflowSettings = dataform.WorkflowSettings.create({
+    ...loadYaml(fs.readFileSync(workflowSettingsPath, "utf8")) as dataform.IWorkflowSettings,
+    ...workflowSettingsOverrides
+  });
   delete workflowSettings.dataformCoreVersion;
-  fs.writeFileSync(workflowSettingsPath, dumpYaml(workflowSettings));
-
+  fs.writeFileSync(
+    workflowSettingsPath,
+    dumpYaml(dataform.WorkflowSettings.toObject(workflowSettings, { enums: String }))
+  );
   fs.writeFileSync(
     packageJsonPath,
     `{
@@ -96,10 +100,51 @@ export async function setupJitProject(
     ])
   );
 
-  const jitTablePath = path.join(projectDir, "definitions", "jit_table.js");
-  fs.ensureFileSync(jitTablePath);
-  fs.writeFileSync(
-    jitTablePath,
+  return projectDir;
+}
+
+export async function runCli(
+  cmd: string,
+  dir?: string,
+  options: string[] = [],
+  execOptions?: ExecFileOptions
+): Promise<{
+  exitCode: number;
+  stdout: string;
+  stderr: string;
+}> {
+  const args = [cliEntryPointPath, cmd, ...(dir !== undefined ? [dir] : []), ...options];
+  return await getProcessResult(
+    execFile(nodePath, args, execOptions)
+  );
+}
+
+export function writeDefinitionFile(projectDir: string, filename: string, content: string): void {
+  const fullPath = path.join(projectDir, "definitions", filename);
+  fs.ensureFileSync(fullPath);
+  fs.writeFileSync(fullPath, content);
+}
+
+export async function alterWorkflowSettings(projectDir: string, workflowSettingsOverrides: Partial<dataform.IWorkflowSettings>): Promise<void> {
+  const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
+  const workflowSettings = dataform.WorkflowSettings.create(
+    loadYaml(fs.readFileSync(workflowSettingsPath, "utf8"))
+  );
+  const workflowSettingsNew = dataform.WorkflowSettings.create({
+    ...workflowSettings,
+    ...workflowSettingsOverrides
+  });
+  fs.writeFileSync(workflowSettingsPath, dumpYaml(workflowSettingsNew));
+}
+
+export async function setupJitProject(
+  tmpDirFixture: TmpDirFixture,
+  projectDir: string
+): Promise<void> {
+  await setupProject(tmpDirFixture, projectDir);
+  writeDefinitionFile(
+    projectDir,
+    "jit_table.js",
     `publish("jit_table", {type: "table"}).jitCode(async (ctx) => { return "SELECT 1 as id"; })`
   );
 }

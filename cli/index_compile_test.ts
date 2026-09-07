@@ -1,13 +1,19 @@
 import { expect } from "chai";
-import { execFile } from "child_process";
 import * as fs from "fs-extra";
 import { dump as dumpYaml, load as loadYaml } from "js-yaml";
 import * as path from "path";
 
-import { cliEntryPointPath, INTEGRATION_TEST_LOCATION, INTEGRATION_TEST_PROJECT } from "df/cli/index_test_base";
+import {
+  alterWorkflowSettings,
+  INTEGRATION_TEST_LOCATION,
+  INTEGRATION_TEST_PROJECT,
+  runCli,
+  setupProject,
+  writeDefinitionFile
+} from "df/cli/index_test_base";
 import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
-import { corePackageTarPath, getProcessResult, nodePath, npmPath, suite, test } from "df/testing";
+import { suite, test } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
 
 suite("compile command", ({ afterEach }) => {
@@ -24,8 +30,7 @@ suite("compile command", ({ afterEach }) => {
       );
 
       expect(
-        (await getProcessResult(execFile(nodePath, [cliEntryPointPath, "compile", projectDir])))
-          .stderr
+        (await runCli("compile", projectDir)).stderr
       ).contains(
         "dataformCoreVersion must be specified either in workflow_settings.yaml or via a " +
           "package.json"
@@ -55,8 +60,7 @@ suite("compile command", ({ afterEach }) => {
     );
 
     expect(
-      (await getProcessResult(execFile(nodePath, [cliEntryPointPath, "compile", projectDir])))
-        .stderr
+      (await runCli("compile", projectDir)).stderr
     ).contains(
       "Could not find a recent installed version of @dataform/core in the project. Check that " +
         "either `dataformCoreVersion` is specified in `workflow_settings.yaml`, or " +
@@ -84,11 +88,9 @@ suite("compile command", ({ afterEach }) => {
     // npm needs a writable cache; ~/.npm is read-only in the bazel sandbox.
     const npmCacheDir = tmpDirFixture.createNewTmpDir();
     const stderr = (
-      await getProcessResult(
-        execFile(nodePath, [cliEntryPointPath, "compile", projectDir], {
-          env: { ...process.env, NPM_CONFIG_CACHE: npmCacheDir }
-        })
-      )
+      await runCli("compile", projectDir, [], {
+        env: { ...process.env, NPM_CONFIG_CACHE: npmCacheDir }
+      })
     ).stderr;
     expect(stderr).contains("@dataform/core 2.9.0 is not compatible with @dataform/cli");
     expect(stderr).contains("matching major.minor");
@@ -111,18 +113,16 @@ suite("compile command", ({ afterEach }) => {
         dataformCoreVersion: "3.0.50"
       })
     );
-    fs.ensureFileSync(path.join(projectDir, "definitions", "example.sqlx"));
-    fs.writeFileSync(
-      path.join(projectDir, "definitions", "example.sqlx"),
+    writeDefinitionFile(
+      projectDir,
+      "example.sqlx",
       `config { type: "table" }\nSELECT 1 AS id`
     );
 
     const npmCacheDir = tmpDirFixture.createNewTmpDir();
-    const result = await getProcessResult(
-      execFile(nodePath, [cliEntryPointPath, "compile", projectDir, "--json"], {
-        env: { ...process.env, NPM_CONFIG_CACHE: npmCacheDir }
-      })
-    );
+    const result = await runCli("compile", projectDir, ["--json"], {
+      env: { ...process.env, NPM_CONFIG_CACHE: npmCacheDir }
+    });
 
     expect(result.exitCode, `compile failed: ${result.stderr}`).equals(0);
     const compiled = JSON.parse(result.stdout);
@@ -150,8 +150,7 @@ suite("compile command", ({ afterEach }) => {
       }
 
       expect(
-        (await getProcessResult(execFile(nodePath, [cliEntryPointPath, "compile", projectDir])))
-          .stderr
+        (await runCli("compile", projectDir)).stderr
       ).contains(`${npmFile}' unexpected; remove it and try again`);
     });
   });
@@ -162,53 +161,20 @@ suite("disable-assertions flag (compilation)", ({ afterEach, beforeEach }) => {
   let projectDir: string;
 
   async function setupTestProject(): Promise<void> {
-    const npmCacheDir = tmpDirFixture.createNewTmpDir();
-    const packageJsonPath = path.join(projectDir, "package.json");
+    await setupProject(tmpDirFixture, projectDir);
 
-    await getProcessResult(
-      execFile(nodePath, [cliEntryPointPath, "init", projectDir, INTEGRATION_TEST_PROJECT, INTEGRATION_TEST_LOCATION])
-    );
-
-    const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
-    const workflowSettings = dataform.WorkflowSettings.create(
-      loadYaml(fs.readFileSync(workflowSettingsPath, "utf8"))
-    );
-    delete workflowSettings.dataformCoreVersion;
-    fs.writeFileSync(workflowSettingsPath, dumpYaml(workflowSettings));
-
-    fs.writeFileSync(
-      packageJsonPath,
-      `{
-  "dependencies":{
-    "@dataform/core": "${version}"
-  }
-}`
-    );
-    await getProcessResult(
-      execFile(npmPath, [
-        "install",
-        "--prefix",
-        projectDir,
-        "--cache",
-        npmCacheDir,
-        corePackageTarPath
-      ])
-    );
-
-    const assertionFilePath = path.join(projectDir, "definitions", "test_assertion.sqlx");
-    fs.ensureFileSync(assertionFilePath);
-    fs.writeFileSync(
-      assertionFilePath,
+    writeDefinitionFile(
+      projectDir,
+      "test_assertion.sqlx",
       `
 config { type: "assertion" }
 SELECT 1 WHERE FALSE
 `
     );
 
-    const tableFilePath = path.join(projectDir, "definitions", "example_table.sqlx");
-    fs.ensureFileSync(tableFilePath);
-    fs.writeFileSync(
-      tableFilePath,
+    writeDefinitionFile(
+      projectDir,
+      "example_table.sqlx",
       `
 config {
   type: "table",
@@ -219,15 +185,6 @@ config {
 SELECT 1 as id
 `
     );
-  }
-
-  async function setUpWorkflowSettings(disableAssertions: boolean): Promise<void> {
-    const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
-    const workflowSettings = dataform.WorkflowSettings.create(
-      loadYaml(fs.readFileSync(workflowSettingsPath, "utf8"))
-    );
-    workflowSettings.disableAssertions = disableAssertions;
-    fs.writeFileSync(workflowSettingsPath, dumpYaml(workflowSettings));
   }
 
   beforeEach("setup test project", async () => {
@@ -333,101 +290,69 @@ SELECT 1 as id
   };
 
   test("with --disable-assertions flag", async () => {
-    await setUpWorkflowSettings(false);
+    await alterWorkflowSettings(projectDir, { disableAssertions : false });
 
-    const compileResult = await getProcessResult(
-      execFile(nodePath, [
-        cliEntryPointPath,
-        "compile",
-        projectDir,
-        "--json",
-        "--disable-assertions"
-      ])
-    );
+    const compileResult = await runCli("compile", projectDir, [
+      "--json",
+      "--disable-assertions"
+    ]);
 
     expect(compileResult.exitCode).equals(0);
     expect(JSON.parse(compileResult.stdout)).deep.equals(expectedCompileResult);
   });
 
   test("with disableAssertions set in workflow_settings.yaml", async () => {
-    await setUpWorkflowSettings(true);
+    await alterWorkflowSettings(projectDir, { disableAssertions : true });
 
-    const compileResult = await getProcessResult(
-      execFile(nodePath, [cliEntryPointPath, "compile", projectDir, "--json"])
-    );
+    const compileResult = await runCli("compile", projectDir, ["--json"]);
 
     expect(compileResult.exitCode).equals(0);
     expect(JSON.parse(compileResult.stdout)).deep.equals(expectedCompileResult);
   });
 });
 
-suite("compile node selection", ({ afterEach }) => {
+suite("compile node selection", ({ afterEach, beforeEach }) => {
   const tmpDirFixture = new TmpDirFixture(afterEach);
-
-  // Builds a project with three tables: upstream -> midstream -> downstream.
-  async function setupSelectionProject(): Promise<string> {
-    const projectDir = tmpDirFixture.createNewTmpDir();
-    const npmCacheDir = tmpDirFixture.createNewTmpDir();
-
-    await getProcessResult(
-      execFile(nodePath, [cliEntryPointPath, "init", projectDir, INTEGRATION_TEST_PROJECT, INTEGRATION_TEST_LOCATION])
-    );
-
-    const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
-    const workflowSettings = dataform.WorkflowSettings.create(
-      loadYaml(fs.readFileSync(workflowSettingsPath, "utf8"))
-    );
-    delete workflowSettings.dataformCoreVersion;
-    fs.writeFileSync(workflowSettingsPath, dumpYaml(workflowSettings));
-
-    fs.writeFileSync(
-      path.join(projectDir, "package.json"),
-      `{
-  "dependencies":{
-    "@dataform/core": "${version}"
-  }
-}`
-    );
-    await getProcessResult(
-      execFile(npmPath, [
-        "install",
-        "--prefix",
-        projectDir,
-        "--cache",
-        npmCacheDir,
-        corePackageTarPath
-      ])
-    );
-
-    const def = (name: string, contents: string) => {
-      const filePath = path.join(projectDir, "definitions", `${name}.sqlx`);
-      fs.ensureFileSync(filePath);
-      fs.writeFileSync(filePath, contents);
-    };
-    def("upstream", `config { type: "table", tags: ["daily"] }\nSELECT 1 AS id`);
-    def("midstream", `config { type: "table" }\nSELECT * FROM \${ref("upstream")}`);
-    def("downstream", `config { type: "table" }\nSELECT * FROM \${ref("midstream")}`);
-
-    return projectDir;
-  }
 
   const tableNames = (stdout: string): string[] =>
     JSON.parse(stdout).tables.map((table: any) => table.target.name).sort();
 
-  test("no selector emits the entire graph", async () => {
-    const projectDir = await setupSelectionProject();
-    const result = await getProcessResult(
-      execFile(nodePath, [cliEntryPointPath, "compile", projectDir, "--json"])
+  let projectDir: string;
+
+  beforeEach("setup test project", async () => {
+    // Builds a project with three tables: upstream -> midstream -> downstream.
+    projectDir = tmpDirFixture.createNewTmpDir();
+    await setupProject(tmpDirFixture, projectDir);
+
+    writeDefinitionFile(
+      projectDir,
+      "upstream.sqlx",
+      `config { type: "table", tags: ["daily"] }\nSELECT 1 AS id`
     );
+    writeDefinitionFile(
+      projectDir,
+      "midstream.sqlx",
+      `config { type: "table" }\nSELECT * FROM \${ref("upstream")}`
+    );
+    writeDefinitionFile(
+      projectDir,
+      "downstream.sqlx",
+      `config { type: "table" }\nSELECT * FROM \${ref("midstream")}`
+    );
+  });
+
+  test("no selector emits the entire graph", async () => {
+    const result = await runCli("compile", projectDir, ["--json"]);
     expect(result.exitCode, result.stderr).equals(0);
     expect(tableNames(result.stdout)).deep.equals(["downstream", "midstream", "upstream"]);
   });
 
   test("--output-actions filters output to the selected action", async () => {
-    const projectDir = await setupSelectionProject();
-    const result = await getProcessResult(
-      execFile(nodePath, [cliEntryPointPath, "compile", projectDir, "--output-actions", "midstream", "--json"])
-    );
+    const result = await runCli("compile", projectDir, [
+      "--output-actions",
+      "midstream",
+      "--json"
+    ]);
     expect(result.exitCode, result.stderr).equals(0);
     expect(tableNames(result.stdout)).deep.equals(["midstream"]);
     // `targets` is printed alongside the actions, so it must be pruned too.
@@ -437,62 +362,52 @@ suite("compile node selection", ({ afterEach }) => {
   });
 
   test("--output-actions --output-include-deps pulls in upstream dependencies", async () => {
-    const projectDir = await setupSelectionProject();
-    const result = await getProcessResult(
-      execFile(nodePath, [
-        cliEntryPointPath,
-        "compile",
-        projectDir,
-        "--output-actions",
-        "midstream",
-        "--output-include-deps",
-        "--json"
-      ])
-    );
+    const result = await runCli("compile", projectDir, [
+      "--output-actions",
+      "midstream",
+      "--output-include-deps",
+      "--json"
+    ]);
     expect(result.exitCode, result.stderr).equals(0);
     expect(tableNames(result.stdout)).deep.equals(["midstream", "upstream"]);
   });
 
   test("--output-actions --output-include-dependents pulls in downstream dependents", async () => {
-    const projectDir = await setupSelectionProject();
-    const result = await getProcessResult(
-      execFile(nodePath, [
-        cliEntryPointPath,
-        "compile",
-        projectDir,
-        "--output-actions",
-        "midstream",
-        "--output-include-dependents",
-        "--json"
-      ])
-    );
+    const result = await runCli("compile", projectDir, [
+      "--output-actions",
+      "midstream",
+      "--output-include-dependents",
+      "--json"
+    ]);
     expect(result.exitCode, result.stderr).equals(0);
     expect(tableNames(result.stdout)).deep.equals(["downstream", "midstream"]);
   });
 
   test("--output-tags filters output to actions carrying the tag", async () => {
-    const projectDir = await setupSelectionProject();
-    const result = await getProcessResult(
-      execFile(nodePath, [cliEntryPointPath, "compile", projectDir, "--output-tags", "daily", "--json"])
-    );
+    const result = await runCli("compile", projectDir, [
+      "--output-tags",
+      "daily",
+      "--json"
+    ]);
     expect(result.exitCode, result.stderr).equals(0);
     expect(tableNames(result.stdout)).deep.equals(["upstream"]);
   });
 
   test("selector matching nothing emits an empty graph and exits zero", async () => {
-    const projectDir = await setupSelectionProject();
-    const result = await getProcessResult(
-      execFile(nodePath, [cliEntryPointPath, "compile", projectDir, "--output-actions", "nope", "--json"])
-    );
+    const result = await runCli("compile", projectDir, [
+      "--output-actions",
+      "nope",
+      "--json"
+    ]);
     expect(result.exitCode, result.stderr).equals(0);
     expect(tableNames(result.stdout)).deep.equals([]);
   });
 
   test("--output-include-deps without a selector is rejected", async () => {
-    const projectDir = await setupSelectionProject();
-    const result = await getProcessResult(
-      execFile(nodePath, [cliEntryPointPath, "compile", projectDir, "--output-include-deps", "--json"])
-    );
+    const result = await runCli("compile", projectDir, [
+      "--output-include-deps",
+      "--json"
+    ]);
     expect(result.exitCode).not.equals(0);
     expect(result.stderr).contains("--output-include-deps");
   });
@@ -503,46 +418,16 @@ suite("extension config", ({ afterEach }) => {
 
   test("compile succeeds with extension set in workflow_settings.yaml", async () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
-    const npmCacheDir = tmpDirFixture.createNewTmpDir();
+    await setupProject(tmpDirFixture, projectDir, {
+      defaultDataset: "dataform",
+      defaultAssertionDataset: "dataform_assertions",
+      extension: {
+        name: "test-extension",
+        compilationMode: dataform.ExtensionCompilationMode.PROLOGUE
+      }
+    });
 
-    fs.writeFileSync(
-      path.join(projectDir, "workflow_settings.yaml"),
-      dumpYaml({
-        defaultProject: INTEGRATION_TEST_PROJECT,
-        defaultLocation: INTEGRATION_TEST_LOCATION,
-        defaultDataset: "dataform",
-        defaultAssertionDataset: "dataform_assertions",
-        extension: {
-          name: "test-extension",
-          compilationMode: "PROLOGUE",
-        },
-      })
-    );
-    fs.mkdirSync(path.join(projectDir, "definitions"));
-    fs.mkdirSync(path.join(projectDir, "includes"));
-
-    fs.writeFileSync(
-      path.join(projectDir, "package.json"),
-      `{
-  "dependencies":{
-    "@dataform/core": "${version}"
-  }
-}`
-    );
-    await getProcessResult(
-      execFile(npmPath, [
-        "install",
-        "--prefix",
-        projectDir,
-        "--cache",
-        npmCacheDir,
-        corePackageTarPath
-      ])
-    );
-
-    const compileResult = await getProcessResult(
-      execFile(nodePath, [cliEntryPointPath, "compile", projectDir])
-    );
+    const compileResult = await runCli("compile", projectDir, []);
 
     expect(compileResult.exitCode).equals(0);
     expect(compileResult.stdout).contains("Compiled 0 action(s).");

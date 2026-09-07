@@ -1,13 +1,13 @@
 import { expect } from "chai";
-import { execFile } from "child_process";
 import * as fs from "fs-extra";
-import { dump as dumpYaml, load as loadYaml } from "js-yaml";
 import * as path from "path";
 
-import { cliEntryPointPath, INTEGRATION_TEST_LOCATION, INTEGRATION_TEST_PROJECT } from "df/cli/index_test_base";
-import { version } from "df/core/version";
-import { dataform } from "df/protos/ts";
-import { corePackageTarPath, getProcessResult, nodePath, npmPath, suite, test } from "df/testing";
+import {
+  runCli,
+  setupProject,
+  writeDefinitionFile
+} from "df/cli/index_test_base";
+import { suite, test } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
 
 suite("project ops", ({ afterEach }) => {
@@ -17,19 +17,13 @@ suite("project ops", ({ afterEach }) => {
     test("install throws an error when dataformCoreVersion in workflow_settings.yaml", async () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
 
-      await getProcessResult(
-        execFile(nodePath, [
-          cliEntryPointPath,
-          "init",
-          projectDir,
-          "--default-database=dataform-database",
-          "--default-location=us-central1"
-        ])
-      );
+      await runCli("init", projectDir, [
+        "--default-database=dataform-database",
+        "--default-location=us-central1"
+      ]);
 
       expect(
-        (await getProcessResult(execFile(nodePath, [cliEntryPointPath, "install", projectDir])))
-          .stderr
+        (await runCli("install", projectDir, [])).stderr
       ).contains(
         "No installation is needed when using workflow_settings.yaml, as packages are installed at " +
           "runtime."
@@ -40,45 +34,12 @@ suite("project ops", ({ afterEach }) => {
   suite("format command", () => {
     test("test for format command", async () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
-      const npmCacheDir = tmpDirFixture.createNewTmpDir();
-      const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
-      const packageJsonPath = path.join(projectDir, "package.json");
-
-      // Initialize a project using the CLI, don't install packages.
-      await getProcessResult(
-        execFile(nodePath, [cliEntryPointPath, "init", projectDir, INTEGRATION_TEST_PROJECT, INTEGRATION_TEST_LOCATION])
-      );
-
-      // Install packages manually to get around bazel read-only sandbox issues.
-      const workflowSettings = dataform.WorkflowSettings.create(
-        loadYaml(fs.readFileSync(workflowSettingsPath, "utf8"))
-      );
-      delete workflowSettings.dataformCoreVersion;
-      fs.writeFileSync(workflowSettingsPath, dumpYaml(workflowSettings));
-      fs.writeFileSync(
-        packageJsonPath,
-        `{
-  "dependencies":{
-    "@dataform/core": "${version}"
-  }
-}`
-      );
-      await getProcessResult(
-        execFile(npmPath, [
-          "install",
-          "--prefix",
-          projectDir,
-          "--cache",
-          npmCacheDir,
-          corePackageTarPath
-        ])
-      );
+      await setupProject(tmpDirFixture, projectDir);
 
       // Create a correctly formatted file
-      const formattedFilePath = path.join(projectDir, "definitions", "formatted.sqlx");
-      fs.ensureFileSync(formattedFilePath);
-      fs.writeFileSync(
-        formattedFilePath,
+      writeDefinitionFile(
+        projectDir,
+        "formatted.sqlx",
         `
 config {
   type: "table"
@@ -90,10 +51,9 @@ SELECT
       );
 
       // Create a file that needs formatting (extra spaces, inconsistent indentation)
-      const unformattedFilePath = path.join(projectDir, "definitions", "unformatted.sqlx");
-      fs.ensureFileSync(unformattedFilePath);
-      fs.writeFileSync(
-        unformattedFilePath,
+      writeDefinitionFile(
+        projectDir,
+        "unformatted.sqlx",
         `
 config {   type:  "table"   }
 SELECT  1  as   test
@@ -101,9 +61,7 @@ SELECT  1  as   test
       );
 
       // Test with --check flag on a project with files needing formatting
-      const beforeFormatCheckResult = await getProcessResult(
-        execFile(nodePath, [cliEntryPointPath, "format", projectDir, "--check"])
-      );
+      const beforeFormatCheckResult = await runCli("format", projectDir, ["--check"]);
 
       // Should exit with code 1 when files need formatting
       expect(beforeFormatCheckResult.exitCode).equals(1);
@@ -111,15 +69,11 @@ SELECT  1  as   test
       expect(beforeFormatCheckResult.stderr).contains("unformatted.sqlx");
 
       // Format the files (without check flag)
-      const formatCheckResult = await getProcessResult(
-        execFile(nodePath, [cliEntryPointPath, "format", projectDir])
-      );
+      const formatCheckResult = await runCli("format", projectDir);
       expect(formatCheckResult.exitCode).equals(0);
 
       // Test with --check flag after formatting
-      const afterFormatCheckResult = await getProcessResult(
-        execFile(nodePath, [cliEntryPointPath, "format", projectDir, "--check"])
-      );
+      const afterFormatCheckResult = await runCli("format", projectDir, ["--check"]);
 
       // Should exit with code 0 when all files are properly formatted
       expect(afterFormatCheckResult.exitCode).equals(0);
@@ -128,51 +82,17 @@ SELECT  1  as   test
 
     test("test for format command ignore js files", async () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
-      const npmCacheDir = tmpDirFixture.createNewTmpDir();
-      const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
-      const packageJsonPath = path.join(projectDir, "package.json");
-
-      // Initialize a project using the CLI, don't install packages.
-      await getProcessResult(
-        execFile(nodePath, [cliEntryPointPath, "init", projectDir, INTEGRATION_TEST_PROJECT, INTEGRATION_TEST_LOCATION])
-      );
-
-      // Install packages manually to get around bazel read-only sandbox issues.
-      const workflowSettings = dataform.WorkflowSettings.create(
-        loadYaml(fs.readFileSync(workflowSettingsPath, "utf8"))
-      );
-      delete workflowSettings.dataformCoreVersion;
-      fs.writeFileSync(workflowSettingsPath, dumpYaml(workflowSettings));
-      fs.writeFileSync(
-        packageJsonPath,
-        `{
-  "dependencies":{
-    "@dataform/core": "${version}"
-  }
-}`
-      );
-      await getProcessResult(
-        execFile(npmPath, [
-          "install",
-          "--prefix",
-          projectDir,
-          "--cache",
-          npmCacheDir,
-          corePackageTarPath
-        ])
-      );
+      await setupProject(tmpDirFixture, projectDir);
 
       // Create files that need formatting and ensure that the js file is not modified
-      const unformattedFilePath = path.join(projectDir, "definitions", "unformatted.sqlx");
-      fs.ensureFileSync(unformattedFilePath);
-      fs.writeFileSync(
-        unformattedFilePath,
+      writeDefinitionFile(
+        projectDir,
+        "unformatted.sqlx",
         `
 config {   type:  "table"   }
 SELECT  1  as   test
 `
       );
-
 
       const jsContents = `
 function myCoolFn() {
@@ -180,7 +100,7 @@ function myCoolFn() {
 
 modules.exports = {
   myCoolFn, }
-`
+`;
       const unformattedJsFilePath = path.join(projectDir, "includes", "someMod.js");
       fs.ensureFileSync(unformattedJsFilePath);
       fs.writeFileSync(
@@ -189,16 +109,14 @@ modules.exports = {
       );
 
       // Run formatter
-      const formatCmdRun = await getProcessResult(
-        execFile(nodePath, [cliEntryPointPath, "format", "--ignore-js-files", projectDir])
-      );
+      const formatCmdRun = await runCli("format", projectDir, ["--ignore-js-files"]);
 
       expect(formatCmdRun.exitCode).equals(0);
 
       // Ensure the js file didn't change
       const bufFromFile = fs.readFileSync(unformattedJsFilePath);
-      const bufFromContents = Buffer.from(jsContents, 'utf-8');
-      expect(bufFromContents.equals(bufFromFile)).equals(true)
+      const bufFromContents = Buffer.from(jsContents, "utf-8");
+      expect(bufFromContents.equals(bufFromFile)).equals(true);
     });
   });
 });
