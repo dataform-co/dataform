@@ -3,7 +3,6 @@ import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 import { prettyJsonStringify } from "df/cli/api/utils";
 import {
   credentialsOption,
-  getCredentialsPath,
   jsonOutputOption,
   projectDirMustExistOption,
   projectDirOption,
@@ -18,7 +17,7 @@ import {
   printTestResult
 } from "df/cli/console";
 import { ProjectConfigOptions } from "df/cli/project_config_options";
-import { compiledGraphHasErrors } from "df/cli/util";
+import { actuallyResolve, compiledGraphHasErrors } from "df/cli/util";
 import { ICommand } from "df/cli/yargswrapper";
 
 export const testCommand: ICommand = {
@@ -48,7 +47,7 @@ export const testCommand: ICommand = {
       printSuccess("Compiled successfully.\n");
     }
     const readCredentials = credentials.read(
-      getCredentialsPath(argv[projectDirOption.name], argv[credentialsOption.name])
+      actuallyResolve(argv[projectDirOption.name], argv[credentialsOption.name])
     );
 
     if (!compiledGraph.tests.length) {

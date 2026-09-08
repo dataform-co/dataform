@@ -1,4 +1,3 @@
-import parseDuration from "parse-duration";
 import yargs from "yargs";
 
 import { build, compile, credentials, run, test } from "df/cli/api";
@@ -8,8 +7,8 @@ import { createLineageEmitter as createLineageEmitterFromFactory } from "df/cli/
 import { prettyJsonStringify } from "df/cli/api/utils";
 import {
   actionsOption,
+  coerceTimeout,
   credentialsOption,
-  getCredentialsPath,
   jsonOutputOption,
   projectDirMustExistOption,
   projectDirOption,
@@ -29,7 +28,7 @@ import {
   printWarning
 } from "df/cli/console";
 import { ProjectConfigOptions } from "df/cli/project_config_options";
-import { compiledGraphHasErrors } from "df/cli/util";
+import { actuallyResolve, compiledGraphHasErrors } from "df/cli/util";
 import { ICommand, INamedOption } from "df/cli/yargswrapper";
 import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
@@ -95,8 +94,7 @@ const executionTimeoutOption: INamedOption<yargs.Options> = {
       "Examples: '10m', '2h'.",
     type: "string",
     default: null,
-    coerce: (rawTimeoutString: string | null) =>
-      rawTimeoutString ? parseDuration(rawTimeoutString) : null
+    coerce: coerceTimeout
   }
 };
 
@@ -110,8 +108,7 @@ const jitTimeoutOption: INamedOption<yargs.Options> = {
       "Examples: '30s', '2m'.",
     type: "string",
     default: null,
-    coerce: (rawTimeoutString: string | null) =>
-      rawTimeoutString ? parseDuration(rawTimeoutString) : null
+    coerce: coerceTimeout
   }
 };
 
@@ -202,6 +199,7 @@ export const runCommand: ICommand = {
     timeoutOption,
     executionTimeoutOption,
     jitTimeoutOption,
+    jobPrefixOption,
     tagsOption,
     bigqueryJobLabelsOption,
     ...ProjectConfigOptions.allYargsOptions
@@ -215,7 +213,7 @@ export const runCommand: ICommand = {
         `For execution, the --${jsonOutputOption.name} option is only supported if the ` +
           `--${dryRunOptionName} option is enabled`
       );
-      return;
+      return 1;
     }
     if (
       !isJsonOutput &&
@@ -239,7 +237,7 @@ export const runCommand: ICommand = {
     }
     logger.success("Compiled successfully.\n");
     const readCredentials = credentials.read(
-      getCredentialsPath(argv[projectDirOption.name], argv[credentialsOption.name])
+      actuallyResolve(argv[projectDirOption.name], argv[credentialsOption.name])
     );
 
     const dbadapter = new BigQueryDbAdapter(readCredentials);

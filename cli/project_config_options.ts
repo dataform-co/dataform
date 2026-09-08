@@ -42,7 +42,8 @@ export class ProjectConfigOptions {
   public static databaseSuffix: INamedOption<yargs.Options> = {
     name: "database-suffix",
     option: {
-      describe: "Default assertion schema. If unset, the value from workflow_settings.yaml is used."
+      describe:
+        "A suffix to be appended to output database names. If unset, the value from workflow_settings.yaml is used."
     }
   };
 

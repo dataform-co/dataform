@@ -37,7 +37,8 @@ export const projectDirMustExistOption: INamedOption<yargs.PositionalOptions> = 
 
 // Splits repeated and comma-separated values into a flat list, e.g.
 // `--actions a,b --actions c` -> ["a", "b", "c"].
-export const splitCommas = (raw: string[] | null) => raw.map(value => value.split(",")).flat();
+export const splitCommas = (raw: string[] | null) =>
+  raw ? raw.map(value => value.split(",")).flat() : [];
 
 export const actionsOption: INamedOption<yargs.Options> = {
   name: "actions",
@@ -48,10 +49,6 @@ export const actionsOption: INamedOption<yargs.Options> = {
   }
 };
 
-export function getCredentialsPath(projectDir: string, credentialsPath: string) {
-  return actuallyResolve(projectDir, credentialsPath);
-}
-
 export const credentialsOption: INamedOption<yargs.Options> = {
   name: "credentials",
   option: {
@@ -59,7 +56,7 @@ export const credentialsOption: INamedOption<yargs.Options> = {
     default: CREDENTIALS_FILENAME
   },
   check: (argv: yargs.Arguments<any>) =>
-    getCredentialsPath(argv[projectDirOption.name], argv[credentialsOption.name])
+    actuallyResolve(argv[projectDirOption.name], argv[credentialsOption.name])
 };
 
 export const jsonOutputOption: INamedOption<yargs.Options> = {
@@ -71,14 +68,16 @@ export const jsonOutputOption: INamedOption<yargs.Options> = {
   }
 };
 
+export const coerceTimeout = (rawTimeoutString: string | null) =>
+  rawTimeoutString ? parseDuration(rawTimeoutString) : null;
+
 export const timeoutOption: INamedOption<yargs.Options> = {
   name: "timeout",
   option: {
     describe: "Duration to allow project compilation to complete. Examples: '1s', '10m', etc.",
     type: "string",
     default: null,
-    coerce: (rawTimeoutString: string | null) =>
-      rawTimeoutString ? parseDuration(rawTimeoutString) : null
+    coerce: coerceTimeout
   }
 };
 
