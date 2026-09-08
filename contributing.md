@@ -40,18 +40,19 @@ The following command runs tests for @dataform/core:
 bazel test //core/...
 ```
 
+### Unit Test
+
+You can run all unit tests across the project by running this script:
+
+```bash
+./scripts/run_tests
+```
+
 ### Integration Test
 
 To run the CLI integration test against your own GCP project:
 
-1. Overwrite the contents of `test_credentials/BUILD` with:
-
-   ```
-   package(default_visibility = ["//visibility:public"])
-   exports_files(["bigquery.json"])
-   ```
-
-2. Prepare a credentials JSON file at `test_credentials/bigquery.json`. Set values as follows:
+1. Prepare a credentials JSON file at `test_credentials/bigquery.json`. Set values as follows:
 
    - `projectId`: your GCP project id
    - `credentials`: the entire content of your GCP service account key JSON file as a single string (you can generate it with `jq -Rsa < path/to/key.json`).
@@ -67,7 +68,7 @@ To run the CLI integration test against your own GCP project:
    }
    ```
 
-3. Run the tests:
+2. You can run all integration tests by using this script:
 
    ```bash
    ./scripts/run_integration_tests

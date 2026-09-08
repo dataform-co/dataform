@@ -4,10 +4,14 @@ import * as fs from "fs-extra";
 import { dump as dumpYaml, load as loadYaml } from "js-yaml";
 import * as path from "path";
 
+import { Logger } from "df/cli/console";
 import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
 import { corePackageTarPath, getProcessResult, nodePath, npmPath } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
+
+const DEFAULT_PROJECT = "dataform-open-source";
+const DEFAULT_LOCATION = "US";
 
 const runfilesDir = process.env.RUNFILES;
 let workspaceName = "df";
@@ -16,6 +20,8 @@ if (!fs.existsSync(path.resolve(runfilesDir, "df"))) {
 }
 
 export const CREDENTIALS_PATH = path.resolve(runfilesDir, workspaceName, "test_credentials/bigquery.json");
+
+const logger = new Logger(true);
 
 function getCredentialsProjectId(): string {
   try {
@@ -28,7 +34,8 @@ function getCredentialsProjectId(): string {
   } catch (e) {
     // Fall back to default
   }
-  return "dataform-open-source";
+  logger.log(`Project name not specified; defaulting to ${DEFAULT_PROJECT}`);
+  return DEFAULT_PROJECT;
 }
 
 function getCredentialsLocation(): string {
@@ -42,12 +49,13 @@ function getCredentialsLocation(): string {
   } catch (e) {
     // Fall back to default
   }
-  return "US";
+  logger.log(`Location not specified; defaulting to ${DEFAULT_LOCATION}`);
+  return DEFAULT_LOCATION;
 }
 
-export const DEFAULT_DATABASE = getCredentialsProjectId();
-export const DEFAULT_LOCATION = getCredentialsLocation();
-export const DEFAULT_RESERVATION = `projects/${DEFAULT_DATABASE}/locations/${DEFAULT_LOCATION.toLowerCase()}/reservations/dataform-test`;
+export const INTEGRATION_TEST_PROJECT = getCredentialsProjectId();
+export const INTEGRATION_TEST_LOCATION = getCredentialsLocation();
+export const INTEGRATION_TEST_RESERVATION = `projects/${INTEGRATION_TEST_PROJECT}/locations/${INTEGRATION_TEST_LOCATION.toLowerCase()}/reservations/dataform-test`;
 
 export const cliEntryPointPath = "cli/node_modules/@dataform/cli/bundle.js";
 
@@ -59,7 +67,7 @@ export async function setupJitProject(
   const packageJsonPath = path.join(projectDir, "package.json");
 
   await getProcessResult(
-    execFile(nodePath, [cliEntryPointPath, "init", projectDir, DEFAULT_DATABASE, DEFAULT_LOCATION])
+    execFile(nodePath, [cliEntryPointPath, "init", projectDir, INTEGRATION_TEST_PROJECT, INTEGRATION_TEST_LOCATION])
   );
 
   const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");

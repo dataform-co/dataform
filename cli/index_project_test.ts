@@ -4,7 +4,7 @@ import * as fs from "fs-extra";
 import { dump as dumpYaml, load as loadYaml } from "js-yaml";
 import * as path from "path";
 
-import { cliEntryPointPath, DEFAULT_DATABASE, DEFAULT_LOCATION } from "df/cli/index_test_base";
+import { cliEntryPointPath, INTEGRATION_TEST_LOCATION, INTEGRATION_TEST_PROJECT } from "df/cli/index_test_base";
 import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
 import { corePackageTarPath, getProcessResult, nodePath, npmPath, suite, test } from "df/testing";
@@ -46,7 +46,7 @@ suite("project ops", ({ afterEach }) => {
 
       // Initialize a project using the CLI, don't install packages.
       await getProcessResult(
-        execFile(nodePath, [cliEntryPointPath, "init", projectDir, DEFAULT_DATABASE, DEFAULT_LOCATION])
+        execFile(nodePath, [cliEntryPointPath, "init", projectDir, INTEGRATION_TEST_PROJECT, INTEGRATION_TEST_LOCATION])
       );
 
       // Install packages manually to get around bazel read-only sandbox issues.
@@ -134,7 +134,7 @@ SELECT  1  as   test
 
       // Initialize a project using the CLI, don't install packages.
       await getProcessResult(
-        execFile(nodePath, [cliEntryPointPath, "init", projectDir, DEFAULT_DATABASE, DEFAULT_LOCATION])
+        execFile(nodePath, [cliEntryPointPath, "init", projectDir, INTEGRATION_TEST_PROJECT, INTEGRATION_TEST_LOCATION])
       );
 
       // Install packages manually to get around bazel read-only sandbox issues.

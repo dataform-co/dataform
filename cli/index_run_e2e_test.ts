@@ -7,9 +7,9 @@ import * as path from "path";
 import {
   cliEntryPointPath,
   CREDENTIALS_PATH,
-  DEFAULT_DATABASE,
-  DEFAULT_LOCATION,
-  DEFAULT_RESERVATION
+  INTEGRATION_TEST_LOCATION,
+  INTEGRATION_TEST_PROJECT,
+  INTEGRATION_TEST_RESERVATION
 } from "df/cli/index_test_base";
 import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
@@ -27,7 +27,7 @@ suite("run e2e", ({ afterEach }) => {
 
     // Initialize a project using the CLI, don't install packages.
     await getProcessResult(
-      execFile(nodePath, [cliEntryPointPath, "init", projectDir, DEFAULT_DATABASE, DEFAULT_LOCATION])
+      execFile(nodePath, [cliEntryPointPath, "init", projectDir, INTEGRATION_TEST_PROJECT, INTEGRATION_TEST_LOCATION])
     );
 
     // Install packages manually to get around bazel read-only sandbox issues.
@@ -86,14 +86,14 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
           type: "table",
           enumType: "TABLE",
           target: {
-            database: DEFAULT_DATABASE,
+            database: INTEGRATION_TEST_PROJECT,
             schema: "dataform_test_schema_suffix",
             name: "example"
           },
           canonicalTarget: {
             schema: "dataform",
             name: "example",
-            database: DEFAULT_DATABASE
+            database: INTEGRATION_TEST_PROJECT
           },
           query: "\n\nselect 1 as testValue2\n",
           disabled: false,
@@ -106,8 +106,8 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
         warehouse: "bigquery",
         defaultSchema: "dataform",
         assertionSchema: "dataform_assertions",
-        defaultDatabase: DEFAULT_DATABASE,
-        defaultLocation: DEFAULT_LOCATION,
+        defaultDatabase: INTEGRATION_TEST_PROJECT,
+        defaultLocation: INTEGRATION_TEST_LOCATION,
         vars: {
           testVar1: "testValue1",
           testVar2: "testValue2"
@@ -119,7 +119,7 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
       dataformCoreVersion: version,
       targets: [
         {
-          database: DEFAULT_DATABASE,
+          database: INTEGRATION_TEST_PROJECT,
           schema: "dataform",
           name: "example"
         }
@@ -156,7 +156,7 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
           hermeticity: "NON_HERMETIC",
           tableType: "table",
           target: {
-            database: DEFAULT_DATABASE,
+            database: INTEGRATION_TEST_PROJECT,
             name: "example",
             schema: "dataform"
           },
@@ -164,7 +164,7 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
             {
               statement:
                 // tslint:disable-next-line:tsr-detect-sql-literal-injection
-                `create or replace table \`${DEFAULT_DATABASE}.dataform.example\` as \n\nselect 1 as testValue2`,
+                `create or replace table \`${INTEGRATION_TEST_PROJECT}.dataform.example\` as \n\nselect 1 as testValue2`,
               type: "statement"
             }
           ],
@@ -174,7 +174,7 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
       jitData: {},
       projectConfig: {
         assertionSchema: "dataform_assertions",
-        defaultDatabase: DEFAULT_DATABASE,
+        defaultDatabase: INTEGRATION_TEST_PROJECT,
         defaultLocation: "europe",
         defaultSchema: "dataform",
         warehouse: "bigquery",
@@ -200,7 +200,7 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
       const packageJsonPath = path.join(projectDir, "package.json");
 
       await getProcessResult(
-        execFile(nodePath, [cliEntryPointPath, "init", projectDir, DEFAULT_DATABASE, DEFAULT_LOCATION])
+        execFile(nodePath, [cliEntryPointPath, "init", projectDir, INTEGRATION_TEST_PROJECT, INTEGRATION_TEST_LOCATION])
       );
 
       const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
@@ -274,7 +274,7 @@ SELECT 1 as id
           hermeticity: "NON_HERMETIC",
           tableType: "table",
           target: {
-            database: DEFAULT_DATABASE,
+            database: INTEGRATION_TEST_PROJECT,
             name: "example_table",
             schema: "dataform"
           },
@@ -282,7 +282,7 @@ SELECT 1 as id
             {
               statement:
                 // tslint:disable-next-line:tsr-detect-sql-literal-injection
-                `create or replace table \`${DEFAULT_DATABASE}.dataform.example_table\` as \n\nSELECT 1 as id`,
+                `create or replace table \`${INTEGRATION_TEST_PROJECT}.dataform.example_table\` as \n\nSELECT 1 as id`,
               type: "statement"
             }
           ],
@@ -292,7 +292,7 @@ SELECT 1 as id
           fileName: "definitions/test_assertion.sqlx",
           hermeticity: "HERMETIC",
           target: {
-            database: DEFAULT_DATABASE,
+            database: INTEGRATION_TEST_PROJECT,
             name: "test_assertion",
             schema: "dataform_assertions"
           },
@@ -302,8 +302,8 @@ SELECT 1 as id
       jitData: {},
       projectConfig: {
         assertionSchema: "dataform_assertions",
-        defaultDatabase: DEFAULT_DATABASE,
-        defaultLocation: DEFAULT_LOCATION,
+        defaultDatabase: INTEGRATION_TEST_PROJECT,
+        defaultLocation: INTEGRATION_TEST_LOCATION,
         defaultSchema: "dataform",
         disableAssertions: true,
         warehouse: "bigquery"
@@ -401,7 +401,7 @@ SELECT 1 as id
       const packageJsonPath = path.join(projectDir, "package.json");
 
       await getProcessResult(
-        execFile(nodePath, [cliEntryPointPath, "init", projectDir, DEFAULT_DATABASE, DEFAULT_LOCATION])
+        execFile(nodePath, [cliEntryPointPath, "init", projectDir, INTEGRATION_TEST_PROJECT, INTEGRATION_TEST_LOCATION])
       );
 
       // Remove dataformCoreVersion so we can use the local package.
@@ -448,7 +448,7 @@ SELECT 1 as id
           "compile",
           projectDir,
           "--json",
-          `--default-reservation=${DEFAULT_RESERVATION}`
+          `--default-reservation=${INTEGRATION_TEST_RESERVATION}`
         ])
       );
 
@@ -458,9 +458,9 @@ SELECT 1 as id
         warehouse: "bigquery",
         defaultSchema: "dataform",
         assertionSchema: "dataform_assertions",
-        defaultDatabase: DEFAULT_DATABASE,
-        defaultLocation: DEFAULT_LOCATION,
-        defaultReservation: DEFAULT_RESERVATION
+        defaultDatabase: INTEGRATION_TEST_PROJECT,
+        defaultLocation: INTEGRATION_TEST_LOCATION,
+        defaultReservation: INTEGRATION_TEST_RESERVATION
       });
     });
 
@@ -474,7 +474,7 @@ SELECT 1 as id
           CREDENTIALS_PATH,
           "--dry-run",
           "--json",
-          `--default-reservation=${DEFAULT_RESERVATION}`,
+          `--default-reservation=${INTEGRATION_TEST_RESERVATION}`,
           "--actions=example_table"
         ])
       );
@@ -485,9 +485,9 @@ SELECT 1 as id
         warehouse: "bigquery",
         defaultSchema: "dataform",
         assertionSchema: "dataform_assertions",
-        defaultDatabase: DEFAULT_DATABASE,
-        defaultLocation: DEFAULT_LOCATION,
-        defaultReservation: DEFAULT_RESERVATION
+        defaultDatabase: INTEGRATION_TEST_PROJECT,
+        defaultLocation: INTEGRATION_TEST_LOCATION,
+        defaultReservation: INTEGRATION_TEST_RESERVATION
       });
     });
   });
@@ -500,7 +500,7 @@ SELECT 1 as id
 
     // Initialize a project using the CLI, don't install packages.
     await getProcessResult(
-      execFile(nodePath, [cliEntryPointPath, "init", projectDir, DEFAULT_DATABASE, DEFAULT_LOCATION])
+      execFile(nodePath, [cliEntryPointPath, "init", projectDir, INTEGRATION_TEST_PROJECT, INTEGRATION_TEST_LOCATION])
     );
 
     // Install packages manually to get around bazel read-only sandbox issues.
@@ -577,7 +577,7 @@ select 1
 
     // Initialize a project using the CLI, don't install packages.
     await getProcessResult(
-      execFile(nodePath, [cliEntryPointPath, "init", projectDir, DEFAULT_DATABASE, DEFAULT_LOCATION])
+      execFile(nodePath, [cliEntryPointPath, "init", projectDir, INTEGRATION_TEST_PROJECT, INTEGRATION_TEST_LOCATION])
     );
 
     // Install packages manually to get around bazel read-only sandbox issues.
@@ -659,7 +659,7 @@ select 2
       const packageJsonPath = path.join(projectDir, "package.json");
 
       await getProcessResult(
-        execFile(nodePath, [cliEntryPointPath, "init", projectDir, DEFAULT_DATABASE, DEFAULT_LOCATION])
+        execFile(nodePath, [cliEntryPointPath, "init", projectDir, INTEGRATION_TEST_PROJECT, INTEGRATION_TEST_LOCATION])
       );
 
       const workflowSettings = dataform.WorkflowSettings.create(
@@ -762,8 +762,8 @@ DROP SCHEMA IF EXISTS \`\${dataform.projectConfig.defaultDatabase}.\${dataform.p
             warehouse: "bigquery",
             defaultSchema: uniqueDataset,
             assertionSchema: "dataform_assertions",
-            defaultDatabase: DEFAULT_DATABASE,
-            defaultLocation: DEFAULT_LOCATION
+            defaultDatabase: INTEGRATION_TEST_PROJECT,
+            defaultLocation: INTEGRATION_TEST_LOCATION
           },
           runConfig: {
             actions: ["example_incremental"],
@@ -775,7 +775,7 @@ DROP SCHEMA IF EXISTS \`\${dataform.projectConfig.defaultDatabase}.\${dataform.p
               hermeticity: "NON_HERMETIC",
               tableType: "incremental",
               target: {
-                database: DEFAULT_DATABASE,
+                database: INTEGRATION_TEST_PROJECT,
                 name: "example_incremental",
                 schema: uniqueDataset
               },
@@ -820,7 +820,7 @@ DROP SCHEMA IF EXISTS \`\${dataform.projectConfig.defaultDatabase}.\${dataform.p
     const projectDir = tmpDirFixture.createNewTmpDir();
     fs.writeFileSync(
       path.join(projectDir, "workflow_settings.yaml"),
-      `defaultProject: ${DEFAULT_DATABASE}\ndefaultLocation: ${DEFAULT_LOCATION}\n`
+      `defaultProject: ${INTEGRATION_TEST_PROJECT}\ndefaultLocation: ${INTEGRATION_TEST_LOCATION}\n`
     );
 
     const runResult = await getProcessResult(
@@ -844,7 +844,7 @@ DROP SCHEMA IF EXISTS \`\${dataform.projectConfig.defaultDatabase}.\${dataform.p
     const projectDir = tmpDirFixture.createNewTmpDir();
     fs.writeFileSync(
       path.join(projectDir, "workflow_settings.yaml"),
-      `defaultProject: ${DEFAULT_DATABASE}\ndefaultLocation: ${DEFAULT_LOCATION}\n`
+      `defaultProject: ${INTEGRATION_TEST_PROJECT}\ndefaultLocation: ${INTEGRATION_TEST_LOCATION}\n`
     );
 
     const runResult = await getProcessResult(
