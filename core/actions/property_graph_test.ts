@@ -1521,6 +1521,32 @@ suite("property_graph", () => {
     );
   });
 
+  test("ref-level includeDependentAssertions=false overrides graph-level dependOnDependencyAssertions=true", () => {
+    const compiled = build({
+      name: "G",
+      dependOnDependencyAssertions: true,
+      entities: [
+        { name: "A", ref: { name: "books", includeDependentAssertions: false }, keys: ["id"] },
+        { name: "B", ref: "authors", keys: ["id"] }
+      ]
+    }).compile();
+
+    expect(asPlainObject(compiled)).deep.equals(
+      asPlainObject({
+        target: graphTarget("G"),
+        canonicalTarget: graphTarget("G"),
+        dependencyTargets: [
+          { name: "books", includeDependentAssertions: false },
+          { name: "authors", includeDependentAssertions: true }
+        ],
+        fileName: "definitions/graph.yaml",
+        description: "",
+        disabled: false,
+        entities: [{ name: "A", keys: ["id"] }, { name: "B", keys: ["id"] }]
+      })
+    );
+  });
+
   test("ref on relationship also normalizes and populates dependencyTargets", () => {
     const compiled = build({
       name: "G",
