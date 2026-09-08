@@ -4,7 +4,7 @@ import * as fs from "fs-extra";
 import { dump as dumpYaml, load as loadYaml } from "js-yaml";
 import * as path from "path";
 
-import { cliEntryPointPath, DEFAULT_DATABASE, DEFAULT_LOCATION } from "df/cli/index_test_base";
+import { cliEntryPointPath, INTEGRATION_TEST_LOCATION, INTEGRATION_TEST_PROJECT } from "df/cli/index_test_base";
 import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
 import { corePackageTarPath, getProcessResult, nodePath, npmPath, suite, test } from "df/testing";
@@ -49,7 +49,7 @@ suite("compile command", ({ afterEach }) => {
   "defaultDatabase": "tada-analytics",
   "defaultSchema": "df_integration_test",
   "assertionSchema": "df_integration_test_assertions",
-  "defaultLocation": "${DEFAULT_LOCATION}"
+  "defaultLocation": "${INTEGRATION_TEST_LOCATION}"
 }
 `
     );
@@ -105,8 +105,8 @@ suite("compile command", ({ afterEach }) => {
     fs.writeFileSync(
       path.join(projectDir, "workflow_settings.yaml"),
       dumpYaml({
-        defaultProject: DEFAULT_DATABASE,
-        defaultLocation: DEFAULT_LOCATION,
+        defaultProject: INTEGRATION_TEST_PROJECT,
+        defaultLocation: INTEGRATION_TEST_LOCATION,
         defaultDataset: "dataform",
         dataformCoreVersion: "3.0.50"
       })
@@ -166,7 +166,7 @@ suite("disable-assertions flag (compilation)", ({ afterEach, beforeEach }) => {
     const packageJsonPath = path.join(projectDir, "package.json");
 
     await getProcessResult(
-      execFile(nodePath, [cliEntryPointPath, "init", projectDir, DEFAULT_DATABASE, DEFAULT_LOCATION])
+      execFile(nodePath, [cliEntryPointPath, "init", projectDir, INTEGRATION_TEST_PROJECT, INTEGRATION_TEST_LOCATION])
     );
 
     const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
@@ -239,13 +239,13 @@ SELECT 1 as id
     assertions: [
       {
         canonicalTarget: {
-          database: DEFAULT_DATABASE,
+          database: INTEGRATION_TEST_PROJECT,
           name: "dataform_example_table_assertions_uniqueKey_0",
           schema: "dataform_assertions"
         },
         dependencyTargets: [
           {
-            database: DEFAULT_DATABASE,
+            database: INTEGRATION_TEST_PROJECT,
             name: "example_table",
             schema: "dataform"
           }
@@ -253,22 +253,22 @@ SELECT 1 as id
         disabled: true,
         fileName: "definitions/example_table.sqlx",
         parentAction: {
-          database: DEFAULT_DATABASE,
+          database: INTEGRATION_TEST_PROJECT,
           name: "example_table",
           schema: "dataform"
         },
         query:
           // tslint:disable-next-line:tsr-detect-sql-literal-injection
-          `\nSELECT\n  *\nFROM (\n  SELECT\n    id,\n    COUNT(1) AS index_row_count\n  FROM \`${DEFAULT_DATABASE}.dataform.example_table\`\n  GROUP BY id\n  ) AS data\nWHERE index_row_count > 1\n`,
+          `\nSELECT\n  *\nFROM (\n  SELECT\n    id,\n    COUNT(1) AS index_row_count\n  FROM \`${INTEGRATION_TEST_PROJECT}.dataform.example_table\`\n  GROUP BY id\n  ) AS data\nWHERE index_row_count > 1\n`,
         target: {
-          database: DEFAULT_DATABASE,
+          database: INTEGRATION_TEST_PROJECT,
           name: "dataform_example_table_assertions_uniqueKey_0",
           schema: "dataform_assertions"
         }
       },
       {
         canonicalTarget: {
-          database: DEFAULT_DATABASE,
+          database: INTEGRATION_TEST_PROJECT,
           name: "test_assertion",
           schema: "dataform_assertions"
         },
@@ -276,7 +276,7 @@ SELECT 1 as id
         fileName: "definitions/test_assertion.sqlx",
         query: "\n\nSELECT 1 WHERE FALSE\n",
         target: {
-          database: DEFAULT_DATABASE,
+          database: INTEGRATION_TEST_PROJECT,
           name: "test_assertion",
           schema: "dataform_assertions"
         }
@@ -287,8 +287,8 @@ SELECT 1 as id
     jitData: {},
     projectConfig: {
       assertionSchema: "dataform_assertions",
-      defaultDatabase: DEFAULT_DATABASE,
-      defaultLocation: DEFAULT_LOCATION,
+      defaultDatabase: INTEGRATION_TEST_PROJECT,
+      defaultLocation: INTEGRATION_TEST_LOCATION,
       defaultSchema: "dataform",
       disableAssertions: true,
       warehouse: "bigquery"
@@ -296,7 +296,7 @@ SELECT 1 as id
     tables: [
       {
         canonicalTarget: {
-          database: DEFAULT_DATABASE,
+          database: INTEGRATION_TEST_PROJECT,
           name: "example_table",
           schema: "dataform"
         },
@@ -306,7 +306,7 @@ SELECT 1 as id
         hermeticity: "NON_HERMETIC",
         query: "\n\nSELECT 1 as id\n",
         target: {
-          database: DEFAULT_DATABASE,
+          database: INTEGRATION_TEST_PROJECT,
           name: "example_table",
           schema: "dataform"
         },
@@ -315,17 +315,17 @@ SELECT 1 as id
     ],
     targets: [
       {
-        database: DEFAULT_DATABASE,
+        database: INTEGRATION_TEST_PROJECT,
         name: "dataform_example_table_assertions_uniqueKey_0",
         schema: "dataform_assertions"
       },
       {
-        database: DEFAULT_DATABASE,
+        database: INTEGRATION_TEST_PROJECT,
         name: "example_table",
         schema: "dataform"
       },
       {
-        database: DEFAULT_DATABASE,
+        database: INTEGRATION_TEST_PROJECT,
         name: "test_assertion",
         schema: "dataform_assertions"
       }
@@ -370,7 +370,7 @@ suite("compile node selection", ({ afterEach }) => {
     const npmCacheDir = tmpDirFixture.createNewTmpDir();
 
     await getProcessResult(
-      execFile(nodePath, [cliEntryPointPath, "init", projectDir, DEFAULT_DATABASE, DEFAULT_LOCATION])
+      execFile(nodePath, [cliEntryPointPath, "init", projectDir, INTEGRATION_TEST_PROJECT, INTEGRATION_TEST_LOCATION])
     );
 
     const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
@@ -508,8 +508,8 @@ suite("extension config", ({ afterEach }) => {
     fs.writeFileSync(
       path.join(projectDir, "workflow_settings.yaml"),
       dumpYaml({
-        defaultProject: DEFAULT_DATABASE,
-        defaultLocation: DEFAULT_LOCATION,
+        defaultProject: INTEGRATION_TEST_PROJECT,
+        defaultLocation: INTEGRATION_TEST_LOCATION,
         defaultDataset: "dataform",
         defaultAssertionDataset: "dataform_assertions",
         extension: {

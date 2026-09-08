@@ -6,7 +6,7 @@ import * as path from "path";
 import {
   cliEntryPointPath,
   CREDENTIALS_PATH,
-  DEFAULT_DATABASE,
+  INTEGRATION_TEST_PROJECT,
   setupJitProject
 } from "df/cli/index_test_base";
 import { getProcessResult, nodePath, suite, test } from "df/testing";
@@ -182,7 +182,7 @@ suite("JiT support main", ({ afterEach }) => {
       `publish("rpc_jit", {type: "table"}).jitCode(async (jctx) => {
          // This will fail because the table does not exist in the warehouse,
          // and jctx.adapter.getTable throws an error in this case.
-         const table = await jctx.adapter.getTable({target: {database: "${DEFAULT_DATABASE}", schema: "sch", name: "tab"}});
+         const table = await jctx.adapter.getTable({target: {database: "${INTEGRATION_TEST_PROJECT}", schema: "sch", name: "tab"}});
          return "SELECT 1 as id";
        })`
     );
@@ -210,7 +210,7 @@ suite("JiT support main", ({ afterEach }) => {
     expect(rpcAction.tasks[0].status).to.equal(3);
     expect(rpcAction.tasks[0].errorMessage).to.include("JiT compilation error");
     expect(rpcAction.tasks[0].errorMessage).to.include("Table not found");
-    expect(rpcAction.tasks[0].errorMessage).to.include(DEFAULT_DATABASE);
+    expect(rpcAction.tasks[0].errorMessage).to.include(INTEGRATION_TEST_PROJECT);
     expect(rpcAction.tasks[0].errorMessage).to.include('"schema":"sch"');
     expect(rpcAction.tasks[0].errorMessage).to.include('"name":"tab"');
   });

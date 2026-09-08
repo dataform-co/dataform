@@ -32,3 +32,9 @@ gcloud_secret = rule(
         "location": attr.string(default = "global"),
     },
 )
+
+def gcloud_secret_or_local(name, **kwargs):
+    if native.glob([name], allow_empty = True):
+        native.exports_files([name])
+    else:
+        gcloud_secret(name = name, **kwargs)

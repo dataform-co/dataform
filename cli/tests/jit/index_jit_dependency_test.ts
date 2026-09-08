@@ -6,6 +6,7 @@ import * as path from "path";
 import {
   cliEntryPointPath,
   CREDENTIALS_PATH,
+  INTEGRATION_TEST_PROJECT,
   setupJitProject
 } from "df/cli/index_test_base";
 import { getProcessResult, nodePath, suite, test } from "df/testing";
@@ -51,7 +52,7 @@ suite("JiT support dependencies", ({ afterEach }) => {
     expect(executedGraph.actions.some((a: any) => a.target.name === "table_a")).to.equal(true);
     const actionB = executedGraph.actions.find((a: any) => a.target.name === "table_b");
     expect(actionB).to.not.equal(undefined);
-    expect(actionB.tasks[0].compiledSql).to.include("SELECT '`dataform-open-source.dataform.table_a`' as ref_name");
+    expect(actionB.tasks[0].compiledSql).to.include(`SELECT '\`${INTEGRATION_TEST_PROJECT}.dataform.table_a\`' as ref_name`);
   });
 
   test("JiT to JiT dependency chain", async () => {
@@ -88,6 +89,6 @@ suite("JiT support dependencies", ({ afterEach }) => {
     const executedGraph = JSON.parse(runResult.stdout);
     expect(executedGraph.actions.length).to.equal(2);
     const actionB = executedGraph.actions.find((a: any) => a.target.name === "jit_b");
-    expect(actionB.tasks[0].compiledSql).to.include("SELECT '`dataform-open-source.dataform.jit_a`' as ref_name");
+    expect(actionB.tasks[0].compiledSql).to.include(`SELECT '\`${INTEGRATION_TEST_PROJECT}.dataform.jit_a\`' as ref_name`);
   });
 });

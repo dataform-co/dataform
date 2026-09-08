@@ -7,6 +7,7 @@ import * as dfapi from "df/cli/api";
 import * as dbadapters from "df/cli/api/dbadapters";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 import { ExecutionSql } from "df/cli/api/dbadapters/execution_sql";
+import { INTEGRATION_TEST_LOCATION, INTEGRATION_TEST_PROJECT } from "df/cli/index_test_base";
 import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
@@ -29,7 +30,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
 
       // Drop schemas to make sure schema creation works.
       await dbadapter.execute(
-        "drop schema if exists `dataform-open-source.df_integration_test_project_e2e` cascade"
+        `drop schema if exists \`${INTEGRATION_TEST_PROJECT}.df_integration_test_project_e2e\` cascade`
       );
 
       // Run the project.
@@ -41,8 +42,8 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
 
       // Check the status of action execution.
       const expectedFailedActions = [
-        "dataform-open-source.df_integration_test_assertions_project_e2e.example_assertion_fail",
-        "dataform-open-source.df_integration_test_project_e2e.example_operation_partial_fail"
+        `${INTEGRATION_TEST_PROJECT}.df_integration_test_assertions_project_e2e.example_assertion_fail`,
+        `${INTEGRATION_TEST_PROJECT}.df_integration_test_project_e2e.example_operation_partial_fail`
       ];
       for (const actionName of Object.keys(actionMap)) {
         const expectedResult = expectedFailedActions.includes(actionName)
@@ -56,13 +57,13 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
 
       expect(
         actionMap[
-          "dataform-open-source.df_integration_test_assertions_project_e2e.example_assertion_fail"
+          `${INTEGRATION_TEST_PROJECT}.df_integration_test_assertions_project_e2e.example_assertion_fail`
         ].tasks[1].errorMessage
       ).to.eql("bigquery error: Assertion failed: query returned 1 row(s).");
 
       expect(
         actionMap[
-          "dataform-open-source.df_integration_test_project_e2e.example_operation_partial_fail"
+          `${INTEGRATION_TEST_PROJECT}.df_integration_test_project_e2e.example_operation_partial_fail`
         ].tasks[0].errorMessage
       ).to.eql("bigquery error: Query error: Unrecognized name: invalid_column at [3:8]");
     });
@@ -106,7 +107,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
         const [incrementalRows, incrementalMergeRows] = await Promise.all([
           getTableRows(
             {
-              database: "dataform-open-source",
+              database: INTEGRATION_TEST_PROJECT,
               schema: "df_integration_test_incremental_tables",
               name: "example_incremental"
             },
@@ -115,7 +116,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
           ),
           getTableRows(
             {
-              database: "dataform-open-source",
+              database: INTEGRATION_TEST_PROJECT,
               schema: "df_integration_test_incremental_tables",
               name: "example_incremental_merge"
             },
@@ -152,7 +153,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       for (const expectedMetadata of [
         {
           target: {
-            database: "dataform-open-source",
+            database: INTEGRATION_TEST_PROJECT,
             schema: "df_integration_test_dataset_metadata",
             name: "example_incremental"
           },
@@ -191,7 +192,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
         },
         {
           target: {
-            database: "dataform-open-source",
+            database: INTEGRATION_TEST_PROJECT,
             schema: "df_integration_test_dataset_metadata",
             name: "example_view"
           },
@@ -260,7 +261,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       await dfapi.run(dbadapter, executionGraph).result();
 
       const view = keyBy(compiledGraph.tables, t => targetAsReadableString(t.target))[
-        "dataform-open-source.df_integration_test_evaluate.example_view"
+        `${INTEGRATION_TEST_PROJECT}.df_integration_test_evaluate.example_view`
       ];
       let evaluations = await dbadapter.evaluate(dataform.Table.create(view));
       expect(evaluations.length).to.equal(1);
@@ -269,7 +270,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       );
 
       const materializedView = keyBy(compiledGraph.tables, t => targetAsReadableString(t.target))[
-        "dataform-open-source.df_integration_test_evaluate.example_materialized_view"
+        `${INTEGRATION_TEST_PROJECT}.df_integration_test_evaluate.example_materialized_view`
       ];
       evaluations = await dbadapter.evaluate(dataform.Table.create(materializedView));
       expect(evaluations.length).to.equal(1);
@@ -278,7 +279,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       );
 
       const table = keyBy(compiledGraph.tables, t => targetAsReadableString(t.target))[
-        "dataform-open-source.df_integration_test_evaluate.example_table"
+        `${INTEGRATION_TEST_PROJECT}.df_integration_test_evaluate.example_table`
       ];
       evaluations = await dbadapter.evaluate(dataform.Table.create(table));
       expect(evaluations.length).to.equal(1);
@@ -287,7 +288,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       );
 
       const operation = keyBy(compiledGraph.operations, t => targetAsReadableString(t.target))[
-        "dataform-open-source.df_integration_test_evaluate.example_operation"
+        `${INTEGRATION_TEST_PROJECT}.df_integration_test_evaluate.example_operation`
       ];
       evaluations = await dbadapter.evaluate(dataform.Operation.create(operation));
       expect(evaluations.length).to.equal(1);
@@ -296,7 +297,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       );
 
       const assertion = keyBy(compiledGraph.assertions, t => targetAsReadableString(t.target))[
-        "dataform-open-source.df_integration_test_assertions_evaluate.example_assertion_pass"
+        `${INTEGRATION_TEST_PROJECT}.df_integration_test_assertions_evaluate.example_assertion_pass`
       ];
       evaluations = await dbadapter.evaluate(dataform.Assertion.create(assertion));
       expect(evaluations.length).to.equal(1);
@@ -305,7 +306,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       );
 
       const incremental = keyBy(compiledGraph.tables, t => targetAsReadableString(t.target))[
-        "dataform-open-source.df_integration_test_evaluate.example_incremental"
+        `${INTEGRATION_TEST_PROJECT}.df_integration_test_evaluate.example_incremental`
       ];
       evaluations = await dbadapter.evaluate(dataform.Table.create(incremental));
       expect(evaluations.length).to.equal(2);
@@ -321,7 +322,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
       const target = (name: string) => ({
         schema: "df_integration_test",
         name,
-        database: "dataform-open-source"
+        database: INTEGRATION_TEST_PROJECT
       });
 
       let evaluations = await dbadapter.evaluate(
@@ -503,8 +504,8 @@ suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) 
     fs.writeFileSync(
       path.join(projectDir, "workflow_settings.yaml"),
       `
-defaultProject: dataform-open-source
-defaultLocation: US
+defaultProject: ${INTEGRATION_TEST_PROJECT}
+defaultLocation: ${INTEGRATION_TEST_LOCATION}
 defaultDataset: df_integration_test_jit
 `
     );
@@ -531,7 +532,7 @@ defaultDataset: df_integration_test_jit
       
       // Drop dataset to start fresh
       await dbadapter.execute(
-        "drop schema if exists `dataform-open-source.df_integration_test_jit` cascade"
+        `drop schema if exists \`${INTEGRATION_TEST_PROJECT}.df_integration_test_jit\` cascade`
       );
 
       const executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
@@ -541,7 +542,7 @@ defaultDataset: df_integration_test_jit
         dataform.RunResult.ExecutionStatus[dataform.RunResult.ExecutionStatus.SUCCESSFUL]
       );
 
-      const rows = await dbadapter.execute("SELECT * FROM `dataform-open-source.df_integration_test_jit.jit_table`").then(res => res.rows);
+      const rows = await dbadapter.execute(`SELECT * FROM \`${INTEGRATION_TEST_PROJECT}.df_integration_test_jit.jit_table\``).then(res => res.rows);
       expect(rows).to.eql([{ id: 1 }]);
     } finally {
       if (fs.existsSync(projectDir)) {
@@ -560,7 +561,7 @@ defaultDataset: df_integration_test_jit
     fs.writeFileSync(
       path.join(projectDir, "workflow_settings.yaml"),
       `
-defaultProject: dataform-open-source
+defaultProject: ${INTEGRATION_TEST_PROJECT}
 defaultLocation: US
 defaultDataset: df_integration_test_jit_dry_run
 `
@@ -587,7 +588,7 @@ defaultDataset: df_integration_test_jit_dry_run
       
       // Drop dataset to start fresh
       await dbadapter.execute(
-        "drop schema if exists `dataform-open-source.df_integration_test_jit_dry_run` cascade"
+        `drop schema if exists \`${INTEGRATION_TEST_PROJECT}.df_integration_test_jit_dry_run\` cascade`
       );
 
       const executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
@@ -602,11 +603,11 @@ defaultDataset: df_integration_test_jit_dry_run
       );
 
       // Verify that the table was NOT created
-      const tables = await dbadapter.schemas("dataform-open-source").then(schemas => {
+      const tables = await dbadapter.schemas(INTEGRATION_TEST_PROJECT).then(schemas => {
         if (!schemas.includes("df_integration_test_jit_dry_run")) {
           return [];
         }
-        return dbadapter.tables("dataform-open-source", "df_integration_test_jit_dry_run");
+        return dbadapter.tables(INTEGRATION_TEST_PROJECT, "df_integration_test_jit_dry_run");
       });
       expect(tables.length).to.equal(0);
     } finally {
