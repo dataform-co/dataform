@@ -81,15 +81,6 @@ export const timeoutOption: INamedOption<yargs.Options> = {
   }
 };
 
-export const quietCompileOption: INamedOption<yargs.Options> = {
-  name: "quiet",
-  option: {
-    describe: "Less verbose compilation output. Example usage: 'dataform compile --quiet'",
-    type: "boolean",
-    default: false
-  }
-};
-
 // It would be nice to use yargs' "implies" to implement this, but it doesn't work for some reason.
 export const requiresSelection = (
   name: string,

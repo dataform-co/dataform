@@ -12,7 +12,6 @@ import {
   jsonOutputOption,
   projectDirMustExistOption,
   projectDirOption,
-  quietCompileOption,
   requiresSelection,
   splitCommas,
   timeoutOption
@@ -232,7 +231,7 @@ export const runCommand: ICommand = {
       timeoutMillis: argv[timeoutOption.name] || undefined
     });
     if (compiledGraphHasErrors(compiledGraph)) {
-      printCompiledGraphErrors(compiledGraph.graphErrors, argv[quietCompileOption.name]);
+      printCompiledGraphErrors(compiledGraph.graphErrors);
       return 1;
     }
     logger.success("Compiled successfully.\n");
