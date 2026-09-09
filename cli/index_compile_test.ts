@@ -30,7 +30,7 @@ suite("compile command", ({ afterEach }) => {
       );
 
       expect(
-        (await runCli("compile", projectDir)).stderr
+        (await runCli("compile", [projectDir])).stderr
       ).contains(
         "dataformCoreVersion must be specified either in workflow_settings.yaml or via a " +
           "package.json"
@@ -60,7 +60,7 @@ suite("compile command", ({ afterEach }) => {
     );
 
     expect(
-      (await runCli("compile", projectDir)).stderr
+      (await runCli("compile", [projectDir])).stderr
     ).contains(
       "Could not find a recent installed version of @dataform/core in the project. Check that " +
         "either `dataformCoreVersion` is specified in `workflow_settings.yaml`, or " +
@@ -88,7 +88,7 @@ suite("compile command", ({ afterEach }) => {
     // npm needs a writable cache; ~/.npm is read-only in the bazel sandbox.
     const npmCacheDir = tmpDirFixture.createNewTmpDir();
     const stderr = (
-      await runCli("compile", projectDir, [], {
+      await runCli("compile", [projectDir], {
         env: { ...process.env, NPM_CONFIG_CACHE: npmCacheDir }
       })
     ).stderr;
@@ -120,7 +120,7 @@ suite("compile command", ({ afterEach }) => {
     );
 
     const npmCacheDir = tmpDirFixture.createNewTmpDir();
-    const result = await runCli("compile", projectDir, ["--json"], {
+    const result = await runCli("compile", [projectDir, "--json"], {
       env: { ...process.env, NPM_CONFIG_CACHE: npmCacheDir }
     });
 
@@ -150,7 +150,7 @@ suite("compile command", ({ afterEach }) => {
       }
 
       expect(
-        (await runCli("compile", projectDir)).stderr
+        (await runCli("compile", [projectDir])).stderr
       ).contains(`${npmFile}' unexpected; remove it and try again`);
     });
   });
@@ -290,9 +290,10 @@ SELECT 1 as id
   };
 
   test("with --disable-assertions flag", async () => {
-    await alterWorkflowSettings(projectDir, { disableAssertions : false });
+    alterWorkflowSettings(projectDir, { disableAssertions: false });
 
-    const compileResult = await runCli("compile", projectDir, [
+    const compileResult = await runCli("compile", [
+      projectDir,
       "--json",
       "--disable-assertions"
     ]);
@@ -302,9 +303,9 @@ SELECT 1 as id
   });
 
   test("with disableAssertions set in workflow_settings.yaml", async () => {
-    await alterWorkflowSettings(projectDir, { disableAssertions : true });
+    alterWorkflowSettings(projectDir, { disableAssertions: true });
 
-    const compileResult = await runCli("compile", projectDir, ["--json"]);
+    const compileResult = await runCli("compile", [projectDir, "--json"]);
 
     expect(compileResult.exitCode).equals(0);
     expect(JSON.parse(compileResult.stdout)).deep.equals(expectedCompileResult);
@@ -342,13 +343,14 @@ suite("compile node selection", ({ afterEach, beforeEach }) => {
   });
 
   test("no selector emits the entire graph", async () => {
-    const result = await runCli("compile", projectDir, ["--json"]);
+    const result = await runCli("compile", [projectDir, "--json"]);
     expect(result.exitCode, result.stderr).equals(0);
     expect(tableNames(result.stdout)).deep.equals(["downstream", "midstream", "upstream"]);
   });
 
   test("--output-actions filters output to the selected action", async () => {
-    const result = await runCli("compile", projectDir, [
+    const result = await runCli("compile", [
+      projectDir,
       "--output-actions",
       "midstream",
       "--json"
@@ -362,7 +364,8 @@ suite("compile node selection", ({ afterEach, beforeEach }) => {
   });
 
   test("--output-actions --output-include-deps pulls in upstream dependencies", async () => {
-    const result = await runCli("compile", projectDir, [
+    const result = await runCli("compile", [
+      projectDir,
       "--output-actions",
       "midstream",
       "--output-include-deps",
@@ -373,7 +376,8 @@ suite("compile node selection", ({ afterEach, beforeEach }) => {
   });
 
   test("--output-actions --output-include-dependents pulls in downstream dependents", async () => {
-    const result = await runCli("compile", projectDir, [
+    const result = await runCli("compile", [
+      projectDir,
       "--output-actions",
       "midstream",
       "--output-include-dependents",
@@ -384,7 +388,8 @@ suite("compile node selection", ({ afterEach, beforeEach }) => {
   });
 
   test("--output-tags filters output to actions carrying the tag", async () => {
-    const result = await runCli("compile", projectDir, [
+    const result = await runCli("compile", [
+      projectDir,
       "--output-tags",
       "daily",
       "--json"
@@ -394,7 +399,8 @@ suite("compile node selection", ({ afterEach, beforeEach }) => {
   });
 
   test("selector matching nothing emits an empty graph and exits zero", async () => {
-    const result = await runCli("compile", projectDir, [
+    const result = await runCli("compile", [
+      projectDir,
       "--output-actions",
       "nope",
       "--json"
@@ -404,7 +410,8 @@ suite("compile node selection", ({ afterEach, beforeEach }) => {
   });
 
   test("--output-include-deps without a selector is rejected", async () => {
-    const result = await runCli("compile", projectDir, [
+    const result = await runCli("compile", [
+      projectDir,
       "--output-include-deps",
       "--json"
     ]);
@@ -427,7 +434,7 @@ suite("extension config", ({ afterEach }) => {
       }
     });
 
-    const compileResult = await runCli("compile", projectDir, []);
+    const compileResult = await runCli("compile", [projectDir]);
 
     expect(compileResult.exitCode).equals(0);
     expect(compileResult.stdout).contains("Compiled 0 action(s).");

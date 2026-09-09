@@ -28,7 +28,8 @@ suite("init command", ({ afterEach }) => {
   test("workflow_settings.yaml generated from init", async () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
 
-    await runCli("init", projectDir, [
+    await runCli("init", [
+      projectDir,
       "--default-database=dataform-database",
       "--default-location=us-central1"
     ]);
@@ -54,8 +55,8 @@ defaultAssertionDataset: dataform_assertions
 
       const result = await runCli(
         "init",
-        projectDir,
         [
+          projectDir,
           "dataform-iceberg-test",
           "us-central1",
           "--iceberg"
@@ -96,8 +97,8 @@ defaultAssertionDataset: dataform_assertions
 
       const result = await runCli(
         "init",
-        projectDir,
         [
+          projectDir,
           "dataform-iceberg-partial",
           "us-east1",
           "--iceberg"
@@ -142,8 +143,8 @@ defaultAssertionDataset: dataform_assertions
 
       const result = await runCli(
         "init",
-        projectDir,
         [
+          projectDir,
           "dataform-iceberg-partial",
           "us-east1",
           "--iceberg"
@@ -188,8 +189,8 @@ defaultAssertionDataset: dataform_assertions
 
       const result = await runCli(
         "init",
-        projectDir,
         [
+          projectDir,
           "dataform-iceberg-partial",
           "us-east1",
           "--iceberg"
@@ -234,8 +235,8 @@ defaultAssertionDataset: dataform_assertions
 
       const result = await runCli(
         "init",
-        projectDir,
         [
+          projectDir,
           "dataform-iceberg-partial",
           "us-east1",
           "--iceberg"
@@ -276,7 +277,7 @@ suite("init-creds command", ({ afterEach }) => {
 
   test("init-creds fails for directory without dataform config", async () => {
     const emptyDir = tmpDirFixture.createNewTmpDir();
-    const result = await runCli("init-creds", emptyDir);
+    const result = await runCli("init-creds", [emptyDir]);
     expect(result.exitCode).to.not.equal(0);
     expect(result.stderr).to.include(
       `${emptyDir} does not appear to be a dataform directory (missing workflow_settings.yaml file).`

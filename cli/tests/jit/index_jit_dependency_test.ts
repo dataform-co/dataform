@@ -31,7 +31,8 @@ suite("JiT support dependencies", ({ afterEach }) => {
       })`
     );
 
-    const runResult = await runCli("run", projectDir, [
+    const runResult = await runCli("run", [
+      projectDir,
       "--credentials",
       CREDENTIALS_PATH,
       "--dry-run",
@@ -68,7 +69,8 @@ suite("JiT support dependencies", ({ afterEach }) => {
       "})"
     );
 
-    const runResult = await runCli("run", projectDir, [
+    const runResult = await runCli("run", [
+      projectDir,
       "--credentials",
       CREDENTIALS_PATH,
       "--dry-run",

@@ -16,7 +16,7 @@ suite("JiT support main", ({ afterEach }) => {
   test("compile command includes jitCode in output", async () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
     await setupJitProject(tmpDirFixture, projectDir);
-    const compileResult = await runCli("compile", projectDir, ["--json"]);
+    const compileResult = await runCli("compile", [projectDir, "--json"]);
 
     expect(compileResult.exitCode).equals(0);
     const compiledGraph = JSON.parse(compileResult.stdout);
@@ -36,7 +36,7 @@ suite("JiT support main", ({ afterEach }) => {
       `publish("conflict", {type: "table"}).query("SELECT 1").jitCode(async (ctx) => "SELECT 2")`
     );
 
-    const compileResult = await runCli("compile", projectDir, ["--json"]);
+    const compileResult = await runCli("compile", [projectDir, "--json"]);
 
     expect(compileResult.exitCode).equals(1);
     expect(compileResult.stderr).to.include("Cannot mix AoT and JiT compilation in action");
@@ -46,7 +46,8 @@ suite("JiT support main", ({ afterEach }) => {
     const projectDir = tmpDirFixture.createNewTmpDir();
     await setupJitProject(tmpDirFixture, projectDir);
 
-    const runResult = await runCli("run", projectDir, [
+    const runResult = await runCli("run", [
+      projectDir,
       "--credentials",
       CREDENTIALS_PATH,
       "--dry-run",
@@ -69,7 +70,8 @@ suite("JiT support main", ({ afterEach }) => {
     await setupJitProject(tmpDirFixture, projectDir);
     writeDefinitionFile(projectDir, "aot_table.sqlx", "config { type: 'table' } SELECT 2 as id");
 
-    const runResult = await runCli("run", projectDir, [
+    const runResult = await runCli("run", [
+      projectDir,
       "--credentials",
       CREDENTIALS_PATH,
       "--dry-run",
@@ -106,8 +108,8 @@ suite("JiT support main", ({ afterEach }) => {
 
     const runResult = await runCli(
       "run",
-      projectDir,
       [
+        projectDir,
         "--credentials",
         CREDENTIALS_PATH,
         "--actions=disabled_jit"
@@ -131,7 +133,8 @@ suite("JiT support main", ({ afterEach }) => {
       `publish("failing_jit", {type: "table"}).jitCode(async (ctx) => { throw new Error("JiT compilation failed!"); })`
     );
 
-    const runResult = await runCli("run", projectDir, [
+    const runResult = await runCli("run", [
+      projectDir,
       "--credentials",
       CREDENTIALS_PATH,
       "--dry-run",
@@ -164,7 +167,8 @@ suite("JiT support main", ({ afterEach }) => {
        })`
     );
 
-    const runResult = await runCli("run", projectDir, [
+    const runResult = await runCli("run", [
+      projectDir,
       "--credentials",
       CREDENTIALS_PATH,
       "--dry-run",
@@ -192,7 +196,8 @@ suite("JiT support main", ({ afterEach }) => {
     await setupJitProject(tmpDirFixture, projectDir);
     writeDefinitionFile(projectDir, "aot_table.sqlx", "config { type: 'table' } SELECT 2 as id");
 
-    const runResult = await runCli("run", projectDir, [
+    const runResult = await runCli("run", [
+      projectDir,
       "--credentials",
       CREDENTIALS_PATH,
       "--dry-run",
@@ -215,7 +220,8 @@ suite("JiT support main", ({ afterEach }) => {
     await setupJitProject(tmpDirFixture, projectDir);
     writeDefinitionFile(projectDir, "aot_table.sqlx", "config { type: 'table' } SELECT 2 as id");
 
-    const runResult = await runCli("run", projectDir, [
+    const runResult = await runCli("run", [
+      projectDir,
       "--credentials",
       CREDENTIALS_PATH,
       "--dry-run",

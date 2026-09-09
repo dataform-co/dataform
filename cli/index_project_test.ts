@@ -17,13 +17,14 @@ suite("project ops", ({ afterEach }) => {
     test("install throws an error when dataformCoreVersion in workflow_settings.yaml", async () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
 
-      await runCli("init", projectDir, [
+      await runCli("init", [
+        projectDir,
         "--default-database=dataform-database",
         "--default-location=us-central1"
       ]);
 
       expect(
-        (await runCli("install", projectDir, [])).stderr
+        (await runCli("install", [projectDir])).stderr
       ).contains(
         "No installation is needed when using workflow_settings.yaml, as packages are installed at " +
           "runtime."
@@ -61,7 +62,7 @@ SELECT  1  as   test
       );
 
       // Test with --check flag on a project with files needing formatting
-      const beforeFormatCheckResult = await runCli("format", projectDir, ["--check"]);
+      const beforeFormatCheckResult = await runCli("format", [projectDir, "--check"]);
 
       // Should exit with code 1 when files need formatting
       expect(beforeFormatCheckResult.exitCode).equals(1);
@@ -69,11 +70,11 @@ SELECT  1  as   test
       expect(beforeFormatCheckResult.stderr).contains("unformatted.sqlx");
 
       // Format the files (without check flag)
-      const formatCheckResult = await runCli("format", projectDir);
+      const formatCheckResult = await runCli("format", [projectDir]);
       expect(formatCheckResult.exitCode).equals(0);
 
       // Test with --check flag after formatting
-      const afterFormatCheckResult = await runCli("format", projectDir, ["--check"]);
+      const afterFormatCheckResult = await runCli("format", [projectDir, "--check"]);
 
       // Should exit with code 0 when all files are properly formatted
       expect(afterFormatCheckResult.exitCode).equals(0);
@@ -109,7 +110,7 @@ modules.exports = {
       );
 
       // Run formatter
-      const formatCmdRun = await runCli("format", projectDir, ["--ignore-js-files"]);
+      const formatCmdRun = await runCli("format", [projectDir, "--ignore-js-files"]);
 
       expect(formatCmdRun.exitCode).equals(0);
 

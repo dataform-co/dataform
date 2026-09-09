@@ -69,7 +69,7 @@ export async function setupProject(
   const packageJsonPath = path.join(projectDir, "package.json");
 
   // Initialize a project using the CLI, don't install packages.
-  await runCli("init", projectDir, [INTEGRATION_TEST_PROJECT, INTEGRATION_TEST_LOCATION]);
+  await runCli("init", [projectDir, INTEGRATION_TEST_PROJECT, INTEGRATION_TEST_LOCATION]);
 
   // Install packages manually to get around bazel read-only sandbox issues.
   const workflowSettings = dataform.WorkflowSettings.create({
@@ -105,7 +105,6 @@ export async function setupProject(
 
 export async function runCli(
   cmd: string,
-  dir?: string,
   options: string[] = [],
   execOptions?: ExecFileOptions
 ): Promise<{
@@ -113,8 +112,8 @@ export async function runCli(
   stdout: string;
   stderr: string;
 }> {
-  const args = [cliEntryPointPath, cmd, ...(dir !== undefined ? [dir] : []), ...options];
-  return await getProcessResult(
+  const args = [cliEntryPointPath, cmd, ...options];
+  return getProcessResult(
     execFile(nodePath, args, execOptions)
   );
 }
@@ -125,16 +124,20 @@ export function writeDefinitionFile(projectDir: string, filename: string, conten
   fs.writeFileSync(fullPath, content);
 }
 
-export async function alterWorkflowSettings(projectDir: string, workflowSettingsOverrides: Partial<dataform.IWorkflowSettings>): Promise<void> {
+export function alterWorkflowSettings(
+  projectDir: string,
+  workflowSettingsOverrides: Partial<dataform.IWorkflowSettings>
+): void {
   const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
-  const workflowSettings = dataform.WorkflowSettings.create(
-    loadYaml(fs.readFileSync(workflowSettingsPath, "utf8"))
-  );
-  const workflowSettingsNew = dataform.WorkflowSettings.create({
-    ...workflowSettings,
+  const existingSettings = loadYaml(fs.readFileSync(workflowSettingsPath, "utf8")) as dataform.IWorkflowSettings;
+  const workflowSettings = dataform.WorkflowSettings.create({
+    ...existingSettings,
     ...workflowSettingsOverrides
   });
-  fs.writeFileSync(workflowSettingsPath, dumpYaml(workflowSettingsNew));
+  fs.writeFileSync(
+    workflowSettingsPath,
+    dumpYaml(dataform.WorkflowSettings.toObject(workflowSettings, { enums: String }))
+  );
 }
 
 export async function setupJitProject(

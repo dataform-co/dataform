@@ -27,7 +27,8 @@ suite("JiT support advanced", ({ afterEach }) => {
       })`
     );
 
-    const runResult = await runCli("run", projectDir, [
+    const runResult = await runCli("run", [
+      projectDir,
       "--credentials",
       CREDENTIALS_PATH,
       "--dry-run",
@@ -65,7 +66,8 @@ suite("JiT support advanced", ({ afterEach }) => {
       })`
     );
 
-    const runResult = await runCli("run", projectDir, [
+    const runResult = await runCli("run", [
+      projectDir,
       "--credentials",
       CREDENTIALS_PATH,
       "--dry-run",
@@ -83,7 +85,8 @@ suite("JiT support advanced", ({ afterEach }) => {
 
     // Also validate when not using full-refresh.
     // Since the table doesn't exist, jctx.incremental() should still be false.
-    const runResultIncremental = await runCli("run", projectDir, [
+    const runResultIncremental = await runCli("run", [
+      projectDir,
       "--credentials",
       CREDENTIALS_PATH,
       "--dry-run",
@@ -121,7 +124,8 @@ suite("JiT support advanced", ({ afterEach }) => {
     );
 
     // 1. Initial run with full-refresh to create the table.
-    const firstRun = await runCli("run", projectDir, [
+    const firstRun = await runCli("run", [
+      projectDir,
       "--credentials",
       CREDENTIALS_PATH,
       "--actions=inc_jit",
@@ -131,7 +135,8 @@ suite("JiT support advanced", ({ afterEach }) => {
 
     // 2. Second run without full-refresh.
     // The table now exists, so it should use the incremental path.
-    const secondRun = await runCli("run", projectDir, [
+    const secondRun = await runCli("run", [
+      projectDir,
       "--credentials",
       CREDENTIALS_PATH,
       "--dry-run",
@@ -164,7 +169,8 @@ suite("JiT support advanced", ({ afterEach }) => {
       })`
     );
 
-    const runResult = await runCli("run", projectDir, [
+    const runResult = await runCli("run", [
+      projectDir,
       "--credentials",
       CREDENTIALS_PATH,
       "--dry-run",
@@ -200,7 +206,8 @@ suite("JiT support advanced", ({ afterEach }) => {
       "})"
     );
 
-    const runResult = await runCli("run", projectDir, [
+    const runResult = await runCli("run", [
+      projectDir,
       "--credentials",
       CREDENTIALS_PATH,
       "--dry-run",

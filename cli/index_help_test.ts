@@ -19,7 +19,7 @@ suite("help command", () => {
   });
 
   test("shows help for 'init' command", async () => {
-    const result = await runCli("help", "init");
+    const result = await runCli("help", ["init"]);
     expect(result.exitCode).equals(0);
     const output = result.stdout;
     expect(output).to.include("Create a new dataform project.");
@@ -28,7 +28,7 @@ suite("help command", () => {
   });
 
   test("shows help for 'install' command", async () => {
-    const result = await runCli("help", "install");
+    const result = await runCli("help", ["install"]);
     expect(result.exitCode).equals(0);
     const output = result.stdout;
     expect(output).to.include("Install a project's NPM dependencies.");
@@ -36,7 +36,7 @@ suite("help command", () => {
   });
 
   test("shows help for 'init-creds' command", async () => {
-    const result = await runCli("help", "init-creds");
+    const result = await runCli("help", ["init-creds"]);
     expect(result.exitCode).equals(0);
     const output = result.stdout;
     expect(output).to.include("Create a .df-credentials.json file for Dataform to use when accessing BigQuery.");
@@ -46,7 +46,7 @@ suite("help command", () => {
   });
 
   test("shows help for 'compile' command", async () => {
-    const result = await runCli("help", "compile");
+    const result = await runCli("help", ["compile"]);
     expect(result.exitCode).equals(0);
     const output = result.stdout;
     expect(output).to.include("Compile the dataform project.");
@@ -56,7 +56,7 @@ suite("help command", () => {
   });
 
   test("shows help for 'test' command", async () => {
-    const result = await runCli("help", "test");
+    const result = await runCli("help", ["test"]);
     expect(result.exitCode).equals(0);
     const output = result.stdout;
     expect(output).to.include("Run the dataform project's unit tests.");
@@ -68,7 +68,7 @@ suite("help command", () => {
   });
 
   test("shows help for 'run' command", async () => {
-    const result = await runCli("help", "run");
+    const result = await runCli("help", ["run"]);
     expect(result.exitCode).equals(0);
     const output = result.stdout;
     expect(output).to.include("Run the dataform project.");
@@ -84,7 +84,7 @@ suite("help command", () => {
   });
 
   test("shows help for 'format' command", async () => {
-    const result = await runCli("help", "format");
+    const result = await runCli("help", ["format"]);
     expect(result.exitCode).equals(0);
     const output = result.stdout;
     expect(output).to.include("Format the dataform project's files.");

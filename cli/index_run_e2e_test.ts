@@ -38,8 +38,8 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
     // Compile the project using the CLI.
     const compileResult = await runCli(
       "compile", 
-      projectDir, 
       [
+        projectDir,
         "--json",
         "--vars=testVar1=testValue1,testVar2=testValue2",
         "--schema-suffix=test_schema_suffix"
@@ -97,8 +97,8 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
     // Dry run the project.
     const runResult = await runCli(
       "run", 
-      projectDir, 
       [
+        projectDir,
         "--credentials",
         CREDENTIALS_PATH,
         "--dry-run",
@@ -163,7 +163,7 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
     let projectDir: string;
 
     beforeEach("setup test project", async () => {
-      projectDir = tmpDirFixture.createNewTmpDir()
+      projectDir = tmpDirFixture.createNewTmpDir();
       await setupProject(tmpDirFixture, projectDir);
 
       writeDefinitionFile(
@@ -239,12 +239,12 @@ SELECT 1 as id
     };
 
     test("with --disable-assertions flag", async () => {
-      await alterWorkflowSettings(projectDir, { disableAssertions : false });
+      alterWorkflowSettings(projectDir, { disableAssertions: false });
 
       const runResult = await runCli(
         "run",
-        projectDir,
         [
+          projectDir,
           "--credentials",
           CREDENTIALS_PATH,
           "--dry-run",
@@ -263,12 +263,12 @@ SELECT 1 as id
     });
 
     test("with disableAssertions set in workflow_settings.yaml", async () => {
-      await alterWorkflowSettings(projectDir, { disableAssertions : true });
+      alterWorkflowSettings(projectDir, { disableAssertions: true });
 
       const runResult = await runCli(
         "run",
-        projectDir,
         [
+          projectDir,
           "--credentials",
           CREDENTIALS_PATH,
           "--dry-run",
@@ -286,12 +286,12 @@ SELECT 1 as id
     });
 
     test("with --job-labels flag", async () => {
-      await alterWorkflowSettings(projectDir, { disableAssertions : false });
+      alterWorkflowSettings(projectDir, { disableAssertions: false });
 
       const runResult = await runCli(
         "run",
-        projectDir,
         [
+          projectDir,
           "--credentials",
           CREDENTIALS_PATH,
           "--dry-run",
@@ -332,8 +332,8 @@ SELECT 1 as id
     test("--default-reservation flag is applied to projectConfig in compile output", async () => {
       const compileResult = await runCli(
         "compile",
-        projectDir,
         [
+          projectDir,
           "--json",
           `--default-reservation=${INTEGRATION_TEST_RESERVATION}`
         ]
@@ -354,8 +354,8 @@ SELECT 1 as id
     test("--default-reservation flag is applied to projectConfig in run (dry-run) output", async () => {
       const runResult = await runCli(
         "run",
-        projectDir,
         [
+          projectDir,
           "--credentials",
           CREDENTIALS_PATH,
           "--dry-run",
@@ -409,8 +409,8 @@ select 1
       // Run tests using the CLI.
       const testResult = await runCli(
         "test",
-        projectDir,
         [
+          projectDir,
           "--credentials",
           CREDENTIALS_PATH,
           "--json"
@@ -439,8 +439,8 @@ select 2
       // Run tests using the CLI.
       const testResult = await runCli(
         "test",
-        projectDir,
         [
+          projectDir,
           "--credentials",
           CREDENTIALS_PATH,
           "--json"
@@ -509,8 +509,8 @@ DROP SCHEMA IF EXISTS \`\${dataform.projectConfig.defaultDatabase}.\${dataform.p
         // Dataform will automatically create the uniqueDataset schema.
         await runCli(
           "run",
-          projectDir,
           [
+            projectDir,
             "--credentials",
             CREDENTIALS_PATH,
             "--actions=setup_table"
@@ -521,8 +521,8 @@ DROP SCHEMA IF EXISTS \`\${dataform.projectConfig.defaultDatabase}.\${dataform.p
         // Dataform will detect the table exists and generate the dynamic procedural SQL.
         const runResult = await runCli(
           "run",
-          projectDir,
           [
+            projectDir,
             "--credentials",
             CREDENTIALS_PATH,
             "--dry-run",
@@ -579,8 +579,8 @@ DROP SCHEMA IF EXISTS \`\${dataform.projectConfig.defaultDatabase}.\${dataform.p
         // Teardown the schema completely, regardless of test success or failure.
         await runCli(
           "run",
-          projectDir,
           [
+            projectDir,
             "--credentials",
             CREDENTIALS_PATH,
             "--actions=teardown_schema"
@@ -607,8 +607,8 @@ DROP SCHEMA IF EXISTS \`\${dataform.projectConfig.defaultDatabase}.\${dataform.p
       // — we only assert on stderr for the notice line.
       const runResult = await runCli(
         "run",
-        projectDir,
         [
+          projectDir,
           "--credentials",
           CREDENTIALS_PATH,
           "--timeout",
@@ -624,8 +624,8 @@ DROP SCHEMA IF EXISTS \`\${dataform.projectConfig.defaultDatabase}.\${dataform.p
     test("--timeout on run does NOT emit notice when --execution-timeout is also set", async () => {
       const runResult = await runCli(
         "run",
-        projectDir,
         [
+          projectDir,
           "--credentials",
           CREDENTIALS_PATH,
           "--timeout",

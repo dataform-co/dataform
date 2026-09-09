@@ -33,7 +33,8 @@ suite("JiT support runtime", ({ afterEach }) => {
       })`
     );
 
-    const runResult = await runCli("run", projectDir, [
+    const runResult = await runCli("run", [
+      projectDir,
       "--credentials",
       CREDENTIALS_PATH,
       "--dry-run",
@@ -60,8 +61,8 @@ suite("JiT support runtime", ({ afterEach }) => {
     );
     const runResult = await runCli(
       "run",
-      projectDir,
       [
+        projectDir,
         "--credentials",
         CREDENTIALS_PATH,
         "--dry-run",
@@ -93,8 +94,8 @@ suite("JiT support runtime", ({ afterEach }) => {
     // defeating the assertions below.
     const runResult = await runCli(
       "run",
-      projectDir,
       [
+        projectDir,
         "--credentials",
         CREDENTIALS_PATH,
         "--dry-run",
@@ -127,7 +128,8 @@ suite("JiT support runtime", ({ afterEach }) => {
       `assert("jit_assertion").jitCode(async (jctx) => "SELECT 1 as row_count")`
     );
 
-    const runResult = await runCli("run", projectDir, [
+    const runResult = await runCli("run", [
+      projectDir,
       "--credentials",
       CREDENTIALS_PATH,
       "--dry-run",
@@ -157,7 +159,8 @@ suite("JiT support runtime", ({ afterEach }) => {
       );
     }
 
-    const runResult = await runCli("run", projectDir, [
+    const runResult = await runCli("run", [
+      projectDir,
       "--credentials",
       CREDENTIALS_PATH,
       "--dry-run",
@@ -182,7 +185,8 @@ suite("JiT support runtime", ({ afterEach }) => {
       })`
     );
 
-    const runResult = await runCli("run", projectDir, [
+    const runResult = await runCli("run", [
+      projectDir,
       "--credentials",
       CREDENTIALS_PATH,
       "--dry-run",
