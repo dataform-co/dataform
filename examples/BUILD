@@ -23,7 +23,6 @@ ts_test_suite(
         ":all_projects",
         ":node_modules",
         "//packages/@dataform/core:package_tar",
-        "//test_credentials:bigquery.json",
         "@nodejs//:node",
     ],
     deps = [
