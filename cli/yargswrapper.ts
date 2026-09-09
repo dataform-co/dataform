@@ -1,5 +1,7 @@
 import yargs from "yargs";
 
+import { printError } from "df/cli/console";
+
 export interface ICli {
   commands: ICommand[];
 }
@@ -19,8 +21,32 @@ export interface INamedOption<T> {
 }
 
 export function createYargsCli(cli: ICli) {
-  let yargsChain = yargs(fixArgvForHelp());
-  for (const command of cli.commands) {
+  const yargsInstance = setupYargs(cli.commands, process.argv.slice(2))
+    .strict()
+    .recommendCommands()
+    .fail(async (msg: string, err: any) => {
+      if (!!err && err.name === "VMError" && err.message.includes("Cannot find module")) {
+        printError("Could not find NPM dependencies. Have you run 'dataform install'?");
+      } else {
+        const message = err?.message ? err.message.split("\n")[0] : msg;
+        printError(`Dataform encountered an error: ${message}`);
+        if (err?.stack) {
+          printError(err.stack);
+        }
+      }
+      process.exit(1);
+    });
+
+  const parsed = yargsInstance.argv;
+  if (!parsed._[0]) {
+    yargs.showHelp();
+  }
+  return yargsInstance;
+}
+
+export function setupYargs(commands: ICommand[], args: string[]) {
+  let yargsChain = yargs(args).scriptName("dataform").wrap(null);
+  for (const command of commands) {
     yargsChain = yargsChain.command(
       command.format,
       command.description,
@@ -54,19 +80,4 @@ function createOptionsChain(yargsChain: yargs.Argv, command: ICommand) {
     return true;
   });
   return yargsChain;
-}
-
-function fixArgvForHelp() {
-  // Obviously this is a massive hack.
-  // The outcome of this is that the following commands are interchangeable:
-  // $ dataform help run
-  // $ dataform --help run
-  // The problem is that yargs.help() only allows us to specify an alias for the "--help" built-in option (by default that alias is "help").
-  // But because "--help" is only an option, not a command, it appears to be impossible (?) to configure yargs to respond to "help" correctly
-  // (or at least, to correctly print help strings for commands; it happily prints a top-level help string).
-  const argvCopy = process.argv.slice(2);
-  if (argvCopy[0] === "help") {
-    argvCopy[0] = "--help";
-  }
-  return argvCopy;
 }
