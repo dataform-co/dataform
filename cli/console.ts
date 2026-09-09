@@ -207,7 +207,11 @@ export enum compiledGraphOutputType {
   Summary = "summary"
 }
 
-export function printCompiledGraph(graph: dataform.ICompiledGraph, outputType: compiledGraphOutputType, quietCompilation: boolean) {
+export function printCompiledGraph(
+  graph: dataform.ICompiledGraph,
+  outputType: compiledGraphOutputType,
+  quietCompilation: boolean = false
+) {
   
   const interactive = isInteractive();
   
@@ -284,7 +288,10 @@ function formatStackTraceForQuietCompilation(compileError: dataform.ICompilation
   return "";
 }
 
-export function printCompiledGraphErrors(graphErrors: dataform.IGraphErrors, quietCompilation: boolean) {
+export function printCompiledGraphErrors(
+  graphErrors: dataform.IGraphErrors,
+  quietCompilation: boolean = false
+) {
   if (graphErrors.compilationErrors && graphErrors.compilationErrors.length > 0) {
     printError("Compilation errors:", 1);
     graphErrors.compilationErrors.forEach(compileError => {

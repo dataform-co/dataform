@@ -5,7 +5,6 @@ import { compile, prune } from "df/cli/api";
 import {
   jsonOutputOption,
   projectDirMustExistOption,
-  quietCompileOption,
   requiresSelection,
   splitCommas,
   timeoutOption
@@ -82,6 +81,15 @@ const dotOutputOption: INamedOption<yargs.Options> = {
 
 const watchOptionName = "watch";
 const verboseOptionName = "verbose";
+
+const quietCompileOption: INamedOption<yargs.Options> = {
+  name: "quiet",
+  option: {
+    describe: "Less verbose compilation output. Example usage: 'dataform compile --quiet'",
+    type: "boolean",
+    default: false
+  }
+};
 
 export const compileCommand: ICommand = {
   format: `compile [${projectDirMustExistOption.name}]`,
