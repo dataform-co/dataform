@@ -52,3 +52,14 @@ export async function compile(
   };
   return compiledGraph;
 }
+
+export async function cleanWarehouse(
+  compiledGraph: dataform.CompiledGraph,
+  dbadapter: dbadapters.IDbAdapter
+) {
+  await dropAllTables(
+    (await dfapi.build(compiledGraph, {}, dbadapter)).warehouseState.tables,
+    new ExecutionSql(compiledGraph.projectConfig, compiledGraph.dataformCoreVersion),
+    dbadapter
+  );
+}
