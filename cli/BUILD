@@ -76,14 +76,43 @@ ts_test_suite(
         "index_init_test.ts",
         "index_project_test.ts",
         "index_compile_test.ts",
+        "util_test.ts",
+        "tests/jit/jit_build_test.ts",
+        "tests/jit/jit_run_test.ts",
+    ],
+    data = [
+        ":node_modules",
+        "//packages/@dataform/core:package_tar",
+        "@nodejs//:node",
+        "@nodejs//:npm",
+    ],
+    deps = [
+        ":index_test_base",
+        "//cli",
+        "//cli/api",
+        "//core",
+        "//protos:ts",
+        "//testing",
+        "@npm//@types/chai",
+        "@npm//@types/fs-extra",
+        "@npm//@types/js-yaml",
+        "@npm//@types/long",
+        "@npm//@types/node",
+        "@npm//chai",
+        "@npm//fs-extra",
+        "@npm//js-yaml",
+        "@npm//ts-mockito",
+    ],
+)
+
+ts_test_suite(
+    name = "integration_tests",
+    srcs = [
         "index_run_e2e_test.ts",
         "tests/jit/index_jit_main_test.ts",
         "tests/jit/index_jit_advanced_test.ts",
         "tests/jit/index_jit_dependency_test.ts",
-        "tests/jit/index_jit_runtime_test.ts",
-        "util_test.ts",
-        "tests/jit/jit_build_test.ts",
-        "tests/jit/jit_run_test.ts",
+        "tests/jit/index_jit_runtime_test.ts"
     ],
     data = [
         ":node_modules",
@@ -92,6 +121,7 @@ ts_test_suite(
         "@nodejs//:node",
         "@nodejs//:npm",
     ],
+    tags = ["integration"],
     deps = [
         ":index_test_base",
         "//cli",
