@@ -15,6 +15,7 @@ process.on("unhandledRejection", async (reason: any) => {
   printError(`Unhandled promise rejection: ${reason?.stack || reason}`);
 });
 
+// TODO: Since yargs launched an actually well typed API in version 12, let's use it as this file is currently not type checked.
 export function runCli() {
   const commands: ICommand[] = [
     initCommand,

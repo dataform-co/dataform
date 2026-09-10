@@ -20,18 +20,18 @@ bazel_dep(name = "gazelle", version = "0.37.0", repo_name = "bazel_gazelle")
 go_deps = use_extension("@bazel_gazelle//:extensions.bzl", "go_deps")
 go_deps.module(
     path = "google.golang.org/grpc",
-    sum = "h1:rRYRFMVgRv6E0D70Skyfsr28tDXIuuPZyWGMPdMcnXg=",
-    version = "v1.27.0",
+    sum = "h1:pnP7OclFFFgFi4VHQDQDaoXUVauOFyktqTsqqgzFKbc=",
+    version = "v1.40.1",
 )
 go_deps.module(
     path = "golang.org/x/net",
-    sum = "h1:2mqDk8w/o6UmeUCu5Qiq2y7iMf6anbx+YA8d1JFoFrs=",
-    version = "v0.0.0-20191002035440-2ec189313ef0",
+    sum = "h1:mIYleuAkSbHh0tCv7RvjL3F6ZVbLjq4+R7zbOn3Kokg=",
+    version = "v0.18.0",
 )
 go_deps.module(
     path = "golang.org/x/text",
-    sum = "h1:tW2bmiBqwgJj/UpqtC8EpXEZVYOwU0yG4iWbprSVAcs=",
-    version = "v0.3.2",
+    sum = "h1:ScX5w1eTa3QqT8oi6+ziP7dTV1S2+ALU0bI+0zXKWiQ=",
+    version = "v0.14.0",
 )
 use_repo(
     go_deps,
