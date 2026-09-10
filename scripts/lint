@@ -1,4 +1,6 @@
 #!/bin/bash
 
+bazel run @nodejs//:yarn
+
 # Run eslint.
 bazel build @npm//eslint/bin:eslint && bazel-bin/external/npm/eslint/bin/eslint.sh --rulesdir eslint-rules '**/*.ts'
