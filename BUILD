@@ -42,12 +42,14 @@ nodejs_binary(
 )
 
 nodejs_binary(
-    name = "tslint",
+    name = "eslint",
     data = [
-        "@npm//tslint",
-    ],
-    entry_point = "@npm//:node_modules/tslint/bin/tslint",
-    templated_args = ["--node_options=--preserve-symlinks"],
+        ".eslintrc.js",
+        ".eslintignore",
+        "@npm//@typescript-eslint/parser",
+        "@npm//eslint",
+    ] + glob(["eslint-rules/**"]),
+    entry_point = "@npm//:node_modules/eslint/bin/eslint.js",
 )
 
 load("@bazel_gazelle//:def.bzl", "gazelle")

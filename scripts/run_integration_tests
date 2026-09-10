@@ -1,9 +1,10 @@
 #!/bin/bash
 set -e
 
-# Run tslint.
 bazel run @nodejs//:yarn
-bazel build @npm//tslint/bin:tslint && bazel-bin/external/npm/tslint/bin/tslint.sh --project .
+
+# Run eslint.
+bazel build @npm//eslint/bin:eslint && bazel-bin/external/npm/eslint/bin/eslint.sh --rulesdir eslint-rules '**/*.ts'
 
 # Run integration tests
 bazel test ... \

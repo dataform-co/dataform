@@ -215,7 +215,6 @@ SELECT 1 as id
           schema: "dataform"
         },
         query:
-          // tslint:disable-next-line:tsr-detect-sql-literal-injection
           `\nSELECT\n  *\nFROM (\n  SELECT\n    id,\n    COUNT(1) AS index_row_count\n  FROM \`${INTEGRATION_TEST_PROJECT}.dataform.example_table\`\n  GROUP BY id\n  ) AS data\nWHERE index_row_count > 1\n`,
         target: {
           database: INTEGRATION_TEST_PROJECT,

@@ -81,7 +81,6 @@ function verifyWorkflowSettingsAsJson(workflowSettingsAsJson: object): dataform.
 
 function maybeRequire(file: string): any {
   try {
-    // tslint:disable-next-line: tsr-detect-non-literal-require
     return nativeRequire(file);
   } catch (e) {
     if (e instanceof SyntaxError || e instanceof YAMLException) {

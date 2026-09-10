@@ -111,7 +111,6 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
     );
 
     if (runResult.exitCode !== 0 || runResult.stdout.trim().length === 0) {
-      // tslint:disable-next-line:no-console
       console.error("GOLDEN PATH FAILED. STDERR:", runResult.stderr);
     }
     expect(runResult.exitCode).equals(0);
@@ -130,7 +129,6 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
           tasks: [
             {
               statement:
-                // tslint:disable-next-line:tsr-detect-sql-literal-injection
                 `create or replace table \`${INTEGRATION_TEST_PROJECT}.dataform.example\` as \n\nselect 1 as testValue2`,
               type: "statement"
             }
@@ -204,7 +202,6 @@ SELECT 1 as id
           tasks: [
             {
               statement:
-                // tslint:disable-next-line:tsr-detect-sql-literal-injection
                 `create or replace table \`${INTEGRATION_TEST_PROJECT}.dataform.example_table\` as \n\nSELECT 1 as id`,
               type: "statement"
             }
@@ -255,7 +252,6 @@ SELECT 1 as id
       );
 
       if (runResult.exitCode !== 0 || runResult.stdout.trim().length === 0) {
-        // tslint:disable-next-line:no-console
         console.error("ASSERTIONS TEST FAILED. STDERR:", runResult.stderr);
       }
       expect(runResult.exitCode).equals(0);
@@ -278,7 +274,6 @@ SELECT 1 as id
       );
 
       if (runResult.exitCode !== 0 || runResult.stdout.trim().length === 0) {
-        // tslint:disable-next-line:no-console
         console.error("ASSERTIONS TEST FAILED. STDERR:", runResult.stderr);
       }
       expect(runResult.exitCode).equals(0);
@@ -303,7 +298,6 @@ SELECT 1 as id
       );
 
       if (runResult.exitCode !== 0 || runResult.stdout.trim().length === 0) {
-        // tslint:disable-next-line:no-console
         console.error("ASSERTIONS TEST FAILED. STDERR:", runResult.stderr);
       }
       expect(runResult.exitCode).equals(0);

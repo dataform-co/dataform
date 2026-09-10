@@ -162,10 +162,8 @@ const _ = (async () => {
     // Tear down should have been called.
     expect(exampleFixture.counter).equals(2);
   } catch (e) {
-    // tslint:disable: no-console
     console.error(e);
     console.log(`Actual: \n ${JSON.stringify(e.actual, null, 4)}`);
-    // tslint:enable
     process.exit(1);
   }
 

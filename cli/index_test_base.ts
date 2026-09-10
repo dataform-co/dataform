@@ -1,4 +1,3 @@
-// tslint:disable tsr-detect-non-literal-fs-filename
 import { execFile, ExecFileOptions } from "child_process";
 import * as fs from "fs-extra";
 import { dump as dumpYaml, load as loadYaml } from "js-yaml";

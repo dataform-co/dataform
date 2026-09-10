@@ -210,7 +210,6 @@ function loadActionConfigsFile(
 ): dataform.ActionConfigs {
   let actionConfigsAsJson = {};
   try {
-    // tslint:disable-next-line: tsr-detect-non-literal-require
     actionConfigsAsJson = nativeRequire(actionConfigsPath).asJson;
   } catch (e) {
     session.compileError(e, actionConfigsPath);
@@ -252,7 +251,6 @@ function loadPropertyGraphs(session: Session, filePaths: string[]) {
   const graphPath = graphPaths[0];
   let configAsJson: any;
   try {
-    // tslint:disable-next-line: tsr-detect-non-literal-require
     configAsJson = snakeToCamelKeys(nativeRequire(graphPath).asJson);
   } catch (e) {
     session.compileError(e, graphPath);
@@ -313,7 +311,6 @@ function dataformCompile(compileRequest: dataform.ICompileExecutionRequest, sess
     .filter(path => Path.fileExtension(path) === "js")
     .forEach(includePath => {
       try {
-        // tslint:disable-next-line: tsr-detect-non-literal-require
         topLevelIncludes[Path.basename(includePath)] = nativeRequire(includePath);
       } catch (e) {
         session.compileError(e, includePath);
@@ -341,7 +338,6 @@ function dataformCompile(compileRequest: dataform.ICompileExecutionRequest, sess
     .sort()
     .forEach(definitionPath => {
       try {
-        // tslint:disable-next-line: tsr-detect-non-literal-require
         nativeRequire(definitionPath);
       } catch (e) {
         session.compileError(e, definitionPath);

@@ -30,7 +30,6 @@ export class ChildProcessForBazelTestEnvironment {
   }
 
   private createFileWriteStream(fileExtension: string) {
-    // tslint:disable: tsr-detect-non-literal-fs-filename
     return fs.createWriteStream(
       path.resolve(
         process.env.TEST_UNDECLARED_OUTPUTS_DIR,

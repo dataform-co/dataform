@@ -23,7 +23,6 @@ suite("examples", { parallel: true }, () => {
         `${projectDir}/node_modules/@dataform/core`
       );
       // A blank `package.json` makes no `dataformCoreVersion` in `workflow_settings.yaml` be OK.
-      // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
       fs.writeFileSync(`${projectDir}/package.json`, "");
 
       const processResult = await getProcessResult(

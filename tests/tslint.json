@@ -1,8 +1,0 @@
-{
-  "extends": ["../tslint.json"],
-  "rules": {
-    "tsr-detect-non-literal-fs-filename": false,
-    "tsr-detect-sql-literal-injection": false,
-    "tsr-detect-unsafe-regexp": false
-  }
-}

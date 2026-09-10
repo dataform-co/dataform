@@ -1,4 +1,3 @@
-// tslint:disable tsr-detect-non-literal-fs-filename
 import { expect } from "chai";
 import * as fs from "fs-extra";
 import { dump as dumpYaml } from "js-yaml";

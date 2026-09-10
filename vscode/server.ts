@@ -70,7 +70,6 @@ async function compileAndValidate() {
 
   const compileResult = await getProcessResult(spawnedProcess);
   if (compileResult.exitCode !== 0) {
-    // tslint:disable-next-line: no-console
     console.error("Error running 'dataform compile':", compileResult);
     if (compileResult.error?.code === "ENOENT") {
       connection.sendNotification(
@@ -87,7 +86,6 @@ async function compileAndValidate() {
   try {
     parsedResult = JSON.parse(compileResult.stdout);
   } catch (e) {
-    // tslint:disable-next-line: no-console
     console.error("Error parsing 'dataform compile' output", e);
     connection.sendNotification(
       "error",
@@ -150,7 +148,7 @@ connection.onDefinition(
       end: { line: params.position.line + 1, character: 0 }
     });
 
-    const refRegex = new RegExp(/ref\s*\(\s*(["'].+?["'])\s*\)/g); // tslint:disable-line
+    const refRegex = new RegExp(/ref\s*\(\s*(["'].+?["'])\s*\)/g);
     const refContents = lineWithRef.match(refRegex);
     if (!refContents || refContents.length === 0) {
       return null;
@@ -192,7 +190,7 @@ connection.onDefinition(
     // split to dataset, schema and name
     const linkedTable: dataform.ITarget = { database: null, schema: null, name: null };
     const splitMatch = clickedRef.match(
-      /^ref\s*\(\s*(["'](.+?)["'])\s*(,\s*["'](.+?)["']\s*)?(,\s*["'](.+?)["']\s*)?,?\s*\)$/ // tslint:disable-line
+      /^ref\s*\(\s*(["'](.+?)["'])\s*(,\s*["'](.+?)["']\s*)?(,\s*["'](.+?)["']\s*)?,?\s*\)$/
     );
     if (splitMatch[6] !== undefined) {
       linkedTable.database = splitMatch[2];
