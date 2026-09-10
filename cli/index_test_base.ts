@@ -6,7 +6,7 @@ import * as path from "path";
 import { Logger } from "df/cli/console";
 import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
-import { corePackageTarPath, getProcessResult, nodePath, npmPath } from "df/testing";
+import { corePackageTarPath, getProcessResult, nodePath, npmPath, writeDefinitionFile } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
 
 const DEFAULT_PROJECT = "dataform-open-source";
@@ -115,12 +115,6 @@ export async function runCli(
   return getProcessResult(
     execFile(nodePath, args, execOptions)
   );
-}
-
-export function writeDefinitionFile(projectDir: string, filename: string, content: string): void {
-  const fullPath = path.join(projectDir, "definitions", filename);
-  fs.ensureFileSync(fullPath);
-  fs.writeFileSync(fullPath, content);
 }
 
 export function alterWorkflowSettings(

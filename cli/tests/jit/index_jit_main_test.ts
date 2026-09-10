@@ -4,10 +4,9 @@ import {
   CREDENTIALS_PATH,
   INTEGRATION_TEST_PROJECT,
   runCli,
-  setupJitProject,
-  writeDefinitionFile
+  setupJitProject
 } from "df/cli/index_test_base";
-import { suite, test } from "df/testing";
+import { suite, test, writeDefinitionFile } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
 
 suite("JiT support main", ({ afterEach }) => {

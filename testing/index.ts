@@ -1,5 +1,10 @@
 import { ChildProcess } from "child_process";
+import * as fs from "fs-extra";
+import { dump as dumpYaml } from "js-yaml";
 import * as os from "os";
+import * as path from "path";
+
+import { dataform } from "df/protos/ts";
 
 export * from "df/testing/hook";
 export * from "df/testing/suite";
@@ -59,4 +64,20 @@ export function cleanSql(value: string) {
     }
     return newCleanVal.toLowerCase().trim();
   }
+}
+
+export function writeDefinitionFile(projectDir: string, filename: string, content: string): void {
+  const fullPath = path.join(projectDir, "definitions", filename);
+  fs.ensureFileSync(fullPath);
+  fs.writeFileSync(fullPath, content);
+}
+
+export function writeWorkflowSettingsFile(
+  projectDir: string,
+  settings: string | dataform.IWorkflowSettings
+): void {
+  const fullPath = path.join(projectDir, "workflow_settings.yaml");
+  const content = typeof settings === "string" ? settings : dumpYaml(settings);
+  fs.ensureFileSync(fullPath);
+  fs.writeFileSync(fullPath, content);
 }

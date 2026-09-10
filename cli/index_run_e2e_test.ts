@@ -10,12 +10,10 @@ import {
   INTEGRATION_TEST_PROJECT,
   INTEGRATION_TEST_RESERVATION,
   runCli,
-  setupProject,
-  writeDefinitionFile
+  setupProject
 } from "df/cli/index_test_base";
 import { version } from "df/core/version";
-import { dataform } from "df/protos/ts";
-import { suite, test } from "df/testing";
+import { suite, test, writeDefinitionFile } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
 
 suite("run e2e", ({ afterEach }) => {

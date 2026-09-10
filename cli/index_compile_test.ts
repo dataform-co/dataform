@@ -8,12 +8,11 @@ import {
   INTEGRATION_TEST_LOCATION,
   INTEGRATION_TEST_PROJECT,
   runCli,
-  setupProject,
-  writeDefinitionFile
+  setupProject
 } from "df/cli/index_test_base";
 import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
-import { suite, test } from "df/testing";
+import { suite, test, writeDefinitionFile } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
 
 suite("compile command", ({ afterEach }) => {
