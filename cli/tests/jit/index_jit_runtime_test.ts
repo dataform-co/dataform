@@ -1,14 +1,14 @@
 import { expect } from "chai";
-import { execFile } from "child_process";
 import * as fs from "fs-extra";
 import * as path from "path";
 
 import {
-  cliEntryPointPath,
   CREDENTIALS_PATH,
-  setupJitProject
+  runCli,
+  setupJitProject,
+  writeDefinitionFile
 } from "df/cli/index_test_base";
-import { getProcessResult, nodePath, suite, test } from "df/testing";
+import { suite, test } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
 
 suite("JiT support runtime", ({ afterEach }) => {
@@ -24,26 +24,23 @@ suite("JiT support runtime", ({ afterEach }) => {
       "module.exports = { getValue: () => 'required_value' };"
     );
     // Add a JiT table that requires it
-    fs.writeFileSync(
-      path.join(projectDir, "definitions", "jit_require_test.js"),
+    writeDefinitionFile(
+      projectDir,
+      "jit_require_test.js",
       `publish("jit_require_test", { type: "table" }).jitCode(async (jctx) => {
         const utils = require("../helpers/utils.js");
         return "SELECT '" + utils.getValue() + "' as val";
       })`
     );
 
-    const runResult = await getProcessResult(
-      execFile(nodePath, [
-        cliEntryPointPath,
-        "run",
-        projectDir,
-        "--credentials",
-        CREDENTIALS_PATH,
-        "--dry-run",
-        "--json",
-        "--actions=jit_require_test"
-      ])
-    );
+    const runResult = await runCli("run", [
+      projectDir,
+      "--credentials",
+      CREDENTIALS_PATH,
+      "--dry-run",
+      "--json",
+      "--actions=jit_require_test"
+    ]);
 
     expect(runResult.exitCode).equals(1);
     expect(runResult.stdout).to.match(/Cannot find module/i);
@@ -54,18 +51,17 @@ suite("JiT support runtime", ({ afterEach }) => {
     await setupJitProject(tmpDirFixture, projectDir);
 
     // Add a JiT table that hangs in an infinite loop
-    const hangPath = path.join(projectDir, "definitions", "hang_jit.js");
-    fs.writeFileSync(
-      hangPath,
+    writeDefinitionFile(
+      projectDir,
+      "hang_jit.js",
       `publish("hang_jit", { type: "table" }).jitCode(async (jctx) => {
         while(true) { /* loop */ }
         return "SELECT 1";
       })`
     );
-    const runResult = await getProcessResult(
-      execFile(nodePath, [
-        cliEntryPointPath,
-        "run",
+    const runResult = await runCli(
+      "run",
+      [
         projectDir,
         "--credentials",
         CREDENTIALS_PATH,
@@ -73,7 +69,8 @@ suite("JiT support runtime", ({ afterEach }) => {
         "--json",
         "--actions=hang_jit",
         "--jit-timeout=4s"
-      ], { timeout: 50000 })
+      ],
+      { timeout: 50000 }
     );
 
     expect(runResult.exitCode).equals(1);
@@ -84,8 +81,9 @@ suite("JiT support runtime", ({ afterEach }) => {
     const projectDir = tmpDirFixture.createNewTmpDir();
     await setupJitProject(tmpDirFixture, projectDir);
 
-    fs.writeFileSync(
-      path.join(projectDir, "definitions", "hang_jit_global.js"),
+    writeDefinitionFile(
+      projectDir,
+      "hang_jit_global.js",
       `publish("hang_jit_global", { type: "table" }).jitCode(async (jctx) => {
         while(true) { /* loop */ }
         return "SELECT 1";
@@ -94,10 +92,9 @@ suite("JiT support runtime", ({ afterEach }) => {
     // --execution-timeout must exceed BQ schema-prep time; smaller values fire
     // the timer before the JiT compile starts, leaving the action SKIPPED and
     // defeating the assertions below.
-    const runResult = await getProcessResult(
-      execFile(nodePath, [
-        cliEntryPointPath,
-        "run",
+    const runResult = await runCli(
+      "run",
+      [
         projectDir,
         "--credentials",
         CREDENTIALS_PATH,
@@ -105,7 +102,8 @@ suite("JiT support runtime", ({ afterEach }) => {
         "--json",
         "--actions=hang_jit_global",
         "--execution-timeout=15s"
-      ], { timeout: 80000 })
+      ],
+      { timeout: 80000 }
     );
 
     expect(runResult.exitCode).equals(1);
@@ -124,23 +122,20 @@ suite("JiT support runtime", ({ afterEach }) => {
     const projectDir = tmpDirFixture.createNewTmpDir();
     await setupJitProject(tmpDirFixture, projectDir);
 
-    fs.writeFileSync(
-      path.join(projectDir, "definitions", "jit_assertion.js"),
+    writeDefinitionFile(
+      projectDir,
+      "jit_assertion.js",
       `assert("jit_assertion").jitCode(async (jctx) => "SELECT 1 as row_count")`
     );
 
-    const runResult = await getProcessResult(
-      execFile(nodePath, [
-        cliEntryPointPath,
-        "run",
-        projectDir,
-        "--credentials",
-        CREDENTIALS_PATH,
-        "--dry-run",
-        "--json",
-        "--actions=jit_assertion"
-      ])
-    );
+    const runResult = await runCli("run", [
+      projectDir,
+      "--credentials",
+      CREDENTIALS_PATH,
+      "--dry-run",
+      "--json",
+      "--actions=jit_assertion"
+    ]);
 
     expect(runResult.exitCode).equals(0);
     const executedGraph = JSON.parse(runResult.stdout);
@@ -157,23 +152,20 @@ suite("JiT support runtime", ({ afterEach }) => {
     await setupJitProject(tmpDirFixture, projectDir);
     // Add multiple JiT tables
     for (let i = 0; i < 5; i++) {
-      fs.writeFileSync(
-        path.join(projectDir, "definitions", `jit_${i}.js`),
+      writeDefinitionFile(
+        projectDir,
+        `jit_${i}.js`,
         `publish("jit_${i}", { type: "table" }).jitCode(async (jctx) => "SELECT ${i} as val")`
       );
     }
 
-    const runResult = await getProcessResult(
-      execFile(nodePath, [
-        cliEntryPointPath,
-        "run",
-        projectDir,
-        "--credentials",
-        CREDENTIALS_PATH,
-        "--dry-run",
-        "--json"
-      ])
-    );
+    const runResult = await runCli("run", [
+      projectDir,
+      "--credentials",
+      CREDENTIALS_PATH,
+      "--dry-run",
+      "--json"
+    ]);
 
     expect(runResult.exitCode).equals(0);
     const executedGraph = JSON.parse(runResult.stdout);
@@ -184,27 +176,23 @@ suite("JiT support runtime", ({ afterEach }) => {
     const projectDir = tmpDirFixture.createNewTmpDir();
     await setupJitProject(tmpDirFixture, projectDir);
     // Add a JiT table that crashes the process
-    const crashPath = path.join(projectDir, "definitions", "crash_jit.js");
-    fs.writeFileSync(
-      crashPath,
+    writeDefinitionFile(
+      projectDir,
+      "crash_jit.js",
       `publish("crash_jit", { type: "table" }).jitCode(async (jctx) => {
         setTimeout(() => { throw new Error("Hard crash"); }, 10);
         return new Promise(() => {}); // Hang until crash
       })`
     );
 
-    const runResult = await getProcessResult(
-      execFile(nodePath, [
-        cliEntryPointPath,
-        "run",
-        projectDir,
-        "--credentials",
-        CREDENTIALS_PATH,
-        "--dry-run",
-        "--json",
-        "--actions=crash_jit"
-      ])
-    );
+    const runResult = await runCli("run", [
+      projectDir,
+      "--credentials",
+      CREDENTIALS_PATH,
+      "--dry-run",
+      "--json",
+      "--actions=crash_jit"
+    ]);
 
     expect(runResult.exitCode).equals(1);
     const executedGraph = JSON.parse(runResult.stdout);

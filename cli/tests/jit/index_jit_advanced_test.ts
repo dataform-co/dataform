@@ -1,14 +1,12 @@
 import { expect } from "chai";
-import { execFile } from "child_process";
-import * as fs from "fs-extra";
-import * as path from "path";
 
 import {
-  cliEntryPointPath,
   CREDENTIALS_PATH,
-  setupJitProject
+  runCli,
+  setupJitProject,
+  writeDefinitionFile
 } from "df/cli/index_test_base";
-import { getProcessResult, nodePath, suite, test } from "df/testing";
+import { suite, test } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
 
 suite("JiT support advanced", ({ afterEach }) => {
@@ -17,9 +15,9 @@ suite("JiT support advanced", ({ afterEach }) => {
   test("JiT preOps and postOps support", async () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
     await setupJitProject(tmpDirFixture, projectDir);
-    const prePostPath = path.join(projectDir, "definitions", "pre_post_jit.js");
-    fs.writeFileSync(
-      prePostPath,
+    writeDefinitionFile(
+      projectDir,
+      "pre_post_jit.js",
       `publish("pre_post_jit", { type: "table" }).jitCode(async (jctx) => {
         return {
           query: "SELECT 1 as id",
@@ -29,18 +27,14 @@ suite("JiT support advanced", ({ afterEach }) => {
       })`
     );
 
-    const runResult = await getProcessResult(
-      execFile(nodePath, [
-        cliEntryPointPath,
-        "run",
-        projectDir,
-        "--credentials",
-        CREDENTIALS_PATH,
-        "--dry-run",
-        "--json",
-        "--actions=pre_post_jit"
-      ])
-    );
+    const runResult = await runCli("run", [
+      projectDir,
+      "--credentials",
+      CREDENTIALS_PATH,
+      "--dry-run",
+      "--json",
+      "--actions=pre_post_jit"
+    ]);
 
     expect(runResult.exitCode).equals(0);
     const executedGraph = JSON.parse(runResult.stdout);
@@ -54,9 +48,9 @@ suite("JiT support advanced", ({ afterEach }) => {
   test({ name: "JiT incremental pre/post ops support", timeout: 60000 }, async () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
     await setupJitProject(tmpDirFixture, projectDir);
-    const incPrePostPath = path.join(projectDir, "definitions", "inc_pre_post_jit.js");
-    fs.writeFileSync(
-      incPrePostPath,
+    writeDefinitionFile(
+      projectDir,
+      "inc_pre_post_jit.js",
       `publish("inc_pre_post_jit", { type: "incremental" }).jitCode(async (jctx) => {
         if (jctx.incremental()) {
           return {
@@ -72,19 +66,15 @@ suite("JiT support advanced", ({ afterEach }) => {
       })`
     );
 
-    const runResult = await getProcessResult(
-      execFile(nodePath, [
-        cliEntryPointPath,
-        "run",
-        projectDir,
-        "--credentials",
-        CREDENTIALS_PATH,
-        "--dry-run",
-        "--json",
-        "--actions=inc_pre_post_jit",
-        "--full-refresh"
-      ])
-    );
+    const runResult = await runCli("run", [
+      projectDir,
+      "--credentials",
+      CREDENTIALS_PATH,
+      "--dry-run",
+      "--json",
+      "--actions=inc_pre_post_jit",
+      "--full-refresh"
+    ]);
 
     expect(runResult.exitCode).equals(0);
     const executedGraph = JSON.parse(runResult.stdout);
@@ -95,18 +85,14 @@ suite("JiT support advanced", ({ afterEach }) => {
 
     // Also validate when not using full-refresh.
     // Since the table doesn't exist, jctx.incremental() should still be false.
-    const runResultIncremental = await getProcessResult(
-      execFile(nodePath, [
-        cliEntryPointPath,
-        "run",
-        projectDir,
-        "--credentials",
-        CREDENTIALS_PATH,
-        "--dry-run",
-        "--json",
-        "--actions=inc_pre_post_jit"
-      ])
-    );
+    const runResultIncremental = await runCli("run", [
+      projectDir,
+      "--credentials",
+      CREDENTIALS_PATH,
+      "--dry-run",
+      "--json",
+      "--actions=inc_pre_post_jit"
+    ]);
 
     expect(runResultIncremental.exitCode).equals(0);
     const executedGraphInc = JSON.parse(runResultIncremental.stdout);
@@ -119,9 +105,9 @@ suite("JiT support advanced", ({ afterEach }) => {
   test({ name: "JiT incremental mode validation with consecutive runs", timeout: 60000 }, async () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
     await setupJitProject(tmpDirFixture, projectDir);
-    const incPath = path.join(projectDir, "definitions", "inc_jit.js");
-    fs.writeFileSync(
-      incPath,
+    writeDefinitionFile(
+      projectDir,
+      "inc_jit.js",
       `publish("inc_jit", { type: "incremental" }).jitCode(async (jctx) => {
         if (jctx.incremental()) {
           return {
@@ -138,33 +124,25 @@ suite("JiT support advanced", ({ afterEach }) => {
     );
 
     // 1. Initial run with full-refresh to create the table.
-    const firstRun = await getProcessResult(
-      execFile(nodePath, [
-        cliEntryPointPath,
-        "run",
-        projectDir,
-        "--credentials",
-        CREDENTIALS_PATH,
-        "--actions=inc_jit",
-        "--full-refresh"
-      ])
-    );
+    const firstRun = await runCli("run", [
+      projectDir,
+      "--credentials",
+      CREDENTIALS_PATH,
+      "--actions=inc_jit",
+      "--full-refresh"
+    ]);
     expect(firstRun.exitCode).equals(0);
 
     // 2. Second run without full-refresh.
     // The table now exists, so it should use the incremental path.
-    const secondRun = await getProcessResult(
-      execFile(nodePath, [
-        cliEntryPointPath,
-        "run",
-        projectDir,
-        "--credentials",
-        CREDENTIALS_PATH,
-        "--dry-run",
-        "--json",
-        "--actions=inc_jit"
-      ])
-    );
+    const secondRun = await runCli("run", [
+      projectDir,
+      "--credentials",
+      CREDENTIALS_PATH,
+      "--dry-run",
+      "--json",
+      "--actions=inc_jit"
+    ]);
 
     expect(secondRun.exitCode).equals(0);
     const secondGraph = JSON.parse(secondRun.stdout);
@@ -177,30 +155,28 @@ suite("JiT support advanced", ({ afterEach }) => {
   test("JiT project-level data support", async () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
     await setupJitProject(tmpDirFixture, projectDir);
-    fs.writeFileSync(
-      path.join(projectDir, "definitions", "project_data.js"),
+    writeDefinitionFile(
+      projectDir,
+      "project_data.js",
       "const { session } = require('@dataform/core');\nsession.jitData('app_secret', 'e2e_secret_value');"
     );
-    fs.writeFileSync(
-      path.join(projectDir, "definitions", "jit_data_test.js"),
+    writeDefinitionFile(
+      projectDir,
+      "jit_data_test.js",
       `publish("jit_data_test", { type: "table" }).jitCode(async (jctx) => {
         const secret = jctx.data.app_secret;
         return "SELECT '" + secret + "' as val";
       })`
     );
 
-    const runResult = await getProcessResult(
-      execFile(nodePath, [
-        cliEntryPointPath,
-        "run",
-        projectDir,
-        "--credentials",
-        CREDENTIALS_PATH,
-        "--dry-run",
-        "--json",
-        "--actions=jit_data_test"
-      ])
-    );
+    const runResult = await runCli("run", [
+      projectDir,
+      "--credentials",
+      CREDENTIALS_PATH,
+      "--dry-run",
+      "--json",
+      "--actions=jit_data_test"
+    ]);
 
     expect(runResult.exitCode).equals(0);
     const executedGraph = JSON.parse(runResult.stdout);
@@ -211,8 +187,9 @@ suite("JiT support advanced", ({ afterEach }) => {
   test("JiT complex session data support", async () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
     await setupJitProject(tmpDirFixture, projectDir);
-    fs.writeFileSync(
-      path.join(projectDir, "definitions", "complex_project_data.js"),
+    writeDefinitionFile(
+      projectDir,
+      "complex_project_data.js",
       "const { session } = require('@dataform/core');\n" +
       "session.jitData('app_config', {\n" +
       "  env: 'test-env',\n" +
@@ -220,26 +197,23 @@ suite("JiT support advanced", ({ afterEach }) => {
       "  tags: ['t1', 't2']\n" +
       "});"
     );
-    fs.writeFileSync(
-      path.join(projectDir, "definitions", "jit_complex_data_test.js"),
+    writeDefinitionFile(
+      projectDir,
+      "jit_complex_data_test.js",
       "publish('jit_complex_data_test', { type: 'table' }).jitCode(async (jctx) => {\n" +
       "  const config = jctx.data.app_config;\n" +
       "  return 'SELECT \\'' + config.env + '\\' as env, ' + config.version + ' as ver, \\'' + config.tags[0] + '\\' as tag';\n" +
       "})"
     );
 
-    const runResult = await getProcessResult(
-      execFile(nodePath, [
-        cliEntryPointPath,
-        "run",
-        projectDir,
-        "--credentials",
-        CREDENTIALS_PATH,
-        "--dry-run",
-        "--json",
-        "--actions=jit_complex_data_test"
-      ])
-    );
+    const runResult = await runCli("run", [
+      projectDir,
+      "--credentials",
+      CREDENTIALS_PATH,
+      "--dry-run",
+      "--json",
+      "--actions=jit_complex_data_test"
+    ]);
 
     expect(runResult.exitCode).equals(0);
     const executedGraph = JSON.parse(runResult.stdout);

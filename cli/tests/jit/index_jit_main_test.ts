@@ -1,15 +1,13 @@
 import { expect } from "chai";
-import { execFile } from "child_process";
-import * as fs from "fs-extra";
-import * as path from "path";
 
 import {
-  cliEntryPointPath,
   CREDENTIALS_PATH,
   INTEGRATION_TEST_PROJECT,
-  setupJitProject
+  runCli,
+  setupJitProject,
+  writeDefinitionFile
 } from "df/cli/index_test_base";
-import { getProcessResult, nodePath, suite, test } from "df/testing";
+import { suite, test } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
 
 suite("JiT support main", ({ afterEach }) => {
@@ -18,9 +16,7 @@ suite("JiT support main", ({ afterEach }) => {
   test("compile command includes jitCode in output", async () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
     await setupJitProject(tmpDirFixture, projectDir);
-    const compileResult = await getProcessResult(
-      execFile(nodePath, [cliEntryPointPath, "compile", projectDir, "--json"])
-    );
+    const compileResult = await runCli("compile", [projectDir, "--json"]);
 
     expect(compileResult.exitCode).equals(0);
     const compiledGraph = JSON.parse(compileResult.stdout);
@@ -34,15 +30,13 @@ suite("JiT support main", ({ afterEach }) => {
   test("fails if both query and jitCode are provided", async () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
     await setupJitProject(tmpDirFixture, projectDir);
-    const conflictPath = path.join(projectDir, "definitions", "conflict.js");
-    fs.writeFileSync(
-      conflictPath,
+    writeDefinitionFile(
+      projectDir,
+      "conflict.js",
       `publish("conflict", {type: "table"}).query("SELECT 1").jitCode(async (ctx) => "SELECT 2")`
     );
 
-    const compileResult = await getProcessResult(
-      execFile(nodePath, [cliEntryPointPath, "compile", projectDir, "--json"])
-    );
+    const compileResult = await runCli("compile", [projectDir, "--json"]);
 
     expect(compileResult.exitCode).equals(1);
     expect(compileResult.stderr).to.include("Cannot mix AoT and JiT compilation in action");
@@ -52,18 +46,14 @@ suite("JiT support main", ({ afterEach }) => {
     const projectDir = tmpDirFixture.createNewTmpDir();
     await setupJitProject(tmpDirFixture, projectDir);
 
-    const runResult = await getProcessResult(
-      execFile(nodePath, [
-        cliEntryPointPath,
-        "run",
-        projectDir,
-        "--credentials",
-        CREDENTIALS_PATH,
-        "--dry-run",
-        "--json",
-        "--actions=jit_table"
-      ])
-    );
+    const runResult = await runCli("run", [
+      projectDir,
+      "--credentials",
+      CREDENTIALS_PATH,
+      "--dry-run",
+      "--json",
+      "--actions=jit_table"
+    ]);
 
     expect(runResult.exitCode).equals(0);
 
@@ -78,20 +68,15 @@ suite("JiT support main", ({ afterEach }) => {
   test("mixed AoT and JiT support", async () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
     await setupJitProject(tmpDirFixture, projectDir);
-    const aotTablePath = path.join(projectDir, "definitions", "aot_table.sqlx");
-    fs.writeFileSync(aotTablePath, "config { type: 'table' } SELECT 2 as id");
+    writeDefinitionFile(projectDir, "aot_table.sqlx", "config { type: 'table' } SELECT 2 as id");
 
-    const runResult = await getProcessResult(
-      execFile(nodePath, [
-        cliEntryPointPath,
-        "run",
-        projectDir,
-        "--credentials",
-        CREDENTIALS_PATH,
-        "--dry-run",
-        "--json"
-      ])
-    );
+    const runResult = await runCli("run", [
+      projectDir,
+      "--credentials",
+      CREDENTIALS_PATH,
+      "--dry-run",
+      "--json"
+    ]);
 
     expect(runResult.exitCode).equals(0);
 
@@ -113,26 +98,25 @@ suite("JiT support main", ({ afterEach }) => {
     const projectDir = tmpDirFixture.createNewTmpDir();
     await setupJitProject(tmpDirFixture, projectDir);
 
-    const disabledPath = path.join(projectDir, "definitions", "disabled_jit.js");
-    fs.writeFileSync(
-      disabledPath,
+    writeDefinitionFile(
+      projectDir,
+      "disabled_jit.js",
       `publish("disabled_jit", { type: "table", disabled: true }).jitCode(async (jctx) => {
          throw new Error("Should not be executed");
        })`
     );
 
-    const runResult = await getProcessResult(
-      execFile(nodePath, [
-        cliEntryPointPath,
-        "run",
+    const runResult = await runCli(
+      "run",
+      [
         projectDir,
         "--credentials",
         CREDENTIALS_PATH,
-        "--actions=disabled_jit"],
-        {
-          env: { ...process.env, NO_COLOR: "1" }
-        }
-      )
+        "--actions=disabled_jit"
+      ],
+      {
+        env: { ...process.env, NO_COLOR: "1" }
+      }
     );
 
     expect(runResult.exitCode).equals(0);
@@ -143,24 +127,20 @@ suite("JiT support main", ({ afterEach }) => {
   test("JiT compilation failure reporting", async () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
     await setupJitProject(tmpDirFixture, projectDir);
-    const failingJitPath = path.join(projectDir, "definitions", "failing_jit.js");
-    fs.writeFileSync(
-      failingJitPath,
+    writeDefinitionFile(
+      projectDir,
+      "failing_jit.js",
       `publish("failing_jit", {type: "table"}).jitCode(async (ctx) => { throw new Error("JiT compilation failed!"); })`
     );
 
-    const runResult = await getProcessResult(
-      execFile(nodePath, [
-        cliEntryPointPath,
-        "run",
-        projectDir,
-        "--credentials",
-        CREDENTIALS_PATH,
-        "--dry-run",
-        "--json",
-        "--actions=failing_jit"
-      ])
-    );
+    const runResult = await runCli("run", [
+      projectDir,
+      "--credentials",
+      CREDENTIALS_PATH,
+      "--dry-run",
+      "--json",
+      "--actions=failing_jit"
+    ]);
 
     expect(runResult.exitCode).equals(1);
 
@@ -176,9 +156,9 @@ suite("JiT support main", ({ afterEach }) => {
   test("surfaces 'Table not found' RPC error during JiT compilation", async () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
     await setupJitProject(tmpDirFixture, projectDir);
-    const rpcJitPath = path.join(projectDir, "definitions", "rpc_jit.js");
-    fs.writeFileSync(
-      rpcJitPath,
+    writeDefinitionFile(
+      projectDir,
+      "rpc_jit.js",
       `publish("rpc_jit", {type: "table"}).jitCode(async (jctx) => {
          // This will fail because the table does not exist in the warehouse,
          // and jctx.adapter.getTable throws an error in this case.
@@ -187,18 +167,14 @@ suite("JiT support main", ({ afterEach }) => {
        })`
     );
 
-    const runResult = await getProcessResult(
-      execFile(nodePath, [
-        cliEntryPointPath,
-        "run",
-        projectDir,
-        "--credentials",
-        CREDENTIALS_PATH,
-        "--dry-run",
-        "--json",
-        "--actions=rpc_jit"
-      ])
-    );
+    const runResult = await runCli("run", [
+      projectDir,
+      "--credentials",
+      CREDENTIALS_PATH,
+      "--dry-run",
+      "--json",
+      "--actions=rpc_jit"
+    ]);
 
     expect(runResult.exitCode).equals(1);
 
@@ -218,21 +194,16 @@ suite("JiT support main", ({ afterEach }) => {
   test("mixed support with AoT filtered out", async () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
     await setupJitProject(tmpDirFixture, projectDir);
-    const aotTablePath = path.join(projectDir, "definitions", "aot_table.sqlx");
-    fs.writeFileSync(aotTablePath, "config { type: 'table' } SELECT 2 as id");
+    writeDefinitionFile(projectDir, "aot_table.sqlx", "config { type: 'table' } SELECT 2 as id");
 
-    const runResult = await getProcessResult(
-      execFile(nodePath, [
-        cliEntryPointPath,
-        "run",
-        projectDir,
-        "--credentials",
-        CREDENTIALS_PATH,
-        "--dry-run",
-        "--json",
-        "--actions=jit_table"
-      ])
-    );
+    const runResult = await runCli("run", [
+      projectDir,
+      "--credentials",
+      CREDENTIALS_PATH,
+      "--dry-run",
+      "--json",
+      "--actions=jit_table"
+    ]);
 
     expect(runResult.exitCode).equals(0);
 
@@ -247,21 +218,16 @@ suite("JiT support main", ({ afterEach }) => {
   test("mixed support with JiT filtered out", async () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
     await setupJitProject(tmpDirFixture, projectDir);
-    const aotTablePath = path.join(projectDir, "definitions", "aot_table.sqlx");
-    fs.writeFileSync(aotTablePath, "config { type: 'table' } SELECT 2 as id");
+    writeDefinitionFile(projectDir, "aot_table.sqlx", "config { type: 'table' } SELECT 2 as id");
 
-    const runResult = await getProcessResult(
-      execFile(nodePath, [
-        cliEntryPointPath,
-        "run",
-        projectDir,
-        "--credentials",
-        CREDENTIALS_PATH,
-        "--dry-run",
-        "--json",
-        "--actions=aot_table"
-      ])
-    );
+    const runResult = await runCli("run", [
+      projectDir,
+      "--credentials",
+      CREDENTIALS_PATH,
+      "--dry-run",
+      "--json",
+      "--actions=aot_table"
+    ]);
 
     expect(runResult.exitCode).equals(0);
 

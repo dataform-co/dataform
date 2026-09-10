@@ -1,10 +1,9 @@
 import { assert, expect } from "chai";
-import { execFile } from "child_process";
 import * as fs from "fs-extra";
 import { load as loadYaml } from "js-yaml";
 import * as path from "path";
 
-import { cliEntryPointPath } from "df/cli/index_test_base";
+import { runCli } from "df/cli/index_test_base";
 import {
   ICEBERG_BUCKET_NAME_HINT,
   ICEBERG_BUCKET_NAME_PROMPT_QUESTION,
@@ -20,7 +19,7 @@ import {
 } from "df/cli/util";
 import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
-import { getProcessResult, nodePath, suite, test } from "df/testing";
+import { suite, test } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
 
 suite("init command", ({ afterEach }) => {
@@ -29,15 +28,11 @@ suite("init command", ({ afterEach }) => {
   test("workflow_settings.yaml generated from init", async () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
 
-    await getProcessResult(
-      execFile(nodePath, [
-        cliEntryPointPath,
-        "init",
-        projectDir,
-        "--default-database=dataform-database",
-        "--default-location=us-central1"
-      ])
-    );
+    await runCli("init", [
+      projectDir,
+      "--default-database=dataform-database",
+      "--default-location=us-central1"
+    ]);
 
     expect(fs.readFileSync(path.join(projectDir, "workflow_settings.yaml"), "utf8")).to
       .equal(`dataformCoreVersion: ${version}
@@ -58,18 +53,18 @@ defaultAssertionDataset: dataform_assertions
         [ICEBERG_CONNECTION_QUESTION]: "my.default.connection",
       };
 
-      const result = await getProcessResult(
-        execFile(nodePath, [
-          cliEntryPointPath,
-          "init",
+      const result = await runCli(
+        "init",
+        [
           projectDir,
           "dataform-iceberg-test",
           "us-central1",
           "--iceberg"
-        ], {
+        ],
+        {
           // Inject test inputs via environment variable
           env: { ...process.env, DATAFORM_CLI_TEST_INPUTS: JSON.stringify(testInputs) }
-        })
+        }
       );
 
       expect(result.exitCode).equals(0);
@@ -100,18 +95,18 @@ defaultAssertionDataset: dataform_assertions
         [ICEBERG_CONNECTION_QUESTION]: "my.default.connection",
       };
 
-      const result = await getProcessResult(
-        execFile(nodePath, [
-          cliEntryPointPath,
-          "init",
+      const result = await runCli(
+        "init",
+        [
           projectDir,
           "dataform-iceberg-partial",
           "us-east1",
           "--iceberg"
-        ], {
+        ],
+        {
           // Inject test inputs via environment variable
           env: { ...process.env, DATAFORM_CLI_TEST_INPUTS: JSON.stringify(testInputs) }
-        })
+        }
       );
 
       expect(result.exitCode).equals(0);
@@ -146,18 +141,18 @@ defaultAssertionDataset: dataform_assertions
         [ICEBERG_CONNECTION_QUESTION]: "my.default.connection",
       };
 
-      const result = await getProcessResult(
-        execFile(nodePath, [
-          cliEntryPointPath,
-          "init",
+      const result = await runCli(
+        "init",
+        [
           projectDir,
           "dataform-iceberg-partial",
           "us-east1",
           "--iceberg"
-        ], {
+        ],
+        {
           // Inject test inputs via environment variable
           env: { ...process.env, DATAFORM_CLI_TEST_INPUTS: JSON.stringify(testInputs) }
-        })
+        }
       );
 
       expect(result.exitCode).equals(0);
@@ -192,18 +187,18 @@ defaultAssertionDataset: dataform_assertions
         [ICEBERG_CONNECTION_QUESTION]: "my.default.connection",
       };
 
-      const result = await getProcessResult(
-        execFile(nodePath, [
-          cliEntryPointPath,
-          "init",
+      const result = await runCli(
+        "init",
+        [
           projectDir,
           "dataform-iceberg-partial",
           "us-east1",
           "--iceberg"
-        ], {
+        ],
+        {
           // Inject test inputs via environment variable
           env: { ...process.env, DATAFORM_CLI_TEST_INPUTS: JSON.stringify(testInputs) }
-        })
+        }
       );
 
       expect(result.exitCode).equals(0);
@@ -238,18 +233,18 @@ defaultAssertionDataset: dataform_assertions
         [ICEBERG_CONNECTION_QUESTION]: "", // Empty input
       };
 
-      const result = await getProcessResult(
-        execFile(nodePath, [
-          cliEntryPointPath,
-          "init",
+      const result = await runCli(
+        "init",
+        [
           projectDir,
           "dataform-iceberg-partial",
           "us-east1",
           "--iceberg"
-        ], {
+        ],
+        {
           // Inject test inputs via environment variable
           env: { ...process.env, DATAFORM_CLI_TEST_INPUTS: JSON.stringify(testInputs) }
-        })
+        }
       );
 
       expect(result.exitCode).equals(0);
@@ -282,9 +277,7 @@ suite("init-creds command", ({ afterEach }) => {
 
   test("init-creds fails for directory without dataform config", async () => {
     const emptyDir = tmpDirFixture.createNewTmpDir();
-    const result = await getProcessResult(
-      execFile(nodePath, [cliEntryPointPath, "init-creds", emptyDir])
-    );
+    const result = await runCli("init-creds", [emptyDir]);
     expect(result.exitCode).to.not.equal(0);
     expect(result.stderr).to.include(
       `${emptyDir} does not appear to be a dataform directory (missing workflow_settings.yaml file).`
