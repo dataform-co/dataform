@@ -6,7 +6,11 @@ ts_test_suite(
     name = "tests",
     srcs = [
         "bigquery.spec.ts",
+        "evaluate.spec.ts",
+        "execute.spec.ts",
+        "jit.spec.ts",
         "property_graph.spec.ts",
+        "run.spec.ts",
         "utils.ts",
     ],
     data = [
