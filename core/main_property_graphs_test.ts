@@ -33,13 +33,42 @@ suite("property graphs", ({ afterEach }) => {
     ...extra
   });
 
-  test("valid graph.yaml compiles end-to-end", () => {
-    const projectDir = tmpDirFixture.createNewTmpDir();
-    writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
-    writeDefinitionFile(
-      projectDir,
-      "graph.yaml",
-      `
+  const missingRefTarget = {
+    schema: "defaultDataset",
+    name: "MissingRefGraph",
+    database: "defaultProject"
+  };
+  const declOneTarget = { schema: "one", name: "books", database: "defaultProject" };
+  const declTwoTarget = { schema: "two", name: "books", database: "defaultProject" };
+  const graphTarget = {
+    schema: "defaultDataset",
+    name: "AmbiguousRefGraph",
+    database: "defaultProject"
+  };
+  const collisionTarget = {
+    schema: "defaultDataset",
+    name: "CollisionName",
+    database: "defaultProject"
+  };
+  const collisionActionName = "defaultProject.defaultDataset.CollisionName";
+  const collisionTargetJson = `{"schema":"defaultDataset","name":"CollisionName","database":"defaultProject"}`;
+  const duplicateActionMessage =
+    "Duplicate action name detected. Names within a schema must be unique " +
+    "across tables, declarations, assertions, and operations:\n" +
+    `"${collisionTargetJson}"`;
+  const duplicateCanonicalMessage =
+    "Duplicate canonical target detected. Canonical targets must be unique " +
+    "across tables, declarations, assertions, and operations:\n" +
+    `"${collisionTargetJson}"`;
+
+  [
+    {
+      testName: "valid graph.yaml compiles end-to-end",
+      workflowSettings: VALID_WORKFLOW_SETTINGS_YAML,
+      definitionFiles: [
+        {
+          name: "graph.yaml",
+          contents: `
 name: SimpleGraph
 entities:
 - name: Customer
@@ -47,12 +76,9 @@ entities:
   keys:
   - id
 `
-    );
-
-    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
-
-    expect(asPlainObject(result.compile.compiledGraph)).deep.equals(
-      asPlainObject({
+        }
+      ],
+      expectedGraph: {
         projectConfig: graphProjectConfig,
         graphErrors: {},
         dataformCoreVersion: version,
@@ -90,17 +116,15 @@ entities:
               ")"
           }
         ]
-      })
-    );
-  });
-
-  test("graph.yaml tags propagate into the compiled proto", () => {
-    const projectDir = tmpDirFixture.createNewTmpDir();
-    writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
-    writeDefinitionFile(
-      projectDir,
-      "graph.yaml",
-      `
+      }
+    },
+    {
+      testName: "graph.yaml tags propagate into the compiled proto",
+      workflowSettings: VALID_WORKFLOW_SETTINGS_YAML,
+      definitionFiles: [
+        {
+          name: "graph.yaml",
+          contents: `
 name: TaggedGraph
 tags:
 - nightly
@@ -111,12 +135,9 @@ entities:
   keys:
   - id
 `
-    );
-
-    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
-
-    expect(asPlainObject(result.compile.compiledGraph)).deep.equals(
-      asPlainObject({
+        }
+      ],
+      expectedGraph: {
         projectConfig: graphProjectConfig,
         graphErrors: {},
         dataformCoreVersion: version,
@@ -155,65 +176,15 @@ entities:
               ")"
           }
         ]
-      })
-    );
-  });
-
-  test("more than one graph.yaml is rejected", () => {
-    const projectDir = tmpDirFixture.createNewTmpDir();
-    writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
-    const graphBody = `
-name: MultiGraph
-entities:
-- name: Node
-  dataSourceString: defaultProject.defaultDataset.t
-  keys:
-  - id
-`;
-    writeDefinitionFile(projectDir, "graph.yaml", graphBody);
-    writeDefinitionFile(projectDir, "subdir/graph.yaml", graphBody);
-
-    const request = dataform.CoreExecutionRequest.create({
-      compile: {
-        compileConfig: {
-          projectDir: fs.realpathSync(projectDir),
-          filePaths: [
-            "workflow_settings.yaml",
-            "definitions/graph.yaml",
-            "definitions/subdir/graph.yaml"
-          ]
-        }
       }
-    });
-
-    const result = runMainInVm(request);
-
-    expect(asPlainObject(result.compile.compiledGraph)).deep.equals(
-      asPlainObject({
-        projectConfig: graphProjectConfig,
-        graphErrors: {
-          compilationErrors: [
-            graphError(
-              "definitions/graph.yaml",
-              "At most one graph.yaml is allowed per project (found 2: " +
-                "definitions/graph.yaml, definitions/subdir/graph.yaml). This " +
-                "restriction may be relaxed in a future version."
-            )
-          ]
-        },
-        dataformCoreVersion: version,
-        jitData: {}
-      })
-    );
-  });
-
-  test("nodes-only graph compiles without EDGE TABLES", () => {
-    const projectDir = tmpDirFixture.createNewTmpDir();
-    writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
-    writeDefinitionFile(
-      projectDir,
-      "graph.yaml",
-      `
+    },
+    {
+      testName: "nodes-only graph compiles without EDGE TABLES",
+      workflowSettings: VALID_WORKFLOW_SETTINGS_YAML,
+      definitionFiles: [
+        {
+          name: "graph.yaml",
+          contents: `
 name: NodesOnly
 entities:
 - name: Customer
@@ -225,12 +196,9 @@ entities:
   keys:
   - sku
 `
-    );
-
-    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
-
-    expect(asPlainObject(result.compile.compiledGraph)).deep.equals(
-      asPlainObject({
+        }
+      ],
+      expectedGraph: {
         projectConfig: graphProjectConfig,
         graphErrors: {},
         dataformCoreVersion: version,
@@ -278,17 +246,15 @@ entities:
               ")"
           }
         ]
-      })
-    );
-  });
-
-  test("targetDataset overrides the schema on the graph target", () => {
-    const projectDir = tmpDirFixture.createNewTmpDir();
-    writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
-    writeDefinitionFile(
-      projectDir,
-      "graph.yaml",
-      `
+      }
+    },
+    {
+      testName: "targetDataset overrides the schema on the graph target",
+      workflowSettings: VALID_WORKFLOW_SETTINGS_YAML,
+      definitionFiles: [
+        {
+          name: "graph.yaml",
+          contents: `
 name: CustomDsGraph
 targetDataset:
   datasetId: customDs
@@ -298,12 +264,9 @@ entities:
   keys:
   - id
 `
-    );
-
-    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
-
-    expect(asPlainObject(result.compile.compiledGraph)).deep.equals(
-      asPlainObject({
+        }
+      ],
+      expectedGraph: {
         projectConfig: graphProjectConfig,
         graphErrors: {},
         dataformCoreVersion: version,
@@ -341,19 +304,18 @@ entities:
               ")"
           }
         ]
-      })
-    );
-  });
-
-  test("empty graph.yaml produces a compilation error", () => {
-    const projectDir = tmpDirFixture.createNewTmpDir();
-    writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
-    writeDefinitionFile(projectDir, "graph.yaml", "");
-
-    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
-
-    expect(asPlainObject(result.compile.compiledGraph)).deep.equals(
-      asPlainObject({
+      }
+    },
+    {
+      testName: "empty graph.yaml produces a compilation error",
+      workflowSettings: VALID_WORKFLOW_SETTINGS_YAML,
+      definitionFiles: [
+        {
+          name: "graph.yaml",
+          contents: ""
+        }
+      ],
+      expectedGraph: {
         projectConfig: graphProjectConfig,
         graphErrors: {
           compilationErrors: [
@@ -366,19 +328,18 @@ entities:
         },
         dataformCoreVersion: version,
         jitData: {}
-      })
-    );
-  });
-
-  test("graph.yaml with only a comment produces a compilation error", () => {
-    const projectDir = tmpDirFixture.createNewTmpDir();
-    writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
-    writeDefinitionFile(projectDir, "graph.yaml", "# nothing here\n");
-
-    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
-
-    expect(asPlainObject(result.compile.compiledGraph)).deep.equals(
-      asPlainObject({
+      }
+    },
+    {
+      testName: "graph.yaml with only a comment produces a compilation error",
+      workflowSettings: VALID_WORKFLOW_SETTINGS_YAML,
+      definitionFiles: [
+        {
+          name: "graph.yaml",
+          contents: "# nothing here\n"
+        }
+      ],
+      expectedGraph: {
         projectConfig: graphProjectConfig,
         graphErrors: {
           compilationErrors: [
@@ -391,19 +352,18 @@ entities:
         },
         dataformCoreVersion: version,
         jitData: {}
-      })
-    );
-  });
-
-  test("graph.yaml with a top-level scalar produces a compilation error", () => {
-    const projectDir = tmpDirFixture.createNewTmpDir();
-    writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
-    writeDefinitionFile(projectDir, "graph.yaml", "just a string\n");
-
-    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
-
-    expect(asPlainObject(result.compile.compiledGraph)).deep.equals(
-      asPlainObject({
+      }
+    },
+    {
+      testName: "graph.yaml with a top-level scalar produces a compilation error",
+      workflowSettings: VALID_WORKFLOW_SETTINGS_YAML,
+      definitionFiles: [
+        {
+          name: "graph.yaml",
+          contents: "just a string\n"
+        }
+      ],
+      expectedGraph: {
         projectConfig: graphProjectConfig,
         graphErrors: {
           compilationErrors: [
@@ -416,25 +376,20 @@ entities:
         },
         dataformCoreVersion: version,
         jitData: {}
-      })
-    );
-  });
-
-  test("graph.yaml missing entities produces a compilation error", () => {
-    const projectDir = tmpDirFixture.createNewTmpDir();
-    writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
-    writeDefinitionFile(
-      projectDir,
-      "graph.yaml",
-      `
+      }
+    },
+    {
+      testName: "graph.yaml missing entities produces a compilation error",
+      workflowSettings: VALID_WORKFLOW_SETTINGS_YAML,
+      definitionFiles: [
+        {
+          name: "graph.yaml",
+          contents: `
 name: EmptyGraph
 `
-    );
-
-    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
-
-    expect(asPlainObject(result.compile.compiledGraph)).deep.equals(
-      asPlainObject({
+        }
+      ],
+      expectedGraph: {
         projectConfig: graphProjectConfig,
         graphErrors: {
           compilationErrors: [
@@ -446,17 +401,15 @@ name: EmptyGraph
         },
         dataformCoreVersion: version,
         jitData: {}
-      })
-    );
-  });
-
-  test("graph with relationships emits EDGE TABLES", () => {
-    const projectDir = tmpDirFixture.createNewTmpDir();
-    writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
-    writeDefinitionFile(
-      projectDir,
-      "graph.yaml",
-      `
+      }
+    },
+    {
+      testName: "graph with relationships emits EDGE TABLES",
+      workflowSettings: VALID_WORKFLOW_SETTINGS_YAML,
+      definitionFiles: [
+        {
+          name: "graph.yaml",
+          contents: `
 name: RelGraph
 entities:
 - name: Customer
@@ -479,12 +432,9 @@ relationships:
     joinKeys:
     - customer_id
 `
-    );
-
-    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
-
-    expect(asPlainObject(result.compile.compiledGraph)).deep.equals(
-      asPlainObject({
+        }
+      ],
+      expectedGraph: {
         projectConfig: graphProjectConfig,
         graphErrors: {},
         dataformCoreVersion: version,
@@ -557,26 +507,23 @@ relationships:
               ")"
           }
         ]
-      })
-    );
-  });
-
-  test("ref to declaration resolves entity dataSource and renders graphBody", () => {
-    const projectDir = tmpDirFixture.createNewTmpDir();
-    writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
-    writeDefinitionFile(
-      projectDir,
-      "actions.yaml",
-      `
+      }
+    },
+    {
+      testName: "ref to declaration resolves entity dataSource and renders graphBody",
+      workflowSettings: VALID_WORKFLOW_SETTINGS_YAML,
+      definitionFiles: [
+        {
+          name: "actions.yaml",
+          contents: `
 actions:
 - declaration:
     name: books
 `
-    );
-    writeDefinitionFile(
-      projectDir,
-      "graph.yaml",
-      `
+        },
+        {
+          name: "graph.yaml",
+          contents: `
 name: RefGraph
 entities:
 - name: Book
@@ -584,13 +531,9 @@ entities:
   keys:
   - id
 `
-    );
-
-    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
-
-    expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-    expect(asPlainObject(result.compile.compiledGraph.propertyGraphs)).deep.equals(
-      asPlainObject([
+        }
+      ],
+      expectedPropertyGraphs: [
         {
           target: {
             schema: "defaultDataset",
@@ -626,17 +569,15 @@ entities:
           graphBody:
             "NODE TABLES (\n" + "  `defaultProject.defaultDataset.books` AS Book KEY (id)\n" + ")"
         }
-      ])
-    );
-  });
-
-  test("ref with schema override resolves the matching declaration", () => {
-    const projectDir = tmpDirFixture.createNewTmpDir();
-    writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
-    writeDefinitionFile(
-      projectDir,
-      "actions.yaml",
-      `
+      ]
+    },
+    {
+      testName: "ref with schema override resolves the matching declaration",
+      workflowSettings: VALID_WORKFLOW_SETTINGS_YAML,
+      definitionFiles: [
+        {
+          name: "actions.yaml",
+          contents: `
 actions:
 - declaration:
     name: books
@@ -644,11 +585,10 @@ actions:
 - declaration:
     name: books
 `
-    );
-    writeDefinitionFile(
-      projectDir,
-      "graph.yaml",
-      `
+        },
+        {
+          name: "graph.yaml",
+          contents: `
 name: RefWithSchemaGraph
 entities:
 - name: Book
@@ -658,13 +598,9 @@ entities:
   keys:
   - id
 `
-    );
-
-    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
-
-    expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-    expect(asPlainObject(result.compile.compiledGraph.propertyGraphs)).deep.equals(
-      asPlainObject([
+        }
+      ],
+      expectedPropertyGraphs: [
         {
           target: {
             schema: "defaultDataset",
@@ -699,26 +635,23 @@ entities:
           ],
           graphBody: "NODE TABLES (\n" + "  `defaultProject.alt.books` AS Book KEY (id)\n" + ")"
         }
-      ])
-    );
-  });
-
-  test("ref with includeDependentAssertions pulls the dependency's assertions", () => {
-    const projectDir = tmpDirFixture.createNewTmpDir();
-    writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
-    writeDefinitionFile(
-      projectDir,
-      "books.sqlx",
-      `config {
+      ]
+    },
+    {
+      testName: "ref with includeDependentAssertions pulls the dependency's assertions",
+      workflowSettings: VALID_WORKFLOW_SETTINGS_YAML,
+      definitionFiles: [
+        {
+          name: "books.sqlx",
+          contents: `config {
   type: "table",
   assertions: { rowConditions: ["id > 0"] }
 }
 select 1 as id`
-    );
-    writeDefinitionFile(
-      projectDir,
-      "graph.yaml",
-      `
+        },
+        {
+          name: "graph.yaml",
+          contents: `
 name: AssertRefGraph
 entities:
 - name: Book
@@ -728,13 +661,9 @@ entities:
   keys:
   - id
 `
-    );
-
-    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
-
-    expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-    expect(asPlainObject(result.compile.compiledGraph.propertyGraphs)).deep.equals(
-      asPlainObject([
+        }
+      ],
+      expectedPropertyGraphs: [
         {
           target: {
             schema: "defaultDataset",
@@ -775,26 +704,23 @@ entities:
           graphBody:
             "NODE TABLES (\n" + "  `defaultProject.defaultDataset.books` AS Book KEY (id)\n" + ")"
         }
-      ])
-    );
-  });
-
-  test("graph-level dependOnDependencyAssertions pulls every ref's assertions", () => {
-    const projectDir = tmpDirFixture.createNewTmpDir();
-    writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
-    writeDefinitionFile(
-      projectDir,
-      "books.sqlx",
-      `config {
+      ]
+    },
+    {
+      testName: "graph-level dependOnDependencyAssertions pulls every ref's assertions",
+      workflowSettings: VALID_WORKFLOW_SETTINGS_YAML,
+      definitionFiles: [
+        {
+          name: "books.sqlx",
+          contents: `config {
   type: "table",
   assertions: { rowConditions: ["id > 0"] }
 }
 select 1 as id`
-    );
-    writeDefinitionFile(
-      projectDir,
-      "graph.yaml",
-      `
+        },
+        {
+          name: "graph.yaml",
+          contents: `
 name: GraphAssertDefaultGraph
 dependOnDependencyAssertions: true
 entities:
@@ -803,13 +729,9 @@ entities:
   keys:
   - id
 `
-    );
-
-    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
-
-    expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-    expect(asPlainObject(result.compile.compiledGraph.propertyGraphs)).deep.equals(
-      asPlainObject([
+        }
+      ],
+      expectedPropertyGraphs: [
         {
           target: {
             schema: "defaultDataset",
@@ -850,17 +772,15 @@ entities:
           graphBody:
             "NODE TABLES (\n" + "  `defaultProject.defaultDataset.books` AS Book KEY (id)\n" + ")"
         }
-      ])
-    );
-  });
-
-  test("missing ref emits a compilation error and leaves graphBody empty", () => {
-    const projectDir = tmpDirFixture.createNewTmpDir();
-    writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
-    writeDefinitionFile(
-      projectDir,
-      "graph.yaml",
-      `
+      ]
+    },
+    {
+      testName: "missing ref emits a compilation error and leaves graphBody empty",
+      workflowSettings: VALID_WORKFLOW_SETTINGS_YAML,
+      definitionFiles: [
+        {
+          name: "graph.yaml",
+          contents: `
 name: MissingRefGraph
 entities:
 - name: Book
@@ -868,17 +788,9 @@ entities:
   keys:
   - id
 `
-    );
-
-    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
-
-    const missingRefTarget = {
-      schema: "defaultDataset",
-      name: "MissingRefGraph",
-      database: "defaultProject"
-    };
-    expect(asPlainObject(result.compile.compiledGraph)).deep.equals(
-      asPlainObject({
+        }
+      ],
+      expectedGraph: {
         projectConfig: graphProjectConfig,
         graphErrors: {
           compilationErrors: [
@@ -913,31 +825,25 @@ entities:
             ]
           }
         ]
-      })
-    );
-  });
-
-  test("ref to a table respects datasetSuffix on the resolved dependency", () => {
-    const projectDir = tmpDirFixture.createNewTmpDir();
-    writeWorkflowSettingsFile(
-      projectDir,
-      `
+      }
+    },
+    {
+      testName: "ref to a table respects datasetSuffix on the resolved dependency",
+      workflowSettings: `
 defaultProject: defaultProject
 defaultDataset: defaultDataset
 defaultLocation: US
 datasetSuffix: dev
-`
-    );
-    writeDefinitionFile(
-      projectDir,
-      "books.sqlx",
-      `config {type: "table"}
+`,
+      definitionFiles: [
+        {
+          name: "books.sqlx",
+          contents: `config {type: "table"}
 select 1 as id`
-    );
-    writeDefinitionFile(
-      projectDir,
-      "graph.yaml",
-      `
+        },
+        {
+          name: "graph.yaml",
+          contents: `
 name: SuffixRefGraph
 entities:
 - name: Book
@@ -945,13 +851,9 @@ entities:
   keys:
   - id
 `
-    );
-
-    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
-
-    expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-    expect(asPlainObject(result.compile.compiledGraph.propertyGraphs)).deep.equals(
-      asPlainObject([
+        }
+      ],
+      expectedPropertyGraphs: [
         {
           target: {
             schema: "defaultDataset_dev",
@@ -989,17 +891,15 @@ entities:
             "  `defaultProject.defaultDataset_dev.books` AS Book KEY (id)\n" +
             ")"
         }
-      ])
-    );
-  });
-
-  test("ref with database override resolves the matching declaration", () => {
-    const projectDir = tmpDirFixture.createNewTmpDir();
-    writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
-    writeDefinitionFile(
-      projectDir,
-      "actions.yaml",
-      `
+      ]
+    },
+    {
+      testName: "ref with database override resolves the matching declaration",
+      workflowSettings: VALID_WORKFLOW_SETTINGS_YAML,
+      definitionFiles: [
+        {
+          name: "actions.yaml",
+          contents: `
 actions:
 - declaration:
     name: books
@@ -1007,11 +907,10 @@ actions:
 - declaration:
     name: books
 `
-    );
-    writeDefinitionFile(
-      projectDir,
-      "graph.yaml",
-      `
+        },
+        {
+          name: "graph.yaml",
+          contents: `
 name: RefWithDatabaseGraph
 entities:
 - name: Book
@@ -1021,13 +920,9 @@ entities:
   keys:
   - id
 `
-    );
-
-    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
-
-    expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-    expect(asPlainObject(result.compile.compiledGraph.propertyGraphs)).deep.equals(
-      asPlainObject([
+        }
+      ],
+      expectedPropertyGraphs: [
         {
           target: {
             schema: "defaultDataset",
@@ -1063,26 +958,23 @@ entities:
           graphBody:
             "NODE TABLES (\n" + "  `otherProject.defaultDataset.books` AS Book KEY (id)\n" + ")"
         }
-      ])
-    );
-  });
-
-  test("relationship ref resolves through the full pipeline", () => {
-    const projectDir = tmpDirFixture.createNewTmpDir();
-    writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
-    writeDefinitionFile(
-      projectDir,
-      "actions.yaml",
-      `
+      ]
+    },
+    {
+      testName: "relationship ref resolves through the full pipeline",
+      workflowSettings: VALID_WORKFLOW_SETTINGS_YAML,
+      definitionFiles: [
+        {
+          name: "actions.yaml",
+          contents: `
 actions:
 - declaration:
     name: wrote
 `
-    );
-    writeDefinitionFile(
-      projectDir,
-      "graph.yaml",
-      `
+        },
+        {
+          name: "graph.yaml",
+          contents: `
 name: RelationshipRefGraph
 entities:
 - name: Book
@@ -1108,13 +1000,9 @@ relationships:
     joinKeys:
     - author_id
 `
-    );
-
-    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
-
-    expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-    expect(asPlainObject(result.compile.compiledGraph.propertyGraphs)).deep.equals(
-      asPlainObject([
+        }
+      ],
+      expectedPropertyGraphs: [
         {
           target: {
             schema: "defaultDataset",
@@ -1189,31 +1077,25 @@ relationships:
             "DESTINATION KEY (author_id) REFERENCES Author (id)\n" +
             ")"
         }
-      ])
-    );
-  });
-
-  test("ref to a view resolves and picks up datasetSuffix", () => {
-    const projectDir = tmpDirFixture.createNewTmpDir();
-    writeWorkflowSettingsFile(
-      projectDir,
-      `
+      ]
+    },
+    {
+      testName: "ref to a view resolves and picks up datasetSuffix",
+      workflowSettings: `
 defaultProject: defaultProject
 defaultDataset: defaultDataset
 defaultLocation: US
 datasetSuffix: dev
-`
-    );
-    writeDefinitionFile(
-      projectDir,
-      "books.sqlx",
-      `config {type: "view"}
+`,
+      definitionFiles: [
+        {
+          name: "books.sqlx",
+          contents: `config {type: "view"}
 select 1 as id`
-    );
-    writeDefinitionFile(
-      projectDir,
-      "graph.yaml",
-      `
+        },
+        {
+          name: "graph.yaml",
+          contents: `
 name: ViewRefGraph
 entities:
 - name: Book
@@ -1221,13 +1103,9 @@ entities:
   keys:
   - id
 `
-    );
-
-    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
-
-    expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-    expect(asPlainObject(result.compile.compiledGraph.propertyGraphs)).deep.equals(
-      asPlainObject([
+        }
+      ],
+      expectedPropertyGraphs: [
         {
           target: {
             schema: "defaultDataset_dev",
@@ -1265,17 +1143,15 @@ entities:
             "  `defaultProject.defaultDataset_dev.books` AS Book KEY (id)\n" +
             ")"
         }
-      ])
-    );
-  });
-
-  test("ambiguous ref emits a compilation error", () => {
-    const projectDir = tmpDirFixture.createNewTmpDir();
-    writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
-    writeDefinitionFile(
-      projectDir,
-      "actions.yaml",
-      `
+      ]
+    },
+    {
+      testName: "ambiguous ref emits a compilation error",
+      workflowSettings: VALID_WORKFLOW_SETTINGS_YAML,
+      definitionFiles: [
+        {
+          name: "actions.yaml",
+          contents: `
 actions:
 - declaration:
     name: books
@@ -1284,11 +1160,10 @@ actions:
     name: books
     dataset: two
 `
-    );
-    writeDefinitionFile(
-      projectDir,
-      "graph.yaml",
-      `
+        },
+        {
+          name: "graph.yaml",
+          contents: `
 name: AmbiguousRefGraph
 entities:
 - name: Book
@@ -1296,19 +1171,9 @@ entities:
   keys:
   - id
 `
-    );
-
-    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
-
-    const declOneTarget = { schema: "one", name: "books", database: "defaultProject" };
-    const declTwoTarget = { schema: "two", name: "books", database: "defaultProject" };
-    const graphTarget = {
-      schema: "defaultDataset",
-      name: "AmbiguousRefGraph",
-      database: "defaultProject"
-    };
-    expect(asPlainObject(result.compile.compiledGraph)).deep.equals(
-      asPlainObject({
+        }
+      ],
+      expectedGraph: {
         projectConfig: graphProjectConfig,
         graphErrors: {
           compilationErrors: [
@@ -1340,31 +1205,25 @@ entities:
             entities: [{ name: "Book", keys: ["id"] }]
           }
         ]
-      })
-    );
-  });
-
-  test("ref to a table respects projectSuffix on the resolved dependency", () => {
-    const projectDir = tmpDirFixture.createNewTmpDir();
-    writeWorkflowSettingsFile(
-      projectDir,
-      `
+      }
+    },
+    {
+      testName: "ref to a table respects projectSuffix on the resolved dependency",
+      workflowSettings: `
 defaultProject: defaultProject
 defaultDataset: defaultDataset
 defaultLocation: US
 projectSuffix: dev
-`
-    );
-    writeDefinitionFile(
-      projectDir,
-      "books.sqlx",
-      `config {type: "table"}
+`,
+      definitionFiles: [
+        {
+          name: "books.sqlx",
+          contents: `config {type: "table"}
 select 1 as id`
-    );
-    writeDefinitionFile(
-      projectDir,
-      "graph.yaml",
-      `
+        },
+        {
+          name: "graph.yaml",
+          contents: `
 name: ProjectSuffixRefGraph
 entities:
 - name: Book
@@ -1372,13 +1231,9 @@ entities:
   keys:
   - id
 `
-    );
-
-    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
-
-    expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-    expect(asPlainObject(result.compile.compiledGraph.propertyGraphs)).deep.equals(
-      asPlainObject([
+        }
+      ],
+      expectedPropertyGraphs: [
         {
           target: {
             schema: "defaultDataset",
@@ -1416,31 +1271,25 @@ entities:
             "  `defaultProject_dev.defaultDataset.books` AS Book KEY (id)\n" +
             ")"
         }
-      ])
-    );
-  });
-
-  test("ref to a table respects namePrefix on the resolved dependency", () => {
-    const projectDir = tmpDirFixture.createNewTmpDir();
-    writeWorkflowSettingsFile(
-      projectDir,
-      `
+      ]
+    },
+    {
+      testName: "ref to a table respects namePrefix on the resolved dependency",
+      workflowSettings: `
 defaultProject: defaultProject
 defaultDataset: defaultDataset
 defaultLocation: US
 namePrefix: pfx
-`
-    );
-    writeDefinitionFile(
-      projectDir,
-      "books.sqlx",
-      `config {type: "table"}
+`,
+      definitionFiles: [
+        {
+          name: "books.sqlx",
+          contents: `config {type: "table"}
 select 1 as id`
-    );
-    writeDefinitionFile(
-      projectDir,
-      "graph.yaml",
-      `
+        },
+        {
+          name: "graph.yaml",
+          contents: `
 name: NamePrefixRefGraph
 entities:
 - name: Book
@@ -1448,13 +1297,9 @@ entities:
   keys:
   - id
 `
-    );
-
-    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
-
-    expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-    expect(asPlainObject(result.compile.compiledGraph.propertyGraphs)).deep.equals(
-      asPlainObject([
+        }
+      ],
+      expectedPropertyGraphs: [
         {
           target: {
             schema: "defaultDataset",
@@ -1492,23 +1337,20 @@ entities:
             "  `defaultProject.defaultDataset.pfx_books` AS Book KEY (id)\n" +
             ")"
         }
-      ])
-    );
-  });
-
-  test("graph target colliding with a table target is flagged as duplicate", () => {
-    const projectDir = tmpDirFixture.createNewTmpDir();
-    writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
-    writeDefinitionFile(
-      projectDir,
-      "collision.sqlx",
-      `config {type: "table", name: "CollisionName"}
+      ]
+    },
+    {
+      testName: "graph target colliding with a table target is flagged as duplicate",
+      workflowSettings: VALID_WORKFLOW_SETTINGS_YAML,
+      definitionFiles: [
+        {
+          name: "collision.sqlx",
+          contents: `config {type: "table", name: "CollisionName"}
 select 1 as a`
-    );
-    writeDefinitionFile(
-      projectDir,
-      "graph.yaml",
-      `
+        },
+        {
+          name: "graph.yaml",
+          contents: `
 name: CollisionName
 entities:
 - name: Customer
@@ -1516,27 +1358,9 @@ entities:
   keys:
   - id
 `
-    );
-
-    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
-
-    const collisionTarget = {
-      schema: "defaultDataset",
-      name: "CollisionName",
-      database: "defaultProject"
-    };
-    const collisionActionName = "defaultProject.defaultDataset.CollisionName";
-    const collisionTargetJson = `{"schema":"defaultDataset","name":"CollisionName","database":"defaultProject"}`;
-    const duplicateActionMessage =
-      "Duplicate action name detected. Names within a schema must be unique " +
-      "across tables, declarations, assertions, and operations:\n" +
-      `"${collisionTargetJson}"`;
-    const duplicateCanonicalMessage =
-      "Duplicate canonical target detected. Canonical targets must be unique " +
-      "across tables, declarations, assertions, and operations:\n" +
-      `"${collisionTargetJson}"`;
-    expect(asPlainObject(result.compile.compiledGraph)).deep.equals(
-      asPlainObject({
+        }
+      ],
+      expectedGraph: {
         projectConfig: graphProjectConfig,
         graphErrors: {
           compilationErrors: [
@@ -1561,16 +1385,15 @@ entities:
         dataformCoreVersion: version,
         targets: [collisionTarget, collisionTarget],
         jitData: {}
-      })
-    );
-  });
-  test("graph.yaml accepts snake_case keys per BQ spec", () => {
-    const projectDir = tmpDirFixture.createNewTmpDir();
-    writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
-    writeDefinitionFile(
-      projectDir,
-      "graph.yaml",
-      `
+      }
+    },
+    {
+      testName: "graph.yaml accepts snake_case keys per BQ spec",
+      workflowSettings: VALID_WORKFLOW_SETTINGS_YAML,
+      definitionFiles: [
+        {
+          name: "graph.yaml",
+          contents: `
 name: SnakeGraph
 description: end to end snake case
 target_dataset:
@@ -1599,12 +1422,9 @@ relationships:
       relationship_columns:
       - owned_id
 `
-    );
-
-    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
-
-    expect(asPlainObject(result.compile.compiledGraph)).deep.equals(
-      asPlainObject({
+        }
+      ],
+      expectedGraph: {
         projectConfig: graphProjectConfig,
         graphErrors: {},
         dataformCoreVersion: version,
@@ -1677,29 +1497,25 @@ relationships:
               ")"
           }
         ]
-      })
-    );
-  });
-
-  test("mixed ref and dataSourceString: only ref target appears in dependencyTargets", () => {
-    const projectDir = tmpDirFixture.createNewTmpDir();
-    writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
-    writeDefinitionFile(
-      projectDir,
-      "books.sqlx",
-      `config {type: "table"}
+      }
+    },
+    {
+      testName: "mixed ref and dataSourceString: only ref target appears in dependencyTargets",
+      workflowSettings: VALID_WORKFLOW_SETTINGS_YAML,
+      definitionFiles: [
+        {
+          name: "books.sqlx",
+          contents: `config {type: "table"}
 select 1 as id`
-    );
-    writeDefinitionFile(
-      projectDir,
-      "authors.sqlx",
-      `config {type: "table"}
+        },
+        {
+          name: "authors.sqlx",
+          contents: `config {type: "table"}
 select 1 as id`
-    );
-    writeDefinitionFile(
-      projectDir,
-      "graph.yaml",
-      `
+        },
+        {
+          name: "graph.yaml",
+          contents: `
 name: MixedRefStringGraph
 entities:
 - name: Book
@@ -1711,13 +1527,9 @@ entities:
   keys:
   - id
 `
-    );
-
-    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
-
-    expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-    expect(asPlainObject(result.compile.compiledGraph.propertyGraphs)).deep.equals(
-      asPlainObject([
+        }
+      ],
+      expectedPropertyGraphs: [
         {
           target: {
             schema: "defaultDataset",
@@ -1761,7 +1573,77 @@ entities:
             "  `defaultProject.defaultDataset.authors` AS Author KEY (id)\n" +
             ")"
         }
-      ])
+      ]
+    }
+  ].forEach(testParameters => {
+    test(testParameters.testName, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      writeWorkflowSettingsFile(projectDir, testParameters.workflowSettings);
+      testParameters.definitionFiles.forEach(file => {
+        writeDefinitionFile(projectDir, file.name, file.contents);
+      });
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      if (testParameters.expectedGraph) {
+        expect(asPlainObject(result.compile?.compiledGraph)).deep.equals(
+          asPlainObject(testParameters.expectedGraph)
+        );
+      }
+      if (testParameters.expectedPropertyGraphs) {
+        expect(result.compile?.compiledGraph?.graphErrors?.compilationErrors).deep.equals([]);
+        expect(asPlainObject(result.compile?.compiledGraph?.propertyGraphs)).deep.equals(
+          asPlainObject(testParameters.expectedPropertyGraphs)
+        );
+      }
+    });
+  });
+
+  test("more than one graph.yaml is rejected", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
+    const graphBody = `
+name: MultiGraph
+entities:
+- name: Node
+  dataSourceString: defaultProject.defaultDataset.t
+  keys:
+  - id
+`;
+    writeDefinitionFile(projectDir, "graph.yaml", graphBody);
+    writeDefinitionFile(projectDir, "subdir/graph.yaml", graphBody);
+
+    const request = dataform.CoreExecutionRequest.create({
+      compile: {
+        compileConfig: {
+          projectDir: fs.realpathSync(projectDir),
+          filePaths: [
+            "workflow_settings.yaml",
+            "definitions/graph.yaml",
+            "definitions/subdir/graph.yaml"
+          ]
+        }
+      }
+    });
+
+    const result = runMainInVm(request);
+
+    expect(asPlainObject(result.compile?.compiledGraph)).deep.equals(
+      asPlainObject({
+        projectConfig: graphProjectConfig,
+        graphErrors: {
+          compilationErrors: [
+            graphError(
+              "definitions/graph.yaml",
+              "At most one graph.yaml is allowed per project (found 2: " +
+                "definitions/graph.yaml, definitions/subdir/graph.yaml). This " +
+                "restriction may be relaxed in a future version."
+            )
+          ]
+        },
+        dataformCoreVersion: version,
+        jitData: {}
+      })
     );
   });
 });
