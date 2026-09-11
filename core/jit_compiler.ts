@@ -10,7 +10,6 @@ import { dataform } from "df/protos/ts";
 function makeMainBody<Context, T>(code: string): (jctx: JitContext<Context>) => Promise<T> {
   return (
     jctx => {
-      // tslint:disable-next-line: tsr-detect-eval-with-expression
       const body = new Function(
         "jctx", `const mainAsync = ${code};\nreturn mainAsync(jctx);`
       ) as (jctx: JitContext<Context>) => Promise<T>;

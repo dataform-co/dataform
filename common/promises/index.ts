@@ -1,5 +1,4 @@
 export function runAsyncIgnoringErrors(promise: Promise<any>) {
-  // tslint:disable-next-line: no-console
   promise.catch(e => console.error(`runAsyncIgnoringErrors caught error: ${e}`));
 }
 

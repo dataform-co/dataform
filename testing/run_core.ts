@@ -1,4 +1,3 @@
-// tslint:disable tsr-detect-non-literal-fs-filename
 import * as fs from "fs-extra";
 import * as path from "path";
 import { CompilerFunction, NodeVM } from "vm2";

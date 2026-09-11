@@ -19,7 +19,6 @@ const externalDependencies = argv.externalDependencies as string[];
 
 // Merge layers in the given order.
 const result = layerPaths
-  // tslint:disable-next-line: tsr-detect-non-literal-fs-filename
   .map((layerPath: string) => JSON.parse(fs.readFileSync(layerPath, "utf8")))
   .reduce(
     (accumulatorJson: object, layerJson: object) => ({ ...accumulatorJson, ...layerJson }),
@@ -47,5 +46,4 @@ result.dependencies = externalDependencies.reduce((acc, key) => {
 
 const resultString = JSON.stringify(result, null, 4);
 
-// tslint:disable-next-line: tsr-detect-non-literal-fs-filename
 fs.writeFileSync(outputPath, resultString);

@@ -311,7 +311,6 @@ function buildSqlxLexer(): { [x: string]: moo.Rules } {
     push: LEXER_STATE_NAMES.INNER_SQL_BLOCK
   };
   sqlLexer[SQL_LEXER_TOKEN_NAMES.START_INPUT] = {
-    // tslint:disable-next-line: tsr-detect-unsafe-regexp
     match: /input "[a-zA-Z0-9_-]+"(?:,\s*"[a-zA-Z0-9_-]+")* {/,
     push: LEXER_STATE_NAMES.INNER_SQL_BLOCK
   };

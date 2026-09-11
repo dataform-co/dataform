@@ -341,14 +341,12 @@ suite("run", () => {
     const [executedSql] = capture(mockAdapter.execute).last();
     // For BigQuery, it should be an 'insert into' because no uniqueKey was specified.
     // We check for substrings without trailing spaces to avoid exact whitespace mismatches.
-    // tslint:disable: tsr-detect-sql-literal-injection
     expect(executedSql).to.equal(
       "insert into `db.sch.incremental_jit`	\n" +
       "(`t`)	\n" +
       "select `t`	\n" +
       "from (SELECT 'inc' as t) as insertions"
     );
-    // tslint:enable: tsr-detect-sql-literal-injection
   });
 
   test("JiT compilation with RPC calls (ListTables, GetTable, DeleteTable)", async () => {
