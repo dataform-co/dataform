@@ -119,7 +119,7 @@ export const runCommand: ICommand<IRunArgs> = {
       !executionGraph.actions.some(action => !!action.jitCode)
     ) {
       printExecutionGraph(executionGraph, isJsonOutput);
-      return;
+      return 0;
     }
 
     if (argv.runTests) {

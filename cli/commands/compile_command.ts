@@ -130,5 +130,6 @@ export const compileCommand: ICommand<ICompileArgs> = {
     while (watching) {
       await new Promise((resolve, reject) => setTimeout(() => resolve(), 100));
     }
+    return 0;
   }
 };
