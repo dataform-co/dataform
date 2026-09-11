@@ -1,14 +1,20 @@
 import yargs from "yargs";
 
 import { init } from "df/cli/api";
-import { projectDirOption } from "df/cli/common_options";
+import { IProjectDirArgs, projectDirOption } from "df/cli/common_options";
 import { print, printInitResult } from "df/cli/console";
 import { ProjectConfigOptions } from "df/cli/project_config_options";
 import { promptForIcebergConfig } from "df/cli/util";
 import { ICommand, INamedOption } from "df/cli/yargswrapper";
 import { dataform } from "df/protos/ts";
 
-const icebergOption: INamedOption<yargs.Options> = {
+export interface IInitArgs extends IProjectDirArgs {
+  defaultDatabase: string;
+  defaultLocation: string;
+  iceberg: boolean;
+}
+
+const icebergOption: INamedOption<yargs.Options, IInitArgs> = {
   name: "iceberg",
   option: {
     describe: "Initialize the project with workflow-level Iceberg tables configuration.",
@@ -17,7 +23,7 @@ const icebergOption: INamedOption<yargs.Options> = {
   }
 };
 
-export const initCommand: ICommand = {
+export const initCommand: ICommand<IInitArgs> = {
   format:
     `init [${projectDirOption.name}] [${ProjectConfigOptions.defaultDatabase.name}]` +
     ` [${ProjectConfigOptions.defaultLocation.name}]`,
@@ -29,8 +35,8 @@ export const initCommand: ICommand = {
       option: {
         describe: "The default database to use, equivalent to Google Cloud Project ID."
       },
-      check: (argv: yargs.Arguments<any>) => {
-        if (!argv[ProjectConfigOptions.defaultDatabase.name]) {
+      check: (argv: yargs.Arguments<IInitArgs>) => {
+        if (!argv.defaultDatabase) {
           throw new Error(
             `The ${ProjectConfigOptions.defaultDatabase.name} positional argument is ` +
               `required. Use "dataform help init" for more info.`
@@ -45,8 +51,8 @@ export const initCommand: ICommand = {
           "The default location to use. See " +
           "https://cloud.google.com/bigquery/docs/locations for supported values."
       },
-      check: (argv: yargs.Arguments<any>) => {
-        if (!argv[ProjectConfigOptions.defaultLocation.name]) {
+      check: (argv: yargs.Arguments<IInitArgs>) => {
+        if (!argv.defaultLocation) {
           throw new Error(
             `The ${ProjectConfigOptions.defaultLocation.name} positional argument is ` +
               `required. Use "dataform help init" for more info.`
@@ -57,13 +63,12 @@ export const initCommand: ICommand = {
   ],
   options: [icebergOption],
   processFn: async argv => {
-    const projectDir = argv[projectDirOption.name];
     const projectConfig: dataform.IProjectConfig = {
-      defaultDatabase: argv[ProjectConfigOptions.defaultDatabase.name],
-      defaultLocation: argv[ProjectConfigOptions.defaultLocation.name]
+      defaultDatabase: argv.defaultDatabase,
+      defaultLocation: argv.defaultLocation
     };
 
-    if (argv[icebergOption.name]) {
+    if (argv.iceberg) {
       const icebergConfig = promptForIcebergConfig();
       if (icebergConfig) {
         projectConfig.defaultIcebergConfig = icebergConfig;
@@ -72,7 +77,7 @@ export const initCommand: ICommand = {
 
     print("Writing project files...\n");
 
-    const initResult = await init(projectDir, projectConfig);
+    const initResult = await init(argv.projectDir, projectConfig);
     printInitResult(initResult);
     return 0;
   }
