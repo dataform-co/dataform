@@ -36,7 +36,11 @@ export const assertProjectDirExists = (argv: yargs.Arguments<IProjectDirArgs>) =
 export const splitCommas = (raw: string[] | null) =>
   raw ? raw.map(value => value.split(",")).flat() : [];
 
-export const actionsOption: INamedOption<yargs.Options> = {
+export interface IActionsArgs {
+  actions?: string[];
+}
+
+export const actionsOption: INamedOption<yargs.Options, IActionsArgs> = {
   name: "actions",
   option: {
     describe: "A list of action names or patterns to run. Can include '*' wildcards.",

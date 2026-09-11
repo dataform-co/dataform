@@ -3,12 +3,23 @@ import * as glob from "glob";
 import * as path from "path";
 import yargs from "yargs";
 
-import { actionsOption, assertProjectDirExists, projectDirOption } from "df/cli/common_options";
+import {
+  actionsOption,
+  assertProjectDirExists,
+  IActionsArgs,
+  IProjectDirArgs,
+  projectDirOption
+} from "df/cli/common_options";
 import { printError, printFormatFilesResult, printSuccess } from "df/cli/console";
 import { ICommand, INamedOption } from "df/cli/yargswrapper";
 import { formatFile } from "df/sqlx/format";
 
-const fmtIgnoreJsOption: INamedOption<yargs.Options> = {
+export interface IFormatArgs extends IProjectDirArgs, IActionsArgs {
+  ignoreJsFiles: boolean;
+  check: boolean;
+}
+
+const fmtIgnoreJsOption: INamedOption<yargs.Options, IFormatArgs> = {
   name: "ignore-js-files",
   option: {
     describe: "If set, the formatter will not consider javascript files (.js)",
@@ -17,10 +28,8 @@ const fmtIgnoreJsOption: INamedOption<yargs.Options> = {
   }
 };
 
-const checkOptionName = "check";
-
-const checkOption: INamedOption<yargs.Options> = {
-  name: checkOptionName,
+const checkOption: INamedOption<yargs.Options, IFormatArgs> = {
+  name: "check",
   option: {
     describe: "Check if files are formatted correctly without modifying them.",
     type: "boolean",
@@ -28,23 +37,23 @@ const checkOption: INamedOption<yargs.Options> = {
   }
 };
 
-export const formatCommand: ICommand = {
+export const formatCommand: ICommand<IFormatArgs> = {
   format: `format [${projectDirOption.name}]`,
   description: "Format the dataform project's files.",
   positionalOptions: [projectDirOption],
   options: [actionsOption, fmtIgnoreJsOption, checkOption],
   check: [assertProjectDirExists],
   processFn: async argv => {
-    const extensions = argv[fmtIgnoreJsOption.name] ? "*.sqlx" : "*.{js,sqlx}";
+    const extensions = argv.ignoreJsFiles ? "*.sqlx" : "*.{js,sqlx}";
     let actions = [`{definitions,includes}/**/${extensions}`];
-    if (actionsOption.name in argv && argv[actionsOption.name].length > 0) {
-      actions = argv[actionsOption.name];
+    if (argv.actions && argv.actions.length > 0) {
+      actions = argv.actions;
     }
     const filenames = actions
-      .map((action: string) => glob.sync(action, { cwd: argv[projectDirOption.name] }))
+      .map((action: string) => glob.sync(action, { cwd: argv.projectDir }))
       .flat();
 
-    const isCheckMode = argv[checkOptionName];
+    const isCheckMode = argv.check;
     const results: Array<{
       filename: string;
       err?: Error;
@@ -52,7 +61,7 @@ export const formatCommand: ICommand = {
     }> = await Promise.all(
       filenames.map(async (filename: string) => {
         try {
-          const filePath = path.resolve(argv[projectDirOption.name], filename);
+          const filePath = path.resolve(argv.projectDir, filename);
           if (isCheckMode) {
             // In check mode, we don't modify files, just check if they need formatting
             const fileContent = fs.readFileSync(filePath).toString();
