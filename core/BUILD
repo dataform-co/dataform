@@ -66,6 +66,8 @@ ts_library(
 ts_test_suite(
     name = "tests",
     srcs = [
+        "actions/assertion_config_test.ts",
+        "actions/assertion_dependency_test.ts",
         "actions/assertion_test.ts",
         "actions/data_preparation_test.ts",
         "actions/declaration_test.ts",
