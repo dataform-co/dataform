@@ -49,17 +49,25 @@ export const actionsOption: INamedOption<yargs.Options, IActionsArgs> = {
   }
 };
 
-export const credentialsOption: INamedOption<yargs.Options> = {
+export interface ICredentialsArgs extends IProjectDirArgs {
+  credentials: string;
+}
+
+export const credentialsOption: INamedOption<yargs.Options, ICredentialsArgs> = {
   name: "credentials",
   option: {
     describe: "The location of the credentials JSON file to use.",
     default: CREDENTIALS_FILENAME
   },
-  check: (argv: yargs.Arguments<any>) =>
-    actuallyResolve(argv[projectDirOption.name], argv[credentialsOption.name])
+  check: (argv: yargs.Arguments<ICredentialsArgs>) =>
+    actuallyResolve(argv.projectDir, argv.credentials)
 };
 
-export const jsonOutputOption: INamedOption<yargs.Options> = {
+export interface IJsonOutputArgs {
+  json: boolean;
+}
+
+export const jsonOutputOption: INamedOption<yargs.Options, IJsonOutputArgs> = {
   name: "json",
   option: {
     describe: "Outputs a JSON representation of the compiled project or test results.",
@@ -71,7 +79,11 @@ export const jsonOutputOption: INamedOption<yargs.Options> = {
 export const coerceTimeout = (rawTimeoutString: string | null) =>
   rawTimeoutString ? parseDuration(rawTimeoutString) : null;
 
-export const timeoutOption: INamedOption<yargs.Options> = {
+export interface ITimeoutArgs {
+  timeout: number | null;
+}
+
+export const timeoutOption: INamedOption<yargs.Options, ITimeoutArgs> = {
   name: "timeout",
   option: {
     describe: "Duration to allow project compilation to complete. Examples: '1s', '10m', etc.",

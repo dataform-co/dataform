@@ -4,6 +4,9 @@ import yargs from "yargs";
 import { compile, prune } from "df/cli/api";
 import {
   assertProjectDirExists,
+  IJsonOutputArgs,
+  IProjectDirArgs,
+  ITimeoutArgs,
   jsonOutputOption,
   projectDirOption,
   requiresSelection,
@@ -18,16 +21,31 @@ import {
   printCompiledGraphErrors,
   printError
 } from "df/cli/console";
-import { ProjectConfigOptions } from "df/cli/project_config_options";
+import { IProjectConfigArgs, ProjectConfigOptions } from "df/cli/project_config_options";
 import { compiledGraphHasErrors } from "df/cli/util";
 import { ICommand, INamedOption } from "df/cli/yargswrapper";
 
 const RECOMPILE_DELAY = 500;
 
+export interface ICompileArgs
+  extends IProjectDirArgs,
+    IProjectConfigArgs,
+    IJsonOutputArgs,
+    ITimeoutArgs {
+  watch: boolean;
+  dot: boolean;
+  quiet: boolean;
+  outputActions?: string[];
+  outputTags?: string[];
+  outputIncludeDeps?: boolean;
+  outputIncludeDependents?: boolean;
+  verbose: boolean;
+}
+
 // `compile` reuses the same prune() filtering as run/build, but these flags only
 // filter the *printed output* -- the whole project still compiles. The `output-`
 // prefix makes that distinction explicit.
-const outputActionsOption: INamedOption<yargs.Options> = {
+const outputActionsOption: INamedOption<yargs.Options, ICompileArgs> = {
   name: "output-actions",
   option: {
     // No wildcard support: prune()'s matchPatterns() does exact matching on the
@@ -38,7 +56,7 @@ const outputActionsOption: INamedOption<yargs.Options> = {
   }
 };
 
-const outputTagsOption: INamedOption<yargs.Options> = {
+const outputTagsOption: INamedOption<yargs.Options, ICompileArgs> = {
   name: "output-tags",
   option: {
     describe: "A list of tags to filter the compiled output to.",
@@ -47,7 +65,7 @@ const outputTagsOption: INamedOption<yargs.Options> = {
   }
 };
 
-const outputIncludeDepsOption: INamedOption<yargs.Options> = {
+const outputIncludeDepsOption: INamedOption<yargs.Options, ICompileArgs> = {
   name: "output-include-deps",
   option: {
     describe: "If set, dependencies of the selected actions are also included in the output.",
@@ -56,7 +74,7 @@ const outputIncludeDepsOption: INamedOption<yargs.Options> = {
   check: requiresSelection("output-include-deps", outputActionsOption, outputTagsOption)
 };
 
-const outputIncludeDependentsOption: INamedOption<yargs.Options> = {
+const outputIncludeDependentsOption: INamedOption<yargs.Options, ICompileArgs> = {
   name: "output-include-dependents",
   option: {
     describe:
@@ -66,24 +84,21 @@ const outputIncludeDependentsOption: INamedOption<yargs.Options> = {
   check: requiresSelection("output-include-dependents", outputActionsOption, outputTagsOption)
 };
 
-const dotOutputOption: INamedOption<yargs.Options> = {
+const dotOutputOption: INamedOption<yargs.Options, ICompileArgs> = {
   name: "dot",
   option: {
     describe: "Outputs a dot representation of the compiled project.",
     type: "boolean",
     default: false
   },
-  check: (argv: yargs.Arguments<any>) => {
+  check: (argv: yargs.Arguments<ICompileArgs>) => {
     if (argv.json && argv.dot) {
       throw new Error("Arguments --json and --dot are mutually exclusive.");
     }
   }
 };
 
-const watchOptionName = "watch";
-const verboseOptionName = "verbose";
-
-const quietCompileOption: INamedOption<yargs.Options> = {
+const quietCompileOption: INamedOption<yargs.Options, ICompileArgs> = {
   name: "quiet",
   option: {
     describe: "Less verbose compilation output. Example usage: 'dataform compile --quiet'",
@@ -92,14 +107,14 @@ const quietCompileOption: INamedOption<yargs.Options> = {
   }
 };
 
-export const compileCommand: ICommand = {
+export const compileCommand: ICommand<ICompileArgs> = {
   format: `compile [${projectDirOption.name}]`,
   description:
     "Compile the dataform project. Produces JSON output describing the non-executable graph.",
   positionalOptions: [projectDirOption],
   options: [
     {
-      name: watchOptionName,
+      name: "watch",
       option: {
         describe: "Whether to watch the changes in the project directory.",
         type: "boolean",
@@ -115,13 +130,13 @@ export const compileCommand: ICommand = {
     outputIncludeDepsOption,
     outputIncludeDependentsOption,
     {
-      name: verboseOptionName,
+      name: "verbose",
       option: {
         describe: "Enable verbose compilation output. Example usage: 'dataform compile --verbose'",
         type: "boolean",
         default: false
       },
-      check: (argv: yargs.Arguments) => {
+      check: (argv: yargs.Arguments<ICompileArgs>) => {
         if (argv.quiet && argv.verbose) {
           throw new Error("Arguments --verbose and --quiet are mutually exclusive.");
         }
@@ -131,14 +146,14 @@ export const compileCommand: ICommand = {
   ],
   check: [assertProjectDirExists],
   processFn: async argv => {
-    const projectDir = argv[projectDirOption.name];
-    const logger = new Logger(!argv[jsonOutputOption.name]);
+    const projectDir = argv.projectDir;
+    const logger = new Logger(!argv.json);
 
     async function compileAndPrint() {
       let outputType = compiledGraphOutputType.Summary;
-      if (argv[jsonOutputOption.name]) {
+      if (argv.json) {
         outputType = compiledGraphOutputType.Json;
-      } else if (argv[dotOutputOption.name]) {
+      } else if (argv.dot) {
         outputType = compiledGraphOutputType.Dot;
       }
 
@@ -148,8 +163,8 @@ export const compileCommand: ICommand = {
       const compiledGraph = await compile({
         projectDir,
         projectConfigOverride: ProjectConfigOptions.constructProjectConfigOverride(argv),
-        timeoutMillis: argv[timeoutOption.name] || undefined,
-        verbose: argv[verboseOptionName] || false
+        timeoutMillis: argv.timeout || undefined,
+        verbose: argv.verbose || false
       });
 
       // The whole project must compile (ref() resolution needs every action
@@ -158,20 +173,20 @@ export const compileCommand: ICommand = {
       // a clean graph; if compilation produced errors we print the full graph
       // plus the errors, keeping graph-level errors as-is.
       const hasSelector =
-        argv[outputActionsOption.name]?.length > 0 || argv[outputTagsOption.name]?.length > 0;
+        (argv.outputActions?.length ?? 0) > 0 || (argv.outputTags?.length ?? 0) > 0;
       const outputGraph =
         hasSelector && !compiledGraphHasErrors(compiledGraph)
           ? prune(compiledGraph, {
-              actions: argv[outputActionsOption.name],
-              tags: argv[outputTagsOption.name],
-              includeDependencies: argv[outputIncludeDepsOption.name],
-              includeDependents: argv[outputIncludeDependentsOption.name]
+              actions: argv.outputActions,
+              tags: argv.outputTags,
+              includeDependencies: argv.outputIncludeDeps,
+              includeDependents: argv.outputIncludeDependents
             })
           : compiledGraph;
-      printCompiledGraph(outputGraph, outputType, argv[quietCompileOption.name]);
+      printCompiledGraph(outputGraph, outputType, argv.quiet);
       if (compiledGraphHasErrors(compiledGraph)) {
         print("");
-        printCompiledGraphErrors(compiledGraph.graphErrors, argv[quietCompileOption.name]);
+        printCompiledGraphErrors(compiledGraph.graphErrors, argv.quiet);
         return true;
       }
       return false;
@@ -179,7 +194,7 @@ export const compileCommand: ICommand = {
 
     const graphHasErrors = await compileAndPrint();
 
-    if (!argv[watchOptionName]) {
+    if (!argv.watch) {
       return graphHasErrors ? 1 : 0;
     }
 
