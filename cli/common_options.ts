@@ -7,7 +7,11 @@ import { CREDENTIALS_FILENAME } from "df/cli/api/commands/credentials";
 import { actuallyResolve, assertPathExists } from "df/cli/util";
 import { INamedOption } from "df/cli/yargswrapper";
 
-export const projectDirOption: INamedOption<yargs.PositionalOptions> = {
+export interface IProjectDirArgs {
+  projectDir: string;
+}
+
+export const projectDirOption: INamedOption<yargs.PositionalOptions, IProjectDirArgs> = {
   name: "project-dir",
   option: {
     describe: "The Dataform project directory.",
@@ -16,14 +20,13 @@ export const projectDirOption: INamedOption<yargs.PositionalOptions> = {
   }
 };
 
-export const assertProjectDirExists = (argv: yargs.Arguments) => {
-  const projectDir = argv[projectDirOption.name] as string;
-  assertPathExists(projectDir);
-  const dataformJsonPath = path.resolve(projectDir, "dataform.json");
-  const workflowSettingsYamlPath = path.resolve(projectDir, "workflow_settings.yaml");
+export const assertProjectDirExists = (argv: yargs.Arguments<IProjectDirArgs>) => {
+  assertPathExists(argv.projectDir);
+  const dataformJsonPath = path.resolve(argv.projectDir, "dataform.json");
+  const workflowSettingsYamlPath = path.resolve(argv.projectDir, "workflow_settings.yaml");
   if (!fs.existsSync(dataformJsonPath) && !fs.existsSync(workflowSettingsYamlPath)) {
     throw new Error(
-      `${projectDir} does not appear to be a dataform directory (missing workflow_settings.yaml file).`
+      `${argv.projectDir} does not appear to be a dataform directory (missing workflow_settings.yaml file).`
     );
   }
 };

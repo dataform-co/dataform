@@ -3,22 +3,22 @@ import yargs from "yargs";
 import { printError } from "df/cli/console";
 
 export interface ICli {
-  commands: ICommand[];
+  commands: Array<ICommand<any>>;
 }
 
-export interface ICommand {
+export interface ICommand<TArgs = any> {
   format: string;
   description: string;
-  positionalOptions: Array<INamedOption<yargs.PositionalOptions>>;
-  options: Array<INamedOption<yargs.Options>>;
-  check?: Array<(argv: yargs.Arguments) => void>;
-  processFn: (argv: { [argumentName: string]: any }) => Promise<number>;
+  positionalOptions: Array<INamedOption<yargs.PositionalOptions, TArgs>>;
+  options: Array<INamedOption<yargs.Options, TArgs>>;
+  check?: Array<(argv: yargs.Arguments<TArgs>) => void>;
+  processFn: (argv: yargs.Arguments<TArgs>) => Promise<number>;
 }
 
-export interface INamedOption<T> {
+export interface INamedOption<TOption = yargs.Options | yargs.PositionalOptions, TArgs = any> {
   name: string;
-  option: T;
-  check?: (args: yargs.Arguments) => void;
+  option: TOption;
+  check?: (args: yargs.Arguments<TArgs>) => void;
 }
 
 export function createYargsCli(cli: ICli) {
@@ -45,14 +45,14 @@ export function createYargsCli(cli: ICli) {
   return yargsInstance;
 }
 
-export function setupYargs(commands: ICommand[], args: string[]) {
+export function setupYargs(commands: Array<ICommand<any>>, args: string[]) {
   let yargsChain = yargs(args).scriptName("dataform").wrap(null);
   for (const command of commands) {
     yargsChain = yargsChain.command(
       command.format,
       command.description,
       (yargsChainer: yargs.Argv) => buildCommand(yargsChainer, command),
-      async (argv: { [argumentName: string]: any }) => {
+      async (argv: any) => {
         const exitCode = await command.processFn(argv);
         process.exit(exitCode);
       }
@@ -61,8 +61,8 @@ export function setupYargs(commands: ICommand[], args: string[]) {
   return yargsChain;
 }
 
-function buildCommand(yargsChain: yargs.Argv, command: ICommand) {
-  const checks: Array<(args: yargs.Arguments) => void> = [];
+function buildCommand(yargsChain: yargs.Argv, command: ICommand<any>) {
+  const checks: Array<(args: yargs.Arguments<any>) => void> = [];
 
   if (command.check) {
     checks.push(...command.check);
