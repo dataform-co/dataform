@@ -6,11 +6,10 @@ import * as dfapi from "df/cli/api";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 import {
   INTEGRATION_TEST_LOCATION,
-  INTEGRATION_TEST_PROJECT,
-  writeDefinitionFile
+  INTEGRATION_TEST_PROJECT
 } from "df/cli/index_test_base";
 import { dataform } from "df/protos/ts";
-import { suite, test } from "df/testing";
+import { suite, test, writeDefinitionFile } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
 
 suite("@dataform/integration/jit", { parallel: true }, ({ afterEach }) => {
