@@ -4,6 +4,10 @@ import { prettyJsonStringify } from "df/cli/api/utils";
 import {
   assertProjectDirExists,
   credentialsOption,
+  ICredentialsArgs,
+  IJsonOutputArgs,
+  IProjectDirArgs,
+  ITimeoutArgs,
   jsonOutputOption,
   projectDirOption,
   timeoutOption
@@ -15,11 +19,18 @@ import {
   printSuccess,
   printTestResult
 } from "df/cli/console";
-import { ProjectConfigOptions } from "df/cli/project_config_options";
+import { IProjectConfigArgs, ProjectConfigOptions } from "df/cli/project_config_options";
 import { actuallyResolve, compiledGraphHasErrors } from "df/cli/util";
 import { ICommand } from "df/cli/yargswrapper";
 
-export const testCommand: ICommand = {
+export interface ITestArgs
+  extends IProjectDirArgs,
+    ICredentialsArgs,
+    ITimeoutArgs,
+    IJsonOutputArgs,
+    IProjectConfigArgs {}
+
+export const testCommand: ICommand<ITestArgs> = {
   format: `test [${projectDirOption.name}]`,
   description: "Run the dataform project's unit tests.",
   positionalOptions: [projectDirOption],
@@ -31,23 +42,23 @@ export const testCommand: ICommand = {
     ...ProjectConfigOptions.allYargsOptions
   ],
   processFn: async argv => {
-    if (!argv[jsonOutputOption.name]) {
+    if (!argv.json) {
       print("Compiling...\n");
     }
     const compiledGraph = await compile({
-      projectDir: argv[projectDirOption.name],
+      projectDir: argv.projectDir,
       projectConfigOverride: ProjectConfigOptions.constructProjectConfigOverride(argv),
-      timeoutMillis: argv[timeoutOption.name] || undefined
+      timeoutMillis: argv.timeout || undefined
     });
     if (compiledGraphHasErrors(compiledGraph)) {
       printCompiledGraphErrors(compiledGraph.graphErrors);
       return 1;
     }
-    if (!argv[jsonOutputOption.name]) {
+    if (!argv.json) {
       printSuccess("Compiled successfully.\n");
     }
     const readCredentials = credentials.read(
-      actuallyResolve(argv[projectDirOption.name], argv[credentialsOption.name])
+      actuallyResolve(argv.projectDir, argv.credentials)
     );
 
     if (!compiledGraph.tests.length) {
@@ -55,12 +66,12 @@ export const testCommand: ICommand = {
       return 1;
     }
 
-    if (!argv[jsonOutputOption.name]) {
+    if (!argv.json) {
       print(`Running ${compiledGraph.tests.length} unit tests...\n`);
     }
     const dbadapter = new BigQueryDbAdapter(readCredentials);
     const testResults = await test(dbadapter, compiledGraph.tests);
-    if (!argv[jsonOutputOption.name]) {
+    if (!argv.json) {
       testResults.forEach(testResult => printTestResult(testResult));
     } else {
       // Print all results as JSON if the option is set.
