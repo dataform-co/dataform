@@ -13,6 +13,7 @@ ts_library(
         "//:modules-fix",
         "//common/strings",
         "//protos:ts",
+        "@npm//@types/node",
         "@npm//protobufjs",
     ],
 )
