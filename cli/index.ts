@@ -9,15 +9,14 @@ import {
   testCommand
 } from "df/cli/commands";
 import { printError } from "df/cli/console";
-import { createYargsCli, ICommand } from "df/cli/yargswrapper";
+import { createYargsCli } from "df/cli/yargswrapper";
 
 process.on("unhandledRejection", async (reason: any) => {
   printError(`Unhandled promise rejection: ${reason?.stack || reason}`);
 });
 
-// TODO: Since yargs launched an actually well typed API in version 12, let's use it as this file is currently not type checked.
 export function runCli() {
-  const commands: ICommand[] = [
+  const commands = [
     initCommand,
     installCommand,
     initCredsCommand,

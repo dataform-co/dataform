@@ -3,19 +3,26 @@ import yargs from "yargs";
 import { printError } from "df/cli/console";
 
 export interface ICli {
-  commands: Array<ICommand<any>>;
+  commands: ICommandBase[];
 }
 
-export interface ICommand<TArgs = any> {
+export interface ICommandBase {
   format: string;
   description: string;
+  positionalOptions: Array<INamedOption<yargs.PositionalOptions, any>>;
+  options: Array<INamedOption<yargs.Options, any>>;
+  check?: Array<(argv: yargs.Arguments<any>) => void>;
+  processFn: (argv: yargs.Arguments<any>) => Promise<number>;
+}
+
+export interface ICommand<TArgs> extends ICommandBase {
   positionalOptions: Array<INamedOption<yargs.PositionalOptions, TArgs>>;
   options: Array<INamedOption<yargs.Options, TArgs>>;
   check?: Array<(argv: yargs.Arguments<TArgs>) => void>;
   processFn: (argv: yargs.Arguments<TArgs>) => Promise<number>;
 }
 
-export interface INamedOption<TOption = yargs.Options | yargs.PositionalOptions, TArgs = any> {
+export interface INamedOption<TOption, TArgs> {
   name: string;
   option: TOption;
   check?: (args: yargs.Arguments<TArgs>) => void;
@@ -45,7 +52,7 @@ export function createYargsCli(cli: ICli) {
   return yargsInstance;
 }
 
-export function setupYargs(commands: Array<ICommand<any>>, args: string[]) {
+export function setupYargs(commands: ICommandBase[], args: string[]) {
   let yargsChain = yargs(args).scriptName("dataform").wrap(null);
   for (const command of commands) {
     yargsChain = yargsChain.command(
@@ -61,7 +68,7 @@ export function setupYargs(commands: Array<ICommand<any>>, args: string[]) {
   return yargsChain;
 }
 
-function buildCommand(yargsChain: yargs.Argv, command: ICommand<any>) {
+function buildCommand(yargsChain: yargs.Argv, command: ICommandBase) {
   const checks: Array<(args: yargs.Arguments<any>) => void> = [];
 
   if (command.check) {

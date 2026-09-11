@@ -96,9 +96,9 @@ export const timeoutOption: INamedOption<yargs.Options, ITimeoutArgs> = {
 // It would be nice to use yargs' "implies" to implement this, but it doesn't work for some reason.
 export const requiresSelection = (
   name: string,
-  actions: INamedOption<yargs.Options>,
-  tags: INamedOption<yargs.Options>
-): INamedOption<yargs.Options>["check"] => (argv: yargs.Arguments) => {
+  actions: { name: string },
+  tags: { name: string }
+) => (argv: yargs.Arguments) => {
   if (argv[name] && !(argv[actions.name] || argv[tags.name])) {
     throw new Error(
       `The --${name} flag should only be supplied along with --${actions.name} or --${tags.name}.`
