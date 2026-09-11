@@ -10,6 +10,11 @@ import {
   assertProjectDirExists,
   coerceTimeout,
   credentialsOption,
+  IActionsArgs,
+  ICredentialsArgs,
+  IJsonOutputArgs,
+  IProjectDirArgs,
+  ITimeoutArgs,
   jsonOutputOption,
   projectDirOption,
   requiresSelection,
@@ -26,7 +31,7 @@ import {
   printTestResult,
   printWarning
 } from "df/cli/console";
-import { ProjectConfigOptions } from "df/cli/project_config_options";
+import { IProjectConfigArgs, ProjectConfigOptions } from "df/cli/project_config_options";
 import { actuallyResolve, compiledGraphHasErrors } from "df/cli/util";
 import { ICommand, INamedOption } from "df/cli/yargswrapper";
 import { targetAsReadableString } from "df/core/targets";
@@ -38,7 +43,55 @@ import { dataform } from "df/protos/ts";
 // unaffected.
 const LINEAGE_DRAIN_TIMEOUT_MS = 15_000;
 
-const fullRefreshOption: INamedOption<yargs.Options> = {
+export interface IRunArgs
+  extends IProjectDirArgs,
+    IProjectConfigArgs,
+    ICredentialsArgs,
+    IActionsArgs,
+    IJsonOutputArgs,
+    ITimeoutArgs {
+  dryRun?: boolean;
+  runTests?: boolean;
+  actionRetryLimit: number;
+  emitLineage?: boolean;
+  fullRefresh: boolean;
+  includeDeps?: boolean;
+  includeDependents?: boolean;
+  executionTimeout?: number | null;
+  jitTimeout?: number | null;
+  jobPrefix?: string | null;
+  tags?: string[];
+  jobLabels?: { [key: string]: string };
+}
+
+const dryRunOption: INamedOption<yargs.Options, IRunArgs> = {
+  name: "dry-run",
+  option: {
+    describe:
+      "If set, BigQuery will validate the run SQL without applying changes to the warehouse.",
+    type: "boolean"
+  }
+};
+
+const runTestsOption: INamedOption<yargs.Options, IRunArgs> = {
+  name: "run-tests",
+  option: {
+    describe:
+      "If set, the project's unit tests are required to pass before running the project.",
+    type: "boolean"
+  }
+};
+
+const actionRetryLimitOption: INamedOption<yargs.Options, IRunArgs> = {
+  name: "action-retry-limit",
+  option: {
+    describe: "If set, idempotent actions will be retried up to the limit.",
+    type: "number",
+    default: 0
+  }
+};
+
+const fullRefreshOption: INamedOption<yargs.Options, IRunArgs> = {
   name: "full-refresh",
   option: {
     describe: "Forces incremental tables to be rebuilt from scratch.",
@@ -47,7 +100,7 @@ const fullRefreshOption: INamedOption<yargs.Options> = {
   }
 };
 
-const tagsOption: INamedOption<yargs.Options> = {
+const tagsOption: INamedOption<yargs.Options, IRunArgs> = {
   name: "tags",
   option: {
     describe: "A list of tags to filter the actions to run.",
@@ -56,7 +109,7 @@ const tagsOption: INamedOption<yargs.Options> = {
   }
 };
 
-const includeDepsOption: INamedOption<yargs.Options> = {
+const includeDepsOption: INamedOption<yargs.Options, IRunArgs> = {
   name: "include-deps",
   option: {
     describe: "If set, dependencies for selected actions will also be run.",
@@ -65,7 +118,7 @@ const includeDepsOption: INamedOption<yargs.Options> = {
   check: requiresSelection("include-deps", actionsOption, tagsOption)
 };
 
-const includeDependentsOption: INamedOption<yargs.Options> = {
+const includeDependentsOption: INamedOption<yargs.Options, IRunArgs> = {
   name: "include-dependents",
   option: {
     describe: "If set, dependents (downstream) for selected actions will also be run.",
@@ -74,7 +127,7 @@ const includeDependentsOption: INamedOption<yargs.Options> = {
   check: requiresSelection("include-dependents", actionsOption, tagsOption)
 };
 
-const emitLineageOption: INamedOption<yargs.Options> = {
+const emitLineageOption: INamedOption<yargs.Options, IRunArgs> = {
   name: "emit-lineage",
   option: {
     describe:
@@ -84,7 +137,7 @@ const emitLineageOption: INamedOption<yargs.Options> = {
   }
 };
 
-const executionTimeoutOption: INamedOption<yargs.Options> = {
+const executionTimeoutOption: INamedOption<yargs.Options, IRunArgs> = {
   name: "execution-timeout",
   option: {
     describe:
@@ -97,7 +150,7 @@ const executionTimeoutOption: INamedOption<yargs.Options> = {
   }
 };
 
-const jitTimeoutOption: INamedOption<yargs.Options> = {
+const jitTimeoutOption: INamedOption<yargs.Options, IRunArgs> = {
   name: "jit-timeout",
   option: {
     describe:
@@ -111,7 +164,7 @@ const jitTimeoutOption: INamedOption<yargs.Options> = {
   }
 };
 
-const jobPrefixOption: INamedOption<yargs.Options> = {
+const jobPrefixOption: INamedOption<yargs.Options, IRunArgs> = {
   name: "job-prefix",
   option: {
     describe: "Adds an additional prefix in the form of `dataform-${jobPrefix}-`.",
@@ -120,7 +173,7 @@ const jobPrefixOption: INamedOption<yargs.Options> = {
   }
 };
 
-const bigqueryJobLabelsOption: INamedOption<yargs.Options> = {
+const bigqueryJobLabelsOption: INamedOption<yargs.Options, IRunArgs> = {
   name: "job-labels",
   option: {
     describe:
@@ -140,55 +193,29 @@ const bigqueryJobLabelsOption: INamedOption<yargs.Options> = {
   }
 };
 
-const dryRunOptionName = "dry-run";
-const runTestsOptionName = "run-tests";
-
-const actionRetryLimitName = "action-retry-limit";
-
 function createLineageEmitter(
-  argv: yargs.Arguments<any>,
+  argv: yargs.Arguments<IRunArgs>,
   executionGraph: dataform.IExecutionGraph,
   readCredentials: dataform.IBigQuery | undefined
 ): LineageEmitter | undefined {
   return createLineageEmitterFromFactory({
-    cliEmitLineage: argv[emitLineageOption.name] as boolean | undefined,
+    cliEmitLineage: argv.emitLineage,
     workflowLineageEnabled: executionGraph.projectConfig?.lineageEnabled ?? undefined,
-    dryRun: !!argv[dryRunOptionName],
-    projectDir: argv[projectDirOption.name] || process.cwd(),
+    dryRun: !!argv.dryRun,
+    projectDir: argv.projectDir || process.cwd(),
     readCredentials
   });
 }
 
-export const runCommand: ICommand = {
+export const runCommand: ICommand<IRunArgs> = {
   format: `run [${projectDirOption.name}]`,
   description: "Run the dataform project.",
   positionalOptions: [projectDirOption],
   check: [assertProjectDirExists],
   options: [
-    {
-      name: dryRunOptionName,
-      option: {
-        describe:
-          "If set, BigQuery will validate the run SQL without applying changes to the warehouse.",
-        type: "boolean"
-      }
-    },
-    {
-      name: runTestsOptionName,
-      option: {
-        describe:
-          "If set, the project's unit tests are required to pass before running the project.",
-        type: "boolean"
-      }
-    },
-    {
-      name: actionRetryLimitName,
-      option: {
-        describe: "If set, idempotent actions will be retried up to the limit.",
-        type: "number",
-        default: 0
-      }
-    },
+    dryRunOption,
+    runTestsOption,
+    actionRetryLimitOption,
     actionsOption,
     credentialsOption,
     emitLineageOption,
@@ -205,20 +232,20 @@ export const runCommand: ICommand = {
     ...ProjectConfigOptions.allYargsOptions
   ],
   processFn: async argv => {
-    const isJsonOutput = argv[jsonOutputOption.name];
+    const isJsonOutput = argv.json;
     const logger = new Logger(!isJsonOutput);
 
-    if (isJsonOutput && !argv[dryRunOptionName]) {
+    if (isJsonOutput && !argv.dryRun) {
       printError(
         `For execution, the --${jsonOutputOption.name} option is only supported if the ` +
-          `--${dryRunOptionName} option is enabled`
+          `--${dryRunOption.name} option is enabled`
       );
       return 1;
     }
     if (
       !isJsonOutput &&
-      argv[timeoutOption.name] != null &&
-      argv[executionTimeoutOption.name] == null
+      argv.timeout != null &&
+      argv.executionTimeout == null
     ) {
       printWarning(
         "Note: --timeout only bounds project compilation. " +
@@ -227,9 +254,9 @@ export const runCommand: ICommand = {
     }
     logger.log("Compiling...\n");
     const compiledGraph = await compile({
-      projectDir: argv[projectDirOption.name],
+      projectDir: argv.projectDir,
       projectConfigOverride: ProjectConfigOptions.constructProjectConfigOverride(argv),
-      timeoutMillis: argv[timeoutOption.name] || undefined
+      timeoutMillis: argv.timeout || undefined
     });
     if (compiledGraphHasErrors(compiledGraph)) {
       printCompiledGraphErrors(compiledGraph.graphErrors);
@@ -237,26 +264,26 @@ export const runCommand: ICommand = {
     }
     logger.success("Compiled successfully.\n");
     const readCredentials = credentials.read(
-      actuallyResolve(argv[projectDirOption.name], argv[credentialsOption.name])
+      actuallyResolve(argv.projectDir, argv.credentials)
     );
 
     const dbadapter = new BigQueryDbAdapter(readCredentials);
     const executionGraph = await build(
       compiledGraph,
       {
-        fullRefresh: argv[fullRefreshOption.name],
-        actions: argv[actionsOption.name],
-        includeDependencies: argv[includeDepsOption.name],
-        includeDependents: argv[includeDependentsOption.name],
-        tags: argv[tagsOption.name],
-        timeoutMillis: argv[executionTimeoutOption.name] || undefined,
-        jitTimeoutMillis: argv[jitTimeoutOption.name] || undefined
+        fullRefresh: argv.fullRefresh,
+        actions: argv.actions,
+        includeDependencies: argv.includeDeps,
+        includeDependents: argv.includeDependents,
+        tags: argv.tags,
+        timeoutMillis: argv.executionTimeout || undefined,
+        jitTimeoutMillis: argv.jitTimeout || undefined
       },
       dbadapter
     );
 
     if (
-      argv[dryRunOptionName] &&
+      argv.dryRun &&
       isJsonOutput &&
       // Skip the early graph print when JiT actions are present: their compiled
       // SQL is only produced once the Runner triggers JiT compilation, so falling
@@ -268,7 +295,7 @@ export const runCommand: ICommand = {
       return;
     }
 
-    if (argv[runTestsOptionName]) {
+    if (argv.runTests) {
       logger.log(`Running ${compiledGraph.tests.length} unit tests...\n`);
       const testResults = await test(dbadapter, compiledGraph.tests);
       testResults.forEach(testResult => printTestResult(testResult));
@@ -280,16 +307,16 @@ export const runCommand: ICommand = {
     }
 
     let bigqueryOptions: {} = {
-      actionRetryLimit: argv[actionRetryLimitName]
+      actionRetryLimit: argv.actionRetryLimit
     };
-    if (argv[dryRunOptionName]) {
-      bigqueryOptions = { ...bigqueryOptions, dryRun: argv[dryRunOptionName] };
+    if (argv.dryRun) {
+      bigqueryOptions = { ...bigqueryOptions, dryRun: argv.dryRun };
     }
-    if (argv[jobPrefixOption.name]) {
-      bigqueryOptions = { ...bigqueryOptions, jobPrefix: argv[jobPrefixOption.name] };
+    if (argv.jobPrefix) {
+      bigqueryOptions = { ...bigqueryOptions, jobPrefix: argv.jobPrefix };
     }
-    if (argv[bigqueryJobLabelsOption.name]) {
-      bigqueryOptions = { ...bigqueryOptions, labels: argv[bigqueryJobLabelsOption.name] };
+    if (argv.jobLabels) {
+      bigqueryOptions = { ...bigqueryOptions, labels: argv.jobLabels };
     }
 
     const actionsByName = new Map<string, dataform.IExecutionAction>();
@@ -302,7 +329,7 @@ export const runCommand: ICommand = {
       return 0;
     }
 
-    if (argv[dryRunOptionName]) {
+    if (argv.dryRun) {
       logger.log("Dry running (no changes to the warehouse will be applied)...");
     } else {
       logger.log("Running...\n");
@@ -314,7 +341,7 @@ export const runCommand: ICommand = {
       dbadapter,
       executionGraph,
       {
-        projectDir: argv[projectDirOption.name],
+        projectDir: argv.projectDir,
         bigquery: bigqueryOptions,
         lineageEmitter
       }
@@ -339,7 +366,7 @@ export const runCommand: ICommand = {
           printExecutedAction(
             executedAction,
             actionsByName.get(targetAsReadableString(executedAction.target)),
-            argv[dryRunOptionName]
+            argv.dryRun
           );
           alreadyPrintedActions.add(targetAsReadableString(executedAction.target));
         });
@@ -360,9 +387,9 @@ export const runCommand: ICommand = {
     }
     if (!isJsonOutput) {
       if (runResult.status === dataform.RunResult.ExecutionStatus.TIMED_OUT) {
-        const executionTimeoutMillis = argv[executionTimeoutOption.name];
+        const executionTimeoutMillis = argv.executionTimeout;
         const suffix = executionTimeoutMillis
-          ? ` after ${executionTimeoutMillis / 1000} seconds (--execution-timeout)`
+          ? ` after ${executionTimeoutMillis / 1000} seconds (--${executionTimeoutOption.name})`
           : "";
         printError(`Run timed out${suffix}.`);
       } else if (runResult.status === dataform.RunResult.ExecutionStatus.CANCELLED) {
