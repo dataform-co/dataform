@@ -10,6 +10,7 @@ ts_library(
     name = "cli",
     srcs = [
         "commands/compile_command.ts",
+        "commands/compile_options.ts",
         "commands/format_command.ts",
         "commands/help_command.ts",
         "commands/index.ts",
@@ -17,6 +18,7 @@ ts_library(
         "commands/init_creds_command.ts",
         "commands/install_command.ts",
         "commands/run_command.ts",
+        "commands/run_options.ts",
         "commands/test_command.ts",
         "common_options.ts",
         "console.ts",

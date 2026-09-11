@@ -5,15 +5,17 @@ import yargs from "yargs";
 import { credentials } from "df/cli/api";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 import { prettyJsonStringify } from "df/cli/api/utils";
-import { projectDirMustExistOption } from "df/cli/common_options";
+import { assertProjectDirExists, IProjectDirArgs, projectDirOption } from "df/cli/common_options";
 import { print, printInitCredsResult, printSuccess } from "df/cli/console";
 import { getBigQueryCredentials } from "df/cli/credentials";
 import { ICommand, INamedOption } from "df/cli/yargswrapper";
 
-const testConnectionOptionName = "test-connection";
+export interface IInitCredsArgs extends IProjectDirArgs {
+  testConnection: boolean;
+}
 
-const testConnectionOption: INamedOption<yargs.Options> = {
-  name: testConnectionOptionName,
+const testConnectionOption: INamedOption<yargs.Options, IInitCredsArgs> = {
+  name: "test-connection",
   option: {
     describe: "If true, a test query will be run using your final credentials.",
     type: "boolean",
@@ -21,16 +23,17 @@ const testConnectionOption: INamedOption<yargs.Options> = {
   }
 };
 
-export const initCredsCommand: ICommand = {
-  format: `init-creds [${projectDirMustExistOption.name}]`,
+export const initCredsCommand: ICommand<IInitCredsArgs> = {
+  format: `init-creds [${projectDirOption.name}]`,
   description:
     `Create a ${credentials.CREDENTIALS_FILENAME} file for Dataform to use when ` +
     `accessing BigQuery.`,
-  positionalOptions: [projectDirMustExistOption],
+  positionalOptions: [projectDirOption],
   options: [testConnectionOption],
+  check: [assertProjectDirExists],
   processFn: async argv => {
     const finalCredentials = getBigQueryCredentials();
-    if (argv[testConnectionOptionName]) {
+    if (argv.testConnection) {
       print("\nRunning connection test...");
       const dbadapter = new BigQueryDbAdapter(finalCredentials);
       const testResult = await credentials.test(dbadapter);
@@ -52,7 +55,7 @@ export const initCredsCommand: ICommand = {
       print("\nCredentials test query was not run.\n");
     }
     const filePath = path.resolve(
-      argv[projectDirMustExistOption.name],
+      argv.projectDir,
       credentials.CREDENTIALS_FILENAME
     );
     fs.writeFileSync(filePath, prettyJsonStringify(finalCredentials));

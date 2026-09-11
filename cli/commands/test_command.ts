@@ -2,9 +2,13 @@ import { compile, credentials, test } from "df/cli/api";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 import { prettyJsonStringify } from "df/cli/api/utils";
 import {
+  assertProjectDirExists,
   credentialsOption,
+  ICredentialsArgs,
+  IJsonOutputArgs,
+  IProjectDirArgs,
+  ITimeoutArgs,
   jsonOutputOption,
-  projectDirMustExistOption,
   projectDirOption,
   timeoutOption
 } from "df/cli/common_options";
@@ -15,14 +19,22 @@ import {
   printSuccess,
   printTestResult
 } from "df/cli/console";
-import { ProjectConfigOptions } from "df/cli/project_config_options";
+import { IProjectConfigArgs, ProjectConfigOptions } from "df/cli/project_config_options";
 import { actuallyResolve, compiledGraphHasErrors } from "df/cli/util";
 import { ICommand } from "df/cli/yargswrapper";
 
-export const testCommand: ICommand = {
-  format: `test [${projectDirMustExistOption.name}]`,
+export interface ITestArgs
+  extends IProjectDirArgs,
+    ICredentialsArgs,
+    ITimeoutArgs,
+    IJsonOutputArgs,
+    IProjectConfigArgs {}
+
+export const testCommand: ICommand<ITestArgs> = {
+  format: `test [${projectDirOption.name}]`,
   description: "Run the dataform project's unit tests.",
-  positionalOptions: [projectDirMustExistOption],
+  positionalOptions: [projectDirOption],
+  check: [assertProjectDirExists],
   options: [
     credentialsOption,
     timeoutOption,
@@ -30,23 +42,23 @@ export const testCommand: ICommand = {
     ...ProjectConfigOptions.allYargsOptions
   ],
   processFn: async argv => {
-    if (!argv[jsonOutputOption.name]) {
+    if (!argv.json) {
       print("Compiling...\n");
     }
     const compiledGraph = await compile({
-      projectDir: argv[projectDirMustExistOption.name],
+      projectDir: argv.projectDir,
       projectConfigOverride: ProjectConfigOptions.constructProjectConfigOverride(argv),
-      timeoutMillis: argv[timeoutOption.name] || undefined
+      timeoutMillis: argv.timeout || undefined
     });
     if (compiledGraphHasErrors(compiledGraph)) {
       printCompiledGraphErrors(compiledGraph.graphErrors);
       return 1;
     }
-    if (!argv[jsonOutputOption.name]) {
+    if (!argv.json) {
       printSuccess("Compiled successfully.\n");
     }
     const readCredentials = credentials.read(
-      actuallyResolve(argv[projectDirOption.name], argv[credentialsOption.name])
+      actuallyResolve(argv.projectDir, argv.credentials)
     );
 
     if (!compiledGraph.tests.length) {
@@ -54,12 +66,12 @@ export const testCommand: ICommand = {
       return 1;
     }
 
-    if (!argv[jsonOutputOption.name]) {
+    if (!argv.json) {
       print(`Running ${compiledGraph.tests.length} unit tests...\n`);
     }
     const dbadapter = new BigQueryDbAdapter(readCredentials);
     const testResults = await test(dbadapter, compiledGraph.tests);
-    if (!argv[jsonOutputOption.name]) {
+    if (!argv.json) {
       testResults.forEach(testResult => printTestResult(testResult));
     } else {
       // Print all results as JSON if the option is set.

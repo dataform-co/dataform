@@ -7,7 +7,11 @@ import { CREDENTIALS_FILENAME } from "df/cli/api/commands/credentials";
 import { actuallyResolve, assertPathExists } from "df/cli/util";
 import { INamedOption } from "df/cli/yargswrapper";
 
-export const projectDirOption: INamedOption<yargs.PositionalOptions> = {
+export interface IProjectDirArgs {
+  projectDir: string;
+}
+
+export const projectDirOption: INamedOption<yargs.PositionalOptions, IProjectDirArgs> = {
   name: "project-dir",
   option: {
     describe: "The Dataform project directory.",
@@ -16,22 +20,14 @@ export const projectDirOption: INamedOption<yargs.PositionalOptions> = {
   }
 };
 
-export const projectDirMustExistOption: INamedOption<yargs.PositionalOptions> = {
-  ...projectDirOption,
-  check: (argv: yargs.Arguments<any>) => {
-    assertPathExists(argv[projectDirOption.name]);
-    const dataformJsonPath = path.resolve(argv[projectDirOption.name], "dataform.json");
-    const workflowSettingsYamlPath = path.resolve(
-      argv[projectDirOption.name],
-      "workflow_settings.yaml"
+export const assertProjectDirExists = (argv: yargs.Arguments<IProjectDirArgs>) => {
+  assertPathExists(argv.projectDir);
+  const dataformJsonPath = path.resolve(argv.projectDir, "dataform.json");
+  const workflowSettingsYamlPath = path.resolve(argv.projectDir, "workflow_settings.yaml");
+  if (!fs.existsSync(dataformJsonPath) && !fs.existsSync(workflowSettingsYamlPath)) {
+    throw new Error(
+      `${argv.projectDir} does not appear to be a dataform directory (missing workflow_settings.yaml file).`
     );
-    if (!fs.existsSync(dataformJsonPath) && !fs.existsSync(workflowSettingsYamlPath)) {
-      throw new Error(
-        `${
-          argv[projectDirOption.name]
-        } does not appear to be a dataform directory (missing workflow_settings.yaml file).`
-      );
-    }
   }
 };
 
@@ -40,7 +36,11 @@ export const projectDirMustExistOption: INamedOption<yargs.PositionalOptions> = 
 export const splitCommas = (raw: string[] | null) =>
   raw ? raw.map(value => value.split(",")).flat() : [];
 
-export const actionsOption: INamedOption<yargs.Options> = {
+export interface IActionsArgs {
+  actions?: string[];
+}
+
+export const actionsOption: INamedOption<yargs.Options, IActionsArgs> = {
   name: "actions",
   option: {
     describe: "A list of action names or patterns to run. Can include '*' wildcards.",
@@ -49,17 +49,25 @@ export const actionsOption: INamedOption<yargs.Options> = {
   }
 };
 
-export const credentialsOption: INamedOption<yargs.Options> = {
+export interface ICredentialsArgs extends IProjectDirArgs {
+  credentials: string;
+}
+
+export const credentialsOption: INamedOption<yargs.Options, ICredentialsArgs> = {
   name: "credentials",
   option: {
     describe: "The location of the credentials JSON file to use.",
     default: CREDENTIALS_FILENAME
   },
-  check: (argv: yargs.Arguments<any>) =>
-    actuallyResolve(argv[projectDirOption.name], argv[credentialsOption.name])
+  check: (argv: yargs.Arguments<ICredentialsArgs>) =>
+    actuallyResolve(argv.projectDir, argv.credentials)
 };
 
-export const jsonOutputOption: INamedOption<yargs.Options> = {
+export interface IJsonOutputArgs {
+  json: boolean;
+}
+
+export const jsonOutputOption: INamedOption<yargs.Options, IJsonOutputArgs> = {
   name: "json",
   option: {
     describe: "Outputs a JSON representation of the compiled project or test results.",
@@ -71,7 +79,11 @@ export const jsonOutputOption: INamedOption<yargs.Options> = {
 export const coerceTimeout = (rawTimeoutString: string | null) =>
   rawTimeoutString ? parseDuration(rawTimeoutString) : null;
 
-export const timeoutOption: INamedOption<yargs.Options> = {
+export interface ITimeoutArgs {
+  timeout: number | null;
+}
+
+export const timeoutOption: INamedOption<yargs.Options, ITimeoutArgs> = {
   name: "timeout",
   option: {
     describe: "Duration to allow project compilation to complete. Examples: '1s', '10m', etc.",
@@ -84,9 +96,9 @@ export const timeoutOption: INamedOption<yargs.Options> = {
 // It would be nice to use yargs' "implies" to implement this, but it doesn't work for some reason.
 export const requiresSelection = (
   name: string,
-  actions: INamedOption<yargs.Options>,
-  tags: INamedOption<yargs.Options>
-): INamedOption<yargs.Options>["check"] => (argv: yargs.Arguments) => {
+  actions: { name: string },
+  tags: { name: string }
+) => (argv: yargs.Arguments) => {
   if (argv[name] && !(argv[actions.name] || argv[tags.name])) {
     throw new Error(
       `The --${name} flag should only be supplied along with --${actions.name} or --${tags.name}.`

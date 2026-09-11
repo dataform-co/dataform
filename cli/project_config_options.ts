@@ -3,8 +3,21 @@ import yargs from "yargs";
 import { INamedOption } from "df/cli/yargswrapper";
 import { dataform } from "df/protos/ts";
 
+export interface IProjectConfigArgs {
+  defaultDatabase?: string;
+  defaultSchema?: string;
+  defaultLocation?: string;
+  assertionSchema?: string;
+  vars?: { [key: string]: string };
+  databaseSuffix?: string;
+  schemaSuffix?: string;
+  tablePrefix?: string;
+  disableAssertions?: boolean;
+  defaultReservation?: string;
+}
+
 export class ProjectConfigOptions {
-  public static defaultDatabase: INamedOption<yargs.Options> = {
+  public static defaultDatabase: INamedOption<yargs.Options, IProjectConfigArgs> = {
     name: "default-database",
     option: {
       describe:
@@ -14,7 +27,7 @@ export class ProjectConfigOptions {
     }
   };
 
-  public static defaultSchema: INamedOption<yargs.Options> = {
+  public static defaultSchema: INamedOption<yargs.Options, IProjectConfigArgs> = {
     name: "default-schema",
     option: {
       describe:
@@ -22,7 +35,7 @@ export class ProjectConfigOptions {
     }
   };
 
-  public static defaultLocation: INamedOption<yargs.Options> = {
+  public static defaultLocation: INamedOption<yargs.Options, IProjectConfigArgs> = {
     name: "default-location",
     option: {
       describe:
@@ -32,14 +45,14 @@ export class ProjectConfigOptions {
     }
   };
 
-  public static assertionSchema: INamedOption<yargs.Options> = {
+  public static assertionSchema: INamedOption<yargs.Options, IProjectConfigArgs> = {
     name: "assertion-schema",
     option: {
       describe: "Default assertion schema. If unset, the value from workflow_settings.yaml is used."
     }
   };
 
-  public static databaseSuffix: INamedOption<yargs.Options> = {
+  public static databaseSuffix: INamedOption<yargs.Options, IProjectConfigArgs> = {
     name: "database-suffix",
     option: {
       describe:
@@ -47,7 +60,7 @@ export class ProjectConfigOptions {
     }
   };
 
-  public static vars: INamedOption<yargs.Options> = {
+  public static vars: INamedOption<yargs.Options, IProjectConfigArgs> = {
     name: "vars",
     option: {
       describe:
@@ -66,17 +79,17 @@ export class ProjectConfigOptions {
     }
   };
 
-  public static schemaSuffix: INamedOption<yargs.Options> = {
+  public static schemaSuffix: INamedOption<yargs.Options, IProjectConfigArgs> = {
     name: "schema-suffix",
     option: {
       describe:
         "A suffix to be appended to output schema names. If unset, the value from workflow_settings.yaml " +
         "is used."
     },
-    check: (argv: yargs.Arguments<any>) => {
+    check: (argv: yargs.Arguments<IProjectConfigArgs>) => {
       if (
-        argv[ProjectConfigOptions.schemaSuffix.name] &&
-        !/^[a-zA-Z_0-9]+$/.test(argv[ProjectConfigOptions.schemaSuffix.name])
+        argv.schemaSuffix &&
+        !/^[a-zA-Z_0-9]+$/.test(argv.schemaSuffix)
       ) {
         throw new Error(
           `--${ProjectConfigOptions.schemaSuffix.name} should contain only ` +
@@ -86,7 +99,7 @@ export class ProjectConfigOptions {
     }
   };
 
-  public static tablePrefix: INamedOption<yargs.Options> = {
+  public static tablePrefix: INamedOption<yargs.Options, IProjectConfigArgs> = {
     name: "table-prefix",
     option: {
       describe:
@@ -94,7 +107,7 @@ export class ProjectConfigOptions {
     }
   };
 
-  public static disableAssertions: INamedOption<yargs.Options> = {
+  public static disableAssertions: INamedOption<yargs.Options, IProjectConfigArgs> = {
     name: "disable-assertions",
     option: {
       describe:
@@ -104,7 +117,7 @@ export class ProjectConfigOptions {
     }
   };
 
-  public static defaultReservation: INamedOption<yargs.Options> = {
+  public static defaultReservation: INamedOption<yargs.Options, IProjectConfigArgs> = {
     name: "default-reservation",
     option: {
       describe:
@@ -114,7 +127,7 @@ export class ProjectConfigOptions {
     }
   };
 
-  public static allYargsOptions = [
+  public static allYargsOptions: Array<INamedOption<yargs.Options, IProjectConfigArgs>> = [
     ProjectConfigOptions.defaultDatabase,
     ProjectConfigOptions.defaultSchema,
     ProjectConfigOptions.defaultLocation,
@@ -128,39 +141,39 @@ export class ProjectConfigOptions {
   ];
 
   public static constructProjectConfigOverride(
-    argv: yargs.Arguments<any>
+    argv: yargs.Arguments<IProjectConfigArgs>
   ): dataform.IProjectConfig {
     const projectConfigOptions: dataform.IProjectConfig = {};
 
-    if (argv[ProjectConfigOptions.defaultDatabase.name]) {
-      projectConfigOptions.defaultDatabase = argv[ProjectConfigOptions.defaultDatabase.name];
+    if (argv.defaultDatabase) {
+      projectConfigOptions.defaultDatabase = argv.defaultDatabase;
     }
-    if (argv[ProjectConfigOptions.defaultSchema.name]) {
-      projectConfigOptions.defaultSchema = argv[ProjectConfigOptions.defaultSchema.name];
+    if (argv.defaultSchema) {
+      projectConfigOptions.defaultSchema = argv.defaultSchema;
     }
-    if (argv[ProjectConfigOptions.defaultLocation.name]) {
-      projectConfigOptions.defaultLocation = argv[ProjectConfigOptions.defaultLocation.name];
+    if (argv.defaultLocation) {
+      projectConfigOptions.defaultLocation = argv.defaultLocation;
     }
-    if (argv[ProjectConfigOptions.assertionSchema.name]) {
-      projectConfigOptions.assertionSchema = argv[ProjectConfigOptions.assertionSchema.name];
+    if (argv.assertionSchema) {
+      projectConfigOptions.assertionSchema = argv.assertionSchema;
     }
-    if (argv[ProjectConfigOptions.vars.name]) {
-      projectConfigOptions.vars = argv[ProjectConfigOptions.vars.name];
+    if (argv.vars) {
+      projectConfigOptions.vars = argv.vars;
     }
-    if (argv[ProjectConfigOptions.databaseSuffix.name]) {
-      projectConfigOptions.databaseSuffix = argv[ProjectConfigOptions.databaseSuffix.name];
+    if (argv.databaseSuffix) {
+      projectConfigOptions.databaseSuffix = argv.databaseSuffix;
     }
-    if (argv[ProjectConfigOptions.schemaSuffix.name]) {
-      projectConfigOptions.schemaSuffix = argv[ProjectConfigOptions.schemaSuffix.name];
+    if (argv.schemaSuffix) {
+      projectConfigOptions.schemaSuffix = argv.schemaSuffix;
     }
-    if (argv[ProjectConfigOptions.tablePrefix.name]) {
-      projectConfigOptions.tablePrefix = argv[ProjectConfigOptions.tablePrefix.name];
+    if (argv.tablePrefix) {
+      projectConfigOptions.tablePrefix = argv.tablePrefix;
     }
-    if (argv[ProjectConfigOptions.disableAssertions.name]) {
-      projectConfigOptions.disableAssertions = argv[ProjectConfigOptions.disableAssertions.name];
+    if (argv.disableAssertions) {
+      projectConfigOptions.disableAssertions = argv.disableAssertions;
     }
-    if (argv[ProjectConfigOptions.defaultReservation.name]) {
-      projectConfigOptions.defaultReservation = argv[ProjectConfigOptions.defaultReservation.name];
+    if (argv.defaultReservation) {
+      projectConfigOptions.defaultReservation = argv.defaultReservation;
     }
     return projectConfigOptions;
   }
