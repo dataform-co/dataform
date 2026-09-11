@@ -107,20 +107,37 @@ const quietCompileOption: INamedOption<yargs.Options, ICompileArgs> = {
   }
 };
 
+const watchOption: INamedOption<yargs.Options, ICompileArgs> = {
+  name: "watch",
+  option: {
+    describe: "Whether to watch the changes in the project directory.",
+    type: "boolean",
+    default: false
+  }
+};
+
+const verboseOption: INamedOption<yargs.Options, ICompileArgs> = {
+  name: "verbose",
+  option: {
+    describe: "Enable verbose compilation output. Example usage: 'dataform compile --verbose'",
+    type: "boolean",
+    default: false
+  },
+  check: (argv: yargs.Arguments<ICompileArgs>) => {
+    if (argv.quiet && argv.verbose) {
+      throw new Error("Arguments --verbose and --quiet are mutually exclusive.");
+    }
+  }
+};
+
 export const compileCommand: ICommand<ICompileArgs> = {
   format: `compile [${projectDirOption.name}]`,
   description:
     "Compile the dataform project. Produces JSON output describing the non-executable graph.",
   positionalOptions: [projectDirOption],
   options: [
-    {
-      name: "watch",
-      option: {
-        describe: "Whether to watch the changes in the project directory.",
-        type: "boolean",
-        default: false
-      }
-    },
+    watchOption,
+    verboseOption,
     jsonOutputOption,
     dotOutputOption,
     timeoutOption,
@@ -129,19 +146,6 @@ export const compileCommand: ICommand<ICompileArgs> = {
     outputTagsOption,
     outputIncludeDepsOption,
     outputIncludeDependentsOption,
-    {
-      name: "verbose",
-      option: {
-        describe: "Enable verbose compilation output. Example usage: 'dataform compile --verbose'",
-        type: "boolean",
-        default: false
-      },
-      check: (argv: yargs.Arguments<ICompileArgs>) => {
-        if (argv.quiet && argv.verbose) {
-          throw new Error("Arguments --verbose and --quiet are mutually exclusive.");
-        }
-      }
-    },
     ...ProjectConfigOptions.allYargsOptions
   ],
   check: [assertProjectDirExists],

@@ -23,43 +23,47 @@ const icebergOption: INamedOption<yargs.Options, IInitArgs> = {
   }
 };
 
+const defaultDatabaseOption: INamedOption<yargs.PositionalOptions, IInitArgs> = {
+  name: ProjectConfigOptions.defaultDatabase.name,
+  option: {
+    describe: "The default database to use, equivalent to Google Cloud Project ID."
+  },
+  check: (argv: yargs.Arguments<IInitArgs>) => {
+    if (!argv.defaultDatabase) {
+      throw new Error(
+        `The ${ProjectConfigOptions.defaultDatabase.name} positional argument is ` +
+          `required. Use "dataform help init" for more info.`
+      );
+    }
+  }
+};
+
+const defaultLocationOption: INamedOption<yargs.PositionalOptions, IInitArgs> = {
+  name: ProjectConfigOptions.defaultLocation.name,
+  option: {
+    describe:
+      "The default location to use. See " +
+      "https://cloud.google.com/bigquery/docs/locations for supported values."
+  },
+  check: (argv: yargs.Arguments<IInitArgs>) => {
+    if (!argv.defaultLocation) {
+      throw new Error(
+        `The ${ProjectConfigOptions.defaultLocation.name} positional argument is ` +
+          `required. Use "dataform help init" for more info.`
+      );
+    }
+  }
+};
+
 export const initCommand: ICommand<IInitArgs> = {
   format:
-    `init [${projectDirOption.name}] [${ProjectConfigOptions.defaultDatabase.name}]` +
-    ` [${ProjectConfigOptions.defaultLocation.name}]`,
+    `init [${projectDirOption.name}] [${defaultDatabaseOption.name}]` +
+    ` [${defaultLocationOption.name}]`,
   description: "Create a new dataform project.",
   positionalOptions: [
     projectDirOption,
-    {
-      name: ProjectConfigOptions.defaultDatabase.name,
-      option: {
-        describe: "The default database to use, equivalent to Google Cloud Project ID."
-      },
-      check: (argv: yargs.Arguments<IInitArgs>) => {
-        if (!argv.defaultDatabase) {
-          throw new Error(
-            `The ${ProjectConfigOptions.defaultDatabase.name} positional argument is ` +
-              `required. Use "dataform help init" for more info.`
-          );
-        }
-      }
-    },
-    {
-      name: ProjectConfigOptions.defaultLocation.name,
-      option: {
-        describe:
-          "The default location to use. See " +
-          "https://cloud.google.com/bigquery/docs/locations for supported values."
-      },
-      check: (argv: yargs.Arguments<IInitArgs>) => {
-        if (!argv.defaultLocation) {
-          throw new Error(
-            `The ${ProjectConfigOptions.defaultLocation.name} positional argument is ` +
-              `required. Use "dataform help init" for more info.`
-          );
-        }
-      }
-    }
+    defaultDatabaseOption,
+    defaultLocationOption
   ],
   options: [icebergOption],
   processFn: async argv => {
