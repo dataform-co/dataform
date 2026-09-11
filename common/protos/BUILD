@@ -35,7 +35,6 @@ ts_test_suite(
         "@npm//@types/chai",
         "@npm//@types/node",
         "@npm//chai",
-        "@npm//protobufjs",
     ],
 )
 
