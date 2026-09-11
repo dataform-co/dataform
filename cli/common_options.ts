@@ -16,22 +16,15 @@ export const projectDirOption: INamedOption<yargs.PositionalOptions> = {
   }
 };
 
-export const projectDirMustExistOption: INamedOption<yargs.PositionalOptions> = {
-  ...projectDirOption,
-  check: (argv: yargs.Arguments<any>) => {
-    assertPathExists(argv[projectDirOption.name]);
-    const dataformJsonPath = path.resolve(argv[projectDirOption.name], "dataform.json");
-    const workflowSettingsYamlPath = path.resolve(
-      argv[projectDirOption.name],
-      "workflow_settings.yaml"
+export const assertProjectDirExists = (argv: yargs.Arguments) => {
+  const projectDir = argv[projectDirOption.name] as string;
+  assertPathExists(projectDir);
+  const dataformJsonPath = path.resolve(projectDir, "dataform.json");
+  const workflowSettingsYamlPath = path.resolve(projectDir, "workflow_settings.yaml");
+  if (!fs.existsSync(dataformJsonPath) && !fs.existsSync(workflowSettingsYamlPath)) {
+    throw new Error(
+      `${projectDir} does not appear to be a dataform directory (missing workflow_settings.yaml file).`
     );
-    if (!fs.existsSync(dataformJsonPath) && !fs.existsSync(workflowSettingsYamlPath)) {
-      throw new Error(
-        `${
-          argv[projectDirOption.name]
-        } does not appear to be a dataform directory (missing workflow_settings.yaml file).`
-      );
-    }
   }
 };
 

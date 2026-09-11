@@ -7,10 +7,10 @@ import { createLineageEmitter as createLineageEmitterFromFactory } from "df/cli/
 import { prettyJsonStringify } from "df/cli/api/utils";
 import {
   actionsOption,
+  assertProjectDirExists,
   coerceTimeout,
   credentialsOption,
   jsonOutputOption,
-  projectDirMustExistOption,
   projectDirOption,
   requiresSelection,
   splitCommas,
@@ -160,9 +160,10 @@ function createLineageEmitter(
 }
 
 export const runCommand: ICommand = {
-  format: `run [${projectDirMustExistOption.name}]`,
+  format: `run [${projectDirOption.name}]`,
   description: "Run the dataform project.",
-  positionalOptions: [projectDirMustExistOption],
+  positionalOptions: [projectDirOption],
+  check: [assertProjectDirExists],
   options: [
     {
       name: dryRunOptionName,

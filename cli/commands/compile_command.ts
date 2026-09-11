@@ -3,8 +3,9 @@ import yargs from "yargs";
 
 import { compile, prune } from "df/cli/api";
 import {
+  assertProjectDirExists,
   jsonOutputOption,
-  projectDirMustExistOption,
+  projectDirOption,
   requiresSelection,
   splitCommas,
   timeoutOption
@@ -92,10 +93,10 @@ const quietCompileOption: INamedOption<yargs.Options> = {
 };
 
 export const compileCommand: ICommand = {
-  format: `compile [${projectDirMustExistOption.name}]`,
+  format: `compile [${projectDirOption.name}]`,
   description:
     "Compile the dataform project. Produces JSON output describing the non-executable graph.",
-  positionalOptions: [projectDirMustExistOption],
+  positionalOptions: [projectDirOption],
   options: [
     {
       name: watchOptionName,
@@ -128,8 +129,9 @@ export const compileCommand: ICommand = {
     },
     ...ProjectConfigOptions.allYargsOptions
   ],
+  check: [assertProjectDirExists],
   processFn: async argv => {
-    const projectDir = argv[projectDirMustExistOption.name];
+    const projectDir = argv[projectDirOption.name];
     const logger = new Logger(!argv[jsonOutputOption.name]);
 
     async function compileAndPrint() {

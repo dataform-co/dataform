@@ -3,7 +3,7 @@ import * as glob from "glob";
 import * as path from "path";
 import yargs from "yargs";
 
-import { actionsOption, projectDirMustExistOption } from "df/cli/common_options";
+import { actionsOption, assertProjectDirExists, projectDirOption } from "df/cli/common_options";
 import { printError, printFormatFilesResult, printSuccess } from "df/cli/console";
 import { ICommand, INamedOption } from "df/cli/yargswrapper";
 import { formatFile } from "df/sqlx/format";
@@ -29,10 +29,11 @@ const checkOption: INamedOption<yargs.Options> = {
 };
 
 export const formatCommand: ICommand = {
-  format: `format [${projectDirMustExistOption.name}]`,
+  format: `format [${projectDirOption.name}]`,
   description: "Format the dataform project's files.",
-  positionalOptions: [projectDirMustExistOption],
+  positionalOptions: [projectDirOption],
   options: [actionsOption, fmtIgnoreJsOption, checkOption],
+  check: [assertProjectDirExists],
   processFn: async argv => {
     const extensions = argv[fmtIgnoreJsOption.name] ? "*.sqlx" : "*.{js,sqlx}";
     let actions = [`{definitions,includes}/**/${extensions}`];
@@ -40,7 +41,7 @@ export const formatCommand: ICommand = {
       actions = argv[actionsOption.name];
     }
     const filenames = actions
-      .map((action: string) => glob.sync(action, { cwd: argv[projectDirMustExistOption.name] }))
+      .map((action: string) => glob.sync(action, { cwd: argv[projectDirOption.name] }))
       .flat();
 
     const isCheckMode = argv[checkOptionName];
@@ -51,7 +52,7 @@ export const formatCommand: ICommand = {
     }> = await Promise.all(
       filenames.map(async (filename: string) => {
         try {
-          const filePath = path.resolve(argv[projectDirMustExistOption.name], filename);
+          const filePath = path.resolve(argv[projectDirOption.name], filename);
           if (isCheckMode) {
             // In check mode, we don't modify files, just check if they need formatting
             const fileContent = fs.readFileSync(filePath).toString();

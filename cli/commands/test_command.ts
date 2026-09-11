@@ -2,9 +2,9 @@ import { compile, credentials, test } from "df/cli/api";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 import { prettyJsonStringify } from "df/cli/api/utils";
 import {
+  assertProjectDirExists,
   credentialsOption,
   jsonOutputOption,
-  projectDirMustExistOption,
   projectDirOption,
   timeoutOption
 } from "df/cli/common_options";
@@ -20,9 +20,10 @@ import { actuallyResolve, compiledGraphHasErrors } from "df/cli/util";
 import { ICommand } from "df/cli/yargswrapper";
 
 export const testCommand: ICommand = {
-  format: `test [${projectDirMustExistOption.name}]`,
+  format: `test [${projectDirOption.name}]`,
   description: "Run the dataform project's unit tests.",
-  positionalOptions: [projectDirMustExistOption],
+  positionalOptions: [projectDirOption],
+  check: [assertProjectDirExists],
   options: [
     credentialsOption,
     timeoutOption,
@@ -34,7 +35,7 @@ export const testCommand: ICommand = {
       print("Compiling...\n");
     }
     const compiledGraph = await compile({
-      projectDir: argv[projectDirMustExistOption.name],
+      projectDir: argv[projectDirOption.name],
       projectConfigOverride: ProjectConfigOptions.constructProjectConfigOverride(argv),
       timeoutMillis: argv[timeoutOption.name] || undefined
     });

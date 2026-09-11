@@ -11,6 +11,7 @@ export interface ICommand {
   description: string;
   positionalOptions: Array<INamedOption<yargs.PositionalOptions>>;
   options: Array<INamedOption<yargs.Options>>;
+  check?: Array<(argv: yargs.Arguments) => void>;
   processFn: (argv: { [argumentName: string]: any }) => Promise<number>;
 }
 
@@ -50,7 +51,7 @@ export function setupYargs(commands: ICommand[], args: string[]) {
     yargsChain = yargsChain.command(
       command.format,
       command.description,
-      (yargsChainer: yargs.Argv) => createOptionsChain(yargsChainer, command),
+      (yargsChainer: yargs.Argv) => buildCommand(yargsChainer, command),
       async (argv: { [argumentName: string]: any }) => {
         const exitCode = await command.processFn(argv);
         process.exit(exitCode);
@@ -60,8 +61,12 @@ export function setupYargs(commands: ICommand[], args: string[]) {
   return yargsChain;
 }
 
-function createOptionsChain(yargsChain: yargs.Argv, command: ICommand) {
+function buildCommand(yargsChain: yargs.Argv, command: ICommand) {
   const checks: Array<(args: yargs.Arguments) => void> = [];
+
+  if (command.check) {
+    checks.push(...command.check);
+  }
 
   for (const positionalOption of command.positionalOptions) {
     yargsChain = yargsChain.positional(positionalOption.name, positionalOption.option);
