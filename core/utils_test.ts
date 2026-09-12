@@ -6,6 +6,7 @@ import {
   getEffectiveTableFolderSubpath,
   getFileFormatValueForIcebergTable,
   getStorageUriForIcebergTable,
+  matchPatterns,
   validateConnectionFormat,
   validateNoMixedCompilationMode,
   validateStorageUriFormat,
@@ -297,6 +298,69 @@ suite('Dataform Utility Validations', () => {
         () => validateNoMixedCompilationMode(sessionStub, 'filename', 'query', 'where', ['op'], ['op']),
         'Cannot mix AoT and JiT compilation in action. The following AoT properties were found: query, where, postOps, preOps'
       );
+    });
+  });
+
+  suite('matchPatterns', () => {
+    const values = [
+      'schema.mrd_features_inference',
+      'schema.mrd_features_training',
+      'other.customer_orders',
+      'analytics.mrd_summary',
+    ];
+
+    test('exact unqualified name selects the single matching action', () => {
+      expect(matchPatterns(['mrd_features_inference'], values)).to.deep.equal([
+        'schema.mrd_features_inference',
+      ]);
+    });
+
+    test('exact fully-qualified name selects that action', () => {
+      expect(matchPatterns(['other.customer_orders'], values)).to.deep.equal([
+        'other.customer_orders',
+      ]);
+    });
+
+    test('ambiguous unqualified exact name still throws', () => {
+      // Two schemas, same unqualified name.
+      const dupes = ['a.dup', 'b.dup'];
+      expect(() => matchPatterns(['dup'], dupes)).to.throw();
+    });
+
+    test('bare "*" matches every action', () => {
+      expect(matchPatterns(['*'], values)).to.deep.equal(values);
+    });
+
+    test('prefix wildcard matches on the unqualified name', () => {
+      expect(matchPatterns(['mrd*'], values)).to.deep.equal([
+        'schema.mrd_features_inference',
+        'schema.mrd_features_training',
+        'analytics.mrd_summary',
+      ]);
+    });
+
+    test('surrounding wildcards match a substring of the unqualified name', () => {
+      expect(matchPatterns(['*features*'], values)).to.deep.equal([
+        'schema.mrd_features_inference',
+        'schema.mrd_features_training',
+      ]);
+    });
+
+    test('qualified wildcard matches against the fully-qualified name', () => {
+      expect(matchPatterns(['schema.*'], values)).to.deep.equal([
+        'schema.mrd_features_inference',
+        'schema.mrd_features_training',
+      ]);
+    });
+
+    test('wildcard with no matches returns empty (no ambiguity error)', () => {
+      expect(matchPatterns(['nope*'], values)).to.deep.equal([]);
+    });
+
+    test('literal dot in a qualified wildcard is not a regex wildcard', () => {
+      // "schemaXmrd..." must NOT match "schema.*" — the "." is literal.
+      const tricky = ['schema.mrd_a', 'schemaXmrd_b'];
+      expect(matchPatterns(['schema.*'], tricky)).to.deep.equal(['schema.mrd_a']);
     });
   });
 });
