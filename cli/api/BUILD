@@ -41,6 +41,7 @@ ts_library(
         "@npm//fs-extra",
         "@npm//glob",
         "@npm//google-sql-syntax-ts",
+        "@npm//ignore",
         "@npm//js-beautify",
         "@npm//js-yaml",
         "@npm//promise-pool-executor",
@@ -62,6 +63,7 @@ ts_test_suite(
     srcs = [
         "tasks_test.ts",
         "utils_test.ts",
+        "commands/compile_copy_filter_test.ts",
         "commands/jit/rpc_test.ts",
         "commands/prune_test.ts",
         "dbadapters/bigquery_test.ts",
