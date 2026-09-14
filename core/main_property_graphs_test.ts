@@ -17,6 +17,17 @@ import {
   VALID_WORKFLOW_SETTINGS_YAML
 } from "df/testing/run_core";
 
+interface TestCase {
+  testName: string,
+  workflowSettings: string,
+  definitionFiles: {
+    name: string,
+    contents: string
+  }[],
+  expectedGraph? : dataform.ICompiledGraph,
+  expectedPropertyGraphs?: dataform.IPropertyGraph[]
+}
+
 suite("property graphs", ({ afterEach }) => {
   const tmpDirFixture = new TmpDirFixture(afterEach);
   const graphProjectConfig = {
@@ -61,7 +72,7 @@ suite("property graphs", ({ afterEach }) => {
     "across tables, declarations, assertions, and operations:\n" +
     `"${collisionTargetJson}"`;
 
-  [
+  const testCases: TestCase[] = [
     {
       testName: "valid graph.yaml compiles end-to-end",
       workflowSettings: VALID_WORKFLOW_SETTINGS_YAML,
@@ -1575,7 +1586,9 @@ entities:
         }
       ]
     }
-  ].forEach(testParameters => {
+  ];
+  
+  testCases.forEach(testParameters => {
     test(testParameters.testName, () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
       writeWorkflowSettingsFile(projectDir, testParameters.workflowSettings);
@@ -1584,6 +1597,12 @@ entities:
       });
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      if (!testParameters.expectedGraph && !testParameters.expectedPropertyGraphs) {
+        throw new Error(
+          `Test case "${testParameters.testName}" must specify either expectedGraph or expectedPropertyGraphs`
+        );
+      }
 
       if (testParameters.expectedGraph) {
         expect(asPlainObject(result.compile?.compiledGraph)).deep.equals(
