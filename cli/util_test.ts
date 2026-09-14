@@ -3,6 +3,7 @@ import { expect } from "chai";
 import {
   formatBytesInHumanReadableFormat,
   formatExecutionSuffix,
+  parseCliDuration,
   validateIcebergConfigBucketName,
   validateIcebergConfigTableFolderRoot,
   validateIcebergConfigTableFolderSubpath,
@@ -33,6 +34,50 @@ suite('format bytes in human readable format', () => {
         expect(formatBytesInHumanReadableFormat(1099511627776)).deep.equals('1.00 TiB');
         expect(formatBytesInHumanReadableFormat(1125899906842624)).deep.equals('1.00 PiB');
     });
+});
+
+suite("parse cli duration", () => {
+  test("parses numeric durations as milliseconds", () => {
+    expect(parseCliDuration("1500")).equals(1500);
+  });
+
+  test("parses single-unit durations", () => {
+    expect(parseCliDuration("1s")).equals(1000);
+    expect(parseCliDuration("10m")).equals(600000);
+    expect(parseCliDuration("2 hours")).equals(7200000);
+  });
+
+  test("parses compound and fractional durations", () => {
+    expect(parseCliDuration("1h30m")).equals(5400000);
+    expect(parseCliDuration("1.5m")).equals(90000);
+    expect(parseCliDuration("1 week 2 days")).equals(777600000);
+  });
+
+  for (const [input, expected] of [
+    [".5s", 500],
+    ["5.s", 5000],
+    ["-.5s", -500],
+    ["+5.s", 5000],
+    ["1m .5s", 60500],
+    ["1m5.s", 65000],
+    [".5", 0.5],
+    ["5.", 5],
+    ["-.5", -0.5],
+    ["+5.", 5]
+  ] as Array<[string, number]>) {
+    test(`parses decimal duration ${input}`, () => {
+      expect(parseCliDuration(input)).equals(expected);
+    });
+  }
+
+  test("rejects invalid durations", () => {
+    expect(() => parseCliDuration("")).to.throw("Duration cannot be empty.");
+    expect(() => parseCliDuration("tomorrow")).to.throw("Invalid duration: tomorrow");
+    expect(() => parseCliDuration("1fortnight")).to.throw("Unsupported duration unit: fortnight");
+    for (const input of [".", ".s", "+.s", "-.s", "5..s"]) {
+      expect(() => parseCliDuration(input)).to.throw(`Invalid duration: ${input}`);
+    }
+  });
 });
 
 suite('Iceberg Config Validation', () => {

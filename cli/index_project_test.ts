@@ -1,5 +1,7 @@
 import { expect } from "chai";
 import * as fs from "fs-extra";
+import { createServer } from "http";
+import { AddressInfo } from "net";
 import * as path from "path";
 
 import {
@@ -11,6 +13,39 @@ import { TmpDirFixture } from "df/testing/fixtures";
 
 suite("project ops", ({ afterEach }) => {
   const tmpDirFixture = new TmpDirFixture(afterEach);
+
+  test("project setup installs the local core package without registry requests", async () => {
+    const requests: string[] = [];
+    const registry = createServer((request, response) => {
+      requests.push(request.url);
+      response.writeHead(503);
+      response.end();
+    });
+    await new Promise<void>(resolve => registry.listen(0, "127.0.0.1", resolve));
+    const previousRegistry = process.env.npm_config_registry;
+    const previousRetries = process.env.npm_config_fetch_retries;
+    try {
+      process.env.npm_config_registry = `http://127.0.0.1:${(registry.address() as AddressInfo).port}`;
+      process.env.npm_config_fetch_retries = "0";
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      await setupProject(tmpDirFixture, projectDir);
+
+      expect(fs.existsSync(path.join(projectDir, "node_modules/@dataform/core/bundle.js"))).equals(true);
+      expect(requests).deep.equals([]);
+    } finally {
+      if (previousRegistry === undefined) {
+        delete process.env.npm_config_registry;
+      } else {
+        process.env.npm_config_registry = previousRegistry;
+      }
+      if (previousRetries === undefined) {
+        delete process.env.npm_config_fetch_retries;
+      } else {
+        process.env.npm_config_fetch_retries = previousRetries;
+      }
+      await new Promise<void>(resolve => registry.close(() => resolve()));
+    }
+  });
 
   suite("install command", () => {
     test("install throws an error when dataformCoreVersion in workflow_settings.yaml", async () => {
