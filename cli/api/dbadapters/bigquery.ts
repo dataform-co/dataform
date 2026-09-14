@@ -376,12 +376,13 @@ export class BigQueryDbAdapter implements IDbAdapter {
     byteLimit?: number,
     location?: string
   ): Promise<IExecutionResult> {
-    const results = await new Promise<any[]>(async (resolve, reject) => {
+    const client = await this.getClient();
+    const results = await new Promise<any[]>((resolve, reject) => {
       const allRows = new LimitedResultSet({
         rowLimit,
         byteLimit
       });
-      const stream = (await this.getClient()).createQueryStream({
+      const stream = client.createQueryStream({
         query,
         params,
         location

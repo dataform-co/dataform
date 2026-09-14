@@ -88,9 +88,16 @@ export async function setupProject(
   }
 }`
   );
-  await getProcessResult(
+  const installResult = await getProcessResult(
     execFile(npmPath, [
       "install",
+      // Core is bundled with no runtime dependencies. Keep fixture setup independent of npm
+      // registry availability, including the audit and update checks performed by npm install.
+      "--offline",
+      "--no-audit",
+      "--no-fund",
+      "--ignore-scripts",
+      "--update-notifier=false",
       "--prefix",
       projectDir,
       "--cache",
@@ -98,6 +105,9 @@ export async function setupProject(
       corePackageTarPath
     ])
   );
+  if (installResult.exitCode !== 0) {
+    throw new Error(`Failed to install the local core package: ${installResult.stderr}`);
+  }
 
   return projectDir;
 }
