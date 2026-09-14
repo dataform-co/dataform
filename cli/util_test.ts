@@ -53,10 +53,30 @@ suite("parse cli duration", () => {
     expect(parseCliDuration("1 week 2 days")).equals(777600000);
   });
 
+  for (const [input, expected] of [
+    [".5s", 500],
+    ["5.s", 5000],
+    ["-.5s", -500],
+    ["+5.s", 5000],
+    ["1m .5s", 60500],
+    ["1m5.s", 65000],
+    [".5", 0.5],
+    ["5.", 5],
+    ["-.5", -0.5],
+    ["+5.", 5]
+  ] as Array<[string, number]>) {
+    test(`parses decimal duration ${input}`, () => {
+      expect(parseCliDuration(input)).equals(expected);
+    });
+  }
+
   test("rejects invalid durations", () => {
     expect(() => parseCliDuration("")).to.throw("Duration cannot be empty.");
     expect(() => parseCliDuration("tomorrow")).to.throw("Invalid duration: tomorrow");
     expect(() => parseCliDuration("1fortnight")).to.throw("Unsupported duration unit: fortnight");
+    for (const input of [".", ".s", "+.s", "-.s", "5..s"]) {
+      expect(() => parseCliDuration(input)).to.throw(`Invalid duration: ${input}`);
+    }
   });
 });
 

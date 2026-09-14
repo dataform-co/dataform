@@ -116,9 +116,7 @@ export function parseCliDuration(rawDuration: string): number {
     while (isAsciiDigit(normalizedDuration[cursor])) {
       cursor++;
     }
-    if (cursor === integerStart) {
-      throw new Error(`Invalid duration: ${rawDuration}`);
-    }
+    let digitCount = cursor - integerStart;
 
     if (normalizedDuration[cursor] === ".") {
       cursor++;
@@ -126,9 +124,10 @@ export function parseCliDuration(rawDuration: string): number {
       while (isAsciiDigit(normalizedDuration[cursor])) {
         cursor++;
       }
-      if (cursor === fractionStart) {
-        throw new Error(`Invalid duration: ${rawDuration}`);
-      }
+      digitCount += cursor - fractionStart;
+    }
+    if (digitCount === 0) {
+      throw new Error(`Invalid duration: ${rawDuration}`);
     }
 
     while (normalizedDuration[cursor] === " ") {
@@ -171,9 +170,7 @@ function isCliDurationNumber(value: string): boolean {
   while (isAsciiDigit(value[cursor])) {
     cursor++;
   }
-  if (cursor === integerStart) {
-    return false;
-  }
+  let digitCount = cursor - integerStart;
 
   if (value[cursor] === ".") {
     cursor++;
@@ -181,12 +178,10 @@ function isCliDurationNumber(value: string): boolean {
     while (isAsciiDigit(value[cursor])) {
       cursor++;
     }
-    if (cursor === fractionStart) {
-      return false;
-    }
+    digitCount += cursor - fractionStart;
   }
 
-  return cursor === value.length;
+  return digitCount > 0 && cursor === value.length;
 }
 
 function isAsciiDigit(value: string): boolean {
