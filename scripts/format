@@ -1,0 +1,10 @@
+#!/bin/bash
+
+bazel run @nodejs//:yarn
+
+# Run prettier on .ts files files changed since the branching point
+CHANGED_TS_FILES=$(git diff --name-only --diff-filter=ACMR "$(git merge-base origin/main HEAD)" -- '*.ts')
+
+if [ -n "$CHANGED_TS_FILES" ]; then
+  bazel build @npm//prettier/bin:prettier && bazel-bin/external/npm/prettier/bin/prettier.sh --ignore-path .eslintignore --write $CHANGED_TS_FILES
+fi

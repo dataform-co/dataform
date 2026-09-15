@@ -76,11 +76,19 @@ To run the CLI integration test against your own GCP project:
 
 ### Lint
 
-The following command to check for any linting errors
+Use the following command to check for any linting and formatting errors
 
 ```bash
 ./scripts/lint
 ```
+
+All .ts files are expected to be formatted using prettier. You can format all files modified in your current branch by using this script:
+
+```bash
+./scripts/format
+```
+
+Alternatively, you may want to configure prettier to run on save or as a pre-commit hook.
 
 ### Building
 
