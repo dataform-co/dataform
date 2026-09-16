@@ -4,7 +4,7 @@
 # Generate documentation for the Javascript API.
 ####################################################################################################
 
-npx typedoc
+npx --yes -p typedoc@0.17.8 -p typedoc-plugin-markdown@2.2.17 typedoc
 
 mv newdocs/classes/_core_session_.session.md docs/reference/session.md
 mv newdocs/classes/_core_actions_assertion_.assertion.md docs/reference/assertion.md
