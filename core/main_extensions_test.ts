@@ -197,17 +197,14 @@ select 1 as a`
 
   test("preserveGovernanceControls in Incremental Tables propagates to compiled graph", () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
-    fs.writeFileSync(
-      path.join(projectDir, "workflow_settings.yaml"),
-      VALID_WORKFLOW_SETTINGS_YAML
-    );
-    fs.mkdirSync(path.join(projectDir, "definitions"));
-    fs.writeFileSync(
-      path.join(projectDir, "definitions/file.sqlx"),
+    writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
+    writeDefinitionFile(
+      projectDir,
+      "file.sqlx",
       `
 config {
-type: "incremental",
-preserveGovernanceControls: true
+  type: "incremental",
+  preserveGovernanceControls: true
 }
 select 1 as a`
     );
