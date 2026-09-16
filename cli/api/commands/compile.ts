@@ -5,6 +5,7 @@ import * as tmp from "tmp";
 import { promisify } from "util";
 
 import { BaseWorker } from "df/cli/api/commands/base_worker";
+import { buildProjectCopyFilter } from "df/cli/api/commands/compile_copy_filter";
 import { MISSING_CORE_VERSION_ERROR } from "df/cli/api/commands/install";
 import { readConfigFromWorkflowSettings } from "df/cli/api/utils";
 import { DEFAULT_COMPILATION_TIMEOUT_MILLIS } from "df/cli/api/utils/constants";
@@ -52,9 +53,12 @@ export async function compile(
     if (compileConfig.verbose) {
       print(`Using isolated environment for @dataform/core@${workflowSettingsDataformCoreVersion}\n`);
       print(`Copying project to temporary directory: ${temporaryProjectPath}\n`);
+      print(`Excluding .git, node_modules, and paths matched by the project's .gitignore\n`);
     }
     const copyStartTime = performance.now();
-    fs.copySync(resolvedProjectPath, temporaryProjectPath);
+    fs.copySync(resolvedProjectPath, temporaryProjectPath, {
+      filter: buildProjectCopyFilter(resolvedProjectPath)
+    });
     if (compileConfig.verbose) {
       print(`Project copy completed in ${performance.now() - copyStartTime}ms\n`);
     }
