@@ -94,8 +94,6 @@ export function runMainInVm(
       __df_current: () => (fileStack.length > 0 ? fileStack[fileStack.length - 1] : null),
     },
     builtinModules: ["path"],
-    resolve: (moduleName, parentDirName) =>
-      path.join(parentDirName, path.relative(parentDirName, projectDir), moduleName),
     sourceExtensions: SOURCE_EXTENSIONS,
     compiler: (code, filePath) => {
       const compiledCode = compiler(code, filePath);
