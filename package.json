@@ -41,7 +41,7 @@
     "google-sql-syntax-ts": "^1.0.3",
     "js-beautify": "^1.10.2",
     "js-yaml": "^4.3.2",
-    "jsdoc": "^3.6.11",
+    "jsdoc": "^4.0.5",
     "json-stable-stringify": "^1.0.1",
     "long": "^4.0.0",
     "minimist": "^1.2.6",
