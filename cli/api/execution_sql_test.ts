@@ -178,6 +178,32 @@ suite("ExecutionSql with 'onSchemaChange'", () => {
       }
     }
   });
+
+  test("executes dynamic DML inside procedure and does not emit static DML outside procedure for onSchemaChange", () => {
+    for (const strategy of [
+      dataform.OnSchemaChange.FAIL,
+      dataform.OnSchemaChange.EXTEND,
+      dataform.OnSchemaChange.SYNCHRONIZE,
+    ]) {
+      const table = {
+        ...baseTable,
+        onSchemaChange: strategy,
+        uniqueKey: ["id"],
+      };
+      const tasks = executionSql.publishTasks(table, { fullRefresh: false }, tableMetadata);
+      const builtTasks = tasks.build();
+      expect(builtTasks.length).to.equal(1);
+
+      const fullSql = builtTasks[0].statement;
+      const [procedurePart, afterProcedurePart] = fullSql.split("\nEND;\n");
+      expect(procedurePart).to.include("SET dataform_columns_list =");
+      expect(procedurePart).to.include("SET dataform_columns_merge =");
+      expect(procedurePart).to.include("EXECUTE IMMEDIATE");
+      expect(afterProcedurePart).to.not.include("insert into");
+      expect(afterProcedurePart).to.not.include("merge ");
+      expect(afterProcedurePart).to.not.include("field1");
+    }
+  });
 });
 
 suite("ExecutionSql for property graphs", () => {

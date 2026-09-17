@@ -479,6 +479,57 @@ SELECT 1 as id, 'new' as field1, 'new2' as field2
 
       writeDefinitionFile(
         projectDir,
+        "verify_extend.sqlx",
+        `
+config {
+  type: "assertion"
+}
+SELECT * FROM \${ref("example_incremental")}
+WHERE (field1 = 'new' AND (field2 IS NULL OR field2 != 'new2'))
+   OR (SELECT COUNT(*) FROM \${ref("example_incremental")}) != 2
+`,
+      );
+
+      writeDefinitionFile(
+        projectDir,
+        "setup_synchronize_table.sqlx",
+        `
+config {
+  type: "operations",
+  dependencies: ["setup_table"]
+}
+CREATE OR REPLACE TABLE \`\${dataform.projectConfig.defaultDatabase}.\${dataform.projectConfig.defaultSchema}.example_synchronize\` AS SELECT 1 AS id, 'old' AS field1
+`,
+      );
+
+      writeDefinitionFile(
+        projectDir,
+        "example_synchronize.sqlx",
+        `
+config {
+  type: "incremental",
+  uniqueKey: ["id"],
+  onSchemaChange: "SYNCHRONIZE"
+}
+SELECT 1 as id, 'synced' as field2
+`,
+      );
+
+      writeDefinitionFile(
+        projectDir,
+        "verify_synchronize.sqlx",
+        `
+config {
+  type: "assertion"
+}
+SELECT * FROM \${ref("example_synchronize")}
+WHERE id != 1 OR field2 IS NULL OR field2 != 'synced'
+   OR (SELECT COUNT(*) FROM \${ref("example_synchronize")}) != 1
+`,
+      );
+
+      writeDefinitionFile(
+        projectDir,
         "teardown_schema.sqlx",
         `
 config { 
@@ -490,21 +541,22 @@ DROP SCHEMA IF EXISTS \`\${dataform.projectConfig.defaultDatabase}.\${dataform.p
     });
 
     test(
-      "generates dynamic SQL for EXTEND when table exists in BigQuery",
+      "executes EXTEND and SYNCHRONIZE strategies in BigQuery and populates dynamically altered columns",
       { timeout: 120000 },
       async () => {
         try {
-          // Run setup operation to create the uniqueDataset schema and the table in BigQuery.
-          await runCli("run", [
+          // Run setup operations to create the initial tables in BigQuery.
+          // Dataform will automatically create the uniqueDataset schema.
+          const setupResult = await runCli("run", [
             projectDir,
             "--credentials",
             CREDENTIALS_PATH,
-            "--actions=setup_table",
+            "--actions=setup_table,setup_synchronize_table",
           ]);
+          expect(setupResult.exitCode).equals(0);
 
-          // Build the execution graph for the incremental table.
-          // Dataform will detect the table exists and generate the dynamic procedural SQL.
-          const runResult = await runCli("run", [
+          // Run the incremental table in dry-run mode first to verify procedural SQL structure.
+          const dryRunResult = await runCli("run", [
             projectDir,
             "--credentials",
             CREDENTIALS_PATH,
@@ -513,8 +565,8 @@ DROP SCHEMA IF EXISTS \`\${dataform.projectConfig.defaultDatabase}.\${dataform.p
             "--actions=example_incremental",
           ]);
 
-          expect(runResult.exitCode).equals(0);
-          const executionGraph = JSON.parse(runResult.stdout);
+          expect(dryRunResult.exitCode).equals(0);
+          const executionGraph = JSON.parse(dryRunResult.stdout);
           const statement = executionGraph.actions[0].tasks[0].statement;
 
           const expectedExecutionGraph = {
@@ -559,6 +611,25 @@ DROP SCHEMA IF EXISTS \`\${dataform.projectConfig.defaultDatabase}.\${dataform.p
           );
           expect(statement).to.include("ALTER TABLE");
           expect(statement).to.include("ADD COLUMN IF NOT EXISTS");
+          expect(statement).to.include("EXECUTE IMMEDIATE");
+
+          // Execute EXTEND live against BigQuery and verify new column is populated.
+          const extendRunResult = await runCli("run", [
+            projectDir,
+            "--credentials",
+            CREDENTIALS_PATH,
+            "--actions=example_incremental,verify_extend",
+          ]);
+          expect(extendRunResult.exitCode).equals(0);
+
+          // Execute SYNCHRONIZE live against BigQuery (drops field1, adds field2) and verify result.
+          const syncRunResult = await runCli("run", [
+            projectDir,
+            "--credentials",
+            CREDENTIALS_PATH,
+            "--actions=example_synchronize,verify_synchronize",
+          ]);
+          expect(syncRunResult.exitCode).equals(0);
         } finally {
           // Teardown the schema completely, regardless of test success or failure.
           await runCli("run", [
