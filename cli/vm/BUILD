@@ -1,4 +1,5 @@
 load("@aspect_rules_js//js:defs.bzl", "js_library")
+load("//testing:index.bzl", "ts_test_suite")
 load("//tools:ts_library.bzl", "ts_library")
 
 package(default_visibility = ["//visibility:public"])
@@ -16,8 +17,8 @@ ts_library(
         "//:node_modules/@types/semver",
         "//:node_modules/glob",
         "//:node_modules/semver",
-        "//:node_modules/vm2",
         "//common/protos",
+        "//common/vm:vm_runner",
         "//core",
         "//protos:ts",
     ],

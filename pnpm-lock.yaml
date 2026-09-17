@@ -97,9 +97,6 @@ dependencies:
   url:
     specifier: ^0.11.0
     version: 0.11.0
-  vm2:
-    specifier: 3.12.2
-    version: 3.12.2
   vscode-jsonrpc:
     specifier: ^5.0.1
     version: 5.0.1
@@ -1109,17 +1106,11 @@ packages:
       acorn: 8.18.0
     dev: true
 
-  /acorn-walk@8.3.4:
-    resolution: {integrity: sha512-ueEepnujpqee2o5aIYnvHU6C0A42MNdsIDeqy5BydrkuC5R1ZuUFnm27EeFJGoEHJQgn3uleRvmTXaJgfXbt4g==}
-    engines: {node: '>=0.4.0'}
-    dependencies:
-      acorn: 8.18.0
-    dev: false
-
   /acorn@8.18.0:
     resolution: {integrity: sha512-lGq+9yr1/GuAWaVYIHRjvvySG5/4VfKIvC8EWxStPdcDh/Ka7FG3twP6v4d5BkravUilhIAsG4Qj83t02LWUPQ==}
     engines: {node: '>=0.4.0'}
     hasBin: true
+    dev: true
 
   /agent-base@6.0.2:
     resolution: {integrity: sha512-RZNwNclF7+MS/8bDg70amg32dyeZGZxiDuQmZxKLAlQjr3jGyLx+4Kkk58UO7D2QdgFIQCovuSuZESne6RG6XQ==}
@@ -3403,15 +3394,6 @@ packages:
   /uuidv7@0.4.4:
     resolution: {integrity: sha512-jjRGChg03uGp9f6wQYSO8qXkweJwRbA5WRuEQE8xLIiehIzIIi23qZSzsyvZPCPoFqkeLtZuz7Plt1LGukAInA==}
     hasBin: true
-    dev: false
-
-  /vm2@3.12.2:
-    resolution: {integrity: sha512-LRHt4xU6eXshlZEcSZVrTehLGxRDjHvjmFPGwEp4xGpZX61QzH6Xm9wK2nU7XAp36V1w2xILAL1LwxVkgD1Ipw==}
-    engines: {node: '>=6.0'}
-    hasBin: true
-    dependencies:
-      acorn: 8.18.0
-      acorn-walk: 8.3.4
     dev: false
 
   /vscode-jsonrpc@5.0.1:

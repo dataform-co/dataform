@@ -23,6 +23,8 @@ const knownNodeBuiltins = [
   "long",
   "https",
   "net",
+  "module",
+  "vm",
 ].map((moduleName) => convertToRegex(moduleName));
 
 const importsToBundle = ["df", /^df\/.*$/];

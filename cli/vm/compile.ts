@@ -2,9 +2,9 @@ import * as fs from "fs";
 import * as glob from "glob";
 import * as path from "path";
 import * as semver from "semver";
-import { CompilerFunction, NodeVM } from "vm2";
 
 import { encode64 } from "df/common/protos";
+import { CompilerFunction, VmRunner } from "df/common/vm/vm_runner";
 import { dataform } from "df/protos/ts";
 
 export function compile(compileConfig: dataform.ICompileConfig) {
@@ -31,14 +31,9 @@ export function compile(compileConfig: dataform.ICompileConfig) {
   // through Node's resolver inside the vm covers every install layout
   // (package.json, workflow_settings.yaml, JiT) and matches what the user's
   // code will see. require() caches the bundle so the second call is free.
-  const indexGeneratorVm = new NodeVM({
-    wrapper: "none",
-    require: {
-      context: "sandbox",
-      root: compileConfig.projectDir,
-      external: true,
-      builtin: ["path"],
-    },
+  const indexGeneratorVm = new VmRunner({
+    projectDir: compileConfig.projectDir,
+    builtinModules: ["path"],
   });
   const compiler: CompilerFunction = indexGeneratorVm.run(
     'return require("@dataform/core").compiler',
@@ -71,15 +66,15 @@ export function compile(compileConfig: dataform.ICompileConfig) {
   }
   const needsCallerFileShim = semver.lt(dataformCoreVersion, "3.0.57");
 
-  // vm2 strips file paths from V8 CallSite objects inside the sandbox, so
-  // getCallerFile() in @dataform/core needs a fallback. Track the currently
+  // While VmRunner preserves V8 CallSite file paths natively, older @dataform/core
+  // versions check global.__dataform_current_file as a fallback. Track the currently
   // executing file via a host-side stack exposed through sandbox helpers, and
   // expose it as a getter on `global.__dataform_current_file`.
   const fileStack: string[] = [];
 
-  // Then use vm2's native compiler integration to apply the compiler to files.
-  const userCodeVm = new NodeVM({
-    wrapper: "none",
+  // Then use VmRunner to apply the compiler to files.
+  const userCodeVm = new VmRunner({
+    projectDir: compileConfig.projectDir,
     sandbox: {
       __df_enter: (p: string) => {
         fileStack.push(p);
@@ -89,19 +84,10 @@ export function compile(compileConfig: dataform.ICompileConfig) {
       },
       __df_current: () => (fileStack.length > 0 ? fileStack[fileStack.length - 1] : null),
     },
-    require: {
-      builtin: ["path"],
-      context: "sandbox",
-      external: true,
-      root: compileConfig.projectDir,
-      resolve: (moduleName, parentDirName) =>
-        path.join(
-          parentDirName,
-          path.relative(parentDirName, compileConfig.projectDir),
-          moduleName,
-        ),
-    },
-    sourceExtensions: ["js", "sql", "sqlx", "yaml", "yml"],
+    builtinModules: ["path"],
+    resolve: (moduleName, parentDirName) =>
+      path.join(parentDirName, path.relative(parentDirName, compileConfig.projectDir), moduleName),
+    sourceExtensions: ["js", "sql", "sqlx", "yaml", "yml", "ipynb", "md"],
     compiler: (code, filePath) => {
       let source = code;
       if (needsCallerFileShim && filePath === coreBundlePath) {
