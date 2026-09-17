@@ -216,6 +216,39 @@ suite("VmRunner", ({ afterEach }) => {
     );
   });
 
+  test("rejects requires that escape projectDir via customResolve", () => {
+    const tmpDir = tmpDirFixture.createNewTmpDir();
+    const outsideDir = tmpDirFixture.createNewTmpDir();
+    const secretFile = path.join(outsideDir, "secret.json");
+    fs.writeFileSync(secretFile, JSON.stringify({ secret: "sensitive" }));
+
+    const runner = new VmRunner({
+      projectDir: tmpDir,
+      resolve: (moduleName) => path.resolve(outsideDir, moduleName),
+    });
+
+    expect(() => runner.run(`require("secret.json");`)).to.throw(/outside of project directory/);
+  });
+
+  test("resolves relative paths from subfolders relative to caller directory without custom resolve", () => {
+    const tmpDir = tmpDirFixture.createNewTmpDir();
+    const subDir = path.join(tmpDir, "models", "sub");
+    fs.mkdirSync(subDir, { recursive: true });
+
+    const rootHelper = path.join(tmpDir, "helper.js");
+    fs.writeFileSync(rootHelper, "module.exports = 'root';");
+
+    const subHelper = path.join(subDir, "helper.js");
+    fs.writeFileSync(subHelper, "module.exports = 'sub';");
+
+    const subCaller = path.join(subDir, "caller.js");
+    fs.writeFileSync(subCaller, "module.exports = require('./helper');");
+
+    const runner = new VmRunner({ projectDir: tmpDir });
+    const result = runner.require("./models/sub/caller");
+    expect(result).to.equal("sub");
+  });
+
   test("allows requiring external files when explicitly permitted via allowedExternalPaths", () => {
     const tmpDir = tmpDirFixture.createNewTmpDir();
     const sharedDir = tmpDirFixture.createNewTmpDir();
