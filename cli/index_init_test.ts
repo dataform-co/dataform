@@ -6,7 +6,8 @@ import * as path from "path";
 import { runCli } from "df/cli/index_test_base";
 import {
   ICEBERG_BUCKET_NAME_HINT,
-  ICEBERG_BUCKET_NAME_PROMPT_QUESTION, ICEBERG_CONFIG_COLLECTED_TEXT,
+  ICEBERG_BUCKET_NAME_PROMPT_QUESTION,
+  ICEBERG_CONFIG_COLLECTED_TEXT,
   ICEBERG_CONFIG_PROMPT_HINT,
   ICEBERG_CONFIG_PROMPT_TEXT,
   ICEBERG_CONNECTION_HINT,
@@ -49,17 +50,12 @@ defaultAssertionDataset: dataform_assertions
         [ICEBERG_BUCKET_NAME_PROMPT_QUESTION]: "my-iceberg-bucket",
         [ICEBERG_TABLE_FOLDER_ROOT_PROMPT_QUESTION]: "my-iceberg-root",
         [ICEBERG_TABLE_FOLDER_SUBPATH_PROMPT_QUESTION]: "my-iceberg-subpath",
-        [ICEBERG_CONNECTION_QUESTION]: "my.default.connection",
+        [ICEBERG_CONNECTION_QUESTION]: "my.default.connection"
       };
 
       const result = await runCli(
         "init",
-        [
-          projectDir,
-          "dataform-iceberg-test",
-          "us-central1",
-          "--iceberg"
-        ],
+        [projectDir, "dataform-iceberg-test", "us-central1", "--iceberg"],
         {
           // Inject test inputs via environment variable
           env: { ...process.env, DATAFORM_CLI_TEST_INPUTS: JSON.stringify(testInputs) }
@@ -81,7 +77,7 @@ defaultAssertionDataset: dataform_assertions
         bucketName: "my-iceberg-bucket",
         tableFolderRoot: "my-iceberg-root",
         tableFolderSubpath: "my-iceberg-subpath",
-        connection: "my.default.connection",
+        connection: "my.default.connection"
       });
     });
 
@@ -91,17 +87,12 @@ defaultAssertionDataset: dataform_assertions
         [ICEBERG_BUCKET_NAME_PROMPT_QUESTION]: "", // Empty input
         [ICEBERG_TABLE_FOLDER_ROOT_PROMPT_QUESTION]: "my-iceberg-root-with-empty-bucketName",
         [ICEBERG_TABLE_FOLDER_SUBPATH_PROMPT_QUESTION]: "my-iceberg-subpath-with-empty-bucketName",
-        [ICEBERG_CONNECTION_QUESTION]: "my.default.connection",
+        [ICEBERG_CONNECTION_QUESTION]: "my.default.connection"
       };
 
       const result = await runCli(
         "init",
-        [
-          projectDir,
-          "dataform-iceberg-partial",
-          "us-east1",
-          "--iceberg"
-        ],
+        [projectDir, "dataform-iceberg-partial", "us-east1", "--iceberg"],
         {
           // Inject test inputs via environment variable
           env: { ...process.env, DATAFORM_CLI_TEST_INPUTS: JSON.stringify(testInputs) }
@@ -127,7 +118,7 @@ defaultAssertionDataset: dataform_assertions
       expect(workflowSettings.defaultIcebergConfig).to.deep.equal({
         tableFolderRoot: "my-iceberg-root-with-empty-bucketName",
         tableFolderSubpath: "my-iceberg-subpath-with-empty-bucketName",
-        connection: "my.default.connection",
+        connection: "my.default.connection"
       });
     });
 
@@ -136,18 +127,14 @@ defaultAssertionDataset: dataform_assertions
       const testInputs = {
         [ICEBERG_BUCKET_NAME_PROMPT_QUESTION]: "my-iceberg-bucket-with-empty-tablefolderroot",
         [ICEBERG_TABLE_FOLDER_ROOT_PROMPT_QUESTION]: "", // Empty input
-        [ICEBERG_TABLE_FOLDER_SUBPATH_PROMPT_QUESTION]: "my-iceberg-subpath-with-empty-tableFolderRoot",
-        [ICEBERG_CONNECTION_QUESTION]: "my.default.connection",
+        [ICEBERG_TABLE_FOLDER_SUBPATH_PROMPT_QUESTION]:
+          "my-iceberg-subpath-with-empty-tableFolderRoot",
+        [ICEBERG_CONNECTION_QUESTION]: "my.default.connection"
       };
 
       const result = await runCli(
         "init",
-        [
-          projectDir,
-          "dataform-iceberg-partial",
-          "us-east1",
-          "--iceberg"
-        ],
+        [projectDir, "dataform-iceberg-partial", "us-east1", "--iceberg"],
         {
           // Inject test inputs via environment variable
           env: { ...process.env, DATAFORM_CLI_TEST_INPUTS: JSON.stringify(testInputs) }
@@ -173,7 +160,7 @@ defaultAssertionDataset: dataform_assertions
       expect(workflowSettings.defaultIcebergConfig).to.deep.equal({
         bucketName: "my-iceberg-bucket-with-empty-tablefolderroot",
         tableFolderSubpath: "my-iceberg-subpath-with-empty-tableFolderRoot",
-        connection: "my.default.connection",
+        connection: "my.default.connection"
       });
     });
 
@@ -181,19 +168,15 @@ defaultAssertionDataset: dataform_assertions
       const projectDir = tmpDirFixture.createNewTmpDir();
       const testInputs = {
         [ICEBERG_BUCKET_NAME_PROMPT_QUESTION]: "my-iceberg-bucket-with-empty-tablefoldersubpath",
-        [ICEBERG_TABLE_FOLDER_ROOT_PROMPT_QUESTION]: "my-iceberg-root-with-empty-tableFolderSubpath",
+        [ICEBERG_TABLE_FOLDER_ROOT_PROMPT_QUESTION]:
+          "my-iceberg-root-with-empty-tableFolderSubpath",
         [ICEBERG_TABLE_FOLDER_SUBPATH_PROMPT_QUESTION]: "", // Empty input
-        [ICEBERG_CONNECTION_QUESTION]: "my.default.connection",
+        [ICEBERG_CONNECTION_QUESTION]: "my.default.connection"
       };
 
       const result = await runCli(
         "init",
-        [
-          projectDir,
-          "dataform-iceberg-partial",
-          "us-east1",
-          "--iceberg"
-        ],
+        [projectDir, "dataform-iceberg-partial", "us-east1", "--iceberg"],
         {
           // Inject test inputs via environment variable
           env: { ...process.env, DATAFORM_CLI_TEST_INPUTS: JSON.stringify(testInputs) }
@@ -219,7 +202,7 @@ defaultAssertionDataset: dataform_assertions
       expect(workflowSettings.defaultIcebergConfig).to.deep.equal({
         bucketName: "my-iceberg-bucket-with-empty-tablefoldersubpath",
         tableFolderRoot: "my-iceberg-root-with-empty-tableFolderSubpath",
-        connection: "my.default.connection",
+        connection: "my.default.connection"
       });
     });
 
@@ -229,17 +212,12 @@ defaultAssertionDataset: dataform_assertions
         [ICEBERG_BUCKET_NAME_PROMPT_QUESTION]: "my-iceberg-bucket-with-empty-connection",
         [ICEBERG_TABLE_FOLDER_ROOT_PROMPT_QUESTION]: "my-iceberg-root-with-empty-connection",
         [ICEBERG_TABLE_FOLDER_SUBPATH_PROMPT_QUESTION]: "my-iceberg-subpath-with-empty-connection",
-        [ICEBERG_CONNECTION_QUESTION]: "", // Empty input
+        [ICEBERG_CONNECTION_QUESTION]: "" // Empty input
       };
 
       const result = await runCli(
         "init",
-        [
-          projectDir,
-          "dataform-iceberg-partial",
-          "us-east1",
-          "--iceberg"
-        ],
+        [projectDir, "dataform-iceberg-partial", "us-east1", "--iceberg"],
         {
           // Inject test inputs via environment variable
           env: { ...process.env, DATAFORM_CLI_TEST_INPUTS: JSON.stringify(testInputs) }
@@ -265,7 +243,7 @@ defaultAssertionDataset: dataform_assertions
       expect(workflowSettings.defaultIcebergConfig).to.deep.equal({
         bucketName: "my-iceberg-bucket-with-empty-connection",
         tableFolderRoot: "my-iceberg-root-with-empty-connection",
-        tableFolderSubpath: "my-iceberg-subpath-with-empty-connection",
+        tableFolderSubpath: "my-iceberg-subpath-with-empty-connection"
       });
     });
   });

@@ -1,4 +1,4 @@
-import { expect } from "chai"
+import { expect } from "chai";
 
 import { runCli } from "df/cli/index_test_base";
 import { suite, test } from "df/testing";
@@ -24,7 +24,9 @@ suite("help command", () => {
     const output = result.stdout;
     expect(output).to.include("Create a new dataform project.");
     expect(output).to.include("--iceberg");
-    expect(output).to.include("Initialize the project with workflow-level Iceberg tables configuration.");
+    expect(output).to.include(
+      "Initialize the project with workflow-level Iceberg tables configuration."
+    );
   });
 
   test("shows help for 'install' command", async () => {
@@ -39,7 +41,9 @@ suite("help command", () => {
     const result = await runCli("help", ["init-creds"]);
     expect(result.exitCode).equals(0);
     const output = result.stdout;
-    expect(output).to.include("Create a .df-credentials.json file for Dataform to use when accessing BigQuery.");
+    expect(output).to.include(
+      "Create a .df-credentials.json file for Dataform to use when accessing BigQuery."
+    );
     expect(output).to.include("[project-dir]");
     expect(output).to.include("--test-connection");
     expect(output).to.include("If true, a test query will be run using your final credentials.");
