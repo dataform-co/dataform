@@ -36,13 +36,19 @@ suite("property graphs", ({ afterEach }) => {
     defaultDatabase: "defaultProject",
     defaultLocation: "US"
   };
-  const graphStackTail = "\n    at CallSite {}".repeat(10);
   const graphError = (fileName: string, message: string, extra: object = {}) => ({
     fileName,
     message,
-    stack: `Error: ${message}${graphStackTail}`,
     ...extra
   });
+  const asPlainGraph = (graph: dataform.ICompiledGraph) => {
+    const plain = asPlainObject(graph);
+    plain.graphErrors?.compilationErrors?.forEach((e: any) => {
+      expect(e.stack).to.include(`Error: ${e.message}`);
+      delete e.stack;
+    });
+    return plain;
+  };
 
   const missingRefTarget = {
     schema: "defaultDataset",
@@ -1605,7 +1611,7 @@ entities:
       }
 
       if (testParameters.expectedGraph) {
-        expect(asPlainObject(result.compile?.compiledGraph)).deep.equals(
+        expect(asPlainGraph(result.compile?.compiledGraph)).deep.equals(
           asPlainObject(testParameters.expectedGraph)
         );
       }
@@ -1647,7 +1653,7 @@ entities:
 
     const result = runMainInVm(request);
 
-    expect(asPlainObject(result.compile?.compiledGraph)).deep.equals(
+    expect(asPlainGraph(result.compile?.compiledGraph)).deep.equals(
       asPlainObject({
         projectConfig: graphProjectConfig,
         graphErrors: {

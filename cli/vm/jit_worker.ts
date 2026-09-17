@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
-import { NodeVM } from "vm2";
 
+import { VmRunner } from "df/common/vm/vm_runner";
 import { dataform } from "df/protos/ts";
 
 const pendingRpcCallbacks = new Map<string, (err: string | null, resBytes: Uint8Array | null) => void>();
@@ -71,15 +71,11 @@ export async function handleJitRequest(message: {
 
     const vmFileName = path.resolve(projectDir, "index.js");
 
-    const vm = new NodeVM({
-      require: {
-        builtin: [],
-        context: "sandbox",
-        external: { modules: ["@dataform/*"], transitive: false },
-        root: projectDir,
-        mock: hasProjectLocalCore ? {} : {
-          "@dataform/core": require("@dataform/core")
-        }
+    const vm = new VmRunner({
+      projectDir,
+      builtinModules: [],
+      mockModules: hasProjectLocalCore ? {} : {
+        "@dataform/core": require("@dataform/core")
       },
       sourceExtensions: ["js", "json", "yaml", "yml"]
     });
