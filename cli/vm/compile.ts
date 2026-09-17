@@ -85,8 +85,6 @@ export function compile(compileConfig: dataform.ICompileConfig) {
       __df_current: () => (fileStack.length > 0 ? fileStack[fileStack.length - 1] : null),
     },
     builtinModules: ["path"],
-    resolve: (moduleName, parentDirName) =>
-      path.join(parentDirName, path.relative(parentDirName, compileConfig.projectDir), moduleName),
     sourceExtensions: ["js", "sql", "sqlx", "yaml", "yml", "ipynb", "md"],
     compiler: (code, filePath) => {
       let source = code;

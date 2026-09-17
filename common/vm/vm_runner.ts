@@ -246,10 +246,21 @@ export class VmRunner {
         const candidate = this.customResolve(moduleName, parentDir);
         const resolved = this.tryResolvePath(candidate);
         if (resolved) {
+          if (!this.isPathContained(resolved)) {
+            const err: any = new Error(
+              `Cannot require '${moduleName}' outside of project directory '${this.projectDir}'`,
+            );
+            err.code = "MODULE_NOT_FOUND";
+            throw err;
+          }
           this.resolveCache.set(cacheKey, resolved);
           return resolved;
         }
-      } catch {}
+      } catch (e) {
+        if (e && e.code === "MODULE_NOT_FOUND") {
+          throw e;
+        }
+      }
     }
 
     // Relative or absolute path
@@ -296,9 +307,24 @@ export class VmRunner {
       try {
         const nodeReq = createRequire(fromPath);
         const resolved = nodeReq.resolve(moduleName);
+        if (!this.isPathContained(resolved)) {
+          const err: any = new Error(
+            `Cannot require '${moduleName}' outside of project directory '${this.projectDir}'`,
+          );
+          err.code = "MODULE_NOT_FOUND";
+          throw err;
+        }
         this.resolveCache.set(cacheKey, resolved);
         return resolved;
       } catch (e) {
+        if (
+          e &&
+          e.code === "MODULE_NOT_FOUND" &&
+          e.message &&
+          e.message.includes("outside of project directory")
+        ) {
+          throw e;
+        }
         nodeReqError = e;
       }
 
@@ -306,9 +332,24 @@ export class VmRunner {
       try {
         const projectReq = createRequire(path.join(this.projectDir, "index.js"));
         const resolved = projectReq.resolve(moduleName);
+        if (!this.isPathContained(resolved)) {
+          const err: any = new Error(
+            `Cannot require '${moduleName}' outside of project directory '${this.projectDir}'`,
+          );
+          err.code = "MODULE_NOT_FOUND";
+          throw err;
+        }
         this.resolveCache.set(cacheKey, resolved);
         return resolved;
       } catch (e) {
+        if (
+          e &&
+          e.code === "MODULE_NOT_FOUND" &&
+          e.message &&
+          e.message.includes("outside of project directory")
+        ) {
+          throw e;
+        }
         projectReqError = e;
       }
 
