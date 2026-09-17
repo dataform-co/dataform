@@ -39,12 +39,12 @@ ts_library(
     ],
     deps = [
         "//common/protos",
+        "//common/vm:vm_runner",
         "//core",
         "//protos:ts",
         "@npm//@types/fs-extra",
         "@npm//@types/node",
         "@npm//fs-extra",
-        "@npm//vm2",
     ],
 )
 
