@@ -15,7 +15,8 @@ import { dataform } from "df/protos/ts";
 import { suite, test, writeDefinitionFile } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
 
-suite("compile", () => {
+suite("compile", 
+  () => {
   suite("compile command", ({ afterEach }) => {
     const tmpDirFixture = new TmpDirFixture(afterEach);
 

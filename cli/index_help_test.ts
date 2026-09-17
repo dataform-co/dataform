@@ -1,4 +1,4 @@
-import { expect } from "chai";
+import { expect } from "chai"
 
 import { runCli } from "df/cli/index_test_base";
 import { suite, test } from "df/testing";
