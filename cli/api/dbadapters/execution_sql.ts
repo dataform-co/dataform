@@ -153,7 +153,7 @@ from (${query}) as insertions`;
           case dataform.OnSchemaChange.EXTEND:
           case dataform.OnSchemaChange.SYNCHRONIZE:
             this.buildIncrementalSchemaChangeTasks(tasks, table);
-          // Fall through to run the static DML after the procedure alters the schema
+            break;
           case dataform.OnSchemaChange.IGNORE:
             const columns = tableMetadata?.fields.map((f) => f.name) || [];
             tasks.add(Task.statement(this.getIncrementalDmlStatement(table, columns)));
@@ -233,12 +233,14 @@ from (${query}) as insertions`;
       ...table.target,
       name: `${table.target.name}_df_temp_${uniqueId}_empty`,
     };
+    const tempTableName = `${table.target.name}_df_temp_${uniqueId}_temp`;
 
     const procedureName = this.createProcedureName(table.target, uniqueId);
     const procedureBody = this.incrementalSchemaChangeBody(
       table,
       this.resolveTarget(table.target),
       emptyTempTableTarget,
+      tempTableName,
     );
 
     const createProcedureSql = `CREATE OR REPLACE PROCEDURE ${procedureName}()
@@ -250,6 +252,7 @@ END;`;
     const callProcedureSql = this.safeCallAndDropProcedure(
       procedureName,
       this.resolveTarget(emptyTempTableTarget),
+      tempTableName,
     );
     tasks.add(Task.statement(createProcedureSql));
     tasks.add(Task.statement(callProcedureSql));
@@ -262,22 +265,40 @@ END;`;
     });
   }
 
-  private safeCallAndDropProcedure(procedureName: string, emptyTempTableName: string): string {
+  private safeCallAndDropProcedure(
+    procedureName: string,
+    emptyTempTableName: string,
+    tempTableName: string,
+  ): string {
     return `
 BEGIN
   CALL ${procedureName}();
 EXCEPTION WHEN ERROR THEN
   DROP TABLE IF EXISTS ${emptyTempTableName};
+  DROP TABLE IF EXISTS \`${tempTableName}\`;
   DROP PROCEDURE IF EXISTS ${procedureName};
   RAISE;
 END;
 DROP PROCEDURE IF EXISTS ${procedureName};`;
   }
 
-  private declareSchemaChangeVariablesSql(onSchemaChange: dataform.OnSchemaChange): string {
+  private declareSchemaChangeVariablesSql(table: dataform.ITable): string {
+    const onSchemaChange = table.onSchemaChange || dataform.OnSchemaChange.IGNORE;
+    const isMerge =
+      table.incrementalStrategy !== dataform.IncrementalStrategy.INSERT_OVERWRITE &&
+      table.uniqueKey &&
+      table.uniqueKey.length > 0;
+
     let sql = `
 -- Declare variables for schema comparison and strategy execution.
 DECLARE dataform_columns ARRAY<STRING>;
+DECLARE dataform_columns_list STRING;`;
+
+    if (isMerge) {
+      sql += `\nDECLARE dataform_columns_merge STRING;`;
+    }
+
+    sql += `
 DECLARE temp_table_columns ARRAY<STRUCT<column_name STRING, data_type STRING>>;
 DECLARE columns_added ARRAY<STRUCT<column_name STRING, data_type STRING>>;
 DECLARE columns_removed ARRAY<STRING>;`;
@@ -401,10 +422,128 @@ ${this.alterTableAddColumnsSql(qualifiedTargetTableName)}
 END IF;`;
   }
 
-  private cleanupSql(emptyTempTableName: string): string {
+  private escapeSqlString(str: string): string {
+    return str.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  }
+
+  private executeDynamicDmlSql(
+    table: dataform.ITable,
+    qualifiedTargetTableName: string,
+    tempTableName: string,
+    query: string,
+  ): string {
+    const isMerge =
+      table.incrementalStrategy !== dataform.IncrementalStrategy.INSERT_OVERWRITE &&
+      table.uniqueKey &&
+      table.uniqueKey.length > 0;
+
+    let sql = `
+-- Prepare dynamic column lists and staging table for DML.
+SET dataform_columns_list = (
+  SELECT STRING_AGG(FORMAT("\`%s\`", column_info.column_name), ", ")
+  FROM UNNEST(temp_table_columns) AS column_info
+);`;
+
+    if (isMerge) {
+      sql += `
+SET dataform_columns_merge = (
+  SELECT STRING_AGG(FORMAT("\`%s\` = DATAFORM_SOURCE.\`%s\`", column_info.column_name, column_info.column_name), ", ")
+  FROM UNNEST(temp_table_columns) AS column_info
+);`;
+    }
+
+    sql += `
+
+CREATE OR REPLACE TEMP TABLE \`${tempTableName}\` AS (
+  ${query}
+);
+`;
+
+    switch (table.incrementalStrategy) {
+      case dataform.IncrementalStrategy.INSERT_OVERWRITE: {
+        const partitionBy = table.bigquery && table.bigquery.partitionBy;
+        const updatePartitionFilter = table.bigquery && table.bigquery.updatePartitionFilter;
+        const incrementalPredicates = table.bigquery && table.bigquery.incrementalPredicates;
+        const incrementalPredicatesString =
+          this.buildIncrementalPredicatesString(incrementalPredicates);
+        const notMatchedBySourceCondition = [
+          `${partitionBy} IN UNNEST(partitions_for_replacement)`,
+          updatePartitionFilter ? `and DATAFORM_DEST.${updatePartitionFilter}` : "",
+          incrementalPredicatesString,
+        ]
+          .filter(Boolean)
+          .join(" ");
+
+        sql += `
+BEGIN
+  DECLARE partitions_for_replacement DEFAULT (
+    ARRAY(
+      SELECT DISTINCT ${partitionBy}
+      FROM \`${tempTableName}\`
+      WHERE ${partitionBy} IS NOT NULL
+    )
+  );
+
+  EXECUTE IMMEDIATE (
+    "MERGE ${this.escapeSqlString(qualifiedTargetTableName)} DATAFORM_DEST " ||
+    "USING \`${tempTableName}\` DATAFORM_SOURCE " ||
+    "ON FALSE " ||
+    "WHEN NOT MATCHED BY SOURCE AND ${this.escapeSqlString(notMatchedBySourceCondition)} THEN " ||
+    "DELETE " ||
+    "WHEN NOT MATCHED BY TARGET THEN " ||
+    "INSERT (" || dataform_columns_list || ") VALUES (" || dataform_columns_list || ")"
+  );
+END;`;
+        break;
+      }
+      case dataform.IncrementalStrategy.MERGE:
+      default: {
+        if (isMerge) {
+          const updatePartitionFilter = table.bigquery && table.bigquery.updatePartitionFilter;
+          const incrementalPredicates = table.bigquery && table.bigquery.incrementalPredicates;
+          const incrementalPredicatesString =
+            this.buildIncrementalPredicatesString(incrementalPredicates);
+          const onCondition = [
+            table.uniqueKey
+              .map(
+                (uniqueKeyCol) => `DATAFORM_DEST.${uniqueKeyCol} = DATAFORM_SOURCE.${uniqueKeyCol}`,
+              )
+              .join(" and "),
+            updatePartitionFilter ? `and DATAFORM_DEST.${updatePartitionFilter}` : "",
+            incrementalPredicatesString,
+          ]
+            .filter(Boolean)
+            .join(" ");
+
+          sql += `
+EXECUTE IMMEDIATE (
+  "MERGE ${this.escapeSqlString(qualifiedTargetTableName)} DATAFORM_DEST " ||
+  "USING \`${tempTableName}\` DATAFORM_SOURCE " ||
+  "ON ${this.escapeSqlString(onCondition)} " ||
+  "WHEN MATCHED THEN " ||
+  "UPDATE SET " || dataform_columns_merge || " " ||
+  "WHEN NOT MATCHED THEN " ||
+  "INSERT (" || dataform_columns_list || ") VALUES (" || dataform_columns_list || ")"
+);`;
+        } else {
+          sql += `
+EXECUTE IMMEDIATE (
+  "INSERT INTO ${this.escapeSqlString(qualifiedTargetTableName)} (" || dataform_columns_list || ") " ||
+  "SELECT " || dataform_columns_list || " FROM \`${tempTableName}\`"
+);`;
+        }
+        break;
+      }
+    }
+
+    return sql;
+  }
+
+  private cleanupSql(emptyTempTableName: string, tempTableName: string): string {
     return `
 -- Cleanup temporary tables.
 DROP TABLE IF EXISTS ${emptyTempTableName};
+DROP TABLE IF EXISTS \`${tempTableName}\`;
     `;
   }
 
@@ -412,16 +551,17 @@ DROP TABLE IF EXISTS ${emptyTempTableName};
     table: dataform.ITable,
     qualifiedTargetTableName: string,
     emptyTempTableTarget: dataform.ITarget,
+    tempTableName: string,
   ): string {
     const emptyTempTableName = this.resolveTarget(emptyTempTableTarget);
     const query = this.getIncrementalQuery(table);
-    const onSchemaChange = table.onSchemaChange || dataform.OnSchemaChange.IGNORE;
     const statements: string[] = [
-      this.declareSchemaChangeVariablesSql(onSchemaChange),
+      this.declareSchemaChangeVariablesSql(table),
       this.createEmptyTempTableSql(emptyTempTableName, query),
       this.compareSchemasSql(table.target, emptyTempTableTarget),
       this.applySchemaChangeStrategySql(table, qualifiedTargetTableName),
-      this.cleanupSql(emptyTempTableName),
+      this.executeDynamicDmlSql(table, qualifiedTargetTableName, tempTableName, query),
+      this.cleanupSql(emptyTempTableName, tempTableName),
     ];
 
     return statements.join("\n\n");
