@@ -194,6 +194,25 @@ select 1 as a`
     expect(result.compile.compiledGraph.tables[0].bigquery.preserveGovernanceControls).equals(true);
   });
 
+
+  test("preserveGovernanceControls in Incremental Tables propagates to compiled graph", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
+    writeDefinitionFile(
+      projectDir,
+      "file.sqlx",
+      `
+config {
+  type: "incremental",
+  preserveGovernanceControls: true
+}
+select 1 as a`
+    );
+    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+    expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+    expect(result.compile.compiledGraph.tables[0].bigquery.preserveGovernanceControls).equals(true);
+  });
+
   test("preserveGovernanceControls in workflow_settings.yaml propagates to compiled graph", () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
     writeWorkflowSettingsFile(
