@@ -1,14 +1,13 @@
 #!/bin/bash
 set -e
 
-bazel run @nodejs//:yarn
+bazel run @nodejs//:yarn -- --frozen-lockfile
 
 # Run eslint.
 bazel build @npm//eslint/bin:eslint && bazel-bin/external/npm/eslint/bin/eslint.sh --rulesdir eslint-rules '**/*.ts'
 
-# Run prettier on .ts files changed against origin/main
-CHANGED_TS_FILES=$(git diff --name-only --diff-filter=ACMR "$(git merge-base origin/main HEAD)" -- '*.ts')
-
-if [ -n "$CHANGED_TS_FILES" ]; then
-  bazel build @npm//prettier/bin:prettier && bazel-bin/external/npm/prettier/bin/prettier.sh --ignore-path .eslintignore --check $CHANGED_TS_FILES
-fi
+# Run prettier on .ts files changed since the branching point
+BASE_REF=$(git rev-parse --verify --quiet upstream/main || echo origin/main)
+bazel build @npm//prettier/bin:prettier
+git diff -z --name-only --diff-filter=ACMR "$(git merge-base $BASE_REF HEAD)" -- '*.ts' \
+  | xargs -0 -r bazel-bin/external/npm/prettier/bin/prettier.sh --ignore-path .prettierignore --check

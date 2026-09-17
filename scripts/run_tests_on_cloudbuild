@@ -8,7 +8,12 @@ bazel run @nodejs//:yarn install -- --frozen-lockfile
 
 # Run lint and format checks
 # Need origin/main to check which files to format
-git fetch origin main --unshallow 2>/dev/null || git fetch origin main
+if [ "$(git rev-parse --is-shallow-repository)" = "true" ]; then
+  git fetch --unshallow origin +refs/heads/main:refs/remotes/origin/main
+else
+  git fetch origin +refs/heads/main:refs/remotes/origin/main
+fi
+git rev-parse --verify --quiet origin/main >/dev/null || { echo "origin/main unavailable; cannot compute changed files" >&2; exit 1; }
 ./scripts/lint
 
 # Run unit tests

@@ -1,0 +1,10 @@
+# Dependencies and build outputs
+node_modules
+bazel-*
+dist
+tmp
+
+# Test fixture projects (mock dataform project fixtures)
+tests/api/projects/
+tests/integration/bigquery_project/
+tests/integration/property_graph_project/
