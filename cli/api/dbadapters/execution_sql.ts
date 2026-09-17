@@ -274,6 +274,20 @@ END;
 DROP PROCEDURE IF EXISTS ${procedureName};`;
   }
 
+  private declareSchemaChangeVariablesSql(onSchemaChange: dataform.OnSchemaChange): string {
+    let sql = `
+-- Declare variables for schema comparison and strategy execution.
+DECLARE dataform_columns ARRAY<STRING>;
+DECLARE temp_table_columns ARRAY<STRUCT<column_name STRING, data_type STRING>>;
+DECLARE columns_added ARRAY<STRUCT<column_name STRING, data_type STRING>>;
+DECLARE columns_removed ARRAY<STRING>;`;
+
+    if (onSchemaChange === dataform.OnSchemaChange.SYNCHRONIZE) {
+      sql += `\nDECLARE invalid_removed_columns ARRAY<STRING>;`;
+    }
+    return sql;
+  }
+
   private createEmptyTempTableSql(emptyTempTableName: string, query: string): string {
     return `
 -- Create empty table to extract schema of new query.
@@ -288,11 +302,6 @@ CREATE OR REPLACE TABLE ${emptyTempTableName} AS (
   ): string {
     return `
 -- Compare schemas
-DECLARE dataform_columns ARRAY<STRING>;
-DECLARE temp_table_columns ARRAY<STRUCT<column_name STRING, data_type STRING>>;
-DECLARE columns_added ARRAY<STRUCT<column_name STRING, data_type STRING>>;
-DECLARE columns_removed ARRAY<STRING>;
-
 SET dataform_columns = (
   SELECT IFNULL(ARRAY_AGG(DISTINCT column_name), [])
   FROM \`${target.database}.${target.schema}.INFORMATION_SCHEMA.COLUMNS\`
@@ -352,7 +361,6 @@ ${this.alterTableAddColumnsSql(qualifiedTargetTableName)}
       case dataform.OnSchemaChange.SYNCHRONIZE:
         const uniqueKeys = table.uniqueKey || [];
         sql += `
-DECLARE invalid_removed_columns ARRAY<STRING>;
 SET invalid_removed_columns = (
   SELECT IFNULL(ARRAY_AGG(col), []) FROM UNNEST(columns_removed) AS col WHERE col IN UNNEST(${JSON.stringify(uniqueKeys)})
 );
@@ -407,7 +415,9 @@ DROP TABLE IF EXISTS ${emptyTempTableName};
   ): string {
     const emptyTempTableName = this.resolveTarget(emptyTempTableTarget);
     const query = this.getIncrementalQuery(table);
+    const onSchemaChange = table.onSchemaChange || dataform.OnSchemaChange.IGNORE;
     const statements: string[] = [
+      this.declareSchemaChangeVariablesSql(onSchemaChange),
       this.createEmptyTempTableSql(emptyTempTableName, query),
       this.compareSchemasSql(table.target, emptyTempTableTarget),
       this.applySchemaChangeStrategySql(table, qualifiedTargetTableName),

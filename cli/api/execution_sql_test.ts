@@ -137,6 +137,47 @@ suite("ExecutionSql with 'onSchemaChange'", () => {
     const expectedSql = fs.readFileSync("cli/api/goldens/insert_overwrite_extend.sql", "utf8");
     expect(sql).to.equal(expectedSql.trim());
   });
+
+  test("places all DECLARE statements before any executable statement in generated procedure body", () => {
+    for (const strategy of [
+      dataform.OnSchemaChange.FAIL,
+      dataform.OnSchemaChange.EXTEND,
+      dataform.OnSchemaChange.SYNCHRONIZE,
+    ]) {
+      const table = {
+        ...baseTable,
+        onSchemaChange: strategy,
+        uniqueKey: ["id"],
+      };
+      const tasks = executionSql.publishTasks(table, { fullRefresh: false }, tableMetadata);
+      const createProcedureSql = tasks.build()[0].statement;
+      expect(createProcedureSql).to.include("CREATE OR REPLACE PROCEDURE");
+
+      const procedureBody = createProcedureSql.split("BEGIN\n")[1].split("\nEND;")[0];
+      const statements = procedureBody
+        .split(";")
+        .map((s) =>
+          s
+            .split("\n")
+            .filter((line) => !line.trim().startsWith("--"))
+            .join("\n")
+            .trim(),
+        )
+        .filter((s) => s.length > 0);
+
+      let seenNonDeclare = false;
+      for (const stmt of statements) {
+        if (stmt.toUpperCase().startsWith("DECLARE ")) {
+          expect(
+            seenNonDeclare,
+            `DECLARE statement appeared after non-DECLARE statement in strategy ${dataform.OnSchemaChange[strategy]}: "${stmt}"`,
+          ).to.equal(false);
+        } else {
+          seenNonDeclare = true;
+        }
+      }
+    }
+  });
 });
 
 suite("ExecutionSql for property graphs", () => {

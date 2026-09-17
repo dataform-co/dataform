@@ -2,6 +2,14 @@ CREATE OR REPLACE PROCEDURE `project-id.dataset-id.df_osc_test_uuid`()
 OPTIONS(strict_mode=false)
 BEGIN
 
+-- Declare variables for schema comparison and strategy execution.
+DECLARE dataform_columns ARRAY<STRING>;
+DECLARE temp_table_columns ARRAY<STRUCT<column_name STRING, data_type STRING>>;
+DECLARE columns_added ARRAY<STRUCT<column_name STRING, data_type STRING>>;
+DECLARE columns_removed ARRAY<STRING>;
+DECLARE invalid_removed_columns ARRAY<STRING>;
+
+
 -- Create empty table to extract schema of new query.
 CREATE OR REPLACE TABLE `project-id.dataset-id.incremental_on_schema_change_df_temp_test_uuid_empty` AS (
   SELECT * FROM (select 1 as id, 'a' as field1, 'new' as field2) AS insertions LIMIT 0
@@ -9,11 +17,6 @@ CREATE OR REPLACE TABLE `project-id.dataset-id.incremental_on_schema_change_df_t
 
 
 -- Compare schemas
-DECLARE dataform_columns ARRAY<STRING>;
-DECLARE temp_table_columns ARRAY<STRUCT<column_name STRING, data_type STRING>>;
-DECLARE columns_added ARRAY<STRUCT<column_name STRING, data_type STRING>>;
-DECLARE columns_removed ARRAY<STRING>;
-
 SET dataform_columns = (
   SELECT IFNULL(ARRAY_AGG(DISTINCT column_name), [])
   FROM `project-id.dataset-id.INFORMATION_SCHEMA.COLUMNS`
@@ -39,7 +42,6 @@ SET columns_removed = (
 
 
 -- Apply schema change strategy (SYNCHRONIZE).
-DECLARE invalid_removed_columns ARRAY<STRING>;
 SET invalid_removed_columns = (
   SELECT IFNULL(ARRAY_AGG(col), []) FROM UNNEST(columns_removed) AS col WHERE col IN UNNEST(["id"])
 );
