@@ -10,14 +10,18 @@ import { dataform } from "df/protos/ts";
 export function compile(compileConfig: dataform.ICompileConfig) {
   compileConfig.projectDir = fs.realpathSync(path.resolve(compileConfig.projectDir));
   const coreBundlePath = path.join(
-    compileConfig.projectDir, "node_modules", "@dataform", "core", "bundle.js"
+    compileConfig.projectDir,
+    "node_modules",
+    "@dataform",
+    "core",
+    "bundle.js",
   );
   if (!fs.existsSync(coreBundlePath)) {
     throw new Error(
       "Could not find a recent installed version of @dataform/core in the project. Check that " +
         "either `dataformCoreVersion` is specified in `workflow_settings.yaml`, or " +
         "`@dataform/core` is specified in `package.json`. If using `package.json`, then run " +
-        "`dataform install`."
+        "`dataform install`.",
     );
   }
 
@@ -29,15 +33,15 @@ export function compile(compileConfig: dataform.ICompileConfig) {
   // code will see. require() caches the bundle so the second call is free.
   const indexGeneratorVm = new VmRunner({
     projectDir: compileConfig.projectDir,
-    builtinModules: ["path"]
+    builtinModules: ["path"],
   });
   const compiler: CompilerFunction = indexGeneratorVm.run(
     'return require("@dataform/core").compiler',
-    vmIndexFileName
+    vmIndexFileName,
   );
   const dataformCoreVersion: string = indexGeneratorVm.run(
     'return require("@dataform/core").version || "0.0.0"',
-    vmIndexFileName
+    vmIndexFileName,
   );
 
   const cliVersion = readCliVersion();
@@ -56,7 +60,7 @@ export function compile(compileConfig: dataform.ICompileConfig) {
           `${cliVersion}. The CLI requires @dataform/core >= ${minCoreVersion} ` +
           `(matching major.minor). Set \`dataformCoreVersion: ${cliVersion}\` in ` +
           `workflow_settings.yaml (or pin @dataform/core in package.json), then run ` +
-          `\`dataform install\`.`
+          `\`dataform install\`.`,
       );
     }
   }
@@ -72,9 +76,13 @@ export function compile(compileConfig: dataform.ICompileConfig) {
   const userCodeVm = new VmRunner({
     projectDir: compileConfig.projectDir,
     sandbox: {
-      __df_enter: (p: string) => { fileStack.push(p); },
-      __df_exit: () => { fileStack.pop(); },
-      __df_current: () => fileStack.length > 0 ? fileStack[fileStack.length - 1] : null
+      __df_enter: (p: string) => {
+        fileStack.push(p);
+      },
+      __df_exit: () => {
+        fileStack.pop();
+      },
+      __df_current: () => (fileStack.length > 0 ? fileStack[fileStack.length - 1] : null),
     },
     builtinModules: ["path"],
     resolve: (moduleName, parentDirName) =>
@@ -94,15 +102,13 @@ export function compile(compileConfig: dataform.ICompileConfig) {
           __df_exit();
         }
       `;
-    }
+    },
   });
 
   const hasWorkflowSettingsYaml = fs.existsSync(
-    path.join(compileConfig.projectDir, "workflow_settings.yaml")
+    path.join(compileConfig.projectDir, "workflow_settings.yaml"),
   );
-  const hasDataformJson = fs.existsSync(
-    path.join(compileConfig.projectDir, "dataform.json")
-  );
+  const hasDataformJson = fs.existsSync(path.join(compileConfig.projectDir, "dataform.json"));
 
   return userCodeVm.run(
     `
@@ -110,15 +116,15 @@ export function compile(compileConfig: dataform.ICompileConfig) {
         configurable: true,
         get: function() { return __df_current(); }
       });
-      ${hasWorkflowSettingsYaml
-        ? 'global.workflowSettingsYaml = require("./workflow_settings.yaml");'
-        : ''}
-      ${hasDataformJson
-        ? 'global.dataformJson = require("./dataform.json");'
-        : ''}
+      ${
+        hasWorkflowSettingsYaml
+          ? 'global.workflowSettingsYaml = require("./workflow_settings.yaml");'
+          : ""
+      }
+      ${hasDataformJson ? 'global.dataformJson = require("./dataform.json");' : ""}
       return require("@dataform/core").main("${createCoreExecutionRequest(compileConfig)}")
     `,
-    vmIndexFileName
+    vmIndexFileName,
   );
 }
 
@@ -152,9 +158,7 @@ if (require.main === module) {
 // by pkg_json(version = DF_VERSION). Returns "0.0.0" when unreadable.
 function readCliVersion(): string {
   try {
-    const pkg = JSON.parse(
-      fs.readFileSync(path.join(__dirname, "package.json"), "utf8")
-    );
+    const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, "package.json"), "utf8"));
     return pkg.version || "0.0.0";
   } catch {
     return "0.0.0";
@@ -169,7 +173,7 @@ function readCliVersion(): string {
 const OLD_CORE_THROW =
   'if(!t)throw new Error("Unable to find valid caller file; please report this issue.")';
 const OLD_CORE_WITH_FALLBACK =
-  'if(!t){if(global.__dataform_current_file){t=global.__dataform_current_file}' +
+  "if(!t){if(global.__dataform_current_file){t=global.__dataform_current_file}" +
   'else{throw new Error("Unable to find valid caller file; please report this issue.")}}';
 
 function patchOldCoreCallerFile(source: string): string {
@@ -181,11 +185,11 @@ function patchOldCoreCallerFile(source: string): string {
  */
 function createCoreExecutionRequest(compileConfig: dataform.ICompileConfig): string {
   const filePaths = Array.from(
-    new Set<string>(glob.sync("!(node_modules)/**/*.*", { cwd: compileConfig.projectDir }))
+    new Set<string>(glob.sync("!(node_modules)/**/*.*", { cwd: compileConfig.projectDir })),
   );
 
   return encode64(dataform.CoreExecutionRequest, {
     // Add the list of file paths to the compile config if not already set.
-    compile: { compileConfig: { filePaths, ...compileConfig } }
+    compile: { compileConfig: { filePaths, ...compileConfig } },
   });
 }

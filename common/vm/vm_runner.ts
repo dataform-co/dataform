@@ -38,20 +38,26 @@ export class VmRunner {
 
   constructor(options: VmRunnerOptions) {
     this.projectDir = this.getRealPath(options.projectDir);
-    this.allowedExternalPaths = (options.allowedExternalPaths || []).map(p => this.getRealPath(p));
+    this.allowedExternalPaths = (options.allowedExternalPaths || []).map((p) =>
+      this.getRealPath(p),
+    );
     const rawExtensions = options.sourceExtensions || ["js", "json"];
     this.sourceExtensions = new Set(
-      rawExtensions.map(ext => (ext.startsWith(".") ? ext.slice(1).toLowerCase() : ext.toLowerCase()))
+      rawExtensions.map((ext) =>
+        ext.startsWith(".") ? ext.slice(1).toLowerCase() : ext.toLowerCase(),
+      ),
     );
     this.allExtensions = Array.from(
       new Set([
         ".js",
         ".json",
-        ...rawExtensions.map(ext => (ext.startsWith(".") ? ext : `.${ext}`))
-      ])
+        ...rawExtensions.map((ext) => (ext.startsWith(".") ? ext : `.${ext}`)),
+      ]),
     );
     this.compiler = options.compiler;
-    this.builtinModules = new Set(options.builtinModules !== undefined ? options.builtinModules : ["path"]);
+    this.builtinModules = new Set(
+      options.builtinModules !== undefined ? options.builtinModules : ["path"],
+    );
     this.mockModules = options.mockModules || {};
     this.customResolve = options.resolve;
     this.nodeBuiltinSet = new Set(nodeBuiltins);
@@ -81,7 +87,7 @@ export class VmRunner {
         version: process.version,
         versions: process.versions,
         platform: process.platform,
-        arch: process.arch
+        arch: process.arch,
       },
       Buffer,
       Uint8Array,
@@ -96,7 +102,7 @@ export class VmRunner {
       URLSearchParams,
       TextEncoder,
       TextDecoder,
-      ...(options.sandbox || {})
+      ...(options.sandbox || {}),
     };
 
     this.context = vm.createContext(sandbox);
@@ -112,7 +118,7 @@ export class VmRunner {
         exports: JSON.parse(source),
         id: filename,
         filename,
-        loaded: true
+        loaded: true,
       };
       this.moduleCache.set(filename, module);
       return module.exports;
@@ -127,15 +133,15 @@ export class VmRunner {
       ["exports", "require", "module", "__filename", "__dirname"],
       {
         filename,
-        parsingContext: this.context
-      }
+        parsingContext: this.context,
+      },
     );
 
     const module = {
       exports: {},
       id: filename,
       filename,
-      loaded: false
+      loaded: false,
     };
     this.moduleCache.set(filename, module);
 
@@ -147,7 +153,7 @@ export class VmRunner {
         scopedRequire,
         module,
         filename,
-        path.dirname(filename)
+        path.dirname(filename),
       );
       module.loaded = true;
 
@@ -160,7 +166,7 @@ export class VmRunner {
 
   public require(
     moduleName: string,
-    fromPath: string = path.join(this.projectDir, "index.js")
+    fromPath: string = path.join(this.projectDir, "index.js"),
   ): any {
     if (Object.prototype.hasOwnProperty.call(this.mockModules, moduleName)) {
       return this.mockModules[moduleName];
@@ -171,9 +177,7 @@ export class VmRunner {
       if (this.builtinModules.has(cleanBuiltinName) || this.builtinModules.has(moduleName)) {
         return require(moduleName);
       }
-      const err: any = new Error(
-        `Access to built-in module '${moduleName}' is not allowed`
-      );
+      const err: any = new Error(`Access to built-in module '${moduleName}' is not allowed`);
       err.code = "MODULE_NOT_FOUND";
       throw err;
     }
@@ -187,7 +191,7 @@ export class VmRunner {
       exports: {},
       id: resolvedPath,
       filename: resolvedPath,
-      loaded: false
+      loaded: false,
     };
     this.moduleCache.set(resolvedPath, module);
 
@@ -210,8 +214,8 @@ export class VmRunner {
         ["exports", "require", "module", "__filename", "__dirname"],
         {
           filename: resolvedPath,
-          parsingContext: this.context
-        }
+          parsingContext: this.context,
+        },
       );
 
       const scopedRequire = this.createRequire(resolvedPath);
@@ -221,7 +225,7 @@ export class VmRunner {
         scopedRequire,
         module,
         resolvedPath,
-        path.dirname(resolvedPath)
+        path.dirname(resolvedPath),
       );
       module.loaded = true;
 
@@ -253,13 +257,17 @@ export class VmRunner {
     }
 
     // Relative or absolute path
-    if (moduleName.startsWith("./") || moduleName.startsWith("../") || path.isAbsolute(moduleName)) {
+    if (
+      moduleName.startsWith("./") ||
+      moduleName.startsWith("../") ||
+      path.isAbsolute(moduleName)
+    ) {
       const candidate = path.resolve(parentDir, moduleName);
       const resolved = this.tryResolvePath(candidate);
       if (resolved) {
         if (!this.isPathContained(resolved)) {
           const err: any = new Error(
-            `Cannot require '${moduleName}' outside of project directory '${this.projectDir}'`
+            `Cannot require '${moduleName}' outside of project directory '${this.projectDir}'`,
           );
           err.code = "MODULE_NOT_FOUND";
           throw err;
@@ -274,7 +282,7 @@ export class VmRunner {
       if (resolvedProjectRelative) {
         if (!this.isPathContained(resolvedProjectRelative)) {
           const err: any = new Error(
-            `Cannot require '${moduleName}' outside of project directory '${this.projectDir}'`
+            `Cannot require '${moduleName}' outside of project directory '${this.projectDir}'`,
           );
           err.code = "MODULE_NOT_FOUND";
           throw err;
@@ -343,7 +351,7 @@ export class VmRunner {
     if (isContainedIn(this.projectDir)) {
       return true;
     }
-    return this.allowedExternalPaths.some(allowed => isContainedIn(allowed));
+    return this.allowedExternalPaths.some((allowed) => isContainedIn(allowed));
   }
 
   private getStat(targetPath: string): fs.Stats | null {

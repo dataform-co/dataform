@@ -27,7 +27,7 @@ suite("VmRunner", ({ afterEach }) => {
     const runner = new VmRunner({ projectDir: tmpDir });
     const result = runner.run(
       JSON.stringify({ name: "dataform-test", active: true }),
-      path.join(tmpDir, "config.json")
+      path.join(tmpDir, "config.json"),
     );
     expect(result).to.deep.equal({ name: "dataform-test", active: true });
   });
@@ -38,7 +38,7 @@ suite("VmRunner", ({ afterEach }) => {
     fs.mkdirSync(path.join(tmpDir, "sub"));
     fs.writeFileSync(
       path.join(tmpDir, "sub", "helper.js"),
-      "module.exports = { greet: (x) => `Hello ${x}` };"
+      "module.exports = { greet: (x) => `Hello ${x}` };",
     );
 
     const runner = new VmRunner({ projectDir: tmpDir });
@@ -55,7 +55,7 @@ suite("VmRunner", ({ afterEach }) => {
     fs.mkdirSync(path.join(tmpDir, "includes"));
     fs.writeFileSync(
       path.join(tmpDir, "includes", "math.js"),
-      "module.exports = { add: (a, b) => a + b };"
+      "module.exports = { add: (a, b) => a + b };",
     );
 
     const runner = new VmRunner({ projectDir: tmpDir });
@@ -68,10 +68,7 @@ suite("VmRunner", ({ afterEach }) => {
 
   test("applies compiler hook to custom sourceExtensions", () => {
     const tmpDir = tmpDirFixture.createNewTmpDir();
-    fs.writeFileSync(
-      path.join(tmpDir, "model.sqlx"),
-      "SELECT 1 AS id"
-    );
+    fs.writeFileSync(path.join(tmpDir, "model.sqlx"), "SELECT 1 AS id");
 
     const runner = new VmRunner({
       projectDir: tmpDir,
@@ -81,7 +78,7 @@ suite("VmRunner", ({ afterEach }) => {
           return `module.exports = { query: ${JSON.stringify(code.trim())}, file: ${JSON.stringify(filePath)} };`;
         }
         return code;
-      }
+      },
     });
 
     const result = runner.run(`
@@ -100,7 +97,7 @@ suite("VmRunner", ({ afterEach }) => {
         exports.name = "moduleA";
         const b = require("./b");
         exports.getBName = () => b.name;
-      `
+      `,
     );
     fs.writeFileSync(
       path.join(tmpDir, "b.js"),
@@ -108,7 +105,7 @@ suite("VmRunner", ({ afterEach }) => {
         exports.name = "moduleB";
         const a = require("./a");
         exports.getAName = () => a.name;
-      `
+      `,
     );
 
     const runner = new VmRunner({ projectDir: tmpDir });
@@ -125,7 +122,7 @@ suite("VmRunner", ({ afterEach }) => {
     const tmpDir = tmpDirFixture.createNewTmpDir();
     const runner = new VmRunner({
       projectDir: tmpDir,
-      builtinModules: ["path"]
+      builtinModules: ["path"],
     });
 
     const pathResult = runner.run(`
@@ -143,14 +140,14 @@ suite("VmRunner", ({ afterEach }) => {
     const tmpDir = tmpDirFixture.createNewTmpDir();
     const mockCore = {
       version: "9.9.9",
-      compiler: () => "compiled"
+      compiler: () => "compiled",
     };
 
     const runner = new VmRunner({
       projectDir: tmpDir,
       mockModules: {
-        "@dataform/core": mockCore
-      }
+        "@dataform/core": mockCore,
+      },
     });
 
     const result = runner.run(`
@@ -173,8 +170,8 @@ suite("VmRunner", ({ afterEach }) => {
     const runner = new VmRunner({
       projectDir: tmpDir,
       sandbox: {
-        injectedValue: 123
-      }
+        injectedValue: 123,
+      },
     });
 
     const result = runner.run(`
@@ -210,12 +207,12 @@ suite("VmRunner", ({ afterEach }) => {
     // Relative path traversal
     const relativePath = path.relative(tmpDir, secretFile);
     expect(() => runner.run(`require(${JSON.stringify(relativePath)});`)).to.throw(
-      /outside of project directory/
+      /outside of project directory/,
     );
 
     // Absolute path traversal
     expect(() => runner.run(`require(${JSON.stringify(secretFile)});`)).to.throw(
-      /outside of project directory/
+      /outside of project directory/,
     );
   });
 
@@ -227,7 +224,7 @@ suite("VmRunner", ({ afterEach }) => {
 
     const runner = new VmRunner({
       projectDir: tmpDir,
-      allowedExternalPaths: [sharedDir]
+      allowedExternalPaths: [sharedDir],
     });
 
     const result = runner.run(`
@@ -246,7 +243,7 @@ suite("VmRunner", ({ afterEach }) => {
       // With envAllowlist
       const allowlistRunner = new VmRunner({
         projectDir: tmpDir,
-        envAllowlist: ["TEST_PUBLIC_VAR"]
+        envAllowlist: ["TEST_PUBLIC_VAR"],
       });
       const allowlistEnv = allowlistRunner.run("return process.env;");
       expect(allowlistEnv.TEST_PUBLIC_VAR).to.equal("public_abc");
@@ -255,7 +252,7 @@ suite("VmRunner", ({ afterEach }) => {
       // With custom env record
       const customRunner = new VmRunner({
         projectDir: tmpDir,
-        env: { CUSTOM_KEY: "custom_value" }
+        env: { CUSTOM_KEY: "custom_value" },
       });
       const customEnv = customRunner.run("return process.env;");
       expect(customEnv.CUSTOM_KEY).to.equal("custom_value");
@@ -270,12 +267,9 @@ suite("VmRunner", ({ afterEach }) => {
     const tmpDir = tmpDirFixture.createNewTmpDir();
     fs.writeFileSync(
       path.join(tmpDir, "notebook.ipynb"),
-      JSON.stringify({ cells: [{ cell_type: "code", source: ["print('hello')"] }] })
+      JSON.stringify({ cells: [{ cell_type: "code", source: ["print('hello')"] }] }),
     );
-    fs.writeFileSync(
-      path.join(tmpDir, "doc.md"),
-      "# Hello Documentation"
-    );
+    fs.writeFileSync(path.join(tmpDir, "doc.md"), "# Hello Documentation");
 
     const runner = new VmRunner({
       projectDir: tmpDir,
@@ -288,7 +282,7 @@ suite("VmRunner", ({ afterEach }) => {
           return `module.exports = { asMarkdown: ${JSON.stringify(code)} };`;
         }
         return code;
-      }
+      },
     });
 
     const result = runner.run(`
@@ -311,7 +305,7 @@ suite("VmRunner", ({ afterEach }) => {
     const runner = new VmRunner({
       projectDir: tmpDir,
       sourceExtensions: ["sqlx"],
-      compiler: code => code
+      compiler: (code) => code,
     });
 
     let caughtError: Error | null = null;
@@ -348,10 +342,10 @@ suite("VmRunner", ({ afterEach }) => {
             compile: (bytes: Uint8Array) => {
               receivedBytes = bytes;
               return new Uint8Array([bytes[0] + 1, bytes[1] + 1]);
-            }
-          })
-        }
-      }
+            },
+          }),
+        },
+      },
     });
 
     const result = runner.run(`
@@ -369,4 +363,3 @@ suite("VmRunner", ({ afterEach }) => {
     expect(Array.from(result.output)).to.deep.equal([11, 21]);
   });
 });
-

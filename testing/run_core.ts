@@ -23,35 +23,35 @@ defaultLocation: US
 export class WorkflowSettingsTemplates {
   public static bigquery = dataform.WorkflowSettings.create({
     defaultDataset: "defaultDataset",
-    defaultLocation: "US"
+    defaultLocation: "US",
   });
 
   public static bigqueryWithDefaultProject = dataform.WorkflowSettings.create({
     ...WorkflowSettingsTemplates.bigquery,
-    defaultProject: "defaultProject"
+    defaultProject: "defaultProject",
   });
 
   public static bigqueryWithDatasetSuffix = dataform.WorkflowSettings.create({
     ...WorkflowSettingsTemplates.bigquery,
-    datasetSuffix: "suffix"
+    datasetSuffix: "suffix",
   });
 
   public static bigqueryWithDefaultProjectAndDataset = dataform.WorkflowSettings.create({
     ...WorkflowSettingsTemplates.bigqueryWithDefaultProject,
-    projectSuffix: "suffix"
+    projectSuffix: "suffix",
   });
 
   public static bigqueryWithNamePrefix = dataform.WorkflowSettings.create({
     ...WorkflowSettingsTemplates.bigquery,
-    namePrefix: "prefix"
+    namePrefix: "prefix",
   });
 }
 
-const SOURCE_EXTENSIONS = ["js", "sql", "sqlx", "yaml", "ipynb","md"];
+const SOURCE_EXTENSIONS = ["js", "sql", "sqlx", "yaml", "ipynb", "md"];
 
 export function coreExecutionRequestFromPath(
   projectDir: string,
-  projectConfigOverride?: dataform.ProjectConfig
+  projectConfigOverride?: dataform.ProjectConfig,
 ): dataform.CoreExecutionRequest {
   const resolvedProjectDir = fs.realpathSync(path.resolve(projectDir));
   return dataform.CoreExecutionRequest.create({
@@ -59,15 +59,15 @@ export function coreExecutionRequestFromPath(
       compileConfig: {
         projectDir: resolvedProjectDir,
         filePaths: walkDirectoryForFilenames(resolvedProjectDir),
-        projectConfigOverride
-      }
-    }
+        projectConfigOverride,
+      },
+    },
   });
 }
 
 // A VM is needed when running main because Node functions like `require` are overridden.
 export function runMainInVm(
-  coreExecutionRequest: dataform.CoreExecutionRequest
+  coreExecutionRequest: dataform.CoreExecutionRequest,
 ): dataform.CoreExecutionResponse {
   const projectDir = coreExecutionRequest.compile.compileConfig.projectDir;
 
@@ -85,9 +85,13 @@ export function runMainInVm(
     // debugging.
     console: "inherit",
     sandbox: {
-      __df_enter: (p: string) => { fileStack.push(p); },
-      __df_exit: () => { fileStack.pop(); },
-      __df_current: () => fileStack.length > 0 ? fileStack[fileStack.length - 1] : null
+      __df_enter: (p: string) => {
+        fileStack.push(p);
+      },
+      __df_exit: () => {
+        fileStack.pop();
+      },
+      __df_current: () => (fileStack.length > 0 ? fileStack[fileStack.length - 1] : null),
     },
     builtinModules: ["path"],
     resolve: (moduleName, parentDirName) =>
@@ -103,15 +107,11 @@ export function runMainInVm(
           __df_exit();
         }
       `;
-    }
+    },
   });
 
-  const hasWorkflowSettingsYaml = fs.existsSync(
-    path.join(projectDir, "workflow_settings.yaml")
-  );
-  const hasDataformJson = fs.existsSync(
-    path.join(projectDir, "dataform.json")
-  );
+  const hasWorkflowSettingsYaml = fs.existsSync(path.join(projectDir, "workflow_settings.yaml"));
+  const hasDataformJson = fs.existsSync(path.join(projectDir, "dataform.json"));
 
   const encodedCoreExecutionRequest = encode64(dataform.CoreExecutionRequest, coreExecutionRequest);
   const vmIndexFileName = path.resolve(path.join(projectDir, "index.js"));
@@ -121,11 +121,11 @@ export function runMainInVm(
         configurable: true,
         get: function() { return __df_current(); }
       });
-      ${hasWorkflowSettingsYaml ? 'global.workflowSettingsYaml = require("./workflow_settings.yaml");' : ''}
-      ${hasDataformJson ? 'global.dataformJson = require("./dataform.json");' : ''}
+      ${hasWorkflowSettingsYaml ? 'global.workflowSettingsYaml = require("./workflow_settings.yaml");' : ""}
+      ${hasDataformJson ? 'global.dataformJson = require("./dataform.json");' : ""}
       return require("@dataform/core").main("${encodedCoreExecutionRequest}")
     `,
-    vmIndexFileName
+    vmIndexFileName,
   );
   return decode64(dataform.CoreExecutionResponse, encodedCoreExecutionResponse);
 }
@@ -133,8 +133,8 @@ export function runMainInVm(
 function walkDirectoryForFilenames(projectDir: string, relativePath: string = ""): string[] {
   let paths: string[] = [];
   fs.readdirSync(path.join(projectDir, relativePath), { withFileTypes: true })
-    .filter(directoryEntry => directoryEntry.name !== "node_modules")
-    .forEach(directoryEntry => {
+    .filter((directoryEntry) => directoryEntry.name !== "node_modules")
+    .forEach((directoryEntry) => {
       if (directoryEntry.isDirectory()) {
         paths = paths.concat(walkDirectoryForFilenames(projectDir, directoryEntry.name));
         return;
@@ -144,5 +144,5 @@ function walkDirectoryForFilenames(projectDir: string, relativePath: string = ""
         paths.push(directoryEntry.name);
       }
     });
-  return paths.map(filename => path.join(relativePath, filename));
+  return paths.map((filename) => path.join(relativePath, filename));
 }

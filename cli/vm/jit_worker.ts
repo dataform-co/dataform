@@ -4,7 +4,10 @@ import * as path from "path";
 import { VmRunner } from "df/common/vm/vm_runner";
 import { dataform } from "df/protos/ts";
 
-const pendingRpcCallbacks = new Map<string, (err: string | null, resBytes: Uint8Array | null) => void>();
+const pendingRpcCallbacks = new Map<
+  string,
+  (err: string | null, resBytes: Uint8Array | null) => void
+>();
 
 export function registerRpcResponseHandler() {
   process.on("message", (res: any) => {
@@ -25,7 +28,8 @@ export function registerJitCompileHandler() {
       if (hasStartedProcessing) {
         process.send({
           type: "jit_error",
-          error: "Worker process received multiple JiT compilation requests. Subsequent requests are rejected."
+          error:
+            "Worker process received multiple JiT compilation requests. Subsequent requests are rejected.",
         });
         return;
       }
@@ -35,26 +39,36 @@ export function registerJitCompileHandler() {
   });
 }
 
-export async function handleJitRequest(message: {
-  request: any;
-  projectDir: string;
-}) {
+export async function handleJitRequest(message: { request: any; projectDir: string }) {
   try {
     const { request, projectDir } = message;
 
-    const projectLocalCorePath = path.join(projectDir, "node_modules", "@dataform", "core", "bundle.js");
+    const projectLocalCorePath = path.join(
+      projectDir,
+      "node_modules",
+      "@dataform",
+      "core",
+      "bundle.js",
+    );
     const hasProjectLocalCore = fs.existsSync(projectLocalCorePath);
 
-    if (!hasProjectLocalCore && !fs.existsSync(path.join(projectDir, "node_modules", "@dataform", "core", "package.json"))) {
+    if (
+      !hasProjectLocalCore &&
+      !fs.existsSync(path.join(projectDir, "node_modules", "@dataform", "core", "package.json"))
+    ) {
       throw new Error(
         "Could not find a recent installed version of @dataform/core in the project. Check that " +
           "either `dataformCoreVersion` is specified in `workflow_settings.yaml`, or " +
           "`@dataform/core` is specified in `package.json`. If using `package.json`, then run " +
-          "`dataform install`."
+          "`dataform install`.",
       );
     }
 
-    const rpcCallback = (method: string, reqBytes: Uint8Array, callback: (err: string | null, resBytes: Uint8Array | null) => void) => {
+    const rpcCallback = (
+      method: string,
+      reqBytes: Uint8Array,
+      callback: (err: string | null, resBytes: Uint8Array | null) => void,
+    ) => {
       const correlationId = Math.random().toString(36).substring(7);
       pendingRpcCallbacks.set(correlationId, callback);
 
@@ -62,7 +76,7 @@ export async function handleJitRequest(message: {
         type: "rpc_request",
         method,
         request: reqBytes,
-        correlationId
+        correlationId,
       });
     };
 
@@ -74,13 +88,16 @@ export async function handleJitRequest(message: {
     const vm = new VmRunner({
       projectDir,
       builtinModules: [],
-      mockModules: hasProjectLocalCore ? {} : {
-        "@dataform/core": require("@dataform/core")
-      },
-      sourceExtensions: ["js", "json", "yaml", "yml"]
+      mockModules: hasProjectLocalCore
+        ? {}
+        : {
+            "@dataform/core": require("@dataform/core"),
+          },
+      sourceExtensions: ["js", "json", "yaml", "yml"],
     });
 
-    const jitCompileInVm = vm.run(`
+    const jitCompileInVm = vm.run(
+      `
       const { jitCompiler } = require("@dataform/core");
 
       global.require = require;
@@ -99,10 +116,14 @@ export async function handleJitRequest(message: {
         const compilerInstance = jitCompiler(internalRpcCallback);
         return await compilerInstance.compile(requestBytesTyped);
       };
-    `, vmFileName);
+    `,
+      vmFileName,
+    );
 
     const responseBytes = await jitCompileInVm(requestBytes, rpcCallback);
-    const response = dataform.JitCompilationResponse.decode(new Uint8Array(responseBytes as number[]));
+    const response = dataform.JitCompilationResponse.decode(
+      new Uint8Array(responseBytes as number[]),
+    );
 
     process.send({ type: "jit_response", response: response.toJSON() });
   } catch (e) {
