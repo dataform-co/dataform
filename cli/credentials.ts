@@ -14,6 +14,11 @@ export function getBigQueryCredentials(): dataform.IBigQuery {
   if (locationIndex === 2) {
     location = question("Enter the location's region name (e.g. 'asia-south1'):");
   }
+  const universeDomain = question(
+    "Enter the universe domain to connect to, or leave blank to use the default " +
+      "('googleapis.com'). Set this only when targeting a non-default universe such as a " +
+      "Trusted Partner Cloud (TPC):"
+  ).trim();
   const isApplicationDefaultOrJSONKeyIndex = selectionQuestion(
     "Do you wish to use Application Default Credentials or JSON Key:",
     ["ADC (default)", "JSON Key"],
@@ -23,6 +28,7 @@ export function getBigQueryCredentials(): dataform.IBigQuery {
     return {
       projectId,
       location,
+      ...(universeDomain ? { universeDomain } : {})
     };
   }
   const cloudCredentialsPath = actuallyResolve(
@@ -41,5 +47,6 @@ export function getBigQueryCredentials(): dataform.IBigQuery {
     projectId: cloudCredentials.project_id,
     credentials: fs.readFileSync(cloudCredentialsPath, "utf8"),
     location,
+    ...(universeDomain ? { universeDomain } : {})
   };
 }

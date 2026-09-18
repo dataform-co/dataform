@@ -40,7 +40,8 @@ export function createLineageClientProvider(
           credentials: credentials.credentials && JSON.parse(credentials.credentials),
           libName: DATAFORM_CLI_LIB_NAME,
           libVersion: version,
-        }),
+          ...(credentials.universeDomain ? { universeDomain: credentials.universeDomain } : {})
+        })
       );
     }
     return clients.get(cacheKey);
