@@ -1,8 +1,8 @@
 import * as fs from "fs-extra";
 import * as path from "path";
-import { CompilerFunction, NodeVM } from "vm2";
 
 import { decode64, encode64 } from "df/common/protos";
+import { VmRunner } from "df/common/vm/vm_runner";
 import { compile } from "df/core/compilers";
 import { dataform } from "df/protos/ts";
 
@@ -23,35 +23,35 @@ defaultLocation: US
 export class WorkflowSettingsTemplates {
   public static bigquery = dataform.WorkflowSettings.create({
     defaultDataset: "defaultDataset",
-    defaultLocation: "US"
+    defaultLocation: "US",
   });
 
   public static bigqueryWithDefaultProject = dataform.WorkflowSettings.create({
     ...WorkflowSettingsTemplates.bigquery,
-    defaultProject: "defaultProject"
+    defaultProject: "defaultProject",
   });
 
   public static bigqueryWithDatasetSuffix = dataform.WorkflowSettings.create({
     ...WorkflowSettingsTemplates.bigquery,
-    datasetSuffix: "suffix"
+    datasetSuffix: "suffix",
   });
 
   public static bigqueryWithDefaultProjectAndDataset = dataform.WorkflowSettings.create({
     ...WorkflowSettingsTemplates.bigqueryWithDefaultProject,
-    projectSuffix: "suffix"
+    projectSuffix: "suffix",
   });
 
   public static bigqueryWithNamePrefix = dataform.WorkflowSettings.create({
     ...WorkflowSettingsTemplates.bigquery,
-    namePrefix: "prefix"
+    namePrefix: "prefix",
   });
 }
 
-const SOURCE_EXTENSIONS = ["js", "sql", "sqlx", "yaml", "ipynb","md"];
+const SOURCE_EXTENSIONS = ["js", "sql", "sqlx", "yaml", "ipynb", "md"];
 
 export function coreExecutionRequestFromPath(
   projectDir: string,
-  projectConfigOverride?: dataform.ProjectConfig
+  projectConfigOverride?: dataform.ProjectConfig,
 ): dataform.CoreExecutionRequest {
   const resolvedProjectDir = fs.realpathSync(path.resolve(projectDir));
   return dataform.CoreExecutionRequest.create({
@@ -59,45 +59,41 @@ export function coreExecutionRequestFromPath(
       compileConfig: {
         projectDir: resolvedProjectDir,
         filePaths: walkDirectoryForFilenames(resolvedProjectDir),
-        projectConfigOverride
-      }
-    }
+        projectConfigOverride,
+      },
+    },
   });
 }
 
 // A VM is needed when running main because Node functions like `require` are overridden.
 export function runMainInVm(
-  coreExecutionRequest: dataform.CoreExecutionRequest
+  coreExecutionRequest: dataform.CoreExecutionRequest,
 ): dataform.CoreExecutionResponse {
   const projectDir = coreExecutionRequest.compile.compileConfig.projectDir;
 
   // Copy over the build Dataform Core that is set up as a node_modules directory.
   fs.copySync(`${process.cwd()}/core/node_modules`, `${projectDir}/node_modules`);
 
-  const compiler = compile as CompilerFunction;
+  const compiler = compile;
   // See cli/vm/compile.ts for why we use a host-side stack + enter/exit helpers
   // instead of writing to `global.__dataform_current_file` inside every module.
   const fileStack: string[] = [];
 
-  // Then use vm2's native compiler integration to apply the compiler to files.
-  const nodeVm = new NodeVM({
+  const vmRunner = new VmRunner({
+    projectDir,
     // Inheriting the console makes console.logs show when tests are running, which is useful for
     // debugging.
     console: "inherit",
-    wrapper: "none",
     sandbox: {
-      __df_enter: (p: string) => { fileStack.push(p); },
-      __df_exit: () => { fileStack.pop(); },
-      __df_current: () => fileStack.length > 0 ? fileStack[fileStack.length - 1] : null
+      __df_enter: (p: string) => {
+        fileStack.push(p);
+      },
+      __df_exit: () => {
+        fileStack.pop();
+      },
+      __df_current: () => (fileStack.length > 0 ? fileStack[fileStack.length - 1] : null),
     },
-    require: {
-      builtin: ["path"],
-      context: "sandbox",
-      external: true,
-      root: projectDir,
-      resolve: (moduleName, parentDirName) =>
-        path.join(parentDirName, path.relative(parentDirName, projectDir), moduleName)
-    },
+    builtinModules: ["path"],
     sourceExtensions: SOURCE_EXTENSIONS,
     compiler: (code, filePath) => {
       const compiledCode = compiler(code, filePath);
@@ -109,22 +105,25 @@ export function runMainInVm(
           __df_exit();
         }
       `;
-    }
+    },
   });
+
+  const hasWorkflowSettingsYaml = fs.existsSync(path.join(projectDir, "workflow_settings.yaml"));
+  const hasDataformJson = fs.existsSync(path.join(projectDir, "dataform.json"));
 
   const encodedCoreExecutionRequest = encode64(dataform.CoreExecutionRequest, coreExecutionRequest);
   const vmIndexFileName = path.resolve(path.join(projectDir, "index.js"));
-  const encodedCoreExecutionResponse = nodeVm.run(
+  const encodedCoreExecutionResponse = vmRunner.run(
     `
       Object.defineProperty(global, '__dataform_current_file', {
         configurable: true,
         get: function() { return __df_current(); }
       });
-      global.workflowSettingsYaml = (function() { try { return require("./workflow_settings.yaml"); } catch(e) { console.error("YAML require failed run_core:", e); } })();
-      global.dataformJson = (function() { try { return require("./dataform.json"); } catch(e) {} })();
+      ${hasWorkflowSettingsYaml ? 'global.workflowSettingsYaml = require("./workflow_settings.yaml");' : ""}
+      ${hasDataformJson ? 'global.dataformJson = require("./dataform.json");' : ""}
       return require("@dataform/core").main("${encodedCoreExecutionRequest}")
     `,
-    vmIndexFileName
+    vmIndexFileName,
   );
   return decode64(dataform.CoreExecutionResponse, encodedCoreExecutionResponse);
 }
@@ -132,8 +131,8 @@ export function runMainInVm(
 function walkDirectoryForFilenames(projectDir: string, relativePath: string = ""): string[] {
   let paths: string[] = [];
   fs.readdirSync(path.join(projectDir, relativePath), { withFileTypes: true })
-    .filter(directoryEntry => directoryEntry.name !== "node_modules")
-    .forEach(directoryEntry => {
+    .filter((directoryEntry) => directoryEntry.name !== "node_modules")
+    .forEach((directoryEntry) => {
       if (directoryEntry.isDirectory()) {
         paths = paths.concat(walkDirectoryForFilenames(projectDir, directoryEntry.name));
         return;
@@ -143,5 +142,5 @@ function walkDirectoryForFilenames(projectDir: string, relativePath: string = ""
         paths.push(directoryEntry.name);
       }
     });
-  return paths.map(filename => path.join(relativePath, filename));
+  return paths.map((filename) => path.join(relativePath, filename));
 }
