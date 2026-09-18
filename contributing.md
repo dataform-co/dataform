@@ -57,6 +57,7 @@ To run the CLI integration test against your own GCP project:
    - `projectId`: your GCP project id
    - `credentials`: the entire content of your GCP service account key JSON file as a single string (you can generate it with `jq -Rsa < path/to/key.json`).
    - `location`: location to use in your project
+   - `universeDomain` (optional): the universe domain to connect to (e.g. `googleapis.com`). Leave unset to use the default Google Default Universe (GDU). Set this only when targeting a non-default universe such as a Trusted Partner Cloud (TPC).
 
    Example:
 
