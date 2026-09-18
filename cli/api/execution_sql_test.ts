@@ -9,10 +9,10 @@ suite("ExecutionSql with 'onSchemaChange'", () => {
   const executionSql = new ExecutionSql(
     {
       defaultDatabase: "project-id",
-      defaultSchema: "dataset-id"
+      defaultSchema: "dataset-id",
     },
     "2.0.0",
-    () => "test_uuid"
+    () => "test_uuid",
   );
 
   const baseTable: dataform.ITable = {
@@ -21,10 +21,10 @@ suite("ExecutionSql with 'onSchemaChange'", () => {
     target: {
       database: "project-id",
       schema: "dataset-id",
-      name: "incremental_on_schema_change"
+      name: "incremental_on_schema_change",
     },
     query: "select 1 as id, 'a' as field1",
-    incrementalQuery: "select 1 as id, 'a' as field1, 'new' as field2"
+    incrementalQuery: "select 1 as id, 'a' as field1, 'new' as field2",
   };
 
   const tableMetadata: dataform.ITableMetadata = {
@@ -32,22 +32,25 @@ suite("ExecutionSql with 'onSchemaChange'", () => {
     fields: [
       {
         name: "id",
-        primitive: dataform.Field.Primitive.INTEGER
+        primitive: dataform.Field.Primitive.INTEGER,
       },
       {
         name: "field1",
-        primitive: dataform.Field.Primitive.STRING
-      }
-    ]
+        primitive: dataform.Field.Primitive.STRING,
+      },
+    ],
   };
 
   test("generates procedure for FAIL strategy", () => {
     const table = {
       ...baseTable,
-      onSchemaChange: dataform.OnSchemaChange.FAIL
+      onSchemaChange: dataform.OnSchemaChange.FAIL,
     };
     const tasks = executionSql.publishTasks(table, { fullRefresh: false }, tableMetadata);
-    const procedureSql = tasks.build().map(t => t.statement).join("\n;\n");
+    const procedureSql = tasks
+      .build()
+      .map((t) => t.statement)
+      .join("\n;\n");
     const expectedSql = fs.readFileSync("cli/api/goldens/on_schema_change_fail.sql", "utf8");
     expect(procedureSql).to.equal(expectedSql.trim());
   });
@@ -55,10 +58,13 @@ suite("ExecutionSql with 'onSchemaChange'", () => {
   test("generates procedure for EXTEND strategy", () => {
     const table = {
       ...baseTable,
-      onSchemaChange: dataform.OnSchemaChange.EXTEND
+      onSchemaChange: dataform.OnSchemaChange.EXTEND,
     };
     const tasks = executionSql.publishTasks(table, { fullRefresh: false }, tableMetadata);
-    const procedureSql = tasks.build().map(t => t.statement).join("\n;\n");
+    const procedureSql = tasks
+      .build()
+      .map((t) => t.statement)
+      .join("\n;\n");
     const expectedSql = fs.readFileSync("cli/api/goldens/on_schema_change_extend.sql", "utf8");
     expect(procedureSql).to.equal(expectedSql.trim());
   });
@@ -67,10 +73,13 @@ suite("ExecutionSql with 'onSchemaChange'", () => {
     const table = {
       ...baseTable,
       onSchemaChange: dataform.OnSchemaChange.SYNCHRONIZE,
-      uniqueKey: ["id"]
+      uniqueKey: ["id"],
     };
     const tasks = executionSql.publishTasks(table, { fullRefresh: false }, tableMetadata);
-    const procedureSql = tasks.build().map(t => t.statement).join("\n;\n");
+    const procedureSql = tasks
+      .build()
+      .map((t) => t.statement)
+      .join("\n;\n");
     const expectedSql = fs.readFileSync("cli/api/goldens/on_schema_change_synchronize.sql", "utf8");
     expect(procedureSql).to.equal(expectedSql.trim());
   });
@@ -79,10 +88,13 @@ suite("ExecutionSql with 'onSchemaChange'", () => {
     const table = {
       ...baseTable,
       onSchemaChange: dataform.OnSchemaChange.IGNORE,
-      uniqueKey: ["id"]
+      uniqueKey: ["id"],
     };
     const tasks = executionSql.publishTasks(table, { fullRefresh: false }, tableMetadata);
-    const procedureSql = tasks.build().map(t => t.statement).join("\n;\n");
+    const procedureSql = tasks
+      .build()
+      .map((t) => t.statement)
+      .join("\n;\n");
     const expectedSql = fs.readFileSync("cli/api/goldens/on_schema_change_ignore.sql", "utf8");
     expect(procedureSql).to.equal(expectedSql.trim());
   });
@@ -93,11 +105,17 @@ suite("ExecutionSql with 'onSchemaChange'", () => {
       incrementalStrategy: dataform.IncrementalStrategy.INSERT_OVERWRITE,
       bigquery: {
         partitionBy: "DATE(ts)",
-        incrementalPredicates: ["DATAFORM_DEST.ts >= '2024-01-01'", "DATAFORM_SOURCE.ts >= '2024-01-01'"]
-      }
+        incrementalPredicates: [
+          "DATAFORM_DEST.ts >= '2024-01-01'",
+          "DATAFORM_SOURCE.ts >= '2024-01-01'",
+        ],
+      },
     };
     const tasks = executionSql.publishTasks(table, { fullRefresh: false }, tableMetadata);
-    const sql = tasks.build().map(t => t.statement).join("\n;\n");
+    const sql = tasks
+      .build()
+      .map((t) => t.statement)
+      .join("\n;\n");
     const expectedSql = fs.readFileSync("cli/api/goldens/insert_overwrite_ignore.sql", "utf8");
     expect(sql).to.equal(expectedSql.trim());
   });
@@ -108,13 +126,57 @@ suite("ExecutionSql with 'onSchemaChange'", () => {
       incrementalStrategy: dataform.IncrementalStrategy.INSERT_OVERWRITE,
       onSchemaChange: dataform.OnSchemaChange.EXTEND,
       bigquery: {
-        partitionBy: "DATE(ts)"
-      }
+        partitionBy: "DATE(ts)",
+      },
     };
     const tasks = executionSql.publishTasks(table, { fullRefresh: false }, tableMetadata);
-    const sql = tasks.build().map(t => t.statement).join("\n;\n");
+    const sql = tasks
+      .build()
+      .map((t) => t.statement)
+      .join("\n;\n");
     const expectedSql = fs.readFileSync("cli/api/goldens/insert_overwrite_extend.sql", "utf8");
     expect(sql).to.equal(expectedSql.trim());
+  });
+
+  test("places all DECLARE statements before any executable statement in generated procedure body", () => {
+    for (const strategy of [
+      dataform.OnSchemaChange.FAIL,
+      dataform.OnSchemaChange.EXTEND,
+      dataform.OnSchemaChange.SYNCHRONIZE,
+    ]) {
+      const table = {
+        ...baseTable,
+        onSchemaChange: strategy,
+        uniqueKey: ["id"],
+      };
+      const tasks = executionSql.publishTasks(table, { fullRefresh: false }, tableMetadata);
+      const createProcedureSql = tasks.build()[0].statement;
+      expect(createProcedureSql).to.include("CREATE OR REPLACE PROCEDURE");
+
+      const procedureBody = createProcedureSql.split("BEGIN\n")[1].split("\nEND;")[0];
+      const statements = procedureBody
+        .split(";")
+        .map((s) =>
+          s
+            .split("\n")
+            .filter((line) => !line.trim().startsWith("--"))
+            .join("\n")
+            .trim(),
+        )
+        .filter((s) => s.length > 0);
+
+      let seenNonDeclare = false;
+      for (const stmt of statements) {
+        if (stmt.toUpperCase().startsWith("DECLARE ")) {
+          expect(
+            seenNonDeclare,
+            `DECLARE statement appeared after non-DECLARE statement in strategy ${dataform.OnSchemaChange[strategy]}: "${stmt}"`,
+          ).to.equal(false);
+        } else {
+          seenNonDeclare = true;
+        }
+      }
+    }
   });
 });
 
@@ -122,10 +184,10 @@ suite("ExecutionSql for property graphs", () => {
   const executionSql = new ExecutionSql(
     {
       defaultDatabase: "project-id",
-      defaultSchema: "dataset-id"
+      defaultSchema: "dataset-id",
     },
     "2.0.0",
-    () => "test_uuid"
+    () => "test_uuid",
   );
 
   test("emits CREATE OR REPLACE PROPERTY GRAPH for FinGraph", () => {
@@ -139,10 +201,10 @@ EDGE TABLES (
 )`;
     const propertyGraph: dataform.IPropertyGraph = {
       target: { database: "project-id", schema: "dataset-id", name: "FinGraph" },
-      graphBody
+      graphBody,
     };
     const tasks = executionSql.createPropertyGraphTasks(propertyGraph);
-    const sql = tasks.map(t => t.statement).join("\n;\n");
+    const sql = tasks.map((t) => t.statement).join("\n;\n");
     const expectedSql = fs.readFileSync("cli/api/goldens/property_graph_fingraph.sql", "utf8");
     expect(sql).to.equal(expectedSql.trim());
   });
@@ -157,10 +219,10 @@ EDGE TABLES (
 )`;
     const propertyGraph: dataform.IPropertyGraph = {
       target: { database: "project-id", schema: "dataset-id", name: "HRGraph" },
-      graphBody
+      graphBody,
     };
     const tasks = executionSql.createPropertyGraphTasks(propertyGraph);
-    const sql = tasks.map(t => t.statement).join("\n;\n");
+    const sql = tasks.map((t) => t.statement).join("\n;\n");
     const expectedSql = fs.readFileSync("cli/api/goldens/property_graph_hrgraph.sql", "utf8");
     expect(sql).to.equal(expectedSql.trim());
   });
