@@ -4,7 +4,7 @@ set -e
 bazel run @nodejs//:yarn -- --frozen-lockfile
 
 # Run eslint.
-bazel build @npm//eslint/bin:eslint && bazel-bin/external/npm/eslint/bin/eslint.sh --rulesdir eslint-rules '**/*.ts'
+bazel build @npm//eslint/bin:eslint && bazel-bin/external/npm/eslint/bin/eslint.sh '**/*.ts'
 
 # Run integration tests
 bazel test ... \
