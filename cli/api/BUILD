@@ -56,6 +56,7 @@ ts_test_suite(
     srcs = [
         "utils_test.ts",
         "commands/compile_copy_filter_test.ts",
+        "commands/credentials_test.ts",
         "commands/jit/rpc_test.ts",
         "commands/prune_test.ts",
         "dbadapters/bigquery_test.ts",

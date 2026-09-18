@@ -33,13 +33,23 @@ export function getBigQueryCredentials(
     // For "auto", location is left undefined so BigQuery picks it per query.
     location = undefined;
   }
+  const universeDomain = prompts
+    .question(
+      "Enter the universe domain to connect to, or leave blank to use the default " +
+        "('googleapis.com'). Set this only when targeting a non-default universe such as a " +
+        "Trusted Partner Cloud (TPC):",
+    )
+    .trim();
   const isApplicationDefaultOrJSONKeyIndex = prompts.selectionQuestion(
     "Do you wish to use Application Default Credentials or JSON Key:",
     ["ADC (default)", "JSON Key"],
   );
   if (isApplicationDefaultOrJSONKeyIndex === 0) {
     const projectId = prompts.question("Enter your billing project ID:");
-    return withServiceAccountToImpersonate({ projectId, location }, prompts);
+    return withServiceAccountToImpersonate(
+      { projectId, location, ...(universeDomain ? { universeDomain } : {}) },
+      prompts,
+    );
   }
   const cloudCredentialsPath = actuallyResolve(
     prompts.question(
@@ -58,6 +68,7 @@ export function getBigQueryCredentials(
       projectId: cloudCredentials.project_id,
       credentials: fs.readFileSync(cloudCredentialsPath, "utf8"),
       location,
+      ...(universeDomain ? { universeDomain } : {}),
     },
     prompts,
   );
