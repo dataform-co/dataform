@@ -1,6 +1,5 @@
 import * as fs from "fs";
 import * as path from "path";
-import * as rimraf from "rimraf";
 
 import { IHookHandler } from "df/testing";
 
@@ -19,7 +18,7 @@ export class TmpDirFixture {
   public createNewTmpDir() {
     // TEST_TMPDIR is set by bazel.
     const tmpDirPath = path.resolve(
-      path.join(process.env.TEST_TMPDIR, `tmp_dir_${TmpDirFixture.dirCounter++}`)
+      path.join(process.env.TEST_TMPDIR, `tmp_dir_${TmpDirFixture.dirCounter++}`),
     );
     fs.mkdirSync(tmpDirPath);
     this.tmpDirPaths.add(tmpDirPath);
@@ -28,7 +27,7 @@ export class TmpDirFixture {
 
   private rmTmpDirs() {
     for (const tmpPath of this.tmpDirPaths) {
-      rimraf.sync(tmpPath);
+      fs.rmSync(tmpPath, { recursive: true, force: true });
     }
   }
 }
