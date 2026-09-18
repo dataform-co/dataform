@@ -24,13 +24,11 @@ ts_library(
         "@npm//@types/js-yaml",
         "@npm//@types/json-stable-stringify",
         "@npm//@types/node",
-        "@npm//@types/rimraf",
         "@npm//chalk",
         "@npm//diff",
         "@npm//fs-extra",
         "@npm//js-yaml",
         "@npm//json-stable-stringify",
-        "@npm//rimraf",
     ],
 )
 

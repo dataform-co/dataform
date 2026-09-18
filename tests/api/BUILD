@@ -27,7 +27,6 @@ ts_test_suite(
         "@npm//@types/node",
         "@npm//chai",
         "@npm//fs-extra",
-        "@npm//rimraf",
         "@npm//ts-mockito",
     ],
 )
