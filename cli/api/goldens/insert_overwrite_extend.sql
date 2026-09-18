@@ -101,7 +101,6 @@ BEGIN
   CALL `project-id.dataset-id.df_osc_test_uuid`();
 EXCEPTION WHEN ERROR THEN
   DROP TABLE IF EXISTS `project-id.dataset-id.incremental_on_schema_change_df_temp_test_uuid_empty`;
-  DROP TABLE IF EXISTS `incremental_on_schema_change_df_temp_test_uuid_temp`;
   DROP PROCEDURE IF EXISTS `project-id.dataset-id.df_osc_test_uuid`;
   RAISE;
 END;
