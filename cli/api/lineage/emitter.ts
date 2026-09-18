@@ -42,7 +42,8 @@ export function createLineageClientProvider(
           apiEndpoint: endpoint,
           credentials: credentials.credentials && JSON.parse(credentials.credentials),
           libName: DATAFORM_CLI_LIB_NAME,
-          libVersion: version
+          libVersion: version,
+          ...(credentials.universeDomain ? { universeDomain: credentials.universeDomain } : {})
         })
       );
     }
