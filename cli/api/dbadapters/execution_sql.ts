@@ -252,7 +252,6 @@ END;`;
     const callProcedureSql = this.safeCallAndDropProcedure(
       procedureName,
       this.resolveTarget(emptyTempTableTarget),
-      tempTableName,
     );
     tasks.add(Task.statement(createProcedureSql));
     tasks.add(Task.statement(callProcedureSql));
@@ -265,17 +264,12 @@ END;`;
     });
   }
 
-  private safeCallAndDropProcedure(
-    procedureName: string,
-    emptyTempTableName: string,
-    tempTableName: string,
-  ): string {
+  private safeCallAndDropProcedure(procedureName: string, emptyTempTableName: string): string {
     return `
 BEGIN
   CALL ${procedureName}();
 EXCEPTION WHEN ERROR THEN
   DROP TABLE IF EXISTS ${emptyTempTableName};
-  DROP TABLE IF EXISTS \`${tempTableName}\`;
   DROP PROCEDURE IF EXISTS ${procedureName};
   RAISE;
 END;
