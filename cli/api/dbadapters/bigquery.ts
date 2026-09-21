@@ -53,7 +53,7 @@ export function createBigQueryClientProvider(
           scopes: EXTRA_GOOGLE_SCOPES,
           location: credentials.location,
           credentials: credentials.credentials && JSON.parse(credentials.credentials),
-          ...(credentials.universeDomain ? { universeDomain: credentials.universeDomain } : {})
+          universeDomain: credentials.universeDomain || undefined
         })
       );
     }
