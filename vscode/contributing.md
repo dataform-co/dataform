@@ -1,6 +1,6 @@
 There are two routes to publishing new versions:
 
-### Web (actually working):
+### Web (requires installing vsce to work):
 
 - In the main repo run `bazel run vscode:packager /tmp/dataform-package.vsix`
 - Take the generated package and upload it [here](https://marketplace.visualstudio.com/manage/publishers/dataform)
