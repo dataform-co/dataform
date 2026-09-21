@@ -44,8 +44,7 @@ nodejs_binary(
 nodejs_binary(
     name = "eslint",
     data = [
-        ".eslintrc.js",
-        ".eslintignore",
+        "eslint.config.js",
         "@npm//@typescript-eslint/parser",
         "@npm//eslint",
     ] + glob(["eslint-rules/**"]),
