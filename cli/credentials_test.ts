@@ -2,7 +2,11 @@ import { expect } from "chai";
 import * as fs from "fs";
 import * as path from "path";
 
-import { getBigQueryCredentials, ICredentialsPrompts } from "df/cli/credentials";
+import {
+  credentialsFromServiceAccountJson,
+  getBigQueryCredentials,
+  ICredentialsPrompts,
+} from "df/cli/credentials";
 import { suite, test } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
 
@@ -44,5 +48,40 @@ suite("getBigQueryCredentials", ({ afterEach }) => {
       location: "US",
       impersonateServiceAccount: "sa@key-project.iam.gserviceaccount.com",
     });
+  });
+});
+
+suite("credentialsFromServiceAccountJson", () => {
+  function keyJson(overrides: object = {}): string {
+    return JSON.stringify({
+      type: "service_account",
+      project_id: "my-project",
+      private_key: "fake-key",
+      ...overrides,
+    });
+  }
+
+  test("copies universe_domain from the key so BigQuery matches google-auth", () => {
+    const credentials = credentialsFromServiceAccountJson(
+      keyJson({ universe_domain: "my-universe.example.com" }),
+      "EU",
+    );
+
+    expect(credentials.projectId).to.equal("my-project");
+    expect(credentials.location).to.equal("EU");
+    expect(credentials.universeDomain).to.equal("my-universe.example.com");
+    expect(JSON.parse(credentials.credentials).universe_domain).to.equal("my-universe.example.com");
+  });
+
+  test("omits universeDomain when the key has no universe_domain", () => {
+    const credentials = credentialsFromServiceAccountJson(keyJson(), "US");
+
+    expect(credentials).to.not.have.property("universeDomain");
+  });
+
+  test("omits universeDomain when universe_domain is blank", () => {
+    const credentials = credentialsFromServiceAccountJson(keyJson({ universe_domain: "  " }), "US");
+
+    expect(credentials).to.not.have.property("universeDomain");
   });
 });
