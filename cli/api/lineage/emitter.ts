@@ -43,6 +43,8 @@ export function createLineageClientProvider(
           credentials: credentials.credentials && JSON.parse(credentials.credentials),
           libName: DATAFORM_CLI_LIB_NAME,
           libVersion: version,
+          // Omit empty universeDomain: gax uses ??, so "" would skip the default. (BigQuery
+          // falsy-checks options.universeDomain, so this guard is not needed there.)
           ...(credentials.universeDomain ? { universeDomain: credentials.universeDomain } : {})
         })
       );
