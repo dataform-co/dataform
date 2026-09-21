@@ -22,7 +22,7 @@ export function getBigQueryCredentials(): dataform.IBigQuery {
     const projectId = question("Enter your billing project ID:");
     return {
       projectId,
-      location
+      location,
     };
   }
   const cloudCredentialsPath = actuallyResolve(
@@ -36,10 +36,23 @@ export function getBigQueryCredentials(): dataform.IBigQuery {
   if (!fs.existsSync(cloudCredentialsPath)) {
     throw new Error(`Google Cloud private key file "${cloudCredentialsPath}" does not exist!`);
   }
-  const cloudCredentials = JSON.parse(fs.readFileSync(cloudCredentialsPath, "utf8"));
+  return credentialsFromServiceAccountJson(fs.readFileSync(cloudCredentialsPath, "utf8"), location);
+}
+
+// Copy universe_domain from the key so BigQuery and google-auth target the same universe.
+export function credentialsFromServiceAccountJson(
+  keyJson: string,
+  location: string,
+): dataform.IBigQuery {
+  const cloudCredentials = JSON.parse(keyJson);
+  const universeDomain =
+    typeof cloudCredentials.universe_domain === "string"
+      ? cloudCredentials.universe_domain.trim()
+      : "";
   return {
     projectId: cloudCredentials.project_id,
-    credentials: fs.readFileSync(cloudCredentialsPath, "utf8"),
-    location
+    credentials: keyJson,
+    location,
+    ...(universeDomain ? { universeDomain } : {}),
   };
 }
