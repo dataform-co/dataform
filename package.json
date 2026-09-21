@@ -81,7 +81,7 @@
   "resolutions": {
     "**/object-path": "^0.11.5",
     "**/http-proxy": "^1.18.1",
-    "**/serialize-javascript": "^3.1.0",
+    "**/serialize-javascript": "^7.1.1",
     "**/ssri": "^7.1.1",
     "**/glob-parent": "^5.1.2",
     "**/node-forge": "^1.0.0",
