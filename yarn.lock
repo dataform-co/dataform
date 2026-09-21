@@ -3933,12 +3933,11 @@ semver@^7.3.7:
   resolved "https://registry.yarnpkg.com/semver/-/semver-7.8.5.tgz#39b646037dd50c14fb451e7e4cac58ed8b863f69"
   integrity sha512-Y7/KDsb8LjooZpwaqGyulO6DQlksgCncchHGk+sZIY4SBvUocMBEFH5Ur1fI4dV+Jvl0w6cjvucaIi40puRioA==
 
-serialize-javascript@^3.1.0, serialize-javascript@^6.0.2:
-  version "3.1.0"
-  resolved "https://registry.yarnpkg.com/serialize-javascript/-/serialize-javascript-3.1.0.tgz#8bf3a9170712664ef2561b44b691eafe399214ea"
-  integrity "sha1-i/OpFwcSZk7yVhtEtpHq/jmSFOo= sha512-JIJT1DGiWmIKhzRsG91aS6Ze4sFUrYbltlkg2onR5OrnNM02Kl/hnY/T4FN2omvyeBbQmMJv+K4cPOpGzOTFBg=="
-  dependencies:
-    randombytes "^2.1.0"
+serialize-javascript@^6.0.2, serialize-javascript@^7.1.1:
+  version "7.1.1"
+  resolved "https://registry.yarnpkg.com/serialize-javascript/-/serialize-javascript-7.1.1.tgz#c3b0a7ac13df6cf2fcda71cbb142ba9392a710b9"
+  integrity sha512-k3CMsaIvvdSwm8oLB4MXSl0wH2/cwlH7xGcnRd2DaeRmBkbzYmyT8j0tsX60DwD1eRwHTpNpH8ljKu9oUT1MeQ==
+
 
 set-value@^2.0.0, set-value@^2.0.1:
   version "2.0.1"
