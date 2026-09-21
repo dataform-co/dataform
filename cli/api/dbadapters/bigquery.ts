@@ -120,7 +120,7 @@ export function getBigQueryClientOptions(
     // Unset proto string fields read as "", which BigQuery rejects as a job location. Pass
     // undefined instead so that BigQuery auto-selects the location.
     location: credentials.location || undefined,
-    ...(credentials.universeDomain ? { universeDomain: credentials.universeDomain } : {}),
+    universeDomain: credentials.universeDomain || undefined,
     ...(authClient
       ? { authClient }
       : { credentials: credentials.credentials && JSON.parse(credentials.credentials) }),
