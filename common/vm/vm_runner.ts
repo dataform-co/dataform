@@ -1,3 +1,14 @@
+/**
+ * @fileoverview VmRunner executes JavaScript code within a Node.js `node:vm` context.
+ *
+ * IMPORTANT SECURITY NOTE:
+ * This class is NOT a security boundary or a sandbox against untrusted code.
+ * As documented by Node.js, `node:vm` contexts can be escaped and do not isolate
+ * against malicious code execution. VmRunner is intended solely for module isolation,
+ * custom module resolution, and scoping execution environments (e.g. Dataform CLI
+ * compilation and testing) where the code being executed is trusted.
+ */
+
 import * as fs from "fs";
 import { builtinModules as nodeBuiltins, createRequire } from "module";
 import * as path from "path";
@@ -17,11 +28,13 @@ export interface VmRunnerOptions {
   env?: Record<string, string>;
   envAllowlist?: string[];
   allowedExternalPaths?: string[];
+  allowedModules?: string[];
 }
 
 export class VmRunner {
   private readonly projectDir: string;
   private readonly allowedExternalPaths: string[];
+  private readonly allowedModules?: string[];
   private readonly sourceExtensions: Set<string>;
   private readonly allExtensions: string[];
   private readonly compiler?: CompilerFunction;
@@ -38,20 +51,27 @@ export class VmRunner {
 
   constructor(options: VmRunnerOptions) {
     this.projectDir = this.getRealPath(options.projectDir);
-    this.allowedExternalPaths = (options.allowedExternalPaths || []).map(p => this.getRealPath(p));
+    this.allowedExternalPaths = (options.allowedExternalPaths || []).map((p) =>
+      this.getRealPath(p),
+    );
+    this.allowedModules = options.allowedModules;
     const rawExtensions = options.sourceExtensions || ["js", "json"];
     this.sourceExtensions = new Set(
-      rawExtensions.map(ext => (ext.startsWith(".") ? ext.slice(1).toLowerCase() : ext.toLowerCase()))
+      rawExtensions.map((ext) =>
+        ext.startsWith(".") ? ext.slice(1).toLowerCase() : ext.toLowerCase(),
+      ),
     );
     this.allExtensions = Array.from(
       new Set([
         ".js",
         ".json",
-        ...rawExtensions.map(ext => (ext.startsWith(".") ? ext : `.${ext}`))
-      ])
+        ...rawExtensions.map((ext) => (ext.startsWith(".") ? ext : `.${ext}`)),
+      ]),
     );
     this.compiler = options.compiler;
-    this.builtinModules = new Set(options.builtinModules !== undefined ? options.builtinModules : ["path"]);
+    this.builtinModules = new Set(
+      options.builtinModules !== undefined ? options.builtinModules : ["path"],
+    );
     this.mockModules = options.mockModules || {};
     this.customResolve = options.resolve;
     this.nodeBuiltinSet = new Set(nodeBuiltins);
@@ -67,7 +87,8 @@ export class VmRunner {
         }
       }
     } else {
-      env = { ...process.env };
+      // Default to empty environment to avoid leaking host secrets (credentials, API keys).
+      env = {};
     }
 
     const sandbox: Record<string, any> = {
@@ -81,7 +102,7 @@ export class VmRunner {
         version: process.version,
         versions: process.versions,
         platform: process.platform,
-        arch: process.arch
+        arch: process.arch,
       },
       Buffer,
       Uint8Array,
@@ -96,7 +117,7 @@ export class VmRunner {
       URLSearchParams,
       TextEncoder,
       TextDecoder,
-      ...(options.sandbox || {})
+      ...(options.sandbox || {}),
     };
 
     this.context = vm.createContext(sandbox);
@@ -105,62 +126,12 @@ export class VmRunner {
   }
 
   public run(code: string, filename: string = path.join(this.projectDir, "index.js")): any {
-    let source = code;
-    const ext = path.extname(filename).toLowerCase().replace(/^\./, "");
-    if (ext === "json") {
-      const module = {
-        exports: JSON.parse(source),
-        id: filename,
-        filename,
-        loaded: true
-      };
-      this.moduleCache.set(filename, module);
-      return module.exports;
-    }
-
-    if (this.compiler && this.sourceExtensions.has(ext)) {
-      source = this.compiler(source, filename);
-    }
-
-    const fn = vm.compileFunction(
-      source,
-      ["exports", "require", "module", "__filename", "__dirname"],
-      {
-        filename,
-        parsingContext: this.context
-      }
-    );
-
-    const module = {
-      exports: {},
-      id: filename,
-      filename,
-      loaded: false
-    };
-    this.moduleCache.set(filename, module);
-
-    try {
-      const scopedRequire = this.createRequire(filename);
-      const result = fn.call(
-        module.exports,
-        module.exports,
-        scopedRequire,
-        module,
-        filename,
-        path.dirname(filename)
-      );
-      module.loaded = true;
-
-      return result !== undefined ? result : module.exports;
-    } catch (e) {
-      this.moduleCache.delete(filename);
-      throw e;
-    }
+    return this.executeModule(code, filename, true);
   }
 
   public require(
     moduleName: string,
-    fromPath: string = path.join(this.projectDir, "index.js")
+    fromPath: string = path.join(this.projectDir, "index.js"),
   ): any {
     if (Object.prototype.hasOwnProperty.call(this.mockModules, moduleName)) {
       return this.mockModules[moduleName];
@@ -171,9 +142,7 @@ export class VmRunner {
       if (this.builtinModules.has(cleanBuiltinName) || this.builtinModules.has(moduleName)) {
         return require(moduleName);
       }
-      const err: any = new Error(
-        `Access to built-in module '${moduleName}' is not allowed`
-      );
+      const err: any = new Error(`Access to built-in module '${moduleName}' is not allowed`);
       err.code = "MODULE_NOT_FOUND";
       throw err;
     }
@@ -183,53 +152,8 @@ export class VmRunner {
       return this.moduleCache.get(resolvedPath)!.exports;
     }
 
-    const module = {
-      exports: {},
-      id: resolvedPath,
-      filename: resolvedPath,
-      loaded: false
-    };
-    this.moduleCache.set(resolvedPath, module);
-
-    try {
-      const ext = path.extname(resolvedPath).toLowerCase().replace(/^\./, "");
-      if (ext === "json") {
-        const content = fs.readFileSync(resolvedPath, "utf8");
-        module.exports = JSON.parse(content);
-        module.loaded = true;
-        return module.exports;
-      }
-
-      let source = fs.readFileSync(resolvedPath, "utf8");
-      if (this.compiler && this.sourceExtensions.has(ext)) {
-        source = this.compiler(source, resolvedPath);
-      }
-
-      const fn = vm.compileFunction(
-        source,
-        ["exports", "require", "module", "__filename", "__dirname"],
-        {
-          filename: resolvedPath,
-          parsingContext: this.context
-        }
-      );
-
-      const scopedRequire = this.createRequire(resolvedPath);
-      fn.call(
-        module.exports,
-        module.exports,
-        scopedRequire,
-        module,
-        resolvedPath,
-        path.dirname(resolvedPath)
-      );
-      module.loaded = true;
-
-      return module.exports;
-    } catch (e) {
-      this.moduleCache.delete(resolvedPath);
-      throw e;
-    }
+    const source = fs.readFileSync(resolvedPath, "utf8");
+    return this.executeModule(source, resolvedPath, false);
   }
 
   public resolve(moduleName: string, fromPath: string): string {
@@ -242,115 +166,78 @@ export class VmRunner {
 
     // Check custom resolve function if provided
     if (this.customResolve) {
+      let candidate: string | undefined;
       try {
-        const candidate = this.customResolve(moduleName, parentDir);
+        candidate = this.customResolve(moduleName, parentDir);
+      } catch (e) {
+        if (e && (e as any).code !== "MODULE_NOT_FOUND") {
+          throw e;
+        }
+      }
+      if (candidate) {
         const resolved = this.tryResolvePath(candidate);
         if (resolved) {
-          if (!this.isPathContained(resolved)) {
-            const err: any = new Error(
-              `Cannot require '${moduleName}' outside of project directory '${this.projectDir}'`,
-            );
-            err.code = "MODULE_NOT_FOUND";
-            throw err;
-          }
-          this.resolveCache.set(cacheKey, resolved);
-          return resolved;
-        }
-      } catch (e) {
-        if (e && e.code === "MODULE_NOT_FOUND") {
-          throw e;
+          return this.checkContainmentAndCache(moduleName, resolved, cacheKey);
         }
       }
     }
 
     // Relative or absolute path
-    if (moduleName.startsWith("./") || moduleName.startsWith("../") || path.isAbsolute(moduleName)) {
+    if (
+      moduleName.startsWith("./") ||
+      moduleName.startsWith("../") ||
+      path.isAbsolute(moduleName)
+    ) {
       const candidate = path.resolve(parentDir, moduleName);
       const resolved = this.tryResolvePath(candidate);
       if (resolved) {
-        if (!this.isPathContained(resolved)) {
-          const err: any = new Error(
-            `Cannot require '${moduleName}' outside of project directory '${this.projectDir}'`
-          );
-          err.code = "MODULE_NOT_FOUND";
-          throw err;
-        }
-        this.resolveCache.set(cacheKey, resolved);
-        return resolved;
+        return this.checkContainmentAndCache(moduleName, resolved, cacheKey);
       }
     } else {
       // Project-relative path (e.g. require("includes/helpers"))
       const projectRelative = path.resolve(this.projectDir, moduleName);
       const resolvedProjectRelative = this.tryResolvePath(projectRelative);
       if (resolvedProjectRelative) {
-        if (!this.isPathContained(resolvedProjectRelative)) {
-          const err: any = new Error(
-            `Cannot require '${moduleName}' outside of project directory '${this.projectDir}'`
-          );
-          err.code = "MODULE_NOT_FOUND";
-          throw err;
-        }
-        this.resolveCache.set(cacheKey, resolvedProjectRelative);
-        return resolvedProjectRelative;
+        return this.checkContainmentAndCache(moduleName, resolvedProjectRelative, cacheKey);
+      }
+
+      // External module check: if allowedModules is specified, package must be allowed
+      if (!this.isModuleAllowed(moduleName)) {
+        const err: any = new Error(`Access to module '${moduleName}' is not allowed`);
+        err.code = "MODULE_NOT_FOUND";
+        throw err;
       }
 
       // Check project node_modules directory directly (e.g. @dataform/core)
       const nodeModulesCandidate = path.resolve(this.projectDir, "node_modules", moduleName);
       const resolvedNodeModules = this.tryResolvePath(nodeModulesCandidate);
       if (resolvedNodeModules) {
-        this.resolveCache.set(cacheKey, resolvedNodeModules);
-        return resolvedNodeModules;
+        return this.checkContainmentAndCache(moduleName, resolvedNodeModules, cacheKey);
       }
 
       // Fallback to standard Node.js require.resolve resolution
+      let nodeReqResolved: string | undefined;
       let nodeReqError: any;
       try {
         const nodeReq = createRequire(fromPath);
-        const resolved = nodeReq.resolve(moduleName);
-        if (!this.isPathContained(resolved)) {
-          const err: any = new Error(
-            `Cannot require '${moduleName}' outside of project directory '${this.projectDir}'`,
-          );
-          err.code = "MODULE_NOT_FOUND";
-          throw err;
-        }
-        this.resolveCache.set(cacheKey, resolved);
-        return resolved;
+        nodeReqResolved = nodeReq.resolve(moduleName);
       } catch (e) {
-        if (
-          e &&
-          e.code === "MODULE_NOT_FOUND" &&
-          e.message &&
-          e.message.includes("outside of project directory")
-        ) {
-          throw e;
-        }
         nodeReqError = e;
       }
+      if (nodeReqResolved) {
+        return this.checkContainmentAndCache(moduleName, nodeReqResolved, cacheKey);
+      }
 
+      let projectReqResolved: string | undefined;
       let projectReqError: any;
       try {
         const projectReq = createRequire(path.join(this.projectDir, "index.js"));
-        const resolved = projectReq.resolve(moduleName);
-        if (!this.isPathContained(resolved)) {
-          const err: any = new Error(
-            `Cannot require '${moduleName}' outside of project directory '${this.projectDir}'`,
-          );
-          err.code = "MODULE_NOT_FOUND";
-          throw err;
-        }
-        this.resolveCache.set(cacheKey, resolved);
-        return resolved;
+        projectReqResolved = projectReq.resolve(moduleName);
       } catch (e) {
-        if (
-          e &&
-          e.code === "MODULE_NOT_FOUND" &&
-          e.message &&
-          e.message.includes("outside of project directory")
-        ) {
-          throw e;
-        }
         projectReqError = e;
+      }
+      if (projectReqResolved) {
+        return this.checkContainmentAndCache(moduleName, projectReqResolved, cacheKey);
       }
 
       const err: any = new Error(`Cannot find module '${moduleName}' from '${fromPath}'`);
@@ -364,6 +251,89 @@ export class VmRunner {
     const err: any = new Error(`Cannot find module '${moduleName}' from '${fromPath}'`);
     err.code = "MODULE_NOT_FOUND";
     throw err;
+  }
+
+  private isModuleAllowed(moduleName: string): boolean {
+    if (!this.allowedModules) {
+      return true;
+    }
+    return this.allowedModules.some((pattern) => {
+      if (pattern.endsWith("/*")) {
+        const prefix = pattern.slice(0, -1);
+        return moduleName.startsWith(prefix);
+      }
+      return moduleName === pattern;
+    });
+  }
+
+  private checkContainmentAndCache(
+    moduleName: string,
+    resolvedPath: string,
+    cacheKey: string,
+  ): string {
+    if (!this.isPathContained(resolvedPath)) {
+      const err: any = new Error(
+        `Cannot require '${moduleName}' outside of project directory '${this.projectDir}'`,
+      );
+      err.code = "MODULE_NOT_FOUND";
+      throw err;
+    }
+    this.resolveCache.set(cacheKey, resolvedPath);
+    return resolvedPath;
+  }
+
+  private executeModule(source: string, filename: string, isRunEntryPoint: boolean = false): any {
+    const ext = path.extname(filename).toLowerCase().replace(/^\./, "");
+    if (ext === "json") {
+      const module = {
+        exports: JSON.parse(source),
+        id: filename,
+        filename,
+        loaded: true,
+      };
+      this.moduleCache.set(filename, module);
+      return module.exports;
+    }
+
+    let code = source;
+    if (this.compiler && this.sourceExtensions.has(ext)) {
+      code = this.compiler(code, filename);
+    }
+
+    const fn = vm.compileFunction(
+      code,
+      ["exports", "require", "module", "__filename", "__dirname"],
+      {
+        filename,
+        parsingContext: this.context,
+      },
+    );
+
+    const module = {
+      exports: {},
+      id: filename,
+      filename,
+      loaded: false,
+    };
+    this.moduleCache.set(filename, module);
+
+    try {
+      const scopedRequire = this.createRequire(filename);
+      const result = fn.call(
+        module.exports,
+        module.exports,
+        scopedRequire,
+        module,
+        filename,
+        path.dirname(filename),
+      );
+      module.loaded = true;
+
+      return isRunEntryPoint && result !== undefined ? result : module.exports;
+    } catch (e) {
+      this.moduleCache.delete(filename);
+      throw e;
+    }
   }
 
   private getRealPath(targetPath: string): string {
@@ -384,7 +354,7 @@ export class VmRunner {
     if (isContainedIn(this.projectDir)) {
       return true;
     }
-    return this.allowedExternalPaths.some(allowed => isContainedIn(allowed));
+    return this.allowedExternalPaths.some((allowed) => isContainedIn(allowed));
   }
 
   private getStat(targetPath: string): fs.Stats | null {
@@ -395,23 +365,33 @@ export class VmRunner {
     }
   }
 
-  private tryResolvePath(candidatePath: string): string | null {
+  private tryResolvePath(
+    candidatePath: string,
+    visitedDirs: Set<string> = new Set<string>(),
+  ): string | null {
     const stat = this.getStat(candidatePath);
     if (stat) {
       if (stat.isFile()) {
         return candidatePath;
       }
       if (stat.isDirectory()) {
+        if (visitedDirs.has(candidatePath)) {
+          return null;
+        }
+        visitedDirs.add(candidatePath);
+
         const pkgPath = path.join(candidatePath, "package.json");
         const pkgStat = this.getStat(pkgPath);
         if (pkgStat && pkgStat.isFile()) {
           try {
             const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
-            if (pkg.main) {
+            if (pkg.main && typeof pkg.main === "string") {
               const mainPath = path.resolve(candidatePath, pkg.main);
-              const resolvedMain = this.tryResolvePath(mainPath);
-              if (resolvedMain) {
-                return resolvedMain;
+              if (mainPath !== candidatePath) {
+                const resolvedMain = this.tryResolvePath(mainPath, visitedDirs);
+                if (resolvedMain) {
+                  return resolvedMain;
+                }
               }
             }
           } catch {}

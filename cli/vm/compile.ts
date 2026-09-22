@@ -71,19 +71,21 @@ export function compile(compileConfig: dataform.ICompileConfig) {
   // executing file via a host-side stack exposed through sandbox helpers, and
   // expose it as a getter on `global.__dataform_current_file`.
   const fileStack: string[] = [];
+  const sandbox: Record<string, any> = {};
+  if (needsCallerFileShim) {
+    sandbox.__df_enter = (p: string) => {
+      fileStack.push(p);
+    };
+    sandbox.__df_exit = () => {
+      fileStack.pop();
+    };
+    sandbox.__df_current = () => (fileStack.length > 0 ? fileStack[fileStack.length - 1] : null);
+  }
 
   // Then use VmRunner to apply the compiler to files.
   const userCodeVm = new VmRunner({
     projectDir: compileConfig.projectDir,
-    sandbox: {
-      __df_enter: (p: string) => {
-        fileStack.push(p);
-      },
-      __df_exit: () => {
-        fileStack.pop();
-      },
-      __df_current: () => (fileStack.length > 0 ? fileStack[fileStack.length - 1] : null),
-    },
+    sandbox,
     builtinModules: ["path"],
     sourceExtensions: ["js", "sql", "sqlx", "yaml", "yml", "ipynb", "md"],
     compiler: (code, filePath) => {
@@ -92,6 +94,9 @@ export function compile(compileConfig: dataform.ICompileConfig) {
         source = patchOldCoreCallerFile(source);
       }
       const compiledCode = compiler(source, filePath);
+      if (!needsCallerFileShim) {
+        return compiledCode;
+      }
       return `
         __df_enter(${JSON.stringify(filePath)});
         try {
@@ -110,10 +115,14 @@ export function compile(compileConfig: dataform.ICompileConfig) {
 
   return userCodeVm.run(
     `
-      Object.defineProperty(global, '__dataform_current_file', {
+      ${
+        needsCallerFileShim
+          ? `Object.defineProperty(global, '__dataform_current_file', {
         configurable: true,
         get: function() { return __df_current(); }
-      });
+      });`
+          : ""
+      }
       ${
         hasWorkflowSettingsYaml
           ? 'global.workflowSettingsYaml = require("./workflow_settings.yaml");'
