@@ -27,7 +27,7 @@ suite("VmRunner", ({ afterEach }) => {
     const runner = new VmRunner({ projectDir: tmpDir });
     const result = runner.run(
       JSON.stringify({ name: "dataform-test", active: true }),
-      path.join(tmpDir, "config.json")
+      path.join(tmpDir, "config.json"),
     );
     expect(result).to.deep.equal({ name: "dataform-test", active: true });
   });
@@ -38,7 +38,7 @@ suite("VmRunner", ({ afterEach }) => {
     fs.mkdirSync(path.join(tmpDir, "sub"));
     fs.writeFileSync(
       path.join(tmpDir, "sub", "helper.js"),
-      "module.exports = { greet: (x) => `Hello ${x}` };"
+      "module.exports = { greet: (x) => `Hello ${x}` };",
     );
 
     const runner = new VmRunner({ projectDir: tmpDir });
@@ -55,7 +55,7 @@ suite("VmRunner", ({ afterEach }) => {
     fs.mkdirSync(path.join(tmpDir, "includes"));
     fs.writeFileSync(
       path.join(tmpDir, "includes", "math.js"),
-      "module.exports = { add: (a, b) => a + b };"
+      "module.exports = { add: (a, b) => a + b };",
     );
 
     const runner = new VmRunner({ projectDir: tmpDir });
@@ -68,10 +68,7 @@ suite("VmRunner", ({ afterEach }) => {
 
   test("applies compiler hook to custom sourceExtensions", () => {
     const tmpDir = tmpDirFixture.createNewTmpDir();
-    fs.writeFileSync(
-      path.join(tmpDir, "model.sqlx"),
-      "SELECT 1 AS id"
-    );
+    fs.writeFileSync(path.join(tmpDir, "model.sqlx"), "SELECT 1 AS id");
 
     const runner = new VmRunner({
       projectDir: tmpDir,
@@ -81,7 +78,7 @@ suite("VmRunner", ({ afterEach }) => {
           return `module.exports = { query: ${JSON.stringify(code.trim())}, file: ${JSON.stringify(filePath)} };`;
         }
         return code;
-      }
+      },
     });
 
     const result = runner.run(`
@@ -100,7 +97,7 @@ suite("VmRunner", ({ afterEach }) => {
         exports.name = "moduleA";
         const b = require("./b");
         exports.getBName = () => b.name;
-      `
+      `,
     );
     fs.writeFileSync(
       path.join(tmpDir, "b.js"),
@@ -108,7 +105,7 @@ suite("VmRunner", ({ afterEach }) => {
         exports.name = "moduleB";
         const a = require("./a");
         exports.getAName = () => a.name;
-      `
+      `,
     );
 
     const runner = new VmRunner({ projectDir: tmpDir });
@@ -125,7 +122,7 @@ suite("VmRunner", ({ afterEach }) => {
     const tmpDir = tmpDirFixture.createNewTmpDir();
     const runner = new VmRunner({
       projectDir: tmpDir,
-      builtinModules: ["path"]
+      builtinModules: ["path"],
     });
 
     const pathResult = runner.run(`
@@ -143,14 +140,14 @@ suite("VmRunner", ({ afterEach }) => {
     const tmpDir = tmpDirFixture.createNewTmpDir();
     const mockCore = {
       version: "9.9.9",
-      compiler: () => "compiled"
+      compiler: () => "compiled",
     };
 
     const runner = new VmRunner({
       projectDir: tmpDir,
       mockModules: {
-        "@dataform/core": mockCore
-      }
+        "@dataform/core": mockCore,
+      },
     });
 
     const result = runner.run(`
@@ -173,8 +170,8 @@ suite("VmRunner", ({ afterEach }) => {
     const runner = new VmRunner({
       projectDir: tmpDir,
       sandbox: {
-        injectedValue: 123
-      }
+        injectedValue: 123,
+      },
     });
 
     const result = runner.run(`
@@ -210,12 +207,12 @@ suite("VmRunner", ({ afterEach }) => {
     // Relative path traversal
     const relativePath = path.relative(tmpDir, secretFile);
     expect(() => runner.run(`require(${JSON.stringify(relativePath)});`)).to.throw(
-      /outside of project directory/
+      /outside of project directory/,
     );
 
     // Absolute path traversal
     expect(() => runner.run(`require(${JSON.stringify(secretFile)});`)).to.throw(
-      /outside of project directory/
+      /outside of project directory/,
     );
   });
 
@@ -260,7 +257,7 @@ suite("VmRunner", ({ afterEach }) => {
 
     const runner = new VmRunner({
       projectDir: tmpDir,
-      allowedExternalPaths: [sharedDir]
+      allowedExternalPaths: [sharedDir],
     });
 
     const result = runner.run(`
@@ -270,16 +267,23 @@ suite("VmRunner", ({ afterEach }) => {
     expect(result).to.equal("data");
   });
 
-  test("supports custom env and envAllowlist", () => {
+  test("supports custom env and envAllowlist, and defaults to empty env", () => {
     const tmpDir = tmpDirFixture.createNewTmpDir();
     process.env.TEST_HOST_SECRET = "secret_123";
     process.env.TEST_PUBLIC_VAR = "public_abc";
 
     try {
+      // Default: empty environment to prevent leaking host secrets
+      const defaultRunner = new VmRunner({ projectDir: tmpDir });
+      const defaultEnv = defaultRunner.run("return process.env;");
+      expect(defaultEnv.TEST_HOST_SECRET).to.equal(undefined);
+      expect(defaultEnv.TEST_PUBLIC_VAR).to.equal(undefined);
+      expect(Object.keys(defaultEnv)).to.deep.equal([]);
+
       // With envAllowlist
       const allowlistRunner = new VmRunner({
         projectDir: tmpDir,
-        envAllowlist: ["TEST_PUBLIC_VAR"]
+        envAllowlist: ["TEST_PUBLIC_VAR"],
       });
       const allowlistEnv = allowlistRunner.run("return process.env;");
       expect(allowlistEnv.TEST_PUBLIC_VAR).to.equal("public_abc");
@@ -288,7 +292,7 @@ suite("VmRunner", ({ afterEach }) => {
       // With custom env record
       const customRunner = new VmRunner({
         projectDir: tmpDir,
-        env: { CUSTOM_KEY: "custom_value" }
+        env: { CUSTOM_KEY: "custom_value" },
       });
       const customEnv = customRunner.run("return process.env;");
       expect(customEnv.CUSTOM_KEY).to.equal("custom_value");
@@ -303,12 +307,9 @@ suite("VmRunner", ({ afterEach }) => {
     const tmpDir = tmpDirFixture.createNewTmpDir();
     fs.writeFileSync(
       path.join(tmpDir, "notebook.ipynb"),
-      JSON.stringify({ cells: [{ cell_type: "code", source: ["print('hello')"] }] })
+      JSON.stringify({ cells: [{ cell_type: "code", source: ["print('hello')"] }] }),
     );
-    fs.writeFileSync(
-      path.join(tmpDir, "doc.md"),
-      "# Hello Documentation"
-    );
+    fs.writeFileSync(path.join(tmpDir, "doc.md"), "# Hello Documentation");
 
     const runner = new VmRunner({
       projectDir: tmpDir,
@@ -321,7 +322,7 @@ suite("VmRunner", ({ afterEach }) => {
           return `module.exports = { asMarkdown: ${JSON.stringify(code)} };`;
         }
         return code;
-      }
+      },
     });
 
     const result = runner.run(`
@@ -344,7 +345,7 @@ suite("VmRunner", ({ afterEach }) => {
     const runner = new VmRunner({
       projectDir: tmpDir,
       sourceExtensions: ["sqlx"],
-      compiler: code => code
+      compiler: (code) => code,
     });
 
     let caughtError: Error | null = null;
@@ -381,10 +382,10 @@ suite("VmRunner", ({ afterEach }) => {
             compile: (bytes: Uint8Array) => {
               receivedBytes = bytes;
               return new Uint8Array([bytes[0] + 1, bytes[1] + 1]);
-            }
-          })
-        }
-      }
+            },
+          }),
+        },
+      },
     });
 
     const result = runner.run(`
@@ -401,5 +402,89 @@ suite("VmRunner", ({ afterEach }) => {
     expect(result.output).to.be.an.instanceOf(Uint8Array);
     expect(Array.from(result.output)).to.deep.equal([11, 21]);
   });
-});
 
+  test("enforces allowedModules restriction when specified", () => {
+    const tmpDir = tmpDirFixture.createNewTmpDir();
+    const runner = new VmRunner({
+      projectDir: tmpDir,
+      allowedModules: ["@dataform/*"],
+      mockModules: {
+        "@dataform/core": { name: "core" },
+        "other-pkg": { name: "other" },
+      },
+    });
+
+    // Mocked modules are accessible
+    expect(runner.require("@dataform/core")).to.deep.equal({ name: "core" });
+
+    // Non-allowed non-mock module fails
+    let err: any = null;
+    try {
+      runner.require("unallowed-pkg");
+    } catch (e) {
+      err = e;
+    }
+    expect(err).to.not.equal(null);
+    expect(err.message).to.include("Access to module 'unallowed-pkg' is not allowed");
+
+    // Project-relative internal files are still allowed even when allowedModules is specified
+    fs.mkdirSync(path.join(tmpDir, "includes"));
+    fs.writeFileSync(path.join(tmpDir, "includes", "helper.js"), "module.exports = { ok: true };");
+    expect(runner.require("includes/helper")).to.deep.equal({ ok: true });
+  });
+
+  test("does not get stuck in infinite recursion on self-referential package.json main", () => {
+    const tmpDir = tmpDirFixture.createNewTmpDir();
+    const subDir = path.join(tmpDir, "loop_pkg");
+    fs.mkdirSync(subDir);
+    fs.writeFileSync(path.join(subDir, "package.json"), JSON.stringify({ main: "." }));
+    fs.writeFileSync(path.join(subDir, "index.js"), "module.exports = { loaded: true };");
+
+    const runner = new VmRunner({ projectDir: tmpDir });
+    const result = runner.require("./loop_pkg", path.join(tmpDir, "index.js"));
+    expect(result).to.deep.equal({ loaded: true });
+  });
+
+  test("re-throws unexpected errors from customResolve", () => {
+    const tmpDir = tmpDirFixture.createNewTmpDir();
+    const runner = new VmRunner({
+      projectDir: tmpDir,
+      resolve: (moduleName) => {
+        if (moduleName === "fail-now") {
+          throw new TypeError("unexpected resolve error");
+        }
+        return path.join(tmpDir, `${moduleName}.js`);
+      },
+    });
+
+    let caught: any = null;
+    try {
+      runner.resolve("fail-now", path.join(tmpDir, "index.js"));
+    } catch (e) {
+      caught = e;
+    }
+    expect(caught).to.not.equal(null);
+    expect(caught).to.be.an.instanceOf(TypeError);
+    expect(caught.message).to.equal("unexpected resolve error");
+  });
+
+  test("enforces isPathContained on node_modules symlinks pointing outside projectDir", () => {
+    const outsideDir = tmpDirFixture.createNewTmpDir();
+    fs.writeFileSync(path.join(outsideDir, "external.js"), "module.exports = 'escaped';");
+
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    const nodeModulesDir = path.join(projectDir, "node_modules");
+    fs.mkdirSync(nodeModulesDir);
+    fs.symlinkSync(outsideDir, path.join(nodeModulesDir, "symlinked-pkg"));
+
+    const runner = new VmRunner({ projectDir });
+    let caught: any = null;
+    try {
+      runner.resolve("symlinked-pkg/external", path.join(projectDir, "index.js"));
+    } catch (e) {
+      caught = e;
+    }
+    expect(caught).to.not.equal(null);
+    expect(caught.message).to.include("outside of project directory");
+  });
+});

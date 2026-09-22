@@ -27,6 +27,8 @@ You can run Dataform locally using the Dataform CLI tool, which can be installed
 npm i -g @dataform/cli
 ```
 
+> **Note on Project Execution & Security:** Dataform compiles SQLX and JavaScript project code using Node.js's native `node:vm` context. While module resolution is scoped to the project directory, `node:vm` is not a security sandbox against untrusted code. Dataform projects execute with the privileges of the local process; only run and compile Dataform projects from trusted sources.
+
 ## Useful Links
 
 - [Documentation home page](https://cloud.google.com/dataform).
