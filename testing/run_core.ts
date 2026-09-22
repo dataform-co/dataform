@@ -108,12 +108,8 @@ export function runMainInVm(
     },
   });
 
-  const hasWorkflowSettingsYaml = fs.existsSync(
-    path.join(projectDir, "workflow_settings.yaml")
-  );
-  const hasDataformJson = fs.existsSync(
-    path.join(projectDir, "dataform.json")
-  );
+  const hasWorkflowSettingsYaml = fs.existsSync(path.join(projectDir, "workflow_settings.yaml"));
+  const hasDataformJson = fs.existsSync(path.join(projectDir, "dataform.json"));
 
   const encodedCoreExecutionRequest = encode64(dataform.CoreExecutionRequest, coreExecutionRequest);
   const vmIndexFileName = path.resolve(path.join(projectDir, "index.js"));
@@ -123,8 +119,8 @@ export function runMainInVm(
         configurable: true,
         get: function() { return __df_current(); }
       });
-      ${hasWorkflowSettingsYaml ? 'global.workflowSettingsYaml = require("./workflow_settings.yaml");' : ''}
-      ${hasDataformJson ? 'global.dataformJson = require("./dataform.json");' : ''}
+      ${hasWorkflowSettingsYaml ? 'global.workflowSettingsYaml = require("./workflow_settings.yaml");' : ""}
+      ${hasDataformJson ? 'global.dataformJson = require("./dataform.json");' : ""}
       return require("@dataform/core").main("${encodedCoreExecutionRequest}")
     `,
     vmIndexFileName,
