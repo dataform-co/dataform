@@ -88,6 +88,7 @@ export async function handleJitRequest(message: { request: any; projectDir: stri
     const vm = new VmRunner({
       projectDir,
       builtinModules: [],
+      allowedModules: ["@dataform/*"],
       mockModules: hasProjectLocalCore
         ? {}
         : {
