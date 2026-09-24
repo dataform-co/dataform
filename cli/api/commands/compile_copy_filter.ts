@@ -49,10 +49,19 @@ export function findProjectIgnoreFiles(resolvedProjectPath: string): string[] {
  *
  * Note that an ignored file is never copied, so it is also never compiled: a project
  * that generates definitions into a gitignored path needs that path unignored, in
- * either file.
+ * either file. As in git, a file can't be re-included while any ancestor directory is
+ * still excluded -- the copy never descends into that directory -- so each excluded
+ * ancestor must be un-ignored too. With `definitions/generated/` in `.gitignore`,
+ * `!definitions/generated/gen.sqlx` alone has no effect; `!definitions/generated/`
+ * restores the directory.
+ *
+ * Matching is always case-sensitive, even on case-insensitive filesystems where git's
+ * `core.ignorecase` would be set. That can only under-exclude: a pattern like
+ * `definitions/staging/` must never drop `definitions/Staging/table.sqlx`, which git on
+ * a case-sensitive filesystem treats as tracked.
  */
 export function buildProjectCopyFilter(resolvedProjectPath: string): (src: string) => boolean {
-  const ig = ignore();
+  const ig = ignore({ ignorecase: false });
   for (const name of findProjectIgnoreFiles(resolvedProjectPath)) {
     ig.add(fs.readFileSync(path.join(resolvedProjectPath, name), "utf8"));
   }

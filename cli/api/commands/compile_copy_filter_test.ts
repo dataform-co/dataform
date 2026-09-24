@@ -186,4 +186,36 @@ suite("buildProjectCopyFilter", ({ afterEach }) => {
     fs.writeFileSync(path.join(projectDir, ".gitignore"), "");
     expect(findProjectIgnoreFiles(projectDir)).to.deep.equal([".gitignore", ".dataformignore"]);
   });
+
+  test("matches ignore patterns case-sensitively", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    const destinationDir = tmpDirFixture.createNewTmpDir();
+    fs.writeFileSync(path.join(projectDir, ".gitignore"), "definitions/staging/\n");
+    fs.ensureDirSync(path.join(projectDir, "definitions", "Staging"));
+    fs.writeFileSync(path.join(projectDir, "definitions", "Staging", "table.sqlx"), "SELECT 1");
+
+    fs.copySync(projectDir, destinationDir, {
+      filter: buildProjectCopyFilter(projectDir),
+    });
+
+    expect(
+      fs.readFileSync(path.join(destinationDir, "definitions", "Staging", "table.sqlx"), "utf8"),
+    ).to.equal("SELECT 1");
+  });
+
+  test("un-ignoring only a file does not re-include it while its directory is ignored", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    const destinationDir = tmpDirFixture.createNewTmpDir();
+    fs.writeFileSync(path.join(projectDir, ".gitignore"), "definitions/generated/\n");
+    fs.writeFileSync(path.join(projectDir, ".dataformignore"), "!definitions/generated/gen.sqlx\n");
+    fs.ensureDirSync(path.join(projectDir, "definitions", "generated"));
+    fs.writeFileSync(path.join(projectDir, "definitions", "generated", "gen.sqlx"), "SELECT 1");
+
+    fs.copySync(projectDir, destinationDir, {
+      filter: buildProjectCopyFilter(projectDir),
+    });
+
+    // Matches git: the excluded parent directory must itself be un-ignored.
+    expect(fs.existsSync(path.join(destinationDir, "definitions", "generated"))).to.equal(false);
+  });
 });
