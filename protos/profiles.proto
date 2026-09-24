@@ -11,6 +11,10 @@ message BigQuery {
   string credentials = 3;
   // Options are listed here: https://cloud.google.com/bigquery/docs/locations
   string location = 4;
+  // The universe domain to connect to (e.g. "googleapis.com"). Leave unset to
+  // use the default Google Default Universe (GDU). Set this when targeting a
+  // Trusted Partner Cloud (TPC) or another non-default universe.
+  string universe_domain = 5;
 
   reserved 2;
 }

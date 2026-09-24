@@ -2,7 +2,7 @@ import { Dataset, Table } from "@google-cloud/bigquery";
 import { expect } from "chai";
 import { anything, instance, mock, verify, when } from "ts-mockito";
 
-import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
+import { BigQueryDbAdapter, createBigQueryClientProvider } from "df/cli/api/dbadapters/bigquery";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 
@@ -145,5 +145,27 @@ suite("BigQueryDbAdapter", () => {
     });
 
     await adapter.setMetadata(action);
+  });
+
+  suite("createBigQueryClientProvider", () => {
+    test("passes universeDomain to the BigQuery client when set", () => {
+      const credentials = dataform.BigQuery.create({
+        projectId: "project1",
+        location: "US",
+        universeDomain: "my-universe.example.com"
+      });
+
+      const client = createBigQueryClientProvider(credentials)();
+
+      expect(client.universeDomain).to.equal("my-universe.example.com");
+    });
+
+    test("defaults to googleapis.com when universeDomain is unset", () => {
+      const credentials = dataform.BigQuery.create({ projectId: "project1", location: "US" });
+
+      const client = createBigQueryClientProvider(credentials)();
+
+      expect(client.universeDomain).to.equal("googleapis.com");
+    });
   });
 });
