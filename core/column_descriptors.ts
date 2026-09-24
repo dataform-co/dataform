@@ -62,7 +62,7 @@ export const IRecordDescriptorProperties = () =>
     "columns",
     "displayName",
     "tags",
-    "bigqueryPolicyTags"
+    "bigqueryPolicyTags",
   ]);
 
 /**
@@ -70,36 +70,36 @@ export const IRecordDescriptorProperties = () =>
  */
 export class ColumnDescriptors {
   public static mapConfigProtoToCompilationProto(
-    columns: dataform.ActionConfig.ColumnDescriptor[]
+    columns: dataform.ActionConfig.ColumnDescriptor[],
   ): dataform.IColumnDescriptor[] {
-    return columns.map(column => {
+    return columns.map((column) => {
       return dataform.ColumnDescriptor.create({
         path: column.path,
         description: column.description,
         tags: column.tags,
-        bigqueryPolicyTags: column.bigqueryPolicyTags
+        bigqueryPolicyTags: column.bigqueryPolicyTags,
       });
     });
   }
 
   public static mapLegacyObjectToConfigProto(
-    columns: IColumnsDescriptor
+    columns: IColumnsDescriptor,
   ): dataform.ActionConfig.ColumnDescriptor[] {
     return Object.keys(columns)
-      .map(column => ColumnDescriptors.mapColumnDescriptionToProto([column], columns[column]))
+      .map((column) => ColumnDescriptors.mapColumnDescriptionToProto([column], columns[column]))
       .flat();
   }
 
   public static mapColumnDescriptionToProto(
     currentPath: string[],
-    description: string | IRecordDescriptor
+    description: string | IRecordDescriptor,
   ): dataform.ActionConfig.ColumnDescriptor[] {
     if (typeof description === "string") {
       return [
         dataform.ColumnDescriptor.create({
           description,
-          path: currentPath
-        })
+          path: currentPath,
+        }),
       ];
     }
     const columnDescriptor: dataform.ActionConfig.ColumnDescriptor[] = !!description
@@ -111,20 +111,20 @@ export class ColumnDescriptors {
             bigqueryPolicyTags:
               typeof description.bigqueryPolicyTags === "string"
                 ? [description.bigqueryPolicyTags]
-                : description.bigqueryPolicyTags
-          })
+                : description.bigqueryPolicyTags,
+          }),
         ]
       : [];
     const nestedColumns = description.columns ? Object.keys(description.columns) : [];
     return columnDescriptor.concat(
       nestedColumns
-        .map(nestedColumn =>
+        .map((nestedColumn) =>
           ColumnDescriptors.mapColumnDescriptionToProto(
             currentPath.concat([nestedColumn]),
-            description.columns[nestedColumn]
-          )
+            description.columns[nestedColumn],
+          ),
         )
-        .flat()
+        .flat(),
     );
   }
 }
@@ -135,11 +135,11 @@ export class ColumnDescriptors {
 export class LegacyColumnDescriptors {
   public static mapToColumnProtoArray(
     columns: IColumnsDescriptor,
-    reportError: (e: Error) => void
+    reportError: (e: Error) => void,
   ): dataform.IColumnDescriptor[] {
     return Object.keys(columns)
-      .map(column =>
-        LegacyColumnDescriptors.mapColumnDescriptionToProto([column], columns[column], reportError)
+      .map((column) =>
+        LegacyColumnDescriptors.mapColumnDescriptionToProto([column], columns[column], reportError),
       )
       .flat();
   }
@@ -147,21 +147,21 @@ export class LegacyColumnDescriptors {
   public static mapColumnDescriptionToProto(
     currentPath: string[],
     description: string | IRecordDescriptor,
-    reportError: (e: Error) => void
+    reportError: (e: Error) => void,
   ): dataform.IColumnDescriptor[] {
     if (typeof description === "string") {
       return [
         dataform.ColumnDescriptor.create({
           description,
-          path: currentPath
-        })
+          path: currentPath,
+        }),
       ];
     }
     utils.checkExcessProperties(
       reportError,
       description,
       IRecordDescriptorProperties(),
-      `${currentPath.join(".")} column descriptor`
+      `${currentPath.join(".")} column descriptor`,
     );
     const columnDescriptor: dataform.IColumnDescriptor[] = !!description
       ? [
@@ -173,21 +173,21 @@ export class LegacyColumnDescriptors {
             bigqueryPolicyTags:
               typeof description.bigqueryPolicyTags === "string"
                 ? [description.bigqueryPolicyTags]
-                : description.bigqueryPolicyTags
-          })
+                : description.bigqueryPolicyTags,
+          }),
         ]
       : [];
     const nestedColumns = description.columns ? Object.keys(description.columns) : [];
     return columnDescriptor.concat(
       nestedColumns
-        .map(nestedColumn =>
+        .map((nestedColumn) =>
           LegacyColumnDescriptors.mapColumnDescriptionToProto(
             currentPath.concat([nestedColumn]),
             description.columns[nestedColumn],
-            reportError
-          )
+            reportError,
+          ),
         )
-        .flat()
+        .flat(),
     );
   }
 }

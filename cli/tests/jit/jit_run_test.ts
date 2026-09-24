@@ -19,8 +19,8 @@ suite("run", () => {
         type: "table",
         tableType: "table",
         jitCode: "async (jctx) => { return 'SELECT 1'; }",
-        tasks: []
-      }
+        tasks: [],
+      },
     ]);
 
     const runner = new Runner(adapterInstance, executionGraph, {
@@ -29,13 +29,15 @@ suite("run", () => {
           // RPC callback bridge for tests
           (adapter as any).rpcImpl(method, internalReq, callback);
         });
-      }
+      },
     });
     const result = await runner.execute().result();
 
     // Verify overall run status
     if (result.status !== dataform.RunResult.ExecutionStatus.SUCCESSFUL) {
-      process.stderr.write("Run failed with actions: " + JSON.stringify(result.actions, null, 2) + "\n");
+      process.stderr.write(
+        "Run failed with actions: " + JSON.stringify(result.actions, null, 2) + "\n",
+      );
     }
     expect(result.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
 
@@ -60,8 +62,8 @@ suite("run", () => {
         target: { database: "db", schema: "sch", name: "jit_op" },
         type: "operation",
         jitCode: "async (jctx) => { return ['SELECT 1', 'SELECT 2']; }",
-        tasks: []
-      }
+        tasks: [],
+      },
     ]);
 
     const runner = new Runner(adapterInstance, executionGraph, {
@@ -70,7 +72,7 @@ suite("run", () => {
           // RPC callback bridge for tests
           (adapter as any).rpcImpl(method, internalReq, callback);
         });
-      }
+      },
     });
     const result = await runner.execute().result();
 
@@ -94,8 +96,8 @@ suite("run", () => {
         target: { database: "db", schema: "sch", name: "jit_assertion" },
         type: "assertion",
         jitCode: "async (jctx) => { return 'SELECT * FROM t WHERE bad'; }",
-        tasks: []
-      }
+        tasks: [],
+      },
     ]);
 
     const runner = new Runner(adapterInstance, executionGraph, {
@@ -103,12 +105,14 @@ suite("run", () => {
         return await jitCompile(req, (method, internalReq, callback) => {
           (adapter as any).rpcImpl(method, internalReq, callback);
         });
-      }
+      },
     });
     const result = await runner.execute().result();
 
     if (result.status !== dataform.RunResult.ExecutionStatus.SUCCESSFUL) {
-      process.stderr.write("Run failed with actions: " + JSON.stringify(result.actions, null, 2) + "\n");
+      process.stderr.write(
+        "Run failed with actions: " + JSON.stringify(result.actions, null, 2) + "\n",
+      );
     }
     expect(result.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
 
@@ -132,7 +136,7 @@ suite("run", () => {
         target: { database: "db", schema: "sch", name: "aot_table" },
         type: "table",
         tableType: "table",
-        tasks: [dataform.ExecutionTask.create({ statement: "SELECT 'aot'", type: "statement" })]
+        tasks: [dataform.ExecutionTask.create({ statement: "SELECT 'aot'", type: "statement" })],
       },
       {
         target: { database: "db", schema: "sch", name: "jit_table" },
@@ -140,8 +144,8 @@ suite("run", () => {
         tableType: "table",
         jitCode: "async (jctx) => { return 'SELECT \"jit\"'; }",
         tasks: [],
-        dependencyTargets: [{ database: "db", schema: "sch", name: "aot_table" }]
-      }
+        dependencyTargets: [{ database: "db", schema: "sch", name: "aot_table" }],
+      },
     ]);
 
     const runner = new Runner(adapterInstance, executionGraph, {
@@ -150,15 +154,19 @@ suite("run", () => {
           // RPC callback bridge for tests
           (adapter as any).rpcImpl(method, internalReq, callback);
         });
-      }
+      },
     });
     const result = await runner.execute().result();
 
     expect(result.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
     expect(result.actions.length).equals(2);
 
-    const aotResult = result.actions.find((a: dataform.IActionResult) => a.target.name === "aot_table");
-    const jitResult = result.actions.find((a: dataform.IActionResult) => a.target.name === "jit_table");
+    const aotResult = result.actions.find(
+      (a: dataform.IActionResult) => a.target.name === "aot_table",
+    );
+    const jitResult = result.actions.find(
+      (a: dataform.IActionResult) => a.target.name === "jit_table",
+    );
 
     expect(aotResult.status).equals(dataform.ActionResult.ExecutionStatus.SUCCESSFUL);
     expect(aotResult.tasks.length).equals(1);
@@ -174,7 +182,7 @@ suite("run", () => {
     const [secondStatement] = capture(mockAdapter.execute).second();
     const allStatements = [firstStatement, secondStatement];
     expect(allStatements.some((s: string) => s.includes("SELECT 'aot'"))).to.equal(true);
-    expect(allStatements.some((s: string) => s.includes("SELECT \"jit\""))).to.equal(true);
+    expect(allStatements.some((s: string) => s.includes('SELECT "jit"'))).to.equal(true);
   });
 
   test("Handles JiT compilation syntax error", async () => {
@@ -186,8 +194,8 @@ suite("run", () => {
         type: "table",
         tableType: "table",
         jitCode: "async (jctx) => { return syntax error; }",
-        tasks: []
-      }
+        tasks: [],
+      },
     ]);
 
     const runner = new Runner(adapterInstance, executionGraph, {
@@ -196,7 +204,7 @@ suite("run", () => {
           // RPC callback bridge for tests
           (adapter as any).rpcImpl(method, internalReq, callback);
         });
-      }
+      },
     });
     const result = await runner.execute().result();
 
@@ -218,9 +226,10 @@ suite("run", () => {
         type: "table",
         tableType: "table",
         // This code calls jctx.adapter.execute() which triggers our mockClient.execute
-        jitCode: "async (jctx) => { await jctx.adapter.execute({statement: 'SELECT fail'}); return 'SELECT 2'; }",
-        tasks: []
-      }
+        jitCode:
+          "async (jctx) => { await jctx.adapter.execute({statement: 'SELECT fail'}); return 'SELECT 2'; }",
+        tasks: [],
+      },
     ]);
 
     const runner = new Runner(adapterInstance, executionGraph, {
@@ -229,7 +238,7 @@ suite("run", () => {
           // RPC callback bridge for tests
           (adapter as any).rpcImpl(method, internalReq, callback);
         });
-      }
+      },
     });
 
     const result = await runner.execute().result();
@@ -253,8 +262,8 @@ suite("run", () => {
         jitCode: `async (jctx) => {
           return jctx.incremental() ? "SELECT 'inc' as t" : "SELECT 'full' as t";
         }`,
-        tasks: []
-      }
+        tasks: [],
+      },
     ]);
 
     let runner: Runner;
@@ -266,7 +275,7 @@ suite("run", () => {
         return await jitCompile(req, (method, internalReq, callback) => {
           (adapter as any).rpcImpl(method, internalReq, callback);
         });
-      }
+      },
     });
     const fullResult = await runner.execute().result();
     expect(fullResult.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
@@ -280,20 +289,18 @@ suite("run", () => {
     executionGraph.warehouseState.tables.push({
       target,
       type: dataform.TableMetadata.Type.TABLE,
-      fields: [{ name: "t" }]
+      fields: [{ name: "t" }],
     });
 
     // 3. Second run - table exists, should use 'incremental' path
-    const {
-      mockAdapter: mockAdapterIncremental,
-      adapterInstance: adapterInstanceIncremental
-    } = createMocks();
+    const { mockAdapter: mockAdapterIncremental, adapterInstance: adapterInstanceIncremental } =
+      createMocks();
     runner = new Runner(adapterInstanceIncremental, executionGraph, {
       jitCompiler: async (req, pdir, adapter) => {
         return await jitCompile(req, (method, internalReq, callback) => {
           (adapter as any).rpcImpl(method, internalReq, callback);
         });
-      }
+      },
     });
     const incrementalResult = await runner.execute().result();
     expect(incrementalResult.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
@@ -315,14 +322,14 @@ suite("run", () => {
         jitCode: `async (jctx) => {
           return jctx.incremental() ? "SELECT 'inc' as t" : "SELECT 'full' as t";
         }`,
-        tasks: []
-      }
+        tasks: [],
+      },
     ]);
     // Mock that the table already exists in the warehouse as a TABLE with a 't' field
     executionGraph.warehouseState.tables.push({
       target,
       type: dataform.TableMetadata.Type.TABLE,
-      fields: [{ name: "t" }]
+      fields: [{ name: "t" }],
     });
 
     const runner = new Runner(adapterInstance, executionGraph, {
@@ -330,7 +337,7 @@ suite("run", () => {
         return await jitCompile(req, (method, internalReq, callback) => {
           (adapter as any).rpcImpl(method, internalReq, callback);
         });
-      }
+      },
     });
     const result = await runner.execute().result();
 
@@ -343,9 +350,9 @@ suite("run", () => {
     // We check for substrings without trailing spaces to avoid exact whitespace mismatches.
     expect(executedSql).to.equal(
       "insert into `db.sch.incremental_jit`	\n" +
-      "(`t`)	\n" +
-      "select `t`	\n" +
-      "from (SELECT 'inc' as t) as insertions"
+        "(`t`)	\n" +
+        "select `t`	\n" +
+        "from (SELECT 'inc' as t) as insertions",
     );
   });
 
@@ -356,7 +363,7 @@ suite("run", () => {
     when(mockAdapter.tables(anything(), anything())).thenResolve([{ target }]);
     when(mockAdapter.table(anything())).thenResolve({
       target,
-      type: dataform.TableMetadata.Type.TABLE
+      type: dataform.TableMetadata.Type.TABLE,
     } as any);
 
     const executionGraph = createGraph([
@@ -370,8 +377,8 @@ suite("run", () => {
           await jctx.adapter.deleteTable({ target: table.target });
           return "SELECT '" + table.target.name + "' as deleted_table";
         }`,
-        tasks: []
-      }
+        tasks: [],
+      },
     ]);
 
     const runner = new Runner(adapterInstance, executionGraph, {
@@ -379,7 +386,7 @@ suite("run", () => {
         return await jitCompile(req, (method, internalReq, callback) => {
           (adapter as any).rpcImpl(method, internalReq, callback);
         });
-      }
+      },
     });
     const result = await runner.execute().result();
 
@@ -405,8 +412,8 @@ suite("run", () => {
         type: "table",
         tableType: "table",
         jitCode: "async (jctx) => { /* hangs forever in mock */ }",
-        tasks: []
-      }
+        tasks: [],
+      },
     ]);
     executionGraph.runConfig.timeoutMillis = 200;
 
@@ -418,7 +425,7 @@ suite("run", () => {
             cancelCallbackInvoked = true;
             reject(new Error("Run cancelled while worker was in flight."));
           });
-        })
+        }),
     });
 
     const result = await runner.execute().result();
@@ -431,7 +438,7 @@ suite("run", () => {
     expect(actionResult.tasks.length).equals(1);
     expect(actionResult.tasks[0].status).equals(dataform.TaskResult.ExecutionStatus.FAILED);
     expect(actionResult.tasks[0].errorMessage).to.match(
-      /JiT compilation error.*Run cancelled while worker was in flight/
+      /JiT compilation error.*Run cancelled while worker was in flight/,
     );
   });
 
@@ -444,7 +451,7 @@ suite("run", () => {
         type: "table",
         tableType: "table",
         jitCode: "async (jctx) => { /* hangs forever in mock */ }",
-        tasks: []
+        tasks: [],
       },
       {
         target: { database: "db", schema: "sch", name: "downstream" },
@@ -452,8 +459,8 @@ suite("run", () => {
         tableType: "table",
         jitCode: "async (jctx) => { return 'SELECT 1'; }",
         tasks: [],
-        dependencyTargets: [{ database: "db", schema: "sch", name: "hang_jit" }]
-      }
+        dependencyTargets: [{ database: "db", schema: "sch", name: "hang_jit" }],
+      },
     ]);
     executionGraph.runConfig.timeoutMillis = 200;
 
@@ -461,14 +468,14 @@ suite("run", () => {
       jitCompiler: (req, pdir, adapter, client, timeoutMs, opts, onCancel) =>
         new Promise((resolve, reject) => {
           onCancel(() => reject(new Error("Run cancelled while worker was in flight.")));
-        })
+        }),
     });
 
     const result = await runner.execute().result();
 
     expect(result.status).equals(dataform.RunResult.ExecutionStatus.TIMED_OUT);
 
-    const downstream = result.actions.find(a => a.target.name === "downstream");
+    const downstream = result.actions.find((a) => a.target.name === "downstream");
     expect(downstream).to.not.equal(undefined);
     expect(downstream.status).equals(dataform.ActionResult.ExecutionStatus.SKIPPED);
     expect(downstream.tasks.length).to.be.greaterThan(0);
@@ -484,29 +491,29 @@ suite("run", () => {
         type: "table",
         tableType: "table",
         jitCode: "async (jctx) => { return 'SELECT 1'; }",
-        tasks: []
+        tasks: [],
       },
       {
         target: { database: "db", schema: "sch", name: "jit_b" },
         type: "table",
         tableType: "table",
         jitCode: "async (jctx) => { return 'SELECT 2'; }",
-        tasks: []
+        tasks: [],
       },
       {
         target: { database: "db", schema: "sch", name: "jit_c" },
         type: "table",
         tableType: "table",
         jitCode: "async (jctx) => { return 'SELECT 3'; }",
-        tasks: []
+        tasks: [],
       },
       {
         target: { database: "db", schema: "sch", name: "jit_d" },
         type: "table",
         tableType: "table",
         jitCode: "async (jctx) => { return 'SELECT 4'; }",
-        tasks: []
-      }
+        tasks: [],
+      },
     ]);
 
     const runner = new Runner(adapterInstance, executionGraph, {
@@ -518,7 +525,7 @@ suite("run", () => {
         return await jitCompile(req, (method, internalReq, callback) => {
           (adapter as any).rpcImpl(method, internalReq, callback);
         });
-      }
+      },
     });
     const result = await runner.execute().result();
 
@@ -543,7 +550,7 @@ function createMocks() {
     }
     return Promise.resolve({
       rows: [],
-      metadata: {}
+      metadata: {},
     });
   });
   when(mockClient.executeRaw(anything(), anything())).thenCall((statement: string) => {
@@ -552,7 +559,7 @@ function createMocks() {
     }
     return Promise.resolve({
       rows: [],
-      metadata: {}
+      metadata: {},
     });
   });
   when(mockClient.execute(anything(), anything())).thenCall((statement: string) => {
@@ -561,7 +568,7 @@ function createMocks() {
     }
     return Promise.resolve({
       rows: [],
-      metadata: {}
+      metadata: {},
     });
   });
 
@@ -580,9 +587,9 @@ function createGraph(actions: any[]): dataform.ExecutionGraph {
     projectConfig: { warehouse: "bigquery" },
     runConfig: { fullRefresh: false, timeoutMillis: 30000 },
     warehouseState: { tables: [] },
-    actions: actions.map(a => ({
+    actions: actions.map((a) => ({
       dependencyTargets: [],
-      ...a
-    }))
+      ...a,
+    })),
   });
 }

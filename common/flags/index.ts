@@ -19,7 +19,7 @@ export class Flags {
 
   public static number(name: string, defaultValue: number = 0) {
     return new SingleValueFlag(name, defaultValue, (stringValue: string) =>
-      parseFloat(stringValue)
+      parseFloat(stringValue),
     );
   }
 
@@ -88,7 +88,10 @@ export interface IFlag<T> {
 abstract class AbstractFlag<T> implements IFlag<T> {
   private parsed: { [value: string]: T } = {};
 
-  constructor(private readonly name: string, private readonly defaultValue: T) {}
+  constructor(
+    private readonly name: string,
+    private readonly defaultValue: T,
+  ) {}
   public get(): T {
     if (Flags.getRawFlagValue(this.name) === undefined) {
       return this.defaultValue;
@@ -104,7 +107,11 @@ abstract class AbstractFlag<T> implements IFlag<T> {
 }
 
 export class SingleValueFlag<T> extends AbstractFlag<T> {
-  constructor(name: string, defaultValue: T, private readonly parser: (singleValue: string) => T) {
+  constructor(
+    name: string,
+    defaultValue: T,
+    private readonly parser: (singleValue: string) => T,
+  ) {
     super(name, defaultValue);
   }
 
@@ -117,7 +124,7 @@ export class SetFlag<T> extends AbstractFlag<Set<T>> {
   constructor(
     name: string,
     defaultValue: Set<T>,
-    private readonly parser: (singleValue: string) => T
+    private readonly parser: (singleValue: string) => T,
   ) {
     super(name, defaultValue);
   }
@@ -126,8 +133,8 @@ export class SetFlag<T> extends AbstractFlag<Set<T>> {
     return new Set(
       stringValue
         .split(",")
-        .filter(singleValue => singleValue.length > 0)
-        .map(this.parser)
+        .filter((singleValue) => singleValue.length > 0)
+        .map(this.parser),
     );
   }
 }

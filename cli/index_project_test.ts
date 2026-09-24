@@ -2,10 +2,7 @@ import { expect } from "chai";
 import * as fs from "fs-extra";
 import * as path from "path";
 
-import {
-  runCli,
-  setupProject
-} from "df/cli/index_test_base";
+import { runCli, setupProject } from "df/cli/index_test_base";
 import { suite, test, writeDefinitionFile } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
 
@@ -19,14 +16,12 @@ suite("project ops", ({ afterEach }) => {
       await runCli("init", [
         projectDir,
         "--default-database=dataform-database",
-        "--default-location=us-central1"
+        "--default-location=us-central1",
       ]);
 
-      expect(
-        (await runCli("install", [projectDir])).stderr
-      ).contains(
+      expect((await runCli("install", [projectDir])).stderr).contains(
         "No installation is needed when using workflow_settings.yaml, as packages are installed at " +
-          "runtime."
+          "runtime.",
       );
     });
   });
@@ -47,7 +42,7 @@ config {
 
 SELECT
   1 AS test
-`
+`,
       );
 
       // Create a file that needs formatting (extra spaces, inconsistent indentation)
@@ -57,7 +52,7 @@ SELECT
         `
 config {   type:  "table"   }
 SELECT  1  as   test
-`
+`,
       );
 
       // Test with --check flag on a project with files needing formatting
@@ -91,7 +86,7 @@ SELECT  1  as   test
         `
 config {   type:  "table"   }
 SELECT  1  as   test
-`
+`,
       );
 
       const jsContents = `
@@ -103,10 +98,7 @@ modules.exports = {
 `;
       const unformattedJsFilePath = path.join(projectDir, "includes", "someMod.js");
       fs.ensureFileSync(unformattedJsFilePath);
-      fs.writeFileSync(
-        unformattedJsFilePath,
-        jsContents,
-      );
+      fs.writeFileSync(unformattedJsFilePath, jsContents);
 
       // Run formatter
       const formatCmdRun = await runCli("format", [projectDir, "--ignore-js-files"]);

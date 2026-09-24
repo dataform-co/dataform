@@ -16,7 +16,7 @@ function combineAllActions(graph: dataform.ICompiledGraph) {
     graph.assertions || ([] as dataform.IAssertion[]),
     graph.declarations || ([] as dataform.IDeclaration[]),
     graph.dataPreparations || ([] as dataform.IDataPreparation[]),
-    graph.propertyGraphs || ([] as dataform.IPropertyGraph[])
+    graph.propertyGraphs || ([] as dataform.IPropertyGraph[]),
   );
 }
 
@@ -24,8 +24,8 @@ export function actionsByTarget(compiledGraph: dataform.ICompiledGraph) {
   const actionsMap = new Map<string, CoreProtoActionTypes>();
   combineAllActions(compiledGraph)
     // Required for backwards compatibility with old versions of @dataform/core.
-    .filter(action => !!action.target)
-    .forEach(action => {
+    .filter((action) => !!action.target)
+    .forEach((action) => {
       actionsMap.set(targetStringifier.stringify(action.target), action);
     });
 }
@@ -34,8 +34,8 @@ export function actionsByCanonicalTarget(compiledGraph: dataform.ICompiledGraph)
   const actionsMap = new Map<string, CoreProtoActionTypes>();
   combineAllActions(compiledGraph)
     // Required for backwards compatibility with old versions of @dataform/core.
-    .filter(action => !!action.canonicalTarget)
-    .forEach(action => {
+    .filter((action) => !!action.canonicalTarget)
+    .forEach((action) => {
       actionsMap.set(targetStringifier.stringify(action.canonicalTarget), action);
     });
 }

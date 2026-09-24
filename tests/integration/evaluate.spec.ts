@@ -18,9 +18,13 @@ suite("@dataform/integration/evaluate", () => {
     const executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
     await dfapi.run(dbadapter, executionGraph).result();
 
-    const tablesByName = keyBy(compiledGraph.tables, t => targetAsReadableString(t.target));
-    const operationsByName = keyBy(compiledGraph.operations, t => targetAsReadableString(t.target));
-    const assertionsByName = keyBy(compiledGraph.assertions, t => targetAsReadableString(t.target));
+    const tablesByName = keyBy(compiledGraph.tables, (t) => targetAsReadableString(t.target));
+    const operationsByName = keyBy(compiledGraph.operations, (t) =>
+      targetAsReadableString(t.target),
+    );
+    const assertionsByName = keyBy(compiledGraph.assertions, (t) =>
+      targetAsReadableString(t.target),
+    );
 
     const view =
       tablesByName[`${INTEGRATION_TEST_PROJECT}.df_integration_test_evaluate.example_view`];
@@ -70,7 +74,7 @@ suite("@dataform/integration/evaluate", () => {
     const target = (name: string) => ({
       schema: "df_integration_test",
       name,
-      database: INTEGRATION_TEST_PROJECT
+      database: INTEGRATION_TEST_PROJECT,
     });
 
     let evaluations = await dbadapter.evaluate(
@@ -78,8 +82,8 @@ suite("@dataform/integration/evaluate", () => {
         enumType: dataform.TableType.TABLE,
         preOps: ["declare var string; set var = 'val';"],
         query: "select var as col;",
-        target: target("example_valid_variable")
-      })
+        target: target("example_valid_variable"),
+      }),
     );
     expect(evaluations.length).to.equal(1);
     expect(evaluations[0].status).to.equal(dataform.QueryEvaluation.QueryEvaluationStatus.SUCCESS);
@@ -88,8 +92,8 @@ suite("@dataform/integration/evaluate", () => {
       dataform.Table.create({
         enumType: dataform.TableType.TABLE,
         query: "select var as col;",
-        target: target("example_invalid_variable")
-      })
+        target: target("example_invalid_variable"),
+      }),
     );
     expect(evaluations.length).to.equal(1);
     expect(evaluations[0].status).to.equal(dataform.QueryEvaluation.QueryEvaluationStatus.FAILURE);
@@ -102,14 +106,14 @@ suite("@dataform/integration/evaluate", () => {
         query: "selects\n1 as x",
         target: {
           name: "EXAMPLE_ILLEGAL_TABLE",
-          database: "df_integration_test"
-        }
-      })
+          database: "df_integration_test",
+        },
+      }),
     );
     expect(evaluations.length).to.equal(1);
     expect(evaluations[0].status).to.equal(dataform.QueryEvaluation.QueryEvaluationStatus.FAILURE);
     expect(
-      dataform.QueryEvaluationError.ErrorLocation.create(evaluations[0].error.errorLocation)
+      dataform.QueryEvaluationError.ErrorLocation.create(evaluations[0].error.errorLocation),
     ).eql(dataform.QueryEvaluationError.ErrorLocation.create({ line: 1, column: 1 }));
   });
 });

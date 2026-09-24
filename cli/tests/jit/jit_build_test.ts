@@ -12,28 +12,28 @@ suite("build", () => {
         {
           target: { database: "db", schema: "schema", name: "table" },
           jitCode: "console.log('jit table')",
-          enumType: dataform.TableType.TABLE
-        }
+          enumType: dataform.TableType.TABLE,
+        },
       ],
       operations: [
         {
           target: { database: "db", schema: "schema", name: "operation" },
           jitCode: "console.log('jit operation')",
-          queries: []
-        }
-      ]
+          queries: [],
+        },
+      ],
     });
 
     const builder = new Builder(compiledGraph, {}, { tables: [] });
     const executionGraph = builder.build();
 
     const tableAction = executionGraph.actions.find(
-      (a: dataform.IExecutionAction) => a.target.name === "table"
+      (a: dataform.IExecutionAction) => a.target.name === "table",
     );
     expect(tableAction.jitCode).equals("console.log('jit table')");
 
     const operationAction = executionGraph.actions.find(
-      (a: dataform.IExecutionAction) => a.target.name === "operation"
+      (a: dataform.IExecutionAction) => a.target.name === "operation",
     );
     expect(operationAction.jitCode).equals("console.log('jit operation')");
   });

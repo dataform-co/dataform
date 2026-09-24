@@ -10,7 +10,7 @@ import { SyntaxTreeNode, SyntaxTreeNodeType } from "df/sqlx/lexer";
 const JS_BEAUTIFY_OPTIONS = {
   indent_size: 2,
   preserve_newlines: true,
-  max_preserve_newlines: 2
+  max_preserve_newlines: 2,
 };
 
 const queryFormatter = new QueryFormatter(new GoogleSqlDefinition());
@@ -34,7 +34,7 @@ export async function formatFile(
   filename: string,
   options?: {
     overwriteFile?: boolean;
-  }
+  },
 ) {
   const fileExtension = filename.split(".").slice(-1)[0];
   const originalFileContent = await promisify(fs.readFile)(filename, "utf8");
@@ -59,16 +59,16 @@ export async function formatFile(
 
 function formatSqlx(node: SyntaxTreeNode, indent = "") {
   const { sqlxStatements, javascriptBlocks, innerSqlBlocks } = separateSqlxIntoParts(
-    node.children()
+    node.children(),
   );
 
   // First, format the JS blocks (including the config block).
-  const formattedJsCodeBlocks = javascriptBlocks.map(jsCodeBlock =>
-    formatJavaScript(jsCodeBlock.concatenate())
+  const formattedJsCodeBlocks = javascriptBlocks.map((jsCodeBlock) =>
+    formatJavaScript(jsCodeBlock.concatenate()),
   );
 
   // Second, format all the SQLX statements, replacing any placeholders with their formatted form.
-  const formattedSqlxStatements = sqlxStatements.map(sqlxStatement => {
+  const formattedSqlxStatements = sqlxStatements.map((sqlxStatement) => {
     const placeholders: {
       [placeholderId: string]: SyntaxTreeNode | string;
     } = {};
@@ -76,7 +76,7 @@ function formatSqlx(node: SyntaxTreeNode, indent = "") {
     const formattedPlaceholderSql = queryFormatter.formatQuery(unformattedPlaceholderSql);
     return formatEveryLine(
       replacePlaceholders(formattedPlaceholderSql, placeholders),
-      line => `${indent}${line}`
+      (line) => `${indent}${line}`,
     );
   });
 
@@ -92,12 +92,12 @@ function formatSqlx(node: SyntaxTreeNode, indent = "") {
     const sqlCodeBlockWithoutOuterBraces =
       sqlCodeBlock.children().length === 1
         ? new SyntaxTreeNode(SyntaxTreeNodeType.SQL, [
-            firstPart.slice(firstPart.indexOf("{") + 1, firstPart.lastIndexOf("}"))
+            firstPart.slice(firstPart.indexOf("{") + 1, firstPart.lastIndexOf("}")),
           ])
         : new SyntaxTreeNode(SyntaxTreeNodeType.SQL, [
             firstPart.slice(firstPart.indexOf("{") + 1),
             ...sqlCodeBlock.children().slice(1, -1),
-            lastPart.slice(0, lastPart.lastIndexOf("}"))
+            lastPart.slice(0, lastPart.lastIndexOf("}")),
           ]);
 
     return `${upToFirstBrace}
@@ -119,7 +119,7 @@ function separateSqlxIntoParts(nodeContents: Array<string | SyntaxTreeNode>) {
   const sqlxStatements: Array<Array<string | SyntaxTreeNode>> = [[]];
   const javascriptBlocks: SyntaxTreeNode[] = [];
   const innerSqlBlocks: SyntaxTreeNode[] = [];
-  nodeContents.forEach(child => {
+  nodeContents.forEach((child) => {
     if (typeof child !== "string") {
       switch (child.type) {
         case SyntaxTreeNodeType.JAVASCRIPT:
@@ -140,7 +140,7 @@ function separateSqlxIntoParts(nodeContents: Array<string | SyntaxTreeNode>) {
   return {
     sqlxStatements,
     javascriptBlocks,
-    innerSqlBlocks
+    innerSqlBlocks,
   };
 }
 
@@ -148,9 +148,9 @@ function stripUnformattableText(
   sqlxStatementParts: Array<string | SyntaxTreeNode>,
   placeholders: {
     [placeholderId: string]: SyntaxTreeNode | string;
-  }
+  },
 ) {
-  return sqlxStatementParts.map(part => {
+  return sqlxStatementParts.map((part) => {
     if (typeof part !== "string") {
       const placeholderId = generatePlaceholderId();
       switch (part.type) {
@@ -182,9 +182,7 @@ function generatePlaceholderId() {
   // Identifiers beginning with a number cause errors when formatting.
   // A shortened UUID is used to facilitate same-line strings.
   // The last chunk of the UUID is used as it is the most random.
-  const uuid = typeid("p")
-    .toString()
-    .replace(/-/g, "");
+  const uuid = typeid("p").toString().replace(/-/g, "");
   return "_" + uuid.substring(uuid.length - 16);
 }
 
@@ -192,7 +190,7 @@ function replacePlaceholders(
   formattedSql: string,
   placeholders: {
     [placeholderId: string]: SyntaxTreeNode | string;
-  }
+  },
 ) {
   return Object.keys(placeholders).reduce((partiallyFormattedSql, placeholderId) => {
     const placeholderValue = placeholders[placeholderId];
@@ -210,7 +208,7 @@ function formatJavaScript(text: string) {
 function formatPlaceholderInSqlx(
   placeholderId: string,
   placeholderSyntaxNode: SyntaxTreeNode,
-  sqlx: string
+  sqlx: string,
 ) {
   const wholeLine = getWholeLineContainingPlaceholderId(placeholderId, sqlx);
   if (!wholeLine) {
@@ -252,7 +250,7 @@ function formatSqlQueryPlaceholder(node: SyntaxTreeNode, jsIndent: string): stri
       return formatJavaScriptPlaceholder(node, jsIndent);
     case SyntaxTreeNodeType.SQL_LITERAL_STRING:
     case SyntaxTreeNodeType.SQL_COMMENT:
-      return formatEveryLine(node.concatenate(), line => `${jsIndent}${line.trimStart()}`);
+      return formatEveryLine(node.concatenate(), (line) => `${jsIndent}${line.trimStart()}`);
     case SyntaxTreeNodeType.SQL_LITERAL_MULTILINE_STRING:
       return `${jsIndent}${node.concatenate().trimStart()}`;
     default:
@@ -264,20 +262,17 @@ function formatJavaScriptPlaceholder(node: SyntaxTreeNode, jsIndent: string) {
   const formattedJs = formatJavaScript(node.concatenate());
   const textInsideBraces = formattedJs.slice(
     formattedJs.indexOf("{") + 1,
-    formattedJs.lastIndexOf("}")
+    formattedJs.lastIndexOf("}"),
   );
   // If the formatted JS is only a single line, trim all whitespace so that it stays a single line.
   const finalJs = textInsideBraces.trim().includes("\n")
     ? `\${${textInsideBraces}}`
     : `\${${textInsideBraces.trim()}}`;
-  return formatEveryLine(finalJs, line => `${jsIndent}${line}`);
+  return formatEveryLine(finalJs, (line) => `${jsIndent}${line}`);
 }
 
 function formatEveryLine(text: string, mapFn: (line: string) => string) {
-  return text
-    .split("\n")
-    .map(mapFn)
-    .join("\n");
+  return text.split("\n").map(mapFn).join("\n");
 }
 
 function getWholeLineContainingPlaceholderId(placeholderId: string, text: string) {

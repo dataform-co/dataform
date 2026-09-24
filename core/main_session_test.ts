@@ -6,14 +6,14 @@ import {
   suite,
   test,
   writeDefinitionFile,
-  writeWorkflowSettingsFile
+  writeWorkflowSettingsFile,
 } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
 import {
   coreExecutionRequestFromPath,
   runMainInVm,
   VALID_WORKFLOW_SETTINGS_YAML,
-  WorkflowSettingsTemplates
+  WorkflowSettingsTemplates,
 } from "df/testing/run_core";
 
 interface IVerifiableAction {
@@ -23,10 +23,7 @@ interface IVerifiableAction {
   dependencyTargets?: dataform.ITarget[] | null;
 }
 
-function toVerifiableAction(
-  graph: dataform.ICompiledGraph,
-  actionType: string
-): IVerifiableAction {
+function toVerifiableAction(graph: dataform.ICompiledGraph, actionType: string): IVerifiableAction {
   let action: dataform.IAssertion | dataform.ITable | dataform.IPropertyGraph;
   switch (actionType) {
     case "assertion":
@@ -46,7 +43,7 @@ function toVerifiableAction(
     type: actionType,
     target: action.target,
     canonicalTarget: action.canonicalTarget,
-    dependencyTargets: action.dependencyTargets
+    dependencyTargets: action.dependencyTargets,
   };
 }
 
@@ -56,8 +53,8 @@ suite("session", ({ afterEach }) => {
     [
       WorkflowSettingsTemplates.bigquery,
       WorkflowSettingsTemplates.bigqueryWithDatasetSuffix,
-      WorkflowSettingsTemplates.bigqueryWithNamePrefix
-    ].forEach(testConfig => {
+      WorkflowSettingsTemplates.bigqueryWithNamePrefix,
+    ].forEach((testConfig) => {
       test(`resolve with name prefix "${testConfig.namePrefix}" and dataset suffix "${testConfig.datasetSuffix}"`, () => {
         const projectDir = tmpDirFixture.createNewTmpDir();
         writeWorkflowSettingsFile(projectDir, testConfig);
@@ -70,14 +67,14 @@ suite("session", ({ afterEach }) => {
         const prefix = testConfig.namePrefix ? `${testConfig.namePrefix}_` : "";
         expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
         expect(result.compile.compiledGraph.operations[0].queries[0]).deep.equals(
-          `\`defaultDataset${suffix}.${prefix}e\``
+          `\`defaultDataset${suffix}.${prefix}e\``,
         );
       });
     });
   });
 
   suite("resolve with legacy dependencies", () => {
-    ["assertion", "incremental", "operations", "table", "view"].forEach(actionType => {
+    ["assertion", "incremental", "operations", "table", "view"].forEach((actionType) => {
       test(`for action type: "${actionType}"`, () => {
         const projectDir = tmpDirFixture.createNewTmpDir();
         writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
@@ -91,7 +88,7 @@ schema: "schema_a",
 name: "tbl",
 }
 
-SELECT 1`
+SELECT 1`,
         );
         writeDefinitionFile(
           projectDir,
@@ -103,7 +100,7 @@ schema: "schema_b",
 name: "tbl",
 }
 
-SELECT 1`
+SELECT 1`,
         );
         writeDefinitionFile(
           projectDir,
@@ -114,7 +111,7 @@ type: "${actionType}",
 dependencies: ["schema_a.tbl"]
 }
 
-SELECT 1`
+SELECT 1`,
         );
 
         const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
@@ -127,21 +124,21 @@ SELECT 1`
             target: {
               database: "defaultProject",
               schema: "defaultDataset",
-              name: "file_with_dependencies"
+              name: "file_with_dependencies",
             },
             canonicalTarget: {
               database: "defaultProject",
               schema: "defaultDataset",
-              name: "file_with_dependencies"
+              name: "file_with_dependencies",
             },
             dependencyTargets: [
               {
                 database: "defaultProject",
                 schema: "schema_a",
-                name: "tbl"
-              }
-            ]
-          })
+                name: "tbl",
+              },
+            ],
+          }),
         );
       });
     });
@@ -156,7 +153,7 @@ SELECT 1`
 
     expect(asPlainObject(result.compile.compiledGraph.operations[0].queries[0])).deep.equals(``);
     expect(
-      asPlainObject(result.compile.compiledGraph.graphErrors.compilationErrors[0].message)
+      asPlainObject(result.compile.compiledGraph.graphErrors.compilationErrors[0].message),
     ).deep.equals(`Could not resolve "e"`);
   });
 
@@ -172,13 +169,13 @@ SELECT 1`
     writeDefinitionFile(
       projectDir,
       "mytable.sqlx",
-      `config { type: "view" }\nSELECT 1 FROM \${ref("FOO")}`
+      `config { type: "view" }\nSELECT 1 FROM \${ref("FOO")}`,
     );
 
     const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
     const errors = result.compile.compiledGraph.graphErrors.compilationErrors;
-    const resolveError = errors.find(e => e.message === `Could not resolve "FOO"`);
+    const resolveError = errors.find((e) => e.message === `Could not resolve "FOO"`);
     expect(resolveError, "expected a 'Could not resolve' error").to.not.equal(undefined);
     expect(resolveError.fileName).equals("definitions/mytable.sqlx");
   });
@@ -192,15 +189,15 @@ SELECT 1`
       `
 publish("a", {"schema": "foo"})
 publish("a", {"schema": "bar"})
-publish("b", {"schema": "foo"}).dependencies("a")`
+publish("b", {"schema": "foo"}).dependencies("a")`,
     );
 
     const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
     expect(
-      result.compile.compiledGraph.graphErrors.compilationErrors?.map(error => error.message)
+      result.compile.compiledGraph.graphErrors.compilationErrors?.map((error) => error.message),
     ).deep.equals([
-      `Ambiguous Action name: {\"name\":\"a\",\"includeDependentAssertions\":false}. Did you mean one of: foo.a, bar.a.`
+      `Ambiguous Action name: {\"name\":\"a\",\"includeDependentAssertions\":false}. Did you mean one of: foo.a, bar.a.`,
     ]);
   });
 
@@ -209,10 +206,10 @@ publish("b", {"schema": "foo"}).dependencies("a")`
       WorkflowSettingsTemplates.bigqueryWithDefaultProjectAndDataset,
       {
         ...WorkflowSettingsTemplates.bigqueryWithDatasetSuffix,
-        defaultProject: "defaultProject"
+        defaultProject: "defaultProject",
       },
-      { ...WorkflowSettingsTemplates.bigqueryWithNamePrefix, defaultProject: "defaultProject" }
-    ].forEach(testConfig => {
+      { ...WorkflowSettingsTemplates.bigqueryWithNamePrefix, defaultProject: "defaultProject" },
+    ].forEach((testConfig) => {
       test(
         `assertions target context functions with project suffix '${testConfig.projectSuffix}', ` +
           `dataset suffix '${testConfig.datasetSuffix}', and name prefix '${testConfig.namePrefix}'`,
@@ -222,20 +219,20 @@ publish("b", {"schema": "foo"}).dependencies("a")`
           writeDefinitionFile(
             projectDir,
             "file.js",
-            'assert("name", ctx => `${ctx.database()}.${ctx.schema()}.${ctx.name()}`)'
+            'assert("name", ctx => `${ctx.database()}.${ctx.schema()}.${ctx.name()}`)',
           );
 
           const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
           expect(
-            asPlainObject(result.compile.compiledGraph.graphErrors.compilationErrors)
+            asPlainObject(result.compile.compiledGraph.graphErrors.compilationErrors),
           ).deep.equals([]);
           expect(asPlainObject(result.compile.compiledGraph.assertions[0].query)).deep.equals(
             `defaultProject${testConfig.projectSuffix ? `_suffix` : ""}.` +
               `defaultDataset${testConfig.datasetSuffix ? `_suffix` : ""}.` +
-              `${testConfig.namePrefix ? `prefix_` : ""}name`
+              `${testConfig.namePrefix ? `prefix_` : ""}name`,
           );
-        }
+        },
       );
     });
 
@@ -245,13 +242,13 @@ publish("b", {"schema": "foo"}).dependencies("a")`
       writeDefinitionFile(
         projectDir,
         "file.js",
-        'assert("name", ctx => `${ctx.database()}.${ctx.schema()}.${ctx.name()}`)'
+        'assert("name", ctx => `${ctx.database()}.${ctx.schema()}.${ctx.name()}`)',
       );
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
       expect(
-        asPlainObject(result.compile.compiledGraph.graphErrors.compilationErrors?.[0]?.message)
+        asPlainObject(result.compile.compiledGraph.graphErrors.compilationErrors?.[0]?.message),
       ).deep.equals("Warehouse does not support multiple databases");
     });
   });
@@ -267,7 +264,7 @@ publish("b", {"schema": "foo"}).dependencies("a")`
 actions:
 - operation:
     dataset: "dataset.extradot"
-    filename: table2.extradot.sql`
+    filename: table2.extradot.sql`,
     );
     writeDefinitionFile(projectDir, "table2.extradot.sql", "SELECT 2");
 
@@ -276,13 +273,13 @@ actions:
     expect(
       result.compile.compiledGraph.graphErrors.compilationErrors
         .map(({ message }) => message)
-        .sort()
+        .sort(),
     ).deep.equals([
       `Action target datasets cannot include '.'`,
       `Action target datasets cannot include '.'`,
       `Action target names cannot include '.'`,
       `Action target names cannot include '.'`,
-      `Action target names cannot include '.'`
+      `Action target names cannot include '.'`,
     ]);
   });
 
@@ -294,25 +291,25 @@ actions:
       "file.js",
       `
 publish("name")
-publish("name")`
+publish("name")`,
     );
 
     const result = runMainInVm(
       coreExecutionRequestFromPath(
         projectDir,
         dataform.ProjectConfig.create({
-          defaultSchema: "otherDataset"
-        })
-      )
+          defaultSchema: "otherDataset",
+        }),
+      ),
     );
 
     expect(
-      result.compile.compiledGraph.graphErrors.compilationErrors?.map(error => error.message)
+      result.compile.compiledGraph.graphErrors.compilationErrors?.map((error) => error.message),
     ).deep.equals([
       `Duplicate action name detected. Names within a schema must be unique across tables, declarations, assertions, and operations:\n\"{\"schema\":\"otherDataset\",\"name\":\"name\",\"database\":\"defaultProject\"}\"`,
       `Duplicate canonical target detected. Canonical targets must be unique across tables, declarations, assertions, and operations:\n\"{\"schema\":\"otherDataset\",\"name\":\"name\",\"database\":\"defaultProject\"}\"`,
       `Duplicate action name detected. Names within a schema must be unique across tables, declarations, assertions, and operations:\n\"{\"schema\":\"otherDataset\",\"name\":\"name\",\"database\":\"defaultProject\"}\"`,
-      `Duplicate canonical target detected. Canonical targets must be unique across tables, declarations, assertions, and operations:\n\"{\"schema\":\"otherDataset\",\"name\":\"name\",\"database\":\"defaultProject\"}\"`
+      `Duplicate canonical target detected. Canonical targets must be unique across tables, declarations, assertions, and operations:\n\"{\"schema\":\"otherDataset\",\"name\":\"name\",\"database\":\"defaultProject\"}\"`,
     ]);
   });
 
@@ -324,15 +321,15 @@ publish("name")`
       "file.js",
       `
 publish("a").dependencies("b")
-publish("b").dependencies("a")`
+publish("b").dependencies("a")`,
     );
 
     const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
     expect(
-      result.compile.compiledGraph.graphErrors.compilationErrors?.map(error => error.message)
+      result.compile.compiledGraph.graphErrors.compilationErrors?.map((error) => error.message),
     ).deep.equals([
-      `Circular dependency detected in chain: [{\"database\":\"defaultProject\",\"name\":\"a\",\"schema\":\"defaultDataset\"} > {\"database\":\"defaultProject\",\"name\":\"b\",\"schema\":\"defaultDataset\"} > defaultProject.defaultDataset.a]`
+      `Circular dependency detected in chain: [{\"database\":\"defaultProject\",\"name\":\"a\",\"schema\":\"defaultDataset\"} > {\"database\":\"defaultProject\",\"name\":\"b\",\"schema\":\"defaultDataset\"} > defaultProject.defaultDataset.a]`,
     ]);
   });
 
@@ -344,15 +341,15 @@ publish("b").dependencies("a")`
       projectDir,
       "file.js",
       `
-publish("a").dependencies("b")`
+publish("a").dependencies("b")`,
     );
 
     const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
     expect(
-      result.compile.compiledGraph.graphErrors.compilationErrors?.map(error => error.message)
+      result.compile.compiledGraph.graphErrors.compilationErrors?.map((error) => error.message),
     ).deep.equals([
-      `Missing dependency detected: Action \"defaultProject.defaultDataset.a\" depends on \"{\"name\":\"b\",\"includeDependentAssertions\":false}\" which does not exist`
+      `Missing dependency detected: Action \"defaultProject.defaultDataset.a\" depends on \"{\"name\":\"b\",\"includeDependentAssertions\":false}\" which does not exist`,
     ]);
   });
 
@@ -367,16 +364,16 @@ publish("a").dependencies("b")`
       "file.js",
       `
 publish("a", "SELECT 1;\\n");
-publish("b", "SELECT 1;");`
+publish("b", "SELECT 1;");`,
     );
 
     const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
     expect(
-      result.compile.compiledGraph.graphErrors.compilationErrors?.map(error => error.message)
+      result.compile.compiledGraph.graphErrors.compilationErrors?.map((error) => error.message),
     ).deep.equals([
       "Semi-colons are not allowed at the end of SQL statements.",
-      "Semi-colons are not allowed at the end of SQL statements."
+      "Semi-colons are not allowed at the end of SQL statements.",
     ]);
   });
 });

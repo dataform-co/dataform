@@ -1,9 +1,6 @@
 import { expect } from "chai";
 
-import {
-  GLOBAL_LINEAGE_ENDPOINT,
-  LineageEndpointRouter
-} from "df/cli/api/lineage/endpoint_router";
+import { GLOBAL_LINEAGE_ENDPOINT, LineageEndpointRouter } from "df/cli/api/lineage/endpoint_router";
 import { suite, test } from "df/testing";
 
 suite("LineageEndpointRouter", () => {

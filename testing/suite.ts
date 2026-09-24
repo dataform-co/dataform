@@ -18,12 +18,12 @@ export function suite(name: string | ISuiteOptions, fn: (ctx?: ISuiteContext) =>
 export function suite(
   name: string,
   options: Omit<ISuiteOptions, "name">,
-  fn: (ctx?: ISuiteContext) => void
+  fn: (ctx?: ISuiteContext) => void,
 ): void;
 export function suite(
   nameOrOptions: ISuiteOptions | string,
   optionsOrFn: Omit<ISuiteOptions, "name"> | ((ctx?: ISuiteContext) => void),
-  fn?: (ctx?: ISuiteContext) => void
+  fn?: (ctx?: ISuiteContext) => void,
 ) {
   const newSuite = Suite.create(nameOrOptions, optionsOrFn, fn);
   if (Suite.globalStack.length > 0) {
@@ -39,7 +39,7 @@ export class Suite {
   public static create(
     nameOrOptions: ISuiteOptions | string,
     optionsOrFn: Omit<ISuiteOptions, "name"> | ((ctx?: ISuiteContext) => void),
-    fn?: (ctx?: ISuiteContext) => void
+    fn?: (ctx?: ISuiteContext) => void,
   ): Suite {
     let options: ISuiteOptions =
       typeof nameOrOptions === "string" ? { name: nameOrOptions } : { ...nameOrOptions };
@@ -61,7 +61,10 @@ export class Suite {
 
   private runStarted: boolean;
 
-  constructor(public readonly options: ISuiteOptions, fn: (ctx?: ISuiteContext) => void) {
+  constructor(
+    public readonly options: ISuiteOptions,
+    fn: (ctx?: ISuiteContext) => void,
+  ) {
     if (Suite.globalStack) {
       Suite.globalStack.push(this);
     }
@@ -86,7 +89,7 @@ export class Suite {
       }
 
       if (this.options.parallel) {
-        await Promise.all(testsAndSuites.map(testOrSuite => runTestOrSuite(testOrSuite)));
+        await Promise.all(testsAndSuites.map((testOrSuite) => runTestOrSuite(testOrSuite)));
       } else {
         for (const testOrSuite of testsAndSuites) {
           await runTestOrSuite(testOrSuite);
@@ -125,7 +128,7 @@ export class Suite {
     }
     if (Suite.globalStack.slice(-1)[0] !== this) {
       throw new Error(
-        "Cannot add to a suite that is not currently in scope. Call ctx.suite, ctx.test, ctx.before/after instead."
+        "Cannot add to a suite that is not currently in scope. Call ctx.suite, ctx.test, ctx.before/after instead.",
       );
     }
   }
@@ -142,7 +145,7 @@ export class Suite {
       before: ((...args: [any, any, any]) =>
         this.addHook(this.setUps, Hook.create(...args))) as typeof hook,
       after: ((...args: [any, any, any]) =>
-        this.addHook(this.tearDowns, Hook.create(...args))) as typeof hook
+        this.addHook(this.tearDowns, Hook.create(...args))) as typeof hook,
     };
   }
 }

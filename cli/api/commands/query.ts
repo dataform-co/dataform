@@ -9,7 +9,7 @@ export function run(
     compileConfig?: dataform.ICompileConfig;
     rowLimit?: number;
     byteLimit?: number;
-  }
+  },
 ): CancellablePromise<any[]> {
   return new CancellablePromise(async (resolve, reject, onCancel) => {
     try {
@@ -17,7 +17,7 @@ export function run(
         onCancel,
         interactive: true,
         rowLimit: options?.rowLimit,
-        byteLimit: options?.byteLimit
+        byteLimit: options?.byteLimit,
       });
       resolve(results.rows);
     } catch (e) {
@@ -28,7 +28,7 @@ export function run(
 
 export async function evaluate(
   dbadapter: dbadapters.IDbAdapter,
-  query: string
+  query: string,
 ): Promise<dataform.IQueryEvaluation> {
   return (await dbadapter.evaluate(query))[0];
 }

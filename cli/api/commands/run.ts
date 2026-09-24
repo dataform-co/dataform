@@ -15,7 +15,7 @@ import { dataform } from "df/protos/ts";
 
 const CANCEL_EVENT = "jobCancel";
 const flags = {
-  runnerNotificationPeriodMillis: Flags.number("runner-notification-period-millis", 5000)
+  runnerNotificationPeriodMillis: Flags.number("runner-notification-period-millis", 5000),
 };
 
 const isSuccessfulAction = (actionResult: dataform.IActionResult) =>
@@ -42,7 +42,7 @@ export interface IExecutionOptions {
     dbclient: dbadapters.IDbClient,
     timeoutMillis?: number,
     options?: IBigQueryExecutionOptions,
-    onCancel?: (cancel: () => void) => void
+    onCancel?: (cancel: () => void) => void,
   ) => Promise<dataform.IJitCompilationResponse>;
   lineageEmitter?: LineageEmitter;
 }
@@ -54,14 +54,14 @@ export function run(
   graph: dataform.IExecutionGraph,
   executionOptions: IExecutionOptions = {},
   partiallyExecutedRunResult: dataform.IRunResult = {},
-  runnerNotificationPeriodMillis: number = flags.runnerNotificationPeriodMillis.get()
+  runnerNotificationPeriodMillis: number = flags.runnerNotificationPeriodMillis.get(),
 ): Runner {
   return new Runner(
     dbadapter,
     graph,
     executionOptions,
     partiallyExecutedRunResult,
-    runnerNotificationPeriodMillis
+    runnerNotificationPeriodMillis,
   ).execute();
 }
 
@@ -70,7 +70,7 @@ export class Runner {
     dbadapter: dbadapters.IDbAdapter,
     graph: dataform.IExecutionGraph,
     options: IExecutionOptions = {},
-    runnerNotificationPeriodMillis: number = flags.runnerNotificationPeriodMillis.get()
+    runnerNotificationPeriodMillis: number = flags.runnerNotificationPeriodMillis.get(),
   ): Runner {
     return new Runner(dbadapter, graph, options, {}, runnerNotificationPeriodMillis);
   }
@@ -79,7 +79,7 @@ export class Runner {
     dbadapter: dbadapters.IDbAdapter,
     graph: dataform.IExecutionGraph,
     runResult: dataform.IRunResult,
-    runnerNotificationPeriodMillis: number = flags.runnerNotificationPeriodMillis.get()
+    runnerNotificationPeriodMillis: number = flags.runnerNotificationPeriodMillis.get(),
   ): Runner {
     return new Runner(dbadapter, graph, {}, runResult, runnerNotificationPeriodMillis);
   }
@@ -108,12 +108,12 @@ export class Runner {
     private readonly graph: dataform.IExecutionGraph,
     executionOptions: IExecutionOptions = {},
     partiallyExecutedRunResult: dataform.IRunResult = {},
-    private readonly runnerNotificationPeriodMillis: number = flags.runnerNotificationPeriodMillis.get()
+    private readonly runnerNotificationPeriodMillis: number = flags.runnerNotificationPeriodMillis.get(),
   ) {
     this.executionOptions = { projectDir: ".", ...executionOptions };
     this.runResult = {
       actions: [],
-      ...partiallyExecutedRunResult
+      ...partiallyExecutedRunResult,
     };
 
     if (!this.executionOptions.jitCompiler) {
@@ -121,27 +121,27 @@ export class Runner {
     }
     this.executionSql = new ExecutionSql(graph.projectConfig, version);
     this.allActionTargets = new Set<string>(
-      graph.actions.map(action => targetStringifier.stringify(action.target))
+      graph.actions.map((action) => targetStringifier.stringify(action.target)),
     );
     this.warehouseStateByTarget = new Map<string, dataform.ITableMetadata>();
-    graph.warehouseState.tables?.forEach(tableMetadata =>
+    graph.warehouseState.tables?.forEach((tableMetadata) =>
       this.warehouseStateByTarget.set(
         targetStringifier.stringify(tableMetadata.target),
-        tableMetadata
-      )
+        tableMetadata,
+      ),
     );
     this.executedActionTargets = new Set(
       this.runResult.actions
-        .filter(action => action.status !== dataform.ActionResult.ExecutionStatus.RUNNING)
-        .map(action => targetStringifier.stringify(action.target))
+        .filter((action) => action.status !== dataform.ActionResult.ExecutionStatus.RUNNING)
+        .map((action) => targetStringifier.stringify(action.target)),
     );
     this.successfullyExecutedActionTargets = new Set<string>(
       this.runResult.actions
         .filter(isSuccessfulAction)
-        .map(action => targetStringifier.stringify(action.target))
+        .map((action) => targetStringifier.stringify(action.target)),
     );
     this.pendingActions = graph.actions.filter(
-      action => !this.executedActionTargets.has(targetStringifier.stringify(action.target))
+      (action) => !this.executedActionTargets.has(targetStringifier.stringify(action.target)),
     );
     this.eEmitter = new EventEmitter();
     // There could feasibly be thousands of listeners to this, 0 makes the limit infinite.
@@ -211,7 +211,7 @@ export class Runner {
     }
     const runResultClone = deepClone(dataform.RunResult, this.runResult);
     this.lastNotificationTimestampMillis = Date.now();
-    this.changeListeners.forEach(listener => listener(runResultClone));
+    this.changeListeners.forEach((listener) => listener(runResultClone));
   }
 
   private async executeGraph() {
@@ -242,7 +242,7 @@ export class Runner {
       this.runResult.status = dataform.RunResult.ExecutionStatus.CANCELLED;
     } else if (
       this.runResult.actions.some(
-        action => action.status === dataform.ActionResult.ExecutionStatus.FAILED
+        (action) => action.status === dataform.ActionResult.ExecutionStatus.FAILED,
       )
     ) {
       this.runResult.status = dataform.RunResult.ExecutionStatus.FAILED;
@@ -255,7 +255,7 @@ export class Runner {
     // Work out all the schemas we are going to need to create first.
     const databaseSchemas = new Map<string, Set<string>>();
     this.graph.actions
-      .filter(action => !!action.target && !!action.target.schema)
+      .filter((action) => !!action.target && !!action.target.schema)
       .forEach(({ target }) => {
         // This field may not be present for older versions of dataform.
         const trueDatabase = target.database || this.graph.projectConfig.defaultDatabase;
@@ -271,10 +271,10 @@ export class Runner {
         const existingSchemas = new Set(await this.dbadapter.schemas(database));
         await Promise.all(
           Array.from(schemas)
-            .filter(schema => !existingSchemas.has(schema))
-            .map(schema => this.dbadapter.createSchema(database, schema))
+            .filter((schema) => !existingSchemas.has(schema))
+            .map((schema) => this.dbadapter.createSchema(database, schema)),
         );
-      })
+      }),
     );
   }
 
@@ -288,25 +288,25 @@ export class Runner {
       const allPendingActions = this.pendingActions;
       this.pendingActions = [];
       const skipErrorMessage = this.skipReason || "Run cancelled before action started";
-      allPendingActions.forEach(pendingAction => {
+      allPendingActions.forEach((pendingAction) => {
         let tasks: dataform.ITaskResult[];
         if (pendingAction.tasks && pendingAction.tasks.length > 0) {
           tasks = pendingAction.tasks.map((_, i) => ({
             status: dataform.TaskResult.ExecutionStatus.SKIPPED,
-            ...(i === 0 ? { errorMessage: skipErrorMessage } : {})
+            ...(i === 0 ? { errorMessage: skipErrorMessage } : {}),
           }));
         } else {
           tasks = [
             {
               status: dataform.TaskResult.ExecutionStatus.SKIPPED,
-              errorMessage: skipErrorMessage
-            }
+              errorMessage: skipErrorMessage,
+            },
           ];
         }
         this.runResult.actions.push({
           target: pendingAction.target,
           status: dataform.ActionResult.ExecutionStatus.SKIPPED,
-          tasks
+          tasks,
         });
       });
       this.notifyListeners();
@@ -321,9 +321,9 @@ export class Runner {
         // An action is executable if all dependencies either: do not exist in the graph, or
         // have executed successfully.
         pendingAction.dependencyTargets.every(
-          dependency =>
+          (dependency) =>
             !this.allActionTargets.has(targetStringifier.stringify(dependency)) ||
-            this.successfullyExecutedActionTargets.has(targetStringifier.stringify(dependency))
+            this.successfullyExecutedActionTargets.has(targetStringifier.stringify(dependency)),
         )
       ) {
         executableActions.push(pendingAction);
@@ -331,9 +331,9 @@ export class Runner {
         // An action is skippable if it is not executable and all dependencies either: do not
         // exist in the graph, or have completed execution.
         pendingAction.dependencyTargets.every(
-          dependency =>
+          (dependency) =>
             !this.allActionTargets.has(targetStringifier.stringify(dependency)) ||
-            this.executedActionTargets.has(targetStringifier.stringify(dependency))
+            this.executedActionTargets.has(targetStringifier.stringify(dependency)),
         )
       ) {
         skippableActions.push(pendingAction);
@@ -346,13 +346,13 @@ export class Runner {
 
     await Promise.all([
       (async () => {
-        skippableActions.forEach(skippableAction => {
+        skippableActions.forEach((skippableAction) => {
           this.runResult.actions.push({
             target: skippableAction.target,
             status: dataform.ActionResult.ExecutionStatus.SKIPPED,
             tasks: skippableAction.tasks.map(() => ({
-              status: dataform.TaskResult.ExecutionStatus.SKIPPED
-            }))
+              status: dataform.TaskResult.ExecutionStatus.SKIPPED,
+            })),
           });
         });
         if (skippableActions.length > 0) {
@@ -361,39 +361,40 @@ export class Runner {
         }
       })(),
       Promise.all(
-        executableActions.map(async executableAction => {
+        executableActions.map(async (executableAction) => {
           const actionResult = await this.executeAction(executableAction);
           this.executedActionTargets.add(targetStringifier.stringify(executableAction.target));
           if (isSuccessfulAction(actionResult)) {
             this.successfullyExecutedActionTargets.add(
-              targetStringifier.stringify(executableAction.target)
+              targetStringifier.stringify(executableAction.target),
             );
           }
           await this.executeAllActionsReadyForExecution();
-        })
-      )
+        }),
+      ),
     ]);
   }
 
-  private getBigQueryExecutionOptions(action: dataform.IExecutionAction): IBigQueryExecutionOptions {
+  private getBigQueryExecutionOptions(
+    action: dataform.IExecutionAction,
+  ): IBigQueryExecutionOptions {
     return {
       dryRun: this.executionOptions.bigquery?.dryRun,
       jobPrefix: this.executionOptions.bigquery?.jobPrefix,
       labels: {
         ...(this.executionOptions?.bigquery?.labels || {}),
-        ...(action.actionDescriptor?.bigqueryLabels || {})
+        ...(action.actionDescriptor?.bigqueryLabels || {}),
       },
       actionRetryLimit: this.executionOptions.bigquery?.actionRetryLimit,
       reservation:
-        action.actionDescriptor?.reservation ||
-        this.graph.projectConfig?.defaultReservation
+        action.actionDescriptor?.reservation || this.graph.projectConfig?.defaultReservation,
     };
   }
 
   private async executeAction(action: dataform.IExecutionAction): Promise<dataform.IActionResult> {
     let actionResult: dataform.IActionResult = {
       target: action.target,
-      tasks: []
+      tasks: [],
     };
 
     if (action.tasks.length === 0 && !action.jitCode) {
@@ -403,8 +404,8 @@ export class Runner {
       return actionResult;
     }
 
-    const resumedActionResult = this.runResult.actions.find(existingActionResult =>
-      equals(dataform.Target, existingActionResult.target, action.target)
+    const resumedActionResult = this.runResult.actions.find((existingActionResult) =>
+      equals(dataform.Target, existingActionResult.target, action.target),
     );
     if (resumedActionResult) {
       actionResult = resumedActionResult;
@@ -426,7 +427,7 @@ export class Runner {
         actionResult.status = dataform.ActionResult.ExecutionStatus.FAILED;
         actionResult.tasks.push({
           status: dataform.TaskResult.ExecutionStatus.FAILED,
-          errorMessage: `JiT compilation error: ${e?.message || String(e)}`
+          errorMessage: `JiT compilation error: ${e?.message || String(e)}`,
         });
         actionResult.timing = timer.end();
         if (this.executionOptions.lineageEmitter) {
@@ -448,7 +449,7 @@ export class Runner {
           !this.cancelled
         ) {
           const taskStatus = await this.executeTask(this.dbadapter, task, actionResult, {
-            bigquery: this.getBigQueryExecutionOptions(action)
+            bigquery: this.getBigQueryExecutionOptions(action),
           });
           if (taskStatus === dataform.TaskResult.ExecutionStatus.FAILED) {
             actionResult.status = dataform.ActionResult.ExecutionStatus.FAILED;
@@ -458,16 +459,19 @@ export class Runner {
         } else {
           actionResult.tasks.push({
             status: dataform.TaskResult.ExecutionStatus.SKIPPED,
-            errorMessage: this.skipReason || "Task skipped after cancellation"
+            errorMessage: this.skipReason || "Task skipped after cancellation",
           });
         }
       }
     } catch (e) {
-      if ((actionResult.status as dataform.ActionResult.ExecutionStatus) !== dataform.ActionResult.ExecutionStatus.FAILED) {
+      if (
+        (actionResult.status as dataform.ActionResult.ExecutionStatus) !==
+        dataform.ActionResult.ExecutionStatus.FAILED
+      ) {
         actionResult.status = dataform.ActionResult.ExecutionStatus.FAILED;
         actionResult.tasks.push({
           status: dataform.TaskResult.ExecutionStatus.FAILED,
-          errorMessage: `Unexpected execution error: ${e.message}`
+          errorMessage: `Unexpected execution error: ${e.message}`,
         });
       }
     }
@@ -493,9 +497,8 @@ export class Runner {
         // For now, we can attach the error to the last task in the action so it gets
         // surfaced properly without ending the entire run, but also not failing silently.
         if (actionResult.tasks.length > 0) {
-          actionResult.tasks[
-            actionResult.tasks.length - 1
-          ].errorMessage = `Error setting metadata: ${e.message}`;
+          actionResult.tasks[actionResult.tasks.length - 1].errorMessage =
+            `Error setting metadata: ${e.message}`;
           actionResult.tasks[actionResult.tasks.length - 1].status =
             dataform.TaskResult.ExecutionStatus.FAILED;
         }
@@ -521,13 +524,13 @@ export class Runner {
     client: dbadapters.IDbClient,
     task: dataform.IExecutionTask,
     parentAction: dataform.IActionResult,
-    options: { bigquery?: dataform.IBigQueryOptions & IBigQueryExecutionOptions }
+    options: { bigquery?: dataform.IBigQueryOptions & IBigQueryExecutionOptions },
   ): Promise<dataform.TaskResult.ExecutionStatus> {
     const timer = Timer.start();
     const taskResult: dataform.ITaskResult = {
       status: dataform.TaskResult.ExecutionStatus.RUNNING,
       timing: timer.current(),
-      metadata: {}
+      metadata: {},
     };
     parentAction.tasks.push(taskResult);
     this.notifyListeners();
@@ -536,18 +539,17 @@ export class Runner {
     }
     if (options.bigquery?.dryRun && task.type === "assertion") {
       taskResult.status = dataform.TaskResult.ExecutionStatus.SUCCESSFUL;
-    }
-    else {
+    } else {
       try {
         // Retry this function a given number of times, configurable by user
         const { rows, metadata } = await retry(
           () =>
             client.execute(task.statement, {
-              onCancel: handleCancel => this.eEmitter.on(CANCEL_EVENT, handleCancel),
+              onCancel: (handleCancel) => this.eEmitter.on(CANCEL_EVENT, handleCancel),
               rowLimit: 1,
-              bigquery: options.bigquery
+              bigquery: options.bigquery,
             }),
-          task.type === "operation" ? 1 : options.bigquery.actionRetryLimit + 1 || 1
+          task.type === "operation" ? 1 : options.bigquery.actionRetryLimit + 1 || 1,
         );
         taskResult.metadata = metadata;
         if (task.type === "assertion") {
@@ -567,8 +569,8 @@ export class Runner {
         if (e.metadata?.bigquery?.jobId) {
           taskResult.metadata = {
             bigquery: {
-              jobId: e.metadata.bigquery.jobId
-            }
+              jobId: e.metadata.bigquery.jobId,
+            },
           };
         }
       }
@@ -578,10 +580,7 @@ export class Runner {
     return taskResult.status;
   }
 
-  private async compileJitAction(
-    action: dataform.IExecutionAction,
-    client: dbadapters.IDbClient
-  ) {
+  private async compileJitAction(action: dataform.IExecutionAction, client: dbadapters.IDbClient) {
     let compilationTargetType =
       dataform.JitCompilationTargetType.JIT_COMPILATION_TARGET_TYPE_UNSPECIFIED;
     if (action.type === "table") {
@@ -590,9 +589,11 @@ export class Runner {
           ? dataform.JitCompilationTargetType.JIT_COMPILATION_TARGET_TYPE_INCREMENTAL_TABLE
           : dataform.JitCompilationTargetType.JIT_COMPILATION_TARGET_TYPE_TABLE;
     } else if (action.type === "operation") {
-      compilationTargetType = dataform.JitCompilationTargetType.JIT_COMPILATION_TARGET_TYPE_OPERATION;
+      compilationTargetType =
+        dataform.JitCompilationTargetType.JIT_COMPILATION_TARGET_TYPE_OPERATION;
     } else if (action.type === "assertion") {
-      compilationTargetType = dataform.JitCompilationTargetType.JIT_COMPILATION_TARGET_TYPE_ASSERTION;
+      compilationTargetType =
+        dataform.JitCompilationTargetType.JIT_COMPILATION_TARGET_TYPE_ASSERTION;
     }
 
     const jitRequest = dataform.JitCompilationRequest.create({
@@ -600,7 +601,7 @@ export class Runner {
       dependencies: action.dependencyTargets,
       jitCode: action.jitCode,
       compilationTargetType,
-      jitData: this.graph.jitData
+      jitData: this.graph.jitData,
     });
 
     let cancelHandler: ((...args: any[]) => void) | undefined;
@@ -612,10 +613,10 @@ export class Runner {
         client,
         this.graph.runConfig?.jitTimeoutMillis || undefined,
         this.getBigQueryExecutionOptions(action),
-        handleCancel => {
+        (handleCancel) => {
           cancelHandler = handleCancel;
           this.eEmitter.on(CANCEL_EVENT, handleCancel);
-        }
+        },
       );
       action.tasks = this.createTasksFromJitResponse(action, jitResponse);
     } finally {
@@ -627,29 +628,29 @@ export class Runner {
 
   private createTasksFromJitResponse(
     action: dataform.IExecutionAction,
-    jitResponse: dataform.IJitCompilationResponse
+    jitResponse: dataform.IJitCompilationResponse,
   ): dataform.IExecutionTask[] {
     if (jitResponse.table) {
       const table = dataform.Table.create({
         ...action,
         ...jitResponse.table,
-        enumType: this.tableTypeEnum(action.tableType)
+        enumType: this.tableTypeEnum(action.tableType),
       });
       return this.executionSql.createTableTasks(
         table,
         this.graph.runConfig,
-        this.warehouseStateByTarget.get(targetStringifier.stringify(action.target))
+        this.warehouseStateByTarget.get(targetStringifier.stringify(action.target)),
       );
     } else if (jitResponse.operation) {
       const operation = dataform.Operation.create({
         ...action,
-        ...jitResponse.operation
+        ...jitResponse.operation,
       });
       return this.executionSql.createOperationTasks(operation);
     } else if (jitResponse.assertion) {
       const assertion = dataform.Assertion.create({
         ...action,
-        ...jitResponse.assertion
+        ...jitResponse.assertion,
       });
       return this.executionSql.createAssertionTasks(assertion);
     } else if (jitResponse.incrementalTable) {
@@ -659,12 +660,12 @@ export class Runner {
         incrementalQuery: jitResponse.incrementalTable.incremental?.query,
         incrementalPreOps: jitResponse.incrementalTable.incremental?.preOps,
         incrementalPostOps: jitResponse.incrementalTable.incremental?.postOps,
-        enumType: dataform.TableType.INCREMENTAL
+        enumType: dataform.TableType.INCREMENTAL,
       });
       return this.executionSql.createTableTasks(
         table,
         this.graph.runConfig,
-        this.warehouseStateByTarget.get(targetStringifier.stringify(action.target))
+        this.warehouseStateByTarget.get(targetStringifier.stringify(action.target)),
       );
     }
     return [];
@@ -686,18 +687,18 @@ class Timer {
   public static start(existingTiming?: dataform.ITiming) {
     return new Timer(existingTiming?.startTimeMillis.toNumber() || new Date().valueOf());
   }
-  private constructor(readonly startTimeMillis: number) { }
+  private constructor(readonly startTimeMillis: number) {}
 
   public current(): dataform.ITiming {
     return {
-      startTimeMillis: Long.fromNumber(this.startTimeMillis)
+      startTimeMillis: Long.fromNumber(this.startTimeMillis),
     };
   }
 
   public end(): dataform.ITiming {
     return {
       startTimeMillis: Long.fromNumber(this.startTimeMillis),
-      endTimeMillis: Long.fromNumber(new Date().valueOf())
+      endTimeMillis: Long.fromNumber(new Date().valueOf()),
     };
   }
 }

@@ -22,36 +22,36 @@ suite("jit_rpc", () => {
         location: "US",
         labels: { key: "val" },
         jobPrefix: "prefix",
-        dryRun: true
-      }
+        dryRun: true,
+      },
     });
     const encodedRequest = dataform.ExecuteRequest.encode(executeRequest).finish();
 
     // Real raw BigQuery f/v format
     const rawRows = [
       {
-        f: [
-          { v: "42" },
-          { v: "val" },
-          { v: "true" },
-          { v: null }
-        ]
-      }
+        f: [{ v: "42" }, { v: "val" }, { v: "true" }, { v: null }],
+      },
     ];
 
     const schema = [
       { name: "num", primitive: dataform.Field.Primitive.INTEGER },
       { name: "str", primitive: dataform.Field.Primitive.STRING },
       { name: "bool", primitive: dataform.Field.Primitive.BOOLEAN },
-      { name: "n", primitive: dataform.Field.Primitive.STRING }
+      { name: "n", primitive: dataform.Field.Primitive.STRING },
     ];
     when(mockClient.executeRaw(statement, anything())).thenResolve({
       rows: rawRows,
       schema,
-      metadata: { bigquery: { jobId: "job1" } }
+      metadata: { bigquery: { jobId: "job1" } },
     });
 
-    const response = await handleDbRequest(instance(mockAdapter), instance(mockClient), "Execute", encodedRequest);
+    const response = await handleDbRequest(
+      instance(mockAdapter),
+      instance(mockClient),
+      "Execute",
+      encodedRequest,
+    );
     const decoded = dataform.ExecuteResponse.decode(response);
 
     expect(decoded.rows.length).equals(1);
@@ -84,7 +84,12 @@ suite("jit_rpc", () => {
     const request = dataform.DeleteTableRequest.create({ target });
     const encodedRequest = dataform.DeleteTableRequest.encode(request).finish();
 
-    const response = await handleDbRequest(instance(mockAdapter), instance(mockClient), "DeleteTable", encodedRequest);
+    const response = await handleDbRequest(
+      instance(mockAdapter),
+      instance(mockClient),
+      "DeleteTable",
+      encodedRequest,
+    );
 
     verify(mockAdapter.deleteTable(anything())).once();
     const capturedTarget = capture(mockAdapter.deleteTable).last()[0];
@@ -97,20 +102,27 @@ suite("jit_rpc", () => {
     const mockClient = mock<IDbClient>();
 
     const statement = "SELECT null as n";
-    const encodedRequest = dataform.ExecuteRequest.encode(dataform.ExecuteRequest.create({ statement })).finish();
+    const encodedRequest = dataform.ExecuteRequest.encode(
+      dataform.ExecuteRequest.create({ statement }),
+    ).finish();
 
     // Test with a null value
     when(mockClient.executeRaw(statement, anything())).thenResolve({
       rows: [
         {
-          f: [{ v: null }]
-        }
+          f: [{ v: null }],
+        },
       ],
       schema: [{ name: "n", primitive: dataform.Field.Primitive.STRING }],
-      metadata: {}
+      metadata: {},
     });
 
-    const response = await handleDbRequest(instance(mockAdapter), instance(mockClient), "Execute", encodedRequest);
+    const response = await handleDbRequest(
+      instance(mockAdapter),
+      instance(mockClient),
+      "Execute",
+      encodedRequest,
+    );
     const decoded = dataform.ExecuteResponse.decode(response);
 
     expect(decoded.rows.length).equals(1);
@@ -125,10 +137,15 @@ suite("jit_rpc", () => {
     // Test with empty rows
     when(mockClient.executeRaw(statement, anything())).thenResolve({
       rows: [],
-      metadata: {}
+      metadata: {},
     });
 
-    const responseEmpty = await handleDbRequest(instance(mockAdapter), instance(mockClient), "Execute", encodedRequest);
+    const responseEmpty = await handleDbRequest(
+      instance(mockAdapter),
+      instance(mockClient),
+      "Execute",
+      encodedRequest,
+    );
     const decodedEmpty = dataform.ExecuteResponse.decode(responseEmpty);
     expect(decodedEmpty.rows.length).equals(0);
 
@@ -149,7 +166,12 @@ suite("jit_rpc", () => {
     const metadata1 = { target: target1, type: dataform.TableMetadata.Type.TABLE } as any;
     when(mockAdapter.tables("db", "sch")).thenResolve([metadata1]);
 
-    const response = await handleDbRequest(instance(mockAdapter), instance(mockClient), "ListTables", encodedRequest);
+    const response = await handleDbRequest(
+      instance(mockAdapter),
+      instance(mockClient),
+      "ListTables",
+      encodedRequest,
+    );
     const decoded = dataform.ListTablesResponse.decode(response);
 
     expect(decoded.tables.length).equals(1);
@@ -168,7 +190,12 @@ suite("jit_rpc", () => {
     const encodedRequest = dataform.ListTablesRequest.encode(request).finish();
 
     try {
-      await handleDbRequest(instance(mockAdapter), instance(mockClient), "ListTables", encodedRequest);
+      await handleDbRequest(
+        instance(mockAdapter),
+        instance(mockClient),
+        "ListTables",
+        encodedRequest,
+      );
       expect.fail("Should have thrown an error");
     } catch (e) {
       expect(e.message).to.equal("ListTablesRequest.database must be supplied");
@@ -187,7 +214,12 @@ suite("jit_rpc", () => {
 
     when(mockAdapter.table(anything())).thenResolve({ target } as any);
 
-    const response = await handleDbRequest(instance(mockAdapter), instance(mockClient), "GetTable", encodedRequest);
+    const response = await handleDbRequest(
+      instance(mockAdapter),
+      instance(mockClient),
+      "GetTable",
+      encodedRequest,
+    );
     const decoded = dataform.TableMetadata.decode(response);
 
     expect(decoded.target.name).equals("tab");
@@ -208,7 +240,12 @@ suite("jit_rpc", () => {
     when(mockAdapter.table(anything())).thenResolve(null);
 
     try {
-      await handleDbRequest(instance(mockAdapter), instance(mockClient), "GetTable", encodedRequest);
+      await handleDbRequest(
+        instance(mockAdapter),
+        instance(mockClient),
+        "GetTable",
+        encodedRequest,
+      );
       expect.fail("Should have thrown an error");
     } catch (e) {
       expect(e.message).to.contain("Table not found");
@@ -223,12 +260,18 @@ suite("jit_rpc", () => {
     const mockClient = mock<IDbClient>();
 
     const request = dataform.DeleteTableRequest.create({
-      target: { database: "db", schema: "sch", name: "tab" }
+      target: { database: "db", schema: "sch", name: "tab" },
     });
     const encodedRequest = dataform.DeleteTableRequest.encode(request).finish();
 
     // Call with dryRun = true
-    await handleDbRequest(instance(mockAdapter), instance(mockClient), "DeleteTable", encodedRequest, { dryRun: true });
+    await handleDbRequest(
+      instance(mockAdapter),
+      instance(mockClient),
+      "DeleteTable",
+      encodedRequest,
+      { dryRun: true },
+    );
 
     // Verify that the adapter method was NOT called
     verify(mockAdapter.deleteTable(anything())).never();
@@ -239,12 +282,16 @@ suite("jit_rpc", () => {
     const mockClient = mock<IDbClient>();
 
     const statement = "SELECT 1";
-    const encodedRequest = dataform.ExecuteRequest.encode(dataform.ExecuteRequest.create({ statement })).finish();
+    const encodedRequest = dataform.ExecuteRequest.encode(
+      dataform.ExecuteRequest.create({ statement }),
+    ).finish();
 
     when(mockClient.executeRaw(anything(), anything())).thenResolve({ rows: [], metadata: {} });
 
     // Call with dryRun = true
-    await handleDbRequest(instance(mockAdapter), instance(mockClient), "Execute", encodedRequest, { dryRun: true });
+    await handleDbRequest(instance(mockAdapter), instance(mockClient), "Execute", encodedRequest, {
+      dryRun: true,
+    });
 
     verify(mockClient.executeRaw(statement, anything())).once();
     const capturedArgs = capture(mockClient.executeRaw).last();
@@ -257,7 +304,12 @@ suite("jit_rpc", () => {
     const mockClient = mock<IDbClient>();
 
     try {
-      await handleDbRequest(instance(mockAdapter), instance(mockClient), "UnknownMethod", new Uint8Array());
+      await handleDbRequest(
+        instance(mockAdapter),
+        instance(mockClient),
+        "UnknownMethod",
+        new Uint8Array(),
+      );
       expect.fail("Should have thrown");
     } catch (e) {
       expect(e.message).to.contain("Unrecognized RPC method");
@@ -274,15 +326,15 @@ suite("jit_rpc", () => {
         location: "EU",
         labels: { request_label: "request_val" },
         jobPrefix: "request-prefix",
-        dryRun: true
-      }
+        dryRun: true,
+      },
     });
     const encodedRequest = dataform.ExecuteRequest.encode(executeRequest).finish();
 
     const globalOptions = {
       labels: { global_label: "global_val" },
       location: "US", // Request should override this to EU
-      jobPrefix: "global-prefix"
+      jobPrefix: "global-prefix",
     };
 
     when(mockClient.executeRaw(statement, anything())).thenResolve({ rows: [], metadata: {} });
@@ -292,7 +344,7 @@ suite("jit_rpc", () => {
       instance(mockClient),
       "Execute",
       encodedRequest,
-      globalOptions
+      globalOptions,
     );
 
     verify(mockClient.executeRaw(statement, anything())).once();
@@ -301,7 +353,7 @@ suite("jit_rpc", () => {
     // We expect both labels to be present
     expect(capturedOptions.bigquery.labels).deep.equals({
       global_label: "global_val",
-      request_label: "request_val"
+      request_label: "request_val",
     });
     // We expect request location to override global location
     expect(capturedOptions.bigquery.location).equals("EU");
@@ -315,7 +367,7 @@ suite("jit_rpc", () => {
     const statement = "SELECT 1";
     const encodedRequest = dataform.ExecuteRequest.encode({
       statement,
-      bigQueryOptions: { labels: { request_label: "request_val" } }
+      bigQueryOptions: { labels: { request_label: "request_val" } },
     }).finish();
 
     when(mockClient.executeRaw(statement, anything())).thenResolve({ rows: [], metadata: {} });
@@ -323,14 +375,14 @@ suite("jit_rpc", () => {
     await handleDbRequest(instance(mockAdapter), instance(mockClient), "Execute", encodedRequest, {
       labels: {
         global_label: "global_val",
-        request_label: "global_override_attempt"
-      }
+        request_label: "global_override_attempt",
+      },
     });
 
     const capturedOptions = capture(mockClient.executeRaw).last()[1];
     expect(capturedOptions.bigquery.labels).deep.equals({
       global_label: "global_val",
-      request_label: "request_val"
+      request_label: "request_val",
     });
   });
 
@@ -340,19 +392,19 @@ suite("jit_rpc", () => {
     const statement = "SELECT 1";
     const encodedRequest = dataform.ExecuteRequest.encode({
       statement,
-      bigQueryOptions: { labels: { request_label: "request_val" } }
+      bigQueryOptions: { labels: { request_label: "request_val" } },
     }).finish();
 
     when(mockClient.executeRaw(statement, anything())).thenResolve({ rows: [], metadata: {} });
 
     // Global options have no labels
     await handleDbRequest(instance(mockAdapter), instance(mockClient), "Execute", encodedRequest, {
-      location: "US"
+      location: "US",
     });
 
     const capturedOptions = capture(mockClient.executeRaw).last()[1];
     expect(capturedOptions.bigquery.labels).deep.equals({
-      request_label: "request_val"
+      request_label: "request_val",
     });
   });
 
@@ -362,19 +414,19 @@ suite("jit_rpc", () => {
     const statement = "SELECT 1";
     const encodedRequest = dataform.ExecuteRequest.encode({
       statement,
-      bigQueryOptions: { labels: { request_label: "request_val" } }
+      bigQueryOptions: { labels: { request_label: "request_val" } },
     }).finish();
 
     when(mockClient.executeRaw(statement, anything())).thenResolve({ rows: [], metadata: {} });
 
     // Global options have empty labels object
     await handleDbRequest(instance(mockAdapter), instance(mockClient), "Execute", encodedRequest, {
-      labels: {}
+      labels: {},
     });
 
     const capturedOptions = capture(mockClient.executeRaw).last()[1];
     expect(capturedOptions.bigquery.labels).deep.equals({
-      request_label: "request_val"
+      request_label: "request_val",
     });
   });
 
@@ -385,18 +437,18 @@ suite("jit_rpc", () => {
     // Request has no labels
     const encodedRequest = dataform.ExecuteRequest.encode({
       statement,
-      bigQueryOptions: { location: "US" }
+      bigQueryOptions: { location: "US" },
     }).finish();
 
     when(mockClient.executeRaw(statement, anything())).thenResolve({ rows: [], metadata: {} });
 
     await handleDbRequest(instance(mockAdapter), instance(mockClient), "Execute", encodedRequest, {
-      labels: { global_label: "global_val" }
+      labels: { global_label: "global_val" },
     });
 
     const capturedOptions = capture(mockClient.executeRaw).last()[1];
     expect(capturedOptions.bigquery.labels).deep.equals({
-      global_label: "global_val"
+      global_label: "global_val",
     });
   });
 
@@ -407,18 +459,18 @@ suite("jit_rpc", () => {
     // Request has empty labels
     const encodedRequest = dataform.ExecuteRequest.encode({
       statement,
-      bigQueryOptions: { labels: {} }
+      bigQueryOptions: { labels: {} },
     }).finish();
 
     when(mockClient.executeRaw(statement, anything())).thenResolve({ rows: [], metadata: {} });
 
     await handleDbRequest(instance(mockAdapter), instance(mockClient), "Execute", encodedRequest, {
-      labels: { global_label: "global_val" }
+      labels: { global_label: "global_val" },
     });
 
     const capturedOptions = capture(mockClient.executeRaw).last()[1];
     expect(capturedOptions.bigquery.labels).deep.equals({
-      global_label: "global_val"
+      global_label: "global_val",
     });
   });
 
@@ -427,24 +479,29 @@ suite("jit_rpc", () => {
     const mockClient = mock<IDbClient>();
 
     const statement = "SELECT * FROM table";
-    const encodedRequest = dataform.ExecuteRequest.encode(dataform.ExecuteRequest.create({ statement })).finish();
+    const encodedRequest = dataform.ExecuteRequest.encode(
+      dataform.ExecuteRequest.create({ statement }),
+    ).finish();
 
     // Real raw BigQuery f/v format
     const rawRows = [
       {
-        f: [
-          { v: "42" }
-        ]
-      }
+        f: [{ v: "42" }],
+      },
     ];
 
     when(mockClient.executeRaw(statement, anything())).thenResolve({
       rows: rawRows,
       schema: [{ name: "id", primitive: dataform.Field.Primitive.STRING }],
-      metadata: { bigquery: { jobId: "job1" } }
+      metadata: { bigquery: { jobId: "job1" } },
     });
 
-    const response = await handleDbRequest(instance(mockAdapter), instance(mockClient), "Execute", encodedRequest);
+    const response = await handleDbRequest(
+      instance(mockAdapter),
+      instance(mockClient),
+      "Execute",
+      encodedRequest,
+    );
     const decoded = dataform.ExecuteResponse.decode(response);
 
     expect(decoded.rows.length).equals(1);
@@ -461,7 +518,9 @@ suite("jit_rpc", () => {
     const mockClient = mock<IDbClient>();
 
     const statement = "SELECT complex_struct FROM table";
-    const encodedRequest = dataform.ExecuteRequest.encode(dataform.ExecuteRequest.create({ statement })).finish();
+    const encodedRequest = dataform.ExecuteRequest.encode(
+      dataform.ExecuteRequest.create({ statement }),
+    ).finish();
 
     // Real raw BigQuery complex nested f/v format
     const rawRows = [
@@ -469,23 +528,25 @@ suite("jit_rpc", () => {
         f: [
           {
             v: {
-              f: [
-                { v: "nested_val" },
-                { v: "123" }
-              ]
-            }
-          }
-        ]
-      }
+              f: [{ v: "nested_val" }, { v: "123" }],
+            },
+          },
+        ],
+      },
     ];
 
     when(mockClient.executeRaw(statement, anything())).thenResolve({
       rows: rawRows,
       schema: [{ name: "complex_struct", primitive: dataform.Field.Primitive.STRING }],
-      metadata: { bigquery: { jobId: "job1" } }
+      metadata: { bigquery: { jobId: "job1" } },
     });
 
-    const response = await handleDbRequest(instance(mockAdapter), instance(mockClient), "Execute", encodedRequest);
+    const response = await handleDbRequest(
+      instance(mockAdapter),
+      instance(mockClient),
+      "Execute",
+      encodedRequest,
+    );
     const decoded = dataform.ExecuteResponse.decode(response);
 
     expect(decoded.rows.length).equals(1);

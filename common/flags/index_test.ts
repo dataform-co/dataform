@@ -16,13 +16,13 @@ suite("flags", () => {
     test("parses multiple flags", () => {
       expect(parseArgv(["node", "script", "--foo", "bar", "--baz", "qux"])).deep.equals({
         foo: "bar",
-        baz: "qux"
+        baz: "qux",
       });
     });
 
     test("ignores positional arguments before flags", () => {
       expect(parseArgv(["node", "script", "run", "my_project", "--foo", "bar"])).deep.equals({
-        foo: "bar"
+        foo: "bar",
       });
     });
 
@@ -31,14 +31,14 @@ suite("flags", () => {
       // argument after a flag used to throw "Arg neither flag name nor flag value", which
       // crashed the CLI.
       expect(parseArgv(["node", "script", "run", "--foo", "bar", "my_project"])).deep.equals({
-        foo: "bar"
+        foo: "bar",
       });
     });
 
     test("ignores positional arguments interleaved with flags", () => {
       expect(parseArgv(["node", "script", "--foo", "bar", "pos", "--baz", "qux"])).deep.equals({
         foo: "bar",
-        baz: "qux"
+        baz: "qux",
       });
     });
 

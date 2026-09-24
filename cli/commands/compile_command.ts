@@ -9,7 +9,7 @@ import {
   print,
   printCompiledGraph,
   printCompiledGraphErrors,
-  printError
+  printError,
 } from "df/cli/console";
 import { ProjectConfigOptions } from "df/cli/project_config_options";
 import { compiledGraphHasErrors } from "df/cli/util";
@@ -24,7 +24,7 @@ export const compileCommand: ICommand<ICompileArgs> = {
   positionalOptions: [projectDirOption],
   options: compileOptions,
   check: [assertProjectDirExists],
-  processFn: async argv => {
+  processFn: async (argv) => {
     const projectDir = argv.projectDir;
     const logger = new Logger(!argv.json);
 
@@ -43,7 +43,7 @@ export const compileCommand: ICommand<ICompileArgs> = {
         projectDir,
         projectConfigOverride: ProjectConfigOptions.constructProjectConfigOverride(argv),
         timeoutMillis: argv.timeout || undefined,
-        verbose: argv.verbose || false
+        verbose: argv.verbose || false,
       });
 
       // The whole project must compile (ref() resolution needs every action
@@ -59,7 +59,7 @@ export const compileCommand: ICommand<ICompileArgs> = {
               actions: argv.outputActions,
               tags: argv.outputTags,
               includeDependencies: argv.outputIncludeDeps,
-              includeDependents: argv.outputIncludeDependents
+              includeDependents: argv.outputIncludeDependents,
             })
           : compiledGraph;
       printCompiledGraph(outputGraph, outputType, argv.quiet);
@@ -89,8 +89,8 @@ export const compileCommand: ICommand<ICompileArgs> = {
       ignoreInitial: true,
       awaitWriteFinish: {
         stabilityThreshold: 1000,
-        pollInterval: 200
-      }
+        pollInterval: 200,
+      },
     });
 
     const printReady = () => {
@@ -99,7 +99,7 @@ export const compileCommand: ICommand<ICompileArgs> = {
     // Add event listeners.
     watcher
       .on("ready", printReady)
-      .on("error", error => {
+      .on("error", (error) => {
         // This error is caught not if there is a compilation error, but
         // if the watcher fails; this indicates an failure on our side.
         printError(`Error: ${error}`);
@@ -131,5 +131,5 @@ export const compileCommand: ICommand<ICompileArgs> = {
       await new Promise((resolve, reject) => setTimeout(() => resolve(), 100));
     }
     return 0;
-  }
+  },
 };

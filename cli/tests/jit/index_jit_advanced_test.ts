@@ -1,10 +1,6 @@
 import { expect } from "chai";
 
-import {
-  CREDENTIALS_PATH,
-  runCli,
-  setupJitProject
-} from "df/cli/index_test_base";
+import { CREDENTIALS_PATH, runCli, setupJitProject } from "df/cli/index_test_base";
 import { suite, test, writeDefinitionFile } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
 
@@ -23,7 +19,7 @@ suite("JiT support advanced", ({ afterEach }) => {
           preOps: ["SELECT 'pre' as p"],
           postOps: ["SELECT 'post' as p"]
         };
-      })`
+      })`,
     );
 
     const runResult = await runCli("run", [
@@ -32,7 +28,7 @@ suite("JiT support advanced", ({ afterEach }) => {
       CREDENTIALS_PATH,
       "--dry-run",
       "--json",
-      "--actions=pre_post_jit"
+      "--actions=pre_post_jit",
     ]);
 
     expect(runResult.exitCode).equals(0);
@@ -62,7 +58,7 @@ suite("JiT support advanced", ({ afterEach }) => {
             preOps: ["SELECT 'reg_path_pre' as p"]
           };
         }
-      })`
+      })`,
     );
 
     const runResult = await runCli("run", [
@@ -72,7 +68,7 @@ suite("JiT support advanced", ({ afterEach }) => {
       "--dry-run",
       "--json",
       "--actions=inc_pre_post_jit",
-      "--full-refresh"
+      "--full-refresh",
     ]);
 
     expect(runResult.exitCode).equals(0);
@@ -90,24 +86,28 @@ suite("JiT support advanced", ({ afterEach }) => {
       CREDENTIALS_PATH,
       "--dry-run",
       "--json",
-      "--actions=inc_pre_post_jit"
+      "--actions=inc_pre_post_jit",
     ]);
 
     expect(runResultIncremental.exitCode).equals(0);
     const executedGraphInc = JSON.parse(runResultIncremental.stdout);
-    const incActionInc = executedGraphInc.actions.find((a: any) => a.target.name === "inc_pre_post_jit");
+    const incActionInc = executedGraphInc.actions.find(
+      (a: any) => a.target.name === "inc_pre_post_jit",
+    );
     const statementInc = incActionInc.tasks[0].compiledSql;
     expect(statementInc).to.include("SELECT 'reg_path_pre' as p");
     expect(statementInc).to.include("SELECT 'reg_path_query' as q");
   });
 
-  test({ name: "JiT incremental mode validation with consecutive runs", timeout: 60000 }, async () => {
-    const projectDir = tmpDirFixture.createNewTmpDir();
-    await setupJitProject(tmpDirFixture, projectDir);
-    writeDefinitionFile(
-      projectDir,
-      "inc_jit.js",
-      `publish("inc_jit", { type: "incremental" }).jitCode(async (jctx) => {
+  test(
+    { name: "JiT incremental mode validation with consecutive runs", timeout: 60000 },
+    async () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      await setupJitProject(tmpDirFixture, projectDir);
+      writeDefinitionFile(
+        projectDir,
+        "inc_jit.js",
+        `publish("inc_jit", { type: "incremental" }).jitCode(async (jctx) => {
         if (jctx.incremental()) {
           return {
             query: "SELECT 'inc_query' as q",
@@ -119,37 +119,38 @@ suite("JiT support advanced", ({ afterEach }) => {
             preOps: ["SELECT 'reg_pre' as p"]
           };
         }
-      })`
-    );
+      })`,
+      );
 
-    // 1. Initial run with full-refresh to create the table.
-    const firstRun = await runCli("run", [
-      projectDir,
-      "--credentials",
-      CREDENTIALS_PATH,
-      "--actions=inc_jit",
-      "--full-refresh"
-    ]);
-    expect(firstRun.exitCode).equals(0);
+      // 1. Initial run with full-refresh to create the table.
+      const firstRun = await runCli("run", [
+        projectDir,
+        "--credentials",
+        CREDENTIALS_PATH,
+        "--actions=inc_jit",
+        "--full-refresh",
+      ]);
+      expect(firstRun.exitCode).equals(0);
 
-    // 2. Second run without full-refresh.
-    // The table now exists, so it should use the incremental path.
-    const secondRun = await runCli("run", [
-      projectDir,
-      "--credentials",
-      CREDENTIALS_PATH,
-      "--dry-run",
-      "--json",
-      "--actions=inc_jit"
-    ]);
+      // 2. Second run without full-refresh.
+      // The table now exists, so it should use the incremental path.
+      const secondRun = await runCli("run", [
+        projectDir,
+        "--credentials",
+        CREDENTIALS_PATH,
+        "--dry-run",
+        "--json",
+        "--actions=inc_jit",
+      ]);
 
-    expect(secondRun.exitCode).equals(0);
-    const secondGraph = JSON.parse(secondRun.stdout);
-    const secondAction = secondGraph.actions.find((a: any) => a.target.name === "inc_jit");
-    // Assert second run is INCREMENTAL
-    expect(secondAction.tasks[0].compiledSql).to.include("SELECT 'inc_pre' as p");
-    expect(secondAction.tasks[0].compiledSql).to.include("SELECT 'inc_query' as q");
-  });
+      expect(secondRun.exitCode).equals(0);
+      const secondGraph = JSON.parse(secondRun.stdout);
+      const secondAction = secondGraph.actions.find((a: any) => a.target.name === "inc_jit");
+      // Assert second run is INCREMENTAL
+      expect(secondAction.tasks[0].compiledSql).to.include("SELECT 'inc_pre' as p");
+      expect(secondAction.tasks[0].compiledSql).to.include("SELECT 'inc_query' as q");
+    },
+  );
 
   test("JiT project-level data support", async () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
@@ -157,7 +158,7 @@ suite("JiT support advanced", ({ afterEach }) => {
     writeDefinitionFile(
       projectDir,
       "project_data.js",
-      "const { session } = require('@dataform/core');\nsession.jitData('app_secret', 'e2e_secret_value');"
+      "const { session } = require('@dataform/core');\nsession.jitData('app_secret', 'e2e_secret_value');",
     );
     writeDefinitionFile(
       projectDir,
@@ -165,7 +166,7 @@ suite("JiT support advanced", ({ afterEach }) => {
       `publish("jit_data_test", { type: "table" }).jitCode(async (jctx) => {
         const secret = jctx.data.app_secret;
         return "SELECT '" + secret + "' as val";
-      })`
+      })`,
     );
 
     const runResult = await runCli("run", [
@@ -174,7 +175,7 @@ suite("JiT support advanced", ({ afterEach }) => {
       CREDENTIALS_PATH,
       "--dry-run",
       "--json",
-      "--actions=jit_data_test"
+      "--actions=jit_data_test",
     ]);
 
     expect(runResult.exitCode).equals(0);
@@ -190,19 +191,19 @@ suite("JiT support advanced", ({ afterEach }) => {
       projectDir,
       "complex_project_data.js",
       "const { session } = require('@dataform/core');\n" +
-      "session.jitData('app_config', {\n" +
-      "  env: 'test-env',\n" +
-      "  version: 1.2,\n" +
-      "  tags: ['t1', 't2']\n" +
-      "});"
+        "session.jitData('app_config', {\n" +
+        "  env: 'test-env',\n" +
+        "  version: 1.2,\n" +
+        "  tags: ['t1', 't2']\n" +
+        "});",
     );
     writeDefinitionFile(
       projectDir,
       "jit_complex_data_test.js",
       "publish('jit_complex_data_test', { type: 'table' }).jitCode(async (jctx) => {\n" +
-      "  const config = jctx.data.app_config;\n" +
-      "  return 'SELECT \\'' + config.env + '\\' as env, ' + config.version + ' as ver, \\'' + config.tags[0] + '\\' as tag';\n" +
-      "})"
+        "  const config = jctx.data.app_config;\n" +
+        "  return 'SELECT \\'' + config.env + '\\' as env, ' + config.version + ' as ver, \\'' + config.tags[0] + '\\' as tag';\n" +
+        "})",
     );
 
     const runResult = await runCli("run", [
@@ -211,12 +212,16 @@ suite("JiT support advanced", ({ afterEach }) => {
       CREDENTIALS_PATH,
       "--dry-run",
       "--json",
-      "--actions=jit_complex_data_test"
+      "--actions=jit_complex_data_test",
     ]);
 
     expect(runResult.exitCode).equals(0);
     const executedGraph = JSON.parse(runResult.stdout);
-    const dataAction = executedGraph.actions.find((a: any) => a.target.name === "jit_complex_data_test");
-    expect(dataAction.tasks[0].compiledSql).to.include("SELECT 'test-env' as env, 1.2 as ver, 't1' as tag");
+    const dataAction = executedGraph.actions.find(
+      (a: any) => a.target.name === "jit_complex_data_test",
+    );
+    expect(dataAction.tasks[0].compiledSql).to.include(
+      "SELECT 'test-env' as env, 1.2 as ver, 't1' as tag",
+    );
   });
 });

@@ -3,7 +3,7 @@ import {
   ActionBuilder,
   ILegacyBigQueryOptions,
   LegacyConfigConverter,
-  TableType
+  TableType,
 } from "df/core/actions";
 import { Assertion } from "df/core/actions/assertion";
 import { IncrementalTable } from "df/core/actions/incremental_table";
@@ -110,7 +110,7 @@ export class View extends ActionBuilder<dataform.Table> {
     type: "view",
     enumType: dataform.TableType.VIEW,
     disabled: false,
-    tags: []
+    tags: [],
   });
 
   /** @hidden */
@@ -140,7 +140,7 @@ export class View extends ActionBuilder<dataform.Table> {
     }
     const target = actionConfigToCompiledGraphTarget(config);
     this.proto.target = this.applySessionToTarget(target, session.projectConfig, config.filename, {
-      validateTarget: true
+      validateTarget: true,
     });
     this.proto.canonicalTarget = this.applySessionToTarget(target, session.canonicalProjectConfig);
 
@@ -157,9 +157,9 @@ export class View extends ActionBuilder<dataform.Table> {
     }
     if (config.dependencyTargets) {
       this.dependencies(
-        config.dependencyTargets.map(dependencyTarget =>
-          configTargetToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget))
-        )
+        config.dependencyTargets.map((dependencyTarget) =>
+          configTargetToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget)),
+        ),
       );
     }
     if (config.hermetic !== undefined) {
@@ -182,9 +182,9 @@ export class View extends ActionBuilder<dataform.Table> {
     }
     if (config.columns?.length) {
       this.columns(
-        config.columns.map(columnDescriptor =>
-          dataform.ActionConfig.ColumnDescriptor.create(columnDescriptor)
-        )
+        config.columns.map((columnDescriptor) =>
+          dataform.ActionConfig.ColumnDescriptor.create(columnDescriptor),
+        ),
       );
     }
     if (config.project) {
@@ -205,7 +205,12 @@ export class View extends ActionBuilder<dataform.Table> {
     if (config.postOperations) {
       this.postOps(config.postOperations);
     }
-    if (Object.keys(config.labels).length || Object.keys(config.additionalOptions).length || config.partitionBy.length > 0 || config.clusterBy.length > 0) {
+    if (
+      Object.keys(config.labels).length ||
+      Object.keys(config.additionalOptions).length ||
+      config.partitionBy.length > 0 ||
+      config.clusterBy.length > 0
+    ) {
       this.bigquery({
         partitionBy: config.partitionBy,
         clusterBy: config.clusterBy,
@@ -235,14 +240,14 @@ export class View extends ActionBuilder<dataform.Table> {
         newAction = new Table(
           this.session,
           { ...this.unverifiedConfig, type: "table" },
-          this.configPath
+          this.configPath,
         );
         break;
       case "incremental":
         newAction = new IncrementalTable(
           this.session,
           { ...this.unverifiedConfig, type: "incremental" },
-          this.configPath
+          this.configPath,
         );
         break;
       case "view":
@@ -253,7 +258,7 @@ export class View extends ActionBuilder<dataform.Table> {
     const existingAction = this.session.actions.indexOf(this);
     if (existingAction === -1) {
       throw Error(
-        "Expected pre-existing action, but none found. Please report this to the Dataform team."
+        "Expected pre-existing action, but none found. Please report this to the Dataform team.",
       );
     }
     this.session.actions[existingAction] = newAction;
@@ -320,7 +325,7 @@ export class View extends ActionBuilder<dataform.Table> {
    */
   public disabled(disabled = true) {
     this.proto.disabled = disabled;
-    this.uniqueKeyAssertions.forEach(assertion => assertion.disabled(disabled));
+    this.uniqueKeyAssertions.forEach((assertion) => assertion.disabled(disabled));
     this.rowConditionsAssertion?.disabled(disabled);
     return this;
   }
@@ -361,7 +366,7 @@ export class View extends ActionBuilder<dataform.Table> {
    */
   public dependencies(value: Resolvable | Resolvable[]) {
     const newDependencies = Array.isArray(value) ? value : [value];
-    newDependencies.forEach(resolvable => {
+    newDependencies.forEach((resolvable) => {
       const dependencyTarget = checkAssertionsForDependency(this, resolvable);
       if (!!dependencyTarget) {
         this.proto.dependencyTargets.push(dependencyTarget);
@@ -392,10 +397,10 @@ export class View extends ActionBuilder<dataform.Table> {
    */
   public tags(value: string | string[]) {
     const newTags = typeof value === "string" ? [value] : value;
-    newTags.forEach(t => {
+    newTags.forEach((t) => {
       this.proto.tags.push(t);
     });
-    this.uniqueKeyAssertions.forEach(assertion => assertion.tags(value));
+    this.uniqueKeyAssertions.forEach((assertion) => assertion.tags(value));
     this.rowConditionsAssertion?.tags(value);
     return this;
   }
@@ -424,9 +429,8 @@ export class View extends ActionBuilder<dataform.Table> {
     if (!this.proto.actionDescriptor) {
       this.proto.actionDescriptor = {};
     }
-    this.proto.actionDescriptor.columns = ColumnDescriptors.mapConfigProtoToCompilationProto(
-      columns
-    );
+    this.proto.actionDescriptor.columns =
+      ColumnDescriptors.mapConfigProtoToCompilationProto(columns);
     return this;
   }
 
@@ -442,7 +446,7 @@ export class View extends ActionBuilder<dataform.Table> {
       dataform.Target.create({ ...this.proto.target, database }),
       this.session.projectConfig,
       this.proto.fileName,
-      { validateTarget: true }
+      { validateTarget: true },
     );
     return this;
   }
@@ -458,7 +462,7 @@ export class View extends ActionBuilder<dataform.Table> {
       dataform.Target.create({ ...this.proto.target, schema }),
       this.session.projectConfig,
       this.proto.fileName,
-      { validateTarget: true }
+      { validateTarget: true },
     );
     return this;
   }
@@ -496,7 +500,8 @@ export class View extends ActionBuilder<dataform.Table> {
     if (!this.proto.actionDescriptor) {
       this.proto.actionDescriptor = {};
     }
-    this.proto.actionDescriptor.compilationMode = dataform.ActionCompilationMode.ACTION_COMPILATION_MODE_JIT;
+    this.proto.actionDescriptor.compilationMode =
+      dataform.ActionCompilationMode.ACTION_COMPILATION_MODE_JIT;
     this.contextableJitCode = jitCode;
     return this;
   }
@@ -513,7 +518,7 @@ export class View extends ActionBuilder<dataform.Table> {
 
   /** @hidden */
   public compile() {
-    if(this.contextableJitCode) {
+    if (this.contextableJitCode) {
       this.compileJit();
     } else {
       this.compileAot();
@@ -522,7 +527,7 @@ export class View extends ActionBuilder<dataform.Table> {
     return verifyObjectMatchesProto(
       dataform.Table,
       this.proto,
-      VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM
+      VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM,
     );
   }
 
@@ -533,7 +538,7 @@ export class View extends ActionBuilder<dataform.Table> {
       this.contextableQuery,
       this.contextableWhere,
       this.contextablePostOps,
-      this.contextablePreOps
+      this.contextablePreOps,
     );
 
     if (!this.proto.actionDescriptor) {
@@ -555,7 +560,7 @@ export class View extends ActionBuilder<dataform.Table> {
       this.proto.incrementalPreOps = this.contextifyOps(this.contextablePreOps, incrementalContext);
       this.proto.incrementalPostOps = this.contextifyOps(
         this.contextablePostOps,
-        incrementalContext
+        incrementalContext,
       );
     }
 
@@ -564,10 +569,10 @@ export class View extends ActionBuilder<dataform.Table> {
     }
 
     this.proto.preOps = this.contextifyOps(this.contextablePreOps, context).filter(
-      op => !!op.trim()
+      (op) => !!op.trim(),
     );
     this.proto.postOps = this.contextifyOps(this.contextablePostOps, context).filter(
-      op => !!op.trim()
+      (op) => !!op.trim(),
     );
 
     validateQueryString(this.session, this.proto.query, this.proto.fileName);
@@ -577,10 +582,10 @@ export class View extends ActionBuilder<dataform.Table> {
   /** @hidden */
   private contextifyOps(
     contextableOps: Array<Contextable<ITableContext, string | string[]>>,
-    currentContext: ViewContext
+    currentContext: ViewContext,
   ) {
     let protoOps: string[] = [];
-    contextableOps.forEach(contextableOp => {
+    contextableOps.forEach((contextableOp) => {
       const appliedOps = currentContext.apply(contextableOp);
       protoOps = protoOps.concat(typeof appliedOps === "string" ? [appliedOps] : appliedOps);
     });
@@ -595,14 +600,14 @@ export class View extends ActionBuilder<dataform.Table> {
   private verifyConfig(
     // `any` is used here to facilitate the type merging of the legacy table config, which is very
     // different to the new structure.
-    unverifiedConfig: dataform.ActionConfig.ViewConfig | ILegacyBigQueryOptions | any
+    unverifiedConfig: dataform.ActionConfig.ViewConfig | ILegacyBigQueryOptions | any,
   ): dataform.ActionConfig.ViewConfig {
     // The "type" field only exists on legacy view configs. Here we convert them to the new format.
     if (unverifiedConfig.type) {
       delete unverifiedConfig.type;
       if (unverifiedConfig.dependencies) {
         unverifiedConfig.dependencyTargets = unverifiedConfig.dependencies.map(
-          (dependency: string | object) => resolvableAsActionConfigTarget(dependency)
+          (dependency: string | object) => resolvableAsActionConfigTarget(dependency),
         );
         delete unverifiedConfig.dependencies;
       }
@@ -620,20 +625,24 @@ export class View extends ActionBuilder<dataform.Table> {
       }
       if (unverifiedConfig.columns) {
         unverifiedConfig.columns = ColumnDescriptors.mapLegacyObjectToConfigProto(
-          unverifiedConfig.columns as any
+          unverifiedConfig.columns as any,
         );
       }
-      unverifiedConfig = LegacyConfigConverter.insertLegacyInlineAssertionsToConfigProto(
-        unverifiedConfig
-      );
+      unverifiedConfig =
+        LegacyConfigConverter.insertLegacyInlineAssertionsToConfigProto(unverifiedConfig);
       if (unverifiedConfig?.bigquery) {
         checkExcessProperties(
           (e: Error) => {
             throw e;
           },
           unverifiedConfig.bigquery,
-          strictKeysOf<ILegacyViewBigqueryConfig>()(["labels", "additionalOptions", "partitionBy", "clusterBy",]),
-          "BigQuery view config"
+          strictKeysOf<ILegacyViewBigqueryConfig>()([
+            "labels",
+            "additionalOptions",
+            "partitionBy",
+            "clusterBy",
+          ]),
+          "BigQuery view config",
         );
         // Shallow-clone before the delete-loop below so we don't mutate a caller-shared object.
         unverifiedConfig.bigquery = { ...unverifiedConfig.bigquery };
@@ -659,7 +668,7 @@ export class View extends ActionBuilder<dataform.Table> {
     const config = verifyObjectMatchesProto(
       dataform.ActionConfig.ViewConfig,
       unverifiedConfig,
-      VerifyProtoErrorBehaviour.SHOW_DOCS_LINK
+      VerifyProtoErrorBehaviour.SHOW_DOCS_LINK,
     );
 
     if (!config.materialized && (config.partitionBy.length > 0 || config.clusterBy.length > 0)) {
@@ -669,8 +678,8 @@ export class View extends ActionBuilder<dataform.Table> {
         dataform.Target.create({
           database: config.project,
           schema: config.dataset,
-          name: config.name
-        })
+          name: config.name,
+        }),
       );
     }
 
@@ -682,7 +691,10 @@ export class View extends ActionBuilder<dataform.Table> {
  * @hidden
  */
 export class ViewContext implements ITableContext {
-  constructor(private view: View, private isIncremental = false) { }
+  constructor(
+    private view: View,
+    private isIncremental = false,
+  ) {}
 
   public self(): string {
     return this.resolve(this.view.getTarget());

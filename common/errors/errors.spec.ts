@@ -8,7 +8,7 @@ suite(basename(__filename), () => {
   suite("ErrorWithCause", () => {
     for (const testCase of [
       { name: "with message", message: "an error was thrown!" },
-      { name: "without message" }
+      { name: "without message" },
     ]) {
       test(`by default, acts the same as Error, ${testCase.name}`, () => {
         const errorWithCause = new ErrorWithCause(testCase.message);
@@ -17,8 +17,8 @@ suite(basename(__filename), () => {
         expect(errorWithCause.stack).eql(
           normalError.stack.replace(
             /errors\.spec\.ts:\d{1,3}:\d{1,3}/,
-            errorWithCause.stack.match(/errors\.spec\.ts:\d{1,3}:\d{1,3}/)[0]
-          )
+            errorWithCause.stack.match(/errors\.spec\.ts:\d{1,3}:\d{1,3}/)[0],
+          ),
         );
         expect(errorWithCause.toString()).eql(normalError.toString());
       });
@@ -47,7 +47,7 @@ suite(basename(__filename), () => {
       const originalError = {
         message: "message",
         stack: "stack",
-        name: "name"
+        name: "name",
       };
       const coercedError = coerceAsError(originalError);
 

@@ -11,9 +11,7 @@ export interface IProviderCall {
 }
 
 type NextResponse =
-  | { kind: "ok" }
-  | { kind: "throw"; code: number; message?: string }
-  | { kind: "hang" };
+  { kind: "ok" } | { kind: "throw"; code: number; message?: string } | { kind: "hang" };
 
 /**
  * Test double for `@google-cloud/lineage`'s LineageClient that records every
@@ -32,14 +30,19 @@ export class RecordingLineageClient {
   public async processOpenLineageRunEvent(request: any): Promise<any> {
     this.calls.push({ request, timestamp: Date.now() });
     if (this.nextResponse.kind === "throw") {
-      const err: any = new Error(this.nextResponse.message || `injected code=${this.nextResponse.code}`);
+      const err: any = new Error(
+        this.nextResponse.message || `injected code=${this.nextResponse.code}`,
+      );
       err.code = this.nextResponse.code;
       throw err;
     }
     if (this.nextResponse.kind === "hang") {
-      await new Promise(() => { /* never resolves */ });
+      await new Promise(() => {
+        /* never resolves */
+      });
     }
-    const runId = request?.openLineage?.fields?.run?.structValue?.fields?.runId?.stringValue || "unknown";
+    const runId =
+      request?.openLineage?.fields?.run?.structValue?.fields?.runId?.stringValue || "unknown";
     return { name: `projects/test/locations/us/processes/${runId}` };
   }
 
@@ -64,7 +67,7 @@ export class RecordingLineageClient {
  * for so tests can assert on endpoint selection (case 5 in T37).
  */
 export function recorderProvider(
-  recorder: RecordingLineageClient
+  recorder: RecordingLineageClient,
 ): (projectId: string, endpoint: string) => LineageClient {
   return (projectId: string, endpoint: string) => {
     recorder.providerCalls.push({ projectId, endpoint });

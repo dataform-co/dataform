@@ -1,9 +1,12 @@
 import { google } from "df/protos/ts";
 
-export type AnyValue = null | number | string | boolean | undefined | AnyValue[] | { [key: string]: AnyValue };
+export type AnyValue =
+  null | number | string | boolean | undefined | AnyValue[] | { [key: string]: AnyValue };
 
 export class Structs {
-  public static toObject(struct?: google.protobuf.IStruct): { [key: string]: AnyValue } | undefined {
+  public static toObject(
+    struct?: google.protobuf.IStruct,
+  ): { [key: string]: AnyValue } | undefined {
     if (!struct || !struct.fields) {
       return undefined;
     }
@@ -60,8 +63,8 @@ export class Structs {
     if (Array.isArray(val)) {
       return {
         listValue: {
-          values: val.map(v => this.toValue(v))
-        }
+          values: val.map((v) => this.toValue(v)),
+        },
       };
     }
     if (typeof val === "object") {

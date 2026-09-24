@@ -16,13 +16,7 @@ declare var __webpack_require__: any;
 declare var __non_webpack_require__: any;
 
 type actionsWithDependencies =
-  | Table
-  | View
-  | IncrementalTable
-  | Operation
-  | Notebook
-  | DataPreparation
-  | PropertyGraph;
+  Table | View | IncrementalTable | Operation | Notebook | DataPreparation | PropertyGraph;
 
 // This side-steps webpack's require in favour of the real require.
 export const nativeRequire =
@@ -30,13 +24,13 @@ export const nativeRequire =
 
 export function matchPatterns(patterns: string[], values: string[]) {
   const fullyQualifiedActions: string[] = [];
-  patterns.forEach(pattern => {
+  patterns.forEach((pattern) => {
     if (pattern.includes(".")) {
       if (values.includes(pattern)) {
         fullyQualifiedActions.push(pattern);
       }
     } else {
-      const matchingActions = values.filter(value => pattern === value.split(".").slice(-1)[0]);
+      const matchingActions = values.filter((value) => pattern === value.split(".").slice(-1)[0]);
       if (matchingActions.length === 0) {
         return;
       }
@@ -66,12 +60,10 @@ export function getCallerFile(rootDir: string) {
     // If it's in the root directory we'll take it, but keep searching
     // for a better match.
     lastfile = nextLastfile;
-    if (
-      !(
-        nextLastfile.includes(`definitions${Path.separator}`) ||
-        nextLastfile.includes(`models${Path.separator}`)
-      )
-    ) {
+    if (!(
+      nextLastfile.includes(`definitions${Path.separator}`) ||
+      nextLastfile.includes(`models${Path.separator}`)
+    )) {
       continue;
     }
     break;
@@ -96,7 +88,7 @@ function getCurrentStack(): NodeJS.CallSite[] {
     Error.prepareStackTrace = (err, stack) => {
       return stack;
     };
-    return (new Error().stack as unknown) as NodeJS.CallSite[];
+    return new Error().stack as unknown as NodeJS.CallSite[];
   } finally {
     Error.stackTraceLimit = originalStackTraceLimit;
     Error.prepareStackTrace = originalPrepareStackTrace;
@@ -128,22 +120,26 @@ export function toResolvable(ref: Resolvable | string[], rest: string[] = []): R
 }
 
 function isResolvableArray(parts: any[]): parts is [string, string?, string?] {
-  if (parts.some(part => typeof part !== "string")) {
+  if (parts.some((part) => typeof part !== "string")) {
     return false;
   }
   return parts.length > 0 && parts.length <= 3;
 }
 
 export function resolvableAsTarget(
-  resolvable: Resolvable | dataform.ActionConfig.Target
+  resolvable: Resolvable | dataform.ActionConfig.Target,
 ): dataform.Target {
   if (typeof resolvable === "string") {
     return dataform.Target.create({
-      name: resolvable
+      name: resolvable,
     });
   }
-  const actionConfigTarget = (resolvable as dataform.ActionConfig.ITarget);
-  if (actionConfigTarget instanceof dataform.ActionConfig.Target || actionConfigTarget.dataset !== undefined || actionConfigTarget.project !== undefined) {
+  const actionConfigTarget = resolvable as dataform.ActionConfig.ITarget;
+  if (
+    actionConfigTarget instanceof dataform.ActionConfig.Target ||
+    actionConfigTarget.dataset !== undefined ||
+    actionConfigTarget.project !== undefined
+  ) {
     return dataform.Target.create({
       name: actionConfigTarget.name,
       schema: actionConfigTarget.dataset,
@@ -155,7 +151,7 @@ export function resolvableAsTarget(
 }
 
 export function resolvableAsActionConfigTarget(
-  resolvable: string | object
+  resolvable: string | object,
 ): dataform.ActionConfig.ITarget {
   if (typeof resolvable === "string") {
     const parts = resolvable.split(".").reverse();
@@ -183,10 +179,10 @@ export function ambiguousActionNameMsg(act: Resolvable, allActs: Action[] | stri
     typeof allActs[0] === "string"
       ? allActs
       : (allActs as Array<Table | Operation | Assertion>).map(
-        r => `${r.getTarget().schema}.${r.getTarget().name}`
-      );
+          (r) => `${r.getTarget().schema}.${r.getTarget().name}`,
+        );
   return `Ambiguous Action name: ${stringifyResolvable(
-    act
+    act,
   )}. Did you mean one of: ${allActNames.join(", ")}.`;
 }
 
@@ -197,12 +193,12 @@ export function target(
   config: dataform.IProjectConfig,
   name: string,
   schema?: string,
-  database?: string
+  database?: string,
 ): dataform.ITarget {
   return dataform.Target.create({
     name,
     schema: schema || config.defaultSchema || undefined,
-    database: database || config.defaultDatabase || undefined
+    database: database || config.defaultDatabase || undefined,
   });
 }
 
@@ -211,7 +207,7 @@ export function target(
  */
 export function strictKeysOf<T>() {
   return <U extends Array<keyof T>>(
-    array: U & ([keyof T] extends [U[number]] ? unknown : Array<["Needs to be all of", T]>)
+    array: U & ([keyof T] extends [U[number]] ? unknown : Array<["Needs to be all of", T]>),
   ) => array;
 }
 
@@ -223,17 +219,18 @@ export function checkExcessProperties<T>(
   reportError: (e: Error) => void,
   object: T,
   supportedProperties: string[],
-  name?: string
+  name?: string,
 ) {
   const extraProperties = Object.keys(object).filter(
-    key => !(supportedProperties as string[]).includes(key)
+    (key) => !(supportedProperties as string[]).includes(key),
   );
   if (extraProperties.length > 0) {
     reportError(
       new Error(
-        `Unexpected property "${extraProperties[0]}"${!!name ? ` in ${name}` : ""
-        }. Supported properties are: ${JSON.stringify(supportedProperties)}`
-      )
+        `Unexpected property "${extraProperties[0]}"${
+          !!name ? ` in ${name}` : ""
+        }. Supported properties are: ${JSON.stringify(supportedProperties)}`,
+      ),
     );
   }
 }
@@ -242,10 +239,10 @@ export function validateQueryString(session: Session, query: string, filename: s
   if (query?.trim().slice(-1) === ";") {
     session.compileError(
       new Error(
-        "Semi-colons are not allowed at the end of SQL statements."
+        "Semi-colons are not allowed at the end of SQL statements.",
         // This can break the statement because of appended adapter specific SQL.
       ),
-      filename
+      filename,
     );
   }
 }
@@ -256,25 +253,34 @@ export function validateNoMixedCompilationMode(
   contextableQuery: Contextable<any, any>,
   contextableWhere: Contextable<any, any>,
   contextablePostOps: Array<Contextable<any, any>>,
-  contextablePreOps: Array<Contextable<any, any>>
+  contextablePreOps: Array<Contextable<any, any>>,
 ) {
   let flattenPostOps: unknown[] = [];
-  contextablePostOps.forEach(op => {
+  contextablePostOps.forEach((op) => {
     flattenPostOps = flattenPostOps.concat(typeof op === "object" ? op : [op]);
   });
   let flattenPreOps: unknown[] = [];
-  contextablePreOps.forEach(op => {
+  contextablePreOps.forEach((op) => {
     flattenPreOps = flattenPreOps.concat(typeof op === "object" ? op : [op]);
   });
   const conflictingProperties: string[] = [];
-  if (!!contextableQuery) { conflictingProperties.push("query"); }
-  if (!!contextableWhere) { conflictingProperties.push("where"); }
-  if (!!flattenPostOps.length) { conflictingProperties.push("postOps"); }
-  if (!!flattenPreOps.length) { conflictingProperties.push("preOps"); }
+  if (!!contextableQuery) {
+    conflictingProperties.push("query");
+  }
+  if (!!contextableWhere) {
+    conflictingProperties.push("where");
+  }
+  if (!!flattenPostOps.length) {
+    conflictingProperties.push("postOps");
+  }
+  if (!!flattenPreOps.length) {
+    conflictingProperties.push("preOps");
+  }
   if (conflictingProperties.length) {
     const err = new Error(
-      `Cannot mix AoT and JiT compilation in action. The following AoT properties were found: ${conflictingProperties.join(", ")
-      }`
+      `Cannot mix AoT and JiT compilation in action. The following AoT properties were found: ${conflictingProperties.join(
+        ", ",
+      )}`,
     );
     session.compileError(err, filename);
     throw err;
@@ -285,9 +291,7 @@ export function validateNoMixedCompilationMode(
  * Checks if the Cloud Resource connection has a valid format.
  * @param connection String to be validated.
  */
-export function validateConnectionFormat(
-  connection: string,
-) {
+export function validateConnectionFormat(connection: string) {
   // Connection pattern of the form project.location.connection_id. Example:
   // my-project.us-central1.my-connection
   const dotPattern = /^[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+$/;
@@ -295,34 +299,27 @@ export function validateConnectionFormat(
   // Connection pattern of the form projects/<substring>/locations/<substring>/connections/<substring>
   // Example: projects/my-project/locations/us-central1/connections/my-connection
   // Substrings cannot contain '/'.
-  const resourcePattern =
-    /^projects\/[^/]+\/locations\/[^/]+\/connections\/[^/]+$/;
+  const resourcePattern = /^projects\/[^/]+\/locations\/[^/]+\/connections\/[^/]+$/;
 
-  const isValidFormat =
-    dotPattern.test(connection) || resourcePattern.test(connection);
+  const isValidFormat = dotPattern.test(connection) || resourcePattern.test(connection);
 
-  if (connection !== 'DEFAULT' && !isValidFormat) {
+  if (connection !== "DEFAULT" && !isValidFormat) {
     throw new Error(
-      'The connection must be in the format `{project}.{location}.{connection_id}` or `projects/{project}/locations/{location}/connections/{connection_id}`, or be set to `DEFAULT`.',
+      "The connection must be in the format `{project}.{location}.{connection_id}` or `projects/{project}/locations/{location}/connections/{connection_id}`, or be set to `DEFAULT`.",
     );
   }
-
 }
 
 /**
  * Checks if the storageUri is a valid GCS path.
  * @param storageUri String to be validated.
  */
-export function validateStorageUriFormat(
-  storageUri: string,
-) {
+export function validateStorageUriFormat(storageUri: string) {
   // storageUri must have format gs://<bucket_name>/<path_to_data>
   const gcsPathPattern = /^gs:\/\/([^/]+)\/(.+)$/;
 
   if (!gcsPathPattern.test(storageUri)) {
-    throw new Error(
-      'The storage URI must be in the format `gs://{bucket_name}/{path_to_data}`.',
-    );
+    throw new Error("The storage URI must be in the format `gs://{bucket_name}/{path_to_data}`.");
   }
 }
 
@@ -331,9 +328,7 @@ export function validateStorageUriFormat(
  * @param configFileFormat User-provided file format, if it exists.
  * @return File format used when creating an Iceberg table.
  */
-export function getFileFormatValueForIcebergTable(
-  configFileFormat?: string,
-): dataform.FileFormat {
+export function getFileFormatValueForIcebergTable(configFileFormat?: string): dataform.FileFormat {
   if (!configFileFormat) {
     // Default to PARQUET if fileFormat is undefined.
     return dataform.FileFormat.PARQUET;
@@ -344,9 +339,7 @@ export function getFileFormatValueForIcebergTable(
       return dataform.FileFormat.PARQUET;
 
     default:
-      throw new Error(
-        `File format ${configFileFormat} is not supported.`,
-      );
+      throw new Error(`File format ${configFileFormat} is not supported.`);
   }
 }
 
@@ -403,7 +396,7 @@ export function getEffectiveBucketName(
     return defaultBucketName;
   } else {
     throw new Error(
-      "When defining an Iceberg table, bucket name must be defined in workflow_settings.yaml or the config block."
+      "When defining an Iceberg table, bucket name must be defined in workflow_settings.yaml or the config block.",
     );
   }
 }
@@ -488,15 +481,16 @@ export function setOrValidateTableEnumType(table: dataform.ITable) {
   } else if (enumTypeFromStr !== null && table.enumType !== enumTypeFromStr) {
     throw new Error(
       `Table str type "${table.type}" and enumType "${tableTypeEnumToString(
-        table.enumType
-      )}" are not equivalent.`
+        table.enumType,
+      )}" are not equivalent.`,
     );
   }
 }
 
-export function extractActionDetailsFromFileName(
-  path: string
-): { fileExtension: string; fileNameAsTargetName: string } {
+export function extractActionDetailsFromFileName(path: string): {
+  fileExtension: string;
+  fileNameAsTargetName: string;
+} {
   const basename = Path.basename(path);
   const fileExtension = Path.fileExtension(path);
   return { fileExtension, fileNameAsTargetName: basename };
@@ -530,7 +524,7 @@ export function actionConfigToCompiledGraphTarget(
     | dataform.ActionConfig.NotebookConfig
     | dataform.ActionConfig.DataPreparationConfig
     | dataform.ActionConfig.DataPreparationConfig.ErrorTableConfig
-    | dataform.ActionConfig.Target
+    | dataform.ActionConfig.Target,
 ): dataform.Target {
   const compiledGraphTarget = dataform.Target.create({ name: actionConfig.name });
   if ("project" in actionConfig && actionConfig.project !== undefined) {
@@ -553,7 +547,7 @@ export function resolveActionsConfigFilename(configFilename: string, configPath:
 
 export function checkAssertionsForDependency(
   action: actionsWithDependencies,
-  resolvable: Resolvable
+  resolvable: Resolvable,
 ): dataform.Target {
   const dependencyTarget = resolvableAsTarget(resolvable);
   if (
@@ -574,20 +568,20 @@ export function checkAssertionsForDependency(
       action.session.compileError(
         `Conflicting "includeDependentAssertions" properties are not allowed. Dependency ${dependencyTarget.name} has different values set for this property.`,
         action.getFileName(),
-        action.getTarget()
+        action.getTarget(),
       );
       return;
     }
   }
   action.includeAssertionsForDependency.set(
     dependencyTargetString,
-    dependencyTarget.includeDependentAssertions
+    dependencyTarget.includeDependentAssertions,
   );
   return dependencyTarget;
 }
 
-/** 
- * Multimap of resolvable targets to values. 
+/**
+ * Multimap of resolvable targets to values.
  * Allows the lookup by name/schema/database and their subsets.
  */
 export class ResolvableMap<T> {
@@ -596,7 +590,7 @@ export class ResolvableMap<T> {
   private byDatabaseAndName: Map<string, Map<string, T[]>> = new Map();
   private byDatabaseSchemaAndName: Map<string, Map<string, Map<string, T[]>>> = new Map();
 
-  public constructor(values?: Array<{ actionTarget: dataform.ITarget, value: T }>) {
+  public constructor(values?: Array<{ actionTarget: dataform.ITarget; value: T }>) {
     if (values) {
       for (const { actionTarget, value } of values) {
         this.set(actionTarget, value);
@@ -656,7 +650,7 @@ export class ResolvableMap<T> {
   private setBySchemaLevel(
     targetMap: Map<string, Map<string, T[]>>,
     actionTarget: dataform.ITarget,
-    value: T
+    value: T,
   ) {
     if (!targetMap.has(actionTarget.schema)) {
       targetMap.set(actionTarget.schema, new Map());

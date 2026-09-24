@@ -1,5 +1,8 @@
 export class ErrorWithCause extends Error {
-  constructor(message?: string | Error, public readonly cause?: Error) {
+  constructor(
+    message?: string | Error,
+    public readonly cause?: Error,
+  ) {
     super(typeof message === "string" ? message : undefined);
     if (typeof message !== "string") {
       this.cause = message;
@@ -17,7 +20,10 @@ export function coerceAsError<T extends Error | any>(errorLike: T): T extends Er
   }
   const error = errorLike as any;
   // Otherwise, attempt to reconstruct an error class from the object.
-  const message = error.message || error.error || (typeof errorLike === "string" ? errorLike : JSON.stringify(errorLike));
+  const message =
+    error.message ||
+    error.error ||
+    (typeof errorLike === "string" ? errorLike : JSON.stringify(errorLike));
   const coercedError = new Error(String(message));
   if (error.stack) {
     coercedError.stack = error.stack;

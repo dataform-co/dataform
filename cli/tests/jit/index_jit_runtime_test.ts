@@ -2,11 +2,7 @@ import { expect } from "chai";
 import * as fs from "fs-extra";
 import * as path from "path";
 
-import {
-  CREDENTIALS_PATH,
-  runCli,
-  setupJitProject
-} from "df/cli/index_test_base";
+import { CREDENTIALS_PATH, runCli, setupJitProject } from "df/cli/index_test_base";
 import { suite, test, writeDefinitionFile } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
 
@@ -20,7 +16,7 @@ suite("JiT support runtime", ({ afterEach }) => {
     fs.ensureDirSync(path.join(projectDir, "helpers"));
     fs.writeFileSync(
       path.join(projectDir, "helpers", "utils.js"),
-      "module.exports = { getValue: () => 'required_value' };"
+      "module.exports = { getValue: () => 'required_value' };",
     );
     // Add a JiT table that requires it
     writeDefinitionFile(
@@ -29,7 +25,7 @@ suite("JiT support runtime", ({ afterEach }) => {
       `publish("jit_require_test", { type: "table" }).jitCode(async (jctx) => {
         const utils = require("../helpers/utils.js");
         return "SELECT '" + utils.getValue() + "' as val";
-      })`
+      })`,
     );
 
     const runResult = await runCli("run", [
@@ -38,7 +34,7 @@ suite("JiT support runtime", ({ afterEach }) => {
       CREDENTIALS_PATH,
       "--dry-run",
       "--json",
-      "--actions=jit_require_test"
+      "--actions=jit_require_test",
     ]);
 
     expect(runResult.exitCode).equals(1);
@@ -56,7 +52,7 @@ suite("JiT support runtime", ({ afterEach }) => {
       `publish("hang_jit", { type: "table" }).jitCode(async (jctx) => {
         while(true) { /* loop */ }
         return "SELECT 1";
-      })`
+      })`,
     );
     const runResult = await runCli(
       "run",
@@ -67,9 +63,9 @@ suite("JiT support runtime", ({ afterEach }) => {
         "--dry-run",
         "--json",
         "--actions=hang_jit",
-        "--jit-timeout=4s"
+        "--jit-timeout=4s",
       ],
-      { timeout: 50000 }
+      { timeout: 50000 },
     );
 
     expect(runResult.exitCode).equals(1);
@@ -86,7 +82,7 @@ suite("JiT support runtime", ({ afterEach }) => {
       `publish("hang_jit_global", { type: "table" }).jitCode(async (jctx) => {
         while(true) { /* loop */ }
         return "SELECT 1";
-      })`
+      })`,
     );
     // --execution-timeout must exceed BQ schema-prep time; smaller values fire
     // the timer before the JiT compile starts, leaving the action SKIPPED and
@@ -100,20 +96,18 @@ suite("JiT support runtime", ({ afterEach }) => {
         "--dry-run",
         "--json",
         "--actions=hang_jit_global",
-        "--execution-timeout=15s"
+        "--execution-timeout=15s",
       ],
-      { timeout: 80000 }
+      { timeout: 80000 },
     );
 
     expect(runResult.exitCode).equals(1);
     const executedGraph = JSON.parse(runResult.stdout);
     expect(executedGraph.status).equals(5); // TIMED_OUT
-    const hangAction = executedGraph.actions.find(
-      (a: any) => a.target.name === "hang_jit_global"
-    );
+    const hangAction = executedGraph.actions.find((a: any) => a.target.name === "hang_jit_global");
     expect(hangAction.status).equals(3); // FAILED
     expect(hangAction.tasks[0].errorMessage).to.include(
-      "Run cancelled while worker was in flight."
+      "Run cancelled while worker was in flight.",
     );
   });
 
@@ -124,7 +118,7 @@ suite("JiT support runtime", ({ afterEach }) => {
     writeDefinitionFile(
       projectDir,
       "jit_assertion.js",
-      `assert("jit_assertion").jitCode(async (jctx) => "SELECT 1 as row_count")`
+      `assert("jit_assertion").jitCode(async (jctx) => "SELECT 1 as row_count")`,
     );
 
     const runResult = await runCli("run", [
@@ -133,13 +127,13 @@ suite("JiT support runtime", ({ afterEach }) => {
       CREDENTIALS_PATH,
       "--dry-run",
       "--json",
-      "--actions=jit_assertion"
+      "--actions=jit_assertion",
     ]);
 
     expect(runResult.exitCode).equals(0);
     const executedGraph = JSON.parse(runResult.stdout);
     const assertionAction = executedGraph.actions.find(
-      (a: any) => a.target.name === "jit_assertion"
+      (a: any) => a.target.name === "jit_assertion",
     );
     expect(assertionAction.status).to.equal(2); // SUCCESSFUL
     // createAssertionTasks emits 2 tasks: create-or-replace view + row-count check.
@@ -154,7 +148,7 @@ suite("JiT support runtime", ({ afterEach }) => {
       writeDefinitionFile(
         projectDir,
         `jit_${i}.js`,
-        `publish("jit_${i}", { type: "table" }).jitCode(async (jctx) => "SELECT ${i} as val")`
+        `publish("jit_${i}", { type: "table" }).jitCode(async (jctx) => "SELECT ${i} as val")`,
       );
     }
 
@@ -163,12 +157,14 @@ suite("JiT support runtime", ({ afterEach }) => {
       "--credentials",
       CREDENTIALS_PATH,
       "--dry-run",
-      "--json"
+      "--json",
     ]);
 
     expect(runResult.exitCode).equals(0);
     const executedGraph = JSON.parse(runResult.stdout);
-    expect(executedGraph.actions.filter((a: any) => a.target.name.startsWith("jit_")).length).to.equal(6); // jit_table + 5 others
+    expect(
+      executedGraph.actions.filter((a: any) => a.target.name.startsWith("jit_")).length,
+    ).to.equal(6); // jit_table + 5 others
   });
 
   test("JiT handles hard worker crash", async () => {
@@ -181,7 +177,7 @@ suite("JiT support runtime", ({ afterEach }) => {
       `publish("crash_jit", { type: "table" }).jitCode(async (jctx) => {
         setTimeout(() => { throw new Error("Hard crash"); }, 10);
         return new Promise(() => {}); // Hang until crash
-      })`
+      })`,
     );
 
     const runResult = await runCli("run", [
@@ -190,7 +186,7 @@ suite("JiT support runtime", ({ afterEach }) => {
       CREDENTIALS_PATH,
       "--dry-run",
       "--json",
-      "--actions=crash_jit"
+      "--actions=crash_jit",
     ]);
 
     expect(runResult.exitCode).equals(1);

@@ -1,6 +1,10 @@
 import { expect } from "chai";
 
-import { IncrementalTableJitContext, SqlActionJitContext, TableJitContext } from "df/core/jit_context";
+import {
+  IncrementalTableJitContext,
+  SqlActionJitContext,
+  TableJitContext,
+} from "df/core/jit_context";
 import { dataform, google } from "df/protos/ts";
 import { suite, test } from "df/testing";
 
@@ -18,42 +22,42 @@ suite("jit_context", () => {
               struct: google.protobuf.Value.create({
                 structValue: google.protobuf.Struct.create({
                   fields: {
-                    nestedKey: google.protobuf.Value.create({ stringValue: "nestedValue" })
-                  }
-                })
+                    nestedKey: google.protobuf.Value.create({ stringValue: "nestedValue" }),
+                  },
+                }),
               }),
               list: google.protobuf.Value.create({
                 listValue: google.protobuf.ListValue.create({
                   values: [
                     google.protobuf.Value.create({ stringValue: "a" }),
                     google.protobuf.Value.create({ stringValue: "b" }),
-                    google.protobuf.Value.create({ stringValue: "c" })
-                  ]
-                })
+                    google.protobuf.Value.create({ stringValue: "c" }),
+                  ],
+                }),
               }),
               null: google.protobuf.Value.create({
-                nullValue: google.protobuf.NullValue.NULL_VALUE
+                nullValue: google.protobuf.NullValue.NULL_VALUE,
               }),
               undef: google.protobuf.Value.create({
-                nullValue: google.protobuf.NullValue.NULL_VALUE
+                nullValue: google.protobuf.NullValue.NULL_VALUE,
               }),
-            }
-          })
-        })
-      }
+            },
+          }),
+        }),
+      },
     });
     const request = dataform.JitCompilationRequest.create({
       target: dataform.Target.create({
         database: "db",
         schema: "schema",
-        name: "name"
+        name: "name",
       }),
       dependencies: [
         dataform.Target.create({
           database: "db",
           schema: "schema",
-          name: "dep"
-        })
+          name: "dep",
+        }),
       ],
       filePaths: [],
       jitData,
@@ -62,7 +66,7 @@ suite("jit_context", () => {
       target: dataform.Target.create({
         database: "db",
         schema: "schema",
-        name: "name"
+        name: "name",
       }),
       dependencies: [],
       filePaths: [],
@@ -116,21 +120,17 @@ suite("jit_context", () => {
     test("data", () => {
       const context = new SqlActionJitContext(adapter, request);
       expect(context.data).to.deep.equal({
-        "key": {
-          "number": 123,
-          "string": "value",
-          "boolean": true,
-          "struct": {
-            "nestedKey": "nestedValue"
+        key: {
+          number: 123,
+          string: "value",
+          boolean: true,
+          struct: {
+            nestedKey: "nestedValue",
           },
-          "list": [
-            "a",
-            "b",
-            "c"
-          ],
-          "null": null,
-          "undef": null,
-        }
+          list: ["a", "b", "c"],
+          null: null,
+          undef: null,
+        },
       });
     });
   });
@@ -141,7 +141,7 @@ suite("jit_context", () => {
       target: dataform.Target.create({
         database: "db",
         schema: "schema",
-        name: "name"
+        name: "name",
       }),
     });
 
@@ -164,7 +164,7 @@ suite("jit_context", () => {
       target: dataform.Target.create({
         database: "db",
         schema: "schema",
-        name: "name"
+        name: "name",
       }),
     });
 

@@ -24,7 +24,7 @@ suite("cancellable_promise", () => {
             wasCancelled = true;
             resolve();
           }),
-        10
+        10,
       );
     });
     promise.cancel();

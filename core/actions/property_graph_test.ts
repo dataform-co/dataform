@@ -10,8 +10,8 @@ function makeSession(): Session {
     "/tmp/root",
     dataform.ProjectConfig.create({
       defaultDatabase: "defaultProject",
-      defaultSchema: "defaultDataset"
-    })
+      defaultSchema: "defaultDataset",
+    }),
   );
 }
 
@@ -29,7 +29,7 @@ function build(config: any, filename = "definitions/graph.yaml"): PropertyGraph 
 const graphTarget = (name: string) => ({
   database: "defaultProject",
   schema: "defaultDataset",
-  name
+  name,
 });
 
 suite("property_graph", () => {
@@ -40,9 +40,9 @@ suite("property_graph", () => {
         {
           name: "Account",
           dataSourceString: "proj.ds.Accounts",
-          keys: ["id"]
-        }
-      ]
+          keys: ["id"],
+        },
+      ],
     });
 
     expect(asPlainObject(compiled)).deep.equals(
@@ -56,11 +56,11 @@ suite("property_graph", () => {
           {
             name: "Account",
             dataSource: { database: "proj", schema: "ds", name: "Accounts" },
-            keys: ["id"]
-          }
+            keys: ["id"],
+          },
         ],
-        graphBody: "NODE TABLES (\n  `proj.ds.Accounts` AS Account KEY (id)\n)"
-      })
+        graphBody: "NODE TABLES (\n  `proj.ds.Accounts` AS Account KEY (id)\n)",
+      }),
     );
   });
 
@@ -72,9 +72,9 @@ suite("property_graph", () => {
         {
           name: "Account",
           dataSourceString: "proj.ds.Accounts",
-          keys: ["id"]
-        }
-      ]
+          keys: ["id"],
+        },
+      ],
     });
 
     expect(asPlainObject(compiled)).deep.equals(
@@ -89,20 +89,18 @@ suite("property_graph", () => {
           {
             name: "Account",
             dataSource: { database: "proj", schema: "ds", name: "Accounts" },
-            keys: ["id"]
-          }
+            keys: ["id"],
+          },
         ],
-        graphBody: "NODE TABLES (\n  `proj.ds.Accounts` AS Account KEY (id)\n)"
-      })
+        graphBody: "NODE TABLES (\n  `proj.ds.Accounts` AS Account KEY (id)\n)",
+      }),
     );
   });
 
   test("normalizes scalar keys to a single-element list", () => {
     const compiled = compile({
       name: "G",
-      entities: [
-        { name: "A", dataSourceString: "p.d.A", keys: "id" }
-      ]
+      entities: [{ name: "A", dataSourceString: "p.d.A", keys: "id" }],
     });
 
     expect(asPlainObject(compiled)).deep.equals(
@@ -116,20 +114,18 @@ suite("property_graph", () => {
           {
             name: "A",
             dataSource: { database: "p", schema: "d", name: "A" },
-            keys: ["id"]
-          }
+            keys: ["id"],
+          },
         ],
-        graphBody: "NODE TABLES (\n  `p.d.A` AS A KEY (id)\n)"
-      })
+        graphBody: "NODE TABLES (\n  `p.d.A` AS A KEY (id)\n)",
+      }),
     );
   });
 
   test("parses 3-part dataSourceString into database.schema.name", () => {
     const compiled = compile({
       name: "G",
-      entities: [
-        { name: "A", dataSourceString: "myProj.myDs.MyTable", keys: ["id"] }
-      ]
+      entities: [{ name: "A", dataSourceString: "myProj.myDs.MyTable", keys: ["id"] }],
     });
 
     expect(asPlainObject(compiled)).deep.equals(
@@ -143,11 +139,11 @@ suite("property_graph", () => {
           {
             name: "A",
             dataSource: { database: "myProj", schema: "myDs", name: "MyTable" },
-            keys: ["id"]
-          }
+            keys: ["id"],
+          },
         ],
-        graphBody: "NODE TABLES (\n  `myProj.myDs.MyTable` AS A KEY (id)\n)"
-      })
+        graphBody: "NODE TABLES (\n  `myProj.myDs.MyTable` AS A KEY (id)\n)",
+      }),
     );
   });
 
@@ -158,9 +154,9 @@ suite("property_graph", () => {
         {
           name: "A",
           dataSourceDataset: { dataset: "customDs", table: "MyTable" },
-          keys: ["id"]
-        }
-      ]
+          keys: ["id"],
+        },
+      ],
     });
 
     expect(asPlainObject(compiled)).deep.equals(
@@ -174,11 +170,11 @@ suite("property_graph", () => {
           {
             name: "A",
             dataSource: { database: "defaultProject", schema: "customDs", name: "MyTable" },
-            keys: ["id"]
-          }
+            keys: ["id"],
+          },
         ],
-        graphBody: "NODE TABLES (\n  `defaultProject.customDs.MyTable` AS A KEY (id)\n)"
-      })
+        graphBody: "NODE TABLES (\n  `defaultProject.customDs.MyTable` AS A KEY (id)\n)",
+      }),
     );
   });
 
@@ -190,9 +186,9 @@ suite("property_graph", () => {
           name: "Account",
           dataSourceString: "p.d.A",
           keys: ["id"],
-          fields: [{ name: "balance", expression: "balance" }]
-        }
-      ]
+          fields: [{ name: "balance", expression: "balance" }],
+        },
+      ],
     });
 
     expect(asPlainObject(compiled)).deep.equals(
@@ -213,14 +209,14 @@ suite("property_graph", () => {
                 description: "",
                 fields: [{ name: "balance", expression: "balance" }],
                 importAll: false,
-                isDefault: true
-              }
-            ]
-          }
+                isDefault: true,
+              },
+            ],
+          },
         ],
         graphBody:
-          "NODE TABLES (\n  `p.d.A` AS Account KEY (id) DEFAULT LABEL PROPERTIES (balance)\n)"
-      })
+          "NODE TABLES (\n  `p.d.A` AS Account KEY (id) DEFAULT LABEL PROPERTIES (balance)\n)",
+      }),
     );
   });
 
@@ -232,9 +228,9 @@ suite("property_graph", () => {
           name: "A",
           dataSourceString: "p.d.A",
           keys: ["id"],
-          fields: ["balance", "owner"]
-        }
-      ]
+          fields: ["balance", "owner"],
+        },
+      ],
     });
 
     expect(asPlainObject(compiled)).deep.equals(
@@ -255,17 +251,17 @@ suite("property_graph", () => {
                 description: "",
                 fields: [
                   { name: "balance", expression: "balance" },
-                  { name: "owner", expression: "owner" }
+                  { name: "owner", expression: "owner" },
                 ],
                 importAll: false,
-                isDefault: true
-              }
-            ]
-          }
+                isDefault: true,
+              },
+            ],
+          },
         ],
         graphBody:
-          "NODE TABLES (\n  `p.d.A` AS A KEY (id) DEFAULT LABEL PROPERTIES (balance, owner)\n)"
-      })
+          "NODE TABLES (\n  `p.d.A` AS A KEY (id) DEFAULT LABEL PROPERTIES (balance, owner)\n)",
+      }),
     );
   });
 
@@ -277,9 +273,9 @@ suite("property_graph", () => {
           name: "A",
           dataSourceString: "p.d.A",
           keys: ["id"],
-          fieldWildcard: { importAll: true }
-        }
-      ]
+          fieldWildcard: { importAll: true },
+        },
+      ],
     });
 
     expect(asPlainObject(compiled)).deep.equals(
@@ -294,14 +290,12 @@ suite("property_graph", () => {
             name: "A",
             dataSource: { database: "p", schema: "d", name: "A" },
             keys: ["id"],
-            labels: [
-              { name: "A", description: "", importAll: true, isDefault: true }
-            ]
-          }
+            labels: [{ name: "A", description: "", importAll: true, isDefault: true }],
+          },
         ],
         graphBody:
-          "NODE TABLES (\n  `p.d.A` AS A KEY (id) DEFAULT LABEL PROPERTIES ARE ALL COLUMNS\n)"
-      })
+          "NODE TABLES (\n  `p.d.A` AS A KEY (id) DEFAULT LABEL PROPERTIES ARE ALL COLUMNS\n)",
+      }),
     );
   });
 
@@ -313,9 +307,9 @@ suite("property_graph", () => {
           name: "A",
           dataSourceString: "p.d.A",
           keys: ["id"],
-          fieldWildcard: { importAll: true, except: ["secret", "internal"] }
-        }
-      ]
+          fieldWildcard: { importAll: true, except: ["secret", "internal"] },
+        },
+      ],
     });
 
     expect(asPlainObject(compiled)).deep.equals(
@@ -336,15 +330,15 @@ suite("property_graph", () => {
                 description: "",
                 importAll: true,
                 importExcept: ["secret", "internal"],
-                isDefault: true
-              }
-            ]
-          }
+                isDefault: true,
+              },
+            ],
+          },
         ],
         graphBody:
           "NODE TABLES (\n  `p.d.A` AS A KEY (id) DEFAULT LABEL " +
-          "PROPERTIES ARE ALL COLUMNS EXCEPT (secret, internal)\n)"
-      })
+          "PROPERTIES ARE ALL COLUMNS EXCEPT (secret, internal)\n)",
+      }),
     );
   });
 
@@ -358,10 +352,10 @@ suite("property_graph", () => {
           keys: ["id"],
           labels: [
             { name: "Account", fields: [{ name: "id", expression: "id" }] },
-            { name: "Auditable", fields: [{ name: "createdAt", expression: "created_at" }] }
-          ]
-        }
-      ]
+            { name: "Auditable", fields: [{ name: "createdAt", expression: "created_at" }] },
+          ],
+        },
+      ],
     });
 
     expect(asPlainObject(compiled)).deep.equals(
@@ -381,45 +375,43 @@ suite("property_graph", () => {
                 name: "Account",
                 fields: [{ name: "id", expression: "id" }],
                 importAll: false,
-                isDefault: false
+                isDefault: false,
               },
               {
                 name: "Auditable",
                 fields: [{ name: "createdAt", expression: "created_at" }],
                 importAll: false,
-                isDefault: false
-              }
-            ]
-          }
+                isDefault: false,
+              },
+            ],
+          },
         ],
         graphBody:
           "NODE TABLES (\n  `p.d.A` AS Account KEY (id) " +
           "LABEL Account PROPERTIES (id) " +
-          "LABEL Auditable PROPERTIES (created_at AS createdAt)\n)"
-      })
+          "LABEL Auditable PROPERTIES (created_at AS createdAt)\n)",
+      }),
     );
   });
 
   test("relationship endpoints render SOURCE/DESTINATION KEY REFERENCES clauses", () => {
     const compiled = compile({
       name: "FinGraph",
-      entities: [
-        { name: "Account", dataSourceString: "p.d.Accounts", keys: ["id"] }
-      ],
+      entities: [{ name: "Account", dataSourceString: "p.d.Accounts", keys: ["id"] }],
       relationships: [
         {
           name: "Transfer",
           dataSourceString: "p.d.Transfers",
           source: {
             entity: "Account",
-            joinKeys: { relationshipColumns: ["sender_id"], entityColumns: ["id"] }
+            joinKeys: { relationshipColumns: ["sender_id"], entityColumns: ["id"] },
           },
           destination: {
             entity: "Account",
-            joinKeys: { relationshipColumns: ["receiver_id"], entityColumns: ["id"] }
-          }
-        }
-      ]
+            joinKeys: { relationshipColumns: ["receiver_id"], entityColumns: ["id"] },
+          },
+        },
+      ],
     });
 
     expect(asPlainObject(compiled)).deep.equals(
@@ -433,8 +425,8 @@ suite("property_graph", () => {
           {
             name: "Account",
             dataSource: { database: "p", schema: "d", name: "Accounts" },
-            keys: ["id"]
-          }
+            keys: ["id"],
+          },
         ],
         relationships: [
           {
@@ -443,44 +435,42 @@ suite("property_graph", () => {
             source: {
               entity: "Account",
               relationshipColumns: ["sender_id"],
-              entityColumns: ["id"]
+              entityColumns: ["id"],
             },
             destination: {
               entity: "Account",
               relationshipColumns: ["receiver_id"],
-              entityColumns: ["id"]
-            }
-          }
+              entityColumns: ["id"],
+            },
+          },
         ],
         graphBody:
           "NODE TABLES (\n  `p.d.Accounts` AS Account KEY (id)\n)\n" +
           "EDGE TABLES (\n  `p.d.Transfers` AS Transfer " +
           "SOURCE KEY (sender_id) REFERENCES Account (id) " +
-          "DESTINATION KEY (receiver_id) REFERENCES Account (id)\n)"
-      })
+          "DESTINATION KEY (receiver_id) REFERENCES Account (id)\n)",
+      }),
     );
   });
 
   test("endpoint entity_columns default to referenced entity keys when omitted", () => {
     const compiled = compile({
       name: "G",
-      entities: [
-        { name: "Account", dataSourceString: "p.d.A", keys: ["id"] }
-      ],
+      entities: [{ name: "Account", dataSourceString: "p.d.A", keys: ["id"] }],
       relationships: [
         {
           name: "SelfLink",
           dataSourceString: "p.d.Links",
           source: {
             entity: "Account",
-            joinKeys: { relationshipColumns: ["from_id"] }
+            joinKeys: { relationshipColumns: ["from_id"] },
           },
           destination: {
             entity: "Account",
-            joinKeys: { relationshipColumns: ["to_id"] }
-          }
-        }
-      ]
+            joinKeys: { relationshipColumns: ["to_id"] },
+          },
+        },
+      ],
     });
 
     expect(asPlainObject(compiled)).deep.equals(
@@ -494,8 +484,8 @@ suite("property_graph", () => {
           {
             name: "Account",
             dataSource: { database: "p", schema: "d", name: "A" },
-            keys: ["id"]
-          }
+            keys: ["id"],
+          },
         ],
         relationships: [
           {
@@ -504,21 +494,21 @@ suite("property_graph", () => {
             source: {
               entity: "Account",
               relationshipColumns: ["from_id"],
-              entityColumns: ["id"]
+              entityColumns: ["id"],
             },
             destination: {
               entity: "Account",
               relationshipColumns: ["to_id"],
-              entityColumns: ["id"]
-            }
-          }
+              entityColumns: ["id"],
+            },
+          },
         ],
         graphBody:
           "NODE TABLES (\n  `p.d.A` AS Account KEY (id)\n)\n" +
           "EDGE TABLES (\n  `p.d.Links` AS SelfLink " +
           "SOURCE KEY (from_id) REFERENCES Account (id) " +
-          "DESTINATION KEY (to_id) REFERENCES Account (id)\n)"
-      })
+          "DESTINATION KEY (to_id) REFERENCES Account (id)\n)",
+      }),
     );
   });
 
@@ -527,7 +517,7 @@ suite("property_graph", () => {
       name: "G",
       entities: [
         { name: "Account", dataSourceString: "p.d.Accounts", keys: ["id"] },
-        { name: "Person", dataSourceString: "p.d.Persons", keys: ["id"] }
+        { name: "Person", dataSourceString: "p.d.Persons", keys: ["id"] },
       ],
       relationships: [
         {
@@ -535,14 +525,14 @@ suite("property_graph", () => {
           dataSourceString: "p.d.Ownership",
           source: {
             entity: "Person",
-            joinKeys: { relationshipColumns: ["person_id"] }
+            joinKeys: { relationshipColumns: ["person_id"] },
           },
           destination: {
             entity: "Account",
-            joinKeys: { relationshipColumns: ["account_id"] }
-          }
-        }
-      ]
+            joinKeys: { relationshipColumns: ["account_id"] },
+          },
+        },
+      ],
     });
 
     expect(asPlainObject(compiled)).deep.equals(
@@ -556,13 +546,13 @@ suite("property_graph", () => {
           {
             name: "Account",
             dataSource: { database: "p", schema: "d", name: "Accounts" },
-            keys: ["id"]
+            keys: ["id"],
           },
           {
             name: "Person",
             dataSource: { database: "p", schema: "d", name: "Persons" },
-            keys: ["id"]
-          }
+            keys: ["id"],
+          },
         ],
         relationships: [
           {
@@ -571,36 +561,36 @@ suite("property_graph", () => {
             source: {
               entity: "Person",
               relationshipColumns: ["person_id"],
-              entityColumns: ["id"]
+              entityColumns: ["id"],
             },
             destination: {
               entity: "Account",
               relationshipColumns: ["account_id"],
-              entityColumns: ["id"]
-            }
-          }
+              entityColumns: ["id"],
+            },
+          },
         ],
         graphBody:
           "NODE TABLES (\n  `p.d.Accounts` AS Account KEY (id),\n" +
           "  `p.d.Persons` AS Person KEY (id)\n)\n" +
           "EDGE TABLES (\n  `p.d.Ownership` AS Owns " +
           "SOURCE KEY (person_id) REFERENCES Person (id) " +
-          "DESTINATION KEY (account_id) REFERENCES Account (id)\n)"
-      })
+          "DESTINATION KEY (account_id) REFERENCES Account (id)\n)",
+      }),
     );
   });
 
   test("errors when graph name is missing", () => {
     expect(() =>
       compile({
-        entities: [{ name: "A", dataSourceString: "p.d.A", keys: ["id"] }]
-      })
+        entities: [{ name: "A", dataSourceString: "p.d.A", keys: ["id"] }],
+      }),
     ).to.throw("Property graphs must have a populated 'name' field.");
   });
 
   test("errors when entities list is empty", () => {
     expect(() => compile({ name: "G", entities: [] })).to.throw(
-      "Property graph 'G' must declare at least one entity."
+      "Property graph 'G' must declare at least one entity.",
     );
   });
 
@@ -608,8 +598,8 @@ suite("property_graph", () => {
     expect(() =>
       compile({
         name: "G",
-        entities: [{ name: "A", keys: ["id"] }]
-      })
+        entities: [{ name: "A", keys: ["id"] }],
+      }),
     ).to.throw("entity 'A': must declare a data source.");
   });
 
@@ -617,8 +607,8 @@ suite("property_graph", () => {
     expect(() =>
       compile({
         name: "G",
-        entities: [{ name: "A", dataSourceString: "p.d.A" }]
-      })
+        entities: [{ name: "A", dataSourceString: "p.d.A" }],
+      }),
     ).to.throw("entity 'A' must declare 'keys'.");
   });
 
@@ -632,10 +622,10 @@ suite("property_graph", () => {
             dataSourceString: "p.d.A",
             keys: ["id"],
             fields: [{ name: "x", expression: "x" }],
-            labels: [{ name: "A", fields: [{ name: "y", expression: "y" }] }]
-          }
-        ]
-      })
+            labels: [{ name: "A", fields: [{ name: "y", expression: "y" }] }],
+          },
+        ],
+      }),
     ).to.throw("cannot combine root-level 'fields'/'fieldWildcard' with a 'labels' list");
   });
 
@@ -650,11 +640,11 @@ suite("property_graph", () => {
             dataSourceString: "p.d.R",
             destination: {
               entity: "A",
-              joinKeys: { relationshipColumns: ["a_id"] }
-            }
-          }
-        ]
-      })
+              joinKeys: { relationshipColumns: ["a_id"] },
+            },
+          },
+        ],
+      }),
     ).to.throw("relationship 'R' must declare 'source'.");
   });
 
@@ -669,15 +659,15 @@ suite("property_graph", () => {
             dataSourceString: "p.d.R",
             source: {
               entity: "Ghost",
-              joinKeys: { relationshipColumns: ["x"] }
+              joinKeys: { relationshipColumns: ["x"] },
             },
             destination: {
               entity: "A",
-              joinKeys: { relationshipColumns: ["y"] }
-            }
-          }
-        ]
-      })
+              joinKeys: { relationshipColumns: ["y"] },
+            },
+          },
+        ],
+      }),
     ).to.throw("relationship 'R' source references unknown entity 'Ghost'.");
   });
 
@@ -687,9 +677,9 @@ suite("property_graph", () => {
         name: "G",
         entities: [
           { name: "A", dataSourceString: "p.d.A1", keys: ["id"] },
-          { name: "A", dataSourceString: "p.d.A2", keys: ["id"] }
-        ]
-      })
+          { name: "A", dataSourceString: "p.d.A2", keys: ["id"] },
+        ],
+      }),
     ).to.throw("duplicate entity name 'A'");
   });
 
@@ -704,12 +694,12 @@ suite("property_graph", () => {
               project: "p",
               catalog: "cat",
               namespace: "ns",
-              table: "T"
+              table: "T",
             },
-            keys: ["id"]
-          }
-        ]
-      })
+            keys: ["id"],
+          },
+        ],
+      }),
     ).to.throw("Catalog-based data sources");
   });
 
@@ -721,10 +711,10 @@ suite("property_graph", () => {
           {
             name: "A",
             dataSourceString: "proj.cat.ns.tbl",
-            keys: ["id"]
-          }
-        ]
-      })
+            keys: ["id"],
+          },
+        ],
+      }),
     ).to.throw("Catalog-based data sources");
   });
 
@@ -732,19 +722,15 @@ suite("property_graph", () => {
     expect(() =>
       compile({
         name: "G",
-        entities: [
-          { name: "A", dataSourceString: "ds.tbl", keys: ["id"] }
-        ]
-      })
+        entities: [{ name: "A", dataSourceString: "ds.tbl", keys: ["id"] }],
+      }),
     ).to.throw("must be 'project.dataset.table'");
   });
 
   test("preserves composite keys list", () => {
     const compiled = compile({
       name: "G",
-      entities: [
-        { name: "A", dataSourceString: "p.d.A", keys: ["id", "date"] }
-      ]
+      entities: [{ name: "A", dataSourceString: "p.d.A", keys: ["id", "date"] }],
     });
 
     expect(asPlainObject(compiled)).deep.equals(
@@ -758,28 +744,26 @@ suite("property_graph", () => {
           {
             name: "A",
             dataSource: { database: "p", schema: "d", name: "A" },
-            keys: ["id", "date"]
-          }
+            keys: ["id", "date"],
+          },
         ],
-        graphBody: "NODE TABLES (\n  `p.d.A` AS A KEY (id, date)\n)"
-      })
+        graphBody: "NODE TABLES (\n  `p.d.A` AS A KEY (id, date)\n)",
+      }),
     );
   });
 
   test("joinKeys array shorthand expands to relationshipColumns with defaulted entityColumns", () => {
     const compiled = compile({
       name: "G",
-      entities: [
-        { name: "Account", dataSourceString: "p.d.A", keys: ["id"] }
-      ],
+      entities: [{ name: "Account", dataSourceString: "p.d.A", keys: ["id"] }],
       relationships: [
         {
           name: "Link",
           dataSourceString: "p.d.L",
           source: { entity: "Account", joinKeys: ["from_id"] },
-          destination: { entity: "Account", joinKeys: ["to_id"] }
-        }
-      ]
+          destination: { entity: "Account", joinKeys: ["to_id"] },
+        },
+      ],
     });
 
     expect(asPlainObject(compiled)).deep.equals(
@@ -793,8 +777,8 @@ suite("property_graph", () => {
           {
             name: "Account",
             dataSource: { database: "p", schema: "d", name: "A" },
-            keys: ["id"]
-          }
+            keys: ["id"],
+          },
         ],
         relationships: [
           {
@@ -803,21 +787,21 @@ suite("property_graph", () => {
             source: {
               entity: "Account",
               relationshipColumns: ["from_id"],
-              entityColumns: ["id"]
+              entityColumns: ["id"],
             },
             destination: {
               entity: "Account",
               relationshipColumns: ["to_id"],
-              entityColumns: ["id"]
-            }
-          }
+              entityColumns: ["id"],
+            },
+          },
         ],
         graphBody:
           "NODE TABLES (\n  `p.d.A` AS Account KEY (id)\n)\n" +
           "EDGE TABLES (\n  `p.d.L` AS Link " +
           "SOURCE KEY (from_id) REFERENCES Account (id) " +
-          "DESTINATION KEY (to_id) REFERENCES Account (id)\n)"
-      })
+          "DESTINATION KEY (to_id) REFERENCES Account (id)\n)",
+      }),
     );
   });
 
@@ -830,10 +814,10 @@ suite("property_graph", () => {
             name: "A",
             dataSourceString: "p.d.A",
             keys: ["id"],
-            labels: [{ name: "Empty" }]
-          }
-        ]
-      })
+            labels: [{ name: "Empty" }],
+          },
+        ],
+      }),
     ).to.throw("must declare at least one of: 'fields', 'fieldWildcard', 'description'");
   });
 
@@ -845,9 +829,9 @@ suite("property_graph", () => {
           name: "A",
           dataSourceString: "p.d.A",
           keys: ["id"],
-          fields: { importAll: true }
-        }
-      ]
+          fields: { importAll: true },
+        },
+      ],
     });
 
     expect(asPlainObject(compiled)).deep.equals(
@@ -862,14 +846,12 @@ suite("property_graph", () => {
             name: "A",
             dataSource: { database: "p", schema: "d", name: "A" },
             keys: ["id"],
-            labels: [
-              { name: "A", description: "", importAll: true, isDefault: true }
-            ]
-          }
+            labels: [{ name: "A", description: "", importAll: true, isDefault: true }],
+          },
         ],
         graphBody:
-          "NODE TABLES (\n  `p.d.A` AS A KEY (id) DEFAULT LABEL PROPERTIES ARE ALL COLUMNS\n)"
-      })
+          "NODE TABLES (\n  `p.d.A` AS A KEY (id) DEFAULT LABEL PROPERTIES ARE ALL COLUMNS\n)",
+      }),
     );
   });
 
@@ -881,9 +863,9 @@ suite("property_graph", () => {
           name: "A",
           dataSourceString: "p.d.A",
           keys: ["id"],
-          fields: { importAll: true, except: ["secret"] }
-        }
-      ]
+          fields: { importAll: true, except: ["secret"] },
+        },
+      ],
     });
 
     expect(asPlainObject(compiled)).deep.equals(
@@ -904,15 +886,15 @@ suite("property_graph", () => {
                 description: "",
                 importAll: true,
                 importExcept: ["secret"],
-                isDefault: true
-              }
-            ]
-          }
+                isDefault: true,
+              },
+            ],
+          },
         ],
         graphBody:
           "NODE TABLES (\n  `p.d.A` AS A KEY (id) DEFAULT LABEL " +
-          "PROPERTIES ARE ALL COLUMNS EXCEPT (secret)\n)"
-      })
+          "PROPERTIES ARE ALL COLUMNS EXCEPT (secret)\n)",
+      }),
     );
   });
 
@@ -924,9 +906,9 @@ suite("property_graph", () => {
           name: "Account",
           dataSourceString: "p.d.A",
           keys: ["id"],
-          fields: [{ name: "balance", expression: "balance" }]
-        }
-      ]
+          fields: [{ name: "balance", expression: "balance" }],
+        },
+      ],
     });
 
     expect(asPlainObject(compiled)).deep.equals(
@@ -947,14 +929,14 @@ suite("property_graph", () => {
                 description: "",
                 fields: [{ name: "balance", expression: "balance" }],
                 importAll: false,
-                isDefault: true
-              }
-            ]
-          }
+                isDefault: true,
+              },
+            ],
+          },
         ],
         graphBody:
-          "NODE TABLES (\n  `p.d.A` AS Account KEY (id) DEFAULT LABEL PROPERTIES (balance)\n)"
-      })
+          "NODE TABLES (\n  `p.d.A` AS Account KEY (id) DEFAULT LABEL PROPERTIES (balance)\n)",
+      }),
     );
   });
 
@@ -966,11 +948,9 @@ suite("property_graph", () => {
           name: "Account",
           dataSourceString: "p.d.A",
           keys: ["id"],
-          labels: [
-            { name: "Account", fields: [{ name: "id", expression: "id" }] }
-          ]
-        }
-      ]
+          labels: [{ name: "Account", fields: [{ name: "id", expression: "id" }] }],
+        },
+      ],
     });
 
     expect(asPlainObject(compiled)).deep.equals(
@@ -990,14 +970,13 @@ suite("property_graph", () => {
                 name: "Account",
                 fields: [{ name: "id", expression: "id" }],
                 importAll: false,
-                isDefault: false
-              }
-            ]
-          }
+                isDefault: false,
+              },
+            ],
+          },
         ],
-        graphBody:
-          "NODE TABLES (\n  `p.d.A` AS Account KEY (id) LABEL Account PROPERTIES (id)\n)"
-      })
+        graphBody: "NODE TABLES (\n  `p.d.A` AS Account KEY (id) LABEL Account PROPERTIES (id)\n)",
+      }),
     );
   });
 
@@ -1014,12 +993,12 @@ suite("property_graph", () => {
               {
                 name: "Account",
                 description: "customer accounts",
-                fields: [{ name: "id", expression: "id" }]
-              }
-            ]
-          }
-        ]
-      })
+                fields: [{ name: "id", expression: "id" }],
+              },
+            ],
+          },
+        ],
+      }),
     ).to.throw("only allowed on the DEFAULT label");
 
     expect(() =>
@@ -1034,12 +1013,12 @@ suite("property_graph", () => {
               {
                 name: "Account",
                 synonyms: ["customer"],
-                fields: [{ name: "id", expression: "id" }]
-              }
-            ]
-          }
-        ]
-      })
+                fields: [{ name: "id", expression: "id" }],
+              },
+            ],
+          },
+        ],
+      }),
     ).to.throw("only allowed on the DEFAULT label");
   });
 
@@ -1056,11 +1035,11 @@ suite("property_graph", () => {
               name: "balance",
               expression: "balance",
               description: "current balance in USD",
-              synonyms: ["amount"]
-            }
-          ]
-        }
-      ]
+              synonyms: ["amount"],
+            },
+          ],
+        },
+      ],
     });
 
     expect(asPlainObject(compiled)).deep.equals(
@@ -1084,19 +1063,19 @@ suite("property_graph", () => {
                     name: "balance",
                     expression: "balance",
                     description: "current balance in USD",
-                    synonyms: ["amount"]
-                  }
+                    synonyms: ["amount"],
+                  },
                 ],
                 importAll: false,
-                isDefault: true
-              }
-            ]
-          }
+                isDefault: true,
+              },
+            ],
+          },
         ],
         graphBody:
           "NODE TABLES (\n  `p.d.A` AS A KEY (id) DEFAULT LABEL PROPERTIES " +
-          `(balance OPTIONS(description="current balance in USD", synonyms=["amount"]))\n)`
-      })
+          `(balance OPTIONS(description="current balance in USD", synonyms=["amount"]))\n)`,
+      }),
     );
   });
 
@@ -1104,7 +1083,7 @@ suite("property_graph", () => {
     const compiled = compile({
       name: "G",
       description: "high-value customer graph",
-      entities: [{ name: "A", dataSourceString: "p.d.A", keys: ["id"] }]
+      entities: [{ name: "A", dataSourceString: "p.d.A", keys: ["id"] }],
     });
 
     expect(asPlainObject(compiled)).deep.equals(
@@ -1118,11 +1097,11 @@ suite("property_graph", () => {
           {
             name: "A",
             dataSource: { database: "p", schema: "d", name: "A" },
-            keys: ["id"]
-          }
+            keys: ["id"],
+          },
         ],
-        graphBody: "NODE TABLES (\n  `p.d.A` AS A KEY (id)\n)"
-      })
+        graphBody: "NODE TABLES (\n  `p.d.A` AS A KEY (id)\n)",
+      }),
     );
   });
 
@@ -1134,9 +1113,9 @@ suite("property_graph", () => {
           name: "Account",
           dataSourceString: "p.d.A",
           keys: ["id"],
-          description: "customer account entity"
-        }
-      ]
+          description: "customer account entity",
+        },
+      ],
     });
 
     expect(asPlainObject(compiled)).deep.equals(
@@ -1156,15 +1135,15 @@ suite("property_graph", () => {
                 name: "Account",
                 description: "customer account entity",
                 importAll: false,
-                isDefault: true
-              }
-            ]
-          }
+                isDefault: true,
+              },
+            ],
+          },
         ],
         graphBody:
           "NODE TABLES (\n  `p.d.A` AS Account KEY (id) DEFAULT LABEL " +
-          `OPTIONS(description="customer account entity")\n)`
-      })
+          `OPTIONS(description="customer account entity")\n)`,
+      }),
     );
   });
 
@@ -1176,9 +1155,9 @@ suite("property_graph", () => {
           name: "A",
           dataSourceString: "p.d.A",
           keys: ["id"],
-          description: `has "quotes" and \\ backslash`
-        }
-      ]
+          description: `has "quotes" and \\ backslash`,
+        },
+      ],
     });
 
     expect(asPlainObject(compiled)).deep.equals(
@@ -1198,15 +1177,15 @@ suite("property_graph", () => {
                 name: "A",
                 description: `has "quotes" and \\ backslash`,
                 importAll: false,
-                isDefault: true
-              }
-            ]
-          }
+                isDefault: true,
+              },
+            ],
+          },
         ],
         graphBody:
           "NODE TABLES (\n  `p.d.A` AS A KEY (id) DEFAULT LABEL " +
-          `OPTIONS(description="has \\"quotes\\" and \\\\ backslash")\n)`
-      })
+          `OPTIONS(description="has \\"quotes\\" and \\\\ backslash")\n)`,
+      }),
     );
   });
 
@@ -1218,9 +1197,9 @@ suite("property_graph", () => {
           name: "A",
           dataSourceString: "p.d.A",
           keys: ["id"],
-          description: "line1\nline2\r\nline3\ttab"
-        }
-      ]
+          description: "line1\nline2\r\nline3\ttab",
+        },
+      ],
     });
 
     expect(asPlainObject(compiled)).deep.equals(
@@ -1240,15 +1219,15 @@ suite("property_graph", () => {
                 name: "A",
                 description: "line1\nline2\r\nline3\ttab",
                 importAll: false,
-                isDefault: true
-              }
-            ]
-          }
+                isDefault: true,
+              },
+            ],
+          },
         ],
         graphBody:
           "NODE TABLES (\n  `p.d.A` AS A KEY (id) DEFAULT LABEL " +
-          `OPTIONS(description="line1\\nline2\\r\\nline3\\ttab")\n)`
-      })
+          `OPTIONS(description="line1\\nline2\\r\\nline3\\ttab")\n)`,
+      }),
     );
   });
 
@@ -1265,11 +1244,11 @@ suite("property_graph", () => {
               name: "DEFAULT",
               description: "the default",
               synonyms: ["main"],
-              fields: [{ name: "id", expression: "id" }]
-            }
-          ]
-        }
-      ]
+              fields: [{ name: "id", expression: "id" }],
+            },
+          ],
+        },
+      ],
     });
 
     expect(asPlainObject(compiled)).deep.equals(
@@ -1291,15 +1270,15 @@ suite("property_graph", () => {
                 synonyms: ["main"],
                 fields: [{ name: "id", expression: "id" }],
                 importAll: false,
-                isDefault: true
-              }
-            ]
-          }
+                isDefault: true,
+              },
+            ],
+          },
         ],
         graphBody:
           "NODE TABLES (\n  `p.d.A` AS A KEY (id) DEFAULT LABEL " +
-          `OPTIONS(description="the default", synonyms=["main"]) PROPERTIES (id)\n)`
-      })
+          `OPTIONS(description="the default", synonyms=["main"]) PROPERTIES (id)\n)`,
+      }),
     );
   });
 
@@ -1314,11 +1293,11 @@ suite("property_graph", () => {
           labels: [
             {
               name: "default",
-              fields: [{ name: "id", expression: "id" }]
-            }
-          ]
-        }
-      ]
+              fields: [{ name: "id", expression: "id" }],
+            },
+          ],
+        },
+      ],
     });
 
     expect(asPlainObject(compiled)).deep.equals(
@@ -1338,13 +1317,13 @@ suite("property_graph", () => {
                 name: "A",
                 fields: [{ name: "id", expression: "id" }],
                 importAll: false,
-                isDefault: true
-              }
-            ]
-          }
+                isDefault: true,
+              },
+            ],
+          },
         ],
-        graphBody: "NODE TABLES (\n  `p.d.A` AS A KEY (id) DEFAULT LABEL PROPERTIES (id)\n)"
-      })
+        graphBody: "NODE TABLES (\n  `p.d.A` AS A KEY (id) DEFAULT LABEL PROPERTIES (id)\n)",
+      }),
     );
   });
 
@@ -1359,11 +1338,11 @@ suite("property_graph", () => {
             keys: ["id"],
             labels: [
               { name: "DEFAULT", fields: [{ name: "id", expression: "id" }] },
-              { name: "default", fields: [{ name: "id", expression: "id" }] }
-            ]
-          }
-        ]
-      })
+              { name: "default", fields: [{ name: "id", expression: "id" }] },
+            ],
+          },
+        ],
+      }),
     ).to.throw("only one DEFAULT label is allowed");
   });
 
@@ -1371,7 +1350,7 @@ suite("property_graph", () => {
     const compiled = compile({
       name: "G",
       disabled: true,
-      entities: [{ name: "A", dataSourceString: "p.d.A", keys: ["id"] }]
+      entities: [{ name: "A", dataSourceString: "p.d.A", keys: ["id"] }],
     });
 
     expect(asPlainObject(compiled)).deep.equals(
@@ -1385,11 +1364,11 @@ suite("property_graph", () => {
           {
             name: "A",
             dataSource: { database: "p", schema: "d", name: "A" },
-            keys: ["id"]
-          }
+            keys: ["id"],
+          },
         ],
-        graphBody: "NODE TABLES (\n  `p.d.A` AS A KEY (id)\n)"
-      })
+        graphBody: "NODE TABLES (\n  `p.d.A` AS A KEY (id)\n)",
+      }),
     );
   });
 
@@ -1400,9 +1379,9 @@ suite("property_graph", () => {
         {
           name: "A",
           ref: "books",
-          keys: ["id"]
-        }
-      ]
+          keys: ["id"],
+        },
+      ],
     }).compile();
 
     expect(asPlainObject(compiled)).deep.equals(
@@ -1413,8 +1392,8 @@ suite("property_graph", () => {
         fileName: "definitions/graph.yaml",
         description: "",
         disabled: false,
-        entities: [{ name: "A", keys: ["id"] }]
-      })
+        entities: [{ name: "A", keys: ["id"] }],
+      }),
     );
   });
 
@@ -1425,9 +1404,9 @@ suite("property_graph", () => {
         {
           name: "A",
           ref: { name: "books", schema: "analytics", database: "proj" },
-          keys: ["id"]
-        }
-      ]
+          keys: ["id"],
+        },
+      ],
     }).compile();
 
     expect(asPlainObject(compiled)).deep.equals(
@@ -1435,13 +1414,18 @@ suite("property_graph", () => {
         target: graphTarget("G"),
         canonicalTarget: graphTarget("G"),
         dependencyTargets: [
-          { database: "proj", schema: "analytics", name: "books", includeDependentAssertions: false }
+          {
+            database: "proj",
+            schema: "analytics",
+            name: "books",
+            includeDependentAssertions: false,
+          },
         ],
         fileName: "definitions/graph.yaml",
         description: "",
         disabled: false,
-        entities: [{ name: "A", keys: ["id"] }]
-      })
+        entities: [{ name: "A", keys: ["id"] }],
+      }),
     );
   });
 
@@ -1450,8 +1434,8 @@ suite("property_graph", () => {
       name: "G",
       entities: [
         { name: "A", ref: "books", keys: ["id"] },
-        { name: "B", ref: "books", keys: ["id"] }
-      ]
+        { name: "B", ref: "books", keys: ["id"] },
+      ],
     }).compile();
 
     expect(asPlainObject(compiled)).deep.equals(
@@ -1464,9 +1448,9 @@ suite("property_graph", () => {
         disabled: false,
         entities: [
           { name: "A", keys: ["id"] },
-          { name: "B", keys: ["id"] }
-        ]
-      })
+          { name: "B", keys: ["id"] },
+        ],
+      }),
     );
   });
 
@@ -1476,8 +1460,8 @@ suite("property_graph", () => {
       dependOnDependencyAssertions: true,
       entities: [
         { name: "A", ref: "books", keys: ["id"] },
-        { name: "B", ref: "authors", keys: ["id"] }
-      ]
+        { name: "B", ref: "authors", keys: ["id"] },
+      ],
     }).compile();
 
     expect(asPlainObject(compiled)).deep.equals(
@@ -1486,13 +1470,16 @@ suite("property_graph", () => {
         canonicalTarget: graphTarget("G"),
         dependencyTargets: [
           { name: "books", includeDependentAssertions: true },
-          { name: "authors", includeDependentAssertions: true }
+          { name: "authors", includeDependentAssertions: true },
         ],
         fileName: "definitions/graph.yaml",
         description: "",
         disabled: false,
-        entities: [{ name: "A", keys: ["id"] }, { name: "B", keys: ["id"] }]
-      })
+        entities: [
+          { name: "A", keys: ["id"] },
+          { name: "B", keys: ["id"] },
+        ],
+      }),
     );
   });
 
@@ -1501,8 +1488,8 @@ suite("property_graph", () => {
       name: "G",
       entities: [
         { name: "A", ref: { name: "books", includeDependentAssertions: true }, keys: ["id"] },
-        { name: "B", ref: "authors", keys: ["id"] }
-      ]
+        { name: "B", ref: "authors", keys: ["id"] },
+      ],
     }).compile();
 
     expect(asPlainObject(compiled)).deep.equals(
@@ -1511,13 +1498,16 @@ suite("property_graph", () => {
         canonicalTarget: graphTarget("G"),
         dependencyTargets: [
           { name: "books", includeDependentAssertions: true },
-          { name: "authors", includeDependentAssertions: false }
+          { name: "authors", includeDependentAssertions: false },
         ],
         fileName: "definitions/graph.yaml",
         description: "",
         disabled: false,
-        entities: [{ name: "A", keys: ["id"] }, { name: "B", keys: ["id"] }]
-      })
+        entities: [
+          { name: "A", keys: ["id"] },
+          { name: "B", keys: ["id"] },
+        ],
+      }),
     );
   });
 
@@ -1527,8 +1517,8 @@ suite("property_graph", () => {
       dependOnDependencyAssertions: true,
       entities: [
         { name: "A", ref: { name: "books", includeDependentAssertions: false }, keys: ["id"] },
-        { name: "B", ref: "authors", keys: ["id"] }
-      ]
+        { name: "B", ref: "authors", keys: ["id"] },
+      ],
     }).compile();
 
     expect(asPlainObject(compiled)).deep.equals(
@@ -1537,13 +1527,16 @@ suite("property_graph", () => {
         canonicalTarget: graphTarget("G"),
         dependencyTargets: [
           { name: "books", includeDependentAssertions: false },
-          { name: "authors", includeDependentAssertions: true }
+          { name: "authors", includeDependentAssertions: true },
         ],
         fileName: "definitions/graph.yaml",
         description: "",
         disabled: false,
-        entities: [{ name: "A", keys: ["id"] }, { name: "B", keys: ["id"] }]
-      })
+        entities: [
+          { name: "A", keys: ["id"] },
+          { name: "B", keys: ["id"] },
+        ],
+      }),
     );
   });
 
@@ -1552,7 +1545,7 @@ suite("property_graph", () => {
       name: "G",
       entities: [
         { name: "A", dataSourceString: "p.d.A", keys: ["id"] },
-        { name: "B", dataSourceString: "p.d.B", keys: ["id"] }
+        { name: "B", dataSourceString: "p.d.B", keys: ["id"] },
       ],
       relationships: [
         {
@@ -1560,9 +1553,9 @@ suite("property_graph", () => {
           ref: "wrote",
           keys: ["a_id", "b_id"],
           source: { entity: "A", joinKeys: ["a_id"] },
-          destination: { entity: "B", joinKeys: ["b_id"] }
-        }
-      ]
+          destination: { entity: "B", joinKeys: ["b_id"] },
+        },
+      ],
     }).compile();
 
     expect(asPlainObject(compiled)).deep.equals(
@@ -1575,17 +1568,17 @@ suite("property_graph", () => {
         disabled: false,
         entities: [
           { name: "A", dataSource: { database: "p", schema: "d", name: "A" }, keys: ["id"] },
-          { name: "B", dataSource: { database: "p", schema: "d", name: "B" }, keys: ["id"] }
+          { name: "B", dataSource: { database: "p", schema: "d", name: "B" }, keys: ["id"] },
         ],
         relationships: [
           {
             name: "R",
             keys: ["a_id", "b_id"],
             source: { entity: "A", relationshipColumns: ["a_id"], entityColumns: ["id"] },
-            destination: { entity: "B", relationshipColumns: ["b_id"], entityColumns: ["id"] }
-          }
-        ]
-      })
+            destination: { entity: "B", relationshipColumns: ["b_id"], entityColumns: ["id"] },
+          },
+        ],
+      }),
     );
   });
 
@@ -1597,10 +1590,10 @@ suite("property_graph", () => {
           {
             name: "A",
             ref: { schema: "s" },
-            keys: ["id"]
-          }
-        ]
-      })
+            keys: ["id"],
+          },
+        ],
+      }),
     ).to.throw("'ref' must include a 'name'");
   });
 });

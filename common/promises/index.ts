@@ -1,11 +1,11 @@
 export function runAsyncIgnoringErrors(promise: Promise<any>) {
-  promise.catch(e => console.error(`runAsyncIgnoringErrors caught error: ${e}`));
+  promise.catch((e) => console.error(`runAsyncIgnoringErrors caught error: ${e}`));
 }
 
 export async function runWithTimeout<T>(
   fn: () => Promise<T>,
   timeoutFn: () => Promise<T>,
-  timeoutMillis: number
+  timeoutMillis: number,
 ): Promise<T> {
   let timer: NodeJS.Timer;
   try {
@@ -19,7 +19,7 @@ export async function runWithTimeout<T>(
             reject(e);
           }
         }, timeoutMillis);
-      })
+      }),
     ]);
   } finally {
     clearTimeout(timer);
@@ -27,12 +27,12 @@ export async function runWithTimeout<T>(
 }
 
 export async function sleep(sleepMillis: number) {
-  await new Promise(resolve => setTimeout(() => resolve(), sleepMillis));
+  await new Promise((resolve) => setTimeout(() => resolve(), sleepMillis));
 }
 
 export async function sleepUntil(
   conditionFn: () => boolean | Promise<boolean>,
-  sleepPeriodMillis: number = 100
+  sleepPeriodMillis: number = 100,
 ) {
   while (!(await conditionFn())) {
     await sleep(sleepPeriodMillis);
@@ -40,13 +40,13 @@ export async function sleepUntil(
 }
 
 export async function sleepImmediate() {
-  await new Promise(resolve => setImmediate(resolve));
+  await new Promise((resolve) => setImmediate(resolve));
 }
 
 export async function retry<T>(
   fn: () => Promise<T>,
   maxAttempts: number = 1,
-  matchesRetriableError: (e: any) => boolean = () => true
+  matchesRetriableError: (e: any) => boolean = () => true,
 ): Promise<T> {
   let lastErr;
   for (let i = 0; i < maxAttempts; i++) {
@@ -76,13 +76,13 @@ export async function promiseAny<T>(promises: Array<Promise<T>>): Promise<T> {
   return new Promise(async (resolve, reject) => {
     let storedError: Error;
     await Promise.all(
-      promises.map(async promise => {
+      promises.map(async (promise) => {
         try {
-          await promise.then(result => resolve(result));
+          await promise.then((result) => resolve(result));
         } catch (e) {
           storedError = e;
         }
-      })
+      }),
     );
     reject(storedError);
   });

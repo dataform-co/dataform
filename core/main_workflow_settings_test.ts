@@ -9,14 +9,14 @@ import {
   suite,
   test,
   writeDefinitionFile,
-  writeWorkflowSettingsFile
+  writeWorkflowSettingsFile,
 } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
 import {
   coreExecutionRequestFromPath,
   runMainInVm,
   VALID_DATAFORM_JSON,
-  VALID_WORKFLOW_SETTINGS_YAML
+  VALID_WORKFLOW_SETTINGS_YAML,
 } from "df/testing/run_core";
 
 suite("workflow settings", ({ afterEach }) => {
@@ -33,8 +33,8 @@ suite("workflow settings", ({ afterEach }) => {
         warehouse: "bigquery",
         defaultDatabase: "defaultProject",
         defaultSchema: "defaultDataset",
-        defaultLocation: "US"
-      })
+        defaultLocation: "US",
+      }),
     );
   });
 
@@ -50,8 +50,8 @@ suite("workflow settings", ({ afterEach }) => {
       asPlainObject({
         defaultDatabase: "defaultProject",
         defaultLocation: "US",
-        defaultSchema: "defaultDataset"
-      })
+        defaultSchema: "defaultDataset",
+      }),
     );
   });
 
@@ -59,7 +59,7 @@ suite("workflow settings", ({ afterEach }) => {
     const projectDir = tmpDirFixture.createNewTmpDir();
 
     expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
-      "Failed to resolve workflow_settings.yaml"
+      "Failed to resolve workflow_settings.yaml",
     );
   });
 
@@ -69,7 +69,7 @@ suite("workflow settings", ({ afterEach }) => {
     writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
 
     expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
-      "dataform.json has been deprecated and cannot be defined alongside workflow_settings.yaml"
+      "dataform.json has been deprecated and cannot be defined alongside workflow_settings.yaml",
     );
   });
 
@@ -78,7 +78,7 @@ suite("workflow settings", ({ afterEach }) => {
     writeWorkflowSettingsFile(projectDir, "&*19132sdS:asd:");
 
     expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
-      "workflow_settings.yaml is invalid"
+      "workflow_settings.yaml is invalid",
     );
   });
 
@@ -88,11 +88,11 @@ suite("workflow settings", ({ afterEach }) => {
       projectDir,
       `
 someKey: and an extra: colon
-`
+`,
     );
 
     expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
-      "workflow_settings.yaml is not a valid YAML file: YAMLException: bad indentation"
+      "workflow_settings.yaml is not a valid YAML file: YAMLException: bad indentation",
     );
   });
 
@@ -101,7 +101,7 @@ someKey: and an extra: colon
     fs.writeFileSync(path.join(projectDir, "dataform.json"), '{keyWithNoQuotes: "validValue"}');
 
     expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
-      "Expected property name or '}' in JSON at position 1 (line 1 column 2)"
+      "Expected property name or '}' in JSON at position 1 (line 1 column 2)",
     );
   });
 
@@ -110,7 +110,7 @@ someKey: and an extra: colon
     writeWorkflowSettingsFile(projectDir, "notAProjectConfigField: value");
 
     expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
-      `Workflow settings error: Unexpected property "notAProjectConfigField", or property value type of "string" is incorrect. See https://dataform-co.github.io/dataform/docs/configs-reference#dataform-WorkflowSettings for allowed properties.`
+      `Workflow settings error: Unexpected property "notAProjectConfigField", or property value type of "string" is incorrect. See https://dataform-co.github.io/dataform/docs/configs-reference#dataform-WorkflowSettings for allowed properties.`,
     );
   });
 
@@ -119,7 +119,7 @@ someKey: and an extra: colon
     writeWorkflowSettingsFile(projectDir, "- someArrayEntry");
 
     expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
-      "Expected a top-level object, but found an array"
+      "Expected a top-level object, but found an array",
     );
   });
 
@@ -128,7 +128,7 @@ someKey: and an extra: colon
     fs.writeFileSync(path.join(projectDir, "dataform.json"), `{"notAProjectConfigField": "value"}`);
 
     expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
-      `Dataform json error: Unexpected property "notAProjectConfigField", or property value type of "string" is incorrect.`
+      `Dataform json error: Unexpected property "notAProjectConfigField", or property value type of "string" is incorrect.`,
     );
   });
 
@@ -138,7 +138,7 @@ someKey: and an extra: colon
       projectDir,
       `
 dataformCoreVersion: ${version}
-defaultProject: project`
+defaultProject: project`,
     );
 
     const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
@@ -147,8 +147,8 @@ defaultProject: project`
     expect(asPlainObject(result.compile.compiledGraph.projectConfig)).deep.equals(
       asPlainObject({
         warehouse: "bigquery",
-        defaultDatabase: "project"
-      })
+        defaultDatabase: "project",
+      }),
     );
   });
 
@@ -161,7 +161,7 @@ defaultProject: defaultProject
 defaultLocation: locationInWorkflowSettings
 vars:
   selectVar: selectVal
-`
+`,
     );
     writeDefinitionFile(
       projectDir,
@@ -171,7 +171,7 @@ config {
   type: "table",
   database: dataform.projectConfig.vars.projectVar,
 }
-select 1 AS \${dataform.projectConfig.vars.selectVar}`
+select 1 AS \${dataform.projectConfig.vars.selectVar}`,
     );
     const coreExecutionRequest = dataform.CoreExecutionRequest.create({
       compile: {
@@ -181,11 +181,11 @@ select 1 AS \${dataform.projectConfig.vars.selectVar}`
           projectConfigOverride: {
             defaultLocation: "locationInOverride",
             vars: {
-              projectVar: "projectVal"
-            }
-          }
-        }
-      }
+              projectVar: "projectVal",
+            },
+          },
+        },
+      },
     });
 
     const result = runMainInVm(coreExecutionRequest);
@@ -201,15 +201,15 @@ select 1 AS \${dataform.projectConfig.vars.selectVar}`
           defaultLocation: "locationInOverride",
           vars: {
             projectVar: "projectVal",
-            selectVar: "selectVal"
+            selectVar: "selectVal",
           },
-          warehouse: "bigquery"
+          warehouse: "bigquery",
         },
         tables: [
           {
             canonicalTarget: {
               database: "projectVal",
-              name: "file"
+              name: "file",
             },
             disabled: false,
             enumType: "TABLE",
@@ -218,18 +218,18 @@ select 1 AS \${dataform.projectConfig.vars.selectVar}`
             query: "\n\nselect 1 AS selectVal",
             target: {
               database: "projectVal",
-              name: "file"
+              name: "file",
             },
-            type: "table"
-          }
+            type: "table",
+          },
         ],
         targets: [
           {
             database: "projectVal",
-            name: "file"
-          }
-        ]
-      })
+            name: "file",
+          },
+        ],
+      }),
     );
   });
 
@@ -240,11 +240,11 @@ select 1 AS \${dataform.projectConfig.vars.selectVar}`
         projectDir,
         `
 dataformCoreVersion: 1.0.0
-defaultProject: dataform`
+defaultProject: dataform`,
       );
 
       expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
-        `Version mismatch: workflow settings specifies version 1.0.0, but ${version} was found`
+        `Version mismatch: workflow settings specifies version 1.0.0, but ${version} was found`,
       );
     });
 
@@ -255,7 +255,7 @@ defaultProject: dataform`
         `
 dataformCoreVersion: ${version}
 defaultProject: project
-defaultLocation: US`
+defaultLocation: US`,
       );
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
@@ -265,8 +265,8 @@ defaultLocation: US`
         asPlainObject({
           warehouse: "bigquery",
           defaultDatabase: "project",
-          defaultLocation: "US"
-        })
+          defaultLocation: "US",
+        }),
       );
     });
   });
@@ -279,11 +279,11 @@ defaultLocation: US`
         `
 vars:
   intValue: 1
-  strValue: "str"`
+  strValue: "str"`,
       );
 
       expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
-        "Custom variables defined in workflow settings can only be strings."
+        "Custom variables defined in workflow settings can only be strings.",
       );
     });
 
@@ -291,11 +291,11 @@ vars:
       const projectDir = tmpDirFixture.createNewTmpDir();
       fs.writeFileSync(
         path.join(projectDir, "dataform.json"),
-        `{"vars": { "intVar": 1, "strVar": "str" } }`
+        `{"vars": { "intVar": 1, "strVar": "str" } }`,
       );
 
       expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
-        "Custom variables defined in workflow settings can only be strings."
+        "Custom variables defined in workflow settings can only be strings.",
       );
     });
 
@@ -307,7 +307,7 @@ vars:
 defaultLocation: "us"
 vars:
   descriptionVar: descriptionValue
-  columnVar: columnValue`
+  columnVar: columnValue`,
       );
       writeDefinitionFile(
         projectDir,
@@ -323,7 +323,7 @@ config {
     nonNull: [dataform.projectConfig.vars.columnVar],
   }
 }
-select 1 AS \${dataform.projectConfig.vars.columnVar}`
+select 1 AS \${dataform.projectConfig.vars.columnVar}`,
       );
       const coreExecutionRequest = dataform.CoreExecutionRequest.create({
         compile: {
@@ -332,11 +332,11 @@ select 1 AS \${dataform.projectConfig.vars.columnVar}`
             filePaths: ["definitions/file.sqlx"],
             projectConfigOverride: {
               vars: {
-                databaseVar: "databaseVal"
-              }
-            }
-          }
-        }
+                databaseVar: "databaseVal",
+              },
+            },
+          },
+        },
       });
 
       const result = runMainInVm(coreExecutionRequest);
@@ -347,27 +347,27 @@ select 1 AS \${dataform.projectConfig.vars.columnVar}`
           assertions: [
             {
               canonicalTarget: {
-                name: "tableSchema_file_assertions_rowConditions"
+                name: "tableSchema_file_assertions_rowConditions",
               },
               dependencyTargets: [
                 {
                   database: "databaseVal",
                   name: "file",
-                  schema: "tableSchema"
-                }
+                  schema: "tableSchema",
+                },
               ],
               fileName: "definitions/file.sqlx",
               parentAction: {
                 database: "databaseVal",
                 name: "file",
-                schema: "tableSchema"
+                schema: "tableSchema",
               },
               query:
                 "\nSELECT\n  'columnValue IS NOT NULL' AS failing_row_condition,\n  *\nFROM `databaseVal.tableSchema.file`\nWHERE NOT (columnValue IS NOT NULL)\n",
               target: {
-                name: "tableSchema_file_assertions_rowConditions"
-              }
-            }
+                name: "tableSchema_file_assertions_rowConditions",
+              },
+            },
           ],
           dataformCoreVersion: version,
           graphErrors: {},
@@ -377,19 +377,19 @@ select 1 AS \${dataform.projectConfig.vars.columnVar}`
             vars: {
               databaseVar: "databaseVal",
               descriptionVar: "descriptionValue",
-              columnVar: "columnValue"
+              columnVar: "columnValue",
             },
-            warehouse: "bigquery"
+            warehouse: "bigquery",
           },
           tables: [
             {
               actionDescriptor: {
-                description: "descriptionValue"
+                description: "descriptionValue",
               },
               canonicalTarget: {
                 database: "databaseVal",
                 name: "file",
-                schema: "tableSchema"
+                schema: "tableSchema",
               },
               disabled: false,
               enumType: "TABLE",
@@ -398,23 +398,23 @@ select 1 AS \${dataform.projectConfig.vars.columnVar}`
               target: {
                 database: "databaseVal",
                 name: "file",
-                schema: "tableSchema"
+                schema: "tableSchema",
               },
               type: "table",
-              hermeticity: "NON_HERMETIC"
-            }
+              hermeticity: "NON_HERMETIC",
+            },
           ],
           targets: [
             {
-              name: "tableSchema_file_assertions_rowConditions"
+              name: "tableSchema_file_assertions_rowConditions",
             },
             {
               database: "databaseVal",
               name: "file",
-              schema: "tableSchema"
-            }
-          ]
-        })
+              schema: "tableSchema",
+            },
+          ],
+        }),
       );
     });
   });

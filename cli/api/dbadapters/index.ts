@@ -13,7 +13,7 @@ export interface IExecutionResultRaw extends IExecutionResult {
 }
 
 export interface IBigQueryError extends Error {
-  metadata?: dataform.IExecutionMetadata
+  metadata?: dataform.IExecutionMetadata;
 }
 
 export interface IDbClient {
@@ -31,7 +31,7 @@ export interface IDbClient {
         dryRun?: boolean;
         reservation?: string;
       };
-    }
+    },
   ): Promise<IExecutionResult>;
 
   executeRaw(
@@ -46,7 +46,7 @@ export interface IDbClient {
         dryRun?: boolean;
         reservation?: string;
       };
-    }
+    },
   ): Promise<IExecutionResultRaw>;
 }
 

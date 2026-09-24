@@ -3,7 +3,7 @@ import { dataform } from "df/protos/ts";
 export class CompilationSql {
   constructor(
     private readonly project: dataform.IProjectConfig,
-    private readonly dataformCoreVersion: string
+    private readonly dataformCoreVersion: string,
   ) {}
 
   public resolveTarget(target: dataform.ITarget) {
@@ -44,7 +44,7 @@ SELECT
   *
 FROM ${dataset}
 WHERE NOT (${rowCondition})
-`
+`,
       )
       .join(`UNION ALL`);
   }

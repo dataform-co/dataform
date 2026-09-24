@@ -48,10 +48,10 @@ export class Runner {
         path: [],
         results: [],
         beforeEaches: [],
-        afterEaches: []
+        afterEaches: [],
       };
 
-      await Promise.all([...this.topLevelSuites].map(suite => suite.run(ctx)));
+      await Promise.all([...this.topLevelSuites].map((suite) => suite.run(ctx)));
 
       for (const result of ctx.results) {
         const outcomeString = (result.outcome || "unknown").toUpperCase();
@@ -61,20 +61,20 @@ export class Runner {
           result.outcome === "failed" || result.outcome === "timeout"
             ? chalk.red
             : result.outcome === "passed"
-            ? chalk.green
-            : chalk.yellow;
+              ? chalk.green
+              : chalk.yellow;
         if (pathString.length + outcomeString.length + 1 <= 80) {
           console.info(
             `${pathString}${new Array(80 - pathString.length - outcomeString.length - 1)
               .fill(" ")
-              .join("")}${colorFn(outcomeString)}`
+              .join("")}${colorFn(outcomeString)}`,
           );
         } else {
           console.info(pathString);
           console.info(
             `${new Array(80 - outcomeString.length - 1).fill(" ").join("")}${colorFn(
-              outcomeString
-            )}`
+              outcomeString,
+            )}`,
           );
         }
 
@@ -90,7 +90,7 @@ export class Runner {
         }
       }
 
-      const hasErrors = ctx.results.some(result => result.outcome !== "passed");
+      const hasErrors = ctx.results.some((result) => result.outcome !== "passed");
 
       if (hasErrors) {
         console.info(chalk.red(`\nTests failed.`));
@@ -121,7 +121,7 @@ export class Runner {
   private static indent(value: string, levels = 4) {
     return value
       .split("\n")
-      .map(line => `${" ".repeat(levels)}${line}`)
+      .map((line) => `${" ".repeat(levels)}${line}`)
       .join("\n");
   }
 
@@ -133,31 +133,33 @@ export class Runner {
     if (expected) {
       console.error(`\n    ${chalk.green("Expected")}:\n`);
       console.error(
-        comparingObjects ? this.indent(DeterministicStringify(expected, { space: "  " })) : expected
+        comparingObjects
+          ? this.indent(DeterministicStringify(expected, { space: "  " }))
+          : expected,
       );
     }
     if (actual) {
       console.error(`\n    ${chalk.red("Actual")}:\n`);
       console.error(
-        comparingObjects ? this.indent(DeterministicStringify(actual, { space: "  " })) : actual
+        comparingObjects ? this.indent(DeterministicStringify(actual, { space: "  " })) : actual,
       );
     }
     if (actual && expected) {
       const diffs = comparingObjects
         ? Diff.diffJson(
             DeterministicStringify(expected, { space: "  " }),
-            DeterministicStringify(actual, { space: "  " })
+            DeterministicStringify(actual, { space: "  " }),
           )
         : Diff.diffLines(expected, actual);
       if (diffs.length === 1 && !diffs[0].added && !diffs[0].removed) {
         console.error(
           `\n    ${chalk.yellow(
-            "Objects appear identical! Are you comparing objects with functions?"
-          )}`
+            "Objects appear identical! Are you comparing objects with functions?",
+          )}`,
         );
       } else {
         console.error(
-          `\n    Overall diff (${chalk.green("expected -")}, ${chalk.red("actual +")}):\n`
+          `\n    Overall diff (${chalk.green("expected -")}, ${chalk.red("actual +")}):\n`,
         );
         let toLog = "";
         diffs.forEach((diff, diffIndex, diffArr) => {
@@ -172,7 +174,7 @@ export class Runner {
             .map((line, splitIndex, splitArr) =>
               splitIndex < splitArr.length - 1 || diffIndex === diffArr.length - 1
                 ? colorFn(`${indentMarker}${line}`)
-                : line
+                : line,
             )
             .join("\n");
         });

@@ -1,9 +1,6 @@
 import { LineageClient } from "@google-cloud/lineage";
 
-import {
-  GLOBAL_LINEAGE_ENDPOINT,
-  LineageEndpointRouter
-} from "df/cli/api/lineage/endpoint_router";
+import { GLOBAL_LINEAGE_ENDPOINT, LineageEndpointRouter } from "df/cli/api/lineage/endpoint_router";
 import { LineagePayloadBuilder, toProtoStruct } from "df/cli/api/lineage/payload_builder";
 import { coerceAsError } from "df/common/errors/errors";
 import { version } from "df/core/version";
@@ -28,7 +25,7 @@ export type LineageClientProvider = (projectId: string, endpoint: string) => Lin
 const DATAFORM_CLI_LIB_NAME = "dataform-cli";
 
 export function createLineageClientProvider(
-  credentials: dataform.IBigQuery
+  credentials: dataform.IBigQuery,
 ): LineageClientProvider {
   const clients = new Map<string, LineageClient>();
   return (projectId: string, endpoint: string) => {
@@ -42,8 +39,8 @@ export function createLineageClientProvider(
           apiEndpoint: endpoint,
           credentials: credentials.credentials && JSON.parse(credentials.credentials),
           libName: DATAFORM_CLI_LIB_NAME,
-          libVersion: version
-        })
+          libVersion: version,
+        }),
       );
     }
     return clients.get(cacheKey);
@@ -67,7 +64,7 @@ const GRPC_CODE_NAMES: { [k: number]: string } = {
   13: "INTERNAL",
   14: "UNAVAILABLE",
   15: "DATA_LOSS",
-  16: "UNAUTHENTICATED"
+  16: "UNAUTHENTICATED",
 };
 
 function gRpcCodeName(code: number | undefined): string {
@@ -103,8 +100,8 @@ export const LINEAGE_RETRY_CONFIG = {
     initialRpcTimeoutMillis: 2000,
     rpcTimeoutMultiplier: 1.0,
     maxRpcTimeoutMillis: 2000,
-    totalTimeoutMillis: 15000
-  }
+    totalTimeoutMillis: 15000,
+  },
 };
 
 export class LineageEmitter {
@@ -123,7 +120,7 @@ export class LineageEmitter {
     credentials: dataform.IBigQuery,
     emitterOptions: IEmitterOptions,
     clientProvider?: LineageClientProvider,
-    stderr: IStderrLike = process.stderr
+    stderr: IStderrLike = process.stderr,
   ) {
     this.credentials = credentials;
     this.emitterOptions = emitterOptions;
@@ -136,7 +133,7 @@ export class LineageEmitter {
 
   public emitForAction(
     action: dataform.IExecutionAction,
-    actionResult: dataform.IActionResult
+    actionResult: dataform.IActionResult,
   ): void {
     if (this.emissionDisabledThisRun) {
       return;
@@ -145,7 +142,7 @@ export class LineageEmitter {
     if (this.emitterOptions.dryRun) {
       if (!this.dryRunSkipLogged) {
         this.stderr.write(
-          "[lineage] Skipped lineage emission (dry-run mode; once-per-run): skip_reason=dry_run\n"
+          "[lineage] Skipped lineage emission (dry-run mode; once-per-run): skip_reason=dry_run\n",
         );
         this.dryRunSkipLogged = true;
       }
@@ -161,13 +158,13 @@ export class LineageEmitter {
     }
 
     const p = this.emitForActionInternal(action, actionResult)
-      .catch(e => {
+      .catch((e) => {
         const code = (e as any).code;
         const endpoint = (e as any).lineageEndpoint || "unknown";
         const location = (e as any).lineageLocation || "unknown";
         this.stderr.write(
           `[lineage] Failed to emit lineage for action ${action.target.schema}.${action.target.name}: ` +
-            `code=${gRpcCodeName(code)}(${code ?? "?"}) endpoint=${endpoint} location=${location} message=${e.message}\n`
+            `code=${gRpcCodeName(code)}(${code ?? "?"}) endpoint=${endpoint} location=${location} message=${e.message}\n`,
         );
       })
       .finally(() => {
@@ -182,13 +179,13 @@ export class LineageEmitter {
     }
     await Promise.race([
       Promise.allSettled([...this.pending]),
-      new Promise<void>(resolve => setTimeout(resolve, maxWaitMs))
+      new Promise<void>((resolve) => setTimeout(resolve, maxWaitMs)),
     ]);
   }
 
   private async emitForActionInternal(
     action: dataform.IExecutionAction,
-    actionResult: dataform.IActionResult
+    actionResult: dataform.IActionResult,
   ): Promise<void> {
     const projectId = action.target.database || this.credentials.projectId;
     const location = (this.credentials.location || "US").toLowerCase();
@@ -199,7 +196,7 @@ export class LineageEmitter {
       actionResult,
       projectId,
       location,
-      this.credentials.projectId
+      this.credentials.projectId,
     );
 
     // Emit payload via ProcessOpenLineageRunEvent. Retry policy is delegated
@@ -220,20 +217,20 @@ export class LineageEmitter {
               `action=${action.target.schema}.${action.target.name} ` +
               `eventType=${(openLineagePayload as any).eventType} ` +
               `runId=${runId} parentRunId=${parentRunId} ` +
-              `payload=${JSON.stringify(openLineagePayload)}\n`
+              `payload=${JSON.stringify(openLineagePayload)}\n`,
           );
         }
         await client.processOpenLineageRunEvent(
           {
             parent,
-            openLineage: toProtoStruct(openLineagePayload) as any
+            openLineage: toProtoStruct(openLineagePayload) as any,
           },
-          { retry: LINEAGE_RETRY_CONFIG }
+          { retry: LINEAGE_RETRY_CONFIG },
         );
         if (this.debugEnabled) {
           this.stderr.write(
             `[lineage-debug] emit_ok action=${action.target.schema}.${action.target.name} ` +
-              `eventType=${(openLineagePayload as any).eventType}\n`
+              `eventType=${(openLineagePayload as any).eventType}\n`,
           );
         }
         return;
@@ -251,7 +248,7 @@ export class LineageEmitter {
           (this.isEndpointUnresolvable(err) || this.isEndpointRegionMismatch(err))
         ) {
           this.stderr.write(
-            `[lineage] Regional endpoint ${currentEndpoint} is not serving location ${location}. Falling back to ${GLOBAL_LINEAGE_ENDPOINT} for this and subsequent emits in this location.\n`
+            `[lineage] Regional endpoint ${currentEndpoint} is not serving location ${location}. Falling back to ${GLOBAL_LINEAGE_ENDPOINT} for this and subsequent emits in this location.\n`,
           );
           this.endpointRouter.markRepUnavailable(location);
           currentEndpoint = GLOBAL_LINEAGE_ENDPOINT;
@@ -265,7 +262,7 @@ export class LineageEmitter {
           if (!this.emissionDisabledThisRun) {
             this.emissionDisabledThisRun = true;
             this.stderr.write(
-              `[lineage] Skipped lineage emission for the rest of this run: skip_reason=endpoint_region_mismatch (endpoint '${currentEndpoint}' returned HTTP 302 for location '${location}'; the endpoint does not serve this region)\n`
+              `[lineage] Skipped lineage emission for the rest of this run: skip_reason=endpoint_region_mismatch (endpoint '${currentEndpoint}' returned HTTP 302 for location '${location}'; the endpoint does not serve this region)\n`,
             );
           }
           return;
@@ -283,7 +280,7 @@ export class LineageEmitter {
           if (!this.emissionDisabledThisRun) {
             this.emissionDisabledThisRun = true;
             this.stderr.write(
-              `[lineage] Skipped lineage emission for the rest of this run: skip_reason=api_disabled (ensure the credential has 'datalineage.googleapis.com/locations.processOpenLineageMessage' OR that the Lineage API is enabled in project ${projectId} via 'gcloud services enable datalineage.googleapis.com')\n`
+              `[lineage] Skipped lineage emission for the rest of this run: skip_reason=api_disabled (ensure the credential has 'datalineage.googleapis.com/locations.processOpenLineageMessage' OR that the Lineage API is enabled in project ${projectId} via 'gcloud services enable datalineage.googleapis.com')\n`,
             );
           }
           return;
@@ -296,7 +293,7 @@ export class LineageEmitter {
           if (!this.emissionDisabledThisRun) {
             this.emissionDisabledThisRun = true;
             this.stderr.write(
-              `[lineage] Skipped lineage emission for the rest of this run: skip_reason=api_disabled (Lineage API is not enabled in project ${projectId}; run 'gcloud services enable datalineage.googleapis.com')\n`
+              `[lineage] Skipped lineage emission for the rest of this run: skip_reason=api_disabled (Lineage API is not enabled in project ${projectId}; run 'gcloud services enable datalineage.googleapis.com')\n`,
             );
           }
           return;
@@ -309,7 +306,7 @@ export class LineageEmitter {
           if (!this.emissionDisabledThisRun) {
             this.emissionDisabledThisRun = true;
             this.stderr.write(
-              `[lineage] Skipped lineage emission for the rest of this run: skip_reason=unauthenticated (the credential used to reach the Lineage API is missing, invalid, or expired; re-authenticate and rerun — e.g., 'gcloud auth application-default login')\n`
+              `[lineage] Skipped lineage emission for the rest of this run: skip_reason=unauthenticated (the credential used to reach the Lineage API is missing, invalid, or expired; re-authenticate and rerun — e.g., 'gcloud auth application-default login')\n`,
             );
           }
           return;

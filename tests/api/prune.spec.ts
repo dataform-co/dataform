@@ -20,40 +20,40 @@ suite("@dataform/api/prune", () => {
       {
         target: { schema: "schema", name: "op_a" },
         tags: ["tag1"],
-        queries: ["create or replace view schema.someview as select 1 as test"]
+        queries: ["create or replace view schema.someview as select 1 as test"],
       },
       {
         target: { schema: "schema", name: "op_b" },
         dependencyTargets: [{ schema: "schema", name: "op_a" }],
         tags: ["tag2"],
-        queries: ["create or replace view schema.someview as select 1 as test"]
+        queries: ["create or replace view schema.someview as select 1 as test"],
       },
       {
         target: { schema: "schema", name: "op_c" },
         dependencyTargets: [{ schema: "schema", name: "op_a" }],
         tags: ["tag3"],
-        queries: ["create or replace view schema.someview as select 1 as test"]
+        queries: ["create or replace view schema.someview as select 1 as test"],
       },
       {
         target: { schema: "schema", name: "op_d" },
         tags: ["tag3"],
-        queries: ["create or replace view schema.someview as select 1 as test"]
-      }
+        queries: ["create or replace view schema.someview as select 1 as test"],
+      },
     ],
     tables: [
       {
         target: { schema: "schema", name: "tab_a" },
         dependencyTargets: [{ schema: "schema", name: "op_d" }],
-        tags: ["tag1", "tag2"]
-      }
-    ]
+        tags: ["tag1", "tag2"],
+      },
+    ],
   });
 
   test("prune actions with --tags (with dependencies)", () => {
     const prunedGraph = prune(TEST_GRAPH_WITH_TAGS, {
       actions: ["op_b", "op_d"],
       tags: ["tag1", "tag2", "tag4"],
-      includeDependencies: true
+      includeDependencies: true,
     });
     const actionNames = extractActionNames(prunedGraph);
     expect(actionNames).includes("schema.op_a");
@@ -66,7 +66,7 @@ suite("@dataform/api/prune", () => {
   test("prune actions with --tags (with dependents)", () => {
     const prunedGraph = prune(TEST_GRAPH_WITH_TAGS, {
       tags: ["tag2"],
-      includeDependents: true
+      includeDependents: true,
     });
     const actionNames = extractActionNames(prunedGraph);
     expect(actionNames).not.includes("schema.op_a");
@@ -79,7 +79,7 @@ suite("@dataform/api/prune", () => {
   test("prune actions with dependents", () => {
     const prunedGraph = prune(TEST_GRAPH, {
       actions: ["schema.c"],
-      includeDependents: true
+      includeDependents: true,
     });
     const actionNames = extractActionNames(prunedGraph);
     expect(actionNames).includes("schema.a");
@@ -91,7 +91,7 @@ suite("@dataform/api/prune", () => {
     const prunedGraph = prune(TEST_GRAPH_WITH_TAGS, {
       tags: ["tag1", "tag2", "tag4"],
       includeDependencies: false,
-      includeDependents: false
+      includeDependents: false,
     });
     const actionNames = extractActionNames(prunedGraph);
     expect(actionNames).includes("schema.op_a");
@@ -119,12 +119,12 @@ suite("@dataform/api/prune", () => {
 
 function extractActionNames(graph: dataform.ICompiledGraph): string[] {
   return [
-    ...(graph.tables ? graph.tables.map(action => targetAsReadableString(action.target)) : []),
+    ...(graph.tables ? graph.tables.map((action) => targetAsReadableString(action.target)) : []),
     ...(graph.operations
-      ? graph.operations.map(action => targetAsReadableString(action.target))
+      ? graph.operations.map((action) => targetAsReadableString(action.target))
       : []),
     ...(graph.assertions
-      ? graph.assertions.map(action => targetAsReadableString(action.target))
-      : [])
+      ? graph.assertions.map((action) => targetAsReadableString(action.target))
+      : []),
   ];
 }

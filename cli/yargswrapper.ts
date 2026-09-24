@@ -62,7 +62,7 @@ export function setupYargs(commands: ICommandBase[], args: string[]) {
       async (argv: any) => {
         const exitCode = await command.processFn(argv);
         process.exit(exitCode);
-      }
+      },
     );
   }
   return yargsChain;
@@ -87,8 +87,8 @@ function buildCommand(yargsChain: yargs.Argv, command: ICommandBase) {
       checks.push(option.check);
     }
   }
-  yargsChain = yargsChain.check(argv => {
-    checks.forEach(check => check(argv));
+  yargsChain = yargsChain.check((argv) => {
+    checks.forEach((check) => check(argv));
     return true;
   });
   return yargsChain;

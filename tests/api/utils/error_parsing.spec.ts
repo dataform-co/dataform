@@ -7,7 +7,7 @@ suite("error_parsing", () => {
   suite("bigquery", () => {
     test("successfully extracts line and column", () => {
       const SAMPLE_BIGQUERY_ERROR = {
-        message: "Syntax error: Unexpected identifier '[3:4]' at [2:1]"
+        message: "Syntax error: Unexpected identifier '[3:4]' at [2:1]",
       };
       const parsedError = parseBigqueryEvalError(SAMPLE_BIGQUERY_ERROR);
       expect(parsedError.errorLocation).to.deep.equal({ line: 2, column: 1 });
@@ -15,7 +15,7 @@ suite("error_parsing", () => {
 
     test("if no message, return", () => {
       const SAMPLE_BIGQUERY_ERROR = {
-        message: ""
+        message: "",
       };
       const parsedError = parseBigqueryEvalError(SAMPLE_BIGQUERY_ERROR);
       expect(parsedError.errorLocation).equals(null);

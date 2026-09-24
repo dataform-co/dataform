@@ -6,7 +6,13 @@ import * as path from "path";
 import { Logger } from "df/cli/console";
 import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
-import { corePackageTarPath, getProcessResult, nodePath, npmPath, writeDefinitionFile } from "df/testing";
+import {
+  corePackageTarPath,
+  getProcessResult,
+  nodePath,
+  npmPath,
+  writeDefinitionFile,
+} from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
 
 const DEFAULT_PROJECT = "dataform-open-source";
@@ -18,7 +24,11 @@ if (!fs.existsSync(path.resolve(runfilesDir, "df"))) {
   workspaceName = "_main";
 }
 
-export const CREDENTIALS_PATH = path.resolve(runfilesDir, workspaceName, "test_credentials/bigquery.json");
+export const CREDENTIALS_PATH = path.resolve(
+  runfilesDir,
+  workspaceName,
+  "test_credentials/bigquery.json",
+);
 
 const logger = new Logger(true);
 
@@ -61,7 +71,7 @@ export const cliEntryPointPath = "cli/node_modules/@dataform/cli/bundle.js";
 export async function setupProject(
   tmpDirFixture: TmpDirFixture,
   projectDir: string,
-  workflowSettingsOverrides?: Partial<dataform.IWorkflowSettings>
+  workflowSettingsOverrides?: Partial<dataform.IWorkflowSettings>,
 ): Promise<string> {
   const npmCacheDir = tmpDirFixture.createNewTmpDir();
   const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
@@ -72,13 +82,13 @@ export async function setupProject(
 
   // Install packages manually to get around bazel read-only sandbox issues.
   const workflowSettings = dataform.WorkflowSettings.create({
-    ...loadYaml(fs.readFileSync(workflowSettingsPath, "utf8")) as dataform.IWorkflowSettings,
-    ...workflowSettingsOverrides
+    ...(loadYaml(fs.readFileSync(workflowSettingsPath, "utf8")) as dataform.IWorkflowSettings),
+    ...workflowSettingsOverrides,
   });
   delete workflowSettings.dataformCoreVersion;
   fs.writeFileSync(
     workflowSettingsPath,
-    dumpYaml(dataform.WorkflowSettings.toObject(workflowSettings, { enums: String }))
+    dumpYaml(dataform.WorkflowSettings.toObject(workflowSettings, { enums: String })),
   );
   fs.writeFileSync(
     packageJsonPath,
@@ -86,7 +96,7 @@ export async function setupProject(
   "dependencies":{
     "@dataform/core": "${version}"
   }
-}`
+}`,
   );
   await getProcessResult(
     execFile(npmPath, [
@@ -95,8 +105,8 @@ export async function setupProject(
       projectDir,
       "--cache",
       npmCacheDir,
-      corePackageTarPath
-    ])
+      corePackageTarPath,
+    ]),
   );
 
   return projectDir;
@@ -105,42 +115,42 @@ export async function setupProject(
 export async function runCli(
   cmd: string,
   options: string[] = [],
-  execOptions?: ExecFileOptions
+  execOptions?: ExecFileOptions,
 ): Promise<{
   exitCode: number;
   stdout: string;
   stderr: string;
 }> {
   const args = [cliEntryPointPath, cmd, ...options];
-  return getProcessResult(
-    execFile(nodePath, args, execOptions)
-  );
+  return getProcessResult(execFile(nodePath, args, execOptions));
 }
 
 export function alterWorkflowSettings(
   projectDir: string,
-  workflowSettingsOverrides: Partial<dataform.IWorkflowSettings>
+  workflowSettingsOverrides: Partial<dataform.IWorkflowSettings>,
 ): void {
   const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
-  const existingSettings = loadYaml(fs.readFileSync(workflowSettingsPath, "utf8")) as dataform.IWorkflowSettings;
+  const existingSettings = loadYaml(
+    fs.readFileSync(workflowSettingsPath, "utf8"),
+  ) as dataform.IWorkflowSettings;
   const workflowSettings = dataform.WorkflowSettings.create({
     ...existingSettings,
-    ...workflowSettingsOverrides
+    ...workflowSettingsOverrides,
   });
   fs.writeFileSync(
     workflowSettingsPath,
-    dumpYaml(dataform.WorkflowSettings.toObject(workflowSettings, { enums: String }))
+    dumpYaml(dataform.WorkflowSettings.toObject(workflowSettings, { enums: String })),
   );
 }
 
 export async function setupJitProject(
   tmpDirFixture: TmpDirFixture,
-  projectDir: string
+  projectDir: string,
 ): Promise<void> {
   await setupProject(tmpDirFixture, projectDir);
   writeDefinitionFile(
     projectDir,
     "jit_table.js",
-    `publish("jit_table", {type: "table"}).jitCode(async (ctx) => { return "SELECT 1 as id"; })`
+    `publish("jit_table", {type: "table"}).jitCode(async (ctx) => { return "SELECT 1 as id"; })`,
   );
 }

@@ -18,10 +18,10 @@ suite("@dataform/api/run", () => {
       defaultSchema: "foo",
       assertionSchema: "bar",
       defaultDatabase: "database",
-      defaultLocation: "US"
+      defaultLocation: "US",
     },
     runConfig: {
-      fullRefresh: true
+      fullRefresh: true,
     },
     warehouseState: {
       tables: [
@@ -29,53 +29,53 @@ suite("@dataform/api/run", () => {
           type: dataform.TableMetadata.Type.TABLE,
           target: {
             schema: "schema1",
-            name: "target1"
-          }
-        }
-      ]
+            name: "target1",
+          },
+        },
+      ],
     },
     actions: [
       {
         tasks: [
           {
             type: "executionTaskType",
-            statement: "SELECT foo FROM bar"
+            statement: "SELECT foo FROM bar",
           },
           {
             type: "executionTaskType",
-            statement: "SELECT 42"
-          }
+            statement: "SELECT 42",
+          },
         ],
         type: "table",
         target: {
           schema: "schema1",
-          name: "target1"
+          name: "target1",
         },
         tableType: "someTableType",
-        dependencyTargets: []
+        dependencyTargets: [],
       },
       {
         tasks: [
           {
             type: "executionTaskType2",
-            statement: "SELECT bar FROM baz"
-          }
+            statement: "SELECT bar FROM baz",
+          },
         ],
         type: "assertion",
         target: {
           database: "database2",
           schema: "schema2",
-          name: "target2"
+          name: "target2",
         },
         tableType: "someTableType",
         dependencyTargets: [
           {
             schema: "schema1",
-            name: "target1"
-          }
-        ]
-      }
-    ]
+            name: "target1",
+          },
+        ],
+      },
+    ],
   });
 
   const EXPECTED_RUN_RESULT = dataform.RunResult.create({
@@ -91,16 +91,16 @@ suite("@dataform/api/run", () => {
               bigquery: {
                 jobId: "abc",
                 totalBytesBilled: Long.fromNumber(0),
-                totalBytesProcessed: Long.fromNumber(0)
-              }
-            }
+                totalBytesProcessed: Long.fromNumber(0),
+              },
+            },
           },
           {
             status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL,
-            metadata: {}
-          }
+            metadata: {},
+          },
         ],
-        status: dataform.ActionResult.ExecutionStatus.SUCCESSFUL
+        status: dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
       },
       {
         target: RUN_TEST_GRAPH.actions![1].target,
@@ -108,37 +108,37 @@ suite("@dataform/api/run", () => {
           {
             status: dataform.TaskResult.ExecutionStatus.FAILED,
             metadata: {},
-            errorMessage: "bigquery error: bad statement"
-          }
+            errorMessage: "bigquery error: bad statement",
+          },
         ],
-        status: dataform.ActionResult.ExecutionStatus.FAILED
-      }
-    ]
+        status: dataform.ActionResult.ExecutionStatus.FAILED,
+      },
+    ],
   });
 
   test("execute", async () => {
     const mockedDbAdapter = mock(BigQueryDbAdapter);
     when(mockedDbAdapter.createSchema(anyString(), anyString())).thenResolve(null);
     when(
-      mockedDbAdapter.execute(RUN_TEST_GRAPH.actions![0].tasks![0].statement!, anything())
+      mockedDbAdapter.execute(RUN_TEST_GRAPH.actions![0].tasks![0].statement!, anything()),
     ).thenResolve({
       rows: [],
       metadata: {
         bigquery: {
           jobId: "abc",
           totalBytesBilled: Long.fromNumber(0),
-          totalBytesProcessed: Long.fromNumber(0)
-        }
-      }
+          totalBytesProcessed: Long.fromNumber(0),
+        },
+      },
     });
     when(
-      mockedDbAdapter.execute(RUN_TEST_GRAPH.actions![0].tasks![1].statement!, anything())
+      mockedDbAdapter.execute(RUN_TEST_GRAPH.actions![0].tasks![1].statement!, anything()),
     ).thenResolve({
       rows: [],
-      metadata: {}
+      metadata: {},
     });
     when(
-      mockedDbAdapter.execute(RUN_TEST_GRAPH.actions![1].tasks![0].statement!, anything())
+      mockedDbAdapter.execute(RUN_TEST_GRAPH.actions![1].tasks![0].statement!, anything()),
     ).thenReject(new Error("bad statement"));
 
     const mockDbAdapterInstance = instance(mockedDbAdapter);
@@ -146,7 +146,7 @@ suite("@dataform/api/run", () => {
     const runner = new Runner(mockDbAdapterInstance, RUN_TEST_GRAPH);
 
     expect(
-      dataform.RunResult.create(cleanTiming(await runner.execute().result())).toJSON()
+      dataform.RunResult.create(cleanTiming(await runner.execute().result())).toJSON(),
     ).to.deep.equal(EXPECTED_RUN_RESULT.toJSON());
     verify(mockedDbAdapter.createSchema("database", "schema1")).once();
     verify(mockedDbAdapter.createSchema("database2", "schema2")).once();
@@ -159,7 +159,7 @@ suite("@dataform/api/run", () => {
     const mockedDbAdapter = mock(BigQueryDbAdapter);
     when(mockedDbAdapter.createSchema(anyString(), anyString())).thenResolve(null);
     when(
-      mockedDbAdapter.execute(RUN_TEST_GRAPH.actions![0].tasks![0].statement!, anything())
+      mockedDbAdapter.execute(RUN_TEST_GRAPH.actions![0].tasks![0].statement!, anything()),
     ).thenCall(async () => {
       firstQueryInProgress = true;
       await sleepUntil(() => stopWasCalled);
@@ -169,19 +169,19 @@ suite("@dataform/api/run", () => {
           bigquery: {
             jobId: "abc",
             totalBytesBilled: Long.fromNumber(0),
-            totalBytesProcessed: Long.fromNumber(0)
-          }
-        }
+            totalBytesProcessed: Long.fromNumber(0),
+          },
+        },
       };
     });
     when(
-      mockedDbAdapter.execute(RUN_TEST_GRAPH.actions![0].tasks![1].statement!, anything())
+      mockedDbAdapter.execute(RUN_TEST_GRAPH.actions![0].tasks![1].statement!, anything()),
     ).thenResolve({
       rows: [],
-      metadata: {}
+      metadata: {},
     });
     when(
-      mockedDbAdapter.execute(RUN_TEST_GRAPH.actions![1].tasks![0].statement!, anything())
+      mockedDbAdapter.execute(RUN_TEST_GRAPH.actions![1].tasks![0].statement!, anything()),
     ).thenReject(new Error("bad statement"));
 
     const mockDbAdapterInstance = instance(mockedDbAdapter);
@@ -200,16 +200,16 @@ suite("@dataform/api/run", () => {
           {
             target: EXPECTED_RUN_RESULT.actions[0].target,
             status: dataform.ActionResult.ExecutionStatus.RUNNING,
-            tasks: [EXPECTED_RUN_RESULT.actions[0].tasks[0]]
-          }
-        ]
-      }).toJSON()
+            tasks: [EXPECTED_RUN_RESULT.actions[0].tasks[0]],
+          },
+        ],
+      }).toJSON(),
     );
 
     runner = Runner.resume(mockDbAdapterInstance, RUN_TEST_GRAPH, result);
 
     expect(
-      dataform.RunResult.create(cleanTiming(await runner.execute().result())).toJSON()
+      dataform.RunResult.create(cleanTiming(await runner.execute().result())).toJSON(),
     ).to.deep.equal(EXPECTED_RUN_RESULT.toJSON());
     verify(mockedDbAdapter.createSchema("database", "schema1")).once();
     verify(mockedDbAdapter.createSchema("database2", "schema2")).once();
@@ -221,22 +221,22 @@ suite("@dataform/api/run", () => {
       const NEW_TEST_GRAPH = RUN_TEST_GRAPH;
       when(mockedDbAdapter.createSchema(anyString(), anyString())).thenResolve(null);
       when(
-        mockedDbAdapter.execute(NEW_TEST_GRAPH.actions![0].tasks![0].statement!, anything())
+        mockedDbAdapter.execute(NEW_TEST_GRAPH.actions![0].tasks![0].statement!, anything()),
       ).thenResolve({
         rows: [],
         metadata: {
           bigquery: {
             jobId: "abc",
             totalBytesBilled: Long.fromNumber(0),
-            totalBytesProcessed: Long.fromNumber(0)
-          }
-        }
+            totalBytesProcessed: Long.fromNumber(0),
+          },
+        },
       });
       when(
-        mockedDbAdapter.execute(RUN_TEST_GRAPH.actions![0].tasks![1].statement!, anything())
+        mockedDbAdapter.execute(RUN_TEST_GRAPH.actions![0].tasks![1].statement!, anything()),
       ).thenResolve({
         rows: [],
-        metadata: {}
+        metadata: {},
       });
       when(mockedDbAdapter.execute(NEW_TEST_GRAPH.actions![1].tasks![0].statement!, anything()))
         .thenReject(new Error("bad statement"))
@@ -246,11 +246,11 @@ suite("@dataform/api/run", () => {
       const mockDbAdapterInstance = instance(mockedDbAdapter);
 
       const runner = new Runner(mockDbAdapterInstance, NEW_TEST_GRAPH, {
-        bigquery: { actionRetryLimit: 1 }
+        bigquery: { actionRetryLimit: 1 },
       });
 
       expect(
-        dataform.RunResult.create(cleanTiming(await runner.execute().result())).toJSON()
+        dataform.RunResult.create(cleanTiming(await runner.execute().result())).toJSON(),
       ).to.deep.equal(EXPECTED_RUN_RESULT.toJSON());
     });
 
@@ -259,22 +259,22 @@ suite("@dataform/api/run", () => {
       const NEW_TEST_GRAPH = RUN_TEST_GRAPH;
       when(mockedDbAdapter.createSchema(anyString(), anyString())).thenResolve(null);
       when(
-        mockedDbAdapter.execute(NEW_TEST_GRAPH.actions![0].tasks![0].statement!, anything())
+        mockedDbAdapter.execute(NEW_TEST_GRAPH.actions![0].tasks![0].statement!, anything()),
       ).thenResolve({
         rows: [],
         metadata: {
           bigquery: {
             jobId: "abc",
             totalBytesBilled: Long.fromNumber(0),
-            totalBytesProcessed: Long.fromNumber(0)
-          }
-        }
+            totalBytesProcessed: Long.fromNumber(0),
+          },
+        },
       });
       when(
-        mockedDbAdapter.execute(RUN_TEST_GRAPH.actions![0].tasks![1].statement!, anything())
+        mockedDbAdapter.execute(RUN_TEST_GRAPH.actions![0].tasks![1].statement!, anything()),
       ).thenResolve({
         rows: [],
-        metadata: {}
+        metadata: {},
       });
       when(mockedDbAdapter.execute(NEW_TEST_GRAPH.actions![1].tasks![0].statement!, anything()))
         .thenReject(new Error("bad statement"))
@@ -284,11 +284,11 @@ suite("@dataform/api/run", () => {
       const mockDbAdapterInstance = instance(mockedDbAdapter);
 
       const runner = new Runner(mockDbAdapterInstance, NEW_TEST_GRAPH, {
-        bigquery: { actionRetryLimit: 2 }
+        bigquery: { actionRetryLimit: 2 },
       });
 
       expect(
-        dataform.RunResult.create(cleanTiming(await runner.execute().result())).toJSON()
+        dataform.RunResult.create(cleanTiming(await runner.execute().result())).toJSON(),
       ).to.deep.equal(
         dataform.RunResult.create({
           status: dataform.RunResult.ExecutionStatus.SUCCESSFUL,
@@ -299,13 +299,13 @@ suite("@dataform/api/run", () => {
               tasks: [
                 {
                   status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL,
-                  metadata: {}
-                }
+                  metadata: {},
+                },
               ],
-              status: dataform.ActionResult.ExecutionStatus.SUCCESSFUL
-            }
-          ]
-        }).toJSON()
+              status: dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
+            },
+          ],
+        }).toJSON(),
       );
     });
 
@@ -316,28 +316,28 @@ suite("@dataform/api/run", () => {
 
       when(mockedDbAdapter.createSchema(anyString(), anyString())).thenResolve(null);
       when(
-        mockedDbAdapter.execute(RUN_TEST_GRAPH.actions![0].tasks![0].statement!, anything())
+        mockedDbAdapter.execute(RUN_TEST_GRAPH.actions![0].tasks![0].statement!, anything()),
       ).thenResolve({
         rows: [],
         metadata: {
           bigquery: {
             jobId: "abc",
             totalBytesBilled: Long.fromNumber(0),
-            totalBytesProcessed: Long.fromNumber(0)
-          }
-        }
+            totalBytesProcessed: Long.fromNumber(0),
+          },
+        },
       });
       when(
-        mockedDbAdapter.execute(RUN_TEST_GRAPH.actions![0].tasks![1].statement!, anything())
+        mockedDbAdapter.execute(RUN_TEST_GRAPH.actions![0].tasks![1].statement!, anything()),
       ).thenResolve({
         rows: [],
-        metadata: {}
+        metadata: {},
       });
       when(
         mockedDbAdapter.execute(
           NEW_TEST_GRAPH_WITH_OPERATION.actions![1].tasks![0].statement!,
-          anything()
-        )
+          anything(),
+        ),
       )
         .thenReject(new Error("bad statement"))
         .thenReject(new Error("bad statement"))
@@ -346,11 +346,11 @@ suite("@dataform/api/run", () => {
       const mockDbAdapterInstance = instance(mockedDbAdapter);
 
       const runner = new Runner(mockDbAdapterInstance, NEW_TEST_GRAPH_WITH_OPERATION, {
-        bigquery: { actionRetryLimit: 3 }
+        bigquery: { actionRetryLimit: 3 },
       });
 
       expect(
-        dataform.RunResult.create(cleanTiming(await runner.execute().result())).toJSON()
+        dataform.RunResult.create(cleanTiming(await runner.execute().result())).toJSON(),
       ).to.deep.equal(EXPECTED_RUN_RESULT.toJSON());
     });
   });
@@ -361,28 +361,28 @@ suite("@dataform/api/run", () => {
         warehouse: "bigquery",
         defaultSchema: "foo",
         assertionSchema: "bar",
-        defaultLocation: "US"
+        defaultLocation: "US",
       },
       warehouseState: {
-        tables: []
+        tables: [],
       },
       actions: [
         {
           tasks: [
             {
               type: "statement",
-              statement: "some statement"
-            }
+              statement: "some statement",
+            },
           ],
           type: "table",
           target: {
             schema: "schema1",
-            name: "target1"
+            name: "target1",
           },
           tableType: "table",
-          dependencyTargets: []
-        }
-      ]
+          dependencyTargets: [],
+        },
+      ],
     });
 
     let wasCancelled = false;
@@ -394,9 +394,9 @@ suite("@dataform/api/run", () => {
             reject(new Error("Run cancelled"));
           });
         }),
-      schemas: _ => Promise.resolve([]),
+      schemas: (_) => Promise.resolve([]),
       createSchema: (_, __) => Promise.resolve(),
-      table: _ => undefined
+      table: (_) => undefined,
     } as IDbAdapter;
 
     const runner = new Runner(mockDbAdapter, CANCEL_TEST_GRAPH);
@@ -421,7 +421,7 @@ suite("@dataform/api/run", () => {
       const NEW_TEST_GRAPH = RUN_TEST_GRAPH;
       when(mockedDbAdapter.createSchema(anyString(), anyString())).thenResolve(null);
       when(
-        mockedDbAdapter.execute(NEW_TEST_GRAPH.actions![0].tasks![0].statement!, anything())
+        mockedDbAdapter.execute(NEW_TEST_GRAPH.actions![0].tasks![0].statement!, anything()),
       ).thenCall((statement: string, options: any) => {
         executionOptions.push(options);
         return Promise.resolve({
@@ -430,19 +430,19 @@ suite("@dataform/api/run", () => {
             bigquery: {
               jobId: "abc",
               totalBytesBilled: Long.fromNumber(0),
-              totalBytesProcessed: Long.fromNumber(0)
-            }
-          }
+              totalBytesProcessed: Long.fromNumber(0),
+            },
+          },
         });
       });
       when(
-        mockedDbAdapter.execute(RUN_TEST_GRAPH.actions![0].tasks![1].statement!, anything())
+        mockedDbAdapter.execute(RUN_TEST_GRAPH.actions![0].tasks![1].statement!, anything()),
       ).thenCall((statement: string, options: any) => {
         executionOptions.push(options);
         return Promise.resolve({ rows: [], metadata: {} });
       });
       when(
-        mockedDbAdapter.execute(NEW_TEST_GRAPH.actions![1].tasks![0].statement!, anything())
+        mockedDbAdapter.execute(NEW_TEST_GRAPH.actions![1].tasks![0].statement!, anything()),
       ).thenCall((statement: string, options: any) => {
         executionOptions.push(options);
         return Promise.resolve({ rows: [], metadata: {} });
@@ -452,7 +452,7 @@ suite("@dataform/api/run", () => {
 
       const labels = { env: "testing", team: "dataform" };
       const runner = new Runner(mockDbAdapterInstance, NEW_TEST_GRAPH, {
-        bigquery: { labels }
+        bigquery: { labels },
       });
 
       const result = await runner.execute().result();
@@ -463,14 +463,14 @@ suite("@dataform/api/run", () => {
 
       // Verify that at least some calls included labels in the options
       const callsWithLabels = executionOptions.filter(
-        opts =>
+        (opts) =>
           opts?.bigquery?.labels &&
           opts.bigquery.labels.env === "testing" &&
-          opts.bigquery.labels.team === "dataform"
+          opts.bigquery.labels.team === "dataform",
       );
       expect(callsWithLabels.length).to.equal(
         3,
-        "Expected 3 execute calls to include the labels in options"
+        "Expected 3 execute calls to include the labels in options",
       );
     });
 
@@ -481,12 +481,12 @@ suite("@dataform/api/run", () => {
       const NEW_TEST_GRAPH = RUN_TEST_GRAPH;
       // Set action-level labels on the first action
       NEW_TEST_GRAPH.actions![0].actionDescriptor = {
-        bigqueryLabels: { action_level: "specific_value" }
+        bigqueryLabels: { action_level: "specific_value" },
       };
 
       when(mockedDbAdapter.createSchema(anyString(), anyString())).thenResolve(null);
       when(
-        mockedDbAdapter.execute(NEW_TEST_GRAPH.actions![0].tasks![0].statement!, anything())
+        mockedDbAdapter.execute(NEW_TEST_GRAPH.actions![0].tasks![0].statement!, anything()),
       ).thenCall((statement: string, options: any) => {
         executionOptions.push(options);
         return Promise.resolve({
@@ -495,19 +495,19 @@ suite("@dataform/api/run", () => {
             bigquery: {
               jobId: "abc",
               totalBytesBilled: Long.fromNumber(0),
-              totalBytesProcessed: Long.fromNumber(0)
-            }
-          }
+              totalBytesProcessed: Long.fromNumber(0),
+            },
+          },
         });
       });
       when(
-        mockedDbAdapter.execute(RUN_TEST_GRAPH.actions![0].tasks![1].statement!, anything())
+        mockedDbAdapter.execute(RUN_TEST_GRAPH.actions![0].tasks![1].statement!, anything()),
       ).thenCall((statement: string, options: any) => {
         executionOptions.push(options);
         return Promise.resolve({ rows: [], metadata: {} });
       });
       when(
-        mockedDbAdapter.execute(NEW_TEST_GRAPH.actions![1].tasks![0].statement!, anything())
+        mockedDbAdapter.execute(NEW_TEST_GRAPH.actions![1].tasks![0].statement!, anything()),
       ).thenCall((statement: string, options: any) => {
         executionOptions.push(options);
         return Promise.resolve({ rows: [], metadata: {} });
@@ -517,7 +517,7 @@ suite("@dataform/api/run", () => {
 
       const globalLabels = { env: "testing", team: "dataform" };
       const runner = new Runner(mockDbAdapterInstance, NEW_TEST_GRAPH, {
-        bigquery: { labels: globalLabels }
+        bigquery: { labels: globalLabels },
       });
 
       const result = await runner.execute().result();
@@ -533,16 +533,16 @@ suite("@dataform/api/run", () => {
         // Should have global labels
         expect(opts.bigquery.labels.env).to.equal(
           "testing",
-          `Call ${index} should have global label 'env'`
+          `Call ${index} should have global label 'env'`,
         );
         expect(opts.bigquery.labels.team).to.equal(
           "dataform",
-          `Call ${index} should have global label 'team'`
+          `Call ${index} should have global label 'team'`,
         );
         // Should have action-level label
         expect(opts.bigquery.labels.action_level).to.equal(
           "specific_value",
-          `Call ${index} should have action-level label 'action_level'`
+          `Call ${index} should have action-level label 'action_level'`,
         );
       });
 
@@ -562,37 +562,37 @@ suite("@dataform/api/run", () => {
         warehouse: "bigquery",
         defaultSchema: "foo",
         assertionSchema: "bar",
-        defaultLocation: "US"
+        defaultLocation: "US",
       },
       warehouseState: {
-        tables: []
+        tables: [],
       },
       actions: [
         {
           tasks: [
             {
               type: "statement",
-              statement: "some statement"
-            }
+              statement: "some statement",
+            },
           ],
           type: "table",
           target: {
             schema: "schema1",
-            name: "target1"
+            name: "target1",
           },
           actionDescriptor: {
-            description: "desc"
+            description: "desc",
           },
           tableType: "table",
-          dependencyTargets: []
-        }
-      ]
+          dependencyTargets: [],
+        },
+      ],
     });
     const mockedDbAdapter = mock(BigQueryDbAdapter);
     when(mockedDbAdapter.createSchema(anyString(), anyString())).thenResolve(null);
     when(mockedDbAdapter.execute(anything(), anything())).thenResolve({
       rows: [],
-      metadata: {}
+      metadata: {},
     });
     when(mockedDbAdapter.setMetadata(anything())).thenReject(new Error("Error during setMetadata"));
 
@@ -601,25 +601,25 @@ suite("@dataform/api/run", () => {
     const runner = new Runner(mockDbAdapterInstance, METADATA_TEST_GRAPH);
 
     expect(
-      dataform.RunResult.create(cleanTiming(await runner.execute().result())).toJSON()
+      dataform.RunResult.create(cleanTiming(await runner.execute().result())).toJSON(),
     ).to.deep.equal({
       actions: [
         {
           status: "FAILED",
           target: {
             name: "target1",
-            schema: "schema1"
+            schema: "schema1",
           },
           tasks: [
             {
               errorMessage: "Error setting metadata: Error during setMetadata",
               metadata: {},
-              status: "FAILED"
-            }
-          ]
-        }
+              status: "FAILED",
+            },
+          ],
+        },
       ],
-      status: "FAILED"
+      status: "FAILED",
     });
   });
 });
@@ -627,9 +627,9 @@ suite("@dataform/api/run", () => {
 function cleanTiming(runResult: dataform.IRunResult) {
   const newRunResult = dataform.RunResult.create(runResult);
   delete newRunResult.timing;
-  newRunResult.actions.forEach(actionResult => {
+  newRunResult.actions.forEach((actionResult) => {
     delete actionResult.timing;
-    actionResult.tasks.forEach(taskResult => {
+    actionResult.tasks.forEach((taskResult) => {
       delete taskResult.timing;
     });
   });

@@ -11,40 +11,40 @@ export const TEST_GRAPH: dataform.ICompiledGraph = dataform.CompiledGraph.create
       type: "table",
       target: {
         schema: "schema",
-        name: "a"
+        name: "a",
       },
       query: "query",
-      dependencyTargets: [{ schema: "schema", name: "b" }]
+      dependencyTargets: [{ schema: "schema", name: "b" }],
     },
     {
       type: "table",
       target: {
         schema: "schema",
-        name: "b"
+        name: "b",
       },
       query: "query",
       dependencyTargets: [{ schema: "schema", name: "c" }],
-      disabled: true
+      disabled: true,
     },
     {
       type: "table",
       target: {
         schema: "schema",
-        name: "c"
+        name: "c",
       },
-      query: "query"
-    }
+      query: "query",
+    },
   ],
   assertions: [
     {
       target: {
         schema: "schema",
-        name: "d"
+        name: "d",
       },
       parentAction: {
         schema: "schema",
-        name: "b"
-      }
-    }
-  ]
+        name: "b",
+      },
+    },
+  ],
 });

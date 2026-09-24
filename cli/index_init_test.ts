@@ -15,7 +15,7 @@ import {
   ICEBERG_TABLE_FOLDER_ROOT_HINT,
   ICEBERG_TABLE_FOLDER_ROOT_PROMPT_QUESTION,
   ICEBERG_TABLE_FOLDER_ROOT_SUBPATH_HINT,
-  ICEBERG_TABLE_FOLDER_SUBPATH_PROMPT_QUESTION
+  ICEBERG_TABLE_FOLDER_SUBPATH_PROMPT_QUESTION,
 } from "df/cli/util";
 import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
@@ -31,7 +31,7 @@ suite("init command", ({ afterEach }) => {
     await runCli("init", [
       projectDir,
       "--default-database=dataform-database",
-      "--default-location=us-central1"
+      "--default-location=us-central1",
     ]);
 
     expect(fs.readFileSync(path.join(projectDir, "workflow_settings.yaml"), "utf8")).to
@@ -55,16 +55,11 @@ defaultAssertionDataset: dataform_assertions
 
       const result = await runCli(
         "init",
-        [
-          projectDir,
-          "dataform-iceberg-test",
-          "us-central1",
-          "--iceberg"
-        ],
+        [projectDir, "dataform-iceberg-test", "us-central1", "--iceberg"],
         {
           // Inject test inputs via environment variable
-          env: { ...process.env, DATAFORM_CLI_TEST_INPUTS: JSON.stringify(testInputs) }
-        }
+          env: { ...process.env, DATAFORM_CLI_TEST_INPUTS: JSON.stringify(testInputs) },
+        },
       );
 
       expect(result.exitCode).equals(0);
@@ -75,7 +70,7 @@ defaultAssertionDataset: dataform_assertions
       assert.isTrue(fs.existsSync(workflowSettingsPath));
 
       const workflowSettings = dataform.WorkflowSettings.create(
-        loadYaml(fs.readFileSync(workflowSettingsPath, "utf8"))
+        loadYaml(fs.readFileSync(workflowSettingsPath, "utf8")),
       );
 
       expect(workflowSettings.defaultIcebergConfig).to.deep.equal({
@@ -97,16 +92,11 @@ defaultAssertionDataset: dataform_assertions
 
       const result = await runCli(
         "init",
-        [
-          projectDir,
-          "dataform-iceberg-partial",
-          "us-east1",
-          "--iceberg"
-        ],
+        [projectDir, "dataform-iceberg-partial", "us-east1", "--iceberg"],
         {
           // Inject test inputs via environment variable
-          env: { ...process.env, DATAFORM_CLI_TEST_INPUTS: JSON.stringify(testInputs) }
-        }
+          env: { ...process.env, DATAFORM_CLI_TEST_INPUTS: JSON.stringify(testInputs) },
+        },
       );
 
       expect(result.exitCode).equals(0);
@@ -122,7 +112,7 @@ defaultAssertionDataset: dataform_assertions
       assert.isTrue(fs.existsSync(workflowSettingsPath));
 
       const workflowSettings = dataform.WorkflowSettings.create(
-        loadYaml(fs.readFileSync(workflowSettingsPath, "utf8"))
+        loadYaml(fs.readFileSync(workflowSettingsPath, "utf8")),
       );
 
       expect(workflowSettings.defaultIcebergConfig).to.deep.equal({
@@ -137,22 +127,18 @@ defaultAssertionDataset: dataform_assertions
       const testInputs = {
         [ICEBERG_BUCKET_NAME_PROMPT_QUESTION]: "my-iceberg-bucket-with-empty-tablefolderroot",
         [ICEBERG_TABLE_FOLDER_ROOT_PROMPT_QUESTION]: "", // Empty input
-        [ICEBERG_TABLE_FOLDER_SUBPATH_PROMPT_QUESTION]: "my-iceberg-subpath-with-empty-tableFolderRoot",
+        [ICEBERG_TABLE_FOLDER_SUBPATH_PROMPT_QUESTION]:
+          "my-iceberg-subpath-with-empty-tableFolderRoot",
         [ICEBERG_CONNECTION_QUESTION]: "my.default.connection",
       };
 
       const result = await runCli(
         "init",
-        [
-          projectDir,
-          "dataform-iceberg-partial",
-          "us-east1",
-          "--iceberg"
-        ],
+        [projectDir, "dataform-iceberg-partial", "us-east1", "--iceberg"],
         {
           // Inject test inputs via environment variable
-          env: { ...process.env, DATAFORM_CLI_TEST_INPUTS: JSON.stringify(testInputs) }
-        }
+          env: { ...process.env, DATAFORM_CLI_TEST_INPUTS: JSON.stringify(testInputs) },
+        },
       );
 
       expect(result.exitCode).equals(0);
@@ -168,7 +154,7 @@ defaultAssertionDataset: dataform_assertions
       assert.isTrue(fs.existsSync(workflowSettingsPath));
 
       const workflowSettings = dataform.WorkflowSettings.create(
-        loadYaml(fs.readFileSync(workflowSettingsPath, "utf8"))
+        loadYaml(fs.readFileSync(workflowSettingsPath, "utf8")),
       );
 
       expect(workflowSettings.defaultIcebergConfig).to.deep.equal({
@@ -182,23 +168,19 @@ defaultAssertionDataset: dataform_assertions
       const projectDir = tmpDirFixture.createNewTmpDir();
       const testInputs = {
         [ICEBERG_BUCKET_NAME_PROMPT_QUESTION]: "my-iceberg-bucket-with-empty-tablefoldersubpath",
-        [ICEBERG_TABLE_FOLDER_ROOT_PROMPT_QUESTION]: "my-iceberg-root-with-empty-tableFolderSubpath",
+        [ICEBERG_TABLE_FOLDER_ROOT_PROMPT_QUESTION]:
+          "my-iceberg-root-with-empty-tableFolderSubpath",
         [ICEBERG_TABLE_FOLDER_SUBPATH_PROMPT_QUESTION]: "", // Empty input
         [ICEBERG_CONNECTION_QUESTION]: "my.default.connection",
       };
 
       const result = await runCli(
         "init",
-        [
-          projectDir,
-          "dataform-iceberg-partial",
-          "us-east1",
-          "--iceberg"
-        ],
+        [projectDir, "dataform-iceberg-partial", "us-east1", "--iceberg"],
         {
           // Inject test inputs via environment variable
-          env: { ...process.env, DATAFORM_CLI_TEST_INPUTS: JSON.stringify(testInputs) }
-        }
+          env: { ...process.env, DATAFORM_CLI_TEST_INPUTS: JSON.stringify(testInputs) },
+        },
       );
 
       expect(result.exitCode).equals(0);
@@ -214,7 +196,7 @@ defaultAssertionDataset: dataform_assertions
       assert.isTrue(fs.existsSync(workflowSettingsPath));
 
       const workflowSettings = dataform.WorkflowSettings.create(
-        loadYaml(fs.readFileSync(workflowSettingsPath, "utf8"))
+        loadYaml(fs.readFileSync(workflowSettingsPath, "utf8")),
       );
 
       expect(workflowSettings.defaultIcebergConfig).to.deep.equal({
@@ -235,16 +217,11 @@ defaultAssertionDataset: dataform_assertions
 
       const result = await runCli(
         "init",
-        [
-          projectDir,
-          "dataform-iceberg-partial",
-          "us-east1",
-          "--iceberg"
-        ],
+        [projectDir, "dataform-iceberg-partial", "us-east1", "--iceberg"],
         {
           // Inject test inputs via environment variable
-          env: { ...process.env, DATAFORM_CLI_TEST_INPUTS: JSON.stringify(testInputs) }
-        }
+          env: { ...process.env, DATAFORM_CLI_TEST_INPUTS: JSON.stringify(testInputs) },
+        },
       );
 
       expect(result.exitCode).equals(0);
@@ -260,7 +237,7 @@ defaultAssertionDataset: dataform_assertions
       assert.isTrue(fs.existsSync(workflowSettingsPath));
 
       const workflowSettings = dataform.WorkflowSettings.create(
-        loadYaml(fs.readFileSync(workflowSettingsPath, "utf8"))
+        loadYaml(fs.readFileSync(workflowSettingsPath, "utf8")),
       );
 
       expect(workflowSettings.defaultIcebergConfig).to.deep.equal({
@@ -280,7 +257,7 @@ suite("init-creds command", ({ afterEach }) => {
     const result = await runCli("init-creds", [emptyDir]);
     expect(result.exitCode).to.not.equal(0);
     expect(result.stderr).to.include(
-      `${emptyDir} does not appear to be a dataform directory (missing workflow_settings.yaml file).`
+      `${emptyDir} does not appear to be a dataform directory (missing workflow_settings.yaml file).`,
     );
   });
 });

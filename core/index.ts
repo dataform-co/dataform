@@ -30,4 +30,14 @@ function indexFileGenerator() {
 // These exports constitute the public API of @dataform/core.
 // They must also be listed in packages/@dataform/core/index.ts.
 // Changes to these will break @dataform/cli, so take care!
-export { compiler, IDataformExtension, indexFileGenerator, IJitCompiler, jitCompiler, main, session, supportedFeatures, version };
+export {
+  compiler,
+  IDataformExtension,
+  indexFileGenerator,
+  IJitCompiler,
+  jitCompiler,
+  main,
+  session,
+  supportedFeatures,
+  version,
+};

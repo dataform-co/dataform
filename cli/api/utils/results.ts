@@ -8,7 +8,7 @@ export class LimitedResultSet {
     private readonly options?: {
       rowLimit?: number;
       byteLimit?: number;
-    }
+    },
   ) {}
 
   public push(row: any) {

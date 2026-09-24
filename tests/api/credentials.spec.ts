@@ -16,7 +16,7 @@ suite("@dataform/api/credentials", ({ afterEach }) => {
     const credentialsPath = path.join(projectDir, "credentials.json");
     fs.writeFileSync(credentialsPath, "");
     expect(() => credentials.read(credentialsPath)).to.throw(
-      /Error reading credentials file: Unexpected end of JSON input/
+      /Error reading credentials file: Unexpected end of JSON input/,
     );
   });
 
@@ -25,7 +25,7 @@ suite("@dataform/api/credentials", ({ afterEach }) => {
     const credentialsPath = path.join(projectDir, "credentials.json");
     fs.writeFileSync(credentialsPath, "{}");
     expect(() => credentials.read(credentialsPath)).to.throw(
-      /Error reading credentials file: the projectId field is required/
+      /Error reading credentials file: the projectId field is required/,
     );
   });
 });

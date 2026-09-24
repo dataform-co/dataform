@@ -32,7 +32,7 @@ export function dirName(fullPath: string) {
 
 export function join(...paths: string[]) {
   return paths
-    .map(path => {
+    .map((path) => {
       if (path.startsWith(separator)) {
         path = path.slice(1);
       }
@@ -55,7 +55,7 @@ export function fileExtension(fullPath: string) {
 export function normalize(path: string) {
   const parts = [];
   let dotDotCount = 0;
-  for (const part of path.split("/").filter(p => !!p && p !== ".")) {
+  for (const part of path.split("/").filter((p) => !!p && p !== ".")) {
     if (part === "..") {
       if (parts.length === 0) {
         dotDotCount++;

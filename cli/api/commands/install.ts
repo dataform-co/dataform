@@ -18,7 +18,7 @@ export async function install(projectPath: string) {
   if (dataformCoreVersion) {
     throw new Error(
       "No installation is needed when using workflow_settings.yaml, as packages are installed at " +
-        "runtime."
+        "runtime.",
     );
   }
 

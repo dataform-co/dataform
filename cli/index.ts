@@ -6,7 +6,7 @@ import {
   initCredsCommand,
   installCommand,
   runCommand,
-  testCommand
+  testCommand,
 } from "df/cli/commands";
 import { printError } from "df/cli/console";
 import { createYargsCli } from "df/cli/yargswrapper";
@@ -23,10 +23,10 @@ export function runCli() {
     compileCommand,
     testCommand,
     runCommand,
-    formatCommand
+    formatCommand,
   ];
 
   createYargsCli({
-    commands: [createHelpCommand(commands), ...commands]
+    commands: [createHelpCommand(commands), ...commands],
   });
 }

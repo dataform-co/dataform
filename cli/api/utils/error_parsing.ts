@@ -8,7 +8,7 @@ export function parseBigqueryEvalError(error: IBigqueryEvaluationError) {
   // expected error format:
   // e.message = Syntax error: Unexpected identifier "asda" at [2:1]
   const evalError = dataform.QueryEvaluationError.create({
-    message: String(error)
+    message: String(error),
   });
   try {
     if (!error.message) {

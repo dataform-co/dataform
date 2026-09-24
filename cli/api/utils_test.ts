@@ -24,7 +24,7 @@ suite("readExtensionConfigFromWorkflowSettings", ({ afterEach }) => {
     const projectDir = tmpDirFixture.createNewTmpDir();
     fs.writeFileSync(
       path.join(projectDir, "workflow_settings.yaml"),
-      dumpYaml({ defaultProject: "dataform" })
+      dumpYaml({ defaultProject: "dataform" }),
     );
     expect(readExtensionConfigFromWorkflowSettings(projectDir)).to.equal(undefined);
   });
@@ -40,7 +40,7 @@ suite("readExtensionConfigFromWorkflowSettings", ({ afterEach }) => {
           name: "test-extension",
           compilationMode: "PROLOGUE",
         },
-      })
+      }),
     );
     const result = readExtensionConfigFromWorkflowSettings(projectDir);
     expect(result.name).to.equal("test-extension");
@@ -56,7 +56,7 @@ suite("readExtensionConfigFromWorkflowSettings", ({ afterEach }) => {
     const projectDir = tmpDirFixture.createNewTmpDir();
     fs.writeFileSync(path.join(projectDir, "workflow_settings.yaml"), "invalid: yaml: [");
     expect(() => readExtensionConfigFromWorkflowSettings(projectDir)).to.throw(
-      "workflow_settings.yaml is not a valid YAML file"
+      "workflow_settings.yaml is not a valid YAML file",
     );
   });
 });

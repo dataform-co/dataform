@@ -1,10 +1,6 @@
 import { dataform } from "df/protos/ts";
 
-function formatStatement(
-  statement: string,
-  isLast: boolean,
-  modifier?: (mod: string) => string
-) {
+function formatStatement(statement: string, isLast: boolean, modifier?: (mod: string) => string) {
   // Only treat a comment as trailing if it lives on the statement's last line.
   // Searching from the last newline avoids misreading an interior comment (e.g.
   // inside a multi-line procedure body) as a trailing comment.
@@ -41,11 +37,11 @@ function formatStatement(
 
 export function concatenateQueries(statements: string[], modifier?: (mod: string) => string) {
   const processed = statements
-    .filter(statement => !!statement)
-    .map(statement => statement.trim())
-    .filter(statement => statement.length > 0);
+    .filter((statement) => !!statement)
+    .map((statement) => statement.trim())
+    .filter((statement) => statement.length > 0);
   const formattedStatements = processed.map((statement, index) =>
-    formatStatement(statement, index === processed.length - 1, modifier)
+    formatStatement(statement, index === processed.length - 1, modifier),
   );
   return formattedStatements.join("\n");
 }
@@ -64,12 +60,12 @@ export class Tasks {
   }
 
   public build() {
-    return this.tasks.map(task => task.build());
+    return this.tasks.map((task) => task.build());
   }
 
   public concatenate() {
     return new Tasks().add(
-      Task.statement(concatenateQueries(this.tasks.map(task => task.getStatement())))
+      Task.statement(concatenateQueries(this.tasks.map((task) => task.getStatement()))),
     );
   }
 }

@@ -49,7 +49,7 @@ export class LineagePayloadBuilder {
     actionResult: dataform.IActionResult,
     projectId: string,
     location: string,
-    credentialsProjectId?: string
+    credentialsProjectId?: string,
   ): { [key: string]: any } {
     if (!this.workdirHash && this.projectDir) {
       this.workdirHash = createHash("sha256").update(this.projectDir).digest("hex").slice(0, 16);
@@ -77,16 +77,16 @@ export class LineagePayloadBuilder {
       }
     }
 
-    const inputs = (action.dependencyTargets || []).map(dep => ({
+    const inputs = (action.dependencyTargets || []).map((dep) => ({
       namespace: "bigquery",
-      name: `${dep.database || projectId}.${dep.schema}.${dep.name}`
+      name: `${dep.database || projectId}.${dep.schema}.${dep.name}`,
     }));
 
     const outputs = [
       {
         namespace: "bigquery",
-        name: `${action.target.database || projectId}.${action.target.schema}.${action.target.name}`
-      }
+        name: `${action.target.database || projectId}.${action.target.schema}.${action.target.name}`,
+      },
     ];
 
     const workdirIdentifier = this.buildWorkdirIdentifier();
@@ -97,12 +97,12 @@ export class LineagePayloadBuilder {
     const nominalTime: any = {
       _schemaURL: NOMINAL_TIME_FACET_SCHEMA,
       nominalStartTime: new Date(
-        toMillis(actionResult.timing?.startTimeMillis) ?? Date.now()
-      ).toISOString()
+        toMillis(actionResult.timing?.startTimeMillis) ?? Date.now(),
+      ).toISOString(),
     };
     if (actionResult.timing?.endTimeMillis) {
       nominalTime.nominalEndTime = new Date(
-        toMillis(actionResult.timing.endTimeMillis)
+        toMillis(actionResult.timing.endTimeMillis),
       ).toISOString();
     }
 
@@ -113,15 +113,15 @@ export class LineagePayloadBuilder {
         _schemaURL: PARENT_RUN_FACET_SCHEMA,
         job: {
           namespace: "dataform",
-          name: parentJobName
+          name: parentJobName,
         },
         run: {
-          runId: this.parentRunId
-        }
+          runId: this.parentRunId,
+        },
       },
       gcp_bq_pipelines_run: {
-        runType: "cli-manual"
-      }
+        runType: "cli-manual",
+      },
     };
 
     if (eventType !== "START") {
@@ -131,35 +131,35 @@ export class LineagePayloadBuilder {
           _producer: PRODUCER_URL,
           _schemaURL: EXTERNAL_QUERY_FACET_SCHEMA,
           externalQueryId: `${credentialsProjectId}.${location}.${bqJobId}`,
-          source: "bigquery"
+          source: "bigquery",
         };
       }
     }
 
     if (eventType === "FAIL") {
       const errorMessages = actionResult.tasks
-        ?.map(t => t.errorMessage)
-        .filter(msg => !!msg)
+        ?.map((t) => t.errorMessage)
+        .filter((msg) => !!msg)
         .join("; ");
       if (errorMessages) {
         runFacets.errorMessage = {
           _schemaURL: ERROR_MESSAGE_FACET_SCHEMA,
           message: errorMessages,
-          programmingLanguage: "typescript"
+          programmingLanguage: "typescript",
         };
       }
     }
 
     const sqlStatements = action.tasks
-      ?.map(task => task.statement)
-      .filter(stmt => !!stmt)
+      ?.map((task) => task.statement)
+      .filter((stmt) => !!stmt)
       .join(";\n");
 
     const jobFacets: any = {};
     if (sqlStatements) {
       jobFacets.sql = {
         _schemaURL: SQL_JOB_FACET_SCHEMA,
-        query: sqlStatements
+        query: sqlStatements,
       };
     }
 
@@ -169,8 +169,8 @@ export class LineagePayloadBuilder {
       displayName: `BigQuery Pipelines action ${canonicalActionTarget}`,
       origin: {
         name: `projects/${projectId}/locations/${location}/cli/${workdirIdentifier}`,
-        sourceType: "BIGQUERY_PIPELINES"
-      }
+        sourceType: "BIGQUERY_PIPELINES",
+      },
     };
 
     jobFacets.jobType = {
@@ -178,13 +178,13 @@ export class LineagePayloadBuilder {
       _schemaURL: JOB_TYPE_FACET_SCHEMA,
       integration: "BIGQUERY_PIPELINES",
       jobType: "ACTION",
-      processingType: "BATCH"
+      processingType: "BATCH",
     };
 
     jobFacets.gcp_bq_pipelines_job = {
       dataformCoreVersion: version,
       actionType: action.type,
-      actionName: canonicalActionTarget
+      actionName: canonicalActionTarget,
     };
 
     return {
@@ -192,17 +192,17 @@ export class LineagePayloadBuilder {
       eventTime,
       run: {
         runId,
-        facets: runFacets
+        facets: runFacets,
       },
       job: {
         namespace: "dataform",
         name: jobName,
-        facets: jobFacets
+        facets: jobFacets,
       },
       inputs,
       outputs,
       producer: PRODUCER_URL,
-      schemaURL: RUN_EVENT_SCHEMA
+      schemaURL: RUN_EVENT_SCHEMA,
     };
   }
 

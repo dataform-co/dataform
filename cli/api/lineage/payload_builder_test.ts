@@ -8,21 +8,21 @@ import { suite, test } from "df/testing";
 const ACTION = dataform.ExecutionAction.create({
   target: { database: "proj", schema: "schema", name: "table" },
   type: "table",
-  tasks: [{ statement: "SELECT 1" }]
+  tasks: [{ statement: "SELECT 1" }],
 });
 
 const START_RESULT = dataform.ActionResult.create({
   status: dataform.ActionResult.ExecutionStatus.RUNNING,
-  timing: { startTimeMillis: Long.fromNumber(1_700_000_000_000) }
+  timing: { startTimeMillis: Long.fromNumber(1_700_000_000_000) },
 });
 
 const COMPLETE_RESULT = dataform.ActionResult.create({
   status: dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
   timing: {
     startTimeMillis: Long.fromNumber(1_700_000_000_000),
-    endTimeMillis: Long.fromNumber(1_700_000_010_000)
+    endTimeMillis: Long.fromNumber(1_700_000_010_000),
   },
-  tasks: [{ metadata: { bigquery: { jobId: "job-abc" } } }]
+  tasks: [{ metadata: { bigquery: { jobId: "job-abc" } } }],
 });
 
 suite("LineagePayloadBuilder", () => {
@@ -34,13 +34,13 @@ suite("LineagePayloadBuilder", () => {
       ACTION,
       dataform.ActionResult.create({ status: dataform.ActionResult.ExecutionStatus.FAILED }),
       "proj",
-      "us"
+      "us",
     );
     const cancelled = builder.build(
       ACTION,
       dataform.ActionResult.create({ status: dataform.ActionResult.ExecutionStatus.CANCELLED }),
       "proj",
-      "us"
+      "us",
     );
     expect(running.eventType).to.equal("START");
     expect(successful.eventType).to.equal("COMPLETE");
@@ -67,7 +67,7 @@ suite("LineagePayloadBuilder", () => {
     const builder = new LineagePayloadBuilder("/tmp/proj");
     const otherAction = dataform.ExecutionAction.create({
       target: { database: "proj", schema: "schema", name: "other" },
-      type: "table"
+      type: "table",
     });
     const first = builder.build(ACTION, START_RESULT, "proj", "us");
     const second = builder.build(otherAction, START_RESULT, "proj", "us");
@@ -96,7 +96,7 @@ suite("LineagePayloadBuilder", () => {
     expect(start.run.facets.externalQuery).to.equal(undefined);
     expect(complete.run.facets.externalQuery).to.deep.include({
       externalQueryId: "cred-proj.us.job-abc",
-      source: "bigquery"
+      source: "bigquery",
     });
   });
 
@@ -112,22 +112,22 @@ suite("LineagePayloadBuilder", () => {
       ACTION,
       dataform.ActionResult.create({
         status: dataform.ActionResult.ExecutionStatus.FAILED,
-        tasks: [{ errorMessage: "boom" }, { errorMessage: "kaboom" }]
+        tasks: [{ errorMessage: "boom" }, { errorMessage: "kaboom" }],
       }),
       "proj",
-      "us"
+      "us",
     );
     expect(failedWithMsg.run.facets.errorMessage).to.deep.include({
       message: "boom; kaboom",
-      programmingLanguage: "typescript"
+      programmingLanguage: "typescript",
     });
     const failedWithoutMsg = builder.build(
       ACTION,
       dataform.ActionResult.create({
-        status: dataform.ActionResult.ExecutionStatus.FAILED
+        status: dataform.ActionResult.ExecutionStatus.FAILED,
       }),
       "proj",
-      "us"
+      "us",
     );
     expect(failedWithoutMsg.run.facets.errorMessage).to.equal(undefined);
   });
@@ -141,17 +141,17 @@ suite("LineagePayloadBuilder", () => {
         tasks: [
           { errorMessage: "pre_operations failed: table not found" },
           { errorMessage: "" },
-          { errorMessage: "main statement failed: syntax error at line 3" }
-        ]
+          { errorMessage: "main statement failed: syntax error at line 3" },
+        ],
       }),
       "proj",
-      "us"
+      "us",
     );
     expect(failed.run.facets.errorMessage).to.deep.equal({
       _schemaURL: "https://openlineage.io/spec/facets/1-0-1/ErrorMessageRunFacet.json",
       message:
         "pre_operations failed: table not found; main statement failed: syntax error at line 3",
-      programmingLanguage: "typescript"
+      programmingLanguage: "typescript",
     });
   });
 
@@ -161,10 +161,10 @@ suite("LineagePayloadBuilder", () => {
       ACTION,
       dataform.ActionResult.create({
         status: dataform.ActionResult.ExecutionStatus.FAILED,
-        tasks: [{ errorMessage: "" }, {}, { errorMessage: "" }]
+        tasks: [{ errorMessage: "" }, {}, { errorMessage: "" }],
       }),
       "proj",
-      "us"
+      "us",
     );
     expect(failed.run.facets.errorMessage).to.equal(undefined);
   });
@@ -173,19 +173,19 @@ suite("LineagePayloadBuilder", () => {
     const multiTaskAction = dataform.ExecutionAction.create({
       target: { database: "proj", schema: "schema", name: "table" },
       type: "table",
-      tasks: [{ statement: "CREATE TABLE t AS SELECT 1" }, { statement: "SELECT 2" }]
+      tasks: [{ statement: "CREATE TABLE t AS SELECT 1" }, { statement: "SELECT 2" }],
     });
     const builder = new LineagePayloadBuilder("/tmp/proj");
     const payload = builder.build(multiTaskAction, START_RESULT, "proj", "us");
     expect(payload.job.facets.sql).to.deep.include({
-      query: "CREATE TABLE t AS SELECT 1;\nSELECT 2"
+      query: "CREATE TABLE t AS SELECT 1;\nSELECT 2",
     });
   });
 
   test("sql job facet omitted when action has no statements", () => {
     const emptyAction = dataform.ExecutionAction.create({
       target: { database: "proj", schema: "schema", name: "table" },
-      type: "table"
+      type: "table",
     });
     const builder = new LineagePayloadBuilder("/tmp/proj");
     const payload = builder.build(emptyAction, START_RESULT, "proj", "us");
@@ -198,7 +198,7 @@ suite("LineagePayloadBuilder", () => {
     expect(payload.job.facets.jobType).to.deep.include({
       integration: "BIGQUERY_PIPELINES",
       jobType: "ACTION",
-      processingType: "BATCH"
+      processingType: "BATCH",
     });
   });
 
@@ -207,7 +207,7 @@ suite("LineagePayloadBuilder", () => {
     const payload = builder.build(ACTION, START_RESULT, "proj", "us");
     expect(payload.job.facets.gcp_bq_pipelines_job).to.deep.include({
       actionType: "table",
-      actionName: "schema.table"
+      actionName: "schema.table",
     });
     expect(payload.job.facets.gcp_bq_pipelines_job.dataformCoreVersion).to.be.a("string");
   });
@@ -218,14 +218,14 @@ suite("LineagePayloadBuilder", () => {
       type: "table",
       dependencyTargets: [
         { database: "p1", schema: "s1", name: "n1" },
-        { database: "p2", schema: "s2", name: "n2" }
-      ]
+        { database: "p2", schema: "s2", name: "n2" },
+      ],
     });
     const builder = new LineagePayloadBuilder("/tmp/proj");
     const payload = builder.build(actionWithDeps, START_RESULT, "proj", "us");
     expect(payload.inputs).to.deep.equal([
       { namespace: "bigquery", name: "p1.s1.n1" },
-      { namespace: "bigquery", name: "p2.s2.n2" }
+      { namespace: "bigquery", name: "p2.s2.n2" },
     ]);
   });
 });

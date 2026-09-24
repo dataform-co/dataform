@@ -6,13 +6,13 @@ import {
   suite,
   test,
   writeDefinitionFile,
-  writeWorkflowSettingsFile
+  writeWorkflowSettingsFile,
 } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
 import {
   coreExecutionRequestFromPath,
   runMainInVm,
-  VALID_WORKFLOW_SETTINGS_YAML
+  VALID_WORKFLOW_SETTINGS_YAML,
 } from "df/testing/run_core";
 
 suite("Iceberg incremental table options", ({ afterEach }) => {
@@ -22,7 +22,7 @@ suite("Iceberg incremental table options", ({ afterEach }) => {
     projectDir: string,
     filename: string,
     fileContents: string,
-    wsContent: string
+    wsContent: string,
   ) => {
     writeWorkflowSettingsFile(projectDir, wsContent);
     writeDefinitionFile(projectDir, filename, fileContents);
@@ -61,11 +61,11 @@ defaultIcebergConfig:
           tableFormat: "ICEBERG",
           fileFormat: "PARQUET",
           connection: "projects/gcp/locations/us/connections/conn-id",
-          storageUri: "gs://my-bucket/my-root/my-subpath"
-        }
+          storageUri: "gs://my-bucket/my-root/my-subpath",
+        },
       },
       expectError: false,
-      wsContent: VALID_WORKFLOW_SETTINGS_YAML
+      wsContent: VALID_WORKFLOW_SETTINGS_YAML,
     },
     {
       testName: "with all values provided and dot form connection",
@@ -88,11 +88,11 @@ defaultIcebergConfig:
           tableFormat: "ICEBERG",
           fileFormat: "PARQUET",
           connection: "gcp.us.conn-id",
-          storageUri: "gs://my-bucket/my-root/my-subpath"
-        }
+          storageUri: "gs://my-bucket/my-root/my-subpath",
+        },
       },
       expectError: false,
-      wsContent: VALID_WORKFLOW_SETTINGS_YAML
+      wsContent: VALID_WORKFLOW_SETTINGS_YAML,
     },
     {
       testName: "defaults to `_dataform` for tableFolderRoot",
@@ -114,11 +114,11 @@ defaultIcebergConfig:
           tableFormat: "ICEBERG",
           fileFormat: "PARQUET",
           connection: "gcp.us.conn-id",
-          storageUri: "gs://my-bucket/_dataform/my-subpath"
-        }
+          storageUri: "gs://my-bucket/_dataform/my-subpath",
+        },
       },
       expectError: false,
-      wsContent: VALID_WORKFLOW_SETTINGS_YAML
+      wsContent: VALID_WORKFLOW_SETTINGS_YAML,
     },
     {
       testName:
@@ -141,11 +141,11 @@ defaultIcebergConfig:
           tableFormat: "ICEBERG",
           fileFormat: "PARQUET",
           connection: "gcp.us.conn-id",
-          storageUri: "gs://my-bucket/my-root/my-dataset/my-incremental"
-        }
+          storageUri: "gs://my-bucket/my-root/my-dataset/my-incremental",
+        },
       },
       expectError: false,
-      wsContent: VALID_WORKFLOW_SETTINGS_YAML
+      wsContent: VALID_WORKFLOW_SETTINGS_YAML,
     },
     {
       testName:
@@ -167,11 +167,11 @@ defaultIcebergConfig:
           tableFormat: "ICEBERG",
           fileFormat: "PARQUET",
           connection: "gcp.us.conn-id",
-          storageUri: "gs://my-bucket/my-root/defaultDataset/my-incremental"
-        }
+          storageUri: "gs://my-bucket/my-root/defaultDataset/my-incremental",
+        },
       },
       expectError: false,
-      wsContent: VALID_WORKFLOW_SETTINGS_YAML
+      wsContent: VALID_WORKFLOW_SETTINGS_YAML,
     },
     {
       testName: "defaults to PARQUET when file format is not set",
@@ -193,11 +193,11 @@ defaultIcebergConfig:
           tableFormat: "ICEBERG",
           fileFormat: "PARQUET",
           connection: "projects/gcp/locations/us/connections/conn-id",
-          storageUri: "gs://my-bucket/my-root/my-subpath"
-        }
+          storageUri: "gs://my-bucket/my-root/my-subpath",
+        },
       },
       expectError: false,
-      wsContent: VALID_WORKFLOW_SETTINGS_YAML
+      wsContent: VALID_WORKFLOW_SETTINGS_YAML,
     },
     {
       testName: "defaults to DEFAULT connection",
@@ -219,11 +219,11 @@ defaultIcebergConfig:
           tableFormat: "ICEBERG",
           fileFormat: "PARQUET",
           connection: "DEFAULT",
-          storageUri: "gs://my-bucket/my-root/my-subpath"
-        }
+          storageUri: "gs://my-bucket/my-root/my-subpath",
+        },
       },
       expectError: false,
-      wsContent: VALID_WORKFLOW_SETTINGS_YAML
+      wsContent: VALID_WORKFLOW_SETTINGS_YAML,
     },
     {
       testName: "defaults to PARQUET when file format is empty",
@@ -246,11 +246,11 @@ defaultIcebergConfig:
           tableFormat: "ICEBERG",
           fileFormat: "PARQUET",
           connection: "projects/gcp/locations/us/connections/conn-id",
-          storageUri: "gs://my-bucket/my-root/my-subpath"
-        }
+          storageUri: "gs://my-bucket/my-root/my-subpath",
+        },
       },
       expectError: false,
-      wsContent: VALID_WORKFLOW_SETTINGS_YAML
+      wsContent: VALID_WORKFLOW_SETTINGS_YAML,
     },
     {
       testName: "invalid connection format",
@@ -268,7 +268,7 @@ defaultIcebergConfig:
         }`,
       expectError:
         "The connection must be in the format `{project}.{location}.{connection_id}` or `projects/{project}/locations/{location}/connections/{connection_id}`, or be set to `DEFAULT`.",
-      wsContent: VALID_WORKFLOW_SETTINGS_YAML
+      wsContent: VALID_WORKFLOW_SETTINGS_YAML,
     },
     {
       testName: "invalid file format",
@@ -282,7 +282,7 @@ defaultIcebergConfig:
           }
         }`,
       expectError: 'Unexpected file format; only "PARQUET" is allowed, got "AVRO".',
-      wsContent: VALID_WORKFLOW_SETTINGS_YAML
+      wsContent: VALID_WORKFLOW_SETTINGS_YAML,
     },
     {
       testName: "bucketName not defined",
@@ -299,7 +299,7 @@ defaultIcebergConfig:
         }`,
       expectError:
         "When defining an Iceberg table, bucket name must be defined in workflow_settings.yaml or the config block.",
-      wsContent: VALID_WORKFLOW_SETTINGS_YAML
+      wsContent: VALID_WORKFLOW_SETTINGS_YAML,
     },
     {
       testName: "with Iceberg options and other BigQuery options",
@@ -324,7 +324,7 @@ defaultIcebergConfig:
         target: {
           name: "iceberg_incremental_mixed",
           schema: "mixed_dataset",
-          database: "defaultProject"
+          database: "defaultProject",
         },
         bigquery: {
           tableFormat: "ICEBERG",
@@ -334,11 +334,11 @@ defaultIcebergConfig:
           partitionBy: "partition_col",
           clusterBy: ["cluster_col1", "cluster_col2"],
           labels: { env: "test", type: "iceberg" },
-          additionalOptions: { key1: "val1", key2: "val2" }
-        }
+          additionalOptions: { key1: "val1", key2: "val2" },
+        },
       },
       expectError: false,
-      wsContent: VALID_WORKFLOW_SETTINGS_YAML
+      wsContent: VALID_WORKFLOW_SETTINGS_YAML,
     },
     {
       testName: "uses defaultBucketName from workflow_settings.yaml",
@@ -362,10 +362,10 @@ defaultIcebergConfig:
           tableFormat: "ICEBERG",
           fileFormat: "PARQUET",
           connection: "gcp.us.conn-id",
-          storageUri: "gs://ws-default-bucket/my-root/my-subpath"
-        }
+          storageUri: "gs://ws-default-bucket/my-root/my-subpath",
+        },
       },
-      expectError: false
+      expectError: false,
     },
     {
       testName: "uses defaultTableFolderRoot from workflow_settings.yaml",
@@ -389,10 +389,10 @@ defaultIcebergConfig:
           tableFormat: "ICEBERG",
           fileFormat: "PARQUET",
           connection: "gcp.us.conn-id",
-          storageUri: "gs://my-bucket/ws-default-root/my-subpath"
-        }
+          storageUri: "gs://my-bucket/ws-default-root/my-subpath",
+        },
       },
-      expectError: false
+      expectError: false,
     },
     {
       testName: "uses defaultTableFolderSubpath from workflow_settings.yaml",
@@ -416,10 +416,10 @@ defaultIcebergConfig:
           tableFormat: "ICEBERG",
           fileFormat: "PARQUET",
           connection: "gcp.us.conn-id",
-          storageUri: "gs://my-bucket/my-root/ws-default-sub"
-        }
+          storageUri: "gs://my-bucket/my-root/ws-default-sub",
+        },
       },
-      expectError: false
+      expectError: false,
     },
     {
       testName: "uses default connection from workflow_settings.yaml",
@@ -442,10 +442,10 @@ defaultIcebergConfig:
           tableFormat: "ICEBERG",
           fileFormat: "PARQUET",
           connection: "ws.default.connection",
-          storageUri: "gs://my-bucket/my-root/my-subpath"
-        }
+          storageUri: "gs://my-bucket/my-root/my-subpath",
+        },
       },
-      expectError: false
+      expectError: false,
     },
     {
       testName: "uses all Iceberg defaults from workflow_settings.yaml",
@@ -465,10 +465,10 @@ defaultIcebergConfig:
           tableFormat: "ICEBERG",
           fileFormat: "PARQUET",
           connection: "ws.default.connection",
-          storageUri: "gs://ws-default-bucket/ws-default-root/ws-default-sub"
-        }
+          storageUri: "gs://ws-default-bucket/ws-default-root/ws-default-sub",
+        },
       },
-      expectError: false
+      expectError: false,
     },
     {
       testName: "config values override workspace defaults for Iceberg paths",
@@ -492,10 +492,10 @@ defaultIcebergConfig:
           tableFormat: "ICEBERG",
           fileFormat: "PARQUET",
           connection: "gcp.us.conn-id",
-          storageUri: "gs://config-bucket/config-root/config-sub"
-        }
+          storageUri: "gs://config-bucket/config-root/config-sub",
+        },
       },
-      expectError: false
+      expectError: false,
     },
     {
       testName: "bucketName not defined in config or workspace settings",
@@ -512,8 +512,8 @@ defaultIcebergConfig:
         }`,
       expectError:
         "When defining an Iceberg table, bucket name must be defined in workflow_settings.yaml or the config block.",
-      wsContent: VALID_WORKFLOW_SETTINGS_YAML // Ensure no defaults are set here
-    }
+      wsContent: VALID_WORKFLOW_SETTINGS_YAML, // Ensure no defaults are set here
+    },
   ];
 
   testCases.forEach((testCase, index) => {
@@ -523,15 +523,15 @@ defaultIcebergConfig:
     const paramsToTest = [
       {
         filename: `${fileName}.sqlx`,
-        fileContents: `config { ${configBlock} }\nSELECT 1`
+        fileContents: `config { ${configBlock} }\nSELECT 1`,
       },
       {
         filename: `${fileName}.js`,
-        fileContents: `publish("${fileName}", { ${configBlock} }).query(ctx => "SELECT 1")`
-      }
+        fileContents: `publish("${fileName}", { ${configBlock} }).query(ctx => "SELECT 1")`,
+      },
     ];
 
-    paramsToTest.forEach(params => {
+    paramsToTest.forEach((params) => {
       test(`${testCase.testName} in ${params.filename}`, () => {
         const projectDir = tmpDirFixture.createNewTmpDir();
         setupFiles(projectDir, params.filename, params.fileContents, testCase.wsContent);
@@ -554,7 +554,7 @@ defaultIcebergConfig:
 
           // Compare the bigquery object
           expect(asPlainObject(compiledTable.bigquery)).deep.equals(
-            asPlainObject(testCase.expected!.bigquery)
+            asPlainObject(testCase.expected!.bigquery),
           );
         }
       });

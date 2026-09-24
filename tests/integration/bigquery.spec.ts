@@ -21,17 +21,17 @@ suite("@dataform/integration/bigquery", { parallel: true }, () => {
       {
         name: "expected more rows than got",
         successful: false,
-        messages: ["Expected 3 rows, but saw 2 rows."]
+        messages: ["Expected 3 rows, but saw 2 rows."],
       },
       {
         name: "expected fewer columns than got",
         successful: false,
-        messages: ['Expected columns "col1,col2,col3", but saw "col1,col2,col3,col4".']
+        messages: ['Expected columns "col1,col2,col3", but saw "col1,col2,col3,col4".'],
       },
       {
         name: "wrong columns",
         successful: false,
-        messages: ['Expected columns "col1,col2,col3,col4", but saw "col1,col2,col3,col5".']
+        messages: ['Expected columns "col1,col2,col3,col4", but saw "col1,col2,col3,col5".'],
       },
       {
         name: "wrong row contents",
@@ -39,10 +39,10 @@ suite("@dataform/integration/bigquery", { parallel: true }, () => {
         messages: [
           'For row 0 and column "col2": expected "1", but saw "5".',
           'For row 1 and column "col3": expected "6.5", but saw "12".',
-          'For row 2 and column "col1": expected "sup?", but saw "WRONG".'
-        ]
+          'For row 2 and column "col1": expected "sup?", but saw "WRONG".',
+        ],
       },
-      { name: "test a view", successful: true }
+      { name: "test a view", successful: true },
     ]);
   });
 
@@ -55,7 +55,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, () => {
         preOps: ["preop task1", "preop task2"],
         incrementalQuery: "",
         postOps: ["postop task1", "postop task2"],
-        target: { schema: "", name: "", database: "" }
+        target: { schema: "", name: "", database: "" },
       };
 
       const bqadapter = new ExecutionSql({ warehouse: "bigquery" }, "1.4.8");
@@ -66,7 +66,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, () => {
         "preop task1;",
         "preop task2;",
         "postop task1;",
-        "postop task2"
+        "postop task2",
       ]);
 
       const increment = bqadapter
@@ -78,7 +78,7 @@ suite("@dataform/integration/bigquery", { parallel: true }, () => {
         "preop task1;",
         "preop task2;",
         "postop task1;",
-        "postop task2"
+        "postop task2",
       ]);
     });
   });
@@ -94,19 +94,19 @@ suite("@dataform/integration/bigquery", { parallel: true }, () => {
       compiledGraph,
       {
         actions: ["example_view"],
-        includeDependencies: true
+        includeDependencies: true,
       },
-      dbadapter
+      dbadapter,
     );
     const runResult = await dfapi.run(dbadapter, executionGraph).result();
     expect(dataform.RunResult.ExecutionStatus[runResult.status]).eql(
-      dataform.RunResult.ExecutionStatus[dataform.RunResult.ExecutionStatus.SUCCESSFUL]
+      dataform.RunResult.ExecutionStatus[dataform.RunResult.ExecutionStatus.SUCCESSFUL],
     );
 
     const [fullSearch, partialSearch, columnSearch] = await Promise.all([
       dbadapter.search("df_integration_test_search"),
       dbadapter.search("test_sear"),
-      dbadapter.search("val")
+      dbadapter.search("val"),
     ]);
 
     expect(fullSearch.length).equals(2);

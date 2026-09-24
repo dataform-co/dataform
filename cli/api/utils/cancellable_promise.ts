@@ -12,23 +12,23 @@ export class CancellablePromise<T> implements PromiseLike<T> {
     method: (
       resolve: (value?: T | PromiseLike<T>) => void,
       reject: (reason?: any) => void,
-      onCancel?: (handleCancel: () => void) => void
-    ) => void
+      onCancel?: (handleCancel: () => void) => void,
+    ) => void,
   ) {
     this.promise = new Promise<T>((resolve, reject) =>
-      method(resolve, reject, handleCancel => {
+      method(resolve, reject, (handleCancel) => {
         if (this.cancelled) {
           handleCancel();
         } else {
           this.emitter.on(CancellablePromise.CANCEL_EVENT, handleCancel);
         }
-      })
+      }),
     );
   }
 
   public then<S>(
     onfulfilled?: (value: T) => S | PromiseLike<S>,
-    onrejected?: (reason: any) => void
+    onrejected?: (reason: any) => void,
   ): Promise<S> {
     // TODO: Seems like local and remote bazel builds behave
     // differently and I can't get this to type correctly for both.

@@ -17,7 +17,7 @@ export function read(credentialsPath: string): dataform.IBigQuery {
     throw new Error(`Error reading credentials file: ${e.message}`);
   }
   const credentials = verifyObjectMatchesProto(dataform.BigQuery, credentialsAsJson);
-  if (!Object.keys(credentials).find(key => key === "projectId")?.length) {
+  if (!Object.keys(credentials).find((key) => key === "projectId")?.length) {
     throw new Error(`Error reading credentials file: the projectId field is required`);
   }
   return credentials;
@@ -26,7 +26,7 @@ export function read(credentialsPath: string): dataform.IBigQuery {
 export enum TestResultStatus {
   SUCCESSFUL,
   TIMED_OUT,
-  OTHER_ERROR
+  OTHER_ERROR,
 }
 
 export interface ITestResult {
@@ -36,21 +36,21 @@ export interface ITestResult {
 
 export async function test(
   dbadapter: dbadapters.IDbAdapter,
-  timeoutMs: number = 10000
+  timeoutMs: number = 10000,
 ): Promise<ITestResult> {
   let timer;
   try {
     const timeout = new Promise<TestResultStatus>(
-      resolve => (timer = setTimeout(() => resolve(TestResultStatus.TIMED_OUT), timeoutMs))
+      (resolve) => (timer = setTimeout(() => resolve(TestResultStatus.TIMED_OUT), timeoutMs)),
     );
     const executeQuery = dbadapter.execute("SELECT 1 AS x").then(() => TestResultStatus.SUCCESSFUL);
     return {
-      status: await Promise.race([executeQuery, timeout])
+      status: await Promise.race([executeQuery, timeout]),
     };
   } catch (e) {
     return {
       status: TestResultStatus.OTHER_ERROR,
-      error: e
+      error: e,
     };
   } finally {
     if (timer) {

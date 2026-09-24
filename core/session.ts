@@ -1,12 +1,14 @@
 import { default as TarjanGraphConstructor, Graph as TarjanGraph } from "tarjan-graph";
 
-import { encode64, unknownToValue, verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
+import {
+  encode64,
+  unknownToValue,
+  verifyObjectMatchesProto,
+  VerifyProtoErrorBehaviour,
+} from "df/common/protos";
 import { Action, ActionProto, ILegacyTableConfig, TableType } from "df/core/actions";
 import { AContextable, Assertion, AssertionContext } from "df/core/actions/assertion";
-import {
-  DataPreparation,
-  DataPreparationContext,
-} from "df/core/actions/data_preparation";
+import { DataPreparation, DataPreparationContext } from "df/core/actions/data_preparation";
 import { Declaration } from "df/core/actions/declaration";
 import { IncrementalTable } from "df/core/actions/incremental_table";
 import { Notebook } from "df/core/actions/notebook";
@@ -24,10 +26,9 @@ import { ResolvableMap, toResolvable } from "df/core/utils";
 import { version as dataformCoreVersion } from "df/core/version";
 import { dataform, google } from "df/protos/ts";
 
-
 const DEFAULT_CONFIG = {
   defaultSchema: "dataform",
-  assertionSchema: "dataform_assertions"
+  assertionSchema: "dataform_assertions",
 };
 
 /**
@@ -75,7 +76,7 @@ export class Session {
   constructor(
     rootDir?: string,
     projectConfig?: dataform.ProjectConfig,
-    originalProjectConfig?: dataform.ProjectConfig
+    originalProjectConfig?: dataform.ProjectConfig,
   ) {
     this.init(rootDir, projectConfig, originalProjectConfig);
   }
@@ -83,12 +84,12 @@ export class Session {
   public init(
     rootDir: string,
     projectConfig?: dataform.ProjectConfig,
-    originalProjectConfig?: dataform.ProjectConfig
+    originalProjectConfig?: dataform.ProjectConfig,
   ) {
     this.rootDir = rootDir;
     this.projectConfig = dataform.ProjectConfig.create(projectConfig || DEFAULT_CONFIG);
     this.canonicalProjectConfig = getCanonicalProjectConfig(
-      dataform.ProjectConfig.create(originalProjectConfig || projectConfig || DEFAULT_CONFIG)
+      dataform.ProjectConfig.create(originalProjectConfig || projectConfig || DEFAULT_CONFIG),
     );
     this.actions = [];
     this.tests = [];
@@ -103,11 +104,13 @@ export class Session {
   public getContents(filePath: string): string {
     const callerFile = utils.getCallerFile(this.rootDir);
     const callerDir = Path.dirName(callerFile);
-    const resolvedPath = Path.join(callerDir,filePath);
+    const resolvedPath = Path.join(callerDir, filePath);
     const absolutePath = Path.separator + Path.normalize(Path.join(this.rootDir, resolvedPath));
-    const rootDir = this.rootDir.endsWith(Path.separator) ? this.rootDir : this.rootDir + Path.separator;
+    const rootDir = this.rootDir.endsWith(Path.separator)
+      ? this.rootDir
+      : this.rootDir + Path.separator;
 
-    if (!absolutePath.startsWith(rootDir)){
+    if (!absolutePath.startsWith(rootDir)) {
       throw new Error(`Cannot read "${filePath}": path resolves outside the project directory.`);
     }
 
@@ -119,7 +122,7 @@ export class Session {
     }
 
     if (!module || typeof module.contents !== "string") {
-      throw new Error (`Cannot read "${filePath}": only .md files are supported.`)
+      throw new Error(`Cannot read "${filePath}": only .md files are supported.`);
     }
     return module.contents;
   }
@@ -135,7 +138,7 @@ export class Session {
         | AssertionContext
         | OperationContext
         | DataPreparationContext
-        | IActionContext
+        | IActionContext,
     ) => string[];
     incrementalWhereContextable: (ctx: ITableContext) => string;
     preOperationsContextable: (ctx: ITableContext) => string[];
@@ -144,24 +147,24 @@ export class Session {
       {
         refName: string[];
         contextable: (ctx: IActionContext) => string;
-      }
+      },
     ];
   }) {
     const { sqlxConfig } = actionOptions;
     const actionType = sqlxConfig.hasOwnProperty("type") ? sqlxConfig.type : "operations";
     if (actionOptions.sqlStatementCount > 1 && actionType !== "operations") {
       this.compileError(
-        "Actions may only contain more than one SQL statement if they are of type 'operations'."
+        "Actions may only contain more than one SQL statement if they are of type 'operations'.",
       );
     }
     if (sqlxConfig.hasOwnProperty("protected") && actionType !== "incremental") {
       this.compileError(
-        "Actions may only specify 'protected: true' if they are of type 'incremental'."
+        "Actions may only specify 'protected: true' if they are of type 'incremental'.",
       );
     }
     if (actionOptions.incrementalWhereContextable && actionType !== "incremental") {
       this.compileError(
-        "Actions may only include incremental_where if they are of type 'incremental'."
+        "Actions may only include incremental_where if they are of type 'incremental'.",
       );
     }
     if (actionOptions.inputContextables.length > 0 && actionType !== "test") {
@@ -180,7 +183,9 @@ export class Session {
 
     switch (actionType) {
       case "view":
-        const view = new View(this, sqlxConfig).query(ctx => actionOptions.sqlContextable(ctx)[0]);
+        const view = new View(this, sqlxConfig).query(
+          (ctx) => actionOptions.sqlContextable(ctx)[0],
+        );
         if (actionOptions.incrementalWhereContextable) {
           view.where(actionOptions.incrementalWhereContextable);
         }
@@ -194,7 +199,7 @@ export class Session {
         break;
       case "incremental":
         const incrementalTable = new IncrementalTable(this, sqlxConfig).query(
-          ctx => actionOptions.sqlContextable(ctx)[0]
+          (ctx) => actionOptions.sqlContextable(ctx)[0],
         );
         if (actionOptions.incrementalWhereContextable) {
           incrementalTable.where(actionOptions.incrementalWhereContextable);
@@ -209,7 +214,7 @@ export class Session {
         break;
       case "table":
         const table = new Table(this, sqlxConfig).query(
-          ctx => actionOptions.sqlContextable(ctx)[0]
+          (ctx) => actionOptions.sqlContextable(ctx)[0],
         );
         if (actionOptions.incrementalWhereContextable) {
           table.where(actionOptions.incrementalWhereContextable);
@@ -224,12 +229,12 @@ export class Session {
         break;
       case "assertion":
         this.actions.push(
-          new Assertion(this, sqlxConfig).query(ctx => actionOptions.sqlContextable(ctx)[0])
+          new Assertion(this, sqlxConfig).query((ctx) => actionOptions.sqlContextable(ctx)[0]),
         );
         break;
       case "dataPreparation":
         const dataPreparation = new DataPreparation(this, sqlxConfig).query(
-          ctx => actionOptions.sqlContextable(ctx)[0]
+          (ctx) => actionOptions.sqlContextable(ctx)[0],
         );
         this.actions.push(dataPreparation);
         break;
@@ -243,7 +248,7 @@ export class Session {
       case "test":
         const testCase = this.test(sqlxConfig.name)
           .config(sqlxConfig)
-          .expect(ctx => actionOptions.sqlContextable(ctx)[0]);
+          .expect((ctx) => actionOptions.sqlContextable(ctx)[0]);
         actionOptions.inputContextables.forEach(({ refName, contextable }) => {
           testCase.input(refName, contextable);
         });
@@ -264,7 +269,7 @@ export class Session {
 
     if (resolved && resolved instanceof Operation && !resolved.getHasOutput()) {
       this.compileError(
-        new Error("Actions cannot resolve operations which do not produce output.")
+        new Error("Actions cannot resolve operations which do not produce output."),
       );
       return "";
     }
@@ -298,7 +303,7 @@ export class Session {
       ...target,
       database: target.database && this.finalizeDatabase(target.database),
       schema: this.finalizeSchema(target.schema),
-      name: this.finalizeName(target.name)
+      name: this.finalizeName(target.name),
     };
   }
 
@@ -312,8 +317,7 @@ export class Session {
   public operate(
     name: string,
     queryOrConfig?:
-      | Contextable<IActionContext, string | string[]>
-      | dataform.ActionConfig.OperationConfig
+      Contextable<IActionContext, string | string[]> | dataform.ActionConfig.OperationConfig,
   ): Operation {
     const filename = utils.getCallerFile(this.rootDir);
     let operation: Operation;
@@ -348,14 +352,14 @@ export class Session {
       | ILegacyTableConfig
       // `any` is used here to facilitate the type merging of legacy table configs, which are very
       // different to the new structures.
-      | any
+      | any,
   ): Table | IncrementalTable | View {
     // In v4, consider replacing publish with separate methods for each action type.
     const filename = utils.getCallerFile(this.rootDir);
     let newTable: Table | IncrementalTable | View = new View(this, {
       type: "view",
       name,
-      filename
+      filename,
     });
     if (!!queryOrConfig) {
       if (typeof queryOrConfig === "object") {
@@ -366,7 +370,7 @@ export class Session {
             type: "incremental",
             name,
             filename,
-            ...queryOrConfig
+            ...queryOrConfig,
           });
         } else if (queryOrConfig?.type === "table") {
           newTable = new Table(this, { type: "table", name, filename, ...queryOrConfig });
@@ -391,7 +395,7 @@ export class Session {
    */
   public assert(
     name: string,
-    queryOrConfig?: AContextable<string> | dataform.ActionConfig.AssertionConfig
+    queryOrConfig?: AContextable<string> | dataform.ActionConfig.AssertionConfig,
     // // `any` is used here to facilitate the type merging of legacy declaration configs options,
     // // without breaking typescript consumers of Dataform.
     // | any
@@ -422,14 +426,14 @@ export class Session {
       | dataform.ActionConfig.DeclarationConfig
       // `any` is used here to facilitate the type merging of legacy declaration configs options,
       // without breaking typescript consumers of Dataform.
-      | any
+      | any,
   ): Declaration {
     // Shallow-clone so verifyConfig's in-place renames/deletes don't mutate a caller-shared object,
     // matching how publish(), operate() and assert() spread their configs.
     const declaration = new Declaration(
       this,
       !!config && typeof config === "object" ? { ...config } : config,
-      utils.getCallerFile(this.rootDir)
+      utils.getCallerFile(this.rootDir),
     );
     this.actions.push(declaration);
     return declaration;
@@ -451,7 +455,7 @@ export class Session {
     newTest.session = this;
     newTest.setFilename(utils.getCallerFile(this.rootDir));
     // Add it to global index.
-    this.tests.push(newTest)
+    this.tests.push(newTest);
     return newTest;
   }
 
@@ -470,13 +474,11 @@ export class Session {
   }
 
   public jitData(key: string, data: unknown): void {
-
     if (this.jitContextData.fields[key] !== undefined) {
       throw new Error(`JiT context data with key ${key} already exists.`);
     }
 
     this.jitContextData.fields[key] = unknownToValue(data);
-
   }
   public compileError(err: Error | string, path?: string, actionTarget?: dataform.ITarget) {
     const fileName =
@@ -485,7 +487,7 @@ export class Session {
     const compileError = dataform.CompilationError.create({
       fileName,
       actionName: !!actionTarget ? targetAsReadableString(actionTarget) : undefined,
-      actionTarget
+      actionTarget,
     });
     if (typeof err === "string") {
       compileError.message = err;
@@ -499,13 +501,13 @@ export class Session {
   public compile(): dataform.CompiledGraph {
     this.actions.push(...this.tests);
     this.indexedActions = new ResolvableMap(
-      this.actions.map(action => ({ actionTarget: action.getTarget(), value: action }))
+      this.actions.map((action) => ({ actionTarget: action.getTarget(), value: action })),
     );
 
     // defaultLocation is no longer a required parameter to support location auto-selection.
     if (
       !!this.projectConfig.vars &&
-      !Object.values(this.projectConfig.vars).every(value => typeof value === "string")
+      !Object.values(this.projectConfig.vars).every((value) => typeof value === "string")
     ) {
       throw new Error("Custom variables defined in workflow settings can only be strings.");
     }
@@ -514,32 +516,32 @@ export class Session {
       projectConfig: this.projectConfig,
       tables: this.compileGraphChunk(
         this.actions.filter(
-          action =>
-            action instanceof Table || action instanceof View || action instanceof IncrementalTable
-        )
+          (action) =>
+            action instanceof Table || action instanceof View || action instanceof IncrementalTable,
+        ),
       ),
       operations: this.compileGraphChunk(
-        this.actions.filter(action => action instanceof Operation)
+        this.actions.filter((action) => action instanceof Operation),
       ),
       assertions: this.compileGraphChunk(
-        this.actions.filter(action => action instanceof Assertion)
+        this.actions.filter((action) => action instanceof Assertion),
       ),
       declarations: this.compileGraphChunk(
-        this.actions.filter(action => action instanceof Declaration)
+        this.actions.filter((action) => action instanceof Declaration),
       ),
-      tests: this.compileGraphChunk(
-        this.actions.filter(action => action instanceof Test)
+      tests: this.compileGraphChunk(this.actions.filter((action) => action instanceof Test)),
+      notebooks: this.compileGraphChunk(
+        this.actions.filter((action) => action instanceof Notebook),
       ),
-      notebooks: this.compileGraphChunk(this.actions.filter(action => action instanceof Notebook)),
       dataPreparations: this.compileGraphChunk(
-        this.actions.filter(action => action instanceof DataPreparation)
+        this.actions.filter((action) => action instanceof DataPreparation),
       ),
       propertyGraphs: this.compileGraphChunk(
-        this.actions.filter(action => action instanceof PropertyGraph)
+        this.actions.filter((action) => action instanceof PropertyGraph),
       ),
       graphErrors: this.graphErrors,
       dataformCoreVersion,
-      targets: this.actions.map(action => action.getTarget()),
+      targets: this.actions.map((action) => action.getTarget()),
       jitData: this.jitContextData,
     });
 
@@ -555,8 +557,8 @@ export class Session {
         compiledGraph.notebooks,
         compiledGraph.dataPreparations,
         compiledGraph.propertyGraphs,
-        compiledGraph.tests
-      )
+        compiledGraph.tests,
+      ),
     );
 
     this.alterActionName(
@@ -567,9 +569,9 @@ export class Session {
         compiledGraph.notebooks,
         compiledGraph.dataPreparations,
         compiledGraph.propertyGraphs,
-        compiledGraph.tests
+        compiledGraph.tests,
       ),
-      [].concat(compiledGraph.declarations.map(declaration => declaration.target))
+      [].concat(compiledGraph.declarations.map((declaration) => declaration.target)),
     );
 
     this.removeNonUniqueActionsFromCompiledGraph(compiledGraph);
@@ -586,13 +588,13 @@ export class Session {
         compiledGraph.notebooks,
         compiledGraph.dataPreparations,
         compiledGraph.propertyGraphs,
-        compiledGraph.tests
-      )
+        compiledGraph.tests,
+      ),
     );
     verifyObjectMatchesProto(
       dataform.CompiledGraph,
       compiledGraph,
-      VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM
+      VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM,
     );
     return compiledGraph;
   }
@@ -628,7 +630,7 @@ export class Session {
   private compileGraphChunk<T>(actions: Action[]): T[] {
     const compiledChunks: T[] = [];
 
-    actions.forEach(action => {
+    actions.forEach((action) => {
       // Track the action's file so that compileError() called synchronously
       // from within the action's callback (e.g. Session.resolve) can attribute
       // the error without depending on getCallerFile / the vm2 sandbox stack.
@@ -647,7 +649,7 @@ export class Session {
   }
 
   private fullyQualifyDependencies(actions: ActionProto[]) {
-    actions.forEach(action => {
+    actions.forEach((action) => {
       const fullyQualifiedDependencies: { [name: string]: dataform.ITarget } = {};
       if (action instanceof dataform.Declaration || !action.dependencyTargets) {
         // Declarations cannot have dependencies.
@@ -660,11 +662,11 @@ export class Session {
           this.compileError(
             new Error(
               `Missing dependency detected: Action "${targetAsReadableString(
-                action.target
-              )}" depends on "${utils.stringifyResolvable(dependency)}" which does not exist`
+                action.target,
+              )}" depends on "${utils.stringifyResolvable(dependency)}" which does not exist`,
             ),
             action.fileName,
-            action.target
+            action.target,
           );
         } else if (possibleDeps.length === 1) {
           // We found a single matching target, and fully-qualify it if it's a normal dependency.
@@ -675,10 +677,9 @@ export class Session {
             this.actionAssertionMap
               .find(dependency)
               .forEach(
-                assertion =>
-                (fullyQualifiedDependencies[
-                  targetAsReadableString(assertion.getTarget())
-                ] = assertion.getTarget())
+                (assertion) =>
+                  (fullyQualifiedDependencies[targetAsReadableString(assertion.getTarget())] =
+                    assertion.getTarget()),
               );
           }
         } else {
@@ -686,7 +687,7 @@ export class Session {
           this.compileError(
             new Error(utils.ambiguousActionNameMsg(dependency, possibleDeps)),
             action.fileName,
-            action.target
+            action.target,
           );
         }
       }
@@ -702,21 +703,21 @@ export class Session {
     }
 
     const newTargetByOriginalTarget = new Map<string, dataform.ITarget>();
-    declarationTargets.forEach(declarationTarget =>
+    declarationTargets.forEach((declarationTarget) =>
       newTargetByOriginalTarget.set(
         targetStringifier.stringify(declarationTarget),
-        declarationTarget
-      )
+        declarationTarget,
+      ),
     );
 
-    actions.forEach(action => {
+    actions.forEach((action) => {
       newTargetByOriginalTarget.set(targetStringifier.stringify(action.target), {
         ...action.target,
         database:
           action.target.database &&
           `${action.target.database}${this.getDatabaseSuffixWithUnderscore()}`,
         schema: `${action.target.schema}${this.getSchemaSuffixWithUnderscore()}`,
-        name: `${this.getTablePrefixWithUnderscore()}${action.target.name}`
+        name: `${this.getTablePrefixWithUnderscore()}${action.target.name}`,
       });
       action.target = newTargetByOriginalTarget.get(targetStringifier.stringify(action.target));
     });
@@ -730,7 +731,7 @@ export class Session {
       }
       return newTargetByOriginalTarget.get(targetStringifier.stringify(originalTarget));
     };
-    actions.forEach(action => {
+    actions.forEach((action) => {
       if (!(action instanceof dataform.Declaration)) {
         // Declarations cannot have dependencies.
         action.dependencyTargets = (action.dependencyTargets || []).map(getUpdatedTarget);
@@ -744,11 +745,11 @@ export class Session {
 
   private checkTestNameUniqueness(tests: dataform.ITest[]) {
     const allNames: string[] = [];
-    tests.forEach(testProto => {
+    tests.forEach((testProto) => {
       if (allNames.includes(testProto.name)) {
         this.compileError(
           new Error(`Duplicate test name detected: "${testProto.name}"`),
-          testProto.fileName
+          testProto.fileName,
         );
       }
       allNames.push(testProto.name);
@@ -757,30 +758,31 @@ export class Session {
 
   private checkCircularity(actions: ActionProto[]) {
     const allActionsByStringifiedTarget = new Map<string, ActionProto>(
-      actions.map(action => [targetStringifier.stringify(action.target), action])
+      actions.map((action) => [targetStringifier.stringify(action.target), action]),
     );
 
     // Type exports for tarjan-graph are unfortunately wrong, so we have to do this minor hack.
     const tarjanGraph: TarjanGraph = new (TarjanGraphConstructor as any)();
-    actions.forEach(action => {
+    actions.forEach((action) => {
       // Declarations cannot have dependencies.
-      const cleanedDependencies = (action instanceof dataform.Declaration ||
-        !action.dependencyTargets
-        ? []
-        : action.dependencyTargets
+      const cleanedDependencies = (
+        action instanceof dataform.Declaration || !action.dependencyTargets
+          ? []
+          : action.dependencyTargets
       ).filter(
-        dependency => !!allActionsByStringifiedTarget.get(targetStringifier.stringify(dependency))
+        (dependency) =>
+          !!allActionsByStringifiedTarget.get(targetStringifier.stringify(dependency)),
       );
       tarjanGraph.add(
         targetStringifier.stringify(action.target),
-        cleanedDependencies.map(target => targetStringifier.stringify(target))
+        cleanedDependencies.map((target) => targetStringifier.stringify(target)),
       );
     });
     const cycles = tarjanGraph.getCycles();
-    cycles.forEach(cycle => {
+    cycles.forEach((cycle) => {
       const firstActionInCycle = allActionsByStringifiedTarget.get(cycle[0].name);
       const message = `Circular dependency detected in chain: [${cycle
-        .map(vertex => vertex.name)
+        .map((vertex) => vertex.name)
         .join(" > ")} > ${targetAsReadableString(firstActionInCycle.target)}]`;
       this.compileError(new Error(message), firstActionInCycle.fileName, firstActionInCycle.target);
     });
@@ -788,25 +790,26 @@ export class Session {
 
   private addTestsToCompiledGraph(actions: Action[]) {
     actions
-      .filter(action => action instanceof Test)
-      .map(test => test as Test)
-      .forEach(currentTest => {
+      .filter((action) => action instanceof Test)
+      .map((test) => test as Test)
+      .forEach((currentTest) => {
         const testTargets = this.indexedActions.find(currentTest.getTestTarget());
+        testTargets.forEach((action) => {
+          if (!(action instanceof Table || action instanceof View)) {
+            this.compileError(
+              new Error(
+                `Tests are only supported for Tables and Views. Action "${targetAsReadableString(action.getTarget())}" is not a table or view".`,
+              ),
+              action.getFileName(),
+              action.getTarget(),
+            );
+          }
+        });
         testTargets
-          .forEach(action => {
-            if (!(action instanceof Table || action instanceof View)) {
-              this.compileError(
-                new Error(
-                  `Tests are only supported for Tables and Views. Action "${targetAsReadableString(action.getTarget())}" is not a table or view".`
-                ),
-                action.getFileName(),
-                action.getTarget()
-              );
-            }
-          });
-        testTargets
-          .map(action => action as Table | View)
-          .forEach(tableOrViewAction => tableOrViewAction.dependencies(utils.resolvableAsTarget(currentTest.getTarget())));
+          .map((action) => action as Table | View)
+          .forEach((tableOrViewAction) =>
+            tableOrViewAction.dependencies(utils.resolvableAsTarget(currentTest.getTarget())),
+          );
       });
   }
 
@@ -823,7 +826,7 @@ export class Session {
       const allTargets = new Set<string>();
       const nonUniqueTargets = new Set<string>();
 
-      targets.forEach(target => {
+      targets.forEach((target) => {
         if (allTargets.has(targetStringifier.stringify(target))) {
           nonUniqueTargets.add(targetStringifier.stringify(target));
         }
@@ -840,42 +843,42 @@ export class Session {
       compiledGraph.declarations,
       compiledGraph.notebooks,
       compiledGraph.dataPreparations,
-      compiledGraph.propertyGraphs
+      compiledGraph.propertyGraphs,
     );
 
-    const nonUniqueActionsTargets = getNonUniqueTargets(actions.map(action => action.target));
+    const nonUniqueActionsTargets = getNonUniqueTargets(actions.map((action) => action.target));
     const nonUniqueActionsCanonicalTargets = getNonUniqueTargets(
-      actions.map(action => action.canonicalTarget)
+      actions.map((action) => action.canonicalTarget),
     );
 
     const isUniqueAction = (action: ActionProto) => {
       const isNonUniqueTarget = nonUniqueActionsTargets.has(
-        targetStringifier.stringify(action.target)
+        targetStringifier.stringify(action.target),
       );
       const isNonUniqueCanonicalTarget = nonUniqueActionsCanonicalTargets.has(
-        targetStringifier.stringify(action.canonicalTarget)
+        targetStringifier.stringify(action.canonicalTarget),
       );
 
       if (isNonUniqueTarget) {
         this.compileError(
           new Error(
             `Duplicate action name detected. Names within a schema must be unique across tables, declarations, assertions, and operations:\n"${JSON.stringify(
-              action.target
-            )}"`
+              action.target,
+            )}"`,
           ),
           action.fileName,
-          action.target
+          action.target,
         );
       }
       if (isNonUniqueCanonicalTarget) {
         this.compileError(
           new Error(
             `Duplicate canonical target detected. Canonical targets must be unique across tables, declarations, assertions, and operations:\n"${JSON.stringify(
-              action.canonicalTarget
-            )}"`
+              action.canonicalTarget,
+            )}"`,
           ),
           action.fileName,
-          action.target
+          action.target,
         );
       }
 
@@ -901,6 +904,6 @@ function getCanonicalProjectConfig(originalProjectConfig: dataform.ProjectConfig
     warehouse: originalProjectConfig.warehouse,
     defaultSchema: originalProjectConfig.defaultSchema,
     defaultDatabase: originalProjectConfig.defaultDatabase,
-    assertionSchema: originalProjectConfig.assertionSchema
+    assertionSchema: originalProjectConfig.assertionSchema,
   });
 }

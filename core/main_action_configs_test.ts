@@ -5,13 +5,13 @@ import {
   suite,
   test,
   writeDefinitionFile,
-  writeWorkflowSettingsFile
+  writeWorkflowSettingsFile,
 } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
 import {
   coreExecutionRequestFromPath,
   runMainInVm,
-  VALID_WORKFLOW_SETTINGS_YAML
+  VALID_WORKFLOW_SETTINGS_YAML,
 } from "df/testing/run_core";
 
 const EMPTY_NOTEBOOK_CONTENTS = '{ "cells": [] }';
@@ -27,11 +27,11 @@ suite("action configs", ({ afterEach }) => {
       `
 actions:
 - operation:
-    filename: doesnotexist.sql`
+    filename: doesnotexist.sql`,
     );
 
     expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
-      "Cannot find module 'definitions/doesnotexist.sql'"
+      "Cannot find module 'definitions/doesnotexist.sql'",
     );
   });
 
@@ -45,11 +45,11 @@ actions:
 actions:
 - table:
     filename: action.sql
-    materialized: true`
+    materialized: true`,
     );
 
     expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
-      `Unexpected property "materialized", or property value type of "boolean" is incorrect. See https://dataform-co.github.io/dataform/docs/configs-reference#dataform-ActionConfigs for allowed properties.`
+      `Unexpected property "materialized", or property value type of "boolean" is incorrect. See https://dataform-co.github.io/dataform/docs/configs-reference#dataform-ActionConfigs for allowed properties.`,
     );
   });
 
@@ -60,11 +60,11 @@ actions:
       projectDir,
       "actions.yaml",
       `
-actions:`
+actions:`,
     );
 
     expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
-      `Unexpected empty value for "actions". See https://dataform-co.github.io/dataform/docs/configs-reference#dataform-ActionConfigs for allowed properties.`
+      `Unexpected empty value for "actions". See https://dataform-co.github.io/dataform/docs/configs-reference#dataform-ActionConfigs for allowed properties.`,
     );
   });
 
@@ -75,35 +75,35 @@ actions:`
         yamlBody: `
 actions:
 - table:
-    filename: table.sqlx`
+    filename: table.sqlx`,
       },
       {
         actionType: "view",
         yamlBody: `
 actions:
 - view:
-    filename: view.sqlx`
+    filename: view.sqlx`,
       },
       {
         actionType: "incrementalTable",
         yamlBody: `
 actions:
 - incrementalTable:
-    filename: incremental.sqlx`
+    filename: incremental.sqlx`,
       },
       {
         actionType: "assertion",
         yamlBody: `
 actions:
 - assertion:
-    filename: assertion.sqlx`
+    filename: assertion.sqlx`,
       },
       {
         actionType: "operation",
         yamlBody: `
 actions:
 - operation:
-    filename: operation.sqlx`
+    filename: operation.sqlx`,
       },
       {
         actionType: "declaration",
@@ -111,15 +111,15 @@ actions:
 actions:
 - declaration:
     name: declaration
-    filename: declaration.sqlx`
+    filename: declaration.sqlx`,
       },
       {
         actionType: "notebook",
         yamlBody: `
 actions:
 - notebook:
-    filename: notebook.sqlx`
-      }
+    filename: notebook.sqlx`,
+      },
     ].forEach(({ actionType, yamlBody }) => {
       test(`for action type "${actionType}"`, () => {
         const projectDir = tmpDirFixture.createNewTmpDir();
@@ -129,7 +129,7 @@ actions:
         const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
         const errorMessages = result.compile.compiledGraph.graphErrors.compilationErrors.map(
-          ({ message }) => message
+          ({ message }) => message,
         );
         expect(errorMessages).to.have.lengthOf(1);
         expect(errorMessages[0]).to.include(`Action config "${actionType}" has filename`);
@@ -146,13 +146,13 @@ actions:
         `
 actions:
 - table:
-    filename: table.SQLX`
+    filename: table.SQLX`,
       );
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
       expect(
-        result.compile.compiledGraph.graphErrors.compilationErrors.map(({ message }) => message)
+        result.compile.compiledGraph.graphErrors.compilationErrors.map(({ message }) => message),
       ).to.have.lengthOf(1);
     });
 
@@ -169,13 +169,13 @@ actions:
         `
 actions:
 - dataPreparation:
-    filename: prep.dp.sqlx`
+    filename: prep.dp.sqlx`,
       );
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
       const errorMessages = result.compile.compiledGraph.graphErrors.compilationErrors.map(
-        ({ message }) => message
+        ({ message }) => message,
       );
       expect(errorMessages).to.have.lengthOf(1);
       expect(errorMessages[0]).to.include(`Action config "dataPreparation" has filename`);
@@ -192,7 +192,7 @@ actions:
       `
 actions:
 - operation:
-    filename: utf8characters:私🙂 and some spaces.sql`
+    filename: utf8characters:私🙂 and some spaces.sql`,
     );
     writeDefinitionFile(projectDir, "utf8characters:私🙂 and some spaces.sql", "SELECT 1");
 
@@ -205,18 +205,18 @@ actions:
           target: {
             database: "defaultProject",
             schema: "defaultDataset",
-            name: "utf8characters:私🙂 and some spaces"
+            name: "utf8characters:私🙂 and some spaces",
           },
           canonicalTarget: {
             database: "defaultProject",
             schema: "defaultDataset",
-            name: "utf8characters:私🙂 and some spaces"
+            name: "utf8characters:私🙂 and some spaces",
           },
           fileName: "definitions/utf8characters:私🙂 and some spaces.sql",
           queries: ["SELECT 1"],
-          hermeticity: "NON_HERMETIC"
-        }
-      ])
+          hermeticity: "NON_HERMETIC",
+        },
+      ]),
     );
   });
 
@@ -259,9 +259,9 @@ actions:
     dependencyTargets:
     - name: view
       dataset: defaultDataset
-      project: defaultProject`
+      project: defaultProject`,
     );
-    ["table.sql", "incrementalTable.sql", "view.sql", "operation.sql"].forEach(filename => {
+    ["table.sql", "incrementalTable.sql", "view.sql", "operation.sql"].forEach((filename) => {
       writeDefinitionFile(projectDir, filename, "SELECT 1");
     });
     writeDefinitionFile(projectDir, "notebook.ipynb", EMPTY_NOTEBOOK_CONTENTS);
@@ -294,7 +294,7 @@ actions:
     - name: notebook1
       dataset: location
       project: project
-    filename: operation.sql`
+    filename: operation.sql`,
     );
     writeDefinitionFile(projectDir, "operation.sql", "SELECT 1");
     writeDefinitionFile(projectDir, "notebook.ipynb", EMPTY_NOTEBOOK_CONTENTS);
