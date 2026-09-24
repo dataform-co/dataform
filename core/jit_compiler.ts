@@ -4,17 +4,20 @@ import { JitAssertionResult } from "df/core/actions/assertion";
 import { JitOperationResult } from "df/core/actions/operation";
 import { JitTableResult } from "df/core/actions/table";
 import { IActionContext, ITableContext, JitContext } from "df/core/contextables";
-import { IncrementalTableJitContext, SqlActionJitContext, TableJitContext } from "df/core/jit_context";
+import {
+  IncrementalTableJitContext,
+  SqlActionJitContext,
+  TableJitContext,
+} from "df/core/jit_context";
 import { dataform } from "df/protos/ts";
 
 function makeMainBody<Context, T>(code: string): (jctx: JitContext<Context>) => Promise<T> {
-  return (
-    jctx => {
-      const body = new Function(
-        "jctx", `const mainAsync = ${code};\nreturn mainAsync(jctx);`
-      ) as (jctx: JitContext<Context>) => Promise<T>;
-      return body(jctx);
-    });
+  return (jctx) => {
+    const body = new Function("jctx", `const mainAsync = ${code};\nreturn mainAsync(jctx);`) as (
+      jctx: JitContext<Context>,
+    ) => Promise<T>;
+    return body(jctx);
+  };
 }
 
 function makeJitTableResult(result: JitTableResult): dataform.IJitTableResult {
@@ -34,10 +37,8 @@ function jitCompileOperation(
 ): Promise<dataform.IJitOperationResult> {
   const mainBody = makeMainBody<IActionContext, JitOperationResult>(request.jitCode);
 
-  const jctx: JitContext<IActionContext> = new SqlActionJitContext(
-    adapter, request,
-  );
-  return mainBody(jctx).then(mainResult => {
+  const jctx: JitContext<IActionContext> = new SqlActionJitContext(adapter, request);
+  return mainBody(jctx).then((mainResult) => {
     let queries: string[] | null = [];
     if (typeof mainResult === "string") {
       queries.push(mainResult);
@@ -57,9 +58,7 @@ function jitCompileTable(
 ): Promise<dataform.IJitTableResult> {
   const mainBody = makeMainBody<ITableContext, JitTableResult>(request.jitCode);
 
-  const jctx: JitContext<ITableContext> = new TableJitContext(
-    adapter, request,
-  );
+  const jctx: JitContext<ITableContext> = new TableJitContext(adapter, request);
   return mainBody(jctx).then(makeJitTableResult);
 }
 
@@ -69,12 +68,8 @@ function jitCompileAssertion(
 ): Promise<dataform.IJitAssertionResult> {
   const mainBody = makeMainBody<IActionContext, JitAssertionResult>(request.jitCode);
 
-  const jctx: JitContext<IActionContext> = new SqlActionJitContext(
-    adapter, request,
-  );
-  return mainBody(jctx).then(result =>
-    typeof result === "string" ? { query: result } : result
-  );
+  const jctx: JitContext<IActionContext> = new SqlActionJitContext(adapter, request);
+  return mainBody(jctx).then((result) => (typeof result === "string" ? { query: result } : result));
 }
 
 function jitCompileIncrementalTable(
@@ -83,22 +78,17 @@ function jitCompileIncrementalTable(
 ): Promise<dataform.IJitIncrementalTableResult> {
   const mainBody = makeMainBody<ITableContext, JitTableResult>(request.jitCode);
 
-  const incrementalJctx = new IncrementalTableJitContext(
-    adapter, request, true,
-  );
-  const regularJctx = new IncrementalTableJitContext(
-    adapter, request, false,
-  );
+  const incrementalJctx = new IncrementalTableJitContext(adapter, request, true);
+  const regularJctx = new IncrementalTableJitContext(adapter, request, false);
 
-  return Promise.all([
-    mainBody(incrementalJctx),
-    mainBody(regularJctx),
-  ]).then(([incrementalResult, regularResult]) => {
-    return dataform.JitIncrementalTableResult.create({
-      incremental: makeJitTableResult(incrementalResult),
-      regular: makeJitTableResult(regularResult),
-    });
-  });
+  return Promise.all([mainBody(incrementalJctx), mainBody(regularJctx)]).then(
+    ([incrementalResult, regularResult]) => {
+      return dataform.JitIncrementalTableResult.create({
+        incremental: makeJitTableResult(incrementalResult),
+        regular: makeJitTableResult(regularResult),
+      });
+    },
+  );
 }
 
 export interface IJitCompiler {
@@ -106,9 +96,16 @@ export interface IJitCompiler {
 }
 
 /** RPC callback, implementing DbAdapter. */
-export type RpcCallback = (method: string, request: Uint8Array, callback: (error: Error | null, response: Uint8Array) => void) => void;
+export type RpcCallback = (
+  method: string,
+  request: Uint8Array,
+  callback: (error: Error | null, response: Uint8Array) => void,
+) => void;
 
-export function jitCompile(request: dataform.IJitCompilationRequest, rpcCallback: RpcCallback): Promise<dataform.IJitCompilationResponse> {
+export function jitCompile(
+  request: dataform.IJitCompilationRequest,
+  rpcCallback: RpcCallback,
+): Promise<dataform.IJitCompilationResponse> {
   const rpcImpl: $protobuf.RPCImpl = (method, internalRequest, callback) => {
     rpcCallback(method.name, internalRequest, callback);
   };
@@ -116,17 +113,21 @@ export function jitCompile(request: dataform.IJitCompilationRequest, rpcCallback
 
   switch (request.compilationTargetType) {
     case dataform.JitCompilationTargetType.JIT_COMPILATION_TARGET_TYPE_OPERATION:
-      return jitCompileOperation(request, dbAdapter).then(
-        operation => dataform.JitCompilationResponse.create({ operation }));
+      return jitCompileOperation(request, dbAdapter).then((operation) =>
+        dataform.JitCompilationResponse.create({ operation }),
+      );
     case dataform.JitCompilationTargetType.JIT_COMPILATION_TARGET_TYPE_TABLE:
-      return jitCompileTable(request, dbAdapter).then(
-        table => dataform.JitCompilationResponse.create({ table }));
+      return jitCompileTable(request, dbAdapter).then((table) =>
+        dataform.JitCompilationResponse.create({ table }),
+      );
     case dataform.JitCompilationTargetType.JIT_COMPILATION_TARGET_TYPE_INCREMENTAL_TABLE:
-      return jitCompileIncrementalTable(request, dbAdapter).then(
-        incrementalTable => dataform.JitCompilationResponse.create({ incrementalTable }));
+      return jitCompileIncrementalTable(request, dbAdapter).then((incrementalTable) =>
+        dataform.JitCompilationResponse.create({ incrementalTable }),
+      );
     case dataform.JitCompilationTargetType.JIT_COMPILATION_TARGET_TYPE_ASSERTION:
-      return jitCompileAssertion(request, dbAdapter).then(
-        assertion => dataform.JitCompilationResponse.create({ assertion }));
+      return jitCompileAssertion(request, dbAdapter).then((assertion) =>
+        dataform.JitCompilationResponse.create({ assertion }),
+      );
     default:
       throw new Error(`Unrecognized compilation target type: ${request.compilationTargetType}`);
   }
@@ -137,9 +138,9 @@ export function jitCompiler(rpcCallback: RpcCallback): IJitCompiler {
   return {
     compile: (request: Uint8Array) => {
       const requestMessage = dataform.JitCompilationRequest.decode(request);
-      return jitCompile(requestMessage, rpcCallback).then(
-        response => dataform.JitCompilationResponse.encode(response).finish()
+      return jitCompile(requestMessage, rpcCallback).then((response) =>
+        dataform.JitCompilationResponse.encode(response).finish(),
       );
-    }
+    },
   };
 }

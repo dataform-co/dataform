@@ -10,12 +10,12 @@ export function test(name: string | ITestOptions, fn: (ctx?: ITestOptions) => vo
 export function test(
   name: string,
   options: Omit<ITestOptions, "name">,
-  fn: (ctx?: ITestOptions) => void
+  fn: (ctx?: ITestOptions) => void,
 ): void;
 export function test(
   nameOrOptions: ITestOptions | string,
   optionsOrFn: Omit<ITestOptions, "name"> | (() => void),
-  fn?: () => void
+  fn?: () => void,
 ): void {
   const newTest = Test.create(nameOrOptions, optionsOrFn, fn);
   if (Suite.globalStack.length > 0) {
@@ -31,7 +31,7 @@ export class Test {
   public static create(
     nameOrOptions: ITestOptions | string,
     optionsOrFn: Omit<ITestOptions, "name"> | (() => void),
-    fn?: () => void
+    fn?: () => void,
   ) {
     let options: ITestOptions =
       typeof nameOrOptions === "string" ? { name: nameOrOptions } : { ...nameOrOptions };
@@ -43,7 +43,10 @@ export class Test {
     return new Test(options, fn);
   }
 
-  constructor(public readonly options: ITestOptions, private readonly fn: () => any) {}
+  constructor(
+    public readonly options: ITestOptions,
+    private readonly fn: () => any,
+  ) {}
 
   public async run(ctx: IRunContext) {
     const path = [...ctx.path, this.options.name];
@@ -57,14 +60,14 @@ export class Test {
       const timeout = this.options.timeout || Test.DEFAULT_TIMEOUT_MILLIS;
       const result: IRunResult = {
         path,
-        outcome: "failed"
+        outcome: "failed",
       };
       try {
         await Promise.race([
           (async () => {
             const hookCtx = {
               ...ctx,
-              path
+              path,
             };
             for (const beforeEach of ctx.beforeEaches) {
               await beforeEach.run(hookCtx);
@@ -84,7 +87,7 @@ export class Test {
               result.outcome = "timeout";
               reject(new Error(`Timed out (${timeout}ms).`));
             }, timeout);
-          })
+          }),
         ]);
         result.outcome = "passed";
       } catch (e) {

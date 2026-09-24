@@ -35,11 +35,11 @@ export const corePackageTarPath = "packages/@dataform/core/package.tar.gz";
 export async function getProcessResult(childProcess: ChildProcess) {
   let stderr = "";
   childProcess.stderr.pipe(process.stderr);
-  childProcess.stderr.on("data", chunk => (stderr += String(chunk)));
+  childProcess.stderr.on("data", (chunk) => (stderr += String(chunk)));
   let stdout = "";
   childProcess.stdout.pipe(process.stdout);
-  childProcess.stdout.on("data", chunk => (stdout += String(chunk)));
-  const exitCode: number = await new Promise(resolve => {
+  childProcess.stdout.on("data", (chunk) => (stdout += String(chunk)));
+  const exitCode: number = await new Promise((resolve) => {
     childProcess.on("close", resolve);
   });
   return { exitCode, stdout, stderr };
@@ -74,7 +74,7 @@ export function writeDefinitionFile(projectDir: string, filename: string, conten
 
 export function writeWorkflowSettingsFile(
   projectDir: string,
-  settings: string | dataform.IWorkflowSettings
+  settings: string | dataform.IWorkflowSettings,
 ): void {
   const fullPath = path.join(projectDir, "workflow_settings.yaml");
   const content = typeof settings === "string" ? settings : dumpYaml(settings);

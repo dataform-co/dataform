@@ -7,7 +7,10 @@ import { IHookHandler } from "df/testing";
 export class ChildProcessForBazelTestEnvironment {
   private childProcess: ChildProcess;
 
-  constructor(private readonly executable: string, private readonly args: string[] = []) {}
+  constructor(
+    private readonly executable: string,
+    private readonly args: string[] = [],
+  ) {}
 
   public spawn(options: { pipeOutputToParentOutputs?: boolean; cwd?: string } = {}) {
     this.childProcess = spawn(this.executable, this.args, options);
@@ -33,8 +36,8 @@ export class ChildProcessForBazelTestEnvironment {
     return fs.createWriteStream(
       path.resolve(
         process.env.TEST_UNDECLARED_OUTPUTS_DIR,
-        this.executable.replace(/\//g, "_") + fileExtension
-      )
+        this.executable.replace(/\//g, "_") + fileExtension,
+      ),
     );
   }
 }

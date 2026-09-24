@@ -10,7 +10,7 @@ export async function handleDbRequest(
   dbclient: IDbClient,
   method: string,
   request: Uint8Array,
-  options?: IBigQueryExecutionOptions
+  options?: IBigQueryExecutionOptions,
 ): Promise<Uint8Array> {
   switch (method) {
     case "Execute":
@@ -29,11 +29,11 @@ export async function handleDbRequest(
 async function handleExecute(
   dbclient: IDbClient,
   request: Uint8Array,
-  options?: IBigQueryExecutionOptions
+  options?: IBigQueryExecutionOptions,
 ): Promise<Uint8Array> {
   const executeRequest = dataform.ExecuteRequest.decode(request);
   const executeRequestObj = dataform.ExecuteRequest.toObject(executeRequest, {
-    defaults: false
+    defaults: false,
   });
   const requestOptions = executeRequestObj.bigQueryOptions;
 
@@ -45,15 +45,16 @@ async function handleExecute(
       ...requestOptions,
       labels: {
         ...options?.labels,
-        ...requestOptions?.labels
+        ...requestOptions?.labels,
       },
-      jobPrefix: [options?.jobPrefix, requestOptions?.jobPrefix].filter(Boolean).join("-") || undefined
-    }
+      jobPrefix:
+        [options?.jobPrefix, requestOptions?.jobPrefix].filter(Boolean).join("-") || undefined,
+    },
   });
 
   return dataform.ExecuteResponse.encode({
-    rows: (results.rows || []).map(row => Structs.fromObject(row)),
-    schemaFields: results.schema || []
+    rows: (results.rows || []).map((row) => Structs.fromObject(row)),
+    schemaFields: results.schema || [],
   } as any).finish();
 }
 
@@ -62,9 +63,12 @@ async function handleListTables(dbadapter: IDbAdapter, request: Uint8Array): Pro
   if (!listTablesRequest.database) {
     throw new Error("ListTablesRequest.database must be supplied");
   }
-  const tablesMetadata = await dbadapter.tables(listTablesRequest.database, listTablesRequest.schema);
+  const tablesMetadata = await dbadapter.tables(
+    listTablesRequest.database,
+    listTablesRequest.schema,
+  );
   const listTablesResponse = dataform.ListTablesResponse.create({
-    tables: tablesMetadata
+    tables: tablesMetadata,
   });
   return dataform.ListTablesResponse.encode(listTablesResponse).finish();
 }
@@ -81,7 +85,7 @@ async function handleGetTable(dbadapter: IDbAdapter, request: Uint8Array): Promi
 async function handleDeleteTable(
   dbadapter: IDbAdapter,
   request: Uint8Array,
-  dryRun?: boolean
+  dryRun?: boolean,
 ): Promise<Uint8Array> {
   const deleteTableRequest = dataform.DeleteTableRequest.decode(request);
   if (dryRun) {

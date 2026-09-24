@@ -89,16 +89,16 @@ export interface ITableContext extends IActionContext {
 /** JiT context, accessible at JiT compilation stage. */
 export type JitContext<T> = T & {
   /** Direct access to adapter. */
-  adapter: dataform.DbAdapter,
+  adapter: dataform.DbAdapter;
   /** JiT data object. */
-  data?: { [k: string]: any },
+  data?: { [k: string]: any };
   /** Original JiT compilation request. */
-  request: dataform.IJitCompilationRequest,
+  request: dataform.IJitCompilationRequest;
   /** Current execution information for introspection. */
-  executionData: dataform.IRunningExecutionData,
+  executionData: dataform.IRunningExecutionData;
 };
 
-/** 
+/**
  * JiT contextable - async function that accepts JiT context
  * or raw string with JS code of this function.
  */

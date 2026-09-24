@@ -8,7 +8,7 @@ import {
   assertProjectDirExists,
   IActionsArgs,
   IProjectDirArgs,
-  projectDirOption
+  projectDirOption,
 } from "df/cli/common_options";
 import { printError, printFormatFilesResult, printSuccess } from "df/cli/console";
 import { ICommand, INamedOption } from "df/cli/yargswrapper";
@@ -24,8 +24,8 @@ const fmtIgnoreJsOption: INamedOption<yargs.Options, IFormatArgs> = {
   option: {
     describe: "If set, the formatter will not consider javascript files (.js)",
     type: "boolean",
-    default: false
-  }
+    default: false,
+  },
 };
 
 const checkOption: INamedOption<yargs.Options, IFormatArgs> = {
@@ -33,8 +33,8 @@ const checkOption: INamedOption<yargs.Options, IFormatArgs> = {
   option: {
     describe: "Check if files are formatted correctly without modifying them.",
     type: "boolean",
-    default: false
-  }
+    default: false,
+  },
 };
 
 export const formatCommand: ICommand<IFormatArgs> = {
@@ -43,7 +43,7 @@ export const formatCommand: ICommand<IFormatArgs> = {
   positionalOptions: [projectDirOption],
   options: [actionsOption, fmtIgnoreJsOption, checkOption],
   check: [assertProjectDirExists],
-  processFn: async argv => {
+  processFn: async (argv) => {
     const extensions = argv.ignoreJsFiles ? "*.sqlx" : "*.{js,sqlx}";
     let actions = [`{definitions,includes}/**/${extensions}`];
     if (argv.actions && argv.actions.length > 0) {
@@ -66,34 +66,34 @@ export const formatCommand: ICommand<IFormatArgs> = {
             // In check mode, we don't modify files, just check if they need formatting
             const fileContent = fs.readFileSync(filePath).toString();
             const formattedContent = await formatFile(filePath, {
-              overwriteFile: false
+              overwriteFile: false,
             });
             return {
               filename,
-              needsFormatting: fileContent !== formattedContent
+              needsFormatting: fileContent !== formattedContent,
             };
           } else {
             // Normal formatting mode
             await formatFile(filePath, {
-              overwriteFile: true
+              overwriteFile: true,
             });
             return {
-              filename
+              filename,
             };
           }
         } catch (e) {
           return {
             filename,
-            err: e
+            err: e,
           };
         }
-      })
+      }),
     );
 
     printFormatFilesResult(results);
 
     // Return error code if there are any formatting errors
-    const failedFormatResults = results.filter(result => !!result.err);
+    const failedFormatResults = results.filter((result) => !!result.err);
     if (failedFormatResults.length > 0) {
       printError(`${failedFormatResults.length} file(s) failed to format.`);
       return 1;
@@ -101,10 +101,10 @@ export const formatCommand: ICommand<IFormatArgs> = {
 
     // In check mode, return an error code if any files need formatting
     if (isCheckMode) {
-      const filesNeedingFormatting = results.filter(result => result.needsFormatting);
+      const filesNeedingFormatting = results.filter((result) => result.needsFormatting);
       if (filesNeedingFormatting.length > 0) {
         printError(
-          `${filesNeedingFormatting.length} file(s) would be reformatted. Run the format command without --check to update.`
+          `${filesNeedingFormatting.length} file(s) would be reformatted. Run the format command without --check to update.`,
         );
         return 1;
       }
@@ -112,5 +112,5 @@ export const formatCommand: ICommand<IFormatArgs> = {
     }
 
     return 0;
-  }
+  },
 };

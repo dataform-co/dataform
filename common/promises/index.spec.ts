@@ -12,7 +12,7 @@ suite(__filename, () => {
         async () => {
           throw new Error("timed out!");
         },
-        1000
+        1000,
       );
       expect(result).eql("hello");
     });
@@ -22,7 +22,7 @@ suite(__filename, () => {
         async () => {
           let timer: NodeJS.Timer;
           try {
-            return new Promise<string>(resolve => {
+            return new Promise<string>((resolve) => {
               timer = setTimeout(() => resolve("wrong!"), 10000);
             });
           } finally {
@@ -30,7 +30,7 @@ suite(__filename, () => {
           }
         },
         async () => "hello",
-        1000
+        1000,
       );
       expect(result).eql("hello");
     });
@@ -41,7 +41,7 @@ suite(__filename, () => {
           async () => {
             let timer: NodeJS.Timer;
             try {
-              return new Promise<string>(resolve => {
+              return new Promise<string>((resolve) => {
                 timer = setTimeout(() => resolve("wrong!"), 10000);
               });
             } finally {
@@ -51,7 +51,7 @@ suite(__filename, () => {
           async () => {
             throw new Error("the function timed out");
           },
-          1000
+          1000,
         );
         assert.fail("Expected timeout to fire, and Error to be thrown.");
       } catch (e) {
@@ -68,7 +68,7 @@ suite(__filename, () => {
           () => {
             throw new Error("initialization error!");
           },
-          100
+          100,
         );
       } catch (e) {
         expect(e.message).equals("initialization error!");

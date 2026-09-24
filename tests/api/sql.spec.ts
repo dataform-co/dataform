@@ -13,33 +13,33 @@ suite("@dataform/api/sql", () => {
     const incrementalTable = {
       target: {
         schema: "schema",
-        name: "incremental"
+        name: "incremental",
       },
       type: "incremental",
       query: "select 1 as test",
-      where: "true"
+      where: "true",
     };
     const warehouseState = dataform.WarehouseState.create({
       tables: [
         {
           target: {
             schema: "schema",
-            name: "incremental"
+            name: "incremental",
           },
           type: dataform.TableMetadata.Type.TABLE,
           fields: [
             {
-              name: "existing_field"
-            }
-          ]
-        }
-      ]
+              name: "existing_field",
+            },
+          ],
+        },
+      ],
     });
 
     test("incremental_mode", () => {
       const graph = dataform.CompiledGraph.create({
         projectConfig,
-        tables: [incrementalTable]
+        tables: [incrementalTable],
       });
 
       const executionGraph = new Builder(graph, {}, warehouseState).build();
@@ -47,24 +47,24 @@ suite("@dataform/api/sql", () => {
       expect(
         cleanSql(
           executionGraph.actions.filter(
-            n => targetAsReadableString(n.target) === "schema.incremental"
-          )[0].tasks[0].statement
-        )
+            (n) => targetAsReadableString(n.target) === "schema.incremental",
+          )[0].tasks[0].statement,
+        ),
       ).equals(
         cleanSql(
           `insert into \`deeb.schema.incremental\` (\`existing_field\`)
             select \`existing_field\` from (
               select * from (select 1 as test) as subquery
               where true
-            ) as insertions`
-        )
+            ) as insertions`,
+        ),
       );
     });
 
     test("full refresh", () => {
       const graph = dataform.CompiledGraph.create({
         projectConfig,
-        tables: [incrementalTable]
+        tables: [incrementalTable],
       });
 
       const executionGraph = new Builder(graph, { fullRefresh: true }, warehouseState).build();
@@ -72,20 +72,20 @@ suite("@dataform/api/sql", () => {
       expect(
         cleanSql(
           executionGraph.actions.filter(
-            n => targetAsReadableString(n.target) === "schema.incremental"
-          )[0].tasks[0].statement
-        )
+            (n) => targetAsReadableString(n.target) === "schema.incremental",
+          )[0].tasks[0].statement,
+        ),
       ).equals(cleanSql("create or replace table `deeb.schema.incremental` as select 1 as test"));
     });
 
     test("full refresh of a protected dataset", () => {
       const protectedIncrementalTable = {
         ...incrementalTable,
-        protected: true
+        protected: true,
       };
       const graph = dataform.CompiledGraph.create({
         projectConfig,
-        tables: [protectedIncrementalTable]
+        tables: [protectedIncrementalTable],
       });
 
       const executionGraph = new Builder(graph, { fullRefresh: true }, warehouseState).build();
@@ -93,17 +93,17 @@ suite("@dataform/api/sql", () => {
       expect(
         cleanSql(
           executionGraph.actions.filter(
-            n => targetAsReadableString(n.target) === "schema.incremental"
-          )[0].tasks[0].statement
-        )
+            (n) => targetAsReadableString(n.target) === "schema.incremental",
+          )[0].tasks[0].statement,
+        ),
       ).equals(
         cleanSql(
           `insert into \`deeb.schema.incremental\` (\`existing_field\`)
             select \`existing_field\` from (
               select * from (select 1 as test) as subquery
               where true
-            ) as insertions`
-        )
+            ) as insertions`,
+        ),
       );
     });
   });
@@ -115,14 +115,14 @@ suite("@dataform/api/sql", () => {
         {
           target: {
             schema: "schema",
-            name: "materialized"
+            name: "materialized",
           },
           type: "view",
           query: "select 1 as test",
-          materialized: true
+          materialized: true,
         },
-        plainTableDef({ type: "view" })
-      ]
+        plainTableDef({ type: "view" }),
+      ],
     });
     const expectedExecutionActions: dataform.IExecutionAction[] = [
       {
@@ -130,31 +130,31 @@ suite("@dataform/api/sql", () => {
         tableType: "view",
         target: {
           schema: "schema",
-          name: "materialized"
+          name: "materialized",
         },
         tasks: [
           {
             type: "statement",
             statement:
-              "create or replace materialized view `deeb.schema.materialized` as select 1 as test"
-          }
+              "create or replace materialized view `deeb.schema.materialized` as select 1 as test",
+          },
         ],
         dependencyTargets: [],
-        hermeticity: dataform.ActionHermeticity.HERMETIC
+        hermeticity: dataform.ActionHermeticity.HERMETIC,
       },
       plainTableAction({
         tableType: "view",
         tasks: [
           {
             type: "statement",
-            statement: "create or replace view `deeb.schema.plain` as select 1 as test"
-          }
-        ]
-      })
+            statement: "create or replace view `deeb.schema.plain` as select 1 as test",
+          },
+        ],
+      }),
     ];
     const executionGraph = new Builder(testGraph, {}, dataform.WarehouseState.create({})).build();
     expect(asPlainObject(executionGraph.actions)).deep.equals(
-      asPlainObject(expectedExecutionActions)
+      asPlainObject(expectedExecutionActions),
     );
   });
 
@@ -165,17 +165,17 @@ suite("@dataform/api/sql", () => {
         {
           target: {
             schema: "schema",
-            name: "partitionby"
+            name: "partitionby",
           },
           type: "table",
           query: "select 1 as test",
           bigquery: {
             partitionBy: "DATE(test)",
-            clusterBy: []
-          }
+            clusterBy: [],
+          },
         },
-        plainTableDef()
-      ]
+        plainTableDef(),
+      ],
     });
     const expectedExecutionActions: dataform.IExecutionAction[] = [
       {
@@ -183,23 +183,23 @@ suite("@dataform/api/sql", () => {
         tableType: "table",
         target: {
           schema: "schema",
-          name: "partitionby"
+          name: "partitionby",
         },
         tasks: [
           {
             type: "statement",
             statement:
-              "create or replace table `deeb.schema.partitionby` partition by DATE(test) as select 1 as test"
-          }
+              "create or replace table `deeb.schema.partitionby` partition by DATE(test) as select 1 as test",
+          },
         ],
         dependencyTargets: [],
-        hermeticity: dataform.ActionHermeticity.HERMETIC
+        hermeticity: dataform.ActionHermeticity.HERMETIC,
       },
-      plainTableAction()
+      plainTableAction(),
     ];
     const executionGraph = new Builder(testGraph, {}, dataform.WarehouseState.create({})).build();
     expect(asPlainObject(executionGraph.actions)).deep.equals(
-      asPlainObject(expectedExecutionActions)
+      asPlainObject(expectedExecutionActions),
     );
   });
 
@@ -210,7 +210,7 @@ suite("@dataform/api/sql", () => {
         {
           target: {
             schema: "schema",
-            name: "partitionby"
+            name: "partitionby",
           },
           type: "table",
           query: "select 1 as test",
@@ -218,11 +218,11 @@ suite("@dataform/api/sql", () => {
             partitionBy: "DATE(test)",
             clusterBy: [],
             partitionExpirationDays: 1,
-            requirePartitionFilter: true
-          }
+            requirePartitionFilter: true,
+          },
         },
-        plainTableDef()
-      ]
+        plainTableDef(),
+      ],
     });
     const expectedExecutionActions: dataform.IExecutionAction[] = [
       {
@@ -230,23 +230,23 @@ suite("@dataform/api/sql", () => {
         tableType: "table",
         target: {
           schema: "schema",
-          name: "partitionby"
+          name: "partitionby",
         },
         tasks: [
           {
             type: "statement",
             statement:
-              "create or replace table `deeb.schema.partitionby` partition by DATE(test) OPTIONS(partition_expiration_days=1,require_partition_filter=true)as select 1 as test"
-          }
+              "create or replace table `deeb.schema.partitionby` partition by DATE(test) OPTIONS(partition_expiration_days=1,require_partition_filter=true)as select 1 as test",
+          },
         ],
         dependencyTargets: [],
-        hermeticity: dataform.ActionHermeticity.HERMETIC
+        hermeticity: dataform.ActionHermeticity.HERMETIC,
       },
-      plainTableAction()
+      plainTableAction(),
     ];
     const executionGraph = new Builder(testGraph, {}, dataform.WarehouseState.create({})).build();
     expect(asPlainObject(executionGraph.actions)).deep.equals(
-      asPlainObject(expectedExecutionActions)
+      asPlainObject(expectedExecutionActions),
     );
   });
 
@@ -257,17 +257,17 @@ suite("@dataform/api/sql", () => {
         {
           target: {
             schema: "schema",
-            name: "partitionby"
+            name: "partitionby",
           },
           type: "table",
           query: "select 1 as test",
           bigquery: {
             partitionBy: "DATE(test)",
-            clusterBy: ["name", "revenue"]
-          }
+            clusterBy: ["name", "revenue"],
+          },
         },
-        plainTableDef()
-      ]
+        plainTableDef(),
+      ],
     });
     const expectedExecutionActions: dataform.IExecutionAction[] = [
       {
@@ -275,23 +275,23 @@ suite("@dataform/api/sql", () => {
         tableType: "table",
         target: {
           schema: "schema",
-          name: "partitionby"
+          name: "partitionby",
         },
         tasks: [
           {
             type: "statement",
             statement:
-              "create or replace table `deeb.schema.partitionby` partition by DATE(test) cluster by name, revenue as select 1 as test"
-          }
+              "create or replace table `deeb.schema.partitionby` partition by DATE(test) cluster by name, revenue as select 1 as test",
+          },
         ],
         dependencyTargets: [],
-        hermeticity: dataform.ActionHermeticity.HERMETIC
+        hermeticity: dataform.ActionHermeticity.HERMETIC,
       },
-      plainTableAction()
+      plainTableAction(),
     ];
     const executionGraph = new Builder(testGraph, {}, dataform.WarehouseState.create({})).build();
     expect(asPlainObject(executionGraph.actions)).deep.equals(
-      asPlainObject(expectedExecutionActions)
+      asPlainObject(expectedExecutionActions),
     );
   });
 
@@ -302,7 +302,7 @@ suite("@dataform/api/sql", () => {
         {
           target: {
             schema: "schema",
-            name: "additional_options"
+            name: "additional_options",
           },
           type: "table",
           query: "select 1 as test",
@@ -310,12 +310,12 @@ suite("@dataform/api/sql", () => {
             additionalOptions: {
               partition_expiration_days: "1",
               require_partition_filter: "true",
-              friendly_name: '"friendlyName"'
-            }
-          }
+              friendly_name: '"friendlyName"',
+            },
+          },
         },
-        plainTableDef()
-      ]
+        plainTableDef(),
+      ],
     });
     const expectedExecutionActions: dataform.IExecutionAction[] = [
       {
@@ -323,23 +323,23 @@ suite("@dataform/api/sql", () => {
         tableType: "table",
         target: {
           schema: "schema",
-          name: "additional_options"
+          name: "additional_options",
         },
         tasks: [
           {
             type: "statement",
             statement:
-              'create or replace table `deeb.schema.additional_options` OPTIONS(partition_expiration_days=1,require_partition_filter=true,friendly_name="friendlyName")as select 1 as test'
-          }
+              'create or replace table `deeb.schema.additional_options` OPTIONS(partition_expiration_days=1,require_partition_filter=true,friendly_name="friendlyName")as select 1 as test',
+          },
         ],
         dependencyTargets: [],
-        hermeticity: dataform.ActionHermeticity.HERMETIC
+        hermeticity: dataform.ActionHermeticity.HERMETIC,
       },
-      plainTableAction()
+      plainTableAction(),
     ];
     const executionGraph = new Builder(testGraph, {}, dataform.WarehouseState.create({})).build();
     expect(asPlainObject(executionGraph.actions)).deep.equals(
-      asPlainObject(expectedExecutionActions)
+      asPlainObject(expectedExecutionActions),
     );
   });
 });
@@ -348,38 +348,38 @@ function plainTableDef(override?: Partial<dataform.ITable>): dataform.ITable {
   const plainTable: dataform.ITable = {
     target: {
       schema: "schema",
-      name: "plain"
+      name: "plain",
     },
     type: "table",
-    query: "select 1 as test"
+    query: "select 1 as test",
   };
   return {
     ...plainTable,
-    ...override
+    ...override,
   };
 }
 
 function plainTableAction(
-  override?: Partial<dataform.IExecutionAction>
+  override?: Partial<dataform.IExecutionAction>,
 ): dataform.IExecutionAction {
   const action: dataform.IExecutionAction = {
     type: "table",
     tableType: "table",
     target: {
       schema: "schema",
-      name: "plain"
+      name: "plain",
     },
     tasks: [
       {
         type: "statement",
-        statement: "create or replace table `deeb.schema.plain` as select 1 as test"
-      }
+        statement: "create or replace table `deeb.schema.plain` as select 1 as test",
+      },
     ],
     dependencyTargets: [],
-    hermeticity: dataform.ActionHermeticity.HERMETIC
+    hermeticity: dataform.ActionHermeticity.HERMETIC,
   };
   return {
     ...action,
-    ...override
+    ...override,
   };
 }

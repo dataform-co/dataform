@@ -31,7 +31,7 @@ const _ = (async () => {
       test(
         "times out",
         { timeout: 10 },
-        async () => await new Promise(resolve => setTimeout(resolve, 100000))
+        async () => await new Promise((resolve) => setTimeout(resolve, 100000)),
       );
       suite("with before and after", ({ beforeEach, afterEach }) => {
         let counter = 0;
@@ -53,7 +53,7 @@ const _ = (async () => {
         });
       });
 
-      suite("with set up and tear down", ctx => {
+      suite("with set up and tear down", (ctx) => {
         exampleFixture = new ExampleFixture(ctx);
         ctx.test({ name: "set up is called" }, () => {
           expect(exampleFixture.counter).equals(1);
@@ -64,12 +64,12 @@ const _ = (async () => {
         let counter = 0;
         test({ name: "test1" }, async () => {
           expect(counter).equals(0);
-          await new Promise(resolve => setTimeout(resolve, 10));
+          await new Promise((resolve) => setTimeout(resolve, 10));
           counter = 1;
         });
         test({ name: "test2" }, async () => {
           expect(counter).equals(0);
-          await new Promise(resolve => setTimeout(resolve, 10));
+          await new Promise((resolve) => setTimeout(resolve, 10));
           counter = 1;
         });
       });
@@ -110,7 +110,7 @@ const _ = (async () => {
     process.exitCode = 0;
 
     // Clean up the rest results.
-    const resultsClean = results.map(result => {
+    const resultsClean = results.map((result) => {
       const newResult = { ...result };
       if (result.err) {
         newResult.err = result.err.message;
@@ -123,7 +123,7 @@ const _ = (async () => {
       {
         path: ["suite", "fails on expectation"],
         outcome: "failed",
-        err: "expected { value: 1 } to deeply equal { value: 2 }"
+        err: "expected { value: 1 } to deeply equal { value: 2 }",
       },
       { path: ["suite", "fails on throw"], outcome: "failed", err: "fail-sync" },
       { path: ["suite", "fails on promise rejection"], outcome: "failed", err: "fail-async" },
@@ -131,7 +131,7 @@ const _ = (async () => {
       { path: ["suite", "with before and after", "passes on first test"], outcome: "passed" },
       {
         path: ["suite", "with before and after", "in sub suite", "passes on second test"],
-        outcome: "passed"
+        outcome: "passed",
       },
       { path: ["suite", "with set up and tear down", "set up is called"], outcome: "passed" },
       { path: ["suite", "can execute in parallel", "test1"], outcome: "passed" },
@@ -139,24 +139,24 @@ const _ = (async () => {
       {
         path: ["suite", "with failing before each hook", "test", "hook that fails (hook)"],
         outcome: "failed",
-        err: "fail-sync"
+        err: "fail-sync",
       },
       {
         path: ["suite", "with failing before each hook", "test"],
         outcome: "failed",
-        err: "fail-sync"
+        err: "fail-sync",
       },
       {
         path: ["suite", "with failing tear down hook", "test"],
-        outcome: "passed"
+        outcome: "passed",
       },
       {
         path: ["suite", "with failing tear down hook", "hook that fails (hook)"],
         outcome: "failed",
-        err: "fail-sync"
+        err: "fail-sync",
       },
       { path: ["suite", "with retries", "passes second time"], outcome: "passed" },
-      { path: ["suite", "with retries", "never passes"], outcome: "failed", err: "fail-sync" }
+      { path: ["suite", "with retries", "never passes"], outcome: "failed", err: "fail-sync" },
     ]);
 
     // Tear down should have been called.

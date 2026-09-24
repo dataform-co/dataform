@@ -3,56 +3,53 @@ import * as utils from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
 type CompileAction =
-  | dataform.ITable
-  | dataform.IOperation
-  | dataform.IAssertion
-  | dataform.IPropertyGraph;
+  dataform.ITable | dataform.IOperation | dataform.IAssertion | dataform.IPropertyGraph;
 
 export function prune(
   compiledGraph: dataform.ICompiledGraph,
-  runConfig: dataform.IRunConfig
+  runConfig: dataform.IRunConfig,
 ): dataform.ICompiledGraph {
   compiledGraph.tables.forEach(utils.setOrValidateTableEnumType);
   const includedActionNames = computeIncludedActionNames(compiledGraph, runConfig);
   return {
     ...compiledGraph,
-    tables: compiledGraph.tables.filter(action =>
-      includedActionNames.has(targetAsReadableString(action.target))
+    tables: compiledGraph.tables.filter((action) =>
+      includedActionNames.has(targetAsReadableString(action.target)),
     ),
-    assertions: compiledGraph.assertions.filter(action =>
-      includedActionNames.has(targetAsReadableString(action.target))
+    assertions: compiledGraph.assertions.filter((action) =>
+      includedActionNames.has(targetAsReadableString(action.target)),
     ),
-    operations: compiledGraph.operations.filter(action =>
-      includedActionNames.has(targetAsReadableString(action.target))
+    operations: compiledGraph.operations.filter((action) =>
+      includedActionNames.has(targetAsReadableString(action.target)),
     ),
-    propertyGraphs: compiledGraph.propertyGraphs?.filter(action =>
-      includedActionNames.has(targetAsReadableString(action.target))
+    propertyGraphs: compiledGraph.propertyGraphs?.filter((action) =>
+      includedActionNames.has(targetAsReadableString(action.target)),
     ),
     // `targets` is declarative output only (nothing downstream reads it), but
     // `compile` prints it, so it has to agree with the filtered action lists.
-    targets: compiledGraph.targets?.filter(target =>
-      includedActionNames.has(targetAsReadableString(target))
-    )
+    targets: compiledGraph.targets?.filter((target) =>
+      includedActionNames.has(targetAsReadableString(target)),
+    ),
   };
 }
 
 function computeIncludedActionNames(
   compiledGraph: dataform.ICompiledGraph,
-  runConfig: dataform.IRunConfig
+  runConfig: dataform.IRunConfig,
 ): Set<string> {
   // Union all tables, operations, assertions, property graphs.
   const allActions: CompileAction[] = [].concat(
     compiledGraph.tables,
     compiledGraph.operations,
     compiledGraph.assertions,
-    compiledGraph.propertyGraphs
+    compiledGraph.propertyGraphs,
   );
 
   const allActionNames = new Set<string>(
-    allActions.map(action => targetAsReadableString(action.target))
+    allActions.map((action) => targetAsReadableString(action.target)),
   );
   const allActionsByName = new Map<string, CompileAction>(
-    allActions.map(action => [targetAsReadableString(action.target), action])
+    allActions.map((action) => [targetAsReadableString(action.target), action]),
   );
 
   const hasActionSelector = runConfig.actions?.length > 0;
@@ -69,14 +66,14 @@ function computeIncludedActionNames(
   if (hasActionSelector) {
     utils
       .matchPatterns(runConfig.actions, [...allActionNames])
-      .forEach(actionName => includedActionNames.add(actionName));
+      .forEach((actionName) => includedActionNames.add(actionName));
   }
 
   // Determine actions selected with --tag option and update applicable actions
   if (hasTagSelector) {
     allActions
-      .filter(action => action.tags?.some(tag => runConfig.tags.includes(tag)))
-      .forEach(action => includedActionNames.add(targetAsReadableString(action.target)));
+      .filter((action) => action.tags?.some((tag) => runConfig.tags.includes(tag)))
+      .forEach((action) => includedActionNames.add(targetAsReadableString(action.target)));
   }
 
   // Compute all transitive dependencies.
@@ -88,11 +85,11 @@ function computeIncludedActionNames(
       const matchingDependencyNames =
         action.dependencyTargets?.length > 0
           ? utils.matchPatterns(
-              action.dependencyTargets.map(dependency => targetAsReadableString(dependency)),
-              [...allActionNames]
+              action.dependencyTargets.map((dependency) => targetAsReadableString(dependency)),
+              [...allActionNames],
             )
           : [];
-      matchingDependencyNames.forEach(dependencyName => {
+      matchingDependencyNames.forEach((dependencyName) => {
         if (!includedActionNames.has(dependencyName)) {
           queue.push(dependencyName);
           includedActionNames.add(dependencyName);
@@ -108,16 +105,16 @@ function computeIncludedActionNames(
       const actionName = queue.pop();
       const matchingDependentNames = allActions
         .filter(
-          compileAction =>
+          (compileAction) =>
             utils.matchPatterns(
               [actionName],
-              compileAction.dependencyTargets?.map(dependency =>
-                targetAsReadableString(dependency)
-              ) || []
-            ).length >= 1
+              compileAction.dependencyTargets?.map((dependency) =>
+                targetAsReadableString(dependency),
+              ) || [],
+            ).length >= 1,
         )
-        .map(compileAction => targetAsReadableString(compileAction.target));
-      matchingDependentNames.forEach(dependentName => {
+        .map((compileAction) => targetAsReadableString(compileAction.target));
+      matchingDependentNames.forEach((dependentName) => {
         if (!includedActionNames.has(dependentName)) {
           queue.push(dependentName);
           includedActionNames.add(dependentName);

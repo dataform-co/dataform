@@ -21,7 +21,7 @@ suite("examples", () => {
     before("compile", async () => {
       graph = await compile({
         projectDir: path.resolve("tests/api/projects/common_v2"),
-        projectConfigOverride: { schemaSuffix, databaseSuffix, warehouse: "bigquery" }
+        projectConfigOverride: { schemaSuffix, databaseSuffix, warehouse: "bigquery" },
       });
     });
 
@@ -29,63 +29,63 @@ suite("examples", () => {
       expect(
         graph.graphErrors.compilationErrors.map(({ fileName, message }) => ({
           fileName,
-          message
-        }))
+          message,
+        })),
       ).deep.equals([
         {
           fileName: "includes/example_ignore.js",
-          message: "publish is not defined"
+          message: "publish is not defined",
         },
         {
           fileName: "definitions/has_compile_errors/assertion_with_bigquery.sqlx",
           message:
-            'Unexpected property "bigquery", or property value type of "object" is incorrect. See https://dataform-co.github.io/dataform/docs/configs-reference#dataform-ActionConfig-AssertionConfig for allowed properties.'
+            'Unexpected property "bigquery", or property value type of "object" is incorrect. See https://dataform-co.github.io/dataform/docs/configs-reference#dataform-ActionConfig-AssertionConfig for allowed properties.',
         },
         {
           fileName: "definitions/has_compile_errors/assertion_with_materialized.sqlx",
           message:
-            'Unexpected property "materialized", or property value type of "boolean" is incorrect. See https://dataform-co.github.io/dataform/docs/configs-reference#dataform-ActionConfig-AssertionConfig for allowed properties.'
+            'Unexpected property "materialized", or property value type of "boolean" is incorrect. See https://dataform-co.github.io/dataform/docs/configs-reference#dataform-ActionConfig-AssertionConfig for allowed properties.',
         },
         {
           fileName: "definitions/has_compile_errors/assertion_with_output.sqlx",
           message:
-            'Unexpected property "hasOutput", or property value type of "boolean" is incorrect. See https://dataform-co.github.io/dataform/docs/configs-reference#dataform-ActionConfig-AssertionConfig for allowed properties.'
+            'Unexpected property "hasOutput", or property value type of "boolean" is incorrect. See https://dataform-co.github.io/dataform/docs/configs-reference#dataform-ActionConfig-AssertionConfig for allowed properties.',
         },
         {
           fileName: "definitions/has_compile_errors/assertion_with_postops.sqlx",
-          message: "Actions may only include post_operations if they create a dataset."
+          message: "Actions may only include post_operations if they create a dataset.",
         },
         {
           fileName: "definitions/has_compile_errors/assertion_with_preops.sqlx",
-          message: "Actions may only include pre_operations if they create a dataset."
+          message: "Actions may only include pre_operations if they create a dataset.",
         },
         {
           fileName: "definitions/has_compile_errors/protected_assertion.sqlx",
-          message: "Actions may only specify 'protected: true' if they are of type 'incremental'."
+          message: "Actions may only specify 'protected: true' if they are of type 'incremental'.",
         },
         {
           fileName: "definitions/has_compile_errors/protected_assertion.sqlx",
           message:
-            'Unexpected property "protected", or property value type of "boolean" is incorrect. See https://dataform-co.github.io/dataform/docs/configs-reference#dataform-ActionConfig-AssertionConfig for allowed properties.'
+            'Unexpected property "protected", or property value type of "boolean" is incorrect. See https://dataform-co.github.io/dataform/docs/configs-reference#dataform-ActionConfig-AssertionConfig for allowed properties.',
         },
         {
           fileName: "definitions/has_compile_errors/table_with_materialized.sqlx",
           message:
-            'Unexpected property "materialized", or property value type of "boolean" is incorrect. See https://dataform-co.github.io/dataform/docs/configs-reference#dataform-ActionConfig-TableConfig for allowed properties.'
+            'Unexpected property "materialized", or property value type of "boolean" is incorrect. See https://dataform-co.github.io/dataform/docs/configs-reference#dataform-ActionConfig-TableConfig for allowed properties.',
         },
         {
           fileName: "definitions/has_compile_errors/view_with_incremental.sqlx",
-          message: "Actions may only include incremental_where if they are of type 'incremental'."
+          message: "Actions may only include incremental_where if they are of type 'incremental'.",
         },
         {
           fileName: "definitions/has_compile_errors/view_with_multiple_statements.sqlx",
           message:
-            "Actions may only contain more than one SQL statement if they are of type 'operations'."
+            "Actions may only contain more than one SQL statement if they are of type 'operations'.",
         },
         {
           fileName: "definitions/has_compile_errors/view_with_semi_colon_at_end.sqlx",
-          message: "Semi-colons are not allowed at the end of SQL statements."
-        }
+          message: "Semi-colons are not allowed at the end of SQL statements.",
+        },
       ]);
     });
 
@@ -97,8 +97,8 @@ suite("examples", () => {
           dotJoined(
             databaseWithSuffix("tada-analytics"),
             schemaWithSuffix("df_integration_test"),
-            "example_js_blocks"
-          )
+            "example_js_blocks",
+          ),
       );
       expect(exampleJsBlocks.type).equals("table");
       expect(exampleJsBlocks.enumType).equals(dataform.TableType.TABLE);
@@ -113,8 +113,8 @@ suite("examples", () => {
           dotJoined(
             databaseWithSuffix("tada-analytics"),
             schemaWithSuffix("df_integration_test"),
-            "example_incremental"
-          )
+            "example_incremental",
+          ),
       );
       expect(exampleIncremental.protected).eql(true);
       expect(exampleIncremental.query.trim()).equals("select current_timestamp() as ts");
@@ -122,12 +122,12 @@ suite("examples", () => {
         `ts > (select max(ts) from \`${dotJoined(
           databaseWithSuffix("tada-analytics"),
           schemaWithSuffix("df_integration_test"),
-          "example_incremental"
+          "example_incremental",
         )}\`) or (select max(ts) from \`${dotJoined(
           databaseWithSuffix("tada-analytics"),
           schemaWithSuffix("df_integration_test"),
-          "example_incremental"
-        )}\`) is null`
+          "example_incremental",
+        )}\`) is null`,
       );
 
       const exampleIsIncremental = graph.tables.filter(
@@ -136,11 +136,11 @@ suite("examples", () => {
           dotJoined(
             databaseWithSuffix("tada-analytics"),
             schemaWithSuffix("df_integration_test"),
-            "example_is_incremental"
-          )
+            "example_is_incremental",
+          ),
       )[0];
       expect(cleanSql(exampleIsIncremental.query.trim())).equals(
-        "select * from (select current_timestamp() as ts)"
+        "select * from (select current_timestamp() as ts)",
       );
       expect(cleanSql(exampleIsIncremental.incrementalQuery)).equals(
         cleanSql(
@@ -148,13 +148,13 @@ suite("examples", () => {
        where ts > (select max(ts) from \`${dotJoined(
          databaseWithSuffix("tada-analytics"),
          schemaWithSuffix("df_integration_test"),
-         "example_is_incremental"
+         "example_is_incremental",
        )}\`) or (select max(ts) from \`${dotJoined(
-            databaseWithSuffix("tada-analytics"),
-            schemaWithSuffix("df_integration_test"),
-            "example_is_incremental"
-          )}\`) is null`
-        )
+         databaseWithSuffix("tada-analytics"),
+         schemaWithSuffix("df_integration_test"),
+         "example_is_incremental",
+       )}\`) is null`,
+        ),
       );
 
       expect(exampleIsIncremental.incrementalPreOps).to.eql(["\n    select 1\n"]);
@@ -164,7 +164,7 @@ suite("examples", () => {
     // Check tables defined in includes are not included.
     test("tables defined in includes are not included", () => {
       const exampleIgnore = graph.tables.find(
-        (t: dataform.ITable) => targetAsReadableString(t.target) === "example_ignore"
+        (t: dataform.ITable) => targetAsReadableString(t.target) === "example_ignore",
       );
       expect(exampleIgnore).equal(undefined);
       const exampleIgnore2 = graph.tables.find(
@@ -173,8 +173,8 @@ suite("examples", () => {
           dotJoined(
             databaseWithSuffix("tada-analytics"),
             schemaWithSuffix("df_integration_test"),
-            "example_ignore"
-          )
+            "example_ignore",
+          ),
       );
       expect(exampleIgnore2).equal(undefined);
     });
@@ -187,14 +187,14 @@ suite("examples", () => {
           dotJoined(
             databaseWithSuffix("tada-analytics"),
             schemaWithSuffix("df_integration_test"),
-            "example_backticks"
-          )
+            "example_backticks",
+          ),
       );
       expect(cleanSql(exampleBackticks.query)).equals(
-        "select * from `tada-analytics.df_integration_test.sample_data`"
+        "select * from `tada-analytics.df_integration_test.sample_data`",
       );
       expect(exampleBackticks.preOps).to.eql([
-        '\n    GRANT SELECT ON `tada-analytics.df_integration_test.sample_data` TO GROUP "allusers@dataform.co"\n'
+        '\n    GRANT SELECT ON `tada-analytics.df_integration_test.sample_data` TO GROUP "allusers@dataform.co"\n',
       ]);
       expect(exampleBackticks.postOps).to.eql([]);
     });
@@ -207,8 +207,8 @@ suite("examples", () => {
           dotJoined(
             databaseWithSuffix("tada-analytics"),
             schemaWithSuffix("df_integration_test"),
-            "example_deferred"
-          )
+            "example_deferred",
+          ),
       );
       expect(exampleDeferred.fileName).includes("definitions/example_deferred.js");
     });
@@ -220,8 +220,8 @@ suite("examples", () => {
           dotJoined(
             databaseWithSuffix("tada-analytics"),
             schemaWithSuffix("df_integration_test"),
-            "example_view"
-          )
+            "example_view",
+          ),
       );
       expect(exampleView.type).equals("view");
       expect(exampleView.enumType).equals(dataform.TableType.VIEW);
@@ -229,49 +229,49 @@ suite("examples", () => {
         `select * from \`${dotJoined(
           databaseWithSuffix("tada-analytics"),
           schemaWithSuffix("df_integration_test"),
-          "sample_data"
+          "sample_data",
         )}\`\n` +
           `inner join select * from \`${dotJoined(
             databaseWithSuffix("tada-analytics"),
             schemaWithSuffix("override_schema"),
-            "override_schema_example"
+            "override_schema_example",
           )}\`\n` +
           `inner join select * from \`${dotJoined(
             databaseWithSuffix("override_database"),
             schemaWithSuffix("df_integration_test"),
-            "override_database_example"
-          )}\``
+            "override_database_example",
+          )}\``,
       );
       expect(exampleView.target).deep.equals(
         dataform.Target.create({
           database: databaseWithSuffix("tada-analytics"),
           schema: schemaWithSuffix("df_integration_test"),
-          name: "example_view"
-        })
+          name: "example_view",
+        }),
       );
       expect(exampleView.canonicalTarget).deep.equals(
         dataform.Target.create({
           database: "tada-analytics",
           schema: "df_integration_test",
-          name: "example_view"
-        })
+          name: "example_view",
+        }),
       );
       expect(exampleView.dependencyTargets).eql([
         dataform.Target.create({
           database: databaseWithSuffix("tada-analytics"),
           schema: schemaWithSuffix("df_integration_test"),
-          name: "sample_data"
+          name: "sample_data",
         }),
         dataform.Target.create({
           database: databaseWithSuffix("tada-analytics"),
           schema: schemaWithSuffix("override_schema"),
-          name: "override_schema_example"
+          name: "override_schema_example",
         }),
         dataform.Target.create({
           database: databaseWithSuffix("override_database"),
           schema: schemaWithSuffix("df_integration_test"),
-          name: "override_database_example"
-        })
+          name: "override_database_example",
+        }),
       ]);
       expect(exampleView.tags).to.eql([]);
     });
@@ -283,8 +283,8 @@ suite("examples", () => {
           dotJoined(
             databaseWithSuffix("tada-analytics"),
             schemaWithSuffix("df_integration_test"),
-            "example_materialized_view"
-          )
+            "example_materialized_view",
+          ),
       );
       expect(exampleMaterializedView.type).equals("view");
       expect(exampleMaterializedView.enumType).equals(dataform.TableType.VIEW);
@@ -293,29 +293,29 @@ suite("examples", () => {
         `select * from \`${dotJoined(
           databaseWithSuffix("tada-analytics"),
           schemaWithSuffix("df_integration_test"),
-          "sample_data"
-        )}\`\n` + `group by 1`
+          "sample_data",
+        )}\`\n` + `group by 1`,
       );
       expect(exampleMaterializedView.target).deep.equals(
         dataform.Target.create({
           database: databaseWithSuffix("tada-analytics"),
           schema: schemaWithSuffix("df_integration_test"),
-          name: "example_materialized_view"
-        })
+          name: "example_materialized_view",
+        }),
       );
       expect(exampleMaterializedView.canonicalTarget).deep.equals(
         dataform.Target.create({
           database: "tada-analytics",
           schema: "df_integration_test",
-          name: "example_materialized_view"
-        })
+          name: "example_materialized_view",
+        }),
       );
       expect(exampleMaterializedView.dependencyTargets).eql([
         dataform.Target.create({
           database: databaseWithSuffix("tada-analytics"),
           schema: schemaWithSuffix("df_integration_test"),
-          name: "sample_data"
-        })
+          name: "sample_data",
+        }),
       ]);
       expect(exampleMaterializedView.tags).to.eql([]);
     });
@@ -327,8 +327,8 @@ suite("examples", () => {
           dotJoined(
             databaseWithSuffix("tada-analytics"),
             schemaWithSuffix("df_integration_test"),
-            "example_table"
-          )
+            "example_table",
+          ),
       );
       expect(exampleTable.type).equals("table");
       expect(exampleTable.enumType).equals(dataform.TableType.TABLE);
@@ -336,28 +336,28 @@ suite("examples", () => {
         `select * from \`${dotJoined(
           databaseWithSuffix("tada-analytics"),
           schemaWithSuffix("df_integration_test"),
-          "sample_data"
-        )}\`\n\n-- here \${"is"} a \`comment\n\n/* \${"another"} \` backtick \` containing \`\`\`comment */`
+          "sample_data",
+        )}\`\n\n-- here \${"is"} a \`comment\n\n/* \${"another"} \` backtick \` containing \`\`\`comment */`,
       );
       expect(exampleTable.dependencyTargets).eql([
         dataform.Target.create({
           database: databaseWithSuffix("tada-analytics"),
           schema: schemaWithSuffix("df_integration_test"),
-          name: "sample_data"
-        })
+          name: "sample_data",
+        }),
       ]);
       expect(exampleTable.preOps).to.eql([]);
       expect(exampleTable.postOps).to.eql([
         `\n    GRANT SELECT ON \`${dotJoined(
           databaseWithSuffix("tada-analytics"),
           schemaWithSuffix("df_integration_test"),
-          "example_table"
+          "example_table",
         )}\` TO GROUP "allusers@dataform.co"\n`,
         `\n    GRANT SELECT ON \`${dotJoined(
           databaseWithSuffix("tada-analytics"),
           schemaWithSuffix("df_integration_test"),
-          "example_table"
-        )}\` TO GROUP "otherusers@dataform.co"\n`
+          "example_table",
+        )}\` TO GROUP "otherusers@dataform.co"\n`,
       ]);
       expect(exampleTable.tags).to.eql([]);
     });
@@ -369,8 +369,8 @@ suite("examples", () => {
           dotJoined(
             databaseWithSuffix("tada-analytics"),
             schemaWithSuffix("df_integration_test"),
-            "example_table_with_tags"
-          )
+            "example_table_with_tags",
+          ),
       );
       expect(exampleTableWithTags.disabled).eql(true);
       expect(exampleTableWithTags.tags).to.eql(["tag1", "tag2", "tag3"]);
@@ -378,56 +378,56 @@ suite("examples", () => {
 
     test("table-with-tags's unique key assertion", () => {
       const exampleTableWithTagsUniqueKeyAssertion = graph.assertions.filter(
-        t =>
+        (t) =>
           targetAsReadableString(t.target) ===
           dotJoined(
             databaseWithSuffix("tada-analytics"),
             schemaWithSuffix("df_integration_test_assertions"),
-            "df_integration_test_example_table_with_tags_assertions_uniqueKey_0"
-          )
+            "df_integration_test_example_table_with_tags_assertions_uniqueKey_0",
+          ),
       )[0];
       expect(exampleTableWithTagsUniqueKeyAssertion.disabled).eql(true);
       expect(cleanSql(exampleTableWithTagsUniqueKeyAssertion.query)).equals(
         `select * from (select sample, count(1) as index_row_count from \`${dotJoined(
           databaseWithSuffix("tada-analytics"),
           schemaWithSuffix("df_integration_test"),
-          "example_table_with_tags"
-        )}\` group by sample) as data where index_row_count > 1`
+          "example_table_with_tags",
+        )}\` group by sample) as data where index_row_count > 1`,
       );
       expect(exampleTableWithTagsUniqueKeyAssertion.dependencyTargets).eql([
         dataform.Target.create({
           database: databaseWithSuffix("tada-analytics"),
           schema: schemaWithSuffix("df_integration_test"),
-          name: "example_table_with_tags"
-        })
+          name: "example_table_with_tags",
+        }),
       ]);
       expect(exampleTableWithTagsUniqueKeyAssertion.tags).eql(["tag1", "tag2", "tag3"]);
     });
 
     test("table-with-tags's row conditions assertion", () => {
       const exampleTableWithTagsRowConditionsAssertion = graph.assertions.filter(
-        t =>
+        (t) =>
           targetAsReadableString(t.target) ===
           dotJoined(
             databaseWithSuffix("tada-analytics"),
             schemaWithSuffix("df_integration_test_assertions"),
-            "df_integration_test_example_table_with_tags_assertions_rowConditions"
-          )
+            "df_integration_test_example_table_with_tags_assertions_rowConditions",
+          ),
       )[0];
       expect(exampleTableWithTagsRowConditionsAssertion.disabled).eql(true);
       expect(cleanSql(exampleTableWithTagsRowConditionsAssertion.query)).equals(
         `select 'sample is not null' as failing_row_condition, * from \`${dotJoined(
           databaseWithSuffix("tada-analytics"),
           schemaWithSuffix("df_integration_test"),
-          "example_table_with_tags"
-        )}\` where not (sample is not null)`
+          "example_table_with_tags",
+        )}\` where not (sample is not null)`,
       );
       expect(exampleTableWithTagsRowConditionsAssertion.dependencyTargets).eql([
         dataform.Target.create({
           database: databaseWithSuffix("tada-analytics"),
           schema: schemaWithSuffix("df_integration_test"),
-          name: "example_table_with_tags"
-        })
+          name: "example_table_with_tags",
+        }),
       ]);
     });
 
@@ -438,13 +438,13 @@ suite("examples", () => {
           dotJoined(
             databaseWithSuffix("tada-analytics"),
             schemaWithSuffix("df_integration_test"),
-            "sample_data"
-          )
+            "sample_data",
+          ),
       );
       expect(exampleSampleData.type).equals("view");
       expect(exampleSampleData.enumType).equals(dataform.TableType.VIEW);
       expect(exampleSampleData.query.trim()).equals(
-        "select 1 as sample union all\nselect 2 as sample union all\nselect 3 as sample"
+        "select 1 as sample union all\nselect 2 as sample union all\nselect 3 as sample",
       );
       expect(exampleSampleData.preOps).eql([]);
       expect(exampleSampleData.dependencyTargets).eql([]);
@@ -454,10 +454,10 @@ suite("examples", () => {
           columns: [
             dataform.ColumnDescriptor.create({
               description: "Sample integers.",
-              path: ["sample"]
-            })
-          ]
-        })
+              path: ["sample"],
+            }),
+          ],
+        }),
       );
     });
 
@@ -468,17 +468,17 @@ suite("examples", () => {
           dotJoined(
             databaseWithSuffix("override_database"),
             schemaWithSuffix("df_integration_test"),
-            "override_database_example"
-          )
+            "override_database_example",
+          ),
       );
 
       expect(exampleUsingOverriddenDatabase.target.database).equals(
-        databaseWithSuffix("override_database")
+        databaseWithSuffix("override_database"),
       );
       expect(exampleUsingOverriddenDatabase.type).equals("view");
       expect(exampleUsingOverriddenDatabase.enumType).equals(dataform.TableType.VIEW);
       expect(exampleUsingOverriddenDatabase.query.trim()).equals(
-        "select 1 as test_database_override"
+        "select 1 as test_database_override",
       );
     });
 
@@ -489,12 +489,12 @@ suite("examples", () => {
           dotJoined(
             databaseWithSuffix("tada-analytics"),
             schemaWithSuffix("override_schema"),
-            "override_schema_example"
-          )
+            "override_schema_example",
+          ),
       );
 
       expect(exampleUsingOverriddenSchema.target.schema).equals(
-        schemaWithSuffix("override_schema")
+        schemaWithSuffix("override_schema"),
       );
       expect(exampleUsingOverriddenSchema.type).equals("view");
       expect(exampleUsingOverriddenSchema.enumType).equals(dataform.TableType.VIEW);
@@ -508,17 +508,17 @@ suite("examples", () => {
           dotJoined(
             databaseWithSuffix("tada-analytics"),
             schemaWithSuffix("df_integration_test"),
-            "override_schema_example_unchanged"
-          )
+            "override_schema_example_unchanged",
+          ),
       );
 
       expect(exampleUsingOverriddenSchemaUnchanged.target.schema).equals(
-        schemaWithSuffix("df_integration_test")
+        schemaWithSuffix("df_integration_test"),
       );
       expect(exampleUsingOverriddenSchemaUnchanged.type).equals("view");
       expect(exampleUsingOverriddenSchemaUnchanged.enumType).equals(dataform.TableType.VIEW);
       expect(exampleUsingOverriddenSchemaUnchanged.query.trim()).equals(
-        "select 1 as test_schema_override"
+        "select 1 as test_schema_override",
       );
     });
 
@@ -529,29 +529,29 @@ suite("examples", () => {
           dotJoined(
             databaseWithSuffix("tada-analytics"),
             schemaWithSuffix("hi_there"),
-            "example_assertion"
-          )
+            "example_assertion",
+          ),
       );
       expect(exampleAssertion.target.schema).equals(schemaWithSuffix("hi_there"));
       expect(exampleAssertion.query.trim()).equals(
         `select * from \`${dotJoined(
           databaseWithSuffix("tada-analytics"),
           schemaWithSuffix("df_integration_test"),
-          "sample_data"
-        )}\` where sample = 100`
+          "sample_data",
+        )}\` where sample = 100`,
       );
       expect(exampleAssertion.dependencyTargets).eql([
         dataform.Target.create({
           database: databaseWithSuffix("tada-analytics"),
           schema: schemaWithSuffix("df_integration_test"),
-          name: "sample_data"
-        })
+          name: "sample_data",
+        }),
       ]);
       expect(exampleAssertion.tags).to.eql([]);
       expect(exampleAssertion.actionDescriptor).to.eql(
         dataform.ActionDescriptor.create({
-          description: "An example assertion looking for incorrect 'sample' values."
-        })
+          description: "An example assertion looking for incorrect 'sample' values.",
+        }),
       );
     });
 
@@ -562,11 +562,11 @@ suite("examples", () => {
           dotJoined(
             databaseWithSuffix("tada-analytics"),
             schemaWithSuffix("df_integration_test_assertions"),
-            "example_assertion_with_tags"
-          )
+            "example_assertion_with_tags",
+          ),
       );
       expect(exampleAssertionWithTags.target.schema).equals(
-        schemaWithSuffix("df_integration_test_assertions")
+        schemaWithSuffix("df_integration_test_assertions"),
       );
       expect(exampleAssertionWithTags.tags).to.eql(["tag1", "tag2"]);
     });
@@ -578,8 +578,8 @@ suite("examples", () => {
           dotJoined(
             databaseWithSuffix("tada-analytics"),
             schemaWithSuffix("df_integration_test"),
-            "example_operations"
-          )
+            "example_operations",
+          ),
       );
       expect(exampleOperations.hasOutput).equals(false);
       expect(exampleOperations.queries).to.eql([
@@ -587,25 +587,25 @@ suite("examples", () => {
         `\nDROP VIEW IF EXISTS \`${dotJoined(
           databaseWithSuffix("tada-analytics"),
           schemaWithSuffix("override_schema"),
-          "override_schema_example"
+          "override_schema_example",
         )}\`\n`,
         `\nDROP VIEW IF EXISTS \`${dotJoined(
           databaseWithSuffix("override_database"),
           schemaWithSuffix("df_integration_test"),
-          "override_database_example"
-        )}\`\n`
+          "override_database_example",
+        )}\`\n`,
       ]);
       expect(exampleOperations.dependencyTargets).eql([
         dataform.Target.create({
           database: databaseWithSuffix("tada-analytics"),
           schema: schemaWithSuffix("override_schema"),
-          name: "override_schema_example"
+          name: "override_schema_example",
         }),
         dataform.Target.create({
           database: databaseWithSuffix("override_database"),
           schema: schemaWithSuffix("df_integration_test"),
-          name: "override_database_example"
-        })
+          name: "override_database_example",
+        }),
       ]);
       expect(exampleOperations.tags).to.eql([]);
     });
@@ -617,26 +617,26 @@ suite("examples", () => {
           dotJoined(
             databaseWithSuffix("tada-analytics"),
             schemaWithSuffix("df_integration_test"),
-            "example_operation_with_output"
-          )
+            "example_operation_with_output",
+          ),
       );
       expect(exampleOperationWithOutput.target.schema).equals(
-        schemaWithSuffix("df_integration_test")
+        schemaWithSuffix("df_integration_test"),
       );
       expect(exampleOperationWithOutput.target.name).equals("example_operation_with_output");
       expect(exampleOperationWithOutput.queries).to.eql([
         `\nCREATE OR REPLACE VIEW \`${dotJoined(
           databaseWithSuffix("tada-analytics"),
           schemaWithSuffix("df_integration_test"),
-          "example_operation_with_output"
-        )}\` AS (SELECT * FROM \`some_database_name.some_external_schema_name.very_important_external_table\`)`
+          "example_operation_with_output",
+        )}\` AS (SELECT * FROM \`some_database_name.some_external_schema_name.very_important_external_table\`)`,
       ]);
       expect(exampleOperationWithOutput.dependencyTargets).eql([
         dataform.Target.create({
           database: "some_database_name",
           schema: "some_external_schema_name",
-          name: "very_important_external_table"
-        })
+          name: "very_important_external_table",
+        }),
       ]);
       expect(exampleOperationWithOutput.actionDescriptor).to.eql(
         dataform.ActionDescriptor.create({
@@ -644,10 +644,10 @@ suite("examples", () => {
           columns: [
             dataform.ColumnDescriptor.create({
               description: "Just 1!",
-              path: ["TEST"]
-            })
-          ]
-        })
+              path: ["TEST"],
+            }),
+          ],
+        }),
       );
     });
 
@@ -658,45 +658,45 @@ suite("examples", () => {
           dotJoined(
             databaseWithSuffix("tada-analytics"),
             schemaWithSuffix("df_integration_test"),
-            "example_operations_with_tags"
-          )
+            "example_operations_with_tags",
+          ),
       );
       expect(exampleOperationsWithTags.tags).to.eql(["tag1"]);
     });
 
     test("declaration", () => {
       const exampleDeclaration = graph.declarations.find(
-        d =>
+        (d) =>
           targetAsReadableString(d.target) ===
-          "some_database_name.some_external_schema_name.very_important_external_table"
+          "some_database_name.some_external_schema_name.very_important_external_table",
       );
       expect(exampleDeclaration.target).eql(
         dataform.Target.create({
           database: "some_database_name",
           schema: "some_external_schema_name",
-          name: "very_important_external_table"
-        })
+          name: "very_important_external_table",
+        }),
       );
       expect(exampleDeclaration.actionDescriptor.description).to.equal(
-        "This table is not generated by Dataform!"
+        "This table is not generated by Dataform!",
       );
     });
 
     test("testcases", () => {
-      const testCase = graph.tests.find(t => t.name === "example_test_case");
+      const testCase = graph.tests.find((t) => t.name === "example_test_case");
       expect(testCase.testQuery.trim()).equals(
-        "select * from (\n    select 'hi' as faked union all\n    select 'ben' as faked union all\n    select 'sup?' as faked\n)\n\n-- here ${\"is\"} a `comment\n\n/* ${\"another\"} ` backtick ` containing ```comment */"
+        "select * from (\n    select 'hi' as faked union all\n    select 'ben' as faked union all\n    select 'sup?' as faked\n)\n\n-- here ${\"is\"} a `comment\n\n/* ${\"another\"} ` backtick ` containing ```comment */",
       );
       expect(testCase.expectedOutputQuery.trim()).equals(
-        "select 'hi' as faked union all\nselect 'ben' as faked union all\nselect 'sup?' as faked"
+        "select 'hi' as faked union all\nselect 'ben' as faked union all\nselect 'sup?' as faked",
       );
 
-      const testCaseFQ = graph.tests.find(t => t.name === "example_test_case_fq_ref");
+      const testCaseFQ = graph.tests.find((t) => t.name === "example_test_case_fq_ref");
       expect(testCaseFQ.testQuery.trim()).equals(
-        "select * from (\n    select 'hi' as faked union all\n    select 'ben' as faked union all\n    select 'sup?' as faked\n)\n\n-- here ${\"is\"} a `comment\n\n/* ${\"another\"} ` backtick ` containing ```comment */"
+        "select * from (\n    select 'hi' as faked union all\n    select 'ben' as faked union all\n    select 'sup?' as faked\n)\n\n-- here ${\"is\"} a `comment\n\n/* ${\"another\"} ` backtick ` containing ```comment */",
       );
       expect(testCaseFQ.expectedOutputQuery.trim()).equals(
-        "select 'hi' as faked union all\nselect 'ben' as faked union all\nselect 'sup?' as faked"
+        "select 'hi' as faked union all\nselect 'ben' as faked union all\nselect 'sup?' as faked",
       );
     });
 
@@ -707,14 +707,14 @@ suite("examples", () => {
           dotJoined(
             databaseWithSuffix("tada-analytics"),
             schemaWithSuffix("df_integration_test"),
-            "example_double_backslash"
-          )
+            "example_double_backslash",
+          ),
       );
       expect(cleanSql(exampleDoubleBackslash.query)).equals(
-        "select * from regexp_extract('01a_data_engine', '^(\\\\d{2}\\\\w)') select * from regexp_extract('01a_data_engine', r'^(\\d{2}\\w)')"
+        "select * from regexp_extract('01a_data_engine', '^(\\\\d{2}\\\\w)') select * from regexp_extract('01a_data_engine', r'^(\\d{2}\\w)')",
       );
       expect(cleanSql(exampleDoubleBackslash.preOps[0])).equals(
-        "select * from regexp_extract('\\\\\\\\', '\\\\')"
+        "select * from regexp_extract('\\\\\\\\', '\\\\')",
       );
     });
   });
@@ -723,13 +723,13 @@ suite("examples", () => {
     try {
       await compile({
         projectDir: "tests/api/projects/never_finishes_compiling",
-        timeoutMillis: 1000
+        timeoutMillis: 1000,
       });
       fail("Compilation timeout Error expected.");
     } catch (e) {
       expect(e.message).to.equal(
         "Compilation timed out after 1 seconds. To allow more time, " +
-          "re-run with a longer --timeout (e.g. --timeout=2m, --timeout=1h)."
+          "re-run with a longer --timeout (e.g. --timeout=2m, --timeout=1h).",
       );
     }
   });
@@ -737,7 +737,7 @@ suite("examples", () => {
   test("invalid dataform json throws error", async () => {
     try {
       await compile({
-        projectDir: path.resolve("tests/api/projects/invalid_dataform_json")
+        projectDir: path.resolve("tests/api/projects/invalid_dataform_json"),
       });
       fail("Should have failed.");
     } catch (e) {
@@ -748,7 +748,7 @@ suite("examples", () => {
   test("version is correctly set", async () => {
     const graph = await compile({
       projectDir: "tests/api/projects/common_v2",
-      projectConfigOverride: { warehouse: "bigquery" }
+      projectConfigOverride: { warehouse: "bigquery" },
     });
     const { version: expectedVersion } = require("df/core/version");
     expect(graph.dataformCoreVersion).equals(expectedVersion);

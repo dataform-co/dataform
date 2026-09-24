@@ -13,7 +13,7 @@ import {
   resolvableAsTarget,
   resolveActionsConfigFilename,
   toResolvable,
-  validateQueryString
+  validateQueryString,
 } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
@@ -31,7 +31,7 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
   constructor(
     session?: Session,
     config?: dataform.ActionConfig.DataPreparationConfig,
-    configPath?: string
+    configPath?: string,
   ) {
     super(session);
     this.session = session;
@@ -41,8 +41,10 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
       // This handles both .yaml and .dp.yaml extensions
       const fileName = Path.filename(config.filename);
 
-      if (fileName.toLowerCase().endsWith(".dp.yaml") ||
-          fileName.toLowerCase().endsWith(".dp.sqlx")) {
+      if (
+        fileName.toLowerCase().endsWith(".dp.yaml") ||
+        fileName.toLowerCase().endsWith(".dp.sqlx")
+      ) {
         config.name = fileName.slice(0, -8);
       } else if (
         fileName.toLowerCase().endsWith(".yaml") ||
@@ -52,8 +54,7 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
       } else {
         throw new Error("Only YAML and SQLX files are supported");
       }
-    } else if (config.name.endsWith(".dp") &&
-        config.filename.endsWith(".dp.sqlx")) {
+    } else if (config.name.endsWith(".dp") && config.filename.endsWith(".dp.sqlx")) {
       // SQLX actions have the name set in the config from the file name.
       // Remove the .dp suffix to avoid compilation failures.
       config.name = config.name.slice(0, -3);
@@ -96,8 +97,8 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
    */
   public dependencies(value: Resolvable | Resolvable[]) {
     const newDependencies = Array.isArray(value) ? value : [value];
-    newDependencies.forEach(resolvable =>
-      this.proto.dependencyTargets.push(checkAssertionsForDependency(this, resolvable))
+    newDependencies.forEach((resolvable) =>
+      this.proto.dependencyTargets.push(checkAssertionsForDependency(this, resolvable)),
     );
     return this;
   }
@@ -127,7 +128,7 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     return verifyObjectMatchesProto(
       dataform.DataPreparation,
       this.proto,
-      VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM
+      VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM,
     );
   }
 
@@ -136,7 +137,7 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
       dataform.Target.create({ ...this.proto.target, database }),
       this.session.projectConfig,
       this.proto.fileName,
-      { validateTarget: true }
+      { validateTarget: true },
     );
     return this;
   }
@@ -146,7 +147,7 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
       dataform.Target.create({ ...this.proto.target, schema }),
       this.session.projectConfig,
       this.proto.fileName,
-      { validateTarget: true }
+      { validateTarget: true },
     );
     return this;
   }
@@ -156,18 +157,18 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
       [key: string]: any;
     },
     session?: Session,
-    config?: dataform.ActionConfig.DataPreparationConfig
+    config?: dataform.ActionConfig.DataPreparationConfig,
   ) {
     const defaultTarget = dataform.Target.create({ name: config.name });
     this.proto.target = this.finalizeTarget(
       this.applySessionToTarget(defaultTarget, session.projectConfig, config.filename, {
-        validateTarget: true
-      })
+        validateTarget: true,
+      }),
     );
     this.proto.targets = [this.proto.target];
     this.proto.canonicalTarget = this.applySessionToTarget(
       defaultTarget,
-      session.canonicalProjectConfig
+      session.canonicalProjectConfig,
     );
     this.proto.canonicalTargets = [this.proto.canonicalTarget];
     const resolvedDefinition = this.applySessionToDataPreparationContents(dataPreparationAsJson);
@@ -180,17 +181,17 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
       [key: string]: any;
     },
     session?: Session,
-    config?: dataform.ActionConfig.DataPreparationConfig
+    config?: dataform.ActionConfig.DataPreparationConfig,
   ) {
-    const resolvedTargets = targets.map(target =>
+    const resolvedTargets = targets.map((target) =>
       this.applySessionToTarget(target, session.projectConfig, config.filename, {
-        validateTarget: true
-      })
+        validateTarget: true,
+      }),
     );
     // Finalize list of targets.
-    this.proto.targets = resolvedTargets.map(target => this.finalizeTarget(target));
-    this.proto.canonicalTargets = targets.map(target =>
-      this.applySessionToTarget(target, session.canonicalProjectConfig)
+    this.proto.targets = resolvedTargets.map((target) => this.finalizeTarget(target));
+    this.proto.canonicalTargets = targets.map((target) =>
+      this.applySessionToTarget(target, session.canonicalProjectConfig),
     );
     // Resolve all table references with compilation overrides and encode resolved proto instance
     const resolvedDefinition = this.applySessionToDataPreparationContents(dataPreparationAsJson);
@@ -202,9 +203,9 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     this.proto.canonicalTarget = this.proto.canonicalTargets[0];
   }
 
-  private applySessionToDataPreparationContents(definition: {
+  private applySessionToDataPreparationContents(definition: { [key: string]: any }): {
     [key: string]: any;
-  }): { [key: string]: any } {
+  } {
     // Handle empty definitions
     if (!definition) {
       return definition;
@@ -215,7 +216,7 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     const errorTable = definition.configuration?.errorTable;
     if (errorTable) {
       definition.configuration.errorTable = this.applySessionToTableReference(
-        errorTable as { [key: string]: string }
+        errorTable as { [key: string]: string },
       );
     }
 
@@ -227,7 +228,7 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
         const sourceTable = node.source?.table;
         if (sourceTable) {
           definition.nodes[index].source.table = this.applySessionToTableReference(
-            sourceTable as { [key: string]: string }
+            sourceTable as { [key: string]: string },
           );
         }
 
@@ -235,7 +236,7 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
         const destinationTable = node.destination?.table;
         if (destinationTable) {
           definition.nodes[index].destination.table = this.applySessionToTableReference(
-            destinationTable as { [key: string]: string }
+            destinationTable as { [key: string]: string },
           );
         }
       });
@@ -248,28 +249,28 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     const target: dataform.ITarget = {
       database: tableReference.project,
       schema: tableReference.dataset,
-      name: tableReference.table
+      name: tableReference.table,
     };
     const resolvedTarget = this.applySessionToTarget(
       dataform.Target.create(target),
-      this.session.projectConfig
+      this.session.projectConfig,
     );
     // Convert resolved target into a Data Preparation Table Reference
     let resolvedTableReference: { [key: string]: string } = {
-      table: this.session.finalizeName(resolvedTarget.name)
+      table: this.session.finalizeName(resolvedTarget.name),
     };
 
     // Ensure project and dataset field are added in order
     if (resolvedTarget.schema) {
       resolvedTableReference = {
         dataset: this.session.finalizeSchema(resolvedTarget.schema),
-        ...resolvedTableReference
+        ...resolvedTableReference,
       };
     }
     if (resolvedTarget.database) {
       resolvedTableReference = {
         project: this.session.finalizeDatabase(resolvedTarget.database),
-        ...resolvedTableReference
+        ...resolvedTableReference,
       };
     }
     return resolvedTableReference;
@@ -279,13 +280,13 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     const targets: dataform.Target[] = [];
 
     if (definition && definition.nodes) {
-      (definition.nodes as Array<{ [key: string]: any }>).forEach(node => {
+      (definition.nodes as Array<{ [key: string]: any }>).forEach((node) => {
         const table = node.destination?.table;
         if (table) {
           const compiledGraphTarget: dataform.ITarget = {
             database: table.project,
             schema: table.dataset,
-            name: table.table
+            name: table.table,
           };
           targets.push(dataform.Target.create(compiledGraphTarget));
         }
@@ -297,7 +298,7 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
   private configureYaml(
     session?: Session,
     config?: dataform.ActionConfig.DataPreparationConfig,
-    configPath?: string
+    configPath?: string,
   ) {
     config.filename = resolveActionsConfigFilename(config.filename, configPath);
     const dataPreparationAsJson = nativeRequire(config.filename).asJson;
@@ -306,7 +307,7 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     const targets = this.getTargets(
       dataPreparationAsJson as {
         [key: string]: any;
-      }
+      },
     );
 
     // if there are targets in the data preparation, resolve and set targets.
@@ -321,9 +322,9 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     this.proto.tags = config.tags;
     if (config.dependencyTargets) {
       this.dependencies(
-        config.dependencyTargets.map(dependencyTarget =>
-          configTargetToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget))
-        )
+        config.dependencyTargets.map((dependencyTarget) =>
+          configTargetToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget)),
+        ),
       );
     }
     this.proto.fileName = config.filename;
@@ -340,7 +341,7 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     // Add Error Table if specified as a secondary target
     if (config.errorTable != null) {
       const errorTableConfig = dataform.ActionConfig.DataPreparationConfig.ErrorTableConfig.create(
-        config.errorTable
+        config.errorTable,
       );
       const errorTableTarget = actionConfigToCompiledGraphTarget(errorTableConfig);
 
@@ -350,18 +351,19 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
 
     // Add Load configuration
     this.proto.load = this.mapLoadMode(
-        config.loadMode?.mode,
-        config.loadMode?.incrementalColumn,
-        config.loadMode?.uniqueKey);
+      config.loadMode?.mode,
+      config.loadMode?.incrementalColumn,
+      config.loadMode?.uniqueKey,
+    );
 
     // Resolve targets
     this.proto.targets = targets
-      .map(target =>
+      .map((target) =>
         this.applySessionToTarget(target, session.projectConfig, config.filename, {
-          validateTarget: true
-        })
+          validateTarget: true,
+        }),
       )
-      .map(target => this.finalizeTarget(target));
+      .map((target) => this.finalizeTarget(target));
 
     // Add target and error table to proto
     this.proto.target = this.proto.targets[0];
@@ -370,16 +372,16 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     }
 
     // resolve canonical targets
-    this.proto.canonicalTargets = targets.map(target =>
-      this.applySessionToTarget(target, session.canonicalProjectConfig)
+    this.proto.canonicalTargets = targets.map((target) =>
+      this.applySessionToTarget(target, session.canonicalProjectConfig),
     );
     this.proto.canonicalTarget = this.proto.canonicalTargets[0];
 
     if (config.dependencyTargets) {
       this.dependencies(
-        config.dependencyTargets.map(dependencyTarget =>
-          configTargetToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget))
-        )
+        config.dependencyTargets.map((dependencyTarget) =>
+          configTargetToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget)),
+        ),
       );
     }
 
@@ -398,7 +400,7 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
   private mapLoadMode(
     loadMode?: string | number,
     incrementalColumn?: string,
-    uniqueKey?: string[]
+    uniqueKey?: string[],
   ): dataform.LoadConfiguration {
     if (!loadMode) {
       return dataform.LoadConfiguration.create({ replace: {} });
@@ -411,15 +413,15 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
         return dataform.LoadConfiguration.create({ append: {} });
       case "MAXIMUM":
         return dataform.LoadConfiguration.create({
-          maximum: { columnName: this.validateLoadModeColumnName(incrementalColumn) }
+          maximum: { columnName: this.validateLoadModeColumnName(incrementalColumn) },
         });
       case "UNIQUE":
         return dataform.LoadConfiguration.create({
-          unique: { columnName: this.validateLoadModeColumnName(incrementalColumn) }
+          unique: { columnName: this.validateLoadModeColumnName(incrementalColumn) },
         });
       case "MERGE":
         return dataform.LoadConfiguration.create({
-          merge: { uniqueKey: this.validateUniqueKey(uniqueKey) }
+          merge: { uniqueKey: this.validateUniqueKey(uniqueKey) },
         });
       default:
         throw new Error(`LoadMode value "${loadMode}" is not supported`);
@@ -442,9 +444,12 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
 }
 
 export class DataPreparationContext implements ITableContext {
-  public EXPECT : string = " /* @@VALIDATION */ WHERE ";
+  public EXPECT: string = " /* @@VALIDATION */ WHERE ";
 
-  constructor(private dataPreparation: DataPreparation, private isIncremental = false) {}
+  constructor(
+    private dataPreparation: DataPreparation,
+    private isIncremental = false,
+  ) {}
 
   public config(config: dataform.ActionConfig.DataPreparationConfig) {
     this.dataPreparation.config(config);
@@ -480,7 +485,7 @@ export class DataPreparationContext implements ITableContext {
   public database(): string {
     if (!this.dataPreparation.getTarget().database) {
       this.dataPreparation.session.compileError(
-        new Error(`Warehouse does not support multiple databases`)
+        new Error(`Warehouse does not support multiple databases`),
       );
       return "";
     }

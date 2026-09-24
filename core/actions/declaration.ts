@@ -87,7 +87,7 @@ export class Declaration extends ActionBuilder<dataform.Declaration> {
     this.proto.target = this.applySessionToTarget(
       target,
       session.projectConfig,
-      config.filename || filename
+      config.filename || filename,
     );
     this.proto.canonicalTarget = this.applySessionToTarget(target, session.canonicalProjectConfig);
 
@@ -96,9 +96,9 @@ export class Declaration extends ActionBuilder<dataform.Declaration> {
     }
     if (config.columns?.length) {
       this.columns(
-        config.columns.map(columnDescriptor =>
-          dataform.ActionConfig.ColumnDescriptor.create(columnDescriptor)
-        )
+        config.columns.map((columnDescriptor) =>
+          dataform.ActionConfig.ColumnDescriptor.create(columnDescriptor),
+        ),
       );
     }
     this.proto.fileName = config.filename || filename;
@@ -130,9 +130,8 @@ export class Declaration extends ActionBuilder<dataform.Declaration> {
     if (!this.proto.actionDescriptor) {
       this.proto.actionDescriptor = {};
     }
-    this.proto.actionDescriptor.columns = ColumnDescriptors.mapConfigProtoToCompilationProto(
-      columns
-    );
+    this.proto.actionDescriptor.columns =
+      ColumnDescriptors.mapConfigProtoToCompilationProto(columns);
     return this;
   }
 
@@ -151,7 +150,7 @@ export class Declaration extends ActionBuilder<dataform.Declaration> {
     return verifyObjectMatchesProto(
       dataform.Declaration,
       this.proto,
-      VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM
+      VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM,
     );
   }
 
@@ -161,7 +160,7 @@ export class Declaration extends ActionBuilder<dataform.Declaration> {
    * converted to the new structure.
    */
   private verifyConfig(
-    unverifiedConfig: ILegacyDeclarationConfig
+    unverifiedConfig: ILegacyDeclarationConfig,
   ): dataform.ActionConfig.DeclarationConfig {
     if (unverifiedConfig.database) {
       unverifiedConfig.project = unverifiedConfig.database;
@@ -173,7 +172,7 @@ export class Declaration extends ActionBuilder<dataform.Declaration> {
     }
     if (unverifiedConfig.columns) {
       unverifiedConfig.columns = ColumnDescriptors.mapLegacyObjectToConfigProto(
-        unverifiedConfig.columns as any
+        unverifiedConfig.columns as any,
       );
     }
 
@@ -184,7 +183,7 @@ export class Declaration extends ActionBuilder<dataform.Declaration> {
     return verifyObjectMatchesProto(
       dataform.ActionConfig.DeclarationConfig,
       unverifiedConfig,
-      VerifyProtoErrorBehaviour.SHOW_DOCS_LINK
+      VerifyProtoErrorBehaviour.SHOW_DOCS_LINK,
     );
   }
 }

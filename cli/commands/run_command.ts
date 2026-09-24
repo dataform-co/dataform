@@ -9,13 +9,9 @@ import {
   dryRunOption,
   executionTimeoutOption,
   IRunArgs,
-  runOptions
+  runOptions,
 } from "df/cli/commands/run_options";
-import {
-  assertProjectDirExists,
-  jsonOutputOption,
-  projectDirOption
-} from "df/cli/common_options";
+import { assertProjectDirExists, jsonOutputOption, projectDirOption } from "df/cli/common_options";
 import {
   Logger,
   print,
@@ -24,7 +20,7 @@ import {
   printExecutedAction,
   printExecutionGraph,
   printTestResult,
-  printWarning
+  printWarning,
 } from "df/cli/console";
 import { ProjectConfigOptions } from "df/cli/project_config_options";
 import { actuallyResolve, compiledGraphHasErrors } from "df/cli/util";
@@ -41,14 +37,14 @@ const LINEAGE_DRAIN_TIMEOUT_MS = 15_000;
 function createLineageEmitter(
   argv: yargs.Arguments<IRunArgs>,
   executionGraph: dataform.IExecutionGraph,
-  readCredentials: dataform.IBigQuery | undefined
+  readCredentials: dataform.IBigQuery | undefined,
 ): LineageEmitter | undefined {
   return createLineageEmitterFromFactory({
     cliEmitLineage: argv.emitLineage,
     workflowLineageEnabled: executionGraph.projectConfig?.lineageEnabled ?? undefined,
     dryRun: !!argv.dryRun,
     projectDir: argv.projectDir || process.cwd(),
-    readCredentials
+    readCredentials,
   });
 }
 
@@ -58,41 +54,35 @@ export const runCommand: ICommand<IRunArgs> = {
   positionalOptions: [projectDirOption],
   check: [assertProjectDirExists],
   options: runOptions,
-  processFn: async argv => {
+  processFn: async (argv) => {
     const isJsonOutput = argv.json;
     const logger = new Logger(!isJsonOutput);
 
     if (isJsonOutput && !argv.dryRun) {
       printError(
         `For execution, the --${jsonOutputOption.name} option is only supported if the ` +
-          `--${dryRunOption.name} option is enabled`
+          `--${dryRunOption.name} option is enabled`,
       );
       return 1;
     }
-    if (
-      !isJsonOutput &&
-      argv.timeout != null &&
-      argv.executionTimeout == null
-    ) {
+    if (!isJsonOutput && argv.timeout != null && argv.executionTimeout == null) {
       printWarning(
         "Note: --timeout only bounds project compilation. " +
-          "For a whole-run wall-clock deadline, use --execution-timeout.\n"
+          "For a whole-run wall-clock deadline, use --execution-timeout.\n",
       );
     }
     logger.log("Compiling...\n");
     const compiledGraph = await compile({
       projectDir: argv.projectDir,
       projectConfigOverride: ProjectConfigOptions.constructProjectConfigOverride(argv),
-      timeoutMillis: argv.timeout || undefined
+      timeoutMillis: argv.timeout || undefined,
     });
     if (compiledGraphHasErrors(compiledGraph)) {
       printCompiledGraphErrors(compiledGraph.graphErrors);
       return 1;
     }
     logger.success("Compiled successfully.\n");
-    const readCredentials = credentials.read(
-      actuallyResolve(argv.projectDir, argv.credentials)
-    );
+    const readCredentials = credentials.read(actuallyResolve(argv.projectDir, argv.credentials));
 
     const dbadapter = new BigQueryDbAdapter(readCredentials);
     const executionGraph = await build(
@@ -104,9 +94,9 @@ export const runCommand: ICommand<IRunArgs> = {
         includeDependents: argv.includeDependents,
         tags: argv.tags,
         timeoutMillis: argv.executionTimeout || undefined,
-        jitTimeoutMillis: argv.jitTimeout || undefined
+        jitTimeoutMillis: argv.jitTimeout || undefined,
       },
-      dbadapter
+      dbadapter,
     );
 
     if (
@@ -116,7 +106,7 @@ export const runCommand: ICommand<IRunArgs> = {
       // SQL is only produced once the Runner triggers JiT compilation, so falling
       // through ensures the JSON dry-run output includes the generated SQL rather
       // than the raw jitCode.
-      !executionGraph.actions.some(action => !!action.jitCode)
+      !executionGraph.actions.some((action) => !!action.jitCode)
     ) {
       printExecutionGraph(executionGraph, isJsonOutput);
       return 0;
@@ -125,8 +115,8 @@ export const runCommand: ICommand<IRunArgs> = {
     if (argv.runTests) {
       logger.log(`Running ${compiledGraph.tests.length} unit tests...\n`);
       const testResults = await test(dbadapter, compiledGraph.tests);
-      testResults.forEach(testResult => printTestResult(testResult));
-      if (testResults.some(testResult => !testResult.successful)) {
+      testResults.forEach((testResult) => printTestResult(testResult));
+      if (testResults.some((testResult) => !testResult.successful)) {
         printError("\nUnit tests did not pass; aborting run.");
         return 1;
       }
@@ -134,7 +124,7 @@ export const runCommand: ICommand<IRunArgs> = {
     }
 
     let bigqueryOptions: {} = {
-      actionRetryLimit: argv.actionRetryLimit
+      actionRetryLimit: argv.actionRetryLimit,
     };
     if (argv.dryRun) {
       bigqueryOptions = { ...bigqueryOptions, dryRun: argv.dryRun };
@@ -147,7 +137,7 @@ export const runCommand: ICommand<IRunArgs> = {
     }
 
     const actionsByName = new Map<string, dataform.IExecutionAction>();
-    executionGraph.actions.forEach(action => {
+    executionGraph.actions.forEach((action) => {
       actionsByName.set(targetAsReadableString(action.target), action);
     });
 
@@ -164,15 +154,11 @@ export const runCommand: ICommand<IRunArgs> = {
 
     const lineageEmitter = createLineageEmitter(argv, executionGraph, readCredentials);
 
-    const runner = run(
-      dbadapter,
-      executionGraph,
-      {
-        projectDir: argv.projectDir,
-        bigquery: bigqueryOptions,
-        lineageEmitter
-      }
-    );
+    const runner = run(dbadapter, executionGraph, {
+      projectDir: argv.projectDir,
+      bigquery: bigqueryOptions,
+      lineageEmitter,
+    });
     process.on("SIGINT", () => {
       runner.cancel();
     });
@@ -182,18 +168,17 @@ export const runCommand: ICommand<IRunArgs> = {
     const printExecutedGraph = (executedGraph: dataform.IRunResult) => {
       executedGraph.actions
         .filter(
-          actionResult =>
-            actionResult.status !== dataform.ActionResult.ExecutionStatus.RUNNING
+          (actionResult) => actionResult.status !== dataform.ActionResult.ExecutionStatus.RUNNING,
         )
         .filter(
-          executedAction =>
-            !alreadyPrintedActions.has(targetAsReadableString(executedAction.target))
+          (executedAction) =>
+            !alreadyPrintedActions.has(targetAsReadableString(executedAction.target)),
         )
-        .forEach(executedAction => {
+        .forEach((executedAction) => {
           printExecutedAction(
             executedAction,
             actionsByName.get(targetAsReadableString(executedAction.target)),
-            argv.dryRun
+            argv.dryRun,
           );
           alreadyPrintedActions.add(targetAsReadableString(executedAction.target));
         });
@@ -224,5 +209,5 @@ export const runCommand: ICommand<IRunArgs> = {
       }
     }
     return runResult.status === dataform.RunResult.ExecutionStatus.SUCCESSFUL ? 0 : 1;
-  }
+  },
 };

@@ -14,7 +14,7 @@ const TABLE_ACTION: dataform.ITable = {
   canonicalTarget: TABLE_TARGET,
   query: "select 1 as id",
   tags: ["daily"],
-  dependencyTargets: []
+  dependencyTargets: [],
 };
 
 const GRAPH_ACTION: dataform.IPropertyGraph = {
@@ -24,12 +24,12 @@ const GRAPH_ACTION: dataform.IPropertyGraph = {
     {
       name: "Book",
       dataSource: TABLE_TARGET,
-      keys: ["id"]
-    }
+      keys: ["id"],
+    },
   ],
   relationships: [],
   dependencyTargets: [TABLE_TARGET],
-  graphBody: "NODE TABLES (`p.d.books` KEY (id))"
+  graphBody: "NODE TABLES (`p.d.books` KEY (id))",
 };
 
 const TAGGED_GRAPH_TARGET: dataform.ITarget = { database: "p", schema: "d", name: "NightlyGraph" };
@@ -41,13 +41,13 @@ const TAGGED_GRAPH_ACTION: dataform.IPropertyGraph = {
     {
       name: "Book",
       dataSource: TABLE_TARGET,
-      keys: ["id"]
-    }
+      keys: ["id"],
+    },
   ],
   relationships: [],
   dependencyTargets: [TABLE_TARGET],
   graphBody: "NODE TABLES (`p.d.books` KEY (id))",
-  tags: ["nightly"]
+  tags: ["nightly"],
 };
 
 function makeCompiledGraph(): dataform.ICompiledGraph {
@@ -56,7 +56,7 @@ function makeCompiledGraph(): dataform.ICompiledGraph {
     operations: [],
     assertions: [],
     propertyGraphs: [GRAPH_ACTION],
-    targets: [TABLE_TARGET, GRAPH_TARGET]
+    targets: [TABLE_TARGET, GRAPH_TARGET],
   };
 }
 
@@ -68,22 +68,20 @@ suite("prune", () => {
         operations: [],
         assertions: [],
         propertyGraphs: [GRAPH_ACTION],
-        targets: [TABLE_TARGET, GRAPH_TARGET]
-      })
+        targets: [TABLE_TARGET, GRAPH_TARGET],
+      }),
     );
   });
 
   test("--actions=<graph_name> selects only the graph", () => {
-    expect(
-      asPlainObject(prune(makeCompiledGraph(), { actions: ["LibraryGraph"] }))
-    ).deep.equals(
+    expect(asPlainObject(prune(makeCompiledGraph(), { actions: ["LibraryGraph"] }))).deep.equals(
       asPlainObject({
         tables: [],
         operations: [],
         assertions: [],
         propertyGraphs: [GRAPH_ACTION],
-        targets: [GRAPH_TARGET]
-      })
+        targets: [GRAPH_TARGET],
+      }),
     );
   });
 
@@ -92,17 +90,17 @@ suite("prune", () => {
       asPlainObject(
         prune(makeCompiledGraph(), {
           actions: ["LibraryGraph"],
-          includeDependencies: true
-        })
-      )
+          includeDependencies: true,
+        }),
+      ),
     ).deep.equals(
       asPlainObject({
         tables: [TABLE_ACTION],
         operations: [],
         assertions: [],
         propertyGraphs: [GRAPH_ACTION],
-        targets: [TABLE_TARGET, GRAPH_TARGET]
-      })
+        targets: [TABLE_TARGET, GRAPH_TARGET],
+      }),
     );
   });
 
@@ -111,17 +109,17 @@ suite("prune", () => {
       asPlainObject(
         prune(makeCompiledGraph(), {
           actions: ["books"],
-          includeDependents: true
-        })
-      )
+          includeDependents: true,
+        }),
+      ),
     ).deep.equals(
       asPlainObject({
         tables: [TABLE_ACTION],
         operations: [],
         assertions: [],
         propertyGraphs: [GRAPH_ACTION],
-        targets: [TABLE_TARGET, GRAPH_TARGET]
-      })
+        targets: [TABLE_TARGET, GRAPH_TARGET],
+      }),
     );
   });
 
@@ -132,8 +130,8 @@ suite("prune", () => {
         operations: [],
         assertions: [],
         propertyGraphs: [],
-        targets: [TABLE_TARGET]
-      })
+        targets: [TABLE_TARGET],
+      }),
     );
   });
 
@@ -143,7 +141,7 @@ suite("prune", () => {
       operations: [],
       assertions: [],
       propertyGraphs: [GRAPH_ACTION, TAGGED_GRAPH_ACTION],
-      targets: [TABLE_TARGET, GRAPH_TARGET, TAGGED_GRAPH_TARGET]
+      targets: [TABLE_TARGET, GRAPH_TARGET, TAGGED_GRAPH_TARGET],
     };
     expect(asPlainObject(prune(compiledGraph, { tags: ["nightly"] }))).deep.equals(
       asPlainObject({
@@ -151,22 +149,22 @@ suite("prune", () => {
         operations: [],
         assertions: [],
         propertyGraphs: [TAGGED_GRAPH_ACTION],
-        targets: [TAGGED_GRAPH_TARGET]
-      })
+        targets: [TAGGED_GRAPH_TARGET],
+      }),
     );
   });
 
   test("--actions=<pattern> matches graph by readable target string", () => {
     expect(
-      asPlainObject(prune(makeCompiledGraph(), { actions: ["p.d.LibraryGraph"] }))
+      asPlainObject(prune(makeCompiledGraph(), { actions: ["p.d.LibraryGraph"] })),
     ).deep.equals(
       asPlainObject({
         tables: [],
         operations: [],
         assertions: [],
         propertyGraphs: [GRAPH_ACTION],
-        targets: [GRAPH_TARGET]
-      })
+        targets: [GRAPH_TARGET],
+      }),
     );
   });
 });

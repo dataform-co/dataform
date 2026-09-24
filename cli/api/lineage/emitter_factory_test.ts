@@ -3,7 +3,7 @@ import { expect } from "chai";
 import { LineageEmitter } from "df/cli/api/lineage/emitter";
 import {
   createLineageEmitter,
-  ILineageEmitterFactoryInput
+  ILineageEmitterFactoryInput,
 } from "df/cli/api/lineage/emitter_factory";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
@@ -21,27 +21,26 @@ class StderrCapture {
 
 const credentials = dataform.BigQuery.create({
   projectId: "test-project",
-  location: "US"
+  location: "US",
 });
 
-function baseInput(overrides: Partial<ILineageEmitterFactoryInput> = {}): ILineageEmitterFactoryInput {
+function baseInput(
+  overrides: Partial<ILineageEmitterFactoryInput> = {},
+): ILineageEmitterFactoryInput {
   return {
     cliEmitLineage: undefined,
     workflowLineageEnabled: undefined,
     dryRun: false,
     projectDir: "/workspaces/my-project",
     readCredentials: credentials,
-    ...overrides
+    ...overrides,
   };
 }
 
 suite("createLineageEmitter", () => {
   test("skip_reason=workflow_opt_out is logged once when workflow_settings opts out and no CLI flag was passed", () => {
     const stderr = new StderrCapture();
-    const emitter = createLineageEmitter(
-      baseInput({ workflowLineageEnabled: false }),
-      stderr
-    );
+    const emitter = createLineageEmitter(baseInput({ workflowLineageEnabled: false }), stderr);
     expect(emitter).to.equal(undefined);
     expect(stderr.writes.length).to.equal(1);
     expect(stderr.combined).to.contain("skip_reason=workflow_opt_out");
@@ -52,7 +51,7 @@ suite("createLineageEmitter", () => {
     const stderr = new StderrCapture();
     const emitter = createLineageEmitter(
       baseInput({ cliEmitLineage: false, workflowLineageEnabled: true }),
-      stderr
+      stderr,
     );
     expect(emitter).to.equal(undefined);
     expect(stderr.writes.length).to.equal(1);
@@ -64,7 +63,7 @@ suite("createLineageEmitter", () => {
     const stderr = new StderrCapture();
     const emitter = createLineageEmitter(
       baseInput({ cliEmitLineage: false, workflowLineageEnabled: false }),
-      stderr
+      stderr,
     );
     expect(emitter).to.equal(undefined);
     expect(stderr.combined).to.contain("skip_reason=invocation_override");
@@ -80,20 +79,14 @@ suite("createLineageEmitter", () => {
 
   test("constructs a LineageEmitter and stays silent when CLI flag opts in", () => {
     const stderr = new StderrCapture();
-    const emitter = createLineageEmitter(
-      baseInput({ cliEmitLineage: true }),
-      stderr
-    );
+    const emitter = createLineageEmitter(baseInput({ cliEmitLineage: true }), stderr);
     expect(emitter).to.be.instanceOf(LineageEmitter);
     expect(stderr.writes).to.deep.equal([]);
   });
 
   test("constructs a LineageEmitter and stays silent when workflow_settings opts in", () => {
     const stderr = new StderrCapture();
-    const emitter = createLineageEmitter(
-      baseInput({ workflowLineageEnabled: true }),
-      stderr
-    );
+    const emitter = createLineageEmitter(baseInput({ workflowLineageEnabled: true }), stderr);
     expect(emitter).to.be.instanceOf(LineageEmitter);
     expect(stderr.writes).to.deep.equal([]);
   });
@@ -102,7 +95,7 @@ suite("createLineageEmitter", () => {
     const stderr = new StderrCapture();
     const emitter = createLineageEmitter(
       baseInput({ cliEmitLineage: true, readCredentials: undefined }),
-      stderr
+      stderr,
     );
     expect(emitter).to.equal(undefined);
     expect(stderr.writes).to.deep.equal([]);

@@ -21,20 +21,20 @@ suite("@dataform/integration/run", { parallel: true }, () => {
 
     // Drop schemas to make sure schema creation works.
     await dbadapter.execute(
-      `drop schema if exists \`${INTEGRATION_TEST_PROJECT}.df_integration_test_project_e2e\` cascade`
+      `drop schema if exists \`${INTEGRATION_TEST_PROJECT}.df_integration_test_project_e2e\` cascade`,
     );
 
     // Run the project.
     const executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
     const executedGraph = await dfapi.run(dbadapter, executionGraph).result();
 
-    const actionMap = keyBy(executedGraph.actions, v => targetAsReadableString(v.target));
+    const actionMap = keyBy(executedGraph.actions, (v) => targetAsReadableString(v.target));
     expect(Object.keys(actionMap).length).eql(20);
 
     // Check the status of action execution.
     const expectedFailedActions = [
       `${INTEGRATION_TEST_PROJECT}.df_integration_test_assertions_project_e2e.example_assertion_fail`,
-      `${INTEGRATION_TEST_PROJECT}.df_integration_test_project_e2e.example_operation_partial_fail`
+      `${INTEGRATION_TEST_PROJECT}.df_integration_test_project_e2e.example_operation_partial_fail`,
     ];
     for (const actionName of Object.keys(actionMap)) {
       const expectedResult = expectedFailedActions.includes(actionName)
@@ -42,20 +42,20 @@ suite("@dataform/integration/run", { parallel: true }, () => {
         : dataform.ActionResult.ExecutionStatus.SUCCESSFUL;
       expect(actionMap[actionName].status).equals(
         expectedResult,
-        JSON.stringify(actionMap[actionName], null, 4)
+        JSON.stringify(actionMap[actionName], null, 4),
       );
     }
 
     expect(
       actionMap[
         `${INTEGRATION_TEST_PROJECT}.df_integration_test_assertions_project_e2e.example_assertion_fail`
-      ].tasks[1].errorMessage
+      ].tasks[1].errorMessage,
     ).to.eql("bigquery error: Assertion failed: query returned 1 row(s).");
 
     expect(
       actionMap[
         `${INTEGRATION_TEST_PROJECT}.df_integration_test_project_e2e.example_operation_partial_fail`
-      ].tasks[0].errorMessage
+      ].tasks[0].errorMessage,
     ).to.eql("bigquery error: Query error: Unrecognized name: invalid_column at [3:8]");
   });
 
@@ -68,49 +68,49 @@ suite("@dataform/integration/run", { parallel: true }, () => {
     // Run two iterations of the project.
     const adapter = new ExecutionSql(
       compiledGraph.projectConfig,
-      compiledGraph.dataformCoreVersion
+      compiledGraph.dataformCoreVersion,
     );
     for (const runIteration of [
       {
         runConfig: {
           actions: ["example_incremental", "example_incremental_merge"],
-          includeDependencies: true
+          includeDependencies: true,
         },
         expectedIncrementalRows: 3,
-        expectedIncrementalMergeRows: 2
+        expectedIncrementalMergeRows: 2,
       },
       {
         runConfig: {
-          actions: ["example_incremental", "example_incremental_merge"]
+          actions: ["example_incremental", "example_incremental_merge"],
         },
         expectedIncrementalRows: 5,
-        expectedIncrementalMergeRows: 2
-      }
+        expectedIncrementalMergeRows: 2,
+      },
     ]) {
       const executionGraph = await dfapi.build(compiledGraph, runIteration.runConfig, dbadapter);
       const runResult = await dfapi.run(dbadapter, executionGraph).result();
       expect(dataform.RunResult.ExecutionStatus[runResult.status]).eql(
-        dataform.RunResult.ExecutionStatus[dataform.RunResult.ExecutionStatus.SUCCESSFUL]
+        dataform.RunResult.ExecutionStatus[dataform.RunResult.ExecutionStatus.SUCCESSFUL],
       );
       const [incrementalRows, incrementalMergeRows] = await Promise.all([
         getTableRows(
           {
             database: INTEGRATION_TEST_PROJECT,
             schema: "df_integration_test_incremental_tables",
-            name: "example_incremental"
+            name: "example_incremental",
           },
           adapter,
-          dbadapter
+          dbadapter,
         ),
         getTableRows(
           {
             database: INTEGRATION_TEST_PROJECT,
             schema: "df_integration_test_incremental_tables",
-            name: "example_incremental_merge"
+            name: "example_incremental_merge",
           },
           adapter,
-          dbadapter
-        )
+          dbadapter,
+        ),
       ]);
       expect(incrementalRows.length).equals(runIteration.expectedIncrementalRows);
       expect(incrementalMergeRows.length).equals(runIteration.expectedIncrementalMergeRows);
@@ -128,13 +128,13 @@ suite("@dataform/integration/run", { parallel: true }, () => {
       compiledGraph,
       {
         actions: ["example_incremental", "example_view"],
-        includeDependencies: true
+        includeDependencies: true,
       },
-      dbadapter
+      dbadapter,
     );
     const runResult = await dfapi.run(dbadapter, executionGraph).result();
     expect(dataform.RunResult.ExecutionStatus[runResult.status]).eql(
-      dataform.RunResult.ExecutionStatus[dataform.RunResult.ExecutionStatus.SUCCESSFUL]
+      dataform.RunResult.ExecutionStatus[dataform.RunResult.ExecutionStatus.SUCCESSFUL],
     );
 
     // Check expected metadata.
@@ -143,19 +143,19 @@ suite("@dataform/integration/run", { parallel: true }, () => {
         target: {
           database: INTEGRATION_TEST_PROJECT,
           schema: "df_integration_test_dataset_metadata",
-          name: "example_incremental"
+          name: "example_incremental",
         },
         expectedDescription: "An incremental table",
         expectedFields: [
           dataform.Field.create({
             description: "the timestamp",
             name: "user_timestamp",
-            primitive: dataform.Field.Primitive.INTEGER
+            primitive: dataform.Field.Primitive.INTEGER,
           }),
           dataform.Field.create({
             description: "the id",
             name: "user_id",
-            primitive: dataform.Field.Primitive.INTEGER
+            primitive: dataform.Field.Primitive.INTEGER,
           }),
           dataform.Field.create({
             name: "nested_data",
@@ -165,38 +165,38 @@ suite("@dataform/integration/run", { parallel: true }, () => {
                 dataform.Field.create({
                   description: "nested timestamp",
                   name: "user_timestamp",
-                  primitive: dataform.Field.Primitive.INTEGER
+                  primitive: dataform.Field.Primitive.INTEGER,
                 }),
                 dataform.Field.create({
                   description: "nested id",
                   name: "user_id",
-                  primitive: dataform.Field.Primitive.INTEGER
-                })
-              ]
-            })
-          })
+                  primitive: dataform.Field.Primitive.INTEGER,
+                }),
+              ],
+            }),
+          }),
         ],
-        expectedLabels: {}
+        expectedLabels: {},
       },
       {
         target: {
           database: INTEGRATION_TEST_PROJECT,
           schema: "df_integration_test_dataset_metadata",
-          name: "example_view"
+          name: "example_view",
         },
         expectedDescription: "An example view",
         expectedFields: [
           dataform.Field.create({
             description: "val doc",
             name: "val",
-            primitive: dataform.Field.Primitive.INTEGER
-          })
+            primitive: dataform.Field.Primitive.INTEGER,
+          }),
         ],
         expectedLabels: {
           label1: "val1",
-          label2: "val2"
-        }
-      }
+          label2: "val2",
+        },
+      },
     ]) {
       const metadata = await dbadapter.table(expectedMetadata.target);
       expect(metadata.description).to.equal(expectedMetadata.expectedDescription);

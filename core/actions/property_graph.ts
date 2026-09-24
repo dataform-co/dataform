@@ -49,12 +49,12 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
     const configTarget = dataform.Target.create({
       name: config.name,
       schema: config.targetDataset?.datasetId,
-      database: config.targetDataset?.projectId
+      database: config.targetDataset?.projectId,
     });
     this.proto.target = this.applySessionToTarget(configTarget, session.projectConfig, filename);
     this.proto.canonicalTarget = this.applySessionToTarget(
       configTarget,
-      session.canonicalProjectConfig
+      session.canonicalProjectConfig,
     );
 
     this.proto.fileName = filename;
@@ -73,11 +73,11 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
       this.dependOnDependencyAssertions = config.dependOnDependencyAssertions;
     }
 
-    this.proto.entities = config.entities.map(entityConfig =>
-      this.buildEntity(entityConfig, config.name)
+    this.proto.entities = config.entities.map((entityConfig) =>
+      this.buildEntity(entityConfig, config.name),
     );
-    this.proto.relationships = (config.relationships || []).map(relConfig =>
-      this.buildRelationship(relConfig, config.name)
+    this.proto.relationships = (config.relationships || []).map((relConfig) =>
+      this.buildRelationship(relConfig, config.name),
     );
 
     this.validateUniqueNames(config.name);
@@ -97,7 +97,7 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
     this.proto = verifyObjectMatchesProto(
       dataform.PropertyGraph,
       this.proto,
-      VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM
+      VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM,
     );
     return this.proto;
   }
@@ -121,7 +121,7 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
 
   private resolveRefIntoDataSource(
     entityOrRel: dataform.IGraphEntity | dataform.IGraphRelationship,
-    key: string
+    key: string,
   ): boolean {
     const rawRef = this.pendingRefs.get(key);
     if (!rawRef) {
@@ -156,13 +156,13 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
     return verifyObjectMatchesProto(
       dataform.PropertyGraphConfig,
       unverifiedConfig,
-      VerifyProtoErrorBehaviour.SHOW_DOCS_LINK
+      VerifyProtoErrorBehaviour.SHOW_DOCS_LINK,
     );
   }
 
   private buildEntity(
     entityConfig: dataform.IGraphEntityConfig,
-    graphName: string
+    graphName: string,
   ): dataform.GraphEntity {
     if (!entityConfig.name) {
       throw new Error(`Property graph '${graphName}': every entity must have a 'name'.`);
@@ -180,13 +180,13 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
       name: entityName,
       dataSource,
       keys: entityConfig.keys,
-      labels
+      labels,
     });
   }
 
   private buildRelationship(
     relConfig: dataform.IGraphRelationshipConfig,
-    graphName: string
+    graphName: string,
   ): dataform.GraphRelationship {
     if (!relConfig.name) {
       throw new Error(`Property graph '${graphName}': every relationship must have a 'name'.`);
@@ -213,14 +213,14 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
       keys: relConfig.keys || [],
       source,
       destination,
-      labels
+      labels,
     });
   }
 
   private resolveDataSource(
     entityOrRel: dataform.IGraphEntityConfig | dataform.IGraphRelationshipConfig,
     pendingKey: string,
-    where: string
+    where: string,
   ): dataform.Target {
     if (entityOrRel.dataSourceCatalog) {
       throw new Error(`${where}: ${CATALOG_NOT_SUPPORTED_MESSAGE}`);
@@ -233,13 +233,12 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
       if (!ds.table) {
         throw new Error(`${where}: 'dataSourceDataset.table' is required.`);
       }
-      const project =
-        ds.project || this.session.projectConfig.defaultDatabase || undefined;
+      const project = ds.project || this.session.projectConfig.defaultDatabase || undefined;
       const dataset = ds.dataset || this.session.projectConfig.defaultSchema || undefined;
       if (!dataset) {
         throw new Error(
           `${where}: 'dataSourceDataset.dataset' is required (no defaultDataset in workflow ` +
-            `settings).`
+            `settings).`,
         );
       }
       return dataform.Target.create({ name: ds.table, schema: dataset, database: project });
@@ -277,9 +276,7 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
     const entityNames = new Set<string>();
     for (const entity of this.proto.entities) {
       if (entityNames.has(entity.name)) {
-        throw new Error(
-          `Property graph '${graphName}': duplicate entity name '${entity.name}'.`
-        );
+        throw new Error(`Property graph '${graphName}': duplicate entity name '${entity.name}'.`);
       }
       entityNames.add(entity.name);
     }
@@ -287,7 +284,7 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
     for (const rel of this.proto.relationships) {
       if (relNames.has(rel.name)) {
         throw new Error(
-          `Property graph '${graphName}': duplicate relationship name '${rel.name}'.`
+          `Property graph '${graphName}': duplicate relationship name '${rel.name}'.`,
         );
       }
       relNames.add(rel.name);
@@ -319,20 +316,20 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
     for (const rel of this.proto.relationships) {
       for (const [role, endpoint] of [
         ["source", rel.source],
-        ["destination", rel.destination]
+        ["destination", rel.destination],
       ] as const) {
         const targetKeys = keysByEntity.get(endpoint.entity);
         if (!targetKeys) {
           throw new Error(
             `Property graph '${graphName}': relationship '${rel.name}' ${role} references ` +
-              `unknown entity '${endpoint.entity}'.`
+              `unknown entity '${endpoint.entity}'.`,
           );
         }
         if (endpoint.entityColumns.length !== endpoint.relationshipColumns.length) {
           throw new Error(
             `Property graph '${graphName}': relationship '${rel.name}' ${role} join_keys arity ` +
               `mismatch: relationshipColumns has ${endpoint.relationshipColumns.length}, ` +
-              `entityColumns has ${endpoint.entityColumns.length}.`
+              `entityColumns has ${endpoint.entityColumns.length}.`,
           );
         }
       }
@@ -341,10 +338,10 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
 
   private emitGraphBody(): string {
     const parts: string[] = [];
-    const nodeEntries = this.proto.entities.map(entity => renderNode(entity));
+    const nodeEntries = this.proto.entities.map((entity) => renderNode(entity));
     parts.push(`NODE TABLES (\n  ${nodeEntries.join(",\n  ")}\n)`);
     if (this.proto.relationships.length > 0) {
-      const edgeEntries = this.proto.relationships.map(rel => renderEdge(rel));
+      const edgeEntries = this.proto.relationships.map((rel) => renderEdge(rel));
       parts.push(`EDGE TABLES (\n  ${edgeEntries.join(",\n  ")}\n)`);
     }
     return parts.join("\n");
@@ -381,7 +378,7 @@ function normalizeFields(container: any) {
   }
   if (Array.isArray(f)) {
     container.fields = f.map((field: string | dataform.IGraphFieldConfig) =>
-      typeof field === "string" ? { name: field, expression: field } : field
+      typeof field === "string" ? { name: field, expression: field } : field,
     );
   }
 }
@@ -401,14 +398,14 @@ function normalizeJoinKeys(endpoint: any) {
   if (Array.isArray(endpoint.joinKeys)) {
     endpoint.joinKeys = {
       relationshipColumns: endpoint.joinKeys,
-      entityColumns: []
+      entityColumns: [],
     };
   }
 }
 
 function buildEndpoint(
   endpointConfig: dataform.IGraphEndpointConfig,
-  where: string
+  where: string,
 ): dataform.GraphEndpoint {
   if (!endpointConfig.entity) {
     throw new Error(`${where}: must declare 'entity'.`);
@@ -424,26 +421,26 @@ function buildEndpoint(
   return dataform.GraphEndpoint.create({
     entity: endpointConfig.entity,
     relationshipColumns: relCols,
-    entityColumns: entityCols
+    entityColumns: entityCols,
   });
 }
 
 function buildLabels(
   defaultLabelName: string,
   config: dataform.IGraphEntityConfig | dataform.IGraphRelationshipConfig,
-  where: string
+  where: string,
 ): dataform.GraphLabel[] {
   const rootFields = config.fields || [];
   const rootWildcard = config.fieldWildcard;
   const configuredLabels = config.labels || [];
   if ((rootFields.length > 0 || rootWildcard) && configuredLabels.length > 0) {
     throw new Error(
-      `${where} cannot combine root-level 'fields'/'fieldWildcard' with a 'labels' list.`
+      `${where} cannot combine root-level 'fields'/'fieldWildcard' with a 'labels' list.`,
     );
   }
   if (configuredLabels.length > 0) {
-    const built = configuredLabels.map(label => buildLabel(label, where, defaultLabelName));
-    const defaultCount = built.filter(label => label.isDefault).length;
+    const built = configuredLabels.map((label) => buildLabel(label, where, defaultLabelName));
+    const defaultCount = built.filter((label) => label.isDefault).length;
     if (defaultCount > 1) {
       throw new Error(`${where}: only one DEFAULT label is allowed.`);
     }
@@ -462,7 +459,7 @@ function buildLabels(
     description: config.description || undefined,
     synonyms: config.synonyms || [],
     fields: rootFields,
-    fieldWildcard: rootWildcard
+    fieldWildcard: rootWildcard,
   });
   return [buildLabel(synthesized, where, defaultLabelName, true)];
 }
@@ -471,7 +468,7 @@ function buildLabel(
   label: dataform.IGraphLabelConfig,
   where: string,
   defaultLabelName: string,
-  forceDefault = false
+  forceDefault = false,
 ): dataform.GraphLabel {
   const isDefault = forceDefault || !label.name || label.name.toUpperCase() === "DEFAULT";
   if (!isDefault && !label.name) {
@@ -481,7 +478,7 @@ function buildLabel(
   const wildcard = label.fieldWildcard;
   if (wildcard && wildcard.importAll === false && wildcard.except && wildcard.except.length > 0) {
     throw new Error(
-      `${where}: label ${labelId} has 'fieldWildcard.except' set but 'importAll' is false.`
+      `${where}: label ${labelId} has 'fieldWildcard.except' set but 'importAll' is false.`,
     );
   }
   const hasFields = !!(label.fields && label.fields.length > 0);
@@ -492,30 +489,30 @@ function buildLabel(
   if (!isDefault && hasOptions) {
     throw new Error(
       `${where}: label ${labelId} cannot declare 'description' or 'synonyms'; ` +
-        `these are only allowed on the DEFAULT label (name absent or 'DEFAULT').`
+        `these are only allowed on the DEFAULT label (name absent or 'DEFAULT').`,
     );
   }
   if (!hasFields && !hasWildcard && !hasOptions) {
     throw new Error(
       `${where}: label ${labelId} must declare at least one of: 'fields', ` +
-        `'fieldWildcard', 'description', or 'synonyms'.`
+        `'fieldWildcard', 'description', or 'synonyms'.`,
     );
   }
   return dataform.GraphLabel.create({
     name: isDefault ? defaultLabelName : label.name,
     description: label.description,
     synonyms: label.synonyms || [],
-    fields: (label.fields || []).map(field =>
+    fields: (label.fields || []).map((field) =>
       dataform.GraphField.create({
         name: field.name,
         expression: field.expression || field.name,
         description: field.description,
-        synonyms: field.synonyms || []
-      })
+        synonyms: field.synonyms || [],
+      }),
     ),
     importAll: !!wildcard?.importAll,
     importExcept: wildcard?.except || [],
-    isDefault
+    isDefault,
   });
 }
 
@@ -526,7 +523,7 @@ function parseTablePath(path: string, where: string): dataform.Target {
   }
   if (parts.length !== 3) {
     throw new Error(
-      `${where}: 'dataSourceString' must be 'project.dataset.table' (got '${path}').`
+      `${where}: 'dataSourceString' must be 'project.dataset.table' (got '${path}').`,
     );
   }
   return dataform.Target.create({ database: parts[0], schema: parts[1], name: parts[2] });
@@ -601,7 +598,7 @@ function renderPropertiesClause(label: dataform.IGraphLabel): string {
   if (label.fields.length === 0) {
     return "";
   }
-  const rendered = label.fields.map(field => renderField(field));
+  const rendered = label.fields.map((field) => renderField(field));
   return `PROPERTIES (${rendered.join(", ")})`;
 }
 
@@ -616,14 +613,14 @@ function renderField(field: dataform.IGraphField): string {
 
 function renderOptionsClause(
   description: string | null | undefined,
-  synonyms: string[] | null | undefined
+  synonyms: string[] | null | undefined,
 ): string {
   const parts: string[] = [];
   if (description) {
     parts.push(`description=${JSON.stringify(description)}`);
   }
   if (synonyms && synonyms.length > 0) {
-    parts.push(`synonyms=[${synonyms.map(s => JSON.stringify(s)).join(", ")}]`);
+    parts.push(`synonyms=[${synonyms.map((s) => JSON.stringify(s)).join(", ")}]`);
   }
   return parts.length > 0 ? `OPTIONS(${parts.join(", ")})` : "";
 }

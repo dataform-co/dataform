@@ -6,7 +6,7 @@ import {
   Location,
   ProposedFeatures,
   TextDocuments,
-  TextDocumentSyncKind
+  TextDocumentSyncKind,
 } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
@@ -19,7 +19,7 @@ let WORKSPACE_ROOT_FOLDER: string = null;
 
 let settings = {
   compilerOptions: [] as string[],
-  compileOnSave: true
+  compileOnSave: true,
 };
 
 connection.onInitialize(() => {
@@ -27,15 +27,15 @@ connection.onInitialize(() => {
     capabilities: {
       textDocumentSync: TextDocumentSyncKind.Incremental,
       // Tell the client that the server supports definitions
-      definitionProvider: true
-    }
+      definitionProvider: true,
+    },
   };
 });
 
 connection.onInitialized(async () => {
   await Promise.all([
     applySettings(),
-    connection.client.register(DidChangeConfigurationNotification.type)
+    connection.client.register(DidChangeConfigurationNotification.type),
   ]);
   const _ = compileAndValidate();
   const workSpaceFolders = await connection.workspace.getWorkspaceFolders();
@@ -52,7 +52,7 @@ connection.onRequest("compile", async () => {
   const _ = compileAndValidate();
 });
 
-documents.onDidSave(change => {
+documents.onDidSave((change) => {
   if (settings.compileOnSave) {
     const _ = compileAndValidate();
   }
@@ -65,7 +65,7 @@ async function applySettings() {
 async function compileAndValidate() {
   let compilationFailed = false;
   const spawnedProcess = spawn("dataform", ["compile", "--json", ...settings.compilerOptions], {
-    shell: true
+    shell: true,
   });
 
   const compileResult = await getProcessResult(spawnedProcess);
@@ -74,7 +74,7 @@ async function compileAndValidate() {
     if (compileResult.error?.code === "ENOENT") {
       connection.sendNotification(
         "error",
-        "Errors encountered when running 'dataform' CLI. Please ensure that the CLI is installed and up-to-date: 'npm i -g @dataform/cli'."
+        "Errors encountered when running 'dataform' CLI. Please ensure that the CLI is installed and up-to-date: 'npm i -g @dataform/cli'.",
       );
       return;
     } else {
@@ -89,22 +89,22 @@ async function compileAndValidate() {
     console.error("Error parsing 'dataform compile' output", e);
     connection.sendNotification(
       "error",
-      "Error parsing 'dataform compile' output. Please check the output for more information."
+      "Error parsing 'dataform compile' output. Please check the output for more information.",
     );
     return;
   }
 
   if (parsedResult?.graphErrors?.compilationErrors) {
-    parsedResult.graphErrors.compilationErrors.forEach(compilationError => {
+    parsedResult.graphErrors.compilationErrors.forEach((compilationError) => {
       connection.sendNotification(
         "error",
-        compilationError.fileName + ": " + compilationError.message
+        compilationError.fileName + ": " + compilationError.message,
       );
     });
     if (compilationFailed) {
       connection.sendNotification(
         "error",
-        "Errors encountered when running 'dataform' CLI. Please check the output for more information."
+        "Errors encountered when running 'dataform' CLI. Please check the output for more information.",
       );
       return;
     }
@@ -119,125 +119,123 @@ async function getProcessResult(childProcess: ChildProcess) {
   let stderr = "";
   let error: any = null;
   childProcess.stderr.pipe(process.stderr);
-  childProcess.stderr.on("data", chunk => (stderr += String(chunk)));
+  childProcess.stderr.on("data", (chunk) => (stderr += String(chunk)));
   childProcess.stdout.pipe(process.stdout);
-  childProcess.stdout.on("data", chunk => (stdout += String(chunk)));
-  childProcess.on("error", err => (error = err));
-  const exitCode: number = await new Promise(resolve => {
+  childProcess.stdout.on("data", (chunk) => (stdout += String(chunk)));
+  childProcess.on("error", (err) => (error = err));
+  const exitCode: number = await new Promise((resolve) => {
     childProcess.on("close", resolve);
   });
   return { exitCode, stdout, stderr, error };
 }
 
 function gatherAllActions(
-  graph = CACHED_COMPILE_GRAPH
+  graph = CACHED_COMPILE_GRAPH,
 ): Array<dataform.Table | dataform.Declaration | dataform.Operation | dataform.Assertion> {
   return [].concat(
     graph.tables ?? [],
     graph.operations ?? [],
     graph.assertions ?? [],
-    graph.declarations ?? []
+    graph.declarations ?? [],
   );
 }
 
-connection.onDefinition(
-  (params): HandlerResult<Location, void> => {
-    const currentFile = documents.get(params.textDocument.uri);
-    const lineWithRef = currentFile.getText({
-      start: { line: params.position.line, character: 0 },
-      end: { line: params.position.line + 1, character: 0 }
-    });
+connection.onDefinition((params): HandlerResult<Location, void> => {
+  const currentFile = documents.get(params.textDocument.uri);
+  const lineWithRef = currentFile.getText({
+    start: { line: params.position.line, character: 0 },
+    end: { line: params.position.line + 1, character: 0 },
+  });
 
-    const refRegex = new RegExp(/ref\s*\(\s*(["'].+?["'])\s*\)/g);
-    const refContents = lineWithRef.match(refRegex);
-    if (!refContents || refContents.length === 0) {
-      return null;
-    }
-
-    // if not compiled yet, we cannot jump to the definition
-    if (CACHED_COMPILE_GRAPH === null) {
-      connection.sendNotification("info", "Project not compiled yet. Please compile first.");
-      return null;
-    }
-
-    // Jump to the one that was clicked or closest
-    const clickedRef = refContents
-      .map(refContent => ({
-        refContent,
-        min: lineWithRef.indexOf(refContent),
-        max: lineWithRef.indexOf(refContent) + refContent.length - 1
-      }))
-      .sort((a, b) => {
-        // sort in priority of closest to the clicked position
-        // if position is within the refContent, distance is 0
-        let distanceToA = 0;
-        if (params.position.character < a.min) {
-          distanceToA = a.min - params.position.character;
-        } else if (params.position.character > a.max) {
-          distanceToA = params.position.character - a.max;
-        }
-
-        let distanceToB = 0;
-        if (params.position.character < b.min) {
-          distanceToB = b.min - params.position.character;
-        } else if (params.position.character > b.max) {
-          distanceToB = params.position.character - b.max;
-        }
-
-        return distanceToA - distanceToB;
-      })[0].refContent;
-
-    // split to dataset, schema and name
-    const linkedTable: dataform.ITarget = { database: null, schema: null, name: null };
-    const splitMatch = clickedRef.match(
-      /^ref\s*\(\s*(["'](.+?)["'])\s*(,\s*["'](.+?)["']\s*)?(,\s*["'](.+?)["']\s*)?,?\s*\)$/
-    );
-    if (splitMatch[6] !== undefined) {
-      linkedTable.database = splitMatch[2];
-      linkedTable.schema = splitMatch[4];
-      linkedTable.name = splitMatch[6];
-    } else if (splitMatch[4] !== undefined) {
-      linkedTable.schema = splitMatch[2];
-      linkedTable.name = splitMatch[4];
-    } else if (splitMatch[2] !== undefined) {
-      linkedTable.name = splitMatch[2];
-    } else {
-      return null;
-    }
-
-    const namePrefix = CACHED_COMPILE_GRAPH.projectConfig?.tablePrefix;
-    let linkedTableNameWtPrefix = "";
-    linkedTableNameWtPrefix =
-      namePrefix !== undefined ? namePrefix + "_" + linkedTable.name : linkedTable.name;
-
-    const foundCompileAction = gatherAllActions().filter(
-      action =>
-        (linkedTable.database === null ||
-          (action?.target?.database !== undefined &&
-            action.target.database === linkedTable.database)) &&
-        (linkedTable.schema === null ||
-          (action?.target?.schema !== undefined && action.target.schema === linkedTable.schema)) &&
-        action?.target?.name !== undefined &&
-        (action.target.name === linkedTable.name || action.target.name === linkedTableNameWtPrefix)
-    );
-    if (foundCompileAction.length === 0) {
-      connection.sendNotification("error", `Definition not found for ${clickedRef}`);
-      return null;
-    } else if (foundCompileAction.length > 1) {
-      connection.sendNotification("error", `Multiple definitions found for ${clickedRef}`);
-      return null;
-    }
-
-    const fileString = `${WORKSPACE_ROOT_FOLDER}/${foundCompileAction[0].fileName}`;
-    return {
-      uri: fileString,
-      range: {
-        start: { line: 0, character: 0 },
-        end: { line: 1, character: 0 }
-      }
-    } as Location;
+  const refRegex = new RegExp(/ref\s*\(\s*(["'].+?["'])\s*\)/g);
+  const refContents = lineWithRef.match(refRegex);
+  if (!refContents || refContents.length === 0) {
+    return null;
   }
-);
+
+  // if not compiled yet, we cannot jump to the definition
+  if (CACHED_COMPILE_GRAPH === null) {
+    connection.sendNotification("info", "Project not compiled yet. Please compile first.");
+    return null;
+  }
+
+  // Jump to the one that was clicked or closest
+  const clickedRef = refContents
+    .map((refContent) => ({
+      refContent,
+      min: lineWithRef.indexOf(refContent),
+      max: lineWithRef.indexOf(refContent) + refContent.length - 1,
+    }))
+    .sort((a, b) => {
+      // sort in priority of closest to the clicked position
+      // if position is within the refContent, distance is 0
+      let distanceToA = 0;
+      if (params.position.character < a.min) {
+        distanceToA = a.min - params.position.character;
+      } else if (params.position.character > a.max) {
+        distanceToA = params.position.character - a.max;
+      }
+
+      let distanceToB = 0;
+      if (params.position.character < b.min) {
+        distanceToB = b.min - params.position.character;
+      } else if (params.position.character > b.max) {
+        distanceToB = params.position.character - b.max;
+      }
+
+      return distanceToA - distanceToB;
+    })[0].refContent;
+
+  // split to dataset, schema and name
+  const linkedTable: dataform.ITarget = { database: null, schema: null, name: null };
+  const splitMatch = clickedRef.match(
+    /^ref\s*\(\s*(["'](.+?)["'])\s*(,\s*["'](.+?)["']\s*)?(,\s*["'](.+?)["']\s*)?,?\s*\)$/,
+  );
+  if (splitMatch[6] !== undefined) {
+    linkedTable.database = splitMatch[2];
+    linkedTable.schema = splitMatch[4];
+    linkedTable.name = splitMatch[6];
+  } else if (splitMatch[4] !== undefined) {
+    linkedTable.schema = splitMatch[2];
+    linkedTable.name = splitMatch[4];
+  } else if (splitMatch[2] !== undefined) {
+    linkedTable.name = splitMatch[2];
+  } else {
+    return null;
+  }
+
+  const namePrefix = CACHED_COMPILE_GRAPH.projectConfig?.tablePrefix;
+  let linkedTableNameWtPrefix = "";
+  linkedTableNameWtPrefix =
+    namePrefix !== undefined ? namePrefix + "_" + linkedTable.name : linkedTable.name;
+
+  const foundCompileAction = gatherAllActions().filter(
+    (action) =>
+      (linkedTable.database === null ||
+        (action?.target?.database !== undefined &&
+          action.target.database === linkedTable.database)) &&
+      (linkedTable.schema === null ||
+        (action?.target?.schema !== undefined && action.target.schema === linkedTable.schema)) &&
+      action?.target?.name !== undefined &&
+      (action.target.name === linkedTable.name || action.target.name === linkedTableNameWtPrefix),
+  );
+  if (foundCompileAction.length === 0) {
+    connection.sendNotification("error", `Definition not found for ${clickedRef}`);
+    return null;
+  } else if (foundCompileAction.length > 1) {
+    connection.sendNotification("error", `Multiple definitions found for ${clickedRef}`);
+    return null;
+  }
+
+  const fileString = `${WORKSPACE_ROOT_FOLDER}/${foundCompileAction[0].fileName}`;
+  return {
+    uri: fileString,
+    range: {
+      start: { line: 0, character: 0 },
+      end: { line: 1, character: 0 },
+    },
+  } as Location;
+});
 
 documents.listen(connection);
 connection.listen();

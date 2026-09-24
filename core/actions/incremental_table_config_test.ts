@@ -6,13 +6,13 @@ import {
   suite,
   test,
   writeDefinitionFile,
-  writeWorkflowSettingsFile
+  writeWorkflowSettingsFile,
 } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
 import {
   coreExecutionRequestFromPath,
   runMainInVm,
-  VALID_WORKFLOW_SETTINGS_YAML
+  VALID_WORKFLOW_SETTINGS_YAML,
 } from "df/testing/run_core";
 
 suite("incremental table sqlx and JS API config options", ({ afterEach }) => {
@@ -62,13 +62,13 @@ suite("incremental table sqlx and JS API config options", ({ afterEach }) => {
       filename: "incremental.sqlx",
       fileContents: `
 config ${incrementalTableConfig}
-SELECT 1`
+SELECT 1`,
     },
     {
       filename: "incremental.js",
-      fileContents: `publish("name", ${incrementalTableConfig}).query(ctx => \`\n\n\nSELECT 1\`)`
-    }
-  ].forEach(testParameters => {
+      fileContents: `publish("name", ${incrementalTableConfig}).query(ctx => \`\n\n\nSELECT 1\`)`,
+    },
+  ].forEach((testParameters) => {
     test(`for incremental tables configured in a ${testParameters.filename} file`, () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
       writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
@@ -83,12 +83,12 @@ SELECT 1`
           target: {
             database: "project",
             schema: "dataset",
-            name: "name"
+            name: "name",
           },
           canonicalTarget: {
             database: "project",
             schema: "dataset",
-            name: "name"
+            name: "name",
           },
           type: "incremental",
           disabled: true,
@@ -98,16 +98,16 @@ SELECT 1`
           bigquery: {
             additionalOptions: {
               option1Key: "option1",
-              option2Key: "option2"
+              option2Key: "option2",
             },
             clusterBy: ["clusterBy"],
             labels: {
-              key: "val"
+              key: "val",
             },
             partitionBy: "partitionBy",
             partitionExpirationDays: 1,
             requirePartitionFilter: true,
-            updatePartitionFilter: "updatePartitionFilter"
+            updatePartitionFilter: "updatePartitionFilter",
           },
           tags: ["tag1", "tag2"],
           uniqueKey: ["key1", "key2"],
@@ -115,8 +115,8 @@ SELECT 1`
             {
               database: "defaultProject",
               schema: "defaultDataset",
-              name: "operation"
-            }
+              name: "operation",
+            },
           ],
           enumType: "INCREMENTAL",
           fileName: `definitions/${testParameters.filename}`,
@@ -128,21 +128,21 @@ SELECT 1`
             reservation: "reservation",
             // sqlxConfig.bigquery.labels are placed as bigqueryLabels.
             bigqueryLabels: {
-              key: "val"
+              key: "val",
             },
             metadata: {
               overview: "incremental table overview",
               extraProperties: {
                 fields: {
-                  priority: { stringValue: "high" }
-                }
-              }
-            }
-          }
-        }
+                  priority: { stringValue: "high" },
+                },
+              },
+            },
+          },
+        },
       ]);
       expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals(
-        exampleBuiltInAssertions.outputAssertions(testParameters.filename)
+        exampleBuiltInAssertions.outputAssertions(testParameters.filename),
       );
     });
   });
@@ -173,12 +173,12 @@ SELECT 1`;
         target: {
           database: "defaultProject",
           schema: "defaultDataset",
-          name: tableName
+          name: tableName,
         },
         canonicalTarget: {
           database: "defaultProject",
           schema: "defaultDataset",
-          name: tableName
+          name: tableName,
         },
         type: "incremental",
         disabled: false,
@@ -194,12 +194,12 @@ SELECT 1`;
           metadata: {
             extraProperties: {
               fields: {
-                priority: { stringValue: "high" }
-              }
-            }
-          }
-        }
-      }
+                priority: { stringValue: "high" },
+              },
+            },
+          },
+        },
+      },
     ]);
   });
 
@@ -215,7 +215,7 @@ SELECT 1`;
     writeDefinitionFile(
       projectDir,
       `${minimalIncrementalTableName}.sqlx`,
-      minimalIncrementalTableContent
+      minimalIncrementalTableContent,
     );
 
     const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
@@ -226,12 +226,12 @@ SELECT 1`;
         target: {
           database: "defaultProject",
           schema: "defaultDataset",
-          name: minimalIncrementalTableName
+          name: minimalIncrementalTableName,
         },
         canonicalTarget: {
           database: "defaultProject",
           schema: "defaultDataset",
-          name: minimalIncrementalTableName
+          name: minimalIncrementalTableName,
         },
         type: "incremental",
         disabled: false,
@@ -242,8 +242,8 @@ SELECT 1`;
         fileName: `definitions/${minimalIncrementalTableName}.sqlx`,
         query: "\n\n\nSELECT 1",
         incrementalQuery: "\n\n\nSELECT 1",
-        incrementalStrategy: "INCREMENTAL_STRATEGY_UNSPECIFIED"
-      }
+        incrementalStrategy: "INCREMENTAL_STRATEGY_UNSPECIFIED",
+      },
     ]);
   });
 
@@ -259,14 +259,14 @@ SELECT 1`;
     incrementalPredicates: "not_an_array"
   }
 }
-SELECT 1`
+SELECT 1`,
     );
 
     const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
     expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).equals(1);
     expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).contains(
-      "incrementalPredicates"
+      "incrementalPredicates",
     );
   });
 });

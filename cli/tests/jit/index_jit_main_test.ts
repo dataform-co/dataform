@@ -4,7 +4,7 @@ import {
   CREDENTIALS_PATH,
   INTEGRATION_TEST_PROJECT,
   runCli,
-  setupJitProject
+  setupJitProject,
 } from "df/cli/index_test_base";
 import { suite, test, writeDefinitionFile } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
@@ -22,7 +22,7 @@ suite("JiT support main", ({ afterEach }) => {
     const jitTable = compiledGraph.tables.find((t: any) => t.target.name === "jit_table");
     expect(!!jitTable).to.equal(true);
     expect(jitTable.type).to.equal("table");
-    expect(jitTable.jitCode).to.contain("async (ctx) => { return \"SELECT 1 as id\"; }");
+    expect(jitTable.jitCode).to.contain('async (ctx) => { return "SELECT 1 as id"; }');
     expect(compiledGraph).to.have.property("jitData");
   });
 
@@ -32,7 +32,7 @@ suite("JiT support main", ({ afterEach }) => {
     writeDefinitionFile(
       projectDir,
       "conflict.js",
-      `publish("conflict", {type: "table"}).query("SELECT 1").jitCode(async (ctx) => "SELECT 2")`
+      `publish("conflict", {type: "table"}).query("SELECT 1").jitCode(async (ctx) => "SELECT 2")`,
     );
 
     const compileResult = await runCli("compile", [projectDir, "--json"]);
@@ -51,7 +51,7 @@ suite("JiT support main", ({ afterEach }) => {
       CREDENTIALS_PATH,
       "--dry-run",
       "--json",
-      "--actions=jit_table"
+      "--actions=jit_table",
     ]);
 
     expect(runResult.exitCode).equals(0);
@@ -74,7 +74,7 @@ suite("JiT support main", ({ afterEach }) => {
       "--credentials",
       CREDENTIALS_PATH,
       "--dry-run",
-      "--json"
+      "--json",
     ]);
 
     expect(runResult.exitCode).equals(0);
@@ -102,25 +102,22 @@ suite("JiT support main", ({ afterEach }) => {
       "disabled_jit.js",
       `publish("disabled_jit", { type: "table", disabled: true }).jitCode(async (jctx) => {
          throw new Error("Should not be executed");
-       })`
+       })`,
     );
 
     const runResult = await runCli(
       "run",
-      [
-        projectDir,
-        "--credentials",
-        CREDENTIALS_PATH,
-        "--actions=disabled_jit"
-      ],
+      [projectDir, "--credentials", CREDENTIALS_PATH, "--actions=disabled_jit"],
       {
-        env: { ...process.env, NO_COLOR: "1" }
-      }
+        env: { ...process.env, NO_COLOR: "1" },
+      },
     );
 
     expect(runResult.exitCode).equals(0);
     // When an action is disabled, it should print a "disabled" message.
-    expect(runResult.stdout).to.include("Dataset creation disabled:  dataform.disabled_jit [table] [disabled]");
+    expect(runResult.stdout).to.include(
+      "Dataset creation disabled:  dataform.disabled_jit [table] [disabled]",
+    );
   });
 
   test("JiT compilation failure reporting", async () => {
@@ -129,7 +126,7 @@ suite("JiT support main", ({ afterEach }) => {
     writeDefinitionFile(
       projectDir,
       "failing_jit.js",
-      `publish("failing_jit", {type: "table"}).jitCode(async (ctx) => { throw new Error("JiT compilation failed!"); })`
+      `publish("failing_jit", {type: "table"}).jitCode(async (ctx) => { throw new Error("JiT compilation failed!"); })`,
     );
 
     const runResult = await runCli("run", [
@@ -138,7 +135,7 @@ suite("JiT support main", ({ afterEach }) => {
       CREDENTIALS_PATH,
       "--dry-run",
       "--json",
-      "--actions=failing_jit"
+      "--actions=failing_jit",
     ]);
 
     expect(runResult.exitCode).equals(1);
@@ -163,7 +160,7 @@ suite("JiT support main", ({ afterEach }) => {
          // and jctx.adapter.getTable throws an error in this case.
          const table = await jctx.adapter.getTable({target: {database: "${INTEGRATION_TEST_PROJECT}", schema: "sch", name: "tab"}});
          return "SELECT 1 as id";
-       })`
+       })`,
     );
 
     const runResult = await runCli("run", [
@@ -172,7 +169,7 @@ suite("JiT support main", ({ afterEach }) => {
       CREDENTIALS_PATH,
       "--dry-run",
       "--json",
-      "--actions=rpc_jit"
+      "--actions=rpc_jit",
     ]);
 
     expect(runResult.exitCode).equals(1);
@@ -201,7 +198,7 @@ suite("JiT support main", ({ afterEach }) => {
       CREDENTIALS_PATH,
       "--dry-run",
       "--json",
-      "--actions=jit_table"
+      "--actions=jit_table",
     ]);
 
     expect(runResult.exitCode).equals(0);
@@ -225,7 +222,7 @@ suite("JiT support main", ({ afterEach }) => {
       CREDENTIALS_PATH,
       "--dry-run",
       "--json",
-      "--actions=aot_table"
+      "--actions=aot_table",
     ]);
 
     expect(runResult.exitCode).equals(0);

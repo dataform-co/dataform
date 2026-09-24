@@ -4,7 +4,7 @@ import Long from "long";
 import {
   createLineageClientProvider,
   LINEAGE_RETRY_CONFIG,
-  LineageEmitter
+  LineageEmitter,
 } from "df/cli/api/lineage/emitter";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
@@ -42,7 +42,7 @@ class MockLineageClient {
 suite("LineageEmitter", () => {
   const credentials = dataform.BigQuery.create({
     projectId: "test-project",
-    location: "US"
+    location: "US",
   });
 
   test("emits open lineage run event with correct payload", async () => {
@@ -50,14 +50,14 @@ suite("LineageEmitter", () => {
     const emitter = new LineageEmitter(
       credentials,
       { lineageEnabled: true, projectDir: "/workspaces/my-dataform-project" },
-      () => mockClient as any
+      () => mockClient as any,
     );
 
     const action = dataform.ExecutionAction.create({
       target: {
         database: "target-project",
         schema: "target_dataset",
-        name: "target_table"
+        name: "target_table",
       },
       type: "table",
       fileName: "definitions/target_table.sqlx",
@@ -65,22 +65,22 @@ suite("LineageEmitter", () => {
         {
           database: "source-project",
           schema: "source_dataset",
-          name: "source_table"
-        }
+          name: "source_table",
+        },
       ],
       tasks: [
         {
-          statement: "CREATE TABLE target_table AS SELECT * FROM source_table"
-        }
-      ]
+          statement: "CREATE TABLE target_table AS SELECT * FROM source_table",
+        },
+      ],
     });
 
     // 1. Emit START event
     const startResult = dataform.ActionResult.create({
       status: dataform.ActionResult.ExecutionStatus.RUNNING,
       timing: {
-        startTimeMillis: Long.fromNumber(1000)
-      }
+        startTimeMillis: Long.fromNumber(1000),
+      },
     });
     emitter.emitForAction(action, startResult);
 
@@ -89,13 +89,13 @@ suite("LineageEmitter", () => {
       status: dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
       timing: {
         startTimeMillis: Long.fromNumber(1000),
-        endTimeMillis: Long.fromNumber(2000)
+        endTimeMillis: Long.fromNumber(2000),
       },
       tasks: [
         {
-          status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL
-        }
-      ]
+          status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL,
+        },
+      ],
     });
     emitter.emitForAction(action, completeResult);
 
@@ -113,7 +113,9 @@ suite("LineageEmitter", () => {
     expect(startPayload.parent).to.equal("projects/target-project/locations/us");
     const startOpenLineage = fromProtoStruct(startPayload.openLineage);
     expect(startOpenLineage.eventType).to.equal("START");
-    expect(startOpenLineage.job.name).to.equal("target-project.us.cli.my-dataform-project-0b5d3e86.target_dataset.target_table");
+    expect(startOpenLineage.job.name).to.equal(
+      "target-project.us.cli.my-dataform-project-0b5d3e86.target_dataset.target_table",
+    );
 
     // Assert COMPLETE event
     const completePayload = mockClient.processOpenLineageRunEventCalledWith[1];
@@ -122,33 +124,41 @@ suite("LineageEmitter", () => {
     expect(openLineage.run.runId).to.equal(startOpenLineage.run.runId);
     expect(openLineage.eventType).to.equal("COMPLETE");
     expect(openLineage.producer).to.equal("https://github.com/dataform-co/dataform");
-    expect(openLineage.job.name).to.equal("target-project.us.cli.my-dataform-project-0b5d3e86.target_dataset.target_table");
+    expect(openLineage.job.name).to.equal(
+      "target-project.us.cli.my-dataform-project-0b5d3e86.target_dataset.target_table",
+    );
     expect(openLineage.inputs[0].namespace).to.equal("bigquery");
     expect(openLineage.inputs[0].name).to.equal("source-project.source_dataset.source_table");
     expect(openLineage.outputs[0].namespace).to.equal("bigquery");
     expect(openLineage.outputs[0].name).to.equal("target-project.target_dataset.target_table");
 
     // Assert Parent run facet
-    expect(openLineage.run.facets.parent.job.name).to.equal("target-project.us.cli.my-dataform-project-0b5d3e86.run");
+    expect(openLineage.run.facets.parent.job.name).to.equal(
+      "target-project.us.cli.my-dataform-project-0b5d3e86.run",
+    );
     expect(openLineage.run.facets.parent.run.runId).to.be.a("string");
 
     // Nominal time run facet verified
     expect(openLineage.run.facets.nominalTime.nominalStartTime).to.equal(
-      new Date(1000).toISOString()
+      new Date(1000).toISOString(),
     );
     expect(openLineage.run.facets.nominalTime.nominalEndTime).to.equal(
-      new Date(2000).toISOString()
+      new Date(2000).toISOString(),
     );
 
     // SQL job facet verified
     expect(openLineage.job.facets.sql.query).to.equal(
-      "CREATE TABLE target_table AS SELECT * FROM source_table"
+      "CREATE TABLE target_table AS SELECT * FROM source_table",
     );
 
     // GCP lineage job facet verified
-    expect(openLineage.job.facets.gcp_lineage.displayName).to.equal("BigQuery Pipelines action target_dataset.target_table");
+    expect(openLineage.job.facets.gcp_lineage.displayName).to.equal(
+      "BigQuery Pipelines action target_dataset.target_table",
+    );
     expect(openLineage.job.facets.gcp_lineage.origin.sourceType).to.equal("BIGQUERY_PIPELINES");
-    expect(openLineage.job.facets.gcp_lineage.origin.name).to.equal("projects/target-project/locations/us/cli/my-dataform-project-0b5d3e86");
+    expect(openLineage.job.facets.gcp_lineage.origin.name).to.equal(
+      "projects/target-project/locations/us/cli/my-dataform-project-0b5d3e86",
+    );
 
     // Job type facet verified
     expect(openLineage.job.facets.jobType.integration).to.equal("BIGQUERY_PIPELINES");
@@ -161,25 +171,25 @@ suite("LineageEmitter", () => {
     const emitter = new LineageEmitter(
       credentials,
       { lineageEnabled: true, projectDir: "/workspaces/my-dataform-project" },
-      () => mockClient as any
+      () => mockClient as any,
     );
 
     const action = dataform.ExecutionAction.create({
       target: {
         database: "target-project",
         schema: "target_dataset",
-        name: "failing_table"
+        name: "failing_table",
       },
       type: "table",
-      fileName: "definitions/failing_table.sqlx"
+      fileName: "definitions/failing_table.sqlx",
     });
 
     // 1. Emit START event
     const startResult = dataform.ActionResult.create({
       status: dataform.ActionResult.ExecutionStatus.RUNNING,
       timing: {
-        startTimeMillis: Long.fromNumber(1000)
-      }
+        startTimeMillis: Long.fromNumber(1000),
+      },
     });
     emitter.emitForAction(action, startResult);
 
@@ -188,14 +198,14 @@ suite("LineageEmitter", () => {
       status: dataform.ActionResult.ExecutionStatus.FAILED,
       timing: {
         startTimeMillis: Long.fromNumber(1000),
-        endTimeMillis: Long.fromNumber(1500)
+        endTimeMillis: Long.fromNumber(1500),
       },
       tasks: [
         {
           status: dataform.TaskResult.ExecutionStatus.FAILED,
-          errorMessage: "bigquery error: Syntax error: Unexpected \"\\\" at [3:15]"
-        }
-      ]
+          errorMessage: 'bigquery error: Syntax error: Unexpected "\\" at [3:15]',
+        },
+      ],
     });
     emitter.emitForAction(action, failResult);
 
@@ -207,124 +217,173 @@ suite("LineageEmitter", () => {
     // Assert FAIL event payload
     const failPayload = mockClient.processOpenLineageRunEventCalledWith[1];
     expect(failPayload.parent).to.equal("projects/target-project/locations/us");
-    
+
     const openLineage = fromProtoStruct(failPayload.openLineage);
     expect(openLineage.eventType).to.equal("FAIL");
-    expect(openLineage.job.name).to.equal("target-project.us.cli.my-dataform-project-0b5d3e86.target_dataset.failing_table");
+    expect(openLineage.job.name).to.equal(
+      "target-project.us.cli.my-dataform-project-0b5d3e86.target_dataset.failing_table",
+    );
 
     // Error message run facet verified
     expect(openLineage.run.facets.errorMessage.message).to.equal(
-      "bigquery error: Syntax error: Unexpected \"\\\" at [3:15]"
+      'bigquery error: Syntax error: Unexpected "\\" at [3:15]',
     );
     expect(openLineage.run.facets.errorMessage.programmingLanguage).to.equal("typescript");
 
     // Nominal time run facet verified (nominalEndTime matches failure timing)
     expect(openLineage.run.facets.nominalTime.nominalStartTime).to.equal(
-      new Date(1000).toISOString()
+      new Date(1000).toISOString(),
     );
     expect(openLineage.run.facets.nominalTime.nominalEndTime).to.equal(
-      new Date(1500).toISOString()
+      new Date(1500).toISOString(),
     );
   });
 
   test("emits externalQuery run facet on COMPLETE when a task carries bigquery.jobId", async () => {
     const mockClient = new MockLineageClient();
-    const emitter = new LineageEmitter(credentials, { lineageEnabled: true }, () => mockClient as any);
+    const emitter = new LineageEmitter(
+      credentials,
+      { lineageEnabled: true },
+      () => mockClient as any,
+    );
 
     const action = dataform.ExecutionAction.create({
       target: { database: "target-project", schema: "s", name: "t" },
       type: "table",
-      tasks: [{ statement: "SELECT 1" }]
+      tasks: [{ statement: "SELECT 1" }],
     });
 
-    emitter.emitForAction(action, dataform.ActionResult.create({
-      status: dataform.ActionResult.ExecutionStatus.RUNNING
-    }));
-    emitter.emitForAction(action, dataform.ActionResult.create({
-      status: dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
-      tasks: [
-        {
-          status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL,
-          metadata: { bigquery: { jobId: "job_abc123" } }
-        }
-      ]
-    }));
+    emitter.emitForAction(
+      action,
+      dataform.ActionResult.create({
+        status: dataform.ActionResult.ExecutionStatus.RUNNING,
+      }),
+    );
+    emitter.emitForAction(
+      action,
+      dataform.ActionResult.create({
+        status: dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
+        tasks: [
+          {
+            status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL,
+            metadata: { bigquery: { jobId: "job_abc123" } },
+          },
+        ],
+      }),
+    );
     await emitter.drain();
 
-    const startFacets = fromProtoStruct(mockClient.processOpenLineageRunEventCalledWith[0].openLineage).run.facets;
+    const startFacets = fromProtoStruct(
+      mockClient.processOpenLineageRunEventCalledWith[0].openLineage,
+    ).run.facets;
     expect(startFacets.externalQuery).to.equal(undefined);
 
-    const completeFacets = fromProtoStruct(mockClient.processOpenLineageRunEventCalledWith[1].openLineage).run.facets;
+    const completeFacets = fromProtoStruct(
+      mockClient.processOpenLineageRunEventCalledWith[1].openLineage,
+    ).run.facets;
     expect(completeFacets.externalQuery.externalQueryId).to.equal("test-project.us.job_abc123");
     expect(completeFacets.externalQuery.source).to.equal("bigquery");
-    expect(completeFacets.externalQuery._producer).to.equal("https://github.com/dataform-co/dataform");
+    expect(completeFacets.externalQuery._producer).to.equal(
+      "https://github.com/dataform-co/dataform",
+    );
   });
 
   test("emits externalQuery run facet on FAIL when a task carries bigquery.jobId", async () => {
     const mockClient = new MockLineageClient();
-    const emitter = new LineageEmitter(credentials, { lineageEnabled: true }, () => mockClient as any);
+    const emitter = new LineageEmitter(
+      credentials,
+      { lineageEnabled: true },
+      () => mockClient as any,
+    );
 
     const action = dataform.ExecutionAction.create({
       target: { database: "target-project", schema: "s", name: "t" },
-      type: "table"
+      type: "table",
     });
 
-    emitter.emitForAction(action, dataform.ActionResult.create({
-      status: dataform.ActionResult.ExecutionStatus.FAILED,
-      tasks: [
-        {
-          status: dataform.TaskResult.ExecutionStatus.FAILED,
-          metadata: { bigquery: { jobId: "job_xyz789" } },
-          errorMessage: "bigquery error: something"
-        }
-      ]
-    }));
+    emitter.emitForAction(
+      action,
+      dataform.ActionResult.create({
+        status: dataform.ActionResult.ExecutionStatus.FAILED,
+        tasks: [
+          {
+            status: dataform.TaskResult.ExecutionStatus.FAILED,
+            metadata: { bigquery: { jobId: "job_xyz789" } },
+            errorMessage: "bigquery error: something",
+          },
+        ],
+      }),
+    );
     await emitter.drain();
 
-    const failFacets = fromProtoStruct(mockClient.processOpenLineageRunEventCalledWith[0].openLineage).run.facets;
+    const failFacets = fromProtoStruct(
+      mockClient.processOpenLineageRunEventCalledWith[0].openLineage,
+    ).run.facets;
     expect(failFacets.externalQuery.externalQueryId).to.equal("test-project.us.job_xyz789");
     expect(failFacets.externalQuery.source).to.equal("bigquery");
   });
 
   test("picks the last non-empty jobId when the action has multiple tasks", async () => {
     const mockClient = new MockLineageClient();
-    const emitter = new LineageEmitter(credentials, { lineageEnabled: true }, () => mockClient as any);
+    const emitter = new LineageEmitter(
+      credentials,
+      { lineageEnabled: true },
+      () => mockClient as any,
+    );
 
     const action = dataform.ExecutionAction.create({
       target: { database: "target-project", schema: "s", name: "t" },
-      type: "table"
+      type: "table",
     });
 
-    emitter.emitForAction(action, dataform.ActionResult.create({
-      status: dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
-      tasks: [
-        { status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL, metadata: { bigquery: { jobId: "job_preop" } } },
-        { status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL, metadata: { bigquery: { jobId: "job_main" } } },
-        { status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL, metadata: {} }
-      ]
-    }));
+    emitter.emitForAction(
+      action,
+      dataform.ActionResult.create({
+        status: dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
+        tasks: [
+          {
+            status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL,
+            metadata: { bigquery: { jobId: "job_preop" } },
+          },
+          {
+            status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL,
+            metadata: { bigquery: { jobId: "job_main" } },
+          },
+          { status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL, metadata: {} },
+        ],
+      }),
+    );
     await emitter.drain();
 
-    const facets = fromProtoStruct(mockClient.processOpenLineageRunEventCalledWith[0].openLineage).run.facets;
+    const facets = fromProtoStruct(mockClient.processOpenLineageRunEventCalledWith[0].openLineage)
+      .run.facets;
     expect(facets.externalQuery.externalQueryId).to.equal("test-project.us.job_main");
   });
 
   test("omits externalQuery run facet when no task carries bigquery.jobId", async () => {
     const mockClient = new MockLineageClient();
-    const emitter = new LineageEmitter(credentials, { lineageEnabled: true }, () => mockClient as any);
+    const emitter = new LineageEmitter(
+      credentials,
+      { lineageEnabled: true },
+      () => mockClient as any,
+    );
 
     const action = dataform.ExecutionAction.create({
       target: { database: "target-project", schema: "s", name: "t" },
-      type: "table"
+      type: "table",
     });
 
-    emitter.emitForAction(action, dataform.ActionResult.create({
-      status: dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
-      tasks: [{ status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL, metadata: {} }]
-    }));
+    emitter.emitForAction(
+      action,
+      dataform.ActionResult.create({
+        status: dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
+        tasks: [{ status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL, metadata: {} }],
+      }),
+    );
     await emitter.drain();
 
-    const facets = fromProtoStruct(mockClient.processOpenLineageRunEventCalledWith[0].openLineage).run.facets;
+    const facets = fromProtoStruct(mockClient.processOpenLineageRunEventCalledWith[0].openLineage)
+      .run.facets;
     expect(facets.externalQuery).to.equal(undefined);
   });
 
@@ -334,14 +393,18 @@ suite("LineageEmitter", () => {
     permissionError.code = 7;
     mockClient.processOpenLineageRunEventError = permissionError;
 
-    const emitter = new LineageEmitter(credentials, { lineageEnabled: true }, () => mockClient as any);
+    const emitter = new LineageEmitter(
+      credentials,
+      { lineageEnabled: true },
+      () => mockClient as any,
+    );
 
     const action = dataform.ExecutionAction.create({
       target: { database: "proj", schema: "schema", name: "table" },
-      type: "table"
+      type: "table",
     });
     const startResult = dataform.ActionResult.create({
-      status: dataform.ActionResult.ExecutionStatus.RUNNING
+      status: dataform.ActionResult.ExecutionStatus.RUNNING,
     });
 
     // Run first action (fails on write, setting emissionDisabledThisRun to true)
@@ -365,7 +428,7 @@ suite("LineageEmitter", () => {
       retryDelayMultiplier: 2.0,
       maxRetryDelayMillis: 4000,
       maxRpcTimeoutMillis: 2000,
-      totalTimeoutMillis: 15000
+      totalTimeoutMillis: 15000,
     });
   });
 
@@ -375,14 +438,18 @@ suite("LineageEmitter", () => {
     invalidArgErr.code = 3; // INVALID_ARGUMENT — not in LINEAGE_RETRY_CONFIG.retryCodes
     mockClient.processOpenLineageRunEventError = invalidArgErr;
 
-    const emitter = new LineageEmitter(credentials, { lineageEnabled: true }, () => mockClient as any);
+    const emitter = new LineageEmitter(
+      credentials,
+      { lineageEnabled: true },
+      () => mockClient as any,
+    );
 
     const action = dataform.ExecutionAction.create({
       target: { database: "proj", schema: "schema", name: "table" },
-      type: "table"
+      type: "table",
     });
     const startResult = dataform.ActionResult.create({
-      status: dataform.ActionResult.ExecutionStatus.RUNNING
+      status: dataform.ActionResult.ExecutionStatus.RUNNING,
     });
 
     emitter.emitForAction(action, startResult);
@@ -395,9 +462,14 @@ suite("LineageEmitter", () => {
 
   test("falls back from regional endpoint to global on DNS-unresolvable REP", async () => {
     const mockClient = new MockLineageClient();
-    const dnsError: any = new Error("14 UNAVAILABLE: DNS resolution failed for datalineage.us.rep.googleapis.com");
+    const dnsError: any = new Error(
+      "14 UNAVAILABLE: DNS resolution failed for datalineage.us.rep.googleapis.com",
+    );
     dnsError.code = 14;
-    dnsError.cause = { code: "ENOTFOUND", message: "getaddrinfo ENOTFOUND datalineage.us.rep.googleapis.com" };
+    dnsError.cause = {
+      code: "ENOTFOUND",
+      message: "getaddrinfo ENOTFOUND datalineage.us.rep.googleapis.com",
+    };
 
     let callCount = 0;
     const endpointsUsed: string[] = [];
@@ -412,10 +484,10 @@ suite("LineageEmitter", () => {
 
     const action = dataform.ExecutionAction.create({
       target: { database: "proj", schema: "schema", name: "table" },
-      type: "table"
+      type: "table",
     });
     const startResult = dataform.ActionResult.create({
-      status: dataform.ActionResult.ExecutionStatus.RUNNING
+      status: dataform.ActionResult.ExecutionStatus.RUNNING,
     });
 
     emitter.emitForAction(action, startResult);
@@ -423,14 +495,16 @@ suite("LineageEmitter", () => {
 
     expect(endpointsUsed).to.deep.equal([
       "datalineage.us.rep.googleapis.com",
-      "datalineage.googleapis.com"
+      "datalineage.googleapis.com",
     ]);
     expect(mockClient.processOpenLineageRunEventCalledWith.length).to.equal(2);
   });
 
   test("caches REP-unavailable decision across subsequent emits", async () => {
     const mockClient = new MockLineageClient();
-    const dnsError: any = new Error("14 UNAVAILABLE: getaddrinfo ENOTFOUND datalineage.us.rep.googleapis.com");
+    const dnsError: any = new Error(
+      "14 UNAVAILABLE: getaddrinfo ENOTFOUND datalineage.us.rep.googleapis.com",
+    );
     dnsError.code = 14;
     dnsError.cause = { code: "ENOTFOUND", message: "getaddrinfo ENOTFOUND" };
 
@@ -447,10 +521,10 @@ suite("LineageEmitter", () => {
 
     const action = dataform.ExecutionAction.create({
       target: { database: "proj", schema: "schema", name: "table" },
-      type: "table"
+      type: "table",
     });
     const startResult = dataform.ActionResult.create({
-      status: dataform.ActionResult.ExecutionStatus.RUNNING
+      status: dataform.ActionResult.ExecutionStatus.RUNNING,
     });
 
     // First emit: REP fails with ENOTFOUND, falls back to global.
@@ -464,7 +538,7 @@ suite("LineageEmitter", () => {
     expect(endpointsUsed).to.deep.equal([
       "datalineage.us.rep.googleapis.com",
       "datalineage.googleapis.com",
-      "datalineage.googleapis.com"
+      "datalineage.googleapis.com",
     ]);
   });
 
@@ -478,7 +552,7 @@ suite("LineageEmitter", () => {
     // UNAVAILABLE(14) into a DEADLINE_EXCEEDED(4) after its retry budget
     // expires. The DNS signature is only in the message string.
     const grpcDnsError: any = new Error(
-      "Total timeout of API google.cloud.datacatalog.lineage.v1.Lineage exceeded 2000 milliseconds retrying error Error: 14 UNAVAILABLE: Name resolution failed for target dns:datalineage.bogusregion.rep.googleapis.com:443"
+      "Total timeout of API google.cloud.datacatalog.lineage.v1.Lineage exceeded 2000 milliseconds retrying error Error: 14 UNAVAILABLE: Name resolution failed for target dns:datalineage.bogusregion.rep.googleapis.com:443",
     );
     grpcDnsError.code = 4;
 
@@ -495,10 +569,10 @@ suite("LineageEmitter", () => {
 
     const action = dataform.ExecutionAction.create({
       target: { database: "proj", schema: "schema", name: "table" },
-      type: "table"
+      type: "table",
     });
     const startResult = dataform.ActionResult.create({
-      status: dataform.ActionResult.ExecutionStatus.RUNNING
+      status: dataform.ActionResult.ExecutionStatus.RUNNING,
     });
 
     emitter.emitForAction(action, startResult);
@@ -506,7 +580,7 @@ suite("LineageEmitter", () => {
 
     expect(endpointsUsed).to.deep.equal([
       "datalineage.us.rep.googleapis.com",
-      "datalineage.googleapis.com"
+      "datalineage.googleapis.com",
     ]);
   });
 
@@ -517,15 +591,15 @@ suite("LineageEmitter", () => {
       credentials,
       { lineageEnabled: true, dryRun: true },
       () => mockClient as any,
-      stderr
+      stderr,
     );
 
     const action = dataform.ExecutionAction.create({
       target: { database: "proj", schema: "schema", name: "table" },
-      type: "table"
+      type: "table",
     });
     const startResult = dataform.ActionResult.create({
-      status: dataform.ActionResult.ExecutionStatus.RUNNING
+      status: dataform.ActionResult.ExecutionStatus.RUNNING,
     });
 
     emitter.emitForAction(action, startResult);
@@ -533,7 +607,7 @@ suite("LineageEmitter", () => {
     emitter.emitForAction(action, startResult);
     await emitter.drain();
 
-    const dryRunLines = stderr.writes.filter(w => w.includes("skip_reason=dry_run"));
+    const dryRunLines = stderr.writes.filter((w) => w.includes("skip_reason=dry_run"));
     expect(dryRunLines.length).to.equal(1);
     expect(dryRunLines[0]).to.contain("dry-run mode");
     expect(mockClient.processOpenLineageRunEventCalledWith.length).to.equal(0);
@@ -549,16 +623,16 @@ suite("LineageEmitter", () => {
     const emitter = new LineageEmitter(
       credentials,
       { lineageEnabled: true, projectDir: "/workspaces/my-dataform-project" },
-      () => mockClient as any
+      () => mockClient as any,
     );
 
     const action = dataform.ExecutionAction.create({
       target: { database: "target-project", schema: "s", name: "op_action" },
       type: "operation",
-      tasks: [{ statement: "CREATE OR REPLACE PROCEDURE p() BEGIN SELECT 1; END" }]
+      tasks: [{ statement: "CREATE OR REPLACE PROCEDURE p() BEGIN SELECT 1; END" }],
     });
     const startResult = dataform.ActionResult.create({
-      status: dataform.ActionResult.ExecutionStatus.RUNNING
+      status: dataform.ActionResult.ExecutionStatus.RUNNING,
     });
 
     emitter.emitForAction(action, startResult);
@@ -566,7 +640,7 @@ suite("LineageEmitter", () => {
 
     expect(mockClient.processOpenLineageRunEventCalledWith.length).to.equal(1);
     const openLineage = fromProtoStruct(
-      mockClient.processOpenLineageRunEventCalledWith[0].openLineage
+      mockClient.processOpenLineageRunEventCalledWith[0].openLineage,
     );
     // Full-object assertion on the gcp_bq_pipelines_job facet: proves
     // actionType propagation AND that no unexpected keys were added on the
@@ -578,7 +652,7 @@ suite("LineageEmitter", () => {
     expect(gcpBqPipelinesJob).to.deep.equal({
       dataformCoreVersion: gcpBqPipelinesJob.dataformCoreVersion,
       actionType: "operation",
-      actionName: "s.op_action"
+      actionName: "s.op_action",
     });
   });
 
@@ -589,19 +663,19 @@ suite("LineageEmitter", () => {
       credentials,
       { lineageEnabled: true },
       () => mockClient as any,
-      stderr
+      stderr,
     );
 
     const assertion = dataform.ExecutionAction.create({
       target: { database: "proj", schema: "schema", name: "assertion" },
-      type: "assertion"
+      type: "assertion",
     });
     const declaration = dataform.ExecutionAction.create({
       target: { database: "proj", schema: "schema", name: "declaration" },
-      type: "declaration"
+      type: "declaration",
     });
     const startResult = dataform.ActionResult.create({
-      status: dataform.ActionResult.ExecutionStatus.RUNNING
+      status: dataform.ActionResult.ExecutionStatus.RUNNING,
     });
 
     emitter.emitForAction(assertion, startResult);
@@ -626,23 +700,23 @@ suite("LineageEmitter", () => {
       credentials,
       { lineageEnabled: true },
       () => mockClient as any,
-      stderr
+      stderr,
     );
     const action = dataform.ExecutionAction.create({
       target: { database: "target-proj", schema: "schema", name: "table" },
-      type: "table"
+      type: "table",
     });
     const startResult = dataform.ActionResult.create({
-      status: dataform.ActionResult.ExecutionStatus.RUNNING
+      status: dataform.ActionResult.ExecutionStatus.RUNNING,
     });
 
     emitter.emitForAction(action, startResult);
     await emitter.drain();
 
-    const apiDisabledLines = stderr.writes.filter(w => w.includes("skip_reason=api_disabled"));
+    const apiDisabledLines = stderr.writes.filter((w) => w.includes("skip_reason=api_disabled"));
     expect(apiDisabledLines.length).to.equal(1);
     expect(apiDisabledLines[0]).to.contain(
-      "datalineage.googleapis.com/locations.processOpenLineageMessage"
+      "datalineage.googleapis.com/locations.processOpenLineageMessage",
     );
     expect(apiDisabledLines[0]).to.contain("gcloud services enable datalineage.googleapis.com");
     expect(apiDisabledLines[0]).to.contain(" OR ");
@@ -660,20 +734,20 @@ suite("LineageEmitter", () => {
       credentials,
       { lineageEnabled: true },
       () => mockClient as any,
-      stderr
+      stderr,
     );
     const action = dataform.ExecutionAction.create({
       target: { database: "target-proj", schema: "schema", name: "table" },
-      type: "table"
+      type: "table",
     });
     const startResult = dataform.ActionResult.create({
-      status: dataform.ActionResult.ExecutionStatus.RUNNING
+      status: dataform.ActionResult.ExecutionStatus.RUNNING,
     });
 
     emitter.emitForAction(action, startResult);
     await emitter.drain();
 
-    const apiDisabledLines = stderr.writes.filter(w => w.includes("skip_reason=api_disabled"));
+    const apiDisabledLines = stderr.writes.filter((w) => w.includes("skip_reason=api_disabled"));
     expect(apiDisabledLines.length).to.equal(1);
     expect(apiDisabledLines[0]).to.contain("gcloud services enable datalineage.googleapis.com");
     expect(apiDisabledLines[0]).to.contain("target-proj");
@@ -687,7 +761,9 @@ suite("LineageEmitter", () => {
     // emits.
     const mockClient = new MockLineageClient();
     const stderr = new StderrCapture();
-    const unauthenticatedError: any = new Error("UNAUTHENTICATED: Request had invalid authentication credentials");
+    const unauthenticatedError: any = new Error(
+      "UNAUTHENTICATED: Request had invalid authentication credentials",
+    );
     unauthenticatedError.code = 16;
     mockClient.processOpenLineageRunEventError = unauthenticatedError;
 
@@ -695,14 +771,14 @@ suite("LineageEmitter", () => {
       credentials,
       { lineageEnabled: true },
       () => mockClient as any,
-      stderr
+      stderr,
     );
     const action = dataform.ExecutionAction.create({
       target: { database: "target-proj", schema: "schema", name: "table" },
-      type: "table"
+      type: "table",
     });
     const startResult = dataform.ActionResult.create({
-      status: dataform.ActionResult.ExecutionStatus.RUNNING
+      status: dataform.ActionResult.ExecutionStatus.RUNNING,
     });
 
     // First emit — RPC fires, fails with UNAUTHENTICATED, kill-switch flips.
@@ -718,7 +794,7 @@ suite("LineageEmitter", () => {
     // generic "[lineage] Failed to emit" line is written.
     expect(mockClient.processOpenLineageRunEventCalledWith.length).to.equal(1);
     expect(stderr.writes).to.deep.equal([
-      "[lineage] Skipped lineage emission for the rest of this run: skip_reason=unauthenticated (the credential used to reach the Lineage API is missing, invalid, or expired; re-authenticate and rerun — e.g., 'gcloud auth application-default login')\n"
+      "[lineage] Skipped lineage emission for the rest of this run: skip_reason=unauthenticated (the credential used to reach the Lineage API is missing, invalid, or expired; re-authenticate and rerun — e.g., 'gcloud auth application-default login')\n",
     ]);
   });
 
@@ -737,14 +813,14 @@ suite("LineageEmitter", () => {
       credentials,
       { lineageEnabled: true },
       () => mockClient as any,
-      stderr
+      stderr,
     );
     const action = dataform.ExecutionAction.create({
       target: { database: "proj", schema: "schema", name: "table" },
-      type: "table"
+      type: "table",
     });
     const startResult = dataform.ActionResult.create({
-      status: dataform.ActionResult.ExecutionStatus.RUNNING
+      status: dataform.ActionResult.ExecutionStatus.RUNNING,
     });
 
     for (let i = 0; i < 5; i++) {
@@ -752,7 +828,7 @@ suite("LineageEmitter", () => {
     }
     await emitter.drain();
 
-    const apiDisabledLines = stderr.writes.filter(w => w.includes("skip_reason=api_disabled"));
+    const apiDisabledLines = stderr.writes.filter((w) => w.includes("skip_reason=api_disabled"));
     expect(apiDisabledLines.length).to.equal(1);
   });
 
@@ -761,27 +837,30 @@ suite("LineageEmitter", () => {
     const emitter = new LineageEmitter(
       credentials,
       { lineageEnabled: true, projectDir: "/workspaces/My Project! v2" },
-      () => mockClient as any
+      () => mockClient as any,
     );
 
     const action = dataform.ExecutionAction.create({
       target: { database: "target-project", schema: "s", name: "t" },
       type: "table",
-      tasks: [{ statement: "SELECT 1" }]
+      tasks: [{ statement: "SELECT 1" }],
     });
 
-    emitter.emitForAction(action, dataform.ActionResult.create({
-      status: dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
-      tasks: [{ status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL }]
-    }));
+    emitter.emitForAction(
+      action,
+      dataform.ActionResult.create({
+        status: dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
+        tasks: [{ status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL }],
+      }),
+    );
     await emitter.drain();
 
     const openLineage = fromProtoStruct(
-      mockClient.processOpenLineageRunEventCalledWith[0].openLineage
+      mockClient.processOpenLineageRunEventCalledWith[0].openLineage,
     );
     // "My Project! v2" -> "my-project-v2" + "-" + 8-hex hash slice.
     expect(openLineage.job.facets.gcp_lineage.origin.name).to.match(
-      /^projects\/target-project\/locations\/us\/cli\/my-project-v2-[0-9a-f]{8}$/
+      /^projects\/target-project\/locations\/us\/cli\/my-project-v2-[0-9a-f]{8}$/,
     );
   });
 
@@ -790,26 +869,29 @@ suite("LineageEmitter", () => {
     const emitter = new LineageEmitter(
       credentials,
       { lineageEnabled: true },
-      () => mockClient as any
+      () => mockClient as any,
     );
 
     const action = dataform.ExecutionAction.create({
       target: { database: "target-project", schema: "s", name: "t" },
       type: "table",
-      tasks: [{ statement: "SELECT 1" }]
+      tasks: [{ statement: "SELECT 1" }],
     });
 
-    emitter.emitForAction(action, dataform.ActionResult.create({
-      status: dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
-      tasks: [{ status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL }]
-    }));
+    emitter.emitForAction(
+      action,
+      dataform.ActionResult.create({
+        status: dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
+        tasks: [{ status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL }],
+      }),
+    );
     await emitter.drain();
 
     const openLineage = fromProtoStruct(
-      mockClient.processOpenLineageRunEventCalledWith[0].openLineage
+      mockClient.processOpenLineageRunEventCalledWith[0].openLineage,
     );
     expect(openLineage.job.facets.gcp_lineage.origin.name).to.equal(
-      "projects/target-project/locations/us/cli/unknown-workdir"
+      "projects/target-project/locations/us/cli/unknown-workdir",
     );
   });
 
@@ -833,10 +915,10 @@ suite("LineageEmitter", () => {
     const emitter = new LineageEmitter(credentials, { lineageEnabled: true }, provider);
     const action = dataform.ExecutionAction.create({
       target: { database: "proj", schema: "schema", name: "table" },
-      type: "table"
+      type: "table",
     });
     const startResult = dataform.ActionResult.create({
-      status: dataform.ActionResult.ExecutionStatus.RUNNING
+      status: dataform.ActionResult.ExecutionStatus.RUNNING,
     });
 
     emitter.emitForAction(action, startResult);
@@ -844,7 +926,7 @@ suite("LineageEmitter", () => {
 
     expect(endpointsUsed).to.deep.equal([
       "datalineage.us.rep.googleapis.com",
-      "datalineage.googleapis.com"
+      "datalineage.googleapis.com",
     ]);
     expect(mockClient.processOpenLineageRunEventCalledWith.length).to.equal(2);
   });
@@ -865,20 +947,20 @@ suite("LineageEmitter", () => {
       credentials,
       { lineageEnabled: true },
       () => mockClient as any,
-      stderr
+      stderr,
     );
     const action = dataform.ExecutionAction.create({
       target: { database: "proj", schema: "myschema", name: "mytable" },
-      type: "table"
+      type: "table",
     });
     const startResult = dataform.ActionResult.create({
-      status: dataform.ActionResult.ExecutionStatus.RUNNING
+      status: dataform.ActionResult.ExecutionStatus.RUNNING,
     });
 
     emitter.emitForAction(action, startResult);
     await emitter.drain();
 
-    const failLines = stderr.writes.filter(w => w.includes("[lineage] Failed to emit"));
+    const failLines = stderr.writes.filter((w) => w.includes("[lineage] Failed to emit"));
     expect(failLines.length).to.equal(1);
     expect(failLines[0]).to.contain("myschema.mytable");
     expect(failLines[0]).to.contain("code=INVALID_ARGUMENT(3)");
@@ -904,14 +986,14 @@ suite("LineageEmitter", () => {
       const emitter = new LineageEmitter(
         credentials,
         { lineageEnabled: true },
-        () => mockClient as any
+        () => mockClient as any,
       );
       const action = dataform.ExecutionAction.create({
         target: { database: "proj", schema: "s", name: "t" },
-        type: "table"
+        type: "table",
       });
       const startResult = dataform.ActionResult.create({
-        status: dataform.ActionResult.ExecutionStatus.RUNNING
+        status: dataform.ActionResult.ExecutionStatus.RUNNING,
       });
 
       for (let i = 0; i < 5; i++) {
@@ -919,7 +1001,7 @@ suite("LineageEmitter", () => {
       }
       await emitter.drain();
       // Yield one more microtask cycle so any late rejections settle.
-      await new Promise(r => setImmediate(r));
+      await new Promise((r) => setImmediate(r));
 
       expect(rejections).to.deep.equal([]);
     } finally {
@@ -947,10 +1029,10 @@ suite("LineageEmitter", () => {
     const emitter = new LineageEmitter(credentials, { lineageEnabled: true }, provider);
     const action = dataform.ExecutionAction.create({
       target: { database: "proj", schema: "schema", name: "table" },
-      type: "table"
+      type: "table",
     });
     const startResult = dataform.ActionResult.create({
-      status: dataform.ActionResult.ExecutionStatus.RUNNING
+      status: dataform.ActionResult.ExecutionStatus.RUNNING,
     });
 
     emitter.emitForAction(action, startResult);
@@ -962,7 +1044,7 @@ suite("LineageEmitter", () => {
     expect(endpointsUsed).to.deep.equal([
       "datalineage.us.rep.googleapis.com",
       "datalineage.googleapis.com",
-      "datalineage.googleapis.com"
+      "datalineage.googleapis.com",
     ]);
   });
 
@@ -975,7 +1057,7 @@ suite("LineageEmitter", () => {
     const mockClient = new MockLineageClient();
     const stderr = new StderrCapture();
     const dnsError: any = new Error(
-      "14 UNAVAILABLE: Name resolution failed for target dns:datalineage.us.rep.googleapis.com:443"
+      "14 UNAVAILABLE: Name resolution failed for target dns:datalineage.us.rep.googleapis.com:443",
     );
     dnsError.code = 4;
     const invalidArgErr: any = new Error("bad request");
@@ -988,24 +1070,19 @@ suite("LineageEmitter", () => {
       return mockClient as any;
     };
 
-    const emitter = new LineageEmitter(
-      credentials,
-      { lineageEnabled: true },
-      provider,
-      stderr
-    );
+    const emitter = new LineageEmitter(credentials, { lineageEnabled: true }, provider, stderr);
     const action = dataform.ExecutionAction.create({
       target: { database: "proj", schema: "myschema", name: "mytable" },
-      type: "table"
+      type: "table",
     });
     const startResult = dataform.ActionResult.create({
-      status: dataform.ActionResult.ExecutionStatus.RUNNING
+      status: dataform.ActionResult.ExecutionStatus.RUNNING,
     });
 
     emitter.emitForAction(action, startResult);
     await emitter.drain();
 
-    const failLines = stderr.writes.filter(w => w.includes("[lineage] Failed to emit"));
+    const failLines = stderr.writes.filter((w) => w.includes("[lineage] Failed to emit"));
     expect(failLines.length).to.equal(1);
     expect(failLines[0]).to.contain("endpoint=datalineage.googleapis.com");
     expect(failLines[0]).to.not.contain("endpoint=datalineage.us.rep.googleapis.com");
@@ -1022,14 +1099,14 @@ suite("LineageEmitter", () => {
         credentials,
         { lineageEnabled: true },
         () => mockClient as any,
-        stderr
+        stderr,
       );
       const action = dataform.ExecutionAction.create({
         target: { database: "proj", schema: "schema", name: "table" },
-        type: "table"
+        type: "table",
       });
       const startResult = dataform.ActionResult.create({
-        status: dataform.ActionResult.ExecutionStatus.RUNNING
+        status: dataform.ActionResult.ExecutionStatus.RUNNING,
       });
 
       emitter.emitForAction(action, startResult);
@@ -1042,13 +1119,13 @@ suite("LineageEmitter", () => {
       // key, eventType, key order) is locked in.
       expect(stderr.writes.length).to.equal(2);
       const runIdMatch = stderr.writes[0].match(
-        /^\[lineage-debug\] emit endpoint=(\S+) location=(\S+) action=schema\.table eventType=START runId=(\S+) parentRunId=(\S+) payload=(.+)\n$/
+        /^\[lineage-debug\] emit endpoint=(\S+) location=(\S+) action=schema\.table eventType=START runId=(\S+) parentRunId=(\S+) payload=(.+)\n$/,
       );
       expect(runIdMatch).to.not.equal(null);
       const [, endpoint, location, runId, parentRunId, payload] = runIdMatch!;
       expect(stderr.writes).to.deep.equal([
         `[lineage-debug] emit endpoint=${endpoint} location=${location} action=schema.table eventType=START runId=${runId} parentRunId=${parentRunId} payload=${payload}\n`,
-        "[lineage-debug] emit_ok action=schema.table eventType=START\n"
+        "[lineage-debug] emit_ok action=schema.table eventType=START\n",
       ]);
     } finally {
       if (originalDebug === undefined) {
@@ -1074,14 +1151,14 @@ suite("LineageEmitter", () => {
         credentials,
         { lineageEnabled: true },
         () => mockClient as any,
-        stderr
+        stderr,
       );
       const action = dataform.ExecutionAction.create({
         target: { database: "proj", schema: "schema", name: "table" },
-        type: "table"
+        type: "table",
       });
       const startResult = dataform.ActionResult.create({
-        status: dataform.ActionResult.ExecutionStatus.RUNNING
+        status: dataform.ActionResult.ExecutionStatus.RUNNING,
       });
 
       emitter.emitForAction(action, startResult);
@@ -1118,10 +1195,10 @@ suite("LineageEmitter", () => {
     const emitter = new LineageEmitter(credentials, { lineageEnabled: true }, provider);
     const action = dataform.ExecutionAction.create({
       target: { database: "proj", schema: "schema", name: "table" },
-      type: "table"
+      type: "table",
     });
     const startResult = dataform.ActionResult.create({
-      status: dataform.ActionResult.ExecutionStatus.RUNNING
+      status: dataform.ActionResult.ExecutionStatus.RUNNING,
     });
 
     emitter.emitForAction(action, startResult);

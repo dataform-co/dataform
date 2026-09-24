@@ -7,13 +7,13 @@ import {
   suite,
   test,
   writeDefinitionFile,
-  writeWorkflowSettingsFile
+  writeWorkflowSettingsFile,
 } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
 import {
   coreExecutionRequestFromPath,
   runMainInVm,
-  WorkflowSettingsTemplates
+  WorkflowSettingsTemplates,
 } from "df/testing/run_core";
 
 const EMPTY_NOTEBOOK_CONTENTS = '{ "cells": [] }';
@@ -24,8 +24,8 @@ suite("Assertions as dependencies", ({ afterEach, beforeEach }) => {
   [
     WorkflowSettingsTemplates.bigquery,
     WorkflowSettingsTemplates.bigqueryWithDatasetSuffix,
-    WorkflowSettingsTemplates.bigqueryWithNamePrefix
-  ].forEach(testConfig => {
+    WorkflowSettingsTemplates.bigqueryWithNamePrefix,
+  ].forEach((testConfig) => {
     let projectDir: any;
     beforeEach("Create temporary dir and files", () => {
       projectDir = tmpDirFixture.createNewTmpDir();
@@ -37,7 +37,7 @@ suite("Assertions as dependencies", ({ afterEach, beforeEach }) => {
 config {
   type: "table",
   assertions: {rowConditions: ["test > 1"]}}
-  SELECT 1 as test`
+  SELECT 1 as test`,
       );
       writeDefinitionFile(
         projectDir,
@@ -46,7 +46,7 @@ config {
 config {
   type: "assertion",
 }
-select test from \${ref("A")} where test > 3`
+select test from \${ref("A")} where test > 3`,
       );
       writeDefinitionFile(projectDir, "B.sql", "SELECT 1");
       writeDefinitionFile(projectDir, "C.sql", "SELECT 1");
@@ -64,7 +64,7 @@ config {
   dependencies: ["A"]
 }
 select 1 as btest
-`
+`,
       );
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
@@ -73,20 +73,20 @@ select 1 as btest
       expect(
         asPlainObject(
           result.compile.compiledGraph.tables.find(
-            table => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B")
-          ).dependencyTargets.length
-        )
+            (table) => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B"),
+          ).dependencyTargets.length,
+        ),
       ).equals(3);
       expect(
         asPlainObject(
           result.compile.compiledGraph.tables
-            .find(table => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B"))
-            .dependencyTargets.flatMap(dependencyTarget => dependencyTarget.name)
-        )
+            .find((table) => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B"))
+            .dependencyTargets.flatMap((dependencyTarget) => dependencyTarget.name),
+        ),
       ).deep.equals([
         prefixAdjustedName(testConfig.namePrefix, "A"),
         prefixAdjustedName(testConfig.namePrefix, "defaultDataset_A_assertions_rowConditions"),
-        prefixAdjustedName(testConfig.namePrefix, "A_assert")
+        prefixAdjustedName(testConfig.namePrefix, "A_assert"),
       ]);
     });
 
@@ -99,7 +99,7 @@ config {
   type: "table",
   dependencies: [{name: "A", includeDependentAssertions: true}, "C"]
 }
-select 1 as btest`
+select 1 as btest`,
       );
       writeDefinitionFile(
         projectDir,
@@ -111,7 +111,7 @@ config {
     rowConditions: ["test > 1"]
   }
 }
-SELECT 1 as test`
+SELECT 1 as test`,
       );
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
@@ -120,21 +120,21 @@ SELECT 1 as test`
       expect(
         asPlainObject(
           result.compile.compiledGraph.tables.find(
-            table => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B")
-          ).dependencyTargets.length
-        )
+            (table) => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B"),
+          ).dependencyTargets.length,
+        ),
       ).equals(4);
       expect(
         asPlainObject(
           result.compile.compiledGraph.tables
-            .find(table => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B"))
-            .dependencyTargets.flatMap(dependencyTarget => dependencyTarget.name)
-        )
+            .find((table) => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B"))
+            .dependencyTargets.flatMap((dependencyTarget) => dependencyTarget.name),
+        ),
       ).deep.equals([
         prefixAdjustedName(testConfig.namePrefix, "A"),
         prefixAdjustedName(testConfig.namePrefix, "defaultDataset_A_assertions_rowConditions"),
         prefixAdjustedName(testConfig.namePrefix, "A_assert"),
-        prefixAdjustedName(testConfig.namePrefix, "C")
+        prefixAdjustedName(testConfig.namePrefix, "C"),
       ]);
     });
 
@@ -148,7 +148,7 @@ config {
   dependencies: ["A"]
 }
 select * from \${ref({name: "C", includeDependentAssertions: true})}
-select 1 as btest`
+select 1 as btest`,
       );
       writeDefinitionFile(
         projectDir,
@@ -160,7 +160,7 @@ config {
       rowConditions: ["test > 1"]
   }
 }
-SELECT 1 as test`
+SELECT 1 as test`,
       );
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
@@ -169,20 +169,20 @@ SELECT 1 as test`
       expect(
         asPlainObject(
           result.compile.compiledGraph.tables.find(
-            table => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B")
-          ).dependencyTargets.length
-        )
+            (table) => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B"),
+          ).dependencyTargets.length,
+        ),
       ).equals(3);
       expect(
         asPlainObject(
           result.compile.compiledGraph.tables
-            .find(table => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B"))
-            .dependencyTargets.flatMap(dependencyTarget => dependencyTarget.name)
-        )
+            .find((table) => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B"))
+            .dependencyTargets.flatMap((dependencyTarget) => dependencyTarget.name),
+        ),
       ).deep.equals([
         prefixAdjustedName(testConfig.namePrefix, "A"),
         prefixAdjustedName(testConfig.namePrefix, "C"),
-        prefixAdjustedName(testConfig.namePrefix, "defaultDataset_C_assertions_rowConditions")
+        prefixAdjustedName(testConfig.namePrefix, "defaultDataset_C_assertions_rowConditions"),
       ]);
     });
 
@@ -197,7 +197,7 @@ config {
   dependencies: ["A"]
 }
 select * from \${ref({name: "C", includeDependentAssertions: false})}
-select 1 as btest`
+select 1 as btest`,
       );
       writeDefinitionFile(
         projectDir,
@@ -209,7 +209,7 @@ config {
       rowConditions: ["test > 1"]
   }
 }
-SELECT 1 as test`
+SELECT 1 as test`,
       );
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
@@ -218,21 +218,21 @@ SELECT 1 as test`
       expect(
         asPlainObject(
           result.compile.compiledGraph.tables.find(
-            table => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B")
-          ).dependencyTargets.length
-        )
+            (table) => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B"),
+          ).dependencyTargets.length,
+        ),
       ).equals(4);
       expect(
         asPlainObject(
           result.compile.compiledGraph.tables
-            .find(table => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B"))
-            .dependencyTargets.flatMap(dependencyTarget => dependencyTarget.name)
-        )
+            .find((table) => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B"))
+            .dependencyTargets.flatMap((dependencyTarget) => dependencyTarget.name),
+        ),
       ).deep.equals([
         prefixAdjustedName(testConfig.namePrefix, "A"),
         prefixAdjustedName(testConfig.namePrefix, "defaultDataset_A_assertions_rowConditions"),
         prefixAdjustedName(testConfig.namePrefix, "A_assert"),
-        prefixAdjustedName(testConfig.namePrefix, "C")
+        prefixAdjustedName(testConfig.namePrefix, "C"),
       ]);
     });
 
@@ -247,7 +247,7 @@ config {
   dependencies: ["A"]
 }
 select * from \${ref({name: "C", includeDependentAssertions: true})}
-select 1 as btest`
+select 1 as btest`,
       );
       writeDefinitionFile(
         projectDir,
@@ -259,7 +259,7 @@ config {
       rowConditions: ["test > 1"]
   }
 }
-SELECT 1 as test`
+SELECT 1 as test`,
       );
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
@@ -268,22 +268,23 @@ SELECT 1 as test`
       expect(
         asPlainObject(
           result.compile.compiledGraph.operations.find(
-            operation => operation.target.name === prefixAdjustedName(testConfig.namePrefix, "B")
-          ).dependencyTargets.length
-        )
+            (operation) => operation.target.name === prefixAdjustedName(testConfig.namePrefix, "B"),
+          ).dependencyTargets.length,
+        ),
       ).equals(3);
       expect(
         asPlainObject(
           result.compile.compiledGraph.operations
             .find(
-              operation => operation.target.name === prefixAdjustedName(testConfig.namePrefix, "B")
+              (operation) =>
+                operation.target.name === prefixAdjustedName(testConfig.namePrefix, "B"),
             )
-            .dependencyTargets.flatMap(dependencyTarget => dependencyTarget.name)
-        )
+            .dependencyTargets.flatMap((dependencyTarget) => dependencyTarget.name),
+        ),
       ).deep.equals([
         prefixAdjustedName(testConfig.namePrefix, "A"),
         prefixAdjustedName(testConfig.namePrefix, "C"),
-        prefixAdjustedName(testConfig.namePrefix, "defaultDataset_C_assertions_rowConditions")
+        prefixAdjustedName(testConfig.namePrefix, "defaultDataset_C_assertions_rowConditions"),
       ]);
     });
 
@@ -297,7 +298,7 @@ config {
   dependencies: ["A_assert"]
 }
 select * from \${ref({name: "A", includeDependentAssertions: true})}
-select 1 as btest`
+select 1 as btest`,
       );
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
@@ -306,20 +307,20 @@ select 1 as btest`
       expect(
         asPlainObject(
           result.compile.compiledGraph.tables.find(
-            table => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B")
-          ).dependencyTargets.length
-        )
+            (table) => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B"),
+          ).dependencyTargets.length,
+        ),
       ).equals(3);
       expect(
         asPlainObject(
           result.compile.compiledGraph.tables
-            .find(table => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B"))
-            .dependencyTargets.flatMap(dependencyTarget => dependencyTarget.name)
-        )
+            .find((table) => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B"))
+            .dependencyTargets.flatMap((dependencyTarget) => dependencyTarget.name),
+        ),
       ).deep.equals([
         prefixAdjustedName(testConfig.namePrefix, "A_assert"),
         prefixAdjustedName(testConfig.namePrefix, "A"),
-        prefixAdjustedName(testConfig.namePrefix, "defaultDataset_A_assertions_rowConditions")
+        prefixAdjustedName(testConfig.namePrefix, "defaultDataset_A_assertions_rowConditions"),
       ]);
     });
 
@@ -334,7 +335,7 @@ config {
 }
 select * from \${ref({name: "A", includeDependentAssertions: true})}
 select * from \${ref({name: "C", includeDependentAssertions: false})}
-select 1 as btest`
+select 1 as btest`,
       );
       writeDefinitionFile(
         projectDir,
@@ -347,14 +348,14 @@ config {
   }
 }
 SELECT 1 as test
-}`
+}`,
       );
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
       expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).deep.equals(2);
       expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).deep.equals(
-        `Conflicting "includeDependentAssertions" properties are not allowed. Dependency A has different values set for this property.`
+        `Conflicting "includeDependentAssertions" properties are not allowed. Dependency A has different values set for this property.`,
       );
     });
 
@@ -380,31 +381,32 @@ actions:
     dependOnDependencyAssertions: true
     dependencyTargets:
       - name: A
-`
+`,
         );
 
         const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
         expect(
           asPlainObject(
             result.compile.compiledGraph.operations.find(
-              operation => operation.target.name === prefixAdjustedName(testConfig.namePrefix, "C")
-            ).dependencyTargets.length
-          )
+              (operation) =>
+                operation.target.name === prefixAdjustedName(testConfig.namePrefix, "C"),
+            ).dependencyTargets.length,
+          ),
         ).deep.equals(3);
         expect(
           asPlainObject(
             result.compile.compiledGraph.tables.find(
-              table => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B")
-            ).dependencyTargets.length
-          )
+              (table) => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B"),
+            ).dependencyTargets.length,
+          ),
         ).deep.equals(3);
         expect(
           asPlainObject(
             result.compile.compiledGraph.notebooks.find(
-              notebook =>
-                notebook.target.name === prefixAdjustedName(testConfig.namePrefix, "notebook")
-            ).dependencyTargets.length
-          )
+              (notebook) =>
+                notebook.target.name === prefixAdjustedName(testConfig.namePrefix, "notebook"),
+            ).dependencyTargets.length,
+          ),
         ).deep.equals(3);
         expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       });
@@ -430,7 +432,7 @@ actions:
     dependencyTargets:
       - name: A
         includeDependentAssertions: true
-`
+`,
         );
 
         const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
@@ -439,24 +441,25 @@ actions:
         expect(
           asPlainObject(
             result.compile.compiledGraph.operations.find(
-              operation => operation.target.name === prefixAdjustedName(testConfig.namePrefix, "C")
-            ).dependencyTargets.length
-          )
+              (operation) =>
+                operation.target.name === prefixAdjustedName(testConfig.namePrefix, "C"),
+            ).dependencyTargets.length,
+          ),
         ).deep.equals(3);
         expect(
           asPlainObject(
             result.compile.compiledGraph.tables.find(
-              table => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B")
-            ).dependencyTargets.length
-          )
+              (table) => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B"),
+            ).dependencyTargets.length,
+          ),
         ).deep.equals(3);
         expect(
           asPlainObject(
             result.compile.compiledGraph.notebooks.find(
-              notebook =>
-                notebook.target.name === prefixAdjustedName(testConfig.namePrefix, "notebook")
-            ).dependencyTargets.length
-          )
+              (notebook) =>
+                notebook.target.name === prefixAdjustedName(testConfig.namePrefix, "notebook"),
+            ).dependencyTargets.length,
+          ),
         ).deep.equals(3);
       });
 
@@ -489,7 +492,7 @@ actions:
       - name: A
         includeDependentAssertions: false
       - name: B
-`
+`,
         );
         writeDefinitionFile(projectDir, "B_assert.sql", "SELECT test from B");
 
@@ -499,24 +502,25 @@ actions:
         expect(
           asPlainObject(
             result.compile.compiledGraph.operations.find(
-              operation => operation.target.name === prefixAdjustedName(testConfig.namePrefix, "C")
-            ).dependencyTargets.length
-          )
+              (operation) =>
+                operation.target.name === prefixAdjustedName(testConfig.namePrefix, "C"),
+            ).dependencyTargets.length,
+          ),
         ).deep.equals(1);
         expect(
           asPlainObject(
             result.compile.compiledGraph.tables.find(
-              table => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B")
-            ).dependencyTargets.length
-          )
+              (table) => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B"),
+            ).dependencyTargets.length,
+          ),
         ).deep.equals(1);
         expect(
           asPlainObject(
             result.compile.compiledGraph.notebooks.find(
-              notebook =>
-                notebook.target.name === prefixAdjustedName(testConfig.namePrefix, "notebook")
-            ).dependencyTargets.length
-          )
+              (notebook) =>
+                notebook.target.name === prefixAdjustedName(testConfig.namePrefix, "notebook"),
+            ).dependencyTargets.length,
+          ),
         ).deep.equals(3);
       });
 
@@ -550,7 +554,7 @@ actions:
       - name: A
         includeDependentAssertions: true
       - name: B
-`
+`,
         );
         writeDefinitionFile(projectDir, "B_assert.sql", "SELECT test from B");
 
@@ -560,24 +564,25 @@ actions:
         expect(
           asPlainObject(
             result.compile.compiledGraph.operations.find(
-              operation => operation.target.name === prefixAdjustedName(testConfig.namePrefix, "C")
-            ).dependencyTargets.length
-          )
+              (operation) =>
+                operation.target.name === prefixAdjustedName(testConfig.namePrefix, "C"),
+            ).dependencyTargets.length,
+          ),
         ).deep.equals(4);
         expect(
           asPlainObject(
             result.compile.compiledGraph.tables.find(
-              table => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B")
-            ).dependencyTargets.length
-          )
+              (table) => table.target.name === prefixAdjustedName(testConfig.namePrefix, "B"),
+            ).dependencyTargets.length,
+          ),
         ).deep.equals(3);
         expect(
           asPlainObject(
             result.compile.compiledGraph.notebooks.find(
-              notebook =>
-                notebook.target.name === prefixAdjustedName(testConfig.namePrefix, "notebook")
-            ).dependencyTargets.length
-          )
+              (notebook) =>
+                notebook.target.name === prefixAdjustedName(testConfig.namePrefix, "notebook"),
+            ).dependencyTargets.length,
+          ),
         ).deep.equals(4);
       });
 
@@ -600,7 +605,7 @@ actions:
       - name: B
       - name: A
         includeDependentAssertions: false
-`
+`,
         );
         writeDefinitionFile(projectDir, "B_assert.sql", "SELECT test from B");
 
@@ -608,7 +613,7 @@ actions:
 
         expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).deep.equals(1);
         expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).deep.equals(
-          `Conflicting "includeDependentAssertions" properties are not allowed. Dependency A has different values set for this property.`
+          `Conflicting "includeDependentAssertions" properties are not allowed. Dependency A has different values set for this property.`,
         );
       });
     });

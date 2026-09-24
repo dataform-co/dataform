@@ -10,25 +10,21 @@ import {
   ITimeoutArgs,
   jsonOutputOption,
   projectDirOption,
-  timeoutOption
+  timeoutOption,
 } from "df/cli/common_options";
 import {
   print,
   printCompiledGraphErrors,
   printError,
   printSuccess,
-  printTestResult
+  printTestResult,
 } from "df/cli/console";
 import { IProjectConfigArgs, ProjectConfigOptions } from "df/cli/project_config_options";
 import { actuallyResolve, compiledGraphHasErrors } from "df/cli/util";
 import { ICommand } from "df/cli/yargswrapper";
 
 export interface ITestArgs
-  extends IProjectDirArgs,
-    ICredentialsArgs,
-    ITimeoutArgs,
-    IJsonOutputArgs,
-    IProjectConfigArgs {}
+  extends IProjectDirArgs, ICredentialsArgs, ITimeoutArgs, IJsonOutputArgs, IProjectConfigArgs {}
 
 export const testCommand: ICommand<ITestArgs> = {
   format: `test [${projectDirOption.name}]`,
@@ -39,16 +35,16 @@ export const testCommand: ICommand<ITestArgs> = {
     credentialsOption,
     timeoutOption,
     jsonOutputOption,
-    ...ProjectConfigOptions.allYargsOptions
+    ...ProjectConfigOptions.allYargsOptions,
   ],
-  processFn: async argv => {
+  processFn: async (argv) => {
     if (!argv.json) {
       print("Compiling...\n");
     }
     const compiledGraph = await compile({
       projectDir: argv.projectDir,
       projectConfigOverride: ProjectConfigOptions.constructProjectConfigOverride(argv),
-      timeoutMillis: argv.timeout || undefined
+      timeoutMillis: argv.timeout || undefined,
     });
     if (compiledGraphHasErrors(compiledGraph)) {
       printCompiledGraphErrors(compiledGraph.graphErrors);
@@ -57,9 +53,7 @@ export const testCommand: ICommand<ITestArgs> = {
     if (!argv.json) {
       printSuccess("Compiled successfully.\n");
     }
-    const readCredentials = credentials.read(
-      actuallyResolve(argv.projectDir, argv.credentials)
-    );
+    const readCredentials = credentials.read(actuallyResolve(argv.projectDir, argv.credentials));
 
     if (!compiledGraph.tests.length) {
       printError("No unit tests found.");
@@ -72,11 +66,11 @@ export const testCommand: ICommand<ITestArgs> = {
     const dbadapter = new BigQueryDbAdapter(readCredentials);
     const testResults = await test(dbadapter, compiledGraph.tests);
     if (!argv.json) {
-      testResults.forEach(testResult => printTestResult(testResult));
+      testResults.forEach((testResult) => printTestResult(testResult));
     } else {
       // Print all results as JSON if the option is set.
       print(prettyJsonStringify(testResults));
     }
-    return testResults.every(testResult => testResult.successful) ? 0 : 1;
-  }
+    return testResults.every((testResult) => testResult.successful) ? 0 : 1;
+  },
 };

@@ -9,12 +9,12 @@ import { dataform } from "df/protos/ts";
 export async function build(
   compiledGraph: dataform.ICompiledGraph,
   runConfig: dataform.IRunConfig,
-  dbadapter: dbadapters.IDbAdapter
+  dbadapter: dbadapters.IDbAdapter,
 ) {
   const prunedGraph = prune(compiledGraph, runConfig);
 
   const allInvolvedTargets = new Set<string>(
-    prunedGraph.tables.map(table => targetStringifier.stringify(table.target))
+    prunedGraph.tables.map((table) => targetStringifier.stringify(table.target)),
   );
 
   return new Builder(
@@ -22,8 +22,8 @@ export async function build(
     runConfig,
     await state(
       dbadapter,
-      Array.from(allInvolvedTargets).map(target => targetStringifier.parse(target))
-    )
+      Array.from(allInvolvedTargets).map((target) => targetStringifier.parse(target)),
+    ),
   ).build();
 }
 
@@ -33,11 +33,11 @@ export class Builder {
   constructor(
     private readonly prunedGraph: dataform.ICompiledGraph,
     private readonly runConfig: dataform.IRunConfig,
-    private readonly warehouseState: dataform.IWarehouseState
+    private readonly warehouseState: dataform.IWarehouseState,
   ) {
     this.executionSql = new ExecutionSql(
       prunedGraph.projectConfig,
-      prunedGraph.dataformCoreVersion || "1.0.0"
+      prunedGraph.dataformCoreVersion || "1.0.0",
     );
     prunedGraph.tables.forEach(utils.setOrValidateTableEnumType);
   }
@@ -49,43 +49,43 @@ export class Builder {
 
     const tableMetadataByTarget = new Map<string, dataform.ITableMetadata>();
 
-    this.warehouseState.tables.forEach(tableState => {
+    this.warehouseState.tables.forEach((tableState) => {
       tableMetadataByTarget.set(targetStringifier.stringify(tableState.target), tableState);
     });
 
     const actions: dataform.IExecutionAction[] = [].concat(
-      this.prunedGraph.tables.map(t =>
+      this.prunedGraph.tables.map((t) =>
         this.buildTable(
           t,
           tableMetadataByTarget.get(targetStringifier.stringify(t.target)),
-          this.runConfig
-        )
+          this.runConfig,
+        ),
       ),
-      this.prunedGraph.operations.map(o => this.buildOperation(o)),
-      this.prunedGraph.assertions.map(a => this.buildAssertion(a)),
-      this.prunedGraph.propertyGraphs.map(g => this.buildPropertyGraph(g))
+      this.prunedGraph.operations.map((o) => this.buildOperation(o)),
+      this.prunedGraph.assertions.map((a) => this.buildAssertion(a)),
+      this.prunedGraph.propertyGraphs.map((g) => this.buildPropertyGraph(g)),
     );
     return dataform.ExecutionGraph.create({
       projectConfig: this.prunedGraph.projectConfig,
       runConfig: this.runConfig,
       warehouseState: this.warehouseState,
-      declarationTargets: this.prunedGraph.declarations.map(declaration => declaration.target),
+      declarationTargets: this.prunedGraph.declarations.map((declaration) => declaration.target),
       actions,
-      jitData: this.prunedGraph.jitData
+      jitData: this.prunedGraph.jitData,
     });
   }
 
   private buildTable(
     table: dataform.ITable,
     tableMetadata: dataform.ITableMetadata,
-    runConfig: dataform.IRunConfig
+    runConfig: dataform.IRunConfig,
   ) {
     return {
       ...this.toPartialExecutionAction(table),
       type: "table",
       tableType: utils.tableTypeEnumToString(table.enumType),
       tasks: this.executionSql.createTableTasks(table, runConfig, tableMetadata),
-      hermeticity: table.hermeticity || dataform.ActionHermeticity.HERMETIC
+      hermeticity: table.hermeticity || dataform.ActionHermeticity.HERMETIC,
     };
   }
 
@@ -94,7 +94,7 @@ export class Builder {
       ...this.toPartialExecutionAction(operation),
       type: "operation",
       tasks: this.executionSql.createOperationTasks(operation),
-      hermeticity: operation.hermeticity || dataform.ActionHermeticity.NON_HERMETIC
+      hermeticity: operation.hermeticity || dataform.ActionHermeticity.NON_HERMETIC,
     };
   }
 
@@ -103,7 +103,7 @@ export class Builder {
       ...this.toPartialExecutionAction(assertion),
       type: "assertion",
       tasks: this.executionSql.createAssertionTasks(assertion),
-      hermeticity: assertion.hermeticity || dataform.ActionHermeticity.HERMETIC
+      hermeticity: assertion.hermeticity || dataform.ActionHermeticity.HERMETIC,
     };
   }
 
@@ -111,16 +111,12 @@ export class Builder {
     return {
       ...this.toPartialExecutionAction(propertyGraph),
       type: "propertyGraph",
-      tasks: this.executionSql.createPropertyGraphTasks(propertyGraph)
+      tasks: this.executionSql.createPropertyGraphTasks(propertyGraph),
     };
   }
 
   private toPartialExecutionAction(
-    action:
-      | dataform.ITable
-      | dataform.IOperation
-      | dataform.IAssertion
-      | dataform.IPropertyGraph
+    action: dataform.ITable | dataform.IOperation | dataform.IAssertion | dataform.IPropertyGraph,
   ) {
     const jitCode = "jitCode" in action ? action.jitCode : undefined;
     const actionDescriptor = "actionDescriptor" in action ? action.actionDescriptor : undefined;
@@ -129,7 +125,7 @@ export class Builder {
       target: action.target,
       fileName: action.fileName,
       dependencyTargets: action.dependencyTargets,
-      actionDescriptor
+      actionDescriptor,
     });
     if (jitCode && !disabled) {
       executionAction.jitCode = jitCode;

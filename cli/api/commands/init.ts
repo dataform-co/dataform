@@ -18,7 +18,7 @@ export interface IInitResult {
 
 export async function init(
   projectDir: string,
-  projectConfig: dataform.IProjectConfig
+  projectConfig: dataform.IProjectConfig,
 ): Promise<IInitResult> {
   const workflowSettingsYamlPath = path.join(projectDir, "workflow_settings.yaml");
   const packageJsonPath = path.join(projectDir, "package.json");
@@ -32,7 +32,7 @@ export async function init(
     fs.existsSync(dataformJsonPath)
   ) {
     throw new Error(
-      "Cannot init dataform project, this already appears to be an NPM or Dataform directory."
+      "Cannot init dataform project, this already appears to be an NPM or Dataform directory.",
     );
   }
 
@@ -68,7 +68,7 @@ export async function init(
   if (projectConfig.builtinAssertionNamePrefix) {
     workflowSettings.builtinAssertionNamePrefix = projectConfig.builtinAssertionNamePrefix;
   }
-  if(projectConfig.defaultIcebergConfig) {
+  if (projectConfig.defaultIcebergConfig) {
     workflowSettings.defaultIcebergConfig = projectConfig.defaultIcebergConfig;
   }
 
@@ -89,6 +89,6 @@ export async function init(
 
   return {
     filesWritten,
-    dirsCreated
+    dirsCreated,
   };
 }

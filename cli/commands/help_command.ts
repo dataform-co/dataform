@@ -12,15 +12,14 @@ export function createHelpCommand(commands: ICommandBase[]): ICommand<IHelpArgs>
     description: "Show help. If [command] is specified, the help is for the given command.",
     positionalOptions: [],
     options: [],
-    processFn: async argv => {
+    processFn: async (argv) => {
       if (argv.command) {
         setupYargs([helpCmd, ...commands], [argv.command, "--help"]).parse();
       } else {
         yargs.showHelp();
       }
       return 0;
-    }
+    },
   };
   return helpCmd;
 }
-

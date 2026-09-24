@@ -11,7 +11,7 @@ export class JSONObjectStringifier<T> implements IStringifier<T> {
     return JSON.stringify(
       Object.keys(value)
         .sort()
-        .reduce((acc, curr) => ({ ...acc, [curr]: (value as any)[curr] }), {})
+        .reduce((acc, curr) => ({ ...acc, [curr]: (value as any)[curr] }), {}),
     );
   }
 

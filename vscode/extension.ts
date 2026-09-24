@@ -4,7 +4,7 @@ import {
   LanguageClient,
   LanguageClientOptions,
   ServerOptions,
-  TransportKind
+  TransportKind,
 } from "vscode-languageclient";
 
 let client: LanguageClient;
@@ -18,23 +18,23 @@ export async function activate(context: vscode.ExtensionContext) {
     debug: {
       module: serverModule,
       transport: TransportKind.ipc,
-      options: debugOptions
-    }
+      options: debugOptions,
+    },
   };
 
   const clientOptions: LanguageClientOptions = {
     // register server for sqlx files
     documentSelector: [{ scheme: "file", language: "sqlx" }],
     synchronize: {
-      fileEvents: workspace.createFileSystemWatcher("**/.clientrc")
-    }
+      fileEvents: workspace.createFileSystemWatcher("**/.clientrc"),
+    },
   };
 
   client = new LanguageClient(
     "dataformLanguageServer",
     "Dataform Language Server",
     serverOptions,
-    clientOptions
+    clientOptions,
   );
 
   const compile = vscode.commands.registerCommand("dataform.compile", () => {
@@ -68,9 +68,9 @@ export async function activate(context: vscode.ExtensionContext) {
         .showInformationMessage(
           "The Dataform extension recommends installing the YAML extension for workflow_settings.yaml support.",
           "Install",
-          "Don't show again"
+          "Don't show again",
         )
-        .then(selection => {
+        .then((selection) => {
           if (selection === "Install") {
             // Open the YAML extension page
             vscode.env.openExternal(vscode.Uri.parse("vscode:extension/redhat.vscode-yaml"));

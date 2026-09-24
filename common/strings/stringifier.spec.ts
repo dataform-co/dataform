@@ -18,9 +18,9 @@ suite(basename(__filename), () => {
         b: 123,
         c: true,
         d: {
-          v: "inner"
+          v: "inner",
         },
-        e: null as null
+        e: null as null,
       };
       expect(stringifier.parse(stringifier.stringify(value))).deep.equals(value);
     });
@@ -32,16 +32,16 @@ suite(basename(__filename), () => {
         b: 123,
         c: true,
         d: {
-          v: "inner"
-        }
+          v: "inner",
+        },
       };
       const value2 = {
         d: {
-          v: "inner"
+          v: "inner",
         },
         a: "test",
         c: true,
-        b: 123
+        b: 123,
       };
       expect(stringifier.stringify(value)).equals(stringifier.stringify(value2));
     });

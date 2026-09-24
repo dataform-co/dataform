@@ -19,8 +19,8 @@ const testConnectionOption: INamedOption<yargs.Options, IInitCredsArgs> = {
   option: {
     describe: "If true, a test query will be run using your final credentials.",
     type: "boolean",
-    default: true
-  }
+    default: true,
+  },
 };
 
 export const initCredsCommand: ICommand<IInitCredsArgs> = {
@@ -31,7 +31,7 @@ export const initCredsCommand: ICommand<IInitCredsArgs> = {
   positionalOptions: [projectDirOption],
   options: [testConnectionOption],
   check: [assertProjectDirExists],
-  processFn: async argv => {
+  processFn: async (argv) => {
     const finalCredentials = getBigQueryCredentials();
     if (argv.testConnection) {
       print("\nRunning connection test...");
@@ -47,19 +47,16 @@ export const initCredsCommand: ICommand<IInitCredsArgs> = {
         }
         case credentials.TestResultStatus.OTHER_ERROR: {
           throw new Error(
-            `Credentials test query failed: ${testResult.error.stack || testResult.error.message}`
+            `Credentials test query failed: ${testResult.error.stack || testResult.error.message}`,
           );
         }
       }
     } else {
       print("\nCredentials test query was not run.\n");
     }
-    const filePath = path.resolve(
-      argv.projectDir,
-      credentials.CREDENTIALS_FILENAME
-    );
+    const filePath = path.resolve(argv.projectDir, credentials.CREDENTIALS_FILENAME);
     fs.writeFileSync(filePath, prettyJsonStringify(finalCredentials));
     printInitCredsResult(filePath);
     return 0;
-  }
+  },
 };

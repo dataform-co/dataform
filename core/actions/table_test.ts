@@ -6,13 +6,13 @@ import {
   suite,
   test,
   writeDefinitionFile,
-  writeWorkflowSettingsFile
+  writeWorkflowSettingsFile,
 } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
 import {
   coreExecutionRequestFromPath,
   runMainInVm,
-  VALID_WORKFLOW_SETTINGS_YAML
+  VALID_WORKFLOW_SETTINGS_YAML,
 } from "df/testing/run_core";
 
 suite("table", ({ afterEach }) => {
@@ -28,7 +28,7 @@ suite("table", ({ afterEach }) => {
         `
 actions:
 - table:
-    filename: action.sql`
+    filename: action.sql`,
       );
       writeDefinitionFile(projectDir, "action.sql", "SELECT 1");
 
@@ -41,21 +41,21 @@ actions:
             target: {
               database: "defaultProject",
               schema: "defaultDataset",
-              name: "action"
+              name: "action",
             },
             canonicalTarget: {
               database: "defaultProject",
               schema: "defaultDataset",
-              name: "action"
+              name: "action",
             },
             fileName: "definitions/action.sql",
             hermeticity: "NON_HERMETIC",
             query: "SELECT 1",
             type: "table",
             enumType: "TABLE",
-            disabled: false
-          }
-        ])
+            disabled: false,
+          },
+        ]),
       );
     });
 
@@ -95,7 +95,7 @@ actions:
     hermetic: true
     reservation: reservation
 ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
-`
+`,
       );
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
@@ -106,12 +106,12 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
           target: {
             database: "project",
             schema: "dataset",
-            name: "name"
+            name: "name",
           },
           canonicalTarget: {
             database: "project",
             schema: "dataset",
-            name: "name"
+            name: "name",
           },
           type: "table",
           disabled: true,
@@ -119,38 +119,38 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
           bigquery: {
             additionalOptions: {
               option1Key: "option1",
-              option2Key: "option2"
+              option2Key: "option2",
             },
             clusterBy: ["clusterBy"],
             labels: {
-              key: "val"
+              key: "val",
             },
             partitionBy: "partitionBy",
             partitionExpirationDays: 1,
-            requirePartitionFilter: true
+            requirePartitionFilter: true,
           },
           tags: ["tag1", "tag2"],
           dependencyTargets: [
             {
               database: "defaultProject",
               schema: "defaultDataset",
-              name: "operation"
-            }
+              name: "operation",
+            },
           ],
           enumType: "TABLE",
           fileName: "definitions/filename.sql",
           query: "SELECT 1",
           actionDescriptor: {
             bigqueryLabels: {
-              key: "val"
+              key: "val",
             },
             description: "description",
-            reservation: "reservation"
-          }
-        }
+            reservation: "reservation",
+          },
+        },
       ]);
       expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals(
-        exampleBuiltInAssertionsAsYaml.outputAssertions
+        exampleBuiltInAssertionsAsYaml.outputAssertions,
       );
     });
   });
@@ -165,14 +165,14 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
         type: "table",
         incrementalStrategy: "merge"
       }
-      SELECT 1`
+      SELECT 1`,
     );
 
     const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
     expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).greaterThan(0);
     expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).contains(
-      'Unexpected property "incrementalStrategy"'
+      'Unexpected property "incrementalStrategy"',
     );
   });
 
@@ -183,7 +183,7 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
       writeDefinitionFile(
         projectDir,
         "table.js",
-        `publish("table", {type: "table"}).jitCode((ctx) => Promise.resolve({query: "select 1"}))`
+        `publish("table", {type: "table"}).jitCode((ctx) => Promise.resolve({query: "select 1"}))`,
       );
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
@@ -194,12 +194,12 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
           target: {
             database: "defaultProject",
             schema: "defaultDataset",
-            name: "table"
+            name: "table",
           },
           canonicalTarget: {
             database: "defaultProject",
             schema: "defaultDataset",
-            name: "table"
+            name: "table",
           },
           type: "table",
           enumType: "TABLE",
@@ -208,9 +208,9 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
           fileName: "definitions/table.js",
           jitCode: '(ctx) => Promise.resolve({query: "select 1"})',
           actionDescriptor: {
-            compilationMode: "ACTION_COMPILATION_MODE_JIT"
-          }
-        }
+            compilationMode: "ACTION_COMPILATION_MODE_JIT",
+          },
+        },
       ]);
     });
 
@@ -220,16 +220,16 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
       writeDefinitionFile(
         projectDir,
         "table.js",
-        `publish("table", {type: "table"}).jitCode((ctx) => Promise.resolve({query: "select 1"})).query("select 1")`
+        `publish("table", {type: "table"}).jitCode((ctx) => Promise.resolve({query: "select 1"})).query("select 1")`,
       );
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
       expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).greaterThan(0);
       expect(
-        result.compile.compiledGraph.graphErrors.compilationErrors.some(e =>
-          e.message.includes("Cannot mix AoT and JiT compilation")
-        )
+        result.compile.compiledGraph.graphErrors.compilationErrors.some((e) =>
+          e.message.includes("Cannot mix AoT and JiT compilation"),
+        ),
       ).equals(true);
     });
   });
@@ -244,7 +244,7 @@ defaultProject: defaultProject
 defaultDataset: defaultDataset
 defaultLocation: US
 defaultReservation: projects/my-project/locations/us/reservations/my-reservation
-`
+`,
       );
       writeDefinitionFile(
         projectDir,
@@ -253,7 +253,7 @@ defaultReservation: projects/my-project/locations/us/reservations/my-reservation
 config {
   type: "table"
 }
-SELECT 1`
+SELECT 1`,
       );
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
@@ -264,7 +264,7 @@ SELECT 1`
         defaultSchema: "defaultDataset",
         defaultLocation: "US",
         defaultReservation: "projects/my-project/locations/us/reservations/my-reservation",
-        warehouse: "bigquery"
+        warehouse: "bigquery",
       });
       // The action itself should have no actionDescriptor (no action-level reservation set).
       expect(asPlainObject(result.compile.compiledGraph.tables[0].actionDescriptor)).equals(null);
@@ -279,7 +279,7 @@ defaultProject: defaultProject
 defaultDataset: defaultDataset
 defaultLocation: US
 defaultReservation: projects/my-project/locations/us/reservations/default-reservation
-`
+`,
       );
       writeDefinitionFile(
         projectDir,
@@ -289,7 +289,7 @@ config {
   type: "table",
   reservation: "projects/my-project/locations/us/reservations/action-reservation"
 }
-SELECT 1`
+SELECT 1`,
       );
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
@@ -297,13 +297,11 @@ SELECT 1`
       expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       // The default reservation is available in projectConfig.
       expect(
-        asPlainObject(result.compile.compiledGraph.projectConfig).defaultReservation
+        asPlainObject(result.compile.compiledGraph.projectConfig).defaultReservation,
       ).deep.equals("projects/my-project/locations/us/reservations/default-reservation");
       // The action-level reservation is stored in actionDescriptor, taking precedence at runtime.
-      expect(
-        asPlainObject(result.compile.compiledGraph.tables[0].actionDescriptor)
-      ).deep.equals({
-        reservation: "projects/my-project/locations/us/reservations/action-reservation"
+      expect(asPlainObject(result.compile.compiledGraph.tables[0].actionDescriptor)).deep.equals({
+        reservation: "projects/my-project/locations/us/reservations/action-reservation",
       });
     });
   });
@@ -324,21 +322,21 @@ const shared = {
 publish("t1", shared).query(_ => "SELECT 1 AS id, DATE '2024-01-01' AS event_date, 'u1' AS user_id");
 publish("t2", shared).query(_ => "SELECT 2 AS id, DATE '2024-01-01' AS event_date, 'u2' AS user_id");
 publish("t3", shared).query(_ => "SELECT 3 AS id, DATE '2024-01-01' AS event_date, 'u3' AS user_id");
-`
+`,
       );
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
       expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
 
-      const bigqueryBlocks = result.compile.compiledGraph.tables.map(t =>
-        asPlainObject(t.bigquery)
+      const bigqueryBlocks = result.compile.compiledGraph.tables.map((t) =>
+        asPlainObject(t.bigquery),
       );
       const expectedBigquery = { partitionBy: "event_date", clusterBy: ["user_id"] };
       expect(bigqueryBlocks).deep.equals([expectedBigquery, expectedBigquery, expectedBigquery]);
 
       const assertionNames = result.compile.compiledGraph.assertions
-        .map(a => a.target.name)
+        .map((a) => a.target.name)
         .sort();
       expect(assertionNames).deep.equals([
         "defaultDataset_t1_assertions_rowConditions",
@@ -346,7 +344,7 @@ publish("t3", shared).query(_ => "SELECT 3 AS id, DATE '2024-01-01' AS event_dat
         "defaultDataset_t2_assertions_rowConditions",
         "defaultDataset_t2_assertions_uniqueKey_0",
         "defaultDataset_t3_assertions_rowConditions",
-        "defaultDataset_t3_assertions_uniqueKey_0"
+        "defaultDataset_t3_assertions_uniqueKey_0",
       ]);
     });
   });

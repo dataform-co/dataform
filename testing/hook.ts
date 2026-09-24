@@ -12,7 +12,7 @@ export function hook(name: string, options: Omit<IHookOptions, "name">, fn: IHoo
 export function hook(
   nameOrOptions: IHookOptions | string,
   optionsOrFn: Omit<IHookOptions, "name"> | IHookFunction,
-  fn?: IHookFunction
+  fn?: IHookFunction,
 ): Hook {
   return Hook.create(nameOrOptions, optionsOrFn, fn);
 }
@@ -25,7 +25,7 @@ export class Hook {
   public static create(
     nameOrOptions: IHookOptions | string,
     optionsOrFn: Omit<IHookOptions, "name"> | IHookFunction,
-    fn?: IHookFunction
+    fn?: IHookFunction,
   ): Hook {
     let options: IHookOptions =
       typeof nameOrOptions === "string" ? { name: nameOrOptions } : nameOrOptions;
@@ -37,14 +37,17 @@ export class Hook {
     return new Hook(options, fn);
   }
 
-  constructor(public readonly options: IHookOptions, private readonly fn: IHookFunction) {}
+  constructor(
+    public readonly options: IHookOptions,
+    private readonly fn: IHookFunction,
+  ) {}
 
   public async run(ctx: IRunContext) {
     let timer: NodeJS.Timer;
     const timeout = this.options.timeout || Hook.DEFAULT_TIMEOUT_MILLIS;
     const result: IRunResult = {
       path: [...ctx.path, `${this.options.name} (hook)`],
-      outcome: "failed"
+      outcome: "failed",
     };
     try {
       await Promise.race([
@@ -54,7 +57,7 @@ export class Hook {
             result.outcome = "timeout";
             reject(new Error(`Timed out (${timeout}ms).`));
           }, timeout);
-        })
+        }),
       ]);
       result.outcome = "passed";
     } catch (err) {

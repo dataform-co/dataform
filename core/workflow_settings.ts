@@ -11,13 +11,14 @@ const nativeRequire = typeof __webpack_require__ === "function" ? __non_webpack_
 
 export function readWorkflowSettings(failIfMissing: boolean = true): dataform.ProjectConfig {
   const globalAny = global as any;
-  const workflowSettingsYaml = globalAny.workflowSettingsYaml || maybeRequire("workflow_settings.yaml");
+  const workflowSettingsYaml =
+    globalAny.workflowSettingsYaml || maybeRequire("workflow_settings.yaml");
   // `dataform.json` is deprecated; new versions of Dataform Core prefer `workflow_settings.yaml`.
   const dataformJson = globalAny.dataformJson || maybeRequire("dataform.json");
 
   if (workflowSettingsYaml && dataformJson) {
     throw Error(
-      "dataform.json has been deprecated and cannot be defined alongside workflow_settings.yaml"
+      "dataform.json has been deprecated and cannot be defined alongside workflow_settings.yaml",
     );
   }
 
@@ -33,7 +34,7 @@ export function readWorkflowSettings(failIfMissing: boolean = true): dataform.Pr
     // Dataform JSON used the compiled graph's config proto, rather than workflow settings.
     try {
       return dataform.ProjectConfig.create(
-        verifyObjectMatchesProto(dataform.ProjectConfig, dataformJson)
+        verifyObjectMatchesProto(dataform.ProjectConfig, dataformJson),
       );
     } catch (e) {
       if (e instanceof ReferenceError) {
@@ -58,8 +59,8 @@ function verifyWorkflowSettingsAsJson(workflowSettingsAsJson: object): dataform.
         workflowSettingsAsJson as {
           [key: string]: any;
         },
-        VerifyProtoErrorBehaviour.SHOW_DOCS_LINK
-      )
+        VerifyProtoErrorBehaviour.SHOW_DOCS_LINK,
+      ),
     );
   } catch (e) {
     if (e instanceof ReferenceError) {
@@ -72,7 +73,7 @@ function verifyWorkflowSettingsAsJson(workflowSettingsAsJson: object): dataform.
   if (!!workflowSettings.dataformCoreVersion && workflowSettings.dataformCoreVersion !== version) {
     throw Error(
       `Version mismatch: workflow settings specifies version ${workflowSettings.dataformCoreVersion}` +
-        `, but ${version} was found`
+        `, but ${version} was found`,
     );
   }
 
@@ -95,7 +96,7 @@ function maybeRequire(file: string): any {
 }
 
 export function workflowSettingsAsProjectConfig(
-  workflowSettings: dataform.WorkflowSettings
+  workflowSettings: dataform.WorkflowSettings,
 ): dataform.ProjectConfig {
   const projectConfig = dataform.ProjectConfig.create();
   if (workflowSettings.defaultProject) {
@@ -127,7 +128,7 @@ export function workflowSettingsAsProjectConfig(
   }
   if (workflowSettings.defaultNotebookRuntimeOptions) {
     projectConfig.defaultNotebookRuntimeOptions = {};
-    const {outputBucket, runtimeTemplateName, repositorySnapshotDestination} =
+    const { outputBucket, runtimeTemplateName, repositorySnapshotDestination } =
       workflowSettings.defaultNotebookRuntimeOptions;
     if (outputBucket) {
       projectConfig.defaultNotebookRuntimeOptions.outputBucket = outputBucket;
@@ -146,26 +147,31 @@ export function workflowSettingsAsProjectConfig(
       } else {
         throw Error(
           "Invalid repository_snapshot_destination: either repository_snapshot_uri or output_bucket " +
-            "has to be defined");
+            "has to be defined",
+        );
       }
     }
   }
-  if(workflowSettings.defaultIcebergConfig) {
+  if (workflowSettings.defaultIcebergConfig) {
     projectConfig.defaultIcebergConfig = {};
-    if(workflowSettings.defaultIcebergConfig.bucketName) {
-      projectConfig.defaultIcebergConfig.bucketName = workflowSettings.defaultIcebergConfig.bucketName;
+    if (workflowSettings.defaultIcebergConfig.bucketName) {
+      projectConfig.defaultIcebergConfig.bucketName =
+        workflowSettings.defaultIcebergConfig.bucketName;
     }
-    if(workflowSettings.defaultIcebergConfig.tableFolderRoot) {
-      projectConfig.defaultIcebergConfig.tableFolderRoot = workflowSettings.defaultIcebergConfig.tableFolderRoot;
+    if (workflowSettings.defaultIcebergConfig.tableFolderRoot) {
+      projectConfig.defaultIcebergConfig.tableFolderRoot =
+        workflowSettings.defaultIcebergConfig.tableFolderRoot;
     }
-    if(workflowSettings.defaultIcebergConfig.tableFolderSubpath) {
-      projectConfig.defaultIcebergConfig.tableFolderSubpath = workflowSettings.defaultIcebergConfig.tableFolderSubpath;
+    if (workflowSettings.defaultIcebergConfig.tableFolderSubpath) {
+      projectConfig.defaultIcebergConfig.tableFolderSubpath =
+        workflowSettings.defaultIcebergConfig.tableFolderSubpath;
     }
-    if(workflowSettings.defaultIcebergConfig.connection) {
-      projectConfig.defaultIcebergConfig.connection = workflowSettings.defaultIcebergConfig.connection;
+    if (workflowSettings.defaultIcebergConfig.connection) {
+      projectConfig.defaultIcebergConfig.connection =
+        workflowSettings.defaultIcebergConfig.connection;
     }
   }
-  if(workflowSettings.disableAssertions) {
+  if (workflowSettings.disableAssertions) {
     projectConfig.disableAssertions = workflowSettings.disableAssertions;
   }
   if (workflowSettings.defaultReservation) {

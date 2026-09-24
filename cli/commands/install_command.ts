@@ -11,10 +11,10 @@ export const installCommand: ICommand<IInstallArgs> = {
   positionalOptions: [projectDirOption],
   options: [],
   check: [assertProjectDirExists],
-  processFn: async argv => {
+  processFn: async (argv) => {
     print("Installing NPM dependencies...\n");
     await install(argv.projectDir);
     printSuccess("Project dependencies successfully installed.");
     return 0;
-  }
+  },
 };

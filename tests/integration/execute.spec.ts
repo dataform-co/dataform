@@ -15,7 +15,7 @@ suite("@dataform/integration/execute", { parallel: true }, () => {
     const { bigquery: bqMetadata } = metadata;
     expect(bqMetadata).to.have.property("jobId");
     expect(bqMetadata.jobId).to.match(
-      /^dataform-[0-9A-Fa-f]{8}(?:-[0-9A-Fa-f]{4}){3}-[0-9A-Fa-f]{12}$/
+      /^dataform-[0-9A-Fa-f]{8}(?:-[0-9A-Fa-f]{4}){3}-[0-9A-Fa-f]{12}$/,
     );
     expect(bqMetadata).to.have.property("totalBytesBilled");
     expect(bqMetadata.totalBytesBilled).to.eql(Long.fromNumber(0));
@@ -29,7 +29,7 @@ suite("@dataform/integration/execute", { parallel: true }, () => {
     const { bigquery: bqMetadata } = metadata;
     expect(bqMetadata).to.have.property("jobId");
     expect(bqMetadata.jobId).to.match(
-      /^dataform-jobPrefix-[0-9A-Fa-f]{8}(?:-[0-9A-Fa-f]{4}){3}-[0-9A-Fa-f]{12}$/
+      /^dataform-jobPrefix-[0-9A-Fa-f]{8}(?:-[0-9A-Fa-f]{4}){3}-[0-9A-Fa-f]{12}$/,
     );
   });
 
@@ -45,17 +45,17 @@ suite("@dataform/integration/execute", { parallel: true }, () => {
       { interactive: true, rowLimit: 2 },
       { interactive: false, rowLimit: 2 },
       { interactive: true, byteLimit: 30 },
-      { interactive: false, byteLimit: 30 }
+      { interactive: false, byteLimit: 30 },
     ]) {
       test(`with options=${JSON.stringify(options)}`, async () => {
         const { rows } = await dbadapter.execute(query, options);
         expect(rows).to.eql([
           {
-            f0_: 1
+            f0_: 1,
           },
           {
-            f0_: 2
-          }
+            f0_: 2,
+          },
         ]);
       });
     }

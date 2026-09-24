@@ -5,7 +5,7 @@ import { TmpDirFixture } from "df/testing/fixtures";
 import {
   coreExecutionRequestFromPath,
   runMainInVm,
-  WorkflowSettingsTemplates
+  WorkflowSettingsTemplates,
 } from "df/testing/run_core";
 
 suite("sqlx special characters", ({ afterEach }) => {
@@ -33,7 +33,7 @@ post_operations {
   SELECT 3;
 }
 -- A single line comment.
-SELECT \${a}`
+SELECT \${a}`,
     );
 
     const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
@@ -84,7 +84,7 @@ from \`location\``;
     writeDefinitionFile(
       projectDir,
       "file.sqlx",
-      `config { type: "table" }` + sqlContents + `pre_operations { ${sqlContents} }`
+      `config { type: "table" }` + sqlContents + `pre_operations { ${sqlContents} }`,
     );
 
     const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
@@ -115,7 +115,7 @@ quotes
     writeDefinitionFile(
       projectDir,
       "file.sqlx",
-      `config { type: "table" }` + sqlContents + `post_operations { ${sqlContents} }`
+      `config { type: "table" }` + sqlContents + `post_operations { ${sqlContents} }`,
     );
 
     const result = runMainInVm(coreExecutionRequestFromPath(projectDir));

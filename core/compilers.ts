@@ -11,16 +11,14 @@ const CONTEXT_FUNCTIONS = [
   "when",
   "incremental",
   "schema",
-  "database"
+  "database",
 ]
-    .map(name => `const ${name} = ctx.${name} ? ctx.${name}.bind(ctx) : undefined;`)
-    .join("\n");
+  .map((name) => `const ${name} = ctx.${name} ? ctx.${name}.bind(ctx) : undefined;`)
+  .join("\n");
 
-const CONTEXT_CONSTANTS = [
-  "EXPECT"
-]
-    .map(name => `const ${name} = ctx.${name} ? ctx.${name} : undefined;`)
-    .join("\n");
+const CONTEXT_CONSTANTS = ["EXPECT"]
+  .map((name) => `const ${name} = ctx.${name} ? ctx.${name} : undefined;`)
+  .join("\n");
 
 export const INVALID_YAML_ERROR_STRING = "is not a valid YAML file";
 
@@ -50,10 +48,7 @@ export function compile(code: string, path: string): string {
     return `exports.asJson = ${notebookAsJson}`;
   }
   if (Path.fileExtension(path) === "sql") {
-    const escapedCode = code
-      .replace(/\\/g, "\\\\")
-      .replace(/`/g, "\\`")
-      .replace(/\${/g, "\\${");
+    const escapedCode = code.replace(/\\/g, "\\\\").replace(/`/g, "\\`").replace(/\${/g, "\\${");
     return `exports.query = \`${escapedCode}\`;`;
   }
   if (Path.fileExtension(path) === "md") {
@@ -68,7 +63,8 @@ export function compile(code: string, path: string): string {
 }
 
 export function extractJsBlocks(code: string): { sql: string; js: string } {
-  const JS_REGEX = /^\s*\/\*[jJ][sS]\s*[\r\n]+((?:[^*]|[\r\n]|(?:\*+(?:[^*/]|[\r\n])))*)\*+\/|^\s*\-\-[jJ][sS]\s(.*)/gm;
+  const JS_REGEX =
+    /^\s*\/\*[jJ][sS]\s*[\r\n]+((?:[^*]|[\r\n]|(?:\*+(?:[^*/]|[\r\n])))*)\*+\/|^\s*\-\-[jJ][sS]\s(.*)/gm;
   // This captures any single backticks that aren't escaped with a preceding \.
   const RAW_BACKTICKS_REGEX = /([^\\])`/g;
   const jsBlocks: string[] = [];
@@ -86,14 +82,13 @@ export function extractJsBlocks(code: string): { sql: string; js: string } {
 
   return {
     sql: cleanSql.trim(),
-    js: jsBlocks.map(block => block.trim()).join("\n")
+    js: jsBlocks.map((block) => block.trim()).join("\n"),
   };
 }
 
 function compileSqlx(rootNode: SyntaxTreeNode, path: string): string {
-  const { config, js, sql, incremental, preOperations, postOperations, inputs } = extractSqlxParts(
-    rootNode
-  );
+  const { config, js, sql, incremental, preOperations, postOperations, inputs } =
+    extractSqlxParts(rootNode);
 
   return `dataform.sqlxAction({
   sqlxConfig: {
@@ -106,7 +101,7 @@ function compileSqlx(rootNode: SyntaxTreeNode, path: string): string {
     ${CONTEXT_FUNCTIONS}
     ${CONTEXT_CONSTANTS}
     ${js}
-    return [${sql.map(sqlOp => `\`${sqlOp}\``)}];
+    return [${sql.map((sqlOp) => `\`${sqlOp}\``)}];
   },
   incrementalWhereContextable: ${
     !!incremental
@@ -124,7 +119,7 @@ function compileSqlx(rootNode: SyntaxTreeNode, path: string): string {
     ${CONTEXT_FUNCTIONS}
     ${CONTEXT_CONSTANTS}
     ${js}
-    return [${preOperations.map(preOpSql => `\`${preOpSql}\``)}];
+    return [${preOperations.map((preOpSql) => `\`${preOpSql}\``)}];
   }`
       : "undefined"
   },
@@ -134,7 +129,7 @@ function compileSqlx(rootNode: SyntaxTreeNode, path: string): string {
     ${CONTEXT_FUNCTIONS}
     ${CONTEXT_CONSTANTS}
     ${js}
-    return [${postOperations.map(postOpSql => `\`${postOpSql}\``)}];
+    return [${postOperations.map((postOpSql) => `\`${postOpSql}\``)}];
   }`
       : "undefined"
   },
@@ -143,12 +138,12 @@ function compileSqlx(rootNode: SyntaxTreeNode, path: string): string {
       .map(
         ({ labelParts, value }) =>
           `{
-            refName: [${labelParts.map(labelPart => `"${labelPart}"`).join(", ")}],
+            refName: [${labelParts.map((labelPart) => `"${labelPart}"`).join(", ")}],
             contextable: (ctx) => {
               ${js}
               return \`${value}\`;
             }
-          }`
+          }`,
       )
       .join(",")}
   ]
@@ -162,8 +157,8 @@ function extractSqlxParts(rootNode: SyntaxTreeNode) {
   rootNode
     .children()
     .filter(SyntaxTreeNode.isSyntaxTreeNode)
-    .filter(node => node.type === SyntaxTreeNodeType.JAVASCRIPT)
-    .forEach(node => {
+    .filter((node) => node.type === SyntaxTreeNodeType.JAVASCRIPT)
+    .forEach((node) => {
       const concatenated = node.concatenate();
       if (concatenated.startsWith("config")) {
         config = concatenated.slice("config ".length);
@@ -176,16 +171,16 @@ function extractSqlxParts(rootNode: SyntaxTreeNode) {
     rootNode
       .children()
       .filter(
-        node =>
+        (node) =>
           typeof node === "string" ||
           [
             SyntaxTreeNodeType.JAVASCRIPT_TEMPLATE_STRING_PLACEHOLDER,
             SyntaxTreeNodeType.SQL_COMMENT,
             SyntaxTreeNodeType.SQL_LITERAL_STRING,
             SyntaxTreeNodeType.SQL_LITERAL_MULTILINE_STRING,
-            SyntaxTreeNodeType.SQL_STATEMENT_SEPARATOR
-          ].includes(node.type)
-      )
+            SyntaxTreeNodeType.SQL_STATEMENT_SEPARATOR,
+          ].includes(node.type),
+      ),
   );
 
   let incremental = "";
@@ -198,27 +193,27 @@ function extractSqlxParts(rootNode: SyntaxTreeNode) {
   rootNode
     .children()
     .filter(SyntaxTreeNode.isSyntaxTreeNode)
-    .filter(node => node.type === SyntaxTreeNodeType.SQL)
-    .forEach(node => {
+    .filter((node) => node.type === SyntaxTreeNodeType.SQL)
+    .forEach((node) => {
       const firstChild = node.children()[0] as string;
       const lastChild = node.children().slice(-1)[0] as string;
 
       const sqlCodeBlockWithoutOuterBraces =
         node.children().length === 1
           ? new SyntaxTreeNode(SyntaxTreeNodeType.SQL, [
-              firstChild.slice(firstChild.indexOf("{") + 1, firstChild.lastIndexOf("}"))
+              firstChild.slice(firstChild.indexOf("{") + 1, firstChild.lastIndexOf("}")),
             ])
           : new SyntaxTreeNode(SyntaxTreeNodeType.SQL, [
               firstChild.slice(firstChild.indexOf("{") + 1),
               ...node.children().slice(1, -1),
-              lastChild.slice(0, lastChild.lastIndexOf("}"))
+              lastChild.slice(0, lastChild.lastIndexOf("}")),
             ]);
       const statements = createEscapedStatements(sqlCodeBlockWithoutOuterBraces.children());
 
       if (firstChild.startsWith("incremental_where")) {
         if (statements.length > 1) {
           throw new Error(
-            "'incremental_where' code blocks may only contain a single SQL statement."
+            "'incremental_where' code blocks may only contain a single SQL statement.",
           );
         }
         incremental = statements[0];
@@ -233,10 +228,10 @@ function extractSqlxParts(rootNode: SyntaxTreeNode) {
         const labelParts = firstChild
           .slice(firstChild.indexOf('"'), firstChild.lastIndexOf('"') + 1)
           .split(",")
-          .map(label => label.trim().slice(1, -1));
+          .map((label) => label.trim().slice(1, -1));
         inputs.push({
           labelParts,
-          value: statements[0]
+          value: statements[0],
         });
       }
     });
@@ -248,13 +243,13 @@ function extractSqlxParts(rootNode: SyntaxTreeNode) {
     incremental,
     preOperations,
     postOperations,
-    inputs
+    inputs,
   };
 }
 
 function createEscapedStatements(nodes: Array<string | SyntaxTreeNode>) {
   const results = [""];
-  nodes.forEach(node => {
+  nodes.forEach((node) => {
     if (typeof node !== "string" && node.type === SyntaxTreeNodeType.SQL_STATEMENT_SEPARATOR) {
       results.push("");
       return;
@@ -267,16 +262,16 @@ function createEscapedStatements(nodes: Array<string | SyntaxTreeNode>) {
 const SQL_STATEMENT_ESCAPERS = new Map([
   [
     SyntaxTreeNodeType.SQL_COMMENT,
-    (str: string) => str.replace(/`/g, "\\`").replace(/\${/g, "\\${")
+    (str: string) => str.replace(/`/g, "\\`").replace(/\${/g, "\\${"),
   ],
   [
     SyntaxTreeNodeType.SQL_LITERAL_STRING,
-    (str: string) => str.replace(/\\/g, "\\\\").replace(/\`/g, "\\`")
+    (str: string) => str.replace(/\\/g, "\\\\").replace(/\`/g, "\\`"),
   ],
   [
     SyntaxTreeNodeType.SQL_LITERAL_MULTILINE_STRING,
-    (str: string) => str.replace(/\\/g, "\\\\").replace(/\`/g, "\\`")
-  ]
+    (str: string) => str.replace(/\\/g, "\\\\").replace(/\`/g, "\\`"),
+  ],
 ]);
 
 function escapeNode(node: string | SyntaxTreeNode) {

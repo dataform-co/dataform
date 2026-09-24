@@ -6,13 +6,13 @@ import {
   suite,
   test,
   writeDefinitionFile,
-  writeWorkflowSettingsFile
+  writeWorkflowSettingsFile,
 } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
 import {
   coreExecutionRequestFromPath,
   runMainInVm,
-  VALID_WORKFLOW_SETTINGS_YAML
+  VALID_WORKFLOW_SETTINGS_YAML,
 } from "df/testing/run_core";
 
 suite("assertion", ({ afterEach }) => {
@@ -44,7 +44,7 @@ actions:
     description: description
     hermetic: true
     dependOnDependencyAssertions: true
-    reservation: reservation`
+    reservation: reservation`,
       );
       writeDefinitionFile(projectDir, "action.sql", "SELECT 1");
       writeDefinitionFile(projectDir, "operation.sqlx", "SELECT 1");
@@ -58,16 +58,16 @@ actions:
             target: {
               database: "project",
               schema: "dataset",
-              name: "name"
+              name: "name",
             },
             canonicalTarget: {
               database: "project",
               schema: "dataset",
-              name: "name"
+              name: "name",
             },
             actionDescriptor: {
               description: "description",
-              reservation: "reservation"
+              reservation: "reservation",
             },
             disabled: true,
             fileName: "definitions/action.sql",
@@ -78,11 +78,11 @@ actions:
               {
                 name: "operation",
                 schema: "defaultDataset",
-                database: "defaultProject"
-              }
-            ]
-          }
-        ])
+                database: "defaultProject",
+              },
+            ],
+          },
+        ]),
       );
     });
 
@@ -110,7 +110,7 @@ actions:
     description: description
     hermetic: true
     dependOnDependencyAssertions: true
-`
+`,
       );
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
@@ -122,30 +122,30 @@ actions:
             target: {
               database: "project",
               schema: "dataset",
-              name: "name"
+              name: "name",
             },
             canonicalTarget: {
               database: "project",
               schema: "dataset",
-              name: "name"
+              name: "name",
             },
             actionDescriptor: {
-              description: "description"
+              description: "description",
             },
             dependencyTargets: [
               {
                 database: "defaultProject",
                 schema: "defaultDataset",
-                name: "operation"
-              }
+                name: "operation",
+              },
             ],
             disabled: true,
             fileName: "definitions/filename.sql",
             hermeticity: "HERMETIC",
             tags: ["tagA", "tagB"],
-            query: "SELECT 1"
-          }
-        ])
+            query: "SELECT 1",
+          },
+        ]),
       );
     });
   });
@@ -158,9 +158,9 @@ actions:
           writeDefinitionFile(
             projectDir,
             "assertion.sqlx",
-            `config { type: "assertion" }SELECT 1 WHERE FALSE`
+            `config { type: "assertion" }SELECT 1 WHERE FALSE`,
           );
-        }
+        },
       },
       {
         extension: "js",
@@ -168,9 +168,9 @@ actions:
           writeDefinitionFile(
             projectDir,
             "assertion.js",
-            `assert("assertion").query("SELECT 1 WHERE FALSE");`
+            `assert("assertion").query("SELECT 1 WHERE FALSE");`,
           );
-        }
+        },
       },
       {
         extension: "sql",
@@ -182,12 +182,12 @@ actions:
 actions:
 - assertion:
     name: assertion
-    filename: assertion.sql`
+    filename: assertion.sql`,
           );
           writeDefinitionFile(projectDir, "assertion.sql", "SELECT 1 WHERE FALSE");
-        }
-      }
-    ].forEach(testCase => {
+        },
+      },
+    ].forEach((testCase) => {
       test(`disables ${testCase.extension} file assertions when disableAssertions is true`, () => {
         const projectDir = tmpDirFixture.createNewTmpDir();
         writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
@@ -197,8 +197,8 @@ actions:
         const coreRequest = coreExecutionRequestFromPath(
           projectDir,
           dataform.ProjectConfig.create({
-            disableAssertions: true
-          })
+            disableAssertions: true,
+          }),
         );
         const result = runMainInVm(coreRequest);
 
@@ -209,7 +209,7 @@ actions:
               canonicalTarget: {
                 database: "defaultProject",
                 name: "assertion",
-                schema: "defaultDataset"
+                schema: "defaultDataset",
               },
               disabled: true,
               fileName: `definitions/assertion.${testCase.extension}`,
@@ -217,15 +217,15 @@ actions:
               target: {
                 database: "defaultProject",
                 name: "assertion",
-                schema: "defaultDataset"
-              }
-            }
-          ])
+                schema: "defaultDataset",
+              },
+            },
+          ]),
         );
       });
     });
 
-    ["table", "view", "incremental"].forEach(tableType => {
+    ["table", "view", "incremental"].forEach((tableType) => {
       test(`disables inline ${tableType} assertions when disableAssertions is true`, () => {
         const projectDir = tmpDirFixture.createNewTmpDir();
         writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
@@ -240,14 +240,14 @@ actions:
               rowConditions: ["id > 0"]
             }
           }
-          SELECT 1 as id, 'test' as name`
+          SELECT 1 as id, 'test' as name`,
         );
 
         const coreRequest = coreExecutionRequestFromPath(
           projectDir,
           dataform.ProjectConfig.create({
-            disableAssertions: true
-          })
+            disableAssertions: true,
+          }),
         );
         const result = runMainInVm(coreRequest);
 
@@ -258,59 +258,59 @@ actions:
               canonicalTarget: {
                 database: "defaultProject",
                 name: "defaultDataset_test_assertions_uniqueKey_0",
-                schema: "defaultDataset"
+                schema: "defaultDataset",
               },
               dependencyTargets: [
                 {
                   database: "defaultProject",
                   name: "test",
-                  schema: "defaultDataset"
-                }
+                  schema: "defaultDataset",
+                },
               ],
               disabled: true,
               fileName: "definitions/test.sqlx",
               parentAction: {
                 database: "defaultProject",
                 name: "test",
-                schema: "defaultDataset"
+                schema: "defaultDataset",
               },
               query:
                 "\nSELECT\n  *\nFROM (\n  SELECT\n    id,\n    COUNT(1) AS index_row_count\n  FROM `defaultProject.defaultDataset.test`\n  GROUP BY id\n  ) AS data\nWHERE index_row_count > 1\n",
               target: {
                 database: "defaultProject",
                 name: "defaultDataset_test_assertions_uniqueKey_0",
-                schema: "defaultDataset"
-              }
+                schema: "defaultDataset",
+              },
             },
             {
               canonicalTarget: {
                 database: "defaultProject",
                 name: "defaultDataset_test_assertions_rowConditions",
-                schema: "defaultDataset"
+                schema: "defaultDataset",
               },
               dependencyTargets: [
                 {
                   database: "defaultProject",
                   name: "test",
-                  schema: "defaultDataset"
-                }
+                  schema: "defaultDataset",
+                },
               ],
               disabled: true,
               fileName: "definitions/test.sqlx",
               parentAction: {
                 database: "defaultProject",
                 name: "test",
-                schema: "defaultDataset"
+                schema: "defaultDataset",
               },
               query:
                 "\nSELECT\n  'id > 0' AS failing_row_condition,\n  *\nFROM `defaultProject.defaultDataset.test`\nWHERE NOT (id > 0)\nUNION ALL\nSELECT\n  'name IS NOT NULL' AS failing_row_condition,\n  *\nFROM `defaultProject.defaultDataset.test`\nWHERE NOT (name IS NOT NULL)\n",
               target: {
                 database: "defaultProject",
                 name: "defaultDataset_test_assertions_rowConditions",
-                schema: "defaultDataset"
-              }
-            }
-          ])
+                schema: "defaultDataset",
+              },
+            },
+          ]),
         );
         expect(result.compile.compiledGraph.tables.length).equals(1);
       });

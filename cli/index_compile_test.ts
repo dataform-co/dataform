@@ -8,7 +8,7 @@ import {
   INTEGRATION_TEST_LOCATION,
   INTEGRATION_TEST_PROJECT,
   runCli,
-  setupProject
+  setupProject,
 } from "df/cli/index_test_base";
 import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
@@ -26,14 +26,14 @@ suite("compile", () => {
         const projectDir = tmpDirFixture.createNewTmpDir();
         fs.writeFileSync(
           path.join(projectDir, "workflow_settings.yaml"),
-          dumpYaml(dataform.WorkflowSettings.create({ defaultProject: "dataform" }))
+          dumpYaml(dataform.WorkflowSettings.create({ defaultProject: "dataform" })),
         );
 
         expect((await runCli("compile", [projectDir])).stderr).contains(
           "dataformCoreVersion must be specified either in workflow_settings.yaml or via a " +
-            "package.json"
+            "package.json",
         );
-      }
+      },
     );
 
     test("compile error when package.json and no package is installed", async () => {
@@ -44,7 +44,7 @@ suite("compile", () => {
   "dependencies":{
     "@dataform/core": "${version}"
   }
-}`
+}`,
       );
       fs.writeFileSync(
         path.join(projectDir, "dataform.json"),
@@ -54,75 +54,83 @@ suite("compile", () => {
   "assertionSchema": "df_integration_test_assertions",
   "defaultLocation": "${INTEGRATION_TEST_LOCATION}"
 }
-`
+`,
       );
 
       expect((await runCli("compile", [projectDir])).stderr).contains(
         "Could not find a recent installed version of @dataform/core in the project. Check that " +
           "either `dataformCoreVersion` is specified in `workflow_settings.yaml`, or " +
           "`@dataform/core` is specified in `package.json`. If using `package.json`, then run " +
-          "`dataform install`."
+          "`dataform install`.",
       );
     });
 
-    test("compile rejects @dataform/core with incompatible version", { timeout: 60000 }, async () => {
-      const projectDir = tmpDirFixture.createNewTmpDir();
-      // dataformCoreVersion in workflow_settings.yaml triggers the stateless
-      // install path (compile.ts copies to a tmp dir and runs `npm i`), so the
-      // test exercises the same flow real users hit. 2.9.0 is the latest 2.x on
-      // the registry; its major (2) is incompatible with the current CLI (3.x).
-      fs.writeFileSync(
-        path.join(projectDir, "workflow_settings.yaml"),
-        dumpYaml(
-          dataform.WorkflowSettings.create({
-            defaultProject: "dataform",
-            dataformCoreVersion: "2.9.0"
+    test(
+      "compile rejects @dataform/core with incompatible version",
+      { timeout: 60000 },
+      async () => {
+        const projectDir = tmpDirFixture.createNewTmpDir();
+        // dataformCoreVersion in workflow_settings.yaml triggers the stateless
+        // install path (compile.ts copies to a tmp dir and runs `npm i`), so the
+        // test exercises the same flow real users hit. 2.9.0 is the latest 2.x on
+        // the registry; its major (2) is incompatible with the current CLI (3.x).
+        fs.writeFileSync(
+          path.join(projectDir, "workflow_settings.yaml"),
+          dumpYaml(
+            dataform.WorkflowSettings.create({
+              defaultProject: "dataform",
+              dataformCoreVersion: "2.9.0",
+            }),
+          ),
+        );
+
+        // npm needs a writable cache; ~/.npm is read-only in the bazel sandbox.
+        const npmCacheDir = tmpDirFixture.createNewTmpDir();
+        const stderr = (
+          await runCli("compile", [projectDir], {
+            env: { ...process.env, NPM_CONFIG_CACHE: npmCacheDir },
           })
-        )
-      );
+        ).stderr;
+        expect(stderr).contains("@dataform/core 2.9.0 is not compatible with @dataform/cli");
+        expect(stderr).contains("matching major.minor");
+        expect(stderr).contains("Set `dataformCoreVersion:");
+      },
+    );
 
-      // npm needs a writable cache; ~/.npm is read-only in the bazel sandbox.
-      const npmCacheDir = tmpDirFixture.createNewTmpDir();
-      const stderr = (
-        await runCli("compile", [projectDir], {
-          env: { ...process.env, NPM_CONFIG_CACHE: npmCacheDir }
-        })
-      ).stderr;
-      expect(stderr).contains("@dataform/core 2.9.0 is not compatible with @dataform/cli");
-      expect(stderr).contains("matching major.minor");
-      expect(stderr).contains("Set `dataformCoreVersion:");
-    });
+    test(
+      "compile succeeds with @dataform/core <= 3.0.56 via caller-file shim",
+      { timeout: 60000 },
+      async () => {
+        const projectDir = tmpDirFixture.createNewTmpDir();
+        // 3.0.50 predates 3.0.57, which is when @dataform/core started reading
+        // global.__dataform_current_file as a fallback in getCallerFile(). The
+        // compile path text-patches the bundle to add that fallback; this test
+        // proves the patch + host-side file stack drive a real action's
+        // fileName from inside vm2 3.11.3's path-stripped sandbox.
+        fs.writeFileSync(
+          path.join(projectDir, "workflow_settings.yaml"),
+          dumpYaml({
+            defaultProject: INTEGRATION_TEST_PROJECT,
+            defaultLocation: INTEGRATION_TEST_LOCATION,
+            defaultDataset: "dataform",
+            dataformCoreVersion: "3.0.50",
+          }),
+        );
+        writeDefinitionFile(projectDir, "example.sqlx", `config { type: "table" }\nSELECT 1 AS id`);
 
-    test("compile succeeds with @dataform/core <= 3.0.56 via caller-file shim", { timeout: 60000 }, async () => {
-      const projectDir = tmpDirFixture.createNewTmpDir();
-      // 3.0.50 predates 3.0.57, which is when @dataform/core started reading
-      // global.__dataform_current_file as a fallback in getCallerFile(). The
-      // compile path text-patches the bundle to add that fallback; this test
-      // proves the patch + host-side file stack drive a real action's
-      // fileName from inside vm2 3.11.3's path-stripped sandbox.
-      fs.writeFileSync(
-        path.join(projectDir, "workflow_settings.yaml"),
-        dumpYaml({
-          defaultProject: INTEGRATION_TEST_PROJECT,
-          defaultLocation: INTEGRATION_TEST_LOCATION,
-          defaultDataset: "dataform",
-          dataformCoreVersion: "3.0.50"
-        })
-      );
-      writeDefinitionFile(projectDir, "example.sqlx", `config { type: "table" }\nSELECT 1 AS id`);
+        const npmCacheDir = tmpDirFixture.createNewTmpDir();
+        const result = await runCli("compile", [projectDir, "--json"], {
+          env: { ...process.env, NPM_CONFIG_CACHE: npmCacheDir },
+        });
 
-      const npmCacheDir = tmpDirFixture.createNewTmpDir();
-      const result = await runCli("compile", [projectDir, "--json"], {
-        env: { ...process.env, NPM_CONFIG_CACHE: npmCacheDir }
-      });
+        expect(result.exitCode, `compile failed: ${result.stderr}`).equals(0);
+        const compiled = JSON.parse(result.stdout);
+        expect(compiled.tables).to.have.lengthOf(1);
+        expect(compiled.tables[0].fileName).equals("definitions/example.sqlx");
+      },
+    );
 
-      expect(result.exitCode, `compile failed: ${result.stderr}`).equals(0);
-      const compiled = JSON.parse(result.stdout);
-      expect(compiled.tables).to.have.lengthOf(1);
-      expect(compiled.tables[0].fileName).equals("definitions/example.sqlx");
-    });
-
-    ["package.json", "package-lock.json", "node_modules"].forEach(npmFile => {
+    ["package.json", "package-lock.json", "node_modules"].forEach((npmFile) => {
       test(`compile throws an error when dataformCoreVersion in workflow_settings.yaml and ${npmFile} is present`, async () => {
         const projectDir = tmpDirFixture.createNewTmpDir();
         fs.writeFileSync(
@@ -130,9 +138,9 @@ suite("compile", () => {
           dumpYaml(
             dataform.WorkflowSettings.create({
               defaultProject: "dataform",
-              dataformCoreVersion: "3.0.0"
-            })
-          )
+              dataformCoreVersion: "3.0.0",
+            }),
+          ),
         );
         const resolvedNpmPath = path.join(projectDir, npmFile);
         if (npmFile === "node_modules") {
@@ -142,7 +150,7 @@ suite("compile", () => {
         }
 
         expect((await runCli("compile", [projectDir])).stderr).contains(
-          `${npmFile}' unexpected; remove it and try again`
+          `${npmFile}' unexpected; remove it and try again`,
         );
       });
     });
@@ -161,7 +169,7 @@ suite("compile", () => {
         `
 config { type: "assertion" }
 SELECT 1 WHERE FALSE
-`
+`,
       );
 
       writeDefinitionFile(
@@ -175,7 +183,7 @@ config {
   }
 }
 SELECT 1 as id
-`
+`,
       );
     }
 
@@ -190,34 +198,34 @@ SELECT 1 as id
           canonicalTarget: {
             database: INTEGRATION_TEST_PROJECT,
             name: "dataform_example_table_assertions_uniqueKey_0",
-            schema: "dataform_assertions"
+            schema: "dataform_assertions",
           },
           dependencyTargets: [
             {
               database: INTEGRATION_TEST_PROJECT,
               name: "example_table",
-              schema: "dataform"
-            }
+              schema: "dataform",
+            },
           ],
           disabled: true,
           fileName: "definitions/example_table.sqlx",
           parentAction: {
             database: INTEGRATION_TEST_PROJECT,
             name: "example_table",
-            schema: "dataform"
+            schema: "dataform",
           },
           query: `\nSELECT\n  *\nFROM (\n  SELECT\n    id,\n    COUNT(1) AS index_row_count\n  FROM \`${INTEGRATION_TEST_PROJECT}.dataform.example_table\`\n  GROUP BY id\n  ) AS data\nWHERE index_row_count > 1\n`,
           target: {
             database: INTEGRATION_TEST_PROJECT,
             name: "dataform_example_table_assertions_uniqueKey_0",
-            schema: "dataform_assertions"
-          }
+            schema: "dataform_assertions",
+          },
         },
         {
           canonicalTarget: {
             database: INTEGRATION_TEST_PROJECT,
             name: "test_assertion",
-            schema: "dataform_assertions"
+            schema: "dataform_assertions",
           },
           disabled: true,
           fileName: "definitions/test_assertion.sqlx",
@@ -225,9 +233,9 @@ SELECT 1 as id
           target: {
             database: INTEGRATION_TEST_PROJECT,
             name: "test_assertion",
-            schema: "dataform_assertions"
-          }
-        }
+            schema: "dataform_assertions",
+          },
+        },
       ],
       dataformCoreVersion: version,
       graphErrors: {},
@@ -238,14 +246,14 @@ SELECT 1 as id
         defaultLocation: INTEGRATION_TEST_LOCATION,
         defaultSchema: "dataform",
         disableAssertions: true,
-        warehouse: "bigquery"
+        warehouse: "bigquery",
       },
       tables: [
         {
           canonicalTarget: {
             database: INTEGRATION_TEST_PROJECT,
             name: "example_table",
-            schema: "dataform"
+            schema: "dataform",
           },
           disabled: false,
           enumType: "TABLE",
@@ -255,28 +263,28 @@ SELECT 1 as id
           target: {
             database: INTEGRATION_TEST_PROJECT,
             name: "example_table",
-            schema: "dataform"
+            schema: "dataform",
           },
-          type: "table"
-        }
+          type: "table",
+        },
       ],
       targets: [
         {
           database: INTEGRATION_TEST_PROJECT,
           name: "dataform_example_table_assertions_uniqueKey_0",
-          schema: "dataform_assertions"
+          schema: "dataform_assertions",
         },
         {
           database: INTEGRATION_TEST_PROJECT,
           name: "example_table",
-          schema: "dataform"
+          schema: "dataform",
         },
         {
           database: INTEGRATION_TEST_PROJECT,
           name: "test_assertion",
-          schema: "dataform_assertions"
-        }
-      ]
+          schema: "dataform_assertions",
+        },
+      ],
     };
 
     test("with --disable-assertions flag", async () => {
@@ -316,17 +324,17 @@ SELECT 1 as id
       writeDefinitionFile(
         projectDir,
         "upstream.sqlx",
-        `config { type: "table", tags: ["daily"] }\nSELECT 1 AS id`
+        `config { type: "table", tags: ["daily"] }\nSELECT 1 AS id`,
       );
       writeDefinitionFile(
         projectDir,
         "midstream.sqlx",
-        `config { type: "table" }\nSELECT * FROM \${ref("upstream")}`
+        `config { type: "table" }\nSELECT * FROM \${ref("upstream")}`,
       );
       writeDefinitionFile(
         projectDir,
         "downstream.sqlx",
-        `config { type: "table" }\nSELECT * FROM \${ref("midstream")}`
+        `config { type: "table" }\nSELECT * FROM \${ref("midstream")}`,
       );
     });
 
@@ -341,13 +349,13 @@ SELECT 1 as id
         projectDir,
         "--output-actions",
         "midstream",
-        "--json"
+        "--json",
       ]);
       expect(result.exitCode, result.stderr).equals(0);
       expect(tableNames(result.stdout)).deep.equals(["midstream"]);
       // `targets` is printed alongside the actions, so it must be pruned too.
       expect(JSON.parse(result.stdout).targets.map((target: any) => target.name)).deep.equals([
-        "midstream"
+        "midstream",
       ]);
     });
 
@@ -357,7 +365,7 @@ SELECT 1 as id
         "--output-actions",
         "midstream",
         "--output-include-deps",
-        "--json"
+        "--json",
       ]);
       expect(result.exitCode, result.stderr).equals(0);
       expect(tableNames(result.stdout)).deep.equals(["midstream", "upstream"]);
@@ -369,7 +377,7 @@ SELECT 1 as id
         "--output-actions",
         "midstream",
         "--output-include-dependents",
-        "--json"
+        "--json",
       ]);
       expect(result.exitCode, result.stderr).equals(0);
       expect(tableNames(result.stdout)).deep.equals(["downstream", "midstream"]);
@@ -404,8 +412,8 @@ SELECT 1 as id
         defaultAssertionDataset: "dataform_assertions",
         extension: {
           name: "test-extension",
-          compilationMode: dataform.ExtensionCompilationMode.PROLOGUE
-        }
+          compilationMode: dataform.ExtensionCompilationMode.PROLOGUE,
+        },
       });
 
       const compileResult = await runCli("compile", [projectDir]);

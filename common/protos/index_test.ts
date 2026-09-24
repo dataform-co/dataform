@@ -16,7 +16,7 @@ suite("verifyObjectMatchesProto", () => {
       verifyObjectMatchesProto(
         dataform.Table,
         { dependencyTargets: null } as any,
-        VerifyProtoErrorBehaviour.SHOW_DOCS_LINK
+        VerifyProtoErrorBehaviour.SHOW_DOCS_LINK,
       );
     }).to.throw(ReferenceError, /Unexpected empty value for "dependencyTargets"/);
   });
@@ -26,11 +26,11 @@ suite("verifyObjectMatchesProto", () => {
       verifyObjectMatchesProto(
         dataform.Table,
         { actionDescriptor: 123 } as any,
-        VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM
+        VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM,
       );
     }).to.throw(
       ReferenceError,
-      /Unexpected property "actionDescriptor" for ".*Table".*please report this to the Dataform team/
+      /Unexpected property "actionDescriptor" for ".*Table".*please report this to the Dataform team/,
     );
   });
 
@@ -39,7 +39,7 @@ suite("verifyObjectMatchesProto", () => {
       verifyObjectMatchesProto(dataform.Table, { actionDescriptor: 123 } as any);
     }).to.throw(
       ReferenceError,
-      /Unexpected property "actionDescriptor", or property value type of "number" is incorrect/
+      /Unexpected property "actionDescriptor", or property value type of "number" is incorrect/,
     );
   });
 });

@@ -5,14 +5,14 @@ import * as path from "path";
 import {
   exampleActionDescriptor,
   exampleBuiltInAssertions,
-  exampleBuiltInAssertionsAsYaml
+  exampleBuiltInAssertionsAsYaml,
 } from "df/core/actions/index_test";
 import { asPlainObject, suite, test } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
 import {
   coreExecutionRequestFromPath,
   runMainInVm,
-  VALID_WORKFLOW_SETTINGS_YAML
+  VALID_WORKFLOW_SETTINGS_YAML,
 } from "df/testing/run_core";
 
 suite("view", ({ afterEach }) => {
@@ -23,7 +23,7 @@ suite("view", ({ afterEach }) => {
       const projectDir = tmpDirFixture.createNewTmpDir();
       fs.writeFileSync(
         path.join(projectDir, "workflow_settings.yaml"),
-        VALID_WORKFLOW_SETTINGS_YAML
+        VALID_WORKFLOW_SETTINGS_YAML,
       );
       fs.mkdirSync(path.join(projectDir, "definitions"));
       fs.writeFileSync(
@@ -31,7 +31,7 @@ suite("view", ({ afterEach }) => {
         `
 actions:
 - view:
-    filename: action.sql`
+    filename: action.sql`,
       );
       fs.writeFileSync(path.join(projectDir, "definitions/action.sql"), "SELECT 1");
 
@@ -44,21 +44,21 @@ actions:
             target: {
               database: "defaultProject",
               schema: "defaultDataset",
-              name: "action"
+              name: "action",
             },
             canonicalTarget: {
               database: "defaultProject",
               schema: "defaultDataset",
-              name: "action"
+              name: "action",
             },
             fileName: "definitions/action.sql",
             hermeticity: "NON_HERMETIC",
             query: "SELECT 1",
             type: "view",
             enumType: "VIEW",
-            disabled: false
-          }
-        ])
+            disabled: false,
+          },
+        ]),
       );
     });
   });
@@ -102,24 +102,24 @@ actions:
         filename: "view.sqlx",
         fileContents: `
 config ${viewConfig}
-SELECT 1`
+SELECT 1`,
       },
       {
         filename: "view.js",
-        fileContents: `publish("name", ${viewConfig}).query(ctx => \`\n\nSELECT 1\`)`
-      }
-    ].forEach(testParameters => {
+        fileContents: `publish("name", ${viewConfig}).query(ctx => \`\n\nSELECT 1\`)`,
+      },
+    ].forEach((testParameters) => {
       test(`for views configured in a ${testParameters.filename} file`, () => {
         const projectDir = tmpDirFixture.createNewTmpDir();
         fs.writeFileSync(
           path.join(projectDir, "workflow_settings.yaml"),
-          VALID_WORKFLOW_SETTINGS_YAML
+          VALID_WORKFLOW_SETTINGS_YAML,
         );
         fs.mkdirSync(path.join(projectDir, "definitions"));
         fs.writeFileSync(path.join(projectDir, "definitions/operation.sqlx"), "SELECT 1");
         fs.writeFileSync(
           path.join(projectDir, `definitions/${testParameters.filename}`),
-          testParameters.fileContents
+          testParameters.fileContents,
         );
 
         const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
@@ -130,12 +130,12 @@ SELECT 1`
             target: {
               database: "project",
               schema: "dataset",
-              name: "name"
+              name: "name",
             },
             canonicalTarget: {
               database: "project",
               schema: "dataset",
-              name: "name"
+              name: "name",
             },
             type: "view",
             disabled: true,
@@ -145,19 +145,19 @@ SELECT 1`
               partitionBy: "partitionBy",
               additionalOptions: {
                 option1Key: "option1",
-                option2Key: "option2"
+                option2Key: "option2",
               },
               labels: {
-                key: "val"
-              }
+                key: "val",
+              },
             },
             tags: ["tag1", "tag2"],
             dependencyTargets: [
               {
                 database: "defaultProject",
                 schema: "defaultDataset",
-                name: "operation"
-              }
+                name: "operation",
+              },
             ],
             enumType: "VIEW",
             fileName: `definitions/${testParameters.filename}`,
@@ -167,22 +167,22 @@ SELECT 1`
               reservation: "reservation",
               // sqlxConfig.bigquery.labels are placed as bigqueryLabels.
               bigqueryLabels: {
-                key: "val"
+                key: "val",
               },
               metadata: {
                 overview: "view overview",
                 extraProperties: {
                   fields: {
-                    priority: { stringValue: "high" }
-                  }
-                }
+                    priority: { stringValue: "high" },
+                  },
+                },
               },
             },
-            materialized: true
-          }
+            materialized: true,
+          },
         ]);
         expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals(
-          exampleBuiltInAssertions.outputAssertions(testParameters.filename)
+          exampleBuiltInAssertions.outputAssertions(testParameters.filename),
         );
       });
     });
@@ -191,7 +191,7 @@ SELECT 1`
       const projectDir = tmpDirFixture.createNewTmpDir();
       fs.writeFileSync(
         path.join(projectDir, "workflow_settings.yaml"),
-        VALID_WORKFLOW_SETTINGS_YAML
+        VALID_WORKFLOW_SETTINGS_YAML,
       );
       fs.mkdirSync(path.join(projectDir, "definitions"));
       fs.writeFileSync(
@@ -204,20 +204,20 @@ SELECT 1`
         }
     }
 }
-SELECT 1`
+SELECT 1`,
       );
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
       expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(
-        asPlainObject(result.compile.compiledGraph.tables[0].actionDescriptor.metadata)
+        asPlainObject(result.compile.compiledGraph.tables[0].actionDescriptor.metadata),
       ).deep.equals({
         extraProperties: {
           fields: {
-            priority: { stringValue: "high" }
-          }
-        }
+            priority: { stringValue: "high" },
+          },
+        },
       });
     });
   });
@@ -257,7 +257,7 @@ actions:
 ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
     hermetic: true
     reservation: reservation
-`
+`,
     );
 
     const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
@@ -268,12 +268,12 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
         target: {
           database: "project",
           schema: "dataset",
-          name: "name"
+          name: "name",
         },
         canonicalTarget: {
           database: "project",
           schema: "dataset",
-          name: "name"
+          name: "name",
         },
         type: "view",
         disabled: true,
@@ -283,44 +283,41 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
           partitionBy: "partitionBy",
           additionalOptions: {
             option1Key: "option1",
-            option2Key: "option2"
+            option2Key: "option2",
           },
           labels: {
-            key: "val"
-          }
+            key: "val",
+          },
         },
         tags: ["tag1", "tag2"],
         dependencyTargets: [
           {
             database: "defaultProject",
             schema: "defaultDataset",
-            name: "operation"
-          }
+            name: "operation",
+          },
         ],
         enumType: "VIEW",
         fileName: "definitions/filename.sql",
         query: "SELECT 1",
         actionDescriptor: {
           bigqueryLabels: {
-            key: "val"
+            key: "val",
           },
           description: "description",
-          reservation: "reservation"
+          reservation: "reservation",
         },
-        materialized: true
-      }
+        materialized: true,
+      },
     ]);
     expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals(
-      exampleBuiltInAssertionsAsYaml.outputAssertions
+      exampleBuiltInAssertionsAsYaml.outputAssertions,
     );
   });
 
   test("fails compilation if incrementalStrategy is set on view", () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
-    fs.writeFileSync(
-      path.join(projectDir, "workflow_settings.yaml"),
-      VALID_WORKFLOW_SETTINGS_YAML
-    );
+    fs.writeFileSync(path.join(projectDir, "workflow_settings.yaml"), VALID_WORKFLOW_SETTINGS_YAML);
     fs.mkdirSync(path.join(projectDir, "definitions"));
     fs.writeFileSync(
       path.join(projectDir, "definitions/view.sqlx"),
@@ -328,21 +325,24 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
         type: "view",
         incrementalStrategy: "merge"
       }
-      SELECT 1`
+      SELECT 1`,
     );
 
     const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
     expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).greaterThan(0);
     expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).contains(
-      'Unexpected property "incrementalStrategy"'
+      'Unexpected property "incrementalStrategy"',
     );
   });
 
   suite("jit compilation", () => {
     test("jit compilation is supported", () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
-      fs.writeFileSync(path.join(projectDir, "workflow_settings.yaml"), VALID_WORKFLOW_SETTINGS_YAML);
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML,
+      );
       fs.mkdirSync(path.join(projectDir, "definitions"));
       fs.writeFileSync(
         path.join(projectDir, "definitions/view.js"),
@@ -352,7 +352,7 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
         publish("viewF", {type: "view"}).jitCode(jitF);
         publish("viewArrow", {type: "view"}).jitCode((jctx) => Promise.resolve("select 1"));
         publish("viewStr", {type: "view"}).jitCode('(jctx) => Promise.resolve("select 1")')
-        `
+        `,
       );
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
@@ -363,33 +363,34 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
           target: {
             database: "defaultProject",
             schema: "defaultDataset",
-            name: "viewF"
+            name: "viewF",
           },
           canonicalTarget: {
             database: "defaultProject",
             schema: "defaultDataset",
-            name: "viewF"
+            name: "viewF",
           },
           type: "view",
           enumType: "VIEW",
           disabled: false,
           hermeticity: "NON_HERMETIC",
           fileName: "definitions/view.js",
-          jitCode: 'function jitF(jctx) {\n          return Promise.resolve(\"select 1\");\n        }',
+          jitCode:
+            'function jitF(jctx) {\n          return Promise.resolve(\"select 1\");\n        }',
           actionDescriptor: {
-            compilationMode: "ACTION_COMPILATION_MODE_JIT"
-          }
+            compilationMode: "ACTION_COMPILATION_MODE_JIT",
+          },
         },
         {
           target: {
             database: "defaultProject",
             schema: "defaultDataset",
-            name: "viewArrow"
+            name: "viewArrow",
           },
           canonicalTarget: {
             database: "defaultProject",
             schema: "defaultDataset",
-            name: "viewArrow"
+            name: "viewArrow",
           },
           type: "view",
           enumType: "VIEW",
@@ -398,19 +399,19 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
           fileName: "definitions/view.js",
           jitCode: '(jctx) => Promise.resolve(\"select 1\")',
           actionDescriptor: {
-            compilationMode: "ACTION_COMPILATION_MODE_JIT"
-          }
+            compilationMode: "ACTION_COMPILATION_MODE_JIT",
+          },
         },
         {
           target: {
             database: "defaultProject",
             schema: "defaultDataset",
-            name: "viewStr"
+            name: "viewStr",
           },
           canonicalTarget: {
             database: "defaultProject",
             schema: "defaultDataset",
-            name: "viewStr"
+            name: "viewStr",
           },
           type: "view",
           enumType: "VIEW",
@@ -419,25 +420,32 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
           fileName: "definitions/view.js",
           jitCode: '(jctx) => Promise.resolve(\"select 1\")',
           actionDescriptor: {
-            compilationMode: "ACTION_COMPILATION_MODE_JIT"
-          }
-        }
+            compilationMode: "ACTION_COMPILATION_MODE_JIT",
+          },
+        },
       ]);
     });
 
     test("jit compilation fails if query is also provided", () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
-      fs.writeFileSync(path.join(projectDir, "workflow_settings.yaml"), VALID_WORKFLOW_SETTINGS_YAML);
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML,
+      );
       fs.mkdirSync(path.join(projectDir, "definitions"));
       fs.writeFileSync(
         path.join(projectDir, "definitions/view.js"),
-        `publish("view", {type: "view"}).jitCode((ctx) => Promise.resolve("select 1")).query("select 1")`
+        `publish("view", {type: "view"}).jitCode((ctx) => Promise.resolve("select 1")).query("select 1")`,
       );
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
       expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).greaterThan(0);
-      expect(result.compile.compiledGraph.graphErrors.compilationErrors.some(e => e.message.includes("Cannot mix AoT and JiT compilation"))).equals(true);
+      expect(
+        result.compile.compiledGraph.graphErrors.compilationErrors.some((e) =>
+          e.message.includes("Cannot mix AoT and JiT compilation"),
+        ),
+      ).equals(true);
     });
   });
 
@@ -446,7 +454,7 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
       const projectDir = tmpDirFixture.createNewTmpDir();
       fs.writeFileSync(
         path.join(projectDir, "workflow_settings.yaml"),
-        VALID_WORKFLOW_SETTINGS_YAML
+        VALID_WORKFLOW_SETTINGS_YAML,
       );
       fs.mkdirSync(path.join(projectDir, "definitions"));
       fs.writeFileSync(
@@ -460,15 +468,15 @@ const shared = {
 publish("v1", shared).query(_ => "SELECT 1 AS id, DATE '2024-01-01' AS event_date, 'u1' AS user_id");
 publish("v2", shared).query(_ => "SELECT 2 AS id, DATE '2024-01-01' AS event_date, 'u2' AS user_id");
 publish("v3", shared).query(_ => "SELECT 3 AS id, DATE '2024-01-01' AS event_date, 'u3' AS user_id");
-`
+`,
       );
 
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
       expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
 
-      const bigqueryBlocks = result.compile.compiledGraph.tables.map(t =>
-        asPlainObject(t.bigquery)
+      const bigqueryBlocks = result.compile.compiledGraph.tables.map((t) =>
+        asPlainObject(t.bigquery),
       );
       const expectedBigquery = { partitionBy: "event_date", clusterBy: ["user_id"] };
       expect(bigqueryBlocks).deep.equals([expectedBigquery, expectedBigquery, expectedBigquery]);

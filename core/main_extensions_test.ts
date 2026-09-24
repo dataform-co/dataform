@@ -7,7 +7,7 @@ import {
   coreExecutionRequestFromPath,
   runMainInVm,
   VALID_WORKFLOW_SETTINGS_YAML,
-  WorkflowSettingsTemplates
+  WorkflowSettingsTemplates,
 } from "df/testing/run_core";
 
 suite("extensions interface", ({ afterEach }) => {
@@ -28,7 +28,7 @@ suite("extensions interface", ({ afterEach }) => {
     const result = runMainInVm(request);
 
     expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-    expect(result.compile.compiledGraph.targets?.map(t => t.name)).deep.equals(["e", "file"]);
+    expect(result.compile.compiledGraph.targets?.map((t) => t.name)).deep.equals(["e", "file"]);
   });
 
   test("keeps regular compilation flow if extension is disabled", () => {
@@ -36,13 +36,13 @@ suite("extensions interface", ({ afterEach }) => {
     const request = coreExecutionRequestFromPath(projectDir);
     request.compile.compileConfig.extension = {
       name: "some-extension",
-      compilationMode: dataform.ExtensionCompilationMode.COMPILATION_MODE_UNSPECIFIED
+      compilationMode: dataform.ExtensionCompilationMode.COMPILATION_MODE_UNSPECIFIED,
     };
 
     const result = runMainInVm(request);
 
     expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-    expect(result.compile.compiledGraph.targets?.map(t => t.name)).deep.equals(["e", "file"]);
+    expect(result.compile.compiledGraph.targets?.map((t) => t.name)).deep.equals(["e", "file"]);
   });
 
   test("runs prologue before regular compilation", () => {
@@ -50,16 +50,16 @@ suite("extensions interface", ({ afterEach }) => {
     const request = coreExecutionRequestFromPath(projectDir);
     request.compile.compileConfig.extension = {
       name: "@dataform/sample-extension",
-      compilationMode: dataform.ExtensionCompilationMode.PROLOGUE
+      compilationMode: dataform.ExtensionCompilationMode.PROLOGUE,
     };
 
     const result = runMainInVm(request);
 
     expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-    expect(result.compile.compiledGraph.targets?.map(t => t.name)).deep.equals([
+    expect(result.compile.compiledGraph.targets?.map((t) => t.name)).deep.equals([
       "sample-action",
       "e",
-      "file"
+      "file",
     ]);
   });
 
@@ -68,13 +68,13 @@ suite("extensions interface", ({ afterEach }) => {
     const request = coreExecutionRequestFromPath(projectDir);
     request.compile.compileConfig.extension = {
       name: "@dataform/sample-extension",
-      compilationMode: dataform.ExtensionCompilationMode.APPLICATION_CODE
+      compilationMode: dataform.ExtensionCompilationMode.APPLICATION_CODE,
     };
 
     const result = runMainInVm(request);
 
     expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-    expect(result.compile.compiledGraph.targets?.map(t => t.name)).deep.equals(["sample-action"]);
+    expect(result.compile.compiledGraph.targets?.map((t) => t.name)).deep.equals(["sample-action"]);
   });
 
   test("works in application mode without workflow settings", () => {
@@ -85,13 +85,13 @@ suite("extensions interface", ({ afterEach }) => {
     const request = coreExecutionRequestFromPath(projectDir);
     request.compile.compileConfig.extension = {
       name: "@dataform/sample-extension",
-      compilationMode: dataform.ExtensionCompilationMode.APPLICATION_CODE
+      compilationMode: dataform.ExtensionCompilationMode.APPLICATION_CODE,
     };
 
     const result = runMainInVm(request);
 
     expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-    expect(result.compile.compiledGraph.targets?.map(t => t.name)).deep.equals(["sample-action"]);
+    expect(result.compile.compiledGraph.targets?.map((t) => t.name)).deep.equals(["sample-action"]);
   });
 
   test("works in prologue mode without workflow settings", () => {
@@ -102,16 +102,16 @@ suite("extensions interface", ({ afterEach }) => {
     const request = coreExecutionRequestFromPath(projectDir);
     request.compile.compileConfig.extension = {
       name: "@dataform/sample-extension",
-      compilationMode: dataform.ExtensionCompilationMode.PROLOGUE
+      compilationMode: dataform.ExtensionCompilationMode.PROLOGUE,
     };
 
     const result = runMainInVm(request);
 
     expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-    expect(result.compile.compiledGraph.targets?.map(t => t.name)).deep.equals([
+    expect(result.compile.compiledGraph.targets?.map((t) => t.name)).deep.equals([
       "sample-action",
       "e",
-      "file"
+      "file",
     ]);
   });
 
@@ -120,59 +120,59 @@ suite("extensions interface", ({ afterEach }) => {
     const request = coreExecutionRequestFromPath(projectDir);
     request.compile.compileConfig.extension = {
       name: "does-not-exist",
-      compilationMode: dataform.ExtensionCompilationMode.PROLOGUE
+      compilationMode: dataform.ExtensionCompilationMode.PROLOGUE,
     };
 
     const result = runMainInVm(request);
 
     expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).equals(1);
     expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).contains(
-      "Cannot find module"
+      "Cannot find module",
     );
-    expect(result.compile.compiledGraph.targets?.map(t => t.name)).deep.equals(["e", "file"]);
+    expect(result.compile.compiledGraph.targets?.map((t) => t.name)).deep.equals(["e", "file"]);
   });
 
   test("catches exceptions thrown from extension", () => {
     const projectDir = setUpProjectWithExtension();
     const request = coreExecutionRequestFromPath(
       projectDir,
-      dataform.ProjectConfig.create({ vars: { "throw-error": "true" } })
+      dataform.ProjectConfig.create({ vars: { "throw-error": "true" } }),
     );
     request.compile.compileConfig.extension = {
       name: "@dataform/sample-extension",
-      compilationMode: dataform.ExtensionCompilationMode.PROLOGUE
+      compilationMode: dataform.ExtensionCompilationMode.PROLOGUE,
     };
 
     const result = runMainInVm(request);
 
     expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).equals(1);
     expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).contains(
-      "throwing exception as requested!"
+      "throwing exception as requested!",
     );
-    expect(result.compile.compiledGraph.targets?.map(t => t.name)).deep.equals(["e", "file"]);
+    expect(result.compile.compiledGraph.targets?.map((t) => t.name)).deep.equals(["e", "file"]);
   });
 
   test("persists extension compilation errors", () => {
     const projectDir = setUpProjectWithExtension();
     const request = coreExecutionRequestFromPath(
       projectDir,
-      dataform.ProjectConfig.create({ vars: { "store-compile-error": "true" } })
+      dataform.ProjectConfig.create({ vars: { "store-compile-error": "true" } }),
     );
     request.compile.compileConfig.extension = {
       name: "@dataform/sample-extension",
-      compilationMode: dataform.ExtensionCompilationMode.PROLOGUE
+      compilationMode: dataform.ExtensionCompilationMode.PROLOGUE,
     };
 
     const result = runMainInVm(request);
 
     expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).equals(1);
     expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).contains(
-      "storing compilation error as requested!"
+      "storing compilation error as requested!",
     );
-    expect(result.compile.compiledGraph.targets?.map(t => t.name)).deep.equals([
+    expect(result.compile.compiledGraph.targets?.map((t) => t.name)).deep.equals([
       "sample-action",
       "e",
-      "file"
+      "file",
     ]);
   });
 
@@ -187,13 +187,12 @@ config {
   type: "table",
   preserveGovernanceControls: true
 }
-select 1 as a`
+select 1 as a`,
     );
     const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
     expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
     expect(result.compile.compiledGraph.tables[0].bigquery.preserveGovernanceControls).equals(true);
   });
-
 
   test("preserveGovernanceControls in Incremental Tables propagates to compiled graph", () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
@@ -206,7 +205,7 @@ config {
   type: "incremental",
   preserveGovernanceControls: true
 }
-select 1 as a`
+select 1 as a`,
     );
     const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
     expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
@@ -220,7 +219,7 @@ select 1 as a`
       `
 defaultProject: "project"
 defaultDataset: "dataset"
-preserveGovernanceControls: true`
+preserveGovernanceControls: true`,
     );
     writeDefinitionFile(
       projectDir,
@@ -229,7 +228,7 @@ preserveGovernanceControls: true`
 config {
   type: "table"
 }
-select 1 as a`
+select 1 as a`,
     );
     const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
     expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
@@ -243,7 +242,7 @@ select 1 as a`
       `
 defaultProject: "project"
 defaultDataset: "dataset"
-preserveGovernanceControls: true`
+preserveGovernanceControls: true`,
     );
     writeDefinitionFile(
       projectDir,
@@ -254,12 +253,12 @@ config {
   partitionBy: "somePartition",
   preserveGovernanceControls: false
 }
-select 1 as a`
+select 1 as a`,
     );
     const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
     expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
     expect(result.compile.compiledGraph.tables[0].bigquery.preserveGovernanceControls).equals(
-      false
+      false,
     );
   });
 });
