@@ -35,6 +35,7 @@ module.exports = [
       'tmp/**',
       'tests/api/projects/**',
       'tests/integration/*_project/**',
+      'tools/canary-project/**',
     ],
   },
   {
