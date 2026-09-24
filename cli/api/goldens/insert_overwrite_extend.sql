@@ -4,6 +4,7 @@ BEGIN
 
 -- Declare variables for schema comparison and strategy execution.
 DECLARE dataform_columns ARRAY<STRING>;
+DECLARE dataform_columns_list STRING;
 DECLARE temp_table_columns ARRAY<STRUCT<column_name STRING, data_type STRING>>;
 DECLARE columns_added ARRAY<STRUCT<column_name STRING, data_type STRING>>;
 DECLARE columns_removed ARRAY<STRING>;
@@ -60,8 +61,40 @@ END IF;
 
 
 
+-- Prepare dynamic column lists and staging table for DML.
+SET dataform_columns_list = (
+  SELECT STRING_AGG(FORMAT("`%s`", column_info.column_name), ", ")
+  FROM UNNEST(temp_table_columns) AS column_info
+);
+
+CREATE OR REPLACE TEMP TABLE `incremental_on_schema_change_df_temp_test_uuid_temp` AS (
+  select 1 as id, 'a' as field1, 'new' as field2
+);
+
+BEGIN
+  DECLARE partitions_for_replacement DEFAULT (
+    ARRAY(
+      SELECT DISTINCT DATE(ts)
+      FROM `incremental_on_schema_change_df_temp_test_uuid_temp`
+      WHERE DATE(ts) IS NOT NULL
+    )
+  );
+
+  EXECUTE IMMEDIATE (
+    "MERGE `project-id.dataset-id.incremental_on_schema_change` DATAFORM_DEST " ||
+    "USING `incremental_on_schema_change_df_temp_test_uuid_temp` DATAFORM_SOURCE " ||
+    "ON FALSE " ||
+    "WHEN NOT MATCHED BY SOURCE AND DATE(ts) IN UNNEST(partitions_for_replacement) THEN " ||
+    "DELETE " ||
+    "WHEN NOT MATCHED BY TARGET THEN " ||
+    "INSERT (" || dataform_columns_list || ") VALUES (" || dataform_columns_list || ")"
+  );
+END;
+
+
 -- Cleanup temporary tables.
 DROP TABLE IF EXISTS `project-id.dataset-id.incremental_on_schema_change_df_temp_test_uuid_empty`;
+DROP TABLE IF EXISTS `incremental_on_schema_change_df_temp_test_uuid_temp`;
     
 END;
 BEGIN
@@ -72,28 +105,3 @@ EXCEPTION WHEN ERROR THEN
   RAISE;
 END;
 DROP PROCEDURE IF EXISTS `project-id.dataset-id.df_osc_test_uuid`;
-CREATE OR REPLACE TEMP TABLE `staging_table_temp_test_uuid` AS (
-  select 1 as id, 'a' as field1, 'new' as field2
-);
-
-BEGIN
-  DECLARE partitions_for_replacement DEFAULT (
-    ARRAY(
-      SELECT DISTINCT DATE(ts)
-      FROM `staging_table_temp_test_uuid`
-      WHERE DATE(ts) IS NOT NULL
-    )
-  );
-
-  MERGE `project-id.dataset-id.incremental_on_schema_change` DATAFORM_DEST
-  USING `staging_table_temp_test_uuid` DATAFORM_SOURCE
-  ON FALSE
-  WHEN NOT MATCHED BY SOURCE AND DATE(ts) IN UNNEST(partitions_for_replacement) 
-  
-  THEN
-    DELETE
-  WHEN NOT MATCHED BY TARGET THEN
-    INSERT (`id`,`field1`) VALUES (`id`,`field1`);
-END;
-
-DROP TABLE IF EXISTS `staging_table_temp_test_uuid`;
