@@ -11,7 +11,16 @@ import * as path from "path";
 // that a project's ignore files cannot override this floor: `ignore` lets later patterns
 // override earlier ones by design, so a `!node_modules` negation would otherwise
 // un-ignore it.
+//
+// Compared case-insensitively: on a case-insensitive filesystem `.GIT` or `NODE_MODULES`
+// is the same directory, and on a case-sensitive one excluding them anyway costs nothing.
 const ALWAYS_IGNORED_NAMES = new Set([".git", "node_modules"]);
+
+// Project-root files that are always copied, whatever the project's ignore files say.
+// `compile()` has already read `workflow_settings.yaml` from the original project to
+// decide on a stateless install, and compilation in the copy can't proceed without it,
+// so a broad pattern like `*.yaml` must not drop it.
+const ALWAYS_COPIED_ROOT_FILES = new Set(["workflow_settings.yaml"]);
 
 // Ignore files read from the project root, in this order. Later patterns override earlier
 // ones, so a `!pattern` in `.dataformignore` can un-ignore a path the `.gitignore` excludes
@@ -19,13 +28,15 @@ const ALWAYS_IGNORED_NAMES = new Set([".git", "node_modules"]);
 export const PROJECT_IGNORE_FILE_NAMES = [".gitignore", ".dataformignore"];
 
 /**
- * Returns the names of the PROJECT_IGNORE_FILE_NAMES present in the project root, in the
- * order they are applied.
+ * Returns the names of the PROJECT_IGNORE_FILE_NAMES present in the project root as
+ * files, in the order they are applied. Anything else by that name, such as a directory,
+ * is not an ignore file and is skipped rather than failing the compile.
  */
 export function findProjectIgnoreFiles(resolvedProjectPath: string): string[] {
-  return PROJECT_IGNORE_FILE_NAMES.filter((name) =>
-    fs.existsSync(path.join(resolvedProjectPath, name)),
-  );
+  return PROJECT_IGNORE_FILE_NAMES.filter((name) => {
+    const ignoreFilePath = path.join(resolvedProjectPath, name);
+    return fs.existsSync(ignoreFilePath) && fs.statSync(ignoreFilePath).isFile();
+  });
 }
 
 /**
@@ -59,6 +70,10 @@ export function findProjectIgnoreFiles(resolvedProjectPath: string): string[] {
  * `core.ignorecase` would be set. That can only under-exclude: a pattern like
  * `definitions/staging/` must never drop `definitions/Staging/table.sqlx`, which git on
  * a case-sensitive filesystem treats as tracked.
+ *
+ * Patterns are evaluated on their own, without consulting git's index, so a file git
+ * still tracks despite matching a pattern (for example, one force-added with
+ * `git add -f`) is excluded all the same. The exception is ALWAYS_COPIED_ROOT_FILES.
  */
 export function buildProjectCopyFilter(resolvedProjectPath: string): (src: string) => boolean {
   const ig = ignore({ ignorecase: false });
@@ -80,8 +95,12 @@ export function buildProjectCopyFilter(resolvedProjectPath: string): (src: strin
       return true;
     }
 
+    if (ALWAYS_COPIED_ROOT_FILES.has(relative)) {
+      return true;
+    }
+
     const relativeSegments = relative.split(path.sep);
-    if (relativeSegments.some((segment) => ALWAYS_IGNORED_NAMES.has(segment))) {
+    if (relativeSegments.some((segment) => ALWAYS_IGNORED_NAMES.has(segment.toLowerCase()))) {
       return false;
     }
 

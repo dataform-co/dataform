@@ -218,4 +218,44 @@ suite("buildProjectCopyFilter", ({ afterEach }) => {
     // Matches git: the excluded parent directory must itself be un-ignored.
     expect(fs.existsSync(path.join(destinationDir, "definitions", "generated"))).to.equal(false);
   });
+
+  test("the always-ignored floor matches names case-insensitively", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    fs.ensureDirSync(path.join(projectDir, ".GIT"));
+    fs.ensureDirSync(path.join(projectDir, "definitions", "NODE_MODULES"));
+    fs.writeFileSync(path.join(projectDir, ".gitignore"), "!.GIT\n!NODE_MODULES\n");
+
+    const filter = buildProjectCopyFilter(projectDir);
+
+    expect(filter(path.join(projectDir, ".GIT"))).to.equal(false);
+    expect(filter(path.join(projectDir, "definitions", "NODE_MODULES"))).to.equal(false);
+  });
+
+  test("workflow_settings.yaml is always copied, even when an ignore file matches it", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    const destinationDir = tmpDirFixture.createNewTmpDir();
+    fs.writeFileSync(path.join(projectDir, ".gitignore"), "*.yaml\n");
+    fs.writeFileSync(path.join(projectDir, "workflow_settings.yaml"), "defaultProject: p\n");
+    fs.writeFileSync(path.join(projectDir, "other.yaml"), "junk");
+
+    fs.copySync(projectDir, destinationDir, {
+      filter: buildProjectCopyFilter(projectDir),
+    });
+
+    expect(fs.readFileSync(path.join(destinationDir, "workflow_settings.yaml"), "utf8")).to.equal(
+      "defaultProject: p\n",
+    );
+    expect(fs.existsSync(path.join(destinationDir, "other.yaml"))).to.equal(false);
+  });
+
+  test("an ignore file name that is a directory is skipped, not read", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    fs.ensureDirSync(path.join(projectDir, ".dataformignore"));
+    fs.writeFileSync(path.join(projectDir, ".gitignore"), ".venv/\n");
+    fs.ensureDirSync(path.join(projectDir, ".venv"));
+
+    expect(findProjectIgnoreFiles(projectDir)).to.deep.equal([".gitignore"]);
+    const filter = buildProjectCopyFilter(projectDir);
+    expect(filter(path.join(projectDir, ".venv"))).to.equal(false);
+  });
 });
