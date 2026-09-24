@@ -11,9 +11,6 @@ import * as path from "path";
 // that a project's ignore files cannot override this floor: `ignore` lets later patterns
 // override earlier ones by design, so a `!node_modules` negation would otherwise
 // un-ignore it.
-//
-// Compared case-insensitively: on a case-insensitive filesystem `.GIT` or `NODE_MODULES`
-// is the same directory, and on a case-sensitive one excluding them anyway costs nothing.
 const ALWAYS_IGNORED_NAMES = new Set([".git", "node_modules"]);
 
 // Project-root files that are always copied, whatever the project's ignore files say.
@@ -37,6 +34,30 @@ export function findProjectIgnoreFiles(resolvedProjectPath: string): string[] {
     const ignoreFilePath = path.join(resolvedProjectPath, name);
     return fs.existsSync(ignoreFilePath) && fs.statSync(ignoreFilePath).isFile();
   });
+}
+
+function swapCase(name: string): string {
+  return name
+    .split("")
+    .map((c) => (c === c.toUpperCase() ? c.toLowerCase() : c.toUpperCase()))
+    .join("");
+}
+
+/**
+ * Returns whether names in `directory` are matched case-insensitively by its filesystem,
+ * as on default Windows and macOS volumes. It probes an existing entry under its
+ * case-swapped name: if that resolves but isn't itself listed, it's the same entry.
+ * Falls back to the platform default when no entry has a name with letters.
+ */
+export function isCaseInsensitiveDirectory(directory: string): boolean {
+  const entries = fs.readdirSync(directory);
+  for (const entry of entries) {
+    const swapped = swapCase(entry);
+    if (swapped !== entry) {
+      return !entries.includes(swapped) && fs.existsSync(path.join(directory, swapped));
+    }
+  }
+  return process.platform === "win32" || process.platform === "darwin";
 }
 
 /**
@@ -66,17 +87,23 @@ export function findProjectIgnoreFiles(resolvedProjectPath: string): string[] {
  * `!definitions/generated/gen.sqlx` alone has no effect; `!definitions/generated/`
  * restores the directory.
  *
- * Matching is always case-sensitive, even on case-insensitive filesystems where git's
- * `core.ignorecase` would be set. That can only under-exclude: a pattern like
- * `definitions/staging/` must never drop `definitions/Staging/table.sqlx`, which git on
- * a case-sensitive filesystem treats as tracked.
+ * Names are matched with the case sensitivity of the project's filesystem, as git does
+ * with `core.ignorecase`: on a case-sensitive one, `definitions/staging/` doesn't match
+ * `definitions/Staging/`, and `NODE_MODULES` is an ordinary directory; on a
+ * case-insensitive one, both patterns and negations match regardless of case. That
+ * applies to the ALWAYS_IGNORED_NAMES and ALWAYS_COPIED_ROOT_FILES checks too.
+ * `caseInsensitive` is detected from the project directory unless given.
  *
  * Patterns are evaluated on their own, without consulting git's index, so a file git
  * still tracks despite matching a pattern (for example, one force-added with
  * `git add -f`) is excluded all the same. The exception is ALWAYS_COPIED_ROOT_FILES.
  */
-export function buildProjectCopyFilter(resolvedProjectPath: string): (src: string) => boolean {
-  const ig = ignore({ ignorecase: false });
+export function buildProjectCopyFilter(
+  resolvedProjectPath: string,
+  caseInsensitive = isCaseInsensitiveDirectory(resolvedProjectPath),
+): (src: string) => boolean {
+  const normalizeCase = (name: string) => (caseInsensitive ? name.toLowerCase() : name);
+  const ig = ignore({ ignorecase: caseInsensitive });
   for (const name of findProjectIgnoreFiles(resolvedProjectPath)) {
     ig.add(fs.readFileSync(path.join(resolvedProjectPath, name), "utf8"));
   }
@@ -95,12 +122,12 @@ export function buildProjectCopyFilter(resolvedProjectPath: string): (src: strin
       return true;
     }
 
-    if (ALWAYS_COPIED_ROOT_FILES.has(relative)) {
+    if (ALWAYS_COPIED_ROOT_FILES.has(normalizeCase(relative))) {
       return true;
     }
 
     const relativeSegments = relative.split(path.sep);
-    if (relativeSegments.some((segment) => ALWAYS_IGNORED_NAMES.has(segment.toLowerCase()))) {
+    if (relativeSegments.some((segment) => ALWAYS_IGNORED_NAMES.has(normalizeCase(segment)))) {
       return false;
     }
 

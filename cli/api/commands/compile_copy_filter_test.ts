@@ -5,6 +5,7 @@ import * as path from "path";
 import {
   buildProjectCopyFilter,
   findProjectIgnoreFiles,
+  isCaseInsensitiveDirectory,
 } from "df/cli/api/commands/compile_copy_filter";
 import { suite, test } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
@@ -187,7 +188,7 @@ suite("buildProjectCopyFilter", ({ afterEach }) => {
     expect(findProjectIgnoreFiles(projectDir)).to.deep.equal([".gitignore", ".dataformignore"]);
   });
 
-  test("matches ignore patterns case-sensitively", () => {
+  test("on a case-sensitive filesystem, patterns only match their exact case", () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
     const destinationDir = tmpDirFixture.createNewTmpDir();
     fs.writeFileSync(path.join(projectDir, ".gitignore"), "definitions/staging/\n");
@@ -195,7 +196,7 @@ suite("buildProjectCopyFilter", ({ afterEach }) => {
     fs.writeFileSync(path.join(projectDir, "definitions", "Staging", "table.sqlx"), "SELECT 1");
 
     fs.copySync(projectDir, destinationDir, {
-      filter: buildProjectCopyFilter(projectDir),
+      filter: buildProjectCopyFilter(projectDir, false),
     });
 
     expect(
@@ -219,16 +220,52 @@ suite("buildProjectCopyFilter", ({ afterEach }) => {
     expect(fs.existsSync(path.join(destinationDir, "definitions", "generated"))).to.equal(false);
   });
 
-  test("the always-ignored floor matches names case-insensitively", () => {
+  test("on a case-insensitive filesystem, patterns and negations ignore case", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    fs.writeFileSync(path.join(projectDir, ".gitignore"), "definitions/staging/\n*.sqlx\n");
+    fs.writeFileSync(path.join(projectDir, ".dataformignore"), "!definitions/Keep.sqlx\n");
+    fs.ensureDirSync(path.join(projectDir, "definitions", "Staging"));
+    fs.writeFileSync(path.join(projectDir, "definitions", "keep.sqlx"), "SELECT 1");
+    fs.writeFileSync(path.join(projectDir, "definitions", "drop.sqlx"), "SELECT 1");
+
+    const filter = buildProjectCopyFilter(projectDir, true);
+
+    expect(filter(path.join(projectDir, "definitions", "Staging"))).to.equal(false);
+    expect(filter(path.join(projectDir, "definitions", "keep.sqlx"))).to.equal(true);
+    expect(filter(path.join(projectDir, "definitions", "drop.sqlx"))).to.equal(false);
+  });
+
+  test("on a case-sensitive filesystem, negations only match their exact case", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    fs.writeFileSync(path.join(projectDir, ".gitignore"), "*.sqlx\n!definitions/Keep.sqlx\n");
+    fs.ensureDirSync(path.join(projectDir, "definitions"));
+    fs.writeFileSync(path.join(projectDir, "definitions", "keep.sqlx"), "SELECT 1");
+    fs.writeFileSync(path.join(projectDir, "definitions", "Keep.sqlx"), "SELECT 1");
+
+    const filter = buildProjectCopyFilter(projectDir, false);
+
+    expect(filter(path.join(projectDir, "definitions", "Keep.sqlx"))).to.equal(true);
+    expect(filter(path.join(projectDir, "definitions", "keep.sqlx"))).to.equal(false);
+  });
+
+  test("the always-ignored floor follows the filesystem's case sensitivity", () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
     fs.ensureDirSync(path.join(projectDir, ".GIT"));
     fs.ensureDirSync(path.join(projectDir, "definitions", "NODE_MODULES"));
+    fs.writeFileSync(path.join(projectDir, "definitions", "NODE_MODULES", "table.sqlx"), "");
     fs.writeFileSync(path.join(projectDir, ".gitignore"), "!.GIT\n!NODE_MODULES\n");
 
-    const filter = buildProjectCopyFilter(projectDir);
+    // Case-insensitive: these are the excluded directories, negations notwithstanding.
+    const insensitiveFilter = buildProjectCopyFilter(projectDir, true);
+    expect(insensitiveFilter(path.join(projectDir, ".GIT"))).to.equal(false);
+    expect(insensitiveFilter(path.join(projectDir, "definitions", "NODE_MODULES"))).to.equal(false);
 
-    expect(filter(path.join(projectDir, ".GIT"))).to.equal(false);
-    expect(filter(path.join(projectDir, "definitions", "NODE_MODULES"))).to.equal(false);
+    // Case-sensitive: these are ordinary directories.
+    const sensitiveFilter = buildProjectCopyFilter(projectDir, false);
+    expect(sensitiveFilter(path.join(projectDir, ".GIT"))).to.equal(true);
+    expect(
+      sensitiveFilter(path.join(projectDir, "definitions", "NODE_MODULES", "table.sqlx")),
+    ).to.equal(true);
   });
 
   test("workflow_settings.yaml is always copied, even when an ignore file matches it", () => {
@@ -257,5 +294,32 @@ suite("buildProjectCopyFilter", ({ afterEach }) => {
     expect(findProjectIgnoreFiles(projectDir)).to.deep.equal([".gitignore"]);
     const filter = buildProjectCopyFilter(projectDir);
     expect(filter(path.join(projectDir, ".venv"))).to.equal(false);
+  });
+
+  test("on a case-insensitive filesystem, workflow_settings.yaml is kept in any case", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    fs.writeFileSync(path.join(projectDir, ".gitignore"), "*.yaml\n");
+    fs.writeFileSync(path.join(projectDir, "Workflow_Settings.yaml"), "defaultProject: p\n");
+
+    expect(
+      buildProjectCopyFilter(projectDir, true)(path.join(projectDir, "Workflow_Settings.yaml")),
+    ).to.equal(true);
+    expect(
+      buildProjectCopyFilter(projectDir, false)(path.join(projectDir, "Workflow_Settings.yaml")),
+    ).to.equal(false);
+  });
+
+  test("isCaseInsensitiveDirectory agrees with how the filesystem resolves names", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    fs.writeFileSync(path.join(projectDir, "probe"), "");
+    const expected = fs.existsSync(path.join(projectDir, "PROBE"));
+
+    expect(isCaseInsensitiveDirectory(projectDir)).to.equal(expected);
+
+    // With both case variants present as distinct entries, it must be case-sensitive.
+    if (!expected) {
+      fs.writeFileSync(path.join(projectDir, "PROBE"), "");
+      expect(isCaseInsensitiveDirectory(projectDir)).to.equal(false);
+    }
   });
 });
