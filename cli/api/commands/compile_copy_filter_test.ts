@@ -2,7 +2,10 @@ import { expect } from "chai";
 import * as fs from "fs-extra";
 import * as path from "path";
 
-import { buildProjectCopyFilter } from "df/cli/api/commands/compile_copy_filter";
+import {
+  buildProjectCopyFilter,
+  findProjectIgnoreFiles,
+} from "df/cli/api/commands/compile_copy_filter";
 import { suite, test } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
 
@@ -75,11 +78,11 @@ suite("buildProjectCopyFilter", ({ afterEach }) => {
     fs.writeFileSync(path.join(projectDir, ".gitignore"), ".venv/\n");
 
     fs.copySync(projectDir, destinationDir, {
-      filter: buildProjectCopyFilter(projectDir)
+      filter: buildProjectCopyFilter(projectDir),
     });
 
     expect(fs.readFileSync(path.join(destinationDir, "definitions", "foo.sqlx"), "utf8")).to.equal(
-      "SELECT 1"
+      "SELECT 1",
     );
     expect(fs.existsSync(path.join(destinationDir, ".venv"))).to.equal(false);
     expect(fs.existsSync(path.join(destinationDir, "node_modules"))).to.equal(false);
@@ -89,7 +92,7 @@ suite("buildProjectCopyFilter", ({ afterEach }) => {
     const projectDir = tmpDirFixture.createNewTmpDir();
     fs.writeFileSync(
       path.join(projectDir, ".gitignore"),
-      [".venv/", "__pycache__/", "*.pyc"].join("\n")
+      [".venv/", "__pycache__/", "*.pyc"].join("\n"),
     );
     fs.ensureDirSync(path.join(projectDir, ".venv", "lib"));
     fs.writeFileSync(path.join(projectDir, ".venv", "lib", "mod.py"), "# stub");
@@ -117,5 +120,70 @@ suite("buildProjectCopyFilter", ({ afterEach }) => {
     // The always-ignored floor still applies even when a .gitignore is present.
     expect(filter(path.join(projectDir, ".git"))).to.equal(false);
     expect(filter(path.join(projectDir, "node_modules"))).to.equal(false);
+  });
+
+  test("a .dataformignore excludes paths on its own, with no .gitignore", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    fs.writeFileSync(path.join(projectDir, ".dataformignore"), "scratch/\n");
+    fs.ensureDirSync(path.join(projectDir, "scratch"));
+    fs.ensureDirSync(path.join(projectDir, "definitions"));
+
+    const filter = buildProjectCopyFilter(projectDir);
+
+    expect(filter(path.join(projectDir, "scratch"))).to.equal(false);
+    expect(filter(path.join(projectDir, "definitions"))).to.equal(true);
+  });
+
+  test("a .dataformignore supplements the .gitignore and can un-ignore its paths", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    const destinationDir = tmpDirFixture.createNewTmpDir();
+    fs.writeFileSync(
+      path.join(projectDir, ".gitignore"),
+      [".venv/", "definitions/generated/"].join("\n"),
+    );
+    fs.writeFileSync(
+      path.join(projectDir, ".dataformignore"),
+      ["docs/", "!definitions/generated/"].join("\n"),
+    );
+    fs.ensureDirSync(path.join(projectDir, ".venv"));
+    fs.writeFileSync(path.join(projectDir, ".venv", "ignored"), "junk");
+    fs.ensureDirSync(path.join(projectDir, "docs"));
+    fs.writeFileSync(path.join(projectDir, "docs", "ignored.md"), "junk");
+    fs.ensureDirSync(path.join(projectDir, "definitions", "generated"));
+    fs.writeFileSync(path.join(projectDir, "definitions", "generated", "gen.sqlx"), "SELECT 1");
+
+    fs.copySync(projectDir, destinationDir, {
+      filter: buildProjectCopyFilter(projectDir),
+    });
+
+    // Still excluded by the .gitignore.
+    expect(fs.existsSync(path.join(destinationDir, ".venv"))).to.equal(false);
+    // Excluded by the .dataformignore.
+    expect(fs.existsSync(path.join(destinationDir, "docs"))).to.equal(false);
+    // Gitignored, but un-ignored by the .dataformignore.
+    expect(
+      fs.readFileSync(path.join(destinationDir, "definitions", "generated", "gen.sqlx"), "utf8"),
+    ).to.equal("SELECT 1");
+  });
+
+  test("a .dataformignore cannot override the always-ignored floor", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    fs.ensureDirSync(path.join(projectDir, "node_modules"));
+    fs.writeFileSync(path.join(projectDir, ".dataformignore"), "!node_modules\n");
+
+    const filter = buildProjectCopyFilter(projectDir);
+
+    expect(filter(path.join(projectDir, "node_modules"))).to.equal(false);
+  });
+
+  test("findProjectIgnoreFiles lists the ignore files present, in application order", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    expect(findProjectIgnoreFiles(projectDir)).to.deep.equal([]);
+
+    fs.writeFileSync(path.join(projectDir, ".dataformignore"), "");
+    expect(findProjectIgnoreFiles(projectDir)).to.deep.equal([".dataformignore"]);
+
+    fs.writeFileSync(path.join(projectDir, ".gitignore"), "");
+    expect(findProjectIgnoreFiles(projectDir)).to.deep.equal([".gitignore", ".dataformignore"]);
   });
 });

@@ -2,16 +2,31 @@ import * as fs from "fs-extra";
 import ignore from "ignore";
 import * as path from "path";
 
-// Excluded whatever the project's .gitignore says. `.git` holds no Dataform project
+// Excluded whatever the project's ignore files say. `.git` holds no Dataform project
 // files. A top-level `node_modules` can't be present at all here -- `compile()` rejects
 // the project before copying if it finds one -- so that entry covers nested ones, which
 // are likewise never part of a Dataform project.
 //
 // Checked independently of the `ignore` instance below, rather than seeded into it, so
-// that a project's .gitignore cannot override this floor: `ignore` lets later patterns
+// that a project's ignore files cannot override this floor: `ignore` lets later patterns
 // override earlier ones by design, so a `!node_modules` negation would otherwise
 // un-ignore it.
 const ALWAYS_IGNORED_NAMES = new Set([".git", "node_modules"]);
+
+// Ignore files read from the project root, in this order. Later patterns override earlier
+// ones, so a `!pattern` in `.dataformignore` can un-ignore a path the `.gitignore` excludes
+// (for example, definitions generated into a gitignored directory).
+export const PROJECT_IGNORE_FILE_NAMES = [".gitignore", ".dataformignore"];
+
+/**
+ * Returns the names of the PROJECT_IGNORE_FILE_NAMES present in the project root, in the
+ * order they are applied.
+ */
+export function findProjectIgnoreFiles(resolvedProjectPath: string): string[] {
+  return PROJECT_IGNORE_FILE_NAMES.filter((name) =>
+    fs.existsSync(path.join(resolvedProjectPath, name)),
+  );
+}
 
 /**
  * Builds a filter for fs-extra's `copySync`, so the stateless-install copy in `compile()`
@@ -23,21 +38,23 @@ const ALWAYS_IGNORED_NAMES = new Set([".git", "node_modules"]);
  * of directory names: no fixed list covers every ecosystem's junk directories (`.venv`,
  * `target/`, `__pycache__/`, `vendor/`, `coverage/`, ...), whereas a project's
  * `.gitignore` already states exactly what that project treats as disposable, and
- * `dataform init` writes one.
+ * `dataform init` writes one. An optional `.dataformignore`, in the same syntax, is
+ * applied on top of it: it can exclude further paths, or un-ignore gitignored ones with
+ * `!pattern`.
  *
- * Only the project root's `.gitignore` is read. Nested `.gitignore` files,
+ * Only ignore files in the project root are read. Nested `.gitignore` files,
  * `.git/info/exclude` and the user's global excludes file are not consulted, so a
  * project relying on those has more copied than `git status` would suggest. A project
- * with no `.gitignore` at all gets only the ALWAYS_IGNORED_NAMES floor.
+ * with neither file gets only the ALWAYS_IGNORED_NAMES floor.
  *
- * Note that a gitignored file is never copied, so it is also never compiled: a project
- * that generates definitions into a gitignored path needs that path unignored.
+ * Note that an ignored file is never copied, so it is also never compiled: a project
+ * that generates definitions into a gitignored path needs that path unignored, in
+ * either file.
  */
 export function buildProjectCopyFilter(resolvedProjectPath: string): (src: string) => boolean {
   const ig = ignore();
-  const gitignorePath = path.join(resolvedProjectPath, ".gitignore");
-  if (fs.existsSync(gitignorePath)) {
-    ig.add(fs.readFileSync(gitignorePath, "utf8"));
+  for (const name of findProjectIgnoreFiles(resolvedProjectPath)) {
+    ig.add(fs.readFileSync(path.join(resolvedProjectPath, name), "utf8"));
   }
 
   return (src: string) => {
@@ -55,7 +72,7 @@ export function buildProjectCopyFilter(resolvedProjectPath: string): (src: strin
     }
 
     const relativeSegments = relative.split(path.sep);
-    if (relativeSegments.some(segment => ALWAYS_IGNORED_NAMES.has(segment))) {
+    if (relativeSegments.some((segment) => ALWAYS_IGNORED_NAMES.has(segment))) {
       return false;
     }
 
