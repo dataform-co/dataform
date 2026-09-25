@@ -125,7 +125,10 @@ export function compile(compileConfig: dataform.ICompileConfig) {
       }
       ${
         hasWorkflowSettingsYaml
-          ? 'global.workflowSettingsYaml = require("./workflow_settings.yaml");'
+          ? `global.workflowSettingsYaml = (function() {
+               try { return require("./workflow_settings.yaml"); }
+               catch(e) { console.error("YAML require failed run_core:", e); }
+             })();`
           : ""
       }
       ${hasDataformJson ? 'global.dataformJson = require("./dataform.json");' : ""}
