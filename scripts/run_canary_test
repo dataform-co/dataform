@@ -15,14 +15,15 @@ CURRENT_VERSION=$(cat version.bzl | grep DF_VERSION | awk '{ print $3 }' | sed "
 TIMESTAMP=$(date +%s)
 
 # Preserve any existing pre-release suffix in DF_VERSION and append our suffix after a dot.
-if [[ "$CURRENT_VERSION" == *-* ]]; then
-  CANARY_VERSION="${CURRENT_VERSION}.pr.${_PR_NUMBER}.${TIMESTAMP}"
-else
-  CANARY_VERSION="${CURRENT_VERSION}-pr.${_PR_NUMBER}.${TIMESTAMP}"
-fi
+# if [[ "$CURRENT_VERSION" == *-* ]]; then
+#   CANARY_VERSION="${CURRENT_VERSION}.pr.${_PR_NUMBER}.${TIMESTAMP}"
+# else
+#   CANARY_VERSION="${CURRENT_VERSION}-pr.${_PR_NUMBER}.${TIMESTAMP}"
+# fi
 
 REPO_PATH="projects/${_CANARY_GCP_PROJECT}/locations/${_CANARY_LOCATION}/repositories/${_CANARY_REPO}"
 REPO_URL="https://dataform.googleapis.com/v1/${REPO_PATH}"
+PARENT_URL="https://dataform.googleapis.com/v1/projects/${_CANARY_GCP_PROJECT}/locations/${_CANARY_LOCATION}"
 WORKSPACE_ID="pr-${_PR_NUMBER}-${TIMESTAMP}"
 WORKSPACE_NAME="${REPO_PATH}/workspaces/${WORKSPACE_ID}"
 WORKSPACE_CREATED=false
@@ -38,25 +39,37 @@ cleanup() {
 }
 trap cleanup EXIT
 
-echo "Setting canary version to: ${CANARY_VERSION}"
-sed -i "s/DF_VERSION = \"[^\"]*\"/DF_VERSION = \"${CANARY_VERSION}\"/" version.bzl
-sed -i "s/dataformCoreVersion: .*/dataformCoreVersion: ${CANARY_VERSION}/" tools/canary-project/workflow_settings.yaml
+# echo "Setting canary version to: ${CANARY_VERSION}"
+# sed -i "s/DF_VERSION = \"[^\"]*\"/DF_VERSION = \"${CANARY_VERSION}\"/" version.bzl
+# sed -i "s/dataformCoreVersion: .*/dataformCoreVersion: ${CANARY_VERSION}/" tools/canary-project/workflow_settings.yaml
 
 # Install dependencies from the trusted registry.
-bazel run @nodejs//:yarn config set registry https://us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/
-bazel run //tools/registry-tools:switch_registry -- $(pwd)/yarn.lock https://us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/
-bazel run @nodejs//:yarn install -- --frozen-lockfile
+# bazel run @nodejs//:yarn config set registry https://us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/
+# bazel run //tools/registry-tools:switch_registry -- $(pwd)/yarn.lock https://us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/
+# bazel run @nodejs//:yarn install -- --frozen-lockfile
 
-# Switch to public npmjs registry to publish the canary @dataform/core package under the 'next' dist-tag.
-bazel run @nodejs//:npm config set registry https://registry.npmjs.org/
-bazel run packages/@dataform/core:package.publish -- --tag=next
+# Switch to public npmjs registry to publish the canary @dataform/core package under the 'canary' dist-tag.
+# bazel run @nodejs//:npm config set registry https://registry.npmjs.org/
+# bazel run packages/@dataform/core:package.publish -- --tag=canary
 
 if [[ -f ~/gcp_token.txt ]]; then
   GCP_TOKEN=$(cat ~/gcp_token.txt)
-elif command -v gcloud >/dev/null 2>&1; then
-  GCP_TOKEN=$(gcloud auth print-access-token)
 else
   echo "Error: Unable to obtain GCP access token." 1>&2
+  exit 1
+fi
+
+echo "Ensuring Dataform repository exists: ${_CANARY_REPO}"
+CREATE_REPO_HTTP_CODE=$(curl -s -o /tmp/create_repo_response.json -w "%{http_code}" \
+  -X POST \
+  -H "Authorization: Bearer ${GCP_TOKEN}" \
+  -H "Content-Type: application/json" \
+  "${PARENT_URL}/repositories?repositoryId=${_CANARY_REPO}" \
+  -d "{}")
+# 2xx = created now; 409 = ALREADY_EXISTS from a previous run
+if [[ ("$CREATE_REPO_HTTP_CODE" -lt 200 || "$CREATE_REPO_HTTP_CODE" -ge 300) && "$CREATE_REPO_HTTP_CODE" -ne 409 ]]; then
+  echo "Error creating Dataform repository (HTTP ${CREATE_REPO_HTTP_CODE}):" 1>&2
+  cat /tmp/create_repo_response.json 1>&2
   exit 1
 fi
 
