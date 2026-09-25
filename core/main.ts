@@ -16,7 +16,7 @@ import { View } from "df/core/actions/view";
 import { IDataformExtension } from "df/core/extension";
 import * as Path from "df/core/path";
 import { Session } from "df/core/session";
-import { nativeRequire, snakeToCamelKeys } from "df/core/utils";
+import { nativeRequire, snakeToCamelKeys, validateJobLabels } from "df/core/utils";
 import { readWorkflowSettings } from "df/core/workflow_settings";
 import { dataform } from "df/protos/ts";
 
@@ -46,10 +46,18 @@ export function main(coreExecutionRequest: Uint8Array | string): Uint8Array | st
 
   // Merge in project config overrides.
   const projectConfigOverride = compileRequest.compileConfig.projectConfigOverride ?? {};
+  const defaultJobLabels = {
+    ...projectConfig.defaultJobLabels,
+    ...projectConfigOverride.defaultJobLabels,
+  };
+  if (Object.keys(defaultJobLabels).length > 0) {
+    validateJobLabels(defaultJobLabels, "defaultJobLabels");
+  }
   projectConfig = dataform.ProjectConfig.create({
     ...projectConfig,
     ...projectConfigOverride,
     vars: { ...projectConfig.vars, ...projectConfigOverride.vars },
+    defaultJobLabels,
   });
 
   // Initialize the compilation session.

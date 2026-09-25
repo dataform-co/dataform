@@ -884,5 +884,91 @@ FROM x
         ]),
       );
     });
+
+    test(`data preparation supports defaultJobLabels and jobLabels in actions.yaml and sqlx`, () => {
+      const workflowSettingsYaml = `
+defaultProject: defaultProject
+defaultDataset: defaultDataset
+defaultLocation: US
+defaultJobLabels:
+  env: dev
+  team: dataprep_team
+`;
+      const projectDir = createSimpleDataPreparationProject(workflowSettingsYaml, false);
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/actions.yaml"),
+        `
+actions:
+- dataPreparation:
+    filename: data_preparation.dp.yaml
+    jobLabels:
+      env: prod
+      cost_center: finance`,
+      );
+      fs.writeFileSync(path.join(projectDir, "definitions/data_preparation.dp.yaml"), "\n");
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/sqlx_dataprep.sqlx"),
+        `
+config {
+  type: "dataPreparation",
+  name: "dest",
+  jobLabels: {
+    env: "staging",
+  },
+}
+FROM x
+|> SELECT *
+`,
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      const dpByFile = new Map(
+        result.compile.compiledGraph.dataPreparations.map((dp) => [dp.fileName, dp]),
+      );
+      expect(
+        asPlainObject(dpByFile.get("definitions/data_preparation.dp.yaml")?.actionDescriptor),
+      ).deep.equals({
+        jobLabels: {
+          env: "prod",
+          team: "dataprep_team",
+          cost_center: "finance",
+        },
+      });
+      expect(
+        asPlainObject(dpByFile.get("definitions/sqlx_dataprep.sqlx")?.actionDescriptor),
+      ).deep.equals({
+        jobLabels: {
+          env: "staging",
+          team: "dataprep_team",
+        },
+      });
+    });
+
+    test(`data preparation records compilation error for invalid jobLabels`, () => {
+      const projectDir = createSimpleDataPreparationProject(VALID_WORKFLOW_SETTINGS_YAML, false);
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/sqlx_dataprep.sqlx"),
+        `
+config {
+  type: "dataPreparation",
+  name: "dest",
+  jobLabels: {
+    "dataprep-reserved": "val",
+  },
+}
+FROM x
+|> SELECT *
+`,
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).to.equal(1);
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).to.include(
+        'Invalid job label key "dataprep-reserved" in jobLabels: key cannot start with reserved prefix "dataprep-".',
+      );
+    });
   });
 });

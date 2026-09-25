@@ -75,6 +75,10 @@ message WorkflowSettings {
 
   // Optional. Configuration for Knowledge Catalog lineage emission.
   LineageSettings lineage = 19;
+
+  // Optional. Default key-value pairs for BigQuery job labels applied to all
+  // BigQuery jobs executed for actions in this project.
+  map<string, string> default_job_labels = 20;
 }
 
 // Configuration for Knowledge Catalog lineage emission.
@@ -281,6 +285,11 @@ message ActionConfig {
     // Optional. If true, preserves existing BigQuery column governance controls
     // (e.g. data policy) when recreating a table.
     optional bool preserve_governance_controls = 25;
+
+    // Optional. Key-value pairs for BigQuery job labels applied to the query
+    // job(s) executed for this table. Overrides matching keys from
+    // `default_job_labels` in `workflow_settings.yaml`.
+    map<string, string> job_labels = 26;
   }
 
   message Metadata {
@@ -369,6 +378,11 @@ message ActionConfig {
     // If unset, the value from workflow_settings.yaml is used. If neither is set, default BigQuery behavior applies.
     // Dataform CLI only (GCP Dataform support pending).
     string reservation = 21;
+
+    // Optional. Key-value pairs for BigQuery job labels applied to the query
+    // job(s) executed for this view. Overrides matching keys from
+    // `default_job_labels` in `workflow_settings.yaml`.
+    map<string, string> job_labels = 22;
   }
 
   enum OnSchemaChange {
@@ -508,6 +522,11 @@ message ActionConfig {
     // Optional. If true, preserves existing BigQuery column governance controls
     // (e.g. data policy) when recreating a table.
     optional bool preserve_governance_controls = 30;
+
+    // Optional. Key-value pairs for BigQuery job labels applied to the query
+    // job(s) executed for this incremental table. Overrides matching keys from
+    // `default_job_labels` in `workflow_settings.yaml`.
+    map<string, string> job_labels = 31;
   }
 
   message AssertionConfig {
@@ -554,6 +573,11 @@ message ActionConfig {
 
     // Metadata for this assertion.
     Metadata metadata = 12;
+
+    // Optional. Key-value pairs for BigQuery job labels applied to the query
+    // job(s) executed for this assertion. Overrides matching keys from
+    // `default_job_labels` in `workflow_settings.yaml`.
+    map<string, string> job_labels = 13;
   }
 
   message OperationConfig {
@@ -606,6 +630,11 @@ message ActionConfig {
     // If unset, the value from workflow_settings.yaml is used. If neither is set, default BigQuery behavior applies.
     // Dataform CLI only (GCP Dataform support pending).
     string reservation = 13;
+
+    // Optional. Key-value pairs for BigQuery job labels applied to the query
+    // job(s) executed for this operation. Overrides matching keys from
+    // `default_job_labels` in `workflow_settings.yaml`.
+    map<string, string> job_labels = 14;
   }
 
   message DeclarationConfig {
@@ -696,6 +725,9 @@ message ActionConfig {
     ErrorTableConfig error_table = 11;
 
     LoadModeConfig load_mode = 12;
+
+    // Labels to be applied to BigQuery job(s) executed for this data preparation.
+    map<string, string> job_labels = 15;
 
     message ErrorTableConfig {
       // The name of the error table.

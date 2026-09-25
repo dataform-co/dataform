@@ -360,4 +360,74 @@ SELECT 1`,
       );
     });
   });
+
+  ["table", "view", "incremental", "operations", "assertion"].forEach((tableType) => {
+    test(`${tableType} inherits defaultJobLabels and overrides colliding keys with action jobLabels`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        `
+defaultProject: defaultProject
+defaultDataset: defaultDataset
+defaultLocation: US
+defaultJobLabels:
+  env: dev
+  team: core
+`,
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/file.sqlx"),
+        `
+config {
+  type: "${tableType}",
+  name: "name",
+  jobLabels: {
+    env: "prod",
+    action_type: "${tableType}",
+  }
+}
+SELECT 1`,
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(
+        asPlainObject(getActionsFromResult(tableType, result)[0]?.actionDescriptor?.jobLabels),
+      ).deep.equals({
+        env: "prod",
+        team: "core",
+        action_type: tableType,
+      });
+    });
+
+    test(`${tableType} records compilation error when jobLabels has invalid key`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML,
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/file.sqlx"),
+        `
+config {
+  type: "${tableType}",
+  name: "name",
+  jobLabels: {
+    "goog-reserved": "value"
+  }
+}
+SELECT 1`,
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).equals(1);
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).contains(
+        'Invalid job label key "goog-reserved" in jobLabels: key cannot start with reserved prefix "goog-".',
+      );
+    });
+  });
 });

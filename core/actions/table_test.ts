@@ -94,6 +94,8 @@ actions:
     dependOnDependencyAssertions: true
     hermetic: true
     reservation: reservation
+    jobLabels:
+        job_key: job_val
 ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
 `,
       );
@@ -146,6 +148,9 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
             },
             description: "description",
             reservation: "reservation",
+            jobLabels: {
+              job_key: "job_val",
+            },
           },
         },
       ]);
