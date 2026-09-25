@@ -224,7 +224,7 @@ suite("VmRunner", ({ afterEach }) => {
 
     const runner = new VmRunner({
       projectDir: tmpDir,
-      resolve: (moduleName) => path.resolve(outsideDir, moduleName),
+      customResolve: (moduleName: string) => path.resolve(outsideDir, moduleName),
     });
 
     expect(() => runner.run(`require("secret.json");`)).to.throw(/outside of project directory/);
@@ -427,10 +427,12 @@ suite("VmRunner", ({ afterEach }) => {
     expect(err).to.not.equal(null);
     expect(err.message).to.include("Access to module 'unallowed-pkg' is not allowed");
 
-    // Project-relative internal files are still allowed even when allowedModules is specified
-    fs.mkdirSync(path.join(tmpDir, "includes"));
-    fs.writeFileSync(path.join(tmpDir, "includes", "helper.js"), "module.exports = { ok: true };");
-    expect(runner.require("includes/helper")).to.deep.equal({ ok: true });
+    // Bare specifier cannot bypass allowedModules even if a local file exists at project root
+    fs.writeFileSync(path.join(tmpDir, "lodash.js"), "module.exports = 'local-lodash';");
+    expect(() => runner.require("lodash")).to.throw(/Access to module 'lodash' is not allowed/);
+
+    // Relative require explicitly using ./ still accesses the local file
+    expect(runner.require("./lodash")).to.equal("local-lodash");
   });
 
   test("does not get stuck in infinite recursion on self-referential package.json main", () => {
@@ -449,7 +451,7 @@ suite("VmRunner", ({ afterEach }) => {
     const tmpDir = tmpDirFixture.createNewTmpDir();
     const runner = new VmRunner({
       projectDir: tmpDir,
-      resolve: (moduleName) => {
+      customResolve: (moduleName: string) => {
         if (moduleName === "fail-now") {
           throw new TypeError("unexpected resolve error");
         }
@@ -486,5 +488,90 @@ suite("VmRunner", ({ afterEach }) => {
     }
     expect(caught).to.not.equal(null);
     expect(caught.message).to.include("outside of project directory");
+  });
+
+  test("allows requiring node: prefixed builtin modules if allowed", () => {
+    const tmpDir = tmpDirFixture.createNewTmpDir();
+    const runner = new VmRunner({
+      projectDir: tmpDir,
+      builtinModules: ["path"],
+    });
+
+    const result = runner.run(`
+      const path = require("node:path");
+      return path.join("foo", "bar");
+    `);
+    expect(result).to.equal(path.join("foo", "bar"));
+  });
+
+  test("suppresses console output when console is off", () => {
+    const tmpDir = tmpDirFixture.createNewTmpDir();
+    const runner = new VmRunner({
+      projectDir: tmpDir,
+      console: "off",
+    });
+
+    expect(() => {
+      runner.run(`
+        console.log("hello");
+        console.error("error");
+        console.warn("warn");
+        console.info("info");
+      `);
+    }).not.to.throw();
+  });
+
+  test("supports mocked modules being required and re-required from inside the VM", () => {
+    const tmpDir = tmpDirFixture.createNewTmpDir();
+    const mockCore = {
+      version: "3.0.0",
+      compiler: () => "compiled",
+    };
+
+    const runner = new VmRunner({
+      projectDir: tmpDir,
+      mockModules: {
+        "@dataform/core": mockCore,
+      },
+    });
+
+    const result = runner.run(`
+      const core1 = require("@dataform/core");
+      const core2 = require("@dataform/core");
+      return { core1, same: core1 === core2 };
+    `);
+    expect(result.core1.version).to.equal("3.0.0");
+    expect(result.same).to.equal(true);
+  });
+
+  test("throws when both env and envAllowlist are specified", () => {
+    const tmpDir = tmpDirFixture.createNewTmpDir();
+    expect(() => {
+      new VmRunner({
+        projectDir: tmpDir,
+        env: { TEST: "1" },
+        envAllowlist: ["TEST"],
+      });
+    }).to.throw("Cannot specify both 'env' and 'envAllowlist' in VmRunnerOptions");
+  });
+
+  test("provides process.hrtime and process.nextTick in the process shim", () => {
+    const tmpDir = tmpDirFixture.createNewTmpDir();
+    const runner = new VmRunner({ projectDir: tmpDir });
+
+    const result = runner.run(`
+      const [seconds, nanos] = process.hrtime();
+      const bigintTime = typeof process.hrtime.bigint === "function" ? process.hrtime.bigint() : 0n;
+      let nextTickCalled = false;
+      process.nextTick(() => { nextTickCalled = true; });
+      return {
+        hasHrtime: typeof seconds === "number" && typeof nanos === "number",
+        hasBigint: typeof bigintTime === "bigint",
+        hasNextTick: typeof process.nextTick === "function",
+      };
+    `);
+    expect(result.hasHrtime).to.equal(true);
+    expect(result.hasBigint).to.equal(true);
+    expect(result.hasNextTick).to.equal(true);
   });
 });
