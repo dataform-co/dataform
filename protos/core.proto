@@ -348,6 +348,8 @@ message Test {
   Target canonical_target = 8;
 
   repeated Target dependency_targets = 9;
+
+  ActionDescriptor action_descriptor = 11;
 }
 
 message Notebook {
@@ -417,6 +419,8 @@ message DataPreparation {
 
   LoadConfiguration load = 16;
 
+  ActionDescriptor action_descriptor = 17;
+
   reserved 7, 10;
 }
 
@@ -452,6 +456,7 @@ message PropertyGraph {
   string graph_body = 8;
   bool disabled = 9;
   repeated string tags = 10;
+  ActionDescriptor action_descriptor = 11;
 }
 
 message GraphEntity {

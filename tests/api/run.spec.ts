@@ -2,7 +2,7 @@ import { config, expect } from "chai";
 import Long from "long";
 import { anyString, anything, instance, mock, verify, when } from "ts-mockito";
 
-import { Runner } from "df/cli/api";
+import { Runner, test as runTests } from "df/cli/api";
 import { IDbAdapter } from "df/cli/api/dbadapters";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 import { sleep, sleepUntil } from "df/common/promises";
@@ -616,6 +616,49 @@ suite("@dataform/api/run", () => {
       expect(assertionCall?.bigquery?.labels).to.deep.equal({
         env: "dev",
         team: "dataform",
+      });
+    });
+
+    test("should pass testCase.actionDescriptor.jobLabels in test command", async () => {
+      const executionOptions: Array<{ bigquery?: any }> = [];
+      const mockedDbAdapter = mock(BigQueryDbAdapter);
+      when(mockedDbAdapter.execute(anyString(), anything())).thenCall(
+        (_statement: string, options: any) => {
+          executionOptions.push(options);
+          return Promise.resolve({
+            rows: [{ col1: 1 }],
+            metadata: {},
+          });
+        },
+      );
+
+      const mockDbAdapterInstance = instance(mockedDbAdapter);
+      const results = await runTests(mockDbAdapterInstance, [
+        {
+          name: "labeled_test",
+          testQuery: "SELECT 1 AS col1",
+          expectedOutputQuery: "SELECT 1 AS col1",
+          actionDescriptor: {
+            jobLabels: {
+              env: "prod",
+              team: "analytics",
+            },
+          },
+        },
+      ]);
+
+      expect(results).to.deep.equal([
+        {
+          name: "labeled_test",
+          successful: true,
+        },
+      ]);
+      expect(executionOptions.length).to.equal(2);
+      executionOptions.forEach((opts) => {
+        expect(opts?.bigquery?.labels).to.deep.equal({
+          env: "prod",
+          team: "analytics",
+        });
       });
     });
   });

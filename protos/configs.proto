@@ -726,6 +726,9 @@ message ActionConfig {
 
     LoadModeConfig load_mode = 12;
 
+    // Labels to be applied to BigQuery job(s) executed for this data preparation.
+    map<string, string> job_labels = 15;
+
     message ErrorTableConfig {
       // The name of the error table.
       string name = 1;

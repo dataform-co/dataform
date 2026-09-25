@@ -7,6 +7,7 @@ import {
   getFileFormatValueForIcebergTable,
   getStorageUriForIcebergTable,
   resolveAndValidateJobLabels,
+  snakeToCamelKeys,
   validateConnectionFormat,
   validateJobLabels,
   validateNoMixedCompilationMode,
@@ -521,6 +522,27 @@ suite("Dataform Utility Validations", () => {
       expect(errors[0].message).to.equal(
         "Too many job labels in jobLabels: maximum allowed is 32, but got 35.",
       );
+    });
+  });
+
+  suite("snakeToCamelKeys", () => {
+    test("converts snake_case keys to camelCase while preserving map keys under job_labels/jobLabels", () => {
+      const input = {
+        graph_name: "my_graph",
+        depend_on_dependency_assertions: true,
+        job_labels: {
+          cost_center: "finance",
+          team_name: "data_eng",
+        },
+      };
+      expect(snakeToCamelKeys(input)).to.deep.equal({
+        graphName: "my_graph",
+        dependOnDependencyAssertions: true,
+        jobLabels: {
+          cost_center: "finance",
+          team_name: "data_eng",
+        },
+      });
     });
   });
 });

@@ -1,7 +1,7 @@
 import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { ActionBuilder } from "df/core/actions";
 import { Session } from "df/core/session";
-import { checkAssertionsForDependency } from "df/core/utils";
+import { checkAssertionsForDependency, resolveAndValidateJobLabels } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
 const CATALOG_NOT_SUPPORTED_MESSAGE =
@@ -71,6 +71,20 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
     }
     if (config.dependOnDependencyAssertions) {
       this.dependOnDependencyAssertions = config.dependOnDependencyAssertions;
+    }
+
+    const jobLabels = resolveAndValidateJobLabels(
+      session?.projectConfig?.defaultJobLabels,
+      config.jobLabels,
+      this.session,
+      this.proto.fileName,
+      this.proto.target,
+    );
+    if (jobLabels) {
+      if (!this.proto.actionDescriptor) {
+        this.proto.actionDescriptor = {};
+      }
+      this.proto.actionDescriptor.jobLabels = jobLabels;
     }
 
     this.proto.entities = config.entities.map((entityConfig) =>

@@ -660,6 +660,8 @@ export class ResolvableMap<T> {
   }
 }
 
+const PRESERVE_MAP_KEYS_FIELDS = new Set(["jobLabels"]);
+
 export function snakeToCamelKeys(value: any): any {
   if (Array.isArray(value)) {
     return value.map(snakeToCamelKeys);
@@ -668,7 +670,10 @@ export function snakeToCamelKeys(value: any): any {
     const out: { [key: string]: any } = {};
     for (const [key, val] of Object.entries(value)) {
       const camel = key.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
-      out[camel] = snakeToCamelKeys(val);
+      out[camel] =
+        PRESERVE_MAP_KEYS_FIELDS.has(camel) && val && typeof val === "object" && !Array.isArray(val)
+          ? { ...val }
+          : snakeToCamelKeys(val);
     }
     return out;
   }
