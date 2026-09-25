@@ -119,7 +119,14 @@ export function runMainInVm(
         configurable: true,
         get: function() { return __df_current(); }
       });
-      ${hasWorkflowSettingsYaml ? 'global.workflowSettingsYaml = require("./workflow_settings.yaml");' : ""}
+      ${
+        hasWorkflowSettingsYaml
+          ? `global.workflowSettingsYaml = (function() {
+               try { return require("./workflow_settings.yaml"); }
+               catch(e) { console.error("YAML require failed run_core:", e); }
+             })();`
+          : ""
+      }
       ${hasDataformJson ? 'global.dataformJson = require("./dataform.json");' : ""}
       return require("@dataform/core").main("${encodedCoreExecutionRequest}")
     `,
