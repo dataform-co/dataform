@@ -6,6 +6,7 @@ if [[ -z "${_PR_NUMBER:-}" ]]; then
   exit 1
 fi
 
+
 if [[ -z "${_CANARY_GCP_PROJECT:-}" || -z "${_CANARY_LOCATION:-}" || -z "${_CANARY_REPO:-}" ]]; then
   echo "Error: _CANARY_GCP_PROJECT, _CANARY_LOCATION, and _CANARY_REPO must be set." 1>&2
   exit 1
@@ -39,15 +40,16 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# echo "Setting canary version to: ${CANARY_VERSION}"
-# sed -i "s/DF_VERSION = \"[^\"]*\"/DF_VERSION = \"${CANARY_VERSION}\"/" version.bzl
-# sed -i "s/dataformCoreVersion: .*/dataformCoreVersion: ${CANARY_VERSION}/" tools/canary-project/workflow_settings.yaml
+echo "Setting canary version to: ${CANARY_VERSION}"
+sed -i "s/DF_VERSION = \"[^\"]*\"/DF_VERSION = \"${CANARY_VERSION}\"/" version.bzl
+sed -i "s/dataformCoreVersion: .*/dataformCoreVersion: ${CANARY_VERSION}/" tools/canary-project/workflow_settings.yaml
 
 # Install dependencies from the trusted registry.
-# bazel run @nodejs//:yarn config set registry https://us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/
-# bazel run //tools/registry-tools:switch_registry -- $(pwd)/yarn.lock https://us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/
-# bazel run @nodejs//:yarn install -- --frozen-lockfile
+bazel run @nodejs//:yarn config set registry https://us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/
+bazel run //tools/registry-tools:switch_registry -- $(pwd)/yarn.lock https://us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/
+bazel run @nodejs//:yarn install -- --frozen-lockfile
 
+echo "This is the part where we would publish the canary package version to npm under version num $(cat version.bzl | grep DF_VERSION | awk '{ print $3 }' | sed "s/\"//g")"
 # Switch to public npmjs registry to publish the canary @dataform/core package under the 'canary' dist-tag.
 # bazel run @nodejs//:npm config set registry https://registry.npmjs.org/
 # bazel run packages/@dataform/core:package.publish -- --tag=canary
