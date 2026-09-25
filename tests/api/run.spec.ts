@@ -554,6 +554,70 @@ suite("@dataform/api/run", () => {
       // This action doesn't have action-level labels
       expect(assertionCall.bigquery.labels.action_level).to.equal(undefined);
     });
+
+    test("should pass actionDescriptor.jobLabels to executeTask", async () => {
+      const executionOptions: Array<{ bigquery?: any }> = [];
+
+      const mockedDbAdapter = mock(BigQueryDbAdapter);
+      const NEW_TEST_GRAPH = dataform.ExecutionGraph.create(RUN_TEST_GRAPH);
+      NEW_TEST_GRAPH.actions![0].actionDescriptor = {
+        jobLabels: { env: "prod", cost_center: "analytics" },
+      };
+
+      when(mockedDbAdapter.createSchema(anyString(), anyString())).thenResolve(null);
+      when(
+        mockedDbAdapter.execute(NEW_TEST_GRAPH.actions![0].tasks![0].statement!, anything()),
+      ).thenCall((statement: string, options: any) => {
+        executionOptions.push(options);
+        return Promise.resolve({
+          rows: [],
+          metadata: {
+            bigquery: {
+              jobId: "abc",
+              totalBytesBilled: Long.fromNumber(0),
+              totalBytesProcessed: Long.fromNumber(0),
+            },
+          },
+        });
+      });
+      when(
+        mockedDbAdapter.execute(NEW_TEST_GRAPH.actions![0].tasks![1].statement!, anything()),
+      ).thenCall((statement: string, options: any) => {
+        executionOptions.push(options);
+        return Promise.resolve({ rows: [], metadata: {} });
+      });
+      when(
+        mockedDbAdapter.execute(NEW_TEST_GRAPH.actions![1].tasks![0].statement!, anything()),
+      ).thenCall((statement: string, options: any) => {
+        executionOptions.push(options);
+        return Promise.resolve({ rows: [], metadata: {} });
+      });
+
+      const mockDbAdapterInstance = instance(mockedDbAdapter);
+
+      const runner = new Runner(mockDbAdapterInstance, NEW_TEST_GRAPH, {
+        bigquery: { labels: { env: "dev", team: "dataform" } },
+      });
+
+      const result = await runner.execute().result();
+      expect(result.status).to.equal(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
+      expect(executionOptions.length).to.equal(3);
+
+      const firstActionCalls = executionOptions.slice(0, 2);
+      firstActionCalls.forEach((opts) => {
+        expect(opts?.bigquery?.labels).to.deep.equal({
+          env: "prod",
+          team: "dataform",
+          cost_center: "analytics",
+        });
+      });
+
+      const assertionCall = executionOptions[2];
+      expect(assertionCall?.bigquery?.labels).to.deep.equal({
+        env: "dev",
+        team: "dataform",
+      });
+    });
   });
 
   test("continues after setMetadata fails", async () => {

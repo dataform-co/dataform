@@ -6,7 +6,9 @@ import {
   getEffectiveTableFolderSubpath,
   getFileFormatValueForIcebergTable,
   getStorageUriForIcebergTable,
+  resolveAndValidateJobLabels,
   validateConnectionFormat,
+  validateJobLabels,
   validateNoMixedCompilationMode,
   validateStorageUriFormat,
 } from "./utils";
@@ -357,6 +359,167 @@ suite("Dataform Utility Validations", () => {
         () =>
           validateNoMixedCompilationMode(sessionStub, "filename", "query", "where", ["op"], ["op"]),
         "Cannot mix AoT and JiT compilation in action. The following AoT properties were found: query, where, postOps, preOps",
+      );
+    });
+  });
+
+  suite("validateJobLabels", () => {
+    test("does not throw for undefined or empty labels", () => {
+      assertNoThrow(() => validateJobLabels(undefined));
+      assertNoThrow(() => validateJobLabels({}));
+    });
+
+    test("does not throw for valid label keys and values", () => {
+      assertNoThrow(() =>
+        validateJobLabels({
+          a: "",
+          env: "prod",
+          team_name: "data_eng-1",
+          "cost-center-123": "456_abc-def",
+          dataform: "allowed_without_underscore_or_hyphen_suffix",
+          gcp: "allowed",
+          goog: "allowed",
+          origin_custom: "allowed",
+          ["a".repeat(63)]: "v".repeat(63),
+        }),
+      );
+    });
+
+    test("does not throw for exactly 32 labels", () => {
+      const labels: { [key: string]: string } = {};
+      for (let i = 0; i < 32; i++) {
+        labels[`key_${i}`] = `val_${i}`;
+      }
+      assertNoThrow(() => validateJobLabels(labels));
+    });
+
+    test("throws when more than 32 labels are provided", () => {
+      const labels: { [key: string]: string } = {};
+      for (let i = 0; i < 33; i++) {
+        labels[`key_${i}`] = `val_${i}`;
+      }
+      assertThrowsWithMessage(
+        () => validateJobLabels(labels, "jobLabels"),
+        "Too many job labels in jobLabels: maximum allowed is 32, but got 33.",
+      );
+    });
+
+    test("throws when labels is not a plain object", () => {
+      assertThrowsWithMessage(
+        () => validateJobLabels(["a", "b"] as any, "defaultJobLabels"),
+        "defaultJobLabels must be an object mapping string keys to string values.",
+      );
+    });
+
+    test("throws when label value is not a string", () => {
+      assertThrowsWithMessage(
+        () => validateJobLabels({ env: 123 as any }, "defaultJobLabels"),
+        'Invalid job label value for key "env" in defaultJobLabels: label values must be strings.',
+      );
+    });
+
+    test("throws when label key is empty or exceeds 63 characters", () => {
+      assertThrowsWithMessage(
+        () => validateJobLabels({ "": "val" }, "jobLabels"),
+        'Invalid job label key "" in jobLabels: key length must be between 1 and 63 characters.',
+      );
+      const longKey = "a".repeat(64);
+      assertThrowsWithMessage(
+        () => validateJobLabels({ [longKey]: "val" }, "jobLabels"),
+        `Invalid job label key "${longKey}" in jobLabels: key length must be between 1 and 63 characters.`,
+      );
+    });
+
+    test("throws when label key has invalid characters or does not start with lowercase letter", () => {
+      for (const invalidKey of ["1key", "-key", "_key", "Key", "my.key", "my/key", "my key"]) {
+        assertThrowsWithMessage(
+          () => validateJobLabels({ [invalidKey]: "val" }, "jobLabels"),
+          `Invalid job label key "${invalidKey}" in jobLabels: keys must start with a lowercase letter and contain only lowercase letters, numbers, underscores, and hyphens.`,
+        );
+      }
+    });
+
+    test("throws when label key starts with a reserved prefix", () => {
+      for (const prefix of ["dataform_", "dataform-", "dataprep-", "gcp-", "goog-"]) {
+        const key = `${prefix}test`;
+        assertThrowsWithMessage(
+          () => validateJobLabels({ [key]: "val" }, "jobLabels"),
+          `Invalid job label key "${key}" in jobLabels: key cannot start with reserved prefix "${prefix}".`,
+        );
+      }
+    });
+
+    test("throws when label key is an exact reserved key", () => {
+      for (const key of [
+        "bigquery-workflow",
+        "single-file-asset-type",
+        "origin",
+        "bq-dea",
+        "data-preparation-file-loader",
+      ]) {
+        assertThrowsWithMessage(
+          () => validateJobLabels({ [key]: "val" }, "jobLabels"),
+          `Invalid job label key "${key}" in jobLabels: "${key}" is a reserved label key.`,
+        );
+      }
+    });
+
+    test("throws when label value exceeds 63 characters or contains invalid characters", () => {
+      const longVal = "v".repeat(64);
+      assertThrowsWithMessage(
+        () => validateJobLabels({ env: longVal }, "jobLabels"),
+        `Invalid job label value "${longVal}" for key "env" in jobLabels: value length must be at most 63 characters.`,
+      );
+      for (const invalidVal of ["Prod", "val.1", "val/1", "val 1"]) {
+        assertThrowsWithMessage(
+          () => validateJobLabels({ env: invalidVal }, "jobLabels"),
+          `Invalid job label value "${invalidVal}" for key "env" in jobLabels: values may contain only lowercase letters, numbers, underscores, and hyphens.`,
+        );
+      }
+    });
+  });
+
+  suite("resolveAndValidateJobLabels", () => {
+    test("returns undefined when both defaultJobLabels and actionJobLabels are undefined or empty", () => {
+      const errors: Error[] = [];
+      const sessionStub = { compileError: (e: Error) => errors.push(e) } as any;
+      expect(resolveAndValidateJobLabels(undefined, undefined, sessionStub)).to.equal(undefined);
+      expect(resolveAndValidateJobLabels({}, {}, sessionStub)).to.equal(undefined);
+      expect(errors).to.deep.equal([]);
+    });
+
+    test("merges defaultJobLabels and actionJobLabels with actionJobLabels taking precedence", () => {
+      const errors: Error[] = [];
+      const sessionStub = { compileError: (e: Error) => errors.push(e) } as any;
+      const merged = resolveAndValidateJobLabels(
+        { env: "dev", team: "core" },
+        { env: "prod", cost_center: "analytics" },
+        sessionStub,
+      );
+      expect(merged).to.deep.equal({
+        env: "prod",
+        team: "core",
+        cost_center: "analytics",
+      });
+      expect(errors).to.deep.equal([]);
+    });
+
+    test("records compileError and returns undefined when merged labels exceed 32", () => {
+      const errors: Error[] = [];
+      const sessionStub = { compileError: (e: Error) => errors.push(e) } as any;
+      const defaults: { [key: string]: string } = {};
+      for (let i = 0; i < 20; i++) {
+        defaults[`def_${i}`] = "v";
+      }
+      const actionLabels: { [key: string]: string } = {};
+      for (let i = 0; i < 15; i++) {
+        actionLabels[`act_${i}`] = "v";
+      }
+      const merged = resolveAndValidateJobLabels(defaults, actionLabels, sessionStub, "file.sqlx");
+      expect(merged).to.equal(undefined);
+      expect(errors.length).to.equal(1);
+      expect(errors[0].message).to.equal(
+        "Too many job labels in jobLabels: maximum allowed is 32, but got 35.",
       );
     });
   });

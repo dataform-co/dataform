@@ -674,3 +674,107 @@ export function snakeToCamelKeys(value: any): any {
   }
   return value;
 }
+
+export const MAX_JOB_LABELS_COUNT = 32;
+export const MAX_JOB_LABEL_LENGTH = 63;
+export const JOB_LABEL_KEY_REGEX = /^[a-z][a-z0-9_-]*$/;
+export const JOB_LABEL_VALUE_REGEX = /^[a-z0-9_-]*$/;
+export const RESERVED_JOB_LABEL_PREFIXES = ["dataform_", "dataform-", "dataprep-", "gcp-", "goog-"];
+export const RESERVED_JOB_LABEL_KEYS = new Set([
+  "bigquery-workflow",
+  "single-file-asset-type",
+  "origin",
+  "bq-dea",
+  "data-preparation-file-loader",
+]);
+
+/**
+ * Validates customer-supplied BigQuery job labels against BigQuery and Dataform constraints.
+ * Throws an Error if any rule is violated.
+ */
+export function validateJobLabels(
+  labels: { [key: string]: string } | null | undefined,
+  fieldName: string = "jobLabels",
+): void {
+  if (!labels) {
+    return;
+  }
+  if (typeof labels !== "object" || Array.isArray(labels)) {
+    throw new Error(`${fieldName} must be an object mapping string keys to string values.`);
+  }
+  const entries = Object.entries(labels);
+  if (entries.length > MAX_JOB_LABELS_COUNT) {
+    throw new Error(
+      `Too many job labels in ${fieldName}: maximum allowed is ${MAX_JOB_LABELS_COUNT}, but got ${entries.length}.`,
+    );
+  }
+  for (const [key, value] of entries) {
+    if (typeof value !== "string") {
+      throw new Error(
+        `Invalid job label value for key "${key}" in ${fieldName}: label values must be strings.`,
+      );
+    }
+    if (key.length === 0 || key.length > MAX_JOB_LABEL_LENGTH) {
+      throw new Error(
+        `Invalid job label key "${key}" in ${fieldName}: key length must be between 1 and ${MAX_JOB_LABEL_LENGTH} characters.`,
+      );
+    }
+    if (!JOB_LABEL_KEY_REGEX.test(key)) {
+      throw new Error(
+        `Invalid job label key "${key}" in ${fieldName}: keys must start with a lowercase letter and contain only lowercase letters, numbers, underscores, and hyphens.`,
+      );
+    }
+    const matchedPrefix = RESERVED_JOB_LABEL_PREFIXES.find((prefix) => key.startsWith(prefix));
+    if (matchedPrefix) {
+      throw new Error(
+        `Invalid job label key "${key}" in ${fieldName}: key cannot start with reserved prefix "${matchedPrefix}".`,
+      );
+    }
+    if (RESERVED_JOB_LABEL_KEYS.has(key)) {
+      throw new Error(
+        `Invalid job label key "${key}" in ${fieldName}: "${key}" is a reserved label key.`,
+      );
+    }
+    if (value.length > MAX_JOB_LABEL_LENGTH) {
+      throw new Error(
+        `Invalid job label value "${value}" for key "${key}" in ${fieldName}: value length must be at most ${MAX_JOB_LABEL_LENGTH} characters.`,
+      );
+    }
+    if (!JOB_LABEL_VALUE_REGEX.test(value)) {
+      throw new Error(
+        `Invalid job label value "${value}" for key "${key}" in ${fieldName}: values may contain only lowercase letters, numbers, underscores, and hyphens.`,
+      );
+    }
+  }
+}
+
+/**
+ * Resolves and validates merged job labels from workflow settings `defaultJobLabels` and
+ * action-level `jobLabels` (where action-level keys override default keys).
+ * Records a compilation error on the session if validation fails.
+ */
+export function resolveAndValidateJobLabels(
+  defaultJobLabels: { [key: string]: string } | null | undefined,
+  actionJobLabels: { [key: string]: string } | null | undefined,
+  session: Session,
+  fileName?: string,
+  target?: dataform.ITarget,
+): { [key: string]: string } | undefined {
+  try {
+    if (actionJobLabels !== undefined && actionJobLabels !== null) {
+      validateJobLabels(actionJobLabels, "jobLabels");
+    }
+    const mergedLabels = {
+      ...(defaultJobLabels || {}),
+      ...(actionJobLabels || {}),
+    };
+    if (Object.keys(mergedLabels).length === 0) {
+      return undefined;
+    }
+    validateJobLabels(mergedLabels, "jobLabels");
+    return mergedLabels;
+  } catch (e) {
+    session.compileError(e, fileName, target);
+    return undefined;
+  }
+}
