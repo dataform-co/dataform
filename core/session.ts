@@ -1,3 +1,4 @@
+import * as x from "path";
 import { default as TarjanGraphConstructor, Graph as TarjanGraph } from "tarjan-graph";
 
 import {
