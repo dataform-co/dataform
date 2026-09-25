@@ -74,6 +74,16 @@ To run the CLI integration test against your own GCP project:
    ./scripts/run_integration_tests
    ```
 
+### GCP Canary Compilation Check
+
+On every pull request, CI runs [cloudbuild-canary.yaml](cloudbuild-canary.yaml) (`./scripts/run_canary_test`), which publishes a pre-release of `@dataform/core` under the `canary` npm dist-tag and compiles the canary project in `tools/canary-project/` via the Google Cloud Dataform API (`dataform.googleapis.com`).
+
+This exercises the production GCP V8 + Sandbox2 compilation runtime, where Node.js built-in modules (`path`, `fs`, `crypto`, etc.) and host OS APIs are unavailable. If this check fails on your PR:
+
+1. Check the compilation error logged in the Cloud Build output.
+2. Ensure neither `core/` nor any transitive dependency bundled into `@dataform/core` imports Node.js built-ins or relies on Node.js runtime globals.
+3. Move any code that requires Node.js APIs into `cli/`, which runs on the full host Node.js runtime, and push the fix to your PR branch.
+
 ### Lint
 
 Use the following command to check for any linting and formatting errors
