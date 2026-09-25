@@ -36,13 +36,24 @@ suite("property graphs", ({ afterEach }) => {
     defaultDatabase: "defaultProject",
     defaultLocation: "US",
   };
-  const graphStackTail = "\n    at CallSite {}".repeat(10);
   const graphError = (fileName: string, message: string, extra: object = {}) => ({
     fileName,
     message,
-    stack: `Error: ${message}${graphStackTail}`,
     ...extra,
   });
+  // Under vm2, V8 stack traces were replaced with mocked "\n    at CallSite {}".
+  // Under native node:vm, real V8 CallSites with genuine file paths and line numbers
+  // are preserved. We verify that compilation error stacks contain the error message
+  // and valid V8 call frames rather than vm2's mocked CallSite stubs.
+  const asPlainGraph = (graph: dataform.ICompiledGraph) => {
+    const plain = asPlainObject(graph);
+    plain.graphErrors?.compilationErrors?.forEach((e: any) => {
+      expect(e.stack).to.include(`Error: ${e.message}`);
+      expect(e.stack).to.match(/\n\s+at /);
+      delete e.stack;
+    });
+    return plain;
+  };
 
   const missingRefTarget = {
     schema: "defaultDataset",
@@ -1605,7 +1616,7 @@ entities:
       }
 
       if (testParameters.expectedGraph) {
-        expect(asPlainObject(result.compile?.compiledGraph)).deep.equals(
+        expect(asPlainGraph(result.compile?.compiledGraph)).deep.equals(
           asPlainObject(testParameters.expectedGraph),
         );
       }
@@ -1647,7 +1658,7 @@ entities:
 
     const result = runMainInVm(request);
 
-    expect(asPlainObject(result.compile?.compiledGraph)).deep.equals(
+    expect(asPlainGraph(result.compile?.compiledGraph)).deep.equals(
       asPlainObject({
         projectConfig: graphProjectConfig,
         graphErrors: {

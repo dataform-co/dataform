@@ -1,5 +1,6 @@
 package(default_visibility = ["//visibility:public"])
 
+load("//testing:index.bzl", "ts_test_suite")
 load("//tools:ts_library.bzl", "ts_library")
 
 ts_library(
@@ -10,6 +11,7 @@ ts_library(
     ],
     deps = [
         "//common/protos",
+        "//common/vm:vm_runner",
         "//core",
         "//protos:ts",
         "@npm//@types/glob",
@@ -17,7 +19,6 @@ ts_library(
         "@npm//@types/semver",
         "@npm//glob",
         "@npm//semver",
-        "@npm//vm2",
     ],
 )
 
@@ -67,3 +68,25 @@ nodejs_binary(
         "--bazel_patch_module_resolver",
     ],
 )
+
+ts_test_suite(
+    name = "tests",
+    srcs = [
+        "compile_test.ts",
+    ],
+    data = [
+        "//core:node_modules",
+    ],
+    deps = [
+        ":vm",
+        "//common/protos",
+        "//protos:ts",
+        "//testing",
+        "@npm//@types/chai",
+        "@npm//@types/fs-extra",
+        "@npm//@types/node",
+        "@npm//chai",
+        "@npm//fs-extra",
+    ],
+)
+
