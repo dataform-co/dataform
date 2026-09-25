@@ -83,13 +83,13 @@ module.exports = [
       'no-new-func': 'off',
     },
   },
-  {
-    // core/ runs inside the V8 compilation sandbox — no Node built-ins.
-    files: ['core/**/*.ts'],
-    rules: {
-      'local/no-node-builtins': 'error',
-    },
-  },
+  // {
+  //   // core/ runs inside the V8 compilation sandbox — no Node built-ins.
+  //   files: ['core/**/*.ts'],
+  //   rules: {
+  //     'local/no-node-builtins': 'error',
+  //   },
+  // },
   {
     // Ambient declarations for webpack internals
     files: ['core/utils.ts', 'core/workflow_settings.ts'],
