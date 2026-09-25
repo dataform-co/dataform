@@ -36,3 +36,25 @@ js_library(
         "//testing:resolver-patch",
     ],
 )
+
+ts_test_suite(
+    name = "tests",
+    srcs = [
+        "compile_test.ts",
+    ],
+    data = [
+        "//core:node_modules",
+    ],
+    deps = [
+        ":vm",
+        "//common/protos",
+        "//protos:ts",
+        "//testing",
+        "@npm//@types/chai",
+        "@npm//@types/fs-extra",
+        "@npm//@types/node",
+        "@npm//chai",
+        "@npm//fs-extra",
+    ],
+)
+

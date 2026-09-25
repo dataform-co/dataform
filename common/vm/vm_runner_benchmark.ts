@@ -9,14 +9,14 @@ function runBenchmark() {
     fs.mkdirSync(path.join(tmpDir, "includes"));
     fs.writeFileSync(
       path.join(tmpDir, "includes", "helpers.js"),
-      "module.exports = { format: (x) => 'formatted_' + x };"
+      "module.exports = { format: (x) => 'formatted_' + x };",
     );
 
     for (let i = 0; i < 50; i++) {
       fs.writeFileSync(
         path.join(tmpDir, `table_${i}.js`),
         `const { format } = require("./includes/helpers");
-         module.exports = { name: format("table_${i}"), query: "SELECT ${i}" };`
+         module.exports = { name: format("table_${i}"), query: "SELECT ${i}" };`,
       );
     }
 
@@ -37,7 +37,9 @@ function runBenchmark() {
     // eslint-disable-next-line no-console
     console.log("VmRunner Benchmark Results:");
     // eslint-disable-next-line no-console
-    console.log(`  Evaluated ${iterations} module requires in ${durationMs.toFixed(2)} ms (${opsPerSec} ops/sec)`);
+    console.log(
+      `  Evaluated ${iterations} module requires in ${durationMs.toFixed(2)} ms (${opsPerSec} ops/sec)`,
+    );
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }

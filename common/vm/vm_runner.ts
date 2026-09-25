@@ -23,9 +23,21 @@ export interface VmRunnerOptions {
   sandbox?: Record<string, any>;
   builtinModules?: string[];
   mockModules?: Record<string, any>;
-  resolve?: (moduleName: string, parentDirName: string) => string;
+  /**
+   * Optional custom resolver hook to resolve module names before falling back
+   * to standard project-relative or node_modules resolution.
+   */
+  customResolve?: (moduleName: string, parentDirName: string) => string;
   console?: "inherit" | "off";
+  /**
+   * Explicit map of environment variables exposed inside the VM context as `process.env`.
+   * Mutually exclusive with `envAllowlist`.
+   */
   env?: Record<string, string>;
+  /**
+   * Allowlist of environment variable names to copy from host `process.env` into the VM.
+   * Mutually exclusive with `env`.
+   */
   envAllowlist?: string[];
   allowedExternalPaths?: string[];
   allowedModules?: string[];
@@ -73,8 +85,12 @@ export class VmRunner {
       options.builtinModules !== undefined ? options.builtinModules : ["path"],
     );
     this.mockModules = options.mockModules || {};
-    this.customResolve = options.resolve;
+    this.customResolve = options.customResolve;
     this.nodeBuiltinSet = new Set(nodeBuiltins);
+
+    if (options.env !== undefined && options.envAllowlist !== undefined) {
+      throw new Error("Cannot specify both 'env' and 'envAllowlist' in VmRunnerOptions");
+    }
 
     let env: Record<string, string | undefined>;
     if (options.env !== undefined) {
@@ -91,6 +107,11 @@ export class VmRunner {
       env = {};
     }
 
+    const hrtime = process.hrtime.bind(process) as any;
+    if (typeof process.hrtime.bigint === "function") {
+      hrtime.bigint = process.hrtime.bigint.bind(process.hrtime);
+    }
+
     const sandbox: Record<string, any> = {
       console:
         options.console === "off"
@@ -103,6 +124,8 @@ export class VmRunner {
         versions: process.versions,
         platform: process.platform,
         arch: process.arch,
+        hrtime,
+        nextTick: process.nextTick.bind(process),
       },
       Buffer,
       Uint8Array,
@@ -177,7 +200,9 @@ export class VmRunner {
       if (candidate) {
         const resolved = this.tryResolvePath(candidate);
         if (resolved) {
-          return this.checkContainmentAndCache(moduleName, resolved, cacheKey);
+          this.assertPathContained(resolved, moduleName);
+          this.resolveCache.set(cacheKey, resolved);
+          return resolved;
         }
       }
     }
@@ -191,28 +216,34 @@ export class VmRunner {
       const candidate = path.resolve(parentDir, moduleName);
       const resolved = this.tryResolvePath(candidate);
       if (resolved) {
-        return this.checkContainmentAndCache(moduleName, resolved, cacheKey);
+        this.assertPathContained(resolved, moduleName);
+        this.resolveCache.set(cacheKey, resolved);
+        return resolved;
       }
     } else {
-      // Project-relative path (e.g. require("includes/helpers"))
-      const projectRelative = path.resolve(this.projectDir, moduleName);
-      const resolvedProjectRelative = this.tryResolvePath(projectRelative);
-      if (resolvedProjectRelative) {
-        return this.checkContainmentAndCache(moduleName, resolvedProjectRelative, cacheKey);
-      }
-
-      // External module check: if allowedModules is specified, package must be allowed
+      // External module check: if allowedModules is specified, bare specifier must be allowed
       if (!this.isModuleAllowed(moduleName)) {
         const err: any = new Error(`Access to module '${moduleName}' is not allowed`);
         err.code = "MODULE_NOT_FOUND";
         throw err;
       }
 
+      // Project-relative path (e.g. require("includes/helpers"))
+      const projectRelative = path.resolve(this.projectDir, moduleName);
+      const resolvedProjectRelative = this.tryResolvePath(projectRelative);
+      if (resolvedProjectRelative) {
+        this.assertPathContained(resolvedProjectRelative, moduleName);
+        this.resolveCache.set(cacheKey, resolvedProjectRelative);
+        return resolvedProjectRelative;
+      }
+
       // Check project node_modules directory directly (e.g. @dataform/core)
       const nodeModulesCandidate = path.resolve(this.projectDir, "node_modules", moduleName);
       const resolvedNodeModules = this.tryResolvePath(nodeModulesCandidate);
       if (resolvedNodeModules) {
-        return this.checkContainmentAndCache(moduleName, resolvedNodeModules, cacheKey);
+        this.assertPathContained(resolvedNodeModules, moduleName);
+        this.resolveCache.set(cacheKey, resolvedNodeModules);
+        return resolvedNodeModules;
       }
 
       // Fallback to standard Node.js require.resolve resolution
@@ -225,7 +256,9 @@ export class VmRunner {
         nodeReqError = e;
       }
       if (nodeReqResolved) {
-        return this.checkContainmentAndCache(moduleName, nodeReqResolved, cacheKey);
+        this.assertPathContained(nodeReqResolved, moduleName);
+        this.resolveCache.set(cacheKey, nodeReqResolved);
+        return nodeReqResolved;
       }
 
       let projectReqResolved: string | undefined;
@@ -237,7 +270,9 @@ export class VmRunner {
         projectReqError = e;
       }
       if (projectReqResolved) {
-        return this.checkContainmentAndCache(moduleName, projectReqResolved, cacheKey);
+        this.assertPathContained(projectReqResolved, moduleName);
+        this.resolveCache.set(cacheKey, projectReqResolved);
+        return projectReqResolved;
       }
 
       const err: any = new Error(`Cannot find module '${moduleName}' from '${fromPath}'`);
@@ -266,11 +301,7 @@ export class VmRunner {
     });
   }
 
-  private checkContainmentAndCache(
-    moduleName: string,
-    resolvedPath: string,
-    cacheKey: string,
-  ): string {
+  private assertPathContained(resolvedPath: string, moduleName: string): void {
     if (!this.isPathContained(resolvedPath)) {
       const err: any = new Error(
         `Cannot require '${moduleName}' outside of project directory '${this.projectDir}'`,
@@ -278,8 +309,6 @@ export class VmRunner {
       err.code = "MODULE_NOT_FOUND";
       throw err;
     }
-    this.resolveCache.set(cacheKey, resolvedPath);
-    return resolvedPath;
   }
 
   private executeModule(source: string, filename: string, isRunEntryPoint: boolean = false): any {
