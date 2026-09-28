@@ -14,17 +14,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup Bazel
+        uses: bazelbuild/setup-bazelisk@v3
+
       - name: Run unit tests
-        uses: gcr.io/cloud-builders/bazel@sha256:aa6c5ffd0d6d37960715d9c3392ba885e6484322c81c3604a90ccfb15c07c110
-        entrypoint: bash
-        with:
-          args: ./scripts/run_tests
+        run: ./scripts/run_tests
 
       - name: Build package tarballs
-        uses: gcr.io/cloud-builders/bazel@sha256:aa6c5ffd0d6d37960715d9c3392ba885e6484322c81c3604a90ccfb15c07c110
-        entrypoint: bash
-        with:
-          args: bazel build //packages/@dataform/cli:package_tar //packages/@dataform/core:package_tar
+        run: bazel build //packages/@dataform/cli:package_tar //packages/@dataform/core:package_tar
 
       - name: Upload CLI tarball
         uses: actions/upload-artifact@v4
