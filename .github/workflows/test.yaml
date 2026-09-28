@@ -1,0 +1,77 @@
+name: Test
+
+on:
+  pull_request:
+  push:
+    branches: [main, windows-support]
+  workflow_dispatch:
+
+jobs:
+  test-linux:
+    name: Build and test (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run unit tests
+        uses: gcr.io/cloud-builders/bazel@sha256:aa6c5ffd0d6d37960715d9c3392ba885e6484322c81c3604a90ccfb15c07c110
+        entrypoint: bash
+        with:
+          args: ./scripts/run_tests
+
+      - name: Build package tarballs
+        uses: gcr.io/cloud-builders/bazel@sha256:aa6c5ffd0d6d37960715d9c3392ba885e6484322c81c3604a90ccfb15c07c110
+        entrypoint: bash
+        with:
+          args: bazel build //packages/@dataform/cli:package_tar //packages/@dataform/core:package_tar
+
+      - name: Upload CLI tarball
+        uses: actions/upload-artifact@v4
+        with:
+          name: dataform-cli-tarball
+          path: bazel-bin/packages/@dataform/cli/package.tar.gz
+
+      - name: Upload Core tarball
+        uses: actions/upload-artifact@v4
+        with:
+          name: dataform-core-tarball
+          path: bazel-bin/packages/@dataform/core/package.tar.gz
+
+  test-windows:
+    name: CLI smoke & unit tests (Windows)
+    needs: test-linux
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Download CLI tarball
+        uses: actions/download-artifact@v4
+        with:
+          name: dataform-cli-tarball
+          path: dist/cli
+
+      - name: Download Core tarball
+        uses: actions/download-artifact@v4
+        with:
+          name: dataform-core-tarball
+          path: dist/core
+
+      - name: Install @dataform/cli globally from tarball
+        run: npm install -g dist/cli/package.tar.gz
+
+      - name: Run Windows smoke tests in PowerShell
+        shell: powershell
+        run: |
+          node scripts/smoke_test_windows.js --shell powershell --core-tarball dist/core/package.tar.gz
+
+      - name: Run Windows smoke tests in cmd.exe
+        shell: cmd
+        run: |
+          node scripts\smoke_test_windows.js --shell cmd --core-tarball dist\core\package.tar.gz

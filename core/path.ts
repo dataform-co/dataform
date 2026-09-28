@@ -1,37 +1,43 @@
-export const separator = (() => {
-  if (typeof process !== "undefined") {
-    return process.platform === "win32" ? "\\" : "/";
-  }
-  return "/";
-})();
+export const separator = "/";
+
+export function toPosixPath(path: string): string {
+  return path ? path.replace(/\\+/g, "/") : path;
+}
 
 export function relativePath(fullPath: string, base: string) {
+  const normalizedFull = toPosixPath(fullPath);
   if (base.length === 0) {
-    return fullPath;
+    return normalizedFull;
   }
-  const stripped = fullPath.substr(base.length);
-  if (stripped.startsWith(separator)) {
-    return stripped.substr(1);
-  } else {
-    return stripped;
+  let normalizedBase = toPosixPath(base);
+  if (!normalizedBase.endsWith("/")) {
+    normalizedBase += "/";
   }
+  if (normalizedFull.toLowerCase().startsWith(normalizedBase.toLowerCase())) {
+    return normalizedFull.slice(normalizedBase.length);
+  }
+  return normalizedFull;
 }
 
 export function filename(path: string) {
-  return path.split(separator).slice(-1)[0];
+  return toPosixPath(path).split("/").slice(-1)[0];
 }
 
 export function basename(path: string) {
   const f = filename(path);
-  return f.substring(0, f.lastIndexOf("."));
+  const dotIndex = f.lastIndexOf(".");
+  return dotIndex === -1 ? f : f.substring(0, dotIndex);
 }
 
 export function dirName(fullPath: string) {
-  return fullPath.slice(0, fullPath.lastIndexOf(separator));
+  const normalized = toPosixPath(fullPath);
+  const lastSlash = normalized.lastIndexOf("/");
+  return lastSlash === -1 ? "" : normalized.slice(0, lastSlash);
 }
 
 export function join(...paths: string[]) {
   return paths
+    .map(toPosixPath)
     .map((path) => {
       if (path.startsWith(separator)) {
         path = path.slice(1);
@@ -41,6 +47,7 @@ export function join(...paths: string[]) {
       }
       return path;
     })
+    .filter((path) => path.length > 0)
     .join(separator);
 }
 
@@ -49,13 +56,16 @@ export function escapedBasename(path: string) {
 }
 
 export function fileExtension(fullPath: string) {
-  return fullPath.split(".").slice(-1)[0];
+  const f = filename(fullPath);
+  const dotIndex = f.lastIndexOf(".");
+  return dotIndex === -1 ? "" : f.slice(dotIndex + 1);
 }
 
 export function normalize(path: string) {
+  const normalized = toPosixPath(path);
   const parts = [];
   let dotDotCount = 0;
-  for (const part of path.split("/").filter((p) => !!p && p !== ".")) {
+  for (const part of normalized.split("/").filter((p) => !!p && p !== ".")) {
     if (part === "..") {
       if (parts.length === 0) {
         dotDotCount++;
@@ -66,7 +76,7 @@ export function normalize(path: string) {
       parts.push(part);
     }
   }
-  if (path.startsWith("/")) {
+  if (normalized.startsWith("/")) {
     if (parts.length === 0) {
       return "/";
     }

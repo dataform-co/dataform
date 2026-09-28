@@ -12,7 +12,10 @@ import {
 } from "df/cli/common_options";
 import { printError, printFormatFilesResult, printSuccess } from "df/cli/console";
 import { ICommand, INamedOption } from "df/cli/yargswrapper";
+import { toPosixPath } from "df/core/path";
 import { formatFile } from "df/sqlx/format";
+
+const normalizeLineEndings = (text: string) => text.replace(/\r\n/g, "\n");
 
 export interface IFormatArgs extends IProjectDirArgs, IActionsArgs {
   ignoreJsFiles: boolean;
@@ -50,7 +53,7 @@ export const formatCommand: ICommand<IFormatArgs> = {
       actions = argv.actions;
     }
     const filenames = actions
-      .map((action: string) => glob.sync(action, { cwd: argv.projectDir }))
+      .map((action: string) => glob.sync(toPosixPath(action), { cwd: argv.projectDir }))
       .flat();
 
     const isCheckMode = argv.check;
@@ -70,7 +73,8 @@ export const formatCommand: ICommand<IFormatArgs> = {
             });
             return {
               filename,
-              needsFormatting: fileContent !== formattedContent,
+              needsFormatting:
+                normalizeLineEndings(fileContent) !== normalizeLineEndings(formattedContent),
             };
           } else {
             // Normal formatting mode

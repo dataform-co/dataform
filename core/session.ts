@@ -104,13 +104,14 @@ export class Session {
   public getContents(filePath: string): string {
     const callerFile = utils.getCallerFile(this.rootDir);
     const callerDir = Path.dirName(callerFile);
+    const normalizedRootDir = Path.toPosixPath(this.rootDir);
     const resolvedPath = Path.join(callerDir, filePath);
-    const absolutePath = Path.separator + Path.normalize(Path.join(this.rootDir, resolvedPath));
-    const rootDir = this.rootDir.endsWith(Path.separator)
-      ? this.rootDir
-      : this.rootDir + Path.separator;
+    const absolutePath = Path.normalize(Path.join(normalizedRootDir, resolvedPath));
+    const rootDirWithSlash = normalizedRootDir.endsWith("/")
+      ? normalizedRootDir
+      : normalizedRootDir + "/";
 
-    if (!absolutePath.startsWith(rootDir)) {
+    if (!absolutePath.toLowerCase().startsWith(rootDirWithSlash.toLowerCase())) {
       throw new Error(`Cannot read "${filePath}": path resolves outside the project directory.`);
     }
 
