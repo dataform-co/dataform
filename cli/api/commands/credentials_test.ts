@@ -34,9 +34,7 @@ suite("credentials", ({ afterEach }) => {
 
     const credentials = read(credentialsPath);
 
-    expect(credentials.universeDomain).to.satisfy(
-      (value: string) => value === "" || value === undefined
-    );
+    expect(credentials.universeDomain).to.equal("");
   });
 
   test("read rejects unknown fields", () => {
