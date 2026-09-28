@@ -155,26 +155,26 @@ suite("BigQueryDbAdapter", () => {
 
     await adapter.setMetadata(action);
   });
+});
 
-  suite("createBigQueryClientProvider", () => {
-    test("passes universeDomain to the BigQuery client when set", () => {
-      const credentials = dataform.BigQuery.create({
-        projectId: "project1",
-        location: "US",
-        universeDomain: "my-universe.example.com"
-      });
-
-      const client = createBigQueryClientProvider(credentials)();
-
-      expect(client.universeDomain).to.equal("my-universe.example.com");
+suite("createBigQueryClientProvider", () => {
+  test("passes universeDomain to the BigQuery client when set", () => {
+    const credentials = dataform.BigQuery.create({
+      projectId: "project1",
+      location: "US",
+      universeDomain: "my-universe.example.com"
     });
 
-    test("defaults to googleapis.com when universeDomain is unset", () => {
-      const credentials = dataform.BigQuery.create({ projectId: "project1", location: "US" });
+    const client = createBigQueryClientProvider(credentials)();
 
-      const client = createBigQueryClientProvider(credentials)();
+    expect(client.universeDomain).to.equal("my-universe.example.com");
+  });
 
-      expect(client.universeDomain).to.equal("googleapis.com");
-    });
+  test("defaults to googleapis.com when universeDomain is unset", () => {
+    const credentials = dataform.BigQuery.create({ projectId: "project1", location: "US" });
+
+    const client = createBigQueryClientProvider(credentials)();
+
+    expect(client.universeDomain).to.equal("googleapis.com");
   });
 });
