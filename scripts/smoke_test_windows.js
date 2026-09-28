@@ -99,7 +99,18 @@ function execCli(commandArgs, options = {}) {
   const cwd = options.cwd || process.cwd();
   const env = { ...process.env, ...(options.env || {}) };
 
-  let shellCommand = "";
+  if (targetShell === "powershell") {
+    const binPart = bin.endsWith(".js") ? `"${process.execPath}" "${path.resolve(bin)}"` : `& "${bin}"`;
+    const quotedArgs = commandArgs.map((a) => (a.includes(" ") ? `"${a}"` : a)).join(" ");
+    const psArgs = ["-NoProfile", "-NonInteractive", "-Command", `${binPart} ${quotedArgs}`];
+    return spawnSync("powershell", psArgs, {
+      cwd,
+      env,
+      encoding: "utf8",
+      timeout: options.timeout || 60000,
+    });
+  }
+
   let spawnFile = bin;
   let spawnArgs = commandArgs;
 
@@ -108,19 +119,12 @@ function execCli(commandArgs, options = {}) {
     spawnArgs = [path.resolve(bin), ...commandArgs];
   }
 
-  if (targetShell === "powershell") {
-    spawnFile = "powershell";
-    const binPart = bin.endsWith(".js") ? `"${process.execPath}" "${path.resolve(bin)}"` : `& "${bin}"`;
-    const quotedArgs = commandArgs.map((a) => (a.includes(" ") ? `"${a}"` : a)).join(" ");
-    spawnArgs = ["-NoProfile", "-NonInteractive", "-Command", `${binPart} ${quotedArgs}`];
-  } else if (targetShell === "cmd") {
-    spawnFile = "cmd.exe";
-    const binPart = bin.endsWith(".js") ? `"${process.execPath}" "${path.resolve(bin)}"` : `"${bin}"`;
-    const quotedArgs = commandArgs.map((a) => (a.includes(" ") ? `"${a}"` : a)).join(" ");
-    spawnArgs = ["/c", `${binPart} ${quotedArgs}`];
-  } else if (os.platform() === "win32") {
-    // Default Windows spawning requires shell: true for .cmd shims
-    return spawnSync(bin, commandArgs, {
+  if (os.platform() === "win32") {
+    // Under cmd.exe or Windows default, delegate through cmd via shell: true.
+    // Node handles Windows cmd.exe argument quoting correctly without escaping quotes to backslash-quotes (\").
+    const safeFile = spawnFile.includes(" ") ? `"${spawnFile}"` : spawnFile;
+    const safeArgs = spawnArgs.map((a) => (a.includes(" ") ? `"${a}"` : a));
+    return spawnSync(safeFile, safeArgs, {
       cwd,
       env,
       shell: true,
