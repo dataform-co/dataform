@@ -113,6 +113,57 @@ $ bazel run @nodejs//:yarn add ...
 Additionally, installed NPM dependencies need to be added to the `deps` of `ts_library` rules by
 prefixing them with `@npm//...`.
 
+## Windows Support
+
+The Dataform CLI is supported on Windows 10 and 11 in both **Command Prompt (`cmd.exe`)** and **PowerShell**.
+
+### Prerequisites & Setup
+- **Node.js**: Node 18+ or Node 20+ LTS is required.
+- **Git line endings**: Configure git to handle CRLF/LF cleanly:
+  ```bash
+  git config --global core.autocrlf true
+  ```
+  Dataform format commands (`dataform format` / `dataform format --check`) are CRLF-aware and normalize line endings before checking.
+- **Symlinks & Long Paths**: If using Bazel or deep `node_modules` hierarchies on Windows, enable [Windows Developer Mode](https://learn.microsoft.com/en-us/windows/apps/get-started/enable-your-device-for-development) or enable `core.longpaths` in Git:
+  ```bash
+  git config --global core.longpaths true
+  ```
+
+### Development & Path Conventions
+- **Canonical Forward Slashes**: Dataform's internal graph contracts, table names, and proto file paths require canonical POSIX forward slashes (`/`). Even on Windows, definitions must resolve as `definitions/my_table.sqlx` rather than with backslashes (`\`).
+- **Cross-Platform Path Helpers**: Use the `Path` utility in `core/path.ts` (`Path.join`, `Path.normalize`, `Path.relativePath`, `Path.dirName`, `Path.basename`). It handles mixed separators and Windows drive letters (e.g. `C:\` vs `c:/`) automatically.
+
+### Running Windows Smoke Tests
+You can run the automated Windows smoke test suite locally on Windows or in CI:
+
+- **In PowerShell**:
+  ```powershell
+  npm install -g @dataform/cli
+  node scripts/smoke_test_windows.js --shell powershell
+  ```
+
+- **In Command Prompt (`cmd.exe`)**:
+  ```cmd
+  npm install -g @dataform/cli
+  node scripts\smoke_test_windows.js --shell cmd
+  ```
+
+- **Testing local package tarballs**:
+  ```powershell
+  node scripts/smoke_test_windows.js --core-tarball path/to/@dataform/core/package.tar.gz
+  ```
+
+### Windows CI on GitHub Actions
+All pull requests run automated CI on `windows-latest` via `.github/workflows/test.yaml`.
+To make the Windows test job a required status check on your repository:
+1. Go to **Settings** > **Branches** > **Branch protection rules**.
+2. Edit the rule for `main`.
+3. Check **Require status checks to pass before merging**.
+4. Search for and select:
+   - `Build and test (Linux)`
+   - `CLI smoke & unit tests (Windows)`
+
+
 ## The Contribution Process
 
 1. Decide on what you'd like to contribute. The majority of open-source contributions come from:

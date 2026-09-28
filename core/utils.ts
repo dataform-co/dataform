@@ -46,12 +46,14 @@ export function matchPatterns(patterns: string[], values: string[]) {
 export function getCallerFile(rootDir: string) {
   let lastfile: string;
   const stack = getCurrentStack();
+  const normalizedRootDir = Path.toPosixPath(rootDir);
   while (stack.length) {
-    const nextLastfile = stack.shift().getFileName();
-    if (!nextLastfile) {
+    const rawNextLastfile = stack.shift().getFileName();
+    if (!rawNextLastfile) {
       continue;
     }
-    if (!nextLastfile.includes(rootDir)) {
+    const nextLastfile = Path.toPosixPath(rawNextLastfile);
+    if (!nextLastfile.toLowerCase().includes(normalizedRootDir.toLowerCase())) {
       continue;
     }
     if (nextLastfile.includes("node_modules")) {
@@ -60,10 +62,7 @@ export function getCallerFile(rootDir: string) {
     // If it's in the root directory we'll take it, but keep searching
     // for a better match.
     lastfile = nextLastfile;
-    if (!(
-      nextLastfile.includes(`definitions${Path.separator}`) ||
-      nextLastfile.includes(`models${Path.separator}`)
-    )) {
+    if (!(nextLastfile.includes("definitions/") || nextLastfile.includes("models/"))) {
       continue;
     }
     break;
