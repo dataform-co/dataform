@@ -107,8 +107,7 @@ export class Session {
     const normalizedRootDir = Path.toPosixPath(this.rootDir);
     const resolvedPath = Path.join(callerDir, filePath);
     const leadingSlash = normalizedRootDir.startsWith("/") ? "/" : "";
-    const absolutePath =
-      leadingSlash + Path.normalize(Path.join(normalizedRootDir, resolvedPath));
+    const absolutePath = leadingSlash + Path.normalize(Path.join(normalizedRootDir, resolvedPath));
     const rootDirWithSlash = normalizedRootDir.endsWith("/")
       ? normalizedRootDir
       : normalizedRootDir + "/";
