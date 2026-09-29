@@ -155,13 +155,6 @@ You can run the automated Windows smoke test suite locally on Windows or in CI:
 
 ### Windows CI on GitHub Actions
 All pull requests run automated CI on `windows-latest` via `.github/workflows/test.yaml`.
-To make the Windows test job a required status check on your repository:
-1. Go to **Settings** > **Branches** > **Branch protection rules**.
-2. Edit the rule for `main`.
-3. Check **Require status checks to pass before merging**.
-4. Search for and select:
-   - `Build and test (Linux)`
-   - `CLI smoke & unit tests (Windows)`
 
 
 ## The Contribution Process
