@@ -103,6 +103,7 @@
     "**/linkify-it": "^5.0.2",
     "**/braces": "^3.0.3",
     "**/@eslint/plugin-kit": "0.7.2",
-    "@google-cloud/storage/**/uuid": "14.0.2"
+    "@google-cloud/storage/**/uuid": "14.0.2",
+    "**/fast-uri": "3.1.7"
   }
 }
