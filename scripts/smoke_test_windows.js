@@ -100,7 +100,9 @@ function execCli(commandArgs, options = {}) {
   const env = { ...process.env, ...(options.env || {}) };
 
   if (targetShell === "powershell") {
-    const binPart = bin.endsWith(".js") ? `"${process.execPath}" "${path.resolve(bin)}"` : `& "${bin}"`;
+    const binPart = bin.endsWith(".js")
+      ? `"${process.execPath}" "${path.resolve(bin)}"`
+      : `& "${bin}"`;
     const quotedArgs = commandArgs.map((a) => (a.includes(" ") ? `"${a}"` : a)).join(" ");
     const psArgs = ["-NoProfile", "-NonInteractive", "-Command", `${binPart} ${quotedArgs}`];
     return spawnSync("powershell", psArgs, {
@@ -177,7 +179,10 @@ async function runUnitTests() {
   await runTest("Path: toPosixPath replaces Windows backslashes with forward slashes", () => {
     assert.strictEqual(toPosixPath("definitions\\table.sqlx"), "definitions/table.sqlx");
     assert.strictEqual(toPosixPath("includes\\sub\\file.js"), "includes/sub/file.js");
-    assert.strictEqual(toPosixPath("definitions\\\\nested\\\\table.sqlx"), "definitions/nested/table.sqlx");
+    assert.strictEqual(
+      toPosixPath("definitions\\\\nested\\\\table.sqlx"),
+      "definitions/nested/table.sqlx",
+    );
     assert.strictEqual(toPosixPath("C:\\project\\file.sqlx"), "C:/project/file.sqlx");
   });
 
@@ -237,14 +242,25 @@ async function runCliFlows() {
 
   await runTest("CLI Flow 1: dataform --version / help", () => {
     const res = execCli(["--help"]);
-    assert.strictEqual(res.status, 0, `Expected exit 0, got ${res.status}. Output: ${res.stdout}\n${res.stderr}`);
-    assert(res.stdout.includes("dataform [command]"), "Expected output to contain 'dataform [command]'");
+    assert.strictEqual(
+      res.status,
+      0,
+      `Expected exit 0, got ${res.status}. Output: ${res.stdout}\n${res.stderr}`,
+    );
+    assert(
+      res.stdout.includes("dataform [command]"),
+      "Expected output to contain 'dataform [command]'",
+    );
   });
 
   await runTest("CLI Flow 2: dataform init creates project structure", () => {
     testProjectDir = createTempDir("df-init-test-");
     const res = execCli(["init", testProjectDir, "test-db", "us-central1"]);
-    assert.strictEqual(res.status, 0, `Init failed with exit ${res.status}: ${res.stderr}\n${res.stdout}`);
+    assert.strictEqual(
+      res.status,
+      0,
+      `Init failed with exit ${res.status}: ${res.stderr}\n${res.stdout}`,
+    );
 
     const workflowSettingsPath = path.join(testProjectDir, "workflow_settings.yaml");
     assert(fs.existsSync(workflowSettingsPath), "workflow_settings.yaml must exist");
@@ -256,11 +272,17 @@ async function runCliFlows() {
     if (coreTarball) {
       // Use local core tarball for offline / unpublished version testing
       const tarballPosix = toPosixPath(path.resolve(coreTarball));
-      content = content.replace(/dataformCoreVersion: .*/, `dataformCoreVersion: "file:${tarballPosix}"`);
+      content = content.replace(
+        /dataformCoreVersion: .*/,
+        `dataformCoreVersion: "file:${tarballPosix}"`,
+      );
       fs.writeFileSync(workflowSettingsPath, content);
     }
 
-    assert(fs.existsSync(path.join(testProjectDir, "definitions")), "definitions/ folder must exist");
+    assert(
+      fs.existsSync(path.join(testProjectDir, "definitions")),
+      "definitions/ folder must exist",
+    );
     assert(fs.existsSync(path.join(testProjectDir, "includes")), "includes/ folder must exist");
   });
 
@@ -271,8 +293,8 @@ async function runCliFlows() {
     const combinedOutput = (res.stdout || "") + (res.stderr || "");
     assert(
       combinedOutput.includes("No installation is needed when using workflow_settings.yaml") ||
-      res.status === 0,
-      `Expected notice about workflow_settings.yaml install, got: ${combinedOutput}`
+        res.status === 0,
+      `Expected notice about workflow_settings.yaml install, got: ${combinedOutput}`,
     );
   });
 
@@ -282,28 +304,39 @@ async function runCliFlows() {
       // Create dataform.json and package.json
       fs.writeFileSync(
         path.join(pkgProjectDir, "dataform.json"),
-        JSON.stringify({
-          defaultDatabase: "test-db",
-          defaultLocation: "us-central1",
-        }, null, 2)
+        JSON.stringify(
+          {
+            defaultDatabase: "test-db",
+            defaultLocation: "us-central1",
+          },
+          null,
+          2,
+        ),
       );
 
       // Point @dataform/core to local tarball if provided, or a valid package
       const coreDep = coreTarball ? path.resolve(coreTarball) : "^3.0.70";
       fs.writeFileSync(
         path.join(pkgProjectDir, "package.json"),
-        JSON.stringify({
-          name: "test-pkg-project",
-          dependencies: {
-            "@dataform/core": coreDep,
+        JSON.stringify(
+          {
+            name: "test-pkg-project",
+            dependencies: {
+              "@dataform/core": coreDep,
+            },
           },
-        }, null, 2)
+          null,
+          2,
+        ),
       );
 
       const res = execCli(["install", pkgProjectDir]);
       if (coreTarball) {
         assert.strictEqual(res.status, 0, `Install failed: ${res.stderr}\n${res.stdout}`);
-        assert(fs.existsSync(path.join(pkgProjectDir, "node_modules")), "node_modules must exist after install");
+        assert(
+          fs.existsSync(path.join(pkgProjectDir, "node_modules")),
+          "node_modules must exist after install",
+        );
       } else {
         // If no core tarball supplied (e.g. offline run), verify it ran npm install
         const output = (res.stdout || "") + (res.stderr || "");
@@ -317,15 +350,15 @@ async function runCliFlows() {
   await runTest("CLI Flow 4A: dataform compile (Issue #1565 fix verification)", () => {
     assert(testProjectDir, "Project directory must exist");
     const tableFile = path.join(testProjectDir, "definitions", "sample_table.sqlx");
-    fs.writeFileSync(
-      tableFile,
-      "config {\n  type: \"table\"\n}\n\nSELECT\n  1 AS sample_col\n"
-    );
+    fs.writeFileSync(tableFile, 'config {\n  type: "table"\n}\n\nSELECT\n  1 AS sample_col\n');
 
     const res = execCli(["compile", testProjectDir]);
     assert.strictEqual(res.status, 0, `Compile failed: ${res.stderr}\n${res.stdout}`);
     const output = (res.stdout || "") + (res.stderr || "");
-    assert(output.includes("Compiled successfully") || output.includes("sample_table"), `Output should confirm compilation: ${output}`);
+    assert(
+      output.includes("Compiled successfully") || output.includes("sample_table"),
+      `Output should confirm compilation: ${output}`,
+    );
   });
 
   await runTest("CLI Flow 4B: dataform compile --json (Issue #510 canonical slash fix)", () => {
@@ -339,7 +372,11 @@ async function runCliFlows() {
     assert(table, "sample_table must be present in compiled tables");
 
     // Critical assertion for issue #510: fileName must use canonical forward slash '/'
-    assert.strictEqual(table.fileName, "definitions/sample_table.sqlx", "fileName must use canonical '/' forward slashes on Windows");
+    assert.strictEqual(
+      table.fileName,
+      "definitions/sample_table.sqlx",
+      "fileName must use canonical '/' forward slashes on Windows",
+    );
   });
 
   await runTest("CLI Flow 4C: dataform compile with JiT action (declarative actions.yaml)", () => {
@@ -347,7 +384,7 @@ async function runCliFlows() {
     const actionsYamlPath = path.join(testProjectDir, "definitions", "actions.yaml");
     fs.writeFileSync(
       actionsYamlPath,
-      `actions:\n- notebook:\n    filename: sample_notebook.ipynb\n`
+      `actions:\n- notebook:\n    filename: sample_notebook.ipynb\n`,
     );
     const notebookPath = path.join(testProjectDir, "definitions", "sample_notebook.ipynb");
     fs.writeFileSync(notebookPath, JSON.stringify({ cells: [] }));
@@ -359,7 +396,11 @@ async function runCliFlows() {
     assert(Array.isArray(compiled.notebooks), "Compiled graph must contain notebooks");
     const nb = compiled.notebooks.find((n) => n.target && n.target.name === "sample_notebook");
     assert(nb, "sample_notebook must be compiled");
-    assert.strictEqual(nb.fileName, "definitions/sample_notebook.ipynb", "notebook fileName must use '/' slashes");
+    assert.strictEqual(
+      nb.fileName,
+      "definitions/sample_notebook.ipynb",
+      "notebook fileName must use '/' slashes",
+    );
 
     // Clean up notebook action for subsequent tests
     fs.unlinkSync(actionsYamlPath);
@@ -410,7 +451,7 @@ async function runCliFlows() {
             clearTimeout(timeout);
             fs.writeFileSync(
               tableFile,
-              "config {\n  type: \"table\"\n}\n\nSELECT\n  1 AS sample_col\n"
+              'config {\n  type: "table"\n}\n\nSELECT\n  1 AS sample_col\n',
             );
             assert(watchOutput.includes("Watching for changes..."), "Watcher started");
             resolve();
@@ -445,12 +486,16 @@ async function runCliFlows() {
 
     // Add an operations action which builds offline without warehouse state network calls
     const opFile = path.join(testProjectDir, "definitions", "sample_operation.sqlx");
-    fs.writeFileSync(
-      opFile,
-      "config {\n  type: \"operations\"\n}\n\nSELECT 1 AS op_col\n"
-    );
+    fs.writeFileSync(opFile, 'config {\n  type: "operations"\n}\n\nSELECT 1 AS op_col\n');
 
-    const res = execCli(["run", testProjectDir, "--dry-run", "--json", "--actions", "sample_operation"]);
+    const res = execCli([
+      "run",
+      testProjectDir,
+      "--dry-run",
+      "--json",
+      "--actions",
+      "sample_operation",
+    ]);
     assert.strictEqual(res.status, 0, `Run dry-run failed: ${res.stderr}\n${res.stdout}`);
 
     const execGraph = JSON.parse(res.stdout);
@@ -466,22 +511,25 @@ async function runCliFlows() {
     // In project with no tests, exits with code 1 and 'No unit tests found.'
     const resNoTests = execCli(["test", testProjectDir]);
     const output = (resNoTests.stdout || "") + (resNoTests.stderr || "");
-    assert(output.includes("No unit tests found."), `Must identify lack of unit tests, got: ${output}`);
+    assert(
+      output.includes("No unit tests found."),
+      `Must identify lack of unit tests, got: ${output}`,
+    );
 
     // Add a test definition
     const testFile = path.join(testProjectDir, "definitions", "table_test.sqlx");
     fs.writeFileSync(
       testFile,
-      `config {\n  type: "test",\n  dataset: "sample_table"\n}\n\ninput "sample_table" {\n  SELECT\n    1 AS sample_col\n}\n\nSELECT\n  1 AS sample_col\n`
+      `config {\n  type: "test",\n  dataset: "sample_table"\n}\n\ninput "sample_table" {\n  SELECT\n    1 AS sample_col\n}\n\nSELECT\n  1 AS sample_col\n`,
     );
 
     const resWithTest = execCli(["test", testProjectDir]);
     const testOutput = (resWithTest.stdout || "") + (resWithTest.stderr || "");
     assert(
       testOutput.includes("Running 1 unit test") ||
-      testOutput.includes("Compiled successfully") ||
-      testOutput.includes("Credentials"),
-      `Must compile and detect test, got: ${testOutput}`
+        testOutput.includes("Compiled successfully") ||
+        testOutput.includes("Credentials"),
+      `Must compile and detect test, got: ${testOutput}`,
     );
 
     fs.unlinkSync(testFile);
@@ -493,20 +541,35 @@ async function runCliFlows() {
     const formatFile = path.join(testProjectDir, "definitions", "to_format.sqlx");
 
     // Write file with CRLF line endings
-    fs.writeFileSync(formatFile, "config {\r\n  type: \"table\"\r\n}\r\n\r\nSELECT\r\n  1 AS num\r\n");
+    fs.writeFileSync(
+      formatFile,
+      'config {\r\n  type: "table"\r\n}\r\n\r\nSELECT\r\n  1 AS num\r\n',
+    );
 
     // Check should pass on already formatted content regardless of CRLF
     const checkRes = execCli(["format", testProjectDir, "--check"]);
-    assert.strictEqual(checkRes.status, 0, `format --check should pass on CRLF file: ${checkRes.stderr}\n${checkRes.stdout}`);
+    assert.strictEqual(
+      checkRes.status,
+      0,
+      `format --check should pass on CRLF file: ${checkRes.stderr}\n${checkRes.stdout}`,
+    );
 
     // Now write unformatted content
-    fs.writeFileSync(formatFile, "config {    type:   \"table\"   }   SELECT   1  AS  num");
+    fs.writeFileSync(formatFile, 'config {    type:   "table"   }   SELECT   1  AS  num');
     const unformattedCheckRes = execCli(["format", testProjectDir, "--check"]);
-    assert.notStrictEqual(unformattedCheckRes.status, 0, "format --check should fail on unformatted file");
+    assert.notStrictEqual(
+      unformattedCheckRes.status,
+      0,
+      "format --check should fail on unformatted file",
+    );
 
     // Run format to fix it
     const formatRes = execCli(["format", testProjectDir]);
-    assert.strictEqual(formatRes.status, 0, `format should succeed: ${formatRes.stderr}\n${formatRes.stdout}`);
+    assert.strictEqual(
+      formatRes.status,
+      0,
+      `format should succeed: ${formatRes.stderr}\n${formatRes.stdout}`,
+    );
 
     // Verify format --check now passes
     const reCheckRes = execCli(["format", testProjectDir, "--check"]);

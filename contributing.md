@@ -118,6 +118,7 @@ prefixing them with `@npm//...`.
 The Dataform CLI is supported on Windows 10 and 11 in both **Command Prompt (`cmd.exe`)** and **PowerShell**.
 
 ### Prerequisites & Setup
+
 - **Node.js**: Node 18+ or Node 20+ LTS is required.
 - **Git line endings**: Configure git to handle CRLF/LF cleanly:
   ```bash
@@ -130,19 +131,23 @@ The Dataform CLI is supported on Windows 10 and 11 in both **Command Prompt (`cm
   ```
 
 ### Development & Path Conventions
+
 - **Canonical Forward Slashes**: Dataform's internal graph contracts, table names, and proto file paths require canonical POSIX forward slashes (`/`). Even on Windows, definitions must resolve as `definitions/my_table.sqlx` rather than with backslashes (`\`).
 - **Cross-Platform Path Helpers**: Use the `Path` utility in `core/path.ts` (`Path.join`, `Path.normalize`, `Path.relativePath`, `Path.dirName`, `Path.basename`). It handles mixed separators and Windows drive letters (e.g. `C:\` vs `c:/`) automatically.
 
 ### Running Windows Smoke Tests
+
 You can run the automated Windows smoke test suite locally on Windows or in CI:
 
 - **In PowerShell**:
+
   ```powershell
   npm install -g @dataform/cli
   node scripts/smoke_test_windows.js --shell powershell
   ```
 
 - **In Command Prompt (`cmd.exe`)**:
+
   ```cmd
   npm install -g @dataform/cli
   node scripts\smoke_test_windows.js --shell cmd
@@ -154,8 +159,8 @@ You can run the automated Windows smoke test suite locally on Windows or in CI:
   ```
 
 ### Windows CI on GitHub Actions
-All pull requests run automated CI on `windows-latest` via `.github/workflows/test.yaml`.
 
+All pull requests run automated CI on `windows-latest` via `.github/workflows/test.yaml`.
 
 ## The Contribution Process
 
