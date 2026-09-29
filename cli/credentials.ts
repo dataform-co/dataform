@@ -7,8 +7,7 @@ import { dataform } from "df/protos/ts";
 export function getBigQueryCredentials(): dataform.IBigQuery {
   const locationIndex = selectionQuestion("Enter the location of your datasets:", [
     "US (default)",
-    "EU",
-    "other",
+    "EU", "other",
   ]);
   let location = locationIndex === 0 ? "US" : "EU";
   if (locationIndex === 2) {
