@@ -9,7 +9,13 @@ const pendingRpcCallbacks = new Map<
   (err: string | null, resBytes: Uint8Array | null) => void
 >();
 
+let rpcResponseHandlerRegistered = false;
+
 export function registerRpcResponseHandler() {
+  if (rpcResponseHandlerRegistered) {
+    return;
+  }
+  rpcResponseHandlerRegistered = true;
   process.on("message", (res: any) => {
     if (res.type === "rpc_response") {
       const callback = pendingRpcCallbacks.get(res.correlationId);
@@ -21,7 +27,13 @@ export function registerRpcResponseHandler() {
   });
 }
 
+let jitCompileHandlerRegistered = false;
+
 export function registerJitCompileHandler() {
+  if (jitCompileHandlerRegistered) {
+    return;
+  }
+  jitCompileHandlerRegistered = true;
   let hasStartedProcessing = false;
   process.on("message", async (message: any) => {
     if (message.type === "jit_compile") {
@@ -132,5 +144,13 @@ export async function handleJitRequest(message: { request: any; projectDir: stri
     process.send({ type: "jit_response", response: response.toJSON() });
   } catch (e) {
     process.send({ type: "jit_error", error: e.stack || e.message });
+  }
+}
+
+if (require.main === module) {
+  registerRpcResponseHandler();
+  registerJitCompileHandler();
+  if (process.send) {
+    process.send({ type: "worker_booted" });
   }
 }
