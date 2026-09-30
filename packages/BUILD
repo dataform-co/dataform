@@ -1,7 +1,18 @@
+load("@aspect_bazel_lib//lib:copy_to_bin.bzl", "copy_to_bin")
+load("@aspect_rules_js//js:defs.bzl", "js_binary")
 load("//tools:ts_library.bzl", "ts_library")
-load("@build_bazel_rules_nodejs//:index.bzl", "nodejs_binary")
 
 package(default_visibility = ["//visibility:public"])
+
+copy_to_bin(
+    name = "rollup_config",
+    srcs = ["rollup.config.js"],
+)
+
+copy_to_bin(
+    name = "rollup_dts_config",
+    srcs = ["rollup_dts.config.js"],
+)
 
 exports_files([
     "rollup.config.js",
@@ -12,21 +23,17 @@ ts_library(
     name = "gen-package-json",
     srcs = ["gen_package_json.ts"],
     deps = [
-        "@npm//@types/node",
-        "@npm//@types/yargs",
-        "@npm//yargs",
+        "//:node_modules/@types/node",
+        "//:node_modules/@types/yargs",
+        "//:node_modules/yargs",
     ],
 )
 
-nodejs_binary(
+js_binary(
     name = "gen-package-json-bin",
-    templated_args = [
-        "--node_options=--require=source-map-support/register",
-        "--bazel_patch_module_resolver",
-    ],
     data = [
         ":gen-package-json",
-        "@npm//source-map-support",
+        "//:node_modules/source-map-support",
     ],
-    entry_point = ":gen_package_json.ts",
+    entry_point = "gen_package_json.js",
 )

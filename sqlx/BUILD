@@ -6,29 +6,27 @@ package(default_visibility = ["//visibility:public"])
 ts_library(
     name = "lexer",
     srcs = [
-        "lexer.ts"
+        "lexer.ts",
     ],
     deps = [
-        "//:modules-fix",
-        "@npm//@types/moo",
-        "@npm//moo",
+        "//:node_modules/@types/moo",
+        "//:node_modules/moo",
     ],
 )
 
 ts_library(
     name = "format",
     srcs = [
-        "format.ts"
+        "format.ts",
     ],
     deps = [
         ":lexer",
-        "//:modules-fix",
+        "//:node_modules/@types/js-beautify",
+        "//:node_modules/@types/node",
+        "//:node_modules/google-sql-syntax-ts",
+        "//:node_modules/js-beautify",
+        "//:node_modules/typeid-js",
         "//common/errors",
-        "@npm//@types/js-beautify",
-        "@npm//@types/node",
-        "@npm//google-sql-syntax-ts",
-        "@npm//js-beautify",
-        "@npm//typeid-js",
     ],
 )
 
@@ -41,9 +39,9 @@ ts_test_suite(
     deps = [
         ":format",
         ":lexer",
+        "//:node_modules/@types/chai",
+        "//:node_modules/@types/node",
+        "//:node_modules/chai",
         "//testing",
-        "@npm//@types/chai",
-        "@npm//@types/node",
-        "@npm//chai",
     ],
 )
