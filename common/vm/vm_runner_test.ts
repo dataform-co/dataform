@@ -216,21 +216,7 @@ suite("VmRunner", ({ afterEach }) => {
     );
   });
 
-  test("rejects requires that escape projectDir via customResolve", () => {
-    const tmpDir = tmpDirFixture.createNewTmpDir();
-    const outsideDir = tmpDirFixture.createNewTmpDir();
-    const secretFile = path.join(outsideDir, "secret.json");
-    fs.writeFileSync(secretFile, JSON.stringify({ secret: "sensitive" }));
-
-    const runner = new VmRunner({
-      projectDir: tmpDir,
-      customResolve: (moduleName: string) => path.resolve(outsideDir, moduleName),
-    });
-
-    expect(() => runner.run(`require("secret.json");`)).to.throw(/outside of project directory/);
-  });
-
-  test("resolves relative paths from subfolders relative to caller directory without custom resolve", () => {
+  test("resolves relative paths from subfolders relative to caller directory", () => {
     const tmpDir = tmpDirFixture.createNewTmpDir();
     const subDir = path.join(tmpDir, "models", "sub");
     fs.mkdirSync(subDir, { recursive: true });
@@ -359,16 +345,31 @@ suite("VmRunner", ({ afterEach }) => {
     expect(caughtError!.stack).to.include(errorFile);
   });
 
-  test("caches module resolution results across multiple requires", () => {
+  test("does not let run() shadow a real project index.js", () => {
     const tmpDir = tmpDirFixture.createNewTmpDir();
-    const helperFile = path.join(tmpDir, "helper.js");
-    fs.writeFileSync(helperFile, "module.exports = { count: 1 };");
+    fs.writeFileSync(path.join(tmpDir, "index.js"), "module.exports = 'real-index';");
 
     const runner = new VmRunner({ projectDir: tmpDir });
-    const resolvedFirst = runner.resolve("./helper", path.join(tmpDir, "index.js"));
-    const resolvedSecond = runner.resolve("./helper", path.join(tmpDir, "index.js"));
-    expect(resolvedFirst).to.equal(helperFile);
-    expect(resolvedSecond).to.equal(helperFile);
+    // run() defaults its filename to <projectDir>/index.js.
+    expect(runner.run(`return require("./index");`)).to.equal("real-index");
+    expect(runner.run(`return require("index");`)).to.equal("real-index");
+    expect(runner.require("./index")).to.equal("real-index");
+  });
+
+  test("includes the file path in JSON parse errors", () => {
+    const tmpDir = tmpDirFixture.createNewTmpDir();
+    const badJson = path.join(tmpDir, "bad.json");
+    fs.writeFileSync(badJson, "{ not json");
+
+    const runner = new VmRunner({ projectDir: tmpDir });
+    let caught: any = null;
+    try {
+      runner.run(`require("./bad.json");`);
+    } catch (e) {
+      caught = e;
+    }
+    expect(caught).to.be.an.instanceOf(SyntaxError);
+    expect(caught.message).to.include("bad.json: ");
   });
 
   test("shares Uint8Array constructor with host across realm boundary", () => {
@@ -447,49 +448,6 @@ suite("VmRunner", ({ afterEach }) => {
     expect(result).to.deep.equal({ loaded: true });
   });
 
-  test("re-throws unexpected errors from customResolve", () => {
-    const tmpDir = tmpDirFixture.createNewTmpDir();
-    const runner = new VmRunner({
-      projectDir: tmpDir,
-      customResolve: (moduleName: string) => {
-        if (moduleName === "fail-now") {
-          throw new TypeError("unexpected resolve error");
-        }
-        return path.join(tmpDir, `${moduleName}.js`);
-      },
-    });
-
-    let caught: any = null;
-    try {
-      runner.resolve("fail-now", path.join(tmpDir, "index.js"));
-    } catch (e) {
-      caught = e;
-    }
-    expect(caught).to.not.equal(null);
-    expect(caught).to.be.an.instanceOf(TypeError);
-    expect(caught.message).to.equal("unexpected resolve error");
-  });
-
-  test("enforces isPathContained on node_modules symlinks pointing outside projectDir", () => {
-    const outsideDir = tmpDirFixture.createNewTmpDir();
-    fs.writeFileSync(path.join(outsideDir, "external.js"), "module.exports = 'escaped';");
-
-    const projectDir = tmpDirFixture.createNewTmpDir();
-    const nodeModulesDir = path.join(projectDir, "node_modules");
-    fs.mkdirSync(nodeModulesDir);
-    fs.symlinkSync(outsideDir, path.join(nodeModulesDir, "symlinked-pkg"));
-
-    const runner = new VmRunner({ projectDir });
-    let caught: any = null;
-    try {
-      runner.resolve("symlinked-pkg/external", path.join(projectDir, "index.js"));
-    } catch (e) {
-      caught = e;
-    }
-    expect(caught).to.not.equal(null);
-    expect(caught.message).to.include("outside of project directory");
-  });
-
   test("allows requiring node: prefixed builtin modules if allowed", () => {
     const tmpDir = tmpDirFixture.createNewTmpDir();
     const runner = new VmRunner({
@@ -555,23 +513,36 @@ suite("VmRunner", ({ afterEach }) => {
     }).to.throw("Cannot specify both 'env' and 'envAllowlist' in VmRunnerOptions");
   });
 
-  test("provides process.hrtime and process.nextTick in the process shim", () => {
+  test("provides process.hrtime and process.nextTick in the process shim", async () => {
     const tmpDir = tmpDirFixture.createNewTmpDir();
-    const runner = new VmRunner({ projectDir: tmpDir });
+    let resolveTicked: () => void;
+    const ticked = new Promise<void>((resolve) => {
+      resolveTicked = resolve;
+    });
+    const runner = new VmRunner({
+      projectDir: tmpDir,
+      sandbox: { onTick: () => resolveTicked() },
+    });
 
     const result = runner.run(`
       const [seconds, nanos] = process.hrtime();
-      const bigintTime = typeof process.hrtime.bigint === "function" ? process.hrtime.bigint() : 0n;
       let nextTickCalled = false;
-      process.nextTick(() => { nextTickCalled = true; });
+      process.nextTick(() => {
+        nextTickCalled = true;
+        onTick();
+      });
       return {
         hasHrtime: typeof seconds === "number" && typeof nanos === "number",
-        hasBigint: typeof bigintTime === "bigint",
-        hasNextTick: typeof process.nextTick === "function",
+        hasBigint: typeof process.hrtime.bigint() === "bigint",
+        nextTickCalled: () => nextTickCalled,
       };
     `);
     expect(result.hasHrtime).to.equal(true);
     expect(result.hasBigint).to.equal(true);
-    expect(result.hasNextTick).to.equal(true);
+    // The callback is asynchronous, so it cannot have run yet.
+    expect(result.nextTickCalled()).to.equal(false);
+
+    await ticked;
+    expect(result.nextTickCalled()).to.equal(true);
   });
 });

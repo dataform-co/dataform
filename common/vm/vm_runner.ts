@@ -10,9 +10,11 @@
  */
 
 import * as fs from "fs";
-import { builtinModules as nodeBuiltins, createRequire } from "module";
+import { builtinModules as nodeBuiltins } from "module";
 import * as path from "path";
 import * as vm from "vm";
+
+import { ModuleResolver } from "df/common/vm/module_resolver";
 
 export type CompilerFunction = (code: string, filePath: string) => string;
 
@@ -23,11 +25,6 @@ export interface VmRunnerOptions {
   sandbox?: Record<string, any>;
   builtinModules?: string[];
   mockModules?: Record<string, any>;
-  /**
-   * Optional custom resolver hook to resolve module names before falling back
-   * to standard project-relative or node_modules resolution.
-   */
-  customResolve?: (moduleName: string, parentDirName: string) => string;
   console?: "inherit" | "off";
   /**
    * Explicit map of environment variables exposed inside the VM context as `process.env`.
@@ -45,47 +42,44 @@ export interface VmRunnerOptions {
 
 export class VmRunner {
   private readonly projectDir: string;
-  private readonly allowedExternalPaths: string[];
-  private readonly allowedModules?: string[];
   private readonly sourceExtensions: Set<string>;
-  private readonly allExtensions: string[];
   private readonly compiler?: CompilerFunction;
   private readonly builtinModules: Set<string>;
   private readonly mockModules: Record<string, any>;
-  private readonly customResolve?: (moduleName: string, parentDirName: string) => string;
+  private readonly resolver: ModuleResolver;
   private readonly context: vm.Context;
   private readonly moduleCache = new Map<
     string,
     { exports: any; id: string; filename: string; loaded: boolean }
   >();
-  private readonly resolveCache = new Map<string, string>();
   private readonly nodeBuiltinSet: Set<string>;
 
   constructor(options: VmRunnerOptions) {
-    this.projectDir = this.getRealPath(options.projectDir);
-    this.allowedExternalPaths = (options.allowedExternalPaths || []).map((p) =>
-      this.getRealPath(p),
-    );
-    this.allowedModules = options.allowedModules;
+    this.projectDir = getRealPath(options.projectDir);
     const rawExtensions = options.sourceExtensions || ["js", "json"];
     this.sourceExtensions = new Set(
       rawExtensions.map((ext) =>
         ext.startsWith(".") ? ext.slice(1).toLowerCase() : ext.toLowerCase(),
       ),
     );
-    this.allExtensions = Array.from(
+    const allExtensions = Array.from(
       new Set([
         ".js",
         ".json",
         ...rawExtensions.map((ext) => (ext.startsWith(".") ? ext : `.${ext}`)),
       ]),
     );
+    this.resolver = new ModuleResolver({
+      projectDir: this.projectDir,
+      extensions: allExtensions,
+      allowedExternalPaths: options.allowedExternalPaths,
+      allowedModules: options.allowedModules,
+    });
     this.compiler = options.compiler;
     this.builtinModules = new Set(
       options.builtinModules !== undefined ? options.builtinModules : ["path"],
     );
     this.mockModules = options.mockModules || {};
-    this.customResolve = options.customResolve;
     this.nodeBuiltinSet = new Set(nodeBuiltins);
 
     if (options.env !== undefined && options.envAllowlist !== undefined) {
@@ -180,148 +174,27 @@ export class VmRunner {
   }
 
   public resolve(moduleName: string, fromPath: string): string {
-    const cacheKey = `${fromPath}\0${moduleName}`;
-    if (this.resolveCache.has(cacheKey)) {
-      return this.resolveCache.get(cacheKey)!;
-    }
-
-    const parentDir = path.dirname(fromPath);
-
-    // Check custom resolve function if provided
-    if (this.customResolve) {
-      let candidate: string | undefined;
-      try {
-        candidate = this.customResolve(moduleName, parentDir);
-      } catch (e) {
-        if (e && (e as any).code !== "MODULE_NOT_FOUND") {
-          throw e;
-        }
-      }
-      if (candidate) {
-        const resolved = this.tryResolvePath(candidate);
-        if (resolved) {
-          this.assertPathContained(resolved, moduleName);
-          this.resolveCache.set(cacheKey, resolved);
-          return resolved;
-        }
-      }
-    }
-
-    // Relative or absolute path
-    if (
-      moduleName.startsWith("./") ||
-      moduleName.startsWith("../") ||
-      path.isAbsolute(moduleName)
-    ) {
-      const candidate = path.resolve(parentDir, moduleName);
-      const resolved = this.tryResolvePath(candidate);
-      if (resolved) {
-        this.assertPathContained(resolved, moduleName);
-        this.resolveCache.set(cacheKey, resolved);
-        return resolved;
-      }
-    } else {
-      // External module check: if allowedModules is specified, bare specifier must be allowed
-      if (!this.isModuleAllowed(moduleName)) {
-        const err: any = new Error(`Access to module '${moduleName}' is not allowed`);
-        err.code = "MODULE_NOT_FOUND";
-        throw err;
-      }
-
-      // Project-relative path (e.g. require("includes/helpers"))
-      const projectRelative = path.resolve(this.projectDir, moduleName);
-      const resolvedProjectRelative = this.tryResolvePath(projectRelative);
-      if (resolvedProjectRelative) {
-        this.assertPathContained(resolvedProjectRelative, moduleName);
-        this.resolveCache.set(cacheKey, resolvedProjectRelative);
-        return resolvedProjectRelative;
-      }
-
-      // Check project node_modules directory directly (e.g. @dataform/core)
-      const nodeModulesCandidate = path.resolve(this.projectDir, "node_modules", moduleName);
-      const resolvedNodeModules = this.tryResolvePath(nodeModulesCandidate);
-      if (resolvedNodeModules) {
-        this.assertPathContained(resolvedNodeModules, moduleName);
-        this.resolveCache.set(cacheKey, resolvedNodeModules);
-        return resolvedNodeModules;
-      }
-
-      // Fallback to standard Node.js require.resolve resolution
-      let nodeReqResolved: string | undefined;
-      let nodeReqError: any;
-      try {
-        const nodeReq = createRequire(fromPath);
-        nodeReqResolved = nodeReq.resolve(moduleName);
-      } catch (e) {
-        nodeReqError = e;
-      }
-      if (nodeReqResolved) {
-        this.assertPathContained(nodeReqResolved, moduleName);
-        this.resolveCache.set(cacheKey, nodeReqResolved);
-        return nodeReqResolved;
-      }
-
-      let projectReqResolved: string | undefined;
-      let projectReqError: any;
-      try {
-        const projectReq = createRequire(path.join(this.projectDir, "index.js"));
-        projectReqResolved = projectReq.resolve(moduleName);
-      } catch (e) {
-        projectReqError = e;
-      }
-      if (projectReqResolved) {
-        this.assertPathContained(projectReqResolved, moduleName);
-        this.resolveCache.set(cacheKey, projectReqResolved);
-        return projectReqResolved;
-      }
-
-      const err: any = new Error(`Cannot find module '${moduleName}' from '${fromPath}'`);
-      err.code = "MODULE_NOT_FOUND";
-      if (nodeReqError || projectReqError) {
-        err.cause = nodeReqError || projectReqError;
-      }
-      throw err;
-    }
-
-    const err: any = new Error(`Cannot find module '${moduleName}' from '${fromPath}'`);
-    err.code = "MODULE_NOT_FOUND";
-    throw err;
-  }
-
-  private isModuleAllowed(moduleName: string): boolean {
-    if (!this.allowedModules) {
-      return true;
-    }
-    return this.allowedModules.some((pattern) => {
-      if (pattern.endsWith("/*")) {
-        const prefix = pattern.slice(0, -1);
-        return moduleName.startsWith(prefix);
-      }
-      return moduleName === pattern;
-    });
-  }
-
-  private assertPathContained(resolvedPath: string, moduleName: string): void {
-    if (!this.isPathContained(resolvedPath)) {
-      const err: any = new Error(
-        `Cannot require '${moduleName}' outside of project directory '${this.projectDir}'`,
-      );
-      err.code = "MODULE_NOT_FOUND";
-      throw err;
-    }
+    return this.resolver.resolve(moduleName, fromPath);
   }
 
   private executeModule(source: string, filename: string, isRunEntryPoint: boolean = false): any {
+    // Code passed to run() is synthetic and not the contents of `filename`, so it must not be
+    // cached: otherwise a real file at that path (e.g. <projectDir>/index.js) would resolve to the
+    // entry point's exports.
+    const shouldCache = !isRunEntryPoint;
+
     const ext = path.extname(filename).toLowerCase().replace(/^\./, "");
     if (ext === "json") {
-      const module = {
-        exports: JSON.parse(source),
+      const jsonModule = {
+        exports: parseJson(source, filename),
         id: filename,
         filename,
         loaded: true,
       };
-      this.moduleCache.set(filename, module);
-      return module.exports;
+      if (shouldCache) {
+        this.moduleCache.set(filename, jsonModule);
+      }
+      return jsonModule.exports;
     }
 
     let code = source;
@@ -344,7 +217,9 @@ export class VmRunner {
       filename,
       loaded: false,
     };
-    this.moduleCache.set(filename, module);
+    if (shouldCache) {
+      this.moduleCache.set(filename, module);
+    }
 
     try {
       const scopedRequire = this.createRequire(filename);
@@ -360,90 +235,11 @@ export class VmRunner {
 
       return isRunEntryPoint && result !== undefined ? result : module.exports;
     } catch (e) {
-      this.moduleCache.delete(filename);
+      if (shouldCache) {
+        this.moduleCache.delete(filename);
+      }
       throw e;
     }
-  }
-
-  private getRealPath(targetPath: string): string {
-    try {
-      return fs.realpathSync(targetPath);
-    } catch {
-      return path.resolve(targetPath);
-    }
-  }
-
-  private isPathContained(targetPath: string): boolean {
-    const realTarget = this.getRealPath(targetPath);
-    const isContainedIn = (parentDir: string) => {
-      const rel = path.relative(parentDir, realTarget);
-      return !rel.startsWith("..") && !path.isAbsolute(rel);
-    };
-
-    if (isContainedIn(this.projectDir)) {
-      return true;
-    }
-    return this.allowedExternalPaths.some((allowed) => isContainedIn(allowed));
-  }
-
-  private getStat(targetPath: string): fs.Stats | null {
-    try {
-      return fs.statSync(targetPath);
-    } catch {
-      return null;
-    }
-  }
-
-  private tryResolvePath(
-    candidatePath: string,
-    visitedDirs: Set<string> = new Set<string>(),
-  ): string | null {
-    const stat = this.getStat(candidatePath);
-    if (stat) {
-      if (stat.isFile()) {
-        return candidatePath;
-      }
-      if (stat.isDirectory()) {
-        if (visitedDirs.has(candidatePath)) {
-          return null;
-        }
-        visitedDirs.add(candidatePath);
-
-        const pkgPath = path.join(candidatePath, "package.json");
-        const pkgStat = this.getStat(pkgPath);
-        if (pkgStat && pkgStat.isFile()) {
-          try {
-            const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
-            if (pkg.main && typeof pkg.main === "string") {
-              const mainPath = path.resolve(candidatePath, pkg.main);
-              if (mainPath !== candidatePath) {
-                const resolvedMain = this.tryResolvePath(mainPath, visitedDirs);
-                if (resolvedMain) {
-                  return resolvedMain;
-                }
-              }
-            }
-          } catch {}
-        }
-        for (const ext of this.allExtensions) {
-          const indexPath = path.join(candidatePath, `index${ext}`);
-          const indexStat = this.getStat(indexPath);
-          if (indexStat && indexStat.isFile()) {
-            return indexPath;
-          }
-        }
-      }
-    }
-
-    for (const ext of this.allExtensions) {
-      const withExt = candidatePath.endsWith(ext) ? candidatePath : `${candidatePath}${ext}`;
-      const withExtStat = this.getStat(withExt);
-      if (withExtStat && withExtStat.isFile()) {
-        return withExt;
-      }
-    }
-
-    return null;
   }
 
   private createRequire(fromPath: string): NodeJS.Require {
@@ -458,5 +254,23 @@ export class VmRunner {
     requireFn.main = undefined;
 
     return requireFn;
+  }
+}
+
+/** Parses a JSON module, prefixing errors with the file path the same way Node's loader does. */
+function parseJson(source: string, filename: string): any {
+  try {
+    return JSON.parse(source);
+  } catch (e) {
+    e.message = `${filename}: ${e.message}`;
+    throw e;
+  }
+}
+
+function getRealPath(targetPath: string): string {
+  try {
+    return fs.realpathSync(targetPath);
+  } catch {
+    return path.resolve(targetPath);
   }
 }

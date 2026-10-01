@@ -6,6 +6,7 @@ load("//tools:ts_library.bzl", "ts_library")
 ts_library(
     name = "vm_runner",
     srcs = [
+        "module_resolver.ts",
         "vm_runner.ts",
     ],
     deps = [
@@ -15,7 +16,10 @@ ts_library(
 
 ts_test_suite(
     name = "tests",
-    srcs = ["vm_runner_test.ts"],
+    srcs = [
+        "module_resolver_test.ts",
+        "vm_runner_test.ts",
+    ],
     deps = [
         ":vm_runner",
         "//testing",

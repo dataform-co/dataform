@@ -9,19 +9,36 @@ import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
 
-suite("cli/vm", ({ afterEach }) => {
+suite("cli/vm", ({ afterEach, before, after }) => {
   const tmpDirFixture = new TmpDirFixture(afterEach);
 
-  // Allow require("@dataform/core") to resolve to the prebuilt core bundle in the test environment
+  // Let host-side require("@dataform/core") (jit_worker's mocked-core branch) resolve to the
+  // prebuilt core bundle in the test environment. Scoped to this suite via before/after.
   // tslint:disable-next-line: no-require-imports
   const Module = require("module");
-  const origResolve = Module._resolveFilename;
-  Module._resolveFilename = function (request: string, parent: any, isMain: boolean, options: any) {
-    if (request === "@dataform/core") {
-      return path.join(process.cwd(), "core", "node_modules", "@dataform", "core", "bundle.js");
-    }
-    return origResolve.apply(this, arguments);
-  };
+  const prebuiltCoreBundle = path.join(
+    process.cwd(),
+    "core",
+    "node_modules",
+    "@dataform",
+    "core",
+    "bundle.js",
+  );
+  let originalResolveFilename: (...args: any[]) => string;
+
+  before("resolve @dataform/core to the prebuilt bundle", () => {
+    originalResolveFilename = Module._resolveFilename;
+    Module._resolveFilename = function (request: string) {
+      if (request === "@dataform/core") {
+        return prebuiltCoreBundle;
+      }
+      return originalResolveFilename.apply(this, arguments);
+    };
+  });
+
+  after("restore Module._resolveFilename", () => {
+    Module._resolveFilename = originalResolveFilename;
+  });
 
   test("compile() runs end-to-end against prebuilt @dataform/core bundle", () => {
     const projectDir = tmpDirFixture.createNewTmpDir();

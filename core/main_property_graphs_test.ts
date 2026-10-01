@@ -41,10 +41,8 @@ suite("property graphs", ({ afterEach }) => {
     message,
     ...extra,
   });
-  // Under vm2, V8 stack traces were replaced with mocked "\n    at CallSite {}".
-  // Under native node:vm, real V8 CallSites with genuine file paths and line numbers
-  // are preserved. We verify that compilation error stacks contain the error message
-  // and valid V8 call frames rather than vm2's mocked CallSite stubs.
+  // Compilation errors carry real V8 stack traces. Check that each stack starts with the error
+  // message and contains at least one call frame, then drop it so graphs can be compared.
   const asPlainGraph = (graph: dataform.ICompiledGraph) => {
     const plain = asPlainObject(graph);
     plain.graphErrors?.compilationErrors?.forEach((e: any) => {
