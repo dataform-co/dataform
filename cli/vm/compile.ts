@@ -66,10 +66,8 @@ export function compile(compileConfig: dataform.ICompileConfig) {
   }
   const needsCallerFileShim = semver.lt(dataformCoreVersion, "3.0.57");
 
-  // While VmRunner preserves V8 CallSite file paths natively, older @dataform/core
-  // versions check global.__dataform_current_file as a fallback. Track the currently
-  // executing file via a host-side stack exposed through sandbox helpers, and
-  // expose it as a getter on `global.__dataform_current_file`.
+  // @dataform/core < 3.0.57 reads global.__dataform_current_file. Track the currently
+  // executing file on a host-side stack and expose it through that getter.
   const fileStack: string[] = [];
   const sandbox: Record<string, any> = {};
   if (needsCallerFileShim) {
@@ -125,10 +123,7 @@ export function compile(compileConfig: dataform.ICompileConfig) {
       }
       ${
         hasWorkflowSettingsYaml
-          ? `global.workflowSettingsYaml = (function() {
-               try { return require("./workflow_settings.yaml"); }
-               catch(e) { console.error("YAML require failed run_core:", e); }
-             })();`
+          ? 'global.workflowSettingsYaml = require("./workflow_settings.yaml");'
           : ""
       }
       ${hasDataformJson ? 'global.dataformJson = require("./dataform.json");' : ""}
@@ -176,10 +171,8 @@ function readCliVersion(): string {
 }
 
 // @dataform/core <= 3.0.56 has no `global.__dataform_current_file` fallback in
-// getCallerFile(), so paired with CLI >= 3.0.57 (which uses vm2 with path
-// stripping) every action fails with "Unable to find valid caller file".
-// Backport the fallback by rewriting the bundle text at load time. Gated on
-// version so we never touch newer core bundles whose layout differs.
+// getCallerFile(). Backport it by rewriting the bundle text at load time. Gated
+// on version so we never touch newer core bundles whose layout differs.
 const OLD_CORE_THROW =
   'if(!t)throw new Error("Unable to find valid caller file; please report this issue.")';
 const OLD_CORE_WITH_FALLBACK =
