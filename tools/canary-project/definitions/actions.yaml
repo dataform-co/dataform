@@ -1,0 +1,4 @@
+actions:
+  - operation:
+      filename: operation.sql
+      description: Canary operations action
