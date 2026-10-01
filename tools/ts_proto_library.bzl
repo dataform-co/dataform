@@ -2,11 +2,13 @@ load("@aspect_rules_js//js:providers.bzl", "js_info")
 
 def _ts_proto_library_impl(ctx):
     # Collect all plain-text .proto source files from dependencies
-    proto_files = []
+    proto_depsets = []
     for dep in ctx.attr.deps:
         if ProtoInfo not in dep:
             fail("ts_proto_library dependency %s must be a proto_library rule" % dep.label)
-        proto_files.extend(dep[ProtoInfo].direct_sources)
+        proto_depsets.append(dep[ProtoInfo].transitive_sources)
+    all_proto_files = depset(transitive = proto_depsets).to_list()
+    proto_files = [f for f in all_proto_files if not f.owner.workspace_name]
 
     # Declare compiled JS and TypeScript declaration output files
     output_name = ctx.attr.output_name or ctx.label.name
@@ -16,7 +18,7 @@ def _ts_proto_library_impl(ctx):
 
     # Execute the compiled binary inside the execroot sandbox
     ctx.actions.run(
-        inputs = proto_files,
+        inputs = all_proto_files,
         outputs = [js_out, dts_out, esm_js_out],
         executable = ctx.executable._compiler,
         arguments = [

@@ -22,8 +22,7 @@ ts_library(
 
 filegroup(
     name = "vscode-sources",
-    srcs = [":vscode"],
-    output_group = "es5_sources",
+    srcs = [":vscode_ts_project"],
 )
 
 sh_binary(

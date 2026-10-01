@@ -24,13 +24,6 @@ ts_library(
 ts_test_suite(
     name = "tests",
     srcs = glob(["*_test.ts"]),
-    data = [
-        "//:node_modules/source-map-support",
-    ],
-    templated_args = [
-        "--node_options=--require=source-map-support/register",
-        "--bazel_patch_module_resolver",
-    ],
     deps = [
         ":protos",
         "//:node_modules/@types/chai",

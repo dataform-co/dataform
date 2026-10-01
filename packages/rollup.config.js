@@ -100,12 +100,15 @@ const checkImports = (imports) => {
         }
       }
 
+      if (allowedImports.some((pattern) => pattern.test(source))) {
+        return null;
+      }
       if (
-        allowedImports.some((pattern) => pattern.test(source)) ||
         externals(source) ||
+        externals(source.split("/")[0]) ||
         (allowNodeBuiltins && knownNodeBuiltins.some((pattern) => pattern.test(source)))
       ) {
-        return null;
+        return false;
       }
       throw new Error("Must explicitly list import as an external: " + source);
     },
@@ -113,11 +116,6 @@ const checkImports = (imports) => {
 };
 
 export default {
-  external: (id) => {
-    if (id.startsWith("df/") || id === "df") return false;
-    if (id.startsWith(".") || path.isAbsolute(id)) return false;
-    return true;
-  },
   plugins: [
     checkImports(importsToBundle),
     resolve({

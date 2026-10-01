@@ -18,9 +18,9 @@ import { TmpDirFixture } from "df/testing/fixtures";
 const DEFAULT_PROJECT = "dataform-open-source";
 const DEFAULT_LOCATION = "US";
 
-const runfilesDir = process.env.RUNFILES;
+const runfilesDir = process.env.RUNFILES || "";
 let workspaceName = "df";
-if (!fs.existsSync(path.resolve(runfilesDir, "df"))) {
+if (runfilesDir && !fs.existsSync(path.resolve(runfilesDir, "df"))) {
   workspaceName = "_main";
 }
 
