@@ -1,22 +1,60 @@
 export const separator = "/";
 
+/**
+ * Replaces every backslash with a forward slash. Repeated separators are deliberately kept, so a
+ * UNC root such as `\\server\share\proj` becomes `//server/share/proj` rather than a POSIX-looking
+ * `/server/share/proj`.
+ */
 export function toPosixPath(path: string): string {
-  return path ? path.replace(/\\+/g, "/") : path;
+  return path ? path.replace(/\\/g, "/") : path;
 }
 
+const WINDOWS_DRIVE_LETTER = /^[a-zA-Z]:(?=\/|$)/;
+
+/**
+ * Normalizes a path for comparison purposes: forward slashes and a lower-cased Windows drive
+ * letter, so that `C:/proj` and `c:/proj` compare equal. Everything else keeps its case, because
+ * POSIX file systems are case-sensitive.
+ */
+export function comparablePath(path: string): string {
+  const posixPath = toPosixPath(path);
+  return WINDOWS_DRIVE_LETTER.test(posixPath)
+    ? posixPath[0].toLowerCase() + posixPath.slice(1)
+    : posixPath;
+}
+
+/**
+ * Returns true if `path` is `base` itself or is located inside `base`. Only Windows drive letters
+ * are compared case-insensitively.
+ */
+export function startsWithPath(path: string, base: string): boolean {
+  const comparable = comparablePath(path);
+  const comparableBase = comparablePath(base);
+  if (comparable === comparableBase) {
+    return true;
+  }
+  return comparable.startsWith(
+    comparableBase.endsWith("/") ? comparableBase : comparableBase + "/",
+  );
+}
+
+/**
+ * Returns `fullPath` relative to `base`, using forward slashes:
+ * - `definitions/a.sqlx` for a path inside `base`,
+ * - `""` when `fullPath` is `base` itself,
+ * - the normalized `fullPath` unchanged when `base` is empty or `fullPath` lies outside of it.
+ */
 export function relativePath(fullPath: string, base: string) {
   const normalizedFull = toPosixPath(fullPath);
   if (base.length === 0) {
     return normalizedFull;
   }
-  let normalizedBase = toPosixPath(base);
-  if (!normalizedBase.endsWith("/")) {
-    normalizedBase += "/";
+  const normalizedBase = toPosixPath(base);
+  if (!startsWithPath(normalizedFull, normalizedBase)) {
+    return normalizedFull;
   }
-  if (normalizedFull.toLowerCase().startsWith(normalizedBase.toLowerCase())) {
-    return normalizedFull.slice(normalizedBase.length);
-  }
-  return normalizedFull;
+  const stripped = normalizedFull.slice(normalizedBase.length);
+  return stripped.startsWith("/") ? stripped.slice(1) : stripped;
 }
 
 export function filename(path: string) {

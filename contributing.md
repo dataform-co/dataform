@@ -137,30 +137,40 @@ The Dataform CLI is supported on Windows 10 and 11 in both **Command Prompt (`cm
 
 ### Running Windows Smoke Tests
 
-You can run the automated Windows smoke test suite locally on Windows or in CI:
+The smoke test suite lives in `cli/tests/windows/smoke_test.ts` and is bundled by Bazel into a
+single file that only needs Node.js to run. Build it on Linux, macOS or WSL (or download the
+`windows-smoke-test` artifact from a CI run of `.github/workflows/test.yaml`):
+
+```bash
+bazel build //cli/tests/windows:smoke_test_bundle //packages/@dataform/cli:package_tar //packages/@dataform/core:package_tar
+# -> bazel-bin/cli/tests/windows/smoke_test_bundle.js
+```
+
+Then, on Windows, install the CLI globally and run the bundle through the shell you want to test:
 
 - **In PowerShell**:
 
   ```powershell
-  npm install -g @dataform/cli
-  node scripts/smoke_test_windows.js --shell powershell
+  npm install -g path\to\cli\package.tar.gz
+  node smoke_test_bundle.js --shell powershell --core-tarball path\to\core\package.tar.gz
   ```
 
 - **In Command Prompt (`cmd.exe`)**:
 
   ```cmd
-  npm install -g @dataform/cli
-  node scripts\smoke_test_windows.js --shell cmd
+  npm install -g path\to\cli\package.tar.gz
+  node smoke_test_bundle.js --shell cmd --core-tarball path\to\core\package.tar.gz
   ```
 
-- **Testing local package tarballs**:
-  ```powershell
-  node scripts/smoke_test_windows.js --core-tarball path/to/@dataform/core/package.tar.gz
-  ```
+Without `--core-tarball`, the `@dataform/core` version pinned by `dataform init` is installed from
+the npm registry instead. Without `--shell`, the CLI is spawned directly, which also works on
+Linux and macOS.
 
 ### Windows CI on GitHub Actions
 
-All pull requests run automated CI on `windows-latest` via `.github/workflows/test.yaml`.
+All pull requests run the `CLI smoke tests (Windows)` job on `windows-latest` via
+`.github/workflows/test.yaml`. It installs the CLI tarball built by the Linux job and runs the
+smoke tests under both PowerShell and `cmd.exe`.
 
 ## The Contribution Process
 

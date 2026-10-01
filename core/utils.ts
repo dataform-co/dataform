@@ -46,14 +46,13 @@ export function matchPatterns(patterns: string[], values: string[]) {
 export function getCallerFile(rootDir: string) {
   let lastfile: string;
   const stack = getCurrentStack();
-  const normalizedRootDir = Path.toPosixPath(rootDir);
   while (stack.length) {
     const rawNextLastfile = stack.shift().getFileName();
     if (!rawNextLastfile) {
       continue;
     }
     const nextLastfile = Path.toPosixPath(rawNextLastfile);
-    if (!nextLastfile.toLowerCase().includes(normalizedRootDir.toLowerCase())) {
+    if (!Path.startsWithPath(nextLastfile, rootDir)) {
       continue;
     }
     if (nextLastfile.includes("node_modules")) {
