@@ -1,0 +1,169 @@
+#!/bin/bash
+set -e
+
+if [[ -z "${_PR_NUMBER:-}" ]]; then
+  echo "Error: _PR_NUMBER is not set. This script is supposed to be run automatically on PR publish." 1>&2
+  exit 1
+fi
+
+if [[ -z "${_CANARY_GCP_PROJECT:-}" || -z "${_CANARY_LOCATION:-}" || -z "${_CANARY_REPO:-}" ]]; then
+  echo "Error: _CANARY_GCP_PROJECT, _CANARY_LOCATION, and _CANARY_REPO must be set." 1>&2
+  exit 1
+fi
+
+CURRENT_VERSION=$(cat version.bzl | grep DF_VERSION | awk '{ print $3 }' | sed "s/\"//g")
+TIMESTAMP=$(date +%s)
+
+# Preserve any existing pre-release suffix in DF_VERSION and append our suffix after a dot.
+if [[ "$CURRENT_VERSION" == *-* ]]; then
+  CANARY_VERSION="${CURRENT_VERSION}.pr.${_PR_NUMBER}.${TIMESTAMP}"
+else
+  CANARY_VERSION="${CURRENT_VERSION}-pr.${_PR_NUMBER}.${TIMESTAMP}"
+fi
+
+REPO_PATH="projects/${_CANARY_GCP_PROJECT}/locations/${_CANARY_LOCATION}/repositories/${_CANARY_REPO}"
+REPO_URL="https://dataform.googleapis.com/v1/${REPO_PATH}"
+PARENT_URL="https://dataform.googleapis.com/v1/projects/${_CANARY_GCP_PROJECT}/locations/${_CANARY_LOCATION}"
+WORKSPACE_ID="pr-${_PR_NUMBER}-${TIMESTAMP}"
+WORKSPACE_NAME="${REPO_PATH}/workspaces/${WORKSPACE_ID}"
+WORKSPACE_CREATED=false
+PACKAGE_PUBLISHED=false
+
+cleanup() {
+  if [[ "$WORKSPACE_CREATED" == "true" && -n "${GCP_TOKEN:-}" ]]; then
+    echo "Cleaning up temporary Dataform workspace: ${WORKSPACE_ID}"
+    curl -s -X DELETE \
+      -H "Authorization: Bearer ${GCP_TOKEN}" \
+      "${REPO_URL}/workspaces/${WORKSPACE_ID}" || true
+  fi
+  # if [[ "$PACKAGE_PUBLISHED" == "true" ]]; then
+  #   echo "Unpublishing canary version from npm: @dataform/core@${CANARY_VERSION}"
+  #   bazel run @nodejs//:npm -- unpublish "@dataform/core@${CANARY_VERSION}" --registry=https://registry.npmjs.org/ --loglevel=http || true
+  # fi
+  bazel run @nodejs//:npm config set registry https://us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/ 2>/dev/null || true
+  git restore version.bzl tools/canary-project/workflow_settings.yaml yarn.lock 2>/dev/null || true
+}
+trap cleanup EXIT
+
+echo "Setting canary version to: ${CANARY_VERSION}"
+sed -i "s/DF_VERSION = \"[^\"]*\"/DF_VERSION = \"${CANARY_VERSION}\"/" version.bzl
+sed -i "s/dataformCoreVersion: .*/dataformCoreVersion: ${CANARY_VERSION}/" tools/canary-project/workflow_settings.yaml
+
+# Install dependencies from the trusted registry.
+bazel run @nodejs//:yarn config set registry https://us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/
+bazel run //tools/registry-tools:switch_registry -- $(pwd)/yarn.lock https://us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/
+bazel run @nodejs//:yarn install -- --frozen-lockfile
+
+# Switch to public npmjs registry to publish the canary @dataform/core package under the 'canary' dist-tag.
+NEW_VERSION=$(cat version.bzl | grep DF_VERSION | awk '{ print $3 }' | sed "s/\"//g")
+echo "Publishing the canary version to npm as ${NEW_VERSION}"
+bazel run @nodejs//:npm config set registry https://registry.npmjs.org/
+bazel run packages/@dataform/core:package.publish -- --tag=canary
+PACKAGE_PUBLISHED=true
+
+if [[ -f ~/gcp_token.txt ]]; then
+  GCP_TOKEN=$(cat ~/gcp_token.txt)
+else
+  echo "Error: Unable to obtain GCP access token." 1>&2
+  exit 1
+fi
+
+echo "Ensuring Dataform repository exists: ${_CANARY_REPO}"
+CREATE_REPO_HTTP_CODE=$(curl -s -o /tmp/create_repo_response.json -w "%{http_code}" \
+  -X POST \
+  -H "Authorization: Bearer ${GCP_TOKEN}" \
+  -H "Content-Type: application/json" \
+  "${PARENT_URL}/repositories?repositoryId=${_CANARY_REPO}" \
+  -d "{}")
+# 2xx = created now; 409 = ALREADY_EXISTS from a previous run
+if [[ ("$CREATE_REPO_HTTP_CODE" -lt 200 || "$CREATE_REPO_HTTP_CODE" -ge 300) && "$CREATE_REPO_HTTP_CODE" -ne 409 ]]; then
+  echo "Error creating Dataform repository (HTTP ${CREATE_REPO_HTTP_CODE}):" 1>&2
+  cat /tmp/create_repo_response.json 1>&2
+  exit 1
+fi
+
+echo "Creating temporary Dataform workspace: ${WORKSPACE_ID}"
+CREATE_WS_HTTP_CODE=$(curl -s -o /tmp/create_ws_response.json -w "%{http_code}" \
+  -X POST \
+  -H "Authorization: Bearer ${GCP_TOKEN}" \
+  -H "Content-Type: application/json" \
+  "${REPO_URL}/workspaces?workspaceId=${WORKSPACE_ID}" \
+  -d "{}")
+
+if [[ "$CREATE_WS_HTTP_CODE" -lt 200 || "$CREATE_WS_HTTP_CODE" -ge 300 ]]; then
+  echo "Error creating Dataform workspace (HTTP ${CREATE_WS_HTTP_CODE}):" 1>&2
+  cat /tmp/create_ws_response.json 1>&2
+  exit 1
+fi
+WORKSPACE_CREATED=true
+
+echo "Uploading canary project files from tools/canary-project/..."
+while IFS= read -r -d '' file; do
+  rel_path="${file#tools/canary-project/}"
+  encoded_contents=$(base64 -w 0 "$file")
+  WRITE_HTTP_CODE=$(curl -s -o /tmp/write_file_response.json -w "%{http_code}" \
+    -X POST \
+    -H "Authorization: Bearer ${GCP_TOKEN}" \
+    -H "Content-Type: application/json" \
+    "${REPO_URL}/workspaces/${WORKSPACE_ID}:writeFile" \
+    -d "{\"path\": \"${rel_path}\", \"contents\": \"${encoded_contents}\"}")
+
+  if [[ "$WRITE_HTTP_CODE" -lt 200 || "$WRITE_HTTP_CODE" -ge 300 ]]; then
+    echo "Error uploading ${rel_path} to workspace (HTTP ${WRITE_HTTP_CODE}):" 1>&2
+    cat /tmp/write_file_response.json 1>&2
+    exit 1
+  fi
+done < <(find tools/canary-project -type f -print0)
+
+# It can take a few minutes for the canary release to make it's way to the registry after npm publish
+echo "Waiting for @dataform/core@${CANARY_VERSION} to become available on registry.npmjs.org..."
+NPM_AVAILABLE=false
+for i in {1..30}; do
+  echo "Waiting..."
+  if curl -sf "https://registry.npmjs.org/@dataform/core/${CANARY_VERSION}" >/dev/null; then
+    NPM_AVAILABLE=true
+    break
+  fi
+  sleep 10
+done
+
+if [[ "$NPM_AVAILABLE" != "true" ]]; then
+  echo "Error: Timed out waiting for @dataform/core@${CANARY_VERSION} to propagate on registry.npmjs.org." 1>&2
+  exit 1
+fi
+
+echo "Compiling canary project via dataform.googleapis.com with dataformCoreVersion=${CANARY_VERSION}..."
+COMPILE_HTTP_CODE=$(curl -s -o /tmp/compile_response.json -w "%{http_code}" \
+  -X POST \
+  -H "Authorization: Bearer ${GCP_TOKEN}" \
+  -H "Content-Type: application/json" \
+  "${REPO_URL}/compilationResults" \
+  -d "{\"workspace\": \"${WORKSPACE_NAME}\"}")
+
+if [[ "$COMPILE_HTTP_CODE" -lt 200 || "$COMPILE_HTTP_CODE" -ge 300 ]]; then
+  echo "Error calling compilationResults.create (HTTP ${COMPILE_HTTP_CODE}):" 1>&2
+  cat /tmp/compile_response.json 1>&2
+  exit 1
+fi
+
+python3 - /tmp/compile_response.json <<'EOF'
+import json
+import sys
+
+with open(sys.argv[1], "r", encoding="utf-8") as f:
+    resp = json.load(f)
+
+errors = resp.get("compilationErrors", [])
+if errors:
+    sys.stderr.write("Canary compilation failed with errors:\n")
+    for err in errors:
+        path = err.get("path", "<unknown>")
+        msg = err.get("message", "")
+        stack = err.get("stack", "")
+        sys.stderr.write(f"  - [{path}] {msg}\n")
+        if stack:
+            sys.stderr.write(f"    {stack}\n")
+    sys.exit(1)
+
+print(f"Canary compilation succeeded: {resp.get('name', 'OK')} (resolved version: {resp.get('resolvedGitCommitSha', 'workspace')})")
+EOF

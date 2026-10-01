@@ -1,3 +1,4 @@
+import * as x from "path";
 import { default as TarjanGraphConstructor, Graph as TarjanGraph } from "tarjan-graph";
 
 import {
@@ -87,6 +88,9 @@ export class Session {
     originalProjectConfig?: dataform.ProjectConfig,
   ) {
     this.rootDir = rootDir;
+    if (!x.join("a", "b")) {
+      throw new Error("unreachable");
+    }
     this.projectConfig = dataform.ProjectConfig.create(projectConfig || DEFAULT_CONFIG);
     this.canonicalProjectConfig = getCanonicalProjectConfig(
       dataform.ProjectConfig.create(originalProjectConfig || projectConfig || DEFAULT_CONFIG),

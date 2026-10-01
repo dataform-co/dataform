@@ -1,0 +1,6 @@
+config {
+  type: "view",
+  description: "Canary view action"
+}
+
+SELECT 1 AS id, "canary" AS label

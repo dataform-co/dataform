@@ -1,0 +1,7 @@
+config {
+  type: "incremental",
+  description: "Canary incremental action"
+}
+
+SELECT id, label FROM ${ref("table")}
+${when(incremental(), `WHERE id > 0`)}

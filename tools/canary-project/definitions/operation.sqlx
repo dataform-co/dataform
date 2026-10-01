@@ -1,0 +1,6 @@
+config {
+  type: "operations",
+  description: "Canary operations action"
+}
+
+SELECT 1

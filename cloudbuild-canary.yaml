@@ -1,22 +1,23 @@
 steps:
-  - name: "gcr.io/cloud-builders/gcloud"
+  - name: 'gcr.io/cloud-builders/gcloud'
     script: |
       #!/usr/bin/env bash
+      set -e
       gcloud auth print-access-token > ~/gcp_token.txt
       REPO_TOKEN="$(cat ~/gcp_token.txt)" NPM_TOKEN=$NPM_TOKEN ./scripts/create_npmrc
-    secretEnv: ["NPM_TOKEN"]
+    secretEnv: ['NPM_TOKEN']
   - name: gcr.io/cloud-builders/bazel:7.3.2
     script: |
       #!/usr/bin/env bash
-      ./scripts/run_tests_on_cloudbuild
+      ./scripts/run_canary_test
 substitutions:
-  _CANARY_GCP_PROJECT: "dataform-open-source"
-  _CANARY_LOCATION: "us-central1"
-  _CANARY_REPO: "canary-repo"
+  _CANARY_GCP_PROJECT: 'dataform-open-source'
+  _CANARY_LOCATION: 'us-central1'
+  _CANARY_REPO: 'canary-repo'
 availableSecrets:
   secretManager:
-    - versionName: projects/178487900909/secrets/npm-publish-token/versions/latest
-      env: "NPM_TOKEN"
+  - versionName: projects/178487900909/secrets/npm-publish-token/versions/latest
+    env: 'NPM_TOKEN'
 options:
   machineType: E2_HIGHCPU_8
   automapSubstitutions: true
