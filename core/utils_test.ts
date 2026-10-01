@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import {
+  getCallerFile,
   getConnectionForIcebergTable,
   getEffectiveBucketName,
   getEffectiveTableFolderRoot,
@@ -358,6 +359,30 @@ suite("Dataform Utility Validations", () => {
           validateNoMixedCompilationMode(sessionStub, "filename", "query", "where", ["op"], ["op"]),
         "Cannot mix AoT and JiT compilation in action. The following AoT properties were found: query, where, postOps, preOps",
       );
+    });
+  });
+
+  suite("getCallerFile", () => {
+    test("returns a relative POSIX path for Windows paths with differing drive-letter case", () => {
+      const globalAny = global as any;
+      const previousCurrentFile = globalAny.__dataform_current_file;
+      try {
+        globalAny.__dataform_current_file = "c:\\project\\definitions\\sub\\table.sqlx";
+        expect(getCallerFile("C:\\project")).to.equal("definitions/sub/table.sqlx");
+      } finally {
+        globalAny.__dataform_current_file = previousCurrentFile;
+      }
+    });
+
+    test("returns a relative POSIX path for Windows UNC paths", () => {
+      const globalAny = global as any;
+      const previousCurrentFile = globalAny.__dataform_current_file;
+      try {
+        globalAny.__dataform_current_file = "\\\\server\\share\\proj\\definitions\\table.sqlx";
+        expect(getCallerFile("\\\\server\\share\\proj")).to.equal("definitions/table.sqlx");
+      } finally {
+        globalAny.__dataform_current_file = previousCurrentFile;
+      }
     });
   });
 });

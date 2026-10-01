@@ -625,6 +625,29 @@ dataform.jitData("key", {test: () => {}});
       );
     });
 
+    test("getContents resolves parent-relative paths that remain inside rootDir", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
+      fs.mkdirSync(path.join(projectDir, "docs"));
+      fs.writeFileSync(path.join(projectDir, "docs", "descriptions.md"), "# Shared description");
+      writeDefinitionFile(
+        projectDir,
+        "table.sqlx",
+        `config {
+            type: "table",
+            description: getContents('../docs/descriptions.md'),
+          }
+            SELECT 1 AS test`,
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(result.compile.compiledGraph.tables[0].actionDescriptor.description).to.equal(
+        `# Shared description`,
+      );
+    });
+
     test("throws error for invalid missing markedown", () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
       writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
