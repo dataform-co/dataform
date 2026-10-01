@@ -105,8 +105,8 @@ suite("compile", () => {
         // 3.0.50 predates 3.0.57, which is when @dataform/core started reading
         // global.__dataform_current_file as a fallback in getCallerFile(). The
         // compile path text-patches the bundle to add that fallback; this test
-        // proves the patch + host-side file stack drive a real action's
-        // fileName from inside vm2 3.11.3's path-stripped sandbox.
+        // proves the patch + host-side file stack still drive a real action's
+        // fileName for such old core versions.
         fs.writeFileSync(
           path.join(projectDir, "workflow_settings.yaml"),
           dumpYaml({
