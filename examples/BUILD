@@ -26,7 +26,6 @@ ts_test_suite(
         "//packages/@dataform/cli:bundle",
         "//packages/@dataform/cli:json",
         "//packages/@dataform/cli:worker_bundle",
-        "//packages/@dataform/core:package_tar",
     ],
     deps = [
         "//:node_modules/@types/chai",

@@ -1,8 +1,6 @@
 const path = require("path");
 const webpack = require("webpack");
 
-const fs = require("fs");
-
 module.exports = (env, argv) => {
   const binDir = process.cwd().endsWith("bin")
     ? process.cwd()

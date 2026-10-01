@@ -109,7 +109,7 @@ $ bazel run -- @pnpm --dir "$PWD" add ...
 ```
 
 Additionally, installed NPM dependencies need to be added to the `deps` of `ts_library` rules by
-prefixing them with `//:node_modules//...`.
+prefixing them with `//:node_modules/...`.
 
 ## The Contribution Process
 

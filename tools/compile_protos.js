@@ -32,19 +32,19 @@ const pbtsPath = require.resolve("protobufjs-cli/pbts");
 
 // Run pbjs for CommonJS static-module programmatically in an isolated process
 const pbjsJsScript = `
-const pbjs = require("${pbjsPath.replace(/\\/g, '/')}");
+const pbjs = require(${JSON.stringify(pbjsPath)});
 const fs = require("fs");
-pbjs.main(["--target", "static-module", "--wrap", "default", "--strict-long", ${protoFiles.map(f => `"${f}"`).join(", ")}], function(err, output) {
+pbjs.main(["--target", "static-module", "--wrap", "default", "--strict-long", ...${JSON.stringify(protoFiles)}], function(err, output) {
     if (err) {
         console.error(err);
         process.exit(1);
     }
-    fs.writeFileSync("${jsOut}", output);
+    fs.writeFileSync(${JSON.stringify(jsOut)}, output);
     process.exit(0);
 });
 `;
 
-const pbjsJsRun = cp.spawnSync("node", ["-e", pbjsJsScript], { encoding: "utf-8" });
+const pbjsJsRun = cp.spawnSync(process.execPath, ["-e", pbjsJsScript], { encoding: "utf-8" });
 if (pbjsJsRun.status !== 0) {
     console.error("pbjs CommonJS failed:", pbjsJsRun.stderr || pbjsJsRun.stdout);
     process.exit(pbjsJsRun.status || 1);
@@ -52,19 +52,19 @@ if (pbjsJsRun.status !== 0) {
 
 // Run pbjs for ES6 static-module programmatically in an isolated process
 const pbjsEsmScript = `
-const pbjs = require("${pbjsPath.replace(/\\/g, '/')}");
+const pbjs = require(${JSON.stringify(pbjsPath)});
 const fs = require("fs");
-pbjs.main(["--target", "static-module", "--wrap", "es6", "--strict-long", ${protoFiles.map(f => `"${f}"`).join(", ")}], function(err, output) {
+pbjs.main(["--target", "static-module", "--wrap", "es6", "--strict-long", ...${JSON.stringify(protoFiles)}], function(err, output) {
     if (err) {
         console.error(err);
         process.exit(1);
     }
-    fs.writeFileSync("${esmJsOut}", output);
+    fs.writeFileSync(${JSON.stringify(esmJsOut)}, output);
     process.exit(0);
 });
 `;
 
-const pbjsEsmRun = cp.spawnSync("node", ["-e", pbjsEsmScript], { encoding: "utf-8" });
+const pbjsEsmRun = cp.spawnSync(process.execPath, ["-e", pbjsEsmScript], { encoding: "utf-8" });
 if (pbjsEsmRun.status !== 0) {
     console.error("pbjs ES6 failed:", pbjsEsmRun.stderr || pbjsEsmRun.stdout);
     process.exit(pbjsEsmRun.status || 1);
@@ -74,20 +74,20 @@ if (pbjsEsmRun.status !== 0) {
 // Patch 'import Long = require("long");' to 'import Long from "long";'
 // to avoid syntax errors in older rollup-plugin-dts.
 const pbtsScript = `
-const pbts = require("${pbtsPath.replace(/\\/g, '/')}");
+const pbts = require(${JSON.stringify(pbtsPath)});
 const fs = require("fs");
-pbts.main(["${jsOut}"], function(err, dtsOutput) {
+pbts.main([${JSON.stringify(jsOut)}], function(err, dtsOutput) {
     if (err) {
         console.error(err);
         process.exit(1);
     }
     const patchedDts = dtsOutput.replace(/import Long = require\\("long"\\);/g, 'import Long from "long";');
-    fs.writeFileSync("${dtsOut}", patchedDts);
+    fs.writeFileSync(${JSON.stringify(dtsOut)}, patchedDts);
     process.exit(0);
 });
 `;
 
-const pbtsRun = cp.spawnSync("node", ["-e", pbtsScript], { encoding: "utf-8" });
+const pbtsRun = cp.spawnSync(process.execPath, ["-e", pbtsScript], { encoding: "utf-8" });
 if (pbtsRun.status !== 0) {
     console.error("pbts failed:", pbtsRun.stderr || pbtsRun.stdout);
     process.exit(pbtsRun.status || 1);

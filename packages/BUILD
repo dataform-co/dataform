@@ -33,7 +33,6 @@ js_binary(
     name = "gen-package-json-bin",
     data = [
         ":gen-package-json",
-        "//:node_modules/source-map-support",
     ],
     entry_point = "gen_package_json.js",
 )

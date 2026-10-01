@@ -43,6 +43,10 @@ function fileExists(filePath: string): boolean {
 }
 
 const getBzlmodNpmPath = () => {
+  const adjacentNpm = path.join(path.dirname(process.execPath), "npm");
+  if (fileExists(adjacentNpm)) {
+    return adjacentNpm;
+  }
   if (!runfilesDir) {
     return "";
   }

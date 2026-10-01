@@ -3,7 +3,6 @@ load("@bazel_gazelle//:def.bzl", "gazelle")
 load("@npm//:defs.bzl", "npm_link_all_packages")
 load("@npm//:eslint/package_json.bzl", eslint_bin = "bin")
 load("@npm//:prettier/package_json.bzl", prettier_bin = "bin")
-load("@npm//:protobufjs-cli/package_json.bzl", "bin")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -35,25 +34,17 @@ exports_files([
     "version.bzl",
 ])
 
-bin.pbjs_binary(
-    name = "pbjs",
-    chdir = ".",
-    visibility = ["//visibility:public"],
-)
-
-bin.pbts_binary(
-    name = "pbts",
-    chdir = ".",
-    visibility = ["//visibility:public"],
-)
-
 eslint_bin.eslint_binary(
     name = "eslint",
     data = [
         "eslint.config.js",
+        "//testing:resolver-patch",
         "//:node_modules/@typescript-eslint/parser",
         "//:node_modules/eslint",
     ] + glob(["eslint-rules/**"]),
+    node_options = [
+        "--require=./testing/resolver-patch.js",
+    ],
     visibility = ["//visibility:public"],
 )
 
