@@ -1,4 +1,6 @@
 import { expect } from "chai";
+import * as fs from "fs";
+import * as path from "path";
 
 import { dataform, google } from "df/protos/ts";
 import {
@@ -652,6 +654,32 @@ dataform.jitData("key", {test: () => {}});
         `config {
             type: "table",
             description: getContents('../../description.md'),
+          }
+            SELECT 1 AS test`,
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).to.include(
+        "outside the project directory",
+      );
+    });
+
+    test("throws error for a sibling directory differing only by case", () => {
+      // With root ".../Proj", "../../proj/secret.md" must not be readable on case-sensitive
+      // file systems, even though it would be the same directory on Windows.
+      const parentDir = tmpDirFixture.createNewTmpDir();
+      const projectDir = path.join(parentDir, "Proj");
+      fs.mkdirSync(projectDir);
+      fs.mkdirSync(path.join(parentDir, "proj"));
+      fs.writeFileSync(path.join(parentDir, "proj", "secret.md"), "secret");
+      writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
+      writeDefinitionFile(
+        projectDir,
+        "table.sqlx",
+        `config {
+            type: "table",
+            description: getContents('../../proj/secret.md'),
           }
             SELECT 1 AS test`,
       );

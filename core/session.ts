@@ -104,15 +104,14 @@ export class Session {
   public getContents(filePath: string): string {
     const callerFile = utils.getCallerFile(this.rootDir);
     const callerDir = Path.dirName(callerFile);
-    const normalizedRootDir = Path.toPosixPath(this.rootDir);
-    const resolvedPath = Path.join(callerDir, filePath);
-    const leadingSlash = normalizedRootDir.startsWith("/") ? "/" : "";
-    const absolutePath = leadingSlash + Path.normalize(Path.join(normalizedRootDir, resolvedPath));
-    const rootDirWithSlash = normalizedRootDir.endsWith("/")
-      ? normalizedRootDir
-      : normalizedRootDir + "/";
+    const rootDir = Path.toPosixPath(this.rootDir);
+    // Keep the root's leading slashes verbatim: "/" for POSIX, "//" for UNC (\\server\share) and
+    // none for drive-letter paths (C:/...). Path.join and Path.normalize strip them.
+    const rootPrefix = /^\/*/.exec(rootDir)[0];
+    const absolutePath =
+      rootPrefix + Path.normalize(Path.join(rootDir.slice(rootPrefix.length), callerDir, filePath));
 
-    if (!absolutePath.toLowerCase().startsWith(rootDirWithSlash.toLowerCase())) {
+    if (!Path.startsWithPath(absolutePath, rootDir)) {
       throw new Error(`Cannot read "${filePath}": path resolves outside the project directory.`);
     }
 

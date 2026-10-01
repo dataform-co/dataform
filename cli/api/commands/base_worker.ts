@@ -32,7 +32,7 @@ export abstract class BaseWorker<TResponse, TMessage = any> {
         }
         completed = true;
         clearTimeout(timeout);
-        child.kill();
+        child.kill("SIGKILL");
         fn();
       };
 

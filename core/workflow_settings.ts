@@ -70,11 +70,7 @@ function verifyWorkflowSettingsAsJson(workflowSettingsAsJson: object): dataform.
   }
 
   // The caller of Dataform Core should ensure that the correct version is installed.
-  if (
-    !!workflowSettings.dataformCoreVersion &&
-    workflowSettings.dataformCoreVersion !== version &&
-    !workflowSettings.dataformCoreVersion.startsWith("file:")
-  ) {
+  if (!!workflowSettings.dataformCoreVersion && workflowSettings.dataformCoreVersion !== version) {
     throw Error(
       `Version mismatch: workflow settings specifies version ${workflowSettings.dataformCoreVersion}` +
         `, but ${version} was found`,
