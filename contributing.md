@@ -120,20 +120,16 @@ The Dataform CLI is supported on Windows 10 and 11 in both **Command Prompt (`cm
 ### Prerequisites & Setup
 
 - **Node.js**: Node 18+ or Node 20+ LTS is required.
-- **Git line endings**: Configure git to handle CRLF/LF cleanly:
+- **Git line endings**: This repository includes a `.gitattributes` file (`* text=auto eol=lf`) that enforces LF line endings automatically without changing your global Git configuration. For user Dataform projects checked out with CRLF (`core.autocrlf=true`), `dataform format` and `dataform format --check` are CRLF-aware and normalize line endings before comparing.
+- **Symlinks & Long Paths**: If using Bazel or deep `node_modules` hierarchies on Windows, enable [Windows Developer Mode](https://learn.microsoft.com/en-us/windows/apps/get-started/enable-your-device-for-development) or enable `core.longpaths` for this repository:
   ```bash
-  git config --global core.autocrlf true
-  ```
-  Dataform format commands (`dataform format` / `dataform format --check`) are CRLF-aware and normalize line endings before checking.
-- **Symlinks & Long Paths**: If using Bazel or deep `node_modules` hierarchies on Windows, enable [Windows Developer Mode](https://learn.microsoft.com/en-us/windows/apps/get-started/enable-your-device-for-development) or enable `core.longpaths` in Git:
-  ```bash
-  git config --global core.longpaths true
+  git config core.longpaths true
   ```
 
 ### Development & Path Conventions
 
 - **Canonical Forward Slashes**: Dataform's internal graph contracts, table names, and proto file paths require canonical POSIX forward slashes (`/`). Even on Windows, definitions must resolve as `definitions/my_table.sqlx` rather than with backslashes (`\`).
-- **Cross-Platform Path Helpers**: Use the `Path` utility in `core/path.ts` (`Path.join`, `Path.normalize`, `Path.relativePath`, `Path.dirName`, `Path.basename`). It handles mixed separators and Windows drive letters (e.g. `C:\` vs `c:/`) automatically.
+- **Cross-Platform Path Helpers**: Use the `Path` utility in `core/path.ts` (`Path.toPosixPath`, `Path.startsWithPath`, `Path.join`, `Path.normalize`, `Path.relativePath`, `Path.dirName`, `Path.basename`). It handles mixed separators and Windows drive letters (e.g. `C:\` vs `c:/`) automatically.
 
 ### Running Windows Smoke Tests
 

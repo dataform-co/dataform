@@ -40,7 +40,10 @@ interface IExecOptions {
 
 const WATCH_TIMEOUT_MILLIS = 45_000;
 const DEFAULT_TIMEOUT_MILLIS = 120_000;
-const SAMPLE_TABLE_SQLX = 'config {\n  type: "table"\n}\n\nSELECT\n  1 AS sample_col\n';
+const SAMPLE_DESCRIPTION = "Sample table description";
+const SAMPLE_TABLE_SQLX =
+  'config {\n  type: "table",\n  description: getContents("./sample_description.md")\n}\n\n' +
+  "SELECT\n  1 AS sample_col\n";
 
 // ---------------------------------------------------------------------------
 // Command line flags
@@ -293,6 +296,7 @@ async function runCliFlows(projectDir: string): Promise<void> {
   });
 
   await runTest("CLI Flow 4A: dataform compile (issue #1565)", () => {
+    fs.writeFileSync(path.join(definitionsDir, "sample_description.md"), SAMPLE_DESCRIPTION);
     fs.writeFileSync(sampleTablePath, SAMPLE_TABLE_SQLX);
     const result = execCli(["compile", projectDir]);
     checkEqual(result.status, 0, `compile must exit with 0: ${describeResult(result)}`);
@@ -307,6 +311,11 @@ async function runCliFlows(projectDir: string): Promise<void> {
     const table = graph.tables.find((t: any) => t.target && t.target.name === "sample_table");
     check(!!table, "sample_table must be in the compiled graph");
     checkEqual(table.fileName, "definitions/sample_table.sqlx", "fileName must use '/'");
+    checkEqual(
+      table.actionDescriptor && table.actionDescriptor.description,
+      SAMPLE_DESCRIPTION,
+      "getContents must resolve relative paths inside definitions/",
+    );
   });
 
   await runTest("CLI Flow 4C: dataform compile with a notebook declared in actions.yaml", () => {
@@ -328,8 +337,8 @@ async function runCliFlows(projectDir: string): Promise<void> {
       check(!!notebook, "sample_notebook must be in the compiled graph");
       checkEqual(notebook.fileName, "definitions/sample_notebook.ipynb", "fileName must use '/'");
     } finally {
-      fs.unlinkSync(actionsYamlPath);
-      fs.unlinkSync(notebookPath);
+      fs.rmSync(actionsYamlPath, { force: true });
+      fs.rmSync(notebookPath, { force: true });
     }
   });
 
@@ -355,7 +364,9 @@ async function runCliFlows(projectDir: string): Promise<void> {
         finished = true;
         clearTimeout(timer);
         child.kill();
-        fs.writeFileSync(sampleTablePath, SAMPLE_TABLE_SQLX);
+        if (changeWritten) {
+          fs.writeFileSync(sampleTablePath, SAMPLE_TABLE_SQLX);
+        }
         if (error) {
           reject(error);
         } else {
@@ -412,7 +423,7 @@ async function runCliFlows(projectDir: string): Promise<void> {
         "execution graph must include sample_operation",
       );
     } finally {
-      fs.unlinkSync(operationPath);
+      fs.rmSync(operationPath, { force: true });
     }
   });
 
@@ -432,15 +443,24 @@ async function runCliFlows(projectDir: string): Promise<void> {
       const result = execCli(["test", projectDir], { timeoutMillis: 60_000 });
       checkIncludes(result.stdout, "Running 1 unit tests...", "test must discover the unit test");
     } finally {
-      fs.unlinkSync(testPath);
+      fs.rmSync(testPath, { force: true });
     }
   });
 
   await runTest("CLI Flow 7: dataform format and --check with CRLF line endings", () => {
     const filePath = path.join(definitionsDir, "to_format.sqlx");
+    // Pass the relative path with the OS separator ("definitions\to_format.sqlx" on Windows) to
+    // verify that `--actions` treats "\" as a path separator rather than a glob escape on Windows.
+    const relativeActionPath = path.join("definitions", "to_format.sqlx");
     try {
       fs.writeFileSync(filePath, 'config {    type:   "table"   }   SELECT   1  AS  num');
-      const unformattedCheck = execCli(["format", projectDir, "--check"]);
+      const unformattedCheck = execCli([
+        "format",
+        projectDir,
+        "--check",
+        "--actions",
+        relativeActionPath,
+      ]);
       checkEqual(
         unformattedCheck.status,
         1,
@@ -448,18 +468,18 @@ async function runCliFlows(projectDir: string): Promise<void> {
       );
       checkIncludes(unformattedCheck.stderr, "to_format.sqlx", "--check must list the file");
 
-      const format = execCli(["format", projectDir]);
+      const format = execCli(["format", projectDir, "--actions", relativeActionPath]);
       checkEqual(format.status, 0, `format must exit with 0: ${describeResult(format)}`);
       const formatted = fs.readFileSync(filePath, "utf8");
       check(!formatted.includes("\r\n"), "format must write LF line endings");
 
       // The same formatted content checked out with CRLF (git core.autocrlf=true) must pass.
       fs.writeFileSync(filePath, formatted.replace(/\n/g, "\r\n"));
-      const crlfCheck = execCli(["format", projectDir, "--check"]);
+      const crlfCheck = execCli(["format", projectDir, "--check", "--actions", relativeActionPath]);
       checkEqual(crlfCheck.status, 0, `--check must accept CRLF: ${describeResult(crlfCheck)}`);
       checkIncludes(crlfCheck.stdout, "All files are formatted correctly", "--check must pass");
     } finally {
-      fs.unlinkSync(filePath);
+      fs.rmSync(filePath, { force: true });
     }
   });
 

@@ -28,13 +28,12 @@ export function comparablePath(path: string): string {
  * are compared case-insensitively.
  */
 export function startsWithPath(path: string, base: string): boolean {
-  const comparable = comparablePath(path);
-  const comparableBase = comparablePath(base);
-  if (comparable === comparableBase) {
-    return true;
+  if (!path || !base) {
+    return false;
   }
-  return comparable.startsWith(
-    comparableBase.endsWith("/") ? comparableBase : comparableBase + "/",
+  const withTrailingSlash = (p: string) => (p.endsWith("/") ? p : p + "/");
+  return withTrailingSlash(comparablePath(path)).startsWith(
+    withTrailingSlash(comparablePath(base)),
   );
 }
 
@@ -64,13 +63,19 @@ export function filename(path: string) {
 export function basename(path: string) {
   const f = filename(path);
   const dotIndex = f.lastIndexOf(".");
-  return dotIndex === -1 ? f : f.substring(0, dotIndex);
+  return dotIndex <= 0 ? f : f.substring(0, dotIndex);
 }
 
 export function dirName(fullPath: string) {
   const normalized = toPosixPath(fullPath);
   const lastSlash = normalized.lastIndexOf("/");
-  return lastSlash === -1 ? "" : normalized.slice(0, lastSlash);
+  if (lastSlash === -1) {
+    return "";
+  }
+  if (lastSlash === 0 || /^[a-zA-Z]:$/.test(normalized.slice(0, lastSlash))) {
+    return normalized.slice(0, lastSlash + 1);
+  }
+  return normalized.slice(0, lastSlash);
 }
 
 export function join(...paths: string[]) {
@@ -96,7 +101,7 @@ export function escapedBasename(path: string) {
 export function fileExtension(fullPath: string) {
   const f = filename(fullPath);
   const dotIndex = f.lastIndexOf(".");
-  return dotIndex === -1 ? "" : f.slice(dotIndex + 1);
+  return dotIndex <= 0 ? "" : f.slice(dotIndex + 1);
 }
 
 export function normalize(path: string) {

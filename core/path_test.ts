@@ -38,10 +38,13 @@ suite("path utils", () => {
     expect(Path.startsWithPath("/tmp/Proj/definitions/a.sqlx", "/tmp/Proj")).equals(true);
     expect(Path.startsWithPath("/tmp/Proj", "/tmp/Proj")).equals(true);
     expect(Path.startsWithPath("/tmp/Proj/", "/tmp/Proj")).equals(true);
+    expect(Path.startsWithPath("/tmp/Proj", "/tmp/Proj/")).equals(true);
     expect(Path.startsWithPath("/tmp/Proj/a.sqlx", "/tmp/Proj/")).equals(true);
     expect(Path.startsWithPath("/tmp/proj/secret.json", "/tmp/Proj")).equals(false);
     expect(Path.startsWithPath("/tmp/Projects/a.sqlx", "/tmp/Proj")).equals(false);
     expect(Path.startsWithPath("/other/a.sqlx", "/tmp/Proj")).equals(false);
+    expect(Path.startsWithPath("/tmp/Proj", "")).equals(false);
+    expect(Path.startsWithPath("", "/tmp/Proj")).equals(false);
     expect(Path.startsWithPath("c:\\proj\\a.sqlx", "C:/proj")).equals(true);
     expect(Path.startsWithPath("C:/proj/a.sqlx", "c:\\proj")).equals(true);
     expect(Path.startsWithPath("C:/Proj/a.sqlx", "C:/proj")).equals(false);
@@ -69,12 +72,18 @@ suite("path utils", () => {
     expect(Path.basename("C:\\Users\\runner\\project\\definitions\\table.sqlx")).equals("table");
     expect(Path.basename("no_ext")).equals("no_ext");
     expect(Path.basename("multi.dot.name.sqlx")).equals("multi.dot.name");
+    expect(Path.basename(".gitignore")).equals(".gitignore");
+    expect(Path.basename("definitions/.gitignore")).equals(".gitignore");
+    expect(Path.basename(".df-credentials.json")).equals(".df-credentials");
   });
 
   test("dirName extracts directory path with POSIX and Windows slashes", () => {
     expect(Path.dirName("definitions/table.sqlx")).equals("definitions");
     expect(Path.dirName("definitions\\table.sqlx")).equals("definitions");
     expect(Path.dirName("C:\\project\\definitions\\table.sqlx")).equals("C:/project/definitions");
+    expect(Path.dirName("/table.sqlx")).equals("/");
+    expect(Path.dirName("C:\\table.sqlx")).equals("C:/");
+    expect(Path.dirName("C:/table.sqlx")).equals("C:/");
     expect(Path.dirName("table.sqlx")).equals("");
   });
 
@@ -109,6 +118,7 @@ suite("path utils", () => {
   test("relativePath returns empty string for the base itself and the full path when outside", () => {
     expect(Path.relativePath("/home/alice", "/home/alice")).equals("");
     expect(Path.relativePath("/home/alice/", "/home/alice")).equals("");
+    expect(Path.relativePath("/home/alice", "/home/alice/")).equals("");
     expect(Path.relativePath("C:\\project", "c:/project")).equals("");
     expect(Path.relativePath("/other/z.sqlx", "/home/alice")).equals("/other/z.sqlx");
     expect(Path.relativePath("/home/alice-other/z.sqlx", "/home/alice")).equals(
@@ -126,6 +136,9 @@ suite("path utils", () => {
     expect(Path.fileExtension("definitions/file.sqlx")).equals("sqlx");
     expect(Path.fileExtension("definitions\\file.sqlx")).equals("sqlx");
     expect(Path.fileExtension("no_extension")).equals("");
+    expect(Path.fileExtension(".gitignore")).equals("");
+    expect(Path.fileExtension("definitions/.gitignore")).equals("");
+    expect(Path.fileExtension(".df-credentials.json")).equals("json");
   });
 
   test("normalize handles both slash types and dot navigation", () => {
