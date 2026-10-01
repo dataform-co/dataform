@@ -58,9 +58,7 @@ ts_test_suite(
         "dbadapters/bigquery_test.ts",
         "execution_sql_test.ts",
     ] + glob(["lineage/*_test.ts"]),
-    data = [
-        "//packages/@dataform/core:package_tar",
-    ] + glob(["goldens/**"]),
+    data = glob(["goldens/**"]),
     deps = [
         ":api",
         "//cli/api/lineage/testing",

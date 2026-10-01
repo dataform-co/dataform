@@ -1,8 +1,6 @@
 #!/bin/bash
 set -e
 
-bazel run -- @pnpm --dir "$PWD" install --frozen-lockfile
-
 # Run lint and format checks
 # Need origin/main to check which files to format
 if [ "$(git rev-parse --is-shallow-repository)" = "true" ]; then

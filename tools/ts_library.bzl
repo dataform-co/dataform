@@ -8,7 +8,11 @@ def _ts_library_forwarder_impl(ctx):
             if f.extension == "ts" or f.path.endswith(".d.ts") or f.path.endswith(".d.ts.map"):
                 dts_files.append(f)
 
-    runfiles = ctx.runfiles()
+    extra_default_files = []
+    for f in ctx.attr.extra_files:
+        extra_default_files.extend(f[DefaultInfo].files.to_list())
+
+    runfiles = ctx.runfiles(files = extra_default_files)
     for dep in ctx.attr.deps:
         runfiles = runfiles.merge(dep[DefaultInfo].default_runfiles)
     for f in ctx.attr.extra_files:
@@ -16,10 +20,9 @@ def _ts_library_forwarder_impl(ctx):
 
     js_info = ctx.attr.deps[0][JsInfo]
     esm_files = []
-    for f in ctx.attr.extra_files:
-        for file in f[DefaultInfo].files.to_list():
-            if file.extension == "mjs" or file.path.endswith(".mjs.map") or file.extension == "js" or file.path.endswith(".js.map") or file.extension == "json":
-                esm_files.append(file)
+    for file in extra_default_files:
+        if file.extension == "mjs" or file.path.endswith(".mjs.map") or file.extension == "js" or file.path.endswith(".js.map") or file.extension == "json":
+            esm_files.append(file)
 
     new_js_info = JsInfo(
         target = js_info.target if hasattr(js_info, "target") else ctx.label,
@@ -50,10 +53,6 @@ _ts_library_forwarder = rule(
 def ts_library(name, srcs = [], **kwargs):
     ts_target_name = name + "_ts_project"
     ts_esm_target_name = name + "_ts_project_esm"
-
-    if "module_name" not in kwargs:
-        package = native.package_name()
-        kwargs["module_name"] = "df/" + package if package else "df"
 
     # Pop legacy rules_nodejs-specific attributes that ts_project doesn't accept
     kwargs.pop("devmode_target", None)

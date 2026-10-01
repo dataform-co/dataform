@@ -12,7 +12,6 @@ js_library(
     name = "resolver-patch",
     srcs = ["resolver-patch.js"],
     visibility = ["//visibility:public"],
-    testonly = True,
 )
 
 ts_library(

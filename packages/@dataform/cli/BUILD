@@ -26,14 +26,11 @@ ts_library(
 
 js_binary(
     name = "bin",
-    testonly = True,
-    chdir = "../../..",
     data = [
         "bin_loader.js",
         ":cli",
-        ":register_loader.js",
-        "//:node_modules/source-map-support",
         "//cli/vm:bazel_compile_loader",
+        "//cli/vm:bazel_jit_worker_loader",
     ],
     entry_point = "bin_loader.js",
 )

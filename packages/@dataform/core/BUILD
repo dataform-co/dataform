@@ -120,6 +120,5 @@ pkg_npm_tar(
         ":extension_proto_with_license",
         ":jit_proto_with_license",
         ":package.json",
-        "//:version.bzl",
     ],
 )
