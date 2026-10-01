@@ -16,7 +16,7 @@ export abstract class BaseWorker<TResponse, TMessage = any> {
   ): Promise<TResponse> {
     const forkScript = this.resolveScript();
     const child = fork(forkScript, [], {
-      stdio: [0, 1, 2, "ipc", "pipe"],
+      stdio: [0, 1, 2, "ipc"],
     });
 
     return new Promise((resolve, reject) => {

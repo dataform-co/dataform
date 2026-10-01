@@ -94,6 +94,7 @@ ts_test_suite(
         "main_session_test.ts",
         "main_sqlx_chars_test.ts",
         "main_workflow_settings_test.ts",
+        "path_test.ts",
         "utils_test.ts",
         "workflow_settings_test.ts",
     ],

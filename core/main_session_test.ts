@@ -283,6 +283,27 @@ actions:
     ]);
   });
 
+  test("backslash file paths in the compile config are normalized to forward slashes", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
+    writeDefinitionFile(projectDir, "a.sqlx", `config { type: "table" } SELECT 1 AS test`);
+    const coreExecutionRequest = dataform.CoreExecutionRequest.create({
+      compile: {
+        compileConfig: {
+          projectDir,
+          filePaths: ["definitions\\a.sqlx"],
+        },
+      },
+    });
+
+    const result = runMainInVm(coreExecutionRequest);
+
+    expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+    expect(result.compile.compiledGraph.tables.map((table) => table.fileName)).deep.equals([
+      "definitions/a.sqlx",
+    ]);
+  });
+
   test("fails when non-unique target", () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
     writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
