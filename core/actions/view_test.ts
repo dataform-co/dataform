@@ -87,6 +87,7 @@ actions:
     dependOnDependencyAssertions: true,
     hermetic: true,
     reservation: "reservation",
+    jobLabels: {"job_key": "job_val"},
     ${exampleBuiltInAssertions.inputAssertionBlock}
     metadata: {
         overview: "view overview",
@@ -165,6 +166,9 @@ SELECT 1`,
             actionDescriptor: {
               ...exampleActionDescriptor.outputActionDescriptor,
               reservation: "reservation",
+              jobLabels: {
+                job_key: "job_val",
+              },
               // sqlxConfig.bigquery.labels are placed as bigqueryLabels.
               bigqueryLabels: {
                 key: "val",
@@ -257,6 +261,8 @@ actions:
 ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
     hermetic: true
     reservation: reservation
+    jobLabels:
+      job_key: job_val
 `,
     );
 
@@ -306,6 +312,9 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
           },
           description: "description",
           reservation: "reservation",
+          jobLabels: {
+            job_key: "job_val",
+          },
         },
         materialized: true,
       },

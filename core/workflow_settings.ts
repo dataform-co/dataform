@@ -2,6 +2,7 @@ import { YAMLException } from "js-yaml";
 
 import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { INVALID_YAML_ERROR_STRING } from "df/core/compilers";
+import { validateJobLabels } from "df/core/utils";
 import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
 
@@ -33,9 +34,16 @@ export function readWorkflowSettings(failIfMissing: boolean = true): dataform.Pr
   if (dataformJson) {
     // Dataform JSON used the compiled graph's config proto, rather than workflow settings.
     try {
-      return dataform.ProjectConfig.create(
+      const projectConfig = dataform.ProjectConfig.create(
         verifyObjectMatchesProto(dataform.ProjectConfig, dataformJson),
       );
+      if (
+        projectConfig.defaultJobLabels &&
+        Object.keys(projectConfig.defaultJobLabels).length > 0
+      ) {
+        validateJobLabels(projectConfig.defaultJobLabels, "defaultJobLabels");
+      }
+      return projectConfig;
     } catch (e) {
       if (e instanceof ReferenceError) {
         throw ReferenceError(`Dataform json error: ${e.message}`);
@@ -185,6 +193,13 @@ export function workflowSettingsAsProjectConfig(
   }
   if (workflowSettings.lineage) {
     projectConfig.lineageEnabled = workflowSettings.lineage.enabled;
+  }
+  if (
+    workflowSettings.defaultJobLabels &&
+    Object.keys(workflowSettings.defaultJobLabels).length > 0
+  ) {
+    validateJobLabels(workflowSettings.defaultJobLabels, "defaultJobLabels");
+    projectConfig.defaultJobLabels = workflowSettings.defaultJobLabels;
   }
   projectConfig.warehouse = "bigquery";
   return projectConfig;

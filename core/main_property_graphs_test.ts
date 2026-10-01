@@ -1586,6 +1586,72 @@ entities:
         },
       ],
     },
+    {
+      testName: "graph.yaml job_labels and defaultJobLabels merge and preserve snake_case keys",
+      workflowSettings: `
+defaultProject: defaultProject
+defaultDataset: defaultDataset
+defaultLocation: US
+defaultJobLabels:
+  env: dev
+  team_name: graph_team
+`,
+      definitionFiles: [
+        {
+          name: "graph.yaml",
+          contents: `
+name: LabeledGraph
+job_labels:
+  env: prod
+  cost_center: finance
+entities:
+- name: Customer
+  dataSourceString: defaultProject.defaultDataset.customers
+  keys:
+  - id
+`,
+        },
+      ],
+      expectedPropertyGraphs: [
+        {
+          target: {
+            schema: "defaultDataset",
+            name: "LabeledGraph",
+            database: "defaultProject",
+          },
+          canonicalTarget: {
+            schema: "defaultDataset",
+            name: "LabeledGraph",
+            database: "defaultProject",
+          },
+          fileName: "definitions/graph.yaml",
+          description: "",
+          disabled: false,
+          actionDescriptor: {
+            jobLabels: {
+              env: "prod",
+              team_name: "graph_team",
+              cost_center: "finance",
+            },
+          },
+          entities: [
+            {
+              name: "Customer",
+              dataSource: {
+                schema: "defaultDataset",
+                name: "customers",
+                database: "defaultProject",
+              },
+              keys: ["id"],
+            },
+          ],
+          graphBody:
+            "NODE TABLES (\n" +
+            "  `defaultProject.defaultDataset.customers` AS Customer KEY (id)\n" +
+            ")",
+        },
+      ],
+    },
   ];
 
   testCases.forEach((testParameters) => {

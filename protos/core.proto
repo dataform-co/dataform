@@ -42,6 +42,8 @@ message ProjectConfig {
 
   optional bool lineage_enabled = 25;
 
+  map<string, string> default_job_labels = 26;
+
   reserved 3, 4, 6, 8, 10, 12, 13;
 }
 
@@ -153,6 +155,7 @@ message ActionDescriptor {
   Metadata metadata = 4;
   ActionCompilationMode compilation_mode = 5;
   string reservation = 6;
+  map<string, string> job_labels = 7;
 }
 
 message Metadata {
@@ -345,6 +348,8 @@ message Test {
   Target canonical_target = 8;
 
   repeated Target dependency_targets = 9;
+
+  ActionDescriptor action_descriptor = 11;
 }
 
 message Notebook {
@@ -414,6 +419,8 @@ message DataPreparation {
 
   LoadConfiguration load = 16;
 
+  ActionDescriptor action_descriptor = 17;
+
   reserved 7, 10;
 }
 
@@ -449,6 +456,7 @@ message PropertyGraph {
   string graph_body = 8;
   bool disabled = 9;
   repeated string tags = 10;
+  ActionDescriptor action_descriptor = 11;
 }
 
 message GraphEntity {

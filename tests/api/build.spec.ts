@@ -66,6 +66,13 @@ suite("@dataform/api/build", () => {
         },
       ],
       assertions: [{ target: { schema: "schema", name: "e" } }],
+      propertyGraphs: [
+        {
+          target: { database: "db", schema: "schema", name: "f" },
+          graphBody: "NODE TABLES (`db.schema.a` AS A KEY (id))",
+          actionDescriptor: { jobLabels: { env: "prod" } },
+        },
+      ],
     });
 
     const builder = new Builder(graph, {}, TEST_STATE);
@@ -92,6 +99,14 @@ suite("@dataform/api/build", () => {
         equals(dataform.Target, item.target, a.target),
       );
       expect(action).to.include({ type: "assertion" });
+    });
+
+    graph.propertyGraphs.forEach((pg: dataform.IPropertyGraph) => {
+      const action = executedGraph.actions.find((item) =>
+        equals(dataform.Target, item.target, pg.target),
+      );
+      expect(action).to.include({ type: "propertyGraph" });
+      expect(action?.actionDescriptor?.jobLabels).to.deep.equal({ env: "prod" });
     });
   });
 
