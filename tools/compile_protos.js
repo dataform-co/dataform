@@ -1,5 +1,4 @@
 const cp = require("child_process");
-const fs = require("fs");
 const path = require("path");
 
 const argv = require("minimist")(process.argv.slice(2));
@@ -7,14 +6,9 @@ const argv = require("minimist")(process.argv.slice(2));
 const bazelBinDir = process.env.BAZEL_BINDIR;
 
 function resolvePath(p) {
-  if (p && bazelBinDir && p.startsWith(bazelBinDir)) {
-    let relativePath = p.substring(bazelBinDir.length);
-    if (relativePath.startsWith("/")) {
-      relativePath = relativePath.substring(1);
-    }
-    return relativePath;
-  }
-  return p;
+  if (!p || !bazelBinDir) return p;
+  const rel = path.relative(bazelBinDir, p);
+  return rel.startsWith("..") || path.isAbsolute(rel) ? p : rel;
 }
 
 const jsOut = resolvePath(argv["js-out"]);
@@ -23,8 +17,10 @@ const dtsOut = resolvePath(argv["dts-out"]);
 const protoFiles = argv._.map(resolvePath);
 
 if (!jsOut || !esmJsOut || !dtsOut || protoFiles.length === 0) {
-    console.error("Usage: node compile_protos.js --js-out <path> --esm-js-out <path> --dts-out <path> <proto_files...>");
-    process.exit(1);
+  console.error(
+    "Usage: node compile_protos.js --js-out <path> --esm-js-out <path> --dts-out <path> <proto_files...>",
+  );
+  process.exit(1);
 }
 
 const pbjsPath = require.resolve("protobufjs-cli/pbjs");
@@ -46,8 +42,8 @@ pbjs.main(["--target", "static-module", "--wrap", "default", "--strict-long", ..
 
 const pbjsJsRun = cp.spawnSync(process.execPath, ["-e", pbjsJsScript], { encoding: "utf-8" });
 if (pbjsJsRun.status !== 0) {
-    console.error("pbjs CommonJS failed:", pbjsJsRun.stderr || pbjsJsRun.stdout);
-    process.exit(pbjsJsRun.status || 1);
+  console.error("pbjs CommonJS failed:", pbjsJsRun.stderr || pbjsJsRun.stdout);
+  process.exit(pbjsJsRun.status || 1);
 }
 
 // Run pbjs for ES6 static-module programmatically in an isolated process
@@ -66,8 +62,8 @@ pbjs.main(["--target", "static-module", "--wrap", "es6", "--strict-long", ...${J
 
 const pbjsEsmRun = cp.spawnSync(process.execPath, ["-e", pbjsEsmScript], { encoding: "utf-8" });
 if (pbjsEsmRun.status !== 0) {
-    console.error("pbjs ES6 failed:", pbjsEsmRun.stderr || pbjsEsmRun.stdout);
-    process.exit(pbjsEsmRun.status || 1);
+  console.error("pbjs ES6 failed:", pbjsEsmRun.stderr || pbjsEsmRun.stdout);
+  process.exit(pbjsEsmRun.status || 1);
 }
 
 // Run pbts programmatically in an isolated process
@@ -89,8 +85,8 @@ pbts.main([${JSON.stringify(jsOut)}], function(err, dtsOutput) {
 
 const pbtsRun = cp.spawnSync(process.execPath, ["-e", pbtsScript], { encoding: "utf-8" });
 if (pbtsRun.status !== 0) {
-    console.error("pbts failed:", pbtsRun.stderr || pbtsRun.stdout);
-    process.exit(pbtsRun.status || 1);
+  console.error("pbts failed:", pbtsRun.stderr || pbtsRun.stdout);
+  process.exit(pbtsRun.status || 1);
 }
 
 console.log("Successfully generated proto JS, ESM, and typings via isolated child processes!");

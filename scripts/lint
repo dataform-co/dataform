@@ -2,10 +2,9 @@
 set -e
 
 # Run eslint.
-bazel build //:eslint && BAZEL_BINDIR=. ./bazel-bin/eslint_/eslint '**/*.ts'
+bazel run //:eslint -- '**/*.ts'
 
 # Run prettier on .ts files changed since the branching point
 BASE_REF=$(git rev-parse --verify --quiet upstream/main || echo origin/main)
-bazel build //:prettier
 git diff -z --name-only --diff-filter=ACMR "$(git merge-base $BASE_REF HEAD)" -- '*.ts' \
-  | xargs -0 -r env BAZEL_BINDIR=. ./bazel-bin/prettier_/prettier --ignore-path .prettierignore --check
+  | xargs -0 -r bazel run //:prettier -- --ignore-path .prettierignore --check

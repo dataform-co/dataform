@@ -2,7 +2,7 @@
 set -e
 
 # Run eslint.
-bazel build //:eslint && BAZEL_BINDIR=. ./bazel-bin/eslint_/eslint '**/*.ts'
+bazel run //:eslint -- '**/*.ts'
 
 # Run integration tests
 bazel test ... \

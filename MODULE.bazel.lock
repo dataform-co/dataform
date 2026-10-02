@@ -110,7 +110,7 @@
   "moduleExtensions": {
     "//tools:node_extension.bzl%node_ext": {
       "general": {
-        "bzlTransitiveDigest": "E66sFxkXRi0qJK3tyjaIjetpGyka9woZZFUWjj8/hTw=",
+        "bzlTransitiveDigest": "0hlttzaz659VyuPoAOAibcjcc6GkU+QQr13eKyWLNww=",
         "usagesDigest": "Av6UyMhJt65LNphW9Nh4x1pHtOXvxiDwKkUO2sGZbtU=",
         "recordedFileInputs": {},
         "recordedDirentsInputs": {},
@@ -147,7 +147,7 @@
                 "24.13.0-linux_arm64": [
                   "node-v24.13.0-linux-arm64.tar.xz",
                   "node-v24.13.0-linux-arm64",
-                  "e798599612f4bb71333a3397ab0d095fd62214e115aea45aa858a145fc72d67e"
+                  "aa881151bd0f9f154a0424dd60a72e9ce10672619121658c278a24327ef46831"
                 ],
                 "24.13.0-windows_amd64": [
                   "node-v24.13.0-win-x64.zip",
@@ -187,7 +187,7 @@
                 "24.13.0-linux_arm64": [
                   "node-v24.13.0-linux-arm64.tar.xz",
                   "node-v24.13.0-linux-arm64",
-                  "e798599612f4bb71333a3397ab0d095fd62214e115aea45aa858a145fc72d67e"
+                  "aa881151bd0f9f154a0424dd60a72e9ce10672619121658c278a24327ef46831"
                 ],
                 "24.13.0-windows_amd64": [
                   "node-v24.13.0-win-x64.zip",
@@ -234,7 +234,7 @@
                 "24.13.0-linux_arm64": [
                   "node-v24.13.0-linux-arm64.tar.xz",
                   "node-v24.13.0-linux-arm64",
-                  "e798599612f4bb71333a3397ab0d095fd62214e115aea45aa858a145fc72d67e"
+                  "aa881151bd0f9f154a0424dd60a72e9ce10672619121658c278a24327ef46831"
                 ],
                 "24.13.0-windows_amd64": [
                   "node-v24.13.0-win-x64.zip",
@@ -274,7 +274,7 @@
                 "24.13.0-linux_arm64": [
                   "node-v24.13.0-linux-arm64.tar.xz",
                   "node-v24.13.0-linux-arm64",
-                  "e798599612f4bb71333a3397ab0d095fd62214e115aea45aa858a145fc72d67e"
+                  "aa881151bd0f9f154a0424dd60a72e9ce10672619121658c278a24327ef46831"
                 ],
                 "24.13.0-windows_amd64": [
                   "node-v24.13.0-win-x64.zip",
@@ -314,7 +314,7 @@
                 "24.13.0-linux_arm64": [
                   "node-v24.13.0-linux-arm64.tar.xz",
                   "node-v24.13.0-linux-arm64",
-                  "e798599612f4bb71333a3397ab0d095fd62214e115aea45aa858a145fc72d67e"
+                  "aa881151bd0f9f154a0424dd60a72e9ce10672619121658c278a24327ef46831"
                 ],
                 "24.13.0-windows_amd64": [
                   "node-v24.13.0-win-x64.zip",
@@ -354,7 +354,7 @@
                 "24.13.0-linux_arm64": [
                   "node-v24.13.0-linux-arm64.tar.xz",
                   "node-v24.13.0-linux-arm64",
-                  "e798599612f4bb71333a3397ab0d095fd62214e115aea45aa858a145fc72d67e"
+                  "aa881151bd0f9f154a0424dd60a72e9ce10672619121658c278a24327ef46831"
                 ],
                 "24.13.0-windows_amd64": [
                   "node-v24.13.0-win-x64.zip",
@@ -401,7 +401,7 @@
                 "24.13.0-linux_arm64": [
                   "node-v24.13.0-linux-arm64.tar.xz",
                   "node-v24.13.0-linux-arm64",
-                  "e798599612f4bb71333a3397ab0d095fd62214e115aea45aa858a145fc72d67e"
+                  "aa881151bd0f9f154a0424dd60a72e9ce10672619121658c278a24327ef46831"
                 ],
                 "24.13.0-windows_amd64": [
                   "node-v24.13.0-win-x64.zip",

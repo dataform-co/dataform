@@ -76,12 +76,16 @@ const checkImports = (imports) => {
             esmCandidates.push(esmPath);
           }
 
+          const parent = path.dirname(dir);
+          if (parent === dir) {
+            break;
+          }
           const base = path.basename(dir);
           if (base === "bin") {
             break;
           }
           suffix = suffix ? path.join(base, suffix) : base;
-          dir = path.dirname(dir);
+          dir = parent;
         }
 
         const allCandidates = [...esmCandidates, candidate];
