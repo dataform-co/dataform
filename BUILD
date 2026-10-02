@@ -36,6 +36,7 @@ exports_files([
 
 eslint_bin.eslint_binary(
     name = "eslint",
+    chdir = "$$BUILD_WORKSPACE_DIRECTORY",
     data = [
         "eslint.config.js",
         "//testing:resolver-patch",
@@ -50,6 +51,7 @@ eslint_bin.eslint_binary(
 
 prettier_bin.prettier_binary(
     name = "prettier",
+    chdir = "$$BUILD_WORKSPACE_DIRECTORY",
     data = [
         ".prettierignore",
         "//:node_modules/prettier",
