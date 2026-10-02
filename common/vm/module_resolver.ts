@@ -2,10 +2,12 @@
  * @fileoverview ModuleResolver maps `require()` specifiers to files for VmRunner.
  *
  * Resolution order (Node's CommonJS rules, plus a project-relative fallback):
- * - Relative and absolute specifiers resolve against the requiring file's directory.
+ * - Relative and absolute specifiers resolve against the requiring file's directory. Relative
+ *   specifiers may use Windows separators (`.\\helpers`) on any platform.
  * - Bare specifiers go through Node's node_modules lookup first (node_modules chain from the
  *   requiring file, package.json "exports"), and only then fall back to a project-relative lookup
- *   such as `require("includes/helpers")`.
+ *   such as `require("includes/helpers")`. Only node_modules directories inside the project (or an
+ *   allowed external path) are searched.
  * - For a given candidate path, a file (optionally with one of the configured extensions) wins over
  *   a directory of the same name.
  *
@@ -73,13 +75,16 @@ export class ModuleResolver {
 
   private resolveUncached(moduleName: string, fromPath: string): string {
     const parentDir = path.dirname(fromPath);
+    // Windows-style relative specifiers (".\\helpers", "..\\utils") behave like "./helpers" and
+    // "../utils" on every platform.
+    const normalizedName = moduleName.replace(/\\/g, "/");
 
     if (
-      moduleName.startsWith("./") ||
-      moduleName.startsWith("../") ||
-      path.isAbsolute(moduleName)
+      normalizedName.startsWith("./") ||
+      normalizedName.startsWith("../") ||
+      path.isAbsolute(normalizedName)
     ) {
-      const resolved = this.tryResolvePath(path.resolve(parentDir, moduleName));
+      const resolved = this.tryResolvePath(path.resolve(parentDir, normalizedName));
       if (!resolved) {
         throw moduleNotFoundError(moduleName, fromPath);
       }
@@ -87,6 +92,9 @@ export class ModuleResolver {
       return resolved;
     }
 
+    // Bare specifiers are gated before any lookup, including the project-relative fallback below:
+    // with `allowedModules` set, a project file such as <projectDir>/lodash.js must not stand in
+    // for a package that is not allowed. Relative specifiers ("./includes/helpers") are unaffected.
     if (!this.isModuleAllowed(moduleName)) {
       const err: any = new Error(`Access to module '${moduleName}' is not allowed`);
       err.code = "MODULE_NOT_FOUND";
@@ -95,34 +103,49 @@ export class ModuleResolver {
 
     // Node's node_modules lookup from the requiring file. This walks the node_modules chain (so a
     // nested dependency gets its own copy) and honours package.json "exports".
+    let resolvedInNodeModules: string | null = null;
     let nodeResolveError: Error | undefined;
-    let containmentError: Error | undefined;
     try {
-      const resolved = findInNodeModules(moduleName, parentDir);
-      if (resolved) {
-        if (this.isPathContained(resolved)) {
-          return resolved;
-        }
-        // Found only outside the project (e.g. hoisted into a parent directory). Keep looking
-        // inside the project, and report the containment violation if nothing else matches.
-        containmentError = this.outsideProjectError(moduleName);
-      }
+      resolvedInNodeModules = this.findInNodeModules(moduleName, parentDir);
     } catch (e) {
       // E.g. ERR_PACKAGE_PATH_NOT_EXPORTED; attached as `cause` if nothing else matches.
       nodeResolveError = e;
     }
+    if (resolvedInNodeModules) {
+      // A node_modules entry inside the project can still be a symlink to somewhere outside it.
+      this.assertPathContained(resolvedInNodeModules, moduleName);
+      return resolvedInNodeModules;
+    }
 
     // Fallback: project-relative bare paths, e.g. require("includes/helpers").
-    const projectRelative = this.tryResolvePath(path.resolve(this.projectDir, moduleName));
+    const projectRelative = this.tryResolvePath(path.resolve(this.projectDir, normalizedName));
     if (projectRelative) {
       this.assertPathContained(projectRelative, moduleName);
       return projectRelative;
     }
-
-    if (containmentError) {
-      throw containmentError;
-    }
     throw moduleNotFoundError(moduleName, fromPath, nodeResolveError);
+  }
+
+  /**
+   * Looks up a bare specifier in the node_modules directories above `parentDir`, using the same
+   * helpers `require.resolve()` uses internally (including package.json "exports").
+   *
+   * `Module._nodeModulePaths` walks all the way up to `/node_modules`, so the candidates are
+   * limited to directories inside the project (or an allowed external path): a package that merely
+   * happens to exist higher up on the host, e.g. in `~/node_modules`, is never picked up and
+   * resolution fails with "Cannot find module" like it would in an empty project.
+   *
+   * This deliberately skips `Module._resolveFilename`: hosts such as Bazel's require patch (and some
+   * tests) monkeypatch it to resolve against their own runfiles, and what user code can load must
+   * depend only on the project's files.
+   *
+   * @returns the resolved (real) path, or null if nothing was found.
+   */
+  private findInNodeModules(moduleName: string, parentDir: string): string | null {
+    const lookupPaths = (NodeModule._nodeModulePaths(parentDir) as string[]).filter((lookupPath) =>
+      this.isPathContained(lookupPath),
+    );
+    return NodeModule._findPath(moduleName, lookupPaths, false) || null;
   }
 
   private isModuleAllowed(moduleName: string): boolean {
@@ -207,21 +230,6 @@ export class ModuleResolver {
     }
     return null;
   }
-}
-
-/**
- * Looks up a bare specifier in the node_modules directories above `parentDir`, using the same
- * helpers `require.resolve()` uses internally (including package.json "exports").
- *
- * This deliberately skips `Module._resolveFilename`: hosts such as Bazel's require patch (and some
- * tests) monkeypatch it to resolve against their own runfiles, and what user code can load must
- * depend only on the project's files.
- *
- * @returns the resolved (real) path, or null if nothing was found.
- */
-function findInNodeModules(moduleName: string, parentDir: string): string | null {
-  const lookupPaths: string[] = NodeModule._nodeModulePaths(parentDir);
-  return NodeModule._findPath(moduleName, lookupPaths, false) || null;
 }
 
 function moduleNotFoundError(moduleName: string, fromPath: string, cause?: Error): Error {

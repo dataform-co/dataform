@@ -90,14 +90,51 @@ suite("ModuleResolver", ({ afterEach }) => {
     );
   });
 
-  test("rejects a package that only exists above the project directory", () => {
+  test("ignores packages that only exist above the project directory", () => {
     const outerDir = newProjectDir();
     const projectDir = path.join(outerDir, "project");
     fs.mkdirSync(projectDir);
     writeFile(path.join(outerDir, "node_modules", "df-test-hoisted", "index.js"), "");
 
     const resolver = new ModuleResolver({ projectDir, extensions: EXTENSIONS });
-    expect(() => resolver.resolve("df-test-hoisted", path.join(projectDir, "index.js"))).to.throw(
+    const fromPath = path.join(projectDir, "index.js");
+    let caught: any = null;
+    try {
+      resolver.resolve("df-test-hoisted", fromPath);
+    } catch (e) {
+      caught = e;
+    }
+    expect(caught).to.not.equal(null);
+    expect(caught.code).to.equal("MODULE_NOT_FOUND");
+    expect(caught.message).to.include("Cannot find module 'df-test-hoisted'");
+
+    // The ambient package does not shadow the project-relative fallback either.
+    writeFile(path.join(projectDir, "df-test-hoisted.js"), "");
+    expect(resolver.resolve("df-test-hoisted", fromPath)).to.equal(
+      path.join(projectDir, "df-test-hoisted.js"),
+    );
+  });
+
+  test("accepts Windows-style relative specifiers on any platform", () => {
+    const projectDir = newProjectDir();
+    writeFile(path.join(projectDir, "includes", "helpers.js"), "");
+    const fromPath = path.join(projectDir, "definitions", "model.js");
+    const expected = path.join(projectDir, "includes", "helpers.js");
+
+    const resolver = new ModuleResolver({ projectDir, extensions: EXTENSIONS });
+    expect(resolver.resolve("..\\includes\\helpers", fromPath)).to.equal(expected);
+    expect(resolver.resolve(".\\..\\includes\\helpers", fromPath)).to.equal(expected);
+    expect(resolver.resolve("includes\\helpers", fromPath)).to.equal(expected);
+
+    // Normalisation does not open a way out of the project directory.
+    const outsideDir = newProjectDir();
+    const secretFile = path.join(outsideDir, "secret.js");
+    fs.writeFileSync(secretFile, "");
+    const escapingSpecifier = path
+      .relative(path.dirname(fromPath), secretFile)
+      .split(path.sep)
+      .join("\\");
+    expect(() => resolver.resolve(escapingSpecifier, fromPath)).to.throw(
       /outside of project directory/,
     );
   });

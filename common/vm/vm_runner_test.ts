@@ -22,6 +22,17 @@ suite("VmRunner", ({ afterEach }) => {
     expect(result).to.deep.equal({ value: "hello" });
   });
 
+  test("returns undefined when the script returns undefined and exports nothing", () => {
+    const tmpDir = tmpDirFixture.createNewTmpDir();
+    const runner = new VmRunner({ projectDir: tmpDir });
+    expect(runner.run("return undefined;")).to.equal(undefined);
+    expect(runner.run("const unused = 1;")).to.equal(undefined);
+
+    // Populated exports still win over an undefined return value, even when empty.
+    expect(runner.run("exports.value = 1; return undefined;")).to.deep.equal({ value: 1 });
+    expect(runner.run("module.exports = {};")).to.deep.equal({});
+  });
+
   test("parses JSON files in run method when filename has .json extension", () => {
     const tmpDir = tmpDirFixture.createNewTmpDir();
     const runner = new VmRunner({ projectDir: tmpDir });

@@ -29,6 +29,10 @@ export interface VmRunnerOptions {
   /**
    * Explicit map of environment variables exposed inside the VM context as `process.env`.
    * Mutually exclusive with `envAllowlist`.
+   *
+   * When neither `env` nor `envAllowlist` is set, `process.env` inside the VM is empty.
+   * The CLI (`cli/vm/compile.ts`) relies on that default
+   * so project code never sees host credentials or API keys.
    */
   env?: Record<string, string>;
   /**
@@ -220,6 +224,7 @@ export class VmRunner {
     if (shouldCache) {
       this.moduleCache.set(filename, module);
     }
+    const initialExports = module.exports;
 
     try {
       const scopedRequire = this.createRequire(filename);
@@ -233,7 +238,16 @@ export class VmRunner {
       );
       module.loaded = true;
 
-      return isRunEntryPoint && result !== undefined ? result : module.exports;
+      if (!isRunEntryPoint) {
+        return module.exports;
+      }
+      // run() returns the script's return value. A script without one (or returning `undefined`)
+      // that populated module.exports returns those exports instead; a script that did neither
+      // returns undefined rather than the untouched empty exports object.
+      if (result !== undefined) {
+        return result;
+      }
+      return hasExports(module.exports, initialExports) ? module.exports : undefined;
     } catch (e) {
       if (shouldCache) {
         this.moduleCache.delete(filename);
@@ -265,6 +279,11 @@ function parseJson(source: string, filename: string): any {
     e.message = `${filename}: ${e.message}`;
     throw e;
   }
+}
+
+/** True if a script reassigned `module.exports` or added anything to the original object. */
+function hasExports(exports: any, initialExports: object): boolean {
+  return exports !== initialExports || Reflect.ownKeys(initialExports).length > 0;
 }
 
 function getRealPath(targetPath: string): string {
