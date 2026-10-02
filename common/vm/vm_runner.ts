@@ -20,6 +20,10 @@ export type CompilerFunction = (code: string, filePath: string) => string;
 
 export interface VmRunnerOptions {
   projectDir: string;
+  /**
+   * Extensions whose files go through `compiler`; also the probe order for extension-less
+   * requires (followed by `.js` and `.json`). Defaults to `["js", "json"]`.
+   */
   sourceExtensions?: string[];
   compiler?: CompilerFunction;
   sandbox?: Record<string, any>;
@@ -68,9 +72,9 @@ export class VmRunner {
     );
     const allExtensions = Array.from(
       new Set([
+        ...rawExtensions.map((ext) => (ext.startsWith(".") ? ext : `.${ext}`)),
         ".js",
         ".json",
-        ...rawExtensions.map((ext) => (ext.startsWith(".") ? ext : `.${ext}`)),
       ]),
     );
     this.resolver = new ModuleResolver({
@@ -206,11 +210,18 @@ export class VmRunner {
       code = this.compiler(code, filename);
     }
 
+    // Required modules run in strict mode; the entry script passed to run() does not.
+    const strict = !isRunEntryPoint;
+    if (strict) {
+      code = `"use strict";\n${code}`;
+    }
+
     const fn = vm.compileFunction(
       code,
       ["exports", "require", "module", "__filename", "__dirname"],
       {
         filename,
+        lineOffset: strict ? -1 : 0,
         parsingContext: this.context,
       },
     );
