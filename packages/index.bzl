@@ -91,6 +91,10 @@ def pkg_bundle_dts(name, deps, externals, entry_point = "index.d.ts", **kwargs):
         else:
             out_filename = out_filename + ".d.ts"
 
+    raw_entry = entry_point.lstrip(":")
+    input_path = "{}/{}".format(package, raw_entry) if package else raw_entry
+    output_path = "{}/{}".format(package, out_filename) if package else out_filename
+
     js_run_binary(
         name = name,
         tool = ":" + rollup_bin,
@@ -103,9 +107,9 @@ def pkg_bundle_dts(name, deps, externals, entry_point = "index.d.ts", **kwargs):
             "--config",
             "packages/rollup_dts.config.js",
             "--input",
-            package + "/" + entry_point,
+            input_path,
             "--file",
-            package + "/" + out_filename,
+            output_path,
             "--external",
             ",".join(externals),
         ],
@@ -130,12 +134,12 @@ def pkg_npm_tar(name, srcs = [], deps = []):
 def add_license_header_to_file(name, from_file, to_file, use_shebang = False, **kwargs):
     header = LICENSE_HEADER
     if use_shebang:
-        header = "#!/usr/bin/env node\\n" + header
+        header = "#!/usr/bin/env node\n" + header
     native.genrule(
         name = name,
         srcs = [from_file],
         outs = [to_file],
-        cmd = "echo -e '{header}' | cat - $(location {from_file}) > $(location {to_file})"
+        cmd = "printf '%s\\n' '{header}' | cat - $(location {from_file}) > $(location {to_file})"
             .format(from_file = from_file, to_file = to_file, header = header),
         **kwargs
     )
@@ -147,11 +151,11 @@ def _pkg_transitive_types_impl(ctx):
             transitive_types.append(dep[JsInfo].transitive_types)
         elif DefaultInfo in dep:
             transitive_types.append(dep[DefaultInfo].files)
-            
+
     return [
         DefaultInfo(
-            files = depset(transitive = transitive_types)
-        )
+            files = depset(transitive = transitive_types),
+        ),
     ]
 
 pkg_transitive_types = rule(
