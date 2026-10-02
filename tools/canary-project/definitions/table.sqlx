@@ -1,0 +1,6 @@
+config {
+  type: "table",
+  description: "Canary table action"
+}
+
+SELECT id, label FROM ${ref("view")}
