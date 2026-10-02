@@ -70,7 +70,7 @@ export class Session {
   // The file of the action currently being compiled by compileGraphChunk.
   // Populated only while an action's callback is running so that errors raised
   // from user code (e.g. failed refs) can be attributed without relying on
-  // getCallerFile(), which is unreliable under vm2's sandbox stack stripping.
+  // getCallerFile().
   private currentActionFile: string | undefined;
 
   constructor(
@@ -633,7 +633,7 @@ export class Session {
     actions.forEach((action) => {
       // Track the action's file so that compileError() called synchronously
       // from within the action's callback (e.g. Session.resolve) can attribute
-      // the error without depending on getCallerFile / the vm2 sandbox stack.
+      // the error without depending on getCallerFile.
       this.currentActionFile = action.getFileName() || undefined;
       try {
         const compiledChunk = action.compile();

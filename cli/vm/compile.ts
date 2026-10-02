@@ -2,9 +2,9 @@ import * as fs from "fs";
 import * as glob from "glob";
 import * as path from "path";
 import * as semver from "semver";
-import { CompilerFunction, NodeVM } from "vm2";
 
 import { encode64 } from "df/common/protos";
+import { CompilerFunction, VmRunner } from "df/common/vm/vm_runner";
 import { dataform } from "df/protos/ts";
 
 export function compile(compileConfig: dataform.ICompileConfig) {
@@ -31,14 +31,9 @@ export function compile(compileConfig: dataform.ICompileConfig) {
   // through Node's resolver inside the vm covers every install layout
   // (package.json, workflow_settings.yaml, JiT) and matches what the user's
   // code will see. require() caches the bundle so the second call is free.
-  const indexGeneratorVm = new NodeVM({
-    wrapper: "none",
-    require: {
-      context: "sandbox",
-      root: compileConfig.projectDir,
-      external: true,
-      builtin: ["path"],
-    },
+  const indexGeneratorVm = new VmRunner({
+    projectDir: compileConfig.projectDir,
+    builtinModules: ["path"],
   });
   const compiler: CompilerFunction = indexGeneratorVm.run(
     'return require("@dataform/core").compiler',
@@ -71,43 +66,35 @@ export function compile(compileConfig: dataform.ICompileConfig) {
   }
   const needsCallerFileShim = semver.lt(dataformCoreVersion, "3.0.57");
 
-  // vm2 strips file paths from V8 CallSite objects inside the sandbox, so
-  // getCallerFile() in @dataform/core needs a fallback. Track the currently
-  // executing file via a host-side stack exposed through sandbox helpers, and
-  // expose it as a getter on `global.__dataform_current_file`.
+  // @dataform/core < 3.0.57 reads global.__dataform_current_file. Track the currently
+  // executing file on a host-side stack and expose it through that getter.
   const fileStack: string[] = [];
+  const sandbox: Record<string, any> = {};
+  if (needsCallerFileShim) {
+    sandbox.__df_enter = (p: string) => {
+      fileStack.push(p);
+    };
+    sandbox.__df_exit = () => {
+      fileStack.pop();
+    };
+    sandbox.__df_current = () => (fileStack.length > 0 ? fileStack[fileStack.length - 1] : null);
+  }
 
-  // Then use vm2's native compiler integration to apply the compiler to files.
-  const userCodeVm = new NodeVM({
-    wrapper: "none",
-    sandbox: {
-      __df_enter: (p: string) => {
-        fileStack.push(p);
-      },
-      __df_exit: () => {
-        fileStack.pop();
-      },
-      __df_current: () => (fileStack.length > 0 ? fileStack[fileStack.length - 1] : null),
-    },
-    require: {
-      builtin: ["path"],
-      context: "sandbox",
-      external: true,
-      root: compileConfig.projectDir,
-      resolve: (moduleName, parentDirName) =>
-        path.join(
-          parentDirName,
-          path.relative(parentDirName, compileConfig.projectDir),
-          moduleName,
-        ),
-    },
-    sourceExtensions: ["js", "sql", "sqlx", "yaml", "yml"],
+  // Then use VmRunner to apply the compiler to files.
+  const userCodeVm = new VmRunner({
+    projectDir: compileConfig.projectDir,
+    sandbox,
+    builtinModules: ["path"],
+    sourceExtensions: ["js", "sql", "sqlx", "yaml", "yml", "ipynb", "md"],
     compiler: (code, filePath) => {
       let source = code;
       if (needsCallerFileShim && filePath === coreBundlePath) {
         source = patchOldCoreCallerFile(source);
       }
       const compiledCode = compiler(source, filePath);
+      if (!needsCallerFileShim) {
+        return compiledCode;
+      }
       return `
         __df_enter(${JSON.stringify(filePath)});
         try {
@@ -126,10 +113,14 @@ export function compile(compileConfig: dataform.ICompileConfig) {
 
   return userCodeVm.run(
     `
-      Object.defineProperty(global, '__dataform_current_file', {
+      ${
+        needsCallerFileShim
+          ? `Object.defineProperty(global, '__dataform_current_file', {
         configurable: true,
         get: function() { return __df_current(); }
-      });
+      });`
+          : ""
+      }
       ${
         hasWorkflowSettingsYaml
           ? 'global.workflowSettingsYaml = require("./workflow_settings.yaml");'
@@ -180,10 +171,8 @@ function readCliVersion(): string {
 }
 
 // @dataform/core <= 3.0.56 has no `global.__dataform_current_file` fallback in
-// getCallerFile(), so paired with CLI >= 3.0.57 (which uses vm2 with path
-// stripping) every action fails with "Unable to find valid caller file".
-// Backport the fallback by rewriting the bundle text at load time. Gated on
-// version so we never touch newer core bundles whose layout differs.
+// getCallerFile(). Backport it by rewriting the bundle text at load time. Gated
+// on version so we never touch newer core bundles whose layout differs.
 const OLD_CORE_THROW =
   'if(!t)throw new Error("Unable to find valid caller file; please report this issue.")';
 const OLD_CORE_WITH_FALLBACK =
