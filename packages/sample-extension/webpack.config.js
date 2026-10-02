@@ -1,38 +1,34 @@
 const path = require("path");
 const webpack = require("webpack");
 
-const fs = require("fs");
-
 module.exports = (env, argv) => {
-  const runfilesDir = process.env.RUNFILES;
-  let workspaceName = "df";
-  if (!fs.existsSync(path.resolve(runfilesDir, "df"))) {
-    workspaceName = "_main";
-  }
+  const binDir = process.cwd().endsWith("bin")
+    ? process.cwd()
+    : path.resolve(process.cwd(), process.env.BAZEL_BINDIR || ".");
 
   const config = {
     mode: argv.mode || "development",
-    target: 'node',
-    entry: [path.resolve(runfilesDir, workspaceName, "packages/sample-extension/index")],
+    target: "node",
+    devtool: false,
     output: {
       libraryTarget: "commonjs-module",
     },
     optimization: {
-      minimize: true
+      minimize: true,
     },
     stats: {
-      warnings: true
+      warnings: true,
     },
     resolve: {
-      extensions: [".ts", ".js", ".json"],
+      extensions: [".js", ".json"],
       alias: {
-        df: path.resolve(runfilesDir, workspaceName)
-      }
+        df: binDir,
+      },
     },
     plugins: [
       new webpack.optimize.LimitChunkCountPlugin({
-        maxChunks: 1
-      })
+        maxChunks: 1,
+      }),
     ],
   };
   return config;

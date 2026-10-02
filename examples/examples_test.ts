@@ -2,13 +2,12 @@ import { expect } from "chai";
 import { execFile } from "child_process";
 import * as fs from "fs-extra";
 
+import { cliEntryPointPath } from "df/cli/index_test_base";
 import { verifyObjectMatchesProto } from "df/common/protos";
 import { dataform } from "df/protos/ts";
 import { getProcessResult, nodePath, suite, test } from "df/testing";
 
 suite("examples", { parallel: true }, () => {
-  const cliEntryPointPath = "examples/node_modules/@dataform/cli/bundle.js";
-
   ["stackoverflow_reporter", "extreme_weather_programming"].forEach((exampleProject) => {
     test(`${exampleProject} runs`, async () => {
       // compile() calls realpath on projectDir, which would jump out of bazel's

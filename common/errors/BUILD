@@ -10,25 +10,17 @@ ts_library(
         exclude = ["*.spec.ts"],
     ),
     deps = [
-        "//:modules-fix",
     ],
 )
 
 ts_test_suite(
     name = "tests",
     srcs = glob(["*.spec.ts"]),
-    data = [
-        "@npm//source-map-support",
-    ],
-    templated_args = [
-        "--node_options=--require=source-map-support/register",
-        "--bazel_patch_module_resolver",
-    ],
     deps = [
         ":errors",
+        "//:node_modules/@types/chai",
+        "//:node_modules/@types/node",
+        "//:node_modules/chai",
         "@df//testing",
-        "@npm//@types/chai",
-        "@npm//@types/node",
-        "@npm//chai",
     ],
 )

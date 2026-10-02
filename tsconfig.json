@@ -9,6 +9,7 @@
       ]
     },
     "module": "commonjs",
+    "declaration": true,
     "noImplicitAny": true,
     "noImplicitThis": true,
     "preserveConstEnums": true,
