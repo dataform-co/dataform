@@ -135,6 +135,42 @@ defaultLocation: US
     expect(tables[0].query.trim()).to.equal("SELECT '' AS host_secret, 0 AS host_env_keys");
   });
 
+  test("compile() runs project files in strict mode", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    fs.copySync(
+      path.join(process.cwd(), "core", "node_modules"),
+      path.join(projectDir, "node_modules"),
+    );
+    fs.writeFileSync(
+      path.join(projectDir, "workflow_settings.yaml"),
+      `
+defaultProject: test-project
+defaultDataset: test-dataset
+defaultLocation: US
+`,
+    );
+    fs.mkdirSync(path.join(projectDir, "definitions"));
+    fs.writeFileSync(
+      path.join(projectDir, "definitions", "a_leaky.js"),
+      `leakedName = "leaked";
+publish("a_leaky", { type: "table" }).query("SELECT 1");`,
+    );
+    fs.writeFileSync(
+      path.join(projectDir, "definitions", "b_reader.js"),
+      `publish("b_reader", { type: "table" }).query("SELECT '" + typeof leakedName + "' AS t");`,
+    );
+
+    const response = decode64(dataform.CoreExecutionResponse, compile({ projectDir }));
+    const graph = response.compile.compiledGraph;
+
+    expect(graph.graphErrors.compilationErrors).to.have.lengthOf(1);
+    expect(graph.graphErrors.compilationErrors[0].fileName).to.equal("definitions/a_leaky.js");
+    expect(graph.graphErrors.compilationErrors[0].message).to.equal("leakedName is not defined");
+    expect(graph.tables).to.have.lengthOf(1);
+    expect(graph.tables[0].target.name).to.equal("b_reader");
+    expect(graph.tables[0].query.trim()).to.equal("SELECT 'undefined' AS t");
+  });
+
   test("handleJitRequest compiles request with local core (hasProjectLocalCore = true)", async () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
     fs.copySync(

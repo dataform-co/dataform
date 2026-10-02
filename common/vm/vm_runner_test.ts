@@ -337,7 +337,7 @@ suite("VmRunner", ({ afterEach }) => {
   test("preserves V8 CallSite file paths and line numbers in stack traces", () => {
     const tmpDir = tmpDirFixture.createNewTmpDir();
     const errorFile = path.join(tmpDir, "faulty.sqlx");
-    fs.writeFileSync(errorFile, "throw new Error('boom');");
+    fs.writeFileSync(errorFile, "const a = 1;\nconst b = 2;\n  throw new Error('boom');");
 
     const runner = new VmRunner({
       projectDir: tmpDir,
@@ -353,7 +353,67 @@ suite("VmRunner", ({ afterEach }) => {
     }
 
     expect(caughtError).to.not.equal(null);
-    expect(caughtError!.stack).to.include(errorFile);
+    expect(caughtError!.stack).to.include(`${errorFile}:3:9`);
+  });
+
+  test("loads required modules in strict mode and keeps the run() entry script sloppy", () => {
+    const tmpDir = tmpDirFixture.createNewTmpDir();
+    fs.mkdirSync(path.join(tmpDir, "includes"));
+    fs.writeFileSync(
+      path.join(tmpDir, "includes", "leaky.js"),
+      "leakedHelper = 'leaked';\nmodule.exports = { ok: true };",
+    );
+    fs.writeFileSync(path.join(tmpDir, "model.sqlx"), "undeclaredInSqlx = 1;");
+
+    const runner = new VmRunner({
+      projectDir: tmpDir,
+      sourceExtensions: ["js", "sqlx"],
+      compiler: (code) => code,
+    });
+
+    const expectReferenceError = (fn: () => void, message: string) => {
+      let caught: any = null;
+      try {
+        fn();
+      } catch (e) {
+        caught = e;
+      }
+      expect(caught).to.not.equal(null);
+      expect(caught.name).to.equal("ReferenceError");
+      expect(caught.message).to.equal(message);
+    };
+
+    expectReferenceError(
+      () => runner.run(`require("includes/leaky");`),
+      "leakedHelper is not defined",
+    );
+    expect(runner.run("return typeof leakedHelper;")).to.equal("undefined");
+    expectReferenceError(
+      () => runner.run(`require("./model.sqlx");`),
+      "undeclaredInSqlx is not defined",
+    );
+
+    expect(runner.run("entryGlobal = 'set'; return entryGlobal;")).to.equal("set");
+    expect(runner.run("return typeof entryGlobal;")).to.equal("string");
+  });
+
+  test("probes sourceExtensions before .json for extension-less requires", () => {
+    const tmpDir = tmpDirFixture.createNewTmpDir();
+    fs.writeFileSync(path.join(tmpDir, "both.js"), "module.exports = 'js';");
+    fs.writeFileSync(path.join(tmpDir, "both.sqlx"), "module.exports = 'sqlx';");
+    fs.writeFileSync(path.join(tmpDir, "both.json"), JSON.stringify({ kind: "json" }));
+    fs.writeFileSync(path.join(tmpDir, "model.sqlx"), "module.exports = 'sqlx';");
+    fs.writeFileSync(path.join(tmpDir, "model.json"), JSON.stringify({ kind: "json" }));
+
+    const runner = new VmRunner({
+      projectDir: tmpDir,
+      sourceExtensions: ["js", "sqlx"],
+      compiler: (code) => code,
+    });
+
+    expect(runner.require("./both")).to.equal("js");
+    expect(runner.require("./model")).to.equal("sqlx");
+    expect(runner.require("./model.json")).to.deep.equal({ kind: "json" });
   });
 
   test("does not let run() shadow a real project index.js", () => {
