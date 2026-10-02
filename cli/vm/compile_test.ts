@@ -98,6 +98,43 @@ actions:
     expect(notebooks[0].target.name).to.equal("test_notebook");
   });
 
+  test("compile() does not expose host environment variables to project code", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    fs.copySync(
+      path.join(process.cwd(), "core", "node_modules"),
+      path.join(projectDir, "node_modules"),
+    );
+    fs.writeFileSync(
+      path.join(projectDir, "workflow_settings.yaml"),
+      `
+defaultProject: test-project
+defaultDataset: test-dataset
+defaultLocation: US
+`,
+    );
+    fs.mkdirSync(path.join(projectDir, "definitions"));
+    fs.writeFileSync(
+      path.join(projectDir, "definitions", "env_probe.js"),
+      `publish("env_probe", { type: "table" }).query(
+        "SELECT '" + (process.env.DF_TEST_HOST_SECRET || "") + "' AS host_secret, " +
+          Object.keys(process.env).length + " AS host_env_keys"
+      );`,
+    );
+
+    process.env.DF_TEST_HOST_SECRET = "leaked";
+    let encodedResponse: string;
+    try {
+      encodedResponse = compile({ projectDir });
+    } finally {
+      delete process.env.DF_TEST_HOST_SECRET;
+    }
+
+    const response = decode64(dataform.CoreExecutionResponse, encodedResponse);
+    const tables = response.compile.compiledGraph.tables;
+    expect(tables).to.have.lengthOf(1);
+    expect(tables[0].query.trim()).to.equal("SELECT '' AS host_secret, 0 AS host_env_keys");
+  });
+
   test("handleJitRequest compiles request with local core (hasProjectLocalCore = true)", async () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
     fs.copySync(
