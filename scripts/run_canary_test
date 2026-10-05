@@ -49,28 +49,14 @@ else
   exit 1
 fi
 
-echo "Ensuring GCS bucket exists: ${_CANARY_BUCKET}"
-CREATE_BUCKET_HTTP_CODE=$(curl -s -o /tmp/create_bucket_response.json -w "%{http_code}" \
-  -X POST \
+echo "Verifying GCS bucket exists: ${_CANARY_BUCKET}"
+CHECK_BUCKET_HTTP_CODE=$(curl -s -o /tmp/check_bucket_response.json -w "%{http_code}" \
+  -X GET \
   -H "Authorization: Bearer ${GCP_TOKEN}" \
-  -H "Content-Type: application/json" \
-  "https://storage.googleapis.com/storage/v1/b?project=${_CANARY_GCP_PROJECT}" \
-  -d "{
-    \"name\": \"${_CANARY_BUCKET}\",
-    \"location\": \"${_CANARY_LOCATION}\",
-    \"lifecycle\": {
-      \"rule\": [
-        {
-          \"action\": {\"type\": \"Delete\"},
-          \"condition\": {\"age\": 1}
-        }
-      ]
-    }
-  }")
-# 2xx = created now; 409 = ALREADY_EXISTS from a previous run
-if [[ ("$CREATE_BUCKET_HTTP_CODE" -lt 200 || "$CREATE_BUCKET_HTTP_CODE" -ge 300) && "$CREATE_BUCKET_HTTP_CODE" -ne 409 ]]; then
-  echo "Error creating GCS bucket (HTTP ${CREATE_BUCKET_HTTP_CODE}):" 1>&2
-  cat /tmp/create_bucket_response.json 1>&2
+  "https://storage.googleapis.com/storage/v1/b/${_CANARY_BUCKET}")
+if [[ "$CHECK_BUCKET_HTTP_CODE" -lt 200 || "$CHECK_BUCKET_HTTP_CODE" -ge 300 ]]; then
+  echo "Error verifying GCS bucket (HTTP ${CHECK_BUCKET_HTTP_CODE}):" 1>&2
+  cat /tmp/check_bucket_response.json 1>&2
   exit 1
 fi
 
