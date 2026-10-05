@@ -200,6 +200,6 @@ if errors:
         if stack:
             sys.stderr.write(f"    {stack}\n")
     sys.exit(1)
-
+print(resp)
 print(f"Canary compilation succeeded: {resp.get('name', 'OK')} (resolved version: {resp.get('resolvedGitCommitSha', 'workspace')})")
 EOF
