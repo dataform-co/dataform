@@ -127,7 +127,7 @@ write_workspace_file() {
     -H "Authorization: Bearer ${GCP_TOKEN}" \
     -H "Content-Type: application/json" \
     "${REPO_URL}/workspaces/${WORKSPACE_ID}:writeFile" \
-    -d "{\"path\": \"${rel_path}\", \"contents\": \"${encoded_contents}\"}")
+    -d "$(jq -n --arg path "$rel_path" --arg contents "$encoded_contents" '{path:$path, contents:$contents}')")
 
   if [[ "$write_http_code" -lt 200 || "$write_http_code" -ge 300 ]]; then
     echo "Error uploading ${rel_path} to workspace (HTTP ${write_http_code}):" 1>&2
@@ -142,6 +142,16 @@ while IFS= read -r -d '' file; do
   encoded_contents=$(base64 -w 0 "$file")
   write_workspace_file "$rel_path" "$encoded_contents"
 done < <(find tools/canary-project -type f -print0)
+
+echo "Uploading workflow_settings.yaml..."
+WORKFLOW_SETTINGS_CONTENTS=$(cat <<EOF | base64 -w 0
+defaultProject: ${_CANARY_GCP_PROJECT}
+defaultLocation: ${_CANARY_LOCATION}
+defaultDataset: dataform_canary
+defaultAssertionDataset: dataform_canary_assertions
+EOF
+)
+write_workspace_file "workflow_settings.yaml" "$WORKFLOW_SETTINGS_CONTENTS"
 
 echo "Uploading package.json referencing ${TARBALL_URL}..."
 PACKAGE_JSON_CONTENTS=$(cat <<EOF | base64 -w 0
