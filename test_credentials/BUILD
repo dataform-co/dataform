@@ -1,17 +1,20 @@
-load("//tools/gcloud:secrets.bzl", "gcloud_secret_or_local")
-
 package(default_visibility = ["//visibility:public"])
 
-# The credentials from bigquery.json will be used if the file exists; otherwise the default will
-# be loaded from bigquery.json.enc.
-# You can update the default credentials for testing by:
-# * Ensuring you have the required permissions (at time of writing, you need to request a grant).
-# * Run the "scripts/update_test_credentials" script.
-gcloud_secret_or_local(
-    name = "bigquery.json",
+# Default integration test configuration using Application Default Credentials (ADC).
+# No secret key is stored here. Before running integration tests locally, authenticate with:
+#   gcloud auth application-default login
+# To override the target GCP project or location locally, create a git-ignored
+# `test_credentials/bigquery.local.json` file or set the `DATAFORM_TEST_CREDENTIALS`
+# environment variable. See contributing.md for details.
+exports_files(["bigquery.json"])
+
+filegroup(
+    name = "bigquery_credentials",
     testonly = 1,
-    ciphertext_file = ":bigquery.json.enc",
-    project = "dataform-open-source",
-    key = "dataform-builder-key",
-    keyring = "dataform-builder-keyring",
+    srcs = [
+        "bigquery.json",
+    ] + glob(
+        ["bigquery.local.json"],
+        allow_empty = True,
+    ),
 )

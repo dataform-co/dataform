@@ -1,6 +1,69 @@
 #!/bin/bash
 set -e
 
+# Resolve effective Dataform test credentials file (for optional "credentials" key override).
+CREDENTIALS_FILE="${DATAFORM_TEST_CREDENTIALS:-}"
+if [ -z "${CREDENTIALS_FILE}" ]; then
+  if [ -f "test_credentials/bigquery.local.json" ]; then
+    CREDENTIALS_FILE="test_credentials/bigquery.local.json"
+  else
+    CREDENTIALS_FILE="test_credentials/bigquery.json"
+  fi
+fi
+
+# Bridge CLOUDSDK_CONFIG for Node's google-auth-library if GOOGLE_APPLICATION_CREDENTIALS is unset.
+if [ -z "${GOOGLE_APPLICATION_CREDENTIALS:-}" ] && [ -n "${CLOUDSDK_CONFIG:-}" ]; then
+  if [ -f "${CLOUDSDK_CONFIG}/application_default_credentials.json" ]; then
+    export GOOGLE_APPLICATION_CREDENTIALS="${CLOUDSDK_CONFIG}/application_default_credentials.json"
+  fi
+fi
+
+# Verify that Application Default Credentials (or an explicit key in the credentials file) exist
+# before building and running integration tests.
+has_adc() {
+  # 1. Explicit non-empty "credentials" field in the Dataform credentials JSON file.
+  if [ -f "${CREDENTIALS_FILE}" ] && grep -Eq '"credentials"[[:space:]]*:[[:space:]]*"[^"]+"' "${CREDENTIALS_FILE}"; then
+    return 0
+  fi
+
+  # 2. GOOGLE_APPLICATION_CREDENTIALS environment variable.
+  if [ -n "${GOOGLE_APPLICATION_CREDENTIALS:-}" ]; then
+    if [ -f "${GOOGLE_APPLICATION_CREDENTIALS}" ]; then
+      return 0
+    fi
+    echo "Error: GOOGLE_APPLICATION_CREDENTIALS points to a non-existent file: ${GOOGLE_APPLICATION_CREDENTIALS}" >&2
+    return 1
+  fi
+
+  # 3. Well-known gcloud ADC file location.
+  local gcloud_adc="${CLOUDSDK_CONFIG:-${HOME:-}/.config/gcloud}/application_default_credentials.json"
+  if [ -f "${gcloud_adc}" ]; then
+    return 0
+  fi
+  if [ -n "${APPDATA:-}" ] && [ -f "${APPDATA}/gcloud/application_default_credentials.json" ]; then
+    return 0
+  fi
+
+  # 4. GCE / Cloud Build metadata server (verify a token can actually be retrieved, not just email,
+  # because environments like Cloudtop expose the metadata server without service account scopes).
+  if [ "$(echo "${METADATA_SERVER_DETECTION:-}" | tr '[:upper:]' '[:lower:]')" != "none" ]; then
+    local metadata_host="${GCE_METADATA_IP:-${GCE_METADATA_HOST:-169.254.169.254}}"
+    if command -v curl >/dev/null 2>&1; then
+      if curl -sf --max-time 1 -H "Metadata-Flavor: Google" \
+        "http://${metadata_host}/computeMetadata/v1/instance/service-accounts/default/token" >/dev/null 2>&1; then
+        return 0
+      fi
+    fi
+  fi
+
+  return 1
+}
+
+if ! has_adc; then
+  echo "Error: No Application Default Credentials found. Run \`gcloud auth application-default login\` or set GOOGLE_APPLICATION_CREDENTIALS." >&2
+  exit 1
+fi
+
 bazel run @nodejs//:yarn -- --frozen-lockfile
 
 # Run eslint.
@@ -10,4 +73,11 @@ bazel build @npm//eslint/bin:eslint && bazel-bin/external/npm/eslint/bin/eslint.
 bazel test ... \
   --test_tag_filters=integration \
   --build_tests_only \
-  --test_env=USE_CLOUD_BUILD_NETWORK=true
+  --test_env=USE_CLOUD_BUILD_NETWORK=true \
+  --test_env=HOME \
+  --test_env=APPDATA \
+  --test_env=GOOGLE_APPLICATION_CREDENTIALS \
+  --test_env=CLOUDSDK_CONFIG \
+  --test_env=GOOGLE_CLOUD_QUOTA_PROJECT \
+  --test_env=DATAFORM_TEST_CREDENTIALS \
+  "$@"

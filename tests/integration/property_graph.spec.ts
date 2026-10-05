@@ -3,7 +3,7 @@ import { randomBytes } from "crypto";
 
 import * as dfapi from "df/cli/api";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
-import { INTEGRATION_TEST_PROJECT } from "df/cli/index_test_base";
+import { getIntegrationTestCredentials, INTEGRATION_TEST_PROJECT } from "df/cli/index_test_base";
 import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
@@ -22,7 +22,7 @@ async function dropDataset(dbadapter: BigQueryDbAdapter, dataset: string) {
 }
 
 suite("@dataform/integration/property_graph", { parallel: true }, ({ before, after }) => {
-  const credentials = dfapi.credentials.read("test_credentials/bigquery.json");
+  const credentials = getIntegrationTestCredentials();
   const schemaSuffix = `e2e_${makeSuffix()}`;
   const dataset = `df_integration_test_pg_${schemaSuffix}`;
   const graphTarget = `${INTEGRATION_TEST_PROJECT}.${dataset}.${GRAPH_NAME}`;
@@ -33,7 +33,9 @@ suite("@dataform/integration/property_graph", { parallel: true }, ({ before, aft
   });
 
   after("drop dataset", async () => {
-    await dropDataset(dbadapter, dataset);
+    if (dbadapter) {
+      await dropDataset(dbadapter, dataset);
+    }
   });
 
   test("creates property graph end-to-end", { timeout: 120000 }, async () => {

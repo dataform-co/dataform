@@ -3,14 +3,14 @@ import { expect } from "chai";
 import * as dfapi from "df/cli/api";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 import { ExecutionSql } from "df/cli/api/dbadapters/execution_sql";
-import { INTEGRATION_TEST_PROJECT } from "df/cli/index_test_base";
+import { getIntegrationTestCredentials, INTEGRATION_TEST_PROJECT } from "df/cli/index_test_base";
 import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { cleanWarehouse, compile, getTableRows, keyBy } from "df/tests/integration/utils";
 
 suite("@dataform/integration/run", { parallel: true }, () => {
-  const credentials = dfapi.credentials.read("test_credentials/bigquery.json");
+  const credentials = getIntegrationTestCredentials();
   const dbadapter = new BigQueryDbAdapter(credentials);
 
   test("project e2e", { timeout: 60000 }, async () => {

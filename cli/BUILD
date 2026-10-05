@@ -60,6 +60,7 @@ ts_library(
     srcs = ["index_test_base.ts"],
     deps = [
         "//cli",
+        "//cli/api",
         "//core",
         "//protos:ts",
         "//testing",
@@ -119,7 +120,7 @@ ts_test_suite(
     data = [
         ":node_modules",
         "//packages/@dataform/core:package_tar",
-        "//test_credentials:bigquery.json",
+        "//test_credentials:bigquery_credentials",
         "@nodejs//:node",
         "@nodejs//:npm",
     ],

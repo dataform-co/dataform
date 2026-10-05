@@ -117,6 +117,13 @@ export class Suite {
     this.tests.push(newTest);
   }
 
+  public prependSetUp(newHook: Hook) {
+    this.checkMutation();
+    if (!this.setUps.some((existing) => existing.options.name === newHook.options.name)) {
+      this.setUps.unshift(newHook);
+    }
+  }
+
   private addHook(hookList: Hook[], newHook: Hook) {
     this.checkMutation();
     hookList.push(newHook);

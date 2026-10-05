@@ -3,12 +3,13 @@ import { expect } from "chai";
 import * as dfapi from "df/cli/api";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 import { ExecutionSql } from "df/cli/api/dbadapters/execution_sql";
+import { getIntegrationTestCredentials } from "df/cli/index_test_base";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { cleanWarehouse, compile } from "df/tests/integration/utils";
 
 suite("@dataform/integration/bigquery", { parallel: true }, () => {
-  const credentials = dfapi.credentials.read("test_credentials/bigquery.json");
+  const credentials = getIntegrationTestCredentials();
   const dbadapter = new BigQueryDbAdapter(credentials);
 
   test("run unit tests", async () => {

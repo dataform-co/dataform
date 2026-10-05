@@ -4,6 +4,14 @@ build --test_output=errors --action_env="GTEST_COLOR=1"
 
 build --incompatible_py3_is_default=false
 
+# Pass Application Default Credentials (ADC) and local test credential overrides into the test sandbox.
+test --test_env=HOME
+test --test_env=APPDATA
+test --test_env=GOOGLE_APPLICATION_CREDENTIALS
+test --test_env=CLOUDSDK_CONFIG
+test --test_env=GOOGLE_CLOUD_QUOTA_PROJECT
+test --test_env=DATAFORM_TEST_CREDENTIALS
+
 # This is an optimisation we used to have to speed up open source development. If open source
 # development is too slow, consider setting it back up, so that build results can be shared across
 # machines, developers, and workspaces.

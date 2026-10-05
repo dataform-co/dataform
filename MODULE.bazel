@@ -40,6 +40,3 @@ use_repo(
     "org_golang_x_text",
 )
 
-# 6. Custom gcloud SDK extension
-gcloud_sdk_ext = use_extension("//tools/gcloud:extensions.bzl", "gcloud_sdk_extension")
-use_repo(gcloud_sdk_ext, "gcloud_sdk")

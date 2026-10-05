@@ -2,14 +2,14 @@ import { expect } from "chai";
 
 import * as dfapi from "df/cli/api";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
-import { INTEGRATION_TEST_PROJECT } from "df/cli/index_test_base";
+import { getIntegrationTestCredentials, INTEGRATION_TEST_PROJECT } from "df/cli/index_test_base";
 import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 import { compile, keyBy } from "df/tests/integration/utils";
 
 suite("@dataform/integration/evaluate", () => {
-  const credentials = dfapi.credentials.read("test_credentials/bigquery.json");
+  const credentials = getIntegrationTestCredentials();
   const dbadapter = new BigQueryDbAdapter(credentials);
 
   test("evaluate from valid compiled graph as valid", async () => {
