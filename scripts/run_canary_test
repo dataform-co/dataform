@@ -6,8 +6,8 @@ if [[ -z "${_PR_NUMBER:-}" ]]; then
   _PR_NUMBER=0
 fi
 
-if [[ -z "${_CANARY_GCP_PROJECT:-}" || -z "${_CANARY_LOCATION:-}" || -z "${_CANARY_REPO:-}" || -z "${_CANARY_BUCKET:-}" ]]; then
-  echo "Error: _CANARY_GCP_PROJECT, _CANARY_LOCATION, _CANARY_REPO, and _CANARY_BUCKET must be set." 1>&2
+if [[ -z "${_CANARY_GCP_PROJECT:-}" || -z "${_CANARY_LOCATION:-}" || -z "${_CANARY_REPO:-}" || -z "${_CANARY_BUCKET:-}" || -z "${_CANARY_SERVICE_ACCOUNT:-}" ]]; then
+  echo "Error: _CANARY_GCP_PROJECT, _CANARY_LOCATION, _CANARY_REPO, _CANARY_BUCKET, and _CANARY_SERVICE_ACCOUNT must be set." 1>&2
   exit 1
 fi
 
@@ -19,7 +19,6 @@ REPO_URL="https://dataform.googleapis.com/v1/${REPO_PATH}"
 WORKSPACE_ID="pr-${_PR_NUMBER}-${TIMESTAMP}"
 WORKSPACE_CREATED=false
 TARBALL_NAME="build-${_PR_NUMBER}-${TIMESTAMP}.tar.gz"
-TARBALL_URL="https://storage.googleapis.com/${_CANARY_BUCKET}/${TARBALL_NAME}"
 
 cleanup() {
   if [[ "$WORKSPACE_CREATED" == "true" && -n "${GCP_TOKEN:-}" ]]; then
@@ -32,14 +31,18 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# Install dependencies from the trusted registry and build the Core tarball.
-bazel run @nodejs//:yarn config set registry https://us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/
-bazel run //tools/registry-tools:switch_registry -- $(pwd)/yarn.lock https://us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/
-bazel run @nodejs//:yarn install -- --frozen-lockfile
-bazel build //packages/@dataform/core:package_tar
+if command -v bazel >/dev/null 2>&1; then
+  # Install dependencies from the trusted registry and build the Core tarball.
+  bazel run @nodejs//:yarn config set registry https://us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/
+  bazel run //tools/registry-tools:switch_registry -- $(pwd)/yarn.lock https://us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/
+  bazel run @nodejs//:yarn install -- --frozen-lockfile
+  bazel build //packages/@dataform/core:package_tar
+fi
 
 if [[ -f ~/gcp_token.txt ]]; then
   GCP_TOKEN=$(cat ~/gcp_token.txt)
+elif command -v gcloud >/dev/null 2>&1; then
+  GCP_TOKEN=$(gcloud auth print-access-token)
 else
   echo "Error: Unable to obtain GCP access token." 1>&2
   exit 1
@@ -138,21 +141,24 @@ while IFS= read -r -d '' file; do
   write_workspace_file "$rel_path" "$encoded_contents"
 done < <(find tools/canary-project -type f -print0)
 
-echo "Uploading package.json referencing ${TARBALL_URL}..."
+echo "Generating V4 signed URL for gs://${_CANARY_BUCKET}/${TARBALL_NAME}..."
+SIGNED_TARBALL_URL=$(gcloud storage sign-url "gs://${_CANARY_BUCKET}/${TARBALL_NAME}" \
+  --impersonate-service-account="${_CANARY_SERVICE_ACCOUNT}" \
+  --duration=10m \
+  --region="${_CANARY_LOCATION}" \
+  --format="value(signed_url)")
+
+echo "Uploading package.json referencing signed tarball URL..."
 PACKAGE_JSON_CONTENTS=$(cat <<EOF | base64 -w 0
 {
   "name": "canary-project",
   "dependencies": {
-    "@dataform/core": "${TARBALL_URL}"
+    "@dataform/core": "${SIGNED_TARBALL_URL}"
   }
 }
 EOF
 )
 write_workspace_file "package.json" "$PACKAGE_JSON_CONTENTS"
-
-echo "Uploading .npmrc to authenticate GCS tarball download..."
-NPMRC_CONTENTS=$(printf "//storage.googleapis.com/:_authToken=%s\n" "${GCP_TOKEN}" | base64 -w 0)
-write_workspace_file ".npmrc" "$NPMRC_CONTENTS"
 
 echo "Installing NPM packages in workspace..."
 INSTALL_HTTP_CODE=$(curl -s -o /tmp/install_response.json -w "%{http_code}" \

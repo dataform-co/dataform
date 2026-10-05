@@ -22,5 +22,5 @@ git rev-parse --verify --quiet origin/main >/dev/null || { echo "origin/main una
 # Run integration tests
 ./scripts/run_integration_tests
 
-# Run GCP canary project compile
-./scripts/run_canary_test
+# Build Core tarball for GCP canary test
+bazel build //packages/@dataform/core:package_tar
