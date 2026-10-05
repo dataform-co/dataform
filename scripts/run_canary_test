@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 # In case script is run directly
 if [[ -z "${_PR_NUMBER:-}" ]]; then
@@ -33,9 +33,8 @@ cleanup() {
 trap cleanup EXIT
 
 # Install dependencies from the trusted registry and build the Core tarball.
-bazel run @nodejs//:yarn config set registry https://us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/
 bazel run //tools/registry-tools:switch_registry -- $(pwd)/yarn.lock https://us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/
-bazel run @nodejs//:yarn install -- --frozen-lockfile
+bazel run @nodejs//:yarn install -- --frozen-lockfile --registry https://us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/
 
 CURRENT_VERSION=$(grep -oP '(?<=DF_VERSION = ")[^"]+' version.bzl)
 CANARY_VERSION="${CURRENT_VERSION}-${_PR_NUMBER}-${TIMESTAMP}"
