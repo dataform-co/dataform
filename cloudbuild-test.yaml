@@ -1,5 +1,5 @@
 steps:
-  - name: 'gcr.io/cloud-builders/gcloud'
+  - name: "gcr.io/cloud-builders/gcloud"
     script: |
       #!/usr/bin/env bash
       gcloud auth print-access-token > ~/gcp_token.txt
@@ -8,7 +8,7 @@ steps:
     script: |
       #!/usr/bin/env bash
       ./scripts/run_tests_on_cloudbuild
-  - name: 'gcr.io/cloud-builders/gcloud'
+  - name: "gcr.io/cloud-builders/gcloud"
     script: |
       #!/usr/bin/env bash
       ./scripts/run_canary_test
