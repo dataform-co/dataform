@@ -28,7 +28,7 @@ cleanup() {
       -H "Authorization: Bearer ${GCP_TOKEN}" \
       "${REPO_URL}/workspaces/${WORKSPACE_ID}" || true
   fi
-  git restore yarn.lock 2>/dev/null || true
+  git restore yarn.lock version.bzl 2>/dev/null || true
 }
 trap cleanup EXIT
 
@@ -36,6 +36,11 @@ trap cleanup EXIT
 bazel run @nodejs//:yarn config set registry https://us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/
 bazel run //tools/registry-tools:switch_registry -- $(pwd)/yarn.lock https://us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/
 bazel run @nodejs//:yarn install -- --frozen-lockfile
+
+CURRENT_VERSION=$(grep -oP '(?<=DF_VERSION = ")[^"]+' version.bzl)
+CANARY_VERSION="${CURRENT_VERSION}-${_PR_NUMBER}-${TIMESTAMP}"
+sed -i "s/DF_VERSION = \"[^\"]*\"/DF_VERSION = \"${CANARY_VERSION}\"/" version.bzl
+
 bazel build //packages/@dataform/core:package_tar
 
 if [[ -f ~/gcp_token.txt ]]; then
@@ -182,12 +187,13 @@ if [[ "$COMPILE_HTTP_CODE" -lt 200 || "$COMPILE_HTTP_CODE" -ge 300 ]]; then
   exit 1
 fi
 
-python3 - /tmp/compile_response.json <<'EOF'
+python3 - /tmp/compile_response.json "${CANARY_VERSION}" <<'EOF'
 import json
 import sys
 
 with open(sys.argv[1], "r", encoding="utf-8") as f:
     resp = json.load(f)
+expected_version = sys.argv[2]
 
 errors = resp.get("compilationErrors", [])
 if errors:
@@ -201,5 +207,13 @@ if errors:
             sys.stderr.write(f"    {stack}\n")
     sys.exit(1)
 print(resp)
+
+actual_version = resp.get("dataformCoreVersion")
+if actual_version != expected_version:
+    sys.stderr.write(
+        f"Canary compilation version mismatch: expected '{expected_version}', got '{actual_version}'\n"
+    )
+    sys.exit(1)
+
 print(f"Canary compilation succeeded: {resp.get('name', 'OK')} (resolved version: {resp.get('resolvedGitCommitSha', 'workspace')})")
 EOF
