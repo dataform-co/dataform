@@ -20,6 +20,7 @@ WORKSPACE_ID="pr-${_PR_NUMBER}-${TIMESTAMP}"
 WORKSPACE_CREATED=false
 TARBALL_NAME="build-${_PR_NUMBER}-${TIMESTAMP}.tar.gz"
 TARBALL_URL="https://storage.googleapis.com/${_CANARY_BUCKET}/${TARBALL_NAME}"
+TMP_DIR=$(mktemp -d)
 
 cleanup() {
   if [[ "$WORKSPACE_CREATED" == "true" && -n "${GCP_TOKEN:-}" ]]; then
@@ -28,6 +29,7 @@ cleanup() {
       -H "Authorization: Bearer ${GCP_TOKEN}" \
       "${REPO_URL}/workspaces/${WORKSPACE_ID}" || true
   fi
+  rm -rf "${TMP_DIR}"
   git restore yarn.lock version.bzl 2>/dev/null || true
 }
 trap cleanup EXIT
@@ -50,18 +52,18 @@ else
 fi
 
 echo "Verifying GCS bucket exists: ${_CANARY_BUCKET}"
-CHECK_BUCKET_HTTP_CODE=$(curl -s -o /tmp/check_bucket_response.json -w "%{http_code}" \
+CHECK_BUCKET_HTTP_CODE=$(curl -s -o "${TMP_DIR}/check_bucket_response.json" -w "%{http_code}" \
   -X GET \
   -H "Authorization: Bearer ${GCP_TOKEN}" \
   "https://storage.googleapis.com/storage/v1/b/${_CANARY_BUCKET}")
 if [[ "$CHECK_BUCKET_HTTP_CODE" -lt 200 || "$CHECK_BUCKET_HTTP_CODE" -ge 300 ]]; then
   echo "Error verifying GCS bucket (HTTP ${CHECK_BUCKET_HTTP_CODE}):" 1>&2
-  cat /tmp/check_bucket_response.json 1>&2
+  cat "${TMP_DIR}/check_bucket_response.json" 1>&2
   exit 1
 fi
 
 echo "Uploading Core tarball to gs://${_CANARY_BUCKET}/${TARBALL_NAME}..."
-UPLOAD_TARBALL_HTTP_CODE=$(curl -s -o /tmp/upload_tarball_response.json -w "%{http_code}" \
+UPLOAD_TARBALL_HTTP_CODE=$(curl -s -o "${TMP_DIR}/upload_tarball_response.json" -w "%{http_code}" \
   -X POST \
   -H "Authorization: Bearer ${GCP_TOKEN}" \
   -H "Content-Type: application/gzip" \
@@ -70,12 +72,12 @@ UPLOAD_TARBALL_HTTP_CODE=$(curl -s -o /tmp/upload_tarball_response.json -w "%{ht
 
 if [[ "$UPLOAD_TARBALL_HTTP_CODE" -lt 200 || "$UPLOAD_TARBALL_HTTP_CODE" -ge 300 ]]; then
   echo "Error uploading Core tarball to GCS (HTTP ${UPLOAD_TARBALL_HTTP_CODE}):" 1>&2
-  cat /tmp/upload_tarball_response.json 1>&2
+  cat "${TMP_DIR}/upload_tarball_response.json" 1>&2
   exit 1
 fi
 
 echo "Ensuring Dataform repository exists: ${_CANARY_REPO}"
-CREATE_REPO_HTTP_CODE=$(curl -s -o /tmp/create_repo_response.json -w "%{http_code}" \
+CREATE_REPO_HTTP_CODE=$(curl -s -o "${TMP_DIR}/create_repo_response.json" -w "%{http_code}" \
   -X POST \
   -H "Authorization: Bearer ${GCP_TOKEN}" \
   -H "Content-Type: application/json" \
@@ -84,12 +86,12 @@ CREATE_REPO_HTTP_CODE=$(curl -s -o /tmp/create_repo_response.json -w "%{http_cod
 # 2xx = created now; 409 = ALREADY_EXISTS from a previous run
 if [[ ("$CREATE_REPO_HTTP_CODE" -lt 200 || "$CREATE_REPO_HTTP_CODE" -ge 300) && "$CREATE_REPO_HTTP_CODE" -ne 409 ]]; then
   echo "Error creating Dataform repository (HTTP ${CREATE_REPO_HTTP_CODE}):" 1>&2
-  cat /tmp/create_repo_response.json 1>&2
+  cat "${TMP_DIR}/create_repo_response.json" 1>&2
   exit 1
 fi
 
 echo "Creating temporary Dataform workspace: ${WORKSPACE_ID}"
-CREATE_WS_HTTP_CODE=$(curl -s -o /tmp/create_ws_response.json -w "%{http_code}" \
+CREATE_WS_HTTP_CODE=$(curl -s -o "${TMP_DIR}/create_ws_response.json" -w "%{http_code}" \
   -X POST \
   -H "Authorization: Bearer ${GCP_TOKEN}" \
   -H "Content-Type: application/json" \
@@ -98,7 +100,7 @@ CREATE_WS_HTTP_CODE=$(curl -s -o /tmp/create_ws_response.json -w "%{http_code}" 
 
 if [[ "$CREATE_WS_HTTP_CODE" -lt 200 || "$CREATE_WS_HTTP_CODE" -ge 300 ]]; then
   echo "Error creating Dataform workspace (HTTP ${CREATE_WS_HTTP_CODE}):" 1>&2
-  cat /tmp/create_ws_response.json 1>&2
+  cat "${TMP_DIR}/create_ws_response.json" 1>&2
   exit 1
 fi
 WORKSPACE_CREATED=true
@@ -107,16 +109,16 @@ write_workspace_file() {
   local rel_path="$1"
   local encoded_contents="$2"
   local write_http_code
-  write_http_code=$(curl -s -o /tmp/write_file_response.json -w "%{http_code}" \
+  write_http_code=$(curl -s -o "${TMP_DIR}/write_file_response.json" -w "%{http_code}" \
     -X POST \
     -H "Authorization: Bearer ${GCP_TOKEN}" \
     -H "Content-Type: application/json" \
     "${REPO_URL}/workspaces/${WORKSPACE_ID}:writeFile" \
-    -d "$(jq -n --arg path "$rel_path" --arg contents "$encoded_contents" '{path:$path, contents:$contents}')")
+    -d "$(python3 -c 'import json, sys; print(json.dumps({"path": sys.argv[1], "contents": sys.argv[2]}))' "$rel_path" "$encoded_contents")")
 
   if [[ "$write_http_code" -lt 200 || "$write_http_code" -ge 300 ]]; then
     echo "Error uploading ${rel_path} to workspace (HTTP ${write_http_code}):" 1>&2
-    cat /tmp/write_file_response.json 1>&2
+    cat "${TMP_DIR}/write_file_response.json" 1>&2
     exit 1
   fi
 }
@@ -155,7 +157,7 @@ NPMRC_CONTENTS=$(printf "//storage.googleapis.com/:_authToken=%s\n" "${GCP_TOKEN
 write_workspace_file ".npmrc" "$NPMRC_CONTENTS"
 
 echo "Installing NPM packages in workspace..."
-INSTALL_HTTP_CODE=$(curl -s -o /tmp/install_response.json -w "%{http_code}" \
+INSTALL_HTTP_CODE=$(curl -s -o "${TMP_DIR}/install_response.json" -w "%{http_code}" \
   -X POST \
   -H "Authorization: Bearer ${GCP_TOKEN}" \
   -H "Content-Type: application/json" \
@@ -164,12 +166,12 @@ INSTALL_HTTP_CODE=$(curl -s -o /tmp/install_response.json -w "%{http_code}" \
 
 if [[ "$INSTALL_HTTP_CODE" -lt 200 || "$INSTALL_HTTP_CODE" -ge 300 ]]; then
   echo "Error calling workspaces.installNpmPackages (HTTP ${INSTALL_HTTP_CODE}):" 1>&2
-  cat /tmp/install_response.json 1>&2
+  cat "${TMP_DIR}/install_response.json" 1>&2
   exit 1
 fi
 
 echo "Compiling canary project via dataform.googleapis.com..."
-COMPILE_HTTP_CODE=$(curl -s -o /tmp/compile_response.json -w "%{http_code}" \
+COMPILE_HTTP_CODE=$(curl -s -o "${TMP_DIR}/compile_response.json" -w "%{http_code}" \
   -X POST \
   -H "Authorization: Bearer ${GCP_TOKEN}" \
   -H "Content-Type: application/json" \
@@ -178,11 +180,11 @@ COMPILE_HTTP_CODE=$(curl -s -o /tmp/compile_response.json -w "%{http_code}" \
 
 if [[ "$COMPILE_HTTP_CODE" -lt 200 || "$COMPILE_HTTP_CODE" -ge 300 ]]; then
   echo "Error calling compilationResults.create (HTTP ${COMPILE_HTTP_CODE}):" 1>&2
-  cat /tmp/compile_response.json 1>&2
+  cat "${TMP_DIR}/compile_response.json" 1>&2
   exit 1
 fi
 
-python3 - /tmp/compile_response.json "${CANARY_VERSION}" <<'EOF'
+python3 - "${TMP_DIR}/compile_response.json" "${CANARY_VERSION}" <<'EOF'
 import json
 import sys
 
