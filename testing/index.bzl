@@ -24,7 +24,7 @@ def ts_test(name, entry_point, args = [], data = [], tags = [], no_copy_to_bin =
     js_test(
         name = name,
         data = js_test_data,
-        entry_point = entry_point.replace(".ts", ".js"),
+        entry_point = entry_point[:-3] + ".js",
         args = args,
         node_options = [
             "--async-stack-traces",
@@ -62,7 +62,7 @@ def ts_test_suite(name, srcs, args = [], data = [], tags = [], no_copy_to_bin = 
             js_test(
                 name = basename,
                 data = js_test_data,
-                entry_point = (":" + src).replace(".ts", ".js"),
+                entry_point = (":" + src)[:-3] + ".js",
                 args = args,
                 node_options = [
                     "--async-stack-traces",

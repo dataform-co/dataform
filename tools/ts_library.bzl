@@ -5,7 +5,7 @@ def _ts_library_forwarder_impl(ctx):
     dts_files = []
     for dep in ctx.attr.deps:
         for f in dep[DefaultInfo].files.to_list():
-            if f.extension == "ts" or f.path.endswith(".d.ts") or f.path.endswith(".d.ts.map"):
+            if f.extension == "ts" or f.path.endswith(".d.ts.map"):
                 dts_files.append(f)
 
     extra_default_files = []
@@ -25,13 +25,13 @@ def _ts_library_forwarder_impl(ctx):
             esm_files.append(file)
 
     new_js_info = JsInfo(
-        target = js_info.target if hasattr(js_info, "target") else ctx.label,
-        sources = js_info.sources if hasattr(js_info, "sources") else depset(),
-        types = js_info.types if hasattr(js_info, "types") else depset(),
+        target = js_info.target,
+        sources = js_info.sources,
+        types = js_info.types,
         transitive_sources = depset(esm_files, transitive = [js_info.transitive_sources]),
         transitive_types = js_info.transitive_types,
-        npm_sources = js_info.npm_sources if hasattr(js_info, "npm_sources") else depset(),
-        npm_package_store_infos = js_info.npm_package_store_infos if hasattr(js_info, "npm_package_store_infos") else depset(),
+        npm_sources = js_info.npm_sources,
+        npm_package_store_infos = js_info.npm_package_store_infos,
     )
 
     return [
@@ -65,6 +65,7 @@ def ts_library(name, srcs = [], **kwargs):
     data = kwargs.pop("data", [])
 
     testonly = kwargs.get("testonly", 0)
+    visibility = kwargs.get("visibility", ["//visibility:public"])
 
     # 1. CommonJS compilation (produces .js, .d.ts)
     ts_project(
@@ -96,5 +97,5 @@ def ts_library(name, srcs = [], **kwargs):
         ],
         extra_files = [":" + ts_esm_target_name] + data,
         testonly = testonly,
-        visibility = ["//visibility:public"],
+        visibility = visibility,
     )
