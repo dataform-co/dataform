@@ -1,7 +1,13 @@
-const cp = require("child_process");
+const fs = require("fs");
 const path = require("path");
+const { promisify } = require("util");
 
 const argv = require("minimist")(process.argv.slice(2));
+const pbjs = require("protobufjs-cli/pbjs");
+const pbts = require("protobufjs-cli/pbts");
+
+const pbjsMain = promisify(pbjs.main);
+const pbtsMain = promisify(pbts.main);
 
 const bazelBinDir = process.env.BAZEL_BINDIR;
 
@@ -23,70 +29,38 @@ if (!jsOut || !esmJsOut || !dtsOut || protoFiles.length === 0) {
   process.exit(1);
 }
 
-const pbjsPath = require.resolve("protobufjs-cli/pbjs");
-const pbtsPath = require.resolve("protobufjs-cli/pbts");
+async function main() {
+  const jsOutput = await pbjsMain([
+    "--target",
+    "static-module",
+    "--wrap",
+    "default",
+    "--strict-long",
+    ...protoFiles,
+  ]);
+  fs.writeFileSync(jsOut, jsOutput);
 
-// Run pbjs for CommonJS static-module programmatically in an isolated process
-const pbjsJsScript = `
-const pbjs = require(${JSON.stringify(pbjsPath)});
-const fs = require("fs");
-pbjs.main(["--target", "static-module", "--wrap", "default", "--strict-long", ...${JSON.stringify(protoFiles)}], function(err, output) {
-    if (err) {
-        console.error(err);
-        process.exit(1);
-    }
-    fs.writeFileSync(${JSON.stringify(jsOut)}, output);
-    process.exit(0);
-});
-`;
+  const esmOutput = await pbjsMain([
+    "--target",
+    "static-module",
+    "--wrap",
+    "es6",
+    "--strict-long",
+    ...protoFiles,
+  ]);
+  fs.writeFileSync(esmJsOut, esmOutput);
 
-const pbjsJsRun = cp.spawnSync(process.execPath, ["-e", pbjsJsScript], { encoding: "utf-8" });
-if (pbjsJsRun.status !== 0) {
-  console.error("pbjs CommonJS failed:", pbjsJsRun.stderr || pbjsJsRun.stdout);
-  process.exit(pbjsJsRun.status || 1);
+  // Patch 'import Long = require("long");' to 'import Long from "long";'
+  // to avoid syntax errors in older rollup-plugin-dts.
+  const dtsOutput = await pbtsMain([jsOut]);
+  const patchedDts = dtsOutput.replace(
+    /import Long = require\("long"\);/g,
+    'import Long from "long";',
+  );
+  fs.writeFileSync(dtsOut, patchedDts);
 }
 
-// Run pbjs for ES6 static-module programmatically in an isolated process
-const pbjsEsmScript = `
-const pbjs = require(${JSON.stringify(pbjsPath)});
-const fs = require("fs");
-pbjs.main(["--target", "static-module", "--wrap", "es6", "--strict-long", ...${JSON.stringify(protoFiles)}], function(err, output) {
-    if (err) {
-        console.error(err);
-        process.exit(1);
-    }
-    fs.writeFileSync(${JSON.stringify(esmJsOut)}, output);
-    process.exit(0);
+main().catch((err) => {
+  console.error("Failed to compile protos:", err);
+  process.exit(1);
 });
-`;
-
-const pbjsEsmRun = cp.spawnSync(process.execPath, ["-e", pbjsEsmScript], { encoding: "utf-8" });
-if (pbjsEsmRun.status !== 0) {
-  console.error("pbjs ES6 failed:", pbjsEsmRun.stderr || pbjsEsmRun.stdout);
-  process.exit(pbjsEsmRun.status || 1);
-}
-
-// Run pbts programmatically in an isolated process
-// Patch 'import Long = require("long");' to 'import Long from "long";'
-// to avoid syntax errors in older rollup-plugin-dts.
-const pbtsScript = `
-const pbts = require(${JSON.stringify(pbtsPath)});
-const fs = require("fs");
-pbts.main([${JSON.stringify(jsOut)}], function(err, dtsOutput) {
-    if (err) {
-        console.error(err);
-        process.exit(1);
-    }
-    const patchedDts = dtsOutput.replace(/import Long = require\\("long"\\);/g, 'import Long from "long";');
-    fs.writeFileSync(${JSON.stringify(dtsOut)}, patchedDts);
-    process.exit(0);
-});
-`;
-
-const pbtsRun = cp.spawnSync(process.execPath, ["-e", pbtsScript], { encoding: "utf-8" });
-if (pbtsRun.status !== 0) {
-  console.error("pbts failed:", pbtsRun.stderr || pbtsRun.stdout);
-  process.exit(pbtsRun.status || 1);
-}
-
-console.log("Successfully generated proto JS, ESM, and typings via isolated child processes!");
