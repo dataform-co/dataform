@@ -1,10 +1,9 @@
-const path = require("path");
 const webpack = require("webpack");
 
 module.exports = (env, argv) => {
-  const binDir = process.cwd().endsWith("bin")
-    ? process.cwd()
-    : path.resolve(process.cwd(), process.env.BAZEL_BINDIR || ".");
+  if (!process.env.BAZEL_BINDIR) {
+    throw new Error("BAZEL_BINDIR must be set");
+  }
 
   const config = {
     mode: argv.mode || "development",
@@ -22,7 +21,7 @@ module.exports = (env, argv) => {
     resolve: {
       extensions: [".js", ".json"],
       alias: {
-        df: binDir,
+        df: process.cwd(),
       },
     },
     plugins: [
