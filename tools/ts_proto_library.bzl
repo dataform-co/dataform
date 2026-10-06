@@ -14,7 +14,7 @@ def _ts_proto_library_impl(ctx):
     output_name = ctx.attr.output_name or ctx.label.name
     js_out = ctx.actions.declare_file(output_name + ".js")
     dts_out = ctx.actions.declare_file(output_name + ".d.ts")
-    esm_js_out = ctx.actions.declare_file("esm/" + output_name + ".js")
+    esm_js_out = ctx.actions.declare_file(output_name + ".mjs")
 
     # Execute the compiled binary inside the execroot sandbox
     ctx.actions.run(

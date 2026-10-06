@@ -20,9 +20,15 @@ def _ts_library_forwarder_impl(ctx):
 
     js_info = ctx.attr.deps[0][JsInfo]
     esm_files = []
+    esm_prefix = (ctx.label.package + "/esm/") if ctx.label.package else "esm/"
     for file in extra_default_files:
         if file.extension == "mjs" or file.path.endswith(".mjs.map") or file.extension == "js" or file.path.endswith(".js.map") or file.extension == "json":
             esm_files.append(file)
+            if file.extension == "js" and file.short_path.startswith(esm_prefix):
+                rel_no_ext = file.short_path[len(esm_prefix):-3]
+                mjs_file = ctx.actions.declare_file(rel_no_ext + ".mjs")
+                ctx.actions.symlink(output = mjs_file, target_file = file)
+                esm_files.append(mjs_file)
 
     new_js_info = JsInfo(
         target = js_info.target,
