@@ -7,6 +7,7 @@ ts_library(
     name = "vm_runner",
     srcs = [
         "module_resolver.ts",
+        "path_utils.ts",
         "vm_runner.ts",
     ],
     deps = [

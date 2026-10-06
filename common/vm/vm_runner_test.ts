@@ -535,19 +535,42 @@ suite("VmRunner", ({ afterEach }) => {
 
   test("suppresses console output when console is off", () => {
     const tmpDir = tmpDirFixture.createNewTmpDir();
-    const runner = new VmRunner({
-      projectDir: tmpDir,
-      console: "off",
-    });
-
-    expect(() => {
-      runner.run(`
+    const script = `
         console.log("hello");
         console.error("error");
         console.warn("warn");
         console.info("info");
-      `);
-    }).not.to.throw();
+      `;
+    const methods = ["log", "error", "warn", "info"] as const;
+
+    // Replace the host console methods with spies for the duration of a run().
+    const runWithConsoleSpy = (runner: VmRunner): string[] => {
+      const calls: string[] = [];
+      const originals = methods.map((method) => console[method]);
+      methods.forEach((method) => {
+        console[method] = (...args: any[]) => {
+          calls.push(`${method}:${args.join(" ")}`);
+        };
+      });
+      try {
+        runner.run(script);
+      } finally {
+        methods.forEach((method, i) => {
+          console[method] = originals[i];
+        });
+      }
+      return calls;
+    };
+
+    expect(runWithConsoleSpy(new VmRunner({ projectDir: tmpDir }))).to.deep.equal([
+      "log:hello",
+      "error:error",
+      "warn:warn",
+      "info:info",
+    ]);
+    expect(runWithConsoleSpy(new VmRunner({ projectDir: tmpDir, console: "off" }))).to.deep.equal(
+      [],
+    );
   });
 
   test("supports mocked modules being required and re-required from inside the VM", () => {

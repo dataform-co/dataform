@@ -139,6 +139,26 @@ suite("ModuleResolver", ({ afterEach }) => {
     );
   });
 
+  test("accepts file names that start with two dots but still rejects the parent directory", () => {
+    const projectDir = newProjectDir();
+    writeFile(path.join(projectDir, "..helpers.js"), "");
+    writeFile(path.join(projectDir, "..defs", "model.js"), "");
+    const fromPath = path.join(projectDir, "index.js");
+
+    const resolver = new ModuleResolver({ projectDir, extensions: EXTENSIONS });
+    expect(resolver.resolve("./..helpers", fromPath)).to.equal(
+      path.join(projectDir, "..helpers.js"),
+    );
+    expect(resolver.resolve("..defs/model", fromPath)).to.equal(
+      path.join(projectDir, "..defs", "model.js"),
+    );
+
+    expect(resolver.isPathContained(projectDir)).to.equal(true);
+    expect(resolver.isPathContained(path.join(projectDir, "..helpers.js"))).to.equal(true);
+    expect(resolver.isPathContained(path.dirname(projectDir))).to.equal(false);
+    expect(resolver.isPathContained(path.join(projectDir, "..", "sibling.js"))).to.equal(false);
+  });
+
   test("rejects node_modules symlinks pointing outside the project directory", () => {
     const outsideDir = newProjectDir();
     fs.writeFileSync(path.join(outsideDir, "external.js"), "module.exports = 'escaped';");

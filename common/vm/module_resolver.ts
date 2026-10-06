@@ -18,6 +18,8 @@
 import * as fs from "fs";
 import * as path from "path";
 
+import { getRealPath } from "df/common/vm/path_utils";
+
 // Node's CommonJS loader. Its lookup helpers are used directly (see findInNodeModules).
 // tslint:disable-next-line: no-require-imports
 const NodeModule: any = require("module");
@@ -64,7 +66,9 @@ export class ModuleResolver {
     const realTarget = getRealPath(targetPath);
     const isContainedIn = (parentDir: string) => {
       const rel = path.relative(parentDir, realTarget);
-      return !rel.startsWith("..") && !path.isAbsolute(rel);
+      // Only ".." itself and "../…" leave parentDir; a file named "..foo" is still inside it.
+      // An absolute result means a different drive on Windows.
+      return rel !== ".." && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel);
     };
 
     if (isContainedIn(this.projectDir)) {
@@ -239,14 +243,6 @@ function moduleNotFoundError(moduleName: string, fromPath: string, cause?: Error
     err.cause = cause;
   }
   return err;
-}
-
-function getRealPath(targetPath: string): string {
-  try {
-    return fs.realpathSync(targetPath);
-  } catch {
-    return path.resolve(targetPath);
-  }
 }
 
 function getStat(targetPath: string): fs.Stats | null {
