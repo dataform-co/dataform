@@ -15,6 +15,7 @@ import * as path from "path";
 import * as vm from "vm";
 
 import { ModuleResolver } from "df/common/vm/module_resolver";
+import { getRealPath } from "df/common/vm/path_utils";
 
 export type CompilerFunction = (code: string, filePath: string) => string;
 
@@ -295,12 +296,4 @@ function parseJson(source: string, filename: string): any {
 /** True if a script reassigned `module.exports` or added anything to the original object. */
 function hasExports(exports: any, initialExports: object): boolean {
   return exports !== initialExports || Reflect.ownKeys(initialExports).length > 0;
-}
-
-function getRealPath(targetPath: string): string {
-  try {
-    return fs.realpathSync(targetPath);
-  } catch {
-    return path.resolve(targetPath);
-  }
 }
