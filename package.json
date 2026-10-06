@@ -99,7 +99,9 @@
       "linkify-it": "^5.0.2",
       "braces": "^3.0.3",
       "@eslint/plugin-kit": "0.7.2",
-      "uuid": "14.0.2",
+      "@google-cloud/storage@7.19.0>uuid": "14.0.2",
+      "gaxios@6.7.1>uuid": "14.0.2",
+      "teeny-request@9.0.0>uuid": "14.0.2",
       "fast-uri": "3.1.7"
     }
   }

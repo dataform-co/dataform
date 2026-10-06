@@ -50,7 +50,7 @@ const getBzlmodNpmPath = () => {
   if (!runfilesDir) {
     return "";
   }
-  const canonicalRepoName = `_main~node_ext~${platformPath()}`;
+  const canonicalRepoName = `rules_nodejs~~node~${platformPath()}`;
   const bzlmodPath = path.resolve(runfilesDir, canonicalRepoName, "bin/nodejs/bin/npm");
   if (fileExists(bzlmodPath)) {
     return bzlmodPath;
@@ -66,7 +66,7 @@ const getBzlmodNodePath = () => {
   if (!runfilesDir) {
     return process.execPath;
   }
-  const canonicalRepoName = `_main~node_ext~${platformPath()}`;
+  const canonicalRepoName = `rules_nodejs~~node~${platformPath()}`;
   const bzlmodPath = path.resolve(runfilesDir, canonicalRepoName, "bin/nodejs/bin/node");
   if (fileExists(bzlmodPath)) {
     return bzlmodPath;
