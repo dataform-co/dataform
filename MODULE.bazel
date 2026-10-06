@@ -11,23 +11,19 @@ bazel_dep(name = "aspect_rules_rollup", version = "2.0.0")
 bazel_dep(name = "aspect_bazel_lib", version = "2.7.7")
 
 # Node.js Toolchain Configuration
-bazel_dep(name = "rules_nodejs", version = "6.2.0")
+bazel_dep(name = "rules_nodejs", version = "6.7.6")
 bazel_dep(name = "platforms", version = "0.0.10")
 
-node_ext = use_extension("//tools:node_extension.bzl", "node_ext")
+node = use_extension("@rules_nodejs//nodejs:extensions.bzl", "node")
+node.toolchain(node_version = "24.13.0")
 use_repo(
-    node_ext,
+    node,
     "nodejs",
     "nodejs_darwin_amd64",
     "nodejs_darwin_arm64",
     "nodejs_linux_amd64",
     "nodejs_linux_arm64",
     "nodejs_windows_amd64",
-    node_toolchains = "nodejs_toolchains",
-)
-
-register_toolchains(
-    "@node_toolchains//:all",
 )
 
 # NPM Lock File Translation to Bzlmod Package Trees
