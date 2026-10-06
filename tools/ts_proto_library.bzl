@@ -8,7 +8,6 @@ def _ts_proto_library_impl(ctx):
             fail("ts_proto_library dependency %s must be a proto_library rule" % dep.label)
         proto_depsets.append(dep[ProtoInfo].transitive_sources)
     all_proto_files = depset(transitive = proto_depsets).to_list()
-    proto_files = [f for f in all_proto_files if not f.owner.workspace_name]
 
     # Declare compiled JS and TypeScript declaration output files
     output_name = ctx.attr.output_name or ctx.label.name
@@ -25,7 +24,7 @@ def _ts_proto_library_impl(ctx):
             "--js-out", js_out.path,
             "--esm-js-out", esm_js_out.path,
             "--dts-out", dts_out.path,
-        ] + [f.path for f in proto_files],
+        ] + [f.path for f in all_proto_files],
         env = {
             "BAZEL_BINDIR": ctx.bin_dir.path,
         },

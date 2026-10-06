@@ -12,9 +12,8 @@ const pbtsMain = promisify(pbts.main);
 const bazelBinDir = process.env.BAZEL_BINDIR;
 
 function resolvePath(p) {
-  if (!p || !bazelBinDir) return p;
-  const rel = path.relative(bazelBinDir, p);
-  return rel.startsWith("..") || path.isAbsolute(rel) ? p : rel;
+  if (!p || !bazelBinDir || path.isAbsolute(p)) return p;
+  return path.relative(bazelBinDir, p);
 }
 
 const jsOut = resolvePath(argv["js-out"]);
