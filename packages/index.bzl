@@ -57,6 +57,9 @@ def pkg_bundle(name, deps, externals, entry_point = "index.js", allow_node_built
         sourcemap = "false",
         entry_point = entry_point,
         node_modules = "//:node_modules",
+        srcs = [
+            "//:tsconfig",
+        ],
         deps = deps + [
             "//:node_modules/@rollup/plugin-node-resolve",
         ],
@@ -99,6 +102,7 @@ def pkg_bundle_dts(name, deps, externals, entry_point = "index.d.ts", **kwargs):
         name = name,
         tool = ":" + rollup_bin,
         srcs = deps + [
+            "//:tsconfig",
             "//packages:rollup_dts_config",
             entry_point_label,
         ],

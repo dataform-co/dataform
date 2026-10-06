@@ -1,21 +1,9 @@
 import resolve from "@rollup/plugin-node-resolve";
-import * as path from "path";
 import * as fs from "fs";
+import * as path from "path";
 
-function findBazelBin() {
-  if (!process.env.BAZEL_BINDIR) {
-    return undefined;
-  }
-  let dir = process.cwd();
-  while (dir && !fs.existsSync(path.join(dir, "bazel-out"))) {
-    const parent = path.dirname(dir);
-    if (parent === dir) {
-      break;
-    }
-    dir = parent;
-  }
-  return path.resolve(dir, process.env.BAZEL_BINDIR);
-}
+const tsconfig = JSON.parse(fs.readFileSync("tsconfig.json", "utf8"));
+const baseUrl = tsconfig.compilerOptions.baseUrl || ".";
 
 function convertToRegex(pattern) {
   if (pattern instanceof RegExp) {
@@ -52,58 +40,15 @@ const checkImports = (imports) => {
     buildStart(options) {
       externals = options.external || (() => false);
     },
-    resolveId(source) {
-      if (path.isAbsolute(source) || source.startsWith(".")) {
-        return undefined;
+    resolveId(source, importer) {
+      if (!importer || path.isAbsolute(source) || source.startsWith(".")) {
+        return null;
       }
-
-      if (source.startsWith("df/") || source.startsWith("packages/")) {
-        const relPath = source.startsWith("df/") ? source.slice(3) : source;
-
-        const bazelBin = findBazelBin();
-        const candidate = bazelBin
-          ? path.resolve(bazelBin, relPath)
-          : path.resolve(process.cwd(), relPath);
-
-        const esmCandidates = [];
-        // Generate ESM variants by walking up the directory tree
-        let dir = candidate;
-        let suffix = "";
-        while (dir && dir !== "/" && dir !== ".") {
-          const esmDir = path.join(dir, "esm");
-          if (fs.existsSync(esmDir) && fs.statSync(esmDir).isDirectory()) {
-            const esmPath = suffix ? path.join(esmDir, suffix) : esmDir;
-            esmCandidates.push(esmPath);
-          }
-
-          const parent = path.dirname(dir);
-          if (parent === dir) {
-            break;
-          }
-          const base = path.basename(dir);
-          if (base === "bin") {
-            break;
-          }
-          suffix = suffix ? path.join(base, suffix) : base;
-          dir = parent;
-        }
-
-        const allCandidates = [...esmCandidates, candidate];
-
-        for (const candidate of allCandidates) {
-          if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
-            return candidate;
-          }
-          if (fs.existsSync(candidate + ".js") && fs.statSync(candidate + ".js").isFile()) {
-            return candidate + ".js";
-          }
-          const indexCandidate = path.resolve(candidate, "index.js");
-          if (fs.existsSync(indexCandidate) && fs.statSync(indexCandidate).isFile()) {
-            return indexCandidate;
-          }
-        }
+      if (source.startsWith("df/")) {
+        return this.resolve(path.resolve(baseUrl, source.slice(3)), importer, {
+          skipSelf: true,
+        });
       }
-
       if (allowedImports.some((pattern) => pattern.test(source))) {
         return null;
       }
@@ -122,8 +67,6 @@ const checkImports = (imports) => {
 export default {
   plugins: [
     checkImports(importsToBundle),
-    resolve({
-      resolveOnly: importsToBundle,
-    }),
+    resolve(),
   ],
 };
