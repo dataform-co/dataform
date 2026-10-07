@@ -1,7 +1,6 @@
 import { ChildProcess } from "child_process";
 import * as fs from "fs-extra";
 import { dump as dumpYaml } from "js-yaml";
-import * as os from "os";
 import * as path from "path";
 
 import { dataform } from "df/protos/ts";
@@ -11,84 +10,10 @@ export * from "df/testing/suite";
 export * from "df/testing/test";
 export * from "df/testing/runner";
 
-export const platformPath = () => {
-  if (os.platform() === "darwin") {
-    if (os.arch() === "arm64") {
-      return "nodejs_darwin_arm64";
-    } else {
-      return "nodejs_darwin_amd64";
-    }
-  } else {
-    if (os.arch() === "arm64") {
-      return "nodejs_linux_arm64";
-    } else {
-      return "nodejs_linux_amd64";
-    }
-  }
-};
-
-const runfilesDir = process.env.RUNFILES || "";
-let workspaceName = "df";
-if (runfilesDir && !fileExists(path.resolve(runfilesDir, "df"))) {
-  workspaceName = "_main";
-}
-
-function fileExists(filePath: string): boolean {
-  try {
-    fs.accessSync(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-const getBzlmodNpmPath = () => {
-  const adjacentNpm = path.join(path.dirname(process.execPath), "npm");
-  if (fileExists(adjacentNpm)) {
-    return adjacentNpm;
-  }
-  if (!runfilesDir) {
-    return "";
-  }
-  const canonicalRepoName = `rules_nodejs~~node~${platformPath()}`;
-  const bzlmodPath = path.resolve(runfilesDir, canonicalRepoName, "bin/nodejs/bin/npm");
-  if (fileExists(bzlmodPath)) {
-    return bzlmodPath;
-  }
-  const legacyPath = path.resolve(runfilesDir, platformPath(), "bin/npm");
-  if (fileExists(legacyPath)) {
-    return legacyPath;
-  }
-  return "";
-};
-
-const getBzlmodNodePath = () => {
-  if (!runfilesDir) {
-    return process.execPath;
-  }
-  const canonicalRepoName = `rules_nodejs~~node~${platformPath()}`;
-  const bzlmodPath = path.resolve(runfilesDir, canonicalRepoName, "bin/nodejs/bin/node");
-  if (fileExists(bzlmodPath)) {
-    return bzlmodPath;
-  }
-  const legacyPath = path.resolve(runfilesDir, platformPath(), "bin/node");
-  if (fileExists(legacyPath)) {
-    return legacyPath;
-  }
-  return process.execPath;
-};
-
-export const nodePath = getBzlmodNodePath();
-const bzlmodNpm = getBzlmodNpmPath();
-export const npmPath = bzlmodNpm || "npm";
-
-if (npmPath !== "npm") {
-  process.env.PATH = `${path.dirname(npmPath)}:${process.env.PATH}`;
-}
-
-export const corePackageTarPath = runfilesDir
-  ? path.resolve(runfilesDir, workspaceName, "packages/@dataform/core/package.tar.gz")
-  : "packages/@dataform/core/package.tar.gz";
+export const nodePath = path.resolve(process.env.JS_BINARY__NODE_BINARY || process.execPath);
+export const npmPath = path.join(path.dirname(nodePath), "npm");
+process.env.PATH = `${path.dirname(nodePath)}:${process.env.PATH}`;
+export const corePackageTarPath = path.resolve("packages/@dataform/core/package.tar.gz");
 
 export async function getProcessResult(childProcess: ChildProcess) {
   let stderr = "";

@@ -26,7 +26,6 @@ ts_library(
         "test.ts",
     ],
     deps = [
-        "//protos:ts",
         "//:node_modules/@types/diff",
         "//:node_modules/@types/fs-extra",
         "//:node_modules/@types/js-yaml",
@@ -37,6 +36,7 @@ ts_library(
         "//:node_modules/fs-extra",
         "//:node_modules/js-yaml",
         "//:node_modules/json-stable-stringify",
+        "//protos:ts",
     ],
 )
 
