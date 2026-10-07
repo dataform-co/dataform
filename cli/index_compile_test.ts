@@ -1,8 +1,10 @@
 import { expect } from "chai";
+import { execFile } from "child_process";
 import * as fs from "fs-extra";
 import { dump as dumpYaml, load as loadYaml } from "js-yaml";
 import * as path from "path";
 
+import { copyProjectForStatelessInstall } from "df/cli/api/commands/compile_copy_filter";
 import {
   alterWorkflowSettings,
   INTEGRATION_TEST_LOCATION,
@@ -12,7 +14,14 @@ import {
 } from "df/cli/index_test_base";
 import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
-import { suite, test, writeDefinitionFile } from "df/testing";
+import {
+  corePackageTarPath,
+  getProcessResult,
+  npmPath,
+  suite,
+  test,
+  writeDefinitionFile,
+} from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
 
 suite("compile", () => {
@@ -154,6 +163,101 @@ suite("compile", () => {
         );
       });
     });
+  });
+
+  suite("stateless-install project copy", ({ afterEach }) => {
+    const tmpDirFixture = new TmpDirFixture(afterEach);
+
+    test(
+      "compiles inputs that definitions/ and includes/ reach through symlinks into gitignored paths",
+      { timeout: 60000 },
+      async () => {
+        const projectDir = tmpDirFixture.createNewTmpDir();
+        // dataformCoreVersion triggers the stateless install path, where compile() copies
+        // the project through the .gitignore-aware filter before compiling the copy.
+        fs.writeFileSync(
+          path.join(projectDir, "workflow_settings.yaml"),
+          dumpYaml({
+            defaultProject: INTEGRATION_TEST_PROJECT,
+            defaultLocation: INTEGRATION_TEST_LOCATION,
+            defaultDataset: "dataform",
+            dataformCoreVersion: "3.0.50",
+          }),
+        );
+        fs.writeFileSync(path.join(projectDir, ".gitignore"), "generated/\n");
+        // definitions -> generated/definitions, and includes/constants.js ->
+        // ../generated/includes/constants.js, both inside the gitignored directory.
+        fs.ensureDirSync(path.join(projectDir, "generated", "definitions", "nested"));
+        fs.writeFileSync(
+          path.join(projectDir, "generated", "definitions", "table.sqlx"),
+          `config { type: "table" }\nSELECT "\${constants.VALUE}" AS id`,
+        );
+        fs.writeFileSync(
+          path.join(projectDir, "generated", "definitions", "nested", "other_table.sqlx"),
+          `config { type: "table" }\nSELECT 2 AS id`,
+        );
+        fs.ensureDirSync(path.join(projectDir, "generated", "includes"));
+        fs.writeFileSync(
+          path.join(projectDir, "generated", "includes", "constants.js"),
+          `module.exports = { VALUE: "from_include" };`,
+        );
+        fs.symlinkSync(path.join("generated", "definitions"), path.join(projectDir, "definitions"));
+        fs.ensureDirSync(path.join(projectDir, "includes"));
+        fs.symlinkSync(
+          path.join("..", "generated", "includes", "constants.js"),
+          path.join(projectDir, "includes", "constants.js"),
+        );
+
+        const npmCacheDir = tmpDirFixture.createNewTmpDir();
+        const result = await runCli("compile", [projectDir, "--json"], {
+          env: { ...process.env, NPM_CONFIG_CACHE: npmCacheDir },
+        });
+
+        expect(result.exitCode, `compile failed: ${result.stderr}`).equals(0);
+        const tables: dataform.ITable[] = JSON.parse(result.stdout).tables ?? [];
+        expect(tables.map((table) => table.target.name).sort()).deep.equals([
+          "other_table",
+          "table",
+        ]);
+        expect(tables.find((table) => table.target.name === "table").query).contains(
+          "from_include",
+        );
+      },
+    );
+
+    test(
+      "compiles gitignored definitions reached through a symlink to the project root",
+      { timeout: 60000 },
+      async () => {
+        const projectDir = tmpDirFixture.createNewTmpDir();
+        fs.writeFileSync(
+          path.join(projectDir, "workflow_settings.yaml"),
+          dumpYaml({
+            defaultProject: INTEGRATION_TEST_PROJECT,
+            defaultLocation: INTEGRATION_TEST_LOCATION,
+            defaultDataset: "dataform",
+            dataformCoreVersion: "3.0.50",
+          }),
+        );
+        fs.writeFileSync(path.join(projectDir, ".gitignore"), "generated/\n");
+        fs.ensureDirSync(path.join(projectDir, "generated"));
+        fs.writeFileSync(
+          path.join(projectDir, "generated", "table.sqlx"),
+          `config { type: "table" }\nSELECT 1 AS id`,
+        );
+        // Compilation's glob follows definitions -> . into generated/.
+        fs.symlinkSync(".", path.join(projectDir, "definitions"));
+
+        const npmCacheDir = tmpDirFixture.createNewTmpDir();
+        const result = await runCli("compile", [projectDir, "--json"], {
+          env: { ...process.env, NPM_CONFIG_CACHE: npmCacheDir },
+        });
+
+        expect(result.exitCode, `compile failed: ${result.stderr}`).equals(0);
+        const tables: dataform.ITable[] = JSON.parse(result.stdout).tables ?? [];
+        expect(tables.map((table) => table.target.name)).deep.equals(["table"]);
+      },
+    );
   });
 
   suite("disable-assertions flag (compilation)", ({ afterEach, beforeEach }) => {

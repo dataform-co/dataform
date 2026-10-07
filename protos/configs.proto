@@ -15,7 +15,16 @@ import "property_graph_config.proto";
 // Workflow Settings defines the contents of the `workflow_settings.yaml`
 // configuration file.
 message WorkflowSettings {
-  // The desired dataform core version to compile against.
+  // The desired dataform core version to compile against. When set, the CLI
+  // compiles a copy of the project in a temporary directory, with this version
+  // installed there. The copy skips `.git` and `node_modules` directories, and
+  // any paths matched by the `.gitignore` in the project root, except for
+  // compilation inputs: `workflow_settings.yaml` (or `dataform.json`),
+  // `.npmrc`, and the files in `definitions/` and `includes/`, including files
+  // they reach through symbolic links within the project. `.git` directories
+  // inside `definitions/` and `includes/` are skipped too. Any other file the
+  // copy skips is unavailable during compilation, so if project code loads one
+  // (for example, with `require()`), compilation fails.
   string dataform_core_version = 1;
 
   // Required. The default Google Cloud project (database).

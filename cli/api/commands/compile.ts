@@ -6,8 +6,8 @@ import { promisify } from "util";
 
 import { BaseWorker } from "df/cli/api/commands/base_worker";
 import {
-  buildProjectCopyFilter,
-  findProjectIgnoreFiles,
+  copyProjectForStatelessInstall,
+  hasProjectGitignore,
 } from "df/cli/api/commands/compile_copy_filter";
 import { MISSING_CORE_VERSION_ERROR } from "df/cli/api/commands/install";
 import { readConfigFromWorkflowSettings } from "df/cli/api/utils";
@@ -58,17 +58,14 @@ export async function compile(
         `Using isolated environment for @dataform/core@${workflowSettingsDataformCoreVersion}\n`,
       );
       print(`Copying project to temporary directory: ${temporaryProjectPath}\n`);
-      const ignoreFiles = findProjectIgnoreFiles(resolvedProjectPath);
       print(
-        ignoreFiles.length > 0
-          ? `Excluding .git, node_modules, and paths matched by: ${ignoreFiles.join(", ")}\n`
-          : `Excluding .git and node_modules (no .gitignore or .dataformignore in project root)\n`,
+        hasProjectGitignore(resolvedProjectPath)
+          ? `Excluding .git, node_modules, and paths matched by .gitignore, except files reachable from definitions/ and includes/\n`
+          : `Excluding .git and node_modules, except files reachable from definitions/ and includes/ (no .gitignore in project root)\n`,
       );
     }
     const copyStartTime = performance.now();
-    fs.copySync(resolvedProjectPath, temporaryProjectPath, {
-      filter: buildProjectCopyFilter(resolvedProjectPath),
-    });
+    copyProjectForStatelessInstall(resolvedProjectPath, temporaryProjectPath);
     if (compileConfig.verbose) {
       print(`Project copy completed in ${performance.now() - copyStartTime}ms\n`);
     }

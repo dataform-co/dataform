@@ -2,62 +2,186 @@ import * as fs from "fs-extra";
 import ignore from "ignore";
 import * as path from "path";
 
-// Excluded whatever the project's ignore files say. `.git` holds no Dataform project
-// files. A top-level `node_modules` can't be present at all here -- `compile()` rejects
-// the project before copying if it finds one -- so that entry covers nested ones, which
-// are likewise never part of a Dataform project.
+// Excluded whatever the project's `.gitignore` says, unless a compilation input is
+// reached through one (see COMPILATION_INPUT_ROOT_NAMES). `.git` holds no Dataform
+// project files. A top-level `node_modules` can't be present at all here -- `compile()`
+// rejects the project before copying if it finds one -- so that entry covers nested ones
+// outside the compilation inputs.
 //
 // Checked independently of the `ignore` instance below, rather than seeded into it, so
-// that a project's ignore files cannot override this floor: `ignore` lets later patterns
+// that a project's `.gitignore` cannot override this floor: `ignore` lets later patterns
 // override earlier ones by design, so a `!node_modules` negation would otherwise
 // un-ignore it.
 const ALWAYS_IGNORED_NAMES = new Set([".git", "node_modules"]);
 
-// Project-root files that are always copied, whatever the project's ignore files say.
-// `compile()` has already read `workflow_settings.yaml` from the original project to
-// decide on a stateless install, and compilation in the copy can't proceed without it,
-// so a broad pattern like `*.yaml` must not drop it.
-const ALWAYS_COPIED_ROOT_FILES = new Set(["workflow_settings.yaml"]);
+// Project-root entries that compilation reads, and that are therefore copied with
+// everything reachable from them, whatever the project's `.gitignore` says.
+//
+// - `definitions` and `includes` are the directories core compiles from. Compilation
+//   lists their files with a glob that follows symbolic links and descends into nested
+//   `node_modules`, so both are followed here too. `.git` directories are still skipped:
+//   the glob skips dot-directories, so nothing in them is compiled.
+// - `workflow_settings.yaml` (or the legacy `dataform.json`) has already been read from
+//   the original project to decide on a stateless install, and compilation in the copy
+//   reads it again, so a broad pattern like `*.yaml` must not drop it.
+// - `.npmrc` configures the `npm i` run in the copy (a private registry or mirror, say),
+//   and is commonly gitignored because it holds auth tokens.
+//
+// `package.json` and `package-lock.json` aren't needed: `compile()` rejects a
+// stateless-install project that has either, and writes its own `package.json` into the
+// copy.
+const COMPILATION_INPUT_ROOT_NAMES = new Set([
+  "definitions",
+  "includes",
+  "workflow_settings.yaml",
+  "dataform.json",
+  ".npmrc",
+]);
 
-// Ignore files read from the project root, in this order. Later patterns override earlier
-// ones, so a `!pattern` in `.dataformignore` can un-ignore a path the `.gitignore` excludes
-// (for example, definitions generated into a gitignored directory).
-export const PROJECT_IGNORE_FILE_NAMES = [".gitignore", ".dataformignore"];
+// Matches the limit most platforms place on symbolic links followed in resolving one
+// path, so a symlink loop ends rather than recursing forever.
+const MAX_SYMLINK_HOPS = 40;
+
+const GITIGNORE_FILE_NAME = ".gitignore";
 
 /**
- * Returns the names of the PROJECT_IGNORE_FILE_NAMES present in the project root as
- * files, in the order they are applied. Anything else by that name, such as a directory,
- * is not an ignore file and is skipped rather than failing the compile.
+ * Returns whether the project root has a `.gitignore` file. Anything else by that name,
+ * such as a directory, is not an ignore file and is skipped rather than failing the
+ * compile.
  */
-export function findProjectIgnoreFiles(resolvedProjectPath: string): string[] {
-  return PROJECT_IGNORE_FILE_NAMES.filter((name) => {
-    const ignoreFilePath = path.join(resolvedProjectPath, name);
-    return fs.existsSync(ignoreFilePath) && fs.statSync(ignoreFilePath).isFile();
-  });
+export function hasProjectGitignore(resolvedProjectPath: string): boolean {
+  const gitignorePath = path.join(resolvedProjectPath, GITIGNORE_FILE_NAME);
+  return fs.existsSync(gitignorePath) && fs.statSync(gitignorePath).isFile();
 }
 
-function swapCase(name: string): string {
-  return name
-    .split("")
-    .map((c) => (c === c.toUpperCase() ? c.toLowerCase() : c.toUpperCase()))
-    .join("");
+function isInsideDirectory(relative: string): boolean {
+  return (
+    !!relative &&
+    relative !== ".." &&
+    !relative.startsWith(`..${path.sep}`) &&
+    !path.isAbsolute(relative)
+  );
 }
 
 /**
- * Returns whether names in `directory` are matched case-insensitively by its filesystem,
- * as on default Windows and macOS volumes. It probes an existing entry under its
- * case-swapped name: if that resolves but isn't itself listed, it's the same entry.
- * Falls back to the platform default when no entry has a name with letters.
+ * Resolves the symbolic link at `linkPath` one path component at a time, as the operating
+ * system does, calling `onEntry` with the physical path of every entry it passes through,
+ * including intermediate links. A relative link resolves against the copy's own directory
+ * structure, so each of those entries must be copied for the link to work there.
+ * `linkPath` must itself be physical (no symbolic links in its parent directories).
+ *
+ * Returns the physical path the link resolves to, or undefined if it's dangling or loops.
  */
-export function isCaseInsensitiveDirectory(directory: string): boolean {
-  const entries = fs.readdirSync(directory);
-  for (const entry of entries) {
-    const swapped = swapCase(entry);
-    if (swapped !== entry) {
-      return !entries.includes(swapped) && fs.existsSync(path.join(directory, swapped));
+function resolveSymlink(
+  linkPath: string,
+  onEntry: (entryPath: string) => void,
+  hops = 0,
+): string | undefined {
+  if (hops >= MAX_SYMLINK_HOPS) {
+    return undefined;
+  }
+  let target: string;
+  try {
+    target = fs.readlinkSync(linkPath);
+  } catch (e) {
+    return undefined;
+  }
+  const root = path.isAbsolute(target) ? path.parse(target).root : "";
+  let current = root || path.dirname(linkPath);
+  for (const part of target.slice(root.length).split(path.sep === "\\" ? /[\\/]/ : "/")) {
+    if (!part || part === ".") {
+      continue;
+    }
+    if (part === "..") {
+      current = path.dirname(current);
+      continue;
+    }
+    const next = path.join(current, part);
+    onEntry(next);
+    let stats: fs.Stats;
+    try {
+      stats = fs.lstatSync(next);
+    } catch (e) {
+      return undefined;
+    }
+    if (stats.isSymbolicLink()) {
+      const resolved = resolveSymlink(next, onEntry, hops + 1);
+      if (resolved === undefined) {
+        return undefined;
+      }
+      current = resolved;
+    } else {
+      current = next;
     }
   }
-  return process.platform === "win32" || process.platform === "darwin";
+  return current;
+}
+
+/**
+ * Returns the project-relative paths, in `/`-separated form and passed through
+ * `normalizeCase`, of every entry the copy must contain for compilation to see the same
+ * inputs as in the original project: everything reachable from the
+ * COMPILATION_INPUT_ROOT_NAMES, following symbolic links that resolve inside the project,
+ * plus every entry those links pass through and the parent directories of all of them.
+ *
+ * A link that resolves to the project root makes the whole project reachable, since
+ * compilation's glob follows it (`definitions -> .` compiles `definitions/generated/*`),
+ * so everything apart from `.git` directories is then required. A link that resolves
+ * outside the project is copied as a link, and not followed: the filter only decides
+ * what is copied from inside the project.
+ */
+function collectCompilationInputs(
+  resolvedProjectPath: string,
+  normalizeCase: (name: string) => string,
+): Set<string> {
+  const projectRoot = fs.realpathSync(resolvedProjectPath);
+  const required = new Set<string>();
+  const visited = new Set<string>();
+
+  const addRequired = (entryPath: string) => {
+    const relative = path.relative(projectRoot, entryPath);
+    if (!isInsideDirectory(relative)) {
+      return;
+    }
+    const segments = relative.split(path.sep);
+    for (let i = 1; i <= segments.length; i++) {
+      required.add(normalizeCase(segments.slice(0, i).join("/")));
+    }
+  };
+
+  const visit = (entryPath: string) => {
+    const relative = path.relative(projectRoot, entryPath);
+    if (visited.has(entryPath) || (relative !== "" && !isInsideDirectory(relative))) {
+      return;
+    }
+    visited.add(entryPath);
+    let stats: fs.Stats;
+    try {
+      stats = fs.lstatSync(entryPath);
+    } catch (e) {
+      return;
+    }
+    addRequired(entryPath);
+    if (stats.isSymbolicLink()) {
+      const resolved = resolveSymlink(entryPath, addRequired);
+      if (resolved !== undefined) {
+        visit(resolved);
+      }
+    } else if (stats.isDirectory()) {
+      for (const child of fs.readdirSync(entryPath)) {
+        if (normalizeCase(child) !== ".git") {
+          visit(path.join(entryPath, child));
+        }
+      }
+    }
+  };
+
+  for (const name of fs.readdirSync(projectRoot)) {
+    if (COMPILATION_INPUT_ROOT_NAMES.has(normalizeCase(name))) {
+      visit(path.join(projectRoot, name));
+    }
+  }
+  return required;
 }
 
 /**
@@ -70,63 +194,54 @@ export function isCaseInsensitiveDirectory(directory: string): boolean {
  * of directory names: no fixed list covers every ecosystem's junk directories (`.venv`,
  * `target/`, `__pycache__/`, `vendor/`, `coverage/`, ...), whereas a project's
  * `.gitignore` already states exactly what that project treats as disposable, and
- * `dataform init` writes one. An optional `.dataformignore`, in the same syntax, is
- * applied on top of it: it can exclude further paths, or un-ignore gitignored ones with
- * `!pattern`.
+ * `dataform init` writes one.
  *
- * Only ignore files in the project root are read. Nested `.gitignore` files,
+ * Neither the `.gitignore` nor ALWAYS_IGNORED_NAMES applies to compilation inputs: the
+ * COMPILATION_INPUT_ROOT_NAMES and everything reachable from them apart from `.git`
+ * directories, including through symbolic links into otherwise-ignored paths inside the
+ * project. Other files are filtered, including ones project code loads with `require()`;
+ * if one of those is excluded, compilation in the copy fails where the original
+ * project's would succeed.
+ *
+ * Only the `.gitignore` in the project root is read. Nested `.gitignore` files,
  * `.git/info/exclude` and the user's global excludes file are not consulted, so a
  * project relying on those has more copied than `git status` would suggest. A project
- * with neither file gets only the ALWAYS_IGNORED_NAMES floor.
+ * without one gets only the ALWAYS_IGNORED_NAMES floor.
  *
- * Note that an ignored file is never copied, so it is also never compiled: a project
- * that generates definitions into a gitignored path needs that path unignored, in
- * either file. As in git, a file can't be re-included while any ancestor directory is
- * still excluded -- the copy never descends into that directory -- so each excluded
- * ancestor must be un-ignored too. With `definitions/generated/` in `.gitignore`,
- * `!definitions/generated/gen.sqlx` alone has no effect; `!definitions/generated/`
- * restores the directory.
- *
- * Names are matched with the case sensitivity of the project's filesystem, as git does
- * with `core.ignorecase`: on a case-sensitive one, `definitions/staging/` doesn't match
- * `definitions/Staging/`, and `NODE_MODULES` is an ordinary directory; on a
- * case-insensitive one, both patterns and negations match regardless of case. That
- * applies to the ALWAYS_IGNORED_NAMES and ALWAYS_COPIED_ROOT_FILES checks too.
- * `caseInsensitive` is detected from the project directory unless given.
+ * Names are matched case-insensitively on Windows and macOS, whose default filesystems
+ * are case-insensitive, and case-sensitively elsewhere. That applies to the
+ * COMPILATION_INPUT_ROOT_NAMES and ALWAYS_IGNORED_NAMES too. `caseInsensitive` overrides
+ * this.
  *
  * Patterns are evaluated on their own, without consulting git's index, so a file git
  * still tracks despite matching a pattern (for example, one force-added with
- * `git add -f`) is excluded all the same. The exception is ALWAYS_COPIED_ROOT_FILES.
+ * `git add -f`) is excluded all the same.
  */
 export function buildProjectCopyFilter(
   resolvedProjectPath: string,
-  caseInsensitive = isCaseInsensitiveDirectory(resolvedProjectPath),
+  caseInsensitive = process.platform === "win32" || process.platform === "darwin",
 ): (src: string) => boolean {
   const normalizeCase = (name: string) => (caseInsensitive ? name.toLowerCase() : name);
   const ig = ignore({ ignorecase: caseInsensitive });
-  for (const name of findProjectIgnoreFiles(resolvedProjectPath)) {
-    ig.add(fs.readFileSync(path.join(resolvedProjectPath, name), "utf8"));
+  if (hasProjectGitignore(resolvedProjectPath)) {
+    ig.add(fs.readFileSync(path.join(resolvedProjectPath, GITIGNORE_FILE_NAME), "utf8"));
   }
+  const compilationInputs = collectCompilationInputs(resolvedProjectPath, normalizeCase);
 
   return (src: string) => {
     const relative = path.relative(resolvedProjectPath, src);
     // The project root itself (relative === ""), or something outside the project
     // root (shouldn't happen in practice for a copySync(resolvedProjectPath, ...)
     // call, but not this function's place to decide) is always copied/recursed into.
-    if (
-      !relative ||
-      relative === ".." ||
-      relative.startsWith(`..${path.sep}`) ||
-      path.isAbsolute(relative)
-    ) {
-      return true;
-    }
-
-    if (ALWAYS_COPIED_ROOT_FILES.has(normalizeCase(relative))) {
+    if (!isInsideDirectory(relative)) {
       return true;
     }
 
     const relativeSegments = relative.split(path.sep);
+    if (compilationInputs.has(normalizeCase(relativeSegments.join("/")))) {
+      return true;
+    }
+
     if (relativeSegments.some((segment) => ALWAYS_IGNORED_NAMES.has(normalizeCase(segment)))) {
       return false;
     }
@@ -143,4 +258,17 @@ export function buildProjectCopyFilter(
 
     return !ig.ignores(posixRelative);
   };
+}
+
+/**
+ * Copies the project to `destination` for a stateless install, skipping what
+ * `buildProjectCopyFilter()` excludes. Symbolic links are copied as links.
+ */
+export function copyProjectForStatelessInstall(
+  resolvedProjectPath: string,
+  destination: string,
+): void {
+  fs.copySync(resolvedProjectPath, destination, {
+    filter: buildProjectCopyFilter(resolvedProjectPath),
+  });
 }
