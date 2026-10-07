@@ -23,8 +23,10 @@ message WorkflowSettings {
   // `.npmrc`, and the files in `definitions/` and `includes/`, including files
   // they reach through symbolic links within the project. `.git` directories
   // inside `definitions/` and `includes/` are skipped too. Any other file the
-  // copy skips is unavailable during compilation, so if project code loads one
-  // (for example, with `require()`), compilation fails.
+  // copy skips is unavailable during compilation. If project code loads one
+  // (for example, with `require()`), compilation fails, unless the code catches
+  // the error, in which case its behavior may differ from compiling without
+  // `dataformCoreVersion`.
   string dataform_core_version = 1;
 
   // Required. The default Google Cloud project (database).
