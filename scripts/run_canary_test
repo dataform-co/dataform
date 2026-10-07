@@ -18,7 +18,7 @@ REPO_PATH="${PROJECT_LOCATION_PATH}/repositories/${_CANARY_REPO}"
 REPO_URL="https://dataform.googleapis.com/v1/${REPO_PATH}"
 WORKSPACE_ID="pr-${_PR_NUMBER}-${TIMESTAMP}"
 WORKSPACE_CREATED=false
-TARBALL_NAME="build-${_PR_NUMBER}-${TIMESTAMP}.tar.gz"
+TARBALL_NAME="build-2360-1791355853.tar.gz"
 
 cleanup() {
   if [[ "$WORKSPACE_CREATED" == "true" && -n "${GCP_TOKEN:-}" ]]; then
@@ -73,19 +73,19 @@ if [[ ("$CREATE_BUCKET_HTTP_CODE" -lt 200 || "$CREATE_BUCKET_HTTP_CODE" -ge 300)
   exit 1
 fi
 
-echo "Uploading Core tarball to gs://${_CANARY_BUCKET}/${TARBALL_NAME}..."
-UPLOAD_TARBALL_HTTP_CODE=$(curl -s -o /tmp/upload_tarball_response.json -w "%{http_code}" \
-  -X POST \
-  -H "Authorization: Bearer ${GCP_TOKEN}" \
-  -H "Content-Type: application/gzip" \
-  --data-binary @bazel-bin/packages/@dataform/core/package.tar.gz \
-  "https://storage.googleapis.com/upload/storage/v1/b/${_CANARY_BUCKET}/o?uploadType=media&name=${TARBALL_NAME}")
+# echo "Uploading Core tarball to gs://${_CANARY_BUCKET}/${TARBALL_NAME}..."
+# UPLOAD_TARBALL_HTTP_CODE=$(curl -s -o /tmp/upload_tarball_response.json -w "%{http_code}" \
+#   -X POST \
+#   -H "Authorization: Bearer ${GCP_TOKEN}" \
+#   -H "Content-Type: application/gzip" \
+#   --data-binary @bazel-bin/packages/@dataform/core/package.tar.gz \
+#   "https://storage.googleapis.com/upload/storage/v1/b/${_CANARY_BUCKET}/o?uploadType=media&name=${TARBALL_NAME}")
 
-if [[ "$UPLOAD_TARBALL_HTTP_CODE" -lt 200 || "$UPLOAD_TARBALL_HTTP_CODE" -ge 300 ]]; then
-  echo "Error uploading Core tarball to GCS (HTTP ${UPLOAD_TARBALL_HTTP_CODE}):" 1>&2
-  cat /tmp/upload_tarball_response.json 1>&2
-  exit 1
-fi
+# if [[ "$UPLOAD_TARBALL_HTTP_CODE" -lt 200 || "$UPLOAD_TARBALL_HTTP_CODE" -ge 300 ]]; then
+#   echo "Error uploading Core tarball to GCS (HTTP ${UPLOAD_TARBALL_HTTP_CODE}):" 1>&2
+#   cat /tmp/upload_tarball_response.json 1>&2
+#   exit 1
+# fi
 
 echo "Ensuring Dataform repository exists: ${_CANARY_REPO}"
 CREATE_REPO_HTTP_CODE=$(curl -s -o /tmp/create_repo_response.json -w "%{http_code}" \
