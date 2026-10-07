@@ -13,6 +13,7 @@ ts_library(
             "**/*_test.ts",
         ],
     ),
+    esm = True,
     deps = [
         "//:node_modules/@google-cloud/bigquery",
         "//:node_modules/@google-cloud/lineage",

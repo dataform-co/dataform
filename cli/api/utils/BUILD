@@ -5,6 +5,7 @@ package(default_visibility = ["//visibility:public"])
 ts_library(
     name = "utils",
     srcs = glob(["**/*.ts"]),
+    esm = True,
     deps = [
         "//:node_modules/@types/node",
         "//:node_modules/object-sizeof",

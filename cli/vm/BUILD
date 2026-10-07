@@ -8,6 +8,7 @@ ts_library(
         "compile.ts",
         "jit_worker.ts",
     ],
+    esm = True,
     deps = [
         "//:node_modules/@types/glob",
         "//:node_modules/@types/node",

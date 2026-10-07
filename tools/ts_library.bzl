@@ -72,6 +72,7 @@ def ts_library(name, srcs = [], **kwargs):
 
     testonly = kwargs.get("testonly", 0)
     visibility = kwargs.get("visibility", ["//visibility:public"])
+    esm = kwargs.pop("esm", False)
 
     # 1. CommonJS compilation (produces .js, .d.ts)
     ts_project(
@@ -85,23 +86,24 @@ def ts_library(name, srcs = [], **kwargs):
     )
 
     # 2. ESM compilation (produces esm/*.js, esm/*.js.map)
-    ts_project(
-        name = ts_esm_target_name,
-        tsconfig = "//:tsconfig_esm",
-        extends = "//:tsconfig",
-        declaration = False,
-        source_map = True,
-        out_dir = "esm",
-        transpiler = "tsc",
-        srcs = srcs,
-        **kwargs
-    )
+    if esm:
+        ts_project(
+            name = ts_esm_target_name,
+            tsconfig = "//:tsconfig_esm",
+            extends = "//:tsconfig",
+            declaration = False,
+            source_map = True,
+            out_dir = "esm",
+            transpiler = "tsc",
+            srcs = srcs,
+            **kwargs
+        )
     _ts_library_forwarder(
         name = name,
         deps = [
             ":" + ts_target_name,
         ],
-        extra_files = [":" + ts_esm_target_name] + data,
+        extra_files = ([":" + ts_esm_target_name] if esm else []) + data,
         testonly = testonly,
         visibility = visibility,
     )

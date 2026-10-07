@@ -26,6 +26,7 @@ ts_library(
         "util.ts",
         "yargswrapper.ts",
     ],
+    esm = True,
     deps = [
         "//cli/api",
         "//cli/vm",
