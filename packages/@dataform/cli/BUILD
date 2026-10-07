@@ -16,6 +16,7 @@ genrule(
 ts_library(
     name = "cli",
     srcs = glob(["*.ts"]),
+    esm = True,
     deps = [
         "//cli",
         "//cli/api",

@@ -13,6 +13,7 @@ ts_library(
             "*.spec.ts",
         ],
     ),
+    esm = True,
     deps = [
         "//:node_modules/@types/node",
         "//:node_modules/protobufjs",

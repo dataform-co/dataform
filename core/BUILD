@@ -44,6 +44,7 @@ ts_library(
         "workflow_settings.ts",
         ":version.ts",
     ],
+    esm = True,
     deps = [
         "//:node_modules/@types/fs-extra",
         "//:node_modules/@types/js-yaml",
