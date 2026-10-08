@@ -1,4 +1,5 @@
 load("//tools:ts_library.bzl", "ts_library")
+load("//tools/common:copy.bzl", "copy_file")
 load("//:version.bzl", "DF_VERSION")
 load("//packages:index.bzl", "LICENSE_HEADER", "add_license_header_to_file", "pkg_bundle", "pkg_json", "pkg_npm_tar")
 load("@build_bazel_rules_nodejs//:index.bzl", "nodejs_binary")
@@ -91,11 +92,18 @@ pkg_bundle(
     ],
 )
 
+copy_file(
+    name = "readme",
+    src = "//cli:README.md",
+    out = "README.md",
+)
+
 pkg_npm_tar(
     name = "package",
     deps = [
         ":bundle",
         ":package.json",
+        ":readme",
         ":worker_bundle",
     ],
 )
