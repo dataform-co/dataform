@@ -1,10 +1,8 @@
 import { expect } from "chai";
-import { execFile } from "child_process";
 import * as fs from "fs-extra";
 import { dump as dumpYaml, load as loadYaml } from "js-yaml";
 import * as path from "path";
 
-import { copyProjectForStatelessInstall } from "df/cli/api/commands/compile_copy_filter";
 import {
   alterWorkflowSettings,
   INTEGRATION_TEST_LOCATION,
@@ -14,14 +12,7 @@ import {
 } from "df/cli/index_test_base";
 import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
-import {
-  corePackageTarPath,
-  getProcessResult,
-  npmPath,
-  suite,
-  test,
-  writeDefinitionFile,
-} from "df/testing";
+import { suite, test, writeDefinitionFile } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
 
 suite("compile", () => {
@@ -168,22 +159,29 @@ suite("compile", () => {
   suite("stateless-install project copy", ({ afterEach }) => {
     const tmpDirFixture = new TmpDirFixture(afterEach);
 
+    // dataformCoreVersion triggers the stateless install path, where compile() copies the
+    // project through the copy filter before compiling the copy.
+    function setUpStatelessProject() {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        dumpYaml({
+          defaultProject: INTEGRATION_TEST_PROJECT,
+          defaultLocation: INTEGRATION_TEST_LOCATION,
+          defaultDataset: "dataform",
+          dataformCoreVersion: "3.0.50",
+        }),
+      );
+      const env = { ...process.env, NPM_CONFIG_CACHE: tmpDirFixture.createNewTmpDir() };
+      const compileProject = () => runCli("compile", [projectDir, "--json"], { env });
+      return { projectDir, compileProject };
+    }
+
     test(
       "compiles inputs that definitions/ and includes/ reach through symlinks into gitignored paths",
       { timeout: 60000 },
       async () => {
-        const projectDir = tmpDirFixture.createNewTmpDir();
-        // dataformCoreVersion triggers the stateless install path, where compile() copies
-        // the project through the .gitignore-aware filter before compiling the copy.
-        fs.writeFileSync(
-          path.join(projectDir, "workflow_settings.yaml"),
-          dumpYaml({
-            defaultProject: INTEGRATION_TEST_PROJECT,
-            defaultLocation: INTEGRATION_TEST_LOCATION,
-            defaultDataset: "dataform",
-            dataformCoreVersion: "3.0.50",
-          }),
-        );
+        const { projectDir, compileProject } = setUpStatelessProject();
         fs.writeFileSync(path.join(projectDir, ".gitignore"), "generated/\n");
         // definitions -> generated/definitions, and includes/constants.js ->
         // ../generated/includes/constants.js, both inside the gitignored directory.
@@ -208,10 +206,7 @@ suite("compile", () => {
           path.join(projectDir, "includes", "constants.js"),
         );
 
-        const npmCacheDir = tmpDirFixture.createNewTmpDir();
-        const result = await runCli("compile", [projectDir, "--json"], {
-          env: { ...process.env, NPM_CONFIG_CACHE: npmCacheDir },
-        });
+        const result = await compileProject();
 
         expect(result.exitCode, `compile failed: ${result.stderr}`).equals(0);
         const tables: dataform.ITable[] = JSON.parse(result.stdout).tables ?? [];
@@ -229,16 +224,7 @@ suite("compile", () => {
       "compiles gitignored definitions reached through a symlink to the project root",
       { timeout: 60000 },
       async () => {
-        const projectDir = tmpDirFixture.createNewTmpDir();
-        fs.writeFileSync(
-          path.join(projectDir, "workflow_settings.yaml"),
-          dumpYaml({
-            defaultProject: INTEGRATION_TEST_PROJECT,
-            defaultLocation: INTEGRATION_TEST_LOCATION,
-            defaultDataset: "dataform",
-            dataformCoreVersion: "3.0.50",
-          }),
-        );
+        const { projectDir, compileProject } = setUpStatelessProject();
         fs.writeFileSync(path.join(projectDir, ".gitignore"), "generated/\n");
         fs.ensureDirSync(path.join(projectDir, "generated"));
         fs.writeFileSync(
@@ -248,10 +234,7 @@ suite("compile", () => {
         // Compilation's glob follows definitions -> . into generated/.
         fs.symlinkSync(".", path.join(projectDir, "definitions"));
 
-        const npmCacheDir = tmpDirFixture.createNewTmpDir();
-        const result = await runCli("compile", [projectDir, "--json"], {
-          env: { ...process.env, NPM_CONFIG_CACHE: npmCacheDir },
-        });
+        const result = await compileProject();
 
         expect(result.exitCode, `compile failed: ${result.stderr}`).equals(0);
         const tables: dataform.ITable[] = JSON.parse(result.stdout).tables ?? [];
@@ -263,16 +246,7 @@ suite("compile", () => {
       "explains a gitignored file actions.yaml references, and compiles it once re-included",
       { timeout: 60000 },
       async () => {
-        const projectDir = tmpDirFixture.createNewTmpDir();
-        fs.writeFileSync(
-          path.join(projectDir, "workflow_settings.yaml"),
-          dumpYaml({
-            defaultProject: INTEGRATION_TEST_PROJECT,
-            defaultLocation: INTEGRATION_TEST_LOCATION,
-            defaultDataset: "dataform",
-            dataformCoreVersion: "3.0.50",
-          }),
-        );
+        const { projectDir, compileProject } = setUpStatelessProject();
         fs.writeFileSync(path.join(projectDir, ".gitignore"), "queries/\n");
         fs.ensureDirSync(path.join(projectDir, "definitions"));
         fs.writeFileSync(
@@ -283,16 +257,13 @@ suite("compile", () => {
         );
         fs.ensureDirSync(path.join(projectDir, "queries"));
         fs.writeFileSync(path.join(projectDir, "queries", "example.sql"), "SELECT 1 AS id");
-        const npmCacheDir = tmpDirFixture.createNewTmpDir();
-        const env = { ...process.env, NPM_CONFIG_CACHE: npmCacheDir };
-
-        const excludedResult = await runCli("compile", [projectDir, "--json"], { env });
+        const excludedResult = await compileProject();
 
         expect(excludedResult.exitCode).not.equals(0);
         expect(excludedResult.stderr).contains("add '!/queries/' to .dataformignore");
 
         fs.writeFileSync(path.join(projectDir, ".dataformignore"), "!/queries/\n");
-        const result = await runCli("compile", [projectDir, "--json"], { env });
+        const result = await compileProject();
 
         expect(result.exitCode, `compile failed: ${result.stderr}`).equals(0);
         const tables: dataform.ITable[] = JSON.parse(result.stdout).tables ?? [];

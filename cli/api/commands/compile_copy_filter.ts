@@ -38,6 +38,9 @@ const COMPILATION_INPUT_ROOT_NAMES = new Set([
   ".npmrc",
 ]);
 
+// The default filesystems on Windows and macOS are case-insensitive.
+const CASE_INSENSITIVE_PLATFORM = process.platform === "win32" || process.platform === "darwin";
+
 // Matches the limit most platforms place on symbolic links followed in resolving one
 // path, so a symlink loop ends rather than recursing forever.
 const MAX_SYMLINK_HOPS = 40;
@@ -229,7 +232,7 @@ function collectCompilationInputs(
  */
 export function buildProjectCopyFilter(
   resolvedProjectPath: string,
-  caseInsensitive = process.platform === "win32" || process.platform === "darwin",
+  caseInsensitive = CASE_INSENSITIVE_PLATFORM,
 ): (src: string) => boolean {
   const normalizeCase = (name: string) => (caseInsensitive ? name.toLowerCase() : name);
   const ig = ignore({ ignorecase: caseInsensitive });
@@ -289,8 +292,9 @@ export function copyProjectForStatelessInstall(
  * re-include it. Otherwise returns `message` unchanged, so a dependency that is genuinely
  * missing still gets its usual error.
  *
- * The note names the shallowest path the filter excludes, since re-including only the
- * file itself wouldn't work while its parent directory is excluded. A relative module
+ * The note names the shallowest path missing from the copy. That's the path the filter
+ * excluded, since `copySync` doesn't descend into an excluded directory, and re-including
+ * only the file itself wouldn't work while that directory is excluded. A relative module
  * name (`require("./sibling")`) is resolved against the requiring file, which the message
  * doesn't name, so it is left unexplained.
  */
@@ -308,24 +312,24 @@ export function explainExcludedModule(
     : path.normalize(match[1]);
   if (
     !isInsideDirectory(moduleName) ||
-    !fs.existsSync(path.join(resolvedProjectPath, moduleName)) ||
-    fs.existsSync(path.join(copyPath, moduleName))
+    !fs.existsSync(path.join(resolvedProjectPath, moduleName))
   ) {
     return message;
   }
 
-  const filter = buildProjectCopyFilter(resolvedProjectPath);
   const segments = moduleName.split(path.sep);
   for (let i = 1; i <= segments.length; i++) {
-    const excludedPath = path.join(resolvedProjectPath, ...segments.slice(0, i));
-    if (filter(excludedPath)) {
+    const excluded = segments.slice(0, i);
+    if (fs.existsSync(path.join(copyPath, ...excluded))) {
       continue;
     }
-    if (segments.slice(0, i).some((segment) => ALWAYS_IGNORED_NAMES.has(segment))) {
+    const name = segments[i - 1];
+    if (ALWAYS_IGNORED_NAMES.has(CASE_INSENSITIVE_PLATFORM ? name.toLowerCase() : name)) {
+      // No ignore file can re-include it.
       return message;
     }
-    let pattern = segments.slice(0, i).join("/");
-    if (fs.lstatSync(excludedPath).isDirectory()) {
+    let pattern = excluded.join("/");
+    if (fs.lstatSync(path.join(resolvedProjectPath, ...excluded)).isDirectory()) {
       pattern += "/";
     }
     return (

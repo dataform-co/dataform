@@ -68,28 +68,6 @@ suite("buildProjectCopyFilter", ({ afterEach }) => {
     expect(filter(path.join(projectDir, "node_modules"))).to.equal(false);
   });
 
-  test("filters an actual project copy", () => {
-    const projectDir = tmpDirFixture.createNewTmpDir();
-    const destinationDir = tmpDirFixture.createNewTmpDir();
-    fs.ensureDirSync(path.join(projectDir, "definitions"));
-    fs.writeFileSync(path.join(projectDir, "definitions", "foo.sqlx"), "SELECT 1");
-    fs.ensureDirSync(path.join(projectDir, ".venv"));
-    fs.writeFileSync(path.join(projectDir, ".venv", "ignored"), "junk");
-    fs.ensureDirSync(path.join(projectDir, "node_modules"));
-    fs.writeFileSync(path.join(projectDir, "node_modules", "ignored"), "junk");
-    fs.writeFileSync(path.join(projectDir, ".gitignore"), ".venv/\n");
-
-    fs.copySync(projectDir, destinationDir, {
-      filter: buildProjectCopyFilter(projectDir),
-    });
-
-    expect(fs.readFileSync(path.join(destinationDir, "definitions", "foo.sqlx"), "utf8")).to.equal(
-      "SELECT 1",
-    );
-    expect(fs.existsSync(path.join(destinationDir, ".venv"))).to.equal(false);
-    expect(fs.existsSync(path.join(destinationDir, "node_modules"))).to.equal(false);
-  });
-
   test("respects a project .gitignore, in addition to the always-ignored floor", () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
     fs.writeFileSync(
@@ -140,9 +118,7 @@ suite("buildProjectCopyFilter", ({ afterEach }) => {
     fs.writeFileSync(path.join(projectDir, "scratch", "notes.js"), "// notes");
     fs.writeFileSync(path.join(projectDir, "helper.js"), "// helper");
 
-    fs.copySync(projectDir, destinationDir, {
-      filter: buildProjectCopyFilter(projectDir),
-    });
+    copyProjectForStatelessInstall(projectDir, destinationDir);
 
     expect(
       fs.readFileSync(path.join(destinationDir, "definitions", "generated", "gen.sqlx"), "utf8"),
@@ -326,9 +302,7 @@ suite("buildProjectCopyFilter", ({ afterEach }) => {
     fs.writeFileSync(path.join(projectDir, "workflow_settings.yaml"), "defaultProject: p\n");
     fs.writeFileSync(path.join(projectDir, "other.yaml"), "junk");
 
-    fs.copySync(projectDir, destinationDir, {
-      filter: buildProjectCopyFilter(projectDir),
-    });
+    copyProjectForStatelessInstall(projectDir, destinationDir);
 
     expect(fs.readFileSync(path.join(destinationDir, "workflow_settings.yaml"), "utf8")).to.equal(
       "defaultProject: p\n",
@@ -342,9 +316,7 @@ suite("buildProjectCopyFilter", ({ afterEach }) => {
     fs.writeFileSync(path.join(projectDir, ".gitignore"), ".npmrc\n");
     fs.writeFileSync(path.join(projectDir, ".npmrc"), "registry=https://example.com/\n");
 
-    fs.copySync(projectDir, destinationDir, {
-      filter: buildProjectCopyFilter(projectDir),
-    });
+    copyProjectForStatelessInstall(projectDir, destinationDir);
 
     expect(fs.readFileSync(path.join(destinationDir, ".npmrc"), "utf8")).to.equal(
       "registry=https://example.com/\n",
@@ -355,14 +327,19 @@ suite("buildProjectCopyFilter", ({ afterEach }) => {
     const projectDir = tmpDirFixture.createNewTmpDir();
     expect(findProjectIgnoreFiles(projectDir)).deep.equals([]);
 
+    // Nested ignore files aren't read, and a root .gitignore that's a directory is
+    // skipped rather than failing the compile.
     fs.ensureDirSync(path.join(projectDir, "definitions"));
     fs.writeFileSync(path.join(projectDir, "definitions", ".gitignore"), "");
     fs.writeFileSync(path.join(projectDir, "definitions", ".dataformignore"), "");
+    fs.ensureDirSync(path.join(projectDir, ".gitignore"));
     expect(findProjectIgnoreFiles(projectDir)).deep.equals([]);
+    expect(() => buildProjectCopyFilter(projectDir)).not.to.throw();
 
     fs.writeFileSync(path.join(projectDir, ".dataformignore"), "");
     expect(findProjectIgnoreFiles(projectDir)).deep.equals([".dataformignore"]);
 
+    fs.removeSync(path.join(projectDir, ".gitignore"));
     fs.writeFileSync(path.join(projectDir, ".gitignore"), "");
     expect(findProjectIgnoreFiles(projectDir)).deep.equals([".gitignore", ".dataformignore"]);
   });
@@ -431,16 +408,6 @@ suite("buildProjectCopyFilter", ({ afterEach }) => {
     expect(fs.existsSync(path.join(destinationDir, "queries"))).to.equal(false);
   });
 
-  test("a .gitignore that is a directory is skipped, not read", () => {
-    const projectDir = tmpDirFixture.createNewTmpDir();
-    fs.ensureDirSync(path.join(projectDir, ".gitignore"));
-    fs.ensureDirSync(path.join(projectDir, ".venv"));
-
-    expect(findProjectIgnoreFiles(projectDir)).deep.equals([]);
-    const filter = buildProjectCopyFilter(projectDir);
-    expect(filter(path.join(projectDir, ".venv"))).to.equal(true);
-  });
-
   test("on a case-insensitive filesystem, workflow_settings.yaml is kept in any case", () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
     fs.writeFileSync(path.join(projectDir, ".gitignore"), "*.yaml\n");
@@ -466,6 +433,8 @@ suite("explainExcludedModule", ({ afterEach }) => {
     fs.writeFileSync(path.join(projectDir, "generated", "queries", "example.sql"), "SELECT 1");
     fs.ensureDirSync(path.join(projectDir, "lib"));
     fs.writeFileSync(path.join(projectDir, "lib", "helper.js"), "");
+    fs.ensureDirSync(path.join(projectDir, "lib", "node_modules", "pkg"));
+    fs.writeFileSync(path.join(projectDir, "lib", "node_modules", "pkg", "index.js"), "");
     copyProjectForStatelessInstall(projectDir, copyDir);
     return { projectDir, copyDir };
   }
@@ -498,6 +467,8 @@ suite("explainExcludedModule", ({ afterEach }) => {
       "Cannot find module 'lib/helper.js'",
       // Resolved against the requiring file, which the message doesn't name.
       "Cannot find module './example.sql'",
+      // Excluded by the node_modules floor, which no ignore file can override.
+      "Cannot find module 'lib/node_modules/pkg/index.js'",
       // Missing from the project too.
       "Cannot find module 'generated/missing.sql'",
       // Not a missing module at all.
