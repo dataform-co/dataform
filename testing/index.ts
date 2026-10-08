@@ -11,8 +11,7 @@ export * from "df/testing/test";
 export * from "df/testing/runner";
 
 export const nodePath = path.resolve(process.env.JS_BINARY__NODE_BINARY || process.execPath);
-export const npmPath = path.join(path.dirname(nodePath), "npm");
-process.env.PATH = `${path.dirname(nodePath)}:${process.env.PATH}`;
+export const npmPath = process.env.JS_BINARY__NPM_BINARY || "npm";
 export const corePackageTarPath = path.resolve("packages/@dataform/core/package.tar.gz");
 
 export async function getProcessResult(childProcess: ChildProcess) {

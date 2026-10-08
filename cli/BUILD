@@ -82,17 +82,8 @@ ts_test_suite(
         "//packages/@dataform/cli:json",
         "//packages/@dataform/cli:worker_bundle",
         "//packages/@dataform/core:package_tar",
-        "@nodejs//:node",
-        "@nodejs//:node_files",
-        "@nodejs//:npm",
-        "@nodejs//:npm_files",
     ],
-    no_copy_to_bin = [
-        "@nodejs//:node",
-        "@nodejs//:npm",
-        "@nodejs//:node_files",
-        "@nodejs//:npm_files",
-    ],
+    include_npm = True,
     deps = [
         ":index_test_base",
         "//:node_modules/@types/chai",
@@ -127,17 +118,9 @@ ts_test_suite(
         "//packages/@dataform/cli:worker_bundle",
         "//packages/@dataform/core:package_tar",
         "//test_credentials:bigquery_credentials",
-        "@nodejs//:node",
-        "@nodejs//:node_files",
-        "@nodejs//:npm",
-        "@nodejs//:npm_files",
     ],
-    no_copy_to_bin = [
-        "@nodejs//:node",
-        "@nodejs//:npm",
-        "@nodejs//:node_files",
-        "@nodejs//:npm_files",
-    ],
+    # index_test_base runs `npm` directly, and the CLI runs `npm i` when dataformCoreVersion is set.
+    include_npm = True,
     tags = ["integration"],
     deps = [
         ":index_test_base",
