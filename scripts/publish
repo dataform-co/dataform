@@ -17,9 +17,6 @@ fi
 # Run all the tests.
 bazel test //... --build_tests_only --action_env=CLOUDSDK_CONTEXT_AWARE_USE_CLIENT_CERTIFICATE
 
-# Switch to the public registry
-bazel run @nodejs//:npm config set registry https://registry.npmjs.org/
-
 VERSION=$(cat version.bzl | grep DF_VERSION | awk '{ print $3 }' | sed "s/\"//g")
 
 TAG=next
@@ -36,6 +33,8 @@ fi
 
 echo "Publishing as '$TAG' based on version: $VERSION"
 
+PUBLISH_REGISTRY=https://registry.npmjs.org/
+
 bazel build //packages/@dataform/cli:package //packages/@dataform/core:package
-bazel run @nodejs//:npm -- publish "$PWD/bazel-bin/packages/@dataform/cli/package" --tag=$TAG
-bazel run @nodejs//:npm -- publish "$PWD/bazel-bin/packages/@dataform/core/package" --tag=$TAG
+bazel run @nodejs//:npm -- publish "$PWD/bazel-bin/packages/@dataform/cli/package" --tag=$TAG --registry=$PUBLISH_REGISTRY
+bazel run @nodejs//:npm -- publish "$PWD/bazel-bin/packages/@dataform/core/package" --tag=$TAG --registry=$PUBLISH_REGISTRY
