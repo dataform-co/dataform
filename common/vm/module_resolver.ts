@@ -45,6 +45,7 @@ export class ModuleResolver {
   private readonly resolveCache = new Map<string, string>();
 
   constructor(options: ModuleResolverOptions) {
+    assertNodeModuleInternals();
     this.projectDir = getRealPath(options.projectDir);
     this.extensions = options.extensions;
     this.allowedExternalPaths = (options.allowedExternalPaths || []).map(getRealPath);
@@ -58,6 +59,16 @@ export class ModuleResolver {
       return cached;
     }
     const resolved = this.resolveUncached(moduleName, fromPath);
+    // VmRunner only evaluates JavaScript and JSON, so a native addon (e.g. a package whose entry
+    // point Module._findPath resolves to index.node) would otherwise run as JavaScript and fail
+    // with a confusing SyntaxError or ReferenceError.
+    if (path.extname(resolved).toLowerCase() === ".node") {
+      const err: any = new Error(
+        `Native '.node' addons are not supported: cannot load '${moduleName}' ('${resolved}')`,
+      );
+      err.code = "MODULE_NOT_FOUND";
+      throw err;
+    }
     this.resolveCache.set(cacheKey, resolved);
     return resolved;
   }
@@ -233,6 +244,21 @@ export class ModuleResolver {
       }
     }
     return null;
+  }
+}
+
+/**
+ * `Module._nodeModulePaths` and `Module._findPath` are undocumented Node.js internals, so check
+ * up front that they exist instead of failing with a confusing error during resolution.
+ */
+function assertNodeModuleInternals(): void {
+  for (const helper of ["_nodeModulePaths", "_findPath"]) {
+    if (typeof NodeModule[helper] !== "function") {
+      throw new Error(
+        `Node.js ${process.version} does not provide Module.${helper}, which is required to ` +
+          "resolve packages from node_modules.",
+      );
+    }
   }
 }
 

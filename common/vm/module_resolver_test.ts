@@ -214,4 +214,43 @@ suite("ModuleResolver", ({ afterEach }) => {
     const freshResolver = new ModuleResolver({ projectDir, extensions: EXTENSIONS });
     expect(() => freshResolver.resolve("./helper", fromPath)).to.throw(/Cannot find module/);
   });
+
+  test("rejects .node native addons resolved from node_modules or project files", () => {
+    const projectDir = newProjectDir();
+    const packageAddon = path.join(projectDir, "node_modules", "df-test-native", "index.node");
+    const projectAddon = path.join(projectDir, "includes", "addon.node");
+    writeFile(packageAddon, "");
+    writeFile(projectAddon, "");
+
+    const resolver = new ModuleResolver({ projectDir, extensions: EXTENSIONS });
+    const fromPath = path.join(projectDir, "index.js");
+    const expectRejected = (specifier: string, addonPath: string) =>
+      expect(() => resolver.resolve(specifier, fromPath))
+        .to.throw(
+          `Native '.node' addons are not supported: cannot load '${specifier}' ('${addonPath}')`,
+        )
+        .with.property("code", "MODULE_NOT_FOUND");
+
+    // Module._findPath resolves the bare package name to node_modules/df-test-native/index.node.
+    expectRejected("df-test-native", packageAddon);
+    expectRejected("./includes/addon.node", projectAddon);
+    expectRejected("includes/addon.node", projectAddon);
+  });
+
+  test("fails with a clear error when Node's internal module lookup helpers are missing", () => {
+    const projectDir = newProjectDir();
+    // tslint:disable-next-line: no-require-imports
+    const NodeModule: any = require("module");
+    for (const helper of ["_nodeModulePaths", "_findPath"]) {
+      const original = NodeModule[helper];
+      NodeModule[helper] = undefined;
+      try {
+        expect(() => new ModuleResolver({ projectDir, extensions: EXTENSIONS })).to.throw(
+          `does not provide Module.${helper}, which is required to resolve packages from node_modules`,
+        );
+      } finally {
+        NodeModule[helper] = original;
+      }
+    }
+  });
 });
