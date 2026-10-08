@@ -9,8 +9,6 @@ ts_library(
         ["*.ts"],
         exclude = ["*.spec.ts"],
     ),
-    deps = [
-    ],
 )
 
 ts_test_suite(

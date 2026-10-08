@@ -14,11 +14,6 @@ copy_to_bin(
     srcs = ["rollup_dts.config.js"],
 )
 
-exports_files([
-    "rollup.config.js",
-    "rollup_dts.config.js",
-])
-
 ts_library(
     name = "gen-package-json",
     srcs = ["gen_package_json.ts"],
