@@ -5,13 +5,6 @@ load("//tools:ts_library.bzl", "ts_library")
 
 package(default_visibility = ["//visibility:public"])
 
-genrule(
-    name = "register_loader_gen",
-    srcs = ["//testing:resolver-patch.js"],
-    outs = ["register_loader.js"],
-    cmd = "cat $(SRCS) > $@",
-)
-
 ts_library(
     name = "cli",
     srcs = glob(["*.ts"]),
@@ -19,7 +12,6 @@ ts_library(
     deps = [
         "//cli",
         "//cli/api",
-        "//cli/vm",
         "//protos:ts",
     ],
 )
@@ -29,10 +21,8 @@ js_binary(
     chdir = "$$BUILD_WORKING_DIRECTORY",
     data = [
         "bin_loader.js",
-        ":register_loader.js",
         ":cli",
-        "//cli/vm:bazel_compile_loader",
-        "//cli/vm:bazel_jit_worker_loader",
+        "//testing:resolver-patch",
     ],
     entry_point = "bin_loader.js",
     testonly = True,
@@ -97,10 +87,12 @@ add_license_header_to_file(
 pkg_bundle(
     name = "worker_bundle_no_license",
     allow_node_builtins = True,
-    entry_point = "esm/worker.js",
+    # ESM output of cli/vm/worker.ts, the single worker entry point (also used in dev/tests
+    # via cli/vm/worker_loader.js).
+    entry_point = "//cli/vm:esm/worker.js",
     externals = externals,
     deps = [
-        ":cli",
+        "//cli/vm",
     ],
 )
 

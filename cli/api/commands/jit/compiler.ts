@@ -40,10 +40,6 @@ export class JitCompileChildProcess extends BaseWorker<
     );
   }
 
-  constructor() {
-    super("vm/bazel_jit_worker_loader");
-  }
-
   private async run(
     request: dataform.IJitCompilationRequest,
     projectDir: string,
