@@ -71,12 +71,11 @@ function isInsideDirectory(relative: string): boolean {
   );
 }
 
-function entryExists(entryPath: string): boolean {
+function lstatIfExists(entryPath: string): fs.Stats | undefined {
   try {
-    fs.lstatSync(entryPath);
-    return true;
+    return fs.lstatSync(entryPath);
   } catch (e) {
-    return false;
+    return undefined;
   }
 }
 
@@ -299,15 +298,15 @@ export function copyProjectForStatelessInstall(
 /**
  * If `message` reports a module compilation couldn't find, and part of its path is in the
  * project but missing from the stateless-install copy at `copyPath`, returns `message`
- * with a note naming that path. Otherwise returns `message` unchanged, so a dependency
- * that is genuinely missing still gets its usual error.
+ * with a note naming that path. Otherwise returns `message` unchanged.
  *
  * The note names the shallowest such path, which is the one an ignore file excluded,
  * since `copySync` doesn't descend into an excluded directory. Starting from there means
  * an extensionless name (`require("lib/helper")`) is explained when a directory on its
  * path was excluded, but not when only the file itself was. A relative name
  * (`require("./sibling")`) is resolved against the requiring file, which the message
- * doesn't name, so it is left unexplained.
+ * doesn't name, so it is left unexplained. So is a path through a copied symbolic link:
+ * what's missing is behind the link, under a path the module name doesn't show.
  *
  * The note doesn't say which pattern to add: other patterns may match the file as well,
  * and file names can contain pattern syntax, so a single suggested negation isn't always
@@ -332,14 +331,18 @@ export function explainExcludedModule(
   const segments = moduleName.split(path.sep);
   for (let i = 1; i <= segments.length; i++) {
     const excluded = segments.slice(0, i);
-    // lstat rather than exists, so that a copied symbolic link whose target was excluded
-    // counts as copied: re-including the link wouldn't help.
-    if (entryExists(path.join(copyPath, ...excluded))) {
+    const copied = lstatIfExists(path.join(copyPath, ...excluded));
+    if (copied?.isSymbolicLink()) {
+      // Whatever is missing is behind a copied link, possibly excluded under a path this
+      // can't see, so re-including anything named here wouldn't help.
+      return message;
+    }
+    if (copied) {
       continue;
     }
     const name = segments[i - 1];
     if (
-      !entryExists(path.join(resolvedProjectPath, ...excluded)) ||
+      !lstatIfExists(path.join(resolvedProjectPath, ...excluded)) ||
       ALWAYS_IGNORED_NAMES.has(CASE_INSENSITIVE_PLATFORM ? name.toLowerCase() : name)
     ) {
       // Missing from the project too, or excluded by the floor no ignore file overrides.

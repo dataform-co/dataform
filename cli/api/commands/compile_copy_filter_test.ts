@@ -11,6 +11,11 @@ import {
 import { suite, test } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
 
+// Under Bazel, rules_nodejs patches fs.readlinkSync to return absolute paths, so copySync
+// turns each relative link into one pointing back into the original project. Reading
+// through a copied link would then succeed whether or not its target was copied, so these
+// tests check a link's target at its own path in the copy instead.
+
 suite("buildProjectCopyFilter", ({ afterEach }) => {
   const tmpDirFixture = new TmpDirFixture(afterEach);
 
@@ -159,7 +164,7 @@ suite("buildProjectCopyFilter", ({ afterEach }) => {
     copyProjectForStatelessInstall(projectDir, destinationDir);
 
     expect(
-      fs.readFileSync(path.join(destinationDir, "definitions", "tables", "table.sqlx"), "utf8"),
+      fs.readFileSync(path.join(destinationDir, "generated", "tables", "table.sqlx"), "utf8"),
     ).to.equal("SELECT 1");
   });
 
@@ -180,9 +185,10 @@ suite("buildProjectCopyFilter", ({ afterEach }) => {
 
     copyProjectForStatelessInstall(projectDir, destinationDir);
 
-    expect(fs.readFileSync(path.join(destinationDir, "includes", "constants.js"), "utf8")).to.equal(
-      "// constants",
-    );
+    expect(fs.lstatSync(path.join(destinationDir, "links")).isSymbolicLink()).to.equal(true);
+    expect(
+      fs.readFileSync(path.join(destinationDir, "build", "js", "constants.js"), "utf8"),
+    ).to.equal("// constants");
     // Only what the link needs is kept; the rest of the ignored directory isn't.
     expect(fs.existsSync(path.join(destinationDir, "build", "unrelated.txt"))).to.equal(false);
   });
@@ -464,14 +470,29 @@ suite("explainExcludedModule", ({ afterEach }) => {
     fs.writeFileSync(path.join(projectDir, "generated", "queries", "example.sql"), "SELECT 1");
     fs.ensureDirSync(path.join(projectDir, "lib"));
     fs.writeFileSync(path.join(projectDir, "lib", "helper.js"), "");
-    // Copied as a link, though its target isn't.
+    // Copied as links, though their targets aren't: a file, a directory, and a directory
+    // inside .git, which only the fixed floor excludes.
     fs.symlinkSync(
       path.join("..", "generated", "queries", "example.sql"),
       path.join(projectDir, "lib", "linked.sql"),
     );
+    fs.symlinkSync("generated", path.join(projectDir, "linked-dir"));
+    fs.ensureDirSync(path.join(projectDir, ".git", "lib"));
+    fs.writeFileSync(path.join(projectDir, ".git", "lib", "helper.js"), "");
+    fs.symlinkSync(path.join(".git", "lib"), path.join(projectDir, "git-lib"));
     fs.ensureDirSync(path.join(projectDir, "lib", "node_modules", "pkg"));
     fs.writeFileSync(path.join(projectDir, "lib", "node_modules", "pkg", "index.js"), "");
     copyProjectForStatelessInstall(projectDir, copyDir);
+    // Point the copied links where their relative targets resolve outside Bazel: at paths
+    // in the copy that the filter left out.
+    for (const [link, target] of [
+      ["lib/linked.sql", "generated/queries/example.sql"],
+      ["linked-dir", "generated"],
+      ["git-lib", ".git/lib"],
+    ]) {
+      fs.removeSync(path.join(copyDir, link));
+      fs.symlinkSync(path.join(copyDir, target), path.join(copyDir, link));
+    }
     return { projectDir, copyDir };
   }
 
@@ -503,8 +524,11 @@ suite("explainExcludedModule", ({ afterEach }) => {
       "Cannot find module 'lodash'",
       // Copied, so not the filter's doing.
       "Cannot find module 'lib/helper.js'",
-      // A copied link whose target was excluded: re-including the link wouldn't help.
+      // Through copied links whose targets were excluded: re-including the link, or
+      // anything under it, wouldn't help.
       "Cannot find module 'lib/linked.sql'",
+      "Cannot find module 'linked-dir/queries/example.sql'",
+      "Cannot find module 'git-lib/helper.js'",
       // Resolved against the requiring file, which the message doesn't name.
       "Cannot find module './example.sql'",
       // Excluded by the node_modules floor, which no ignore file can override.
