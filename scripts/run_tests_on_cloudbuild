@@ -1,11 +1,6 @@
 #!/bin/bash
 set -e
 
-bazel run @nodejs//:yarn config set registry https://us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/
-bazel run //tools/registry-tools:switch_registry -- $(pwd)/yarn.lock https://us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/
-# Install from trusted registry, prohibit lockfile changes.
-bazel run @nodejs//:yarn install -- --frozen-lockfile
-
 # Run lint and format checks
 # Need origin/main to check which files to format
 if [ "$(git rev-parse --is-shallow-repository)" = "true" ]; then

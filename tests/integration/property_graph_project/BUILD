@@ -1,6 +1,6 @@
-package(default_visibility = ["//tests:__subpackages__"])
-
 load("//tools:node_modules.bzl", "node_modules")
+
+package(default_visibility = ["//tests:__subpackages__"])
 
 filegroup(
     name = "files",

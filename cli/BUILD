@@ -1,8 +1,6 @@
+load("//testing:index.bzl", "ts_test_suite")
 load("//tools:ts_library.bzl", "ts_library")
 load("//tools/common:copy.bzl", "copy_file")
-load("//:version.bzl", "DF_VERSION")
-load("//testing:index.bzl", "ts_test_suite")
-load("//tools:node_modules.bzl", "node_modules")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -29,29 +27,22 @@ ts_library(
         "yargswrapper.ts",
     ],
     deps = [
+        "//:node_modules/@types/glob",
+        "//:node_modules/@types/long",
+        "//:node_modules/@types/node",
+        "//:node_modules/@types/readline-sync",
+        "//:node_modules/@types/yargs",
+        "//:node_modules/chokidar",
+        "//:node_modules/glob",
+        "//:node_modules/parse-duration",
+        "//:node_modules/readline-sync",
+        "//:node_modules/untildify",
+        "//:node_modules/yargs",
         "//cli/api",
         "//cli/vm",
         "//core",
         "//protos:ts",
         "//sqlx:format",
-        "@npm//@types/glob",
-        "@npm//@types/long",
-        "@npm//@types/node",
-        "@npm//@types/readline-sync",
-        "@npm//@types/yargs",
-        "@npm//chokidar",
-        "@npm//glob",
-        "@npm//parse-duration",
-        "@npm//readline-sync",
-        "@npm//untildify",
-        "@npm//yargs",
-    ],
-)
-
-node_modules(
-    name = "node_modules",
-    deps = [
-        "//packages/@dataform/cli:package_tar",
     ],
 )
 
@@ -59,51 +50,52 @@ ts_library(
     name = "index_test_base",
     srcs = ["index_test_base.ts"],
     deps = [
+        "//:node_modules/@types/fs-extra",
+        "//:node_modules/@types/js-yaml",
+        "//:node_modules/@types/node",
+        "//:node_modules/fs-extra",
+        "//:node_modules/js-yaml",
         "//cli",
         "//core",
         "//protos:ts",
         "//testing",
-        "@npm//@types/fs-extra",
-        "@npm//@types/js-yaml",
-        "@npm//@types/node",
-        "@npm//fs-extra",
-        "@npm//js-yaml",
     ],
 )
 
 ts_test_suite(
     name = "tests",
     srcs = [
+        "index_compile_test.ts",
         "index_help_test.ts",
         "index_init_test.ts",
         "index_project_test.ts",
-        "index_compile_test.ts",
-        "util_test.ts",
         "tests/jit/jit_build_test.ts",
         "tests/jit/jit_run_test.ts",
+        "util_test.ts",
     ],
     data = [
-        ":node_modules",
+        "//packages/@dataform/cli:bundle",
+        "//packages/@dataform/cli:json",
+        "//packages/@dataform/cli:worker_bundle",
         "//packages/@dataform/core:package_tar",
-        "@nodejs//:node",
-        "@nodejs//:npm",
     ],
+    include_npm = True,
     deps = [
         ":index_test_base",
+        "//:node_modules/@types/chai",
+        "//:node_modules/@types/fs-extra",
+        "//:node_modules/@types/js-yaml",
+        "//:node_modules/@types/long",
+        "//:node_modules/@types/node",
+        "//:node_modules/chai",
+        "//:node_modules/fs-extra",
+        "//:node_modules/js-yaml",
+        "//:node_modules/ts-mockito",
         "//cli",
         "//cli/api",
         "//core",
         "//protos:ts",
         "//testing",
-        "@npm//@types/chai",
-        "@npm//@types/fs-extra",
-        "@npm//@types/js-yaml",
-        "@npm//@types/long",
-        "@npm//@types/node",
-        "@npm//chai",
-        "@npm//fs-extra",
-        "@npm//js-yaml",
-        "@npm//ts-mockito",
     ],
 )
 
@@ -111,35 +103,37 @@ ts_test_suite(
     name = "integration_tests",
     srcs = [
         "index_run_e2e_test.ts",
-        "tests/jit/index_jit_main_test.ts",
         "tests/jit/index_jit_advanced_test.ts",
         "tests/jit/index_jit_dependency_test.ts",
-        "tests/jit/index_jit_runtime_test.ts"
+        "tests/jit/index_jit_main_test.ts",
+        "tests/jit/index_jit_runtime_test.ts",
     ],
     data = [
-        ":node_modules",
+        "//packages/@dataform/cli:bundle",
+        "//packages/@dataform/cli:json",
+        "//packages/@dataform/cli:worker_bundle",
         "//packages/@dataform/core:package_tar",
         "//test_credentials:bigquery.json",
-        "@nodejs//:node",
-        "@nodejs//:npm",
     ],
+    # index_test_base runs `npm` directly, and the CLI runs `npm i` when dataformCoreVersion is set.
+    include_npm = True,
     tags = ["integration"],
     deps = [
         ":index_test_base",
+        "//:node_modules/@types/chai",
+        "//:node_modules/@types/fs-extra",
+        "//:node_modules/@types/js-yaml",
+        "//:node_modules/@types/long",
+        "//:node_modules/@types/node",
+        "//:node_modules/chai",
+        "//:node_modules/fs-extra",
+        "//:node_modules/js-yaml",
+        "//:node_modules/ts-mockito",
         "//cli",
         "//cli/api",
         "//core",
         "//protos:ts",
         "//testing",
-        "@npm//@types/chai",
-        "@npm//@types/fs-extra",
-        "@npm//@types/js-yaml",
-        "@npm//@types/long",
-        "@npm//@types/node",
-        "@npm//chai",
-        "@npm//fs-extra",
-        "@npm//js-yaml",
-        "@npm//ts-mockito",
     ],
 )
 

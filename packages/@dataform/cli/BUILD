@@ -1,7 +1,7 @@
-load("//tools:ts_library.bzl", "ts_library")
+load("@aspect_rules_js//js:defs.bzl", "js_binary")
 load("//:version.bzl", "DF_VERSION")
-load("//packages:index.bzl", "LICENSE_HEADER", "add_license_header_to_file", "pkg_bundle", "pkg_json", "pkg_npm_tar")
-load("@build_bazel_rules_nodejs//:index.bzl", "nodejs_binary")
+load("//packages:index.bzl", "add_license_header_to_file", "pkg_bundle", "pkg_json", "pkg_npm_tar")
+load("//tools:ts_library.bzl", "ts_library")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -11,23 +11,19 @@ ts_library(
     deps = [
         "//cli",
         "//cli/api",
-        "//cli/vm",
-        "//cli/vm:compile_loader",
         "//protos:ts",
     ],
 )
 
-nodejs_binary(
+js_binary(
     name = "bin",
+    chdir = "$$BUILD_WORKING_DIRECTORY",
     data = [
         ":cli",
-        "@npm//source-map-support",
+        "//testing:resolver-patch",
     ],
-    entry_point = ":index.ts",
-    templated_args = [
-        "--node_options=--require=source-map-support/register",
-        "--bazel_patch_module_resolver",
-    ],
+    entry_point = "bin_loader.js",
+    testonly = True,
 )
 
 externals = [
@@ -70,25 +66,39 @@ pkg_json(
 )
 
 pkg_bundle(
-    name = "bundle",
+    name = "bundle_no_license",
     allow_node_builtins = True,
-    args = ["--banner='#!/usr/bin/env node\n" + LICENSE_HEADER + "'"],
-    entry_point = "index.ts",
+    entry_point = "index.js",
     externals = externals,
     deps = [
         ":cli",
     ],
 )
 
+add_license_header_to_file(
+    name = "bundle",
+    from_file = ":bundle_no_license",
+    to_file = "bundle.js",
+    use_shebang = True,
+)
+
 pkg_bundle(
-    name = "worker_bundle",
+    name = "worker_bundle_no_license",
     allow_node_builtins = True,
-    args = ["--banner='#!/usr/bin/env node\n" + LICENSE_HEADER + "'"],
-    entry_point = "worker.ts",
+    # Compiled cli/vm/worker.ts, the single worker entry point (also used in dev/tests via
+    # cli/vm/worker_loader.js).
+    entry_point = "//cli/vm:worker.js",
     externals = externals,
     deps = [
-        ":cli",
+        "//cli/vm",
     ],
+)
+
+add_license_header_to_file(
+    name = "worker_bundle",
+    from_file = ":worker_bundle_no_license",
+    to_file = "worker_bundle.js",
+    use_shebang = True,
 )
 
 pkg_npm_tar(
