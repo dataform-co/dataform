@@ -71,6 +71,15 @@ function isInsideDirectory(relative: string): boolean {
   );
 }
 
+function entryExists(entryPath: string): boolean {
+  try {
+    fs.lstatSync(entryPath);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
 /**
  * Resolves the symbolic link at `linkPath` one path component at a time, as the operating
  * system does, calling `onEntry` with the physical path of every entry it passes through,
@@ -201,10 +210,11 @@ function collectCompilationInputs(
  * Exclusions come from the project's own `.gitignore` rather than from a hardcoded list
  * of directory names: no fixed list covers every ecosystem's junk directories (`.venv`,
  * `target/`, `__pycache__/`, `vendor/`, `coverage/`, ...), whereas a project's
- * `.gitignore` already states exactly what that project treats as disposable, and
- * `dataform init` writes one. An optional `.dataformignore`, in the same syntax, is
- * applied after it, for files the copy needs that the project doesn't want git to track
- * (generated SQL that `actions.yaml` references, or a CA file `.npmrc` points to), or for
+ * `.gitignore` already lists what it keeps out of version control, which usually
+ * includes those, and `dataform init` writes one. Not everything kept out of version
+ * control is disposable, so an optional `.dataformignore`, in the same syntax, is applied
+ * after it, for files the copy needs that git doesn't track (generated SQL that
+ * `actions.yaml` references, or a CA file `.npmrc` points to), or for
  * further exclusions. As in git, a path can't be re-included while its parent directory
  * is excluded, since the copy never descends into that directory.
  *
@@ -287,16 +297,21 @@ export function copyProjectForStatelessInstall(
 }
 
 /**
- * If `message` reports a module compilation couldn't find that exists in the project but
- * not in its stateless-install copy at `copyPath`, returns `message` with a note on how to
- * re-include it. Otherwise returns `message` unchanged, so a dependency that is genuinely
- * missing still gets its usual error.
+ * If `message` reports a module compilation couldn't find, and part of its path is in the
+ * project but missing from the stateless-install copy at `copyPath`, returns `message`
+ * with a note naming that path. Otherwise returns `message` unchanged, so a dependency
+ * that is genuinely missing still gets its usual error.
  *
- * The note names the shallowest path missing from the copy. That's the path the filter
- * excluded, since `copySync` doesn't descend into an excluded directory, and re-including
- * only the file itself wouldn't work while that directory is excluded. A relative module
- * name (`require("./sibling")`) is resolved against the requiring file, which the message
+ * The note names the shallowest such path, which is the one an ignore file excluded,
+ * since `copySync` doesn't descend into an excluded directory. Starting from there means
+ * an extensionless name (`require("lib/helper")`) is explained when a directory on its
+ * path was excluded, but not when only the file itself was. A relative name
+ * (`require("./sibling")`) is resolved against the requiring file, which the message
  * doesn't name, so it is left unexplained.
+ *
+ * The note doesn't say which pattern to add: other patterns may match the file as well,
+ * and file names can contain pattern syntax, so a single suggested negation isn't always
+ * enough.
  */
 export function explainExcludedModule(
   message: string,
@@ -310,32 +325,30 @@ export function explainExcludedModule(
   const moduleName = path.isAbsolute(match[1])
     ? path.relative(copyPath, match[1])
     : path.normalize(match[1]);
-  if (
-    !isInsideDirectory(moduleName) ||
-    !fs.existsSync(path.join(resolvedProjectPath, moduleName))
-  ) {
+  if (!isInsideDirectory(moduleName)) {
     return message;
   }
 
   const segments = moduleName.split(path.sep);
   for (let i = 1; i <= segments.length; i++) {
     const excluded = segments.slice(0, i);
-    if (fs.existsSync(path.join(copyPath, ...excluded))) {
+    // lstat rather than exists, so that a copied symbolic link whose target was excluded
+    // counts as copied: re-including the link wouldn't help.
+    if (entryExists(path.join(copyPath, ...excluded))) {
       continue;
     }
     const name = segments[i - 1];
-    if (ALWAYS_IGNORED_NAMES.has(CASE_INSENSITIVE_PLATFORM ? name.toLowerCase() : name)) {
-      // No ignore file can re-include it.
+    if (
+      !entryExists(path.join(resolvedProjectPath, ...excluded)) ||
+      ALWAYS_IGNORED_NAMES.has(CASE_INSENSITIVE_PLATFORM ? name.toLowerCase() : name)
+    ) {
+      // Missing from the project too, or excluded by the floor no ignore file overrides.
       return message;
     }
-    let pattern = excluded.join("/");
-    if (fs.lstatSync(path.join(resolvedProjectPath, ...excluded)).isDirectory()) {
-      pattern += "/";
-    }
     return (
-      `${message}. It exists in the project, but an ignore file excludes '${pattern}' ` +
-      `from the copy compiled for dataformCoreVersion. To include it, add '!/${pattern}' ` +
-      `to .dataformignore`
+      `${message}. '${excluded.join("/")}' is in the project but not in the copy compiled ` +
+      `for dataformCoreVersion, because .gitignore or .dataformignore excludes it. If the ` +
+      `module is there, re-include it in .dataformignore`
     );
   }
   return message;

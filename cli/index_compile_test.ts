@@ -261,7 +261,9 @@ suite("compile", () => {
         const excludedResult = await compileProject();
 
         expect(excludedResult.exitCode).not.equals(0);
-        expect(excludedResult.stderr).contains("add '!/queries/' to .dataformignore");
+        expect(excludedResult.stderr).contains(
+          "'queries' is in the project but not in the copy compiled for dataformCoreVersion",
+        );
 
         fs.writeFileSync(path.join(projectDir, ".dataformignore"), "!/queries/\n");
         const result = await compileProject();
@@ -286,10 +288,14 @@ suite("compile", () => {
         fs.ensureDirSync(path.join(projectDir, "definitions"));
         fs.writeFileSync(
           path.join(projectDir, "definitions", "table.js"),
-          `const helper = require("lib/helper.js");\n` +
+          // Extensionless, as helpers are usually required.
+          `const helper = require("lib/helper");\n` +
             `publish("table").query(\`SELECT "\${helper.VALUE}" AS id\`);`,
         );
-        const hint = "add '!/lib/' to .dataformignore";
+        const hint =
+          "'lib' is in the project but not in the copy compiled for dataformCoreVersion, " +
+          "because .gitignore or .dataformignore excludes it. If the module is there, " +
+          "re-include it in .dataformignore";
 
         // An uncaught require() becomes a graph compilation error rather than a thrown one.
         const jsonResult = await compileProject();
@@ -297,9 +303,7 @@ suite("compile", () => {
         const compilationErrors: dataform.ICompilationError[] = JSON.parse(jsonResult.stdout)
           .graphErrors.compilationErrors;
         expect(compilationErrors.map((error) => error.message)).deep.equals([
-          "Cannot find module 'lib/helper.js'. It exists in the project, but an ignore file " +
-            "excludes 'lib/' from the copy compiled for dataformCoreVersion. To include it, " +
-            hint,
+          `Cannot find module 'lib/helper'. ${hint}`,
         ]);
         // The console prints the error's stack, so the hint has to reach that too.
         const consoleResult = await compileProject([]);

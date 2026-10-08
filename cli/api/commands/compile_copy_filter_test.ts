@@ -464,29 +464,36 @@ suite("explainExcludedModule", ({ afterEach }) => {
     fs.writeFileSync(path.join(projectDir, "generated", "queries", "example.sql"), "SELECT 1");
     fs.ensureDirSync(path.join(projectDir, "lib"));
     fs.writeFileSync(path.join(projectDir, "lib", "helper.js"), "");
+    // Copied as a link, though its target isn't.
+    fs.symlinkSync(
+      path.join("..", "generated", "queries", "example.sql"),
+      path.join(projectDir, "lib", "linked.sql"),
+    );
     fs.ensureDirSync(path.join(projectDir, "lib", "node_modules", "pkg"));
     fs.writeFileSync(path.join(projectDir, "lib", "node_modules", "pkg", "index.js"), "");
     copyProjectForStatelessInstall(projectDir, copyDir);
     return { projectDir, copyDir };
   }
 
-  test("names the shallowest excluded path for a module the copy filter dropped", () => {
+  test("names the shallowest path an ignore file kept out of the copy", () => {
     const { projectDir, copyDir } = setUpCopy();
     const message = "Cannot find module 'generated/queries/example.sql'";
 
     expect(explainExcludedModule(message, projectDir, copyDir)).to.equal(
-      `${message}. It exists in the project, but an ignore file excludes 'generated/' from ` +
-        "the copy compiled for dataformCoreVersion. To include it, add '!/generated/' to " +
-        ".dataformignore",
+      `${message}. 'generated' is in the project but not in the copy compiled for ` +
+        "dataformCoreVersion, because .gitignore or .dataformignore excludes it. If the " +
+        "module is there, re-include it in .dataformignore",
     );
-    // An absolute path inside the copy is explained the same way.
-    expect(
-      explainExcludedModule(
-        `Cannot find module '${path.join(copyDir, "generated", "queries", "example.sql")}'`,
-        projectDir,
-        copyDir,
-      ),
-    ).to.contain("excludes 'generated/'");
+    for (const explained of [
+      // An absolute path inside the copy.
+      `Cannot find module '${path.join(copyDir, "generated", "queries", "example.sql")}'`,
+      // An extensionless name, which resolved to a file before the copy.
+      "Cannot find module 'generated/queries/example'",
+    ]) {
+      expect(explainExcludedModule(explained, projectDir, copyDir)).to.contain(
+        "'generated' is in the project but not in the copy",
+      );
+    }
   });
 
   test("leaves other missing modules unexplained", () => {
@@ -496,12 +503,14 @@ suite("explainExcludedModule", ({ afterEach }) => {
       "Cannot find module 'lodash'",
       // Copied, so not the filter's doing.
       "Cannot find module 'lib/helper.js'",
+      // A copied link whose target was excluded: re-including the link wouldn't help.
+      "Cannot find module 'lib/linked.sql'",
       // Resolved against the requiring file, which the message doesn't name.
       "Cannot find module './example.sql'",
       // Excluded by the node_modules floor, which no ignore file can override.
       "Cannot find module 'lib/node_modules/pkg/index.js'",
       // Missing from the project too.
-      "Cannot find module 'generated/missing.sql'",
+      "Cannot find module 'missing/example.sql'",
       // Not a missing module at all.
       "Unexpected token",
     ]) {
