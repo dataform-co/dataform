@@ -276,8 +276,6 @@ export class VmRunner {
     requireFn.resolve = (moduleName: string) => {
       return this.resolve(moduleName, fromPath);
     };
-    requireFn.extensions = {};
-    requireFn.main = undefined;
 
     return requireFn;
   }
