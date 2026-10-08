@@ -14,6 +14,8 @@ ts_library(
         ],
     ),
     esm = True,
+    # Worker entry point forked by BaseWorker in dev and tests (not imported).
+    data = ["//cli/vm:worker_loader"],
     deps = [
         "//:node_modules/@google-cloud/bigquery",
         "//:node_modules/@google-cloud/lineage",
@@ -36,7 +38,6 @@ ts_library(
         "//:node_modules/semver",
         "//:node_modules/tmp",
         "//cli/api/utils",
-        "//cli/vm",
         "//common/errors",
         "//common/flags",
         "//common/promises",

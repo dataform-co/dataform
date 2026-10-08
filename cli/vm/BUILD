@@ -1,3 +1,4 @@
+load("@aspect_rules_js//js:defs.bzl", "js_library")
 load("//tools:ts_library.bzl", "ts_library")
 
 package(default_visibility = ["//visibility:public"])
@@ -7,6 +8,7 @@ ts_library(
     srcs = [
         "compile.ts",
         "jit_worker.ts",
+        "worker.ts",
     ],
     esm = True,
     deps = [
@@ -22,24 +24,15 @@ ts_library(
     ],
 )
 
-# This is a bit nuts. As we fork a process when compiling projects, we
-# start a new node instance but within bazel, modules will fail to load in the
-# forked process as we don't have a loader script available.
-# To fix this, we generate the bazel loader scripts
-# and then execute these scripts instead, so module resulution works.
-
-genrule(
-    name = "bazel_compile_loader",
-    srcs = ["//testing:resolver-patch.js", "compile.js"],
-    outs = ["bazel_compile_loader.js"],
-    cmd = "cat $(SRCS) > $@",
-    testonly = True,
-)
-
-genrule(
-    name = "bazel_jit_worker_loader",
-    srcs = ["//testing:resolver-patch.js", "jit_worker.js"],
-    outs = ["bazel_jit_worker_loader.js"],
-    cmd = "cat $(SRCS) > $@",
-    testonly = True,
+# When compiling a project, the CLI forks a worker process running worker.ts. The published
+# CLI forks worker_bundle.js; in dev and tests there is no bundle, so the worker is started
+# through this loader, which installs the "df/..." resolver patch before loading worker.js.
+# //cli/api depends on this target, so anything that runs the CLI API gets a working loader.
+js_library(
+    name = "worker_loader",
+    srcs = ["worker_loader.js"],
+    deps = [
+        ":vm",
+        "//testing:resolver-patch",
+    ],
 )
