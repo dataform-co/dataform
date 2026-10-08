@@ -201,11 +201,12 @@ function collectCompilationInputs(
  * directories, including through symbolic links into otherwise-ignored paths inside the
  * project. Other files are filtered, including ones project code loads with `require()`;
  * if one of those is excluded, compilation in the copy fails where the original
- * project's would succeed.
+ * project's would succeed, or, if the code catches the error, behaves differently.
  *
  * Only the `.gitignore` in the project root is read. Nested `.gitignore` files,
- * `.git/info/exclude` and the user's global excludes file are not consulted, so a
- * project relying on those has more copied than `git status` would suggest. A project
+ * `.git/info/exclude` and the user's global excludes file are not consulted, so the
+ * copy can differ from git's ignored-file classification in either direction: a nested
+ * `!helper.js` negation un-ignores a file for git that this filter still excludes. A project
  * without one gets only the ALWAYS_IGNORED_NAMES floor.
  *
  * Names are matched case-insensitively on Windows and macOS, whose default filesystems

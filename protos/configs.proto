@@ -26,10 +26,10 @@ message WorkflowSettings {
   // copy skips is unavailable during compilation. If project code loads one
   // (for example, with `require()`), compilation fails, unless the code catches
   // the error, in which case its behavior may differ from compiling without
-  // `dataformCoreVersion`. To keep such a file gitignored, put it in a
-  // subdirectory of `includes/` (for example, `includes/generated/`), which is
-  // always copied and, unlike top-level `includes/*.js` files, isn't loaded as
-  // a global.
+  // `dataformCoreVersion`. To keep such a file gitignored, you can move it,
+  // along with any files it loads by relative path, into a subdirectory of
+  // `includes/` (for example, `includes/generated/`), which is always copied
+  // and, unlike top-level `includes/*.js` files, isn't loaded as a global.
   string dataform_core_version = 1;
 
   // Required. The default Google Cloud project (database).
