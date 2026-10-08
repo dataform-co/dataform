@@ -1,0 +1,215 @@
+#!/bin/bash
+set -euo pipefail
+
+# In case script is run directly
+if [[ -z "${_PR_NUMBER:-}" ]]; then
+  _PR_NUMBER=0
+fi
+
+if [[ -z "${_CANARY_GCP_PROJECT:-}" || -z "${_CANARY_LOCATION:-}" || -z "${_CANARY_REPO:-}" || -z "${_CANARY_BUCKET:-}" ]]; then
+  echo "Error: _CANARY_GCP_PROJECT, _CANARY_LOCATION, _CANARY_REPO, and _CANARY_BUCKET must be set." 1>&2
+  exit 1
+fi
+
+TIMESTAMP=$(date +%s)
+
+PROJECT_LOCATION_PATH="projects/${_CANARY_GCP_PROJECT}/locations/${_CANARY_LOCATION}"
+REPO_PATH="${PROJECT_LOCATION_PATH}/repositories/${_CANARY_REPO}"
+REPO_URL="https://dataform.googleapis.com/v1/${REPO_PATH}"
+WORKSPACE_ID="pr-${_PR_NUMBER}-${TIMESTAMP}"
+WORKSPACE_CREATED=false
+TARBALL_NAME="build-${_PR_NUMBER}-${TIMESTAMP}.tar.gz"
+TARBALL_URL="https://storage.googleapis.com/${_CANARY_BUCKET}/${TARBALL_NAME}"
+TMP_DIR=$(mktemp -d)
+
+cleanup() {
+  if [[ "$WORKSPACE_CREATED" == "true" && -n "${GCP_TOKEN:-}" ]]; then
+    echo "Cleaning up temporary Dataform workspace: ${WORKSPACE_ID}"
+    curl -s -X DELETE \
+      -H "Authorization: Bearer ${GCP_TOKEN}" \
+      "${REPO_URL}/workspaces/${WORKSPACE_ID}" || true
+  fi
+  rm -rf "${TMP_DIR}"
+  git restore yarn.lock version.bzl 2>/dev/null || true
+}
+trap cleanup EXIT
+
+# Install dependencies from the trusted registry and build the Core tarball.
+bazel run //tools/registry-tools:switch_registry -- $(pwd)/yarn.lock https://us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/
+bazel run @nodejs//:yarn install -- --frozen-lockfile --registry https://us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/
+
+CURRENT_VERSION=$(grep -oP '(?<=DF_VERSION = ")[^"]+' version.bzl)
+CANARY_VERSION="${CURRENT_VERSION}-${_PR_NUMBER}-${TIMESTAMP}"
+sed -i "s/DF_VERSION = \"[^\"]*\"/DF_VERSION = \"${CANARY_VERSION}\"/" version.bzl
+
+bazel build //packages/@dataform/core:package_tar
+
+if [[ -f ~/gcp_token.txt ]]; then
+  GCP_TOKEN=$(cat ~/gcp_token.txt)
+else
+  echo "Error: Unable to obtain GCP access token." 1>&2
+  exit 1
+fi
+
+echo "Verifying GCS bucket exists: ${_CANARY_BUCKET}"
+CHECK_BUCKET_HTTP_CODE=$(curl -s -o "${TMP_DIR}/check_bucket_response.json" -w "%{http_code}" \
+  -X GET \
+  -H "Authorization: Bearer ${GCP_TOKEN}" \
+  "https://storage.googleapis.com/storage/v1/b/${_CANARY_BUCKET}")
+if [[ "$CHECK_BUCKET_HTTP_CODE" -lt 200 || "$CHECK_BUCKET_HTTP_CODE" -ge 300 ]]; then
+  echo "Error verifying GCS bucket (HTTP ${CHECK_BUCKET_HTTP_CODE}):" 1>&2
+  cat "${TMP_DIR}/check_bucket_response.json" 1>&2
+  exit 1
+fi
+
+echo "Uploading Core tarball to gs://${_CANARY_BUCKET}/${TARBALL_NAME}..."
+UPLOAD_TARBALL_HTTP_CODE=$(curl -s -o "${TMP_DIR}/upload_tarball_response.json" -w "%{http_code}" \
+  -X POST \
+  -H "Authorization: Bearer ${GCP_TOKEN}" \
+  -H "Content-Type: application/gzip" \
+  --data-binary @bazel-bin/packages/@dataform/core/package.tar.gz \
+  "https://storage.googleapis.com/upload/storage/v1/b/${_CANARY_BUCKET}/o?uploadType=media&name=${TARBALL_NAME}")
+
+if [[ "$UPLOAD_TARBALL_HTTP_CODE" -lt 200 || "$UPLOAD_TARBALL_HTTP_CODE" -ge 300 ]]; then
+  echo "Error uploading Core tarball to GCS (HTTP ${UPLOAD_TARBALL_HTTP_CODE}):" 1>&2
+  cat "${TMP_DIR}/upload_tarball_response.json" 1>&2
+  exit 1
+fi
+
+echo "Ensuring Dataform repository exists: ${_CANARY_REPO}"
+CREATE_REPO_HTTP_CODE=$(curl -s -o "${TMP_DIR}/create_repo_response.json" -w "%{http_code}" \
+  -X POST \
+  -H "Authorization: Bearer ${GCP_TOKEN}" \
+  -H "Content-Type: application/json" \
+  "https://dataform.googleapis.com/v1/${PROJECT_LOCATION_PATH}/repositories?repositoryId=${_CANARY_REPO}" \
+  -d "{}")
+# 2xx = created now; 409 = ALREADY_EXISTS from a previous run
+if [[ ("$CREATE_REPO_HTTP_CODE" -lt 200 || "$CREATE_REPO_HTTP_CODE" -ge 300) && "$CREATE_REPO_HTTP_CODE" -ne 409 ]]; then
+  echo "Error creating Dataform repository (HTTP ${CREATE_REPO_HTTP_CODE}):" 1>&2
+  cat "${TMP_DIR}/create_repo_response.json" 1>&2
+  exit 1
+fi
+
+echo "Creating temporary Dataform workspace: ${WORKSPACE_ID}"
+CREATE_WS_HTTP_CODE=$(curl -s -o "${TMP_DIR}/create_ws_response.json" -w "%{http_code}" \
+  -X POST \
+  -H "Authorization: Bearer ${GCP_TOKEN}" \
+  -H "Content-Type: application/json" \
+  "${REPO_URL}/workspaces?workspaceId=${WORKSPACE_ID}" \
+  -d "{}")
+
+if [[ "$CREATE_WS_HTTP_CODE" -lt 200 || "$CREATE_WS_HTTP_CODE" -ge 300 ]]; then
+  echo "Error creating Dataform workspace (HTTP ${CREATE_WS_HTTP_CODE}):" 1>&2
+  cat "${TMP_DIR}/create_ws_response.json" 1>&2
+  exit 1
+fi
+WORKSPACE_CREATED=true
+
+write_workspace_file() {
+  local rel_path="$1"
+  local encoded_contents="$2"
+  local write_http_code
+  write_http_code=$(curl -s -o "${TMP_DIR}/write_file_response.json" -w "%{http_code}" \
+    -X POST \
+    -H "Authorization: Bearer ${GCP_TOKEN}" \
+    -H "Content-Type: application/json" \
+    "${REPO_URL}/workspaces/${WORKSPACE_ID}:writeFile" \
+    -d "$(python3 -c 'import json, sys; print(json.dumps({"path": sys.argv[1], "contents": sys.argv[2]}))' "$rel_path" "$encoded_contents")")
+
+  if [[ "$write_http_code" -lt 200 || "$write_http_code" -ge 300 ]]; then
+    echo "Error uploading ${rel_path} to workspace (HTTP ${write_http_code}):" 1>&2
+    cat "${TMP_DIR}/write_file_response.json" 1>&2
+    exit 1
+  fi
+}
+
+echo "Uploading canary project files from tools/canary-project/..."
+while IFS= read -r -d '' file; do
+  rel_path="${file#tools/canary-project/}"
+  encoded_contents=$(base64 -w 0 "$file")
+  write_workspace_file "$rel_path" "$encoded_contents"
+done < <(find tools/canary-project -type f -print0)
+
+echo "Uploading workflow_settings.yaml..."
+WORKFLOW_SETTINGS_CONTENTS=$(cat <<EOF | base64 -w 0
+defaultProject: ${_CANARY_GCP_PROJECT}
+defaultLocation: ${_CANARY_LOCATION}
+defaultDataset: dataform_canary
+defaultAssertionDataset: dataform_canary_assertions
+EOF
+)
+write_workspace_file "workflow_settings.yaml" "$WORKFLOW_SETTINGS_CONTENTS"
+
+echo "Uploading package.json referencing ${TARBALL_URL}..."
+PACKAGE_JSON_CONTENTS=$(cat <<EOF | base64 -w 0
+{
+  "name": "canary-project",
+  "dependencies": {
+    "@dataform/core": "${TARBALL_URL}"
+  }
+}
+EOF
+)
+write_workspace_file "package.json" "$PACKAGE_JSON_CONTENTS"
+
+echo "Uploading .npmrc to authenticate GCS tarball download..."
+NPMRC_CONTENTS=$(printf "//storage.googleapis.com/:_authToken=%s\n" "${GCP_TOKEN}" | base64 -w 0)
+write_workspace_file ".npmrc" "$NPMRC_CONTENTS"
+
+echo "Installing NPM packages in workspace..."
+INSTALL_HTTP_CODE=$(curl -s -o "${TMP_DIR}/install_response.json" -w "%{http_code}" \
+  -X POST \
+  -H "Authorization: Bearer ${GCP_TOKEN}" \
+  -H "Content-Type: application/json" \
+  "${REPO_URL}/workspaces/${WORKSPACE_ID}:installNpmPackages" \
+  -d "{}")
+
+if [[ "$INSTALL_HTTP_CODE" -lt 200 || "$INSTALL_HTTP_CODE" -ge 300 ]]; then
+  echo "Error calling workspaces.installNpmPackages (HTTP ${INSTALL_HTTP_CODE}):" 1>&2
+  cat "${TMP_DIR}/install_response.json" 1>&2
+  exit 1
+fi
+
+echo "Compiling canary project via dataform.googleapis.com..."
+COMPILE_HTTP_CODE=$(curl -s -o "${TMP_DIR}/compile_response.json" -w "%{http_code}" \
+  -X POST \
+  -H "Authorization: Bearer ${GCP_TOKEN}" \
+  -H "Content-Type: application/json" \
+  "${REPO_URL}/compilationResults" \
+  -d "{\"workspace\": \"${REPO_PATH}/workspaces/${WORKSPACE_ID}\"}")
+
+if [[ "$COMPILE_HTTP_CODE" -lt 200 || "$COMPILE_HTTP_CODE" -ge 300 ]]; then
+  echo "Error calling compilationResults.create (HTTP ${COMPILE_HTTP_CODE}):" 1>&2
+  cat "${TMP_DIR}/compile_response.json" 1>&2
+  exit 1
+fi
+
+python3 - "${TMP_DIR}/compile_response.json" "${CANARY_VERSION}" <<'EOF'
+import json
+import sys
+
+with open(sys.argv[1], "r", encoding="utf-8") as f:
+    resp = json.load(f)
+expected_version = sys.argv[2]
+
+errors = resp.get("compilationErrors", [])
+if errors:
+    sys.stderr.write("Canary compilation failed with errors:\n")
+    for err in errors:
+        path = err.get("path", "<unknown>")
+        msg = err.get("message", "")
+        stack = err.get("stack", "")
+        sys.stderr.write(f"  - [{path}] {msg}\n")
+        if stack:
+            sys.stderr.write(f"    {stack}\n")
+    sys.exit(1)
+
+actual_version = resp.get("dataformCoreVersion")
+if actual_version != expected_version:
+    sys.stderr.write(
+        f"Canary compilation version mismatch: expected '{expected_version}', got '{actual_version}'\n"
+    )
+    sys.exit(1)
+
+print(f"Canary compilation succeeded: {resp.get('name', 'OK')} (resolved version: {resp.get('resolvedGitCommitSha', 'workspace')})")
+EOF

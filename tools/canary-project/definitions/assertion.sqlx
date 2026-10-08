@@ -1,0 +1,6 @@
+config {
+  type: "assertion",
+  description: "Canary assertion action"
+}
+
+SELECT * FROM ${ref("table")} WHERE id IS NULL
