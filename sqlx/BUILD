@@ -8,7 +8,6 @@ ts_library(
     srcs = [
         "lexer.ts",
     ],
-    esm = True,
     deps = [
         "//:node_modules/@types/moo",
         "//:node_modules/moo",
@@ -20,7 +19,6 @@ ts_library(
     srcs = [
         "format.ts",
     ],
-    esm = True,
     deps = [
         ":lexer",
         "//:node_modules/@types/js-beautify",

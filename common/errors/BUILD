@@ -9,7 +9,6 @@ ts_library(
         ["*.ts"],
         exclude = ["*.spec.ts"],
     ),
-    esm = True,
     deps = [
     ],
 )

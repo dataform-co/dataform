@@ -15,12 +15,6 @@ copy_to_bin(
 )
 
 copy_to_bin(
-    name = "tsconfig_esm",
-    srcs = ["tsconfig.esm.json"],
-    visibility = ["//visibility:public"],
-)
-
-copy_to_bin(
     name = "package_json",
     srcs = ["package.json"],
     visibility = ["//visibility:public"],
@@ -28,7 +22,6 @@ copy_to_bin(
 
 exports_files([
     "tsconfig.json",
-    "tsconfig.esm.json",
     "package.json",
     "readme.md",
     "version.bzl",

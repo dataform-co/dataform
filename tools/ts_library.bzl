@@ -2,79 +2,34 @@ load("@aspect_rules_js//js:providers.bzl", "JsInfo")
 load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
 
 def _ts_library_forwarder_impl(ctx):
-    dts_files = []
-    for dep in ctx.attr.deps:
-        for f in dep[DefaultInfo].files.to_list():
-            if f.extension == "ts" or f.path.endswith(".d.ts.map"):
-                dts_files.append(f)
+    ts_js_info = ctx.attr.ts_project[JsInfo]
 
-    extra_default_files = []
-    for f in ctx.attr.extra_files:
-        extra_default_files.extend(f[DefaultInfo].files.to_list())
-
-    runfiles = ctx.runfiles(files = extra_default_files)
-    for dep in ctx.attr.deps:
-        runfiles = runfiles.merge(dep[DefaultInfo].default_runfiles)
-    for f in ctx.attr.extra_files:
-        runfiles = runfiles.merge(f[DefaultInfo].default_runfiles)
-
-    js_info = ctx.attr.deps[0][JsInfo]
-    esm_files = []
-    esm_prefix = (ctx.label.package + "/esm/") if ctx.label.package else "esm/"
-    for file in extra_default_files:
-        if file.extension == "mjs" or file.path.endswith(".mjs.map") or file.extension == "js" or file.path.endswith(".js.map") or file.extension == "json":
-            esm_files.append(file)
-            if file.extension == "js" and file.short_path.startswith(esm_prefix):
-                rel_no_ext = file.short_path[len(esm_prefix):-3]
-                mjs_file = ctx.actions.declare_file(rel_no_ext + ".mjs")
-                ctx.actions.symlink(output = mjs_file, target_file = file)
-                esm_files.append(mjs_file)
-
-    new_js_info = JsInfo(
-        target = js_info.target,
-        sources = js_info.sources,
-        types = js_info.types,
-        transitive_sources = depset(esm_files, transitive = [js_info.transitive_sources]),
-        transitive_types = js_info.transitive_types,
-        npm_sources = js_info.npm_sources,
-        npm_package_store_infos = js_info.npm_package_store_infos,
+    runfiles = ctx.runfiles(
+        transitive_files = depset(transitive = [d[DefaultInfo].files for d in ctx.attr.data]),
+    ).merge_all(
+        [ctx.attr.ts_project[DefaultInfo].default_runfiles] +
+        [d[DefaultInfo].default_runfiles for d in ctx.attr.data],
     )
 
     return [
         DefaultInfo(
-            files = depset(dts_files),
+            files = ts_js_info.types,
             runfiles = runfiles,
         ),
-        new_js_info,
+        ts_js_info,
     ]
 
 _ts_library_forwarder = rule(
     implementation = _ts_library_forwarder_impl,
     attrs = {
-        "deps": attr.label_list(mandatory = True, providers = [JsInfo]),
-        "extra_files": attr.label_list(allow_files = True),
+        "ts_project": attr.label(mandatory = True, providers = [JsInfo]),
+        "data": attr.label_list(allow_files = True),
     },
 )
 
-def ts_library(name, srcs = [], **kwargs):
+def ts_library(name, srcs = [], data = [], **kwargs):
     ts_target_name = name + "_ts_project"
-    ts_esm_target_name = name + "_ts_project_esm"
 
-    # Pop legacy rules_nodejs-specific attributes that ts_project doesn't accept
-    kwargs.pop("devmode_target", None)
-    kwargs.pop("prodmode_target", None)
-    kwargs.pop("devmode_module", None)
-    kwargs.pop("prodmode_module", None)
-    kwargs.pop("module_name", None)
-    kwargs.pop("module_root", None)
-
-    data = kwargs.pop("data", [])
-
-    testonly = kwargs.get("testonly", 0)
-    visibility = kwargs.get("visibility", ["//visibility:public"])
-    esm = kwargs.pop("esm", False)
-
-    # 1. CommonJS compilation (produces .js, .d.ts)
     ts_project(
         name = ts_target_name,
         tsconfig = "//:tsconfig",
@@ -85,25 +40,11 @@ def ts_library(name, srcs = [], **kwargs):
         **kwargs
     )
 
-    # 2. ESM compilation (produces esm/*.js, esm/*.js.map)
-    if esm:
-        ts_project(
-            name = ts_esm_target_name,
-            tsconfig = "//:tsconfig_esm",
-            extends = "//:tsconfig",
-            declaration = False,
-            source_map = True,
-            out_dir = "esm",
-            transpiler = "tsc",
-            srcs = srcs,
-            **kwargs
-        )
     _ts_library_forwarder(
         name = name,
-        deps = [
-            ":" + ts_target_name,
-        ],
-        extra_files = ([":" + ts_esm_target_name] if esm else []) + data,
-        testonly = testonly,
-        visibility = visibility,
+        ts_project = ":" + ts_target_name,
+        data = data,
+        testonly = kwargs.get("testonly"),
+        # None falls back to the package's default_visibility.
+        visibility = kwargs.get("visibility"),
     )

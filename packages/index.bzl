@@ -61,6 +61,7 @@ def pkg_bundle(name, deps, externals, entry_point = "index.js", allow_node_built
             "//:tsconfig",
         ],
         deps = deps + [
+            "//:node_modules/@rollup/plugin-commonjs",
             "//:node_modules/@rollup/plugin-node-resolve",
         ],
         **kwargs

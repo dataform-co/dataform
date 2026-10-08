@@ -10,7 +10,6 @@ ts_library(
         "jit_worker.ts",
         "worker.ts",
     ],
-    esm = True,
     deps = [
         "//:node_modules/@types/glob",
         "//:node_modules/@types/node",

@@ -8,7 +8,6 @@ package(default_visibility = ["//visibility:public"])
 ts_library(
     name = "cli",
     srcs = glob(["*.ts"]),
-    esm = True,
     deps = [
         "//cli",
         "//cli/api",
@@ -70,7 +69,7 @@ pkg_json(
 pkg_bundle(
     name = "bundle_no_license",
     allow_node_builtins = True,
-    entry_point = "esm/index.js",
+    entry_point = "index.js",
     externals = externals,
     deps = [
         ":cli",
@@ -87,9 +86,9 @@ add_license_header_to_file(
 pkg_bundle(
     name = "worker_bundle_no_license",
     allow_node_builtins = True,
-    # ESM output of cli/vm/worker.ts, the single worker entry point (also used in dev/tests
-    # via cli/vm/worker_loader.js).
-    entry_point = "//cli/vm:esm/worker.js",
+    # Compiled cli/vm/worker.ts, the single worker entry point (also used in dev/tests via
+    # cli/vm/worker_loader.js).
+    entry_point = "//cli/vm:worker.js",
     externals = externals,
     deps = [
         "//cli/vm",

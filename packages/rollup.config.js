@@ -1,4 +1,5 @@
-import resolve from "@rollup/plugin-node-resolve";
+import commonjs from "@rollup/plugin-commonjs";
+import { nodeResolve } from "@rollup/plugin-node-resolve";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -40,12 +41,15 @@ const checkImports = (imports) => {
     buildStart(options) {
       externals = options.external || (() => false);
     },
-    resolveId(source, importer) {
+    resolveId(source, importer, options) {
       if (!importer || path.isAbsolute(source) || source.startsWith(".")) {
         return null;
       }
       if (source.startsWith("df/")) {
+        // Forward `options` so that @rollup/plugin-commonjs's metadata (e.g. whether this is a
+        // require() call) reaches node-resolve.
         return this.resolve(path.resolve(baseUrl, source.slice(3)), importer, {
+          ...options,
           skipSelf: true,
         });
       }
@@ -65,8 +69,18 @@ const checkImports = (imports) => {
 };
 
 export default {
+  output: {
+    exports: "auto",
+  },
   plugins: [
     checkImports(importsToBundle),
-    resolve(),
+    nodeResolve(),
+    commonjs({
+      strictRequires: true,
+      // Leave these require() calls untouched, so they resolve at runtime. cli/vm/jit_worker.ts
+      // requires the project's (or a JiT-installed) @dataform/core, which isn't a CLI dependency,
+      // so it must not be listed in `externals` (that would add it to the package.json).
+      ignore: ["@dataform/core"],
+    }),
   ],
 };

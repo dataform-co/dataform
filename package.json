@@ -33,7 +33,8 @@
     "yargs": "^16.2.0"
   },
   "devDependencies": {
-    "@rollup/plugin-node-resolve": "^7.1.3",
+    "@rollup/plugin-commonjs": "^28.0.9",
+    "@rollup/plugin-node-resolve": "^16.0.3",
     "@types/chai": "^4.1.7",
     "@types/diff": "^4.0.2",
     "@types/es6-shim": "^0.31.37",
