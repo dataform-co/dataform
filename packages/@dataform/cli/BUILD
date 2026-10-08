@@ -19,7 +19,6 @@ js_binary(
     name = "bin",
     chdir = "$$BUILD_WORKING_DIRECTORY",
     data = [
-        "bin_loader.js",
         ":cli",
         "//testing:resolver-patch",
     ],

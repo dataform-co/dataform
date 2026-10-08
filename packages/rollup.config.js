@@ -1,10 +1,6 @@
 import commonjs from "@rollup/plugin-commonjs";
 import { nodeResolve } from "@rollup/plugin-node-resolve";
-import * as fs from "fs";
 import * as path from "path";
-
-const tsconfig = JSON.parse(fs.readFileSync("tsconfig.json", "utf8"));
-const baseUrl = tsconfig.compilerOptions.baseUrl || ".";
 
 function convertToRegex(pattern) {
   if (pattern instanceof RegExp) {
@@ -29,7 +25,7 @@ const knownNodeBuiltins = [
   "net",
 ].map((moduleName) => convertToRegex(moduleName));
 
-const importsToBundle = ["df", /df\/.*$/, /^bazel\-.*$/];
+const importsToBundle = ["df", /^df\/.*$/];
 
 const checkImports = (imports) => {
   const allowedImports = [...imports].map((pattern) => convertToRegex(pattern));
@@ -48,7 +44,7 @@ const checkImports = (imports) => {
       if (source.startsWith("df/")) {
         // Forward `options` so that @rollup/plugin-commonjs's metadata (e.g. whether this is a
         // require() call) reaches node-resolve.
-        return this.resolve(path.resolve(baseUrl, source.slice(3)), importer, {
+        return this.resolve(path.resolve(source.slice(3)), importer, {
           ...options,
           skipSelf: true,
         });
