@@ -1,7 +1,7 @@
 load("@aspect_rules_js//js:defs.bzl", "js_test")
 load("//tools:ts_library.bzl", "ts_library")
 
-def ts_test(name, entry_point, args = [], data = [], tags = [], no_copy_to_bin = [], **kwargs):
+def ts_test(name, entry_point, args = [], data = [], tags = [], include_npm = False, **kwargs):
     ts_library(
         name = name + "_library",
         data = data,
@@ -32,10 +32,10 @@ def ts_test(name, entry_point, args = [], data = [], tags = [], no_copy_to_bin =
             "--require=source-map-support/register",
         ],
         tags = tags,
-        no_copy_to_bin = no_copy_to_bin,
+        include_npm = include_npm,
     )
 
-def ts_test_suite(name, srcs, args = [], data = [], tags = [], no_copy_to_bin = [], **kwargs):
+def ts_test_suite(name, srcs, args = [], data = [], tags = [], include_npm = False, **kwargs):
     ts_library(
         name = name,
         data = data,
@@ -70,5 +70,5 @@ def ts_test_suite(name, srcs, args = [], data = [], tags = [], no_copy_to_bin = 
                     "--require=source-map-support/register",
                 ],
                 tags = tags,
-                no_copy_to_bin = no_copy_to_bin,
+                include_npm = include_npm,
             )
