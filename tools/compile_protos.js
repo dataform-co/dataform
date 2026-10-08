@@ -17,13 +17,12 @@ function resolvePath(p) {
 }
 
 const jsOut = resolvePath(argv["js-out"]);
-const esmJsOut = resolvePath(argv["esm-js-out"]);
 const dtsOut = resolvePath(argv["dts-out"]);
 const protoFiles = argv._.map(resolvePath);
 
-if (!jsOut || !esmJsOut || !dtsOut || protoFiles.length === 0) {
+if (!jsOut || !dtsOut || protoFiles.length === 0) {
   console.error(
-    "Usage: node compile_protos.js --js-out <path> --esm-js-out <path> --dts-out <path> <proto_files...>",
+    "Usage: node compile_protos.js --js-out <path> --dts-out <path> <proto_files...>",
   );
   process.exit(1);
 }
@@ -38,16 +37,6 @@ async function main() {
     ...protoFiles,
   ]);
   fs.writeFileSync(jsOut, jsOutput);
-
-  const esmOutput = await pbjsMain([
-    "--target",
-    "static-module",
-    "--wrap",
-    "es6",
-    "--strict-long",
-    ...protoFiles,
-  ]);
-  fs.writeFileSync(esmJsOut, esmOutput);
 
   // Patch 'import Long = require("long");' to 'import Long from "long";'
   // to avoid syntax errors in older rollup-plugin-dts.

@@ -13,16 +13,14 @@ def _ts_proto_library_impl(ctx):
     output_name = ctx.attr.output_name or ctx.label.name
     js_out = ctx.actions.declare_file(output_name + ".js")
     dts_out = ctx.actions.declare_file(output_name + ".d.ts")
-    esm_js_out = ctx.actions.declare_file(output_name + ".mjs")
 
     # Execute the compiled binary inside the execroot sandbox
     ctx.actions.run(
         inputs = all_proto_files,
-        outputs = [js_out, dts_out, esm_js_out],
+        outputs = [js_out, dts_out],
         executable = ctx.executable._compiler,
         arguments = [
             "--js-out", js_out.path,
-            "--esm-js-out", esm_js_out.path,
             "--dts-out", dts_out.path,
         ] + [f.path for f in all_proto_files],
         env = {
@@ -34,13 +32,13 @@ def _ts_proto_library_impl(ctx):
 
     # Return standard Bzlmod JS providers
     return [
-        DefaultInfo(files = depset([js_out, dts_out, esm_js_out])),
+        DefaultInfo(files = depset([js_out, dts_out])),
         js_info(
             target = ctx.label,
             types = depset([dts_out]),
             transitive_types = depset([dts_out]),
-            sources = depset([js_out, esm_js_out]),
-            transitive_sources = depset([js_out, esm_js_out]),
+            sources = depset([js_out]),
+            transitive_sources = depset([js_out]),
         ),
     ]
 
@@ -64,17 +62,9 @@ _ts_proto_library_rule = rule(
     },
 )
 
-# Public Starlark Macro wrapping the rule and stripping legacy rules_nodejs-specific kwargs
 def ts_proto_library(name, deps, output_name = None, **kwargs):
     if not output_name:
         output_name = name
-
-    kwargs.pop("module_name", None)
-    kwargs.pop("module_root", None)
-    kwargs.pop("devmode_target", None)
-    kwargs.pop("prodmode_target", None)
-    kwargs.pop("devmode_module", None)
-    kwargs.pop("prodmode_module", None)
 
     _ts_proto_library_rule(
         name = name,

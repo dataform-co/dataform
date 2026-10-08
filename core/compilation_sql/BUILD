@@ -7,7 +7,6 @@ ts_library(
     srcs = [
         "index.ts",
     ],
-    esm = True,
     deps = [
         "//protos:ts",
     ],

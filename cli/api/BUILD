@@ -13,7 +13,6 @@ ts_library(
             "**/*_test.ts",
         ],
     ),
-    esm = True,
     # Worker entry point forked by BaseWorker in dev and tests (not imported).
     data = ["//cli/vm:worker_loader"],
     deps = [

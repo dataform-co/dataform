@@ -29,7 +29,6 @@ ts_library(
         "util.ts",
         "yargswrapper.ts",
     ],
-    esm = True,
     deps = [
         "//:node_modules/@types/glob",
         "//:node_modules/@types/long",
