@@ -173,7 +173,8 @@ suite("compile", () => {
         }),
       );
       const env = { ...process.env, NPM_CONFIG_CACHE: tmpDirFixture.createNewTmpDir() };
-      const compileProject = () => runCli("compile", [projectDir, "--json"], { env });
+      const compileProject = (args = ["--json"]) =>
+        runCli("compile", [projectDir, ...args], { env });
       return { projectDir, compileProject };
     }
 
@@ -268,6 +269,50 @@ suite("compile", () => {
         expect(result.exitCode, `compile failed: ${result.stderr}`).equals(0);
         const tables: dataform.ITable[] = JSON.parse(result.stdout).tables ?? [];
         expect(tables.map((table) => table.query.trim())).deep.equals(["SELECT 1 AS id"]);
+      },
+    );
+
+    test(
+      "explains a gitignored helper a definition requires, in JSON and console output",
+      { timeout: 60000 },
+      async () => {
+        const { projectDir, compileProject } = setUpStatelessProject();
+        fs.writeFileSync(path.join(projectDir, ".gitignore"), "lib/\n");
+        fs.ensureDirSync(path.join(projectDir, "lib"));
+        fs.writeFileSync(
+          path.join(projectDir, "lib", "helper.js"),
+          `module.exports = { VALUE: "from_helper" };`,
+        );
+        fs.ensureDirSync(path.join(projectDir, "definitions"));
+        fs.writeFileSync(
+          path.join(projectDir, "definitions", "table.js"),
+          `const helper = require("lib/helper.js");\n` +
+            `publish("table").query(\`SELECT "\${helper.VALUE}" AS id\`);`,
+        );
+        const hint = "add '!/lib/' to .dataformignore";
+
+        // An uncaught require() becomes a graph compilation error rather than a thrown one.
+        const jsonResult = await compileProject();
+        expect(jsonResult.exitCode).not.equals(0);
+        const compilationErrors: dataform.ICompilationError[] = JSON.parse(jsonResult.stdout)
+          .graphErrors.compilationErrors;
+        expect(compilationErrors.map((error) => error.message)).deep.equals([
+          "Cannot find module 'lib/helper.js'. It exists in the project, but an ignore file " +
+            "excludes 'lib/' from the copy compiled for dataformCoreVersion. To include it, " +
+            hint,
+        ]);
+        // The console prints the error's stack, so the hint has to reach that too.
+        const consoleResult = await compileProject([]);
+        expect(consoleResult.stderr).contains(hint);
+
+        fs.writeFileSync(path.join(projectDir, ".dataformignore"), "!/lib/\n");
+        const result = await compileProject();
+
+        expect(result.exitCode, `compile failed: ${result.stderr}`).equals(0);
+        const tables: dataform.ITable[] = JSON.parse(result.stdout).tables ?? [];
+        expect(tables.map((table) => table.query.trim())).deep.equals([
+          'SELECT "from_helper" AS id',
+        ]);
       },
     );
   });

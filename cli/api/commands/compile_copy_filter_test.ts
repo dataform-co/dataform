@@ -323,6 +323,37 @@ suite("buildProjectCopyFilter", ({ afterEach }) => {
     );
   });
 
+  test("a .dataformignore of !* re-includes everything the .gitignore excludes", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    const destinationDir = tmpDirFixture.createNewTmpDir();
+    fs.writeFileSync(
+      path.join(projectDir, ".gitignore"),
+      [".venv/", "*.pyc", "/queries", "build/output/"].join("\n"),
+    );
+    fs.writeFileSync(path.join(projectDir, ".dataformignore"), "!*\n");
+    const ignoredFiles = [
+      [".venv", "lib", "mod.py"],
+      ["scratch", "foo.pyc"],
+      ["queries", "example.sql"],
+      ["build", "output", "bundle.js"],
+    ];
+    for (const file of ignoredFiles) {
+      fs.ensureDirSync(path.join(projectDir, ...file.slice(0, -1)));
+      fs.writeFileSync(path.join(projectDir, ...file), "");
+    }
+    fs.ensureDirSync(path.join(projectDir, ".git"));
+    fs.ensureDirSync(path.join(projectDir, "scratch", "node_modules"));
+
+    copyProjectForStatelessInstall(projectDir, destinationDir);
+
+    for (const file of ignoredFiles) {
+      expect(fs.existsSync(path.join(destinationDir, ...file)), file.join("/")).to.equal(true);
+    }
+    // The fixed floor still applies.
+    expect(fs.existsSync(path.join(destinationDir, ".git"))).to.equal(false);
+    expect(fs.existsSync(path.join(destinationDir, "scratch", "node_modules"))).to.equal(false);
+  });
+
   test("findProjectIgnoreFiles lists only ignore files in the project root, in order", () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
     expect(findProjectIgnoreFiles(projectDir)).deep.equals([]);
