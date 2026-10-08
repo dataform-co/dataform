@@ -14,12 +14,6 @@ copy_to_bin(
     visibility = ["//visibility:public"],
 )
 
-copy_to_bin(
-    name = "package_json",
-    srcs = ["package.json"],
-    visibility = ["//visibility:public"],
-)
-
 exports_files([
     "tsconfig.json",
     "package.json",

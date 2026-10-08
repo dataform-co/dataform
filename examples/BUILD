@@ -1,10 +1,9 @@
-load("@aspect_rules_js//js:defs.bzl", "js_library")
 load("//testing:index.bzl", "ts_test_suite")
 load("//tools:node_modules.bzl", "node_modules")
 
 package(default_visibility = ["//visibility:private"])
 
-js_library(
+filegroup(
     name = "all_projects",
     srcs = glob(
         [
