@@ -1,8 +1,6 @@
-load("@aspect_bazel_lib//lib:directory_path.bzl", "directory_path")
-load("@aspect_rules_js//js:defs.bzl", "js_binary", "js_run_binary")
-load("@aspect_rules_js//js:providers.bzl", "JsInfo")
 load("@aspect_rules_js//npm:defs.bzl", "npm_package")
 load("@aspect_rules_rollup//rollup:defs.bzl", "rollup")
+load("@npm//:rollup/package_json.bzl", rollup_bin = "bin")
 
 LICENSE_HEADER = """// Copyright 2023 Google LLC
 //
@@ -67,54 +65,27 @@ def pkg_bundle(name, deps, externals, entry_point = "index.js", allow_node_built
         **kwargs
     )
 
-def pkg_bundle_dts(name, deps, externals, entry_point = "index.d.ts", **kwargs):
-    entry_point_label = entry_point if entry_point.startswith(":") or entry_point.startswith("//") else ":" + entry_point
-    package = native.package_name()
-
-    rollup_entry_point = "_{}_rollup_entry_point".format(name)
-    directory_path(
-        name = rollup_entry_point,
-        directory = "//:node_modules/rollup/dir",
-        path = "dist/bin/rollup",
-    )
-
-    rollup_bin = "_{}_rollup_binary".format(name)
-    js_binary(
-        name = rollup_bin,
-        data = [
-            "//:node_modules/rollup",
-            "//:node_modules/rollup-plugin-dts",
-        ],
-        entry_point = ":" + rollup_entry_point,
-    )
-
-    out_filename = name
-    if not out_filename.endswith(".d.ts"):
-        if out_filename.endswith(".d"):
-            out_filename = out_filename + ".ts"
-        else:
-            out_filename = out_filename + ".d.ts"
-
-    raw_entry = entry_point.lstrip(":")
-    input_path = "{}/{}".format(package, raw_entry) if package else raw_entry
-    output_path = "{}/{}".format(package, out_filename) if package else out_filename
-
-    js_run_binary(
+def pkg_bundle_dts(name, deps, externals, entry_point = ":index.d.ts", out = "bundle.d.ts", **kwargs):
+    rollup_bin.rollup(
         name = name,
-        tool = ":" + rollup_bin,
         srcs = deps + [
+            entry_point,
+            "//:node_modules/rollup-plugin-dts",
             "//:tsconfig",
             "//packages:rollup_dts_config",
-            entry_point_label,
         ],
-        outs = [out_filename],
+        include_sources = False,
+        include_transitive_sources = False,
+        include_types = True,
+        include_transitive_types = True,
+        outs = [out],
         args = [
             "--config",
-            "packages/rollup_dts.config.js",
+            "$(rootpath //packages:rollup_dts_config)",
             "--input",
-            input_path,
+            "$(rootpath {})".format(entry_point),
             "--file",
-            output_path,
+            "$(rootpath {})".format(out),
             "--external",
             ",".join(externals),
         ],
@@ -148,26 +119,3 @@ def add_license_header_to_file(name, from_file, to_file, use_shebang = False, **
             .format(from_file = from_file, to_file = to_file, header = header),
         **kwargs
     )
-
-def _pkg_transitive_types_impl(ctx):
-    transitive_types = []
-    for dep in ctx.attr.deps:
-        if JsInfo in dep:
-            transitive_types.append(dep[JsInfo].transitive_types)
-        elif DefaultInfo in dep:
-            transitive_types.append(dep[DefaultInfo].files)
-
-    return [
-        DefaultInfo(
-            files = depset(transitive = transitive_types),
-        ),
-    ]
-
-pkg_transitive_types = rule(
-    implementation = _pkg_transitive_types_impl,
-    attrs = {
-        "deps": attr.label_list(
-            mandatory = True,
-        ),
-    },
-)

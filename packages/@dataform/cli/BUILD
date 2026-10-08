@@ -58,8 +58,8 @@ pkg_json(
     description = "Dataform command line interface.",
     external_deps = externals,
     layers = [
-        "//:package_json",
-        "//packages/@dataform:package_layer",
+        "//:package.json",
+        "//packages/@dataform:package.layer.json",
         "//packages/@dataform/cli:package.layer.json",
     ],
     main = "bundle.js",

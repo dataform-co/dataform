@@ -1,6 +1,6 @@
 load("@aspect_rules_webpack//webpack:defs.bzl", "webpack_bundle")
 load("//:version.bzl", "DF_VERSION")
-load("//packages:index.bzl", "add_license_header_to_file", "pkg_bundle_dts", "pkg_json", "pkg_npm_tar", "pkg_transitive_types")
+load("//packages:index.bzl", "add_license_header_to_file", "pkg_bundle_dts", "pkg_json", "pkg_npm_tar")
 load("//tools:ts_library.bzl", "ts_library")
 
 package(default_visibility = ["//visibility:public"])
@@ -27,13 +27,6 @@ webpack_bundle(
     webpack_config = ":webpack.config.js",
     deps = [
         ":core",
-        "//common/errors",
-        "//common/protos",
-        "//common/strings",
-        "//core",
-        "//core/compilation_sql",
-        "//protos:ts",
-        "//sqlx:lexer",
     ],
 )
 
@@ -43,8 +36,8 @@ pkg_json(
     description = "Dataform core API.",
     external_deps = [],
     layers = [
-        "//:package_json",
-        "//packages/@dataform:package_layer",
+        "//:package.json",
+        "//packages/@dataform:package.layer.json",
     ],
     main = "bundle.js",
     version = DF_VERSION,
@@ -86,16 +79,8 @@ add_license_header_to_file(
     to_file = "bundle.js",
 )
 
-pkg_transitive_types(
-    name = "core_transitive_types",
-    deps = [
-        ":core",
-    ],
-)
-
 pkg_bundle_dts(
     name = "bundle.d",
-    entry_point = "index.d.ts",
     externals = [
         "protobufjs",
         "tarjan-graph",
@@ -105,7 +90,6 @@ pkg_bundle_dts(
     ],
     deps = [
         ":core",
-        ":core_transitive_types",
     ],
 )
 

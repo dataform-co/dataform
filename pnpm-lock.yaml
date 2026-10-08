@@ -196,21 +196,9 @@ devDependencies:
   diff:
     specifier: ^8.0.3
     version: 8.0.3
-  escodegen:
-    specifier: ^1.13.0
-    version: 1.14.3
   eslint:
     specifier: 10.9.1
     version: 10.9.1
-  espree:
-    specifier: ^7.0.0
-    version: 7.3.1
-  estraverse:
-    specifier: ^5.1.0
-    version: 5.3.0
-  jsdoc:
-    specifier: ^4.0.5
-    version: 4.0.5
   json-stable-stringify:
     specifier: ^1.0.1
     version: 1.0.1
@@ -238,15 +226,9 @@ devDependencies:
   typescript:
     specifier: ^3.8.3
     version: 3.8.3
-  uglify-es:
-    specifier: ^3.3.9
-    version: 3.3.9
-  uglify-js:
-    specifier: ^3.7.7
-    version: 3.19.3
   webpack:
     specifier: 5.104.1
-    version: 5.104.1(uglify-js@3.19.3)(webpack-cli@4.10.0)
+    version: 5.104.1(webpack-cli@4.10.0)
   webpack-cli:
     specifier: 4.10.0
     version: 4.10.0(webpack@5.104.1)
@@ -1019,7 +1001,7 @@ packages:
       webpack: 4.x.x || 5.x.x
       webpack-cli: 4.x.x
     dependencies:
-      webpack: 5.104.1(uglify-js@3.19.3)(webpack-cli@4.10.0)
+      webpack: 5.104.1(webpack-cli@4.10.0)
       webpack-cli: 4.10.0(webpack@5.104.1)
     dev: true
 
@@ -1073,14 +1055,6 @@ packages:
       acorn: 8.18.0
     dev: true
 
-  /acorn-jsx@5.3.2(acorn@7.4.1):
-    resolution: {integrity: sha512-rq9s+JNhf0IChjtDXxllJ7g41oZk5SlXtp0LHwyA5cejwn7vKmKp4pPri6YEePv2PU65sAsegbXtIinmDFDXgQ==}
-    peerDependencies:
-      acorn: ^6.0.0 || ^7.0.0 || ^8.0.0
-    dependencies:
-      acorn: 7.4.1
-    dev: true
-
   /acorn-jsx@5.3.2(acorn@8.18.0):
     resolution: {integrity: sha512-rq9s+JNhf0IChjtDXxllJ7g41oZk5SlXtp0LHwyA5cejwn7vKmKp4pPri6YEePv2PU65sAsegbXtIinmDFDXgQ==}
     peerDependencies:
@@ -1095,12 +1069,6 @@ packages:
     dependencies:
       acorn: 8.18.0
     dev: false
-
-  /acorn@7.4.1:
-    resolution: {integrity: sha512-nQyp0o1/mNdbTO1PO6kHkwSrmgZ0MT/jCCpNiwbUjGoRN4dlBhqJtoQuCnEOKzgTVwg0ZWiCoQy6SxMebQVh8A==}
-    engines: {node: '>=0.4.0'}
-    hasBin: true
-    dev: true
 
   /acorn@8.18.0:
     resolution: {integrity: sha512-lGq+9yr1/GuAWaVYIHRjvvySG5/4VfKIvC8EWxStPdcDh/Ka7FG3twP6v4d5BkravUilhIAsG4Qj83t02LWUPQ==}
@@ -1436,10 +1404,6 @@ packages:
     engines: {node: '>=14'}
     dev: false
 
-  /commander@2.13.0:
-    resolution: {integrity: sha512-MVuS359B+YzaWqjCL/c+22gfryv+mCBPHAv3zyVI2GN8EY6IRP8VwtasXn8jyyhvvq84R4ImN1OKRtcbIasjYA==}
-    dev: true
-
   /commander@2.20.3:
     resolution: {integrity: sha512-GpVkmM8vF2vQUkj2LvZmD35JxeJOLCwJ9cUkugyk2nuhbv3+mJvpLYYt+0+USMxE+oj+ey/lJEnhZw75x/OMcQ==}
     dev: true
@@ -1673,11 +1637,6 @@ packages:
       estraverse: 5.3.0
     dev: true
 
-  /eslint-visitor-keys@1.3.0:
-    resolution: {integrity: sha512-6J72N8UNa462wa/KFODt/PJ3IU60SDpC3QXC1Hjc1BXXpfL2C9R5+AU7jhe0F6GREqVMh4Juu+NY7xn+6dipUQ==}
-    engines: {node: '>=4'}
-    dev: true
-
   /eslint-visitor-keys@3.4.3:
     resolution: {integrity: sha512-wpc+LXeiyiisxPlEkUzU6svyS1frIO3Mgxj1fdy7Pm8Ygzguax2N3Fa/D/ag1WqbOprdI+uY6wMUl8/a2G+iag==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
@@ -1739,15 +1698,6 @@ packages:
       acorn: 8.18.0
       acorn-jsx: 5.3.2(acorn@8.18.0)
       eslint-visitor-keys: 5.0.1
-    dev: true
-
-  /espree@7.3.1:
-    resolution: {integrity: sha512-v3JCNCE64umkFpmkFGqzVKsOT0tN1Zr+ueqLZfpV1Ob8e+CEgPWa+OxCoGH3tnhimMKIaBm4m/vaRpJ/krRz2g==}
-    engines: {node: ^10.12.0 || >=12.0.0}
-    dependencies:
-      acorn: 7.4.1
-      acorn-jsx: 5.3.2(acorn@7.4.1)
-      eslint-visitor-keys: 1.3.0
     dev: true
 
   /espree@9.3.2:
@@ -3344,7 +3294,7 @@ packages:
       - supports-color
     dev: false
 
-  /terser-webpack-plugin@5.3.16(uglify-js@3.19.3)(webpack@5.104.1):
+  /terser-webpack-plugin@5.3.16(webpack@5.104.1):
     resolution: {integrity: sha512-h9oBFCWrq78NyWWVcSwZarJkZ01c2AyGrzs1crmHZO3QUg9D61Wu4NPjBy69n7JqylFF5y+CsUZYmYEIZ3mR+Q==}
     engines: {node: '>= 10.13.0'}
     peerDependencies:
@@ -3365,8 +3315,7 @@ packages:
       schema-utils: 4.3.3
       serialize-javascript: 7.1.1
       terser: 5.39.0
-      uglify-js: 3.19.3
-      webpack: 5.104.1(uglify-js@3.19.3)(webpack-cli@4.10.0)
+      webpack: 5.104.1(webpack-cli@4.10.0)
     dev: true
 
   /terser@5.39.0:
@@ -3447,15 +3396,6 @@ packages:
 
   /uc.micro@2.1.0:
     resolution: {integrity: sha512-ARDJmphmdvUk6Glw7y9DQ2bFkKBHwQHLi2lsaH6PPmz/Ka9sFOBsBluozhDltWmnv9u/cF6Rt87znRTPV+yp/A==}
-    dev: true
-
-  /uglify-es@3.3.9:
-    resolution: {integrity: sha512-r+MU0rfv4L/0eeW3xZrd16t4NZfK8Ld4SWVglYBb7ez5uXFWHuVRs6xCTrf1yirs9a4j4Y27nn7SRfO6v67XsQ==}
-    engines: {node: '>=0.8.0'}
-    hasBin: true
-    dependencies:
-      commander: 2.13.0
-      source-map: 0.6.1
     dev: true
 
   /uglify-js@3.19.3:
@@ -3603,7 +3543,7 @@ packages:
       import-local: 3.2.0
       interpret: 2.2.0
       rechoir: 0.7.1
-      webpack: 5.104.1(uglify-js@3.19.3)(webpack-cli@4.10.0)
+      webpack: 5.104.1(webpack-cli@4.10.0)
       webpack-merge: 5.10.0
     dev: true
 
@@ -3621,7 +3561,7 @@ packages:
     engines: {node: '>=10.13.0'}
     dev: true
 
-  /webpack@5.104.1(uglify-js@3.19.3)(webpack-cli@4.10.0):
+  /webpack@5.104.1(webpack-cli@4.10.0):
     resolution: {integrity: sha512-Qphch25abbMNtekmEGJmeRUhLDbe+QfiWTiqpKYkpCOWY64v9eyl+KRRLmqOFA2AvKPpc9DC6+u2n76tQLBoaA==}
     engines: {node: '>=10.13.0'}
     hasBin: true
@@ -3653,7 +3593,7 @@ packages:
       neo-async: 2.6.2
       schema-utils: 4.3.3
       tapable: 2.3.0
-      terser-webpack-plugin: 5.3.16(uglify-js@3.19.3)(webpack@5.104.1)
+      terser-webpack-plugin: 5.3.16(webpack@5.104.1)
       watchpack: 2.5.1
       webpack-cli: 4.10.0(webpack@5.104.1)
       webpack-sources: 3.3.3

@@ -1,4 +1,3 @@
-load("@aspect_rules_js//js:defs.bzl", "js_library")
 load("//tools/gcloud:secrets.bzl", "gcloud_secret_or_local")
 
 package(default_visibility = ["//visibility:public"])
@@ -15,10 +14,4 @@ gcloud_secret_or_local(
     project = "dataform-open-source",
     key = "dataform-builder-key",
     keyring = "dataform-builder-keyring",
-)
-
-js_library(
-    name = "bigquery_credentials",
-    testonly = 1,
-    srcs = [":bigquery.json"],
 )

@@ -1,40 +1,6 @@
 load("@aspect_rules_js//js:defs.bzl", "js_test")
 load("//tools:ts_library.bzl", "ts_library")
 
-def ts_test(name, entry_point, args = [], data = [], tags = [], include_npm = False, **kwargs):
-    ts_library(
-        name = name + "_library",
-        data = data,
-        testonly = 1,
-        **kwargs
-    )
-
-    js_test_data = []
-    for d in data:
-        if d not in js_test_data:
-            js_test_data.append(d)
-    for d in [
-        ":{name}_library".format(name = name),
-        "//testing:resolver-patch",
-        "//:node_modules/source-map-support",
-    ]:
-        if d not in js_test_data:
-            js_test_data.append(d)
-
-    js_test(
-        name = name,
-        data = js_test_data,
-        entry_point = entry_point[:-3] + ".js",
-        args = args,
-        node_options = [
-            "--async-stack-traces",
-            "--require=./testing/resolver-patch.js",
-            "--require=source-map-support/register",
-        ],
-        tags = tags,
-        include_npm = include_npm,
-    )
-
 def ts_test_suite(name, srcs, args = [], data = [], tags = [], include_npm = False, **kwargs):
     ts_library(
         name = name,
@@ -44,24 +10,16 @@ def ts_test_suite(name, srcs, args = [], data = [], tags = [], include_npm = Fal
         **kwargs
     )
 
-    js_test_data = []
-    for d in data:
-        if d not in js_test_data:
-            js_test_data.append(d)
-    for d in [
-        ":{name}".format(name = name),
-        "//testing:resolver-patch",
-        "//:node_modules/source-map-support",
-    ]:
-        if d not in js_test_data:
-            js_test_data.append(d)
-
     for src in srcs:
         basename = ".".join(src.split(".")[0:-1])
         if (basename[-5:] == ".spec" or basename[-5:] == "_test"):
             js_test(
                 name = basename,
-                data = js_test_data,
+                data = [
+                    ":" + name,
+                    "//testing:resolver-patch",
+                    "//:node_modules/source-map-support",
+                ],
                 entry_point = (":" + src)[:-3] + ".js",
                 args = args,
                 node_options = [
