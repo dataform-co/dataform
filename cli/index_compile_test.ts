@@ -258,6 +258,47 @@ suite("compile", () => {
         expect(tables.map((table) => table.target.name)).deep.equals(["table"]);
       },
     );
+
+    test(
+      "explains a gitignored file actions.yaml references, and compiles it once re-included",
+      { timeout: 60000 },
+      async () => {
+        const projectDir = tmpDirFixture.createNewTmpDir();
+        fs.writeFileSync(
+          path.join(projectDir, "workflow_settings.yaml"),
+          dumpYaml({
+            defaultProject: INTEGRATION_TEST_PROJECT,
+            defaultLocation: INTEGRATION_TEST_LOCATION,
+            defaultDataset: "dataform",
+            dataformCoreVersion: "3.0.50",
+          }),
+        );
+        fs.writeFileSync(path.join(projectDir, ".gitignore"), "queries/\n");
+        fs.ensureDirSync(path.join(projectDir, "definitions"));
+        fs.writeFileSync(
+          path.join(projectDir, "definitions", "actions.yaml"),
+          dumpYaml({
+            actions: [{ table: { name: "example", filename: "../queries/example.sql" } }],
+          }),
+        );
+        fs.ensureDirSync(path.join(projectDir, "queries"));
+        fs.writeFileSync(path.join(projectDir, "queries", "example.sql"), "SELECT 1 AS id");
+        const npmCacheDir = tmpDirFixture.createNewTmpDir();
+        const env = { ...process.env, NPM_CONFIG_CACHE: npmCacheDir };
+
+        const excludedResult = await runCli("compile", [projectDir, "--json"], { env });
+
+        expect(excludedResult.exitCode).not.equals(0);
+        expect(excludedResult.stderr).contains("add '!/queries/' to .dataformignore");
+
+        fs.writeFileSync(path.join(projectDir, ".dataformignore"), "!/queries/\n");
+        const result = await runCli("compile", [projectDir, "--json"], { env });
+
+        expect(result.exitCode, `compile failed: ${result.stderr}`).equals(0);
+        const tables: dataform.ITable[] = JSON.parse(result.stdout).tables ?? [];
+        expect(tables.map((table) => table.query.trim())).deep.equals(["SELECT 1 AS id"]);
+      },
+    );
   });
 
   suite("disable-assertions flag (compilation)", ({ afterEach, beforeEach }) => {

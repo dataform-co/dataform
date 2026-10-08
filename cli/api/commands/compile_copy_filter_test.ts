@@ -5,7 +5,8 @@ import * as path from "path";
 import {
   buildProjectCopyFilter,
   copyProjectForStatelessInstall,
-  hasProjectGitignore,
+  explainExcludedModule,
+  findProjectIgnoreFiles,
 } from "df/cli/api/commands/compile_copy_filter";
 import { suite, test } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
@@ -350,16 +351,84 @@ suite("buildProjectCopyFilter", ({ afterEach }) => {
     );
   });
 
-  test("hasProjectGitignore is true only for a .gitignore file in the project root", () => {
+  test("findProjectIgnoreFiles lists only ignore files in the project root, in order", () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
-    expect(hasProjectGitignore(projectDir)).to.equal(false);
+    expect(findProjectIgnoreFiles(projectDir)).deep.equals([]);
 
     fs.ensureDirSync(path.join(projectDir, "definitions"));
     fs.writeFileSync(path.join(projectDir, "definitions", ".gitignore"), "");
-    expect(hasProjectGitignore(projectDir)).to.equal(false);
+    fs.writeFileSync(path.join(projectDir, "definitions", ".dataformignore"), "");
+    expect(findProjectIgnoreFiles(projectDir)).deep.equals([]);
+
+    fs.writeFileSync(path.join(projectDir, ".dataformignore"), "");
+    expect(findProjectIgnoreFiles(projectDir)).deep.equals([".dataformignore"]);
 
     fs.writeFileSync(path.join(projectDir, ".gitignore"), "");
-    expect(hasProjectGitignore(projectDir)).to.equal(true);
+    expect(findProjectIgnoreFiles(projectDir)).deep.equals([".gitignore", ".dataformignore"]);
+  });
+
+  test(".dataformignore re-includes gitignored inputs that aren't compilation inputs", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    const destinationDir = tmpDirFixture.createNewTmpDir();
+    fs.writeFileSync(path.join(projectDir, ".gitignore"), "queries/\n.certs/\n*.pem\n");
+    fs.writeFileSync(path.join(projectDir, ".dataformignore"), "!/queries/\n!/.certs/\n!*.pem\n");
+    // Generated SQL that definitions/actions.yaml references, and the CA file .npmrc
+    // points to: both are needed in the copy, but neither is a compilation input.
+    fs.ensureDirSync(path.join(projectDir, "definitions"));
+    fs.writeFileSync(
+      path.join(projectDir, "definitions", "actions.yaml"),
+      "actions:\n  - table:\n      filename: ../queries/example.sql\n",
+    );
+    fs.ensureDirSync(path.join(projectDir, "queries"));
+    fs.writeFileSync(path.join(projectDir, "queries", "example.sql"), "SELECT 1");
+    fs.writeFileSync(path.join(projectDir, ".npmrc"), "cafile=.certs/company-ca.pem\n");
+    fs.ensureDirSync(path.join(projectDir, ".certs"));
+    fs.writeFileSync(path.join(projectDir, ".certs", "company-ca.pem"), "certificate");
+
+    copyProjectForStatelessInstall(projectDir, destinationDir);
+
+    expect(fs.readFileSync(path.join(destinationDir, "queries", "example.sql"), "utf8")).to.equal(
+      "SELECT 1",
+    );
+    expect(fs.readFileSync(path.join(destinationDir, ".certs", "company-ca.pem"), "utf8")).to.equal(
+      "certificate",
+    );
+  });
+
+  test(".dataformignore can exclude more, but not compilation inputs or the fixed floor", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    fs.writeFileSync(
+      path.join(projectDir, ".dataformignore"),
+      ["scratch/", "definitions/", "includes/", "!.git/", "!node_modules/"].join("\n"),
+    );
+    fs.ensureDirSync(path.join(projectDir, "scratch"));
+    fs.ensureDirSync(path.join(projectDir, "definitions"));
+    fs.writeFileSync(path.join(projectDir, "definitions", "foo.sqlx"), "SELECT 1");
+    fs.ensureDirSync(path.join(projectDir, "includes"));
+    fs.ensureDirSync(path.join(projectDir, ".git"));
+    fs.ensureDirSync(path.join(projectDir, "node_modules"));
+    const filter = buildProjectCopyFilter(projectDir);
+
+    expect(filter(path.join(projectDir, "scratch"))).to.equal(false);
+    expect(filter(path.join(projectDir, "definitions"))).to.equal(true);
+    expect(filter(path.join(projectDir, "definitions", "foo.sqlx"))).to.equal(true);
+    expect(filter(path.join(projectDir, "includes"))).to.equal(true);
+    expect(filter(path.join(projectDir, ".git"))).to.equal(false);
+    expect(filter(path.join(projectDir, "node_modules"))).to.equal(false);
+  });
+
+  test(".dataformignore can't re-include a file while its parent directory is excluded", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    const destinationDir = tmpDirFixture.createNewTmpDir();
+    fs.writeFileSync(path.join(projectDir, ".gitignore"), "queries/\n");
+    fs.writeFileSync(path.join(projectDir, ".dataformignore"), "!queries/example.sql\n");
+    fs.ensureDirSync(path.join(projectDir, "queries"));
+    fs.writeFileSync(path.join(projectDir, "queries", "example.sql"), "SELECT 1");
+
+    copyProjectForStatelessInstall(projectDir, destinationDir);
+
+    // As in git: the copy never descends into the excluded directory.
+    expect(fs.existsSync(path.join(destinationDir, "queries"))).to.equal(false);
   });
 
   test("a .gitignore that is a directory is skipped, not read", () => {
@@ -367,7 +436,7 @@ suite("buildProjectCopyFilter", ({ afterEach }) => {
     fs.ensureDirSync(path.join(projectDir, ".gitignore"));
     fs.ensureDirSync(path.join(projectDir, ".venv"));
 
-    expect(hasProjectGitignore(projectDir)).to.equal(false);
+    expect(findProjectIgnoreFiles(projectDir)).deep.equals([]);
     const filter = buildProjectCopyFilter(projectDir);
     expect(filter(path.join(projectDir, ".venv"))).to.equal(true);
   });
@@ -383,5 +452,58 @@ suite("buildProjectCopyFilter", ({ afterEach }) => {
     expect(
       buildProjectCopyFilter(projectDir, false)(path.join(projectDir, "Workflow_Settings.yaml")),
     ).to.equal(false);
+  });
+});
+
+suite("explainExcludedModule", ({ afterEach }) => {
+  const tmpDirFixture = new TmpDirFixture(afterEach);
+
+  function setUpCopy(): { projectDir: string; copyDir: string } {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    const copyDir = tmpDirFixture.createNewTmpDir();
+    fs.writeFileSync(path.join(projectDir, ".gitignore"), "generated/\n");
+    fs.ensureDirSync(path.join(projectDir, "generated", "queries"));
+    fs.writeFileSync(path.join(projectDir, "generated", "queries", "example.sql"), "SELECT 1");
+    fs.ensureDirSync(path.join(projectDir, "lib"));
+    fs.writeFileSync(path.join(projectDir, "lib", "helper.js"), "");
+    copyProjectForStatelessInstall(projectDir, copyDir);
+    return { projectDir, copyDir };
+  }
+
+  test("names the shallowest excluded path for a module the copy filter dropped", () => {
+    const { projectDir, copyDir } = setUpCopy();
+    const message = "Cannot find module 'generated/queries/example.sql'";
+
+    expect(explainExcludedModule(message, projectDir, copyDir)).to.equal(
+      `${message}. It exists in the project, but an ignore file excludes 'generated/' from ` +
+        "the copy compiled for dataformCoreVersion. To include it, add '!/generated/' to " +
+        ".dataformignore",
+    );
+    // An absolute path inside the copy is explained the same way.
+    expect(
+      explainExcludedModule(
+        `Cannot find module '${path.join(copyDir, "generated", "queries", "example.sql")}'`,
+        projectDir,
+        copyDir,
+      ),
+    ).to.contain("excludes 'generated/'");
+  });
+
+  test("leaves other missing modules unexplained", () => {
+    const { projectDir, copyDir } = setUpCopy();
+    for (const message of [
+      // A genuinely missing npm dependency.
+      "Cannot find module 'lodash'",
+      // Copied, so not the filter's doing.
+      "Cannot find module 'lib/helper.js'",
+      // Resolved against the requiring file, which the message doesn't name.
+      "Cannot find module './example.sql'",
+      // Missing from the project too.
+      "Cannot find module 'generated/missing.sql'",
+      // Not a missing module at all.
+      "Unexpected token",
+    ]) {
+      expect(explainExcludedModule(message, projectDir, copyDir)).to.equal(message);
+    }
   });
 });

@@ -7,7 +7,8 @@ import { promisify } from "util";
 import { BaseWorker } from "df/cli/api/commands/base_worker";
 import {
   copyProjectForStatelessInstall,
-  hasProjectGitignore,
+  explainExcludedModule,
+  findProjectIgnoreFiles,
 } from "df/cli/api/commands/compile_copy_filter";
 import { MISSING_CORE_VERSION_ERROR } from "df/cli/api/commands/install";
 import { readConfigFromWorkflowSettings } from "df/cli/api/utils";
@@ -58,10 +59,11 @@ export async function compile(
         `Using isolated environment for @dataform/core@${workflowSettingsDataformCoreVersion}\n`,
       );
       print(`Copying project to temporary directory: ${temporaryProjectPath}\n`);
+      const ignoreFiles = findProjectIgnoreFiles(resolvedProjectPath);
       print(
-        hasProjectGitignore(resolvedProjectPath)
-          ? `Excluding .git, node_modules, and paths matched by .gitignore, except files reachable from definitions/ and includes/\n`
-          : `Excluding .git and node_modules, except files reachable from definitions/ and includes/ (no .gitignore in project root)\n`,
+        ignoreFiles.length > 0
+          ? `Excluding .git, node_modules, and paths matched by ${ignoreFiles.join(" and ")}, except files reachable from definitions/ and includes/\n`
+          : `Excluding .git and node_modules, except files reachable from definitions/ and includes/ (no .gitignore or .dataformignore in project root)\n`,
       );
     }
     const copyStartTime = performance.now();
@@ -99,12 +101,40 @@ export async function compile(
     compileConfig.projectDir = temporaryProjectPath;
   }
 
-  const result = await new CompileChildProcess().compile(compileConfig);
+  let result: string;
+  try {
+    result = await new CompileChildProcess().compile(compileConfig);
+  } catch (e) {
+    // A file the copy filter excluded surfaces as a missing module. Say so, rather than
+    // leaving it to read like a missing npm dependency.
+    if (workflowSettingsDataformCoreVersion) {
+      const explained = explainExcludedModule(e.message, resolvedProjectPath, temporaryProjectPath);
+      if (explained !== e.message) {
+        throw new Error(explained);
+      }
+    }
+    throw e;
+  }
 
   const decodedResult = decode64(dataform.CoreExecutionResponse, result);
   compiledGraph = dataform.CompiledGraph.create(decodedResult.compile.compiledGraph);
 
   if (workflowSettingsDataformCoreVersion) {
+    for (const compilationError of compiledGraph.graphErrors?.compilationErrors ?? []) {
+      const explained = explainExcludedModule(
+        compilationError.message,
+        resolvedProjectPath,
+        temporaryProjectPath,
+      );
+      if (explained !== compilationError.message) {
+        // The console prints the stack, which starts with the message.
+        compilationError.stack = compilationError.stack?.replace(
+          compilationError.message,
+          explained,
+        );
+        compilationError.message = explained;
+      }
+    }
     fs.rmSync(temporaryProjectPath, { recursive: true });
   }
 

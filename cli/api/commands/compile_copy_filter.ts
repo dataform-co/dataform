@@ -2,20 +2,20 @@ import * as fs from "fs-extra";
 import ignore from "ignore";
 import * as path from "path";
 
-// Excluded whatever the project's `.gitignore` says, unless a compilation input is
+// Excluded whatever the project's ignore files say, unless a compilation input is
 // reached through one (see COMPILATION_INPUT_ROOT_NAMES). `.git` holds no Dataform
 // project files. A top-level `node_modules` can't be present at all here -- `compile()`
 // rejects the project before copying if it finds one -- so that entry covers nested ones
 // outside the compilation inputs.
 //
 // Checked independently of the `ignore` instance below, rather than seeded into it, so
-// that a project's `.gitignore` cannot override this floor: `ignore` lets later patterns
+// that neither ignore file can override this floor: `ignore` lets later patterns
 // override earlier ones by design, so a `!node_modules` negation would otherwise
 // un-ignore it.
 const ALWAYS_IGNORED_NAMES = new Set([".git", "node_modules"]);
 
 // Project-root entries that compilation reads, and that are therefore copied with
-// everything reachable from them, whatever the project's `.gitignore` says.
+// everything reachable from them, whatever the project's ignore files say.
 //
 // - `definitions` and `includes` are the directories core compiles from. Compilation
 //   lists their files with a glob that follows symbolic links and descends into nested
@@ -42,16 +42,21 @@ const COMPILATION_INPUT_ROOT_NAMES = new Set([
 // path, so a symlink loop ends rather than recursing forever.
 const MAX_SYMLINK_HOPS = 40;
 
-const GITIGNORE_FILE_NAME = ".gitignore";
+// Read in this order into one matcher, so a `.dataformignore` pattern overrides the
+// `.gitignore`: it can exclude more, or re-include a gitignored path with `!pattern`
+// without the project changing what git ignores.
+const PROJECT_IGNORE_FILE_NAMES = [".gitignore", ".dataformignore"];
 
 /**
- * Returns whether the project root has a `.gitignore` file. Anything else by that name,
- * such as a directory, is not an ignore file and is skipped rather than failing the
- * compile.
+ * Returns the names of the ignore files present in the project root, in the order they
+ * are applied. Anything else by those names, such as a directory, is not an ignore file
+ * and is skipped rather than failing the compile.
  */
-export function hasProjectGitignore(resolvedProjectPath: string): boolean {
-  const gitignorePath = path.join(resolvedProjectPath, GITIGNORE_FILE_NAME);
-  return fs.existsSync(gitignorePath) && fs.statSync(gitignorePath).isFile();
+export function findProjectIgnoreFiles(resolvedProjectPath: string): string[] {
+  return PROJECT_IGNORE_FILE_NAMES.filter((name) => {
+    const ignoreFilePath = path.join(resolvedProjectPath, name);
+    return fs.existsSync(ignoreFilePath) && fs.statSync(ignoreFilePath).isFile();
+  });
 }
 
 function isInsideDirectory(relative: string): boolean {
@@ -194,20 +199,24 @@ function collectCompilationInputs(
  * of directory names: no fixed list covers every ecosystem's junk directories (`.venv`,
  * `target/`, `__pycache__/`, `vendor/`, `coverage/`, ...), whereas a project's
  * `.gitignore` already states exactly what that project treats as disposable, and
- * `dataform init` writes one.
+ * `dataform init` writes one. An optional `.dataformignore`, in the same syntax, is
+ * applied after it, for files the copy needs that the project doesn't want git to track
+ * (generated SQL that `actions.yaml` references, or a CA file `.npmrc` points to), or for
+ * further exclusions. As in git, a path can't be re-included while its parent directory
+ * is excluded, since the copy never descends into that directory.
  *
- * Neither the `.gitignore` nor ALWAYS_IGNORED_NAMES applies to compilation inputs: the
+ * Neither ignore file nor ALWAYS_IGNORED_NAMES applies to compilation inputs: the
  * COMPILATION_INPUT_ROOT_NAMES and everything reachable from them apart from `.git`
  * directories, including through symbolic links into otherwise-ignored paths inside the
  * project. Other files are filtered, including ones project code loads with `require()`;
  * if one of those is excluded, compilation in the copy fails where the original
  * project's would succeed, or, if the code catches the error, behaves differently.
  *
- * Only the `.gitignore` in the project root is read. Nested `.gitignore` files,
+ * Only the ignore files in the project root are read. Nested `.gitignore` files,
  * `.git/info/exclude` and the user's global excludes file are not consulted, so the
  * copy can differ from git's ignored-file classification in either direction: a nested
  * `!helper.js` negation un-ignores a file for git that this filter still excludes. A project
- * without one gets only the ALWAYS_IGNORED_NAMES floor.
+ * without either ignore file gets only the ALWAYS_IGNORED_NAMES floor.
  *
  * Names are matched case-insensitively on Windows and macOS, whose default filesystems
  * are case-insensitive, and case-sensitively elsewhere. That applies to the
@@ -224,8 +233,8 @@ export function buildProjectCopyFilter(
 ): (src: string) => boolean {
   const normalizeCase = (name: string) => (caseInsensitive ? name.toLowerCase() : name);
   const ig = ignore({ ignorecase: caseInsensitive });
-  if (hasProjectGitignore(resolvedProjectPath)) {
-    ig.add(fs.readFileSync(path.join(resolvedProjectPath, GITIGNORE_FILE_NAME), "utf8"));
+  for (const name of findProjectIgnoreFiles(resolvedProjectPath)) {
+    ig.add(fs.readFileSync(path.join(resolvedProjectPath, name), "utf8"));
   }
   const compilationInputs = collectCompilationInputs(resolvedProjectPath, normalizeCase);
 
@@ -272,4 +281,58 @@ export function copyProjectForStatelessInstall(
   fs.copySync(resolvedProjectPath, destination, {
     filter: buildProjectCopyFilter(resolvedProjectPath),
   });
+}
+
+/**
+ * If `message` reports a module compilation couldn't find that exists in the project but
+ * not in its stateless-install copy at `copyPath`, returns `message` with a note on how to
+ * re-include it. Otherwise returns `message` unchanged, so a dependency that is genuinely
+ * missing still gets its usual error.
+ *
+ * The note names the shallowest path the filter excludes, since re-including only the
+ * file itself wouldn't work while its parent directory is excluded. A relative module
+ * name (`require("./sibling")`) is resolved against the requiring file, which the message
+ * doesn't name, so it is left unexplained.
+ */
+export function explainExcludedModule(
+  message: string,
+  resolvedProjectPath: string,
+  copyPath: string,
+): string {
+  const match = /Cannot find module '([^']+)'/.exec(message);
+  if (!match || match[1].startsWith(".")) {
+    return message;
+  }
+  const moduleName = path.isAbsolute(match[1])
+    ? path.relative(copyPath, match[1])
+    : path.normalize(match[1]);
+  if (
+    !isInsideDirectory(moduleName) ||
+    !fs.existsSync(path.join(resolvedProjectPath, moduleName)) ||
+    fs.existsSync(path.join(copyPath, moduleName))
+  ) {
+    return message;
+  }
+
+  const filter = buildProjectCopyFilter(resolvedProjectPath);
+  const segments = moduleName.split(path.sep);
+  for (let i = 1; i <= segments.length; i++) {
+    const excludedPath = path.join(resolvedProjectPath, ...segments.slice(0, i));
+    if (filter(excludedPath)) {
+      continue;
+    }
+    if (segments.slice(0, i).some((segment) => ALWAYS_IGNORED_NAMES.has(segment))) {
+      return message;
+    }
+    let pattern = segments.slice(0, i).join("/");
+    if (fs.lstatSync(excludedPath).isDirectory()) {
+      pattern += "/";
+    }
+    return (
+      `${message}. It exists in the project, but an ignore file excludes '${pattern}' ` +
+      `from the copy compiled for dataformCoreVersion. To include it, add '!/${pattern}' ` +
+      `to .dataformignore`
+    );
+  }
+  return message;
 }
