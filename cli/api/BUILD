@@ -75,7 +75,6 @@ ts_test_suite(
     ] + glob(["goldens/**"]),
     deps = [
         ":api",
-        "//cli:index_test_base",
         "//cli/api/lineage/testing",
         "//core",
         "//protos:ts",

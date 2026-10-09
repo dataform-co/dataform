@@ -1,12 +1,15 @@
 import { expect } from "chai";
 import Long from "long";
 
+import * as dfapi from "df/cli/api";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
-import { getIntegrationTestCredentials } from "df/cli/index_test_base";
+import { CREDENTIALS_PATH } from "df/cli/index_test_base";
 import { suite, test } from "df/testing";
+import { requireAdc } from "df/testing/credentials";
 
-suite("@dataform/integration/execute", { parallel: true }, () => {
-  const credentials = getIntegrationTestCredentials();
+suite("@dataform/integration/execute", { parallel: true }, ({ before }) => {
+  requireAdc(before);
+  const credentials = dfapi.credentials.read(CREDENTIALS_PATH);
   const dbadapter = new BigQueryDbAdapter(credentials);
 
   test("returned metadata includes jobReference and statistics", async () => {

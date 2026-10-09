@@ -1,20 +1,18 @@
 package(default_visibility = ["//visibility:public"])
 
-# Default integration test configuration using Application Default Credentials (ADC).
-# No secret key is stored here. Before running integration tests locally, authenticate with:
+# Integration tests authenticate with Application Default Credentials (ADC); no secret key is
+# stored in the repository. Before running integration tests locally, authenticate with:
 #   gcloud auth application-default login
-# To override the target GCP project or location locally, create a git-ignored
-# `test_credentials/bigquery.local.json` file or set the `DATAFORM_TEST_CREDENTIALS`
-# environment variable. See contributing.md for details.
-exports_files(["bigquery.json"])
-
+# bigquery.default.json (committed) targets the shared dataform-open-source project. To target
+# your own GCP project or location, create a git-ignored bigquery.json next to it; it takes
+# precedence when present. See contributing.md for details.
 filegroup(
     name = "bigquery_credentials",
     testonly = 1,
     srcs = [
-        "bigquery.json",
+        "bigquery.default.json",
     ] + glob(
-        ["bigquery.local.json"],
+        ["bigquery.json"],
         allow_empty = True,
     ),
 )

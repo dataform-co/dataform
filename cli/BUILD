@@ -60,7 +60,6 @@ ts_library(
     srcs = ["index_test_base.ts"],
     deps = [
         "//cli",
-        "//cli/api",
         "//core",
         "//protos:ts",
         "//testing",

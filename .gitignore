@@ -16,7 +16,7 @@ go.sum
 
 .df-credentials.json
 secret.json
-bigquery.local.json
+bigquery.json
 
 yarn-error.log
 

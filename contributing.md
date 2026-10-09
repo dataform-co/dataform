@@ -68,8 +68,8 @@ Integration tests run against BigQuery using [Application Default Credentials (A
 
 3. **Configure the target GCP project (optional for `dataform-open-source` members):**
 
-   By default, `test_credentials/bigquery.json` points to `"projectId": "dataform-open-source"` and `"location": "US"`.
-   To run integration tests against your own GCP project without modifying tracked files, create a git-ignored `test_credentials/bigquery.local.json` file (or set the `DATAFORM_TEST_CREDENTIALS=/path/to/credentials.json` environment variable):
+   By default, the committed `test_credentials/bigquery.default.json` points to `"projectId": "dataform-open-source"` and `"location": "US"`.
+   To run integration tests against your own GCP project without modifying tracked files, create a git-ignored `test_credentials/bigquery.json` file, which takes precedence over the default. If you already have a `test_credentials/bigquery.json` from the previous setup, it keeps working:
 
    ```json
    {
@@ -84,6 +84,12 @@ Integration tests run against BigQuery using [Application Default Credentials (A
 
    ```bash
    ./scripts/run_integration_tests
+   ```
+
+   To run a single integration test target directly, pass `--config=integration` so that your ADC environment is forwarded into the test sandbox:
+
+   ```bash
+   bazel test --config=integration //tests/integration:bigquery.spec
    ```
 
 ### Lint
