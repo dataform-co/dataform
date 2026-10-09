@@ -4,13 +4,19 @@ import * as path from "path";
 
 import * as dfapi from "df/cli/api";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
-import { INTEGRATION_TEST_LOCATION, INTEGRATION_TEST_PROJECT } from "df/cli/index_test_base";
+import {
+  CREDENTIALS_PATH,
+  INTEGRATION_TEST_LOCATION,
+  INTEGRATION_TEST_PROJECT,
+} from "df/cli/index_test_base";
 import { dataform } from "df/protos/ts";
 import { suite, test, writeDefinitionFile } from "df/testing";
+import { requireAdc } from "df/testing/credentials";
 import { TmpDirFixture } from "df/testing/fixtures";
 
-suite("@dataform/integration/jit", { parallel: true }, ({ afterEach }) => {
-  const credentials = dfapi.credentials.read("test_credentials/bigquery.json");
+suite("@dataform/integration/jit", { parallel: true }, ({ afterEach, before }) => {
+  requireAdc(before);
+  const credentials = dfapi.credentials.read(CREDENTIALS_PATH);
   const dbadapter = new BigQueryDbAdapter(credentials);
   const tmpDirFixture = new TmpDirFixture(afterEach);
 

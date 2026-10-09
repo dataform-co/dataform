@@ -9,6 +9,7 @@ ts_library(
     name = "testing",
     srcs = [
         "child_process.ts",
+        "credentials.ts",
         "fixtures.ts",
         "hook.ts",
         "index.ts",
@@ -50,14 +51,20 @@ ts_library(
 
 ts_test_suite(
     name = "tests",
-    srcs = ["index_test.ts"],
+    srcs = [
+        "credentials_test.ts",
+        "index_test.ts",
+    ],
     deps = [
         ":testing",
         "@npm//@types/chai",
         "@npm//@types/diff",
+        "@npm//@types/fs-extra",
         "@npm//@types/json-stable-stringify",
+        "@npm//@types/node",
         "@npm//chai",
         "@npm//diff",
+        "@npm//fs-extra",
         "@npm//json-stable-stringify",
     ],
 )

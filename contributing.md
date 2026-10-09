@@ -50,28 +50,46 @@ You can run all unit tests across the project by running this script:
 
 ### Integration Test
 
-To run the CLI integration test against your own GCP project:
+Integration tests run against BigQuery using [Application Default Credentials (ADC)](https://cloud.google.com/docs/authentication/application-default-credentials). No service account keys are stored in the repository.
 
-1. Prepare a credentials JSON file at `test_credentials/bigquery.json`. Set values as follows:
+1. **Authenticate with ADC:**
 
-   - `projectId`: your GCP project id
-   - `credentials`: the entire content of your GCP service account key JSON file as a single string (you can generate it with `jq -Rsa < path/to/key.json`).
-   - `location`: location to use in your project
+   ```bash
+   gcloud auth application-default login
+   ```
 
-   Example:
+   Alternatively, you can set `GOOGLE_APPLICATION_CREDENTIALS=/path/to/key.json` in your environment.
+
+2. **Required IAM roles:**
+
+   Your Google account (or service account) needs the following IAM roles on the target GCP project:
+   - `roles/bigquery.jobUser` (BigQuery Job User)
+   - `roles/bigquery.dataEditor` (BigQuery Data Editor)
+
+3. **Configure the target GCP project (optional for `dataform-open-source` members):**
+
+   By default, the committed `test_credentials/bigquery.default.json` points to `"projectId": "dataform-open-source"` and `"location": "US"`.
+   To run integration tests against your own GCP project without modifying tracked files, create a git-ignored `test_credentials/bigquery.json` file, which takes precedence over the default. If you already have a `test_credentials/bigquery.json` from the previous setup, it keeps working:
 
    ```json
    {
      "projectId": "my-gcp-project",
-     "credentials": "{\"type\":\"service_account\",...}",
      "location": "US"
    }
    ```
 
-2. You can run all integration tests by using this script:
+   *(Optional)* If you still want to test with an explicit service account key inside the Dataform credentials file rather than ADC, you can include the `"credentials"` field containing the JSON key serialized as a string (`jq -Rsa < path/to/key.json`).
+
+4. **Run the integration tests:**
 
    ```bash
    ./scripts/run_integration_tests
+   ```
+
+   To run a single integration test target directly, pass `--config=integration` so that your ADC environment is forwarded into the test sandbox:
+
+   ```bash
+   bazel test --config=integration //tests/integration:bigquery.spec
    ```
 
 ### Lint

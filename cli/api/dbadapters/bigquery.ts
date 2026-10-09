@@ -1,4 +1,10 @@
-import { BigQuery, GetTablesResponse, TableField, TableMetadata } from "@google-cloud/bigquery";
+import {
+  BigQuery,
+  BigQueryOptions,
+  GetTablesResponse,
+  TableField,
+  TableMetadata,
+} from "@google-cloud/bigquery";
 import Long from "long";
 import { PromisePoolExecutor } from "promise-pool-executor";
 
@@ -39,6 +45,22 @@ export interface IBigQueryExecutionOptions {
 
 export type BigQueryClientProvider = (projectId?: string) => BigQuery;
 
+/**
+ * Builds the BigQuery client options for the given credentials. When `credentials.credentials`
+ * (a service account key) is empty, the client authenticates with Application Default Credentials.
+ */
+export function getBigQueryClientOptions(
+  credentials: dataform.IBigQuery,
+  projectId?: string,
+): BigQueryOptions {
+  return {
+    projectId: projectId || credentials.projectId,
+    scopes: EXTRA_GOOGLE_SCOPES,
+    location: credentials.location,
+    credentials: credentials.credentials && JSON.parse(credentials.credentials),
+  };
+}
+
 export function createBigQueryClientProvider(
   credentials: dataform.IBigQuery,
 ): BigQueryClientProvider {
@@ -46,15 +68,7 @@ export function createBigQueryClientProvider(
   return (projectId?: string) => {
     projectId = projectId || credentials.projectId;
     if (!clients.has(projectId)) {
-      clients.set(
-        projectId,
-        new BigQuery({
-          projectId,
-          scopes: EXTRA_GOOGLE_SCOPES,
-          location: credentials.location,
-          credentials: credentials.credentials && JSON.parse(credentials.credentials),
-        }),
-      );
+      clients.set(projectId, new BigQuery(getBigQueryClientOptions(credentials, projectId)));
     }
     return clients.get(projectId);
   };

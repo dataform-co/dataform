@@ -6,8 +6,10 @@ bazel run @nodejs//:yarn -- --frozen-lockfile
 # Run eslint.
 bazel build @npm//eslint/bin:eslint && bazel-bin/external/npm/eslint/bin/eslint.sh '**/*.ts'
 
-# Run integration tests
+# Run integration tests (--config=integration forwards the ADC environment, see .bazelrc).
 bazel test ... \
+  --config=integration \
   --test_tag_filters=integration \
   --build_tests_only \
-  --test_env=USE_CLOUD_BUILD_NETWORK=true
+  --test_env=USE_CLOUD_BUILD_NETWORK=true \
+  "$@"

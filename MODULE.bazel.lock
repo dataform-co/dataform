@@ -93,23 +93,6 @@
   },
   "selectedYankedVersions": {},
   "moduleExtensions": {
-    "//tools/gcloud:extensions.bzl%gcloud_sdk_extension": {
-      "general": {
-        "bzlTransitiveDigest": "kvgSakWSAojqjpVE9x4s5Cr2/DcTP4DJDorH/EkVOnU=",
-        "usagesDigest": "G9567r7BOo4v/0F+Q6wGrEvu7How52VjLhNqFE/f/yk=",
-        "recordedFileInputs": {},
-        "recordedDirentsInputs": {},
-        "envVariables": {},
-        "generatedRepoSpecs": {
-          "gcloud_sdk": {
-            "bzlFile": "@@//tools/gcloud:repository_rules.bzl",
-            "ruleClassName": "gcloud_sdk",
-            "attributes": {}
-          }
-        },
-        "recordedRepoMappingEntries": []
-      }
-    },
     "@@apple_support~//crosstool:setup.bzl%apple_cc_configure_extension": {
       "general": {
         "bzlTransitiveDigest": "PjIds3feoYE8SGbbIq2SFTZy3zmxeO2tQevJZNDo7iY=",

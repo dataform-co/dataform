@@ -14,9 +14,11 @@ import {
 } from "df/cli/index_test_base";
 import { version } from "df/core/version";
 import { suite, test, writeDefinitionFile } from "df/testing";
+import { requireAdc } from "df/testing/credentials";
 import { TmpDirFixture } from "df/testing/fixtures";
 
-suite("run e2e", ({ afterEach }) => {
+suite("run e2e", ({ afterEach, before }) => {
+  requireAdc(before);
   const tmpDirFixture = new TmpDirFixture(afterEach);
 
   test("golden path with package.json", async () => {

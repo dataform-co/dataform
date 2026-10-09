@@ -3,12 +3,15 @@ import { expect } from "chai";
 import * as dfapi from "df/cli/api";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 import { ExecutionSql } from "df/cli/api/dbadapters/execution_sql";
+import { CREDENTIALS_PATH } from "df/cli/index_test_base";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
+import { requireAdc } from "df/testing/credentials";
 import { cleanWarehouse, compile } from "df/tests/integration/utils";
 
-suite("@dataform/integration/bigquery", { parallel: true }, () => {
-  const credentials = dfapi.credentials.read("test_credentials/bigquery.json");
+suite("@dataform/integration/bigquery", { parallel: true }, ({ before }) => {
+  requireAdc(before);
+  const credentials = dfapi.credentials.read(CREDENTIALS_PATH);
   const dbadapter = new BigQueryDbAdapter(credentials);
 
   test("run unit tests", async () => {

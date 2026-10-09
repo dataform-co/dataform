@@ -7,9 +7,11 @@ import {
   setupJitProject,
 } from "df/cli/index_test_base";
 import { suite, test, writeDefinitionFile } from "df/testing";
+import { requireAdc } from "df/testing/credentials";
 import { TmpDirFixture } from "df/testing/fixtures";
 
-suite("JiT support dependencies", ({ afterEach }) => {
+suite("JiT support dependencies", ({ afterEach, before }) => {
+  requireAdc(before);
   const tmpDirFixture = new TmpDirFixture(afterEach);
 
   test("JiT transitive dependency pruning", async () => {
