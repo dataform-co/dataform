@@ -31,7 +31,7 @@ export class Runner {
     Runner.noExit = noExit;
   }
   public static queueRun() {
-    if (!Runner.resultPromise) {
+    if (Runner.resultPromise === undefined) {
       Runner.resultPromise = Runner.run();
     }
   }
