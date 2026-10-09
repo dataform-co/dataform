@@ -94,10 +94,6 @@ export function join(...paths: string[]) {
     .join(separator);
 }
 
-export function escapedBasename(path: string) {
-  return basename(path).replace(/\\/g, "\\\\");
-}
-
 export function fileExtension(fullPath: string) {
   const f = filename(fullPath);
   const dotIndex = f.lastIndexOf(".");

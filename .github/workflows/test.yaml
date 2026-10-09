@@ -10,8 +10,10 @@ permissions:
   contents: read
 
 jobs:
-  test-linux:
-    name: Build and test (Linux)
+  # Lint, unit and integration tests run on Cloud Build (cloudbuild-test.yaml); this job only
+  # builds the packages and the smoke test bundle that the Windows job needs.
+  build-linux:
+    name: Build packages and smoke test bundle (Linux)
     runs-on: ubuntu-latest
     timeout-minutes: 60
     permissions:
@@ -22,9 +24,6 @@ jobs:
 
       - name: Setup Bazel
         uses: bazelbuild/setup-bazelisk@b39c379c82683a5f25d34f0d062761f62693e0b2 # v3.0.0
-
-      - name: Run unit tests
-        run: ./scripts/run_tests
 
       - name: Build package tarballs and the Windows smoke test bundle
         run: |
@@ -53,7 +52,7 @@ jobs:
 
   test-windows:
     name: CLI smoke tests (Windows)
-    needs: test-linux
+    needs: build-linux
     runs-on: windows-latest
     timeout-minutes: 30
     permissions:
