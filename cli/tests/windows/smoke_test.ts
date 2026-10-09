@@ -8,7 +8,8 @@
  *   node smoke_test_bundle.js --shell powershell [--core-tarball <path>] [--dataform-bin <path>]
  *   node smoke_test_bundle.js --shell cmd        [--core-tarball <path>] [--dataform-bin <path>]
  *
- * Without `--shell` the CLI is spawned directly, which also works on Linux and macOS.
+ * Without `--shell`, `bundle.js` is run directly with Node (no shell and no launcher), which also
+ * works on Linux and macOS.
  *
  * `--core-tarball` installs `@dataform/core` from a local tarball through `package.json`
  * (`"file:<tarball>"`), the same flow used by the CLI unit tests. Without it the version written by
@@ -150,10 +151,21 @@ function resolveDataformBinary(): IDataformBinary {
 }
 
 const binary = resolveDataformBinary();
+if (shellMode === "direct" && !binary.bundlePath) {
+  throw new Error(
+    "Direct mode runs bundle.js with node, but it could not be located next to the dataform " +
+      "launcher; pass --dataform-bin <bundle.js>",
+  );
+}
 
-/** The program and leading arguments that start the CLI, e.g. `[dataform.cmd]` or `[node, bundle.js]`. */
+/**
+ * The program and leading arguments that start the CLI. The cmd.exe and PowerShell modes go
+ * through the launcher (e.g. `dataform.cmd`), as a user would. Direct mode runs
+ * `[node, bundle.js]`, because Node refuses to spawn a `.cmd` file without a shell (EINVAL since
+ * the CVE-2024-27980 fix).
+ */
 function cliCommand(): string[] {
-  if (binary.shimPath) {
+  if (shellMode !== "direct" && binary.shimPath) {
     return [binary.shimPath];
   }
   return [process.execPath, binary.bundlePath];
@@ -243,6 +255,14 @@ async function runCliFlows(projectDir: string): Promise<void> {
   const definitionsDir = path.join(projectDir, "definitions");
   const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
   const sampleTablePath = path.join(definitionsDir, "sample_table.sqlx");
+
+  // `run` and `test` read credentials before doing anything else. Neither the dry run (Flow 5)
+  // nor test discovery (Flow 6) contacts BigQuery, so placeholder credentials are enough. `init`
+  // only refuses directories that already contain a project, so the file can be written first.
+  fs.writeFileSync(
+    path.join(projectDir, ".df-credentials.json"),
+    JSON.stringify({ projectId: "test-project" }, null, 2),
+  );
 
   await runTest("CLI Flow 1: dataform --help", () => {
     const result = execCli(["--help"]);
@@ -399,11 +419,6 @@ async function runCliFlows(projectDir: string): Promise<void> {
   });
 
   await runTest("CLI Flow 5: dataform run --dry-run --json", () => {
-    // run/test read credentials before doing anything; a dry run never contacts BigQuery.
-    fs.writeFileSync(
-      path.join(projectDir, ".df-credentials.json"),
-      JSON.stringify({ projectId: "test-project" }, null, 2),
-    );
     const operationPath = path.join(definitionsDir, "sample_operation.sqlx");
     fs.writeFileSync(operationPath, 'config {\n  type: "operations"\n}\n\nSELECT 1 AS op_col\n');
     try {

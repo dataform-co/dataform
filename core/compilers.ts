@@ -68,7 +68,7 @@ function compileSqlx(rootNode: SyntaxTreeNode, path: string): string {
 
   return `dataform.sqlxAction({
   sqlxConfig: {
-    name: "${Path.escapedBasename(path)}",
+    name: "${Path.basename(path)}",
     type: "operations",
     ...${config || "{}"}
   },
