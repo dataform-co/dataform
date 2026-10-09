@@ -6,12 +6,12 @@ package(default_visibility = ["//visibility:public"])
 
 copy_to_bin(
     name = "rollup_config",
-    srcs = ["rollup.config.js"],
+    srcs = ["rollup.config.mjs"],
 )
 
 copy_to_bin(
     name = "rollup_dts_config",
-    srcs = ["rollup_dts.config.js"],
+    srcs = ["rollup_dts.config.mjs"],
 )
 
 ts_library(

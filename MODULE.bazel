@@ -39,10 +39,8 @@ pnpm = use_extension("@aspect_rules_js//npm:extensions.bzl", "pnpm")
 pnpm.pnpm(pnpm_version = "8.15.9")
 use_repo(pnpm, "pnpm")
 
-# TODO: make sure the TS version here is alinged with package.json (@npm//:typescript/resolved.json)
-# once it's updated there
 rules_ts_ext = use_extension("@aspect_rules_ts//ts:extensions.bzl", "ext")
-rules_ts_ext.deps(ts_version = "5.5.4")
+rules_ts_ext.deps(ts_version_from = "@npm//:typescript/resolved.json")
 use_repo(rules_ts_ext, "npm_typescript")
 
 # bazel_skylib
