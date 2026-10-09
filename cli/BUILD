@@ -69,6 +69,7 @@ ts_test_suite(
         "index_help_test.ts",
         "index_init_test.ts",
         "index_project_test.ts",
+        "tests/bin_test.ts",
         "tests/jit/jit_build_test.ts",
         "tests/jit/jit_run_test.ts",
         "util_test.ts",
