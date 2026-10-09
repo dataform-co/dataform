@@ -38,6 +38,11 @@ export function main(coreExecutionRequest: Uint8Array | string): Uint8Array | st
     request = dataform.CoreExecutionRequest.decode(coreExecutionRequest);
   }
   const compileRequest = request.compile;
+  if (compileRequest?.compileConfig?.filePaths) {
+    compileRequest.compileConfig.filePaths = compileRequest.compileConfig.filePaths.map(
+      Path.toPosixPath,
+    );
+  }
 
   // Allow extensions to populate settings by themselves.
   const failIfMissing = !compileRequest?.compileConfig?.extension?.compilationMode;
