@@ -50,6 +50,19 @@ suite("buildProjectCopyFilter", ({ afterEach }) => {
     expect(filter(danglingSymlink)).to.equal(true);
   });
 
+  test("as in git, a directory-only pattern doesn't match a symlink to a directory", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    fs.ensureDirSync(path.join(projectDir, "envs", "python"));
+    fs.symlinkSync(path.join("envs", "python"), path.join(projectDir, ".venv"));
+    fs.writeFileSync(path.join(projectDir, ".gitignore"), ".venv/\n");
+
+    const filter = buildProjectCopyFilter(projectDir);
+
+    // `git check-ignore .venv` reports no match either. The link is copied as a link, and
+    // its target is filtered on its own.
+    expect(filter(path.join(projectDir, ".venv"))).to.equal(true);
+  });
+
   test("applies ignore rules to in-project paths beginning with two dots", () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
     const ignoredDir = path.join(projectDir, "..cache");
@@ -498,20 +511,27 @@ suite("explainExcludedModule", ({ afterEach }) => {
 
   test("names the shallowest path an ignore file kept out of the copy", () => {
     const { projectDir, copyDir } = setUpCopy();
-    const message = "Cannot find module 'generated/queries/example.sql'";
 
-    expect(explainExcludedModule(message, projectDir, copyDir)).to.equal(
-      `${message}. 'generated' is in the project but not in the copy compiled for ` +
-        "dataformCoreVersion, because .gitignore or .dataformignore excludes it. If the " +
-        "module is there, re-include it in .dataformignore",
+    expect(
+      explainExcludedModule(
+        "Cannot find module 'generated/queries/example.sql'",
+        projectDir,
+        copyDir,
+      ),
+    ).to.equal(
+      "'generated' is in the project but not in the copy compiled for dataformCoreVersion, " +
+        "because .gitignore or .dataformignore excludes it. If module " +
+        "'generated/queries/example.sql' is there, re-include it in .dataformignore.",
     );
-    for (const explained of [
+    for (const message of [
       // An absolute path inside the copy.
       `Cannot find module '${path.join(copyDir, "generated", "queries", "example.sql")}'`,
       // An extensionless name, which resolved to a file before the copy.
       "Cannot find module 'generated/queries/example'",
+      // Other quoting, and the require stack Node appends.
+      'Cannot find module "generated/queries/example.sql"\nRequire stack:\n- /project/a.js',
     ]) {
-      expect(explainExcludedModule(explained, projectDir, copyDir)).to.contain(
+      expect(explainExcludedModule(message, projectDir, copyDir)).to.contain(
         "'generated' is in the project but not in the copy",
       );
     }
@@ -538,7 +558,7 @@ suite("explainExcludedModule", ({ afterEach }) => {
       // Not a missing module at all.
       "Unexpected token",
     ]) {
-      expect(explainExcludedModule(message, projectDir, copyDir)).to.equal(message);
+      expect(explainExcludedModule(message, projectDir, copyDir)).to.equal(undefined);
     }
   });
 });

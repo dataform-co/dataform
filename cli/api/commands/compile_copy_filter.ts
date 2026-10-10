@@ -134,11 +134,31 @@ function resolveSymlink(
 }
 
 /**
+ * Whether the filter copies the project-relative path `segments` by its location alone:
+ * anything under one of the COMPILATION_INPUT_ROOT_NAMES, apart from `.git` directories.
+ */
+function isUnderCompilationInputRoot(
+  segments: string[],
+  normalizeCase: (name: string) => string,
+): boolean {
+  return (
+    COMPILATION_INPUT_ROOT_NAMES.has(normalizeCase(segments[0])) &&
+    !segments.slice(1).some((segment) => normalizeCase(segment) === ".git")
+  );
+}
+
+/**
  * Returns the project-relative paths, in `/`-separated form and passed through
- * `normalizeCase`, of every entry the copy must contain for compilation to see the same
- * inputs as in the original project: everything reachable from the
- * COMPILATION_INPUT_ROOT_NAMES, following symbolic links that resolve inside the project,
- * plus every entry those links pass through and the parent directories of all of them.
+ * `normalizeCase`, of the entries the copy must contain for compilation to see the same
+ * inputs as in the original project, beyond those `isUnderCompilationInputRoot` already
+ * covers: everything reachable through symbolic links in the COMPILATION_INPUT_ROOT_NAMES
+ * that resolve inside the project, plus every entry those links pass through and the
+ * parent directories of all of them.
+ *
+ * Finding those links still means listing every directory under the compilation inputs,
+ * but entries there are only recorded when a link leads out of them, so a large tree
+ * such as a vendored `node_modules` under `includes/` costs one directory listing each,
+ * without a stat or a recorded path per file.
  *
  * A link that resolves to the project root makes the whole project reachable, since
  * compilation's glob follows it (`definitions -> .` compiles `definitions/generated/*`),
@@ -152,7 +172,7 @@ function collectCompilationInputs(
 ): Set<string> {
   const projectRoot = fs.realpathSync(resolvedProjectPath);
   const required = new Set<string>();
-  const visited = new Set<string>();
+  const visitedDirectories = new Set<string>();
 
   const addRequired = (entryPath: string) => {
     const relative = path.relative(projectRoot, entryPath);
@@ -165,28 +185,40 @@ function collectCompilationInputs(
     }
   };
 
-  const visit = (entryPath: string) => {
-    const relative = path.relative(projectRoot, entryPath);
-    if (visited.has(entryPath) || (relative !== "" && !isInsideDirectory(relative))) {
+  // `entry` is the entry's type, if already known from its directory listing, and
+  // `covered` whether isUnderCompilationInputRoot holds for it, if already known.
+  const visit = (
+    entryPath: string,
+    entry?: Pick<fs.Stats, "isDirectory" | "isSymbolicLink">,
+    covered?: boolean,
+  ) => {
+    if (covered === undefined) {
+      const relative = path.relative(projectRoot, entryPath);
+      if (relative !== "" && !isInsideDirectory(relative)) {
+        return;
+      }
+      covered =
+        relative !== "" && isUnderCompilationInputRoot(relative.split(path.sep), normalizeCase);
+    }
+    entry = entry ?? lstatIfExists(entryPath);
+    if (!entry) {
       return;
     }
-    visited.add(entryPath);
-    let stats: fs.Stats;
-    try {
-      stats = fs.lstatSync(entryPath);
-    } catch (e) {
-      return;
+    if (!covered) {
+      addRequired(entryPath);
     }
-    addRequired(entryPath);
-    if (stats.isSymbolicLink()) {
+    if (entry.isSymbolicLink()) {
       const resolved = resolveSymlink(entryPath, addRequired);
       if (resolved !== undefined) {
         visit(resolved);
       }
-    } else if (stats.isDirectory()) {
-      for (const child of fs.readdirSync(entryPath)) {
-        if (normalizeCase(child) !== ".git") {
-          visit(path.join(entryPath, child));
+    } else if (entry.isDirectory() && !visitedDirectories.has(entryPath)) {
+      visitedDirectories.add(entryPath);
+      for (const child of fs.readdirSync(entryPath, { withFileTypes: true })) {
+        if (normalizeCase(child.name) !== ".git") {
+          // Under a covered directory, so is the child; otherwise, as for the project
+          // root's own children, it has to be checked.
+          visit(path.join(entryPath, child.name), child, covered || undefined);
         }
       }
     }
@@ -194,7 +226,7 @@ function collectCompilationInputs(
 
   for (const name of fs.readdirSync(projectRoot)) {
     if (COMPILATION_INPUT_ROOT_NAMES.has(normalizeCase(name))) {
-      visit(path.join(projectRoot, name));
+      visit(path.join(projectRoot, name), undefined, true);
     }
   }
   return required;
@@ -260,7 +292,10 @@ export function buildProjectCopyFilter(
     }
 
     const relativeSegments = relative.split(path.sep);
-    if (compilationInputs.has(normalizeCase(relativeSegments.join("/")))) {
+    if (
+      isUnderCompilationInputRoot(relativeSegments, normalizeCase) ||
+      compilationInputs.has(normalizeCase(relativeSegments.join("/")))
+    ) {
       return true;
     }
 
@@ -272,7 +307,9 @@ export function buildProjectCopyFilter(
     // patterns like `.venv/` (trailing slash = directories only), and fs-extra's
     // copySync filter callback isn't given that -- only `src`. Use lstatSync so
     // dangling symlinks remain copyable, matching copySync's default behavior of
-    // copying links rather than dereferencing them.
+    // copying links rather than dereferencing them. That also matches git, which
+    // doesn't follow symbolic links either: a link to a directory isn't a directory,
+    // so `.venv/` doesn't match a `.venv` link, and the link is copied as a link.
     let posixRelative = relativeSegments.join("/");
     if (fs.lstatSync(src).isDirectory()) {
       posixRelative += "/";
@@ -297,8 +334,8 @@ export function copyProjectForStatelessInstall(
 
 /**
  * If `message` reports a module compilation couldn't find, and part of its path is in the
- * project but missing from the stateless-install copy at `copyPath`, returns `message`
- * with a note naming that path. Otherwise returns `message` unchanged.
+ * project but missing from the stateless-install copy at `copyPath`, returns a note naming
+ * that path, to report alongside the unchanged error. Otherwise returns undefined.
  *
  * The note names the shallowest such path, which is the one an ignore file excluded,
  * since `copySync` doesn't descend into an excluded directory. Starting from there means
@@ -316,16 +353,16 @@ export function explainExcludedModule(
   message: string,
   resolvedProjectPath: string,
   copyPath: string,
-): string {
-  const match = /Cannot find module '([^']+)'/.exec(message);
-  if (!match || match[1].startsWith(".")) {
-    return message;
+): string | undefined {
+  const match = /Cannot find module (['"`])(.+?)\1/.exec(message);
+  if (!match || match[2].startsWith(".")) {
+    return undefined;
   }
-  const moduleName = path.isAbsolute(match[1])
-    ? path.relative(copyPath, match[1])
-    : path.normalize(match[1]);
+  const moduleName = path.isAbsolute(match[2])
+    ? path.relative(copyPath, match[2])
+    : path.normalize(match[2]);
   if (!isInsideDirectory(moduleName)) {
-    return message;
+    return undefined;
   }
 
   const segments = moduleName.split(path.sep);
@@ -335,7 +372,7 @@ export function explainExcludedModule(
     if (copied?.isSymbolicLink()) {
       // Whatever is missing is behind a copied link, possibly excluded under a path this
       // can't see, so re-including anything named here wouldn't help.
-      return message;
+      return undefined;
     }
     if (copied) {
       continue;
@@ -346,13 +383,13 @@ export function explainExcludedModule(
       ALWAYS_IGNORED_NAMES.has(CASE_INSENSITIVE_PLATFORM ? name.toLowerCase() : name)
     ) {
       // Missing from the project too, or excluded by the floor no ignore file overrides.
-      return message;
+      return undefined;
     }
     return (
-      `${message}. '${excluded.join("/")}' is in the project but not in the copy compiled ` +
-      `for dataformCoreVersion, because .gitignore or .dataformignore excludes it. If the ` +
-      `module is there, re-include it in .dataformignore`
+      `'${excluded.join("/")}' is in the project but not in the copy compiled for ` +
+      `dataformCoreVersion, because .gitignore or .dataformignore excludes it. If module ` +
+      `'${match[2]}' is there, re-include it in .dataformignore.`
     );
   }
-  return message;
+  return undefined;
 }

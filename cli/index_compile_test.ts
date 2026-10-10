@@ -292,22 +292,23 @@ suite("compile", () => {
           `const helper = require("lib/helper");\n` +
             `publish("table").query(\`SELECT "\${helper.VALUE}" AS id\`);`,
         );
-        const hint =
-          "'lib' is in the project but not in the copy compiled for dataformCoreVersion, " +
-          "because .gitignore or .dataformignore excludes it. If the module is there, " +
-          "re-include it in .dataformignore";
+        const note =
+          "Note: 'lib' is in the project but not in the copy compiled for dataformCoreVersion, " +
+          "because .gitignore or .dataformignore excludes it. If module 'lib/helper' is " +
+          "there, re-include it in .dataformignore.";
 
-        // An uncaught require() becomes a graph compilation error rather than a thrown one.
+        // An uncaught require() becomes a graph compilation error rather than a thrown one,
+        // which is reported unchanged, with the note printed alongside it.
         const jsonResult = await compileProject();
         expect(jsonResult.exitCode).not.equals(0);
         const compilationErrors: dataform.ICompilationError[] = JSON.parse(jsonResult.stdout)
           .graphErrors.compilationErrors;
         expect(compilationErrors.map((error) => error.message)).deep.equals([
-          `Cannot find module 'lib/helper'. ${hint}`,
+          "Cannot find module 'lib/helper'",
         ]);
-        // The console prints the error's stack, so the hint has to reach that too.
+        expect(jsonResult.stderr).contains(note);
         const consoleResult = await compileProject([]);
-        expect(consoleResult.stderr).contains(hint);
+        expect(consoleResult.stderr).contains(note);
 
         fs.writeFileSync(path.join(projectDir, ".dataformignore"), "!/lib/\n");
         const result = await compileProject();

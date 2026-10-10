@@ -26,14 +26,15 @@ message WorkflowSettings {
   // same syntax as `.gitignore` and is applied after it, so it can exclude more
   // paths, or re-include gitignored ones with a negation such as `!/queries/`.
   // As in git, a path can't be re-included while its parent directory is
-  // excluded. Any other file the copy skips is unavailable during installation
-  // and compilation, such as a gitignored SQL file that `actions.yaml`
-  // references or a CA file that `.npmrc` names by a relative path. If project
-  // code loads one (for example, with `require()`), compilation fails, unless
-  // the code catches the error, in which case its behavior may differ from
-  // compiling without `dataformCoreVersion`. To make such a file available,
-  // re-include it in `.dataformignore`, or keep it under `definitions/` or
-  // `includes/`.
+  // excluded, and a pattern ending in `/` doesn't match a symbolic link to a
+  // directory. Any other file the copy skips is unavailable during
+  // installation and compilation, such as a gitignored SQL file that
+  // `actions.yaml` references or a CA file that `.npmrc` names by a relative
+  // path. If project code loads one (for example, with `require()`),
+  // compilation fails, unless the code catches the error, in which case its
+  // behavior may differ from compiling without `dataformCoreVersion`. To make
+  // such a file available, re-include it in `.dataformignore`, or keep it
+  // under `definitions/` or `includes/`.
   string dataform_core_version = 1;
 
   // Required. The default Google Cloud project (database).

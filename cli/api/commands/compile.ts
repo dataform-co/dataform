@@ -101,17 +101,25 @@ export async function compile(
     compileConfig.projectDir = temporaryProjectPath;
   }
 
+  // A file the copy filter excluded surfaces as a missing module, which the CLI can
+  // report as a missing npm dependency. Say why alongside the error, which is left as is.
+  const printExcludedModuleNotes = (messages: string[]) => {
+    const notes = new Set<string>();
+    for (const message of messages) {
+      const note = explainExcludedModule(message, resolvedProjectPath, temporaryProjectPath);
+      if (note) {
+        notes.add(note);
+      }
+    }
+    notes.forEach((note) => print(`Note: ${note}\n`));
+  };
+
   let result: string;
   try {
     result = await new CompileChildProcess().compile(compileConfig);
   } catch (e) {
-    // A file the copy filter excluded surfaces as a missing module. Say so, rather than
-    // leaving it to read like a missing npm dependency.
-    if (workflowSettingsDataformCoreVersion) {
-      const explained = explainExcludedModule(e.message, resolvedProjectPath, temporaryProjectPath);
-      if (explained !== e.message) {
-        throw new Error(explained);
-      }
+    if (workflowSettingsDataformCoreVersion && e instanceof Error) {
+      printExcludedModuleNotes([e.message]);
     }
     throw e;
   }
@@ -120,21 +128,9 @@ export async function compile(
   compiledGraph = dataform.CompiledGraph.create(decodedResult.compile.compiledGraph);
 
   if (workflowSettingsDataformCoreVersion) {
-    for (const compilationError of compiledGraph.graphErrors?.compilationErrors ?? []) {
-      const explained = explainExcludedModule(
-        compilationError.message,
-        resolvedProjectPath,
-        temporaryProjectPath,
-      );
-      if (explained !== compilationError.message) {
-        // The console prints the stack, which starts with the message.
-        compilationError.stack = compilationError.stack?.replace(
-          compilationError.message,
-          explained,
-        );
-        compilationError.message = explained;
-      }
-    }
+    printExcludedModuleNotes(
+      (compiledGraph.graphErrors?.compilationErrors ?? []).map((error) => error.message ?? ""),
+    );
     fs.rmSync(temporaryProjectPath, { recursive: true });
   }
 
