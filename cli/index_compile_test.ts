@@ -156,6 +156,172 @@ suite("compile", () => {
     });
   });
 
+  suite("stateless-install project copy", ({ afterEach }) => {
+    const tmpDirFixture = new TmpDirFixture(afterEach);
+
+    // dataformCoreVersion triggers the stateless install path, where compile() copies the
+    // project through the copy filter before compiling the copy.
+    function setUpStatelessProject() {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        dumpYaml({
+          defaultProject: INTEGRATION_TEST_PROJECT,
+          defaultLocation: INTEGRATION_TEST_LOCATION,
+          defaultDataset: "dataform",
+          dataformCoreVersion: "3.0.50",
+        }),
+      );
+      const env = { ...process.env, NPM_CONFIG_CACHE: tmpDirFixture.createNewTmpDir() };
+      const compileProject = (args = ["--json"]) =>
+        runCli("compile", [projectDir, ...args], { env });
+      return { projectDir, compileProject };
+    }
+
+    test(
+      "compiles inputs that definitions/ and includes/ reach through symlinks into gitignored paths",
+      { timeout: 60000 },
+      async () => {
+        const { projectDir, compileProject } = setUpStatelessProject();
+        fs.writeFileSync(path.join(projectDir, ".gitignore"), "generated/\n");
+        // definitions -> generated/definitions, and includes/constants.js ->
+        // ../generated/includes/constants.js, both inside the gitignored directory.
+        fs.ensureDirSync(path.join(projectDir, "generated", "definitions", "nested"));
+        fs.writeFileSync(
+          path.join(projectDir, "generated", "definitions", "table.sqlx"),
+          `config { type: "table" }\nSELECT "\${constants.VALUE}" AS id`,
+        );
+        fs.writeFileSync(
+          path.join(projectDir, "generated", "definitions", "nested", "other_table.sqlx"),
+          `config { type: "table" }\nSELECT 2 AS id`,
+        );
+        fs.ensureDirSync(path.join(projectDir, "generated", "includes"));
+        fs.writeFileSync(
+          path.join(projectDir, "generated", "includes", "constants.js"),
+          `module.exports = { VALUE: "from_include" };`,
+        );
+        fs.symlinkSync(path.join("generated", "definitions"), path.join(projectDir, "definitions"));
+        fs.ensureDirSync(path.join(projectDir, "includes"));
+        fs.symlinkSync(
+          path.join("..", "generated", "includes", "constants.js"),
+          path.join(projectDir, "includes", "constants.js"),
+        );
+
+        const result = await compileProject();
+
+        expect(result.exitCode, `compile failed: ${result.stderr}`).equals(0);
+        const tables: dataform.ITable[] = JSON.parse(result.stdout).tables ?? [];
+        expect(tables.map((table) => table.target.name).sort()).deep.equals([
+          "other_table",
+          "table",
+        ]);
+        expect(tables.find((table) => table.target.name === "table").query).contains(
+          "from_include",
+        );
+      },
+    );
+
+    test(
+      "compiles gitignored definitions reached through a symlink to the project root",
+      { timeout: 60000 },
+      async () => {
+        const { projectDir, compileProject } = setUpStatelessProject();
+        fs.writeFileSync(path.join(projectDir, ".gitignore"), "generated/\n");
+        fs.ensureDirSync(path.join(projectDir, "generated"));
+        fs.writeFileSync(
+          path.join(projectDir, "generated", "table.sqlx"),
+          `config { type: "table" }\nSELECT 1 AS id`,
+        );
+        // Compilation's glob follows definitions -> . into generated/.
+        fs.symlinkSync(".", path.join(projectDir, "definitions"));
+
+        const result = await compileProject();
+
+        expect(result.exitCode, `compile failed: ${result.stderr}`).equals(0);
+        const tables: dataform.ITable[] = JSON.parse(result.stdout).tables ?? [];
+        expect(tables.map((table) => table.target.name)).deep.equals(["table"]);
+      },
+    );
+
+    test(
+      "explains a gitignored file actions.yaml references, and compiles it once re-included",
+      { timeout: 60000 },
+      async () => {
+        const { projectDir, compileProject } = setUpStatelessProject();
+        fs.writeFileSync(path.join(projectDir, ".gitignore"), "queries/\n");
+        fs.ensureDirSync(path.join(projectDir, "definitions"));
+        fs.writeFileSync(
+          path.join(projectDir, "definitions", "actions.yaml"),
+          dumpYaml({
+            actions: [{ table: { name: "example", filename: "../queries/example.sql" } }],
+          }),
+        );
+        fs.ensureDirSync(path.join(projectDir, "queries"));
+        fs.writeFileSync(path.join(projectDir, "queries", "example.sql"), "SELECT 1 AS id");
+        const excludedResult = await compileProject();
+
+        expect(excludedResult.exitCode).not.equals(0);
+        expect(excludedResult.stderr).contains(
+          "'queries' is in the project but not in the copy compiled for dataformCoreVersion",
+        );
+
+        fs.writeFileSync(path.join(projectDir, ".dataformignore"), "!/queries/\n");
+        const result = await compileProject();
+
+        expect(result.exitCode, `compile failed: ${result.stderr}`).equals(0);
+        const tables: dataform.ITable[] = JSON.parse(result.stdout).tables ?? [];
+        expect(tables.map((table) => table.query.trim())).deep.equals(["SELECT 1 AS id"]);
+      },
+    );
+
+    test(
+      "explains a gitignored helper a definition requires, in JSON and console output",
+      { timeout: 60000 },
+      async () => {
+        const { projectDir, compileProject } = setUpStatelessProject();
+        fs.writeFileSync(path.join(projectDir, ".gitignore"), "lib/\n");
+        fs.ensureDirSync(path.join(projectDir, "lib"));
+        fs.writeFileSync(
+          path.join(projectDir, "lib", "helper.js"),
+          `module.exports = { VALUE: "from_helper" };`,
+        );
+        fs.ensureDirSync(path.join(projectDir, "definitions"));
+        fs.writeFileSync(
+          path.join(projectDir, "definitions", "table.js"),
+          // Extensionless, as helpers are usually required.
+          `const helper = require("lib/helper");\n` +
+            `publish("table").query(\`SELECT "\${helper.VALUE}" AS id\`);`,
+        );
+        const note =
+          "Note: 'lib' is in the project but not in the copy compiled for dataformCoreVersion, " +
+          "because .gitignore or .dataformignore excludes it. If module 'lib/helper' is " +
+          "there, re-include it in .dataformignore.";
+
+        // An uncaught require() becomes a graph compilation error rather than a thrown one,
+        // which is reported unchanged, with the note printed alongside it.
+        const jsonResult = await compileProject();
+        expect(jsonResult.exitCode).not.equals(0);
+        const compilationErrors: dataform.ICompilationError[] = JSON.parse(jsonResult.stdout)
+          .graphErrors.compilationErrors;
+        expect(compilationErrors.map((error) => error.message)).deep.equals([
+          "Cannot find module 'lib/helper'",
+        ]);
+        expect(jsonResult.stderr).contains(note);
+        const consoleResult = await compileProject([]);
+        expect(consoleResult.stderr).contains(note);
+
+        fs.writeFileSync(path.join(projectDir, ".dataformignore"), "!/lib/\n");
+        const result = await compileProject();
+
+        expect(result.exitCode, `compile failed: ${result.stderr}`).equals(0);
+        const tables: dataform.ITable[] = JSON.parse(result.stdout).tables ?? [];
+        expect(tables.map((table) => table.query.trim())).deep.equals([
+          'SELECT "from_helper" AS id',
+        ]);
+      },
+    );
+  });
+
   suite("disable-assertions flag (compilation)", ({ afterEach, beforeEach }) => {
     const tmpDirFixture = new TmpDirFixture(afterEach);
     let projectDir: string;
