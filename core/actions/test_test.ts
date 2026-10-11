@@ -606,4 +606,107 @@ SELECT 1`,
       ]),
     );
   });
+
+  test(`test supports defaultJobLabels and jobLabels in sqlx and js`, () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
+    const definitionsDir = path.join(projectDir, "definitions");
+
+    fs.writeFileSync(
+      workflowSettingsPath,
+      `
+defaultProject: defaultProject
+defaultDataset: defaultDataset
+defaultLocation: US
+defaultJobLabels:
+  env: dev
+  team: test_team
+`,
+    );
+    fs.mkdirSync(definitionsDir);
+    fs.writeFileSync(
+      path.join(definitionsDir, "actions.yaml"),
+      `
+actions:
+- table:
+    filename: action.sql`,
+    );
+    fs.writeFileSync(path.join(definitionsDir, "action.sql"), "SELECT 1");
+    fs.writeFileSync(
+      path.join(definitionsDir, "sqlx_test.sqlx"),
+      `
+config {
+  type: "test",
+  dataset: "action",
+  jobLabels: {
+    env: "prod",
+    cost_center: "analytics"
+  }
+}
+SELECT 1`,
+    );
+    fs.writeFileSync(
+      path.join(definitionsDir, "js_test.js"),
+      `
+test("js_test")
+  .dataset("action")
+  .jobLabels({ env: "staging" })
+  .expect("SELECT 1");
+`,
+    );
+
+    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+    expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+    const testByName = new Map(result.compile.compiledGraph.tests.map((t) => [t.name, t]));
+    expect(asPlainObject(testByName.get("sqlx_test")?.actionDescriptor)).deep.equals({
+      jobLabels: {
+        env: "prod",
+        team: "test_team",
+        cost_center: "analytics",
+      },
+    });
+    expect(asPlainObject(testByName.get("js_test")?.actionDescriptor)).deep.equals({
+      jobLabels: {
+        env: "staging",
+        team: "test_team",
+      },
+    });
+  });
+
+  test(`test records compilation error for invalid jobLabels`, () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
+    const definitionsDir = path.join(projectDir, "definitions");
+
+    fs.writeFileSync(workflowSettingsPath, VALID_WORKFLOW_SETTINGS_YAML);
+    fs.mkdirSync(definitionsDir);
+    fs.writeFileSync(
+      path.join(definitionsDir, "actions.yaml"),
+      `
+actions:
+- table:
+    filename: action.sql`,
+    );
+    fs.writeFileSync(path.join(definitionsDir, "action.sql"), "SELECT 1");
+    fs.writeFileSync(
+      path.join(definitionsDir, "invalid_test.sqlx"),
+      `
+config {
+  type: "test",
+  dataset: "action",
+  jobLabels: {
+    "origin": "val"
+  }
+}
+SELECT 1`,
+    );
+
+    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+    expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).to.equal(1);
+    expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).to.include(
+      'Invalid job label key "origin" in jobLabels: "origin" is a reserved label key.',
+    );
+  });
 });

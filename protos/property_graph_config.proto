@@ -17,6 +17,7 @@ message PropertyGraphConfig {
   bool disabled = 6;
   bool depend_on_dependency_assertions = 7;
   repeated string tags = 8;
+  map<string, string> job_labels = 9;
 
   message TargetDataset {
     string project_id = 1;

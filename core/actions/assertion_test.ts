@@ -44,7 +44,9 @@ actions:
     description: description
     hermetic: true
     dependOnDependencyAssertions: true
-    reservation: reservation`,
+    reservation: reservation
+    jobLabels:
+      job_key: job_val`,
       );
       writeDefinitionFile(projectDir, "action.sql", "SELECT 1");
       writeDefinitionFile(projectDir, "operation.sqlx", "SELECT 1");
@@ -68,6 +70,9 @@ actions:
             actionDescriptor: {
               description: "description",
               reservation: "reservation",
+              jobLabels: {
+                job_key: "job_val",
+              },
             },
             disabled: true,
             fileName: "definitions/action.sql",

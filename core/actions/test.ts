@@ -10,6 +10,7 @@ import {
   ambiguousActionNameMsg,
   checkExcessProperties,
   resolvableAsTarget,
+  resolveAndValidateJobLabels,
   strictKeysOf,
   stringifyResolvable,
   toResolvable,
@@ -35,6 +36,9 @@ export interface ITestConfig extends INamedConfig {
 
   /** Tags for this test action. */
   tags?: string[];
+
+  /** Labels to be applied to BigQuery job(s) executed for this test action. */
+  jobLabels?: { [key: string]: string };
 }
 
 /** @hidden */
@@ -44,6 +48,7 @@ const ITestConfigProperties = strictKeysOf<ITestConfig>()([
   "name",
   "filename",
   "tags",
+  "jobLabels",
 ]);
 
 /**
@@ -88,6 +93,7 @@ export class Test extends ActionBuilder<dataform.Test> {
   public contextableInputs = new Map<string, Contextable<IActionContext, string>>();
   private contextableQuery: Contextable<IActionContext, string>;
   private testTarget: dataform.ITarget;
+  private configJobLabels?: { [key: string]: string };
 
   /**
    * @hidden Stores the generated proto for the compiled graph.
@@ -140,6 +146,9 @@ export class Test extends ActionBuilder<dataform.Test> {
     if (config.tags) {
       this.proto.tags = config.tags;
     }
+    if (config.hasOwnProperty("jobLabels")) {
+      this.configJobLabels = config.jobLabels;
+    }
     return this;
   }
 
@@ -148,6 +157,14 @@ export class Test extends ActionBuilder<dataform.Test> {
    */
   public dataset(ref: Resolvable) {
     this.config({ dataset: ref });
+    return this;
+  }
+
+  /**
+   * Sets labels to be applied to BigQuery job(s) executed for this test action.
+   */
+  public jobLabels(jobLabels: { [key: string]: string }) {
+    this.config({ jobLabels });
     return this;
   }
 
@@ -190,6 +207,20 @@ export class Test extends ActionBuilder<dataform.Test> {
 
   /** @hidden */
   public compile() {
+    const resolvedJobLabels = resolveAndValidateJobLabels(
+      this.session?.projectConfig?.defaultJobLabels,
+      this.configJobLabels,
+      this.session,
+      this.proto.fileName,
+      this.proto.target,
+    );
+    if (resolvedJobLabels) {
+      if (!this.proto.actionDescriptor) {
+        this.proto.actionDescriptor = {};
+      }
+      this.proto.actionDescriptor.jobLabels = resolvedJobLabels;
+    }
+
     const testContext = new TestContext(this);
     if (!this.testTarget) {
       this.session.compileError(

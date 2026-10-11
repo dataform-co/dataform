@@ -257,6 +257,11 @@ export interface IActionConfig {
    * Useful for temporarily turning off broken actions.
    */
   disabled?: boolean;
+
+  /**
+   * Key-value pairs for BigQuery job labels applied to the query job(s) executed for this action.
+   */
+  jobLabels?: { [key: string]: string };
 }
 
 /**

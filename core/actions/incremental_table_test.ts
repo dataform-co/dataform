@@ -110,6 +110,8 @@ actions:
 ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
     hermetic: true
     reservation: reservation
+    jobLabels:
+        job_key: job_val
     onSchemaChange: FAIL
   `,
       );
@@ -168,6 +170,9 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
             },
             description: "description",
             reservation: "reservation",
+            jobLabels: {
+              job_key: "job_val",
+            },
           },
         },
       ]);

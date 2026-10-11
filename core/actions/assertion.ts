@@ -10,6 +10,7 @@ import {
   resolvableAsActionConfigTarget,
   resolvableAsTarget,
   resolveActionsConfigFilename,
+  resolveAndValidateJobLabels,
   toResolvable,
   validateQueryString,
 } from "df/core/utils";
@@ -167,6 +168,19 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
       }
       this.proto.actionDescriptor.metadata = config.metadata;
     }
+    const jobLabels = resolveAndValidateJobLabels(
+      session?.projectConfig?.defaultJobLabels,
+      config.jobLabels,
+      this.session,
+      this.proto.fileName,
+      this.proto.target,
+    );
+    if (jobLabels) {
+      if (!this.proto.actionDescriptor) {
+        this.proto.actionDescriptor = {};
+      }
+      this.proto.actionDescriptor.jobLabels = jobLabels;
+    }
     return this;
   }
 
@@ -253,7 +267,10 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
    * Sets the description of this assertion.
    */
   public description(description: string) {
-    this.proto.actionDescriptor = { description };
+    if (!this.proto.actionDescriptor) {
+      this.proto.actionDescriptor = {};
+    }
+    this.proto.actionDescriptor.description = description;
     return this;
   }
 
