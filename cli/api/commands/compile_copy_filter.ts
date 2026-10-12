@@ -341,10 +341,10 @@ export function copyProjectForStatelessInstall(
  * The note names the shallowest such path, which is the one an ignore file excluded,
  * since `copySync` doesn't descend into an excluded directory. Starting from there means
  * an extensionless name (`require("lib/helper")`) is explained when a directory on its
- * path was excluded, but not when only the file itself was. A relative name
- * (`require("./sibling")`) is resolved against the requiring file, which the message
- * doesn't name, so it is left unexplained. So is a path through a copied symbolic link:
- * what's missing is behind the link, under a path the module name doesn't show.
+ * path was excluded, but not when only the file itself was. Relative names
+ * (`require("./sibling")`) aren't handled yet, so they are left unexplained. So is a path
+ * through a copied symbolic link: what's missing is behind the link, under a path the
+ * module name doesn't show.
  *
  * The note doesn't say which pattern to add: other patterns may match the file as well,
  * and file names can contain pattern syntax, so a single suggested negation isn't always

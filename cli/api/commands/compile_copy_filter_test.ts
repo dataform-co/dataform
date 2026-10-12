@@ -549,7 +549,7 @@ suite("explainExcludedModule", ({ afterEach }) => {
       "Cannot find module 'lib/linked.sql'",
       "Cannot find module 'linked-dir/queries/example.sql'",
       "Cannot find module 'git-lib/helper.js'",
-      // Resolved against the requiring file, which the message doesn't name.
+      // A relative name, which isn't handled yet.
       "Cannot find module './example.sql'",
       // Excluded by the node_modules floor, which no ignore file can override.
       "Cannot find module 'lib/node_modules/pkg/index.js'",

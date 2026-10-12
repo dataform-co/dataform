@@ -131,8 +131,8 @@ export async function compile(
     );
     return compiledGraph;
   } finally {
-    // Removed whether installation and compilation succeed or not. A failure to remove it
-    // mustn't hide the error that ended the compile.
+    // Removal is attempted whether installation and compilation succeed or not. A failure
+    // to remove it mustn't hide the error that ended the compile.
     try {
       fs.rmSync(temporaryProjectPath, { recursive: true, force: true, maxRetries: 3 });
     } catch {
