@@ -1,30 +1,9 @@
 /**
  * ESLint flat config for the Dataform repository.
  */
-const rawTsParser = require('@typescript-eslint/parser');
+const tseslint = require('typescript-eslint');
 const noNodeBuiltins = require('./eslint-rules/no-node-builtins');
 const orderedImports = require('./eslint-rules/ordered-imports');
-
-// Compatibility shim for @typescript-eslint/parser v5 with ESLint v10
-const tsParser = {
-  ...rawTsParser,
-  parseForESLint(code, options) {
-    const result = rawTsParser.parseForESLint(code, options);
-    if (result.scopeManager && !result.scopeManager.addGlobals) {
-      result.scopeManager.addGlobals = (names) => {
-        for (const name of names) {
-          if (!result.scopeManager.globalScope.set.has(name)) {
-            result.scopeManager.globalScope.defineImplicitVariable(name, {
-              isTypeVariable: false,
-              isValueVariable: true,
-            });
-          }
-        }
-      };
-    }
-    return result;
-  },
-};
 
 module.exports = [
   {
@@ -40,11 +19,16 @@ module.exports = [
   {
     files: ['**/*.ts'],
     languageOptions: {
-      parser: tsParser,
+      parser: tseslint.parser,
       ecmaVersion: 2020,
       sourceType: 'module',
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: __dirname,
+      },
     },
     plugins: {
+      '@typescript-eslint': tseslint.plugin,
       local: {
         rules: {
           'no-node-builtins': noNodeBuiltins,
@@ -73,6 +57,8 @@ module.exports = [
       'no-shadow-restricted-names': 'error',
       'local/ordered-imports': 'error',
       'no-new-func': 'error',
+      '@typescript-eslint/no-floating-promises': 'error',
+      '@typescript-eslint/no-misused-promises': ['error', { checksVoidReturn: false }],
     },
   },
   {

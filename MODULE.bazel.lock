@@ -741,7 +741,7 @@
     "@@aspect_rules_ts~//ts:extensions.bzl%ext": {
       "general": {
         "bzlTransitiveDigest": "oKcu5tBbtSfUDhUlzslFb7VqeJo83CbHK95dXgz/1F0=",
-        "usagesDigest": "CUBMmbsuViyAVZVMkOx0OsD0zFXvIS7qHelONWk74s0=",
+        "usagesDigest": "61HZqPR3Mb9KR+I0+aQv1RAca50YySCdVc6aTig3JcM=",
         "recordedFileInputs": {},
         "recordedDirentsInputs": {},
         "envVariables": {},
@@ -751,7 +751,8 @@
             "ruleClassName": "http_archive_version",
             "attributes": {
               "bzlmod": true,
-              "version": "5.5.4",
+              "version": "",
+              "version_from": "@@aspect_rules_js~~npm~npm//:typescript/resolved.json",
               "integrity": "",
               "build_file": "@@aspect_rules_ts~//ts:BUILD.typescript",
               "build_file_substitutions": {

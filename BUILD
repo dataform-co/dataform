@@ -26,7 +26,7 @@ eslint_bin.eslint_binary(
     chdir = "$$BUILD_WORKSPACE_DIRECTORY",
     data = [
         "//testing:resolver-patch",
-        "//:node_modules/@typescript-eslint/parser",
+        "//:node_modules/typescript-eslint",
     ],
     node_options = [
         "--require=./testing/resolver-patch.js",

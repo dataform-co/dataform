@@ -1,6 +1,10 @@
 #!/bin/bash
 set -e
 
+# Type-aware lint rules need the npm types in node_modules and the generated sources in bazel-bin.
+bazel run -- @pnpm//:pnpm --dir "$PWD" install --frozen-lockfile
+bazel build //protos:ts //core:version
+
 # Run eslint.
 bazel run //:eslint -- '**/*.ts'
 
