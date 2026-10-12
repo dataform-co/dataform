@@ -1,12 +1,79 @@
 import { Dataset, Table } from "@google-cloud/bigquery";
 import { expect } from "chai";
-import { anything, instance, mock, verify, when } from "ts-mockito";
+import { anything, instance, mock, when } from "ts-mockito";
 
-import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
+import {
+  BigQueryDbAdapter,
+  createBigQueryClientProvider,
+  getBigQueryClientOptions,
+} from "df/cli/api/dbadapters/bigquery";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 
 suite("BigQueryDbAdapter", () => {
+  suite("getBigQueryClientOptions", () => {
+    test("passes the parsed service account key to the client", () => {
+      const serviceAccountKey = {
+        type: "service_account",
+        project_id: "key-project-id",
+        private_key_id: "key-id-123",
+        private_key:
+          "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQC\n-----END PRIVATE KEY-----\n",
+        client_email: "test-sa@key-project-id.iam.gserviceaccount.com",
+        client_id: "1234567890",
+      };
+      const options = getBigQueryClientOptions(
+        dataform.BigQuery.create({
+          projectId: "target-project-id",
+          location: "EU",
+          credentials: JSON.stringify(serviceAccountKey),
+        }),
+      );
+      expect(options).to.deep.include({
+        projectId: "target-project-id",
+        location: "EU",
+        credentials: serviceAccountKey,
+      });
+    });
+
+    test("leaves out credentials when no key is given, so ADC is used", () => {
+      const options = getBigQueryClientOptions(
+        dataform.BigQuery.create({ projectId: "adc-project-id", location: "US" }),
+      );
+      expect(options).to.deep.include({ projectId: "adc-project-id", location: "US" });
+      expect(Boolean(options.credentials)).to.equal(false);
+    });
+
+    test("uses the requested project instead of the default one", () => {
+      const options = getBigQueryClientOptions(
+        dataform.BigQuery.create({ projectId: "default-project", location: "US" }),
+        "other-project",
+      );
+      expect(options.projectId).to.equal("other-project");
+    });
+
+    test("throws on malformed service account key JSON", () => {
+      expect(() =>
+        getBigQueryClientOptions({
+          projectId: "target-project-id",
+          location: "US",
+          credentials: "{not-valid-json",
+        }),
+      ).to.throw(SyntaxError);
+    });
+  });
+
+  test("createBigQueryClientProvider creates and caches one client per project", () => {
+    const clientProvider = createBigQueryClientProvider(
+      dataform.BigQuery.create({ projectId: "default-project", location: "EU" }),
+    );
+    const defaultClient = clientProvider();
+    expect(defaultClient.projectId).to.equal("default-project");
+    expect(defaultClient.location).to.equal("EU");
+    expect(clientProvider()).to.equal(defaultClient);
+    expect(clientProvider("other-project").projectId).to.equal("other-project");
+  });
+
   test("tables() with schema filters correctly", async () => {
     const mockBigQuery = mock<any>();
     const mockDataset = mock<Dataset>();

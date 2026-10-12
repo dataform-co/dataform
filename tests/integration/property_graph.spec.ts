@@ -3,10 +3,11 @@ import { randomBytes } from "crypto";
 
 import * as dfapi from "df/cli/api";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
-import { INTEGRATION_TEST_PROJECT } from "df/cli/index_test_base";
+import { CREDENTIALS_PATH, INTEGRATION_TEST_PROJECT } from "df/cli/index_test_base";
 import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
+import { requireAdc } from "df/testing/credentials";
 import { compile, keyBy } from "df/tests/integration/utils";
 
 const GRAPH_NAME = "LibraryGraph";
@@ -22,7 +23,8 @@ async function dropDataset(dbadapter: BigQueryDbAdapter, dataset: string) {
 }
 
 suite("@dataform/integration/property_graph", { parallel: true }, ({ before, after }) => {
-  const credentials = dfapi.credentials.read("test_credentials/bigquery.json");
+  requireAdc(before);
+  const credentials = dfapi.credentials.read(CREDENTIALS_PATH);
   const schemaSuffix = `e2e_${makeSuffix()}`;
   const dataset = `df_integration_test_pg_${schemaSuffix}`;
   const graphTarget = `${INTEGRATION_TEST_PROJECT}.${dataset}.${GRAPH_NAME}`;
@@ -33,7 +35,11 @@ suite("@dataform/integration/property_graph", { parallel: true }, ({ before, aft
   });
 
   after("drop dataset", async () => {
-    await dropDataset(dbadapter, dataset);
+    // Tear-down hooks run even when a set-up hook (e.g. requireAdc) fails, in which case the
+    // adapter was never created.
+    if (dbadapter) {
+      await dropDataset(dbadapter, dataset);
+    }
   });
 
   test("creates property graph end-to-end", { timeout: 120000 }, async () => {
