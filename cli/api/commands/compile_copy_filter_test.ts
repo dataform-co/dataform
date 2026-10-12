@@ -561,4 +561,20 @@ suite("explainExcludedModule", ({ afterEach }) => {
       expect(explainExcludedModule(message, projectDir, copyDir)).to.equal(undefined);
     }
   });
+
+  test("recognizes the fixed floor with the case setting the copy used", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    const copyDir = tmpDirFixture.createNewTmpDir();
+    fs.ensureDirSync(path.join(projectDir, "lib", "Node_Modules", "pkg"));
+    fs.writeFileSync(path.join(projectDir, "lib", "Node_Modules", "pkg", "index.js"), "");
+    copyProjectForStatelessInstall(projectDir, copyDir, true);
+    const message = "Cannot find module 'lib/Node_Modules/pkg/index.js'";
+
+    // Excluded by the node_modules floor, which no ignore file can override.
+    expect(explainExcludedModule(message, projectDir, copyDir, true)).to.equal(undefined);
+    // Case-sensitively, the name isn't the floor's, so the note blames an ignore file.
+    expect(explainExcludedModule(message, projectDir, copyDir, false)).to.contain(
+      "'lib/Node_Modules' is in the project but not in the copy",
+    );
+  });
 });

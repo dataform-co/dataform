@@ -244,7 +244,7 @@ suite("compile", () => {
     );
 
     test(
-      "explains a gitignored file actions.yaml references, and compiles it once re-included",
+      "explains a gitignored file actions.yaml references, removes the copy, and compiles it once re-included",
       { timeout: 60000 },
       async () => {
         const { projectDir, compileProject } = setUpStatelessProject();
@@ -258,12 +258,17 @@ suite("compile", () => {
         );
         fs.ensureDirSync(path.join(projectDir, "queries"));
         fs.writeFileSync(path.join(projectDir, "queries", "example.sql"), "SELECT 1 AS id");
-        const excludedResult = await compileProject();
+        const excludedResult = await compileProject(["--json", "--verbose"]);
 
         expect(excludedResult.exitCode).not.equals(0);
         expect(excludedResult.stderr).contains(
           "'queries' is in the project but not in the copy compiled for dataformCoreVersion",
         );
+        const copyPath = /Copying project to temporary directory: (.+)/.exec(
+          excludedResult.stderr,
+        )?.[1];
+        expect(copyPath, excludedResult.stderr).to.not.equal(undefined);
+        expect(fs.existsSync(copyPath)).equals(false);
 
         fs.writeFileSync(path.join(projectDir, ".dataformignore"), "!/queries/\n");
         const result = await compileProject();

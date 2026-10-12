@@ -326,9 +326,10 @@ export function buildProjectCopyFilter(
 export function copyProjectForStatelessInstall(
   resolvedProjectPath: string,
   destination: string,
+  caseInsensitive = CASE_INSENSITIVE_PLATFORM,
 ): void {
   fs.copySync(resolvedProjectPath, destination, {
-    filter: buildProjectCopyFilter(resolvedProjectPath),
+    filter: buildProjectCopyFilter(resolvedProjectPath, caseInsensitive),
   });
 }
 
@@ -348,11 +349,15 @@ export function copyProjectForStatelessInstall(
  * The note doesn't say which pattern to add: other patterns may match the file as well,
  * and file names can contain pattern syntax, so a single suggested negation isn't always
  * enough.
+ *
+ * `caseInsensitive` must match the setting the copy was made with, so that names the
+ * fixed floor excluded are recognized the same way.
  */
 export function explainExcludedModule(
   message: string,
   resolvedProjectPath: string,
   copyPath: string,
+  caseInsensitive = CASE_INSENSITIVE_PLATFORM,
 ): string | undefined {
   const match = /Cannot find module (['"`])(.+?)\1/.exec(message);
   if (!match || match[2].startsWith(".")) {
@@ -380,7 +385,7 @@ export function explainExcludedModule(
     const name = segments[i - 1];
     if (
       !lstatIfExists(path.join(resolvedProjectPath, ...excluded)) ||
-      ALWAYS_IGNORED_NAMES.has(CASE_INSENSITIVE_PLATFORM ? name.toLowerCase() : name)
+      ALWAYS_IGNORED_NAMES.has(caseInsensitive ? name.toLowerCase() : name)
     ) {
       // Missing from the project too, or excluded by the floor no ignore file overrides.
       return undefined;

@@ -26,14 +26,10 @@ function print(text: string) {
 export async function compile(
   compileConfig: dataform.ICompileConfig = {},
 ): Promise<dataform.CompiledGraph> {
-  let compiledGraph = dataform.CompiledGraph.create();
-
   const resolvedProjectPath = path.resolve(compileConfig.projectDir);
   const packageJsonPath = path.join(resolvedProjectPath, "package.json");
   const packageLockJsonPath = path.join(resolvedProjectPath, "package-lock.json");
   const projectNodeModulesPath = path.join(resolvedProjectPath, "node_modules");
-
-  const temporaryProjectPath = tmp.dirSync().name;
 
   const workflowSettings = readConfigFromWorkflowSettings(resolvedProjectPath);
   const workflowSettingsDataformCoreVersion = workflowSettings?.dataformCoreVersion;
@@ -45,15 +41,20 @@ export async function compile(
     throw new Error(MISSING_CORE_VERSION_ERROR);
   }
 
+  if (!workflowSettingsDataformCoreVersion) {
+    return decodeCompiledGraph(await new CompileChildProcess().compile(compileConfig));
+  }
+
   // For stateless package installation, a temporary directory is used in order to avoid interfering
   // with user's project directories.
-  if (workflowSettingsDataformCoreVersion) {
-    [projectNodeModulesPath, packageJsonPath, packageLockJsonPath].forEach((npmPath) => {
-      if (fs.existsSync(npmPath)) {
-        throw new Error(`'${npmPath}' unexpected; remove it and try again`);
-      }
-    });
+  [projectNodeModulesPath, packageJsonPath, packageLockJsonPath].forEach((npmPath) => {
+    if (fs.existsSync(npmPath)) {
+      throw new Error(`'${npmPath}' unexpected; remove it and try again`);
+    }
+  });
 
+  const temporaryProjectPath = tmp.dirSync().name;
+  try {
     if (compileConfig.verbose) {
       print(
         `Using isolated environment for @dataform/core@${workflowSettingsDataformCoreVersion}\n`,
@@ -99,42 +100,50 @@ export async function compile(
     }
 
     compileConfig.projectDir = temporaryProjectPath;
-  }
 
-  // A file the copy filter excluded surfaces as a missing module, which the CLI can
-  // report as a missing npm dependency. Say why alongside the error, which is left as is.
-  const printExcludedModuleNotes = (messages: string[]) => {
-    const notes = new Set<string>();
-    for (const message of messages) {
-      const note = explainExcludedModule(message, resolvedProjectPath, temporaryProjectPath);
-      if (note) {
-        notes.add(note);
+    // A file the copy filter excluded surfaces as a missing module, which the CLI can
+    // report as a missing npm dependency. Say why alongside the error, which is left as is.
+    // This reads the copy, so it runs before the copy is removed below.
+    const printExcludedModuleNotes = (messages: string[]) => {
+      const notes = new Set<string>();
+      for (const message of messages) {
+        const note = explainExcludedModule(message, resolvedProjectPath, temporaryProjectPath);
+        if (note) {
+          notes.add(note);
+        }
       }
+      notes.forEach((note) => print(`Note: ${note}\n`));
+    };
+
+    let result: string;
+    try {
+      result = await new CompileChildProcess().compile(compileConfig);
+    } catch (e) {
+      if (e instanceof Error) {
+        printExcludedModuleNotes([e.message]);
+      }
+      throw e;
     }
-    notes.forEach((note) => print(`Note: ${note}\n`));
-  };
 
-  let result: string;
-  try {
-    result = await new CompileChildProcess().compile(compileConfig);
-  } catch (e) {
-    if (workflowSettingsDataformCoreVersion && e instanceof Error) {
-      printExcludedModuleNotes([e.message]);
-    }
-    throw e;
-  }
-
-  const decodedResult = decode64(dataform.CoreExecutionResponse, result);
-  compiledGraph = dataform.CompiledGraph.create(decodedResult.compile.compiledGraph);
-
-  if (workflowSettingsDataformCoreVersion) {
+    const compiledGraph = decodeCompiledGraph(result);
     printExcludedModuleNotes(
       (compiledGraph.graphErrors?.compilationErrors ?? []).map((error) => error.message ?? ""),
     );
-    fs.rmSync(temporaryProjectPath, { recursive: true });
+    return compiledGraph;
+  } finally {
+    // Removed whether installation and compilation succeed or not. A failure to remove it
+    // mustn't hide the error that ended the compile.
+    try {
+      fs.rmSync(temporaryProjectPath, { recursive: true, force: true, maxRetries: 3 });
+    } catch {
+      // Left for the OS to clean up with the rest of the temporary directory.
+    }
   }
+}
 
-  return compiledGraph;
+function decodeCompiledGraph(result: string): dataform.CompiledGraph {
+  const decodedResult = decode64(dataform.CoreExecutionResponse, result);
+  return dataform.CompiledGraph.create(decodedResult.compile.compiledGraph);
 }
 
 export class CompileChildProcess extends BaseWorker<string, string | Error> {
