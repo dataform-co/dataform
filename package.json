@@ -68,6 +68,7 @@
     "webpack-cli": "4.10.0"
   },
   "pnpm": {
+    "onlyBuiltDependencies": ["protobufjs", "fsevents"],
     "overrides": {
       "serialize-javascript": "^7.1.1",
       "glob-parent": "^5.1.2",
