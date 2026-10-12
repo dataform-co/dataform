@@ -1,5 +1,6 @@
 import { LineageClient } from "@google-cloud/lineage";
 
+import { LineageEnablementSource } from "df/cli/api/lineage/enablement";
 import { GLOBAL_LINEAGE_ENDPOINT, LineageEndpointRouter } from "df/cli/api/lineage/endpoint_router";
 import { LineagePayloadBuilder, toProtoStruct } from "df/cli/api/lineage/payload_builder";
 import { coerceAsError } from "df/common/errors/errors";
@@ -8,6 +9,12 @@ import { dataform } from "df/protos/ts";
 
 export interface IEmitterOptions {
   lineageEnabled?: boolean;
+  /**
+   * Which surface enabled lineage. When `default`, the user never asked for
+   * lineage, so expected one-time skip notices (API disabled, missing
+   * permission, dry-run, ...) are only printed with DATAFORM_LINEAGE_DEBUG=1.
+   */
+  enablementSource?: LineageEnablementSource;
   dryRun?: boolean;
   projectDir?: string;
 }
@@ -141,7 +148,7 @@ export class LineageEmitter {
 
     if (this.emitterOptions.dryRun) {
       if (!this.dryRunSkipLogged) {
-        this.stderr.write(
+        this.writeNotice(
           "[lineage] Skipped lineage emission (dry-run mode; once-per-run): skip_reason=dry_run\n",
         );
         this.dryRunSkipLogged = true;
@@ -247,7 +254,7 @@ export class LineageEmitter {
           onRepEndpoint &&
           (this.isEndpointUnresolvable(err) || this.isEndpointRegionMismatch(err))
         ) {
-          this.stderr.write(
+          this.writeNotice(
             `[lineage] Regional endpoint ${currentEndpoint} is not serving location ${location}. Falling back to ${GLOBAL_LINEAGE_ENDPOINT} for this and subsequent emits in this location.\n`,
           );
           this.endpointRouter.markRepUnavailable(location);
@@ -261,7 +268,7 @@ export class LineageEmitter {
         if (this.isEndpointRegionMismatch(err)) {
           if (!this.emissionDisabledThisRun) {
             this.emissionDisabledThisRun = true;
-            this.stderr.write(
+            this.writeNotice(
               `[lineage] Skipped lineage emission for the rest of this run: skip_reason=endpoint_region_mismatch (endpoint '${currentEndpoint}' returned HTTP 302 for location '${location}'; the endpoint does not serve this region)\n`,
             );
           }
@@ -279,7 +286,7 @@ export class LineageEmitter {
         if (code === 7 || err.message?.includes("PERMISSION_DENIED")) {
           if (!this.emissionDisabledThisRun) {
             this.emissionDisabledThisRun = true;
-            this.stderr.write(
+            this.writeNotice(
               `[lineage] Skipped lineage emission for the rest of this run: skip_reason=api_disabled (ensure the credential has 'datalineage.googleapis.com/locations.processOpenLineageMessage' OR that the Lineage API is enabled in project ${projectId} via 'gcloud services enable datalineage.googleapis.com')\n`,
             );
           }
@@ -292,7 +299,7 @@ export class LineageEmitter {
         ) {
           if (!this.emissionDisabledThisRun) {
             this.emissionDisabledThisRun = true;
-            this.stderr.write(
+            this.writeNotice(
               `[lineage] Skipped lineage emission for the rest of this run: skip_reason=api_disabled (Lineage API is not enabled in project ${projectId}; run 'gcloud services enable datalineage.googleapis.com')\n`,
             );
           }
@@ -305,7 +312,7 @@ export class LineageEmitter {
         if (code === 16 || err.message?.includes("UNAUTHENTICATED")) {
           if (!this.emissionDisabledThisRun) {
             this.emissionDisabledThisRun = true;
-            this.stderr.write(
+            this.writeNotice(
               `[lineage] Skipped lineage emission for the rest of this run: skip_reason=unauthenticated (the credential used to reach the Lineage API is missing, invalid, or expired; re-authenticate and rerun — e.g., 'gcloud auth application-default login')\n`,
             );
           }
@@ -320,6 +327,18 @@ export class LineageEmitter {
         throw err;
       }
     }
+  }
+
+  /**
+   * Writes a one-time skip / fallback notice. When lineage is on only because
+   * of the built-in default, the user never asked for lineage, so the notice is
+   * shown only with DATAFORM_LINEAGE_DEBUG=1 to keep their output unchanged.
+   */
+  private writeNotice(msg: string): void {
+    if (this.emitterOptions.enablementSource === "default" && !this.debugEnabled) {
+      return;
+    }
+    this.stderr.write(msg);
   }
 
   private isEndpointUnresolvable(err: Error): boolean {
