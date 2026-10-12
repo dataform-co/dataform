@@ -25,6 +25,11 @@ jobs:
       - name: Setup Bazel
         uses: bazelbuild/setup-bazelisk@b39c379c82683a5f25d34f0d062761f62693e0b2 # v3.0.0
 
+      # MODULE.bazel sets `use_home_npmrc = True`, so aspect_rules_js requires ~/.npmrc to exist.
+      # An empty file keeps the default public npm registry (Cloud Build writes its own).
+      - name: Create an empty ~/.npmrc
+        run: touch ~/.npmrc
+
       - name: Build package tarballs and the Windows smoke test bundle
         run: |
           bazel build \
