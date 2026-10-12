@@ -108,6 +108,10 @@ Global pnpm installations will throw errors when installing packages, instead yo
 $ bazel run -- @pnpm --dir "$PWD" add ...
 ```
 
+Replace "$PWD" with path to the project directory if running from outside it. The --dir option is necessary, otherwise pnpm will install in Bazel's ephemeral output directory tree.
+
+pnpm will use the registry specified in ~/.npmrc by default. When building in the Cloud, this will be set to a trusted internal registry. In local development, feel free to use a public registry like https://registry.npmjs.org/. Before committing, make sure pnpm-lock.yaml does not contain tarball: fields (pnpm only adds them when a registry serves packages from non-standard URLs, for example some mirrors or proxies, so you shouldn't normally see them with the public npm registry).
+
 Additionally, installed NPM dependencies need to be added to the `deps` of `ts_library` rules by
 prefixing them with `//:node_modules/...`.
 
