@@ -1,7 +1,8 @@
-package(default_visibility = ["//visibility:public"])
-
+load("@aspect_rules_js//js:defs.bzl", "js_binary")
 load("//testing:index.bzl", "ts_test_suite")
 load("//tools:ts_library.bzl", "ts_library")
+
+package(default_visibility = ["//visibility:public"])
 
 ts_library(
     name = "vm_runner",
@@ -11,7 +12,7 @@ ts_library(
         "vm_runner.ts",
     ],
     deps = [
-        "@npm//@types/node",
+        "//:node_modules/@types/node",
     ],
 )
 
@@ -23,33 +24,33 @@ ts_test_suite(
     ],
     deps = [
         ":vm_runner",
+        "//:node_modules/@types/chai",
+        "//:node_modules/@types/node",
+        "//:node_modules/chai",
         "//testing",
-        "@npm//@types/chai",
-        "@npm//@types/node",
-        "@npm//chai",
     ],
 )
-
-load("@build_bazel_rules_nodejs//:index.bzl", "nodejs_binary")
 
 ts_library(
     name = "benchmark_lib",
     srcs = ["vm_runner_benchmark.ts"],
     deps = [
         ":vm_runner",
-        "@npm//@types/node",
+        "//:node_modules/@types/node",
     ],
 )
 
-nodejs_binary(
+# bazel run //common/vm:benchmark
+js_binary(
     name = "benchmark",
     data = [
         ":benchmark_lib",
-        "@npm//source-map-support",
+        "//:node_modules/source-map-support",
+        "//testing:resolver-patch",
     ],
-    entry_point = ":vm_runner_benchmark.ts",
-    templated_args = [
-        "--node_options=--require=source-map-support/register",
-        "--bazel_patch_module_resolver",
+    entry_point = ":vm_runner_benchmark.js",
+    node_options = [
+        "--require=./testing/resolver-patch.js",
+        "--require=source-map-support/register",
     ],
 )

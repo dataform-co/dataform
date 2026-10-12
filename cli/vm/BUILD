@@ -47,14 +47,13 @@ ts_test_suite(
     ],
     deps = [
         ":vm",
+        "//:node_modules/@types/chai",
+        "//:node_modules/@types/fs-extra",
+        "//:node_modules/@types/node",
+        "//:node_modules/chai",
+        "//:node_modules/fs-extra",
         "//common/protos",
         "//protos:ts",
         "//testing",
-        "@npm//@types/chai",
-        "@npm//@types/fs-extra",
-        "@npm//@types/node",
-        "@npm//chai",
-        "@npm//fs-extra",
     ],
 )
-
