@@ -18,17 +18,7 @@ import { TmpDirFixture } from "df/testing/fixtures";
 const DEFAULT_PROJECT = "dataform-open-source";
 const DEFAULT_LOCATION = "US";
 
-const runfilesDir = process.env.RUNFILES;
-let workspaceName = "df";
-if (!fs.existsSync(path.resolve(runfilesDir, "df"))) {
-  workspaceName = "_main";
-}
-
-export const CREDENTIALS_PATH = path.resolve(
-  runfilesDir,
-  workspaceName,
-  "test_credentials/bigquery.json",
-);
+export const CREDENTIALS_PATH = path.resolve("test_credentials/bigquery.json");
 
 const logger = new Logger(true);
 
@@ -66,7 +56,7 @@ export const INTEGRATION_TEST_PROJECT = getCredentialsProjectId();
 export const INTEGRATION_TEST_LOCATION = getCredentialsLocation();
 export const INTEGRATION_TEST_RESERVATION = `projects/${INTEGRATION_TEST_PROJECT}/locations/${INTEGRATION_TEST_LOCATION.toLowerCase()}/reservations/dataform-test`;
 
-export const cliEntryPointPath = "cli/node_modules/@dataform/cli/bundle.js";
+export const cliEntryPointPath = path.resolve("packages/@dataform/cli/bundle.js");
 
 export async function setupProject(
   tmpDirFixture: TmpDirFixture,

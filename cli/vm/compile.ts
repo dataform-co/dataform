@@ -144,8 +144,9 @@ export function compile(compileConfig: dataform.ICompileConfig) {
 
 export function listenForCompileRequest() {
   process.on("message", (compileConfig: dataform.ICompileConfig & { type?: string }) => {
-    // JiT messages are handled by handleJitRequest in worker.ts; skip them here.
-    if ((compileConfig as { type?: string })?.type === "jit_compile") {
+    // Compile requests are bare CompileConfig objects. Typed messages (jit_compile, rpc_response)
+    // belong to the JiT handlers in jit_worker.ts, which share this process; skip them here.
+    if (compileConfig?.type) {
       return;
     }
     try {
@@ -159,13 +160,6 @@ export function listenForCompileRequest() {
       process.send(serializableError);
     }
   });
-}
-
-if (require.main === module) {
-  if (process.send) {
-    process.send({ type: "worker_booted" });
-  }
-  listenForCompileRequest();
 }
 
 // Reads the CLI's own version from the package.json baked next to the bundle

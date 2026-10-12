@@ -1,8 +1,11 @@
 import { ChildProcess, fork } from "child_process";
+import * as path from "path";
+
+// Worker entry point used when there is no worker_bundle.js next to the running code, i.e. in
+// dev (`bazel run`) and tests. It runs the same cli/vm/worker.ts as the bundle.
+const DEV_WORKER_LOADER_PATH = path.resolve(__dirname, "../../vm/worker_loader");
 
 export abstract class BaseWorker<TResponse, TMessage = any> {
-  protected constructor(private readonly loaderPath: string) {}
-
   protected async runWorker(
     timeoutMillis: number,
     onBoot: (child: ChildProcess) => void,
@@ -82,7 +85,7 @@ export abstract class BaseWorker<TResponse, TMessage = any> {
   }
 
   private resolveScript() {
-    const pathsToTry = ["./worker_bundle.js", this.loaderPath];
+    const pathsToTry = ["./worker_bundle.js", DEV_WORKER_LOADER_PATH];
     for (const p of pathsToTry) {
       try {
         return require.resolve(p);

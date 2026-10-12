@@ -26,8 +26,6 @@ proto_library(
 
 ts_proto_library(
     name = "ts",
-    module_name = "df/protos/ts",
-    module_root = "ts",
     deps = [
         ":dataform_proto",
     ],

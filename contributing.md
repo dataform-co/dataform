@@ -90,8 +90,6 @@ All .ts files are expected to be formatted using prettier. You can format all fi
 
 Alternatively, you may want to configure prettier to run on save or as a pre-commit hook.
 
-Note that some files may predate the enforcement of this standard and not be properly formatted yet. If you modify such files, you will have to format the entire file before submitting, even for a small change.
-
 ### Building
 
 Building the CLI will build most of the required components.
@@ -104,14 +102,18 @@ The projects folder here is not built as it requires an environment file, which 
 
 ### Add New NPM Dependencies
 
-Global yarn installations will throw errors when installing packages, instead you should use:
+Global pnpm installations will throw errors when installing packages, instead you should use:
 
 ```bash
-$ bazel run @nodejs//:yarn add ...
+$ bazel run -- @pnpm --dir "$PWD" add ...
 ```
 
+Replace "$PWD" with path to the project directory if running from outside it. The --dir option is necessary, otherwise pnpm will install in Bazel's ephemeral output directory tree.
+
+pnpm will use the registry specified in ~/.npmrc by default. When building in the Cloud, this will be set to a trusted internal registry. In local development, feel free to use a public registry like https://registry.npmjs.org/. Before committing, make sure pnpm-lock.yaml does not contain tarball: fields (pnpm only adds them when a registry serves packages from non-standard URLs, for example some mirrors or proxies, so you shouldn't normally see them with the public npm registry).
+
 Additionally, installed NPM dependencies need to be added to the `deps` of `ts_library` rules by
-prefixing them with `@npm//...`.
+prefixing them with `//:node_modules/...`.
 
 ## The Contribution Process
 
