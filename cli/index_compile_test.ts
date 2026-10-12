@@ -308,9 +308,10 @@ suite("compile", () => {
         expect(jsonResult.exitCode).not.equals(0);
         const compilationErrors: dataform.ICompilationError[] = JSON.parse(jsonResult.stdout)
           .graphErrors.compilationErrors;
-        expect(compilationErrors.map((error) => error.message)).deep.equals([
-          "Cannot find module 'lib/helper'",
-        ]);
+        expect(compilationErrors).to.have.length(1);
+        // The runner may name the requiring file after the module.
+        expect(compilationErrors[0].message).to.match(/^Cannot find module 'lib\/helper'/);
+        expect(compilationErrors[0].message).not.contains(".dataformignore");
         expect(jsonResult.stderr).contains(note);
         const consoleResult = await compileProject([]);
         expect(consoleResult.stderr).contains(note);

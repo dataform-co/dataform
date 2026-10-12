@@ -101,8 +101,8 @@ export async function compile(
 
     compileConfig.projectDir = temporaryProjectPath;
 
-    // A file the copy filter excluded surfaces as a missing module, which the CLI can
-    // report as a missing npm dependency. Say why alongside the error, which is left as is.
+    // A file the copy filter excluded surfaces as a missing module, and the error doesn't
+    // say why. Say why alongside the error, which is left as is.
     // This reads the copy, so it runs before the copy is removed below.
     const printExcludedModuleNotes = (messages: string[]) => {
       const notes = new Set<string>();
