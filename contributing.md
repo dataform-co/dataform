@@ -121,7 +121,7 @@ The Dataform CLI is supported on Windows 10 and 11 in both **Command Prompt (`cm
 
 ### Prerequisites & Setup
 
-- **Node.js**: Node 20+ LTS is required.
+- **Node.js**: Node 22+ LTS is required.
 - **Git line endings**: This repository includes a `.gitattributes` file (`* text=auto eol=lf`) that enforces LF line endings automatically without changing your global Git configuration. For user Dataform projects checked out with CRLF (`core.autocrlf=true`), `dataform format` and `dataform format --check` are CRLF-aware and normalize line endings before comparing.
 - **Symlinks & Long Paths**: If using Bazel or deep `node_modules` hierarchies on Windows, enable [Windows Developer Mode](https://learn.microsoft.com/en-us/windows/apps/get-started/enable-your-device-for-development) or enable `core.longpaths` for this repository:
   ```bash
@@ -166,9 +166,10 @@ the `dataform.cmd` launcher), which also works on Linux and macOS.
 
 ### Windows CI on GitHub Actions
 
-All pull requests run the `CLI smoke tests (Windows)` job on `windows-latest` via
-`.github/workflows/test.yaml`. It installs the CLI tarball built by the Linux job and runs the
-smoke tests under both PowerShell and `cmd.exe`.
+All pull requests run the `CLI smoke tests (Windows, Node 22)` and
+`CLI smoke tests (Windows, Node 24)` jobs on `windows-latest` via `.github/workflows/test.yaml`.
+Each installs the CLI tarball built by the Linux job and runs the smoke tests under both PowerShell
+and `cmd.exe`, with `@dataform/core` installed from the locally built tarball.
 
 ## The Contribution Process
 

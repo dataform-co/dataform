@@ -139,6 +139,9 @@ suite("path utils", () => {
     expect(Path.fileExtension(".gitignore")).equals("");
     expect(Path.fileExtension("definitions/.gitignore")).equals("");
     expect(Path.fileExtension(".df-credentials.json")).equals("json");
+    // Only the file name is inspected, not dots in directory names.
+    expect(Path.fileExtension("definitions.v2/no_extension")).equals("");
+    expect(Path.fileExtension("definitions.v2/file.sqlx")).equals("sqlx");
   });
 
   test("normalize handles both slash types and dot navigation", () => {

@@ -384,5 +384,18 @@ suite("Dataform Utility Validations", () => {
         globalAny.__dataform_current_file = previousCurrentFile;
       }
     });
+
+    test("accepts any caller file when rootDir is empty", () => {
+      const globalAny = global as any;
+      const previousCurrentFile = globalAny.__dataform_current_file;
+      try {
+        // Hosts that don't set projectDir pass an empty rootDir; the stack must still be searched
+        // instead of failing with "Unable to find valid caller file".
+        globalAny.__dataform_current_file = undefined;
+        expect(() => getCallerFile("")).to.not.throw();
+      } finally {
+        globalAny.__dataform_current_file = previousCurrentFile;
+      }
+    });
   });
 });

@@ -51,17 +51,22 @@ jobs:
           path: bazel-bin/cli/tests/windows/smoke_test_bundle.js
 
   test-windows:
-    name: CLI smoke tests (Windows)
+    name: CLI smoke tests (Windows, Node ${{ matrix.node-version }})
     needs: build-linux
     runs-on: windows-latest
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        # Oldest supported Node.js LTS and the current one (also used by the Bazel toolchain).
+        node-version: [22, 24]
     permissions:
       contents: read
     steps:
       - name: Setup Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: 20
+          node-version: ${{ matrix.node-version }}
 
       - name: Download CLI tarball
         uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806 # v4.1.9

@@ -1,9 +1,11 @@
 export const separator = "/";
 
 /**
- * Replaces every backslash with a forward slash. Repeated separators are deliberately kept, so a
- * UNC root such as `\\server\share\proj` becomes `//server/share/proj` rather than a POSIX-looking
- * `/server/share/proj`.
+ * Replaces every backslash with a forward slash, on every platform, so the compiled graph is the
+ * same on Windows and POSIX. As a result, a literal backslash in a POSIX file name (e.g.
+ * `definitions/a\b.sqlx`) is treated as a separator; such files can't be checked out on Windows
+ * anyway. Repeated separators are deliberately kept, so a UNC root such as `\\server\share\proj`
+ * becomes `//server/share/proj` rather than a POSIX-looking `/server/share/proj`.
  */
 export function toPosixPath(path: string): string {
   return path ? path.replace(/\\/g, "/") : path;

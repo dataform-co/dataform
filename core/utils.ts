@@ -52,7 +52,8 @@ export function getCallerFile(rootDir: string) {
       continue;
     }
     const nextLastfile = Path.toPosixPath(rawNextLastfile);
-    if (!Path.startsWithPath(nextLastfile, rootDir)) {
+    // An empty rootDir (a host that doesn't set projectDir) matches every file, as before.
+    if (rootDir && !Path.startsWithPath(nextLastfile, rootDir)) {
       continue;
     }
     if (nextLastfile.includes("node_modules")) {

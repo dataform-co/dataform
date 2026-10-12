@@ -12,8 +12,9 @@
  * works on Linux and macOS.
  *
  * `--core-tarball` installs `@dataform/core` from a local tarball through `package.json`
- * (`"file:<tarball>"`), the same flow used by the CLI unit tests. Without it the version written by
- * `dataform init` is installed from the npm registry.
+ * (`"file:<tarball>"`), the same flow used by the CLI unit tests; CI always passes it. Note that
+ * `dataform init` installs nothing, it only pins the CLI's own version. Without `--core-tarball`
+ * (local runs), Flow 3B installs that pinned version from the npm registry.
  *
  * This file is bundled with Bazel (`//cli/tests/windows:smoke_test_bundle`) into a single
  * CommonJS file that only depends on Node built-ins, so the Windows CI runner needs nothing but
