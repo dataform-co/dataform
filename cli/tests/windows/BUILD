@@ -7,7 +7,7 @@ ts_library(
     name = "smoke_test_lib",
     srcs = ["smoke_test.ts"],
     deps = [
-        "@npm//@types/node",
+        "//:node_modules/@types/node",
     ],
 )
 
@@ -16,7 +16,7 @@ ts_library(
 pkg_bundle(
     name = "smoke_test_bundle",
     allow_node_builtins = True,
-    entry_point = "smoke_test.ts",
+    entry_point = "smoke_test.js",
     externals = [],
     deps = [":smoke_test_lib"],
 )
