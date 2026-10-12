@@ -18,6 +18,8 @@ ts_library(
 
 js_binary(
     name = "bin",
+    # Only used for local dev; testonly prevents prod targets from depending on it
+    testonly = True,
     chdir = "$$BUILD_WORKING_DIRECTORY",
     data = [
         ":cli",
