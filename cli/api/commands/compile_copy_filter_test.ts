@@ -11,7 +11,7 @@ import {
 import { suite, test } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
 
-// Under Bazel, rules_nodejs patches fs.readlinkSync to return absolute paths, so copySync
+// Under Bazel, the test runner patches fs.readlinkSync to return absolute paths, so copySync
 // turns each relative link into one pointing back into the original project. Reading
 // through a copied link would then succeed whether or not its target was copied, so these
 // tests check a link's target at its own path in the copy instead.
