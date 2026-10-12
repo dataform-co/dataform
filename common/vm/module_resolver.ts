@@ -21,7 +21,6 @@ import * as path from "path";
 import { getRealPath } from "df/common/vm/path_utils";
 
 // Node's CommonJS loader. Its lookup helpers are used directly (see findInNodeModules).
-// tslint:disable-next-line: no-require-imports
 const NodeModule: any = require("module");
 
 export interface ModuleResolverOptions {

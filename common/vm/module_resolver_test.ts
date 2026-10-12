@@ -239,7 +239,6 @@ suite("ModuleResolver", ({ afterEach }) => {
 
   test("fails with a clear error when Node's internal module lookup helpers are missing", () => {
     const projectDir = newProjectDir();
-    // tslint:disable-next-line: no-require-imports
     const NodeModule: any = require("module");
     for (const helper of ["_nodeModulePaths", "_findPath"]) {
       const original = NodeModule[helper];

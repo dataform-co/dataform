@@ -14,7 +14,6 @@ suite("cli/vm", ({ afterEach, before, after }) => {
 
   // Let host-side require("@dataform/core") (jit_worker's mocked-core branch) resolve to the
   // prebuilt core bundle in the test environment. Scoped to this suite via before/after.
-  // tslint:disable-next-line: no-require-imports
   const Module = require("module");
   const prebuiltCoreBundle = path.join(
     process.cwd(),
