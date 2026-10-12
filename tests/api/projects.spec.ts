@@ -337,7 +337,7 @@ suite("examples", () => {
           databaseWithSuffix("tada-analytics"),
           schemaWithSuffix("df_integration_test"),
           "sample_data",
-        )}\`\n\n-- here \${"is"} a \`comment\n\n/* \${"another"} \` backtick \` containing \`\`\`comment */`,
+        )}\`\n\n-- here \${"is"} a \`comment\n\n/* \${"another"} \` backtick \` containing \`\`\`comment */\n\n-- another comment \\\${"with"} \\\` with backslashes`,
       );
       expect(exampleTable.dependencyTargets).eql([
         dataform.Target.create({
@@ -685,7 +685,7 @@ suite("examples", () => {
     test("testcases", () => {
       const testCase = graph.tests.find((t) => t.name === "example_test_case");
       expect(testCase.testQuery.trim()).equals(
-        "select * from (\n    select 'hi' as faked union all\n    select 'ben' as faked union all\n    select 'sup?' as faked\n)\n\n-- here ${\"is\"} a `comment\n\n/* ${\"another\"} ` backtick ` containing ```comment */",
+        "select * from (\n    select 'hi' as faked union all\n    select 'ben' as faked union all\n    select 'sup?' as faked\n)\n\n-- here ${\"is\"} a `comment\n\n/* ${\"another\"} ` backtick ` containing ```comment */\n\n-- another comment \\${\"with\"} \\` with backslashes",
       );
       expect(testCase.expectedOutputQuery.trim()).equals(
         "select 'hi' as faked union all\nselect 'ben' as faked union all\nselect 'sup?' as faked",
@@ -693,7 +693,7 @@ suite("examples", () => {
 
       const testCaseFQ = graph.tests.find((t) => t.name === "example_test_case_fq_ref");
       expect(testCaseFQ.testQuery.trim()).equals(
-        "select * from (\n    select 'hi' as faked union all\n    select 'ben' as faked union all\n    select 'sup?' as faked\n)\n\n-- here ${\"is\"} a `comment\n\n/* ${\"another\"} ` backtick ` containing ```comment */",
+        "select * from (\n    select 'hi' as faked union all\n    select 'ben' as faked union all\n    select 'sup?' as faked\n)\n\n-- here ${\"is\"} a `comment\n\n/* ${\"another\"} ` backtick ` containing ```comment */\n\n-- another comment \\${\"with\"} \\` with backslashes",
       );
       expect(testCaseFQ.expectedOutputQuery.trim()).equals(
         "select 'hi' as faked union all\nselect 'ben' as faked union all\nselect 'sup?' as faked",

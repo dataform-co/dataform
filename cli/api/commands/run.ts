@@ -154,7 +154,7 @@ export class Runner {
   }
 
   public execute(): this {
-    if (!!this.executionTask) {
+    if (this.executionTask !== undefined) {
       throw new Error("Executor already started.");
     }
     this.executionTask = this.executeGraph();

@@ -147,10 +147,6 @@ function decodeCompiledGraph(result: string): dataform.CompiledGraph {
 }
 
 export class CompileChildProcess extends BaseWorker<string, string | Error> {
-  constructor() {
-    super(path.resolve(__dirname, "../../vm/compile_loader"));
-  }
-
   public async compile(compileConfig: dataform.ICompileConfig) {
     const timeoutValue = compileConfig.timeoutMillis || DEFAULT_COMPILATION_TIMEOUT_MILLIS;
 

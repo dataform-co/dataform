@@ -90,8 +90,6 @@ All .ts files are expected to be formatted using prettier. You can format all fi
 
 Alternatively, you may want to configure prettier to run on save or as a pre-commit hook.
 
-Note that some files may predate the enforcement of this standard and not be properly formatted yet. If you modify such files, you will have to format the entire file before submitting, even for a small change.
-
 ### Building
 
 Building the CLI will build most of the required components.
@@ -104,14 +102,74 @@ The projects folder here is not built as it requires an environment file, which 
 
 ### Add New NPM Dependencies
 
-Global yarn installations will throw errors when installing packages, instead you should use:
+Global pnpm installations will throw errors when installing packages, instead you should use:
 
 ```bash
-$ bazel run @nodejs//:yarn add ...
+$ bazel run -- @pnpm --dir "$PWD" add ...
 ```
 
+Replace "$PWD" with path to the project directory if running from outside it. The --dir option is necessary, otherwise pnpm will install in Bazel's ephemeral output directory tree.
+
+pnpm will use the registry specified in ~/.npmrc by default. When building in the Cloud, this will be set to a trusted internal registry. In local development, feel free to use a public registry like https://registry.npmjs.org/. Before committing, make sure pnpm-lock.yaml does not contain tarball: fields (pnpm only adds them when a registry serves packages from non-standard URLs, for example some mirrors or proxies, so you shouldn't normally see them with the public npm registry).
+
 Additionally, installed NPM dependencies need to be added to the `deps` of `ts_library` rules by
-prefixing them with `@npm//...`.
+prefixing them with `//:node_modules/...`.
+
+## Windows Support
+
+The Dataform CLI is supported on Windows 10 and 11 in both **Command Prompt (`cmd.exe`)** and **PowerShell**.
+
+### Prerequisites & Setup
+
+- **Node.js**: Node 22+ LTS is required.
+- **Git line endings**: This repository includes a `.gitattributes` file (`* text=auto eol=lf`) that enforces LF line endings automatically without changing your global Git configuration. For user Dataform projects checked out with CRLF (`core.autocrlf=true`), `dataform format` and `dataform format --check` are CRLF-aware and normalize line endings before comparing.
+- **Symlinks & Long Paths**: If using Bazel or deep `node_modules` hierarchies on Windows, enable [Windows Developer Mode](https://learn.microsoft.com/en-us/windows/apps/get-started/enable-your-device-for-development) or enable `core.longpaths` for this repository:
+  ```bash
+  git config core.longpaths true
+  ```
+
+### Development & Path Conventions
+
+- **Canonical Forward Slashes**: Dataform's internal graph contracts, table names, and proto file paths require canonical POSIX forward slashes (`/`). Even on Windows, definitions must resolve as `definitions/my_table.sqlx` rather than with backslashes (`\`).
+- **Cross-Platform Path Helpers**: Use the `Path` utility in `core/path.ts` (`Path.toPosixPath`, `Path.startsWithPath`, `Path.join`, `Path.normalize`, `Path.relativePath`, `Path.dirName`, `Path.basename`). It handles mixed separators and Windows drive letters (e.g. `C:\` vs `c:/`) automatically.
+
+### Running Windows Smoke Tests
+
+The smoke test suite lives in `cli/tests/windows/smoke_test.ts` and is bundled by Bazel into a
+single file that only needs Node.js to run. Build it on Linux, macOS or WSL (or download the
+`windows-smoke-test` artifact from a CI run of `.github/workflows/test.yaml`):
+
+```bash
+bazel build //cli/tests/windows:smoke_test_bundle //packages/@dataform/cli:package_tar //packages/@dataform/core:package_tar
+# -> bazel-bin/cli/tests/windows/smoke_test_bundle.js
+```
+
+Then, on Windows, install the CLI globally and run the bundle through the shell you want to test:
+
+- **In PowerShell**:
+
+  ```powershell
+  npm install -g path\to\cli\package.tar.gz
+  node smoke_test_bundle.js --shell powershell --core-tarball path\to\core\package.tar.gz
+  ```
+
+- **In Command Prompt (`cmd.exe`)**:
+
+  ```cmd
+  npm install -g path\to\cli\package.tar.gz
+  node smoke_test_bundle.js --shell cmd --core-tarball path\to\core\package.tar.gz
+  ```
+
+Without `--core-tarball`, the `@dataform/core` version pinned by `dataform init` is installed from
+the npm registry instead. Without `--shell`, the CLI bundle is run directly with Node (bypassing
+the `dataform.cmd` launcher), which also works on Linux and macOS.
+
+### Windows CI on GitHub Actions
+
+All pull requests run the `CLI smoke tests (Windows, Node 22)` and
+`CLI smoke tests (Windows, Node 24)` jobs on `windows-latest` via `.github/workflows/test.yaml`.
+Each installs the CLI tarball built by the Linux job and runs the smoke tests under both PowerShell
+and `cmd.exe`, with `@dataform/core` installed from the locally built tarball.
 
 ## The Contribution Process
 

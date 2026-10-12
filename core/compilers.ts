@@ -62,37 +62,13 @@ export function compile(code: string, path: string): string {
   return code;
 }
 
-export function extractJsBlocks(code: string): { sql: string; js: string } {
-  const JS_REGEX =
-    /^\s*\/\*[jJ][sS]\s*[\r\n]+((?:[^*]|[\r\n]|(?:\*+(?:[^*/]|[\r\n])))*)\*+\/|^\s*\-\-[jJ][sS]\s(.*)/gm;
-  // This captures any single backticks that aren't escaped with a preceding \.
-  const RAW_BACKTICKS_REGEX = /([^\\])`/g;
-  const jsBlocks: string[] = [];
-  const cleanSql = code
-    .replace(JS_REGEX, (_, group1, group2) => {
-      if (group1) {
-        jsBlocks.push(group1);
-      }
-      if (group2) {
-        jsBlocks.push(group2);
-      }
-      return "";
-    })
-    .replace(RAW_BACKTICKS_REGEX, (_, group1) => group1 + "\\`");
-
-  return {
-    sql: cleanSql.trim(),
-    js: jsBlocks.map((block) => block.trim()).join("\n"),
-  };
-}
-
 function compileSqlx(rootNode: SyntaxTreeNode, path: string): string {
   const { config, js, sql, incremental, preOperations, postOperations, inputs } =
     extractSqlxParts(rootNode);
 
   return `dataform.sqlxAction({
   sqlxConfig: {
-    name: "${Path.escapedBasename(path)}",
+    name: ${JSON.stringify(Path.basename(path))},
     type: "operations",
     ...${config || "{}"}
   },
@@ -262,7 +238,7 @@ function createEscapedStatements(nodes: Array<string | SyntaxTreeNode>) {
 const SQL_STATEMENT_ESCAPERS = new Map([
   [
     SyntaxTreeNodeType.SQL_COMMENT,
-    (str: string) => str.replace(/`/g, "\\`").replace(/\${/g, "\\${"),
+    (str: string) => str.replace(/\\/g, "\\\\").replace(/`/g, "\\`").replace(/\${/g, "\\${"),
   ],
   [
     SyntaxTreeNodeType.SQL_LITERAL_STRING,

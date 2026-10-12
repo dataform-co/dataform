@@ -128,7 +128,7 @@ export const compileCommand: ICommand<ICompileArgs> = {
       process.exit(1);
     });
     while (watching) {
-      await new Promise((resolve, reject) => setTimeout(() => resolve(), 100));
+      await new Promise<void>((resolve, reject) => setTimeout(() => resolve(), 100));
     }
     return 0;
   },

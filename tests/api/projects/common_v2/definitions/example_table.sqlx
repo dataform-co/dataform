@@ -5,6 +5,8 @@ select * from ${ref("df_integration_test", "sample_data")}
 
 /* ${"another"} ` backtick ` containing ```comment */
 
+-- another comment \${"with"} \` with backslashes
+
 post_operations {
     GRANT SELECT ON ${self()} TO GROUP "${constants.allUsersEmailAddress}"
     ---

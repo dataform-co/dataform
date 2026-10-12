@@ -9,5 +9,5 @@ ts_library(
     ],
     deps = [
         "//protos:ts",
-    ]
+    ],
 )
