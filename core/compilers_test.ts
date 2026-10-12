@@ -16,6 +16,11 @@ suite("core/compilers", () => {
       expect(result).to.include("select 1");
     });
 
+    test("escapes the action name derived from the file name", () => {
+      const result = compile("select 1", 'definitions/a"b.sqlx');
+      expect(result).to.include('name: "a\\"b"');
+    });
+
     test("compiles yml to js", () => {
       const code = "foo: bar";
       const path = "definitions/foo.yml";
