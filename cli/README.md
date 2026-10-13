@@ -376,3 +376,5 @@ dataform run --job-prefix=nightly --job-labels=team=analytics,pipeline=nightly-e
 ```bash
 DATAFORM_LINEAGE_DEBUG=1 dataform run --emit-lineage
 ```
+
+Lineage events are emitted for every action that runs a BigQuery job: tables (including views and incremental tables), operations, assertions and property graphs. Assertions appear as a process for the assertion view written to the assertions dataset. Declarations are not emitted. The action type is reported in the `gcp_bq_pipelines_job.actionType` attribute as `TABLE`, `OPERATIONS`, `ASSERTION` or `PROPERTY_GRAPH`, matching the values used by Dataform in Google Cloud.
