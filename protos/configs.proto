@@ -77,23 +77,8 @@ message WorkflowSettings {
   LineageSettings lineage = 19;
 
   // Optional. Default key-value pairs for BigQuery job labels applied to
-  // BigQuery jobs executed for supported actions in this project (tables,
-  // views, incremental tables, assertions, operations, data preparations,
-  // property graphs, and unit tests). Action-level `jobLabels` override
-  // matching keys from `defaultJobLabels`, but cannot remove a default key.
-  //
-  // Validation rules (stricter than BigQuery's general label rules, which allow
-  // up to 64 labels and international characters):
-  // - Keys and values may contain only lowercase ASCII letters (`a-z`), digits
-  //   (`0-9`), underscores (`_`), and hyphens (`-`).
-  // - Keys must be 1-63 characters and start with a lowercase letter. Values
-  //   must be 0-63 characters.
-  // - At most 32 labels per action after merging `defaultJobLabels` and
-  //   action-level `jobLabels`.
-  // - Keys starting with reserved prefixes (`dataform_`, `dataform-`,
-  //   `dataprep-`, `gcp-`, `goog-`) or matching reserved keys
-  //   (`bigquery-workflow`, `single-file-asset-type`, `origin`, `bq-dea`,
-  //   `data-preparation-file-loader`) are rejected.
+  // BigQuery jobs executed for actions in this project. Can be overridden by
+  // action-level `job_labels`.
   map<string, string> default_job_labels = 20;
 }
 
