@@ -1,5 +1,6 @@
 import { LineageClient } from "@google-cloud/lineage";
 
+import { isLineageEligibleAction } from "df/cli/api/lineage/action_type";
 import { GLOBAL_LINEAGE_ENDPOINT, LineageEndpointRouter } from "df/cli/api/lineage/endpoint_router";
 import { LineagePayloadBuilder, toProtoStruct } from "df/cli/api/lineage/payload_builder";
 import { coerceAsError } from "df/common/errors/errors";
@@ -149,11 +150,10 @@ export class LineageEmitter {
       return;
     }
 
-    // Non-table/non-operation actions (e.g., assertions, declarations) are not
-    // emitted. This is a scope decision, not a user-visible misconfiguration,
-    // so it is intentionally silent.
-    const isEligibleType = action.type === "table" || action.type === "operation";
-    if (!isEligibleType) {
+    // Only actions that run a BigQuery job emit lineage (see action_type.ts).
+    // Skipping the rest is a scope decision, not a user-visible
+    // misconfiguration, so it is intentionally silent.
+    if (!isLineageEligibleAction(action)) {
       return;
     }
 
