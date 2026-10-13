@@ -191,15 +191,17 @@ suite("--emit-lineage integration", { parallel: true }, () => {
     expect(recorder.calls.length).to.equal(4);
   });
 
-  test("Case 3 — neither flag nor config produces no emission and no factory-provider call", async () => {
+  test("Case 3 — neither flag nor config enables emission by default", async () => {
     const recorder = new RecordingLineageClient();
     const stderr = new StderrCapture();
     const emitter = createLineageEmitter(factoryInput(), stderr, recorderProvider(recorder));
+    expect(emitter).to.not.equal(undefined);
 
-    expect(emitter).to.equal(undefined);
-    expect(recorder.calls.length).to.equal(0);
-    expect(recorder.providerCalls.length).to.equal(0);
-    // Silent default — no skip line either.
+    const runner = run(new FakeDbAdapter(), makeLinearGraph(), { lineageEmitter: emitter });
+    await runner.result();
+    await emitter!.drain();
+
+    expect(recorder.calls.length).to.equal(4);
     expect(stderr.contains("skip_reason=")).to.equal(false);
   });
 
@@ -242,6 +244,32 @@ suite("--emit-lineage integration", { parallel: true }, () => {
     expect(dbadapter.executed.length).to.equal(2);
     const skipLines = stderr.writes.filter((w) => w.includes("skip_reason=api_disabled"));
     expect(skipLines.length).to.equal(1);
+  });
+
+  test("Case 7 — default-on emit failure is fail-open and silent (no skip_reason line)", async () => {
+    // When lineage is on only by default, the user never asked for it, so an
+    // expected skip (API disabled / missing permission) must not add output.
+    const originalDebug = process.env.DATAFORM_LINEAGE_DEBUG;
+    delete process.env.DATAFORM_LINEAGE_DEBUG;
+    try {
+      const recorder = new RecordingLineageClient();
+      recorder.throwOnNextCallWith(7, "Permission Denied");
+      const stderr = new StderrCapture();
+      const emitter = createLineageEmitter(factoryInput(), stderr, recorderProvider(recorder));
+
+      const dbadapter = new FakeDbAdapter();
+      const runner = run(dbadapter, makeLinearGraph(), { lineageEmitter: emitter });
+      const runResult = await runner.result();
+      await emitter!.drain();
+
+      expect(runResult.status).to.equal(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
+      expect(dbadapter.executed.length).to.equal(2);
+      expect(stderr.writes).to.deep.equal([]);
+    } finally {
+      if (originalDebug !== undefined) {
+        process.env.DATAFORM_LINEAGE_DEBUG = originalDebug;
+      }
+    }
   });
 
   test("Case 6 — drain is bounded when the client hangs indefinitely", async () => {
