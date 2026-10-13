@@ -106,7 +106,7 @@ suite("LineagePayloadBuilder", () => {
     expect(complete.run.facets.externalQuery).to.equal(undefined);
   });
 
-  test("externalQuery uses the last job for multi-task tables", () => {
+  test("externalQuery uses the last non-assertion task job ID", () => {
     const multiTaskTable = dataform.ExecutionAction.create({
       target: { database: "proj", schema: "schema", name: "table" },
       type: "table",
@@ -284,6 +284,17 @@ suite("LineagePayloadBuilder", () => {
       actionName: "schema.table",
     });
     expect(payload.job.facets.gcp_bq_pipelines_job.dataformCoreVersion).to.be.a("string");
+  });
+
+  test("throws when called with an unsupported action type", () => {
+    const declaration = dataform.ExecutionAction.create({
+      target: { database: "proj", schema: "schema", name: "decl" },
+      type: "declaration",
+    });
+    const builder = new LineagePayloadBuilder("/tmp/proj");
+    expect(() => builder.build(declaration, START_RESULT, "proj", "us")).to.throw(
+      /Unsupported action type for lineage: declaration/,
+    );
   });
 
   test("inputs list mirrors action.dependencyTargets in bigquery namespace", () => {
