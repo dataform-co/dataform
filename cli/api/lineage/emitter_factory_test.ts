@@ -33,6 +33,7 @@ function baseInput(
     dryRun: false,
     projectDir: "/workspaces/my-project",
     readCredentials: credentials,
+    location: "US",
     ...overrides,
   };
 }
@@ -99,5 +100,30 @@ suite("createLineageEmitter", () => {
     );
     expect(emitter).to.equal(undefined);
     expect(stderr.writes).to.deep.equal([]);
+  });
+
+  suite("lineage requires explicit location", () => {
+    test("throws when lineage is enabled but location is not set", () => {
+      const stderr = new StderrCapture();
+      expect(() =>
+        createLineageEmitter(baseInput({ cliEmitLineage: true, location: undefined }), stderr),
+      ).to.throw("Lineage emission requires a location.");
+    });
+
+    test("throws in dry-run mode when lineage is enabled but location is not set", () => {
+      const stderr = new StderrCapture();
+      expect(() =>
+        createLineageEmitter(
+          baseInput({ cliEmitLineage: true, dryRun: true, location: undefined }),
+          stderr,
+        ),
+      ).to.throw("Lineage emission requires a location.");
+    });
+
+    test("returns undefined without throwing when lineage is disabled and location is not set", () => {
+      const stderr = new StderrCapture();
+      const emitter = createLineageEmitter(baseInput({ location: undefined }), stderr);
+      expect(emitter).to.equal(undefined);
+    });
   });
 });

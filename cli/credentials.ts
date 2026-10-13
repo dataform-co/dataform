@@ -9,10 +9,22 @@ export function getBigQueryCredentials(): dataform.IBigQuery {
     "US (default)",
     "EU",
     "other",
+    "auto (let BigQuery choose dynamically)",
   ]);
-  let location = locationIndex === 0 ? "US" : "EU";
-  if (locationIndex === 2) {
-    location = question("Enter the location's region name (e.g. 'asia-south1'):");
+  let location: string | undefined;
+  switch (locationIndex) {
+    case 0:
+      location = "US";
+      break;
+    case 1:
+      location = "EU";
+      break;
+    case 2:
+      location = question("Enter the location's region name (e.g. 'asia-south1'):");
+      break;
+    case 3:
+      location = undefined;
+      break;
   }
   const isApplicationDefaultOrJSONKeyIndex = selectionQuestion(
     "Do you wish to use Application Default Credentials or JSON Key:",

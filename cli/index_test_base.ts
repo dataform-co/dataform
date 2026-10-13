@@ -133,6 +133,15 @@ export function alterWorkflowSettings(
   );
 }
 
+export function removeDefaultLocation(projectDir: string): void {
+  const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
+  const workflowSettings = loadYaml(
+    fs.readFileSync(workflowSettingsPath, "utf8"),
+  ) as dataform.IWorkflowSettings;
+  delete workflowSettings.defaultLocation;
+  fs.writeFileSync(workflowSettingsPath, dumpYaml(workflowSettings));
+}
+
 export async function setupJitProject(
   tmpDirFixture: TmpDirFixture,
   projectDir: string,

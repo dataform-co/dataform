@@ -7,6 +7,7 @@ import { createLineageEmitter as createLineageEmitterFromFactory } from "df/cli/
 import { prettyJsonStringify } from "df/cli/api/utils";
 import {
   dryRunOption,
+  emitLineageOption,
   executionTimeoutOption,
   IRunArgs,
   runOptions,
@@ -23,7 +24,7 @@ import {
   printWarning,
 } from "df/cli/console";
 import { ProjectConfigOptions } from "df/cli/project_config_options";
-import { actuallyResolve, compiledGraphHasErrors } from "df/cli/util";
+import { actuallyResolve, compiledGraphHasErrors, resolveDefaultLocation } from "df/cli/util";
 import { ICommand } from "df/cli/yargswrapper";
 import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
@@ -38,6 +39,7 @@ function createLineageEmitter(
   argv: yargs.Arguments<IRunArgs>,
   executionGraph: dataform.IExecutionGraph,
   readCredentials: dataform.IBigQuery | undefined,
+  location: string | undefined,
 ): LineageEmitter | undefined {
   return createLineageEmitterFromFactory({
     cliEmitLineage: argv.emitLineage,
@@ -45,6 +47,7 @@ function createLineageEmitter(
     dryRun: !!argv.dryRun,
     projectDir: argv.projectDir || process.cwd(),
     readCredentials,
+    location,
   });
 }
 
@@ -83,8 +86,19 @@ export const runCommand: ICommand<IRunArgs> = {
     }
     logger.success("Compiled successfully.\n");
     const readCredentials = credentials.read(actuallyResolve(argv.projectDir, argv.credentials));
+    const location = resolveDefaultLocation(argv.defaultLocation, compiledGraph, readCredentials);
 
-    const dbadapter = new BigQueryDbAdapter(readCredentials);
+    const lineageEnabled = argv.emitLineage ?? compiledGraph.projectConfig?.lineageEnabled ?? false;
+    if (lineageEnabled && !location) {
+      printError(
+        "Lineage emission requires a location. Set defaultLocation in workflow_settings.yaml, " +
+          `pass --${ProjectConfigOptions.defaultLocation.name}, or disable lineage with ` +
+          `--${emitLineageOption.name}=false.`,
+      );
+      return 1;
+    }
+
+    const dbadapter = new BigQueryDbAdapter(readCredentials, { location });
     const executionGraph = await build(
       compiledGraph,
       {
@@ -152,7 +166,7 @@ export const runCommand: ICommand<IRunArgs> = {
       logger.log("Running...\n");
     }
 
-    const lineageEmitter = createLineageEmitter(argv, executionGraph, readCredentials);
+    const lineageEmitter = createLineageEmitter(argv, executionGraph, readCredentials, location);
 
     const runner = run(dbadapter, executionGraph, {
       projectDir: argv.projectDir,

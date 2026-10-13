@@ -20,6 +20,19 @@ export function compiledGraphHasErrors(graph: dataform.ICompiledGraph) {
   return graph.graphErrors?.compilationErrors?.length > 0;
 }
 
+export function resolveDefaultLocation(
+  argvDefaultLocation: string | undefined,
+  compiledGraph: dataform.ICompiledGraph,
+  readCredentials: dataform.IBigQuery,
+): string | undefined {
+  return (
+    argvDefaultLocation ||
+    compiledGraph.projectConfig?.defaultLocation ||
+    readCredentials.location ||
+    undefined
+  );
+}
+
 export function formatExecutionSuffix(jobIds: string[], bytesBilled: string[]): string {
   const jobMetadataParts: string[] = [];
   if (jobIds.length > 0) {

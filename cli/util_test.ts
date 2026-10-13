@@ -3,11 +3,51 @@ import { expect } from "chai";
 import {
   formatBytesInHumanReadableFormat,
   formatExecutionSuffix,
+  resolveDefaultLocation,
   validateIcebergConfigBucketName,
   validateIcebergConfigTableFolderRoot,
   validateIcebergConfigTableFolderSubpath,
 } from "df/cli/util";
 import { suite, test } from "df/testing";
+
+suite("resolve default location", () => {
+  test("CLI argument takes priority over workflow settings", () => {
+    expect(
+      resolveDefaultLocation(
+        "EU",
+        { projectConfig: { defaultLocation: "US" } },
+        { location: "US" },
+      ),
+    ).equals("EU");
+  });
+
+  test("falls back to workflow settings when CLI argument is not set", () => {
+    expect(
+      resolveDefaultLocation(
+        undefined,
+        { projectConfig: { defaultLocation: "US" } },
+        { location: "EU" },
+      ),
+    ).equals("US");
+  });
+
+  test("falls back to credentials when CLI argument and workflow settings are not set", () => {
+    expect(
+      resolveDefaultLocation("", { projectConfig: { defaultLocation: "" } }, { location: "US" }),
+    ).equals("US");
+  });
+
+  test("returns undefined when nothing is set", () => {
+    expect(resolveDefaultLocation(undefined, {}, {})).equals(undefined);
+    expect(
+      resolveDefaultLocation(
+        "",
+        { projectConfig: { defaultLocation: "" } },
+        { location: undefined },
+      ),
+    ).equals(undefined);
+  });
+});
 
 suite("format execution suffix", () => {
   test("format execution suffix", () => {

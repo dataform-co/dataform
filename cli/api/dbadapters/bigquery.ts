@@ -39,41 +39,24 @@ export interface IBigQueryExecutionOptions {
 
 export type BigQueryClientProvider = (projectId?: string) => BigQuery;
 
-export function createBigQueryClientProvider(
-  credentials: dataform.IBigQuery,
-): BigQueryClientProvider {
-  const clients = new Map<string, BigQuery>();
-  return (projectId?: string) => {
-    projectId = projectId || credentials.projectId;
-    if (!clients.has(projectId)) {
-      clients.set(
-        projectId,
-        new BigQuery({
-          projectId,
-          scopes: EXTRA_GOOGLE_SCOPES,
-          location: credentials.location,
-          credentials: credentials.credentials && JSON.parse(credentials.credentials),
-        }),
-      );
-    }
-    return clients.get(projectId);
-  };
-}
-
 export class BigQueryDbAdapter implements IDbAdapter {
   private bigQueryCredentials: dataform.IBigQuery;
   private pool: PromisePoolExecutor;
   private clientProvider: BigQueryClientProvider;
+  private location?: string;
 
   constructor(
     credentials: dataform.IBigQuery,
     options?: {
       concurrencyLimit?: number;
       clientProvider?: BigQueryClientProvider;
+      // Already parsed; location from credentials is not read
+      location?: string;
     },
   ) {
     this.bigQueryCredentials = credentials;
-    this.clientProvider = options?.clientProvider || createBigQueryClientProvider(credentials);
+    this.location = options?.location;
+    this.clientProvider = options?.clientProvider || this.createBigQueryClientProvider();
 
     // Bigquery allows 50 concurrent queries, and a rate limit of 100/user/second by default.
     // These limits should be safely low enough for most projects.
@@ -82,6 +65,27 @@ export class BigQueryDbAdapter implements IDbAdapter {
       frequencyWindow: 1000,
       frequencyLimit: 30,
     });
+  }
+
+  private createBigQueryClientProvider(): BigQueryClientProvider {
+    const clients = new Map<string, BigQuery>();
+    return (projectId?: string) => {
+      projectId = projectId || this.bigQueryCredentials.projectId;
+      if (!clients.has(projectId)) {
+        clients.set(
+          projectId,
+          new BigQuery({
+            projectId,
+            scopes: EXTRA_GOOGLE_SCOPES,
+            location: this.location,
+            credentials:
+              this.bigQueryCredentials.credentials &&
+              JSON.parse(this.bigQueryCredentials.credentials),
+          }),
+        );
+      }
+      return clients.get(projectId);
+    };
   }
 
   public async execute(
@@ -223,9 +227,15 @@ export class BigQueryDbAdapter implements IDbAdapter {
     searchText: string,
     options: { limit: number } = { limit: 1000 },
   ): Promise<dataform.ITableMetadata[]> {
+    if (!this.location) {
+      throw new Error(
+        "Search needs a specific region, set in either workflow-settings.yaml or .df-credentials.json",
+      );
+    }
+
     const results = await this.execute(
       `select table_catalog, table_schema, table_name
-       from region-${this.bigQueryCredentials.location}.INFORMATION_SCHEMA.COLUMN_FIELD_PATHS
+       from region-${this.location}.INFORMATION_SCHEMA.COLUMN_FIELD_PATHS
        where regexp_contains(table_schema, @searchText) or regexp_contains(table_name, @searchText) or regexp_contains(field_path, @searchText)
        group by 1, 2, 3`,
       {
@@ -308,7 +318,6 @@ export class BigQueryDbAdapter implements IDbAdapter {
   public async createSchema(database: string, schema: string): Promise<void> {
     await this.execute(
       `create schema if not exists \`${database || this.bigQueryCredentials.projectId}.${schema}\``,
-      { bigquery: { location: this.bigQueryCredentials.location || "US" } },
     );
   }
 
@@ -364,7 +373,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
       const stream = this.getClient().createQueryStream({
         query,
         params,
-        location,
+        location: location ?? this.location,
       });
       stream
         .on("error", (e) => reject(coerceAsError(e)))
@@ -390,7 +399,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
       query,
       useLegacySql: false,
       jobPrefix: "dataform-" + (bigqueryOptions?.jobPrefix ? `${bigqueryOptions.jobPrefix}-` : ""),
-      location: bigqueryOptions?.location,
+      location: bigqueryOptions?.location ?? this.location,
       maxResults: rowLimit,
       labels: bigqueryOptions?.labels,
       dryRun: bigqueryOptions?.dryRun,

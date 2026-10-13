@@ -10,7 +10,7 @@ import { dataform } from "df/protos/ts";
 
 export interface IInitArgs extends IProjectDirArgs {
   defaultDatabase: string;
-  defaultLocation: string;
+  defaultLocation?: string;
   iceberg: boolean;
 }
 
@@ -43,15 +43,8 @@ const defaultLocationOption: INamedOption<yargs.PositionalOptions, IInitArgs> = 
   option: {
     describe:
       "The default location to use. See " +
-      "https://cloud.google.com/bigquery/docs/locations for supported values.",
-  },
-  check: (argv: yargs.Arguments<IInitArgs>) => {
-    if (!argv.defaultLocation) {
-      throw new Error(
-        `The ${ProjectConfigOptions.defaultLocation.name} positional argument is ` +
-          `required. Use "dataform help init" for more info.`,
-      );
-    }
+      "https://cloud.google.com/bigquery/docs/locations for supported values. If unset, " +
+      "BigQuery determines the location automatically.",
   },
 };
 
