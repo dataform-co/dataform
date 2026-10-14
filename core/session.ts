@@ -70,7 +70,7 @@ export class Session {
   // The file of the action currently being compiled by compileGraphChunk.
   // Populated only while an action's callback is running so that errors raised
   // from user code (e.g. failed refs) can be attributed without relying on
-  // getCallerFile(), which is unreliable under vm2's sandbox stack stripping.
+  // getCallerFile().
   private currentActionFile: string | undefined;
 
   constructor(
@@ -104,13 +104,14 @@ export class Session {
   public getContents(filePath: string): string {
     const callerFile = utils.getCallerFile(this.rootDir);
     const callerDir = Path.dirName(callerFile);
-    const resolvedPath = Path.join(callerDir, filePath);
-    const absolutePath = Path.separator + Path.normalize(Path.join(this.rootDir, resolvedPath));
-    const rootDir = this.rootDir.endsWith(Path.separator)
-      ? this.rootDir
-      : this.rootDir + Path.separator;
+    const rootDir = Path.toPosixPath(this.rootDir);
+    // Keep the root's leading slashes verbatim: "/" for POSIX, "//" for UNC (\\server\share) and
+    // none for drive-letter paths (C:/...). Path.join and Path.normalize strip them.
+    const rootPrefix = /^\/*/.exec(rootDir)[0];
+    const absolutePath =
+      rootPrefix + Path.normalize(Path.join(rootDir.slice(rootPrefix.length), callerDir, filePath));
 
-    if (!absolutePath.startsWith(rootDir)) {
+    if (!Path.startsWithPath(absolutePath, rootDir)) {
       throw new Error(`Cannot read "${filePath}": path resolves outside the project directory.`);
     }
 
@@ -633,7 +634,7 @@ export class Session {
     actions.forEach((action) => {
       // Track the action's file so that compileError() called synchronously
       // from within the action's callback (e.g. Session.resolve) can attribute
-      // the error without depending on getCallerFile / the vm2 sandbox stack.
+      // the error without depending on getCallerFile.
       this.currentActionFile = action.getFileName() || undefined;
       try {
         const compiledChunk = action.compile();

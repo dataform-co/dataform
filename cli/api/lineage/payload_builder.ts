@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "crypto";
 import Long from "long";
 import * as path from "path";
 
+import { toLineageActionType } from "df/cli/api/lineage/action_type";
 import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
 
@@ -125,7 +126,7 @@ export class LineagePayloadBuilder {
     };
 
     if (eventType !== "START") {
-      const bqJobId = extractBqJobId(actionResult);
+      const bqJobId = extractTargetWritingBqJobId(action, actionResult);
       if (bqJobId && credentialsProjectId) {
         runFacets.externalQuery = {
           _producer: PRODUCER_URL,
@@ -183,7 +184,7 @@ export class LineagePayloadBuilder {
 
     jobFacets.gcp_bq_pipelines_job = {
       dataformCoreVersion: version,
-      actionType: action.type,
+      actionType: toLineageActionType(action),
       actionName: canonicalActionTarget,
     };
 
@@ -231,11 +232,24 @@ function toMillis(val: Long | number | undefined | null): number | undefined {
   return undefined;
 }
 
-function extractBqJobId(actionResult: dataform.IActionResult): string | undefined {
+/**
+ * Returns the ID of the BigQuery job that wrote the action's target: the last
+ * task with a job ID, skipping assertion check tasks. Assertions run a
+ * `CREATE VIEW` task followed by a check query that only reads the view, so
+ * the check job carries no lineage for the assertion's dependencies.
+ * `actionResult.tasks` is index-aligned with `action.tasks`.
+ */
+function extractTargetWritingBqJobId(
+  action: dataform.IExecutionAction,
+  actionResult: dataform.IActionResult,
+): string | undefined {
   if (!actionResult.tasks) {
     return undefined;
   }
   for (let i = actionResult.tasks.length - 1; i >= 0; i--) {
+    if (action.tasks?.[i]?.type === "assertion") {
+      continue;
+    }
     const jobId = actionResult.tasks[i]?.metadata?.bigquery?.jobId;
     if (jobId) {
       return jobId;

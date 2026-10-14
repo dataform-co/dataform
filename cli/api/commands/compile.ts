@@ -96,17 +96,13 @@ export async function compile(
   compiledGraph = dataform.CompiledGraph.create(decodedResult.compile.compiledGraph);
 
   if (workflowSettingsDataformCoreVersion) {
-    fs.rmSync(temporaryProjectPath, { recursive: true });
+    fs.rmSync(temporaryProjectPath, { recursive: true, force: true, maxRetries: 3 });
   }
 
   return compiledGraph;
 }
 
 export class CompileChildProcess extends BaseWorker<string, string | Error> {
-  constructor() {
-    super(path.resolve(__dirname, "../../vm/compile_loader"));
-  }
-
   public async compile(compileConfig: dataform.ICompileConfig) {
     const timeoutValue = compileConfig.timeoutMillis || DEFAULT_COMPILATION_TIMEOUT_MILLIS;
 

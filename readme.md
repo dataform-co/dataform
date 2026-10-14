@@ -21,11 +21,13 @@ Follow the [quickstart guide](https://cloud.google.com/dataform/docs/quickstart)
 
 ### With the CLI
 
-You can run Dataform locally using the Dataform CLI tool, which can be installed using the following command line. Follow the [CLI guide](https://cloud.google.com/dataform/docs/use-dataform-cli) to get started.
+You can run Dataform locally using the Dataform CLI tool, which can be installed using the following command line. Follow the [CLI guide](https://cloud.google.com/dataform/docs/use-dataform-cli) to get started, or see the [CLI reference](cli/README.md) for all commands and flags.
 
 ```
 npm i -g @dataform/cli
 ```
+
+> **Note on Project Execution & Security:** Dataform compiles SQLX and JavaScript project code using Node.js's native `node:vm` context. While module resolution is scoped to the project directory, `node:vm` is not a security sandbox against untrusted code. Dataform projects execute with the privileges of the local process; only run and compile Dataform projects from trusted sources.
 
 ## Useful Links
 
@@ -36,6 +38,7 @@ npm i -g @dataform/cli
 - Enable [scripting](https://cloud.google.com/dataform/docs/develop-workflows-js) and code re-use with a JavaScript API.
 - Import [pre-defined packages](https://dataform-co.github.io/dataform/docs/packages), or create your own.
 - View the [Dataform Core reference](https://cloud.google.com/dataform/docs/reference/dataform-core-reference).
+- View the [Dataform CLI reference](cli/README.md).
 - View the [Dataform configs reference](https://dataform-co.github.io/dataform/docs/configs-reference).
 
 _Note: this readme can also be viewed on https://dataform-co.github.io/dataform._

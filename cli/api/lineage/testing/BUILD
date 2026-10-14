@@ -6,7 +6,7 @@ ts_library(
     name = "testing",
     srcs = glob(["**/*.ts"]),
     deps = [
-        "@npm//@google-cloud/lineage",
-        "@npm//@types/node",
+        "//:node_modules/@google-cloud/lineage",
+        "//:node_modules/@types/node",
     ],
 )
