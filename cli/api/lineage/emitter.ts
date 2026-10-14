@@ -1,5 +1,6 @@
 import { LineageClient } from "@google-cloud/lineage";
 
+import { createAuthClient } from "df/cli/api/dbadapters/bigquery";
 import { isLineageEligibleAction } from "df/cli/api/lineage/action_type";
 import { GLOBAL_LINEAGE_ENDPOINT, LineageEndpointRouter } from "df/cli/api/lineage/endpoint_router";
 import { LineagePayloadBuilder, toProtoStruct } from "df/cli/api/lineage/payload_builder";
@@ -29,6 +30,8 @@ export function createLineageClientProvider(
   credentials: dataform.IBigQuery,
 ): LineageClientProvider {
   const clients = new Map<string, LineageClient>();
+  // Impersonates the same service account as the BigQuery adapter, if one is configured.
+  const authClient = createAuthClient(credentials);
   return (projectId: string, endpoint: string) => {
     const targetProjectId = projectId || credentials.projectId;
     const cacheKey = `${targetProjectId}::${endpoint}`;
@@ -38,7 +41,9 @@ export function createLineageClientProvider(
         new LineageClient({
           projectId: targetProjectId,
           apiEndpoint: endpoint,
-          credentials: credentials.credentials && JSON.parse(credentials.credentials),
+          ...(authClient
+            ? { authClient }
+            : { credentials: credentials.credentials && JSON.parse(credentials.credentials) }),
           libName: DATAFORM_CLI_LIB_NAME,
           libVersion: version,
         }),

@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import { Impersonated } from "google-auth-library";
 import Long from "long";
 
 import {
@@ -430,6 +431,20 @@ suite("LineageEmitter", () => {
       maxRpcTimeoutMillis: 2000,
       totalTimeoutMillis: 15000,
     });
+  });
+
+  test("createLineageClientProvider impersonates the configured service account", async () => {
+    const serviceAccount = "target-sa@test-project.iam.gserviceaccount.com";
+    const client = createLineageClientProvider(
+      dataform.BigQuery.create({
+        projectId: "test-project",
+        location: "US",
+        impersonateServiceAccount: serviceAccount,
+      }),
+    )("test-project", "datalineage.googleapis.com");
+    const authClient = await client.auth.getClient();
+    expect(authClient).to.be.instanceOf(Impersonated);
+    expect((authClient as Impersonated).getTargetPrincipal()).to.equal(serviceAccount);
   });
 
   test("non-transient errors propagate without outer-loop retry", async () => {

@@ -66,4 +66,36 @@ suite("@dataform/api/credentials", ({ afterEach }) => {
     expect(parsed.location).to.equal("EU");
     expect(parsed.credentials).to.equal(keyJson);
   });
+
+  test("bigquery credentials file with a service account to impersonate", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    const credentialsPath = path.join(projectDir, "credentials.json");
+    fs.writeFileSync(
+      credentialsPath,
+      JSON.stringify({
+        projectId: "my-gcp-project",
+        location: "US",
+        impersonateServiceAccount: "sa@my-gcp-project.iam.gserviceaccount.com",
+      }),
+    );
+    const parsed = credentials.read(credentialsPath);
+    expect(parsed.projectId).to.equal("my-gcp-project");
+    expect(parsed.impersonateServiceAccount).to.equal("sa@my-gcp-project.iam.gserviceaccount.com");
+    expect(parsed.credentials).to.equal("");
+  });
+
+  test("bigquery credentials file with an unknown field", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    const credentialsPath = path.join(projectDir, "credentials.json");
+    fs.writeFileSync(
+      credentialsPath,
+      JSON.stringify({
+        projectId: "my-gcp-project",
+        impersonateServiceAcount: "sa@my-gcp-project.iam.gserviceaccount.com",
+      }),
+    );
+    expect(() => credentials.read(credentialsPath)).to.throw(
+      /Unexpected property "impersonateServiceAcount"/,
+    );
+  });
 });

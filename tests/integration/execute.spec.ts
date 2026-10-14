@@ -36,6 +36,15 @@ suite("@dataform/integration/execute", { parallel: true }, ({ before }) => {
     );
   });
 
+  test("queries run as the impersonated service account, if one is configured", async () => {
+    if (!credentials.impersonateServiceAccount) {
+      // E.g. a local test_credentials/bigquery.json override for a personal project.
+      return;
+    }
+    const { rows } = await dbadapter.execute("select session_user() as user");
+    expect(rows).to.eql([{ user: credentials.impersonateServiceAccount }]);
+  });
+
   suite("query limits work", { parallel: true }, () => {
     const query = `
       select 1 union all

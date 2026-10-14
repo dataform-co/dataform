@@ -60,15 +60,19 @@ Integration tests run against BigQuery using [Application Default Credentials (A
 
    Alternatively, you can set `GOOGLE_APPLICATION_CREDENTIALS=/path/to/key.json` in your environment.
 
+   Don't add `--impersonate-service-account` here: the default test configuration already impersonates the test service account (see below).
+
 2. **Required IAM roles:**
 
-   Your Google account (or service account) needs the following IAM roles on the target GCP project:
+   By default, tests run in the `dataform-open-source` project as the `dataform-testing@dataform-open-source.iam.gserviceaccount.com` service account, which your ADC identity impersonates. This requires `roles/iam.serviceAccountTokenCreator` (Service Account Token Creator) on that service account, which members of the Dataform team have, and the IAM Service Account Credentials API (`iamcredentials.googleapis.com`) enabled in your ADC quota project.
+
+   When running against your own GCP project (see the next step), your Google account (or service account) needs the following IAM roles on that project instead:
    - `roles/bigquery.jobUser` (BigQuery Job User)
    - `roles/bigquery.dataEditor` (BigQuery Data Editor)
 
 3. **Configure the target GCP project (optional for `dataform-open-source` members):**
 
-   By default, the committed `test_credentials/bigquery.default.json` points to `"projectId": "dataform-open-source"` and `"location": "US"`.
+   By default, the committed `test_credentials/bigquery.default.json` points to `"projectId": "dataform-open-source"` and `"location": "US"`, and sets `"impersonateServiceAccount"` to the test service account.
    To run integration tests against your own GCP project without modifying tracked files, create a git-ignored `test_credentials/bigquery.json` file, which takes precedence over the default. If you already have a `test_credentials/bigquery.json` from the previous setup, it keeps working:
 
    ```json
@@ -77,6 +81,8 @@ Integration tests run against BigQuery using [Application Default Credentials (A
      "location": "US"
    }
    ```
+
+   Without `"impersonateServiceAccount"`, tests run as your ADC identity. Add it to impersonate a service account of your own instead.
 
    *(Optional)* If you still want to test with an explicit service account key inside the Dataform credentials file rather than ADC, you can include the `"credentials"` field containing the JSON key serialized as a string (`jq -Rsa < path/to/key.json`).
 

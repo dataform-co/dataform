@@ -7,6 +7,7 @@
     "deepmerge": "^4.2.2",
     "fs-extra": "^9.0.0",
     "glob": "13.0.6",
+    "google-auth-library": "~10.5.0",
     "google-sql-syntax-ts": "^1.0.3",
     "js-beautify": "1.15.4",
     "js-yaml": "^4.3.2",
