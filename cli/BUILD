@@ -68,6 +68,7 @@ ts_library(
 ts_test_suite(
     name = "tests",
     srcs = [
+        "credentials_test.ts",
         "index_compile_test.ts",
         "index_help_test.ts",
         "index_init_test.ts",

@@ -99,6 +99,7 @@ Prompts for:
 2. Authentication method — Application Default Credentials (ADC) or a JSON service account key file.
    - ADC: prompts for your billing project ID.
    - JSON key: prompts for the path to a downloaded service account key file.
+3. A service account to impersonate (optional, press Enter to skip). It's saved as `impersonateServiceAccount`, see [Credentials file](#credentials-file).
 
 **Positional arguments**
 
@@ -273,7 +274,7 @@ These are reused by multiple commands:
 
 - **ADC-based**: `{ "projectId": ..., "location": ... }`
 - **JSON-key-based**: `{ "projectId": ..., "credentials": "<service account key JSON as a string>", "location": ... }`
-- **Service account impersonation** (optional, with either of the above): add `"impersonateServiceAccount": "<service account email>"` to run BigQuery queries (and lineage emission) as that service account. Your ADC identity, or the key above, is used to impersonate it and needs `roles/iam.serviceAccountTokenCreator` on that service account. `init-creds` doesn't set this field; add it to the file manually.
+- **Service account impersonation** (optional, with either of the above): add `"impersonateServiceAccount": "<service account email>"` to run BigQuery queries (and lineage emission) as that service account. Your ADC identity, or the key above, is used to impersonate it and needs `roles/iam.serviceAccountTokenCreator` on that service account. `init-creds` asks for it as an optional last step.
 
 Only BigQuery is supported by `init-creds` and the bundled BigQuery adapter in this codebase. Treat `.df-credentials.json` as a secret — `dataform init` adds it to `.gitignore` automatically; never commit it.
 
