@@ -70,7 +70,7 @@
   "pnpm": {
     "onlyBuiltDependencies": ["protobufjs", "fsevents"],
     "overrides": {
-      "serialize-javascript": "^7.1.1",
+      "serialize-javascript": "^7.1.2",
       "glob-parent": "^5.1.2",
       "json-bigint": "^1.0.0",
       "y18n": "^5.0.5",
