@@ -2,16 +2,21 @@
 set -euo pipefail
 
 # In case script is run directly
-if [[ -z "${_PR_NUMBER:-}" ]]; then
-  _PR_NUMBER=0
-fi
+_PR_NUMBER="${_PR_NUMBER:-0}"
 
 if [[ -z "${_CANARY_GCP_PROJECT:-}" || -z "${_CANARY_LOCATION:-}" || -z "${_CANARY_REPO:-}" || -z "${_CANARY_BUCKET:-}" || -z "${_CANARY_SERVICE_ACCOUNT:-}" ]]; then
   echo "Error: _CANARY_GCP_PROJECT, _CANARY_LOCATION, _CANARY_REPO, _CANARY_BUCKET and _CANARY_SERVICE_ACCOUNT must be set." 1>&2
   exit 1
 fi
 
-TIMESTAMP=$(date +%s)
+# If running as part of the cloudbuild-test workflow, reuse the timestamp from the previous step
+# so that Core version identifier matches
+if [[ -f ~/timestamp.txt ]]; then
+  TIMESTAMP=$(cat ~/timestamp.txt)
+else 
+  TIMESTAMP=$(date +%s)
+fi
+CANARY_VERSION=$(grep -oP '(?<=DF_VERSION = ")[^"]+' version.bzl)
 
 PROJECT_LOCATION_PATH="projects/${_CANARY_GCP_PROJECT}/locations/${_CANARY_LOCATION}"
 REPO_PATH="${PROJECT_LOCATION_PATH}/repositories/${_CANARY_REPO}"
@@ -33,19 +38,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# Install dependencies from the trusted registry and build the Core tarball.
-if command -v bazel >/dev/null 2>&1; then
-  # Install dependencies from the trusted registry and build the Core tarball.
-  bazel run -- @pnpm --dir "$PWD" --frozen-lockfile --registry https://us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/
-  bazel build //packages/@dataform/core:package_tar
-fi
-
-CURRENT_VERSION=$(grep -oP '(?<=DF_VERSION = ")[^"]+' version.bzl)
-CANARY_VERSION="${CURRENT_VERSION}-${_PR_NUMBER}-${TIMESTAMP}"
-sed -i "s/DF_VERSION = \"[^\"]*\"/DF_VERSION = \"${CANARY_VERSION}\"/" version.bzl
-
-bazel build //packages/@dataform/core:package_tar
-
+# When running on cloudbuild, the token will have been generated in the previous steps
 if [[ -f ~/gcp_token.txt ]]; then
   GCP_TOKEN=$(cat ~/gcp_token.txt)
 elif command -v gcloud >/dev/null 2>&1; then
@@ -56,41 +49,28 @@ else
 fi
 
 echo "Verifying GCS bucket exists: ${_CANARY_BUCKET}"
-CHECK_BUCKET_HTTP_CODE=$(curl -s -o "${TMP_DIR}/check_bucket_response.json" -w "%{http_code}" \
-  -X GET \
-  -H "Authorization: Bearer ${GCP_TOKEN}" \
-  "https://storage.googleapis.com/storage/v1/b/${_CANARY_BUCKET}")
-if [[ "$CHECK_BUCKET_HTTP_CODE" -lt 200 || "$CHECK_BUCKET_HTTP_CODE" -ge 300 ]]; then
-  echo "Error verifying GCS bucket (HTTP ${CHECK_BUCKET_HTTP_CODE}):" 1>&2
+if ! gcloud storage buckets describe "gs://${_CANARY_BUCKET}" --format="value(name)" >/dev/null; then
+  echo "Error verifying GCS bucket ${_CANARY_BUCKET}." 1>&2
   echo "This is most likely an infra failure, not an issue with the Dataform code"
-  cat "${TMP_DIR}/check_bucket_response.json" 1>&2
   exit 1
 fi
 
 echo "Uploading Core tarball to gs://${_CANARY_BUCKET}/${TARBALL_NAME}..."
-UPLOAD_TARBALL_HTTP_CODE=$(curl -s -o "${TMP_DIR}/upload_tarball_response.json" -w "%{http_code}" \
-  -X POST \
-  -H "Authorization: Bearer ${GCP_TOKEN}" \
-  -H "Content-Type: application/gzip" \
-  --data-binary @bazel-bin/packages/@dataform/core/package.tar.gz \
-  "https://storage.googleapis.com/upload/storage/v1/b/${_CANARY_BUCKET}/o?uploadType=media&name=${TARBALL_NAME}")
-
-if [[ "$UPLOAD_TARBALL_HTTP_CODE" -lt 200 || "$UPLOAD_TARBALL_HTTP_CODE" -ge 300 ]]; then
-  echo "Error uploading Core tarball to GCS (HTTP ${UPLOAD_TARBALL_HTTP_CODE}):" 1>&2
+if ! gcloud storage cp bazel-bin/packages/@dataform/core/package.tar.gz "gs://${_CANARY_BUCKET}/${TARBALL_NAME}"; then
+  echo "Error uploading Core tarball to GCS." 1>&2
   echo "This is most likely an infra failure, not an issue with the Dataform code"
-  cat "${TMP_DIR}/upload_tarball_response.json" 1>&2
   exit 1
 fi
 
 echo "Checking that Dataform repository exists: ${_CANARY_REPO}"
-GET_REPO_HTTP_CODE=$(curl -s -o /tmp/get_repo_response.json -w "%{http_code}" \
+GET_REPO_HTTP_CODE=$(curl -s -o "${TMP_DIR}/get_repo_response.json" -w "%{http_code}" \
   -X GET \
   -H "Authorization: Bearer ${GCP_TOKEN}" \
   "${REPO_URL}")
 if [[ "$GET_REPO_HTTP_CODE" -lt 200 || "$GET_REPO_HTTP_CODE" -ge 300 ]]; then
   echo "Error checking Dataform repository (HTTP ${GET_REPO_HTTP_CODE}):" 1>&2
   echo "This is most likely an infra failure, not an issue with the Dataform code"
-  cat /tmp/get_repo_response.json 1>&2
+  cat "${TMP_DIR}/get_repo_response.json" 1>&2
   exit 1
 fi
 
@@ -101,7 +81,6 @@ CREATE_WS_HTTP_CODE=$(curl -s -o "${TMP_DIR}/create_ws_response.json" -w "%{http
   -H "Content-Type: application/json" \
   "${REPO_URL}/workspaces?workspaceId=${WORKSPACE_ID}" \
   -d "{}")
-
 if [[ "$CREATE_WS_HTTP_CODE" -lt 200 || "$CREATE_WS_HTTP_CODE" -ge 300 ]]; then
   echo "Error creating Dataform workspace (HTTP ${CREATE_WS_HTTP_CODE}):" 1>&2
   echo "This is most likely an infra failure, not an issue with the Dataform code"
@@ -165,10 +144,6 @@ EOF
 )
 write_workspace_file "package.json" "$PACKAGE_JSON_CONTENTS"
 
-echo "Uploading .npmrc to authenticate GCS tarball download..."
-NPMRC_CONTENTS=$(printf "//storage.googleapis.com/:_authToken=%s\n" "${GCP_TOKEN}" | base64 -w 0)
-write_workspace_file ".npmrc" "$NPMRC_CONTENTS"
-
 echo "Installing NPM packages in workspace..."
 INSTALL_HTTP_CODE=$(curl --retry 3 --retry-all-errors --retry-delay 5 -s -o "${TMP_DIR}/install_response.json" -w "%{http_code}" \
   -X POST \
@@ -176,7 +151,6 @@ INSTALL_HTTP_CODE=$(curl --retry 3 --retry-all-errors --retry-delay 5 -s -o "${T
   -H "Content-Type: application/json" \
   "${REPO_URL}/workspaces/${WORKSPACE_ID}:installNpmPackages" \
   -d "{}")
-
 if [[ "$INSTALL_HTTP_CODE" -lt 200 || "$INSTALL_HTTP_CODE" -ge 300 ]]; then
   echo "Error calling workspaces.installNpmPackages (HTTP ${INSTALL_HTTP_CODE}):" 1>&2
   echo "This is most likely an infra or npm failure, not an issue with the Dataform code"
@@ -191,7 +165,6 @@ COMPILE_HTTP_CODE=$(curl -s -o "${TMP_DIR}/compile_response.json" -w "%{http_cod
   -H "Content-Type: application/json" \
   "${REPO_URL}/compilationResults" \
   -d "$(python3 -c 'import json, sys; print(json.dumps({"workspace": sys.argv[1]}))' "${REPO_PATH}/workspaces/${WORKSPACE_ID}")")
-
 if [[ "$COMPILE_HTTP_CODE" -lt 200 || "$COMPILE_HTTP_CODE" -ge 300 ]]; then
   echo "Error calling compilationResults.create (HTTP ${COMPILE_HTTP_CODE}):" 1>&2
   cat "${TMP_DIR}/compile_response.json" 1>&2
