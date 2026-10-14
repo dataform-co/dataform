@@ -34,7 +34,11 @@ cleanup() {
 trap cleanup EXIT
 
 # Install dependencies from the trusted registry and build the Core tarball.
-bazel run -- @pnpm install --dir "$PWD" --frozen-lockfile --registry https://us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/
+if command -v bazel >/dev/null 2>&1; then
+  # Install dependencies from the trusted registry and build the Core tarball.
+  bazel run -- @pnpm --dir "$PWD" --frozen-lockfile --registry https://us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/
+  bazel build //packages/@dataform/core:package_tar
+fi
 
 CURRENT_VERSION=$(grep -oP '(?<=DF_VERSION = ")[^"]+' version.bzl)
 CANARY_VERSION="${CURRENT_VERSION}-${_PR_NUMBER}-${TIMESTAMP}"

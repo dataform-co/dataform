@@ -8,6 +8,10 @@ steps:
     script: |
       #!/usr/bin/env bash
       ./scripts/run_tests_on_cloudbuild
+  - name: "gcr.io/cloud-builders/gcloud"
+    script: |
+      #!/usr/bin/env bash
+      ./scripts/run_canary_test
 substitutions:
   _CANARY_GCP_PROJECT: "dataform-open-source"
   _CANARY_LOCATION: "us-central1"
