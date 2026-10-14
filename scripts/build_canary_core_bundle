@@ -1,0 +1,12 @@
+#!/bin/bash
+set -euo pipefail
+
+# In case script is run directly
+_PR_NUMBER="${_PR_NUMBER:-0}"
+
+CURRENT_VERSION=$(grep -oP '(?<=DF_VERSION = ")[^"]+' version.bzl)
+CANARY_VERSION="${CURRENT_VERSION}-${_PR_NUMBER}-${TIMESTAMP}"
+sed -i "s/DF_VERSION = \"[^\"]*\"/DF_VERSION = \"${CANARY_VERSION}\"/" version.bzl
+
+bazel run -- @pnpm install --dir "$PWD" --frozen-lockfile --registry https://us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/
+bazel build //packages/@dataform/core:package_tar

@@ -8,6 +8,11 @@ steps:
     script: |
       #!/usr/bin/env bash
       ./scripts/run_tests_on_cloudbuild
+  - name: gcr.io/cloud-builders/bazel:7.3.2
+    script: |
+      #!/usr/bin/env bash
+      date +%s > ~/timestamp.txt
+      TIMESTAMP=$(cat ~/timestamp.txt) ./scripts/build_canary_core_bundle
   - name: "gcr.io/cloud-builders/gcloud"
     script: |
       #!/usr/bin/env bash
