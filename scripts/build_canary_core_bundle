@@ -1,11 +1,24 @@
 #!/bin/bash
 set -euo pipefail
 
-# In case script is run directly
+# Builds the Core tarball with a canary version. Only intended to be run on Cloud Build.
+if [[ -z "${BUILD_ID:-}" ]]; then
+  echo "Error: BUILD_ID must be set. This script is intended to be run on Cloud Build." 1>&2
+  exit 1
+fi
 _PR_NUMBER="${_PR_NUMBER:-0}"
 
+# Temporarily bump the version for the canary build, restoring the original on exit.
+VERSION_BACKUP=$(mktemp)
+cp version.bzl "${VERSION_BACKUP}"
+restore_version() {
+  cp "${VERSION_BACKUP}" version.bzl
+  rm -f "${VERSION_BACKUP}"
+}
+trap restore_version EXIT
+
 CURRENT_VERSION=$(grep -oP '(?<=DF_VERSION = ")[^"]+' version.bzl)
-CANARY_VERSION="${CURRENT_VERSION}-${_PR_NUMBER}-${TIMESTAMP}"
+CANARY_VERSION="${CURRENT_VERSION}-${_PR_NUMBER}-${BUILD_ID}"
 sed -i "s/DF_VERSION = \"[^\"]*\"/DF_VERSION = \"${CANARY_VERSION}\"/" version.bzl
 
 bazel run -- @pnpm install --dir "$PWD" --frozen-lockfile --registry https://us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/
