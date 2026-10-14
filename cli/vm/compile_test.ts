@@ -2,7 +2,7 @@ import { expect } from "chai";
 import * as fs from "fs-extra";
 import * as path from "path";
 
-import { compile } from "df/cli/vm/compile";
+import { checkCoreCompatibility, compile, MIN_SUPPORTED_CORE_VERSION } from "df/cli/vm/compile";
 import { handleJitRequest } from "df/cli/vm/jit_worker";
 import { decode64 } from "df/common/protos";
 import { dataform } from "df/protos/ts";
@@ -237,5 +237,48 @@ publish("a_leaky", { type: "table" }).query("SELECT 1");`,
     expect(messages).to.have.lengthOf(1);
     expect(messages[0].type).to.equal("jit_response");
     expect(messages[0].response.operation.queries).to.deep.equal(["SELECT 42"]);
+  });
+});
+
+suite("cli/vm checkCoreCompatibility", () => {
+  // Each entry: [cliVersion, coreVersion]
+  const supported: Array<[string, string]> = [
+    ["3.1.0", MIN_SUPPORTED_CORE_VERSION],
+    // Older than 3.0.57, so it uses the caller-file shim.
+    ["3.1.0", "3.0.50"],
+    ["3.1.0", "3.0.71"],
+    ["3.1.0", "3.1.0"],
+    // Core can be newer than the CLI if the major version is the same.
+    ["3.1.0", "3.2.0"],
+    ["3.1.0", "3.1.1-beta.0"],
+    // Later CLI versions with major 3 still accept 3.0.x.
+    ["3.9.4", "3.0.0"],
+    // Unknown or invalid CLI version (e.g. running from source): the check is skipped.
+    ["0.0.0", "2.9.0"],
+    ["not-a-version", "2.9.0"],
+  ];
+  supported.forEach(([cliVersion, coreVersion]) => {
+    test(`CLI ${cliVersion} accepts @dataform/core ${coreVersion}`, () => {
+      expect(() => checkCoreCompatibility(coreVersion, cliVersion)).to.not.throw();
+    });
+  });
+
+  // Each entry: [cliVersion, coreVersion, version range shown in the error]
+  const unsupported: Array<[string, string, string]> = [
+    ["3.1.0", "2.9.0", ">=3.0.0 <4.0.0"],
+    ["3.1.0", "4.0.0", ">=3.0.0 <4.0.0"],
+    ["3.1.0", "4.0.0-alpha.0", ">=3.0.0 <4.0.0"],
+    // Pre-release of 3.0.0, which counts as older than 3.0.0.
+    ["3.1.0", "3.0.0-alpha.0", ">=3.0.0 <4.0.0"],
+    // A CLI with a new major version does not accept Core from the old major.
+    ["4.0.0", "3.0.71", ">=4.0.0 <5.0.0"],
+  ];
+  unsupported.forEach(([cliVersion, coreVersion, range]) => {
+    test(`CLI ${cliVersion} rejects @dataform/core ${coreVersion}`, () => {
+      expect(() => checkCoreCompatibility(coreVersion, cliVersion)).to.throw(
+        `@dataform/core ${coreVersion} is not compatible with @dataform/cli ${cliVersion}. ` +
+          `The CLI requires @dataform/core ${range}.`,
+      );
+    });
   });
 });
