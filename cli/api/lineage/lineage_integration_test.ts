@@ -47,8 +47,9 @@ class FakeDbAdapter implements IDbAdapter {
   public executed: string[] = [];
 
   public async execute(statement: string): Promise<IExecutionResult> {
+    const jobIndex = this.executed.length;
     this.executed.push(statement);
-    return { rows: [], metadata: {} };
+    return { rows: [], metadata: { bigquery: { jobId: `job-${jobIndex}` } } };
   }
   public async executeRaw(statement: string): Promise<IExecutionResultRaw> {
     return { rows: [], metadata: {} };
@@ -208,11 +209,13 @@ suite("--emit-lineage integration", { parallel: true }, () => {
       }),
     );
 
-    const runner = run(new FakeDbAdapter(), graph, { lineageEmitter: emitter });
+    const dbadapter = new FakeDbAdapter();
+    const runner = run(dbadapter, graph, { lineageEmitter: emitter });
     await runner.result();
     await emitter!.drain();
 
     const eventsByActionType = new Map<string, string[]>();
+    let assertionCompletePayload: any;
     for (const call of recorder.calls) {
       const ol = fromProtoStruct(call.request.openLineage);
       const actionType = ol.job.facets.gcp_bq_pipelines_job.actionType as string;
@@ -220,6 +223,9 @@ suite("--emit-lineage integration", { parallel: true }, () => {
         eventsByActionType.set(actionType, []);
       }
       eventsByActionType.get(actionType).push(ol.eventType as string);
+      if (actionType === "ASSERTION" && ol.eventType === "COMPLETE") {
+        assertionCompletePayload = ol;
+      }
     }
     // 2 tables + 1 assertion + 1 property graph, each START + COMPLETE.
     expect(recorder.calls.length).to.equal(8);
@@ -230,6 +236,16 @@ suite("--emit-lineage integration", { parallel: true }, () => {
     ]);
     expect(eventsByActionType.get("ASSERTION").sort()).to.deep.equal(["COMPLETE", "START"]);
     expect(eventsByActionType.get("PROPERTY_GRAPH").sort()).to.deep.equal(["COMPLETE", "START"]);
+
+    // Verify end-to-end with Runner.executeAction that the assertion COMPLETE
+    // event selects the CREATE VIEW task's jobId and skips the assertion check task.
+    const createViewJobIndex = dbadapter.executed.findIndex((sql) =>
+      sql.startsWith("CREATE OR REPLACE VIEW s_assertions.assert_a"),
+    );
+    expect(createViewJobIndex).to.be.greaterThan(-1);
+    expect(assertionCompletePayload.run.facets.externalQuery.externalQueryId).to.equal(
+      `test-project.us.job-${createViewJobIndex}`,
+    );
   });
 
   test("Case 2 — workflow lineage.enabled=true (no CLI flag) enables emission", async () => {

@@ -783,6 +783,38 @@ suite("LineageEmitter", () => {
     expect(mockClient.processOpenLineageRunEventCalledWith.length).to.equal(0);
   });
 
+  test("catches and logs errors thrown by payloadBuilder.build without throwing", async () => {
+    const mockClient = new MockLineageClient();
+    const stderr = new StderrCapture();
+    const emitter = new LineageEmitter(
+      credentials,
+      { lineageEnabled: true },
+      () => mockClient as any,
+      stderr,
+    );
+    (emitter as any).payloadBuilder.build = () => {
+      throw new Error("payload build failure");
+    };
+
+    const action = dataform.ExecutionAction.create({
+      target: { database: "proj", schema: "schema", name: "table" },
+      type: "table",
+    });
+    const startResult = dataform.ActionResult.create({
+      status: dataform.ActionResult.ExecutionStatus.RUNNING,
+    });
+
+    emitter.emitForAction(action, startResult);
+    await emitter.drain();
+
+    expect(mockClient.processOpenLineageRunEventCalledWith.length).to.equal(0);
+    expect(stderr.writes.length).to.equal(1);
+    expect(stderr.writes[0]).to.contain(
+      "[lineage] Failed to emit lineage for action schema.table:",
+    );
+    expect(stderr.writes[0]).to.contain("message=payload build failure");
+  });
+
   test("skip_reason=api_disabled on PERMISSION_DENIED surfaces both IAM and API-enable hints", async () => {
     // PERMISSION_DENIED is ambiguous on GCP — it fires for missing IAM roles
     // AND for "API not enabled" (enablement checks often surface as code 7,
