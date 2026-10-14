@@ -9,22 +9,30 @@ if [[ -z "${_CANARY_GCP_PROJECT:-}" || -z "${_CANARY_LOCATION:-}" || -z "${_CANA
   exit 1
 fi
 
-# If running as part of the cloudbuild-test workflow, reuse the timestamp from the previous step
-# so that Core version identifier matches
-if [[ -f ~/timestamp.txt ]]; then
-  TIMESTAMP=$(cat ~/timestamp.txt)
-else 
-  TIMESTAMP=$(date +%s)
+CURRENT_VERSION=$(grep -oP '(?<=DF_VERSION = ")[^"]+' version.bzl)
+if [[ -n "${BUILD_ID:-}" ]]; then
+  # On Cloud Build, the tarball was built by scripts/build_canary_core_bundle with this version.
+  RUN_ID="${BUILD_ID}"
+  CANARY_VERSION="${CURRENT_VERSION}-${_PR_NUMBER}-${BUILD_ID}"
+else
+  # When run manually, assume the tarball was built from the current version.bzl:
+  #   bazel build //packages/@dataform/core:package_tar
+  RUN_ID=$(date +%s)
+  CANARY_VERSION="${CURRENT_VERSION}"
 fi
-CANARY_VERSION=$(grep -oP '(?<=DF_VERSION = ")[^"]+' version.bzl)
+
+LOCAL_TARBALL="bazel-bin/packages/@dataform/core/package.tar.gz"
+if [[ ! -f "${LOCAL_TARBALL}" ]]; then
+  echo "Error: ${LOCAL_TARBALL} not found. Build it with: bazel build //packages/@dataform/core:package_tar" 1>&2
+  exit 1
+fi
 
 PROJECT_LOCATION_PATH="projects/${_CANARY_GCP_PROJECT}/locations/${_CANARY_LOCATION}"
 REPO_PATH="${PROJECT_LOCATION_PATH}/repositories/${_CANARY_REPO}"
 REPO_URL="https://dataform.googleapis.com/v1/${REPO_PATH}"
-WORKSPACE_ID="pr-${_PR_NUMBER}-${TIMESTAMP}"
+WORKSPACE_ID="pr-${_PR_NUMBER}-${RUN_ID}"
 WORKSPACE_CREATED=false
-TARBALL_NAME="build-${_PR_NUMBER}-${TIMESTAMP}.tar.gz"
-TARBALL_URL="https://storage.googleapis.com/${_CANARY_BUCKET}/${TARBALL_NAME}"
+TARBALL_NAME="build-${_PR_NUMBER}-${RUN_ID}.tar.gz"
 TMP_DIR=$(mktemp -d)
 
 cleanup() {
@@ -42,7 +50,7 @@ trap cleanup EXIT
 if [[ -f ~/gcp_token.txt ]]; then
   GCP_TOKEN=$(cat ~/gcp_token.txt)
 elif command -v gcloud >/dev/null 2>&1; then
-  GCP_TOKEN=$(gcloud auth print-access-token)
+  GCP_TOKEN=$(gcloud auth application-default print-access-token)
 else
   echo "Error: Unable to obtain GCP access token." 1>&2
   exit 1
@@ -56,7 +64,7 @@ if ! gcloud storage buckets describe "gs://${_CANARY_BUCKET}" --format="value(na
 fi
 
 echo "Uploading Core tarball to gs://${_CANARY_BUCKET}/${TARBALL_NAME}..."
-if ! gcloud storage cp bazel-bin/packages/@dataform/core/package.tar.gz "gs://${_CANARY_BUCKET}/${TARBALL_NAME}"; then
+if ! gcloud storage cp "${LOCAL_TARBALL}" "gs://${_CANARY_BUCKET}/${TARBALL_NAME}"; then
   echo "Error uploading Core tarball to GCS." 1>&2
   echo "This is most likely an infra failure, not an issue with the Dataform code"
   exit 1
@@ -132,7 +140,7 @@ SIGNED_TARBALL_URL=$(gcloud storage sign-url "gs://${_CANARY_BUCKET}/${TARBALL_N
   --region="${_CANARY_LOCATION}" \
   --format="value(signed_url)")
 
-echo "Uploading package.json referencing ${TARBALL_URL}..."
+echo "Uploading package.json referencing ${SIGNED_TARBALL_URL}..."
 PACKAGE_JSON_CONTENTS=$(cat <<EOF | base64 -w 0
 {
   "name": "canary-project",
@@ -198,5 +206,5 @@ if actual_version != expected_version:
     )
     sys.exit(1)
 
-print(f"Canary compilation succeeded: {resp.get('name', 'OK')} (resolved version: {resp.get('resolvedGitCommitSha', 'workspace')})")
+print(f"Canary compilation succeeded: {resp.get('name', 'OK')} (resolved version: {resp.get('dataformCoreVersion', 'workspace')})")
 EOF
