@@ -661,6 +661,88 @@ suite("@dataform/api/run", () => {
         });
       });
     });
+
+    test("actionDescriptor.jobLabels overrides actionDescriptor.bigqueryLabels on key collision", async () => {
+      const executionOptions: Array<{ bigquery?: any }> = [];
+      const setMetadataActionDescriptors: dataform.IActionDescriptor[] = [];
+
+      const mockedDbAdapter = mock(BigQueryDbAdapter);
+      const NEW_TEST_GRAPH = dataform.ExecutionGraph.create(RUN_TEST_GRAPH);
+      NEW_TEST_GRAPH.actions![0].actionDescriptor = {
+        bigqueryLabels: {
+          shared_key: "from_bigquery_labels",
+          table_only: "table_val",
+        },
+        jobLabels: {
+          shared_key: "from_job_labels",
+          job_only: "job_val",
+        },
+      };
+
+      when(mockedDbAdapter.createSchema(anyString(), anyString())).thenResolve(null);
+      when(
+        mockedDbAdapter.execute(NEW_TEST_GRAPH.actions![0].tasks![0].statement!, anything()),
+      ).thenCall((_statement: string, options: any) => {
+        executionOptions.push(options);
+        return Promise.resolve({
+          rows: [],
+          metadata: {
+            bigquery: {
+              jobId: "abc",
+              totalBytesBilled: Long.fromNumber(0),
+              totalBytesProcessed: Long.fromNumber(0),
+            },
+          },
+        });
+      });
+      when(
+        mockedDbAdapter.execute(NEW_TEST_GRAPH.actions![0].tasks![1].statement!, anything()),
+      ).thenCall((_statement: string, options: any) => {
+        executionOptions.push(options);
+        return Promise.resolve({ rows: [], metadata: {} });
+      });
+      when(
+        mockedDbAdapter.execute(NEW_TEST_GRAPH.actions![1].tasks![0].statement!, anything()),
+      ).thenCall((_statement: string, options: any) => {
+        executionOptions.push(options);
+        return Promise.resolve({ rows: [], metadata: {} });
+      });
+      when(mockedDbAdapter.setMetadata(anything())).thenCall(
+        (action: dataform.IExecutionAction) => {
+          setMetadataActionDescriptors.push(action.actionDescriptor!);
+          return Promise.resolve();
+        },
+      );
+
+      const mockDbAdapterInstance = instance(mockedDbAdapter);
+      const runner = new Runner(mockDbAdapterInstance, NEW_TEST_GRAPH, {
+        bigquery: {
+          labels: {
+            shared_key: "from_execution_options",
+            table_only: "from_execution_options",
+            global_only: "global_val",
+          },
+        },
+      });
+
+      const result = await runner.execute().result();
+      expect(result.status).to.equal(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
+
+      const firstActionCalls = executionOptions.slice(0, 2);
+      firstActionCalls.forEach((opts) => {
+        expect(opts?.bigquery?.labels).to.deep.equal({
+          global_only: "global_val",
+          table_only: "table_val",
+          shared_key: "from_job_labels",
+          job_only: "job_val",
+        });
+      });
+      expect(setMetadataActionDescriptors.length).to.equal(1);
+      expect(setMetadataActionDescriptors[0].bigqueryLabels).to.deep.equal({
+        shared_key: "from_bigquery_labels",
+        table_only: "table_val",
+      });
+    });
   });
 
   test("continues after setMetadata fails", async () => {

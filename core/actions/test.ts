@@ -10,7 +10,7 @@ import {
   ambiguousActionNameMsg,
   checkExcessProperties,
   resolvableAsTarget,
-  resolveAndValidateJobLabels,
+  setActionJobLabels,
   strictKeysOf,
   stringifyResolvable,
   toResolvable,
@@ -37,7 +37,11 @@ export interface ITestConfig extends INamedConfig {
   /** Tags for this test action. */
   tags?: string[];
 
-  /** Labels to be applied to BigQuery job(s) executed for this test action. */
+  /**
+   * Key-value pairs for BigQuery job labels applied to the query job(s) executed for this test
+   * action. Keys that collide with `defaultJobLabels` in `workflow_settings.yaml` override the
+   * default value.
+   */
   jobLabels?: { [key: string]: string };
 }
 
@@ -207,19 +211,7 @@ export class Test extends ActionBuilder<dataform.Test> {
 
   /** @hidden */
   public compile() {
-    const resolvedJobLabels = resolveAndValidateJobLabels(
-      this.session?.projectConfig?.defaultJobLabels,
-      this.configJobLabels,
-      this.session,
-      this.proto.fileName,
-      this.proto.target,
-    );
-    if (resolvedJobLabels) {
-      if (!this.proto.actionDescriptor) {
-        this.proto.actionDescriptor = {};
-      }
-      this.proto.actionDescriptor.jobLabels = resolvedJobLabels;
-    }
+    setActionJobLabels(this.proto, this.configJobLabels, this.session);
 
     const testContext = new TestContext(this);
     if (!this.testTarget) {

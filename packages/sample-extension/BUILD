@@ -1,5 +1,4 @@
-load("@build_bazel_rules_nodejs//:index.bzl", "npm_package_bin")
-load("@npm//webpack:index.bzl", "webpack")
+load("@aspect_rules_webpack//webpack:defs.bzl", "webpack_bundle")
 load("//:version.bzl", "DF_VERSION")
 load("//packages:index.bzl", "add_license_header_to_file", "pkg_bundle_dts", "pkg_json", "pkg_npm_tar")
 load("//tools:ts_library.bzl", "ts_library")
@@ -15,30 +14,21 @@ ts_library(
     ],
 )
 
-webpack(
-    name = "bundler",
-    data = [
-        ":sample",
-        ":webpack.config.js",
-        "@npm//webpack-cli",
-    ],
-)
-
-npm_package_bin(
-    name = "bundle",
-    outs = [
-        "bundle_no_license.js",
-    ],
+webpack_bundle(
+    name = "bundle_no_license",
     args = [
-        "--config=$(location webpack.config.js)",
-        "--output-path=$(RULEDIR)",
-        "--output-filename=bundle_no_license.js",
         "--mode=production",
     ],
     data = [
         ":webpack.config.js",
+        "//:node_modules/webpack-cli",
     ],
-    tool = ":bundler",
+    entry_point = "index.js",
+    node_modules = "//:node_modules",
+    webpack_config = ":webpack.config.js",
+    deps = [
+        ":sample",
+    ],
 )
 
 pkg_json(
@@ -56,13 +46,12 @@ pkg_json(
 
 add_license_header_to_file(
     name = "bundle_with_license",
-    from_file = "bundle",
+    from_file = ":bundle_no_license",
     to_file = "bundle.js",
 )
 
 pkg_bundle_dts(
     name = "bundle.d",
-    entry_point = "index.ts",
     externals = [
         "protobufjs",
         "tarjan-graph",
@@ -81,6 +70,5 @@ pkg_npm_tar(
         ":bundle.d",
         ":bundle_with_license",
         ":package.json",
-        "//:version.bzl",
     ],
 )

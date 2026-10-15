@@ -321,4 +321,36 @@ actions:
       });
     });
   });
+
+  test("JS assert().description() preserves jobLabels and reservation on actionDescriptor", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
+    writeDefinitionFile(
+      projectDir,
+      "assertion.js",
+      `
+assert("name", {
+  reservation: "projects/p/locations/US/reservations/r",
+  jobLabels: {
+    env: "prod",
+  },
+})
+  .description("my assertion description")
+  .query("SELECT 1 WHERE FALSE");
+`,
+    );
+
+    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+    expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+    expect(asPlainObject(result.compile.compiledGraph.assertions[0]?.actionDescriptor)).deep.equals(
+      {
+        description: "my assertion description",
+        reservation: "projects/p/locations/US/reservations/r",
+        jobLabels: {
+          env: "prod",
+        },
+      },
+    );
+  });
 });

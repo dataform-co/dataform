@@ -38,6 +38,11 @@ export function main(coreExecutionRequest: Uint8Array | string): Uint8Array | st
     request = dataform.CoreExecutionRequest.decode(coreExecutionRequest);
   }
   const compileRequest = request.compile;
+  if (compileRequest?.compileConfig?.filePaths) {
+    compileRequest.compileConfig.filePaths = compileRequest.compileConfig.filePaths.map(
+      Path.toPosixPath,
+    );
+  }
 
   // Allow extensions to populate settings by themselves.
   const failIfMissing = !compileRequest?.compileConfig?.extension?.compilationMode;
@@ -50,7 +55,7 @@ export function main(coreExecutionRequest: Uint8Array | string): Uint8Array | st
     ...projectConfig.defaultJobLabels,
     ...projectConfigOverride.defaultJobLabels,
   };
-  if (Object.keys(defaultJobLabels).length > 0) {
+  if (projectConfigOverride.defaultJobLabels && Object.keys(defaultJobLabels).length > 0) {
     validateJobLabels(defaultJobLabels, "defaultJobLabels");
   }
   projectConfig = dataform.ProjectConfig.create({
@@ -216,7 +221,7 @@ function loadActionConfigsFile(
   session: Session,
   actionConfigsPath: string,
 ): dataform.ActionConfigs {
-  let actionConfigsAsJson = {};
+  let actionConfigsAsJson: { actions?: any[] } = {};
   try {
     actionConfigsAsJson = nativeRequire(actionConfigsPath).asJson;
   } catch (e) {
@@ -227,7 +232,51 @@ function loadActionConfigsFile(
     actionConfigsAsJson,
     VerifyProtoErrorBehaviour.SHOW_DOCS_LINK,
   );
-  return dataform.ActionConfigs.fromObject(actionConfigsAsJson);
+  const actionConfigs = dataform.ActionConfigs.fromObject(actionConfigsAsJson);
+  restoreJobLabelsAsWritten(actionConfigsAsJson, actionConfigs);
+  return actionConfigs;
+}
+
+/**
+ * `ActionConfigs.fromObject` converts camelCased JSON keys into proto fields, but it also
+ * calls `String(value)` on `map<string, string>` entries (turning numbers and booleans into
+ * strings). Restore the raw `jobLabels` / `job_labels` object from the parsed YAML so that
+ * `validateJobLabels` rejects non-string values consistently across all config surfaces.
+ */
+function restoreJobLabelsAsWritten(
+  rawActionConfigs: { actions?: any[] },
+  parsedActionConfigs: dataform.ActionConfigs,
+) {
+  if (!Array.isArray(rawActionConfigs?.actions)) {
+    return;
+  }
+  const actionTypePairs: Array<[string, keyof dataform.IActionConfig]> = [
+    ["table", "table"],
+    ["view", "view"],
+    ["incrementalTable", "incrementalTable"],
+    ["incremental_table", "incrementalTable"],
+    ["assertion", "assertion"],
+    ["operation", "operation"],
+    ["dataPreparation", "dataPreparation"],
+    ["data_preparation", "dataPreparation"],
+  ];
+  rawActionConfigs.actions.forEach((rawAction, index) => {
+    const parsedAction = parsedActionConfigs.actions?.[index];
+    if (!rawAction || !parsedAction) {
+      return;
+    }
+    for (const [rawKey, parsedKey] of actionTypePairs) {
+      const rawSubConfig = rawAction[rawKey];
+      const parsedSubConfig = parsedAction[parsedKey] as { jobLabels?: any } | null | undefined;
+      if (!rawSubConfig || !parsedSubConfig) {
+        continue;
+      }
+      const rawJobLabels = rawSubConfig.jobLabels ?? rawSubConfig.job_labels;
+      if (rawJobLabels !== undefined) {
+        parsedSubConfig.jobLabels = rawJobLabels;
+      }
+    }
+  });
 }
 
 // Only a single graph.yaml per project is accepted for now, though it may live

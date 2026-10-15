@@ -110,5 +110,31 @@ modules.exports = {
       const bufFromContents = Buffer.from(jsContents, "utf-8");
       expect(bufFromContents.equals(bufFromFile)).equals(true);
     });
+
+    test("format --check accepts correctly formatted files with CRLF line endings", async () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      await setupProject(tmpDirFixture, projectDir);
+      writeDefinitionFile(
+        projectDir,
+        "crlf.sqlx",
+        `
+config {   type:  "table"   }
+SELECT  1  as   test
+`,
+      );
+      expect((await runCli("format", [projectDir])).exitCode).equals(0);
+
+      // Same formatted content, but with Windows line endings (e.g. a Git checkout with
+      // core.autocrlf=true).
+      const crlfFilePath = path.join(projectDir, "definitions", "crlf.sqlx");
+      const formattedContent = fs.readFileSync(crlfFilePath, "utf8");
+      expect(formattedContent).not.contains("\r\n");
+      fs.writeFileSync(crlfFilePath, formattedContent.replace(/\n/g, "\r\n"));
+
+      const checkResult = await runCli("format", [projectDir, "--check"]);
+
+      expect(checkResult.exitCode).equals(0);
+      expect(checkResult.stdout).contains("All files are formatted correctly");
+    });
   });
 });

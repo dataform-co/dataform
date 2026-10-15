@@ -12,7 +12,7 @@ import {
   nativeRequire,
   resolvableAsTarget,
   resolveActionsConfigFilename,
-  resolveAndValidateJobLabels,
+  setActionJobLabels,
   toResolvable,
   validateQueryString,
 } from "df/core/utils";
@@ -68,19 +68,7 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
       this.configureSqlx(session, config);
     }
 
-    const jobLabels = resolveAndValidateJobLabels(
-      session?.projectConfig?.defaultJobLabels,
-      config.jobLabels,
-      this.session,
-      this.proto.fileName,
-      this.proto.target,
-    );
-    if (jobLabels) {
-      if (!this.proto.actionDescriptor) {
-        this.proto.actionDescriptor = {};
-      }
-      this.proto.actionDescriptor.jobLabels = jobLabels;
-    }
+    setActionJobLabels(this.proto, config.jobLabels, this.session);
   }
 
   /**

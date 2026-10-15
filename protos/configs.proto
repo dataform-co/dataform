@@ -76,8 +76,9 @@ message WorkflowSettings {
   // Optional. Configuration for Knowledge Catalog lineage emission.
   LineageSettings lineage = 19;
 
-  // Optional. Default key-value pairs for BigQuery job labels applied to all
-  // BigQuery jobs executed for actions in this project.
+  // Optional. Default key-value pairs for BigQuery job labels applied to
+  // BigQuery jobs executed for actions in this project. Can be overridden by
+  // action-level `job_labels`.
   map<string, string> default_job_labels = 20;
 }
 
@@ -726,7 +727,9 @@ message ActionConfig {
 
     LoadModeConfig load_mode = 12;
 
-    // Labels to be applied to BigQuery job(s) executed for this data preparation.
+    // Optional. Key-value pairs for BigQuery job labels applied to the BigQuery
+    // job(s) executed for this data preparation. Overrides matching keys from
+    // `default_job_labels` in `workflow_settings.yaml`.
     map<string, string> job_labels = 15;
 
     message ErrorTableConfig {

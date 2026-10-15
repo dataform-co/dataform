@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import {
+  getCallerFile,
   getConnectionForIcebergTable,
   getEffectiveBucketName,
   getEffectiveTableFolderRoot,
@@ -364,6 +365,43 @@ suite("Dataform Utility Validations", () => {
     });
   });
 
+  suite("getCallerFile", () => {
+    test("returns a relative POSIX path for Windows paths with differing drive-letter case", () => {
+      const globalAny = global as any;
+      const previousCurrentFile = globalAny.__dataform_current_file;
+      try {
+        globalAny.__dataform_current_file = "c:\\project\\definitions\\sub\\table.sqlx";
+        expect(getCallerFile("C:\\project")).to.equal("definitions/sub/table.sqlx");
+      } finally {
+        globalAny.__dataform_current_file = previousCurrentFile;
+      }
+    });
+
+    test("returns a relative POSIX path for Windows UNC paths", () => {
+      const globalAny = global as any;
+      const previousCurrentFile = globalAny.__dataform_current_file;
+      try {
+        globalAny.__dataform_current_file = "\\\\server\\share\\proj\\definitions\\table.sqlx";
+        expect(getCallerFile("\\\\server\\share\\proj")).to.equal("definitions/table.sqlx");
+      } finally {
+        globalAny.__dataform_current_file = previousCurrentFile;
+      }
+    });
+
+    test("accepts any caller file when rootDir is empty", () => {
+      const globalAny = global as any;
+      const previousCurrentFile = globalAny.__dataform_current_file;
+      try {
+        // Hosts that don't set projectDir pass an empty rootDir; the stack must still be searched
+        // instead of failing with "Unable to find valid caller file".
+        globalAny.__dataform_current_file = undefined;
+        expect(() => getCallerFile("")).to.not.throw();
+      } finally {
+        globalAny.__dataform_current_file = previousCurrentFile;
+      }
+    });
+  });
+
   suite("validateJobLabels", () => {
     test("does not throw for undefined or empty labels", () => {
       assertNoThrow(() => validateJobLabels(undefined));
@@ -406,10 +444,12 @@ suite("Dataform Utility Validations", () => {
     });
 
     test("throws when labels is not a plain object", () => {
-      assertThrowsWithMessage(
-        () => validateJobLabels(["a", "b"] as any, "defaultJobLabels"),
-        "defaultJobLabels must be an object mapping string keys to string values.",
-      );
+      for (const invalidLabels of [["a", "b"], false, "", 0]) {
+        assertThrowsWithMessage(
+          () => validateJobLabels(invalidLabels as any, "defaultJobLabels"),
+          "defaultJobLabels must be an object mapping string keys to string values.",
+        );
+      }
     });
 
     test("throws when label value is not a string", () => {
@@ -520,7 +560,7 @@ suite("Dataform Utility Validations", () => {
       expect(merged).to.equal(undefined);
       expect(errors.length).to.equal(1);
       expect(errors[0].message).to.equal(
-        "Too many job labels in jobLabels: maximum allowed is 32, but got 35.",
+        "Too many job labels in jobLabels: maximum allowed is 32, but got 35 (20 from defaultJobLabels and 15 from jobLabels).",
       );
     });
   });

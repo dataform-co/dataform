@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "crypto";
 import Long from "long";
 import * as path from "path";
 
+import { toLineageActionType } from "df/cli/api/lineage/action_type";
 import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
 
@@ -51,6 +52,11 @@ export class LineagePayloadBuilder {
     location: string,
     credentialsProjectId?: string,
   ): { [key: string]: any } {
+    const actionType = toLineageActionType(action);
+    if (!actionType) {
+      throw new Error(`Unsupported action type for lineage: ${action.type}`);
+    }
+
     if (!this.workdirHash && this.projectDir) {
       this.workdirHash = createHash("sha256").update(this.projectDir).digest("hex").slice(0, 16);
     }
@@ -125,7 +131,7 @@ export class LineagePayloadBuilder {
     };
 
     if (eventType !== "START") {
-      const bqJobId = extractBqJobId(actionResult);
+      const bqJobId = extractTargetWritingBqJobId(action, actionResult);
       if (bqJobId && credentialsProjectId) {
         runFacets.externalQuery = {
           _producer: PRODUCER_URL,
@@ -183,7 +189,7 @@ export class LineagePayloadBuilder {
 
     jobFacets.gcp_bq_pipelines_job = {
       dataformCoreVersion: version,
-      actionType: action.type,
+      actionType,
       actionName: canonicalActionTarget,
     };
 
@@ -231,11 +237,29 @@ function toMillis(val: Long | number | undefined | null): number | undefined {
   return undefined;
 }
 
-function extractBqJobId(actionResult: dataform.IActionResult): string | undefined {
+/**
+ * Returns the ID of the BigQuery job that wrote the action's target: the last
+ * executed non-assertion task with a job ID. Assertions run a `CREATE VIEW`
+ * task followed by a check query that only reads the view, so the check job
+ * carries no lineage for the assertion's dependencies. For tables,
+ * `ExecutionSql.publishTasks` concatenates `pre_operations`, the main DDL/DML
+ * statement and `post_operations` into a single task.
+ *
+ * `Runner.executeAction` in `cli/api/commands/run.ts` pushes one `ITaskResult`
+ * per `action.tasks` entry in order, so `actionResult.tasks` is index-aligned
+ * with `action.tasks`.
+ */
+function extractTargetWritingBqJobId(
+  action: dataform.IExecutionAction,
+  actionResult: dataform.IActionResult,
+): string | undefined {
   if (!actionResult.tasks) {
     return undefined;
   }
   for (let i = actionResult.tasks.length - 1; i >= 0; i--) {
+    if (action.tasks?.[i]?.type === "assertion") {
+      continue;
+    }
     const jobId = actionResult.tasks[i]?.metadata?.bigquery?.jobId;
     if (jobId) {
       return jobId;

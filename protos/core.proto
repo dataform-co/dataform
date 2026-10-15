@@ -155,6 +155,9 @@ message ActionDescriptor {
   Metadata metadata = 4;
   ActionCompilationMode compilation_mode = 5;
   string reservation = 6;
+  // Effective BigQuery job labels for this action, with
+  // `ProjectConfig.default_job_labels` already merged in and overridden by
+  // action-level `job_labels`.
   map<string, string> job_labels = 7;
 }
 

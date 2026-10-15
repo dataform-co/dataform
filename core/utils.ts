@@ -47,11 +47,13 @@ export function getCallerFile(rootDir: string) {
   let lastfile: string;
   const stack = getCurrentStack();
   while (stack.length) {
-    const nextLastfile = stack.shift().getFileName();
-    if (!nextLastfile) {
+    const rawNextLastfile = stack.shift().getFileName();
+    if (!rawNextLastfile) {
       continue;
     }
-    if (!nextLastfile.includes(rootDir)) {
+    const nextLastfile = Path.toPosixPath(rawNextLastfile);
+    // An empty rootDir (a host that doesn't set projectDir) matches every file, as before.
+    if (rootDir && !Path.startsWithPath(nextLastfile, rootDir)) {
       continue;
     }
     if (nextLastfile.includes("node_modules")) {
@@ -60,10 +62,7 @@ export function getCallerFile(rootDir: string) {
     // If it's in the root directory we'll take it, but keep searching
     // for a better match.
     lastfile = nextLastfile;
-    if (!(
-      nextLastfile.includes(`definitions${Path.separator}`) ||
-      nextLastfile.includes(`models${Path.separator}`)
-    )) {
+    if (!(nextLastfile.includes("definitions/") || nextLastfile.includes("models/"))) {
       continue;
     }
     break;
@@ -680,6 +679,8 @@ export function snakeToCamelKeys(value: any): any {
   return value;
 }
 
+// NOTE: These validation constants and rules are mirrored by the Cloud Dataform backend validator.
+// If one validator is updated, the other must also be updated to stay in sync.
 export const MAX_JOB_LABELS_COUNT = 32;
 export const MAX_JOB_LABEL_LENGTH = 63;
 export const JOB_LABEL_KEY_REGEX = /^[a-z][a-z0-9_-]*$/;
@@ -701,7 +702,7 @@ export function validateJobLabels(
   labels: { [key: string]: string } | null | undefined,
   fieldName: string = "jobLabels",
 ): void {
-  if (!labels) {
+  if (labels === undefined || labels === null) {
     return;
   }
   if (typeof labels !== "object" || Array.isArray(labels)) {
@@ -773,13 +774,47 @@ export function resolveAndValidateJobLabels(
       ...(defaultJobLabels || {}),
       ...(actionJobLabels || {}),
     };
-    if (Object.keys(mergedLabels).length === 0) {
+    const mergedCount = Object.keys(mergedLabels).length;
+    if (mergedCount === 0) {
       return undefined;
     }
-    validateJobLabels(mergedLabels, "jobLabels");
+    if (mergedCount > MAX_JOB_LABELS_COUNT) {
+      const defaultCount = Object.keys(defaultJobLabels || {}).length;
+      const actionCount = Object.keys(actionJobLabels || {}).length;
+      throw new Error(
+        `Too many job labels in jobLabels: maximum allowed is ${MAX_JOB_LABELS_COUNT}, but got ${mergedCount} (${defaultCount} from defaultJobLabels and ${actionCount} from jobLabels).`,
+      );
+    }
     return mergedLabels;
   } catch (e) {
     session.compileError(e, fileName, target);
     return undefined;
+  }
+}
+
+/**
+ * Resolves, validates, and sets `actionDescriptor.jobLabels` on an action proto.
+ */
+export function setActionJobLabels(
+  proto: {
+    actionDescriptor?: dataform.IActionDescriptor | null;
+    fileName?: string | null;
+    target?: dataform.ITarget | null;
+  },
+  actionJobLabels: { [key: string]: string } | null | undefined,
+  session?: Session,
+): void {
+  const jobLabels = resolveAndValidateJobLabels(
+    session?.projectConfig?.defaultJobLabels,
+    actionJobLabels,
+    session,
+    proto.fileName,
+    proto.target,
+  );
+  if (jobLabels) {
+    if (!proto.actionDescriptor) {
+      proto.actionDescriptor = {};
+    }
+    proto.actionDescriptor.jobLabels = jobLabels;
   }
 }

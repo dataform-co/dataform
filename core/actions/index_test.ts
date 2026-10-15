@@ -54,6 +54,11 @@ export const exampleBuiltInAssertions = {
   outputAssertions: (filename: string) =>
     [
       {
+        actionDescriptor: {
+          jobLabels: {
+            job_key: "job_val",
+          },
+        },
         target: {
           database: "defaultProject",
           schema: "defaultDataset",
@@ -83,6 +88,11 @@ export const exampleBuiltInAssertions = {
         tags: ["tag1", "tag2"],
       },
       {
+        actionDescriptor: {
+          jobLabels: {
+            job_key: "job_val",
+          },
+        },
         target: {
           database: "defaultProject",
           schema: "defaultDataset",
@@ -129,6 +139,11 @@ export const exampleBuiltInAssertionsAsYaml = {
 `,
   outputAssertions: [
     {
+      actionDescriptor: {
+        jobLabels: {
+          job_key: "job_val",
+        },
+      },
       target: {
         database: "defaultProject",
         schema: "defaultDataset",
@@ -160,6 +175,11 @@ export const exampleBuiltInAssertionsAsYaml = {
       tags: ["tag1", "tag2"],
     },
     {
+      actionDescriptor: {
+        jobLabels: {
+          job_key: "job_val",
+        },
+      },
       target: {
         database: "defaultProject",
         schema: "defaultDataset",
@@ -429,5 +449,130 @@ SELECT 1`,
         'Invalid job label key "goog-reserved" in jobLabels: key cannot start with reserved prefix "goog-".',
       );
     });
+
+    if (["table", "view", "incremental"].includes(tableType)) {
+      test(`${tableType} built-in assertions inherit parent action jobLabels and defaultJobLabels`, () => {
+        const projectDir = tmpDirFixture.createNewTmpDir();
+        fs.writeFileSync(
+          path.join(projectDir, "workflow_settings.yaml"),
+          `${VALID_WORKFLOW_SETTINGS_YAML}
+defaultJobLabels:
+  env: dev
+  team: core
+`,
+        );
+        fs.mkdirSync(path.join(projectDir, "definitions"));
+        fs.writeFileSync(
+          path.join(projectDir, "definitions/file.sqlx"),
+          `
+config {
+  type: "${tableType}",
+  name: "name",
+  jobLabels: {
+    env: "prod",
+    parent_label: "${tableType}",
+  },
+  assertions: {
+    uniqueKey: ["id"],
+    nonNull: ["id"],
+    rowConditions: ["id > 0"],
+  }
+}
+SELECT 1 AS id`,
+        );
+
+        const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+        expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+        expect(result.compile.compiledGraph.assertions.length).equals(2);
+        result.compile.compiledGraph.assertions.forEach((assertion) => {
+          expect(asPlainObject(assertion.actionDescriptor?.jobLabels)).deep.equals({
+            env: "prod",
+            team: "core",
+            parent_label: tableType,
+          });
+        });
+      });
+
+      test(`${tableType} built-in assertions do not inherit invalid parent jobLabels`, () => {
+        const projectDir = tmpDirFixture.createNewTmpDir();
+        fs.writeFileSync(
+          path.join(projectDir, "workflow_settings.yaml"),
+          `${VALID_WORKFLOW_SETTINGS_YAML}
+defaultJobLabels:
+  team: core
+`,
+        );
+        fs.mkdirSync(path.join(projectDir, "definitions"));
+        fs.writeFileSync(
+          path.join(projectDir, "definitions/file.sqlx"),
+          `
+config {
+  type: "${tableType}",
+  name: "name",
+  jobLabels: {
+    "goog-reserved": "value"
+  },
+  assertions: {
+    uniqueKey: ["id"],
+    rowConditions: ["id > 0"],
+  }
+}
+SELECT 1 AS id`,
+        );
+
+        const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+        expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).equals(1);
+        expect(result.compile.compiledGraph.assertions.length).equals(2);
+        result.compile.compiledGraph.assertions.forEach((assertion) => {
+          expect(asPlainObject(assertion.actionDescriptor?.jobLabels)).deep.equals({
+            team: "core",
+          });
+        });
+      });
+
+      test(`${tableType} built-in assertions in JS API inherit parent action jobLabels`, () => {
+        const projectDir = tmpDirFixture.createNewTmpDir();
+        fs.writeFileSync(
+          path.join(projectDir, "workflow_settings.yaml"),
+          `${VALID_WORKFLOW_SETTINGS_YAML}
+defaultJobLabels:
+  env: dev
+  team: core
+`,
+        );
+        fs.mkdirSync(path.join(projectDir, "definitions"));
+        fs.writeFileSync(
+          path.join(projectDir, "definitions/file.js"),
+          `
+publish("name", {
+  type: "${tableType}",
+  jobLabels: {
+    env: "prod",
+    parent_label: "${tableType}",
+  },
+})
+  .assertions({
+    uniqueKey: ["id"],
+    rowConditions: ["id > 0"],
+  })
+  .query("SELECT 1 AS id");
+`,
+        );
+
+        const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+        expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+        expect(result.compile.compiledGraph.assertions.length).equals(2);
+        result.compile.compiledGraph.assertions.forEach((assertion) => {
+          expect(asPlainObject(assertion.actionDescriptor?.jobLabels)).deep.equals({
+            env: "prod",
+            team: "core",
+            parent_label: tableType,
+          });
+        });
+      });
+    }
   });
 });

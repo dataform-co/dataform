@@ -1,10 +1,7 @@
 #!/bin/bash
 set -e
 
-bazel run @nodejs//:yarn
-
 # Run prettier on .ts files changed since the branching point
 BASE_REF=$(git rev-parse --verify --quiet upstream/main || echo origin/main)
-bazel build @npm//prettier/bin:prettier
 git diff -z --name-only --diff-filter=ACMR "$(git merge-base $BASE_REF HEAD)" -- '*.ts' \
-  | xargs -0 -r bazel-bin/external/npm/prettier/bin/prettier.sh --ignore-path .prettierignore --write
+  | xargs -0 -r bazel run //:prettier -- --ignore-path .prettierignore --write

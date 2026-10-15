@@ -28,7 +28,7 @@ import {
   resolvableAsActionConfigTarget,
   resolvableAsTarget,
   resolveActionsConfigFilename,
-  resolveAndValidateJobLabels,
+  setActionJobLabels,
   strictKeysOf,
   toResolvable,
   validateConnectionFormat,
@@ -179,6 +179,7 @@ export class Table extends ActionBuilder<dataform.Table> {
         ),
       );
     }
+    setActionJobLabels(this.proto, config.jobLabels, this.session);
     if (config.assertions) {
       this.assertions(dataform.ActionConfig.TableAssertionsConfig.create(config.assertions));
     }
@@ -232,20 +233,6 @@ export class Table extends ActionBuilder<dataform.Table> {
         this.proto.actionDescriptor = {};
       }
       this.proto.actionDescriptor.reservation = config.reservation;
-    }
-
-    const jobLabels = resolveAndValidateJobLabels(
-      session?.projectConfig?.defaultJobLabels,
-      config.jobLabels,
-      this.session,
-      this.proto.fileName,
-      this.proto.target,
-    );
-    if (jobLabels) {
-      if (!this.proto.actionDescriptor) {
-        this.proto.actionDescriptor = {};
-      }
-      this.proto.actionDescriptor.jobLabels = jobLabels;
     }
 
     return this;

@@ -12,7 +12,7 @@ import {
   resolvableAsActionConfigTarget,
   resolvableAsTarget,
   resolveActionsConfigFilename,
-  resolveAndValidateJobLabels,
+  setActionJobLabels,
   toResolvable,
 } from "df/core/utils";
 import { dataform } from "df/protos/ts";
@@ -166,19 +166,7 @@ export class Operation extends ActionBuilder<dataform.Operation> {
       }
       this.proto.actionDescriptor.reservation = config.reservation;
     }
-    const jobLabels = resolveAndValidateJobLabels(
-      session?.projectConfig?.defaultJobLabels,
-      config.jobLabels,
-      this.session,
-      this.proto.fileName,
-      this.proto.target,
-    );
-    if (jobLabels) {
-      if (!this.proto.actionDescriptor) {
-        this.proto.actionDescriptor = {};
-      }
-      this.proto.actionDescriptor.jobLabels = jobLabels;
-    }
+    setActionJobLabels(this.proto, config.jobLabels, this.session);
     return this;
   }
 

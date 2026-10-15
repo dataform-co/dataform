@@ -513,19 +513,34 @@ defaultJobLabels:
     });
 
     test("defaultJobLabels fails on reserved keys or invalid characters", () => {
-      const projectDir = tmpDirFixture.createNewTmpDir();
-      writeWorkflowSettingsFile(
-        projectDir,
-        `
+      for (const [key, expectedMessage] of [
+        [
+          "dataform_internal",
+          'Invalid job label key "dataform_internal" in defaultJobLabels: key cannot start with reserved prefix "dataform_".',
+        ],
+        [
+          "origin",
+          'Invalid job label key "origin" in defaultJobLabels: "origin" is a reserved label key.',
+        ],
+        [
+          "InvalidKey",
+          'Invalid job label key "InvalidKey" in defaultJobLabels: keys must start with a lowercase letter and contain only lowercase letters, numbers, underscores, and hyphens.',
+        ],
+      ]) {
+        const projectDir = tmpDirFixture.createNewTmpDir();
+        writeWorkflowSettingsFile(
+          projectDir,
+          `
 defaultProject: defaultProject
 defaultJobLabels:
-  dataform_internal: val
+  ${key}: val
 `,
-      );
+        );
 
-      expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
-        'Invalid job label key "dataform_internal" in defaultJobLabels: key cannot start with reserved prefix "dataform_".',
-      );
+        expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
+          expectedMessage,
+        );
+      }
     });
 
     test("defaultJobLabels merges with projectConfigOverride", () => {
@@ -564,6 +579,33 @@ defaultJobLabels:
         team: "core",
         cost_center: "123",
       });
+    });
+
+    test("defaultJobLabels fails when projectConfigOverride has invalid labels", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      writeWorkflowSettingsFile(
+        projectDir,
+        `
+defaultProject: defaultProject
+defaultLocation: US
+`,
+      );
+      const coreExecutionRequest = dataform.CoreExecutionRequest.create({
+        compile: {
+          compileConfig: {
+            projectDir,
+            projectConfigOverride: {
+              defaultJobLabels: {
+                "goog-reserved": "val",
+              },
+            },
+          },
+        },
+      });
+
+      expect(() => runMainInVm(coreExecutionRequest)).to.throw(
+        'Invalid job label key "goog-reserved" in defaultJobLabels: key cannot start with reserved prefix "goog-".',
+      );
     });
   });
 });
