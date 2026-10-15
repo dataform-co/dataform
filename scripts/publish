@@ -35,6 +35,5 @@ echo "Publishing as '$TAG' based on version: $VERSION"
 
 PUBLISH_REGISTRY=https://registry.npmjs.org/
 
-bazel build //packages/@dataform/cli:package //packages/@dataform/core:package
-bazel run @nodejs//:npm -- publish "$PWD/bazel-bin/packages/@dataform/cli/package" --tag=$TAG --registry=$PUBLISH_REGISTRY
-bazel run @nodejs//:npm -- publish "$PWD/bazel-bin/packages/@dataform/core/package" --tag=$TAG --registry=$PUBLISH_REGISTRY
+bazel run //packages/@dataform/cli:package.publish -- --tag=$TAG --registry=$PUBLISH_REGISTRY
+bazel run //packages/@dataform/core:package.publish -- --tag=$TAG --registry=$PUBLISH_REGISTRY

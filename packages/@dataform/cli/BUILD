@@ -116,4 +116,5 @@ pkg_npm_tar(
         ":readme",
         ":worker_bundle",
     ],
+    publishable = True,
 )
