@@ -98,8 +98,6 @@ Building the CLI will build most of the required components.
 bazel build cli
 ```
 
-The projects folder here is not built as it requires an environment file, which can be provided from the team.
-
 ### Add New NPM Dependencies
 
 Global pnpm installations will throw errors when installing packages, instead you should use:
