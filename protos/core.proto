@@ -44,6 +44,8 @@ message ProjectConfig {
 
   map<string, string> default_job_labels = 26;
 
+  DefaultLakehouseConfig default_lakehouse_config = 27;
+
   reserved 3, 4, 6, 8, 10, 12, 13;
 }
 
@@ -63,6 +65,14 @@ message DefaultIcebergConfig {
   // Optional. The connection specifying the credentials to be used to read and
   // write to external storage, such as Cloud Storage.
   string connection = 4;
+}
+
+message DefaultLakehouseConfig {
+  // Optional. Default Lakehouse catalog name.
+  string catalog = 1;
+
+  // Optional. Default Lakehouse namespace name.
+  string namespace = 2;
 }
 
 message CompileConfig {
