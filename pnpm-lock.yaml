@@ -5,7 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  serialize-javascript: ^7.1.1
+  serialize-javascript: ^7.1.2
   glob-parent: ^5.1.2
   json-bigint: ^1.0.0
   y18n: ^5.0.5
@@ -1777,8 +1777,8 @@ packages:
     engines: {node: '>=10'}
     hasBin: true
 
-  serialize-javascript@7.1.1:
-    resolution: {integrity: sha512-k3CMsaIvvdSwm8oLB4MXSl0wH2/cwlH7xGcnRd2DaeRmBkbzYmyT8j0tsX60DwD1eRwHTpNpH8ljKu9oUT1MeQ==}
+  serialize-javascript@7.1.2:
+    resolution: {integrity: sha512-GL2BWwVa6JydKO6l/ljVgjAZF4QJ3S7dWDWi53s5GZT8PJzD2fNxi67HANQGKAqPrwEpL5ba7gUBGi0Ls/sEoQ==}
     engines: {node: '>=20.0.0'}
 
   shallow-clone@3.0.1:
@@ -3761,7 +3761,7 @@ snapshots:
 
   semver@7.8.5: {}
 
-  serialize-javascript@7.1.1: {}
+  serialize-javascript@7.1.2: {}
 
   shallow-clone@3.0.1:
     dependencies:
@@ -3864,7 +3864,7 @@ snapshots:
       '@jridgewell/trace-mapping': 0.3.25
       jest-worker: 27.5.1
       schema-utils: 4.3.3
-      serialize-javascript: 7.1.1
+      serialize-javascript: 7.1.2
       terser: 5.39.0
       webpack: 5.104.1(webpack-cli@4.10.0)
 
