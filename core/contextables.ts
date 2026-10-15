@@ -1,10 +1,25 @@
 import { dataform } from "df/protos/ts";
 
 /**
+ * Object representation of an action target accepted by `ref()` and `resolve()`.
+ */
+export interface IResolvable {
+  database?: string;
+  project?: string;
+  schema?: string;
+  dataset?: string;
+  catalog?: string;
+  namespace?: string;
+  lakehouse?: dataform.ActionConfig.ILakehouseConfig;
+  name?: string;
+  includeDependentAssertions?: boolean;
+}
+
+/**
  * A resolvable is a reference to an action, and it can be either the string representation of the
  * action's target, or the target of the action.
  */
-export type Resolvable = string | dataform.ITarget;
+export type Resolvable = string | dataform.ITarget | IResolvable;
 
 /**
  * Contextable arguments can either pass a plain value for their generic type `T` or can pass a

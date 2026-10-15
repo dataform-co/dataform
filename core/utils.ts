@@ -110,19 +110,23 @@ export function toResolvable(ref: Resolvable | string[], rest: string[] = []): R
   if (rest.length === 0 && !Array.isArray(ref)) {
     return ref;
   }
-  const resolvableArray = Array.isArray(ref) ? ref.reverse() : [ref, ...rest].reverse();
+  const resolvableArray = Array.isArray(ref) ? [...ref].reverse() : [ref, ...rest].reverse();
   if (!isResolvableArray(resolvableArray)) {
     throw new Error(invalidRefInputMessage);
+  }
+  if (resolvableArray.length === 4) {
+    const [name, namespace, catalog, database] = resolvableArray;
+    return { database, schema: `${catalog}.${namespace}`, name };
   }
   const [name, schema, database] = resolvableArray;
   return { database, schema, name };
 }
 
-function isResolvableArray(parts: any[]): parts is [string, string?, string?] {
+function isResolvableArray(parts: any[]): parts is [string, string?, string?, string?] {
   if (parts.some((part) => typeof part !== "string")) {
     return false;
   }
-  return parts.length > 0 && parts.length <= 3;
+  return parts.length > 0 && parts.length <= 4;
 }
 
 export function resolvableAsTarget(
@@ -131,6 +135,17 @@ export function resolvableAsTarget(
   if (typeof resolvable === "string") {
     return dataform.Target.create({
       name: resolvable,
+    });
+  }
+  const obj = resolvable as any;
+  const catalog = obj.catalog ?? obj.lakehouse?.catalog;
+  const namespace = obj.namespace ?? obj.lakehouse?.namespace;
+  if (catalog !== undefined || namespace !== undefined || obj.lakehouse !== undefined) {
+    return dataform.Target.create({
+      name: obj.name,
+      schema: catalog && namespace ? `${catalog}.${namespace}` : undefined,
+      database: obj.database ?? obj.project,
+      includeDependentAssertions: obj.includeDependentAssertions,
     });
   }
   const actionConfigTarget = resolvable as dataform.ActionConfig.ITarget;
@@ -157,6 +172,17 @@ export function resolvableAsActionConfigTarget(
     if (!isResolvableArray(parts)) {
       throw new Error(invalidRefInputMessage);
     }
+    if (parts.length === 4) {
+      const [name, namespace, catalog, database] = parts;
+      return {
+        name,
+        project: database,
+        lakehouse: {
+          catalog,
+          namespace,
+        },
+      };
+    }
 
     const [name, schema, database] = parts;
     return {
@@ -164,6 +190,31 @@ export function resolvableAsActionConfigTarget(
       dataset: schema,
       project: database,
     };
+  }
+
+  const obj = resolvable as any;
+  if (obj && typeof obj === "object") {
+    const catalog = obj.catalog ?? obj.lakehouse?.catalog;
+    const namespace = obj.namespace ?? obj.lakehouse?.namespace;
+    if (catalog !== undefined || namespace !== undefined || obj.lakehouse !== undefined) {
+      return {
+        name: obj.name,
+        project: obj.project ?? obj.database,
+        lakehouse: {
+          catalog,
+          namespace,
+        },
+        includeDependentAssertions: obj.includeDependentAssertions,
+      };
+    }
+    if (obj.database !== undefined || obj.schema !== undefined) {
+      return {
+        name: obj.name,
+        dataset: obj.dataset ?? obj.schema,
+        project: obj.project ?? obj.database,
+        includeDependentAssertions: obj.includeDependentAssertions,
+      };
+    }
   }
 
   return resolvable as dataform.ActionConfig.ITarget;
@@ -496,13 +547,23 @@ export function extractActionDetailsFromFileName(path: string): {
 }
 
 // Converts the config proto's target proto to the compiled graph proto's representation.
-export function configTargetToCompiledGraphTarget(configTarget: dataform.ActionConfig.Target) {
+export function configTargetToCompiledGraphTarget(
+  configTarget: dataform.ActionConfig.Target,
+  defaultLakehouseConfig?: dataform.IDefaultLakehouseConfig,
+) {
   const compiledGraphTarget: dataform.ITarget = { name: configTarget.name };
   if (configTarget.project) {
     compiledGraphTarget.database = configTarget.project;
   }
   if (configTarget.dataset) {
     compiledGraphTarget.schema = configTarget.dataset;
+  }
+  if (configTarget.lakehouse) {
+    const catalog = configTarget.lakehouse.catalog || defaultLakehouseConfig?.catalog || "";
+    const namespace = configTarget.lakehouse.namespace || defaultLakehouseConfig?.namespace || "";
+    if (catalog && namespace) {
+      compiledGraphTarget.schema = `${catalog}.${namespace}`;
+    }
   }
   if (configTarget.hasOwnProperty("includeDependentAssertions")) {
     compiledGraphTarget.includeDependentAssertions = configTarget.includeDependentAssertions;
@@ -524,6 +585,7 @@ export function actionConfigToCompiledGraphTarget(
     | dataform.ActionConfig.DataPreparationConfig
     | dataform.ActionConfig.DataPreparationConfig.ErrorTableConfig
     | dataform.ActionConfig.Target,
+  defaultLakehouseConfig?: dataform.IDefaultLakehouseConfig,
 ): dataform.Target {
   const compiledGraphTarget = dataform.Target.create({ name: actionConfig.name });
   if ("project" in actionConfig && actionConfig.project !== undefined) {
@@ -536,6 +598,13 @@ export function actionConfigToCompiledGraphTarget(
   }
   if ("dataset" in actionConfig && actionConfig.dataset !== undefined) {
     compiledGraphTarget.schema = actionConfig.dataset;
+  }
+  if ("lakehouse" in actionConfig && actionConfig.lakehouse) {
+    const catalog = actionConfig.lakehouse.catalog || defaultLakehouseConfig?.catalog || "";
+    const namespace = actionConfig.lakehouse.namespace || defaultLakehouseConfig?.namespace || "";
+    if (catalog && namespace) {
+      compiledGraphTarget.schema = `${catalog}.${namespace}`;
+    }
   }
   return compiledGraphTarget;
 }
