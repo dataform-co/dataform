@@ -77,19 +77,29 @@ export class Declaration extends ActionBuilder<dataform.Declaration> {
       return;
     }
 
+    const hasDatasetOrSchema = Boolean(unverifiedConfig.dataset || unverifiedConfig.schema);
     const config = this.verifyConfig(unverifiedConfig);
 
     if (!config.name) {
       throw Error("Declarations must have a populated 'name' field.");
     }
 
-    const target = actionConfigToCompiledGraphTarget(config);
-    this.proto.target = this.applySessionToTarget(
-      target,
-      session.projectConfig,
-      config.filename || filename,
+    const resolvedFilename = config.filename || filename;
+    this.validateLakehouseConfig(config, resolvedFilename, hasDatasetOrSchema);
+    const target = actionConfigToCompiledGraphTarget(
+      config,
+      session.projectConfig?.defaultLakehouseConfig,
     );
-    this.proto.canonicalTarget = this.applySessionToTarget(target, session.canonicalProjectConfig);
+    this.proto.target = this.applySessionToTarget(target, session.projectConfig, resolvedFilename, {
+      validateTarget: this.isLakehouseTarget,
+    });
+    this.proto.canonicalTarget = this.applySessionToTarget(
+      actionConfigToCompiledGraphTarget(
+        config,
+        session.canonicalProjectConfig?.defaultLakehouseConfig,
+      ),
+      session.canonicalProjectConfig,
+    );
 
     if (config.description) {
       this.description(config.description);
@@ -147,6 +157,11 @@ export class Declaration extends ActionBuilder<dataform.Declaration> {
 
   /** @hidden */
   public compile() {
+    this.validateLakehouseColumns(
+      this.proto.actionDescriptor,
+      this.proto.fileName,
+      this.proto.target,
+    );
     return verifyObjectMatchesProto(
       dataform.Declaration,
       this.proto,

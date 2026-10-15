@@ -40,6 +40,7 @@ export type ActionProto =
 export abstract class ActionBuilder<T> {
   public session: Session;
   public includeAssertionsForDependency: Map<string, boolean> = new Map();
+  protected isLakehouseTarget = false;
 
   constructor(session?: Session) {
     this.session = session;
@@ -167,6 +168,144 @@ export abstract class ActionBuilder<T> {
     return inlineAssertions;
   }
 
+  protected validateLakehouseConfig(
+    config:
+      | dataform.ActionConfig.TableConfig
+      | dataform.ActionConfig.IncrementalTableConfig
+      | dataform.ActionConfig.OperationConfig
+      | dataform.ActionConfig.DeclarationConfig,
+    fileName?: string,
+    hasDatasetOrSchema?: boolean,
+  ) {
+    if (!config.lakehouse) {
+      return;
+    }
+    this.isLakehouseTarget = true;
+    const defaultLakehouse = this.session.projectConfig?.defaultLakehouseConfig;
+    const catalog = config.lakehouse.catalog || defaultLakehouse?.catalog || "";
+    const namespace = config.lakehouse.namespace || defaultLakehouse?.namespace || "";
+    const errorTarget = dataform.Target.create({
+      database: config.project || this.session.projectConfig?.defaultDatabase || undefined,
+      schema:
+        catalog && namespace
+          ? `${catalog}.${namespace}`
+          : config.dataset || this.session.projectConfig?.defaultSchema || undefined,
+      name: config.name,
+    });
+
+    if (hasDatasetOrSchema || !!config.dataset) {
+      this.session.compileError(
+        new Error("Cannot specify both 'lakehouse' and 'dataset'/'schema' on the same action."),
+        fileName,
+        errorTarget,
+      );
+    }
+    if ("iceberg" in config && !!config.iceberg) {
+      this.session.compileError(
+        new Error("Cannot specify both 'lakehouse' and 'iceberg' on the same action."),
+        fileName,
+        errorTarget,
+      );
+    }
+    if (!catalog) {
+      this.session.compileError(
+        new Error(
+          "When defining a Lakehouse target, 'catalog' must be defined in workflow_settings.yaml or the lakehouse config block.",
+        ),
+        fileName,
+        errorTarget,
+      );
+    } else if (catalog.includes(".")) {
+      this.session.compileError(
+        new Error("Action target catalog cannot include '.'"),
+        fileName,
+        errorTarget,
+      );
+    }
+    if (!namespace) {
+      this.session.compileError(
+        new Error(
+          "When defining a Lakehouse target, 'namespace' must be defined in workflow_settings.yaml or the lakehouse config block.",
+        ),
+        fileName,
+        errorTarget,
+      );
+    } else if (namespace.includes(".")) {
+      this.session.compileError(
+        new Error("Action target namespace cannot include '.'"),
+        fileName,
+        errorTarget,
+      );
+    }
+  }
+
+  protected validateLakehouseColumns(
+    actionDescriptor: dataform.IActionDescriptor | null | undefined,
+    fileName: string,
+    target: dataform.ITarget,
+  ) {
+    if (!this.isLakehouseTarget) {
+      return;
+    }
+    if (
+      actionDescriptor?.columns?.some(
+        (column) => column.bigqueryPolicyTags && column.bigqueryPolicyTags.length > 0,
+      )
+    ) {
+      this.session.compileError(
+        new Error(
+          "Column policy tags (bigqueryPolicyTags) are not supported for Lakehouse (4-part) targets",
+        ),
+        fileName,
+        target,
+      );
+    }
+  }
+
+  protected validateLakehouseBigQueryOptions(
+    bigquery: dataform.IBigQueryOptions | null | undefined,
+    fileName: string,
+    target: dataform.ITarget,
+  ) {
+    if (!this.isLakehouseTarget || !bigquery) {
+      return;
+    }
+    if (bigquery.labels && Object.keys(bigquery.labels).length > 0) {
+      this.session.compileError(
+        new Error("BigQuery labels are not supported for Lakehouse (4-part) targets"),
+        fileName,
+        target,
+      );
+    }
+    if (bigquery.clusterBy && bigquery.clusterBy.length > 0) {
+      this.session.compileError(
+        new Error("clusterBy is not supported for Lakehouse (4-part) targets"),
+        fileName,
+        target,
+      );
+    }
+    if (
+      bigquery.requirePartitionFilter ||
+      bigquery.additionalOptions?.require_partition_filter !== undefined
+    ) {
+      this.session.compileError(
+        new Error("requirePartitionFilter is not supported for Lakehouse (4-part) targets"),
+        fileName,
+        target,
+      );
+    }
+    if (
+      bigquery.partitionExpirationDays ||
+      bigquery.additionalOptions?.partition_expiration_days !== undefined
+    ) {
+      this.session.compileError(
+        new Error("partitionExpirationDays is not supported for Lakehouse (4-part) targets"),
+        fileName,
+        target,
+      );
+    }
+  }
+
   private validateTarget(target: dataform.Target, fileName: string) {
     if (target.name.includes(".")) {
       this.session.compileError(
@@ -175,7 +314,7 @@ export abstract class ActionBuilder<T> {
         target,
       );
     }
-    if (target.schema.includes(".")) {
+    if (!this.isLakehouseTarget && target.schema.includes(".")) {
       this.session.compileError(
         new Error("Action target datasets cannot include '.'"),
         fileName,
@@ -351,6 +490,7 @@ export interface ILegacyTableConfig
   assertions?: ILegacyTableAssertions;
   uniqueKey?: string[];
   materialized?: boolean;
+  lakehouse?: dataform.ActionConfig.ILakehouseConfig;
 }
 
 /**

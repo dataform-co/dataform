@@ -313,4 +313,107 @@ publish("stg_orders", { type: "view", columns: src.columns })
       ]),
     );
   });
+
+  suite("Lakehouse (4-part) declarations", () => {
+    test("compiles declaration with lakehouse block and resolves downstream via ref()", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML,
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/lh_src.sqlx"),
+        `
+config {
+  type: "declaration",
+  project: "p",
+  lakehouse: { catalog: "c", namespace: "n" },
+  name: "src"
+}
+`,
+      );
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/downstream.sqlx"),
+        `
+config { type: "table" }
+SELECT * FROM \${ref("src")}
+`,
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.declarations[0].target)).deep.equals({
+        database: "p",
+        schema: "c.n",
+        name: "src",
+      });
+      const table = result.compile.compiledGraph.tables[0];
+      expect(table.query.trim()).equals("SELECT * FROM `p.c.n.src`");
+      expect(asPlainObject(table.dependencyTargets)).deep.equals([
+        {
+          database: "p",
+          schema: "c.n",
+          name: "src",
+        },
+      ]);
+    });
+
+    test("preserves backwards compatibility for declaration with dotted schema", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML,
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/dotted_decl.sqlx"),
+        `
+config {
+  type: "declaration",
+  database: "p",
+  schema: "c.n",
+  name: "src"
+}
+`,
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.declarations[0].target)).deep.equals({
+        database: "p",
+        schema: "c.n",
+        name: "src",
+      });
+    });
+
+    test("fails when declaration combines lakehouse and schema", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML,
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/bad_decl.sqlx"),
+        `
+config {
+  type: "declaration",
+  schema: "some_schema",
+  lakehouse: { catalog: "c", namespace: "n" },
+  name: "src"
+}
+`,
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).greaterThan(0);
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).contains(
+        "Cannot specify both 'lakehouse' and 'dataset'/'schema' on the same action.",
+      );
+    });
+  });
 });
