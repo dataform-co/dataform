@@ -11,8 +11,8 @@ export interface IEmitterOptions {
   lineageEnabled?: boolean;
   /**
    * Which surface enabled lineage. When `default`, the user never asked for
-   * lineage, so expected one-time skip notices (API disabled, missing
-   * permission, dry-run, ...) are only printed with DATAFORM_LINEAGE_DEBUG=1.
+   * lineage, so skip notices (API disabled, missing permission, dry-run, ...)
+   * and `Failed to emit` lines are only printed with DATAFORM_LINEAGE_DEBUG=1.
    */
   enablementSource?: LineageEnablementSource;
   dryRun?: boolean;
@@ -169,7 +169,7 @@ export class LineageEmitter {
         const code = (e as any).code;
         const endpoint = (e as any).lineageEndpoint || "unknown";
         const location = (e as any).lineageLocation || "unknown";
-        this.stderr.write(
+        this.writeNotice(
           `[lineage] Failed to emit lineage for action ${action.target.schema}.${action.target.name}: ` +
             `code=${gRpcCodeName(code)}(${code ?? "?"}) endpoint=${endpoint} location=${location} message=${e.message}\n`,
         );
@@ -330,9 +330,10 @@ export class LineageEmitter {
   }
 
   /**
-   * Writes a one-time skip / fallback notice. When lineage is on only because
-   * of the built-in default, the user never asked for lineage, so the notice is
-   * shown only with DATAFORM_LINEAGE_DEBUG=1 to keep their output unchanged.
+   * Writes a lineage skip, fallback or failure line. When lineage is on only
+   * because of the built-in default, the user never asked for lineage, so the
+   * line is shown only with DATAFORM_LINEAGE_DEBUG=1 to keep their output
+   * unchanged (for example in air-gapped CI or behind a proxy).
    */
   private writeNotice(msg: string): void {
     if (this.emitterOptions.enablementSource === "default" && !this.debugEnabled) {

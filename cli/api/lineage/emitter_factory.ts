@@ -47,7 +47,7 @@ export function createLineageEmitter(
   if (!enablement.enabled) {
     if (enablement.source === "cli_flag") {
       stderr.write(
-        "[lineage] Skipped lineage emission: skip_reason=invocation_override (--emit-lineage=false)\n",
+        "[lineage] Skipped lineage emission: skip_reason=invocation_override (--no-emit-lineage / --emit-lineage=false)\n",
       );
     } else if (enablement.source === "workflow_settings") {
       stderr.write(

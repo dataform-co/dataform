@@ -56,6 +56,7 @@ suite("createLineageEmitter", () => {
     expect(emitter).to.equal(undefined);
     expect(stderr.writes.length).to.equal(1);
     expect(stderr.combined).to.contain("skip_reason=invocation_override");
+    expect(stderr.combined).to.contain("--no-emit-lineage");
     expect(stderr.combined).to.contain("--emit-lineage=false");
   });
 

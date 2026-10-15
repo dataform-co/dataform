@@ -6,6 +6,7 @@ import {
   LINEAGE_RETRY_CONFIG,
   LineageEmitter,
 } from "df/cli/api/lineage/emitter";
+import { withDebugEnv } from "df/cli/api/lineage/testing/debug_env";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 
@@ -769,24 +770,6 @@ suite("LineageEmitter", () => {
       status: dataform.ActionResult.ExecutionStatus.RUNNING,
     });
 
-    async function withDebugEnv<T>(value: string | undefined, fn: () => Promise<T>): Promise<T> {
-      const originalDebug = process.env.DATAFORM_LINEAGE_DEBUG;
-      if (value === undefined) {
-        delete process.env.DATAFORM_LINEAGE_DEBUG;
-      } else {
-        process.env.DATAFORM_LINEAGE_DEBUG = value;
-      }
-      try {
-        return await fn();
-      } finally {
-        if (originalDebug === undefined) {
-          delete process.env.DATAFORM_LINEAGE_DEBUG;
-        } else {
-          process.env.DATAFORM_LINEAGE_DEBUG = originalDebug;
-        }
-      }
-    }
-
     test("hides the skip_reason notice but still disables emission for the rest of the run", async () => {
       await withDebugEnv(undefined, async () => {
         const mockClient = permissionDeniedClient();
@@ -848,12 +831,17 @@ suite("LineageEmitter", () => {
       });
     });
 
-    test("still prints the Failed to emit line for unexpected errors", async () => {
+    function invalidArgumentClient(): MockLineageClient {
+      const mockClient = new MockLineageClient();
+      const invalidArgument: any = new Error("bad payload");
+      invalidArgument.code = 3;
+      mockClient.processOpenLineageRunEventError = invalidArgument;
+      return mockClient;
+    }
+
+    test("hides the Failed to emit line for unexpected errors", async () => {
       await withDebugEnv(undefined, async () => {
-        const mockClient = new MockLineageClient();
-        const invalidArgument: any = new Error("bad payload");
-        invalidArgument.code = 3;
-        mockClient.processOpenLineageRunEventError = invalidArgument;
+        const mockClient = invalidArgumentClient();
         const stderr = new StderrCapture();
         const emitter = new LineageEmitter(
           credentials,
@@ -865,9 +853,30 @@ suite("LineageEmitter", () => {
         emitter.emitForAction(tableAction, runningResult);
         await emitter.drain();
 
-        expect(stderr.writes.length).to.equal(1);
-        expect(stderr.writes[0]).to.contain("[lineage] Failed to emit lineage");
-        expect(stderr.writes[0]).to.contain("INVALID_ARGUMENT");
+        expect(stderr.writes).to.deep.equal([]);
+        expect(mockClient.processOpenLineageRunEventCalledWith.length).to.equal(1);
+      });
+    });
+
+    test("prints the Failed to emit line when DATAFORM_LINEAGE_DEBUG=1", async () => {
+      await withDebugEnv("1", async () => {
+        const mockClient = invalidArgumentClient();
+        const stderr = new StderrCapture();
+        const emitter = new LineageEmitter(
+          credentials,
+          { lineageEnabled: true, enablementSource: "default" },
+          () => mockClient as any,
+          stderr,
+        );
+
+        emitter.emitForAction(tableAction, runningResult);
+        await emitter.drain();
+
+        const failedLines = stderr.writes.filter((w) =>
+          w.includes("[lineage] Failed to emit lineage"),
+        );
+        expect(failedLines.length).to.equal(1);
+        expect(failedLines[0]).to.contain("INVALID_ARGUMENT");
       });
     });
 
@@ -890,6 +899,27 @@ suite("LineageEmitter", () => {
             w.includes("skip_reason=api_disabled"),
           );
           expect(apiDisabledLines.length).to.equal(1);
+        });
+      });
+
+      test(`enablementSource=${explicitSource} still prints the Failed to emit line`, async () => {
+        await withDebugEnv(undefined, async () => {
+          const mockClient = invalidArgumentClient();
+          const stderr = new StderrCapture();
+          const emitter = new LineageEmitter(
+            credentials,
+            { lineageEnabled: true, enablementSource: explicitSource },
+            () => mockClient as any,
+            stderr,
+          );
+
+          emitter.emitForAction(tableAction, runningResult);
+          await emitter.drain();
+
+          const failedLines = stderr.writes.filter((w) =>
+            w.includes("[lineage] Failed to emit lineage"),
+          );
+          expect(failedLines.length).to.equal(1);
         });
       });
     }

@@ -26,7 +26,7 @@ Run `dataform` with no arguments, or `dataform help`, to print the list of comma
 - **`--version`** — prints the installed `@dataform/cli` version number.
 - **Strict parsing** — unknown commands or flags are rejected with an error, and the CLI suggests the closest matching command name for typos.
 - **Colored output** — output is colorized by default. Set `NO_COLOR=1` (or `true`/`yes`) to disable it.
-- **Lineage debug logging** — set `DATAFORM_LINEAGE_DEBUG=1` to enable verbose logging from the OpenLineage emitter used by `run`. When lineage is on only by default, skip notices (for example, Lineage API not enabled) are printed only in this mode.
+- **Lineage debug logging** — set `DATAFORM_LINEAGE_DEBUG=1` to enable verbose logging from the OpenLineage emitter used by `run`. When lineage is on only by default, skip notices (for example, Lineage API not enabled) and emit failures are printed only in this mode.
 
 ## Commands
 

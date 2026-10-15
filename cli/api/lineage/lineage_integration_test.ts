@@ -12,6 +12,7 @@ import {
   createLineageEmitter,
   ILineageEmitterFactoryInput,
 } from "df/cli/api/lineage/emitter_factory";
+import { withDebugEnv } from "df/cli/api/lineage/testing/debug_env";
 import {
   recorderProvider,
   RecordingLineageClient,
@@ -246,32 +247,6 @@ suite("--emit-lineage integration", { parallel: true }, () => {
     expect(skipLines.length).to.equal(1);
   });
 
-  test("Case 7 — default-on emit failure is fail-open and silent (no skip_reason line)", async () => {
-    // When lineage is on only by default, the user never asked for it, so an
-    // expected skip (API disabled / missing permission) must not add output.
-    const originalDebug = process.env.DATAFORM_LINEAGE_DEBUG;
-    delete process.env.DATAFORM_LINEAGE_DEBUG;
-    try {
-      const recorder = new RecordingLineageClient();
-      recorder.throwOnNextCallWith(7, "Permission Denied");
-      const stderr = new StderrCapture();
-      const emitter = createLineageEmitter(factoryInput(), stderr, recorderProvider(recorder));
-
-      const dbadapter = new FakeDbAdapter();
-      const runner = run(dbadapter, makeLinearGraph(), { lineageEmitter: emitter });
-      const runResult = await runner.result();
-      await emitter!.drain();
-
-      expect(runResult.status).to.equal(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
-      expect(dbadapter.executed.length).to.equal(2);
-      expect(stderr.writes).to.deep.equal([]);
-    } finally {
-      if (originalDebug !== undefined) {
-        process.env.DATAFORM_LINEAGE_DEBUG = originalDebug;
-      }
-    }
-  });
-
   test("Case 6 — drain is bounded when the client hangs indefinitely", async () => {
     const recorder = new RecordingLineageClient();
     recorder.hangForever();
@@ -289,6 +264,26 @@ suite("--emit-lineage integration", { parallel: true }, () => {
     const elapsed = Date.now() - started;
     // 200ms bound + generous slack for CI jitter.
     expect(elapsed).to.be.lessThan(2000);
+  });
+
+  test("Case 7 — default-on emit failure is fail-open and silent (no skip_reason line)", async () => {
+    // When lineage is on only by default, the user never asked for it, so an
+    // expected skip (API disabled / missing permission) must not add output.
+    await withDebugEnv(undefined, async () => {
+      const recorder = new RecordingLineageClient();
+      recorder.throwOnNextCallWith(7, "Permission Denied");
+      const stderr = new StderrCapture();
+      const emitter = createLineageEmitter(factoryInput(), stderr, recorderProvider(recorder));
+
+      const dbadapter = new FakeDbAdapter();
+      const runner = run(dbadapter, makeLinearGraph(), { lineageEmitter: emitter });
+      const runResult = await runner.result();
+      await emitter!.drain();
+
+      expect(runResult.status).to.equal(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
+      expect(dbadapter.executed.length).to.equal(2);
+      expect(stderr.writes).to.deep.equal([]);
+    });
   });
 });
 
