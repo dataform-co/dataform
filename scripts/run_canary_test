@@ -59,31 +59,35 @@ fi
 echo "Verifying GCS bucket exists: ${_CANARY_BUCKET}"
 if ! gcloud storage buckets describe "gs://${_CANARY_BUCKET}" --format="value(name)" >/dev/null; then
   echo "Error verifying GCS bucket ${_CANARY_BUCKET}." 1>&2
-  echo "This is most likely an infra failure, not an issue with the Dataform code"
+  echo "This is most likely an infra failure, not an issue with the Dataform code" 1>&2
   exit 1
 fi
 
 echo "Uploading Core tarball to gs://${_CANARY_BUCKET}/${TARBALL_NAME}..."
 if ! gcloud storage cp "${LOCAL_TARBALL}" "gs://${_CANARY_BUCKET}/${TARBALL_NAME}"; then
   echo "Error uploading Core tarball to GCS." 1>&2
-  echo "This is most likely an infra failure, not an issue with the Dataform code"
+  echo "This is most likely an infra failure, not an issue with the Dataform code" 1>&2
   exit 1
 fi
 
 echo "Checking that Dataform repository exists: ${_CANARY_REPO}"
-GET_REPO_HTTP_CODE=$(curl -s -o "${TMP_DIR}/get_repo_response.json" -w "%{http_code}" \
+GET_REPO_HTTP_CODE=$(curl --retry 3 --retry-all-errors --retry-delay 5 -s -o "${TMP_DIR}/get_repo_response.json" -w "%{http_code}" \
   -X GET \
   -H "Authorization: Bearer ${GCP_TOKEN}" \
   "${REPO_URL}")
+if [[ "$GET_REPO_HTTP_CODE" == 404 ]]; then 
+  echo "Dataform repository ${_CANARY_REPO} does not exist. It needs to be created on the project manually before this script can run." 1>&2
+  exit 1
+fi
 if [[ "$GET_REPO_HTTP_CODE" -lt 200 || "$GET_REPO_HTTP_CODE" -ge 300 ]]; then
   echo "Error checking Dataform repository (HTTP ${GET_REPO_HTTP_CODE}):" 1>&2
-  echo "This is most likely an infra failure, not an issue with the Dataform code"
+  echo "This is most likely an infra failure, not an issue with the Dataform code" 1>&2
   cat "${TMP_DIR}/get_repo_response.json" 1>&2
   exit 1
 fi
 
 echo "Creating temporary Dataform workspace: ${WORKSPACE_ID}"
-CREATE_WS_HTTP_CODE=$(curl -s -o "${TMP_DIR}/create_ws_response.json" -w "%{http_code}" \
+CREATE_WS_HTTP_CODE=$(curl --retry 3 --retry-all-errors --retry-delay 5 -s -o "${TMP_DIR}/create_ws_response.json" -w "%{http_code}" \
   -X POST \
   -H "Authorization: Bearer ${GCP_TOKEN}" \
   -H "Content-Type: application/json" \
@@ -91,7 +95,7 @@ CREATE_WS_HTTP_CODE=$(curl -s -o "${TMP_DIR}/create_ws_response.json" -w "%{http
   -d "{}")
 if [[ "$CREATE_WS_HTTP_CODE" -lt 200 || "$CREATE_WS_HTTP_CODE" -ge 300 ]]; then
   echo "Error creating Dataform workspace (HTTP ${CREATE_WS_HTTP_CODE}):" 1>&2
-  echo "This is most likely an infra failure, not an issue with the Dataform code"
+  echo "This is most likely an infra failure, not an issue with the Dataform code" 1>&2
   cat "${TMP_DIR}/create_ws_response.json" 1>&2
   exit 1
 fi
@@ -101,7 +105,7 @@ write_workspace_file() {
   local rel_path="$1"
   local encoded_contents="$2"
   local write_http_code
-  write_http_code=$(curl -s -o "${TMP_DIR}/write_file_response.json" -w "%{http_code}" \
+  write_http_code=$(curl --retry 3 --retry-all-errors --retry-delay 5 -s -o "${TMP_DIR}/write_file_response.json" -w "%{http_code}" \
     -X POST \
     -H "Authorization: Bearer ${GCP_TOKEN}" \
     -H "Content-Type: application/json" \
@@ -110,7 +114,7 @@ write_workspace_file() {
 
   if [[ "$write_http_code" -lt 200 || "$write_http_code" -ge 300 ]]; then
     echo "Error uploading ${rel_path} to workspace (HTTP ${write_http_code}):" 1>&2
-    echo "This is most likely an infra failure, not an issue with the Dataform code"
+    echo "This is most likely an infra failure, not an issue with the Dataform code" 1>&2
     cat "${TMP_DIR}/write_file_response.json" 1>&2
     exit 1
   fi
@@ -161,13 +165,13 @@ INSTALL_HTTP_CODE=$(curl --retry 3 --retry-all-errors --retry-delay 5 -s -o "${T
   -d "{}")
 if [[ "$INSTALL_HTTP_CODE" -lt 200 || "$INSTALL_HTTP_CODE" -ge 300 ]]; then
   echo "Error calling workspaces.installNpmPackages (HTTP ${INSTALL_HTTP_CODE}):" 1>&2
-  echo "This is most likely an infra or npm failure, not an issue with the Dataform code"
+  echo "This is most likely an infra or npm failure, not an issue with the Dataform code" 1>&2
   cat "${TMP_DIR}/install_response.json" 1>&2
   exit 1
 fi
 
 echo "Compiling canary project via dataform.googleapis.com..."
-COMPILE_HTTP_CODE=$(curl -s -o "${TMP_DIR}/compile_response.json" -w "%{http_code}" \
+COMPILE_HTTP_CODE=$(curl --retry 3 --retry-all-errors --retry-delay 5 -s -o "${TMP_DIR}/compile_response.json" -w "%{http_code}" \
   -X POST \
   -H "Authorization: Bearer ${GCP_TOKEN}" \
   -H "Content-Type: application/json" \
