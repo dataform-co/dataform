@@ -1,6 +1,6 @@
 import { expect } from "chai";
-import { randomBytes } from "crypto";
 import * as fs from "fs-extra";
+import * as os from "os";
 import * as path from "path";
 
 import * as dfapi from "df/cli/api";
@@ -8,12 +8,11 @@ import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 import { INTEGRATION_TEST_LOCATION, INTEGRATION_TEST_PROJECT } from "df/cli/index_test_base";
 import { dataform } from "df/protos/ts";
 import { suite, test, writeDefinitionFile } from "df/testing";
+import { dropDataset, makeSuffix } from "df/tests/integration/utils";
 
 suite("@dataform/integration/jit", { parallel: true }, () => {
   const credentials = dfapi.credentials.read("test_credentials/bigquery.json");
   const dbadapter = new BigQueryDbAdapter(credentials);
-  // Unique per run, so that concurrent runs (e.g. two CI builds) never share a dataset.
-  const runId = randomBytes(4).toString("hex");
 
   function setUpProject(projectDir: string, datasetName: string, tableName: string): void {
     fs.writeFileSync(
@@ -50,15 +49,25 @@ defaultDataset: ${datasetName}
     name: string,
     fn: (projectDir: string, datasetName: string) => Promise<void>,
   ) {
-    const projectDir = fs.mkdtempSync(path.join(process.env.TEST_TMPDIR, `${name}_`));
-    const datasetName = `df_integration_test_${name}_${runId}`;
+    // TEST_TMPDIR is set by Bazel.
+    const tmpDir = process.env.TEST_TMPDIR || os.tmpdir();
+    const projectDir = fs.mkdtempSync(path.join(tmpDir, `${name}_`));
+    const datasetName = `df_integration_test_${name}_${makeSuffix()}`;
     try {
       await fn(projectDir, datasetName);
     } finally {
-      fs.removeSync(projectDir);
-      await dbadapter.execute(
-        `drop schema if exists \`${INTEGRATION_TEST_PROJECT}.${datasetName}\` cascade`,
-      );
+      // Best effort: a cleanup error mustn't replace the error that failed the test, and one
+      // cleanup step failing mustn't skip the other.
+      try {
+        fs.removeSync(projectDir);
+      } catch (e) {
+        process.stderr.write(`Could not remove ${projectDir}: ${e}\n`);
+      }
+      try {
+        await dropDataset(dbadapter, datasetName);
+      } catch (e) {
+        process.stderr.write(`Could not drop dataset ${datasetName}: ${e}\n`);
+      }
     }
   }
 

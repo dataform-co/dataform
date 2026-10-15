@@ -1,5 +1,4 @@
 import { expect } from "chai";
-import { randomBytes } from "crypto";
 
 import * as dfapi from "df/cli/api";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
@@ -7,19 +6,9 @@ import { INTEGRATION_TEST_PROJECT } from "df/cli/index_test_base";
 import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
-import { compile, keyBy } from "df/tests/integration/utils";
+import { compile, dropDataset, keyBy, makeSuffix } from "df/tests/integration/utils";
 
 const GRAPH_NAME = "LibraryGraph";
-
-function makeSuffix() {
-  return process.env.GITHUB_RUN_ID ?? process.env.BUILD_ID ?? randomBytes(4).toString("hex");
-}
-
-async function dropDataset(dbadapter: BigQueryDbAdapter, dataset: string) {
-  await dbadapter.execute(
-    `drop schema if exists \`${INTEGRATION_TEST_PROJECT}.${dataset}\` cascade`,
-  );
-}
 
 suite("@dataform/integration/property_graph", { parallel: true }, ({ before, after }) => {
   const credentials = dfapi.credentials.read("test_credentials/bigquery.json");

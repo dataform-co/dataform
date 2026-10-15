@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import { randomBytes } from "crypto";
 
 import * as dfapi from "df/cli/api";
 import * as dbadapters from "df/cli/api/dbadapters";
@@ -13,6 +14,23 @@ export function keyBy<V>(values: V[], keyFn: (value: V) => string): { [key: stri
       return map;
     },
     {} as { [key: string]: V },
+  );
+}
+
+// Suffix for resources (e.g. datasets) that one run of a test creates, so that concurrent runs never
+// share them. It starts with the CI run ID if there is one, so that a leftover resource can be traced
+// back to its run, and ends with random bytes, so that it's unique even within one CI run. Other
+// characters than letters, digits and underscores (e.g. the dashes in a Cloud Build ID) are replaced,
+// because BigQuery doesn't allow them in dataset names.
+export function makeSuffix() {
+  const runId = process.env.GITHUB_RUN_ID ?? process.env.BUILD_ID;
+  const random = randomBytes(4).toString("hex");
+  return (runId ? `${runId}_${random}` : random).replace(/[^A-Za-z0-9_]/g, "_");
+}
+
+export async function dropDataset(dbadapter: dbadapters.IDbAdapter, dataset: string) {
+  await dbadapter.execute(
+    `drop schema if exists \`${INTEGRATION_TEST_PROJECT}.${dataset}\` cascade`,
   );
 }
 
