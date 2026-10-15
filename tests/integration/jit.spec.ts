@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import { randomBytes } from "crypto";
 import * as fs from "fs-extra";
 import * as path from "path";
 
@@ -7,12 +8,12 @@ import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 import { INTEGRATION_TEST_LOCATION, INTEGRATION_TEST_PROJECT } from "df/cli/index_test_base";
 import { dataform } from "df/protos/ts";
 import { suite, test, writeDefinitionFile } from "df/testing";
-import { TmpDirFixture } from "df/testing/fixtures";
 
-suite("@dataform/integration/jit", { parallel: true }, ({ afterEach }) => {
+suite("@dataform/integration/jit", { parallel: true }, () => {
   const credentials = dfapi.credentials.read("test_credentials/bigquery.json");
   const dbadapter = new BigQueryDbAdapter(credentials);
-  const tmpDirFixture = new TmpDirFixture(afterEach);
+  // Unique per run, so that concurrent runs (e.g. two CI builds) never share a dataset.
+  const runId = randomBytes(4).toString("hex");
 
   function setUpProject(projectDir: string, datasetName: string, tableName: string): void {
     fs.writeFileSync(
@@ -42,67 +43,78 @@ defaultDataset: ${datasetName}
     );
   }
 
+  // Each test owns its project directory and its dataset, and removes both when it ends. The tests
+  // run in parallel, so a cleanup shared by the suite (like TmpDirFixture with afterEach) would
+  // delete the project of a test that's still running.
+  async function withJitProject(
+    name: string,
+    fn: (projectDir: string, datasetName: string) => Promise<void>,
+  ) {
+    const projectDir = fs.mkdtempSync(path.join(process.env.TEST_TMPDIR, `${name}_`));
+    const datasetName = `df_integration_test_${name}_${runId}`;
+    try {
+      await fn(projectDir, datasetName);
+    } finally {
+      fs.removeSync(projectDir);
+      await dbadapter.execute(
+        `drop schema if exists \`${INTEGRATION_TEST_PROJECT}.${datasetName}\` cascade`,
+      );
+    }
+  }
+
+  function expectSuccessfulRun(runResult: dataform.IRunResult) {
+    // Include the action results, so that a failure shows the underlying error message.
+    expect(
+      dataform.RunResult.ExecutionStatus[runResult.status],
+      JSON.stringify(runResult.actions, null, 2),
+    ).eql(dataform.RunResult.ExecutionStatus[dataform.RunResult.ExecutionStatus.SUCCESSFUL]);
+  }
+
   test("JiT execution e2e", { timeout: 120000 }, async () => {
-    // Create a simple project with a JiT table
-    const projectDir = tmpDirFixture.createNewTmpDir();
-    const datasetName = "df_integration_test_jit";
-    const tableName = "jit_table";
-    setUpProject(projectDir, datasetName, tableName);
+    await withJitProject("jit", async (projectDir, datasetName) => {
+      // Create a simple project with a JiT table
+      const tableName = "jit_table";
+      setUpProject(projectDir, datasetName, tableName);
 
-    const compiledGraph = await dfapi.compile({ projectDir });
+      const compiledGraph = await dfapi.compile({ projectDir });
+      const executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
+      const runResult = await dfapi.run(dbadapter, executionGraph, { projectDir }).result();
 
-    // Drop dataset to start fresh
-    await dbadapter.execute(
-      `drop schema if exists \`${INTEGRATION_TEST_PROJECT}.${datasetName}\` cascade`,
-    );
+      expectSuccessfulRun(runResult);
 
-    const executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
-    const runResult = await dfapi.run(dbadapter, executionGraph, { projectDir }).result();
-
-    expect(dataform.RunResult.ExecutionStatus[runResult.status]).eql(
-      dataform.RunResult.ExecutionStatus[dataform.RunResult.ExecutionStatus.SUCCESSFUL],
-    );
-
-    const rows = await dbadapter
-      .execute(`SELECT * FROM \`${INTEGRATION_TEST_PROJECT}.${datasetName}.${tableName}\``)
-      .then((res) => res.rows);
-    expect(rows).to.eql([{ id: 1 }]);
+      const rows = await dbadapter
+        .execute(`SELECT * FROM \`${INTEGRATION_TEST_PROJECT}.${datasetName}.${tableName}\``)
+        .then((res) => res.rows);
+      expect(rows).to.eql([{ id: 1 }]);
+    });
   });
 
   test("JiT dry run integration", { timeout: 120000 }, async () => {
-    // Create a simple project with a JiT table
-    const projectDir = tmpDirFixture.createNewTmpDir();
-    const datasetName = "df_integration_test_jit_dry_run";
-    const tableName = "jit_table_dry_run";
-    setUpProject(projectDir, datasetName, tableName);
+    await withJitProject("jit_dry_run", async (projectDir, datasetName) => {
+      // Create a simple project with a JiT table
+      const tableName = "jit_table_dry_run";
+      setUpProject(projectDir, datasetName, tableName);
 
-    const compiledGraph = await dfapi.compile({ projectDir });
+      const compiledGraph = await dfapi.compile({ projectDir });
+      const executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
 
-    // Drop dataset to start fresh
-    await dbadapter.execute(
-      `drop schema if exists \`${INTEGRATION_TEST_PROJECT}.${datasetName}\` cascade`,
-    );
+      const runResult = await dfapi
+        .run(dbadapter, executionGraph, {
+          projectDir,
+          bigquery: { dryRun: true },
+        })
+        .result();
 
-    const executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
+      expectSuccessfulRun(runResult);
 
-    const runResult = await dfapi
-      .run(dbadapter, executionGraph, {
-        projectDir,
-        bigquery: { dryRun: true },
-      })
-      .result();
-
-    expect(dataform.RunResult.ExecutionStatus[runResult.status]).eql(
-      dataform.RunResult.ExecutionStatus[dataform.RunResult.ExecutionStatus.SUCCESSFUL],
-    );
-
-    // Verify that the table was NOT created
-    const tables = await dbadapter.schemas(INTEGRATION_TEST_PROJECT).then((schemas) => {
-      if (!schemas.includes(datasetName)) {
-        return [];
-      }
-      return dbadapter.tables(INTEGRATION_TEST_PROJECT, datasetName);
+      // Verify that the table was NOT created
+      const tables = await dbadapter.schemas(INTEGRATION_TEST_PROJECT).then((schemas) => {
+        if (!schemas.includes(datasetName)) {
+          return [];
+        }
+        return dbadapter.tables(INTEGRATION_TEST_PROJECT, datasetName);
+      });
+      expect(tables.length).to.equal(0);
     });
-    expect(tables.length).to.equal(0);
   });
 });
