@@ -130,7 +130,7 @@ function factoryInput(
 }
 
 suite("--emit-lineage integration", { parallel: true }, () => {
-  test("Case 1 — CLI flag alone enables emission (2*N recorder calls, pairing invariant)", async () => {
+  test("CLI flag alone enables emission (2*N recorder calls, pairing invariant)", async () => {
     const recorder = new RecordingLineageClient();
     const stderr = new StderrCapture();
     const emitter = createLineageEmitter(
@@ -176,7 +176,7 @@ suite("--emit-lineage integration", { parallel: true }, () => {
     }
   });
 
-  test("Case 2 — workflow lineage.enabled=true (no CLI flag) enables emission", async () => {
+  test("workflow lineage.enabled=true (no CLI flag) enables emission", async () => {
     const recorder = new RecordingLineageClient();
     const emitter = createLineageEmitter(
       factoryInput({ workflowLineageEnabled: true }),
@@ -192,7 +192,7 @@ suite("--emit-lineage integration", { parallel: true }, () => {
     expect(recorder.calls.length).to.equal(4);
   });
 
-  test("Case 3 — neither flag nor config enables emission by default", async () => {
+  test("neither flag nor config enables emission by default", async () => {
     const recorder = new RecordingLineageClient();
     const stderr = new StderrCapture();
     const emitter = createLineageEmitter(factoryInput(), stderr, recorderProvider(recorder));
@@ -206,7 +206,7 @@ suite("--emit-lineage integration", { parallel: true }, () => {
     expect(stderr.contains("skip_reason=")).to.equal(false);
   });
 
-  test("Case 4 — CLI --emit-lineage=false overrides workflow lineage.enabled=true", async () => {
+  test("CLI --emit-lineage=false overrides workflow lineage.enabled=true", async () => {
     const recorder = new RecordingLineageClient();
     const stderr = new StderrCapture();
     const emitter = createLineageEmitter(
@@ -221,7 +221,7 @@ suite("--emit-lineage integration", { parallel: true }, () => {
     expect(stderr.contains("skip_reason=invocation_override")).to.equal(true);
   });
 
-  test("Case 5 — lineage emit failure is fail-open (run exits SUCCESSFUL), skip_reason=api_disabled printed once", async () => {
+  test("lineage emit failure is fail-open (run exits SUCCESSFUL), skip_reason=api_disabled printed once", async () => {
     // Fail-open contract: any lineage emission failure — whatever the gRPC
     // code — must not affect the workflow status. The dataform run continues,
     // dbadapter still executes every action. When multiple in-flight emits
@@ -247,7 +247,7 @@ suite("--emit-lineage integration", { parallel: true }, () => {
     expect(skipLines.length).to.equal(1);
   });
 
-  test("Case 6 — drain is bounded when the client hangs indefinitely", async () => {
+  test("drain is bounded when the client hangs indefinitely", async () => {
     const recorder = new RecordingLineageClient();
     recorder.hangForever();
     const emitter = createLineageEmitter(
@@ -266,7 +266,7 @@ suite("--emit-lineage integration", { parallel: true }, () => {
     expect(elapsed).to.be.lessThan(2000);
   });
 
-  test("Case 7 — default-on emit failure is fail-open and silent (no skip_reason line)", async () => {
+  test("default-on emit failure is fail-open and silent (no skip_reason line)", async () => {
     // When lineage is on only by default, the user never asked for it, so an
     // expected skip (API disabled / missing permission) must not add output.
     await withDebugEnv(undefined, async () => {

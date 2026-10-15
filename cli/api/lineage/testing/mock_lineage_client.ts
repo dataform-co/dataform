@@ -64,7 +64,7 @@ export class RecordingLineageClient {
 /**
  * Returns a LineageClientProvider-shaped factory that always yields the given
  * recorder, and remembers every (projectId, endpoint) pair the emitter asks
- * for so tests can assert on endpoint selection (case 5 in T37).
+ * for so tests can assert on endpoint selection.
  */
 export function recorderProvider(
   recorder: RecordingLineageClient,
