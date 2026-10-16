@@ -33,6 +33,11 @@ export interface ILineageEmitterFactoryInput {
  * `[lineage] Skipped lineage emission: skip_reason=<label>` line is written to
  * stderr so a troubleshooting user can see WHY nothing was emitted. When
  * neither surface has been touched, we stay silent (opt-in is the default).
+ *
+ * Cloud Data Lineage is not available outside the Google Default Universe
+ * (e.g. GDC / TPC). If credentials set a non-empty `universeDomain`, emission
+ * is skipped with `skip_reason=unsupported_universe` even when lineage is
+ * otherwise enabled.
  */
 export function createLineageEmitter(
   input: ILineageEmitterFactoryInput,
@@ -63,6 +68,16 @@ export function createLineageEmitter(
       `Warning: Lineage emission is enabled, but no location was specified. Lineage requires a ` +
         `specific location, set either as "defaultLocation" in workflow_settings.yaml or as ` +
         `"location" in .df-credentials.json. Lineage will not be emitted.\n`,
+    );
+    return undefined;
+  }
+
+  // Non-empty universeDomain means a non-GDU target; Lineage API is unavailable there.
+  if (input.readCredentials.universeDomain) {
+    stderr.write(
+      "[lineage] Skipped lineage emission: skip_reason=unsupported_universe " +
+        "(Cloud Data Lineage API is not available when credentials.universeDomain " +
+        "targets a non-default universe)\n",
     );
     return undefined;
   }
