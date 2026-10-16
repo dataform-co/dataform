@@ -5,6 +5,8 @@ import { IHookHandler } from "df/testing";
 
 // TmpDirFixture can be used to create unique temporary directories which will be cleaned up
 // at the end of a test run. Intended for use within bazel tests.
+// In a { parallel: true } suite, pass `after`, not `afterEach`: the cleanup deletes the directories
+// of all tests, including ones that are still running.
 export class TmpDirFixture {
   private static dirCounter = 0;
 
