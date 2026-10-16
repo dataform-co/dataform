@@ -49,7 +49,7 @@ suite("LineageEmitter", () => {
     const mockClient = new MockLineageClient();
     const emitter = new LineageEmitter(
       credentials,
-      { lineageEnabled: true, projectDir: "/workspaces/my-dataform-project" },
+      { lineageEnabled: true, location: "US", projectDir: "/workspaces/my-dataform-project" },
       () => mockClient as any,
     );
 
@@ -170,7 +170,7 @@ suite("LineageEmitter", () => {
     const mockClient = new MockLineageClient();
     const emitter = new LineageEmitter(
       credentials,
-      { lineageEnabled: true, projectDir: "/workspaces/my-dataform-project" },
+      { lineageEnabled: true, location: "US", projectDir: "/workspaces/my-dataform-project" },
       () => mockClient as any,
     );
 
@@ -243,7 +243,7 @@ suite("LineageEmitter", () => {
     const mockClient = new MockLineageClient();
     const emitter = new LineageEmitter(
       credentials,
-      { lineageEnabled: true },
+      { lineageEnabled: true, location: "US" },
       () => mockClient as any,
     );
 
@@ -292,7 +292,7 @@ suite("LineageEmitter", () => {
     const mockClient = new MockLineageClient();
     const emitter = new LineageEmitter(
       credentials,
-      { lineageEnabled: true },
+      { lineageEnabled: true, location: "US" },
       () => mockClient as any,
     );
 
@@ -327,7 +327,7 @@ suite("LineageEmitter", () => {
     const mockClient = new MockLineageClient();
     const emitter = new LineageEmitter(
       credentials,
-      { lineageEnabled: true },
+      { lineageEnabled: true, location: "US" },
       () => mockClient as any,
     );
 
@@ -364,7 +364,7 @@ suite("LineageEmitter", () => {
     const mockClient = new MockLineageClient();
     const emitter = new LineageEmitter(
       credentials,
-      { lineageEnabled: true },
+      { lineageEnabled: true, location: "US" },
       () => mockClient as any,
     );
 
@@ -395,7 +395,7 @@ suite("LineageEmitter", () => {
 
     const emitter = new LineageEmitter(
       credentials,
-      { lineageEnabled: true },
+      { lineageEnabled: true, location: "US" },
       () => mockClient as any,
     );
 
@@ -440,7 +440,7 @@ suite("LineageEmitter", () => {
 
     const emitter = new LineageEmitter(
       credentials,
-      { lineageEnabled: true },
+      { lineageEnabled: true, location: "US" },
       () => mockClient as any,
     );
 
@@ -480,7 +480,11 @@ suite("LineageEmitter", () => {
       return mockClient as any;
     };
 
-    const emitter = new LineageEmitter(credentials, { lineageEnabled: true }, provider);
+    const emitter = new LineageEmitter(
+      credentials,
+      { lineageEnabled: true, location: "US" },
+      provider,
+    );
 
     const action = dataform.ExecutionAction.create({
       target: { database: "proj", schema: "schema", name: "table" },
@@ -517,7 +521,11 @@ suite("LineageEmitter", () => {
       return mockClient as any;
     };
 
-    const emitter = new LineageEmitter(credentials, { lineageEnabled: true }, provider);
+    const emitter = new LineageEmitter(
+      credentials,
+      { lineageEnabled: true, location: "US" },
+      provider,
+    );
 
     const action = dataform.ExecutionAction.create({
       target: { database: "proj", schema: "schema", name: "table" },
@@ -565,7 +573,11 @@ suite("LineageEmitter", () => {
       return mockClient as any;
     };
 
-    const emitter = new LineageEmitter(credentials, { lineageEnabled: true }, provider);
+    const emitter = new LineageEmitter(
+      credentials,
+      { lineageEnabled: true, location: "US" },
+      provider,
+    );
 
     const action = dataform.ExecutionAction.create({
       target: { database: "proj", schema: "schema", name: "table" },
@@ -589,7 +601,7 @@ suite("LineageEmitter", () => {
     const stderr = new StderrCapture();
     const emitter = new LineageEmitter(
       credentials,
-      { lineageEnabled: true, dryRun: true },
+      { lineageEnabled: true, location: "US", dryRun: true },
       () => mockClient as any,
       stderr,
     );
@@ -622,7 +634,7 @@ suite("LineageEmitter", () => {
     const mockClient = new MockLineageClient();
     const emitter = new LineageEmitter(
       credentials,
-      { lineageEnabled: true, projectDir: "/workspaces/my-dataform-project" },
+      { lineageEnabled: true, location: "US", projectDir: "/workspaces/my-dataform-project" },
       () => mockClient as any,
     );
 
@@ -661,7 +673,7 @@ suite("LineageEmitter", () => {
     const stderr = new StderrCapture();
     const emitter = new LineageEmitter(
       credentials,
-      { lineageEnabled: true },
+      { lineageEnabled: true, location: "US" },
       () => mockClient as any,
       stderr,
     );
@@ -827,7 +839,7 @@ suite("LineageEmitter", () => {
 
     const emitter = new LineageEmitter(
       credentials,
-      { lineageEnabled: true },
+      { lineageEnabled: true, location: "US" },
       () => mockClient as any,
       stderr,
     );
@@ -861,7 +873,7 @@ suite("LineageEmitter", () => {
 
     const emitter = new LineageEmitter(
       credentials,
-      { lineageEnabled: true },
+      { lineageEnabled: true, location: "US" },
       () => mockClient as any,
       stderr,
     );
@@ -898,7 +910,7 @@ suite("LineageEmitter", () => {
 
     const emitter = new LineageEmitter(
       credentials,
-      { lineageEnabled: true },
+      { lineageEnabled: true, location: "US" },
       () => mockClient as any,
       stderr,
     );
@@ -940,7 +952,7 @@ suite("LineageEmitter", () => {
 
     const emitter = new LineageEmitter(
       credentials,
-      { lineageEnabled: true },
+      { lineageEnabled: true, location: "US" },
       () => mockClient as any,
       stderr,
     );
@@ -965,7 +977,7 @@ suite("LineageEmitter", () => {
     const mockClient = new MockLineageClient();
     const emitter = new LineageEmitter(
       credentials,
-      { lineageEnabled: true, projectDir: "/workspaces/My Project! v2" },
+      { lineageEnabled: true, location: "US", projectDir: "/workspaces/My Project! v2" },
       () => mockClient as any,
     );
 
@@ -997,7 +1009,7 @@ suite("LineageEmitter", () => {
     const mockClient = new MockLineageClient();
     const emitter = new LineageEmitter(
       credentials,
-      { lineageEnabled: true },
+      { lineageEnabled: true, location: "US" },
       () => mockClient as any,
     );
 
@@ -1041,7 +1053,11 @@ suite("LineageEmitter", () => {
       return mockClient as any;
     };
 
-    const emitter = new LineageEmitter(credentials, { lineageEnabled: true }, provider);
+    const emitter = new LineageEmitter(
+      credentials,
+      { lineageEnabled: true, location: "US" },
+      provider,
+    );
     const action = dataform.ExecutionAction.create({
       target: { database: "proj", schema: "schema", name: "table" },
       type: "table",
@@ -1074,7 +1090,7 @@ suite("LineageEmitter", () => {
 
     const emitter = new LineageEmitter(
       credentials,
-      { lineageEnabled: true },
+      { lineageEnabled: true, location: "US" },
       () => mockClient as any,
       stderr,
     );
@@ -1114,7 +1130,7 @@ suite("LineageEmitter", () => {
 
       const emitter = new LineageEmitter(
         credentials,
-        { lineageEnabled: true },
+        { lineageEnabled: true, location: "US" },
         () => mockClient as any,
       );
       const action = dataform.ExecutionAction.create({
@@ -1155,7 +1171,11 @@ suite("LineageEmitter", () => {
       return mockClient as any;
     };
 
-    const emitter = new LineageEmitter(credentials, { lineageEnabled: true }, provider);
+    const emitter = new LineageEmitter(
+      credentials,
+      { lineageEnabled: true, location: "US" },
+      provider,
+    );
     const action = dataform.ExecutionAction.create({
       target: { database: "proj", schema: "schema", name: "table" },
       type: "table",
@@ -1199,7 +1219,12 @@ suite("LineageEmitter", () => {
       return mockClient as any;
     };
 
-    const emitter = new LineageEmitter(credentials, { lineageEnabled: true }, provider, stderr);
+    const emitter = new LineageEmitter(
+      credentials,
+      { lineageEnabled: true, location: "US" },
+      provider,
+      stderr,
+    );
     const action = dataform.ExecutionAction.create({
       target: { database: "proj", schema: "myschema", name: "mytable" },
       type: "table",
@@ -1226,7 +1251,7 @@ suite("LineageEmitter", () => {
       const stderr = new StderrCapture();
       const emitter = new LineageEmitter(
         credentials,
-        { lineageEnabled: true },
+        { lineageEnabled: true, location: "US" },
         () => mockClient as any,
         stderr,
       );
@@ -1278,7 +1303,7 @@ suite("LineageEmitter", () => {
       const stderr = new StderrCapture();
       const emitter = new LineageEmitter(
         credentials,
-        { lineageEnabled: true },
+        { lineageEnabled: true, location: "US" },
         () => mockClient as any,
         stderr,
       );
@@ -1321,7 +1346,11 @@ suite("LineageEmitter", () => {
       return mockClient as any;
     };
 
-    const emitter = new LineageEmitter(credentials, { lineageEnabled: true }, provider);
+    const emitter = new LineageEmitter(
+      credentials,
+      { lineageEnabled: true, location: "US" },
+      provider,
+    );
     const action = dataform.ExecutionAction.create({
       target: { database: "proj", schema: "schema", name: "table" },
       type: "table",

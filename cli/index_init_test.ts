@@ -37,9 +37,9 @@ suite("init command", ({ afterEach }) => {
     expect(fs.readFileSync(path.join(projectDir, "workflow_settings.yaml"), "utf8")).to
       .equal(`dataformCoreVersion: ${version}
 defaultProject: dataform-database
-defaultLocation: us-central1
 defaultDataset: dataform
 defaultAssertionDataset: dataform_assertions
+defaultLocation: us-central1
 `);
   });
 

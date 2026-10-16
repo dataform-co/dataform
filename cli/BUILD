@@ -124,6 +124,7 @@ ts_test_suite(
     tags = ["integration"],
     deps = [
         ":index_test_base",
+        "//:node_modules/@google-cloud/bigquery",
         "//:node_modules/@types/chai",
         "//:node_modules/@types/fs-extra",
         "//:node_modules/@types/js-yaml",

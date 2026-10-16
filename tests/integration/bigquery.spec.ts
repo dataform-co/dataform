@@ -8,8 +8,9 @@ import { suite, test } from "df/testing";
 import { cleanWarehouse, compile } from "df/tests/integration/utils";
 
 suite("@dataform/integration/bigquery", { parallel: true }, () => {
+  const location = "US";
   const credentials = dfapi.credentials.read("test_credentials/bigquery.json");
-  const dbadapter = new BigQueryDbAdapter(credentials);
+  const dbadapter = new BigQueryDbAdapter(credentials, { location });
 
   test("run unit tests", async () => {
     const compiledGraph = await compile("tests/integration/bigquery_project", "unit_tests");

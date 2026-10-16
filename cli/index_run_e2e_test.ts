@@ -1,6 +1,6 @@
+import { BigQuery } from "@google-cloud/bigquery";
 import { expect } from "chai";
 import * as fs from "fs-extra";
-import { dump as dumpYaml, load as loadYaml } from "js-yaml";
 import * as path from "path";
 
 import {
@@ -9,6 +9,7 @@ import {
   INTEGRATION_TEST_LOCATION,
   INTEGRATION_TEST_PROJECT,
   INTEGRATION_TEST_RESERVATION,
+  removeDefaultLocation,
   runCli,
   setupProject,
 } from "df/cli/index_test_base";
@@ -546,6 +547,163 @@ DROP SCHEMA IF EXISTS \`\${dataform.projectConfig.defaultDatabase}.\${dataform.p
             "--actions=teardown_schema",
           ]);
         }
+      },
+    );
+  });
+
+  suite("location resolution", ({ beforeEach, afterEach: suiteAfterEach }) => {
+    const otherLocation = INTEGRATION_TEST_LOCATION.toUpperCase() === "EU" ? "US" : "EU";
+    const baseCredentials = JSON.parse(fs.readFileSync(CREDENTIALS_PATH, "utf8"));
+    const bigquery = new BigQuery({
+      projectId: INTEGRATION_TEST_PROJECT,
+      credentials: baseCredentials.credentials && JSON.parse(baseCredentials.credentials),
+    });
+
+    let datasetsToCleanUp: string[];
+
+    beforeEach("reset datasets to clean up", () => {
+      datasetsToCleanUp = [];
+    });
+
+    suiteAfterEach("clean up datasets", async () => {
+      await Promise.all(
+        datasetsToCleanUp.map((dataset) =>
+          bigquery
+            .dataset(dataset)
+            .delete({ force: true })
+            .catch(() => undefined),
+        ),
+      );
+    });
+
+    function uniqueDataset(): string {
+      const dataset = `dataform_e2e_loc_${Math.random().toString(36).substring(7)}`;
+      datasetsToCleanUp.push(dataset);
+      return dataset;
+    }
+
+    function credentialsWithLocation(location: string | undefined): string {
+      const credentialsPath = path.join(tmpDirFixture.createNewTmpDir(), "credentials.json");
+      const credentials = { ...baseCredentials, location };
+      if (!location) {
+        delete credentials.location;
+      }
+      fs.writeFileSync(credentialsPath, JSON.stringify(credentials));
+      return credentialsPath;
+    }
+
+    async function setupLocationProject(
+      dataset: string,
+      definitionFileName: string,
+      definition: string,
+    ): Promise<string> {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      await setupProject(tmpDirFixture, projectDir, { defaultDataset: dataset });
+      writeDefinitionFile(projectDir, definitionFileName, definition);
+      return projectDir;
+    }
+
+    async function runProject(projectDir: string, credentialsPath: string, args: string[] = []) {
+      const runResult = await runCli("run", [
+        projectDir,
+        "--credentials",
+        credentialsPath,
+        ...args,
+      ]);
+      expect(
+        runResult.exitCode,
+        `stdout:\n${runResult.stdout}\nstderr:\n${runResult.stderr}`,
+      ).equals(0);
+      return runResult;
+    }
+
+    async function expectDatasetLocation(dataset: string, expectedLocation: string) {
+      const [datasetMetadata] = await bigquery.dataset(dataset).getMetadata();
+      expect(datasetMetadata.location).equals(expectedLocation);
+    }
+
+    const simpleTable = `config { type: "table" }\nSELECT 1 AS x`;
+
+    test(
+      "--default-location takes priority over workflow_settings.yaml and credentials",
+      { timeout: 180000 },
+      async () => {
+        const dataset = uniqueDataset();
+        // workflow_settings.yaml has defaultLocation set to INTEGRATION_TEST_LOCATION by setupProject.
+        const projectDir = await setupLocationProject(dataset, "example.sqlx", simpleTable);
+
+        await runProject(projectDir, credentialsWithLocation(INTEGRATION_TEST_LOCATION), [
+          `--default-location=${otherLocation}`,
+        ]);
+
+        await expectDatasetLocation(dataset, otherLocation);
+      },
+    );
+
+    test(
+      "workflow_settings.yaml defaultLocation takes priority over credentials",
+      { timeout: 180000 },
+      async () => {
+        const dataset = uniqueDataset();
+        const projectDir = await setupLocationProject(dataset, "example.sqlx", simpleTable);
+        alterWorkflowSettings(projectDir, { defaultLocation: otherLocation });
+
+        await runProject(projectDir, credentialsWithLocation(INTEGRATION_TEST_LOCATION));
+
+        await expectDatasetLocation(dataset, otherLocation);
+      },
+    );
+
+    test(
+      "falls back to credentials location when not set in arguments or workflow_settings.yaml",
+      { timeout: 180000 },
+      async () => {
+        const dataset = uniqueDataset();
+        const projectDir = await setupLocationProject(dataset, "example.sqlx", simpleTable);
+        removeDefaultLocation(projectDir);
+
+        await runProject(projectDir, credentialsWithLocation(otherLocation));
+
+        await expectDatasetLocation(dataset, otherLocation);
+      },
+    );
+
+    test(
+      "lets BigQuery choose the location when not set anywhere",
+      { timeout: 180000 },
+      async () => {
+        const dataset = uniqueDataset();
+        const projectDir = await setupLocationProject(dataset, "example.sqlx", simpleTable);
+        removeDefaultLocation(projectDir);
+
+        await runProject(projectDir, credentialsWithLocation(undefined));
+
+        // CREATE SCHEMA references no tables, so without a location BigQuery falls back to the
+        // project/organization default_location setting, or the US multi-region if none is set.
+        await expectDatasetLocation(dataset, "US");
+      },
+    );
+
+    test(
+      "fails when lineage emission is enabled but location is not set anywhere",
+      { timeout: 180000 },
+      async () => {
+        const dataset = uniqueDataset();
+        const projectDir = await setupLocationProject(dataset, "example.sqlx", simpleTable);
+        removeDefaultLocation(projectDir);
+
+        const runResult = await runCli("run", [
+          projectDir,
+          "--credentials",
+          credentialsWithLocation(undefined),
+          "--emit-lineage",
+        ]);
+
+        expect(runResult.exitCode).equals(1);
+        expect(runResult.stderr).to.include("Lineage emission requires a location.");
+        // The run should fail before touching the warehouse.
+        const [datasetExists] = await bigquery.dataset(dataset).exists();
+        expect(datasetExists).equals(false);
       },
     );
   });

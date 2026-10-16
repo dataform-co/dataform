@@ -125,6 +125,7 @@ function factoryInput(
     dryRun: false,
     projectDir: "/workspaces/test-project",
     readCredentials: dataform.BigQuery.create({ projectId: "test-project", location: "US" }),
+    location: "US",
     ...overrides,
   };
 }

@@ -20,7 +20,7 @@ import {
   printTestResult,
 } from "df/cli/console";
 import { IProjectConfigArgs, ProjectConfigOptions } from "df/cli/project_config_options";
-import { actuallyResolve, compiledGraphHasErrors } from "df/cli/util";
+import { actuallyResolve, compiledGraphHasErrors, resolveDefaultLocation } from "df/cli/util";
 import { ICommand } from "df/cli/yargswrapper";
 
 export interface ITestArgs
@@ -63,7 +63,9 @@ export const testCommand: ICommand<ITestArgs> = {
     if (!argv.json) {
       print(`Running ${compiledGraph.tests.length} unit tests...\n`);
     }
-    const dbadapter = new BigQueryDbAdapter(readCredentials);
+    const dbadapter = new BigQueryDbAdapter(readCredentials, {
+      location: resolveDefaultLocation(argv.defaultLocation, compiledGraph, readCredentials),
+    });
     const testResults = await test(dbadapter, compiledGraph.tests);
     if (!argv.json) {
       testResults.forEach((testResult) => printTestResult(testResult));

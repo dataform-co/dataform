@@ -48,11 +48,13 @@ export async function init(
   const workflowSettings: dataform.IWorkflowSettings = {
     dataformCoreVersion: version,
     defaultProject: projectConfig.defaultDatabase,
-    defaultLocation: projectConfig.defaultLocation,
     defaultDataset: projectConfig.defaultSchema || "dataform",
     defaultAssertionDataset: projectConfig.assertionSchema || "dataform_assertions",
     defaultIcebergConfig: projectConfig.defaultIcebergConfig,
   };
+  if (projectConfig.defaultLocation) {
+    workflowSettings.defaultLocation = projectConfig.defaultLocation;
+  }
   if (projectConfig.databaseSuffix) {
     workflowSettings.projectSuffix = projectConfig.databaseSuffix;
   }

@@ -35,7 +35,9 @@ export const initCredsCommand: ICommand<IInitCredsArgs> = {
     const finalCredentials = getBigQueryCredentials();
     if (argv.testConnection) {
       print("\nRunning connection test...");
-      const dbadapter = new BigQueryDbAdapter(finalCredentials);
+      const dbadapter = new BigQueryDbAdapter(finalCredentials, {
+        location: finalCredentials.location,
+      });
       const testResult = await credentials.test(dbadapter);
       switch (testResult.status) {
         case credentials.TestResultStatus.SUCCESSFUL: {
