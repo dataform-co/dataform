@@ -21,6 +21,12 @@ else
   CANARY_VERSION="${CURRENT_VERSION}"
 fi
 
+EXPECTED_ACTIONS_FILE="tools/canary-expected-compilation-result-actions.json"
+if [[ ! -f "${EXPECTED_ACTIONS_FILE}" ]]; then
+  echo "Error: ${EXPECTED_ACTIONS_FILE} not found." 1>&2
+  exit 1
+fi
+
 LOCAL_TARBALL="bazel-bin/packages/@dataform/core/package.tar.gz"
 if [[ ! -f "${LOCAL_TARBALL}" ]]; then
   echo "Error: ${LOCAL_TARBALL} not found. Build it with: bazel build //packages/@dataform/core:package_tar" 1>&2
@@ -211,4 +217,69 @@ if actual_version != expected_version:
     sys.exit(1)
 
 print(f"Canary compilation succeeded: {resp.get('name', 'OK')} (resolved version: {resp.get('dataformCoreVersion', 'workspace')})")
+EOF
+
+COMPILATION_RESULT_NAME=$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["name"])' "${TMP_DIR}/compile_response.json")
+
+echo "Querying compilation result actions for ${COMPILATION_RESULT_NAME}..."
+QUERY_HTTP_CODE=$(curl --retry 3 --retry-all-errors --retry-delay 5 -s -o "${TMP_DIR}/query_response.json" -w "%{http_code}" \
+  -X GET \
+  -H "Authorization: Bearer ${GCP_TOKEN}" \
+  "https://dataform.googleapis.com/v1/${COMPILATION_RESULT_NAME}:query?pageSize=1000")
+if [[ "$QUERY_HTTP_CODE" -lt 200 || "$QUERY_HTTP_CODE" -ge 300 ]]; then
+  echo "Error calling compilationResults.query (HTTP ${QUERY_HTTP_CODE}):" 1>&2
+  cat "${TMP_DIR}/query_response.json" 1>&2
+  exit 1
+fi
+
+echo "Comparing compilation result actions against ${EXPECTED_ACTIONS_FILE}..."
+python3 - "${TMP_DIR}/query_response.json" "${EXPECTED_ACTIONS_FILE}" "${_CANARY_GCP_PROJECT}" <<'EOF'
+import difflib
+import json
+import sys
+
+actual_path, expected_path, project = sys.argv[1:4]
+
+with open(actual_path, "r", encoding="utf-8") as f:
+    actual = json.load(f)
+with open(expected_path, "r", encoding="utf-8") as f:
+    expected_raw = f.read()
+
+# Substitute placeholders at the JSON-value level so values are never re-escaped incorrectly.
+placeholders = {"${PROJECT}": project}
+
+def substitute(value):
+    if isinstance(value, str):
+        for placeholder, replacement in placeholders.items():
+            value = value.replace(placeholder, replacement)
+        return value
+    if isinstance(value, list):
+        return [substitute(v) for v in value]
+    if isinstance(value, dict):
+        return {k: substitute(v) for k, v in value.items()}
+    return value
+
+expected = substitute(json.loads(expected_raw))
+
+def normalize(resp):
+    actions = resp.get("compilationResultActions", [])
+    def sort_key(action):
+        target = action.get("target", {})
+        return (target.get("database", ""), target.get("schema", ""), target.get("name", ""))
+    return sorted(actions, key=sort_key)
+
+actual_actions = normalize(actual)
+expected_actions = normalize(expected)
+
+if actual_actions != expected_actions:
+    actual_str = json.dumps(actual_actions, indent=2, sort_keys=True).splitlines()
+    expected_str = json.dumps(expected_actions, indent=2, sort_keys=True).splitlines()
+    sys.stderr.write("Canary compilation result actions do not match the expected baseline:\n")
+    for line in difflib.unified_diff(expected_str, actual_str, fromfile="expected", tofile="actual", lineterm=""):
+        sys.stderr.write(line + "\n")
+    sys.stderr.write("\nFull actual response:\n")
+    sys.stderr.write(json.dumps(actual, indent=2) + "\n")
+    sys.exit(1)
+
+print(f"Canary compilation result actions match the expected baseline ({len(actual_actions)} actions).")
 EOF
