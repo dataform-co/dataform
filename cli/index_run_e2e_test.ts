@@ -3,6 +3,8 @@ import * as fs from "fs-extra";
 import { dump as dumpYaml, load as loadYaml } from "js-yaml";
 import * as path from "path";
 
+import * as dfapi from "df/cli/api";
+import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 import {
   alterWorkflowSettings,
   CREDENTIALS_PATH,
@@ -14,7 +16,10 @@ import {
 } from "df/cli/index_test_base";
 import { version } from "df/core/version";
 import { suite, test, writeDefinitionFile } from "df/testing";
+import { dropDatasets, dropStaleDatasets, makeUniqueSuffix } from "df/testing/bigquery";
 import { TmpDirFixture } from "df/testing/fixtures";
+
+const ON_SCHEMA_CHANGE_DATASET = "dataform_e2e_osc";
 
 suite("run e2e", ({ afterEach }) => {
   const tmpDirFixture = new TmpDirFixture(afterEach);
@@ -423,9 +428,22 @@ select 2
     });
   });
 
-  suite("onSchemaChange", ({ beforeEach }) => {
+  suite("onSchemaChange", ({ before, beforeEach, after }) => {
     let projectDir: string;
-    const uniqueDataset = `dataform_e2e_osc_${Math.random().toString(36).substring(7)}`;
+    const dbadapter = new BigQueryDbAdapter(dfapi.credentials.read(CREDENTIALS_PATH));
+    const uniqueDataset = `${ON_SCHEMA_CHANGE_DATASET}_${makeUniqueSuffix()}`;
+
+    before("drop stale datasets", async () => {
+      await dropStaleDatasets(dbadapter, {
+        project: INTEGRATION_TEST_PROJECT,
+        location: INTEGRATION_TEST_LOCATION,
+        prefixes: [ON_SCHEMA_CHANGE_DATASET],
+      });
+    });
+
+    after("drop datasets", async () => {
+      await dropDatasets(dbadapter, INTEGRATION_TEST_PROJECT, [uniqueDataset]);
+    });
 
     beforeEach("setup test project", async () => {
       projectDir = tmpDirFixture.createNewTmpDir();

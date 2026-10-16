@@ -1,30 +1,25 @@
 import { expect } from "chai";
-import { randomBytes } from "crypto";
 
 import * as dfapi from "df/cli/api";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
-import { INTEGRATION_TEST_PROJECT } from "df/cli/index_test_base";
+import { INTEGRATION_TEST_LOCATION, INTEGRATION_TEST_PROJECT } from "df/cli/index_test_base";
 import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
+import { dropDatasets, dropStaleDatasets, makeUniqueSuffix } from "df/testing/bigquery";
 import { compile, keyBy } from "df/tests/integration/utils";
 
 const GRAPH_NAME = "LibraryGraph";
 
-function makeSuffix() {
-  return process.env.GITHUB_RUN_ID ?? process.env.BUILD_ID ?? randomBytes(4).toString("hex");
-}
-
-async function dropDataset(dbadapter: BigQueryDbAdapter, dataset: string) {
-  await dbadapter.execute(
-    `drop schema if exists \`${INTEGRATION_TEST_PROJECT}.${dataset}\` cascade`,
-  );
-}
+// The test compiles property_graph_project with this schema suffix, which dataform appends to the
+// project's dataset. The unique suffix is appended to the names below.
+const SCHEMA_SUFFIX = "e2e";
+const DATASET = `df_integration_test_pg_${SCHEMA_SUFFIX}`;
 
 suite("@dataform/integration/property_graph", { parallel: true }, ({ before, after }) => {
   const credentials = dfapi.credentials.read("test_credentials/bigquery.json");
-  const schemaSuffix = `e2e_${makeSuffix()}`;
-  const dataset = `df_integration_test_pg_${schemaSuffix}`;
+  const uniqueSuffix = makeUniqueSuffix();
+  const dataset = `${DATASET}_${uniqueSuffix}`;
   const graphTarget = `${INTEGRATION_TEST_PROJECT}.${dataset}.${GRAPH_NAME}`;
   let dbadapter: BigQueryDbAdapter;
 
@@ -32,14 +27,23 @@ suite("@dataform/integration/property_graph", { parallel: true }, ({ before, aft
     dbadapter = new BigQueryDbAdapter(credentials);
   });
 
-  after("drop dataset", async () => {
-    await dropDataset(dbadapter, dataset);
+  before("drop stale datasets", async () => {
+    await dropStaleDatasets(dbadapter, {
+      project: INTEGRATION_TEST_PROJECT,
+      location: INTEGRATION_TEST_LOCATION,
+      prefixes: [DATASET],
+    });
+  });
+
+  after("drop datasets", async () => {
+    await dropDatasets(dbadapter, INTEGRATION_TEST_PROJECT, [dataset]);
   });
 
   test("creates property graph end-to-end", { timeout: 120000 }, async () => {
-    const compiledGraph = await compile("tests/integration/property_graph_project", schemaSuffix);
-
-    await dropDataset(dbadapter, dataset);
+    const compiledGraph = await compile(
+      "tests/integration/property_graph_project",
+      `${SCHEMA_SUFFIX}_${uniqueSuffix}`,
+    );
 
     const executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
     const executedGraph = await dfapi.run(dbadapter, executionGraph).result();
