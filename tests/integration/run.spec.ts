@@ -3,27 +3,72 @@ import { expect } from "chai";
 import * as dfapi from "df/cli/api";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 import { ExecutionSql } from "df/cli/api/dbadapters/execution_sql";
-import { CREDENTIALS_PATH, INTEGRATION_TEST_PROJECT } from "df/cli/index_test_base";
+import {
+  CREDENTIALS_PATH,
+  INTEGRATION_TEST_LOCATION,
+  INTEGRATION_TEST_PROJECT,
+} from "df/cli/index_test_base";
 import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 import { test } from "df/testing";
 import { integrationSuite } from "df/testing/credentials";
-import { cleanWarehouse, compile, getTableRows, keyBy } from "df/tests/integration/utils";
+import { dropDatasets, dropStaleDatasets, makeUniqueSuffix } from "df/testing/bigquery";
+import { compile, getTableRows, keyBy } from "df/tests/integration/utils";
 
-integrationSuite("@dataform/integration/run", { parallel: true }, () => {
+// Each test compiles bigquery_project with its own schema suffix, which dataform appends to every
+// dataset of the project. The unique suffix is appended to the names below.
+const PROJECT_E2E_SCHEMA_SUFFIX = "project_e2e";
+const PROJECT_E2E_DATASET = `df_integration_test_${PROJECT_E2E_SCHEMA_SUFFIX}`;
+const PROJECT_E2E_ASSERTIONS_DATASET = `df_integration_test_assertions_${PROJECT_E2E_SCHEMA_SUFFIX}`;
+const PROJECT_E2E_TEST_DATASET = `test_${PROJECT_E2E_SCHEMA_SUFFIX}`;
+
+const INCREMENTAL_TABLES_SCHEMA_SUFFIX = "incremental_tables";
+const INCREMENTAL_TABLES_DATASET = `df_integration_test_${INCREMENTAL_TABLES_SCHEMA_SUFFIX}`;
+const INCREMENTAL_TABLES_ASSERTIONS_DATASET = `df_integration_test_assertions_${INCREMENTAL_TABLES_SCHEMA_SUFFIX}`;
+
+const DATASET_METADATA_SCHEMA_SUFFIX = "dataset_metadata";
+const DATASET_METADATA_DATASET = `df_integration_test_${DATASET_METADATA_SCHEMA_SUFFIX}`;
+const DATASET_METADATA_ASSERTIONS_DATASET = `df_integration_test_assertions_${DATASET_METADATA_SCHEMA_SUFFIX}`;
+
+const DATASETS = [
+  PROJECT_E2E_DATASET,
+  PROJECT_E2E_ASSERTIONS_DATASET,
+  PROJECT_E2E_TEST_DATASET,
+  INCREMENTAL_TABLES_DATASET,
+  INCREMENTAL_TABLES_ASSERTIONS_DATASET,
+  DATASET_METADATA_DATASET,
+  DATASET_METADATA_ASSERTIONS_DATASET,
+];
+
+integrationSuite("@dataform/integration/run", { parallel: true }, ({ before, after }) => {
   const credentials = dfapi.credentials.read(CREDENTIALS_PATH);
   const dbadapter = new BigQueryDbAdapter(credentials);
+  const uniqueSuffix = makeUniqueSuffix();
+
+  before("drop stale datasets", async () => {
+    await dropStaleDatasets(dbadapter, {
+      project: INTEGRATION_TEST_PROJECT,
+      location: INTEGRATION_TEST_LOCATION,
+      prefixes: DATASETS,
+    });
+  });
+
+  after("drop datasets", async () => {
+    await dropDatasets(
+      dbadapter,
+      INTEGRATION_TEST_PROJECT,
+      DATASETS.map((dataset) => `${dataset}_${uniqueSuffix}`),
+    );
+  });
 
   test("project e2e", { timeout: 60000 }, async () => {
-    const compiledGraph = await compile("tests/integration/bigquery_project", "project_e2e");
-
-    // Drop all the tables before we do anything.
-    await cleanWarehouse(compiledGraph, dbadapter);
-
-    // Drop schemas to make sure schema creation works.
-    await dbadapter.execute(
-      `drop schema if exists \`${INTEGRATION_TEST_PROJECT}.df_integration_test_project_e2e\` cascade`,
+    // The datasets are unique to this run, so they don't exist yet and schema creation is tested.
+    const compiledGraph = await compile(
+      "tests/integration/bigquery_project",
+      `${PROJECT_E2E_SCHEMA_SUFFIX}_${uniqueSuffix}`,
     );
+    const dataset = `${PROJECT_E2E_DATASET}_${uniqueSuffix}`;
+    const assertionsDataset = `${PROJECT_E2E_ASSERTIONS_DATASET}_${uniqueSuffix}`;
 
     // Run the project.
     const executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
@@ -34,8 +79,8 @@ integrationSuite("@dataform/integration/run", { parallel: true }, () => {
 
     // Check the status of action execution.
     const expectedFailedActions = [
-      `${INTEGRATION_TEST_PROJECT}.df_integration_test_assertions_project_e2e.example_assertion_fail`,
-      `${INTEGRATION_TEST_PROJECT}.df_integration_test_project_e2e.example_operation_partial_fail`,
+      `${INTEGRATION_TEST_PROJECT}.${assertionsDataset}.example_assertion_fail`,
+      `${INTEGRATION_TEST_PROJECT}.${dataset}.example_operation_partial_fail`,
     ];
     for (const actionName of Object.keys(actionMap)) {
       const expectedResult = expectedFailedActions.includes(actionName)
@@ -48,23 +93,22 @@ integrationSuite("@dataform/integration/run", { parallel: true }, () => {
     }
 
     expect(
-      actionMap[
-        `${INTEGRATION_TEST_PROJECT}.df_integration_test_assertions_project_e2e.example_assertion_fail`
-      ].tasks[1].errorMessage,
+      actionMap[`${INTEGRATION_TEST_PROJECT}.${assertionsDataset}.example_assertion_fail`].tasks[1]
+        .errorMessage,
     ).to.eql("bigquery error: Assertion failed: query returned 1 row(s).");
 
     expect(
-      actionMap[
-        `${INTEGRATION_TEST_PROJECT}.df_integration_test_project_e2e.example_operation_partial_fail`
-      ].tasks[0].errorMessage,
+      actionMap[`${INTEGRATION_TEST_PROJECT}.${dataset}.example_operation_partial_fail`].tasks[0]
+        .errorMessage,
     ).to.eql("bigquery error: Query error: Unrecognized name: invalid_column at [3:8]");
   });
 
   test("incremental tables", { timeout: 60000 }, async () => {
-    const compiledGraph = await compile("tests/integration/bigquery_project", "incremental_tables");
-
-    // Drop all the tables before we do anything.
-    await cleanWarehouse(compiledGraph, dbadapter);
+    const compiledGraph = await compile(
+      "tests/integration/bigquery_project",
+      `${INCREMENTAL_TABLES_SCHEMA_SUFFIX}_${uniqueSuffix}`,
+    );
+    const dataset = `${INCREMENTAL_TABLES_DATASET}_${uniqueSuffix}`;
 
     // Run two iterations of the project.
     const adapter = new ExecutionSql(
@@ -97,7 +141,7 @@ integrationSuite("@dataform/integration/run", { parallel: true }, () => {
         getTableRows(
           {
             database: INTEGRATION_TEST_PROJECT,
-            schema: "df_integration_test_incremental_tables",
+            schema: dataset,
             name: "example_incremental",
           },
           adapter,
@@ -106,7 +150,7 @@ integrationSuite("@dataform/integration/run", { parallel: true }, () => {
         getTableRows(
           {
             database: INTEGRATION_TEST_PROJECT,
-            schema: "df_integration_test_incremental_tables",
+            schema: dataset,
             name: "example_incremental_merge",
           },
           adapter,
@@ -119,10 +163,11 @@ integrationSuite("@dataform/integration/run", { parallel: true }, () => {
   });
 
   test("dataset metadata set correctly", { timeout: 60000 }, async () => {
-    const compiledGraph = await compile("tests/integration/bigquery_project", "dataset_metadata");
-
-    // Drop all the tables before we do anything.
-    await cleanWarehouse(compiledGraph, dbadapter);
+    const compiledGraph = await compile(
+      "tests/integration/bigquery_project",
+      `${DATASET_METADATA_SCHEMA_SUFFIX}_${uniqueSuffix}`,
+    );
+    const dataset = `${DATASET_METADATA_DATASET}_${uniqueSuffix}`;
 
     // Run the project.
     const executionGraph = await dfapi.build(
@@ -143,7 +188,7 @@ integrationSuite("@dataform/integration/run", { parallel: true }, () => {
       {
         target: {
           database: INTEGRATION_TEST_PROJECT,
-          schema: "df_integration_test_dataset_metadata",
+          schema: dataset,
           name: "example_incremental",
         },
         expectedDescription: "An incremental table",
@@ -182,7 +227,7 @@ integrationSuite("@dataform/integration/run", { parallel: true }, () => {
       {
         target: {
           database: INTEGRATION_TEST_PROJECT,
-          schema: "df_integration_test_dataset_metadata",
+          schema: dataset,
           name: "example_view",
         },
         expectedDescription: "An example view",

@@ -17,6 +17,7 @@ js_library(
 ts_library(
     name = "testing",
     srcs = [
+        "bigquery.ts",
         "child_process.ts",
         "credentials.ts",
         "fixtures.ts",
