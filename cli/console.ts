@@ -12,7 +12,7 @@ const noColor =
   process.env.NO_COLOR && ["1", "true", "yes"].includes(process.env.NO_COLOR.toLowerCase());
 
 const ansiColorCodes = Object.freeze({
-  red: 91,
+  red: 92,
   green: 32,
   yellow: 93,
   cyan: 36,
