@@ -8,6 +8,11 @@ import {
   TableType,
 } from "df/core/actions";
 import { Assertion } from "df/core/actions/assertion";
+import {
+  validateLakehouseBigQueryOptions,
+  validateLakehouseColumns,
+  validateLakehouseConfig,
+} from "df/core/actions/lakehouse";
 import { JitTableResult, Table } from "df/core/actions/table";
 import { View } from "df/core/actions/view";
 import { ColumnDescriptors } from "df/core/column_descriptors";
@@ -130,7 +135,7 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
     const fileName = configPath
       ? resolveActionsConfigFilename(config.filename, configPath)
       : config.filename;
-    this.validateLakehouseConfig(config, fileName, hasDatasetOrSchema);
+    this.isLakehouseTarget = validateLakehouseConfig(session, config, fileName, hasDatasetOrSchema);
     const target = actionConfigToCompiledGraphTarget(
       config,
       session.projectConfig?.defaultLakehouseConfig,
@@ -604,16 +609,20 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
       validateStorageUriFormat(this.proto.bigquery.storageUri);
     }
 
-    this.validateLakehouseColumns(
-      this.proto.actionDescriptor,
-      this.proto.fileName,
-      this.proto.target,
-    );
-    this.validateLakehouseBigQueryOptions(
-      this.proto.bigquery,
-      this.proto.fileName,
-      this.proto.target,
-    );
+    if (this.isLakehouseTarget) {
+      validateLakehouseColumns(
+        this.session,
+        this.proto.actionDescriptor,
+        this.proto.fileName,
+        this.proto.target,
+      );
+      validateLakehouseBigQueryOptions(
+        this.session,
+        this.proto.bigquery,
+        this.proto.fileName,
+        this.proto.target,
+      );
+    }
 
     return verifyObjectMatchesProto(
       dataform.Table,

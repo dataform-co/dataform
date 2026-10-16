@@ -1,5 +1,6 @@
 import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { ActionBuilder } from "df/core/actions";
+import { validateLakehouseColumns, validateLakehouseConfig } from "df/core/actions/lakehouse";
 import { ColumnDescriptors } from "df/core/column_descriptors";
 import { Contextable, IActionContext, JitContextable, Resolvable } from "df/core/contextables";
 import * as Path from "df/core/path";
@@ -111,7 +112,7 @@ export class Operation extends ActionBuilder<dataform.Operation> {
     const fileName = configPath
       ? resolveActionsConfigFilename(config.filename, configPath)
       : config.filename;
-    this.validateLakehouseConfig(config, fileName, hasDatasetOrSchema);
+    this.isLakehouseTarget = validateLakehouseConfig(session, config, fileName, hasDatasetOrSchema);
     const target = actionConfigToCompiledGraphTarget(
       config,
       session.projectConfig?.defaultLakehouseConfig,
@@ -393,11 +394,14 @@ export class Operation extends ActionBuilder<dataform.Operation> {
         this.proto.fileName,
       );
     }
-    this.validateLakehouseColumns(
-      this.proto.actionDescriptor,
-      this.proto.fileName,
-      this.proto.target,
-    );
+    if (this.isLakehouseTarget) {
+      validateLakehouseColumns(
+        this.session,
+        this.proto.actionDescriptor,
+        this.proto.fileName,
+        this.proto.target,
+      );
+    }
 
     if (this.contextableJitCode) {
       this.compileJit();

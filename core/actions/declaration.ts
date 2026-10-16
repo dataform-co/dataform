@@ -1,5 +1,6 @@
 import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { ActionBuilder } from "df/core/actions";
+import { validateLakehouseColumns, validateLakehouseConfig } from "df/core/actions/lakehouse";
 import { ColumnDescriptors } from "df/core/column_descriptors";
 import { Session } from "df/core/session";
 import { actionConfigToCompiledGraphTarget } from "df/core/utils";
@@ -85,7 +86,12 @@ export class Declaration extends ActionBuilder<dataform.Declaration> {
     }
 
     const resolvedFilename = config.filename || filename;
-    this.validateLakehouseConfig(config, resolvedFilename, hasDatasetOrSchema);
+    this.isLakehouseTarget = validateLakehouseConfig(
+      session,
+      config,
+      resolvedFilename,
+      hasDatasetOrSchema,
+    );
     const target = actionConfigToCompiledGraphTarget(
       config,
       session.projectConfig?.defaultLakehouseConfig,
@@ -157,11 +163,14 @@ export class Declaration extends ActionBuilder<dataform.Declaration> {
 
   /** @hidden */
   public compile() {
-    this.validateLakehouseColumns(
-      this.proto.actionDescriptor,
-      this.proto.fileName,
-      this.proto.target,
-    );
+    if (this.isLakehouseTarget) {
+      validateLakehouseColumns(
+        this.session,
+        this.proto.actionDescriptor,
+        this.proto.fileName,
+        this.proto.target,
+      );
+    }
     return verifyObjectMatchesProto(
       dataform.Declaration,
       this.proto,

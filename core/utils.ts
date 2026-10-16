@@ -2,6 +2,7 @@ import { Action, ActionProto } from "df/core/actions";
 import { Assertion } from "df/core/actions/assertion";
 import { DataPreparation } from "df/core/actions/data_preparation";
 import { IncrementalTable } from "df/core/actions/incremental_table";
+import { resolveLakehouseSchema } from "df/core/actions/lakehouse";
 import { Notebook } from "df/core/actions/notebook";
 import { Operation } from "df/core/actions/operation";
 import { PropertyGraph } from "df/core/actions/property_graph";
@@ -600,10 +601,9 @@ export function actionConfigToCompiledGraphTarget(
     compiledGraphTarget.schema = actionConfig.dataset;
   }
   if ("lakehouse" in actionConfig && actionConfig.lakehouse) {
-    const catalog = actionConfig.lakehouse.catalog || defaultLakehouseConfig?.catalog || "";
-    const namespace = actionConfig.lakehouse.namespace || defaultLakehouseConfig?.namespace || "";
-    if (catalog && namespace) {
-      compiledGraphTarget.schema = `${catalog}.${namespace}`;
+    const schema = resolveLakehouseSchema(actionConfig.lakehouse, defaultLakehouseConfig);
+    if (schema) {
+      compiledGraphTarget.schema = schema;
     }
   }
   return compiledGraphTarget;

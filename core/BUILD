@@ -23,6 +23,7 @@ ts_library(
         "actions/declaration.ts",
         "actions/incremental_table.ts",
         "actions/index.ts",
+        "actions/lakehouse.ts",
         "actions/notebook.ts",
         "actions/operation.ts",
         "actions/property_graph.ts",
