@@ -384,6 +384,7 @@ export class Runner {
       labels: {
         ...(this.executionOptions?.bigquery?.labels || {}),
         ...(action.actionDescriptor?.bigqueryLabels || {}),
+        ...(action.actionDescriptor?.jobLabels || {}),
       },
       actionRetryLimit: this.executionOptions.bigquery?.actionRetryLimit,
       reservation:

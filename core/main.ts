@@ -16,7 +16,7 @@ import { View } from "df/core/actions/view";
 import { IDataformExtension } from "df/core/extension";
 import * as Path from "df/core/path";
 import { Session } from "df/core/session";
-import { nativeRequire, snakeToCamelKeys } from "df/core/utils";
+import { nativeRequire, snakeToCamelKeys, validateJobLabels } from "df/core/utils";
 import { readWorkflowSettings } from "df/core/workflow_settings";
 import { dataform } from "df/protos/ts";
 
@@ -51,10 +51,18 @@ export function main(coreExecutionRequest: Uint8Array | string): Uint8Array | st
 
   // Merge in project config overrides.
   const projectConfigOverride = compileRequest.compileConfig.projectConfigOverride ?? {};
+  const defaultJobLabels = {
+    ...projectConfig.defaultJobLabels,
+    ...projectConfigOverride.defaultJobLabels,
+  };
+  if (projectConfigOverride.defaultJobLabels && Object.keys(defaultJobLabels).length > 0) {
+    validateJobLabels(defaultJobLabels, "defaultJobLabels");
+  }
   projectConfig = dataform.ProjectConfig.create({
     ...projectConfig,
     ...projectConfigOverride,
     vars: { ...projectConfig.vars, ...projectConfigOverride.vars },
+    defaultJobLabels,
   });
 
   // Initialize the compilation session.
@@ -213,7 +221,7 @@ function loadActionConfigsFile(
   session: Session,
   actionConfigsPath: string,
 ): dataform.ActionConfigs {
-  let actionConfigsAsJson = {};
+  let actionConfigsAsJson: { actions?: any[] } = {};
   try {
     actionConfigsAsJson = nativeRequire(actionConfigsPath).asJson;
   } catch (e) {
@@ -224,7 +232,45 @@ function loadActionConfigsFile(
     actionConfigsAsJson,
     VerifyProtoErrorBehaviour.SHOW_DOCS_LINK,
   );
-  return dataform.ActionConfigs.fromObject(actionConfigsAsJson);
+  const actionConfigs = dataform.ActionConfigs.fromObject(actionConfigsAsJson);
+  restoreJobLabelsAsWritten(actionConfigsAsJson, actionConfigs);
+  return actionConfigs;
+}
+
+/**
+ * `ActionConfigs.fromObject` converts camelCased JSON keys into proto fields, but it also
+ * calls `String(value)` on `map<string, string>` entries (turning numbers and booleans into
+ * strings). Restore the raw `jobLabels` object from the parsed YAML so that
+ * `validateJobLabels` rejects non-string values consistently across all config surfaces.
+ */
+function restoreJobLabelsAsWritten(
+  rawActionConfigs: { actions?: any[] },
+  parsedActionConfigs: dataform.ActionConfigs,
+) {
+  if (!Array.isArray(rawActionConfigs?.actions)) {
+    return;
+  }
+  const actionTypes: Array<keyof dataform.IActionConfig> = [
+    "table",
+    "view",
+    "incrementalTable",
+    "assertion",
+    "operation",
+    "dataPreparation",
+  ];
+  rawActionConfigs.actions.forEach((rawAction, index) => {
+    const parsedAction = parsedActionConfigs.actions?.[index];
+    if (!rawAction || !parsedAction) {
+      return;
+    }
+    for (const actionType of actionTypes) {
+      const rawJobLabels = rawAction[actionType]?.jobLabels;
+      const parsedSubConfig = parsedAction[actionType] as { jobLabels?: any } | null | undefined;
+      if (rawJobLabels !== undefined && parsedSubConfig) {
+        parsedSubConfig.jobLabels = rawJobLabels;
+      }
+    }
+  });
 }
 
 // Only a single graph.yaml per project is accepted for now, though it may live

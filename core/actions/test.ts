@@ -10,6 +10,7 @@ import {
   ambiguousActionNameMsg,
   checkExcessProperties,
   resolvableAsTarget,
+  setActionJobLabels,
   strictKeysOf,
   stringifyResolvable,
   toResolvable,
@@ -35,6 +36,13 @@ export interface ITestConfig extends INamedConfig {
 
   /** Tags for this test action. */
   tags?: string[];
+
+  /**
+   * Key-value pairs for BigQuery job labels applied to the query job(s) executed for this test
+   * action. Keys that collide with `defaultJobLabels` in `workflow_settings.yaml` override the
+   * default value.
+   */
+  jobLabels?: { [key: string]: string };
 }
 
 /** @hidden */
@@ -44,6 +52,7 @@ const ITestConfigProperties = strictKeysOf<ITestConfig>()([
   "name",
   "filename",
   "tags",
+  "jobLabels",
 ]);
 
 /**
@@ -88,6 +97,7 @@ export class Test extends ActionBuilder<dataform.Test> {
   public contextableInputs = new Map<string, Contextable<IActionContext, string>>();
   private contextableQuery: Contextable<IActionContext, string>;
   private testTarget: dataform.ITarget;
+  private configJobLabels?: { [key: string]: string };
 
   /**
    * @hidden Stores the generated proto for the compiled graph.
@@ -140,6 +150,9 @@ export class Test extends ActionBuilder<dataform.Test> {
     if (config.tags) {
       this.proto.tags = config.tags;
     }
+    if (config.hasOwnProperty("jobLabels")) {
+      this.configJobLabels = config.jobLabels;
+    }
     return this;
   }
 
@@ -148,6 +161,14 @@ export class Test extends ActionBuilder<dataform.Test> {
    */
   public dataset(ref: Resolvable) {
     this.config({ dataset: ref });
+    return this;
+  }
+
+  /**
+   * Sets labels to be applied to BigQuery job(s) executed for this test action.
+   */
+  public jobLabels(jobLabels: { [key: string]: string }) {
+    this.config({ jobLabels });
     return this;
   }
 
@@ -190,6 +211,8 @@ export class Test extends ActionBuilder<dataform.Test> {
 
   /** @hidden */
   public compile() {
+    setActionJobLabels(this.proto, this.configJobLabels, this.session);
+
     const testContext = new TestContext(this);
     if (!this.testTarget) {
       this.session.compileError(

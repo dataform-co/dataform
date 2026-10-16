@@ -659,6 +659,8 @@ export class ResolvableMap<T> {
   }
 }
 
+const PRESERVE_MAP_KEYS_FIELDS = new Set(["jobLabels"]);
+
 export function snakeToCamelKeys(value: any): any {
   if (Array.isArray(value)) {
     return value.map(snakeToCamelKeys);
@@ -667,9 +669,152 @@ export function snakeToCamelKeys(value: any): any {
     const out: { [key: string]: any } = {};
     for (const [key, val] of Object.entries(value)) {
       const camel = key.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
-      out[camel] = snakeToCamelKeys(val);
+      out[camel] =
+        PRESERVE_MAP_KEYS_FIELDS.has(camel) && val && typeof val === "object" && !Array.isArray(val)
+          ? { ...val }
+          : snakeToCamelKeys(val);
     }
     return out;
   }
   return value;
+}
+
+// NOTE: These validation constants and rules are mirrored by the Cloud Dataform backend validator.
+// If one validator is updated, the other must also be updated to stay in sync.
+export const MAX_JOB_LABELS_COUNT = 32;
+export const MAX_JOB_LABEL_LENGTH = 63;
+export const JOB_LABEL_KEY_REGEX = /^[a-z][a-z0-9_-]*$/;
+export const JOB_LABEL_VALUE_REGEX = /^[a-z0-9_-]*$/;
+export const RESERVED_JOB_LABEL_PREFIXES = ["dataform_", "dataform-", "dataprep-", "gcp-", "goog-"];
+export const RESERVED_JOB_LABEL_KEYS = new Set([
+  "bigquery-workflow",
+  "single-file-asset-type",
+  "origin",
+  "bq-dea",
+  "data-preparation-file-loader",
+]);
+
+/**
+ * Validates customer-supplied BigQuery job labels against BigQuery and Dataform constraints.
+ * Throws an Error if any rule is violated.
+ */
+export function validateJobLabels(
+  labels: { [key: string]: string } | null | undefined,
+  fieldName: string = "jobLabels",
+): void {
+  if (labels === undefined || labels === null) {
+    return;
+  }
+  if (typeof labels !== "object" || Array.isArray(labels)) {
+    throw new Error(`${fieldName} must be an object mapping string keys to string values.`);
+  }
+  const entries = Object.entries(labels);
+  if (entries.length > MAX_JOB_LABELS_COUNT) {
+    throw new Error(
+      `Too many job labels in ${fieldName}: maximum allowed is ${MAX_JOB_LABELS_COUNT}, but got ${entries.length}.`,
+    );
+  }
+  for (const [key, value] of entries) {
+    if (typeof value !== "string") {
+      throw new Error(
+        `Invalid job label value for key "${key}" in ${fieldName}: label values must be strings.`,
+      );
+    }
+    if (key.length === 0 || key.length > MAX_JOB_LABEL_LENGTH) {
+      throw new Error(
+        `Invalid job label key "${key}" in ${fieldName}: key length must be between 1 and ${MAX_JOB_LABEL_LENGTH} characters.`,
+      );
+    }
+    if (!JOB_LABEL_KEY_REGEX.test(key)) {
+      throw new Error(
+        `Invalid job label key "${key}" in ${fieldName}: keys must start with a lowercase letter and contain only lowercase letters, numbers, underscores, and hyphens.`,
+      );
+    }
+    const matchedPrefix = RESERVED_JOB_LABEL_PREFIXES.find((prefix) => key.startsWith(prefix));
+    if (matchedPrefix) {
+      throw new Error(
+        `Invalid job label key "${key}" in ${fieldName}: key cannot start with reserved prefix "${matchedPrefix}".`,
+      );
+    }
+    if (RESERVED_JOB_LABEL_KEYS.has(key)) {
+      throw new Error(
+        `Invalid job label key "${key}" in ${fieldName}: "${key}" is a reserved label key.`,
+      );
+    }
+    if (value.length > MAX_JOB_LABEL_LENGTH) {
+      throw new Error(
+        `Invalid job label value "${value}" for key "${key}" in ${fieldName}: value length must be at most ${MAX_JOB_LABEL_LENGTH} characters.`,
+      );
+    }
+    if (!JOB_LABEL_VALUE_REGEX.test(value)) {
+      throw new Error(
+        `Invalid job label value "${value}" for key "${key}" in ${fieldName}: values may contain only lowercase letters, numbers, underscores, and hyphens.`,
+      );
+    }
+  }
+}
+
+/**
+ * Resolves and validates merged job labels from workflow settings `defaultJobLabels` and
+ * action-level `jobLabels` (where action-level keys override default keys).
+ * Records a compilation error on the session if validation fails.
+ */
+export function resolveAndValidateJobLabels(
+  defaultJobLabels: { [key: string]: string } | null | undefined,
+  actionJobLabels: { [key: string]: string } | null | undefined,
+  session: Session,
+  fileName?: string,
+  target?: dataform.ITarget,
+): { [key: string]: string } | undefined {
+  try {
+    if (actionJobLabels !== undefined && actionJobLabels !== null) {
+      validateJobLabels(actionJobLabels, "jobLabels");
+    }
+    const mergedLabels = {
+      ...(defaultJobLabels || {}),
+      ...(actionJobLabels || {}),
+    };
+    const mergedCount = Object.keys(mergedLabels).length;
+    if (mergedCount === 0) {
+      return undefined;
+    }
+    if (mergedCount > MAX_JOB_LABELS_COUNT) {
+      const defaultCount = Object.keys(defaultJobLabels || {}).length;
+      const actionCount = Object.keys(actionJobLabels || {}).length;
+      throw new Error(
+        `Too many job labels in jobLabels: maximum allowed is ${MAX_JOB_LABELS_COUNT}, but got ${mergedCount} (${defaultCount} from defaultJobLabels and ${actionCount} from jobLabels).`,
+      );
+    }
+    return mergedLabels;
+  } catch (e) {
+    session.compileError(e, fileName, target);
+    return undefined;
+  }
+}
+
+/**
+ * Resolves, validates, and sets `actionDescriptor.jobLabels` on an action proto.
+ */
+export function setActionJobLabels(
+  proto: {
+    actionDescriptor?: dataform.IActionDescriptor | null;
+    fileName?: string | null;
+    target?: dataform.ITarget | null;
+  },
+  actionJobLabels: { [key: string]: string } | null | undefined,
+  session?: Session,
+): void {
+  const jobLabels = resolveAndValidateJobLabels(
+    session?.projectConfig?.defaultJobLabels,
+    actionJobLabels,
+    session,
+    proto.fileName,
+    proto.target,
+  );
+  if (jobLabels) {
+    if (!proto.actionDescriptor) {
+      proto.actionDescriptor = {};
+    }
+    proto.actionDescriptor.jobLabels = jobLabels;
+  }
 }

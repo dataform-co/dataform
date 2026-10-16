@@ -446,4 +446,194 @@ select 1 AS \${dataform.projectConfig.vars.columnVar}`,
       );
     });
   });
+
+  suite("defaultJobLabels", () => {
+    test("valid defaultJobLabels in workflow_settings.yaml", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      writeWorkflowSettingsFile(
+        projectDir,
+        `
+defaultProject: defaultProject
+defaultDataset: defaultDataset
+defaultLocation: US
+defaultJobLabels:
+  env: prod
+  cost-center: analytics_1
+  empty-val: ""
+`,
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.projectConfig)).deep.equals(
+        asPlainObject({
+          warehouse: "bigquery",
+          defaultDatabase: "defaultProject",
+          defaultSchema: "defaultDataset",
+          defaultLocation: "US",
+          defaultJobLabels: {
+            env: "prod",
+            "cost-center": "analytics_1",
+            "empty-val": "",
+          },
+        }),
+      );
+    });
+
+    test("valid defaultJobLabels in dataform.json", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "dataform.json"),
+        JSON.stringify({
+          defaultDatabase: "defaultProject",
+          defaultSchema: "defaultDataset",
+          defaultLocation: "US",
+          defaultJobLabels: {
+            env: "staging",
+            team: "data_eng",
+          },
+        }),
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.projectConfig)).deep.equals(
+        asPlainObject({
+          defaultDatabase: "defaultProject",
+          defaultSchema: "defaultDataset",
+          defaultLocation: "US",
+          defaultJobLabels: {
+            env: "staging",
+            team: "data_eng",
+          },
+        }),
+      );
+    });
+
+    test("defaultJobLabels in workflow_settings.yaml must have string values", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      writeWorkflowSettingsFile(
+        projectDir,
+        `
+defaultProject: defaultProject
+defaultJobLabels:
+  intLabel: 1
+`,
+      );
+
+      expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
+        'Invalid job label value for key "intLabel" in defaultJobLabels: label values must be strings.',
+      );
+    });
+
+    test("defaultJobLabels in dataform.json must have string values", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "dataform.json"),
+        `{"defaultJobLabels": { "intLabel": 1 } }`,
+      );
+
+      expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
+        'Invalid job label value for key "intLabel" in defaultJobLabels: label values must be strings.',
+      );
+    });
+
+    test("defaultJobLabels fails on reserved keys or invalid characters", () => {
+      for (const [key, expectedMessage] of [
+        [
+          "dataform_internal",
+          'Invalid job label key "dataform_internal" in defaultJobLabels: key cannot start with reserved prefix "dataform_".',
+        ],
+        [
+          "origin",
+          'Invalid job label key "origin" in defaultJobLabels: "origin" is a reserved label key.',
+        ],
+        [
+          "InvalidKey",
+          'Invalid job label key "InvalidKey" in defaultJobLabels: keys must start with a lowercase letter and contain only lowercase letters, numbers, underscores, and hyphens.',
+        ],
+      ]) {
+        const projectDir = tmpDirFixture.createNewTmpDir();
+        writeWorkflowSettingsFile(
+          projectDir,
+          `
+defaultProject: defaultProject
+defaultJobLabels:
+  ${key}: val
+`,
+        );
+
+        expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
+          expectedMessage,
+        );
+      }
+    });
+
+    test("defaultJobLabels merges with projectConfigOverride", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      writeWorkflowSettingsFile(
+        projectDir,
+        `
+defaultProject: defaultProject
+defaultLocation: US
+defaultJobLabels:
+  env: dev
+  team: core
+`,
+      );
+      const coreExecutionRequest = dataform.CoreExecutionRequest.create({
+        compile: {
+          compileConfig: {
+            projectDir,
+            projectConfigOverride: {
+              defaultJobLabels: {
+                env: "prod",
+                cost_center: "123",
+              },
+            },
+          },
+        },
+      });
+
+      const result = runMainInVm(coreExecutionRequest);
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(
+        asPlainObject(result.compile.compiledGraph.projectConfig.defaultJobLabels),
+      ).deep.equals({
+        env: "prod",
+        team: "core",
+        cost_center: "123",
+      });
+    });
+
+    test("defaultJobLabels fails when projectConfigOverride has invalid labels", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      writeWorkflowSettingsFile(
+        projectDir,
+        `
+defaultProject: defaultProject
+defaultLocation: US
+`,
+      );
+      const coreExecutionRequest = dataform.CoreExecutionRequest.create({
+        compile: {
+          compileConfig: {
+            projectDir,
+            projectConfigOverride: {
+              defaultJobLabels: {
+                "goog-reserved": "val",
+              },
+            },
+          },
+        },
+      });
+
+      expect(() => runMainInVm(coreExecutionRequest)).to.throw(
+        'Invalid job label key "goog-reserved" in defaultJobLabels: key cannot start with reserved prefix "goog-".',
+      );
+    });
+  });
 });

@@ -12,6 +12,7 @@ import {
   resolvableAsActionConfigTarget,
   resolvableAsTarget,
   resolveActionsConfigFilename,
+  setActionJobLabels,
   toResolvable,
 } from "df/core/utils";
 import { dataform } from "df/protos/ts";
@@ -165,6 +166,7 @@ export class Operation extends ActionBuilder<dataform.Operation> {
       }
       this.proto.actionDescriptor.reservation = config.reservation;
     }
+    setActionJobLabels(this.proto, config.jobLabels, this.session);
     return this;
   }
 

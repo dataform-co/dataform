@@ -28,6 +28,7 @@ import {
   resolvableAsActionConfigTarget,
   resolvableAsTarget,
   resolveActionsConfigFilename,
+  setActionJobLabels,
   strictKeysOf,
   toResolvable,
   validateConnectionFormat,
@@ -178,6 +179,7 @@ export class Table extends ActionBuilder<dataform.Table> {
         ),
       );
     }
+    setActionJobLabels(this.proto, config.jobLabels, this.session);
     if (config.assertions) {
       this.assertions(dataform.ActionConfig.TableAssertionsConfig.create(config.assertions));
     }

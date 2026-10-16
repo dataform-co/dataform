@@ -12,6 +12,7 @@ import {
   nativeRequire,
   resolvableAsTarget,
   resolveActionsConfigFilename,
+  setActionJobLabels,
   toResolvable,
   validateQueryString,
 } from "df/core/utils";
@@ -66,6 +67,8 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     } else if (extension === "sqlx") {
       this.configureSqlx(session, config);
     }
+
+    setActionJobLabels(this.proto, config.jobLabels, this.session);
   }
 
   /**

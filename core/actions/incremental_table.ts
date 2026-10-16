@@ -29,6 +29,7 @@ import {
   resolvableAsActionConfigTarget,
   resolvableAsTarget,
   resolveActionsConfigFilename,
+  setActionJobLabels,
   strictKeysOf,
   toResolvable,
   validateConnectionFormat,
@@ -181,6 +182,7 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
     if (config.dataset) {
       this.schema(config.dataset);
     }
+    setActionJobLabels(this.proto, config.jobLabels, this.session);
     if (config.assertions) {
       this.assertions(dataform.ActionConfig.TableAssertionsConfig.create(config.assertions));
     }
