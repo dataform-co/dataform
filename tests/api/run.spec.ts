@@ -1,6 +1,6 @@
 import { config, expect } from "chai";
 import Long from "long";
-import { anyString, anything, instance, mock, verify, when } from "ts-mockito";
+import { anyString, anything, capture, instance, mock, verify, when } from "ts-mockito";
 
 import { Runner } from "df/cli/api";
 import { IDbAdapter } from "df/cli/api/dbadapters";
@@ -150,6 +150,35 @@ suite("@dataform/api/run", () => {
     ).to.deep.equal(EXPECTED_RUN_RESULT.toJSON());
     verify(mockedDbAdapter.createSchema("database", "schema1")).once();
     verify(mockedDbAdapter.createSchema("database2", "schema2")).once();
+  });
+
+  test("execute passes projectConfig.defaultLocation to BigQuery", async () => {
+    const graph = dataform.ExecutionGraph.create({
+      projectConfig: {
+        warehouse: "bigquery",
+        defaultDatabase: "db",
+        defaultLocation: "europe-west1",
+      },
+      runConfig: {},
+      warehouseState: {},
+      actions: [
+        {
+          tasks: [{ type: "statement", statement: "SELECT 1" }],
+          type: "table",
+          target: { database: "db", schema: "s", name: "t" },
+          tableType: "table",
+          dependencyTargets: [],
+        },
+      ],
+    });
+    const mockedDbAdapter = mock(BigQueryDbAdapter);
+    when(mockedDbAdapter.createSchema(anyString(), anyString())).thenResolve(null);
+    when(mockedDbAdapter.execute(anyString(), anything())).thenResolve({ rows: [], metadata: {} });
+
+    await new Runner(instance(mockedDbAdapter), graph).execute().result();
+
+    const [, options] = capture(mockedDbAdapter.execute).last();
+    expect(options.bigquery?.location).to.equal("europe-west1");
   });
 
   test("stop and then resume", async () => {

@@ -386,6 +386,7 @@ export class Runner {
         ...(action.actionDescriptor?.bigqueryLabels || {}),
       },
       actionRetryLimit: this.executionOptions.bigquery?.actionRetryLimit,
+      location: this.graph.projectConfig?.defaultLocation || undefined,
       reservation:
         action.actionDescriptor?.reservation || this.graph.projectConfig?.defaultReservation,
     };
