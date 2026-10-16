@@ -240,7 +240,7 @@ function loadActionConfigsFile(
 /**
  * `ActionConfigs.fromObject` converts camelCased JSON keys into proto fields, but it also
  * calls `String(value)` on `map<string, string>` entries (turning numbers and booleans into
- * strings). Restore the raw `jobLabels` / `job_labels` object from the parsed YAML so that
+ * strings). Restore the raw `jobLabels` object from the parsed YAML so that
  * `validateJobLabels` rejects non-string values consistently across all config surfaces.
  */
 function restoreJobLabelsAsWritten(
@@ -250,29 +250,23 @@ function restoreJobLabelsAsWritten(
   if (!Array.isArray(rawActionConfigs?.actions)) {
     return;
   }
-  const actionTypePairs: Array<[string, keyof dataform.IActionConfig]> = [
-    ["table", "table"],
-    ["view", "view"],
-    ["incrementalTable", "incrementalTable"],
-    ["incremental_table", "incrementalTable"],
-    ["assertion", "assertion"],
-    ["operation", "operation"],
-    ["dataPreparation", "dataPreparation"],
-    ["data_preparation", "dataPreparation"],
+  const actionTypes: Array<keyof dataform.IActionConfig> = [
+    "table",
+    "view",
+    "incrementalTable",
+    "assertion",
+    "operation",
+    "dataPreparation",
   ];
   rawActionConfigs.actions.forEach((rawAction, index) => {
     const parsedAction = parsedActionConfigs.actions?.[index];
     if (!rawAction || !parsedAction) {
       return;
     }
-    for (const [rawKey, parsedKey] of actionTypePairs) {
-      const rawSubConfig = rawAction[rawKey];
-      const parsedSubConfig = parsedAction[parsedKey] as { jobLabels?: any } | null | undefined;
-      if (!rawSubConfig || !parsedSubConfig) {
-        continue;
-      }
-      const rawJobLabels = rawSubConfig.jobLabels ?? rawSubConfig.job_labels;
-      if (rawJobLabels !== undefined) {
+    for (const actionType of actionTypes) {
+      const rawJobLabels = rawAction[actionType]?.jobLabels;
+      const parsedSubConfig = parsedAction[actionType] as { jobLabels?: any } | null | undefined;
+      if (rawJobLabels !== undefined && parsedSubConfig) {
         parsedSubConfig.jobLabels = rawJobLabels;
       }
     }
