@@ -3,10 +3,12 @@ import Long from "long";
 
 import * as dfapi from "df/cli/api";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
+import { CREDENTIALS_PATH } from "df/cli/index_test_base";
 import { suite, test } from "df/testing";
+import { integrationSuite } from "df/testing/credentials";
 
-suite("@dataform/integration/execute", { parallel: true }, () => {
-  const credentials = dfapi.credentials.read("test_credentials/bigquery.json");
+integrationSuite("@dataform/integration/execute", { parallel: true }, () => {
+  const credentials = dfapi.credentials.read(CREDENTIALS_PATH);
   const dbadapter = new BigQueryDbAdapter(credentials);
 
   test("returned metadata includes jobReference and statistics", async () => {
@@ -31,6 +33,15 @@ suite("@dataform/integration/execute", { parallel: true }, () => {
     expect(bqMetadata.jobId).to.match(
       /^dataform-jobPrefix-[0-9A-Fa-f]{8}(?:-[0-9A-Fa-f]{4}){3}-[0-9A-Fa-f]{12}$/,
     );
+  });
+
+  test("queries run as the impersonated service account, if one is configured", async () => {
+    if (!credentials.impersonateServiceAccount) {
+      // E.g. a local test_credentials/bigquery.json override for a personal project.
+      return;
+    }
+    const { rows } = await dbadapter.execute("select session_user() as user");
+    expect(rows).to.eql([{ user: credentials.impersonateServiceAccount }]);
   });
 
   suite("query limits work", { parallel: true }, () => {

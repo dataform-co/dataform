@@ -68,6 +68,7 @@ ts_library(
 ts_test_suite(
     name = "tests",
     srcs = [
+        "credentials_test.ts",
         "index_compile_test.ts",
         "index_help_test.ts",
         "index_init_test.ts",
@@ -117,7 +118,7 @@ ts_test_suite(
         "//packages/@dataform/cli:json",
         "//packages/@dataform/cli:worker_bundle",
         "//packages/@dataform/core:package_tar",
-        "//test_credentials:bigquery.json",
+        "//test_credentials:bigquery_credentials",
     ],
     # index_test_base runs `npm` directly, and the CLI runs `npm i` when dataformCoreVersion is set.
     include_npm = True,

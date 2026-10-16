@@ -1,10 +1,11 @@
 import { expect } from "chai";
 
 import { CREDENTIALS_PATH, runCli, setupJitProject } from "df/cli/index_test_base";
-import { suite, test, writeDefinitionFile } from "df/testing";
+import { test, writeDefinitionFile } from "df/testing";
+import { integrationSuite } from "df/testing/credentials";
 import { TmpDirFixture } from "df/testing/fixtures";
 
-suite("JiT support advanced", ({ afterEach }) => {
+integrationSuite("JiT support advanced", ({ afterEach }) => {
   const tmpDirFixture = new TmpDirFixture(afterEach);
 
   test("JiT preOps and postOps support", async () => {
