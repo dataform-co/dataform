@@ -16,16 +16,6 @@ export function keyBy<V>(values: V[], keyFn: (value: V) => string): { [key: stri
   );
 }
 
-export async function dropAllTables(
-  tables: dataform.ITableMetadata[],
-  executionSql: ExecutionSql,
-  dbadapter: dbadapters.IDbAdapter,
-) {
-  await Promise.all(
-    tables.map((table) => dbadapter.execute(executionSql.dropIfExists(table.target, table.type))),
-  );
-}
-
 export async function getTableRows(
   target: dataform.ITarget,
   executionSql: ExecutionSql,
@@ -54,15 +44,4 @@ export async function compile(
     ...projectConfigOverrides,
   };
   return compiledGraph;
-}
-
-export async function cleanWarehouse(
-  compiledGraph: dataform.CompiledGraph,
-  dbadapter: dbadapters.IDbAdapter,
-) {
-  await dropAllTables(
-    (await dfapi.build(compiledGraph, {}, dbadapter)).warehouseState.tables,
-    new ExecutionSql(compiledGraph.projectConfig, compiledGraph.dataformCoreVersion),
-    dbadapter,
-  );
 }

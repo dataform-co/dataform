@@ -3,13 +3,38 @@ import { expect } from "chai";
 import * as dfapi from "df/cli/api";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 import { ExecutionSql } from "df/cli/api/dbadapters/execution_sql";
+import { INTEGRATION_TEST_LOCATION, INTEGRATION_TEST_PROJECT } from "df/cli/index_test_base";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
-import { cleanWarehouse, compile } from "df/tests/integration/utils";
+import { dropDatasets, dropStaleDatasets, makeUniqueSuffix } from "df/testing/bigquery";
+import { compile } from "df/tests/integration/utils";
 
-suite("@dataform/integration/bigquery", { parallel: true }, () => {
+const SEARCH_SCHEMA_SUFFIX = "search";
+const SEARCH_DATASET = `df_integration_test_${SEARCH_SCHEMA_SUFFIX}`;
+const SEARCH_ASSERTIONS_DATASET = `df_integration_test_assertions_${SEARCH_SCHEMA_SUFFIX}`;
+
+const DATASETS = [SEARCH_DATASET, SEARCH_ASSERTIONS_DATASET];
+
+suite("@dataform/integration/bigquery", { parallel: true }, ({ before, after }) => {
   const credentials = dfapi.credentials.read("test_credentials/bigquery.json");
   const dbadapter = new BigQueryDbAdapter(credentials);
+  const uniqueSuffix = makeUniqueSuffix();
+
+  before("drop stale datasets", async () => {
+    await dropStaleDatasets(dbadapter, {
+      project: INTEGRATION_TEST_PROJECT,
+      location: INTEGRATION_TEST_LOCATION,
+      prefixes: DATASETS,
+    });
+  });
+
+  after("drop datasets", async () => {
+    await dropDatasets(
+      dbadapter,
+      INTEGRATION_TEST_PROJECT,
+      DATASETS.map((dataset) => `${dataset}_${uniqueSuffix}`),
+    );
+  });
 
   test("run unit tests", async () => {
     const compiledGraph = await compile("tests/integration/bigquery_project", "unit_tests");
@@ -84,10 +109,11 @@ suite("@dataform/integration/bigquery", { parallel: true }, () => {
   });
 
   test("search", async () => {
-    const compiledGraph = await compile("tests/integration/bigquery_project", "search");
-
-    // Drop all the tables before we do anything.
-    await cleanWarehouse(compiledGraph, dbadapter);
+    const compiledGraph = await compile(
+      "tests/integration/bigquery_project",
+      `${SEARCH_SCHEMA_SUFFIX}_${uniqueSuffix}`,
+    );
+    const dataset = `${SEARCH_DATASET}_${uniqueSuffix}`;
 
     // Run the project.
     const executionGraph = await dfapi.build(
@@ -104,8 +130,9 @@ suite("@dataform/integration/bigquery", { parallel: true }, () => {
     );
 
     const [fullSearch, partialSearch, columnSearch] = await Promise.all([
-      dbadapter.search("df_integration_test_search"),
-      dbadapter.search("test_sear"),
+      dbadapter.search(dataset),
+      // A partial match, that still only matches this run's dataset.
+      dbadapter.search(`test_search_${uniqueSuffix}`),
       dbadapter.search("val"),
     ]);
 

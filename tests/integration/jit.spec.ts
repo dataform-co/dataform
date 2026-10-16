@@ -7,12 +7,36 @@ import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 import { INTEGRATION_TEST_LOCATION, INTEGRATION_TEST_PROJECT } from "df/cli/index_test_base";
 import { dataform } from "df/protos/ts";
 import { suite, test, writeDefinitionFile } from "df/testing";
+import { dropDatasets, dropStaleDatasets, makeUniqueSuffix } from "df/testing/bigquery";
 import { TmpDirFixture } from "df/testing/fixtures";
 
-suite("@dataform/integration/jit", { parallel: true }, ({ afterEach }) => {
+// The unique suffix is appended to these names.
+const JIT_DATASET = "df_integration_test_jit";
+const JIT_DRY_RUN_DATASET = "df_integration_test_jit_dry_run";
+
+const DATASETS = [JIT_DATASET, JIT_DRY_RUN_DATASET];
+
+suite("@dataform/integration/jit", { parallel: true }, ({ afterEach, before, after }) => {
   const credentials = dfapi.credentials.read("test_credentials/bigquery.json");
   const dbadapter = new BigQueryDbAdapter(credentials);
   const tmpDirFixture = new TmpDirFixture(afterEach);
+  const uniqueSuffix = makeUniqueSuffix();
+
+  before("drop stale datasets", async () => {
+    await dropStaleDatasets(dbadapter, {
+      project: INTEGRATION_TEST_PROJECT,
+      location: INTEGRATION_TEST_LOCATION,
+      prefixes: DATASETS,
+    });
+  });
+
+  after("drop datasets", async () => {
+    await dropDatasets(
+      dbadapter,
+      INTEGRATION_TEST_PROJECT,
+      DATASETS.map((dataset) => `${dataset}_${uniqueSuffix}`),
+    );
+  });
 
   function setUpProject(projectDir: string, datasetName: string, tableName: string): void {
     fs.writeFileSync(
@@ -45,16 +69,11 @@ defaultDataset: ${datasetName}
   test("JiT execution e2e", { timeout: 120000 }, async () => {
     // Create a simple project with a JiT table
     const projectDir = tmpDirFixture.createNewTmpDir();
-    const datasetName = "df_integration_test_jit";
+    const datasetName = `${JIT_DATASET}_${uniqueSuffix}`;
     const tableName = "jit_table";
     setUpProject(projectDir, datasetName, tableName);
 
     const compiledGraph = await dfapi.compile({ projectDir });
-
-    // Drop dataset to start fresh
-    await dbadapter.execute(
-      `drop schema if exists \`${INTEGRATION_TEST_PROJECT}.${datasetName}\` cascade`,
-    );
 
     const executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
     const runResult = await dfapi.run(dbadapter, executionGraph, { projectDir }).result();
@@ -72,16 +91,11 @@ defaultDataset: ${datasetName}
   test("JiT dry run integration", { timeout: 120000 }, async () => {
     // Create a simple project with a JiT table
     const projectDir = tmpDirFixture.createNewTmpDir();
-    const datasetName = "df_integration_test_jit_dry_run";
+    const datasetName = `${JIT_DRY_RUN_DATASET}_${uniqueSuffix}`;
     const tableName = "jit_table_dry_run";
     setUpProject(projectDir, datasetName, tableName);
 
     const compiledGraph = await dfapi.compile({ projectDir });
-
-    // Drop dataset to start fresh
-    await dbadapter.execute(
-      `drop schema if exists \`${INTEGRATION_TEST_PROJECT}.${datasetName}\` cascade`,
-    );
 
     const executionGraph = await dfapi.build(compiledGraph, {}, dbadapter);
 
