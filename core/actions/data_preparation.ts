@@ -323,7 +323,10 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     if (config.dependencyTargets) {
       this.dependencies(
         config.dependencyTargets.map((dependencyTarget) =>
-          configTargetToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget)),
+          configTargetToCompiledGraphTarget(
+            dataform.ActionConfig.Target.create(dependencyTarget),
+            session.projectConfig?.defaultLakehouseConfig,
+          ),
         ),
       );
     }
@@ -380,7 +383,10 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     if (config.dependencyTargets) {
       this.dependencies(
         config.dependencyTargets.map((dependencyTarget) =>
-          configTargetToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget)),
+          configTargetToCompiledGraphTarget(
+            dataform.ActionConfig.Target.create(dependencyTarget),
+            session.projectConfig?.defaultLakehouseConfig,
+          ),
         ),
       );
     }
@@ -466,7 +472,9 @@ export class DataPreparationContext implements ITableContext {
 
   public ref(ref: Resolvable | string[], ...rest: string[]): string {
     ref = toResolvable(ref, rest);
-    if (!resolvableAsTarget(ref)) {
+    if (
+      !resolvableAsTarget(ref, this.dataPreparation.session.projectConfig?.defaultLakehouseConfig)
+    ) {
       this.dataPreparation.session.compileError(new Error(`Action name is not specified`));
       return "";
     }

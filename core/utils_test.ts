@@ -459,6 +459,40 @@ suite("Dataform Utility Validations", () => {
       );
     });
 
+    test("resolvableAsTarget applies defaultLakehouseConfig for partial Lakehouse references", () => {
+      expect(
+        resolvableAsTarget(
+          { catalog: "c", name: "t" },
+          { catalog: "default_c", namespace: "default_n" },
+        ),
+      ).to.deep.equal(
+        dataform.Target.create({
+          schema: "c.default_n",
+          name: "t",
+        }),
+      );
+      expect(
+        resolvableAsTarget(
+          { namespace: "n", name: "t" },
+          { catalog: "default_c", namespace: "default_n" },
+        ),
+      ).to.deep.equal(
+        dataform.Target.create({
+          schema: "default_c.n",
+          name: "t",
+        }),
+      );
+    });
+
+    test("resolvableAsTarget throws when Lakehouse reference is missing catalog or namespace", () => {
+      expect(() => resolvableAsTarget({ catalog: "c", name: "t" })).to.throw(
+        "Lakehouse target reference must specify both 'catalog' and 'namespace' (or set defaultLakehouseConfig in workflow_settings.yaml).",
+      );
+      expect(() => resolvableAsTarget({ namespace: "n", name: "t" })).to.throw(
+        "Lakehouse target reference must specify both 'catalog' and 'namespace' (or set defaultLakehouseConfig in workflow_settings.yaml).",
+      );
+    });
+
     test("resolvableAsActionConfigTarget supports 4-part strings and Lakehouse objects", () => {
       expect(resolvableAsActionConfigTarget("p.c.n.t")).to.deep.equal({
         name: "t",

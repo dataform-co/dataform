@@ -132,6 +132,7 @@ function isResolvableArray(parts: any[]): parts is [string, string?, string?, st
 
 export function resolvableAsTarget(
   resolvable: Resolvable | dataform.ActionConfig.Target,
+  defaultLakehouseConfig?: dataform.IDefaultLakehouseConfig | null,
 ): dataform.Target {
   if (typeof resolvable === "string") {
     return dataform.Target.create({
@@ -141,10 +142,10 @@ export function resolvableAsTarget(
   const obj = resolvable as any;
   const catalog = obj.catalog ?? obj.lakehouse?.catalog;
   const namespace = obj.namespace ?? obj.lakehouse?.namespace;
-  if (catalog !== undefined || namespace !== undefined || obj.lakehouse !== undefined) {
+  if (catalog != null || namespace != null || obj.lakehouse != null) {
     return dataform.Target.create({
       name: obj.name,
-      schema: catalog && namespace ? `${catalog}.${namespace}` : undefined,
+      schema: resolveLakehouseSchema({ catalog, namespace }, defaultLakehouseConfig, true),
       database: obj.database ?? obj.project,
       includeDependentAssertions: obj.includeDependentAssertions,
     });
@@ -560,11 +561,11 @@ export function configTargetToCompiledGraphTarget(
     compiledGraphTarget.schema = configTarget.dataset;
   }
   if (configTarget.lakehouse) {
-    const catalog = configTarget.lakehouse.catalog || defaultLakehouseConfig?.catalog || "";
-    const namespace = configTarget.lakehouse.namespace || defaultLakehouseConfig?.namespace || "";
-    if (catalog && namespace) {
-      compiledGraphTarget.schema = `${catalog}.${namespace}`;
-    }
+    compiledGraphTarget.schema = resolveLakehouseSchema(
+      configTarget.lakehouse,
+      defaultLakehouseConfig,
+      true,
+    );
   }
   if (configTarget.hasOwnProperty("includeDependentAssertions")) {
     compiledGraphTarget.includeDependentAssertions = configTarget.includeDependentAssertions;
@@ -617,7 +618,10 @@ export function checkAssertionsForDependency(
   action: actionsWithDependencies,
   resolvable: Resolvable,
 ): dataform.Target {
-  const dependencyTarget = resolvableAsTarget(resolvable);
+  const dependencyTarget = resolvableAsTarget(
+    resolvable,
+    action.session.projectConfig?.defaultLakehouseConfig,
+  );
   if (
     !dependencyTarget.hasOwnProperty("includeDependentAssertions") &&
     !(action instanceof DataPreparation)

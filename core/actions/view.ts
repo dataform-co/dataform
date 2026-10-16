@@ -722,7 +722,7 @@ export class ViewContext implements ITableContext {
 
   public ref(ref: Resolvable | string[], ...rest: string[]): string {
     ref = toResolvable(ref, rest);
-    if (!resolvableAsTarget(ref)) {
+    if (!resolvableAsTarget(ref, this.view.session.projectConfig?.defaultLakehouseConfig)) {
       this.view.session.compileError(new Error(`Action name is not specified`));
       return "";
     }

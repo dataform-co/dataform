@@ -906,7 +906,9 @@ export class IncrementalTableContext implements ITableContext {
 
   public ref(ref: Resolvable | string[], ...rest: string[]): string {
     ref = toResolvable(ref, rest);
-    if (!resolvableAsTarget(ref)) {
+    if (
+      !resolvableAsTarget(ref, this.incrementalTable.session.projectConfig?.defaultLakehouseConfig)
+    ) {
       this.incrementalTable.session.compileError(new Error(`Action name is not specified`));
       return "";
     }

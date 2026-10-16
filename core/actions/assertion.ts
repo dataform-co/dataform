@@ -203,7 +203,10 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
   public dependencies(value: Resolvable | Resolvable[]) {
     const newDependencies = Array.isArray(value) ? value : [value];
     newDependencies.forEach((resolvable) => {
-      const resolvableTarget = resolvableAsTarget(resolvable);
+      const resolvableTarget = resolvableAsTarget(
+        resolvable,
+        this.session.projectConfig?.defaultLakehouseConfig,
+      );
       this.session.actionAssertionMap.set(resolvableTarget, this);
       this.proto.dependencyTargets.push(resolvableTarget);
     });
@@ -417,7 +420,7 @@ export class AssertionContext implements IActionContext {
 
   public ref(ref: Resolvable | string[], ...rest: string[]) {
     ref = toResolvable(ref, rest);
-    if (!resolvableAsTarget(ref)) {
+    if (!resolvableAsTarget(ref, this.assertion.session.projectConfig?.defaultLakehouseConfig)) {
       this.assertion.session.compileError(new Error(`Action name is not specified`));
       return "";
     }

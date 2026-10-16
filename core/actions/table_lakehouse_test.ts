@@ -545,4 +545,100 @@ SELECT "\${self()}" AS self_ref
       'SELECT "`defaultProject_psuf.cat.ns.npref_tbl`" AS self_ref',
     );
   });
+
+  test("partial Lakehouse ref applies defaultLakehouseConfig and does not fall back to 3-part table", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    writeWorkflowSettingsFile(
+      projectDir,
+      `
+defaultProject: defaultProject
+defaultDataset: defaultDataset
+defaultLocation: US
+defaultLakehouseConfig:
+  catalog: default_cat
+  namespace: default_ns
+`,
+    );
+    writeDefinitionFile(
+      projectDir,
+      "bq_tbl.sqlx",
+      `
+config {
+  type: "table",
+  name: "shared_name"
+}
+SELECT 1
+`,
+    );
+    writeDefinitionFile(
+      projectDir,
+      "lh_tbl.sqlx",
+      `
+config {
+  type: "table",
+  name: "shared_name",
+  lakehouse: {
+    catalog: "custom_cat"
+  }
+}
+SELECT 2
+`,
+    );
+    writeDefinitionFile(
+      projectDir,
+      "consumer.sqlx",
+      `
+config {
+  type: "table"
+}
+SELECT * FROM \${ref({ catalog: "custom_cat", name: "shared_name" })}
+`,
+    );
+
+    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+    expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+    const consumer = result.compile.compiledGraph.tables.find((t) => t.target.name === "consumer");
+    expect(consumer.query.trim()).equals(
+      "SELECT * FROM `defaultProject.custom_cat.default_ns.shared_name`",
+    );
+    expect(asPlainObject(consumer.dependencyTargets)).deep.equals([
+      {
+        database: "defaultProject",
+        schema: "custom_cat.default_ns",
+        name: "shared_name",
+      },
+    ]);
+  });
+
+  test("partial Lakehouse ref without defaultLakehouseConfig fails instead of matching 3-part table by name", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
+    writeDefinitionFile(
+      projectDir,
+      "bq_tbl.sqlx",
+      `
+config {
+  type: "table",
+  name: "shared_name"
+}
+SELECT 1
+`,
+    );
+    writeDefinitionFile(
+      projectDir,
+      "consumer.sqlx",
+      `
+config {
+  type: "table"
+}
+SELECT * FROM \${ref({ catalog: "custom_cat", name: "shared_name" })}
+`,
+    );
+
+    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+    const errors = result.compile.compiledGraph.graphErrors.compilationErrors.map((e) => e.message);
+    expect(errors).to.include(
+      "Lakehouse target reference must specify both 'catalog' and 'namespace' (or set defaultLakehouseConfig in workflow_settings.yaml).",
+    );
+  });
 });

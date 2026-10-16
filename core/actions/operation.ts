@@ -495,7 +495,7 @@ export class OperationContext implements IActionContext {
 
   public ref(ref: Resolvable | string[], ...rest: string[]) {
     ref = toResolvable(ref, rest);
-    if (!resolvableAsTarget(ref)) {
+    if (!resolvableAsTarget(ref, this.operation.session.projectConfig?.defaultLakehouseConfig)) {
       this.operation.session.compileError(new Error(`Action name is not specified`));
       return "";
     }

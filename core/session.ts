@@ -261,7 +261,9 @@ export class Session {
 
   public resolve(ref: Resolvable | string[], ...rest: string[]): string {
     ref = toResolvable(ref, rest);
-    const allResolved = this.indexedActions.find(utils.resolvableAsTarget(ref));
+    const allResolved = this.indexedActions.find(
+      utils.resolvableAsTarget(ref, this.projectConfig?.defaultLakehouseConfig),
+    );
     if (allResolved.length > 1) {
       this.compileError(new Error(utils.ambiguousActionNameMsg(ref, allResolved)));
       return "";
@@ -288,7 +290,9 @@ export class Session {
     ...rest: string[]
   ): dataform.ITarget | undefined {
     ref = toResolvable(ref, rest);
-    const allResolved = this.indexedActions.find(utils.resolvableAsTarget(ref));
+    const allResolved = this.indexedActions.find(
+      utils.resolvableAsTarget(ref, this.projectConfig?.defaultLakehouseConfig),
+    );
     if (allResolved.length !== 1) {
       return undefined;
     }
