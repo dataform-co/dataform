@@ -51,7 +51,7 @@ suite("@dataform/api/credentials", ({ afterEach }) => {
     const keyJson = JSON.stringify({
       type: "service_account",
       client_email: "sa@my-gcp-project.iam.gserviceaccount.com",
-      private_key: "-----BEGIN PRIVATE KEY-----\ntest\n-----END PRIVATE KEY-----\n",
+      private_key: "fake-private-key",
     });
     fs.writeFileSync(
       credentialsPath,

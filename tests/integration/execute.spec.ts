@@ -5,10 +5,9 @@ import * as dfapi from "df/cli/api";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 import { CREDENTIALS_PATH } from "df/cli/index_test_base";
 import { suite, test } from "df/testing";
-import { requireAdc } from "df/testing/credentials";
+import { integrationSuite } from "df/testing/credentials";
 
-suite("@dataform/integration/execute", { parallel: true }, ({ before }) => {
-  requireAdc(before);
+integrationSuite("@dataform/integration/execute", { parallel: true }, () => {
   const credentials = dfapi.credentials.read(CREDENTIALS_PATH);
   const dbadapter = new BigQueryDbAdapter(credentials);
 

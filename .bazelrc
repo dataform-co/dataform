@@ -13,6 +13,11 @@ test:integration --test_env=APPDATA
 test:integration --test_env=GOOGLE_APPLICATION_CREDENTIALS
 test:integration --test_env=CLOUDSDK_CONFIG
 test:integration --test_env=GOOGLE_CLOUD_QUOTA_PROJECT
+# Metadata server settings, honoured by both google-auth-library and the ADC check in
+# testing/credentials.ts (e.g. for metadata server emulators).
+test:integration --test_env=GCE_METADATA_HOST
+test:integration --test_env=GCE_METADATA_IP
+test:integration --test_env=METADATA_SERVER_DETECTION
 
 # This is an optimisation we used to have to speed up open source development. If open source
 # development is too slow, consider setting it back up, so that build results can be shared across

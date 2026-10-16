@@ -6,8 +6,8 @@ import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 import { CREDENTIALS_PATH, INTEGRATION_TEST_PROJECT } from "df/cli/index_test_base";
 import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
-import { suite, test } from "df/testing";
-import { requireAdc } from "df/testing/credentials";
+import { test } from "df/testing";
+import { integrationSuite } from "df/testing/credentials";
 import { compile, keyBy } from "df/tests/integration/utils";
 
 const GRAPH_NAME = "LibraryGraph";
@@ -22,21 +22,20 @@ async function dropDataset(dbadapter: BigQueryDbAdapter, dataset: string) {
   );
 }
 
-suite("@dataform/integration/property_graph", { parallel: true }, ({ before, after }) => {
-  requireAdc(before);
+integrationSuite("@dataform/integration/property_graph", { parallel: true }, (ctx) => {
   const credentials = dfapi.credentials.read(CREDENTIALS_PATH);
   const schemaSuffix = `e2e_${makeSuffix()}`;
   const dataset = `df_integration_test_pg_${schemaSuffix}`;
   const graphTarget = `${INTEGRATION_TEST_PROJECT}.${dataset}.${GRAPH_NAME}`;
   let dbadapter: BigQueryDbAdapter;
 
-  before("create adapter", async () => {
+  ctx.before("create adapter", async () => {
     dbadapter = new BigQueryDbAdapter(credentials);
   });
 
-  after("drop dataset", async () => {
-    // Tear-down hooks run even when a set-up hook (e.g. requireAdc) fails, in which case the
-    // adapter was never created.
+  ctx.after("drop dataset", async () => {
+    // Tear-down hooks run even when a set-up hook (e.g. the ADC check registered by
+    // integrationSuite) fails, in which case the adapter was never created.
     if (dbadapter) {
       await dropDataset(dbadapter, dataset);
     }

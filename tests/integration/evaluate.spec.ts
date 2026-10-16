@@ -5,12 +5,11 @@ import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 import { CREDENTIALS_PATH, INTEGRATION_TEST_PROJECT } from "df/cli/index_test_base";
 import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
-import { suite, test } from "df/testing";
-import { requireAdc } from "df/testing/credentials";
+import { test } from "df/testing";
+import { integrationSuite } from "df/testing/credentials";
 import { compile, keyBy } from "df/tests/integration/utils";
 
-suite("@dataform/integration/evaluate", ({ before }) => {
-  requireAdc(before);
+integrationSuite("@dataform/integration/evaluate", () => {
   const credentials = dfapi.credentials.read(CREDENTIALS_PATH);
   const dbadapter = new BigQueryDbAdapter(credentials);
 

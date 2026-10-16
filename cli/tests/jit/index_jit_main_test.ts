@@ -6,12 +6,11 @@ import {
   runCli,
   setupJitProject,
 } from "df/cli/index_test_base";
-import { suite, test, writeDefinitionFile } from "df/testing";
-import { requireAdc } from "df/testing/credentials";
+import { test, writeDefinitionFile } from "df/testing";
+import { integrationSuite } from "df/testing/credentials";
 import { TmpDirFixture } from "df/testing/fixtures";
 
-suite("JiT support main", ({ afterEach, before }) => {
-  requireAdc(before);
+integrationSuite("JiT support main", ({ afterEach }) => {
   const tmpDirFixture = new TmpDirFixture(afterEach);
 
   test("compile command includes jitCode in output", async () => {

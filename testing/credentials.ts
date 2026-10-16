@@ -3,7 +3,7 @@ import * as http from "http";
 import * as https from "https";
 import * as path from "path";
 
-import { IHookHandler } from "df/testing";
+import { IHookHandler, ISuiteContext, ISuiteOptions, suite } from "df/testing";
 
 // Helpers for integration test credentials and Application Default Credentials (ADC).
 // This module intentionally has no import-time side effects: nothing here reads or modifies the
@@ -72,6 +72,10 @@ export function readTestCredentialsConfig(
  * Verifies that Application Default Credentials (or an explicit service account key in the
  * Dataform credentials JSON file) are available. Fails immediately with an actionable message
  * instead of hanging on unreachable GCE metadata server probes.
+ *
+ * This is only a fast pre-check: it looks for credentials but doesn't validate them. For example,
+ * an expired user credentials file passes here, and the tests then fail later, with
+ * google-auth-library's less specific auth error.
  */
 export async function ensureAdcAvailable(options: IAdcCheckOptions = {}): Promise<void> {
   const env = options.env ?? process.env;
@@ -98,7 +102,7 @@ export async function ensureAdcAvailable(options: IAdcCheckOptions = {}): Promis
     );
   }
 
-  // 3. Check well-known gcloud ADC file locations.
+  // 3. Check well-known gcloud ADC file locations (existence only, see above).
   const wellKnownPaths: string[] = [];
   if (env.CLOUDSDK_CONFIG) {
     wellKnownPaths.push(path.join(env.CLOUDSDK_CONFIG, ADC_FILENAME));
@@ -126,12 +130,8 @@ export async function ensureAdcAvailable(options: IAdcCheckOptions = {}): Promis
 /**
  * Registers a suite set-up hook that prepares and verifies Application Default Credentials for
  * integration tests, failing the whole suite fast with an actionable message when none are
- * available. Call it first in the suite body, so that it runs before any other set-up hook:
- *
- *   suite("...", ({ before }) => {
- *     requireAdc(before);
- *     ...
- *   });
+ * available. Integration suites get it from integrationSuite(), which registers it before any
+ * other hook.
  */
 export function requireAdc(setUp: IHookHandler, options: IAdcCheckOptions = {}): void {
   setUp("verify Application Default Credentials", async () => {
@@ -139,6 +139,30 @@ export function requireAdc(setUp: IHookHandler, options: IAdcCheckOptions = {}):
     // read later by google-auth-library and inherited by child processes (e.g. the CLI).
     bridgeCloudSdkConfig(options.env ?? process.env);
     await ensureAdcAvailable(options);
+  });
+}
+
+/**
+ * Like suite(), for integration tests that need Application Default Credentials. Registers the
+ * ADC check (see requireAdc()) before anything in `fn`, so it runs before the suite's own set-up
+ * hooks and fails the whole suite fast when no credentials are available.
+ */
+export function integrationSuite(name: string, fn: (ctx: ISuiteContext) => void): void;
+export function integrationSuite(
+  name: string,
+  options: Omit<ISuiteOptions, "name">,
+  fn: (ctx: ISuiteContext) => void,
+): void;
+export function integrationSuite(
+  name: string,
+  optionsOrFn: Omit<ISuiteOptions, "name"> | ((ctx: ISuiteContext) => void),
+  fn?: (ctx: ISuiteContext) => void,
+): void {
+  const options = typeof optionsOrFn === "function" ? {} : optionsOrFn;
+  const body = typeof optionsOrFn === "function" ? optionsOrFn : fn;
+  suite(name, options, (ctx) => {
+    requireAdc(ctx.before);
+    body(ctx);
   });
 }
 

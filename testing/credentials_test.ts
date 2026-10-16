@@ -177,13 +177,15 @@ suite("testing/credentials", ({ afterEach }) => {
     });
 
     test("does not downgrade an explicit https:// GCE_METADATA_HOST to plain http", async () => {
-      // The stand-in server only speaks plain HTTP, so an HTTPS probe must fail.
+      // The stand-in server only speaks plain HTTP, so an HTTPS probe must fail. The handshake
+      // normally fails at once; the short timeout only caps it on slow machines.
       await withMetadataServer(200, async (host) => {
         await assert.rejects(
           ensureAdcAvailable({
             credentialsPath: writeCredentialsFile(ADC_ONLY_CONFIG),
             env: { HOME: tmpDirFixture.createNewTmpDir(), GCE_METADATA_HOST: `https://${host}` },
             platform: "linux",
+            metadataProbeTimeoutMs: 200,
           }),
           /^Error: No Application Default Credentials found\./,
         );

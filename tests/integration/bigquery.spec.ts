@@ -6,11 +6,10 @@ import { ExecutionSql } from "df/cli/api/dbadapters/execution_sql";
 import { CREDENTIALS_PATH } from "df/cli/index_test_base";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
-import { requireAdc } from "df/testing/credentials";
+import { integrationSuite } from "df/testing/credentials";
 import { cleanWarehouse, compile } from "df/tests/integration/utils";
 
-suite("@dataform/integration/bigquery", { parallel: true }, ({ before }) => {
-  requireAdc(before);
+integrationSuite("@dataform/integration/bigquery", { parallel: true }, () => {
   const credentials = dfapi.credentials.read(CREDENTIALS_PATH);
   const dbadapter = new BigQueryDbAdapter(credentials);
 

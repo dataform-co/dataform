@@ -43,8 +43,7 @@ suite("BigQueryDbAdapter", () => {
         type: "service_account",
         project_id: "key-project-id",
         private_key_id: "key-id-123",
-        private_key:
-          "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQC\n-----END PRIVATE KEY-----\n",
+        private_key: "fake-private-key",
         client_email: "test-sa@key-project-id.iam.gserviceaccount.com",
         client_id: "1234567890",
       };
