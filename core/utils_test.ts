@@ -7,6 +7,9 @@ import {
   getEffectiveTableFolderSubpath,
   getFileFormatValueForIcebergTable,
   getStorageUriForIcebergTable,
+  resolvableAsActionConfigTarget,
+  resolvableAsTarget,
+  toResolvable,
   validateConnectionFormat,
   validateNoMixedCompilationMode,
   validateStorageUriFormat,
@@ -396,6 +399,78 @@ suite("Dataform Utility Validations", () => {
       } finally {
         globalAny.__dataform_current_file = previousCurrentFile;
       }
+    });
+  });
+
+  suite("Lakehouse 4-part ref and target resolution", () => {
+    test("toResolvable maps 4 positional arguments to normalized target", () => {
+      expect(toResolvable("p", ["c", "n", "t"])).to.deep.equal({
+        database: "p",
+        schema: "c.n",
+        name: "t",
+      });
+      expect(toResolvable(["p", "c", "n", "t"])).to.deep.equal({
+        database: "p",
+        schema: "c.n",
+        name: "t",
+      });
+    });
+
+    test("toResolvable does not split a single dotted string", () => {
+      expect(toResolvable("p.c.n.t")).to.equal("p.c.n.t");
+    });
+
+    test("toResolvable throws when given 5 or more segments", () => {
+      expect(() => toResolvable("a", ["b", "c", "d", "e"])).to.throw(
+        "Invalid input. Accepted inputs include",
+      );
+      expect(() => toResolvable(["a", "b", "c", "d", "e"])).to.throw(
+        "Invalid input. Accepted inputs include",
+      );
+    });
+
+    test("resolvableAsTarget maps explicit Lakehouse object properties to compiled target", () => {
+      expect(
+        resolvableAsTarget({
+          project: "p",
+          catalog: "c",
+          namespace: "n",
+          name: "t",
+        }),
+      ).to.deep.equal(
+        dataform.Target.create({
+          database: "p",
+          schema: "c.n",
+          name: "t",
+        }),
+      );
+      expect(
+        resolvableAsTarget({
+          database: "p",
+          lakehouse: { catalog: "c", namespace: "n" },
+          name: "t",
+        }),
+      ).to.deep.equal(
+        dataform.Target.create({
+          database: "p",
+          schema: "c.n",
+          name: "t",
+        }),
+      );
+    });
+
+    test("resolvableAsActionConfigTarget supports 4-part strings and Lakehouse objects", () => {
+      expect(resolvableAsActionConfigTarget("p.c.n.t")).to.deep.equal({
+        name: "t",
+        project: "p",
+        lakehouse: {
+          catalog: "c",
+          namespace: "n",
+        },
+      });
+      expect(() => resolvableAsActionConfigTarget("a.b.c.d.e")).to.throw(
+        "Invalid input. Accepted inputs include",
+      );
     });
   });
 });

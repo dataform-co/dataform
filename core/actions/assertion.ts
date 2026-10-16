@@ -27,6 +27,7 @@ interface ILegacyAssertionConfig extends dataform.ActionConfig.AssertionConfig {
   schema: string;
   fileName: string;
   type: string;
+  lakehouse?: any;
 }
 
 /** @hidden */
@@ -96,6 +97,8 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
   /** @hidden */
   private contextableJitCode: JitContextable<AssertionContext, JitAssertionResult> | undefined;
 
+  private hasLakehouseConfig = false;
+
   /** @hidden */
   constructor(session?: Session, unverifiedConfig?: any, configPath?: string) {
     super(session);
@@ -130,7 +133,10 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
     if (config.dependencyTargets) {
       this.dependencies(
         config.dependencyTargets.map((dependencyTarget) =>
-          configTargetToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget)),
+          configTargetToCompiledGraphTarget(
+            dataform.ActionConfig.Target.create(dependencyTarget),
+            session.projectConfig?.defaultLakehouseConfig,
+          ),
         ),
       );
     }
@@ -313,6 +319,13 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
 
   /** @hidden */
   public compile() {
+    if (this.hasLakehouseConfig) {
+      this.session.compileError(
+        new Error("Lakehouse (4-part) targets are not supported for views and assertions"),
+        this.proto.fileName,
+        this.proto.target,
+      );
+    }
     const context = new AssertionContext(this);
 
     if (this.contextableJitCode && this.contextableQuery) {
@@ -370,6 +383,10 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
 
     if (unverifiedConfig.type) {
       delete unverifiedConfig.type;
+    }
+    if (unverifiedConfig.lakehouse !== undefined) {
+      this.hasLakehouseConfig = true;
+      delete unverifiedConfig.lakehouse;
     }
 
     return verifyObjectMatchesProto(

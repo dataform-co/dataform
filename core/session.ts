@@ -609,6 +609,9 @@ export class Session {
   }
 
   public finalizeSchema(schema: string): string {
+    if (schema.includes(".")) {
+      return schema;
+    }
     return `${schema}${this.getSchemaSuffixWithUnderscore()}`;
   }
 
@@ -717,7 +720,7 @@ export class Session {
         database:
           action.target.database &&
           `${action.target.database}${this.getDatabaseSuffixWithUnderscore()}`,
-        schema: `${action.target.schema}${this.getSchemaSuffixWithUnderscore()}`,
+        schema: this.finalizeSchema(action.target.schema),
         name: `${this.getTablePrefixWithUnderscore()}${action.target.name}`,
       });
       action.target = newTargetByOriginalTarget.get(targetStringifier.stringify(action.target));
@@ -906,5 +909,6 @@ function getCanonicalProjectConfig(originalProjectConfig: dataform.ProjectConfig
     defaultSchema: originalProjectConfig.defaultSchema,
     defaultDatabase: originalProjectConfig.defaultDatabase,
     assertionSchema: originalProjectConfig.assertionSchema,
+    defaultLakehouseConfig: originalProjectConfig.defaultLakehouseConfig,
   });
 }

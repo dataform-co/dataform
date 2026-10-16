@@ -18,6 +18,7 @@ import {
   actionConfigToCompiledGraphTarget,
   checkAssertionsForDependency,
   checkExcessProperties,
+  configTargetToCompiledGraphTarget,
   getConnectionForIcebergTable,
   getEffectiveBucketName,
   getEffectiveTableFolderRoot,
@@ -128,19 +129,33 @@ export class Table extends ActionBuilder<dataform.Table> {
     if (!unverifiedConfig) {
       return;
     }
+    const hasDatasetOrSchema = Boolean(unverifiedConfig.dataset || unverifiedConfig.schema);
     const config = this.verifyConfig(unverifiedConfig);
 
     if (!config.name) {
       config.name = Path.basename(config.filename);
     }
-    const target = actionConfigToCompiledGraphTarget(config);
-    this.proto.target = this.applySessionToTarget(target, session.projectConfig, config.filename, {
+    const fileName = configPath
+      ? resolveActionsConfigFilename(config.filename, configPath)
+      : config.filename;
+    this.validateLakehouseConfig(config, fileName, hasDatasetOrSchema);
+    const target = actionConfigToCompiledGraphTarget(
+      config,
+      session.projectConfig?.defaultLakehouseConfig,
+    );
+    this.proto.target = this.applySessionToTarget(target, session.projectConfig, fileName, {
       validateTarget: true,
     });
-    this.proto.canonicalTarget = this.applySessionToTarget(target, session.canonicalProjectConfig);
+    this.proto.canonicalTarget = this.applySessionToTarget(
+      actionConfigToCompiledGraphTarget(
+        config,
+        session.canonicalProjectConfig?.defaultLakehouseConfig,
+      ),
+      session.canonicalProjectConfig,
+    );
 
     if (configPath) {
-      config.filename = resolveActionsConfigFilename(config.filename, configPath);
+      config.filename = fileName;
       this.query(nativeRequire(config.filename).query);
     }
     if (config.filename) {
@@ -151,7 +166,14 @@ export class Table extends ActionBuilder<dataform.Table> {
       this.setDependOnDependencyAssertions(config.dependOnDependencyAssertions);
     }
     if (config.dependencyTargets) {
-      this.dependencies(config.dependencyTargets);
+      this.dependencies(
+        config.dependencyTargets.map((dependencyTarget) =>
+          configTargetToCompiledGraphTarget(
+            dataform.ActionConfig.Target.create(dependencyTarget),
+            session.projectConfig?.defaultLakehouseConfig,
+          ),
+        ),
+      );
     }
     if (config.hermetic !== undefined) {
       this.hermetic(config.hermetic);
@@ -198,7 +220,7 @@ export class Table extends ActionBuilder<dataform.Table> {
         config.preserveGovernanceControls ??
         session.projectConfig.preserveGovernanceControls ??
         false,
-      ...(config.iceberg
+      ...(config.iceberg && !config.lakehouse
         ? {
             connection: getConnectionForIcebergTable(
               config.iceberg.connection,
@@ -469,6 +491,14 @@ export class Table extends ActionBuilder<dataform.Table> {
    * Sets the schema (BigQuery dataset) in which to create the output of this action.
    */
   public schema(schema: string) {
+    if (this.isLakehouseTarget) {
+      this.session.compileError(
+        new Error("Cannot specify both 'lakehouse' and 'dataset'/'schema' on the same action."),
+        this.proto.fileName,
+        this.proto.target,
+      );
+      return this;
+    }
     this.proto.target = this.applySessionToTarget(
       dataform.Target.create({ ...this.proto.target, schema }),
       this.session.projectConfig,
@@ -489,6 +519,14 @@ export class Table extends ActionBuilder<dataform.Table> {
    * needed -->
    */
   public assertions(tableAssertionsConfig: dataform.ActionConfig.TableAssertionsConfig): Table {
+    if (this.isLakehouseTarget) {
+      this.session.compileError(
+        new Error("Inline assertions are not supported for Lakehouse (4-part) targets"),
+        this.proto.fileName,
+        this.proto.target,
+      );
+      return this;
+    }
     const inlineAssertions = this.generateInlineAssertions(tableAssertionsConfig, this.proto);
     this.uniqueKeyAssertions = inlineAssertions.uniqueKeyAssertions;
     this.rowConditionsAssertion = inlineAssertions.rowConditionsAssertion;
@@ -532,6 +570,17 @@ export class Table extends ActionBuilder<dataform.Table> {
     if (this.proto.bigquery?.storageUri) {
       validateStorageUriFormat(this.proto.bigquery.storageUri);
     }
+
+    this.validateLakehouseColumns(
+      this.proto.actionDescriptor,
+      this.proto.fileName,
+      this.proto.target,
+    );
+    this.validateLakehouseBigQueryOptions(
+      this.proto.bigquery,
+      this.proto.fileName,
+      this.proto.target,
+    );
 
     return verifyObjectMatchesProto(
       dataform.Table,
@@ -685,7 +734,11 @@ export class Table extends ActionBuilder<dataform.Table> {
       VerifyProtoErrorBehaviour.SHOW_DOCS_LINK,
     );
 
-    if (!config.partitionBy && (config.partitionExpirationDays || config.requirePartitionFilter)) {
+    if (
+      !config.lakehouse &&
+      !config.partitionBy &&
+      (config.partitionExpirationDays || config.requirePartitionFilter)
+    ) {
       this.session.compileError(
         `requirePartitionFilter/partitionExpirationDays are not valid for non partitioned BigQuery tables`,
         config.filename,
