@@ -2,7 +2,7 @@ name: "LibraryGraph"
 
 tags: ["integration"]
 
-entities:
+nodes:
 - name: "Author"
   ref: "authors"
   keys: "id"
@@ -21,13 +21,13 @@ entities:
   - name: "title"
     expression: "title"
 
-relationships:
+edges:
 - name: "Wrote"
   ref: "wrote"
   keys: ["author_id", "book_id"]
   source:
-    entity: "Author"
+    node: "Author"
     join_keys: ["author_id"]
   destination:
-    entity: "Book"
+    node: "Book"
     join_keys: ["book_id"]
