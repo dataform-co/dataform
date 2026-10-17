@@ -20,14 +20,14 @@ const TABLE_ACTION: dataform.ITable = {
 const GRAPH_ACTION: dataform.IPropertyGraph = {
   target: GRAPH_TARGET,
   canonicalTarget: GRAPH_TARGET,
-  entities: [
+  nodes: [
     {
       name: "Book",
       dataSource: TABLE_TARGET,
       keys: ["id"],
     },
   ],
-  relationships: [],
+  edges: [],
   dependencyTargets: [TABLE_TARGET],
   graphBody: "NODE TABLES (`p.d.books` KEY (id))",
 };
@@ -37,14 +37,14 @@ const TAGGED_GRAPH_TARGET: dataform.ITarget = { database: "p", schema: "d", name
 const TAGGED_GRAPH_ACTION: dataform.IPropertyGraph = {
   target: TAGGED_GRAPH_TARGET,
   canonicalTarget: TAGGED_GRAPH_TARGET,
-  entities: [
+  nodes: [
     {
       name: "Book",
       dataSource: TABLE_TARGET,
       keys: ["id"],
     },
   ],
-  relationships: [],
+  edges: [],
   dependencyTargets: [TABLE_TARGET],
   graphBody: "NODE TABLES (`p.d.books` KEY (id))",
   tags: ["nightly"],
