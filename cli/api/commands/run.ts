@@ -272,7 +272,13 @@ export class Runner {
         await Promise.all(
           Array.from(schemas)
             .filter((schema) => !existingSchemas.has(schema))
-            .map((schema) => this.dbadapter.createSchema(database, schema)),
+            .map((schema) =>
+              this.dbadapter.createSchema(
+                database,
+                schema,
+                this.graph.projectConfig?.defaultLocation || undefined,
+              ),
+            ),
         );
       }),
     );

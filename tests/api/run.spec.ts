@@ -148,11 +148,11 @@ suite("@dataform/api/run", () => {
     expect(
       dataform.RunResult.create(cleanTiming(await runner.execute().result())).toJSON(),
     ).to.deep.equal(EXPECTED_RUN_RESULT.toJSON());
-    verify(mockedDbAdapter.createSchema("database", "schema1")).once();
-    verify(mockedDbAdapter.createSchema("database2", "schema2")).once();
+    verify(mockedDbAdapter.createSchema("database", "schema1", anything())).once();
+    verify(mockedDbAdapter.createSchema("database2", "schema2", anything())).once();
   });
 
-  test("execute passes projectConfig.defaultLocation to BigQuery", async () => {
+  test("execute passes projectConfig.defaultLocation to BigQuery jobs and datasets", async () => {
     const graph = dataform.ExecutionGraph.create({
       projectConfig: {
         warehouse: "bigquery",
@@ -172,11 +172,13 @@ suite("@dataform/api/run", () => {
       ],
     });
     const mockedDbAdapter = mock(BigQueryDbAdapter);
-    when(mockedDbAdapter.createSchema(anyString(), anyString())).thenResolve(null);
+    when(mockedDbAdapter.schemas(anyString())).thenResolve([]);
+    when(mockedDbAdapter.createSchema(anyString(), anyString(), anything())).thenResolve(null);
     when(mockedDbAdapter.execute(anyString(), anything())).thenResolve({ rows: [], metadata: {} });
 
     await new Runner(instance(mockedDbAdapter), graph).execute().result();
 
+    verify(mockedDbAdapter.createSchema("db", "s", "europe-west1")).once();
     const [, options] = capture(mockedDbAdapter.execute).last();
     expect(options.bigquery?.location).to.equal("europe-west1");
   });
@@ -240,8 +242,8 @@ suite("@dataform/api/run", () => {
     expect(
       dataform.RunResult.create(cleanTiming(await runner.execute().result())).toJSON(),
     ).to.deep.equal(EXPECTED_RUN_RESULT.toJSON());
-    verify(mockedDbAdapter.createSchema("database", "schema1")).once();
-    verify(mockedDbAdapter.createSchema("database2", "schema2")).once();
+    verify(mockedDbAdapter.createSchema("database", "schema1", anything())).once();
+    verify(mockedDbAdapter.createSchema("database2", "schema2", anything())).once();
   });
 
   suite("execute with retry", () => {

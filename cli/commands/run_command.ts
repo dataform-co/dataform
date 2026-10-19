@@ -83,6 +83,19 @@ export const runCommand: ICommand<IRunArgs> = {
     }
     logger.success("Compiled successfully.\n");
     const readCredentials = credentials.read(actuallyResolve(argv.projectDir, argv.credentials));
+    const defaultLocation = compiledGraph.projectConfig?.defaultLocation;
+    if (
+      !isJsonOutput &&
+      defaultLocation &&
+      readCredentials.location &&
+      defaultLocation.toLowerCase() !== readCredentials.location.toLowerCase()
+    ) {
+      printWarning(
+        `Warning: defaultLocation "${defaultLocation}" in the project config differs from ` +
+          `location "${readCredentials.location}" in the credentials file. BigQuery jobs and ` +
+          `new datasets will use "${defaultLocation}".\n`,
+      );
+    }
 
     const dbadapter = new BigQueryDbAdapter(readCredentials);
     const executionGraph = await build(

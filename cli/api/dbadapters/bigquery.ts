@@ -388,10 +388,10 @@ export class BigQueryDbAdapter implements IDbAdapter {
     return data[0].map((dataset) => dataset.id);
   }
 
-  public async createSchema(database: string, schema: string): Promise<void> {
+  public async createSchema(database: string, schema: string, location?: string): Promise<void> {
     await this.execute(
       `create schema if not exists \`${database || this.bigQueryCredentials.projectId}.${schema}\``,
-      { bigquery: { location: this.bigQueryCredentials.location || "US" } },
+      { bigquery: { location: location || this.bigQueryCredentials.location || "US" } },
     );
   }
 
