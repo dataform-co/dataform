@@ -101,8 +101,8 @@ export function graphHasErrors(graph: dataform.ICompiledGraph) {
 
 const invalidRefInputMessage =
   "Invalid input. Accepted inputs include: a single object containing " +
-  "an (optional) 'database', (optional) 'schema', and 'name', " +
-  "or 1-3 inputs consisting of an (optional) database, (optional) schema, and 'name'.";
+  "an (optional) 'database', (optional) 'schema' (or 'catalog' and 'namespace'), and 'name', " +
+  "or 1-4 inputs consisting of an (optional) database, (optional) catalog and namespace (or schema), and 'name'.";
 
 export function toResolvable(ref: Resolvable | string[], rest: string[] = []): Resolvable {
   if (Array.isArray(ref) && rest.length > 0) {
@@ -171,19 +171,8 @@ export function resolvableAsActionConfigTarget(
 ): dataform.ActionConfig.ITarget {
   if (typeof resolvable === "string") {
     const parts = resolvable.split(".").reverse();
-    if (!isResolvableArray(parts)) {
+    if (!isResolvableArray(parts) || parts.length > 3) {
       throw new Error(invalidRefInputMessage);
-    }
-    if (parts.length === 4) {
-      const [name, namespace, catalog, database] = parts;
-      return {
-        name,
-        project: database,
-        lakehouse: {
-          catalog,
-          namespace,
-        },
-      };
     }
 
     const [name, schema, database] = parts;
@@ -206,14 +195,6 @@ export function resolvableAsActionConfigTarget(
           catalog,
           namespace,
         },
-        includeDependentAssertions: obj.includeDependentAssertions,
-      };
-    }
-    if (obj.database !== undefined || obj.schema !== undefined) {
-      return {
-        name: obj.name,
-        dataset: obj.dataset ?? obj.schema,
-        project: obj.project ?? obj.database,
         includeDependentAssertions: obj.includeDependentAssertions,
       };
     }

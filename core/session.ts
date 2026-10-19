@@ -613,6 +613,8 @@ export class Session {
   }
 
   public finalizeSchema(schema: string): string {
+    // Normalized 4-part Lakehouse schemas ("${catalog}.${namespace}") do not take datasetSuffix.
+    // Standard dataset names cannot contain '.' (enforced by ActionBuilder.validateTarget).
     if (schema.includes(".")) {
       return schema;
     }
