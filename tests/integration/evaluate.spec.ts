@@ -10,27 +10,30 @@ import {
 import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 import { test } from "df/testing";
-import { integrationSuite } from "df/testing/credentials";
 import { dropDatasets, dropStaleDatasets, makeUniqueSuffix } from "df/testing/bigquery";
-import { compile, keyBy } from "df/tests/integration/utils";
+import { integrationSuite } from "df/testing/credentials";
+import { compile, datasetsOf, keyBy } from "df/tests/integration/utils";
 
 const EVALUATE_SCHEMA_SUFFIX = "evaluate";
 const EVALUATE_DATASET = `df_integration_test_${EVALUATE_SCHEMA_SUFFIX}`;
 const EVALUATE_ASSERTIONS_DATASET = `df_integration_test_assertions_${EVALUATE_SCHEMA_SUFFIX}`;
-const EVALUATE_TEST_DATASET = `test_${EVALUATE_SCHEMA_SUFFIX}`;
-
-const DATASETS = [EVALUATE_DATASET, EVALUATE_ASSERTIONS_DATASET, EVALUATE_TEST_DATASET];
 
 integrationSuite("@dataform/integration/evaluate", ({ before, after }) => {
   const credentials = dfapi.credentials.read(CREDENTIALS_PATH);
   const dbadapter = new BigQueryDbAdapter(credentials);
   const uniqueSuffix = makeUniqueSuffix();
 
+  // The datasets created by the tests, without the unique suffix.
+  let datasets: string[];
+
   before("drop stale datasets", async () => {
+    datasets = datasetsOf(
+      await compile("tests/integration/bigquery_project", EVALUATE_SCHEMA_SUFFIX),
+    );
     await dropStaleDatasets(dbadapter, {
       project: INTEGRATION_TEST_PROJECT,
       location: INTEGRATION_TEST_LOCATION,
-      prefixes: DATASETS,
+      prefixes: datasets,
     });
   });
 
@@ -38,7 +41,7 @@ integrationSuite("@dataform/integration/evaluate", ({ before, after }) => {
     await dropDatasets(
       dbadapter,
       INTEGRATION_TEST_PROJECT,
-      DATASETS.map((dataset) => `${dataset}_${uniqueSuffix}`),
+      datasets.map((dataset) => `${dataset}_${uniqueSuffix}`),
     );
   });
 

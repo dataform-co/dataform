@@ -24,6 +24,23 @@ export async function getTableRows(
   return (await dbadapter.execute(`SELECT * FROM ${executionSql.resolveTarget(target)}`)).rows;
 }
 
+export function datasetsOf(compiledGraph: dataform.ICompiledGraph): string[] {
+  const actions: Array<{ target?: dataform.ITarget }> = [
+    ...(compiledGraph.tables || []),
+    ...(compiledGraph.assertions || []),
+    ...(compiledGraph.operations || []),
+  ];
+  return [...new Set(actions.map((action) => action.target?.schema).filter(Boolean))];
+}
+
+export function datasetsWithSuffixes(
+  compiledGraph: dataform.ICompiledGraph,
+  schemaSuffixes: string[],
+): string[] {
+  const datasets = datasetsOf(compiledGraph);
+  return schemaSuffixes.flatMap((suffix) => datasets.map((dataset) => `${dataset}_${suffix}`));
+}
+
 export async function compile(
   projectDir: string,
   schemaSuffixOverride: string,

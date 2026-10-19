@@ -11,45 +11,40 @@ import {
 import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 import { test } from "df/testing";
-import { integrationSuite } from "df/testing/credentials";
 import { dropDatasets, dropStaleDatasets, makeUniqueSuffix } from "df/testing/bigquery";
-import { compile, getTableRows, keyBy } from "df/tests/integration/utils";
+import { integrationSuite } from "df/testing/credentials";
+import { compile, datasetsWithSuffixes, getTableRows, keyBy } from "df/tests/integration/utils";
 
 // Each test compiles bigquery_project with its own schema suffix, which dataform appends to every
 // dataset of the project. The unique suffix is appended to the names below.
 const PROJECT_E2E_SCHEMA_SUFFIX = "project_e2e";
 const PROJECT_E2E_DATASET = `df_integration_test_${PROJECT_E2E_SCHEMA_SUFFIX}`;
 const PROJECT_E2E_ASSERTIONS_DATASET = `df_integration_test_assertions_${PROJECT_E2E_SCHEMA_SUFFIX}`;
-const PROJECT_E2E_TEST_DATASET = `test_${PROJECT_E2E_SCHEMA_SUFFIX}`;
 
 const INCREMENTAL_TABLES_SCHEMA_SUFFIX = "incremental_tables";
 const INCREMENTAL_TABLES_DATASET = `df_integration_test_${INCREMENTAL_TABLES_SCHEMA_SUFFIX}`;
-const INCREMENTAL_TABLES_ASSERTIONS_DATASET = `df_integration_test_assertions_${INCREMENTAL_TABLES_SCHEMA_SUFFIX}`;
 
 const DATASET_METADATA_SCHEMA_SUFFIX = "dataset_metadata";
 const DATASET_METADATA_DATASET = `df_integration_test_${DATASET_METADATA_SCHEMA_SUFFIX}`;
-const DATASET_METADATA_ASSERTIONS_DATASET = `df_integration_test_assertions_${DATASET_METADATA_SCHEMA_SUFFIX}`;
-
-const DATASETS = [
-  PROJECT_E2E_DATASET,
-  PROJECT_E2E_ASSERTIONS_DATASET,
-  PROJECT_E2E_TEST_DATASET,
-  INCREMENTAL_TABLES_DATASET,
-  INCREMENTAL_TABLES_ASSERTIONS_DATASET,
-  DATASET_METADATA_DATASET,
-  DATASET_METADATA_ASSERTIONS_DATASET,
-];
 
 integrationSuite("@dataform/integration/run", { parallel: true }, ({ before, after }) => {
   const credentials = dfapi.credentials.read(CREDENTIALS_PATH);
   const dbadapter = new BigQueryDbAdapter(credentials);
   const uniqueSuffix = makeUniqueSuffix();
 
+  // The datasets created by the tests, without the unique suffix.
+  let datasets: string[];
+
   before("drop stale datasets", async () => {
+    datasets = datasetsWithSuffixes(await compile("tests/integration/bigquery_project", ""), [
+      PROJECT_E2E_SCHEMA_SUFFIX,
+      INCREMENTAL_TABLES_SCHEMA_SUFFIX,
+      DATASET_METADATA_SCHEMA_SUFFIX,
+    ]);
     await dropStaleDatasets(dbadapter, {
       project: INTEGRATION_TEST_PROJECT,
       location: INTEGRATION_TEST_LOCATION,
-      prefixes: DATASETS,
+      prefixes: datasets,
     });
   });
 
@@ -57,7 +52,7 @@ integrationSuite("@dataform/integration/run", { parallel: true }, ({ before, aft
     await dropDatasets(
       dbadapter,
       INTEGRATION_TEST_PROJECT,
-      DATASETS.map((dataset) => `${dataset}_${uniqueSuffix}`),
+      datasets.map((dataset) => `${dataset}_${uniqueSuffix}`),
     );
   });
 
