@@ -1,5 +1,6 @@
 import { Dataset, Table } from "@google-cloud/bigquery";
 import { expect } from "chai";
+import { EventEmitter } from "events";
 import { AuthClient, gaxios, Impersonated } from "google-auth-library";
 import { anything, instance, mock, when } from "ts-mockito";
 
@@ -318,5 +319,63 @@ suite("BigQueryDbAdapter", () => {
     });
 
     await adapter.setMetadata(action);
+  });
+
+  test("search() filters out tables whose metadata is not found", async () => {
+    const projectId = "project1";
+    const liveSchema = "live_schema";
+    const deletedSchema = "deleted_schema";
+    const tableName = "table1";
+
+    const mockBigQuery: any = {
+      createQueryStream: () => {
+        const stream = new EventEmitter();
+        process.nextTick(() => {
+          stream.emit("data", {
+            table_catalog: projectId,
+            table_schema: liveSchema,
+            table_name: tableName,
+          });
+          stream.emit("data", {
+            table_catalog: projectId,
+            table_schema: deletedSchema,
+            table_name: tableName,
+          });
+          stream.emit("end");
+        });
+        return stream;
+      },
+      dataset: (schema: string) => ({
+        table: (name: string) => ({
+          getMetadata: () => {
+            if (schema === deletedSchema) {
+              return Promise.reject({ errors: [{ reason: "notFound" }] });
+            }
+            return Promise.resolve([
+              {
+                type: "TABLE",
+                tableReference: { projectId, datasetId: schema, tableId: name },
+                schema: { fields: [{ name: "col1", type: "STRING" }] },
+                lastModifiedTime: "123456789",
+              },
+            ]);
+          },
+        }),
+      }),
+    };
+
+    const credentials = dataform.BigQuery.create({ projectId, location: "US" });
+    const adapter = new BigQueryDbAdapter(credentials, {
+      clientProvider: () => mockBigQuery,
+    });
+
+    const result = await adapter.search("schema");
+
+    expect(result.length).to.equal(1);
+    expect(result[0].target).to.eql({
+      database: projectId,
+      schema: liveSchema,
+      name: tableName,
+    });
   });
 });

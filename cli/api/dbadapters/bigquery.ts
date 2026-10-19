@@ -318,7 +318,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
         rowLimit: options.limit,
       },
     );
-    return await Promise.all(
+    const tables = await Promise.all(
       results.rows.map((row) =>
         this.table({
           database: row.table_catalog,
@@ -327,6 +327,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
         }),
       ),
     );
+    return tables.filter((table) => Boolean(table));
   }
 
   public async table(target: dataform.ITarget): Promise<dataform.ITableMetadata> {
