@@ -762,7 +762,8 @@ export function validateJobLabels(
 /**
  * Resolves, validates, and sets `actionDescriptor.jobLabels` on an action proto by merging
  * workflow settings `defaultJobLabels` with action-level `jobLabels` (where action-level keys
- * override default keys). Records a compilation error on the session if validation fails.
+ * override default keys). Records a compilation error on the session if validation fails, or
+ * rethrows the error if no session is provided.
  */
 export function setActionJobLabels(
   proto: {
@@ -794,6 +795,12 @@ export function setActionJobLabels(
     }
     proto.actionDescriptor.jobLabels = mergedLabels;
   } catch (e) {
-    session?.compileError(e, proto.fileName, proto.target);
+    if (session) {
+      session.compileError(e, proto.fileName, proto.target);
+    } else {
+      // Without a session there is nowhere to record a compilation error, so rethrow instead of
+      // silently dropping the validation failure.
+      throw e;
+    }
   }
 }

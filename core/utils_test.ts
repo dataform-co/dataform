@@ -577,6 +577,25 @@ suite("Dataform Utility Validations", () => {
         "Too many job labels in jobLabels: maximum allowed is 32, but got 35.",
       );
     });
+
+    test("sets jobLabels from actionJobLabels when no session is provided", () => {
+      const proto: { actionDescriptor?: dataform.IActionDescriptor } = {};
+      setActionJobLabels(proto, { env: "prod" });
+      expect(proto.actionDescriptor?.jobLabels).to.deep.equal({ env: "prod" });
+    });
+
+    test("rethrows validation errors when no session is provided", () => {
+      const proto: { actionDescriptor?: dataform.IActionDescriptor } = {};
+      assertThrowsWithMessage(
+        () => setActionJobLabels(proto, ["env"] as any),
+        "jobLabels must be an object mapping string keys to string values.",
+      );
+      assertThrowsWithMessage(
+        () => setActionJobLabels(proto, { Env: "prod" }),
+        'Invalid job label key "Env" in jobLabels: keys must start with a lowercase letter and contain only lowercase letters, numbers, underscores, and hyphens.',
+      );
+      expect(proto.actionDescriptor).to.equal(undefined);
+    });
   });
 
   suite("snakeToCamelKeys", () => {
