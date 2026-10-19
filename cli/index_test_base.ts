@@ -124,8 +124,9 @@ export function alterWorkflowSettings(
 export async function setupJitProject(
   tmpDirFixture: TmpDirFixture,
   projectDir: string,
+  workflowSettingsOverrides?: Partial<dataform.IWorkflowSettings>,
 ): Promise<void> {
-  await setupProject(tmpDirFixture, projectDir);
+  await setupProject(tmpDirFixture, projectDir, workflowSettingsOverrides);
   writeDefinitionFile(
     projectDir,
     "jit_table.js",
