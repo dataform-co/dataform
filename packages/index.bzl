@@ -88,10 +88,12 @@ def pkg_bundle_dts(name, deps, externals, entry_point = ":index.d.ts", out = "bu
         **kwargs
     )
 
-def pkg_npm_tar(name, srcs = [], deps = []):
+def pkg_npm_tar(name, srcs = [], deps = [], publishable = False):
     npm_package(
         name = name,
         srcs = srcs + deps,
+        # When True, generates a `<name>.publish` target that runs `npm publish` on the package.
+        publishable = publishable,
         visibility = ["//visibility:public"],
     )
     native.genrule(

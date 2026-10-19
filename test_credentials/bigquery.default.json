@@ -1,0 +1,5 @@
+{
+  "projectId": "dataform-open-source",
+  "location": "US",
+  "impersonateServiceAccount": "dataform-testing@dataform-open-source.iam.gserviceaccount.com"
+}

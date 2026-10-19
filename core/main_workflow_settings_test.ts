@@ -152,6 +152,34 @@ defaultProject: project`,
     );
   });
 
+  suite("lineage settings", () => {
+    function compiledLineageEnabled(lineageYaml: string): boolean | null | undefined {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      writeWorkflowSettingsFile(
+        projectDir,
+        `
+dataformCoreVersion: ${version}
+defaultProject: project
+${lineageYaml}`,
+      );
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      return result.compile.compiledGraph.projectConfig.lineageEnabled;
+    }
+
+    test(`lineage.enabled: false compiles to lineageEnabled false`, () => {
+      expect(compiledLineageEnabled("lineage:\n  enabled: false")).equals(false);
+    });
+
+    test(`lineage.enabled: true compiles to lineageEnabled true`, () => {
+      expect(compiledLineageEnabled("lineage:\n  enabled: true")).equals(true);
+    });
+
+    test(`an empty lineage block leaves lineageEnabled unset`, () => {
+      expect(compiledLineageEnabled("lineage: {}")).equals(null);
+    });
+  });
+
   test(`workflow settings and project config overrides are merged and applied within SQLX files`, () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
     writeWorkflowSettingsFile(
