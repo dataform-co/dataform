@@ -111,8 +111,15 @@ integrationSuite("@dataform/integration/bigquery", { parallel: true }, () => {
       dbadapter.search("val"),
     ]);
 
-    expect(fullSearch.length).equals(2);
-    expect(partialSearch.length).equals(2);
+    // Only count tables in this test's own schema: other runs may leave behind datasets with
+    // similar names (e.g. with a per-run suffix) that also match the search text.
+    const testSchema = compiledGraph.tables.find((table) => table.target.name === "example_view")
+      .target.schema;
+    const inTestSchema = (results: dataform.ITableMetadata[]) =>
+      results.filter((result) => result.target.schema === testSchema);
+
+    expect(inTestSchema(fullSearch).length).equals(2);
+    expect(inTestSchema(partialSearch).length).equals(2);
     expect(columnSearch.length).greaterThan(0);
   });
 });
