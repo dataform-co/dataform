@@ -50,14 +50,14 @@ export function main(coreExecutionRequest: Uint8Array | string): Uint8Array | st
   let projectConfig = readWorkflowSettings(failIfMissing);
 
   // Merge in project config overrides.
+  // Like `vars`, `defaultJobLabels` is merged key-by-key so overrides add to or replace
+  // individual default keys without wiping the remaining defaults from workflow_settings.yaml.
   const projectConfigOverride = compileRequest.compileConfig.projectConfigOverride ?? {};
   const defaultJobLabels = {
     ...projectConfig.defaultJobLabels,
     ...projectConfigOverride.defaultJobLabels,
   };
-  if (projectConfigOverride.defaultJobLabels && Object.keys(defaultJobLabels).length > 0) {
-    validateJobLabels(defaultJobLabels, "defaultJobLabels");
-  }
+  validateJobLabels(defaultJobLabels, "defaultJobLabels");
   projectConfig = dataform.ProjectConfig.create({
     ...projectConfig,
     ...projectConfigOverride,
@@ -221,7 +221,7 @@ function loadActionConfigsFile(
   session: Session,
   actionConfigsPath: string,
 ): dataform.ActionConfigs {
-  let actionConfigsAsJson: { actions?: any[] } = {};
+  let actionConfigsAsJson = {};
   try {
     actionConfigsAsJson = nativeRequire(actionConfigsPath).asJson;
   } catch (e) {
@@ -232,45 +232,7 @@ function loadActionConfigsFile(
     actionConfigsAsJson,
     VerifyProtoErrorBehaviour.SHOW_DOCS_LINK,
   );
-  const actionConfigs = dataform.ActionConfigs.fromObject(actionConfigsAsJson);
-  restoreJobLabelsAsWritten(actionConfigsAsJson, actionConfigs);
-  return actionConfigs;
-}
-
-/**
- * `ActionConfigs.fromObject` converts camelCased JSON keys into proto fields, but it also
- * calls `String(value)` on `map<string, string>` entries (turning numbers and booleans into
- * strings). Restore the raw `jobLabels` object from the parsed YAML so that
- * `validateJobLabels` rejects non-string values consistently across all config surfaces.
- */
-function restoreJobLabelsAsWritten(
-  rawActionConfigs: { actions?: any[] },
-  parsedActionConfigs: dataform.ActionConfigs,
-) {
-  if (!Array.isArray(rawActionConfigs?.actions)) {
-    return;
-  }
-  const actionTypes: Array<keyof dataform.IActionConfig> = [
-    "table",
-    "view",
-    "incrementalTable",
-    "assertion",
-    "operation",
-    "dataPreparation",
-  ];
-  rawActionConfigs.actions.forEach((rawAction, index) => {
-    const parsedAction = parsedActionConfigs.actions?.[index];
-    if (!rawAction || !parsedAction) {
-      return;
-    }
-    for (const actionType of actionTypes) {
-      const rawJobLabels = rawAction[actionType]?.jobLabels;
-      const parsedSubConfig = parsedAction[actionType] as { jobLabels?: any } | null | undefined;
-      if (rawJobLabels !== undefined && parsedSubConfig) {
-        parsedSubConfig.jobLabels = rawJobLabels;
-      }
-    }
-  });
+  return dataform.ActionConfigs.fromObject(actionConfigsAsJson);
 }
 
 // Only a single graph.yaml per project is accepted for now, though it may live
@@ -302,7 +264,7 @@ function loadPropertyGraphs(session: Session, filePaths: string[]) {
   const graphPath = graphPaths[0];
   let configAsJson: any;
   try {
-    configAsJson = snakeToCamelKeys(nativeRequire(graphPath).asJson);
+    configAsJson = snakeToCamelKeys(nativeRequire(graphPath).asJson, new Set(["jobLabels"]));
   } catch (e) {
     session.compileError(e, graphPath);
     return;

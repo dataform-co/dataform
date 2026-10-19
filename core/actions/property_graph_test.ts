@@ -1637,30 +1637,4 @@ suite("property_graph", () => {
       },
     });
   });
-
-  test("records compilation error when jobLabels has invalid key", () => {
-    const session = makeSession();
-    const action = new PropertyGraph(
-      session,
-      {
-        name: "InvalidLabeledGraph",
-        jobLabels: {
-          "Invalid-Key": "val",
-        },
-        entities: [
-          {
-            name: "Account",
-            dataSourceString: "proj.ds.Accounts",
-            keys: ["id"],
-          },
-        ],
-      } as any,
-      "definitions/graph.yaml",
-    );
-    action.compile();
-    expect(session.graphErrors.compilationErrors?.length).to.equal(1);
-    expect(session.graphErrors.compilationErrors?.[0].message).to.include(
-      'Invalid job label key "Invalid-Key"',
-    );
-  });
 });

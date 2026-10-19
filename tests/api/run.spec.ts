@@ -606,7 +606,7 @@ suite("@dataform/api/run", () => {
       const firstActionCalls = executionOptions.slice(0, 2);
       firstActionCalls.forEach((opts) => {
         expect(opts?.bigquery?.labels).to.deep.equal({
-          env: "prod",
+          env: "dev",
           team: "dataform",
           cost_center: "analytics",
         });
@@ -662,7 +662,7 @@ suite("@dataform/api/run", () => {
       });
     });
 
-    test("actionDescriptor.jobLabels overrides actionDescriptor.bigqueryLabels on key collision", async () => {
+    test("uses actionDescriptor.jobLabels instead of bigqueryLabels for jobs while executionOptions.bigquery.labels takes highest precedence", async () => {
       const executionOptions: Array<{ bigquery?: any }> = [];
       const setMetadataActionDescriptors: dataform.IActionDescriptor[] = [];
 
@@ -676,6 +676,7 @@ suite("@dataform/api/run", () => {
         jobLabels: {
           shared_key: "from_job_labels",
           job_only: "job_val",
+          cli_override_key: "from_job_labels",
         },
       };
 
@@ -718,8 +719,7 @@ suite("@dataform/api/run", () => {
       const runner = new Runner(mockDbAdapterInstance, NEW_TEST_GRAPH, {
         bigquery: {
           labels: {
-            shared_key: "from_execution_options",
-            table_only: "from_execution_options",
+            cli_override_key: "from_execution_options",
             global_only: "global_val",
           },
         },
@@ -731,10 +731,10 @@ suite("@dataform/api/run", () => {
       const firstActionCalls = executionOptions.slice(0, 2);
       firstActionCalls.forEach((opts) => {
         expect(opts?.bigquery?.labels).to.deep.equal({
-          global_only: "global_val",
-          table_only: "table_val",
           shared_key: "from_job_labels",
           job_only: "job_val",
+          cli_override_key: "from_execution_options",
+          global_only: "global_val",
         });
       });
       expect(setMetadataActionDescriptors.length).to.equal(1);

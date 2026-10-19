@@ -304,7 +304,7 @@ actions:
     expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
   });
 
-  suite("jobLabels with non-string values are rejected", () => {
+  suite("jobLabels with numeric and boolean values are coerced to strings", () => {
     [
       { actionType: "table", filename: "action.sql", content: "SELECT 1" },
       { actionType: "view", filename: "action.sql", content: "SELECT 1" },
@@ -317,7 +317,7 @@ actions:
         content: "nodes: []",
       },
     ].forEach(({ actionType, filename, content }) => {
-      test(`${actionType} rejects numeric and boolean jobLabels values in actions.yaml`, () => {
+      test(`${actionType} coerces numeric and boolean jobLabels values in actions.yaml`, () => {
         const projectDir = tmpDirFixture.createNewTmpDir();
         writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
         writeDefinitionFile(
@@ -329,19 +329,24 @@ actions:
     filename: ${filename}
     jobLabels:
       num_label: 123
+      bool_label: true
 `,
         );
         writeDefinitionFile(projectDir, filename, content);
 
         const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
-        const errorMessages = result.compile.compiledGraph.graphErrors.compilationErrors.map(
-          (e) => e.message,
-        );
-        expect(errorMessages).to.have.lengthOf(1);
-        expect(errorMessages[0]).to.include(
-          'Invalid job label value for key "num_label" in jobLabels: label values must be strings.',
-        );
+        expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+        const compiledActions = [
+          ...result.compile.compiledGraph.tables,
+          ...result.compile.compiledGraph.assertions,
+          ...result.compile.compiledGraph.operations,
+          ...result.compile.compiledGraph.dataPreparations,
+        ];
+        expect(asPlainObject(compiledActions[0]?.actionDescriptor?.jobLabels)).deep.equals({
+          num_label: "123",
+          bool_label: "true",
+        });
       });
     });
   });

@@ -422,34 +422,6 @@ SELECT 1`,
       });
     });
 
-    test(`${tableType} records compilation error when jobLabels has invalid key`, () => {
-      const projectDir = tmpDirFixture.createNewTmpDir();
-      fs.writeFileSync(
-        path.join(projectDir, "workflow_settings.yaml"),
-        VALID_WORKFLOW_SETTINGS_YAML,
-      );
-      fs.mkdirSync(path.join(projectDir, "definitions"));
-      fs.writeFileSync(
-        path.join(projectDir, "definitions/file.sqlx"),
-        `
-config {
-  type: "${tableType}",
-  name: "name",
-  jobLabels: {
-    "goog-reserved": "value"
-  }
-}
-SELECT 1`,
-      );
-
-      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
-
-      expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).equals(1);
-      expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).contains(
-        'Invalid job label key "goog-reserved" in jobLabels: key cannot start with reserved prefix "goog-".',
-      );
-    });
-
     if (["table", "view", "incremental"].includes(tableType)) {
       test(`${tableType} built-in assertions inherit parent action jobLabels and defaultJobLabels`, () => {
         const projectDir = tmpDirFixture.createNewTmpDir();
@@ -574,5 +546,81 @@ publish("name", {
         });
       });
     }
+  });
+
+  [
+    {
+      name: "table",
+      file: "definitions/file.sqlx",
+      content: 'config { type: "table", jobLabels: { "goog-reserved": "v" } }\nSELECT 1',
+    },
+    {
+      name: "view",
+      file: "definitions/file.sqlx",
+      content: 'config { type: "view", jobLabels: { "goog-reserved": "v" } }\nSELECT 1',
+    },
+    {
+      name: "incremental",
+      file: "definitions/file.sqlx",
+      content: 'config { type: "incremental", jobLabels: { "goog-reserved": "v" } }\nSELECT 1',
+    },
+    {
+      name: "operations",
+      file: "definitions/file.sqlx",
+      content: 'config { type: "operations", jobLabels: { "goog-reserved": "v" } }\nSELECT 1',
+    },
+    {
+      name: "assertion",
+      file: "definitions/file.sqlx",
+      content: 'config { type: "assertion", jobLabels: { "goog-reserved": "v" } }\nSELECT 1',
+    },
+    {
+      name: "test",
+      file: "definitions/file.sqlx",
+      extraFiles: { "definitions/base.sqlx": 'config { type: "table" }\nSELECT 1' },
+      content:
+        'config { type: "test", dataset: "base", jobLabels: { "goog-reserved": "v" } }\nSELECT 1',
+    },
+    {
+      name: "dataPreparation",
+      file: "definitions/file.sqlx",
+      content:
+        'config { type: "dataPreparation", jobLabels: { "goog-reserved": "v" } }\nFROM x\n|> SELECT *',
+    },
+    {
+      name: "propertyGraph",
+      file: "definitions/graph.yaml",
+      content: [
+        "name: G",
+        "jobLabels:",
+        '  "goog-reserved": v',
+        "entities:",
+        "  - name: Account",
+        "    dataSourceString: proj.ds.Accounts",
+        "    keys: [id]",
+      ].join("\n"),
+    },
+  ].forEach(({ name, file, content, extraFiles }) => {
+    test(`${name} records compilation error when jobLabels has invalid key`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML,
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      if (extraFiles) {
+        for (const [extraPath, extraContent] of Object.entries(extraFiles)) {
+          fs.writeFileSync(path.join(projectDir, extraPath), extraContent);
+        }
+      }
+      fs.writeFileSync(path.join(projectDir, file), content);
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).equals(1);
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).contains(
+        'Invalid job label key "goog-reserved" in jobLabels: key cannot start with reserved prefix "goog-".',
+      );
+    });
   });
 });

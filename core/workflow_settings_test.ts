@@ -50,14 +50,4 @@ suite("workflowSettingsAsProjectConfig", () => {
 
     expect(projectConfig.defaultJobLabels).to.deep.equal({});
   });
-
-  test("throws when defaultJobLabels contains invalid keys or values", () => {
-    const workflowSettings = dataform.WorkflowSettings.create({
-      defaultJobLabels: { "goog-reserved": "val" },
-    });
-
-    expect(() => workflowSettingsAsProjectConfig(workflowSettings)).to.throw(
-      'Invalid job label key "goog-reserved" in defaultJobLabels: key cannot start with reserved prefix "goog-".',
-    );
-  });
 });

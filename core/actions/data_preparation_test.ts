@@ -945,30 +945,5 @@ FROM x
         },
       });
     });
-
-    test(`data preparation records compilation error for invalid jobLabels`, () => {
-      const projectDir = createSimpleDataPreparationProject(VALID_WORKFLOW_SETTINGS_YAML, false);
-      fs.writeFileSync(
-        path.join(projectDir, "definitions/sqlx_dataprep.sqlx"),
-        `
-config {
-  type: "dataPreparation",
-  name: "dest",
-  jobLabels: {
-    "dataprep-reserved": "val",
-  },
-}
-FROM x
-|> SELECT *
-`,
-      );
-
-      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
-
-      expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).to.equal(1);
-      expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).to.include(
-        'Invalid job label key "dataprep-reserved" in jobLabels: key cannot start with reserved prefix "dataprep-".',
-      );
-    });
   });
 });

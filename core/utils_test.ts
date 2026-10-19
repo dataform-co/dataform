@@ -7,7 +7,7 @@ import {
   getEffectiveTableFolderSubpath,
   getFileFormatValueForIcebergTable,
   getStorageUriForIcebergTable,
-  resolveAndValidateJobLabels,
+  setActionJobLabels,
   snakeToCamelKeys,
   validateConnectionFormat,
   validateJobLabels,
@@ -452,9 +452,13 @@ suite("Dataform Utility Validations", () => {
       }
     });
 
-    test("throws when label value is not a string", () => {
+    test("coerces number and boolean label values to strings and throws for other non-string values", () => {
+      const labels: any = { year: 2026, active: true };
+      assertNoThrow(() => validateJobLabels(labels, "defaultJobLabels"));
+      expect(labels).to.deep.equal({ year: "2026", active: "true" });
+
       assertThrowsWithMessage(
-        () => validateJobLabels({ env: 123 as any }, "defaultJobLabels"),
+        () => validateJobLabels({ env: { nested: "obj" } as any }, "defaultJobLabels"),
         'Invalid job label value for key "env" in defaultJobLabels: label values must be strings.',
       );
     });
@@ -520,24 +524,28 @@ suite("Dataform Utility Validations", () => {
     });
   });
 
-  suite("resolveAndValidateJobLabels", () => {
-    test("returns undefined when both defaultJobLabels and actionJobLabels are undefined or empty", () => {
+  suite("setActionJobLabels", () => {
+    test("leaves actionDescriptor unset when both defaultJobLabels and actionJobLabels are undefined or empty", () => {
       const errors: Error[] = [];
       const sessionStub = { compileError: (e: Error) => errors.push(e) } as any;
-      expect(resolveAndValidateJobLabels(undefined, undefined, sessionStub)).to.equal(undefined);
-      expect(resolveAndValidateJobLabels({}, {}, sessionStub)).to.equal(undefined);
+      const proto1: { actionDescriptor?: dataform.IActionDescriptor } = {};
+      const proto2: { actionDescriptor?: dataform.IActionDescriptor } = {};
+      setActionJobLabels(proto1, undefined, sessionStub);
+      setActionJobLabels(proto2, {}, sessionStub);
+      expect(proto1.actionDescriptor).to.equal(undefined);
+      expect(proto2.actionDescriptor).to.equal(undefined);
       expect(errors).to.deep.equal([]);
     });
 
     test("merges defaultJobLabels and actionJobLabels with actionJobLabels taking precedence", () => {
       const errors: Error[] = [];
-      const sessionStub = { compileError: (e: Error) => errors.push(e) } as any;
-      const merged = resolveAndValidateJobLabels(
-        { env: "dev", team: "core" },
-        { env: "prod", cost_center: "analytics" },
-        sessionStub,
-      );
-      expect(merged).to.deep.equal({
+      const sessionStub = {
+        projectConfig: { defaultJobLabels: { env: "dev", team: "core" } },
+        compileError: (e: Error) => errors.push(e),
+      } as any;
+      const proto: { actionDescriptor?: dataform.IActionDescriptor } = {};
+      setActionJobLabels(proto, { env: "prod", cost_center: "analytics" }, sessionStub);
+      expect(proto.actionDescriptor?.jobLabels).to.deep.equal({
         env: "prod",
         team: "core",
         cost_center: "analytics",
@@ -545,9 +553,8 @@ suite("Dataform Utility Validations", () => {
       expect(errors).to.deep.equal([]);
     });
 
-    test("records compileError and returns undefined when merged labels exceed 32", () => {
+    test("records compileError and leaves jobLabels unset when merged labels exceed 32", () => {
       const errors: Error[] = [];
-      const sessionStub = { compileError: (e: Error) => errors.push(e) } as any;
       const defaults: { [key: string]: string } = {};
       for (let i = 0; i < 20; i++) {
         defaults[`def_${i}`] = "v";
@@ -556,17 +563,24 @@ suite("Dataform Utility Validations", () => {
       for (let i = 0; i < 15; i++) {
         actionLabels[`act_${i}`] = "v";
       }
-      const merged = resolveAndValidateJobLabels(defaults, actionLabels, sessionStub, "file.sqlx");
-      expect(merged).to.equal(undefined);
+      const sessionStub = {
+        projectConfig: { defaultJobLabels: defaults },
+        compileError: (e: Error) => errors.push(e),
+      } as any;
+      const proto: { actionDescriptor?: dataform.IActionDescriptor; fileName?: string } = {
+        fileName: "file.sqlx",
+      };
+      setActionJobLabels(proto, actionLabels, sessionStub);
+      expect(proto.actionDescriptor).to.equal(undefined);
       expect(errors.length).to.equal(1);
       expect(errors[0].message).to.equal(
-        "Too many job labels in jobLabels: maximum allowed is 32, but got 35 (20 from defaultJobLabels and 15 from jobLabels).",
+        "Too many job labels in jobLabels: maximum allowed is 32, but got 35.",
       );
     });
   });
 
   suite("snakeToCamelKeys", () => {
-    test("converts snake_case keys to camelCase while preserving map keys under job_labels/jobLabels", () => {
+    test("converts snake_case keys to camelCase while preserving specified map fields", () => {
       const input = {
         graph_name: "my_graph",
         depend_on_dependency_assertions: true,
@@ -575,7 +589,7 @@ suite("Dataform Utility Validations", () => {
           team_name: "data_eng",
         },
       };
-      expect(snakeToCamelKeys(input)).to.deep.equal({
+      expect(snakeToCamelKeys(input, new Set(["jobLabels"]))).to.deep.equal({
         graphName: "my_graph",
         dependOnDependencyAssertions: true,
         jobLabels: {

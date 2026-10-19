@@ -97,7 +97,6 @@ export class Test extends ActionBuilder<dataform.Test> {
   public contextableInputs = new Map<string, Contextable<IActionContext, string>>();
   private contextableQuery: Contextable<IActionContext, string>;
   private testTarget: dataform.ITarget;
-  private configJobLabels?: { [key: string]: string };
 
   /**
    * @hidden Stores the generated proto for the compiled graph.
@@ -111,6 +110,9 @@ export class Test extends ActionBuilder<dataform.Test> {
 
     if (config) {
       this.config(config);
+    }
+    if (!config?.hasOwnProperty("jobLabels")) {
+      setActionJobLabels(this.proto, undefined, this.session);
     }
   }
 
@@ -151,7 +153,7 @@ export class Test extends ActionBuilder<dataform.Test> {
       this.proto.tags = config.tags;
     }
     if (config.hasOwnProperty("jobLabels")) {
-      this.configJobLabels = config.jobLabels;
+      setActionJobLabels(this.proto, config.jobLabels, this.session);
     }
     return this;
   }
@@ -211,8 +213,6 @@ export class Test extends ActionBuilder<dataform.Test> {
 
   /** @hidden */
   public compile() {
-    setActionJobLabels(this.proto, this.configJobLabels, this.session);
-
     const testContext = new TestContext(this);
     if (!this.testTarget) {
       this.session.compileError(

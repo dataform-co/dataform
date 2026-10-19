@@ -447,7 +447,7 @@ configuration file.
 | defaultNotebookRuntimeOptions | [NotebookRuntimeOptionsConfig](#dataform-NotebookRuntimeOptionsConfig)                   |          | Optional. Default runtime options for Notebook actions.                                                                                                     |
 | builtinAssertionNamePrefix    | [string](#string)                                                                        |          | Optional. The prefix to append to built-in assertion names.                                                                                                 |
 | defaultReservation            | [string](#string)                                                                        |          | Optional. The default BigQuery reservation to use for execution.                                                                                            |
-| defaultJobLabels              | [WorkflowSettings.DefaultJobLabelsEntry](#dataform-WorkflowSettings-DefaultJobLabelsEntry) | repeated | Optional. Default key-value pairs for BigQuery job labels applied to BigQuery jobs executed for actions in this project. Can be overridden by action-level `job_labels`. |
+| defaultJobLabels              | [WorkflowSettings.DefaultJobLabelsEntry](#dataform-WorkflowSettings-DefaultJobLabelsEntry) | repeated | Optional. Default key-value pairs for BigQuery job labels applied to BigQuery jobs executed for actions in this project. Merged key-by-key when overridden via `projectConfigOverride`, and can be overridden per key by action-level `job_labels`. |
 
 <a name="dataform-WorkflowSettings-DefaultJobLabelsEntry"></a>
 

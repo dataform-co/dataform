@@ -378,13 +378,16 @@ export class Runner {
   private getBigQueryExecutionOptions(
     action: dataform.IExecutionAction,
   ): IBigQueryExecutionOptions {
+    const actionLabels =
+      Object.keys(action.actionDescriptor?.jobLabels || {}).length > 0
+        ? action.actionDescriptor?.jobLabels
+        : action.actionDescriptor?.bigqueryLabels;
     return {
       dryRun: this.executionOptions.bigquery?.dryRun,
       jobPrefix: this.executionOptions.bigquery?.jobPrefix,
       labels: {
+        ...(actionLabels || {}),
         ...(this.executionOptions?.bigquery?.labels || {}),
-        ...(action.actionDescriptor?.bigqueryLabels || {}),
-        ...(action.actionDescriptor?.jobLabels || {}),
       },
       actionRetryLimit: this.executionOptions.bigquery?.actionRetryLimit,
       reservation:

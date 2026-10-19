@@ -484,32 +484,46 @@ defaultJobLabels:
       );
     });
 
-    test("defaultJobLabels in workflow_settings.yaml must have string values", () => {
+    test("defaultJobLabels in workflow_settings.yaml coerces numbers and booleans to strings", () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
       writeWorkflowSettingsFile(
         projectDir,
         `
 defaultProject: defaultProject
+defaultLocation: US
 defaultJobLabels:
-  intLabel: 1
+  int_label: 1
+  bool_label: true
 `,
       );
 
-      expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
-        'Invalid job label value for key "intLabel" in defaultJobLabels: label values must be strings.',
-      );
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(
+        asPlainObject(result.compile.compiledGraph.projectConfig.defaultJobLabels),
+      ).deep.equals({
+        int_label: "1",
+        bool_label: "true",
+      });
     });
 
-    test("defaultJobLabels in dataform.json must have string values", () => {
+    test("defaultJobLabels in dataform.json coerces numbers and booleans to strings", () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
       fs.writeFileSync(
         path.join(projectDir, "dataform.json"),
-        `{"defaultJobLabels": { "intLabel": 1 } }`,
+        `{"defaultDatabase": "defaultProject", "defaultLocation": "US", "defaultJobLabels": { "int_label": 1, "bool_label": false } }`,
       );
 
-      expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
-        'Invalid job label value for key "intLabel" in defaultJobLabels: label values must be strings.',
-      );
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(
+        asPlainObject(result.compile.compiledGraph.projectConfig.defaultJobLabels),
+      ).deep.equals({
+        int_label: "1",
+        bool_label: "false",
+      });
     });
 
     test("defaultJobLabels fails on reserved keys or invalid characters", () => {

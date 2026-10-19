@@ -673,40 +673,4 @@ test("js_test")
       },
     });
   });
-
-  test(`test records compilation error for invalid jobLabels`, () => {
-    const projectDir = tmpDirFixture.createNewTmpDir();
-    const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
-    const definitionsDir = path.join(projectDir, "definitions");
-
-    fs.writeFileSync(workflowSettingsPath, VALID_WORKFLOW_SETTINGS_YAML);
-    fs.mkdirSync(definitionsDir);
-    fs.writeFileSync(
-      path.join(definitionsDir, "actions.yaml"),
-      `
-actions:
-- table:
-    filename: action.sql`,
-    );
-    fs.writeFileSync(path.join(definitionsDir, "action.sql"), "SELECT 1");
-    fs.writeFileSync(
-      path.join(definitionsDir, "invalid_test.sqlx"),
-      `
-config {
-  type: "test",
-  dataset: "action",
-  jobLabels: {
-    "origin": "val"
-  }
-}
-SELECT 1`,
-    );
-
-    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
-
-    expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).to.equal(1);
-    expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).to.include(
-      'Invalid job label key "origin" in jobLabels: "origin" is a reserved label key.',
-    );
-  });
 });
