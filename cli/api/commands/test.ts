@@ -16,10 +16,15 @@ async function runTest(
   // We should paginate test results to remove this limit.
   let actualResults;
   let expectedResults;
+  const labels = testCase.actionDescriptor?.jobLabels;
+  const executeOptions = {
+    byteLimit: 1024 * 1024,
+    ...(labels && Object.keys(labels).length > 0 ? { bigquery: { labels } } : {}),
+  };
   try {
     [actualResults, expectedResults] = await Promise.all([
-      dbadapter.execute(testCase.testQuery, { byteLimit: 1024 * 1024 }),
-      dbadapter.execute(testCase.expectedOutputQuery, { byteLimit: 1024 * 1024 }),
+      dbadapter.execute(testCase.testQuery, executeOptions),
+      dbadapter.execute(testCase.expectedOutputQuery, executeOptions),
     ]);
   } catch (e) {
     return {

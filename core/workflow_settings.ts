@@ -186,6 +186,9 @@ export function workflowSettingsAsProjectConfig(
   if (workflowSettings.lineage) {
     projectConfig.lineageEnabled = workflowSettings.lineage.enabled;
   }
+  if (workflowSettings.defaultJobLabels) {
+    projectConfig.defaultJobLabels = workflowSettings.defaultJobLabels;
+  }
   projectConfig.warehouse = "bigquery";
   return projectConfig;
 }

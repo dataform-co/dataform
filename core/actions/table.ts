@@ -28,6 +28,7 @@ import {
   resolvableAsActionConfigTarget,
   resolvableAsTarget,
   resolveActionsConfigFilename,
+  setActionJobLabels,
   strictKeysOf,
   toResolvable,
   validateConnectionFormat,
@@ -178,6 +179,8 @@ export class Table extends ActionBuilder<dataform.Table> {
         ),
       );
     }
+    // Must run before `this.assertions(...)` so built-in assertions inherit the resolved `jobLabels`.
+    setActionJobLabels(this.proto, config.jobLabels, this.session);
     if (config.assertions) {
       this.assertions(dataform.ActionConfig.TableAssertionsConfig.create(config.assertions));
     }

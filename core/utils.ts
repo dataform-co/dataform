@@ -659,17 +659,148 @@ export class ResolvableMap<T> {
   }
 }
 
-export function snakeToCamelKeys(value: any): any {
+export function snakeToCamelKeys(value: any, preserveMapKeysFields: Set<string> = new Set()): any {
   if (Array.isArray(value)) {
-    return value.map(snakeToCamelKeys);
+    return value.map((item) => snakeToCamelKeys(item, preserveMapKeysFields));
   }
   if (value && typeof value === "object") {
     const out: { [key: string]: any } = {};
     for (const [key, val] of Object.entries(value)) {
       const camel = key.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
-      out[camel] = snakeToCamelKeys(val);
+      out[camel] =
+        preserveMapKeysFields.has(camel) && val && typeof val === "object" && !Array.isArray(val)
+          ? { ...val }
+          : snakeToCamelKeys(val, preserveMapKeysFields);
     }
     return out;
   }
   return value;
+}
+
+// NOTE: These validation constants and rules are mirrored by the Cloud Dataform backend validator.
+// If one validator is updated, the other must also be updated to stay in sync.
+export const MAX_JOB_LABELS_COUNT = 32;
+export const MAX_JOB_LABEL_LENGTH = 63;
+export const JOB_LABEL_KEY_REGEX = /^[a-z][a-z0-9_-]*$/;
+export const JOB_LABEL_VALUE_REGEX = /^[a-z0-9_-]*$/;
+export const RESERVED_JOB_LABEL_PREFIXES = ["dataform_", "dataform-", "dataprep-", "gcp-", "goog-"];
+export const RESERVED_JOB_LABEL_KEYS = new Set([
+  "bigquery-workflow",
+  "single-file-asset-type",
+  "origin",
+  "bq-dea",
+  "data-preparation-file-loader",
+]);
+
+/**
+ * Validates customer-supplied BigQuery job labels against BigQuery and Dataform constraints.
+ * Numbers and booleans are coerced to strings in-place.
+ * Throws an Error if any rule is violated.
+ */
+export function validateJobLabels(
+  labels: { [key: string]: string } | null | undefined,
+  fieldName: string = "jobLabels",
+): void {
+  if (labels === undefined || labels === null) {
+    return;
+  }
+  if (typeof labels !== "object" || Array.isArray(labels)) {
+    throw new Error(`${fieldName} must be an object mapping string keys to string values.`);
+  }
+  const entries = Object.entries(labels);
+  if (entries.length > MAX_JOB_LABELS_COUNT) {
+    throw new Error(
+      `Too many job labels in ${fieldName}: maximum allowed is ${MAX_JOB_LABELS_COUNT}, but got ${entries.length}.`,
+    );
+  }
+  for (const [key, rawValue] of entries) {
+    if (
+      typeof rawValue !== "string" &&
+      typeof rawValue !== "number" &&
+      typeof rawValue !== "boolean"
+    ) {
+      throw new Error(
+        `Invalid job label value for key "${key}" in ${fieldName}: label values must be strings.`,
+      );
+    }
+    const value = String(rawValue);
+    labels[key] = value;
+    if (key.length === 0 || key.length > MAX_JOB_LABEL_LENGTH) {
+      throw new Error(
+        `Invalid job label key "${key}" in ${fieldName}: key length must be between 1 and ${MAX_JOB_LABEL_LENGTH} characters.`,
+      );
+    }
+    if (!JOB_LABEL_KEY_REGEX.test(key)) {
+      throw new Error(
+        `Invalid job label key "${key}" in ${fieldName}: keys must start with a lowercase letter and contain only lowercase letters, numbers, underscores, and hyphens.`,
+      );
+    }
+    const matchedPrefix = RESERVED_JOB_LABEL_PREFIXES.find((prefix) => key.startsWith(prefix));
+    if (matchedPrefix) {
+      throw new Error(
+        `Invalid job label key "${key}" in ${fieldName}: key cannot start with reserved prefix "${matchedPrefix}".`,
+      );
+    }
+    if (RESERVED_JOB_LABEL_KEYS.has(key)) {
+      throw new Error(
+        `Invalid job label key "${key}" in ${fieldName}: "${key}" is a reserved label key.`,
+      );
+    }
+    if (value.length > MAX_JOB_LABEL_LENGTH) {
+      throw new Error(
+        `Invalid job label value "${value}" for key "${key}" in ${fieldName}: value length must be at most ${MAX_JOB_LABEL_LENGTH} characters.`,
+      );
+    }
+    if (!JOB_LABEL_VALUE_REGEX.test(value)) {
+      throw new Error(
+        `Invalid job label value "${value}" for key "${key}" in ${fieldName}: values may contain only lowercase letters, numbers, underscores, and hyphens.`,
+      );
+    }
+  }
+}
+
+/**
+ * Resolves, validates, and sets `actionDescriptor.jobLabels` on an action proto by merging
+ * workflow settings `defaultJobLabels` with action-level `jobLabels` (where action-level keys
+ * override default keys). Records a compilation error on the session if validation fails, or
+ * rethrows the error if no session is provided.
+ */
+export function setActionJobLabels(
+  proto: {
+    actionDescriptor?: dataform.IActionDescriptor | null;
+    fileName?: string | null;
+    target?: dataform.ITarget | null;
+  },
+  actionJobLabels: { [key: string]: string } | null | undefined,
+  session?: Session,
+): void {
+  try {
+    if (
+      actionJobLabels !== undefined &&
+      actionJobLabels !== null &&
+      (typeof actionJobLabels !== "object" || Array.isArray(actionJobLabels))
+    ) {
+      throw new Error("jobLabels must be an object mapping string keys to string values.");
+    }
+    const mergedLabels: { [key: string]: string } = {
+      ...(session?.projectConfig?.defaultJobLabels || {}),
+      ...(actionJobLabels || {}),
+    };
+    if (Object.keys(mergedLabels).length === 0) {
+      return;
+    }
+    validateJobLabels(mergedLabels, "jobLabels");
+    if (!proto.actionDescriptor) {
+      proto.actionDescriptor = {};
+    }
+    proto.actionDescriptor.jobLabels = mergedLabels;
+  } catch (e) {
+    if (session) {
+      session.compileError(e, proto.fileName, proto.target);
+    } else {
+      // Without a session there is nowhere to record a compilation error, so rethrow instead of
+      // silently dropping the validation failure.
+      throw e;
+    }
+  }
 }

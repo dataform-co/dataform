@@ -70,6 +70,7 @@ actions:
     hasOutput: true,
     dependOnDependencyAssertions: true,
     reservation: "reservation",
+    jobLabels: {"job_key": "job_val"},
     ${exampleActionDescriptor.inputSqlxConfigBlock}
 }`;
 
@@ -133,6 +134,9 @@ SELECT 1`,
               actionDescriptor: {
                 ...exampleActionDescriptor.outputActionDescriptor,
                 reservation: "reservation",
+                jobLabels: {
+                  job_key: "job_val",
+                },
               },
             },
           ]),
@@ -170,6 +174,8 @@ actions:
     dependOnDependencyAssertions: true
     hermetic: true
     reservation: reservation
+    jobLabels:
+      job_key: job_val
 `,
     );
 
@@ -205,6 +211,9 @@ actions:
           actionDescriptor: {
             description: "description",
             reservation: "reservation",
+            jobLabels: {
+              job_key: "job_val",
+            },
           },
         },
       ]),

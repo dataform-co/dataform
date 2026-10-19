@@ -1596,4 +1596,45 @@ suite("property_graph", () => {
       }),
     ).to.throw("'ref' must include a 'name'");
   });
+
+  test("propagates jobLabels and merges with defaultJobLabels", () => {
+    const session = new Session(
+      "/tmp/root",
+      dataform.ProjectConfig.create({
+        defaultDatabase: "defaultProject",
+        defaultSchema: "defaultDataset",
+        defaultJobLabels: {
+          env: "dev",
+          team: "graph_team",
+        },
+      }),
+    );
+    const action = new PropertyGraph(
+      session,
+      {
+        name: "LabeledGraph",
+        jobLabels: {
+          env: "prod",
+          cost_center: "analytics",
+        },
+        entities: [
+          {
+            name: "Account",
+            dataSourceString: "proj.ds.Accounts",
+            keys: ["id"],
+          },
+        ],
+      } as any,
+      "definitions/graph.yaml",
+    );
+    const compiled = action.compile();
+    expect(session.graphErrors.compilationErrors).to.deep.equal([]);
+    expect(asPlainObject(compiled.actionDescriptor)).to.deep.equal({
+      jobLabels: {
+        env: "prod",
+        team: "graph_team",
+        cost_center: "analytics",
+      },
+    });
+  });
 });

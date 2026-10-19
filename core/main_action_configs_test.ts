@@ -303,4 +303,51 @@ actions:
 
     expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
   });
+
+  suite("jobLabels with numeric and boolean values are coerced to strings", () => {
+    [
+      { actionType: "table", filename: "action.sql", content: "SELECT 1" },
+      { actionType: "view", filename: "action.sql", content: "SELECT 1" },
+      { actionType: "incrementalTable", filename: "action.sql", content: "SELECT 1" },
+      { actionType: "assertion", filename: "action.sql", content: "SELECT 1" },
+      { actionType: "operation", filename: "action.sql", content: "SELECT 1" },
+      {
+        actionType: "dataPreparation",
+        filename: "action.dp.yaml",
+        content: "nodes: []",
+      },
+    ].forEach(({ actionType, filename, content }) => {
+      test(`${actionType} coerces numeric and boolean jobLabels values in actions.yaml`, () => {
+        const projectDir = tmpDirFixture.createNewTmpDir();
+        writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
+        writeDefinitionFile(
+          projectDir,
+          "actions.yaml",
+          `
+actions:
+- ${actionType}:
+    filename: ${filename}
+    jobLabels:
+      num_label: 123
+      bool_label: true
+`,
+        );
+        writeDefinitionFile(projectDir, filename, content);
+
+        const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+        expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+        const compiledActions = [
+          ...result.compile.compiledGraph.tables,
+          ...result.compile.compiledGraph.assertions,
+          ...result.compile.compiledGraph.operations,
+          ...result.compile.compiledGraph.dataPreparations,
+        ];
+        expect(asPlainObject(compiledActions[0]?.actionDescriptor?.jobLabels)).deep.equals({
+          num_label: "123",
+          bool_label: "true",
+        });
+      });
+    });
+  });
 });
