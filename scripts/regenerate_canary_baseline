@@ -1,0 +1,22 @@
+#!/bin/bash
+set -euo pipefail
+
+# Regenerates tools/canary/expected-compilation-result-actions.json by building Core from the
+# current checkout, compiling the canary project with it via dataform.googleapis.com, and saving
+# the resulting compilation result actions. It's meant to be used when you know that your changes 
+# are going to change the output of the projects.locations.repositories.compilationResults.query
+# API endpoint, as otherwise the canary test will expect the old output and fail.
+#
+# Intended to be run manually from the repository root. By default, GCP config is taken from
+# tools/canary/config.env. If you want to use your own project, create a file 
+# tools/canary/config.local.env and provide overrides for each variable.
+
+_PR_NUMBER="regen-$(od -An -N2 -tx1 /dev/urandom | tr -d ' \n')"
+export _PR_NUMBER
+
+echo "Building Core tarball from the current checkout..."
+bazel build //packages/@dataform/core:package_tar
+
+./scripts/run_canary_test --regenerate
+
+echo "Baseline regenerated. Review the changes with: git diff tools/canary/expected-compilation-result-actions.json"
