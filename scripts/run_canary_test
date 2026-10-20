@@ -343,7 +343,7 @@ if actual_actions != expected_actions:
     sys.stderr.write("Canary compilation result actions do not match the expected baseline:\n")
     for line in difflib.unified_diff(expected_str, actual_str, fromfile="expected", tofile="actual", lineterm=""):
         sys.stderr.write(line + "\n")
-    sys.stderr.write("If the changes in the output are expected, make sure to regenerate the baseline by running ./scripts/regenerate_canary_baseline)
+    sys.stderr.write("If the changes in the output are expected, make sure to regenerate the baseline by running ./scripts/regenerate_canary_baseline\n")
     sys.stderr.write("\nFull actual response:\n")
     sys.stderr.write(json.dumps(actual, indent=2) + "\n")
     sys.exit(1)
