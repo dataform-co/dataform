@@ -1,6 +1,6 @@
 import { config, expect } from "chai";
 import Long from "long";
-import { anyString, anything, instance, mock, verify, when } from "ts-mockito";
+import { anyString, anything, capture, instance, mock, verify, when } from "ts-mockito";
 
 import { Runner } from "df/cli/api";
 import { IDbAdapter } from "df/cli/api/dbadapters";
@@ -148,8 +148,39 @@ suite("@dataform/api/run", () => {
     expect(
       dataform.RunResult.create(cleanTiming(await runner.execute().result())).toJSON(),
     ).to.deep.equal(EXPECTED_RUN_RESULT.toJSON());
-    verify(mockedDbAdapter.createSchema("database", "schema1")).once();
-    verify(mockedDbAdapter.createSchema("database2", "schema2")).once();
+    verify(mockedDbAdapter.createSchema("database", "schema1", anything())).once();
+    verify(mockedDbAdapter.createSchema("database2", "schema2", anything())).once();
+  });
+
+  test("execute passes projectConfig.defaultLocation to BigQuery jobs and datasets", async () => {
+    const graph = dataform.ExecutionGraph.create({
+      projectConfig: {
+        warehouse: "bigquery",
+        defaultDatabase: "db",
+        defaultLocation: "europe-west1",
+      },
+      runConfig: {},
+      warehouseState: {},
+      actions: [
+        {
+          tasks: [{ type: "statement", statement: "SELECT 1" }],
+          type: "table",
+          target: { database: "db", schema: "s", name: "t" },
+          tableType: "table",
+          dependencyTargets: [],
+        },
+      ],
+    });
+    const mockedDbAdapter = mock(BigQueryDbAdapter);
+    when(mockedDbAdapter.schemas(anyString())).thenResolve([]);
+    when(mockedDbAdapter.createSchema(anyString(), anyString(), anything())).thenResolve(null);
+    when(mockedDbAdapter.execute(anyString(), anything())).thenResolve({ rows: [], metadata: {} });
+
+    await new Runner(instance(mockedDbAdapter), graph).execute().result();
+
+    verify(mockedDbAdapter.createSchema("db", "s", "europe-west1")).once();
+    const [, options] = capture(mockedDbAdapter.execute).last();
+    expect(options.bigquery?.location).to.equal("europe-west1");
   });
 
   test("stop and then resume", async () => {
@@ -211,8 +242,8 @@ suite("@dataform/api/run", () => {
     expect(
       dataform.RunResult.create(cleanTiming(await runner.execute().result())).toJSON(),
     ).to.deep.equal(EXPECTED_RUN_RESULT.toJSON());
-    verify(mockedDbAdapter.createSchema("database", "schema1")).once();
-    verify(mockedDbAdapter.createSchema("database2", "schema2")).once();
+    verify(mockedDbAdapter.createSchema("database", "schema1", anything())).once();
+    verify(mockedDbAdapter.createSchema("database2", "schema2", anything())).once();
   });
 
   suite("execute with retry", () => {

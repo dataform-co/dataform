@@ -303,11 +303,12 @@ export class BigQueryDbAdapter implements IDbAdapter {
 
   public async search(
     searchText: string,
-    options: { limit: number } = { limit: 1000 },
+    options: { limit: number; location?: string } = { limit: 1000 },
   ): Promise<dataform.ITableMetadata[]> {
+    const location = options.location || this.bigQueryCredentials.location || "US";
     const results = await this.execute(
       `select table_catalog, table_schema, table_name
-       from region-${this.bigQueryCredentials.location}.INFORMATION_SCHEMA.COLUMN_FIELD_PATHS
+       from region-${location}.INFORMATION_SCHEMA.COLUMN_FIELD_PATHS
        where regexp_contains(table_schema, @searchText) or regexp_contains(table_name, @searchText) or regexp_contains(field_path, @searchText)
        group by 1, 2, 3`,
       {
@@ -316,6 +317,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
         },
         interactive: true,
         rowLimit: options.limit,
+        bigquery: { location },
       },
     );
     const tables = await Promise.all(
@@ -388,10 +390,10 @@ export class BigQueryDbAdapter implements IDbAdapter {
     return data[0].map((dataset) => dataset.id);
   }
 
-  public async createSchema(database: string, schema: string): Promise<void> {
+  public async createSchema(database: string, schema: string, location?: string): Promise<void> {
     await this.execute(
       `create schema if not exists \`${database || this.bigQueryCredentials.projectId}.${schema}\``,
-      { bigquery: { location: this.bigQueryCredentials.location || "US" } },
+      { bigquery: { location: location || this.bigQueryCredentials.location || "US" } },
     );
   }
 

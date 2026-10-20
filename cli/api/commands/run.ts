@@ -272,7 +272,13 @@ export class Runner {
         await Promise.all(
           Array.from(schemas)
             .filter((schema) => !existingSchemas.has(schema))
-            .map((schema) => this.dbadapter.createSchema(database, schema)),
+            .map((schema) =>
+              this.dbadapter.createSchema(
+                database,
+                schema,
+                this.graph.projectConfig?.defaultLocation || undefined,
+              ),
+            ),
         );
       }),
     );
@@ -386,6 +392,7 @@ export class Runner {
         ...(action.actionDescriptor?.bigqueryLabels || {}),
       },
       actionRetryLimit: this.executionOptions.bigquery?.actionRetryLimit,
+      location: this.graph.projectConfig?.defaultLocation || undefined,
       reservation:
         action.actionDescriptor?.reservation || this.graph.projectConfig?.defaultReservation,
     };
