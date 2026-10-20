@@ -22,6 +22,8 @@ export interface ILineageEmitterFactoryInput {
   projectDir: string;
   /** BigQuery credentials; `undefined` when unavailable. */
   readCredentials: dataform.IBigQuery | undefined;
+  /** Lineage location */
+  location: string | undefined;
 }
 
 /**
@@ -56,10 +58,15 @@ export function createLineageEmitter(
     return undefined;
   }
 
+  if (!input.location && !input.readCredentials.location) {
+    return undefined;
+  }
+
   const options: IEmitterOptions = {
     lineageEnabled: true,
     dryRun: input.dryRun,
     projectDir: input.projectDir,
+    location: input.location,
   };
   return new LineageEmitter(input.readCredentials, options, clientProvider, stderr);
 }

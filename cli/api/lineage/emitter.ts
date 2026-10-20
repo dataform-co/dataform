@@ -12,6 +12,7 @@ export interface IEmitterOptions {
   lineageEnabled?: boolean;
   dryRun?: boolean;
   projectDir?: string;
+  location?: string;
 }
 
 /**
@@ -193,7 +194,7 @@ export class LineageEmitter {
     actionResult: dataform.IActionResult,
   ): Promise<void> {
     const projectId = action.target.database || this.credentials.projectId;
-    const location = (this.credentials.location || "US").toLowerCase();
+    const location = (this.emitterOptions.location || this.credentials.location).toLowerCase();
     const parent = `projects/${projectId}/locations/${location}`;
 
     const openLineagePayload = this.payloadBuilder.build(
