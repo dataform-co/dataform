@@ -3,6 +3,7 @@ import * as fs from "fs-extra";
 import { dump as dumpYaml, load as loadYaml } from "js-yaml";
 import * as path from "path";
 
+import { TEMPORARY_ENVIRONMENT_PREFIX } from "df/cli/api/commands/compile";
 import { Logger } from "df/cli/console";
 import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
@@ -101,6 +102,25 @@ export async function runCli(
 }> {
   const args = [cliEntryPointPath, cmd, ...options];
   return getProcessResult(execFile(nodePath, args, execOptions));
+}
+
+/**
+ * Runs the CLI with its own temporary directory and npm cache, and reports the temporary
+ * compilation environments the CLI left behind there (there should be none).
+ */
+export async function runCliWithTmpDir(
+  tmpDirFixture: TmpDirFixture,
+  cmd: string,
+  options: string[],
+): Promise<{ exitCode: number; stdout: string; stderr: string; leftoverEnvironments: string[] }> {
+  const tmpDir = tmpDirFixture.createNewTmpDir();
+  const result = await runCli(cmd, options, {
+    env: { ...process.env, TMPDIR: tmpDir, NPM_CONFIG_CACHE: tmpDirFixture.createNewTmpDir() },
+  });
+  const leftoverEnvironments = fs
+    .readdirSync(tmpDir)
+    .filter((entry) => entry.startsWith(TEMPORARY_ENVIRONMENT_PREFIX));
+  return { ...result, leftoverEnvironments };
 }
 
 export function alterWorkflowSettings(

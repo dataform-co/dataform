@@ -3,27 +3,14 @@ import * as glob from "glob";
 import * as path from "path";
 import * as semver from "semver";
 
+import { findInstalledCoreBundle } from "df/cli/vm/core_installation";
 import { encode64 } from "df/common/protos";
 import { CompilerFunction, VmRunner } from "df/common/vm/vm_runner";
 import { dataform } from "df/protos/ts";
 
 export function compile(compileConfig: dataform.ICompileConfig) {
   compileConfig.projectDir = fs.realpathSync(path.resolve(compileConfig.projectDir));
-  const coreBundlePath = path.join(
-    compileConfig.projectDir,
-    "node_modules",
-    "@dataform",
-    "core",
-    "bundle.js",
-  );
-  if (!fs.existsSync(coreBundlePath)) {
-    throw new Error(
-      "Could not find a recent installed version of @dataform/core in the project. Check that " +
-        "either `dataformCoreVersion` is specified in `workflow_settings.yaml`, or " +
-        "`@dataform/core` is specified in `package.json`. If using `package.json`, then run " +
-        "`dataform install`.",
-    );
-  }
+  const coreBundlePath = findInstalledCoreBundle(compileConfig.projectDir);
 
   const vmIndexFileName = path.resolve(path.join(compileConfig.projectDir, "index.js"));
 

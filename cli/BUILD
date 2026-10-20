@@ -109,6 +109,7 @@ ts_test_suite(
     srcs = [
         "index_run_e2e_test.ts",
         "tests/jit/index_jit_advanced_test.ts",
+        "tests/jit/index_jit_core_version_test.ts",
         "tests/jit/index_jit_dependency_test.ts",
         "tests/jit/index_jit_main_test.ts",
         "tests/jit/index_jit_runtime_test.ts",

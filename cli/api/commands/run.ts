@@ -28,6 +28,10 @@ export interface IExecutedAction {
 }
 
 export interface IExecutionOptions {
+  /**
+   * Directory JiT compilation runs in; `@dataform/core` is loaded from its `node_modules`. Use the
+   * compilation environment's directory (see `compileForRun`) so JiT uses the same core.
+   */
   projectDir?: string;
   bigquery?: {
     jobPrefix?: string;
@@ -43,7 +47,13 @@ export interface IExecutionOptions {
     timeoutMillis?: number,
     options?: IBigQueryExecutionOptions,
     onCancel?: (cancel: () => void) => void,
+    expectedCoreVersion?: string,
   ) => Promise<dataform.IJitCompilationResponse>;
+  /**
+   * The `@dataform/core` version that compiled the project (`CompiledGraph.dataformCoreVersion`).
+   * JiT compilation must use the same version.
+   */
+  expectedCoreVersion?: string;
   lineageEmitter?: LineageEmitter;
 }
 
@@ -624,6 +634,7 @@ export class Runner {
           cancelHandler = handleCancel;
           this.eEmitter.on(CANCEL_EVENT, handleCancel);
         },
+        this.executionOptions.expectedCoreVersion,
       );
       action.tasks = this.createTasksFromJitResponse(action, jitResponse);
     } finally {

@@ -8,12 +8,22 @@ import {
   INTEGRATION_TEST_LOCATION,
   INTEGRATION_TEST_PROJECT,
   runCli,
+  runCliWithTmpDir,
   setupProject,
 } from "df/cli/index_test_base";
 import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
-import { suite, test, writeDefinitionFile } from "df/testing";
+import { suite, test, writeDefinitionFile, writeWorkflowSettingsFile } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
+
+function writeWorkflowSettingsWithCoreVersion(projectDir: string, coreVersion: string) {
+  writeWorkflowSettingsFile(projectDir, {
+    defaultProject: INTEGRATION_TEST_PROJECT,
+    defaultLocation: INTEGRATION_TEST_LOCATION,
+    defaultDataset: "dataform",
+    dataformCoreVersion: coreVersion,
+  });
+}
 
 suite("compile", () => {
   suite("compile command", ({ afterEach }) => {
@@ -57,11 +67,10 @@ suite("compile", () => {
 `,
       );
 
-      expect((await runCli("compile", [projectDir])).stderr).contains(
-        "Could not find a recent installed version of @dataform/core in the project. Check that " +
-          "either `dataformCoreVersion` is specified in `workflow_settings.yaml`, or " +
-          "`@dataform/core` is specified in `package.json`. If using `package.json`, then run " +
-          "`dataform install`.",
+      const stderr = (await runCli("compile", [projectDir])).stderr;
+      expect(stderr).contains("Could not find @dataform/core:");
+      expect(stderr).contains(
+        "Run `dataform install` in the project directory to install the version from package.json.",
       );
     });
 
@@ -107,15 +116,7 @@ suite("compile", () => {
         { timeout: 60000 },
         async () => {
           const projectDir = tmpDirFixture.createNewTmpDir();
-          fs.writeFileSync(
-            path.join(projectDir, "workflow_settings.yaml"),
-            dumpYaml({
-              defaultProject: INTEGRATION_TEST_PROJECT,
-              defaultLocation: INTEGRATION_TEST_LOCATION,
-              defaultDataset: "dataform",
-              dataformCoreVersion: coreVersion,
-            }),
-          );
+          writeWorkflowSettingsWithCoreVersion(projectDir, coreVersion);
           writeDefinitionFile(
             projectDir,
             "example.sqlx",
@@ -158,6 +159,34 @@ suite("compile", () => {
           `${npmFile}' unexpected; remove it and try again`,
         );
       });
+    });
+
+    test(
+      "compile removes its temporary environment for dataformCoreVersion projects",
+      { timeout: 60000 },
+      async () => {
+        const projectDir = tmpDirFixture.createNewTmpDir();
+        writeWorkflowSettingsWithCoreVersion(projectDir, "3.0.71");
+        writeDefinitionFile(projectDir, "example.sqlx", `config { type: "table" }\nSELECT 1 AS id`);
+
+        const result = await runCliWithTmpDir(tmpDirFixture, "compile", [projectDir, "--json"]);
+
+        expect(result.exitCode, `compile failed: ${result.stderr}`).equals(0);
+        expect(result.leftoverEnvironments).deep.equals([]);
+      },
+    );
+
+    test("compile explains a failed @dataform/core installation", { timeout: 60000 }, async () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      writeWorkflowSettingsWithCoreVersion(projectDir, "3.999.0");
+
+      const result = await runCliWithTmpDir(tmpDirFixture, "compile", [projectDir, "--json"]);
+
+      expect(result.exitCode).equals(1);
+      expect(result.stderr).contains(
+        "Failed to install @dataform/core@3.999.0 (dataformCoreVersion in workflow_settings.yaml).",
+      );
+      expect(result.leftoverEnvironments).deep.equals([]);
     });
   });
 
