@@ -14,9 +14,6 @@ const PARENT_RUN_FACET_SCHEMA =
   "https://openlineage.io/spec/facets/1-2-0/ParentRunFacet.json#/$defs/ParentRunFacet";
 const EXTERNAL_QUERY_FACET_SCHEMA =
   "https://openlineage.io/spec/facets/1-0-2/ExternalQueryRunFacet.json";
-const ERROR_MESSAGE_FACET_SCHEMA =
-  "https://openlineage.io/spec/facets/1-0-1/ErrorMessageRunFacet.json";
-const SQL_JOB_FACET_SCHEMA = "https://openlineage.io/spec/facets/1-1-0/SQLJobFacet.json";
 const GCP_LINEAGE_JOB_FACET_SCHEMA =
   "https://openlineage.io/spec/facets/1-0-0/GcpLineageJobFacet.json#/$defs/GcpLineageJobFacet";
 const JOB_TYPE_FACET_SCHEMA =
@@ -142,55 +139,28 @@ export class LineagePayloadBuilder {
       }
     }
 
-    if (eventType === "FAIL") {
-      const errorMessages = actionResult.tasks
-        ?.map((t) => t.errorMessage)
-        .filter((msg) => !!msg)
-        .join("; ");
-      if (errorMessages) {
-        runFacets.errorMessage = {
-          _schemaURL: ERROR_MESSAGE_FACET_SCHEMA,
-          message: errorMessages,
-          programmingLanguage: "typescript",
-        };
-      }
-    }
-
-    const sqlStatements = action.tasks
-      ?.map((task) => task.statement)
-      .filter((stmt) => !!stmt)
-      .join(";\n");
-
-    const jobFacets: any = {};
-    if (sqlStatements) {
-      jobFacets.sql = {
-        _schemaURL: SQL_JOB_FACET_SCHEMA,
-        query: sqlStatements,
-      };
-    }
-
-    jobFacets.gcp_lineage = {
-      _producer: PRODUCER_URL,
-      _schemaURL: GCP_LINEAGE_JOB_FACET_SCHEMA,
-      displayName: `BigQuery Pipelines action ${canonicalActionTarget}`,
-      origin: {
-        name: `projects/${projectId}/locations/${location}/cli/${workdirIdentifier}`,
-        sourceType: "BIGQUERY_PIPELINES",
+    const jobFacets: any = {
+      gcp_lineage: {
+        _producer: PRODUCER_URL,
+        _schemaURL: GCP_LINEAGE_JOB_FACET_SCHEMA,
+        displayName: `BigQuery Pipelines action ${canonicalActionTarget}`,
+        origin: {
+          name: `projects/${projectId}/locations/${location}/cli/${workdirIdentifier}`,
+          sourceType: "BIGQUERY_PIPELINES",
+        },
       },
-    };
-
-    jobFacets.jobType = {
-      _producer: PRODUCER_URL,
-      _schemaURL: JOB_TYPE_FACET_SCHEMA,
-      integration: "BIGQUERY_PIPELINES",
-      jobType: "ACTION",
-      processingType: "BATCH",
-    };
-
-    jobFacets.gcp_bq_pipelines_job = {
-      dataformCoreVersion: version,
-      actionType,
-      actionName: canonicalActionTarget,
+      jobType: {
+        _producer: PRODUCER_URL,
+        _schemaURL: JOB_TYPE_FACET_SCHEMA,
+        integration: "BIGQUERY_PIPELINES",
+        jobType: "ACTION",
+        processingType: "BATCH",
+      },
+      gcp_bq_pipelines_job: {
+        dataformCoreVersion: version,
+        actionType,
+        actionName: canonicalActionTarget,
+      },
     };
 
     return {

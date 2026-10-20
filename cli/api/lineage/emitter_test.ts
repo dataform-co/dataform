@@ -147,11 +147,6 @@ suite("LineageEmitter", () => {
       new Date(2000).toISOString(),
     );
 
-    // SQL job facet verified
-    expect(openLineage.job.facets.sql.query).to.equal(
-      "CREATE TABLE target_table AS SELECT * FROM source_table",
-    );
-
     // GCP lineage job facet verified
     expect(openLineage.job.facets.gcp_lineage.displayName).to.equal(
       "BigQuery Pipelines action target_dataset.target_table",
@@ -224,12 +219,6 @@ suite("LineageEmitter", () => {
     expect(openLineage.job.name).to.equal(
       "target-project.us.cli.my-dataform-project-0b5d3e86.target_dataset.failing_table",
     );
-
-    // Error message run facet verified
-    expect(openLineage.run.facets.errorMessage.message).to.equal(
-      'bigquery error: Syntax error: Unexpected "\\" at [3:15]',
-    );
-    expect(openLineage.run.facets.errorMessage.programmingLanguage).to.equal("typescript");
 
     // Nominal time run facet verified (nominalEndTime matches failure timing)
     expect(openLineage.run.facets.nominalTime.nominalStartTime).to.equal(
@@ -721,7 +710,7 @@ suite("LineageEmitter", () => {
     }
   });
 
-  test("emits FAIL with errorMessage facet for a failing assertion", async () => {
+  test("emits FAIL event for a failing assertion", async () => {
     const mockClient = new MockLineageClient();
     const emitter = new LineageEmitter(
       credentials,
@@ -746,9 +735,7 @@ suite("LineageEmitter", () => {
     expect(mockClient.processOpenLineageRunEventCalledWith.length).to.equal(1);
     const event = fromProtoStruct(mockClient.processOpenLineageRunEventCalledWith[0].openLineage);
     expect(event.eventType).to.equal("FAIL");
-    expect(event.run.facets.errorMessage.message).to.equal(
-      "bigquery error: Assertion failed: query returned 3 row(s).",
-    );
+    expect(event.job.facets.gcp_bq_pipelines_job.actionType).to.equal("ASSERTION");
   });
 
   test("emits for property graph actions with PROPERTY_GRAPH actionType", async () => {
