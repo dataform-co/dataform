@@ -255,11 +255,29 @@ publish("a_leaky", { type: "table" }).query("SELECT 1");`,
     );
   });
 
+  test("handleJitRequest reports a core without a version as unknown", async () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    writeCorePackage(projectDir, "module.exports = { jitCompiler: () => ({}) };");
+
+    const messages = await runJitRequest({
+      request: operationJitRequest("SELECT 1"),
+      projectDir,
+      expectedCoreVersion: "3.0.71",
+    });
+
+    expect(messages).to.have.lengthOf(1);
+    expect(messages[0].type).to.equal("jit_error");
+    expect(messages[0].error).to.include(
+      `JiT compilation would use @dataform/core of an unknown version from ` +
+        `'${coreBundlePath(projectDir)}', but the project was compiled with @dataform/core 3.0.71.`,
+    );
+  });
+
   test("handleJitRequest does not fall back to the CLI's bundled core", async () => {
     // Host-side require("@dataform/core") resolves to the prebuilt bundle in this suite (see the
     // `before` hook), so a fallback to the CLI's core would succeed and return a jit_response.
     const projectDir = tmpDirFixture.createNewTmpDir();
-    writeCorePackage(projectDir, "3.0.0");
+    writeCorePackage(projectDir);
 
     const messages = await runJitRequest({ request: operationJitRequest("SELECT 42"), projectDir });
 
@@ -270,7 +288,7 @@ publish("a_leaky", { type: "table" }).query("SELECT 1");`,
 
   test("handleJitRequest fails when the project's core does not support JiT", async () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
-    writeCorePackage(projectDir, "3.0.0", `module.exports = { version: "3.0.0" };`);
+    writeCorePackage(projectDir, `module.exports = { version: "3.0.0" };`);
 
     const messages = await runJitRequest({
       request: operationJitRequest("SELECT 1"),
@@ -289,7 +307,7 @@ suite("cli/vm findInstalledCoreBundle", ({ afterEach }) => {
 
   test("returns the installed bundle", () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
-    writeCorePackage(projectDir, "3.0.0", "module.exports = {};");
+    writeCorePackage(projectDir, "module.exports = {};");
 
     expect(findInstalledCoreBundle(projectDir)).to.equal(coreBundlePath(projectDir));
   });

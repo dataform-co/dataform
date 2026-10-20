@@ -1,29 +1,23 @@
 import { expect } from "chai";
+import { spawn } from "child_process";
 import * as fs from "fs-extra";
 import { dump as dumpYaml, load as loadYaml } from "js-yaml";
 import * as path from "path";
 
+import { TEMPORARY_ENVIRONMENT_PREFIX } from "df/cli/api/commands/compile";
 import {
   alterWorkflowSettings,
+  cliEntryPointPath,
   INTEGRATION_TEST_LOCATION,
   INTEGRATION_TEST_PROJECT,
   runCli,
-  runCliWithTmpDir,
   setupProject,
+  writeWorkflowSettingsWithCoreVersion,
 } from "df/cli/index_test_base";
 import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
-import { suite, test, writeDefinitionFile, writeWorkflowSettingsFile } from "df/testing";
+import { getProcessResult, nodePath, suite, test, writeDefinitionFile } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
-
-function writeWorkflowSettingsWithCoreVersion(projectDir: string, coreVersion: string) {
-  writeWorkflowSettingsFile(projectDir, {
-    defaultProject: INTEGRATION_TEST_PROJECT,
-    defaultLocation: INTEGRATION_TEST_LOCATION,
-    defaultDataset: "dataform",
-    dataformCoreVersion: coreVersion,
-  });
-}
 
 suite("compile", () => {
   suite("compile command", ({ afterEach }) => {
@@ -116,7 +110,15 @@ suite("compile", () => {
         { timeout: 60000 },
         async () => {
           const projectDir = tmpDirFixture.createNewTmpDir();
-          writeWorkflowSettingsWithCoreVersion(projectDir, coreVersion);
+          fs.writeFileSync(
+            path.join(projectDir, "workflow_settings.yaml"),
+            dumpYaml({
+              defaultProject: INTEGRATION_TEST_PROJECT,
+              defaultLocation: INTEGRATION_TEST_LOCATION,
+              defaultDataset: "dataform",
+              dataformCoreVersion: coreVersion,
+            }),
+          );
           writeDefinitionFile(
             projectDir,
             "example.sqlx",
@@ -161,32 +163,59 @@ suite("compile", () => {
       });
     });
 
-    test(
-      "compile removes its temporary environment for dataformCoreVersion projects",
-      { timeout: 60000 },
-      async () => {
-        const projectDir = tmpDirFixture.createNewTmpDir();
-        writeWorkflowSettingsWithCoreVersion(projectDir, "3.0.71");
-        writeDefinitionFile(projectDir, "example.sqlx", `config { type: "table" }\nSELECT 1 AS id`);
-
-        const result = await runCliWithTmpDir(tmpDirFixture, "compile", [projectDir, "--json"]);
-
-        expect(result.exitCode, `compile failed: ${result.stderr}`).equals(0);
-        expect(result.leftoverEnvironments).deep.equals([]);
-      },
-    );
-
-    test("compile explains a failed @dataform/core installation", { timeout: 60000 }, async () => {
+    // Runs the CLI with a fake `npm` that marks that it has started and then hangs, presses Ctrl+C
+    // once the installation has started, and reports how the CLI exited. The fake `npm` makes the
+    // timing deterministic and needs no network access.
+    async function interruptDuringCoreInstallation(command: string) {
       const projectDir = tmpDirFixture.createNewTmpDir();
-      writeWorkflowSettingsWithCoreVersion(projectDir, "3.999.0");
-
-      const result = await runCliWithTmpDir(tmpDirFixture, "compile", [projectDir, "--json"]);
-
-      expect(result.exitCode).equals(1);
-      expect(result.stderr).contains(
-        "Failed to install @dataform/core@3.999.0 (dataformCoreVersion in workflow_settings.yaml).",
+      writeWorkflowSettingsWithCoreVersion(projectDir, version);
+      const tmpDir = tmpDirFixture.createNewTmpDir();
+      const fakeBinDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(fakeBinDir, "npm"),
+        "#!/bin/sh\ntouch npm-started\nexec sleep 600\n",
+        { mode: 0o755 },
       );
-      expect(result.leftoverEnvironments).deep.equals([]);
+
+      // A separate process group, like a job in a terminal, so that Ctrl+C reaches every process.
+      const cli = spawn(nodePath, [cliEntryPointPath, command, projectDir], {
+        detached: true,
+        env: {
+          ...process.env,
+          TMPDIR: tmpDir,
+          PATH: `${fakeBinDir}${path.delimiter}${process.env.PATH}`,
+        },
+      });
+      const result = getProcessResult(cli);
+      const temporaryEnvironments = () =>
+        fs.readdirSync(tmpDir).filter((entry) => entry.startsWith(TEMPORARY_ENVIRONMENT_PREFIX));
+      try {
+        await waitUntil(() =>
+          temporaryEnvironments().some((entry) =>
+            fs.existsSync(path.join(tmpDir, entry, "npm-started")),
+          ),
+        );
+        process.kill(-cli.pid, "SIGINT");
+      } catch (e) {
+        process.kill(-cli.pid, "SIGKILL");
+        throw e;
+      }
+      const { exitCode } = await result;
+      return { exitCode, leftoverEnvironments: temporaryEnvironments() };
+    }
+
+    ["compile", "run"].forEach((command) => {
+      test(
+        `Ctrl+C during the @dataform/core installation of ${command} removes the temporary ` +
+          "environment",
+        { timeout: 60000 },
+        async () => {
+          const { exitCode, leftoverEnvironments } = await interruptDuringCoreInstallation(command);
+
+          expect(exitCode).equals(130);
+          expect(leftoverEnvironments).deep.equals([]);
+        },
+      );
     });
   });
 
@@ -457,3 +486,13 @@ SELECT 1 as id
     });
   });
 });
+
+async function waitUntil(condition: () => boolean, timeoutMillis = 30000) {
+  const deadline = Date.now() + timeoutMillis;
+  while (!condition()) {
+    if (Date.now() > deadline) {
+      throw new Error(`Condition not met within ${timeoutMillis}ms`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+}

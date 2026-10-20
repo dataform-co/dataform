@@ -94,7 +94,7 @@ export async function handleJitRequest(message: IJitCompileMessage) {
       global.require = require;
 
       return {
-        version: core.version || "0.0.0",
+        version: core.version,
         hasJitCompiler: typeof core.jitCompiler === "function",
         compile: async (requestBytes, armoredRpcCallback) => {
           const requestBytesTyped = new Uint8Array(requestBytes);
@@ -114,16 +114,19 @@ export async function handleJitRequest(message: IJitCompileMessage) {
     `,
       vmFileName,
     );
+    const coreDescription = coreVersion
+      ? `@dataform/core ${coreVersion}`
+      : "@dataform/core of an unknown version";
     if (expectedCoreVersion && coreVersion !== expectedCoreVersion) {
       throw new Error(
-        `JiT compilation would use @dataform/core ${coreVersion} from '${coreBundlePath}', but the ` +
+        `JiT compilation would use ${coreDescription} from '${coreBundlePath}', but the ` +
           `project was compiled with @dataform/core ${expectedCoreVersion}. Compilation and JiT ` +
           `compilation must use the same @dataform/core version.`,
       );
     }
     if (!hasJitCompiler) {
       throw new Error(
-        `@dataform/core ${coreVersion} does not support JiT compilation. Upgrade ` +
+        `${coreDescription} does not support JiT compilation. Upgrade ` +
           `@dataform/core to a version that supports JiT.`,
       );
     }

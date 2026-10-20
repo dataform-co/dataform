@@ -573,7 +573,6 @@ suite("run", ({ afterEach }) => {
     const projectDir = tmpDirFixture.createNewTmpDir();
     writeCorePackage(
       projectDir,
-      "3.0.70",
       `module.exports = { version: "3.0.70", jitCompiler: () => ({ compile: async () => [] }) };`,
     );
 

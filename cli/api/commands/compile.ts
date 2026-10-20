@@ -133,6 +133,8 @@ function createTemporaryDirectory(): ICompilationEnvironment {
     fs.rmSync(projectDir, { recursive: true, force: true, maxRetries: 3 });
   };
   // Safety net in case the caller never gets to call cleanup(), e.g. on an uncaught exception.
+  // Signals skip "exit" unless the process exits explicitly; the CLI does that in
+  // exitOnTerminationSignals (cli/signals.ts).
   process.on("exit", cleanup);
   return { projectDir, cleanup };
 }

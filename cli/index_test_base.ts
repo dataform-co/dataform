@@ -13,6 +13,7 @@ import {
   nodePath,
   npmPath,
   writeDefinitionFile,
+  writeWorkflowSettingsFile,
 } from "df/testing";
 import { readTestCredentialsConfig, resolveCredentialsPath } from "df/testing/credentials";
 import { TmpDirFixture } from "df/testing/fixtures";
@@ -102,6 +103,16 @@ export async function runCli(
 }> {
   const args = [cliEntryPointPath, cmd, ...options];
   return getProcessResult(execFile(nodePath, args, execOptions));
+}
+
+/** Writes a `workflow_settings.yaml` that pins `dataformCoreVersion` to `coreVersion`. */
+export function writeWorkflowSettingsWithCoreVersion(projectDir: string, coreVersion: string) {
+  writeWorkflowSettingsFile(projectDir, {
+    defaultProject: INTEGRATION_TEST_PROJECT,
+    defaultLocation: INTEGRATION_TEST_LOCATION,
+    defaultDataset: "dataform",
+    dataformCoreVersion: coreVersion,
+  });
 }
 
 /**

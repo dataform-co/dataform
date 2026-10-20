@@ -58,12 +58,11 @@ export function writeDefinitionFile(projectDir: string, filename: string, conten
  * Writes a minimal `@dataform/core` package to `projectDir/node_modules`, with `bundle` as the
  * contents of its `bundle.js`. Without `bundle`, no `bundle.js` is written.
  */
-export function writeCorePackage(projectDir: string, version: string, bundle?: string): void {
+export function writeCorePackage(projectDir: string, bundle?: string): void {
   const coreDir = path.join(projectDir, "node_modules", "@dataform", "core");
   fs.ensureDirSync(coreDir);
   fs.writeJsonSync(path.join(coreDir, "package.json"), {
     name: "@dataform/core",
-    version,
     main: "bundle.js",
   });
   if (bundle !== undefined) {
