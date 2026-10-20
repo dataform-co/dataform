@@ -49,6 +49,24 @@ suite("getBigQueryCredentials", ({ afterEach }) => {
       impersonateServiceAccount: "sa@key-project.iam.gserviceaccount.com",
     });
   });
+
+  test("JSON key copies universe_domain and can still impersonate a service account", () => {
+    const keyPath = path.join(tmpDirFixture.createNewTmpDir(), "key.json");
+    const key = JSON.stringify({
+      type: "service_account",
+      project_id: "key-project",
+      universe_domain: "s3nsapis.fr",
+    });
+    fs.writeFileSync(keyPath, key);
+    const prompts = fakePrompts([0, 1], [keyPath, "sa@key-project.iam.gserviceaccount.com"]);
+    expect(getBigQueryCredentials(prompts)).to.eql({
+      projectId: "key-project",
+      credentials: key,
+      location: "US",
+      universeDomain: "s3nsapis.fr",
+      impersonateServiceAccount: "sa@key-project.iam.gserviceaccount.com",
+    });
+  });
 });
 
 suite("credentialsFromServiceAccountJson", () => {

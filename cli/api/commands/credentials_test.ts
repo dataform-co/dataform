@@ -19,7 +19,7 @@ suite("credentials", ({ afterEach }) => {
     const credentialsPath = writeCredentials({
       projectId: "my-project",
       location: "US",
-      universeDomain: "my-universe.example.com"
+      universeDomain: "my-universe.example.com",
     });
 
     const credentials = read(credentialsPath);

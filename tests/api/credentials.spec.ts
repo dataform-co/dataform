@@ -82,6 +82,24 @@ suite("@dataform/api/credentials", ({ afterEach }) => {
     expect(parsed.projectId).to.equal("my-gcp-project");
     expect(parsed.impersonateServiceAccount).to.equal("sa@my-gcp-project.iam.gserviceaccount.com");
     expect(parsed.credentials).to.equal("");
+    expect(parsed.universeDomain).to.equal("");
+  });
+
+  test("bigquery credentials file with a universe domain and impersonation", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    const credentialsPath = path.join(projectDir, "credentials.json");
+    fs.writeFileSync(
+      credentialsPath,
+      JSON.stringify({
+        projectId: "my-gcp-project",
+        location: "US",
+        universeDomain: "s3nsapis.fr",
+        impersonateServiceAccount: "sa@my-gcp-project.iam.gserviceaccount.com",
+      }),
+    );
+    const parsed = credentials.read(credentialsPath);
+    expect(parsed.universeDomain).to.equal("s3nsapis.fr");
+    expect(parsed.impersonateServiceAccount).to.equal("sa@my-gcp-project.iam.gserviceaccount.com");
   });
 
   test("bigquery credentials file with an unknown field", () => {
