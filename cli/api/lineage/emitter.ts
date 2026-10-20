@@ -8,11 +8,16 @@ import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
 
 export interface IEmitterOptions {
+  /**
+   * @deprecated Not read by the emitter: an emitter is only constructed when
+   * lineage is enabled. Use `enablementSource` instead. To be removed.
+   */
   lineageEnabled?: boolean;
   /**
    * Which surface enabled lineage. When `default`, the user never asked for
    * lineage, so skip notices (API disabled, missing permission, dry-run, ...)
-   * and `Failed to emit` lines are only printed with DATAFORM_LINEAGE_DEBUG=1.
+   * are only printed with DATAFORM_LINEAGE_DEBUG=1, and only the first
+   * `Failed to emit` line of a run is printed without it.
    */
   enablementSource?: LineageEnablementSource;
   dryRun?: boolean;
@@ -119,9 +124,13 @@ export class LineageEmitter {
   private readonly payloadBuilder: LineagePayloadBuilder;
   private readonly endpointRouter: LineageEndpointRouter;
   private readonly pending = new Set<Promise<void>>();
+  // Read once in the constructor: changing DATAFORM_LINEAGE_DEBUG afterwards
+  // has no effect on an existing emitter (tests must create the emitter after
+  // setting it, see testing/debug_env.ts).
   private readonly debugEnabled: boolean;
   private emissionDisabledThisRun = false;
   private dryRunSkipLogged = false;
+  private defaultModeFailureLogged = false;
 
   constructor(
     credentials: dataform.IBigQuery,
@@ -169,7 +178,7 @@ export class LineageEmitter {
         const code = (e as any).code;
         const endpoint = (e as any).lineageEndpoint || "unknown";
         const location = (e as any).lineageLocation || "unknown";
-        this.writeNotice(
+        this.writeFailure(
           `[lineage] Failed to emit lineage for action ${action.target.schema}.${action.target.name}: ` +
             `code=${gRpcCodeName(code)}(${code ?? "?"}) endpoint=${endpoint} location=${location} message=${e.message}\n`,
         );
@@ -330,13 +339,35 @@ export class LineageEmitter {
   }
 
   /**
-   * Writes a lineage skip, fallback or failure line. When lineage is on only
-   * because of the built-in default, the user never asked for lineage, so the
-   * line is shown only with DATAFORM_LINEAGE_DEBUG=1 to keep their output
-   * unchanged (for example in air-gapped CI or behind a proxy).
+   * Writes a lineage skip or fallback notice. When lineage is on only because
+   * of the built-in default, the user never asked for lineage, so the notice is
+   * shown only with DATAFORM_LINEAGE_DEBUG=1 to keep their output unchanged
+   * (for example in air-gapped CI or behind a proxy).
    */
   private writeNotice(msg: string): void {
     if (this.emitterOptions.enablementSource === "default" && !this.debugEnabled) {
+      return;
+    }
+    this.stderr.write(msg);
+  }
+
+  /**
+   * Writes an unexpected `Failed to emit` line. When lineage is on only because
+   * of the built-in default, only the first failure of the run is printed (so a
+   * payload bug is still noticed) and later ones need DATAFORM_LINEAGE_DEBUG=1.
+   */
+  private writeFailure(msg: string): void {
+    if (this.emitterOptions.enablementSource === "default" && !this.debugEnabled) {
+      if (this.defaultModeFailureLogged) {
+        return;
+      }
+      this.defaultModeFailureLogged = true;
+      this.stderr.write(
+        msg.replace(
+          /\n$/,
+          " (further lineage failures in this run are shown only with DATAFORM_LINEAGE_DEBUG=1)\n",
+        ),
+      );
       return;
     }
     this.stderr.write(msg);

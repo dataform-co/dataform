@@ -839,7 +839,7 @@ suite("LineageEmitter", () => {
       return mockClient;
     }
 
-    test("hides the Failed to emit line for unexpected errors", async () => {
+    test("prints only the first Failed to emit line of the run", async () => {
       await withDebugEnv(undefined, async () => {
         const mockClient = invalidArgumentClient();
         const stderr = new StderrCapture();
@@ -852,13 +852,20 @@ suite("LineageEmitter", () => {
 
         emitter.emitForAction(tableAction, runningResult);
         await emitter.drain();
+        emitter.emitForAction(tableAction, runningResult);
+        await emitter.drain();
 
-        expect(stderr.writes).to.deep.equal([]);
-        expect(mockClient.processOpenLineageRunEventCalledWith.length).to.equal(1);
+        expect(stderr.writes.length).to.equal(1);
+        expect(stderr.writes[0]).to.contain("[lineage] Failed to emit lineage");
+        expect(stderr.writes[0]).to.contain("INVALID_ARGUMENT");
+        expect(stderr.writes[0]).to.contain(
+          "further lineage failures in this run are shown only with DATAFORM_LINEAGE_DEBUG=1",
+        );
+        expect(mockClient.processOpenLineageRunEventCalledWith.length).to.equal(2);
       });
     });
 
-    test("prints the Failed to emit line when DATAFORM_LINEAGE_DEBUG=1", async () => {
+    test("prints every Failed to emit line when DATAFORM_LINEAGE_DEBUG=1", async () => {
       await withDebugEnv("1", async () => {
         const mockClient = invalidArgumentClient();
         const stderr = new StderrCapture();
@@ -871,12 +878,15 @@ suite("LineageEmitter", () => {
 
         emitter.emitForAction(tableAction, runningResult);
         await emitter.drain();
+        emitter.emitForAction(tableAction, runningResult);
+        await emitter.drain();
 
         const failedLines = stderr.writes.filter((w) =>
           w.includes("[lineage] Failed to emit lineage"),
         );
-        expect(failedLines.length).to.equal(1);
+        expect(failedLines.length).to.equal(2);
         expect(failedLines[0]).to.contain("INVALID_ARGUMENT");
+        expect(failedLines[0]).to.not.contain("further lineage failures");
       });
     });
 
@@ -902,7 +912,7 @@ suite("LineageEmitter", () => {
         });
       });
 
-      test(`enablementSource=${explicitSource} still prints the Failed to emit line`, async () => {
+      test(`enablementSource=${explicitSource} prints every Failed to emit line`, async () => {
         await withDebugEnv(undefined, async () => {
           const mockClient = invalidArgumentClient();
           const stderr = new StderrCapture();
@@ -915,11 +925,13 @@ suite("LineageEmitter", () => {
 
           emitter.emitForAction(tableAction, runningResult);
           await emitter.drain();
+          emitter.emitForAction(tableAction, runningResult);
+          await emitter.drain();
 
           const failedLines = stderr.writes.filter((w) =>
             w.includes("[lineage] Failed to emit lineage"),
           );
-          expect(failedLines.length).to.equal(1);
+          expect(failedLines.length).to.equal(2);
         });
       });
     }

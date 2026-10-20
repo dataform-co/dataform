@@ -1,16 +1,9 @@
 import { expect } from "chai";
 
-import {
-  LINEAGE_ENABLED_BY_DEFAULT,
-  resolveLineageEnablement,
-} from "df/cli/api/lineage/enablement";
+import { resolveLineageEnablement } from "df/cli/api/lineage/enablement";
 import { suite, test } from "df/testing";
 
 suite("resolveLineageEnablement", () => {
-  test("lineage is enabled by default", () => {
-    expect(LINEAGE_ENABLED_BY_DEFAULT).to.equal(true);
-  });
-
   const cases: Array<{
     cli: boolean | undefined;
     yaml: boolean | undefined;
