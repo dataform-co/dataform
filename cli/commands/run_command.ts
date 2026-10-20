@@ -44,7 +44,11 @@ function createLineageEmitter(
     workflowLineageEnabled: executionGraph.projectConfig?.lineageEnabled ?? undefined,
     dryRun: !!argv.dryRun,
     projectDir: argv.projectDir || process.cwd(),
-    readCredentials,
+    // Emit lineage for the location the jobs actually run in.
+    readCredentials: readCredentials && {
+      ...readCredentials,
+      location: executionGraph.projectConfig?.defaultLocation || readCredentials.location,
+    },
   });
 }
 
