@@ -91,11 +91,11 @@ suite("@dataform/api/credentials", ({ afterEach }) => {
       credentialsPath,
       JSON.stringify({
         projectId: "my-gcp-project",
-        impersonateServiceAcount: "sa@my-gcp-project.iam.gserviceaccount.com",
+        unknownProperty: "some-value",
       }),
     );
     expect(() => credentials.read(credentialsPath)).to.throw(
-      /Unexpected property "impersonateServiceAcount"/,
+      /Unexpected property "unknownProperty"/,
     );
   });
 });
