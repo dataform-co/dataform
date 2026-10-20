@@ -316,4 +316,74 @@ actions:
       });
     });
   });
+
+  suite("Lakehouse (4-part) support and validation", () => {
+    test("fails compilation when an assertion is configured with a lakehouse block", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
+      writeDefinitionFile(
+        projectDir,
+        "lh_assertion.sqlx",
+        `
+config {
+  type: "assertion",
+  lakehouse: { catalog: "c", namespace: "n" },
+  name: "a"
+}
+SELECT 1
+`,
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).greaterThan(0);
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).contains(
+        "Lakehouse (4-part) targets are not supported for views and assertions",
+      );
+    });
+
+    test("3-part standalone assertion querying a 4-part Lakehouse table via ref() compiles", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
+      writeDefinitionFile(
+        projectDir,
+        "lh_table.sqlx",
+        `
+config {
+  type: "table",
+  project: "p",
+  lakehouse: { catalog: "c", namespace: "n" },
+  name: "t"
+}
+SELECT 1 AS id
+`,
+      );
+      writeDefinitionFile(
+        projectDir,
+        "check_lh.sqlx",
+        `
+config { type: "assertion" }
+SELECT * FROM \${ref("p", "c", "n", "t")} WHERE id IS NULL
+`,
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      const assertion = result.compile.compiledGraph.assertions[0];
+      expect(asPlainObject(assertion.target)).deep.equals({
+        database: "defaultProject",
+        schema: "defaultDataset",
+        name: "check_lh",
+      });
+      expect(assertion.query.trim()).equals("SELECT * FROM `p.c.n.t` WHERE id IS NULL");
+      expect(asPlainObject(assertion.dependencyTargets)).deep.equals([
+        {
+          database: "p",
+          schema: "c.n",
+          name: "t",
+        },
+      ]);
+    });
+  });
 });

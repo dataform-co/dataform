@@ -186,6 +186,17 @@ export function workflowSettingsAsProjectConfig(
   if (workflowSettings.lineage) {
     projectConfig.lineageEnabled = workflowSettings.lineage.enabled;
   }
+  if (workflowSettings.defaultLakehouseConfig) {
+    projectConfig.defaultLakehouseConfig = {};
+    if (workflowSettings.defaultLakehouseConfig.catalog) {
+      projectConfig.defaultLakehouseConfig.catalog =
+        workflowSettings.defaultLakehouseConfig.catalog;
+    }
+    if (workflowSettings.defaultLakehouseConfig.namespace) {
+      projectConfig.defaultLakehouseConfig.namespace =
+        workflowSettings.defaultLakehouseConfig.namespace;
+    }
+  }
   projectConfig.warehouse = "bigquery";
   return projectConfig;
 }
