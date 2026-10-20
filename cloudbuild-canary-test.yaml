@@ -12,12 +12,6 @@ steps:
     script: |
       #!/usr/bin/env bash
       ./scripts/run_canary_test
-substitutions:
-  _CANARY_GCP_PROJECT: "dataform-open-source"
-  _CANARY_LOCATION: "us-central1"
-  _CANARY_REPO: "canary-repo"
-  _CANARY_BUCKET: "dataform-open-source-canary-builds"
-  _CANARY_SERVICE_ACCOUNT: "dataform-canary-reader@dataform-open-source.iam.gserviceaccount.com"
 options:
   machineType: E2_HIGHCPU_8
   automapSubstitutions: true

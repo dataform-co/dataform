@@ -1,8 +1,37 @@
+# By default, this script uses the dataform-open-source GCP project,
+# taking the configuration from tools/canary/config.env. If you want to 
+# run this test manually on your own project, create a file 
+# tools/canary/config.local.env and provide overrides for each variable. 
+
 #!/bin/bash
 set -euo pipefail
 
+# Usage: scripts/run_canary_test [--regenerate]
+#   --regenerate: instead of comparing the compilation result actions against the baseline,
+#                 overwrite the baseline with them. Prefer scripts/regenerate_canary_baseline.
+MODE="test"
+if [[ "${1:-}" == "--regenerate" ]]; then
+  MODE="regenerate"
+elif [[ -n "${1:-}" ]]; then
+  echo "Error: unknown argument '${1}'." 1>&2
+  exit 1
+fi
+
 # In case script is run directly
 _PR_NUMBER="${_PR_NUMBER:-0}"
+
+CANARY_DIR="tools/canary"
+
+# Load the local config override if present, otherwise the defaults.
+CANARY_CONFIG_FILE="${CANARY_DIR}/config.env"
+if [[ -f "${CANARY_DIR}/config.local.env" ]]; then
+  CANARY_CONFIG_FILE="${CANARY_DIR}/config.local.env"
+elif [[ ! -f "${CANARY_CONFIG_FILE}" ]]; then
+  echo "Error: neither ${CANARY_DIR}/config.local.env nor ${CANARY_DIR}/config.env found. Make sure the script is run from the repository root." 1>&2
+  exit 1
+fi
+echo "Loading canary config from ${CANARY_CONFIG_FILE}"
+source "${CANARY_CONFIG_FILE}"
 
 if [[ -z "${_CANARY_GCP_PROJECT:-}" || -z "${_CANARY_LOCATION:-}" || -z "${_CANARY_REPO:-}" || -z "${_CANARY_BUCKET:-}" || -z "${_CANARY_SERVICE_ACCOUNT:-}" ]]; then
   echo "Error: _CANARY_GCP_PROJECT, _CANARY_LOCATION, _CANARY_REPO, _CANARY_BUCKET and _CANARY_SERVICE_ACCOUNT must be set." 1>&2
@@ -21,8 +50,8 @@ else
   CANARY_VERSION="${CURRENT_VERSION}"
 fi
 
-EXPECTED_ACTIONS_FILE="tools/canary-expected-compilation-result-actions.json"
-if [[ ! -f "${EXPECTED_ACTIONS_FILE}" ]]; then
+EXPECTED_ACTIONS_FILE="${CANARY_DIR}/expected-compilation-result-actions.json"
+if [[ "${MODE}" == "test" && ! -f "${EXPECTED_ACTIONS_FILE}" ]]; then
   echo "Error: ${EXPECTED_ACTIONS_FILE} not found." 1>&2
   exit 1
 fi
@@ -126,12 +155,12 @@ write_workspace_file() {
   fi
 }
 
-echo "Uploading canary project files from tools/canary-project/..."
+echo "Uploading canary project files from ${CANARY_DIR}/project/..."
 while IFS= read -r -d '' file; do
-  rel_path="${file#tools/canary-project/}"
+  rel_path="${file#"${CANARY_DIR}"/project/}"
   encoded_contents=$(base64 -w 0 "$file")
   write_workspace_file "$rel_path" "$encoded_contents"
-done < <(find tools/canary-project -type f -print0)
+done < <(find "${CANARY_DIR}/project" -type f -print0)
 
 echo "Uploading workflow_settings.yaml..."
 WORKFLOW_SETTINGS_CONTENTS=$(cat <<EOF | base64 -w 0
@@ -232,6 +261,43 @@ if [[ "$QUERY_HTTP_CODE" -lt 200 || "$QUERY_HTTP_CODE" -ge 300 ]]; then
   exit 1
 fi
 
+if [[ "${MODE}" == "regenerate" ]]; then
+  echo "Writing compilation result actions to ${EXPECTED_ACTIONS_FILE}..."
+  python3 - "${TMP_DIR}/query_response.json" "${EXPECTED_ACTIONS_FILE}" "${_CANARY_GCP_PROJECT}" <<'EOF'
+import json
+import sys
+
+actual_path, expected_path, project = sys.argv[1:4]
+
+with open(actual_path, "r", encoding="utf-8") as f:
+    actual = json.load(f)
+
+# Replace the project with a placeholder at the JSON-value level, so that the baseline is
+# independent of the project the canary runs in.
+def substitute(value):
+    if isinstance(value, str):
+        return value.replace(project, "${PROJECT}")
+    if isinstance(value, list):
+        return [substitute(v) for v in value]
+    if isinstance(value, dict):
+        return {k: substitute(v) for k, v in value.items()}
+    return value
+
+def sort_key(action):
+    target = action.get("target", {})
+    return (target.get("database", ""), target.get("schema", ""), target.get("name", ""))
+
+actions = sorted(substitute(actual.get("compilationResultActions", [])), key=sort_key)
+
+with open(expected_path, "w", encoding="utf-8") as f:
+    json.dump({"compilationResultActions": actions}, f, indent=4)
+    f.write("\n")
+
+print(f"Wrote {len(actions)} actions to {expected_path}.")
+EOF
+  exit 0
+fi
+
 echo "Comparing compilation result actions against ${EXPECTED_ACTIONS_FILE}..."
 python3 - "${TMP_DIR}/query_response.json" "${EXPECTED_ACTIONS_FILE}" "${_CANARY_GCP_PROJECT}" <<'EOF'
 import difflib
@@ -277,6 +343,7 @@ if actual_actions != expected_actions:
     sys.stderr.write("Canary compilation result actions do not match the expected baseline:\n")
     for line in difflib.unified_diff(expected_str, actual_str, fromfile="expected", tofile="actual", lineterm=""):
         sys.stderr.write(line + "\n")
+    sys.stderr.write("If the changes in the output are expected, make sure to regenerate the baseline by running ./scripts/regenerate_canary_baseline)
     sys.stderr.write("\nFull actual response:\n")
     sys.stderr.write(json.dumps(actual, indent=2) + "\n")
     sys.exit(1)
