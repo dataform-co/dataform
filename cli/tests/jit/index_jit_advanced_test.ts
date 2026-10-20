@@ -1,11 +1,39 @@
 import { expect } from "chai";
 
-import { CREDENTIALS_PATH, runCli, setupJitProject } from "df/cli/index_test_base";
-import { suite, test, writeDefinitionFile } from "df/testing";
+import * as dfapi from "df/cli/api";
+import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
+import {
+  CREDENTIALS_PATH,
+  INTEGRATION_TEST_LOCATION,
+  INTEGRATION_TEST_PROJECT,
+  runCli,
+  setupJitProject,
+} from "df/cli/index_test_base";
+import { test, writeDefinitionFile } from "df/testing";
+import { dropDatasets, dropStaleDatasets, makeUniqueSuffix } from "df/testing/bigquery";
+import { integrationSuite } from "df/testing/credentials";
 import { TmpDirFixture } from "df/testing/fixtures";
 
-suite("JiT support advanced", ({ afterEach }) => {
+const JIT_INCREMENTAL_DATASET = "dataform_e2e_jit_inc";
+
+integrationSuite("JiT support advanced", ({ afterEach, before, after }) => {
   const tmpDirFixture = new TmpDirFixture(afterEach);
+  const dbadapter = new BigQueryDbAdapter(dfapi.credentials.read(CREDENTIALS_PATH));
+  const uniqueSuffix = makeUniqueSuffix();
+
+  before("drop stale datasets", async () => {
+    await dropStaleDatasets(dbadapter, {
+      project: INTEGRATION_TEST_PROJECT,
+      location: INTEGRATION_TEST_LOCATION,
+      prefixes: [JIT_INCREMENTAL_DATASET],
+    });
+  });
+
+  after("drop datasets", async () => {
+    await dropDatasets(dbadapter, INTEGRATION_TEST_PROJECT, [
+      `${JIT_INCREMENTAL_DATASET}_${uniqueSuffix}`,
+    ]);
+  });
 
   test("JiT preOps and postOps support", async () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
@@ -103,7 +131,9 @@ suite("JiT support advanced", ({ afterEach }) => {
     { name: "JiT incremental mode validation with consecutive runs", timeout: 60000 },
     async () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
-      await setupJitProject(tmpDirFixture, projectDir);
+      await setupJitProject(tmpDirFixture, projectDir, {
+        defaultDataset: `${JIT_INCREMENTAL_DATASET}_${uniqueSuffix}`,
+      });
       writeDefinitionFile(
         projectDir,
         "inc_jit.js",

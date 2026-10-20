@@ -92,43 +92,48 @@ suite("compile", () => {
           })
         ).stderr;
         expect(stderr).contains("@dataform/core 2.9.0 is not compatible with @dataform/cli");
-        expect(stderr).contains("matching major.minor");
+        expect(stderr).contains("The CLI requires @dataform/core >=3.0.0 <4.0.0");
         expect(stderr).contains("Set `dataformCoreVersion:");
       },
     );
 
-    test(
-      "compile succeeds with @dataform/core <= 3.0.56 via caller-file shim",
-      { timeout: 60000 },
-      async () => {
-        const projectDir = tmpDirFixture.createNewTmpDir();
-        // 3.0.50 predates 3.0.57, which is when @dataform/core started reading
-        // global.__dataform_current_file as a fallback in getCallerFile(). The
-        // compile path text-patches the bundle to add that fallback; this test
-        // proves the patch + host-side file stack still drive a real action's
-        // fileName for such old core versions.
-        fs.writeFileSync(
-          path.join(projectDir, "workflow_settings.yaml"),
-          dumpYaml({
-            defaultProject: INTEGRATION_TEST_PROJECT,
-            defaultLocation: INTEGRATION_TEST_LOCATION,
-            defaultDataset: "dataform",
-            dataformCoreVersion: "3.0.50",
-          }),
-        );
-        writeDefinitionFile(projectDir, "example.sqlx", `config { type: "table" }\nSELECT 1 AS id`);
+    // Core versions older than 3.0.57 can't tell which project file is running when the CLI
+    // runs them in its VM, so the CLI patches them (the caller-file shim). These tests check
+    // that the shim still gives actions the right fileName. 3.0.0 is MIN_SUPPORTED_CORE_VERSION
+    // (cli/vm/compile.ts), so it must keep working when the CLI version goes up.
+    ["3.0.0", "3.0.50"].forEach((coreVersion) => {
+      test(
+        `compile succeeds with @dataform/core ${coreVersion} via caller-file shim`,
+        { timeout: 60000 },
+        async () => {
+          const projectDir = tmpDirFixture.createNewTmpDir();
+          fs.writeFileSync(
+            path.join(projectDir, "workflow_settings.yaml"),
+            dumpYaml({
+              defaultProject: INTEGRATION_TEST_PROJECT,
+              defaultLocation: INTEGRATION_TEST_LOCATION,
+              defaultDataset: "dataform",
+              dataformCoreVersion: coreVersion,
+            }),
+          );
+          writeDefinitionFile(
+            projectDir,
+            "example.sqlx",
+            `config { type: "table" }\nSELECT 1 AS id`,
+          );
 
-        const npmCacheDir = tmpDirFixture.createNewTmpDir();
-        const result = await runCli("compile", [projectDir, "--json"], {
-          env: { ...process.env, NPM_CONFIG_CACHE: npmCacheDir },
-        });
+          const npmCacheDir = tmpDirFixture.createNewTmpDir();
+          const result = await runCli("compile", [projectDir, "--json"], {
+            env: { ...process.env, NPM_CONFIG_CACHE: npmCacheDir },
+          });
 
-        expect(result.exitCode, `compile failed: ${result.stderr}`).equals(0);
-        const compiled = JSON.parse(result.stdout);
-        expect(compiled.tables).to.have.lengthOf(1);
-        expect(compiled.tables[0].fileName).equals("definitions/example.sqlx");
-      },
-    );
+          expect(result.exitCode, `compile failed: ${result.stderr}`).equals(0);
+          const compiled = JSON.parse(result.stdout);
+          expect(compiled.tables).to.have.lengthOf(1);
+          expect(compiled.tables[0].fileName).equals("definitions/example.sqlx");
+        },
+      );
+    });
 
     ["package.json", "package-lock.json", "node_modules"].forEach((npmFile) => {
       test(`compile throws an error when dataformCoreVersion in workflow_settings.yaml and ${npmFile} is present`, async () => {

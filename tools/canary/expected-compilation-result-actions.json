@@ -1,0 +1,164 @@
+{
+    "compilationResultActions": [
+        {
+            "target": {
+                "database": "${PROJECT}",
+                "schema": "dataform_canary",
+                "name": "incremental"
+            },
+            "canonicalTarget": {
+                "database": "${PROJECT}",
+                "schema": "dataform_canary",
+                "name": "incremental"
+            },
+            "filePath": "definitions/incremental.sqlx",
+            "relation": {
+                "dependencyTargets": [
+                    {
+                        "database": "${PROJECT}",
+                        "schema": "dataform_canary",
+                        "name": "table"
+                    }
+                ],
+                "relationDescriptor": {
+                    "description": "Canary incremental action"
+                },
+                "relationType": "INCREMENTAL_TABLE",
+                "selectQuery": "\n\nSELECT id, label FROM `${PROJECT}.dataform_canary.table`\n\n",
+                "incrementalTableConfig": {
+                    "incrementalSelectQuery": "\n\nSELECT id, label FROM `${PROJECT}.dataform_canary.table`\nWHERE id > 0\n"
+                }
+            },
+            "internalMetadata": "{}"
+        },
+        {
+            "target": {
+                "database": "${PROJECT}",
+                "schema": "dataform_canary",
+                "name": "js_action"
+            },
+            "canonicalTarget": {
+                "database": "${PROJECT}",
+                "schema": "dataform_canary",
+                "name": "js_action"
+            },
+            "filePath": "definitions/js_action.js",
+            "relation": {
+                "dependencyTargets": [
+                    {
+                        "database": "${PROJECT}",
+                        "schema": "dataform_canary",
+                        "name": "table"
+                    }
+                ],
+                "relationDescriptor": {
+                    "description": "Canary JS action"
+                },
+                "relationType": "VIEW",
+                "selectQuery": "SELECT id, label FROM `${PROJECT}.dataform_canary.table`",
+                "incrementalTableConfig": {}
+            },
+            "internalMetadata": "{}"
+        },
+        {
+            "target": {
+                "database": "${PROJECT}",
+                "schema": "dataform_canary",
+                "name": "operation"
+            },
+            "canonicalTarget": {
+                "database": "${PROJECT}",
+                "schema": "dataform_canary",
+                "name": "operation"
+            },
+            "filePath": "definitions/operation.sql",
+            "operations": {
+                "queries": [
+                    "SELECT 1\n"
+                ],
+                "relationDescriptor": {
+                    "description": "Canary operations action"
+                }
+            },
+            "internalMetadata": "{}"
+        },
+        {
+            "target": {
+                "database": "${PROJECT}",
+                "schema": "dataform_canary",
+                "name": "table"
+            },
+            "canonicalTarget": {
+                "database": "${PROJECT}",
+                "schema": "dataform_canary",
+                "name": "table"
+            },
+            "filePath": "definitions/table.sqlx",
+            "relation": {
+                "dependencyTargets": [
+                    {
+                        "database": "${PROJECT}",
+                        "schema": "dataform_canary",
+                        "name": "view"
+                    }
+                ],
+                "relationDescriptor": {
+                    "description": "Canary table action"
+                },
+                "relationType": "TABLE",
+                "selectQuery": "\n\nSELECT id, label FROM `${PROJECT}.dataform_canary.view`\n",
+                "incrementalTableConfig": {}
+            },
+            "internalMetadata": "{}"
+        },
+        {
+            "target": {
+                "database": "${PROJECT}",
+                "schema": "dataform_canary",
+                "name": "view"
+            },
+            "canonicalTarget": {
+                "database": "${PROJECT}",
+                "schema": "dataform_canary",
+                "name": "view"
+            },
+            "filePath": "definitions/view.sqlx",
+            "relation": {
+                "relationDescriptor": {
+                    "description": "Canary view action"
+                },
+                "relationType": "VIEW",
+                "selectQuery": "\n\nSELECT 1 AS id, \"canary\" AS label\n",
+                "incrementalTableConfig": {}
+            },
+            "internalMetadata": "{}"
+        },
+        {
+            "target": {
+                "database": "${PROJECT}",
+                "schema": "dataform_canary_assertions",
+                "name": "assertion"
+            },
+            "canonicalTarget": {
+                "database": "${PROJECT}",
+                "schema": "dataform_canary_assertions",
+                "name": "assertion"
+            },
+            "filePath": "definitions/assertion.sqlx",
+            "assertion": {
+                "dependencyTargets": [
+                    {
+                        "database": "${PROJECT}",
+                        "schema": "dataform_canary",
+                        "name": "table"
+                    }
+                ],
+                "selectQuery": "\n\nSELECT * FROM `${PROJECT}.dataform_canary.table` WHERE id IS NULL\n",
+                "relationDescriptor": {
+                    "description": "Canary assertion action"
+                }
+            },
+            "internalMetadata": "{}"
+        }
+    ]
+}

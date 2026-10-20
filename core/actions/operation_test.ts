@@ -271,4 +271,68 @@ actions:
       ).equals(true);
     });
   });
+
+  suite("Lakehouse (4-part) targets", () => {
+    test("compiles operation with lakehouse block and hasOutput: true", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML,
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/op_lh.sqlx"),
+        `
+config {
+  type: "operations",
+  hasOutput: true,
+  project: "p",
+  lakehouse: { catalog: "c", namespace: "n" },
+  name: "op_tbl"
+}
+CREATE OR REPLACE TABLE \${self()} AS SELECT 1 AS id
+`,
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      const op = result.compile.compiledGraph.operations[0];
+      expect(asPlainObject(op.target)).deep.equals({
+        database: "p",
+        schema: "c.n",
+        name: "op_tbl",
+      });
+      expect(op.queries[0].trim()).equals(
+        "CREATE OR REPLACE TABLE `p.c.n.op_tbl` AS SELECT 1 AS id",
+      );
+    });
+
+    test("fails when operation specifies lakehouse without hasOutput: true", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML,
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/op_lh_err.sqlx"),
+        `
+config {
+  type: "operations",
+  lakehouse: { catalog: "c", namespace: "n" },
+  name: "op_tbl"
+}
+SELECT 1
+`,
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).greaterThan(0);
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).contains(
+        "Actions of type 'operations' may only specify 'lakehouse' if they specify 'hasOutput: true'.",
+      );
+    });
+  });
 });

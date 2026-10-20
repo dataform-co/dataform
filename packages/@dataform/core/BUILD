@@ -105,4 +105,5 @@ pkg_npm_tar(
         ":jit_proto_with_license",
         ":package.json",
     ],
+    publishable = True,
 )

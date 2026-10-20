@@ -99,6 +99,7 @@ Prompts for:
 2. Authentication method — Application Default Credentials (ADC) or a JSON service account key file.
    - ADC: prompts for your billing project ID.
    - JSON key: prompts for the path to a downloaded service account key file.
+3. A service account to impersonate (optional, press Enter to skip). It's saved as `impersonateServiceAccount`, see [Credentials file](#credentials-file).
 
 **Positional arguments**
 
@@ -273,6 +274,7 @@ These are reused by multiple commands:
 
 - **ADC-based**: `{ "projectId": ..., "location": ... }`
 - **JSON-key-based**: `{ "projectId": ..., "credentials": "<service account key JSON as a string>", "location": ... }`
+- **Service account impersonation** (optional, with either of the above): add `"impersonateServiceAccount": "<service account email>"` to run BigQuery queries (and lineage emission) as that service account. Your ADC identity, or the key above, is used to impersonate it and needs `roles/iam.serviceAccountTokenCreator` on that service account. `init-creds` asks for it as an optional last step.
 
 Only BigQuery is supported by `init-creds` and the bundled BigQuery adapter in this codebase. Treat `.df-credentials.json` as a secret — `dataform init` adds it to `.gitignore` automatically; never commit it.
 
@@ -379,3 +381,5 @@ Lineage events are emitted by default. To print emitter diagnostics, or to turn 
 DATAFORM_LINEAGE_DEBUG=1 dataform run
 dataform run --no-emit-lineage
 ```
+
+Lineage events are emitted for every action that runs a BigQuery job: tables (including views and incremental tables), operations, assertions and property graphs. Assertions appear as a process for the assertion view written to the assertions dataset, with the assertion's dependencies reported as inputs. Property graph inputs are populated from the action's dependencies (`dependencyTargets`), so node and edge tables referenced via `ref` are reported as inputs while raw table paths in the graph definition are not. Declarations are not emitted. The action type is reported in the `gcp_bq_pipelines_job.actionType` attribute as `TABLE`, `OPERATIONS`, `ASSERTION` or `PROPERTY_GRAPH`, matching the values used by Dataform in Google Cloud.

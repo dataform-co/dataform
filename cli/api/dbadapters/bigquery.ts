@@ -1,4 +1,11 @@
-import { BigQuery, GetTablesResponse, TableField, TableMetadata } from "@google-cloud/bigquery";
+import {
+  BigQuery,
+  BigQueryOptions,
+  GetTablesResponse,
+  TableField,
+  TableMetadata,
+} from "@google-cloud/bigquery";
+import { AuthClient, gaxios, GoogleAuth, Impersonated } from "google-auth-library";
 import Long from "long";
 import { PromisePoolExecutor } from "promise-pool-executor";
 
@@ -17,6 +24,7 @@ import { coerceAsError } from "df/common/errors/errors";
 import { retry } from "df/common/promises";
 import { dataform } from "df/protos/ts";
 
+const CLOUD_PLATFORM_SCOPE = "https://www.googleapis.com/auth/cloud-platform";
 const EXTRA_GOOGLE_SCOPES = ["https://www.googleapis.com/auth/drive"];
 
 const BIGQUERY_DATE_RELATED_FIELDS = [
@@ -39,21 +47,95 @@ export interface IBigQueryExecutionOptions {
 
 export type BigQueryClientProvider = (projectId?: string) => BigQuery;
 
+/**
+ * An AuthClient that delegates to a client resolved only when it's needed, e.g. Application Default
+ * Credentials from `GoogleAuth.getClient()` (which caches the resolved client). This allows an
+ * impersonated client to be created synchronously.
+ */
+export class DeferredAuthClient extends AuthClient {
+  constructor(private readonly resolveClient: () => Promise<AuthClient>) {
+    super();
+  }
+
+  public async getAccessToken(): Promise<{
+    token?: string | null;
+    res?: gaxios.GaxiosResponse | null;
+  }> {
+    return (await this.resolveClient()).getAccessToken();
+  }
+
+  public async getRequestHeaders(url?: string | URL): Promise<Headers> {
+    return (await this.resolveClient()).getRequestHeaders(url);
+  }
+
+  public async request<T>(options: gaxios.GaxiosOptions): gaxios.GaxiosPromise<T> {
+    return (await this.resolveClient()).request<T>(options);
+  }
+}
+
+/** Creates a client that impersonates `targetPrincipal`, authenticating with `sourceClient`. */
+export function createImpersonatedClient(
+  targetPrincipal: string,
+  sourceClient: AuthClient,
+): Impersonated {
+  return new Impersonated({
+    sourceClient,
+    targetPrincipal,
+    targetScopes: [CLOUD_PLATFORM_SCOPE, ...EXTRA_GOOGLE_SCOPES],
+  });
+}
+
+/**
+ * Returns a client that impersonates `credentials.impersonateServiceAccount`, or undefined if it
+ * isn't set. The service account key in `credentials.credentials`, or Application Default
+ * Credentials if it's empty, is used as the source credentials.
+ */
+export function createAuthClient(credentials: dataform.IBigQuery): AuthClient | undefined {
+  if (!credentials.impersonateServiceAccount) {
+    return undefined;
+  }
+  const sourceAuth = new GoogleAuth({
+    credentials: credentials.credentials && JSON.parse(credentials.credentials),
+    scopes: [CLOUD_PLATFORM_SCOPE],
+  });
+  return createImpersonatedClient(
+    credentials.impersonateServiceAccount,
+    new DeferredAuthClient(() => sourceAuth.getClient()),
+  );
+}
+
+/**
+ * Builds the BigQuery client options for the given credentials. When `credentials.credentials`
+ * (a service account key) is empty, the client authenticates with Application Default Credentials.
+ * When `authClient` is given (see `createAuthClient()`), the client authenticates with it instead.
+ */
+export function getBigQueryClientOptions(
+  credentials: dataform.IBigQuery,
+  projectId?: string,
+  authClient?: AuthClient,
+): BigQueryOptions {
+  return {
+    projectId: projectId || credentials.projectId,
+    scopes: EXTRA_GOOGLE_SCOPES,
+    location: credentials.location,
+    ...(authClient
+      ? { authClient }
+      : { credentials: credentials.credentials && JSON.parse(credentials.credentials) }),
+  };
+}
+
 export function createBigQueryClientProvider(
   credentials: dataform.IBigQuery,
 ): BigQueryClientProvider {
   const clients = new Map<string, BigQuery>();
+  // Shared by the clients of all projects, so that they reuse the same impersonated token.
+  const authClient = createAuthClient(credentials);
   return (projectId?: string) => {
     projectId = projectId || credentials.projectId;
     if (!clients.has(projectId)) {
       clients.set(
         projectId,
-        new BigQuery({
-          projectId,
-          scopes: EXTRA_GOOGLE_SCOPES,
-          location: credentials.location,
-          credentials: credentials.credentials && JSON.parse(credentials.credentials),
-        }),
+        new BigQuery(getBigQueryClientOptions(credentials, projectId, authClient)),
       );
     }
     return clients.get(projectId);
@@ -221,11 +303,12 @@ export class BigQueryDbAdapter implements IDbAdapter {
 
   public async search(
     searchText: string,
-    options: { limit: number } = { limit: 1000 },
+    options: { limit: number; location?: string } = { limit: 1000 },
   ): Promise<dataform.ITableMetadata[]> {
+    const location = options.location || this.bigQueryCredentials.location || "US";
     const results = await this.execute(
       `select table_catalog, table_schema, table_name
-       from region-${this.bigQueryCredentials.location}.INFORMATION_SCHEMA.COLUMN_FIELD_PATHS
+       from region-${location}.INFORMATION_SCHEMA.COLUMN_FIELD_PATHS
        where regexp_contains(table_schema, @searchText) or regexp_contains(table_name, @searchText) or regexp_contains(field_path, @searchText)
        group by 1, 2, 3`,
       {
@@ -234,9 +317,10 @@ export class BigQueryDbAdapter implements IDbAdapter {
         },
         interactive: true,
         rowLimit: options.limit,
+        bigquery: { location },
       },
     );
-    return await Promise.all(
+    const tables = await Promise.all(
       results.rows.map((row) =>
         this.table({
           database: row.table_catalog,
@@ -245,6 +329,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
         }),
       ),
     );
+    return tables.filter((table) => Boolean(table));
   }
 
   public async table(target: dataform.ITarget): Promise<dataform.ITableMetadata> {
@@ -305,10 +390,10 @@ export class BigQueryDbAdapter implements IDbAdapter {
     return data[0].map((dataset) => dataset.id);
   }
 
-  public async createSchema(database: string, schema: string): Promise<void> {
+  public async createSchema(database: string, schema: string, location?: string): Promise<void> {
     await this.execute(
       `create schema if not exists \`${database || this.bigQueryCredentials.projectId}.${schema}\``,
-      { bigquery: { location: this.bigQueryCredentials.location || "US" } },
+      { bigquery: { location: location || this.bigQueryCredentials.location || "US" } },
     );
   }
 

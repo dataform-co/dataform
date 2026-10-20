@@ -13,40 +13,28 @@ import {
   npmPath,
   writeDefinitionFile,
 } from "df/testing";
+import { readTestCredentialsConfig, resolveCredentialsPath } from "df/testing/credentials";
 import { TmpDirFixture } from "df/testing/fixtures";
 
 const DEFAULT_PROJECT = "dataform-open-source";
 const DEFAULT_LOCATION = "US";
 
-export const CREDENTIALS_PATH = path.resolve("test_credentials/bigquery.json");
+export const CREDENTIALS_PATH = resolveCredentialsPath();
 
 const logger = new Logger(true);
+const initialCredentialsConfig = readTestCredentialsConfig(CREDENTIALS_PATH);
 
 function getCredentialsProjectId(): string {
-  try {
-    if (fs.existsSync(CREDENTIALS_PATH)) {
-      const parsed = JSON.parse(fs.readFileSync(CREDENTIALS_PATH, "utf8"));
-      if (parsed?.projectId) {
-        return parsed.projectId;
-      }
-    }
-  } catch (e) {
-    // Fall back to default
+  if (initialCredentialsConfig?.projectId) {
+    return initialCredentialsConfig.projectId;
   }
   logger.log(`Project name not specified; defaulting to ${DEFAULT_PROJECT}`);
   return DEFAULT_PROJECT;
 }
 
 function getCredentialsLocation(): string {
-  try {
-    if (fs.existsSync(CREDENTIALS_PATH)) {
-      const parsed = JSON.parse(fs.readFileSync(CREDENTIALS_PATH, "utf8"));
-      if (parsed?.location) {
-        return parsed.location;
-      }
-    }
-  } catch (e) {
-    // Fall back to default
+  if (initialCredentialsConfig?.location) {
+    return initialCredentialsConfig.location;
   }
   logger.log(`Location not specified; defaulting to ${DEFAULT_LOCATION}`);
   return DEFAULT_LOCATION;
@@ -136,8 +124,9 @@ export function alterWorkflowSettings(
 export async function setupJitProject(
   tmpDirFixture: TmpDirFixture,
   projectDir: string,
+  workflowSettingsOverrides?: Partial<dataform.IWorkflowSettings>,
 ): Promise<void> {
-  await setupProject(tmpDirFixture, projectDir);
+  await setupProject(tmpDirFixture, projectDir, workflowSettingsOverrides);
   writeDefinitionFile(
     projectDir,
     "jit_table.js",

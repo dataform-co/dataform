@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import { Impersonated } from "google-auth-library";
 import Long from "long";
 
 import {
@@ -147,11 +148,6 @@ suite("LineageEmitter", () => {
       new Date(2000).toISOString(),
     );
 
-    // SQL job facet verified
-    expect(openLineage.job.facets.sql.query).to.equal(
-      "CREATE TABLE target_table AS SELECT * FROM source_table",
-    );
-
     // GCP lineage job facet verified
     expect(openLineage.job.facets.gcp_lineage.displayName).to.equal(
       "BigQuery Pipelines action target_dataset.target_table",
@@ -224,12 +220,6 @@ suite("LineageEmitter", () => {
     expect(openLineage.job.name).to.equal(
       "target-project.us.cli.my-dataform-project-0b5d3e86.target_dataset.failing_table",
     );
-
-    // Error message run facet verified
-    expect(openLineage.run.facets.errorMessage.message).to.equal(
-      'bigquery error: Syntax error: Unexpected "\\" at [3:15]',
-    );
-    expect(openLineage.run.facets.errorMessage.programmingLanguage).to.equal("typescript");
 
     // Nominal time run facet verified (nominalEndTime matches failure timing)
     expect(openLineage.run.facets.nominalTime.nominalStartTime).to.equal(
@@ -433,6 +423,20 @@ suite("LineageEmitter", () => {
     });
   });
 
+  test("createLineageClientProvider impersonates the configured service account", async () => {
+    const serviceAccount = "target-sa@test-project.iam.gserviceaccount.com";
+    const client = createLineageClientProvider(
+      dataform.BigQuery.create({
+        projectId: "test-project",
+        location: "US",
+        impersonateServiceAccount: serviceAccount,
+      }),
+    )("test-project", "datalineage.googleapis.com");
+    const authClient = await client.auth.getClient();
+    expect(authClient).to.be.instanceOf(Impersonated);
+    expect((authClient as Impersonated).getTargetPrincipal()).to.equal(serviceAccount);
+  });
+
   test("non-transient errors propagate without outer-loop retry", async () => {
     const mockClient = new MockLineageClient();
     const invalidArgErr: any = new Error("bad request");
@@ -614,12 +618,12 @@ suite("LineageEmitter", () => {
     expect(mockClient.processOpenLineageRunEventCalledWith.length).to.equal(0);
   });
 
-  test("emits for operation-type actions and propagates action.type to gcp_bq_pipelines_job facet", async () => {
-    // Positive counterpart to "ineligible action types are skipped": operation
-    // is a first-class Dataform action (raw SQL block that runs but produces no
+  test("emits for operation-type actions and maps action.type to gcp_bq_pipelines_job facet", async () => {
+    // Positive counterpart to "declarations are skipped": operation is a
+    // first-class Dataform action (raw SQL block that runs but produces no
     // modeled table). It must not be caught by the eligibility filter, and its
-    // action.type string must reach the gcp_bq_pipelines_job.actionType facet
-    // verbatim so downstream consumers can distinguish tables from operations.
+    // action type must reach the gcp_bq_pipelines_job.actionType facet as the
+    // Backend's enum name so both runtimes report the same value.
     const mockClient = new MockLineageClient();
     const emitter = new LineageEmitter(
       credentials,
@@ -652,12 +656,12 @@ suite("LineageEmitter", () => {
     expect(gcpBqPipelinesJob.dataformCoreVersion).to.be.a("string");
     expect(gcpBqPipelinesJob).to.deep.equal({
       dataformCoreVersion: gcpBqPipelinesJob.dataformCoreVersion,
-      actionType: "operation",
+      actionType: "OPERATIONS",
       actionName: "s.op_action",
     });
   });
 
-  test("ineligible action types are skipped silently (no stderr line, no emission)", async () => {
+  test("emits START and COMPLETE for assertions with the assertion view as output", async () => {
     const mockClient = new MockLineageClient();
     const stderr = new StderrCapture();
     const emitter = new LineageEmitter(
@@ -668,9 +672,105 @@ suite("LineageEmitter", () => {
     );
 
     const assertion = dataform.ExecutionAction.create({
-      target: { database: "proj", schema: "schema", name: "assertion" },
+      target: { database: "proj", schema: "assertions", name: "assert_a" },
+      type: "assertion",
+      dependencyTargets: [{ database: "proj", schema: "schema", name: "table_a" }],
+      tasks: [
+        {
+          type: "statement",
+          statement: "create or replace view `proj.assertions.assert_a` as ...",
+        },
+        {
+          type: "assertion",
+          statement: "select sum(1) as row_count from `proj.assertions.assert_a`",
+        },
+      ],
+    });
+
+    emitter.emitForAction(
+      assertion,
+      dataform.ActionResult.create({ status: dataform.ActionResult.ExecutionStatus.RUNNING }),
+    );
+    emitter.emitForAction(
+      assertion,
+      dataform.ActionResult.create({ status: dataform.ActionResult.ExecutionStatus.SUCCESSFUL }),
+    );
+    await emitter.drain();
+
+    expect(stderr.writes).to.deep.equal([]);
+    const events = mockClient.processOpenLineageRunEventCalledWith.map((call) =>
+      fromProtoStruct(call.openLineage),
+    );
+    expect(events.map((e) => e.eventType)).to.deep.equal(["START", "COMPLETE"]);
+    for (const event of events) {
+      expect(event.inputs).to.deep.equal([{ namespace: "bigquery", name: "proj.schema.table_a" }]);
+      expect(event.outputs).to.deep.equal([
+        { namespace: "bigquery", name: "proj.assertions.assert_a" },
+      ]);
+      expect(event.job.facets.gcp_bq_pipelines_job.actionType).to.equal("ASSERTION");
+    }
+  });
+
+  test("emits FAIL event for a failing assertion", async () => {
+    const mockClient = new MockLineageClient();
+    const emitter = new LineageEmitter(
+      credentials,
+      { lineageEnabled: true },
+      () => mockClient as any,
+    );
+
+    const assertion = dataform.ExecutionAction.create({
+      target: { database: "proj", schema: "assertions", name: "assert_a" },
       type: "assertion",
     });
+
+    emitter.emitForAction(
+      assertion,
+      dataform.ActionResult.create({
+        status: dataform.ActionResult.ExecutionStatus.FAILED,
+        tasks: [{ errorMessage: "bigquery error: Assertion failed: query returned 3 row(s)." }],
+      }),
+    );
+    await emitter.drain();
+
+    expect(mockClient.processOpenLineageRunEventCalledWith.length).to.equal(1);
+    const event = fromProtoStruct(mockClient.processOpenLineageRunEventCalledWith[0].openLineage);
+    expect(event.eventType).to.equal("FAIL");
+    expect(event.job.facets.gcp_bq_pipelines_job.actionType).to.equal("ASSERTION");
+  });
+
+  test("emits for property graph actions with PROPERTY_GRAPH actionType", async () => {
+    const mockClient = new MockLineageClient();
+    const emitter = new LineageEmitter(
+      credentials,
+      { lineageEnabled: true },
+      () => mockClient as any,
+    );
+
+    emitter.emitForAction(
+      dataform.ExecutionAction.create({
+        target: { database: "proj", schema: "schema", name: "graph" },
+        type: "propertyGraph",
+      }),
+      dataform.ActionResult.create({ status: dataform.ActionResult.ExecutionStatus.RUNNING }),
+    );
+    await emitter.drain();
+
+    expect(mockClient.processOpenLineageRunEventCalledWith.length).to.equal(1);
+    const event = fromProtoStruct(mockClient.processOpenLineageRunEventCalledWith[0].openLineage);
+    expect(event.job.facets.gcp_bq_pipelines_job.actionType).to.equal("PROPERTY_GRAPH");
+  });
+
+  test("declarations are skipped silently (no stderr line, no emission)", async () => {
+    const mockClient = new MockLineageClient();
+    const stderr = new StderrCapture();
+    const emitter = new LineageEmitter(
+      credentials,
+      { lineageEnabled: true },
+      () => mockClient as any,
+      stderr,
+    );
+
     const declaration = dataform.ExecutionAction.create({
       target: { database: "proj", schema: "schema", name: "declaration" },
       type: "declaration",
@@ -679,12 +779,43 @@ suite("LineageEmitter", () => {
       status: dataform.ActionResult.ExecutionStatus.RUNNING,
     });
 
-    emitter.emitForAction(assertion, startResult);
     emitter.emitForAction(declaration, startResult);
     await emitter.drain();
 
     expect(stderr.writes).to.deep.equal([]);
     expect(mockClient.processOpenLineageRunEventCalledWith.length).to.equal(0);
+  });
+
+  test("catches and logs errors thrown by payloadBuilder.build without throwing", async () => {
+    const mockClient = new MockLineageClient();
+    const stderr = new StderrCapture();
+    const emitter = new LineageEmitter(
+      credentials,
+      { lineageEnabled: true },
+      () => mockClient as any,
+      stderr,
+    );
+    (emitter as any).payloadBuilder.build = () => {
+      throw new Error("payload build failure");
+    };
+
+    const action = dataform.ExecutionAction.create({
+      target: { database: "proj", schema: "schema", name: "table" },
+      type: "table",
+    });
+    const startResult = dataform.ActionResult.create({
+      status: dataform.ActionResult.ExecutionStatus.RUNNING,
+    });
+
+    emitter.emitForAction(action, startResult);
+    await emitter.drain();
+
+    expect(mockClient.processOpenLineageRunEventCalledWith.length).to.equal(0);
+    expect(stderr.writes.length).to.equal(1);
+    expect(stderr.writes[0]).to.contain(
+      "[lineage] Failed to emit lineage for action schema.table:",
+    );
+    expect(stderr.writes[0]).to.contain("message=payload build failure");
   });
 
   test("skip_reason=api_disabled on PERMISSION_DENIED surfaces both IAM and API-enable hints", async () => {

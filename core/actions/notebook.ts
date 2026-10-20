@@ -82,7 +82,10 @@ export class Notebook extends ActionBuilder<dataform.Notebook> {
     if (config.dependencyTargets) {
       this.dependencies(
         config.dependencyTargets.map((dependencyTarget) =>
-          configTargetToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget)),
+          configTargetToCompiledGraphTarget(
+            dataform.ActionConfig.Target.create(dependencyTarget),
+            session.projectConfig?.defaultLakehouseConfig,
+          ),
         ),
       );
     }

@@ -120,6 +120,7 @@ export class View extends ActionBuilder<dataform.Table> {
   /** @hidden */
   private unverifiedConfig: any;
   private configPath: string | undefined;
+  private hasLakehouseConfig = false;
 
   /** @hidden */
   constructor(session?: Session, unverifiedConfig?: any, configPath?: string) {
@@ -158,7 +159,10 @@ export class View extends ActionBuilder<dataform.Table> {
     if (config.dependencyTargets) {
       this.dependencies(
         config.dependencyTargets.map((dependencyTarget) =>
-          configTargetToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget)),
+          configTargetToCompiledGraphTarget(
+            dataform.ActionConfig.Target.create(dependencyTarget),
+            session.projectConfig?.defaultLakehouseConfig,
+          ),
         ),
       );
     }
@@ -518,6 +522,13 @@ export class View extends ActionBuilder<dataform.Table> {
 
   /** @hidden */
   public compile() {
+    if (this.hasLakehouseConfig) {
+      this.session.compileError(
+        new Error("Lakehouse (4-part) targets are not supported for views and assertions"),
+        this.proto.fileName,
+        this.proto.target,
+      );
+    }
     if (this.contextableJitCode) {
       this.compileJit();
     } else {
@@ -665,6 +676,11 @@ export class View extends ActionBuilder<dataform.Table> {
       }
     }
 
+    if (unverifiedConfig.lakehouse !== undefined) {
+      this.hasLakehouseConfig = true;
+      delete unverifiedConfig.lakehouse;
+    }
+
     const config = verifyObjectMatchesProto(
       dataform.ActionConfig.ViewConfig,
       unverifiedConfig,
@@ -706,7 +722,7 @@ export class ViewContext implements ITableContext {
 
   public ref(ref: Resolvable | string[], ...rest: string[]): string {
     ref = toResolvable(ref, rest);
-    if (!resolvableAsTarget(ref)) {
+    if (!resolvableAsTarget(ref, this.view.session.projectConfig?.defaultLakehouseConfig)) {
       this.view.session.compileError(new Error(`Action name is not specified`));
       return "";
     }

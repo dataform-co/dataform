@@ -16,22 +16,29 @@ export function keyBy<V>(values: V[], keyFn: (value: V) => string): { [key: stri
   );
 }
 
-export async function dropAllTables(
-  tables: dataform.ITableMetadata[],
-  executionSql: ExecutionSql,
-  dbadapter: dbadapters.IDbAdapter,
-) {
-  await Promise.all(
-    tables.map((table) => dbadapter.execute(executionSql.dropIfExists(table.target, table.type))),
-  );
-}
-
 export async function getTableRows(
   target: dataform.ITarget,
   executionSql: ExecutionSql,
   dbadapter: dbadapters.IDbAdapter,
 ) {
   return (await dbadapter.execute(`SELECT * FROM ${executionSql.resolveTarget(target)}`)).rows;
+}
+
+export function datasetsOf(compiledGraph: dataform.ICompiledGraph): string[] {
+  const actions: Array<{ target?: dataform.ITarget }> = [
+    ...(compiledGraph.tables || []),
+    ...(compiledGraph.assertions || []),
+    ...(compiledGraph.operations || []),
+  ];
+  return [...new Set(actions.map((action) => action.target?.schema).filter(Boolean))];
+}
+
+export function datasetsWithSuffixes(
+  compiledGraph: dataform.ICompiledGraph,
+  schemaSuffixes: string[],
+): string[] {
+  const datasets = datasetsOf(compiledGraph);
+  return schemaSuffixes.flatMap((suffix) => datasets.map((dataset) => `${dataset}_${suffix}`));
 }
 
 export async function compile(
@@ -54,15 +61,4 @@ export async function compile(
     ...projectConfigOverrides,
   };
   return compiledGraph;
-}
-
-export async function cleanWarehouse(
-  compiledGraph: dataform.CompiledGraph,
-  dbadapter: dbadapters.IDbAdapter,
-) {
-  await dropAllTables(
-    (await dfapi.build(compiledGraph, {}, dbadapter)).warehouseState.tables,
-    new ExecutionSql(compiledGraph.projectConfig, compiledGraph.dataformCoreVersion),
-    dbadapter,
-  );
 }

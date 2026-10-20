@@ -2,6 +2,7 @@ import { Action, ActionProto } from "df/core/actions";
 import { Assertion } from "df/core/actions/assertion";
 import { DataPreparation } from "df/core/actions/data_preparation";
 import { IncrementalTable } from "df/core/actions/incremental_table";
+import { resolveLakehouseSchema } from "df/core/actions/lakehouse";
 import { Notebook } from "df/core/actions/notebook";
 import { Operation } from "df/core/actions/operation";
 import { PropertyGraph } from "df/core/actions/property_graph";
@@ -100,8 +101,8 @@ export function graphHasErrors(graph: dataform.ICompiledGraph) {
 
 const invalidRefInputMessage =
   "Invalid input. Accepted inputs include: a single object containing " +
-  "an (optional) 'database', (optional) 'schema', and 'name', " +
-  "or 1-3 inputs consisting of an (optional) database, (optional) schema, and 'name'.";
+  "an (optional) 'database', (optional) 'schema' (or 'catalog' and 'namespace'), and 'name', " +
+  "or 1-4 inputs consisting of an (optional) database, (optional) catalog and namespace (or schema), and 'name'.";
 
 export function toResolvable(ref: Resolvable | string[], rest: string[] = []): Resolvable {
   if (Array.isArray(ref) && rest.length > 0) {
@@ -110,27 +111,43 @@ export function toResolvable(ref: Resolvable | string[], rest: string[] = []): R
   if (rest.length === 0 && !Array.isArray(ref)) {
     return ref;
   }
-  const resolvableArray = Array.isArray(ref) ? ref.reverse() : [ref, ...rest].reverse();
+  const resolvableArray = Array.isArray(ref) ? [...ref].reverse() : [ref, ...rest].reverse();
   if (!isResolvableArray(resolvableArray)) {
     throw new Error(invalidRefInputMessage);
+  }
+  if (resolvableArray.length === 4) {
+    const [name, namespace, catalog, database] = resolvableArray;
+    return { database, schema: `${catalog}.${namespace}`, name };
   }
   const [name, schema, database] = resolvableArray;
   return { database, schema, name };
 }
 
-function isResolvableArray(parts: any[]): parts is [string, string?, string?] {
+function isResolvableArray(parts: any[]): parts is [string, string?, string?, string?] {
   if (parts.some((part) => typeof part !== "string")) {
     return false;
   }
-  return parts.length > 0 && parts.length <= 3;
+  return parts.length > 0 && parts.length <= 4;
 }
 
 export function resolvableAsTarget(
   resolvable: Resolvable | dataform.ActionConfig.Target,
+  defaultLakehouseConfig?: dataform.IDefaultLakehouseConfig | null,
 ): dataform.Target {
   if (typeof resolvable === "string") {
     return dataform.Target.create({
       name: resolvable,
+    });
+  }
+  const obj = resolvable as any;
+  const catalog = obj.catalog ?? obj.lakehouse?.catalog;
+  const namespace = obj.namespace ?? obj.lakehouse?.namespace;
+  if (catalog != null || namespace != null || obj.lakehouse != null) {
+    return dataform.Target.create({
+      name: obj.name,
+      schema: resolveLakehouseSchema({ catalog, namespace }, defaultLakehouseConfig, true),
+      database: obj.database ?? obj.project,
+      includeDependentAssertions: obj.includeDependentAssertions,
     });
   }
   const actionConfigTarget = resolvable as dataform.ActionConfig.ITarget;
@@ -154,7 +171,7 @@ export function resolvableAsActionConfigTarget(
 ): dataform.ActionConfig.ITarget {
   if (typeof resolvable === "string") {
     const parts = resolvable.split(".").reverse();
-    if (!isResolvableArray(parts)) {
+    if (!isResolvableArray(parts) || parts.length > 3) {
       throw new Error(invalidRefInputMessage);
     }
 
@@ -164,6 +181,23 @@ export function resolvableAsActionConfigTarget(
       dataset: schema,
       project: database,
     };
+  }
+
+  const obj = resolvable as any;
+  if (obj && typeof obj === "object") {
+    const catalog = obj.catalog ?? obj.lakehouse?.catalog;
+    const namespace = obj.namespace ?? obj.lakehouse?.namespace;
+    if (catalog != null || namespace != null || obj.lakehouse != null) {
+      return {
+        name: obj.name,
+        project: obj.project ?? obj.database,
+        lakehouse: {
+          catalog,
+          namespace,
+        },
+        includeDependentAssertions: obj.includeDependentAssertions,
+      };
+    }
   }
 
   return resolvable as dataform.ActionConfig.ITarget;
@@ -496,13 +530,23 @@ export function extractActionDetailsFromFileName(path: string): {
 }
 
 // Converts the config proto's target proto to the compiled graph proto's representation.
-export function configTargetToCompiledGraphTarget(configTarget: dataform.ActionConfig.Target) {
+export function configTargetToCompiledGraphTarget(
+  configTarget: dataform.ActionConfig.Target,
+  defaultLakehouseConfig?: dataform.IDefaultLakehouseConfig,
+) {
   const compiledGraphTarget: dataform.ITarget = { name: configTarget.name };
   if (configTarget.project) {
     compiledGraphTarget.database = configTarget.project;
   }
   if (configTarget.dataset) {
     compiledGraphTarget.schema = configTarget.dataset;
+  }
+  if (configTarget.lakehouse) {
+    compiledGraphTarget.schema = resolveLakehouseSchema(
+      configTarget.lakehouse,
+      defaultLakehouseConfig,
+      true,
+    );
   }
   if (configTarget.hasOwnProperty("includeDependentAssertions")) {
     compiledGraphTarget.includeDependentAssertions = configTarget.includeDependentAssertions;
@@ -524,6 +568,7 @@ export function actionConfigToCompiledGraphTarget(
     | dataform.ActionConfig.DataPreparationConfig
     | dataform.ActionConfig.DataPreparationConfig.ErrorTableConfig
     | dataform.ActionConfig.Target,
+  defaultLakehouseConfig?: dataform.IDefaultLakehouseConfig,
 ): dataform.Target {
   const compiledGraphTarget = dataform.Target.create({ name: actionConfig.name });
   if ("project" in actionConfig && actionConfig.project !== undefined) {
@@ -537,6 +582,12 @@ export function actionConfigToCompiledGraphTarget(
   if ("dataset" in actionConfig && actionConfig.dataset !== undefined) {
     compiledGraphTarget.schema = actionConfig.dataset;
   }
+  if ("lakehouse" in actionConfig && actionConfig.lakehouse) {
+    const schema = resolveLakehouseSchema(actionConfig.lakehouse, defaultLakehouseConfig);
+    if (schema) {
+      compiledGraphTarget.schema = schema;
+    }
+  }
   return compiledGraphTarget;
 }
 
@@ -548,7 +599,10 @@ export function checkAssertionsForDependency(
   action: actionsWithDependencies,
   resolvable: Resolvable,
 ): dataform.Target {
-  const dependencyTarget = resolvableAsTarget(resolvable);
+  const dependencyTarget = resolvableAsTarget(
+    resolvable,
+    action.session.projectConfig?.defaultLakehouseConfig,
+  );
   if (
     !dependencyTarget.hasOwnProperty("includeDependentAssertions") &&
     !(action instanceof DataPreparation)

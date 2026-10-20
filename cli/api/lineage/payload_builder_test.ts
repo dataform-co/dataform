@@ -106,90 +106,93 @@ suite("LineagePayloadBuilder", () => {
     expect(complete.run.facets.externalQuery).to.equal(undefined);
   });
 
-  test("errorMessage run facet appears only on FAIL with non-empty task errorMessage", () => {
-    const builder = new LineagePayloadBuilder("/tmp/proj");
-    const failedWithMsg = builder.build(
-      ACTION,
-      dataform.ActionResult.create({
-        status: dataform.ActionResult.ExecutionStatus.FAILED,
-        tasks: [{ errorMessage: "boom" }, { errorMessage: "kaboom" }],
-      }),
-      "proj",
-      "us",
-    );
-    expect(failedWithMsg.run.facets.errorMessage).to.deep.include({
-      message: "boom; kaboom",
-      programmingLanguage: "typescript",
+  test("externalQuery uses the last non-assertion task job ID", () => {
+    const multiTaskTable = dataform.ExecutionAction.create({
+      target: { database: "proj", schema: "schema", name: "table" },
+      type: "table",
+      tasks: [
+        { type: "statement", statement: "CREATE SCHEMA IF NOT EXISTS ..." },
+        { type: "statement", statement: "CREATE OR REPLACE TABLE ..." },
+      ],
     });
-    const failedWithoutMsg = builder.build(
-      ACTION,
-      dataform.ActionResult.create({
-        status: dataform.ActionResult.ExecutionStatus.FAILED,
-      }),
-      "proj",
-      "us",
-    );
-    expect(failedWithoutMsg.run.facets.errorMessage).to.equal(undefined);
-  });
-
-  test("errorMessage aggregates non-empty task messages across multi-task action", () => {
     const builder = new LineagePayloadBuilder("/tmp/proj");
-    const failed = builder.build(
-      ACTION,
+    const complete = builder.build(
+      multiTaskTable,
       dataform.ActionResult.create({
-        status: dataform.ActionResult.ExecutionStatus.FAILED,
+        status: dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
         tasks: [
-          { errorMessage: "pre_operations failed: table not found" },
-          { errorMessage: "" },
-          { errorMessage: "main statement failed: syntax error at line 3" },
+          { metadata: { bigquery: { jobId: "job-schema" } } },
+          { metadata: { bigquery: { jobId: "job-ctas" } } },
         ],
       }),
       "proj",
       "us",
+      "cred-proj",
     );
-    expect(failed.run.facets.errorMessage).to.deep.equal({
-      _schemaURL: "https://openlineage.io/spec/facets/1-0-1/ErrorMessageRunFacet.json",
-      message:
-        "pre_operations failed: table not found; main statement failed: syntax error at line 3",
-      programmingLanguage: "typescript",
-    });
+    expect(complete.run.facets.externalQuery.externalQueryId).to.equal("cred-proj.us.job-ctas");
   });
 
-  test("errorMessage facet omitted when every task has empty or undefined errorMessage", () => {
+  test("externalQuery uses the CREATE VIEW job for assertions, not the check job", () => {
+    const assertion = dataform.ExecutionAction.create({
+      target: { database: "proj", schema: "assertions", name: "assert_a" },
+      type: "assertion",
+      tasks: [
+        {
+          type: "statement",
+          statement: "create or replace view `proj.assertions.assert_a` as ...",
+        },
+        {
+          type: "assertion",
+          statement: "select sum(1) as row_count from `proj.assertions.assert_a`",
+        },
+      ],
+    });
+    const builder = new LineagePayloadBuilder("/tmp/proj");
+    const tasks = [
+      { metadata: { bigquery: { jobId: "job-create-view" } } },
+      { metadata: { bigquery: { jobId: "job-check" } } },
+    ];
+    const complete = builder.build(
+      assertion,
+      dataform.ActionResult.create({
+        status: dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
+        tasks,
+      }),
+      "proj",
+      "us",
+      "cred-proj",
+    );
+    const failed = builder.build(
+      assertion,
+      dataform.ActionResult.create({
+        status: dataform.ActionResult.ExecutionStatus.FAILED,
+        tasks,
+      }),
+      "proj",
+      "us",
+      "cred-proj",
+    );
+    expect(complete.run.facets.externalQuery.externalQueryId).to.equal(
+      "cred-proj.us.job-create-view",
+    );
+    expect(failed.run.facets.externalQuery.externalQueryId).to.equal(
+      "cred-proj.us.job-create-view",
+    );
+  });
+
+  test("does not emit sql job facet or errorMessage run facet", () => {
     const builder = new LineagePayloadBuilder("/tmp/proj");
     const failed = builder.build(
       ACTION,
       dataform.ActionResult.create({
         status: dataform.ActionResult.ExecutionStatus.FAILED,
-        tasks: [{ errorMessage: "" }, {}, { errorMessage: "" }],
+        tasks: [{ errorMessage: "boom" }],
       }),
       "proj",
       "us",
     );
+    expect(failed.job.facets.sql).to.equal(undefined);
     expect(failed.run.facets.errorMessage).to.equal(undefined);
-  });
-
-  test("sql job facet emits joined task statements", () => {
-    const multiTaskAction = dataform.ExecutionAction.create({
-      target: { database: "proj", schema: "schema", name: "table" },
-      type: "table",
-      tasks: [{ statement: "CREATE TABLE t AS SELECT 1" }, { statement: "SELECT 2" }],
-    });
-    const builder = new LineagePayloadBuilder("/tmp/proj");
-    const payload = builder.build(multiTaskAction, START_RESULT, "proj", "us");
-    expect(payload.job.facets.sql).to.deep.include({
-      query: "CREATE TABLE t AS SELECT 1;\nSELECT 2",
-    });
-  });
-
-  test("sql job facet omitted when action has no statements", () => {
-    const emptyAction = dataform.ExecutionAction.create({
-      target: { database: "proj", schema: "schema", name: "table" },
-      type: "table",
-    });
-    const builder = new LineagePayloadBuilder("/tmp/proj");
-    const payload = builder.build(emptyAction, START_RESULT, "proj", "us");
-    expect(payload.job.facets.sql).to.equal(undefined);
   });
 
   test("jobType job facet declares BigQuery Pipelines integration", () => {
@@ -206,10 +209,21 @@ suite("LineagePayloadBuilder", () => {
     const builder = new LineagePayloadBuilder("/tmp/proj");
     const payload = builder.build(ACTION, START_RESULT, "proj", "us");
     expect(payload.job.facets.gcp_bq_pipelines_job).to.deep.include({
-      actionType: "table",
+      actionType: "TABLE",
       actionName: "schema.table",
     });
     expect(payload.job.facets.gcp_bq_pipelines_job.dataformCoreVersion).to.be.a("string");
+  });
+
+  test("throws when called with an unsupported action type", () => {
+    const declaration = dataform.ExecutionAction.create({
+      target: { database: "proj", schema: "schema", name: "decl" },
+      type: "declaration",
+    });
+    const builder = new LineagePayloadBuilder("/tmp/proj");
+    expect(() => builder.build(declaration, START_RESULT, "proj", "us")).to.throw(
+      /Unsupported action type for lineage: declaration/,
+    );
   });
 
   test("inputs list mirrors action.dependencyTargets in bigquery namespace", () => {

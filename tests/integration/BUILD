@@ -14,7 +14,7 @@ ts_test_suite(
         "utils.ts",
     ],
     data = [
-        "//test_credentials:bigquery.json",
+        "//test_credentials:bigquery_credentials",
         "//tests/integration/bigquery_project:files",
         "//tests/integration/bigquery_project:node_modules",
         "//packages/@dataform/core:bundle.js",
