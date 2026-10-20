@@ -187,7 +187,7 @@ export function resolvableAsActionConfigTarget(
   if (obj && typeof obj === "object") {
     const catalog = obj.catalog ?? obj.lakehouse?.catalog;
     const namespace = obj.namespace ?? obj.lakehouse?.namespace;
-    if (catalog !== undefined || namespace !== undefined || obj.lakehouse !== undefined) {
+    if (catalog != null || namespace != null || obj.lakehouse != null) {
       return {
         name: obj.name,
         project: obj.project ?? obj.database,

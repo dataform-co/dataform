@@ -27,7 +27,7 @@ interface ILegacyAssertionConfig extends dataform.ActionConfig.AssertionConfig {
   schema: string;
   fileName: string;
   type: string;
-  lakehouse?: any;
+  lakehouse?: dataform.ActionConfig.ILakehouseConfig;
 }
 
 /** @hidden */
