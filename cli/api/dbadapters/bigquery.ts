@@ -117,7 +117,9 @@ export function getBigQueryClientOptions(
   return {
     projectId: projectId || credentials.projectId,
     scopes: EXTRA_GOOGLE_SCOPES,
-    location: credentials.location,
+    // Unset proto string fields read as "", which BigQuery rejects as a job location. Pass
+    // undefined instead so that BigQuery auto-selects the location.
+    location: credentials.location || undefined,
     ...(authClient
       ? { authClient }
       : { credentials: credentials.credentials && JSON.parse(credentials.credentials) }),
