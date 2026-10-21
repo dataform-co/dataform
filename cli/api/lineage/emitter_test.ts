@@ -660,7 +660,7 @@ suite("LineageEmitter", () => {
     });
   });
 
-  test("emits START and COMPLETE for assertions with inputs only on COMPLETE and no outputs", async () => {
+  test("emits START and COMPLETE for assertions with inputs and assertion view output on COMPLETE", async () => {
     const mockClient = new MockLineageClient();
     const stderr = new StderrCapture();
     const emitter = new LineageEmitter(
@@ -706,7 +706,9 @@ suite("LineageEmitter", () => {
     expect(events[1].inputs).to.deep.equal([
       { namespace: "bigquery", name: "proj.schema.table_a" },
     ]);
-    expect(events[1].outputs).to.deep.equal([]);
+    expect(events[1].outputs).to.deep.equal([
+      { namespace: "bigquery", name: "proj.assertions.assert_a" },
+    ]);
     for (const event of events) {
       expect(event.job.facets.gcp_bq_pipelines_job.actionType).to.equal("ASSERTION");
     }

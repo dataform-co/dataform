@@ -216,7 +216,10 @@ suite("LineagePayloadBuilder", () => {
       "BigQuery Pipelines action proj.schema.table",
     );
     expect(payload.job.facets.gcp_bq_pipelines_job.dataformCoreVersion).to.be.a("string");
+  });
 
+  test("actionName and displayName fall back to projectId when database is omitted", () => {
+    const builder = new LineagePayloadBuilder("/tmp/proj");
     const actionWithoutDatabase = dataform.ExecutionAction.create({
       target: { schema: "schema", name: "table" },
       type: "table",
@@ -285,17 +288,47 @@ suite("LineagePayloadBuilder", () => {
     expect(complete.outputs).to.deep.equal([{ namespace: "bigquery", name: "proj.schema.table" }]);
   });
 
-  test("outputs are emitted only for table actions on COMPLETE", () => {
+  test("inputs and outputs are emitted on COMPLETE for actions with output and omitted for operations without hasOutput", () => {
     const builder = new LineagePayloadBuilder("/tmp/proj");
-    for (const nonTableType of ["operation", "assertion", "propertyGraph"]) {
+    const deps = [{ database: "p1", schema: "s1", name: "n1" }];
+
+    for (const typeWithOutput of ["table", "assertion", "propertyGraph"]) {
       const action = dataform.ExecutionAction.create({
         target: { database: "proj", schema: "schema", name: "target_name" },
-        type: nonTableType,
-        dependencyTargets: [{ database: "p1", schema: "s1", name: "n1" }],
+        type: typeWithOutput,
+        dependencyTargets: deps,
       });
       const complete = builder.build(action, COMPLETE_RESULT, "proj", "us");
-      expect(complete.inputs).to.deep.equal([{ namespace: "bigquery", name: "p1.s1.n1" }]);
-      expect(complete.outputs).to.deep.equal([]);
+      expect(complete.inputs, typeWithOutput).to.deep.equal([
+        { namespace: "bigquery", name: "p1.s1.n1" },
+      ]);
+      expect(complete.outputs, typeWithOutput).to.deep.equal([
+        { namespace: "bigquery", name: "proj.schema.target_name" },
+      ]);
     }
+
+    const opWithOutput = dataform.ExecutionAction.create({
+      target: { database: "proj", schema: "schema", name: "op_out" },
+      type: "operation",
+      hasOutput: true,
+      dependencyTargets: deps,
+    });
+    const opWithOutputComplete = builder.build(opWithOutput, COMPLETE_RESULT, "proj", "us");
+    expect(opWithOutputComplete.inputs).to.deep.equal([
+      { namespace: "bigquery", name: "p1.s1.n1" },
+    ]);
+    expect(opWithOutputComplete.outputs).to.deep.equal([
+      { namespace: "bigquery", name: "proj.schema.op_out" },
+    ]);
+
+    const opWithoutOutput = dataform.ExecutionAction.create({
+      target: { database: "proj", schema: "schema", name: "op_no_out" },
+      type: "operation",
+      hasOutput: false,
+      dependencyTargets: deps,
+    });
+    const opWithoutOutputComplete = builder.build(opWithoutOutput, COMPLETE_RESULT, "proj", "us");
+    expect(opWithoutOutputComplete.inputs).to.deep.equal([]);
+    expect(opWithoutOutputComplete.outputs).to.deep.equal([]);
   });
 });

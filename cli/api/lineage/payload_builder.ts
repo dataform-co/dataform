@@ -59,7 +59,8 @@ export class LineagePayloadBuilder {
     }
 
     const eventTime = new Date().toISOString();
-    const actionKey = `${action.target.database || ""}.${action.target.schema}.${action.target.name}`;
+    const fullActionTarget = toFqn(action.target, projectId);
+    const actionKey = fullActionTarget;
     let runId = this.activeRunIds.get(actionKey);
     if (!runId) {
       runId = randomUUID();
@@ -80,27 +81,27 @@ export class LineagePayloadBuilder {
       }
     }
 
-    const fullActionTarget = `${action.target.database || projectId}.${action.target.schema}.${action.target.name}`;
+    const emitDatasets = eventType === "COMPLETE" && hasLineageOutput(action, actionType);
 
-    const inputs =
-      eventType === "COMPLETE"
-        ? (action.dependencyTargets || []).map((dep) => ({
+    const inputs = emitDatasets
+      ? (action.dependencyTargets || []).map((dep) => ({
+          namespace: "bigquery",
+          name: toFqn(dep, projectId),
+        }))
+      : [];
+
+    const outputs = emitDatasets
+      ? [
+          {
             namespace: "bigquery",
-            name: `${dep.database || projectId}.${dep.schema}.${dep.name}`,
-          }))
-        : [];
-
-    const outputs =
-      eventType === "COMPLETE" && actionType === "TABLE"
-        ? [
-            {
-              namespace: "bigquery",
-              name: fullActionTarget,
-            },
-          ]
-        : [];
+            name: fullActionTarget,
+          },
+        ]
+      : [];
 
     const workdirIdentifier = this.buildWorkdirIdentifier();
+    // Keep 2-part `<schema>.<name>` in jobName: `projectId` is already the
+    // prefix, and changing `job.name` would alter the Data Lineage Process ID.
     const canonicalActionTarget = `${action.target.schema}.${action.target.name}`;
     const jobName = `${projectId}.${location}.cli.${workdirIdentifier}.${canonicalActionTarget}`;
     const parentJobName = `${projectId}.${location}.cli.${workdirIdentifier}.run`;
@@ -203,6 +204,22 @@ export class LineagePayloadBuilder {
     const shortHash = this.workdirHash.slice(0, 8);
     return `${base}-${shortHash}`;
   }
+}
+
+function toFqn(target: dataform.ITarget, fallbackProjectId: string): string {
+  return `${target.database || fallbackProjectId}.${target.schema}.${target.name}`;
+}
+
+/**
+ * Returns true if the action materializes a BigQuery object at `action.target`
+ * (tables/views, assertion views, property graphs, and operations with
+ * `hasOutput: true`). Operations without `hasOutput: true` only use
+ * `action.target` as an internal graph identifier, and Data Lineage forms
+ * edges from `inputs × outputs`, so both `inputs` and `outputs` are gated on
+ * this condition.
+ */
+function hasLineageOutput(action: dataform.IExecutionAction, actionType: string): boolean {
+  return actionType !== "OPERATIONS" || !!action.hasOutput;
 }
 
 function toMillis(val: Long | number | undefined | null): number | undefined {
