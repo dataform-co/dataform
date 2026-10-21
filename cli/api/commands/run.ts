@@ -1,7 +1,7 @@
 import EventEmitter from "events";
 import Long from "long";
 
-import { JitCompileChildProcess } from "df/cli/api/commands/jit/compiler";
+import { JitCompileChildProcess, JitCompiler } from "df/cli/api/commands/jit/compiler";
 import * as dbadapters from "df/cli/api/dbadapters";
 import { IBigQueryExecutionOptions } from "df/cli/api/dbadapters/bigquery";
 import { ExecutionSql } from "df/cli/api/dbadapters/execution_sql";
@@ -39,16 +39,7 @@ export interface IExecutionOptions {
     dryRun?: boolean;
     labels?: { [label: string]: string };
   };
-  jitCompiler?: (
-    request: dataform.IJitCompilationRequest,
-    projectDir: string,
-    dbadapter: dbadapters.IDbAdapter,
-    dbclient: dbadapters.IDbClient,
-    timeoutMillis?: number,
-    options?: IBigQueryExecutionOptions,
-    onCancel?: (cancel: () => void) => void,
-    expectedCoreVersion?: string,
-  ) => Promise<dataform.IJitCompilationResponse>;
+  jitCompiler?: JitCompiler;
   /**
    * The `@dataform/core` version that compiled the project (`CompiledGraph.dataformCoreVersion`).
    * JiT compilation must use the same version.
@@ -623,19 +614,19 @@ export class Runner {
 
     let cancelHandler: ((...args: any[]) => void) | undefined;
     try {
-      const jitResponse = await this.executionOptions.jitCompiler(
-        jitRequest,
-        this.executionOptions.projectDir,
-        this.dbadapter,
-        client,
-        this.graph.runConfig?.jitTimeoutMillis || undefined,
-        this.getBigQueryExecutionOptions(action),
-        (handleCancel) => {
+      const jitResponse = await this.executionOptions.jitCompiler({
+        request: jitRequest,
+        projectDir: this.executionOptions.projectDir,
+        dbadapter: this.dbadapter,
+        dbclient: client,
+        timeoutMillis: this.graph.runConfig?.jitTimeoutMillis || undefined,
+        bigqueryOptions: this.getBigQueryExecutionOptions(action),
+        onCancel: (handleCancel) => {
           cancelHandler = handleCancel;
           this.eEmitter.on(CANCEL_EVENT, handleCancel);
         },
-        this.executionOptions.expectedCoreVersion,
-      );
+        expectedCoreVersion: this.executionOptions.expectedCoreVersion,
+      });
       action.tasks = this.createTasksFromJitResponse(action, jitResponse);
     } finally {
       if (cancelHandler) {
