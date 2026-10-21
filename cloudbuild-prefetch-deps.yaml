@@ -1,0 +1,20 @@
+# Prefetches npm dependencies (including those of open Dependabot PRs) through
+# the registry configured in the trigger's _PREFETCH_REGISTRY substitution.
+# Intended to run from a scheduled Cloud Build trigger. See
+# scripts/prefetch_npm_deps.
+steps:
+  - name: "gcr.io/cloud-builders/gcloud"
+    script: |
+      #!/usr/bin/env bash
+      set -e
+      gcloud auth print-access-token > /workspace/.repo_token
+  - name: "node:22"
+    env:
+      - "PREFETCH_REGISTRY=${_PREFETCH_REGISTRY}"
+    script: |
+      #!/usr/bin/env bash
+      set -e
+      REPO_TOKEN="$(cat /workspace/.repo_token)" ./scripts/prefetch_npm_deps --open-dependabot-prs
+options:
+  machineType: E2_HIGHCPU_8
+timeout: 1800s

@@ -1,0 +1,66 @@
+#!/bin/bash
+# Prefetches npm dependencies through a configurable registry.
+#
+# Fetching the packages listed in pnpm-lock.yaml through the registry given in
+# PREFETCH_REGISTRY makes that registry pick up new package versions (for
+# example those bumped by Dependabot) ahead of the test builds that need them.
+#
+# Usage:
+#   REPO_TOKEN=<token> PREFETCH_REGISTRY=<host/path/> \
+#     ./scripts/prefetch_npm_deps [--open-dependabot-prs]
+#
+# Without flags, prefetches the pnpm-lock.yaml of the current checkout.
+# With --open-dependabot-prs, also prefetches the lockfile of every open
+# Dependabot PR.
+#
+# Fetch failures are reported as warnings and never fail the build.
+set -euo pipefail
+
+: "${REPO_TOKEN:?REPO_TOKEN must be set}"
+: "${PREFETCH_REGISTRY:?PREFETCH_REGISTRY must be set, e.g. registry.example.com/npm/}"
+GITHUB_REPO="${GITHUB_REPO:-dataform-co/dataform}"
+PNPM_VERSION="${PNPM_VERSION:-9.7.1}" # Keep in sync with MODULE.bazel.
+
+WORK_DIR="$(mktemp -d)"
+trap 'rm -rf "${WORK_DIR}"' EXIT
+
+cat > "${WORK_DIR}/.npmrc" <<EOL
+registry=https://${PREFETCH_REGISTRY}
+//${PREFETCH_REGISTRY}:always-auth=true
+//${PREFETCH_REGISTRY}:_authToken=${REPO_TOKEN}
+EOL
+
+prefetch_lockfile() {
+  local name="$1" lockfile="$2"
+  local dir="${WORK_DIR}/${name}"
+  mkdir -p "${dir}"
+  cp "${lockfile}" "${dir}/pnpm-lock.yaml"
+  echo "=== Prefetching dependencies for ${name}"
+  # `pnpm fetch` only needs the lockfile; it downloads every package in it.
+  if ! (cd "${dir}" && NPM_CONFIG_USERCONFIG="${WORK_DIR}/.npmrc" \
+      npx --yes "pnpm@${PNPM_VERSION}" fetch --store-dir "${WORK_DIR}/store" \
+      --config.registry="https://${PREFETCH_REGISTRY}"); then
+    echo "WARNING: some packages for ${name} could not be fetched yet." >&2
+  fi
+}
+
+prefetch_lockfile "checkout" "pnpm-lock.yaml"
+
+if [[ "${1:-}" == "--open-dependabot-prs" ]]; then
+  # Public repo: the unauthenticated GitHub API is sufficient.
+  prs="$(curl -fsSL "https://api.github.com/repos/${GITHUB_REPO}/pulls?state=open&per_page=100" |
+    python3 -c 'import json,sys
+for pr in json.load(sys.stdin):
+    if pr["user"]["login"] == "dependabot[bot]":
+        print(pr["number"], pr["head"]["sha"])')"
+  while read -r number sha; do
+    [[ -z "${number}" ]] && continue
+    lockfile="${WORK_DIR}/pr-${number}.yaml"
+    if curl -fsSL -o "${lockfile}" \
+        "https://raw.githubusercontent.com/${GITHUB_REPO}/${sha}/pnpm-lock.yaml"; then
+      prefetch_lockfile "pr-${number}" "${lockfile}"
+    else
+      echo "WARNING: could not download lockfile for PR #${number}" >&2
+    fi
+  done <<< "${prs}"
+fi

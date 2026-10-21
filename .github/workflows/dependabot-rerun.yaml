@@ -1,0 +1,30 @@
+# Re-triggers Cloud Build tests on open Dependabot PRs whose tests failed,
+# so they turn green automatically once the new packages are available
+# (see cloudbuild-prefetch-deps.yaml).
+name: Re-run failed Dependabot PR tests
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  pull-requests: write
+
+jobs:
+  rerun:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Comment /gcbrun on failing Dependabot PRs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          gh pr list -R "$REPO" --author app/dependabot --state open \
+            --json number,statusCheckRollup \
+            --jq '.[] | select(any(.statusCheckRollup[]; (.name // "" | startswith("test-pull-request-trigger")) and .conclusion == "FAILURE")) | .number' |
+          while read -r pr; do
+            echo "Re-triggering tests for PR #$pr"
+            gh pr comment "$pr" -R "$REPO" --body "/gcbrun"
+          done
