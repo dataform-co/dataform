@@ -13,7 +13,7 @@ import { suite, test, writeCorePackage } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
 
 // Runs JiT compilation in the test process and forwards its RPCs to the mock adapter.
-const inProcessJitCompiler: JitCompiler = ({ request, dbadapter }) =>
+const inProcessJitCompiler: JitCompiler = async ({ request, dbadapter }) =>
   jitCompile(request, (method, internalReq, callback) =>
     (dbadapter as any).rpcImpl(method, internalReq, callback),
   );

@@ -25,7 +25,7 @@ export interface IJitCompileOptions {
   dbclient: IDbClient;
   timeoutMillis?: number;
   bigqueryOptions?: IBigQueryExecutionOptions;
-  onCancel?: (cancel: () => void) => void;
+  onCancel: (cancel: () => void) => void;
   /** The `@dataform/core` version that compiled the project; JiT must use the same version. */
   expectedCoreVersion?: string;
 }
