@@ -9,6 +9,7 @@ import {
   testCommand,
 } from "df/cli/commands";
 import { printError } from "df/cli/console";
+import { handleTerminationSignals } from "df/cli/signals";
 import { createYargsCli } from "df/cli/yargswrapper";
 
 process.on("unhandledRejection", async (reason: any) => {
@@ -16,6 +17,8 @@ process.on("unhandledRejection", async (reason: any) => {
 });
 
 export function runCli() {
+  handleTerminationSignals();
+
   const commands = [
     initCommand,
     installCommand,

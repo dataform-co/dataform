@@ -1,6 +1,7 @@
 import yargs from "yargs";
 
-import { build, compile, credentials, run, test } from "df/cli/api";
+import { build, credentials, run, test } from "df/cli/api";
+import { compileForRun } from "df/cli/api/commands/compile";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 import { LineageEmitter } from "df/cli/api/lineage/emitter";
 import { createLineageEmitter as createLineageEmitterFromFactory } from "df/cli/api/lineage/emitter_factory";
@@ -23,6 +24,7 @@ import {
   printWarning,
 } from "df/cli/console";
 import { ProjectConfigOptions } from "df/cli/project_config_options";
+import { setSignalHandler } from "df/cli/signals";
 import { actuallyResolve, compiledGraphHasErrors } from "df/cli/util";
 import { ICommand } from "df/cli/yargswrapper";
 import { targetAsReadableString } from "df/core/targets";
@@ -76,7 +78,10 @@ export const runCommand: ICommand<IRunArgs> = {
       );
     }
     logger.log("Compiling...\n");
-    const compiledGraph = await compile({
+    // dataformCoreVersion projects are compiled in a temporary directory with the pinned
+    // @dataform/core, and JiT compilation must use the same directory. It is removed when the
+    // process exits (see createTemporaryDirectory and handleTerminationSignals).
+    const { compiledGraph, environment } = await compileForRun({
       projectDir: argv.projectDir,
       projectConfigOverride: ProjectConfigOptions.constructProjectConfigOverride(argv),
       timeoutMillis: argv.timeout || undefined,
@@ -172,13 +177,13 @@ export const runCommand: ICommand<IRunArgs> = {
     const lineageEmitter = createLineageEmitter(argv, executionGraph, readCredentials);
 
     const runner = run(dbadapter, executionGraph, {
-      projectDir: argv.projectDir,
+      projectDir: environment.projectDir,
+      expectedCoreVersion: compiledGraph.dataformCoreVersion || undefined,
       bigquery: bigqueryOptions,
       lineageEmitter,
     });
-    process.on("SIGINT", () => {
-      runner.cancel();
-    });
+    // The first Ctrl+C cancels the run gracefully; a second one exits immediately.
+    setSignalHandler("SIGINT", () => runner.cancel());
 
     const alreadyPrintedActions = new Set<string>();
 

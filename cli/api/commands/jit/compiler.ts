@@ -28,6 +28,7 @@ export class JitCompileChildProcess extends BaseWorker<
     timeoutMillis?: number,
     options?: IBigQueryExecutionOptions,
     onCancel?: (cancel: () => void) => void,
+    expectedCoreVersion?: string,
   ): Promise<dataform.IJitCompilationResponse> {
     return await new JitCompileChildProcess().run(
       request,
@@ -37,6 +38,7 @@ export class JitCompileChildProcess extends BaseWorker<
       timeoutMillis || DEFAULT_COMPILATION_TIMEOUT_MILLIS,
       options,
       onCancel,
+      expectedCoreVersion,
     );
   }
 
@@ -48,6 +50,7 @@ export class JitCompileChildProcess extends BaseWorker<
     timeoutMillis: number,
     options: IBigQueryExecutionOptions | undefined,
     onCancel: ((cancel: () => void) => void) | undefined,
+    expectedCoreVersion: string | undefined,
   ): Promise<dataform.IJitCompilationResponse> {
     return await this.runWorker(
       timeoutMillis,
@@ -56,6 +59,7 @@ export class JitCompileChildProcess extends BaseWorker<
           type: "jit_compile",
           request,
           projectDir,
+          expectedCoreVersion,
         });
       },
       async (message, child, resolve, reject) => {

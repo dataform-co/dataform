@@ -12,6 +12,7 @@ import {
   printError,
 } from "df/cli/console";
 import { ProjectConfigOptions } from "df/cli/project_config_options";
+import { setSignalHandler } from "df/cli/signals";
 import { compiledGraphHasErrors } from "df/cli/util";
 import { ICommand } from "df/cli/yargswrapper";
 
@@ -122,7 +123,7 @@ export const compileCommand: ICommand<ICompileArgs> = {
           }
         }, RECOMPILE_DELAY);
       });
-    process.on("SIGINT", async () => {
+    setSignalHandler("SIGINT", async () => {
       await watcher.close();
       watching = false;
       process.exit(1);

@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import { EventEmitter } from "events";
+import * as path from "path";
 import { anything, capture, instance, mock, verify, when } from "ts-mockito";
 
 import { handleDbRequest as handleRpc } from "df/cli/api/commands/jit/rpc";
@@ -7,9 +8,11 @@ import { Runner } from "df/cli/api/commands/run";
 import { IDbAdapter, IDbClient } from "df/cli/api/dbadapters";
 import { jitCompile } from "df/core/jit_compiler";
 import { dataform } from "df/protos/ts";
-import { suite, test } from "df/testing";
+import { suite, test, writeCorePackage } from "df/testing";
+import { TmpDirFixture } from "df/testing/fixtures";
 
-suite("run", () => {
+suite("run", ({ afterEach }) => {
+  const tmpDirFixture = new TmpDirFixture(afterEach);
   test("JiT compilation is performed for Table actions", async () => {
     const { mockAdapter, adapterInstance } = createMocks();
 
@@ -536,6 +539,65 @@ suite("run", () => {
     // leaks listeners and eventually triggers MaxListenersExceededWarning.
     const emitter = (runner as any).eEmitter as EventEmitter;
     expect(emitter.listenerCount("jobCancel")).equals(0);
+  });
+  test("Runner passes the compilation environment to the JiT compiler", async () => {
+    const { adapterInstance } = createMocks();
+    const executionGraph = createGraph([
+      {
+        target: { database: "db", schema: "sch", name: "jit_table" },
+        type: "table",
+        tableType: "table",
+        jitCode: "async (jctx) => { return 'SELECT 1'; }",
+        tasks: [],
+      },
+    ]);
+    const calls: Array<{ projectDir: string; expectedCoreVersion?: string }> = [];
+
+    const runner = new Runner(adapterInstance, executionGraph, {
+      projectDir: "/tmp/dataform-isolated-env",
+      expectedCoreVersion: "3.0.71",
+      jitCompiler: async (req, projectDir, adapter, client, timeout, opts, onCancel, version) => {
+        calls.push({ projectDir, expectedCoreVersion: version });
+        return { table: { query: "SELECT 1" } };
+      },
+    });
+    const result = await runner.execute().result();
+
+    expect(result.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
+    expect(calls).deep.equals([
+      { projectDir: "/tmp/dataform-isolated-env", expectedCoreVersion: "3.0.71" },
+    ]);
+  });
+  test("Default JiT worker rejects a core version that differs from compilation", async () => {
+    const { adapterInstance } = createMocks();
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    writeCorePackage(
+      projectDir,
+      `module.exports = { version: "3.0.70", jitCompiler: () => ({ compile: async () => [] }) };`,
+    );
+
+    const executionGraph = createGraph([
+      {
+        target: { database: "db", schema: "sch", name: "jit_table" },
+        type: "table",
+        tableType: "table",
+        jitCode: "async () => 'SELECT 1'",
+        tasks: [],
+      },
+    ]);
+
+    const runner = new Runner(adapterInstance, executionGraph, {
+      projectDir,
+      expectedCoreVersion: "3.0.71",
+    });
+    const result = await runner.execute().result();
+
+    expect(result.status).equals(dataform.RunResult.ExecutionStatus.FAILED);
+    expect(result.actions[0].tasks[0].errorMessage).to.include(
+      `JiT compilation would use @dataform/core 3.0.70 from ` +
+        `'${path.join(projectDir, "node_modules", "@dataform", "core", "bundle.js")}', but the project ` +
+        `was compiled with @dataform/core 3.0.71.`,
+    );
   });
 });
 
