@@ -121,7 +121,7 @@ dataform init-creds [project-dir]
 Interactively creates a `.df-credentials.json` file in `project-dir` that Dataform uses to connect to BigQuery. **Only BigQuery is currently supported.**
 
 Prompts for:
-1. Dataset location (`US`, `EU`, or a custom region name).
+1. Dataset location (`US`, `EU`, a custom region name, or `auto`). Choosing `auto` leaves `location` out of the credentials file so BigQuery chooses the location dynamically.
 2. Authentication method — Application Default Credentials (ADC) or a JSON service account key file.
    - ADC: prompts for your billing project ID.
    - JSON key: prompts for the path to a downloaded service account key file.
@@ -446,3 +446,5 @@ DATAFORM_LINEAGE_DEBUG=1 dataform run --emit-lineage
 ```
 
 Lineage events are emitted for every action that runs a BigQuery job: tables (including views and incremental tables), operations, assertions and property graphs. On `COMPLETE` events, `inputs` and `outputs` are populated for actions that materialize a BigQuery object (`table`, `view`, `incremental`, `assertion`, `propertyGraph`, and `operations` with `hasOutput: true`). Assertions appear as a process for the assertion view written to the assertions dataset, with the assertion's dependencies reported as inputs. Property graph inputs are populated from the action's dependencies (`dependencyTargets`), so node and edge tables referenced via `ref` are reported as inputs while raw table paths in the graph definition are not. Declarations are not emitted. The action type is reported in the `gcp_bq_pipelines_job.actionType` attribute as `TABLE`, `OPERATIONS`, `ASSERTION` or `PROPERTY_GRAPH`, matching the values used by Dataform in Google Cloud. For prerequisites, `workflow_settings.yaml` configuration, and troubleshooting, see the [Data Lineage guide](../docs/lineage.md).
+
+Lineage events are sent to the location set by `defaultLocation` in `workflow_settings.yaml` or, if that is not set, by `location` in `.df-credentials.json`. If neither is set, lineage emission is skipped with a warning and the run proceeds normally.
