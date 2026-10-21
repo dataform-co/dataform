@@ -610,6 +610,15 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
     }
 
     if (this.isLakehouseTarget) {
+      if (!this.session.projectConfig?.defaultSchema) {
+        this.session.compileError(
+          new Error(
+            "When defining an incremental Lakehouse table, 'defaultDataset' must be defined in workflow_settings.yaml.",
+          ),
+          this.proto.fileName,
+          this.proto.target,
+        );
+      }
       validateLakehouseColumns(
         this.session,
         this.proto.actionDescriptor,

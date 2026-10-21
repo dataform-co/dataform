@@ -1,5 +1,6 @@
 import { expect } from "chai";
 
+import { dataform } from "df/protos/ts";
 import {
   asPlainObject,
   suite,
@@ -235,6 +236,22 @@ defaultLakehouseConfig:
         "Column policy tags (bigqueryPolicyTags) are not supported for Lakehouse (4-part) targets",
       wsContent: VALID_WORKFLOW_SETTINGS_YAML,
     },
+    {
+      testName: "fails when defaultDataset is not set in workflow_settings.yaml",
+      configBlock: `
+        type: "incremental",
+        name: "inc_err_no_default_dataset",
+        lakehouse: {
+          catalog: "my_catalog",
+          namespace: "my_namespace",
+        }`,
+      expectError:
+        "When defining an incremental Lakehouse table, 'defaultDataset' must be defined in workflow_settings.yaml.",
+      wsContent: `
+defaultProject: "defaultProject"
+defaultLocation: "us-central1"
+`,
+    },
   ];
 
   testCases.forEach((testCase, index) => {
@@ -307,5 +324,40 @@ SELECT 1 AS id \${when(incremental(), \`FROM \${self()}\`)}
     expect(compiledTable.query.trim()).equals("SELECT 1 AS id");
     expect(compiledTable.incrementalQuery.trim()).equals("SELECT 1 AS id FROM `p.c.n.inc_t`");
     expect(compiledTable.uniqueKey).deep.equals(["id"]);
+  });
+
+  test("succeeds when defaultDataset is omitted in workflow_settings.yaml but provided via compilation override", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    setupFiles(
+      projectDir,
+      "lakehouse_inc_override.sqlx",
+      `
+config {
+  type: "incremental",
+  lakehouse: { catalog: "c", namespace: "n" },
+  name: "inc_override_t",
+}
+SELECT 1 AS id
+`,
+      `
+defaultProject: "defaultProject"
+defaultLocation: "us-central1"
+`,
+    );
+
+    const result = runMainInVm(
+      coreExecutionRequestFromPath(
+        projectDir,
+        dataform.ProjectConfig.create({ defaultSchema: "overriddenDataset" }),
+      ),
+    );
+
+    expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+    const compiledTable = result.compile.compiledGraph.tables[0];
+    expect(asPlainObject(compiledTable.target)).deep.equals({
+      database: "defaultProject",
+      schema: "c.n",
+      name: "inc_override_t",
+    });
   });
 });
