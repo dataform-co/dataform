@@ -380,6 +380,35 @@ suite("--emit-lineage integration", { parallel: true }, () => {
       expect(call.request.parent).to.equal("projects/test-project/locations/eu");
     }
   });
+
+  test("lineage is disabled with a warning when no location is set", async () => {
+    const recorder = new RecordingLineageClient();
+    const stderr = new StderrCapture();
+    const graph = makeLinearGraph();
+    delete graph.projectConfig.defaultLocation;
+
+    const emitter = createLineageEmitter(
+      factoryInput({
+        cliEmitLineage: true,
+        location: graph.projectConfig.defaultLocation || undefined,
+        readCredentials: dataform.BigQuery.create({ projectId: "test-project" }),
+      }),
+      stderr,
+      recorderProvider(recorder),
+    );
+    expect(emitter).to.equal(undefined);
+    expect(stderr.contains("Lineage emission is enabled, but no location was specified")).to.equal(
+      true,
+    );
+
+    const dbadapter = new FakeDbAdapter();
+    const result = await run(dbadapter, graph, { lineageEmitter: emitter }).result();
+
+    expect(result.status).to.equal(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
+    expect(dbadapter.executed.length).to.be.greaterThan(0);
+    expect(recorder.calls.length).to.equal(0);
+    expect(recorder.providerCalls.length).to.equal(0);
+  });
 });
 
 function fromProtoStruct(struct: any): any {

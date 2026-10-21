@@ -167,16 +167,6 @@ export const runCommand: ICommand<IRunArgs> = {
       logger.log("Running...\n");
     }
 
-    const lineageEnabled =
-      argv.emitLineage ?? executionGraph.projectConfig?.lineageEnabled ?? false;
-    if (lineageEnabled && !defaultLocation && !readCredentials.location) {
-      printWarning(
-        `Warning: Lineage emission is enabled, but no location was specified. Lineage requires a ` +
-          `specific location, set either as "defaultLocation" in workflow_settings.yaml or as ` +
-          `"location" in .df-credentials.json. Lineage will not be emitted.\n`,
-      );
-    }
-
     const lineageEmitter = createLineageEmitter(
       argv,
       executionGraph,
