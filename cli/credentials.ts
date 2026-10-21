@@ -16,10 +16,18 @@ export function getBigQueryCredentials(
     "US (default)",
     "EU",
     "other",
+    "auto (let BigQuery choose dynamically)",
   ]);
-  let location = locationIndex === 0 ? "US" : "EU";
-  if (locationIndex === 2) {
+  let location: string | undefined;
+  if (locationIndex === 0) {
+    location = "US";
+  } else if (locationIndex === 1) {
+    location = "EU";
+  } else if (locationIndex === 2) {
     location = prompts.question("Enter the location's region name (e.g. 'asia-south1'):");
+  } else {
+    // For "auto", location is left undefined so BigQuery picks it per query.
+    location = undefined;
   }
   const isApplicationDefaultOrJSONKeyIndex = prompts.selectionQuestion(
     "Do you wish to use Application Default Credentials or JSON Key:",
