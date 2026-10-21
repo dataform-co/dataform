@@ -95,6 +95,7 @@ export class Builder {
       type: "operation",
       tasks: this.executionSql.createOperationTasks(operation),
       hermeticity: operation.hermeticity || dataform.ActionHermeticity.NON_HERMETIC,
+      hasOutput: !!operation.hasOutput,
     };
   }
 
