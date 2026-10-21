@@ -149,7 +149,7 @@ suite("LineageEmitter", () => {
 
     // GCP lineage job facet verified
     expect(openLineage.job.facets.gcp_lineage.displayName).to.equal(
-      "BigQuery Pipelines action target_dataset.target_table",
+      "BigQuery Pipelines action target-project.target_dataset.target_table",
     );
     expect(openLineage.job.facets.gcp_lineage.origin.sourceType).to.equal("BIGQUERY_PIPELINES");
     expect(openLineage.job.facets.gcp_lineage.origin.name).to.equal(
@@ -656,11 +656,11 @@ suite("LineageEmitter", () => {
     expect(gcpBqPipelinesJob).to.deep.equal({
       dataformCoreVersion: gcpBqPipelinesJob.dataformCoreVersion,
       actionType: "OPERATIONS",
-      actionName: "s.op_action",
+      actionName: "target-project.s.op_action",
     });
   });
 
-  test("emits START and COMPLETE for assertions with the assertion view as output", async () => {
+  test("emits START and COMPLETE for assertions with inputs only on COMPLETE and no outputs", async () => {
     const mockClient = new MockLineageClient();
     const stderr = new StderrCapture();
     const emitter = new LineageEmitter(
@@ -701,11 +701,13 @@ suite("LineageEmitter", () => {
       fromProtoStruct(call.openLineage),
     );
     expect(events.map((e) => e.eventType)).to.deep.equal(["START", "COMPLETE"]);
+    expect(events[0].inputs).to.deep.equal([]);
+    expect(events[0].outputs).to.deep.equal([]);
+    expect(events[1].inputs).to.deep.equal([
+      { namespace: "bigquery", name: "proj.schema.table_a" },
+    ]);
+    expect(events[1].outputs).to.deep.equal([]);
     for (const event of events) {
-      expect(event.inputs).to.deep.equal([{ namespace: "bigquery", name: "proj.schema.table_a" }]);
-      expect(event.outputs).to.deep.equal([
-        { namespace: "bigquery", name: "proj.assertions.assert_a" },
-      ]);
       expect(event.job.facets.gcp_bq_pipelines_job.actionType).to.equal("ASSERTION");
     }
   });

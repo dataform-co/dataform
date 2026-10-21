@@ -80,17 +80,25 @@ export class LineagePayloadBuilder {
       }
     }
 
-    const inputs = (action.dependencyTargets || []).map((dep) => ({
-      namespace: "bigquery",
-      name: `${dep.database || projectId}.${dep.schema}.${dep.name}`,
-    }));
+    const fullActionTarget = `${action.target.database || projectId}.${action.target.schema}.${action.target.name}`;
 
-    const outputs = [
-      {
-        namespace: "bigquery",
-        name: `${action.target.database || projectId}.${action.target.schema}.${action.target.name}`,
-      },
-    ];
+    const inputs =
+      eventType === "COMPLETE"
+        ? (action.dependencyTargets || []).map((dep) => ({
+            namespace: "bigquery",
+            name: `${dep.database || projectId}.${dep.schema}.${dep.name}`,
+          }))
+        : [];
+
+    const outputs =
+      eventType === "COMPLETE" && actionType === "TABLE"
+        ? [
+            {
+              namespace: "bigquery",
+              name: fullActionTarget,
+            },
+          ]
+        : [];
 
     const workdirIdentifier = this.buildWorkdirIdentifier();
     const canonicalActionTarget = `${action.target.schema}.${action.target.name}`;
@@ -143,7 +151,7 @@ export class LineagePayloadBuilder {
       gcp_lineage: {
         _producer: PRODUCER_URL,
         _schemaURL: GCP_LINEAGE_JOB_FACET_SCHEMA,
-        displayName: `BigQuery Pipelines action ${canonicalActionTarget}`,
+        displayName: `BigQuery Pipelines action ${fullActionTarget}`,
         origin: {
           name: `projects/${projectId}/locations/${location}/cli/${workdirIdentifier}`,
           sourceType: "BIGQUERY_PIPELINES",
@@ -159,7 +167,7 @@ export class LineagePayloadBuilder {
       gcp_bq_pipelines_job: {
         dataformCoreVersion: version,
         actionType,
-        actionName: canonicalActionTarget,
+        actionName: fullActionTarget,
       },
     };
 
