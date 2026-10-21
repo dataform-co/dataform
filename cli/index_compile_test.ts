@@ -163,21 +163,27 @@ suite("compile", () => {
       });
     });
 
-    // Runs the CLI with a fake `npm` that marks that it has started and then hangs, presses Ctrl+C
-    // once the installation has started, and reports how the CLI exited. The fake `npm` makes the
-    // timing deterministic and needs no network access.
-    async function interruptDuringCoreInstallation(command: string) {
+    // Runs the CLI with a fake `npm` that records its pid, marks that it has started and then
+    // hangs; once the installation has started, sends `signal` either to the CLI's whole process
+    // group (like Ctrl+C in a terminal) or to the CLI process only (like `kill <pid>`), and reports
+    // how the CLI exited. The fake `npm` makes the timing deterministic and needs no network.
+    async function interruptDuringCoreInstallation(
+      command: string,
+      signal: "SIGINT" | "SIGTERM",
+      target: "processGroup" | "cliProcess",
+    ) {
       const projectDir = tmpDirFixture.createNewTmpDir();
       writeWorkflowSettingsWithCoreVersion(projectDir, version);
       const tmpDir = tmpDirFixture.createNewTmpDir();
       const fakeBinDir = tmpDirFixture.createNewTmpDir();
+      const npmPidFile = path.join(tmpDirFixture.createNewTmpDir(), "npm.pid");
       fs.writeFileSync(
         path.join(fakeBinDir, "npm"),
-        "#!/bin/sh\ntouch npm-started\nexec sleep 600\n",
+        `#!/bin/sh\necho $$ > "${npmPidFile}"\ntouch npm-started\nexec sleep 600\n`,
         { mode: 0o755 },
       );
 
-      // A separate process group, like a job in a terminal, so that Ctrl+C reaches every process.
+      // A separate process group, like a job in a terminal.
       const cli = spawn(nodePath, [cliEntryPointPath, command, projectDir], {
         detached: true,
         env: {
@@ -195,28 +201,54 @@ suite("compile", () => {
             fs.existsSync(path.join(tmpDir, entry, "npm-started")),
           ),
         );
-        process.kill(-cli.pid, "SIGINT");
+        process.kill(target === "processGroup" ? -cli.pid : cli.pid, signal);
       } catch (e) {
         process.kill(-cli.pid, "SIGKILL");
         throw e;
       }
       const { exitCode } = await result;
-      return { exitCode, leftoverEnvironments: temporaryEnvironments() };
+
+      const npmPid = Number(fs.readFileSync(npmPidFile, "utf8"));
+      const npmStopped = await waitUntil(() => !isRunning(npmPid), 5000).then(
+        () => true,
+        () => false,
+      );
+      if (!npmStopped) {
+        // Don't leave the fake npm behind when the test fails.
+        process.kill(npmPid, "SIGKILL");
+      }
+      return { exitCode, leftoverEnvironments: temporaryEnvironments(), npmStopped };
     }
 
-    ["compile", "run"].forEach((command) => {
+    // The fake npm, process groups and process.kill(-pid) are POSIX-only.
+    if (process.platform !== "win32") {
+      ["compile", "run"].forEach((command) => {
+        test(
+          `Ctrl+C during the @dataform/core installation of ${command} removes the temporary ` +
+            "environment",
+          { timeout: 60000 },
+          async () => {
+            const result = await interruptDuringCoreInstallation(command, "SIGINT", "processGroup");
+
+            expect(result.exitCode).equals(130);
+            expect(result.leftoverEnvironments).deep.equals([]);
+            expect(result.npmStopped).equals(true);
+          },
+        );
+      });
+
       test(
-        `Ctrl+C during the @dataform/core installation of ${command} removes the temporary ` +
-          "environment",
+        "SIGTERM sent only to the CLI process stops npm and removes the temporary environment",
         { timeout: 60000 },
         async () => {
-          const { exitCode, leftoverEnvironments } = await interruptDuringCoreInstallation(command);
+          const result = await interruptDuringCoreInstallation("compile", "SIGTERM", "cliProcess");
 
-          expect(exitCode).equals(130);
-          expect(leftoverEnvironments).deep.equals([]);
+          expect(result.exitCode).equals(143);
+          expect(result.npmStopped).equals(true);
+          expect(result.leftoverEnvironments).deep.equals([]);
         },
       );
-    });
+    }
   });
 
   suite("disable-assertions flag (compilation)", ({ afterEach, beforeEach }) => {
@@ -486,6 +518,15 @@ SELECT 1 as id
     });
   });
 });
+
+function isRunning(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (e) {
+    return e.code === "EPERM";
+  }
+}
 
 async function waitUntil(condition: () => boolean, timeoutMillis = 30000) {
   const deadline = Date.now() + timeoutMillis;

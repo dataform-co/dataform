@@ -9,7 +9,7 @@ import {
   testCommand,
 } from "df/cli/commands";
 import { printError } from "df/cli/console";
-import { exitOnTerminationSignals } from "df/cli/signals";
+import { handleTerminationSignals } from "df/cli/signals";
 import { createYargsCli } from "df/cli/yargswrapper";
 
 process.on("unhandledRejection", async (reason: any) => {
@@ -17,7 +17,7 @@ process.on("unhandledRejection", async (reason: any) => {
 });
 
 export function runCli() {
-  exitOnTerminationSignals();
+  handleTerminationSignals();
 
   const commands = [
     initCommand,

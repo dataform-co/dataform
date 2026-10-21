@@ -1,8 +1,7 @@
-import { exec } from "child_process";
+import { ChildProcess, spawn, spawnSync } from "child_process";
 import * as fs from "fs-extra";
 import * as path from "path";
 import * as tmp from "tmp";
-import { promisify } from "util";
 
 import { BaseWorker } from "df/cli/api/commands/base_worker";
 import { MISSING_CORE_VERSION_ERROR } from "df/cli/api/commands/install";
@@ -113,7 +112,7 @@ async function createIsolatedEnvironment(
     fs.copySync(projectDir, environment.projectDir);
     log(`Project copy completed in ${performance.now() - copyStartTime}ms\n`);
 
-    await installCore(environment.projectDir, dataformCoreVersion, log);
+    await installCore(environment, dataformCoreVersion, log);
     return environment;
   } catch (e) {
     environment.cleanup();
@@ -121,8 +120,15 @@ async function createIsolatedEnvironment(
   }
 }
 
-function createTemporaryDirectory(): ICompilationEnvironment {
+/** A temporary environment that also stops the processes running in it when cleaned up. */
+interface ITemporaryEnvironment extends ICompilationEnvironment {
+  /** Runs `command` in a shell in the environment; resolves with its stderr. */
+  run(command: string): Promise<string>;
+}
+
+function createTemporaryDirectory(): ITemporaryEnvironment {
   const projectDir = tmp.dirSync({ prefix: TEMPORARY_ENVIRONMENT_PREFIX }).name;
+  const runningProcesses = new Set<ChildProcess>();
   let removed = false;
   const cleanup = () => {
     if (removed) {
@@ -130,19 +136,64 @@ function createTemporaryDirectory(): ICompilationEnvironment {
     }
     removed = true;
     process.removeListener("exit", cleanup);
+    // Stop npm first, so that it doesn't keep writing into the directory while it is removed.
+    runningProcesses.forEach(killProcessTree);
     fs.rmSync(projectDir, { recursive: true, force: true, maxRetries: 3 });
   };
   // Safety net in case the caller never gets to call cleanup(), e.g. on an uncaught exception.
   // Signals skip "exit" unless the process exits explicitly; the CLI does that in
-  // exitOnTerminationSignals (cli/signals.ts).
+  // handleTerminationSignals (cli/signals.ts).
   process.on("exit", cleanup);
-  return { projectDir, cleanup };
+
+  const run = (command: string) =>
+    new Promise<string>((resolve, reject) => {
+      const child = spawn(command, {
+        cwd: projectDir,
+        shell: true,
+        // On POSIX, its own process group, so that cleanup can stop the shell and npm together.
+        detached: process.platform !== "win32",
+        stdio: ["ignore", "ignore", "pipe"],
+        windowsHide: true,
+      });
+      runningProcesses.add(child);
+      let stderr = "";
+      child.stderr.on("data", (chunk) => (stderr += String(chunk)));
+      child.on("error", (e) => reject(Object.assign(e, { stderr })));
+      child.on("close", (code, signal) => {
+        runningProcesses.delete(child);
+        if (code === 0) {
+          resolve(stderr);
+        } else {
+          const status = signal ? `signal ${signal}` : `code ${code}`;
+          reject(Object.assign(new Error(`'${command}' exited with ${status}`), { stderr }));
+        }
+      });
+    });
+
+  return { projectDir, cleanup, run };
 }
 
-async function installCore(directory: string, dataformCoreVersion: string, log: Log) {
+function killProcessTree(child: ChildProcess) {
+  try {
+    if (process.platform === "win32") {
+      spawnSync("taskkill", ["/pid", String(child.pid), "/T", "/F"], { windowsHide: true });
+    } else {
+      // SIGKILL takes effect immediately, so nothing writes into the directory afterwards.
+      process.kill(-child.pid, "SIGKILL");
+    }
+  } catch (e) {
+    // The process has already exited.
+  }
+}
+
+async function installCore(
+  environment: ITemporaryEnvironment,
+  dataformCoreVersion: string,
+  log: Log,
+) {
   log(`Generating temporary package.json\n`);
   fs.writeFileSync(
-    path.join(directory, "package.json"),
+    path.join(environment.projectDir, "package.json"),
     JSON.stringify({ dependencies: { "@dataform/core": dataformCoreVersion } }, null, 2),
   );
 
@@ -150,7 +201,7 @@ async function installCore(directory: string, dataformCoreVersion: string, log: 
   log(`Running '${npmCommand}' in temporary directory...\n`);
   const npmStartTime = performance.now();
   try {
-    const { stderr } = await promisify(exec)(npmCommand, { cwd: directory });
+    const stderr = await environment.run(npmCommand);
     log(`NPM HTTP Logs:\n${stderr}\n`);
     log(`NPM install completed in ${performance.now() - npmStartTime}ms\n`);
   } catch (e) {

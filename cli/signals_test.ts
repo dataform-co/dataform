@@ -1,10 +1,15 @@
 import { expect } from "chai";
 import { EventEmitter } from "events";
 
-import { exitOnTerminationSignals } from "df/cli/signals";
+import { handleTerminationSignals, setSignalHandler } from "df/cli/signals";
 import { suite, test } from "df/testing";
 
-suite("exitOnTerminationSignals", () => {
+suite("handleTerminationSignals", ({ afterEach }) => {
+  afterEach("clear command handlers", () => {
+    setSignalHandler("SIGINT", undefined);
+    setSignalHandler("SIGTERM", undefined);
+  });
+
   function createProcess() {
     const exitCodes: number[] = [];
     const proc = Object.assign(new EventEmitter(), {
@@ -12,7 +17,7 @@ suite("exitOnTerminationSignals", () => {
         exitCodes.push(code);
       },
     });
-    exitOnTerminationSignals(proc as any);
+    handleTerminationSignals(proc as any);
     return { proc, exitCodes };
   }
 
@@ -32,16 +37,29 @@ suite("exitOnTerminationSignals", () => {
     expect(exitCodes).deep.equals([143]);
   });
 
-  test("leaves the signal to a command that handles it", () => {
+  test("exits even if another listener is registered", () => {
     const { proc, exitCodes } = createProcess();
-    let handledByCommand = false;
-    proc.on("SIGINT", () => {
-      handledByCommand = true;
-    });
+    // E.g. a listener added by a library.
+    proc.on("SIGINT", () => undefined);
 
     proc.emit("SIGINT");
 
-    expect(handledByCommand).equals(true);
+    expect(exitCodes).deep.equals([130]);
+  });
+
+  test("lets the command handle the first signal and exits on the second", () => {
+    const { proc, exitCodes } = createProcess();
+    let handled = 0;
+    setSignalHandler("SIGINT", () => {
+      handled++;
+    });
+
+    proc.emit("SIGINT");
+    expect(handled).equals(1);
     expect(exitCodes).deep.equals([]);
+
+    proc.emit("SIGINT");
+    expect(handled).equals(1);
+    expect(exitCodes).deep.equals([130]);
   });
 });
