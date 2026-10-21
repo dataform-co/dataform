@@ -59,6 +59,11 @@ export function createLineageEmitter(
   }
 
   if (!input.location && !input.readCredentials.location) {
+    stderr.write(
+      `Warning: Lineage emission is enabled, but no location was specified. Lineage requires a ` +
+        `specific location, set either as "defaultLocation" in workflow_settings.yaml or as ` +
+        `"location" in .df-credentials.json. Lineage will not be emitted.\n`,
+    );
     return undefined;
   }
 
