@@ -19,6 +19,7 @@ set -euo pipefail
 : "${REPO_TOKEN:?REPO_TOKEN must be set}"
 : "${PREFETCH_REGISTRY:?PREFETCH_REGISTRY must be set, e.g. registry.example.com/npm/}"
 GITHUB_REPO="${GITHUB_REPO:-dataform-co/dataform}"
+PR_AUTHOR="${PR_AUTHOR:-dependabot[bot]}" # Override for testing.
 PNPM_VERSION="${PNPM_VERSION:-9.7.1}" # Keep in sync with MODULE.bazel.
 
 WORK_DIR="$(mktemp -d)"
@@ -38,7 +39,7 @@ prefetch_lockfile() {
   echo "=== Prefetching dependencies for ${name}"
   # `pnpm fetch` only needs the lockfile; it downloads every package in it.
   if ! (cd "${dir}" && NPM_CONFIG_USERCONFIG="${WORK_DIR}/.npmrc" \
-      npx --yes "pnpm@${PNPM_VERSION}" fetch --store-dir "${WORK_DIR}/store" \
+      npx --yes "pnpm@${PNPM_VERSION}" fetch --ignore-scripts --store-dir "${WORK_DIR}/store" \
       --config.registry="https://${PREFETCH_REGISTRY}"); then
     echo "WARNING: some packages for ${name} could not be fetched yet." >&2
   fi
@@ -49,9 +50,9 @@ prefetch_lockfile "checkout" "pnpm-lock.yaml"
 if [[ "${1:-}" == "--open-dependabot-prs" ]]; then
   # Public repo: the unauthenticated GitHub API is sufficient.
   prs="$(curl -fsSL "https://api.github.com/repos/${GITHUB_REPO}/pulls?state=open&per_page=100" |
-    python3 -c 'import json,sys
+    PR_AUTHOR="${PR_AUTHOR}" python3 -c 'import json,os,sys
 for pr in json.load(sys.stdin):
-    if pr["user"]["login"] == "dependabot[bot]":
+    if pr["user"]["login"] == os.environ["PR_AUTHOR"]:
         print(pr["number"], pr["head"]["sha"])')"
   while read -r number sha; do
     [[ -z "${number}" ]] && continue
