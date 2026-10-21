@@ -33,6 +33,24 @@ suite("getBigQueryCredentials", ({ afterEach }) => {
     });
   });
 
+  test("ADC with auto location leaves location unset", () => {
+    expect(getBigQueryCredentials(fakePrompts([3, 0], ["my-project", ""]))).to.eql({
+      projectId: "my-project",
+      location: undefined,
+    });
+  });
+
+  test("JSON key with auto location leaves location unset", () => {
+    const keyPath = path.join(tmpDirFixture.createNewTmpDir(), "key.json");
+    const key = JSON.stringify({ type: "service_account", project_id: "key-project" });
+    fs.writeFileSync(keyPath, key);
+    expect(getBigQueryCredentials(fakePrompts([3, 1], [keyPath, ""]))).to.eql({
+      projectId: "key-project",
+      credentials: key,
+      location: undefined,
+    });
+  });
+
   test("JSON key with a service account to impersonate", () => {
     const keyPath = path.join(tmpDirFixture.createNewTmpDir(), "key.json");
     const key = JSON.stringify({ type: "service_account", project_id: "key-project" });
