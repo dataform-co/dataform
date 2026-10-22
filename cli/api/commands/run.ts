@@ -503,7 +503,6 @@ export class Runner {
 
     try {
       // Start running tasks from the last executed task (if any), onwards.
-      let isFirstPendingTask = true;
       for (const task of action.tasks.slice(actionResult.tasks.length)) {
         if (this.stopped) {
           return actionResult;
@@ -512,9 +511,7 @@ export class Runner {
           actionResult.status === dataform.ActionResult.ExecutionStatus.RUNNING &&
           !this.cancelled
         ) {
-          const missingSchema = isFirstPendingTask
-            ? this.missingSchemaToCreate(action, task)
-            : null;
+          const missingSchema = this.missingSchemaToCreate(action, task);
           const taskStatus = await this.executeTask(
             this.dbadapter,
             task,
@@ -548,7 +545,6 @@ export class Runner {
             errorMessage: this.skipReason || "Task skipped after cancellation",
           });
         }
-        isFirstPendingTask = false;
       }
     } catch (e) {
       if (
@@ -609,7 +605,9 @@ export class Runner {
 
   /**
    * In lazy schema creation mode, returns the target dataset to create in the same job as the
-   * given task (the first not-yet-executed task of the action), or null if there's none.
+   * given task, or null if there's none. Every task is checked, not just the first one of the
+   * action: once a task creates the dataset, it's no longer missing and later tasks aren't
+   * wrapped, but in dry runs it's never created, so every task writing to it must be wrapped.
    */
   private missingSchemaToCreate(
     action: dataform.IExecutionAction,
