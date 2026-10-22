@@ -3,6 +3,7 @@ import * as fs from "fs-extra";
 import { dump as dumpYaml, load as loadYaml } from "js-yaml";
 import * as path from "path";
 
+import { TEMPORARY_ENVIRONMENT_PREFIX } from "df/cli/api/commands/compile";
 import { Logger } from "df/cli/console";
 import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
@@ -12,41 +13,30 @@ import {
   nodePath,
   npmPath,
   writeDefinitionFile,
+  writeWorkflowSettingsFile,
 } from "df/testing";
+import { readTestCredentialsConfig, resolveCredentialsPath } from "df/testing/credentials";
 import { TmpDirFixture } from "df/testing/fixtures";
 
 const DEFAULT_PROJECT = "dataform-open-source";
 const DEFAULT_LOCATION = "US";
 
-export const CREDENTIALS_PATH = path.resolve("test_credentials/bigquery.json");
+export const CREDENTIALS_PATH = resolveCredentialsPath();
 
 const logger = new Logger(true);
+const initialCredentialsConfig = readTestCredentialsConfig(CREDENTIALS_PATH);
 
 function getCredentialsProjectId(): string {
-  try {
-    if (fs.existsSync(CREDENTIALS_PATH)) {
-      const parsed = JSON.parse(fs.readFileSync(CREDENTIALS_PATH, "utf8"));
-      if (parsed?.projectId) {
-        return parsed.projectId;
-      }
-    }
-  } catch (e) {
-    // Fall back to default
+  if (initialCredentialsConfig?.projectId) {
+    return initialCredentialsConfig.projectId;
   }
   logger.log(`Project name not specified; defaulting to ${DEFAULT_PROJECT}`);
   return DEFAULT_PROJECT;
 }
 
 function getCredentialsLocation(): string {
-  try {
-    if (fs.existsSync(CREDENTIALS_PATH)) {
-      const parsed = JSON.parse(fs.readFileSync(CREDENTIALS_PATH, "utf8"));
-      if (parsed?.location) {
-        return parsed.location;
-      }
-    }
-  } catch (e) {
-    // Fall back to default
+  if (initialCredentialsConfig?.location) {
+    return initialCredentialsConfig.location;
   }
   logger.log(`Location not specified; defaulting to ${DEFAULT_LOCATION}`);
   return DEFAULT_LOCATION;
@@ -115,6 +105,35 @@ export async function runCli(
   return getProcessResult(execFile(nodePath, args, execOptions));
 }
 
+/** Writes a `workflow_settings.yaml` that pins `dataformCoreVersion` to `coreVersion`. */
+export function writeWorkflowSettingsWithCoreVersion(projectDir: string, coreVersion: string) {
+  writeWorkflowSettingsFile(projectDir, {
+    defaultProject: INTEGRATION_TEST_PROJECT,
+    defaultLocation: INTEGRATION_TEST_LOCATION,
+    defaultDataset: "dataform",
+    dataformCoreVersion: coreVersion,
+  });
+}
+
+/**
+ * Runs the CLI with its own temporary directory and npm cache, and reports the temporary
+ * compilation environments the CLI left behind there (there should be none).
+ */
+export async function runCliWithTmpDir(
+  tmpDirFixture: TmpDirFixture,
+  cmd: string,
+  options: string[],
+): Promise<{ exitCode: number; stdout: string; stderr: string; leftoverEnvironments: string[] }> {
+  const tmpDir = tmpDirFixture.createNewTmpDir();
+  const result = await runCli(cmd, options, {
+    env: { ...process.env, TMPDIR: tmpDir, NPM_CONFIG_CACHE: tmpDirFixture.createNewTmpDir() },
+  });
+  const leftoverEnvironments = fs
+    .readdirSync(tmpDir)
+    .filter((entry) => entry.startsWith(TEMPORARY_ENVIRONMENT_PREFIX));
+  return { ...result, leftoverEnvironments };
+}
+
 export function alterWorkflowSettings(
   projectDir: string,
   workflowSettingsOverrides: Partial<dataform.IWorkflowSettings>,
@@ -136,8 +155,9 @@ export function alterWorkflowSettings(
 export async function setupJitProject(
   tmpDirFixture: TmpDirFixture,
   projectDir: string,
+  workflowSettingsOverrides?: Partial<dataform.IWorkflowSettings>,
 ): Promise<void> {
-  await setupProject(tmpDirFixture, projectDir);
+  await setupProject(tmpDirFixture, projectDir, workflowSettingsOverrides);
   writeDefinitionFile(
     projectDir,
     "jit_table.js",

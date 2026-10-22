@@ -1,8 +1,7 @@
-import { exec } from "child_process";
+import { ChildProcess, spawn, spawnSync } from "child_process";
 import * as fs from "fs-extra";
 import * as path from "path";
 import * as tmp from "tmp";
-import { promisify } from "util";
 
 import { BaseWorker } from "df/cli/api/commands/base_worker";
 import {
@@ -19,131 +18,240 @@ import { dataform } from "df/protos/ts";
 
 export class CompilationTimeoutError extends Error {}
 
-function print(text: string) {
-  process.stderr.write(text);
+/** Name prefix of the temporary directories created for `dataformCoreVersion` projects. */
+export const TEMPORARY_ENVIRONMENT_PREFIX = "dataform-";
+
+/** Prints progress details to stderr when `--verbose` is set. */
+type Log = ((text: string) => void) & { readonly verbose: boolean };
+
+function createLog(verbose: boolean): Log {
+  const log = (text: string) => {
+    if (verbose) {
+      process.stderr.write(text);
+    }
+  };
+  return Object.assign(log, { verbose });
 }
 
-export async function compile(
-  compileConfig: dataform.ICompileConfig = {},
-): Promise<dataform.CompiledGraph> {
-  const resolvedProjectPath = path.resolve(compileConfig.projectDir);
-  const packageJsonPath = path.join(resolvedProjectPath, "package.json");
-  const packageLockJsonPath = path.join(resolvedProjectPath, "package-lock.json");
-  const projectNodeModulesPath = path.join(resolvedProjectPath, "node_modules");
+/**
+ * The directory a project is compiled in, i.e. where `@dataform/core` is resolved from
+ * `node_modules`. JiT compilation during `dataform run` must use the same directory, so that
+ * compilation and JiT use the same `@dataform/core`.
+ */
+export interface ICompilationEnvironment {
+  /** Directory containing the project and its `node_modules/@dataform/core`. */
+  projectDir: string;
+  /** Removes any temporary files created for this environment. Safe to call more than once. */
+  cleanup: () => void;
+}
 
-  const workflowSettings = readConfigFromWorkflowSettings(resolvedProjectPath);
-  const workflowSettingsDataformCoreVersion = workflowSettings?.dataformCoreVersion;
-  const workflowSettingsExtension = workflowSettings?.extension ?? undefined;
+/**
+ * Compiles the project and keeps its compilation environment, so that JiT compilation during the
+ * run can use the same `@dataform/core`. The caller must call `environment.cleanup()` when done.
+ */
+export async function compileForRun(compileConfig: dataform.ICompileConfig = {}): Promise<{
+  compiledGraph: dataform.CompiledGraph;
+  environment: ICompilationEnvironment;
+}> {
+  const projectDir = path.resolve(compileConfig.projectDir);
+  const workflowSettings = readConfigFromWorkflowSettings(projectDir);
+  const log = createLog(!!compileConfig.verbose);
 
-  compileConfig.extension = workflowSettingsExtension;
-
-  if (!workflowSettingsDataformCoreVersion && !fs.existsSync(packageJsonPath)) {
-    throw new Error(MISSING_CORE_VERSION_ERROR);
-  }
-
-  if (!workflowSettingsDataformCoreVersion) {
-    return decodeCompiledGraph(await new CompileChildProcess().compile(compileConfig));
-  }
-
-  // For stateless package installation, a temporary directory is used in order to avoid interfering
-  // with user's project directories.
-  [projectNodeModulesPath, packageJsonPath, packageLockJsonPath].forEach((npmPath) => {
-    if (fs.existsSync(npmPath)) {
-      throw new Error(`'${npmPath}' unexpected; remove it and try again`);
+  const environment = workflowSettings?.dataformCoreVersion
+    ? await createIsolatedEnvironment(projectDir, workflowSettings.dataformCoreVersion, log)
+    : useProjectEnvironment(projectDir);
+  // A file the copy filter excluded surfaces as a missing module, and the error doesn't
+  // say why. Say why alongside the error, which is left as is.
+  // This reads the copy, so it runs before the environment is cleaned up.
+  const printExcludedModuleNotes = (messages: string[]) => {
+    if (environment.projectDir === projectDir) {
+      return;
     }
-  });
-
-  const temporaryProjectPath = tmp.dirSync().name;
-  try {
-    if (compileConfig.verbose) {
-      print(
-        `Using isolated environment for @dataform/core@${workflowSettingsDataformCoreVersion}\n`,
-      );
-      print(`Copying project to temporary directory: ${temporaryProjectPath}\n`);
-      const ignoreFiles = findProjectIgnoreFiles(resolvedProjectPath);
-      print(
-        ignoreFiles.length > 0
-          ? `Excluding .git, node_modules, and paths matched by ${ignoreFiles.join(" and ")}, except files reachable from definitions/ and includes/\n`
-          : `Excluding .git and node_modules, except files reachable from definitions/ and includes/ (no .gitignore or .dataformignore in project root)\n`,
-      );
-    }
-    const copyStartTime = performance.now();
-    copyProjectForStatelessInstall(resolvedProjectPath, temporaryProjectPath);
-    if (compileConfig.verbose) {
-      print(`Project copy completed in ${performance.now() - copyStartTime}ms\n`);
-    }
-
-    if (compileConfig.verbose) {
-      print(`Generating temporary package.json\n`);
-    }
-    fs.writeFileSync(
-      path.join(temporaryProjectPath, "package.json"),
-      `{
-  "dependencies": {
-  "@dataform/core": "${workflowSettingsDataformCoreVersion}"
-  }
-}`,
-    );
-
-    const npmCommand = `npm i --ignore-scripts${compileConfig.verbose ? " --loglevel=http" : ""}`;
-    if (compileConfig.verbose) {
-      print(`Running '${npmCommand}' in temporary directory...\n`);
-    }
-    const npmStartTime = performance.now();
-    const { stdout, stderr } = await promisify(exec)(npmCommand, {
-      cwd: temporaryProjectPath,
-    });
-
-    if (compileConfig.verbose) {
-      print(`NPM HTTP Logs:\n${stderr}\n`);
-      print(`NPM install completed in ${performance.now() - npmStartTime}ms\n`);
-    }
-
-    compileConfig.projectDir = temporaryProjectPath;
-
-    // A file the copy filter excluded surfaces as a missing module, and the error doesn't
-    // say why. Say why alongside the error, which is left as is.
-    // This reads the copy, so it runs before the copy is removed below.
-    const printExcludedModuleNotes = (messages: string[]) => {
-      const notes = new Set<string>();
-      for (const message of messages) {
-        const note = explainExcludedModule(message, resolvedProjectPath, temporaryProjectPath);
-        if (note) {
-          notes.add(note);
-        }
+    const notes = new Set<string>();
+    for (const message of messages) {
+      const note = explainExcludedModule(message, projectDir, environment.projectDir);
+      if (note) {
+        notes.add(note);
       }
-      notes.forEach((note) => print(`Note: ${note}\n`));
-    };
-
+    }
+    notes.forEach((note) => process.stderr.write(`Note: ${note}\n`));
+  };
+  try {
     let result: string;
     try {
-      result = await new CompileChildProcess().compile(compileConfig);
+      result = await new CompileChildProcess().compile({
+        ...compileConfig,
+        projectDir: environment.projectDir,
+        extension: workflowSettings?.extension ?? undefined,
+      });
     } catch (e) {
       if (e instanceof Error) {
         printExcludedModuleNotes([e.message]);
       }
       throw e;
     }
-
-    const compiledGraph = decodeCompiledGraph(result);
+    const decodedResult = decode64(dataform.CoreExecutionResponse, result);
+    const compiledGraph = dataform.CompiledGraph.create(decodedResult.compile.compiledGraph);
     printExcludedModuleNotes(
       (compiledGraph.graphErrors?.compilationErrors ?? []).map((error) => error.message ?? ""),
     );
-    return compiledGraph;
-  } finally {
-    // Removal is attempted whether installation and compilation succeed or not. A failure
-    // to remove it mustn't hide the error that ended the compile.
-    try {
-      fs.rmSync(temporaryProjectPath, { recursive: true, force: true, maxRetries: 3 });
-    } catch {
-      // Left for the OS to clean up with the rest of the temporary directory.
-    }
+    return { compiledGraph, environment };
+  } catch (e) {
+    environment.cleanup();
+    throw e;
   }
 }
 
-function decodeCompiledGraph(result: string): dataform.CompiledGraph {
-  const decodedResult = decode64(dataform.CoreExecutionResponse, result);
-  return dataform.CompiledGraph.create(decodedResult.compile.compiledGraph);
+export async function compile(
+  compileConfig: dataform.ICompileConfig = {},
+): Promise<dataform.CompiledGraph> {
+  const { compiledGraph, environment } = await compileForRun(compileConfig);
+  environment.cleanup();
+  return compiledGraph;
+}
+
+/** `package.json` projects are compiled in place, with `@dataform/core` from `dataform install`. */
+function useProjectEnvironment(projectDir: string): ICompilationEnvironment {
+  if (!fs.existsSync(path.join(projectDir, "package.json"))) {
+    throw new Error(MISSING_CORE_VERSION_ERROR);
+  }
+  return { projectDir, cleanup: () => undefined };
+}
+
+/**
+ * Projects with `dataformCoreVersion` in `workflow_settings.yaml` are copied to a temporary
+ * directory where that `@dataform/core` version is installed, so the project directory is left
+ * untouched.
+ */
+async function createIsolatedEnvironment(
+  projectDir: string,
+  dataformCoreVersion: string,
+  log: Log,
+): Promise<ICompilationEnvironment> {
+  ["node_modules", "package.json", "package-lock.json"]
+    .map((npmFile) => path.join(projectDir, npmFile))
+    .forEach((npmPath) => {
+      if (fs.existsSync(npmPath)) {
+        throw new Error(`'${npmPath}' unexpected; remove it and try again`);
+      }
+    });
+
+  const environment = createTemporaryDirectory();
+  try {
+    log(`Using isolated environment for @dataform/core@${dataformCoreVersion}\n`);
+    log(`Copying project to temporary directory: ${environment.projectDir}\n`);
+    if (log.verbose) {
+      const ignoreFiles = findProjectIgnoreFiles(projectDir);
+      log(
+        ignoreFiles.length > 0
+          ? `Excluding .git, node_modules, and paths matched by ${ignoreFiles.join(" and ")}, except files reachable from definitions/ and includes/\n`
+          : `Excluding .git and node_modules, except files reachable from definitions/ and includes/ (no .gitignore or .dataformignore in project root)\n`,
+      );
+    }
+    const copyStartTime = performance.now();
+    copyProjectForStatelessInstall(projectDir, environment.projectDir);
+    log(`Project copy completed in ${performance.now() - copyStartTime}ms\n`);
+
+    await installCore(environment, dataformCoreVersion, log);
+    return environment;
+  } catch (e) {
+    environment.cleanup();
+    throw e;
+  }
+}
+
+/** A temporary environment that also stops the processes running in it when cleaned up. */
+interface ITemporaryEnvironment extends ICompilationEnvironment {
+  /** Runs `command` in a shell in the environment; resolves with its stderr. */
+  run(command: string): Promise<string>;
+}
+
+function createTemporaryDirectory(): ITemporaryEnvironment {
+  const projectDir = tmp.dirSync({ prefix: TEMPORARY_ENVIRONMENT_PREFIX }).name;
+  const runningProcesses = new Set<ChildProcess>();
+  let removed = false;
+  const cleanup = () => {
+    if (removed) {
+      return;
+    }
+    removed = true;
+    process.removeListener("exit", cleanup);
+    // Stop npm first, so that it doesn't keep writing into the directory while it is removed.
+    runningProcesses.forEach(killProcessTree);
+    fs.rmSync(projectDir, { recursive: true, force: true, maxRetries: 3 });
+  };
+  // Safety net in case the caller never gets to call cleanup(), e.g. on an uncaught exception.
+  // Signals skip "exit" unless the process exits explicitly; the CLI does that in
+  // handleTerminationSignals (cli/signals.ts).
+  process.on("exit", cleanup);
+
+  const run = (command: string) =>
+    new Promise<string>((resolve, reject) => {
+      const child = spawn(command, {
+        cwd: projectDir,
+        shell: true,
+        // On POSIX, its own process group, so that cleanup can stop the shell and npm together.
+        detached: process.platform !== "win32",
+        stdio: ["ignore", "ignore", "pipe"],
+        windowsHide: true,
+      });
+      runningProcesses.add(child);
+      let stderr = "";
+      child.stderr.on("data", (chunk) => (stderr += String(chunk)));
+      child.on("error", (e) => reject(Object.assign(e, { stderr })));
+      child.on("close", (code, signal) => {
+        runningProcesses.delete(child);
+        if (code === 0) {
+          resolve(stderr);
+        } else {
+          const status = signal ? `signal ${signal}` : `code ${code}`;
+          reject(Object.assign(new Error(`'${command}' exited with ${status}`), { stderr }));
+        }
+      });
+    });
+
+  return { projectDir, cleanup, run };
+}
+
+function killProcessTree(child: ChildProcess) {
+  try {
+    if (process.platform === "win32") {
+      spawnSync("taskkill", ["/pid", String(child.pid), "/T", "/F"], { windowsHide: true });
+    } else {
+      // SIGKILL takes effect immediately, so nothing writes into the directory afterwards.
+      process.kill(-child.pid, "SIGKILL");
+    }
+  } catch (e) {
+    // The process has already exited.
+  }
+}
+
+async function installCore(
+  environment: ITemporaryEnvironment,
+  dataformCoreVersion: string,
+  log: Log,
+) {
+  log(`Generating temporary package.json\n`);
+  fs.writeFileSync(
+    path.join(environment.projectDir, "package.json"),
+    JSON.stringify({ dependencies: { "@dataform/core": dataformCoreVersion } }, null, 2),
+  );
+
+  const npmCommand = `npm i --ignore-scripts${log.verbose ? " --loglevel=http" : ""}`;
+  log(`Running '${npmCommand}' in temporary directory...\n`);
+  const npmStartTime = performance.now();
+  try {
+    const stderr = await environment.run(npmCommand);
+    log(`NPM HTTP Logs:\n${stderr}\n`);
+    log(`NPM install completed in ${performance.now() - npmStartTime}ms\n`);
+  } catch (e) {
+    const details = String(e?.stderr || "").trim() || e?.message || String(e);
+    throw new Error(
+      `Failed to install @dataform/core@${dataformCoreVersion} (dataformCoreVersion in ` +
+        `workflow_settings.yaml). Check that the version exists and that the npm registry is ` +
+        `reachable.\n${details}`,
+    );
+  }
 }
 
 export class CompileChildProcess extends BaseWorker<string, string | Error> {

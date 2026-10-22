@@ -1,5 +1,5 @@
 steps:
-  - name: 'gcr.io/cloud-builders/gcloud'
+  - name: "gcr.io/cloud-builders/gcloud"
     script: |
       #!/usr/bin/env bash
       REPO_TOKEN="$(gcloud auth print-access-token)" NPM_TOKEN="test_only" ./scripts/create_npmrc

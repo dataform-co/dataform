@@ -4,29 +4,33 @@ import { question, selectionQuestion } from "df/cli/console";
 import { actuallyResolve } from "df/cli/util";
 import { dataform } from "df/protos/ts";
 
-export function getBigQueryCredentials(): dataform.IBigQuery {
-  const locationIndex = selectionQuestion("Enter the location of your datasets:", [
+export interface ICredentialsPrompts {
+  question: (questionText: string) => string;
+  selectionQuestion: (questionText: string, options: string[]) => number;
+}
+
+export function getBigQueryCredentials(
+  prompts: ICredentialsPrompts = { question, selectionQuestion },
+): dataform.IBigQuery {
+  const locationIndex = prompts.selectionQuestion("Enter the location of your datasets:", [
     "US (default)",
     "EU",
     "other",
   ]);
   let location = locationIndex === 0 ? "US" : "EU";
   if (locationIndex === 2) {
-    location = question("Enter the location's region name (e.g. 'asia-south1'):");
+    location = prompts.question("Enter the location's region name (e.g. 'asia-south1'):");
   }
-  const isApplicationDefaultOrJSONKeyIndex = selectionQuestion(
+  const isApplicationDefaultOrJSONKeyIndex = prompts.selectionQuestion(
     "Do you wish to use Application Default Credentials or JSON Key:",
     ["ADC (default)", "JSON Key"],
   );
   if (isApplicationDefaultOrJSONKeyIndex === 0) {
-    const projectId = question("Enter your billing project ID:");
-    return {
-      projectId,
-      location,
-    };
+    const projectId = prompts.question("Enter your billing project ID:");
+    return withServiceAccountToImpersonate({ projectId, location }, prompts);
   }
   const cloudCredentialsPath = actuallyResolve(
-    question(
+    prompts.question(
       "Please follow the instructions at https://docs.dataform.co/dataform-cli#create-a-credentials-file/\n" +
         "to create and download a private key from the Google Cloud Console in JSON format.\n" +
         "(You can delete this file after credential initialization is complete.)\n\n" +
@@ -37,9 +41,23 @@ export function getBigQueryCredentials(): dataform.IBigQuery {
     throw new Error(`Google Cloud private key file "${cloudCredentialsPath}" does not exist!`);
   }
   const cloudCredentials = JSON.parse(fs.readFileSync(cloudCredentialsPath, "utf8"));
-  return {
-    projectId: cloudCredentials.project_id,
-    credentials: fs.readFileSync(cloudCredentialsPath, "utf8"),
-    location,
-  };
+  return withServiceAccountToImpersonate(
+    {
+      projectId: cloudCredentials.project_id,
+      credentials: fs.readFileSync(cloudCredentialsPath, "utf8"),
+      location,
+    },
+    prompts,
+  );
+}
+
+/** Asks for an optional service account to impersonate with the given credentials. */
+function withServiceAccountToImpersonate(
+  credentials: dataform.IBigQuery,
+  prompts: ICredentialsPrompts,
+): dataform.IBigQuery {
+  const impersonateServiceAccount = prompts
+    .question("Enter a service account to impersonate (optional, press Enter to skip):")
+    .trim();
+  return impersonateServiceAccount ? { ...credentials, impersonateServiceAccount } : credentials;
 }

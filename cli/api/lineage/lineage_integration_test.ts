@@ -47,8 +47,9 @@ class FakeDbAdapter implements IDbAdapter {
   public executed: string[] = [];
 
   public async execute(statement: string): Promise<IExecutionResult> {
+    const jobIndex = this.executed.length;
     this.executed.push(statement);
-    return { rows: [], metadata: {} };
+    return { rows: [], metadata: { bigquery: { jobId: `job-${jobIndex}` } } };
   }
   public async executeRaw(statement: string): Promise<IExecutionResultRaw> {
     return { rows: [], metadata: {} };
@@ -173,6 +174,78 @@ suite("--emit-lineage integration", { parallel: true }, () => {
     for (const events of eventTypesPerRunId.values()) {
       expect(events.sort()).to.deep.equal(["COMPLETE", "START"]);
     }
+  });
+
+  test("Case 1b — every BigQuery-job action type emits; declarations do not", async () => {
+    const recorder = new RecordingLineageClient();
+    const emitter = createLineageEmitter(
+      factoryInput({ cliEmitLineage: true }),
+      new StderrCapture(),
+      recorderProvider(recorder),
+    );
+    expect(emitter).to.not.equal(undefined);
+
+    const graph = makeLinearGraph();
+    graph.actions.push(
+      dataform.ExecutionAction.create({
+        target: { database: "test-project", schema: "s_assertions", name: "assert_a" },
+        type: "assertion",
+        tasks: [
+          { type: "statement", statement: "CREATE OR REPLACE VIEW s_assertions.assert_a AS ..." },
+          { type: "assertion", statement: "SELECT SUM(1) AS row_count FROM s_assertions.assert_a" },
+        ],
+        dependencyTargets: [{ database: "test-project", schema: "s", name: "table_a" }],
+      }),
+      dataform.ExecutionAction.create({
+        target: { database: "test-project", schema: "s", name: "graph" },
+        type: "propertyGraph",
+        tasks: [{ type: "statement", statement: "CREATE OR REPLACE PROPERTY GRAPH s.graph ..." }],
+        dependencyTargets: [{ database: "test-project", schema: "s", name: "table_a" }],
+      }),
+      dataform.ExecutionAction.create({
+        target: { database: "bigquery-public-data", schema: "samples", name: "shakespeare" },
+        type: "declaration",
+        tasks: [],
+      }),
+    );
+
+    const dbadapter = new FakeDbAdapter();
+    const runner = run(dbadapter, graph, { lineageEmitter: emitter });
+    await runner.result();
+    await emitter!.drain();
+
+    const eventsByActionType = new Map<string, string[]>();
+    let assertionCompletePayload: any;
+    for (const call of recorder.calls) {
+      const ol = fromProtoStruct(call.request.openLineage);
+      const actionType = ol.job.facets.gcp_bq_pipelines_job.actionType as string;
+      if (!eventsByActionType.has(actionType)) {
+        eventsByActionType.set(actionType, []);
+      }
+      eventsByActionType.get(actionType).push(ol.eventType as string);
+      if (actionType === "ASSERTION" && ol.eventType === "COMPLETE") {
+        assertionCompletePayload = ol;
+      }
+    }
+    // 2 tables + 1 assertion + 1 property graph, each START + COMPLETE.
+    expect(recorder.calls.length).to.equal(8);
+    expect([...eventsByActionType.keys()].sort()).to.deep.equal([
+      "ASSERTION",
+      "PROPERTY_GRAPH",
+      "TABLE",
+    ]);
+    expect(eventsByActionType.get("ASSERTION").sort()).to.deep.equal(["COMPLETE", "START"]);
+    expect(eventsByActionType.get("PROPERTY_GRAPH").sort()).to.deep.equal(["COMPLETE", "START"]);
+
+    // Verify end-to-end with Runner.executeAction that the assertion COMPLETE
+    // event selects the CREATE VIEW task's jobId and skips the assertion check task.
+    const createViewJobIndex = dbadapter.executed.findIndex((sql) =>
+      sql.startsWith("CREATE OR REPLACE VIEW s_assertions.assert_a"),
+    );
+    expect(createViewJobIndex).to.be.greaterThan(-1);
+    expect(assertionCompletePayload.run.facets.externalQuery.externalQueryId).to.equal(
+      `test-project.us.job-${createViewJobIndex}`,
+    );
   });
 
   test("Case 2 — workflow lineage.enabled=true (no CLI flag) enables emission", async () => {

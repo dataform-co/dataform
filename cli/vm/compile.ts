@@ -3,27 +3,14 @@ import * as glob from "glob";
 import * as path from "path";
 import * as semver from "semver";
 
+import { findInstalledCoreBundle } from "df/cli/vm/core_installation";
 import { encode64 } from "df/common/protos";
 import { CompilerFunction, VmRunner } from "df/common/vm/vm_runner";
 import { dataform } from "df/protos/ts";
 
 export function compile(compileConfig: dataform.ICompileConfig) {
   compileConfig.projectDir = fs.realpathSync(path.resolve(compileConfig.projectDir));
-  const coreBundlePath = path.join(
-    compileConfig.projectDir,
-    "node_modules",
-    "@dataform",
-    "core",
-    "bundle.js",
-  );
-  if (!fs.existsSync(coreBundlePath)) {
-    throw new Error(
-      "Could not find a recent installed version of @dataform/core in the project. Check that " +
-        "either `dataformCoreVersion` is specified in `workflow_settings.yaml`, or " +
-        "`@dataform/core` is specified in `package.json`. If using `package.json`, then run " +
-        "`dataform install`.",
-    );
-  }
+  const coreBundlePath = findInstalledCoreBundle(compileConfig.projectDir);
 
   const vmIndexFileName = path.resolve(path.join(compileConfig.projectDir, "index.js"));
 
@@ -44,26 +31,9 @@ export function compile(compileConfig: dataform.ICompileConfig) {
     vmIndexFileName,
   );
 
-  const cliVersion = readCliVersion();
-  const cliParsed = semver.parse(cliVersion);
-  // cliParsed is null for unparseable strings, and "0.0.0" is the sentinel
-  // returned when package.json can't be read (unbundled local dev). In both
-  // cases skip the check rather than reject every real Core install.
-  if (cliParsed && cliVersion !== "0.0.0") {
-    const minCoreVersion = `${cliParsed.major}.${cliParsed.minor}.0`;
-    if (
-      semver.major(dataformCoreVersion) !== cliParsed.major ||
-      semver.lt(dataformCoreVersion, minCoreVersion)
-    ) {
-      throw new Error(
-        `@dataform/core ${dataformCoreVersion} is not compatible with @dataform/cli ` +
-          `${cliVersion}. The CLI requires @dataform/core >= ${minCoreVersion} ` +
-          `(matching major.minor). Set \`dataformCoreVersion: ${cliVersion}\` in ` +
-          `workflow_settings.yaml (or pin @dataform/core in package.json), then run ` +
-          `\`dataform install\`.`,
-      );
-    }
-  }
+  checkCoreCompatibility(dataformCoreVersion, readCliVersion());
+  // Core older than 3.0.57 needs the shim below. Once MIN_SUPPORTED_CORE_VERSION is 3.0.57 or
+  // higher, delete the shim and its tests in cli/index_compile_test.ts.
   const needsCallerFileShim = semver.lt(dataformCoreVersion, "3.0.57");
 
   // @dataform/core < 3.0.57 reads global.__dataform_current_file. Track the currently
@@ -161,6 +131,37 @@ function readCliVersion(): string {
     return pkg.version || "0.0.0";
   } catch {
     return "0.0.0";
+  }
+}
+
+// The oldest @dataform/core version this CLI works with. It is not tied to the CLI version, so
+// releasing a new CLI version does not drop support for older Core versions. Only raise it on
+// purpose, and update the tests when you do.
+export const MIN_SUPPORTED_CORE_VERSION = "3.0.0";
+
+/**
+ * Throws an error if this CLI can't work with the installed @dataform/core version. Core must
+ * have the same major version as the CLI and be at least MIN_SUPPORTED_CORE_VERSION. Newer Core
+ * versions with the same major version are also fine.
+ */
+export function checkCoreCompatibility(coreVersion: string, cliVersion: string) {
+  const cliParsed = semver.parse(cliVersion);
+  // Skip the check if the CLI version is unknown or invalid. readCliVersion() returns "0.0.0"
+  // when it can't read package.json, e.g. when the CLI runs from source instead of a bundle.
+  if (!cliParsed || cliVersion === "0.0.0") {
+    return;
+  }
+  const majorFloor = `${cliParsed.major}.0.0`;
+  const minCoreVersion = semver.gt(MIN_SUPPORTED_CORE_VERSION, majorFloor)
+    ? MIN_SUPPORTED_CORE_VERSION
+    : majorFloor;
+  if (semver.major(coreVersion) !== cliParsed.major || semver.lt(coreVersion, minCoreVersion)) {
+    throw new Error(
+      `@dataform/core ${coreVersion} is not compatible with @dataform/cli ${cliVersion}. ` +
+        `The CLI requires @dataform/core >=${minCoreVersion} <${cliParsed.major + 1}.0.0. ` +
+        `Set \`dataformCoreVersion: ${cliVersion}\` in workflow_settings.yaml, or pin ` +
+        `@dataform/core in package.json and run \`dataform install\`.`,
+    );
   }
 }
 

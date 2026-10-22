@@ -8,6 +8,7 @@ ts_library(
     name = "vm",
     srcs = [
         "compile.ts",
+        "core_installation.ts",
         "jit_worker.ts",
         "worker.ts",
     ],

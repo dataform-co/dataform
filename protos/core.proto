@@ -42,6 +42,10 @@ message ProjectConfig {
 
   optional bool lineage_enabled = 25;
 
+  map<string, string> default_job_labels = 26;
+
+  DefaultLakehouseConfig default_lakehouse_config = 27;
+
   reserved 3, 4, 6, 8, 10, 12, 13;
 }
 
@@ -61,6 +65,14 @@ message DefaultIcebergConfig {
   // Optional. The connection specifying the credentials to be used to read and
   // write to external storage, such as Cloud Storage.
   string connection = 4;
+}
+
+message DefaultLakehouseConfig {
+  // Optional. Default Lakehouse catalog name.
+  string catalog = 1;
+
+  // Optional. Default Lakehouse namespace name.
+  string namespace = 2;
 }
 
 message CompileConfig {
@@ -153,6 +165,10 @@ message ActionDescriptor {
   Metadata metadata = 4;
   ActionCompilationMode compilation_mode = 5;
   string reservation = 6;
+  // Effective BigQuery job labels for this action, with
+  // `ProjectConfig.default_job_labels` already merged in and overridden by
+  // action-level `job_labels`.
+  map<string, string> job_labels = 7;
 }
 
 message Metadata {
@@ -345,6 +361,8 @@ message Test {
   Target canonical_target = 8;
 
   repeated Target dependency_targets = 9;
+
+  ActionDescriptor action_descriptor = 11;
 }
 
 message Notebook {
@@ -414,6 +432,8 @@ message DataPreparation {
 
   LoadConfiguration load = 16;
 
+  ActionDescriptor action_descriptor = 17;
+
   reserved 7, 10;
 }
 
@@ -444,21 +464,22 @@ message PropertyGraph {
   repeated Target dependency_targets = 3;
   string file_name = 4;
   string description = 5;
-  repeated GraphEntity entities = 6;
-  repeated GraphRelationship relationships = 7;
+  repeated GraphNodeTable nodes = 6;
+  repeated GraphEdgeTable edges = 7;
   string graph_body = 8;
   bool disabled = 9;
   repeated string tags = 10;
+  ActionDescriptor action_descriptor = 11;
 }
 
-message GraphEntity {
+message GraphNodeTable {
   string name = 1;
   Target data_source = 2;
   repeated string keys = 3;
   repeated GraphLabel labels = 4;
 }
 
-message GraphRelationship {
+message GraphEdgeTable {
   string name = 1;
   Target data_source = 2;
   repeated string keys = 3;
@@ -485,9 +506,9 @@ message GraphField {
 }
 
 message GraphEndpoint {
-  string entity = 1;
-  repeated string relationship_columns = 2;
-  repeated string entity_columns = 3;
+  string node = 1;
+  repeated string edge_columns = 2;
+  repeated string node_columns = 3;
 }
 
 message CompiledGraph {

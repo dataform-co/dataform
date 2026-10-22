@@ -7,12 +7,12 @@ import { dataform } from "df/protos/ts";
 const CATALOG_NOT_SUPPORTED_MESSAGE =
   "Catalog-based data sources (BigLake/Iceberg/external catalogs) are not yet supported.";
 
-function entityRefKey(name: string): string {
-  return `entity:${name}`;
+function nodeRefKey(name: string): string {
+  return `node:${name}`;
 }
 
-function relationshipRefKey(name: string): string {
-  return `relationship:${name}`;
+function edgeRefKey(name: string): string {
+  return `edge:${name}`;
 }
 
 export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
@@ -20,10 +20,10 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
   public dependOnDependencyAssertions: boolean = false;
 
   private proto = dataform.PropertyGraph.create({ description: "", disabled: false });
-  // Populated during construction for entity/relationship configs that use a ref-style
+  // Populated during construction for node/edge configs that use a ref-style
   // dataSource; drained in finalize() once all actions are indexed, since the target
   // schema/database of a ref cannot be resolved until every action is known.
-  // Keys are produced by entityRefKey / relationshipRefKey.
+  // Keys are produced by nodeRefKey / edgeRefKey.
   private pendingRefs = new Map<string, dataform.ITarget>();
   private dependencyKeys = new Set<string>();
 
@@ -35,15 +35,15 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
       return;
     }
 
-    this.normalizeEntitiesAndRelationships(unverifiedConfig);
+    this.normalizeNodesAndEdges(unverifiedConfig);
 
     const config = this.verifyConfig(unverifiedConfig);
 
     if (!config.name) {
       throw new Error("Property graphs must have a populated 'name' field.");
     }
-    if (!config.entities || config.entities.length === 0) {
-      throw new Error(`Property graph '${config.name}' must declare at least one entity.`);
+    if (!config.nodes || config.nodes.length === 0) {
+      throw new Error(`Property graph '${config.name}' must declare at least one node.`);
     }
 
     const configTarget = dataform.Target.create({
@@ -73,11 +73,9 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
       this.dependOnDependencyAssertions = config.dependOnDependencyAssertions;
     }
 
-    this.proto.entities = config.entities.map((entityConfig) =>
-      this.buildEntity(entityConfig, config.name),
-    );
-    this.proto.relationships = (config.relationships || []).map((relConfig) =>
-      this.buildRelationship(relConfig, config.name),
+    this.proto.nodes = config.nodes.map((nodeConfig) => this.buildNode(nodeConfig, config.name));
+    this.proto.edges = (config.edges || []).map((edgeConfig) =>
+      this.buildEdge(edgeConfig, config.name),
     );
 
     this.validateUniqueNames(config.name);
@@ -104,13 +102,13 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
 
   public finalize() {
     let allResolved = true;
-    for (const entity of this.proto.entities) {
-      if (!this.resolveRefIntoDataSource(entity, entityRefKey(entity.name))) {
+    for (const node of this.proto.nodes) {
+      if (!this.resolveRefIntoDataSource(node, nodeRefKey(node.name))) {
         allResolved = false;
       }
     }
-    for (const rel of this.proto.relationships) {
-      if (!this.resolveRefIntoDataSource(rel, relationshipRefKey(rel.name))) {
+    for (const edge of this.proto.edges) {
+      if (!this.resolveRefIntoDataSource(edge, edgeRefKey(edge.name))) {
         allResolved = false;
       }
     }
@@ -120,7 +118,7 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
   }
 
   private resolveRefIntoDataSource(
-    entityOrRel: dataform.IGraphEntity | dataform.IGraphRelationship,
+    nodeOrEdge: dataform.IGraphNodeTable | dataform.IGraphEdgeTable,
     key: string,
   ): boolean {
     const rawRef = this.pendingRefs.get(key);
@@ -131,24 +129,24 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
     if (!target) {
       return false;
     }
-    entityOrRel.dataSource = dataform.Target.create(target);
+    nodeOrEdge.dataSource = dataform.Target.create(target);
     return true;
   }
 
-  private normalizeEntitiesAndRelationships(unverifiedConfig: any) {
-    for (const entity of unverifiedConfig.entities || []) {
-      normalizeRef(entity);
-      normalizeKeys(entity);
-      normalizeFields(entity);
-      normalizeFieldsOnLabels(entity);
+  private normalizeNodesAndEdges(unverifiedConfig: any) {
+    for (const node of unverifiedConfig.nodes || []) {
+      normalizeRef(node);
+      normalizeKeys(node);
+      normalizeFields(node);
+      normalizeFieldsOnLabels(node);
     }
-    for (const relationship of unverifiedConfig.relationships || []) {
-      normalizeRef(relationship);
-      normalizeKeys(relationship);
-      normalizeFields(relationship);
-      normalizeFieldsOnLabels(relationship);
-      normalizeJoinKeys(relationship.source);
-      normalizeJoinKeys(relationship.destination);
+    for (const edge of unverifiedConfig.edges || []) {
+      normalizeRef(edge);
+      normalizeKeys(edge);
+      normalizeFields(edge);
+      normalizeFieldsOnLabels(edge);
+      normalizeJoinKeys(edge.source);
+      normalizeJoinKeys(edge.destination);
     }
   }
 
@@ -160,57 +158,57 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
     );
   }
 
-  private buildEntity(
-    entityConfig: dataform.IGraphEntityConfig,
+  private buildNode(
+    nodeConfig: dataform.IGraphNodeTableConfig,
     graphName: string,
-  ): dataform.GraphEntity {
-    if (!entityConfig.name) {
-      throw new Error(`Property graph '${graphName}': every entity must have a 'name'.`);
+  ): dataform.GraphNodeTable {
+    if (!nodeConfig.name) {
+      throw new Error(`Property graph '${graphName}': every node must have a 'name'.`);
     }
-    const entityName = entityConfig.name;
-    const where = `Property graph '${graphName}': entity '${entityName}'`;
-    const dataSource = this.resolveDataSource(entityConfig, entityRefKey(entityName), where);
-    if (!entityConfig.keys || entityConfig.keys.length === 0) {
+    const nodeName = nodeConfig.name;
+    const where = `Property graph '${graphName}': node '${nodeName}'`;
+    const dataSource = this.resolveDataSource(nodeConfig, nodeRefKey(nodeName), where);
+    if (!nodeConfig.keys || nodeConfig.keys.length === 0) {
       throw new Error(`${where} must declare 'keys'.`);
     }
 
-    const labels = buildLabels(entityName, entityConfig, where);
+    const labels = buildLabels(nodeName, nodeConfig, where);
 
-    return dataform.GraphEntity.create({
-      name: entityName,
+    return dataform.GraphNodeTable.create({
+      name: nodeName,
       dataSource,
-      keys: entityConfig.keys,
+      keys: nodeConfig.keys,
       labels,
     });
   }
 
-  private buildRelationship(
-    relConfig: dataform.IGraphRelationshipConfig,
+  private buildEdge(
+    edgeConfig: dataform.IGraphEdgeTableConfig,
     graphName: string,
-  ): dataform.GraphRelationship {
-    if (!relConfig.name) {
-      throw new Error(`Property graph '${graphName}': every relationship must have a 'name'.`);
+  ): dataform.GraphEdgeTable {
+    if (!edgeConfig.name) {
+      throw new Error(`Property graph '${graphName}': every edge must have a 'name'.`);
     }
-    const relName = relConfig.name;
-    const where = `Property graph '${graphName}': relationship '${relName}'`;
-    const dataSource = this.resolveDataSource(relConfig, relationshipRefKey(relName), where);
+    const edgeName = edgeConfig.name;
+    const where = `Property graph '${graphName}': edge '${edgeName}'`;
+    const dataSource = this.resolveDataSource(edgeConfig, edgeRefKey(edgeName), where);
 
-    if (!relConfig.source) {
+    if (!edgeConfig.source) {
       throw new Error(`${where} must declare 'source'.`);
     }
-    if (!relConfig.destination) {
+    if (!edgeConfig.destination) {
       throw new Error(`${where} must declare 'destination'.`);
     }
 
-    const source = buildEndpoint(relConfig.source, `${where} source`);
-    const destination = buildEndpoint(relConfig.destination, `${where} destination`);
+    const source = buildEndpoint(edgeConfig.source, `${where} source`);
+    const destination = buildEndpoint(edgeConfig.destination, `${where} destination`);
 
-    const labels = buildLabels(relName, relConfig, where);
+    const labels = buildLabels(edgeName, edgeConfig, where);
 
-    return dataform.GraphRelationship.create({
-      name: relName,
+    return dataform.GraphEdgeTable.create({
+      name: edgeName,
       dataSource,
-      keys: relConfig.keys || [],
+      keys: edgeConfig.keys || [],
       source,
       destination,
       labels,
@@ -218,18 +216,18 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
   }
 
   private resolveDataSource(
-    entityOrRel: dataform.IGraphEntityConfig | dataform.IGraphRelationshipConfig,
+    nodeOrEdge: dataform.IGraphNodeTableConfig | dataform.IGraphEdgeTableConfig,
     pendingKey: string,
     where: string,
   ): dataform.Target {
-    if (entityOrRel.dataSourceCatalog) {
+    if (nodeOrEdge.dataSourceCatalog) {
       throw new Error(`${where}: ${CATALOG_NOT_SUPPORTED_MESSAGE}`);
     }
-    if (entityOrRel.dataSourceString) {
-      return parseTablePath(entityOrRel.dataSourceString, where);
+    if (nodeOrEdge.dataSourceString) {
+      return parseTablePath(nodeOrEdge.dataSourceString, where);
     }
-    if (entityOrRel.dataSourceDataset) {
-      const ds = entityOrRel.dataSourceDataset;
+    if (nodeOrEdge.dataSourceDataset) {
+      const ds = nodeOrEdge.dataSourceDataset;
       if (!ds.table) {
         throw new Error(`${where}: 'dataSourceDataset.table' is required.`);
       }
@@ -243,8 +241,8 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
       }
       return dataform.Target.create({ name: ds.table, schema: dataset, database: project });
     }
-    if (entityOrRel.dataSourceRef) {
-      const ref = entityOrRel.dataSourceRef;
+    if (nodeOrEdge.dataSourceRef) {
+      const ref = nodeOrEdge.dataSourceRef;
       if (!ref.name) {
         throw new Error(`${where}: 'ref' must include a 'name'.`);
       }
@@ -273,35 +271,33 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
   }
 
   private validateUniqueNames(graphName: string) {
-    const entityNames = new Set<string>();
-    for (const entity of this.proto.entities) {
-      if (entityNames.has(entity.name)) {
-        throw new Error(`Property graph '${graphName}': duplicate entity name '${entity.name}'.`);
+    const nodeNames = new Set<string>();
+    for (const node of this.proto.nodes) {
+      if (nodeNames.has(node.name)) {
+        throw new Error(`Property graph '${graphName}': duplicate node name '${node.name}'.`);
       }
-      entityNames.add(entity.name);
+      nodeNames.add(node.name);
     }
-    const relNames = new Set<string>();
-    for (const rel of this.proto.relationships) {
-      if (relNames.has(rel.name)) {
-        throw new Error(
-          `Property graph '${graphName}': duplicate relationship name '${rel.name}'.`,
-        );
+    const edgeNames = new Set<string>();
+    for (const edge of this.proto.edges) {
+      if (edgeNames.has(edge.name)) {
+        throw new Error(`Property graph '${graphName}': duplicate edge name '${edge.name}'.`);
       }
-      relNames.add(rel.name);
+      edgeNames.add(edge.name);
     }
   }
 
   private resolveEndpointDefaults() {
-    const keysByEntity = new Map<string, string[]>();
-    for (const entity of this.proto.entities) {
-      keysByEntity.set(entity.name, entity.keys);
+    const keysByNode = new Map<string, string[]>();
+    for (const node of this.proto.nodes) {
+      keysByNode.set(node.name, node.keys);
     }
-    for (const rel of this.proto.relationships) {
-      for (const endpoint of [rel.source, rel.destination]) {
-        if (endpoint.entityColumns.length === 0) {
-          const targetKeys = keysByEntity.get(endpoint.entity);
+    for (const edge of this.proto.edges) {
+      for (const endpoint of [edge.source, edge.destination]) {
+        if (endpoint.nodeColumns.length === 0) {
+          const targetKeys = keysByNode.get(endpoint.node);
           if (targetKeys) {
-            endpoint.entityColumns = targetKeys.slice();
+            endpoint.nodeColumns = targetKeys.slice();
           }
         }
       }
@@ -309,27 +305,27 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
   }
 
   private validateEndpointReferences(graphName: string) {
-    const keysByEntity = new Map<string, string[]>();
-    for (const entity of this.proto.entities) {
-      keysByEntity.set(entity.name, entity.keys);
+    const keysByNode = new Map<string, string[]>();
+    for (const node of this.proto.nodes) {
+      keysByNode.set(node.name, node.keys);
     }
-    for (const rel of this.proto.relationships) {
+    for (const edge of this.proto.edges) {
       for (const [role, endpoint] of [
-        ["source", rel.source],
-        ["destination", rel.destination],
+        ["source", edge.source],
+        ["destination", edge.destination],
       ] as const) {
-        const targetKeys = keysByEntity.get(endpoint.entity);
+        const targetKeys = keysByNode.get(endpoint.node);
         if (!targetKeys) {
           throw new Error(
-            `Property graph '${graphName}': relationship '${rel.name}' ${role} references ` +
-              `unknown entity '${endpoint.entity}'.`,
+            `Property graph '${graphName}': edge '${edge.name}' ${role} references ` +
+              `unknown node '${endpoint.node}'.`,
           );
         }
-        if (endpoint.entityColumns.length !== endpoint.relationshipColumns.length) {
+        if (endpoint.nodeColumns.length !== endpoint.edgeColumns.length) {
           throw new Error(
-            `Property graph '${graphName}': relationship '${rel.name}' ${role} join_keys arity ` +
-              `mismatch: relationshipColumns has ${endpoint.relationshipColumns.length}, ` +
-              `entityColumns has ${endpoint.entityColumns.length}.`,
+            `Property graph '${graphName}': edge '${edge.name}' ${role} join_keys arity ` +
+              `mismatch: edgeColumns has ${endpoint.edgeColumns.length}, ` +
+              `nodeColumns has ${endpoint.nodeColumns.length}.`,
           );
         }
       }
@@ -338,34 +334,34 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
 
   private emitGraphBody(): string {
     const parts: string[] = [];
-    const nodeEntries = this.proto.entities.map((entity) => renderNode(entity));
+    const nodeEntries = this.proto.nodes.map((node) => renderNode(node));
     parts.push(`NODE TABLES (\n  ${nodeEntries.join(",\n  ")}\n)`);
-    if (this.proto.relationships.length > 0) {
-      const edgeEntries = this.proto.relationships.map((rel) => renderEdge(rel));
+    if (this.proto.edges.length > 0) {
+      const edgeEntries = this.proto.edges.map((edge) => renderEdge(edge));
       parts.push(`EDGE TABLES (\n  ${edgeEntries.join(",\n  ")}\n)`);
     }
     return parts.join("\n");
   }
 }
 
-function normalizeRef(entityOrRel: any) {
-  if (entityOrRel.ref === undefined || entityOrRel.ref === null) {
+function normalizeRef(nodeOrEdge: any) {
+  if (nodeOrEdge.ref === undefined || nodeOrEdge.ref === null) {
     return;
   }
-  if (typeof entityOrRel.ref === "string") {
-    entityOrRel.dataSourceRef = { name: entityOrRel.ref };
-    delete entityOrRel.ref;
+  if (typeof nodeOrEdge.ref === "string") {
+    nodeOrEdge.dataSourceRef = { name: nodeOrEdge.ref };
+    delete nodeOrEdge.ref;
     return;
   }
-  if (typeof entityOrRel.ref === "object") {
-    entityOrRel.dataSourceRef = entityOrRel.ref;
-    delete entityOrRel.ref;
+  if (typeof nodeOrEdge.ref === "object") {
+    nodeOrEdge.dataSourceRef = nodeOrEdge.ref;
+    delete nodeOrEdge.ref;
   }
 }
 
-function normalizeKeys(entityOrRel: any) {
-  if (typeof entityOrRel.keys === "string") {
-    entityOrRel.keys = [entityOrRel.keys];
+function normalizeKeys(nodeOrEdge: any) {
+  if (typeof nodeOrEdge.keys === "string") {
+    nodeOrEdge.keys = [nodeOrEdge.keys];
   }
 }
 
@@ -397,8 +393,8 @@ function normalizeJoinKeys(endpoint: any) {
   }
   if (Array.isArray(endpoint.joinKeys)) {
     endpoint.joinKeys = {
-      relationshipColumns: endpoint.joinKeys,
-      entityColumns: [],
+      edgeColumns: endpoint.joinKeys,
+      nodeColumns: [],
     };
   }
 }
@@ -407,27 +403,27 @@ function buildEndpoint(
   endpointConfig: dataform.IGraphEndpointConfig,
   where: string,
 ): dataform.GraphEndpoint {
-  if (!endpointConfig.entity) {
-    throw new Error(`${where}: must declare 'entity'.`);
+  if (!endpointConfig.node) {
+    throw new Error(`${where}: must declare 'node'.`);
   }
   if (!endpointConfig.joinKeys) {
     throw new Error(`${where}: must declare 'joinKeys'.`);
   }
-  const relCols = endpointConfig.joinKeys.relationshipColumns || [];
-  const entityCols = endpointConfig.joinKeys.entityColumns || [];
-  if (relCols.length === 0) {
-    throw new Error(`${where}: 'joinKeys.relationshipColumns' must be non-empty.`);
+  const edgeCols = endpointConfig.joinKeys.edgeColumns || [];
+  const nodeCols = endpointConfig.joinKeys.nodeColumns || [];
+  if (edgeCols.length === 0) {
+    throw new Error(`${where}: 'joinKeys.edgeColumns' must be non-empty.`);
   }
   return dataform.GraphEndpoint.create({
-    entity: endpointConfig.entity,
-    relationshipColumns: relCols,
-    entityColumns: entityCols,
+    node: endpointConfig.node,
+    edgeColumns: edgeCols,
+    nodeColumns: nodeCols,
   });
 }
 
 function buildLabels(
   defaultLabelName: string,
-  config: dataform.IGraphEntityConfig | dataform.IGraphRelationshipConfig,
+  config: dataform.IGraphNodeTableConfig | dataform.IGraphEdgeTableConfig,
   where: string,
 ): dataform.GraphLabel[] {
   const rootFields = config.fields || [];
@@ -541,25 +537,25 @@ function renderQualifiedTable(target: dataform.ITarget): string {
   return "`" + parts.join(".") + "`";
 }
 
-function renderNode(entity: dataform.IGraphEntity): string {
+function renderNode(node: dataform.IGraphNodeTable): string {
   const pieces: string[] = [];
-  pieces.push(`${renderQualifiedTable(entity.dataSource)} AS ${entity.name}`);
-  pieces.push(`KEY (${entity.keys.join(", ")})`);
-  for (const label of entity.labels) {
+  pieces.push(`${renderQualifiedTable(node.dataSource)} AS ${node.name}`);
+  pieces.push(`KEY (${node.keys.join(", ")})`);
+  for (const label of node.labels) {
     pieces.push(renderLabelClause(label));
   }
   return pieces.join(" ");
 }
 
-function renderEdge(rel: dataform.IGraphRelationship): string {
+function renderEdge(edge: dataform.IGraphEdgeTable): string {
   const pieces: string[] = [];
-  pieces.push(`${renderQualifiedTable(rel.dataSource)} AS ${rel.name}`);
-  if (rel.keys.length > 0) {
-    pieces.push(`KEY (${rel.keys.join(", ")})`);
+  pieces.push(`${renderQualifiedTable(edge.dataSource)} AS ${edge.name}`);
+  if (edge.keys.length > 0) {
+    pieces.push(`KEY (${edge.keys.join(", ")})`);
   }
-  pieces.push(renderEndpoint("SOURCE", rel.source));
-  pieces.push(renderEndpoint("DESTINATION", rel.destination));
-  for (const label of rel.labels) {
+  pieces.push(renderEndpoint("SOURCE", edge.source));
+  pieces.push(renderEndpoint("DESTINATION", edge.destination));
+  for (const label of edge.labels) {
     pieces.push(renderLabelClause(label));
   }
   return pieces.join(" ");
@@ -567,8 +563,8 @@ function renderEdge(rel: dataform.IGraphRelationship): string {
 
 function renderEndpoint(role: "SOURCE" | "DESTINATION", endpoint: dataform.IGraphEndpoint): string {
   return (
-    `${role} KEY (${endpoint.relationshipColumns.join(", ")}) ` +
-    `REFERENCES ${endpoint.entity} (${endpoint.entityColumns.join(", ")})`
+    `${role} KEY (${endpoint.edgeColumns.join(", ")}) ` +
+    `REFERENCES ${endpoint.node} (${endpoint.nodeColumns.join(", ")})`
   );
 }
 

@@ -1,15 +1,25 @@
 import { expect } from "chai";
 import { EventEmitter } from "events";
+import * as path from "path";
 import { anything, capture, instance, mock, verify, when } from "ts-mockito";
 
+import { JitCompiler } from "df/cli/api/commands/jit/compiler";
 import { handleDbRequest as handleRpc } from "df/cli/api/commands/jit/rpc";
 import { Runner } from "df/cli/api/commands/run";
 import { IDbAdapter, IDbClient } from "df/cli/api/dbadapters";
 import { jitCompile } from "df/core/jit_compiler";
 import { dataform } from "df/protos/ts";
-import { suite, test } from "df/testing";
+import { suite, test, writeCorePackage } from "df/testing";
+import { TmpDirFixture } from "df/testing/fixtures";
 
-suite("run", () => {
+// Runs JiT compilation in the test process and forwards its RPCs to the mock adapter.
+const inProcessJitCompiler: JitCompiler = async ({ request, dbadapter }) =>
+  jitCompile(request, (method, internalReq, callback) =>
+    (dbadapter as any).rpcImpl(method, internalReq, callback),
+  );
+
+suite("run", ({ afterEach }) => {
+  const tmpDirFixture = new TmpDirFixture(afterEach);
   test("JiT compilation is performed for Table actions", async () => {
     const { mockAdapter, adapterInstance } = createMocks();
 
@@ -24,12 +34,7 @@ suite("run", () => {
     ]);
 
     const runner = new Runner(adapterInstance, executionGraph, {
-      jitCompiler: async (req, pdir, adapter) => {
-        return await jitCompile(req, (method, internalReq, callback) => {
-          // RPC callback bridge for tests
-          (adapter as any).rpcImpl(method, internalReq, callback);
-        });
-      },
+      jitCompiler: inProcessJitCompiler,
     });
     const result = await runner.execute().result();
 
@@ -67,12 +72,7 @@ suite("run", () => {
     ]);
 
     const runner = new Runner(adapterInstance, executionGraph, {
-      jitCompiler: async (req, pdir, adapter) => {
-        return await jitCompile(req, (method, internalReq, callback) => {
-          // RPC callback bridge for tests
-          (adapter as any).rpcImpl(method, internalReq, callback);
-        });
-      },
+      jitCompiler: inProcessJitCompiler,
     });
     const result = await runner.execute().result();
 
@@ -101,11 +101,7 @@ suite("run", () => {
     ]);
 
     const runner = new Runner(adapterInstance, executionGraph, {
-      jitCompiler: async (req, pdir, adapter) => {
-        return await jitCompile(req, (method, internalReq, callback) => {
-          (adapter as any).rpcImpl(method, internalReq, callback);
-        });
-      },
+      jitCompiler: inProcessJitCompiler,
     });
     const result = await runner.execute().result();
 
@@ -149,12 +145,7 @@ suite("run", () => {
     ]);
 
     const runner = new Runner(adapterInstance, executionGraph, {
-      jitCompiler: async (req, pdir, adapter) => {
-        return await jitCompile(req, (method, internalReq, callback) => {
-          // RPC callback bridge for tests
-          (adapter as any).rpcImpl(method, internalReq, callback);
-        });
-      },
+      jitCompiler: inProcessJitCompiler,
     });
     const result = await runner.execute().result();
 
@@ -199,12 +190,7 @@ suite("run", () => {
     ]);
 
     const runner = new Runner(adapterInstance, executionGraph, {
-      jitCompiler: async (req, pdir, adapter) => {
-        return await jitCompile(req, (method, internalReq, callback) => {
-          // RPC callback bridge for tests
-          (adapter as any).rpcImpl(method, internalReq, callback);
-        });
-      },
+      jitCompiler: inProcessJitCompiler,
     });
     const result = await runner.execute().result();
 
@@ -233,12 +219,7 @@ suite("run", () => {
     ]);
 
     const runner = new Runner(adapterInstance, executionGraph, {
-      jitCompiler: async (req, pdir, adapter) => {
-        return await jitCompile(req, (method, internalReq, callback) => {
-          // RPC callback bridge for tests
-          (adapter as any).rpcImpl(method, internalReq, callback);
-        });
-      },
+      jitCompiler: inProcessJitCompiler,
     });
 
     const result = await runner.execute().result();
@@ -271,11 +252,7 @@ suite("run", () => {
     // 1. First run - empty warehouse, should use 'full' path
     const { mockAdapter: mockAdapterFull, adapterInstance: adapterInstanceFull } = createMocks();
     runner = new Runner(adapterInstanceFull, executionGraph, {
-      jitCompiler: async (req, pdir, adapter) => {
-        return await jitCompile(req, (method, internalReq, callback) => {
-          (adapter as any).rpcImpl(method, internalReq, callback);
-        });
-      },
+      jitCompiler: inProcessJitCompiler,
     });
     const fullResult = await runner.execute().result();
     expect(fullResult.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
@@ -296,11 +273,7 @@ suite("run", () => {
     const { mockAdapter: mockAdapterIncremental, adapterInstance: adapterInstanceIncremental } =
       createMocks();
     runner = new Runner(adapterInstanceIncremental, executionGraph, {
-      jitCompiler: async (req, pdir, adapter) => {
-        return await jitCompile(req, (method, internalReq, callback) => {
-          (adapter as any).rpcImpl(method, internalReq, callback);
-        });
-      },
+      jitCompiler: inProcessJitCompiler,
     });
     const incrementalResult = await runner.execute().result();
     expect(incrementalResult.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
@@ -333,11 +306,7 @@ suite("run", () => {
     });
 
     const runner = new Runner(adapterInstance, executionGraph, {
-      jitCompiler: async (req, pdir, adapter) => {
-        return await jitCompile(req, (method, internalReq, callback) => {
-          (adapter as any).rpcImpl(method, internalReq, callback);
-        });
-      },
+      jitCompiler: inProcessJitCompiler,
     });
     const result = await runner.execute().result();
 
@@ -382,11 +351,7 @@ suite("run", () => {
     ]);
 
     const runner = new Runner(adapterInstance, executionGraph, {
-      jitCompiler: async (req, pdir, adapter) => {
-        return await jitCompile(req, (method, internalReq, callback) => {
-          (adapter as any).rpcImpl(method, internalReq, callback);
-        });
-      },
+      jitCompiler: inProcessJitCompiler,
     });
     const result = await runner.execute().result();
 
@@ -419,7 +384,7 @@ suite("run", () => {
 
     let cancelCallbackInvoked = false;
     const runner = new Runner(adapterInstance, executionGraph, {
-      jitCompiler: (req, pdir, adapter, client, timeoutMs, opts, onCancel) =>
+      jitCompiler: ({ onCancel }) =>
         new Promise((resolve, reject) => {
           onCancel(() => {
             cancelCallbackInvoked = true;
@@ -465,7 +430,7 @@ suite("run", () => {
     executionGraph.runConfig.timeoutMillis = 200;
 
     const runner = new Runner(adapterInstance, executionGraph, {
-      jitCompiler: (req, pdir, adapter, client, timeoutMs, opts, onCancel) =>
+      jitCompiler: ({ onCancel }) =>
         new Promise((resolve, reject) => {
           onCancel(() => reject(new Error("Run cancelled while worker was in flight.")));
         }),
@@ -517,14 +482,12 @@ suite("run", () => {
     ]);
 
     const runner = new Runner(adapterInstance, executionGraph, {
-      jitCompiler: async (req, pdir, adapter, client, timeoutMs, opts, onCancel) => {
+      jitCompiler: async (options) => {
         // Mirror the real compile worker: register a cancel handler on every
         // invocation so we can observe whether Runner unregisters it once the
         // compile completes.
-        onCancel(() => undefined);
-        return await jitCompile(req, (method, internalReq, callback) => {
-          (adapter as any).rpcImpl(method, internalReq, callback);
-        });
+        options.onCancel(() => undefined);
+        return await inProcessJitCompiler(options);
       },
     });
     const result = await runner.execute().result();
@@ -536,6 +499,65 @@ suite("run", () => {
     // leaks listeners and eventually triggers MaxListenersExceededWarning.
     const emitter = (runner as any).eEmitter as EventEmitter;
     expect(emitter.listenerCount("jobCancel")).equals(0);
+  });
+  test("Runner passes the compilation environment to the JiT compiler", async () => {
+    const { adapterInstance } = createMocks();
+    const executionGraph = createGraph([
+      {
+        target: { database: "db", schema: "sch", name: "jit_table" },
+        type: "table",
+        tableType: "table",
+        jitCode: "async (jctx) => { return 'SELECT 1'; }",
+        tasks: [],
+      },
+    ]);
+    const calls: Array<{ projectDir: string; expectedCoreVersion?: string }> = [];
+
+    const runner = new Runner(adapterInstance, executionGraph, {
+      projectDir: "/tmp/dataform-isolated-env",
+      expectedCoreVersion: "3.0.71",
+      jitCompiler: async ({ projectDir, expectedCoreVersion }) => {
+        calls.push({ projectDir, expectedCoreVersion });
+        return { table: { query: "SELECT 1" } };
+      },
+    });
+    const result = await runner.execute().result();
+
+    expect(result.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
+    expect(calls).deep.equals([
+      { projectDir: "/tmp/dataform-isolated-env", expectedCoreVersion: "3.0.71" },
+    ]);
+  });
+  test("Default JiT worker rejects a core version that differs from compilation", async () => {
+    const { adapterInstance } = createMocks();
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    writeCorePackage(
+      projectDir,
+      `module.exports = { version: "3.0.70", jitCompiler: () => ({ compile: async () => [] }) };`,
+    );
+
+    const executionGraph = createGraph([
+      {
+        target: { database: "db", schema: "sch", name: "jit_table" },
+        type: "table",
+        tableType: "table",
+        jitCode: "async () => 'SELECT 1'",
+        tasks: [],
+      },
+    ]);
+
+    const runner = new Runner(adapterInstance, executionGraph, {
+      projectDir,
+      expectedCoreVersion: "3.0.71",
+    });
+    const result = await runner.execute().result();
+
+    expect(result.status).equals(dataform.RunResult.ExecutionStatus.FAILED);
+    expect(result.actions[0].tasks[0].errorMessage).to.include(
+      `JiT compilation would use @dataform/core 3.0.70 from ` +
+        `'${path.join(projectDir, "node_modules", "@dataform", "core", "bundle.js")}', but the project ` +
+        `was compiled with @dataform/core 3.0.71.`,
+    );
   });
 });
 

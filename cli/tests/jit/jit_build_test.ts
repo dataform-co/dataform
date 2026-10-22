@@ -20,6 +20,7 @@ suite("build", () => {
           target: { database: "db", schema: "schema", name: "operation" },
           jitCode: "console.log('jit operation')",
           queries: [],
+          hasOutput: true,
         },
       ],
     });
@@ -36,5 +37,6 @@ suite("build", () => {
       (a: dataform.IExecutionAction) => a.target.name === "operation",
     );
     expect(operationAction.jitCode).equals("console.log('jit operation')");
+    expect(operationAction.hasOutput).equals(true);
   });
 });

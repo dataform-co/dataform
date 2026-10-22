@@ -26,6 +26,7 @@ ts_library(
         "credentials.ts",
         "index.ts",
         "project_config_options.ts",
+        "signals.ts",
         "util.ts",
         "yargswrapper.ts",
     ],
@@ -68,10 +69,12 @@ ts_library(
 ts_test_suite(
     name = "tests",
     srcs = [
+        "credentials_test.ts",
         "index_compile_test.ts",
         "index_help_test.ts",
         "index_init_test.ts",
         "index_project_test.ts",
+        "signals_test.ts",
         "tests/bin_test.ts",
         "tests/jit/jit_build_test.ts",
         "tests/jit/jit_run_test.ts",
@@ -106,8 +109,10 @@ ts_test_suite(
 ts_test_suite(
     name = "integration_tests",
     srcs = [
+        "index_compile_isolated_environment_test.ts",
         "index_run_e2e_test.ts",
         "tests/jit/index_jit_advanced_test.ts",
+        "tests/jit/index_jit_core_version_test.ts",
         "tests/jit/index_jit_dependency_test.ts",
         "tests/jit/index_jit_main_test.ts",
         "tests/jit/index_jit_runtime_test.ts",
@@ -117,7 +122,7 @@ ts_test_suite(
         "//packages/@dataform/cli:json",
         "//packages/@dataform/cli:worker_bundle",
         "//packages/@dataform/core:package_tar",
-        "//test_credentials:bigquery.json",
+        "//test_credentials:bigquery_credentials",
     ],
     # index_test_base runs `npm` directly, and the CLI runs `npm i` when dataformCoreVersion is set.
     include_npm = True,

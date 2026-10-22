@@ -11,6 +11,10 @@ message BigQuery {
   string credentials = 3;
   // Options are listed here: https://cloud.google.com/bigquery/docs/locations
   string location = 4;
+  // Optional service account to impersonate, e.g. sa@my-project.iam.gserviceaccount.com.
+  // The credentials above (or the application default credentials) are used as the
+  // source credentials and need roles/iam.serviceAccountTokenCreator on this account.
+  string impersonate_service_account = 5;
 
   reserved 2;
 }

@@ -35,6 +35,7 @@ externals = [
     "deepmerge",
     "fs-extra",
     "glob",
+    "google-auth-library",
     "google-sql-syntax-ts",
     "ignore",
     "js-beautify",
@@ -117,4 +118,5 @@ pkg_npm_tar(
         ":readme",
         ":worker_bundle",
     ],
+    publishable = True,
 )
