@@ -4,6 +4,8 @@ import { dump as dumpYaml, load as loadYaml } from "js-yaml";
 import * as path from "path";
 
 import * as dfapi from "df/cli/api";
+import { createCatalogClientProvider } from "df/cli/api/catalog/metadata_writer";
+import { buildBigQueryEntryName } from "df/cli/api/catalog/request_builder";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 import {
   alterWorkflowSettings,
@@ -22,6 +24,7 @@ import { TmpDirFixture } from "df/testing/fixtures";
 
 const ON_SCHEMA_CHANGE_DATASET = "dataform_e2e_osc";
 const LOCATION_RESOLUTION_DATASET = "dataform_e2e_loc";
+const KNOWLEDGE_CATALOG_DATASET = "dataform_e2e_kc";
 
 integrationSuite("run e2e", ({ afterEach }) => {
   const tmpDirFixture = new TmpDirFixture(afterEach);
@@ -750,5 +753,142 @@ SELECT 1 AS id
 
       expect(runResult.stderr).to.not.match(/--timeout only bounds project compilation/);
     });
+  });
+
+  suite("knowledge catalog metadata", ({ before, beforeEach, afterEach: suiteAfterEach }) => {
+    const SINGLE_REGION_LOCATION = "us-central1";
+    const MULTI_REGION_LOCATION = "US";
+    const ALL_LOCATIONS = [SINGLE_REGION_LOCATION, MULTI_REGION_LOCATION];
+
+    const credentials = dfapi.credentials.read(CREDENTIALS_PATH);
+    const dbadapter = new BigQueryDbAdapter(credentials);
+    const catalogClientProvider = createCatalogClientProvider(credentials);
+    const executorInLocation = (location: string) => ({
+      execute: (statement: string) => dbadapter.execute(statement, { bigquery: { location } }),
+    });
+
+    let datasetsToDrop: string[];
+
+    before("drop stale datasets", async () => {
+      for (const location of ALL_LOCATIONS) {
+        await dropStaleDatasets(executorInLocation(location), {
+          project: INTEGRATION_TEST_PROJECT,
+          location,
+          prefixes: [KNOWLEDGE_CATALOG_DATASET],
+        });
+      }
+    });
+
+    beforeEach("reset datasets to drop", () => {
+      datasetsToDrop = [];
+    });
+
+    suiteAfterEach("drop datasets", async () => {
+      for (const location of ALL_LOCATIONS) {
+        await dropDatasets(executorInLocation(location), INTEGRATION_TEST_PROJECT, datasetsToDrop);
+      }
+    });
+
+    test(
+      "writes overview and generic aspects to Knowledge Catalog for single-region dataset",
+      { timeout: 120000 },
+      async () => {
+        const dataset = `${KNOWLEDGE_CATALOG_DATASET}_${makeUniqueSuffix()}`;
+        datasetsToDrop.push(dataset);
+
+        const projectDir = tmpDirFixture.createNewTmpDir();
+        await setupProject(tmpDirFixture, projectDir, {
+          defaultDataset: dataset,
+          defaultLocation: SINGLE_REGION_LOCATION,
+        });
+
+        writeDefinitionFile(
+          projectDir,
+          "kc_table.sqlx",
+          `
+config {
+  type: "table",
+  metadata: {
+    overview: "Integration test table overview.",
+    extraProperties: {
+      generic: {
+        system: "BigQuery",
+        type: "table"
+      }
+    }
+  }
+}
+SELECT 1 AS id
+`,
+        );
+
+        const runResult = await runCli("run", [projectDir, "--credentials", CREDENTIALS_PATH]);
+        expect(
+          runResult.exitCode,
+          `stdout:\n${runResult.stdout}\nstderr:\n${runResult.stderr}`,
+        ).equals(0);
+
+        const entryName = buildBigQueryEntryName(INTEGRATION_TEST_PROJECT, SINGLE_REGION_LOCATION, {
+          schema: dataset,
+          name: "kc_table",
+        });
+        const [entry] = await catalogClientProvider(INTEGRATION_TEST_PROJECT).getEntry({
+          name: entryName,
+          view: "ALL",
+        });
+
+        const aspects = entry.aspects || {};
+        const overviewAspect = Object.entries(aspects).find(([key]) =>
+          key.endsWith(".global.overview"),
+        )?.[1];
+        const genericAspect = Object.entries(aspects).find(([key]) =>
+          key.endsWith(".global.generic"),
+        )?.[1];
+
+        expect(overviewAspect?.data?.fields?.content?.stringValue).to.equal(
+          "Integration test table overview.",
+        );
+        expect(genericAspect?.data?.fields?.system?.stringValue).to.equal("BigQuery");
+        expect(genericAspect?.data?.fields?.type?.stringValue).to.equal("table");
+      },
+    );
+
+    test(
+      "warns and skips Knowledge Catalog write for multi-region dataset",
+      { timeout: 120000 },
+      async () => {
+        const dataset = `${KNOWLEDGE_CATALOG_DATASET}_${makeUniqueSuffix()}`;
+        datasetsToDrop.push(dataset);
+
+        const projectDir = tmpDirFixture.createNewTmpDir();
+        await setupProject(tmpDirFixture, projectDir, {
+          defaultDataset: dataset,
+          defaultLocation: MULTI_REGION_LOCATION,
+        });
+
+        writeDefinitionFile(
+          projectDir,
+          "kc_multi_region_table.sqlx",
+          `
+config {
+  type: "table",
+  metadata: {
+    overview: "Multi-region table overview."
+  }
+}
+SELECT 1 AS id
+`,
+        );
+
+        const runResult = await runCli("run", [projectDir, "--credentials", CREDENTIALS_PATH]);
+        expect(
+          runResult.exitCode,
+          `stdout:\n${runResult.stdout}\nstderr:\n${runResult.stderr}`,
+        ).equals(0);
+        expect(runResult.stderr).to.include(
+          `Warning: Skipping Knowledge Catalog metadata write for ${INTEGRATION_TEST_PROJECT}.${dataset}.kc_multi_region_table: multi-region location "US" is not supported by Knowledge Catalog.`,
+        );
+      },
+    );
   });
 });

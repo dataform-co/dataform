@@ -14,6 +14,7 @@
   - [ActionConfig.IncrementalTableConfig](#dataform-ActionConfig-IncrementalTableConfig)
   - [ActionConfig.IncrementalTableConfig.AdditionalOptionsEntry](#dataform-ActionConfig-IncrementalTableConfig-AdditionalOptionsEntry)
   - [ActionConfig.IncrementalTableConfig.LabelsEntry](#dataform-ActionConfig-IncrementalTableConfig-LabelsEntry)
+  - [ActionConfig.Metadata](#dataform-ActionConfig-Metadata)
   - [ActionConfig.NotebookConfig](#dataform-ActionConfig-NotebookConfig)
   - [ActionConfig.OnSchemaChange](#dataform-ActionConfig-OnSchemaChange)
   - [ActionConfig.OperationConfig](#dataform-ActionConfig-OperationConfig)
@@ -73,6 +74,7 @@ Action config defines the contents of `actions.yaml` configuration files.
 | hermetic                     | [bool](#bool)                                        |          | If true, this indicates that the action only depends on data from explicitly-declared dependencies. Otherwise if false, it indicates that the action depends on data from a source which has not been declared as a dependency. |
 | dependOnDependencyAssertions | [bool](#bool)                                        |          | If true, assertions dependent upon any of the dependencies are added as dependencies as well.                                                                                                                                   |
 | reservation          | [string](#string)                                    |          | Optional. The BigQuery reservation to use for execution.                                                                                                                                                                        |
+| metadata                     | [ActionConfig.Metadata](#dataform-ActionConfig-Metadata) |          | Metadata for this assertion.                                                                                                                                                                                                    |
 
 <a name="dataform-ActionConfig-ColumnDescriptor"></a>
 
@@ -142,6 +144,7 @@ Action config defines the contents of `actions.yaml` configuration files.
 | assertions                   | [ActionConfig.TableAssertionsConfig](#dataform-ActionConfig-TableAssertionsConfig)                                                 |          | Assertions to be run on the dataset. If configured, relevant assertions will automatically be created and run as a dependency of this dataset.                                                                                  |
 | hermetic                     | [bool](#bool)                                                                                                                      |          | If true, this indicates that the action only depends on data from explicitly-declared dependencies. Otherwise if false, it indicates that the action depends on data from a source which has not been declared as a dependency. |
 | onSchemaChange               | [ActionConfg.OnSchemaChange](#dataform-ActionConfig-OnSchemaChange)                                                                |          | Defines the action behavior if the selected columns in query doesn't match columns in the target table.                                                                                                                         |
+| metadata                     | [ActionConfig.Metadata](#dataform-ActionConfig-Metadata)                                                                           |          | Metadata for this incremental table.                                                                                                                                                                                            |
 | reservation          | [string](#string)                                                                                                                  |          | Optional. The BigQuery reservation to use for execution.                                                                                                                                                                        |
 
 <a name="dataform-ActionConfig-IncrementalTableConfig-AdditionalOptionsEntry"></a>
@@ -161,6 +164,17 @@ Action config defines the contents of `actions.yaml` configuration files.
 | ----- | ----------------- | ----- | ----------- |
 | key   | [string](#string) |       |             |
 | value | [string](#string) |       |             |
+
+<a name="dataform-ActionConfig-Metadata"></a>
+
+### ActionConfig.Metadata
+
+Knowledge Catalog metadata for a data object. Written to Knowledge Catalog during execution for single-region BigQuery datasets (multi-region locations such as `US` and `EU` are not supported by Knowledge Catalog and are skipped with a warning).
+
+| Field           | Type              | Label | Description                                                                                                                                          |
+| --------------- | ----------------- | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| overview        | [string](#string) |       | A detailed description of the data object, written to the `dataplex-types.global.overview` aspect.                                                   |
+| extraProperties | [google.protobuf.Struct](#google-protobuf-Struct) |       | Extra properties of the data object, such as `generic` (`system`, `type`) written to the `dataplex-types.global.generic` aspect.                     |
 
 <a name="dataform-ActionConfig-NotebookConfig"></a>
 
@@ -209,6 +223,7 @@ Action config defines the contents of `actions.yaml` configuration files.
 | dependOnDependencyAssertions | [bool](#bool)                                                            |          | When set to true, assertions dependent upon any dependency will be add as dedpendency to this action                                                                                                                            |
 | hermetic                     | [bool](#bool)                                                            |          | If true, this indicates that the action only depends on data from explicitly-declared dependencies. Otherwise if false, it indicates that the action depends on data from a source which has not been declared as a dependency. |
 | reservation          | [string](#string)                                                        |          | Optional. The BigQuery reservation to use for execution.                                                                                                                                                                        |
+| metadata                     | [ActionConfig.Metadata](#dataform-ActionConfig-Metadata)                 |          | Metadata for this operation. Can only be set if hasOutput is true.                                                                                                                                                              |
 
 <a name="dataform-ActionConfig-TableAssertionsConfig"></a>
 
@@ -263,6 +278,7 @@ the column(s) in the unique key(s).
 | dependOnDependencyAssertions | [bool](#bool)                                                                                                |          | When set to true, assertions dependent upon any dependency will be add as dedpendency to this action                                                                                                                            |
 | assertions                   | [ActionConfig.TableAssertionsConfig](#dataform-ActionConfig-TableAssertionsConfig)                           |          | Assertions to be run on the dataset. If configured, relevant assertions will automatically be created and run as a dependency of this dataset.                                                                                  |
 | hermetic                     | [bool](#bool)                                                                                                |          | If true, this indicates that the action only depends on data from explicitly-declared dependencies. Otherwise if false, it indicates that the action depends on data from a source which has not been declared as a dependency. |
+| metadata                     | [ActionConfig.Metadata](#dataform-ActionConfig-Metadata)                                                     |          | Metadata for this table.                                                                                                                                                                                                        |
 | reservation          | [string](#string)                                                                                            |          | Optional. The BigQuery reservation to use for execution.                                                                                                                                                                        |
 
 <a name="dataform-ActionConfig-TableConfig-AdditionalOptionsEntry"></a>
@@ -321,6 +337,7 @@ Target represents a unique action identifier.
 | dependOnDependencyAssertions | [bool](#bool)                                                                                              |          | When set to true, assertions dependent upon any dependency will be add as dedpendency to this action                                                                                                                                                            |
 | hermetic                     | [bool](#bool)                                                                                              |          | If true, this indicates that the action only depends on data from explicitly-declared dependencies. Otherwise if false, it indicates that the action depends on data from a source which has not been declared as a dependency.                                 |
 | assertions                   | [ActionConfig.TableAssertionsConfig](#dataform-ActionConfig-TableAssertionsConfig)                         |          | Assertions to be run on the dataset. If configured, relevant assertions will automatically be created and run as a dependency of this dataset.                                                                                                                  |
+| metadata                     | [ActionConfig.Metadata](#dataform-ActionConfig-Metadata)                                                   |          | Metadata for this view.                                                                                                                                                                                                                                         |
 | reservation          | [string](#string)                                                                                          |          | Optional. The BigQuery reservation to use for execution.                                                                                                                                                                                                        |
 
 <a name="dataform-ActionConfig-ViewConfig-AdditionalOptionsEntry"></a>

@@ -335,4 +335,82 @@ SELECT 1
       );
     });
   });
+
+  suite("metadata", () => {
+    test("compiles operation with metadata and hasOutput: true", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML,
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/op_meta.sqlx"),
+        `
+config {
+  type: "operations",
+  hasOutput: true,
+  metadata: {
+    overview: "operation overview",
+    extraProperties: {
+      generic: {
+        system: "BigQuery",
+        type: "table"
+      }
+    }
+  }
+}
+CREATE OR REPLACE TABLE \${self()} AS SELECT 1 AS id
+`,
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      const op = result.compile.compiledGraph.operations[0];
+      expect(asPlainObject(op.actionDescriptor.metadata)).deep.equals({
+        overview: "operation overview",
+        extraProperties: {
+          fields: {
+            generic: {
+              structValue: {
+                fields: {
+                  system: { stringValue: "BigQuery" },
+                  type: { stringValue: "table" },
+                },
+              },
+            },
+          },
+        },
+      });
+    });
+
+    test("fails when operation specifies metadata without hasOutput: true", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML,
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/op_meta_err.sqlx"),
+        `
+config {
+  type: "operations",
+  metadata: {
+    overview: "operation overview"
+  }
+}
+SELECT 1
+`,
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).greaterThan(0);
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).contains(
+        "Actions of type 'operations' may only specify 'metadata' if they specify 'hasOutput: true'.",
+      );
+    });
+  });
 });

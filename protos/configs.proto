@@ -311,9 +311,14 @@ message ActionConfig {
   }
 
   message Metadata {
-    // A detailed description of the data object.
+    // A detailed description of the data object. Written to Knowledge Catalog
+    // (`dataplex-types.global.overview`) for single-region BigQuery datasets
+    // (multi-region locations such as US and EU are not supported by Knowledge
+    // Catalog and are skipped with a warning).
     string overview = 1;
-    // Extra properties of the data object.
+    // Extra properties of the data object, such as `generic` (`system`, `type`)
+    // written to Knowledge Catalog (`dataplex-types.global.generic`) for
+    // single-region BigQuery datasets.
     google.protobuf.Struct extra_properties = 2;
   }
 
@@ -659,6 +664,9 @@ message ActionConfig {
 
     // Configuration options for a Lakehouse (4-part) operation target.
     LakehouseConfig lakehouse = 15;
+
+    // Metadata for this operation. Can only be set if hasOutput is true.
+    Metadata metadata = 16;
   }
 
   message DeclarationConfig {
