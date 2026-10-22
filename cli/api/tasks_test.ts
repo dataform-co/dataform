@@ -1,6 +1,6 @@
 import { expect } from "chai";
 
-import { concatenateQueries } from "df/cli/api/dbadapters/tasks";
+import { concatenateQueries, wrapWithCreateSchemaIfNotExists } from "df/cli/api/dbadapters/tasks";
 import { suite, test } from "df/testing";
 
 suite("concatenateQueries", () => {
@@ -95,5 +95,39 @@ suite("concatenateQueries", () => {
     expect(
       concatenateQueries(["SELECT 1 --comment", "SELECT 2"], (stmt) => `(${stmt})`),
     ).deep.equals("(SELECT 1); --comment\n(SELECT 2)");
+  });
+});
+
+suite("wrapWithCreateSchemaIfNotExists", () => {
+  test("wraps a statement in a block after creating the schema", () => {
+    expect(wrapWithCreateSchemaIfNotExists("project", "dataset", "SELECT 1;")).equals(
+      "create schema if not exists `project.dataset`;\nbegin\nSELECT 1;\nend;",
+    );
+  });
+
+  test("adds a missing semicolon on its own line", () => {
+    expect(wrapWithCreateSchemaIfNotExists("project", "dataset", "  SELECT 1\n")).equals(
+      "create schema if not exists `project.dataset`;\nbegin\nSELECT 1\n;\nend;",
+    );
+  });
+
+  test("terminates a statement with a trailing comment", () => {
+    expect(wrapWithCreateSchemaIfNotExists("project", "dataset", "SELECT 1 -- comment")).equals(
+      "create schema if not exists `project.dataset`;\nbegin\nSELECT 1 -- comment\n;\nend;",
+    );
+  });
+
+  test("keeps leading DECLARE statements at the start of the block", () => {
+    expect(
+      wrapWithCreateSchemaIfNotExists("project", "dataset", "DECLARE x INT64;\nSELECT x"),
+    ).equals(
+      "create schema if not exists `project.dataset`;\nbegin\nDECLARE x INT64;\nSELECT x\n;\nend;",
+    );
+  });
+
+  test("omits the database if not set", () => {
+    expect(wrapWithCreateSchemaIfNotExists(undefined, "dataset", "SELECT 1;")).equals(
+      "create schema if not exists `dataset`;\nbegin\nSELECT 1;\nend;",
+    );
   });
 });
