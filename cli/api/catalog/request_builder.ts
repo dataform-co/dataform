@@ -23,14 +23,17 @@ export const GENERIC_ASPECT_KEY = "dataplex-types.global.generic";
 export const GENERIC_ASPECT_TYPE = "projects/dataplex-types/locations/global/aspectTypes/generic";
 
 const SUPPORTED_GENERIC_KEYS = new Set(["system", "type"]);
+const SUPPORTED_MULTI_REGIONS = new Set(["us", "eu"]);
 
 /**
- * Returns true if `location` is a BigQuery multi-region (e.g. `US`, `EU`).
- * Single-region locations always contain a hyphen (e.g. `us-central1`, `europe-west1`).
+ * Returns true if `location` is supported by Knowledge Catalog:
+ * any single-region location (contains `-`, e.g. `us-central1`) or the `US` / `EU` multi-regions.
  */
-export function isMultiRegionLocation(location: string): boolean {
-  const normalized = location.trim();
-  return normalized.length > 0 && !normalized.includes("-");
+export function isSupportedCatalogLocation(location: string): boolean {
+  const normalized = location.trim().toLowerCase();
+  return (
+    normalized.length > 0 && (normalized.includes("-") || SUPPORTED_MULTI_REGIONS.has(normalized))
+  );
 }
 
 /**

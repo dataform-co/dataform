@@ -865,7 +865,7 @@ SELECT 1 AS id
     );
 
     test(
-      "warns and skips Knowledge Catalog write for multi-region dataset",
+      "writes overview aspect to Knowledge Catalog for US multi-region dataset",
       { timeout: 120000 },
       async () => {
         const dataset = `${KNOWLEDGE_CATALOG_DATASET}_${makeUniqueSuffix()}`;
@@ -896,8 +896,31 @@ SELECT 1 AS id
           runResult.exitCode,
           `stdout:\n${runResult.stdout}\nstderr:\n${runResult.stderr}`,
         ).equals(0);
-        expect(runResult.stderr).to.include(
-          `Warning: Skipping Knowledge Catalog metadata write for ${INTEGRATION_TEST_PROJECT}.${dataset}.kc_multi_region_table: multi-region location "US" is not supported by Knowledge Catalog.`,
+
+        if (
+          runResult.stderr.includes(
+            "Warning: Skipping Knowledge Catalog metadata writes for the rest of this run",
+          )
+        ) {
+          expect(runResult.stderr).to.include("PERMISSION_DENIED");
+          return;
+        }
+
+        const entryName = buildBigQueryEntryName(INTEGRATION_TEST_PROJECT, MULTI_REGION_LOCATION, {
+          schema: dataset,
+          name: "kc_multi_region_table",
+        });
+        const [entry] = await catalogClientProvider(INTEGRATION_TEST_PROJECT).getEntry({
+          name: entryName,
+          view: "ALL",
+        });
+
+        const aspects = entry.aspects || {};
+        const overviewAspect = Object.entries(aspects).find(([key]) =>
+          key.endsWith(".global.overview"),
+        )?.[1];
+        expect(overviewAspect?.data?.fields?.content?.stringValue).to.equal(
+          "Multi-region table overview.",
         );
       },
     );

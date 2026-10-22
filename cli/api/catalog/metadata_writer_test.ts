@@ -85,13 +85,13 @@ suite("@dataform/cli/catalog/metadata_writer", () => {
     ]);
   });
 
-  test("logs warning and skips updateEntry for multi-region locations (US, EU)", async () => {
-    let clientCalled = false;
+  test("calls updateEntry for US/EU multi-region locations using lowercased location", async () => {
+    const capturedRequests: IUpdateEntryRequest[] = [];
     const stderrMessages: string[] = [];
 
     const mockClient: ICatalogClient = {
-      updateEntry: (async () => {
-        clientCalled = true;
+      updateEntry: (async (req: IUpdateEntryRequest) => {
+        capturedRequests.push(req);
         return [{}];
       }) as ICatalogClient["updateEntry"],
     };
@@ -110,10 +110,42 @@ suite("@dataform/cli/catalog/metadata_writer", () => {
       dataform.Metadata.create({ overview: "Table overview." }),
     );
 
+    expect(stderrMessages).to.deep.equal([]);
+    expect(capturedRequests[0]?.entry?.name).to.equal(
+      "projects/target-proj/locations/us/entryGroups/@bigquery/entries/" +
+        "bigquery.googleapis.com/projects/target-proj/datasets/my_dataset/tables/my_table",
+    );
+  });
+
+  test("logs warning and skips updateEntry for unsupported locations (e.g. ASIA)", async () => {
+    let clientCalled = false;
+    const stderrMessages: string[] = [];
+
+    const mockClient: ICatalogClient = {
+      updateEntry: (async () => {
+        clientCalled = true;
+        return [{}];
+      }) as ICatalogClient["updateEntry"],
+    };
+
+    const writer = new KnowledgeCatalogMetadataWriter(
+      dataform.BigQuery.create({ projectId: "default-proj", location: "ASIA" }),
+      {
+        clientProvider: () => mockClient,
+        stderr: { write: (msg: string) => stderrMessages.push(msg) },
+      },
+    );
+
+    await writer.writeMetadata(
+      { database: "target-proj", schema: "my_dataset", name: "my_table" },
+      "ASIA",
+      dataform.Metadata.create({ overview: "Table overview." }),
+    );
+
     expect(clientCalled).to.equal(false);
     expect(stderrMessages).to.deep.equal([
       "Warning: Skipping Knowledge Catalog metadata write for target-proj.my_dataset.my_table: " +
-        'multi-region location "US" is not supported by Knowledge Catalog.\n',
+        'location "ASIA" is not supported by Knowledge Catalog.\n',
     ]);
   });
 

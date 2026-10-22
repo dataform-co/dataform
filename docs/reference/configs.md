@@ -169,7 +169,7 @@ Action config defines the contents of `actions.yaml` configuration files.
 
 ### ActionConfig.Metadata
 
-Knowledge Catalog metadata for a data object. Written to Knowledge Catalog during execution for single-region BigQuery datasets (multi-region locations such as `US` and `EU` are not supported by Knowledge Catalog and are skipped with a warning).
+Knowledge Catalog metadata for a data object, written to Knowledge Catalog during execution.
 
 | Field           | Type              | Label | Description                                                                                                                                          |
 | --------------- | ----------------- | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |

@@ -7,7 +7,7 @@ import {
   extractOverview,
   GENERIC_ASPECT_KEY,
   GENERIC_ASPECT_TYPE,
-  isMultiRegionLocation,
+  isSupportedCatalogLocation,
   OVERVIEW_ASPECT_KEY,
   OVERVIEW_ASPECT_TYPE,
 } from "df/cli/api/catalog/request_builder";
@@ -15,18 +15,20 @@ import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 
 suite("@dataform/cli/catalog/request_builder", () => {
-  suite("isMultiRegionLocation", () => {
-    test("identifies multi-region locations without a hyphen", () => {
-      expect(isMultiRegionLocation("US")).to.equal(true);
-      expect(isMultiRegionLocation("EU")).to.equal(true);
-      expect(isMultiRegionLocation(" us ")).to.equal(true);
+  suite("isSupportedCatalogLocation", () => {
+    test("accepts single-region locations and US/EU multi-regions", () => {
+      expect(isSupportedCatalogLocation("us-central1")).to.equal(true);
+      expect(isSupportedCatalogLocation("europe-west2")).to.equal(true);
+      expect(isSupportedCatalogLocation("US")).to.equal(true);
+      expect(isSupportedCatalogLocation("EU")).to.equal(true);
+      expect(isSupportedCatalogLocation(" us ")).to.equal(true);
     });
 
-    test("identifies single-region and empty locations as non-multi-region", () => {
-      expect(isMultiRegionLocation("us-central1")).to.equal(false);
-      expect(isMultiRegionLocation("europe-west2")).to.equal(false);
-      expect(isMultiRegionLocation("")).to.equal(false);
-      expect(isMultiRegionLocation("   ")).to.equal(false);
+    test("rejects unsupported multi-regions and empty locations", () => {
+      expect(isSupportedCatalogLocation("ASIA")).to.equal(false);
+      expect(isSupportedCatalogLocation("europe")).to.equal(false);
+      expect(isSupportedCatalogLocation("")).to.equal(false);
+      expect(isSupportedCatalogLocation("   ")).to.equal(false);
     });
   });
 

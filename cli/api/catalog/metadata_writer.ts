@@ -4,7 +4,7 @@ import { AuthClient } from "google-auth-library";
 import {
   buildCatalogAspects,
   buildUpdateEntryRequest,
-  isMultiRegionLocation,
+  isSupportedCatalogLocation,
 } from "df/cli/api/catalog/request_builder";
 import type { IStderrLike } from "df/cli/api/lineage/emitter";
 import { coerceAsError } from "df/common/errors/errors";
@@ -35,7 +35,11 @@ function isNotFoundError(err: unknown): boolean {
   }
   const code = (err as { code?: unknown }).code;
   const message = (err as { message?: unknown }).message;
-  return code === 5 || (typeof message === "string" && message.includes("NOT_FOUND"));
+  return (
+    code === 5 ||
+    (typeof message === "string" &&
+      (message.includes("NOT_FOUND") || message.includes("or it may not exist")))
+  );
 }
 
 export function createCatalogClientProvider(
@@ -102,11 +106,11 @@ export class KnowledgeCatalogMetadataWriter {
     const targetFqn = `${targetProject}.${target.schema}.${target.name}`;
     const trimmedLocation = location?.trim() || "";
 
-    if (!trimmedLocation || isMultiRegionLocation(trimmedLocation)) {
+    if (!isSupportedCatalogLocation(trimmedLocation)) {
       this.stderr.write(
         trimmedLocation
           ? `Warning: Skipping Knowledge Catalog metadata write for ${targetFqn}: ` +
-              `multi-region location "${trimmedLocation}" is not supported by Knowledge Catalog.\n`
+              `location "${trimmedLocation}" is not supported by Knowledge Catalog.\n`
           : `Warning: Skipping Knowledge Catalog metadata write for ${targetFqn}: ` +
               `dataset location is unknown.\n`,
       );

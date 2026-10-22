@@ -311,14 +311,11 @@ message ActionConfig {
   }
 
   message Metadata {
-    // A detailed description of the data object. Written to Knowledge Catalog
-    // (`dataplex-types.global.overview`) for single-region BigQuery datasets
-    // (multi-region locations such as US and EU are not supported by Knowledge
-    // Catalog and are skipped with a warning).
+    // A detailed description of the data object, written to Knowledge Catalog
+    // (`dataplex-types.global.overview`).
     string overview = 1;
     // Extra properties of the data object, such as `generic` (`system`, `type`)
-    // written to Knowledge Catalog (`dataplex-types.global.generic`) for
-    // single-region BigQuery datasets.
+    // written to Knowledge Catalog (`dataplex-types.global.generic`).
     google.protobuf.Struct extra_properties = 2;
   }
 
