@@ -60,10 +60,10 @@ class FakeDbAdapter implements IDbAdapter {
   public async evaluate(queryOrAction: QueryOrAction): Promise<dataform.IQueryEvaluation[]> {
     return [];
   }
-  public async schemas(database: string): Promise<string[]> {
+  public async schemas(database?: string): Promise<string[]> {
     return [];
   }
-  public async createSchema(database: string, schema: string): Promise<void> {
+  public async createSchema(database: string | undefined, schema: string): Promise<void> {
     return;
   }
   public async tables(database: string, schema?: string): Promise<dataform.ITableMetadata[]> {
