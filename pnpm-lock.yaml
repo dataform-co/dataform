@@ -34,8 +34,8 @@ importers:
         specifier: ~8.3.0
         version: 8.3.0
       '@google-cloud/dataplex':
-        specifier: ^5.6.0
-        version: 5.6.0
+        specifier: ~5.4.0
+        version: 5.4.0
       '@google-cloud/lineage':
         specifier: ^2.1.1
         version: 2.1.1
@@ -295,8 +295,8 @@ packages:
     resolution: {integrity: sha512-IXh04DlkLMxWgYLIUYuHHKXKOUwPDzDgke1ykkkJPe48cGIS9kkL2U/o0pm4ankHLlvzLF/ma1eO86n/bkumIA==}
     engines: {node: '>=18'}
 
-  '@google-cloud/dataplex@5.6.0':
-    resolution: {integrity: sha512-T0ihM9W/L0TbNv+M5FwLs411bAczY0EJU1nRG1tQAOULqdXWVDZz11VeUTGR7DAqQq+S9LonTKn8gZk6eLoQRg==}
+  '@google-cloud/dataplex@5.4.0':
+    resolution: {integrity: sha512-BBeGDlYUuUSqcAsVJ/WbICzfjMs19XpK09yWbRAHhLnlKxsF7ZD/QCmEJUDEDcxsziWB8YqtEoRlotfdmrV7Yw==}
     engines: {node: '>=18'}
 
   '@google-cloud/lineage@2.1.1':
@@ -2197,7 +2197,7 @@ snapshots:
       - encoding
       - supports-color
 
-  '@google-cloud/dataplex@5.6.0':
+  '@google-cloud/dataplex@5.4.0':
     dependencies:
       google-gax: 5.0.8
     transitivePeerDependencies:
