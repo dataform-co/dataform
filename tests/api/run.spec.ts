@@ -5,6 +5,7 @@ import { anyString, anything, capture, instance, mock, verify, when } from "ts-m
 import { Runner } from "df/cli/api";
 import { IDbAdapter } from "df/cli/api/dbadapters";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
+import { wrapWithCreateSchemaIfNotExists } from "df/cli/api/dbadapters/tasks";
 import { sleep, sleepUntil } from "df/common/promises";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
@@ -651,6 +652,330 @@ suite("@dataform/api/run", () => {
         },
       ],
       status: "FAILED",
+    });
+  });
+
+  suite("lazy schema creation", () => {
+    const projectConfig: dataform.IProjectConfig = {
+      warehouse: "bigquery",
+      defaultDatabase: "db",
+      defaultSchema: "new_ds",
+      assertionSchema: "new_assertions",
+    };
+
+    const tableAction = (
+      name: string,
+      schema: string,
+      statements: string[],
+      dependencies: string[] = [],
+    ): dataform.IExecutionAction => ({
+      type: "table",
+      tableType: "table",
+      target: { database: "db", schema, name },
+      tasks: statements.map((statement) => ({ type: "statement", statement })),
+      dependencyTargets: dependencies.map((dependency) => ({
+        database: "db",
+        schema,
+        name: dependency,
+      })),
+    });
+
+    const wrapped = (schema: string, statement: string) =>
+      wrapWithCreateSchemaIfNotExists("db", schema, statement);
+
+    function mockDbAdapter(
+      existingSchemas: string[][] = [["existing_ds"]],
+      executeImpl: (statement: string) => Promise<any> = async () => ({ rows: [], metadata: {} }),
+    ) {
+      const mockedDbAdapter = mock(BigQueryDbAdapter);
+      const executedStatements: string[] = [];
+      let schemasCall = when(mockedDbAdapter.schemas(anyString()));
+      existingSchemas.forEach((schemas) => (schemasCall = schemasCall.thenResolve(schemas)));
+      when(mockedDbAdapter.createSchema(anyString(), anyString(), anything())).thenResolve();
+      when(mockedDbAdapter.execute(anyString(), anything())).thenCall(async (statement: string) => {
+        executedStatements.push(statement);
+        return executeImpl(statement);
+      });
+      return { mockedDbAdapter, executedStatements };
+    }
+
+    test("is off by default: datasets are created up-front and statements aren't wrapped", async () => {
+      const graph = dataform.ExecutionGraph.create({
+        projectConfig,
+        runConfig: {},
+        warehouseState: {},
+        actions: [tableAction("a", "new_ds", ["CREATE TABLE a"])],
+      });
+      const { mockedDbAdapter, executedStatements } = mockDbAdapter();
+
+      const result = await new Runner(instance(mockedDbAdapter), graph).execute().result();
+
+      expect(result.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
+      verify(mockedDbAdapter.createSchema("db", "new_ds", anything())).once();
+      expect(executedStatements).deep.equals(["CREATE TABLE a"]);
+      expect(result.lazySchemaCreation).equals(undefined);
+    });
+
+    test("creates missing datasets in the first job of the first action writing to them", async () => {
+      const graph = dataform.ExecutionGraph.create({
+        projectConfig,
+        runConfig: {},
+        warehouseState: {},
+        actions: [
+          tableAction("a", "new_ds", ["CREATE TABLE a", "SECOND TASK a"]),
+          tableAction("b", "new_ds", ["CREATE TABLE b"], ["a"]),
+          tableAction("c", "existing_ds", ["CREATE TABLE c"]),
+          {
+            type: "assertion",
+            target: { database: "db", schema: "new_assertions", name: "d" },
+            tasks: [
+              { type: "statement", statement: "CREATE VIEW d" },
+              { type: "assertion", statement: "SELECT SUM(1) FROM d" },
+            ],
+            dependencyTargets: [],
+          },
+        ],
+      });
+      const { mockedDbAdapter, executedStatements } = mockDbAdapter();
+
+      const result = await new Runner(instance(mockedDbAdapter), graph, {
+        lazySchemaCreation: true,
+      })
+        .execute()
+        .result();
+
+      expect(result.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
+      expect(result.lazySchemaCreation).equals(true);
+      verify(mockedDbAdapter.createSchema(anything(), anything(), anything())).never();
+      expect(executedStatements).to.have.members([
+        wrapped("new_ds", "CREATE TABLE a"),
+        // Only the first task of an action is wrapped.
+        "SECOND TASK a",
+        // The dataset was created by "a", so "b" isn't wrapped.
+        "CREATE TABLE b",
+        // Existing datasets are never created.
+        "CREATE TABLE c",
+        wrapped("new_assertions", "CREATE VIEW d"),
+        // Assertion tasks are never wrapped.
+        "SELECT SUM(1) FROM d",
+      ]);
+      expect(executedStatements).to.have.length(6);
+    });
+
+    test("wraps concurrently running actions writing to the same missing dataset", async () => {
+      const graph = dataform.ExecutionGraph.create({
+        projectConfig,
+        runConfig: {},
+        warehouseState: {},
+        actions: [
+          tableAction("a", "new_ds", ["CREATE TABLE a"]),
+          tableAction("b", "new_ds", ["CREATE TABLE b"]),
+        ],
+      });
+      const { mockedDbAdapter, executedStatements } = mockDbAdapter();
+
+      await new Runner(instance(mockedDbAdapter), graph, { lazySchemaCreation: true })
+        .execute()
+        .result();
+
+      expect(executedStatements).to.have.members([
+        wrapped("new_ds", "CREATE TABLE a"),
+        wrapped("new_ds", "CREATE TABLE b"),
+      ]);
+    });
+
+    test("wraps the next action writing to the dataset again if the creating action failed", async () => {
+      const graph = dataform.ExecutionGraph.create({
+        projectConfig,
+        runConfig: {},
+        warehouseState: {},
+        actions: [
+          tableAction("a", "new_ds", ["CREATE TABLE a"]),
+          tableAction("e", "existing_ds", ["CREATE TABLE e"]),
+          // Runs after "a" has failed, as "e" only completes afterwards.
+          {
+            ...tableAction("b", "new_ds", ["CREATE TABLE b"]),
+            dependencyTargets: [{ database: "db", schema: "existing_ds", name: "e" }],
+          },
+        ],
+      });
+      let aFailed = false;
+      const { mockedDbAdapter, executedStatements } = mockDbAdapter(
+        [["existing_ds"]],
+        async (statement) => {
+          if (statement === wrapped("new_ds", "CREATE TABLE a")) {
+            aFailed = true;
+            throw new Error("a failed");
+          }
+          if (statement === "CREATE TABLE e") {
+            await sleepUntil(() => aFailed);
+          }
+          return { rows: [], metadata: {} };
+        },
+      );
+
+      const result = await new Runner(instance(mockedDbAdapter), graph, {
+        lazySchemaCreation: true,
+      })
+        .execute()
+        .result();
+
+      expect(
+        result.actions.map((action) => [action.target.name, action.status]),
+      ).to.have.deep.members([
+        ["a", dataform.ActionResult.ExecutionStatus.FAILED],
+        ["e", dataform.ActionResult.ExecutionStatus.SUCCESSFUL],
+        ["b", dataform.ActionResult.ExecutionStatus.SUCCESSFUL],
+      ]);
+      expect(executedStatements).to.include(wrapped("new_ds", "CREATE TABLE b"));
+    });
+
+    test("wraps tasks produced by JiT compilation", async () => {
+      const graph = dataform.ExecutionGraph.create({
+        projectConfig,
+        runConfig: {},
+        warehouseState: {},
+        actions: [
+          {
+            type: "operation",
+            target: { database: "db", schema: "new_ds", name: "jit_op" },
+            tasks: [],
+            jitCode: "async () => ({ queries: ['JIT QUERY'] })",
+            dependencyTargets: [],
+          },
+        ],
+      });
+      const { mockedDbAdapter, executedStatements } = mockDbAdapter();
+
+      const result = await new Runner(instance(mockedDbAdapter), graph, {
+        lazySchemaCreation: true,
+        jitCompiler: async () =>
+          dataform.JitCompilationResponse.create({ operation: { queries: ["JIT QUERY"] } }),
+      })
+        .execute()
+        .result();
+
+      expect(result.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
+      expect(executedStatements).deep.equals([wrapped("new_ds", "JIT QUERY")]);
+    });
+
+    test("in dry runs, wraps every action writing to a missing dataset and reports the original SQL", async () => {
+      const graph = dataform.ExecutionGraph.create({
+        projectConfig,
+        runConfig: {},
+        warehouseState: {},
+        actions: [
+          tableAction("a", "new_ds", ["CREATE TABLE a"]),
+          tableAction("b", "new_ds", ["CREATE TABLE b"], ["a"]),
+          tableAction("c", "existing_ds", ["CREATE TABLE c"]),
+        ],
+      });
+      const { mockedDbAdapter, executedStatements } = mockDbAdapter();
+
+      const result = await new Runner(instance(mockedDbAdapter), graph, {
+        lazySchemaCreation: true,
+        bigquery: { dryRun: true },
+      })
+        .execute()
+        .result();
+
+      expect(result.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
+      verify(mockedDbAdapter.createSchema(anything(), anything(), anything())).never();
+      // Dry runs don't create the dataset, so "b" is wrapped too.
+      expect(executedStatements).to.have.members([
+        wrapped("new_ds", "CREATE TABLE a"),
+        wrapped("new_ds", "CREATE TABLE b"),
+        "CREATE TABLE c",
+      ]);
+      expect(
+        result.actions.map((action) => [action.target.name, action.tasks[0].compiledSql]),
+      ).to.have.deep.members([
+        ["a", "CREATE TABLE a"],
+        ["b", "CREATE TABLE b"],
+        ["c", "CREATE TABLE c"],
+      ]);
+    });
+
+    suite("resume", () => {
+      const graph = dataform.ExecutionGraph.create({
+        projectConfig,
+        runConfig: {},
+        warehouseState: {},
+        actions: [tableAction("a", "new_ds", ["CREATE TABLE a", "SECOND TASK a"])],
+      });
+
+      async function runUntilFirstTaskThenStop(
+        options: { lazySchemaCreation?: boolean },
+        firstStatement: string,
+      ) {
+        let firstTaskInProgress = false;
+        let stopWasCalled = false;
+        const { mockedDbAdapter } = mockDbAdapter([[]], async (statement) => {
+          if (statement === firstStatement) {
+            firstTaskInProgress = true;
+            await sleepUntil(() => stopWasCalled);
+          }
+          return { rows: [], metadata: {} };
+        });
+        const runner = new Runner(instance(mockedDbAdapter), graph, options);
+        runner.execute();
+        await sleepUntil(() => firstTaskInProgress);
+        runner.stop();
+        stopWasCalled = true;
+        return { result: await runner.result(), mockedDbAdapter };
+      }
+
+      test("a run started in lazy mode stays in lazy mode when resumed without options", async () => {
+        const { result: partialResult } = await runUntilFirstTaskThenStop(
+          { lazySchemaCreation: true },
+          wrapped("new_ds", "CREATE TABLE a"),
+        );
+        expect(partialResult.lazySchemaCreation).equals(true);
+
+        // The dataset is still missing (e.g. the first job was interrupted before creating it),
+        // so the first not-yet-executed task is wrapped.
+        const { mockedDbAdapter, executedStatements } = mockDbAdapter([[]]);
+        const result = await Runner.resume(instance(mockedDbAdapter), graph, partialResult)
+          .execute()
+          .result();
+
+        expect(result.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
+        expect(result.lazySchemaCreation).equals(true);
+        verify(mockedDbAdapter.createSchema(anything(), anything(), anything())).never();
+        expect(executedStatements).deep.equals([wrapped("new_ds", "SECOND TASK a")]);
+      });
+
+      test("a resumed lazy run doesn't wrap tasks writing to datasets created before the interruption", async () => {
+        const { result: partialResult } = await runUntilFirstTaskThenStop(
+          { lazySchemaCreation: true },
+          wrapped("new_ds", "CREATE TABLE a"),
+        );
+
+        const { mockedDbAdapter, executedStatements } = mockDbAdapter([["new_ds"]]);
+        await new Runner(instance(mockedDbAdapter), graph, {}, partialResult).execute().result();
+
+        verify(mockedDbAdapter.createSchema(anything(), anything(), anything())).never();
+        expect(executedStatements).deep.equals(["SECOND TASK a"]);
+      });
+
+      test("a run started without lazy mode stays without it when resumed in lazy mode", async () => {
+        const { result: partialResult } = await runUntilFirstTaskThenStop({}, "CREATE TABLE a");
+        expect(partialResult.lazySchemaCreation).equals(undefined);
+
+        const { mockedDbAdapter, executedStatements } = mockDbAdapter([[]]);
+        const result = await Runner.resume(
+          instance(mockedDbAdapter),
+          graph,
+          partialResult,
+          undefined,
+          { lazySchemaCreation: true },
+        )
+          .execute()
+          .result();
+
+        expect(result.lazySchemaCreation).equals(undefined);
+        expect(executedStatements).deep.equals(["SECOND TASK a"]);
+      });
     });
   });
 });

@@ -1,3 +1,4 @@
+import { endsWithStatementTerminator } from "df/cli/api/utils/sql_parsing";
 import { dataform } from "df/protos/ts";
 
 function formatStatement(statement: string, isLast: boolean, modifier?: (mod: string) => string) {
@@ -44,6 +45,31 @@ export function concatenateQueries(statements: string[], modifier?: (mod: string
     formatStatement(statement, index === processed.length - 1, modifier),
   );
   return formattedStatements.join("\n");
+}
+
+/**
+ * Wraps the given statement (or script) so that the `database.schema` dataset is created, if it
+ * doesn't exist yet, in the same BigQuery job. This lets BigQuery infer the location of the new
+ * dataset from the tables read by the statement.
+ *
+ * The statement is wrapped in a `BEGIN ... END` block, rather than just prepended with the
+ * `CREATE SCHEMA` statement, because `DECLARE` statements are only allowed at the start of a
+ * script or block.
+ */
+export function wrapWithCreateSchemaIfNotExists(
+  database: string | undefined,
+  schema: string,
+  statement: string,
+): string {
+  const schemaRef = database ? `${database}.${schema}` : schema;
+  const trimmedStatement = statement.trim();
+  // Statements inside a block must be terminated with `;`. Empty statements (`;;`) are not
+  // allowed, so only add one if missing. It goes on its own line, so it's not swallowed by a
+  // trailing `--` comment.
+  const terminatedStatement = endsWithStatementTerminator(trimmedStatement)
+    ? trimmedStatement
+    : `${trimmedStatement}\n;`;
+  return `create schema if not exists \`${schemaRef}\`;\nbegin\n${terminatedStatement}\nend;`;
 }
 
 export class Tasks {
