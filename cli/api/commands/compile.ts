@@ -178,7 +178,13 @@ function createTemporaryDirectory(): ITemporaryEnvironment {
     process.removeListener("exit", cleanup);
     // Stop npm first, so that it doesn't keep writing into the directory while it is removed.
     runningProcesses.forEach(killProcessTree);
-    fs.rmSync(projectDir, { recursive: true, force: true, maxRetries: 3 });
+    // Removal is best effort: a failure to remove the directory mustn't turn a successful
+    // compile into a failure, or hide the error that ended the compile.
+    try {
+      fs.rmSync(projectDir, { recursive: true, force: true, maxRetries: 3 });
+    } catch {
+      // Left for the OS to clean up with the rest of the temporary directory.
+    }
   };
   // Safety net in case the caller never gets to call cleanup(), e.g. on an uncaught exception.
   // Signals skip "exit" unless the process exits explicitly; the CLI does that in
