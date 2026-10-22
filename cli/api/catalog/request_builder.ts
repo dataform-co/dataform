@@ -1,6 +1,7 @@
 import { CatalogServiceClient } from "@google-cloud/dataplex";
 
 import { toProtoStruct } from "df/cli/api/lineage/payload_builder";
+import { Structs } from "df/common/protos/structs";
 import { dataform, google } from "df/protos/ts";
 
 export type IUpdateEntryRequest = NonNullable<Parameters<CatalogServiceClient["updateEntry"]>[0]>;
@@ -57,26 +58,11 @@ export function extractOverview(metadata: dataform.IMetadata | null | undefined)
   if (!metadata) {
     return null;
   }
-
-  const typedOverview =
-    typeof metadata.overview === "string" && metadata.overview.length > 0
-      ? metadata.overview
-      : null;
-
-  const extraOverviewRaw = getExtraPropertyField(metadata.extraProperties, "overview");
-  const extraOverview =
-    typeof extraOverviewRaw === "string" && extraOverviewRaw.length > 0 ? extraOverviewRaw : null;
-
-  if (typedOverview !== null && extraOverview !== null) {
-    return `${typedOverview}\n\n${extraOverview}`;
-  }
-  if (typedOverview !== null) {
-    return typedOverview;
-  }
-  if (extraOverview !== null) {
-    return extraOverview;
-  }
-  return null;
+  const extraOverview = getExtraPropertiesObject(metadata.extraProperties)?.overview;
+  const parts = [metadata.overview, extraOverview].filter(
+    (v): v is string => typeof v === "string" && v.length > 0,
+  );
+  return parts.length > 0 ? parts.join("\n\n") : null;
 }
 
 /**
@@ -85,28 +71,19 @@ export function extractOverview(metadata: dataform.IMetadata | null | undefined)
 export function extractGenericFields(
   metadata: dataform.IMetadata | null | undefined,
 ): { [key: string]: { stringValue: string } } | null {
-  if (!metadata?.extraProperties) {
+  const generic = getExtraPropertiesObject(metadata?.extraProperties)?.generic;
+  if (!generic || typeof generic !== "object" || Array.isArray(generic)) {
     return null;
   }
 
-  const genericRaw = getExtraPropertyField(metadata.extraProperties, "generic");
-  if (!genericRaw || typeof genericRaw !== "object" || Array.isArray(genericRaw)) {
-    return null;
-  }
-
-  const genericEntries = extractStructEntries(genericRaw);
   const filtered: { [key: string]: string } = {};
-
-  for (const [key, value] of Object.entries(genericEntries)) {
+  for (const [key, value] of Object.entries(generic)) {
     if (SUPPORTED_GENERIC_KEYS.has(key) && typeof value === "string") {
       filtered[key] = value;
     }
   }
 
-  if (Object.keys(filtered).length === 0) {
-    return null;
-  }
-  return toProtoStruct(filtered).fields;
+  return Object.keys(filtered).length > 0 ? toProtoStruct(filtered).fields : null;
 }
 
 /**
@@ -168,71 +145,14 @@ export function buildUpdateEntryRequest(
   };
 }
 
-function getExtraPropertyField(
+function getExtraPropertiesObject(
   extraProperties: google.protobuf.IStruct | { [key: string]: unknown } | null | undefined,
-  key: string,
-): unknown {
+): { [key: string]: unknown } | undefined {
   if (!extraProperties || typeof extraProperties !== "object") {
     return undefined;
   }
-  const entries = extractStructEntries(extraProperties);
-  return entries[key];
-}
-
-function extractStructEntries(
-  structOrObject: google.protobuf.IStruct | { [key: string]: unknown },
-): { [key: string]: unknown } {
-  if (
-    "fields" in structOrObject &&
-    structOrObject.fields &&
-    typeof structOrObject.fields === "object" &&
-    !isProtoValueObject(structOrObject.fields)
-  ) {
-    const result: { [key: string]: unknown } = {};
-    for (const [k, v] of Object.entries(structOrObject.fields)) {
-      result[k] = unwrapProtoValue(v);
-    }
-    return result;
-  }
-  return structOrObject as { [key: string]: unknown };
-}
-
-function isProtoValueObject(obj: unknown): boolean {
-  if (!obj || typeof obj !== "object") {
-    return false;
-  }
   return (
-    "stringValue" in obj ||
-    "numberValue" in obj ||
-    "boolValue" in obj ||
-    "structValue" in obj ||
-    "listValue" in obj ||
-    "nullValue" in obj
+    Structs.toObject(extraProperties as google.protobuf.IStruct) ??
+    (extraProperties as { [key: string]: unknown })
   );
-}
-
-function unwrapProtoValue(val: unknown): unknown {
-  if (!val || typeof val !== "object") {
-    return val;
-  }
-  const protoVal = val as google.protobuf.IValue;
-  if (typeof protoVal.stringValue === "string") {
-    return protoVal.stringValue;
-  }
-  if (typeof protoVal.numberValue === "number") {
-    return protoVal.numberValue;
-  }
-  if (typeof protoVal.boolValue === "boolean") {
-    return protoVal.boolValue;
-  }
-  if (protoVal.structValue && typeof protoVal.structValue === "object") {
-    return extractStructEntries(protoVal.structValue);
-  }
-  if (protoVal.listValue && Array.isArray(protoVal.listValue.values)) {
-    return protoVal.listValue.values.map(unwrapProtoValue);
-  }
-  if ("nullValue" in protoVal) {
-    return null;
-  }
-  return val;
 }

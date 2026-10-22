@@ -20,12 +20,7 @@ const NOT_FOUND_MAX_ATTEMPTS = 5;
 const NOT_FOUND_INITIAL_DELAY_MILLIS = 1000;
 
 export const CATALOG_RETRY_CONFIG = {
-  retryCodes: [
-    4, // DEADLINE_EXCEEDED
-    8, // RESOURCE_EXHAUSTED
-    13, // INTERNAL
-    14, // UNAVAILABLE
-  ],
+  retryCodes: [4, 8, 13, 14], // DEADLINE_EXCEEDED, RESOURCE_EXHAUSTED, INTERNAL, UNAVAILABLE
   backoffSettings: {
     initialRetryDelayMillis: 100,
     retryDelayMultiplier: 1.3,
@@ -147,44 +142,31 @@ export class KnowledgeCatalogMetadataWriter {
     const code = (err as { code?: unknown }).code;
     const message = err.message || "";
 
+    let reason: string | undefined;
     if (code === 7 || message.includes("PERMISSION_DENIED")) {
-      if (!this.writesDisabledThisRun) {
-        this.writesDisabledThisRun = true;
-        this.stderr.write(
-          `Warning: Skipping Knowledge Catalog metadata writes for the rest of this run ` +
-            `(failed on ${targetFqn}): PERMISSION_DENIED (${message}). ` +
-            `Ensure the credential has 'roles/dataplex.catalogEditor' or that the Dataplex API is enabled in project ${projectId}.\n`,
-        );
-      }
-      return true;
-    }
-
-    if (
+      reason =
+        `PERMISSION_DENIED (${message}). Ensure the credential has 'roles/dataplex.catalogEditor' ` +
+        `or that the Dataplex API is enabled in project ${projectId}.`;
+    } else if (
       code === 9 ||
       message.includes("SERVICE_DISABLED") ||
       message.includes("FAILED_PRECONDITION")
     ) {
-      if (!this.writesDisabledThisRun) {
-        this.writesDisabledThisRun = true;
-        this.stderr.write(
-          `Warning: Skipping Knowledge Catalog metadata writes for the rest of this run ` +
-            `(failed on ${targetFqn}): Dataplex API is not enabled in project ${projectId} (${message}).\n`,
-        );
-      }
-      return true;
+      reason = `Dataplex API is not enabled in project ${projectId} (${message}).`;
+    } else if (code === 16 || message.includes("UNAUTHENTICATED")) {
+      reason = `UNAUTHENTICATED (${message}).`;
     }
 
-    if (code === 16 || message.includes("UNAUTHENTICATED")) {
-      if (!this.writesDisabledThisRun) {
-        this.writesDisabledThisRun = true;
-        this.stderr.write(
-          `Warning: Skipping Knowledge Catalog metadata writes for the rest of this run ` +
-            `(failed on ${targetFqn}): UNAUTHENTICATED (${message}).\n`,
-        );
-      }
-      return true;
+    if (!reason) {
+      return false;
     }
-
-    return false;
+    if (!this.writesDisabledThisRun) {
+      this.writesDisabledThisRun = true;
+      this.stderr.write(
+        `Warning: Skipping Knowledge Catalog metadata writes for the rest of this run ` +
+          `(failed on ${targetFqn}): ${reason}\n`,
+      );
+    }
+    return true;
   }
 }
