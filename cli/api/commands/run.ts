@@ -5,6 +5,7 @@ import { JitCompileChildProcess, JitCompiler } from "df/cli/api/commands/jit/com
 import * as dbadapters from "df/cli/api/dbadapters";
 import { IBigQueryExecutionOptions } from "df/cli/api/dbadapters/bigquery";
 import { ExecutionSql } from "df/cli/api/dbadapters/execution_sql";
+import { wrapWithCreateSchemaIfNotExists } from "df/cli/api/dbadapters/tasks";
 import { LineageEmitter } from "df/cli/api/lineage/emitter";
 import { Flags } from "df/common/flags";
 import { retry } from "df/common/promises";
@@ -46,9 +47,25 @@ export interface IExecutionOptions {
    */
   expectedCoreVersion?: string;
   lineageEmitter?: LineageEmitter;
+  /**
+   * When true, missing target datasets are not created up-front. Instead, each one is created
+   * inside the first job of the first action writing to it, so that BigQuery infers the dataset's
+   * location from the tables that action reads. Intended for runs without an explicit location.
+   *
+   * When resuming a run, the mode the run was started in (`RunResult.lazySchemaCreation`) is kept.
+   */
+  lazySchemaCreation?: boolean;
 }
 
 export type CancelReason = "timeout" | "user" | "cancellation";
+
+/** A target dataset that doesn't exist yet. */
+interface IMissingSchema {
+  // Unset if the action's target has no database and there's no default database, in which case
+  // BigQuery uses the project of the credentials.
+  database: string | undefined;
+  schema: string;
+}
 
 export function run(
   dbadapter: dbadapters.IDbAdapter,
@@ -81,13 +98,15 @@ export class Runner {
     graph: dataform.IExecutionGraph,
     runResult: dataform.IRunResult,
     runnerNotificationPeriodMillis: number = flags.runnerNotificationPeriodMillis.get(),
+    options: IExecutionOptions = {},
   ): Runner {
-    return new Runner(dbadapter, graph, {}, runResult, runnerNotificationPeriodMillis);
+    return new Runner(dbadapter, graph, options, runResult, runnerNotificationPeriodMillis);
   }
 
   private readonly warehouseStateByTarget: Map<string, dataform.ITableMetadata>;
   private readonly executionSql: ExecutionSql;
   private readonly executionOptions: IExecutionOptions;
+  private readonly lazySchemaCreation: boolean;
 
   private readonly allActionTargets: Set<string>;
   private readonly runResult: dataform.IRunResult;
@@ -103,6 +122,8 @@ export class Runner {
   private timedOut = false;
   private skipReason: string = "";
   private executionTask: Promise<dataform.IRunResult>;
+  // In lazy schema creation mode: target datasets not known to exist, keyed by `schemaKey()`.
+  private missingSchemas = new Map<string, IMissingSchema>();
 
   constructor(
     private readonly dbadapter: dbadapters.IDbAdapter,
@@ -116,6 +137,15 @@ export class Runner {
       actions: [],
       ...partiallyExecutedRunResult,
     };
+    // A resumed run keeps the schema creation mode it was started in, regardless of the options
+    // it's resumed with: switching modes midway could create datasets in the wrong location.
+    const isResumedRun = this.runResult.actions && this.runResult.actions.length > 0;
+    this.lazySchemaCreation =
+      !!this.runResult.lazySchemaCreation ||
+      (!isResumedRun && !!this.executionOptions.lazySchemaCreation);
+    if (this.lazySchemaCreation) {
+      this.runResult.lazySchemaCreation = true;
+    }
 
     if (!this.executionOptions.jitCompiler) {
       this.executionOptions.jitCompiler = JitCompileChildProcess.compile;
@@ -222,8 +252,12 @@ export class Runner {
     this.runResult.timing = timer.current();
     this.notifyListeners();
 
-    // If we're not resuming an existing run, prepare schemas.
-    if (this.runResult.actions.length === 0) {
+    if (this.lazySchemaCreation) {
+      // Missing datasets are created by the first action writing to them. This also runs when
+      // resuming: datasets created before the run was interrupted now exist and drop out.
+      this.missingSchemas = await this.findMissingSchemas();
+    } else if (!this.runResult.actions?.length) {
+      // If we're not resuming an existing run, prepare schemas.
       await this.prepareAllSchemas();
     }
 
@@ -253,36 +287,57 @@ export class Runner {
   }
 
   private async prepareAllSchemas() {
-    // Work out all the schemas we are going to need to create first.
-    const databaseSchemas = new Map<string, Set<string>>();
+    const missingSchemas = await this.findMissingSchemas();
+    await Promise.all(
+      Array.from(missingSchemas.values()).map(({ database, schema }) =>
+        this.dbadapter.createSchema(
+          database,
+          schema,
+          this.graph.projectConfig?.defaultLocation || undefined,
+        ),
+      ),
+    );
+  }
+
+  /**
+   * Returns the target datasets of all actions that don't exist yet, keyed by `schemaKey()`.
+   */
+  private async findMissingSchemas(): Promise<Map<string, IMissingSchema>> {
+    // Work out all the schemas we are going to need.
+    const databaseSchemas = new Map<string | undefined, Set<string>>();
     this.graph.actions
       .filter((action) => !!action.target && !!action.target.schema)
       .forEach(({ target }) => {
-        // This field may not be present for older versions of dataform.
-        const trueDatabase = target.database || this.graph.projectConfig.defaultDatabase;
+        const trueDatabase = this.targetDatabase(target!);
         if (!databaseSchemas.has(trueDatabase)) {
           databaseSchemas.set(trueDatabase, new Set<string>());
         }
         databaseSchemas.get(trueDatabase).add(target.schema);
       });
 
-    // Create all nonexistent schemas.
+    // Find all nonexistent schemas.
+    const missingSchemas = new Map<string, IMissingSchema>();
     await Promise.all(
       Array.from(databaseSchemas.entries()).map(async ([database, schemas]) => {
         const existingSchemas = new Set(await this.dbadapter.schemas(database));
-        await Promise.all(
-          Array.from(schemas)
-            .filter((schema) => !existingSchemas.has(schema))
-            .map((schema) =>
-              this.dbadapter.createSchema(
-                database,
-                schema,
-                this.graph.projectConfig?.defaultLocation || undefined,
-              ),
-            ),
-        );
+        Array.from(schemas)
+          .filter((schema) => !existingSchemas.has(schema))
+          .forEach((schema) =>
+            missingSchemas.set(this.schemaKey({ database, schema }), { database, schema }),
+          );
       }),
     );
+    return missingSchemas;
+  }
+
+  private targetDatabase(target: dataform.ITarget): string | undefined {
+    // Either may be unset (e.g. no defaultProject in workflow_settings.yaml, or older versions of
+    // dataform), in which case BigQuery uses the project of the credentials.
+    return target.database || this.graph.projectConfig!.defaultDatabase || undefined;
+  }
+
+  private schemaKey(target: dataform.ITarget): string {
+    return `${this.targetDatabase(target)}.${target.schema}`;
   }
 
   private async executeAllActionsReadyForExecution() {
@@ -448,6 +503,7 @@ export class Runner {
 
     try {
       // Start running tasks from the last executed task (if any), onwards.
+      let isFirstPendingTask = true;
       for (const task of action.tasks.slice(actionResult.tasks.length)) {
         if (this.stopped) {
           return actionResult;
@@ -456,9 +512,31 @@ export class Runner {
           actionResult.status === dataform.ActionResult.ExecutionStatus.RUNNING &&
           !this.cancelled
         ) {
-          const taskStatus = await this.executeTask(this.dbadapter, task, actionResult, {
-            bigquery: this.getBigQueryExecutionOptions(action),
-          });
+          const missingSchema = isFirstPendingTask
+            ? this.missingSchemaToCreate(action, task)
+            : null;
+          const taskStatus = await this.executeTask(
+            this.dbadapter,
+            task,
+            actionResult,
+            { bigquery: this.getBigQueryExecutionOptions(action) },
+            missingSchema
+              ? wrapWithCreateSchemaIfNotExists(
+                  missingSchema.database,
+                  missingSchema.schema,
+                  task.statement,
+                )
+              : undefined,
+          );
+          if (
+            missingSchema &&
+            taskStatus === dataform.TaskResult.ExecutionStatus.SUCCESSFUL &&
+            !this.executionOptions.bigquery?.dryRun
+          ) {
+            // The dataset now exists. If the task failed, it may or may not have been created, so
+            // the next action writing to it creates it if it doesn't exist.
+            this.missingSchemas.delete(this.schemaKey(action.target));
+          }
           if (taskStatus === dataform.TaskResult.ExecutionStatus.FAILED) {
             actionResult.status = dataform.ActionResult.ExecutionStatus.FAILED;
           } else if (taskStatus === dataform.TaskResult.ExecutionStatus.CANCELLED) {
@@ -470,6 +548,7 @@ export class Runner {
             errorMessage: this.skipReason || "Task skipped after cancellation",
           });
         }
+        isFirstPendingTask = false;
       }
     } catch (e) {
       if (
@@ -528,11 +607,35 @@ export class Runner {
     return actionResult;
   }
 
+  /**
+   * In lazy schema creation mode, returns the target dataset to create in the same job as the
+   * given task (the first not-yet-executed task of the action), or null if there's none.
+   */
+  private missingSchemaToCreate(
+    action: dataform.IExecutionAction,
+    task: dataform.IExecutionTask,
+  ): IMissingSchema | null {
+    if (!this.lazySchemaCreation || !action.target?.schema) {
+      return null;
+    }
+    // Assertion tasks must stay single statements: their result is read from the job's rows,
+    // and a script's result would be that of its last statement.
+    if (task.type === "assertion") {
+      return null;
+    }
+    return this.missingSchemas.get(this.schemaKey(action.target)) || null;
+  }
+
+  /**
+   * Executes the given task. If set, `statementOverride` is executed instead of the task's
+   * statement, while the task's own statement is still reported as its compiled SQL.
+   */
   private async executeTask(
     client: dbadapters.IDbClient,
     task: dataform.IExecutionTask,
     parentAction: dataform.IActionResult,
     options: { bigquery?: dataform.IBigQueryOptions & IBigQueryExecutionOptions },
+    statementOverride?: string,
   ): Promise<dataform.TaskResult.ExecutionStatus> {
     const timer = Timer.start();
     const taskResult: dataform.ITaskResult = {
@@ -552,7 +655,7 @@ export class Runner {
         // Retry this function a given number of times, configurable by user
         const { rows, metadata } = await retry(
           () =>
-            client.execute(task.statement, {
+            client.execute(statementOverride ?? task.statement, {
               onCancel: (handleCancel) => this.eEmitter.on(CANCEL_EVENT, handleCancel),
               rowLimit: 1,
               bigquery: options.bigquery,
