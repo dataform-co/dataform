@@ -828,6 +828,17 @@ SELECT 1 AS id
           `stdout:\n${runResult.stdout}\nstderr:\n${runResult.stderr}`,
         ).equals(0);
 
+        // When the test credential only has BigQuery permissions (e.g. CI service account
+        // without roles/dataplex.catalogEditor), the run still succeeds and logs a PERMISSION_DENIED warning.
+        if (
+          runResult.stderr.includes(
+            "Warning: Skipping Knowledge Catalog metadata writes for the rest of this run",
+          )
+        ) {
+          expect(runResult.stderr).to.include("PERMISSION_DENIED");
+          return;
+        }
+
         const entryName = buildBigQueryEntryName(INTEGRATION_TEST_PROJECT, SINGLE_REGION_LOCATION, {
           schema: dataset,
           name: "kc_table",

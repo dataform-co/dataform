@@ -142,10 +142,53 @@ suite("@dataform/cli/catalog/metadata_writer", () => {
     expect(stderrMessages).to.deep.equal([]);
   });
 
-  test("propagates updateEntry errors so the action fails loudly", async () => {
+  test("skips remaining writes and logs warning once on PERMISSION_DENIED", async () => {
+    let attempts = 0;
+    const stderrMessages: string[] = [];
+
     const mockClient: ICatalogClient = {
       updateEntry: (async () => {
-        throw new Error("PERMISSION_DENIED: missing dataplex.entries.update");
+        attempts++;
+        const err = new Error("7 PERMISSION_DENIED: missing dataplex.entries.update") as Error & {
+          code: number;
+        };
+        err.code = 7;
+        throw err;
+      }) as ICatalogClient["updateEntry"],
+    };
+
+    const writer = new KnowledgeCatalogMetadataWriter(
+      dataform.BigQuery.create({ projectId: "default-proj", location: "us-central1" }),
+      {
+        clientProvider: () => mockClient,
+        stderr: { write: (msg: string) => stderrMessages.push(msg) },
+      },
+    );
+
+    await writer.writeMetadata(
+      { database: "target-proj", schema: "my_dataset", name: "table_1" },
+      "us-central1",
+      dataform.Metadata.create({ overview: "Table 1 overview." }),
+    );
+    await writer.writeMetadata(
+      { database: "target-proj", schema: "my_dataset", name: "table_2" },
+      "us-central1",
+      dataform.Metadata.create({ overview: "Table 2 overview." }),
+    );
+
+    expect(attempts).to.equal(1);
+    expect(stderrMessages.length).to.equal(1);
+    expect(stderrMessages[0]).to.include(
+      "Warning: Skipping Knowledge Catalog metadata writes for the rest of this run (failed on target-proj.my_dataset.table_1): PERMISSION_DENIED",
+    );
+  });
+
+  test("propagates unexpected updateEntry errors", async () => {
+    const mockClient: ICatalogClient = {
+      updateEntry: (async () => {
+        const err = new Error("3 INVALID_ARGUMENT: malformed aspect") as Error & { code: number };
+        err.code = 3;
+        throw err;
       }) as ICatalogClient["updateEntry"],
     };
 
@@ -169,7 +212,7 @@ suite("@dataform/cli/catalog/metadata_writer", () => {
     }
 
     expect(thrownError).to.not.equal(undefined);
-    expect(thrownError?.message).to.include("PERMISSION_DENIED");
+    expect(thrownError?.message).to.include("INVALID_ARGUMENT");
   });
 
   test("retries transient NOT_FOUND errors while entry is syncing in Knowledge Catalog", async () => {

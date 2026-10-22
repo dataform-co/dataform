@@ -6,7 +6,8 @@ import {
   buildUpdateEntryRequest,
   isMultiRegionLocation,
 } from "df/cli/api/catalog/request_builder";
-import { IStderrLike } from "df/cli/api/lineage/emitter";
+import type { IStderrLike } from "df/cli/api/lineage/emitter";
+import { coerceAsError } from "df/common/errors/errors";
 import { sleep } from "df/common/promises";
 import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
@@ -17,6 +18,21 @@ export type CatalogClientProvider = (projectId?: string) => ICatalogClient;
 const DATAFORM_CLI_LIB_NAME = "dataform-cli";
 const NOT_FOUND_MAX_ATTEMPTS = 5;
 const NOT_FOUND_INITIAL_DELAY_MILLIS = 1000;
+
+export const CATALOG_RETRY_CONFIG = {
+  retryCodes: [
+    4, // DEADLINE_EXCEEDED
+    8, // RESOURCE_EXHAUSTED
+    13, // INTERNAL
+    14, // UNAVAILABLE
+  ],
+  backoffSettings: {
+    initialRetryDelayMillis: 100,
+    retryDelayMultiplier: 1.3,
+    maxRetryDelayMillis: 5000,
+    totalTimeoutMillis: 15000,
+  },
+};
 
 function isNotFoundError(err: unknown): boolean {
   if (!err || typeof err !== "object") {
@@ -56,6 +72,7 @@ export class KnowledgeCatalogMetadataWriter {
   private readonly clientProvider: CatalogClientProvider;
   private readonly stderr: IStderrLike;
   private readonly sleepFn: (millis: number) => Promise<void>;
+  private writesDisabledThisRun = false;
 
   constructor(
     credentials: dataform.IBigQuery,
@@ -78,6 +95,10 @@ export class KnowledgeCatalogMetadataWriter {
     location: string | undefined,
     metadata: dataform.IMetadata | null | undefined,
   ): Promise<void> {
+    if (this.writesDisabledThisRun) {
+      return;
+    }
+
     if (!buildCatalogAspects(metadata)) {
       return;
     }
@@ -106,15 +127,64 @@ export class KnowledgeCatalogMetadataWriter {
     let delayMillis = NOT_FOUND_INITIAL_DELAY_MILLIS;
     for (let attempt = 1; attempt <= NOT_FOUND_MAX_ATTEMPTS; attempt++) {
       try {
-        await client.updateEntry(request);
+        await client.updateEntry(request, { retry: CATALOG_RETRY_CONFIG });
         return;
       } catch (e) {
-        if (!isNotFoundError(e) || attempt === NOT_FOUND_MAX_ATTEMPTS) {
-          throw e;
+        if (isNotFoundError(e) && attempt < NOT_FOUND_MAX_ATTEMPTS) {
+          await this.sleepFn(delayMillis);
+          delayMillis *= 2;
+          continue;
         }
-        await this.sleepFn(delayMillis);
-        delayMillis *= 2;
+        if (this.handleNonFatalAccessError(coerceAsError(e), targetProject, targetFqn)) {
+          return;
+        }
+        throw e;
       }
     }
+  }
+
+  private handleNonFatalAccessError(err: Error, projectId: string, targetFqn: string): boolean {
+    const code = (err as { code?: unknown }).code;
+    const message = err.message || "";
+
+    if (code === 7 || message.includes("PERMISSION_DENIED")) {
+      if (!this.writesDisabledThisRun) {
+        this.writesDisabledThisRun = true;
+        this.stderr.write(
+          `Warning: Skipping Knowledge Catalog metadata writes for the rest of this run ` +
+            `(failed on ${targetFqn}): PERMISSION_DENIED (${message}). ` +
+            `Ensure the credential has 'roles/dataplex.catalogEditor' or that the Dataplex API is enabled in project ${projectId}.\n`,
+        );
+      }
+      return true;
+    }
+
+    if (
+      code === 9 ||
+      message.includes("SERVICE_DISABLED") ||
+      message.includes("FAILED_PRECONDITION")
+    ) {
+      if (!this.writesDisabledThisRun) {
+        this.writesDisabledThisRun = true;
+        this.stderr.write(
+          `Warning: Skipping Knowledge Catalog metadata writes for the rest of this run ` +
+            `(failed on ${targetFqn}): Dataplex API is not enabled in project ${projectId} (${message}).\n`,
+        );
+      }
+      return true;
+    }
+
+    if (code === 16 || message.includes("UNAUTHENTICATED")) {
+      if (!this.writesDisabledThisRun) {
+        this.writesDisabledThisRun = true;
+        this.stderr.write(
+          `Warning: Skipping Knowledge Catalog metadata writes for the rest of this run ` +
+            `(failed on ${targetFqn}): UNAUTHENTICATED (${message}).\n`,
+        );
+      }
+      return true;
+    }
+
+    return false;
   }
 }

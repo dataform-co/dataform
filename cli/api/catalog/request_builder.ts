@@ -1,5 +1,6 @@
 import { CatalogServiceClient } from "@google-cloud/dataplex";
 
+import { toProtoStruct } from "df/cli/api/lineage/payload_builder";
 import { dataform, google } from "df/protos/ts";
 
 export type IUpdateEntryRequest = NonNullable<Parameters<CatalogServiceClient["updateEntry"]>[0]>;
@@ -94,18 +95,18 @@ export function extractGenericFields(
   }
 
   const genericEntries = extractStructEntries(genericRaw);
-  const fields: { [key: string]: { stringValue: string } } = {};
+  const filtered: { [key: string]: string } = {};
 
   for (const [key, value] of Object.entries(genericEntries)) {
     if (SUPPORTED_GENERIC_KEYS.has(key) && typeof value === "string") {
-      fields[key] = { stringValue: value };
+      filtered[key] = value;
     }
   }
 
-  if (Object.keys(fields).length === 0) {
+  if (Object.keys(filtered).length === 0) {
     return null;
   }
-  return fields;
+  return toProtoStruct(filtered).fields;
 }
 
 /**
@@ -121,11 +122,7 @@ export function buildCatalogAspects(
   if (overview !== null) {
     aspects[OVERVIEW_ASPECT_KEY] = {
       aspectType: OVERVIEW_ASPECT_TYPE,
-      data: {
-        fields: {
-          content: { stringValue: overview },
-        },
-      },
+      data: toProtoStruct({ content: overview }),
     };
   }
 
