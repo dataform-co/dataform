@@ -54,9 +54,9 @@ Creates a new Dataform project (`workflow_settings.yaml`, `.gitignore`, `definit
 |---|---|---|
 | `project-dir` | No (default `.`) | The directory to create the project in. |
 | `default-database` | **Yes** | The default database to use, equivalent to a Google Cloud Project ID. |
-| `default-location` | **Yes** | The default BigQuery location. See [supported values](https://cloud.google.com/bigquery/docs/locations). |
+| `default-location` | No | The default BigQuery location. See [supported values](https://cloud.google.com/bigquery/docs/locations). If omitted, `defaultLocation` is not written to `workflow_settings.yaml` and the `location` from `.df-credentials.json` is used instead; if that is also unset, BigQuery chooses the location dynamically. |
 
-`default-database` and `default-location` are positional but enforced as required at runtime — omitting either produces an error telling you to run `dataform help init`. All three positional arguments can also be passed as named flags (`--project-dir`, `--default-database`, `--default-location`), e.g. `dataform init my_project --default-database=my-gcp-project-id --default-location=US`.
+`default-database` is positional but enforced as required at runtime — omitting it produces an error telling you to run `dataform help init`. All three positional arguments can also be passed as named flags (`--project-dir`, `--default-database`, `--default-location`), e.g. `dataform init my_project --default-database=my-gcp-project-id --default-location=US`.
 
 **Options**
 
@@ -95,7 +95,7 @@ dataform init-creds [project-dir]
 Interactively creates a `.df-credentials.json` file that Dataform uses to connect to BigQuery. **Only BigQuery is currently supported.**
 
 Prompts for:
-1. Dataset location (`US`, `EU`, or a custom region name).
+1. Dataset location (`US`, `EU`, a custom region name, or `auto`). Choosing `auto` leaves `location` out of the credentials file so BigQuery chooses the location dynamically.
 2. Authentication method — Application Default Credentials (ADC) or a JSON service account key file.
    - ADC: prompts for your billing project ID.
    - JSON key: prompts for the path to a downloaded service account key file.
@@ -378,5 +378,7 @@ dataform run --job-prefix=nightly --job-labels=team=analytics,pipeline=nightly-e
 ```bash
 DATAFORM_LINEAGE_DEBUG=1 dataform run --emit-lineage
 ```
+
+Lineage events are sent to the location set by `defaultLocation` in `workflow_settings.yaml` or, if that is not set, by `location` in `.df-credentials.json`. If neither is set, lineage emission is skipped with a warning and the run proceeds normally.
 
 Lineage events are emitted for every action that runs a BigQuery job: tables (including views and incremental tables), operations, assertions and property graphs. Assertions appear as a process for the assertion view written to the assertions dataset, with the assertion's dependencies reported as inputs. Property graph inputs are populated from the action's dependencies (`dependencyTargets`), so node and edge tables referenced via `ref` are reported as inputs while raw table paths in the graph definition are not. Declarations are not emitted. The action type is reported in the `gcp_bq_pipelines_job.actionType` attribute as `TABLE`, `OPERATIONS`, `ASSERTION` or `PROPERTY_GRAPH`, matching the values used by Dataform in Google Cloud.
