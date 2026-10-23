@@ -311,9 +311,11 @@ message ActionConfig {
   }
 
   message Metadata {
-    // A detailed description of the data object.
+    // A detailed description of the data object, written to Knowledge Catalog
+    // (`dataplex-types.global.overview`).
     string overview = 1;
-    // Extra properties of the data object.
+    // Extra properties of the data object, such as `generic` (`system`, `type`)
+    // written to Knowledge Catalog (`dataplex-types.global.generic`).
     google.protobuf.Struct extra_properties = 2;
   }
 

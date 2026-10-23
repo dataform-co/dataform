@@ -9,6 +9,7 @@ import { AuthClient, gaxios, GoogleAuth, Impersonated } from "google-auth-librar
 import Long from "long";
 import { PromisePoolExecutor } from "promise-pool-executor";
 
+import { KnowledgeCatalogMetadataWriter } from "df/cli/api/catalog/metadata_writer";
 import { collectEvaluationQueries, QueryOrAction } from "df/cli/api/dbadapters/execution_sql";
 import {
   IBigQueryError,
@@ -148,16 +149,23 @@ export class BigQueryDbAdapter implements IDbAdapter {
   private bigQueryCredentials: dataform.IBigQuery;
   private pool: PromisePoolExecutor;
   private clientProvider: BigQueryClientProvider;
+  private knowledgeCatalogMetadataWriter: KnowledgeCatalogMetadataWriter;
 
   constructor(
     credentials: dataform.IBigQuery,
     options?: {
       concurrencyLimit?: number;
       clientProvider?: BigQueryClientProvider;
+      knowledgeCatalogMetadataWriter?: KnowledgeCatalogMetadataWriter;
     },
   ) {
     this.bigQueryCredentials = credentials;
     this.clientProvider = options?.clientProvider || createBigQueryClientProvider(credentials);
+    this.knowledgeCatalogMetadataWriter =
+      options?.knowledgeCatalogMetadataWriter ||
+      new KnowledgeCatalogMetadataWriter(credentials, {
+        authClient: createAuthClient(credentials),
+      });
 
     // Bigquery allows 50 concurrent queries, and a rate limit of 100/user/second by default.
     // These limits should be safely low enough for most projects.
@@ -403,16 +411,26 @@ export class BigQueryDbAdapter implements IDbAdapter {
     const { target, actionDescriptor } = action;
 
     const metadata = await this.getMetadata(target);
-    const schemaWithDescription = addDescriptionToMetadata(
-      actionDescriptor.columns,
-      metadata.schema.fields,
-    );
+    if (metadata) {
+      const schemaWithDescription = addDescriptionToMetadata(
+        actionDescriptor.columns,
+        metadata.schema?.fields || [],
+      );
 
-    await this.getClient(target.database).dataset(target.schema).table(target.name).setMetadata({
-      description: actionDescriptor.description,
-      schema: schemaWithDescription,
-      labels: actionDescriptor.bigqueryLabels,
-    });
+      await this.getClient(target.database).dataset(target.schema).table(target.name).setMetadata({
+        description: actionDescriptor.description,
+        schema: schemaWithDescription,
+        labels: actionDescriptor.bigqueryLabels,
+      });
+    }
+
+    if (actionDescriptor.metadata) {
+      await this.knowledgeCatalogMetadataWriter.writeMetadata(
+        target,
+        metadata?.location || this.bigQueryCredentials.location,
+        actionDescriptor.metadata,
+      );
+    }
   }
 
   private async getMetadata(target: dataform.ITarget): Promise<TableMetadata> {

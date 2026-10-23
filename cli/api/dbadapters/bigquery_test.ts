@@ -4,6 +4,8 @@ import { EventEmitter } from "events";
 import { AuthClient, gaxios, Impersonated } from "google-auth-library";
 import { anything, instance, mock, when } from "ts-mockito";
 
+import { ICatalogClient, KnowledgeCatalogMetadataWriter } from "df/cli/api/catalog/metadata_writer";
+import { IUpdateEntryRequest, OVERVIEW_ASPECT_KEY } from "df/cli/api/catalog/request_builder";
 import {
   BigQueryDbAdapter,
   createAuthClient,
@@ -327,6 +329,61 @@ suite("BigQueryDbAdapter", () => {
     });
 
     await adapter.setMetadata(action);
+  });
+
+  test("setMetadata writes Knowledge Catalog metadata using the table dataset location", async () => {
+    const capturedRequests: IUpdateEntryRequest[] = [];
+    const mockCatalogClient: ICatalogClient = {
+      updateEntry: (async (req: IUpdateEntryRequest) => {
+        capturedRequests.push(req);
+        return [{}];
+      }) as ICatalogClient["updateEntry"],
+    };
+
+    const mockBigQuery: any = {
+      dataset: () => ({
+        table: () => ({
+          getMetadata: () =>
+            Promise.resolve([
+              {
+                location: "us-central1",
+                schema: { fields: [] },
+              },
+            ]),
+          setMetadata: () => Promise.resolve([]),
+        }),
+      }),
+    };
+
+    const credentials = dataform.BigQuery.create({ projectId: "p", location: "US" });
+    const adapter = new BigQueryDbAdapter(credentials, {
+      concurrencyLimit: 1,
+      clientProvider: () => mockBigQuery,
+      knowledgeCatalogMetadataWriter: new KnowledgeCatalogMetadataWriter(credentials, {
+        clientProvider: () => mockCatalogClient,
+      }),
+    });
+
+    const action = dataform.ExecutionAction.create({
+      target: { database: "db", schema: "sch", name: "tab" },
+      actionDescriptor: {
+        description: "bq desc",
+        metadata: {
+          overview: "catalog overview",
+        },
+      },
+    });
+
+    await adapter.setMetadata(action);
+
+    expect(capturedRequests.length).to.equal(1);
+    expect(capturedRequests[0].entry?.name).to.equal(
+      "projects/db/locations/us-central1/entryGroups/@bigquery/entries/" +
+        "bigquery.googleapis.com/projects/db/datasets/sch/tables/tab",
+    );
+    expect(
+      capturedRequests[0].entry?.aspects?.[OVERVIEW_ASPECT_KEY]?.data?.fields?.content?.stringValue,
+    ).to.equal("catalog overview");
   });
 
   test("search() filters out tables whose metadata is not found", async () => {

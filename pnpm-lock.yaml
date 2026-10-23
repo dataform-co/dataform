@@ -33,6 +33,9 @@ importers:
       '@google-cloud/bigquery':
         specifier: ~8.3.0
         version: 8.3.0
+      '@google-cloud/dataplex':
+        specifier: ~5.4.0
+        version: 5.4.0
       '@google-cloud/lineage':
         specifier: ^2.1.1
         version: 2.1.1
@@ -290,6 +293,10 @@ packages:
 
   '@google-cloud/common@6.0.0':
     resolution: {integrity: sha512-IXh04DlkLMxWgYLIUYuHHKXKOUwPDzDgke1ykkkJPe48cGIS9kkL2U/o0pm4ankHLlvzLF/ma1eO86n/bkumIA==}
+    engines: {node: '>=18'}
+
+  '@google-cloud/dataplex@5.4.0':
+    resolution: {integrity: sha512-BBeGDlYUuUSqcAsVJ/WbICzfjMs19XpK09yWbRAHhLnlKxsF7ZD/QCmEJUDEDcxsziWB8YqtEoRlotfdmrV7Yw==}
     engines: {node: '>=18'}
 
   '@google-cloud/lineage@2.1.1':
@@ -2186,6 +2193,13 @@ snapshots:
       html-entities: 2.6.0
       retry-request: 8.0.4
       teeny-request: 10.1.0
+    transitivePeerDependencies:
+      - encoding
+      - supports-color
+
+  '@google-cloud/dataplex@5.4.0':
+    dependencies:
+      google-gax: 5.0.8
     transitivePeerDependencies:
       - encoding
       - supports-color
