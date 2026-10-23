@@ -53,8 +53,13 @@ export type BigQueryClientProvider = (projectId?: string) => BigQuery;
  * impersonated client to be created synchronously.
  */
 export class DeferredAuthClient extends AuthClient {
-  constructor(private readonly resolveClient: () => Promise<AuthClient>) {
-    super();
+  constructor(
+    private readonly resolveClient: () => Promise<AuthClient>,
+    universeDomain?: string,
+  ) {
+    // Impersonated reads the source client's universe at construction time, before this
+    // client is resolved, and rejects a mismatch. Keep them on the same universe.
+    super(universeDomain ? { universeDomain } : undefined);
   }
 
   public async getAccessToken(): Promise<{
@@ -77,11 +82,15 @@ export class DeferredAuthClient extends AuthClient {
 export function createImpersonatedClient(
   targetPrincipal: string,
   sourceClient: AuthClient,
+  universeDomain?: string,
 ): Impersonated {
   return new Impersonated({
     sourceClient,
     targetPrincipal,
     targetScopes: [CLOUD_PLATFORM_SCOPE, ...EXTRA_GOOGLE_SCOPES],
+    // Unset inherits the source client's universe (googleapis.com by default). An explicit
+    // value must match sourceClient.universeDomain or Impersonated throws.
+    ...(universeDomain ? { universeDomain } : {}),
   });
 }
 
@@ -94,13 +103,17 @@ export function createAuthClient(credentials: dataform.IBigQuery): AuthClient | 
   if (!credentials.impersonateServiceAccount) {
     return undefined;
   }
+  // Empty string is the proto default; omit it so auth stays on googleapis.com.
+  const universeDomain = credentials.universeDomain || undefined;
   const sourceAuth = new GoogleAuth({
     credentials: credentials.credentials && JSON.parse(credentials.credentials),
     scopes: [CLOUD_PLATFORM_SCOPE],
+    universeDomain,
   });
   return createImpersonatedClient(
     credentials.impersonateServiceAccount,
-    new DeferredAuthClient(() => sourceAuth.getClient()),
+    new DeferredAuthClient(() => sourceAuth.getClient(), universeDomain),
+    universeDomain,
   );
 }
 
@@ -120,6 +133,7 @@ export function getBigQueryClientOptions(
     // Unset proto string fields read as "", which BigQuery rejects as a job location. Pass
     // undefined instead so that BigQuery auto-selects the location.
     location: credentials.location || undefined,
+    universeDomain: credentials.universeDomain || undefined,
     ...(authClient
       ? { authClient }
       : { credentials: credentials.credentials && JSON.parse(credentials.credentials) }),

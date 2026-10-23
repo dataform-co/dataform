@@ -118,6 +118,24 @@ suite("BigQueryDbAdapter", () => {
         }),
       ).to.throw(SyntaxError);
     });
+
+    test("passes universeDomain alongside an impersonated auth client", () => {
+      const credentials = dataform.BigQuery.create({
+        projectId: "target-project-id",
+        location: "US",
+        universeDomain: "s3nsapis.fr",
+        impersonateServiceAccount: TARGET_SERVICE_ACCOUNT,
+      });
+      const options = getBigQueryClientOptions(
+        credentials,
+        undefined,
+        createAuthClient(credentials),
+      );
+      expect(options.universeDomain).to.equal("s3nsapis.fr");
+      expect(options.authClient).to.be.instanceOf(Impersonated);
+      expect((options.authClient as Impersonated).universeDomain).to.equal("s3nsapis.fr");
+      expect(Boolean(options.credentials)).to.equal(false);
+    });
   });
 
   test("createBigQueryClientProvider creates and caches one client per project", () => {
@@ -178,6 +196,23 @@ suite("BigQueryDbAdapter", () => {
         lifetime: "3600s",
       },
     });
+  });
+
+  test("impersonated client targets iamcredentials on the configured universe", async () => {
+    const universeDomain = "s3nsapis.fr";
+    const sourceClient = new FakeSourceClient();
+    const impersonatedClient = createImpersonatedClient(
+      TARGET_SERVICE_ACCOUNT,
+      new DeferredAuthClient(async () => sourceClient, universeDomain),
+      universeDomain,
+    );
+
+    await impersonatedClient.getAccessToken();
+
+    expect(impersonatedClient.universeDomain).to.equal(universeDomain);
+    expect(sourceClient.requests[0].url).to.equal(
+      `https://iamcredentials.${universeDomain}/v1/projects/-/serviceAccounts/${TARGET_SERVICE_ACCOUNT}:generateAccessToken`,
+    );
   });
 
   test("tables() with schema filters correctly", async () => {
@@ -385,5 +420,27 @@ suite("BigQueryDbAdapter", () => {
       schema: liveSchema,
       name: tableName,
     });
+  });
+});
+
+suite("createBigQueryClientProvider", () => {
+  test("passes universeDomain to the BigQuery client when set", () => {
+    const credentials = dataform.BigQuery.create({
+      projectId: "project1",
+      location: "US",
+      universeDomain: "my-universe.example.com",
+    });
+
+    const client = createBigQueryClientProvider(credentials)();
+
+    expect(client.universeDomain).to.equal("my-universe.example.com");
+  });
+
+  test("defaults to googleapis.com when universeDomain is unset", () => {
+    const credentials = dataform.BigQuery.create({ projectId: "project1", location: "US" });
+
+    const client = createBigQueryClientProvider(credentials)();
+
+    expect(client.universeDomain).to.equal("googleapis.com");
   });
 });

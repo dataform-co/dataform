@@ -100,4 +100,40 @@ suite("createLineageEmitter", () => {
     expect(emitter).to.equal(undefined);
     expect(stderr.writes).to.deep.equal([]);
   });
+
+  test("skip_reason=unsupported_universe when universeDomain is set, even if lineage is opted in", () => {
+    const stderr = new StderrCapture();
+    const emitter = createLineageEmitter(
+      baseInput({
+        cliEmitLineage: true,
+        readCredentials: dataform.BigQuery.create({
+          projectId: "test-project",
+          location: "US",
+          universeDomain: "s3nsapis.fr",
+        }),
+      }),
+      stderr,
+    );
+    expect(emitter).to.equal(undefined);
+    expect(stderr.writes.length).to.equal(1);
+    expect(stderr.combined).to.contain("skip_reason=unsupported_universe");
+    expect(stderr.combined).to.contain("non-default universe");
+  });
+
+  test("constructs a LineageEmitter when universeDomain is empty (GDU)", () => {
+    const stderr = new StderrCapture();
+    const emitter = createLineageEmitter(
+      baseInput({
+        cliEmitLineage: true,
+        readCredentials: dataform.BigQuery.create({
+          projectId: "test-project",
+          location: "US",
+          universeDomain: "",
+        }),
+      }),
+      stderr,
+    );
+    expect(emitter).to.be.instanceOf(LineageEmitter);
+    expect(stderr.writes).to.deep.equal([]);
+  });
 });
