@@ -27,6 +27,8 @@ You can run Dataform locally using the Dataform CLI tool, which can be installed
 npm i -g @dataform/cli
 ```
 
+To emit table-level data lineage to Google Cloud Data Lineage during CLI runs, enable `datalineage.googleapis.com` and run `dataform run --emit-lineage` (or set `lineage: { enabled: true }` in `workflow_settings.yaml`). See the [Data Lineage guide](docs/lineage.md) for prerequisites and configuration details.
+
 > **Note on Project Execution & Security:** Dataform compiles SQLX and JavaScript project code using Node.js's native `node:vm` context. While module resolution is scoped to the project directory, `node:vm` is not a security sandbox against untrusted code. Dataform projects execute with the privileges of the local process; only run and compile Dataform projects from trusted sources.
 
 ## Useful Links
@@ -37,6 +39,7 @@ npm i -g @dataform/cli
 - Write [data quality checks](https://cloud.google.com/dataform/docs/assertions).
 - Enable [scripting](https://cloud.google.com/dataform/docs/develop-workflows-js) and code re-use with a JavaScript API.
 - Import [pre-defined packages](https://dataform-co.github.io/dataform/docs/packages), or create your own.
+- Emit table-level [data lineage to Knowledge Catalog](docs/lineage.md).
 - View the [Dataform Core reference](https://cloud.google.com/dataform/docs/reference/dataform-core-reference).
 - View the [Dataform CLI reference](cli/README.md).
 - View the [Dataform configs reference](https://dataform-co.github.io/dataform/docs/configs-reference).

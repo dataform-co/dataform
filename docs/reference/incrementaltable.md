@@ -4,7 +4,10 @@
 
 When you define an incremental table, Dataform builds the incremental table from scratch only for
 the first time. During subsequent executions, Dataform only inserts or merges new rows into the
-incremental table according to the conditions that you configure.
+incremental table according to the conditions that you configure. When
+[lineage emission](../lineage.md) is enabled, executing an incremental table action emits
+OpenLineage `RunEvent`s (`actionType: "TABLE"`) to Knowledge Catalog Lineage with the table's
+`dependencyTargets` as `inputs` and the incremental table target as `outputs` on `COMPLETE`.
 
 You can create incremental tables in the following ways. Available config options are defined in
 [IncrementalTableConfig](configs#dataform-ActionConfig-IncrementalTableConfig), and are shared across all the

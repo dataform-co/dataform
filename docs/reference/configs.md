@@ -27,6 +27,7 @@
   - [ActionConfig.ViewConfig.AdditionalOptionsEntry](#dataform-ActionConfig-ViewConfig-AdditionalOptionsEntry)
   - [ActionConfig.ViewConfig.LabelsEntry](#dataform-ActionConfig-ViewConfig-LabelsEntry)
   - [ActionConfigs](#dataform-ActionConfigs)
+  - [LineageSettings](#dataform-LineageSettings)
   - [NotebookRuntimeOptionsConfig](#dataform-NotebookRuntimeOptionsConfig)
   - [WorkflowSettings](#dataform-WorkflowSettings)
   - [WorkflowSettings.VarsEntry](#dataform-WorkflowSettings-VarsEntry)
@@ -351,6 +352,16 @@ Action configs defines the contents of `actions.yaml` configuration files.
 | ------- | -------------------------------------- | -------- | ----------- |
 | actions | [ActionConfig](#dataform-ActionConfig) | repeated |             |
 
+<a name="dataform-LineageSettings"></a>
+
+### LineageSettings
+
+Configuration for Knowledge Catalog lineage emission. See the [Data Lineage guide](../lineage.md).
+
+| Field   | Type          | Label | Description                                                                                                             |
+| ------- | ------------- | ----- | ----------------------------------------------------------------------------------------------------------------------- |
+| enabled | [bool](#bool) |       | If true, downstream runners will emit OpenLineage events to Knowledge Catalog for actions executed from this project. |
+
 <a name="dataform-NotebookRuntimeOptionsConfig"></a>
 
 ### NotebookRuntimeOptionsConfig
@@ -380,6 +391,7 @@ configuration file.
 | defaultNotebookRuntimeOptions | [NotebookRuntimeOptionsConfig](#dataform-NotebookRuntimeOptionsConfig) |          | Optional. Default runtime options for Notebook actions.                                                                                                     |
 | builtinAssertionNamePrefix    | [string](#string)                                                      |          | Optional. The prefix to append to built-in assertion names.                                                                                                 |
 | defaultReservation            | [string](#string)                                                      |          | Optional. The default BigQuery reservation to use for execution.                                                                                            |
+| lineage                       | [LineageSettings](#dataform-LineageSettings)                           |          | Optional. Configuration for Knowledge Catalog lineage emission. See the [Data Lineage guide](../lineage.md).                                                |
 
 <a name="dataform-WorkflowSettings-VarsEntry"></a>
 

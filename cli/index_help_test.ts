@@ -85,6 +85,8 @@ suite("help command", () => {
     expect(output).to.include("--include-dependents");
     expect(output).to.include("--tags");
     expect(output).to.include("--job-labels");
+    expect(output).to.include("--emit-lineage");
+    expect(output).to.include("docs/lineage.md");
   });
 
   test("shows help for 'format' command", async () => {

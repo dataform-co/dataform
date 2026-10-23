@@ -4,7 +4,9 @@
 
 Tables are the fundamental building block for storing data when using Dataform. Dataform compiles
 your Dataform core code into SQL, executes the SQL code, and creates your defined tables in
-BigQuery.
+BigQuery. When [lineage emission](../lineage.md) is enabled, executing a table action emits
+OpenLineage `RunEvent`s (`actionType: "TABLE"`) to Knowledge Catalog Lineage with the table's
+`dependencyTargets` as `inputs` and the table target as `outputs` on `COMPLETE`.
 
 You can create tables in the following ways. Available config options are defined in
 [TableConfig](configs#dataform-ActionConfig-TableConfig), and are shared across all the
