@@ -2,6 +2,7 @@ import { LineageClient } from "@google-cloud/lineage";
 
 import { createAuthClient } from "df/cli/api/dbadapters/bigquery";
 import { isLineageEligibleAction } from "df/cli/api/lineage/action_type";
+import { LineageEnablementSource } from "df/cli/api/lineage/enablement";
 import { GLOBAL_LINEAGE_ENDPOINT, LineageEndpointRouter } from "df/cli/api/lineage/endpoint_router";
 import { LineagePayloadBuilder, toProtoStruct } from "df/cli/api/lineage/payload_builder";
 import { coerceAsError } from "df/common/errors/errors";
@@ -9,7 +10,18 @@ import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
 
 export interface IEmitterOptions {
+  /**
+   * @deprecated Not read by the emitter: an emitter is only constructed when
+   * lineage is enabled. Use `enablementSource` instead. To be removed.
+   */
   lineageEnabled?: boolean;
+  /**
+   * Which surface enabled lineage. When `default`, the user never asked for
+   * lineage, so skip notices (API disabled, missing permission, dry-run, ...)
+   * are only printed with DATAFORM_LINEAGE_DEBUG=1, and only the first
+   * `Failed to emit` line of a run is printed without it.
+   */
+  enablementSource?: LineageEnablementSource;
   dryRun?: boolean;
   projectDir?: string;
 }
@@ -118,9 +130,13 @@ export class LineageEmitter {
   private readonly payloadBuilder: LineagePayloadBuilder;
   private readonly endpointRouter: LineageEndpointRouter;
   private readonly pending = new Set<Promise<void>>();
+  // Read once in the constructor: changing DATAFORM_LINEAGE_DEBUG afterwards
+  // has no effect on an existing emitter (tests must create the emitter after
+  // setting it, see testing/debug_env.ts).
   private readonly debugEnabled: boolean;
   private emissionDisabledThisRun = false;
   private dryRunSkipLogged = false;
+  private defaultModeFailureLogged = false;
 
   constructor(
     credentials: dataform.IBigQuery,
@@ -147,7 +163,7 @@ export class LineageEmitter {
 
     if (this.emitterOptions.dryRun) {
       if (!this.dryRunSkipLogged) {
-        this.stderr.write(
+        this.writeNotice(
           "[lineage] Skipped lineage emission (dry-run mode; once-per-run): skip_reason=dry_run\n",
         );
         this.dryRunSkipLogged = true;
@@ -167,7 +183,7 @@ export class LineageEmitter {
         const code = (e as any).code;
         const endpoint = (e as any).lineageEndpoint || "unknown";
         const location = (e as any).lineageLocation || "unknown";
-        this.stderr.write(
+        this.writeFailure(
           `[lineage] Failed to emit lineage for action ${action.target.schema}.${action.target.name}: ` +
             `code=${gRpcCodeName(code)}(${code ?? "?"}) endpoint=${endpoint} location=${location} message=${e.message}\n`,
         );
@@ -252,7 +268,7 @@ export class LineageEmitter {
           onRepEndpoint &&
           (this.isEndpointUnresolvable(err) || this.isEndpointRegionMismatch(err))
         ) {
-          this.stderr.write(
+          this.writeNotice(
             `[lineage] Regional endpoint ${currentEndpoint} is not serving location ${location}. Falling back to ${GLOBAL_LINEAGE_ENDPOINT} for this and subsequent emits in this location.\n`,
           );
           this.endpointRouter.markRepUnavailable(location);
@@ -266,7 +282,7 @@ export class LineageEmitter {
         if (this.isEndpointRegionMismatch(err)) {
           if (!this.emissionDisabledThisRun) {
             this.emissionDisabledThisRun = true;
-            this.stderr.write(
+            this.writeNotice(
               `[lineage] Skipped lineage emission for the rest of this run: skip_reason=endpoint_region_mismatch (endpoint '${currentEndpoint}' returned HTTP 302 for location '${location}'; the endpoint does not serve this region)\n`,
             );
           }
@@ -284,7 +300,7 @@ export class LineageEmitter {
         if (code === 7 || err.message?.includes("PERMISSION_DENIED")) {
           if (!this.emissionDisabledThisRun) {
             this.emissionDisabledThisRun = true;
-            this.stderr.write(
+            this.writeNotice(
               `[lineage] Skipped lineage emission for the rest of this run: skip_reason=api_disabled (ensure the credential has 'datalineage.googleapis.com/locations.processOpenLineageMessage' OR that the Lineage API is enabled in project ${projectId} via 'gcloud services enable datalineage.googleapis.com')\n`,
             );
           }
@@ -297,7 +313,7 @@ export class LineageEmitter {
         ) {
           if (!this.emissionDisabledThisRun) {
             this.emissionDisabledThisRun = true;
-            this.stderr.write(
+            this.writeNotice(
               `[lineage] Skipped lineage emission for the rest of this run: skip_reason=api_disabled (Lineage API is not enabled in project ${projectId}; run 'gcloud services enable datalineage.googleapis.com')\n`,
             );
           }
@@ -310,7 +326,7 @@ export class LineageEmitter {
         if (code === 16 || err.message?.includes("UNAUTHENTICATED")) {
           if (!this.emissionDisabledThisRun) {
             this.emissionDisabledThisRun = true;
-            this.stderr.write(
+            this.writeNotice(
               `[lineage] Skipped lineage emission for the rest of this run: skip_reason=unauthenticated (the credential used to reach the Lineage API is missing, invalid, or expired; re-authenticate and rerun — e.g., 'gcloud auth application-default login')\n`,
             );
           }
@@ -325,6 +341,41 @@ export class LineageEmitter {
         throw err;
       }
     }
+  }
+
+  /**
+   * Writes a lineage skip or fallback notice. When lineage is on only because
+   * of the built-in default, the user never asked for lineage, so the notice is
+   * shown only with DATAFORM_LINEAGE_DEBUG=1 to keep their output unchanged
+   * (for example in air-gapped CI or behind a proxy).
+   */
+  private writeNotice(msg: string): void {
+    if (this.emitterOptions.enablementSource === "default" && !this.debugEnabled) {
+      return;
+    }
+    this.stderr.write(msg);
+  }
+
+  /**
+   * Writes an unexpected `Failed to emit` line. When lineage is on only because
+   * of the built-in default, only the first failure of the run is printed (so a
+   * payload bug is still noticed) and later ones need DATAFORM_LINEAGE_DEBUG=1.
+   */
+  private writeFailure(msg: string): void {
+    if (this.emitterOptions.enablementSource === "default" && !this.debugEnabled) {
+      if (this.defaultModeFailureLogged) {
+        return;
+      }
+      this.defaultModeFailureLogged = true;
+      this.stderr.write(
+        msg.replace(
+          /\n$/,
+          " (further lineage failures in this run are shown only with DATAFORM_LINEAGE_DEBUG=1)\n",
+        ),
+      );
+      return;
+    }
+    this.stderr.write(msg);
   }
 
   private isEndpointUnresolvable(err: Error): boolean {

@@ -103,9 +103,13 @@ export const includeDependentsOption: INamedOption<yargs.Options, IRunArgs> = {
 
 export const emitLineageOption: INamedOption<yargs.Options, IRunArgs> = {
   name: "emit-lineage",
+  // Intentionally no yargs `default`: "not passed" must stay `undefined` so that
+  // workflow_settings.yaml `lineage.enabled` and then the built-in default
+  // (LINEAGE_ENABLED_BY_DEFAULT in cli/api/lineage/enablement.ts) can apply.
   option: {
     describe:
-      "If set, emit OpenLineage RunEvents to Knowledge Catalog Lineage for each executed action. " +
+      "Emit OpenLineage RunEvents to Knowledge Catalog Lineage for each executed action. " +
+      "Enabled by default; pass --no-emit-lineage to disable. " +
       "Overrides workflow_settings.yaml lineage.enabled when specified.",
     type: "boolean",
   },

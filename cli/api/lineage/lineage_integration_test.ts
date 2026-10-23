@@ -12,6 +12,7 @@ import {
   createLineageEmitter,
   ILineageEmitterFactoryInput,
 } from "df/cli/api/lineage/emitter_factory";
+import { withDebugEnv } from "df/cli/api/lineage/testing/debug_env";
 import {
   recorderProvider,
   RecordingLineageClient,
@@ -130,7 +131,7 @@ function factoryInput(
 }
 
 suite("--emit-lineage integration", { parallel: true }, () => {
-  test("Case 1 — CLI flag alone enables emission (2*N recorder calls, pairing invariant)", async () => {
+  test("CLI flag alone enables emission (2*N recorder calls, pairing invariant)", async () => {
     const recorder = new RecordingLineageClient();
     const stderr = new StderrCapture();
     const emitter = createLineageEmitter(
@@ -176,7 +177,7 @@ suite("--emit-lineage integration", { parallel: true }, () => {
     }
   });
 
-  test("Case 1b — every BigQuery-job action type emits; declarations do not", async () => {
+  test("every BigQuery-job action type emits; declarations do not", async () => {
     const recorder = new RecordingLineageClient();
     const emitter = createLineageEmitter(
       factoryInput({ cliEmitLineage: true }),
@@ -248,7 +249,7 @@ suite("--emit-lineage integration", { parallel: true }, () => {
     );
   });
 
-  test("Case 2 — workflow lineage.enabled=true (no CLI flag) enables emission", async () => {
+  test("workflow lineage.enabled=true (no CLI flag) enables emission", async () => {
     const recorder = new RecordingLineageClient();
     const emitter = createLineageEmitter(
       factoryInput({ workflowLineageEnabled: true }),
@@ -264,19 +265,21 @@ suite("--emit-lineage integration", { parallel: true }, () => {
     expect(recorder.calls.length).to.equal(4);
   });
 
-  test("Case 3 — neither flag nor config produces no emission and no factory-provider call", async () => {
+  test("neither flag nor config enables emission by default", async () => {
     const recorder = new RecordingLineageClient();
     const stderr = new StderrCapture();
     const emitter = createLineageEmitter(factoryInput(), stderr, recorderProvider(recorder));
+    expect(emitter).to.not.equal(undefined);
 
-    expect(emitter).to.equal(undefined);
-    expect(recorder.calls.length).to.equal(0);
-    expect(recorder.providerCalls.length).to.equal(0);
-    // Silent default — no skip line either.
+    const runner = run(new FakeDbAdapter(), makeLinearGraph(), { lineageEmitter: emitter });
+    await runner.result();
+    await emitter!.drain();
+
+    expect(recorder.calls.length).to.equal(4);
     expect(stderr.contains("skip_reason=")).to.equal(false);
   });
 
-  test("Case 4 — CLI --emit-lineage=false overrides workflow lineage.enabled=true", async () => {
+  test("CLI --emit-lineage=false overrides workflow lineage.enabled=true", async () => {
     const recorder = new RecordingLineageClient();
     const stderr = new StderrCapture();
     const emitter = createLineageEmitter(
@@ -291,7 +294,7 @@ suite("--emit-lineage integration", { parallel: true }, () => {
     expect(stderr.contains("skip_reason=invocation_override")).to.equal(true);
   });
 
-  test("Case 5 — lineage emit failure is fail-open (run exits SUCCESSFUL), skip_reason=api_disabled printed once", async () => {
+  test("lineage emit failure is fail-open (run exits SUCCESSFUL), skip_reason=api_disabled printed once", async () => {
     // Fail-open contract: any lineage emission failure — whatever the gRPC
     // code — must not affect the workflow status. The dataform run continues,
     // dbadapter still executes every action. When multiple in-flight emits
@@ -317,7 +320,7 @@ suite("--emit-lineage integration", { parallel: true }, () => {
     expect(skipLines.length).to.equal(1);
   });
 
-  test("Case 6 — drain is bounded when the client hangs indefinitely", async () => {
+  test("drain is bounded when the client hangs indefinitely", async () => {
     const recorder = new RecordingLineageClient();
     recorder.hangForever();
     const emitter = createLineageEmitter(
@@ -334,6 +337,26 @@ suite("--emit-lineage integration", { parallel: true }, () => {
     const elapsed = Date.now() - started;
     // 200ms bound + generous slack for CI jitter.
     expect(elapsed).to.be.lessThan(2000);
+  });
+
+  test("default-on emit failure is fail-open and silent (no skip_reason line)", async () => {
+    // When lineage is on only by default, the user never asked for it, so an
+    // expected skip (API disabled / missing permission) must not add output.
+    await withDebugEnv(undefined, async () => {
+      const recorder = new RecordingLineageClient();
+      recorder.throwOnNextCallWith(7, "Permission Denied");
+      const stderr = new StderrCapture();
+      const emitter = createLineageEmitter(factoryInput(), stderr, recorderProvider(recorder));
+
+      const dbadapter = new FakeDbAdapter();
+      const runner = run(dbadapter, makeLinearGraph(), { lineageEmitter: emitter });
+      const runResult = await runner.result();
+      await emitter!.drain();
+
+      expect(runResult.status).to.equal(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
+      expect(dbadapter.executed.length).to.equal(2);
+      expect(stderr.writes).to.deep.equal([]);
+    });
   });
 });
 

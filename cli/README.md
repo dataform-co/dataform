@@ -26,7 +26,7 @@ Run `dataform` with no arguments, or `dataform help`, to print the list of comma
 - **`--version`** — prints the installed `@dataform/cli` version number.
 - **Strict parsing** — unknown commands or flags are rejected with an error, and the CLI suggests the closest matching command name for typos.
 - **Colored output** — output is colorized by default. Set `NO_COLOR=1` (or `true`/`yes`) to disable it.
-- **Lineage debug logging** — set `DATAFORM_LINEAGE_DEBUG=1` to enable verbose logging from the OpenLineage emitter used by `run --emit-lineage`.
+- **Lineage debug logging** — set `DATAFORM_LINEAGE_DEBUG=1` to enable verbose logging from the OpenLineage emitter used by `run`. When lineage is on only by default, skip notices (for example, Lineage API not enabled) are printed only in this mode, and only the first emit failure of a run is printed without it.
 
 ## Commands
 
@@ -207,7 +207,7 @@ Compiles and executes the project against BigQuery (or validates it with `--dry-
 | `--jit-timeout` | string | — | Per-model just-in-time (JiT) compilation worker timeout, e.g. `'30s'`, `'2m'`. Each action with JiT code gets its own fresh deadline, independent of `--execution-timeout`. If unset, only `--execution-timeout` bounds JiT work. |
 | `--job-prefix` | string | — | Adds an additional prefix to BigQuery job IDs, in the form `dataform-${jobPrefix}-`. |
 | `--job-labels` | string | — | Comma-separated `key=value` labels to attach to BigQuery jobs, e.g. `'key1=val1,key2=val2'`. |
-| `--emit-lineage` | boolean | — | Emits OpenLineage `RunEvent`s to Knowledge Catalog Lineage for each executed action. Overrides the `lineage.enabled` setting in `workflow_settings.yaml` when specified. |
+| `--emit-lineage` | boolean | unset (lineage on by default) | Emits OpenLineage `RunEvent`s to Knowledge Catalog Lineage for each executed action. Enabled by default; pass `--no-emit-lineage` (or set `lineage.enabled: false` in `workflow_settings.yaml`) to disable. Overrides the `lineage.enabled` setting in `workflow_settings.yaml` when specified. |
 | Project-config overrides | — | — | See [Shared project-config flags](#shared-project-config-flags). |
 
 If `--timeout` is set without `--execution-timeout`, `run` prints a warning reminding you that `--timeout` only bounds compilation.
@@ -375,8 +375,11 @@ dataform run --job-prefix=nightly --job-labels=team=analytics,pipeline=nightly-e
 
 ### Emitting lineage events for a run
 
+Lineage events are emitted by default. To print emitter diagnostics, or to turn emission off for one run:
+
 ```bash
-DATAFORM_LINEAGE_DEBUG=1 dataform run --emit-lineage
+DATAFORM_LINEAGE_DEBUG=1 dataform run
+dataform run --no-emit-lineage
 ```
 
 Lineage events are emitted for every action that runs a BigQuery job: tables (including views and incremental tables), operations, assertions and property graphs. Assertions appear as a process for the assertion view written to the assertions dataset, with the assertion's dependencies reported as inputs. Property graph inputs are populated from the action's dependencies (`dependencyTargets`), so node and edge tables referenced via `ref` are reported as inputs while raw table paths in the graph definition are not. Declarations are not emitted. The action type is reported in the `gcp_bq_pipelines_job.actionType` attribute as `TABLE`, `OPERATIONS`, `ASSERTION` or `PROPERTY_GRAPH`, matching the values used by Dataform in Google Cloud.

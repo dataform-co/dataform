@@ -7,6 +7,7 @@ import {
   LINEAGE_RETRY_CONFIG,
   LineageEmitter,
 } from "df/cli/api/lineage/emitter";
+import { withDebugEnv } from "df/cli/api/lineage/testing/debug_env";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 
@@ -886,6 +887,189 @@ suite("LineageEmitter", () => {
     expect(apiDisabledLines.length).to.equal(1);
     expect(apiDisabledLines[0]).to.contain("gcloud services enable datalineage.googleapis.com");
     expect(apiDisabledLines[0]).to.contain("target-proj");
+  });
+
+  suite("enablementSource=default (lineage on by default, not requested by the user)", () => {
+    function permissionDeniedClient(): MockLineageClient {
+      const mockClient = new MockLineageClient();
+      const permissionError: any = new Error("Permission Denied");
+      permissionError.code = 7;
+      mockClient.processOpenLineageRunEventError = permissionError;
+      return mockClient;
+    }
+    const tableAction = dataform.ExecutionAction.create({
+      target: { database: "target-proj", schema: "schema", name: "table" },
+      type: "table",
+    });
+    const runningResult = dataform.ActionResult.create({
+      status: dataform.ActionResult.ExecutionStatus.RUNNING,
+    });
+
+    test("hides the skip_reason notice but still disables emission for the rest of the run", async () => {
+      await withDebugEnv(undefined, async () => {
+        const mockClient = permissionDeniedClient();
+        const stderr = new StderrCapture();
+        const emitter = new LineageEmitter(
+          credentials,
+          { lineageEnabled: true, enablementSource: "default" },
+          () => mockClient as any,
+          stderr,
+        );
+
+        emitter.emitForAction(tableAction, runningResult);
+        await emitter.drain();
+        emitter.emitForAction(tableAction, runningResult);
+        await emitter.drain();
+
+        expect(stderr.writes).to.deep.equal([]);
+        expect(mockClient.processOpenLineageRunEventCalledWith.length).to.equal(1);
+      });
+    });
+
+    test("prints the skip_reason notice when DATAFORM_LINEAGE_DEBUG=1", async () => {
+      await withDebugEnv("1", async () => {
+        const mockClient = permissionDeniedClient();
+        const stderr = new StderrCapture();
+        const emitter = new LineageEmitter(
+          credentials,
+          { lineageEnabled: true, enablementSource: "default" },
+          () => mockClient as any,
+          stderr,
+        );
+
+        emitter.emitForAction(tableAction, runningResult);
+        await emitter.drain();
+
+        const apiDisabledLines = stderr.writes.filter((w) =>
+          w.includes("skip_reason=api_disabled"),
+        );
+        expect(apiDisabledLines.length).to.equal(1);
+      });
+    });
+
+    test("hides the skip_reason=dry_run notice", async () => {
+      await withDebugEnv(undefined, async () => {
+        const mockClient = new MockLineageClient();
+        const stderr = new StderrCapture();
+        const emitter = new LineageEmitter(
+          credentials,
+          { lineageEnabled: true, enablementSource: "default", dryRun: true },
+          () => mockClient as any,
+          stderr,
+        );
+
+        emitter.emitForAction(tableAction, runningResult);
+        await emitter.drain();
+
+        expect(stderr.writes).to.deep.equal([]);
+        expect(mockClient.processOpenLineageRunEventCalledWith.length).to.equal(0);
+      });
+    });
+
+    function invalidArgumentClient(): MockLineageClient {
+      const mockClient = new MockLineageClient();
+      const invalidArgument: any = new Error("bad payload");
+      invalidArgument.code = 3;
+      mockClient.processOpenLineageRunEventError = invalidArgument;
+      return mockClient;
+    }
+
+    test("prints only the first Failed to emit line of the run", async () => {
+      await withDebugEnv(undefined, async () => {
+        const mockClient = invalidArgumentClient();
+        const stderr = new StderrCapture();
+        const emitter = new LineageEmitter(
+          credentials,
+          { lineageEnabled: true, enablementSource: "default" },
+          () => mockClient as any,
+          stderr,
+        );
+
+        emitter.emitForAction(tableAction, runningResult);
+        await emitter.drain();
+        emitter.emitForAction(tableAction, runningResult);
+        await emitter.drain();
+
+        expect(stderr.writes.length).to.equal(1);
+        expect(stderr.writes[0]).to.contain("[lineage] Failed to emit lineage");
+        expect(stderr.writes[0]).to.contain("INVALID_ARGUMENT");
+        expect(stderr.writes[0]).to.contain(
+          "further lineage failures in this run are shown only with DATAFORM_LINEAGE_DEBUG=1",
+        );
+        expect(mockClient.processOpenLineageRunEventCalledWith.length).to.equal(2);
+      });
+    });
+
+    test("prints every Failed to emit line when DATAFORM_LINEAGE_DEBUG=1", async () => {
+      await withDebugEnv("1", async () => {
+        const mockClient = invalidArgumentClient();
+        const stderr = new StderrCapture();
+        const emitter = new LineageEmitter(
+          credentials,
+          { lineageEnabled: true, enablementSource: "default" },
+          () => mockClient as any,
+          stderr,
+        );
+
+        emitter.emitForAction(tableAction, runningResult);
+        await emitter.drain();
+        emitter.emitForAction(tableAction, runningResult);
+        await emitter.drain();
+
+        const failedLines = stderr.writes.filter((w) =>
+          w.includes("[lineage] Failed to emit lineage"),
+        );
+        expect(failedLines.length).to.equal(2);
+        expect(failedLines[0]).to.contain("INVALID_ARGUMENT");
+        expect(failedLines[0]).to.not.contain("further lineage failures");
+      });
+    });
+
+    for (const explicitSource of ["cli_flag", "workflow_settings"] as const) {
+      test(`enablementSource=${explicitSource} still prints the skip_reason notice`, async () => {
+        await withDebugEnv(undefined, async () => {
+          const mockClient = permissionDeniedClient();
+          const stderr = new StderrCapture();
+          const emitter = new LineageEmitter(
+            credentials,
+            { lineageEnabled: true, enablementSource: explicitSource },
+            () => mockClient as any,
+            stderr,
+          );
+
+          emitter.emitForAction(tableAction, runningResult);
+          await emitter.drain();
+
+          const apiDisabledLines = stderr.writes.filter((w) =>
+            w.includes("skip_reason=api_disabled"),
+          );
+          expect(apiDisabledLines.length).to.equal(1);
+        });
+      });
+
+      test(`enablementSource=${explicitSource} prints every Failed to emit line`, async () => {
+        await withDebugEnv(undefined, async () => {
+          const mockClient = invalidArgumentClient();
+          const stderr = new StderrCapture();
+          const emitter = new LineageEmitter(
+            credentials,
+            { lineageEnabled: true, enablementSource: explicitSource },
+            () => mockClient as any,
+            stderr,
+          );
+
+          emitter.emitForAction(tableAction, runningResult);
+          await emitter.drain();
+          emitter.emitForAction(tableAction, runningResult);
+          await emitter.drain();
+
+          const failedLines = stderr.writes.filter((w) =>
+            w.includes("[lineage] Failed to emit lineage"),
+          );
+          expect(failedLines.length).to.equal(2);
+        });
+      });
+    }
   });
 
   test("skip_reason=unauthenticated is logged on UNAUTHENTICATED and disables emission for the rest of the run", async () => {

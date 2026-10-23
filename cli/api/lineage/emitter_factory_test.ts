@@ -56,6 +56,7 @@ suite("createLineageEmitter", () => {
     expect(emitter).to.equal(undefined);
     expect(stderr.writes.length).to.equal(1);
     expect(stderr.combined).to.contain("skip_reason=invocation_override");
+    expect(stderr.combined).to.contain("--no-emit-lineage");
     expect(stderr.combined).to.contain("--emit-lineage=false");
   });
 
@@ -70,10 +71,27 @@ suite("createLineageEmitter", () => {
     expect(stderr.combined).to.not.contain("skip_reason=workflow_opt_out");
   });
 
-  test("stays silent when neither surface has been touched (opt-in is the default)", () => {
+  test("constructs a LineageEmitter and stays silent when neither surface has been touched (default-on)", () => {
     const stderr = new StderrCapture();
     const emitter = createLineageEmitter(baseInput(), stderr);
+    expect(emitter).to.be.instanceOf(LineageEmitter);
+    expect(stderr.writes).to.deep.equal([]);
+  });
+
+  test("returns undefined without logging when credentials are missing, even with the default on", () => {
+    const stderr = new StderrCapture();
+    const emitter = createLineageEmitter(baseInput({ readCredentials: undefined }), stderr);
     expect(emitter).to.equal(undefined);
+    expect(stderr.writes).to.deep.equal([]);
+  });
+
+  test("CLI --emit-lineage=true overrides workflow_settings opt-out", () => {
+    const stderr = new StderrCapture();
+    const emitter = createLineageEmitter(
+      baseInput({ cliEmitLineage: true, workflowLineageEnabled: false }),
+      stderr,
+    );
+    expect(emitter).to.be.instanceOf(LineageEmitter);
     expect(stderr.writes).to.deep.equal([]);
   });
 
