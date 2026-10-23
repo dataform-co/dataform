@@ -79,7 +79,6 @@
       "protobufjs": "^7.6.5",
       "ansi-regex": "^3.0.1",
       "node-fetch": "^2.6.7",
-      "markdown-it": "14.3.1",
       "mdurl": "2.0.0",
       "wrap-ansi": "7.0.0",
       "string-width": "4.1.0",
