@@ -384,7 +384,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
       .delete({ ignoreNotFound: true });
   }
 
-  public async schemas(database: string): Promise<string[]> {
+  public async schemas(database?: string): Promise<string[]> {
     const data = await this.getClient(database).getDatasets({
       autoPaginate: true,
       maxResults: 1000,
@@ -392,7 +392,11 @@ export class BigQueryDbAdapter implements IDbAdapter {
     return data[0].map((dataset) => dataset.id);
   }
 
-  public async createSchema(database: string, schema: string, location?: string): Promise<void> {
+  public async createSchema(
+    database: string | undefined,
+    schema: string,
+    location?: string,
+  ): Promise<void> {
     await this.execute(
       `create schema if not exists \`${database || this.bigQueryCredentials.projectId}.${schema}\``,
       { bigquery: { location: location || this.bigQueryCredentials.location || "US" } },
