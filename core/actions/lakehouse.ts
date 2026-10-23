@@ -101,6 +101,18 @@ export function validateLakehouseConfig(
       errorTarget,
     );
   }
+  if (
+    config instanceof dataform.ActionConfig.IncrementalTableConfig &&
+    !session.projectConfig?.defaultSchema
+  ) {
+    session.compileError(
+      new Error(
+        "When defining an incremental Lakehouse table, 'defaultDataset' must be defined in workflow_settings.yaml.",
+      ),
+      fileName,
+      errorTarget,
+    );
+  }
   return true;
 }
 
