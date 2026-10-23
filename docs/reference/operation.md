@@ -3,7 +3,9 @@
 # Class: Operation
 
 Operations define custom SQL operations that don't fit into the Dataform model of publishing a
-table or writing an assertion.
+table or writing an assertion. When [lineage emission](../lineage.md) is enabled, executing an
+operation action emits OpenLineage `RunEvent`s (`actionType: "OPERATIONS"`) to Knowledge Catalog
+Lineage (`inputs` and `outputs` are populated on `COMPLETE` when `hasOutput` is `true`).
 
 You can create operations in the following ways. Available config options are defined in
 [OperationConfig](configs#dataform-ActionConfig-OperationConfig), and are shared across all the
