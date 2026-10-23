@@ -174,19 +174,26 @@ suite("@dataform/cli/catalog/metadata_writer", () => {
     expect(stderrMessages).to.deep.equal([]);
   });
 
-  test("skips remaining writes and logs warning once on PERMISSION_DENIED", async () => {
+  test("skips remaining writes and logs warning once on genuine PERMISSION_DENIED without retrying", async () => {
     let attempts = 0;
     const stderrMessages: string[] = [];
 
     const mockClient: ICatalogClient = {
       updateEntry: (async () => {
         attempts++;
-        const err = new Error("7 PERMISSION_DENIED: missing dataplex.entries.update") as Error & {
+        const err = new Error(
+          "7 PERMISSION_DENIED: Permission 'dataplex.entries.update' denied on resource (or it may not exist).",
+        ) as Error & { code: number };
+        err.code = 7;
+        throw err;
+      }) as ICatalogClient["updateEntry"],
+      getEntry: (async () => {
+        const err = new Error("7 PERMISSION_DENIED: missing dataplex.entries.get") as Error & {
           code: number;
         };
         err.code = 7;
         throw err;
-      }) as ICatalogClient["updateEntry"],
+      }) as ICatalogClient["getEntry"],
     };
 
     const writer = new KnowledgeCatalogMetadataWriter(
@@ -213,6 +220,85 @@ suite("@dataform/cli/catalog/metadata_writer", () => {
     expect(stderrMessages[0]).to.include(
       "Warning: Skipping Knowledge Catalog metadata writes for the rest of this run (failed on target-proj.my_dataset.table_1): PERMISSION_DENIED",
     );
+  });
+
+  test("retries transient PERMISSION_DENIED when getEntry reports NOT_FOUND", async () => {
+    let attempts = 0;
+    const sleepDelays: number[] = [];
+
+    const mockClient: ICatalogClient = {
+      updateEntry: (async () => {
+        attempts++;
+        if (attempts === 1) {
+          const err = new Error(
+            "7 PERMISSION_DENIED: Permission denied on resource (or it may not exist).",
+          ) as Error & { code: number };
+          err.code = 7;
+          throw err;
+        }
+        return [{}];
+      }) as ICatalogClient["updateEntry"],
+      getEntry: (async () => {
+        const err = new Error("5 NOT_FOUND: Entry not found") as Error & { code: number };
+        err.code = 5;
+        throw err;
+      }) as ICatalogClient["getEntry"],
+    };
+
+    const writer = new KnowledgeCatalogMetadataWriter(
+      dataform.BigQuery.create({ projectId: "default-proj", location: "EU" }),
+      {
+        clientProvider: () => mockClient,
+        stderr: { write: () => undefined },
+        sleepFn: async (millis: number) => {
+          sleepDelays.push(millis);
+        },
+      },
+    );
+
+    await writer.writeMetadata(
+      { database: "target-proj", schema: "my_dataset", name: "my_table" },
+      "EU",
+      dataform.Metadata.create({ overview: "Table overview." }),
+    );
+
+    expect(attempts).to.equal(2);
+    expect(sleepDelays).to.deep.equal([1000]);
+  });
+
+  test("logs warning and fails open when NOT_FOUND retries are exhausted", async () => {
+    let attempts = 0;
+    const stderrMessages: string[] = [];
+
+    const mockClient: ICatalogClient = {
+      updateEntry: (async () => {
+        attempts++;
+        const notFoundErr = new Error("5 NOT_FOUND: Entry not found") as Error & { code: number };
+        notFoundErr.code = 5;
+        throw notFoundErr;
+      }) as ICatalogClient["updateEntry"],
+    };
+
+    const writer = new KnowledgeCatalogMetadataWriter(
+      dataform.BigQuery.create({ projectId: "default-proj", location: "us-central1" }),
+      {
+        clientProvider: () => mockClient,
+        stderr: { write: (msg: string) => stderrMessages.push(msg) },
+        sleepFn: async () => undefined,
+      },
+    );
+
+    await writer.writeMetadata(
+      { database: "target-proj", schema: "my_dataset", name: "my_table" },
+      "us-central1",
+      dataform.Metadata.create({ overview: "Table overview." }),
+    );
+
+    expect(attempts).to.equal(5);
+    expect(stderrMessages).to.deep.equal([
+      "Warning: Skipping Knowledge Catalog metadata write for target-proj.my_dataset.my_table: " +
+        "entry was not found in Knowledge Catalog after 5 attempts.\n",
+    ]);
   });
 
   test("propagates unexpected updateEntry errors", async () => {

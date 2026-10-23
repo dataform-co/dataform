@@ -223,7 +223,6 @@ Knowledge Catalog metadata for a data object, written to Knowledge Catalog durin
 | dependOnDependencyAssertions | [bool](#bool)                                                            |          | When set to true, assertions dependent upon any dependency will be add as dedpendency to this action                                                                                                                            |
 | hermetic                     | [bool](#bool)                                                            |          | If true, this indicates that the action only depends on data from explicitly-declared dependencies. Otherwise if false, it indicates that the action depends on data from a source which has not been declared as a dependency. |
 | reservation          | [string](#string)                                                        |          | Optional. The BigQuery reservation to use for execution.                                                                                                                                                                        |
-| metadata                     | [ActionConfig.Metadata](#dataform-ActionConfig-Metadata)                 |          | Metadata for this operation. Can only be set if hasOutput is true.                                                                                                                                                              |
 
 <a name="dataform-ActionConfig-TableAssertionsConfig"></a>
 

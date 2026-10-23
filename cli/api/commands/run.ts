@@ -496,7 +496,7 @@ export class Runner {
       !(this.graph.runConfig && this.graph.runConfig.disableSetMetadata) &&
       // Only set metadata if not using BigQuery dry run
       !this.executionOptions.bigquery?.dryRun &&
-      (action.type === "table" || (action.type === "operation" && action.hasOutput))
+      action.type === "table"
     ) {
       try {
         await this.dbadapter.setMetadata(action);

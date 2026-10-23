@@ -183,12 +183,6 @@ export class Operation extends ActionBuilder<dataform.Operation> {
       }
       this.proto.actionDescriptor.reservation = config.reservation;
     }
-    if (config.metadata) {
-      if (!this.proto.actionDescriptor) {
-        this.proto.actionDescriptor = {};
-      }
-      this.proto.actionDescriptor.metadata = config.metadata;
-    }
     return this;
   }
 
@@ -398,15 +392,6 @@ export class Operation extends ActionBuilder<dataform.Operation> {
           "Actions of type 'operations' may only describe columns if they specify 'hasOutput: true'.",
         ),
         this.proto.fileName,
-      );
-    }
-    if (this.proto.actionDescriptor?.metadata && !this.proto.hasOutput) {
-      this.session.compileError(
-        new Error(
-          "Actions of type 'operations' may only specify 'metadata' if they specify 'hasOutput: true'.",
-        ),
-        this.proto.fileName,
-        this.proto.target,
       );
     }
     if (this.isLakehouseTarget) {

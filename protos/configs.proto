@@ -661,9 +661,6 @@ message ActionConfig {
 
     // Configuration options for a Lakehouse (4-part) operation target.
     LakehouseConfig lakehouse = 15;
-
-    // Metadata for this operation. Can only be set if hasOutput is true.
-    Metadata metadata = 16;
   }
 
   message DeclarationConfig {

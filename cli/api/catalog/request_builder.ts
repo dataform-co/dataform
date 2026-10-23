@@ -24,16 +24,15 @@ export const GENERIC_ASPECT_TYPE = "projects/dataplex-types/locations/global/asp
 
 const SUPPORTED_GENERIC_KEYS = new Set(["system", "type"]);
 const SUPPORTED_MULTI_REGIONS = new Set(["us", "eu"]);
+const SINGLE_REGION_PATTERN = /^(?!aws-|azure-)[a-z]+-[a-z]+[0-9]+$/;
 
 /**
  * Returns true if `location` is supported by Knowledge Catalog:
- * any single-region location (contains `-`, e.g. `us-central1`) or the `US` / `EU` multi-regions.
+ * standard GCP single-region locations (e.g. `us-central1`, `europe-west2`) or the `US` / `EU` multi-regions.
  */
 export function isSupportedCatalogLocation(location: string): boolean {
   const normalized = location.trim().toLowerCase();
-  return (
-    normalized.length > 0 && (normalized.includes("-") || SUPPORTED_MULTI_REGIONS.has(normalized))
-  );
+  return SINGLE_REGION_PATTERN.test(normalized) || SUPPORTED_MULTI_REGIONS.has(normalized);
 }
 
 /**

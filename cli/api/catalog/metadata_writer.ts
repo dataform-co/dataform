@@ -12,7 +12,8 @@ import { sleep } from "df/common/promises";
 import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
 
-export type ICatalogClient = Pick<CatalogServiceClient, "updateEntry">;
+export type ICatalogClient = Pick<CatalogServiceClient, "updateEntry"> &
+  Partial<Pick<CatalogServiceClient, "getEntry">>;
 export type CatalogClientProvider = (projectId?: string) => ICatalogClient;
 
 const DATAFORM_CLI_LIB_NAME = "dataform-cli";
@@ -25,6 +26,9 @@ export const CATALOG_RETRY_CONFIG = {
     initialRetryDelayMillis: 100,
     retryDelayMultiplier: 1.3,
     maxRetryDelayMillis: 5000,
+    initialRpcTimeoutMillis: 5000,
+    rpcTimeoutMultiplier: 1.0,
+    maxRpcTimeoutMillis: 5000,
     totalTimeoutMillis: 15000,
   },
 };
@@ -35,11 +39,16 @@ function isNotFoundError(err: unknown): boolean {
   }
   const code = (err as { code?: unknown }).code;
   const message = (err as { message?: unknown }).message;
-  return (
-    code === 5 ||
-    (typeof message === "string" &&
-      (message.includes("NOT_FOUND") || message.includes("or it may not exist")))
-  );
+  return code === 5 || (typeof message === "string" && message.includes("NOT_FOUND"));
+}
+
+function isPermissionDeniedError(err: unknown): boolean {
+  if (!err || typeof err !== "object") {
+    return false;
+  }
+  const code = (err as { code?: unknown }).code;
+  const message = (err as { message?: unknown }).message;
+  return code === 7 || (typeof message === "string" && message.includes("PERMISSION_DENIED"));
 }
 
 export function createCatalogClientProvider(
@@ -129,10 +138,32 @@ export class KnowledgeCatalogMetadataWriter {
         await client.updateEntry(request, { retry: CATALOG_RETRY_CONFIG });
         return;
       } catch (e) {
-        if (isNotFoundError(e) && attempt < NOT_FOUND_MAX_ATTEMPTS) {
-          await this.sleepFn(delayMillis);
-          delayMillis *= 2;
-          continue;
+        let entryNotFound = isNotFoundError(e);
+        // When a BigQuery table is newly created, UpdateEntry may return PERMISSION_DENIED
+        // before the entry is synced in Knowledge Catalog. Check GetEntry to distinguish
+        // transient sync delay (GetEntry returns NOT_FOUND) from genuine IAM denial.
+        if (!entryNotFound && isPermissionDeniedError(e) && client.getEntry) {
+          try {
+            await client.getEntry(
+              { name: request.entry.name, view: "BASIC" },
+              { retry: CATALOG_RETRY_CONFIG },
+            );
+          } catch (getErr) {
+            entryNotFound = isNotFoundError(getErr);
+          }
+        }
+
+        if (entryNotFound) {
+          if (attempt < NOT_FOUND_MAX_ATTEMPTS) {
+            await this.sleepFn(delayMillis);
+            delayMillis *= 2;
+            continue;
+          }
+          this.stderr.write(
+            `Warning: Skipping Knowledge Catalog metadata write for ${targetFqn}: ` +
+              `entry was not found in Knowledge Catalog after ${NOT_FOUND_MAX_ATTEMPTS} attempts.\n`,
+          );
+          return;
         }
         if (this.handleNonFatalAccessError(coerceAsError(e), targetProject, targetFqn)) {
           return;

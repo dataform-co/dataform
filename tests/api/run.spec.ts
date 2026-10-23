@@ -653,61 +653,6 @@ suite("@dataform/api/run", () => {
       status: "FAILED",
     });
   });
-
-  test("calls setMetadata for operations with hasOutput: true and skips operations without hasOutput", async () => {
-    const graph: dataform.IExecutionGraph = dataform.ExecutionGraph.create({
-      projectConfig: {
-        warehouse: "bigquery",
-        defaultSchema: "foo",
-        assertionSchema: "bar",
-        defaultLocation: "us-central1",
-      },
-      warehouseState: {
-        tables: [],
-      },
-      actions: [
-        {
-          tasks: [
-            { type: "operation", statement: "CREATE OR REPLACE TABLE foo.op_out AS SELECT 1" },
-          ],
-          type: "operation",
-          hasOutput: true,
-          target: { schema: "foo", name: "op_out" },
-          actionDescriptor: {
-            metadata: { overview: "op overview" },
-          },
-          dependencyTargets: [],
-        },
-        {
-          tasks: [{ type: "operation", statement: "SELECT 1" }],
-          type: "operation",
-          hasOutput: false,
-          target: { schema: "foo", name: "op_no_out" },
-          actionDescriptor: {
-            description: "op without output",
-          },
-          dependencyTargets: [],
-        },
-      ],
-    });
-
-    const mockedDbAdapter = mock(BigQueryDbAdapter);
-    when(mockedDbAdapter.schemas(anyString())).thenResolve([]);
-    when(mockedDbAdapter.createSchema(anyString(), anyString(), anything())).thenResolve(null);
-    when(mockedDbAdapter.execute(anything(), anything())).thenResolve({
-      rows: [],
-      metadata: {},
-    });
-    when(mockedDbAdapter.setMetadata(anything())).thenResolve();
-
-    const runner = new Runner(instance(mockedDbAdapter), graph);
-    const result = await runner.execute().result();
-
-    expect(result.status).to.equal(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
-    verify(mockedDbAdapter.setMetadata(anything())).once();
-    const [calledAction] = capture(mockedDbAdapter.setMetadata).last();
-    expect(calledAction.target.name).to.equal("op_out");
-  });
 });
 
 function cleanTiming(runResult: dataform.IRunResult) {

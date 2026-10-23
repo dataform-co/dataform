@@ -24,9 +24,13 @@ suite("@dataform/cli/catalog/request_builder", () => {
       expect(isSupportedCatalogLocation(" us ")).to.equal(true);
     });
 
-    test("rejects unsupported multi-regions and empty locations", () => {
+    test("rejects unsupported multi-regions, Omni/zonal locations, and empty locations", () => {
       expect(isSupportedCatalogLocation("ASIA")).to.equal(false);
       expect(isSupportedCatalogLocation("europe")).to.equal(false);
+      expect(isSupportedCatalogLocation("nam-eur-asia1")).to.equal(false);
+      expect(isSupportedCatalogLocation("aws-us-east-1")).to.equal(false);
+      expect(isSupportedCatalogLocation("azure-eastus2")).to.equal(false);
+      expect(isSupportedCatalogLocation("us-central1-a")).to.equal(false);
       expect(isSupportedCatalogLocation("")).to.equal(false);
       expect(isSupportedCatalogLocation("   ")).to.equal(false);
     });
