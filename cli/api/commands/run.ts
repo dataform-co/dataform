@@ -235,6 +235,7 @@ export class Runner {
     }
 
     this.runResult.timing = timer.end();
+    await this.dbadapter.drainMetadataWrites?.();
 
     this.runResult.status = dataform.RunResult.ExecutionStatus.SUCCESSFUL;
     if (this.timedOut) {

@@ -1,6 +1,8 @@
 import { expect } from "chai";
 
 import * as dfapi from "df/cli/api";
+import { createCatalogClientProvider } from "df/cli/api/catalog/metadata_writer";
+import { buildBigQueryEntryName } from "df/cli/api/catalog/request_builder";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 import { ExecutionSql } from "df/cli/api/dbadapters/execution_sql";
 import {
@@ -179,6 +181,7 @@ integrationSuite("@dataform/integration/run", { parallel: true }, ({ before, aft
     );
 
     // Check expected metadata.
+    const catalogClient = createCatalogClientProvider(credentials)();
     for (const expectedMetadata of [
       {
         target: {
@@ -218,6 +221,11 @@ integrationSuite("@dataform/integration/run", { parallel: true }, ({ before, aft
           }),
         ],
         expectedLabels: {},
+        expectedCatalogOverview: "An incremental table overview.",
+        expectedCatalogGeneric: {
+          system: "BigQuery",
+          type: "incremental",
+        },
       },
       {
         target: {
@@ -237,12 +245,42 @@ integrationSuite("@dataform/integration/run", { parallel: true }, ({ before, aft
           label1: "val1",
           label2: "val2",
         },
+        expectedCatalogOverview: "An example view overview.",
       },
     ]) {
       const metadata = await dbadapter.table(expectedMetadata.target);
       expect(metadata.description).to.equal(expectedMetadata.expectedDescription);
       expect(metadata.fields).to.deep.equal(expectedMetadata.expectedFields);
       expect(metadata.labels).to.deep.equal(expectedMetadata.expectedLabels);
+
+      const entryName = buildBigQueryEntryName(
+        INTEGRATION_TEST_PROJECT,
+        compiledGraph.projectConfig.defaultLocation || INTEGRATION_TEST_LOCATION,
+        expectedMetadata.target,
+      );
+      const [entry] = await catalogClient.getEntry({
+        name: entryName,
+        view: "ALL",
+      });
+      const aspects = entry.aspects || {};
+      const overviewAspect = Object.entries(aspects).find(([key]) =>
+        key.endsWith(".global.overview"),
+      )?.[1];
+      expect(overviewAspect?.data?.fields?.content?.stringValue).to.equal(
+        expectedMetadata.expectedCatalogOverview,
+      );
+
+      const genericAspect = Object.entries(aspects).find(([key]) =>
+        key.endsWith(".global.generic"),
+      )?.[1];
+      if (expectedMetadata.expectedCatalogGeneric) {
+        expect(genericAspect?.data?.fields?.system?.stringValue).to.equal(
+          expectedMetadata.expectedCatalogGeneric.system,
+        );
+        expect(genericAspect?.data?.fields?.type?.stringValue).to.equal(
+          expectedMetadata.expectedCatalogGeneric.type,
+        );
+      }
     }
   });
 });

@@ -12,9 +12,8 @@ import { sleep } from "df/common/promises";
 import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
 
-export type ICatalogClient = Pick<CatalogServiceClient, "updateEntry"> &
-  Partial<Pick<CatalogServiceClient, "getEntry">>;
-export type CatalogClientProvider = (projectId?: string) => ICatalogClient;
+export type ICatalogClient = Pick<CatalogServiceClient, "updateEntry" | "getEntry">;
+export type CatalogClientProvider = () => ICatalogClient;
 
 const DATAFORM_CLI_LIB_NAME = "dataform-cli";
 const NOT_FOUND_MAX_ATTEMPTS = 5;
@@ -34,44 +33,41 @@ export const CATALOG_RETRY_CONFIG = {
 };
 
 function isNotFoundError(err: unknown): boolean {
-  if (!err || typeof err !== "object") {
-    return false;
-  }
-  const code = (err as { code?: unknown }).code;
-  const message = (err as { message?: unknown }).message;
-  return code === 5 || (typeof message === "string" && message.includes("NOT_FOUND"));
+  return Boolean(err && typeof err === "object" && (err as { code?: unknown }).code === 5);
 }
 
 function isPermissionDeniedError(err: unknown): boolean {
-  if (!err || typeof err !== "object") {
-    return false;
-  }
-  const code = (err as { code?: unknown }).code;
-  const message = (err as { message?: unknown }).message;
-  return code === 7 || (typeof message === "string" && message.includes("PERMISSION_DENIED"));
+  return Boolean(err && typeof err === "object" && (err as { code?: unknown }).code === 7);
+}
+
+/**
+ * Returns the authentication options for Google Cloud clients: uses `authClient` when impersonating
+ * a service account, or parses the service account key JSON in `credentials.credentials` (falling
+ * back to Application Default Credentials when empty).
+ */
+export function getGoogleAuthOptions(
+  credentials: dataform.IBigQuery,
+  authClient?: AuthClient,
+): { authClient: AuthClient } | { credentials?: Record<string, unknown> } {
+  return authClient
+    ? { authClient }
+    : { credentials: credentials.credentials && JSON.parse(credentials.credentials) };
 }
 
 export function createCatalogClientProvider(
   credentials: dataform.IBigQuery,
   authClient?: AuthClient,
-): (projectId?: string) => CatalogServiceClient {
-  const clients = new Map<string, CatalogServiceClient>();
-  return (projectId?: string) => {
-    const targetProjectId = projectId || credentials.projectId;
-    if (!clients.has(targetProjectId)) {
-      clients.set(
-        targetProjectId,
-        new CatalogServiceClient({
-          projectId: targetProjectId,
-          ...(authClient
-            ? { authClient }
-            : { credentials: credentials.credentials && JSON.parse(credentials.credentials) }),
-          libName: DATAFORM_CLI_LIB_NAME,
-          libVersion: version,
-        }),
-      );
+): () => CatalogServiceClient {
+  let client: CatalogServiceClient | undefined;
+  return () => {
+    if (!client) {
+      client = new CatalogServiceClient({
+        ...getGoogleAuthOptions(credentials, authClient),
+        libName: DATAFORM_CLI_LIB_NAME,
+        libVersion: version,
+      });
     }
-    return clients.get(targetProjectId);
+    return client;
   };
 }
 
@@ -80,7 +76,8 @@ export class KnowledgeCatalogMetadataWriter {
   private readonly clientProvider: CatalogClientProvider;
   private readonly stderr: IStderrLike;
   private readonly sleepFn: (millis: number) => Promise<void>;
-  private writesDisabledThisRun = false;
+  private readonly disabledProjects = new Set<string>();
+  private readonly pending = new Set<Promise<void>>();
 
   constructor(
     credentials: dataform.IBigQuery,
@@ -98,12 +95,40 @@ export class KnowledgeCatalogMetadataWriter {
     this.sleepFn = options?.sleepFn || sleep;
   }
 
-  public async writeMetadata(
+  public writeMetadata(
     target: dataform.ITarget,
     location: string | undefined,
     metadata: dataform.IMetadata | null | undefined,
   ): Promise<void> {
-    if (this.writesDisabledThisRun) {
+    const p = this.writeMetadataInternal(target, location, metadata)
+      .catch((e) => {
+        const err = coerceAsError(e);
+        const targetProject = target.database || this.credentials.projectId;
+        const targetFqn = `${targetProject}.${target.schema}.${target.name}`;
+        this.stderr.write(
+          `Warning: Failed to write Knowledge Catalog metadata for ${targetFqn}: ${err.message}\n`,
+        );
+      })
+      .finally(() => {
+        this.pending.delete(p);
+      });
+    this.pending.add(p);
+    return p;
+  }
+
+  public async drain(): Promise<void> {
+    while (this.pending.size > 0) {
+      await Promise.allSettled([...this.pending]);
+    }
+  }
+
+  private async writeMetadataInternal(
+    target: dataform.ITarget,
+    location: string | undefined,
+    metadata: dataform.IMetadata | null | undefined,
+  ): Promise<void> {
+    const targetProject = target.database || this.credentials.projectId;
+    if (this.disabledProjects.has(targetProject)) {
       return;
     }
 
@@ -111,7 +136,6 @@ export class KnowledgeCatalogMetadataWriter {
       return;
     }
 
-    const targetProject = target.database || this.credentials.projectId;
     const targetFqn = `${targetProject}.${target.schema}.${target.name}`;
     const trimmedLocation = location?.trim() || "";
 
@@ -131,7 +155,7 @@ export class KnowledgeCatalogMetadataWriter {
       return;
     }
 
-    const client = this.clientProvider(targetProject);
+    const client = this.clientProvider();
     let delayMillis = NOT_FOUND_INITIAL_DELAY_MILLIS;
     for (let attempt = 1; attempt <= NOT_FOUND_MAX_ATTEMPTS; attempt++) {
       try {
@@ -142,7 +166,7 @@ export class KnowledgeCatalogMetadataWriter {
         // When a BigQuery table is newly created, UpdateEntry may return PERMISSION_DENIED
         // before the entry is synced in Knowledge Catalog. Check GetEntry to distinguish
         // transient sync delay (GetEntry returns NOT_FOUND) from genuine IAM denial.
-        if (!entryNotFound && isPermissionDeniedError(e) && client.getEntry) {
+        if (!entryNotFound && isPermissionDeniedError(e)) {
           try {
             await client.getEntry(
               { name: request.entry.name, view: "BASIC" },
@@ -165,43 +189,24 @@ export class KnowledgeCatalogMetadataWriter {
           );
           return;
         }
-        if (this.handleNonFatalAccessError(coerceAsError(e), targetProject, targetFqn)) {
+
+        const err = coerceAsError(e);
+        if (isPermissionDeniedError(e)) {
+          if (!this.disabledProjects.has(targetProject)) {
+            this.disabledProjects.add(targetProject);
+            this.stderr.write(
+              `Warning: Skipping Knowledge Catalog metadata writes for project ${targetProject} ` +
+                `for the rest of this run (failed on ${targetFqn}): ${err.message}\n`,
+            );
+          }
           return;
         }
-        throw e;
+
+        this.stderr.write(
+          `Warning: Failed to write Knowledge Catalog metadata for ${targetFqn}: ${err.message}\n`,
+        );
+        return;
       }
     }
-  }
-
-  private handleNonFatalAccessError(err: Error, projectId: string, targetFqn: string): boolean {
-    const code = (err as { code?: unknown }).code;
-    const message = err.message || "";
-
-    let reason: string | undefined;
-    if (code === 7 || message.includes("PERMISSION_DENIED")) {
-      reason =
-        `PERMISSION_DENIED (${message}). Ensure the credential has 'roles/dataplex.catalogEditor' ` +
-        `or that the Dataplex API is enabled in project ${projectId}.`;
-    } else if (
-      code === 9 ||
-      message.includes("SERVICE_DISABLED") ||
-      message.includes("FAILED_PRECONDITION")
-    ) {
-      reason = `Dataplex API is not enabled in project ${projectId} (${message}).`;
-    } else if (code === 16 || message.includes("UNAUTHENTICATED")) {
-      reason = `UNAUTHENTICATED (${message}).`;
-    }
-
-    if (!reason) {
-      return false;
-    }
-    if (!this.writesDisabledThisRun) {
-      this.writesDisabledThisRun = true;
-      this.stderr.write(
-        `Warning: Skipping Knowledge Catalog metadata writes for the rest of this run ` +
-          `(failed on ${targetFqn}): ${reason}\n`,
-      );
-    }
-    return true;
   }
 }

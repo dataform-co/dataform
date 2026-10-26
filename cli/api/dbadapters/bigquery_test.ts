@@ -338,6 +338,7 @@ suite("BigQueryDbAdapter", () => {
         capturedRequests.push(req);
         return [{}];
       }) as ICatalogClient["updateEntry"],
+      getEntry: (async () => [{}]) as ICatalogClient["getEntry"],
     };
 
     const mockBigQuery: any = {
@@ -375,6 +376,7 @@ suite("BigQueryDbAdapter", () => {
     });
 
     await adapter.setMetadata(action);
+    await adapter.drainMetadataWrites();
 
     expect(capturedRequests.length).to.equal(1);
     expect(capturedRequests[0].entry?.name).to.equal(

@@ -74,7 +74,7 @@ Action config defines the contents of `actions.yaml` configuration files.
 | hermetic                     | [bool](#bool)                                        |          | If true, this indicates that the action only depends on data from explicitly-declared dependencies. Otherwise if false, it indicates that the action depends on data from a source which has not been declared as a dependency. |
 | dependOnDependencyAssertions | [bool](#bool)                                        |          | If true, assertions dependent upon any of the dependencies are added as dependencies as well.                                                                                                                                   |
 | reservation          | [string](#string)                                    |          | Optional. The BigQuery reservation to use for execution.                                                                                                                                                                        |
-| metadata                     | [ActionConfig.Metadata](#dataform-ActionConfig-Metadata) |          | Metadata for this assertion.                                                                                                                                                                                                    |
+| metadata                     | [ActionConfig.Metadata](#dataform-ActionConfig-Metadata) |          | Metadata for this assertion (written to Knowledge Catalog (Dataplex) only by the managed Dataform service; ignored by the CLI).                                                                                                    |
 
 <a name="dataform-ActionConfig-ColumnDescriptor"></a>
 
@@ -169,12 +169,12 @@ Action config defines the contents of `actions.yaml` configuration files.
 
 ### ActionConfig.Metadata
 
-Knowledge Catalog metadata for a data object, written to Knowledge Catalog during execution.
+Knowledge Catalog (Dataplex) metadata for a data object. During execution, the CLI writes this metadata for tables, views, and incremental tables.
 
 | Field           | Type              | Label | Description                                                                                                                                          |
 | --------------- | ----------------- | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| overview        | [string](#string) |       | A detailed description of the data object, written to the `dataplex-types.global.overview` aspect.                                                   |
-| extraProperties | [google.protobuf.Struct](#google-protobuf-Struct) |       | Extra properties of the data object, such as `generic` (`system`, `type`) written to the `dataplex-types.global.generic` aspect.                     |
+| overview        | [string](#string) |       | A detailed description of the data object, written to Knowledge Catalog (Dataplex) (`dataplex-types.global.overview` aspect).                        |
+| extraProperties | [google.protobuf.Struct](#google-protobuf-Struct) |       | Extra properties of the data object, such as `generic` (`system`, `type`) written to Knowledge Catalog (Dataplex) (`dataplex-types.global.generic` aspect). |
 
 <a name="dataform-ActionConfig-NotebookConfig"></a>
 
