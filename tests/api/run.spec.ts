@@ -3,6 +3,7 @@ import Long from "long";
 import { anyString, anything, capture, instance, mock, verify, when } from "ts-mockito";
 
 import { Runner, test as runTests } from "df/cli/api";
+import { checkJobLabelLimit, resolveJobLabels } from "df/cli/api/commands/run";
 import { IDbAdapter } from "df/cli/api/dbadapters";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 import { sleep, sleepUntil } from "df/common/promises";
@@ -772,6 +773,88 @@ suite("@dataform/api/run", () => {
       expect(setMetadataActionDescriptors[0].bigqueryLabels).to.deep.equal({
         shared_key: "from_bigquery_labels",
         table_only: "table_val",
+      });
+    });
+
+    test("resolveJobLabels falls back to bigqueryLabels when jobLabels is empty, and execution labels override them", () => {
+      // Like in a decoded compiled graph, ActionDescriptor.create() sets the unset jobLabels map to {}.
+      const actionDescriptor = dataform.ActionDescriptor.create({
+        bigqueryLabels: { env: "from_table", table_only: "table_val" },
+      });
+      expect(actionDescriptor.jobLabels).to.deep.equal({});
+
+      expect(resolveJobLabels(actionDescriptor)).to.deep.equal({
+        env: "from_table",
+        table_only: "table_val",
+      });
+      expect(resolveJobLabels(actionDescriptor, { env: "from_cli" })).to.deep.equal({
+        env: "from_cli",
+        table_only: "table_val",
+      });
+    });
+
+    test("checkJobLabelLimit reports actions and unit tests whose jobs would get more than 64 labels", () => {
+      const labels = (prefix: string, count: number) => {
+        const result: { [key: string]: string } = {};
+        for (let i = 0; i < count; i++) {
+          result[`${prefix}_${i}`] = "v";
+        }
+        return result;
+      };
+      const action: dataform.IExecutionAction = {
+        target: { database: "p", schema: "s", name: "t" },
+        tasks: [{ type: "statement", statement: "SELECT 1" }],
+        actionDescriptor: { jobLabels: labels("job", 32) },
+      };
+      const unitTest: dataform.ITest = {
+        name: "my_test",
+        actionDescriptor: { jobLabels: labels("job", 32) },
+      };
+
+      expect(checkJobLabelLimit([action], [unitTest], labels("cli", 32))).to.equal(undefined);
+      expect(checkJobLabelLimit([action], [], labels("cli", 33))).to.equal(
+        'Action "p.s.t" would run BigQuery jobs with 65 labels, but BigQuery allows at most 64.',
+      );
+      expect(checkJobLabelLimit([], [unitTest], labels("cli", 33))).to.equal(
+        'Unit test "my_test" would run BigQuery jobs with 65 labels, but BigQuery allows at most 64.',
+      );
+      // Disabled actions run no jobs, so they aren't checked.
+      expect(checkJobLabelLimit([{ ...action, tasks: [] }], [], labels("cli", 33))).to.equal(
+        undefined,
+      );
+    });
+
+    test("should let execution labels override testCase.actionDescriptor.jobLabels in test command", async () => {
+      const executionOptions: Array<{ bigquery?: any }> = [];
+      const mockedDbAdapter = mock(BigQueryDbAdapter);
+      when(mockedDbAdapter.execute(anyString(), anything())).thenCall(
+        (_statement: string, options: any) => {
+          executionOptions.push(options);
+          return Promise.resolve({ rows: [{ col1: 1 }], metadata: {} });
+        },
+      );
+
+      const results = await runTests(
+        instance(mockedDbAdapter),
+        [
+          {
+            name: "labeled_test",
+            testQuery: "SELECT 1 AS col1",
+            expectedOutputQuery: "SELECT 1 AS col1",
+            actionDescriptor: { jobLabels: { env: "prod", team: "analytics" } },
+          },
+        ],
+        { env: "from_cli", run_id: "123" },
+      );
+
+      expect(results).to.deep.equal([{ name: "labeled_test", successful: true }]);
+      expect(executionOptions.length).to.equal(2);
+      executionOptions.forEach((opts) => {
+        expect(opts?.bigquery?.labels).to.deep.equal({
+          env: "from_cli",
+          team: "analytics",
+          run_id: "123",
+        });
       });
     });
   });

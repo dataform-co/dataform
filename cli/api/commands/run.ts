@@ -9,7 +9,7 @@ import { LineageEmitter } from "df/cli/api/lineage/emitter";
 import { Flags } from "df/common/flags";
 import { retry } from "df/common/promises";
 import { deepClone, equals } from "df/common/protos";
-import { targetStringifier } from "df/core/targets";
+import { targetAsReadableString, targetStringifier } from "df/core/targets";
 import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
 
@@ -49,6 +49,59 @@ export interface IExecutionOptions {
 }
 
 export type CancelReason = "timeout" | "user" | "cancellation";
+
+/** The maximum number of labels that BigQuery allows on a job. */
+export const MAX_BIGQUERY_JOB_LABELS = 64;
+
+/**
+ * Returns the labels to set on the BigQuery jobs of an action or unit test: its job labels, or its
+ * table's `bigqueryLabels` if it has no job labels, overridden by `executionLabels` (for example,
+ * `--job-labels`).
+ */
+export function resolveJobLabels(
+  actionDescriptor: dataform.IActionDescriptor | null | undefined,
+  executionLabels?: { [label: string]: string } | null,
+): { [label: string]: string } {
+  const jobLabels = actionDescriptor?.jobLabels;
+  // Decoded compiled graphs set unset maps to {}, so check for emptiness rather than presence.
+  const actionLabels =
+    jobLabels && Object.keys(jobLabels).length > 0 ? jobLabels : actionDescriptor?.bigqueryLabels;
+  return { ...(actionLabels || {}), ...(executionLabels || {}) };
+}
+
+/**
+ * Returns an error message if any of the given actions or unit tests would run BigQuery jobs with
+ * more labels than BigQuery allows, or undefined if none would.
+ */
+export function checkJobLabelLimit(
+  actions: dataform.IExecutionAction[],
+  tests: dataform.ITest[],
+  executionLabels?: { [label: string]: string } | null,
+): string | undefined {
+  const labelledItems = [
+    // Like the runner, treat actions with no tasks and no JiT code as disabled: they run no jobs.
+    ...actions
+      .filter((action) => action.tasks?.length || action.jitCode)
+      .map((action) => ({
+        description: `Action "${targetAsReadableString(action.target)}"`,
+        actionDescriptor: action.actionDescriptor,
+      })),
+    ...tests.map((testCase) => ({
+      description: `Unit test "${testCase.name}"`,
+      actionDescriptor: testCase.actionDescriptor,
+    })),
+  ];
+  for (const { description, actionDescriptor } of labelledItems) {
+    const labelCount = Object.keys(resolveJobLabels(actionDescriptor, executionLabels)).length;
+    if (labelCount > MAX_BIGQUERY_JOB_LABELS) {
+      return (
+        `${description} would run BigQuery jobs with ${labelCount} labels, but BigQuery allows at ` +
+        `most ${MAX_BIGQUERY_JOB_LABELS}.`
+      );
+    }
+  }
+  return undefined;
+}
 
 export function run(
   dbadapter: dbadapters.IDbAdapter,
@@ -385,17 +438,10 @@ export class Runner {
   private getBigQueryExecutionOptions(
     action: dataform.IExecutionAction,
   ): IBigQueryExecutionOptions {
-    const actionLabels =
-      Object.keys(action.actionDescriptor?.jobLabels || {}).length > 0
-        ? action.actionDescriptor?.jobLabels
-        : action.actionDescriptor?.bigqueryLabels;
     return {
       dryRun: this.executionOptions.bigquery?.dryRun,
       jobPrefix: this.executionOptions.bigquery?.jobPrefix,
-      labels: {
-        ...(actionLabels || {}),
-        ...(this.executionOptions?.bigquery?.labels || {}),
-      },
+      labels: resolveJobLabels(action.actionDescriptor, this.executionOptions.bigquery?.labels),
       actionRetryLimit: this.executionOptions.bigquery?.actionRetryLimit,
       location: this.graph.projectConfig?.defaultLocation || undefined,
       reservation:
