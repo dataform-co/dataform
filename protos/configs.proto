@@ -77,8 +77,11 @@ message WorkflowSettings {
   LineageSettings lineage = 19;
 
   // Optional. Default key-value pairs for BigQuery job labels applied to
-  // BigQuery jobs executed for actions in this project. Can be overridden by
-  // action-level `job_labels`.
+  // BigQuery jobs executed for actions in this project. Merged key-by-key when
+  // overridden via `projectConfigOverride`. Action-level `jobLabels` override
+  // matching keys; an action can't remove a default key. When an action has
+  // any job labels, the Dataform CLI doesn't also apply the table's `labels`
+  // to its jobs.
   map<string, string> default_job_labels = 20;
 
   // Optional. Default config options for Lakehouse (4-part) targets.
@@ -303,7 +306,7 @@ message ActionConfig {
 
     // Optional. Key-value pairs for BigQuery job labels applied to the query
     // job(s) executed for this table. Overrides matching keys from
-    // `default_job_labels` in `workflow_settings.yaml`.
+    // `defaultJobLabels` in `workflow_settings.yaml`.
     map<string, string> job_labels = 26;
 
     // Configuration options for a Lakehouse (4-part) table.
@@ -399,7 +402,7 @@ message ActionConfig {
 
     // Optional. Key-value pairs for BigQuery job labels applied to the query
     // job(s) executed for this view. Overrides matching keys from
-    // `default_job_labels` in `workflow_settings.yaml`.
+    // `defaultJobLabels` in `workflow_settings.yaml`.
     map<string, string> job_labels = 22;
   }
 
@@ -543,7 +546,7 @@ message ActionConfig {
 
     // Optional. Key-value pairs for BigQuery job labels applied to the query
     // job(s) executed for this incremental table. Overrides matching keys from
-    // `default_job_labels` in `workflow_settings.yaml`.
+    // `defaultJobLabels` in `workflow_settings.yaml`.
     map<string, string> job_labels = 31;
 
     // Configuration options for a Lakehouse (4-part) incremental table.
@@ -597,7 +600,7 @@ message ActionConfig {
 
     // Optional. Key-value pairs for BigQuery job labels applied to the query
     // job(s) executed for this assertion. Overrides matching keys from
-    // `default_job_labels` in `workflow_settings.yaml`.
+    // `defaultJobLabels` in `workflow_settings.yaml`.
     map<string, string> job_labels = 13;
   }
 
@@ -654,7 +657,7 @@ message ActionConfig {
 
     // Optional. Key-value pairs for BigQuery job labels applied to the query
     // job(s) executed for this operation. Overrides matching keys from
-    // `default_job_labels` in `workflow_settings.yaml`.
+    // `defaultJobLabels` in `workflow_settings.yaml`.
     map<string, string> job_labels = 14;
 
     // Configuration options for a Lakehouse (4-part) operation target.
@@ -755,7 +758,7 @@ message ActionConfig {
 
     // Optional. Key-value pairs for BigQuery job labels applied to the BigQuery
     // job(s) executed for this data preparation. Overrides matching keys from
-    // `default_job_labels` in `workflow_settings.yaml`.
+    // `defaultJobLabels` in `workflow_settings.yaml`.
     map<string, string> job_labels = 15;
 
     message ErrorTableConfig {

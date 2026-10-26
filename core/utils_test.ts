@@ -482,7 +482,7 @@ suite("Dataform Utility Validations", () => {
       for (const invalidKey of ["1key", "-key", "_key", "Key", "my.key", "my/key", "my key"]) {
         assertThrowsWithMessage(
           () => validateJobLabels({ [invalidKey]: "val" }, "jobLabels"),
-          `Invalid job label key "${invalidKey}" in jobLabels: keys must start with a lowercase letter and contain only lowercase letters, numbers, underscores, and hyphens.`,
+          `Invalid job label key "${invalidKey}" in jobLabels: keys must start with a lowercase ASCII letter and contain only lowercase ASCII letters, numbers, underscores, and hyphens.`,
         );
       }
     });
@@ -521,7 +521,7 @@ suite("Dataform Utility Validations", () => {
       for (const invalidVal of ["Prod", "val.1", "val/1", "val 1"]) {
         assertThrowsWithMessage(
           () => validateJobLabels({ env: invalidVal }, "jobLabels"),
-          `Invalid job label value "${invalidVal}" for key "env" in jobLabels: values may contain only lowercase letters, numbers, underscores, and hyphens.`,
+          `Invalid job label value "${invalidVal}" for key "env" in jobLabels: values may contain only lowercase ASCII letters, numbers, underscores, and hyphens.`,
         );
       }
     });
@@ -595,7 +595,7 @@ suite("Dataform Utility Validations", () => {
       );
       assertThrowsWithMessage(
         () => setActionJobLabels(proto, { Env: "prod" }),
-        'Invalid job label key "Env" in jobLabels: keys must start with a lowercase letter and contain only lowercase letters, numbers, underscores, and hyphens.',
+        'Invalid job label key "Env" in jobLabels: keys must start with a lowercase ASCII letter and contain only lowercase ASCII letters, numbers, underscores, and hyphens.',
       );
       expect(proto.actionDescriptor).to.equal(undefined);
     });

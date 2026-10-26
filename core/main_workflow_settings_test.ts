@@ -566,7 +566,7 @@ defaultJobLabels:
         ],
         [
           "InvalidKey",
-          'Invalid job label key "InvalidKey" in defaultJobLabels: keys must start with a lowercase letter and contain only lowercase letters, numbers, underscores, and hyphens.',
+          'Invalid job label key "InvalidKey" in defaultJobLabels: keys must start with a lowercase ASCII letter and contain only lowercase ASCII letters, numbers, underscores, and hyphens.',
         ],
       ]) {
         const projectDir = tmpDirFixture.createNewTmpDir();

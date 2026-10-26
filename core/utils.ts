@@ -786,7 +786,7 @@ export function validateJobLabels(
     }
     if (!JOB_LABEL_KEY_REGEX.test(key)) {
       throw new Error(
-        `Invalid job label key "${key}" in ${fieldName}: keys must start with a lowercase letter and contain only lowercase letters, numbers, underscores, and hyphens.`,
+        `Invalid job label key "${key}" in ${fieldName}: keys must start with a lowercase ASCII letter and contain only lowercase ASCII letters, numbers, underscores, and hyphens.`,
       );
     }
     const matchedPrefix = RESERVED_JOB_LABEL_PREFIXES.find((prefix) => key.startsWith(prefix));
@@ -807,7 +807,7 @@ export function validateJobLabels(
     }
     if (!JOB_LABEL_VALUE_REGEX.test(value)) {
       throw new Error(
-        `Invalid job label value "${value}" for key "${key}" in ${fieldName}: values may contain only lowercase letters, numbers, underscores, and hyphens.`,
+        `Invalid job label value "${value}" for key "${key}" in ${fieldName}: values may contain only lowercase ASCII letters, numbers, underscores, and hyphens.`,
       );
     }
   }

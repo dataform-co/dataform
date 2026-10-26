@@ -19,7 +19,7 @@ message PropertyGraphConfig {
   repeated string tags = 8;
   // Optional. Key-value pairs for BigQuery job labels applied to the query
   // job(s) executed for this property graph. Overrides matching keys from
-  // `default_job_labels` in `workflow_settings.yaml`.
+  // `defaultJobLabels` in `workflow_settings.yaml`.
   map<string, string> job_labels = 9;
 
   message TargetDataset {

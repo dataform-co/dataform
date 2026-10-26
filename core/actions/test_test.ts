@@ -645,12 +645,26 @@ config {
 }
 SELECT 1`,
     );
+    // Tests that don't set jobLabels must still inherit defaultJobLabels.
+    fs.writeFileSync(
+      path.join(definitionsDir, "sqlx_defaults_test.sqlx"),
+      `
+config {
+  type: "test",
+  dataset: "action"
+}
+SELECT 1`,
+    );
     fs.writeFileSync(
       path.join(definitionsDir, "js_test.js"),
       `
 test("js_test")
   .dataset("action")
   .jobLabels({ env: "staging" })
+  .expect("SELECT 1");
+
+test("js_defaults_test")
+  .dataset("action")
   .expect("SELECT 1");
 `,
     );
@@ -669,6 +683,18 @@ test("js_test")
     expect(asPlainObject(testByName.get("js_test")?.actionDescriptor)).deep.equals({
       jobLabels: {
         env: "staging",
+        team: "test_team",
+      },
+    });
+    expect(asPlainObject(testByName.get("sqlx_defaults_test")?.actionDescriptor)).deep.equals({
+      jobLabels: {
+        env: "dev",
+        team: "test_team",
+      },
+    });
+    expect(asPlainObject(testByName.get("js_defaults_test")?.actionDescriptor)).deep.equals({
+      jobLabels: {
+        env: "dev",
         team: "test_team",
       },
     });

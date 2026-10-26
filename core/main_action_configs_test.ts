@@ -343,6 +343,7 @@ actions:
           ...result.compile.compiledGraph.operations,
           ...result.compile.compiledGraph.dataPreparations,
         ];
+        expect(compiledActions).to.have.lengthOf(1);
         expect(asPlainObject(compiledActions[0]?.actionDescriptor?.jobLabels)).deep.equals({
           num_label: "123",
           bool_label: "true",
