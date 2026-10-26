@@ -733,12 +733,18 @@ export function snakeToCamelKeys(value: any, preserveMapKeysFields: Set<string> 
 
 // NOTE: These validation constants and rules are mirrored by the Cloud Dataform backend validator.
 // If one validator is updated, the other must also be updated to stay in sync.
-export const MAX_JOB_LABELS_COUNT = 32;
-export const MAX_JOB_LABEL_LENGTH = 63;
-export const JOB_LABEL_KEY_REGEX = /^[a-z][a-z0-9_-]*$/;
-export const JOB_LABEL_VALUE_REGEX = /^[a-z0-9_-]*$/;
-export const RESERVED_JOB_LABEL_PREFIXES = ["dataform_", "dataform-", "dataprep-", "gcp-", "goog-"];
-export const RESERVED_JOB_LABEL_KEYS = new Set([
+const MAX_JOB_LABELS_COUNT = 32;
+const MAX_JOB_LABEL_LENGTH = 63;
+const JOB_LABEL_KEY_REGEX = /^[a-z][a-z0-9_-]*$/;
+const JOB_LABEL_VALUE_REGEX = /^[a-z0-9_-]*$/;
+const RESERVED_JOB_LABEL_PREFIXES: readonly string[] = [
+  "dataform_",
+  "dataform-",
+  "dataprep-",
+  "gcp-",
+  "goog-",
+];
+const RESERVED_JOB_LABEL_KEYS: ReadonlySet<string> = new Set([
   "bigquery-workflow",
   "single-file-asset-type",
   "origin",
@@ -746,20 +752,28 @@ export const RESERVED_JOB_LABEL_KEYS = new Set([
   "data-preparation-file-loader",
 ]);
 
+/** Throws unless `labels` is null, undefined, or a plain (non-array) object. */
+function assertJobLabelsObject(
+  labels: unknown,
+  fieldName: string,
+): asserts labels is { [key: string]: unknown } | null | undefined {
+  if (labels != null && (typeof labels !== "object" || Array.isArray(labels))) {
+    throw new Error(`${fieldName} must be an object mapping string keys to string values.`);
+  }
+}
+
 /**
- * Validates customer-supplied BigQuery job labels against BigQuery and Dataform constraints.
- * Numbers and booleans are coerced to strings in-place.
- * Throws an Error if any rule is violated.
+ * Validates customer-supplied BigQuery job labels against BigQuery and Dataform constraints, and
+ * returns them as a new object with string values: numbers and booleans are converted to strings.
+ * `null` and `undefined` mean no labels. Throws an Error if any rule is violated.
  */
 export function validateJobLabels(
-  labels: { [key: string]: string } | null | undefined,
+  labels: unknown,
   fieldName: string = "jobLabels",
-): void {
-  if (labels === undefined || labels === null) {
-    return;
-  }
-  if (typeof labels !== "object" || Array.isArray(labels)) {
-    throw new Error(`${fieldName} must be an object mapping string keys to string values.`);
+): { [key: string]: string } {
+  assertJobLabelsObject(labels, fieldName);
+  if (labels == null) {
+    return {};
   }
   const entries = Object.entries(labels);
   if (entries.length > MAX_JOB_LABELS_COUNT) {
@@ -767,6 +781,7 @@ export function validateJobLabels(
       `Too many job labels in ${fieldName}: maximum allowed is ${MAX_JOB_LABELS_COUNT}, but got ${entries.length}.`,
     );
   }
+  const validatedLabels: { [key: string]: string } = {};
   for (const [key, rawValue] of entries) {
     if (
       typeof rawValue !== "string" &&
@@ -774,11 +789,10 @@ export function validateJobLabels(
       typeof rawValue !== "boolean"
     ) {
       throw new Error(
-        `Invalid job label value for key "${key}" in ${fieldName}: label values must be strings.`,
+        `Invalid job label value for key "${key}" in ${fieldName}: label values must be strings, numbers, or booleans.`,
       );
     }
     const value = String(rawValue);
-    labels[key] = value;
     if (key.length === 0 || key.length > MAX_JOB_LABEL_LENGTH) {
       throw new Error(
         `Invalid job label key "${key}" in ${fieldName}: key length must be between 1 and ${MAX_JOB_LABEL_LENGTH} characters.`,
@@ -810,7 +824,9 @@ export function validateJobLabels(
         `Invalid job label value "${value}" for key "${key}" in ${fieldName}: values may contain only lowercase ASCII letters, numbers, underscores, and hyphens.`,
       );
     }
+    validatedLabels[key] = value;
   }
+  return validatedLabels;
 }
 
 /**
@@ -825,29 +841,22 @@ export function setActionJobLabels(
     fileName?: string | null;
     target?: dataform.ITarget | null;
   },
-  actionJobLabels: { [key: string]: string } | null | undefined,
+  actionJobLabels: unknown,
   session?: Session,
 ): void {
   try {
-    if (
-      actionJobLabels !== undefined &&
-      actionJobLabels !== null &&
-      (typeof actionJobLabels !== "object" || Array.isArray(actionJobLabels))
-    ) {
-      throw new Error("jobLabels must be an object mapping string keys to string values.");
-    }
-    const mergedLabels: { [key: string]: string } = {
-      ...(session?.projectConfig?.defaultJobLabels || {}),
-      ...(actionJobLabels || {}),
-    };
-    if (Object.keys(mergedLabels).length === 0) {
+    assertJobLabelsObject(actionJobLabels, "jobLabels");
+    const jobLabels = validateJobLabels(
+      { ...(session?.projectConfig?.defaultJobLabels || {}), ...(actionJobLabels || {}) },
+      "jobLabels",
+    );
+    if (Object.keys(jobLabels).length === 0) {
       return;
     }
-    validateJobLabels(mergedLabels, "jobLabels");
     if (!proto.actionDescriptor) {
       proto.actionDescriptor = {};
     }
-    proto.actionDescriptor.jobLabels = mergedLabels;
+    proto.actionDescriptor.jobLabels = jobLabels;
   } catch (e) {
     if (session) {
       session.compileError(e, proto.fileName, proto.target);

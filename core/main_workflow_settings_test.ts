@@ -554,21 +554,24 @@ defaultJobLabels:
       });
     });
 
-    test("defaultJobLabels fails on reserved keys or invalid characters", () => {
-      for (const [key, expectedMessage] of [
-        [
-          "dataform_internal",
+    [
+      {
+        key: "dataform_internal",
+        expectedMessage:
           'Invalid job label key "dataform_internal" in defaultJobLabels: key cannot start with reserved prefix "dataform_".',
-        ],
-        [
-          "origin",
+      },
+      {
+        key: "origin",
+        expectedMessage:
           'Invalid job label key "origin" in defaultJobLabels: "origin" is a reserved label key.',
-        ],
-        [
-          "InvalidKey",
+      },
+      {
+        key: "InvalidKey",
+        expectedMessage:
           'Invalid job label key "InvalidKey" in defaultJobLabels: keys must start with a lowercase ASCII letter and contain only lowercase ASCII letters, numbers, underscores, and hyphens.',
-        ],
-      ]) {
+      },
+    ].forEach(({ key, expectedMessage }) => {
+      test(`defaultJobLabels fails on reserved or invalid key "${key}"`, () => {
         const projectDir = tmpDirFixture.createNewTmpDir();
         writeWorkflowSettingsFile(
           projectDir,
@@ -582,7 +585,7 @@ defaultJobLabels:
         expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
           expectedMessage,
         );
-      }
+      });
     });
 
     test("defaultJobLabels merges with projectConfigOverride", () => {

@@ -7,6 +7,7 @@ import { checkJobLabelLimit, resolveJobLabels } from "df/cli/api/commands/run";
 import { IDbAdapter } from "df/cli/api/dbadapters";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 import { sleep, sleepUntil } from "df/common/promises";
+import { deepClone } from "df/common/protos";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 
@@ -510,7 +511,7 @@ suite("@dataform/api/run", () => {
       const executionOptions: Array<{ bigquery?: any }> = [];
 
       const mockedDbAdapter = mock(BigQueryDbAdapter);
-      const NEW_TEST_GRAPH = RUN_TEST_GRAPH;
+      const NEW_TEST_GRAPH = deepClone(dataform.ExecutionGraph, RUN_TEST_GRAPH);
       // Set action-level labels on the first action
       NEW_TEST_GRAPH.actions![0].actionDescriptor = {
         bigqueryLabels: { action_level: "specific_value" },
@@ -591,7 +592,7 @@ suite("@dataform/api/run", () => {
       const executionOptions: Array<{ bigquery?: any }> = [];
 
       const mockedDbAdapter = mock(BigQueryDbAdapter);
-      const NEW_TEST_GRAPH = dataform.ExecutionGraph.create(RUN_TEST_GRAPH);
+      const NEW_TEST_GRAPH = deepClone(dataform.ExecutionGraph, RUN_TEST_GRAPH);
       NEW_TEST_GRAPH.actions![0].actionDescriptor = {
         jobLabels: { env: "prod", cost_center: "analytics" },
       };
@@ -699,7 +700,7 @@ suite("@dataform/api/run", () => {
       const setMetadataActionDescriptors: dataform.IActionDescriptor[] = [];
 
       const mockedDbAdapter = mock(BigQueryDbAdapter);
-      const NEW_TEST_GRAPH = dataform.ExecutionGraph.create(RUN_TEST_GRAPH);
+      const NEW_TEST_GRAPH = deepClone(dataform.ExecutionGraph, RUN_TEST_GRAPH);
       NEW_TEST_GRAPH.actions![0].actionDescriptor = {
         bigqueryLabels: {
           shared_key: "from_bigquery_labels",

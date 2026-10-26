@@ -421,22 +421,23 @@ SELECT 1`,
         action_type: tableType,
       });
     });
+  });
 
-    if (["table", "view", "incremental"].includes(tableType)) {
-      test(`${tableType} built-in assertions inherit parent action jobLabels and defaultJobLabels`, () => {
-        const projectDir = tmpDirFixture.createNewTmpDir();
-        fs.writeFileSync(
-          path.join(projectDir, "workflow_settings.yaml"),
-          `${VALID_WORKFLOW_SETTINGS_YAML}
+  ["table", "view", "incremental"].forEach((tableType) => {
+    test(`${tableType} built-in assertions inherit parent action jobLabels and defaultJobLabels`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        `${VALID_WORKFLOW_SETTINGS_YAML}
 defaultJobLabels:
   env: dev
   team: core
 `,
-        );
-        fs.mkdirSync(path.join(projectDir, "definitions"));
-        fs.writeFileSync(
-          path.join(projectDir, "definitions/file.sqlx"),
-          `
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/file.sqlx"),
+        `
 config {
   type: "${tableType}",
   name: "name",
@@ -451,34 +452,34 @@ config {
   }
 }
 SELECT 1 AS id`,
-        );
+      );
 
-        const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
-        expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-        expect(result.compile.compiledGraph.assertions.length).equals(2);
-        result.compile.compiledGraph.assertions.forEach((assertion) => {
-          expect(asPlainObject(assertion.actionDescriptor?.jobLabels)).deep.equals({
-            env: "prod",
-            team: "core",
-            parent_label: tableType,
-          });
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(result.compile.compiledGraph.assertions.length).equals(2);
+      result.compile.compiledGraph.assertions.forEach((assertion) => {
+        expect(asPlainObject(assertion.actionDescriptor?.jobLabels)).deep.equals({
+          env: "prod",
+          team: "core",
+          parent_label: tableType,
         });
       });
+    });
 
-      test(`${tableType} built-in assertions do not inherit invalid parent jobLabels`, () => {
-        const projectDir = tmpDirFixture.createNewTmpDir();
-        fs.writeFileSync(
-          path.join(projectDir, "workflow_settings.yaml"),
-          `${VALID_WORKFLOW_SETTINGS_YAML}
+    test(`${tableType} built-in assertions do not inherit invalid parent jobLabels`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        `${VALID_WORKFLOW_SETTINGS_YAML}
 defaultJobLabels:
   team: core
 `,
-        );
-        fs.mkdirSync(path.join(projectDir, "definitions"));
-        fs.writeFileSync(
-          path.join(projectDir, "definitions/file.sqlx"),
-          `
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/file.sqlx"),
+        `
 config {
   type: "${tableType}",
   name: "name",
@@ -491,33 +492,33 @@ config {
   }
 }
 SELECT 1 AS id`,
-        );
+      );
 
-        const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
-        expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).equals(1);
-        expect(result.compile.compiledGraph.assertions.length).equals(2);
-        result.compile.compiledGraph.assertions.forEach((assertion) => {
-          expect(asPlainObject(assertion.actionDescriptor?.jobLabels)).deep.equals({
-            team: "core",
-          });
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).equals(1);
+      expect(result.compile.compiledGraph.assertions.length).equals(2);
+      result.compile.compiledGraph.assertions.forEach((assertion) => {
+        expect(asPlainObject(assertion.actionDescriptor?.jobLabels)).deep.equals({
+          team: "core",
         });
       });
+    });
 
-      test(`${tableType} built-in assertions in JS API inherit parent action jobLabels`, () => {
-        const projectDir = tmpDirFixture.createNewTmpDir();
-        fs.writeFileSync(
-          path.join(projectDir, "workflow_settings.yaml"),
-          `${VALID_WORKFLOW_SETTINGS_YAML}
+    test(`${tableType} built-in assertions in JS API inherit parent action jobLabels`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        `${VALID_WORKFLOW_SETTINGS_YAML}
 defaultJobLabels:
   env: dev
   team: core
 `,
-        );
-        fs.mkdirSync(path.join(projectDir, "definitions"));
-        fs.writeFileSync(
-          path.join(projectDir, "definitions/file.js"),
-          `
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/file.js"),
+        `
 publish("name", {
   type: "${tableType}",
   jobLabels: {
@@ -531,21 +532,20 @@ publish("name", {
   })
   .query("SELECT 1 AS id");
 `,
-        );
+      );
 
-        const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
-        expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-        expect(result.compile.compiledGraph.assertions.length).equals(2);
-        result.compile.compiledGraph.assertions.forEach((assertion) => {
-          expect(asPlainObject(assertion.actionDescriptor?.jobLabels)).deep.equals({
-            env: "prod",
-            team: "core",
-            parent_label: tableType,
-          });
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(result.compile.compiledGraph.assertions.length).equals(2);
+      result.compile.compiledGraph.assertions.forEach((assertion) => {
+        expect(asPlainObject(assertion.actionDescriptor?.jobLabels)).deep.equals({
+          env: "prod",
+          team: "core",
+          parent_label: tableType,
         });
       });
-    }
+    });
   });
 
   [
@@ -600,7 +600,7 @@ publish("name", {
         "    keys: [id]",
       ].join("\n"),
     },
-  ].forEach(({ name, file, content, extraFiles }) => {
+  ].forEach(({ name, file, content, extraFiles = {} }) => {
     test(`${name} records compilation error when jobLabels has invalid key`, () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
       fs.writeFileSync(
@@ -608,10 +608,8 @@ publish("name", {
         VALID_WORKFLOW_SETTINGS_YAML,
       );
       fs.mkdirSync(path.join(projectDir, "definitions"));
-      if (extraFiles) {
-        for (const [extraPath, extraContent] of Object.entries(extraFiles)) {
-          fs.writeFileSync(path.join(projectDir, extraPath), extraContent);
-        }
+      for (const [extraPath, extraContent] of Object.entries(extraFiles)) {
+        fs.writeFileSync(path.join(projectDir, extraPath), extraContent);
       }
       fs.writeFileSync(path.join(projectDir, file), content);
 

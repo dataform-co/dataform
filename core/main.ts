@@ -53,11 +53,10 @@ export function main(coreExecutionRequest: Uint8Array | string): Uint8Array | st
   // Like `vars`, `defaultJobLabels` is merged key-by-key so overrides add to or replace
   // individual default keys without wiping the remaining defaults from workflow_settings.yaml.
   const projectConfigOverride = compileRequest.compileConfig.projectConfigOverride ?? {};
-  const defaultJobLabels = {
-    ...projectConfig.defaultJobLabels,
-    ...projectConfigOverride.defaultJobLabels,
-  };
-  validateJobLabels(defaultJobLabels, "defaultJobLabels");
+  const defaultJobLabels = validateJobLabels(
+    { ...projectConfig.defaultJobLabels, ...projectConfigOverride.defaultJobLabels },
+    "defaultJobLabels",
+  );
   projectConfig = dataform.ProjectConfig.create({
     ...projectConfig,
     ...projectConfigOverride,

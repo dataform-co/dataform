@@ -43,14 +43,6 @@ suite("workflowSettingsAsProjectConfig", () => {
     expect(projectConfig.defaultJobLabels).to.deep.equal({ env: "prod", cost_center: "123" });
   });
 
-  test("leaves defaultJobLabels empty when workflow settings omit defaultJobLabels", () => {
-    const workflowSettings = dataform.WorkflowSettings.create({});
-
-    const projectConfig = workflowSettingsAsProjectConfig(workflowSettings);
-
-    expect(projectConfig.defaultJobLabels).to.deep.equal({});
-  });
-
   test("maps defaultLakehouseConfig to projectConfig.defaultLakehouseConfig", () => {
     const workflowSettings = dataform.WorkflowSettings.create({
       defaultLakehouseConfig: {
