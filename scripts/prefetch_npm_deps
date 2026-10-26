@@ -1,0 +1,112 @@
+#!/bin/bash
+# Prefetches new npm dependencies of open Dependabot PRs through a configurable
+# registry.
+#
+# For every open PR by PR_AUTHOR, compares its pnpm-lock.yaml with the lockfile
+# of its base commit and downloads each new package version from
+# PREFETCH_REGISTRY. This makes that registry pick up the new versions ahead of
+# the test builds that need them. Each package is fetched separately, so one
+# failure doesn't stop the others.
+#
+# Usage:
+#   REGISTRY_TOKEN=<token> PREFETCH_REGISTRY=<host/path/> ./scripts/prefetch_npm_deps
+#
+# Failures are reported as warnings and never fail the build.
+set -uo pipefail
+
+: "${REGISTRY_TOKEN:?REGISTRY_TOKEN must be set}"
+: "${PREFETCH_REGISTRY:?PREFETCH_REGISTRY must be set, e.g. registry.example.com/npm/}"
+GITHUB_REPO="${GITHUB_REPO:-dataform-co/dataform}"
+PR_AUTHOR="${PR_AUTHOR:-dependabot[bot]}" # Override for testing.
+
+readonly CURL_OPTS=(-fsS --connect-timeout 10 --max-time 120 --retry 2)
+
+WORK_DIR="$(mktemp -d)"
+trap 'rm -rf "${WORK_DIR}"' EXIT
+
+warn() { echo "WARNING: $*" >&2; }
+
+# Prints "name version" for every registry package in the `packages:` section of
+# a pnpm v9 lockfile. Entries with non-registry versions (URLs, git, file:) or
+# names that aren't valid npm package names are skipped.
+# Arguments: path to pnpm-lock.yaml.
+list_packages() {
+  python3 - "$1" <<'EOF'
+import re, sys
+NAME = re.compile(r"^(@[a-z0-9][a-z0-9._-]*/)?[a-z0-9][a-z0-9._-]*$")
+VERSION = re.compile(r"^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$")
+in_packages = False
+for line in open(sys.argv[1]):
+    if line.startswith("packages:"):
+        in_packages = True
+        continue
+    if in_packages and line.strip() and not line[0].isspace():
+        break
+    m = re.match(r"^  '?(@?[^@\s']+)@([^(:'\s]+)", line) if in_packages else None
+    if m and NAME.match(m.group(1)) and VERSION.match(m.group(2)):
+        print(m.group(1), m.group(2))
+EOF
+}
+
+# Downloads pnpm-lock.yaml at a given commit.
+# Arguments: commit SHA, output path.
+download_lockfile() {
+  curl "${CURL_OPTS[@]}" -L -o "$2" \
+    "https://raw.githubusercontent.com/${GITHUB_REPO}/$1/pnpm-lock.yaml"
+}
+
+# Downloads one package tarball from the registry; warns on failure.
+# Arguments: package name, version.
+prefetch_package() {
+  local name="$1" version="$2"
+  local url="https://${PREFETCH_REGISTRY}${name}/-/${name##*/}-${version}.tgz"
+  # The token is passed on stdin so it doesn't show up in the process list.
+  if curl "${CURL_OPTS[@]}" -o /dev/null -H @- "${url}" \
+      <<< "Authorization: Bearer ${REGISTRY_TOKEN}"; then
+    echo "  fetched ${name}@${version}"
+  else
+    warn "could not fetch ${name}@${version} yet"
+  fi
+}
+
+# Prints "number head_sha base_sha" for every open PR by PR_AUTHOR.
+# One page of 100 is enough: Dependabot limits its number of open PRs.
+list_prs() {
+  local json
+  json="$(curl "${CURL_OPTS[@]}" -L \
+    "https://api.github.com/repos/${GITHUB_REPO}/pulls?state=open&per_page=100")" ||
+    return 1
+  PR_AUTHOR="${PR_AUTHOR}" python3 -c 'import json, os, sys
+prs = json.load(sys.stdin)
+if not isinstance(prs, list):
+    sys.exit("unexpected GitHub API response: %s" % str(prs)[:200])
+for pr in prs:
+    if pr.get("user", {}).get("login") == os.environ["PR_AUTHOR"]:
+        print(pr["number"], pr["head"]["sha"], pr["base"]["sha"])' <<< "${json}"
+}
+
+main() {
+  local prs
+  prs="$(list_prs)" || { warn "could not list open PRs"; return 0; }
+
+  local number head base
+  while read -r number head base; do
+    [[ -z "${number}" ]] && continue
+    echo "=== PR #${number}"
+    if ! download_lockfile "${head}" "${WORK_DIR}/head.yaml" ||
+       ! download_lockfile "${base}" "${WORK_DIR}/base.yaml"; then
+      warn "could not download lockfiles for PR #${number}"
+      continue
+    fi
+    # The base commit may be older than the current main, so a few versions
+    # that are already available may be fetched again. That is harmless.
+    comm -13 <(list_packages "${WORK_DIR}/base.yaml" | sort) \
+             <(list_packages "${WORK_DIR}/head.yaml" | sort) |
+    while read -r name version; do
+      prefetch_package "${name}" "${version}"
+    done
+  done <<< "${prs}"
+  return 0
+}
+
+main "$@"

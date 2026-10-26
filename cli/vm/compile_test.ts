@@ -3,17 +3,23 @@ import * as fs from "fs-extra";
 import * as path from "path";
 
 import { checkCoreCompatibility, compile, MIN_SUPPORTED_CORE_VERSION } from "df/cli/vm/compile";
-import { handleJitRequest } from "df/cli/vm/jit_worker";
+import { findInstalledCoreBundle } from "df/cli/vm/core_installation";
+import { handleJitRequest, IJitCompileMessage } from "df/cli/vm/jit_worker";
 import { decode64 } from "df/common/protos";
 import { dataform } from "df/protos/ts";
-import { suite, test } from "df/testing";
+import { suite, test, writeCorePackage, writeWorkflowSettingsFile } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
+
+function coreBundlePath(projectDir: string) {
+  return path.join(projectDir, "node_modules", "@dataform", "core", "bundle.js");
+}
 
 suite("cli/vm", ({ afterEach, before, after }) => {
   const tmpDirFixture = new TmpDirFixture(afterEach);
 
-  // Let host-side require("@dataform/core") (jit_worker's mocked-core branch) resolve to the
-  // prebuilt core bundle in the test environment. Scoped to this suite via before/after.
+  // Let host-side require("@dataform/core") resolve to the prebuilt core bundle in the test
+  // environment, so that the "does not fall back to the CLI's bundled core" test would catch a
+  // regression. Scoped to this suite via before/after.
   const Module = require("module");
   const prebuiltCoreBundle = path.join(
     process.cwd(),
@@ -170,15 +176,9 @@ publish("a_leaky", { type: "table" }).query("SELECT 1");`,
     expect(graph.tables[0].query.trim()).to.equal("SELECT 'undefined' AS t");
   });
 
-  test("handleJitRequest compiles request with local core (hasProjectLocalCore = true)", async () => {
-    const projectDir = tmpDirFixture.createNewTmpDir();
-    fs.copySync(
-      path.join(process.cwd(), "core", "node_modules"),
-      path.join(projectDir, "node_modules"),
-    );
-
-    const request = dataform.JitCompilationRequest.create({
-      jitCode: `async (ctx) => "SELECT 1"`,
+  function operationJitRequest(sql: string) {
+    return dataform.JitCompilationRequest.create({
+      jitCode: `async (ctx) => "${sql}"`,
       target: {
         database: "db",
         schema: "schema",
@@ -187,56 +187,158 @@ publish("a_leaky", { type: "table" }).query("SELECT 1");`,
       compilationTargetType:
         dataform.JitCompilationTargetType.JIT_COMPILATION_TARGET_TYPE_OPERATION,
     });
+  }
 
+  async function runJitRequest(message: IJitCompileMessage): Promise<any[]> {
     const messages: any[] = [];
     const origSend = process.send;
     (process as any).send = (msg: any) => messages.push(msg);
-
     try {
-      await handleJitRequest({ request, projectDir });
+      await handleJitRequest(message);
     } finally {
       (process as any).send = origSend;
     }
+    return messages;
+  }
+
+  function createProjectWithPrebuiltCore(): { projectDir: string; coreVersion: string } {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    fs.copySync(
+      path.join(process.cwd(), "core", "node_modules"),
+      path.join(projectDir, "node_modules"),
+    );
+    const coreVersion = fs.readJsonSync(
+      path.join(projectDir, "node_modules", "@dataform", "core", "package.json"),
+    ).version;
+    return { projectDir, coreVersion };
+  }
+
+  test("handleJitRequest compiles request with the project's core", async () => {
+    const { projectDir } = createProjectWithPrebuiltCore();
+
+    const messages = await runJitRequest({ request: operationJitRequest("SELECT 1"), projectDir });
 
     expect(messages).to.have.lengthOf(1);
     expect(messages[0].type).to.equal("jit_response");
     expect(messages[0].response.operation.queries).to.deep.equal(["SELECT 1"]);
   });
 
-  test("handleJitRequest compiles request with fallback core (hasProjectLocalCore = false)", async () => {
-    const projectDir = tmpDirFixture.createNewTmpDir();
-    // Provide only package.json for @dataform/core without bundle.js so hasProjectLocalCore is false
-    const coreDir = path.join(projectDir, "node_modules", "@dataform", "core");
-    fs.mkdirSync(coreDir, { recursive: true });
-    fs.writeFileSync(
-      path.join(coreDir, "package.json"),
-      JSON.stringify({ name: "@dataform/core", version: "3.0.0" }),
-    );
+  test("handleJitRequest succeeds when the project's core matches the expected version", async () => {
+    const { projectDir, coreVersion } = createProjectWithPrebuiltCore();
 
-    const request = dataform.JitCompilationRequest.create({
-      jitCode: `async (ctx) => "SELECT 42"`,
-      target: {
-        database: "db",
-        schema: "schema",
-        name: "test_op2",
-      },
-      compilationTargetType:
-        dataform.JitCompilationTargetType.JIT_COMPILATION_TARGET_TYPE_OPERATION,
+    const messages = await runJitRequest({
+      request: operationJitRequest("SELECT 1"),
+      projectDir,
+      expectedCoreVersion: coreVersion,
     });
-
-    const messages: any[] = [];
-    const origSend = process.send;
-    (process as any).send = (msg: any) => messages.push(msg);
-
-    try {
-      await handleJitRequest({ request, projectDir });
-    } finally {
-      (process as any).send = origSend;
-    }
 
     expect(messages).to.have.lengthOf(1);
     expect(messages[0].type).to.equal("jit_response");
-    expect(messages[0].response.operation.queries).to.deep.equal(["SELECT 42"]);
+    expect(messages[0].response.operation.queries).to.deep.equal(["SELECT 1"]);
+  });
+
+  test("handleJitRequest fails when the project's core differs from the expected version", async () => {
+    const { projectDir, coreVersion } = createProjectWithPrebuiltCore();
+
+    const messages = await runJitRequest({
+      request: operationJitRequest("SELECT 1"),
+      projectDir,
+      expectedCoreVersion: "3.0.1",
+    });
+
+    expect(messages).to.have.lengthOf(1);
+    expect(messages[0].type).to.equal("jit_error");
+    expect(messages[0].error).to.include(
+      `JiT compilation would use @dataform/core ${coreVersion} from '${coreBundlePath(projectDir)}', ` +
+        `but the ` +
+        `project was compiled with @dataform/core 3.0.1.`,
+    );
+  });
+
+  test("handleJitRequest reports a core without a version as unknown", async () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    writeCorePackage(projectDir, "module.exports = { jitCompiler: () => ({}) };");
+
+    const messages = await runJitRequest({
+      request: operationJitRequest("SELECT 1"),
+      projectDir,
+      expectedCoreVersion: "3.0.71",
+    });
+
+    expect(messages).to.have.lengthOf(1);
+    expect(messages[0].type).to.equal("jit_error");
+    expect(messages[0].error).to.include(
+      `JiT compilation would use @dataform/core of an unknown version from ` +
+        `'${coreBundlePath(projectDir)}', but the project was compiled with @dataform/core 3.0.71.`,
+    );
+  });
+
+  test("handleJitRequest does not fall back to the CLI's bundled core", async () => {
+    // Host-side require("@dataform/core") resolves to the prebuilt bundle in this suite (see the
+    // `before` hook), so a fallback to the CLI's core would succeed and return a jit_response.
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    writeCorePackage(projectDir);
+
+    const messages = await runJitRequest({ request: operationJitRequest("SELECT 42"), projectDir });
+
+    expect(messages).to.have.lengthOf(1);
+    expect(messages[0].type).to.equal("jit_error");
+    expect(messages[0].error).to.include("Could not find @dataform/core");
+  });
+
+  test("handleJitRequest fails when the project's core does not support JiT", async () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    writeCorePackage(projectDir, `module.exports = { version: "3.0.0" };`);
+
+    const messages = await runJitRequest({
+      request: operationJitRequest("SELECT 1"),
+      projectDir,
+      expectedCoreVersion: "3.0.0",
+    });
+
+    expect(messages).to.have.lengthOf(1);
+    expect(messages[0].type).to.equal("jit_error");
+    expect(messages[0].error).to.include("@dataform/core 3.0.0 does not support JiT compilation");
+  });
+});
+
+suite("cli/vm findInstalledCoreBundle", ({ afterEach }) => {
+  const tmpDirFixture = new TmpDirFixture(afterEach);
+
+  test("returns the installed bundle", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    writeCorePackage(projectDir, "module.exports = {};");
+
+    expect(findInstalledCoreBundle(projectDir)).to.equal(coreBundlePath(projectDir));
+  });
+
+  test("explains a missing project directory", () => {
+    const projectDir = path.join(tmpDirFixture.createNewTmpDir(), "removed");
+
+    expect(() => findInstalledCoreBundle(projectDir)).to.throw(
+      `Could not find @dataform/core: the project directory '${projectDir}' does not exist.`,
+    );
+  });
+
+  test("tells package.json projects to run dataform install", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    fs.writeJsonSync(path.join(projectDir, "package.json"), { dependencies: {} });
+
+    expect(() => findInstalledCoreBundle(projectDir)).to.throw(
+      `Could not find @dataform/core: '${coreBundlePath(projectDir)}' does not exist. Run ` +
+        "`dataform install` in the project directory to install the version from package.json.",
+    );
+  });
+
+  test("explains that dataformCoreVersion projects run in a temporary directory", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    writeWorkflowSettingsFile(projectDir, { dataformCoreVersion: "3.0.71" });
+
+    expect(() => findInstalledCoreBundle(projectDir)).to.throw(
+      `Could not find @dataform/core: '${coreBundlePath(projectDir)}' does not exist. Projects ` +
+        "that set `dataformCoreVersion` in workflow_settings.yaml are compiled in a temporary " +
+        "directory",
+    );
   });
 });
 

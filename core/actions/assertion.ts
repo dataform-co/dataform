@@ -28,6 +28,7 @@ interface ILegacyAssertionConfig extends dataform.ActionConfig.AssertionConfig {
   schema: string;
   fileName: string;
   type: string;
+  lakehouse?: dataform.ActionConfig.ILakehouseConfig;
 }
 
 /** @hidden */
@@ -97,6 +98,8 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
   /** @hidden */
   private contextableJitCode: JitContextable<AssertionContext, JitAssertionResult> | undefined;
 
+  private hasLakehouseConfig = false;
+
   /** @hidden */
   constructor(session?: Session, unverifiedConfig?: any, configPath?: string) {
     super(session);
@@ -131,7 +134,10 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
     if (config.dependencyTargets) {
       this.dependencies(
         config.dependencyTargets.map((dependencyTarget) =>
-          configTargetToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget)),
+          configTargetToCompiledGraphTarget(
+            dataform.ActionConfig.Target.create(dependencyTarget),
+            session.projectConfig?.defaultLakehouseConfig,
+          ),
         ),
       );
     }
@@ -199,7 +205,10 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
   public dependencies(value: Resolvable | Resolvable[]) {
     const newDependencies = Array.isArray(value) ? value : [value];
     newDependencies.forEach((resolvable) => {
-      const resolvableTarget = resolvableAsTarget(resolvable);
+      const resolvableTarget = resolvableAsTarget(
+        resolvable,
+        this.session.projectConfig?.defaultLakehouseConfig,
+      );
       this.session.actionAssertionMap.set(resolvableTarget, this);
       this.proto.dependencyTargets.push(resolvableTarget);
     });
@@ -318,6 +327,13 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
 
   /** @hidden */
   public compile() {
+    if (this.hasLakehouseConfig) {
+      this.session.compileError(
+        new Error("Lakehouse (4-part) targets are not supported for views and assertions"),
+        this.proto.fileName,
+        this.proto.target,
+      );
+    }
     const context = new AssertionContext(this);
 
     if (this.contextableJitCode && this.contextableQuery) {
@@ -376,6 +392,10 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
     if (unverifiedConfig.type) {
       delete unverifiedConfig.type;
     }
+    if (unverifiedConfig.lakehouse !== undefined) {
+      this.hasLakehouseConfig = true;
+      delete unverifiedConfig.lakehouse;
+    }
 
     return verifyObjectMatchesProto(
       dataform.ActionConfig.AssertionConfig,
@@ -405,7 +425,7 @@ export class AssertionContext implements IActionContext {
 
   public ref(ref: Resolvable | string[], ...rest: string[]) {
     ref = toResolvable(ref, rest);
-    if (!resolvableAsTarget(ref)) {
+    if (!resolvableAsTarget(ref, this.assertion.session.projectConfig?.defaultLakehouseConfig)) {
       this.assertion.session.compileError(new Error(`Action name is not specified`));
       return "";
     }

@@ -594,7 +594,7 @@ publish("name", {
         "name: G",
         "jobLabels:",
         '  "goog-reserved": v',
-        "entities:",
+        "nodes:",
         "  - name: Account",
         "    dataSourceString: proj.ds.Accounts",
         "    keys: [id]",

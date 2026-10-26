@@ -16,51 +16,53 @@ export interface IJitWorkerMessage {
   error?: string;
 }
 
+/** Arguments of a JiT compilation of one action. */
+export interface IJitCompileOptions {
+  request: dataform.IJitCompilationRequest;
+  /** Directory whose `node_modules/@dataform/core` is used for JiT compilation. */
+  projectDir: string;
+  dbadapter: IDbAdapter;
+  dbclient: IDbClient;
+  timeoutMillis?: number;
+  bigqueryOptions?: IBigQueryExecutionOptions;
+  onCancel: (cancel: () => void) => void;
+  /** The `@dataform/core` version that compiled the project; JiT must use the same version. */
+  expectedCoreVersion?: string;
+}
+
+export type JitCompiler = (
+  options: IJitCompileOptions,
+) => Promise<dataform.IJitCompilationResponse>;
+
 export class JitCompileChildProcess extends BaseWorker<
   dataform.IJitCompilationResponse,
   IJitWorkerMessage
 > {
-  public static async compile(
-    request: dataform.IJitCompilationRequest,
-    projectDir: string,
-    dbadapter: IDbAdapter,
-    dbclient: IDbClient,
-    timeoutMillis?: number,
-    options?: IBigQueryExecutionOptions,
-    onCancel?: (cancel: () => void) => void,
-  ): Promise<dataform.IJitCompilationResponse> {
-    return await new JitCompileChildProcess().run(
-      request,
-      projectDir,
-      dbadapter,
-      dbclient,
-      timeoutMillis || DEFAULT_COMPILATION_TIMEOUT_MILLIS,
-      options,
-      onCancel,
-    );
-  }
+  public static compile: JitCompiler = (options) => new JitCompileChildProcess().run(options);
 
-  private async run(
-    request: dataform.IJitCompilationRequest,
-    projectDir: string,
-    dbadapter: IDbAdapter,
-    dbclient: IDbClient,
-    timeoutMillis: number,
-    options: IBigQueryExecutionOptions | undefined,
-    onCancel: ((cancel: () => void) => void) | undefined,
-  ): Promise<dataform.IJitCompilationResponse> {
+  private async run({
+    request,
+    projectDir,
+    dbadapter,
+    dbclient,
+    timeoutMillis,
+    bigqueryOptions,
+    onCancel,
+    expectedCoreVersion,
+  }: IJitCompileOptions): Promise<dataform.IJitCompilationResponse> {
     return await this.runWorker(
-      timeoutMillis,
+      timeoutMillis || DEFAULT_COMPILATION_TIMEOUT_MILLIS,
       (child) => {
         child.send({
           type: "jit_compile",
           request,
           projectDir,
+          expectedCoreVersion,
         });
       },
       async (message, child, resolve, reject) => {
         if (message.type === "rpc_request") {
-          await this.handleRpcRequest(message, child, dbadapter, dbclient, options);
+          await this.handleRpcRequest(message, child, dbadapter, dbclient, bigqueryOptions);
         } else if (message.type === "jit_response") {
           resolve(dataform.JitCompilationResponse.fromObject(message.response));
         } else if (message.type === "jit_error") {

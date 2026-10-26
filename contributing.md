@@ -84,7 +84,7 @@ Integration tests run against BigQuery using [Application Default Credentials (A
 
    Without `"impersonateServiceAccount"`, tests run as your ADC identity. Add it to impersonate a service account of your own instead.
 
-   *(Optional)* If you still want to test with an explicit service account key inside the Dataform credentials file rather than ADC, you can include the `"credentials"` field containing the JSON key serialized as a string (`jq -Rsa < path/to/key.json`).
+   _(Optional)_ If you still want to test with an explicit service account key inside the Dataform credentials file rather than ADC, you can include the `"credentials"` field containing the JSON key serialized as a string (`jq -Rsa < path/to/key.json`).
 
 4. **Run the integration tests:**
 
@@ -113,6 +113,24 @@ All .ts files are expected to be formatted using prettier. You can format all fi
 ```
 
 Alternatively, you may want to configure prettier to run on save or as a pre-commit hook.
+
+### Canary test
+
+In CI, a script builds the Core bundle the same way it would be prepared for publishing to npm, and attempts to use it to compile a sample project using Dataform's Google Cloud interface. This ensures changes to Core do not break the Cloud backend.
+
+If you expect your changes to affect the output of the Cloud API's projects.locations.repositories.compilationResults.query endpoint, you will have to regenerate the baseline file that the output is compiled against. Use this script:
+
+```bash
+./scripts/regenerate_canary_baseline
+```
+
+The script uses dataform-open-source GCP project by default; to run it on your own project, you have to provide a tools/canary/config.local.env with the same variables as in the default tools/canary/config.env. The projects will need to include a Dataform repository and a Cloud Storage bucket to store the bundle in, as well as a service account with access to that bucket.
+
+Once this file is provided, you can also run the canary test itself on your own project by using the script:
+
+```bash
+./scripts/run_canary_test
+```
 
 ### Building
 

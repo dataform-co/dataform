@@ -101,6 +101,14 @@ suite("BigQueryDbAdapter", () => {
       expect(options.projectId).to.equal("other-project");
     });
 
+    test("leaves the location undefined when it is not set, so BigQuery auto-selects it", () => {
+      // Unset proto3 string fields read as "", which BigQuery rejects as a job location.
+      const credentials = dataform.BigQuery.create({ projectId: "default-project" });
+      expect(credentials.location).to.equal("");
+      expect(getBigQueryClientOptions(credentials).location).to.equal(undefined);
+      expect(createBigQueryClientProvider(credentials)().location).to.equal(undefined);
+    });
+
     test("throws on malformed service account key JSON", () => {
       expect(() =>
         getBigQueryClientOptions({

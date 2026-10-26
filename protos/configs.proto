@@ -80,6 +80,9 @@ message WorkflowSettings {
   // BigQuery jobs executed for actions in this project. Can be overridden by
   // action-level `job_labels`.
   map<string, string> default_job_labels = 20;
+
+  // Optional. Default config options for Lakehouse (4-part) targets.
+  DefaultLakehouseConfig default_lakehouse_config = 21;
 }
 
 // Configuration for Knowledge Catalog lineage emission.
@@ -110,6 +113,9 @@ message ActionConfig {
     // flag for when we want to add assertions of this dependency in
     // dependency_targets as well.
     bool include_dependent_assertions = 5;
+
+    // Configuration options for a Lakehouse (4-part) target.
+    LakehouseConfig lakehouse = 6;
   }
 
   message ColumnDescriptor {
@@ -192,6 +198,14 @@ message ActionConfig {
     // `gs://{bucket_name}/{table_folder_root}/{table_folder_subpath}``.
     // If `storage_uri` is provided, this value is ignored.
     string table_folder_subpath = 5;
+  }
+
+  message LakehouseConfig {
+    // The Lakehouse catalog name.
+    string catalog = 1;
+
+    // The Lakehouse namespace name.
+    string namespace = 2;
   }
 
   message TableConfig {
@@ -291,6 +305,9 @@ message ActionConfig {
     // job(s) executed for this table. Overrides matching keys from
     // `default_job_labels` in `workflow_settings.yaml`.
     map<string, string> job_labels = 26;
+
+    // Configuration options for a Lakehouse (4-part) table.
+    LakehouseConfig lakehouse = 27;
   }
 
   message Metadata {
@@ -528,6 +545,9 @@ message ActionConfig {
     // job(s) executed for this incremental table. Overrides matching keys from
     // `default_job_labels` in `workflow_settings.yaml`.
     map<string, string> job_labels = 31;
+
+    // Configuration options for a Lakehouse (4-part) incremental table.
+    LakehouseConfig lakehouse = 32;
   }
 
   message AssertionConfig {
@@ -636,6 +656,9 @@ message ActionConfig {
     // job(s) executed for this operation. Overrides matching keys from
     // `default_job_labels` in `workflow_settings.yaml`.
     map<string, string> job_labels = 14;
+
+    // Configuration options for a Lakehouse (4-part) operation target.
+    LakehouseConfig lakehouse = 15;
   }
 
   message DeclarationConfig {
@@ -659,6 +682,9 @@ message ActionConfig {
 
     // A list of user-defined tags with which the action should be labeled.
     repeated string tags = 7;
+
+    // Configuration options for a Lakehouse (4-part) declaration target.
+    LakehouseConfig lakehouse = 8;
   }
 
   message NotebookConfig {

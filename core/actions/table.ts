@@ -9,6 +9,11 @@ import {
 } from "df/core/actions";
 import { Assertion } from "df/core/actions/assertion";
 import { IncrementalTable } from "df/core/actions/incremental_table";
+import {
+  validateLakehouseBigQueryOptions,
+  validateLakehouseColumns,
+  validateLakehouseConfig,
+} from "df/core/actions/lakehouse";
 import { View } from "df/core/actions/view";
 import { ColumnDescriptors } from "df/core/column_descriptors";
 import { Contextable, ITableContext, JitContextable, Resolvable } from "df/core/contextables";
@@ -18,6 +23,7 @@ import {
   actionConfigToCompiledGraphTarget,
   checkAssertionsForDependency,
   checkExcessProperties,
+  configTargetToCompiledGraphTarget,
   getConnectionForIcebergTable,
   getEffectiveBucketName,
   getEffectiveTableFolderRoot,
@@ -129,19 +135,33 @@ export class Table extends ActionBuilder<dataform.Table> {
     if (!unverifiedConfig) {
       return;
     }
+    const hasDatasetOrSchema = Boolean(unverifiedConfig.dataset || unverifiedConfig.schema);
     const config = this.verifyConfig(unverifiedConfig);
 
     if (!config.name) {
       config.name = Path.basename(config.filename);
     }
-    const target = actionConfigToCompiledGraphTarget(config);
-    this.proto.target = this.applySessionToTarget(target, session.projectConfig, config.filename, {
+    const fileName = configPath
+      ? resolveActionsConfigFilename(config.filename, configPath)
+      : config.filename;
+    this.isLakehouseTarget = validateLakehouseConfig(session, config, fileName, hasDatasetOrSchema);
+    const target = actionConfigToCompiledGraphTarget(
+      config,
+      session.projectConfig?.defaultLakehouseConfig,
+    );
+    this.proto.target = this.applySessionToTarget(target, session.projectConfig, fileName, {
       validateTarget: true,
     });
-    this.proto.canonicalTarget = this.applySessionToTarget(target, session.canonicalProjectConfig);
+    this.proto.canonicalTarget = this.applySessionToTarget(
+      actionConfigToCompiledGraphTarget(
+        config,
+        session.canonicalProjectConfig?.defaultLakehouseConfig,
+      ),
+      session.canonicalProjectConfig,
+    );
 
     if (configPath) {
-      config.filename = resolveActionsConfigFilename(config.filename, configPath);
+      config.filename = fileName;
       this.query(nativeRequire(config.filename).query);
     }
     if (config.filename) {
@@ -152,7 +172,14 @@ export class Table extends ActionBuilder<dataform.Table> {
       this.setDependOnDependencyAssertions(config.dependOnDependencyAssertions);
     }
     if (config.dependencyTargets) {
-      this.dependencies(config.dependencyTargets);
+      this.dependencies(
+        config.dependencyTargets.map((dependencyTarget) =>
+          configTargetToCompiledGraphTarget(
+            dataform.ActionConfig.Target.create(dependencyTarget),
+            session.projectConfig?.defaultLakehouseConfig,
+          ),
+        ),
+      );
     }
     if (config.hermetic !== undefined) {
       this.hermetic(config.hermetic);
@@ -201,7 +228,7 @@ export class Table extends ActionBuilder<dataform.Table> {
         config.preserveGovernanceControls ??
         session.projectConfig.preserveGovernanceControls ??
         false,
-      ...(config.iceberg
+      ...(config.iceberg && !config.lakehouse
         ? {
             connection: getConnectionForIcebergTable(
               config.iceberg.connection,
@@ -472,6 +499,14 @@ export class Table extends ActionBuilder<dataform.Table> {
    * Sets the schema (BigQuery dataset) in which to create the output of this action.
    */
   public schema(schema: string) {
+    if (this.isLakehouseTarget) {
+      this.session.compileError(
+        new Error("Cannot specify both 'lakehouse' and 'dataset'/'schema' on the same action."),
+        this.proto.fileName,
+        this.proto.target,
+      );
+      return this;
+    }
     this.proto.target = this.applySessionToTarget(
       dataform.Target.create({ ...this.proto.target, schema }),
       this.session.projectConfig,
@@ -492,6 +527,14 @@ export class Table extends ActionBuilder<dataform.Table> {
    * needed -->
    */
   public assertions(tableAssertionsConfig: dataform.ActionConfig.TableAssertionsConfig): Table {
+    if (this.isLakehouseTarget) {
+      this.session.compileError(
+        new Error("Inline assertions are not supported for Lakehouse (4-part) targets"),
+        this.proto.fileName,
+        this.proto.target,
+      );
+      return this;
+    }
     const inlineAssertions = this.generateInlineAssertions(tableAssertionsConfig, this.proto);
     this.uniqueKeyAssertions = inlineAssertions.uniqueKeyAssertions;
     this.rowConditionsAssertion = inlineAssertions.rowConditionsAssertion;
@@ -534,6 +577,21 @@ export class Table extends ActionBuilder<dataform.Table> {
 
     if (this.proto.bigquery?.storageUri) {
       validateStorageUriFormat(this.proto.bigquery.storageUri);
+    }
+
+    if (this.isLakehouseTarget) {
+      validateLakehouseColumns(
+        this.session,
+        this.proto.actionDescriptor,
+        this.proto.fileName,
+        this.proto.target,
+      );
+      validateLakehouseBigQueryOptions(
+        this.session,
+        this.proto.bigquery,
+        this.proto.fileName,
+        this.proto.target,
+      );
     }
 
     return verifyObjectMatchesProto(
@@ -688,7 +746,11 @@ export class Table extends ActionBuilder<dataform.Table> {
       VerifyProtoErrorBehaviour.SHOW_DOCS_LINK,
     );
 
-    if (!config.partitionBy && (config.partitionExpirationDays || config.requirePartitionFilter)) {
+    if (
+      !config.lakehouse &&
+      !config.partitionBy &&
+      (config.partitionExpirationDays || config.requirePartitionFilter)
+    ) {
       this.session.compileError(
         `requirePartitionFilter/partitionExpirationDays are not valid for non partitioned BigQuery tables`,
         config.filename,
@@ -727,7 +789,7 @@ export class TableContext implements ITableContext {
 
   public ref(ref: Resolvable | string[], ...rest: string[]): string {
     ref = toResolvable(ref, rest);
-    if (!resolvableAsTarget(ref)) {
+    if (!resolvableAsTarget(ref, this.table.session.projectConfig?.defaultLakehouseConfig)) {
       this.table.session.compileError(new Error(`Action name is not specified`));
       return "";
     }

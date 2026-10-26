@@ -261,7 +261,9 @@ export class Session {
 
   public resolve(ref: Resolvable | string[], ...rest: string[]): string {
     ref = toResolvable(ref, rest);
-    const allResolved = this.indexedActions.find(utils.resolvableAsTarget(ref));
+    const allResolved = this.indexedActions.find(
+      utils.resolvableAsTarget(ref, this.projectConfig?.defaultLakehouseConfig),
+    );
     if (allResolved.length > 1) {
       this.compileError(new Error(utils.ambiguousActionNameMsg(ref, allResolved)));
       return "";
@@ -288,7 +290,9 @@ export class Session {
     ...rest: string[]
   ): dataform.ITarget | undefined {
     ref = toResolvable(ref, rest);
-    const allResolved = this.indexedActions.find(utils.resolvableAsTarget(ref));
+    const allResolved = this.indexedActions.find(
+      utils.resolvableAsTarget(ref, this.projectConfig?.defaultLakehouseConfig),
+    );
     if (allResolved.length !== 1) {
       return undefined;
     }
@@ -609,6 +613,11 @@ export class Session {
   }
 
   public finalizeSchema(schema: string): string {
+    // Normalized 4-part Lakehouse schemas ("${catalog}.${namespace}") do not take datasetSuffix.
+    // Standard dataset names cannot contain '.' (enforced by ActionBuilder.validateTarget).
+    if (schema.includes(".")) {
+      return schema;
+    }
     return `${schema}${this.getSchemaSuffixWithUnderscore()}`;
   }
 
@@ -717,7 +726,7 @@ export class Session {
         database:
           action.target.database &&
           `${action.target.database}${this.getDatabaseSuffixWithUnderscore()}`,
-        schema: `${action.target.schema}${this.getSchemaSuffixWithUnderscore()}`,
+        schema: this.finalizeSchema(action.target.schema),
         name: `${this.getTablePrefixWithUnderscore()}${action.target.name}`,
       });
       action.target = newTargetByOriginalTarget.get(targetStringifier.stringify(action.target));
@@ -906,5 +915,6 @@ function getCanonicalProjectConfig(originalProjectConfig: dataform.ProjectConfig
     defaultSchema: originalProjectConfig.defaultSchema,
     defaultDatabase: originalProjectConfig.defaultDatabase,
     assertionSchema: originalProjectConfig.assertionSchema,
+    defaultLakehouseConfig: originalProjectConfig.defaultLakehouseConfig,
   });
 }

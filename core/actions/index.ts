@@ -40,6 +40,7 @@ export type ActionProto =
 export abstract class ActionBuilder<T> {
   public session: Session;
   public includeAssertionsForDependency: Map<string, boolean> = new Map();
+  protected isLakehouseTarget = false;
 
   constructor(session?: Session) {
     this.session = session;
@@ -180,7 +181,7 @@ export abstract class ActionBuilder<T> {
         target,
       );
     }
-    if (target.schema.includes(".")) {
+    if (!this.isLakehouseTarget && target.schema.includes(".")) {
       this.session.compileError(
         new Error("Action target datasets cannot include '.'"),
         fileName,
@@ -356,6 +357,7 @@ export interface ILegacyTableConfig
   assertions?: ILegacyTableAssertions;
   uniqueKey?: string[];
   materialized?: boolean;
+  lakehouse?: dataform.ActionConfig.ILakehouseConfig;
 }
 
 /**

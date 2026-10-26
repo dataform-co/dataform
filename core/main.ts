@@ -273,7 +273,7 @@ function loadPropertyGraphs(session: Session, filePaths: string[]) {
     session.compileError(
       new Error(
         "Property graph config is empty or malformed. " +
-          "Expected a top-level object with 'name' and 'entities'.",
+          "Expected a top-level object with 'name' and 'nodes'.",
       ),
       graphPath,
     );

@@ -90,7 +90,7 @@ suite("property graphs", ({ afterEach }) => {
           name: "graph.yaml",
           contents: `
 name: SimpleGraph
-entities:
+nodes:
 - name: Customer
   dataSourceString: defaultProject.defaultDataset.customers
   keys:
@@ -119,7 +119,7 @@ entities:
             fileName: "definitions/graph.yaml",
             description: "",
             disabled: false,
-            entities: [
+            nodes: [
               {
                 name: "Customer",
                 dataSource: {
@@ -149,7 +149,7 @@ name: TaggedGraph
 tags:
 - nightly
 - reporting
-entities:
+nodes:
 - name: Customer
   dataSourceString: defaultProject.defaultDataset.customers
   keys:
@@ -179,7 +179,7 @@ entities:
             description: "",
             disabled: false,
             tags: ["nightly", "reporting"],
-            entities: [
+            nodes: [
               {
                 name: "Customer",
                 dataSource: {
@@ -206,7 +206,7 @@ entities:
           name: "graph.yaml",
           contents: `
 name: NodesOnly
-entities:
+nodes:
 - name: Customer
   dataSourceString: defaultProject.defaultDataset.customers
   keys:
@@ -239,7 +239,7 @@ entities:
             fileName: "definitions/graph.yaml",
             description: "",
             disabled: false,
-            entities: [
+            nodes: [
               {
                 name: "Customer",
                 dataSource: {
@@ -278,7 +278,7 @@ entities:
 name: CustomDsGraph
 targetDataset:
   datasetId: customDs
-entities:
+nodes:
 - name: Customer
   dataSourceString: defaultProject.defaultDataset.customers
   keys:
@@ -307,7 +307,7 @@ entities:
             fileName: "definitions/graph.yaml",
             description: "",
             disabled: false,
-            entities: [
+            nodes: [
               {
                 name: "Customer",
                 dataSource: {
@@ -342,7 +342,7 @@ entities:
             graphError(
               "definitions/graph.yaml",
               "Property graph config is empty or malformed. Expected a top-level " +
-                "object with 'name' and 'entities'.",
+                "object with 'name' and 'nodes'.",
             ),
           ],
         },
@@ -366,7 +366,7 @@ entities:
             graphError(
               "definitions/graph.yaml",
               "Property graph config is empty or malformed. Expected a top-level " +
-                "object with 'name' and 'entities'.",
+                "object with 'name' and 'nodes'.",
             ),
           ],
         },
@@ -390,7 +390,7 @@ entities:
             graphError(
               "definitions/graph.yaml",
               "Property graph config is empty or malformed. Expected a top-level " +
-                "object with 'name' and 'entities'.",
+                "object with 'name' and 'nodes'.",
             ),
           ],
         },
@@ -399,7 +399,7 @@ entities:
       },
     },
     {
-      testName: "graph.yaml missing entities produces a compilation error",
+      testName: "graph.yaml missing nodes produces a compilation error",
       workflowSettings: VALID_WORKFLOW_SETTINGS_YAML,
       definitionFiles: [
         {
@@ -415,7 +415,7 @@ name: EmptyGraph
           compilationErrors: [
             graphError(
               "definitions/graph.yaml",
-              "Property graph 'EmptyGraph' must declare at least one entity.",
+              "Property graph 'EmptyGraph' must declare at least one node.",
             ),
           ],
         },
@@ -424,14 +424,14 @@ name: EmptyGraph
       },
     },
     {
-      testName: "graph with relationships emits EDGE TABLES",
+      testName: "graph with edges emits EDGE TABLES",
       workflowSettings: VALID_WORKFLOW_SETTINGS_YAML,
       definitionFiles: [
         {
           name: "graph.yaml",
           contents: `
 name: RelGraph
-entities:
+nodes:
 - name: Customer
   dataSourceString: defaultProject.defaultDataset.customers
   keys:
@@ -440,15 +440,15 @@ entities:
   dataSourceString: defaultProject.defaultDataset.orders
   keys:
   - id
-relationships:
+edges:
 - name: PlacedBy
   dataSourceString: defaultProject.defaultDataset.orders
   source:
-    entity: Order
+    node: Order
     joinKeys:
     - order_id
   destination:
-    entity: Customer
+    node: Customer
     joinKeys:
     - customer_id
 `,
@@ -475,7 +475,7 @@ relationships:
             fileName: "definitions/graph.yaml",
             description: "",
             disabled: false,
-            entities: [
+            nodes: [
               {
                 name: "Customer",
                 dataSource: {
@@ -495,7 +495,7 @@ relationships:
                 keys: ["id"],
               },
             ],
-            relationships: [
+            edges: [
               {
                 name: "PlacedBy",
                 dataSource: {
@@ -504,14 +504,14 @@ relationships:
                   database: "defaultProject",
                 },
                 source: {
-                  entity: "Order",
-                  relationshipColumns: ["order_id"],
-                  entityColumns: ["id"],
+                  node: "Order",
+                  edgeColumns: ["order_id"],
+                  nodeColumns: ["id"],
                 },
                 destination: {
-                  entity: "Customer",
-                  relationshipColumns: ["customer_id"],
-                  entityColumns: ["id"],
+                  node: "Customer",
+                  edgeColumns: ["customer_id"],
+                  nodeColumns: ["id"],
                 },
               },
             ],
@@ -530,7 +530,7 @@ relationships:
       },
     },
     {
-      testName: "ref to declaration resolves entity dataSource and renders graphBody",
+      testName: "ref to declaration resolves node dataSource and renders graphBody",
       workflowSettings: VALID_WORKFLOW_SETTINGS_YAML,
       definitionFiles: [
         {
@@ -545,7 +545,7 @@ actions:
           name: "graph.yaml",
           contents: `
 name: RefGraph
-entities:
+nodes:
 - name: Book
   ref: books
   keys:
@@ -575,7 +575,7 @@ entities:
           fileName: "definitions/graph.yaml",
           description: "",
           disabled: false,
-          entities: [
+          nodes: [
             {
               name: "Book",
               dataSource: {
@@ -610,7 +610,7 @@ actions:
           name: "graph.yaml",
           contents: `
 name: RefWithSchemaGraph
-entities:
+nodes:
 - name: Book
   ref:
     name: books
@@ -642,7 +642,7 @@ entities:
           fileName: "definitions/graph.yaml",
           description: "",
           disabled: false,
-          entities: [
+          nodes: [
             {
               name: "Book",
               dataSource: {
@@ -673,7 +673,7 @@ select 1 as id`,
           name: "graph.yaml",
           contents: `
 name: AssertRefGraph
-entities:
+nodes:
 - name: Book
   ref:
     name: books
@@ -710,7 +710,7 @@ entities:
           fileName: "definitions/graph.yaml",
           description: "",
           disabled: false,
-          entities: [
+          nodes: [
             {
               name: "Book",
               dataSource: {
@@ -743,7 +743,7 @@ select 1 as id`,
           contents: `
 name: GraphAssertDefaultGraph
 dependOnDependencyAssertions: true
-entities:
+nodes:
 - name: Book
   ref: books
   keys:
@@ -778,7 +778,7 @@ entities:
           fileName: "definitions/graph.yaml",
           description: "",
           disabled: false,
-          entities: [
+          nodes: [
             {
               name: "Book",
               dataSource: {
@@ -802,7 +802,7 @@ entities:
           name: "graph.yaml",
           contents: `
 name: MissingRefGraph
-entities:
+nodes:
 - name: Book
   ref: nonexistent
   keys:
@@ -837,7 +837,7 @@ entities:
             fileName: "definitions/graph.yaml",
             description: "",
             disabled: false,
-            entities: [
+            nodes: [
               {
                 name: "Book",
                 keys: ["id"],
@@ -865,7 +865,7 @@ select 1 as id`,
           name: "graph.yaml",
           contents: `
 name: SuffixRefGraph
-entities:
+nodes:
 - name: Book
   ref: books
   keys:
@@ -895,7 +895,7 @@ entities:
           fileName: "definitions/graph.yaml",
           description: "",
           disabled: false,
-          entities: [
+          nodes: [
             {
               name: "Book",
               dataSource: {
@@ -932,7 +932,7 @@ actions:
           name: "graph.yaml",
           contents: `
 name: RefWithDatabaseGraph
-entities:
+nodes:
 - name: Book
   ref:
     name: books
@@ -964,7 +964,7 @@ entities:
           fileName: "definitions/graph.yaml",
           description: "",
           disabled: false,
-          entities: [
+          nodes: [
             {
               name: "Book",
               dataSource: {
@@ -981,7 +981,7 @@ entities:
       ],
     },
     {
-      testName: "relationship ref resolves through the full pipeline",
+      testName: "edge ref resolves through the full pipeline",
       workflowSettings: VALID_WORKFLOW_SETTINGS_YAML,
       definitionFiles: [
         {
@@ -996,7 +996,7 @@ actions:
           name: "graph.yaml",
           contents: `
 name: RelationshipRefGraph
-entities:
+nodes:
 - name: Book
   dataSourceString: defaultProject.defaultDataset.books
   keys:
@@ -1005,18 +1005,18 @@ entities:
   dataSourceString: defaultProject.defaultDataset.authors
   keys:
   - id
-relationships:
+edges:
 - name: WrittenBy
   ref: wrote
   keys:
   - author_id
   - book_id
   source:
-    entity: Book
+    node: Book
     joinKeys:
     - book_id
   destination:
-    entity: Author
+    node: Author
     joinKeys:
     - author_id
 `,
@@ -1044,7 +1044,7 @@ relationships:
           fileName: "definitions/graph.yaml",
           description: "",
           disabled: false,
-          entities: [
+          nodes: [
             {
               name: "Book",
               dataSource: {
@@ -1064,7 +1064,7 @@ relationships:
               keys: ["id"],
             },
           ],
-          relationships: [
+          edges: [
             {
               name: "WrittenBy",
               dataSource: {
@@ -1074,14 +1074,14 @@ relationships:
               },
               keys: ["author_id", "book_id"],
               source: {
-                entity: "Book",
-                relationshipColumns: ["book_id"],
-                entityColumns: ["id"],
+                node: "Book",
+                edgeColumns: ["book_id"],
+                nodeColumns: ["id"],
               },
               destination: {
-                entity: "Author",
-                relationshipColumns: ["author_id"],
-                entityColumns: ["id"],
+                node: "Author",
+                edgeColumns: ["author_id"],
+                nodeColumns: ["id"],
               },
             },
           ],
@@ -1117,7 +1117,7 @@ select 1 as id`,
           name: "graph.yaml",
           contents: `
 name: ViewRefGraph
-entities:
+nodes:
 - name: Book
   ref: books
   keys:
@@ -1147,7 +1147,7 @@ entities:
           fileName: "definitions/graph.yaml",
           description: "",
           disabled: false,
-          entities: [
+          nodes: [
             {
               name: "Book",
               dataSource: {
@@ -1185,7 +1185,7 @@ actions:
           name: "graph.yaml",
           contents: `
 name: AmbiguousRefGraph
-entities:
+nodes:
 - name: Book
   ref: books
   keys:
@@ -1222,7 +1222,7 @@ entities:
             fileName: "definitions/graph.yaml",
             description: "",
             disabled: false,
-            entities: [{ name: "Book", keys: ["id"] }],
+            nodes: [{ name: "Book", keys: ["id"] }],
           },
         ],
       },
@@ -1245,7 +1245,7 @@ select 1 as id`,
           name: "graph.yaml",
           contents: `
 name: ProjectSuffixRefGraph
-entities:
+nodes:
 - name: Book
   ref: books
   keys:
@@ -1275,7 +1275,7 @@ entities:
           fileName: "definitions/graph.yaml",
           description: "",
           disabled: false,
-          entities: [
+          nodes: [
             {
               name: "Book",
               dataSource: {
@@ -1311,7 +1311,7 @@ select 1 as id`,
           name: "graph.yaml",
           contents: `
 name: NamePrefixRefGraph
-entities:
+nodes:
 - name: Book
   ref: books
   keys:
@@ -1341,7 +1341,7 @@ entities:
           fileName: "definitions/graph.yaml",
           description: "",
           disabled: false,
-          entities: [
+          nodes: [
             {
               name: "Book",
               dataSource: {
@@ -1372,7 +1372,7 @@ select 1 as a`,
           name: "graph.yaml",
           contents: `
 name: CollisionName
-entities:
+nodes:
 - name: Customer
   dataSourceString: defaultProject.defaultDataset.customers
   keys:
@@ -1419,7 +1419,7 @@ description: end to end snake case
 target_dataset:
   project_id: defaultProject
   dataset_id: defaultDataset
-entities:
+nodes:
 - name: Account
   data_source_string: defaultProject.defaultDataset.accounts
   keys:
@@ -1428,18 +1428,18 @@ entities:
     import_all: true
     except:
     - secret
-relationships:
+edges:
 - name: Owns
   data_source_string: defaultProject.defaultDataset.ownership
   source:
-    entity: Account
+    node: Account
     join_keys:
-      relationship_columns:
+      edge_columns:
       - owner_id
   destination:
-    entity: Account
+    node: Account
     join_keys:
-      relationship_columns:
+      edge_columns:
       - owned_id
 `,
         },
@@ -1465,7 +1465,7 @@ relationships:
             fileName: "definitions/graph.yaml",
             description: "end to end snake case",
             disabled: false,
-            entities: [
+            nodes: [
               {
                 name: "Account",
                 dataSource: {
@@ -1485,7 +1485,7 @@ relationships:
                 ],
               },
             ],
-            relationships: [
+            edges: [
               {
                 name: "Owns",
                 dataSource: {
@@ -1494,14 +1494,14 @@ relationships:
                   database: "defaultProject",
                 },
                 source: {
-                  entity: "Account",
-                  relationshipColumns: ["owner_id"],
-                  entityColumns: ["id"],
+                  node: "Account",
+                  edgeColumns: ["owner_id"],
+                  nodeColumns: ["id"],
                 },
                 destination: {
-                  entity: "Account",
-                  relationshipColumns: ["owned_id"],
-                  entityColumns: ["id"],
+                  node: "Account",
+                  edgeColumns: ["owned_id"],
+                  nodeColumns: ["id"],
                 },
               },
             ],
@@ -1537,7 +1537,7 @@ select 1 as id`,
           name: "graph.yaml",
           contents: `
 name: MixedRefStringGraph
-entities:
+nodes:
 - name: Book
   ref: books
   keys:
@@ -1567,7 +1567,7 @@ entities:
           fileName: "definitions/graph.yaml",
           description: "",
           disabled: false,
-          entities: [
+          nodes: [
             {
               name: "Book",
               dataSource: {
@@ -1613,7 +1613,7 @@ name: LabeledGraph
 job_labels:
   env: prod
   cost_center: finance
-entities:
+nodes:
 - name: Customer
   dataSourceString: defaultProject.defaultDataset.customers
   keys:
@@ -1643,7 +1643,7 @@ entities:
               cost_center: "finance",
             },
           },
-          entities: [
+          nodes: [
             {
               name: "Customer",
               dataSource: {
@@ -1698,7 +1698,7 @@ entities:
     writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
     const graphBody = `
 name: MultiGraph
-entities:
+nodes:
 - name: Node
   dataSourceString: defaultProject.defaultDataset.t
   keys:

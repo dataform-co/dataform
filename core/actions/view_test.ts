@@ -491,4 +491,83 @@ publish("v3", shared).query(_ => "SELECT 3 AS id, DATE '2024-01-01' AS event_dat
       expect(bigqueryBlocks).deep.equals([expectedBigquery, expectedBigquery, expectedBigquery]);
     });
   });
+
+  suite("Lakehouse (4-part) support and validation", () => {
+    test("fails compilation when a view is configured with a lakehouse block", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML,
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/lh_view.sqlx"),
+        `
+config {
+  type: "view",
+  lakehouse: { catalog: "c", namespace: "n" },
+  name: "v"
+}
+SELECT 1
+`,
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).greaterThan(0);
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).contains(
+        "Lakehouse (4-part) targets are not supported for views and assertions",
+      );
+    });
+
+    test("3-part view referencing a 4-part Lakehouse table via 4-arg and object ref() compiles", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML,
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/lh_table.sqlx"),
+        `
+config {
+  type: "table",
+  project: "p",
+  lakehouse: { catalog: "c", namespace: "n" },
+  name: "t"
+}
+SELECT 1 AS id
+`,
+      );
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/my_view.sqlx"),
+        `
+config { type: "view" }
+SELECT * FROM \${ref("p", "c", "n", "t")}
+UNION ALL
+SELECT * FROM \${ref({ project: "p", catalog: "c", namespace: "n", name: "t" })}
+`,
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      const view = result.compile.compiledGraph.tables.find((t) => t.target.name === "my_view");
+      expect(asPlainObject(view.target)).deep.equals({
+        database: "defaultProject",
+        schema: "defaultDataset",
+        name: "my_view",
+      });
+      expect(view.query.trim()).equals(
+        "SELECT * FROM `p.c.n.t`\nUNION ALL\nSELECT * FROM `p.c.n.t`",
+      );
+      expect(asPlainObject(view.dependencyTargets)).deep.equals([
+        {
+          database: "p",
+          schema: "c.n",
+          name: "t",
+        },
+      ]);
+    });
+  });
 });

@@ -131,13 +131,19 @@ export class Test extends ActionBuilder<dataform.Test> {
       // Determine target from the parent dataset name
       this.testTarget = dataform.Target.create(
         this.applySessionToTarget(
-          resolvableAsTarget(toResolvable(config.dataset)),
+          resolvableAsTarget(
+            toResolvable(config.dataset),
+            this.session.projectConfig?.defaultLakehouseConfig,
+          ),
           this.session.projectConfig,
         ),
       );
       const canonicalTestTarget = dataform.Target.create(
         this.applySessionToTarget(
-          resolvableAsTarget(toResolvable(config.dataset)),
+          resolvableAsTarget(
+            toResolvable(config.dataset),
+            this.session.canonicalProjectConfig?.defaultLakehouseConfig,
+          ),
           this.session.canonicalProjectConfig,
         ),
       );
@@ -179,7 +185,12 @@ export class Test extends ActionBuilder<dataform.Test> {
    */
   public input(refName: string | string[], contextableQuery: Contextable<IActionContext, string>) {
     this.contextableInputs.set(
-      targetStringifier.stringify(resolvableAsTarget(toResolvable(refName))),
+      targetStringifier.stringify(
+        resolvableAsTarget(
+          toResolvable(refName),
+          this.session.projectConfig?.defaultLakehouseConfig,
+        ),
+      ),
       contextableQuery,
     );
     return this;
@@ -297,7 +308,10 @@ class RefReplacingContext implements ITableContext {
   }
 
   public resolve(ref: Resolvable | string[], ...rest: string[]) {
-    const target = resolvableAsTarget(toResolvable(ref, rest));
+    const target = resolvableAsTarget(
+      toResolvable(ref, rest),
+      this.testContext.test.session.projectConfig?.defaultLakehouseConfig,
+    );
     if (!this.testContext.test.contextableInputs.has(targetStringifier.stringify(target))) {
       this.testContext.test.session.compileError(
         new Error(

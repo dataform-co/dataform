@@ -14,9 +14,6 @@ const PARENT_RUN_FACET_SCHEMA =
   "https://openlineage.io/spec/facets/1-2-0/ParentRunFacet.json#/$defs/ParentRunFacet";
 const EXTERNAL_QUERY_FACET_SCHEMA =
   "https://openlineage.io/spec/facets/1-0-2/ExternalQueryRunFacet.json";
-const ERROR_MESSAGE_FACET_SCHEMA =
-  "https://openlineage.io/spec/facets/1-0-1/ErrorMessageRunFacet.json";
-const SQL_JOB_FACET_SCHEMA = "https://openlineage.io/spec/facets/1-1-0/SQLJobFacet.json";
 const GCP_LINEAGE_JOB_FACET_SCHEMA =
   "https://openlineage.io/spec/facets/1-0-0/GcpLineageJobFacet.json#/$defs/GcpLineageJobFacet";
 const JOB_TYPE_FACET_SCHEMA =
@@ -62,7 +59,8 @@ export class LineagePayloadBuilder {
     }
 
     const eventTime = new Date().toISOString();
-    const actionKey = `${action.target.database || ""}.${action.target.schema}.${action.target.name}`;
+    const fullActionTarget = toFqn(action.target, projectId);
+    const actionKey = fullActionTarget;
     let runId = this.activeRunIds.get(actionKey);
     if (!runId) {
       runId = randomUUID();
@@ -83,19 +81,27 @@ export class LineagePayloadBuilder {
       }
     }
 
-    const inputs = (action.dependencyTargets || []).map((dep) => ({
-      namespace: "bigquery",
-      name: `${dep.database || projectId}.${dep.schema}.${dep.name}`,
-    }));
+    const emitDatasets = eventType === "COMPLETE" && hasLineageOutput(action, actionType);
 
-    const outputs = [
-      {
-        namespace: "bigquery",
-        name: `${action.target.database || projectId}.${action.target.schema}.${action.target.name}`,
-      },
-    ];
+    const inputs = emitDatasets
+      ? (action.dependencyTargets || []).map((dep) => ({
+          namespace: "bigquery",
+          name: toFqn(dep, projectId),
+        }))
+      : [];
+
+    const outputs = emitDatasets
+      ? [
+          {
+            namespace: "bigquery",
+            name: fullActionTarget,
+          },
+        ]
+      : [];
 
     const workdirIdentifier = this.buildWorkdirIdentifier();
+    // Keep 2-part `<schema>.<name>` in jobName: `projectId` is already the
+    // prefix, and changing `job.name` would alter the Data Lineage Process ID.
     const canonicalActionTarget = `${action.target.schema}.${action.target.name}`;
     const jobName = `${projectId}.${location}.cli.${workdirIdentifier}.${canonicalActionTarget}`;
     const parentJobName = `${projectId}.${location}.cli.${workdirIdentifier}.run`;
@@ -142,55 +148,28 @@ export class LineagePayloadBuilder {
       }
     }
 
-    if (eventType === "FAIL") {
-      const errorMessages = actionResult.tasks
-        ?.map((t) => t.errorMessage)
-        .filter((msg) => !!msg)
-        .join("; ");
-      if (errorMessages) {
-        runFacets.errorMessage = {
-          _schemaURL: ERROR_MESSAGE_FACET_SCHEMA,
-          message: errorMessages,
-          programmingLanguage: "typescript",
-        };
-      }
-    }
-
-    const sqlStatements = action.tasks
-      ?.map((task) => task.statement)
-      .filter((stmt) => !!stmt)
-      .join(";\n");
-
-    const jobFacets: any = {};
-    if (sqlStatements) {
-      jobFacets.sql = {
-        _schemaURL: SQL_JOB_FACET_SCHEMA,
-        query: sqlStatements,
-      };
-    }
-
-    jobFacets.gcp_lineage = {
-      _producer: PRODUCER_URL,
-      _schemaURL: GCP_LINEAGE_JOB_FACET_SCHEMA,
-      displayName: `BigQuery Pipelines action ${canonicalActionTarget}`,
-      origin: {
-        name: `projects/${projectId}/locations/${location}/cli/${workdirIdentifier}`,
-        sourceType: "BIGQUERY_PIPELINES",
+    const jobFacets: any = {
+      gcp_lineage: {
+        _producer: PRODUCER_URL,
+        _schemaURL: GCP_LINEAGE_JOB_FACET_SCHEMA,
+        displayName: `BigQuery Pipelines action ${fullActionTarget}`,
+        origin: {
+          name: `projects/${projectId}/locations/${location}/cli/${workdirIdentifier}`,
+          sourceType: "BIGQUERY_PIPELINES",
+        },
       },
-    };
-
-    jobFacets.jobType = {
-      _producer: PRODUCER_URL,
-      _schemaURL: JOB_TYPE_FACET_SCHEMA,
-      integration: "BIGQUERY_PIPELINES",
-      jobType: "ACTION",
-      processingType: "BATCH",
-    };
-
-    jobFacets.gcp_bq_pipelines_job = {
-      dataformCoreVersion: version,
-      actionType,
-      actionName: canonicalActionTarget,
+      jobType: {
+        _producer: PRODUCER_URL,
+        _schemaURL: JOB_TYPE_FACET_SCHEMA,
+        integration: "BIGQUERY_PIPELINES",
+        jobType: "ACTION",
+        processingType: "BATCH",
+      },
+      gcp_bq_pipelines_job: {
+        dataformCoreVersion: version,
+        actionType,
+        actionName: fullActionTarget,
+      },
     };
 
     return {
@@ -225,6 +204,22 @@ export class LineagePayloadBuilder {
     const shortHash = this.workdirHash.slice(0, 8);
     return `${base}-${shortHash}`;
   }
+}
+
+function toFqn(target: dataform.ITarget, fallbackProjectId: string): string {
+  return `${target.database || fallbackProjectId}.${target.schema}.${target.name}`;
+}
+
+/**
+ * Returns true if the action materializes a BigQuery object at `action.target`
+ * (tables/views, assertion views, property graphs, and operations with
+ * `hasOutput: true`). Operations without `hasOutput: true` only use
+ * `action.target` as an internal graph identifier, and Data Lineage forms
+ * edges from `inputs × outputs`, so both `inputs` and `outputs` are gated on
+ * this condition.
+ */
+function hasLineageOutput(action: dataform.IExecutionAction, actionType: string): boolean {
+  return actionType !== "OPERATIONS" || !!action.hasOutput;
 }
 
 function toMillis(val: Long | number | undefined | null): number | undefined {

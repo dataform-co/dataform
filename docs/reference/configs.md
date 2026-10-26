@@ -33,6 +33,7 @@
   - [ActionConfig.ViewConfig.JobLabelsEntry](#dataform-ActionConfig-ViewConfig-JobLabelsEntry)
   - [ActionConfig.ViewConfig.LabelsEntry](#dataform-ActionConfig-ViewConfig-LabelsEntry)
   - [ActionConfigs](#dataform-ActionConfigs)
+  - [LineageSettings](#dataform-LineageSettings)
   - [NotebookRuntimeOptionsConfig](#dataform-NotebookRuntimeOptionsConfig)
   - [WorkflowSettings](#dataform-WorkflowSettings)
   - [WorkflowSettings.DefaultJobLabelsEntry](#dataform-WorkflowSettings-DefaultJobLabelsEntry)
@@ -418,6 +419,16 @@ Action configs defines the contents of `actions.yaml` configuration files.
 | ------- | -------------------------------------- | -------- | ----------- |
 | actions | [ActionConfig](#dataform-ActionConfig) | repeated |             |
 
+<a name="dataform-LineageSettings"></a>
+
+### LineageSettings
+
+Configuration for Knowledge Catalog lineage emission. See the [Data Lineage guide](../lineage.md).
+
+| Field   | Type          | Label | Description                                                                                                             |
+| ------- | ------------- | ----- | ----------------------------------------------------------------------------------------------------------------------- |
+| enabled | [bool](#bool) |       | If true, downstream runners will emit OpenLineage events to Knowledge Catalog for actions executed from this project. |
+
 <a name="dataform-NotebookRuntimeOptionsConfig"></a>
 
 ### NotebookRuntimeOptionsConfig
@@ -433,20 +444,21 @@ Action configs defines the contents of `actions.yaml` configuration files.
 Workflow Settings defines the contents of the `workflow_settings.yaml`
 configuration file.
 
-| Field                         | Type                                                                                     | Label    | Description                                                                                                                                                 |
-| ----------------------------- | ---------------------------------------------------------------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| dataformCoreVersion           | [string](#string)                                                                        |          | The desired dataform core version to compile against.                                                                                                       |
-| defaultProject                | [string](#string)                                                                        |          | Required. The default Google Cloud project (database).                                                                                                      |
-| defaultDataset                | [string](#string)                                                                        |          | Required. The default dataset (schema).                                                                                                                     |
-| defaultLocation               | [string](#string)                                                                        |          | Required. The default BigQuery location to use. For more information on BigQuery locations, see https://cloud.google.com/bigquery/docs/locations.           |
-| defaultAssertionDataset       | [string](#string)                                                                        |          | Required. The default dataset (schema) for assertions.                                                                                                      |
-| vars                          | [WorkflowSettings.VarsEntry](#dataform-WorkflowSettings-VarsEntry)                       | repeated | Optional. User-defined variables that are made available to project code during compilation. An object containing a list of &#34;key&#34;: value pairs.     |
-| projectSuffix                 | [string](#string)                                                                        |          | Optional. The suffix to append to all Google Cloud project references.                                                                                      |
-| datasetSuffix                 | [string](#string)                                                                        |          | Optional. The suffix to append to all dataset references.                                                                                                   |
-| namePrefix                    | [string](#string)                                                                        |          | Optional. The prefix to append to all action names.                                                                                                         |
-| defaultNotebookRuntimeOptions | [NotebookRuntimeOptionsConfig](#dataform-NotebookRuntimeOptionsConfig)                   |          | Optional. Default runtime options for Notebook actions.                                                                                                     |
-| builtinAssertionNamePrefix    | [string](#string)                                                                        |          | Optional. The prefix to append to built-in assertion names.                                                                                                 |
-| defaultReservation            | [string](#string)                                                                        |          | Optional. The default BigQuery reservation to use for execution.                                                                                            |
+| Field                         | Type                                                                                       | Label    | Description                                                                                                                                                                                                                                         |
+| ----------------------------- | ------------------------------------------------------------------------------------------ | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| dataformCoreVersion           | [string](#string)                                                                          |          | The desired dataform core version to compile against.                                                                                                                                                                                               |
+| defaultProject                | [string](#string)                                                                          |          | Required. The default Google Cloud project (database).                                                                                                                                                                                              |
+| defaultDataset                | [string](#string)                                                                          |          | Required. The default dataset (schema).                                                                                                                                                                                                             |
+| defaultLocation               | [string](#string)                                                                          |          | Required. The default BigQuery location to use. For more information on BigQuery locations, see https://cloud.google.com/bigquery/docs/locations.                                                                                                   |
+| defaultAssertionDataset       | [string](#string)                                                                          |          | Required. The default dataset (schema) for assertions.                                                                                                                                                                                              |
+| vars                          | [WorkflowSettings.VarsEntry](#dataform-WorkflowSettings-VarsEntry)                         | repeated | Optional. User-defined variables that are made available to project code during compilation. An object containing a list of &#34;key&#34;: value pairs.                                                                                             |
+| projectSuffix                 | [string](#string)                                                                          |          | Optional. The suffix to append to all Google Cloud project references.                                                                                                                                                                              |
+| datasetSuffix                 | [string](#string)                                                                          |          | Optional. The suffix to append to all dataset references.                                                                                                                                                                                           |
+| namePrefix                    | [string](#string)                                                                          |          | Optional. The prefix to append to all action names.                                                                                                                                                                                                 |
+| defaultNotebookRuntimeOptions | [NotebookRuntimeOptionsConfig](#dataform-NotebookRuntimeOptionsConfig)                     |          | Optional. Default runtime options for Notebook actions.                                                                                                                                                                                             |
+| builtinAssertionNamePrefix    | [string](#string)                                                                          |          | Optional. The prefix to append to built-in assertion names.                                                                                                                                                                                         |
+| defaultReservation            | [string](#string)                                                                          |          | Optional. The default BigQuery reservation to use for execution.                                                                                                                                                                                    |
+| lineage                       | [LineageSettings](#dataform-LineageSettings)                                               |          | Optional. Configuration for Knowledge Catalog lineage emission. See the [Data Lineage guide](../lineage.md).                                                                                                                                        |
 | defaultJobLabels              | [WorkflowSettings.DefaultJobLabelsEntry](#dataform-WorkflowSettings-DefaultJobLabelsEntry) | repeated | Optional. Default key-value pairs for BigQuery job labels applied to BigQuery jobs executed for actions in this project. Merged key-by-key when overridden via `projectConfigOverride`, and can be overridden per key by action-level `job_labels`. |
 
 <a name="dataform-WorkflowSettings-DefaultJobLabelsEntry"></a>

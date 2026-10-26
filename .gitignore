@@ -17,3 +17,5 @@ secret.json
 bigquery.json
 
 tmp/
+
+tools/canary/config.local.env

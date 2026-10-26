@@ -1,5 +1,6 @@
 import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { ActionBuilder } from "df/core/actions";
+import { validateLakehouseColumns, validateLakehouseConfig } from "df/core/actions/lakehouse";
 import { ColumnDescriptors } from "df/core/column_descriptors";
 import { Contextable, IActionContext, JitContextable, Resolvable } from "df/core/contextables";
 import * as Path from "df/core/path";
@@ -69,11 +70,12 @@ export type JitOperationResult = string | string[] | dataform.IJitOperationResul
  *
  * ```js
  * // definitions/file.js
- * operate("name").query("DELETE FROM dataset.table WHERE country = 'GB'")
+ * operate("name", { tags: ["cleanup"] }).queries("DELETE FROM dataset.table WHERE country = 'GB'")
  * ```
  *
  * Note: When using the Javascript API, methods in this class can be accessed by the returned value.
- * This is where `query` comes from.
+ * This is where `queries` comes from. Config options are passed as the second argument to
+ * `operate()`; the chained `.config()` method was removed in Dataform core 3.0.
  */
 export class Operation extends ActionBuilder<dataform.Operation> {
   /** @hidden Hold a reference to the Session instance. */
@@ -103,19 +105,33 @@ export class Operation extends ActionBuilder<dataform.Operation> {
       return;
     }
 
+    const hasDatasetOrSchema = Boolean(unverifiedConfig.dataset || unverifiedConfig.schema);
     const config = this.verifyConfig(unverifiedConfig);
 
     if (!config.name) {
       config.name = Path.basename(config.filename);
     }
-    const target = actionConfigToCompiledGraphTarget(config);
-    this.proto.target = this.applySessionToTarget(target, session.projectConfig, config.filename, {
+    const fileName = configPath
+      ? resolveActionsConfigFilename(config.filename, configPath)
+      : config.filename;
+    this.isLakehouseTarget = validateLakehouseConfig(session, config, fileName, hasDatasetOrSchema);
+    const target = actionConfigToCompiledGraphTarget(
+      config,
+      session.projectConfig?.defaultLakehouseConfig,
+    );
+    this.proto.target = this.applySessionToTarget(target, session.projectConfig, fileName, {
       validateTarget: true,
     });
-    this.proto.canonicalTarget = this.applySessionToTarget(target, session.canonicalProjectConfig);
+    this.proto.canonicalTarget = this.applySessionToTarget(
+      actionConfigToCompiledGraphTarget(
+        config,
+        session.canonicalProjectConfig?.defaultLakehouseConfig,
+      ),
+      session.canonicalProjectConfig,
+    );
 
     if (configPath) {
-      config.filename = resolveActionsConfigFilename(config.filename, configPath);
+      config.filename = fileName;
       this.queries(nativeRequire(config.filename).query);
     }
 
@@ -125,7 +141,10 @@ export class Operation extends ActionBuilder<dataform.Operation> {
     if (config.dependencyTargets) {
       this.dependencies(
         config.dependencyTargets.map((dependencyTarget) =>
-          configTargetToCompiledGraphTarget(dataform.ActionConfig.Target.create(dependencyTarget)),
+          configTargetToCompiledGraphTarget(
+            dataform.ActionConfig.Target.create(dependencyTarget),
+            session.projectConfig?.defaultLakehouseConfig,
+          ),
         ),
       );
     }
@@ -154,7 +173,7 @@ export class Operation extends ActionBuilder<dataform.Operation> {
     if (config.project) {
       this.database(config.project);
     }
-    if (config.dataset) {
+    if (config.dataset && !config.lakehouse) {
       this.schema(config.dataset);
     }
     if (config.filename) {
@@ -315,6 +334,14 @@ export class Operation extends ActionBuilder<dataform.Operation> {
    * Sets the schema (BigQuery dataset) in which to create the output of this action.
    */
   public schema(schema: string) {
+    if (this.isLakehouseTarget) {
+      this.session.compileError(
+        new Error("Cannot specify both 'lakehouse' and 'dataset'/'schema' on the same action."),
+        this.proto.fileName,
+        this.proto.target,
+      );
+      return this;
+    }
     this.proto.target = this.applySessionToTarget(
       dataform.Target.create({ ...this.proto.target, schema }),
       this.session.projectConfig,
@@ -353,12 +380,29 @@ export class Operation extends ActionBuilder<dataform.Operation> {
 
   /** @hidden */
   public compile() {
+    if (this.isLakehouseTarget && !this.proto.hasOutput) {
+      this.session.compileError(
+        new Error(
+          "Actions of type 'operations' may only specify 'lakehouse' if they specify 'hasOutput: true'.",
+        ),
+        this.proto.fileName,
+        this.proto.target,
+      );
+    }
     if (this.proto.actionDescriptor?.columns?.length > 0 && !this.proto.hasOutput) {
       this.session.compileError(
         new Error(
           "Actions of type 'operations' may only describe columns if they specify 'hasOutput: true'.",
         ),
         this.proto.fileName,
+      );
+    }
+    if (this.isLakehouseTarget) {
+      validateLakehouseColumns(
+        this.session,
+        this.proto.actionDescriptor,
+        this.proto.fileName,
+        this.proto.target,
       );
     }
 
@@ -454,7 +498,7 @@ export class OperationContext implements IActionContext {
 
   public ref(ref: Resolvable | string[], ...rest: string[]) {
     ref = toResolvable(ref, rest);
-    if (!resolvableAsTarget(ref)) {
+    if (!resolvableAsTarget(ref, this.operation.session.projectConfig?.defaultLakehouseConfig)) {
       this.operation.session.compileError(new Error(`Action name is not specified`));
       return "";
     }

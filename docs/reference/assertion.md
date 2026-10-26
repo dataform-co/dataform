@@ -3,7 +3,10 @@
 # Class: Assertion
 
 An assertion is a data quality test query that finds rows that violate one or more conditions
-specified in the query. If the query returns any rows, the assertion fails.
+specified in the query. If the query returns any rows, the assertion fails. When
+[lineage emission](../lineage.md) is enabled, executing an assertion action emits OpenLineage
+`RunEvent`s (`actionType: "ASSERTION"`) to Knowledge Catalog Lineage with the assertion's
+`dependencyTargets` as `inputs` and the assertion view as `outputs` on `COMPLETE`.
 
 You can create assertions in the following ways. Available config options are defined in
 [AssertionConfig](configs#dataform-ActionConfig-AssertionConfig), and are shared across all the
