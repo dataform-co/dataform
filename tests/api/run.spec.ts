@@ -777,6 +777,23 @@ suite("@dataform/api/run", () => {
       });
     });
 
+    test("doesn't set table metadata when the actionDescriptor only has jobLabels", async () => {
+      const mockedDbAdapter = mock(BigQueryDbAdapter);
+      const NEW_TEST_GRAPH = deepClone(dataform.ExecutionGraph, RUN_TEST_GRAPH);
+      // As in a decoded graph, create() sets the unset columns and bigqueryLabels to [] and {}.
+      NEW_TEST_GRAPH.actions![0].actionDescriptor = dataform.ActionDescriptor.create({
+        jobLabels: { env: "prod" },
+      });
+      when(mockedDbAdapter.createSchema(anyString(), anyString())).thenResolve(null);
+      when(mockedDbAdapter.execute(anything(), anything())).thenResolve({ rows: [], metadata: {} });
+
+      const runner = new Runner(instance(mockedDbAdapter), NEW_TEST_GRAPH);
+      const result = await runner.execute().result();
+
+      expect(result.status).to.equal(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
+      verify(mockedDbAdapter.setMetadata(anything())).never();
+    });
+
     test("resolveJobLabels falls back to bigqueryLabels when jobLabels is empty, and execution labels override them", () => {
       // Like in a decoded compiled graph, ActionDescriptor.create() sets the unset jobLabels map to {}.
       const actionDescriptor = dataform.ActionDescriptor.create({

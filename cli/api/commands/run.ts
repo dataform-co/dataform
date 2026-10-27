@@ -103,6 +103,21 @@ export function checkJobLabelLimit(
   return undefined;
 }
 
+/**
+ * Returns whether `setMetadata` has anything to apply to the table: a description, column
+ * descriptions or table labels. Other `actionDescriptor` fields, such as `jobLabels`, only affect
+ * BigQuery jobs, so they don't need a table metadata update.
+ */
+function hasTableMetadata(
+  actionDescriptor: dataform.IActionDescriptor | null | undefined,
+): boolean {
+  return (
+    !!actionDescriptor?.description ||
+    !!actionDescriptor?.columns?.length ||
+    Object.keys(actionDescriptor?.bigqueryLabels || {}).length > 0
+  );
+}
+
 export function run(
   dbadapter: dbadapters.IDbAdapter,
   graph: dataform.IExecutionGraph,
@@ -539,7 +554,7 @@ export class Runner {
     }
 
     if (
-      action.actionDescriptor &&
+      hasTableMetadata(action.actionDescriptor) &&
       // Only set metadata if we expect the action to complete in SUCCESSFUL state
       // (i.e. it must still be RUNNING, and not FAILED).
       actionResult.status === dataform.ActionResult.ExecutionStatus.RUNNING &&
