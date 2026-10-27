@@ -151,7 +151,10 @@ export const jobPrefixOption: INamedOption<yargs.Options, IRunArgs> = {
 export const bigqueryJobLabelsOption: INamedOption<yargs.Options, IRunArgs> = {
   name: "job-labels",
   option: {
-    describe: "Comma-separated list of labels to add to BigQuery jobs, e.g. 'key1=val1,key2=val2'.",
+    describe:
+      "Comma-separated list of labels to add to BigQuery jobs, e.g. 'key1=val1,key2=val2'. " +
+      "Also applied to unit tests with --run-tests. " +
+      "Overrides job labels and table labels that use the same key.",
     type: "string",
     coerce: (raw: string | null) => {
       const labels: { [key: string]: string } = {};

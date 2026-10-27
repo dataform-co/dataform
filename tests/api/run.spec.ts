@@ -652,7 +652,7 @@ suite("@dataform/api/run", () => {
       });
     });
 
-    test("should pass testCase.actionDescriptor.jobLabels in test command", async () => {
+    test("should pass testCase.actionDescriptor.jobLabels to unit test jobs", async () => {
       const executionOptions: Array<{ bigquery?: any }> = [];
       const mockedDbAdapter = mock(BigQueryDbAdapter);
       when(mockedDbAdapter.execute(anyString(), anything())).thenCall(
@@ -842,7 +842,7 @@ suite("@dataform/api/run", () => {
       );
     });
 
-    test("should let execution labels override testCase.actionDescriptor.jobLabels in test command", async () => {
+    test("should let execution labels override testCase.actionDescriptor.jobLabels for unit test jobs", async () => {
       const executionOptions: Array<{ bigquery?: any }> = [];
       const mockedDbAdapter = mock(BigQueryDbAdapter);
       when(mockedDbAdapter.execute(anyString(), anything())).thenCall(
