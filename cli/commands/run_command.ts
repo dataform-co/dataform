@@ -40,17 +40,15 @@ function createLineageEmitter(
   argv: yargs.Arguments<IRunArgs>,
   executionGraph: dataform.IExecutionGraph,
   readCredentials: dataform.IBigQuery | undefined,
+  location?: string,
 ): LineageEmitter | undefined {
   return createLineageEmitterFromFactory({
     cliEmitLineage: argv.emitLineage,
     workflowLineageEnabled: executionGraph.projectConfig?.lineageEnabled ?? undefined,
     dryRun: !!argv.dryRun,
     projectDir: argv.projectDir || process.cwd(),
-    // Emit lineage for the location the jobs actually run in.
-    readCredentials: readCredentials && {
-      ...readCredentials,
-      location: executionGraph.projectConfig?.defaultLocation || readCredentials.location,
-    },
+    readCredentials,
+    location,
   });
 }
 
@@ -92,7 +90,7 @@ export const runCommand: ICommand<IRunArgs> = {
     }
     logger.success("Compiled successfully.\n");
     const readCredentials = credentials.read(actuallyResolve(argv.projectDir, argv.credentials));
-    const defaultLocation = compiledGraph.projectConfig?.defaultLocation;
+    const defaultLocation = compiledGraph.projectConfig?.defaultLocation ?? undefined;
     if (
       !isJsonOutput &&
       defaultLocation &&
@@ -174,7 +172,12 @@ export const runCommand: ICommand<IRunArgs> = {
       logger.log("Running...\n");
     }
 
-    const lineageEmitter = createLineageEmitter(argv, executionGraph, readCredentials);
+    const lineageEmitter = createLineageEmitter(
+      argv,
+      executionGraph,
+      readCredentials,
+      defaultLocation,
+    );
 
     const runner = run(dbadapter, executionGraph, {
       projectDir: environment.projectDir,

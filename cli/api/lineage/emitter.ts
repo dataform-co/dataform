@@ -12,6 +12,7 @@ export interface IEmitterOptions {
   lineageEnabled?: boolean;
   dryRun?: boolean;
   projectDir?: string;
+  location?: string;
 }
 
 /**
@@ -193,7 +194,14 @@ export class LineageEmitter {
     actionResult: dataform.IActionResult,
   ): Promise<void> {
     const projectId = action.target.database || this.credentials.projectId;
-    const location = (this.credentials.location || "US").toLowerCase();
+    const configuredLocation = this.emitterOptions.location || this.credentials.location;
+    if (!configuredLocation) {
+      throw new Error(
+        'Lineage location is not set: specify either "defaultLocation" in workflow_settings.yaml ' +
+          'or "location" in .df-credentials.json.',
+      );
+    }
+    const location = configuredLocation.toLowerCase();
     const parent = `projects/${projectId}/locations/${location}`;
 
     const openLineagePayload = this.payloadBuilder.build(

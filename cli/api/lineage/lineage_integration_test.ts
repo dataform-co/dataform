@@ -125,6 +125,7 @@ function factoryInput(
     dryRun: false,
     projectDir: "/workspaces/test-project",
     readCredentials: dataform.BigQuery.create({ projectId: "test-project", location: "US" }),
+    location: "US",
     ...overrides,
   };
 }
@@ -334,6 +335,79 @@ suite("--emit-lineage integration", { parallel: true }, () => {
     const elapsed = Date.now() - started;
     // 200ms bound + generous slack for CI jitter.
     expect(elapsed).to.be.lessThan(2000);
+  });
+
+  test("explicit location takes precedence over credentials location", async () => {
+    const recorder = new RecordingLineageClient();
+    const emitter = createLineageEmitter(
+      factoryInput({
+        cliEmitLineage: true,
+        location: "europe-west1",
+        readCredentials: dataform.BigQuery.create({ projectId: "test-project", location: "US" }),
+      }),
+      new StderrCapture(),
+      recorderProvider(recorder),
+    );
+    expect(emitter).to.not.equal(undefined);
+
+    await run(new FakeDbAdapter(), makeLinearGraph(), { lineageEmitter: emitter }).result();
+    await emitter!.drain();
+
+    expect(recorder.calls.length).to.be.greaterThan(0);
+    for (const call of recorder.calls) {
+      expect(call.request.parent).to.equal("projects/test-project/locations/europe-west1");
+    }
+  });
+
+  test("falls back to credentials location when no explicit location is given", async () => {
+    const recorder = new RecordingLineageClient();
+    const emitter = createLineageEmitter(
+      factoryInput({
+        cliEmitLineage: true,
+        location: undefined,
+        readCredentials: dataform.BigQuery.create({ projectId: "test-project", location: "EU" }),
+      }),
+      new StderrCapture(),
+      recorderProvider(recorder),
+    );
+    expect(emitter).to.not.equal(undefined);
+
+    await run(new FakeDbAdapter(), makeLinearGraph(), { lineageEmitter: emitter }).result();
+    await emitter!.drain();
+
+    expect(recorder.calls.length).to.be.greaterThan(0);
+    for (const call of recorder.calls) {
+      expect(call.request.parent).to.equal("projects/test-project/locations/eu");
+    }
+  });
+
+  test("lineage is disabled with a warning when no location is set", async () => {
+    const recorder = new RecordingLineageClient();
+    const stderr = new StderrCapture();
+    const graph = makeLinearGraph();
+    delete graph.projectConfig.defaultLocation;
+
+    const emitter = createLineageEmitter(
+      factoryInput({
+        cliEmitLineage: true,
+        location: graph.projectConfig.defaultLocation || undefined,
+        readCredentials: dataform.BigQuery.create({ projectId: "test-project" }),
+      }),
+      stderr,
+      recorderProvider(recorder),
+    );
+    expect(emitter).to.equal(undefined);
+    expect(stderr.contains("Lineage emission is enabled, but no location was specified")).to.equal(
+      true,
+    );
+
+    const dbadapter = new FakeDbAdapter();
+    const result = await run(dbadapter, graph, { lineageEmitter: emitter }).result();
+
+    expect(result.status).to.equal(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
+    expect(dbadapter.executed.length).to.be.greaterThan(0);
+    expect(recorder.calls.length).to.equal(0);
+    expect(recorder.providerCalls.length).to.equal(0);
   });
 });
 

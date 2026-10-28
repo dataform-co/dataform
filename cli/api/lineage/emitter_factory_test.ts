@@ -33,6 +33,7 @@ function baseInput(
     dryRun: false,
     projectDir: "/workspaces/my-project",
     readCredentials: credentials,
+    location: "US",
     ...overrides,
   };
 }
