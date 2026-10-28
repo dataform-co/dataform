@@ -310,10 +310,14 @@ message ActionConfig {
     LakehouseConfig lakehouse = 27;
   }
 
+  // Knowledge Catalog (Dataplex) metadata for a data object. During execution,
+  // the CLI writes this metadata for tables, views, and incremental tables.
   message Metadata {
-    // A detailed description of the data object.
+    // A detailed description of the data object, written to Knowledge Catalog
+    // (Dataplex) (`dataplex-types.global.overview`).
     string overview = 1;
-    // Extra properties of the data object.
+    // Extra properties of the data object, such as `generic` (`system`, `type`)
+    // written to Knowledge Catalog (Dataplex) (`dataplex-types.global.generic`).
     google.protobuf.Struct extra_properties = 2;
   }
 
@@ -592,7 +596,8 @@ message ActionConfig {
     // Dataform CLI only (GCP Dataform support pending).
     string reservation = 11;
 
-    // Metadata for this assertion.
+    // Metadata for this assertion (written to Knowledge Catalog (Dataplex) only
+    // by the managed Dataform service; ignored by the CLI).
     Metadata metadata = 12;
 
     // Optional. Key-value pairs for BigQuery job labels applied to the query

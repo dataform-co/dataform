@@ -9,6 +9,10 @@ import { AuthClient, gaxios, GoogleAuth, Impersonated } from "google-auth-librar
 import Long from "long";
 import { PromisePoolExecutor } from "promise-pool-executor";
 
+import {
+  getGoogleAuthOptions,
+  KnowledgeCatalogMetadataWriter,
+} from "df/cli/api/catalog/metadata_writer";
 import { collectEvaluationQueries, QueryOrAction } from "df/cli/api/dbadapters/execution_sql";
 import {
   IBigQueryError,
@@ -104,6 +108,8 @@ export function createAuthClient(credentials: dataform.IBigQuery): AuthClient | 
   );
 }
 
+export { getGoogleAuthOptions };
+
 /**
  * Builds the BigQuery client options for the given credentials. When `credentials.credentials`
  * (a service account key) is empty, the client authenticates with Application Default Credentials.
@@ -120,18 +126,15 @@ export function getBigQueryClientOptions(
     // Unset proto string fields read as "", which BigQuery rejects as a job location. Pass
     // undefined instead so that BigQuery auto-selects the location.
     location: credentials.location || undefined,
-    ...(authClient
-      ? { authClient }
-      : { credentials: credentials.credentials && JSON.parse(credentials.credentials) }),
+    ...getGoogleAuthOptions(credentials, authClient),
   };
 }
 
 export function createBigQueryClientProvider(
   credentials: dataform.IBigQuery,
+  authClient: AuthClient | undefined = createAuthClient(credentials),
 ): BigQueryClientProvider {
   const clients = new Map<string, BigQuery>();
-  // Shared by the clients of all projects, so that they reuse the same impersonated token.
-  const authClient = createAuthClient(credentials);
   return (projectId?: string) => {
     projectId = projectId || credentials.projectId;
     if (!clients.has(projectId)) {
@@ -148,16 +151,29 @@ export class BigQueryDbAdapter implements IDbAdapter {
   private bigQueryCredentials: dataform.IBigQuery;
   private pool: PromisePoolExecutor;
   private clientProvider: BigQueryClientProvider;
+  private knowledgeCatalogMetadataWriter: KnowledgeCatalogMetadataWriter;
 
   constructor(
     credentials: dataform.IBigQuery,
     options?: {
       concurrencyLimit?: number;
       clientProvider?: BigQueryClientProvider;
+      knowledgeCatalogMetadataWriter?: KnowledgeCatalogMetadataWriter;
     },
   ) {
     this.bigQueryCredentials = credentials;
-    this.clientProvider = options?.clientProvider || createBigQueryClientProvider(credentials);
+    // Shared by the clients of all projects and services, so that they reuse the same impersonated token.
+    const authClient =
+      !options?.clientProvider || !options?.knowledgeCatalogMetadataWriter
+        ? createAuthClient(credentials)
+        : undefined;
+    this.clientProvider =
+      options?.clientProvider || createBigQueryClientProvider(credentials, authClient);
+    this.knowledgeCatalogMetadataWriter =
+      options?.knowledgeCatalogMetadataWriter ||
+      new KnowledgeCatalogMetadataWriter(credentials, {
+        authClient,
+      });
 
     // Bigquery allows 50 concurrent queries, and a rate limit of 100/user/second by default.
     // These limits should be safely low enough for most projects.
@@ -413,6 +429,18 @@ export class BigQueryDbAdapter implements IDbAdapter {
       schema: schemaWithDescription,
       labels: actionDescriptor.bigqueryLabels,
     });
+
+    if (actionDescriptor.metadata) {
+      void this.knowledgeCatalogMetadataWriter.writeMetadata(
+        target,
+        metadata.location || this.bigQueryCredentials.location,
+        actionDescriptor.metadata,
+      );
+    }
+  }
+
+  public async drainMetadataWrites(): Promise<void> {
+    await this.knowledgeCatalogMetadataWriter.drain();
   }
 
   private async getMetadata(target: dataform.ITarget): Promise<TableMetadata> {

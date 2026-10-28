@@ -11,6 +11,9 @@ config {
             label1: "val1",
             "label2": "val2"
         }
+    },
+    metadata: {
+        overview: "An example view overview."
     }
 }
 select * from ${ref("sample_data")}
