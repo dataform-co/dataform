@@ -15,8 +15,8 @@ When lineage emission is enabled, `dataform run` emits [OpenLineage](https://ope
    ```
 
 2. **Grant IAM permissions** to the identity configured in `.df-credentials.json` (your Application Default Credentials principal, service account JSON key, or `impersonateServiceAccount` target):
-   - Predefined role: `roles/datalineage.editor` (**Data Lineage Editor**) on the target project(s), or
-   - Custom role containing `datalineage.events.create` (`datalineage.googleapis.com/locations.processOpenLineageMessage`).
+   - Predefined role: `roles/datalineage.producer` (**Data Lineage Events Producer**) on the target project(s), or
+   - Custom role containing `datalineage.locations.processOpenLineageMessage`.
 
 ---
 
@@ -127,7 +127,7 @@ When enabled, the CLI logs:
 
 | `skip_reason` / Message | Cause | Resolution |
 | :--- | :--- | :--- |
-| `skip_reason=api_disabled` (`PERMISSION_DENIED` or `SERVICE_DISABLED`) | Either `datalineage.googleapis.com` is not enabled in the target project, or the execution identity lacks `datalineage.events.create`. | Run `gcloud services enable datalineage.googleapis.com --project=<PROJECT_ID>` and grant `roles/datalineage.editor` to the principal in `.df-credentials.json`. |
+| `skip_reason=api_disabled` (`PERMISSION_DENIED` or `SERVICE_DISABLED`) | Either `datalineage.googleapis.com` is not enabled in the target project, or the execution identity lacks `datalineage.locations.processOpenLineageMessage`. | Run `gcloud services enable datalineage.googleapis.com --project=<PROJECT_ID>` and grant `roles/datalineage.producer` to the principal in `.df-credentials.json`. |
 | `skip_reason=unauthenticated` (`UNAUTHENTICATED`) | Credentials in `.df-credentials.json` or Application Default Credentials are missing, invalid, or expired. | Re-authenticate (for example, `gcloud auth application-default login`) or refresh `.df-credentials.json` via `dataform init-creds`. |
 | `skip_reason=invocation_override` | `--no-emit-lineage` or `--emit-lineage=false` was passed on the command line. | Run `dataform run --emit-lineage` or omit `--no-emit-lineage` when `lineage.enabled: true` is set in `workflow_settings.yaml`. |
 | `skip_reason=workflow_opt_out` | `lineage.enabled: false` is set in `workflow_settings.yaml` and `--emit-lineage` was not passed. | Set `lineage.enabled: true` in `workflow_settings.yaml` or pass `--emit-lineage`. |

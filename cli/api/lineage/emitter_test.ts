@@ -850,9 +850,7 @@ suite("LineageEmitter", () => {
 
     const apiDisabledLines = stderr.writes.filter((w) => w.includes("skip_reason=api_disabled"));
     expect(apiDisabledLines.length).to.equal(1);
-    expect(apiDisabledLines[0]).to.contain(
-      "datalineage.googleapis.com/locations.processOpenLineageMessage",
-    );
+    expect(apiDisabledLines[0]).to.contain("datalineage.locations.processOpenLineageMessage");
     expect(apiDisabledLines[0]).to.contain("gcloud services enable datalineage.googleapis.com");
     expect(apiDisabledLines[0]).to.contain(" OR ");
     expect(apiDisabledLines[0]).to.contain("target-proj");
