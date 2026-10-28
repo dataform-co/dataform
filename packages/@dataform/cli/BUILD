@@ -37,6 +37,7 @@ externals = [
     "glob",
     "google-auth-library",
     "google-sql-syntax-ts",
+    "ignore",
     "js-beautify",
     "js-yaml",
     "moo",

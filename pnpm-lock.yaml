@@ -57,6 +57,9 @@ importers:
       google-sql-syntax-ts:
         specifier: ^1.0.3
         version: 1.0.3
+      ignore:
+        specifier: ^7.0.8
+        version: 7.0.8
       js-beautify:
         specifier: 1.15.4
         version: 1.15.4

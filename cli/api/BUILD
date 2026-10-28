@@ -31,6 +31,7 @@ ts_library(
         "//:node_modules/glob",
         "//:node_modules/google-auth-library",
         "//:node_modules/google-sql-syntax-ts",
+        "//:node_modules/ignore",
         "//:node_modules/js-beautify",
         "//:node_modules/js-yaml",
         "//:node_modules/promise-pool-executor",
@@ -55,6 +56,7 @@ ts_test_suite(
     srcs = [
         "tasks_test.ts",
         "utils_test.ts",
+        "commands/compile_copy_filter_test.ts",
         "commands/jit/rpc_test.ts",
         "commands/prune_test.ts",
         "dbadapters/bigquery_test.ts",
