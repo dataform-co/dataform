@@ -113,6 +113,7 @@ export class Runner {
   private skipReason: string = "";
   private executionTask: Promise<dataform.IRunResult>;
   private missingSchemas = new Map<string, IMissingSchema>();
+  private schemaCreations = new Map<string, Promise<void>>();
 
   constructor(
     private readonly dbadapter: dbadapters.IDbAdapter,
@@ -464,6 +465,11 @@ export class Runner {
     try {
       // Start running tasks from the last executed task (if any), onwards.
       for (const task of action.tasks.slice(actionResult.tasks.length)) {
+        let schemaCreation = this.schemaCreationToWaitFor(action, task);
+        while (schemaCreation !== undefined) {
+          await schemaCreation;
+          schemaCreation = this.schemaCreationToWaitFor(action, task);
+        }
         if (this.stopped) {
           return actionResult;
         }
@@ -471,29 +477,11 @@ export class Runner {
           actionResult.status === dataform.ActionResult.ExecutionStatus.RUNNING &&
           !this.cancelled
         ) {
-          const missingSchema = this.missingSchemaToCreate(action, task);
-          const taskStatus = await this.executeTask(
-            this.dbadapter,
+          const taskStatus = await this.executeTaskCreatingMissingSchema(
+            action,
             task,
             actionResult,
-            { bigquery: this.getBigQueryExecutionOptions(action) },
-            missingSchema
-              ? wrapWithCreateSchemaIfNotExists(
-                  missingSchema.database,
-                  missingSchema.schema,
-                  task.statement,
-                )
-              : undefined,
           );
-          if (
-            missingSchema &&
-            taskStatus === dataform.TaskResult.ExecutionStatus.SUCCESSFUL &&
-            !this.executionOptions.bigquery?.dryRun
-          ) {
-            // The dataset now exists. If the task failed, it may or may not have been created, so
-            // the next action writing to it creates it if it doesn't exist.
-            this.missingSchemas.delete(this.schemaKey(action.target));
-          }
           if (taskStatus === dataform.TaskResult.ExecutionStatus.FAILED) {
             actionResult.status = dataform.ActionResult.ExecutionStatus.FAILED;
           } else if (taskStatus === dataform.TaskResult.ExecutionStatus.CANCELLED) {
@@ -580,6 +568,65 @@ export class Runner {
       return null;
     }
     return this.missingSchemas.get(this.schemaKey(action.target)) || null;
+  }
+
+  /**
+   * Returns the job currently trying to create the given task's target dataset, if the task would
+   * otherwise try to create it too. When it finishes, check again: another waiting task may have
+   * become the next creator in the meantime.
+   */
+  private schemaCreationToWaitFor(
+    action: dataform.IExecutionAction,
+    task: dataform.IExecutionTask,
+  ): Promise<void> | undefined {
+    if (!this.missingSchemaToCreate(action, task)) {
+      return undefined;
+    }
+    return this.schemaCreations.get(this.schemaKey(action.target));
+  }
+
+  /**
+   * Executes the task. If its target dataset is still missing, the task is wrapped so that the
+   * dataset is created in the same job. In a real run (not a dry run), other tasks writing to the
+   * dataset wait for that job (see `schemaCreationToWaitFor()`): if it succeeds, they run unwrapped;
+   * if it fails, the dataset may or may not have been created, so the next one tries to create it.
+   */
+  private async executeTaskCreatingMissingSchema(
+    action: dataform.IExecutionAction,
+    task: dataform.IExecutionTask,
+    actionResult: dataform.IActionResult,
+  ): Promise<dataform.TaskResult.ExecutionStatus> {
+    const options = { bigquery: this.getBigQueryExecutionOptions(action) };
+    const missingSchema = this.missingSchemaToCreate(action, task);
+    if (!missingSchema) {
+      return this.executeTask(this.dbadapter, task, actionResult, options);
+    }
+    const statement = wrapWithCreateSchemaIfNotExists(
+      missingSchema.database,
+      missingSchema.schema,
+      task.statement,
+    );
+    // Dry runs don't create the dataset, so there's no rate limit to protect, and nothing to wait
+    // for: every task writing to the dataset is wrapped.
+    if (this.executionOptions.bigquery?.dryRun) {
+      return this.executeTask(this.dbadapter, task, actionResult, options, statement);
+    }
+
+    // Registered without awaiting anything since `schemaCreationToWaitFor()` returned nothing, so
+    // no other task can become the creator in between.
+    const key = this.schemaKey(action.target);
+    let release: () => void;
+    this.schemaCreations.set(key, new Promise<void>((resolve) => (release = resolve)));
+    try {
+      const status = await this.executeTask(this.dbadapter, task, actionResult, options, statement);
+      if (status === dataform.TaskResult.ExecutionStatus.SUCCESSFUL) {
+        this.missingSchemas.delete(key);
+      }
+      return status;
+    } finally {
+      this.schemaCreations.delete(key);
+      release!();
+    }
   }
 
   /**
