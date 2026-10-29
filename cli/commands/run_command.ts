@@ -184,12 +184,10 @@ export const runCommand: ICommand<IRunArgs> = {
       logger.log("Running...\n");
     }
 
-    const lazySchemaCreation = !(defaultLocation || readCredentials.location);
-    if (lazySchemaCreation && argv.dryRun && !isJsonOutput) {
+    if (argv.dryRun && !isJsonOutput) {
       printWarning(
-        "Note: no location is configured, so datasets that don't exist yet are created by the " +
-          "first action writing to them. Dry runs don't create them, and only validate the " +
-          "syntax of actions writing to them.\n",
+        "Note: datasets that don't exist yet are created by the first action writing to them. " +
+          "Dry runs don't create them, and only validate the syntax of actions writing to them.\n",
       );
     }
 
@@ -205,7 +203,6 @@ export const runCommand: ICommand<IRunArgs> = {
       expectedCoreVersion: compiledGraph.dataformCoreVersion || undefined,
       bigquery: bigqueryOptions,
       lineageEmitter,
-      lazySchemaCreation,
     });
     // The first Ctrl+C cancels the run gracefully; a second one exits immediately.
     setSignalHandler("SIGINT", () => runner.cancel());
