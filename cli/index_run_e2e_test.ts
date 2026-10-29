@@ -778,6 +778,36 @@ CREATE OR REPLACE TABLE \${self()} AS SELECT * FROM ${source}
 
       await expectDatasetMissing(dataset);
     });
+
+    test(
+      "dry runs fully check the query of tables writing to a dataset that doesn't exist yet",
+      { timeout: 120000 },
+      async () => {
+        const { projectDir, dataset } = await setupLocationProject(EXPECTED_LOCATION);
+        writeDefinitionFile(
+          projectDir,
+          "example.sqlx",
+          `
+config { type: "table" }
+SELECT no_such_column FROM (SELECT 1 AS id)
+`,
+        );
+
+        const runResult = await runCli("run", [
+          projectDir,
+          "--credentials",
+          writeCredentialsWithLocation(EXPECTED_LOCATION),
+          "--dry-run",
+        ]);
+
+        // Only a syntax check of the script creating the dataset wouldn't catch this.
+        expect(runResult.exitCode).equals(1);
+        expect(`${runResult.stdout}\n${runResult.stderr}`).to.include(
+          "Unrecognized name: no_such_column",
+        );
+        await expectDatasetMissing(dataset);
+      },
+    );
   });
 
   suite("run --timeout deprecation", ({ beforeEach }) => {

@@ -2,6 +2,7 @@ import yargs from "yargs";
 
 import { build, credentials, run, test } from "df/cli/api";
 import { compileForRun } from "df/cli/api/commands/compile";
+import { buildDryRunValidationQueries } from "df/cli/api/commands/run";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 import { LineageEmitter } from "df/cli/api/lineage/emitter";
 import { createLineageEmitter as createLineageEmitterFromFactory } from "df/cli/api/lineage/emitter_factory";
@@ -175,7 +176,8 @@ export const runCommand: ICommand<IRunArgs> = {
     if (argv.dryRun && !isJsonOutput) {
       printWarning(
         "Note: datasets that don't exist yet are created by the first action writing to them. " +
-          "Dry runs don't create them, and only validate the syntax of actions writing to them.\n",
+          "Dry runs don't create them. For actions writing to them, the queries of tables, views " +
+          "and assertions are fully validated, but other statements only get a syntax check.\n",
       );
     }
 
@@ -191,6 +193,9 @@ export const runCommand: ICommand<IRunArgs> = {
       expectedCoreVersion: compiledGraph.dataformCoreVersion || undefined,
       bigquery: bigqueryOptions,
       lineageEmitter,
+      dryRunValidationQueries: argv.dryRun
+        ? buildDryRunValidationQueries(compiledGraph)
+        : undefined,
     });
     // The first Ctrl+C cancels the run gracefully; a second one exits immediately.
     setSignalHandler("SIGINT", () => runner.cancel());
