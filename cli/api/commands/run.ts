@@ -47,6 +47,31 @@ export interface IExecutionOptions {
    */
   expectedCoreVersion?: string;
   lineageEmitter?: LineageEmitter;
+  dryRunValidationQueries?: Map<string, string>;
+}
+
+/**
+ * Key of `IExecutionOptions.dryRunValidationQueries`. Unlike `targetStringifier`, it doesn't depend
+ * on which (possibly empty) fields happen to be set on the target proto, so that targets of the
+ * compiled graph and of the execution graph match.
+ */
+export function dryRunValidationQueryKey(target: dataform.ITarget): string {
+  return JSON.stringify([target.database || "", target.schema || "", target.name || ""]);
+}
+
+/**
+ * Returns the compiled SELECT queries of the tables, views, incremental tables and assertions of
+ * the graph, keyed by `dryRunValidationQueryKey()`, for `IExecutionOptions.dryRunValidationQueries`.
+ * JiT actions are skipped: their query is only known once they're compiled during the run.
+ */
+export function buildDryRunValidationQueries(
+  compiledGraph: dataform.ICompiledGraph,
+): Map<string, string> {
+  const queries = new Map<string, string>();
+  [...(compiledGraph.tables || []), ...(compiledGraph.assertions || [])]
+    .filter((action) => !action.disabled && !!action.query)
+    .forEach((action) => queries.set(dryRunValidationQueryKey(action.target), action.query));
+  return queries;
 }
 
 export type CancelReason = "timeout" | "user" | "cancellation";
@@ -114,6 +139,7 @@ export class Runner {
   private executionTask: Promise<dataform.IRunResult>;
   private missingSchemas = new Map<string, IMissingSchema>();
   private schemaCreations = new Map<string, Promise<void>>();
+  private jitDryRunValidationQueries = new Map<string, string>();
 
   constructor(
     private readonly dbadapter: dbadapters.IDbAdapter,
@@ -609,7 +635,11 @@ export class Runner {
     // Dry runs don't create the dataset, so there's no rate limit to protect, and nothing to wait
     // for: every task writing to the dataset is wrapped.
     if (this.executionOptions.bigquery?.dryRun) {
-      return this.executeTask(this.dbadapter, task, actionResult, options, statement);
+      const status = await this.executeTask(this.dbadapter, task, actionResult, options, statement);
+      if (status !== dataform.TaskResult.ExecutionStatus.SUCCESSFUL) {
+        return status;
+      }
+      return this.dryRunValidationQuery(action, actionResult, missingSchema, options);
     }
 
     // Registered without awaiting anything since `schemaCreationToWaitFor()` returned nothing, so
@@ -626,6 +656,45 @@ export class Runner {
     } finally {
       this.schemaCreations.delete(key);
       release!();
+    }
+  }
+
+  /**
+   * In a dry run, BigQuery only checks the syntax of the wrapped script of a task writing to a
+   * dataset that doesn't exist yet. Dry-run the action's SELECT query on its own, if it has one, to
+   * fully check it. A failure is reported on the task, which was just executed.
+   */
+  private async dryRunValidationQuery(
+    action: dataform.IExecutionAction,
+    actionResult: dataform.IActionResult,
+    missingSchema: IMissingSchema,
+    options: { bigquery?: dataform.IBigQueryOptions & IBigQueryExecutionOptions },
+  ): Promise<dataform.TaskResult.ExecutionStatus> {
+    const key = dryRunValidationQueryKey(action.target);
+    const query =
+      this.jitDryRunValidationQueries.get(key) ??
+      this.executionOptions.dryRunValidationQueries?.get(key);
+    if (!query) {
+      return dataform.TaskResult.ExecutionStatus.SUCCESSFUL;
+    }
+    try {
+      await this.dbadapter.execute(query, {
+        onCancel: (handleCancel) => this.eEmitter.on(CANCEL_EVENT, handleCancel),
+        rowLimit: 1,
+        bigquery: options.bigquery,
+      });
+      return dataform.TaskResult.ExecutionStatus.SUCCESSFUL;
+    } catch (e) {
+      const taskResult = actionResult.tasks[actionResult.tasks.length - 1];
+      taskResult.status = this.cancelled
+        ? dataform.TaskResult.ExecutionStatus.CANCELLED
+        : dataform.TaskResult.ExecutionStatus.FAILED;
+      const schemaRef = [missingSchema.database, missingSchema.schema].filter(Boolean).join(".");
+      taskResult.errorMessage =
+        `${this.graph.projectConfig!.warehouse} error: ${e.message} (in the query, validated ` +
+        `separately because dataset ${schemaRef} doesn't exist yet)`;
+      this.notifyListeners();
+      return taskResult.status;
     }
   }
 
@@ -734,6 +803,13 @@ export class Runner {
         expectedCoreVersion: this.executionOptions.expectedCoreVersion,
       });
       action.tasks = this.createTasksFromJitResponse(action, jitResponse);
+      const query =
+        jitResponse.table?.query ||
+        jitResponse.incrementalTable?.regular?.query ||
+        jitResponse.assertion?.query;
+      if (query) {
+        this.jitDryRunValidationQueries.set(dryRunValidationQueryKey(action.target), query);
+      }
     } finally {
       if (cancelHandler) {
         this.eEmitter.removeListener(CANCEL_EVENT, cancelHandler);

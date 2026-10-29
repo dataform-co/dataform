@@ -3,6 +3,7 @@ import Long from "long";
 import { anyString, anything, capture, instance, mock, verify, when } from "ts-mockito";
 
 import { Runner } from "df/cli/api";
+import { buildDryRunValidationQueries, dryRunValidationQueryKey } from "df/cli/api/commands/run";
 import { IDbAdapter } from "df/cli/api/dbadapters";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 import { wrapWithCreateSchemaIfNotExists } from "df/cli/api/dbadapters/tasks";
@@ -904,6 +905,172 @@ suite("@dataform/api/run", () => {
         wrapped("new_ds", "CREATE TABLE a"),
         wrapped("new_ds", "CREATE TABLE b"),
       ]);
+    });
+
+    suite("dry-run validation queries", () => {
+      const graph = dataform.ExecutionGraph.create({
+        projectConfig,
+        runConfig: {},
+        warehouseState: {},
+        actions: [
+          tableAction("a", "new_ds", ["CREATE TABLE a AS SELECT a"]),
+          tableAction("c", "existing_ds", ["CREATE TABLE c AS SELECT c"]),
+          {
+            type: "operation",
+            target: { database: "db", schema: "new_ds", name: "op" },
+            tasks: [{ type: "statement", statement: "OPERATION" }],
+            dependencyTargets: [],
+          },
+        ],
+      });
+      const dryRunValidationQueries = new Map([
+        [dryRunValidationQueryKey({ database: "db", schema: "new_ds", name: "a" }), "SELECT a"],
+        [
+          dryRunValidationQueryKey({ database: "db", schema: "existing_ds", name: "c" }),
+          "SELECT c",
+        ],
+      ]);
+
+      test("dry-runs the query of actions writing to a missing dataset", async () => {
+        const { mockedDbAdapter, executedStatements } = mockDbAdapter();
+
+        const result = await new Runner(instance(mockedDbAdapter), graph, {
+          bigquery: { dryRun: true },
+          dryRunValidationQueries,
+        })
+          .execute()
+          .result();
+
+        expect(result.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
+        expect(executedStatements).to.have.members([
+          wrapped("new_ds", "CREATE TABLE a AS SELECT a"),
+          "SELECT a",
+          // Not wrapped, so fully checked already.
+          "CREATE TABLE c AS SELECT c",
+          // No query to validate separately.
+          wrapped("new_ds", "OPERATION"),
+        ]);
+        expect(executedStatements).to.have.length(4);
+      });
+
+      test("reports a failure of the query on the action's task", async () => {
+        const { mockedDbAdapter } = mockDbAdapter([["existing_ds"]], async (statement) => {
+          if (statement === "SELECT a") {
+            throw new Error("Unrecognized name: a");
+          }
+          return { rows: [], metadata: {} };
+        });
+
+        const result = await new Runner(instance(mockedDbAdapter), graph, {
+          bigquery: { dryRun: true },
+          dryRunValidationQueries,
+        })
+          .execute()
+          .result();
+
+        expect(result.status).equals(dataform.RunResult.ExecutionStatus.FAILED);
+        const actionA = result.actions.find((action) => action.target.name === "a");
+        expect(actionA.status).equals(dataform.ActionResult.ExecutionStatus.FAILED);
+        expect(actionA.tasks).to.have.length(1);
+        expect(actionA.tasks[0].status).equals(dataform.TaskResult.ExecutionStatus.FAILED);
+        expect(actionA.tasks[0].errorMessage).equals(
+          "bigquery error: Unrecognized name: a (in the query, validated separately because " +
+            "dataset db.new_ds doesn't exist yet)",
+        );
+        expect(actionA.tasks[0].compiledSql).equals("CREATE TABLE a AS SELECT a");
+      });
+
+      test("doesn't dry-run the query if the wrapped script fails", async () => {
+        const { mockedDbAdapter, executedStatements } = mockDbAdapter(
+          [["existing_ds"]],
+          async (statement) => {
+            if (statement === wrapped("new_ds", "CREATE TABLE a AS SELECT a")) {
+              throw new Error("Syntax error");
+            }
+            return { rows: [], metadata: {} };
+          },
+        );
+
+        await new Runner(instance(mockedDbAdapter), graph, {
+          bigquery: { dryRun: true },
+          dryRunValidationQueries,
+        })
+          .execute()
+          .result();
+
+        expect(executedStatements).not.to.include("SELECT a");
+      });
+
+      test("are ignored outside of dry runs", async () => {
+        const { mockedDbAdapter, executedStatements } = mockDbAdapter();
+
+        await new Runner(instance(mockedDbAdapter), graph, { dryRunValidationQueries })
+          .execute()
+          .result();
+
+        expect(executedStatements).not.to.include("SELECT a");
+      });
+
+      test("come from the JiT response for JiT actions", async () => {
+        const jitGraph = dataform.ExecutionGraph.create({
+          projectConfig,
+          runConfig: {},
+          warehouseState: {},
+          actions: [
+            {
+              type: "table",
+              tableType: "table",
+              target: { database: "db", schema: "new_ds", name: "jit_table" },
+              tasks: [],
+              jitCode: "async () => 'SELECT jit'",
+              dependencyTargets: [],
+            },
+          ],
+        });
+        const { mockedDbAdapter, executedStatements } = mockDbAdapter();
+
+        const result = await new Runner(instance(mockedDbAdapter), jitGraph, {
+          bigquery: { dryRun: true },
+          jitCompiler: async () =>
+            dataform.JitCompilationResponse.create({ table: { query: "SELECT jit" } }),
+        })
+          .execute()
+          .result();
+
+        expect(result.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
+        expect(executedStatements).to.have.length(2);
+        expect(executedStatements[1]).equals("SELECT jit");
+      });
+
+      test("are built from the tables and assertions of the compiled graph", () => {
+        const queries = buildDryRunValidationQueries(
+          dataform.CompiledGraph.create({
+            tables: [
+              { target: { database: "db", schema: "ds", name: "table" }, query: "SELECT 1" },
+              { target: { database: "db", schema: "ds", name: "jit" }, jitCode: "async () => ''" },
+              {
+                target: { database: "db", schema: "ds", name: "disabled" },
+                query: "SELECT 2",
+                disabled: true,
+              },
+            ],
+            assertions: [
+              { target: { database: "db", schema: "ds_assertions", name: "a" }, query: "SELECT 3" },
+            ],
+            operations: [
+              { target: { database: "db", schema: "ds", name: "op" }, queries: ["SELECT 4"] },
+            ],
+          }),
+        );
+
+        expect(Array.from(queries.entries())).to.have.deep.members([
+          [dryRunValidationQueryKey({ database: "db", schema: "ds", name: "table" }), "SELECT 1"],
+          [
+            dryRunValidationQueryKey({ database: "db", schema: "ds_assertions", name: "a" }),
+            "SELECT 3",
+          ],
+        ]);
+      });
     });
 
     suite("resume", () => {
