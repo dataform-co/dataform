@@ -392,17 +392,6 @@ export class BigQueryDbAdapter implements IDbAdapter {
     return data[0].map((dataset) => dataset.id);
   }
 
-  public async createSchema(
-    database: string | undefined,
-    schema: string,
-    location?: string,
-  ): Promise<void> {
-    await this.execute(
-      `create schema if not exists \`${database || this.bigQueryCredentials.projectId}.${schema}\``,
-      { bigquery: { location: location || this.bigQueryCredentials.location || "US" } },
-    );
-  }
-
   public async setMetadata(action: dataform.IExecutionAction): Promise<void> {
     const { target, actionDescriptor } = action;
 

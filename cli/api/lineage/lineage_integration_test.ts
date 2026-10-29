@@ -61,10 +61,8 @@ class FakeDbAdapter implements IDbAdapter {
     return [];
   }
   public async schemas(database?: string): Promise<string[]> {
-    return [];
-  }
-  public async createSchema(database: string | undefined, schema: string): Promise<void> {
-    return;
+    // The target datasets exist, so tasks aren't wrapped in a script creating them.
+    return ["s", "s_assertions"];
   }
   public async tables(database: string, schema?: string): Promise<dataform.ITableMetadata[]> {
     return [];

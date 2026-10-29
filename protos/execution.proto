@@ -92,7 +92,6 @@ message RunResult {
   ExecutionStatus status = 1;
   repeated ActionResult actions = 2;
   Timing timing = 3;
-  bool lazy_schema_creation = 4;
 }
 
 message ActionResult {
