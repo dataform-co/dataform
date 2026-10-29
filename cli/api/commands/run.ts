@@ -47,14 +47,6 @@ export interface IExecutionOptions {
    */
   expectedCoreVersion?: string;
   lineageEmitter?: LineageEmitter;
-  /**
-   * When true, missing target datasets are not created up-front. Instead, each one is created
-   * inside the first job of the first action writing to it, so that BigQuery infers the dataset's
-   * location from the tables that action reads. Intended for runs without an explicit location.
-   *
-   * When resuming a run, the mode the run was started in (`RunResult.lazySchemaCreation`) is kept.
-   */
-  lazySchemaCreation?: boolean;
 }
 
 export type CancelReason = "timeout" | "user" | "cancellation";
@@ -98,15 +90,13 @@ export class Runner {
     graph: dataform.IExecutionGraph,
     runResult: dataform.IRunResult,
     runnerNotificationPeriodMillis: number = flags.runnerNotificationPeriodMillis.get(),
-    options: IExecutionOptions = {},
   ): Runner {
-    return new Runner(dbadapter, graph, options, runResult, runnerNotificationPeriodMillis);
+    return new Runner(dbadapter, graph, {}, runResult, runnerNotificationPeriodMillis);
   }
 
   private readonly warehouseStateByTarget: Map<string, dataform.ITableMetadata>;
   private readonly executionSql: ExecutionSql;
   private readonly executionOptions: IExecutionOptions;
-  private readonly lazySchemaCreation: boolean;
 
   private readonly allActionTargets: Set<string>;
   private readonly runResult: dataform.IRunResult;
@@ -122,7 +112,6 @@ export class Runner {
   private timedOut = false;
   private skipReason: string = "";
   private executionTask: Promise<dataform.IRunResult>;
-  // In lazy schema creation mode: target datasets not known to exist, keyed by `schemaKey()`.
   private missingSchemas = new Map<string, IMissingSchema>();
 
   constructor(
@@ -137,15 +126,6 @@ export class Runner {
       actions: [],
       ...partiallyExecutedRunResult,
     };
-    // A resumed run keeps the schema creation mode it was started in, regardless of the options
-    // it's resumed with: switching modes midway could create datasets in the wrong location.
-    const isResumedRun = this.runResult.actions && this.runResult.actions.length > 0;
-    this.lazySchemaCreation =
-      !!this.runResult.lazySchemaCreation ||
-      (!isResumedRun && !!this.executionOptions.lazySchemaCreation);
-    if (this.lazySchemaCreation) {
-      this.runResult.lazySchemaCreation = true;
-    }
 
     if (!this.executionOptions.jitCompiler) {
       this.executionOptions.jitCompiler = JitCompileChildProcess.compile;
@@ -252,14 +232,7 @@ export class Runner {
     this.runResult.timing = timer.current();
     this.notifyListeners();
 
-    if (this.lazySchemaCreation) {
-      // Missing datasets are created by the first action writing to them. This also runs when
-      // resuming: datasets created before the run was interrupted now exist and drop out.
-      this.missingSchemas = await this.findMissingSchemas();
-    } else if (!this.runResult.actions?.length) {
-      // If we're not resuming an existing run, prepare schemas.
-      await this.prepareAllSchemas();
-    }
+    this.missingSchemas = await this.findMissingSchemas();
 
     // Recursively execute all actions as they become executable.
     await this.executeAllActionsReadyForExecution();
@@ -284,19 +257,6 @@ export class Runner {
     }
 
     return this.runResult;
-  }
-
-  private async prepareAllSchemas() {
-    const missingSchemas = await this.findMissingSchemas();
-    await Promise.all(
-      Array.from(missingSchemas.values()).map(({ database, schema }) =>
-        this.dbadapter.createSchema(
-          database,
-          schema,
-          this.graph.projectConfig?.defaultLocation || undefined,
-        ),
-      ),
-    );
   }
 
   /**
@@ -604,16 +564,14 @@ export class Runner {
   }
 
   /**
-   * In lazy schema creation mode, returns the target dataset to create in the same job as the
-   * given task, or null if there's none. Every task is checked, not just the first one of the
-   * action: once a task creates the dataset, it's no longer missing and later tasks aren't
-   * wrapped, but in dry runs it's never created, so every task writing to it must be wrapped.
+   * Returns the target dataset to create in the same job as the given task, or null if there's
+   * none. Every task in an action is checked.
    */
   private missingSchemaToCreate(
     action: dataform.IExecutionAction,
     task: dataform.IExecutionTask,
   ): IMissingSchema | null {
-    if (!this.lazySchemaCreation || !action.target?.schema) {
+    if (!action.target?.schema) {
       return null;
     }
     // Assertion tasks must stay single statements: their result is read from the job's rows,
