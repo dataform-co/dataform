@@ -732,7 +732,7 @@ suite("@dataform/api/run", () => {
       expect(executedStatements).to.have.length(6);
     });
 
-    test("wraps concurrently running actions writing to the same missing dataset", async () => {
+    test("only one job at a time creates a missing dataset", async () => {
       const graph = dataform.ExecutionGraph.create({
         projectConfig,
         runConfig: {},
@@ -742,41 +742,50 @@ suite("@dataform/api/run", () => {
           tableAction("b", "new_ds", ["CREATE TABLE b"]),
         ],
       });
-      const { mockedDbAdapter, executedStatements } = mockDbAdapter();
+      let aStarted = false;
+      let releaseA = false;
+      const { mockedDbAdapter, executedStatements } = mockDbAdapter(
+        [["existing_ds"]],
+        async (statement) => {
+          if (statement === wrapped("new_ds", "CREATE TABLE a")) {
+            aStarted = true;
+            await sleepUntil(() => releaseA);
+          }
+          return { rows: [], metadata: {} };
+        },
+      );
 
-      await new Runner(instance(mockedDbAdapter), graph).execute().result();
+      const execution = new Runner(instance(mockedDbAdapter), graph).execute().result();
+      await sleepUntil(() => aStarted);
+      // Give "b" the chance to start, which it mustn't while "a" is creating the dataset.
+      await sleep(50);
+      expect(executedStatements).deep.equals([wrapped("new_ds", "CREATE TABLE a")]);
+      releaseA = true;
+      const result = await execution;
 
-      expect(executedStatements).to.have.members([
+      expect(result.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
+      // "a" created the dataset, so "b" isn't wrapped.
+      expect(executedStatements).deep.equals([
         wrapped("new_ds", "CREATE TABLE a"),
-        wrapped("new_ds", "CREATE TABLE b"),
+        "CREATE TABLE b",
       ]);
     });
 
-    test("wraps the next action writing to the dataset again if the creating action failed", async () => {
+    test("the next action writing to the dataset creates it if the creating action failed", async () => {
       const graph = dataform.ExecutionGraph.create({
         projectConfig,
         runConfig: {},
         warehouseState: {},
         actions: [
           tableAction("a", "new_ds", ["CREATE TABLE a"]),
-          tableAction("e", "existing_ds", ["CREATE TABLE e"]),
-          // Runs after "a" has failed, as "e" only completes afterwards.
-          {
-            ...tableAction("b", "new_ds", ["CREATE TABLE b"]),
-            dependencyTargets: [{ database: "db", schema: "existing_ds", name: "e" }],
-          },
+          tableAction("b", "new_ds", ["CREATE TABLE b"]),
         ],
       });
-      let aFailed = false;
       const { mockedDbAdapter, executedStatements } = mockDbAdapter(
         [["existing_ds"]],
         async (statement) => {
           if (statement === wrapped("new_ds", "CREATE TABLE a")) {
-            aFailed = true;
             throw new Error("a failed");
-          }
-          if (statement === "CREATE TABLE e") {
-            await sleepUntil(() => aFailed);
           }
           return { rows: [], metadata: {} };
         },
@@ -788,10 +797,12 @@ suite("@dataform/api/run", () => {
         result.actions.map((action) => [action.target.name, action.status]),
       ).to.have.deep.members([
         ["a", dataform.ActionResult.ExecutionStatus.FAILED],
-        ["e", dataform.ActionResult.ExecutionStatus.SUCCESSFUL],
         ["b", dataform.ActionResult.ExecutionStatus.SUCCESSFUL],
       ]);
-      expect(executedStatements).to.include(wrapped("new_ds", "CREATE TABLE b"));
+      expect(executedStatements).deep.equals([
+        wrapped("new_ds", "CREATE TABLE a"),
+        wrapped("new_ds", "CREATE TABLE b"),
+      ]);
     });
 
     test("wraps tasks produced by JiT compilation", async () => {
@@ -854,6 +865,44 @@ suite("@dataform/api/run", () => {
         ["a", "CREATE TABLE a"],
         ["b", "CREATE TABLE b"],
         ["c", "CREATE TABLE c"],
+      ]);
+    });
+
+    test("in dry runs, actions writing to the same missing dataset run concurrently", async () => {
+      const graph = dataform.ExecutionGraph.create({
+        projectConfig,
+        runConfig: {},
+        warehouseState: {},
+        actions: [
+          tableAction("a", "new_ds", ["CREATE TABLE a"]),
+          tableAction("b", "new_ds", ["CREATE TABLE b"]),
+        ],
+      });
+      let bStarted = false;
+      const { mockedDbAdapter, executedStatements } = mockDbAdapter(
+        [["existing_ds"]],
+        async (statement) => {
+          if (statement === wrapped("new_ds", "CREATE TABLE a")) {
+            // Would never finish if "b" waited for "a".
+            await sleepUntil(() => bStarted);
+          }
+          if (statement === wrapped("new_ds", "CREATE TABLE b")) {
+            bStarted = true;
+          }
+          return { rows: [], metadata: {} };
+        },
+      );
+
+      const result = await new Runner(instance(mockedDbAdapter), graph, {
+        bigquery: { dryRun: true },
+      })
+        .execute()
+        .result();
+
+      expect(result.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
+      expect(executedStatements).to.have.members([
+        wrapped("new_ds", "CREATE TABLE a"),
+        wrapped("new_ds", "CREATE TABLE b"),
       ]);
     });
 
