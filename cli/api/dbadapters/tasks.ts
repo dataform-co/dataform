@@ -1,25 +1,49 @@
 import { dataform } from "df/protos/ts";
 
-function formatStatement(statement: string, isLast: boolean, modifier?: (mod: string) => string) {
-  // Only treat a comment as trailing if it lives on the statement's last line.
-  // Searching from the last newline avoids misreading an interior comment (e.g.
-  // inside a multi-line procedure body) as a trailing comment.
-  const lastLineStart = statement.lastIndexOf("\n") + 1;
-  const commentIndex = statement.indexOf("--", lastLineStart);
-
-  let code: string;
-  let comment: string;
-
-  if (commentIndex === 0) {
-    code = "";
-    comment = statement;
-  } else if (commentIndex > 0) {
-    code = statement.substring(0, commentIndex).trimEnd();
-    comment = statement.substring(commentIndex);
-  } else {
-    code = statement;
-    comment = "";
+/**
+ * Returns the index just after the last character of code in the given GoogleSQL statement, i.e.
+ * ignoring trailing whitespace and comments (`--`, `#` and `/* *\/`). String literals (single,
+ * double and triple quoted) and quoted identifiers are skipped as a whole, so that e.g. a `--`
+ * inside a string literal is not mistaken for a comment. Returns 0 if the statement has no code.
+ */
+function codeEndIndex(statement: string): number {
+  let codeEnd = 0;
+  let i = 0;
+  while (i < statement.length) {
+    const char = statement[i];
+    const next = statement[i + 1];
+    if ((char === "-" && next === "-") || char === "#") {
+      const newline = statement.indexOf("\n", i);
+      i = newline === -1 ? statement.length : newline + 1;
+    } else if (char === "/" && next === "*") {
+      const end = statement.indexOf("*/", i + 2);
+      i = end === -1 ? statement.length : end + 2;
+    } else if (char === "'" || char === '"' || char === "`") {
+      const tripleQuote = char.repeat(3);
+      const closing = char !== "`" && statement.startsWith(tripleQuote, i) ? tripleQuote : char;
+      i += closing.length;
+      while (i < statement.length && !statement.startsWith(closing, i)) {
+        // Skip escaped characters, e.g. \' inside a single-quoted string.
+        i += statement[i] === "\\" ? 2 : 1;
+      }
+      i = Math.min(i + closing.length, statement.length);
+      codeEnd = i;
+    } else {
+      i++;
+      if (!/\s/.test(char)) {
+        codeEnd = i;
+      }
+    }
   }
+  return codeEnd;
+}
+
+function formatStatement(statement: string, isLast: boolean, modifier?: (mod: string) => string) {
+  // Split off trailing comments, so that the modifier and the terminating semicolon only apply to
+  // the code: a semicolon after a trailing `--` or `#` comment would be commented out.
+  const codeEnd = codeEndIndex(statement);
+  let code = statement.substring(0, codeEnd);
+  const comment = statement.substring(codeEnd);
 
   if (modifier && code.length > 0) {
     code = modifier(code);
@@ -29,10 +53,7 @@ function formatStatement(statement: string, isLast: boolean, modifier?: (mod: st
     code = code + ";";
   }
 
-  if (code.length > 0 && comment.length > 0) {
-    return code + " " + comment;
-  }
-  return code || comment;
+  return code + comment;
 }
 
 export function concatenateQueries(statements: string[], modifier?: (mod: string) => string) {
