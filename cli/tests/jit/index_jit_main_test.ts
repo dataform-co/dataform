@@ -234,4 +234,62 @@ integrationSuite("JiT support main", ({ afterEach }) => {
     expect(!!aotAction).to.equal(true);
     expect(aotAction.tasks[0].statement).to.include("SELECT 2 as id");
   });
+
+  test("SQLX files with compilation_mode: 'jit' compile and dry-run via CLI", async () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    await setupJitProject(tmpDirFixture, projectDir);
+    writeDefinitionFile(
+      projectDir,
+      "sqlx_jit_table.sqlx",
+      `config { type: "table", compilation_mode: "jit" }
+js {
+  const prefix = "sqlx";
+}
+SELECT '\${prefix}' AS source, 1 AS id`,
+    );
+    writeDefinitionFile(
+      projectDir,
+      "sqlx_jit_assert.sqlx",
+      `config { type: "assertion", compilation_mode: "jit", dependencies: ["sqlx_jit_table"] }
+SELECT '\${ref("sqlx_jit_table")}' AS ref_target`,
+    );
+
+    const runResult = await runCli("run", [
+      projectDir,
+      "--credentials",
+      CREDENTIALS_PATH,
+      "--dry-run",
+      "--json",
+      "--actions=sqlx_jit_table,sqlx_jit_assert",
+    ]);
+
+    expect(runResult.exitCode).equals(0);
+    const executedGraph = JSON.parse(runResult.stdout);
+    const tableAction = executedGraph.actions.find((a: any) => a.target.name === "sqlx_jit_table");
+    const assertAction = executedGraph.actions.find(
+      (a: any) => a.target.name === "sqlx_jit_assert",
+    );
+    expect(!!tableAction).to.equal(true);
+    expect(tableAction.tasks[0].compiledSql).to.include("SELECT 'sqlx' AS source, 1 AS id");
+    expect(!!assertAction).to.equal(true);
+    expect(assertAction.tasks[0].compiledSql).to.include(
+      `SELECT '\`${INTEGRATION_TEST_PROJECT}.dataform.sqlx_jit_table\`' AS ref_target`,
+    );
+  });
+
+  test("SQLX JiT reports const data redeclaration at compile time", async () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    await setupJitProject(tmpDirFixture, projectDir);
+    writeDefinitionFile(
+      projectDir,
+      "dup_data.sqlx",
+      `config { type: "table", compilation_mode: "jit" }
+js { const data = ["a", "b"]; }
+SELECT \${data.length} AS n`,
+    );
+
+    const compileResult = await runCli("compile", [projectDir, "--json"]);
+    expect(compileResult.exitCode).equals(1);
+    expect(compileResult.stdout).to.include("Identifier 'data' has already been declared");
+  });
 });

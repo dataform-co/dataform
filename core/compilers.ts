@@ -20,6 +20,23 @@ const CONTEXT_CONSTANTS = ["EXPECT"]
   .map((name) => `const ${name} = ctx.${name} ? ctx.${name} : undefined;`)
   .join("\n");
 
+const JIT_CONTEXT_FUNCTIONS = [
+  "self",
+  "ref",
+  "resolve",
+  "name",
+  "when",
+  "incremental",
+  "schema",
+  "database",
+]
+  .map((name) => `const ${name} = jctx.${name} ? jctx.${name}.bind(jctx) : undefined;`)
+  .join("\n    ");
+
+const JIT_CONTEXT_CONSTANTS = ["adapter", "data", "executionData"]
+  .map((name) => `const ${name} = jctx.${name} ? jctx.${name} : undefined;`)
+  .join("\n    ");
+
 export const INVALID_YAML_ERROR_STRING = "is not a valid YAML file";
 
 export function compile(code: string, path: string): string {
@@ -63,8 +80,201 @@ export function compile(code: string, path: string): string {
 }
 
 function compileSqlx(rootNode: SyntaxTreeNode, path: string): string {
-  const { config, js, sql, incremental, preOperations, postOperations, inputs } =
-    extractSqlxParts(rootNode);
+  const sqlxParts = extractSqlxParts(rootNode);
+  const { config } = sqlxParts;
+  const configWithoutComments = config.replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, "");
+  const compilationModeMatch =
+    /(?:^|[{,\s])(?:compilation_mode|["']compilation_mode["'])\s*:\s*(?:(["'])(.*?)\1|([^\s,}]+))/.exec(
+      configWithoutComments,
+    );
+  if (compilationModeMatch) {
+    if (compilationModeMatch[1] !== undefined) {
+      const mode = compilationModeMatch[2];
+      if (mode === "jit") {
+        const staticActionType = extractStaticActionType(configWithoutComments, path);
+        return compileSqlxJit(sqlxParts, path, staticActionType);
+      }
+      if (mode !== "aot") {
+        throw new Error(`Invalid compilation_mode "${mode}" in ${path}; expected "jit" or "aot".`);
+      }
+    } else {
+      const rawToken = compilationModeMatch[3];
+      throw new Error(
+        `Invalid compilation_mode "${rawToken}" in ${path}; expected "jit" or "aot".`,
+      );
+    }
+  }
+
+  return compileSqlxAot(sqlxParts, path);
+}
+
+function extractStaticActionType(configWithoutComments: string, path: string): string | undefined {
+  const typeMatch = /(?:^|[{,\s])(?:type|["']type["'])\s*:\s*(?:(["'])(.*?)\1|([^,}]+))/.exec(
+    configWithoutComments,
+  );
+  if (!typeMatch) {
+    return "operations";
+  }
+  if (typeMatch[1] !== undefined) {
+    return typeMatch[2];
+  }
+  const rawTypeExpr = typeMatch[3].trim();
+  if (/^(?:true|false|null|undefined|-?\d+(?:\.\d+)?)$/.test(rawTypeExpr)) {
+    throw new Error(`Invalid action type: ${rawTypeExpr} at ${path}.`);
+  }
+  return undefined;
+}
+
+export interface ISqlxBlockValidationOptions {
+  sqlStatementCount: number;
+  hasIncrementalWhere: boolean;
+  hasInputs: boolean;
+  hasPreOperations: boolean;
+  hasPostOperations: boolean;
+  isJit: boolean;
+}
+
+export function validateSqlxActionBlocks(
+  actionType: string,
+  options: ISqlxBlockValidationOptions,
+  onError: (message: string) => void,
+) {
+  if (options.sqlStatementCount > 1 && actionType !== "operations") {
+    onError(
+      "Actions may only contain more than one SQL statement if they are of type 'operations'.",
+    );
+  }
+  if (options.hasIncrementalWhere) {
+    if (options.isJit) {
+      onError("incremental_where is not supported with JiT compilation.");
+    } else if (actionType !== "incremental") {
+      onError("Actions may only include incremental_where if they are of type 'incremental'.");
+    }
+  }
+  if (options.hasInputs) {
+    if (options.isJit) {
+      onError("input blocks are not supported with JiT compilation.");
+    } else if (actionType !== "test") {
+      onError("Actions may only include input blocks if they are of type 'test'.");
+    }
+  }
+  const definesDataset = ["incremental", "table", "view"].includes(actionType);
+  if (options.hasPreOperations && !definesDataset) {
+    onError("Actions may only include pre_operations if they create a dataset.");
+  }
+  if (options.hasPostOperations && !definesDataset) {
+    onError("Actions may only include post_operations if they create a dataset.");
+  }
+}
+
+function makeSqlxJitReturnBlock(parts: SqlxParts, actionType: string): string {
+  const { sql, preOperations, postOperations } = parts;
+  switch (actionType) {
+    case "operations":
+      return `return {
+        queries: [
+          ${sql.map((sqlOp) => `\`${sqlOp}\``).join(", ")}
+        ],
+      };`;
+    case "assertion":
+      return `return {
+        query: (
+          \`${sql[0]}\`
+        ),
+      };`;
+    case "incremental":
+    case "table":
+    case "view":
+      return `return {
+        query: (
+          \`${sql[0]}\`
+        ),
+        postOps: (
+          ${postOperations.length > 0 ? "[" + postOperations.map((postOpSql) => `\`${postOpSql}\``).join(", ") + "]" : "undefined"}
+        ),
+        preOps: (
+          ${preOperations.length > 0 ? "[" + preOperations.map((preOpSql) => `\`${preOpSql}\``).join(", ") + "]" : "undefined"}
+        ),
+      };`;
+    default:
+      throw new Error(`Unsupported by JiT compilation mode action type: ${actionType}`);
+  }
+}
+
+function buildJitCodeString(js: string, returnBlock: string): string {
+  const jitCode = `async (jctx) => {
+    ${JIT_CONTEXT_FUNCTIONS}
+    ${JIT_CONTEXT_CONSTANTS}
+    ${js}
+    ${returnBlock}
+    }`;
+  // Syntax-check generated jitCode at compile time without executing it.
+  // eslint-disable-next-line no-new-func
+  new Function("jctx", `const mainAsync = ${jitCode};`);
+  return jitCode;
+}
+
+function compileSqlxJit(
+  parts: SqlxParts,
+  path: string,
+  staticActionType: string | undefined,
+): string {
+  const { config, js, sql, incremental, preOperations, postOperations, inputs } = parts;
+  const blockFlags = {
+    sqlStatementCount: sql.length,
+    hasIncrementalWhere: Boolean(incremental),
+    hasInputs: inputs.length > 0,
+    hasPreOperations: preOperations.length > 0,
+    hasPostOperations: postOperations.length > 0,
+  };
+  if (staticActionType !== undefined) {
+    validateSqlxActionBlocks(staticActionType, { ...blockFlags, isJit: true }, (msg) => {
+      throw new Error(msg);
+    });
+    const returnBlock = makeSqlxJitReturnBlock(parts, staticActionType);
+    const jitCode = buildJitCodeString(js, returnBlock);
+    return `dataform.sqlxJitAction({
+  sqlxConfig: {
+    name: ${JSON.stringify(Path.basename(path))},
+    type: "operations",
+    ...${config || "{}"}
+  },
+  jitCode: ${JSON.stringify(jitCode)},
+  sqlStatementCount: ${blockFlags.sqlStatementCount},
+  hasIncrementalWhere: ${blockFlags.hasIncrementalWhere},
+  hasInputs: ${blockFlags.hasInputs},
+  hasPreOperations: ${blockFlags.hasPreOperations},
+  hasPostOperations: ${blockFlags.hasPostOperations}
+  });
+  `;
+  }
+
+  // When `type` is a dynamic expression (e.g. referencing `dataform.*` or `includes`),
+  // defer actionType-dependent validation and return-block selection to Session.sqlxJitAction.
+  const jitCodeByType = {
+    operations: buildJitCodeString(js, makeSqlxJitReturnBlock(parts, "operations")),
+    assertion: buildJitCodeString(js, makeSqlxJitReturnBlock(parts, "assertion")),
+    dataset: buildJitCodeString(js, makeSqlxJitReturnBlock(parts, "table")),
+  };
+  return `dataform.sqlxJitAction({
+  sqlxConfig: {
+    name: ${JSON.stringify(Path.basename(path))},
+    type: "operations",
+    ...${config || "{}"}
+  },
+  jitCode: ${JSON.stringify(jitCodeByType.dataset)},
+  jitCodeByType: ${JSON.stringify(jitCodeByType)},
+  sqlStatementCount: ${blockFlags.sqlStatementCount},
+  hasIncrementalWhere: ${blockFlags.hasIncrementalWhere},
+  hasInputs: ${blockFlags.hasInputs},
+  hasPreOperations: ${blockFlags.hasPreOperations},
+  hasPostOperations: ${blockFlags.hasPostOperations}
+  });
+  `;
+}
+
+function compileSqlxAot(parts: SqlxParts, path: string): string {
+  const { config, js, sql, incremental, preOperations, postOperations, inputs } = parts;
 
   return `dataform.sqlxAction({
   sqlxConfig: {
@@ -126,6 +336,8 @@ function compileSqlx(rootNode: SyntaxTreeNode, path: string): string {
 });
 `;
 }
+
+type SqlxParts = ReturnType<typeof extractSqlxParts>;
 
 function extractSqlxParts(rootNode: SyntaxTreeNode) {
   let config = "";

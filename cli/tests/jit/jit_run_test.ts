@@ -3,11 +3,15 @@ import { EventEmitter } from "events";
 import * as path from "path";
 import { anything, capture, instance, mock, verify, when } from "ts-mockito";
 
+import { Builder } from "df/cli/api/commands/build";
 import { JitCompiler } from "df/cli/api/commands/jit/compiler";
 import { handleDbRequest as handleRpc } from "df/cli/api/commands/jit/rpc";
 import { Runner } from "df/cli/api/commands/run";
 import { IDbAdapter, IDbClient } from "df/cli/api/dbadapters";
+import { unknownToValue } from "df/common/protos";
+import { compile as compileFile } from "df/core/compilers";
 import { jitCompile } from "df/core/jit_compiler";
+import { Session } from "df/core/session";
 import { dataform } from "df/protos/ts";
 import { suite, test, writeCorePackage } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
@@ -558,6 +562,84 @@ suite("run", ({ afterEach }) => {
         `'${path.join(projectDir, "node_modules", "@dataform", "core", "bundle.js")}', but the project ` +
         `was compiled with @dataform/core 3.0.71.`,
     );
+  });
+
+  test("End-to-end Runner execution of SQLX JiT actions (table, view, incremental, operations, assertion)", async () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    const session = new Session(
+      projectDir,
+      dataform.ProjectConfig.create({
+        defaultDatabase: "db",
+        defaultSchema: "sch",
+        warehouse: "bigquery",
+        vars: { prod: "true" },
+      }),
+    );
+    session.jitContextData.fields["env_suffix"] = unknownToValue("prod");
+    const constants = { TAGS: ["jit_tag"] };
+    const sqlxFiles: Array<[string, string]> = [
+      [
+        "definitions/sqlx_table.sqlx",
+        `config {
+  type: dataform.projectConfig.vars.prod ? "table" : "view",
+  compilation_mode: "jit",
+  tags: constants.TAGS,
+  filename: "definitions/sqlx_table.sqlx"
+}
+js {
+  const res = await adapter.execute({ statement: "SELECT 'col_a' AS c" });
+}
+SELECT 1 AS id, '\${data.env_suffix}' AS env`,
+      ],
+      [
+        "definitions/sqlx_view.sqlx",
+        `config { type: "view", compilation_mode: "jit", dependencies: ["sqlx_table"], filename: "definitions/sqlx_view.sqlx" }
+SELECT * FROM \${ref("sqlx_table")}`,
+      ],
+      [
+        "definitions/sqlx_inc.sqlx",
+        `config { type: "incremental", compilation_mode: "jit", filename: "definitions/sqlx_inc.sqlx" }
+SELECT 1 AS id \${when(incremental(), "WHERE id > 0")}`,
+      ],
+      [
+        "definitions/sqlx_ops.sqlx",
+        `config { type: "operations", compilation_mode: "jit", filename: "definitions/sqlx_ops.sqlx" }
+SELECT 10;
+---
+SELECT 20`,
+      ],
+      [
+        "definitions/sqlx_assert.sqlx",
+        `config { type: "assertion", compilation_mode: "jit", dependencies: ["sqlx_table"], filename: "definitions/sqlx_assert.sqlx" }
+SELECT * FROM \${ref("sqlx_table")} WHERE id IS NULL`,
+      ],
+    ];
+    for (const [filePath, content] of sqlxFiles) {
+      // eslint-disable-next-line no-new-func
+      new Function("dataform", "constants", compileFile(content, filePath))(session, constants);
+    }
+
+    const compiledGraph = session.compile();
+    expect(compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+    const compiledSqlxTable = compiledGraph.tables.find((t) => t.target.name === "sqlx_table");
+    expect(compiledSqlxTable.tags).deep.equals(["jit_tag"]);
+
+    const builder = new Builder(compiledGraph, {}, { tables: [] });
+    const executionGraph = builder.build();
+
+    const { mockAdapter, adapterInstance } = createMocks();
+    const runner = new Runner(adapterInstance, executionGraph, {
+      jitCompiler: inProcessJitCompiler,
+    });
+    const result = await runner.execute().result();
+
+    expect(result.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
+    expect(result.actions.length).equals(5);
+    for (const actionResult of result.actions) {
+      expect(actionResult.status).equals(dataform.ActionResult.ExecutionStatus.SUCCESSFUL);
+      expect(actionResult.tasks.length).to.be.greaterThan(0);
+    }
+    verify(mockAdapter.execute(anything(), anything())).atLeast(5);
   });
 });
 
