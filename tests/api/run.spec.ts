@@ -1032,14 +1032,20 @@ suite("@dataform/api/run", () => {
         const result = await new Runner(instance(mockedDbAdapter), jitGraph, {
           bigquery: { dryRun: true },
           jitCompiler: async () =>
-            dataform.JitCompilationResponse.create({ table: { query: "SELECT jit" } }),
+            dataform.JitCompilationResponse.create({
+              table: {
+                preOps: ["DECLARE x INT64 DEFAULT 1;"],
+                query: "SELECT x",
+                postOps: ["SET x = 2;"],
+              },
+            }),
         })
           .execute()
           .result();
 
         expect(result.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
         expect(executedStatements).to.have.length(2);
-        expect(executedStatements[1]).equals("SELECT jit");
+        expect(executedStatements[1]).equals("DECLARE x INT64 DEFAULT 1;\nSELECT x;\nSET x = 2;");
       });
 
       test("are built from the tables and assertions of the compiled graph", () => {
@@ -1047,6 +1053,12 @@ suite("@dataform/api/run", () => {
           dataform.CompiledGraph.create({
             tables: [
               { target: { database: "db", schema: "ds", name: "table" }, query: "SELECT 1" },
+              {
+                target: { database: "db", schema: "ds", name: "with_ops" },
+                preOps: ["DECLARE x INT64 DEFAULT 1"],
+                query: "SELECT x",
+                postOps: ["SET x = 2"],
+              },
               { target: { database: "db", schema: "ds", name: "jit" }, jitCode: "async () => ''" },
               {
                 target: { database: "db", schema: "ds", name: "disabled" },
@@ -1065,6 +1077,10 @@ suite("@dataform/api/run", () => {
 
         expect(Array.from(queries.entries())).to.have.deep.members([
           [dryRunValidationQueryKey({ database: "db", schema: "ds", name: "table" }), "SELECT 1"],
+          [
+            dryRunValidationQueryKey({ database: "db", schema: "ds", name: "with_ops" }),
+            "DECLARE x INT64 DEFAULT 1;\nSELECT x;\nSET x = 2",
+          ],
           [
             dryRunValidationQueryKey({ database: "db", schema: "ds_assertions", name: "a" }),
             "SELECT 3",
