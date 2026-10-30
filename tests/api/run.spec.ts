@@ -778,22 +778,43 @@ suite("@dataform/api/run", () => {
         runConfig: {},
         warehouseState: {},
         actions: [
-          tableAction("a", "new_ds", ["CREATE TABLE a"]),
+          tableAction("a", "new_ds", ["CREATE TABLE a", "SECOND TASK a"]),
           tableAction("b", "new_ds", ["CREATE TABLE b"]),
         ],
       });
+      let bStarted = false;
+      let releaseB = false;
+      let aFinished = false;
       const { mockedDbAdapter, executedStatements } = mockDbAdapter(
         [["existing_ds"]],
         async (statement) => {
           if (statement === wrapped("new_ds", "CREATE TABLE a")) {
             throw new Error("a failed");
           }
+          if (statement === wrapped("new_ds", "CREATE TABLE b")) {
+            bStarted = true;
+            await sleepUntil(() => releaseB);
+          }
           return { rows: [], metadata: {} };
         },
       );
 
-      const result = await new Runner(instance(mockedDbAdapter), graph).execute().result();
+      const runner = Runner.create(instance(mockedDbAdapter), graph, {}, 0);
+      runner.onChange((runResult) => {
+        const actionA = runResult.actions.find((action) => action.target.name === "a");
+        if (actionA?.status === dataform.ActionResult.ExecutionStatus.FAILED) {
+          aFinished = true;
+        }
+      });
+      const execution = runner.execute().result();
+      await sleepUntil(() => bStarted);
+      // "SECOND TASK a" is skipped without waiting for "b" to create the dataset.
+      await sleep(50);
+      const aFinishedWhileBRunning = aFinished;
+      releaseB = true;
+      const result = await execution;
 
+      expect(aFinishedWhileBRunning).equals(true);
       expect(
         result.actions.map((action) => [action.target.name, action.status]),
       ).to.have.deep.members([
