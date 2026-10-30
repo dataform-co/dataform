@@ -789,7 +789,13 @@ CREATE OR REPLACE TABLE \${self()} AS SELECT * FROM ${source}
           "example.sqlx",
           `
 config { type: "table" }
-SELECT no_such_column FROM (SELECT 1 AS id)
+pre_operations {
+  DECLARE min_id INT64 DEFAULT 0;
+}
+SELECT no_such_column FROM (SELECT 1 AS id) WHERE id >= min_id
+post_operations {
+  SET min_id = 1;
+}
 `,
         );
 

@@ -5,7 +5,7 @@ import { JitCompileChildProcess, JitCompiler } from "df/cli/api/commands/jit/com
 import * as dbadapters from "df/cli/api/dbadapters";
 import { IBigQueryExecutionOptions } from "df/cli/api/dbadapters/bigquery";
 import { ExecutionSql } from "df/cli/api/dbadapters/execution_sql";
-import { wrapWithCreateSchemaIfNotExists } from "df/cli/api/dbadapters/tasks";
+import { concatenateQueries, wrapWithCreateSchemaIfNotExists } from "df/cli/api/dbadapters/tasks";
 import { LineageEmitter } from "df/cli/api/lineage/emitter";
 import { Flags } from "df/common/flags";
 import { retry } from "df/common/promises";
@@ -60,18 +60,33 @@ export function dryRunValidationQueryKey(target: dataform.ITarget): string {
 }
 
 /**
- * Returns the compiled SELECT queries of the tables, views, incremental tables and assertions of
- * the graph, keyed by `dryRunValidationQueryKey()`, for `IExecutionOptions.dryRunValidationQueries`.
- * JiT actions are skipped: their query is only known once they're compiled during the run.
+ * Returns the compiled SELECT queries (including pre and post operations) of the tables, views,
+ * incremental tables and assertions of the graph, keyed by `dryRunValidationQueryKey()`, for
+ * `IExecutionOptions.dryRunValidationQueries`. JiT actions are skipped: their query is only known
+ * once they're compiled during the run.
  */
 export function buildDryRunValidationQueries(
   compiledGraph: dataform.ICompiledGraph,
 ): Map<string, string> {
   const queries = new Map<string, string>();
   [...(compiledGraph.tables || []), ...(compiledGraph.assertions || [])]
-    .filter((action) => !action.disabled && !!action.query)
-    .forEach((action) => queries.set(dryRunValidationQueryKey(action.target), action.query));
+    .filter((action) => !action.disabled)
+    .forEach((action) => {
+      const query = actionDryRunValidationQuery(action);
+      if (query) {
+        queries.set(dryRunValidationQueryKey(action.target), query);
+      }
+    });
   return queries;
+}
+
+function actionDryRunValidationQuery(
+  action?: dataform.ITable | null,
+): string | undefined {
+  if (!action?.query?.trim()) {
+    return undefined;
+  }
+  return concatenateQueries([...(action.preOps || []), action.query, ...(action.postOps || [])]);
 }
 
 export type CancelReason = "timeout" | "user" | "cancellation";
@@ -803,10 +818,9 @@ export class Runner {
         expectedCoreVersion: this.executionOptions.expectedCoreVersion,
       });
       action.tasks = this.createTasksFromJitResponse(action, jitResponse);
-      const query =
-        jitResponse.table?.query ||
-        jitResponse.incrementalTable?.regular?.query ||
-        jitResponse.assertion?.query;
+      const query = actionDryRunValidationQuery(
+        jitResponse.table || jitResponse.incrementalTable?.regular || jitResponse.assertion,
+      );
       if (query) {
         this.jitDryRunValidationQueries.set(dryRunValidationQueryKey(action.target), query);
       }
