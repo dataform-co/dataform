@@ -375,7 +375,12 @@ export class Runner {
     // Work out all the schemas we are going to need.
     const databaseSchemas = new Map<string | undefined, Set<string>>();
     this.graph.actions
-      .filter((action) => !!action.target && !!action.target.schema)
+      .filter(
+        (action) =>
+          (action.tasks.length > 0 || !!action.jitCode) &&
+          !!action.target &&
+          !!action.target.schema,
+      )
       .forEach(({ target }) => {
         const trueDatabase = this.targetDatabase(target!);
         if (!databaseSchemas.has(trueDatabase)) {
@@ -402,7 +407,7 @@ export class Runner {
   private targetDatabase(target: dataform.ITarget): string | undefined {
     // Either may be unset (e.g. no defaultProject in workflow_settings.yaml, or older versions of
     // dataform), in which case BigQuery uses the project of the credentials.
-    return target.database || this.graph.projectConfig!.defaultDatabase || undefined;
+    return target.database || this.graph.projectConfig?.defaultDatabase || undefined;
   }
 
   private schemaKey(target: dataform.ITarget): string {
@@ -763,11 +768,15 @@ export class Runner {
       return dataform.TaskResult.ExecutionStatus.SUCCESSFUL;
     }
     try {
-      await this.dbadapter.execute(query, {
-        onCancel: (handleCancel) => this.eEmitter.on(CANCEL_EVENT, handleCancel),
-        rowLimit: 1,
-        bigquery: options.bigquery,
-      });
+      await retry(
+        () =>
+          this.dbadapter.execute(query, {
+            onCancel: (handleCancel) => this.eEmitter.on(CANCEL_EVENT, handleCancel),
+            rowLimit: 1,
+            bigquery: options.bigquery,
+          }),
+        options.bigquery.actionRetryLimit + 1 || 1,
+      );
       return dataform.TaskResult.ExecutionStatus.SUCCESSFUL;
     } catch (e) {
       const taskResult = actionResult.tasks[actionResult.tasks.length - 1];
@@ -776,7 +785,7 @@ export class Runner {
         : dataform.TaskResult.ExecutionStatus.FAILED;
       const schemaRef = [missingSchema.database, missingSchema.schema].filter(Boolean).join(".");
       taskResult.errorMessage =
-        `${this.graph.projectConfig!.warehouse} error: ${e.message} (in the query, validated ` +
+        `${this.graph.projectConfig?.warehouse} error: ${e.message} (in the query, validated ` +
         `separately because dataset ${schemaRef} doesn't exist yet)`;
       this.notifyListeners();
       return taskResult.status;
