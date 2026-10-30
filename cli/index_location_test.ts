@@ -253,8 +253,19 @@ post_operations {
 
       // Only a syntax check of the script creating the dataset wouldn't catch this.
       expect(runResult.exitCode).equals(1);
-      expect(`${runResult.stdout}\n${runResult.stderr}`).to.include(
-        "Unrecognized name: no_such_column",
+      const output = `${runResult.stdout}\n${runResult.stderr}`;
+      expect(output).to.include("Unrecognized name: no_such_column");
+
+      // The error position refers to the printed SQL (the statement wrapped in the script creating
+      // the dataset), even though the error comes from dry-running the query separately.
+      const printedSqlLines = output
+        .split("\n")
+        .filter((line) => line.trimStart().startsWith("> "))
+        .map((line) => line.trimStart().slice(2));
+      const [, line, column] = output.match(/no_such_column at \[(\d+):(\d+)\]/);
+      expect(printedSqlLines[Number(line) - 1].slice(Number(column) - 1)).to.match(
+        /^no_such_column/,
+        output,
       );
       await expectDatasetMissing(dataset);
     },

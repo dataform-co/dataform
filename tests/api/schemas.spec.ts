@@ -4,8 +4,10 @@ import { anyString, anything, instance, mock, verify, when } from "ts-mockito";
 import { Runner } from "df/cli/api";
 import { buildDryRunValidationQueries, dryRunValidationQueryKey } from "df/cli/api/commands/run";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
+import { ExecutionSql } from "df/cli/api/dbadapters/execution_sql";
 import { wrapWithCreateSchemaIfNotExists } from "df/cli/api/dbadapters/tasks";
 import { sleep, sleepUntil } from "df/common/promises";
+import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 
@@ -221,7 +223,7 @@ suite("schema creation", () => {
     expect(executedStatements).deep.equals([wrapped("new_ds", "JIT QUERY")]);
   });
 
-  test("in dry runs, wraps every action writing to a missing dataset and reports the original SQL", async () => {
+  test("in dry runs, wraps every action writing to a missing dataset and reports the SQL sent", async () => {
     const graph = dataform.ExecutionGraph.create({
       projectConfig,
       runConfig: {},
@@ -250,9 +252,33 @@ suite("schema creation", () => {
     expect(
       result.actions.map((action) => [action.target.name, action.tasks[0].compiledSql]),
     ).to.have.deep.members([
-      ["a", "CREATE TABLE a"],
-      ["b", "CREATE TABLE b"],
+      ["a", wrapped("new_ds", "CREATE TABLE a")],
+      ["b", wrapped("new_ds", "CREATE TABLE b")],
       ["c", "CREATE TABLE c"],
+    ]);
+  });
+
+  test("in real runs, reports the SQL sent for wrapped tasks only", async () => {
+    const graph = dataform.ExecutionGraph.create({
+      projectConfig,
+      runConfig: {},
+      warehouseState: {},
+      actions: [
+        tableAction("a", "new_ds", ["CREATE TABLE a"]),
+        tableAction("c", "existing_ds", ["CREATE TABLE c"]),
+      ],
+    });
+    const { mockedDbAdapter } = mockDbAdapter();
+
+    const result = await new Runner(instance(mockedDbAdapter), graph).execute().result();
+
+    expect(
+      result.actions.map((action) => [action.target.name, action.tasks[0].compiledSql]),
+    ).to.have.deep.members([
+      // Error positions refer to the wrapped SQL, so it's what is shown.
+      ["a", wrapped("new_ds", "CREATE TABLE a")],
+      // Unwrapped tasks show their own statement, as before.
+      ["c", undefined],
     ]);
   });
 
@@ -342,7 +368,7 @@ suite("schema creation", () => {
       const { mockedDbAdapter } = mockDbAdapter([["existing_ds"]], async (statement) => {
         if (statement === "SELECT a") {
           attempts++;
-          throw new Error("Unrecognized name: a");
+          throw new Error("Query error: Unrecognized name: a at [1:8]");
         }
         return { rows: [], metadata: {} };
       });
@@ -360,11 +386,11 @@ suite("schema creation", () => {
       expect(actionA.status).equals(dataform.ActionResult.ExecutionStatus.FAILED);
       expect(actionA.tasks).to.have.length(1);
       expect(actionA.tasks[0].status).equals(dataform.TaskResult.ExecutionStatus.FAILED);
+      // The position is shifted to refer to the wrapped statement shown as the compiled SQL.
       expect(actionA.tasks[0].errorMessage).equals(
-        "bigquery error: Unrecognized name: a (in the query, validated separately because " +
-          "dataset db.new_ds doesn't exist yet)",
+        "bigquery error: Query error: Unrecognized name: a at [3:8]",
       );
-      expect(actionA.tasks[0].compiledSql).equals("CREATE TABLE a AS SELECT a");
+      expect(actionA.tasks[0].compiledSql).equals(wrapped("new_ds", "CREATE TABLE a AS SELECT a"));
     });
 
     test("doesn't dry-run the query if the wrapped script fails", async () => {
@@ -473,6 +499,38 @@ suite("schema creation", () => {
           "SELECT 3",
         ],
       ]);
+    });
+
+    test("have the same lines as the executed statement", () => {
+      const table = dataform.Table.create({
+        target: { database: "db", schema: "ds", name: "t" },
+        enumType: dataform.TableType.TABLE,
+        preOps: ["DECLARE x INT64 DEFAULT 1", "SET x = 2 -- comment"],
+        // Compiled SQLX queries start with line breaks, which the statement keeps after `as `.
+        query: "\n\n  SELECT x,\n    y\n  FROM src\n",
+        postOps: ["SELECT 1"],
+        bigquery: { partitionBy: "DATE(ts)", clusterBy: ["y"] },
+      });
+      const [task] = new ExecutionSql(projectConfig, version).createTableTasks(table, {});
+      const statementLines = task.statement.split("\n");
+
+      const queryLines = buildDryRunValidationQueries(
+        dataform.CompiledGraph.create({ tables: [table] }),
+      )
+        .get(dryRunValidationQueryKey(table.target))
+        .split("\n");
+
+      expect(queryLines).to.have.length(statementLines.length);
+      // All lines match, except the one where the query starts: the statement has
+      // `create or replace table … as ` there, the validation query nothing.
+      const queryStartLine = 2;
+      expect(statementLines[queryStartLine]).to.match(/^create or replace table .* as\s*$/);
+      expect(queryLines[queryStartLine]).equals("");
+      queryLines.forEach((line, i) => {
+        if (i !== queryStartLine) {
+          expect(line).equals(statementLines[i]);
+        }
+      });
     });
   });
 

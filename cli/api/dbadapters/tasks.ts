@@ -71,10 +71,14 @@ function formatStatement(
   return code + comment;
 }
 
-export function concatenateQueries(statements: string[], modifier?: (mod: string) => string) {
+export function concatenateQueries(
+  statements: string[],
+  modifier?: (mod: string) => string,
+  trimLeadingWhitespace = true,
+) {
   const processed = statements
     .filter((statement) => !!statement)
-    .map((statement) => statement.trim())
+    .map((statement) => (trimLeadingWhitespace ? statement.trim() : statement.trimEnd()))
     .filter((statement) => statement.length > 0)
     .map((statement) => ({ statement, codeEnd: codeEndIndex(statement) }));
   let lastCodeIndex = -1;
@@ -89,6 +93,12 @@ export function concatenateQueries(statements: string[], modifier?: (mod: string
     )
     .join("\n");
 }
+
+/**
+ * Number of lines `wrapWithCreateSchemaIfNotExists()` adds before the wrapped statement: the
+ * statement starts on line `1 + CREATE_SCHEMA_WRAPPER_LINE_OFFSET` of the script.
+ */
+export const CREATE_SCHEMA_WRAPPER_LINE_OFFSET = 2;
 
 /**
  * Wraps the given statement (or script) so that the `database.schema` dataset is created, if it

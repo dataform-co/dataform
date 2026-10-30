@@ -29,3 +29,13 @@ export function parseBigqueryEvalError(error: IBigqueryEvaluationError) {
   }
   return evalError;
 }
+
+/**
+ * Shifts the line numbers of the `at [line:column]` positions in a BigQuery error message.
+ */
+export function shiftErrorPositionLines(message: string, lineOffset: number): string {
+  return message.replace(
+    /at \[(\d+):(\d+)\]/g,
+    (_, line: string, column: string) => `at [${Number(line) + lineOffset}:${column}]`,
+  );
+}
