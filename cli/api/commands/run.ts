@@ -506,10 +506,16 @@ export class Runner {
     try {
       // Start running tasks from the last executed task (if any), onwards.
       for (const task of action.tasks.slice(actionResult.tasks.length)) {
-        let schemaCreation = this.schemaCreationToWaitFor(action, task);
-        while (schemaCreation !== undefined) {
-          await schemaCreation;
-          schemaCreation = this.schemaCreationToWaitFor(action, task);
+        if (
+          actionResult.status === dataform.ActionResult.ExecutionStatus.RUNNING &&
+          !this.stopped &&
+          !this.cancelled
+        ) {
+          let schemaCreation = this.schemaCreationToWaitFor(action, task);
+          while (schemaCreation !== undefined && !this.stopped && !this.cancelled) {
+            await schemaCreation;
+            schemaCreation = this.schemaCreationToWaitFor(action, task);
+          }
         }
         if (this.stopped) {
           return actionResult;
