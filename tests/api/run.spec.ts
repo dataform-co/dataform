@@ -1,10 +1,11 @@
 import { config, expect } from "chai";
 import Long from "long";
-import { anyString, anything, capture, instance, mock, verify, when } from "ts-mockito";
+import { anyString, anything, capture, instance, mock, when } from "ts-mockito";
 
 import { Runner } from "df/cli/api";
 import { IDbAdapter } from "df/cli/api/dbadapters";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
+import { wrapWithCreateSchemaIfNotExists } from "df/cli/api/dbadapters/tasks";
 import { sleep, sleepUntil } from "df/common/promises";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
@@ -118,7 +119,7 @@ suite("@dataform/api/run", () => {
 
   test("execute", async () => {
     const mockedDbAdapter = mock(BigQueryDbAdapter);
-    when(mockedDbAdapter.createSchema(anyString(), anyString())).thenResolve(null);
+    when(mockedDbAdapter.schemas(anything())).thenResolve(["schema1", "schema2"]);
     when(
       mockedDbAdapter.execute(RUN_TEST_GRAPH.actions![0].tasks![0].statement!, anything()),
     ).thenResolve({
@@ -148,11 +149,9 @@ suite("@dataform/api/run", () => {
     expect(
       dataform.RunResult.create(cleanTiming(await runner.execute().result())).toJSON(),
     ).to.deep.equal(EXPECTED_RUN_RESULT.toJSON());
-    verify(mockedDbAdapter.createSchema("database", "schema1", anything())).once();
-    verify(mockedDbAdapter.createSchema("database2", "schema2", anything())).once();
   });
 
-  test("execute passes projectConfig.defaultLocation to BigQuery jobs and datasets", async () => {
+  test("execute passes projectConfig.defaultLocation to BigQuery jobs, including the ones creating datasets", async () => {
     const graph = dataform.ExecutionGraph.create({
       projectConfig: {
         warehouse: "bigquery",
@@ -173,13 +172,12 @@ suite("@dataform/api/run", () => {
     });
     const mockedDbAdapter = mock(BigQueryDbAdapter);
     when(mockedDbAdapter.schemas(anyString())).thenResolve([]);
-    when(mockedDbAdapter.createSchema(anyString(), anyString(), anything())).thenResolve(null);
     when(mockedDbAdapter.execute(anyString(), anything())).thenResolve({ rows: [], metadata: {} });
 
     await new Runner(instance(mockedDbAdapter), graph).execute().result();
 
-    verify(mockedDbAdapter.createSchema("db", "s", "europe-west1")).once();
-    const [, options] = capture(mockedDbAdapter.execute).last();
+    const [statement, options] = capture(mockedDbAdapter.execute).last();
+    expect(statement).to.equal(wrapWithCreateSchemaIfNotExists("db", "s", "SELECT 1"));
     expect(options.bigquery?.location).to.equal("europe-west1");
   });
 
@@ -188,7 +186,7 @@ suite("@dataform/api/run", () => {
     let stopWasCalled = false;
 
     const mockedDbAdapter = mock(BigQueryDbAdapter);
-    when(mockedDbAdapter.createSchema(anyString(), anyString())).thenResolve(null);
+    when(mockedDbAdapter.schemas(anything())).thenResolve(["schema1", "schema2"]);
     when(
       mockedDbAdapter.execute(RUN_TEST_GRAPH.actions![0].tasks![0].statement!, anything()),
     ).thenCall(async () => {
@@ -242,15 +240,13 @@ suite("@dataform/api/run", () => {
     expect(
       dataform.RunResult.create(cleanTiming(await runner.execute().result())).toJSON(),
     ).to.deep.equal(EXPECTED_RUN_RESULT.toJSON());
-    verify(mockedDbAdapter.createSchema("database", "schema1", anything())).once();
-    verify(mockedDbAdapter.createSchema("database2", "schema2", anything())).once();
   });
 
   suite("execute with retry", () => {
     test("should fail when execution fails too many times for the retry setting", async () => {
       const mockedDbAdapter = mock(BigQueryDbAdapter);
       const NEW_TEST_GRAPH = RUN_TEST_GRAPH;
-      when(mockedDbAdapter.createSchema(anyString(), anyString())).thenResolve(null);
+      when(mockedDbAdapter.schemas(anything())).thenResolve(["schema1", "schema2"]);
       when(
         mockedDbAdapter.execute(NEW_TEST_GRAPH.actions![0].tasks![0].statement!, anything()),
       ).thenResolve({
@@ -288,7 +284,7 @@ suite("@dataform/api/run", () => {
     test("should pass when execution fails initially, then passes with the number of allowed retries", async () => {
       const mockedDbAdapter = mock(BigQueryDbAdapter);
       const NEW_TEST_GRAPH = RUN_TEST_GRAPH;
-      when(mockedDbAdapter.createSchema(anyString(), anyString())).thenResolve(null);
+      when(mockedDbAdapter.schemas(anything())).thenResolve(["schema1", "schema2"]);
       when(
         mockedDbAdapter.execute(NEW_TEST_GRAPH.actions![0].tasks![0].statement!, anything()),
       ).thenResolve({
@@ -345,7 +341,7 @@ suite("@dataform/api/run", () => {
       const NEW_TEST_GRAPH_WITH_OPERATION = RUN_TEST_GRAPH;
       NEW_TEST_GRAPH_WITH_OPERATION.actions[1].tasks[0].type = "operation";
 
-      when(mockedDbAdapter.createSchema(anyString(), anyString())).thenResolve(null);
+      when(mockedDbAdapter.schemas(anything())).thenResolve(["schema1", "schema2"]);
       when(
         mockedDbAdapter.execute(RUN_TEST_GRAPH.actions![0].tasks![0].statement!, anything()),
       ).thenResolve({
@@ -426,7 +422,6 @@ suite("@dataform/api/run", () => {
           });
         }),
       schemas: (_) => Promise.resolve([]),
-      createSchema: (_, __) => Promise.resolve(),
       table: (_) => undefined,
     } as IDbAdapter;
 
@@ -450,7 +445,7 @@ suite("@dataform/api/run", () => {
 
       const mockedDbAdapter = mock(BigQueryDbAdapter);
       const NEW_TEST_GRAPH = RUN_TEST_GRAPH;
-      when(mockedDbAdapter.createSchema(anyString(), anyString())).thenResolve(null);
+      when(mockedDbAdapter.schemas(anything())).thenResolve(["schema1", "schema2"]);
       when(
         mockedDbAdapter.execute(NEW_TEST_GRAPH.actions![0].tasks![0].statement!, anything()),
       ).thenCall((statement: string, options: any) => {
@@ -515,7 +510,7 @@ suite("@dataform/api/run", () => {
         bigqueryLabels: { action_level: "specific_value" },
       };
 
-      when(mockedDbAdapter.createSchema(anyString(), anyString())).thenResolve(null);
+      when(mockedDbAdapter.schemas(anything())).thenResolve(["schema1", "schema2"]);
       when(
         mockedDbAdapter.execute(NEW_TEST_GRAPH.actions![0].tasks![0].statement!, anything()),
       ).thenCall((statement: string, options: any) => {
@@ -620,7 +615,7 @@ suite("@dataform/api/run", () => {
       ],
     });
     const mockedDbAdapter = mock(BigQueryDbAdapter);
-    when(mockedDbAdapter.createSchema(anyString(), anyString())).thenResolve(null);
+    when(mockedDbAdapter.schemas(anything())).thenResolve(["schema1", "schema2"]);
     when(mockedDbAdapter.execute(anything(), anything())).thenResolve({
       rows: [],
       metadata: {},

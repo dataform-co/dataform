@@ -565,7 +565,8 @@ function createMocks() {
   const mockAdapter = mock<IDbAdapter>();
   const mockClient = mock<IDbClient>();
 
-  when(mockAdapter.schemas(anything())).thenResolve([]);
+  // The target datasets exist, so tasks aren't wrapped in a script creating them.
+  when(mockAdapter.schemas(anything())).thenResolve(["sch"]);
   when(mockAdapter.execute(anything(), anything())).thenCall((statement: string) => {
     if (statement.includes("fail") || statement.includes("nonexistent")) {
       throw new Error("RPC DB Fail");

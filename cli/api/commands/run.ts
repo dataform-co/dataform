@@ -5,6 +5,7 @@ import { JitCompileChildProcess, JitCompiler } from "df/cli/api/commands/jit/com
 import * as dbadapters from "df/cli/api/dbadapters";
 import { IBigQueryExecutionOptions } from "df/cli/api/dbadapters/bigquery";
 import { ExecutionSql } from "df/cli/api/dbadapters/execution_sql";
+import { concatenateQueries, wrapWithCreateSchemaIfNotExists } from "df/cli/api/dbadapters/tasks";
 import { LineageEmitter } from "df/cli/api/lineage/emitter";
 import { Flags } from "df/common/flags";
 import { retry } from "df/common/promises";
@@ -46,9 +47,55 @@ export interface IExecutionOptions {
    */
   expectedCoreVersion?: string;
   lineageEmitter?: LineageEmitter;
+  dryRunValidationQueries?: Map<string, string>;
+}
+
+/**
+ * Key of `IExecutionOptions.dryRunValidationQueries`. Unlike `targetStringifier`, it doesn't depend
+ * on which (possibly empty) fields happen to be set on the target proto, so that targets of the
+ * compiled graph and of the execution graph match.
+ */
+export function dryRunValidationQueryKey(target: dataform.ITarget): string {
+  return JSON.stringify([target.database || "", target.schema || "", target.name || ""]);
+}
+
+/**
+ * Returns the compiled SELECT queries (including pre and post operations) of the tables, views,
+ * incremental tables and assertions of the graph, keyed by `dryRunValidationQueryKey()`, for
+ * `IExecutionOptions.dryRunValidationQueries`. JiT actions are skipped: their query is only known
+ * once they're compiled during the run.
+ */
+export function buildDryRunValidationQueries(
+  compiledGraph: dataform.ICompiledGraph,
+): Map<string, string> {
+  const queries = new Map<string, string>();
+  [...(compiledGraph.tables || []), ...(compiledGraph.assertions || [])]
+    .filter((action) => !action.disabled)
+    .forEach((action) => {
+      const query = actionDryRunValidationQuery(action);
+      if (query) {
+        queries.set(dryRunValidationQueryKey(action.target), query);
+      }
+    });
+  return queries;
+}
+
+function actionDryRunValidationQuery(action?: dataform.ITable | null): string | undefined {
+  if (!action?.query?.trim()) {
+    return undefined;
+  }
+  return concatenateQueries([...(action.preOps || []), action.query, ...(action.postOps || [])]);
 }
 
 export type CancelReason = "timeout" | "user" | "cancellation";
+
+/** A target dataset that doesn't exist yet. */
+interface IMissingSchema {
+  // Unset if the action's target has no database and there's no default database, in which case
+  // BigQuery uses the project of the credentials.
+  database: string | undefined;
+  schema: string;
+}
 
 export function run(
   dbadapter: dbadapters.IDbAdapter,
@@ -103,6 +150,9 @@ export class Runner {
   private timedOut = false;
   private skipReason: string = "";
   private executionTask: Promise<dataform.IRunResult>;
+  private missingSchemas = new Map<string, IMissingSchema>();
+  private schemaCreations = new Map<string, Promise<void>>();
+  private jitDryRunValidationQueries = new Map<string, string>();
 
   constructor(
     private readonly dbadapter: dbadapters.IDbAdapter,
@@ -222,10 +272,7 @@ export class Runner {
     this.runResult.timing = timer.current();
     this.notifyListeners();
 
-    // If we're not resuming an existing run, prepare schemas.
-    if (this.runResult.actions.length === 0) {
-      await this.prepareAllSchemas();
-    }
+    this.missingSchemas = await this.findMissingSchemas();
 
     // Recursively execute all actions as they become executable.
     await this.executeAllActionsReadyForExecution();
@@ -252,37 +299,50 @@ export class Runner {
     return this.runResult;
   }
 
-  private async prepareAllSchemas() {
-    // Work out all the schemas we are going to need to create first.
-    const databaseSchemas = new Map<string, Set<string>>();
+  /**
+   * Returns the target datasets of all actions that don't exist yet, keyed by `schemaKey()`.
+   */
+  private async findMissingSchemas(): Promise<Map<string, IMissingSchema>> {
+    // Work out all the schemas we are going to need.
+    const databaseSchemas = new Map<string | undefined, Set<string>>();
     this.graph.actions
-      .filter((action) => !!action.target && !!action.target.schema)
+      .filter(
+        (action) =>
+          (action.tasks.length > 0 || !!action.jitCode) &&
+          !!action.target &&
+          !!action.target.schema,
+      )
       .forEach(({ target }) => {
-        // This field may not be present for older versions of dataform.
-        const trueDatabase = target.database || this.graph.projectConfig.defaultDatabase;
+        const trueDatabase = this.targetDatabase(target!);
         if (!databaseSchemas.has(trueDatabase)) {
           databaseSchemas.set(trueDatabase, new Set<string>());
         }
         databaseSchemas.get(trueDatabase).add(target.schema);
       });
 
-    // Create all nonexistent schemas.
+    // Find all nonexistent schemas.
+    const missingSchemas = new Map<string, IMissingSchema>();
     await Promise.all(
       Array.from(databaseSchemas.entries()).map(async ([database, schemas]) => {
         const existingSchemas = new Set(await this.dbadapter.schemas(database));
-        await Promise.all(
-          Array.from(schemas)
-            .filter((schema) => !existingSchemas.has(schema))
-            .map((schema) =>
-              this.dbadapter.createSchema(
-                database,
-                schema,
-                this.graph.projectConfig?.defaultLocation || undefined,
-              ),
-            ),
-        );
+        Array.from(schemas)
+          .filter((schema) => !existingSchemas.has(schema))
+          .forEach((schema) =>
+            missingSchemas.set(this.schemaKey({ database, schema }), { database, schema }),
+          );
       }),
     );
+    return missingSchemas;
+  }
+
+  private targetDatabase(target: dataform.ITarget): string | undefined {
+    // Either may be unset (e.g. no defaultProject in workflow_settings.yaml, or older versions of
+    // dataform), in which case BigQuery uses the project of the credentials.
+    return target.database || this.graph.projectConfig?.defaultDatabase || undefined;
+  }
+
+  private schemaKey(target: dataform.ITarget): string {
+    return `${this.targetDatabase(target)}.${target.schema}`;
   }
 
   private async executeAllActionsReadyForExecution() {
@@ -449,6 +509,17 @@ export class Runner {
     try {
       // Start running tasks from the last executed task (if any), onwards.
       for (const task of action.tasks.slice(actionResult.tasks.length)) {
+        if (
+          actionResult.status === dataform.ActionResult.ExecutionStatus.RUNNING &&
+          !this.stopped &&
+          !this.cancelled
+        ) {
+          let schemaCreation = this.schemaCreationToWaitFor(action, task);
+          while (schemaCreation !== undefined && !this.stopped && !this.cancelled) {
+            await schemaCreation;
+            schemaCreation = this.schemaCreationToWaitFor(action, task);
+          }
+        }
         if (this.stopped) {
           return actionResult;
         }
@@ -456,9 +527,11 @@ export class Runner {
           actionResult.status === dataform.ActionResult.ExecutionStatus.RUNNING &&
           !this.cancelled
         ) {
-          const taskStatus = await this.executeTask(this.dbadapter, task, actionResult, {
-            bigquery: this.getBigQueryExecutionOptions(action),
-          });
+          const taskStatus = await this.executeTaskCreatingMissingSchema(
+            action,
+            task,
+            actionResult,
+          );
           if (taskStatus === dataform.TaskResult.ExecutionStatus.FAILED) {
             actionResult.status = dataform.ActionResult.ExecutionStatus.FAILED;
           } else if (taskStatus === dataform.TaskResult.ExecutionStatus.CANCELLED) {
@@ -528,11 +601,141 @@ export class Runner {
     return actionResult;
   }
 
+  /**
+   * Returns the target dataset to create in the same job as the given task, or null if there's
+   * none. Every task in an action is checked.
+   */
+  private missingSchemaToCreate(
+    action: dataform.IExecutionAction,
+    task: dataform.IExecutionTask,
+  ): IMissingSchema | null {
+    if (!action.target?.schema) {
+      return null;
+    }
+    // Assertion tasks must stay single statements: their result is read from the job's rows,
+    // and a script's result would be that of its last statement.
+    if (task.type === "assertion") {
+      return null;
+    }
+    return this.missingSchemas.get(this.schemaKey(action.target)) || null;
+  }
+
+  /**
+   * Returns the job currently trying to create the given task's target dataset, if the task would
+   * otherwise try to create it too. When it finishes, check again: another waiting task may have
+   * become the next creator in the meantime.
+   */
+  private schemaCreationToWaitFor(
+    action: dataform.IExecutionAction,
+    task: dataform.IExecutionTask,
+  ): Promise<void> | undefined {
+    if (!this.missingSchemaToCreate(action, task)) {
+      return undefined;
+    }
+    return this.schemaCreations.get(this.schemaKey(action.target));
+  }
+
+  /**
+   * Executes the task. If its target dataset is still missing, the task is wrapped so that the
+   * dataset is created in the same job. In a real run (not a dry run), other tasks writing to the
+   * dataset wait for that job (see `schemaCreationToWaitFor()`): if it succeeds, they run unwrapped;
+   * if it fails, the dataset may or may not have been created, so the next one tries to create it.
+   */
+  private async executeTaskCreatingMissingSchema(
+    action: dataform.IExecutionAction,
+    task: dataform.IExecutionTask,
+    actionResult: dataform.IActionResult,
+  ): Promise<dataform.TaskResult.ExecutionStatus> {
+    const options = { bigquery: this.getBigQueryExecutionOptions(action) };
+    const missingSchema = this.missingSchemaToCreate(action, task);
+    if (!missingSchema) {
+      return this.executeTask(this.dbadapter, task, actionResult, options);
+    }
+    const statement = wrapWithCreateSchemaIfNotExists(
+      missingSchema.database,
+      missingSchema.schema,
+      task.statement,
+    );
+    // Dry runs don't create the dataset, so there's no rate limit to protect, and nothing to wait
+    // for: every task writing to the dataset is wrapped.
+    if (this.executionOptions.bigquery?.dryRun) {
+      const status = await this.executeTask(this.dbadapter, task, actionResult, options, statement);
+      if (status !== dataform.TaskResult.ExecutionStatus.SUCCESSFUL) {
+        return status;
+      }
+      return this.dryRunValidationQuery(action, actionResult, missingSchema, options);
+    }
+
+    // Registered without awaiting anything since `schemaCreationToWaitFor()` returned nothing, so
+    // no other task can become the creator in between.
+    const key = this.schemaKey(action.target);
+    let release: () => void;
+    this.schemaCreations.set(key, new Promise<void>((resolve) => (release = resolve)));
+    try {
+      const status = await this.executeTask(this.dbadapter, task, actionResult, options, statement);
+      if (status === dataform.TaskResult.ExecutionStatus.SUCCESSFUL) {
+        this.missingSchemas.delete(key);
+      }
+      return status;
+    } finally {
+      this.schemaCreations.delete(key);
+      release!();
+    }
+  }
+
+  /**
+   * In a dry run, BigQuery only checks the syntax of the wrapped script of a task writing to a
+   * dataset that doesn't exist yet. Dry-run the action's SELECT query on its own, if it has one, to
+   * fully check it. A failure is reported on the task, which was just executed.
+   */
+  private async dryRunValidationQuery(
+    action: dataform.IExecutionAction,
+    actionResult: dataform.IActionResult,
+    missingSchema: IMissingSchema,
+    options: { bigquery?: dataform.IBigQueryOptions & IBigQueryExecutionOptions },
+  ): Promise<dataform.TaskResult.ExecutionStatus> {
+    const key = dryRunValidationQueryKey(action.target);
+    const query =
+      this.jitDryRunValidationQueries.get(key) ??
+      this.executionOptions.dryRunValidationQueries?.get(key);
+    if (!query) {
+      return dataform.TaskResult.ExecutionStatus.SUCCESSFUL;
+    }
+    try {
+      await retry(
+        () =>
+          this.dbadapter.execute(query, {
+            onCancel: (handleCancel) => this.eEmitter.on(CANCEL_EVENT, handleCancel),
+            rowLimit: 1,
+            bigquery: options.bigquery,
+          }),
+        options.bigquery.actionRetryLimit + 1 || 1,
+      );
+      return dataform.TaskResult.ExecutionStatus.SUCCESSFUL;
+    } catch (e) {
+      const taskResult = actionResult.tasks[actionResult.tasks.length - 1];
+      taskResult.status = this.cancelled
+        ? dataform.TaskResult.ExecutionStatus.CANCELLED
+        : dataform.TaskResult.ExecutionStatus.FAILED;
+      const schemaRef = [missingSchema.database, missingSchema.schema].filter(Boolean).join(".");
+      taskResult.errorMessage =
+        `${this.graph.projectConfig?.warehouse} error: ${e.message} (in the query, validated ` +
+        `separately because dataset ${schemaRef} doesn't exist yet)`;
+      this.notifyListeners();
+      return taskResult.status;
+    }
+  }
+
+  /**
+   * Executes the given task. If set, `statementOverride` is executed instead of the task's
+   * statement, while the task's own statement is still reported as its compiled SQL.
+   */
   private async executeTask(
     client: dbadapters.IDbClient,
     task: dataform.IExecutionTask,
     parentAction: dataform.IActionResult,
     options: { bigquery?: dataform.IBigQueryOptions & IBigQueryExecutionOptions },
+    statementOverride?: string,
   ): Promise<dataform.TaskResult.ExecutionStatus> {
     const timer = Timer.start();
     const taskResult: dataform.ITaskResult = {
@@ -552,7 +755,7 @@ export class Runner {
         // Retry this function a given number of times, configurable by user
         const { rows, metadata } = await retry(
           () =>
-            client.execute(task.statement, {
+            client.execute(statementOverride ?? task.statement, {
               onCancel: (handleCancel) => this.eEmitter.on(CANCEL_EVENT, handleCancel),
               rowLimit: 1,
               bigquery: options.bigquery,
@@ -628,6 +831,12 @@ export class Runner {
         expectedCoreVersion: this.executionOptions.expectedCoreVersion,
       });
       action.tasks = this.createTasksFromJitResponse(action, jitResponse);
+      const query = actionDryRunValidationQuery(
+        jitResponse.table || jitResponse.incrementalTable?.regular || jitResponse.assertion,
+      );
+      if (query) {
+        this.jitDryRunValidationQueries.set(dryRunValidationQueryKey(action.target), query);
+      }
     } finally {
       if (cancelHandler) {
         this.eEmitter.removeListener(CANCEL_EVENT, cancelHandler);
