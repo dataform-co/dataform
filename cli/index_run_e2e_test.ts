@@ -456,6 +456,8 @@ select 2
 config { 
   type: "operations"
 }
+-- Operations without an output don't get their dataset created by Dataform.
+CREATE SCHEMA IF NOT EXISTS \`\${dataform.projectConfig.defaultDatabase}.\${dataform.projectConfig.defaultSchema}\`;
 CREATE OR REPLACE TABLE \`\${dataform.projectConfig.defaultDatabase}.\${dataform.projectConfig.defaultSchema}.example_incremental\` AS SELECT 1 AS id, 'old' AS field1
 `,
       );
@@ -489,8 +491,7 @@ DROP SCHEMA IF EXISTS \`\${dataform.projectConfig.defaultDatabase}.\${dataform.p
       { timeout: 120000 },
       async () => {
         try {
-          // Run setup operation to create the table in BigQuery.
-          // Dataform will automatically create the uniqueDataset schema.
+          // Run setup operation to create the uniqueDataset schema and the table in BigQuery.
           await runCli("run", [
             projectDir,
             "--credentials",

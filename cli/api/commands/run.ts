@@ -102,6 +102,15 @@ function actionDryRunValidationQuery(action?: dataform.ITable | null): string | 
 
 export type CancelReason = "timeout" | "user" | "cancellation";
 
+/**
+ * Whether the action writes to its target, so that the target dataset must exist. Operations only
+ * do if they're declared with `hasOutput: true`; otherwise their target is just a name, and their
+ * SQL may write anywhere (or nowhere), so their target dataset is not created.
+ */
+function writesToTarget(action: dataform.IExecutionAction): boolean {
+  return action.type !== "operation" || !!action.hasOutput;
+}
+
 /** A target dataset that doesn't exist yet. */
 interface IMissingSchema {
   // Unset if the action's target has no database and there's no default database, in which case
@@ -323,7 +332,8 @@ export class Runner {
         (action) =>
           (action.tasks.length > 0 || !!action.jitCode) &&
           !!action.target &&
-          !!action.target.schema,
+          !!action.target.schema &&
+          writesToTarget(action),
       )
       .forEach(({ target }) => {
         const trueDatabase = this.targetDatabase(target!);
@@ -622,7 +632,7 @@ export class Runner {
     action: dataform.IExecutionAction,
     task: dataform.IExecutionTask,
   ): IMissingSchema | null {
-    if (!action.target?.schema) {
+    if (!action.target?.schema || !writesToTarget(action)) {
       return null;
     }
     // Assertion tasks must stay single statements: their result is read from the job's rows,
