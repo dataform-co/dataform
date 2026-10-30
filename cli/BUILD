@@ -110,6 +110,7 @@ ts_test_suite(
     name = "integration_tests",
     srcs = [
         "index_compile_isolated_environment_test.ts",
+        "index_location_test.ts",
         "index_run_e2e_test.ts",
         "tests/jit/index_jit_advanced_test.ts",
         "tests/jit/index_jit_core_version_test.ts",
