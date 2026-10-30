@@ -195,6 +195,72 @@ suite("schema creation", () => {
     ]);
   });
 
+  test("operations only create their target dataset if they have an output", async () => {
+    const operation = (name: string, schema: string, hasOutput: boolean) => ({
+      type: "operation",
+      target: { database: "db", schema, name },
+      hasOutput,
+      tasks: [{ type: "statement", statement: `OPERATION ${name}` }],
+      dependencyTargets: [] as dataform.ITarget[],
+    });
+    const graph = dataform.ExecutionGraph.create({
+      projectConfig,
+      runConfig: {},
+      warehouseState: {},
+      actions: [
+        operation("with_output", "new_ds", true),
+        // Its target dataset is never created, even though it doesn't exist.
+        operation("without_output", "new_ds_2", false),
+      ],
+    });
+    const { mockedDbAdapter, executedStatements } = mockDbAdapter();
+
+    const result = await new Runner(instance(mockedDbAdapter), graph).execute().result();
+
+    expect(result.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
+    expect(executedStatements).to.have.members([
+      wrapped("new_ds", "OPERATION with_output"),
+      "OPERATION without_output",
+    ]);
+  });
+
+  test("operations without an output don't wait for their target dataset to be created", async () => {
+    const graph = dataform.ExecutionGraph.create({
+      projectConfig,
+      runConfig: {},
+      warehouseState: {},
+      actions: [
+        tableAction("a", "new_ds", ["CREATE TABLE a"]),
+        {
+          type: "operation",
+          target: { database: "db", schema: "new_ds", name: "op" },
+          hasOutput: false,
+          tasks: [{ type: "statement", statement: "OPERATION" }],
+          dependencyTargets: [],
+        },
+      ],
+    });
+    let operationStarted = false;
+    const { mockedDbAdapter, executedStatements } = mockDbAdapter(
+      [["existing_ds"]],
+      async (statement) => {
+        if (statement === wrapped("new_ds", "CREATE TABLE a")) {
+          // Would never finish if the operation waited for "a" to create the dataset.
+          await sleepUntil(() => operationStarted);
+        }
+        if (statement === "OPERATION") {
+          operationStarted = true;
+        }
+        return { rows: [], metadata: {} };
+      },
+    );
+
+    const result = await new Runner(instance(mockedDbAdapter), graph).execute().result();
+
+    expect(result.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
+    expect(executedStatements).to.have.members([wrapped("new_ds", "CREATE TABLE a"), "OPERATION"]);
+  });
+
   test("wraps tasks produced by JiT compilation", async () => {
     const graph = dataform.ExecutionGraph.create({
       projectConfig,
@@ -204,6 +270,7 @@ suite("schema creation", () => {
         {
           type: "operation",
           target: { database: "db", schema: "new_ds", name: "jit_op" },
+          hasOutput: true,
           tasks: [],
           jitCode: "async () => ({ queries: ['JIT QUERY'] })",
           dependencyTargets: [],
@@ -331,6 +398,7 @@ suite("schema creation", () => {
         {
           type: "operation",
           target: { database: "db", schema: "new_ds", name: "op" },
+          hasOutput: true,
           tasks: [{ type: "statement", statement: "OPERATION" }],
           dependencyTargets: [],
         },
