@@ -711,6 +711,13 @@ suite("@dataform/api/run", () => {
             ],
             dependencyTargets: [],
           },
+          {
+            type: "table",
+            tableType: "table",
+            target: { database: "disabled_db", schema: "disabled_ds", name: "disabled" },
+            tasks: [],
+            dependencyTargets: [],
+          },
         ],
       });
       const { mockedDbAdapter, executedStatements } = mockDbAdapter();
@@ -718,6 +725,7 @@ suite("@dataform/api/run", () => {
       const result = await new Runner(instance(mockedDbAdapter), graph).execute().result();
 
       expect(result.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
+      verify(mockedDbAdapter.schemas("disabled_db")).never();
       expect(executedStatements).to.have.members([
         wrapped("new_ds", "CREATE TABLE a"),
         // The dataset was created by the first task, so later tasks aren't wrapped.
@@ -974,21 +982,24 @@ suite("@dataform/api/run", () => {
         expect(executedStatements).to.have.length(4);
       });
 
-      test("reports a failure of the query on the action's task", async () => {
+      test("reports a failure of the query on the action's task after retries", async () => {
+        let attempts = 0;
         const { mockedDbAdapter } = mockDbAdapter([["existing_ds"]], async (statement) => {
           if (statement === "SELECT a") {
+            attempts++;
             throw new Error("Unrecognized name: a");
           }
           return { rows: [], metadata: {} };
         });
 
         const result = await new Runner(instance(mockedDbAdapter), graph, {
-          bigquery: { dryRun: true },
+          bigquery: { dryRun: true, actionRetryLimit: 1 },
           dryRunValidationQueries,
         })
           .execute()
           .result();
 
+        expect(attempts).equals(2);
         expect(result.status).equals(dataform.RunResult.ExecutionStatus.FAILED);
         const actionA = result.actions.find((action) => action.target.name === "a");
         expect(actionA.status).equals(dataform.ActionResult.ExecutionStatus.FAILED);
