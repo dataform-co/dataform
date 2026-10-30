@@ -34,6 +34,24 @@ suite("concatenateQueries", () => {
     );
   });
 
+  test("doesn't mistake -- inside a string literal for a trailing comment", () => {
+    expect(concatenateQueries(["DELETE FROM t WHERE note = '--'", "SELECT 1"])).deep.equals(
+      "DELETE FROM t WHERE note = '--';\nSELECT 1",
+    );
+  });
+
+  test("adds semicolon before trailing # comment", () => {
+    expect(concatenateQueries(["SELECT 1 # hash comment", "SELECT 2"])).deep.equals(
+      "SELECT 1; # hash comment\nSELECT 2",
+    );
+  });
+
+  test("adds semicolon after the code when the statement ends with several comment lines", () => {
+    expect(concatenateQueries(["SELECT 1 -- first\n-- second", "SELECT 2"])).deep.equals(
+      "SELECT 1; -- first\n-- second\nSELECT 2",
+    );
+  });
+
   test("preserves single line comments within a query", () => {
     expect(concatenateQueries(["SELECT 1\n--test\nFROM UNNEST([]);"])).deep.equals(
       "SELECT 1\n--test\nFROM UNNEST([]);",
