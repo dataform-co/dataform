@@ -2,6 +2,7 @@ import yargs from "yargs";
 
 import { build, credentials, run, test } from "df/cli/api";
 import { compileForRun } from "df/cli/api/commands/compile";
+import { checkJobLabelLimit } from "df/cli/api/commands/run";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 import { LineageEmitter } from "df/cli/api/lineage/emitter";
 import { createLineageEmitter as createLineageEmitterFromFactory } from "df/cli/api/lineage/emitter_factory";
@@ -119,6 +120,17 @@ export const runCommand: ICommand<IRunArgs> = {
       dbadapter,
     );
 
+    // BigQuery rejects jobs with more than 64 labels, so check before anything runs.
+    const jobLabelLimitError = checkJobLabelLimit(
+      executionGraph.actions,
+      argv.runTests ? compiledGraph.tests : [],
+      argv.jobLabels,
+    );
+    if (jobLabelLimitError) {
+      printError(jobLabelLimitError);
+      return 1;
+    }
+
     if (
       argv.dryRun &&
       isJsonOutput &&
@@ -134,7 +146,7 @@ export const runCommand: ICommand<IRunArgs> = {
 
     if (argv.runTests) {
       logger.log(`Running ${compiledGraph.tests.length} unit tests...\n`);
-      const testResults = await test(dbadapter, compiledGraph.tests);
+      const testResults = await test(dbadapter, compiledGraph.tests, argv.jobLabels);
       testResults.forEach((testResult) => printTestResult(testResult));
       if (testResults.some((testResult) => !testResult.successful)) {
         printError("\nUnit tests did not pass; aborting run.");

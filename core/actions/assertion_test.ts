@@ -44,7 +44,9 @@ actions:
     description: description
     hermetic: true
     dependOnDependencyAssertions: true
-    reservation: reservation`,
+    reservation: reservation
+    jobLabels:
+      job_key: job_val`,
       );
       writeDefinitionFile(projectDir, "action.sql", "SELECT 1");
       writeDefinitionFile(projectDir, "operation.sqlx", "SELECT 1");
@@ -68,6 +70,9 @@ actions:
             actionDescriptor: {
               description: "description",
               reservation: "reservation",
+              jobLabels: {
+                job_key: "job_val",
+              },
             },
             disabled: true,
             fileName: "definitions/action.sql",
@@ -315,6 +320,38 @@ actions:
         expect(result.compile.compiledGraph.tables.length).equals(1);
       });
     });
+  });
+
+  test("JS assert().description() preserves jobLabels and reservation on actionDescriptor", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
+    writeDefinitionFile(
+      projectDir,
+      "assertion.js",
+      `
+assert("name", {
+  reservation: "projects/p/locations/US/reservations/r",
+  jobLabels: {
+    env: "prod",
+  },
+})
+  .description("my assertion description")
+  .query("SELECT 1 WHERE FALSE");
+`,
+    );
+
+    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+    expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+    expect(asPlainObject(result.compile.compiledGraph.assertions[0]?.actionDescriptor)).deep.equals(
+      {
+        description: "my assertion description",
+        reservation: "projects/p/locations/US/reservations/r",
+        jobLabels: {
+          env: "prod",
+        },
+      },
+    );
   });
 
   suite("Lakehouse (4-part) support and validation", () => {

@@ -1,25 +1,33 @@
+import { resolveJobLabels } from "df/cli/api/commands/run";
 import * as dbadapters from "df/cli/api/dbadapters";
 import { dataform } from "df/protos/ts";
 
 export async function test(
   dbadapter: dbadapters.IDbAdapter,
   tests: dataform.ITest[],
+  executionLabels?: { [label: string]: string },
 ): Promise<dataform.ITestResult[]> {
-  return await Promise.all(tests.map((testCase) => runTest(dbadapter, testCase)));
+  return await Promise.all(tests.map((testCase) => runTest(dbadapter, testCase, executionLabels)));
 }
 
 async function runTest(
   dbadapter: dbadapters.IDbAdapter,
   testCase: dataform.ITest,
+  executionLabels?: { [label: string]: string },
 ): Promise<dataform.ITestResult> {
   // TODO: Test results are currently limited to 1MB.
   // We should paginate test results to remove this limit.
   let actualResults;
   let expectedResults;
+  const labels = resolveJobLabels(testCase.actionDescriptor, executionLabels);
+  const executeOptions = {
+    byteLimit: 1024 * 1024,
+    ...(Object.keys(labels).length > 0 ? { bigquery: { labels } } : {}),
+  };
   try {
     [actualResults, expectedResults] = await Promise.all([
-      dbadapter.execute(testCase.testQuery, { byteLimit: 1024 * 1024 }),
-      dbadapter.execute(testCase.expectedOutputQuery, { byteLimit: 1024 * 1024 }),
+      dbadapter.execute(testCase.testQuery, executeOptions),
+      dbadapter.execute(testCase.expectedOutputQuery, executeOptions),
     ]);
   } catch (e) {
     return {

@@ -186,6 +186,9 @@ export function workflowSettingsAsProjectConfig(
   if (workflowSettings.lineage) {
     projectConfig.lineageEnabled = workflowSettings.lineage.enabled;
   }
+  if (workflowSettings.defaultJobLabels) {
+    projectConfig.defaultJobLabels = workflowSettings.defaultJobLabels;
+  }
   if (workflowSettings.defaultLakehouseConfig) {
     projectConfig.defaultLakehouseConfig = {};
     if (workflowSettings.defaultLakehouseConfig.catalog) {

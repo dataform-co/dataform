@@ -9,8 +9,11 @@ import {
   getStorageUriForIcebergTable,
   resolvableAsActionConfigTarget,
   resolvableAsTarget,
+  setActionJobLabels,
+  snakeToCamelKeys,
   toResolvable,
   validateConnectionFormat,
+  validateJobLabels,
   validateNoMixedCompilationMode,
   validateStorageUriFormat,
 } from "./utils";
@@ -399,6 +402,238 @@ suite("Dataform Utility Validations", () => {
       } finally {
         globalAny.__dataform_current_file = previousCurrentFile;
       }
+    });
+  });
+
+  suite("validateJobLabels", () => {
+    test("returns an empty object for undefined, null or empty labels", () => {
+      expect(validateJobLabels(undefined)).to.deep.equal({});
+      expect(validateJobLabels(null)).to.deep.equal({});
+      expect(validateJobLabels({})).to.deep.equal({});
+    });
+
+    test("returns valid label keys and values unchanged", () => {
+      const labels = {
+        a: "",
+        env: "prod",
+        team_name: "data_eng-1",
+        "cost-center-123": "456_abc-def",
+        dataform: "allowed_without_underscore_or_hyphen_suffix",
+        gcp: "allowed",
+        goog: "allowed",
+        origin_custom: "allowed",
+        ["a".repeat(63)]: "v".repeat(63),
+      };
+      expect(validateJobLabels(labels)).to.deep.equal(labels);
+    });
+
+    test("does not throw for exactly 32 labels", () => {
+      const labels: { [key: string]: string } = {};
+      for (let i = 0; i < 32; i++) {
+        labels[`key_${i}`] = `val_${i}`;
+      }
+      assertNoThrow(() => validateJobLabels(labels));
+    });
+
+    test("throws when more than 32 labels are provided", () => {
+      const labels: { [key: string]: string } = {};
+      for (let i = 0; i < 33; i++) {
+        labels[`key_${i}`] = `val_${i}`;
+      }
+      assertThrowsWithMessage(
+        () => validateJobLabels(labels, "jobLabels"),
+        "Too many job labels in jobLabels: maximum allowed is 32, but got 33.",
+      );
+    });
+
+    [["a", "b"], false, "", 0].forEach((invalidLabels) => {
+      test(`throws when labels is ${JSON.stringify(invalidLabels)} instead of a plain object`, () => {
+        assertThrowsWithMessage(
+          () => validateJobLabels(invalidLabels, "defaultJobLabels"),
+          "defaultJobLabels must be an object mapping string keys to string values.",
+        );
+      });
+    });
+
+    test("converts number and boolean label values to strings without changing its input", () => {
+      const labels = { year: 2026, active: true };
+      expect(validateJobLabels(labels, "defaultJobLabels")).to.deep.equal({
+        year: "2026",
+        active: "true",
+      });
+      expect(labels).to.deep.equal({ year: 2026, active: true });
+    });
+
+    test("throws for label values that aren't strings, numbers or booleans", () => {
+      assertThrowsWithMessage(
+        () => validateJobLabels({ env: { nested: "obj" } }, "defaultJobLabels"),
+        'Invalid job label value for key "env" in defaultJobLabels: label values must be strings, numbers, or booleans.',
+      );
+    });
+
+    test("throws when label key is empty or exceeds 63 characters", () => {
+      assertThrowsWithMessage(
+        () => validateJobLabels({ "": "val" }, "jobLabels"),
+        'Invalid job label key "" in jobLabels: key length must be between 1 and 63 characters.',
+      );
+      const longKey = "a".repeat(64);
+      assertThrowsWithMessage(
+        () => validateJobLabels({ [longKey]: "val" }, "jobLabels"),
+        `Invalid job label key "${longKey}" in jobLabels: key length must be between 1 and 63 characters.`,
+      );
+    });
+
+    ["1key", "-key", "_key", "Key", "my.key", "my/key", "my key"].forEach((invalidKey) => {
+      test(`throws for label key "${invalidKey}", which has invalid characters or doesn't start with a lowercase letter`, () => {
+        assertThrowsWithMessage(
+          () => validateJobLabels({ [invalidKey]: "val" }, "jobLabels"),
+          `Invalid job label key "${invalidKey}" in jobLabels: keys must start with a lowercase ASCII letter and contain only lowercase ASCII letters, numbers, underscores, and hyphens.`,
+        );
+      });
+    });
+
+    ["dataform_", "dataform-", "dataprep-", "gcp-", "goog-"].forEach((prefix) => {
+      test(`throws when label key starts with reserved prefix "${prefix}"`, () => {
+        const key = `${prefix}test`;
+        assertThrowsWithMessage(
+          () => validateJobLabels({ [key]: "val" }, "jobLabels"),
+          `Invalid job label key "${key}" in jobLabels: key cannot start with reserved prefix "${prefix}".`,
+        );
+      });
+    });
+
+    [
+      "bigquery-workflow",
+      "single-file-asset-type",
+      "origin",
+      "bq-dea",
+      "data-preparation-file-loader",
+    ].forEach((key) => {
+      test(`throws when label key is the reserved key "${key}"`, () => {
+        assertThrowsWithMessage(
+          () => validateJobLabels({ [key]: "val" }, "jobLabels"),
+          `Invalid job label key "${key}" in jobLabels: "${key}" is a reserved label key.`,
+        );
+      });
+    });
+
+    test("throws when label value exceeds 63 characters", () => {
+      const longVal = "v".repeat(64);
+      assertThrowsWithMessage(
+        () => validateJobLabels({ env: longVal }, "jobLabels"),
+        `Invalid job label value "${longVal}" for key "env" in jobLabels: value length must be at most 63 characters.`,
+      );
+    });
+
+    ["Prod", "val.1", "val/1", "val 1"].forEach((invalidVal) => {
+      test(`throws for label value "${invalidVal}", which has invalid characters`, () => {
+        assertThrowsWithMessage(
+          () => validateJobLabels({ env: invalidVal }, "jobLabels"),
+          `Invalid job label value "${invalidVal}" for key "env" in jobLabels: values may contain only lowercase ASCII letters, numbers, underscores, and hyphens.`,
+        );
+      });
+    });
+  });
+
+  suite("setActionJobLabels", () => {
+    test("leaves actionDescriptor unset when both defaultJobLabels and actionJobLabels are undefined or empty", () => {
+      const errors: Error[] = [];
+      const sessionStub = { compileError: (e: Error) => errors.push(e) } as any;
+      const proto1: { actionDescriptor?: dataform.IActionDescriptor } = {};
+      const proto2: { actionDescriptor?: dataform.IActionDescriptor } = {};
+      setActionJobLabels(proto1, undefined, sessionStub);
+      setActionJobLabels(proto2, {}, sessionStub);
+      expect(proto1.actionDescriptor).to.equal(undefined);
+      expect(proto2.actionDescriptor).to.equal(undefined);
+      expect(errors).to.deep.equal([]);
+    });
+
+    test("merges defaultJobLabels and actionJobLabels with actionJobLabels taking precedence", () => {
+      const errors: Error[] = [];
+      const sessionStub = {
+        projectConfig: { defaultJobLabels: { env: "dev", team: "core" } },
+        compileError: (e: Error) => errors.push(e),
+      } as any;
+      const proto: { actionDescriptor?: dataform.IActionDescriptor } = {};
+      setActionJobLabels(proto, { env: "prod", cost_center: "analytics" }, sessionStub);
+      expect(proto.actionDescriptor?.jobLabels).to.deep.equal({
+        env: "prod",
+        team: "core",
+        cost_center: "analytics",
+      });
+      expect(errors).to.deep.equal([]);
+    });
+
+    test("records compileError against the action's file and target, and leaves jobLabels unset, when merged labels exceed 32", () => {
+      const errors: Array<{ message: string; fileName?: string; target?: dataform.ITarget }> = [];
+      const defaults: { [key: string]: string } = {};
+      for (let i = 0; i < 20; i++) {
+        defaults[`def_${i}`] = "v";
+      }
+      const actionLabels: { [key: string]: string } = {};
+      for (let i = 0; i < 15; i++) {
+        actionLabels[`act_${i}`] = "v";
+      }
+      const sessionStub = {
+        projectConfig: { defaultJobLabels: defaults },
+        compileError: (e: Error, fileName?: string, target?: dataform.ITarget) =>
+          errors.push({ message: e.message, fileName, target }),
+      } as any;
+      const target = { database: "p", schema: "s", name: "t" };
+      const proto: {
+        actionDescriptor?: dataform.IActionDescriptor;
+        fileName?: string;
+        target?: dataform.ITarget;
+      } = { fileName: "file.sqlx", target };
+      setActionJobLabels(proto, actionLabels, sessionStub);
+      expect(proto.actionDescriptor).to.equal(undefined);
+      expect(errors).to.deep.equal([
+        {
+          message: "Too many job labels in jobLabels: maximum allowed is 32, but got 35.",
+          fileName: "file.sqlx",
+          target,
+        },
+      ]);
+    });
+
+    test("sets jobLabels from actionJobLabels when no session is provided", () => {
+      const proto: { actionDescriptor?: dataform.IActionDescriptor } = {};
+      setActionJobLabels(proto, { env: "prod" });
+      expect(proto.actionDescriptor?.jobLabels).to.deep.equal({ env: "prod" });
+    });
+
+    test("rethrows validation errors when no session is provided", () => {
+      const proto: { actionDescriptor?: dataform.IActionDescriptor } = {};
+      assertThrowsWithMessage(
+        () => setActionJobLabels(proto, ["env"]),
+        "jobLabels must be an object mapping string keys to string values.",
+      );
+      assertThrowsWithMessage(
+        () => setActionJobLabels(proto, { Env: "prod" }),
+        'Invalid job label key "Env" in jobLabels: keys must start with a lowercase ASCII letter and contain only lowercase ASCII letters, numbers, underscores, and hyphens.',
+      );
+      expect(proto.actionDescriptor).to.equal(undefined);
+    });
+  });
+
+  suite("snakeToCamelKeys", () => {
+    test("converts snake_case keys to camelCase while preserving specified map fields", () => {
+      const input = {
+        graph_name: "my_graph",
+        depend_on_dependency_assertions: true,
+        job_labels: {
+          cost_center: "finance",
+          team_name: "data_eng",
+        },
+      };
+      expect(snakeToCamelKeys(input, new Set(["jobLabels"]))).to.deep.equal({
+        graphName: "my_graph",
+        dependOnDependencyAssertions: true,
+        jobLabels: {
+          cost_center: "finance",
+          team_name: "data_eng",
+        },
+      });
     });
   });
 

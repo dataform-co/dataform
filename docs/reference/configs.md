@@ -8,28 +8,35 @@
 
   - [ActionConfig](#dataform-ActionConfig)
   - [ActionConfig.AssertionConfig](#dataform-ActionConfig-AssertionConfig)
+  - [ActionConfig.AssertionConfig.JobLabelsEntry](#dataform-ActionConfig-AssertionConfig-JobLabelsEntry)
   - [ActionConfig.ColumnDescriptor](#dataform-ActionConfig-ColumnDescriptor)
   - [ActionConfig.DataPreparationConfig](#dataform-ActionConfig-DataPreparationConfig)
+  - [ActionConfig.DataPreparationConfig.JobLabelsEntry](#dataform-ActionConfig-DataPreparationConfig-JobLabelsEntry)
   - [ActionConfig.DeclarationConfig](#dataform-ActionConfig-DeclarationConfig)
   - [ActionConfig.IncrementalTableConfig](#dataform-ActionConfig-IncrementalTableConfig)
   - [ActionConfig.IncrementalTableConfig.AdditionalOptionsEntry](#dataform-ActionConfig-IncrementalTableConfig-AdditionalOptionsEntry)
+  - [ActionConfig.IncrementalTableConfig.JobLabelsEntry](#dataform-ActionConfig-IncrementalTableConfig-JobLabelsEntry)
   - [ActionConfig.IncrementalTableConfig.LabelsEntry](#dataform-ActionConfig-IncrementalTableConfig-LabelsEntry)
   - [ActionConfig.NotebookConfig](#dataform-ActionConfig-NotebookConfig)
   - [ActionConfig.OnSchemaChange](#dataform-ActionConfig-OnSchemaChange)
   - [ActionConfig.OperationConfig](#dataform-ActionConfig-OperationConfig)
+  - [ActionConfig.OperationConfig.JobLabelsEntry](#dataform-ActionConfig-OperationConfig-JobLabelsEntry)
   - [ActionConfig.TableAssertionsConfig](#dataform-ActionConfig-TableAssertionsConfig)
   - [ActionConfig.TableAssertionsConfig.UniqueKey](#dataform-ActionConfig-TableAssertionsConfig-UniqueKey)
   - [ActionConfig.TableConfig](#dataform-ActionConfig-TableConfig)
   - [ActionConfig.TableConfig.AdditionalOptionsEntry](#dataform-ActionConfig-TableConfig-AdditionalOptionsEntry)
+  - [ActionConfig.TableConfig.JobLabelsEntry](#dataform-ActionConfig-TableConfig-JobLabelsEntry)
   - [ActionConfig.TableConfig.LabelsEntry](#dataform-ActionConfig-TableConfig-LabelsEntry)
   - [ActionConfig.Target](#dataform-ActionConfig-Target)
   - [ActionConfig.ViewConfig](#dataform-ActionConfig-ViewConfig)
   - [ActionConfig.ViewConfig.AdditionalOptionsEntry](#dataform-ActionConfig-ViewConfig-AdditionalOptionsEntry)
+  - [ActionConfig.ViewConfig.JobLabelsEntry](#dataform-ActionConfig-ViewConfig-JobLabelsEntry)
   - [ActionConfig.ViewConfig.LabelsEntry](#dataform-ActionConfig-ViewConfig-LabelsEntry)
   - [ActionConfigs](#dataform-ActionConfigs)
   - [LineageSettings](#dataform-LineageSettings)
   - [NotebookRuntimeOptionsConfig](#dataform-NotebookRuntimeOptionsConfig)
   - [WorkflowSettings](#dataform-WorkflowSettings)
+  - [WorkflowSettings.DefaultJobLabelsEntry](#dataform-WorkflowSettings-DefaultJobLabelsEntry)
   - [WorkflowSettings.VarsEntry](#dataform-WorkflowSettings-VarsEntry)
 
 - [Scalar Value Types](#scalar-value-types)
@@ -74,6 +81,16 @@ Action config defines the contents of `actions.yaml` configuration files.
 | hermetic                     | [bool](#bool)                                        |          | If true, this indicates that the action only depends on data from explicitly-declared dependencies. Otherwise if false, it indicates that the action depends on data from a source which has not been declared as a dependency. |
 | dependOnDependencyAssertions | [bool](#bool)                                        |          | If true, assertions dependent upon any of the dependencies are added as dependencies as well.                                                                                                                                   |
 | reservation          | [string](#string)                                    |          | Optional. The BigQuery reservation to use for execution.                                                                                                                                                                        |
+| jobLabels                    | [ActionConfig.AssertionConfig.JobLabelsEntry](#dataform-ActionConfig-AssertionConfig-JobLabelsEntry) | repeated | Optional. Key-value pairs for BigQuery job labels applied to the query job(s) executed for this assertion. Overrides matching keys from `defaultJobLabels` in `workflow_settings.yaml`. See `defaultJobLabels` for the allowed keys and values. |
+
+<a name="dataform-ActionConfig-AssertionConfig-JobLabelsEntry"></a>
+
+### ActionConfig.AssertionConfig.JobLabelsEntry
+
+| Field | Type              | Label | Description |
+| ----- | ----------------- | ----- | ----------- |
+| key   | [string](#string) |       |             |
+| value | [string](#string) |       |             |
 
 <a name="dataform-ActionConfig-ColumnDescriptor"></a>
 
@@ -99,6 +116,16 @@ Action config defines the contents of `actions.yaml` configuration files.
 | disabled            | [bool](#bool)                                        |          | If set to true, this action will not be executed. However, the action can still be depended upon. Useful for temporarily turning off broken actions. |
 | description         | [string](#string)                                    |          | Description of the data preparation.                                                                                                                 |
 | reservation | [string](#string)                                    |          | Optional. The BigQuery reservation to use for execution.                                                                                             |
+| jobLabels           | [ActionConfig.DataPreparationConfig.JobLabelsEntry](#dataform-ActionConfig-DataPreparationConfig-JobLabelsEntry) | repeated | Optional. Key-value pairs for BigQuery job labels applied to the BigQuery job(s) executed for this data preparation. Overrides matching keys from `defaultJobLabels` in `workflow_settings.yaml`. See `defaultJobLabels` for the allowed keys and values. |
+
+<a name="dataform-ActionConfig-DataPreparationConfig-JobLabelsEntry"></a>
+
+### ActionConfig.DataPreparationConfig.JobLabelsEntry
+
+| Field | Type              | Label | Description |
+| ----- | ----------------- | ----- | ----------- |
+| key   | [string](#string) |       |             |
+| value | [string](#string) |       |             |
 
 <a name="dataform-ActionConfig-DeclarationConfig"></a>
 
@@ -144,10 +171,20 @@ Action config defines the contents of `actions.yaml` configuration files.
 | hermetic                     | [bool](#bool)                                                                                                                      |          | If true, this indicates that the action only depends on data from explicitly-declared dependencies. Otherwise if false, it indicates that the action depends on data from a source which has not been declared as a dependency. |
 | onSchemaChange               | [ActionConfg.OnSchemaChange](#dataform-ActionConfig-OnSchemaChange)                                                                |          | Defines the action behavior if the selected columns in query doesn't match columns in the target table.                                                                                                                         |
 | reservation          | [string](#string)                                                                                                                  |          | Optional. The BigQuery reservation to use for execution.                                                                                                                                                                        |
+| jobLabels                    | [ActionConfig.IncrementalTableConfig.JobLabelsEntry](#dataform-ActionConfig-IncrementalTableConfig-JobLabelsEntry)                 | repeated | Optional. Key-value pairs for BigQuery job labels applied to the query job(s) executed for this incremental table and its built-in assertions. Overrides matching keys from `defaultJobLabels` in `workflow_settings.yaml`. When the table has any job labels, including defaults, the Dataform CLI doesn't also apply its `labels` to its jobs. See `defaultJobLabels` for the allowed keys and values. |
 
 <a name="dataform-ActionConfig-IncrementalTableConfig-AdditionalOptionsEntry"></a>
 
 ### ActionConfig.IncrementalTableConfig.AdditionalOptionsEntry
+
+| Field | Type              | Label | Description |
+| ----- | ----------------- | ----- | ----------- |
+| key   | [string](#string) |       |             |
+| value | [string](#string) |       |             |
+
+<a name="dataform-ActionConfig-IncrementalTableConfig-JobLabelsEntry"></a>
+
+### ActionConfig.IncrementalTableConfig.JobLabelsEntry
 
 | Field | Type              | Label | Description |
 | ----- | ----------------- | ----- | ----------- |
@@ -210,6 +247,16 @@ Action config defines the contents of `actions.yaml` configuration files.
 | dependOnDependencyAssertions | [bool](#bool)                                                            |          | When set to true, assertions dependent upon any dependency will be add as dedpendency to this action                                                                                                                            |
 | hermetic                     | [bool](#bool)                                                            |          | If true, this indicates that the action only depends on data from explicitly-declared dependencies. Otherwise if false, it indicates that the action depends on data from a source which has not been declared as a dependency. |
 | reservation          | [string](#string)                                                        |          | Optional. The BigQuery reservation to use for execution.                                                                                                                                                                        |
+| jobLabels                    | [ActionConfig.OperationConfig.JobLabelsEntry](#dataform-ActionConfig-OperationConfig-JobLabelsEntry)     | repeated | Optional. Key-value pairs for BigQuery job labels applied to the query job(s) executed for this operation. Overrides matching keys from `defaultJobLabels` in `workflow_settings.yaml`. See `defaultJobLabels` for the allowed keys and values. |
+
+<a name="dataform-ActionConfig-OperationConfig-JobLabelsEntry"></a>
+
+### ActionConfig.OperationConfig.JobLabelsEntry
+
+| Field | Type              | Label | Description |
+| ----- | ----------------- | ----- | ----------- |
+| key   | [string](#string) |       |             |
+| value | [string](#string) |       |             |
 
 <a name="dataform-ActionConfig-TableAssertionsConfig"></a>
 
@@ -265,10 +312,20 @@ the column(s) in the unique key(s).
 | assertions                   | [ActionConfig.TableAssertionsConfig](#dataform-ActionConfig-TableAssertionsConfig)                           |          | Assertions to be run on the dataset. If configured, relevant assertions will automatically be created and run as a dependency of this dataset.                                                                                  |
 | hermetic                     | [bool](#bool)                                                                                                |          | If true, this indicates that the action only depends on data from explicitly-declared dependencies. Otherwise if false, it indicates that the action depends on data from a source which has not been declared as a dependency. |
 | reservation          | [string](#string)                                                                                            |          | Optional. The BigQuery reservation to use for execution.                                                                                                                                                                        |
+| jobLabels                    | [ActionConfig.TableConfig.JobLabelsEntry](#dataform-ActionConfig-TableConfig-JobLabelsEntry)                 | repeated | Optional. Key-value pairs for BigQuery job labels applied to the query job(s) executed for this table and its built-in assertions. Overrides matching keys from `defaultJobLabels` in `workflow_settings.yaml`. When the table has any job labels, including defaults, the Dataform CLI doesn't also apply its `labels` to its jobs. See `defaultJobLabels` for the allowed keys and values. |
 
 <a name="dataform-ActionConfig-TableConfig-AdditionalOptionsEntry"></a>
 
 ### ActionConfig.TableConfig.AdditionalOptionsEntry
+
+| Field | Type              | Label | Description |
+| ----- | ----------------- | ----- | ----------- |
+| key   | [string](#string) |       |             |
+| value | [string](#string) |       |             |
+
+<a name="dataform-ActionConfig-TableConfig-JobLabelsEntry"></a>
+
+### ActionConfig.TableConfig.JobLabelsEntry
 
 | Field | Type              | Label | Description |
 | ----- | ----------------- | ----- | ----------- |
@@ -323,10 +380,20 @@ Target represents a unique action identifier.
 | hermetic                     | [bool](#bool)                                                                                              |          | If true, this indicates that the action only depends on data from explicitly-declared dependencies. Otherwise if false, it indicates that the action depends on data from a source which has not been declared as a dependency.                                 |
 | assertions                   | [ActionConfig.TableAssertionsConfig](#dataform-ActionConfig-TableAssertionsConfig)                         |          | Assertions to be run on the dataset. If configured, relevant assertions will automatically be created and run as a dependency of this dataset.                                                                                                                  |
 | reservation          | [string](#string)                                                                                          |          | Optional. The BigQuery reservation to use for execution.                                                                                                                                                                                                        |
+| jobLabels                    | [ActionConfig.ViewConfig.JobLabelsEntry](#dataform-ActionConfig-ViewConfig-JobLabelsEntry)                 | repeated | Optional. Key-value pairs for BigQuery job labels applied to the query job(s) executed for this view and its built-in assertions. Overrides matching keys from `defaultJobLabels` in `workflow_settings.yaml`. When the view has any job labels, including defaults, the Dataform CLI doesn't also apply its `labels` to its jobs. See `defaultJobLabels` for the allowed keys and values. |
 
 <a name="dataform-ActionConfig-ViewConfig-AdditionalOptionsEntry"></a>
 
 ### ActionConfig.ViewConfig.AdditionalOptionsEntry
+
+| Field | Type              | Label | Description |
+| ----- | ----------------- | ----- | ----------- |
+| key   | [string](#string) |       |             |
+| value | [string](#string) |       |             |
+
+<a name="dataform-ActionConfig-ViewConfig-JobLabelsEntry"></a>
+
+### ActionConfig.ViewConfig.JobLabelsEntry
 
 | Field | Type              | Label | Description |
 | ----- | ----------------- | ----- | ----------- |
@@ -377,21 +444,31 @@ Configuration for Knowledge Catalog lineage emission. See the [Data Lineage guid
 Workflow Settings defines the contents of the `workflow_settings.yaml`
 configuration file.
 
-| Field                         | Type                                                                   | Label    | Description                                                                                                                                                 |
-| ----------------------------- | ---------------------------------------------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| dataformCoreVersion           | [string](#string)                                                      |          | The desired dataform core version to compile against.                                                                                                       |
-| defaultProject                | [string](#string)                                                      |          | Required. The default Google Cloud project (database).                                                                                                      |
-| defaultDataset                | [string](#string)                                                      |          | Required. The default dataset (schema).                                                                                                                     |
-| defaultLocation               | [string](#string)                                                      |          | Required. The default BigQuery location to use. For more information on BigQuery locations, see https://cloud.google.com/bigquery/docs/locations.           |
-| defaultAssertionDataset       | [string](#string)                                                      |          | Required. The default dataset (schema) for assertions.                                                                                                      |
-| vars                          | [WorkflowSettings.VarsEntry](#dataform-WorkflowSettings-VarsEntry)     | repeated | Optional. User-defined variables that are made available to project code during compilation. An object containing a list of &#34;key&#34;: value pairs.     |
-| projectSuffix                 | [string](#string)                                                      |          | Optional. The suffix to append to all Google Cloud project references.                                                                                      |
-| datasetSuffix                 | [string](#string)                                                      |          | Optional. The suffix to append to all dataset references.                                                                                                   |
-| namePrefix                    | [string](#string)                                                      |          | Optional. The prefix to append to all action names.                                                                                                         |
-| defaultNotebookRuntimeOptions | [NotebookRuntimeOptionsConfig](#dataform-NotebookRuntimeOptionsConfig) |          | Optional. Default runtime options for Notebook actions.                                                                                                     |
-| builtinAssertionNamePrefix    | [string](#string)                                                      |          | Optional. The prefix to append to built-in assertion names.                                                                                                 |
-| defaultReservation            | [string](#string)                                                      |          | Optional. The default BigQuery reservation to use for execution.                                                                                            |
-| lineage                       | [LineageSettings](#dataform-LineageSettings)                           |          | Optional. Configuration for Knowledge Catalog lineage emission. See the [Data Lineage guide](../lineage.md).                                                |
+| Field                         | Type                                                                                       | Label    | Description                                                                                                                                                                                                                                                                                                                                                                             |
+| ----------------------------- | ------------------------------------------------------------------------------------------ | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| dataformCoreVersion           | [string](#string)                                                                          |          | The desired dataform core version to compile against.                                                                                                                                                                                                                                                                                                                                   |
+| defaultProject                | [string](#string)                                                                          |          | Required. The default Google Cloud project (database).                                                                                                                                                                                                                                                                                                                                  |
+| defaultDataset                | [string](#string)                                                                          |          | Required. The default dataset (schema).                                                                                                                                                                                                                                                                                                                                                 |
+| defaultLocation               | [string](#string)                                                                          |          | Required. The default BigQuery location to use. For more information on BigQuery locations, see https://cloud.google.com/bigquery/docs/locations.                                                                                                                                                                                                                                       |
+| defaultAssertionDataset       | [string](#string)                                                                          |          | Required. The default dataset (schema) for assertions.                                                                                                                                                                                                                                                                                                                                  |
+| vars                          | [WorkflowSettings.VarsEntry](#dataform-WorkflowSettings-VarsEntry)                         | repeated | Optional. User-defined variables that are made available to project code during compilation. An object containing a list of &#34;key&#34;: value pairs.                                                                                                                                                                                                                                 |
+| projectSuffix                 | [string](#string)                                                                          |          | Optional. The suffix to append to all Google Cloud project references.                                                                                                                                                                                                                                                                                                                  |
+| datasetSuffix                 | [string](#string)                                                                          |          | Optional. The suffix to append to all dataset references.                                                                                                                                                                                                                                                                                                                               |
+| namePrefix                    | [string](#string)                                                                          |          | Optional. The prefix to append to all action names.                                                                                                                                                                                                                                                                                                                                     |
+| defaultNotebookRuntimeOptions | [NotebookRuntimeOptionsConfig](#dataform-NotebookRuntimeOptionsConfig)                     |          | Optional. Default runtime options for Notebook actions.                                                                                                                                                                                                                                                                                                                                 |
+| builtinAssertionNamePrefix    | [string](#string)                                                                          |          | Optional. The prefix to append to built-in assertion names.                                                                                                                                                                                                                                                                                                                             |
+| defaultReservation            | [string](#string)                                                                          |          | Optional. The default BigQuery reservation to use for execution.                                                                                                                                                                                                                                                                                                                        |
+| lineage                       | [LineageSettings](#dataform-LineageSettings)                                               |          | Optional. Configuration for Knowledge Catalog lineage emission. See the [Data Lineage guide](../lineage.md).                                                                                                                                                                                                                                                                            |
+| defaultJobLabels              | [WorkflowSettings.DefaultJobLabelsEntry](#dataform-WorkflowSettings-DefaultJobLabelsEntry) | repeated | Optional. Default key-value pairs for BigQuery job labels applied to BigQuery jobs executed for actions in this project. Merged key-by-key when overridden via `projectConfigOverride`. Action-level `jobLabels` override matching keys; an action can't remove a default key. Built-in assertions use the job labels of their table. When an action has any job labels, including these defaults, the Dataform CLI doesn't also apply the table's `labels` to its jobs. `dataform run --job-labels` overrides matching keys. Keys and values can contain only lowercase ASCII letters, numbers, underscores and hyphens, and can be at most 63 characters long. Keys must start with a lowercase letter; values can be empty. An action can have at most 32 job labels, including these defaults. Keys that start with `dataform_`, `dataform-`, `dataprep-`, `gcp-` or `goog-` are reserved, as are `bigquery-workflow`, `single-file-asset-type`, `origin`, `bq-dea` and `data-preparation-file-loader`. Numbers and booleans are converted to strings, so quote values that must be kept exactly as written, for example `"0042"`. |
+
+<a name="dataform-WorkflowSettings-DefaultJobLabelsEntry"></a>
+
+### WorkflowSettings.DefaultJobLabelsEntry
+
+| Field | Type              | Label | Description |
+| ----- | ----------------- | ----- | ----------- |
+| key   | [string](#string) |       |             |
+| value | [string](#string) |       |             |
 
 <a name="dataform-WorkflowSettings-VarsEntry"></a>
 

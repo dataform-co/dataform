@@ -66,6 +66,12 @@ suite("@dataform/api/build", () => {
         },
       ],
       assertions: [{ target: { schema: "schema", name: "e" } }],
+      propertyGraphs: [
+        {
+          target: { database: "db", schema: "schema", name: "f" },
+          graphBody: "NODE TABLES (`db.schema.a` AS A KEY (id))",
+        },
+      ],
     });
 
     const builder = new Builder(graph, {}, TEST_STATE);
@@ -93,6 +99,45 @@ suite("@dataform/api/build", () => {
       );
       expect(action).to.include({ type: "assertion" });
     });
+
+    graph.propertyGraphs.forEach((pg: dataform.IPropertyGraph) => {
+      const action = executedGraph.actions.find((item) =>
+        equals(dataform.Target, item.target, pg.target),
+      );
+      expect(action).to.include({ type: "propertyGraph" });
+    });
+  });
+
+  test("propagates actionDescriptor.jobLabels to execution actions", () => {
+    const graph: dataform.ICompiledGraph = dataform.CompiledGraph.create({
+      projectConfig: { warehouse: "bigquery" },
+      tables: [
+        {
+          target: { schema: "schema", name: "a" },
+          type: "table",
+          actionDescriptor: { jobLabels: { env: "prod" } },
+        },
+      ],
+      propertyGraphs: [
+        {
+          target: { database: "db", schema: "schema", name: "f" },
+          graphBody: "NODE TABLES (`db.schema.a` AS A KEY (id))",
+          actionDescriptor: { jobLabels: { team: "graphs" } },
+        },
+      ],
+    });
+
+    const executedGraph = new Builder(graph, {}, TEST_STATE).build();
+
+    expect(
+      executedGraph.actions.map((action) => [
+        action.target.name,
+        action.actionDescriptor?.jobLabels,
+      ]),
+    ).to.deep.equal([
+      ["a", { env: "prod" }],
+      ["f", { team: "graphs" }],
+    ]);
   });
 
   test("table_enum_types", () => {

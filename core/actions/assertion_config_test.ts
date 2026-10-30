@@ -29,6 +29,7 @@ suite("sqlx and JS API config options", ({ afterEach }) => {
   description: "description",
   hermetic: true,
   dependOnDependencyAssertions: true,
+  jobLabels: {"job_key": "job_val"},
   metadata: {
       overview: "assertion overview",
       extraProperties: {
@@ -74,6 +75,9 @@ SELECT 1`,
             },
             actionDescriptor: {
               description: "description",
+              jobLabels: {
+                job_key: "job_val",
+              },
               metadata: {
                 overview: "assertion overview",
                 extraProperties: {
