@@ -227,3 +227,54 @@ EDGE TABLES (
     expect(sql).to.equal(expectedSql.trim());
   });
 });
+
+suite("ExecutionSql for operations", () => {
+  const executionSql = new ExecutionSql(
+    { defaultDatabase: "project-id", defaultSchema: "dataset-id" },
+    "2.0.0",
+  );
+  const target = { database: "project-id", schema: "dataset-id", name: "op" };
+
+  test("runs all queries as a single script", () => {
+    expect(
+      executionSql.createOperationTasks({
+        target,
+        queries: ["DECLARE min_id INT64 DEFAULT 0", "SELECT * FROM t WHERE id >= min_id -- c"],
+      }),
+    ).deep.equals([
+      dataform.ExecutionTask.create({
+        type: "statement",
+        statement: "DECLARE min_id INT64 DEFAULT 0;\nSELECT * FROM t WHERE id >= min_id -- c",
+      }),
+    ]);
+  });
+
+  test("terminates queries ending with a comment, and keeps existing semicolons", () => {
+    expect(
+      executionSql.createOperationTasks({
+        target,
+        queries: ["\n  CREATE TABLE a AS SELECT 1 -- comment\n", "DROP TABLE b;", "SELECT 2"],
+      })[0].statement,
+    ).equals("CREATE TABLE a AS SELECT 1; -- comment\nDROP TABLE b;\nSELECT 2");
+  });
+
+  test("uses a single query as is", () => {
+    const query = "\nSELECT '--' AS dashes -- comment\n";
+    expect(executionSql.createOperationTasks({ target, queries: [query] })).deep.equals([
+      dataform.ExecutionTask.create({ type: "statement", statement: query }),
+    ]);
+  });
+
+  test("skips empty queries", () => {
+    expect(
+      executionSql.createOperationTasks({ target, queries: ["  \n", "SELECT 1", ""] }),
+    ).deep.equals([dataform.ExecutionTask.create({ type: "statement", statement: "SELECT 1" })]);
+    expect(executionSql.createOperationTasks({ target, queries: [] })).deep.equals([]);
+  });
+
+  test("returns no tasks for disabled operations", () => {
+    expect(
+      executionSql.createOperationTasks({ target, queries: ["SELECT 1"], disabled: true }),
+    ).deep.equals([]);
+  });
+});
