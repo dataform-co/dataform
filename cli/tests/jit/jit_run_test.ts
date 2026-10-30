@@ -80,12 +80,10 @@ suite("run", ({ afterEach }) => {
 
     const actionResult = result.actions[0];
     expect(actionResult.status).equals(dataform.ActionResult.ExecutionStatus.SUCCESSFUL);
-    expect(actionResult.tasks.length).equals(2);
+    expect(actionResult.tasks.length).equals(1);
     expect(actionResult.tasks[0].status).equals(dataform.TaskResult.ExecutionStatus.SUCCESSFUL);
-    expect(actionResult.tasks[1].status).equals(dataform.TaskResult.ExecutionStatus.SUCCESSFUL);
 
-    verify(mockAdapter.execute("SELECT 1", anything())).once();
-    verify(mockAdapter.execute("SELECT 2", anything())).once();
+    verify(mockAdapter.execute("SELECT 1;\nSELECT 2", anything())).once();
   });
 
   test("JiT compilation is performed for Assertion actions", async () => {
