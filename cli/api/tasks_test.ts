@@ -77,6 +77,12 @@ suite("concatenateQueries", () => {
     );
   });
 
+  test("keeps leading whitespace if trimLeadingWhitespace is false", () => {
+    expect(
+      concatenateQueries(["SELECT 1", "\n\n  SELECT 2  \n", "  \n  "], undefined, false),
+    ).deep.equals("SELECT 1;\n\n\n  SELECT 2");
+  });
+
   test("returns empty string for empty input", () => {
     expect(concatenateQueries([])).deep.equals("");
   });

@@ -5,8 +5,13 @@ import { JitCompileChildProcess, JitCompiler } from "df/cli/api/commands/jit/com
 import * as dbadapters from "df/cli/api/dbadapters";
 import { IBigQueryExecutionOptions } from "df/cli/api/dbadapters/bigquery";
 import { ExecutionSql } from "df/cli/api/dbadapters/execution_sql";
-import { concatenateQueries, wrapWithCreateSchemaIfNotExists } from "df/cli/api/dbadapters/tasks";
+import {
+  concatenateQueries,
+  CREATE_SCHEMA_WRAPPER_LINE_OFFSET,
+  wrapWithCreateSchemaIfNotExists,
+} from "df/cli/api/dbadapters/tasks";
 import { LineageEmitter } from "df/cli/api/lineage/emitter";
+import { shiftErrorPositionLines } from "df/cli/api/utils/error_parsing";
 import { Flags } from "df/common/flags";
 import { retry } from "df/common/promises";
 import { deepClone, equals } from "df/common/protos";
@@ -84,7 +89,15 @@ function actionDryRunValidationQuery(action?: dataform.ITable | null): string | 
   if (!action?.query?.trim()) {
     return undefined;
   }
-  return concatenateQueries([...(action.preOps || []), action.query, ...(action.postOps || [])]);
+  return concatenateQueries(
+    [
+      ...(action.preOps || []).map((preOp) => preOp.trim()),
+      action.query,
+      ...(action.postOps || []).map((postOp) => postOp.trim()),
+    ],
+    undefined,
+    false,
+  );
 }
 
 export type CancelReason = "timeout" | "user" | "cancellation";
@@ -663,7 +676,7 @@ export class Runner {
       if (status !== dataform.TaskResult.ExecutionStatus.SUCCESSFUL) {
         return status;
       }
-      return this.dryRunValidationQuery(action, actionResult, missingSchema, options);
+      return this.dryRunValidationQuery(action, actionResult, options);
     }
 
     // Registered without awaiting anything since `schemaCreationToWaitFor()` returned nothing, so
@@ -691,7 +704,6 @@ export class Runner {
   private async dryRunValidationQuery(
     action: dataform.IExecutionAction,
     actionResult: dataform.IActionResult,
-    missingSchema: IMissingSchema,
     options: { bigquery?: dataform.IBigQueryOptions & IBigQueryExecutionOptions },
   ): Promise<dataform.TaskResult.ExecutionStatus> {
     const key = dryRunValidationQueryKey(action.target);
@@ -717,10 +729,11 @@ export class Runner {
       taskResult.status = this.cancelled
         ? dataform.TaskResult.ExecutionStatus.CANCELLED
         : dataform.TaskResult.ExecutionStatus.FAILED;
-      const schemaRef = [missingSchema.database, missingSchema.schema].filter(Boolean).join(".");
+      // The validation query has the same lines as the task's statement, so positions in the
+      // error only need shifting by the lines the wrapper adds, to refer to the compiled SQL shown.
       taskResult.errorMessage =
-        `${this.graph.projectConfig?.warehouse} error: ${e.message} (in the query, validated ` +
-        `separately because dataset ${schemaRef} doesn't exist yet)`;
+        `${this.graph.projectConfig?.warehouse} error: ` +
+        shiftErrorPositionLines(e.message, CREATE_SCHEMA_WRAPPER_LINE_OFFSET);
       this.notifyListeners();
       return taskResult.status;
     }
@@ -728,7 +741,7 @@ export class Runner {
 
   /**
    * Executes the given task. If set, `statementOverride` is executed instead of the task's
-   * statement, while the task's own statement is still reported as its compiled SQL.
+   * statement, and reported as its compiled SQL, so that error positions refer to what is shown.
    */
   private async executeTask(
     client: dbadapters.IDbClient,
@@ -745,8 +758,11 @@ export class Runner {
     };
     parentAction.tasks.push(taskResult);
     this.notifyListeners();
-    if (options.bigquery?.dryRun) {
-      taskResult.compiledSql = task.statement;
+    // The SQL actually sent to BigQuery, so that error positions refer to what is shown. Always set
+    // in dry runs; in real runs only when it differs from the task's statement (e.g. wrapped in a
+    // script creating the target dataset), as the task's statement is shown otherwise.
+    if (options.bigquery?.dryRun || statementOverride !== undefined) {
+      taskResult.compiledSql = statementOverride ?? task.statement;
     }
     if (options.bigquery?.dryRun && task.type === "assertion") {
       taskResult.status = dataform.TaskResult.ExecutionStatus.SUCCESSFUL;
