@@ -135,10 +135,7 @@ suite("schema creation", () => {
 
     expect(result.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
     // "a" created the dataset, so "b" isn't wrapped.
-    expect(executedStatements).deep.equals([
-      wrapped("new_ds", "CREATE TABLE a"),
-      "CREATE TABLE b",
-    ]);
+    expect(executedStatements).deep.equals([wrapped("new_ds", "CREATE TABLE a"), "CREATE TABLE b"]);
   });
 
   test("the next action writing to the dataset creates it if the creating action failed", async () => {
@@ -315,10 +312,7 @@ suite("schema creation", () => {
     });
     const dryRunValidationQueries = new Map([
       [dryRunValidationQueryKey({ database: "db", schema: "new_ds", name: "a" }), "SELECT a"],
-      [
-        dryRunValidationQueryKey({ database: "db", schema: "existing_ds", name: "c" }),
-        "SELECT c",
-      ],
+      [dryRunValidationQueryKey({ database: "db", schema: "existing_ds", name: "c" }), "SELECT c"],
     ]);
 
     test("dry-runs the query of actions writing to a missing dataset", async () => {

@@ -80,9 +80,7 @@ export function buildDryRunValidationQueries(
   return queries;
 }
 
-function actionDryRunValidationQuery(
-  action?: dataform.ITable | null,
-): string | undefined {
+function actionDryRunValidationQuery(action?: dataform.ITable | null): string | undefined {
   if (!action?.query?.trim()) {
     return undefined;
   }
