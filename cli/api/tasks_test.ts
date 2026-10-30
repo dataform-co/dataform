@@ -46,6 +46,26 @@ suite("concatenateQueries", () => {
     );
   });
 
+  test("doesn't mistake comment markers or semicolons inside strings and identifiers", () => {
+    const terminated = (statement: string) => concatenateQueries([statement, "SELECT 2"]);
+    expect(terminated("SELECT 'a;'")).equals("SELECT 'a;';\nSELECT 2");
+    expect(terminated('SELECT "# not a comment"')).equals('SELECT "# not a comment";\nSELECT 2');
+    expect(terminated("SELECT '''a\n-- b;\n'''")).equals("SELECT '''a\n-- b;\n''';\nSELECT 2");
+    expect(terminated("SELECT * FROM `p.d.t--`")).equals("SELECT * FROM `p.d.t--`;\nSELECT 2");
+    expect(terminated("SELECT 'it\\'s -- x'")).equals("SELECT 'it\\'s -- x';\nSELECT 2");
+  });
+
+  test("adds semicolon before trailing block comment", () => {
+    expect(concatenateQueries(["SELECT 1 /* comment; */", "SELECT 2"])).equals(
+      "SELECT 1; /* comment; */\nSELECT 2",
+    );
+  });
+
+  test("doesn't add semicolon after a terminated script", () => {
+    const script = "BEGIN\n  SELECT 1;\nEXCEPTION WHEN ERROR THEN\n  RAISE;\nEND;";
+    expect(concatenateQueries([script, "SELECT 2"])).equals(`${script}\nSELECT 2`);
+  });
+
   test("adds semicolon after the code when the statement ends with several comment lines", () => {
     expect(concatenateQueries(["SELECT 1 -- first\n-- second", "SELECT 2"])).deep.equals(
       "SELECT 1; -- first\n-- second\nSELECT 2",
@@ -111,15 +131,15 @@ suite("wrapWithCreateSchemaIfNotExists", () => {
     );
   });
 
-  test("adds a missing semicolon on its own line", () => {
+  test("adds a missing semicolon", () => {
     expect(wrapWithCreateSchemaIfNotExists("project", "dataset", "  SELECT 1\n")).equals(
-      "create schema if not exists `project.dataset`;\nbegin\nSELECT 1\n;\nend;",
+      "create schema if not exists `project.dataset`;\nbegin\nSELECT 1;\nend;",
     );
   });
 
   test("terminates a statement with a trailing comment", () => {
     expect(wrapWithCreateSchemaIfNotExists("project", "dataset", "SELECT 1 -- comment")).equals(
-      "create schema if not exists `project.dataset`;\nbegin\nSELECT 1 -- comment\n;\nend;",
+      "create schema if not exists `project.dataset`;\nbegin\nSELECT 1; -- comment\nend;",
     );
   });
 
@@ -127,7 +147,7 @@ suite("wrapWithCreateSchemaIfNotExists", () => {
     expect(
       wrapWithCreateSchemaIfNotExists("project", "dataset", "DECLARE x INT64;\nSELECT x"),
     ).equals(
-      "create schema if not exists `project.dataset`;\nbegin\nDECLARE x INT64;\nSELECT x\n;\nend;",
+      "create schema if not exists `project.dataset`;\nbegin\nDECLARE x INT64;\nSELECT x;\nend;",
     );
   });
 

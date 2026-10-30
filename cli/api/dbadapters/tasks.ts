@@ -1,4 +1,3 @@
-import { endsWithStatementTerminator } from "df/cli/api/utils/sql_parsing";
 import { dataform } from "df/protos/ts";
 
 /**
@@ -93,13 +92,7 @@ export function wrapWithCreateSchemaIfNotExists(
   statement: string,
 ): string {
   const schemaRef = database ? `${database}.${schema}` : schema;
-  const trimmedStatement = statement.trim();
-  // Statements inside a block must be terminated with `;`. Empty statements (`;;`) are not
-  // allowed, so only add one if missing. It goes on its own line, so it's not swallowed by a
-  // trailing `--` comment.
-  const terminatedStatement = endsWithStatementTerminator(trimmedStatement)
-    ? trimmedStatement
-    : `${trimmedStatement}\n;`;
+  const terminatedStatement = formatStatement(statement.trim(), false);
   return `create schema if not exists \`${schemaRef}\`;\nbegin\n${terminatedStatement}\nend;`;
 }
 
