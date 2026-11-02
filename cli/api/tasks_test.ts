@@ -188,9 +188,7 @@ suite("wrapWithCreateSchemaIfNotExists", () => {
   });
 
   test("terminates a raw string ending in a backslash before a trailing comment", () => {
-    expect(
-      wrapWithCreateSchemaIfNotExists("project", "dataset", "SELECT r'\\' -- comment"),
-    ).equals(
+    expect(wrapWithCreateSchemaIfNotExists("project", "dataset", "SELECT r'\\' -- comment")).equals(
       "create schema if not exists `project.dataset`;\nbegin\nSELECT r'\\'; -- comment\nend;",
     );
   });
