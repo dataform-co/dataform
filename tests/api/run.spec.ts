@@ -1,14 +1,9 @@
 import { config, expect } from "chai";
 import Long from "long";
-import { anyString, anything, capture, instance, mock, when } from "ts-mockito";
+import { anyString, anything, capture, instance, mock, verify, when } from "ts-mockito";
 
 import { Runner, test as runTests } from "df/cli/api";
-import {
-  buildDryRunValidationQueries,
-  checkJobLabelLimit,
-  dryRunValidationQueryKey,
-  resolveJobLabels,
-} from "df/cli/api/commands/run";
+import { checkJobLabelLimit, resolveJobLabels } from "df/cli/api/commands/run";
 import { IDbAdapter } from "df/cli/api/dbadapters";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 import { wrapWithCreateSchemaIfNotExists } from "df/cli/api/dbadapters/tasks";
@@ -597,7 +592,7 @@ suite("@dataform/api/run", () => {
         jobLabels: { env: "prod", cost_center: "analytics" },
       };
 
-      when(mockedDbAdapter.createSchema(anyString(), anyString())).thenResolve(null);
+      when(mockedDbAdapter.schemas(anything())).thenResolve(["schema1", "schema2"]);
       when(
         mockedDbAdapter.execute(NEW_TEST_GRAPH.actions![0].tasks![0].statement!, anything()),
       ).thenCall((statement: string, options: any) => {
@@ -713,7 +708,7 @@ suite("@dataform/api/run", () => {
         },
       };
 
-      when(mockedDbAdapter.createSchema(anyString(), anyString())).thenResolve(null);
+      when(mockedDbAdapter.schemas(anything())).thenResolve(["schema1", "schema2"]);
       when(
         mockedDbAdapter.execute(NEW_TEST_GRAPH.actions![0].tasks![0].statement!, anything()),
       ).thenCall((_statement: string, options: any) => {
@@ -784,7 +779,7 @@ suite("@dataform/api/run", () => {
       NEW_TEST_GRAPH.actions![0].actionDescriptor = dataform.ActionDescriptor.create({
         jobLabels: { env: "prod" },
       });
-      when(mockedDbAdapter.createSchema(anyString(), anyString())).thenResolve(null);
+      when(mockedDbAdapter.schemas(anything())).thenResolve(["schema1", "schema2"]);
       when(mockedDbAdapter.execute(anything(), anything())).thenResolve({ rows: [], metadata: {} });
 
       const runner = new Runner(instance(mockedDbAdapter), NEW_TEST_GRAPH);
