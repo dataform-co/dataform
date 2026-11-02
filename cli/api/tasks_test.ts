@@ -28,9 +28,52 @@ suite("concatenateQueries", () => {
     ).deep.equals("SELECT 1; -- blah\ndrop table foo; -- baz\nSELECT 2");
   });
 
-  test("preserves comment-only lines, verifies fix for https://github.com/dataform-co/dataform/issues/2103", () => {
+  test("preserves comment-only lines", () => {
     expect(concatenateQueries(["SELECT 1;", "--drop table foo", "SELECT 2", "--baz"])).deep.equals(
-      "SELECT 1;\n--drop table foo\nSELECT 2;\n--baz",
+      "SELECT 1;\n--drop table foo\nSELECT 2\n--baz",
+    );
+  });
+
+  test("does not add semicolon to last code statement when followed only by comments", () => {
+    expect(concatenateQueries(["SELECT 1", "-- trailing comment", "/* another */"])).deep.equals(
+      "SELECT 1\n-- trailing comment\n/* another */",
+    );
+  });
+
+  test("doesn't mistake -- inside a string literal for a trailing comment", () => {
+    expect(concatenateQueries(["DELETE FROM t WHERE note = '--'", "SELECT 1"])).deep.equals(
+      "DELETE FROM t WHERE note = '--';\nSELECT 1",
+    );
+  });
+
+  test("doesn't treat \\ as an escape inside raw string or bytes literals", () => {
+    const terminated = (statement: string) => concatenateQueries([statement, "SELECT 2"]);
+    expect(terminated("SELECT r'\\' -- comment")).equals("SELECT r'\\'; -- comment\nSELECT 2");
+    expect(terminated("SELECT REPLACE(p, r'\\', '/'), 'ok' -- don't fail")).equals(
+      "SELECT REPLACE(p, r'\\', '/'), 'ok'; -- don't fail\nSELECT 2",
+    );
+    expect(terminated('R"\\" -- comment')).equals('R"\\"; -- comment\nSELECT 2');
+    expect(terminated("SELECT r'''a\\''' -- comment")).equals(
+      "SELECT r'''a\\'''; -- comment\nSELECT 2",
+    );
+    expect(terminated("SELECT rb'\\' -- comment")).equals("SELECT rb'\\'; -- comment\nSELECT 2");
+    expect(terminated('SELECT BR"\\" -- comment')).equals('SELECT BR"\\"; -- comment\nSELECT 2');
+    // Non-raw `b` prefix and SQL keywords ending in `r` still escape quotes with `\`.
+    expect(terminated("SELECT b'it\\'s -- x'")).equals("SELECT b'it\\'s -- x';\nSELECT 2");
+    expect(terminated("SELECT flag OR'it\\'s -- x'")).equals(
+      "SELECT flag OR'it\\'s -- x';\nSELECT 2",
+    );
+  });
+
+  test("adds semicolon before trailing # comment", () => {
+    expect(concatenateQueries(["SELECT 1 # hash comment", "SELECT 2"])).deep.equals(
+      "SELECT 1; # hash comment\nSELECT 2",
+    );
+  });
+
+  test("adds semicolon after the code when the statement ends with several comment lines", () => {
+    expect(concatenateQueries(["SELECT 1 -- first\n-- second", "SELECT 2"])).deep.equals(
+      "SELECT 1; -- first\n-- second\nSELECT 2",
     );
   });
 
