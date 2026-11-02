@@ -1,4 +1,5 @@
 import { config, expect } from "chai";
+import Long from "long";
 import { anyString, anything, instance, mock, verify, when } from "ts-mockito";
 
 import { Runner } from "df/cli/api";
@@ -475,7 +476,16 @@ suite("schema creation", () => {
     ]);
 
     test("dry-runs the query of actions writing to a missing dataset", async () => {
-      const { mockedDbAdapter, executedStatements } = mockDbAdapter();
+      const validationMetadata: dataform.IExecutionMetadata = {
+        bigquery: { totalBytesProcessed: Long.fromNumber(123) },
+      };
+      const { mockedDbAdapter, executedStatements } = mockDbAdapter(
+        [["existing_ds"]],
+        async (statement) => ({
+          rows: [],
+          metadata: statement === "SELECT a" ? validationMetadata : {},
+        }),
+      );
 
       const result = await new Runner(instance(mockedDbAdapter), graph, {
         bigquery: { dryRun: true },
@@ -494,31 +504,52 @@ suite("schema creation", () => {
         wrapped("new_ds", "OPERATION"),
       ]);
       expect(executedStatements).to.have.length(4);
+      const actionA = result.actions.find((action) => action.target.name === "a");
+      expect(actionA.tasks[0].metadata).deep.equals(validationMetadata);
     });
 
     test("reports a failure of the query on the action's task after retries", async () => {
       let attempts = 0;
+      let validationEndMillis = 0;
       const { mockedDbAdapter } = mockDbAdapter([["existing_ds"]], async (statement) => {
         if (statement === "SELECT a") {
           attempts++;
+          await sleep(10);
+          validationEndMillis = Date.now();
           throw new Error("Query error: Unrecognized name: a at [1:8]");
         }
         return { rows: [], metadata: {} };
       });
+      const observedStatuses: dataform.TaskResult.ExecutionStatus[] = [];
+      const runner = Runner.create(
+        instance(mockedDbAdapter),
+        graph,
+        {
+          bigquery: { dryRun: true, actionRetryLimit: 1 },
+          dryRunValidationQueries,
+        },
+        0,
+      );
+      runner.onChange((runResult) => {
+        const actionA = runResult.actions.find((action) => action.target.name === "a");
+        const status = actionA?.tasks[0]?.status;
+        if (status !== undefined) {
+          observedStatuses.push(status);
+        }
+      });
 
-      const result = await new Runner(instance(mockedDbAdapter), graph, {
-        bigquery: { dryRun: true, actionRetryLimit: 1 },
-        dryRunValidationQueries,
-      })
-        .execute()
-        .result();
+      const result = await runner.execute().result();
 
       expect(attempts).equals(2);
       expect(result.status).equals(dataform.RunResult.ExecutionStatus.FAILED);
+      // Listeners never see the task as SUCCESSFUL before the validation query fails.
+      expect(observedStatuses).not.to.include(dataform.TaskResult.ExecutionStatus.SUCCESSFUL);
       const actionA = result.actions.find((action) => action.target.name === "a");
       expect(actionA.status).equals(dataform.ActionResult.ExecutionStatus.FAILED);
       expect(actionA.tasks).to.have.length(1);
       expect(actionA.tasks[0].status).equals(dataform.TaskResult.ExecutionStatus.FAILED);
+      const endMillis = actionA.tasks[0].timing.endTimeMillis.toNumber();
+      expect(endMillis).to.be.at.least(validationEndMillis);
       // The position is shifted to refer to the wrapped statement shown as the compiled SQL.
       expect(actionA.tasks[0].errorMessage).equals(
         "bigquery error: Query error: Unrecognized name: a at [3:8]",
@@ -719,6 +750,42 @@ suite("schema creation", () => {
       await Runner.resume(instance(mockedDbAdapter), graph, partialResult).execute().result();
 
       expect(executedStatements).deep.equals(["SECOND TASK a"]);
+    });
+
+    test("doesn't list datasets of databases whose actions have all completed", async () => {
+      const multiDbGraph = dataform.ExecutionGraph.create({
+        projectConfig,
+        runConfig: {},
+        warehouseState: {},
+        actions: [
+          {
+            type: "table",
+            tableType: "table",
+            target: { database: "completed_db", schema: "ds", name: "done" },
+            tasks: [{ type: "statement", statement: "CREATE TABLE done" }],
+            dependencyTargets: [],
+          },
+          tableAction("pending", "new_ds", ["CREATE TABLE pending"]),
+        ],
+      });
+      const partialResult: dataform.IRunResult = {
+        actions: [
+          {
+            target: { database: "completed_db", schema: "ds", name: "done" },
+            status: dataform.ActionResult.ExecutionStatus.SUCCESSFUL,
+            tasks: [{ status: dataform.TaskResult.ExecutionStatus.SUCCESSFUL }],
+          },
+        ],
+      };
+      const { mockedDbAdapter, executedStatements } = mockDbAdapter([[]]);
+
+      const result = await Runner.resume(instance(mockedDbAdapter), multiDbGraph, partialResult)
+        .execute()
+        .result();
+
+      expect(result.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
+      verify(mockedDbAdapter.schemas("completed_db")).never();
+      expect(executedStatements).deep.equals([wrapped("new_ds", "CREATE TABLE pending")]);
     });
   });
 });

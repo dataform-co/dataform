@@ -388,12 +388,12 @@ export class Runner {
   }
 
   /**
-   * Returns the target datasets of all actions that don't exist yet, keyed by `schemaKey()`.
+   * Returns the target datasets of pending actions that don't exist yet, keyed by `schemaKey()`.
    */
   private async findMissingSchemas(): Promise<Map<string, IMissingSchema>> {
     // Work out all the schemas we are going to need.
     const databaseSchemas = new Map<string | undefined, Set<string>>();
-    this.graph.actions
+    this.pendingActions
       .filter(
         (action) =>
           (action.tasks.length > 0 || !!action.jitCode) &&
@@ -748,11 +748,14 @@ export class Runner {
     // Dry runs don't create the dataset, so there's no rate limit to protect, and nothing to wait
     // for: every task writing to the dataset is wrapped.
     if (this.executionOptions.bigquery?.dryRun) {
-      const status = await this.executeTask(this.dbadapter, task, actionResult, options, statement);
-      if (status !== dataform.TaskResult.ExecutionStatus.SUCCESSFUL) {
-        return status;
-      }
-      return this.dryRunValidationQuery(action, actionResult, options);
+      return this.executeTask(
+        this.dbadapter,
+        task,
+        actionResult,
+        options,
+        statement,
+        this.dryRunValidationQueryFor(action),
+      );
     }
 
     // Registered without awaiting anything since `schemaCreationToWaitFor()` returned nothing, so
@@ -772,52 +775,21 @@ export class Runner {
     }
   }
 
-  /**
-   * In a dry run, BigQuery only checks the syntax of the wrapped script of a task writing to a
-   * dataset that doesn't exist yet. Dry-run the action's SELECT query on its own, if it has one, to
-   * fully check it. A failure is reported on the task, which was just executed.
-   */
-  private async dryRunValidationQuery(
-    action: dataform.IExecutionAction,
-    actionResult: dataform.IActionResult,
-    options: { bigquery?: dataform.IBigQueryOptions & IBigQueryExecutionOptions },
-  ): Promise<dataform.TaskResult.ExecutionStatus> {
+  private dryRunValidationQueryFor(action: dataform.IExecutionAction): string | undefined {
     const key = dryRunValidationQueryKey(action.target);
-    const query =
+    return (
       this.jitDryRunValidationQueries.get(key) ??
-      this.executionOptions.dryRunValidationQueries?.get(key);
-    if (!query) {
-      return dataform.TaskResult.ExecutionStatus.SUCCESSFUL;
-    }
-    try {
-      await retry(
-        () =>
-          this.dbadapter.execute(query, {
-            onCancel: (handleCancel) => this.eEmitter.on(CANCEL_EVENT, handleCancel),
-            rowLimit: 1,
-            bigquery: options.bigquery,
-          }),
-        options.bigquery.actionRetryLimit + 1 || 1,
-      );
-      return dataform.TaskResult.ExecutionStatus.SUCCESSFUL;
-    } catch (e) {
-      const taskResult = actionResult.tasks[actionResult.tasks.length - 1];
-      taskResult.status = this.cancelled
-        ? dataform.TaskResult.ExecutionStatus.CANCELLED
-        : dataform.TaskResult.ExecutionStatus.FAILED;
-      // The validation query has the same lines as the task's statement, so positions in the
-      // error only need shifting by the lines the wrapper adds, to refer to the compiled SQL shown.
-      taskResult.errorMessage =
-        `${this.graph.projectConfig?.warehouse} error: ` +
-        shiftErrorPositionLines(e.message, CREATE_SCHEMA_WRAPPER_LINE_OFFSET);
-      this.notifyListeners();
-      return taskResult.status;
-    }
+      this.executionOptions.dryRunValidationQueries?.get(key)
+    );
   }
 
   /**
    * Executes the given task. If set, `statementOverride` is executed instead of the task's
    * statement, and reported as its compiled SQL, so that error positions refer to what is shown.
+   *
+   * If `dryRunValidationQuery` is also set (in dry runs, for tasks wrapped in a script creating a
+   * missing dataset, which BigQuery only syntax-checks), it is dry-run right after to fully check
+   * the action's SELECT query within the same task timing, metadata, and status update.
    */
   private async executeTask(
     client: dbadapters.IDbClient,
@@ -825,6 +797,7 @@ export class Runner {
     parentAction: dataform.IActionResult,
     options: { bigquery?: dataform.IBigQueryOptions & IBigQueryExecutionOptions },
     statementOverride?: string,
+    dryRunValidationQuery?: string,
   ): Promise<dataform.TaskResult.ExecutionStatus> {
     const timer = Timer.start();
     const taskResult: dataform.ITaskResult = {
@@ -843,6 +816,7 @@ export class Runner {
     if (options.bigquery?.dryRun && task.type === "assertion") {
       taskResult.status = dataform.TaskResult.ExecutionStatus.SUCCESSFUL;
     } else {
+      let errorFromValidationQuery = false;
       try {
         // Retry this function a given number of times, configurable by user
         const { rows, metadata } = await retry(
@@ -854,7 +828,21 @@ export class Runner {
             }),
           task.type === "operation" ? 1 : options.bigquery.actionRetryLimit + 1 || 1,
         );
-        taskResult.metadata = metadata;
+        if (dryRunValidationQuery) {
+          errorFromValidationQuery = true;
+          const validationResult = await retry(
+            () =>
+              client.execute(dryRunValidationQuery, {
+                onCancel: (handleCancel) => this.eEmitter.on(CANCEL_EVENT, handleCancel),
+                rowLimit: 1,
+                bigquery: options.bigquery,
+              }),
+            options.bigquery.actionRetryLimit + 1 || 1,
+          );
+          taskResult.metadata = validationResult.metadata;
+        } else {
+          taskResult.metadata = metadata;
+        }
         if (task.type === "assertion") {
           // We expect that an assertion query returns 1 row, with 1 field that is the row count.
           // We don't really care what that field/column is called.
@@ -868,7 +856,12 @@ export class Runner {
         taskResult.status = this.cancelled
           ? dataform.TaskResult.ExecutionStatus.CANCELLED
           : dataform.TaskResult.ExecutionStatus.FAILED;
-        taskResult.errorMessage = `${this.graph.projectConfig.warehouse} error: ${e.message}`;
+        // The validation query has the same lines as the task's statement, so positions in its
+        // error only need shifting by the lines the wrapper adds, to refer to the compiled SQL.
+        const message = errorFromValidationQuery
+          ? shiftErrorPositionLines(e.message, CREATE_SCHEMA_WRAPPER_LINE_OFFSET)
+          : e.message;
+        taskResult.errorMessage = `${this.graph.projectConfig?.warehouse} error: ${message}`;
         if (e.metadata?.bigquery?.jobId) {
           taskResult.metadata = {
             bigquery: {

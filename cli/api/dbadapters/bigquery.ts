@@ -282,9 +282,18 @@ export class BigQueryDbAdapter implements IDbAdapter {
 
     await Promise.all(
       datasetIds.map(async (datasetId) => {
-        const [tables] = await this.getClient(database)
-          .dataset(datasetId)
-          .getTables({ autoPaginate: true, maxResults: 1000 });
+        let tables: GetTablesResponse[0];
+        try {
+          [tables] = await this.getClient(database)
+            .dataset(datasetId)
+            .getTables({ autoPaginate: true, maxResults: 1000 });
+        } catch (e) {
+          if (e?.code === 404 || e?.errors?.[0]?.reason === "notFound") {
+            // The dataset may not exist yet (e.g. before any action writes to it).
+            return;
+          }
+          throw coerceAsError(e);
+        }
         await Promise.all(
           tables.map(async (table) => {
             const metadata = await this.table({

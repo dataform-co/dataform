@@ -184,14 +184,6 @@ export const runCommand: ICommand<IRunArgs> = {
       logger.log("Running...\n");
     }
 
-    if (argv.dryRun && !isJsonOutput) {
-      printWarning(
-        "Note: datasets that don't exist yet are created by the first action writing to them. " +
-          "Dry runs don't create them. For actions writing to them, the queries of tables, views " +
-          "and assertions are fully validated, but other statements only get a syntax check.\n",
-      );
-    }
-
     const lineageEmitter = createLineageEmitter(
       argv,
       executionGraph,
