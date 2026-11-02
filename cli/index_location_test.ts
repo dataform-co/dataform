@@ -218,6 +218,17 @@ CREATE OR REPLACE TABLE \${self()} AS SELECT * FROM ${source}
 
   test("without any location, dry runs don't create datasets", { timeout: 120000 }, async () => {
     const { projectDir, dataset } = await setupLocationProject(undefined);
+    writeDefinitionFile(
+      projectDir,
+      "example.sqlx",
+      `
+config { type: "table" }
+SELECT 1 AS id
+post_operations {
+  ALTER TABLE \${self()} SET OPTIONS (description = "example");
+}
+`,
+    );
 
     await runProject(projectDir, writeCredentialsWithLocation(undefined), ["--dry-run"]);
 
@@ -239,7 +250,7 @@ pre_operations {
 }
 SELECT no_such_column FROM (SELECT 1 AS id) WHERE id >= min_id
 post_operations {
-  SET min_id = 1;
+  ALTER TABLE \${self()} SET OPTIONS (description = "example");
 }
 `,
       );

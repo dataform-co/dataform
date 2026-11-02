@@ -582,7 +582,7 @@ suite("schema creation", () => {
             table: {
               preOps: ["DECLARE x INT64 DEFAULT 1;"],
               query: "SELECT x",
-              postOps: ["SET x = 2;"],
+              postOps: ["ALTER TABLE `db.new_ds.jit_table` SET OPTIONS (description = 'x');"],
             },
           }),
       })
@@ -591,7 +591,7 @@ suite("schema creation", () => {
 
       expect(result.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
       expect(executedStatements).to.have.length(2);
-      expect(executedStatements[1]).equals("DECLARE x INT64 DEFAULT 1;\nSELECT x;\nSET x = 2;");
+      expect(executedStatements[1]).equals("DECLARE x INT64 DEFAULT 1;\nSELECT x");
     });
 
     test("are built from the tables and assertions of the compiled graph", () => {
@@ -625,7 +625,7 @@ suite("schema creation", () => {
         [dryRunValidationQueryKey({ database: "db", schema: "ds", name: "table" }), "SELECT 1"],
         [
           dryRunValidationQueryKey({ database: "db", schema: "ds", name: "with_ops" }),
-          "DECLARE x INT64 DEFAULT 1;\nSELECT x;\nSET x = 2",
+          "DECLARE x INT64 DEFAULT 1;\nSELECT x",
         ],
         [
           dryRunValidationQueryKey({ database: "db", schema: "ds_assertions", name: "a" }),
@@ -634,7 +634,7 @@ suite("schema creation", () => {
       ]);
     });
 
-    test("have the same lines as the executed statement", () => {
+    test("have the same lines as the executed statement up to the end of the query", () => {
       const table = dataform.Table.create({
         target: { database: "db", schema: "ds", name: "t" },
         enumType: dataform.TableType.TABLE,
@@ -653,14 +653,20 @@ suite("schema creation", () => {
         .get(dryRunValidationQueryKey(table.target))
         .split("\n");
 
-      expect(queryLines).to.have.length(statementLines.length);
-      // All lines match, except the one where the query starts: the statement has
-      // `create or replace table … as ` there, the validation query nothing.
+      // The statement has postOps after the query (and a `;` terminating the query before them).
+      expect(queryLines).to.have.length(statementLines.length - 1);
+      // All query lines match the statement, except the one where the query starts (`create or
+      // replace table … as ` vs nothing) and the trailing `;` added before postOps.
       const queryStartLine = 2;
       expect(statementLines[queryStartLine]).to.match(/^create or replace table .* as\s*$/);
       expect(queryLines[queryStartLine]).equals("");
       queryLines.forEach((line, i) => {
-        if (i !== queryStartLine) {
+        if (i === queryStartLine) {
+          return;
+        }
+        if (i === queryLines.length - 1) {
+          expect(`${line};`).equals(statementLines[i]);
+        } else {
           expect(line).equals(statementLines[i]);
         }
       });

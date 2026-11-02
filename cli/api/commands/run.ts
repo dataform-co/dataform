@@ -65,10 +65,11 @@ export function dryRunValidationQueryKey(target: dataform.ITarget): string {
 }
 
 /**
- * Returns the compiled SELECT queries (including pre and post operations) of the tables, views,
- * incremental tables and assertions of the graph, keyed by `dryRunValidationQueryKey()`, for
- * `IExecutionOptions.dryRunValidationQueries`. JiT actions are skipped: their query is only known
- * once they're compiled during the run.
+ * Returns the compiled SELECT queries (including pre-operations, which may declare variables or
+ * temporary objects used by the query; post-operations are excluded as they often reference the
+ * not-yet-created target table) of the tables, views, incremental tables and assertions of the
+ * graph, keyed by `dryRunValidationQueryKey()`, for `IExecutionOptions.dryRunValidationQueries`.
+ * JiT actions are skipped: their query is only known once they're compiled during the run.
  */
 export function buildDryRunValidationQueries(
   compiledGraph: dataform.ICompiledGraph,
@@ -85,16 +86,14 @@ export function buildDryRunValidationQueries(
   return queries;
 }
 
-function actionDryRunValidationQuery(action?: dataform.ITable | null): string | undefined {
+function actionDryRunValidationQuery(
+  action?: { preOps?: string[] | null; query?: string | null } | null,
+): string | undefined {
   if (!action?.query?.trim()) {
     return undefined;
   }
   return concatenateQueries(
-    [
-      ...(action.preOps || []).map((preOp) => preOp.trim()),
-      action.query,
-      ...(action.postOps || []).map((postOp) => postOp.trim()),
-    ],
+    [...(action.preOps || []).map((preOp) => preOp.trim()), action.query],
     undefined,
     false,
   );
