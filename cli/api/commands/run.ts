@@ -625,6 +625,9 @@ export class Runner {
             actionResult.status = dataform.ActionResult.ExecutionStatus.CANCELLED;
           }
         } else {
+          if (actionResult.status === dataform.ActionResult.ExecutionStatus.RUNNING) {
+            actionResult.status = dataform.ActionResult.ExecutionStatus.CANCELLED;
+          }
           actionResult.tasks.push({
             status: dataform.TaskResult.ExecutionStatus.SKIPPED,
             errorMessage: this.skipReason || "Task skipped after cancellation",

@@ -43,16 +43,21 @@ suite("schema creation", () => {
 
   function mockDbAdapter(
     existingSchemas: string[][] = [["existing_ds"]],
-    executeImpl: (statement: string) => Promise<any> = async () => ({ rows: [], metadata: {} }),
+    executeImpl: (statement: string, options?: any) => Promise<any> = async () => ({
+      rows: [],
+      metadata: {},
+    }),
   ) {
     const mockedDbAdapter = mock(BigQueryDbAdapter);
     const executedStatements: string[] = [];
     let schemasCall = when(mockedDbAdapter.schemas(anyString()));
     existingSchemas.forEach((schemas) => (schemasCall = schemasCall.thenResolve(schemas)));
-    when(mockedDbAdapter.execute(anyString(), anything())).thenCall(async (statement: string) => {
-      executedStatements.push(statement);
-      return executeImpl(statement);
-    });
+    when(mockedDbAdapter.execute(anyString(), anything())).thenCall(
+      async (statement: string, options: any) => {
+        executedStatements.push(statement);
+        return executeImpl(statement, options);
+      },
+    );
     return { mockedDbAdapter, executedStatements };
   }
 
@@ -193,6 +198,66 @@ suite("schema creation", () => {
       wrapped("new_ds", "CREATE TABLE a"),
       wrapped("new_ds", "CREATE TABLE b"),
     ]);
+  });
+
+  test("marks actions waiting for dataset creation as cancelled when the run is cancelled", async () => {
+    const graph = dataform.ExecutionGraph.create({
+      projectConfig,
+      runConfig: {},
+      warehouseState: {},
+      actions: [
+        tableAction("a", "new_ds", ["CREATE TABLE a"]),
+        {
+          ...tableAction("b", "new_ds", ["CREATE TABLE b"]),
+          actionDescriptor: { description: "table b" },
+        },
+        tableAction("c", "new_ds", ["CREATE TABLE c"], ["b"]),
+      ],
+    });
+    let aStarted = false;
+    let bRunning = false;
+    const { mockedDbAdapter, executedStatements } = mockDbAdapter(
+      [["existing_ds"]],
+      (statement, options) => {
+        if (statement === wrapped("new_ds", "CREATE TABLE a")) {
+          aStarted = true;
+          return new Promise((_, reject) => {
+            options.onCancel(() => reject(new Error("Query cancelled.")));
+          });
+        }
+        return Promise.resolve({ rows: [], metadata: {} });
+      },
+    );
+
+    const runner = Runner.create(instance(mockedDbAdapter), graph, {}, 0);
+    runner.onChange((runResult) => {
+      const actionB = runResult.actions.find((action) => action.target.name === "b");
+      if (actionB?.status === dataform.ActionResult.ExecutionStatus.RUNNING) {
+        bRunning = true;
+      }
+    });
+    const execution = runner.execute().result();
+    await sleepUntil(() => aStarted && bRunning);
+    runner.cancel();
+    const result = await execution;
+
+    expect(result.status).equals(dataform.RunResult.ExecutionStatus.CANCELLED);
+    expect(
+      result.actions.map((action) => [action.target.name, action.status]),
+    ).to.have.deep.members([
+      ["a", dataform.ActionResult.ExecutionStatus.CANCELLED],
+      ["b", dataform.ActionResult.ExecutionStatus.CANCELLED],
+      ["c", dataform.ActionResult.ExecutionStatus.SKIPPED],
+    ]);
+    const actionB = result.actions.find((action) => action.target.name === "b");
+    expect(actionB.tasks).deep.equals([
+      {
+        status: dataform.TaskResult.ExecutionStatus.SKIPPED,
+        errorMessage: "Run cancelled",
+      },
+    ]);
+    verify(mockedDbAdapter.setMetadata(anything())).never();
+    expect(executedStatements).deep.equals([wrapped("new_ds", "CREATE TABLE a")]);
   });
 
   test("operations only create their target dataset if they have an output", async () => {
