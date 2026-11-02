@@ -28,9 +28,15 @@ suite("concatenateQueries", () => {
     ).deep.equals("SELECT 1; -- blah\ndrop table foo; -- baz\nSELECT 2");
   });
 
-  test("preserves comment-only lines, verifies fix for https://github.com/dataform-co/dataform/issues/2103", () => {
+  test("preserves comment-only lines", () => {
     expect(concatenateQueries(["SELECT 1;", "--drop table foo", "SELECT 2", "--baz"])).deep.equals(
-      "SELECT 1;\n--drop table foo\nSELECT 2;\n--baz",
+      "SELECT 1;\n--drop table foo\nSELECT 2\n--baz",
+    );
+  });
+
+  test("does not add semicolon to last code statement when followed only by comments", () => {
+    expect(concatenateQueries(["SELECT 1", "-- trailing comment", "/* another */"])).deep.equals(
+      "SELECT 1\n-- trailing comment\n/* another */",
     );
   });
 

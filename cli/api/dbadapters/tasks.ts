@@ -48,10 +48,14 @@ function codeEndIndex(statement: string): number {
   return codeEnd;
 }
 
-function formatStatement(statement: string, isLast: boolean, modifier?: (mod: string) => string) {
+function formatStatement(
+  statement: string,
+  isLast: boolean,
+  modifier?: (mod: string) => string,
+  codeEnd: number = codeEndIndex(statement),
+) {
   // Split off trailing comments, so that the modifier and the terminating semicolon only apply to
   // the code: a semicolon after a trailing `--` or `#` comment would be commented out.
-  const codeEnd = codeEndIndex(statement);
   let code = statement.substring(0, codeEnd);
   const comment = statement.substring(codeEnd);
 
@@ -70,11 +74,19 @@ export function concatenateQueries(statements: string[], modifier?: (mod: string
   const processed = statements
     .filter((statement) => !!statement)
     .map((statement) => statement.trim())
-    .filter((statement) => statement.length > 0);
-  const formattedStatements = processed.map((statement, index) =>
-    formatStatement(statement, index === processed.length - 1, modifier),
-  );
-  return formattedStatements.join("\n");
+    .filter((statement) => statement.length > 0)
+    .map((statement) => ({ statement, codeEnd: codeEndIndex(statement) }));
+  let lastCodeIndex = -1;
+  processed.forEach(({ codeEnd }, index) => {
+    if (codeEnd > 0) {
+      lastCodeIndex = index;
+    }
+  });
+  return processed
+    .map(({ statement, codeEnd }, index) =>
+      formatStatement(statement, index >= lastCodeIndex, modifier, codeEnd),
+    )
+    .join("\n");
 }
 
 export class Tasks {
