@@ -1,6 +1,15 @@
 import { dataform } from "df/protos/ts";
 
 /**
+ * Whether the string or bytes literal opening quote (`'` or `"`) at `quoteIndex` is preceded by a
+ * GoogleSQL raw literal prefix (`r`, `rb` or `br`, case-insensitive).
+ */
+function hasRawLiteralPrefix(statement: string, quoteIndex: number): boolean {
+  const prefix = statement.slice(Math.max(0, quoteIndex - 3), quoteIndex);
+  return /(?:^|[^a-zA-Z0-9_])(?:r|rb|br)$/i.test(prefix);
+}
+
+/**
  * Returns the index just after the last character of code in the given GoogleSQL statement, i.e.
  * ignoring trailing whitespace and comments (`--`, `#` and `/* *\/`). String literals (single,
  * double and triple quoted) and quoted identifiers are skipped as a whole, so that e.g. a `--`
@@ -19,12 +28,13 @@ function codeEndIndex(statement: string): number {
       const end = statement.indexOf("*/", i + 2);
       i = end === -1 ? statement.length : end + 2;
     } else if (char === "'" || char === '"' || char === "`") {
+      const isRaw = char !== "`" && hasRawLiteralPrefix(statement, i);
       const tripleQuote = char.repeat(3);
       const closing = char !== "`" && statement.startsWith(tripleQuote, i) ? tripleQuote : char;
       i += closing.length;
       while (i < statement.length && !statement.startsWith(closing, i)) {
-        // Skip escaped characters, e.g. \' inside a single-quoted string.
-        i += statement[i] === "\\" ? 2 : 1;
+        // Skip escaped characters, e.g. \' inside a non-raw single-quoted string.
+        i += !isRaw && statement[i] === "\\" ? 2 : 1;
       }
       i = Math.min(i + closing.length, statement.length);
       codeEnd = i;
