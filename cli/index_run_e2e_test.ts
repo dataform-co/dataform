@@ -22,6 +22,7 @@ import { TmpDirFixture } from "df/testing/fixtures";
 
 const ON_SCHEMA_CHANGE_DATASET = "dataform_e2e_osc";
 const LOCATION_RESOLUTION_DATASET = "dataform_e2e_loc";
+const OPERATIONS_DATASET = "dataform_e2e_ops";
 
 integrationSuite("run e2e", ({ afterEach }) => {
   const tmpDirFixture = new TmpDirFixture(afterEach);
@@ -568,6 +569,53 @@ DROP SCHEMA IF EXISTS \`\${dataform.projectConfig.defaultDatabase}.\${dataform.p
         }
       },
     );
+  });
+
+  suite("operations", ({ before, after }) => {
+    const dbadapter = new BigQueryDbAdapter(dfapi.credentials.read(CREDENTIALS_PATH));
+    const uniqueDataset = `${OPERATIONS_DATASET}_${makeUniqueSuffix()}`;
+
+    before("drop stale datasets", async () => {
+      await dropStaleDatasets(dbadapter, {
+        project: INTEGRATION_TEST_PROJECT,
+        location: INTEGRATION_TEST_LOCATION,
+        prefixes: [OPERATIONS_DATASET],
+      });
+    });
+
+    after("drop datasets", async () => {
+      await dropDatasets(dbadapter, INTEGRATION_TEST_PROJECT, [uniqueDataset]);
+    });
+
+    test("statements separated by --- run as a single script", { timeout: 120000 }, async () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      await setupProject(tmpDirFixture, projectDir, { defaultDataset: uniqueDataset });
+      // The variable declared in the first statement is only visible to the second one if
+      // both run in the same script.
+      writeDefinitionFile(
+        projectDir,
+        "multi_statement_operation.sqlx",
+        `
+config { type: "operations" }
+DECLARE min_id INT64 DEFAULT 0;
+---
+SELECT * FROM (SELECT 1 AS id) WHERE id >= min_id
+`,
+      );
+
+      const runResult = await runCli("run", [
+        projectDir,
+        "--credentials",
+        CREDENTIALS_PATH,
+        "--actions=multi_statement_operation",
+      ]);
+
+      expect(
+        runResult.exitCode,
+        `stdout:\n${runResult.stdout}\nstderr:\n${runResult.stderr}`,
+      ).equals(0);
+      expect(runResult.stdout).to.include("Operation completed successfully");
+    });
   });
 
   suite("location resolution", ({ before, beforeEach, afterEach: suiteAfterEach }) => {

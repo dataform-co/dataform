@@ -178,11 +178,15 @@ from (${query}) as insertions`;
   }
 
   public createOperationTasks(operation: dataform.IOperation): dataform.IExecutionTask[] {
-    return operation.disabled
-      ? []
-      : operation.queries.map((statement) =>
-          dataform.ExecutionTask.create({ type: "statement", statement }),
-        );
+    if (operation.disabled) {
+      return [];
+    }
+    const queries = (operation.queries || []).filter((query) => !!query?.trim());
+    if (queries.length === 0) {
+      return [];
+    }
+    const statement = queries.length === 1 ? queries[0] : concatenateQueries(queries);
+    return [dataform.ExecutionTask.create({ type: "statement", statement })];
   }
 
   public createPropertyGraphTasks(
