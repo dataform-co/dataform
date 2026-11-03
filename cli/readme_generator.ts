@@ -262,7 +262,11 @@ function renderPositionalsTable(positionals: AnyOption[]): string[] {
     "| Argument | Required | Description |",
     "|---|---|---|",
     ...positionals.map((positional) =>
-      tableRow([`\`${positional.name}\``, requiredCell(positional), describeCell(positional)]),
+      tableRow([
+        codeCell(positional.name),
+        requiredCell(positional),
+        textCell(describe(positional)),
+      ]),
     ),
   ];
 }
@@ -297,10 +301,10 @@ function renderOptionsTable(options: AnyOption[], extraRows: string[] = []): str
     "|---|---|---|---|",
     ...options.map((option) =>
       tableRow([
-        `\`--${option.name}\``,
-        option.option.type || "—",
+        codeCell(`--${option.name}`),
+        option.option.type ? textCell(option.option.type) : "—",
         defaultCell(option),
-        describeCell(option),
+        textCell(describe(option)),
       ]),
     ),
     ...extraRows,
@@ -315,34 +319,65 @@ function requiredCell(positional: AnyOption): string {
   return defaultValue === "—" ? "No" : `No (default ${defaultValue})`;
 }
 
+// Table cells are built from three kinds of content, each rendered differently:
+// - plain text (e.g. an option's `describe`, shared with `dataform help`): escaped, see textCell(),
+// - values rendered as inline code (option names, declared defaults): see codeCell(),
+// - markdown written for the README (`docs.default`, fixed strings in this file): used as is.
+
 function defaultCell(option: AnyOption): string {
   if (option.docs?.default !== undefined) {
-    return option.docs.default;
+    return markdownCell(option.docs.default, `docs.default of --${option.name}`);
   }
   const value = option.option.default;
   if (value === undefined || value === null) {
     return "—";
   }
-  return `\`${typeof value === "string" ? value : JSON.stringify(value)}\``;
+  return codeCell(typeof value === "string" ? value : JSON.stringify(value));
 }
 
-// Descriptions are plain text shared with `dataform help`, so characters that markdown would
-// interpret as HTML (e.g. "dataform-<job-prefix>-") are escaped.
-function describeCell(option: AnyOption): string {
-  return String(option.option.describe || "")
+function describe(option: AnyOption): string {
+  return String(option.option.describe || "");
+}
+
+// Escapes plain text for a markdown table cell, so that it renders exactly as written: backslashes
+// first (so that the escapes added below can't be altered), then characters that markdown or GFM
+// tables would interpret (`|` ends the cell, `*` and `` ` `` format text), then HTML (e.g. the
+// "<job-prefix>" in "dataform-<job-prefix>-" would otherwise be hidden as an unknown tag).
+function textCell(text: string): string {
+  return text
+    .replace(/\s*\n\s*/g, " ")
+    .replace(/\\/g, "\\\\")
+    .replace(/[|*`]/g, (char) => `\\${char}`)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
 }
 
-function tableRow(cells: string[]): string {
-  return `| ${cells.map(escapeTableCell).join(" | ")} |`;
+// Renders a value as inline code. Backslashes are literal inside code spans, so values that would
+// need escaping (backticks, `|`, line breaks) aren't supported rather than escaped.
+function codeCell(value: string): string {
+  if (/[`|\n]/.test(value)) {
+    throw new Error(
+      `cli/README.md: can't render ${JSON.stringify(value)} as inline code in a table cell. ` +
+        "Set the option's docs.default to the markdown to show instead.",
+    );
+  }
+  return `\`${value}\``;
 }
 
-function escapeTableCell(text: string): string {
-  return String(text)
-    .replace(/\s*\n\s*/g, " ")
-    .replace(/\|/g, "\\|");
+// Markdown written for the README is used as is, but can't contain line breaks or unescaped `|`,
+// which would break the table.
+function markdownCell(markdown: string, source: string): string {
+  if (/\n|(^|[^\\])\|/.test(markdown)) {
+    throw new Error(
+      `cli/README.md: ${source} can't contain line breaks or unescaped "|": ${JSON.stringify(markdown)}`,
+    );
+  }
+  return markdown;
+}
+
+function tableRow(cells: string[]): string {
+  return `| ${cells.join(" | ")} |`;
 }
 
 function commandName(command: ICommandBase): string {

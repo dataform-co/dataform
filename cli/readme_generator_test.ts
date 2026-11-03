@@ -154,14 +154,52 @@ suite("readme generator", () => {
     expect(generatedBlock(content, "options build")).equals("None.");
   });
 
-  test("escapes table cells", () => {
+  test("escapes descriptions as plain text", () => {
     const { content } = generateReadme(readmeFor(["build"]), [
       command({
-        options: [{ name: "mode", option: { describe: "Either a|b,\nor c.", type: "string" } }],
+        options: [
+          { name: "mode", option: { describe: "Either a|b,\nor c.", type: "string" } },
+          {
+            name: "path",
+            option: { describe: "A path like C:\\dir\\|x, *not* `code`.", type: "string" },
+          },
+        ],
       }),
     ]);
-    expect(generatedBlock(content, "options build")).includes(
-      "| `--mode` | string | — | Either a\\|b, or c. |",
+    const table = generatedBlock(content, "options build");
+    expect(table).includes("| `--mode` | string | — | Either a\\|b, or c. |");
+    // The backslash before "|" is escaped too, so the "|" can't end the cell.
+    expect(table).includes(
+      "| `--path` | string | — | A path like C:\\\\dir\\\\\\|x, \\*not\\* \\`code\\`. |",
+    );
+  });
+
+  test("renders declared defaults as inline code, rejecting values that can't be", () => {
+    const withDefault = (value: string) =>
+      command({ options: [{ name: "sep", option: { describe: "Sep.", default: value } }] });
+    const { content } = generateReadme(readmeFor(["build"]), [withDefault("C:\\dir")]);
+    // Backslashes are literal inside code spans, so they're not escaped.
+    expect(generatedBlock(content, "options build")).includes("| `--sep` | — | `C:\\dir` | Sep. |");
+    expect(() => generateReadme(readmeFor(["build"]), [withDefault("a|b")])).to.throw(
+      /can't render "a\|b" as inline code/,
+    );
+    expect(() => generateReadme(readmeFor(["build"]), [withDefault("a`b")])).to.throw(
+      /can't render "a`b" as inline code/,
+    );
+  });
+
+  test("rejects docs.default markdown that would break the table", () => {
+    const withDocsDefault = (markdown: string) =>
+      command({
+        options: [{ name: "sep", option: { describe: "Sep." }, docs: { default: markdown } }],
+      });
+    const { content } = generateReadme(readmeFor(["build"]), [withDocsDefault("`a\\|b`")]);
+    expect(generatedBlock(content, "options build")).includes("| `--sep` | — | `a\\|b` | Sep. |");
+    expect(() => generateReadme(readmeFor(["build"]), [withDocsDefault("a|b")])).to.throw(
+      /docs.default of --sep can't contain line breaks or unescaped "\|"/,
+    );
+    expect(() => generateReadme(readmeFor(["build"]), [withDocsDefault("a\nb")])).to.throw(
+      /docs.default of --sep can't contain line breaks/,
     );
   });
 
