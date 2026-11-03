@@ -3,10 +3,13 @@ import Long from "long";
 import { anyString, anything, instance, mock, verify, when } from "ts-mockito";
 
 import { Runner } from "df/cli/api";
-import { buildDryRunValidationQueries, dryRunValidationQueryKey } from "df/cli/api/commands/run";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 import { ExecutionSql } from "df/cli/api/dbadapters/execution_sql";
-import { wrapWithCreateSchemaIfNotExists } from "df/cli/api/dbadapters/tasks";
+import {
+  buildDryRunValidationQueries,
+  dryRunValidationQueryKey,
+} from "df/cli/api/utils/dry_run_validation";
+import { wrapWithCreateSchemaIfNotExists } from "df/cli/api/utils/query_transforms";
 import { sleep, sleepUntil } from "df/common/promises";
 import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";

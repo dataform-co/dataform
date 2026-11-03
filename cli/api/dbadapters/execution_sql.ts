@@ -1,6 +1,7 @@
 import * as semver from "semver";
 
-import { concatenateQueries, Task, Tasks } from "df/cli/api/dbadapters/tasks";
+import { Task, Tasks } from "df/cli/api/dbadapters/tasks";
+import { concatenateQueries } from "df/cli/api/utils/query_transforms";
 import { ErrorWithCause } from "df/common/errors/errors";
 import { CompilationSql } from "df/core/compilation_sql";
 import { tableTypeEnumToString } from "df/core/utils";

@@ -2,11 +2,12 @@ import yargs from "yargs";
 
 import { build, credentials, run, test } from "df/cli/api";
 import { compileForRun } from "df/cli/api/commands/compile";
-import { buildDryRunValidationQueries, checkJobLabelLimit } from "df/cli/api/commands/run";
+import { checkJobLabelLimit } from "df/cli/api/commands/run";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 import { LineageEmitter } from "df/cli/api/lineage/emitter";
 import { createLineageEmitter as createLineageEmitterFromFactory } from "df/cli/api/lineage/emitter_factory";
 import { prettyJsonStringify } from "df/cli/api/utils";
+import { buildDryRunValidationQueries } from "df/cli/api/utils/dry_run_validation";
 import {
   dryRunOption,
   executionTimeoutOption,

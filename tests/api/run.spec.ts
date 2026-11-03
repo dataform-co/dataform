@@ -6,7 +6,7 @@ import { Runner, test as runTests } from "df/cli/api";
 import { checkJobLabelLimit, resolveJobLabels } from "df/cli/api/commands/run";
 import { IDbAdapter } from "df/cli/api/dbadapters";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
-import { wrapWithCreateSchemaIfNotExists } from "df/cli/api/dbadapters/tasks";
+import { wrapWithCreateSchemaIfNotExists } from "df/cli/api/utils/query_transforms";
 import { sleep, sleepUntil } from "df/common/promises";
 import { deepClone } from "df/common/protos";
 import { dataform } from "df/protos/ts";

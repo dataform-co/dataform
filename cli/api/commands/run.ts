@@ -1,17 +1,20 @@
 import EventEmitter from "events";
-import Long from "long";
 
 import { JitCompileChildProcess, JitCompiler } from "df/cli/api/commands/jit/compiler";
 import * as dbadapters from "df/cli/api/dbadapters";
 import { IBigQueryExecutionOptions } from "df/cli/api/dbadapters/bigquery";
 import { ExecutionSql } from "df/cli/api/dbadapters/execution_sql";
+import { LineageEmitter } from "df/cli/api/lineage/emitter";
 import {
-  concatenateQueries,
+  actionDryRunValidationQuery,
+  dryRunValidationQueryKey,
+} from "df/cli/api/utils/dry_run_validation";
+import { shiftErrorPositionLines } from "df/cli/api/utils/error_parsing";
+import {
   CREATE_SCHEMA_WRAPPER_LINE_OFFSET,
   wrapWithCreateSchemaIfNotExists,
-} from "df/cli/api/dbadapters/tasks";
-import { LineageEmitter } from "df/cli/api/lineage/emitter";
-import { shiftErrorPositionLines } from "df/cli/api/utils/error_parsing";
+} from "df/cli/api/utils/query_transforms";
+import { Timer } from "df/cli/api/utils/timer";
 import { Flags } from "df/common/flags";
 import { retry } from "df/common/promises";
 import { deepClone, equals } from "df/common/protos";
@@ -53,50 +56,6 @@ export interface IExecutionOptions {
   expectedCoreVersion?: string;
   lineageEmitter?: LineageEmitter;
   dryRunValidationQueries?: Map<string, string>;
-}
-
-/**
- * Key of `IExecutionOptions.dryRunValidationQueries`. Unlike `targetStringifier`, it doesn't depend
- * on which (possibly empty) fields happen to be set on the target proto, so that targets of the
- * compiled graph and of the execution graph match.
- */
-export function dryRunValidationQueryKey(target: dataform.ITarget): string {
-  return JSON.stringify([target.database || "", target.schema || "", target.name || ""]);
-}
-
-/**
- * Returns the compiled SELECT queries (including pre-operations, which may declare variables or
- * temporary objects used by the query; post-operations are excluded as they often reference the
- * not-yet-created target table) of the tables, views, incremental tables and assertions of the
- * graph, keyed by `dryRunValidationQueryKey()`, for `IExecutionOptions.dryRunValidationQueries`.
- * JiT actions are skipped: their query is only known once they're compiled during the run.
- */
-export function buildDryRunValidationQueries(
-  compiledGraph: dataform.ICompiledGraph,
-): Map<string, string> {
-  const queries = new Map<string, string>();
-  [...(compiledGraph.tables || []), ...(compiledGraph.assertions || [])]
-    .filter((action) => !action.disabled)
-    .forEach((action) => {
-      const query = actionDryRunValidationQuery(action);
-      if (query) {
-        queries.set(dryRunValidationQueryKey(action.target), query);
-      }
-    });
-  return queries;
-}
-
-function actionDryRunValidationQuery(
-  action?: { preOps?: string[] | null; query?: string | null } | null,
-): string | undefined {
-  if (!action?.query?.trim()) {
-    return undefined;
-  }
-  return concatenateQueries(
-    [...(action.preOps || []).map((preOp) => preOp.trim()), action.query],
-    undefined,
-    false,
-  );
 }
 
 export type CancelReason = "timeout" | "user" | "cancellation";
@@ -983,25 +942,5 @@ export class Runner {
       default:
         return dataform.TableType.TABLE;
     }
-  }
-}
-
-class Timer {
-  public static start(existingTiming?: dataform.ITiming) {
-    return new Timer(existingTiming?.startTimeMillis.toNumber() || new Date().valueOf());
-  }
-  private constructor(readonly startTimeMillis: number) {}
-
-  public current(): dataform.ITiming {
-    return {
-      startTimeMillis: Long.fromNumber(this.startTimeMillis),
-    };
-  }
-
-  public end(): dataform.ITiming {
-    return {
-      startTimeMillis: Long.fromNumber(this.startTimeMillis),
-      endTimeMillis: Long.fromNumber(new Date().valueOf()),
-    };
   }
 }

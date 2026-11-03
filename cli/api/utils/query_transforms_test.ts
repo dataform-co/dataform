@@ -1,6 +1,9 @@
 import { expect } from "chai";
 
-import { concatenateQueries, wrapWithCreateSchemaIfNotExists } from "df/cli/api/dbadapters/tasks";
+import {
+  concatenateQueries,
+  wrapWithCreateSchemaIfNotExists,
+} from "df/cli/api/utils/query_transforms";
 import { suite, test } from "df/testing";
 
 suite("concatenateQueries", () => {
@@ -22,7 +25,7 @@ suite("concatenateQueries", () => {
     expect(concatenateQueries(["SELECT 1;", "SELECT 2;"])).deep.equals("SELECT 1;\nSELECT 2;");
   });
 
-  test("adds semicolon before trailing comment if necessary, verifies fix for https://github.com/dataform-co/dataform/issues/1231", () => {
+  test("adds semicolon before trailing comment if necessary", () => {
     expect(
       concatenateQueries(["SELECT 1 -- blah", "drop table foo; -- baz", "SELECT 2"]),
     ).deep.equals("SELECT 1; -- blah\ndrop table foo; -- baz\nSELECT 2");
