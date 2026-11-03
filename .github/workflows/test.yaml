@@ -10,8 +10,9 @@ permissions:
   contents: read
 
 jobs:
-  # Lint, unit and integration tests run on Cloud Build (cloudbuild-test.yaml); this job only
-  # builds the packages and the smoke test bundle that the Windows job needs.
+  # Lint, unit and integration tests run on Cloud Build (cloudbuild-test.yaml); this job builds the
+  # packages and the smoke test bundle that the Windows job needs, and checks that cli/README.md is
+  # up to date (unlike Cloud Build, this runs for every PR, including forks).
   build-linux:
     name: Build packages and smoke test bundle (Linux)
     runs-on: ubuntu-latest
@@ -54,6 +55,12 @@ jobs:
         with:
           name: windows-smoke-test
           path: bazel-bin/cli/tests/windows/smoke_test_bundle.js
+
+      # Reuses the //cli build above. Kept last so that a failure doesn't block the Windows 
+      # smoke tests. These tests (tag cli_docs) are excluded from Cloud Build in 
+      # scripts/run_tests_on_cloudbuild.
+      - name: Check cli/README.md is up to date with the CLI definitions
+        run: bazel test --test_output=errors //cli:readme_generator_test //cli:readme_generated_test
 
   test-windows:
     name: CLI smoke tests (Windows, Node ${{ matrix.node-version }})

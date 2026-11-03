@@ -11,8 +11,9 @@ fi
 git rev-parse --verify --quiet origin/main >/dev/null || { echo "origin/main unavailable; cannot compute changed files" >&2; exit 1; }
 ./scripts/lint
 
-# Run unit tests
-./scripts/run_tests
+# Run unit tests. The cli/README.md tests (tag cli_docs) are skipped here: they run on GitHub
+# Actions (build-linux job in .github/workflows/test.yaml) for every PR, including forks.
+./scripts/run_tests --test_tag_filters=-integration,-cli_docs
 
 # Run integration tests
 ./scripts/run_integration_tests
