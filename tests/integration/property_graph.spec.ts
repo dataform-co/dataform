@@ -98,9 +98,28 @@ integrationSuite(
         "authors",
         "books",
         "wrote",
+        "NO PROPERTIES",
+        "MEASURE",
       ]) {
         expect(row.ddl).to.contain(needle);
       }
+
+      const graphQueryRows = (
+        await dbadapter.execute(
+          `SELECT author_name, upper_name, book_title
+           FROM GRAPH_TABLE(
+             \`${INTEGRATION_TEST_PROJECT}.${uniqueDataset}.${GRAPH_NAME}\`
+             MATCH (a:Author)-[:Wrote]->(b:Book)
+             COLUMNS (a.name AS author_name, a.upper_name AS upper_name, b.title AS book_title)
+           )
+           ORDER BY author_name`,
+        )
+      ).rows;
+      expect(graphQueryRows).deep.equals([
+        { author_name: "Alice", upper_name: "ALICE", book_title: "Book A" },
+        { author_name: "Bob", upper_name: "BOB", book_title: "Book B" },
+        { author_name: "Carol", upper_name: "CAROL", book_title: "Book C" },
+      ]);
     });
   },
 );

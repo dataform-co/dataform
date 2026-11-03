@@ -8,107 +8,172 @@ option java_multiple_files = true;
 
 option go_package = "github.com/dataform-co/dataform/protos/dataform";
 
+// Top-level configuration for a Dataform BigQuery Property Graph YAML file
+// (`definitions/graph.yaml`), aligned with the Google Semantic Ontology V1
+// specification (`version: 0.2.0.dev0/google`).
 message PropertyGraphConfig {
-  string name = 1;
-  string description = 2;
-  TargetDataset target_dataset = 3;
-  repeated GraphNodeTableConfig nodes = 4;
-  repeated GraphEdgeTableConfig edges = 5;
-  bool disabled = 6;
-  bool depend_on_dependency_assertions = 7;
-  repeated string tags = 8;
+  // Semantic Ontology specification version (`0.2.0.dev0/google`).
+  string version = 1;
+  // Semantic models declared in the file (must contain 1 model in V1).
+  repeated SemanticModelConfig semantic_model = 2;
+  // Optional. Whether this property graph action is disabled.
+  bool disabled = 3;
+  // Optional. Whether to depend on assertions attached to dependency actions.
+  bool depend_on_dependency_assertions = 4;
+  // Optional. Action tags for selective execution.
+  repeated string tags = 5;
   // Optional. Key-value pairs for BigQuery job labels applied to the query
   // job(s) executed for this property graph. Overrides matching keys from
-  // `defaultJobLabels` in `workflow_settings.yaml`. See `defaultJobLabels` for
-  // the allowed keys and values.
-  map<string, string> job_labels = 9;
-
-  message TargetDataset {
-    string project_id = 1;
-    string dataset_id = 2;
-  }
+  // `defaultJobLabels` in `workflow_settings.yaml`.
+  map<string, string> job_labels = 6;
 }
 
-message GraphNodeTableConfig {
+// A single semantic model definition within `semantic_model`.
+message SemanticModelConfig {
+  // Name of the semantic model / property graph.
   string name = 1;
-  oneof data_source {
-    string data_source_string = 2;
-    DatasetDataSource data_source_dataset = 3;
-    CatalogDataSource data_source_catalog = 4;
-    DataSourceRef data_source_ref = 11;
-  }
-  repeated string keys = 5;
-  string description = 6;
-  repeated string synonyms = 7;
-  repeated GraphFieldConfig fields = 8;
-  GraphFieldWildcard field_wildcard = 9;
-  repeated GraphLabelConfig labels = 10;
-}
-
-message GraphEdgeTableConfig {
-  string name = 1;
-  oneof data_source {
-    string data_source_string = 2;
-    DatasetDataSource data_source_dataset = 3;
-    CatalogDataSource data_source_catalog = 4;
-    DataSourceRef data_source_ref = 13;
-  }
-  repeated string keys = 5;
-  string description = 6;
-  repeated string synonyms = 7;
-  GraphEndpointConfig source = 8;
-  GraphEndpointConfig destination = 9;
-  repeated GraphFieldConfig fields = 10;
-  GraphFieldWildcard field_wildcard = 11;
-  repeated GraphLabelConfig labels = 12;
-}
-
-message GraphLabelConfig {
-  string name = 1;
+  // Optional human-readable description of the semantic model.
   string description = 2;
-  repeated string synonyms = 3;
-  repeated GraphFieldConfig fields = 4;
-  GraphFieldWildcard field_wildcard = 5;
+  // Optional AI context metadata (synonyms and examples) for the model.
+  GraphAiContextConfig ai_context = 3;
+  // Optional deployment targets for the property graph.
+  repeated GraphDeploymentConfig deployments = 4;
+  // Node entities in the semantic model.
+  repeated GraphEntityConfig entities = 5;
+  // Edge relationships connecting entities in the semantic model.
+  repeated GraphRelationshipConfig relationships = 6;
+  // Top-level aggregate metrics compiled as `MEASURE(...)` on host entities.
+  repeated GraphMetricConfig metrics = 7;
+  // Optional. Whether this property graph action is disabled.
+  bool disabled = 8;
+  // Optional. Whether to depend on assertions attached to dependency actions.
+  bool depend_on_dependency_assertions = 9;
+  // Optional. Action tags for selective execution.
+  repeated string tags = 10;
+  // Optional. Key-value pairs for BigQuery job labels applied to the query
+  // job(s) executed for this property graph.
+  map<string, string> job_labels = 11;
 }
 
+// Deployment target mapping for a semantic model.
+message GraphDeploymentConfig {
+  // Logical deployment profile name (e.g. `default`).
+  string name = 1;
+  // Target resource URI (`bigquery.googleapis.com/projects/<p>/datasets/<d>/propertyGraphs/<g>`).
+  string target = 2;
+}
+
+// A node entity definition in the semantic model.
+message GraphEntityConfig {
+  // Unique entity name within the semantic model.
+  string name = 1;
+  // Backing BigQuery table source (Dataform `ref`, `bigquery:p.d.t`, or GCP URI).
+  oneof source {
+    // String table reference (`bigquery:p.d.t`, `p.d.t`, or GCP table URI).
+    string source_string = 2;
+    // Dataform action reference (`source: { ref: ... }`).
+    DataSourceRef source_ref = 3;
+  }
+  // Physical primary key column name(s) identifying rows of this entity.
+  repeated string primary_key = 4;
+  // Secondary unique key column lists (accepted by parser so V1 validator can
+  // emit an explicit unsupported error; deferred to V2).
+  repeated GraphUniqueKeyList unique_keys = 5;
+  // Optional human-readable description of the entity.
+  string description = 6;
+  // Optional AI context metadata (synonyms and examples) for the entity.
+  GraphAiContextConfig ai_context = 7;
+  // Optional list of properties exposed on the entity node table.
+  repeated GraphFieldConfig fields = 8;
+}
+
+// Wrapper for a single composite unique key column list on an entity.
+message GraphUniqueKeyList {
+  // Column names comprising the unique key.
+  repeated string columns = 1;
+}
+
+// An edge relationship definition connecting two entities in the semantic model.
+message GraphRelationshipConfig {
+  // Unique relationship name within the semantic model.
+  string name = 1;
+  // Optional backing bridge table for M:N relationships. When omitted, the
+  // relationship is treated as a 1:N foreign-key edge backed by the `from`
+  // entity's table and `primary_key`.
+  oneof source {
+    // String table reference (`bigquery:p.d.t`, `p.d.t`, or GCP table URI).
+    string source_string = 2;
+    // Dataform action reference (`source: { ref: ... }`).
+    DataSourceRef source_ref = 3;
+  }
+  // Physical primary key column name(s) when an explicit `source` bridge table
+  // is specified.
+  repeated string primary_key = 4;
+  // Name of the source entity (`SOURCE KEY ... REFERENCES <from>`).
+  string from = 5;
+  // Name of the destination entity (`DESTINATION KEY ... REFERENCES <to>`).
+  string to = 6;
+  // Physical column name(s) on the source/edge table for the relationship join.
+  repeated string from_columns = 7;
+  // Physical column name(s) on the destination/edge table for the relationship join.
+  repeated string to_columns = 8;
+  // Optional human-readable description of the relationship.
+  string description = 9;
+  // Optional AI context metadata (synonyms and examples) for the relationship.
+  GraphAiContextConfig ai_context = 10;
+}
+
+// A property field definition on an entity.
 message GraphFieldConfig {
+  // Property name exposed on the graph element.
   string name = 1;
+  // Optional SQL expression computing the property value. Defaults to `name`.
   string expression = 2;
+  // Optional human-readable description of the field.
   string description = 3;
-  repeated string synonyms = 4;
+  // Optional logical data type metadata (accepted in YAML; ignored in BQ DDL).
+  string datatype = 4;
+  // Optional dimension flag metadata (accepted in YAML; ignored in BQ DDL).
+  bool dimension = 5;
+  // Optional display label metadata (accepted in YAML; ignored in BQ DDL).
+  string label = 6;
+  // Optional AI context metadata (synonyms and examples) for the field.
+  GraphAiContextConfig ai_context = 7;
 }
 
-message GraphFieldWildcard {
-  bool import_all = 1;
-  repeated string except = 2;
-}
-
-message GraphEndpointConfig {
-  string node = 1;
-  GraphJoinKeysConfig join_keys = 2;
-}
-
-message GraphJoinKeysConfig {
-  repeated string edge_columns = 1;
-  repeated string node_columns = 2;
-}
-
-message DatasetDataSource {
-  string project = 1;
-  string dataset = 2;
-  string table = 3;
-}
-
-message CatalogDataSource {
-  string project = 1;
-  string catalog = 2;
-  string namespace = 3;
-  string table = 4;
-}
-
-message DataSourceRef {
+// A top-level metric definition compiled as `MEASURE(...)` on a host entity.
+message GraphMetricConfig {
+  // Unique metric name within the semantic model.
   string name = 1;
+  // Target entity name on whose node table the `MEASURE(...)` property is emitted.
+  string entity = 2;
+  // Aggregate SQL expression (`SUM`, `AVG`, `COUNT`, `MIN`, or `MAX`).
+  string expression = 3;
+  // Optional human-readable description of the metric.
+  string description = 4;
+  // Optional display label metadata (accepted in YAML; ignored in BQ DDL).
+  string label = 5;
+  // Optional AI context metadata (synonyms and examples) for the metric.
+  GraphAiContextConfig ai_context = 6;
+}
+
+// AI context metadata attached to a semantic model, entity, relationship, field,
+// or metric.
+message GraphAiContextConfig {
+  // Alternative names emitted as `OPTIONS(synonyms=[...])`.
+  repeated string synonyms = 1;
+  // Example values or questions folded into `OPTIONS(description="...\nExamples: ...")`.
+  repeated string examples = 2;
+}
+
+// Reference to another Dataform action as a backing table source.
+message DataSourceRef {
+  // Target action name.
+  string name = 1;
+  // Optional target dataset / schema name.
   string schema = 2;
+  // Optional target GCP project / database ID.
   string database = 3;
+  // Optional flag to depend on assertions of the referenced action.
   bool include_dependent_assertions = 4;
 }

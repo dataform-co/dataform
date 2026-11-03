@@ -1,33 +1,42 @@
-name: "LibraryGraph"
-
-tags: ["integration"]
-
-nodes:
-- name: "Author"
-  ref: "authors"
-  keys: "id"
-  fields:
-  - name: "id"
-    expression: "id"
-  - name: "name"
-    expression: "name"
-
-- name: "Book"
-  ref: "books"
-  keys: "id"
-  fields:
-  - name: "id"
-    expression: "id"
-  - name: "title"
-    expression: "title"
-
-edges:
-- name: "Wrote"
-  ref: "wrote"
-  keys: ["author_id", "book_id"]
-  source:
-    node: "Author"
-    join_keys: ["author_id"]
-  destination:
-    node: "Book"
-    join_keys: ["book_id"]
+version: 0.2.0.dev0/google
+semantic_model:
+  - name: "LibraryGraph"
+    tags: ["integration"]
+    entities:
+      - name: "Author"
+        source:
+          ref: "authors"
+        primary_key: "id"
+        description: "Library author"
+        ai_context:
+          synonyms: ["writer"]
+          examples: ["Alice"]
+        fields:
+          - name: "id"
+            datatype: "INT64"
+          - name: "name"
+            datatype: "STRING"
+          - name: "upper_name"
+            datatype: "STRING"
+            expression: "UPPER(Author.name)"
+      - name: "Book"
+        source:
+          ref: "books"
+        primary_key: "id"
+        fields:
+          - name: "id"
+          - name: "title"
+    relationships:
+      - name: "Wrote"
+        source:
+          ref: "wrote"
+        primary_key: ["author_id", "book_id"]
+        from: "Author"
+        to: "Book"
+        from_columns: ["author_id"]
+        to_columns: ["book_id"]
+    metrics:
+      - name: "book_count"
+        entity: "Book"
+        expression: "COUNT(Book.id)"
+        description: "Total books"
