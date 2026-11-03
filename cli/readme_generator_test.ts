@@ -1,7 +1,7 @@
 import { expect } from "chai";
 
 import { ProjectConfigOptions } from "df/cli/project_config_options";
-import { generateReadme } from "df/cli/readme_generator";
+import { formatStaleBlocks, generateReadme } from "df/cli/readme_generator";
 import { ICommandBase } from "df/cli/yargswrapper";
 import { suite, test } from "df/testing";
 
@@ -198,6 +198,39 @@ suite("readme generator", () => {
       "options build",
       "project-config-options",
     ]);
+  });
+
+  test("explains stale blocks with the differing lines and how to fix them", () => {
+    const upToDate = generateReadme(readmeFor(["build"]), [command()]).content;
+    const handEdited = upToDate.replace("| Builds faster. |", "| Builds fastr. |");
+    const { staleBlocks } = generateReadme(handEdited, [
+      command({
+        options: [
+          { name: "fast", option: { describe: "Builds faster.", type: "boolean", default: false } },
+          { name: "new", option: { describe: "New option.", type: "boolean" } },
+        ],
+      }),
+    ]);
+    const optionsLine = upToDate.split("\n").indexOf("<!-- BEGIN GENERATED: options build -->") + 2;
+    const readmeLabel = `README (line ${optionsLine + 2}):`;
+    const expectedLabel = "expected from cli/:";
+    const width = Math.max(readmeLabel.length, expectedLabel.length);
+    expect(formatStaleBlocks(staleBlocks)).equals(
+      [
+        "cli/README.md is out of date with the CLI command and option definitions in cli/.",
+        "",
+        `Block "options build" (cli/README.md, lines ${optionsLine}-${optionsLine + 2}):`,
+        `  ${readmeLabel.padEnd(width)} | \`--fast\` | boolean | \`false\` | Builds fastr. |`,
+        `  ${expectedLabel.padEnd(width)} | \`--fast\` | boolean | \`false\` | Builds faster. |`,
+        `  ${expectedLabel.padEnd(width)} | \`--new\` | boolean | — | New option. |`,
+        "",
+        "To fix it:",
+        "- If you changed a command or option in cli/, run: bazel run //cli:update_readme",
+        "- If you edited a generated block in cli/README.md by hand, revert that edit and change the",
+        "  definition in cli/ instead (cli/commands/*.ts, cli/common_options.ts or",
+        "  cli/project_config_options.ts), then run: bazel run //cli:update_readme",
+      ].join("\n"),
+    );
   });
 
   test("is idempotent", () => {

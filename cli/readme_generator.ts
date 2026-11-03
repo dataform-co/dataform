@@ -33,12 +33,24 @@ export interface IGeneratedReadme {
   content: string;
   // Names of the blocks whose content changed, e.g. "options run".
   changedBlocks: string[];
+  // Details of the blocks whose content changed, for error messages.
+  staleBlocks: IStaleBlock[];
+}
+
+export interface IStaleBlock {
+  name: string;
+  // 1-based line number in the README of the first line inside the block.
+  firstLine: number;
+  // The block's lines as they are in the README.
+  current: string[];
+  // The block's lines as generated from the CLI definitions.
+  expected: string[];
 }
 
 export function generateReadme(readme: string, commands: ICommandBase[]): IGeneratedReadme {
   const lines = readme.replace(/\r\n/g, "\n").split("\n");
   const output: string[] = [];
-  const changedBlocks: string[] = [];
+  const staleBlocks: IStaleBlock[] = [];
   const seenBlocks = new Set<string>();
 
   let openBlock: { name: string; line: number; content: string[] } | null = null;
@@ -69,7 +81,12 @@ export function generateReadme(readme: string, commands: ICommandBase[]): IGener
       }
       const generated = renderBlock(openBlock.name, commands);
       if (openBlock.content.join("\n") !== generated.join("\n")) {
-        changedBlocks.push(openBlock.name);
+        staleBlocks.push({
+          name: openBlock.name,
+          firstLine: openBlock.line + 1,
+          current: openBlock.content,
+          expected: generated,
+        });
       }
       output.push(...generated, line);
       openBlock = null;
@@ -86,7 +103,83 @@ export function generateReadme(readme: string, commands: ICommandBase[]): IGener
   }
 
   checkAllBlocksPresent(seenBlocks, commands);
-  return { content: output.join("\n"), changedBlocks };
+  return {
+    content: output.join("\n"),
+    changedBlocks: staleBlocks.map((block) => block.name),
+    staleBlocks,
+  };
+}
+
+// Explains which generated blocks of cli/README.md are out of date, showing only the lines that
+// differ, and how to fix it.
+export function formatStaleBlocks(staleBlocks: IStaleBlock[]): string {
+  const blocks = staleBlocks.map((block) => {
+    const lastLine = block.firstLine + Math.max(block.current.length - 1, 0);
+    const labelled = diffLines(block.current, block.expected).map(({ kind, line, index }) => ({
+      label:
+        kind === "current" ? `README (line ${block.firstLine + index}):` : "expected from cli/:",
+      line,
+    }));
+    // Align the lines so that the differences are easy to spot.
+    const labelWidth = Math.max(...labelled.map(({ label }) => label.length));
+    const diff = labelled.map(({ label, line }) => `  ${label.padEnd(labelWidth)} ${line}`);
+    return [
+      `Block "${block.name}" (cli/README.md, lines ${block.firstLine}-${lastLine}):`,
+      ...diff,
+    ].join("\n");
+  });
+  return [
+    "cli/README.md is out of date with the CLI command and option definitions in cli/.",
+    "",
+    ...blocks.flatMap((block) => [block, ""]),
+    "To fix it:",
+    `- If you changed a command or option in cli/, run: ${UPDATE_README_COMMAND}`,
+    "- If you edited a generated block in cli/README.md by hand, revert that edit and change the",
+    "  definition in cli/ instead (cli/commands/*.ts, cli/common_options.ts or",
+    `  cli/project_config_options.ts), then run: ${UPDATE_README_COMMAND}`,
+  ].join("\n");
+}
+
+interface IDiffLine {
+  kind: "current" | "expected";
+  line: string;
+  // Index of the line in `current` or `expected`, depending on `kind`.
+  index: number;
+}
+
+// Returns the lines that differ between `current` and `expected` (based on their longest common
+// subsequence), in order. Generated blocks are small, so the quadratic algorithm is fine.
+function diffLines(current: string[], expected: string[]): IDiffLine[] {
+  const common: number[][] = Array.from({ length: current.length + 1 }, () =>
+    new Array(expected.length + 1).fill(0),
+  );
+  for (let i = current.length - 1; i >= 0; i--) {
+    for (let j = expected.length - 1; j >= 0; j--) {
+      common[i][j] =
+        current[i] === expected[j]
+          ? common[i + 1][j + 1] + 1
+          : Math.max(common[i + 1][j], common[i][j + 1]);
+    }
+  }
+  const diff: IDiffLine[] = [];
+  let i = 0;
+  let j = 0;
+  while (i < current.length || j < expected.length) {
+    if (i < current.length && j < expected.length && current[i] === expected[j]) {
+      i++;
+      j++;
+    } else if (
+      j >= expected.length ||
+      (i < current.length && common[i + 1][j] >= common[i][j + 1])
+    ) {
+      diff.push({ kind: "current", line: current[i], index: i });
+      i++;
+    } else {
+      diff.push({ kind: "expected", line: expected[j], index: j });
+      j++;
+    }
+  }
+  return diff;
 }
 
 function checkAllBlocksPresent(seenBlocks: Set<string>, commands: ICommandBase[]) {
