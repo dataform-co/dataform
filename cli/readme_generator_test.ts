@@ -165,6 +165,23 @@ suite("readme generator", () => {
     );
   });
 
+  test("escapes HTML in descriptions", () => {
+    const { content } = generateReadme(readmeFor(["build"]), [
+      command({
+        options: [
+          {
+            name: "prefix",
+            option: { describe: "Uses the form dataform-<prefix>- & more.", type: "string" },
+            docs: { default: "`<none>`" },
+          },
+        ],
+      }),
+    ]);
+    expect(generatedBlock(content, "options build")).includes(
+      "| `--prefix` | string | `<none>` | Uses the form dataform-&lt;prefix&gt;- &amp; more. |",
+    );
+  });
+
   test("leaves hand-written content untouched and replaces stale blocks", () => {
     const readme = readmeFor(["build"], "Hand-written\r\nnotes.").replace(
       block("options build"),

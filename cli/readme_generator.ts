@@ -169,11 +169,7 @@ function renderPositionalsTable(positionals: AnyOption[]): string[] {
     "| Argument | Required | Description |",
     "|---|---|---|",
     ...positionals.map((positional) =>
-      tableRow([
-        `\`${positional.name}\``,
-        requiredCell(positional),
-        positional.option.describe || "",
-      ]),
+      tableRow([`\`${positional.name}\``, requiredCell(positional), describeCell(positional)]),
     ),
   ];
 }
@@ -211,7 +207,7 @@ function renderOptionsTable(options: AnyOption[], extraRows: string[] = []): str
         `\`--${option.name}\``,
         option.option.type || "—",
         defaultCell(option),
-        option.option.describe || "",
+        describeCell(option),
       ]),
     ),
     ...extraRows,
@@ -235,6 +231,15 @@ function defaultCell(option: AnyOption): string {
     return "—";
   }
   return `\`${typeof value === "string" ? value : JSON.stringify(value)}\``;
+}
+
+// Descriptions are plain text shared with `dataform help`, so characters that markdown would
+// interpret as HTML (e.g. "dataform-<job-prefix>-") are escaped.
+function describeCell(option: AnyOption): string {
+  return String(option.option.describe || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 }
 
 function tableRow(cells: string[]): string {

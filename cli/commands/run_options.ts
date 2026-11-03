@@ -42,8 +42,7 @@ export interface IRunArgs
 export const dryRunOption: INamedOption<yargs.Options, IRunArgs> = {
   name: "dry-run",
   option: {
-    describe:
-      "If set, BigQuery will validate the run SQL without applying changes to the warehouse.",
+    describe: "Validates the run SQL with BigQuery without applying any changes to the warehouse.",
     type: "boolean",
   },
 };
@@ -51,7 +50,9 @@ export const dryRunOption: INamedOption<yargs.Options, IRunArgs> = {
 export const runTestsOption: INamedOption<yargs.Options, IRunArgs> = {
   name: "run-tests",
   option: {
-    describe: "If set, the project's unit tests are required to pass before running the project.",
+    describe:
+      "Requires the project's unit tests to pass before executing; aborts the run if any test " +
+      "fails.",
     type: "boolean",
   },
 };
@@ -59,7 +60,7 @@ export const runTestsOption: INamedOption<yargs.Options, IRunArgs> = {
 export const actionRetryLimitOption: INamedOption<yargs.Options, IRunArgs> = {
   name: "action-retry-limit",
   option: {
-    describe: "If set, idempotent actions will be retried up to the limit.",
+    describe: "Retries idempotent actions up to this many times on failure.",
     type: "number",
     default: 0,
   },
@@ -68,7 +69,7 @@ export const actionRetryLimitOption: INamedOption<yargs.Options, IRunArgs> = {
 export const fullRefreshOption: INamedOption<yargs.Options, IRunArgs> = {
   name: "full-refresh",
   option: {
-    describe: "Forces incremental tables to be rebuilt from scratch.",
+    describe: "Forces incremental tables (unless marked protected) to be rebuilt from scratch.",
     type: "boolean",
     default: false,
   },
@@ -77,7 +78,7 @@ export const fullRefreshOption: INamedOption<yargs.Options, IRunArgs> = {
 export const tagsOption: INamedOption<yargs.Options, IRunArgs> = {
   name: "tags",
   option: {
-    describe: "A list of tags to filter the actions to run.",
+    describe: "Tags to filter the actions to run (comma-separated or repeatable).",
     type: "array",
     coerce: splitCommas,
   },
@@ -86,7 +87,8 @@ export const tagsOption: INamedOption<yargs.Options, IRunArgs> = {
 export const includeDepsOption: INamedOption<yargs.Options, IRunArgs> = {
   name: "include-deps",
   option: {
-    describe: "If set, dependencies for selected actions will also be run.",
+    describe:
+      "Also runs upstream dependencies of the selected actions. Requires --actions or --tags.",
     type: "boolean",
   },
   check: requiresSelection("include-deps", actionsOption, tagsOption),
@@ -95,7 +97,8 @@ export const includeDepsOption: INamedOption<yargs.Options, IRunArgs> = {
 export const includeDependentsOption: INamedOption<yargs.Options, IRunArgs> = {
   name: "include-dependents",
   option: {
-    describe: "If set, dependents (downstream) for selected actions will also be run.",
+    describe:
+      "Also runs downstream dependents of the selected actions. Requires --actions or --tags.",
     type: "boolean",
   },
   check: requiresSelection("include-dependents", actionsOption, tagsOption),
@@ -142,7 +145,7 @@ export const jitTimeoutOption: INamedOption<yargs.Options, IRunArgs> = {
 export const jobPrefixOption: INamedOption<yargs.Options, IRunArgs> = {
   name: "job-prefix",
   option: {
-    describe: "Adds an additional prefix in the form of `dataform-${jobPrefix}-`.",
+    describe: "Adds an additional prefix to BigQuery job IDs, in the form dataform-<job-prefix>-.",
     type: "string",
     default: null,
   },
@@ -175,17 +178,17 @@ export const runOptions: Array<INamedOption<yargs.Options, IRunArgs>> = [
   runTestsOption,
   actionRetryLimitOption,
   actionsOption,
-  credentialsOption,
-  emitLineageOption,
-  fullRefreshOption,
+  tagsOption,
   includeDepsOption,
   includeDependentsOption,
+  fullRefreshOption,
+  credentialsOption,
   jsonOutputOption,
   timeoutOption,
   executionTimeoutOption,
   jitTimeoutOption,
   jobPrefixOption,
-  tagsOption,
   bigqueryJobLabelsOption,
+  emitLineageOption,
   ...ProjectConfigOptions.allYargsOptions,
 ];
