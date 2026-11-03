@@ -24,7 +24,7 @@ export function getBigQueryCredentials(
   } else if (locationIndex === 1) {
     location = "EU";
   } else if (locationIndex === 2) {
-    location = prompts.question("Enter the location's region name (e.g. 'asia-south1'):");
+    location = prompts.question("Enter the location's region name (e.g. 'asia-south1'):").trim();
     if (!location) {
       printWarning("Note: location's region name not provided; setting to auto");
       location = undefined;

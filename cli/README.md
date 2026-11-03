@@ -274,6 +274,10 @@ These are reused by multiple commands:
 
 - **ADC-based**: `{ "projectId": ..., "location": ... }`
 - **JSON-key-based**: `{ "projectId": ..., "credentials": "<service account key JSON as a string>", "location": ... }`
+
+Additional details:
+
+- **Location** is optional in both of the above (`init-creds` omits it if `auto` chosen)
 - **Service account impersonation** (optional, with either of the above): add `"impersonateServiceAccount": "<service account email>"` to run BigQuery queries (and lineage emission) as that service account. Your ADC identity, or the key above, is used to impersonate it and needs `roles/iam.serviceAccountTokenCreator` on that service account. `init-creds` asks for it as an optional last step.
 
 Only BigQuery is supported by `init-creds` and the bundled BigQuery adapter in this codebase. Treat `.df-credentials.json` as a secret — `dataform init` adds it to `.gitignore` automatically; never commit it.
