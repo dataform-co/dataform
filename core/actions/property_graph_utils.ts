@@ -16,43 +16,107 @@ const TABLE_SOURCE_URI_REGEX =
 
 const STRING_LITERAL_REGEX = /'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"/g;
 
-const SQL_EXPRESSION_KEYWORDS = new Set([
+// GoogleSQL reserved keywords that must be backtick-quoted when used as bare
+// identifiers (entity/relationship aliases, label names, key columns, or
+// property aliases) in CREATE PROPERTY GRAPH DDL.
+const GOOGLE_SQL_RESERVED_KEYWORDS = new Set([
   "ALL",
   "AND",
+  "ANY",
+  "ARRAY",
   "AS",
   "ASC",
+  "ASSERT_ROWS_MODIFIED",
+  "AT",
   "BETWEEN",
-  "BIGNUMERIC",
-  "BOOL",
-  "BOOLEAN",
   "BY",
   "CASE",
   "CAST",
-  "DATE",
-  "DATETIME",
+  "COLLATE",
+  "CONTAINS",
+  "CREATE",
+  "CROSS",
+  "CUBE",
+  "CURRENT",
+  "DEFAULT",
+  "DEFINE",
   "DESC",
   "DISTINCT",
   "ELSE",
   "END",
+  "ENUM",
+  "ESCAPE",
+  "EXCEPT",
+  "EXCLUDE",
+  "EXISTS",
+  "EXTRACT",
   "FALSE",
-  "FLOAT64",
+  "FETCH",
+  "FOLLOWING",
+  "FOR",
   "FROM",
+  "FULL",
+  "GRAPH_TABLE",
+  "GROUP",
+  "GROUPING",
+  "GROUPS",
+  "HASH",
+  "HAVING",
+  "IF",
+  "IGNORE",
   "IN",
-  "INT64",
+  "INNER",
+  "INTERSECT",
   "INTERVAL",
+  "INTO",
   "IS",
+  "JOIN",
+  "LATERAL",
+  "LEFT",
   "LIKE",
+  "LIMIT",
+  "LOOKUP",
+  "MERGE",
+  "NATURAL",
+  "NEW",
+  "NO",
   "NOT",
   "NULL",
-  "NUMERIC",
+  "NULLS",
+  "OF",
+  "ON",
   "OR",
-  "SAFE_CAST",
-  "STRING",
+  "ORDER",
+  "OUTER",
+  "OVER",
+  "PARTITION",
+  "PRECEDING",
+  "PROTO",
+  "QUALIFY",
+  "RANGE",
+  "RECURSIVE",
+  "RESPECT",
+  "RIGHT",
+  "ROLLUP",
+  "ROWS",
+  "SELECT",
+  "SET",
+  "SOME",
+  "STRUCT",
+  "TABLESAMPLE",
   "THEN",
-  "TIME",
-  "TIMESTAMP",
+  "TO",
+  "TREAT",
   "TRUE",
+  "UNBOUNDED",
+  "UNION",
+  "UNNEST",
+  "USING",
   "WHEN",
+  "WHERE",
+  "WINDOW",
+  "WITH",
+  "WITHIN",
 ]);
 
 export interface IResolvedDeploymentTarget {
@@ -103,18 +167,31 @@ function normalizeSource(container: any) {
     delete container.source;
     return;
   }
-  if (typeof container.source === "object" && !Array.isArray(container.source)) {
-    if ("ref" in container.source) {
-      if (typeof container.source.ref === "string") {
-        container.sourceRef = { name: container.source.ref };
-      } else if (container.source.ref && typeof container.source.ref === "object") {
-        container.sourceRef = container.source.ref;
-      } else {
-        container.sourceRef = {};
-      }
-      delete container.source;
-    }
+  if (typeof container.source !== "object" || Array.isArray(container.source)) {
+    throw new Error("'source' must be a table URI string or a '{ ref: ... }' object.");
   }
+  if (!("ref" in container.source)) {
+    throw new Error("'source' object must contain a 'ref' property.");
+  }
+  const extraKeys = Object.keys(container.source).filter((key) => key !== "ref");
+  if (extraKeys.length > 0) {
+    throw new Error(
+      `Unexpected property '${extraKeys[0]}' in 'source' ` +
+        `(only 'ref' is allowed; nest target properties inside 'source.ref').`,
+    );
+  }
+  if (typeof container.source.ref === "string") {
+    container.sourceRef = { name: container.source.ref };
+  } else if (
+    container.source.ref &&
+    typeof container.source.ref === "object" &&
+    !Array.isArray(container.source.ref)
+  ) {
+    container.sourceRef = container.source.ref;
+  } else {
+    container.sourceRef = {};
+  }
+  delete container.source;
 }
 
 function normalizeStringList(container: any, fieldName: string) {
@@ -125,10 +202,6 @@ function normalizeStringList(container: any, fieldName: string) {
 
 function normalizeUniqueKeys(entity: any) {
   if (!Array.isArray(entity.uniqueKeys)) {
-    return;
-  }
-  if (entity.uniqueKeys.length === 0) {
-    entity.uniqueKeys = [{ columns: [] }];
     return;
   }
   entity.uniqueKeys = entity.uniqueKeys.map((item: any) => {
@@ -230,11 +303,65 @@ export function parseSourceTableString(rawSource: string, where: string): datafo
   );
 }
 
+export function unquoteIdentifier(name: string): string {
+  if (!name || typeof name !== "string") {
+    return name;
+  }
+  const trimmed = name.trim();
+  if (trimmed.length >= 2 && trimmed.startsWith("`") && trimmed.endsWith("`")) {
+    return trimmed.slice(1, -1);
+  }
+  return trimmed;
+}
+
+export function isSimpleIdentifier(name: string): boolean {
+  return /^[A-Za-z_][A-Za-z0-9_]*$/.test(name);
+}
+
+export function isReservedKeyword(name: string): boolean {
+  return GOOGLE_SQL_RESERVED_KEYWORDS.has(name.toUpperCase());
+}
+
+export function quoteIdentifier(name: string): string {
+  const trimmed = name.trim();
+  if (/^`[^`]+`$/.test(trimmed)) {
+    return trimmed;
+  }
+  if (isSimpleIdentifier(trimmed)) {
+    return isReservedKeyword(trimmed) ? `\`${trimmed}\`` : trimmed;
+  }
+  return `\`${trimmed}\``;
+}
+
+export function quoteIfReserved(value: string): string {
+  const trimmed = value.trim();
+  if (isSimpleIdentifier(trimmed) && isReservedKeyword(trimmed)) {
+    return `\`${trimmed}\``;
+  }
+  return value;
+}
+
+export function validateIdentifierName(name: string, itemKind: string, where: string): void {
+  const unquoted = unquoteIdentifier(name);
+  if (!isSimpleIdentifier(unquoted)) {
+    throw new Error(
+      `${where}: ${itemKind} name '${name}' must be a valid identifier ` +
+        `(letters, digits, and underscores, starting with a letter or underscore).`,
+    );
+  }
+}
+
+const SQL_LITERAL_KEYWORDS = new Set<string>(["TRUE", "FALSE", "NULL"]);
+
 export function isPhysicalColumnName(value: string): boolean {
   if (!value || typeof value !== "string") {
     return false;
   }
-  return /^`[^`]+`$/.test(value) || /^[^\s().+\-*/%=<>!|&^~,`]+$/.test(value);
+  const trimmed = value.trim();
+  if (/^`[^`]+`$/.test(trimmed)) {
+    return true;
+  }
+  return isSimpleIdentifier(trimmed) && !SQL_LITERAL_KEYWORDS.has(trimmed.toUpperCase());
 }
 
 export function validatePhysicalColumnList(
@@ -259,7 +386,7 @@ export function validateCaseInsensitiveUnique(
 ): void {
   const seen = new Map<string, string>();
   for (const name of names) {
-    const lower = name.toLowerCase();
+    const lower = unquoteIdentifier(name).toLowerCase();
     const existing = seen.get(lower);
     if (existing !== undefined) {
       throw new Error(
@@ -287,8 +414,28 @@ export function formatDescriptionWithExamples(
   return base ? `${base}\n${examplesText}` : examplesText;
 }
 
-function escapeRegExp(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const QUALIFIER_OR_BACKTICK_TOKEN_REGEX = /(`[^`]*`)(\.?)|([A-Za-z_][A-Za-z0-9_]*)\./g;
+
+function extractQualifierIdent(
+  backtickToken: string | undefined,
+  dot: string | undefined,
+  bareIdent: string | undefined,
+  offset: number,
+  segment: string,
+): string | null {
+  if (offset > 0 && /[\w`.-]/.test(segment[offset - 1])) {
+    return null;
+  }
+  if (backtickToken !== undefined) {
+    if (dot !== "." || backtickToken.length <= 2) {
+      return null;
+    }
+    return unquoteIdentifier(backtickToken);
+  }
+  if (bareIdent !== undefined) {
+    return bareIdent;
+  }
+  return null;
 }
 
 function mapOutsideStringLiterals(expression: string, fn: (segment: string) => string): string {
@@ -310,19 +457,50 @@ function blankStringLiterals(expression: string): string {
 }
 
 export function stripEntityQualifier(expression: string, entityName: string): string {
-  const qualifierRegex = new RegExp(`(?<![\\w\`.])\`?${escapeRegExp(entityName)}\`?\\.`, "g");
-  return mapOutsideStringLiterals(expression, (seg) => seg.replace(qualifierRegex, ""));
+  const targetLower = unquoteIdentifier(entityName).toLowerCase();
+  return mapOutsideStringLiterals(expression, (seg) =>
+    seg.replace(
+      QUALIFIER_OR_BACKTICK_TOKEN_REGEX,
+      (
+        match: string,
+        backtickToken: string | undefined,
+        dot: string | undefined,
+        bareIdent: string | undefined,
+        offset: number,
+        str: string,
+      ) => {
+        const qualifier = extractQualifierIdent(backtickToken, dot, bareIdent, offset, str);
+        if (qualifier !== null && qualifier.toLowerCase() === targetLower) {
+          return "";
+        }
+        return match;
+      },
+    ),
+  );
 }
 
 export function findReferencedEntityQualifiers(
   expression: string,
   entityNames: string[],
+  allowedLocalQualifiers: ReadonlySet<string> = new Set(),
 ): string[] {
   const scannable = blankStringLiterals(expression);
+  const foundQualifiersLower = new Set<string>();
+  const regex = new RegExp(QUALIFIER_OR_BACKTICK_TOKEN_REGEX.source, "g");
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(scannable)) !== null) {
+    const qualifier = extractQualifierIdent(match[1], match[2], match[3], match.index, scannable);
+    if (qualifier !== null) {
+      foundQualifiersLower.add(qualifier.toLowerCase());
+    }
+  }
   const referenced: string[] = [];
   for (const name of entityNames) {
-    const regex = new RegExp(`(?<![\\w\`.])\`?${escapeRegExp(name)}\`?\\.`);
-    if (regex.test(scannable)) {
+    const lowerName = unquoteIdentifier(name).toLowerCase();
+    if (allowedLocalQualifiers.has(lowerName)) {
+      continue;
+    }
+    if (foundQualifiersLower.has(lowerName)) {
       referenced.push(name);
     }
   }
@@ -438,36 +616,6 @@ export function extractSupportedAggregate(expression: string): IParsedAggregate 
   return { fn, operand, distinct };
 }
 
-function extractOperandColumnIdentifiers(operand: string): string[] {
-  if (isPhysicalColumnName(operand)) {
-    return [operand];
-  }
-  const scannable = blankStringLiterals(operand);
-  const columns: string[] = [];
-  const tokenRegex = /`[^`]+`|\b[A-Za-z_][A-Za-z0-9_]*\b/g;
-  let match: RegExpExecArray | null;
-  while ((match = tokenRegex.exec(scannable)) !== null) {
-    const token = match[0];
-    if (token.startsWith("`")) {
-      if (!columns.includes(token)) {
-        columns.push(token);
-      }
-      continue;
-    }
-    const rest = scannable.slice(match.index + token.length);
-    if (/^\s*\(/.test(rest)) {
-      continue;
-    }
-    if (SQL_EXPRESSION_KEYWORDS.has(token.toUpperCase())) {
-      continue;
-    }
-    if (!columns.includes(token)) {
-      columns.push(token);
-    }
-  }
-  return columns;
-}
-
 export function buildEntityLabels(
   entityConfig: dataform.IGraphEntityConfig,
   entityMetrics: dataform.IGraphMetricConfig[],
@@ -478,10 +626,18 @@ export function buildEntityLabels(
   const where = `Property graph '${graphName}': entity '${entityName}'`;
   const configuredFields = entityConfig.fields || [];
 
+  if (entityMetrics.length > 0 && configuredFields.length === 0) {
+    throw new Error(
+      `${where} must declare 'fields' explicitly when 'metrics' target it, ` +
+        `because BigQuery does not allow combining PROPERTIES ALL COLUMNS with MEASURE(...).`,
+    );
+  }
+
   for (const field of configuredFields) {
     if (!field.name) {
       throw new Error(`${where}: every field must have a 'name'.`);
     }
+    validateIdentifierName(field.name, "field", where);
   }
   validateCaseInsensitiveUnique(
     configuredFields.map((f) => f.name),
@@ -490,31 +646,46 @@ export function buildEntityLabels(
   );
 
   const builtFields: dataform.GraphField[] = configuredFields.map((field) => {
+    const cleanName = unquoteIdentifier(field.name);
     const strippedExpr = field.expression
       ? stripEntityQualifier(field.expression, entityName)
-      : field.name;
+      : cleanName;
+    const normalizedExpr = unquoteIdentifier(strippedExpr) === cleanName ? cleanName : strippedExpr;
     return dataform.GraphField.create({
-      name: field.name,
-      expression: strippedExpr,
+      name: cleanName,
+      expression: normalizedExpr,
       description: formatDescriptionWithExamples(field.description, field.aiContext),
       synonyms: field.aiContext?.synonyms || [],
     });
   });
 
+  const declaredFieldsByLowerName = new Map<string, dataform.GraphField>();
   const exposedNamesLower = new Map<string, string>();
   for (const field of builtFields) {
-    exposedNamesLower.set(field.name.toLowerCase(), field.name);
+    const lowerName = unquoteIdentifier(field.name).toLowerCase();
+    declaredFieldsByLowerName.set(lowerName, field);
+    exposedNamesLower.set(lowerName, field.name);
   }
 
-  for (const metric of entityMetrics) {
-    const metricConflict = exposedNamesLower.get(metric.name.toLowerCase());
-    if (metricConflict !== undefined) {
-      throw new Error(
-        `Property graph '${graphName}': metric '${metric.name}' collides with field ` +
-          `'${metricConflict}' on entity '${entityName}'.`,
-      );
+  const allowedLocalQualifiers = new Set<string>([
+    unquoteIdentifier(entityName).toLowerCase(),
+    ...exposedNamesLower.keys(),
+  ]);
+
+  const assertNoMetricFieldCollisions = () => {
+    for (const metric of entityMetrics) {
+      const lowerMetricName = unquoteIdentifier(metric.name).toLowerCase();
+      const metricConflict = exposedNamesLower.get(lowerMetricName);
+      if (metricConflict !== undefined) {
+        throw new Error(
+          `Property graph '${graphName}': metric '${metric.name}' collides with field ` +
+            `'${metricConflict}' on entity '${entityName}'.`,
+        );
+      }
     }
-  }
+  };
+
+  assertNoMetricFieldCollisions();
 
   const autoExposedFields: dataform.GraphField[] = [];
   const measureFields: dataform.GraphField[] = [];
@@ -525,9 +696,16 @@ export function buildEntityLabels(
       throw new Error(`${metricWhere} must declare 'expression'.`);
     }
 
-    const referencedEntities = findReferencedEntityQualifiers(metric.expression, allEntityNames);
+    const strippedMetricExpr = stripEntityQualifier(metric.expression, entityName);
+    const referencedEntities = findReferencedEntityQualifiers(
+      strippedMetricExpr,
+      allEntityNames,
+      allowedLocalQualifiers,
+    );
     for (const refEntity of referencedEntities) {
-      if (refEntity !== entityName) {
+      if (
+        unquoteIdentifier(refEntity).toLowerCase() !== unquoteIdentifier(entityName).toLowerCase()
+      ) {
         throw new Error(
           `${metricWhere} targets entity '${entityName}' but its expression references ` +
             `entity '${refEntity}'.`,
@@ -535,7 +713,6 @@ export function buildEntityLabels(
       }
     }
 
-    const strippedMetricExpr = stripEntityQualifier(metric.expression, entityName);
     const parsedAgg = extractSupportedAggregate(strippedMetricExpr);
     if (!parsedAgg) {
       throw new Error(
@@ -545,7 +722,6 @@ export function buildEntityLabels(
     }
 
     let loweredOperand = parsedAgg.operand;
-    let operandColumns: string[] = [];
 
     if (parsedAgg.operand === "*") {
       if (parsedAgg.fn.toUpperCase() !== "COUNT" || parsedAgg.distinct) {
@@ -554,36 +730,59 @@ export function buildEntityLabels(
             `is not supported (only COUNT(*) is allowed).`,
         );
       }
-      const pkCol = entityConfig.primaryKey[0];
-      loweredOperand = pkCol;
-      operandColumns = [pkCol];
-    } else {
-      operandColumns = extractOperandColumnIdentifiers(parsedAgg.operand);
-    }
-
-    for (const col of operandColumns) {
-      const lowerCol = col.toLowerCase();
-      if (!exposedNamesLower.has(lowerCol)) {
-        exposedNamesLower.set(lowerCol, col);
+      // BigQuery graph MEASURE(...) expressions must aggregate an exposed node
+      // property rather than `*` (see
+      // https://cloud.google.com/bigquery/docs/reference/standard-sql/graph-ddl-statements).
+      // Lower COUNT(*) to COUNT(<primary_key[0]>) and ensure that key column is
+      // exposed as a property on the node label.
+      const pkCol = unquoteIdentifier(entityConfig.primaryKey[0]);
+      const lowerPk = pkCol.toLowerCase();
+      if (!exposedNamesLower.has(lowerPk)) {
+        exposedNamesLower.set(lowerPk, pkCol);
         autoExposedFields.push(
           dataform.GraphField.create({
-            name: col,
-            expression: col,
+            name: pkCol,
+            expression: pkCol,
           }),
         );
+      }
+      loweredOperand = quoteIdentifier(pkCol);
+    } else if (isPhysicalColumnName(parsedAgg.operand)) {
+      const cleanOperand = unquoteIdentifier(parsedAgg.operand);
+      const lowerOperand = cleanOperand.toLowerCase();
+      const matchedField = declaredFieldsByLowerName.get(lowerOperand);
+      if (matchedField) {
+        const isDerivedField =
+          unquoteIdentifier(matchedField.expression) !== unquoteIdentifier(matchedField.name);
+        loweredOperand = isDerivedField
+          ? matchedField.expression
+          : quoteIdentifier(matchedField.name);
+      } else {
+        if (!exposedNamesLower.has(lowerOperand)) {
+          exposedNamesLower.set(lowerOperand, cleanOperand);
+          autoExposedFields.push(
+            dataform.GraphField.create({
+              name: cleanOperand,
+              expression: cleanOperand,
+            }),
+          );
+        }
+        loweredOperand = quoteIdentifier(cleanOperand);
       }
     }
 
     const loweredAgg = `${parsedAgg.fn}(${parsedAgg.distinct ? "DISTINCT " : ""}${loweredOperand})`;
     measureFields.push(
       dataform.GraphField.create({
-        name: metric.name,
+        name: unquoteIdentifier(metric.name),
         expression: `MEASURE(${loweredAgg})`,
         description: formatDescriptionWithExamples(metric.description, metric.aiContext),
         synonyms: metric.aiContext?.synonyms || [],
       }),
     );
   }
+
+  assertNoMetricFieldCollisions();
 
   const allFields = [...builtFields, ...autoExposedFields, ...measureFields];
   const entityDescription = formatDescriptionWithExamples(
@@ -633,8 +832,8 @@ export function buildRelationshipLabels(
 
 export function renderNode(node: dataform.IGraphNodeTable): string {
   const pieces: string[] = [
-    `${renderQualifiedTable(node.dataSource)} AS ${node.name}`,
-    `KEY (${node.keys.join(", ")})`,
+    `${renderQualifiedTable(node.dataSource)} AS ${quoteIdentifier(node.name)}`,
+    `KEY (${node.keys.map((k) => quoteIdentifier(k)).join(", ")})`,
   ];
   if (!node.labels || node.labels.length === 0) {
     pieces.push("PROPERTIES ALL COLUMNS");
@@ -647,9 +846,11 @@ export function renderNode(node: dataform.IGraphNodeTable): string {
 }
 
 export function renderEdge(edge: dataform.IGraphEdgeTable): string {
-  const pieces: string[] = [`${renderQualifiedTable(edge.dataSource)} AS ${edge.name}`];
+  const pieces: string[] = [
+    `${renderQualifiedTable(edge.dataSource)} AS ${quoteIdentifier(edge.name)}`,
+  ];
   if (edge.keys && edge.keys.length > 0) {
-    pieces.push(`KEY (${edge.keys.join(", ")})`);
+    pieces.push(`KEY (${edge.keys.map((k) => quoteIdentifier(k)).join(", ")})`);
   }
   pieces.push(renderEndpoint("SOURCE", edge.source));
   pieces.push(renderEndpoint("DESTINATION", edge.destination));
@@ -677,8 +878,9 @@ function renderQualifiedTable(target: dataform.ITarget): string {
 
 function renderEndpoint(role: "SOURCE" | "DESTINATION", endpoint: dataform.IGraphEndpoint): string {
   return (
-    `${role} KEY (${endpoint.edgeColumns.join(", ")}) ` +
-    `REFERENCES ${endpoint.node} (${endpoint.nodeColumns.join(", ")})`
+    `${role} KEY (${endpoint.edgeColumns.map((c) => quoteIdentifier(c)).join(", ")}) ` +
+    `REFERENCES ${quoteIdentifier(endpoint.node)} ` +
+    `(${endpoint.nodeColumns.map((c) => quoteIdentifier(c)).join(", ")})`
   );
 }
 
@@ -690,7 +892,7 @@ function renderNodeLabelClause(label: dataform.IGraphLabel): string {
       parts.push(`DEFAULT LABEL ${options}`);
     }
   } else {
-    parts.push(`LABEL ${label.name}`);
+    parts.push(`LABEL ${quoteIdentifier(label.name)}`);
   }
   parts.push(renderNodePropertiesClause(label));
   return parts.join(" ");
@@ -704,7 +906,7 @@ function renderEdgeLabelClause(label: dataform.IGraphLabel): string {
       parts.push(`DEFAULT LABEL ${options}`);
     }
   } else {
-    parts.push(`LABEL ${label.name}`);
+    parts.push(`LABEL ${quoteIdentifier(label.name)}`);
   }
   parts.push("NO PROPERTIES");
   return parts.join(" ");
@@ -719,12 +921,26 @@ function renderNodePropertiesClause(label: dataform.IGraphLabel): string {
 }
 
 function renderField(field: dataform.IGraphField): string {
-  const expr =
-    field.expression && field.expression !== field.name
-      ? `${field.expression} AS ${field.name}`
-      : field.name;
+  const alias = quoteIdentifier(field.name);
+  const hasDistinctExpression =
+    field.expression && unquoteIdentifier(field.expression) !== unquoteIdentifier(field.name);
+  const expr = hasDistinctExpression ? `${quoteIfReserved(field.expression)} AS ${alias}` : alias;
   const options = renderOptionsClause(field.description, field.synonyms);
   return options ? `${expr} ${options}` : expr;
+}
+
+export function quoteBigQueryString(value: string): string {
+  const escaped = value
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, "\\n")
+    .replace(/\r/g, "\\r")
+    .replace(/\t/g, "\\t")
+    .replace(
+      /[\x00-\x08\x0b\x0c\x0e-\x1f]/g,
+      (ch) => `\\x${ch.charCodeAt(0).toString(16).padStart(2, "0")}`,
+    );
+  return `"${escaped}"`;
 }
 
 export function renderOptionsClause(
@@ -733,10 +949,10 @@ export function renderOptionsClause(
 ): string {
   const parts: string[] = [];
   if (description) {
-    parts.push(`description=${JSON.stringify(description)}`);
+    parts.push(`description=${quoteBigQueryString(description)}`);
   }
   if (synonyms && synonyms.length > 0) {
-    parts.push(`synonyms=[${synonyms.map((s) => JSON.stringify(s)).join(", ")}]`);
+    parts.push(`synonyms=[${synonyms.map((s) => quoteBigQueryString(s)).join(", ")}]`);
   }
   return parts.length > 0 ? `OPTIONS(${parts.join(", ")})` : "";
 }

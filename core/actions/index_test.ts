@@ -592,10 +592,10 @@ publish("name", {
       file: "definitions/graph.yaml",
       content: [
         "version: 0.2.0.dev0/google",
+        "job_labels:",
+        '  "goog-reserved": v',
         "semantic_model:",
         "  - name: G",
-        "    job_labels:",
-        '      "goog-reserved": v',
         "    entities:",
         "      - name: Account",
         "        source: bigquery:proj.ds.Accounts",

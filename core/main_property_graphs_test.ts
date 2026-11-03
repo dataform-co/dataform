@@ -146,11 +146,11 @@ semantic_model:
           name: "graph.yaml",
           contents: `
 version: 0.2.0.dev0/google
+tags:
+- nightly
+- reporting
 semantic_model:
 - name: TaggedGraph
-  tags:
-  - nightly
-  - reporting
   entities:
   - name: Customer
     source: bigquery:defaultProject.defaultDataset.customers
@@ -642,9 +642,9 @@ semantic_model:
           name: "graph.yaml",
           contents: `
 version: 0.2.0.dev0/google
+depend_on_dependency_assertions: false
 semantic_model:
 - name: SnakeGraph
-  depend_on_dependency_assertions: false
   deployments:
   - name: default
     target: //bigquery.googleapis.com/projects/customProj/datasets/customDs/propertyGraphs/SnakeGraph
@@ -824,11 +824,11 @@ defaultJobLabels:
           name: "graph.yaml",
           contents: `
 version: 0.2.0.dev0/google
+job_labels:
+  env: prod
+  cost_center: finance
 semantic_model:
 - name: LabeledGraph
-  job_labels:
-    env: prod
-    cost_center: finance
   entities:
   - name: Customer
     source: bigquery:defaultProject.defaultDataset.customers
@@ -967,9 +967,9 @@ select 1 as id`,
           name: "graph.yaml",
           contents: `
 version: 0.2.0.dev0/google
+dependOnDependencyAssertions: true
 semantic_model:
 - name: GraphAssertDefaultGraph
-  dependOnDependencyAssertions: true
   entities:
   - name: Book
     source:

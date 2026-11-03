@@ -44,15 +44,6 @@ message SemanticModelConfig {
   repeated GraphRelationshipConfig relationships = 6;
   // Top-level aggregate metrics compiled as `MEASURE(...)` on host entities.
   repeated GraphMetricConfig metrics = 7;
-  // Optional. Whether this property graph action is disabled.
-  bool disabled = 8;
-  // Optional. Whether to depend on assertions attached to dependency actions.
-  bool depend_on_dependency_assertions = 9;
-  // Optional. Action tags for selective execution.
-  repeated string tags = 10;
-  // Optional. Key-value pairs for BigQuery job labels applied to the query
-  // job(s) executed for this property graph.
-  map<string, string> job_labels = 11;
 }
 
 // Deployment target mapping for a semantic model.
@@ -113,9 +104,18 @@ message GraphRelationshipConfig {
   string from = 5;
   // Name of the destination entity (`DESTINATION KEY ... REFERENCES <to>`).
   string to = 6;
-  // Physical column name(s) on the source/edge table for the relationship join.
+  // Physical column name(s) for the source side of the relationship join:
+  // - When `source` is specified (M:N bridge table): column(s) on the bridge
+  //   table used in `SOURCE KEY (<from_columns>) REFERENCES <from> (<from.primary_key>)`.
+  // - When `source` is omitted (1:N foreign-key edge): foreign-key column(s) on
+  //   the `from` entity table used in `DESTINATION KEY (<from_columns>) REFERENCES <to> (<to_columns>)`.
   repeated string from_columns = 7;
-  // Physical column name(s) on the destination/edge table for the relationship join.
+  // Physical column name(s) for the destination side of the relationship join:
+  // - When `source` is specified (M:N bridge table): column(s) on the bridge
+  //   table used in `DESTINATION KEY (<to_columns>) REFERENCES <to> (<to.primary_key>)`.
+  // - When `source` is omitted (1:N foreign-key edge): referenced key column(s)
+  //   on the `to` entity table (defaults to `<to>.primary_key` and must match
+  //   `<to>.primary_key` when specified).
   repeated string to_columns = 8;
   // Optional human-readable description of the relationship.
   string description = 9;
@@ -131,11 +131,14 @@ message GraphFieldConfig {
   string expression = 2;
   // Optional human-readable description of the field.
   string description = 3;
-  // Optional logical data type metadata (accepted in YAML; ignored in BQ DDL).
+  // Optional informational data type metadata. Has no effect on the generated
+  // BigQuery DDL.
   string datatype = 4;
-  // Optional dimension flag metadata (accepted in YAML; ignored in BQ DDL).
+  // Optional informational dimension flag metadata. Has no effect on the
+  // generated BigQuery DDL.
   bool dimension = 5;
-  // Optional display label metadata (accepted in YAML; ignored in BQ DDL).
+  // Optional informational display label metadata. Has no effect on the
+  // generated BigQuery DDL.
   string label = 6;
   // Optional AI context metadata (synonyms and examples) for the field.
   GraphAiContextConfig ai_context = 7;
@@ -151,7 +154,8 @@ message GraphMetricConfig {
   string expression = 3;
   // Optional human-readable description of the metric.
   string description = 4;
-  // Optional display label metadata (accepted in YAML; ignored in BQ DDL).
+  // Optional informational display label metadata. Has no effect on the
+  // generated BigQuery DDL.
   string label = 5;
   // Optional AI context metadata (synonyms and examples) for the metric.
   GraphAiContextConfig ai_context = 6;

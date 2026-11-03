@@ -2,6 +2,6 @@ config {
     type: "table"
 }
 
-select 1 as id, "Alice" as name union all
-select 2 as id, "Bob" as name union all
-select 3 as id, "Carol" as name
+select 1 as id, "Alice" as name, struct("US" as country) as address union all
+select 2 as id, "Bob" as name, struct("UK" as country) as address union all
+select 3 as id, "Carol" as name, struct("DE" as country) as address

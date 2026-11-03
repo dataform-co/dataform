@@ -10,7 +10,9 @@ import {
   renderNode,
   resolveDeploymentTarget,
   SEMANTIC_ONTOLOGY_VERSION,
+  unquoteIdentifier,
   validateCaseInsensitiveUnique,
+  validateIdentifierName,
   validatePhysicalColumnList,
 } from "df/core/actions/property_graph_utils";
 import { Session } from "df/core/session";
@@ -48,6 +50,19 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
     }
 
     const normalizedConfig = normalizePropertyGraphConfig(unverifiedConfig);
+    if (
+      normalizedConfig &&
+      typeof normalizedConfig === "object" &&
+      !Array.isArray(normalizedConfig) &&
+      !normalizedConfig.semanticModel &&
+      ("nodes" in normalizedConfig || "edges" in normalizedConfig)
+    ) {
+      throw new Error(
+        `Legacy property graph schema ('nodes'/'edges') is no longer supported; ` +
+          `migrate to Semantic Ontology V1 ('version: ${SEMANTIC_ONTOLOGY_VERSION}' and 'semantic_model').`,
+      );
+    }
+
     const config = this.verifyConfig(normalizedConfig);
 
     if (!config.version) {
@@ -98,100 +113,97 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
     if (modelDescription) {
       this.proto.description = modelDescription;
     }
-    if (config.disabled || model.disabled) {
+    if (config.disabled) {
       this.proto.disabled = true;
     }
-    const mergedTags = [...(config.tags || []), ...(model.tags || [])];
-    if (mergedTags.length > 0) {
-      this.proto.tags = mergedTags;
+    if (config.tags && config.tags.length > 0) {
+      this.proto.tags = config.tags;
     }
-    if (config.dependOnDependencyAssertions || model.dependOnDependencyAssertions) {
+    if (config.dependOnDependencyAssertions) {
       this.dependOnDependencyAssertions = true;
     }
 
-    const hasTopJobLabels = config.jobLabels && Object.keys(config.jobLabels).length > 0;
-    const hasModelJobLabels = model.jobLabels && Object.keys(model.jobLabels).length > 0;
-    const mergedJobLabels =
-      hasTopJobLabels || hasModelJobLabels
-        ? { ...(config.jobLabels || {}), ...(model.jobLabels || {}) }
-        : undefined;
-    setActionJobLabels(this.proto, mergedJobLabels, this.session);
+    const topJobLabels =
+      config.jobLabels && Object.keys(config.jobLabels).length > 0 ? config.jobLabels : undefined;
+    setActionJobLabels(this.proto, topJobLabels, this.session);
 
+    const graphWhere = `Property graph '${graphName}'`;
     for (const entity of model.entities) {
       if (!entity.name) {
-        throw new Error(`Property graph '${graphName}': every entity must have a 'name'.`);
+        throw new Error(`${graphWhere}: every entity must have a 'name'.`);
       }
+      validateIdentifierName(entity.name, "entity", graphWhere);
     }
     validateCaseInsensitiveUnique(
       model.entities.map((e) => e.name),
       "entity",
-      `Property graph '${graphName}'`,
+      graphWhere,
     );
 
-    const entityConfigByName = new Map<string, dataform.IGraphEntityConfig>();
+    const entityConfigByLowerName = new Map<string, dataform.IGraphEntityConfig>();
     for (const entity of model.entities) {
-      entityConfigByName.set(entity.name, entity);
+      entityConfigByLowerName.set(unquoteIdentifier(entity.name).toLowerCase(), entity);
     }
 
     const metrics = model.metrics || [];
     for (const metric of metrics) {
       if (!metric.name) {
-        throw new Error(`Property graph '${graphName}': every metric must have a 'name'.`);
+        throw new Error(`${graphWhere}: every metric must have a 'name'.`);
       }
+      validateIdentifierName(metric.name, "metric", graphWhere);
       if (!metric.entity) {
-        throw new Error(
-          `Property graph '${graphName}': metric '${metric.name}' must declare 'entity'.`,
-        );
+        throw new Error(`${graphWhere}: metric '${metric.name}' must declare 'entity'.`);
       }
-      if (!entityConfigByName.has(metric.entity)) {
+      if (!entityConfigByLowerName.has(unquoteIdentifier(metric.entity).toLowerCase())) {
         throw new Error(
-          `Property graph '${graphName}': metric '${metric.name}' references unknown ` +
-            `entity '${metric.entity}'.`,
+          `${graphWhere}: metric '${metric.name}' references unknown entity '${metric.entity}'.`,
         );
       }
     }
     validateCaseInsensitiveUnique(
       metrics.map((m) => m.name),
       "metric",
-      `Property graph '${graphName}'`,
+      graphWhere,
     );
 
-    const metricsByEntity = new Map<string, dataform.IGraphMetricConfig[]>();
+    const metricsByEntityLower = new Map<string, dataform.IGraphMetricConfig[]>();
     for (const metric of metrics) {
-      const list = metricsByEntity.get(metric.entity) || [];
+      const entityLower = unquoteIdentifier(metric.entity).toLowerCase();
+      const list = metricsByEntityLower.get(entityLower) || [];
       list.push(metric);
-      metricsByEntity.set(metric.entity, list);
+      metricsByEntityLower.set(entityLower, list);
     }
 
     const allEntityNames = model.entities.map((e) => e.name);
     this.proto.nodes = model.entities.map((entityConfig) =>
       this.buildNode(
         entityConfig,
-        metricsByEntity.get(entityConfig.name) || [],
+        metricsByEntityLower.get(unquoteIdentifier(entityConfig.name).toLowerCase()) || [],
         allEntityNames,
         graphName,
       ),
     );
 
-    const nodesByName = new Map<string, dataform.IGraphNodeTable>();
+    const nodesByLowerName = new Map<string, dataform.IGraphNodeTable>();
     for (const node of this.proto.nodes) {
-      nodesByName.set(node.name, node);
+      nodesByLowerName.set(unquoteIdentifier(node.name).toLowerCase(), node);
     }
 
     const relationships = model.relationships || [];
     for (const rel of relationships) {
       if (!rel.name) {
-        throw new Error(`Property graph '${graphName}': every relationship must have a 'name'.`);
+        throw new Error(`${graphWhere}: every relationship must have a 'name'.`);
       }
+      validateIdentifierName(rel.name, "relationship", graphWhere);
     }
     validateCaseInsensitiveUnique(
       relationships.map((r) => r.name),
       "relationship",
-      `Property graph '${graphName}'`,
+      graphWhere,
     );
 
     this.proto.edges = relationships.map((relConfig) =>
-      this.buildEdge(relConfig, nodesByName, graphName),
+      this.buildEdge(relConfig, nodesByLowerName, graphName),
     );
   }
 
@@ -236,6 +248,9 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
         allResolved = false;
       }
     }
+    // When any ref cannot be resolved, session.resolveTarget() has already recorded
+    // a compilationError on the session, so leaving graphBody unset never emits a
+    // valid action with an empty body.
     if (allResolved) {
       this.proto.graphBody = this.emitGraphBody();
     }
@@ -271,7 +286,7 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
     allEntityNames: string[],
     graphName: string,
   ): dataform.GraphNodeTable {
-    const entityName = entityConfig.name;
+    const entityName = unquoteIdentifier(entityConfig.name);
     const where = `Property graph '${graphName}': entity '${entityName}'`;
 
     if (entityConfig.uniqueKeys && entityConfig.uniqueKeys.length > 0) {
@@ -287,7 +302,16 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
     }
     validatePhysicalColumnList(entityConfig.primaryKey, "primary_key", where);
 
-    const labels = buildEntityLabels(entityConfig, entityMetrics, allEntityNames, graphName);
+    const normalizedEntityConfig: dataform.IGraphEntityConfig = {
+      ...entityConfig,
+      name: entityName,
+    };
+    const labels = buildEntityLabels(
+      normalizedEntityConfig,
+      entityMetrics,
+      allEntityNames,
+      graphName,
+    );
 
     return dataform.GraphNodeTable.create({
       name: entityName,
@@ -299,10 +323,10 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
 
   private buildEdge(
     relConfig: dataform.IGraphRelationshipConfig,
-    nodesByName: Map<string, dataform.IGraphNodeTable>,
+    nodesByLowerName: Map<string, dataform.IGraphNodeTable>,
     graphName: string,
   ): dataform.GraphEdgeTable {
-    const edgeName = relConfig.name;
+    const edgeName = unquoteIdentifier(relConfig.name);
     const where = `Property graph '${graphName}': relationship '${edgeName}'`;
 
     if (!relConfig.from) {
@@ -316,14 +340,14 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
     }
     validatePhysicalColumnList(relConfig.fromColumns, "from_columns", where);
 
-    const fromNode = nodesByName.get(relConfig.from);
+    const fromNode = nodesByLowerName.get(unquoteIdentifier(relConfig.from).toLowerCase());
     if (!fromNode) {
       throw new Error(
         `Property graph '${graphName}': relationship '${edgeName}' 'from' references ` +
           `unknown entity '${relConfig.from}'.`,
       );
     }
-    const toNode = nodesByName.get(relConfig.to);
+    const toNode = nodesByLowerName.get(unquoteIdentifier(relConfig.to).toLowerCase());
     if (!toNode) {
       throw new Error(
         `Property graph '${graphName}': relationship '${edgeName}' 'to' references ` +
@@ -332,7 +356,7 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
     }
 
     const hasExplicitSource = !!(relConfig.sourceString || relConfig.sourceRef);
-    const labels = buildRelationshipLabels(relConfig);
+    const labels = buildRelationshipLabels({ ...relConfig, name: edgeName });
 
     if (hasExplicitSource) {
       const dataSource = this.resolveSource(relConfig, edgeRefKey(edgeName), where);
@@ -388,22 +412,32 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
       );
     }
 
-    const toColumns =
-      relConfig.toColumns && relConfig.toColumns.length > 0
-        ? relConfig.toColumns.slice()
-        : toNode.keys.slice();
-    validatePhysicalColumnList(toColumns, "to_columns", where);
+    let toColumns: string[];
+    if (relConfig.toColumns && relConfig.toColumns.length > 0) {
+      toColumns = relConfig.toColumns.slice();
+      validatePhysicalColumnList(toColumns, "to_columns", where);
+      const matchesTargetPrimaryKey =
+        toColumns.length === toNode.keys.length &&
+        toColumns.every(
+          (col, idx) =>
+            unquoteIdentifier(col).toLowerCase() ===
+            unquoteIdentifier(toNode.keys[idx]).toLowerCase(),
+        );
+      if (!matchesTargetPrimaryKey) {
+        throw new Error(
+          `${where}: in a 1:N relationship (without 'source'), 'to_columns' ` +
+            `([${toColumns.join(", ")}]) must match target entity '${toNode.name}' ` +
+            `primary_key ([${toNode.keys.join(", ")}]).`,
+        );
+      }
+    } else {
+      toColumns = toNode.keys.slice();
+    }
 
     if (relConfig.fromColumns.length !== toColumns.length) {
       throw new Error(
         `${where}: join column arity mismatch: from_columns has ` +
           `${relConfig.fromColumns.length}, to_columns has ${toColumns.length}.`,
-      );
-    }
-    if (toColumns.length !== toNode.keys.length) {
-      throw new Error(
-        `${where}: 'to_columns' arity mismatch: to_columns has ${toColumns.length}, ` +
-          `entity '${toNode.name}' primary_key has ${toNode.keys.length}.`,
       );
     }
 

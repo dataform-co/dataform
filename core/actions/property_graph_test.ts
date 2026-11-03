@@ -104,24 +104,28 @@ suite("property_graph", () => {
     }
   });
 
-  test("propagates tags, disabled, description, and ai_context examples on semantic_model", () => {
+  test("propagates top-level tags, disabled, and semantic_model description and ai_context examples", () => {
     const compiled = compile(
-      makeModelConfig({
-        name: "Tagged",
-        description: "Financial graph",
-        ai_context: {
-          examples: ["Find accounts owned by Alice", "List transfers"],
-        },
-        disabled: true,
-        tags: ["nightly", "reporting"],
-        entities: [
-          {
-            name: "Account",
-            source: "proj.ds.Accounts",
-            primary_key: "id",
+      makeModelConfig(
+        {
+          name: "Tagged",
+          description: "Financial graph",
+          ai_context: {
+            examples: ["Find accounts owned by Alice", "List transfers"],
           },
-        ],
-      }),
+          entities: [
+            {
+              name: "Account",
+              source: "proj.ds.Accounts",
+              primary_key: "id",
+            },
+          ],
+        },
+        {
+          disabled: true,
+          tags: ["nightly", "reporting"],
+        },
+      ),
     );
 
     expect(asPlainObject(compiled)).deep.equals(
@@ -378,7 +382,7 @@ suite("property_graph", () => {
     );
   });
 
-  test("compiles top-level metrics to MEASURE(...), strips <Entity>., lowers COUNT(*), and auto-exposes operand columns", () => {
+  test("compiles top-level metrics to MEASURE(...), strips <Entity>., lowers COUNT(*), and auto-exposes plain operand columns", () => {
     const compiled = compile(
       makeModelConfig({
         name: "UniGraph",
@@ -387,6 +391,7 @@ suite("property_graph", () => {
             name: "Process",
             source: "bigquery:p.d.uni_processes",
             primary_key: ["process_id"],
+            fields: ["process_id"],
           },
         ],
         metrics: [
@@ -424,6 +429,163 @@ suite("property_graph", () => {
         "MEASURE(COUNT(process_id)) AS row_count, " +
         "MEASURE(COUNT(DISTINCT hostname)) AS distinct_host_count" +
         ")\n" +
+        ")",
+    );
+  });
+
+  test("errors when an entity targeted by metrics omits fields", () => {
+    expect(() =>
+      build(
+        makeModelConfig({
+          name: "G",
+          entities: [
+            {
+              name: "Process",
+              source: "bigquery:p.d.uni_processes",
+              primary_key: ["process_id"],
+            },
+          ],
+          metrics: [
+            {
+              name: "process_count",
+              entity: "Process",
+              expression: "COUNT(Process.process_id)",
+            },
+          ],
+        }),
+      ),
+    ).to.throw(
+      "Property graph 'G': entity 'Process' must declare 'fields' explicitly when 'metrics' target it, because BigQuery does not allow combining PROPERTIES ALL COLUMNS with MEASURE(...).",
+    );
+  });
+
+  test("inlines derived field expressions in metrics, avoids extracting SQL keywords as columns, and normalizes backticks", () => {
+    const compiled = compile(
+      makeModelConfig({
+        name: "OrderGraph",
+        entities: [
+          {
+            name: "Order",
+            source: "bigquery:p.d.orders",
+            primary_key: ["`id`"],
+            fields: [
+              "id",
+              "price",
+              "qty",
+              "ts",
+              {
+                name: "total",
+                expression: "Order.price * Order.qty",
+              },
+            ],
+          },
+        ],
+        metrics: [
+          {
+            name: "sum_total",
+            entity: "order",
+            expression: "SUM(order.total)",
+          },
+          {
+            name: "order_count",
+            entity: "Order",
+            expression: "COUNT(`Order`.`id`)",
+          },
+          {
+            name: "sum_year",
+            entity: "Order",
+            expression: "SUM(EXTRACT(YEAR FROM Order.ts))",
+          },
+        ],
+      }),
+    );
+
+    expect(compiled.graphBody).equals(
+      "NODE TABLES (\n" +
+        "  `p.d.orders` AS `Order` KEY (`id`) PROPERTIES (" +
+        "id, price, qty, ts, price * qty AS total, " +
+        "MEASURE(SUM(price * qty)) AS sum_total, " +
+        "MEASURE(COUNT(id)) AS order_count, " +
+        "MEASURE(SUM(EXTRACT(YEAR FROM ts))) AS sum_year" +
+        ")\n" +
+        ")",
+    );
+  });
+
+  test("quotes GoogleSQL reserved keywords in entity, relationship, key, and field identifiers and supports STRUCT field expressions", () => {
+    const compiled = compile(
+      makeModelConfig({
+        name: "ReservedAndStructGraph",
+        entities: [
+          {
+            name: "Person",
+            source: "bigquery:p.d.people",
+            primary_key: ["id"],
+            fields: [
+              "id",
+              "address",
+              {
+                name: "city",
+                expression: "Person.address.city",
+              },
+              {
+                name: "select",
+                expression: "Person.raw_select",
+              },
+            ],
+          },
+          {
+            name: "Address",
+            source: "bigquery:p.d.addresses",
+            primary_key: ["id"],
+          },
+          {
+            name: "Order",
+            source: "bigquery:p.d.orders",
+            primary_key: ["group"],
+            unique_keys: [],
+            fields: ["group"],
+          },
+        ],
+        relationships: [
+          {
+            name: "Group",
+            from: "order",
+            to: "person",
+            from_columns: ["person_id"],
+            to_columns: ["id"],
+          },
+        ],
+        metrics: [
+          {
+            name: "city_count",
+            entity: "Person",
+            expression: "COUNT(Address.city)",
+          },
+          {
+            name: "order_count",
+            entity: "Order",
+            expression: "COUNT(*)",
+          },
+        ],
+      }),
+    );
+
+    expect(compiled.graphBody).equals(
+      "NODE TABLES (\n" +
+        "  `p.d.people` AS Person KEY (id) PROPERTIES (" +
+        "id, address, address.city AS city, raw_select AS `select`, " +
+        "MEASURE(COUNT(Address.city)) AS city_count" +
+        "),\n" +
+        "  `p.d.addresses` AS Address KEY (id) PROPERTIES ALL COLUMNS,\n" +
+        "  `p.d.orders` AS `Order` KEY (`group`) PROPERTIES (" +
+        "`group`, MEASURE(COUNT(`group`)) AS order_count" +
+        ")\n" +
+        ")\n" +
+        "EDGE TABLES (\n" +
+        "  `p.d.orders` AS `Group` KEY (`group`) " +
+        "SOURCE KEY (`group`) REFERENCES `Order` (`group`) " +
+        "DESTINATION KEY (person_id) REFERENCES Person (id) NO PROPERTIES\n" +
         ")",
     );
   });
@@ -749,7 +911,7 @@ suite("property_graph", () => {
       build(
         makeModelConfig({
           name: "G",
-          entities: [{ name: "Process", source: "p.d.P", primary_key: ["id"] }],
+          entities: [{ name: "Process", source: "p.d.P", primary_key: ["id"], fields: ["id"] }],
           metrics: [
             {
               name: "bad_agg",
@@ -767,7 +929,7 @@ suite("property_graph", () => {
       build(
         makeModelConfig({
           name: "G",
-          entities: [{ name: "Process", source: "p.d.P", primary_key: ["id"] }],
+          entities: [{ name: "Process", source: "p.d.P", primary_key: ["id"], fields: ["id"] }],
           metrics: [
             {
               name: "bad_star",
@@ -782,7 +944,7 @@ suite("property_graph", () => {
     );
   });
 
-  test("defaults 1:N relationship to_columns to target entity primary_key when omitted", () => {
+  test("defaults 1:N relationship to_columns to target entity primary_key when omitted and rejects mismatched to_columns", () => {
     const compiled = compile(
       makeModelConfig({
         name: "G",
@@ -804,6 +966,29 @@ suite("property_graph", () => {
     expect(compiled.graphBody).to.include(
       "SOURCE KEY (process_id) REFERENCES Process (process_id) " +
         "DESTINATION KEY (machine_fk) REFERENCES Machine (machine_id) NO PROPERTIES",
+    );
+
+    expect(() =>
+      build(
+        makeModelConfig({
+          name: "G",
+          entities: [
+            { name: "Process", source: "p.d.processes", primary_key: ["process_id"] },
+            { name: "Machine", source: "p.d.machines", primary_key: ["machine_id"] },
+          ],
+          relationships: [
+            {
+              name: "RunsOn",
+              from: "Process",
+              to: "Machine",
+              from_columns: ["machine_fk"],
+              to_columns: ["wrong_col"],
+            },
+          ],
+        }),
+      ),
+    ).to.throw(
+      "Property graph 'G': relationship 'RunsOn': in a 1:N relationship (without 'source'), 'to_columns' ([wrong_col]) must match target entity 'Machine' primary_key ([machine_id]).",
     );
   });
 
@@ -855,26 +1040,50 @@ suite("property_graph", () => {
     ).to.throw("Property graph 'G': relationship 'Wrote' with 'source' must declare 'to_columns'.");
   });
 
-  test("errors when metric expression references another declared entity", () => {
+  test("errors when metric expression references another declared entity (case-insensitively)", () => {
     expect(() =>
       build(
         makeModelConfig({
           name: "G",
           entities: [
-            { name: "Process", source: "p.d.processes", primary_key: ["id"] },
+            { name: "Process", source: "p.d.processes", primary_key: ["id"], fields: ["id"] },
             { name: "Machine", source: "p.d.machines", primary_key: ["id"] },
           ],
           metrics: [
             {
               name: "bad_metric",
               entity: "Process",
-              expression: "COUNT(Machine.id)",
+              expression: "COUNT(machine.id)",
             },
           ],
         }),
       ),
     ).to.throw(
       "Property graph 'G': metric 'bad_metric' targets entity 'Process' but its expression references entity 'Machine'.",
+    );
+  });
+
+  test("errors with a migration message when legacy nodes/edges schema is used", () => {
+    expect(() =>
+      build({
+        name: "LegacyGraph",
+        nodes: [{ name: "N", source: "p.d.N", keys: ["id"] }],
+      }),
+    ).to.throw(
+      "Legacy property graph schema ('nodes'/'edges') is no longer supported; migrate to Semantic Ontology V1 ('version: 0.2.0.dev0/google' and 'semantic_model').",
+    );
+  });
+
+  test("errors when entity, relationship, field, or metric name is not a valid identifier", () => {
+    expect(() =>
+      build(
+        makeModelConfig({
+          name: "G",
+          entities: [{ name: "Bad Name", source: "p.d.A", primary_key: ["id"] }],
+        }),
+      ),
+    ).to.throw(
+      "Property graph 'G': entity name 'Bad Name' must be a valid identifier (letters, digits, and underscores, starting with a letter or underscore).",
     );
   });
 
@@ -908,6 +1117,153 @@ suite("property_graph", () => {
       ),
     ).to.throw(
       "Property graph 'G': deployment 'target' must match 'bigquery.googleapis.com/projects/<project>/datasets/<dataset>/propertyGraphs/<graph>' (got 'invalid://uri').",
+    );
+  });
+
+  test("rejects array source.ref, source object missing ref, or extra properties on source", () => {
+    expect(() =>
+      build(
+        makeModelConfig({
+          name: "G",
+          entities: [{ name: "A", source: { ref: ["bad"] }, primary_key: ["id"] }],
+        }),
+      ),
+    ).to.throw("Property graph 'G': entity 'A': 'source.ref' must include a 'name'.");
+
+    expect(() =>
+      build(
+        makeModelConfig({
+          name: "G",
+          entities: [
+            {
+              name: "A",
+              source: { name: "accounts", schema: "other_schema" },
+              primary_key: ["id"],
+            },
+          ],
+        }),
+      ),
+    ).to.throw("'source' object must contain a 'ref' property.");
+
+    expect(() =>
+      build(
+        makeModelConfig({
+          name: "G",
+          entities: [
+            { name: "A", source: { ref: "accounts", schema: "other_schema" }, primary_key: ["id"] },
+          ],
+        }),
+      ),
+    ).to.throw(
+      "Unexpected property 'schema' in 'source' (only 'ref' is allowed; nest target properties inside 'source.ref').",
+    );
+  });
+
+  test("does not treat numeric or string literals in metric aggregates as physical column names", () => {
+    const compiled = compile(
+      makeModelConfig({
+        name: "G",
+        entities: [
+          {
+            name: "Process",
+            source: "bigquery:p.d.processes",
+            primary_key: ["id"],
+            fields: ["id"],
+          },
+        ],
+        metrics: [
+          {
+            name: "cnt_one",
+            entity: "Process",
+            expression: "COUNT(1)",
+          },
+        ],
+      }),
+    );
+
+    expect(compiled.graphBody).equals(
+      "NODE TABLES (\n" +
+        "  `p.d.processes` AS Process KEY (id) PROPERTIES (" +
+        "id, MEASURE(COUNT(1)) AS cnt_one" +
+        ")\n" +
+        ")",
+    );
+  });
+
+  test("preserves backtick-quoted identifiers containing dots or hyphens when stripping or scanning qualifiers", () => {
+    const compiled = compile(
+      makeModelConfig({
+        name: "G",
+        entities: [
+          {
+            name: "Account",
+            source: "bigquery:p.d.accounts",
+            primary_key: ["id"],
+            fields: [
+              "id",
+              {
+                name: "dotted_col",
+                expression: "`Account.id`",
+              },
+              {
+                name: "sub_country",
+                expression: "`sub-account`.country",
+              },
+            ],
+          },
+          {
+            name: "Customer",
+            source: "bigquery:p.d.customers",
+            primary_key: ["id"],
+            fields: ["id"],
+          },
+        ],
+        metrics: [
+          {
+            name: "sub_account_cnt",
+            entity: "Customer",
+            expression: "COUNT(`sub-account`.country)",
+          },
+        ],
+      }),
+    );
+
+    expect(compiled.graphBody).equals(
+      "NODE TABLES (\n" +
+        "  `p.d.accounts` AS Account KEY (id) PROPERTIES (" +
+        "id, `Account.id` AS dotted_col, `sub-account`.country AS sub_country" +
+        "),\n" +
+        "  `p.d.customers` AS Customer KEY (id) PROPERTIES (" +
+        "id, MEASURE(COUNT(`sub-account`.country)) AS sub_account_cnt" +
+        ")\n" +
+        ")",
+    );
+  });
+
+  test("errors when metric name collides with an auto-exposed operand column", () => {
+    expect(() =>
+      build(
+        makeModelConfig({
+          name: "G",
+          entities: [
+            {
+              name: "Order",
+              source: "p.d.orders",
+              primary_key: ["id"],
+              fields: ["id"],
+            },
+          ],
+          metrics: [
+            {
+              name: "amount",
+              entity: "Order",
+              expression: "SUM(Order.amount)",
+            },
+          ],
+        }),
+      ),
+    ).to.throw(
+      "Property graph 'G': metric 'amount' collides with field 'amount' on entity 'Order'.",
     );
   });
 });
