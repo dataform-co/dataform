@@ -130,7 +130,7 @@ message TaskResult {
   ExecutionMetadata metadata = 4;
   // SQL that would be executed. Populated only during --dry-run or when executed
   // SQL differs from the tasks statement (for example when wrapped in create schema
-  // if not exists) 
+  // if not exists)
   string compiled_sql = 5;
 }
 

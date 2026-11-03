@@ -6,7 +6,7 @@ package(default_visibility = ["//visibility:public"])
 ts_library(
     name = "utils",
     srcs = glob(
-        ["**/*.ts"], 
+        ["**/*.ts"],
         exclude = [
             "**/*_test.ts",
         ],
