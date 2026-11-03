@@ -14,6 +14,7 @@ import {
   setupProject,
 } from "df/cli/index_test_base";
 import { version } from "df/core/version";
+import { dataform } from "df/protos/ts";
 import { suite, test, writeDefinitionFile } from "df/testing";
 import { dropDatasets, dropStaleDatasets, makeUniqueSuffix } from "df/testing/bigquery";
 import { integrationSuite } from "df/testing/credentials";
@@ -21,6 +22,7 @@ import { TmpDirFixture } from "df/testing/fixtures";
 
 const ON_SCHEMA_CHANGE_DATASET = "dataform_e2e_osc";
 const OPERATIONS_DATASET = "dataform_e2e_ops";
+const JSON_OUTPUT_DATASET = "dataform_e2e_json";
 
 integrationSuite("run e2e", ({ afterEach }) => {
   const tmpDirFixture = new TmpDirFixture(afterEach);
@@ -95,12 +97,12 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
       ],
     });
 
-    // Dry run the project.
+    // Build the execution graph.
     const runResult = await runCli("run", [
       projectDir,
       "--credentials",
       CREDENTIALS_PATH,
-      "--dry-run",
+      "--execution-graph",
       "--json",
       "--vars=testVar1=testValue1,testVar2=testValue2",
       "--default-location=europe",
@@ -185,7 +187,7 @@ SELECT 1 as id
       );
     });
 
-    const expectedRunResult = {
+    const expectedExecutionGraph = {
       actions: [
         {
           fileName: "definitions/example_table.sqlx",
@@ -238,7 +240,7 @@ SELECT 1 as id
         projectDir,
         "--credentials",
         CREDENTIALS_PATH,
-        "--dry-run",
+        "--execution-graph",
         "--json",
         "--disable-assertions",
         "--actions=test_assertion,example_table",
@@ -248,7 +250,7 @@ SELECT 1 as id
         console.error("ASSERTIONS TEST FAILED. STDERR:", runResult.stderr);
       }
       expect(runResult.exitCode).equals(0);
-      expect(JSON.parse(runResult.stdout)).deep.equals(expectedRunResult);
+      expect(JSON.parse(runResult.stdout)).deep.equals(expectedExecutionGraph);
     });
 
     test("with disableAssertions set in workflow_settings.yaml", async () => {
@@ -258,7 +260,7 @@ SELECT 1 as id
         projectDir,
         "--credentials",
         CREDENTIALS_PATH,
-        "--dry-run",
+        "--execution-graph",
         "--json",
         "--actions=test_assertion,example_table",
       ]);
@@ -267,7 +269,7 @@ SELECT 1 as id
         console.error("ASSERTIONS TEST FAILED. STDERR:", runResult.stderr);
       }
       expect(runResult.exitCode).equals(0);
-      expect(JSON.parse(runResult.stdout)).deep.equals(expectedRunResult);
+      expect(JSON.parse(runResult.stdout)).deep.equals(expectedExecutionGraph);
     });
 
     test("with --job-labels flag", async () => {
@@ -277,7 +279,7 @@ SELECT 1 as id
         projectDir,
         "--credentials",
         CREDENTIALS_PATH,
-        "--dry-run",
+        "--execution-graph",
         "--json",
         "--disable-assertions",
         "--actions=test_assertion,example_table",
@@ -288,7 +290,7 @@ SELECT 1 as id
         console.error("ASSERTIONS TEST FAILED. STDERR:", runResult.stderr);
       }
       expect(runResult.exitCode).equals(0);
-      expect(JSON.parse(runResult.stdout)).deep.equals(expectedRunResult);
+      expect(JSON.parse(runResult.stdout)).deep.equals(expectedExecutionGraph);
     });
   });
 
@@ -328,12 +330,12 @@ SELECT 1 as id
       });
     });
 
-    test("--default-reservation flag is applied to projectConfig in run (dry-run) output", async () => {
+    test("--default-reservation flag is applied to projectConfig in run --execution-graph output", async () => {
       const runResult = await runCli("run", [
         projectDir,
         "--credentials",
         CREDENTIALS_PATH,
-        "--dry-run",
+        "--execution-graph",
         "--json",
         `--default-reservation=${INTEGRATION_TEST_RESERVATION}`,
         "--actions=example_table",
@@ -500,13 +502,13 @@ DROP SCHEMA IF EXISTS \`\${dataform.projectConfig.defaultDatabase}.\${dataform.p
             "--actions=setup_table",
           ]);
 
-          // Run the incremental table in dry-run mode.
+          // Build the execution graph for the incremental table.
           // Dataform will detect the table exists and generate the dynamic procedural SQL.
           const runResult = await runCli("run", [
             projectDir,
             "--credentials",
             CREDENTIALS_PATH,
-            "--dry-run",
+            "--execution-graph",
             "--json",
             "--actions=example_incremental",
           ]);
@@ -515,7 +517,7 @@ DROP SCHEMA IF EXISTS \`\${dataform.projectConfig.defaultDatabase}.\${dataform.p
           const executionGraph = JSON.parse(runResult.stdout);
           const statement = executionGraph.actions[0].tasks[0].statement;
 
-          const expectedRunResult = {
+          const expectedExecutionGraph = {
             projectConfig: {
               warehouse: "bigquery",
               defaultSchema: uniqueDataset,
@@ -550,7 +552,7 @@ DROP SCHEMA IF EXISTS \`\${dataform.projectConfig.defaultDatabase}.\${dataform.p
             warehouseState: executionGraph.warehouseState,
           };
 
-          expect(executionGraph).deep.equals(expectedRunResult);
+          expect(executionGraph).deep.equals(expectedExecutionGraph);
           expect(statement).to.include("CREATE OR REPLACE PROCEDURE");
           expect(statement).to.include(
             "Column removals are not allowed when on_schema_change = 'EXTEND'.",
@@ -658,5 +660,184 @@ SELECT * FROM (SELECT 1 AS id) WHERE id >= min_id
 
       expect(runResult.stderr).to.not.match(/--timeout only bounds project compilation/);
     });
+  });
+
+  suite("json output", ({ before, beforeEach, after }) => {
+    const dbadapter = new BigQueryDbAdapter(dfapi.credentials.read(CREDENTIALS_PATH));
+    const uniqueDataset = `${JSON_OUTPUT_DATASET}_${makeUniqueSuffix()}`;
+    let projectDir: string;
+
+    before("drop stale datasets", async () => {
+      await dropStaleDatasets(dbadapter, {
+        project: INTEGRATION_TEST_PROJECT,
+        location: INTEGRATION_TEST_LOCATION,
+        prefixes: [JSON_OUTPUT_DATASET],
+      });
+    });
+
+    after("drop datasets", async () => {
+      await dropDatasets(dbadapter, INTEGRATION_TEST_PROJECT, [uniqueDataset]);
+    });
+
+    beforeEach("setup test project", async () => {
+      projectDir = tmpDirFixture.createNewTmpDir();
+      await setupProject(tmpDirFixture, projectDir, { defaultDataset: uniqueDataset });
+      writeDefinitionFile(
+        projectDir,
+        "example_table.sqlx",
+        `
+config { type: "table" }
+SELECT 1 AS id
+`,
+      );
+    });
+
+    test(
+      "run --dry-run --json outputs RunResult with compiledSql",
+      { timeout: 120000 },
+      async () => {
+        const result = await runCli("run", [
+          projectDir,
+          "--credentials",
+          CREDENTIALS_PATH,
+          "--dry-run",
+          "--json",
+          "--actions=example_table",
+        ]);
+
+        expect(result.exitCode, `stdout:\n${result.stdout}\nstderr:\n${result.stderr}`).equals(0);
+        const parsed = JSON.parse(result.stdout);
+        expect(parsed.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
+        expect(parsed.actions).to.have.lengthOf(1);
+        expect(parsed.actions[0].target).deep.equals({
+          database: INTEGRATION_TEST_PROJECT,
+          schema: uniqueDataset,
+          name: "example_table",
+        });
+        expect(parsed.actions[0].status).equals(dataform.ActionResult.ExecutionStatus.SUCCESSFUL);
+        expect(parsed.actions[0].tasks).to.have.lengthOf(1);
+        expect(parsed.actions[0].tasks[0].status).equals(
+          dataform.TaskResult.ExecutionStatus.SUCCESSFUL,
+        );
+        expect(parsed.actions[0].tasks[0].compiledSql).to.include("SELECT 1 AS id");
+      },
+    );
+
+    test("run --json executes actions and outputs RunResult", { timeout: 120000 }, async () => {
+      const result = await runCli("run", [
+        projectDir,
+        "--credentials",
+        CREDENTIALS_PATH,
+        "--json",
+        "--actions=example_table",
+      ]);
+
+      expect(result.exitCode, `stdout:\n${result.stdout}\nstderr:\n${result.stderr}`).equals(0);
+      const parsed = JSON.parse(result.stdout);
+      expect(parsed.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
+      expect(parsed.actions).to.have.lengthOf(1);
+      expect(parsed.actions[0].target).deep.equals({
+        database: INTEGRATION_TEST_PROJECT,
+        schema: uniqueDataset,
+        name: "example_table",
+      });
+      expect(parsed.actions[0].status).equals(dataform.ActionResult.ExecutionStatus.SUCCESSFUL);
+      expect(parsed.actions[0].tasks).to.have.lengthOf(1);
+      expect(parsed.actions[0].tasks[0].status).equals(
+        dataform.TaskResult.ExecutionStatus.SUCCESSFUL,
+      );
+      expect(parsed.actions[0].tasks[0].metadata?.bigquery?.jobId)
+        .to.be.a("string")
+        .and.not.equal("");
+    });
+
+    test("run --execution-graph without --json is rejected", async () => {
+      const result = await runCli("run", [
+        projectDir,
+        "--credentials",
+        CREDENTIALS_PATH,
+        "--execution-graph",
+      ]);
+
+      expect(result.exitCode).equals(1);
+      expect(result.stderr).to.include(
+        "--execution-graph option is only supported if the --json option is enabled",
+      );
+    });
+
+    test("run --json with no matching actions outputs empty RunResult", async () => {
+      const result = await runCli("run", [
+        projectDir,
+        "--credentials",
+        CREDENTIALS_PATH,
+        "--json",
+        "--actions=nonexistent_action",
+      ]);
+
+      expect(result.exitCode, `stdout:\n${result.stdout}\nstderr:\n${result.stderr}`).equals(0);
+      const parsed = JSON.parse(result.stdout);
+      expect(parsed.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
+      expect(parsed.actions).deep.equals([]);
+    });
+
+    test(
+      "run --dry-run --json --run-tests keeps stdout valid JSON when tests pass",
+      { timeout: 120000 },
+      async () => {
+        writeDefinitionFile(
+          projectDir,
+          "passing_test.sqlx",
+          `
+config { type: "test", dataset: "example_table" }
+SELECT 1 AS id
+`,
+        );
+
+        const result = await runCli("run", [
+          projectDir,
+          "--credentials",
+          CREDENTIALS_PATH,
+          "--dry-run",
+          "--json",
+          "--run-tests",
+          "--actions=example_table",
+        ]);
+
+        expect(result.exitCode, `stdout:\n${result.stdout}\nstderr:\n${result.stderr}`).equals(0);
+        const parsed = JSON.parse(result.stdout);
+        expect(parsed.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
+        expect(parsed.actions).to.have.lengthOf(1);
+      },
+    );
+
+    test(
+      "run --dry-run --json --run-tests writes failed test details to stderr only",
+      { timeout: 120000 },
+      async () => {
+        writeDefinitionFile(
+          projectDir,
+          "failing_test.sqlx",
+          `
+config { type: "test", dataset: "example_table" }
+SELECT 2 AS id
+`,
+        );
+
+        const result = await runCli("run", [
+          projectDir,
+          "--credentials",
+          CREDENTIALS_PATH,
+          "--dry-run",
+          "--json",
+          "--run-tests",
+          "--actions=example_table",
+        ]);
+
+        expect(result.exitCode).equals(1);
+        expect(result.stdout).equals("");
+        expect(result.stderr).to.include("failing_test: failed");
+        expect(result.stderr).to.include("Unit tests did not pass; aborting run.");
+      },
+    );
   });
 });

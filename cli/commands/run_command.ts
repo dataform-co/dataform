@@ -139,7 +139,16 @@ export const runCommand: ICommand<IRunArgs> = {
     if (argv.runTests) {
       logger.log(`Running ${compiledGraph.tests.length} unit tests...\n`);
       const testResults = await test(dbadapter, compiledGraph.tests, argv.jobLabels);
-      testResults.forEach((testResult) => printTestResult(testResult));
+      if (!argv.json) {
+        testResults.forEach((testResult) => printTestResult(testResult));
+      } else {
+        testResults
+          .filter((testResult) => !testResult.successful)
+          .forEach((testResult) => {
+            printError(`${testResult.name}: failed`);
+            testResult.messages?.forEach((message) => printError(message, 1));
+          });
+      }
       if (testResults.some((testResult) => !testResult.successful)) {
         printError("\nUnit tests did not pass; aborting run.");
         return 1;
@@ -165,7 +174,7 @@ export const runCommand: ICommand<IRunArgs> = {
       actionsByName.set(targetAsReadableString(action.target), action);
     });
 
-    if (actionsByName.size === 0) {
+    if (!argv.json && actionsByName.size === 0) {
       logger.log("No actions to run.\n");
       return 0;
     }
@@ -223,13 +232,10 @@ export const runCommand: ICommand<IRunArgs> = {
     if (lineageEmitter) {
       await lineageEmitter.drain(LINEAGE_DRAIN_TIMEOUT_MS);
     }
-    if (!argv.json) {
-      printExecutedGraph(runResult);
-    }
     if (argv.json) {
       print(prettyJsonStringify(runResult));
-    }
-    if (!argv.json) {
+    } else {
+      printExecutedGraph(runResult);
       if (runResult.status === dataform.RunResult.ExecutionStatus.TIMED_OUT) {
         const executionTimeoutMillis = argv.executionTimeout;
         const suffix = executionTimeoutMillis
