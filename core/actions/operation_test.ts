@@ -279,6 +279,73 @@ actions:
         ),
       ).equals(true);
     });
+
+    test("jit compilation is supported in sqlx", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML,
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/op.sqlx"),
+        `config { type: "operations", compilation_mode: "jit" }
+js {
+  const foo = "bar";
+}
+SELECT 1
+---
+SELECT 2`,
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.operations)).deep.equals([
+        {
+          target: {
+            database: "defaultProject",
+            schema: "defaultDataset",
+            name: "op",
+          },
+          canonicalTarget: {
+            database: "defaultProject",
+            schema: "defaultDataset",
+            name: "op",
+          },
+          hermeticity: "NON_HERMETIC",
+          fileName: "definitions/op.sqlx",
+          jitCode: `async (jctx) => {
+    const self = jctx.self ? jctx.self.bind(jctx) : undefined;
+    const ref = jctx.ref ? jctx.ref.bind(jctx) : undefined;
+    const resolve = jctx.resolve ? jctx.resolve.bind(jctx) : undefined;
+    const name = jctx.name ? jctx.name.bind(jctx) : undefined;
+    const when = jctx.when ? jctx.when.bind(jctx) : undefined;
+    const incremental = jctx.incremental ? jctx.incremental.bind(jctx) : undefined;
+    const schema = jctx.schema ? jctx.schema.bind(jctx) : undefined;
+    const database = jctx.database ? jctx.database.bind(jctx) : undefined;
+    const adapter = jctx.adapter ? jctx.adapter : undefined;
+    const data = jctx.data ? jctx.data : undefined;
+    const executionData = jctx.executionData ? jctx.executionData : undefined;
+    
+  const foo = "bar";
+
+    return {
+        queries: [
+          \`
+
+SELECT 1
+\`, \`
+SELECT 2\`
+        ],
+      };
+    }`,
+          actionDescriptor: {
+            compilationMode: "ACTION_COMPILATION_MODE_JIT",
+          },
+        },
+      ]);
+    });
   });
 
   suite("Lakehouse (4-part) targets", () => {
