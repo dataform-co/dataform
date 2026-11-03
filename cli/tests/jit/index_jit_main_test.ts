@@ -232,6 +232,6 @@ integrationSuite("JiT support main", ({ afterEach }) => {
     expect(executedGraph.actions.length).to.equal(1);
     const aotAction = executedGraph.actions.find((a: any) => a.target.name === "aot_table");
     expect(!!aotAction).to.equal(true);
-    expect(aotAction.tasks[0].statement).to.include("SELECT 2 as id");
+    expect(aotAction.tasks[0].compiledSql).to.include("SELECT 2 as id");
   });
 });

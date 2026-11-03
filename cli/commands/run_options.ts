@@ -37,6 +37,7 @@ export interface IRunArgs
   jobPrefix?: string | null;
   tags?: string[];
   jobLabels?: { [key: string]: string };
+  executionGraph: boolean;
 }
 
 export const dryRunOption: INamedOption<yargs.Options, IRunArgs> = {
