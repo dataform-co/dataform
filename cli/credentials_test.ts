@@ -40,6 +40,13 @@ suite("getBigQueryCredentials", ({ afterEach }) => {
     });
   });
 
+  test("ADC with other location and empty name leaves location unset", () => {
+    expect(getBigQueryCredentials(fakePrompts([2, 0], ["", "my-project", ""]))).to.eql({
+      projectId: "my-project",
+      location: undefined,
+    });
+  });
+
   test("JSON key with auto location leaves location unset", () => {
     const keyPath = path.join(tmpDirFixture.createNewTmpDir(), "key.json");
     const key = JSON.stringify({ type: "service_account", project_id: "key-project" });

@@ -1,6 +1,6 @@
 import * as fs from "fs";
 
-import { question, selectionQuestion } from "df/cli/console";
+import { printWarning, question, selectionQuestion } from "df/cli/console";
 import { actuallyResolve } from "df/cli/util";
 import { dataform } from "df/protos/ts";
 
@@ -25,6 +25,10 @@ export function getBigQueryCredentials(
     location = "EU";
   } else if (locationIndex === 2) {
     location = prompts.question("Enter the location's region name (e.g. 'asia-south1'):");
+    if (!location) {
+      printWarning("Note: location's region name not provided; setting to auto");
+      location = undefined;
+    }
   } else {
     // For "auto", location is left undefined so BigQuery picks it per query.
     location = undefined;
