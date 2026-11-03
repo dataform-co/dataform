@@ -173,6 +173,16 @@ export const bigqueryJobLabelsOption: INamedOption<yargs.Options, IRunArgs> = {
   },
 };
 
+export const executionGraphOption: INamedOption<yargs.Options, IRunArgs> = {
+  name: "execution-graph",
+  option: {
+    describe:
+      "If set, only build and output the execution graph without submitting to BigQuery. Must be combined with --json.",
+    type: "boolean",
+    default: false,
+  },
+};
+
 export const runOptions: Array<INamedOption<yargs.Options, IRunArgs>> = [
   dryRunOption,
   runTestsOption,
@@ -190,5 +200,6 @@ export const runOptions: Array<INamedOption<yargs.Options, IRunArgs>> = [
   jobPrefixOption,
   bigqueryJobLabelsOption,
   emitLineageOption,
+  executionGraphOption,
   ...ProjectConfigOptions.allYargsOptions,
 ];
