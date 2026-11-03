@@ -1,6 +1,9 @@
 import { expect } from "chai";
 
-import { concatenateQueries } from "df/cli/api/dbadapters/tasks";
+import {
+  concatenateQueries,
+  wrapWithCreateSchemaIfNotExists,
+} from "df/cli/api/utils/query_transforms";
 import { suite, test } from "df/testing";
 
 suite("concatenateQueries", () => {
@@ -22,7 +25,7 @@ suite("concatenateQueries", () => {
     expect(concatenateQueries(["SELECT 1;", "SELECT 2;"])).deep.equals("SELECT 1;\nSELECT 2;");
   });
 
-  test("adds semicolon before trailing comment if necessary, verifies fix for https://github.com/dataform-co/dataform/issues/1231", () => {
+  test("adds semicolon before trailing comment if necessary", () => {
     expect(
       concatenateQueries(["SELECT 1 -- blah", "drop table foo; -- baz", "SELECT 2"]),
     ).deep.equals("SELECT 1; -- blah\ndrop table foo; -- baz\nSELECT 2");
@@ -71,6 +74,45 @@ suite("concatenateQueries", () => {
     );
   });
 
+  test("doesn't mistake comment markers or semicolons inside strings and identifiers", () => {
+    const terminated = (statement: string) => concatenateQueries([statement, "SELECT 2"]);
+    expect(terminated("SELECT 'a;'")).equals("SELECT 'a;';\nSELECT 2");
+    expect(terminated('SELECT "# not a comment"')).equals('SELECT "# not a comment";\nSELECT 2');
+    expect(terminated("SELECT '''a\n-- b;\n'''")).equals("SELECT '''a\n-- b;\n''';\nSELECT 2");
+    expect(terminated("SELECT * FROM `p.d.t--`")).equals("SELECT * FROM `p.d.t--`;\nSELECT 2");
+    expect(terminated("SELECT 'it\\'s -- x'")).equals("SELECT 'it\\'s -- x';\nSELECT 2");
+  });
+
+  test("doesn't treat \\ as an escape inside raw string or bytes literals", () => {
+    const terminated = (statement: string) => concatenateQueries([statement, "SELECT 2"]);
+    expect(terminated("SELECT r'\\' -- comment")).equals("SELECT r'\\'; -- comment\nSELECT 2");
+    expect(terminated("SELECT REPLACE(p, r'\\', '/'), 'ok' -- don't fail")).equals(
+      "SELECT REPLACE(p, r'\\', '/'), 'ok'; -- don't fail\nSELECT 2",
+    );
+    expect(terminated('R"\\" -- comment')).equals('R"\\"; -- comment\nSELECT 2');
+    expect(terminated("SELECT r'''a\\''' -- comment")).equals(
+      "SELECT r'''a\\'''; -- comment\nSELECT 2",
+    );
+    expect(terminated("SELECT rb'\\' -- comment")).equals("SELECT rb'\\'; -- comment\nSELECT 2");
+    expect(terminated('SELECT BR"\\" -- comment')).equals('SELECT BR"\\"; -- comment\nSELECT 2');
+    // Non-raw `b` prefix and SQL keywords ending in `r` still escape quotes with `\`.
+    expect(terminated("SELECT b'it\\'s -- x'")).equals("SELECT b'it\\'s -- x';\nSELECT 2");
+    expect(terminated("SELECT flag OR'it\\'s -- x'")).equals(
+      "SELECT flag OR'it\\'s -- x';\nSELECT 2",
+    );
+  });
+
+  test("adds semicolon before trailing block comment", () => {
+    expect(concatenateQueries(["SELECT 1 /* comment; */", "SELECT 2"])).equals(
+      "SELECT 1; /* comment; */\nSELECT 2",
+    );
+  });
+
+  test("doesn't add semicolon after a terminated script", () => {
+    const script = "BEGIN\n  SELECT 1;\nEXCEPTION WHEN ERROR THEN\n  RAISE;\nEND;";
+    expect(concatenateQueries([script, "SELECT 2"])).equals(`${script}\nSELECT 2`);
+  });
+
   test("adds semicolon after the code when the statement ends with several comment lines", () => {
     expect(concatenateQueries(["SELECT 1 -- first\n-- second", "SELECT 2"])).deep.equals(
       "SELECT 1; -- first\n-- second\nSELECT 2",
@@ -102,6 +144,12 @@ suite("concatenateQueries", () => {
     );
   });
 
+  test("keeps leading whitespace if trimLeadingWhitespace is false", () => {
+    expect(
+      concatenateQueries(["SELECT 1", "\n\n  SELECT 2  \n", "  \n  "], undefined, false),
+    ).deep.equals("SELECT 1;\n\n\n  SELECT 2");
+  });
+
   test("returns empty string for empty input", () => {
     expect(concatenateQueries([])).deep.equals("");
   });
@@ -120,5 +168,45 @@ suite("concatenateQueries", () => {
     expect(
       concatenateQueries(["SELECT 1 --comment", "SELECT 2"], (stmt) => `(${stmt})`),
     ).deep.equals("(SELECT 1); --comment\n(SELECT 2)");
+  });
+});
+
+suite("wrapWithCreateSchemaIfNotExists", () => {
+  test("wraps a statement in a block after creating the schema", () => {
+    expect(wrapWithCreateSchemaIfNotExists("project", "dataset", "SELECT 1;")).equals(
+      "create schema if not exists `project.dataset`;\nbegin\nSELECT 1;\nend;",
+    );
+  });
+
+  test("adds a missing semicolon", () => {
+    expect(wrapWithCreateSchemaIfNotExists("project", "dataset", "  SELECT 1\n")).equals(
+      "create schema if not exists `project.dataset`;\nbegin\nSELECT 1;\nend;",
+    );
+  });
+
+  test("terminates a statement with a trailing comment", () => {
+    expect(wrapWithCreateSchemaIfNotExists("project", "dataset", "SELECT 1 -- comment")).equals(
+      "create schema if not exists `project.dataset`;\nbegin\nSELECT 1; -- comment\nend;",
+    );
+  });
+
+  test("terminates a raw string ending in a backslash before a trailing comment", () => {
+    expect(wrapWithCreateSchemaIfNotExists("project", "dataset", "SELECT r'\\' -- comment")).equals(
+      "create schema if not exists `project.dataset`;\nbegin\nSELECT r'\\'; -- comment\nend;",
+    );
+  });
+
+  test("keeps leading DECLARE statements at the start of the block", () => {
+    expect(
+      wrapWithCreateSchemaIfNotExists("project", "dataset", "DECLARE x INT64;\nSELECT x"),
+    ).equals(
+      "create schema if not exists `project.dataset`;\nbegin\nDECLARE x INT64;\nSELECT x;\nend;",
+    );
+  });
+
+  test("omits the database if not set", () => {
+    expect(wrapWithCreateSchemaIfNotExists(undefined, "dataset", "SELECT 1;")).equals(
+      "create schema if not exists `dataset`;\nbegin\nSELECT 1;\nend;",
+    );
   });
 });

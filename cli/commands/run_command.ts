@@ -7,6 +7,7 @@ import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 import { LineageEmitter } from "df/cli/api/lineage/emitter";
 import { createLineageEmitter as createLineageEmitterFromFactory } from "df/cli/api/lineage/emitter_factory";
 import { prettyJsonStringify } from "df/cli/api/utils";
+import { buildDryRunValidationQueries } from "df/cli/api/utils/dry_run_validation";
 import {
   dryRunOption,
   executionTimeoutOption,
@@ -196,6 +197,9 @@ export const runCommand: ICommand<IRunArgs> = {
       expectedCoreVersion: compiledGraph.dataformCoreVersion || undefined,
       bigquery: bigqueryOptions,
       lineageEmitter,
+      dryRunValidationQueries: argv.dryRun
+        ? buildDryRunValidationQueries(compiledGraph)
+        : undefined,
     });
     // The first Ctrl+C cancels the run gracefully; a second one exits immediately.
     setSignalHandler("SIGINT", () => runner.cancel());

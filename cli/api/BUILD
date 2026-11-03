@@ -53,7 +53,6 @@ ts_library(
 ts_test_suite(
     name = "tests",
     srcs = [
-        "tasks_test.ts",
         "utils_test.ts",
         "commands/jit/rpc_test.ts",
         "commands/prune_test.ts",

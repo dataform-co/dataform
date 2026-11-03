@@ -53,8 +53,7 @@ export interface IDbClient {
 export interface IDbAdapter extends IDbClient {
   evaluate(queryOrAction: QueryOrAction): Promise<dataform.IQueryEvaluation[]>;
 
-  schemas(database: string): Promise<string[]>;
-  createSchema(database: string, schema: string, location?: string): Promise<void>;
+  schemas(database?: string): Promise<string[]>;
 
   tables(database: string, schema?: string): Promise<dataform.ITableMetadata[]>;
   search(
