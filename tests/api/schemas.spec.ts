@@ -553,11 +553,70 @@ suite("schema creation", () => {
       expect(actionA.tasks[0].status).equals(dataform.TaskResult.ExecutionStatus.FAILED);
       const endMillis = actionA.tasks[0].timing.endTimeMillis.toNumber();
       expect(endMillis).to.be.at.least(validationEndMillis);
-      // The position is shifted to refer to the wrapped statement shown as the compiled SQL.
+      // The position is mapped to the wrapped statement shown as the compiled SQL: 2 lines down
+      // for the wrapper, and after the `CREATE TABLE a AS ` before the query on its line.
       expect(actionA.tasks[0].errorMessage).equals(
-        "bigquery error: Query error: Unrecognized name: a at [3:8]",
+        "bigquery error: Query error: Unrecognized name: a at [3:26]",
       );
       expect(actionA.tasks[0].compiledSql).equals(wrapped("new_ds", "CREATE TABLE a AS SELECT a"));
+    });
+
+    test("maps error positions to the compiled SQL when the query follows `create or replace … as` on the same line", async () => {
+      // E.g. `publish("t", "SELECT …")` in JS, unlike SQLX queries which start with a line break.
+      const table = dataform.Table.create({
+        target: { database: "db", schema: "new_ds", name: "inline" },
+        enumType: dataform.TableType.TABLE,
+        preOps: ["DECLARE x INT64 DEFAULT 1"],
+        query: "SELECT bad FROM src WHERE x > 0",
+        bigquery: { partitionBy: "DATE(ts)" },
+      });
+      const [task] = new ExecutionSql(projectConfig, version).createTableTasks(table, {});
+      const key = dryRunValidationQueryKey(table.target);
+      const validationQuery = buildDryRunValidationQueries(
+        dataform.CompiledGraph.create({ tables: [table] }),
+      ).get(key);
+      expect(validationQuery).equals("DECLARE x INT64 DEFAULT 1;\nSELECT bad FROM src WHERE x > 0");
+      const inlineGraph = dataform.ExecutionGraph.create({
+        projectConfig,
+        runConfig: {},
+        warehouseState: {},
+        actions: [
+          {
+            type: "table",
+            tableType: "table",
+            target: table.target,
+            tasks: [task],
+            dependencyTargets: [],
+          },
+        ],
+      });
+      const { mockedDbAdapter } = mockDbAdapter([["existing_ds"]], async (statement) => {
+        if (statement === validationQuery) {
+          // Position of `bad` in the validation query.
+          throw new Error("Query error: Unrecognized name: bad at [2:8]");
+        }
+        return { rows: [], metadata: {} };
+      });
+
+      const result = await new Runner(instance(mockedDbAdapter), inlineGraph, {
+        bigquery: { dryRun: true },
+        dryRunValidationQueries: new Map([[key, validationQuery]]),
+      })
+        .execute()
+        .result();
+
+      const taskResult = result.actions[0].tasks[0];
+      expect(taskResult.status).equals(dataform.TaskResult.ExecutionStatus.FAILED);
+      // The compiled SQL is the wrapped statement, with the query on the line of
+      // `create or replace table … partition by … as `.
+      const compiledLines = taskResult.compiledSql.split("\n");
+      expect(compiledLines[3]).to.match(
+        /^create or replace table `db\.new_ds\.inline` partition by DATE\(ts\) as SELECT bad/,
+      );
+      const column = compiledLines[3].indexOf("bad") + 1;
+      expect(taskResult.errorMessage).equals(
+        `bigquery error: Query error: Unrecognized name: bad at [4:${column}]`,
+      );
     });
 
     test("doesn't dry-run the query if the wrapped script fails", async () => {

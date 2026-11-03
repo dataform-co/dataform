@@ -9,7 +9,7 @@ import {
   actionDryRunValidationQuery,
   dryRunValidationQueryKey,
 } from "df/cli/api/utils/dry_run_validation";
-import { shiftErrorPositionLines } from "df/cli/api/utils/error_parsing";
+import { mapErrorPositions } from "df/cli/api/utils/error_parsing";
 import {
   CREATE_SCHEMA_WRAPPER_LINE_OFFSET,
   wrapWithCreateSchemaIfNotExists,
@@ -815,10 +815,16 @@ export class Runner {
         taskResult.status = this.cancelled
           ? dataform.TaskResult.ExecutionStatus.CANCELLED
           : dataform.TaskResult.ExecutionStatus.FAILED;
-        // The validation query has the same lines as the task's statement, so positions in its
-        // error only need shifting by the lines the wrapper adds, to refer to the compiled SQL.
+        // The validation query has the same lines as the task's statement, shifted by the lines
+        // the wrapper adds, except for the `create or replace … as ` prefix before the start of
+        // the query. Map positions in its error to the compiled SQL shown.
         const message = errorFromValidationQuery
-          ? shiftErrorPositionLines(e.message, CREATE_SCHEMA_WRAPPER_LINE_OFFSET)
+          ? mapErrorPositions(
+              e.message,
+              dryRunValidationQuery,
+              statementOverride ?? task.statement,
+              CREATE_SCHEMA_WRAPPER_LINE_OFFSET,
+            )
           : e.message;
         taskResult.errorMessage = `${this.graph.projectConfig?.warehouse} error: ${message}`;
         if (e.metadata?.bigquery?.jobId) {
