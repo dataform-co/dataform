@@ -8,7 +8,7 @@ import { LineageEmitter } from "df/cli/api/lineage/emitter";
 import { createLineageEmitter as createLineageEmitterFromFactory } from "df/cli/api/lineage/emitter_factory";
 import { prettyJsonStringify } from "df/cli/api/utils";
 import {
-  dryRunOption,
+  executionGraphOption,
   executionTimeoutOption,
   IRunArgs,
   runOptions,
@@ -60,17 +60,16 @@ export const runCommand: ICommand<IRunArgs> = {
   check: [assertProjectDirExists],
   options: runOptions,
   processFn: async (argv) => {
-    const isJsonOutput = argv.json;
-    const logger = new Logger(!isJsonOutput);
+    const logger = new Logger(!argv.json);
 
-    if (isJsonOutput && !argv.dryRun) {
+    if (argv.executionGraph && !argv.json) {
       printError(
-        `For execution, the --${jsonOutputOption.name} option is only supported if the ` +
-          `--${dryRunOption.name} option is enabled`,
+        `--${executionGraphOption.name} option is only supported if the --${jsonOutputOption.name} option is enabled`,
       );
       return 1;
     }
-    if (!isJsonOutput && argv.timeout != null && argv.executionTimeout == null) {
+
+    if (!argv.json && argv.timeout != null && argv.executionTimeout == null) {
       printWarning(
         "Note: --timeout only bounds project compilation. " +
           "For a whole-run wall-clock deadline, use --execution-timeout.\n",
@@ -93,7 +92,7 @@ export const runCommand: ICommand<IRunArgs> = {
     const readCredentials = credentials.read(actuallyResolve(argv.projectDir, argv.credentials));
     const defaultLocation = compiledGraph.projectConfig?.defaultLocation ?? undefined;
     if (
-      !isJsonOutput &&
+      !argv.json &&
       defaultLocation &&
       readCredentials.location &&
       defaultLocation.toLowerCase() !== readCredentials.location.toLowerCase()
@@ -131,16 +130,8 @@ export const runCommand: ICommand<IRunArgs> = {
       return 1;
     }
 
-    if (
-      argv.dryRun &&
-      isJsonOutput &&
-      // Skip the early graph print when JiT actions are present: their compiled
-      // SQL is only produced once the Runner triggers JiT compilation, so falling
-      // through ensures the JSON dry-run output includes the generated SQL rather
-      // than the raw jitCode.
-      !executionGraph.actions.some((action) => !!action.jitCode)
-    ) {
-      printExecutionGraph(executionGraph, isJsonOutput);
+    if (argv.executionGraph) {
+      printExecutionGraph(executionGraph, argv.json);
       return 0;
     }
 
@@ -221,20 +212,20 @@ export const runCommand: ICommand<IRunArgs> = {
         });
     };
 
-    if (!isJsonOutput) {
+    if (!argv.json) {
       runner.onChange(printExecutedGraph);
     }
     const runResult = await runner.result();
     if (lineageEmitter) {
       await lineageEmitter.drain(LINEAGE_DRAIN_TIMEOUT_MS);
     }
-    if (!isJsonOutput) {
+    if (!argv.json) {
       printExecutedGraph(runResult);
     }
-    if (isJsonOutput) {
+    if (argv.json) {
       print(prettyJsonStringify(runResult));
     }
-    if (!isJsonOutput) {
+    if (!argv.json) {
       if (runResult.status === dataform.RunResult.ExecutionStatus.TIMED_OUT) {
         const executionTimeoutMillis = argv.executionTimeout;
         const suffix = executionTimeoutMillis
