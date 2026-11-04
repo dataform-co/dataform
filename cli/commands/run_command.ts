@@ -83,7 +83,7 @@ export const runCommand: ICommand<IRunArgs> = {
       );
     }
 
-    if (!argv.json && argv.timeout != null && argv.executionTimeout == null) {
+    if (argv.timeout != null && argv.executionTimeout == null) {
       printWarning(
         "Note: --timeout only bounds project compilation. " +
           "For a whole-run wall-clock deadline, use --execution-timeout.\n",
@@ -106,7 +106,6 @@ export const runCommand: ICommand<IRunArgs> = {
     const readCredentials = credentials.read(actuallyResolve(argv.projectDir, argv.credentials));
     const defaultLocation = compiledGraph.projectConfig?.defaultLocation ?? undefined;
     if (
-      !argv.json &&
       defaultLocation &&
       readCredentials.location &&
       defaultLocation.toLowerCase() !== readCredentials.location.toLowerCase()
