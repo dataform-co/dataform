@@ -39,6 +39,21 @@
   - [WorkflowSettings.DefaultJobLabelsEntry](#dataform-WorkflowSettings-DefaultJobLabelsEntry)
   - [WorkflowSettings.VarsEntry](#dataform-WorkflowSettings-VarsEntry)
 
+- [property_graph_config.proto](#property_graph_config-proto)
+
+  - [DataSourceRef](#dataform-DataSourceRef)
+  - [GraphAiContextConfig](#dataform-GraphAiContextConfig)
+  - [GraphDeploymentConfig](#dataform-GraphDeploymentConfig)
+  - [GraphDimensionConfig](#dataform-GraphDimensionConfig)
+  - [GraphEntityConfig](#dataform-GraphEntityConfig)
+  - [GraphFieldConfig](#dataform-GraphFieldConfig)
+  - [GraphMetricConfig](#dataform-GraphMetricConfig)
+  - [GraphRelationshipConfig](#dataform-GraphRelationshipConfig)
+  - [GraphUniqueKeyList](#dataform-GraphUniqueKeyList)
+  - [PropertyGraphConfig](#dataform-PropertyGraphConfig)
+  - [PropertyGraphConfig.JobLabelsEntry](#dataform-PropertyGraphConfig-JobLabelsEntry)
+  - [SemanticModelConfig](#dataform-SemanticModelConfig)
+
 - [Scalar Value Types](#scalar-value-types)
 
 <a name="configs-proto"></a>
@@ -53,16 +68,17 @@
 
 Action config defines the contents of `actions.yaml` configuration files.
 
-| Field            | Type                                                                                 | Label | Description |
-| ---------------- | ------------------------------------------------------------------------------------ | ----- | ----------- |
-| table            | [ActionConfig.TableConfig](#dataform-ActionConfig-TableConfig)                       |       |             |
-| view             | [ActionConfig.ViewConfig](#dataform-ActionConfig-ViewConfig)                         |       |             |
-| incrementalTable | [ActionConfig.IncrementalTableConfig](#dataform-ActionConfig-IncrementalTableConfig) |       |             |
-| assertion        | [ActionConfig.AssertionConfig](#dataform-ActionConfig-AssertionConfig)               |       |             |
-| operation        | [ActionConfig.OperationConfig](#dataform-ActionConfig-OperationConfig)               |       |             |
-| declaration      | [ActionConfig.DeclarationConfig](#dataform-ActionConfig-DeclarationConfig)           |       |             |
-| notebook         | [ActionConfig.NotebookConfig](#dataform-ActionConfig-NotebookConfig)                 |       |             |
-| dataPreparation  | [ActionConfig.DataPreparationConfig](#dataform-ActionConfig-DataPreparationConfig)   |       |             |
+| Field            | Type                                                                                 | Label | Description                                                       |
+| ---------------- | ------------------------------------------------------------------------------------ | ----- | ----------------------------------------------------------------- |
+| table            | [ActionConfig.TableConfig](#dataform-ActionConfig-TableConfig)                       |       |                                                                   |
+| view             | [ActionConfig.ViewConfig](#dataform-ActionConfig-ViewConfig)                         |       |                                                                   |
+| incrementalTable | [ActionConfig.IncrementalTableConfig](#dataform-ActionConfig-IncrementalTableConfig) |       |                                                                   |
+| assertion        | [ActionConfig.AssertionConfig](#dataform-ActionConfig-AssertionConfig)               |       |                                                                   |
+| operation        | [ActionConfig.OperationConfig](#dataform-ActionConfig-OperationConfig)               |       |                                                                   |
+| declaration      | [ActionConfig.DeclarationConfig](#dataform-ActionConfig-DeclarationConfig)           |       |                                                                   |
+| notebook         | [ActionConfig.NotebookConfig](#dataform-ActionConfig-NotebookConfig)                 |       |                                                                   |
+| dataPreparation  | [ActionConfig.DataPreparationConfig](#dataform-ActionConfig-DataPreparationConfig)   |       |                                                                   |
+| propertyGraph    | [PropertyGraphConfig](#dataform-PropertyGraphConfig)                                 |       | Not supported in `actions.yaml`; use `definitions/**/graph.yaml`. |
 
 <a name="dataform-ActionConfig-AssertionConfig"></a>
 
@@ -478,6 +494,174 @@ configuration file.
 | ----- | ----------------- | ----- | ----------- |
 | key   | [string](#string) |       |             |
 | value | [string](#string) |       |             |
+
+<a name="property_graph_config-proto"></a>
+
+<p align="right"><a href="#top">Top</a></p>
+
+## property_graph_config.proto
+
+Defines the configuration schema for BigQuery Property Graph YAML files (`definitions/**/graph.yaml`), aligned with the Google Semantic Ontology V1 specification (`version: 0.2.0.dev0/google`). At most one `graph.yaml` file is allowed per project in V1. Both `snake_case` (recommended in `graph.yaml`, e.g. `semantic_model`, `primary_key`, `from_columns`, `to_columns`, `ai_context`, `job_labels`, `depend_on_dependency_assertions`, `include_dependent_assertions`) and `camelCase` keys are accepted.
+
+<a name="dataform-DataSourceRef"></a>
+
+### DataSourceRef
+
+Reference to another Dataform action as a backing table source (`source: { ref: ... }`). In `graph.yaml`, a string shorthand `source: { ref: "<action_name>" }` is also accepted and normalized to `{ name: "<action_name>" }`.
+
+| Field                      | Type              | Label | Description                                                                                             |
+| -------------------------- | ----------------- | ----- | ------------------------------------------------------------------------------------------------------- |
+| name                       | [string](#string) |       | Required. Target Dataform action name.                                                                  |
+| schema                     | [string](#string) |       | Optional. Target dataset (schema) name.                                                                 |
+| database                   | [string](#string) |       | Optional. Target Google Cloud project (database) ID.                                                    |
+| includeDependentAssertions | [bool](#bool)     |       | Optional (`include_dependent_assertions` in YAML). If true, depends on assertions of the target action. |
+
+<a name="dataform-GraphAiContextConfig"></a>
+
+### GraphAiContextConfig
+
+AI context metadata attached to a semantic model, entity, relationship, field, or metric (`ai_context` in `graph.yaml`). On entities and relationships, `DEFAULT LABEL OPTIONS(...)` is emitted before `PROPERTIES (...)`, `PROPERTIES ALL COLUMNS`, or `NO PROPERTIES`. Description sections (`label`, `"Time dimension."`, `description`, `ai_context.instructions`, and `"Examples: a; b"`) are joined with `"\n\n"`.
+
+| Field        | Type              | Label    | Description                                                                                                          |
+| ------------ | ----------------- | -------- | -------------------------------------------------------------------------------------------------------------------- |
+| synonyms     | [string](#string) | repeated | Optional. Alternative names emitted as `OPTIONS(synonyms=[...])`.                                                    |
+| examples     | [string](#string) | repeated | Optional. Example values or questions folded into the element's description (`"...\n\nExamples: ex1; ex2"`).         |
+| instructions | [string](#string) |          | Optional. Free-form AI instructions folded into the element's description (`OPTIONS(description=...)`).              |
+
+<a name="dataform-GraphDeploymentConfig"></a>
+
+### GraphDeploymentConfig
+
+Deployment target mapping for a semantic model (`deployments` in `graph.yaml`). At most one deployment is supported in V1; when omitted, the property graph is deployed to the project's default database and default schema with the `semantic_model.name`.
+
+| Field  | Type              | Label | Description                                                                                                                                                                                                                                                                                                                                     |
+| ------ | ----------------- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| name   | [string](#string) |       | Logical deployment profile name (for example, `default`).                                                                                                                                                                                                                                                                                       |
+| target | [string](#string) |       | Required. Target BigQuery property graph resource URI (`bigquery.googleapis.com/projects/<project>/datasets/<dataset>/propertyGraphs/<graph>`). Leading `//` is rejected. Sets the base project, dataset, and graph name on the Dataform action target; Dataform session overrides (`databaseSuffix`, `schemaSuffix`, `namePrefix`) still apply when resolving the final target. |
+
+<a name="dataform-GraphDimensionConfig"></a>
+
+### GraphDimensionConfig
+
+Dimension metadata for a property field on an entity (`dimension` in `graph.yaml`). In `graph.yaml`, a boolean shorthand `dimension: true` is also accepted and normalized to `{ is_time: true }`.
+
+| Field  | Type          | Label | Description                                                                                                                    |
+| ------ | ------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------ |
+| isTime | [bool](#bool) |       | Optional (`is_time` in YAML). If true, marks the field as a temporal dimension and folds `"Time dimension."` into `OPTIONS(description=...)`. |
+
+<a name="dataform-GraphEntityConfig"></a>
+
+### GraphEntityConfig
+
+A node entity definition in the semantic model (`entities` in `graph.yaml`). Compiles to a BigQuery `NODE TABLES` entry.
+
+| Field        | Type                                                   | Label    | Description                                                                                                                                                                                                                                                                                                                 |
+| ------------ | ------------------------------------------------------ | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| name         | [string](#string)                                      |          | Required. Unique entity name within the semantic model (must be a valid identifier).                                                                                                                                                                                                                                        |
+| sourceString | [string](#string)                                      |          | Backing table reference when `source` in `graph.yaml` is a string (`bigquery:<project>.<dataset>.<table>`, `<project>.<dataset>.<table>`, or `bigquery.googleapis.com/projects/<project>/datasets/<dataset>/tables/<table>`; leading `//` is rejected). Mutually exclusive with `sourceRef`.                               |
+| sourceRef    | [DataSourceRef](#dataform-DataSourceRef)               |          | Backing Dataform action reference when `source` in `graph.yaml` is `{ ref: "<name>" }` or `{ ref: { name, schema, database, include_dependent_assertions } }`. Mutually exclusive with `sourceString`.                                                                                                                      |
+| primaryKey   | [string](#string)                                      | repeated | Required (`primary_key` in YAML; accepts a single string or list of strings). Physical primary key column name(s) identifying rows of this entity, emitted in `KEY (...)`.                                                                                                                                                  |
+| uniqueKeys   | [GraphUniqueKeyList](#dataform-GraphUniqueKeyList)     | repeated | Secondary unique key column lists (`unique_keys` in YAML). Not supported in V1 because BigQuery `CREATE PROPERTY GRAPH` DDL supports only a single `KEY(...)` clause.                                                                                                                                                       |
+| description  | [string](#string)                                      |          | Optional. Human-readable description of the entity, emitted in `DEFAULT LABEL OPTIONS(description=...)`.                                                                                                                                                                                                                    |
+| aiContext    | [GraphAiContextConfig](#dataform-GraphAiContextConfig) |          | Optional (`ai_context` in YAML). AI context metadata (`instructions`, `synonyms`, and `examples`) for the entity.                                                                                                                                                                                                           |
+| fields       | [GraphFieldConfig](#dataform-GraphFieldConfig)         | repeated | Optional. Properties exposed on the entity node table (`PROPERTIES (...)`). In `graph.yaml`, each item may be a bare column name string `"col"` or a `GraphFieldConfig` object. When omitted (and no `metrics` target the entity), `PROPERTIES ALL COLUMNS` is emitted. Required when one or more `metrics` target the entity. |
+
+<a name="dataform-GraphFieldConfig"></a>
+
+### GraphFieldConfig
+
+A property field definition on an entity (`fields` in `graph.yaml`). In `graph.yaml`, a bare string `"col"` is shorthand for `{ name: "col", expression: "col" }`.
+
+| Field       | Type                                                   | Label | Description                                                                                                                                                                   |
+| ----------- | ------------------------------------------------------ | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| name        | [string](#string)                                      |       | Required. Property name exposed on the graph element (must be a valid identifier, unique case-insensitively on the entity).                                                   |
+| expression  | [string](#string)                                      |       | Optional. SQL expression computing the property value; defaults to `name`. Passed through as-is into BigQuery DDL (`<expression> AS <name>` when distinct from `name`).       |
+| description | [string](#string)                                      |       | Optional. Human-readable description of the field, folded into `OPTIONS(description=...)`.                                                                                    |
+| datatype    | [string](#string)                                      |       | Optional. Informational data type metadata. Accepted by the parser but has no effect on the generated BigQuery DDL.                                                           |
+| dimension   | [GraphDimensionConfig](#dataform-GraphDimensionConfig) |       | Optional. Dimension metadata (e.g. `dimension: { is_time: true }` or `dimension: true`), folding `"Time dimension."` into `OPTIONS(description=...)` when `is_time` is true. |
+| label       | [string](#string)                                      |       | Optional. Human-readable display label folded into `OPTIONS(description=...)`.                                                                                                |
+| aiContext   | [GraphAiContextConfig](#dataform-GraphAiContextConfig) |       | Optional (`ai_context` in YAML). AI context metadata (`instructions`, `synonyms`, and `examples`) for the field.                                                              |
+
+<a name="dataform-GraphMetricConfig"></a>
+
+### GraphMetricConfig
+
+A top-level aggregate metric definition (`metrics` in `graph.yaml`), compiled as a `MEASURE(<expression>) AS <name>` property inside the target entity's `PROPERTIES (...)` list.
+
+| Field       | Type                                                   | Label | Description                                                                                                                                                                                                 |
+| ----------- | ------------------------------------------------------ | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| name        | [string](#string)                                      |       | Required. Unique metric name within the semantic model (must be a valid identifier and must not collide case-insensitively with any declared field on the target `entity`).                                 |
+| entity      | [string](#string)                                      |       | Required. Target entity name on whose node table the `MEASURE(...)` property is emitted.                                                                                                                    |
+| expression  | [string](#string)                                      |       | Required. Single supported SQL aggregate (`SUM`, `AVG`, `COUNT`, `MIN`, or `MAX`), or `COUNT(*)`. Passed through as-is into `MEASURE(<expression>) AS <name>`, except `COUNT(*)` which is lowered to `COUNT(<primary_key[0]>)`. |
+| description | [string](#string)                                      |       | Optional. Human-readable description of the metric, folded into `OPTIONS(description=...)`.                                                                                                                 |
+| label       | [string](#string)                                      |       | Optional. Human-readable display label folded into `OPTIONS(description=...)`.                                                                                                                              |
+| aiContext   | [GraphAiContextConfig](#dataform-GraphAiContextConfig) |       | Optional (`ai_context` in YAML). AI context metadata (`instructions`, `synonyms`, and `examples`) for the metric.                                                                                           |
+
+<a name="dataform-GraphRelationshipConfig"></a>
+
+### GraphRelationshipConfig
+
+An edge relationship definition connecting two entities in the semantic model (`relationships` in `graph.yaml`). Each relationship is a 1:N foreign-key edge from `from` to `to`, backed by the `from` entity's table and `primary_key`, and compiles to a BigQuery `EDGE TABLES` entry with `NO PROPERTIES` in V1.
+
+| Field       | Type                                                   | Label    | Description                                                                                                                                                                                            |
+| ----------- | ------------------------------------------------------ | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| name        | [string](#string)                                      |          | Required. Unique relationship name within the semantic model (must be a valid identifier).                                                                                                             |
+| from        | [string](#string)                                      |          | Required. Name of the source entity (`SOURCE KEY ... REFERENCES <from>`).                                                                                                                              |
+| to          | [string](#string)                                      |          | Required. Name of the destination entity (`DESTINATION KEY ... REFERENCES <to>`).                                                                                                                      |
+| fromColumns | [string](#string)                                      | repeated | Required (`from_columns` in YAML; accepts a single string or list of strings). Physical foreign-key column name(s) on the `from` entity table emitted in `DESTINATION KEY (<from_columns>) REFERENCES <to> (<to_columns>)`. |
+| toColumns   | [string](#string)                                      | repeated | Required (`to_columns` in YAML; accepts a single string or list of strings). Referenced key column(s) on the `to` entity table (must match `<to>.primary_key`).                                        |
+| description | [string](#string)                                      |          | Optional. Human-readable description of the relationship, emitted in `DEFAULT LABEL OPTIONS(description=...)`.                                                                                         |
+| aiContext   | [GraphAiContextConfig](#dataform-GraphAiContextConfig) |          | Optional (`ai_context` in YAML). AI context metadata (`instructions`, `synonyms`, and `examples`) for the relationship.                                                                                |
+
+<a name="dataform-GraphUniqueKeyList"></a>
+
+### GraphUniqueKeyList
+
+Wrapper for a single composite unique key column list on an entity (`unique_keys` in `graph.yaml`). Accepted by the parser so V1 validation can report an explicit unsupported error.
+
+| Field   | Type              | Label    | Description                                  |
+| ------- | ----------------- | -------- | -------------------------------------------- |
+| columns | [string](#string) | repeated | Column names comprising the unique key list. |
+
+<a name="dataform-PropertyGraphConfig"></a>
+
+### PropertyGraphConfig
+
+Top-level configuration for a Dataform BigQuery Property Graph YAML file (`definitions/**/graph.yaml`), aligned with the Google Semantic Ontology V1 specification (`version: 0.2.0.dev0/google`).
+
+| Field                        | Type                                                                               | Label    | Description                                                                                                                                                                                                                                                        |
+| ---------------------------- | ---------------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| version                      | [string](#string)                                                                  |          | Required. Semantic Ontology specification version (`"0.2.0.dev0/google"`).                                                                                                                                                                                         |
+| semanticModel                | [SemanticModelConfig](#dataform-SemanticModelConfig)                               | repeated | Required (`semantic_model` in YAML). Semantic models declared in the file (must contain 1 model in V1).                                                                                                                                                            |
+| disabled                     | [bool](#bool)                                                                      |          | Optional. If set to true, this property graph action will not be executed, though it can still be depended upon.                                                                                                                                                   |
+| dependOnDependencyAssertions | [bool](#bool)                                                                      |          | Optional (`depend_on_dependency_assertions` in YAML). If true, assertions dependent upon any of the graph's referenced dependencies are added as dependencies of this property graph action.                                                                       |
+| tags                         | [string](#string)                                                                  | repeated | Optional. A list of user-defined tags with which the property graph action should be labeled.                                                                                                                                                                      |
+| jobLabels                    | [PropertyGraphConfig.JobLabelsEntry](#dataform-PropertyGraphConfig-JobLabelsEntry) | repeated | Optional (`job_labels` in YAML). Key-value pairs for BigQuery job labels applied to the query job(s) executed for this property graph. Overrides matching keys from `defaultJobLabels` in `workflow_settings.yaml`. See `defaultJobLabels` for the allowed keys and values. |
+
+<a name="dataform-PropertyGraphConfig-JobLabelsEntry"></a>
+
+### PropertyGraphConfig.JobLabelsEntry
+
+| Field | Type              | Label | Description |
+| ----- | ----------------- | ----- | ----------- |
+| key   | [string](#string) |       |             |
+| value | [string](#string) |       |             |
+
+<a name="dataform-SemanticModelConfig"></a>
+
+### SemanticModelConfig
+
+A single semantic model definition within `semantic_model` in `definitions/**/graph.yaml`.
+
+| Field         | Type                                                         | Label    | Description                                                                                                                                                                                                                  |
+| ------------- | ------------------------------------------------------------ | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| name          | [string](#string)                                            |          | Required. Name of the semantic model / BigQuery property graph (must be a valid identifier).                                                                                                                                 |
+| description   | [string](#string)                                            |          | Optional. Human-readable description of the semantic model. Populates Dataform's action metadata (`PropertyGraph.description`) only and has no effect on the generated BigQuery DDL (BigQuery `CREATE PROPERTY GRAPH` does not support graph-level `OPTIONS`). |
+| aiContext     | [GraphAiContextConfig](#dataform-GraphAiContextConfig)       |          | Optional (`ai_context` in YAML). AI context metadata for the model. `instructions` and `examples` are folded into Dataform's action metadata (`PropertyGraph.description`) only; model-level `ai_context` has no effect on the generated BigQuery DDL. |
+| deployments   | [GraphDeploymentConfig](#dataform-GraphDeploymentConfig)     | repeated | Optional. Deployment target(s) for the property graph (at most 1 in V1).                                                                                                                                                     |
+| entities      | [GraphEntityConfig](#dataform-GraphEntityConfig)             | repeated | Required (`entities` or `datasets` in YAML). Node entities in the semantic model (must contain at least 1 entity).                                                                                                           |
+| relationships | [GraphRelationshipConfig](#dataform-GraphRelationshipConfig) | repeated | Optional. Edge relationships connecting entities in the semantic model.                                                                                                                                                      |
+| metrics       | [GraphMetricConfig](#dataform-GraphMetricConfig)             | repeated | Optional. Top-level aggregate metrics compiled as `MEASURE(...)` properties on target entities.                                                                                                                              |
 
 ## Scalar Value Types
 
