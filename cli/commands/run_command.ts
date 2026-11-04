@@ -8,10 +8,12 @@ import { LineageEmitter } from "df/cli/api/lineage/emitter";
 import { createLineageEmitter as createLineageEmitterFromFactory } from "df/cli/api/lineage/emitter_factory";
 import { prettyJsonStringify } from "df/cli/api/utils";
 import {
+  dryRunOption,
   executionGraphOption,
   executionTimeoutOption,
   IRunArgs,
   runOptions,
+  runTestsOption,
 } from "df/cli/commands/run_options";
 import { assertProjectDirExists, jsonOutputOption, projectDirOption } from "df/cli/common_options";
 import {
@@ -67,6 +69,18 @@ export const runCommand: ICommand<IRunArgs> = {
         `--${executionGraphOption.name} option is only supported if the --${jsonOutputOption.name} option is enabled`,
       );
       return 1;
+    }
+
+    if (argv.executionGraph && argv.dryRun) {
+      printWarning(
+        `Note: --${dryRunOption.name} is ignored because --${executionGraphOption.name} is set`,
+      );
+    }
+
+    if (argv.executionGraph && argv.runTests) {
+      printWarning(
+        `Note: --${runTestsOption.name} is ignored because --${executionGraphOption.name} is set`,
+      );
     }
 
     if (!argv.json && argv.timeout != null && argv.executionTimeout == null) {
