@@ -184,10 +184,6 @@ ts_test_suite(
         "readme_generator_test.ts",
     ],
     data = ["README.md"],
-    # Run on GitHub Actions (build-linux job in .github/workflows/test.yaml), which covers every PR
-    # including forks. Excluded from Cloud Build (scripts/run_tests_on_cloudbuild) to avoid running
-    # them twice.
-    tags = ["cli_docs"],
     deps = [
         ":readme_generator",
         "//:node_modules/@types/chai",

@@ -108,9 +108,9 @@ export const emitLineageOption: INamedOption<yargs.Options, IRunArgs> = {
   name: "emit-lineage",
   option: {
     describe:
-      "If set, emit OpenLineage RunEvents to Knowledge Catalog Lineage for each executed action " +
-      "(requires datalineage.googleapis.com enabled and roles/datalineage.producer; see docs/lineage.md). " +
-      "Overrides workflow_settings.yaml lineage.enabled when specified.",
+      "If set, emits OpenLineage RunEvents to Knowledge Catalog Lineage for each executed " +
+      "action. Overrides workflow_settings.yaml lineage.enabled when specified. See " +
+      "https://github.com/dataform-co/dataform/blob/main/docs/lineage.md.",
     type: "boolean",
   },
 };
@@ -132,8 +132,8 @@ export const jitTimeoutOption: INamedOption<yargs.Options, IRunArgs> = {
   name: "jit-timeout",
   option: {
     describe:
-      "Per-model JiT compilation worker timeout. Each action with jitCode gets " +
-      "its own fresh deadline; independent of --execution-timeout. When unset, no " +
+      "Per-model JiT compilation worker timeout. Each JiT action gets its own fresh " +
+      "deadline, independent of --execution-timeout. When unset, no " +
       "per-model cap is applied and only --execution-timeout bounds JiT work. " +
       "Examples: '30s', '2m'.",
     type: "string",

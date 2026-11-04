@@ -339,18 +339,38 @@ function describe(option: AnyOption): string {
   return String(option.option.describe || "");
 }
 
-// Escapes plain text for a markdown table cell, so that it renders exactly as written: backslashes
-// first (so that the escapes added below can't be altered), then characters that markdown or GFM
-// tables would interpret (`|` ends the cell, `*` and `` ` `` format text), then HTML (e.g. the
-// "<job-prefix>" in "dataform-<job-prefix>-" would otherwise be hidden as an unknown tag).
+// URLs in plain text, which GitHub turns into links.
+const URL_PATTERN = /(https?:\/\/[^\s|<>]+)/;
+
+// Escapes plain text for a markdown table cell, so that it renders exactly as written:
+// - characters that markdown or GFM tables would interpret are backslash-escaped (see
+//   escapeMarkdown()), except in URLs, where a backslash would break GitHub's autolinking,
+// - HTML is escaped (e.g. the "<job-prefix>" in "dataform-<job-prefix>-" would otherwise be
+//   hidden as an unknown tag).
 function textCell(text: string): string {
+  return (
+    text
+      .replace(/\s*\n\s*/g, " ")
+      .split(URL_PATTERN)
+      // split() with a capturing group puts the URLs at odd indexes.
+      .map((part, index) => (index % 2 === 1 ? part : escapeMarkdown(part)))
+      .join("")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+  );
+}
+
+// Backslash-escapes characters that markdown or GFM tables would interpret: `|` ends the cell,
+// `*`, `_` and `~` format text, `[` and `]` start links, `` ` `` starts code. Backslashes are
+// escaped first, so that the escapes added for the other characters can't be altered. `_` inside a
+// word (e.g. workflow_settings.yaml) can't start or end emphasis, so it's only escaped at word
+// boundaries, which keeps the README source readable.
+function escapeMarkdown(text: string): string {
   return text
-    .replace(/\s*\n\s*/g, " ")
     .replace(/\\/g, "\\\\")
-    .replace(/[|*`]/g, (char) => `\\${char}`)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+    .replace(/[|*[\]~`]/g, (char) => `\\${char}`)
+    .replace(/(?<![A-Za-z0-9])_|_(?![A-Za-z0-9])/g, "\\_");
 }
 
 // Renders a value as inline code. Backslashes are literal inside code spans, so values that would

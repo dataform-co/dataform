@@ -259,10 +259,10 @@ Compiles and executes the project against BigQuery (or validates it with `--dry-
 | `--json` | boolean | `false` | Outputs the result as JSON instead of human-readable text. |
 | `--timeout` | string | `'60s'` | Duration to allow project compilation to complete, e.g. '1s', '10m'. |
 | `--execution-timeout` | string | — | Wall-clock deadline for the entire run (compile + all actions). When it fires, in-flight actions are cancelled and pending actions are skipped. Off by default. Examples: '10m', '2h'. |
-| `--jit-timeout` | string | — | Per-model JiT compilation worker timeout. Each action with jitCode gets its own fresh deadline; independent of --execution-timeout. When unset, no per-model cap is applied and only --execution-timeout bounds JiT work. Examples: '30s', '2m'. |
+| `--jit-timeout` | string | — | Per-model JiT compilation worker timeout. Each JiT action gets its own fresh deadline, independent of --execution-timeout. When unset, no per-model cap is applied and only --execution-timeout bounds JiT work. Examples: '30s', '2m'. |
 | `--job-prefix` | string | — | Adds an additional prefix to BigQuery job IDs, in the form dataform-&lt;job-prefix&gt;-. |
 | `--job-labels` | string | — | Comma-separated list of labels to add to BigQuery jobs, e.g. 'key1=val1,key2=val2'. Also applied to unit tests with --run-tests. Overrides job labels and table labels that use the same key. |
-| `--emit-lineage` | boolean | — | If set, emit OpenLineage RunEvents to Knowledge Catalog Lineage for each executed action (requires datalineage.googleapis.com enabled and roles/datalineage.producer; see docs/lineage.md). Overrides workflow_settings.yaml lineage.enabled when specified. |
+| `--emit-lineage` | boolean | — | If set, emits OpenLineage RunEvents to Knowledge Catalog Lineage for each executed action. Overrides workflow_settings.yaml lineage.enabled when specified. See https://github.com/dataform-co/dataform/blob/main/docs/lineage.md. |
 | Project-config overrides | — | — | See [Shared project-config flags](#shared-project-config-flags). |
 <!-- END GENERATED: options run -->
 
@@ -273,7 +273,7 @@ Compiles and executes the project against BigQuery (or validates it with `--dry-
 - `--json` outputs the run result as JSON and is only supported together with `--dry-run`; plain `run --json` is rejected.
 - `--timeout` bounds compilation only, not execution. If it's set without `--execution-timeout`, `run` prints a warning reminding you of that.
 - `--job-labels` override `defaultJobLabels`, action `jobLabels` and table `labels` that use the same key.
-- `--emit-lineage`: for prerequisites and configuration, see the [Data Lineage guide](../docs/lineage.md).
+- `--emit-lineage` requires the Data Lineage API (`datalineage.googleapis.com`) to be enabled and the `roles/datalineage.producer` role; for configuration and troubleshooting, see the [Data Lineage guide](../docs/lineage.md).
 
 Exit codes: `0` on success, `1` if compilation fails, a BigQuery job would get more than 64 labels (checked before any action or unit test runs), unit tests fail (with `--run-tests`), the run fails, times out, or is cancelled (Ctrl+C).
 

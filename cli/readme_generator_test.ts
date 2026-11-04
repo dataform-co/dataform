@@ -174,6 +174,29 @@ suite("readme generator", () => {
     );
   });
 
+  test("escapes markdown links, emphasis and strikethrough, but not URLs", () => {
+    const { content } = generateReadme(readmeFor(["build"]), [
+      command({
+        options: [
+          {
+            name: "docs",
+            option: {
+              describe:
+                "Reads workflow_settings.yaml, not _this_, [this](link) or ~~that~~. " +
+                "See https://example.com/a_b/c_d.md for more.",
+              type: "string",
+            },
+          },
+        ],
+      }),
+    ]);
+    expect(generatedBlock(content, "options build")).includes(
+      // `_` inside a word can't start emphasis, so it's only escaped at word boundaries.
+      "| `--docs` | string | — | Reads workflow_settings.yaml, not \\_this\\_, \\[this\\](link) or " +
+        "\\~\\~that\\~\\~. See https://example.com/a_b/c_d.md for more. |",
+    );
+  });
+
   test("renders declared defaults as inline code, rejecting values that can't be", () => {
     const withDefault = (value: string) =>
       command({ options: [{ name: "sep", option: { describe: "Sep.", default: value } }] });
