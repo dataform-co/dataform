@@ -188,8 +188,17 @@ export const runCommand: ICommand<IRunArgs> = {
       actionsByName.set(targetAsReadableString(action.target), action);
     });
 
-    if (!argv.json && actionsByName.size === 0) {
-      logger.log("No actions to run.\n");
+    if (actionsByName.size === 0) {
+      if (argv.json) {
+        print(
+          prettyJsonStringify({
+            status: dataform.RunResult.ExecutionStatus.SUCCESSFUL,
+            actions: [],
+          }),
+        );
+      } else {
+        logger.log("No actions to run.\n");
+      }
       return 0;
     }
 
