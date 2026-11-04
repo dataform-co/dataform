@@ -263,7 +263,7 @@ Compiles and executes the project against BigQuery (or validates it with `--dry-
 | `--job-prefix` | string | — | Adds an additional prefix to BigQuery job IDs, in the form `dataform-${jobPrefix}-`. |
 | `--job-labels` | string | — | Comma-separated `key=value` labels to attach to BigQuery jobs, e.g. `'key1=val1,key2=val2'`. Also applied to unit tests with `--run-tests`. Overrides `defaultJobLabels`, action `jobLabels` and table `labels` that use the same key. |
 | `--emit-lineage` | boolean | — | Emits OpenLineage `RunEvent`s to Knowledge Catalog Lineage for each executed action. Overrides the `lineage.enabled` setting in `workflow_settings.yaml` when specified. See the [Data Lineage guide](../docs/lineage.md). |
-| `--execution-graph` | boolean | `false` | Only builds and outputs the execution graph, without submitting the jobs to BigQuery. Only supported together with `--json` — plain `run --execution-graph` (without `--json`) is rejected. |
+| `--execution-graph` | boolean | `false` | Only builds and outputs the execution graph, without submitting the jobs to BigQuery. Only supported together with `--json` — plain `run --execution-graph` (without `--json`) is rejected. Note that --dry-run and --run-test will be ignored if combined with --execution-graph |
 | Project-config overrides | — | — | See [Shared project-config flags](#shared-project-config-flags). |
 <!-- END GENERATED: options run -->
 

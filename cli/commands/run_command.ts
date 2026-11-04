@@ -9,10 +9,12 @@ import { createLineageEmitter as createLineageEmitterFromFactory } from "df/cli/
 import { prettyJsonStringify } from "df/cli/api/utils";
 import { buildDryRunValidationQueries } from "df/cli/api/utils/dry_run_validation";
 import {
+  dryRunOption,
   executionGraphOption,
   executionTimeoutOption,
   IRunArgs,
   runOptions,
+  runTestsOption,
 } from "df/cli/commands/run_options";
 import { assertProjectDirExists, jsonOutputOption, projectDirOption } from "df/cli/common_options";
 import {
@@ -68,6 +70,18 @@ export const runCommand: ICommand<IRunArgs> = {
         `--${executionGraphOption.name} option is only supported if the --${jsonOutputOption.name} option is enabled`,
       );
       return 1;
+    }
+
+    if (argv.executionGraph && argv.dryRun) {
+      printWarning(
+        `Note: --${dryRunOption.name} is ignored because --${executionGraphOption.name} is set`,
+      );
+    }
+
+    if (argv.executionGraph && argv.runTests) {
+      printWarning(
+        `Note: --${runTestsOption.name} is ignored because --${executionGraphOption.name} is set`,
+      );
     }
 
     if (!argv.json && argv.timeout != null && argv.executionTimeout == null) {
