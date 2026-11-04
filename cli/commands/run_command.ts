@@ -15,7 +15,7 @@ import {
   runOptions,
   runTestsOption,
 } from "df/cli/commands/run_options";
-import { assertProjectDirExists, jsonOutputOption, projectDirOption } from "df/cli/common_options";
+import { assertProjectDirExists, projectDirOption } from "df/cli/common_options";
 import {
   Logger,
   print,
@@ -63,13 +63,6 @@ export const runCommand: ICommand<IRunArgs> = {
   options: runOptions,
   processFn: async (argv) => {
     const logger = new Logger(!argv.json);
-
-    if (argv.executionGraph && !argv.json) {
-      printError(
-        `--${executionGraphOption.name} option is only supported if the --${jsonOutputOption.name} option is enabled`,
-      );
-      return 1;
-    }
 
     if (argv.executionGraph && argv.dryRun) {
       printWarning(

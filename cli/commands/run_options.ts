@@ -174,8 +174,7 @@ export const bigqueryJobLabelsOption: INamedOption<yargs.Options, IRunArgs> = {
 export const executionGraphOption: INamedOption<yargs.Options, IRunArgs> = {
   name: "execution-graph",
   option: {
-    describe:
-      "If set, only build and output the execution graph without submitting to BigQuery. Must be combined with --json.",
+    describe: "If set, only build and output the execution graph without submitting to BigQuery.",
     type: "boolean",
     default: false,
   },
