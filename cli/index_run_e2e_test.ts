@@ -751,19 +751,57 @@ SELECT 1 AS id
         .and.not.equal("");
     });
 
-    test("run --execution-graph without --json is rejected", async () => {
-      const result = await runCli("run", [
-        projectDir,
-        "--credentials",
-        CREDENTIALS_PATH,
-        "--execution-graph",
-      ]);
+    test(
+      "run --execution-graph without --json outputs plain text summary",
+      { timeout: 120000 },
+      async () => {
+        writeDefinitionFile(
+          projectDir,
+          "new_table.sqlx",
+          `
+config { type: "table" }
+SELECT 1 AS id
+`,
+        );
 
-      expect(result.exitCode).equals(1);
-      expect(result.stderr).to.include(
-        "--execution-graph option is only supported if the --json option is enabled",
-      );
-    });
+        // First run creates example_table as a table in BigQuery.
+        await runCli("run", [
+          projectDir,
+          "--credentials",
+          CREDENTIALS_PATH,
+          "--actions=example_table",
+        ]);
+
+        // Change example_table to a view locally so old vs new type differs.
+        writeDefinitionFile(
+          projectDir,
+          "example_table.sqlx",
+          `
+config { type: "view" }
+SELECT 1 AS id
+`,
+        );
+
+        const result = await runCli("run", [
+          projectDir,
+          "--credentials",
+          CREDENTIALS_PATH,
+          "--execution-graph",
+          "--actions=example_table,new_table",
+        ]);
+
+        expect(result.exitCode, `stdout:\n${result.stdout}\nstderr:\n${result.stderr}`).equals(0);
+        expect(result.stdout).to.include("2 dataset(s):");
+        expect(result.stdout).to.match(
+          new RegExp(
+            `${uniqueDataset}\\.example_table.*\\[view\\] \\(type: table -> view, last modified: \\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2} UTC\\)`,
+          ),
+        );
+        expect(result.stdout).to.match(
+          new RegExp(`${uniqueDataset}\\.new_table.*\\[table\\] \\(does not exist\\)`),
+        );
+      },
+    );
 
     test("run --json with no matching actions outputs empty RunResult", async () => {
       const result = await runCli("run", [
