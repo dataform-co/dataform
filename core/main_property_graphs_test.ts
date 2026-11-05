@@ -681,7 +681,7 @@ semantic_model:
   metrics:
   - name: book_count
     entity: Book
-    expression: COUNT(Book.id)
+    expression: COUNT(id)
 `,
         },
       ],

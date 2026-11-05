@@ -6,15 +6,11 @@ export const SEMANTIC_ONTOLOGY_VERSION = "0.2.0.dev0/google";
 export const CATALOG_NOT_SUPPORTED_MESSAGE =
   "Catalog-based data sources (BigLake/Iceberg/external catalogs) are not yet supported.";
 
-export const SUPPORTED_METRIC_AGGREGATES = ["SUM", "AVG", "COUNT", "MIN", "MAX"];
-
 const DEPLOYMENT_TARGET_URI_REGEX =
   /^(?:\/\/)?bigquery\.googleapis\.com\/projects\/([^/]+)\/datasets\/([^/]+)\/propertyGraphs\/([^/]+)$/;
 
 const TABLE_SOURCE_URI_REGEX =
   /^(?:\/\/)?bigquery\.googleapis\.com\/projects\/([^/]+)\/datasets\/([^/]+)\/tables\/([^/]+)$/;
-
-const STRING_LITERAL_REGEX = /'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"/g;
 
 // GoogleSQL reserved keywords that must be backtick-quoted when used as bare
 // identifiers (entity/relationship aliases, label names, key columns, or
@@ -414,212 +410,9 @@ export function formatDescriptionWithExamples(
   return base ? `${base}\n${examplesText}` : examplesText;
 }
 
-const QUALIFIER_OR_BACKTICK_TOKEN_REGEX = /(`[^`]*`)(\.?)|([A-Za-z_][A-Za-z0-9_]*)\./g;
-
-function extractQualifierIdent(
-  backtickToken: string | undefined,
-  dot: string | undefined,
-  bareIdent: string | undefined,
-  offset: number,
-  segment: string,
-): string | null {
-  if (offset > 0 && /[\w`.-]/.test(segment[offset - 1])) {
-    return null;
-  }
-  if (backtickToken !== undefined) {
-    if (dot !== "." || backtickToken.length <= 2) {
-      return null;
-    }
-    return unquoteIdentifier(backtickToken);
-  }
-  if (bareIdent !== undefined) {
-    return bareIdent;
-  }
-  return null;
-}
-
-function mapOutsideStringLiterals(expression: string, fn: (segment: string) => string): string {
-  let out = "";
-  let last = 0;
-  const regex = new RegExp(STRING_LITERAL_REGEX.source, "g");
-  let match: RegExpExecArray | null;
-  while ((match = regex.exec(expression)) !== null) {
-    out += fn(expression.slice(last, match.index));
-    out += match[0];
-    last = match.index + match[0].length;
-  }
-  out += fn(expression.slice(last));
-  return out;
-}
-
-function blankStringLiterals(expression: string): string {
-  return expression.replace(STRING_LITERAL_REGEX, (m) => " ".repeat(m.length));
-}
-
-export function stripEntityQualifier(expression: string, entityName: string): string {
-  const targetLower = unquoteIdentifier(entityName).toLowerCase();
-  return mapOutsideStringLiterals(expression, (seg) =>
-    seg.replace(
-      QUALIFIER_OR_BACKTICK_TOKEN_REGEX,
-      (
-        match: string,
-        backtickToken: string | undefined,
-        dot: string | undefined,
-        bareIdent: string | undefined,
-        offset: number,
-        str: string,
-      ) => {
-        const qualifier = extractQualifierIdent(backtickToken, dot, bareIdent, offset, str);
-        if (qualifier !== null && qualifier.toLowerCase() === targetLower) {
-          return "";
-        }
-        return match;
-      },
-    ),
-  );
-}
-
-export function findReferencedEntityQualifiers(
-  expression: string,
-  entityNames: string[],
-  allowedLocalQualifiers: ReadonlySet<string> = new Set(),
-): string[] {
-  const scannable = blankStringLiterals(expression);
-  const foundQualifiersLower = new Set<string>();
-  const regex = new RegExp(QUALIFIER_OR_BACKTICK_TOKEN_REGEX.source, "g");
-  let match: RegExpExecArray | null;
-  while ((match = regex.exec(scannable)) !== null) {
-    const qualifier = extractQualifierIdent(match[1], match[2], match[3], match.index, scannable);
-    if (qualifier !== null) {
-      foundQualifiersLower.add(qualifier.toLowerCase());
-    }
-  }
-  const referenced: string[] = [];
-  for (const name of entityNames) {
-    const lowerName = unquoteIdentifier(name).toLowerCase();
-    if (allowedLocalQualifiers.has(lowerName)) {
-      continue;
-    }
-    if (foundQualifiersLower.has(lowerName)) {
-      referenced.push(name);
-    }
-  }
-  return referenced;
-}
-
-export interface IParsedAggregate {
-  fn: string;
-  operand: string;
-  distinct: boolean;
-}
-
-export function extractSupportedAggregate(expression: string): IParsedAggregate | null {
-  const s = expression.trim();
-  const head = s.match(/^([A-Za-z_][A-Za-z0-9_]*)\s*\(/);
-  if (!head) {
-    return null;
-  }
-  const fn = head[1];
-  if (!SUPPORTED_METRIC_AGGREGATES.includes(fn.toUpperCase())) {
-    return null;
-  }
-
-  let depth = 0;
-  let inSingle = false;
-  let inDouble = false;
-  let inTick = false;
-  let start = -1;
-  let end = -1;
-  let hasTopLevelComma = false;
-
-  for (let i = head[0].length - 1; i < s.length; i++) {
-    const c = s[i];
-    if (inSingle) {
-      if (c === "\\" && i + 1 < s.length) {
-        i++;
-      } else if (c === "'") {
-        inSingle = false;
-      }
-      continue;
-    }
-    if (inDouble) {
-      if (c === "\\" && i + 1 < s.length) {
-        i++;
-      } else if (c === '"') {
-        inDouble = false;
-      }
-      continue;
-    }
-    if (inTick) {
-      if (c === "`") {
-        inTick = false;
-      }
-      continue;
-    }
-    if (c === "'") {
-      inSingle = true;
-      continue;
-    }
-    if (c === '"') {
-      inDouble = true;
-      continue;
-    }
-    if (c === "`") {
-      inTick = true;
-      continue;
-    }
-    if (c === "(") {
-      if (depth === 0) {
-        start = i + 1;
-      }
-      depth++;
-      continue;
-    }
-    if (c === ")") {
-      depth--;
-      if (depth === 0) {
-        end = i;
-        break;
-      }
-      continue;
-    }
-    if (c === "," && depth === 1) {
-      hasTopLevelComma = true;
-    }
-  }
-
-  if (end === -1 || end !== s.length - 1 || hasTopLevelComma) {
-    return null;
-  }
-
-  const rawInner = s.slice(start, end).trim();
-  if (!rawInner) {
-    return null;
-  }
-
-  const distinctMatch = rawInner.match(/^DISTINCT(?:\s+|(?=\())(.*)$/i);
-  const distinct = !!distinctMatch;
-  const operand = (distinctMatch ? distinctMatch[1] : rawInner).trim();
-  if (!operand) {
-    return null;
-  }
-
-  // Reject nested aggregates inside the operand.
-  const operandWithoutStrings = blankStringLiterals(operand).replace(/`[^`]*`/g, (m) =>
-    " ".repeat(m.length),
-  );
-  const nestedAggRegex = new RegExp(`\\b(?:${SUPPORTED_METRIC_AGGREGATES.join("|")})\\s*\\(`, "i");
-  if (nestedAggRegex.test(operandWithoutStrings)) {
-    return null;
-  }
-
-  return { fn, operand, distinct };
-}
-
 export function buildEntityLabels(
   entityConfig: dataform.IGraphEntityConfig,
   entityMetrics: dataform.IGraphMetricConfig[],
-  allEntityNames: string[],
   graphName: string,
 ): dataform.GraphLabel[] {
   const entityName = entityConfig.name;
@@ -647,10 +440,8 @@ export function buildEntityLabels(
 
   const builtFields: dataform.GraphField[] = configuredFields.map((field) => {
     const cleanName = unquoteIdentifier(field.name);
-    const strippedExpr = field.expression
-      ? stripEntityQualifier(field.expression, entityName)
-      : cleanName;
-    const normalizedExpr = unquoteIdentifier(strippedExpr) === cleanName ? cleanName : strippedExpr;
+    const rawExpr = field.expression ? field.expression.trim() : cleanName;
+    const normalizedExpr = unquoteIdentifier(rawExpr) === cleanName ? cleanName : rawExpr;
     return dataform.GraphField.create({
       name: cleanName,
       expression: normalizedExpr,
@@ -659,132 +450,39 @@ export function buildEntityLabels(
     });
   });
 
-  const declaredFieldsByLowerName = new Map<string, dataform.GraphField>();
   const exposedNamesLower = new Map<string, string>();
   for (const field of builtFields) {
-    const lowerName = unquoteIdentifier(field.name).toLowerCase();
-    declaredFieldsByLowerName.set(lowerName, field);
-    exposedNamesLower.set(lowerName, field.name);
+    exposedNamesLower.set(unquoteIdentifier(field.name).toLowerCase(), field.name);
   }
 
-  const allowedLocalQualifiers = new Set<string>([
-    unquoteIdentifier(entityName).toLowerCase(),
-    ...exposedNamesLower.keys(),
-  ]);
-
-  const assertNoMetricFieldCollisions = () => {
-    for (const metric of entityMetrics) {
-      const lowerMetricName = unquoteIdentifier(metric.name).toLowerCase();
-      const metricConflict = exposedNamesLower.get(lowerMetricName);
-      if (metricConflict !== undefined) {
-        throw new Error(
-          `Property graph '${graphName}': metric '${metric.name}' collides with field ` +
-            `'${metricConflict}' on entity '${entityName}'.`,
-        );
-      }
+  for (const metric of entityMetrics) {
+    const lowerMetricName = unquoteIdentifier(metric.name).toLowerCase();
+    const metricConflict = exposedNamesLower.get(lowerMetricName);
+    if (metricConflict !== undefined) {
+      throw new Error(
+        `Property graph '${graphName}': metric '${metric.name}' collides with field ` +
+          `'${metricConflict}' on entity '${entityName}'.`,
+      );
     }
-  };
+  }
 
-  assertNoMetricFieldCollisions();
-
-  const autoExposedFields: dataform.GraphField[] = [];
   const measureFields: dataform.GraphField[] = [];
-
   for (const metric of entityMetrics) {
     const metricWhere = `Property graph '${graphName}': metric '${metric.name}'`;
     if (!metric.expression || !metric.expression.trim()) {
       throw new Error(`${metricWhere} must declare 'expression'.`);
     }
-
-    const strippedMetricExpr = stripEntityQualifier(metric.expression, entityName);
-    const referencedEntities = findReferencedEntityQualifiers(
-      strippedMetricExpr,
-      allEntityNames,
-      allowedLocalQualifiers,
-    );
-    for (const refEntity of referencedEntities) {
-      if (
-        unquoteIdentifier(refEntity).toLowerCase() !== unquoteIdentifier(entityName).toLowerCase()
-      ) {
-        throw new Error(
-          `${metricWhere} targets entity '${entityName}' but its expression references ` +
-            `entity '${refEntity}'.`,
-        );
-      }
-    }
-
-    const parsedAgg = extractSupportedAggregate(strippedMetricExpr);
-    if (!parsedAgg) {
-      throw new Error(
-        `${metricWhere}: expression '${metric.expression}' must be a single supported ` +
-          `aggregate (${SUPPORTED_METRIC_AGGREGATES.join(", ")}) over one operand or COUNT(*).`,
-      );
-    }
-
-    let loweredOperand = parsedAgg.operand;
-
-    if (parsedAgg.operand === "*") {
-      if (parsedAgg.fn.toUpperCase() !== "COUNT" || parsedAgg.distinct) {
-        throw new Error(
-          `${metricWhere}: '${parsedAgg.fn}(${parsedAgg.distinct ? "DISTINCT " : ""}*)' ` +
-            `is not supported (only COUNT(*) is allowed).`,
-        );
-      }
-      // BigQuery graph MEASURE(...) expressions must aggregate an exposed node
-      // property rather than `*` (see
-      // https://cloud.google.com/bigquery/docs/reference/standard-sql/graph-ddl-statements).
-      // Lower COUNT(*) to COUNT(<primary_key[0]>) and ensure that key column is
-      // exposed as a property on the node label.
-      const pkCol = unquoteIdentifier(entityConfig.primaryKey[0]);
-      const lowerPk = pkCol.toLowerCase();
-      if (!exposedNamesLower.has(lowerPk)) {
-        exposedNamesLower.set(lowerPk, pkCol);
-        autoExposedFields.push(
-          dataform.GraphField.create({
-            name: pkCol,
-            expression: pkCol,
-          }),
-        );
-      }
-      loweredOperand = quoteIdentifier(pkCol);
-    } else if (isPhysicalColumnName(parsedAgg.operand)) {
-      const cleanOperand = unquoteIdentifier(parsedAgg.operand);
-      const lowerOperand = cleanOperand.toLowerCase();
-      const matchedField = declaredFieldsByLowerName.get(lowerOperand);
-      if (matchedField) {
-        const isDerivedField =
-          unquoteIdentifier(matchedField.expression) !== unquoteIdentifier(matchedField.name);
-        loweredOperand = isDerivedField
-          ? matchedField.expression
-          : quoteIdentifier(matchedField.name);
-      } else {
-        if (!exposedNamesLower.has(lowerOperand)) {
-          exposedNamesLower.set(lowerOperand, cleanOperand);
-          autoExposedFields.push(
-            dataform.GraphField.create({
-              name: cleanOperand,
-              expression: cleanOperand,
-            }),
-          );
-        }
-        loweredOperand = quoteIdentifier(cleanOperand);
-      }
-    }
-
-    const loweredAgg = `${parsedAgg.fn}(${parsedAgg.distinct ? "DISTINCT " : ""}${loweredOperand})`;
     measureFields.push(
       dataform.GraphField.create({
         name: unquoteIdentifier(metric.name),
-        expression: `MEASURE(${loweredAgg})`,
+        expression: `MEASURE(${metric.expression.trim()})`,
         description: formatDescriptionWithExamples(metric.description, metric.aiContext),
         synonyms: metric.aiContext?.synonyms || [],
       }),
     );
   }
 
-  assertNoMetricFieldCollisions();
-
-  const allFields = [...builtFields, ...autoExposedFields, ...measureFields];
+  const allFields = [...builtFields, ...measureFields];
   const entityDescription = formatDescriptionWithExamples(
     entityConfig.description,
     entityConfig.aiContext,

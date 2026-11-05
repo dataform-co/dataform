@@ -314,7 +314,7 @@ suite("property_graph", () => {
     );
   });
 
-  test("strips leading <Entity>. and `<Entity>`. qualifiers from derived field expressions outside string literals", () => {
+  test("passes derived field expressions as-is into PROPERTIES (...) and emits field OPTIONS", () => {
     const compiled = compile(
       makeModelConfig({
         name: "G",
@@ -330,7 +330,7 @@ suite("property_graph", () => {
                 datatype: "STRING",
                 dimension: true,
                 label: "Full Name",
-                expression: "(Person.first || ' ' || `Person`.last || ' (Person.literal)')",
+                expression: "(first || ' ' || last || ' (Person.literal)')",
                 description: "Combined name",
                 ai_context: {
                   synonyms: ["display_name"],
@@ -382,7 +382,7 @@ suite("property_graph", () => {
     );
   });
 
-  test("compiles top-level metrics to MEASURE(...), strips <Entity>., lowers COUNT(*), and auto-exposes plain operand columns", () => {
+  test("compiles top-level metrics to MEASURE(...) and passes metric expressions as-is", () => {
     const compiled = compile(
       makeModelConfig({
         name: "UniGraph",
@@ -391,14 +391,14 @@ suite("property_graph", () => {
             name: "Process",
             source: "bigquery:p.d.uni_processes",
             primary_key: ["process_id"],
-            fields: ["process_id"],
+            fields: ["process_id", "hostname"],
           },
         ],
         metrics: [
           {
             name: "process_count",
             entity: "Process",
-            expression: "COUNT(Process.process_id)",
+            expression: "COUNT(process_id)",
             description: "Total processes",
             ai_context: {
               synonyms: ["proc_cnt"],
@@ -413,7 +413,7 @@ suite("property_graph", () => {
           {
             name: "distinct_host_count",
             entity: "Process",
-            expression: "COUNT(DISTINCT Process.hostname)",
+            expression: "COUNT(DISTINCT hostname)",
           },
         ],
       }),
@@ -426,7 +426,7 @@ suite("property_graph", () => {
         "hostname, " +
         "MEASURE(COUNT(process_id)) AS process_count " +
         'OPTIONS(description="Total processes\\nExamples: How many processes?", synonyms=["proc_cnt"]), ' +
-        "MEASURE(COUNT(process_id)) AS row_count, " +
+        "MEASURE(COUNT(*)) AS row_count, " +
         "MEASURE(COUNT(DISTINCT hostname)) AS distinct_host_count" +
         ")\n" +
         ")",
@@ -449,7 +449,7 @@ suite("property_graph", () => {
             {
               name: "process_count",
               entity: "Process",
-              expression: "COUNT(Process.process_id)",
+              expression: "COUNT(process_id)",
             },
           ],
         }),
@@ -459,7 +459,7 @@ suite("property_graph", () => {
     );
   });
 
-  test("inlines derived field expressions in metrics, avoids extracting SQL keywords as columns, and normalizes backticks", () => {
+  test("matches metric.entity case-insensitively, preserves derived field and metric expressions as-is, and normalizes key backticks", () => {
     const compiled = compile(
       makeModelConfig({
         name: "OrderGraph",
@@ -475,7 +475,7 @@ suite("property_graph", () => {
               "ts",
               {
                 name: "total",
-                expression: "Order.price * Order.qty",
+                expression: "price * qty",
               },
             ],
           },
@@ -484,17 +484,17 @@ suite("property_graph", () => {
           {
             name: "sum_total",
             entity: "order",
-            expression: "SUM(order.total)",
+            expression: "SUM(price * qty)",
           },
           {
             name: "order_count",
             entity: "Order",
-            expression: "COUNT(`Order`.`id`)",
+            expression: "COUNT(id)",
           },
           {
             name: "sum_year",
             entity: "Order",
-            expression: "SUM(EXTRACT(YEAR FROM Order.ts))",
+            expression: "SUM(EXTRACT(YEAR FROM ts))",
           },
         ],
       }),
@@ -526,11 +526,11 @@ suite("property_graph", () => {
               "address",
               {
                 name: "city",
-                expression: "Person.address.city",
+                expression: "address.city",
               },
               {
                 name: "select",
-                expression: "Person.raw_select",
+                expression: "raw_select",
               },
             ],
           },
@@ -565,7 +565,7 @@ suite("property_graph", () => {
           {
             name: "order_count",
             entity: "Order",
-            expression: "COUNT(*)",
+            expression: "COUNT(`group`)",
           },
         ],
       }),
@@ -590,7 +590,7 @@ suite("property_graph", () => {
     );
   });
 
-  test("does not duplicate operand column when already declared in entity fields", () => {
+  test("defaults field expression to field name when omitted", () => {
     const compiled = compile(
       makeModelConfig({
         name: "G",
@@ -606,7 +606,7 @@ suite("property_graph", () => {
           {
             name: "process_count",
             entity: "Process",
-            expression: "COUNT(Process.process_id)",
+            expression: "COUNT(process_id)",
           },
         ],
       }),
@@ -904,44 +904,29 @@ suite("property_graph", () => {
     ).to.throw(
       "Property graph 'G': metric 'PROCESS_COUNT' collides with field 'process_count' on entity 'Process'.",
     );
-  });
-
-  test("errors when metric expression is not a single supported aggregate", () => {
-    expect(() =>
-      build(
-        makeModelConfig({
-          name: "G",
-          entities: [{ name: "Process", source: "p.d.P", primary_key: ["id"], fields: ["id"] }],
-          metrics: [
-            {
-              name: "bad_agg",
-              entity: "Process",
-              expression: "SUM(Process.x) / COUNT(Process.y)",
-            },
-          ],
-        }),
-      ),
-    ).to.throw(
-      "Property graph 'G': metric 'bad_agg': expression 'SUM(Process.x) / COUNT(Process.y)' must be a single supported aggregate (SUM, AVG, COUNT, MIN, MAX) over one operand or COUNT(*).",
-    );
 
     expect(() =>
       build(
         makeModelConfig({
           name: "G",
-          entities: [{ name: "Process", source: "p.d.P", primary_key: ["id"], fields: ["id"] }],
+          entities: [
+            {
+              name: "Process",
+              source: "p.d.P",
+              primary_key: ["id"],
+              fields: ["id"],
+            },
+          ],
           metrics: [
             {
-              name: "bad_star",
+              name: "m1",
               entity: "Process",
-              expression: "SUM(*)",
+              expression: "   ",
             },
           ],
         }),
       ),
-    ).to.throw(
-      "Property graph 'G': metric 'bad_star': 'SUM(*)' is not supported (only COUNT(*) is allowed).",
-    );
+    ).to.throw("Property graph 'G': metric 'm1' must declare 'expression'.");
   });
 
   test("defaults 1:N relationship to_columns to target entity primary_key when omitted and rejects mismatched to_columns", () => {
@@ -1040,29 +1025,6 @@ suite("property_graph", () => {
     ).to.throw("Property graph 'G': relationship 'Wrote' with 'source' must declare 'to_columns'.");
   });
 
-  test("errors when metric expression references another declared entity (case-insensitively)", () => {
-    expect(() =>
-      build(
-        makeModelConfig({
-          name: "G",
-          entities: [
-            { name: "Process", source: "p.d.processes", primary_key: ["id"], fields: ["id"] },
-            { name: "Machine", source: "p.d.machines", primary_key: ["id"] },
-          ],
-          metrics: [
-            {
-              name: "bad_metric",
-              entity: "Process",
-              expression: "COUNT(machine.id)",
-            },
-          ],
-        }),
-      ),
-    ).to.throw(
-      "Property graph 'G': metric 'bad_metric' targets entity 'Process' but its expression references entity 'Machine'.",
-    );
-  });
-
   test("errors with a migration message when legacy nodes/edges schema is used", () => {
     expect(() =>
       build({
@@ -1159,38 +1121,7 @@ suite("property_graph", () => {
     );
   });
 
-  test("does not treat numeric or string literals in metric aggregates as physical column names", () => {
-    const compiled = compile(
-      makeModelConfig({
-        name: "G",
-        entities: [
-          {
-            name: "Process",
-            source: "bigquery:p.d.processes",
-            primary_key: ["id"],
-            fields: ["id"],
-          },
-        ],
-        metrics: [
-          {
-            name: "cnt_one",
-            entity: "Process",
-            expression: "COUNT(1)",
-          },
-        ],
-      }),
-    );
-
-    expect(compiled.graphBody).equals(
-      "NODE TABLES (\n" +
-        "  `p.d.processes` AS Process KEY (id) PROPERTIES (" +
-        "id, MEASURE(COUNT(1)) AS cnt_one" +
-        ")\n" +
-        ")",
-    );
-  });
-
-  test("preserves backtick-quoted identifiers containing dots or hyphens when stripping or scanning qualifiers", () => {
+  test("passes arbitrary SQL expressions (including qualified names, ratios, literals, and backticks) as-is into field and metric DDL", () => {
     const compiled = compile(
       makeModelConfig({
         name: "G",
@@ -1209,6 +1140,10 @@ suite("property_graph", () => {
                 name: "sub_country",
                 expression: "`sub-account`.country",
               },
+              {
+                name: "prefixed_col",
+                expression: "Account.name",
+              },
             ],
           },
           {
@@ -1220,9 +1155,19 @@ suite("property_graph", () => {
         ],
         metrics: [
           {
+            name: "cnt_one",
+            entity: "Customer",
+            expression: "COUNT(1)",
+          },
+          {
             name: "sub_account_cnt",
             entity: "Customer",
             expression: "COUNT(`sub-account`.country)",
+          },
+          {
+            name: "avg_ratio",
+            entity: "Customer",
+            expression: "SUM(x) / COUNT(y)",
           },
         ],
       }),
@@ -1231,39 +1176,12 @@ suite("property_graph", () => {
     expect(compiled.graphBody).equals(
       "NODE TABLES (\n" +
         "  `p.d.accounts` AS Account KEY (id) PROPERTIES (" +
-        "id, `Account.id` AS dotted_col, `sub-account`.country AS sub_country" +
+        "id, `Account.id` AS dotted_col, `sub-account`.country AS sub_country, Account.name AS prefixed_col" +
         "),\n" +
         "  `p.d.customers` AS Customer KEY (id) PROPERTIES (" +
-        "id, MEASURE(COUNT(`sub-account`.country)) AS sub_account_cnt" +
+        "id, MEASURE(COUNT(1)) AS cnt_one, MEASURE(COUNT(`sub-account`.country)) AS sub_account_cnt, MEASURE(SUM(x) / COUNT(y)) AS avg_ratio" +
         ")\n" +
         ")",
-    );
-  });
-
-  test("errors when metric name collides with an auto-exposed operand column", () => {
-    expect(() =>
-      build(
-        makeModelConfig({
-          name: "G",
-          entities: [
-            {
-              name: "Order",
-              source: "p.d.orders",
-              primary_key: ["id"],
-              fields: ["id"],
-            },
-          ],
-          metrics: [
-            {
-              name: "amount",
-              entity: "Order",
-              expression: "SUM(Order.amount)",
-            },
-          ],
-        }),
-      ),
-    ).to.throw(
-      "Property graph 'G': metric 'amount' collides with field 'amount' on entity 'Order'.",
     );
   });
 });

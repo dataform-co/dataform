@@ -18,19 +18,19 @@ semantic_model:
             datatype: "STRING"
           - name: "upper_name"
             datatype: "STRING"
-            expression: "UPPER(Author.name)"
+            expression: "UPPER(name)"
           - name: "address"
           - name: "country"
-            expression: "Author.address.country"
+            expression: "address.country"
           - name: "group"
-            expression: "Author.name"
+            expression: "name"
       - name: "Book"
         source:
           ref: "books"
         primary_key: "id"
         fields:
-          - name: "id"
-          - name: "title"
+          - "id"
+          - "title"
     relationships:
       - name: "Wrote"
         source:
@@ -43,5 +43,5 @@ semantic_model:
     metrics:
       - name: "book_count"
         entity: "Book"
-        expression: "COUNT(Book.id)"
+        expression: "COUNT(id)"
         description: "Total books"

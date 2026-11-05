@@ -174,12 +174,10 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
       metricsByEntityLower.set(entityLower, list);
     }
 
-    const allEntityNames = model.entities.map((e) => e.name);
     this.proto.nodes = model.entities.map((entityConfig) =>
       this.buildNode(
         entityConfig,
         metricsByEntityLower.get(unquoteIdentifier(entityConfig.name).toLowerCase()) || [],
-        allEntityNames,
         graphName,
       ),
     );
@@ -283,7 +281,6 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
   private buildNode(
     entityConfig: dataform.IGraphEntityConfig,
     entityMetrics: dataform.IGraphMetricConfig[],
-    allEntityNames: string[],
     graphName: string,
   ): dataform.GraphNodeTable {
     const entityName = unquoteIdentifier(entityConfig.name);
@@ -306,12 +303,7 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
       ...entityConfig,
       name: entityName,
     };
-    const labels = buildEntityLabels(
-      normalizedEntityConfig,
-      entityMetrics,
-      allEntityNames,
-      graphName,
-    );
+    const labels = buildEntityLabels(normalizedEntityConfig, entityMetrics, graphName);
 
     return dataform.GraphNodeTable.create({
       name: entityName,
