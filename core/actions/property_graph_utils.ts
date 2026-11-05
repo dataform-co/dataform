@@ -449,6 +449,16 @@ export function buildEntityLabels(
 
   const builtFields: dataform.GraphField[] = configuredFields.map((field) => {
     const cleanName = unquoteIdentifier(field.name);
+    if (
+      field.expression !== undefined &&
+      field.expression !== null &&
+      typeof field.expression !== "string"
+    ) {
+      throw new Error(
+        `${where}: field '${cleanName}': 'expression' must be a string; ` +
+          `multi-dialect 'dialects' objects are not supported in V1.`,
+      );
+    }
     const rawExpr = field.expression ? field.expression.trim() : cleanName;
     const normalizedExpr = unquoteIdentifier(rawExpr) === cleanName ? cleanName : rawExpr;
     return dataform.GraphField.create({
@@ -478,6 +488,16 @@ export function buildEntityLabels(
   const measureFields: dataform.GraphField[] = [];
   for (const metric of entityMetrics) {
     const metricWhere = `Property graph '${graphName}': metric '${metric.name}'`;
+    if (
+      metric.expression !== undefined &&
+      metric.expression !== null &&
+      typeof metric.expression !== "string"
+    ) {
+      throw new Error(
+        `${metricWhere}: 'expression' must be a string; ` +
+          `multi-dialect 'dialects' objects are not supported in V1.`,
+      );
+    }
     if (!metric.expression || !metric.expression.trim()) {
       throw new Error(`${metricWhere} must declare 'expression'.`);
     }

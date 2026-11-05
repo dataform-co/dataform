@@ -1248,4 +1248,58 @@ suite("property_graph", () => {
       ),
     ).to.throw("Cannot specify both 'entities' and 'datasets' in the same semantic_model.");
   });
+
+  test("errors when field or metric expression is a multi-dialect object in V1", () => {
+    expect(() =>
+      build(
+        makeModelConfig({
+          name: "G",
+          entities: [
+            {
+              name: "Process",
+              source: "p.d.processes",
+              primary_key: ["process_id"],
+              fields: [
+                {
+                  name: "process_name",
+                  expression: {
+                    dialects: [{ dialect: "BIGQUERY", expression: "LOWER(name)" }],
+                  },
+                },
+              ],
+            },
+          ],
+        }),
+      ),
+    ).to.throw(
+      "Property graph 'G': entity 'Process': field 'process_name': 'expression' must be a string; multi-dialect 'dialects' objects are not supported in V1.",
+    );
+
+    expect(() =>
+      build(
+        makeModelConfig({
+          name: "G",
+          entities: [
+            {
+              name: "Process",
+              source: "p.d.processes",
+              primary_key: ["process_id"],
+              fields: [{ name: "process_id" }],
+            },
+          ],
+          metrics: [
+            {
+              name: "process_count",
+              entity: "Process",
+              expression: {
+                dialects: [{ dialect: "BIGQUERY", expression: "COUNT(process_id)" }],
+              },
+            },
+          ],
+        }),
+      ),
+    ).to.throw(
+      "Property graph 'G': metric 'process_count': 'expression' must be a string; multi-dialect 'dialects' objects are not supported in V1.",
+    );
+  });
 });
