@@ -94,7 +94,9 @@ integrationSuite(
         "EDGE TABLES",
         "Author",
         "Book",
+        "Authorship",
         "Wrote",
+        "WroteBook",
         "authors",
         "books",
         "wrote",
@@ -104,6 +106,7 @@ integrationSuite(
         "DEFAULT LABEL OPTIONS",
         "NO PROPERTIES",
         "MEASURE(COUNT(id)) AS book_count",
+        "MEASURE(SUM(pages)) AS total_pages",
       ]) {
         expect(row.ddl).to.contain(needle);
       }

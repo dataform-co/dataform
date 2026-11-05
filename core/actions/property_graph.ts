@@ -98,6 +98,9 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
       schema: deploymentTarget.datasetId,
       database: deploymentTarget.projectId,
     });
+    // `deployments[].target` sets the base project/dataset/name on `configTarget`;
+    // Dataform session overrides (`databaseSuffix`, `schemaSuffix`, `namePrefix`)
+    // are still applied via `applySessionToTarget`.
     this.proto.target = this.applySessionToTarget(configTarget, session.projectConfig, filename);
     this.proto.canonicalTarget = this.applySessionToTarget(
       configTarget,
@@ -105,6 +108,9 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
     );
 
     this.proto.fileName = filename;
+    // Model-level `description` and `ai_context` populate Dataform's action metadata
+    // (`proto.description`) only; BigQuery `CREATE PROPERTY GRAPH` does not support
+    // graph-level `OPTIONS`, so they are not emitted to the DDL.
     const modelDescription = formatDescriptionWithExamples(model.description, model.aiContext);
     if (modelDescription) {
       this.proto.description = modelDescription;

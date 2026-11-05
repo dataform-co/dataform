@@ -269,6 +269,14 @@ export function resolveDeploymentTarget(
   if (!rawTarget) {
     throw new Error(`Property graph '${graphName}': deployment must declare a non-empty 'target'.`);
   }
+  if (rawTarget.startsWith("//bigquery.googleapis.com/")) {
+    throw new Error(
+      `Property graph '${graphName}': deployment 'target' must not start with '//'; ` +
+        `remove the leading '//' and use ` +
+        `'bigquery.googleapis.com/projects/<project>/datasets/<dataset>/propertyGraphs/<graph>' ` +
+        `(got '${deployment.target}').`,
+    );
+  }
   const match = rawTarget.match(DEPLOYMENT_TARGET_URI_REGEX);
   if (!match) {
     throw new Error(
@@ -289,10 +297,14 @@ export function resolveDeploymentTarget(
 
 export function parseSourceTableString(rawSource: string, where: string): dataform.Target {
   const trimmed = rawSource.trim();
-  if (
-    trimmed.startsWith("bigquery.googleapis.com/") ||
-    trimmed.startsWith("//bigquery.googleapis.com/")
-  ) {
+  if (trimmed.startsWith("//bigquery.googleapis.com/")) {
+    throw new Error(
+      `${where}: 'source' URI must not start with '//'; remove the leading '//' and use ` +
+        `'bigquery.googleapis.com/projects/<project>/datasets/<dataset>/tables/<table>' ` +
+        `(got '${rawSource}').`,
+    );
+  }
+  if (trimmed.startsWith("bigquery.googleapis.com/")) {
     const match = trimmed.match(TABLE_SOURCE_URI_REGEX);
     if (!match) {
       throw new Error(
@@ -386,7 +398,7 @@ export function isPhysicalColumnName(value: string): boolean {
   }
   const trimmed = value.trim();
   if (/^`[^`]+`$/.test(trimmed)) {
-    return true;
+    return isSimpleIdentifier(unquoteIdentifier(trimmed));
   }
   return isSimpleIdentifier(trimmed) && !SQL_LITERAL_KEYWORDS.has(trimmed.toUpperCase());
 }

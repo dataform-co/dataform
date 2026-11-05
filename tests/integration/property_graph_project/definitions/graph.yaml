@@ -51,3 +51,7 @@ semantic_model:
         entity: "Book"
         expression: "COUNT(id)"
         description: "Total books"
+      - name: "total_pages"
+        entity: "Book"
+        expression: "SUM(pages)"
+        description: "Total pages across books"

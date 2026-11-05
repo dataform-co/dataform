@@ -123,7 +123,7 @@ suite("property_graph", () => {
         }),
       ),
     ).to.throw(
-      "Property graph 'FinGraph': deployment 'target' must match 'bigquery.googleapis.com/projects/<project>/datasets/<dataset>/propertyGraphs/<graph>' (got '//bigquery.googleapis.com/projects/customProj/datasets/customDs/propertyGraphs/FinGraph').",
+      "Property graph 'FinGraph': deployment 'target' must not start with '//'; remove the leading '//' and use 'bigquery.googleapis.com/projects/<project>/datasets/<dataset>/propertyGraphs/<graph>' (got '//bigquery.googleapis.com/projects/customProj/datasets/customDs/propertyGraphs/FinGraph').",
     );
   });
 
@@ -216,7 +216,7 @@ suite("property_graph", () => {
         }),
       ),
     ).to.throw(
-      "Property graph 'G': entity 'D': 'source' URI must match 'bigquery.googleapis.com/projects/<project>/datasets/<dataset>/tables/<table>' (got '//bigquery.googleapis.com/projects/p4/datasets/d4/tables/T4').",
+      "Property graph 'G': entity 'D': 'source' URI must not start with '//'; remove the leading '//' and use 'bigquery.googleapis.com/projects/<project>/datasets/<dataset>/tables/<table>' (got '//bigquery.googleapis.com/projects/p4/datasets/d4/tables/T4').",
     );
   });
 
@@ -846,7 +846,7 @@ suite("property_graph", () => {
     );
   });
 
-  test("allows backtick-quoted physical column names in primary_key", () => {
+  test("allows backtick-quoted valid physical column names in primary_key and rejects backtick-quoted non-identifiers", () => {
     const compiled = compile(
       makeModelConfig({
         name: "G",
@@ -863,6 +863,25 @@ suite("property_graph", () => {
     expect(compiled.graphBody).equals(
       "NODE TABLES (\n  `p.d.processes` AS Process KEY (`select`) PROPERTIES ALL COLUMNS\n)",
     );
+
+    for (const badKey of ["`a.b`", "`x y`"]) {
+      expect(() =>
+        build(
+          makeModelConfig({
+            name: "G",
+            entities: [
+              {
+                name: "Process",
+                source: "p.d.processes",
+                primary_key: [badKey],
+              },
+            ],
+          }),
+        ),
+      ).to.throw(
+        `Property graph 'G': entity 'Process': 'primary_key' entry '${badKey}' must be a physical column name`,
+      );
+    }
   });
 
   test("enforces case-insensitive uniqueness on entities, relationships, metrics, and fields", () => {

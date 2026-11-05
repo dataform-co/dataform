@@ -32,9 +32,14 @@ message PropertyGraphConfig {
 message SemanticModelConfig {
   // Name of the semantic model / property graph.
   string name = 1;
-  // Optional human-readable description of the semantic model.
+  // Optional human-readable description of the semantic model. Populates
+  // Dataform's action metadata (`PropertyGraph.description`) only and has no
+  // effect on the generated BigQuery DDL (BigQuery `CREATE PROPERTY GRAPH` does
+  // not support graph-level `OPTIONS`).
   string description = 2;
-  // Optional AI context metadata (synonyms and examples) for the model.
+  // Optional AI context metadata for the model. `instructions` and `examples`
+  // are folded into Dataform's action metadata (`PropertyGraph.description`)
+  // only; model-level `ai_context` has no effect on the generated BigQuery DDL.
   GraphAiContextConfig ai_context = 3;
   // Optional deployment targets for the property graph.
   repeated GraphDeploymentConfig deployments = 4;
@@ -50,7 +55,10 @@ message SemanticModelConfig {
 message GraphDeploymentConfig {
   // Logical deployment profile name (e.g. `default`).
   string name = 1;
-  // Target resource URI (`bigquery.googleapis.com/projects/<p>/datasets/<d>/propertyGraphs/<g>`).
+  // Target resource name (`bigquery.googleapis.com/projects/<p>/datasets/<d>/propertyGraphs/<g>`).
+  // Sets the base project, dataset, and graph name on the Dataform action
+  // target; Dataform session overrides (`databaseSuffix`, `schemaSuffix`,
+  // `namePrefix`) still apply when resolving the final target.
   string target = 2;
 }
 
@@ -85,8 +93,8 @@ message GraphUniqueKeyList {
 }
 
 // An edge relationship definition connecting two entities in the semantic model.
-// Each relationship is a foreign-key edge backed by the `from` entity's table
-// and `primary_key`.
+// Each relationship is a many-to-one foreign-key edge from `from` to `to`,
+// backed by the `from` entity's table and `primary_key`.
 message GraphRelationshipConfig {
   // Unique relationship name within the semantic model.
   string name = 1;
