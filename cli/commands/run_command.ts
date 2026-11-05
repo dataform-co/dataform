@@ -2,10 +2,12 @@ import yargs from "yargs";
 
 import { build, credentials, run, test } from "df/cli/api";
 import { compileForRun } from "df/cli/api/commands/compile";
+import { checkJobLabelLimit } from "df/cli/api/commands/run";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
 import { LineageEmitter } from "df/cli/api/lineage/emitter";
 import { createLineageEmitter as createLineageEmitterFromFactory } from "df/cli/api/lineage/emitter_factory";
 import { prettyJsonStringify } from "df/cli/api/utils";
+import { buildDryRunValidationQueries } from "df/cli/api/utils/dry_run_validation";
 import {
   dryRunOption,
   executionTimeoutOption,
@@ -40,17 +42,15 @@ function createLineageEmitter(
   argv: yargs.Arguments<IRunArgs>,
   executionGraph: dataform.IExecutionGraph,
   readCredentials: dataform.IBigQuery | undefined,
+  location?: string,
 ): LineageEmitter | undefined {
   return createLineageEmitterFromFactory({
     cliEmitLineage: argv.emitLineage,
     workflowLineageEnabled: executionGraph.projectConfig?.lineageEnabled ?? undefined,
     dryRun: !!argv.dryRun,
     projectDir: argv.projectDir || process.cwd(),
-    // Emit lineage for the location the jobs actually run in.
-    readCredentials: readCredentials && {
-      ...readCredentials,
-      location: executionGraph.projectConfig?.defaultLocation || readCredentials.location,
-    },
+    readCredentials,
+    location,
   });
 }
 
@@ -92,7 +92,7 @@ export const runCommand: ICommand<IRunArgs> = {
     }
     logger.success("Compiled successfully.\n");
     const readCredentials = credentials.read(actuallyResolve(argv.projectDir, argv.credentials));
-    const defaultLocation = compiledGraph.projectConfig?.defaultLocation;
+    const defaultLocation = compiledGraph.projectConfig?.defaultLocation ?? undefined;
     if (
       !isJsonOutput &&
       defaultLocation &&
@@ -121,6 +121,17 @@ export const runCommand: ICommand<IRunArgs> = {
       dbadapter,
     );
 
+    // BigQuery rejects jobs with more than 64 labels, so check before anything runs.
+    const jobLabelLimitError = checkJobLabelLimit(
+      executionGraph.actions,
+      argv.runTests ? compiledGraph.tests : [],
+      argv.jobLabels,
+    );
+    if (jobLabelLimitError) {
+      printError(jobLabelLimitError);
+      return 1;
+    }
+
     if (
       argv.dryRun &&
       isJsonOutput &&
@@ -136,7 +147,7 @@ export const runCommand: ICommand<IRunArgs> = {
 
     if (argv.runTests) {
       logger.log(`Running ${compiledGraph.tests.length} unit tests...\n`);
-      const testResults = await test(dbadapter, compiledGraph.tests);
+      const testResults = await test(dbadapter, compiledGraph.tests, argv.jobLabels);
       testResults.forEach((testResult) => printTestResult(testResult));
       if (testResults.some((testResult) => !testResult.successful)) {
         printError("\nUnit tests did not pass; aborting run.");
@@ -174,13 +185,21 @@ export const runCommand: ICommand<IRunArgs> = {
       logger.log("Running...\n");
     }
 
-    const lineageEmitter = createLineageEmitter(argv, executionGraph, readCredentials);
+    const lineageEmitter = createLineageEmitter(
+      argv,
+      executionGraph,
+      readCredentials,
+      defaultLocation,
+    );
 
     const runner = run(dbadapter, executionGraph, {
       projectDir: environment.projectDir,
       expectedCoreVersion: compiledGraph.dataformCoreVersion || undefined,
       bigquery: bigqueryOptions,
       lineageEmitter,
+      dryRunValidationQueries: argv.dryRun
+        ? buildDryRunValidationQueries(compiledGraph)
+        : undefined,
     });
     // The first Ctrl+C cancels the run gracefully; a second one exits immediately.
     setSignalHandler("SIGINT", () => runner.cancel());

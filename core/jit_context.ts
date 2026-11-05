@@ -73,6 +73,10 @@ export class SqlActionJitContext implements JitContext<IActionContext> {
     return this.target.database;
   }
 
+  public when(cond: boolean, trueCase: string, falseCase?: string) {
+    return cond ? trueCase : falseCase || "";
+  }
+
   private resolveReference(name: string, resolvedName?: string): string {
     if (!!resolvedName) {
       return `\`${resolvedName}\``;
@@ -88,10 +92,6 @@ export class SqlActionJitContext implements JitContext<IActionContext> {
 export class TableJitContext extends SqlActionJitContext implements JitContext<ITableContext> {
   constructor(adapter: dataform.DbAdapter, request: dataform.IJitCompilationRequest) {
     super(adapter, request);
-  }
-
-  public when(cond: boolean, trueCase: string, falseCase?: string) {
-    return cond ? trueCase : falseCase || "";
   }
 
   public incremental(): boolean {

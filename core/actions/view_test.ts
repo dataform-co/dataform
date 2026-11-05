@@ -87,6 +87,7 @@ actions:
     dependOnDependencyAssertions: true,
     hermetic: true,
     reservation: "reservation",
+    jobLabels: {"job_key": "job_val"},
     ${exampleBuiltInAssertions.inputAssertionBlock}
     metadata: {
         overview: "view overview",
@@ -165,6 +166,9 @@ SELECT 1`,
             actionDescriptor: {
               ...exampleActionDescriptor.outputActionDescriptor,
               reservation: "reservation",
+              jobLabels: {
+                job_key: "job_val",
+              },
               // sqlxConfig.bigquery.labels are placed as bigqueryLabels.
               bigqueryLabels: {
                 key: "val",
@@ -257,6 +261,8 @@ actions:
 ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
     hermetic: true
     reservation: reservation
+    jobLabels:
+      job_key: job_val
 `,
     );
 
@@ -306,6 +312,9 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
           },
           description: "description",
           reservation: "reservation",
+          jobLabels: {
+            job_key: "job_val",
+          },
         },
         materialized: true,
       },
@@ -446,6 +455,162 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
           e.message.includes("Cannot mix AoT and JiT compilation"),
         ),
       ).equals(true);
+    });
+
+    test("jit compilation is supported in sqlx", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML,
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/view.sqlx"),
+        `config { type: "view", compilation_mode: "jit" }
+js {
+  const foo = "bar";
+}
+SELECT 1`,
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals([
+        {
+          target: {
+            database: "defaultProject",
+            schema: "defaultDataset",
+            name: "view",
+          },
+          canonicalTarget: {
+            database: "defaultProject",
+            schema: "defaultDataset",
+            name: "view",
+          },
+          type: "view",
+          enumType: "VIEW",
+          disabled: false,
+          hermeticity: "NON_HERMETIC",
+          fileName: "definitions/view.sqlx",
+          jitCode: `async (jctx) => {
+    const self = jctx.self ? jctx.self.bind(jctx) : undefined;
+    const ref = jctx.ref ? jctx.ref.bind(jctx) : undefined;
+    const resolve = jctx.resolve ? jctx.resolve.bind(jctx) : undefined;
+    const name = jctx.name ? jctx.name.bind(jctx) : undefined;
+    const when = jctx.when ? jctx.when.bind(jctx) : undefined;
+    const incremental = jctx.incremental ? jctx.incremental.bind(jctx) : undefined;
+    const schema = jctx.schema ? jctx.schema.bind(jctx) : undefined;
+    const database = jctx.database ? jctx.database.bind(jctx) : undefined;
+    const adapter = jctx.adapter ? jctx.adapter : undefined;
+    const data = jctx.data ? jctx.data : undefined;
+    const executionData = jctx.executionData ? jctx.executionData : undefined;
+    
+  const foo = "bar";
+
+    return {
+        query: (
+          \`
+
+SELECT 1\`
+        ),
+        postOps: (
+          undefined
+        ),
+        preOps: (
+          undefined
+        ),
+      };
+    }`,
+          actionDescriptor: {
+            compilationMode: "ACTION_COMPILATION_MODE_JIT",
+          },
+        },
+      ]);
+    });
+
+    test("jit compilation with pre/post ops is supported in sqlx", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML,
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/view.sqlx"),
+        `config { type: "view", compilation_mode: "jit" }
+js {
+  const foo = "bar";
+}
+SELECT 1
+pre_operations {
+  SELECT 10;
+}
+post_operations {
+  SELECT 20;
+}`,
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals([
+        {
+          target: {
+            database: "defaultProject",
+            schema: "defaultDataset",
+            name: "view",
+          },
+          canonicalTarget: {
+            database: "defaultProject",
+            schema: "defaultDataset",
+            name: "view",
+          },
+          type: "view",
+          enumType: "VIEW",
+          disabled: false,
+          hermeticity: "NON_HERMETIC",
+          fileName: "definitions/view.sqlx",
+          jitCode: `async (jctx) => {
+    const self = jctx.self ? jctx.self.bind(jctx) : undefined;
+    const ref = jctx.ref ? jctx.ref.bind(jctx) : undefined;
+    const resolve = jctx.resolve ? jctx.resolve.bind(jctx) : undefined;
+    const name = jctx.name ? jctx.name.bind(jctx) : undefined;
+    const when = jctx.when ? jctx.when.bind(jctx) : undefined;
+    const incremental = jctx.incremental ? jctx.incremental.bind(jctx) : undefined;
+    const schema = jctx.schema ? jctx.schema.bind(jctx) : undefined;
+    const database = jctx.database ? jctx.database.bind(jctx) : undefined;
+    const adapter = jctx.adapter ? jctx.adapter : undefined;
+    const data = jctx.data ? jctx.data : undefined;
+    const executionData = jctx.executionData ? jctx.executionData : undefined;
+    
+  const foo = "bar";
+
+    return {
+        query: (
+          \`
+
+SELECT 1
+
+\`
+        ),
+        postOps: (
+          [\`
+  SELECT 20;
+\`]
+        ),
+        preOps: (
+          [\`
+  SELECT 10;
+\`]
+        ),
+      };
+    }`,
+          actionDescriptor: {
+            compilationMode: "ACTION_COMPILATION_MODE_JIT",
+          },
+        },
+      ]);
     });
   });
 

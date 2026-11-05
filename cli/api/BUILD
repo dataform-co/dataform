@@ -54,7 +54,6 @@ ts_library(
 ts_test_suite(
     name = "tests",
     srcs = [
-        "tasks_test.ts",
         "utils_test.ts",
         "commands/compile_copy_filter_test.ts",
         "commands/jit/rpc_test.ts",

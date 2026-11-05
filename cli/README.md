@@ -206,13 +206,13 @@ Compiles and executes the project against BigQuery (or validates it with `--dry-
 | `--execution-timeout` | string | — | Wall-clock deadline for the *entire* run (compile + all actions), e.g. `'10m'`, `'2h'`. When it fires, in-flight actions are cancelled and pending actions are skipped. Off by default. |
 | `--jit-timeout` | string | — | Per-model just-in-time (JiT) compilation worker timeout, e.g. `'30s'`, `'2m'`. Each action with JiT code gets its own fresh deadline, independent of `--execution-timeout`. If unset, only `--execution-timeout` bounds JiT work. |
 | `--job-prefix` | string | — | Adds an additional prefix to BigQuery job IDs, in the form `dataform-${jobPrefix}-`. |
-| `--job-labels` | string | — | Comma-separated `key=value` labels to attach to BigQuery jobs, e.g. `'key1=val1,key2=val2'`. |
-| `--emit-lineage` | boolean | — | Emits OpenLineage `RunEvent`s to Knowledge Catalog Lineage for each executed action. Overrides the `lineage.enabled` setting in `workflow_settings.yaml` when specified. |
+| `--job-labels` | string | — | Comma-separated `key=value` labels to attach to BigQuery jobs, e.g. `'key1=val1,key2=val2'`. Also applied to unit tests with `--run-tests`. Overrides `defaultJobLabels`, action `jobLabels` and table `labels` that use the same key. |
+| `--emit-lineage` | boolean | — | Emits OpenLineage `RunEvent`s to Knowledge Catalog Lineage for each executed action. Overrides the `lineage.enabled` setting in `workflow_settings.yaml` when specified. See the [Data Lineage guide](../docs/lineage.md). |
 | Project-config overrides | — | — | See [Shared project-config flags](#shared-project-config-flags). |
 
 If `--timeout` is set without `--execution-timeout`, `run` prints a warning reminding you that `--timeout` only bounds compilation.
 
-Exit codes: `0` on success, `1` if compilation fails, unit tests fail (with `--run-tests`), the run fails, times out, or is cancelled (Ctrl+C).
+Exit codes: `0` on success, `1` if compilation fails, a BigQuery job would get more than 64 labels (checked before any action or unit test runs), unit tests fail (with `--run-tests`), the run fails, times out, or is cancelled (Ctrl+C).
 
 ---
 
@@ -379,4 +379,4 @@ dataform run --job-prefix=nightly --job-labels=team=analytics,pipeline=nightly-e
 DATAFORM_LINEAGE_DEBUG=1 dataform run --emit-lineage
 ```
 
-Lineage events are emitted for every action that runs a BigQuery job: tables (including views and incremental tables), operations, assertions and property graphs. Assertions appear as a process for the assertion view written to the assertions dataset, with the assertion's dependencies reported as inputs. Property graph inputs are populated from the action's dependencies (`dependencyTargets`), so node and edge tables referenced via `ref` are reported as inputs while raw table paths in the graph definition are not. Declarations are not emitted. The action type is reported in the `gcp_bq_pipelines_job.actionType` attribute as `TABLE`, `OPERATIONS`, `ASSERTION` or `PROPERTY_GRAPH`, matching the values used by Dataform in Google Cloud.
+Lineage events are emitted for every action that runs a BigQuery job: tables (including views and incremental tables), operations, assertions and property graphs. On `COMPLETE` events, `inputs` and `outputs` are populated for actions that materialize a BigQuery object (`table`, `view`, `incremental`, `assertion`, `propertyGraph`, and `operations` with `hasOutput: true`). Assertions appear as a process for the assertion view written to the assertions dataset, with the assertion's dependencies reported as inputs. Property graph inputs are populated from the action's dependencies (`dependencyTargets`), so node and edge tables referenced via `ref` are reported as inputs while raw table paths in the graph definition are not. Declarations are not emitted. The action type is reported in the `gcp_bq_pipelines_job.actionType` attribute as `TABLE`, `OPERATIONS`, `ASSERTION` or `PROPERTY_GRAPH`, matching the values used by Dataform in Google Cloud. For prerequisites, `workflow_settings.yaml` configuration, and troubleshooting, see the [Data Lineage guide](../docs/lineage.md).

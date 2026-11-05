@@ -22,6 +22,8 @@ export interface ILineageEmitterFactoryInput {
   projectDir: string;
   /** BigQuery credentials; `undefined` when unavailable. */
   readCredentials: dataform.IBigQuery | undefined;
+  /** Lineage location */
+  location: string | undefined;
 }
 
 /**
@@ -56,10 +58,20 @@ export function createLineageEmitter(
     return undefined;
   }
 
+  if (!input.location && !input.readCredentials.location) {
+    stderr.write(
+      `Warning: Lineage emission is enabled, but no location was specified. Lineage requires a ` +
+        `specific location, set either as "defaultLocation" in workflow_settings.yaml or as ` +
+        `"location" in .df-credentials.json. Lineage will not be emitted.\n`,
+    );
+    return undefined;
+  }
+
   const options: IEmitterOptions = {
     lineageEnabled: true,
     dryRun: input.dryRun,
     projectDir: input.projectDir,
+    location: input.location,
   };
   return new LineageEmitter(input.readCredentials, options, clientProvider, stderr);
 }

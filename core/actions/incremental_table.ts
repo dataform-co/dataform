@@ -34,6 +34,7 @@ import {
   resolvableAsActionConfigTarget,
   resolvableAsTarget,
   resolveActionsConfigFilename,
+  setActionJobLabels,
   strictKeysOf,
   toResolvable,
   validateConnectionFormat,
@@ -203,6 +204,8 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
     if (config.dataset && !config.lakehouse) {
       this.schema(config.dataset);
     }
+    // Must run before `this.assertions(...)` so built-in assertions inherit the resolved `jobLabels`.
+    setActionJobLabels(this.proto, config.jobLabels, this.session);
     if (config.assertions) {
       this.assertions(dataform.ActionConfig.TableAssertionsConfig.create(config.assertions));
     }

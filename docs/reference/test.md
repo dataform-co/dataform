@@ -48,6 +48,7 @@ This is where `input` and `expect` come from.
 * [dataset](_core_actions_test_.test.md#dataset)
 * [expect](_core_actions_test_.test.md#expect)
 * [input](_core_actions_test_.test.md#input)
+* [jobLabels](_core_actions_test_.test.md#joblabels)
 
 ## Methods
 
@@ -95,5 +96,21 @@ Name | Type |
 ------ | ------ |
 `refName` | string &#124; string[] |
 `contextableQuery` | [Contextable](../modules/_core_contextables_.md#contextable)‹[IActionContext](../interfaces/_core_contextables_.iactioncontext.md), string› |
+
+**Returns:** *this*
+
+___
+
+###  jobLabels
+
+▸ **jobLabels**(`jobLabels`: object): *this*
+
+Sets labels to be applied to BigQuery job(s) executed for this test action.
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`jobLabels` | object |
 
 **Returns:** *this*
