@@ -23,21 +23,17 @@ function nodeRefKey(name: string): string {
   return `node:${name}`;
 }
 
-function edgeRefKey(name: string): string {
-  return `edge:${name}`;
-}
-
 export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
   public session: Session;
   public dependOnDependencyAssertions: boolean = false;
 
   private proto = dataform.PropertyGraph.create({ description: "", disabled: false });
-  // Populated during construction for entity/relationship configs that use a ref-style
+  // Populated during construction for entity configs that use a ref-style
   // source; drained in finalize() once all actions are indexed, since the target
   // schema/database of a ref cannot be resolved until every action is known.
   private pendingRefs = new Map<string, dataform.ITarget>();
-  // Tracks 1:N FK relationships (without an explicit `source`) so finalize() can copy
-  // the resolved `dataSource` from the `from` entity node once refs are resolved.
+  // Tracks relationships whose `from` entity uses a ref-style source so finalize()
+  // can copy the resolved `dataSource` from the `from` entity node once refs are resolved.
   private inferredEdgeFromNode = new Map<string, string>();
   private dependencyKeys = new Set<string>();
 
@@ -240,10 +236,6 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
         } else {
           allResolved = false;
         }
-        continue;
-      }
-      if (!this.resolveRefIntoDataSource(edge, edgeRefKey(edge.name))) {
-        allResolved = false;
       }
     }
     // When any ref cannot be resolved, session.resolveTarget() has already recorded
@@ -254,10 +246,7 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
     }
   }
 
-  private resolveRefIntoDataSource(
-    nodeOrEdge: dataform.IGraphNodeTable | dataform.IGraphEdgeTable,
-    key: string,
-  ): boolean {
+  private resolveRefIntoDataSource(node: dataform.IGraphNodeTable, key: string): boolean {
     const rawRef = this.pendingRefs.get(key);
     if (!rawRef) {
       return true;
@@ -266,7 +255,7 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
     if (!target) {
       return false;
     }
-    nodeOrEdge.dataSource = dataform.Target.create(target);
+    node.dataSource = dataform.Target.create(target);
     return true;
   }
 
@@ -332,6 +321,12 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
     }
     validatePhysicalColumnList(relConfig.fromColumns, "from_columns", where);
 
+    if (!relConfig.toColumns || relConfig.toColumns.length === 0) {
+      throw new Error(`${where} must declare 'to_columns'.`);
+    }
+    const toColumns = relConfig.toColumns.slice();
+    validatePhysicalColumnList(toColumns, "to_columns", where);
+
     const fromNode = nodesByLowerName.get(unquoteIdentifier(relConfig.from).toLowerCase());
     if (!fromNode) {
       throw new Error(
@@ -347,91 +342,28 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
       );
     }
 
-    const hasExplicitSource = !!(relConfig.sourceString || relConfig.sourceRef);
-    const labels = buildRelationshipLabels({ ...relConfig, name: edgeName });
-
-    if (hasExplicitSource) {
-      const dataSource = this.resolveSource(relConfig, edgeRefKey(edgeName), where);
-      if (!relConfig.primaryKey || relConfig.primaryKey.length === 0) {
-        throw new Error(`${where} with 'source' must declare 'primary_key'.`);
-      }
-      validatePhysicalColumnList(relConfig.primaryKey, "primary_key", where);
-
-      if (!relConfig.toColumns || relConfig.toColumns.length === 0) {
-        throw new Error(`${where} with 'source' must declare 'to_columns'.`);
-      }
-      validatePhysicalColumnList(relConfig.toColumns, "to_columns", where);
-
-      if (relConfig.fromColumns.length !== fromNode.keys.length) {
-        throw new Error(
-          `${where}: 'from_columns' arity mismatch: from_columns has ` +
-            `${relConfig.fromColumns.length}, entity '${fromNode.name}' primary_key has ` +
-            `${fromNode.keys.length}.`,
-        );
-      }
-      if (relConfig.toColumns.length !== toNode.keys.length) {
-        throw new Error(
-          `${where}: 'to_columns' arity mismatch: to_columns has ` +
-            `${relConfig.toColumns.length}, entity '${toNode.name}' primary_key has ` +
-            `${toNode.keys.length}.`,
-        );
-      }
-
-      return dataform.GraphEdgeTable.create({
-        name: edgeName,
-        dataSource,
-        keys: relConfig.primaryKey.slice(),
-        source: dataform.GraphEndpoint.create({
-          node: fromNode.name,
-          edgeColumns: relConfig.fromColumns.slice(),
-          nodeColumns: fromNode.keys.slice(),
-        }),
-        destination: dataform.GraphEndpoint.create({
-          node: toNode.name,
-          edgeColumns: relConfig.toColumns.slice(),
-          nodeColumns: toNode.keys.slice(),
-        }),
-        labels,
-      });
-    }
-
-    // 1:N FK relationship without an explicit `source` bridge table:
-    // Reuse the `from` entity's backing table and `primary_key`.
-    if (relConfig.primaryKey && relConfig.primaryKey.length > 0) {
-      throw new Error(
-        `${where} cannot declare 'primary_key' without 'source' ` +
-          `(1:N foreign-key relationships inherit the 'from' entity's 'primary_key').`,
-      );
-    }
-
-    let toColumns: string[];
-    if (relConfig.toColumns && relConfig.toColumns.length > 0) {
-      toColumns = relConfig.toColumns.slice();
-      validatePhysicalColumnList(toColumns, "to_columns", where);
-      const matchesTargetPrimaryKey =
-        toColumns.length === toNode.keys.length &&
-        toColumns.every(
-          (col, idx) =>
-            unquoteIdentifier(col).toLowerCase() ===
-            unquoteIdentifier(toNode.keys[idx]).toLowerCase(),
-        );
-      if (!matchesTargetPrimaryKey) {
-        throw new Error(
-          `${where}: in a 1:N relationship (without 'source'), 'to_columns' ` +
-            `([${toColumns.join(", ")}]) must match target entity '${toNode.name}' ` +
-            `primary_key ([${toNode.keys.join(", ")}]).`,
-        );
-      }
-    } else {
-      toColumns = toNode.keys.slice();
-    }
-
     if (relConfig.fromColumns.length !== toColumns.length) {
       throw new Error(
         `${where}: join column arity mismatch: from_columns has ` +
           `${relConfig.fromColumns.length}, to_columns has ${toColumns.length}.`,
       );
     }
+
+    const matchesTargetPrimaryKey =
+      toColumns.length === toNode.keys.length &&
+      toColumns.every(
+        (col, idx) =>
+          unquoteIdentifier(col).toLowerCase() ===
+          unquoteIdentifier(toNode.keys[idx]).toLowerCase(),
+      );
+    if (!matchesTargetPrimaryKey) {
+      throw new Error(
+        `${where}: 'to_columns' ([${toColumns.join(", ")}]) must match target entity ` +
+          `'${toNode.name}' primary_key ([${toNode.keys.join(", ")}]).`,
+      );
+    }
+
+    const labels = buildRelationshipLabels({ ...relConfig, name: edgeName });
 
     let dataSource: dataform.Target;
     if (fromNode.dataSource) {
@@ -459,15 +391,15 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
   }
 
   private resolveSource(
-    entityOrRel: dataform.IGraphEntityConfig | dataform.IGraphRelationshipConfig,
+    entity: dataform.IGraphEntityConfig,
     pendingKey: string,
     where: string,
   ): dataform.Target {
-    if (entityOrRel.sourceString) {
-      return parseSourceTableString(entityOrRel.sourceString, where);
+    if (entity.sourceString) {
+      return parseSourceTableString(entity.sourceString, where);
     }
-    if (entityOrRel.sourceRef) {
-      const ref = entityOrRel.sourceRef;
+    if (entity.sourceRef) {
+      const ref = entity.sourceRef;
       if (!ref.name) {
         throw new Error(`${where}: 'source.ref' must include a 'name'.`);
       }

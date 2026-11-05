@@ -31,15 +31,21 @@ semantic_model:
         fields:
           - "id"
           - "title"
-    relationships:
-      - name: "Wrote"
+      - name: "Authorship"
         source:
           ref: "wrote"
         primary_key: ["author_id", "book_id"]
-        from: "Author"
-        to: "Book"
+    relationships:
+      - name: "Wrote"
+        from: "Authorship"
+        to: "Author"
         from_columns: ["author_id"]
-        to_columns: ["book_id"]
+        to_columns: ["id"]
+      - name: "WroteBook"
+        from: "Authorship"
+        to: "Book"
+        from_columns: ["book_id"]
+        to_columns: ["id"]
     metrics:
       - name: "book_count"
         entity: "Book"

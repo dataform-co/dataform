@@ -85,42 +85,32 @@ message GraphUniqueKeyList {
 }
 
 // An edge relationship definition connecting two entities in the semantic model.
+// Each relationship is a foreign-key edge backed by the `from` entity's table
+// and `primary_key`.
 message GraphRelationshipConfig {
   // Unique relationship name within the semantic model.
   string name = 1;
-  // Optional backing bridge table for M:N relationships. When omitted, the
-  // relationship is treated as a 1:N foreign-key edge backed by the `from`
-  // entity's table and `primary_key`.
-  oneof source {
-    // String table reference (`bigquery:p.d.t`, `p.d.t`, or GCP table URI).
-    string source_string = 2;
-    // Dataform action reference (`source: { ref: ... }`).
-    DataSourceRef source_ref = 3;
-  }
-  // Physical primary key column name(s) when an explicit `source` bridge table
-  // is specified.
-  repeated string primary_key = 4;
   // Name of the source entity (`SOURCE KEY ... REFERENCES <from>`).
   string from = 5;
   // Name of the destination entity (`DESTINATION KEY ... REFERENCES <to>`).
   string to = 6;
-  // Physical column name(s) for the source side of the relationship join:
-  // - When `source` is specified (M:N bridge table): column(s) on the bridge
-  //   table used in `SOURCE KEY (<from_columns>) REFERENCES <from> (<from.primary_key>)`.
-  // - When `source` is omitted (1:N foreign-key edge): foreign-key column(s) on
-  //   the `from` entity table used in `DESTINATION KEY (<from_columns>) REFERENCES <to> (<to_columns>)`.
+  // Physical foreign-key column name(s) on the `from` entity table used in
+  // `DESTINATION KEY (<from_columns>) REFERENCES <to> (<to_columns>)`.
   repeated string from_columns = 7;
-  // Physical column name(s) for the destination side of the relationship join:
-  // - When `source` is specified (M:N bridge table): column(s) on the bridge
-  //   table used in `DESTINATION KEY (<to_columns>) REFERENCES <to> (<to.primary_key>)`.
-  // - When `source` is omitted (1:N foreign-key edge): referenced key column(s)
-  //   on the `to` entity table (defaults to `<to>.primary_key` and must match
-  //   `<to>.primary_key` when specified).
+  // Referenced key column(s) on the `to` entity table (must match
+  // `<to>.primary_key`).
   repeated string to_columns = 8;
   // Optional human-readable description of the relationship.
   string description = 9;
-  // Optional AI context metadata (synonyms and examples) for the relationship.
+  // Optional AI context metadata (instructions, synonyms, and examples) for the
+  // relationship.
   GraphAiContextConfig ai_context = 10;
+}
+
+// Dimension metadata for a property field on an entity.
+message GraphDimensionConfig {
+  // Whether the field represents a temporal dimension (`OPTIONS(description="Time dimension....")`).
+  bool is_time = 1;
 }
 
 // A property field definition on an entity.
@@ -134,13 +124,12 @@ message GraphFieldConfig {
   // Optional informational data type metadata. Has no effect on the generated
   // BigQuery DDL.
   string datatype = 4;
-  // Optional informational dimension flag metadata. Has no effect on the
-  // generated BigQuery DDL.
-  bool dimension = 5;
-  // Optional informational display label metadata. Has no effect on the
-  // generated BigQuery DDL.
+  // Optional dimension metadata (e.g. `dimension: { is_time: true }`).
+  GraphDimensionConfig dimension = 5;
+  // Optional human-readable display label folded into `OPTIONS(description=...)`.
   string label = 6;
-  // Optional AI context metadata (synonyms and examples) for the field.
+  // Optional AI context metadata (instructions, synonyms, and examples) for the
+  // field.
   GraphAiContextConfig ai_context = 7;
 }
 
@@ -154,10 +143,10 @@ message GraphMetricConfig {
   string expression = 3;
   // Optional human-readable description of the metric.
   string description = 4;
-  // Optional informational display label metadata. Has no effect on the
-  // generated BigQuery DDL.
+  // Optional human-readable display label folded into `OPTIONS(description=...)`.
   string label = 5;
-  // Optional AI context metadata (synonyms and examples) for the metric.
+  // Optional AI context metadata (instructions, synonyms, and examples) for the
+  // metric.
   GraphAiContextConfig ai_context = 6;
 }
 
@@ -166,8 +155,10 @@ message GraphMetricConfig {
 message GraphAiContextConfig {
   // Alternative names emitted as `OPTIONS(synonyms=[...])`.
   repeated string synonyms = 1;
-  // Example values or questions folded into `OPTIONS(description="...\nExamples: ...")`.
+  // Example values or questions folded into `OPTIONS(description="...\n\nExamples: a; b")`.
   repeated string examples = 2;
+  // Free-form AI instructions folded into `OPTIONS(description=...)`.
+  string instructions = 3;
 }
 
 // Reference to another Dataform action as a backing table source.

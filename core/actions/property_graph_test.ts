@@ -156,7 +156,7 @@ suite("property_graph", () => {
         target: graphTarget("Tagged"),
         canonicalTarget: graphTarget("Tagged"),
         fileName: "definitions/graph.yaml",
-        description: "Financial graph\nExamples: Find accounts owned by Alice, List transfers",
+        description: "Financial graph\n\nExamples: Find accounts owned by Alice; List transfers",
         disabled: true,
         tags: ["nightly", "reporting"],
         nodes: [
@@ -298,7 +298,7 @@ suite("property_graph", () => {
     );
   });
 
-  test("resolves M:N relationship with explicit source and primary_key and emits NO PROPERTIES", () => {
+  test("emits relationship DEFAULT LABEL OPTIONS(...) and NO PROPERTIES", () => {
     const compiled = compile(
       makeModelConfig({
         name: "LibraryGraph",
@@ -316,13 +316,11 @@ suite("property_graph", () => {
         ],
         relationships: [
           {
-            name: "Wrote",
-            source: "bigquery:p.d.wrote",
-            primary_key: ["author_id", "book_id"],
-            from: "Author",
-            to: "Book",
+            name: "WrittenBy",
+            from: "Book",
+            to: "Author",
             from_columns: ["author_id"],
-            to_columns: ["book_id"],
+            to_columns: ["id"],
             description: "Authorship edge",
             ai_context: {
               synonyms: ["authored"],
@@ -339,16 +337,16 @@ suite("property_graph", () => {
         "  `p.d.books` AS Book KEY (id) PROPERTIES ALL COLUMNS\n" +
         ")\n" +
         "EDGE TABLES (\n" +
-        "  `p.d.wrote` AS Wrote KEY (author_id, book_id) " +
-        "SOURCE KEY (author_id) REFERENCES Author (id) " +
-        "DESTINATION KEY (book_id) REFERENCES Book (id) " +
-        'DEFAULT LABEL OPTIONS(description="Authorship edge\\nExamples: Alice wrote Book A", synonyms=["authored"]) ' +
+        "  `p.d.books` AS WrittenBy KEY (id) " +
+        "SOURCE KEY (id) REFERENCES Book (id) " +
+        "DESTINATION KEY (author_id) REFERENCES Author (id) " +
+        'DEFAULT LABEL OPTIONS(description="Authorship edge\\n\\nExamples: Alice wrote Book A", synonyms=["authored"]) ' +
         "NO PROPERTIES\n" +
         ")",
     );
   });
 
-  test("passes derived field expressions as-is into PROPERTIES (...) and emits field OPTIONS", () => {
+  test("passes derived field expressions as-is into PROPERTIES (...) and folds label, dimension.is_time, description, instructions, and examples into OPTIONS", () => {
     const compiled = compile(
       makeModelConfig({
         name: "G",
@@ -358,17 +356,23 @@ suite("property_graph", () => {
             source: "bigquery:p.d.people",
             primary_key: ["id"],
             fields: [
-              { name: "id", datatype: "INT64", dimension: false, label: "ID" },
+              { name: "id", datatype: "INT64" },
               {
                 name: "full_name",
                 datatype: "STRING",
-                dimension: true,
                 label: "Full Name",
                 expression: "(first || ' ' || last || ' (Person.literal)')",
                 description: "Combined name",
                 ai_context: {
                   synonyms: ["display_name"],
-                  examples: ["Alice Smith"],
+                  examples: ["Alice Smith", "Bob Jones"],
+                },
+              },
+              {
+                name: "started_at",
+                dimension: { is_time: true },
+                ai_context: {
+                  instructions: "Use UTC for comparisons.",
                 },
               },
             ],
@@ -382,7 +386,9 @@ suite("property_graph", () => {
         "  `p.d.people` AS Person KEY (id) PROPERTIES (" +
         "id, " +
         "(first || ' ' || last || ' (Person.literal)') AS full_name " +
-        'OPTIONS(description="Combined name\\nExamples: Alice Smith", synonyms=["display_name"])' +
+        'OPTIONS(description="Full Name\\n\\nCombined name\\n\\nExamples: Alice Smith; Bob Jones", synonyms=["display_name"]), ' +
+        "started_at " +
+        'OPTIONS(description="Time dimension.\\n\\nUse UTC for comparisons.")' +
         ")\n" +
         ")",
     );
@@ -410,7 +416,7 @@ suite("property_graph", () => {
     expect(compiled.graphBody).equals(
       "NODE TABLES (\n" +
         "  `p.d.accounts` AS Account KEY (id) " +
-        'DEFAULT LABEL OPTIONS(description="Bank account\\nExamples: Checking account", synonyms=["acct", "wallet"]) ' +
+        'DEFAULT LABEL OPTIONS(description="Bank account\\n\\nExamples: Checking account", synonyms=["acct", "wallet"]) ' +
         "PROPERTIES ALL COLUMNS\n" +
         ")",
     );
@@ -459,7 +465,7 @@ suite("property_graph", () => {
         "process_id, " +
         "hostname, " +
         "MEASURE(COUNT(process_id)) AS process_count " +
-        'OPTIONS(description="Total processes\\nExamples: How many processes?", synonyms=["proc_cnt"]), ' +
+        'OPTIONS(description="Total processes\\n\\nExamples: How many processes?", synonyms=["proc_cnt"]), ' +
         "MEASURE(COUNT(*)) AS row_count, " +
         "MEASURE(COUNT(DISTINCT hostname)) AS distinct_host_count" +
         ")\n" +
@@ -963,29 +969,26 @@ suite("property_graph", () => {
     ).to.throw("Property graph 'G': metric 'm1' must declare 'expression'.");
   });
 
-  test("defaults 1:N relationship to_columns to target entity primary_key when omitted and rejects mismatched to_columns", () => {
-    const compiled = compile(
-      makeModelConfig({
-        name: "G",
-        entities: [
-          { name: "Process", source: "p.d.processes", primary_key: ["process_id"] },
-          { name: "Machine", source: "p.d.machines", primary_key: ["machine_id"] },
-        ],
-        relationships: [
-          {
-            name: "RunsOn",
-            from: "Process",
-            to: "Machine",
-            from_columns: ["machine_fk"],
-          },
-        ],
-      }),
-    );
-
-    expect(compiled.graphBody).to.include(
-      "SOURCE KEY (process_id) REFERENCES Process (process_id) " +
-        "DESTINATION KEY (machine_fk) REFERENCES Machine (machine_id) NO PROPERTIES",
-    );
+  test("requires explicit relationship to_columns and rejects mismatched to_columns", () => {
+    expect(() =>
+      build(
+        makeModelConfig({
+          name: "G",
+          entities: [
+            { name: "Process", source: "p.d.processes", primary_key: ["process_id"] },
+            { name: "Machine", source: "p.d.machines", primary_key: ["machine_id"] },
+          ],
+          relationships: [
+            {
+              name: "RunsOn",
+              from: "Process",
+              to: "Machine",
+              from_columns: ["machine_fk"],
+            },
+          ],
+        }),
+      ),
+    ).to.throw("Property graph 'G': relationship 'RunsOn' must declare 'to_columns'.");
 
     expect(() =>
       build(
@@ -1007,11 +1010,11 @@ suite("property_graph", () => {
         }),
       ),
     ).to.throw(
-      "Property graph 'G': relationship 'RunsOn': in a 1:N relationship (without 'source'), 'to_columns' ([wrong_col]) must match target entity 'Machine' primary_key ([machine_id]).",
+      "Property graph 'G': relationship 'RunsOn': 'to_columns' ([wrong_col]) must match target entity 'Machine' primary_key ([machine_id]).",
     );
   });
 
-  test("errors when M:N relationship with explicit source omits primary_key or to_columns", () => {
+  test("errors when relationship declares source or primary_key in V1", () => {
     expect(() =>
       build(
         makeModelConfig({
@@ -1024,6 +1027,7 @@ suite("property_graph", () => {
             {
               name: "Wrote",
               source: "p.d.wrote",
+              primary_key: ["author_id", "book_id"],
               from: "Author",
               to: "Book",
               from_columns: ["author_id"],
@@ -1032,31 +1036,7 @@ suite("property_graph", () => {
           ],
         }),
       ),
-    ).to.throw(
-      "Property graph 'G': relationship 'Wrote' with 'source' must declare 'primary_key'.",
-    );
-
-    expect(() =>
-      build(
-        makeModelConfig({
-          name: "G",
-          entities: [
-            { name: "Author", source: "p.d.authors", primary_key: ["id"] },
-            { name: "Book", source: "p.d.books", primary_key: ["id"] },
-          ],
-          relationships: [
-            {
-              name: "Wrote",
-              source: "p.d.wrote",
-              primary_key: ["rel_id"],
-              from: "Author",
-              to: "Book",
-              from_columns: ["author_id"],
-            },
-          ],
-        }),
-      ),
-    ).to.throw("Property graph 'G': relationship 'Wrote' with 'source' must declare 'to_columns'.");
+    ).to.throw('Unexpected property "source", or property value type of "string" is incorrect.');
   });
 
   test("errors with a migration message when legacy nodes/edges schema is used", () => {

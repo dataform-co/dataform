@@ -623,7 +623,7 @@ semantic_model:
     },
     {
       testName:
-        "graph.yaml accepts Semantic Ontology V1 snake_case keys, deployments, 1:N and M:N relationships, and metrics",
+        "graph.yaml accepts Semantic Ontology V1 snake_case keys, deployments, foreign-key relationships, and metrics",
       workflowSettings: VALID_WORKFLOW_SETTINGS_YAML,
       definitionFiles: [
         {
@@ -664,15 +664,16 @@ semantic_model:
       ref: authors
     primary_key:
     - id
-  relationships:
-  - name: Wrote
+  - name: Authorship
     source:
       ref: wrote
     primary_key: [author_id, book_id]
-    from: Author
-    to: Book
+  relationships:
+  - name: Wrote
+    from: Authorship
+    to: Author
     from_columns: [author_id]
-    to_columns: [book_id]
+    to_columns: [id]
   - name: WrittenByPrimaryAuthor
     from: Book
     to: Author
@@ -752,6 +753,15 @@ semantic_model:
               },
               keys: ["id"],
             },
+            {
+              name: "Authorship",
+              dataSource: {
+                schema: "defaultDataset",
+                name: "wrote",
+                database: "defaultProject",
+              },
+              keys: ["author_id", "book_id"],
+            },
           ],
           edges: [
             {
@@ -763,13 +773,13 @@ semantic_model:
               },
               keys: ["author_id", "book_id"],
               source: {
-                node: "Author",
-                edgeColumns: ["author_id"],
-                nodeColumns: ["id"],
+                node: "Authorship",
+                edgeColumns: ["author_id", "book_id"],
+                nodeColumns: ["author_id", "book_id"],
               },
               destination: {
-                node: "Book",
-                edgeColumns: ["book_id"],
+                node: "Author",
+                edgeColumns: ["author_id"],
                 nodeColumns: ["id"],
               },
             },
@@ -796,12 +806,13 @@ semantic_model:
           graphBody:
             "NODE TABLES (\n" +
             "  `defaultProject.defaultDataset.books` AS Book KEY (id) PROPERTIES (id, MEASURE(COUNT(id)) AS book_count),\n" +
-            "  `defaultProject.defaultDataset.authors` AS Author KEY (id) PROPERTIES ALL COLUMNS\n" +
+            "  `defaultProject.defaultDataset.authors` AS Author KEY (id) PROPERTIES ALL COLUMNS,\n" +
+            "  `defaultProject.defaultDataset.wrote` AS Authorship KEY (author_id, book_id) PROPERTIES ALL COLUMNS\n" +
             ")\n" +
             "EDGE TABLES (\n" +
             "  `defaultProject.defaultDataset.wrote` AS Wrote KEY (author_id, book_id) " +
-            "SOURCE KEY (author_id) REFERENCES Author (id) " +
-            "DESTINATION KEY (book_id) REFERENCES Book (id) NO PROPERTIES,\n" +
+            "SOURCE KEY (author_id, book_id) REFERENCES Authorship (author_id, book_id) " +
+            "DESTINATION KEY (author_id) REFERENCES Author (id) NO PROPERTIES,\n" +
             "  `defaultProject.defaultDataset.books` AS WrittenByPrimaryAuthor KEY (id) " +
             "SOURCE KEY (id) REFERENCES Book (id) " +
             "DESTINATION KEY (publisher_id) REFERENCES Author (id) NO PROPERTIES\n" +

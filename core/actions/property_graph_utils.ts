@@ -141,6 +141,7 @@ export function normalizePropertyGraphConfig(rawConfig: any): any {
       model.entities = model.datasets;
       delete model.datasets;
     }
+    normalizeAiContext(model);
     for (const entity of model.entities || []) {
       if (!entity || typeof entity !== "object") {
         continue;
@@ -148,19 +149,31 @@ export function normalizePropertyGraphConfig(rawConfig: any): any {
       normalizeSource(entity);
       normalizeStringList(entity, "primaryKey");
       normalizeUniqueKeys(entity);
+      normalizeAiContext(entity);
       normalizeFields(entity);
     }
     for (const rel of model.relationships || []) {
       if (!rel || typeof rel !== "object") {
         continue;
       }
-      normalizeSource(rel);
-      normalizeStringList(rel, "primaryKey");
       normalizeStringList(rel, "fromColumns");
       normalizeStringList(rel, "toColumns");
+      normalizeAiContext(rel);
+    }
+    for (const metric of model.metrics || []) {
+      if (!metric || typeof metric !== "object") {
+        continue;
+      }
+      normalizeAiContext(metric);
     }
   }
   return config;
+}
+
+function normalizeAiContext(container: any) {
+  if (typeof container.aiContext === "string") {
+    container.aiContext = { instructions: container.aiContext };
+  }
 }
 
 function normalizeSource(container: any) {
@@ -222,9 +235,18 @@ function normalizeUniqueKeys(entity: any) {
 
 function normalizeFields(entity: any) {
   if (Array.isArray(entity.fields)) {
-    entity.fields = entity.fields.map((field: string | dataform.IGraphFieldConfig) =>
-      typeof field === "string" ? { name: field, expression: field } : field,
-    );
+    entity.fields = entity.fields.map((field: string | any) => {
+      if (typeof field === "string") {
+        return { name: field, expression: field };
+      }
+      if (field && typeof field === "object" && !Array.isArray(field)) {
+        if (typeof field.dimension === "boolean") {
+          field.dimension = {};
+        }
+        normalizeAiContext(field);
+      }
+      return field;
+    });
   }
 }
 
@@ -404,19 +426,30 @@ export function validateCaseInsensitiveUnique(
   }
 }
 
+function formatExamplesLine(examples?: string[] | null): string | undefined {
+  const valid = (examples || []).filter((ex) => ex !== undefined && ex !== null && ex !== "");
+  return valid.length > 0 ? `Examples: ${valid.join("; ")}` : undefined;
+}
+
+function composeDescription(parts: Array<string | undefined | null>): string {
+  const kept = parts
+    .map((part) => (typeof part === "string" ? part.trim() : ""))
+    .filter((part) => part.length > 0);
+  return kept.join("\n\n");
+}
+
 export function formatDescriptionWithExamples(
   description?: string | null,
   aiContext?: dataform.IGraphAiContextConfig | null,
+  extraParts?: { label?: string | null; isTimeDimension?: boolean },
 ): string {
-  const base = description || "";
-  const examples = (aiContext?.examples || []).filter(
-    (ex) => ex !== undefined && ex !== null && ex !== "",
-  );
-  if (examples.length === 0) {
-    return base;
-  }
-  const examplesText = `Examples: ${examples.join(", ")}`;
-  return base ? `${base}\n${examplesText}` : examplesText;
+  return composeDescription([
+    extraParts?.label,
+    extraParts?.isTimeDimension ? "Time dimension." : undefined,
+    description,
+    aiContext?.instructions,
+    formatExamplesLine(aiContext?.examples),
+  ]);
 }
 
 export function buildEntityLabels(
@@ -464,7 +497,10 @@ export function buildEntityLabels(
     return dataform.GraphField.create({
       name: cleanName,
       expression: normalizedExpr,
-      description: formatDescriptionWithExamples(field.description, field.aiContext),
+      description: formatDescriptionWithExamples(field.description, field.aiContext, {
+        label: field.label,
+        isTimeDimension: Boolean(field.dimension?.isTime),
+      }),
       synonyms: field.aiContext?.synonyms || [],
     });
   });
@@ -505,7 +541,9 @@ export function buildEntityLabels(
       dataform.GraphField.create({
         name: unquoteIdentifier(metric.name),
         expression: `MEASURE(${metric.expression.trim()})`,
-        description: formatDescriptionWithExamples(metric.description, metric.aiContext),
+        description: formatDescriptionWithExamples(metric.description, metric.aiContext, {
+          label: metric.label,
+        }),
         synonyms: metric.aiContext?.synonyms || [],
       }),
     );
