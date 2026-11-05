@@ -327,10 +327,7 @@ export function printExecutionGraph(executionGraph: dataform.ExecutionGraph, asJ
     const tableMetadataByTarget = new Map<string, dataform.ITableMetadata>();
     executionGraph.warehouseState?.tables?.forEach((tableMetadata) => {
       if (tableMetadata.target) {
-        tableMetadataByTarget.set(
-          targetStringifier.stringify(tableMetadata.target),
-          tableMetadata,
-        );
+        tableMetadataByTarget.set(targetStringifier.stringify(tableMetadata.target), tableMetadata);
       }
     });
 
