@@ -8,6 +8,7 @@ import { LineageEmitter } from "df/cli/api/lineage/emitter";
 import { createLineageEmitter as createLineageEmitterFromFactory } from "df/cli/api/lineage/emitter_factory";
 import { prettyJsonStringify } from "df/cli/api/utils";
 import { buildDryRunValidationQueries } from "df/cli/api/utils/dry_run_validation";
+import { setsDatasetId } from "df/cli/api/utils/query_transforms";
 import {
   buildOnlyOption,
   dryRunOption,
@@ -195,6 +196,21 @@ export const runCommand: ICommand<IRunArgs> = {
         logger.log("No actions to run.\n");
       }
       return 0;
+    }
+
+    const hasConfiguredLocation = Boolean(defaultLocation || readCredentials.location);
+    if (
+      !hasConfiguredLocation &&
+      executionGraph.actions.some((action) =>
+        action.tasks?.some((task) => setsDatasetId(task.statement || "")),
+      )
+    ) {
+      printWarning(
+        "Warning: SET @@dataset_id is used without a configured location. BigQuery does not " +
+          "infer the query or new dataset location from @@dataset_id for unqualified table " +
+          "names. This can cause datasets to be created in unexpected locations. Set defaultLocation " +
+          "in workflow_settings.yaml or qualify source table names.\n",
+      );
     }
 
     if (argv.dryRun) {
