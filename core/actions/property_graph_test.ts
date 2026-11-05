@@ -1218,4 +1218,34 @@ suite("property_graph", () => {
         ")",
     );
   });
+
+  test("accepts datasets as an alias for entities and rejects specifying both", () => {
+    const compiled = compile(
+      makeModelConfig({
+        name: "DatasetAliasGraph",
+        datasets: [
+          {
+            name: "Process",
+            source: "bigquery:p.d.processes",
+            primary_key: ["process_id"],
+            fields: ["process_id"],
+          },
+        ],
+      }),
+    );
+
+    expect(compiled.graphBody).equals(
+      "NODE TABLES (\n  `p.d.processes` AS Process KEY (process_id) PROPERTIES (process_id)\n)",
+    );
+
+    expect(() =>
+      build(
+        makeModelConfig({
+          name: "BothGraph",
+          entities: [{ name: "A", source: "p.d.A", primary_key: ["id"] }],
+          datasets: [{ name: "B", source: "p.d.B", primary_key: ["id"] }],
+        }),
+      ),
+    ).to.throw("Cannot specify both 'entities' and 'datasets' in the same semantic_model.");
+  });
 });

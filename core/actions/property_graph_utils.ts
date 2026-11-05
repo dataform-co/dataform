@@ -132,6 +132,15 @@ export function normalizePropertyGraphConfig(rawConfig: any): any {
     if (!model || typeof model !== "object") {
       continue;
     }
+    if ("datasets" in model) {
+      if ("entities" in model) {
+        throw new Error(
+          "Cannot specify both 'entities' and 'datasets' in the same semantic_model.",
+        );
+      }
+      model.entities = model.datasets;
+      delete model.datasets;
+    }
     for (const entity of model.entities || []) {
       if (!entity || typeof entity !== "object") {
         continue;
