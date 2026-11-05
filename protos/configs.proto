@@ -15,7 +15,11 @@ import "property_graph_config.proto";
 // Workflow Settings defines the contents of the `workflow_settings.yaml`
 // configuration file.
 message WorkflowSettings {
-  // The desired dataform core version to compile against.
+  // The desired dataform core version to compile against. When set, the CLI
+  // installs this version into a copy of the project in a temporary directory
+  // and compiles the copy, which skips paths matched by `.gitignore` or
+  // `.dataformignore` outside `definitions/` and `includes/`. For details, see
+  // https://dataform-co.github.io/dataform/docs/stateless-install.
   string dataform_core_version = 1;
 
   // Required. The default Google Cloud project (database).
