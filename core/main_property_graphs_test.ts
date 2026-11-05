@@ -647,7 +647,7 @@ semantic_model:
 - name: SnakeGraph
   deployments:
   - name: default
-    target: //bigquery.googleapis.com/projects/customProj/datasets/customDs/propertyGraphs/SnakeGraph
+    target: bigquery.googleapis.com/projects/customProj/datasets/customDs/propertyGraphs/SnakeGraph
   entities:
   - name: Book
     source:

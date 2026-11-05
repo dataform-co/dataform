@@ -75,15 +75,42 @@ suite("property_graph", () => {
     );
   });
 
-  test("resolves deployments BigQuery URI (without and with leading //)", () => {
-    for (const prefix of ["", "//"]) {
-      const compiled = compile(
+  test("resolves deployments BigQuery URI and rejects leading //", () => {
+    const compiled = compile(
+      makeModelConfig({
+        name: "FinGraph",
+        deployments: [
+          {
+            name: "default",
+            target:
+              "bigquery.googleapis.com/projects/customProj/datasets/customDs/propertyGraphs/FinGraph",
+          },
+        ],
+        entities: [
+          {
+            name: "Account",
+            source: "bigquery:proj.ds.Accounts",
+            primary_key: ["id"],
+          },
+        ],
+      }),
+    );
+
+    expect(asPlainObject(compiled.target)).deep.equals({
+      database: "customProj",
+      schema: "customDs",
+      name: "FinGraph",
+    });
+
+    expect(() =>
+      build(
         makeModelConfig({
           name: "FinGraph",
           deployments: [
             {
               name: "default",
-              target: `${prefix}bigquery.googleapis.com/projects/customProj/datasets/customDs/propertyGraphs/FinGraph`,
+              target:
+                "//bigquery.googleapis.com/projects/customProj/datasets/customDs/propertyGraphs/FinGraph",
             },
           ],
           entities: [
@@ -94,14 +121,10 @@ suite("property_graph", () => {
             },
           ],
         }),
-      );
-
-      expect(asPlainObject(compiled.target)).deep.equals({
-        database: "customProj",
-        schema: "customDs",
-        name: "FinGraph",
-      });
-    }
+      ),
+    ).to.throw(
+      "Property graph 'FinGraph': deployment 'target' must match 'bigquery.googleapis.com/projects/<project>/datasets/<dataset>/propertyGraphs/<graph>' (got '//bigquery.googleapis.com/projects/customProj/datasets/customDs/propertyGraphs/FinGraph').",
+    );
   });
 
   test("propagates top-level tags, disabled, and semantic_model description and ai_context examples", () => {
@@ -149,7 +172,7 @@ suite("property_graph", () => {
     );
   });
 
-  test("supports all 3 source string formats (bigquery:p.d.t, p.d.t, and GCP table URI)", () => {
+  test("supports all 3 source string formats (bigquery:p.d.t, p.d.t, and GCP table URI) and rejects leading //", () => {
     const compiled = compile(
       makeModelConfig({
         name: "G",
@@ -169,11 +192,6 @@ suite("property_graph", () => {
             source: "bigquery.googleapis.com/projects/p3/datasets/d3/tables/T3",
             primary_key: ["id"],
           },
-          {
-            name: "D",
-            source: "//bigquery.googleapis.com/projects/p4/datasets/d4/tables/T4",
-            primary_key: ["id"],
-          },
         ],
       }),
     );
@@ -182,8 +200,24 @@ suite("property_graph", () => {
       { name: "A", dataSource: { database: "p1", schema: "d1", name: "T1" }, keys: ["id"] },
       { name: "B", dataSource: { database: "p2", schema: "d2", name: "T2" }, keys: ["id"] },
       { name: "C", dataSource: { database: "p3", schema: "d3", name: "T3" }, keys: ["id"] },
-      { name: "D", dataSource: { database: "p4", schema: "d4", name: "T4" }, keys: ["id"] },
     ]);
+
+    expect(() =>
+      build(
+        makeModelConfig({
+          name: "G",
+          entities: [
+            {
+              name: "D",
+              source: "//bigquery.googleapis.com/projects/p4/datasets/d4/tables/T4",
+              primary_key: ["id"],
+            },
+          ],
+        }),
+      ),
+    ).to.throw(
+      "Property graph 'G': entity 'D': 'source' URI must match 'bigquery.googleapis.com/projects/<project>/datasets/<dataset>/tables/<table>' (got '//bigquery.googleapis.com/projects/p4/datasets/d4/tables/T4').",
+    );
   });
 
   test("resolves 1:N FK relationship without source by inheriting from entity table and primary_key", () => {

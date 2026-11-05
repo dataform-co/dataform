@@ -7,10 +7,10 @@ export const CATALOG_NOT_SUPPORTED_MESSAGE =
   "Catalog-based data sources (BigLake/Iceberg/external catalogs) are not yet supported.";
 
 const DEPLOYMENT_TARGET_URI_REGEX =
-  /^(?:\/\/)?bigquery\.googleapis\.com\/projects\/([^/]+)\/datasets\/([^/]+)\/propertyGraphs\/([^/]+)$/;
+  /^bigquery\.googleapis\.com\/projects\/([^/]+)\/datasets\/([^/]+)\/propertyGraphs\/([^/]+)$/;
 
 const TABLE_SOURCE_URI_REGEX =
-  /^(?:\/\/)?bigquery\.googleapis\.com\/projects\/([^/]+)\/datasets\/([^/]+)\/tables\/([^/]+)$/;
+  /^bigquery\.googleapis\.com\/projects\/([^/]+)\/datasets\/([^/]+)\/tables\/([^/]+)$/;
 
 // GoogleSQL reserved keywords that must be backtick-quoted when used as bare
 // identifiers (entity/relationship aliases, label names, key columns, or
