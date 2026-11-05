@@ -61,13 +61,13 @@ END IF;
 
 
 
--- Prepare dynamic column lists and staging table for DML.
+-- Prepare dynamic column lists for DML.
 SET dataform_columns_list = (
   SELECT STRING_AGG(FORMAT("`%s`", column_info.column_name), ", ")
   FROM UNNEST(temp_table_columns) AS column_info
 );
 
-CREATE OR REPLACE TEMP TABLE `incremental_on_schema_change_df_temp_test_uuid_temp` AS (
+CREATE OR REPLACE TEMP TABLE `staging_table_temp_test_uuid` AS (
   select 1 as id, 'a' as field1, 'new' as field2
 );
 
@@ -75,26 +75,29 @@ BEGIN
   DECLARE partitions_for_replacement DEFAULT (
     ARRAY(
       SELECT DISTINCT DATE(ts)
-      FROM `incremental_on_schema_change_df_temp_test_uuid_temp`
+      FROM `staging_table_temp_test_uuid`
       WHERE DATE(ts) IS NOT NULL
     )
   );
 
-  EXECUTE IMMEDIATE (
-    "MERGE `project-id.dataset-id.incremental_on_schema_change` DATAFORM_DEST " ||
-    "USING `incremental_on_schema_change_df_temp_test_uuid_temp` DATAFORM_SOURCE " ||
-    "ON FALSE " ||
-    "WHEN NOT MATCHED BY SOURCE AND DATE(ts) IN UNNEST(partitions_for_replacement) THEN " ||
-    "DELETE " ||
-    "WHEN NOT MATCHED BY TARGET THEN " ||
-    "INSERT (" || dataform_columns_list || ") VALUES (" || dataform_columns_list || ")"
-  );
+  EXECUTE IMMEDIATE ("""MERGE `project-id.dataset-id.incremental_on_schema_change` DATAFORM_DEST
+  USING `staging_table_temp_test_uuid` DATAFORM_SOURCE
+  ON FALSE
+  WHEN NOT MATCHED BY SOURCE AND DATE(ts) IN UNNEST(@partitions_for_replacement) 
+  
+  THEN
+    DELETE
+  WHEN NOT MATCHED BY TARGET THEN
+    INSERT (""" || dataform_columns_list || """) VALUES (""" || dataform_columns_list || """)""")
+  USING partitions_for_replacement AS partitions_for_replacement;
 END;
 
+-- Cleanup staging table
+DROP TABLE IF EXISTS `staging_table_temp_test_uuid`;
 
--- Cleanup temporary tables.
+
+-- Cleanup empty temp table
 DROP TABLE IF EXISTS `project-id.dataset-id.incremental_on_schema_change_df_temp_test_uuid_empty`;
-DROP TABLE IF EXISTS `incremental_on_schema_change_df_temp_test_uuid_temp`;
     
 END;
 BEGIN

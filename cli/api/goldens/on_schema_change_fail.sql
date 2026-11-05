@@ -52,25 +52,28 @@ END IF;
 
 
 
--- Prepare dynamic column lists and staging table for DML.
+-- Prepare dynamic column lists for DML.
 SET dataform_columns_list = (
   SELECT STRING_AGG(FORMAT("`%s`", column_info.column_name), ", ")
   FROM UNNEST(temp_table_columns) AS column_info
 );
 
-CREATE OR REPLACE TEMP TABLE `incremental_on_schema_change_df_temp_test_uuid_temp` AS (
+CREATE OR REPLACE TEMP TABLE `staging_table_temp_test_uuid` AS (
   select 1 as id, 'a' as field1, 'new' as field2
 );
 
-EXECUTE IMMEDIATE (
-  "INSERT INTO `project-id.dataset-id.incremental_on_schema_change` (" || dataform_columns_list || ") " ||
-  "SELECT " || dataform_columns_list || " FROM `incremental_on_schema_change_df_temp_test_uuid_temp`"
-);
+EXECUTE IMMEDIATE ("""	
+insert into `project-id.dataset-id.incremental_on_schema_change`	
+(""" || dataform_columns_list || """)	
+select """ || dataform_columns_list || """	
+from `staging_table_temp_test_uuid`""");
+
+-- Cleanup staging table
+DROP TABLE IF EXISTS `staging_table_temp_test_uuid`;
 
 
--- Cleanup temporary tables.
+-- Cleanup empty temp table
 DROP TABLE IF EXISTS `project-id.dataset-id.incremental_on_schema_change_df_temp_test_uuid_empty`;
-DROP TABLE IF EXISTS `incremental_on_schema_change_df_temp_test_uuid_temp`;
     
 END;
 BEGIN
