@@ -137,7 +137,7 @@ export const runCommand: ICommand<IRunArgs> = {
     }
 
     if (argv.executionGraph) {
-      if (!executionGraph.actions.some((action) => !!action.jitCode)) {
+      if (executionGraph.actions.some((action) => !!action.jitCode)) {
         printWarning(`Note: with --${executionGraphOption.name}, JiT actions are not compiled`);
       }
       printExecutionGraph(executionGraph, argv.json);
