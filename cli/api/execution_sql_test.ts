@@ -236,6 +236,26 @@ suite("ExecutionSql with 'onSchemaChange'", () => {
       }
     }
   });
+
+  test("places incrementalPreOps and incrementalPostOps inside procedure with inner BEGIN...END block for onSchemaChange", () => {
+    const table: dataform.ITable = {
+      ...baseTable,
+      onSchemaChange: dataform.OnSchemaChange.EXTEND,
+      incrementalPreOps: ["DECLARE watermark TIMESTAMP;\nSET watermark = CURRENT_TIMESTAMP();"],
+      incrementalPostOps: ["SELECT watermark;"],
+    };
+    const builtTasks = executionSql.publishTasks(table, { fullRefresh: false }, tableMetadata).build();
+    expect(builtTasks.length).to.equal(1);
+
+    const fullSql = builtTasks[0].statement;
+    expect(fullSql).to.match(/^CREATE OR REPLACE PROCEDURE/);
+    expect(fullSql).to.include(
+      "BEGIN\nDECLARE watermark TIMESTAMP;\nSET watermark = CURRENT_TIMESTAMP();\n\nBEGIN\n\n-- Declare variables for schema comparison and strategy execution.",
+    );
+    expect(fullSql).to.include(
+      "-- Cleanup empty temp table\nDROP TABLE IF EXISTS `project-id.dataset-id.incremental_on_schema_change_df_temp_test_uuid_empty`;\n    \nEND;\n\nSELECT watermark;\nEND;",
+    );
+  });
 });
 
 suite("ExecutionSql for property graphs", () => {
