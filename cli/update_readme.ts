@@ -18,10 +18,11 @@ const { content, changedBlocks } = generateReadme(
   fs.readFileSync(readmePath, "utf8"),
   CLI_COMMANDS,
 );
-fs.writeFileSync(readmePath, content);
 
 if (changedBlocks.length > 0) {
+  fs.writeFileSync(readmePath, content);
   printSuccess(`Updated ${readmePath}: ${changedBlocks.join(", ")}`);
 } else {
+  // Not written, to avoid touching the file's mtime (and triggering watchers or rebuilds).
   printSuccess(`${readmePath} is already up to date.`);
 }

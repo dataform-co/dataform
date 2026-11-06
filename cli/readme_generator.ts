@@ -273,7 +273,9 @@ function renderPositionalsTable(positionals: AnyOption[]): string[] {
 
 function renderCommandOptionsTable(options: AnyOption[]): string[] {
   // Commands that accept all project-config overrides list them in a single row pointing to the
-  // shared table, rather than repeating them in every command.
+  // shared table, rather than repeating them in every command. This relies on reference identity:
+  // the command must reuse the ProjectConfigOptions.allYargsOptions objects, so a command that
+  // wraps or copies one of them falls back to listing all its options in the full table.
   const projectConfigOptions: AnyOption[] = ProjectConfigOptions.allYargsOptions;
   const hasAllProjectConfigOptions = projectConfigOptions.every((option) =>
     options.includes(option),
