@@ -244,7 +244,9 @@ suite("ExecutionSql with 'onSchemaChange'", () => {
       incrementalPreOps: ["DECLARE watermark TIMESTAMP;\nSET watermark = CURRENT_TIMESTAMP();"],
       incrementalPostOps: ["SELECT watermark;"],
     };
-    const builtTasks = executionSql.publishTasks(table, { fullRefresh: false }, tableMetadata).build();
+    const builtTasks = executionSql
+      .publishTasks(table, { fullRefresh: false }, tableMetadata)
+      .build();
     expect(builtTasks.length).to.equal(1);
 
     const fullSql = builtTasks[0].statement;
