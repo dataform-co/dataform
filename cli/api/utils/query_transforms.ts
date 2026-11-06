@@ -92,6 +92,19 @@ export function concatenateQueries(
 }
 
 /**
+ * Terminates each GoogleSQL statement in `statements` with a semicolon (placed before any trailing
+ * comments) and joins non-empty statements with newlines.
+ */
+export function terminateStatements(statements: string[]): string {
+  return statements
+    .filter((statement) => !!statement)
+    .map((statement) => statement.trim())
+    .filter((statement) => statement.length > 0)
+    .map((statement) => formatStatement(statement, false))
+    .join("\n");
+}
+
+/**
  * Number of lines `wrapWithCreateSchemaIfNotExists()` adds before the wrapped statement: the
  * statement starts on line `1 + CREATE_SCHEMA_WRAPPER_LINE_OFFSET` of the script.
  */
