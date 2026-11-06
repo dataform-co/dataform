@@ -36,6 +36,7 @@ const defaultDatabaseOption: INamedOption<yargs.PositionalOptions, IInitArgs> = 
       );
     }
   },
+  docs: { required: true },
 };
 
 const defaultLocationOption: INamedOption<yargs.PositionalOptions, IInitArgs> = {
@@ -53,6 +54,7 @@ const defaultLocationOption: INamedOption<yargs.PositionalOptions, IInitArgs> = 
       );
     }
   },
+  docs: { required: true },
 };
 
 export const initCommand: ICommand<IInitArgs> = {

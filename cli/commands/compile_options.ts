@@ -32,7 +32,10 @@ export const outputActionsOption: INamedOption<yargs.Options, ICompileArgs> = {
   option: {
     // No wildcard support: prune()'s matchPatterns() does exact matching on the
     // action name or its fully-qualified `database.schema.name`.
-    describe: "A list of action names to filter the compiled output to.",
+    describe:
+      "Filters the printed output to these actions (comma-separated or repeatable). Each entry " +
+      "is an action name or a fully-qualified database.schema.name target. The whole project " +
+      "is still compiled.",
     type: "array",
     coerce: splitCommas,
   },
@@ -41,7 +44,9 @@ export const outputActionsOption: INamedOption<yargs.Options, ICompileArgs> = {
 export const outputTagsOption: INamedOption<yargs.Options, ICompileArgs> = {
   name: "output-tags",
   option: {
-    describe: "A list of tags to filter the compiled output to.",
+    describe:
+      "Filters the printed output to actions with any of these tags (comma-separated or " +
+      "repeatable).",
     type: "array",
     coerce: splitCommas,
   },
@@ -50,7 +55,9 @@ export const outputTagsOption: INamedOption<yargs.Options, ICompileArgs> = {
 export const outputIncludeDepsOption: INamedOption<yargs.Options, ICompileArgs> = {
   name: "output-include-deps",
   option: {
-    describe: "If set, dependencies of the selected actions are also included in the output.",
+    describe:
+      "Also includes upstream dependencies of the selected actions in the output. Requires " +
+      "--output-actions or --output-tags.",
     type: "boolean",
   },
   check: requiresSelection("output-include-deps", outputActionsOption, outputTagsOption),
@@ -60,7 +67,8 @@ export const outputIncludeDependentsOption: INamedOption<yargs.Options, ICompile
   name: "output-include-dependents",
   option: {
     describe:
-      "If set, dependents (downstream) of the selected actions are also included in the output.",
+      "Also includes downstream dependents of the selected actions in the output. Requires " +
+      "--output-actions or --output-tags.",
     type: "boolean",
   },
   check: requiresSelection("output-include-dependents", outputActionsOption, outputTagsOption),
@@ -69,7 +77,9 @@ export const outputIncludeDependentsOption: INamedOption<yargs.Options, ICompile
 export const dotOutputOption: INamedOption<yargs.Options, ICompileArgs> = {
   name: "dot",
   option: {
-    describe: "Outputs a dot representation of the compiled project.",
+    describe:
+      "Outputs a Graphviz DOT representation of the compiled project. Mutually exclusive with " +
+      "--json.",
     type: "boolean",
     default: false,
   },
@@ -83,7 +93,7 @@ export const dotOutputOption: INamedOption<yargs.Options, ICompileArgs> = {
 export const quietCompileOption: INamedOption<yargs.Options, ICompileArgs> = {
   name: "quiet",
   option: {
-    describe: "Less verbose compilation output. Example usage: 'dataform compile --quiet'",
+    describe: "Less verbose compilation output. Mutually exclusive with --verbose.",
     type: "boolean",
     default: false,
   },
@@ -92,7 +102,7 @@ export const quietCompileOption: INamedOption<yargs.Options, ICompileArgs> = {
 export const watchOption: INamedOption<yargs.Options, ICompileArgs> = {
   name: "watch",
   option: {
-    describe: "Whether to watch the changes in the project directory.",
+    describe: "Watches the project directory and recompiles on changes.",
     type: "boolean",
     default: false,
   },
@@ -101,7 +111,7 @@ export const watchOption: INamedOption<yargs.Options, ICompileArgs> = {
 export const verboseOption: INamedOption<yargs.Options, ICompileArgs> = {
   name: "verbose",
   option: {
-    describe: "Enable verbose compilation output. Example usage: 'dataform compile --verbose'",
+    describe: "Enables verbose compilation output. Mutually exclusive with --quiet.",
     type: "boolean",
     default: false,
   },
@@ -113,12 +123,12 @@ export const verboseOption: INamedOption<yargs.Options, ICompileArgs> = {
 };
 
 export const compileOptions: Array<INamedOption<yargs.Options, ICompileArgs>> = [
-  watchOption,
-  verboseOption,
   jsonOutputOption,
   dotOutputOption,
-  timeoutOption,
+  verboseOption,
   quietCompileOption,
+  watchOption,
+  timeoutOption,
   outputActionsOption,
   outputTagsOption,
   outputIncludeDepsOption,
