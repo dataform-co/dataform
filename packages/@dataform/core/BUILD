@@ -74,6 +74,12 @@ add_license_header_to_file(
 )
 
 add_license_header_to_file(
+    name = "property_graph_config_proto_with_license",
+    from_file = "//protos:property_graph_config.proto",
+    to_file = "property_graph_config.proto",
+)
+
+add_license_header_to_file(
     name = "bundle_with_license",
     from_file = ":bundle_no_license",
     to_file = "bundle.js",
@@ -104,6 +110,7 @@ pkg_npm_tar(
         ":extension_proto_with_license",
         ":jit_proto_with_license",
         ":package.json",
+        ":property_graph_config_proto_with_license",
     ],
     publishable = True,
 )

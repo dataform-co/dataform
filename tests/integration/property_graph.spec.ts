@@ -94,10 +94,19 @@ integrationSuite(
         "EDGE TABLES",
         "Author",
         "Book",
+        "Authorship",
         "Wrote",
+        "WroteBook",
         "authors",
         "books",
         "wrote",
+        "UPPER(name) AS upper_name",
+        "address.country AS country",
+        "`group`",
+        "DEFAULT LABEL OPTIONS",
+        "NO PROPERTIES",
+        "MEASURE(COUNT(id)) AS book_count",
+        "MEASURE(SUM(pages)) AS total_pages",
       ]) {
         expect(row.ddl).to.contain(needle);
       }

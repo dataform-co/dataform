@@ -15,6 +15,14 @@ function makeSession(): Session {
   );
 }
 
+function makeModelConfig(model: any, topLevelExtra: any = {}): any {
+  return {
+    version: "0.2.0.dev0/google",
+    semantic_model: [model],
+    ...topLevelExtra,
+  };
+}
+
 function compile(config: any, filename = "definitions/graph.yaml"): dataform.PropertyGraph {
   const action = new PropertyGraph(makeSession(), config, filename);
   const compiled = action.compile();
@@ -33,17 +41,19 @@ const graphTarget = (name: string) => ({
 });
 
 suite("property_graph", () => {
-  test("compiles a minimal graph with one node and no edges", () => {
-    const compiled = compile({
-      name: "Simple",
-      nodes: [
-        {
-          name: "Account",
-          dataSourceString: "proj.ds.Accounts",
-          keys: ["id"],
-        },
-      ],
-    });
+  test("compiles a minimal semantic_model with one entity and no relationships", () => {
+    const compiled = compile(
+      makeModelConfig({
+        name: "Simple",
+        entities: [
+          {
+            name: "Account",
+            source: "bigquery:proj.ds.Accounts",
+            primary_key: ["id"],
+          },
+        ],
+      }),
+    );
 
     expect(asPlainObject(compiled)).deep.equals(
       asPlainObject({
@@ -59,31 +69,95 @@ suite("property_graph", () => {
             keys: ["id"],
           },
         ],
-        graphBody: "NODE TABLES (\n  `proj.ds.Accounts` AS Account KEY (id)\n)",
+        graphBody:
+          "NODE TABLES (\n  `proj.ds.Accounts` AS Account KEY (id) PROPERTIES ALL COLUMNS\n)",
       }),
     );
   });
 
-  test("propagates tags into the compiled proto", () => {
-    const compiled = compile({
-      name: "Tagged",
-      tags: ["nightly", "reporting"],
-      nodes: [
-        {
-          name: "Account",
-          dataSourceString: "proj.ds.Accounts",
-          keys: ["id"],
-        },
-      ],
+  test("resolves deployments BigQuery URI and rejects leading //", () => {
+    const compiled = compile(
+      makeModelConfig({
+        name: "FinGraph",
+        deployments: [
+          {
+            name: "default",
+            target:
+              "bigquery.googleapis.com/projects/customProj/datasets/customDs/propertyGraphs/FinGraph",
+          },
+        ],
+        entities: [
+          {
+            name: "Account",
+            source: "bigquery:proj.ds.Accounts",
+            primary_key: ["id"],
+          },
+        ],
+      }),
+    );
+
+    expect(asPlainObject(compiled.target)).deep.equals({
+      database: "customProj",
+      schema: "customDs",
+      name: "FinGraph",
     });
+
+    expect(() =>
+      build(
+        makeModelConfig({
+          name: "FinGraph",
+          deployments: [
+            {
+              name: "default",
+              target:
+                "//bigquery.googleapis.com/projects/customProj/datasets/customDs/propertyGraphs/FinGraph",
+            },
+          ],
+          entities: [
+            {
+              name: "Account",
+              source: "bigquery:proj.ds.Accounts",
+              primary_key: ["id"],
+            },
+          ],
+        }),
+      ),
+    ).to.throw(
+      "Property graph 'FinGraph': deployment 'target' must not start with '//'; remove the leading '//' and use 'bigquery.googleapis.com/projects/<project>/datasets/<dataset>/propertyGraphs/<graph>' (got '//bigquery.googleapis.com/projects/customProj/datasets/customDs/propertyGraphs/FinGraph').",
+    );
+  });
+
+  test("propagates top-level tags, disabled, and semantic_model description and ai_context examples", () => {
+    const compiled = compile(
+      makeModelConfig(
+        {
+          name: "Tagged",
+          description: "Financial graph",
+          ai_context: {
+            examples: ["Find accounts owned by Alice", "List transfers"],
+          },
+          entities: [
+            {
+              name: "Account",
+              source: "proj.ds.Accounts",
+              primary_key: "id",
+            },
+          ],
+        },
+        {
+          disabled: true,
+          tags: ["nightly", "reporting"],
+        },
+      ),
+    );
 
     expect(asPlainObject(compiled)).deep.equals(
       asPlainObject({
         target: graphTarget("Tagged"),
         canonicalTarget: graphTarget("Tagged"),
         fileName: "definitions/graph.yaml",
-        description: "",
-        disabled: false,
+        description: "Financial graph\n\nExamples: Find accounts owned by Alice; List transfers",
+        disabled: true,
         tags: ["nightly", "reporting"],
         nodes: [
           {
@@ -92,1549 +166,1139 @@ suite("property_graph", () => {
             keys: ["id"],
           },
         ],
-        graphBody: "NODE TABLES (\n  `proj.ds.Accounts` AS Account KEY (id)\n)",
-      }),
-    );
-  });
-
-  test("normalizes scalar keys to a single-element list", () => {
-    const compiled = compile({
-      name: "G",
-      nodes: [{ name: "A", dataSourceString: "p.d.A", keys: "id" }],
-    });
-
-    expect(asPlainObject(compiled)).deep.equals(
-      asPlainObject({
-        target: graphTarget("G"),
-        canonicalTarget: graphTarget("G"),
-        fileName: "definitions/graph.yaml",
-        description: "",
-        disabled: false,
-        nodes: [
-          {
-            name: "A",
-            dataSource: { database: "p", schema: "d", name: "A" },
-            keys: ["id"],
-          },
-        ],
-        graphBody: "NODE TABLES (\n  `p.d.A` AS A KEY (id)\n)",
-      }),
-    );
-  });
-
-  test("parses 3-part dataSourceString into database.schema.name", () => {
-    const compiled = compile({
-      name: "G",
-      nodes: [{ name: "A", dataSourceString: "myProj.myDs.MyTable", keys: ["id"] }],
-    });
-
-    expect(asPlainObject(compiled)).deep.equals(
-      asPlainObject({
-        target: graphTarget("G"),
-        canonicalTarget: graphTarget("G"),
-        fileName: "definitions/graph.yaml",
-        description: "",
-        disabled: false,
-        nodes: [
-          {
-            name: "A",
-            dataSource: { database: "myProj", schema: "myDs", name: "MyTable" },
-            keys: ["id"],
-          },
-        ],
-        graphBody: "NODE TABLES (\n  `myProj.myDs.MyTable` AS A KEY (id)\n)",
-      }),
-    );
-  });
-
-  test("resolves dataSourceDataset map form with default project fallback", () => {
-    const compiled = compile({
-      name: "G",
-      nodes: [
-        {
-          name: "A",
-          dataSourceDataset: { dataset: "customDs", table: "MyTable" },
-          keys: ["id"],
-        },
-      ],
-    });
-
-    expect(asPlainObject(compiled)).deep.equals(
-      asPlainObject({
-        target: graphTarget("G"),
-        canonicalTarget: graphTarget("G"),
-        fileName: "definitions/graph.yaml",
-        description: "",
-        disabled: false,
-        nodes: [
-          {
-            name: "A",
-            dataSource: { database: "defaultProject", schema: "customDs", name: "MyTable" },
-            keys: ["id"],
-          },
-        ],
-        graphBody: "NODE TABLES (\n  `defaultProject.customDs.MyTable` AS A KEY (id)\n)",
-      }),
-    );
-  });
-
-  test("synthesizes default label named after node when root-level fields set", () => {
-    const compiled = compile({
-      name: "G",
-      nodes: [
-        {
-          name: "Account",
-          dataSourceString: "p.d.A",
-          keys: ["id"],
-          fields: [{ name: "balance", expression: "balance" }],
-        },
-      ],
-    });
-
-    expect(asPlainObject(compiled)).deep.equals(
-      asPlainObject({
-        target: graphTarget("G"),
-        canonicalTarget: graphTarget("G"),
-        fileName: "definitions/graph.yaml",
-        description: "",
-        disabled: false,
-        nodes: [
-          {
-            name: "Account",
-            dataSource: { database: "p", schema: "d", name: "A" },
-            keys: ["id"],
-            labels: [
-              {
-                name: "Account",
-                description: "",
-                fields: [{ name: "balance", expression: "balance" }],
-                importAll: false,
-                isDefault: true,
-              },
-            ],
-          },
-        ],
         graphBody:
-          "NODE TABLES (\n  `p.d.A` AS Account KEY (id) DEFAULT LABEL PROPERTIES (balance)\n)",
+          "NODE TABLES (\n  `proj.ds.Accounts` AS Account KEY (id) PROPERTIES ALL COLUMNS\n)",
       }),
     );
   });
 
-  test("expands field shorthand strings into {name, expression} objects", () => {
-    const compiled = compile({
-      name: "G",
-      nodes: [
-        {
-          name: "A",
-          dataSourceString: "p.d.A",
-          keys: ["id"],
-          fields: ["balance", "owner"],
-        },
-      ],
-    });
-
-    expect(asPlainObject(compiled)).deep.equals(
-      asPlainObject({
-        target: graphTarget("G"),
-        canonicalTarget: graphTarget("G"),
-        fileName: "definitions/graph.yaml",
-        description: "",
-        disabled: false,
-        nodes: [
+  test("supports all 3 source string formats (bigquery:p.d.t, p.d.t, and GCP table URI) and rejects leading //", () => {
+    const compiled = compile(
+      makeModelConfig({
+        name: "G",
+        entities: [
           {
             name: "A",
-            dataSource: { database: "p", schema: "d", name: "A" },
-            keys: ["id"],
-            labels: [
-              {
-                name: "A",
-                description: "",
-                fields: [
-                  { name: "balance", expression: "balance" },
-                  { name: "owner", expression: "owner" },
-                ],
-                importAll: false,
-                isDefault: true,
-              },
-            ],
+            source: "bigquery:p1.d1.T1",
+            primary_key: ["id"],
           },
-        ],
-        graphBody:
-          "NODE TABLES (\n  `p.d.A` AS A KEY (id) DEFAULT LABEL PROPERTIES (balance, owner)\n)",
-      }),
-    );
-  });
-
-  test("fieldWildcard.importAll renders as PROPERTIES ARE ALL COLUMNS", () => {
-    const compiled = compile({
-      name: "G",
-      nodes: [
-        {
-          name: "A",
-          dataSourceString: "p.d.A",
-          keys: ["id"],
-          fieldWildcard: { importAll: true },
-        },
-      ],
-    });
-
-    expect(asPlainObject(compiled)).deep.equals(
-      asPlainObject({
-        target: graphTarget("G"),
-        canonicalTarget: graphTarget("G"),
-        fileName: "definitions/graph.yaml",
-        description: "",
-        disabled: false,
-        nodes: [
           {
-            name: "A",
-            dataSource: { database: "p", schema: "d", name: "A" },
-            keys: ["id"],
-            labels: [{ name: "A", description: "", importAll: true, isDefault: true }],
+            name: "B",
+            source: "p2.d2.T2",
+            primary_key: ["id"],
           },
-        ],
-        graphBody:
-          "NODE TABLES (\n  `p.d.A` AS A KEY (id) DEFAULT LABEL PROPERTIES ARE ALL COLUMNS\n)",
-      }),
-    );
-  });
-
-  test("fieldWildcard with except renders as PROPERTIES ARE ALL COLUMNS EXCEPT (...)", () => {
-    const compiled = compile({
-      name: "G",
-      nodes: [
-        {
-          name: "A",
-          dataSourceString: "p.d.A",
-          keys: ["id"],
-          fieldWildcard: { importAll: true, except: ["secret", "internal"] },
-        },
-      ],
-    });
-
-    expect(asPlainObject(compiled)).deep.equals(
-      asPlainObject({
-        target: graphTarget("G"),
-        canonicalTarget: graphTarget("G"),
-        fileName: "definitions/graph.yaml",
-        description: "",
-        disabled: false,
-        nodes: [
           {
-            name: "A",
-            dataSource: { database: "p", schema: "d", name: "A" },
-            keys: ["id"],
-            labels: [
-              {
-                name: "A",
-                description: "",
-                importAll: true,
-                importExcept: ["secret", "internal"],
-                isDefault: true,
-              },
-            ],
+            name: "C",
+            source: "bigquery.googleapis.com/projects/p3/datasets/d3/tables/T3",
+            primary_key: ["id"],
           },
         ],
-        graphBody:
-          "NODE TABLES (\n  `p.d.A` AS A KEY (id) DEFAULT LABEL " +
-          "PROPERTIES ARE ALL COLUMNS EXCEPT (secret, internal)\n)",
       }),
     );
-  });
 
-  test("multiple explicit labels render in declared order", () => {
-    const compiled = compile({
-      name: "G",
-      nodes: [
-        {
-          name: "Account",
-          dataSourceString: "p.d.A",
-          keys: ["id"],
-          labels: [
-            { name: "Account", fields: [{ name: "id", expression: "id" }] },
-            { name: "Auditable", fields: [{ name: "createdAt", expression: "created_at" }] },
+    expect(asPlainObject(compiled.nodes)).deep.equals([
+      { name: "A", dataSource: { database: "p1", schema: "d1", name: "T1" }, keys: ["id"] },
+      { name: "B", dataSource: { database: "p2", schema: "d2", name: "T2" }, keys: ["id"] },
+      { name: "C", dataSource: { database: "p3", schema: "d3", name: "T3" }, keys: ["id"] },
+    ]);
+
+    expect(() =>
+      build(
+        makeModelConfig({
+          name: "G",
+          entities: [
+            {
+              name: "D",
+              source: "//bigquery.googleapis.com/projects/p4/datasets/d4/tables/T4",
+              primary_key: ["id"],
+            },
           ],
-        },
-      ],
-    });
-
-    expect(asPlainObject(compiled)).deep.equals(
-      asPlainObject({
-        target: graphTarget("G"),
-        canonicalTarget: graphTarget("G"),
-        fileName: "definitions/graph.yaml",
-        description: "",
-        disabled: false,
-        nodes: [
-          {
-            name: "Account",
-            dataSource: { database: "p", schema: "d", name: "A" },
-            keys: ["id"],
-            labels: [
-              {
-                name: "Account",
-                fields: [{ name: "id", expression: "id" }],
-                importAll: false,
-                isDefault: false,
-              },
-              {
-                name: "Auditable",
-                fields: [{ name: "createdAt", expression: "created_at" }],
-                importAll: false,
-                isDefault: false,
-              },
-            ],
-          },
-        ],
-        graphBody:
-          "NODE TABLES (\n  `p.d.A` AS Account KEY (id) " +
-          "LABEL Account PROPERTIES (id) " +
-          "LABEL Auditable PROPERTIES (created_at AS createdAt)\n)",
-      }),
+        }),
+      ),
+    ).to.throw(
+      "Property graph 'G': entity 'D': 'source' URI must not start with '//'; remove the leading '//' and use 'bigquery.googleapis.com/projects/<project>/datasets/<dataset>/tables/<table>' (got '//bigquery.googleapis.com/projects/p4/datasets/d4/tables/T4').",
     );
   });
 
-  test("edge endpoints render SOURCE/DESTINATION KEY REFERENCES clauses", () => {
-    const compiled = compile({
-      name: "FinGraph",
-      nodes: [{ name: "Account", dataSourceString: "p.d.Accounts", keys: ["id"] }],
-      edges: [
-        {
-          name: "Transfer",
-          dataSourceString: "p.d.Transfers",
-          source: {
-            node: "Account",
-            joinKeys: { edgeColumns: ["sender_id"], nodeColumns: ["id"] },
+  test("resolves 1:N FK relationship without source by inheriting from entity table and primary_key", () => {
+    const compiled = compile(
+      makeModelConfig({
+        name: "UniGraph",
+        entities: [
+          {
+            name: "Process",
+            source: "bigquery:p.d.processes",
+            primary_key: ["process_id"],
           },
-          destination: {
-            node: "Account",
-            joinKeys: { edgeColumns: ["receiver_id"], nodeColumns: ["id"] },
+          {
+            name: "Asset",
+            source: "bigquery:p.d.assets",
+            primary_key: ["hostname"],
           },
-        },
-      ],
-    });
+        ],
+        relationships: [
+          {
+            name: "ProcessExecutedOn",
+            from: "Process",
+            to: "Asset",
+            from_columns: ["hostname"],
+            to_columns: ["hostname"],
+          },
+        ],
+      }),
+    );
 
     expect(asPlainObject(compiled)).deep.equals(
       asPlainObject({
-        target: graphTarget("FinGraph"),
-        canonicalTarget: graphTarget("FinGraph"),
+        target: graphTarget("UniGraph"),
+        canonicalTarget: graphTarget("UniGraph"),
         fileName: "definitions/graph.yaml",
         description: "",
         disabled: false,
         nodes: [
           {
-            name: "Account",
-            dataSource: { database: "p", schema: "d", name: "Accounts" },
-            keys: ["id"],
+            name: "Process",
+            dataSource: { database: "p", schema: "d", name: "processes" },
+            keys: ["process_id"],
+          },
+          {
+            name: "Asset",
+            dataSource: { database: "p", schema: "d", name: "assets" },
+            keys: ["hostname"],
           },
         ],
         edges: [
           {
-            name: "Transfer",
-            dataSource: { database: "p", schema: "d", name: "Transfers" },
+            name: "ProcessExecutedOn",
+            dataSource: { database: "p", schema: "d", name: "processes" },
+            keys: ["process_id"],
             source: {
-              node: "Account",
-              edgeColumns: ["sender_id"],
-              nodeColumns: ["id"],
+              node: "Process",
+              edgeColumns: ["process_id"],
+              nodeColumns: ["process_id"],
             },
             destination: {
-              node: "Account",
-              edgeColumns: ["receiver_id"],
-              nodeColumns: ["id"],
+              node: "Asset",
+              edgeColumns: ["hostname"],
+              nodeColumns: ["hostname"],
             },
           },
         ],
         graphBody:
-          "NODE TABLES (\n  `p.d.Accounts` AS Account KEY (id)\n)\n" +
-          "EDGE TABLES (\n  `p.d.Transfers` AS Transfer " +
-          "SOURCE KEY (sender_id) REFERENCES Account (id) " +
-          "DESTINATION KEY (receiver_id) REFERENCES Account (id)\n)",
+          "NODE TABLES (\n" +
+          "  `p.d.processes` AS Process KEY (process_id) PROPERTIES ALL COLUMNS,\n" +
+          "  `p.d.assets` AS Asset KEY (hostname) PROPERTIES ALL COLUMNS\n" +
+          ")\n" +
+          "EDGE TABLES (\n" +
+          "  `p.d.processes` AS ProcessExecutedOn KEY (process_id) " +
+          "SOURCE KEY (process_id) REFERENCES Process (process_id) " +
+          "DESTINATION KEY (hostname) REFERENCES Asset (hostname) NO PROPERTIES\n" +
+          ")",
       }),
     );
   });
 
-  test("endpoint node_columns default to referenced node keys when omitted", () => {
-    const compiled = compile({
-      name: "G",
-      nodes: [{ name: "Account", dataSourceString: "p.d.A", keys: ["id"] }],
-      edges: [
-        {
-          name: "SelfLink",
-          dataSourceString: "p.d.Links",
-          source: {
-            node: "Account",
-            joinKeys: { edgeColumns: ["from_id"] },
-          },
-          destination: {
-            node: "Account",
-            joinKeys: { edgeColumns: ["to_id"] },
-          },
-        },
-      ],
-    });
-
-    expect(asPlainObject(compiled)).deep.equals(
-      asPlainObject({
-        target: graphTarget("G"),
-        canonicalTarget: graphTarget("G"),
-        fileName: "definitions/graph.yaml",
-        description: "",
-        disabled: false,
-        nodes: [
+  test("emits relationship DEFAULT LABEL OPTIONS(...) and NO PROPERTIES", () => {
+    const compiled = compile(
+      makeModelConfig({
+        name: "LibraryGraph",
+        entities: [
           {
-            name: "Account",
-            dataSource: { database: "p", schema: "d", name: "A" },
-            keys: ["id"],
+            name: "Author",
+            source: "bigquery:p.d.authors",
+            primary_key: ["id"],
+          },
+          {
+            name: "Book",
+            source: "bigquery:p.d.books",
+            primary_key: ["id"],
           },
         ],
-        edges: [
+        relationships: [
           {
-            name: "SelfLink",
-            dataSource: { database: "p", schema: "d", name: "Links" },
-            source: {
-              node: "Account",
-              edgeColumns: ["from_id"],
-              nodeColumns: ["id"],
-            },
-            destination: {
-              node: "Account",
-              edgeColumns: ["to_id"],
-              nodeColumns: ["id"],
+            name: "WrittenBy",
+            from: "Book",
+            to: "Author",
+            from_columns: ["author_id"],
+            to_columns: ["id"],
+            description: "Authorship edge",
+            ai_context: {
+              synonyms: ["authored"],
+              examples: ["Alice wrote Book A"],
             },
           },
         ],
-        graphBody:
-          "NODE TABLES (\n  `p.d.A` AS Account KEY (id)\n)\n" +
-          "EDGE TABLES (\n  `p.d.Links` AS SelfLink " +
-          "SOURCE KEY (from_id) REFERENCES Account (id) " +
-          "DESTINATION KEY (to_id) REFERENCES Account (id)\n)",
       }),
+    );
+
+    expect(compiled.graphBody).equals(
+      "NODE TABLES (\n" +
+        "  `p.d.authors` AS Author KEY (id) PROPERTIES ALL COLUMNS,\n" +
+        "  `p.d.books` AS Book KEY (id) PROPERTIES ALL COLUMNS\n" +
+        ")\n" +
+        "EDGE TABLES (\n" +
+        "  `p.d.books` AS WrittenBy KEY (id) " +
+        "SOURCE KEY (id) REFERENCES Book (id) " +
+        "DESTINATION KEY (author_id) REFERENCES Author (id) " +
+        'DEFAULT LABEL OPTIONS(description="Authorship edge\\n\\nExamples: Alice wrote Book A", synonyms=["authored"]) ' +
+        "NO PROPERTIES\n" +
+        ")",
     );
   });
 
-  test("every emitted NODE and EDGE table has explicit AS alias", () => {
-    const compiled = compile({
-      name: "G",
-      nodes: [
-        { name: "Account", dataSourceString: "p.d.Accounts", keys: ["id"] },
-        { name: "Person", dataSourceString: "p.d.Persons", keys: ["id"] },
-      ],
-      edges: [
-        {
-          name: "Owns",
-          dataSourceString: "p.d.Ownership",
-          source: {
-            node: "Person",
-            joinKeys: { edgeColumns: ["person_id"] },
-          },
-          destination: {
-            node: "Account",
-            joinKeys: { edgeColumns: ["account_id"] },
-          },
-        },
-      ],
-    });
-
-    expect(asPlainObject(compiled)).deep.equals(
-      asPlainObject({
-        target: graphTarget("G"),
-        canonicalTarget: graphTarget("G"),
-        fileName: "definitions/graph.yaml",
-        description: "",
-        disabled: false,
-        nodes: [
-          {
-            name: "Account",
-            dataSource: { database: "p", schema: "d", name: "Accounts" },
-            keys: ["id"],
-          },
+  test("passes derived field expressions as-is into PROPERTIES (...) and folds label, dimension.is_time, description, instructions, and examples into OPTIONS", () => {
+    const compiled = compile(
+      makeModelConfig({
+        name: "G",
+        entities: [
           {
             name: "Person",
-            dataSource: { database: "p", schema: "d", name: "Persons" },
-            keys: ["id"],
-          },
-        ],
-        edges: [
-          {
-            name: "Owns",
-            dataSource: { database: "p", schema: "d", name: "Ownership" },
-            source: {
-              node: "Person",
-              edgeColumns: ["person_id"],
-              nodeColumns: ["id"],
-            },
-            destination: {
-              node: "Account",
-              edgeColumns: ["account_id"],
-              nodeColumns: ["id"],
-            },
-          },
-        ],
-        graphBody:
-          "NODE TABLES (\n  `p.d.Accounts` AS Account KEY (id),\n" +
-          "  `p.d.Persons` AS Person KEY (id)\n)\n" +
-          "EDGE TABLES (\n  `p.d.Ownership` AS Owns " +
-          "SOURCE KEY (person_id) REFERENCES Person (id) " +
-          "DESTINATION KEY (account_id) REFERENCES Account (id)\n)",
-      }),
-    );
-  });
-
-  test("errors when graph name is missing", () => {
-    expect(() =>
-      compile({
-        nodes: [{ name: "A", dataSourceString: "p.d.A", keys: ["id"] }],
-      }),
-    ).to.throw("Property graphs must have a populated 'name' field.");
-  });
-
-  test("errors when nodes list is empty", () => {
-    expect(() => compile({ name: "G", nodes: [] })).to.throw(
-      "Property graph 'G' must declare at least one node.",
-    );
-  });
-
-  test("errors when node has no data source", () => {
-    expect(() =>
-      compile({
-        name: "G",
-        nodes: [{ name: "A", keys: ["id"] }],
-      }),
-    ).to.throw("node 'A': must declare a data source.");
-  });
-
-  test("errors when node has no keys", () => {
-    expect(() =>
-      compile({
-        name: "G",
-        nodes: [{ name: "A", dataSourceString: "p.d.A" }],
-      }),
-    ).to.throw("node 'A' must declare 'keys'.");
-  });
-
-  test("errors when node has both root-level fields and labels list", () => {
-    expect(() =>
-      compile({
-        name: "G",
-        nodes: [
-          {
-            name: "A",
-            dataSourceString: "p.d.A",
-            keys: ["id"],
-            fields: [{ name: "x", expression: "x" }],
-            labels: [{ name: "A", fields: [{ name: "y", expression: "y" }] }],
-          },
-        ],
-      }),
-    ).to.throw("cannot combine root-level 'fields'/'fieldWildcard' with a 'labels' list");
-  });
-
-  test("errors when edge is missing source", () => {
-    expect(() =>
-      compile({
-        name: "G",
-        nodes: [{ name: "A", dataSourceString: "p.d.A", keys: ["id"] }],
-        edges: [
-          {
-            name: "R",
-            dataSourceString: "p.d.R",
-            destination: {
-              node: "A",
-              joinKeys: { edgeColumns: ["a_id"] },
-            },
-          },
-        ],
-      }),
-    ).to.throw("edge 'R' must declare 'source'.");
-  });
-
-  test("errors when endpoint references an unknown node", () => {
-    expect(() =>
-      compile({
-        name: "G",
-        nodes: [{ name: "A", dataSourceString: "p.d.A", keys: ["id"] }],
-        edges: [
-          {
-            name: "R",
-            dataSourceString: "p.d.R",
-            source: {
-              node: "Ghost",
-              joinKeys: { edgeColumns: ["x"] },
-            },
-            destination: {
-              node: "A",
-              joinKeys: { edgeColumns: ["y"] },
-            },
-          },
-        ],
-      }),
-    ).to.throw("edge 'R' source references unknown node 'Ghost'.");
-  });
-
-  test("errors on duplicate node names", () => {
-    expect(() =>
-      compile({
-        name: "G",
-        nodes: [
-          { name: "A", dataSourceString: "p.d.A1", keys: ["id"] },
-          { name: "A", dataSourceString: "p.d.A2", keys: ["id"] },
-        ],
-      }),
-    ).to.throw("duplicate node name 'A'");
-  });
-
-  test("rejects dataSourceCatalog variant", () => {
-    expect(() =>
-      compile({
-        name: "G",
-        nodes: [
-          {
-            name: "A",
-            dataSourceCatalog: {
-              project: "p",
-              catalog: "cat",
-              namespace: "ns",
-              table: "T",
-            },
-            keys: ["id"],
-          },
-        ],
-      }),
-    ).to.throw("Catalog-based data sources");
-  });
-
-  test("rejects 4-part dataSourceString as catalog reference", () => {
-    expect(() =>
-      compile({
-        name: "G",
-        nodes: [
-          {
-            name: "A",
-            dataSourceString: "proj.cat.ns.tbl",
-            keys: ["id"],
-          },
-        ],
-      }),
-    ).to.throw("Catalog-based data sources");
-  });
-
-  test("rejects 2-part dataSourceString as invalid path", () => {
-    expect(() =>
-      compile({
-        name: "G",
-        nodes: [{ name: "A", dataSourceString: "ds.tbl", keys: ["id"] }],
-      }),
-    ).to.throw("must be 'project.dataset.table'");
-  });
-
-  test("preserves composite keys list", () => {
-    const compiled = compile({
-      name: "G",
-      nodes: [{ name: "A", dataSourceString: "p.d.A", keys: ["id", "date"] }],
-    });
-
-    expect(asPlainObject(compiled)).deep.equals(
-      asPlainObject({
-        target: graphTarget("G"),
-        canonicalTarget: graphTarget("G"),
-        fileName: "definitions/graph.yaml",
-        description: "",
-        disabled: false,
-        nodes: [
-          {
-            name: "A",
-            dataSource: { database: "p", schema: "d", name: "A" },
-            keys: ["id", "date"],
-          },
-        ],
-        graphBody: "NODE TABLES (\n  `p.d.A` AS A KEY (id, date)\n)",
-      }),
-    );
-  });
-
-  test("joinKeys array shorthand expands to edgeColumns with defaulted nodeColumns", () => {
-    const compiled = compile({
-      name: "G",
-      nodes: [{ name: "Account", dataSourceString: "p.d.A", keys: ["id"] }],
-      edges: [
-        {
-          name: "Link",
-          dataSourceString: "p.d.L",
-          source: { node: "Account", joinKeys: ["from_id"] },
-          destination: { node: "Account", joinKeys: ["to_id"] },
-        },
-      ],
-    });
-
-    expect(asPlainObject(compiled)).deep.equals(
-      asPlainObject({
-        target: graphTarget("G"),
-        canonicalTarget: graphTarget("G"),
-        fileName: "definitions/graph.yaml",
-        description: "",
-        disabled: false,
-        nodes: [
-          {
-            name: "Account",
-            dataSource: { database: "p", schema: "d", name: "A" },
-            keys: ["id"],
-          },
-        ],
-        edges: [
-          {
-            name: "Link",
-            dataSource: { database: "p", schema: "d", name: "L" },
-            source: {
-              node: "Account",
-              edgeColumns: ["from_id"],
-              nodeColumns: ["id"],
-            },
-            destination: {
-              node: "Account",
-              edgeColumns: ["to_id"],
-              nodeColumns: ["id"],
-            },
-          },
-        ],
-        graphBody:
-          "NODE TABLES (\n  `p.d.A` AS Account KEY (id)\n)\n" +
-          "EDGE TABLES (\n  `p.d.L` AS Link " +
-          "SOURCE KEY (from_id) REFERENCES Account (id) " +
-          "DESTINATION KEY (to_id) REFERENCES Account (id)\n)",
-      }),
-    );
-  });
-
-  test("errors when label declares neither fields nor a wildcard", () => {
-    expect(() =>
-      compile({
-        name: "G",
-        nodes: [
-          {
-            name: "A",
-            dataSourceString: "p.d.A",
-            keys: ["id"],
-            labels: [{ name: "Empty" }],
-          },
-        ],
-      }),
-    ).to.throw("must declare at least one of: 'fields', 'fieldWildcard', 'description'");
-  });
-
-  test("fields:{importAll:true} map form hoists to fieldWildcard", () => {
-    const compiled = compile({
-      name: "G",
-      nodes: [
-        {
-          name: "A",
-          dataSourceString: "p.d.A",
-          keys: ["id"],
-          fields: { importAll: true },
-        },
-      ],
-    });
-
-    expect(asPlainObject(compiled)).deep.equals(
-      asPlainObject({
-        target: graphTarget("G"),
-        canonicalTarget: graphTarget("G"),
-        fileName: "definitions/graph.yaml",
-        description: "",
-        disabled: false,
-        nodes: [
-          {
-            name: "A",
-            dataSource: { database: "p", schema: "d", name: "A" },
-            keys: ["id"],
-            labels: [{ name: "A", description: "", importAll: true, isDefault: true }],
-          },
-        ],
-        graphBody:
-          "NODE TABLES (\n  `p.d.A` AS A KEY (id) DEFAULT LABEL PROPERTIES ARE ALL COLUMNS\n)",
-      }),
-    );
-  });
-
-  test("fields:{importAll:true, except:[...]} map form hoists with except", () => {
-    const compiled = compile({
-      name: "G",
-      nodes: [
-        {
-          name: "A",
-          dataSourceString: "p.d.A",
-          keys: ["id"],
-          fields: { importAll: true, except: ["secret"] },
-        },
-      ],
-    });
-
-    expect(asPlainObject(compiled)).deep.equals(
-      asPlainObject({
-        target: graphTarget("G"),
-        canonicalTarget: graphTarget("G"),
-        fileName: "definitions/graph.yaml",
-        description: "",
-        disabled: false,
-        nodes: [
-          {
-            name: "A",
-            dataSource: { database: "p", schema: "d", name: "A" },
-            keys: ["id"],
-            labels: [
+            source: "bigquery:p.d.people",
+            primary_key: ["id"],
+            fields: [
+              { name: "id", datatype: "INT64" },
               {
-                name: "A",
-                description: "",
-                importAll: true,
-                importExcept: ["secret"],
-                isDefault: true,
+                name: "full_name",
+                datatype: "STRING",
+                label: "Full Name",
+                expression: "(first || ' ' || last || ' (Person.literal)')",
+                description: "Combined name",
+                ai_context: {
+                  synonyms: ["display_name"],
+                  examples: ["Alice Smith", "Bob Jones"],
+                },
               },
-            ],
-          },
-        ],
-        graphBody:
-          "NODE TABLES (\n  `p.d.A` AS A KEY (id) DEFAULT LABEL " +
-          "PROPERTIES ARE ALL COLUMNS EXCEPT (secret)\n)",
-      }),
-    );
-  });
-
-  test("synthesized default label sets isDefault=true and renders DEFAULT LABEL", () => {
-    const compiled = compile({
-      name: "G",
-      nodes: [
-        {
-          name: "Account",
-          dataSourceString: "p.d.A",
-          keys: ["id"],
-          fields: [{ name: "balance", expression: "balance" }],
-        },
-      ],
-    });
-
-    expect(asPlainObject(compiled)).deep.equals(
-      asPlainObject({
-        target: graphTarget("G"),
-        canonicalTarget: graphTarget("G"),
-        fileName: "definitions/graph.yaml",
-        description: "",
-        disabled: false,
-        nodes: [
-          {
-            name: "Account",
-            dataSource: { database: "p", schema: "d", name: "A" },
-            keys: ["id"],
-            labels: [
               {
-                name: "Account",
-                description: "",
-                fields: [{ name: "balance", expression: "balance" }],
-                importAll: false,
-                isDefault: true,
-              },
-            ],
-          },
-        ],
-        graphBody:
-          "NODE TABLES (\n  `p.d.A` AS Account KEY (id) DEFAULT LABEL PROPERTIES (balance)\n)",
-      }),
-    );
-  });
-
-  test("explicitly configured labels set isDefault=false and render LABEL <name>", () => {
-    const compiled = compile({
-      name: "G",
-      nodes: [
-        {
-          name: "Account",
-          dataSourceString: "p.d.A",
-          keys: ["id"],
-          labels: [{ name: "Account", fields: [{ name: "id", expression: "id" }] }],
-        },
-      ],
-    });
-
-    expect(asPlainObject(compiled)).deep.equals(
-      asPlainObject({
-        target: graphTarget("G"),
-        canonicalTarget: graphTarget("G"),
-        fileName: "definitions/graph.yaml",
-        description: "",
-        disabled: false,
-        nodes: [
-          {
-            name: "Account",
-            dataSource: { database: "p", schema: "d", name: "A" },
-            keys: ["id"],
-            labels: [
-              {
-                name: "Account",
-                fields: [{ name: "id", expression: "id" }],
-                importAll: false,
-                isDefault: false,
-              },
-            ],
-          },
-        ],
-        graphBody: "NODE TABLES (\n  `p.d.A` AS Account KEY (id) LABEL Account PROPERTIES (id)\n)",
-      }),
-    );
-  });
-
-  test("errors when a non-default label declares description or synonyms", () => {
-    expect(() =>
-      compile({
-        name: "G",
-        nodes: [
-          {
-            name: "Account",
-            dataSourceString: "p.d.A",
-            keys: ["id"],
-            labels: [
-              {
-                name: "Account",
-                description: "customer accounts",
-                fields: [{ name: "id", expression: "id" }],
+                name: "started_at",
+                dimension: { is_time: true },
+                ai_context: {
+                  instructions: "Use UTC for comparisons.",
+                },
               },
             ],
           },
         ],
       }),
-    ).to.throw("only allowed on the DEFAULT label");
+    );
 
-    expect(() =>
-      compile({
+    expect(compiled.graphBody).equals(
+      "NODE TABLES (\n" +
+        "  `p.d.people` AS Person KEY (id) PROPERTIES (" +
+        "id, " +
+        "(first || ' ' || last || ' (Person.literal)') AS full_name " +
+        'OPTIONS(description="Full Name\\n\\nCombined name\\n\\nExamples: Alice Smith; Bob Jones", synonyms=["display_name"]), ' +
+        "started_at " +
+        'OPTIONS(description="Time dimension.\\n\\nUse UTC for comparisons.")' +
+        ")\n" +
+        ")",
+    );
+  });
+
+  test("emits DEFAULT LABEL OPTIONS(...) before PROPERTIES ALL COLUMNS when entity has ai_context", () => {
+    const compiled = compile(
+      makeModelConfig({
         name: "G",
-        nodes: [
+        entities: [
           {
             name: "Account",
-            dataSourceString: "p.d.A",
-            keys: ["id"],
-            labels: [
-              {
-                name: "Account",
-                synonyms: ["customer"],
-                fields: [{ name: "id", expression: "id" }],
-              },
-            ],
+            source: "bigquery:p.d.accounts",
+            primary_key: ["id"],
+            description: "Bank account",
+            ai_context: {
+              synonyms: ["acct", "wallet"],
+              examples: ["Checking account"],
+            },
           },
         ],
       }),
-    ).to.throw("only allowed on the DEFAULT label");
+    );
+
+    expect(compiled.graphBody).equals(
+      "NODE TABLES (\n" +
+        "  `p.d.accounts` AS Account KEY (id) " +
+        'DEFAULT LABEL OPTIONS(description="Bank account\\n\\nExamples: Checking account", synonyms=["acct", "wallet"]) ' +
+        "PROPERTIES ALL COLUMNS\n" +
+        ")",
+    );
   });
 
-  test("field description and synonyms render as per-field OPTIONS(...)", () => {
-    const compiled = compile({
-      name: "G",
-      nodes: [
-        {
-          name: "A",
-          dataSourceString: "p.d.A",
-          keys: ["id"],
-          fields: [
+  test("compiles top-level metrics to MEASURE(...) and passes metric expressions as-is", () => {
+    const compiled = compile(
+      makeModelConfig({
+        name: "UniGraph",
+        entities: [
+          {
+            name: "Process",
+            source: "bigquery:p.d.uni_processes",
+            primary_key: ["process_id"],
+            fields: ["process_id", "hostname"],
+          },
+        ],
+        metrics: [
+          {
+            name: "process_count",
+            entity: "Process",
+            expression: "COUNT(process_id)",
+            description: "Total processes",
+            ai_context: {
+              synonyms: ["proc_cnt"],
+              examples: ["How many processes?"],
+            },
+          },
+          {
+            name: "row_count",
+            entity: "Process",
+            expression: "COUNT(*)",
+          },
+          {
+            name: "distinct_host_count",
+            entity: "Process",
+            expression: "COUNT(DISTINCT hostname)",
+          },
+        ],
+      }),
+    );
+
+    expect(compiled.graphBody).equals(
+      "NODE TABLES (\n" +
+        "  `p.d.uni_processes` AS Process KEY (process_id) PROPERTIES (" +
+        "process_id, " +
+        "hostname, " +
+        "MEASURE(COUNT(process_id)) AS process_count " +
+        'OPTIONS(description="Total processes\\n\\nExamples: How many processes?", synonyms=["proc_cnt"]), ' +
+        "MEASURE(COUNT(*)) AS row_count, " +
+        "MEASURE(COUNT(DISTINCT hostname)) AS distinct_host_count" +
+        ")\n" +
+        ")",
+    );
+  });
+
+  test("errors when an entity targeted by metrics omits fields", () => {
+    expect(() =>
+      build(
+        makeModelConfig({
+          name: "G",
+          entities: [
             {
-              name: "balance",
-              expression: "balance",
-              description: "current balance in USD",
-              synonyms: ["amount"],
+              name: "Process",
+              source: "bigquery:p.d.uni_processes",
+              primary_key: ["process_id"],
             },
           ],
-        },
-      ],
-    });
-
-    expect(asPlainObject(compiled)).deep.equals(
-      asPlainObject({
-        target: graphTarget("G"),
-        canonicalTarget: graphTarget("G"),
-        fileName: "definitions/graph.yaml",
-        description: "",
-        disabled: false,
-        nodes: [
-          {
-            name: "A",
-            dataSource: { database: "p", schema: "d", name: "A" },
-            keys: ["id"],
-            labels: [
-              {
-                name: "A",
-                description: "",
-                fields: [
-                  {
-                    name: "balance",
-                    expression: "balance",
-                    description: "current balance in USD",
-                    synonyms: ["amount"],
-                  },
-                ],
-                importAll: false,
-                isDefault: true,
-              },
-            ],
-          },
-        ],
-        graphBody:
-          "NODE TABLES (\n  `p.d.A` AS A KEY (id) DEFAULT LABEL PROPERTIES " +
-          `(balance OPTIONS(description="current balance in USD", synonyms=["amount"]))\n)`,
-      }),
-    );
-  });
-
-  test("graph-level description is stored on the compiled proto but not emitted to graphBody", () => {
-    const compiled = compile({
-      name: "G",
-      description: "high-value customer graph",
-      nodes: [{ name: "A", dataSourceString: "p.d.A", keys: ["id"] }],
-    });
-
-    expect(asPlainObject(compiled)).deep.equals(
-      asPlainObject({
-        target: graphTarget("G"),
-        canonicalTarget: graphTarget("G"),
-        fileName: "definitions/graph.yaml",
-        disabled: false,
-        description: "high-value customer graph",
-        nodes: [
-          {
-            name: "A",
-            dataSource: { database: "p", schema: "d", name: "A" },
-            keys: ["id"],
-          },
-        ],
-        graphBody: "NODE TABLES (\n  `p.d.A` AS A KEY (id)\n)",
-      }),
-    );
-  });
-
-  test("node with only description synthesizes a DEFAULT LABEL with OPTIONS", () => {
-    const compiled = compile({
-      name: "G",
-      nodes: [
-        {
-          name: "Account",
-          dataSourceString: "p.d.A",
-          keys: ["id"],
-          description: "customer account entity",
-        },
-      ],
-    });
-
-    expect(asPlainObject(compiled)).deep.equals(
-      asPlainObject({
-        target: graphTarget("G"),
-        canonicalTarget: graphTarget("G"),
-        fileName: "definitions/graph.yaml",
-        description: "",
-        disabled: false,
-        nodes: [
-          {
-            name: "Account",
-            dataSource: { database: "p", schema: "d", name: "A" },
-            keys: ["id"],
-            labels: [
-              {
-                name: "Account",
-                description: "customer account entity",
-                importAll: false,
-                isDefault: true,
-              },
-            ],
-          },
-        ],
-        graphBody:
-          "NODE TABLES (\n  `p.d.A` AS Account KEY (id) DEFAULT LABEL " +
-          `OPTIONS(description="customer account entity")\n)`,
-      }),
-    );
-  });
-
-  test("string quoting in OPTIONS escapes embedded double quotes and backslashes", () => {
-    const compiled = compile({
-      name: "G",
-      nodes: [
-        {
-          name: "A",
-          dataSourceString: "p.d.A",
-          keys: ["id"],
-          description: `has "quotes" and \\ backslash`,
-        },
-      ],
-    });
-
-    expect(asPlainObject(compiled)).deep.equals(
-      asPlainObject({
-        target: graphTarget("G"),
-        canonicalTarget: graphTarget("G"),
-        fileName: "definitions/graph.yaml",
-        description: "",
-        disabled: false,
-        nodes: [
-          {
-            name: "A",
-            dataSource: { database: "p", schema: "d", name: "A" },
-            keys: ["id"],
-            labels: [
-              {
-                name: "A",
-                description: `has "quotes" and \\ backslash`,
-                importAll: false,
-                isDefault: true,
-              },
-            ],
-          },
-        ],
-        graphBody:
-          "NODE TABLES (\n  `p.d.A` AS A KEY (id) DEFAULT LABEL " +
-          `OPTIONS(description="has \\"quotes\\" and \\\\ backslash")\n)`,
-      }),
-    );
-  });
-
-  test("string quoting in OPTIONS escapes newlines carriage returns and tabs", () => {
-    const compiled = compile({
-      name: "G",
-      nodes: [
-        {
-          name: "A",
-          dataSourceString: "p.d.A",
-          keys: ["id"],
-          description: "line1\nline2\r\nline3\ttab",
-        },
-      ],
-    });
-
-    expect(asPlainObject(compiled)).deep.equals(
-      asPlainObject({
-        target: graphTarget("G"),
-        canonicalTarget: graphTarget("G"),
-        fileName: "definitions/graph.yaml",
-        description: "",
-        disabled: false,
-        nodes: [
-          {
-            name: "A",
-            dataSource: { database: "p", schema: "d", name: "A" },
-            keys: ["id"],
-            labels: [
-              {
-                name: "A",
-                description: "line1\nline2\r\nline3\ttab",
-                importAll: false,
-                isDefault: true,
-              },
-            ],
-          },
-        ],
-        graphBody:
-          "NODE TABLES (\n  `p.d.A` AS A KEY (id) DEFAULT LABEL " +
-          `OPTIONS(description="line1\\nline2\\r\\nline3\\ttab")\n)`,
-      }),
-    );
-  });
-
-  test("label with name 'DEFAULT' is treated as DEFAULT LABEL", () => {
-    const compiled = compile({
-      name: "G",
-      nodes: [
-        {
-          name: "A",
-          dataSourceString: "p.d.A",
-          keys: ["id"],
-          labels: [
+          metrics: [
             {
-              name: "DEFAULT",
-              description: "the default",
-              synonyms: ["main"],
-              fields: [{ name: "id", expression: "id" }],
+              name: "process_count",
+              entity: "Process",
+              expression: "COUNT(process_id)",
             },
           ],
-        },
-      ],
-    });
+        }),
+      ),
+    ).to.throw(
+      "Property graph 'G': entity 'Process' must declare 'fields' explicitly when 'metrics' target it, because BigQuery does not allow combining PROPERTIES ALL COLUMNS with MEASURE(...).",
+    );
+  });
 
-    expect(asPlainObject(compiled)).deep.equals(
-      asPlainObject({
-        target: graphTarget("G"),
-        canonicalTarget: graphTarget("G"),
-        fileName: "definitions/graph.yaml",
-        description: "",
-        disabled: false,
-        nodes: [
+  test("matches metric.entity case-insensitively, preserves derived field and metric expressions as-is, and normalizes key backticks", () => {
+    const compiled = compile(
+      makeModelConfig({
+        name: "OrderGraph",
+        entities: [
           {
-            name: "A",
-            dataSource: { database: "p", schema: "d", name: "A" },
-            keys: ["id"],
-            labels: [
+            name: "Order",
+            source: "bigquery:p.d.orders",
+            primary_key: ["`id`"],
+            fields: [
+              "id",
+              "price",
+              "qty",
+              "ts",
               {
-                name: "A",
-                description: "the default",
-                synonyms: ["main"],
-                fields: [{ name: "id", expression: "id" }],
-                importAll: false,
-                isDefault: true,
+                name: "total",
+                expression: "price * qty",
               },
             ],
           },
         ],
-        graphBody:
-          "NODE TABLES (\n  `p.d.A` AS A KEY (id) DEFAULT LABEL " +
-          `OPTIONS(description="the default", synonyms=["main"]) PROPERTIES (id)\n)`,
+        metrics: [
+          {
+            name: "sum_total",
+            entity: "order",
+            expression: "SUM(price * qty)",
+          },
+          {
+            name: "order_count",
+            entity: "Order",
+            expression: "COUNT(id)",
+          },
+          {
+            name: "sum_year",
+            entity: "Order",
+            expression: "SUM(EXTRACT(YEAR FROM ts))",
+          },
+        ],
       }),
+    );
+
+    expect(compiled.graphBody).equals(
+      "NODE TABLES (\n" +
+        "  `p.d.orders` AS `Order` KEY (`id`) PROPERTIES (" +
+        "id, price, qty, ts, price * qty AS total, " +
+        "MEASURE(SUM(price * qty)) AS sum_total, " +
+        "MEASURE(COUNT(id)) AS order_count, " +
+        "MEASURE(SUM(EXTRACT(YEAR FROM ts))) AS sum_year" +
+        ")\n" +
+        ")",
     );
   });
 
-  test("label name 'default' is case-insensitive and treated as DEFAULT LABEL", () => {
-    const compiled = compile({
-      name: "G",
-      nodes: [
-        {
-          name: "A",
-          dataSourceString: "p.d.A",
-          keys: ["id"],
-          labels: [
-            {
-              name: "default",
-              fields: [{ name: "id", expression: "id" }],
-            },
-          ],
-        },
-      ],
-    });
-
-    expect(asPlainObject(compiled)).deep.equals(
-      asPlainObject({
-        target: graphTarget("G"),
-        canonicalTarget: graphTarget("G"),
-        fileName: "definitions/graph.yaml",
-        description: "",
-        disabled: false,
-        nodes: [
+  test("quotes GoogleSQL reserved keywords in entity, relationship, key, and field identifiers and supports STRUCT field expressions", () => {
+    const compiled = compile(
+      makeModelConfig({
+        name: "ReservedAndStructGraph",
+        entities: [
           {
-            name: "A",
-            dataSource: { database: "p", schema: "d", name: "A" },
-            keys: ["id"],
-            labels: [
+            name: "Person",
+            source: "bigquery:p.d.people",
+            primary_key: ["id"],
+            fields: [
+              "id",
+              "address",
               {
-                name: "A",
-                fields: [{ name: "id", expression: "id" }],
-                importAll: false,
-                isDefault: true,
+                name: "city",
+                expression: "address.city",
+              },
+              {
+                name: "select",
+                expression: "raw_select",
               },
             ],
           },
+          {
+            name: "Address",
+            source: "bigquery:p.d.addresses",
+            primary_key: ["id"],
+          },
+          {
+            name: "Order",
+            source: "bigquery:p.d.orders",
+            primary_key: ["group"],
+            unique_keys: [],
+            fields: ["group"],
+          },
         ],
-        graphBody: "NODE TABLES (\n  `p.d.A` AS A KEY (id) DEFAULT LABEL PROPERTIES (id)\n)",
+        relationships: [
+          {
+            name: "Group",
+            from: "order",
+            to: "person",
+            from_columns: ["person_id"],
+            to_columns: ["id"],
+          },
+        ],
+        metrics: [
+          {
+            name: "city_count",
+            entity: "Person",
+            expression: "COUNT(Address.city)",
+          },
+          {
+            name: "order_count",
+            entity: "Order",
+            expression: "COUNT(`group`)",
+          },
+        ],
       }),
+    );
+
+    expect(compiled.graphBody).equals(
+      "NODE TABLES (\n" +
+        "  `p.d.people` AS Person KEY (id) PROPERTIES (" +
+        "id, address, address.city AS city, raw_select AS `select`, " +
+        "MEASURE(COUNT(Address.city)) AS city_count" +
+        "),\n" +
+        "  `p.d.addresses` AS Address KEY (id) PROPERTIES ALL COLUMNS,\n" +
+        "  `p.d.orders` AS `Order` KEY (`group`) PROPERTIES (" +
+        "`group`, MEASURE(COUNT(`group`)) AS order_count" +
+        ")\n" +
+        ")\n" +
+        "EDGE TABLES (\n" +
+        "  `p.d.orders` AS `Group` KEY (`group`) " +
+        "SOURCE KEY (`group`) REFERENCES `Order` (`group`) " +
+        "DESTINATION KEY (person_id) REFERENCES Person (id) NO PROPERTIES\n" +
+        ")",
     );
   });
 
-  test("errors when more than one DEFAULT label is declared", () => {
-    expect(() =>
-      compile({
+  test("defaults field expression to field name when omitted", () => {
+    const compiled = compile(
+      makeModelConfig({
         name: "G",
-        nodes: [
+        entities: [
           {
-            name: "A",
-            dataSourceString: "p.d.A",
-            keys: ["id"],
-            labels: [
-              { name: "DEFAULT", fields: [{ name: "id", expression: "id" }] },
-              { name: "default", fields: [{ name: "id", expression: "id" }] },
-            ],
+            name: "Process",
+            source: "bigquery:p.d.uni_processes",
+            primary_key: ["process_id"],
+            fields: [{ name: "process_id" }],
           },
         ],
-      }),
-    ).to.throw("only one DEFAULT label is allowed");
-  });
-
-  test("disabled=true propagates onto the compiled PropertyGraph", () => {
-    const compiled = compile({
-      name: "G",
-      disabled: true,
-      nodes: [{ name: "A", dataSourceString: "p.d.A", keys: ["id"] }],
-    });
-
-    expect(asPlainObject(compiled)).deep.equals(
-      asPlainObject({
-        target: graphTarget("G"),
-        canonicalTarget: graphTarget("G"),
-        fileName: "definitions/graph.yaml",
-        description: "",
-        disabled: true,
-        nodes: [
+        metrics: [
           {
-            name: "A",
-            dataSource: { database: "p", schema: "d", name: "A" },
-            keys: ["id"],
-          },
-        ],
-        graphBody: "NODE TABLES (\n  `p.d.A` AS A KEY (id)\n)",
-      }),
-    );
-  });
-
-  test("scalar ref normalizes to dataSourceRef and populates dependencyTargets", () => {
-    const compiled = build({
-      name: "G",
-      nodes: [
-        {
-          name: "A",
-          ref: "books",
-          keys: ["id"],
-        },
-      ],
-    }).compile();
-
-    expect(asPlainObject(compiled)).deep.equals(
-      asPlainObject({
-        target: graphTarget("G"),
-        canonicalTarget: graphTarget("G"),
-        dependencyTargets: [{ name: "books", includeDependentAssertions: false }],
-        fileName: "definitions/graph.yaml",
-        description: "",
-        disabled: false,
-        nodes: [{ name: "A", keys: ["id"] }],
-      }),
-    );
-  });
-
-  test("object ref preserves schema and database in dependencyTargets", () => {
-    const compiled = build({
-      name: "G",
-      nodes: [
-        {
-          name: "A",
-          ref: { name: "books", schema: "analytics", database: "proj" },
-          keys: ["id"],
-        },
-      ],
-    }).compile();
-
-    expect(asPlainObject(compiled)).deep.equals(
-      asPlainObject({
-        target: graphTarget("G"),
-        canonicalTarget: graphTarget("G"),
-        dependencyTargets: [
-          {
-            database: "proj",
-            schema: "analytics",
-            name: "books",
-            includeDependentAssertions: false,
-          },
-        ],
-        fileName: "definitions/graph.yaml",
-        description: "",
-        disabled: false,
-        nodes: [{ name: "A", keys: ["id"] }],
-      }),
-    );
-  });
-
-  test("duplicate refs across nodes dedupe in dependencyTargets", () => {
-    const compiled = build({
-      name: "G",
-      nodes: [
-        { name: "A", ref: "books", keys: ["id"] },
-        { name: "B", ref: "books", keys: ["id"] },
-      ],
-    }).compile();
-
-    expect(asPlainObject(compiled)).deep.equals(
-      asPlainObject({
-        target: graphTarget("G"),
-        canonicalTarget: graphTarget("G"),
-        dependencyTargets: [{ name: "books", includeDependentAssertions: false }],
-        fileName: "definitions/graph.yaml",
-        description: "",
-        disabled: false,
-        nodes: [
-          { name: "A", keys: ["id"] },
-          { name: "B", keys: ["id"] },
-        ],
-      }),
-    );
-  });
-
-  test("graph-level dependOnDependencyAssertions propagates to every ref dependency", () => {
-    const compiled = build({
-      name: "G",
-      dependOnDependencyAssertions: true,
-      nodes: [
-        { name: "A", ref: "books", keys: ["id"] },
-        { name: "B", ref: "authors", keys: ["id"] },
-      ],
-    }).compile();
-
-    expect(asPlainObject(compiled)).deep.equals(
-      asPlainObject({
-        target: graphTarget("G"),
-        canonicalTarget: graphTarget("G"),
-        dependencyTargets: [
-          { name: "books", includeDependentAssertions: true },
-          { name: "authors", includeDependentAssertions: true },
-        ],
-        fileName: "definitions/graph.yaml",
-        description: "",
-        disabled: false,
-        nodes: [
-          { name: "A", keys: ["id"] },
-          { name: "B", keys: ["id"] },
-        ],
-      }),
-    );
-  });
-
-  test("ref-level includeDependentAssertions propagates to that dependency only", () => {
-    const compiled = build({
-      name: "G",
-      nodes: [
-        { name: "A", ref: { name: "books", includeDependentAssertions: true }, keys: ["id"] },
-        { name: "B", ref: "authors", keys: ["id"] },
-      ],
-    }).compile();
-
-    expect(asPlainObject(compiled)).deep.equals(
-      asPlainObject({
-        target: graphTarget("G"),
-        canonicalTarget: graphTarget("G"),
-        dependencyTargets: [
-          { name: "books", includeDependentAssertions: true },
-          { name: "authors", includeDependentAssertions: false },
-        ],
-        fileName: "definitions/graph.yaml",
-        description: "",
-        disabled: false,
-        nodes: [
-          { name: "A", keys: ["id"] },
-          { name: "B", keys: ["id"] },
-        ],
-      }),
-    );
-  });
-
-  test("ref-level includeDependentAssertions=false overrides graph-level dependOnDependencyAssertions=true", () => {
-    const compiled = build({
-      name: "G",
-      dependOnDependencyAssertions: true,
-      nodes: [
-        { name: "A", ref: { name: "books", includeDependentAssertions: false }, keys: ["id"] },
-        { name: "B", ref: "authors", keys: ["id"] },
-      ],
-    }).compile();
-
-    expect(asPlainObject(compiled)).deep.equals(
-      asPlainObject({
-        target: graphTarget("G"),
-        canonicalTarget: graphTarget("G"),
-        dependencyTargets: [
-          { name: "books", includeDependentAssertions: false },
-          { name: "authors", includeDependentAssertions: true },
-        ],
-        fileName: "definitions/graph.yaml",
-        description: "",
-        disabled: false,
-        nodes: [
-          { name: "A", keys: ["id"] },
-          { name: "B", keys: ["id"] },
-        ],
-      }),
-    );
-  });
-
-  test("ref on edge also normalizes and populates dependencyTargets", () => {
-    const compiled = build({
-      name: "G",
-      nodes: [
-        { name: "A", dataSourceString: "p.d.A", keys: ["id"] },
-        { name: "B", dataSourceString: "p.d.B", keys: ["id"] },
-      ],
-      edges: [
-        {
-          name: "R",
-          ref: "wrote",
-          keys: ["a_id", "b_id"],
-          source: { node: "A", joinKeys: ["a_id"] },
-          destination: { node: "B", joinKeys: ["b_id"] },
-        },
-      ],
-    }).compile();
-
-    expect(asPlainObject(compiled)).deep.equals(
-      asPlainObject({
-        target: graphTarget("G"),
-        canonicalTarget: graphTarget("G"),
-        dependencyTargets: [{ name: "wrote", includeDependentAssertions: false }],
-        fileName: "definitions/graph.yaml",
-        description: "",
-        disabled: false,
-        nodes: [
-          { name: "A", dataSource: { database: "p", schema: "d", name: "A" }, keys: ["id"] },
-          { name: "B", dataSource: { database: "p", schema: "d", name: "B" }, keys: ["id"] },
-        ],
-        edges: [
-          {
-            name: "R",
-            keys: ["a_id", "b_id"],
-            source: { node: "A", edgeColumns: ["a_id"], nodeColumns: ["id"] },
-            destination: { node: "B", edgeColumns: ["b_id"], nodeColumns: ["id"] },
+            name: "process_count",
+            entity: "Process",
+            expression: "COUNT(process_id)",
           },
         ],
       }),
     );
-  });
 
-  test("errors when ref has no name", () => {
-    expect(() =>
-      compile({
-        name: "G",
-        nodes: [
-          {
-            name: "A",
-            ref: { schema: "s" },
-            keys: ["id"],
-          },
-        ],
-      }),
-    ).to.throw("'ref' must include a 'name'");
-  });
-
-  test("propagates jobLabels and merges with defaultJobLabels", () => {
-    const session = new Session(
-      "/tmp/root",
-      dataform.ProjectConfig.create({
-        defaultDatabase: "defaultProject",
-        defaultSchema: "defaultDataset",
-        defaultJobLabels: {
-          env: "dev",
-          team: "graph_team",
-        },
-      }),
+    expect(compiled.graphBody).equals(
+      "NODE TABLES (\n" +
+        "  `p.d.uni_processes` AS Process KEY (process_id) PROPERTIES (" +
+        "process_id, " +
+        "MEASURE(COUNT(process_id)) AS process_count" +
+        ")\n" +
+        ")",
     );
+  });
+
+  test("resolves source.ref for entities and 1:N FK edges during finalize() and records dependencyTargets", () => {
+    const session = makeSession();
+    session.resolveTarget = (ref: dataform.ITarget) =>
+      dataform.Target.create({
+        database: ref.database || "defaultProject",
+        schema: ref.schema || "defaultDataset",
+        name: ref.name,
+      });
+
     const action = new PropertyGraph(
       session,
-      {
-        name: "LabeledGraph",
-        jobLabels: {
-          env: "prod",
-          cost_center: "analytics",
-        },
-        nodes: [
+      makeModelConfig({
+        name: "RefGraph",
+        entities: [
           {
-            name: "Account",
-            dataSourceString: "proj.ds.Accounts",
-            keys: ["id"],
+            name: "Process",
+            source: { ref: "processes" },
+            primary_key: ["process_id"],
+          },
+          {
+            name: "Asset",
+            source: {
+              ref: { name: "assets", schema: "customDs", include_dependent_assertions: true },
+            },
+            primary_key: ["hostname"],
           },
         ],
-      } as any,
+        relationships: [
+          {
+            name: "ProcessExecutedOn",
+            from: "Process",
+            to: "Asset",
+            from_columns: ["hostname"],
+            to_columns: ["hostname"],
+          },
+        ],
+      }),
       "definitions/graph.yaml",
     );
-    const compiled = action.compile();
-    expect(session.graphErrors.compilationErrors).to.deep.equal([]);
-    expect(asPlainObject(compiled.actionDescriptor)).to.deep.equal({
-      jobLabels: {
-        env: "prod",
-        team: "graph_team",
-        cost_center: "analytics",
-      },
-    });
+
+    const pg = action.compile();
+    action.finalize();
+
+    expect(asPlainObject(pg.dependencyTargets)).deep.equals([
+      { name: "processes", includeDependentAssertions: false },
+      { name: "assets", schema: "customDs", includeDependentAssertions: true },
+    ]);
+    expect(pg.graphBody).equals(
+      "NODE TABLES (\n" +
+        "  `defaultProject.defaultDataset.processes` AS Process KEY (process_id) PROPERTIES ALL COLUMNS,\n" +
+        "  `defaultProject.customDs.assets` AS Asset KEY (hostname) PROPERTIES ALL COLUMNS\n" +
+        ")\n" +
+        "EDGE TABLES (\n" +
+        "  `defaultProject.defaultDataset.processes` AS ProcessExecutedOn KEY (process_id) " +
+        "SOURCE KEY (process_id) REFERENCES Process (process_id) " +
+        "DESTINATION KEY (hostname) REFERENCES Asset (hostname) NO PROPERTIES\n" +
+        ")",
+    );
+  });
+
+  test("errors when version is missing or invalid", () => {
+    expect(() =>
+      build({
+        semantic_model: [
+          {
+            name: "G",
+            entities: [{ name: "A", source: "p.d.A", primary_key: ["id"] }],
+          },
+        ],
+      }),
+    ).to.throw("Property graph config must declare 'version: 0.2.0.dev0/google'.");
+
+    expect(() =>
+      build({
+        version: "0.1.0",
+        semantic_model: [
+          {
+            name: "G",
+            entities: [{ name: "A", source: "p.d.A", primary_key: ["id"] }],
+          },
+        ],
+      }),
+    ).to.throw("Property graph config 'version' must be '0.2.0.dev0/google' (got '0.1.0').");
+  });
+
+  test("errors when semantic_model is missing, empty, or has more than 1 model in V1", () => {
+    expect(() => build({ version: "0.2.0.dev0/google" })).to.throw(
+      "Property graph config must declare a non-empty 'semantic_model' list.",
+    );
+
+    expect(() =>
+      build({
+        version: "0.2.0.dev0/google",
+        semantic_model: [
+          { name: "G1", entities: [{ name: "A", source: "p.d.A", primary_key: ["id"] }] },
+          { name: "G2", entities: [{ name: "B", source: "p.d.B", primary_key: ["id"] }] },
+        ],
+      }),
+    ).to.throw(
+      "Property graph config 'semantic_model' must contain exactly 1 model in V1 (found 2).",
+    );
+  });
+
+  test("errors when deployment target graph name does not match semantic_model name", () => {
+    expect(() =>
+      build(
+        makeModelConfig({
+          name: "FinGraph",
+          deployments: [
+            {
+              name: "default",
+              target: "bigquery.googleapis.com/projects/p/datasets/d/propertyGraphs/WrongGraphName",
+            },
+          ],
+          entities: [{ name: "A", source: "p.d.A", primary_key: ["id"] }],
+        }),
+      ),
+    ).to.throw(
+      "Property graph 'FinGraph': deployment target graph name 'WrongGraphName' must match semantic_model name 'FinGraph'.",
+    );
+  });
+
+  test("errors when entity declares unique_keys in V1", () => {
+    expect(() =>
+      build(
+        makeModelConfig({
+          name: "G",
+          entities: [
+            {
+              name: "Account",
+              source: "p.d.Accounts",
+              primary_key: ["id"],
+              unique_keys: [["iban"]],
+            },
+          ],
+        }),
+      ),
+    ).to.throw(
+      "Property graph 'G': entity 'Account': 'unique_keys' are not supported in V1 because BigQuery CREATE PROPERTY GRAPH DDL only supports a single KEY(...) clause.",
+    );
+  });
+
+  test("errors when primary_key, from_columns, or to_columns contain non-physical column expressions or qualifiers", () => {
+    expect(() =>
+      build(
+        makeModelConfig({
+          name: "G",
+          entities: [
+            {
+              name: "Process",
+              source: "p.d.processes",
+              primary_key: ["Process.process_id"],
+            },
+          ],
+        }),
+      ),
+    ).to.throw(
+      "Property graph 'G': entity 'Process': 'primary_key' entry 'Process.process_id' must be a physical column name",
+    );
+
+    expect(() =>
+      build(
+        makeModelConfig({
+          name: "G",
+          entities: [
+            { name: "Process", source: "p.d.processes", primary_key: ["process_id"] },
+            { name: "Asset", source: "p.d.assets", primary_key: ["hostname"] },
+          ],
+          relationships: [
+            {
+              name: "Exec",
+              from: "Process",
+              to: "Asset",
+              from_columns: ["LOWER(hostname)"],
+              to_columns: ["hostname"],
+            },
+          ],
+        }),
+      ),
+    ).to.throw(
+      "Property graph 'G': relationship 'Exec': 'from_columns' entry 'LOWER(hostname)' must be a physical column name",
+    );
+  });
+
+  test("allows backtick-quoted valid physical column names in primary_key and rejects backtick-quoted non-identifiers", () => {
+    const compiled = compile(
+      makeModelConfig({
+        name: "G",
+        entities: [
+          {
+            name: "Process",
+            source: "p.d.processes",
+            primary_key: ["`select`"],
+          },
+        ],
+      }),
+    );
+
+    expect(compiled.graphBody).equals(
+      "NODE TABLES (\n  `p.d.processes` AS Process KEY (`select`) PROPERTIES ALL COLUMNS\n)",
+    );
+
+    for (const badKey of ["`a.b`", "`x y`"]) {
+      expect(() =>
+        build(
+          makeModelConfig({
+            name: "G",
+            entities: [
+              {
+                name: "Process",
+                source: "p.d.processes",
+                primary_key: [badKey],
+              },
+            ],
+          }),
+        ),
+      ).to.throw(
+        `Property graph 'G': entity 'Process': 'primary_key' entry '${badKey}' must be a physical column name`,
+      );
+    }
+  });
+
+  test("enforces case-insensitive uniqueness on entities, relationships, metrics, and fields", () => {
+    expect(() =>
+      build(
+        makeModelConfig({
+          name: "G",
+          entities: [
+            { name: "Account", source: "p.d.A", primary_key: ["id"] },
+            { name: "account", source: "p.d.B", primary_key: ["id"] },
+          ],
+        }),
+      ),
+    ).to.throw(
+      "Property graph 'G': duplicate entity name 'account' (conflicts case-insensitively with 'Account').",
+    );
+
+    expect(() =>
+      build(
+        makeModelConfig({
+          name: "G",
+          entities: [
+            {
+              name: "Account",
+              source: "p.d.A",
+              primary_key: ["id"],
+              fields: [{ name: "balance" }, { name: "Balance" }],
+            },
+          ],
+        }),
+      ),
+    ).to.throw(
+      "Property graph 'G': entity 'Account': duplicate field name 'Balance' (conflicts case-insensitively with 'balance').",
+    );
+  });
+
+  test("errors when metric is missing entity, references unknown entity, or collides with an entity field", () => {
+    expect(() =>
+      build(
+        makeModelConfig({
+          name: "G",
+          entities: [{ name: "Process", source: "p.d.P", primary_key: ["id"] }],
+          metrics: [{ name: "m1", expression: "COUNT(*)" }],
+        }),
+      ),
+    ).to.throw("Property graph 'G': metric 'm1' must declare 'entity'.");
+
+    expect(() =>
+      build(
+        makeModelConfig({
+          name: "G",
+          entities: [{ name: "Process", source: "p.d.P", primary_key: ["id"] }],
+          metrics: [{ name: "m1", entity: "Unknown", expression: "COUNT(*)" }],
+        }),
+      ),
+    ).to.throw("Property graph 'G': metric 'm1' references unknown entity 'Unknown'.");
+
+    expect(() =>
+      build(
+        makeModelConfig({
+          name: "G",
+          entities: [
+            {
+              name: "Process",
+              source: "p.d.P",
+              primary_key: ["id"],
+              fields: [{ name: "process_count" }],
+            },
+          ],
+          metrics: [
+            {
+              name: "PROCESS_COUNT",
+              entity: "Process",
+              expression: "COUNT(Process.id)",
+            },
+          ],
+        }),
+      ),
+    ).to.throw(
+      "Property graph 'G': metric 'PROCESS_COUNT' collides with field 'process_count' on entity 'Process'.",
+    );
+
+    expect(() =>
+      build(
+        makeModelConfig({
+          name: "G",
+          entities: [
+            {
+              name: "Process",
+              source: "p.d.P",
+              primary_key: ["id"],
+              fields: ["id"],
+            },
+          ],
+          metrics: [
+            {
+              name: "m1",
+              entity: "Process",
+              expression: "   ",
+            },
+          ],
+        }),
+      ),
+    ).to.throw("Property graph 'G': metric 'm1' must declare 'expression'.");
+  });
+
+  test("requires explicit relationship to_columns and rejects mismatched to_columns", () => {
+    expect(() =>
+      build(
+        makeModelConfig({
+          name: "G",
+          entities: [
+            { name: "Process", source: "p.d.processes", primary_key: ["process_id"] },
+            { name: "Machine", source: "p.d.machines", primary_key: ["machine_id"] },
+          ],
+          relationships: [
+            {
+              name: "RunsOn",
+              from: "Process",
+              to: "Machine",
+              from_columns: ["machine_fk"],
+            },
+          ],
+        }),
+      ),
+    ).to.throw("Property graph 'G': relationship 'RunsOn' must declare 'to_columns'.");
+
+    expect(() =>
+      build(
+        makeModelConfig({
+          name: "G",
+          entities: [
+            { name: "Process", source: "p.d.processes", primary_key: ["process_id"] },
+            { name: "Machine", source: "p.d.machines", primary_key: ["machine_id"] },
+          ],
+          relationships: [
+            {
+              name: "RunsOn",
+              from: "Process",
+              to: "Machine",
+              from_columns: ["machine_fk"],
+              to_columns: ["wrong_col"],
+            },
+          ],
+        }),
+      ),
+    ).to.throw(
+      "Property graph 'G': relationship 'RunsOn': 'to_columns' ([wrong_col]) must match target entity 'Machine' primary_key ([machine_id]).",
+    );
+  });
+
+  test("errors when relationship declares source or primary_key in V1", () => {
+    expect(() =>
+      build(
+        makeModelConfig({
+          name: "G",
+          entities: [
+            { name: "Author", source: "p.d.authors", primary_key: ["id"] },
+            { name: "Book", source: "p.d.books", primary_key: ["id"] },
+          ],
+          relationships: [
+            {
+              name: "Wrote",
+              source: "p.d.wrote",
+              primary_key: ["author_id", "book_id"],
+              from: "Author",
+              to: "Book",
+              from_columns: ["author_id"],
+              to_columns: ["book_id"],
+            },
+          ],
+        }),
+      ),
+    ).to.throw('Unexpected property "source", or property value type of "string" is incorrect.');
+  });
+
+  test("errors with a migration message when legacy nodes/edges schema is used", () => {
+    expect(() =>
+      build({
+        name: "LegacyGraph",
+        nodes: [{ name: "N", source: "p.d.N", keys: ["id"] }],
+      }),
+    ).to.throw(
+      "Legacy property graph schema ('nodes'/'edges') is no longer supported; migrate to Semantic Ontology V1 ('version: 0.2.0.dev0/google' and 'semantic_model').",
+    );
+  });
+
+  test("errors when entity, relationship, field, or metric name is not a valid identifier", () => {
+    expect(() =>
+      build(
+        makeModelConfig({
+          name: "G",
+          entities: [{ name: "Bad Name", source: "p.d.A", primary_key: ["id"] }],
+        }),
+      ),
+    ).to.throw(
+      "Property graph 'G': entity name 'Bad Name' must be a valid identifier (letters, digits, and underscores, starting with a letter or underscore).",
+    );
+  });
+
+  test("errors when deployments has more than 1 entry or an invalid target URI", () => {
+    expect(() =>
+      build(
+        makeModelConfig({
+          name: "G",
+          deployments: [
+            {
+              name: "d1",
+              target: "bigquery.googleapis.com/projects/p/datasets/d/propertyGraphs/G",
+            },
+            {
+              name: "d2",
+              target: "bigquery.googleapis.com/projects/p/datasets/d/propertyGraphs/G",
+            },
+          ],
+          entities: [{ name: "A", source: "p.d.A", primary_key: ["id"] }],
+        }),
+      ),
+    ).to.throw("Property graph 'G': at most one deployment is supported in V1 (found 2).");
+
+    expect(() =>
+      build(
+        makeModelConfig({
+          name: "G",
+          deployments: [{ name: "d1", target: "invalid://uri" }],
+          entities: [{ name: "A", source: "p.d.A", primary_key: ["id"] }],
+        }),
+      ),
+    ).to.throw(
+      "Property graph 'G': deployment 'target' must match 'bigquery.googleapis.com/projects/<project>/datasets/<dataset>/propertyGraphs/<graph>' (got 'invalid://uri').",
+    );
+  });
+
+  test("rejects array source.ref, source object missing ref, or extra properties on source", () => {
+    expect(() =>
+      build(
+        makeModelConfig({
+          name: "G",
+          entities: [{ name: "A", source: { ref: ["bad"] }, primary_key: ["id"] }],
+        }),
+      ),
+    ).to.throw("Property graph 'G': entity 'A': 'source.ref' must include a 'name'.");
+
+    expect(() =>
+      build(
+        makeModelConfig({
+          name: "G",
+          entities: [
+            {
+              name: "A",
+              source: { name: "accounts", schema: "other_schema" },
+              primary_key: ["id"],
+            },
+          ],
+        }),
+      ),
+    ).to.throw("'source' object must contain a 'ref' property.");
+
+    expect(() =>
+      build(
+        makeModelConfig({
+          name: "G",
+          entities: [
+            { name: "A", source: { ref: "accounts", schema: "other_schema" }, primary_key: ["id"] },
+          ],
+        }),
+      ),
+    ).to.throw(
+      "Unexpected property 'schema' in 'source' (only 'ref' is allowed; nest target properties inside 'source.ref').",
+    );
+  });
+
+  test("passes arbitrary SQL expressions (including qualified names, ratios, literals, and backticks) as-is into field and metric DDL", () => {
+    const compiled = compile(
+      makeModelConfig({
+        name: "G",
+        entities: [
+          {
+            name: "Account",
+            source: "bigquery:p.d.accounts",
+            primary_key: ["id"],
+            fields: [
+              "id",
+              {
+                name: "dotted_col",
+                expression: "`Account.id`",
+              },
+              {
+                name: "sub_country",
+                expression: "`sub-account`.country",
+              },
+              {
+                name: "prefixed_col",
+                expression: "Account.name",
+              },
+            ],
+          },
+          {
+            name: "Customer",
+            source: "bigquery:p.d.customers",
+            primary_key: ["id"],
+            fields: ["id"],
+          },
+        ],
+        metrics: [
+          {
+            name: "cnt_one",
+            entity: "Customer",
+            expression: "COUNT(1)",
+          },
+          {
+            name: "sub_account_cnt",
+            entity: "Customer",
+            expression: "COUNT(`sub-account`.country)",
+          },
+          {
+            name: "avg_ratio",
+            entity: "Customer",
+            expression: "SUM(x) / COUNT(y)",
+          },
+        ],
+      }),
+    );
+
+    expect(compiled.graphBody).equals(
+      "NODE TABLES (\n" +
+        "  `p.d.accounts` AS Account KEY (id) PROPERTIES (" +
+        "id, `Account.id` AS dotted_col, `sub-account`.country AS sub_country, Account.name AS prefixed_col" +
+        "),\n" +
+        "  `p.d.customers` AS Customer KEY (id) PROPERTIES (" +
+        "id, MEASURE(COUNT(1)) AS cnt_one, MEASURE(COUNT(`sub-account`.country)) AS sub_account_cnt, MEASURE(SUM(x) / COUNT(y)) AS avg_ratio" +
+        ")\n" +
+        ")",
+    );
+  });
+
+  test("accepts datasets as an alias for entities and rejects specifying both", () => {
+    const compiled = compile(
+      makeModelConfig({
+        name: "DatasetAliasGraph",
+        datasets: [
+          {
+            name: "Process",
+            source: "bigquery:p.d.processes",
+            primary_key: ["process_id"],
+            fields: ["process_id"],
+          },
+        ],
+      }),
+    );
+
+    expect(compiled.graphBody).equals(
+      "NODE TABLES (\n  `p.d.processes` AS Process KEY (process_id) PROPERTIES (process_id)\n)",
+    );
+
+    expect(() =>
+      build(
+        makeModelConfig({
+          name: "BothGraph",
+          entities: [{ name: "A", source: "p.d.A", primary_key: ["id"] }],
+          datasets: [{ name: "B", source: "p.d.B", primary_key: ["id"] }],
+        }),
+      ),
+    ).to.throw("Cannot specify both 'entities' and 'datasets' in the same semantic_model.");
+  });
+
+  test("errors when field or metric expression is a multi-dialect object in V1", () => {
+    expect(() =>
+      build(
+        makeModelConfig({
+          name: "G",
+          entities: [
+            {
+              name: "Process",
+              source: "p.d.processes",
+              primary_key: ["process_id"],
+              fields: [
+                {
+                  name: "process_name",
+                  expression: {
+                    dialects: [{ dialect: "BIGQUERY", expression: "LOWER(name)" }],
+                  },
+                },
+              ],
+            },
+          ],
+        }),
+      ),
+    ).to.throw(
+      "Property graph 'G': entity 'Process': field 'process_name': 'expression' must be a string; multi-dialect 'dialects' objects are not supported in V1.",
+    );
+
+    expect(() =>
+      build(
+        makeModelConfig({
+          name: "G",
+          entities: [
+            {
+              name: "Process",
+              source: "p.d.processes",
+              primary_key: ["process_id"],
+              fields: [{ name: "process_id" }],
+            },
+          ],
+          metrics: [
+            {
+              name: "process_count",
+              entity: "Process",
+              expression: {
+                dialects: [{ dialect: "BIGQUERY", expression: "COUNT(process_id)" }],
+              },
+            },
+          ],
+        }),
+      ),
+    ).to.throw(
+      "Property graph 'G': metric 'process_count': 'expression' must be a string; multi-dialect 'dialects' objects are not supported in V1.",
+    );
   });
 });
