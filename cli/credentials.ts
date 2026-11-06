@@ -1,6 +1,6 @@
 import * as fs from "fs";
 
-import { question, selectionQuestion } from "df/cli/console";
+import { printWarning, question, selectionQuestion } from "df/cli/console";
 import { actuallyResolve } from "df/cli/util";
 import { dataform } from "df/protos/ts";
 
@@ -16,10 +16,22 @@ export function getBigQueryCredentials(
     "US (default)",
     "EU",
     "other",
+    "auto (let BigQuery choose dynamically)",
   ]);
-  let location = locationIndex === 0 ? "US" : "EU";
-  if (locationIndex === 2) {
-    location = prompts.question("Enter the location's region name (e.g. 'asia-south1'):");
+  let location: string | undefined;
+  if (locationIndex === 0) {
+    location = "US";
+  } else if (locationIndex === 1) {
+    location = "EU";
+  } else if (locationIndex === 2) {
+    location = prompts.question("Enter the location's region name (e.g. 'asia-south1'):").trim();
+    if (!location) {
+      printWarning("Note: location's region name not provided; setting to auto");
+      location = undefined;
+    }
+  } else {
+    // For "auto", location is left undefined so BigQuery picks it per query.
+    location = undefined;
   }
   const isApplicationDefaultOrJSONKeyIndex = prompts.selectionQuestion(
     "Do you wish to use Application Default Credentials or JSON Key:",
