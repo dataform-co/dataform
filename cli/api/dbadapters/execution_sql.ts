@@ -1,7 +1,7 @@
 import * as semver from "semver";
 
 import { Task, Tasks } from "df/cli/api/dbadapters/tasks";
-import { concatenateQueries } from "df/cli/api/utils/query_transforms";
+import { concatenateQueries, terminateStatements } from "df/cli/api/utils/query_transforms";
 import { ErrorWithCause } from "df/common/errors/errors";
 import { CompilationSql } from "df/core/compilation_sql";
 import { tableTypeEnumToString } from "df/core/utils";
@@ -472,11 +472,6 @@ DROP TABLE IF EXISTS ${emptyTempTableName};
     `;
   }
 
-  private terminateStatements(statements: string[]): string {
-    const joined = concatenateQueries([...statements, "DUMMY"]);
-    return joined === "DUMMY" ? "" : joined.slice(0, -"\nDUMMY".length);
-  }
-
   private incrementalSchemaChangeBody(
     table: dataform.ITable,
     qualifiedTargetTableName: string,
@@ -496,8 +491,8 @@ DROP TABLE IF EXISTS ${emptyTempTableName};
       this.cleanupSql(emptyTempTableName),
     ].join("\n\n");
 
-    const preOpsSql = this.terminateStatements(preOpTasks.map((t) => t.getStatement()));
-    const postOpsSql = this.terminateStatements(postOpTasks.map((t) => t.getStatement()));
+    const preOpsSql = terminateStatements(preOpTasks.map((t) => t.getStatement()));
+    const postOpsSql = terminateStatements(postOpTasks.map((t) => t.getStatement()));
 
     const bodyParts: string[] = [];
     if (preOpsSql) {

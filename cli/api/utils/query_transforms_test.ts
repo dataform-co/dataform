@@ -2,6 +2,7 @@ import { expect } from "chai";
 
 import {
   concatenateQueries,
+  terminateStatements,
   wrapWithCreateSchemaIfNotExists,
 } from "df/cli/api/utils/query_transforms";
 import { suite, test } from "df/testing";
@@ -208,5 +209,21 @@ suite("wrapWithCreateSchemaIfNotExists", () => {
     expect(wrapWithCreateSchemaIfNotExists(undefined, "dataset", "SELECT 1;")).equals(
       "create schema if not exists `dataset`;\nbegin\nSELECT 1;\nend;",
     );
+  });
+});
+
+suite("terminateStatements", () => {
+  test("terminates every statement including the last one", () => {
+    expect(terminateStatements(["SELECT 1", "SELECT 2"])).equals("SELECT 1;\nSELECT 2;");
+  });
+
+  test("places semicolons before trailing comments and skips empty statements", () => {
+    expect(terminateStatements(["  SELECT 1 -- comment  ", "", "SELECT 2;"])).equals(
+      "SELECT 1; -- comment\nSELECT 2;",
+    );
+  });
+
+  test("returns empty string for empty input", () => {
+    expect(terminateStatements([])).equals("");
   });
 });
