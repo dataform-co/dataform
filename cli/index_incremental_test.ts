@@ -38,7 +38,10 @@ integrationSuite("incremental", ({ afterEach }) => {
 
     beforeEach("setup test project", async () => {
       projectDir = tmpDirFixture.createNewTmpDir();
-      await setupProject(tmpDirFixture, projectDir, { defaultDataset: uniqueDataset });
+      await setupProject(tmpDirFixture, projectDir, {
+        defaultDataset: uniqueDataset,
+        defaultAssertionDataset: uniqueDataset,
+      });
     });
 
     test(
@@ -120,7 +123,7 @@ config {
           projectConfig: {
             warehouse: "bigquery",
             defaultSchema: uniqueDataset,
-            assertionSchema: "dataform_assertions",
+            assertionSchema: uniqueDataset,
             defaultDatabase: INTEGRATION_TEST_PROJECT,
             defaultLocation: INTEGRATION_TEST_LOCATION,
           },
