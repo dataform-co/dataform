@@ -235,11 +235,7 @@ WHERE id != 1 OR field2 IS NULL OR field2 != 'synced'
         ).equals(0);
 
         // Execute SYNCHRONIZE live against BigQuery (drops field1, adds field2) and verify result.
-        const syncRunResult = await runCli("run", [
-          projectDir,
-          "--credentials",
-          CREDENTIALS_PATH,
-        ]);
+        const syncRunResult = await runCli("run", [projectDir, "--credentials", CREDENTIALS_PATH]);
         expect(
           syncRunResult.exitCode,
           `stdout:\n${syncRunResult.stdout}\nstderr:\n${syncRunResult.stderr}`,
