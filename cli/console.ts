@@ -2,7 +2,12 @@ import * as readlineSync from "readline-sync";
 
 import { IInitResult } from "df/cli/api/commands/init";
 import { prettyJsonStringify } from "df/cli/api/utils";
-import { formatBytesInHumanReadableFormat, formatExecutionSuffix } from "df/cli/util";
+import {
+  formatBytesInHumanReadableFormat,
+  formatDatasetWarehouseState,
+  formatExecutionSuffix,
+} from "df/cli/util";
+import { targetStringifier } from "df/core/targets";
 import { setOrValidateTableEnumType, tableTypeEnumToString } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
@@ -319,6 +324,13 @@ export function printExecutionGraph(executionGraph: dataform.ExecutionGraph, asJ
   if (asJson) {
     writeStdOut(prettyJsonStringify(executionGraph.toJSON()));
   } else {
+    const tableMetadataByTarget = new Map<string, dataform.ITableMetadata>();
+    executionGraph.warehouseState?.tables?.forEach((tableMetadata) => {
+      if (tableMetadata.target) {
+        tableMetadataByTarget.set(targetStringifier.stringify(tableMetadata.target), tableMetadata);
+      }
+    });
+
     const actionsByType = {
       table: [] as dataform.IExecutionAction[],
       assertion: [] as dataform.IExecutionAction[],
@@ -339,12 +351,20 @@ export function printExecutionGraph(executionGraph: dataform.ExecutionGraph, asJ
     const datasetActions = actionsByType.table;
     if (datasetActions && datasetActions.length) {
       writeStdOut(`${datasetActions.length} dataset(s):`);
-      datasetActions.forEach((datasetAction) =>
+      datasetActions.forEach((datasetAction) => {
+        const tableMetadata = datasetAction.target
+          ? tableMetadataByTarget.get(targetStringifier.stringify(datasetAction.target))
+          : undefined;
+        const datasetType = datasetAction.tableType || datasetAction.type;
         writeStdOut(
-          datasetString(datasetAction.target, datasetAction.type, datasetAction.tasks.length === 0),
+          `${datasetString(
+            datasetAction.target,
+            datasetType,
+            datasetAction.tasks.length === 0,
+          )} ${formatDatasetWarehouseState(datasetType, tableMetadata)}`,
           1,
-        ),
-      );
+        );
+      });
     }
     const assertionActions = actionsByType.assertion;
     if (assertionActions && assertionActions.length) {

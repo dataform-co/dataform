@@ -10,11 +10,13 @@ import { prettyJsonStringify } from "df/cli/api/utils";
 import { buildDryRunValidationQueries } from "df/cli/api/utils/dry_run_validation";
 import {
   dryRunOption,
+  executionGraphOption,
   executionTimeoutOption,
   IRunArgs,
   runOptions,
+  runTestsOption,
 } from "df/cli/commands/run_options";
-import { assertProjectDirExists, jsonOutputOption, projectDirOption } from "df/cli/common_options";
+import { assertProjectDirExists, projectDirOption } from "df/cli/common_options";
 import {
   Logger,
   print,
@@ -61,17 +63,21 @@ export const runCommand: ICommand<IRunArgs> = {
   check: [assertProjectDirExists],
   options: runOptions,
   processFn: async (argv) => {
-    const isJsonOutput = argv.json;
-    const logger = new Logger(!isJsonOutput);
+    const logger = new Logger(!argv.json);
 
-    if (isJsonOutput && !argv.dryRun) {
-      printError(
-        `For execution, the --${jsonOutputOption.name} option is only supported if the ` +
-          `--${dryRunOption.name} option is enabled`,
+    if (argv.executionGraph && argv.dryRun) {
+      printWarning(
+        `Note: --${dryRunOption.name} is ignored because --${executionGraphOption.name} is set`,
       );
-      return 1;
     }
-    if (!isJsonOutput && argv.timeout != null && argv.executionTimeout == null) {
+
+    if (argv.executionGraph && argv.runTests) {
+      printWarning(
+        `Note: --${runTestsOption.name} is ignored because --${executionGraphOption.name} is set`,
+      );
+    }
+
+    if (argv.timeout != null && argv.executionTimeout == null) {
       printWarning(
         "Note: --timeout only bounds project compilation. " +
           "For a whole-run wall-clock deadline, use --execution-timeout.\n",
@@ -94,7 +100,6 @@ export const runCommand: ICommand<IRunArgs> = {
     const readCredentials = credentials.read(actuallyResolve(argv.projectDir, argv.credentials));
     const defaultLocation = compiledGraph.projectConfig?.defaultLocation ?? undefined;
     if (
-      !isJsonOutput &&
       defaultLocation &&
       readCredentials.location &&
       defaultLocation.toLowerCase() !== readCredentials.location.toLowerCase()
@@ -132,23 +137,27 @@ export const runCommand: ICommand<IRunArgs> = {
       return 1;
     }
 
-    if (
-      argv.dryRun &&
-      isJsonOutput &&
-      // Skip the early graph print when JiT actions are present: their compiled
-      // SQL is only produced once the Runner triggers JiT compilation, so falling
-      // through ensures the JSON dry-run output includes the generated SQL rather
-      // than the raw jitCode.
-      !executionGraph.actions.some((action) => !!action.jitCode)
-    ) {
-      printExecutionGraph(executionGraph, isJsonOutput);
+    if (argv.executionGraph) {
+      if (executionGraph.actions.some((action) => !!action.jitCode)) {
+        printWarning(`Note: with --${executionGraphOption.name}, JiT actions are not compiled`);
+      }
+      printExecutionGraph(executionGraph, argv.json);
       return 0;
     }
 
     if (argv.runTests) {
       logger.log(`Running ${compiledGraph.tests.length} unit tests...\n`);
       const testResults = await test(dbadapter, compiledGraph.tests, argv.jobLabels);
-      testResults.forEach((testResult) => printTestResult(testResult));
+      if (!argv.json) {
+        testResults.forEach((testResult) => printTestResult(testResult));
+      } else {
+        testResults
+          .filter((testResult) => !testResult.successful)
+          .forEach((testResult) => {
+            printError(`${testResult.name}: failed`);
+            testResult.messages?.forEach((message) => printError(message, 1));
+          });
+      }
       if (testResults.some((testResult) => !testResult.successful)) {
         printError("\nUnit tests did not pass; aborting run.");
         return 1;
@@ -175,7 +184,16 @@ export const runCommand: ICommand<IRunArgs> = {
     });
 
     if (actionsByName.size === 0) {
-      logger.log("No actions to run.\n");
+      if (argv.json) {
+        print(
+          prettyJsonStringify({
+            status: dataform.RunResult.ExecutionStatus.SUCCESSFUL,
+            actions: [],
+          }),
+        );
+      } else {
+        logger.log("No actions to run.\n");
+      }
       return 0;
     }
 
@@ -225,20 +243,17 @@ export const runCommand: ICommand<IRunArgs> = {
         });
     };
 
-    if (!isJsonOutput) {
+    if (!argv.json) {
       runner.onChange(printExecutedGraph);
     }
     const runResult = await runner.result();
     if (lineageEmitter) {
       await lineageEmitter.drain(LINEAGE_DRAIN_TIMEOUT_MS);
     }
-    if (!isJsonOutput) {
-      printExecutedGraph(runResult);
-    }
-    if (isJsonOutput) {
+    if (argv.json) {
       print(prettyJsonStringify(runResult));
-    }
-    if (!isJsonOutput) {
+    } else {
+      printExecutedGraph(runResult);
       if (runResult.status === dataform.RunResult.ExecutionStatus.TIMED_OUT) {
         const executionTimeoutMillis = argv.executionTimeout;
         const suffix = executionTimeoutMillis
