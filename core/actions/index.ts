@@ -137,24 +137,29 @@ export abstract class ActionBuilder<T> {
         inlineAssertions.uniqueKeyAssertions.push(uniqueKeyAssertion);
       });
     }
-    const mergedRowConditions = tableAssertionsConfig.rowConditions || [];
+    const rowConditions = tableAssertionsConfig.rowConditions || [];
+    const nonNullConditions: string[] = [];
     if (!!tableAssertionsConfig.nonNull) {
       const nonNullCols =
         typeof tableAssertionsConfig.nonNull === "string"
           ? [tableAssertionsConfig.nonNull]
           : tableAssertionsConfig.nonNull;
-      nonNullCols.forEach((nonNullCol) => mergedRowConditions.push(`${nonNullCol} IS NOT NULL`));
+      nonNullCols.forEach((nonNullCol) => nonNullConditions.push(`${nonNullCol} IS NOT NULL`));
     }
-    if (!!mergedRowConditions && mergedRowConditions.length > 0) {
+    if (rowConditions.length > 0 || nonNullConditions.length > 0) {
       inlineAssertions.rowConditionsAssertion = this.session
         .assert(
           `${assertionPrefix}${proto.target.schema}_${proto.target.name}_assertions_rowConditions`,
           dataform.ActionConfig.AssertionConfig.create({ filename: proto.fileName, jobLabels }),
         )
+        // Merge at compilation time to retain later additions without modifying the user's array.
         .query((ctx) =>
           this.session
             .compilationSql()
-            .rowConditionsAssertion(ctx.ref(proto.target), mergedRowConditions),
+            .rowConditionsAssertion(ctx.ref(proto.target), [
+              ...rowConditions,
+              ...nonNullConditions,
+            ]),
         );
       inlineAssertions.rowConditionsAssertion.setParentAction(dataform.Target.create(proto.target));
       if (proto.disabled) {

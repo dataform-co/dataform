@@ -15,8 +15,14 @@ export class CompilationSql {
   }
 
   public sqlString(stringContents: string) {
-    // Escape escape characters, then escape single quotes, then wrap the string in single quotes.
-    return `'${stringContents.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`;
+    // Escape backslashes first (so the escapes added below are not doubled), then single quotes,
+    // then line breaks, and wrap the result in single quotes. BigQuery single-quoted literals
+    // cannot span lines; "\n" / "\r" escapes parse back to the original characters.
+    return `'${stringContents
+      .replace(/\\/g, "\\\\")
+      .replace(/'/g, "\\'")
+      .replace(/\n/g, "\\n")
+      .replace(/\r/g, "\\r")}'`;
   }
 
   public indexAssertion(dataset: string, indexCols: string[]) {
@@ -43,7 +49,8 @@ SELECT
   ${this.sqlString(rowCondition)} AS failing_row_condition,
   *
 FROM ${dataset}
-WHERE NOT (${rowCondition})
+WHERE NOT (${rowCondition}
+)
 `,
       )
       .join(`UNION ALL`);

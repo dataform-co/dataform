@@ -308,7 +308,7 @@ actions:
                 schema: "defaultDataset",
               },
               query:
-                "\nSELECT\n  'id > 0' AS failing_row_condition,\n  *\nFROM `defaultProject.defaultDataset.test`\nWHERE NOT (id > 0)\nUNION ALL\nSELECT\n  'name IS NOT NULL' AS failing_row_condition,\n  *\nFROM `defaultProject.defaultDataset.test`\nWHERE NOT (name IS NOT NULL)\n",
+                "\nSELECT\n  'id > 0' AS failing_row_condition,\n  *\nFROM `defaultProject.defaultDataset.test`\nWHERE NOT (id > 0\n)\nUNION ALL\nSELECT\n  'name IS NOT NULL' AS failing_row_condition,\n  *\nFROM `defaultProject.defaultDataset.test`\nWHERE NOT (name IS NOT NULL\n)\n",
               target: {
                 database: "defaultProject",
                 name: "defaultDataset_test_assertions_rowConditions",
@@ -320,6 +320,154 @@ actions:
         expect(result.compile.compiledGraph.tables.length).equals(1);
       });
     });
+  });
+
+  suite("rowConditions SQL generation", () => {
+    const compileRowConditionsQuery = (rowConditionsSource: string) => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
+      writeDefinitionFile(
+        projectDir,
+        "test.sqlx",
+        `config {
+  type: "table",
+  assertions: {
+    rowConditions: [${rowConditionsSource}]
+  }
+}
+SELECT 1 AS a, 1 AS b`,
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      return result.compile.compiledGraph.assertions.find(
+        (assertion) => assertion.target.name === "defaultDataset_test_assertions_rowConditions",
+      ).query;
+    };
+
+    test("multiline conditions produce single-line failing_row_condition literals", () => {
+      // Regression test for #2201: BigQuery rejects single-quoted literals that span lines.
+      const query = compileRowConditionsQuery("`a > 0\n  AND b > 0`");
+
+      expect(query).contains("'a > 0\\n  AND b > 0' AS failing_row_condition");
+      // The WHERE clause keeps the condition exactly as authored.
+      expect(query).contains("WHERE NOT (a > 0\n  AND b > 0\n)");
+    });
+
+    test("carriage returns, quotes and backslashes are escaped in the literal", () => {
+      const condition = "CAST(a AS STRING) = r'x\\y'\r\nOR b > 0";
+      const query = compileRowConditionsQuery(JSON.stringify(condition));
+
+      expect(query).contains(
+        String.raw`'CAST(a AS STRING) = r\'x\\y\'\r\nOR b > 0' AS failing_row_condition`,
+      );
+      expect(query).contains(`WHERE NOT (${condition}\n)`);
+    });
+
+    test("trailing line comments do not swallow the closing parenthesis", () => {
+      const query = compileRowConditionsQuery(
+        `"a > 0 -- must be positive", "b > 0 # hash comment"`,
+      );
+
+      expect(query).contains("WHERE NOT (a > 0 -- must be positive\n)");
+      expect(query).contains("WHERE NOT (b > 0 # hash comment\n)");
+    });
+
+    test("actions.yaml block scalar conditions compile to valid SQL", () => {
+      // Plain YAML "|" preserves the final newline, so even a one-line condition hit #2201.
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
+      writeDefinitionFile(projectDir, "test.sql", "SELECT 1 AS a");
+      writeDefinitionFile(
+        projectDir,
+        "actions.yaml",
+        `
+actions:
+- table:
+    filename: test.sql
+    assertions:
+      rowConditions:
+        - |
+          a > 0 -- must be positive
+`,
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      const query = result.compile.compiledGraph.assertions.find(
+        (assertion) => assertion.target.name === "defaultDataset_test_assertions_rowConditions",
+      ).query;
+      expect(query).contains("'a > 0 -- must be positive\\n' AS failing_row_condition");
+      expect(query).contains("WHERE NOT (a > 0 -- must be positive\n\n)");
+    });
+
+    test("nonNull does not modify a rowConditions array shared between actions", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
+      writeDefinitionFile(
+        projectDir,
+        "tables.js",
+        `
+const sharedRowConditions = ["a > 0"];
+publish("t1", { type: "table", assertions: { rowConditions: sharedRowConditions, nonNull: ["id"] } })
+  .query("SELECT 1 AS a, 1 AS id");
+publish("t2", { type: "table", assertions: { rowConditions: sharedRowConditions, nonNull: ["id"] } })
+  .query("SELECT 1 AS a, 1 AS id");
+publish("t3", { type: "table", assertions: { rowConditions: sharedRowConditions } })
+  .query("SELECT 1 AS a");
+`,
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      const failingRowConditions = (tableName: string) =>
+        result.compile.compiledGraph.assertions
+          .find(
+            (assertion) =>
+              assertion.target.name === `defaultDataset_${tableName}_assertions_rowConditions`,
+          )
+          .query.match(/'[^']*' AS failing_row_condition/g);
+      const expectedWithNonNull = [
+        "'a > 0' AS failing_row_condition",
+        "'id IS NOT NULL' AS failing_row_condition",
+      ];
+      expect(failingRowConditions("t1")).deep.equals(expectedWithNonNull);
+      expect(failingRowConditions("t2")).deep.equals(expectedWithNonNull);
+      expect(failingRowConditions("t3")).deep.equals(["'a > 0' AS failing_row_condition"]);
+    });
+
+    for (const nonNull of [[], ["id"]]) {
+      test(`conditions appended after registration are retained with nonNull ${JSON.stringify(nonNull)}`, () => {
+        const projectDir = tmpDirFixture.createNewTmpDir();
+        writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
+        writeDefinitionFile(
+          projectDir,
+          "table.js",
+          `
+const rowConditions = ["a > 0"];
+publish("test", { type: "table", assertions: { rowConditions, nonNull: ${JSON.stringify(nonNull)} } })
+  .query("SELECT 1 AS a, 1 AS b, 1 AS id");
+rowConditions.push("b > 0");
+`,
+        );
+
+        const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+        expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+        const query = result.compile.compiledGraph.assertions.find(
+          (assertion) => assertion.target.name === "defaultDataset_test_assertions_rowConditions",
+        ).query;
+        expect(query.match(/'[^']*' AS failing_row_condition/g)).deep.equals([
+          "'a > 0' AS failing_row_condition",
+          "'b > 0' AS failing_row_condition",
+          ...nonNull.map((column) => `'${column} IS NOT NULL' AS failing_row_condition`),
+        ]);
+        expect(query).contains("WHERE NOT (b > 0\n)");
+      });
+    }
   });
 
   test("JS assert().description() preserves jobLabels and reservation on actionDescriptor", () => {
