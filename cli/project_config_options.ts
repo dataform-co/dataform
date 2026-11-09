@@ -32,6 +32,7 @@ export class ProjectConfigOptions {
     option: {
       describe:
         "Override for the default schema name. If unset, the value from workflow_settings.yaml is used.",
+      type: "string",
     },
   };
 
@@ -42,6 +43,7 @@ export class ProjectConfigOptions {
         "The default location to use. See " +
         "https://cloud.google.com/bigquery/docs/locations for supported values. If unset, the " +
         "value from workflow_settings.yaml is used.",
+      type: "string",
     },
   };
 
@@ -50,6 +52,7 @@ export class ProjectConfigOptions {
     option: {
       describe:
         "Default assertion schema. If unset, the value from workflow_settings.yaml is used.",
+      type: "string",
     },
   };
 
@@ -58,6 +61,7 @@ export class ProjectConfigOptions {
     option: {
       describe:
         "A suffix to be appended to output database names. If unset, the value from workflow_settings.yaml is used.",
+      type: "string",
     },
   };
 
@@ -65,8 +69,9 @@ export class ProjectConfigOptions {
     name: "vars",
     option: {
       describe:
-        "Override for variables to inject via '--vars=someKey=someValue,a=b', referenced by " +
-        "`dataform.projectConfig.vars.someValue`.  If unset, the value from workflow_settings.yaml is used.",
+        "Variables to inject, as comma-separated key=value pairs (e.g. --vars=env=staging,region=eu), " +
+        "referenced in code via dataform.projectConfig.vars.<key>. If unset, the value from " +
+        "workflow_settings.yaml is used.",
       type: "string",
       default: null,
       coerce: (rawVarsString: string | null) => {
@@ -84,8 +89,9 @@ export class ProjectConfigOptions {
     name: "schema-suffix",
     option: {
       describe:
-        "A suffix to be appended to output schema names. If unset, the value from workflow_settings.yaml " +
-        "is used.",
+        "A suffix to be appended to output schema names. Must contain only alphanumeric characters " +
+        "and/or underscores. If unset, the value from workflow_settings.yaml is used.",
+      type: "string",
     },
     check: (argv: yargs.Arguments<IProjectConfigArgs>) => {
       if (argv.schemaSuffix && !/^[a-zA-Z_0-9]+$/.test(argv.schemaSuffix)) {
@@ -102,6 +108,7 @@ export class ProjectConfigOptions {
     option: {
       describe:
         "Adds a prefix for all table names. If unset, the value from workflow_settings.yaml is used.",
+      type: "string",
     },
   };
 

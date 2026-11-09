@@ -27,7 +27,7 @@ rm -rf newdocs
 # docker run --rm \
 #     -v $(pwd)/docs:/out \
 #     -v $(pwd)/protos:/protos \
-#     pseudomuto/protoc-gen-doc configs.proto --doc_opt=markdown,configs-reference.md::camel_case_fields=true
+#     pseudomuto/protoc-gen-doc configs.proto property_graph_config.proto --doc_opt=markdown,configs-reference.md::camel_case_fields=true
 
 echo ERROR: Generating docs with camel casing requires https://github.com/pseudomuto/protoc-gen-doc/pull/540 to be merged.
 echo Until this is merged, the updated image with camel casing can be built from the fork before running the above script.

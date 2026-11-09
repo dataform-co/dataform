@@ -12,6 +12,7 @@ export interface IEmitterOptions {
   lineageEnabled?: boolean;
   dryRun?: boolean;
   projectDir?: string;
+  location?: string;
 }
 
 /**
@@ -193,7 +194,14 @@ export class LineageEmitter {
     actionResult: dataform.IActionResult,
   ): Promise<void> {
     const projectId = action.target.database || this.credentials.projectId;
-    const location = (this.credentials.location || "US").toLowerCase();
+    const configuredLocation = this.emitterOptions.location || this.credentials.location;
+    if (!configuredLocation) {
+      throw new Error(
+        'Lineage location is not set: specify either "defaultLocation" in workflow_settings.yaml ' +
+          'or "location" in .df-credentials.json.',
+      );
+    }
+    const location = configuredLocation.toLowerCase();
     const parent = `projects/${projectId}/locations/${location}`;
 
     const openLineagePayload = this.payloadBuilder.build(
@@ -285,7 +293,7 @@ export class LineageEmitter {
           if (!this.emissionDisabledThisRun) {
             this.emissionDisabledThisRun = true;
             this.stderr.write(
-              `[lineage] Skipped lineage emission for the rest of this run: skip_reason=api_disabled (ensure the credential has 'datalineage.googleapis.com/locations.processOpenLineageMessage' OR that the Lineage API is enabled in project ${projectId} via 'gcloud services enable datalineage.googleapis.com')\n`,
+              `[lineage] Skipped lineage emission for the rest of this run: skip_reason=api_disabled (ensure the credential has 'datalineage.locations.processOpenLineageMessage' OR that the Lineage API is enabled in project ${projectId} via 'gcloud services enable datalineage.googleapis.com')\n`,
             );
           }
           return;

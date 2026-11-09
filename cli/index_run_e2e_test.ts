@@ -1,6 +1,5 @@
 import { expect } from "chai";
 import * as fs from "fs-extra";
-import { dump as dumpYaml, load as loadYaml } from "js-yaml";
 import * as path from "path";
 
 import * as dfapi from "df/cli/api";
@@ -17,11 +16,11 @@ import {
 import { version } from "df/core/version";
 import { suite, test, writeDefinitionFile } from "df/testing";
 import { dropDatasets, dropStaleDatasets, makeUniqueSuffix } from "df/testing/bigquery";
-import { integrationSuite, readTestCredentialsConfig } from "df/testing/credentials";
+import { integrationSuite } from "df/testing/credentials";
 import { TmpDirFixture } from "df/testing/fixtures";
 
 const ON_SCHEMA_CHANGE_DATASET = "dataform_e2e_osc";
-const LOCATION_RESOLUTION_DATASET = "dataform_e2e_loc";
+const OPERATIONS_DATASET = "dataform_e2e_ops";
 
 integrationSuite("run e2e", ({ afterEach }) => {
   const tmpDirFixture = new TmpDirFixture(afterEach);
@@ -458,6 +457,8 @@ select 2
 config { 
   type: "operations"
 }
+-- Operations without an output don't get their dataset created by Dataform.
+CREATE SCHEMA IF NOT EXISTS \`\${dataform.projectConfig.defaultDatabase}.\${dataform.projectConfig.defaultSchema}\`;
 CREATE OR REPLACE TABLE \`\${dataform.projectConfig.defaultDatabase}.\${dataform.projectConfig.defaultSchema}.example_incremental\` AS SELECT 1 AS id, 'old' AS field1
 `,
       );
@@ -491,8 +492,7 @@ DROP SCHEMA IF EXISTS \`\${dataform.projectConfig.defaultDatabase}.\${dataform.p
       { timeout: 120000 },
       async () => {
         try {
-          // Run setup operation to create the table in BigQuery.
-          // Dataform will automatically create the uniqueDataset schema.
+          // Run setup operation to create the uniqueDataset schema and the table in BigQuery.
           await runCli("run", [
             projectDir,
             "--credentials",
@@ -570,143 +570,51 @@ DROP SCHEMA IF EXISTS \`\${dataform.projectConfig.defaultDatabase}.\${dataform.p
     );
   });
 
-  suite("location resolution", ({ before, beforeEach, afterEach: suiteAfterEach }) => {
-    // The expected location is never "US", which is the hardcoded fallback used when no location
-    // is set anywhere, so the tests can't pass by accident.
-    const EXPECTED_LOCATION = "EU";
-    const OTHER_LOCATION = "US";
-    const ALL_LOCATIONS = [EXPECTED_LOCATION, OTHER_LOCATION];
-
+  suite("operations", ({ before, after }) => {
     const dbadapter = new BigQueryDbAdapter(dfapi.credentials.read(CREDENTIALS_PATH));
-    const executorInLocation = (location: string) => ({
-      execute: (statement: string) => dbadapter.execute(statement, { bigquery: { location } }),
-    });
-
-    let datasetsToDrop: string[];
+    const uniqueDataset = `${OPERATIONS_DATASET}_${makeUniqueSuffix()}`;
 
     before("drop stale datasets", async () => {
-      for (const location of ALL_LOCATIONS) {
-        await dropStaleDatasets(executorInLocation(location), {
-          project: INTEGRATION_TEST_PROJECT,
-          location,
-          prefixes: [LOCATION_RESOLUTION_DATASET],
-        });
-      }
+      await dropStaleDatasets(dbadapter, {
+        project: INTEGRATION_TEST_PROJECT,
+        location: INTEGRATION_TEST_LOCATION,
+        prefixes: [OPERATIONS_DATASET],
+      });
     });
 
-    beforeEach("reset datasets to drop", () => {
-      datasetsToDrop = [];
+    after("drop datasets", async () => {
+      await dropDatasets(dbadapter, INTEGRATION_TEST_PROJECT, [uniqueDataset]);
     });
 
-    suiteAfterEach("drop datasets", async () => {
-      // A dataset may have ended up in the wrong location if a test failed, so try both.
-      for (const location of ALL_LOCATIONS) {
-        await dropDatasets(executorInLocation(location), INTEGRATION_TEST_PROJECT, datasetsToDrop);
-      }
-    });
-
-    async function setupLocationProject(
-      workflowSettingsLocation: string | undefined,
-    ): Promise<{ projectDir: string; dataset: string }> {
-      const dataset = `${LOCATION_RESOLUTION_DATASET}_${makeUniqueSuffix()}`;
-      datasetsToDrop.push(dataset);
-
+    test("statements separated by --- run as a single script", { timeout: 120000 }, async () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
-      await setupProject(tmpDirFixture, projectDir, { defaultDataset: dataset });
-
-      const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
-      const workflowSettings = loadYaml(fs.readFileSync(workflowSettingsPath, "utf8")) as {
-        [key: string]: any;
-      };
-      if (workflowSettingsLocation) {
-        workflowSettings.defaultLocation = workflowSettingsLocation;
-      } else {
-        delete workflowSettings.defaultLocation;
-      }
-      fs.writeFileSync(workflowSettingsPath, dumpYaml(workflowSettings));
-
+      await setupProject(tmpDirFixture, projectDir, { defaultDataset: uniqueDataset });
+      // The variable declared in the first statement is only visible to the second one if
+      // both run in the same script.
       writeDefinitionFile(
         projectDir,
-        "example.sqlx",
+        "multi_statement_operation.sqlx",
         `
-config { type: "table" }
-SELECT 1 AS id
+config { type: "operations" }
+DECLARE min_id INT64 DEFAULT 0;
+---
+SELECT * FROM (SELECT 1 AS id) WHERE id >= min_id
 `,
       );
-      return { projectDir, dataset };
-    }
 
-    function writeCredentialsWithLocation(location: string): string {
-      const credentialsPath = path.join(tmpDirFixture.createNewTmpDir(), "credentials.json");
-      fs.writeFileSync(
-        credentialsPath,
-        JSON.stringify({ ...readTestCredentialsConfig(CREDENTIALS_PATH), location }),
-      );
-      return credentialsPath;
-    }
-
-    async function runProject(projectDir: string, credentialsPath: string, args: string[] = []) {
       const runResult = await runCli("run", [
         projectDir,
         "--credentials",
-        credentialsPath,
-        ...args,
+        CREDENTIALS_PATH,
+        "--actions=multi_statement_operation",
       ]);
+
       expect(
         runResult.exitCode,
         `stdout:\n${runResult.stdout}\nstderr:\n${runResult.stderr}`,
       ).equals(0);
-    }
-
-    async function expectDatasetLocation(dataset: string, expectedLocation: string) {
-      // INFORMATION_SCHEMA.SCHEMATA only lists datasets in the queried region.
-      const { rows } = await dbadapter.execute(
-        `select location
-         from \`${INTEGRATION_TEST_PROJECT}\`.\`region-${expectedLocation.toLowerCase()}\`.INFORMATION_SCHEMA.SCHEMATA
-         where schema_name = '${dataset}'`,
-        { bigquery: { location: expectedLocation } },
-      );
-      expect(rows.length, `dataset ${dataset} not found in ${expectedLocation}`).equals(1);
-      expect(rows[0].location.toUpperCase()).equals(expectedLocation.toUpperCase());
-    }
-
-    test(
-      "--default-location overrides workflow_settings.yaml and credentials",
-      { timeout: 120000 },
-      async () => {
-        const { projectDir, dataset } = await setupLocationProject(OTHER_LOCATION);
-
-        await runProject(projectDir, writeCredentialsWithLocation(OTHER_LOCATION), [
-          `--default-location=${EXPECTED_LOCATION}`,
-        ]);
-
-        await expectDatasetLocation(dataset, EXPECTED_LOCATION);
-      },
-    );
-
-    test(
-      "workflow_settings.yaml defaultLocation takes precedence over credentials",
-      { timeout: 120000 },
-      async () => {
-        const { projectDir, dataset } = await setupLocationProject(EXPECTED_LOCATION);
-
-        await runProject(projectDir, writeCredentialsWithLocation(OTHER_LOCATION));
-
-        await expectDatasetLocation(dataset, EXPECTED_LOCATION);
-      },
-    );
-
-    test(
-      "falls back to credentials location when not set in arguments or workflow_settings.yaml",
-      { timeout: 120000 },
-      async () => {
-        const { projectDir, dataset } = await setupLocationProject(undefined);
-
-        await runProject(projectDir, writeCredentialsWithLocation(EXPECTED_LOCATION));
-
-        await expectDatasetLocation(dataset, EXPECTED_LOCATION);
-      },
-    );
+      expect(runResult.stdout).to.include("Operation completed successfully");
+    });
   });
 
   suite("run --timeout deprecation", ({ beforeEach }) => {

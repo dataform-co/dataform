@@ -9,6 +9,7 @@ import {
   IActionsArgs,
   IProjectDirArgs,
   projectDirOption,
+  splitCommas,
 } from "df/cli/common_options";
 import { printError, printFormatFilesResult, printSuccess } from "df/cli/console";
 import { ICommand, INamedOption } from "df/cli/yargswrapper";
@@ -21,10 +22,26 @@ export interface IFormatArgs extends IProjectDirArgs, IActionsArgs {
   check: boolean;
 }
 
+// Files formatted when --actions isn't set, with the extensions depending on --ignore-js-files.
+const defaultFormatGlob = (extensions: string) => `{definitions,includes}/**/${extensions}`;
+
+// Shares the --actions flag name with `run`, but here it takes file globs, not action names.
+const formatFilesOption: INamedOption<yargs.Options, IFormatArgs> = {
+  name: actionsOption.name,
+  option: {
+    describe:
+      "Glob patterns of files to format, relative to the project directory (comma-separated or " +
+      "repeatable).",
+    type: "array",
+    coerce: splitCommas,
+  },
+  docs: { default: `\`${defaultFormatGlob("*.{js,sqlx}")}\`` },
+};
+
 const fmtIgnoreJsOption: INamedOption<yargs.Options, IFormatArgs> = {
   name: "ignore-js-files",
   option: {
-    describe: "If set, the formatter will not consider javascript files (.js)",
+    describe: "If set, only formats .sqlx files (skips .js files).",
     type: "boolean",
     default: false,
   },
@@ -33,7 +50,7 @@ const fmtIgnoreJsOption: INamedOption<yargs.Options, IFormatArgs> = {
 const checkOption: INamedOption<yargs.Options, IFormatArgs> = {
   name: "check",
   option: {
-    describe: "Check if files are formatted correctly without modifying them.",
+    describe: "Checks whether files are already formatted correctly, without modifying them.",
     type: "boolean",
     default: false,
   },
@@ -43,11 +60,11 @@ export const formatCommand: ICommand<IFormatArgs> = {
   format: `format [${projectDirOption.name}]`,
   description: "Format the dataform project's files.",
   positionalOptions: [projectDirOption],
-  options: [actionsOption, fmtIgnoreJsOption, checkOption],
+  options: [formatFilesOption, fmtIgnoreJsOption, checkOption],
   check: [assertProjectDirExists],
   processFn: async (argv) => {
     const extensions = argv.ignoreJsFiles ? "*.sqlx" : "*.{js,sqlx}";
-    let actions = [`{definitions,includes}/**/${extensions}`];
+    let actions = [defaultFormatGlob(extensions)];
     if (argv.actions && argv.actions.length > 0) {
       actions = argv.actions;
     }

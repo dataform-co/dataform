@@ -3,7 +3,9 @@
 # Class: Operation
 
 Operations define custom SQL operations that don't fit into the Dataform model of publishing a
-table or writing an assertion.
+table or writing an assertion. When [lineage emission](../lineage.md) is enabled, executing an
+operation action emits OpenLineage `RunEvent`s (`actionType: "OPERATIONS"`) to Knowledge Catalog
+Lineage (`inputs` and `outputs` are populated on `COMPLETE` when `hasOutput` is `true`).
 
 You can create operations in the following ways. Available config options are defined in
 [OperationConfig](configs#dataform-ActionConfig-OperationConfig), and are shared across all the
@@ -37,11 +39,12 @@ DELETE FROM dataset.table WHERE country = 'GB'
 
 ```js
 // definitions/file.js
-operate("name").query("DELETE FROM dataset.table WHERE country = 'GB'")
+operate("name", { tags: ["cleanup"] }).queries("DELETE FROM dataset.table WHERE country = 'GB'")
 ```
 
 Note: When using the Javascript API, methods in this class can be accessed by the returned value.
-This is where `query` comes from.
+This is where `queries` comes from. Config options are passed as the second argument to
+`operate()`; the chained `.config()` method was removed in Dataform core 3.0.
 
 ## Hierarchy
 

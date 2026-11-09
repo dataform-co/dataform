@@ -1,18 +1,26 @@
 import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { ActionBuilder } from "df/core/actions";
+import {
+  buildEntityLabels,
+  buildRelationshipLabels,
+  formatDescriptionWithExamples,
+  normalizePropertyGraphConfig,
+  parseSourceTableString,
+  renderEdge,
+  renderNode,
+  resolveDeploymentTarget,
+  SEMANTIC_ONTOLOGY_VERSION,
+  unquoteIdentifier,
+  validateCaseInsensitiveUnique,
+  validateIdentifierName,
+  validatePhysicalColumnList,
+} from "df/core/actions/property_graph_utils";
 import { Session } from "df/core/session";
-import { checkAssertionsForDependency } from "df/core/utils";
+import { checkAssertionsForDependency, setActionJobLabels } from "df/core/utils";
 import { dataform } from "df/protos/ts";
-
-const CATALOG_NOT_SUPPORTED_MESSAGE =
-  "Catalog-based data sources (BigLake/Iceberg/external catalogs) are not yet supported.";
 
 function nodeRefKey(name: string): string {
   return `node:${name}`;
-}
-
-function edgeRefKey(name: string): string {
-  return `edge:${name}`;
 }
 
 export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
@@ -20,11 +28,13 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
   public dependOnDependencyAssertions: boolean = false;
 
   private proto = dataform.PropertyGraph.create({ description: "", disabled: false });
-  // Populated during construction for node/edge configs that use a ref-style
-  // dataSource; drained in finalize() once all actions are indexed, since the target
+  // Populated during construction for entity configs that use a ref-style
+  // source; drained in finalize() once all actions are indexed, since the target
   // schema/database of a ref cannot be resolved until every action is known.
-  // Keys are produced by nodeRefKey / edgeRefKey.
   private pendingRefs = new Map<string, dataform.ITarget>();
+  // Tracks relationships whose `from` entity uses a ref-style source so finalize()
+  // can copy the resolved `dataSource` from the `from` entity node once refs are resolved.
+  private inferredEdgeFromNode = new Map<string, string>();
   private dependencyKeys = new Set<string>();
 
   constructor(session?: Session, unverifiedConfig?: any, filename?: string) {
@@ -35,22 +45,62 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
       return;
     }
 
-    this.normalizeNodesAndEdges(unverifiedConfig);
+    const normalizedConfig = normalizePropertyGraphConfig(unverifiedConfig);
+    if (
+      normalizedConfig &&
+      typeof normalizedConfig === "object" &&
+      !Array.isArray(normalizedConfig) &&
+      !normalizedConfig.semanticModel &&
+      ("nodes" in normalizedConfig || "edges" in normalizedConfig)
+    ) {
+      throw new Error(
+        `Legacy property graph schema ('nodes'/'edges') is no longer supported; ` +
+          `migrate to Semantic Ontology V1 ('version: ${SEMANTIC_ONTOLOGY_VERSION}' and 'semantic_model').`,
+      );
+    }
 
-    const config = this.verifyConfig(unverifiedConfig);
+    const config = this.verifyConfig(normalizedConfig);
 
-    if (!config.name) {
+    if (!config.version) {
+      throw new Error(
+        `Property graph config must declare 'version: ${SEMANTIC_ONTOLOGY_VERSION}'.`,
+      );
+    }
+    if (config.version !== SEMANTIC_ONTOLOGY_VERSION) {
+      throw new Error(
+        `Property graph config 'version' must be '${SEMANTIC_ONTOLOGY_VERSION}' ` +
+          `(got '${config.version}').`,
+      );
+    }
+    if (!config.semanticModel || config.semanticModel.length === 0) {
+      throw new Error("Property graph config must declare a non-empty 'semantic_model' list.");
+    }
+    if (config.semanticModel.length > 1) {
+      throw new Error(
+        `Property graph config 'semantic_model' must contain exactly 1 model in V1 ` +
+          `(found ${config.semanticModel.length}).`,
+      );
+    }
+
+    const model = config.semanticModel[0];
+    if (!model.name) {
       throw new Error("Property graphs must have a populated 'name' field.");
     }
-    if (!config.nodes || config.nodes.length === 0) {
-      throw new Error(`Property graph '${config.name}' must declare at least one node.`);
+    const graphName = model.name;
+
+    if (!model.entities || model.entities.length === 0) {
+      throw new Error(`Property graph '${graphName}' must declare at least one entity.`);
     }
 
+    const deploymentTarget = resolveDeploymentTarget(model, graphName);
     const configTarget = dataform.Target.create({
-      name: config.name,
-      schema: config.targetDataset?.datasetId,
-      database: config.targetDataset?.projectId,
+      name: graphName,
+      schema: deploymentTarget.datasetId,
+      database: deploymentTarget.projectId,
     });
+    // `deployments[].target` sets the base project/dataset/name on `configTarget`;
+    // Dataform session overrides (`databaseSuffix`, `schemaSuffix`, `namePrefix`)
+    // are still applied via `applySessionToTarget`.
     this.proto.target = this.applySessionToTarget(configTarget, session.projectConfig, filename);
     this.proto.canonicalTarget = this.applySessionToTarget(
       configTarget,
@@ -58,29 +108,103 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
     );
 
     this.proto.fileName = filename;
-    if (config.description) {
-      // Stored on the compiled proto but not yet emitted to graphBody OPTIONS;
-      // DDL propagation is planned.
-      this.proto.description = config.description;
+    // Model-level `description` and `ai_context` populate Dataform's action metadata
+    // (`proto.description`) only; BigQuery `CREATE PROPERTY GRAPH` does not support
+    // graph-level `OPTIONS`, so they are not emitted to the DDL.
+    const modelDescription = formatDescriptionWithExamples(model.description, model.aiContext);
+    if (modelDescription) {
+      this.proto.description = modelDescription;
     }
     if (config.disabled) {
-      this.proto.disabled = config.disabled;
+      this.proto.disabled = true;
     }
-    if (config.tags) {
+    if (config.tags && config.tags.length > 0) {
       this.proto.tags = config.tags;
     }
     if (config.dependOnDependencyAssertions) {
-      this.dependOnDependencyAssertions = config.dependOnDependencyAssertions;
+      this.dependOnDependencyAssertions = true;
     }
 
-    this.proto.nodes = config.nodes.map((nodeConfig) => this.buildNode(nodeConfig, config.name));
-    this.proto.edges = (config.edges || []).map((edgeConfig) =>
-      this.buildEdge(edgeConfig, config.name),
+    const topJobLabels =
+      config.jobLabels && Object.keys(config.jobLabels).length > 0 ? config.jobLabels : undefined;
+    setActionJobLabels(this.proto, topJobLabels, this.session);
+
+    const graphWhere = `Property graph '${graphName}'`;
+    for (const entity of model.entities) {
+      if (!entity.name) {
+        throw new Error(`${graphWhere}: every entity must have a 'name'.`);
+      }
+      validateIdentifierName(entity.name, "entity", graphWhere);
+    }
+    validateCaseInsensitiveUnique(
+      model.entities.map((e) => e.name),
+      "entity",
+      graphWhere,
     );
 
-    this.validateUniqueNames(config.name);
-    this.resolveEndpointDefaults();
-    this.validateEndpointReferences(config.name);
+    const entityConfigByLowerName = new Map<string, dataform.IGraphEntityConfig>();
+    for (const entity of model.entities) {
+      entityConfigByLowerName.set(unquoteIdentifier(entity.name).toLowerCase(), entity);
+    }
+
+    const metrics = model.metrics || [];
+    for (const metric of metrics) {
+      if (!metric.name) {
+        throw new Error(`${graphWhere}: every metric must have a 'name'.`);
+      }
+      validateIdentifierName(metric.name, "metric", graphWhere);
+      if (!metric.entity) {
+        throw new Error(`${graphWhere}: metric '${metric.name}' must declare 'entity'.`);
+      }
+      if (!entityConfigByLowerName.has(unquoteIdentifier(metric.entity).toLowerCase())) {
+        throw new Error(
+          `${graphWhere}: metric '${metric.name}' references unknown entity '${metric.entity}'.`,
+        );
+      }
+    }
+    validateCaseInsensitiveUnique(
+      metrics.map((m) => m.name),
+      "metric",
+      graphWhere,
+    );
+
+    const metricsByEntityLower = new Map<string, dataform.IGraphMetricConfig[]>();
+    for (const metric of metrics) {
+      const entityLower = unquoteIdentifier(metric.entity).toLowerCase();
+      const list = metricsByEntityLower.get(entityLower) || [];
+      list.push(metric);
+      metricsByEntityLower.set(entityLower, list);
+    }
+
+    this.proto.nodes = model.entities.map((entityConfig) =>
+      this.buildNode(
+        entityConfig,
+        metricsByEntityLower.get(unquoteIdentifier(entityConfig.name).toLowerCase()) || [],
+        graphName,
+      ),
+    );
+
+    const nodesByLowerName = new Map<string, dataform.IGraphNodeTable>();
+    for (const node of this.proto.nodes) {
+      nodesByLowerName.set(unquoteIdentifier(node.name).toLowerCase(), node);
+    }
+
+    const relationships = model.relationships || [];
+    for (const rel of relationships) {
+      if (!rel.name) {
+        throw new Error(`${graphWhere}: every relationship must have a 'name'.`);
+      }
+      validateIdentifierName(rel.name, "relationship", graphWhere);
+    }
+    validateCaseInsensitiveUnique(
+      relationships.map((r) => r.name),
+      "relationship",
+      graphWhere,
+    );
+
+    this.proto.edges = relationships.map((relConfig) =>
+      this.buildEdge(relConfig, nodesByLowerName, graphName),
+    );
   }
 
   public getFileName() {
@@ -102,25 +226,33 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
 
   public finalize() {
     let allResolved = true;
+    const nodesByName = new Map<string, dataform.IGraphNodeTable>();
     for (const node of this.proto.nodes) {
       if (!this.resolveRefIntoDataSource(node, nodeRefKey(node.name))) {
         allResolved = false;
       }
+      nodesByName.set(node.name, node);
     }
     for (const edge of this.proto.edges) {
-      if (!this.resolveRefIntoDataSource(edge, edgeRefKey(edge.name))) {
-        allResolved = false;
+      const inferredFrom = this.inferredEdgeFromNode.get(edge.name);
+      if (inferredFrom) {
+        const fromNode = nodesByName.get(inferredFrom);
+        if (fromNode?.dataSource) {
+          edge.dataSource = dataform.Target.create(fromNode.dataSource);
+        } else {
+          allResolved = false;
+        }
       }
     }
+    // When any ref cannot be resolved, session.resolveTarget() has already recorded
+    // a compilationError on the session, so leaving graphBody unset never emits a
+    // valid action with an empty body.
     if (allResolved) {
       this.proto.graphBody = this.emitGraphBody();
     }
   }
 
-  private resolveRefIntoDataSource(
-    nodeOrEdge: dataform.IGraphNodeTable | dataform.IGraphEdgeTable,
-    key: string,
-  ): boolean {
+  private resolveRefIntoDataSource(node: dataform.IGraphNodeTable, key: string): boolean {
     const rawRef = this.pendingRefs.get(key);
     if (!rawRef) {
       return true;
@@ -129,25 +261,8 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
     if (!target) {
       return false;
     }
-    nodeOrEdge.dataSource = dataform.Target.create(target);
+    node.dataSource = dataform.Target.create(target);
     return true;
-  }
-
-  private normalizeNodesAndEdges(unverifiedConfig: any) {
-    for (const node of unverifiedConfig.nodes || []) {
-      normalizeRef(node);
-      normalizeKeys(node);
-      normalizeFields(node);
-      normalizeFieldsOnLabels(node);
-    }
-    for (const edge of unverifiedConfig.edges || []) {
-      normalizeRef(edge);
-      normalizeKeys(edge);
-      normalizeFields(edge);
-      normalizeFieldsOnLabels(edge);
-      normalizeJoinKeys(edge.source);
-      normalizeJoinKeys(edge.destination);
-    }
   }
 
   private verifyConfig(unverifiedConfig: any): dataform.PropertyGraphConfig {
@@ -159,92 +274,140 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
   }
 
   private buildNode(
-    nodeConfig: dataform.IGraphNodeTableConfig,
+    entityConfig: dataform.IGraphEntityConfig,
+    entityMetrics: dataform.IGraphMetricConfig[],
     graphName: string,
   ): dataform.GraphNodeTable {
-    if (!nodeConfig.name) {
-      throw new Error(`Property graph '${graphName}': every node must have a 'name'.`);
-    }
-    const nodeName = nodeConfig.name;
-    const where = `Property graph '${graphName}': node '${nodeName}'`;
-    const dataSource = this.resolveDataSource(nodeConfig, nodeRefKey(nodeName), where);
-    if (!nodeConfig.keys || nodeConfig.keys.length === 0) {
-      throw new Error(`${where} must declare 'keys'.`);
+    const entityName = unquoteIdentifier(entityConfig.name);
+    const where = `Property graph '${graphName}': entity '${entityName}'`;
+
+    if (entityConfig.uniqueKeys && entityConfig.uniqueKeys.length > 0) {
+      throw new Error(
+        `${where}: 'unique_keys' are not supported in V1 because BigQuery CREATE PROPERTY GRAPH ` +
+          `DDL only supports a single KEY(...) clause.`,
+      );
     }
 
-    const labels = buildLabels(nodeName, nodeConfig, where);
+    const dataSource = this.resolveSource(entityConfig, nodeRefKey(entityName), where);
+    if (!entityConfig.primaryKey || entityConfig.primaryKey.length === 0) {
+      throw new Error(`${where} must declare 'primary_key'.`);
+    }
+    validatePhysicalColumnList(entityConfig.primaryKey, "primary_key", where);
+
+    const normalizedEntityConfig: dataform.IGraphEntityConfig = {
+      ...entityConfig,
+      name: entityName,
+    };
+    const labels = buildEntityLabels(normalizedEntityConfig, entityMetrics, graphName);
 
     return dataform.GraphNodeTable.create({
-      name: nodeName,
+      name: entityName,
       dataSource,
-      keys: nodeConfig.keys,
+      keys: entityConfig.primaryKey,
       labels,
     });
   }
 
   private buildEdge(
-    edgeConfig: dataform.IGraphEdgeTableConfig,
+    relConfig: dataform.IGraphRelationshipConfig,
+    nodesByLowerName: Map<string, dataform.IGraphNodeTable>,
     graphName: string,
   ): dataform.GraphEdgeTable {
-    if (!edgeConfig.name) {
-      throw new Error(`Property graph '${graphName}': every edge must have a 'name'.`);
-    }
-    const edgeName = edgeConfig.name;
-    const where = `Property graph '${graphName}': edge '${edgeName}'`;
-    const dataSource = this.resolveDataSource(edgeConfig, edgeRefKey(edgeName), where);
+    const edgeName = unquoteIdentifier(relConfig.name);
+    const where = `Property graph '${graphName}': relationship '${edgeName}'`;
 
-    if (!edgeConfig.source) {
-      throw new Error(`${where} must declare 'source'.`);
+    if (!relConfig.from) {
+      throw new Error(`${where} must declare 'from'.`);
     }
-    if (!edgeConfig.destination) {
-      throw new Error(`${where} must declare 'destination'.`);
+    if (!relConfig.to) {
+      throw new Error(`${where} must declare 'to'.`);
+    }
+    if (!relConfig.fromColumns || relConfig.fromColumns.length === 0) {
+      throw new Error(`${where} must declare 'from_columns'.`);
+    }
+    validatePhysicalColumnList(relConfig.fromColumns, "from_columns", where);
+
+    if (!relConfig.toColumns || relConfig.toColumns.length === 0) {
+      throw new Error(`${where} must declare 'to_columns'.`);
+    }
+    const toColumns = relConfig.toColumns.slice();
+    validatePhysicalColumnList(toColumns, "to_columns", where);
+
+    const fromNode = nodesByLowerName.get(unquoteIdentifier(relConfig.from).toLowerCase());
+    if (!fromNode) {
+      throw new Error(
+        `Property graph '${graphName}': relationship '${edgeName}' 'from' references ` +
+          `unknown entity '${relConfig.from}'.`,
+      );
+    }
+    const toNode = nodesByLowerName.get(unquoteIdentifier(relConfig.to).toLowerCase());
+    if (!toNode) {
+      throw new Error(
+        `Property graph '${graphName}': relationship '${edgeName}' 'to' references ` +
+          `unknown entity '${relConfig.to}'.`,
+      );
     }
 
-    const source = buildEndpoint(edgeConfig.source, `${where} source`);
-    const destination = buildEndpoint(edgeConfig.destination, `${where} destination`);
+    if (relConfig.fromColumns.length !== toColumns.length) {
+      throw new Error(
+        `${where}: join column arity mismatch: from_columns has ` +
+          `${relConfig.fromColumns.length}, to_columns has ${toColumns.length}.`,
+      );
+    }
 
-    const labels = buildLabels(edgeName, edgeConfig, where);
+    const matchesTargetPrimaryKey =
+      toColumns.length === toNode.keys.length &&
+      toColumns.every(
+        (col, idx) =>
+          unquoteIdentifier(col).toLowerCase() ===
+          unquoteIdentifier(toNode.keys[idx]).toLowerCase(),
+      );
+    if (!matchesTargetPrimaryKey) {
+      throw new Error(
+        `${where}: 'to_columns' ([${toColumns.join(", ")}]) must match target entity ` +
+          `'${toNode.name}' primary_key ([${toNode.keys.join(", ")}]).`,
+      );
+    }
+
+    const labels = buildRelationshipLabels({ ...relConfig, name: edgeName });
+
+    let dataSource: dataform.Target;
+    if (fromNode.dataSource) {
+      dataSource = dataform.Target.create(fromNode.dataSource);
+    } else {
+      this.inferredEdgeFromNode.set(edgeName, fromNode.name);
+    }
 
     return dataform.GraphEdgeTable.create({
       name: edgeName,
       dataSource,
-      keys: edgeConfig.keys || [],
-      source,
-      destination,
+      keys: fromNode.keys.slice(),
+      source: dataform.GraphEndpoint.create({
+        node: fromNode.name,
+        edgeColumns: fromNode.keys.slice(),
+        nodeColumns: fromNode.keys.slice(),
+      }),
+      destination: dataform.GraphEndpoint.create({
+        node: toNode.name,
+        edgeColumns: relConfig.fromColumns.slice(),
+        nodeColumns: toColumns,
+      }),
       labels,
     });
   }
 
-  private resolveDataSource(
-    nodeOrEdge: dataform.IGraphNodeTableConfig | dataform.IGraphEdgeTableConfig,
+  private resolveSource(
+    entity: dataform.IGraphEntityConfig,
     pendingKey: string,
     where: string,
   ): dataform.Target {
-    if (nodeOrEdge.dataSourceCatalog) {
-      throw new Error(`${where}: ${CATALOG_NOT_SUPPORTED_MESSAGE}`);
+    if (entity.sourceString) {
+      return parseSourceTableString(entity.sourceString, where);
     }
-    if (nodeOrEdge.dataSourceString) {
-      return parseTablePath(nodeOrEdge.dataSourceString, where);
-    }
-    if (nodeOrEdge.dataSourceDataset) {
-      const ds = nodeOrEdge.dataSourceDataset;
-      if (!ds.table) {
-        throw new Error(`${where}: 'dataSourceDataset.table' is required.`);
-      }
-      const project = ds.project || this.session.projectConfig.defaultDatabase || undefined;
-      const dataset = ds.dataset || this.session.projectConfig.defaultSchema || undefined;
-      if (!dataset) {
-        throw new Error(
-          `${where}: 'dataSourceDataset.dataset' is required (no defaultDataset in workflow ` +
-            `settings).`,
-        );
-      }
-      return dataform.Target.create({ name: ds.table, schema: dataset, database: project });
-    }
-    if (nodeOrEdge.dataSourceRef) {
-      const ref = nodeOrEdge.dataSourceRef;
+    if (entity.sourceRef) {
+      const ref = entity.sourceRef;
       if (!ref.name) {
-        throw new Error(`${where}: 'ref' must include a 'name'.`);
+        throw new Error(`${where}: 'source.ref' must include a 'name'.`);
       }
       const rawRef: dataform.ITarget = { name: ref.name };
       if (ref.schema) {
@@ -267,69 +430,7 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
       }
       return undefined;
     }
-    throw new Error(`${where}: must declare a data source.`);
-  }
-
-  private validateUniqueNames(graphName: string) {
-    const nodeNames = new Set<string>();
-    for (const node of this.proto.nodes) {
-      if (nodeNames.has(node.name)) {
-        throw new Error(`Property graph '${graphName}': duplicate node name '${node.name}'.`);
-      }
-      nodeNames.add(node.name);
-    }
-    const edgeNames = new Set<string>();
-    for (const edge of this.proto.edges) {
-      if (edgeNames.has(edge.name)) {
-        throw new Error(`Property graph '${graphName}': duplicate edge name '${edge.name}'.`);
-      }
-      edgeNames.add(edge.name);
-    }
-  }
-
-  private resolveEndpointDefaults() {
-    const keysByNode = new Map<string, string[]>();
-    for (const node of this.proto.nodes) {
-      keysByNode.set(node.name, node.keys);
-    }
-    for (const edge of this.proto.edges) {
-      for (const endpoint of [edge.source, edge.destination]) {
-        if (endpoint.nodeColumns.length === 0) {
-          const targetKeys = keysByNode.get(endpoint.node);
-          if (targetKeys) {
-            endpoint.nodeColumns = targetKeys.slice();
-          }
-        }
-      }
-    }
-  }
-
-  private validateEndpointReferences(graphName: string) {
-    const keysByNode = new Map<string, string[]>();
-    for (const node of this.proto.nodes) {
-      keysByNode.set(node.name, node.keys);
-    }
-    for (const edge of this.proto.edges) {
-      for (const [role, endpoint] of [
-        ["source", edge.source],
-        ["destination", edge.destination],
-      ] as const) {
-        const targetKeys = keysByNode.get(endpoint.node);
-        if (!targetKeys) {
-          throw new Error(
-            `Property graph '${graphName}': edge '${edge.name}' ${role} references ` +
-              `unknown node '${endpoint.node}'.`,
-          );
-        }
-        if (endpoint.nodeColumns.length !== endpoint.edgeColumns.length) {
-          throw new Error(
-            `Property graph '${graphName}': edge '${edge.name}' ${role} join_keys arity ` +
-              `mismatch: edgeColumns has ${endpoint.edgeColumns.length}, ` +
-              `nodeColumns has ${endpoint.nodeColumns.length}.`,
-          );
-        }
-      }
-    }
+    throw new Error(`${where} must declare 'source'.`);
   }
 
   private emitGraphBody(): string {
@@ -342,281 +443,4 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
     }
     return parts.join("\n");
   }
-}
-
-function normalizeRef(nodeOrEdge: any) {
-  if (nodeOrEdge.ref === undefined || nodeOrEdge.ref === null) {
-    return;
-  }
-  if (typeof nodeOrEdge.ref === "string") {
-    nodeOrEdge.dataSourceRef = { name: nodeOrEdge.ref };
-    delete nodeOrEdge.ref;
-    return;
-  }
-  if (typeof nodeOrEdge.ref === "object") {
-    nodeOrEdge.dataSourceRef = nodeOrEdge.ref;
-    delete nodeOrEdge.ref;
-  }
-}
-
-function normalizeKeys(nodeOrEdge: any) {
-  if (typeof nodeOrEdge.keys === "string") {
-    nodeOrEdge.keys = [nodeOrEdge.keys];
-  }
-}
-
-function normalizeFields(container: any) {
-  const f = container.fields;
-  if (f && !Array.isArray(f) && typeof f === "object" && "importAll" in f) {
-    container.fieldWildcard = f;
-    delete container.fields;
-    return;
-  }
-  if (Array.isArray(f)) {
-    container.fields = f.map((field: string | dataform.IGraphFieldConfig) =>
-      typeof field === "string" ? { name: field, expression: field } : field,
-    );
-  }
-}
-
-function normalizeFieldsOnLabels(container: any) {
-  if (Array.isArray(container.labels)) {
-    for (const label of container.labels) {
-      normalizeFields(label);
-    }
-  }
-}
-
-function normalizeJoinKeys(endpoint: any) {
-  if (!endpoint) {
-    return;
-  }
-  if (Array.isArray(endpoint.joinKeys)) {
-    endpoint.joinKeys = {
-      edgeColumns: endpoint.joinKeys,
-      nodeColumns: [],
-    };
-  }
-}
-
-function buildEndpoint(
-  endpointConfig: dataform.IGraphEndpointConfig,
-  where: string,
-): dataform.GraphEndpoint {
-  if (!endpointConfig.node) {
-    throw new Error(`${where}: must declare 'node'.`);
-  }
-  if (!endpointConfig.joinKeys) {
-    throw new Error(`${where}: must declare 'joinKeys'.`);
-  }
-  const edgeCols = endpointConfig.joinKeys.edgeColumns || [];
-  const nodeCols = endpointConfig.joinKeys.nodeColumns || [];
-  if (edgeCols.length === 0) {
-    throw new Error(`${where}: 'joinKeys.edgeColumns' must be non-empty.`);
-  }
-  return dataform.GraphEndpoint.create({
-    node: endpointConfig.node,
-    edgeColumns: edgeCols,
-    nodeColumns: nodeCols,
-  });
-}
-
-function buildLabels(
-  defaultLabelName: string,
-  config: dataform.IGraphNodeTableConfig | dataform.IGraphEdgeTableConfig,
-  where: string,
-): dataform.GraphLabel[] {
-  const rootFields = config.fields || [];
-  const rootWildcard = config.fieldWildcard;
-  const configuredLabels = config.labels || [];
-  if ((rootFields.length > 0 || rootWildcard) && configuredLabels.length > 0) {
-    throw new Error(
-      `${where} cannot combine root-level 'fields'/'fieldWildcard' with a 'labels' list.`,
-    );
-  }
-  if (configuredLabels.length > 0) {
-    const built = configuredLabels.map((label) => buildLabel(label, where, defaultLabelName));
-    const defaultCount = built.filter((label) => label.isDefault).length;
-    if (defaultCount > 1) {
-      throw new Error(`${where}: only one DEFAULT label is allowed.`);
-    }
-    return built;
-  }
-  const hasRootData =
-    rootFields.length > 0 ||
-    !!rootWildcard ||
-    !!config.description ||
-    (config.synonyms && config.synonyms.length > 0);
-  if (!hasRootData) {
-    return [];
-  }
-  const synthesized = dataform.GraphLabelConfig.create({
-    name: defaultLabelName,
-    description: config.description || undefined,
-    synonyms: config.synonyms || [],
-    fields: rootFields,
-    fieldWildcard: rootWildcard,
-  });
-  return [buildLabel(synthesized, where, defaultLabelName, true)];
-}
-
-function buildLabel(
-  label: dataform.IGraphLabelConfig,
-  where: string,
-  defaultLabelName: string,
-  forceDefault = false,
-): dataform.GraphLabel {
-  const isDefault = forceDefault || !label.name || label.name.toUpperCase() === "DEFAULT";
-  if (!isDefault && !label.name) {
-    throw new Error(`${where}: every non-default label must have a 'name'.`);
-  }
-  const labelId = isDefault ? "DEFAULT" : `'${label.name}'`;
-  const wildcard = label.fieldWildcard;
-  if (wildcard && wildcard.importAll === false && wildcard.except && wildcard.except.length > 0) {
-    throw new Error(
-      `${where}: label ${labelId} has 'fieldWildcard.except' set but 'importAll' is false.`,
-    );
-  }
-  const hasFields = !!(label.fields && label.fields.length > 0);
-  const hasWildcard = !!(wildcard && wildcard.importAll);
-  const hasDescription = !!label.description;
-  const hasSynonyms = !!(label.synonyms && label.synonyms.length > 0);
-  const hasOptions = hasDescription || hasSynonyms;
-  if (!isDefault && hasOptions) {
-    throw new Error(
-      `${where}: label ${labelId} cannot declare 'description' or 'synonyms'; ` +
-        `these are only allowed on the DEFAULT label (name absent or 'DEFAULT').`,
-    );
-  }
-  if (!hasFields && !hasWildcard && !hasOptions) {
-    throw new Error(
-      `${where}: label ${labelId} must declare at least one of: 'fields', ` +
-        `'fieldWildcard', 'description', or 'synonyms'.`,
-    );
-  }
-  return dataform.GraphLabel.create({
-    name: isDefault ? defaultLabelName : label.name,
-    description: label.description,
-    synonyms: label.synonyms || [],
-    fields: (label.fields || []).map((field) =>
-      dataform.GraphField.create({
-        name: field.name,
-        expression: field.expression || field.name,
-        description: field.description,
-        synonyms: field.synonyms || [],
-      }),
-    ),
-    importAll: !!wildcard?.importAll,
-    importExcept: wildcard?.except || [],
-    isDefault,
-  });
-}
-
-function parseTablePath(path: string, where: string): dataform.Target {
-  const parts = path.split(".");
-  if (parts.length === 4) {
-    throw new Error(`${where}: ${CATALOG_NOT_SUPPORTED_MESSAGE}`);
-  }
-  if (parts.length !== 3) {
-    throw new Error(
-      `${where}: 'dataSourceString' must be 'project.dataset.table' (got '${path}').`,
-    );
-  }
-  return dataform.Target.create({ database: parts[0], schema: parts[1], name: parts[2] });
-}
-
-function renderQualifiedTable(target: dataform.ITarget): string {
-  const parts: string[] = [];
-  if (target.database) {
-    parts.push(target.database);
-  }
-  if (target.schema) {
-    parts.push(target.schema);
-  }
-  parts.push(target.name);
-  return "`" + parts.join(".") + "`";
-}
-
-function renderNode(node: dataform.IGraphNodeTable): string {
-  const pieces: string[] = [];
-  pieces.push(`${renderQualifiedTable(node.dataSource)} AS ${node.name}`);
-  pieces.push(`KEY (${node.keys.join(", ")})`);
-  for (const label of node.labels) {
-    pieces.push(renderLabelClause(label));
-  }
-  return pieces.join(" ");
-}
-
-function renderEdge(edge: dataform.IGraphEdgeTable): string {
-  const pieces: string[] = [];
-  pieces.push(`${renderQualifiedTable(edge.dataSource)} AS ${edge.name}`);
-  if (edge.keys.length > 0) {
-    pieces.push(`KEY (${edge.keys.join(", ")})`);
-  }
-  pieces.push(renderEndpoint("SOURCE", edge.source));
-  pieces.push(renderEndpoint("DESTINATION", edge.destination));
-  for (const label of edge.labels) {
-    pieces.push(renderLabelClause(label));
-  }
-  return pieces.join(" ");
-}
-
-function renderEndpoint(role: "SOURCE" | "DESTINATION", endpoint: dataform.IGraphEndpoint): string {
-  return (
-    `${role} KEY (${endpoint.edgeColumns.join(", ")}) ` +
-    `REFERENCES ${endpoint.node} (${endpoint.nodeColumns.join(", ")})`
-  );
-}
-
-function renderLabelClause(label: dataform.IGraphLabel): string {
-  const head = label.isDefault ? "DEFAULT LABEL" : `LABEL ${label.name}`;
-  const parts: string[] = [head];
-  if (label.isDefault) {
-    const options = renderOptionsClause(label.description, label.synonyms);
-    if (options) {
-      parts.push(options);
-    }
-  }
-  const properties = renderPropertiesClause(label);
-  if (properties) {
-    parts.push(properties);
-  }
-  return parts.join(" ");
-}
-
-function renderPropertiesClause(label: dataform.IGraphLabel): string {
-  if (label.importAll) {
-    if (label.importExcept.length > 0) {
-      return `PROPERTIES ARE ALL COLUMNS EXCEPT (${label.importExcept.join(", ")})`;
-    }
-    return "PROPERTIES ARE ALL COLUMNS";
-  }
-  if (label.fields.length === 0) {
-    return "";
-  }
-  const rendered = label.fields.map((field) => renderField(field));
-  return `PROPERTIES (${rendered.join(", ")})`;
-}
-
-function renderField(field: dataform.IGraphField): string {
-  const expr =
-    field.expression && field.expression !== field.name
-      ? `${field.expression} AS ${field.name}`
-      : field.name;
-  const options = renderOptionsClause(field.description, field.synonyms);
-  return options ? `${expr} ${options}` : expr;
-}
-
-function renderOptionsClause(
-  description: string | null | undefined,
-  synonyms: string[] | null | undefined,
-): string {
-  const parts: string[] = [];
-  if (description) {
-    parts.push(`description=${JSON.stringify(description)}`);
-  }
-  if (synonyms && synonyms.length > 0) {
-    parts.push(`synonyms=[${synonyms.map((s) => JSON.stringify(s)).join(", ")}]`);
-  }
-  return parts.length > 0 ? `OPTIONS(${parts.join(", ")})` : "";
 }

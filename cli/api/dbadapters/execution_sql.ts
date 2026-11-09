@@ -1,6 +1,7 @@
 import * as semver from "semver";
 
-import { concatenateQueries, Task, Tasks } from "df/cli/api/dbadapters/tasks";
+import { Task, Tasks } from "df/cli/api/dbadapters/tasks";
+import { concatenateQueries } from "df/cli/api/utils/query_transforms";
 import { ErrorWithCause } from "df/common/errors/errors";
 import { CompilationSql } from "df/core/compilation_sql";
 import { tableTypeEnumToString } from "df/core/utils";
@@ -178,11 +179,15 @@ from (${query}) as insertions`;
   }
 
   public createOperationTasks(operation: dataform.IOperation): dataform.IExecutionTask[] {
-    return operation.disabled
-      ? []
-      : operation.queries.map((statement) =>
-          dataform.ExecutionTask.create({ type: "statement", statement }),
-        );
+    if (operation.disabled) {
+      return [];
+    }
+    const queries = (operation.queries || []).filter((query) => !!query?.trim());
+    if (queries.length === 0) {
+      return [];
+    }
+    const statement = queries.length === 1 ? queries[0] : concatenateQueries(queries);
+    return [dataform.ExecutionTask.create({ type: "statement", statement })];
   }
 
   public createPropertyGraphTasks(

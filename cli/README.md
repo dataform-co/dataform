@@ -1,6 +1,12 @@
 # Dataform CLI Reference
 
-This document is a complete reference for the `dataform` command line interface, generated from the CLI source in this repository (`cli/`). It covers every command and flag as implemented today, plus practical example use cases.
+<!--
+  The command list, usage lines and argument/option tables in this file are generated from the CLI
+  command definitions in cli/. Don't edit the generated blocks by hand: change the definitions
+  (e.g. an option's `describe`) and run `bazel run //cli:update_readme`.
+-->
+
+This document is a complete reference for the `dataform` command line interface. The command list, usage lines and argument/option tables are generated from the CLI source in this repository (`cli/`), so they match `dataform help`. It also covers practical example use cases.
 
 For conceptual documentation (project structure, SQLX syntax, the JavaScript API, etc.) see the [root readme](../readme.md) and the hosted [Dataform CLI guide](https://cloud.google.com/dataform/docs/use-dataform-cli).
 
@@ -30,6 +36,7 @@ Run `dataform` with no arguments, or `dataform help`, to print the list of comma
 
 ## Commands
 
+<!-- BEGIN GENERATED: commands -->
 - [`init`](#init)
 - [`install`](#install)
 - [`init-creds`](#init-creds)
@@ -37,50 +44,67 @@ Run `dataform` with no arguments, or `dataform help`, to print the list of comma
 - [`test`](#test)
 - [`run`](#run)
 - [`format`](#format)
+<!-- END GENERATED: commands -->
 
 ---
 
 ### `init`
 
+<!-- BEGIN GENERATED: usage init -->
 ```
 dataform init [project-dir] [default-database] [default-location]
 ```
+<!-- END GENERATED: usage init -->
 
 Creates a new Dataform project (`workflow_settings.yaml`, `.gitignore`, `definitions/`, and `includes/`) in `project-dir`. Fails if `workflow_settings.yaml`, `package.json`, or `dataform.json` already exists in `project-dir`.
 
 **Positional arguments**
 
+<!-- BEGIN GENERATED: positionals init -->
 | Argument | Required | Description |
 |---|---|---|
-| `project-dir` | No (default `.`) | The directory to create the project in. |
-| `default-database` | **Yes** | The default database to use, equivalent to a Google Cloud Project ID. |
-| `default-location` | **Yes** | The default BigQuery location. See [supported values](https://cloud.google.com/bigquery/docs/locations). |
+| `project-dir` | No (default `.`) | The Dataform project directory. |
+| `default-database` | **Yes** | The default database to use, equivalent to Google Cloud Project ID. |
+| `default-location` | **Yes** | The default location to use. See https://cloud.google.com/bigquery/docs/locations for supported values. |
+<!-- END GENERATED: positionals init -->
 
-`default-database` and `default-location` are positional but enforced as required at runtime — omitting either produces an error telling you to run `dataform help init`. All three positional arguments can also be passed as named flags (`--project-dir`, `--default-database`, `--default-location`), e.g. `dataform init my_project --default-database=my-gcp-project-id --default-location=US`.
+`project-dir` is the directory to create the project in. `default-database` and `default-location` are positional but enforced as required at runtime — omitting either produces an error telling you to run `dataform help init`. All three positional arguments can also be passed as named flags (`--project-dir`, `--default-database`, `--default-location`), e.g. `dataform init my_project --default-database=my-gcp-project-id --default-location=US`.
 
 **Options**
 
+<!-- BEGIN GENERATED: options init -->
 | Flag | Type | Default | Description |
 |---|---|---|---|
-| `--iceberg` | boolean | `false` | Initialize the project with workflow-level Iceberg tables configuration. When set, prompts interactively for an Iceberg bucket name, table folder root/subpath, and connection. |
+| `--iceberg` | boolean | `false` | Initialize the project with workflow-level Iceberg tables configuration. |
+<!-- END GENERATED: options init -->
+
+When `--iceberg` is set, `init` prompts interactively for an Iceberg bucket name, table folder root/subpath, and connection.
 
 ---
 
 ### `install`
 
+<!-- BEGIN GENERATED: usage install -->
 ```
 dataform install [project-dir]
 ```
+<!-- END GENERATED: usage install -->
 
 Installs a project's NPM dependencies (via `npm i --ignore-scripts`) as declared in the project's `package.json`.
 
 **Positional arguments**
 
+<!-- BEGIN GENERATED: positionals install -->
 | Argument | Required | Description |
 |---|---|---|
 | `project-dir` | No (default `.`) | The Dataform project directory. |
+<!-- END GENERATED: positionals install -->
 
-**Options:** none.
+**Options**
+
+<!-- BEGIN GENERATED: options install -->
+None.
+<!-- END GENERATED: options install -->
 
 > Note: for projects that specify `dataformCoreVersion` in `workflow_settings.yaml`, `@dataform/core` is installed automatically in an isolated temporary directory at compile/run time, and running `dataform install` throws an error (`No installation is needed when using workflow_settings.yaml, as packages are installed at runtime.`). Use `dataform install` only when managing `@dataform/core` and external dependencies via `package.json` (without `dataformCoreVersion` in `workflow_settings.yaml`).
 
@@ -88,11 +112,13 @@ Installs a project's NPM dependencies (via `npm i --ignore-scripts`) as declared
 
 ### `init-creds`
 
+<!-- BEGIN GENERATED: usage init-creds -->
 ```
 dataform init-creds [project-dir]
 ```
+<!-- END GENERATED: usage init-creds -->
 
-Interactively creates a `.df-credentials.json` file that Dataform uses to connect to BigQuery. **Only BigQuery is currently supported.**
+Interactively creates a `.df-credentials.json` file in `project-dir` that Dataform uses to connect to BigQuery. **Only BigQuery is currently supported.**
 
 Prompts for:
 1. Dataset location (`US`, `EU`, or a custom region name).
@@ -103,72 +129,96 @@ Prompts for:
 
 **Positional arguments**
 
+<!-- BEGIN GENERATED: positionals init-creds -->
 | Argument | Required | Description |
 |---|---|---|
-| `project-dir` | No (default `.`) | The Dataform project directory the credentials file is written into. |
+| `project-dir` | No (default `.`) | The Dataform project directory. |
+<!-- END GENERATED: positionals init-creds -->
 
 **Options**
 
+<!-- BEGIN GENERATED: options init-creds -->
 | Flag | Type | Default | Description |
 |---|---|---|---|
-| `--test-connection` | boolean | `true` | If true, runs a test query using the credentials you just entered before saving them. |
+| `--test-connection` | boolean | `true` | If true, a test query will be run using your final credentials. |
+<!-- END GENERATED: options init-creds -->
 
 ---
 
 ### `compile`
 
+<!-- BEGIN GENERATED: usage compile -->
 ```
 dataform compile [project-dir]
 ```
+<!-- END GENERATED: usage compile -->
 
 Compiles the project and prints a summary (or JSON / Graphviz DOT representation) of the compiled dependency graph without executing it against your warehouse. Useful for validating a project and inspecting its structure.
 
 **Positional arguments**
 
+<!-- BEGIN GENERATED: positionals compile -->
 | Argument | Required | Description |
 |---|---|---|
 | `project-dir` | No (default `.`) | The Dataform project directory. |
+<!-- END GENERATED: positionals compile -->
 
 **Options**
 
+<!-- BEGIN GENERATED: options compile -->
 | Flag | Type | Default | Description |
 |---|---|---|---|
-| `--json` | boolean | `false` | Outputs a JSON representation of the compiled project. Mutually exclusive with `--dot`. |
-| `--dot` | boolean | `false` | Outputs a [Graphviz DOT](https://graphviz.org/doc/info/lang.html) representation of the compiled project. Mutually exclusive with `--json`. |
-| `--verbose` | boolean | `false` | Enable verbose compilation output. Mutually exclusive with `--quiet`. |
-| `--quiet` | boolean | `false` | Less verbose compilation output. Mutually exclusive with `--verbose`. |
-| `--watch` | boolean | `false` | Watches the project directory (ignoring `node_modules`) and recompiles automatically on changes, with a debounce of 500ms. Runs until interrupted with Ctrl+C. |
-| `--timeout` | string | `'60s'` (`60000` ms) | Duration to allow compilation to complete, e.g. `'1s'`, `'10m'`. |
-| `--output-actions` | array | — | Filters the *printed* output to only these actions (comma-separated or repeatable). The whole project still compiles; this only prunes what's printed. Each entry must be either an unambiguous bare action `<name>` or a fully-qualified `<database>.<schema>.<name>` target (no `*` wildcard expansion). |
+| `--json` | boolean | `false` | Outputs the result as JSON instead of human-readable text. |
+| `--dot` | boolean | `false` | Outputs a Graphviz DOT representation of the compiled project. Mutually exclusive with --json. |
+| `--verbose` | boolean | `false` | Enables verbose compilation output. Mutually exclusive with --quiet. |
+| `--quiet` | boolean | `false` | Less verbose compilation output. Mutually exclusive with --verbose. |
+| `--watch` | boolean | `false` | Watches the project directory and recompiles on changes. |
+| `--timeout` | string | `'60s'` | Duration to allow project compilation to complete, e.g. '1s', '10m'. |
+| `--output-actions` | array | — | Filters the printed output to these actions (comma-separated or repeatable). Each entry is an action name or a fully-qualified database.schema.name target. The whole project is still compiled. |
 | `--output-tags` | array | — | Filters the printed output to actions with any of these tags (comma-separated or repeatable). |
-| `--output-include-deps` | boolean | — | Also includes upstream dependencies of the selected actions in the output. Requires `--output-actions` or `--output-tags`. |
-| `--output-include-dependents` | boolean | — | Also includes downstream dependents of the selected actions in the output. Requires `--output-actions` or `--output-tags`. |
+| `--output-include-deps` | boolean | — | Also includes upstream dependencies of the selected actions in the output. Requires --output-actions or --output-tags. |
+| `--output-include-dependents` | boolean | — | Also includes downstream dependents of the selected actions in the output. Requires --output-actions or --output-tags. |
 | Project-config overrides | — | — | See [Shared project-config flags](#shared-project-config-flags). |
+<!-- END GENERATED: options compile -->
+
+**Notes**
+
+- `--json` outputs the compiled graph and can't be combined with `--dot`.
+- `--watch` ignores `node_modules`, recompiles with a debounce of 500ms, and runs until interrupted with Ctrl+C.
+- `--output-actions`, `--output-tags`, `--output-include-deps` and `--output-include-dependents` only prune what's printed; the whole project still compiles. `--output-actions` entries are matched exactly (no `*` wildcard expansion).
 
 ---
 
 ### `test`
 
+<!-- BEGIN GENERATED: usage test -->
 ```
 dataform test [project-dir]
 ```
+<!-- END GENERATED: usage test -->
 
 Compiles the project and runs its unit tests (`type: "test"` actions) against BigQuery.
 
 **Positional arguments**
 
+<!-- BEGIN GENERATED: positionals test -->
 | Argument | Required | Description |
 |---|---|---|
 | `project-dir` | No (default `.`) | The Dataform project directory. |
+<!-- END GENERATED: positionals test -->
 
 **Options**
 
+<!-- BEGIN GENERATED: options test -->
 | Flag | Type | Default | Description |
 |---|---|---|---|
 | `--credentials` | string | `.df-credentials.json` | Path to the credentials JSON file to use. |
-| `--timeout` | string | `'60s'` (`60000` ms) | Duration to allow compilation to complete, e.g. `'1s'`, `'10m'`. |
-| `--json` | boolean | `false` | Outputs test results as JSON instead of human-readable text. |
+| `--timeout` | string | `'60s'` | Duration to allow project compilation to complete, e.g. '1s', '10m'. |
+| `--json` | boolean | `false` | Outputs the result as JSON instead of human-readable text. |
 | Project-config overrides | — | — | See [Shared project-config flags](#shared-project-config-flags). |
+<!-- END GENERATED: options test -->
+
+`--json` outputs the test results as JSON.
 
 Exits with code `1` if any test fails, if the project fails to compile, or if no unit tests are found. Exits `0` if all tests pass.
 
@@ -176,67 +226,91 @@ Exits with code `1` if any test fails, if the project fails to compile, or if no
 
 ### `run`
 
+<!-- BEGIN GENERATED: usage run -->
 ```
 dataform run [project-dir]
 ```
+<!-- END GENERATED: usage run -->
 
 Compiles and executes the project against BigQuery (or validates it with `--dry-run`).
 
 **Positional arguments**
 
+<!-- BEGIN GENERATED: positionals run -->
 | Argument | Required | Description |
 |---|---|---|
 | `project-dir` | No (default `.`) | The Dataform project directory. |
+<!-- END GENERATED: positionals run -->
 
 **Options**
 
+<!-- BEGIN GENERATED: options run -->
 | Flag | Type | Default | Description |
 |---|---|---|---|
 | `--dry-run` | boolean | — | Validates the run SQL with BigQuery without applying any changes to the warehouse. |
 | `--run-tests` | boolean | — | Requires the project's unit tests to pass before executing; aborts the run if any test fails. |
 | `--action-retry-limit` | number | `0` | Retries idempotent actions up to this many times on failure. |
-| `--actions` | array | — | Action names to run (comma-separated or repeatable). Each entry must be either an unambiguous bare action `<name>` or a fully-qualified `<database>.<schema>.<name>` target (note: despite the CLI help text, `*` wildcards are not expanded). |
+| `--actions` | array | — | Actions to run (comma-separated or repeatable). Each entry is an action name or a fully-qualified database.schema.name target. |
 | `--tags` | array | — | Tags to filter the actions to run (comma-separated or repeatable). |
-| `--include-deps` | boolean | — | Also runs upstream dependencies of the selected actions. Requires `--actions` or `--tags`. |
-| `--include-dependents` | boolean | — | Also runs downstream dependents of the selected actions. Requires `--actions` or `--tags`. |
-| `--full-refresh` | boolean | `false` | Forces incremental tables (unless marked `protected`) to be rebuilt from scratch instead of updated incrementally (regular tables and views are always rebuilt). |
+| `--include-deps` | boolean | — | Also runs upstream dependencies of the selected actions. Requires --actions or --tags. |
+| `--include-dependents` | boolean | — | Also runs downstream dependents of the selected actions. Requires --actions or --tags. |
+| `--full-refresh` | boolean | `false` | Forces incremental tables (unless marked protected) to be rebuilt from scratch. |
 | `--credentials` | string | `.df-credentials.json` | Path to the credentials JSON file to use. |
-| `--json` | boolean | `false` | Outputs the run result as JSON. Only supported together with `--dry-run` — plain `run --json` (without `--dry-run`) is rejected. |
-| `--timeout` | string | `'60s'` (`60000` ms) | Duration to allow **compilation only** to complete, e.g. `'1s'`, `'10m'`. Does not bound execution — see `--execution-timeout`. |
-| `--execution-timeout` | string | — | Wall-clock deadline for the *entire* run (compile + all actions), e.g. `'10m'`, `'2h'`. When it fires, in-flight actions are cancelled and pending actions are skipped. Off by default. |
-| `--jit-timeout` | string | — | Per-model just-in-time (JiT) compilation worker timeout, e.g. `'30s'`, `'2m'`. Each action with JiT code gets its own fresh deadline, independent of `--execution-timeout`. If unset, only `--execution-timeout` bounds JiT work. |
-| `--job-prefix` | string | — | Adds an additional prefix to BigQuery job IDs, in the form `dataform-${jobPrefix}-`. |
-| `--job-labels` | string | — | Comma-separated `key=value` labels to attach to BigQuery jobs, e.g. `'key1=val1,key2=val2'`. |
-| `--emit-lineage` | boolean | — | Emits OpenLineage `RunEvent`s to Knowledge Catalog Lineage for each executed action. Overrides the `lineage.enabled` setting in `workflow_settings.yaml` when specified. |
+| `--json` | boolean | `false` | Outputs the result as JSON instead of human-readable text. |
+| `--timeout` | string | `'60s'` | Duration to allow project compilation to complete, e.g. '1s', '10m'. |
+| `--execution-timeout` | string | — | Wall-clock deadline for the entire run (compile + all actions). When it fires, in-flight actions are cancelled and pending actions are skipped. Off by default. Examples: '10m', '2h'. |
+| `--jit-timeout` | string | — | Per-model JiT compilation worker timeout. Each JiT action gets its own fresh deadline, independent of --execution-timeout. When unset, no per-model cap is applied and only --execution-timeout bounds JiT work. Examples: '30s', '2m'. |
+| `--job-prefix` | string | — | Adds an additional prefix to BigQuery job IDs, in the form dataform-&lt;job-prefix&gt;-. |
+| `--job-labels` | string | — | Comma-separated list of labels to add to BigQuery jobs, e.g. 'key1=val1,key2=val2'. Also applied to unit tests with --run-tests. Overrides job labels and table labels that use the same key. |
+| `--emit-lineage` | boolean | — | If set, emits OpenLineage RunEvents to Knowledge Catalog Lineage for each executed action. Overrides workflow_settings.yaml lineage.enabled when specified. See https://github.com/dataform-co/dataform/blob/main/docs/lineage.md. |
 | Project-config overrides | — | — | See [Shared project-config flags](#shared-project-config-flags). |
+<!-- END GENERATED: options run -->
 
-If `--timeout` is set without `--execution-timeout`, `run` prints a warning reminding you that `--timeout` only bounds compilation.
+**Notes**
 
-Exit codes: `0` on success, `1` if compilation fails, unit tests fail (with `--run-tests`), the run fails, times out, or is cancelled (Ctrl+C).
+- `--actions` entries are matched exactly: `*` wildcards are not expanded, and a bare action name that matches several actions is an error.
+- `--full-refresh` only affects incremental tables; regular tables and views are always rebuilt.
+- `--json` outputs the run result as JSON and is only supported together with `--dry-run`; plain `run --json` is rejected.
+- `--timeout` bounds compilation only, not execution. If it's set without `--execution-timeout`, `run` prints a warning reminding you of that.
+- `--job-labels` override `defaultJobLabels`, action `jobLabels` and table `labels` that use the same key.
+- `--emit-lineage` requires the Data Lineage API (`datalineage.googleapis.com`) to be enabled and the `roles/datalineage.producer` role; for configuration and troubleshooting, see the [Data Lineage guide](../docs/lineage.md).
+
+Exit codes: `0` on success, `1` if compilation fails, a BigQuery job would get more than 64 labels (checked before any action or unit test runs), unit tests fail (with `--run-tests`), the run fails, times out, or is cancelled (Ctrl+C).
 
 ---
 
 ### `format`
 
+<!-- BEGIN GENERATED: usage format -->
 ```
 dataform format [project-dir]
 ```
+<!-- END GENERATED: usage format -->
 
 Formats `.sqlx` and `.js` files in the project using Dataform's built-in formatter.
 
 **Positional arguments**
 
+<!-- BEGIN GENERATED: positionals format -->
 | Argument | Required | Description |
 |---|---|---|
 | `project-dir` | No (default `.`) | The Dataform project directory. |
+<!-- END GENERATED: positionals format -->
 
 **Options**
 
+<!-- BEGIN GENERATED: options format -->
 | Flag | Type | Default | Description |
 |---|---|---|---|
-| `--actions` | array | `{definitions,includes}/**/*.{js,sqlx}` | Glob pattern(s) of files to format, relative to `project-dir`. (Note: despite the shared flag name, here it means file globs, not action names.) |
-| `--ignore-js-files` | boolean | `false` | If set, only formats `.sqlx` files (skips `.js` files). |
-| `--check` | boolean | `false` | Checks whether files are already formatted correctly, without modifying them. Exits `1` if any file would be reformatted. |
+| `--actions` | array | `{definitions,includes}/**/*.{js,sqlx}` | Glob patterns of files to format, relative to the project directory (comma-separated or repeatable). |
+| `--ignore-js-files` | boolean | `false` | If set, only formats .sqlx files (skips .js files). |
+| `--check` | boolean | `false` | Checks whether files are already formatted correctly, without modifying them. |
+<!-- END GENERATED: options format -->
+
+**Notes**
+
+- Despite the shared flag name, `--actions` here takes file globs relative to `project-dir`, not action names. With `--ignore-js-files`, the default becomes `{definitions,includes}/**/*.sqlx`.
+- `--check` exits with code `1` if any file would be reformatted.
 
 ---
 
@@ -244,29 +318,20 @@ Formats `.sqlx` and `.js` files in the project using Dataform's built-in formatt
 
 `compile`, `test`, and `run` all accept the following flags, which override the equivalent settings in the project's `workflow_settings.yaml` for that invocation only:
 
-| Flag | Type | Description |
-|---|---|---|
-| `--default-database` | string | Overrides the default database (Google Cloud Project ID). |
-| `--default-schema` | string | Overrides the default schema name. |
-| `--default-location` | string | Overrides the default BigQuery location. See [supported values](https://cloud.google.com/bigquery/docs/locations). |
-| `--assertion-schema` | string | Overrides the default assertion schema. |
-| `--vars` | string | Injects variables as `key=value` pairs (comma-separated), referenced in code via `dataform.projectConfig.vars.someKey`. Example: `--vars=env=staging,region=eu`. |
-| `--database-suffix` | string | Suffix appended to all output database names. |
-| `--schema-suffix` | string | Suffix appended to all output schema names. Must contain only alphanumeric characters and/or underscores. |
-| `--table-prefix` | string | Prefix added to all table names. |
-| `--disable-assertions` | boolean | Disables all assertions, both built-in (`uniqueKey`, `nonNull`, `rowConditions`) and manual (`type: assertion`). Default `false`. |
-| `--default-reservation` | string | The default BigQuery reservation to use for execution. |
-
-## Other shared flags
-
-These are reused by multiple commands:
-
-| Flag | Used by | Description |
-|---|---|---|
-| `--actions` | `run`, `compile` (as `--output-actions`/`--output-tags` under different names), `format` | Meaning varies by command — see each command's table above. |
-| `--credentials` | `test`, `run` | Path to the credentials JSON file. Default: `.df-credentials.json`. |
-| `--json` | `compile`, `test`, `run` | Requests JSON output instead of human-readable text. |
-| `--timeout` | `compile`, `test`, `run` | Bounds project **compilation** time only (default `60s`). |
+<!-- BEGIN GENERATED: project-config-options -->
+| Flag | Type | Default | Description |
+|---|---|---|---|
+| `--default-database` | string | — | The default database to use, equivalent to Google Cloud Project ID. If unset, the value from workflow_settings.yaml is used. |
+| `--default-schema` | string | — | Override for the default schema name. If unset, the value from workflow_settings.yaml is used. |
+| `--default-location` | string | — | The default location to use. See https://cloud.google.com/bigquery/docs/locations for supported values. If unset, the value from workflow_settings.yaml is used. |
+| `--assertion-schema` | string | — | Default assertion schema. If unset, the value from workflow_settings.yaml is used. |
+| `--vars` | string | — | Variables to inject, as comma-separated key=value pairs (e.g. --vars=env=staging,region=eu), referenced in code via dataform.projectConfig.vars.&lt;key&gt;. If unset, the value from workflow_settings.yaml is used. |
+| `--database-suffix` | string | — | A suffix to be appended to output database names. If unset, the value from workflow_settings.yaml is used. |
+| `--schema-suffix` | string | — | A suffix to be appended to output schema names. Must contain only alphanumeric characters and/or underscores. If unset, the value from workflow_settings.yaml is used. |
+| `--table-prefix` | string | — | Adds a prefix for all table names. If unset, the value from workflow_settings.yaml is used. |
+| `--disable-assertions` | boolean | `false` | Disables all assertions including built-in assertions (uniqueKey, nonNull, rowConditions) and manual assertions (type: assertion). |
+| `--default-reservation` | string | — | The default BigQuery reservation to use for execution. If unset, the value from workflow_settings.yaml is used. If neither is set, default BigQuery behavior applies. |
+<!-- END GENERATED: project-config-options -->
 
 ## Credentials file
 
@@ -379,4 +444,4 @@ dataform run --job-prefix=nightly --job-labels=team=analytics,pipeline=nightly-e
 DATAFORM_LINEAGE_DEBUG=1 dataform run --emit-lineage
 ```
 
-Lineage events are emitted for every action that runs a BigQuery job: tables (including views and incremental tables), operations, assertions and property graphs. Assertions appear as a process for the assertion view written to the assertions dataset, with the assertion's dependencies reported as inputs. Property graph inputs are populated from the action's dependencies (`dependencyTargets`), so node and edge tables referenced via `ref` are reported as inputs while raw table paths in the graph definition are not. Declarations are not emitted. The action type is reported in the `gcp_bq_pipelines_job.actionType` attribute as `TABLE`, `OPERATIONS`, `ASSERTION` or `PROPERTY_GRAPH`, matching the values used by Dataform in Google Cloud.
+Lineage events are emitted for every action that runs a BigQuery job: tables (including views and incremental tables), operations, assertions and property graphs. On `COMPLETE` events, `inputs` and `outputs` are populated for actions that materialize a BigQuery object (`table`, `view`, `incremental`, `assertion`, `propertyGraph`, and `operations` with `hasOutput: true`). Assertions appear as a process for the assertion view written to the assertions dataset, with the assertion's dependencies reported as inputs. Property graph inputs are populated from the action's dependencies (`dependencyTargets`), so node and edge tables referenced via `ref` are reported as inputs while raw table paths in the graph definition are not. Declarations are not emitted. The action type is reported in the `gcp_bq_pipelines_job.actionType` attribute as `TABLE`, `OPERATIONS`, `ASSERTION` or `PROPERTY_GRAPH`, matching the values used by Dataform in Google Cloud. For prerequisites, `workflow_settings.yaml` configuration, and troubleshooting, see the [Data Lineage guide](../docs/lineage.md).

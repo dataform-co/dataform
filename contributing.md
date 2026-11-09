@@ -114,6 +114,21 @@ All .ts files are expected to be formatted using prettier. You can format all fi
 
 Alternatively, you may want to configure prettier to run on save or as a pre-commit hook.
 
+### Changing CLI commands or options
+
+The command list, usage lines and argument/option tables in [`cli/README.md`](cli/README.md) are generated from the CLI command and option definitions in `cli/` (e.g. an option's `describe`), between `<!-- BEGIN GENERATED: ... -->` and `<!-- END GENERATED: ... -->` markers. If you add, remove or change a command, positional argument or option:
+
+1. Change the definition in `cli/` (not the generated blocks in the README, which are overwritten).
+2. Regenerate the README:
+
+   ```bash
+   bazel run //cli:update_readme
+   ```
+
+3. Update the hand-written parts of `cli/README.md` (command descriptions, Notes, examples) if needed, and commit them together with your change.
+
+Option descriptions are shown both in `dataform help` and in the README, so keep them plain text (no markdown) and put longer explanations in the command's Notes in the README. The unit tests fail if the README is out of date (`./scripts/run_tests`, also run in CI); you can run just this check with `bazel test //cli:readme_generated_test`.
+
 ### Canary test
 
 In CI, a script builds the Core bundle the same way it would be prepared for publishing to npm, and attempts to use it to compile a sample project using Dataform's Google Cloud interface. This ensures changes to Core do not break the Cloud backend.

@@ -1,3 +1,4 @@
+load("@aspect_rules_js//js:defs.bzl", "js_binary")
 load("//testing:index.bzl", "ts_test_suite")
 load("//tools:ts_library.bzl", "ts_library")
 
@@ -111,6 +112,7 @@ ts_test_suite(
     name = "integration_tests",
     srcs = [
         "index_compile_isolated_environment_test.ts",
+        "index_location_test.ts",
         "index_run_e2e_test.ts",
         "tests/jit/index_jit_advanced_test.ts",
         "tests/jit/index_jit_core_version_test.ts",
@@ -144,6 +146,53 @@ ts_test_suite(
         "//cli/api",
         "//core",
         "//protos:ts",
+        "//testing",
+    ],
+)
+
+# Generates the parts of README.md derived from the CLI command definitions. Kept separate from
+# :cli so that the generator isn't bundled into @dataform/cli.
+ts_library(
+    name = "readme_generator",
+    srcs = [
+        "readme_generator.ts",
+        "update_readme.ts",
+    ],
+    deps = [
+        ":cli",
+        "//:node_modules/@types/node",
+        "//:node_modules/@types/yargs",
+    ],
+)
+
+# Regenerates the generated blocks of README.md: bazel run //cli:update_readme
+js_binary(
+    name = "update_readme",
+    data = [
+        ":readme_generator",
+        "//:node_modules/source-map-support",
+        "//testing:resolver-patch",
+    ],
+    entry_point = ":update_readme.js",
+    node_options = [
+        "--require=./testing/resolver-patch.js",
+        "--require=source-map-support/register",
+    ],
+)
+
+ts_test_suite(
+    name = "readme_tests",
+    srcs = [
+        "readme_generated_test.ts",
+        "readme_generator_test.ts",
+    ],
+    data = ["README.md"],
+    deps = [
+        ":readme_generator",
+        "//:node_modules/@types/chai",
+        "//:node_modules/@types/node",
+        "//:node_modules/chai",
+        "//cli",
         "//testing",
     ],
 )

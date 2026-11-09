@@ -4,7 +4,9 @@
 
 Views are virtualised tables. They are useful for creating a new structured table without having
 to copy the original data to it, which can result in significant cost savings for avoiding data
-processing and storage.
+processing and storage. When [lineage emission](../lineage.md) is enabled, executing a view action
+emits OpenLineage `RunEvent`s (`actionType: "TABLE"`) to Knowledge Catalog Lineage with the view's
+`dependencyTargets` as `inputs` and the view target as `outputs` on `COMPLETE`.
 
 You can create views in the following ways. Available config options are defined in
 [ViewConfig](configs#dataform-ActionConfig-ViewConfig), and are shared across all the

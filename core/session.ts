@@ -18,6 +18,7 @@ import { Table, TableContext } from "df/core/actions/table";
 import { Test } from "df/core/actions/test";
 import { View } from "df/core/actions/view";
 import { CompilationSql } from "df/core/compilation_sql";
+import { validateSqlxActionBlocks } from "df/core/compilers";
 import { Contextable, IActionContext, ITableContext, Resolvable } from "df/core/contextables";
 import * as Path from "df/core/path";
 import { targetAsReadableString, targetStringifier } from "df/core/targets";
@@ -152,35 +153,23 @@ export class Session {
     ];
   }) {
     const { sqlxConfig } = actionOptions;
-    const actionType = sqlxConfig.hasOwnProperty("type") ? sqlxConfig.type : "operations";
-    if (actionOptions.sqlStatementCount > 1 && actionType !== "operations") {
-      this.compileError(
-        "Actions may only contain more than one SQL statement if they are of type 'operations'.",
-      );
-    }
-    if (sqlxConfig.hasOwnProperty("protected") && actionType !== "incremental") {
-      this.compileError(
-        "Actions may only specify 'protected: true' if they are of type 'incremental'.",
-      );
-    }
-    if (actionOptions.incrementalWhereContextable && actionType !== "incremental") {
-      this.compileError(
-        "Actions may only include incremental_where if they are of type 'incremental'.",
-      );
-    }
-    if (actionOptions.inputContextables.length > 0 && actionType !== "test") {
-      this.compileError("Actions may only include input blocks if they are of type 'test'.");
-    }
-    if (actionOptions.preOperationsContextable && !definesDataset(actionType)) {
-      this.compileError("Actions may only include pre_operations if they create a dataset.");
-    }
-    if (actionOptions.postOperationsContextable && !definesDataset(actionType)) {
-      this.compileError("Actions may only include post_operations if they create a dataset.");
-    }
-
     if (!sqlxConfig.filename) {
       sqlxConfig.filename = utils.getCallerFile(this.rootDir);
     }
+    const actionType = this.processSqlxConfig(actionOptions);
+
+    validateSqlxActionBlocks(
+      actionType,
+      {
+        sqlStatementCount: actionOptions.sqlStatementCount,
+        hasIncrementalWhere: Boolean(actionOptions.incrementalWhereContextable),
+        hasInputs: actionOptions.inputContextables.length > 0,
+        hasPreOperations: Boolean(actionOptions.preOperationsContextable),
+        hasPostOperations: Boolean(actionOptions.postOperationsContextable),
+        isJit: false,
+      },
+      (msg) => this.compileError(msg),
+    );
 
     switch (actionType) {
       case "view":
@@ -256,6 +245,70 @@ export class Session {
         break;
       default:
         throw new Error(`Unrecognized action type: ${sqlxConfig.type}`);
+    }
+  }
+
+  public sqlxJitAction(actionOptions: {
+    sqlxConfig: any;
+    jitCode: string;
+    jitCodeByType?: { operations: string; assertion: string; dataset: string };
+    sqlStatementCount?: number;
+    hasIncrementalWhere?: boolean;
+    hasInputs?: boolean;
+    hasPreOperations?: boolean;
+    hasPostOperations?: boolean;
+  }) {
+    const { sqlxConfig } = actionOptions;
+    if (!sqlxConfig.filename) {
+      sqlxConfig.filename = utils.getCallerFile(this.rootDir);
+    }
+    const actionType = this.processSqlxConfig(actionOptions);
+
+    validateSqlxActionBlocks(
+      actionType,
+      {
+        sqlStatementCount: actionOptions.sqlStatementCount ?? 1,
+        hasIncrementalWhere: Boolean(actionOptions.hasIncrementalWhere),
+        hasInputs: Boolean(actionOptions.hasInputs),
+        hasPreOperations: Boolean(actionOptions.hasPreOperations),
+        hasPostOperations: Boolean(actionOptions.hasPostOperations),
+        isJit: true,
+      },
+      (msg) => this.compileError(msg),
+    );
+
+    const jitConfig = { ...sqlxConfig };
+    delete jitConfig.compilation_mode;
+
+    const resolvedJitCode = actionOptions.jitCodeByType
+      ? actionType === "operations"
+        ? actionOptions.jitCodeByType.operations
+        : actionType === "assertion"
+          ? actionOptions.jitCodeByType.assertion
+          : actionOptions.jitCodeByType.dataset
+      : actionOptions.jitCode;
+
+    switch (actionType) {
+      case "view":
+        const view = new View(this, jitConfig).jitCode(resolvedJitCode);
+        this.actions.push(view);
+        break;
+      case "incremental":
+        const incrementalTable = new IncrementalTable(this, jitConfig).jitCode(resolvedJitCode);
+        this.actions.push(incrementalTable);
+        break;
+      case "table":
+        const table = new Table(this, jitConfig).jitCode(resolvedJitCode);
+        this.actions.push(table);
+        break;
+      case "operations":
+        this.actions.push(new Operation(this, jitConfig).jitCode(resolvedJitCode));
+        break;
+      case "assertion":
+        this.actions.push(new Assertion(this, jitConfig).jitCode(resolvedJitCode));
+        break;
+      default:
+        throw new Error(`Unsupported by JiT compilation mode action type: ${actionType}`);
     }
   }
 
@@ -705,6 +758,29 @@ export class Session {
     });
   }
 
+  private processSqlxConfig(actionOptions: { sqlxConfig: any }): string {
+    const { sqlxConfig } = actionOptions;
+
+    if (sqlxConfig.hasOwnProperty("compilation_mode")) {
+      const mode = sqlxConfig.compilation_mode;
+      if (mode !== "jit" && mode !== "aot") {
+        this.compileError(
+          `Invalid compilation_mode "${mode}" in ${sqlxConfig.filename || "sqlx"}; expected "jit" or "aot".`,
+        );
+      }
+      delete sqlxConfig.compilation_mode;
+    }
+
+    const actionType = sqlxConfig.hasOwnProperty("type") ? sqlxConfig.type : "operations";
+    if (sqlxConfig.hasOwnProperty("protected") && actionType !== "incremental") {
+      this.compileError(
+        "Actions may only specify 'protected: true' if they are of type 'incremental'.",
+      );
+    }
+
+    return actionType;
+  }
+
   private alterActionName(actions: ActionProto[], declarationTargets: dataform.ITarget[]) {
     const { tablePrefix, schemaSuffix, databaseSuffix } = this.projectConfig;
 
@@ -903,10 +979,6 @@ export class Session {
     compiledGraph.dataPreparations = compiledGraph.dataPreparations.filter(isUniqueAction);
     compiledGraph.propertyGraphs = compiledGraph.propertyGraphs.filter(isUniqueAction);
   }
-}
-
-function definesDataset(type: string) {
-  return type === "view" || type === "table" || type === "incremental";
 }
 
 function getCanonicalProjectConfig(originalProjectConfig: dataform.ProjectConfig) {

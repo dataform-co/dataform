@@ -2,6 +2,6 @@ config {
     type: "table"
 }
 
-select 1 as id, "Book A" as title union all
-select 2 as id, "Book B" as title union all
-select 3 as id, "Book C" as title
+select 1 as id, "Book A" as title, 100 as pages union all
+select 2 as id, "Book B" as title, 200 as pages union all
+select 3 as id, "Book C" as title, 300 as pages

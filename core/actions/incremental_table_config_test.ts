@@ -46,6 +46,7 @@ suite("incremental table sqlx and JS API config options", ({ afterEach }) => {
     ${exampleBuiltInAssertions.inputAssertionBlock}
     hermetic: true,
     reservation: "reservation",
+    jobLabels: {"job_key": "job_val"},
     onSchemaChange: "SYNCHRONIZE",
     metadata: {
         overview: "incremental table overview",
@@ -126,6 +127,9 @@ SELECT 1`,
           actionDescriptor: {
             ...exampleActionDescriptor.outputActionDescriptor,
             reservation: "reservation",
+            jobLabels: {
+              job_key: "job_val",
+            },
             // sqlxConfig.bigquery.labels are placed as bigqueryLabels.
             bigqueryLabels: {
               key: "val",

@@ -1,33 +1,58 @@
-name: "LibraryGraph"
-
+version: 0.2.0.dev0/google
 tags: ["integration"]
-
-nodes:
-- name: "Author"
-  ref: "authors"
-  keys: "id"
-  fields:
-  - name: "id"
-    expression: "id"
-  - name: "name"
-    expression: "name"
-
-- name: "Book"
-  ref: "books"
-  keys: "id"
-  fields:
-  - name: "id"
-    expression: "id"
-  - name: "title"
-    expression: "title"
-
-edges:
-- name: "Wrote"
-  ref: "wrote"
-  keys: ["author_id", "book_id"]
-  source:
-    node: "Author"
-    join_keys: ["author_id"]
-  destination:
-    node: "Book"
-    join_keys: ["book_id"]
+semantic_model:
+  - name: "LibraryGraph"
+    entities:
+      - name: "Author"
+        source:
+          ref: "authors"
+        primary_key: "id"
+        description: "Library author"
+        ai_context:
+          synonyms: ["writer"]
+          examples: ["Alice"]
+        fields:
+          - name: "id"
+            datatype: "INT64"
+          - name: "name"
+            datatype: "STRING"
+          - name: "upper_name"
+            datatype: "STRING"
+            expression: "UPPER(name)"
+          - name: "address"
+          - name: "country"
+            expression: "address.country"
+          - name: "group"
+            expression: "name"
+      - name: "Book"
+        source:
+          ref: "books"
+        primary_key: "id"
+        fields:
+          - "id"
+          - "title"
+          - "pages"
+      - name: "Authorship"
+        source:
+          ref: "wrote"
+        primary_key: ["author_id", "book_id"]
+    relationships:
+      - name: "Wrote"
+        from: "Authorship"
+        to: "Author"
+        from_columns: ["author_id"]
+        to_columns: ["id"]
+      - name: "WroteBook"
+        from: "Authorship"
+        to: "Book"
+        from_columns: ["book_id"]
+        to_columns: ["id"]
+    metrics:
+      - name: "book_count"
+        entity: "Book"
+        expression: "COUNT(id)"
+        description: "Total books"
+      - name: "total_pages"
+        entity: "Book"
+        expression: "SUM(pages)"
+        description: "Total pages across books"

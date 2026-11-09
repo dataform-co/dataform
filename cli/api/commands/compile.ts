@@ -4,6 +4,11 @@ import * as path from "path";
 import * as tmp from "tmp";
 
 import { BaseWorker } from "df/cli/api/commands/base_worker";
+import {
+  copyProjectForStatelessInstall,
+  explainExcludedModule,
+  findProjectIgnoreFiles,
+} from "df/cli/api/commands/compile_copy_filter";
 import { MISSING_CORE_VERSION_ERROR } from "df/cli/api/commands/install";
 import { readConfigFromWorkflowSettings } from "df/cli/api/utils";
 import { DEFAULT_COMPILATION_TIMEOUT_MILLIS } from "df/cli/api/utils/constants";
@@ -55,14 +60,41 @@ export async function compileForRun(compileConfig: dataform.ICompileConfig = {})
   const environment = workflowSettings?.dataformCoreVersion
     ? await createIsolatedEnvironment(projectDir, workflowSettings.dataformCoreVersion, log)
     : useProjectEnvironment(projectDir);
+  // A file the copy filter excluded surfaces as a missing module, and the error doesn't
+  // say why. Say why alongside the error, which is left as is.
+  // This reads the copy, so it runs before the environment is cleaned up.
+  const printExcludedModuleNotes = (messages: string[]) => {
+    if (environment.projectDir === projectDir) {
+      return;
+    }
+    const notes = new Set<string>();
+    for (const message of messages) {
+      const note = explainExcludedModule(message, projectDir, environment.projectDir);
+      if (note) {
+        notes.add(note);
+      }
+    }
+    notes.forEach((note) => process.stderr.write(`Note: ${note}\n`));
+  };
   try {
-    const result = await new CompileChildProcess().compile({
-      ...compileConfig,
-      projectDir: environment.projectDir,
-      extension: workflowSettings?.extension ?? undefined,
-    });
+    let result: string;
+    try {
+      result = await new CompileChildProcess().compile({
+        ...compileConfig,
+        projectDir: environment.projectDir,
+        extension: workflowSettings?.extension ?? undefined,
+      });
+    } catch (e) {
+      if (e instanceof Error) {
+        printExcludedModuleNotes([e.message]);
+      }
+      throw e;
+    }
     const decodedResult = decode64(dataform.CoreExecutionResponse, result);
     const compiledGraph = dataform.CompiledGraph.create(decodedResult.compile.compiledGraph);
+    printExcludedModuleNotes(
+      (compiledGraph.graphErrors?.compilationErrors ?? []).map((error) => error.message ?? ""),
+    );
     return { compiledGraph, environment };
   } catch (e) {
     environment.cleanup();
@@ -108,8 +140,16 @@ async function createIsolatedEnvironment(
   try {
     log(`Using isolated environment for @dataform/core@${dataformCoreVersion}\n`);
     log(`Copying project to temporary directory: ${environment.projectDir}\n`);
+    if (log.verbose) {
+      const ignoreFiles = findProjectIgnoreFiles(projectDir);
+      log(
+        ignoreFiles.length > 0
+          ? `Excluding .git, node_modules, and paths matched by ${ignoreFiles.join(" and ")}, except files reachable from definitions/ and includes/\n`
+          : `Excluding .git and node_modules, except files reachable from definitions/ and includes/ (no .gitignore or .dataformignore in project root)\n`,
+      );
+    }
     const copyStartTime = performance.now();
-    fs.copySync(projectDir, environment.projectDir);
+    copyProjectForStatelessInstall(projectDir, environment.projectDir);
     log(`Project copy completed in ${performance.now() - copyStartTime}ms\n`);
 
     await installCore(environment, dataformCoreVersion, log);
@@ -138,7 +178,13 @@ function createTemporaryDirectory(): ITemporaryEnvironment {
     process.removeListener("exit", cleanup);
     // Stop npm first, so that it doesn't keep writing into the directory while it is removed.
     runningProcesses.forEach(killProcessTree);
-    fs.rmSync(projectDir, { recursive: true, force: true, maxRetries: 3 });
+    // Removal is best effort: a failure to remove the directory mustn't turn a successful
+    // compile into a failure, or hide the error that ended the compile.
+    try {
+      fs.rmSync(projectDir, { recursive: true, force: true, maxRetries: 3 });
+    } catch {
+      // Left for the OS to clean up with the rest of the temporary directory.
+    }
   };
   // Safety net in case the caller never gets to call cleanup(), e.g. on an uncaught exception.
   // Signals skip "exit" unless the process exits explicitly; the CLI does that in

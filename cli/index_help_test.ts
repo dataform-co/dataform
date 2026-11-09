@@ -85,6 +85,8 @@ suite("help command", () => {
     expect(output).to.include("--include-dependents");
     expect(output).to.include("--tags");
     expect(output).to.include("--job-labels");
+    expect(output).to.include("--emit-lineage");
+    expect(output).to.include("docs/lineage.md");
   });
 
   test("shows help for 'format' command", async () => {
@@ -93,9 +95,11 @@ suite("help command", () => {
     const output = result.stdout;
     expect(output).to.include("Format the dataform project's files.");
     expect(output).to.include("--check");
-    expect(output).to.include("Check if files are formatted correctly without modifying them.");
+    expect(output).to.include(
+      "Checks whether files are already formatted correctly, without modifying them.",
+    );
     expect(output).to.include("--actions");
     expect(output).to.include("--ignore-js-files");
-    expect(output).to.include("If set, the formatter will not consider javascript files (.js)");
+    expect(output).to.include("If set, only formats .sqlx files (skips .js files).");
   });
 });

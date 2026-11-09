@@ -43,6 +43,7 @@ suite("table sqlx and JS API config options", ({ afterEach }) => {
     dependOnDependencyAssertions: true,
     hermetic: true,
     reservation: "reservation",
+    jobLabels: {"job_key": "job_val"},
     metadata: {
         overview: "table overview",
         extraProperties: {
@@ -116,6 +117,9 @@ SELECT 1`,
           actionDescriptor: {
             ...exampleActionDescriptor.outputActionDescriptor,
             reservation: "reservation",
+            jobLabels: {
+              job_key: "job_val",
+            },
             // sqlxConfig.bigquery.labels are placed as bigqueryLabels.
             bigqueryLabels: {
               key: "val",
