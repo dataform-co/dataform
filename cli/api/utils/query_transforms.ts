@@ -40,7 +40,10 @@ function stripCommentsAndQuotedContent(statement: string): string {
         i += !isRaw && statement[i] === "\\" ? 2 : 1;
       }
       i = Math.min(i + closing.length, statement.length);
-      result += char + " ".repeat(Math.max(0, i - start - 2)) + (i - start > 1 ? char : "");
+      result +=
+        closing +
+        " ".repeat(Math.max(0, i - start - 2 * closing.length)) +
+        (i - start >= 2 * closing.length ? closing : "");
     } else {
       result += char;
       i++;
