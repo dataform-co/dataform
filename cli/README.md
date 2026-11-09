@@ -263,6 +263,7 @@ Compiles and executes the project against BigQuery (or validates it with `--dry-
 | `--job-prefix` | string | — | Adds an additional prefix to BigQuery job IDs, in the form dataform-&lt;job-prefix&gt;-. |
 | `--job-labels` | string | — | Comma-separated list of labels to add to BigQuery jobs, e.g. 'key1=val1,key2=val2'. Also applied to unit tests with --run-tests. Overrides job labels and table labels that use the same key. |
 | `--emit-lineage` | boolean | — | If set, emits OpenLineage RunEvents to Knowledge Catalog Lineage for each executed action. Overrides workflow_settings.yaml lineage.enabled when specified. See https://github.com/dataform-co/dataform/blob/main/docs/lineage.md. |
+| `--build-only` | boolean | `false` | Only builds the execution graph without submitting any queries to BigQuery. JiT actions are not compiled. Note that --dry-run and --run-tests will be ignored if combined with --build-only. |
 | Project-config overrides | — | — | See [Shared project-config flags](#shared-project-config-flags). |
 <!-- END GENERATED: options run -->
 

@@ -49,6 +49,35 @@ export function formatBytesInHumanReadableFormat(bytes: number): string {
   return `${value} ${units[i]}`;
 }
 
+export function formatDatasetWarehouseState(
+  datasetType: string,
+  tableMetadata?: dataform.ITableMetadata,
+): string {
+  if (!tableMetadata) {
+    return "(does not exist)";
+  }
+  const details: string[] = [];
+  const oldBaseType =
+    tableMetadata.type === dataform.TableMetadata.Type.VIEW
+      ? "view"
+      : tableMetadata.type === dataform.TableMetadata.Type.TABLE
+        ? "table"
+        : undefined;
+  const newBaseType = datasetType === "view" ? "view" : "table";
+  if (oldBaseType && oldBaseType !== newBaseType) {
+    details.push(`type: ${oldBaseType} -> ${newBaseType}`);
+  }
+  const lastUpdatedMillis = tableMetadata.lastUpdatedMillis?.toNumber?.() ?? 0;
+  if (lastUpdatedMillis !== 0) {
+    const lastModified = new Date(lastUpdatedMillis)
+      .toISOString()
+      .replace("T", " ")
+      .replace(/\.\d{3}Z$/, " UTC");
+    details.push(`last modified: ${lastModified}`);
+  }
+  return `(${details.join(", ")})`;
+}
+
 /**
  * Handles prompting and validation for defaultBucketName, defaultTableFolderRoot
  * and defaultTableFolderSubpath if the user provides the --iceberg flag when

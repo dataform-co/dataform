@@ -1,12 +1,15 @@
 import { expect } from "chai";
+import Long from "long";
 
 import {
   formatBytesInHumanReadableFormat,
+  formatDatasetWarehouseState,
   formatExecutionSuffix,
   validateIcebergConfigBucketName,
   validateIcebergConfigTableFolderRoot,
   validateIcebergConfigTableFolderSubpath,
 } from "df/cli/util";
+import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 
 suite("format execution suffix", () => {
@@ -166,5 +169,59 @@ suite("Iceberg Config Validation", () => {
     test('invalidates subpaths containing ".."', () => {
       expect(() => validateIcebergConfigTableFolderSubpath("subp..ath")).to.throw("Invalid input.");
     });
+  });
+});
+
+suite("formatDatasetWarehouseState", () => {
+  const timestampMillis = Long.fromNumber(Date.UTC(2026, 10, 4, 14, 8, 23));
+
+  test("returns does not exist when metadata is missing", () => {
+    expect(formatDatasetWarehouseState("table", undefined)).equals("(does not exist)");
+  });
+
+  test("formats last modified date when types match", () => {
+    expect(
+      formatDatasetWarehouseState("table", {
+        type: dataform.TableMetadata.Type.TABLE,
+        lastUpdatedMillis: timestampMillis,
+      }),
+    ).equals("(last modified: 2026-11-04 14:08:23 UTC)");
+
+    expect(
+      formatDatasetWarehouseState("incremental", {
+        type: dataform.TableMetadata.Type.TABLE,
+        lastUpdatedMillis: timestampMillis,
+      }),
+    ).equals("(last modified: 2026-11-04 14:08:23 UTC)");
+
+    expect(
+      formatDatasetWarehouseState("view", {
+        type: dataform.TableMetadata.Type.VIEW,
+        lastUpdatedMillis: timestampMillis,
+      }),
+    ).equals("(last modified: 2026-11-04 14:08:23 UTC)");
+  });
+
+  test("includes old and new types when warehouse type differs from action type", () => {
+    expect(
+      formatDatasetWarehouseState("view", {
+        type: dataform.TableMetadata.Type.TABLE,
+        lastUpdatedMillis: timestampMillis,
+      }),
+    ).equals("(type: table -> view, last modified: 2026-11-04 14:08:23 UTC)");
+
+    expect(
+      formatDatasetWarehouseState("table", {
+        type: dataform.TableMetadata.Type.VIEW,
+        lastUpdatedMillis: timestampMillis,
+      }),
+    ).equals("(type: view -> table, last modified: 2026-11-04 14:08:23 UTC)");
+
+    expect(
+      formatDatasetWarehouseState("incremental", {
+        type: dataform.TableMetadata.Type.VIEW,
+        lastUpdatedMillis: timestampMillis,
+      }),
+    ).equals("(type: view -> table, last modified: 2026-11-04 14:08:23 UTC)");
   });
 });
