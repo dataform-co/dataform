@@ -246,8 +246,18 @@ suite("warnAboutSetDatasetIdWithoutLocation", ({ beforeEach, afterEach }) => {
   test("warns once when SET @@dataset_id is used without any location", () => {
     warnAboutSetDatasetIdWithoutLocation(
       [
-        { tasks: [{ statement: "SET @@dataset_id = 'some_dataset';\nSELECT 1 AS id" }] },
-        { tasks: [{ statement: "SET @@dataset_id = 'some_dataset';\nSELECT 2 AS id" }] },
+        {
+          target: { database: "db", schema: "schema", name: "first" },
+          tasks: [{ statement: "SET @@dataset_id = 'some_dataset';\nSELECT 1 AS id" }],
+        },
+        {
+          target: { database: "db", schema: "schema", name: "unaffected" },
+          tasks: [{ statement: "SELECT 1 AS id" }],
+        },
+        {
+          target: { database: "db", schema: "schema", name: "second" },
+          tasks: [{ statement: "SET @@dataset_id = 'some_dataset';\nSELECT 2 AS id" }],
+        },
       ],
       undefined,
     );
@@ -255,6 +265,23 @@ suite("warnAboutSetDatasetIdWithoutLocation", ({ beforeEach, afterEach }) => {
     expect(stderrOutput).to.have.length(1);
     expect(stderrOutput[0]).to.include(
       "Warning: SET @@dataset_id is used without a configured location.",
+    );
+    expect(stderrOutput[0]).to.include("Affected actions: db.schema.first, db.schema.second\n");
+  });
+
+  test("truncates affected actions list when more than 5 actions are affected", () => {
+    warnAboutSetDatasetIdWithoutLocation(
+      [1, 2, 3, 4, 5, 6, 7].map((i) => ({
+        target: { schema: "schema", name: `action_${i}` },
+        tasks: [{ statement: "SET @@dataset_id = 'some_dataset';\nSELECT 1 AS id" }],
+      })),
+      undefined,
+    );
+
+    expect(stderrOutput).to.have.length(1);
+    expect(stderrOutput[0]).to.include(
+      "Affected actions: schema.action_1, schema.action_2, schema.action_3, schema.action_4, " +
+        "schema.action_5 (...2 actions truncated)\n",
     );
   });
 
