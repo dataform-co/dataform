@@ -53,7 +53,7 @@ export function formatDatasetWarehouseState(
   datasetType: string,
   tableMetadata?: dataform.ITableMetadata,
 ): string {
-  if (!tableMetadata || !tableMetadata.type) {
+  if (!tableMetadata) {
     return "(does not exist)";
   }
   const details: string[] = [];
@@ -68,11 +68,13 @@ export function formatDatasetWarehouseState(
     details.push(`type: ${oldBaseType} -> ${newBaseType}`);
   }
   const lastUpdatedMillis = tableMetadata.lastUpdatedMillis?.toNumber?.() ?? 0;
-  const lastModified = new Date(lastUpdatedMillis)
-    .toISOString()
-    .replace("T", " ")
-    .replace(/\.\d{3}Z$/, " UTC");
-  details.push(`last modified: ${lastModified}`);
+  if (lastUpdatedMillis !== 0) {
+    const lastModified = new Date(lastUpdatedMillis)
+      .toISOString()
+      .replace("T", " ")
+      .replace(/\.\d{3}Z$/, " UTC");
+    details.push(`last modified: ${lastModified}`);
+  }
   return `(${details.join(", ")})`;
 }
 

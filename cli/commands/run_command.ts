@@ -254,15 +254,15 @@ export const runCommand: ICommand<IRunArgs> = {
       print(prettyJsonStringify(runResult));
     } else {
       printExecutedGraph(runResult);
-      if (runResult.status === dataform.RunResult.ExecutionStatus.TIMED_OUT) {
-        const executionTimeoutMillis = argv.executionTimeout;
-        const suffix = executionTimeoutMillis
-          ? ` after ${executionTimeoutMillis / 1000} seconds (--${executionTimeoutOption.name})`
-          : "";
-        printError(`Run timed out${suffix}.`);
-      } else if (runResult.status === dataform.RunResult.ExecutionStatus.CANCELLED) {
-        printError("Run cancelled.");
-      }
+    }
+    if (runResult.status === dataform.RunResult.ExecutionStatus.TIMED_OUT) {
+      const executionTimeoutMillis = argv.executionTimeout;
+      const suffix = executionTimeoutMillis
+        ? ` after ${executionTimeoutMillis / 1000} seconds (--${executionTimeoutOption.name})`
+        : "";
+      printError(`Run timed out${suffix}.`);
+    } else if (runResult.status === dataform.RunResult.ExecutionStatus.CANCELLED) {
+      printError("Run cancelled.");
     }
     return runResult.status === dataform.RunResult.ExecutionStatus.SUCCESSFUL ? 0 : 1;
   },
