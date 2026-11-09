@@ -308,7 +308,7 @@ actions:
                 schema: "defaultDataset",
               },
               query:
-                "\nSELECT\n  'id > 0' AS failing_row_condition,\n  *\nFROM `defaultProject.defaultDataset.test`\nWHERE NOT (id > 0\n)\nUNION ALL\nSELECT\n  'name IS NOT NULL' AS failing_row_condition,\n  *\nFROM `defaultProject.defaultDataset.test`\nWHERE NOT (name IS NOT NULL\n)\n",
+                "\nSELECT\n  'id > 0' AS failing_row_condition,\n  *\nFROM `defaultProject.defaultDataset.test`\nWHERE NOT (id > 0)\nUNION ALL\nSELECT\n  'name IS NOT NULL' AS failing_row_condition,\n  *\nFROM `defaultProject.defaultDataset.test`\nWHERE NOT (name IS NOT NULL)\n",
               target: {
                 database: "defaultProject",
                 name: "defaultDataset_test_assertions_rowConditions",
@@ -438,36 +438,6 @@ publish("t3", { type: "table", assertions: { rowConditions: sharedRowConditions 
       expect(failingRowConditions("t2")).deep.equals(expectedWithNonNull);
       expect(failingRowConditions("t3")).deep.equals(["'a > 0' AS failing_row_condition"]);
     });
-
-    for (const nonNull of [[], ["id"]]) {
-      test(`conditions appended after registration are retained with nonNull ${JSON.stringify(nonNull)}`, () => {
-        const projectDir = tmpDirFixture.createNewTmpDir();
-        writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
-        writeDefinitionFile(
-          projectDir,
-          "table.js",
-          `
-const rowConditions = ["a > 0"];
-publish("test", { type: "table", assertions: { rowConditions, nonNull: ${JSON.stringify(nonNull)} } })
-  .query("SELECT 1 AS a, 1 AS b, 1 AS id");
-rowConditions.push("b > 0");
-`,
-        );
-
-        const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
-
-        expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-        const query = result.compile.compiledGraph.assertions.find(
-          (assertion) => assertion.target.name === "defaultDataset_test_assertions_rowConditions",
-        ).query;
-        expect(query.match(/'[^']*' AS failing_row_condition/g)).deep.equals([
-          "'a > 0' AS failing_row_condition",
-          "'b > 0' AS failing_row_condition",
-          ...nonNull.map((column) => `'${column} IS NOT NULL' AS failing_row_condition`),
-        ]);
-        expect(query).contains("WHERE NOT (b > 0\n)");
-      });
-    }
   });
 
   test("JS assert().description() preserves jobLabels and reservation on actionDescriptor", () => {

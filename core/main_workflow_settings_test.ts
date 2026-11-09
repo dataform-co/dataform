@@ -391,7 +391,7 @@ select 1 AS \${dataform.projectConfig.vars.columnVar}`,
                 schema: "tableSchema",
               },
               query:
-                "\nSELECT\n  'columnValue IS NOT NULL' AS failing_row_condition,\n  *\nFROM `databaseVal.tableSchema.file`\nWHERE NOT (columnValue IS NOT NULL\n)\n",
+                "\nSELECT\n  'columnValue IS NOT NULL' AS failing_row_condition,\n  *\nFROM `databaseVal.tableSchema.file`\nWHERE NOT (columnValue IS NOT NULL)\n",
               target: {
                 name: "tableSchema_file_assertions_rowConditions",
               },

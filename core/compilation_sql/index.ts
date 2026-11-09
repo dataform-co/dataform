@@ -43,16 +43,18 @@ WHERE index_row_count > 1
 
   public rowConditionsAssertion(dataset: string, rowConditions: string[]) {
     return rowConditions
-      .map(
-        (rowCondition: string) => `
+      .map((rowCondition: string) => {
+        // A condition ending in a "--" or "#" line comment would comment out a closing parenthesis
+        // on the same line, so close on a new line when the condition has a comment or spans lines.
+        const closingParenthesis = /\n|--|#/.test(rowCondition) ? "\n)" : ")";
+        return `
 SELECT
   ${this.sqlString(rowCondition)} AS failing_row_condition,
   *
 FROM ${dataset}
-WHERE NOT (${rowCondition}
-)
-`,
-      )
+WHERE NOT (${rowCondition}${closingParenthesis}
+`;
+      })
       .join(`UNION ALL`);
   }
 }
