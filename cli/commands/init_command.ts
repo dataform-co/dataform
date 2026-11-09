@@ -43,10 +43,11 @@ const defaultLocationOption: INamedOption<yargs.PositionalOptions, IInitArgs> = 
   name: ProjectConfigOptions.defaultLocation.name,
   option: {
     describe:
-      "The default location to use (optional). If not set, BigQuery chooses the location " +
-      "dynamically. See https://cloud.google.com/bigquery/docs/locations for supported values.",
+      "The default location to use (optional). If omitted, `defaultLocation` is not written to" +
+      " `workflow_settings.yaml` and the `location` from `.df-credentials.json` is used instead;" +
+      " if that is also unset, BigQuery chooses the location dynamically. See" +
+      " https://cloud.google.com/bigquery/docs/locations for supported values.",
   },
-  docs: { required: true },
 };
 
 export const initCommand: ICommand<IInitArgs> = {

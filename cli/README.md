@@ -65,10 +65,10 @@ Creates a new Dataform project (`workflow_settings.yaml`, `.gitignore`, `definit
 |---|---|---|
 | `project-dir` | No (default `.`) | The Dataform project directory. |
 | `default-database` | **Yes** | The default database to use, equivalent to Google Cloud Project ID. |
-| `default-location` | **Yes** | The default location to use. See https://cloud.google.com/bigquery/docs/locations for supported values. |
+| `default-location` | No | The default location to use (optional). If omitted, \`defaultLocation\` is not written to \`workflow_settings.yaml\` and the \`location\` from \`.df-credentials.json\` is used instead; if that is also unset, BigQuery chooses the location dynamically. See https://cloud.google.com/bigquery/docs/locations for supported values. |
 <!-- END GENERATED: positionals init -->
 
-`project-dir` is the directory to create the project in. `default-database` and `default-location` are positional but enforced as required at runtime — omitting either produces an error telling you to run `dataform help init`. All three positional arguments can also be passed as named flags (`--project-dir`, `--default-database`, `--default-location`), e.g. `dataform init my_project --default-database=my-gcp-project-id --default-location=US`.
+`project-dir` is the directory to create the project in. All three positional arguments can also be passed as named flags (`--project-dir`, `--default-database`, `--default-location`), e.g. `dataform init my_project --default-database=my-gcp-project-id --default-location=US`.
 
 **Options**
 
