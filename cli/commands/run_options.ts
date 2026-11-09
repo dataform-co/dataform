@@ -37,7 +37,7 @@ export interface IRunArgs
   jobPrefix?: string | null;
   tags?: string[];
   jobLabels?: { [key: string]: string };
-  executionGraph: boolean;
+  buildOnly: boolean;
 }
 
 export const dryRunOption: INamedOption<yargs.Options, IRunArgs> = {
@@ -174,10 +174,10 @@ export const bigqueryJobLabelsOption: INamedOption<yargs.Options, IRunArgs> = {
   },
 };
 
-export const executionGraphOption: INamedOption<yargs.Options, IRunArgs> = {
-  name: "execution-graph",
+export const buildOnlyOption: INamedOption<yargs.Options, IRunArgs> = {
+  name: "build-only",
   option: {
-    describe: "If set, only build and output the execution graph without submitting to BigQuery.",
+    describe: "If set, only build the execution graph without submitting to BigQuery.",
     type: "boolean",
     default: false,
   },
@@ -200,6 +200,6 @@ export const runOptions: Array<INamedOption<yargs.Options, IRunArgs>> = [
   jobPrefixOption,
   bigqueryJobLabelsOption,
   emitLineageOption,
-  executionGraphOption,
+  buildOnlyOption,
   ...ProjectConfigOptions.allYargsOptions,
 ];

@@ -257,7 +257,7 @@ Compiles and executes the project against BigQuery (or validates it with `--dry-
 | `--full-refresh` | boolean | `false` | Forces incremental tables (unless marked protected) to be rebuilt from scratch. |
 | `--credentials` | string | `.df-credentials.json` | Path to the credentials JSON file to use. |
 | `--json` | boolean | `false` | Outputs the run result as JSON instead of a human-readable summary. |
-| `--execution-graph` | boolean | `false` | Only builds and outputs the execution graph, without submitting the jobs to BigQuery. Note that `--dry-run` and `--run-tests` will be ignored if combined with `--execution-graph`. |
+| `--build-only` | boolean | `false` | Only builds and outputs the execution graph, without submitting any jobs to BigQuery. JiT actions are not compiled. Note that `--dry-run` and `--run-tests` will be ignored if combined with `--build-only`. |
 | `--timeout` | string | `'60s'` (`60000` ms) | Duration to allow **compilation only** to complete, e.g. `'1s'`, `'10m'`. Does not bound execution — see `--execution-timeout`. |
 | `--execution-timeout` | string | — | Wall-clock deadline for the *entire* run (compile + all actions), e.g. `'10m'`, `'2h'`. When it fires, in-flight actions are cancelled and pending actions are skipped. Off by default. |
 | `--jit-timeout` | string | — | Per-model just-in-time (JiT) compilation worker timeout, e.g. `'30s'`, `'2m'`. Each action with JiT code gets its own fresh deadline, independent of `--execution-timeout`. If unset, only `--execution-timeout` bounds JiT work. |

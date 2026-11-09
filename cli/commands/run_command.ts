@@ -9,8 +9,8 @@ import { createLineageEmitter as createLineageEmitterFromFactory } from "df/cli/
 import { prettyJsonStringify } from "df/cli/api/utils";
 import { buildDryRunValidationQueries } from "df/cli/api/utils/dry_run_validation";
 import {
+  buildOnlyOption,
   dryRunOption,
-  executionGraphOption,
   executionTimeoutOption,
   IRunArgs,
   runOptions,
@@ -65,15 +65,15 @@ export const runCommand: ICommand<IRunArgs> = {
   processFn: async (argv) => {
     const logger = new Logger(!argv.json);
 
-    if (argv.executionGraph && argv.dryRun) {
+    if (argv.buildOnly && argv.dryRun) {
       printWarning(
-        `Note: --${dryRunOption.name} is ignored because --${executionGraphOption.name} is set`,
+        `Note: --${dryRunOption.name} is ignored because --${buildOnlyOption.name} is set`,
       );
     }
 
-    if (argv.executionGraph && argv.runTests) {
+    if (argv.buildOnly && argv.runTests) {
       printWarning(
-        `Note: --${runTestsOption.name} is ignored because --${executionGraphOption.name} is set`,
+        `Note: --${runTestsOption.name} is ignored because --${buildOnlyOption.name} is set`,
       );
     }
 
@@ -137,9 +137,9 @@ export const runCommand: ICommand<IRunArgs> = {
       return 1;
     }
 
-    if (argv.executionGraph) {
+    if (argv.buildOnly) {
       if (executionGraph.actions.some((action) => !!action.jitCode)) {
-        printWarning(`Note: with --${executionGraphOption.name}, JiT actions are not compiled`);
+        printWarning(`Note: with --${buildOnlyOption.name}, JiT actions are not compiled`);
       }
       printExecutionGraph(executionGraph, argv.json);
       return 0;

@@ -102,7 +102,7 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
       projectDir,
       "--credentials",
       CREDENTIALS_PATH,
-      "--execution-graph",
+      "--build-only",
       "--json",
       "--vars=testVar1=testValue1,testVar2=testValue2",
       "--default-location=europe",
@@ -240,7 +240,7 @@ SELECT 1 as id
         projectDir,
         "--credentials",
         CREDENTIALS_PATH,
-        "--execution-graph",
+        "--build-only",
         "--json",
         "--disable-assertions",
         "--actions=test_assertion,example_table",
@@ -260,7 +260,7 @@ SELECT 1 as id
         projectDir,
         "--credentials",
         CREDENTIALS_PATH,
-        "--execution-graph",
+        "--build-only",
         "--json",
         "--actions=test_assertion,example_table",
       ]);
@@ -279,7 +279,7 @@ SELECT 1 as id
         projectDir,
         "--credentials",
         CREDENTIALS_PATH,
-        "--execution-graph",
+        "--build-only",
         "--json",
         "--disable-assertions",
         "--actions=test_assertion,example_table",
@@ -330,12 +330,12 @@ SELECT 1 as id
       });
     });
 
-    test("--default-reservation flag is applied to projectConfig in run --execution-graph output", async () => {
+    test("--default-reservation flag is applied to projectConfig in run --build-only output", async () => {
       const runResult = await runCli("run", [
         projectDir,
         "--credentials",
         CREDENTIALS_PATH,
-        "--execution-graph",
+        "--build-only",
         "--json",
         `--default-reservation=${INTEGRATION_TEST_RESERVATION}`,
         "--actions=example_table",
@@ -508,7 +508,7 @@ DROP SCHEMA IF EXISTS \`\${dataform.projectConfig.defaultDatabase}.\${dataform.p
             projectDir,
             "--credentials",
             CREDENTIALS_PATH,
-            "--execution-graph",
+            "--build-only",
             "--json",
             "--actions=example_incremental",
           ]);
@@ -752,7 +752,7 @@ SELECT 1 AS id
     });
 
     test(
-      "run --execution-graph without --json outputs plain text summary",
+      "run --build-only without --json outputs plain text summary",
       { timeout: 120000 },
       async () => {
         writeDefinitionFile(
@@ -786,7 +786,7 @@ SELECT 1 AS id
           projectDir,
           "--credentials",
           CREDENTIALS_PATH,
-          "--execution-graph",
+          "--build-only",
           "--actions=example_table,new_table",
         ]);
 
