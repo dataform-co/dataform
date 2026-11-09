@@ -177,7 +177,9 @@ export const bigqueryJobLabelsOption: INamedOption<yargs.Options, IRunArgs> = {
 export const buildOnlyOption: INamedOption<yargs.Options, IRunArgs> = {
   name: "build-only",
   option: {
-    describe: "If set, only build the execution graph without submitting to BigQuery.",
+    describe:
+      "Only builds the execution graph without submitting any queries to BigQuery. JiT actions are not compiled. " +
+      "Note that --dry-run and --run-tests will be ignored if combined with --build-only.",
     type: "boolean",
     default: false,
   },

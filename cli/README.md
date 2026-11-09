@@ -256,14 +256,14 @@ Compiles and executes the project against BigQuery (or validates it with `--dry-
 | `--include-dependents` | boolean | — | Also runs downstream dependents of the selected actions. Requires --actions or --tags. |
 | `--full-refresh` | boolean | `false` | Forces incremental tables (unless marked protected) to be rebuilt from scratch. |
 | `--credentials` | string | `.df-credentials.json` | Path to the credentials JSON file to use. |
-| `--json` | boolean | `false` | Outputs the run result as JSON instead of a human-readable summary. |
-| `--build-only` | boolean | `false` | Only builds and outputs the execution graph, without submitting any jobs to BigQuery. JiT actions are not compiled. Note that `--dry-run` and `--run-tests` will be ignored if combined with `--build-only`. |
-| `--timeout` | string | `'60s'` (`60000` ms) | Duration to allow **compilation only** to complete, e.g. `'1s'`, `'10m'`. Does not bound execution — see `--execution-timeout`. |
-| `--execution-timeout` | string | — | Wall-clock deadline for the *entire* run (compile + all actions), e.g. `'10m'`, `'2h'`. When it fires, in-flight actions are cancelled and pending actions are skipped. Off by default. |
-| `--jit-timeout` | string | — | Per-model just-in-time (JiT) compilation worker timeout, e.g. `'30s'`, `'2m'`. Each action with JiT code gets its own fresh deadline, independent of `--execution-timeout`. If unset, only `--execution-timeout` bounds JiT work. |
-| `--job-prefix` | string | — | Adds an additional prefix to BigQuery job IDs, in the form `dataform-${jobPrefix}-`. |
-| `--job-labels` | string | — | Comma-separated `key=value` labels to attach to BigQuery jobs, e.g. `'key1=val1,key2=val2'`. Also applied to unit tests with `--run-tests`. Overrides `defaultJobLabels`, action `jobLabels` and table `labels` that use the same key. |
-| `--emit-lineage` | boolean | — | Emits OpenLineage `RunEvent`s to Knowledge Catalog Lineage for each executed action. Overrides the `lineage.enabled` setting in `workflow_settings.yaml` when specified. See the [Data Lineage guide](../docs/lineage.md). |
+| `--json` | boolean | `false` | Outputs the result as JSON instead of human-readable text. |
+| `--timeout` | string | `'60s'` | Duration to allow project compilation to complete, e.g. '1s', '10m'. |
+| `--execution-timeout` | string | — | Wall-clock deadline for the entire run (compile + all actions). When it fires, in-flight actions are cancelled and pending actions are skipped. Off by default. Examples: '10m', '2h'. |
+| `--jit-timeout` | string | — | Per-model JiT compilation worker timeout. Each JiT action gets its own fresh deadline, independent of --execution-timeout. When unset, no per-model cap is applied and only --execution-timeout bounds JiT work. Examples: '30s', '2m'. |
+| `--job-prefix` | string | — | Adds an additional prefix to BigQuery job IDs, in the form dataform-&lt;job-prefix&gt;-. |
+| `--job-labels` | string | — | Comma-separated list of labels to add to BigQuery jobs, e.g. 'key1=val1,key2=val2'. Also applied to unit tests with --run-tests. Overrides job labels and table labels that use the same key. |
+| `--emit-lineage` | boolean | — | If set, emits OpenLineage RunEvents to Knowledge Catalog Lineage for each executed action. Overrides workflow_settings.yaml lineage.enabled when specified. See https://github.com/dataform-co/dataform/blob/main/docs/lineage.md. |
+| `--build-only` | boolean | `false` | Only builds the execution graph without submitting any queries to BigQuery. JiT actions are not compiled. Note that --dry-run and --run-tests will be ignored if combined with --build-only. |
 | Project-config overrides | — | — | See [Shared project-config flags](#shared-project-config-flags). |
 <!-- END GENERATED: options run -->
 
