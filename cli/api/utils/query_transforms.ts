@@ -134,10 +134,12 @@ export function wrapWithCreateSchemaIfNotExists(
 
 /**
  * Whether the given GoogleSQL statement or script sets the `@@dataset_id` system variable (e.g.
- * `SET @@dataset_id = '...'`), ignoring comments, string literals, and quoted identifiers.
+ * `SET @@dataset_id = '...'`), ignoring comments, string literals, and quoted identifiers. Note:
+ * SET directives inside quoted SQL expressions (e.g. EXECUTE IMMEDIATE blocks) will not be detected.
  */
 export function setsDatasetId(statement: string): boolean {
   return (
+    // Quick check to filter out obvious negatives before a more detailed parse
     /@@dataset_id\b/i.test(statement) &&
     /(?:^|[^a-zA-Z0-9_@$])set\s+(?:@@dataset_id\b|\([^;)=]*@@dataset_id\b)/i.test(
       stripCommentsAndQuotedContent(statement),

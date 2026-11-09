@@ -2,7 +2,8 @@ import * as fs from "fs";
 import * as path from "path";
 import untildify from "untildify";
 
-import { interactiveQuestion, print, printError, printSuccess } from "df/cli/console";
+import { setsDatasetId } from "df/cli/api/utils/query_transforms";
+import { interactiveQuestion, print, printError, printSuccess, printWarning } from "df/cli/console";
 import { validateConnectionFormat } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
@@ -239,6 +240,20 @@ export function validateIcebergConfigTableFolderSubpath(tableFolderSubpath: stri
   }
   if (tableFolderSubpath.includes("./") || tableFolderSubpath.includes("../")) {
     throw new Error("Input cannot contain './' or '../'.");
+  }
+}
+
+export function warnAboutSetDatasetIdWithoutLocation(
+  actions: dataform.IExecutionAction[],
+  location: string | undefined,
+) {
+  if (!location && actions.some((a) => a.tasks?.some((t) => setsDatasetId(t.statement || "")))) {
+    printWarning(
+      "Warning: SET @@dataset_id is used without a configured location. BigQuery does not infer the query " +
+        "or new dataset location from @@dataset_id for unqualified table names, so queries may run in (and create " +
+        "datasets in) the default US location. Set defaultLocation in workflow_settings.yaml (or by passing the " +
+        "--default-location option) or qualify source table names.\n",
+    );
   }
 }
 

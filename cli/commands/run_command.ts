@@ -8,7 +8,6 @@ import { LineageEmitter } from "df/cli/api/lineage/emitter";
 import { createLineageEmitter as createLineageEmitterFromFactory } from "df/cli/api/lineage/emitter_factory";
 import { prettyJsonStringify } from "df/cli/api/utils";
 import { buildDryRunValidationQueries } from "df/cli/api/utils/dry_run_validation";
-import { setsDatasetId } from "df/cli/api/utils/query_transforms";
 import {
   buildOnlyOption,
   dryRunOption,
@@ -30,7 +29,11 @@ import {
 } from "df/cli/console";
 import { ProjectConfigOptions } from "df/cli/project_config_options";
 import { setSignalHandler } from "df/cli/signals";
-import { actuallyResolve, compiledGraphHasErrors } from "df/cli/util";
+import {
+  actuallyResolve,
+  compiledGraphHasErrors,
+  warnAboutSetDatasetIdWithoutLocation,
+} from "df/cli/util";
 import { ICommand } from "df/cli/yargswrapper";
 import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
@@ -111,6 +114,7 @@ export const runCommand: ICommand<IRunArgs> = {
           `new datasets will use "${defaultLocation}".\n`,
       );
     }
+    const location = defaultLocation || readCredentials.location || undefined;
 
     const dbadapter = new BigQueryDbAdapter(readCredentials);
     const executionGraph = await build(
@@ -198,20 +202,7 @@ export const runCommand: ICommand<IRunArgs> = {
       return 0;
     }
 
-    const hasConfiguredLocation = Boolean(defaultLocation || readCredentials.location);
-    if (
-      !hasConfiguredLocation &&
-      executionGraph.actions.some((action) =>
-        action.tasks?.some((task) => setsDatasetId(task.statement || "")),
-      )
-    ) {
-      printWarning(
-        "Warning: SET @@dataset_id is used without a configured location. BigQuery does not " +
-          "infer the query or new dataset location from @@dataset_id for unqualified table " +
-          "names. This can cause datasets to be created in unexpected locations. Set defaultLocation " +
-          "in workflow_settings.yaml or qualify source table names.\n",
-      );
-    }
+    warnAboutSetDatasetIdWithoutLocation(executionGraph.actions, location);
 
     if (argv.dryRun) {
       logger.log("Dry running (no changes to the warehouse will be applied)...");
