@@ -3,7 +3,7 @@ import { configure, util } from "protobufjs";
 import { google } from "df/protos/ts";
 
 const CONFIGS_PROTO_DOCUMENTATION_URL =
-  "https://dataform-co.github.io/dataform/docs/configs-reference";
+  "https://dataform-co.github.io/dataform/docs/reference/configs";
 const REPORT_ISSUE_URL = "https://github.com/dataform-co/dataform/issues";
 
 /**
