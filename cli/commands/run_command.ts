@@ -29,7 +29,11 @@ import {
 } from "df/cli/console";
 import { ProjectConfigOptions } from "df/cli/project_config_options";
 import { setSignalHandler } from "df/cli/signals";
-import { actuallyResolve, compiledGraphHasErrors } from "df/cli/util";
+import {
+  actuallyResolve,
+  compiledGraphHasErrors,
+  warnAboutSetDatasetIdWithoutLocation,
+} from "df/cli/util";
 import { ICommand } from "df/cli/yargswrapper";
 import { targetAsReadableString } from "df/core/targets";
 import { dataform } from "df/protos/ts";
@@ -110,6 +114,7 @@ export const runCommand: ICommand<IRunArgs> = {
           `new datasets will use "${defaultLocation}".\n`,
       );
     }
+    const location = defaultLocation || readCredentials.location || undefined;
 
     const dbadapter = new BigQueryDbAdapter(readCredentials);
     const executionGraph = await build(
@@ -255,6 +260,7 @@ export const runCommand: ICommand<IRunArgs> = {
     } else {
       printExecutedGraph(runResult);
     }
+    warnAboutSetDatasetIdWithoutLocation(executionGraph.actions, location);
     if (runResult.status === dataform.RunResult.ExecutionStatus.TIMED_OUT) {
       const executionTimeoutMillis = argv.executionTimeout;
       const suffix = executionTimeoutMillis

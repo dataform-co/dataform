@@ -8,6 +8,7 @@ import {
   validateIcebergConfigBucketName,
   validateIcebergConfigTableFolderRoot,
   validateIcebergConfigTableFolderSubpath,
+  warnAboutSetDatasetIdWithoutLocation,
 } from "df/cli/util";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
@@ -223,5 +224,79 @@ suite("formatDatasetWarehouseState", () => {
         lastUpdatedMillis: timestampMillis,
       }),
     ).equals("(type: view -> table, last modified: 2026-11-04 14:08:23 UTC)");
+  });
+});
+
+suite("warnAboutSetDatasetIdWithoutLocation", ({ beforeEach, afterEach }) => {
+  const originalStderrWrite = process.stderr.write;
+  let stderrOutput: string[];
+
+  beforeEach("capture stderr", () => {
+    stderrOutput = [];
+    process.stderr.write = ((chunk: string | Uint8Array) => {
+      stderrOutput.push(String(chunk));
+      return true;
+    }) as typeof process.stderr.write;
+  });
+
+  afterEach("restore stderr", () => {
+    process.stderr.write = originalStderrWrite;
+  });
+
+  test("warns once when SET @@dataset_id is used without any location", () => {
+    warnAboutSetDatasetIdWithoutLocation(
+      [
+        {
+          target: { database: "db", schema: "schema", name: "first" },
+          tasks: [{ statement: "SET @@dataset_id = 'some_dataset';\nSELECT 1 AS id" }],
+        },
+        {
+          target: { database: "db", schema: "schema", name: "unaffected" },
+          tasks: [{ statement: "SELECT 1 AS id" }],
+        },
+        {
+          target: { database: "db", schema: "schema", name: "second" },
+          tasks: [{ statement: "SET @@dataset_id = 'some_dataset';\nSELECT 2 AS id" }],
+        },
+      ],
+      undefined,
+    );
+
+    expect(stderrOutput).to.have.length(1);
+    expect(stderrOutput[0]).to.include(
+      "Warning: SET @@dataset_id is used without a configured location.",
+    );
+    expect(stderrOutput[0]).to.include("Affected actions: db.schema.first, db.schema.second\n");
+  });
+
+  test("truncates affected actions list when more than 5 actions are affected", () => {
+    warnAboutSetDatasetIdWithoutLocation(
+      [1, 2, 3, 4, 5, 6, 7].map((i) => ({
+        target: { schema: "schema", name: `action_${i}` },
+        tasks: [{ statement: "SET @@dataset_id = 'some_dataset';\nSELECT 1 AS id" }],
+      })),
+      undefined,
+    );
+
+    expect(stderrOutput).to.have.length(1);
+    expect(stderrOutput[0]).to.include(
+      "Affected actions: schema.action_1, schema.action_2, schema.action_3, schema.action_4, " +
+        "schema.action_5 (...2 actions truncated)\n",
+    );
+  });
+
+  test("does not warn when location is set", () => {
+    warnAboutSetDatasetIdWithoutLocation(
+      [{ tasks: [{ statement: "SET @@dataset_id = 'some_dataset';\nSELECT 1 AS id" }] }],
+      "EU",
+    );
+
+    expect(stderrOutput).deep.equals([]);
+  });
+
+  test("does not warn when location is unset and SET @@dataset_id is not present in actions", () => {
+    warnAboutSetDatasetIdWithoutLocation([{ tasks: [{ statement: "SELECT 1 AS id" }] }], undefined);
+
+    expect(stderrOutput).deep.equals([]);
   });
 });

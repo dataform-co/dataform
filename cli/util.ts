@@ -2,7 +2,9 @@ import * as fs from "fs";
 import * as path from "path";
 import untildify from "untildify";
 
-import { interactiveQuestion, print, printError, printSuccess } from "df/cli/console";
+import { setsDatasetId } from "df/cli/api/utils/query_transforms";
+import { interactiveQuestion, print, printError, printSuccess, printWarning } from "df/cli/console";
+import { targetAsReadableString } from "df/core/targets";
 import { validateConnectionFormat } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
@@ -240,6 +242,36 @@ export function validateIcebergConfigTableFolderSubpath(tableFolderSubpath: stri
   if (tableFolderSubpath.includes("./") || tableFolderSubpath.includes("../")) {
     throw new Error("Input cannot contain './' or '../'.");
   }
+}
+
+const MAX_SET_DATASET_ID_AFFECTED_ACTIONS = 5;
+
+export function warnAboutSetDatasetIdWithoutLocation(
+  actions: dataform.IExecutionAction[],
+  location: string | undefined,
+) {
+  if (location) {
+    return;
+  }
+  const affectedActions = actions.filter((a) =>
+    a.tasks?.some((t) => setsDatasetId(t.statement || "")),
+  );
+  if (affectedActions.length === 0) {
+    return;
+  }
+  const listedTargets = affectedActions
+    .slice(0, MAX_SET_DATASET_ID_AFFECTED_ACTIONS)
+    .map((a) => (a.target ? targetAsReadableString(a.target) : ""))
+    .join(", ");
+  const truncatedCount = affectedActions.length - MAX_SET_DATASET_ID_AFFECTED_ACTIONS;
+  const truncatedSuffix = truncatedCount > 0 ? ` (...${truncatedCount} actions truncated)` : "";
+  printWarning(
+    "Warning: SET @@dataset_id is used without a configured location. BigQuery does not infer the query " +
+      "or new dataset location from @@dataset_id for unqualified table names, so queries may run in (and create " +
+      "datasets in) the default US location. Set a default location (defaultLocation) in workflow_settings.yaml " +
+      "(or by passing the --default-location option) or qualify source table names.\n" +
+      `Affected actions: ${listedTargets}${truncatedSuffix}\n`,
+  );
 }
 
 export const ICEBERG_BUCKET_NAME_HINT =
