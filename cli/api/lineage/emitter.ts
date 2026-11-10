@@ -27,12 +27,16 @@ export interface IStderrLike {
 export type LineageClientProvider = (projectId: string, endpoint: string) => LineageClient;
 
 const DATAFORM_CLI_LIB_NAME = "dataform-cli";
-const SIDE_CHANNEL_CLIENT = "BQ_PIPELINES";
-const SIDE_CHANNEL_OPERATION = "DATAFORM_CLI";
+const LINEAGE_CLIENT_INFO_CLIENT = "BQ_PIPELINES";
+const LINEAGE_CLIENT_INFO_OPERATION = "DATAFORM_CLI";
 
 /**
  * gRPC metadata header and serialized `google.cloud.datacatalog.lineage.v1.ClientInfo`
  * payload (`client = "BQ_PIPELINES"`, `operation = "DATAFORM_CLI"`, extension 512598505).
+ *
+ * `ClientInfo` (`message ClientInfo { optional string client = 1; optional string operation = 2; }`)
+ * is an internal side-channel extension not included in the public `@google-cloud/lineage`
+ * protos bundle, so the two `string` fields are encoded directly via `protobuf.Writer`.
  *
  * Wrapped in a single-element array so `google-gax`'s `metadataBuilder` calls
  * `metadata.add(key, Buffer)` rather than stringifying the `Buffer` via
@@ -41,10 +45,10 @@ const SIDE_CHANNEL_OPERATION = "DATAFORM_CLI";
 export const LINEAGE_CLIENT_INFO_HEADER = "x-goog-ext-512598505-bin";
 export const LINEAGE_CLIENT_INFO_BYTES = Buffer.from(
   protobuf.Writer.create()
-    .uint32((1 << 3) | 2) // field 1 (client), wire type 2 (length-delimited string)
-    .string(SIDE_CHANNEL_CLIENT)
-    .uint32((2 << 3) | 2) // field 2 (operation), wire type 2 (length-delimited string)
-    .string(SIDE_CHANNEL_OPERATION)
+    .uint32((1 << 3) | 2) // field 1 (string client = 1), wire type 2 (length-delimited)
+    .string(LINEAGE_CLIENT_INFO_CLIENT)
+    .uint32((2 << 3) | 2) // field 2 (string operation = 2), wire type 2 (length-delimited)
+    .string(LINEAGE_CLIENT_INFO_OPERATION)
     .finish(),
 );
 

@@ -166,23 +166,17 @@ suite("LineageEmitter", () => {
     expect(openLineage.job.facets.jobType.processingType).to.equal("BATCH");
 
     // Retry config and ClientInfo side-channel header verified on both calls
+    const expectedCallOptions = {
+      retry: LINEAGE_RETRY_CONFIG,
+      otherArgs: {
+        headers: {
+          [LINEAGE_CLIENT_INFO_HEADER]: [LINEAGE_CLIENT_INFO_BYTES],
+        },
+      },
+    };
     expect(mockClient.processOpenLineageRunEventOptions).to.deep.equal([
-      {
-        retry: LINEAGE_RETRY_CONFIG,
-        otherArgs: {
-          headers: {
-            [LINEAGE_CLIENT_INFO_HEADER]: [LINEAGE_CLIENT_INFO_BYTES],
-          },
-        },
-      },
-      {
-        retry: LINEAGE_RETRY_CONFIG,
-        otherArgs: {
-          headers: {
-            [LINEAGE_CLIENT_INFO_HEADER]: [LINEAGE_CLIENT_INFO_BYTES],
-          },
-        },
-      },
+      expectedCallOptions,
+      expectedCallOptions,
     ]);
   });
 
@@ -456,6 +450,9 @@ suite("LineageEmitter", () => {
       "test-project",
       "datalineage.googleapis.com",
     );
+    // Intentionally couples to google-gax's internal `_gaxGrpc.metadataBuilder` to verify
+    // that wrapping the Buffer in an array preserves binary Buffer metadata for `-bin` headers
+    // instead of coercing it to a string.
     const buildMetadata = client._gaxGrpc.metadataBuilder({
       "x-goog-api-client": "dataform-cli/test",
     });
