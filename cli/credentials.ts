@@ -58,7 +58,10 @@ export function getBigQueryCredentials(
   );
 }
 
-// Copy universe_domain from the key so BigQuery and google-auth target the same universe.
+// Copy a non-default universe_domain from the key so BigQuery and google-auth target the same
+// universe. googleapis.com is the GDU default; current GDU keys include it, so omit that value.
+const DEFAULT_UNIVERSE_DOMAIN = "googleapis.com";
+
 export function credentialsFromServiceAccountJson(
   keyJson: string,
   location: string,
@@ -72,7 +75,7 @@ export function credentialsFromServiceAccountJson(
     projectId: cloudCredentials.project_id,
     credentials: keyJson,
     location,
-    ...(universeDomain ? { universeDomain } : {}),
+    ...(universeDomain && universeDomain !== DEFAULT_UNIVERSE_DOMAIN ? { universeDomain } : {}),
   };
 }
 

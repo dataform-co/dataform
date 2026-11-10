@@ -116,6 +116,16 @@ suite("credentialsFromServiceAccountJson", () => {
     expect(JSON.parse(credentials.credentials).universe_domain).to.equal("my-universe.example.com");
   });
 
+  test("omits universeDomain when universe_domain is the GDU default", () => {
+    const credentials = credentialsFromServiceAccountJson(
+      keyJson({ universe_domain: "googleapis.com" }),
+      "US",
+    );
+
+    expect(credentials).to.not.have.property("universeDomain");
+    expect(JSON.parse(credentials.credentials).universe_domain).to.equal("googleapis.com");
+  });
+
   test("omits universeDomain when the key has no universe_domain", () => {
     const credentials = credentialsFromServiceAccountJson(keyJson(), "US");
 

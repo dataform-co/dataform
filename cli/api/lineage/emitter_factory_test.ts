@@ -121,6 +121,23 @@ suite("createLineageEmitter", () => {
     expect(stderr.combined).to.contain("non-default universe");
   });
 
+  test("constructs a LineageEmitter when universeDomain is googleapis.com (GDU)", () => {
+    const stderr = new StderrCapture();
+    const emitter = createLineageEmitter(
+      baseInput({
+        cliEmitLineage: true,
+        readCredentials: dataform.BigQuery.create({
+          projectId: "test-project",
+          location: "US",
+          universeDomain: "googleapis.com",
+        }),
+      }),
+      stderr,
+    );
+    expect(emitter).to.be.instanceOf(LineageEmitter);
+    expect(stderr.writes).to.deep.equal([]);
+  });
+
   test("constructs a LineageEmitter when universeDomain is empty (GDU)", () => {
     const stderr = new StderrCapture();
     const emitter = createLineageEmitter(

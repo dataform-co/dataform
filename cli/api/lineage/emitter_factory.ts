@@ -35,9 +35,10 @@ export interface ILineageEmitterFactoryInput {
  * neither surface has been touched, we stay silent (opt-in is the default).
  *
  * Cloud Data Lineage is not available outside the Google Default Universe
- * (e.g. GDC / TPC). If credentials set a non-empty `universeDomain`, emission
- * is skipped with `skip_reason=unsupported_universe` even when lineage is
- * otherwise enabled.
+ * (e.g. GDC / TPC). If credentials set a `universeDomain` other than
+ * `googleapis.com`, emission is skipped with `skip_reason=unsupported_universe`
+ * even when lineage is otherwise enabled. The default domain is not a reason
+ * to skip: GDU service-account keys include it.
  */
 export function createLineageEmitter(
   input: ILineageEmitterFactoryInput,
@@ -72,8 +73,10 @@ export function createLineageEmitter(
     return undefined;
   }
 
-  // Non-empty universeDomain means a non-GDU target; Lineage API is unavailable there.
-  if (input.readCredentials.universeDomain) {
+  // googleapis.com is the GDU default, including on service-account keys created today.
+  // Only a different universe means the Lineage API is unavailable.
+  const universeDomain = input.readCredentials.universeDomain;
+  if (universeDomain && universeDomain !== "googleapis.com") {
     stderr.write(
       "[lineage] Skipped lineage emission: skip_reason=unsupported_universe " +
         "(Cloud Data Lineage API is not available when credentials.universeDomain " +
