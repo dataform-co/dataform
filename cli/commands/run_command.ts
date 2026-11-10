@@ -202,8 +202,6 @@ export const runCommand: ICommand<IRunArgs> = {
       return 0;
     }
 
-    warnAboutSetDatasetIdWithoutLocation(executionGraph.actions, location);
-
     if (argv.dryRun) {
       logger.log("Dry running (no changes to the warehouse will be applied)...");
     } else {
@@ -262,6 +260,7 @@ export const runCommand: ICommand<IRunArgs> = {
     } else {
       printExecutedGraph(runResult);
     }
+    warnAboutSetDatasetIdWithoutLocation(executionGraph.actions, location);
     if (runResult.status === dataform.RunResult.ExecutionStatus.TIMED_OUT) {
       const executionTimeoutMillis = argv.executionTimeout;
       const suffix = executionTimeoutMillis
