@@ -43,6 +43,7 @@ suite("@dataform/api/credentials", ({ afterEach }) => {
     expect(parsed.projectId).to.equal("my-gcp-project");
     expect(parsed.location).to.equal("US");
     expect(parsed.credentials).to.equal("");
+    expect(parsed.universeDomain).to.equal("");
   });
 
   test("bigquery credentials file with service account key", () => {
@@ -98,6 +99,8 @@ suite("@dataform/api/credentials", ({ afterEach }) => {
       }),
     );
     const parsed = credentials.read(credentialsPath);
+    expect(parsed.projectId).to.equal("my-gcp-project");
+    expect(parsed.location).to.equal("US");
     expect(parsed.universeDomain).to.equal("s3nsapis.fr");
     expect(parsed.impersonateServiceAccount).to.equal("sa@my-gcp-project.iam.gserviceaccount.com");
   });
