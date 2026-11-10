@@ -105,6 +105,45 @@ suite("@dataform/api/credentials", ({ afterEach }) => {
     expect(parsed.impersonateServiceAccount).to.equal("sa@my-gcp-project.iam.gserviceaccount.com");
   });
 
+  test("bigquery credentials file whose universeDomain matches the service account key", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    const credentialsPath = path.join(projectDir, "credentials.json");
+    const keyJson = JSON.stringify({
+      type: "service_account",
+      universe_domain: "s3nsapis.fr",
+    });
+    fs.writeFileSync(
+      credentialsPath,
+      JSON.stringify({
+        projectId: "my-gcp-project",
+        universeDomain: "s3nsapis.fr",
+        credentials: keyJson,
+      }),
+    );
+    const parsed = credentials.read(credentialsPath);
+    expect(parsed.universeDomain).to.equal("s3nsapis.fr");
+    expect(parsed.credentials).to.equal(keyJson);
+  });
+
+  test("bigquery credentials reject a universeDomain that disagrees with the key", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    const credentialsPath = path.join(projectDir, "credentials.json");
+    fs.writeFileSync(
+      credentialsPath,
+      JSON.stringify({
+        projectId: "my-gcp-project",
+        universeDomain: "s3nsapis.fr",
+        credentials: JSON.stringify({
+          type: "service_account",
+          universe_domain: "googleapis.com",
+        }),
+      }),
+    );
+    expect(() => credentials.read(credentialsPath)).to.throw(
+      /universeDomain "s3nsapis.fr" does not match universe_domain "googleapis.com"/,
+    );
+  });
+
   test("bigquery credentials file with an unknown field", () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
     const credentialsPath = path.join(projectDir, "credentials.json");
