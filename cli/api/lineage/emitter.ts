@@ -1,4 +1,5 @@
 import { LineageClient } from "@google-cloud/lineage";
+import * as protobuf from "protobufjs";
 
 import { createAuthClient } from "df/cli/api/dbadapters/bigquery";
 import { isLineageEligibleAction } from "df/cli/api/lineage/action_type";
@@ -26,6 +27,26 @@ export interface IStderrLike {
 export type LineageClientProvider = (projectId: string, endpoint: string) => LineageClient;
 
 const DATAFORM_CLI_LIB_NAME = "dataform-cli";
+const SIDE_CHANNEL_CLIENT = "BQ_PIPELINES";
+const SIDE_CHANNEL_OPERATION = "DATAFORM_CLI";
+
+/**
+ * gRPC metadata header and serialized `google.cloud.datacatalog.lineage.v1.ClientInfo`
+ * payload (`client = "BQ_PIPELINES"`, `operation = "DATAFORM_CLI"`, extension 512598505).
+ *
+ * Wrapped in a single-element array so `google-gax`'s `metadataBuilder` calls
+ * `metadata.add(key, Buffer)` rather than stringifying the `Buffer` via
+ * `metadata.set(key, `${value}`)`.
+ */
+export const LINEAGE_CLIENT_INFO_HEADER = "x-goog-ext-512598505-bin";
+export const LINEAGE_CLIENT_INFO_BYTES = Buffer.from(
+  protobuf.Writer.create()
+    .uint32((1 << 3) | 2) // field 1 (client), wire type 2 (length-delimited string)
+    .string(SIDE_CHANNEL_CLIENT)
+    .uint32((2 << 3) | 2) // field 2 (operation), wire type 2 (length-delimited string)
+    .string(SIDE_CHANNEL_OPERATION)
+    .finish(),
+);
 
 export function createLineageClientProvider(
   credentials: dataform.IBigQuery,
@@ -238,7 +259,14 @@ export class LineageEmitter {
             parent,
             openLineage: toProtoStruct(openLineagePayload) as any,
           },
-          { retry: LINEAGE_RETRY_CONFIG },
+          {
+            retry: LINEAGE_RETRY_CONFIG,
+            otherArgs: {
+              headers: {
+                [LINEAGE_CLIENT_INFO_HEADER]: [LINEAGE_CLIENT_INFO_BYTES],
+              },
+            },
+          },
         );
         if (this.debugEnabled) {
           this.stderr.write(
