@@ -110,7 +110,7 @@ someKey: and an extra: colon
     writeWorkflowSettingsFile(projectDir, "notAProjectConfigField: value");
 
     expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
-      `Workflow settings error: Unexpected property "notAProjectConfigField", or property value type of "string" is incorrect. See https://dataform-co.github.io/dataform/docs/configs-reference#dataform-WorkflowSettings for allowed properties.`,
+      `Workflow settings error: Unexpected property "notAProjectConfigField", or property value type of "string" is incorrect. See https://dataform-co.github.io/dataform/docs/reference/configs#dataform-WorkflowSettings for allowed properties.`,
     );
   });
 

@@ -798,7 +798,7 @@ publish("name", {
   materialized: true,
 })`,
         expectedError:
-          'Unexpected property "materialized", or property value type of "boolean" is incorrect. See https://dataform-co.github.io/dataform/docs/configs-reference#dataform-ActionConfig-TableConfig for allowed properties.',
+          'Unexpected property "materialized", or property value type of "boolean" is incorrect. See https://dataform-co.github.io/dataform/docs/reference/configs#dataform-ActionConfig-TableConfig for allowed properties.',
       },
       {
         testName: "partitionExpirationDays invalid for BigQuery tables",

@@ -43,7 +43,7 @@ To emit table-level data lineage to Google Cloud Data Lineage during CLI runs, e
 - Emit table-level [data lineage to Knowledge Catalog](docs/lineage.md).
 - View the [Dataform Core reference](https://cloud.google.com/dataform/docs/reference/dataform-core-reference).
 - View the [Dataform CLI reference](cli/README.md).
-- View the [Dataform configs reference](https://dataform-co.github.io/dataform/docs/configs-reference).
+- View the [Dataform configs reference](https://dataform-co.github.io/dataform/docs/reference/configs).
 
 _Note: this readme can also be viewed on https://dataform-co.github.io/dataform._
 
