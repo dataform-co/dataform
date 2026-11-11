@@ -76,8 +76,20 @@ message TableMetadata {
 message ExecutionMetadata {
   message BigqueryMetadata {
     string job_id = 1;
+    // For dry runs, BigQuery's estimate, which may be incomplete (e.g. a lower
+    // bound of 0 for some scripts); its accuracy isn't exposed here. Unset if
+    // BigQuery doesn't report it.
     int64 total_bytes_processed = 2;
     int64 total_bytes_billed = 3;
+    // Tables referenced by the query, as reported by BigQuery. For DML, BigQuery
+    // can include the target table. Only set for dry runs. Empty means none were
+    // reported (e.g. for scripts), not that the query references no tables.
+    repeated Target referenced_tables = 4;
+    // Result schema reported by BigQuery, which for a script may cover only one
+    // statement. Not necessarily the destination table's schema. Uses Dataform's
+    // lossy Field representation: e.g. RANGE becomes UNKNOWN, and nullability
+    // and type parameters aren't kept. Only set for dry runs.
+    repeated Field schema = 5;
   }
   BigqueryMetadata bigquery = 1;
 }
