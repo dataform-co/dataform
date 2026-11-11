@@ -1,5 +1,6 @@
-# Prefetches new npm dependencies of open Dependabot PRs through the registry
-# configured in the trigger's _PREFETCH_REGISTRY substitution.
+# Prefetches new npm dependencies (from open dependency PRs and from fixes for
+# security advisories) through the registry configured in the trigger's
+# _PREFETCH_REGISTRY substitution.
 # Intended to run from a scheduled Cloud Build trigger. See
 # scripts/prefetch_npm_deps. This build never fails: problems are only logged.
 steps:
