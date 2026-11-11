@@ -153,7 +153,7 @@ dataform compile [project-dir]
 ```
 <!-- END GENERATED: usage compile -->
 
-Compiles the project and prints a summary (or JSON / Graphviz DOT representation) of the compiled dependency graph without executing it against your warehouse. Useful for validating a project and inspecting its structure.
+Compiles the project and prints a summary (or JSON / Graphviz DOT / Mermaid representation) of the compiled dependency graph without executing it against your warehouse. Useful for validating a project and inspecting its structure.
 
 **Positional arguments**
 
@@ -169,7 +169,8 @@ Compiles the project and prints a summary (or JSON / Graphviz DOT representation
 | Flag | Type | Default | Description |
 |---|---|---|---|
 | `--json` | boolean | `false` | Outputs the result as JSON instead of human-readable text. |
-| `--dot` | boolean | `false` | Outputs a Graphviz DOT representation of the compiled project. Mutually exclusive with --json. |
+| `--dot` | boolean | `false` | Outputs a Graphviz DOT representation of the compiled project. Mutually exclusive with --json and --mermaid. |
+| `--mermaid` | boolean | `false` | Outputs a Mermaid flowchart representation of the compiled project. Mutually exclusive with --json and --dot. |
 | `--verbose` | boolean | `false` | Enables verbose compilation output. Mutually exclusive with --quiet. |
 | `--quiet` | boolean | `false` | Less verbose compilation output. Mutually exclusive with --verbose. |
 | `--watch` | boolean | `false` | Watches the project directory and recompiles on changes. |
@@ -183,7 +184,8 @@ Compiles the project and prints a summary (or JSON / Graphviz DOT representation
 
 **Notes**
 
-- `--json` outputs the compiled graph and can't be combined with `--dot`.
+- `--json` outputs the compiled graph and can't be combined with `--dot` or `--mermaid`.
+- `--mermaid` prints a Mermaid flowchart (using the widely supported `graph` keyword), which GitHub, GitLab and other Mermaid-enabled documentation tools render natively. To render it in Markdown, wrap the output in a `mermaid` code fence. Mermaid limits diagram size by default (500 edges and 50,000 characters; renderers can change these, and GitHub refuses diagrams over 50,000 characters), so for large projects use `--output-actions` / `--output-tags` to print part of the graph. A warning is printed to stderr when the diagram exceeds these limits. With `--watch`, each recompilation prints a new diagram (plus status messages), so the output isn't a single Mermaid document.
 - `--watch` ignores `node_modules`, recompiles with a debounce of 500ms, and runs until interrupted with Ctrl+C.
 - `--output-actions`, `--output-tags`, `--output-include-deps` and `--output-include-dependents` only prune what's printed; the whole project still compiles. `--output-actions` entries are matched exactly (no `*` wildcard expansion).
 
@@ -372,6 +374,9 @@ dataform compile --json | jq '.tables[].target'
 
 # Visualize the dependency graph
 dataform compile --dot > graph.dot && dot -Tpng graph.dot -o graph.png
+
+# Or as a Mermaid flowchart, e.g. a table and its upstream dependencies to paste into a PR or wiki
+dataform compile --mermaid --output-actions=my_table --output-include-deps
 
 # Only show a subset of the graph (by unambiguous action name or full database.schema.name target)
 dataform compile --output-actions=my_table --output-include-deps

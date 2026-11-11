@@ -650,6 +650,77 @@ SELECT 1 as id
       expect(tableNames(result.stdout)).deep.equals(["downstream", "midstream"]);
     });
 
+    test("--mermaid prints a flowchart of the (filtered) graph", async () => {
+      const result = await runCli("compile", [
+        projectDir,
+        "--output-actions",
+        "midstream",
+        "--output-include-deps",
+        "--mermaid",
+      ]);
+      expect(result.exitCode, result.stderr).equals(0);
+      const lines = result.stdout.trim().split("\n");
+      expect(lines[0]).equals("graph LR");
+      const nodeLine = (name: string) => lines.find((line) => line.endsWith(`.${name} [table]"]`));
+      const idOf = (name: string) => nodeLine(name)?.trim().split("[")[0];
+      expect(idOf("upstream")).to.match(/^n[0-9a-f]{8}$/);
+      expect(idOf("midstream")).to.match(/^n[0-9a-f]{8}$/);
+      // Sorted by target, so midstream comes before upstream.
+      expect(lines.indexOf(nodeLine("midstream"))).lessThan(lines.indexOf(nodeLine("upstream")));
+      expect(lines.filter((line) => line.includes("-->"))).deep.equals([
+        `  ${idOf("upstream")} --> ${idOf("midstream")}`,
+      ]);
+    });
+
+    test("--mermaid shows dependencies outside the selection as plain nodes", async () => {
+      const result = await runCli("compile", [
+        projectDir,
+        "--output-actions",
+        "midstream",
+        "--mermaid",
+      ]);
+      expect(result.exitCode, result.stderr).equals(0);
+      const nodeLines = result.stdout
+        .trim()
+        .split("\n")
+        .filter((line) => line.includes('["'));
+      expect(nodeLines.map((line) => line.replace(/^.*\["[^.]*\./, ""))).deep.equals([
+        'midstream [table]"]',
+        'upstream"]',
+      ]);
+    });
+
+    test("--mermaid warns on stderr when the diagram is too large to render", async () => {
+      writeDefinitionFile(
+        projectDir,
+        "chain.js",
+        `for (let i = 1; i <= 501; i++) {
+          operate("c" + i).dependencies(["c" + (i - 1)]).queries("SELECT 1");
+        }
+        operate("c0").queries("SELECT 1");`,
+      );
+      const result = await runCli("compile", [projectDir, "--mermaid"]);
+      expect(result.exitCode, result.stderr).equals(0);
+      expect(result.stdout.startsWith("graph LR\n")).equals(true);
+      expect(result.stdout).not.contains("Warning");
+      expect(result.stdout.split("\n").filter((line) => line.includes(" --> ")).length).equals(503);
+      expect(result.stderr).contains("Warning: this diagram has 503 edges");
+    });
+
+    test("--mermaid prints no warning for a diagram within the limits", async () => {
+      const result = await runCli("compile", [projectDir, "--mermaid"]);
+      expect(result.exitCode, result.stderr).equals(0);
+      expect(result.stderr).not.contains("Warning");
+    });
+
+    test("--mermaid cannot be combined with --json or --dot", async () => {
+      for (const other of ["--json", "--dot"]) {
+        const result = await runCli("compile", [projectDir, "--mermaid", other]);
+        expect(result.exitCode).not.equals(0);
+        expect(result.stderr).contains("mutually exclusive");
+      }
+    });
+
     test("--output-tags filters output to actions carrying the tag", async () => {
       const result = await runCli("compile", [projectDir, "--output-tags", "daily", "--json"]);
       expect(result.exitCode, result.stderr).equals(0);
