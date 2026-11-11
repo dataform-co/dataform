@@ -720,6 +720,15 @@ SELECT 1 AS id
           dataform.TaskResult.ExecutionStatus.SUCCESSFUL,
         );
         expect(parsed.actions[0].tasks[0].compiledSql).to.include("SELECT 1 AS id");
+        // Dry runs report the statistics of BigQuery's dry-run job.
+        const bigqueryMetadata = parsed.actions[0].tasks[0].metadata.bigquery;
+        expect(bigqueryMetadata.totalBytesProcessed).deep.equals({
+          low: 0,
+          high: 0,
+          unsigned: false,
+        });
+        expect(bigqueryMetadata.referencedTables).deep.equals([]);
+        expect(bigqueryMetadata.schema).deep.equals([{ name: "id", primitive: "INTEGER" }]);
       },
     );
 
