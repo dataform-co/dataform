@@ -1,12 +1,15 @@
 # Prefetches new npm dependencies (from open dependency PRs and from fixes for
 # security advisories) through the registry configured in the trigger's
 # _PREFETCH_REGISTRY substitution.
+# If the optional _CI_REGISTRY substitution is set to the registry the test
+# builds install from, the log also shows which versions are available there.
 # Intended to run from a scheduled Cloud Build trigger. See
 # scripts/prefetch_npm_deps. This build never fails: problems are only logged.
 steps:
   - name: "gcr.io/cloud-builders/gcloud"
     env:
       - "PREFETCH_REGISTRY=${_PREFETCH_REGISTRY}"
+      - "CI_REGISTRY=${_CI_REGISTRY}"
     script: |
       #!/usr/bin/env bash
       if ! REGISTRY_TOKEN="$(gcloud auth print-access-token)"; then
@@ -15,4 +18,6 @@ steps:
       fi
       REGISTRY_TOKEN="${REGISTRY_TOKEN}" ./scripts/prefetch_npm_deps ||
         echo "WARNING: prefetch failed" >&2
+substitutions:
+  _CI_REGISTRY: "" # Optional; set in the trigger.
 timeout: 600s

@@ -20,6 +20,9 @@
 #   DRY_RUN=1 ./scripts/prefetch_npm_deps   # Only print what would be fetched.
 #
 # Optional:
+#   CI_REGISTRY   Registry the test builds install from (host/path/). If set,
+#                 the script also reports whether each version is available
+#                 there yet. Uses REGISTRY_TOKEN; works with DRY_RUN=1 too.
 #   GITHUB_TOKEN  Token for the GitHub API (raises the rate limit; not required).
 #   PR_AUTHOR     Only consider PRs by this author (for testing).
 #
@@ -31,6 +34,8 @@ if [[ "${DRY_RUN}" != "1" ]]; then
   : "${REGISTRY_TOKEN:?REGISTRY_TOKEN must be set}"
   : "${PREFETCH_REGISTRY:?PREFETCH_REGISTRY must be set, e.g. registry.example.com/npm/}"
 fi
+REGISTRY_TOKEN="${REGISTRY_TOKEN:-}"
+CI_REGISTRY="${CI_REGISTRY:-}"
 export GITHUB_REPO="${GITHUB_REPO:-dataform-co/dataform}"
 export BASE_BRANCH="${BASE_BRANCH:-main}"
 export PR_AUTHOR="${PR_AUTHOR:-}"
@@ -91,6 +96,23 @@ prefetch_package() {
   else
     warn "could not fetch ${name}@${version} yet"
   fi
+}
+
+# Prints whether a package version can be downloaded from CI_REGISTRY:
+# "available", "not available yet" or "unknown (...)".
+# Arguments: package name, version.
+ci_registry_status() {
+  local name="$1" version="$2" code
+  local url="https://${CI_REGISTRY}${name}/-/${name##*/}-${version}.tgz"
+  # -L: the registry may redirect to the actual download location.
+  code="$(curl -sS -L --connect-timeout 10 --max-time 120 --retry 2 \
+    -o /dev/null -w '%{http_code}' -H @- "${url}" \
+    <<< "Authorization: Bearer ${REGISTRY_TOKEN}")"
+  case "${code}" in
+    200) echo "available" ;;
+    404) echo "not available yet" ;;
+    *) echo "unknown (HTTP ${code})" ;;
+  esac
 }
 
 # Prints "number head_sha base_sha" for every open PR whose new dependencies
@@ -250,9 +272,23 @@ main() {
 
   echo "=== Prefetching"
   local name version
-  sort -u "${WANTED}" | while read -r name version; do
+  while read -r name version; do
     prefetch_package "${name}" "${version}"
-  done
+  done < <(sort -u "${WANTED}")
+
+  if [[ -n "${CI_REGISTRY}" && -z "${REGISTRY_TOKEN}" ]]; then
+    warn "CI_REGISTRY is set but REGISTRY_TOKEN is empty; skipping the availability check"
+  elif [[ -n "${CI_REGISTRY}" ]]; then
+    echo "=== Availability in the CI registry"
+    local status available=0 total=0
+    while read -r name version; do
+      status="$(ci_registry_status "${name}" "${version}")"
+      echo "  ${name}@${version}: ${status}"
+      total=$((total + 1))
+      [[ "${status}" == "available" ]] && available=$((available + 1))
+    done < <(sort -u "${WANTED}")
+    echo "${available} of ${total} versions available in the CI registry"
+  fi
   return 0
 }
 
