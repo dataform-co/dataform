@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import * as fs from "fs";
+import * as path from "path";
 
-import * as corePackage from "df/core";
 import { suite, test } from "df/testing";
 
 suite("core/README.md", () => {
@@ -11,7 +11,6 @@ suite("core/README.md", () => {
 
     expect(fs.existsSync(packagedReadmePath)).to.equal(true);
     const packagedReadme = fs.readFileSync(packagedReadmePath, "utf8");
-    expect(packagedReadme.length).to.be.greaterThan(0);
     expect(packagedReadme).to.equal(sourceReadme);
   });
 
@@ -34,12 +33,18 @@ suite("core/README.md", () => {
 
   test("documents public @dataform/core runtime exports", () => {
     const readme = fs.readFileSync("core/README.md", "utf8");
+    const exportsSectionMatch =
+      /### TypeScript \/ JavaScript Exports\r?\n([\s\S]*?)(?=\r?\n### |\r?\n## |$)/.exec(readme);
+    expect(exportsSectionMatch).to.not.equal(null);
+    const exportsSection = exportsSectionMatch![1];
+
+    const corePackage = require(path.resolve("core/node_modules/@dataform/core"));
     const runtimeExports = Object.keys(corePackage).filter(
       (exportName) => exportName !== "indexFileGenerator",
     );
 
     for (const exportName of runtimeExports) {
-      expect(readme).to.include(`\`${exportName}\``);
+      expect(exportsSection).to.include(`- **\`${exportName}\`**`);
     }
   });
 });

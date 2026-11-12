@@ -23,6 +23,7 @@ For command-line execution (`dataform init`, `compile`, `test`, `run`, `format`)
   - [`declaration`](#declaration)
   - [`test` (Unit Tests)](#test-unit-tests)
   - [`notebook`](#notebook)
+  - [`dataPreparation`](#datapreparation)
   - [`propertyGraph` (`graph.yaml`)](#propertygraph-graphyaml)
   - [`actions.yaml` Action Configs](#actionsyaml-action-configs)
 - [JavaScript API (`Session` Globals)](#javascript-api-session-globals)
@@ -42,7 +43,7 @@ defaultProject: my-gcp-project
 defaultLocation: US
 defaultDataset: dataform
 defaultAssertionDataset: dataform_assertions
-dataformCoreVersion: 3.1.5
+dataformCoreVersion: <version>
 ```
 
 When `dataformCoreVersion` is set in `workflow_settings.yaml`, `@dataform/cli` automatically installs that version of `@dataform/core` in an isolated temporary directory at compile time (see [Stateless installs](https://github.com/dataform-co/dataform/blob/main/docs/stateless-install.md)).
@@ -121,13 +122,15 @@ A `.sqlx` file combines a `config {}` metadata block, optional JavaScript (`js {
 |---|---|---|
 | `config { ... }` | All `.sqlx` types | Declares the action `type` (defaults to `"operations"` if omitted), target overrides, dependencies, assertions, and BigQuery options. |
 | `js { ... }` | All `.sqlx` types | Local JavaScript variables and helper functions scoped to the current `.sqlx` file. |
-| `pre_operations { ... }` | `table`, `incremental`, `view` | SQL statements executed before the main table/view query runs (separated by `---` if multiple). |
-| `post_operations { ... }` | `table`, `incremental`, `view` | SQL statements executed after the main table/view query completes (separated by `---` if multiple). |
-| `incremental_where { ... }` | `incremental` | Optional SQL predicate expression used by `updatePartitionFilter` / incremental filtering. |
+| `pre_operations { ... }` | `table`, `incremental`, `view` | SQL statements executed before the main table/view query runs (multiple statements can be terminated with `;` or split into separate compiled array entries with `---`). |
+| `post_operations { ... }` | `table`, `incremental`, `view` | SQL statements executed after the main table/view query completes (multiple statements can be terminated with `;` or split into separate compiled array entries with `---`). |
+| `incremental_where { ... }` | `incremental` | Optional SQL predicate that sets `Table.where` to filter rows during incremental updates (`SELECT * FROM (<query>) AS subquery WHERE <predicate>`). Not supported with `compilation_mode: "jit"`. |
 | `input "<target>" { ... }` | `test` | Mock SQL query replacing a referenced upstream dependency (`ref("<target>")`) during a unit test. |
 | `---` | `operations`, `pre_operations`, `post_operations` | Statement separator for multi-statement SQL blocks. |
 
 ### SQLX Context Functions
+
+Each action maps to an **action target** (`database.schema.name`) in BigQuery. By default, `name` is the action's filename (without extension), `schema` is `defaultDataset` (or `defaultAssertionDataset` for assertions), and `database` is `defaultProject` from `workflow_settings.yaml`.
 
 Inside the SQL body and operation blocks of a `.sqlx` file (or via the `ctx` argument in JavaScript API callbacks), the following context methods are available:
 
@@ -139,7 +142,7 @@ Inside the SQL body and operation blocks of a `.sqlx` file (or via the `ctx` arg
 | `name` | `name()` | Returns the finalized table/action name of the current action (including `namePrefix` if set). |
 | `schema` | `schema()` | Returns the finalized dataset (`schema`) name of the current action (including `datasetSuffix` if set). |
 | `database` | `database()` | Returns the finalized Google Cloud project (`database`) of the current action (including `projectSuffix` if set). |
-| `when` | `when(condition, trueCase, falseCase = "")` | Returns `trueCase` when `condition` is truthy and `falseCase` otherwise (`table`, `incremental`, `view`, `assertion`). |
+| `when` | `when(condition, trueCase, falseCase = "")` | Returns `trueCase` when `condition` is truthy and `falseCase` otherwise (`table`, `incremental`, `view`, `operations`, `assertion`, `test`, `dataPreparation`). |
 | `incremental` | `incremental()` | Returns `true` when compiling the incremental update query of an `incremental` table, or `false` when compiling its initial/full-refresh query (`table`, `incremental`, `view`). |
 
 ---
@@ -186,7 +189,7 @@ GROUP BY 1, 2
 
 Key `table` config properties:
 - **Target & metadata**: `name`, `schema` (or `dataset`), `database` (or `project`), `description`, `columns`, `tags`, `disabled`, `dependencies`, `dependOnDependencyAssertions`, `hermetic`, `metadata` (`overview`, `extraProperties`).
-- **BigQuery options** (top-level or nested under `bigquery: {}`): `partitionBy`, `partitionExpirationDays`, `requirePartitionFilter`, `clusterBy`, `labels`, `additionalOptions`, `iceberg`, `preserveGovernanceControls`.
+- **BigQuery options**: `partitionBy`, `partitionExpirationDays`, `requirePartitionFilter`, `clusterBy`, `labels`, `additionalOptions`, and `iceberg` (all accepted at top level or nested under `bigquery: {}`; for `view`, `bigquery: {}` accepts `partitionBy`, `clusterBy`, `labels`, and `additionalOptions`), plus top-level `preserveGovernanceControls`.
 - **Execution & assertions**: `assertions` (`uniqueKey`, `uniqueKeys`, `nonNull`, `rowConditions`), `preOperations`, `postOperations`, `reservation`, `jobLabels`, `lakehouse`, `compilation_mode` (`"aot"` or `"jit"`).
 
 ---
@@ -217,10 +220,10 @@ ${when(incremental(), `WHERE event_timestamp > (SELECT MAX(event_timestamp) FROM
 
 Incremental-specific config properties (in addition to `table` properties):
 - `uniqueKey`: Column name(s) used to `MERGE` rows on incremental updates; if omitted, new rows are appended (`INSERT`).
-- `incrementalStrategy`: `"INCREMENTAL_STRATEGY_MERGE"` or `"INCREMENTAL_STRATEGY_INSERT_OVERWRITE"`.
-- `updatePartitionFilter` / `incrementalPredicates`: SQL filter(s) restricting target partitions scanned during incremental updates.
+- `incrementalStrategy`: `"merge"` (requires `uniqueKey`) or `"insert_overwrite"` (requires `partitionBy`) in SQLX and JavaScript (or `"INCREMENTAL_STRATEGY_MERGE"` / `"INCREMENTAL_STRATEGY_INSERT_OVERWRITE"` in `actions.yaml`).
+- `updatePartitionFilter` / `incrementalPredicates`: Mutually exclusive SQL filter(s) restricting target partitions scanned during incremental updates (setting both is a compile error; prefer `incrementalPredicates`).
 - `onSchemaChange`: `"IGNORE"` (default), `"FAIL"`, `"EXTEND"`, or `"SYNCHRONIZE"`.
-- `protected`: When `true`, prevents the table from being dropped and rebuilt from scratch on `--full-refresh`.
+- `protected` (default `true`): Prevents the table from being dropped and rebuilt from scratch on `--full-refresh`. Set `protected: false` to allow full refreshes.
 
 ---
 
@@ -357,9 +360,15 @@ actions:
 
 ---
 
+### `dataPreparation`
+
+Configures a BigQuery Data Preparation action from a `.dp.yaml` / `.yaml` definition (via `actions.yaml`) or a `.dp.sqlx` / `.sqlx` file (`type: "dataPreparation"`). See [`DataPreparationConfig`](https://dataform-co.github.io/dataform/docs/reference/configs#dataform-ActionConfig-DataPreparationConfig).
+
+---
+
 ### `propertyGraph` (`graph.yaml`)
 
-Defines a BigQuery Property Graph (`CREATE OR REPLACE PROPERTY GRAPH`) from a `definitions/**/graph.yaml` file following the Google Semantic Ontology schema (`version: 0.2.0.dev0/google`). See the [BigQuery Property Graphs guide](https://github.com/dataform-co/dataform/blob/main/docs/property_graphs.md) for full syntax and examples.
+Defines a BigQuery Property Graph (`CREATE OR REPLACE PROPERTY GRAPH`) from a `definitions/**/graph.yaml` file (at most one `graph.yaml` per project) following the Google Semantic Ontology schema (`version: 0.2.0.dev0/google`). See the [BigQuery Property Graphs guide](https://github.com/dataform-co/dataform/blob/main/docs/property_graphs.md) for full syntax and examples.
 
 ---
 
