@@ -105,12 +105,12 @@ config {
           `stdout:\n${initialRunResult.stdout}\nstderr:\n${initialRunResult.stderr}`,
         ).equals(0);
 
-        // Run the incremental table in dry-run mode first to verify procedural SQL structure.
+        // Run the incremental table in build-only mode first to verify procedural SQL structure.
         const dryRunResult = await runCli("run", [
           projectDir,
           "--credentials",
           CREDENTIALS_PATH,
-          "--dry-run",
+          "--build-only",
           "--json",
           "--actions=example_incremental",
         ]);
