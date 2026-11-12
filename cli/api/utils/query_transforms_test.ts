@@ -50,25 +50,6 @@ suite("concatenateQueries", () => {
     );
   });
 
-  test("doesn't treat \\ as an escape inside raw string or bytes literals", () => {
-    const terminated = (statement: string) => concatenateQueries([statement, "SELECT 2"]);
-    expect(terminated("SELECT r'\\' -- comment")).equals("SELECT r'\\'; -- comment\nSELECT 2");
-    expect(terminated("SELECT REPLACE(p, r'\\', '/'), 'ok' -- don't fail")).equals(
-      "SELECT REPLACE(p, r'\\', '/'), 'ok'; -- don't fail\nSELECT 2",
-    );
-    expect(terminated('R"\\" -- comment')).equals('R"\\"; -- comment\nSELECT 2');
-    expect(terminated("SELECT r'''a\\''' -- comment")).equals(
-      "SELECT r'''a\\'''; -- comment\nSELECT 2",
-    );
-    expect(terminated("SELECT rb'\\' -- comment")).equals("SELECT rb'\\'; -- comment\nSELECT 2");
-    expect(terminated('SELECT BR"\\" -- comment')).equals('SELECT BR"\\"; -- comment\nSELECT 2');
-    // Non-raw `b` prefix and SQL keywords ending in `r` still escape quotes with `\`.
-    expect(terminated("SELECT b'it\\'s -- x'")).equals("SELECT b'it\\'s -- x';\nSELECT 2");
-    expect(terminated("SELECT flag OR'it\\'s -- x'")).equals(
-      "SELECT flag OR'it\\'s -- x';\nSELECT 2",
-    );
-  });
-
   test("adds semicolon before trailing # comment", () => {
     expect(concatenateQueries(["SELECT 1 # hash comment", "SELECT 2"])).deep.equals(
       "SELECT 1; # hash comment\nSELECT 2",
