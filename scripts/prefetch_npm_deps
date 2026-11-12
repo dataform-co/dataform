@@ -9,8 +9,10 @@
 #      lockfile of its base commit.
 #   2. Security advisories: for every package version in pnpm-lock.yaml on the
 #      base branch that has a known vulnerability, the first patched version
-#      (from the public GitHub Advisory Database). This lets the registry pick
-#      up a fix before anyone opens a PR with it.
+#      (from the public GitHub Advisory Database), plus any dependencies of
+#      that version that the lockfile can't satisfy (resolved with the public
+#      npm registry metadata). This lets the registry pick up a fix before
+#      anyone opens a PR with it.
 #
 # Each package version is fetched separately, so one failure doesn't stop the
 # others.
@@ -223,6 +225,176 @@ for name, fix in sorted(fixes):
 EOF
 }
 
+# Prints "name version parent" for every dependency that the given package
+# versions need and that the lockfile can't satisfy, for example a package
+# that a fixed version newly depends on. Each such dependency is resolved to
+# its highest version matching the requested range (as pnpm would), using the
+# public npm registry metadata, and its own dependencies are checked the same
+# way.
+# Arguments: path to a "name version" list of the lockfile's packages, path to
+#   a "name version" list of the package versions to check.
+list_new_dependencies() {
+  python3 - "$1" "$2" <<'EOF'
+import json, os, re, sys, urllib.parse, urllib.request
+
+METADATA_REGISTRY = os.environ.get("NPM_METADATA_REGISTRY", "https://registry.npmjs.org/")
+MAX_NEW = 100  # Upper bound on the number of new dependencies, as a safeguard.
+VERSION = re.compile(r"^v?(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$")
+PARTIAL = re.compile(r"^v?(\d+|[xX*])(?:\.(\d+|[xX*]))?(?:\.(\d+|[xX*]))?(?:-([0-9A-Za-z.-]+))?$")
+
+
+def key(version):
+    """Sort key for a full version; None if it isn't a valid version."""
+    m = VERSION.match(version)
+    if not m:
+        return None
+    pre = m[4]
+    pre_key = (tuple((0, int(p), "") if p.isdigit() else (1, 0, p) for p in pre.split("."))
+               if pre else ())
+    return (int(m[1]), int(m[2]), int(m[3]), 0 if pre else 1, pre_key)
+
+
+def comparators(part):
+    """Desugars one range comparator (e.g. "^1.2", "~1", ">=2.0.0", "1.x")
+    into a list of (op, version key) pairs; returns None if unsupported."""
+    m = re.match(r"^(\^|~|>=|<=|>|<|=)?\s*(.*)$", part)
+    op, rest = m[1] or "", m[2]
+    if rest in ("", "*", "x", "X"):
+        return []
+    p = PARTIAL.match(rest)
+    if not p:
+        return None
+    nums = [None if x is None or x in "xX*" else int(x) for x in p.groups()[:3]]
+    major, minor, patch = nums
+    if major is None:
+        return []
+    low = (major, minor or 0, patch or 0, 0 if p[4] else 1, ())
+    if p[4]:
+        low = key("%d.%d.%d-%s" % (major, minor or 0, patch or 0, p[4]))
+
+    def upper(*v):
+        return (v[0], v[1], v[2], 0, ())  # Exclusive; below any prerelease of v.
+
+    if op == "^":
+        if major > 0 or minor is None:
+            return [(">=", low), ("<", upper(major + 1, 0, 0))]
+        if minor > 0 or patch is None:
+            return [(">=", low), ("<", upper(0, minor + 1, 0))]
+        return [(">=", low), ("<", upper(0, 0, patch + 1))]
+    if op == "~":
+        if minor is None:
+            return [(">=", low), ("<", upper(major + 1, 0, 0))]
+        return [(">=", low), ("<", upper(major, minor + 1, 0))]
+    if op in ("", "="):
+        if minor is None:
+            return [(">=", low), ("<", upper(major + 1, 0, 0))]
+        if patch is None:
+            return [(">=", low), ("<", upper(major, minor + 1, 0))]
+        return [("=", low)]
+    if op in (">=", "<"):
+        return [(op, low)]
+    if op == ">":
+        if minor is None:
+            return [(">=", upper(major + 1, 0, 0))]
+        if patch is None:
+            return [(">=", upper(major, minor + 1, 0))]
+        return [(">", low)]
+    if op == "<=":
+        if minor is None:
+            return [("<", upper(major + 1, 0, 0))]
+        if patch is None:
+            return [("<", upper(major, minor + 1, 0))]
+        return [("<=", low)]
+    return None
+
+
+def parse_range(spec):
+    """Parses an npm range into a list of alternatives (lists of comparators);
+    returns None for unsupported specs (URLs, git, aliases, tags...)."""
+    alternatives = []
+    for alt in spec.split("||"):
+        alt = alt.strip()
+        hyphen = re.match(r"^(\S+)\s+-\s+(\S+)$", alt)
+        parts = [">=" + hyphen[1], "<=" + hyphen[2]] if hyphen else \
+            re.sub(r"(\^|~|>=|<=|>|<|=)\s+", r"\1", alt).split()
+        comps = []
+        for part in parts or [""]:
+            c = comparators(part)
+            if c is None:
+                return None
+            comps.extend(c)
+        alternatives.append(comps)
+    return alternatives
+
+
+def satisfies(version, alternatives, allow_prerelease):
+    k = key(version)
+    if k is None or (k[3] == 0 and not allow_prerelease):
+        return False
+    ops = {">=": lambda a, b: a >= b, "<=": lambda a, b: a <= b, ">": lambda a, b: a > b,
+           "<": lambda a, b: a < b, "=": lambda a, b: a == b}
+    return any(all(ops[op](k, bound) for op, bound in alt) for alt in alternatives)
+
+
+metadata_cache = {}
+
+
+def metadata(name):
+    if name not in metadata_cache:
+        url = METADATA_REGISTRY + urllib.parse.quote(name, safe="@")
+        request = urllib.request.Request(url, headers={
+            "Accept": "application/vnd.npm.install-v1+json", "User-Agent": "prefetch_npm_deps"})
+        with urllib.request.urlopen(request, timeout=60) as response:
+            metadata_cache[name] = json.load(response)
+    return metadata_cache[name]
+
+
+def dependencies(name, version):
+    """Returns {dependency: range} that installing name@version needs."""
+    manifest = metadata(name).get("versions", {}).get(version, {})
+    deps = dict(manifest.get("dependencies") or {})
+    deps.update(manifest.get("optionalDependencies") or {})
+    peer_meta = manifest.get("peerDependenciesMeta") or {}
+    for peer, spec in (manifest.get("peerDependencies") or {}).items():
+        if not (peer_meta.get(peer) or {}).get("optional"):
+            deps.setdefault(peer, spec)  # Installed automatically by pnpm.
+    return deps
+
+
+locked = {}
+for line in open(sys.argv[1]):
+    n, v = line.split()
+    locked.setdefault(n, set()).add(v)
+
+queue = [tuple(line.split()) for line in open(sys.argv[2]) if line.strip()]
+seen = set(queue)
+new = 0
+try:
+    while queue and new < MAX_NEW:
+        parent, parent_version = queue.pop(0)
+        for dep, spec in sorted(dependencies(parent, parent_version).items()):
+            alternatives = parse_range(spec)
+            if alternatives is None:
+                continue
+            allow_pre = "-" in spec
+            if any(satisfies(v, alternatives, allow_pre) for v in locked.get(dep, ())):
+                continue  # pnpm would reuse the locked version.
+            candidates = [v for v in metadata(dep).get("versions", {})
+                          if satisfies(v, alternatives, allow_pre)]
+            if not candidates:
+                continue
+            best = max(candidates, key=key)
+            if (dep, best) in seen:
+                continue
+            seen.add((dep, best))
+            queue.append((dep, best))
+            new += 1
+            print(dep, best, "%s@%s" % (parent, parent_version))
+except Exception as e:  # Network or registry error: reported by the caller.
+    sys.exit("npm metadata request failed: %s" % e)
+EOF
+}
+
 # Adds the new package versions of open PRs to WANTED.
 collect_from_prs() {
   local prs
@@ -247,8 +419,8 @@ collect_from_prs() {
   done <<< "${prs}"
 }
 
-# Adds the first patched versions of vulnerable packages on BASE_BRANCH to
-# WANTED.
+# Adds the first patched versions of vulnerable packages on BASE_BRANCH, and
+# the new dependencies those versions need, to WANTED.
 collect_from_advisories() {
   if ! download_lockfile "${BASE_BRANCH}" "${WORK_DIR}/main.yaml"; then
     warn "could not download the ${BASE_BRANCH} lockfile"
@@ -257,12 +429,24 @@ collect_from_advisories() {
   local fixes
   fixes="$(list_advisory_fixes "${WORK_DIR}/main.yaml")" ||
     { warn "could not check security advisories"; return 0; }
-  local name version
+  local name version parent
   while read -r name version; do
     [[ -z "${name}" ]] && continue
     echo "advisory: ${name}@${version}"
     echo "${name} ${version}" >> "${WANTED}"
   done <<< "${fixes}"
+  [[ -z "${fixes}" ]] && return 0
+
+  # A fixed version may depend on packages that aren't in the lockfile yet.
+  echo "${fixes}" > "${WORK_DIR}/fixes"
+  local deps
+  deps="$(list_new_dependencies "${WORK_DIR}/locked" "${WORK_DIR}/fixes")" ||
+    { warn "could not check dependencies of the fixed versions"; return 0; }
+  while read -r name version parent; do
+    [[ -z "${name}" ]] && continue
+    echo "advisory dependency: ${name}@${version} (needed by ${parent})"
+    echo "${name} ${version}" >> "${WANTED}"
+  done <<< "${deps}"
 }
 
 main() {
