@@ -1,0 +1,16 @@
+version: 2
+updates:
+  # Security updates only: the open PR limit of 0 disables version updates.
+  # Note: with pnpm, Dependabot can only update direct dependencies (listed in
+  # package.json). Vulnerable transitive dependencies are fixed with
+  # pnpm.overrides in package.json.
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 0
+    groups:
+      npm-security-updates:
+        applies-to: security-updates
+        patterns:
+          - "*"
