@@ -48,3 +48,9 @@ cat <<EOF > publish_all.json
   }
 }
 EOF
+
+rm -rf npm_packages
+mkdir -p npm_packages
+cp -rL bazel-bin/packages/@dataform/cli/package npm_packages/cli
+cp -rL bazel-bin/packages/@dataform/core/package npm_packages/core
+chmod -R u+w npm_packages
