@@ -496,6 +496,10 @@ message GraphLabel {
   bool import_all = 5;
   repeated string import_except = 6;
   bool is_default = 7;
+  // Key-value metadata pairs emitted in `OPTIONS(extensions=[...])` on the
+  // default label (populated from `ai_context.instructions` and JSON-serialized
+  // `ai_context.examples`).
+  map<string, string> extensions = 8;
 }
 
 message GraphField {
@@ -503,6 +507,10 @@ message GraphField {
   string expression = 2;
   string description = 3;
   repeated string synonyms = 4;
+  // Key-value metadata pairs emitted in `OPTIONS(extensions=[...])` on the
+  // property or measure (populated from `ai_context.instructions` and
+  // JSON-serialized `ai_context.examples`).
+  map<string, string> extensions = 5;
 }
 
 message GraphEndpoint {

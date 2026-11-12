@@ -28,6 +28,7 @@ ts_library(
         "actions/operation.ts",
         "actions/property_graph.ts",
         "actions/property_graph_utils.ts",
+        "actions/property_graph_validation.ts",
         "actions/table.ts",
         "actions/test.ts",
         "actions/view.ts",

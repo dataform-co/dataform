@@ -50,9 +50,24 @@ semantic_model:
     metrics:
       - name: "book_count"
         entity: "Book"
+        datatype: "INT64"
         expression: "COUNT(id)"
         description: "Total books"
       - name: "total_pages"
         entity: "Book"
+        datatype: "INT64"
         expression: "SUM(pages)"
         description: "Total pages across books"
+      - name: "avg_pages"
+        entity: "Book"
+        datatype: "FLOAT64"
+        expression: "SAFE_DIVIDE(AGG(total_pages), NULLIF(AGG(book_count), 0))"
+        description: "Average pages per book"
+        ai_context:
+          instructions: "Use AGG(Book_avg_pages) over GRAPH_EXPAND."
+          examples: ["What is the average page count?"]
+          custom:
+            unit_type: "pages"
+        custom_extensions:
+          - vendor_name: "dbt"
+            data: '{"meta":{"tier":"gold"}}'

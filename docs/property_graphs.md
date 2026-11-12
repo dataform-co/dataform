@@ -14,7 +14,7 @@ Dataform supports defining [BigQuery Property Graphs](https://cloud.google.com/b
 > - **File path (`graph.yaml`):** Property graph configurations must be placed inside `definitions/` in a file named `graph.yaml` (for example, `definitions/graph.yaml` or `definitions/graphs/graph.yaml`).
 > - **One graph per project:** At most one `graph.yaml` file and one entry in `semantic_model` are allowed per Dataform project.
 
-- **Key casing:** Both `snake_case` (recommended, such as `semantic_model`, `primary_key`, `from_columns`, `to_columns`, `ai_context`, `is_time`, `job_labels`, `depend_on_dependency_assertions`, `include_dependent_assertions`) and `camelCase` keys are accepted.
+- **Key casing:** Both `snake_case` (recommended, such as `semantic_model`, `primary_key`, `from_columns`, `to_columns`, `ai_context`, `custom_extensions`, `is_time`, `job_labels`, `depend_on_dependency_assertions`, `include_dependent_assertions`) and `camelCase` keys are accepted (keys inside `job_labels`, `ai_context.custom`, and mapping-valued `custom_extensions[].data` are preserved verbatim).
 
 ---
 
@@ -125,13 +125,20 @@ semantic_model:
     metrics:
       - name: "book_count"
         entity: "Book"
+        datatype: "INT64"
         expression: "COUNT(id)"
         description: "Total books"
       - name: "total_pages"
         entity: "Book"
+        datatype: "INT64"
         expression: "SUM(pages)"
         label: "Total Pages"
         description: "Sum of pages across books"
+      - name: "avg_pages"
+        entity: "Book"
+        datatype: "FLOAT64"
+        expression: "SAFE_DIVIDE(AGG(total_pages), NULLIF(AGG(book_count), 0))"
+        description: "Average pages per book"
 ```
 
 ### 3. Compiled BigQuery DDL
@@ -141,8 +148,8 @@ When executed (`dataform run`), Dataform compiles the model above into the follo
 ```sql
 CREATE OR REPLACE PROPERTY GRAPH `my-gcp-project.analytics.LibraryGraph`
 NODE TABLES (
-  `my-gcp-project.dataform.authors` AS Author KEY (id) DEFAULT LABEL OPTIONS(description="Library author\n\nQuery by author id or country\n\nExamples: Alice", synonyms=["writer", "creator"]) PROPERTIES (id, name OPTIONS(description="Author Name"), UPPER(name) AS upper_name, joined_date OPTIONS(description="Time dimension."), address.country AS country),
-  `my-gcp-project.dataform.books` AS Book KEY (id) PROPERTIES (id, title, pages, MEASURE(COUNT(id)) AS book_count OPTIONS(description="Total books"), MEASURE(SUM(pages)) AS total_pages OPTIONS(description="Total Pages\n\nSum of pages across books")),
+  `my-gcp-project.dataform.authors` AS Author KEY (id) DEFAULT LABEL OPTIONS(description="Library author", synonyms=["writer", "creator"], extensions=[("instructions", "Query by author id or country"), ("examples", "[\"Alice\"]")]) PROPERTIES (id, name OPTIONS(description="Author Name"), UPPER(name) AS upper_name, joined_date OPTIONS(description="Time dimension."), address.country AS country),
+  `my-gcp-project.dataform.books` AS Book KEY (id) PROPERTIES (id, title, pages, MEASURE(COUNT(id)) AS book_count OPTIONS(description="Total books"), MEASURE(SUM(pages)) AS total_pages OPTIONS(description="Total Pages\n\nSum of pages across books"), MEASURE(SAFE_DIVIDE(AGG(total_pages), NULLIF(AGG(book_count), 0))) AS avg_pages OPTIONS(description="Average pages per book")),
   `my-gcp-project.dataform.wrote` AS Authorship KEY (author_id, book_id) PROPERTIES ALL COLUMNS
 )
 EDGE TABLES (
@@ -216,15 +223,18 @@ Every relationship is an **N:1 foreign-key edge** from `from` to `to`, backed by
 
 ### Metrics (`metrics`)
 
-Top-level `metrics` entries compile to `MEASURE(<expression>) AS <name>` properties inside the target entity's `PROPERTIES (...)` list:
+Top-level `metrics` entries compile to [BigQuery Graph Measures](https://docs.cloud.google.com/bigquery/docs/graph-measures) (`MEASURE(<expression>) AS <name>`) inside the target entity's `PROPERTIES (...)` list:
 
-- **Aggregate expressions:** At compile time, Dataform validates that `expression` is a non-empty string and passes it through as-is into `MEASURE(<expression>) AS <name>`. BigQuery validates the aggregate expression (such as `SUM(...)`, `AVG(...)`, `COUNT(...)`, `MIN(...)`, or `MAX(...)`) when the `CREATE OR REPLACE PROPERTY GRAPH` DDL executes.
-  - Because BigQuery requires a column argument inside `MEASURE(COUNT(<column>))` and rejects `MEASURE(COUNT(*))`, specify an explicit column (for example, `COUNT(id)`).
+- **Aggregate and derived expressions:** Dataform validates that `expression` is a non-empty string and passes it through as-is into `MEASURE(<expression>) AS <name>`. Supported BigQuery measure expressions include:
+  - Standard and conditional aggregates (`SUM(...)`, `AVG(...)`, `COUNT(...)`, `MIN(...)`, `MAX(...)`, `COUNT(DISTINCT ...)`, `CASE WHEN ...`, scalar arithmetic).
+  - **Derived sibling measures (`AGG(...)`):** Reference other metrics defined on the same entity via `AGG(<sibling_metric>)` (for example, `SAFE_DIVIDE(AGG(total_pages), NULLIF(AGG(book_count), 0))` or `AGG(gross_revenue) - AGG(refunds)`).
+  - **`COUNT(*)` and `COUNT(<literal>)` restriction:** BigQuery requires every measure expression to aggregate at least one graph property and rejects both `COUNT(*)` and literal-only counts such as `COUNT(1)`. Dataform rejects `COUNT(*)` and `COUNT(<literal>)` at compile time: count an explicit property instead (for example, `COUNT(id)`).
+- **Informational `datatype`:** Accepted on `metrics` (for example, `datatype: "FLOAT64"` or `datatype: "Float"`) for documentation and schema tooling; omitted from the generated BigQuery DDL, matching `fields`.
 - **Target entity requirements:**
   1. When one or more `metrics` target an entity, that entity must declare an explicit `fields` list (because BigQuery does not allow `MEASURE(...)` alongside `PROPERTIES ALL COLUMNS`).
-  2. Any column referenced inside a metric `expression` must be declared in the target entity's `fields` list.
+  2. Any column or derived property referenced inside a metric `expression` must be declared in the target entity's `fields` list.
 
-### Metadata and `ai_context` Folding (`OPTIONS`)
+### Metadata and `ai_context` Mapping (`OPTIONS`)
 
 On entities and relationships, metadata is emitted as `DEFAULT LABEL OPTIONS(...)` before `PROPERTIES (...)`, `PROPERTIES ALL COLUMNS`, or `NO PROPERTIES`. On fields and metrics, metadata is emitted as `OPTIONS(...)` immediately after the property definition.
 
@@ -232,15 +242,21 @@ On entities and relationships, metadata is emitted as `DEFAULT LABEL OPTIONS(...
   1. `label` (on fields and metrics)
   2. `"Time dimension."` (on fields when `dimension.is_time` is `true`)
   3. `description`
-  4. `ai_context.instructions` (or a string shorthand `ai_context: "..."`)
-  5. `"Examples: " + ai_context.examples.join("; ")`
 - **`OPTIONS(synonyms=[...])`:** Populated from `ai_context.synonyms`.
+- **`OPTIONS(extensions=[...])`:** Populated from `ai_context` as `(key, value)` string pairs in order:
+  1. `("instructions", "<trimmed_instructions>")` when `ai_context.instructions` (or a string shorthand `ai_context: "..."`) is non-empty.
+  2. `("examples", "<json_array>")` when `ai_context.examples` is non-empty (serialized via `JSON.stringify`, for example `("examples", "[\"Alice\"]")`).
+- **Knowledge Catalog custom metadata (omitted from BigQuery DDL):**
+  - **`ai_context.custom`:** Accepts an optional mapping of custom key-value pairs (`string`, `number`, `boolean`, `null`, array, or nested object) on the model, entities, fields, relationships, and metrics. Nested `snake_case` keys are preserved verbatim, and standard `ai_context` keys (`instructions`, `synonyms`, `examples`) must be written directly under `ai_context` rather than inside `custom`.
+  - **`custom_extensions`:** Accepts a list of `{ vendor_name: "<vendor>", data: "<json_string_or_object>" }` blocks on the model, entities, fields, relationships, and metrics for third-party vendor metadata. Entries with `vendor_name` matching `"GOOGLE"` (in any casing) are rejected in `0.2.0.dev0/google` documents because Google extensions are declared as native YAML keys.
 
 ---
 
 ## Querying Property Graphs in Downstream SQLX Actions
 
-Reference a property graph in any downstream SQLX table, view, or assertion using `${ref("<graph_name>")}` inside BigQuery's `GRAPH_TABLE` operator:
+### Pattern Matching with `GRAPH_TABLE`
+
+Reference a property graph in any downstream SQLX table, view, or assertion using `${ref("<graph_name>")}` inside BigQuery's `GRAPH_TABLE` operator (which expects a backticked identifier such as `` `project.dataset.LibraryGraph` ``):
 
 ```sql
 -- definitions/author_books.sqlx
@@ -261,4 +277,27 @@ FROM GRAPH_TABLE(
     b.pages AS pages
   )
 )
+```
+
+### Aggregating Graph Measures with `GRAPH_EXPAND`
+
+BigQuery's `GRAPH_EXPAND` table-valued function evaluates graph measures via `AGG(...)` and requires the property graph name as a **`STRING` literal** (`"project.dataset.LibraryGraph"`) rather than a backticked identifier. Strip the surrounding backticks returned by `ref()` with `.slice(1, -1)` so Dataform still registers the DAG dependency:
+
+```sql
+-- definitions/author_book_metrics.sqlx
+config {
+  type: "table"
+}
+
+SELECT
+  Author_country AS country,
+  AGG(Book_book_count) AS book_count,
+  AGG(Book_total_pages) AS total_pages,
+  AGG(Book_avg_pages) AS avg_pages
+FROM GRAPH_EXPAND(
+  "${ref('LibraryGraph').slice(1, -1)}",
+  start_node => "Authorship",
+  flatten_results => TRUE
+)
+GROUP BY country
 ```

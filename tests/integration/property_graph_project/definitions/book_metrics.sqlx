@@ -1,0 +1,12 @@
+config {
+    type: "table"
+}
+
+select
+  AGG(Book_book_count) as book_count,
+  AGG(Book_total_pages) as total_pages,
+  AGG(Book_avg_pages) as avg_pages
+from GRAPH_EXPAND(
+  "${ref('LibraryGraph').slice(1, -1)}",
+  start_node => "Authorship"
+)

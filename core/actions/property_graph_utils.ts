@@ -1,3 +1,8 @@
+import {
+  normalizeAndValidateAiContext,
+  normalizeAndValidateCustomExtensions,
+  validateMetricExpression,
+} from "df/core/actions/property_graph_validation";
 import { snakeToCamelKeys } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
@@ -124,7 +129,7 @@ export function normalizePropertyGraphConfig(rawConfig: any): any {
   if (!rawConfig || typeof rawConfig !== "object" || Array.isArray(rawConfig)) {
     return rawConfig;
   }
-  const config = snakeToCamelKeys(rawConfig, new Set(["jobLabels"]));
+  const config = snakeToCamelKeys(rawConfig, new Set(["jobLabels", "custom", "data"]));
   if (!Array.isArray(config.semanticModel)) {
     return config;
   }
@@ -141,39 +146,53 @@ export function normalizePropertyGraphConfig(rawConfig: any): any {
       model.entities = model.datasets;
       delete model.datasets;
     }
-    normalizeAiContext(model);
+    const modelWhere =
+      typeof model.name === "string" && model.name
+        ? `Property graph '${model.name}'`
+        : "Property graph";
+    normalizeAndValidateAiContext(model, modelWhere);
+    normalizeAndValidateCustomExtensions(model, modelWhere);
     for (const entity of model.entities || []) {
       if (!entity || typeof entity !== "object") {
         continue;
       }
+      const entityWhere =
+        typeof entity.name === "string" && entity.name
+          ? `${modelWhere}: entity '${unquoteIdentifier(entity.name)}'`
+          : `${modelWhere}: entity`;
       normalizeSource(entity);
       normalizeStringList(entity, "primaryKey");
       normalizeUniqueKeys(entity);
-      normalizeAiContext(entity);
-      normalizeFields(entity);
+      normalizeAndValidateAiContext(entity, entityWhere);
+      normalizeAndValidateCustomExtensions(entity, entityWhere);
+      normalizeFields(entity, entityWhere);
     }
     for (const rel of model.relationships || []) {
       if (!rel || typeof rel !== "object") {
         continue;
       }
+      const relWhere =
+        typeof rel.name === "string" && rel.name
+          ? `${modelWhere}: relationship '${unquoteIdentifier(rel.name)}'`
+          : `${modelWhere}: relationship`;
       normalizeStringList(rel, "fromColumns");
       normalizeStringList(rel, "toColumns");
-      normalizeAiContext(rel);
+      normalizeAndValidateAiContext(rel, relWhere);
+      normalizeAndValidateCustomExtensions(rel, relWhere);
     }
     for (const metric of model.metrics || []) {
       if (!metric || typeof metric !== "object") {
         continue;
       }
-      normalizeAiContext(metric);
+      const metricWhere =
+        typeof metric.name === "string" && metric.name
+          ? `${modelWhere}: metric '${unquoteIdentifier(metric.name)}'`
+          : `${modelWhere}: metric`;
+      normalizeAndValidateAiContext(metric, metricWhere);
+      normalizeAndValidateCustomExtensions(metric, metricWhere);
     }
   }
   return config;
-}
-
-function normalizeAiContext(container: any) {
-  if (typeof container.aiContext === "string") {
-    container.aiContext = { instructions: container.aiContext };
-  }
 }
 
 function normalizeSource(container: any) {
@@ -233,7 +252,7 @@ function normalizeUniqueKeys(entity: any) {
   });
 }
 
-function normalizeFields(entity: any) {
+function normalizeFields(entity: any, entityWhere: string) {
   if (Array.isArray(entity.fields)) {
     entity.fields = entity.fields.map((field: string | any) => {
       if (typeof field === "string") {
@@ -243,7 +262,12 @@ function normalizeFields(entity: any) {
         if (typeof field.dimension === "boolean") {
           field.dimension = {};
         }
-        normalizeAiContext(field);
+        const fieldWhere =
+          typeof field.name === "string" && field.name
+            ? `${entityWhere}: field '${unquoteIdentifier(field.name)}'`
+            : `${entityWhere}: field`;
+        normalizeAndValidateAiContext(field, fieldWhere);
+        normalizeAndValidateCustomExtensions(field, fieldWhere);
       }
       return field;
     });
@@ -464,6 +488,41 @@ export function formatDescriptionWithExamples(
   ]);
 }
 
+export function composeElementDescription(
+  description?: string | null,
+  extraParts?: { label?: string | null; isTimeDimension?: boolean },
+): string {
+  return composeDescription([
+    extraParts?.label,
+    extraParts?.isTimeDimension ? "Time dimension." : undefined,
+    description,
+  ]);
+}
+
+export function buildAiExtensions(
+  aiContext?: dataform.IGraphAiContextConfig | null,
+): Record<string, string> {
+  const extensions: Record<string, string> = {};
+  if (!aiContext) {
+    return extensions;
+  }
+  const instructions =
+    typeof aiContext.instructions === "string" ? aiContext.instructions.trim() : "";
+  if (instructions.length > 0) {
+    extensions.instructions = instructions;
+  }
+  if (aiContext.examples && aiContext.examples.length > 0) {
+    extensions.examples = JSON.stringify(aiContext.examples);
+  }
+  return extensions;
+}
+
+function nonEmptyExtensions(
+  extensions: Record<string, string>,
+): Record<string, string> | undefined {
+  return Object.keys(extensions).length > 0 ? extensions : undefined;
+}
+
 export function buildEntityLabels(
   entityConfig: dataform.IGraphEntityConfig,
   entityMetrics: dataform.IGraphMetricConfig[],
@@ -509,11 +568,12 @@ export function buildEntityLabels(
     return dataform.GraphField.create({
       name: cleanName,
       expression: normalizedExpr,
-      description: formatDescriptionWithExamples(field.description, field.aiContext, {
+      description: composeElementDescription(field.description, {
         label: field.label,
         isTimeDimension: Boolean(field.dimension?.isTime),
       }),
       synonyms: field.aiContext?.synonyms || [],
+      extensions: nonEmptyExtensions(buildAiExtensions(field.aiContext)),
     });
   });
 
@@ -549,25 +609,26 @@ export function buildEntityLabels(
     if (!metric.expression || !metric.expression.trim()) {
       throw new Error(`${metricWhere} must declare 'expression'.`);
     }
+    validateMetricExpression(metric.expression, metricWhere);
     measureFields.push(
       dataform.GraphField.create({
         name: unquoteIdentifier(metric.name),
         expression: `MEASURE(${metric.expression.trim()})`,
-        description: formatDescriptionWithExamples(metric.description, metric.aiContext, {
+        description: composeElementDescription(metric.description, {
           label: metric.label,
         }),
         synonyms: metric.aiContext?.synonyms || [],
+        extensions: nonEmptyExtensions(buildAiExtensions(metric.aiContext)),
       }),
     );
   }
 
   const allFields = [...builtFields, ...measureFields];
-  const entityDescription = formatDescriptionWithExamples(
-    entityConfig.description,
-    entityConfig.aiContext,
-  );
+  const entityDescription = composeElementDescription(entityConfig.description);
   const entitySynonyms = entityConfig.aiContext?.synonyms || [];
-  const hasOptions = !!entityDescription || entitySynonyms.length > 0;
+  const entityExtensions = buildAiExtensions(entityConfig.aiContext);
+  const hasOptions =
+    !!entityDescription || entitySynonyms.length > 0 || Object.keys(entityExtensions).length > 0;
 
   if (allFields.length === 0 && !hasOptions) {
     return [];
@@ -578,6 +639,7 @@ export function buildEntityLabels(
       name: entityName,
       description: entityDescription || undefined,
       synonyms: entitySynonyms,
+      extensions: nonEmptyExtensions(entityExtensions),
       fields: allFields,
       importAll: allFields.length === 0,
       importExcept: [],
@@ -589,9 +651,10 @@ export function buildEntityLabels(
 export function buildRelationshipLabels(
   relConfig: dataform.IGraphRelationshipConfig,
 ): dataform.GraphLabel[] {
-  const description = formatDescriptionWithExamples(relConfig.description, relConfig.aiContext);
+  const description = composeElementDescription(relConfig.description);
   const synonyms = relConfig.aiContext?.synonyms || [];
-  if (!description && synonyms.length === 0) {
+  const extensions = buildAiExtensions(relConfig.aiContext);
+  if (!description && synonyms.length === 0 && Object.keys(extensions).length === 0) {
     return [];
   }
   return [
@@ -599,6 +662,7 @@ export function buildRelationshipLabels(
       name: relConfig.name,
       description: description || undefined,
       synonyms,
+      extensions: nonEmptyExtensions(extensions),
       fields: [],
       importAll: false,
       importExcept: [],
@@ -664,7 +728,7 @@ function renderEndpoint(role: "SOURCE" | "DESTINATION", endpoint: dataform.IGrap
 function renderNodeLabelClause(label: dataform.IGraphLabel): string {
   const parts: string[] = [];
   if (label.isDefault) {
-    const options = renderOptionsClause(label.description, label.synonyms);
+    const options = renderOptionsClause(label.description, label.synonyms, label.extensions);
     if (options) {
       parts.push(`DEFAULT LABEL ${options}`);
     }
@@ -678,7 +742,7 @@ function renderNodeLabelClause(label: dataform.IGraphLabel): string {
 function renderEdgeLabelClause(label: dataform.IGraphLabel): string {
   const parts: string[] = [];
   if (label.isDefault) {
-    const options = renderOptionsClause(label.description, label.synonyms);
+    const options = renderOptionsClause(label.description, label.synonyms, label.extensions);
     if (options) {
       parts.push(`DEFAULT LABEL ${options}`);
     }
@@ -702,7 +766,7 @@ function renderField(field: dataform.IGraphField): string {
   const hasDistinctExpression =
     field.expression && unquoteIdentifier(field.expression) !== unquoteIdentifier(field.name);
   const expr = hasDistinctExpression ? `${quoteIfReserved(field.expression)} AS ${alias}` : alias;
-  const options = renderOptionsClause(field.description, field.synonyms);
+  const options = renderOptionsClause(field.description, field.synonyms, field.extensions);
   return options ? `${expr} ${options}` : expr;
 }
 
@@ -720,9 +784,29 @@ export function quoteBigQueryString(value: string): string {
   return `"${escaped}"`;
 }
 
+const AI_EXTENSION_KEY_ORDER = ["instructions", "examples"];
+
+function orderedExtensionEntries(
+  extensions: Record<string, string> | null | undefined,
+): Array<[string, string]> {
+  if (!extensions) {
+    return [];
+  }
+  const keys = Object.keys(extensions);
+  if (keys.length === 0) {
+    return [];
+  }
+  const orderedKeys = [
+    ...AI_EXTENSION_KEY_ORDER.filter((k) => Object.prototype.hasOwnProperty.call(extensions, k)),
+    ...keys.filter((k) => !AI_EXTENSION_KEY_ORDER.includes(k)).sort(),
+  ];
+  return orderedKeys.map((k) => [k, extensions[k]]);
+}
+
 export function renderOptionsClause(
   description: string | null | undefined,
   synonyms: string[] | null | undefined,
+  extensions?: Record<string, string> | null,
 ): string {
   const parts: string[] = [];
   if (description) {
@@ -730,6 +814,13 @@ export function renderOptionsClause(
   }
   if (synonyms && synonyms.length > 0) {
     parts.push(`synonyms=[${synonyms.map((s) => quoteBigQueryString(s)).join(", ")}]`);
+  }
+  const extEntries = orderedExtensionEntries(extensions);
+  if (extEntries.length > 0) {
+    const pairs = extEntries
+      .map(([k, v]) => `(${quoteBigQueryString(k)}, ${quoteBigQueryString(v)})`)
+      .join(", ");
+    parts.push(`extensions=[${pairs}]`);
   }
   return parts.length > 0 ? `OPTIONS(${parts.join(", ")})` : "";
 }

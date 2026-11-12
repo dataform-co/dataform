@@ -3,8 +3,9 @@
 // specification (`version: 0.2.0.dev0/google`). At most one `graph.yaml` file
 // is allowed per project in V1. Both `snake_case` (recommended in `graph.yaml`,
 // e.g. `semantic_model`, `primary_key`, `from_columns`, `to_columns`,
-// `ai_context`, `job_labels`, `depend_on_dependency_assertions`,
-// `include_dependent_assertions`) and `camelCase` keys are accepted.
+// `ai_context`, `custom_extensions`, `job_labels`,
+// `depend_on_dependency_assertions`, `include_dependent_assertions`) and
+// `camelCase` keys are accepted.
 syntax = "proto3";
 
 package dataform;
@@ -14,6 +15,8 @@ option java_outer_classname = "PropertyGraphConfigMeta";
 option java_multiple_files = true;
 
 option go_package = "github.com/dataform-co/dataform/protos/dataform";
+
+import "google/protobuf/struct.proto";
 
 // Top-level configuration for a Dataform BigQuery Property Graph YAML file
 // (`definitions/**/graph.yaml`), aligned with the Google Semantic Ontology V1
@@ -67,6 +70,11 @@ message SemanticModelConfig {
   // Optional. Top-level aggregate metrics compiled as `MEASURE(...)` properties
   // on target entities.
   repeated GraphMetricConfig metrics = 7;
+  // Optional (`custom_extensions` in YAML). Vendor-scoped custom extension
+  // metadata blocks (`vendor_name` must not be `"GOOGLE"` in
+  // `0.2.0.dev0/google` documents). Accepted for Knowledge Catalog
+  // compatibility and omitted from generated BigQuery DDL.
+  repeated GraphCustomExtensionConfig custom_extensions = 8;
 }
 
 // Deployment target mapping for a semantic model (`deployments` in
@@ -115,7 +123,7 @@ message GraphEntityConfig {
   // `DEFAULT LABEL OPTIONS(description=...)`.
   string description = 6;
   // Optional (`ai_context` in YAML). AI context metadata (`instructions`,
-  // `synonyms`, and `examples`) for the entity.
+  // `synonyms`, `examples`, and `custom`) for the entity.
   GraphAiContextConfig ai_context = 7;
   // Optional. Properties exposed on the entity node table (`PROPERTIES (...)`).
   // In `graph.yaml`, each item may be a bare column name string `"col"` or a
@@ -123,6 +131,11 @@ message GraphEntityConfig {
   // entity), `PROPERTIES ALL COLUMNS` is emitted. Required when one or more
   // `metrics` target the entity.
   repeated GraphFieldConfig fields = 8;
+  // Optional (`custom_extensions` in YAML). Vendor-scoped custom extension
+  // metadata blocks (`vendor_name` must not be `"GOOGLE"` in
+  // `0.2.0.dev0/google` documents). Accepted for Knowledge Catalog
+  // compatibility and omitted from generated BigQuery DDL.
+  repeated GraphCustomExtensionConfig custom_extensions = 9;
 }
 
 // Wrapper for a single composite unique key column list on an entity
@@ -159,8 +172,13 @@ message GraphRelationshipConfig {
   // `DEFAULT LABEL OPTIONS(description=...)`.
   string description = 9;
   // Optional (`ai_context` in YAML). AI context metadata (`instructions`,
-  // `synonyms`, and `examples`) for the relationship.
+  // `synonyms`, `examples`, and `custom`) for the relationship.
   GraphAiContextConfig ai_context = 10;
+  // Optional (`custom_extensions` in YAML). Vendor-scoped custom extension
+  // metadata blocks (`vendor_name` must not be `"GOOGLE"` in
+  // `0.2.0.dev0/google` documents). Accepted for Knowledge Catalog
+  // compatibility and omitted from generated BigQuery DDL.
+  repeated GraphCustomExtensionConfig custom_extensions = 11;
 }
 
 // Dimension metadata for a property field on an entity (`dimension` in
@@ -197,8 +215,13 @@ message GraphFieldConfig {
   // `OPTIONS(description=...)`.
   string label = 6;
   // Optional (`ai_context` in YAML). AI context metadata (`instructions`,
-  // `synonyms`, and `examples`) for the field.
+  // `synonyms`, `examples`, and `custom`) for the field.
   GraphAiContextConfig ai_context = 7;
+  // Optional (`custom_extensions` in YAML). Vendor-scoped custom extension
+  // metadata blocks (`vendor_name` must not be `"GOOGLE"` in
+  // `0.2.0.dev0/google` documents). Accepted for Knowledge Catalog
+  // compatibility and omitted from generated BigQuery DDL.
+  repeated GraphCustomExtensionConfig custom_extensions = 8;
 }
 
 // A top-level aggregate metric definition (`metrics` in `graph.yaml`), compiled
@@ -212,10 +235,13 @@ message GraphMetricConfig {
   // Required. Target entity name on whose node table the `MEASURE(...)`
   // property is emitted.
   string entity = 2;
-  // Required. Single supported SQL aggregate (`SUM`, `AVG`, `COUNT`, `MIN`, or
-  // `MAX`), or `COUNT(*)`. Passed through as-is into
-  // `MEASURE(<expression>) AS <name>`, except `COUNT(*)` which is lowered to
-  // `COUNT(<primary_key[0]>)`.
+  // Required. SQL aggregate or derived measure expression passed through as-is
+  // into `MEASURE(<expression>) AS <name>` (supporting `SUM`, `AVG`,
+  // `COUNT(<property>)`, `MIN`, `MAX`, `DISTINCT`, `CASE WHEN`, scalar
+  // arithmetic, and derived sibling measures via `AGG(<sibling_metric>)`).
+  // `COUNT(*)` and literal-only counts such as `COUNT(1)` are rejected at
+  // compile time because BigQuery requires every measure to aggregate at least
+  // one graph property.
   string expression = 3;
   // Optional. Human-readable description of the metric, folded into
   // `OPTIONS(description=...)`.
@@ -224,25 +250,57 @@ message GraphMetricConfig {
   // `OPTIONS(description=...)`.
   string label = 5;
   // Optional (`ai_context` in YAML). AI context metadata (`instructions`,
-  // `synonyms`, and `examples`) for the metric.
+  // `synonyms`, `examples`, and `custom`) for the metric.
   GraphAiContextConfig ai_context = 6;
+  // Optional. Informational data type metadata. Accepted by the parser but has
+  // no effect on the generated BigQuery DDL.
+  string datatype = 7;
+  // Optional (`custom_extensions` in YAML). Vendor-scoped custom extension
+  // metadata blocks (`vendor_name` must not be `"GOOGLE"` in
+  // `0.2.0.dev0/google` documents). Accepted for Knowledge Catalog
+  // compatibility and omitted from generated BigQuery DDL.
+  repeated GraphCustomExtensionConfig custom_extensions = 8;
 }
 
 // AI context metadata attached to a semantic model, entity, relationship, field,
 // or metric (`ai_context` in `graph.yaml`). On entities and relationships,
 // `DEFAULT LABEL OPTIONS(...)` is emitted before `PROPERTIES (...)`,
-// `PROPERTIES ALL COLUMNS`, or `NO PROPERTIES`. Description sections (`label`,
-// `"Time dimension."`, `description`, `ai_context.instructions`, and
-// `"Examples: a; b"`) are joined with `"\n\n"`.
+// `PROPERTIES ALL COLUMNS`, or `NO PROPERTIES`. On entities, relationships,
+// fields, and metrics, `synonyms` map to `OPTIONS(synonyms=[...])`, while
+// non-empty `instructions` and JSON-serialized `examples` map to
+// `OPTIONS(extensions=[("instructions", "..."), ("examples", "[...]")])`.
+// Model-level `ai_context` populates `PropertyGraph.description` only.
 message GraphAiContextConfig {
   // Optional. Alternative names emitted as `OPTIONS(synonyms=[...])`.
   repeated string synonyms = 1;
-  // Optional. Example values or questions folded into the element's description
-  // (`"...\n\nExamples: ex1; ex2"`).
+  // Optional. Example values or questions emitted as a JSON-serialized array in
+  // `OPTIONS(extensions=[("examples", "[...]")])` on labels, fields, and
+  // metrics (and folded into `PropertyGraph.description` on `semantic_model`).
   repeated string examples = 2;
-  // Optional. Free-form AI instructions folded into the element's description
-  // (`OPTIONS(description=...)`).
+  // Optional. Free-form AI instructions emitted as
+  // `OPTIONS(extensions=[("instructions", "...")])` on labels, fields, and
+  // metrics (and folded into `PropertyGraph.description` on `semantic_model`).
   string instructions = 3;
+  // Optional. Opaque mapping of custom AI context member names to arbitrary
+  // JSON/YAML values (preserving nested `snake_case` keys verbatim). Accepted
+  // for Knowledge Catalog compatibility and omitted from generated BigQuery
+  // DDL.
+  google.protobuf.Struct custom = 4;
+}
+
+// Vendor-scoped custom extension metadata block attached to a semantic model,
+// entity, relationship, field, or metric (`custom_extensions` in `graph.yaml`).
+// Accepted for Knowledge Catalog compatibility and omitted from generated
+// BigQuery DDL.
+message GraphCustomExtensionConfig {
+  // Required (`vendor_name` in YAML). Non-empty third-party vendor identifier
+  // (`"GOOGLE"` in any casing is rejected in `0.2.0.dev0/google` documents,
+  // where Google extensions are declared as native keys).
+  string vendor_name = 1;
+  // Required. Vendor-specific extension payload. In `graph.yaml`, either a
+  // serialized JSON string or a plain mapping object (normalized to a JSON
+  // string with nested keys preserved verbatim) is accepted.
+  string data = 2;
 }
 
 // Reference to another Dataform action as a backing table source
