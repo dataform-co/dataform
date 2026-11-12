@@ -13,6 +13,15 @@ config {
         },
         not_a_column_name: "shouldn't appear"
     },
+    metadata: {
+        overview: "An incremental table overview.",
+        extraProperties: {
+            generic: {
+                system: "BigQuery",
+                type: "incremental"
+            }
+        }
+    },
     hermetic: false
 }
 

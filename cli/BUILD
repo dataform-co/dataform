@@ -91,6 +91,7 @@ ts_test_suite(
     include_npm = True,
     deps = [
         ":index_test_base",
+        "//:node_modules/@google-cloud/dataplex",
         "//:node_modules/@types/chai",
         "//:node_modules/@types/fs-extra",
         "//:node_modules/@types/js-yaml",
@@ -132,6 +133,7 @@ ts_test_suite(
     tags = ["integration"],
     deps = [
         ":index_test_base",
+        "//:node_modules/@google-cloud/dataplex",
         "//:node_modules/@types/chai",
         "//:node_modules/@types/fs-extra",
         "//:node_modules/@types/js-yaml",
