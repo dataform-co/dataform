@@ -271,7 +271,6 @@ Compiles and executes the project against BigQuery (or validates it with `--dry-
 
 - `--actions` entries are matched exactly: `*` wildcards are not expanded, and a bare action name that matches several actions is an error.
 - `--full-refresh` only affects incremental tables; regular tables and views are always rebuilt.
-- `--json` outputs the run result as JSON and is only supported together with `--dry-run`; plain `run --json` is rejected.
 - `--timeout` bounds compilation only, not execution. If it's set without `--execution-timeout`, `run` prints a warning reminding you of that.
 - `--job-labels` override `defaultJobLabels`, action `jobLabels` and table `labels` that use the same key.
 - `--emit-lineage` requires the Data Lineage API (`datalineage.googleapis.com`) to be enabled and the `roles/datalineage.producer` role; for configuration and troubleshooting, see the [Data Lineage guide](../docs/lineage.md).
