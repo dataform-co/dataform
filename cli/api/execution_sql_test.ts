@@ -278,3 +278,253 @@ suite("ExecutionSql for operations", () => {
     ).deep.equals([]);
   });
 });
+
+suite("ExecutionSql for 4-part Lakehouse targets", () => {
+  const executionSql = new ExecutionSql(
+    {
+      defaultDatabase: "project-id",
+      defaultSchema: "default_dataset",
+    },
+    "3.1.5",
+    () => "test_uuid",
+  );
+
+  const lakehouseTarget: dataform.ITarget = {
+    database: "project-id",
+    schema: "ecommerce_catalog.sales_dw",
+    name: "customer_orders",
+  };
+
+  const lakehouseMetadata: dataform.ITableMetadata = {
+    type: dataform.TableMetadata.Type.TABLE,
+    target: lakehouseTarget,
+    fields: [
+      { name: "order_id", primitive: dataform.Field.Primitive.INTEGER },
+      { name: "customer_id", primitive: dataform.Field.Primitive.INTEGER },
+    ],
+  };
+
+  test("emits 4-part CREATE OR REPLACE TABLE and skips incompatible-type DROP VIEW IF EXISTS", () => {
+    const table: dataform.ITable = {
+      type: "table",
+      enumType: dataform.TableType.TABLE,
+      target: lakehouseTarget,
+      query: "SELECT 1 AS order_id, 2 AS customer_id",
+      bigquery: {
+        partitionBy: "BUCKET(order_id, 16)",
+      },
+    };
+    const incompatibleMetadata: dataform.ITableMetadata = {
+      type: dataform.TableMetadata.Type.UNKNOWN,
+      target: lakehouseTarget,
+      fields: [],
+    };
+
+    const tasks = executionSql
+      .publishTasks(table, { fullRefresh: false }, incompatibleMetadata)
+      .build();
+
+    expect(tasks.length).to.equal(1);
+    expect(tasks[0].statement).to.not.include("drop view");
+    expect(tasks[0].statement).to.equal(
+      "create or replace table `project-id.ecommerce_catalog.sales_dw.customer_orders` " +
+        "partition by BUCKET(order_id, 16) as SELECT 1 AS order_id, 2 AS customer_id",
+    );
+  });
+
+  test("emits CREATE OR REPLACE TABLE on first run and fullRefresh of 4-part incremental table", () => {
+    const incTable: dataform.ITable = {
+      type: "incremental",
+      enumType: dataform.TableType.INCREMENTAL,
+      target: lakehouseTarget,
+      query: "SELECT 1 AS order_id, 2 AS customer_id",
+      incrementalQuery: "SELECT 3 AS order_id, 4 AS customer_id",
+    };
+
+    const firstRunSql = executionSql
+      .publishTasks(incTable, { fullRefresh: false })
+      .build()[0].statement;
+    const fullRefreshSql = executionSql
+      .publishTasks(incTable, { fullRefresh: true }, lakehouseMetadata)
+      .build()[0].statement;
+
+    const expectedDdl =
+      "create or replace table `project-id.ecommerce_catalog.sales_dw.customer_orders` " +
+      "as SELECT 1 AS order_id, 2 AS customer_id";
+    expect(firstRunSql).to.equal(expectedDdl);
+    expect(fullRefreshSql).to.equal(expectedDdl);
+  });
+
+  test("emits valid 4-part DML for incremental INSERT, MERGE, and INSERT_OVERWRITE", () => {
+    const baseIncTable: dataform.ITable = {
+      type: "incremental",
+      enumType: dataform.TableType.INCREMENTAL,
+      target: lakehouseTarget,
+      query: "SELECT 1 AS order_id, 2 AS customer_id",
+      incrementalQuery: "SELECT 3 AS order_id, 4 AS customer_id",
+    };
+
+    const insertSql = executionSql
+      .publishTasks(baseIncTable, { fullRefresh: false }, lakehouseMetadata)
+      .build()[0].statement;
+    expect(insertSql).to.include(
+      "insert into `project-id.ecommerce_catalog.sales_dw.customer_orders`",
+    );
+    expect(insertSql).to.include("(`order_id`,`customer_id`)");
+
+    const mergeSql = executionSql
+      .publishTasks(
+        { ...baseIncTable, uniqueKey: ["order_id"] },
+        { fullRefresh: false },
+        lakehouseMetadata,
+      )
+      .build()[0].statement;
+    expect(mergeSql).to.include(
+      "merge `project-id.ecommerce_catalog.sales_dw.customer_orders` DATAFORM_DEST",
+    );
+
+    const insertOverwriteSql = executionSql
+      .publishTasks(
+        {
+          ...baseIncTable,
+          incrementalStrategy: dataform.IncrementalStrategy.INSERT_OVERWRITE,
+          bigquery: { partitionBy: "DATE(ts)" },
+        },
+        { fullRefresh: false },
+        lakehouseMetadata,
+      )
+      .build()[0].statement;
+    expect(insertOverwriteSql).to.include(
+      "CREATE OR REPLACE TEMP TABLE `staging_table_temp_test_uuid`",
+    );
+    expect(insertOverwriteSql).to.include(
+      "MERGE `project-id.ecommerce_catalog.sales_dw.customer_orders` DATAFORM_DEST",
+    );
+  });
+
+  test("handles onSchemaChange = FAIL on 4-part target without procedure in catalog.namespace or 5-part INFORMATION_SCHEMA", () => {
+    const table: dataform.ITable = {
+      type: "incremental",
+      enumType: dataform.TableType.INCREMENTAL,
+      target: lakehouseTarget,
+      query: "SELECT 1 AS order_id, 2 AS customer_id",
+      incrementalQuery: "SELECT 1 AS order_id, 2 AS customer_id, 'new' AS status",
+      onSchemaChange: dataform.OnSchemaChange.FAIL,
+    };
+
+    const sql = executionSql
+      .publishTasks(table, { fullRefresh: false }, lakehouseMetadata)
+      .build()[0].statement;
+
+    expect(sql).to.not.include("CREATE OR REPLACE PROCEDURE");
+    expect(sql).to.not.include("ecommerce_catalog.sales_dw.INFORMATION_SCHEMA");
+    expect(sql).to.not.include("ecommerce_catalog.sales_dw.df_osc_");
+    expect(sql).to.include(
+      "CREATE OR REPLACE TABLE `project-id.default_dataset.customer_orders_df_temp_test_uuid_empty`",
+    );
+    expect(sql).to.include("SET dataform_columns = ARRAY<STRING>['order_id', 'customer_id'];");
+    expect(sql).to.include("FROM `project-id.default_dataset.INFORMATION_SCHEMA.COLUMNS`");
+    expect(sql).to.include("Schema mismatch defined by on_schema_change = 'FAIL'.");
+    expect(sql).to.include(
+      "EXCEPTION WHEN ERROR THEN\n  DROP TABLE IF EXISTS `project-id.default_dataset.customer_orders_df_temp_test_uuid_empty`;\n  RAISE;\nEND;",
+    );
+  });
+
+  test("handles onSchemaChange = EXTEND on 4-part target and applies schemaSuffix to scratch dataset", () => {
+    const suffixedExecutionSql = new ExecutionSql(
+      {
+        defaultDatabase: "project-id",
+        defaultSchema: "default_dataset",
+        schemaSuffix: "staging",
+      },
+      "3.1.5",
+      () => "test_uuid",
+    );
+    const table: dataform.ITable = {
+      type: "incremental",
+      enumType: dataform.TableType.INCREMENTAL,
+      target: lakehouseTarget,
+      query: "SELECT 1 AS order_id, 2 AS customer_id",
+      incrementalQuery: "SELECT 1 AS order_id, 2 AS customer_id, 'new' AS status",
+      onSchemaChange: dataform.OnSchemaChange.EXTEND,
+    };
+
+    const sql = suffixedExecutionSql
+      .publishTasks(table, { fullRefresh: false }, lakehouseMetadata)
+      .build()[0].statement;
+
+    expect(sql).to.not.include("CREATE OR REPLACE PROCEDURE");
+    expect(sql).to.not.include("ecommerce_catalog.sales_dw.INFORMATION_SCHEMA");
+    expect(sql).to.include(
+      "CREATE OR REPLACE TABLE `project-id.default_dataset_staging.customer_orders_df_temp_test_uuid_empty`",
+    );
+    expect(sql).to.include("FROM `project-id.default_dataset_staging.INFORMATION_SCHEMA.COLUMNS`");
+    expect(sql).to.include(
+      '"ALTER TABLE `project-id.ecommerce_catalog.sales_dw.customer_orders` "',
+    );
+    expect(sql).to.include("ADD COLUMN IF NOT EXISTS");
+  });
+
+  test("handles onSchemaChange = SYNCHRONIZE on 4-part target with DECLARE statements first in BEGIN block", () => {
+    const table: dataform.ITable = {
+      type: "incremental",
+      enumType: dataform.TableType.INCREMENTAL,
+      target: lakehouseTarget,
+      uniqueKey: ["order_id"],
+      query: "SELECT 1 AS order_id, 2 AS customer_id",
+      incrementalQuery: "SELECT 1 AS order_id, 'new' AS status",
+      onSchemaChange: dataform.OnSchemaChange.SYNCHRONIZE,
+    };
+
+    const sql = executionSql
+      .publishTasks(table, { fullRefresh: false }, lakehouseMetadata)
+      .build()[0].statement;
+
+    expect(sql).to.not.include("CREATE OR REPLACE PROCEDURE");
+    expect(sql).to.not.include("ecommerce_catalog.sales_dw.INFORMATION_SCHEMA");
+    expect(sql).to.include("DECLARE invalid_removed_columns ARRAY<STRING>;");
+    expect(sql).to.include(
+      "Cannot drop columns %T as they are part of the unique key for table `project-id.ecommerce_catalog.sales_dw.customer_orders`",
+    );
+    expect(sql).to.include("DROP COLUMN IF EXISTS");
+    expect(sql).to.include("ADD COLUMN IF NOT EXISTS");
+
+    const scriptBody = sql.split("BEGIN\n")[1].split("\nEXCEPTION WHEN ERROR THEN")[0];
+    const statements = scriptBody
+      .split(";")
+      .map((s) =>
+        s
+          .split("\n")
+          .filter((line) => !line.trim().startsWith("--"))
+          .join("\n")
+          .trim(),
+      )
+      .filter((s) => s.length > 0);
+
+    let seenNonDeclare = false;
+    for (const stmt of statements) {
+      if (stmt.toUpperCase().startsWith("DECLARE ")) {
+        expect(seenNonDeclare).to.equal(false);
+      } else {
+        seenNonDeclare = true;
+      }
+    }
+  });
+
+  test("creates operation tasks for 4-part Lakehouse operation target", () => {
+    const tasks = executionSql.createOperationTasks({
+      target: lakehouseTarget,
+      hasOutput: true,
+      queries: [
+        "CREATE OR REPLACE TABLE `project-id.ecommerce_catalog.sales_dw.customer_orders` (order_id INT64)",
+      ],
+    });
+    expect(tasks).deep.equals([
+      dataform.ExecutionTask.create({
+        type: "statement",
+        statement:
+          "CREATE OR REPLACE TABLE `project-id.ecommerce_catalog.sales_dw.customer_orders` (order_id INT64)",
+      }),
+    ]);
+  });
+});
