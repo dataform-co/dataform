@@ -670,11 +670,14 @@ function convertFieldType(type: string) {
     case "INT64":
       return dataform.Field.Primitive.INTEGER;
     case "NUMERIC":
+    case "BIGNUMERIC":
       return dataform.Field.Primitive.NUMERIC;
     case "BOOL":
     case "BOOLEAN":
       return dataform.Field.Primitive.BOOLEAN;
     case "STRING":
+    case "JSON":
+    case "INTERVAL":
       return dataform.Field.Primitive.STRING;
     case "DATE":
       return dataform.Field.Primitive.DATE;
