@@ -75,10 +75,21 @@ for line in open(sys.argv[1]):
 EOF
 }
 
+# Runs curl for a GitHub URL, with GITHUB_TOKEN (if set) to raise the rate
+# limit. The token is passed on stdin so it doesn't show up in the process list.
+# Arguments: curl arguments.
+github_curl() {
+  if [[ -n "${GITHUB_TOKEN}" ]]; then
+    curl "${CURL_OPTS[@]}" -H @- "$@" <<< "Authorization: Bearer ${GITHUB_TOKEN}"
+  else
+    curl "${CURL_OPTS[@]}" "$@"
+  fi
+}
+
 # Downloads pnpm-lock.yaml at a given commit or branch.
 # Arguments: commit SHA or branch name, output path.
 download_lockfile() {
-  curl "${CURL_OPTS[@]}" -L -o "$2" \
+  github_curl -L -o "$2" \
     "https://raw.githubusercontent.com/${GITHUB_REPO}/$1/pnpm-lock.yaml"
 }
 
@@ -124,7 +135,7 @@ ci_registry_status() {
 # packages. If PR_AUTHOR is set, only PRs by that author are listed.
 list_prs() {
   local json
-  json="$(curl "${CURL_OPTS[@]}" -L \
+  json="$(github_curl -L \
     "https://api.github.com/repos/${GITHUB_REPO}/pulls?state=open&per_page=100")" ||
     return 1
   python3 -c 'import json, os, sys
