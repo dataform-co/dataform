@@ -1,0 +1,48 @@
+name: Dependency PR status
+
+# Labels PRs from Dependabot and from the Security updates workflow whose
+# Cloud Build tests fail only because new dependency versions aren't available
+# in the registry used by CI yet. See scripts/dependency_pr_status.
+
+on:
+  schedule:
+    - cron: "0 7 * * *" # Daily at 07:00 UTC.
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: Only show what would be done.
+        type: boolean
+        default: true
+      pr-number:
+        description: Only process this PR (optional, for testing).
+        type: string
+        required: false
+
+permissions: {}
+
+concurrency:
+  group: dependency-pr-status
+  cancel-in-progress: false
+
+jobs:
+  status:
+    name: Update dependency PR labels
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      checks: read # Read the check runs of the PRs.
+      contents: read # Check out this repo and read commits.
+      issues: write # Create the labels.
+      pull-requests: write # Label the PRs and comment on them.
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Update labels
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run }}
+          PR_NUMBER: ${{ inputs.pr-number }}
+        run: ./scripts/dependency_pr_status
