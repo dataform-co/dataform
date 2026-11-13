@@ -2,6 +2,7 @@ import { Dataset, Table } from "@google-cloud/bigquery";
 import { expect } from "chai";
 import { EventEmitter } from "events";
 import { AuthClient, gaxios, Impersonated } from "google-auth-library";
+import Long from "long";
 import { anything, instance, mock, when } from "ts-mockito";
 
 import {
@@ -427,5 +428,176 @@ suite("BigQueryDbAdapter", () => {
       schema: liveSchema,
       name: tableName,
     });
+  });
+
+  test("table() handles 4-part Lakehouse datasetId including when lastModifiedTime is absent", async () => {
+    const projectId = "my-gcp-project";
+    const lakehouseDatasetId = "ecommerce_catalog.sales_dw";
+    const tableName = "customer_orders";
+    const mockBigQuery: any = {
+      dataset: (datasetId: string) => {
+        expect(datasetId).to.equal(lakehouseDatasetId);
+        return {
+          table: (id: string) => {
+            expect(id).to.equal(tableName);
+            return {
+              getMetadata: () =>
+                Promise.resolve([
+                  {
+                    kind: "bigquery#table",
+                    id: `${projectId}:${lakehouseDatasetId}.${tableName}`,
+                    tableReference: {
+                      projectId,
+                      datasetId: lakehouseDatasetId,
+                      tableId: tableName,
+                    },
+                    type: "TABLE",
+                    location: "US",
+                    biglakeConfiguration: {
+                      storageUri: "gs://my-lakehouse-bucket/sales_dw/customer_orders/123/",
+                    },
+                    schema: {
+                      fields: [
+                        { name: "order_id", type: "INTEGER" },
+                        { name: "customer_id", type: "INTEGER" },
+                      ],
+                    },
+                    // lastModifiedTime intentionally omitted (UIT / Lakehouse response)
+                  },
+                ]),
+            };
+          },
+        };
+      },
+    };
+    const adapter = new BigQueryDbAdapter(dataform.BigQuery.create({ projectId, location: "US" }), {
+      clientProvider: () => mockBigQuery,
+    });
+    const target = { database: projectId, schema: lakehouseDatasetId, name: tableName };
+    const result = await adapter.table(target);
+    expect(result).to.not.equal(null);
+    expect(result.type).to.equal(dataform.TableMetadata.Type.TABLE);
+    expect(result.target).to.eql(target);
+    expect(result.fields.map((f) => f.name)).to.eql(["order_id", "customer_id"]);
+    expect(result.lastUpdatedMillis.equals(Long.ZERO)).to.equal(true);
+  });
+
+  test("table() returns null on 404 for nonexistent 4-part Lakehouse table", async () => {
+    const mockBigQuery: any = {
+      dataset: () => ({
+        table: () => ({
+          getMetadata: () => Promise.reject({ code: 404, message: "Not found" }),
+        }),
+      }),
+    };
+    const adapter = new BigQueryDbAdapter(
+      dataform.BigQuery.create({ projectId: "my-gcp-project", location: "US" }),
+      { clientProvider: () => mockBigQuery },
+    );
+    const result = await adapter.table({
+      database: "my-gcp-project",
+      schema: "ecommerce_catalog.sales_dw",
+      name: "missing_table",
+    });
+    expect(result).to.equal(null);
+  });
+
+  test("setMetadata() skips tables.patch for 4-part Lakehouse targets", async () => {
+    let datasetCalled = false;
+    const mockBigQuery: any = {
+      dataset: () => {
+        datasetCalled = true;
+        throw new Error("tables.patch should not be called on 4-part Lakehouse targets");
+      },
+    };
+    const adapter = new BigQueryDbAdapter(
+      dataform.BigQuery.create({ projectId: "my-gcp-project", location: "US" }),
+      { concurrencyLimit: 1, clientProvider: () => mockBigQuery },
+    );
+    await adapter.setMetadata(
+      dataform.ExecutionAction.create({
+        target: {
+          database: "my-gcp-project",
+          schema: "ecommerce_catalog.sales_dw",
+          name: "customer_orders",
+        },
+        actionDescriptor: {
+          description: "Orders table",
+          columns: [{ path: ["order_id"], description: "Primary key" }],
+        },
+      }),
+    );
+    expect(datasetCalled).to.equal(false);
+  });
+
+  test("deleteTable() executes 4-part DROP TABLE IF EXISTS for Lakehouse targets", async () => {
+    let restDeleteCalled = false;
+    const adapter = new BigQueryDbAdapter(
+      dataform.BigQuery.create({ projectId: "creds-project", location: "US" }),
+      {
+        clientProvider: () =>
+          ({
+            dataset: () => ({
+              table: () => ({
+                delete: () => {
+                  restDeleteCalled = true;
+                  return Promise.resolve();
+                },
+              }),
+            }),
+          }) as any,
+      },
+    );
+    const executedStatements: string[] = [];
+    adapter.execute = async (statement: string) => {
+      executedStatements.push(statement);
+      return { rows: [], metadata: {} };
+    };
+    await adapter.deleteTable({
+      database: "explicit-project",
+      schema: "ecommerce_catalog.sales_dw",
+      name: "customer_orders",
+    });
+    await adapter.deleteTable({
+      schema: "ecommerce_catalog.sales_dw",
+      name: "fallback_project_orders",
+    });
+    expect(restDeleteCalled).to.equal(false);
+    expect(executedStatements).to.eql([
+      "drop table if exists `explicit-project.ecommerce_catalog.sales_dw.customer_orders`",
+      "drop table if exists `creds-project.ecommerce_catalog.sales_dw.fallback_project_orders`",
+    ]);
+  });
+
+  test("deleteTable() uses REST table.delete for standard 3-part targets", async () => {
+    let deletedWithIgnoreNotFound = false;
+    const adapter = new BigQueryDbAdapter(
+      dataform.BigQuery.create({ projectId: "p", location: "US" }),
+      {
+        clientProvider: () =>
+          ({
+            dataset: (schema: string) => {
+              expect(schema).to.equal("standard_dataset");
+              return {
+                table: (name: string) => {
+                  expect(name).to.equal("standard_table");
+                  return {
+                    delete: (opts: { ignoreNotFound: boolean }) => {
+                      deletedWithIgnoreNotFound = opts.ignoreNotFound;
+                      return Promise.resolve();
+                    },
+                  };
+                },
+              };
+            },
+          }) as any,
+      },
+    );
+    await adapter.deleteTable({
+      database: "p",
+      schema: "standard_dataset",
+      name: "standard_table",
+    });
+    expect(deletedWithIgnoreNotFound).to.equal(true);
   });
 });

@@ -10,6 +10,7 @@ import {
   dryRunValidationQueryKey,
 } from "df/cli/api/utils/dry_run_validation";
 import { mapErrorPositions } from "df/cli/api/utils/error_parsing";
+import { isCatalogSchema, isLakehouseTarget } from "df/cli/api/utils/lakehouse";
 import {
   CREATE_SCHEMA_WRAPPER_LINE_OFFSET,
   wrapWithCreateSchemaIfNotExists,
@@ -358,6 +359,9 @@ export class Runner {
           (action.tasks.length > 0 || !!action.jitCode) &&
           !!action.target &&
           !!action.target.schema &&
+          // Lakehouse catalog.namespace targets are managed externally via BigLake REST APIs
+          // and cannot be listed via datasets.list or created via CREATE SCHEMA.
+          !isCatalogSchema(action.target.schema) &&
           writesToTarget(action),
       )
       .forEach(({ target }) => {
@@ -611,6 +615,8 @@ export class Runner {
 
     if (
       hasTableMetadata(action.actionDescriptor) &&
+      // BigQuery tables.patch rejects 4-part Lakehouse Iceberg tables.
+      !isLakehouseTarget(action.target) &&
       // Only set metadata if we expect the action to complete in SUCCESSFUL state
       // (i.e. it must still be RUNNING, and not FAILED).
       actionResult.status === dataform.ActionResult.ExecutionStatus.RUNNING &&
@@ -657,7 +663,7 @@ export class Runner {
     action: dataform.IExecutionAction,
     task: dataform.IExecutionTask,
   ): IMissingSchema | null {
-    if (!action.target?.schema || !writesToTarget(action)) {
+    if (!action.target?.schema || isLakehouseTarget(action.target) || !writesToTarget(action)) {
       return null;
     }
     // Assertion tasks must stay single statements: their result is read from the job's rows,
