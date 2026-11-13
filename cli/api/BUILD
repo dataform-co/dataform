@@ -58,6 +58,7 @@ ts_test_suite(
         "commands/compile_copy_filter_test.ts",
         "commands/jit/rpc_test.ts",
         "commands/prune_test.ts",
+        "commands/run_test.ts",
         "dbadapters/bigquery_test.ts",
         "execution_sql_test.ts",
     ] + glob(["lineage/*_test.ts"]),
@@ -65,6 +66,7 @@ ts_test_suite(
     deps = [
         ":api",
         "//cli/api/lineage/testing",
+        "//cli/api/utils",
         "//core",
         "//protos:ts",
         "//testing",
