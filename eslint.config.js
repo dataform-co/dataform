@@ -41,7 +41,6 @@ module.exports = [
       'no-var': 'error',
       'no-debugger': 'error',
       'no-duplicate-imports': 'error',
-      'no-duplicate-case': 'error',
       'no-empty': ['error', { allowEmptyCatch: true }],
       'curly': 'error',
       'eqeqeq': ['error', 'smart'],
