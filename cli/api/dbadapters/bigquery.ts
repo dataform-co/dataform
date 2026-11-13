@@ -526,7 +526,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
             if (isCancelled) {
               throw new Error("Query cancelled.");
             }
-            return { rows: [], metadata: dryRunMetadata(job[0].metadata) };
+            return { rows: [], metadata: jobStatisticsMetadata(job[0].metadata) };
           }
           const resultStream = job[0].getQueryResultsStream();
           return new Promise<IExecutionResult>((resolve, reject) => {
@@ -578,9 +578,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
                         totalBytesBilled: jobMetadata.statistics.query.totalBytesBilled
                           ? Long.fromString(jobMetadata.statistics.query.totalBytesBilled)
                           : Long.ZERO,
-                        totalBytesProcessed: jobMetadata.statistics.query.totalBytesProcessed
-                          ? Long.fromString(jobMetadata.statistics.query.totalBytesProcessed)
-                          : Long.ZERO,
+                        ...jobStatisticsMetadata(jobMetadata).bigquery,
                       },
                     },
                   });
@@ -635,16 +633,16 @@ function convertField(field: TableField): dataform.IField {
   return dataform.Field.create(result);
 }
 
+// Statistics shared by dry and real runs, filled in whenever BigQuery reports them. Which ones
+// BigQuery reports depends on the statement and on whether it's a dry run.
 // See: https://cloud.google.com/bigquery/docs/reference/rest/v2/Job#JobStatistics2
-function dryRunMetadata(jobMetadata: any): dataform.IExecutionMetadata {
+function jobStatisticsMetadata(jobMetadata: any): dataform.IExecutionMetadata {
   const statistics = jobMetadata?.statistics?.query || {};
   return {
     bigquery: {
-      // Left unset when not reported, so a missing count isn't reported as 0.
-      totalBytesProcessed:
-        statistics.totalBytesProcessed != null
-          ? Long.fromString(statistics.totalBytesProcessed)
-          : undefined,
+      totalBytesProcessed: statistics.totalBytesProcessed
+        ? Long.fromString(statistics.totalBytesProcessed)
+        : Long.ZERO,
       // BigQuery leaves out empty lists, so a missing list can't be told apart from an empty one.
       // Either way, [] means none were reported.
       referencedTables: (statistics.referencedTables || []).map(

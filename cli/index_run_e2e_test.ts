@@ -755,9 +755,11 @@ SELECT 1 AS id
       expect(parsed.actions[0].tasks[0].status).equals(
         dataform.TaskResult.ExecutionStatus.SUCCESSFUL,
       );
-      expect(parsed.actions[0].tasks[0].metadata?.bigquery?.jobId)
-        .to.be.a("string")
-        .and.not.equal("");
+      const bigqueryMetadata = parsed.actions[0].tasks[0].metadata?.bigquery;
+      expect(bigqueryMetadata?.jobId).to.be.a("string").and.not.equal("");
+      // Their contents depend on what BigQuery reports for the statement, so only check they're set.
+      expect(bigqueryMetadata.referencedTables).to.be.an("array");
+      expect(bigqueryMetadata.schema).to.be.an("array");
     });
 
     test(

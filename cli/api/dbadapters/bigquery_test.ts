@@ -563,17 +563,18 @@ suite("BigQueryDbAdapter", () => {
       );
     });
 
-    test("leaves out byte counts BigQuery didn't report", async () => {
+    test("reports 0 for byte counts BigQuery didn't report, like real runs", async () => {
       for (const jobMetadata of [{}, { statistics: {} }, { statistics: { query: {} } }]) {
         const { adapter } = dryRunAdapter(jobMetadata);
 
         const result = await adapter.execute("SELECT 1", { bigquery: { dryRun: true } });
 
-        expect(result.metadata.bigquery.totalBytesProcessed).equals(undefined);
-        expect(result.metadata.bigquery.referencedTables).deep.equals([]);
-        expect(result.metadata.bigquery.schema).deep.equals([]);
         expect(JSON.parse(prettyJsonStringify(result.metadata))).deep.equals({
-          bigquery: { referencedTables: [], schema: [] },
+          bigquery: {
+            totalBytesProcessed: { low: 0, high: 0, unsigned: false },
+            referencedTables: [],
+            schema: [],
+          },
         });
       }
     });
@@ -684,6 +685,88 @@ suite("BigQueryDbAdapter", () => {
       }
 
       expect(caughtError?.message).equals("Query cancelled.");
+    });
+  });
+
+  suite("real runs", () => {
+    function realRunAdapter(jobMetadata: any) {
+      const mockBigQuery: any = {
+        createQueryJob: async () => [
+          {
+            getQueryResultsStream: () => {
+              const stream = Object.assign(new EventEmitter(), { end: () => undefined });
+              process.nextTick(() => {
+                stream.emit("data", { id: 1 });
+                stream.emit("end");
+              });
+              return stream;
+            },
+            getMetadata: async () => [jobMetadata],
+          },
+        ],
+      };
+      return new BigQueryDbAdapter(dataform.BigQuery.create({ projectId: "p" }), {
+        clientProvider: () => mockBigQuery,
+      });
+    }
+
+    test("reports referenced tables and schema with the job ID and byte counts", async () => {
+      const adapter = realRunAdapter({
+        jobReference: { projectId: "p", jobId: "dataform-123", location: "US" },
+        status: { state: "DONE" },
+        statistics: {
+          query: {
+            statementType: "CREATE_TABLE_AS_SELECT",
+            totalBytesProcessed: "2650191",
+            totalBytesBilled: "10485760",
+            referencedTables: [
+              { projectId: "bigquery-public-data", datasetId: "samples", tableId: "shakespeare" },
+            ],
+            schema: { fields: [{ name: "word", type: "STRING" }] },
+          },
+        },
+      });
+
+      const result = await adapter.execute("CREATE TABLE t AS SELECT 1");
+
+      expect(result.rows).deep.equals([{ id: 1 }]);
+      expect(dataform.ExecutionMetadata.create(result.metadata).toJSON()).deep.equals({
+        bigquery: {
+          jobId: "dataform-123",
+          totalBytesProcessed: "2650191",
+          totalBytesBilled: "10485760",
+          referencedTables: [
+            { database: "bigquery-public-data", schema: "samples", name: "shakespeare" },
+          ],
+          schema: [{ name: "word", primitive: "STRING" }],
+        },
+      });
+    });
+
+    test("leaves out what BigQuery didn't report", async () => {
+      // As returned for a real MERGE, which reports no schema.
+      const adapter = realRunAdapter({
+        jobReference: { projectId: "p", jobId: "dataform-456", location: "US" },
+        status: { state: "DONE" },
+        statistics: {
+          query: {
+            statementType: "MERGE",
+            referencedTables: [{ projectId: "p", datasetId: "s", tableId: "t" }],
+          },
+        },
+      });
+
+      const result = await adapter.execute("MERGE s.t USING (SELECT 1) ON FALSE");
+
+      expect(JSON.parse(prettyJsonStringify(result.metadata))).deep.equals({
+        bigquery: {
+          jobId: "dataform-456",
+          totalBytesBilled: { low: 0, high: 0, unsigned: false },
+          totalBytesProcessed: { low: 0, high: 0, unsigned: false },
+          referencedTables: [{ database: "p", schema: "s", name: "t" }],
+          schema: [],
+        },
+      });
     });
   });
 });
