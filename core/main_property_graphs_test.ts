@@ -383,6 +383,11 @@ semantic_model:
           contents:
             'config { type: "table" }\nSELECT * FROM GRAPH_TABLE(${ref("UniGraph")} MATCH (p:Process) COLUMNS (p.process_id))',
         },
+        {
+          name: "expand_graph.sqlx",
+          contents:
+            'config { type: "view" }\nSELECT * FROM GRAPH_EXPAND("${ref(\'UniGraph\').slice(1, -1)}", start_node => "Process")',
+        },
       ],
       expectedGraph: {
         projectConfig: graphProjectConfig,
@@ -390,10 +395,29 @@ semantic_model:
         dataformCoreVersion: version,
         targets: [
           { schema: "defaultDataset", name: "UniGraph", database: "defaultProject" },
+          { schema: "defaultDataset", name: "expand_graph", database: "defaultProject" },
           { schema: "defaultDataset", name: "query_graph", database: "defaultProject" },
         ],
         jitData: {},
         tables: [
+          dataform.Table.create({
+            type: "view",
+            target: { schema: "defaultDataset", name: "expand_graph", database: "defaultProject" },
+            canonicalTarget: {
+              schema: "defaultDataset",
+              name: "expand_graph",
+              database: "defaultProject",
+            },
+            dependencyTargets: [
+              { schema: "defaultDataset", name: "UniGraph", database: "defaultProject" },
+            ],
+            query:
+              '\nSELECT * FROM GRAPH_EXPAND("defaultProject.defaultDataset.UniGraph", start_node => "Process")',
+            disabled: false,
+            fileName: "definitions/expand_graph.sqlx",
+            enumType: dataform.TableType.VIEW,
+            hermeticity: dataform.ActionHermeticity.NON_HERMETIC,
+          }),
           dataform.Table.create({
             type: "table",
             target: { schema: "defaultDataset", name: "query_graph", database: "defaultProject" },
@@ -682,7 +706,17 @@ semantic_model:
   metrics:
   - name: book_count
     entity: Book
+    datatype: INT64
     expression: COUNT(id)
+    ai_context:
+      instructions: Count books per partition.
+      examples:
+      - How many books?
+      custom:
+        metric_tier: core
+    custom_extensions:
+    - vendor_name: dbt
+      data: '{"meta":{"verified":true}}'
 `,
         },
       ],
@@ -737,7 +771,15 @@ semantic_model:
                   name: "Book",
                   fields: [
                     { name: "id", expression: "id", description: "" },
-                    { name: "book_count", expression: "MEASURE(COUNT(id))", description: "" },
+                    {
+                      name: "book_count",
+                      expression: "MEASURE(COUNT(id))",
+                      description: "",
+                      extensions: {
+                        instructions: "Count books per partition.",
+                        examples: '["How many books?"]',
+                      },
+                    },
                   ],
                   importAll: false,
                   isDefault: true,
@@ -805,7 +847,7 @@ semantic_model:
           ],
           graphBody:
             "NODE TABLES (\n" +
-            "  `defaultProject.defaultDataset.books` AS Book KEY (id) PROPERTIES (id, MEASURE(COUNT(id)) AS book_count),\n" +
+            '  `defaultProject.defaultDataset.books` AS Book KEY (id) PROPERTIES (id, MEASURE(COUNT(id)) AS book_count OPTIONS(extensions=[("instructions", "Count books per partition."), ("examples", "[\\"How many books?\\"]")])),\n' +
             "  `defaultProject.defaultDataset.authors` AS Author KEY (id) PROPERTIES ALL COLUMNS,\n" +
             "  `defaultProject.defaultDataset.wrote` AS Authorship KEY (author_id, book_id) PROPERTIES ALL COLUMNS\n" +
             ")\n" +

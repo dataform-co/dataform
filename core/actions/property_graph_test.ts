@@ -340,13 +340,13 @@ suite("property_graph", () => {
         "  `p.d.books` AS WrittenBy KEY (id) " +
         "SOURCE KEY (id) REFERENCES Book (id) " +
         "DESTINATION KEY (author_id) REFERENCES Author (id) " +
-        'DEFAULT LABEL OPTIONS(description="Authorship edge\\n\\nExamples: Alice wrote Book A", synonyms=["authored"]) ' +
+        'DEFAULT LABEL OPTIONS(description="Authorship edge", synonyms=["authored"], extensions=[("examples", "[\\"Alice wrote Book A\\"]")]) ' +
         "NO PROPERTIES\n" +
         ")",
     );
   });
 
-  test("passes derived field expressions as-is into PROPERTIES (...) and folds label, dimension.is_time, description, instructions, and examples into OPTIONS", () => {
+  test("passes derived field expressions as-is into PROPERTIES (...), folds label and dimension.is_time into description, and emits instructions and examples in extensions", () => {
     const compiled = compile(
       makeModelConfig({
         name: "G",
@@ -364,6 +364,7 @@ suite("property_graph", () => {
                 expression: "(first || ' ' || last || ' (Person.literal)')",
                 description: "Combined name",
                 ai_context: {
+                  instructions: "Prefer full_name in display output.",
                   synonyms: ["display_name"],
                   examples: ["Alice Smith", "Bob Jones"],
                 },
@@ -386,15 +387,15 @@ suite("property_graph", () => {
         "  `p.d.people` AS Person KEY (id) PROPERTIES (" +
         "id, " +
         "(first || ' ' || last || ' (Person.literal)') AS full_name " +
-        'OPTIONS(description="Full Name\\n\\nCombined name\\n\\nExamples: Alice Smith; Bob Jones", synonyms=["display_name"]), ' +
+        'OPTIONS(description="Full Name\\n\\nCombined name", synonyms=["display_name"], extensions=[("instructions", "Prefer full_name in display output."), ("examples", "[\\"Alice Smith\\",\\"Bob Jones\\"]")]), ' +
         "started_at " +
-        'OPTIONS(description="Time dimension.\\n\\nUse UTC for comparisons.")' +
+        'OPTIONS(description="Time dimension.", extensions=[("instructions", "Use UTC for comparisons.")])' +
         ")\n" +
         ")",
     );
   });
 
-  test("emits DEFAULT LABEL OPTIONS(...) before PROPERTIES ALL COLUMNS when entity has ai_context", () => {
+  test("emits DEFAULT LABEL OPTIONS(...) before PROPERTIES ALL COLUMNS when entity has ai_context (including extensions-only)", () => {
     const compiled = compile(
       makeModelConfig({
         name: "G",
@@ -409,6 +410,24 @@ suite("property_graph", () => {
               examples: ["Checking account"],
             },
           },
+          {
+            name: "AuditLog",
+            source: "bigquery:p.d.audit_logs",
+            primary_key: ["log_id"],
+            ai_context: "Filter by recent timestamps.",
+          },
+        ],
+        relationships: [
+          {
+            name: "LoggedFor",
+            from: "AuditLog",
+            to: "Account",
+            from_columns: ["account_id"],
+            to_columns: ["id"],
+            ai_context: {
+              instructions: "Join audit entries to their owning account.",
+            },
+          },
         ],
       }),
     );
@@ -416,8 +435,18 @@ suite("property_graph", () => {
     expect(compiled.graphBody).equals(
       "NODE TABLES (\n" +
         "  `p.d.accounts` AS Account KEY (id) " +
-        'DEFAULT LABEL OPTIONS(description="Bank account\\n\\nExamples: Checking account", synonyms=["acct", "wallet"]) ' +
+        'DEFAULT LABEL OPTIONS(description="Bank account", synonyms=["acct", "wallet"], extensions=[("examples", "[\\"Checking account\\"]")]) ' +
+        "PROPERTIES ALL COLUMNS,\n" +
+        "  `p.d.audit_logs` AS AuditLog KEY (log_id) " +
+        'DEFAULT LABEL OPTIONS(extensions=[("instructions", "Filter by recent timestamps.")]) ' +
         "PROPERTIES ALL COLUMNS\n" +
+        ")\n" +
+        "EDGE TABLES (\n" +
+        "  `p.d.audit_logs` AS LoggedFor KEY (log_id) " +
+        "SOURCE KEY (log_id) REFERENCES AuditLog (log_id) " +
+        "DESTINATION KEY (account_id) REFERENCES Account (id) " +
+        'DEFAULT LABEL OPTIONS(extensions=[("instructions", "Join audit entries to their owning account.")]) ' +
+        "NO PROPERTIES\n" +
         ")",
     );
   });
@@ -441,14 +470,15 @@ suite("property_graph", () => {
             expression: "COUNT(process_id)",
             description: "Total processes",
             ai_context: {
+              instructions: "Count active OS processes.",
               synonyms: ["proc_cnt"],
               examples: ["How many processes?"],
             },
           },
           {
-            name: "row_count",
+            name: "named_host_count",
             entity: "Process",
-            expression: "COUNT(*)",
+            expression: "COUNT(hostname)",
           },
           {
             name: "distinct_host_count",
@@ -465,8 +495,8 @@ suite("property_graph", () => {
         "process_id, " +
         "hostname, " +
         "MEASURE(COUNT(process_id)) AS process_count " +
-        'OPTIONS(description="Total processes\\n\\nExamples: How many processes?", synonyms=["proc_cnt"]), ' +
-        "MEASURE(COUNT(*)) AS row_count, " +
+        'OPTIONS(description="Total processes", synonyms=["proc_cnt"], extensions=[("instructions", "Count active OS processes."), ("examples", "[\\"How many processes?\\"]")]), ' +
+        "MEASURE(COUNT(hostname)) AS named_host_count, " +
         "MEASURE(COUNT(DISTINCT hostname)) AS distinct_host_count" +
         ")\n" +
         ")",
@@ -924,7 +954,7 @@ suite("property_graph", () => {
         makeModelConfig({
           name: "G",
           entities: [{ name: "Process", source: "p.d.P", primary_key: ["id"] }],
-          metrics: [{ name: "m1", expression: "COUNT(*)" }],
+          metrics: [{ name: "m1", expression: "COUNT(id)" }],
         }),
       ),
     ).to.throw("Property graph 'G': metric 'm1' must declare 'entity'.");
@@ -934,7 +964,7 @@ suite("property_graph", () => {
         makeModelConfig({
           name: "G",
           entities: [{ name: "Process", source: "p.d.P", primary_key: ["id"] }],
-          metrics: [{ name: "m1", entity: "Unknown", expression: "COUNT(*)" }],
+          metrics: [{ name: "m1", entity: "Unknown", expression: "COUNT(id)" }],
         }),
       ),
     ).to.throw("Property graph 'G': metric 'm1' references unknown entity 'Unknown'.");
@@ -1188,9 +1218,9 @@ suite("property_graph", () => {
         ],
         metrics: [
           {
-            name: "cnt_one",
+            name: "cnt_positive",
             entity: "Customer",
-            expression: "COUNT(1)",
+            expression: "COUNT(CASE WHEN id > 0 THEN 1 END)",
           },
           {
             name: "sub_account_cnt",
@@ -1212,9 +1242,332 @@ suite("property_graph", () => {
         "id, `Account.id` AS dotted_col, `sub-account`.country AS sub_country, Account.name AS prefixed_col" +
         "),\n" +
         "  `p.d.customers` AS Customer KEY (id) PROPERTIES (" +
-        "id, MEASURE(COUNT(1)) AS cnt_one, MEASURE(COUNT(`sub-account`.country)) AS sub_account_cnt, MEASURE(SUM(x) / COUNT(y)) AS avg_ratio" +
+        "id, MEASURE(COUNT(CASE WHEN id > 0 THEN 1 END)) AS cnt_positive, MEASURE(COUNT(`sub-account`.country)) AS sub_account_cnt, MEASURE(SUM(x) / COUNT(y)) AS avg_ratio" +
         ")\n" +
         ")",
+    );
+  });
+
+  test("rejects COUNT(*) and literal-only COUNT(...) in metrics while allowing valid property, string-literal, and comment cases", () => {
+    for (const starExpr of ["COUNT(*)", "count( * )", "SUM(x) / NULLIF(COUNT(*), 0)"]) {
+      expect(() =>
+        build(
+          makeModelConfig({
+            name: "G",
+            entities: [
+              { name: "Order", source: "p.d.orders", primary_key: ["id"], fields: ["id"] },
+            ],
+            metrics: [{ name: "m_star", entity: "Order", expression: starExpr }],
+          }),
+        ),
+      ).to.throw(
+        "Property graph 'G': metric 'm_star': 'COUNT(*)' is not supported in BigQuery property graph measure expressions; count an explicit property instead (for example, 'COUNT(id)').",
+      );
+    }
+
+    for (const [literalExpr, shownArg] of [
+      ["COUNT(1)", "1"],
+      ["COUNT(0)", "0"],
+      ["COUNT(-1)", "-1"],
+      ["COUNT(3.14)", "3.14"],
+      ["COUNT((1))", "(1)"],
+      ["COUNT(DISTINCT 1)", "DISTINCT 1"],
+      ["COUNT(ALL 1)", "ALL 1"],
+      ["COUNT('x')", "'x'"],
+      ['COUNT("x")', '"x"'],
+      ["COUNT(r'x')", "r'x'"],
+      ["COUNT(TRUE)", "TRUE"],
+      ["COUNT(NULL)", "NULL"],
+    ] as const) {
+      expect(() =>
+        build(
+          makeModelConfig({
+            name: "G",
+            entities: [
+              { name: "Order", source: "p.d.orders", primary_key: ["id"], fields: ["id"] },
+            ],
+            metrics: [{ name: "m_lit", entity: "Order", expression: literalExpr }],
+          }),
+        ),
+      ).to.throw(
+        `Property graph 'G': metric 'm_lit': 'COUNT(${shownArg})' is not supported in BigQuery property graph measure expressions because a measure must aggregate at least one graph property; count an explicit property instead (for example, 'COUNT(id)').`,
+      );
+    }
+
+    const compiled = compile(
+      makeModelConfig({
+        name: "G",
+        entities: [
+          {
+            name: "Order",
+            source: "p.d.orders",
+            primary_key: ["id"],
+            fields: ["id", "status"],
+          },
+        ],
+        metrics: [
+          {
+            name: "quoted_star_in_string",
+            entity: "Order",
+            expression: "COUNT(CASE WHEN status = 'COUNT(*)' THEN id END)",
+          },
+          {
+            name: "commented_star",
+            entity: "Order",
+            expression: "/* COUNT(*) */ COUNT(id) -- COUNT(1)",
+          },
+          {
+            name: "backticked_digit_col",
+            entity: "Order",
+            expression: "COUNT(`1`)",
+          },
+        ],
+      }),
+    );
+
+    expect(compiled.graphBody).equals(
+      "NODE TABLES (\n" +
+        "  `p.d.orders` AS `Order` KEY (id) PROPERTIES (" +
+        "id, status, " +
+        "MEASURE(COUNT(CASE WHEN status = 'COUNT(*)' THEN id END)) AS quoted_star_in_string, " +
+        "MEASURE(/* COUNT(*) */ COUNT(id) -- COUNT(1)) AS commented_star, " +
+        "MEASURE(COUNT(`1`)) AS backticked_digit_col" +
+        ")\n" +
+        ")",
+    );
+  });
+
+  test("supports derived AGG(...) sibling metrics and optional datatype on metrics", () => {
+    const compiled = compile(
+      makeModelConfig({
+        name: "CourseGraph",
+        entities: [
+          {
+            name: "Course",
+            source: "bigquery:p.d.courses",
+            primary_key: ["course_id"],
+            fields: ["course_id", "credits", "dropped_credits"],
+          },
+        ],
+        metrics: [
+          {
+            name: "total_credits",
+            entity: "Course",
+            datatype: "Integer",
+            expression: "SUM(credits)",
+          },
+          {
+            name: "total_dropped_credits",
+            entity: "Course",
+            datatype: "INT64",
+            expression: "SUM(dropped_credits)",
+          },
+          {
+            name: "course_count",
+            entity: "Course",
+            datatype: "Integer",
+            expression: "COUNT(course_id)",
+          },
+          {
+            name: "net_credits",
+            entity: "Course",
+            datatype: "Integer",
+            expression: "AGG(total_credits) - AGG(total_dropped_credits)",
+          },
+          {
+            name: "avg_credits",
+            entity: "Course",
+            datatype: "FLOAT64",
+            expression: "SAFE_DIVIDE(AGG(total_credits), NULLIF(AGG(course_count), 0))",
+          },
+        ],
+      }),
+    );
+
+    expect(compiled.graphBody).equals(
+      "NODE TABLES (\n" +
+        "  `p.d.courses` AS Course KEY (course_id) PROPERTIES (" +
+        "course_id, credits, dropped_credits, " +
+        "MEASURE(SUM(credits)) AS total_credits, " +
+        "MEASURE(SUM(dropped_credits)) AS total_dropped_credits, " +
+        "MEASURE(COUNT(course_id)) AS course_count, " +
+        "MEASURE(AGG(total_credits) - AGG(total_dropped_credits)) AS net_credits, " +
+        "MEASURE(SAFE_DIVIDE(AGG(total_credits), NULLIF(AGG(course_count), 0))) AS avg_credits" +
+        ")\n" +
+        ")",
+    );
+  });
+
+  test("accepts ai_context.custom and non-GOOGLE custom_extensions on all levels, preserves nested snake_case keys, and omits them from BigQuery DDL", () => {
+    const rawConfig = makeModelConfig({
+      name: "KcGraph",
+      description: "Model desc",
+      ai_context: {
+        instructions: "Model instructions",
+        custom: {
+          owner_team: "analytics",
+          nested_meta: {
+            snake_key: 42,
+            is_certified: false,
+            nullable_val: null,
+            tag_list: ["a", { item_key: "b" }],
+            fields: ["not_a_proto_struct_fields_map"],
+            empty_obj: {},
+            empty_arr: [],
+          },
+        },
+      },
+      custom_extensions: [
+        { vendor_name: "dbt", data: '{"meta":{"model_tier":"gold"}}' },
+        { vendor_name: "looker", data: { view_label: "Core", snake_flag: true } },
+      ],
+      entities: [
+        {
+          name: "Process",
+          source: "bigquery:p.d.processes",
+          primary_key: ["process_id"],
+          ai_context: {
+            synonyms: ["proc"],
+            custom: { domain_owner: "infra" },
+          },
+          custom_extensions: [{ vendor_name: "dbt", data: '{"entity":true}' }],
+          fields: [
+            {
+              name: "process_id",
+              ai_context: { custom: { pii_level: "none" } },
+              custom_extensions: [{ vendor_name: "dbt", data: '{"pk":true}' }],
+            },
+            { name: "machine_id" },
+            { name: "cpu" },
+          ],
+        },
+        {
+          name: "Machine",
+          source: "bigquery:p.d.machines",
+          primary_key: ["machine_id"],
+        },
+      ],
+      relationships: [
+        {
+          name: "RunsOn",
+          from: "Process",
+          to: "Machine",
+          from_columns: ["machine_id"],
+          to_columns: ["machine_id"],
+          ai_context: { custom: { cardinality_hint: "many_to_one" } },
+          custom_extensions: [{ vendor_name: "dbt", data: '{"edge":true}' }],
+        },
+      ],
+      metrics: [
+        {
+          name: "total_cpu",
+          entity: "Process",
+          datatype: "Float",
+          expression: "SUM(cpu)",
+          ai_context: {
+            synonyms: ["cpu_sum"],
+            custom: { unit_name: "cores" },
+          },
+          custom_extensions: [{ vendor_name: "dbt", data: '{"tier":"gold"}' }],
+        },
+      ],
+    });
+
+    const compiled = compile(rawConfig);
+    expect(compiled.description).equals("Model desc\n\nModel instructions");
+    expect(compiled.graphBody).equals(
+      "NODE TABLES (\n" +
+        '  `p.d.processes` AS Process KEY (process_id) DEFAULT LABEL OPTIONS(synonyms=["proc"]) ' +
+        'PROPERTIES (process_id, machine_id, cpu, MEASURE(SUM(cpu)) AS total_cpu OPTIONS(synonyms=["cpu_sum"])),\n' +
+        "  `p.d.machines` AS Machine KEY (machine_id) PROPERTIES ALL COLUMNS\n" +
+        ")\n" +
+        "EDGE TABLES (\n" +
+        "  `p.d.processes` AS RunsOn KEY (process_id) " +
+        "SOURCE KEY (process_id) REFERENCES Process (process_id) " +
+        "DESTINATION KEY (machine_id) REFERENCES Machine (machine_id) NO PROPERTIES\n" +
+        ")",
+    );
+  });
+
+  test("rejects invalid ai_context.custom shapes and GOOGLE or malformed custom_extensions", () => {
+    expect(() =>
+      build(
+        makeModelConfig({
+          name: "G",
+          ai_context: { custom: ["not_an_object"] },
+          entities: [{ name: "A", source: "p.d.A", primary_key: ["id"] }],
+        }),
+      ),
+    ).to.throw("Property graph 'G': 'ai_context.custom' must be a key-value mapping object.");
+
+    expect(() =>
+      build(
+        makeModelConfig({
+          name: "G",
+          entities: [
+            {
+              name: "A",
+              source: "p.d.A",
+              primary_key: ["id"],
+              ai_context: { custom: { synonyms: ["misplaced"] } },
+            },
+          ],
+        }),
+      ),
+    ).to.throw(
+      "Property graph 'G': entity 'A': 'ai_context.custom' cannot hold 'synonyms'; write 'synonyms' directly under 'ai_context'.",
+    );
+
+    for (const googleSpelling of ["GOOGLE", "google", "Google"]) {
+      expect(() =>
+        build(
+          makeModelConfig({
+            name: "G",
+            entities: [
+              {
+                name: "A",
+                source: "p.d.A",
+                primary_key: ["id"],
+                fields: ["id"],
+              },
+            ],
+            metrics: [
+              {
+                name: "m1",
+                entity: "A",
+                expression: "COUNT(id)",
+                custom_extensions: [{ vendor_name: googleSpelling, data: "{}" }],
+              },
+            ],
+          }),
+        ),
+      ).to.throw(
+        "Property graph 'G': metric 'm1': 'GOOGLE' custom_extensions blocks are not accepted in '0.2.0.dev0/google' documents; declare Google extensions using native keys.",
+      );
+    }
+
+    expect(() =>
+      build(
+        makeModelConfig({
+          name: "G",
+          custom_extensions: [{ vendor_name: "  ", data: "{}" }],
+          entities: [{ name: "A", source: "p.d.A", primary_key: ["id"] }],
+        }),
+      ),
+    ).to.throw(
+      "Property graph 'G': every 'custom_extensions' entry must declare a non-empty 'vendor_name'.",
+    );
+
+    expect(() =>
+      build(
+        makeModelConfig({
+          name: "G",
+          custom_extensions: [{ vendor_name: "dbt", data: ["bad"] }],
+          entities: [{ name: "A", source: "p.d.A", primary_key: ["id"] }],
+        }),
+      ),
+    ).to.throw(
+      "Property graph 'G': 'custom_extensions' entry for vendor 'dbt' must declare 'data' as a JSON string or mapping object.",
     );
   });
 
