@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": 400,
+    "message": "Uncaught Error: Failed to resolve path",
+    "status": "FAILED_PRECONDITION"
+  }
+}

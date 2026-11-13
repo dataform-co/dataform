@@ -1,0 +1,246 @@
+#!/bin/bash
+set -euo pipefail
+
+# Negative counterpart of scripts/run_canary_test: uploads the deliberately broken Core bundle
+# tools/canary/negative/package.tar.gz, tries to compile the canary project with it via
+# dataform.googleapis.com, and verifies that compilation fails with the error in
+# tools/canary/negative/expected_error.json. This guards against the canary test passing
+# vacuously (e.g. because the uploaded bundle is not actually the one used for compilation).
+#
+# By default, this script uses the dataform-open-source GCP project,
+# taking the configuration from tools/canary/config.env. If you want to
+# run this test manually on your own project, create a file
+# tools/canary/config.local.env and provide overrides for each variable.
+#
+# Usage: scripts/run_negative_canary_test
+if [[ -n "${1:-}" ]]; then
+  echo "Error: unknown argument '${1}'." 1>&2
+  exit 1
+fi
+
+# In case script is run directly
+_PR_NUMBER="${_PR_NUMBER:-0}"
+
+CANARY_DIR="tools/canary"
+NEGATIVE_DIR="${CANARY_DIR}/negative"
+
+# Load the local config override if present, otherwise the defaults.
+CANARY_CONFIG_FILE="${CANARY_DIR}/config.env"
+if [[ -f "${CANARY_DIR}/config.local.env" ]]; then
+  CANARY_CONFIG_FILE="${CANARY_DIR}/config.local.env"
+elif [[ ! -f "${CANARY_CONFIG_FILE}" ]]; then
+  echo "Error: neither ${CANARY_DIR}/config.local.env nor ${CANARY_DIR}/config.env found. Make sure the script is run from the repository root." 1>&2
+  exit 1
+fi
+echo "Loading canary config from ${CANARY_CONFIG_FILE}"
+source "${CANARY_CONFIG_FILE}"
+
+if [[ -z "${_CANARY_GCP_PROJECT:-}" || -z "${_CANARY_LOCATION:-}" || -z "${_CANARY_REPO:-}" || -z "${_CANARY_BUCKET:-}" || -z "${_CANARY_SERVICE_ACCOUNT:-}" ]]; then
+  echo "Error: _CANARY_GCP_PROJECT, _CANARY_LOCATION, _CANARY_REPO, _CANARY_BUCKET and _CANARY_SERVICE_ACCOUNT must be set." 1>&2
+  exit 1
+fi
+
+if [[ -n "${BUILD_ID:-}" ]]; then
+  RUN_ID="${BUILD_ID}"
+else
+  RUN_ID=$(date +%s)
+fi
+
+EXPECTED_ERROR_FILE="${NEGATIVE_DIR}/expected_error.json"
+if [[ ! -f "${EXPECTED_ERROR_FILE}" ]]; then
+  echo "Error: ${EXPECTED_ERROR_FILE} not found." 1>&2
+  exit 1
+fi
+
+LOCAL_TARBALL="${NEGATIVE_DIR}/package.tar.gz"
+if [[ ! -f "${LOCAL_TARBALL}" ]]; then
+  echo "Error: ${LOCAL_TARBALL} not found." 1>&2
+  exit 1
+fi
+
+PROJECT_LOCATION_PATH="projects/${_CANARY_GCP_PROJECT}/locations/${_CANARY_LOCATION}"
+REPO_PATH="${PROJECT_LOCATION_PATH}/repositories/${_CANARY_REPO}"
+REPO_URL="https://dataform.googleapis.com/v1/${REPO_PATH}"
+WORKSPACE_ID="pr-${_PR_NUMBER}-${RUN_ID}-negative"
+WORKSPACE_CREATED=false
+TARBALL_NAME="build-${_PR_NUMBER}-${RUN_ID}-negative.tar.gz"
+TMP_DIR=$(mktemp -d)
+
+cleanup() {
+  if [[ "$WORKSPACE_CREATED" == "true" && -n "${GCP_TOKEN:-}" ]]; then
+    echo "Cleaning up temporary Dataform workspace: ${WORKSPACE_ID}"
+    curl -s -X DELETE \
+      -H "Authorization: Bearer ${GCP_TOKEN}" \
+      "${REPO_URL}/workspaces/${WORKSPACE_ID}" || true
+  fi
+  rm -rf "${TMP_DIR}"
+}
+trap cleanup EXIT
+
+# When running on cloudbuild, the token will have been generated in the previous steps
+if [[ -f ~/gcp_token.txt ]]; then
+  GCP_TOKEN=$(cat ~/gcp_token.txt)
+elif command -v gcloud >/dev/null 2>&1; then
+  GCP_TOKEN=$(gcloud auth application-default print-access-token)
+else
+  echo "Error: Unable to obtain GCP access token." 1>&2
+  exit 1
+fi
+
+echo "Verifying GCS bucket exists: ${_CANARY_BUCKET}"
+if ! gcloud storage buckets describe "gs://${_CANARY_BUCKET}" --format="value(name)" >/dev/null; then
+  echo "Error verifying GCS bucket ${_CANARY_BUCKET}." 1>&2
+  echo "This is most likely an infra failure, not an issue with the Dataform code" 1>&2
+  exit 1
+fi
+
+echo "Uploading broken Core tarball to gs://${_CANARY_BUCKET}/${TARBALL_NAME}..."
+if ! gcloud storage cp "${LOCAL_TARBALL}" "gs://${_CANARY_BUCKET}/${TARBALL_NAME}"; then
+  echo "Error uploading Core tarball to GCS." 1>&2
+  echo "This is most likely an infra failure, not an issue with the Dataform code" 1>&2
+  exit 1
+fi
+
+echo "Checking that Dataform repository exists: ${_CANARY_REPO}"
+GET_REPO_HTTP_CODE=$(curl --retry 3 --retry-all-errors --retry-delay 5 -s -o "${TMP_DIR}/get_repo_response.json" -w "%{http_code}" \
+  -X GET \
+  -H "Authorization: Bearer ${GCP_TOKEN}" \
+  "${REPO_URL}")
+if [[ "$GET_REPO_HTTP_CODE" == 404 ]]; then
+  echo "Dataform repository ${_CANARY_REPO} does not exist. It needs to be created on the project manually before this script can run." 1>&2
+  exit 1
+fi
+if [[ "$GET_REPO_HTTP_CODE" -lt 200 || "$GET_REPO_HTTP_CODE" -ge 300 ]]; then
+  echo "Error checking Dataform repository (HTTP ${GET_REPO_HTTP_CODE}):" 1>&2
+  echo "This is most likely an infra failure, not an issue with the Dataform code" 1>&2
+  cat "${TMP_DIR}/get_repo_response.json" 1>&2
+  exit 1
+fi
+
+echo "Creating temporary Dataform workspace: ${WORKSPACE_ID}"
+CREATE_WS_HTTP_CODE=$(curl --retry 3 --retry-all-errors --retry-delay 5 -s -o "${TMP_DIR}/create_ws_response.json" -w "%{http_code}" \
+  -X POST \
+  -H "Authorization: Bearer ${GCP_TOKEN}" \
+  -H "Content-Type: application/json" \
+  "${REPO_URL}/workspaces?workspaceId=${WORKSPACE_ID}" \
+  -d "{}")
+if [[ "$CREATE_WS_HTTP_CODE" -lt 200 || "$CREATE_WS_HTTP_CODE" -ge 300 ]]; then
+  echo "Error creating Dataform workspace (HTTP ${CREATE_WS_HTTP_CODE}):" 1>&2
+  echo "This is most likely an infra failure, not an issue with the Dataform code" 1>&2
+  cat "${TMP_DIR}/create_ws_response.json" 1>&2
+  exit 1
+fi
+WORKSPACE_CREATED=true
+
+write_workspace_file() {
+  local rel_path="$1"
+  local encoded_contents="$2"
+  local write_http_code
+  write_http_code=$(curl --retry 3 --retry-all-errors --retry-delay 5 -s -o "${TMP_DIR}/write_file_response.json" -w "%{http_code}" \
+    -X POST \
+    -H "Authorization: Bearer ${GCP_TOKEN}" \
+    -H "Content-Type: application/json" \
+    "${REPO_URL}/workspaces/${WORKSPACE_ID}:writeFile" \
+    -d "$(python3 -c 'import json, sys; print(json.dumps({"path": sys.argv[1], "contents": sys.argv[2]}))' "$rel_path" "$encoded_contents")")
+
+  if [[ "$write_http_code" -lt 200 || "$write_http_code" -ge 300 ]]; then
+    echo "Error uploading ${rel_path} to workspace (HTTP ${write_http_code}):" 1>&2
+    echo "This is most likely an infra failure, not an issue with the Dataform code" 1>&2
+    cat "${TMP_DIR}/write_file_response.json" 1>&2
+    exit 1
+  fi
+}
+
+echo "Uploading canary project files from ${CANARY_DIR}/project/..."
+while IFS= read -r -d '' file; do
+  rel_path="${file#"${CANARY_DIR}"/project/}"
+  encoded_contents=$(base64 -w 0 "$file")
+  write_workspace_file "$rel_path" "$encoded_contents"
+done < <(find "${CANARY_DIR}/project" -type f -print0)
+
+echo "Uploading workflow_settings.yaml..."
+WORKFLOW_SETTINGS_CONTENTS=$(cat <<EOF | base64 -w 0
+defaultProject: ${_CANARY_GCP_PROJECT}
+defaultLocation: ${_CANARY_LOCATION}
+defaultDataset: dataform_canary
+defaultAssertionDataset: dataform_canary_assertions
+EOF
+)
+write_workspace_file "workflow_settings.yaml" "$WORKFLOW_SETTINGS_CONTENTS"
+
+echo "Generating V4 signed URL for gs://${_CANARY_BUCKET}/${TARBALL_NAME}..."
+SIGNED_TARBALL_URL=$(gcloud storage sign-url "gs://${_CANARY_BUCKET}/${TARBALL_NAME}" \
+  --impersonate-service-account="${_CANARY_SERVICE_ACCOUNT}" \
+  --duration=10m \
+  --region="${_CANARY_LOCATION}" \
+  --format="value(signed_url)")
+
+echo "Uploading package.json referencing ${SIGNED_TARBALL_URL}..."
+PACKAGE_JSON_CONTENTS=$(cat <<EOF | base64 -w 0
+{
+  "name": "canary-project",
+  "dependencies": {
+    "@dataform/core": "${SIGNED_TARBALL_URL}"
+  }
+}
+EOF
+)
+write_workspace_file "package.json" "$PACKAGE_JSON_CONTENTS"
+
+echo "Installing NPM packages in workspace..."
+INSTALL_HTTP_CODE=$(curl --retry 3 --retry-all-errors --retry-delay 5 -s -o "${TMP_DIR}/install_response.json" -w "%{http_code}" \
+  -X POST \
+  -H "Authorization: Bearer ${GCP_TOKEN}" \
+  -H "Content-Type: application/json" \
+  "${REPO_URL}/workspaces/${WORKSPACE_ID}:installNpmPackages" \
+  -d "{}")
+if [[ "$INSTALL_HTTP_CODE" -lt 200 || "$INSTALL_HTTP_CODE" -ge 300 ]]; then
+  echo "Error calling workspaces.installNpmPackages (HTTP ${INSTALL_HTTP_CODE}):" 1>&2
+  echo "This is most likely an infra or npm failure, not an issue with the Dataform code" 1>&2
+  cat "${TMP_DIR}/install_response.json" 1>&2
+  exit 1
+fi
+
+echo "Compiling canary project via dataform.googleapis.com (expecting failure)..."
+COMPILE_HTTP_CODE=$(curl --retry 3 --retry-all-errors --retry-delay 5 -s -o "${TMP_DIR}/compile_response.json" -w "%{http_code}" \
+  -X POST \
+  -H "Authorization: Bearer ${GCP_TOKEN}" \
+  -H "Content-Type: application/json" \
+  "${REPO_URL}/compilationResults" \
+  -d "$(python3 -c 'import json, sys; print(json.dumps({"workspace": sys.argv[1]}))' "${REPO_PATH}/workspaces/${WORKSPACE_ID}")")
+
+echo "Comparing compilationResults.create response (HTTP ${COMPILE_HTTP_CODE}) against ${EXPECTED_ERROR_FILE}..."
+python3 - "${TMP_DIR}/compile_response.json" "${EXPECTED_ERROR_FILE}" "${COMPILE_HTTP_CODE}" <<'EOF'
+import difflib
+import json
+import sys
+
+actual_path, expected_path, http_code = sys.argv[1:4]
+
+with open(actual_path, "r", encoding="utf-8") as f:
+    actual_raw = f.read()
+with open(expected_path, "r", encoding="utf-8") as f:
+    expected = json.load(f)
+
+try:
+    actual = json.loads(actual_raw)
+except json.JSONDecodeError:
+    sys.stderr.write(f"compilationResults.create returned a non-JSON response (HTTP {http_code}):\n")
+    sys.stderr.write(actual_raw + "\n")
+    sys.exit(1)
+
+if actual != expected:
+    if 200 <= int(http_code) < 300:
+        sys.stderr.write(
+            "Negative canary compilation unexpectedly succeeded with the broken Core bundle.\n"
+        )
+    else:
+        sys.stderr.write("Negative canary compilation failed, but not with the expected error:\n")
+    actual_str = json.dumps(actual, indent=2, sort_keys=True).splitlines()
+    expected_str = json.dumps(expected, indent=2, sort_keys=True).splitlines()
+    for line in difflib.unified_diff(expected_str, actual_str, fromfile="expected", tofile="actual", lineterm=""):
+        sys.stderr.write(line + "\n")
+    sys.exit(1)
+
+print(f"Negative canary compilation failed with the expected error: {expected.get('error', {}).get('message', '')}")
+EOF
