@@ -19,6 +19,7 @@ import {
   OnCancel,
 } from "df/cli/api/dbadapters/index";
 import { parseBigqueryEvalError } from "df/cli/api/utils/error_parsing";
+import { isLakehouseTarget } from "df/cli/api/utils/lakehouse";
 import { LimitedResultSet } from "df/cli/api/utils/results";
 import { coerceAsError } from "df/common/errors/errors";
 import { retry } from "df/common/promises";
@@ -376,8 +377,10 @@ export class BigQueryDbAdapter implements IDbAdapter {
             ? dataform.TableMetadata.Type.VIEW
             : dataform.TableMetadata.Type.UNKNOWN,
       target,
-      fields: metadata.schema.fields?.map((field) => convertField(field)),
-      lastUpdatedMillis: Long.fromString(metadata.lastModifiedTime),
+      fields: metadata.schema?.fields?.map((field) => convertField(field)),
+      lastUpdatedMillis: metadata.lastModifiedTime
+        ? Long.fromString(metadata.lastModifiedTime)
+        : Long.ZERO,
       description: metadata.description,
       labels: metadata.labels,
       bigquery: {
@@ -387,6 +390,13 @@ export class BigQueryDbAdapter implements IDbAdapter {
   }
 
   public async deleteTable(target: dataform.ITarget): Promise<void> {
+    if (isLakehouseTarget(target)) {
+      const database = target.database || this.bigQueryCredentials.projectId;
+      const prefix = database ? `${database}.` : "";
+      await this.execute(`drop table if exists \`${prefix}${target.schema}.${target.name}\``);
+      return;
+    }
+
     await this.getClient(target.database)
       .dataset(target.schema)
       .table(target.name)
@@ -403,6 +413,11 @@ export class BigQueryDbAdapter implements IDbAdapter {
 
   public async setMetadata(action: dataform.IExecutionAction): Promise<void> {
     const { target, actionDescriptor } = action;
+    if (isLakehouseTarget(target)) {
+      // BigQuery's tables.patch REST endpoint rejects 4-part Lakehouse Iceberg tables
+      // ("Connection is required for BigQuery tables for Apache Iceberg").
+      return;
+    }
 
     const metadata = await this.getMetadata(target);
     const schemaWithDescription = addDescriptionToMetadata(
@@ -425,7 +440,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
         .getMetadata();
       return table?.[0];
     } catch (e) {
-      if (e?.errors?.[0]?.reason === "notFound") {
+      if (e?.code === 404 || e?.errors?.[0]?.reason === "notFound") {
         // if the table can't be found, just return null
         return null;
       }
