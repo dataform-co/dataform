@@ -1,0 +1,390 @@
+#!/usr/bin/env python3
+"""Updates vulnerable npm dependencies in pnpm-lock.yaml to fixed versions.
+
+For every package version in pnpm-lock.yaml that is affected by a security
+advisory in the public GitHub Advisory Database, picks the first patched version
+of the matching release line and, if it was published at least COOLDOWN_DAYS
+ago, pins it in the lockfile:
+
+  1. temporarily set an exact override for the package in package.json,
+  2. regenerate the lockfile (pnpm install --lockfile-only),
+  3. restore the previous override (as a range starting at the fixed version
+     if it was a range) or remove the temporary one, and regenerate again.
+
+pnpm keeps the pinned version in step 3, so only that package (and any new
+dependencies of the fixed version) change. Each update is verified: if a
+vulnerable version is still locked afterwards, for example because the fix is
+outside the range a dependent package requests, the change is reverted and the
+package is reported for a manual update.
+
+Usage:
+  ./scripts/update_vulnerable_deps [--summary FILE]
+
+Environment:
+  COOLDOWN_DAYS  Minimum age of a fixed version, in days (default 14). New
+                 versions reach the registry used by CI only after a delay.
+  GITHUB_TOKEN   Token for the GitHub API (optional; raises the rate limit).
+  GITHUB_REPO    Repo whose open PRs are checked (default dataform-co/dataform).
+  SKIP_BRANCH    Branch of this tool's own PR, ignored when checking open PRs.
+  PNPM           pnpm command (default: npx with the version in packageManager).
+
+Writes a markdown summary (for the PR description) to --summary and exits with
+0 whether or not anything changed; compare the files to find out.
+"""
+
+import argparse
+import datetime
+import json
+import os
+import re
+import shlex
+import shutil
+import subprocess
+import sys
+import tempfile
+import urllib.parse
+import urllib.request
+
+COOLDOWN_DAYS = int(os.environ.get("COOLDOWN_DAYS", "14"))
+GITHUB_REPO = os.environ.get("GITHUB_REPO") or os.environ.get("GITHUB_REPOSITORY") or \
+    "dataform-co/dataform"
+SKIP_BRANCH = os.environ.get("SKIP_BRANCH", "")
+NPM_REGISTRY = "https://registry.npmjs.org/"
+LOCKFILE = "pnpm-lock.yaml"
+PACKAGE_JSON = "package.json"
+
+NAME = re.compile(r"^(@[a-z0-9][a-z0-9._-]*/)?[a-z0-9][a-z0-9._-]*$")
+VERSION = re.compile(r"^(\d+)\.(\d+)\.(\d+)(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$")
+
+
+def log(message):
+    print(message, file=sys.stderr, flush=True)
+
+
+# --- Versions -----------------------------------------------------------------
+
+
+def parse_version(version):
+    m = VERSION.match(version.strip())
+    if not m:
+        return None
+    # Prereleases sort before the release with the same version number.
+    return (int(m[1]), int(m[2]), int(m[3]), 0 if m[4] else 1)
+
+
+def in_range(version, version_range):
+    """Checks a version against an advisory range such as ">= 3.0.0, < 3.1.9"."""
+    v = parse_version(version)
+    for comparator in version_range.split(","):
+        m = re.match(r"^\s*(>=|<=|>|<|=)?\s*(\S+)\s*$", comparator)
+        bound = parse_version(m[2]) if m else None
+        if v is None or bound is None:
+            return False
+        op = m[1] or "="
+        if not {">=": v >= bound, "<=": v <= bound, ">": v > bound,
+                "<": v < bound, "=": v == bound}[op]:
+            return False
+    return True
+
+
+# --- Files --------------------------------------------------------------------
+
+
+def locked_packages():
+    """Returns {name: {versions}} for the registry packages in the lockfile."""
+    packages, in_packages = {}, False
+    with open(LOCKFILE) as f:
+        for line in f:
+            if line.startswith("packages:"):
+                in_packages = True
+                continue
+            if in_packages and line.strip() and not line[0].isspace():
+                break
+            m = re.match(r"^  '?(@?[^@\s']+)@([^(:'\s]+)", line) if in_packages else None
+            if m and NAME.match(m[1]) and parse_version(m[2]):
+                packages.setdefault(m[1], set()).add(m[2])
+    return packages
+
+
+OVERRIDE_LINE = re.compile(r'^(\s*)"((?:[^"\\]|\\.)+)":\s*"((?:[^"\\]|\\.)*)"(,?)\s*$')
+
+
+def read_overrides():
+    """Returns (lines, start, end, entries) for the pnpm.overrides block of
+    package.json, where entries maps each key to (line index, value). Edits are
+    made on the text so that the rest of the file keeps its formatting."""
+    with open(PACKAGE_JSON) as f:
+        lines = f.readlines()
+    start = next((i for i, l in enumerate(lines) if re.match(r'^\s*"overrides":\s*\{\s*$', l)), None)
+    if start is None:
+        raise RuntimeError("no multi-line pnpm.overrides block in package.json")
+    end = next(i for i in range(start + 1, len(lines)) if re.match(r"^\s*\},?\s*$", lines[i]))
+    entries = {}
+    for i in range(start + 1, end):
+        m = OVERRIDE_LINE.match(lines[i])
+        if not m:
+            raise RuntimeError("unexpected line in pnpm.overrides: %r" % lines[i])
+        entries[m[2]] = (i, m[3])
+    return lines, start, end, entries
+
+
+def set_override(name, value):
+    """Sets (or with value None, removes) a pnpm.overrides entry."""
+    lines, start, end, entries = read_overrides()
+    if name in entries:
+        i, _ = entries[name]
+        m = OVERRIDE_LINE.match(lines[i])
+        if value is None:
+            del lines[i]
+            end -= 1
+        else:
+            lines[i] = '%s"%s": "%s"%s\n' % (m[1], name, value, m[4])
+    elif value is not None:
+        indent = OVERRIDE_LINE.match(lines[end - 1])[1] if end - 1 > start else " " * 6
+        lines.insert(end, '%s"%s": "%s"\n' % (indent, name, value))
+        end += 1
+    # Exactly the last entry has no trailing comma.
+    for i in range(start + 1, end):
+        m = OVERRIDE_LINE.match(lines[i])
+        comma = "" if i == end - 1 else ","
+        lines[i] = '%s"%s": "%s"%s\n' % (m[1], m[2], m[3], comma)
+    with open(PACKAGE_JSON, "w") as f:
+        f.writelines(lines)
+
+
+def pnpm_command():
+    if os.environ.get("PNPM"):
+        return shlex.split(os.environ["PNPM"])
+    with open(PACKAGE_JSON) as f:
+        manager = json.load(f).get("packageManager", "pnpm@9.7.1")
+    return ["npx", "--yes", manager.split("+")[0]]
+
+
+def regenerate_lockfile():
+    result = subprocess.run(pnpm_command() + ["install", "--lockfile-only"],
+                            capture_output=True, text=True)
+    if result.returncode != 0:
+        raise RuntimeError("pnpm install failed:\n" + (result.stdout + result.stderr)[-2000:])
+
+
+# --- Network ------------------------------------------------------------------
+
+
+def get_json(url, github=False):
+    headers = {"User-Agent": "update_vulnerable_deps"}
+    if github:
+        headers["Accept"] = "application/vnd.github+json"
+        if os.environ.get("GITHUB_TOKEN"):
+            headers["Authorization"] = "Bearer " + os.environ["GITHUB_TOKEN"]
+    with urllib.request.urlopen(urllib.request.Request(url, headers=headers),
+                                timeout=60) as response:
+        links = re.findall(r'<([^>]+)>;\s*rel="next"', response.headers.get("Link", ""))
+        return json.load(response), (links[0] if links else None)
+
+
+def advisory_fixes(packages):
+    """Returns {(name, fixed version): {"ids": set, "vulnerable": set}}."""
+    specs = sorted("%s@%s" % (n, v) for n, versions in packages.items() for v in versions)
+    fixes = {}
+    for i in range(0, len(specs), 100):
+        url = "https://api.github.com/advisories?" + urllib.parse.urlencode({
+            "ecosystem": "npm", "per_page": 100, "affects": ",".join(specs[i:i + 100])})
+        for _ in range(20):
+            advisories, url = get_json(url, github=True)
+            for advisory in advisories:
+                if advisory.get("withdrawn_at"):
+                    continue
+                for vuln in advisory.get("vulnerabilities") or []:
+                    name = (vuln.get("package") or {}).get("name")
+                    fix = vuln.get("first_patched_version")
+                    if isinstance(fix, dict):
+                        fix = fix.get("identifier")
+                    if name not in packages or not fix or not parse_version(fix):
+                        continue
+                    vulnerable = {v for v in packages[name]
+                                  if in_range(v, vuln.get("vulnerable_version_range") or "")}
+                    if vulnerable:
+                        entry = fixes.setdefault((name, fix), {"ids": set(), "vulnerable": set()})
+                        entry["ids"].add(advisory["ghsa_id"])
+                        entry["vulnerable"] |= vulnerable
+            if not url:
+                break
+    return fixes
+
+
+publish_times = {}
+
+
+def published(name, version):
+    """Returns the publish time of a package version (UTC datetime) or None."""
+    if name not in publish_times:
+        data, _ = get_json(NPM_REGISTRY + urllib.parse.quote(name, safe="@"))
+        publish_times[name] = data.get("time", {})
+    value = publish_times[name].get(version)
+    return datetime.datetime.fromisoformat(value.replace("Z", "+00:00")) if value else None
+
+
+def packages_in_open_prs():
+    """Returns {package name: PR number} for package names mentioned in the
+    titles of other open PRs, to avoid duplicating their updates."""
+    mentioned = {}
+    try:
+        prs, _ = get_json("https://api.github.com/repos/%s/pulls?state=open&per_page=100"
+                          % GITHUB_REPO, github=True)
+    except Exception as e:  # Not fatal: worst case, an update is proposed twice.
+        log("WARNING: could not list open PRs: %s" % e)
+        return mentioned
+    for pr in prs:
+        if pr["head"]["ref"] == SKIP_BRANCH:
+            continue
+        for word in re.findall(r"@?[a-z0-9][a-z0-9._/-]*", pr["title"].lower()):
+            mentioned.setdefault(word, pr["number"])
+    return mentioned
+
+
+# --- Main ---------------------------------------------------------------------
+
+
+def snapshot(directory):
+    for path in (PACKAGE_JSON, LOCKFILE):
+        shutil.copy(path, os.path.join(directory, path))
+
+
+def restore(directory):
+    for path in (PACKAGE_JSON, LOCKFILE):
+        shutil.copy(os.path.join(directory, path), path)
+
+
+def apply_fix(name, fix):
+    """Pins name@fix in the lockfile; see the module docstring."""
+    _, _, _, entries = read_overrides()
+    if any(">" in key and key.rsplit(">", 1)[1].rsplit("@", 1)[0] == name for key in entries):
+        raise RuntimeError("has a dependency-specific override")
+    previous = entries.get(name, (None, None))[1]
+    set_override(name, fix)
+    regenerate_lockfile()
+    if previous is None:
+        set_override(name, None)
+    elif re.match(r"^[\^~]|^>=", previous):
+        set_override(name, previous[0] + fix if previous[0] in "^~" else ">=" + fix)
+    # An exact previous override stays pinned, at the fixed version.
+    regenerate_lockfile()
+
+
+def plan_updates(fixes, now):
+    """Groups the fixes by package and major version and picks, for each group,
+    the highest fixed version released at least COOLDOWN_DAYS ago. Returns
+    (updates, waiting): rows to update and rows of fixes that are too new."""
+    groups = {}
+    for (name, fix), info in fixes.items():
+        groups.setdefault((name, parse_version(fix)[0]), []).append((fix, info))
+    updates, waiting = [], []
+    for (name, _), entries in sorted(groups.items()):
+        entries.sort(key=lambda e: parse_version(e[0]), reverse=True)
+        chosen = None
+        for fix, info in entries:
+            when = published(name, fix)
+            if when is not None and (now - when).days >= COOLDOWN_DAYS:
+                chosen = fix
+                break
+        covered = [(f, i) for f, i in entries
+                   if chosen and parse_version(f) <= parse_version(chosen)]
+        if covered:
+            updates.append(row(name, chosen, covered))
+        newer = [(f, i) for f, i in entries if (f, i) not in covered]
+        if newer:
+            fix = newer[0][0]
+            when = published(name, fix)
+            reason = ("publish date unknown" if when is None else
+                      "released %d days ago (waiting %d days)" % ((now - when).days, COOLDOWN_DAYS))
+            waiting.append(dict(row(name, fix, newer), reason=reason))
+    return updates, waiting
+
+
+def row(name, fix, entries):
+    vulnerable = set().union(*(info["vulnerable"] for _, info in entries))
+    return {"name": name, "fix": fix,
+            "from": ", ".join(sorted(vulnerable, key=parse_version)),
+            "vulnerable": vulnerable,
+            "ids": sorted(set().union(*(info["ids"] for _, info in entries)))}
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    parser.add_argument("--summary", help="file to write the markdown summary to")
+    args = parser.parse_args()
+
+    now = datetime.datetime.now(datetime.timezone.utc)
+    before = locked_packages()
+    planned, skipped = plan_updates(advisory_fixes(before), now)
+    in_prs = packages_in_open_prs()
+    updated = []
+
+    work = tempfile.mkdtemp()
+    for r in planned:
+        name, fix = r["name"], r["fix"]
+        if name.lower() in in_prs:
+            skipped.append(dict(r, reason="already in PR #%d" % in_prs[name.lower()]))
+            continue
+        log("Updating %s %s -> %s" % (name, r["from"], fix))
+        snapshot(work)
+        try:
+            apply_fix(name, fix)
+            still = locked_packages().get(name, set()) & r["vulnerable"]
+            if still:
+                raise RuntimeError("the fix is outside the range requested by a dependent "
+                                   "package; %s is still locked" % ", ".join(sorted(still)))
+            updated.append(r)
+        except RuntimeError as e:
+            restore(work)
+            log("  skipped: %s" % e)
+            skipped.append(dict(r, reason="needs a manual update: %s" % str(e).split("\n")[0]))
+    shutil.rmtree(work)
+    skipped.sort(key=lambda r: r["name"])
+
+    after = locked_packages()
+    new_versions = sorted((n, v) for n, versions in after.items()
+                          for v in versions - before.get(n, set()))
+    fresh = []
+    for n, v in new_versions:
+        when = published(n, v)
+        if when is None or (now - when).days < COOLDOWN_DAYS:
+            fresh.append("%s@%s" % (n, v))
+
+    summary = render_summary(updated, skipped, new_versions, fresh)
+    print(summary)
+    if args.summary:
+        with open(args.summary, "w") as f:
+            f.write(summary)
+
+
+def render_summary(updated, skipped, new_versions, fresh):
+    def advisories(row):
+        return ", ".join("[%s](https://github.com/advisories/%s)" % (i, i) for i in row["ids"])
+
+    out = ["Updates dependencies affected by security advisories to the first patched "
+           "version released at least %d days ago." % COOLDOWN_DAYS, ""]
+    if updated:
+        out += ["### Updated", "", "| Package | From | To | Advisories |", "|---|---|---|---|"]
+        out += ["| `%s` | %s | %s | %s |" % (r["name"], r["from"], r["fix"], advisories(r))
+                for r in updated]
+        out.append("")
+        out += ["New versions in the lockfile: " + ", ".join(
+            "`%s@%s`" % nv for nv in new_versions) + ".", ""]
+        if fresh:
+            out += ["Released less than %d days ago (CI may not be able to install them yet): "
+                    % COOLDOWN_DAYS + ", ".join("`%s`" % f for f in fresh) + ".", ""]
+    else:
+        out += ["No updates.", ""]
+    if skipped:
+        out += ["### Not updated", "", "| Package | Vulnerable | Fix | Reason |",
+                "|---|---|---|---|"]
+        out += ["| `%s` | %s | %s | %s |" % (r["name"], r["from"], r["fix"], r["reason"])
+                for r in skipped]
+        out.append("")
+    out.append("Generated by `scripts/update_vulnerable_deps`.")
+    return "\n".join(out) + "\n"
+
+
+if __name__ == "__main__":
+    main()
