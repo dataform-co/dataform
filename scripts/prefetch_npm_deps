@@ -1,28 +1,55 @@
 #!/bin/bash
-# Prefetches new npm dependencies of open Dependabot PRs through a configurable
-# registry.
+# Prefetches new npm dependencies through a configurable registry, so that the
+# registry picks up new package versions ahead of the test builds that need
+# them.
 #
-# For every open PR by PR_AUTHOR, compares its pnpm-lock.yaml with the lockfile
-# of its base commit and downloads each new package version from
-# PREFETCH_REGISTRY. This makes that registry pick up the new versions ahead of
-# the test builds that need them. Each package is fetched separately, so one
-# failure doesn't stop the others.
+# Two sources of package versions are used:
+#   1. Open PRs from Dependabot or from authors with write access to the repo:
+#      every package version that is in the PR's pnpm-lock.yaml but not in the
+#      lockfile of its base commit.
+#   2. Security advisories: for every package version in pnpm-lock.yaml on the
+#      base branch that has a known vulnerability, the first patched version
+#      (from the public GitHub Advisory Database), plus any dependencies of
+#      that version that the lockfile can't satisfy (resolved with the public
+#      npm registry metadata). This lets the registry pick up a fix before
+#      anyone opens a PR with it.
+#
+# Each package version is fetched separately, so one failure doesn't stop the
+# others.
 #
 # Usage:
 #   REGISTRY_TOKEN=<token> PREFETCH_REGISTRY=<host/path/> ./scripts/prefetch_npm_deps
+#   DRY_RUN=1 ./scripts/prefetch_npm_deps   # Only print what would be fetched.
+#
+# Optional:
+#   CI_REGISTRY   Registry the test builds install from (host/path/). If set,
+#                 the script also reports whether each version is available
+#                 there yet. Uses REGISTRY_TOKEN; works with DRY_RUN=1 too.
+#   GITHUB_TOKEN  Token for the GitHub API (raises the rate limit; not required).
+#   PR_AUTHOR     Only consider PRs by this author (for testing).
 #
 # Failures are reported as warnings and never fail the build.
 set -uo pipefail
 
-: "${REGISTRY_TOKEN:?REGISTRY_TOKEN must be set}"
-: "${PREFETCH_REGISTRY:?PREFETCH_REGISTRY must be set, e.g. registry.example.com/npm/}"
-GITHUB_REPO="${GITHUB_REPO:-dataform-co/dataform}"
-PR_AUTHOR="${PR_AUTHOR:-dependabot[bot]}" # Override for testing.
+DRY_RUN="${DRY_RUN:-0}"
+if [[ "${DRY_RUN}" != "1" ]]; then
+  : "${REGISTRY_TOKEN:?REGISTRY_TOKEN must be set}"
+  : "${PREFETCH_REGISTRY:?PREFETCH_REGISTRY must be set, e.g. registry.example.com/npm/}"
+fi
+REGISTRY_TOKEN="${REGISTRY_TOKEN:-}"
+CI_REGISTRY="${CI_REGISTRY:-}"
+export GITHUB_REPO="${GITHUB_REPO:-dataform-co/dataform}"
+export BASE_BRANCH="${BASE_BRANCH:-main}"
+export PR_AUTHOR="${PR_AUTHOR:-}"
+export GITHUB_TOKEN="${GITHUB_TOKEN:-}"
 
 readonly CURL_OPTS=(-fsS --connect-timeout 10 --max-time 120 --retry 2)
 
 WORK_DIR="$(mktemp -d)"
 trap 'rm -rf "${WORK_DIR}"' EXIT
+# "name version" lines of every package version to prefetch.
+readonly WANTED="${WORK_DIR}/wanted"
+touch "${WANTED}"
 
 warn() { echo "WARNING: $*" >&2; }
 
@@ -48,10 +75,21 @@ for line in open(sys.argv[1]):
 EOF
 }
 
-# Downloads pnpm-lock.yaml at a given commit.
-# Arguments: commit SHA, output path.
+# Runs curl for a GitHub URL, with GITHUB_TOKEN (if set) to raise the rate
+# limit. The token is passed on stdin so it doesn't show up in the process list.
+# Arguments: curl arguments.
+github_curl() {
+  if [[ -n "${GITHUB_TOKEN}" ]]; then
+    curl "${CURL_OPTS[@]}" -H @- "$@" <<< "Authorization: Bearer ${GITHUB_TOKEN}"
+  else
+    curl "${CURL_OPTS[@]}" "$@"
+  fi
+}
+
+# Downloads pnpm-lock.yaml at a given commit or branch.
+# Arguments: commit SHA or branch name, output path.
 download_lockfile() {
-  curl "${CURL_OPTS[@]}" -L -o "$2" \
+  github_curl -L -o "$2" \
     "https://raw.githubusercontent.com/${GITHUB_REPO}/$1/pnpm-lock.yaml"
 }
 
@@ -59,6 +97,10 @@ download_lockfile() {
 # Arguments: package name, version.
 prefetch_package() {
   local name="$1" version="$2"
+  if [[ "${DRY_RUN}" == "1" ]]; then
+    echo "  would fetch ${name}@${version}"
+    return
+  fi
   local url="https://${PREFETCH_REGISTRY}${name}/-/${name##*/}-${version}.tgz"
   # The token is passed on stdin so it doesn't show up in the process list.
   if curl "${CURL_OPTS[@]}" -o /dev/null -H @- "${url}" \
@@ -69,30 +111,309 @@ prefetch_package() {
   fi
 }
 
-# Prints "number head_sha base_sha" for every open PR by PR_AUTHOR.
-# One page of 100 is enough: Dependabot limits its number of open PRs.
+# Prints whether a package version can be downloaded from CI_REGISTRY:
+# "available", "not available yet" or "unknown (...)".
+# Arguments: package name, version.
+ci_registry_status() {
+  local name="$1" version="$2" code
+  local url="https://${CI_REGISTRY}${name}/-/${name##*/}-${version}.tgz"
+  # -L: the registry may redirect to the actual download location.
+  code="$(curl -sS -L --connect-timeout 10 --max-time 120 --retry 2 \
+    -o /dev/null -w '%{http_code}' -H @- "${url}" \
+    <<< "Authorization: Bearer ${REGISTRY_TOKEN}")"
+  case "${code}" in
+    200) echo "available" ;;
+    404) echo "not available yet" ;;
+    *) echo "unknown (HTTP ${code})" ;;
+  esac
+}
+
+# Prints "number head_sha base_sha" for every open PR whose new dependencies
+# should be prefetched: PRs by Dependabot, PRs from a branch in this repo (the
+# author can push to it), and PRs by owners, members or collaborators. PRs by
+# other authors are skipped, so they can't make the registry import arbitrary
+# packages. If PR_AUTHOR is set, only PRs by that author are listed.
 list_prs() {
   local json
-  json="$(curl "${CURL_OPTS[@]}" -L \
+  json="$(github_curl -L \
     "https://api.github.com/repos/${GITHUB_REPO}/pulls?state=open&per_page=100")" ||
     return 1
-  PR_AUTHOR="${PR_AUTHOR}" python3 -c 'import json, os, sys
+  python3 -c 'import json, os, sys
+TRUSTED = {"OWNER", "MEMBER", "COLLABORATOR"}
 prs = json.load(sys.stdin)
 if not isinstance(prs, list):
     sys.exit("unexpected GitHub API response: %s" % str(prs)[:200])
 for pr in prs:
-    if pr.get("user", {}).get("login") == os.environ["PR_AUTHOR"]:
+    login = pr.get("user", {}).get("login")
+    head_repo = (pr.get("head", {}).get("repo") or {}).get("full_name")
+    if os.environ["PR_AUTHOR"]:
+        trusted = login == os.environ["PR_AUTHOR"]
+    else:
+        trusted = (login == "dependabot[bot]" or head_repo == os.environ["GITHUB_REPO"]
+                   or pr.get("author_association") in TRUSTED)
+    if trusted:
         print(pr["number"], pr["head"]["sha"], pr["base"]["sha"])' <<< "${json}"
 }
 
-main() {
+# Prints "name first_patched_version" for every package version in a lockfile
+# that is affected by a security advisory in the GitHub Advisory Database.
+# Arguments: path to pnpm-lock.yaml.
+list_advisory_fixes() {
+  list_packages "$1" > "${WORK_DIR}/locked"
+  python3 - "${WORK_DIR}/locked" <<'EOF'
+import json, os, re, sys, urllib.parse, urllib.request
+
+VERSION = re.compile(r"^(\d+)\.(\d+)\.(\d+)(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$")
+BATCH_SIZE = 100  # Packages per request, to keep URLs short.
+MAX_PAGES = 20    # Per batch.
+
+
+def parse(version):
+    m = VERSION.match(version.strip())
+    if not m:
+        return None
+    # Prereleases sort before the release with the same version number.
+    return (int(m[1]), int(m[2]), int(m[3]), 0 if m[4] else 1)
+
+
+def in_range(version, version_range):
+    """Checks a version against a range such as ">= 3.0.0, < 3.1.9"."""
+    v = parse(version)
+    for comparator in version_range.split(","):
+        m = re.match(r"^\s*(>=|<=|>|<|=)?\s*(\S+)\s*$", comparator)
+        bound = parse(m[2]) if m else None
+        if v is None or bound is None:
+            return True  # Unknown format: prefetching an extra version is harmless.
+        op = m[1] or "="
+        if not {">=": v >= bound, "<=": v <= bound, ">": v > bound,
+                "<": v < bound, "=": v == bound}[op]:
+            return False
+    return True
+
+
+def get(url):
+    headers = {"Accept": "application/vnd.github+json", "User-Agent": "prefetch_npm_deps"}
+    if os.environ.get("GITHUB_TOKEN"):
+        headers["Authorization"] = "Bearer " + os.environ["GITHUB_TOKEN"]
+    with urllib.request.urlopen(urllib.request.Request(url, headers=headers),
+                                timeout=60) as response:
+        links = re.findall(r'<([^>]+)>;\s*rel="next"', response.headers.get("Link", ""))
+        return json.load(response), (links[0] if links else None)
+
+
+locked = {}
+for line in open(sys.argv[1]):
+    name, version = line.split()
+    locked.setdefault(name, set()).add(version)
+
+specs = sorted("%s@%s" % (n, v) for n, versions in locked.items() for v in versions)
+fixes = set()
+for i in range(0, len(specs), BATCH_SIZE):
+    url = "https://api.github.com/advisories?" + urllib.parse.urlencode({
+        "ecosystem": "npm", "per_page": 100, "affects": ",".join(specs[i:i + BATCH_SIZE])})
+    for _ in range(MAX_PAGES):
+        try:
+            advisories, url = get(url)
+        except Exception as e:  # Network or API error: reported by the caller.
+            sys.exit("GitHub Advisory Database request failed: %s" % e)
+        for advisory in advisories:
+            if advisory.get("withdrawn_at"):
+                continue
+            for vuln in advisory.get("vulnerabilities") or []:
+                name = (vuln.get("package") or {}).get("name")
+                fix = vuln.get("first_patched_version")
+                if isinstance(fix, dict):
+                    fix = fix.get("identifier")
+                if name not in locked or not fix or not parse(fix):
+                    continue
+                vulnerable_range = vuln.get("vulnerable_version_range") or ""
+                if any(in_range(v, vulnerable_range) for v in locked[name]):
+                    fixes.add((name, fix))
+        if not url:
+            break
+for name, fix in sorted(fixes):
+    print(name, fix)
+EOF
+}
+
+# Prints "name version parent" for every dependency that the given package
+# versions need and that the lockfile can't satisfy, for example a package
+# that a fixed version newly depends on. Each such dependency is resolved to
+# its highest version matching the requested range (as pnpm would), using the
+# public npm registry metadata, and its own dependencies are checked the same
+# way.
+# Arguments: path to a "name version" list of the lockfile's packages, path to
+#   a "name version" list of the package versions to check.
+list_new_dependencies() {
+  python3 - "$1" "$2" <<'EOF'
+import json, os, re, sys, urllib.parse, urllib.request
+
+METADATA_REGISTRY = os.environ.get("NPM_METADATA_REGISTRY", "https://registry.npmjs.org/")
+MAX_NEW = 100  # Upper bound on the number of new dependencies, as a safeguard.
+VERSION = re.compile(r"^v?(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$")
+PARTIAL = re.compile(r"^v?(\d+|[xX*])(?:\.(\d+|[xX*]))?(?:\.(\d+|[xX*]))?(?:-([0-9A-Za-z.-]+))?$")
+
+
+def key(version):
+    """Sort key for a full version; None if it isn't a valid version."""
+    m = VERSION.match(version)
+    if not m:
+        return None
+    pre = m[4]
+    pre_key = (tuple((0, int(p), "") if p.isdigit() else (1, 0, p) for p in pre.split("."))
+               if pre else ())
+    return (int(m[1]), int(m[2]), int(m[3]), 0 if pre else 1, pre_key)
+
+
+def comparators(part):
+    """Desugars one range comparator (e.g. "^1.2", "~1", ">=2.0.0", "1.x")
+    into a list of (op, version key) pairs; returns None if unsupported."""
+    m = re.match(r"^(\^|~|>=|<=|>|<|=)?\s*(.*)$", part)
+    op, rest = m[1] or "", m[2]
+    if rest in ("", "*", "x", "X"):
+        return []
+    p = PARTIAL.match(rest)
+    if not p:
+        return None
+    nums = [None if x is None or x in "xX*" else int(x) for x in p.groups()[:3]]
+    major, minor, patch = nums
+    if major is None:
+        return []
+    low = (major, minor or 0, patch or 0, 0 if p[4] else 1, ())
+    if p[4]:
+        low = key("%d.%d.%d-%s" % (major, minor or 0, patch or 0, p[4]))
+
+    def upper(*v):
+        return (v[0], v[1], v[2], 0, ())  # Exclusive; below any prerelease of v.
+
+    if op == "^":
+        if major > 0 or minor is None:
+            return [(">=", low), ("<", upper(major + 1, 0, 0))]
+        if minor > 0 or patch is None:
+            return [(">=", low), ("<", upper(0, minor + 1, 0))]
+        return [(">=", low), ("<", upper(0, 0, patch + 1))]
+    if op == "~":
+        if minor is None:
+            return [(">=", low), ("<", upper(major + 1, 0, 0))]
+        return [(">=", low), ("<", upper(major, minor + 1, 0))]
+    if op in ("", "="):
+        if minor is None:
+            return [(">=", low), ("<", upper(major + 1, 0, 0))]
+        if patch is None:
+            return [(">=", low), ("<", upper(major, minor + 1, 0))]
+        return [("=", low)]
+    if op in (">=", "<"):
+        return [(op, low)]
+    if op == ">":
+        if minor is None:
+            return [(">=", upper(major + 1, 0, 0))]
+        if patch is None:
+            return [(">=", upper(major, minor + 1, 0))]
+        return [(">", low)]
+    if op == "<=":
+        if minor is None:
+            return [("<", upper(major + 1, 0, 0))]
+        if patch is None:
+            return [("<", upper(major, minor + 1, 0))]
+        return [("<=", low)]
+    return None
+
+
+def parse_range(spec):
+    """Parses an npm range into a list of alternatives (lists of comparators);
+    returns None for unsupported specs (URLs, git, aliases, tags...)."""
+    alternatives = []
+    for alt in spec.split("||"):
+        alt = alt.strip()
+        hyphen = re.match(r"^(\S+)\s+-\s+(\S+)$", alt)
+        parts = [">=" + hyphen[1], "<=" + hyphen[2]] if hyphen else \
+            re.sub(r"(\^|~|>=|<=|>|<|=)\s+", r"\1", alt).split()
+        comps = []
+        for part in parts or [""]:
+            c = comparators(part)
+            if c is None:
+                return None
+            comps.extend(c)
+        alternatives.append(comps)
+    return alternatives
+
+
+def satisfies(version, alternatives, allow_prerelease):
+    k = key(version)
+    if k is None or (k[3] == 0 and not allow_prerelease):
+        return False
+    ops = {">=": lambda a, b: a >= b, "<=": lambda a, b: a <= b, ">": lambda a, b: a > b,
+           "<": lambda a, b: a < b, "=": lambda a, b: a == b}
+    return any(all(ops[op](k, bound) for op, bound in alt) for alt in alternatives)
+
+
+metadata_cache = {}
+
+
+def metadata(name):
+    if name not in metadata_cache:
+        url = METADATA_REGISTRY + urllib.parse.quote(name, safe="@")
+        request = urllib.request.Request(url, headers={
+            "Accept": "application/vnd.npm.install-v1+json", "User-Agent": "prefetch_npm_deps"})
+        with urllib.request.urlopen(request, timeout=60) as response:
+            metadata_cache[name] = json.load(response)
+    return metadata_cache[name]
+
+
+def dependencies(name, version):
+    """Returns {dependency: range} that installing name@version needs."""
+    manifest = metadata(name).get("versions", {}).get(version, {})
+    deps = dict(manifest.get("dependencies") or {})
+    deps.update(manifest.get("optionalDependencies") or {})
+    peer_meta = manifest.get("peerDependenciesMeta") or {}
+    for peer, spec in (manifest.get("peerDependencies") or {}).items():
+        if not (peer_meta.get(peer) or {}).get("optional"):
+            deps.setdefault(peer, spec)  # Installed automatically by pnpm.
+    return deps
+
+
+locked = {}
+for line in open(sys.argv[1]):
+    n, v = line.split()
+    locked.setdefault(n, set()).add(v)
+
+queue = [tuple(line.split()) for line in open(sys.argv[2]) if line.strip()]
+seen = set(queue)
+new = 0
+try:
+    while queue and new < MAX_NEW:
+        parent, parent_version = queue.pop(0)
+        for dep, spec in sorted(dependencies(parent, parent_version).items()):
+            alternatives = parse_range(spec)
+            if alternatives is None:
+                continue
+            allow_pre = "-" in spec
+            if any(satisfies(v, alternatives, allow_pre) for v in locked.get(dep, ())):
+                continue  # pnpm would reuse the locked version.
+            candidates = [v for v in metadata(dep).get("versions", {})
+                          if satisfies(v, alternatives, allow_pre)]
+            if not candidates:
+                continue
+            best = max(candidates, key=key)
+            if (dep, best) in seen:
+                continue
+            seen.add((dep, best))
+            queue.append((dep, best))
+            new += 1
+            print(dep, best, "%s@%s" % (parent, parent_version))
+except Exception as e:  # Network or registry error: reported by the caller.
+    sys.exit("npm metadata request failed: %s" % e)
+EOF
+}
+
+# Adds the new package versions of open PRs to WANTED.
+collect_from_prs() {
   local prs
   prs="$(list_prs)" || { warn "could not list open PRs"; return 0; }
 
   local number head base
   while read -r number head base; do
     [[ -z "${number}" ]] && continue
-    echo "=== PR #${number}"
     if ! download_lockfile "${head}" "${WORK_DIR}/head.yaml" ||
        ! download_lockfile "${base}" "${WORK_DIR}/base.yaml"; then
       warn "could not download lockfiles for PR #${number}"
@@ -103,9 +424,66 @@ main() {
     comm -13 <(list_packages "${WORK_DIR}/base.yaml" | sort) \
              <(list_packages "${WORK_DIR}/head.yaml" | sort) |
     while read -r name version; do
-      prefetch_package "${name}" "${version}"
+      echo "PR #${number}: ${name}@${version}"
+      echo "${name} ${version}" >> "${WANTED}"
     done
   done <<< "${prs}"
+}
+
+# Adds the first patched versions of vulnerable packages on BASE_BRANCH, and
+# the new dependencies those versions need, to WANTED.
+collect_from_advisories() {
+  if ! download_lockfile "${BASE_BRANCH}" "${WORK_DIR}/main.yaml"; then
+    warn "could not download the ${BASE_BRANCH} lockfile"
+    return 0
+  fi
+  local fixes
+  fixes="$(list_advisory_fixes "${WORK_DIR}/main.yaml")" ||
+    { warn "could not check security advisories"; return 0; }
+  local name version parent
+  while read -r name version; do
+    [[ -z "${name}" ]] && continue
+    echo "advisory: ${name}@${version}"
+    echo "${name} ${version}" >> "${WANTED}"
+  done <<< "${fixes}"
+  [[ -z "${fixes}" ]] && return 0
+
+  # A fixed version may depend on packages that aren't in the lockfile yet.
+  echo "${fixes}" > "${WORK_DIR}/fixes"
+  local deps
+  deps="$(list_new_dependencies "${WORK_DIR}/locked" "${WORK_DIR}/fixes")" ||
+    { warn "could not check dependencies of the fixed versions"; return 0; }
+  while read -r name version parent; do
+    [[ -z "${name}" ]] && continue
+    echo "advisory dependency: ${name}@${version} (needed by ${parent})"
+    echo "${name} ${version}" >> "${WANTED}"
+  done <<< "${deps}"
+}
+
+main() {
+  echo "=== Collecting package versions"
+  collect_from_prs
+  collect_from_advisories
+
+  echo "=== Prefetching"
+  local name version
+  while read -r name version; do
+    prefetch_package "${name}" "${version}"
+  done < <(sort -u "${WANTED}")
+
+  if [[ -n "${CI_REGISTRY}" && -z "${REGISTRY_TOKEN}" ]]; then
+    warn "CI_REGISTRY is set but REGISTRY_TOKEN is empty; skipping the availability check"
+  elif [[ -n "${CI_REGISTRY}" ]]; then
+    echo "=== Availability in the CI registry"
+    local status available=0 total=0
+    while read -r name version; do
+      status="$(ci_registry_status "${name}" "${version}")"
+      echo "  ${name}@${version}: ${status}"
+      total=$((total + 1))
+      [[ "${status}" == "available" ]] && available=$((available + 1))
+    done < <(sort -u "${WANTED}")
+    echo "${available} of ${total} versions available in the CI registry"
+  fi
   return 0
 }
 
