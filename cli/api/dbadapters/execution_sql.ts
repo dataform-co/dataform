@@ -501,7 +501,7 @@ DROP TABLE IF EXISTS ${emptyTempTableName};
       this.applySchemaChangeStrategySql(table, qualifiedTargetTableName),
       this.cleanupSql(emptyTempTableName),
     ];
-    
+
     return statements.join("\n\n");
   }
 
