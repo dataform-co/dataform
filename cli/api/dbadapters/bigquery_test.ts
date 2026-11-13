@@ -428,4 +428,74 @@ suite("BigQueryDbAdapter", () => {
       name: tableName,
     });
   });
+
+  test("table() keeps BIGNUMERIC, JSON and INTERVAL field types", async () => {
+    const target = { database: "p", schema: "s", name: "t" };
+    const mockBigQuery: any = {
+      dataset: () => ({
+        table: () => ({
+          getMetadata: () =>
+            Promise.resolve([
+              {
+                type: "TABLE",
+                tableReference: { projectId: "p", datasetId: "s", tableId: "t" },
+                schema: {
+                  fields: [
+                    { name: "bn", type: "BIGNUMERIC" },
+                    { name: "n", type: "NUMERIC" },
+                    { name: "j", type: "JSON" },
+                    { name: "iv", type: "INTERVAL" },
+                    { name: "s", type: "STRING" },
+                  ],
+                },
+                lastModifiedTime: "123456789",
+              },
+            ]),
+        }),
+      }),
+    };
+    const adapter = new BigQueryDbAdapter(dataform.BigQuery.create({ projectId: "p" }), {
+      clientProvider: () => mockBigQuery,
+    });
+
+    const result = await adapter.table(target);
+
+    expect(result.fields.map((field) => [field.name, field.primitive])).deep.equals([
+      ["bn", dataform.Field.Primitive.BIGNUMERIC],
+      ["n", dataform.Field.Primitive.NUMERIC],
+      ["j", dataform.Field.Primitive.JSON],
+      ["iv", dataform.Field.Primitive.INTERVAL],
+      ["s", dataform.Field.Primitive.STRING],
+    ]);
+  });
+
+  test("executeRaw() keeps BIGNUMERIC, JSON and INTERVAL field types", async () => {
+    // executeRaw() supplies the schemas JiT code receives from ExecuteResponse.schemaFields.
+    const mockBigQuery: any = {
+      query: async (): Promise<any[]> => [
+        [],
+        undefined,
+        {
+          schema: {
+            fields: [
+              { name: "n", type: "BIGNUMERIC" },
+              { name: "j", type: "JSON" },
+              { name: "i", type: "INTERVAL" },
+            ],
+          },
+        },
+      ],
+    };
+    const adapter = new BigQueryDbAdapter(dataform.BigQuery.create({ projectId: "p" }), {
+      clientProvider: () => mockBigQuery,
+    });
+
+    const result = await adapter.executeRaw("SELECT 1");
+
+    expect(result.schema.map((field) => field.primitive)).deep.equals([
+      dataform.Field.Primitive.BIGNUMERIC,
+      dataform.Field.Primitive.JSON,
+      dataform.Field.Primitive.INTERVAL,
+    ]);
+  });
 });
