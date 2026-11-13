@@ -174,7 +174,7 @@ Compiles the project and prints a summary (or JSON / Graphviz DOT representation
 | `--quiet` | boolean | `false` | Less verbose compilation output. Mutually exclusive with --verbose. |
 | `--watch` | boolean | `false` | Watches the project directory and recompiles on changes. |
 | `--timeout` | string | `'60s'` | Duration to allow project compilation to complete, e.g. '1s', '10m'. |
-| `--output-actions` | array | — | Filters the printed output to these actions (comma-separated or repeatable). Each entry is an action name or a fully-qualified database.schema.name target. The whole project is still compiled. |
+| `--output-actions` | array | — | Filters the printed output to these actions (comma-separated or repeatable). Each entry is an action name or a fully-qualified database.schema.name (or 4-part database.catalog.namespace.name) target. The whole project is still compiled. |
 | `--output-tags` | array | — | Filters the printed output to actions with any of these tags (comma-separated or repeatable). |
 | `--output-include-deps` | boolean | — | Also includes upstream dependencies of the selected actions in the output. Requires --output-actions or --output-tags. |
 | `--output-include-dependents` | boolean | — | Also includes downstream dependents of the selected actions in the output. Requires --output-actions or --output-tags. |
@@ -250,7 +250,7 @@ Compiles and executes the project against BigQuery (or validates it with `--dry-
 | `--dry-run` | boolean | — | Validates the run SQL with BigQuery without applying any changes to the warehouse. |
 | `--run-tests` | boolean | — | Requires the project's unit tests to pass before executing; aborts the run if any test fails. |
 | `--action-retry-limit` | number | `0` | Retries idempotent actions up to this many times on failure. |
-| `--actions` | array | — | Actions to run (comma-separated or repeatable). Each entry is an action name or a fully-qualified database.schema.name target. |
+| `--actions` | array | — | Actions to run (comma-separated or repeatable). Each entry is an action name or a fully-qualified database.schema.name (or 4-part database.catalog.namespace.name) target. |
 | `--tags` | array | — | Tags to filter the actions to run (comma-separated or repeatable). |
 | `--include-deps` | boolean | — | Also runs upstream dependencies of the selected actions. Requires --actions or --tags. |
 | `--include-dependents` | boolean | — | Also runs downstream dependents of the selected actions. Requires --actions or --tags. |
