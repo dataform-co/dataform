@@ -12,6 +12,10 @@ steps:
     script: |
       #!/usr/bin/env bash
       ./scripts/run_canary_test
+  - name: "gcr.io/cloud-builders/gcloud"
+    script: |
+      #!/usr/bin/env bash
+      ./scripts/run_negative_canary_test
 options:
   machineType: E2_HIGHCPU_8
   automapSubstitutions: true
