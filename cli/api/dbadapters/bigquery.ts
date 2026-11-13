@@ -520,6 +520,14 @@ export class BigQueryDbAdapter implements IDbAdapter {
               params,
             ) as any,
           );
+          if (dryRun) {
+            // Dry-run jobs aren't persisted, so their results can't be read. The job resource
+            // returned on creation already has the statistics.
+            if (isCancelled) {
+              throw new Error("Query cancelled.");
+            }
+            return { rows: [], metadata: jobStatisticsMetadata(job[0].metadata) };
+          }
           const resultStream = job[0].getQueryResultsStream();
           return new Promise<IExecutionResult>((resolve, reject) => {
             if (isCancelled) {
@@ -538,14 +546,6 @@ export class BigQueryDbAdapter implements IDbAdapter {
             });
             resultStream
               .on("error", async (e: IBigQueryError) => {
-                // Dry run queries against BigQuery done by this package eagerly fail with
-                // "Not found: job". This is a workaround to avoid that.
-                // Example: https://github.com/googleapis/python-bigquery/issues/118.
-                if (dryRun && e.message?.includes("Not found: Job")) {
-                  resolve({ rows: [], metadata: {} });
-                  return;
-                }
-
                 try {
                   const [jobMetadata] = await job[0].getMetadata();
                   if (!!jobMetadata.status?.errorResult) {
@@ -578,9 +578,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
                         totalBytesBilled: jobMetadata.statistics.query.totalBytesBilled
                           ? Long.fromString(jobMetadata.statistics.query.totalBytesBilled)
                           : Long.ZERO,
-                        totalBytesProcessed: jobMetadata.statistics.query.totalBytesProcessed
-                          ? Long.fromString(jobMetadata.statistics.query.totalBytesProcessed)
-                          : Long.ZERO,
+                        ...jobStatisticsMetadata(jobMetadata).bigquery,
                       },
                     },
                   });
@@ -633,6 +631,31 @@ function convertField(field: TableField): dataform.IField {
     result.primitive = convertFieldType(field.type);
   }
   return dataform.Field.create(result);
+}
+
+// Statistics shared by dry and real runs, filled in whenever BigQuery reports them. Which ones
+// BigQuery reports depends on the statement and on whether it's a dry run.
+// See: https://cloud.google.com/bigquery/docs/reference/rest/v2/Job#JobStatistics2
+function jobStatisticsMetadata(jobMetadata: any): dataform.IExecutionMetadata {
+  const statistics = jobMetadata?.statistics?.query || {};
+  return {
+    bigquery: {
+      totalBytesProcessed: statistics.totalBytesProcessed
+        ? Long.fromString(statistics.totalBytesProcessed)
+        : Long.ZERO,
+      // BigQuery leaves out empty lists, so a missing list can't be told apart from an empty one.
+      // Either way, [] means none were reported.
+      referencedTables: (statistics.referencedTables || []).map(
+        (table: { projectId: string; datasetId: string; tableId: string }) =>
+          dataform.Target.create({
+            database: table.projectId,
+            schema: table.datasetId,
+            name: table.tableId,
+          }),
+      ),
+      schema: (statistics.schema?.fields || []).map((field: TableField) => convertField(field)),
+    },
+  };
 }
 
 // See: https://cloud.google.com/bigquery/docs/reference/rest/v2/tables#TableFieldSchema
