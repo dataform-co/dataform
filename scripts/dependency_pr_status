@@ -1,0 +1,191 @@
+#!/usr/bin/env python3
+"""Labels dependency PRs whose tests wait for new package versions in CI.
+
+New package versions become installable in the registry that the Cloud Build
+tests use only some time after they are published, so a PR from Dependabot or
+from the security updates job (scripts/update_vulnerable_deps) can fail there
+although the code is fine. For each such open PR, this script:
+
+  - adds the "waiting-for-dependencies" label and a one-time comment if the
+    Cloud Build checks failed but the build with the public npm registry
+    (GitHub Actions) passed and no other check failed;
+  - replaces it with "needs-attention" once the PR has been waiting for
+    MAX_WAIT_DAYS;
+  - removes both labels once the Cloud Build checks pass, or the waiting label
+    if another check fails too (a real failure).
+
+Environment:
+  GITHUB_TOKEN   Token with pull requests and issues write access (required).
+  GITHUB_REPO    owner/repo (default: GITHUB_REPOSITORY or dataform-co/dataform).
+  PR_NUMBER      Only process this PR, whoever opened it (for testing).
+  DRY_RUN        If "true" or "1", only print what would be done.
+  MAX_WAIT_DAYS  Days before a waiting PR needs attention (default 21).
+"""
+
+import datetime
+import json
+import os
+import sys
+import urllib.error
+import urllib.request
+
+REPO = os.environ.get("GITHUB_REPO") or os.environ.get("GITHUB_REPOSITORY") or \
+    "dataform-co/dataform"
+DRY_RUN = os.environ.get("DRY_RUN", "").lower() in ("1", "true")
+MAX_WAIT_DAYS = int(os.environ.get("MAX_WAIT_DAYS", "21"))
+
+BOT_AUTHORS = {"dependabot[bot]"}
+BOT_BRANCHES = {"deps/security-updates"}
+CLOUD_BUILD_APP = "google-cloud-build"
+# Builds with the public npm registry: if it passes, the code itself is fine.
+PUBLIC_BUILD_CHECK = "Build packages and smoke test bundle (Linux)"
+
+WAITING = "waiting-for-dependencies"
+ATTENTION = "needs-attention"
+LABELS = {
+    WAITING: ("fbca04", "Waiting for new dependency versions to be available in CI"),
+    ATTENTION: ("d93f0b", "Has been waiting for dependencies for a long time"),
+}
+MARKER = "<!-- dependency-pr-status -->"
+COMMENT = """\
+This PR updates dependencies to versions that aren't available yet in the \
+package registry that CI installs from: new versions become available there \
+some time after they are published. The build with the public npm registry \
+passed, so the failing Cloud Build check here most likely only means that. \
+Once the versions are available, the tests will be re-run and the \
+`%s` label removed.
+
+%s
+""" % (WAITING, MARKER)
+
+
+def api(method, path, body=None):
+    request = urllib.request.Request(
+        "https://api.github.com" + path, method=method,
+        data=json.dumps(body).encode() if body is not None else None,
+        headers={"Accept": "application/vnd.github+json",
+                 "Authorization": "Bearer " + os.environ["GITHUB_TOKEN"],
+                 "User-Agent": "dependency_pr_status"})
+    with urllib.request.urlopen(request, timeout=60) as response:
+        data = response.read()
+        return json.loads(data) if data else None
+
+
+def write(method, path, body=None):
+    """Like api(), but only logged in dry-run mode."""
+    if DRY_RUN:
+        print("  [dry run] %s %s %s" % (method, path, json.dumps(body) if body else ""))
+        return None
+    return api(method, path, body)
+
+
+def parse_time(value):
+    return datetime.datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+
+def latest_check_runs(sha):
+    """Returns the latest check run of each name for a commit."""
+    runs, page = {}, 1
+    while True:
+        data = api("GET", "/repos/%s/commits/%s/check-runs?per_page=100&page=%d"
+                   % (REPO, sha, page))
+        for run in data["check_runs"]:
+            key = run["name"]
+            started = run.get("started_at") or ""
+            if key not in runs or started > (runs[key].get("started_at") or ""):
+                runs[key] = run
+        if len(data["check_runs"]) < 100:
+            return list(runs.values())
+        page += 1
+
+
+def classify(runs, waiting_days):
+    """Returns "pending", "green", "waiting", "stale", "failure" or "unknown"
+    (no public build to compare with)."""
+    cloud_build = [r for r in runs if r["app"]["slug"] == CLOUD_BUILD_APP
+                   and r.get("conclusion") != "action_required"]  # Needs /gcbrun.
+    others = [r for r in runs if r["app"]["slug"] != CLOUD_BUILD_APP]
+    if not cloud_build or any(r["status"] != "completed" for r in cloud_build):
+        return "pending"
+    if all(r["conclusion"] in ("success", "neutral", "skipped") for r in cloud_build):
+        return "green"
+    if any(r["status"] != "completed" for r in others):
+        return "pending"
+    public = [r for r in others if r["name"] == PUBLIC_BUILD_CHECK]
+    if not public:
+        return "unknown"
+    if public[0]["conclusion"] != "success" or \
+            any(r["conclusion"] in ("failure", "timed_out", "cancelled") for r in others):
+        return "failure"
+    return "waiting" if waiting_days < MAX_WAIT_DAYS else "stale"
+
+
+def ensure_labels():
+    existing = {l["name"] for l in api("GET", "/repos/%s/labels?per_page=100" % REPO)}
+    for name, (color, description) in LABELS.items():
+        if name not in existing:
+            write("POST", "/repos/%s/labels" % REPO,
+                  {"name": name, "color": color, "description": description})
+
+
+def set_labels(pr, add, remove):
+    current = {l["name"] for l in pr["labels"]}
+    for name in add - current:
+        print("  add label %s" % name)
+        write("POST", "/repos/%s/issues/%d/labels" % (REPO, pr["number"]), {"labels": [name]})
+    for name in remove & current:
+        print("  remove label %s" % name)
+        write("DELETE", "/repos/%s/issues/%d/labels/%s" % (REPO, pr["number"], name))
+
+
+def ensure_comment(pr):
+    comments = api("GET", "/repos/%s/issues/%d/comments?per_page=100" % (REPO, pr["number"]))
+    if not any(MARKER in (c.get("body") or "") for c in comments):
+        print("  add comment")
+        write("POST", "/repos/%s/issues/%d/comments" % (REPO, pr["number"]), {"body": COMMENT})
+
+
+def process(pr, now):
+    sha = pr["head"]["sha"]
+    commit = api("GET", "/repos/%s/commits/%s" % (REPO, sha))
+    waiting_days = (now - parse_time(commit["commit"]["committer"]["date"])).days
+    state = classify(latest_check_runs(sha), waiting_days)
+    print("PR #%d (%s): %s, head commit %d days old"
+          % (pr["number"], pr["title"], state, waiting_days))
+    if state == "waiting":
+        set_labels(pr, {WAITING}, {ATTENTION})
+        ensure_comment(pr)
+    elif state == "stale":
+        set_labels(pr, {ATTENTION}, {WAITING})
+    elif state == "green":
+        set_labels(pr, set(), {WAITING, ATTENTION})
+    elif state == "failure":
+        set_labels(pr, set(), {WAITING})
+
+
+def main():
+    if not os.environ.get("GITHUB_TOKEN"):
+        sys.exit("GITHUB_TOKEN must be set")
+    now = datetime.datetime.now(datetime.timezone.utc)
+    if os.environ.get("PR_NUMBER"):
+        prs = [api("GET", "/repos/%s/pulls/%d" % (REPO, int(os.environ["PR_NUMBER"])))]
+    else:
+        prs = [pr for pr in api("GET", "/repos/%s/pulls?state=open&per_page=100" % REPO)
+               if pr["user"]["login"] in BOT_AUTHORS or
+               (pr["head"]["ref"] in BOT_BRANCHES and
+                (pr["head"].get("repo") or {}).get("full_name") == REPO)]
+    print("%d dependency PR(s)%s" % (len(prs), " (dry run)" if DRY_RUN else ""))
+    if prs:
+        ensure_labels()
+    failed = False
+    for pr in prs:
+        try:
+            process(pr, now)
+        except urllib.error.HTTPError as e:  # Keep going with the other PRs.
+            print("WARNING: PR #%d: %s" % (pr["number"], e), file=sys.stderr)
+            failed = True
+    sys.exit(1 if failed else 0)
+
+
+if __name__ == "__main__":
+    main()
