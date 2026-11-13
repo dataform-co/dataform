@@ -1,6 +1,7 @@
 import * as semver from "semver";
 
 import { Task, Tasks } from "df/cli/api/dbadapters/tasks";
+import { isLakehouseTarget } from "df/cli/api/utils/lakehouse";
 import { concatenateQueries } from "df/cli/api/utils/query_transforms";
 import { ErrorWithCause } from "df/common/errors/errors";
 import { CompilationSql } from "df/core/compilation_sql";
@@ -138,7 +139,7 @@ from (${query}) as insertions`;
     this.preOps(table, runConfig, tableMetadata).forEach((statement) => tasks.add(statement));
 
     const baseTableType = this.baseTableType(table.enumType);
-    if (tableMetadata && tableMetadata.type !== baseTableType) {
+    if (!isLakehouseTarget(table.target) && tableMetadata && tableMetadata.type !== baseTableType) {
       tasks.add(
         Task.statement(this.dropIfExists(table.target, this.oppositeTableType(baseTableType))),
       );
@@ -153,10 +154,10 @@ from (${query}) as insertions`;
           case dataform.OnSchemaChange.FAIL:
           case dataform.OnSchemaChange.EXTEND:
           case dataform.OnSchemaChange.SYNCHRONIZE:
-            this.buildIncrementalSchemaChangeTasks(tasks, table);
+            this.buildIncrementalSchemaChangeTasks(tasks, table, tableMetadata);
           // Fall through to run the static DML after the procedure alters the schema
           case dataform.OnSchemaChange.IGNORE:
-            const columns = tableMetadata?.fields.map((f) => f.name) || [];
+            const columns = tableMetadata?.fields?.map((f) => f.name) || [];
             tasks.add(Task.statement(this.getIncrementalDmlStatement(table, columns)));
             break;
         }
@@ -231,7 +232,16 @@ from (${query}) as insertions`;
     return `and ${validPredicates.map((p) => `(${p})`).join(" and ")}`;
   }
 
-  private buildIncrementalSchemaChangeTasks(tasks: Tasks, table: dataform.ITable) {
+  private buildIncrementalSchemaChangeTasks(
+    tasks: Tasks,
+    table: dataform.ITable,
+    tableMetadata?: dataform.ITableMetadata,
+  ) {
+    if (isLakehouseTarget(table.target)) {
+      this.buildLakehouseIncrementalSchemaChangeTasks(tasks, table, tableMetadata);
+      return;
+    }
+
     const uniqueId = this.uniqueIdGenerator();
 
     const emptyTempTableTarget = {
@@ -258,6 +268,56 @@ END;`;
     );
     tasks.add(Task.statement(createProcedureSql));
     tasks.add(Task.statement(callProcedureSql));
+  }
+
+  private buildLakehouseIncrementalSchemaChangeTasks(
+    tasks: Tasks,
+    table: dataform.ITable,
+    tableMetadata?: dataform.ITableMetadata,
+  ) {
+    const uniqueId = this.uniqueIdGenerator();
+    const tempTableName = `${table.target.name}_df_temp_${uniqueId}_empty`;
+    const emptyTempTableTarget = this.resolveScratchTarget(table.target, tempTableName);
+    const emptyTempTableName = this.resolveTarget(emptyTempTableTarget);
+    const existingColumns = tableMetadata?.fields?.map((f) => f.name) || [];
+    const scriptBody = this.incrementalSchemaChangeBody(
+      table,
+      this.resolveTarget(table.target),
+      emptyTempTableTarget,
+      existingColumns,
+    );
+    const scriptSql = `BEGIN
+${scriptBody}
+EXCEPTION WHEN ERROR THEN
+  DROP TABLE IF EXISTS ${emptyTempTableName};
+  RAISE;
+END;`;
+    tasks.add(Task.statement(scriptSql));
+  }
+
+  private resolveScratchTarget(
+    tableTarget: dataform.ITarget,
+    tempTableName: string,
+  ): dataform.ITarget {
+    const baseDefaultSchema = this.project?.defaultSchema;
+    if (!baseDefaultSchema) {
+      throw new Error(
+        "When defining an incremental Lakehouse table, 'defaultDataset' must be defined in workflow_settings.yaml.",
+      );
+    }
+    const scratchSchema = this.project?.schemaSuffix
+      ? `${baseDefaultSchema}_${this.project.schemaSuffix}`
+      : baseDefaultSchema;
+    const defaultDatabase = this.project?.defaultDatabase
+      ? this.project.databaseSuffix
+        ? `${this.project.defaultDatabase}_${this.project.databaseSuffix}`
+        : this.project.defaultDatabase
+      : undefined;
+    return {
+      database: tableTarget.database || defaultDatabase,
+      schema: scratchSchema,
+      name: tempTableName,
+    };
   }
 
   private createProcedureName(target: dataform.ITarget, uniqueId: string): string {
@@ -304,18 +364,30 @@ CREATE OR REPLACE TABLE ${emptyTempTableName} AS (
   private compareSchemasSql(
     target: dataform.ITarget,
     emptyTempTableTarget: dataform.ITarget,
+    existingColumns?: string[],
   ): string {
-    return `
--- Compare schemas
-SET dataform_columns = (
+    const setDataformColumnsSql =
+      existingColumns !== undefined
+        ? `SET dataform_columns = ARRAY<STRING>[${existingColumns
+            .map((col) => this.CompilationSql.sqlString(col))
+            .join(", ")}];`
+        : `SET dataform_columns = (
   SELECT IFNULL(ARRAY_AGG(DISTINCT column_name), [])
   FROM \`${target.database}.${target.schema}.INFORMATION_SCHEMA.COLUMNS\`
   WHERE table_name = '${target.name}'
-);
+);`;
+
+    const tempInfoSchemaPrefix = emptyTempTableTarget.database
+      ? `${emptyTempTableTarget.database}.${emptyTempTableTarget.schema}`
+      : emptyTempTableTarget.schema;
+
+    return `
+-- Compare schemas
+${setDataformColumnsSql}
 
 SET temp_table_columns = (
   SELECT IFNULL(ARRAY_AGG(STRUCT(column_name, data_type)), [])
-  FROM \`${emptyTempTableTarget.database}.${emptyTempTableTarget.schema}.INFORMATION_SCHEMA.COLUMNS\`
+  FROM \`${tempInfoSchemaPrefix}.INFORMATION_SCHEMA.COLUMNS\`
   WHERE table_name = '${emptyTempTableTarget.name}'
 );
 
@@ -417,6 +489,7 @@ DROP TABLE IF EXISTS ${emptyTempTableName};
     table: dataform.ITable,
     qualifiedTargetTableName: string,
     emptyTempTableTarget: dataform.ITarget,
+    existingColumns?: string[],
   ): string {
     const emptyTempTableName = this.resolveTarget(emptyTempTableTarget);
     const query = this.getIncrementalQuery(table);
@@ -424,11 +497,11 @@ DROP TABLE IF EXISTS ${emptyTempTableName};
     const statements: string[] = [
       this.declareSchemaChangeVariablesSql(onSchemaChange),
       this.createEmptyTempTableSql(emptyTempTableName, query),
-      this.compareSchemasSql(table.target, emptyTempTableTarget),
+      this.compareSchemasSql(table.target, emptyTempTableTarget, existingColumns),
       this.applySchemaChangeStrategySql(table, qualifiedTargetTableName),
       this.cleanupSql(emptyTempTableName),
     ];
-
+    
     return statements.join("\n\n");
   }
 
