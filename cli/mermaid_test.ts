@@ -138,7 +138,7 @@ suite("mermaidRepresentation", () => {
     // As created in memory: enumType is unset.
     const created = dataform.CompiledGraph.create({ tables });
     expect(mermaidRepresentation(created)).equals(expected);
-    // As decoded from the compiler's output: enumType is UNKNOWN_TYPE.
+    // After a protobuf round-trip: the absent enumType defaults to UNKNOWN_TYPE.
     const decoded = dataform.CompiledGraph.decode(dataform.CompiledGraph.encode(created).finish());
     expect(decoded.tables[0].enumType).equals(dataform.TableType.UNKNOWN_TYPE);
     expect(mermaidRepresentation(decoded)).equals(expected);

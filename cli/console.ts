@@ -7,6 +7,7 @@ import {
   formatBytesInHumanReadableFormat,
   formatDatasetWarehouseState,
   formatExecutionSuffix,
+  tableTypeLabel,
 } from "df/cli/util";
 import { targetStringifier } from "df/core/targets";
 import { setOrValidateTableEnumType, tableTypeEnumToString } from "df/core/utils";
@@ -664,9 +665,7 @@ export function dotRepresentation(graph: dataform.ICompiledGraph, interactive: b
 
   graph.tables?.forEach((table) => {
     const nodeName = `${formatTarget(table.target)}`;
-    nodes.push(
-      `"${nodeName}" [label="${formatTarget(table.target)} [${tableTypeEnumToString(table.enumType)}]"]`,
-    );
+    nodes.push(`"${nodeName}" [label="${formatTarget(table.target)} [${tableTypeLabel(table)}]"]`);
     table.dependencyTargets?.forEach((dependencyTarget) => {
       edges.push(`"${formatTarget(dependencyTarget)}" -> "${nodeName}"`);
     });
