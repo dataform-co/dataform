@@ -1,6 +1,6 @@
 import * as crypto from "crypto";
 
-import { setOrValidateTableEnumType, tableTypeEnumToString } from "df/core/utils";
+import { tableTypeLabel } from "df/cli/util";
 import { dataform } from "df/protos/ts";
 
 /**
@@ -69,17 +69,6 @@ export function mermaidRepresentation(graph: dataform.ICompiledGraph): string {
   // `graph` rather than the newer `flowchart` keyword: they draw the same diagram, but some
   // renderers (e.g. Azure DevOps wikis) only support `graph`.
   return ["graph LR", ...nodeLines, ...edgeLines].join("\n");
-}
-
-/**
- * Returns the table's type for its label. For graphs that only set the string `type`, prune()
- * normally converts it to `enumType`; but prune() only runs with --output-actions or --output-tags,
- * so this does the same conversion, on a copy so the caller's graph is unchanged.
- */
-function tableTypeLabel(table: dataform.ITable) {
-  const normalized: dataform.ITable = { type: table.type, enumType: table.enumType };
-  setOrValidateTableEnumType(normalized);
-  return tableTypeEnumToString(normalized.enumType || dataform.TableType.UNKNOWN_TYPE);
 }
 
 // Mermaid's default size limits. Renderers can configure them; GitHub refuses diagrams over
