@@ -15,6 +15,10 @@ message BigQuery {
   // The credentials above (or the application default credentials) are used as the
   // source credentials and need roles/iam.serviceAccountTokenCreator on this account.
   string impersonate_service_account = 5;
+  // The universe domain to connect to (e.g. "s3nsapis.fr"). Leave unset to
+  // use the default Google Default Universe (GDU). Set this when targeting a
+  // Trusted Partner Cloud (TPC) or another non-default universe.
+  string universe_domain = 6;
 
   reserved 2;
 }

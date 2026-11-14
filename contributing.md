@@ -86,6 +86,8 @@ Integration tests run against BigQuery using [Application Default Credentials (A
 
    _(Optional)_ If you still want to test with an explicit service account key inside the Dataform credentials file rather than ADC, you can include the `"credentials"` field containing the JSON key serialized as a string (`jq -Rsa < path/to/key.json`).
 
+   - `universeDomain` (optional): the universe domain to connect to (e.g. `googleapis.com`). Leave unset to use the default Google Default Universe (GDU). Set this only when targeting a non-default universe such as a Trusted Partner Cloud (TPC).
+
 4. **Run the integration tests:**
 
    ```bash

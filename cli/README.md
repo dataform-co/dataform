@@ -127,6 +127,8 @@ Prompts for:
    - JSON key: prompts for the path to a downloaded service account key file.
 3. A service account to impersonate (optional, press Enter to skip). It's saved as `impersonateServiceAccount`, see [Credentials file](#credentials-file).
 
+`init-creds` does not prompt for a universe domain. When the JSON key contains a non-default `universe_domain`, that value is saved as `universeDomain`. The default `googleapis.com` is left unset. To target a non-default universe with ADC, set `universeDomain` by hand in `.df-credentials.json`.
+
 **Positional arguments**
 
 <!-- BEGIN GENERATED: positionals init-creds -->
@@ -344,6 +346,7 @@ Additional details:
 
 - **Location** is optional in both of the above (`init-creds` omits it if `auto` is chosen)
 - **Service account impersonation** (optional, with either of the above): add `"impersonateServiceAccount": "<service account email>"` to run BigQuery queries (and lineage emission) as that service account. Your ADC identity, or the key above, is used to impersonate it and needs `roles/iam.serviceAccountTokenCreator` on that service account. `init-creds` asks for it as an optional last step.
+- **Universe domain** (optional): add `"universeDomain": "s3nsapis.fr"` when BigQuery is in a non-default universe, such as a Trusted Partner Cloud. Leave it unset for the Google Default Universe. It can be combined with `impersonateServiceAccount`. Lineage emission is skipped when this field names a non-default universe, because Cloud Data Lineage is not available outside the Google Default Universe. `googleapis.com` does not disable lineage. When `credentials` is a service account key, `universeDomain` must equal that key's `universe_domain`; a mismatch is rejected when the file is read.
 
 Only BigQuery is supported by `init-creds` and the bundled BigQuery adapter in this codebase. Treat `.df-credentials.json` as a secret — `dataform init` adds it to `.gitignore` automatically; never commit it.
 
