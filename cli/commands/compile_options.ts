@@ -16,6 +16,7 @@ export interface ICompileArgs
   extends IProjectDirArgs, IProjectConfigArgs, IJsonOutputArgs, ITimeoutArgs {
   watch: boolean;
   dot: boolean;
+  mermaid: boolean;
   quiet: boolean;
   outputActions?: string[];
   outputTags?: string[];
@@ -79,13 +80,29 @@ export const dotOutputOption: INamedOption<yargs.Options, ICompileArgs> = {
   option: {
     describe:
       "Outputs a Graphviz DOT representation of the compiled project. Mutually exclusive with " +
-      "--json.",
+      "--json and --mermaid.",
     type: "boolean",
     default: false,
   },
   check: (argv: yargs.Arguments<ICompileArgs>) => {
     if (argv.json && argv.dot) {
       throw new Error("Arguments --json and --dot are mutually exclusive.");
+    }
+  },
+};
+
+export const mermaidOutputOption: INamedOption<yargs.Options, ICompileArgs> = {
+  name: "mermaid",
+  option: {
+    describe:
+      "Outputs a Mermaid flowchart representation of the compiled project. Mutually exclusive " +
+      "with --json and --dot.",
+    type: "boolean",
+    default: false,
+  },
+  check: (argv: yargs.Arguments<ICompileArgs>) => {
+    if (argv.mermaid && (argv.json || argv.dot)) {
+      throw new Error("Argument --mermaid is mutually exclusive with --json and --dot.");
     }
   },
 };
@@ -125,6 +142,7 @@ export const verboseOption: INamedOption<yargs.Options, ICompileArgs> = {
 export const compileOptions: Array<INamedOption<yargs.Options, ICompileArgs>> = [
   jsonOutputOption,
   dotOutputOption,
+  mermaidOutputOption,
   verboseOption,
   quietCompileOption,
   watchOption,
