@@ -1,0 +1,42 @@
+#!/bin/bash
+
+# Shared configuration and authentication setup for canary test scripts.
+# Intended to be sourced from scripts run at the repository root.
+
+_PR_NUMBER="${_PR_NUMBER:-0}"
+CANARY_DIR="tools/canary"
+
+# Load the local config override if present, otherwise the defaults.
+CANARY_CONFIG_FILE="${CANARY_DIR}/config.env"
+if [[ -f "${CANARY_DIR}/config.local.env" ]]; then
+  CANARY_CONFIG_FILE="${CANARY_DIR}/config.local.env"
+elif [[ ! -f "${CANARY_CONFIG_FILE}" ]]; then
+  echo "Error: neither ${CANARY_DIR}/config.local.env nor ${CANARY_DIR}/config.env found. Make sure the script is run from the repository root." 1>&2
+  exit 1
+fi
+echo "Loading canary config from ${CANARY_CONFIG_FILE}"
+set -a
+source "${CANARY_CONFIG_FILE}"
+set +a
+
+if [[ -z "${_CANARY_GCP_PROJECT:-}" || -z "${_CANARY_LOCATION:-}" || -z "${_CANARY_REPO:-}" || -z "${_CANARY_BUCKET:-}" || -z "${_CANARY_SERVICE_ACCOUNT:-}" ]]; then
+  echo "Error: _CANARY_GCP_PROJECT, _CANARY_LOCATION, _CANARY_REPO, _CANARY_BUCKET and _CANARY_SERVICE_ACCOUNT must be set." 1>&2
+  exit 1
+fi
+
+if [[ -n "${BUILD_ID:-}" ]]; then
+  RUN_ID="${BUILD_ID}"
+else
+  RUN_ID=$(date +%s)
+fi
+
+# When running on cloudbuild, the token will have been generated in the previous steps
+if [[ -f ~/gcp_token.txt ]]; then
+  GCP_TOKEN=$(cat ~/gcp_token.txt)
+elif command -v gcloud >/dev/null 2>&1; then
+  GCP_TOKEN=$(gcloud auth application-default print-access-token)
+else
+  echo "Error: Unable to obtain GCP access token." 1>&2
+  exit 1
+fi
+export GCP_TOKEN

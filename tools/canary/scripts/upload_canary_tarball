@@ -1,0 +1,46 @@
+#!/bin/bash
+set -euo pipefail
+
+# Verifies that the target GCS bucket exists, uploads a local Core tarball to it,
+# generates a V4 signed URL for the uploaded object, and prints the signed URL to stdout.
+#
+# Required environment variables:
+#   LOCAL_TARBALL           - Path to the local .tar.gz bundle
+#   TARBALL_NAME            - Destination object name in the GCS bucket
+#   _CANARY_BUCKET          - GCS bucket name
+#   _CANARY_SERVICE_ACCOUNT - Service account email to impersonate for signing the URL
+#   _CANARY_LOCATION        - GCP location/region
+
+: "${LOCAL_TARBALL:?Error: LOCAL_TARBALL must be set}"
+: "${TARBALL_NAME:?Error: TARBALL_NAME must be set}"
+: "${_CANARY_BUCKET:?Error: _CANARY_BUCKET must be set}"
+: "${_CANARY_SERVICE_ACCOUNT:?Error: _CANARY_SERVICE_ACCOUNT must be set}"
+: "${_CANARY_LOCATION:?Error: _CANARY_LOCATION must be set}"
+
+if [[ ! -f "${LOCAL_TARBALL}" ]]; then
+  echo "Error: ${LOCAL_TARBALL} not found." 1>&2
+  exit 1
+fi
+
+echo "Verifying GCS bucket exists: ${_CANARY_BUCKET}" 1>&2
+if ! gcloud storage buckets describe "gs://${_CANARY_BUCKET}" --format="value(name)" >/dev/null; then
+  echo "Error verifying GCS bucket ${_CANARY_BUCKET}." 1>&2
+  echo "This is most likely an infra failure, not an issue with the Dataform code" 1>&2
+  exit 1
+fi
+
+echo "Uploading Core tarball to gs://${_CANARY_BUCKET}/${TARBALL_NAME}..." 1>&2
+if ! gcloud storage cp "${LOCAL_TARBALL}" "gs://${_CANARY_BUCKET}/${TARBALL_NAME}" 1>&2; then
+  echo "Error uploading Core tarball to GCS." 1>&2
+  echo "This is most likely an infra failure, not an issue with the Dataform code" 1>&2
+  exit 1
+fi
+
+echo "Generating V4 signed URL for gs://${_CANARY_BUCKET}/${TARBALL_NAME}..." 1>&2
+SIGNED_TARBALL_URL=$(gcloud storage sign-url "gs://${_CANARY_BUCKET}/${TARBALL_NAME}" \
+  --impersonate-service-account="${_CANARY_SERVICE_ACCOUNT}" \
+  --duration=10m \
+  --region="${_CANARY_LOCATION}" \
+  --format="value(signed_url)")
+
+echo "${SIGNED_TARBALL_URL}"
