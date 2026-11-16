@@ -3,7 +3,9 @@ name: Security updates
 # Updates npm dependencies affected by security advisories to fixed versions
 # released at least 14 days ago (see scripts/update_vulnerable_deps) and opens
 # or updates a PR from the deps/security-updates branch. The branch is
-# rewritten on every run, so don't push changes to it.
+# rewritten when the updates change, so don't push changes to it. The run
+# summary lists the updated packages and the vulnerable ones that are waiting,
+# changed in other PRs or need a manual update.
 #
 # PRs opened with the default GITHUB_TOKEN don't trigger GitHub Actions
 # workflows. To run them, store a token of a GitHub App or a fine-grained
@@ -12,11 +14,13 @@ name: Security updates
 
 on:
   schedule:
-    - cron: "0 6 * * 1" # Mondays at 06:00 UTC.
+    - cron: "0 6 * * 1-5" # Weekdays at 06:00 UTC.
   workflow_dispatch:
     inputs:
       dry-run:
-        description: Only show the planned updates; don't push or open a PR.
+        description: >-
+          Only report vulnerable dependencies and the planned updates in the run
+          summary; don't push or open a PR.
         type: boolean
         default: true
 
@@ -72,6 +76,16 @@ jobs:
               gh pr close "${existing}" --delete-branch \
                 --comment "No dependency updates are needed any more; closing."
             fi
+            exit 0
+          fi
+
+          # Don't push if the PR already has exactly these changes (e.g. on the
+          # days when no new fix passed the cooldown); only refresh its
+          # description, which includes the waiting and manual updates.
+          if [[ -n "${existing}" ]] && git fetch -q origin "${BRANCH}" &&
+             git diff --quiet FETCH_HEAD -- package.json pnpm-lock.yaml; then
+            echo "The PR is up to date; only updating its description."
+            gh pr edit "${existing}" --body-file "${RUNNER_TEMP}/summary.md"
             exit 0
           fi
 

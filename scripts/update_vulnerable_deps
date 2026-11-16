@@ -2,9 +2,9 @@
 """Updates vulnerable npm dependencies in pnpm-lock.yaml to fixed versions.
 
 For every package version in pnpm-lock.yaml that is affected by a security
-advisory in the public GitHub Advisory Database, picks the first patched version
-of the matching release line and, if it was published at least COOLDOWN_DAYS
-ago, pins it in the lockfile:
+advisory in the public GitHub Advisory Database, picks the highest fixed version
+of the matching release line that was published at least COOLDOWN_DAYS ago and
+pins it in the lockfile:
 
   1. temporarily set an exact override for the package in package.json,
   2. regenerate the lockfile (pnpm install --lockfile-only),
@@ -15,7 +15,9 @@ pnpm keeps the pinned version in step 3, so only that package (and any new
 dependencies of the fixed version) change. Each update is verified: if a
 vulnerable version is still locked afterwards, for example because the fix is
 outside the range a dependent package requests, the change is reverted and the
-package is reported for a manual update.
+package is reported for a manual update. Packages with a dependency-specific
+override (e.g. "a@1.0.0>b") or without a fixed version are reported too, and
+packages whose locked versions another open PR changes are skipped.
 
 Usage:
   ./scripts/update_vulnerable_deps [--summary FILE]
@@ -42,6 +44,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -90,20 +93,25 @@ def in_range(version, version_range):
 # --- Files --------------------------------------------------------------------
 
 
+def parse_lockfile(lines):
+    """Returns {name: {versions}} for the registry packages in a lockfile."""
+    packages, in_packages = {}, False
+    for line in lines:
+        if line.startswith("packages:"):
+            in_packages = True
+            continue
+        if in_packages and line.strip() and not line[0].isspace():
+            break
+        m = re.match(r"^  '?(@?[^@\s']+)@([^(:'\s]+)", line) if in_packages else None
+        if m and NAME.match(m[1]) and parse_version(m[2]):
+            packages.setdefault(m[1], set()).add(m[2])
+    return packages
+
+
 def locked_packages():
     """Returns {name: {versions}} for the registry packages in the lockfile."""
-    packages, in_packages = {}, False
     with open(LOCKFILE) as f:
-        for line in f:
-            if line.startswith("packages:"):
-                in_packages = True
-                continue
-            if in_packages and line.strip() and not line[0].isspace():
-                break
-            m = re.match(r"^  '?(@?[^@\s']+)@([^(:'\s]+)", line) if in_packages else None
-            if m and NAME.match(m[1]) and parse_version(m[2]):
-                packages.setdefault(m[1], set()).add(m[2])
-    return packages
+        return parse_lockfile(f)
 
 
 OVERRIDE_LINE = re.compile(r'^(\s*)"((?:[^"\\]|\\.)+)":\s*"((?:[^"\\]|\\.)*)"(,?)\s*$')
@@ -183,9 +191,11 @@ def get_json(url, github=False):
 
 
 def advisory_fixes(packages):
-    """Returns {(name, fixed version): {"ids": set, "vulnerable": set}}."""
+    """Returns (fixes, unfixed): fixes maps (name, fixed version) to
+    {"ids": set, "vulnerable": set}; unfixed lists summary rows for vulnerable
+    versions without a fixed version."""
     specs = sorted("%s@%s" % (n, v) for n, versions in packages.items() for v in versions)
-    fixes = {}
+    fixes, unfixed = {}, {}
     for i in range(0, len(specs), 100):
         url = "https://api.github.com/advisories?" + urllib.parse.urlencode({
             "ecosystem": "npm", "per_page": 100, "affects": ",".join(specs[i:i + 100])})
@@ -196,20 +206,23 @@ def advisory_fixes(packages):
                     continue
                 for vuln in advisory.get("vulnerabilities") or []:
                     name = (vuln.get("package") or {}).get("name")
-                    fix = vuln.get("first_patched_version")
-                    if isinstance(fix, dict):
-                        fix = fix.get("identifier")
-                    if name not in packages or not fix or not parse_version(fix):
+                    if name not in packages:
                         continue
                     vulnerable = {v for v in packages[name]
                                   if in_range(v, vuln.get("vulnerable_version_range") or "")}
-                    if vulnerable:
-                        entry = fixes.setdefault((name, fix), {"ids": set(), "vulnerable": set()})
-                        entry["ids"].add(advisory["ghsa_id"])
-                        entry["vulnerable"] |= vulnerable
+                    if not vulnerable:
+                        continue
+                    fix = vuln.get("first_patched_version")
+                    if isinstance(fix, dict):
+                        fix = fix.get("identifier")
+                    key = (name, fix) if fix and parse_version(fix) else name
+                    entry = (fixes if isinstance(key, tuple) else unfixed).setdefault(
+                        key, {"ids": set(), "vulnerable": set()})
+                    entry["ids"].add(advisory["ghsa_id"])
+                    entry["vulnerable"] |= vulnerable
             if not url:
                 break
-    return fixes
+    return fixes, [row(name, "-", [(None, info)]) for name, info in sorted(unfixed.items())]
 
 
 publish_times = {}
@@ -224,22 +237,41 @@ def published(name, version):
     return datetime.datetime.fromisoformat(value.replace("Z", "+00:00")) if value else None
 
 
-def packages_in_open_prs():
-    """Returns {package name: PR number} for package names mentioned in the
-    titles of other open PRs, to avoid duplicating their updates."""
-    mentioned = {}
+def lockfile_at(repo, sha):
+    """Returns {name: {versions}} for pnpm-lock.yaml at a commit."""
+    url = "https://raw.githubusercontent.com/%s/%s/%s" % (repo, sha, LOCKFILE)
+    with urllib.request.urlopen(url, timeout=120) as response:
+        return parse_lockfile(response.read().decode().splitlines())
+
+
+def packages_changed_by_open_prs():
+    """Returns {package name: PR number} for the packages whose locked versions
+    other open PRs change, to avoid proposing the same update twice."""
+    changed = {}
     try:
         prs, _ = get_json("https://api.github.com/repos/%s/pulls?state=open&per_page=100"
                           % GITHUB_REPO, github=True)
     except Exception as e:  # Not fatal: worst case, an update is proposed twice.
         log("WARNING: could not list open PRs: %s" % e)
-        return mentioned
+        return changed
     for pr in prs:
         if pr["head"]["ref"] == SKIP_BRANCH:
             continue
-        for word in re.findall(r"@?[a-z0-9][a-z0-9._/-]*", pr["title"].lower()):
-            mentioned.setdefault(word, pr["number"])
-    return mentioned
+        head_repo = (pr["head"].get("repo") or {}).get("full_name") or GITHUB_REPO
+        try:
+            head = lockfile_at(head_repo, pr["head"]["sha"])
+            base = lockfile_at(GITHUB_REPO, pr["base"]["sha"])
+        except urllib.error.HTTPError as e:
+            if e.code != 404:  # 404: no pnpm-lock.yaml, e.g. a PR from before pnpm.
+                log("WARNING: could not compare the lockfiles of PR #%d: %s" % (pr["number"], e))
+            continue
+        except Exception as e:  # Not fatal: worst case, an update is proposed twice.
+            log("WARNING: could not compare the lockfiles of PR #%d: %s" % (pr["number"], e))
+            continue
+        for name in set(head) | set(base):
+            if head.get(name) != base.get(name):
+                changed.setdefault(name, pr["number"])
+    return changed
 
 
 # --- Main ---------------------------------------------------------------------
@@ -258,8 +290,6 @@ def restore(directory):
 def apply_fix(name, fix):
     """Pins name@fix in the lockfile; see the module docstring."""
     _, _, _, entries = read_overrides()
-    if any(">" in key and key.rsplit(">", 1)[1].rsplit("@", 1)[0] == name for key in entries):
-        raise RuntimeError("has a dependency-specific override")
     previous = entries.get(name, (None, None))[1]
     set_override(name, fix)
     regenerate_lockfile()
@@ -316,15 +346,24 @@ def main():
 
     now = datetime.datetime.now(datetime.timezone.utc)
     before = locked_packages()
-    planned, skipped = plan_updates(advisory_fixes(before), now)
-    in_prs = packages_in_open_prs()
-    updated = []
+    fixes, unfixed = advisory_fixes(before)
+    planned, waiting = plan_updates(fixes, now)
+    in_prs = packages_changed_by_open_prs()
+    updated, in_other_prs = [], []
+    manual = [dict(r, fix="-", reason="no fixed version released yet") for r in unfixed]
 
     work = tempfile.mkdtemp()
     for r in planned:
         name, fix = r["name"], r["fix"]
-        if name.lower() in in_prs:
-            skipped.append(dict(r, reason="already in PR #%d" % in_prs[name.lower()]))
+        if name in in_prs:
+            in_other_prs.append(dict(r, reason="changed in PR #%d" % in_prs[name]))
+            continue
+        _, _, _, entries = read_overrides()
+        scoped = [key for key in entries if ">" in key and
+                  key.rsplit(">", 1)[1].rsplit("@", 1)[0] == name]
+        if scoped:
+            manual.append(dict(r, reason="has a dependency-specific override (`%s`)"
+                               % "`, `".join(scoped)))
             continue
         log("Updating %s %s -> %s" % (name, r["from"], fix))
         snapshot(work)
@@ -332,15 +371,15 @@ def main():
             apply_fix(name, fix)
             still = locked_packages().get(name, set()) & r["vulnerable"]
             if still:
-                raise RuntimeError("the fix is outside the range requested by a dependent "
-                                   "package; %s is still locked" % ", ".join(sorted(still)))
+                raise RuntimeError("the fix is outside the version range that a package "
+                                   "depending on it requests (%s is still locked)"
+                                   % ", ".join(sorted(still, key=parse_version)))
             updated.append(r)
         except RuntimeError as e:
             restore(work)
             log("  skipped: %s" % e)
-            skipped.append(dict(r, reason="needs a manual update: %s" % str(e).split("\n")[0]))
+            manual.append(dict(r, reason=str(e).split("\n")[0]))
     shutil.rmtree(work)
-    skipped.sort(key=lambda r: r["name"])
 
     after = locked_packages()
     new_versions = sorted((n, v) for n, versions in after.items()
@@ -351,24 +390,32 @@ def main():
         if when is None or (now - when).days < COOLDOWN_DAYS:
             fresh.append("%s@%s" % (n, v))
 
-    summary = render_summary(updated, skipped, new_versions, fresh)
+    summary = render_summary(updated, waiting, in_other_prs, manual, new_versions, fresh)
     print(summary)
     if args.summary:
         with open(args.summary, "w") as f:
             f.write(summary)
 
 
-def render_summary(updated, skipped, new_versions, fresh):
+def render_summary(updated, waiting, in_other_prs, manual, new_versions, fresh):
     def advisories(row):
         return ", ".join("[%s](https://github.com/advisories/%s)" % (i, i) for i in row["ids"])
 
-    out = ["Updates dependencies affected by security advisories to the first patched "
-           "version released at least %d days ago." % COOLDOWN_DAYS, ""]
+    def table(rows, fix_header="Fix", reason=True):
+        header = "| Package | Vulnerable | %s | Advisories |%s" % (fix_header, " Reason |" if reason else "")
+        lines = [header, "|---|---|---|---|" + ("---|" if reason else "")]
+        for r in sorted(rows, key=lambda r: r["name"]):
+            lines.append("| `%s` | %s | %s | %s |%s" % (
+                r["name"], r["from"], r["fix"], advisories(r),
+                " %s |" % r["reason"] if reason else ""))
+        return lines + [""]
+
+    out = ["Updates dependencies affected by security advisories to the highest fixed "
+           "version of the same release line that was released at least %d days ago."
+           % COOLDOWN_DAYS, ""]
+    out += ["### Updated", ""]
     if updated:
-        out += ["### Updated", "", "| Package | From | To | Advisories |", "|---|---|---|---|"]
-        out += ["| `%s` | %s | %s | %s |" % (r["name"], r["from"], r["fix"], advisories(r))
-                for r in updated]
-        out.append("")
+        out += table(updated, fix_header="Updated to", reason=False)
         out += ["New versions in the lockfile: " + ", ".join(
             "`%s@%s`" % nv for nv in new_versions) + ".", ""]
         if fresh:
@@ -376,12 +423,18 @@ def render_summary(updated, skipped, new_versions, fresh):
                     % COOLDOWN_DAYS + ", ".join("`%s`" % f for f in fresh) + ".", ""]
     else:
         out += ["No updates.", ""]
-    if skipped:
-        out += ["### Not updated", "", "| Package | Vulnerable | Fix | Reason |",
-                "|---|---|---|---|"]
-        out += ["| `%s` | %s | %s | %s |" % (r["name"], r["from"], r["fix"], r["reason"])
-                for r in skipped]
-        out.append("")
+    if waiting:
+        out += ["### Waiting", "",
+                "The fix was released less than %d days ago; it will be updated automatically "
+                "later." % COOLDOWN_DAYS, ""] + table(waiting)
+    if in_other_prs:
+        out += ["### Changed in other PRs", ""] + table(in_other_prs)
+    if manual:
+        out += ["### Needs a manual update", "",
+                "These can't be updated automatically. If the fix is outside the version "
+                "range that a package depending on it requests, update that package, or add "
+                "an override in `pnpm.overrides` if the fix is compatible (see "
+                "contributing.md).", ""] + table(manual)
     out.append("Generated by `scripts/update_vulnerable_deps`.")
     return "\n".join(out) + "\n"
 
