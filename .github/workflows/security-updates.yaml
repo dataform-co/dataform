@@ -7,10 +7,11 @@ name: Security updates
 # summary lists the updated packages and the vulnerable ones that are waiting,
 # changed in other PRs or need a manual update.
 #
-# PRs opened with the default GITHUB_TOKEN don't trigger GitHub Actions
-# workflows. To run them, store a token of a GitHub App or a fine-grained
-# personal access token (contents and pull requests: read and write) in the
-# SECURITY_UPDATES_TOKEN secret.
+# The branch is pushed and the PR opened with an installation token of the
+# dataform-security-updates GitHub App (repo secrets SECURITY_UPDATES_APP_ID
+# and SECURITY_UPDATES_PRIVATE_KEY; contents and pull requests: read and
+# write). Unlike with the default GITHUB_TOKEN, its pushes and PRs trigger the
+# GitHub Actions workflows.
 
 on:
   schedule:
@@ -36,8 +37,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
-      contents: write # Push the deps/security-updates branch.
-      pull-requests: write # Open, update or close its PR.
+      contents: read # Check out the repo; writes use the GitHub App token.
     env:
       BRANCH: deps/security-updates
       DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run }}
@@ -61,10 +61,21 @@ jobs:
           cat "${RUNNER_TEMP}/summary.md" >> "${GITHUB_STEP_SUMMARY}"
           git diff --stat
 
+      - name: Create a GitHub App token
+        id: app-token
+        if: env.DRY_RUN != 'true'
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          app-id: ${{ secrets.SECURITY_UPDATES_APP_ID }}
+          private-key: ${{ secrets.SECURITY_UPDATES_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+
       - name: Open, update or close the PR
         if: env.DRY_RUN != 'true'
         env:
-          GH_TOKEN: ${{ secrets.SECURITY_UPDATES_TOKEN || github.token }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
         run: |
           set -euo pipefail
           title="Update vulnerable npm dependencies"
@@ -89,8 +100,11 @@ jobs:
             exit 0
           fi
 
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Commit as the GitHub App's bot user.
+          bot="${APP_SLUG}[bot]"
+          bot_id="$(gh api "/users/${bot}" --jq .id)"
+          git config user.name "${bot}"
+          git config user.email "${bot_id}+${bot}@users.noreply.github.com"
           git switch -c "${BRANCH}"
           git commit -q -m "${title}" -- package.json pnpm-lock.yaml
           auth="$(printf 'x-access-token:%s' "${GH_TOKEN}" | base64 -w0)"
