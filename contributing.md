@@ -165,10 +165,20 @@ $ bazel run -- @pnpm --dir "$PWD" add ...
 
 Replace "$PWD" with path to the project directory if running from outside it. The --dir option is necessary, otherwise pnpm will install in Bazel's ephemeral output directory tree.
 
-pnpm will use the registry specified in ~/.npmrc by default. When building in the Cloud, this will be set to a trusted internal registry. In local development, feel free to use a public registry like https://registry.npmjs.org/. Before committing, make sure pnpm-lock.yaml does not contain tarball: fields (pnpm only adds them when a registry serves packages from non-standard URLs, for example some mirrors or proxies, so you shouldn't normally see them with the public npm registry).
+pnpm will use the registry specified in ~/.npmrc by default. When building in the Cloud, this will be set to a trusted internal registry, which makes new package versions available only some time after they're published. If you have access to that registry, use it in ~/.npmrc when you add or update dependencies: pnpm then only picks versions that CI can install. Otherwise, a public registry like https://registry.npmjs.org/ works too, but a version that was published recently may not be installable in CI yet. Before committing, make sure pnpm-lock.yaml does not contain tarball: fields (pnpm only adds them when a registry serves packages from non-standard URLs, for example some mirrors or proxies, so you shouldn't normally see them with the public npm registry).
 
 Additionally, installed NPM dependencies need to be added to the `deps` of `ts_library` rules by
 prefixing them with `//:node_modules/...`.
+
+### Update Transitive NPM Dependencies
+
+With pnpm, Dependabot can only update direct dependencies (the ones listed in `package.json`). A vulnerable transitive dependency is fixed by adding or updating an entry in `pnpm.overrides` in `package.json` and regenerating the lockfile:
+
+```bash
+$ bazel run -- @pnpm --dir "$PWD" install --lockfile-only
+```
+
+Prefer a range (for example `"^3.1.9"`) over an exact version in overrides, so later compatible releases can be picked up without editing the override. A range resolves to the newest matching version available in your registry when you regenerate the lockfile, so check that this version can be installed in CI (see above). Use an exact version when the override intentionally forces a version outside the range requested by the package that depends on it, or when the newest version in the range isn't available in CI yet.
 
 ## Windows Support
 

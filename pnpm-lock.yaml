@@ -13,17 +13,17 @@ overrides:
   protobufjs: ^7.6.5
   ansi-regex: ^3.0.1
   node-fetch: ^2.6.7
-  mdurl: 2.0.0
+  mdurl: ^2.0.0
   wrap-ansi: 7.0.0
   string-width: 4.1.0
-  '@eslint-community/eslint-utils': 4.9.1
+  '@eslint-community/eslint-utils': ^4.9.1
   brace-expansion: 5.0.12
   linkify-it: ^5.0.2
-  '@eslint/plugin-kit': 0.7.2
+  '@eslint/plugin-kit': ^0.7.2
   '@google-cloud/storage@7.19.0>uuid': 14.0.2
   gaxios@6.7.1>uuid: 14.0.2
   teeny-request@9.0.0>uuid: 14.0.2
-  fast-uri: 3.1.7
+  fast-uri: ^3.1.7
 
 importers:
 
