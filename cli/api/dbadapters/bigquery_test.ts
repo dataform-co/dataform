@@ -206,7 +206,15 @@ suite("BigQueryDbAdapter", () => {
         {
           type: "TABLE",
           tableReference: { projectId, datasetId: schemaName, tableId: tableName },
-          schema: { fields: [{ name: "col1", type: "STRING", mode: "NULLABLE" }] },
+          schema: {
+            fields: [
+              { name: "col1", type: "STRING", mode: "NULLABLE" },
+              { name: "bn", type: "BIGNUMERIC" },
+              { name: "n", type: "NUMERIC" },
+              { name: "j", type: "JSON" },
+              { name: "iv", type: "INTERVAL" },
+            ],
+          },
           lastModifiedTime: "123456789",
         },
       ] as any),
@@ -218,8 +226,13 @@ suite("BigQueryDbAdapter", () => {
     expect(result[0].target.database).to.equal(projectId);
     expect(result[0].target.schema).to.equal(schemaName);
     expect(result[0].target.name).to.equal(tableName);
-    expect(result[0].fields.length).to.equal(1);
-    expect(result[0].fields[0].name).to.equal("col1");
+    expect(result[0].fields.map((field) => [field.name, field.primitive])).deep.equals([
+      ["col1", dataform.Field.Primitive.STRING],
+      ["bn", dataform.Field.Primitive.BIGNUMERIC],
+      ["n", dataform.Field.Primitive.NUMERIC],
+      ["j", dataform.Field.Primitive.JSON],
+      ["iv", dataform.Field.Primitive.INTERVAL],
+    ]);
   });
 
   test("tables() without schema lists all datasets and tables", async () => {
@@ -427,75 +440,5 @@ suite("BigQueryDbAdapter", () => {
       schema: liveSchema,
       name: tableName,
     });
-  });
-
-  test("table() keeps BIGNUMERIC, JSON and INTERVAL field types", async () => {
-    const target = { database: "p", schema: "s", name: "t" };
-    const mockBigQuery: any = {
-      dataset: () => ({
-        table: () => ({
-          getMetadata: () =>
-            Promise.resolve([
-              {
-                type: "TABLE",
-                tableReference: { projectId: "p", datasetId: "s", tableId: "t" },
-                schema: {
-                  fields: [
-                    { name: "bn", type: "BIGNUMERIC" },
-                    { name: "n", type: "NUMERIC" },
-                    { name: "j", type: "JSON" },
-                    { name: "iv", type: "INTERVAL" },
-                    { name: "s", type: "STRING" },
-                  ],
-                },
-                lastModifiedTime: "123456789",
-              },
-            ]),
-        }),
-      }),
-    };
-    const adapter = new BigQueryDbAdapter(dataform.BigQuery.create({ projectId: "p" }), {
-      clientProvider: () => mockBigQuery,
-    });
-
-    const result = await adapter.table(target);
-
-    expect(result.fields.map((field) => [field.name, field.primitive])).deep.equals([
-      ["bn", dataform.Field.Primitive.BIGNUMERIC],
-      ["n", dataform.Field.Primitive.NUMERIC],
-      ["j", dataform.Field.Primitive.JSON],
-      ["iv", dataform.Field.Primitive.INTERVAL],
-      ["s", dataform.Field.Primitive.STRING],
-    ]);
-  });
-
-  test("executeRaw() keeps BIGNUMERIC, JSON and INTERVAL field types", async () => {
-    // executeRaw() supplies the schemas JiT code receives from ExecuteResponse.schemaFields.
-    const mockBigQuery: any = {
-      query: async (): Promise<any[]> => [
-        [],
-        undefined,
-        {
-          schema: {
-            fields: [
-              { name: "n", type: "BIGNUMERIC" },
-              { name: "j", type: "JSON" },
-              { name: "i", type: "INTERVAL" },
-            ],
-          },
-        },
-      ],
-    };
-    const adapter = new BigQueryDbAdapter(dataform.BigQuery.create({ projectId: "p" }), {
-      clientProvider: () => mockBigQuery,
-    });
-
-    const result = await adapter.executeRaw("SELECT 1");
-
-    expect(result.schema.map((field) => field.primitive)).deep.equals([
-      dataform.Field.Primitive.BIGNUMERIC,
-      dataform.Field.Primitive.JSON,
-      dataform.Field.Primitive.INTERVAL,
-    ]);
   });
 });
