@@ -416,11 +416,13 @@ export class BigQueryDbAdapter implements IDbAdapter {
     return data[0].map((dataset) => dataset.id);
   }
 
-  public async setMetadata(action: dataform.IExecutionAction): Promise<void> {
+  public async setMetadata(
+    action: dataform.IExecutionAction,
+    options?: { bigquery?: IBigQueryExecutionOptions },
+  ): Promise<void> {
     const { target, actionDescriptor } = action;
     if (isLakehouseTarget(target)) {
-      // BigQuery's tables.patch REST endpoint rejects 4-part Lakehouse Iceberg tables
-      // ("Connection is required for BigQuery tables for Apache Iceberg").
+      await this.setLakehouseMetadata(target, actionDescriptor, options);
       return;
     }
 
@@ -435,6 +437,40 @@ export class BigQueryDbAdapter implements IDbAdapter {
       schema: schemaWithDescription,
       labels: actionDescriptor.bigqueryLabels,
     });
+  }
+
+  private async setLakehouseMetadata(
+    target: dataform.ITarget,
+    actionDescriptor?: dataform.IActionDescriptor | null,
+    options?: { bigquery?: IBigQueryExecutionOptions },
+  ): Promise<void> {
+    if (!target.database) {
+      throw new Error(
+        `Cannot set metadata on Lakehouse table "${target.schema}.${target.name}" without a target database (project).`,
+      );
+    }
+    // BigQuery's tables.patch REST endpoint rejects 4-part Lakehouse Iceberg tables, so apply
+    // table and top-level column descriptions via SQL DDL instead. BigQuery does not allow
+    // mixing table SET OPTIONS and ALTER COLUMN in a single ALTER TABLE statement.
+    const qualifiedTable = `\`${target.database}.${target.schema}.${target.name}\``;
+    const statements: string[] = [];
+    if (actionDescriptor?.description != null && actionDescriptor.description !== "") {
+      statements.push(
+        `ALTER TABLE ${qualifiedTable} SET OPTIONS(description = ${escapeSqlStringLiteral(actionDescriptor.description)});`,
+      );
+    }
+    const alterColumns = (actionDescriptor?.columns || [])
+      .filter((col) => col.path?.length === 1 && col.description != null && col.description !== "")
+      .map(
+        (col) =>
+          `ALTER COLUMN IF EXISTS \`${col.path[0]}\` SET OPTIONS(description = ${escapeSqlStringLiteral(col.description)})`,
+      );
+    if (alterColumns.length > 0) {
+      statements.push(`ALTER TABLE ${qualifiedTable} ${alterColumns.join(", ")};`);
+    }
+    if (statements.length > 0) {
+      await this.execute(statements.join("\n"), { bigquery: options?.bigquery });
+    }
   }
 
   private async getMetadata(target: dataform.ITarget): Promise<TableMetadata> {
@@ -743,4 +779,12 @@ function createBigQueryError(jobMetadata: any): IBigQueryError {
     };
   }
   return error;
+}
+
+function escapeSqlStringLiteral(value: string): string {
+  return `'${value
+    .replace(/\\/g, "\\\\")
+    .replace(/'/g, "\\'")
+    .replace(/\n/g, "\\n")
+    .replace(/\r/g, "\\r")}'`;
 }

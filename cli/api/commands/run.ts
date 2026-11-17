@@ -619,8 +619,6 @@ export class Runner {
 
     if (
       hasTableMetadata(action.actionDescriptor) &&
-      // BigQuery tables.patch rejects 4-part Lakehouse Iceberg tables.
-      !isLakehouseTarget(action.target) &&
       // Only set metadata if we expect the action to complete in SUCCESSFUL state
       // (i.e. it must still be RUNNING, and not FAILED).
       actionResult.status === dataform.ActionResult.ExecutionStatus.RUNNING &&
@@ -630,7 +628,9 @@ export class Runner {
       action.type === "table"
     ) {
       try {
-        await this.dbadapter.setMetadata(action);
+        await this.dbadapter.setMetadata(action, {
+          bigquery: this.getBigQueryExecutionOptions(action),
+        });
       } catch (e) {
         // TODO: Setting the metadata is not a task itself, so we have nowhere to surface this error cleanly.
         // For now, we can attach the error to the last task in the action so it gets

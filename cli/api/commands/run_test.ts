@@ -165,9 +165,10 @@ suite("Runner with 4-part Lakehouse targets", () => {
     );
   });
 
-  test("does not call setMetadata() on 4-part Lakehouse tables with descriptions", async () => {
+  test("delegates setMetadata() with execution options on 4-part Lakehouse tables with descriptions", async () => {
     const mockedDbAdapter = mock(BigQueryDbAdapter);
     when(mockedDbAdapter.execute(anyString(), anything())).thenResolve({ rows: [], metadata: {} });
+    when(mockedDbAdapter.setMetadata(anything(), anything())).thenResolve();
 
     const graph = dataform.ExecutionGraph.create({
       projectConfig,
@@ -199,8 +200,7 @@ suite("Runner with 4-part Lakehouse targets", () => {
     });
 
     const result = await new Runner(instance(mockedDbAdapter), graph).execute().result();
-
     expect(result.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
-    verify(mockedDbAdapter.setMetadata(anything())).never();
+    verify(mockedDbAdapter.setMetadata(anything(), anything())).once();
   });
 });

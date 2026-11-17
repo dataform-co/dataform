@@ -260,7 +260,7 @@ suite("schema creation", () => {
         errorMessage: "Run cancelled",
       },
     ]);
-    verify(mockedDbAdapter.setMetadata(anything())).never();
+    verify(mockedDbAdapter.setMetadata(anything(), anything())).never();
     expect(executedStatements).deep.equals([wrapped("new_ds", "CREATE TABLE a")]);
   });
 

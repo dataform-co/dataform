@@ -63,5 +63,16 @@ export interface IDbAdapter extends IDbClient {
   table(target: dataform.ITarget): Promise<dataform.ITableMetadata>;
   deleteTable(target: dataform.ITarget): Promise<void>;
 
-  setMetadata(action: dataform.IExecutionAction): Promise<void>;
+  setMetadata(
+    action: dataform.IExecutionAction,
+    options?: {
+      bigquery?: {
+        labels?: { [label: string]: string };
+        location?: string;
+        jobPrefix?: string;
+        dryRun?: boolean;
+        reservation?: string;
+      };
+    },
+  ): Promise<void>;
 }

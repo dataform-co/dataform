@@ -1,4 +1,4 @@
-import { Dataset, Table } from "@google-cloud/bigquery";
+import { BigQuery, Dataset, Table } from "@google-cloud/bigquery";
 import { expect } from "chai";
 import { EventEmitter } from "events";
 import { AuthClient, gaxios, Impersonated } from "google-auth-library";
@@ -502,18 +502,23 @@ suite("BigQueryDbAdapter", () => {
     expect(result).to.equal(null);
   });
 
-  test("setMetadata() skips tables.patch for 4-part Lakehouse targets", async () => {
+  test("setMetadata() applies table and top-level column descriptions via ALTER TABLE SQL for 4-part Lakehouse targets", async () => {
     let datasetCalled = false;
-    const mockBigQuery: any = {
+    const mockBigQuery = {
       dataset: () => {
         datasetCalled = true;
-        throw new Error("tables.patch should not be called on 4-part Lakehouse targets");
+        throw new Error("tables.patch must not be called for Lakehouse targets");
       },
-    };
+    } as unknown as BigQuery;
     const adapter = new BigQueryDbAdapter(
       dataform.BigQuery.create({ projectId: "my-gcp-project", location: "US" }),
       { concurrencyLimit: 1, clientProvider: () => mockBigQuery },
     );
+    const executedCalls: Array<{ statement: string; location?: string }> = [];
+    adapter.execute = async (statement: string, options?: any) => {
+      executedCalls.push({ statement, location: options?.bigquery?.location });
+      return { rows: [], metadata: {} };
+    };
     await adapter.setMetadata(
       dataform.ExecutionAction.create({
         target: {
@@ -522,12 +527,24 @@ suite("BigQueryDbAdapter", () => {
           name: "customer_orders",
         },
         actionDescriptor: {
-          description: "Orders table",
-          columns: [{ path: ["order_id"], description: "Primary key" }],
+          description: "Orders' main\ntable",
+          columns: [
+            { path: ["order_id"], description: "Primary key" },
+            { path: ["struct_col", "nested"], description: "Ignored nested field" },
+          ],
         },
       }),
+      { bigquery: { location: "us-central1" } },
     );
     expect(datasetCalled).to.equal(false);
+    expect(executedCalls).to.eql([
+      {
+        statement:
+          "ALTER TABLE `my-gcp-project.ecommerce_catalog.sales_dw.customer_orders` SET OPTIONS(description = 'Orders\\' main\\ntable');\n" +
+          "ALTER TABLE `my-gcp-project.ecommerce_catalog.sales_dw.customer_orders` ALTER COLUMN IF EXISTS `order_id` SET OPTIONS(description = 'Primary key');",
+        location: "us-central1",
+      },
+    ]);
   });
 
   test("deleteTable() executes 4-part DROP TABLE IF EXISTS for Lakehouse targets", async () => {
