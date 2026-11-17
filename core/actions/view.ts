@@ -455,6 +455,14 @@ export class View extends ActionBuilder<dataform.Table> {
       this.proto.fileName,
       { validateTarget: true },
     );
+    this.uniqueKeyAssertions.forEach((assertion) => {
+      assertion.database(database);
+      assertion.setParentAction(dataform.Target.create(this.proto.target));
+    });
+    if (this.rowConditionsAssertion) {
+      this.rowConditionsAssertion.database(database);
+      this.rowConditionsAssertion.setParentAction(dataform.Target.create(this.proto.target));
+    }
     return this;
   }
 
@@ -471,6 +479,18 @@ export class View extends ActionBuilder<dataform.Table> {
       this.proto.fileName,
       { validateTarget: true },
     );
+    this.uniqueKeyAssertions.forEach((assertion) => {
+      if (!this.session.projectConfig.assertionSchema) {
+        assertion.schema(schema);
+      }
+      assertion.setParentAction(dataform.Target.create(this.proto.target));
+    });
+    if (this.rowConditionsAssertion) {
+      if (!this.session.projectConfig.assertionSchema) {
+        this.rowConditionsAssertion.schema(schema);
+      }
+      this.rowConditionsAssertion.setParentAction(dataform.Target.create(this.proto.target));
+    }
     return this;
   }
 
