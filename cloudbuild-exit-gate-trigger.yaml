@@ -1,0 +1,30 @@
+# Triggered by a Cloud Build Pub/Sub notification on `cloud-builds` once the
+# publish build (`cloudbuild-publish.yaml`) finishes SUCCESS and has uploaded the
+# npm packages, SLSA provenance, and SBOM to `oss-exit-gate-prod/dataform--npm`.
+steps:
+  - name: "gcr.io/cloud-builders/git"
+    env:
+      - "COMMIT_SHA=$_COMMIT_SHA"
+    script: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+      if [ -n "${COMMIT_SHA}" ]; then
+        git fetch --depth=1 origin "${COMMIT_SHA}"
+        git checkout "${COMMIT_SHA}"
+      fi
+  - name: "gcr.io/cloud-builders/gcloud"
+    env:
+      - "BRANCH_NAME=$_BRANCH_NAME"
+    script: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+      ./scripts/write_exit_gate_manifest "${BRANCH_NAME}"
+      gcloud storage cp publish_all.json gs://oss-exit-gate-prod-projects-bucket/dataform/npm/manifests/publish_all.json
+substitutions:
+  _STATUS: ""
+  _TRIGGER_ID: ""
+  _COMMIT_SHA: ""
+  _BRANCH_NAME: ""
+options:
+  substitutionOption: ALLOW_LOOSE
+  logging: CLOUD_LOGGING_ONLY

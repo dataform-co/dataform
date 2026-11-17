@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+BRANCH="${1:-$(git branch --show-current)}"
+VERSION=$(grep 'DF_VERSION' version.bzl | awk '{ print $3 }' | tr -d '"')
+
+TAG=next
+
+# If the version is a normal release (1.2.3) and not pre-release e.g (1.2.3-alpha.1) then publish with the 'latest' tag.
+if [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    TAG=latest
+
+    if [ "main" != "$BRANCH" ]; then
+        echo "Not on the 'main' branch (got '$BRANCH'); aborting." 1>&2
+        exit 1
+    fi
+fi
+
+echo "Publishing as '$TAG' based on version: $VERSION"
+
+cat <<EOF > publish_all.json
+{
+  "publish_all": true,
+  "registry_config": {
+    "npm": {
+      "tags": ["$TAG"]
+    }
+  }
+}
+EOF
