@@ -436,6 +436,7 @@ suite("ExecutionSql for 4-part Lakehouse targets", () => {
     expect(sql).to.include(
       "EXCEPTION WHEN ERROR THEN\n  DROP TABLE IF EXISTS `project-id.default_dataset.customer_orders_df_temp_test_uuid_empty`;\n  RAISE;\nEND;",
     );
+    expect(sql).to.include("CREATE SCHEMA IF NOT EXISTS `project-id.default_dataset`;\nBEGIN");
   });
 
   test("handles onSchemaChange = EXTEND on 4-part target and applies schemaSuffix to scratch dataset", () => {
@@ -562,6 +563,7 @@ suite("ExecutionSql for 4-part Lakehouse targets", () => {
     const crossProjectExecutionSql = new ExecutionSql(
       {
         defaultDatabase: "default-project",
+        defaultLocation: "us-central1",
         databaseSuffix: "dev",
         defaultSchema: "default_dataset",
         schemaSuffix: "staging",
@@ -594,6 +596,9 @@ suite("ExecutionSql for 4-part Lakehouse targets", () => {
     );
     expect(sql).to.include(
       '"ALTER TABLE `catalog-project.ecommerce_catalog.sales_dw.customer_orders` "',
+    );
+    expect(sql).to.include(
+      "CREATE SCHEMA IF NOT EXISTS `default-project_dev.default_dataset_staging` OPTIONS(location='us-central1');\nBEGIN",
     );
 
     const noDefaultDbExecutionSql = new ExecutionSql({ defaultSchema: "default_dataset" }, "3.1.5");
