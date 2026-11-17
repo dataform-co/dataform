@@ -369,10 +369,17 @@ DECLARE columns_removed ARRAY<STRING>;`;
     return sql;
   }
 
-  private createEmptyTempTableSql(emptyTempTableName: string, query: string): string {
+  private createEmptyTempTableSql(
+    emptyTempTableName: string,
+    query: string,
+    setExpiration = false,
+  ): string {
+    const optionsClause = setExpiration
+      ? "\nOPTIONS(expiration_timestamp = TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 1 DAY))"
+      : "";
     return `
 -- Create empty table to extract schema of new query.
-CREATE OR REPLACE TABLE ${emptyTempTableName} AS (
+CREATE OR REPLACE TABLE ${emptyTempTableName}${optionsClause} AS (
   SELECT * FROM (${query}) AS insertions LIMIT 0
 );`;
   }
@@ -512,7 +519,7 @@ DROP TABLE IF EXISTS ${emptyTempTableName};
     const onSchemaChange = table.onSchemaChange || dataform.OnSchemaChange.IGNORE;
     const statements: string[] = [
       this.declareSchemaChangeVariablesSql(onSchemaChange),
-      this.createEmptyTempTableSql(emptyTempTableName, query),
+      this.createEmptyTempTableSql(emptyTempTableName, query, isLakehouseTarget(table.target)),
       this.compareSchemasSql(table.target, emptyTempTableTarget, existingColumns),
       this.applySchemaChangeStrategySql(table, qualifiedTargetTableName),
       this.cleanupSql(emptyTempTableName),

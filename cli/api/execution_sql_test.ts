@@ -437,6 +437,9 @@ suite("ExecutionSql for 4-part Lakehouse targets", () => {
       "EXCEPTION WHEN ERROR THEN\n  DROP TABLE IF EXISTS `project-id.default_dataset.customer_orders_df_temp_test_uuid_empty`;\n  RAISE;\nEND;",
     );
     expect(sql).to.include("CREATE SCHEMA IF NOT EXISTS `project-id.default_dataset`;\nBEGIN");
+    expect(sql).to.include(
+      "OPTIONS(expiration_timestamp = TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 1 DAY))",
+    );
   });
 
   test("handles onSchemaChange = EXTEND on 4-part target and applies schemaSuffix to scratch dataset", () => {
