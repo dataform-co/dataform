@@ -33,10 +33,7 @@ fi
 
 echo "Publishing as '$TAG' based on version: $VERSION"
 
-PUBLISH_REGISTRY=https://us-npm.pkg.dev/oss-exit-gate-prod/dataform--npm/
-
-bazel run //packages/@dataform/cli:package.publish -- --tag=$TAG --registry=$PUBLISH_REGISTRY
-bazel run //packages/@dataform/core:package.publish -- --tag=$TAG --registry=$PUBLISH_REGISTRY
+bazel build //packages/@dataform/cli:package //packages/@dataform/core:package
 
 cat <<EOF > publish_all.json
 {

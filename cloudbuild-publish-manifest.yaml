@@ -1,0 +1,16 @@
+steps:
+  - name: "gcr.io/cloud-builders/gcloud"
+    env:
+      - "SRC_BUILD_ID=$_SRC_BUILD_ID"
+      - "STAGING_BUCKET=$_STAGING_BUCKET"
+    script: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+
+      : "${SRC_BUILD_ID:?The _SRC_BUILD_ID substitution must be set on the trigger.}"
+      : "${STAGING_BUCKET:?The _STAGING_BUCKET substitution must be set on the trigger.}"
+
+      gcloud storage cp \
+        "gs://${STAGING_BUCKET}/exitgate-manifests/${SRC_BUILD_ID}/publish_all.json" \
+        gs://oss-exit-gate-prod-projects-bucket/dataform/npm/manifests/publish_all.json
+timeout: 600s
