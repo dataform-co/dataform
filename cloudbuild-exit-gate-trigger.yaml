@@ -1,5 +1,15 @@
-# Follow-up build triggered via Cloud Build Pub/Sub notifications after
-# cloudbuild-publish.yaml succeeds and finalizes its Artifact Registry uploads.
+# Follow-up build triggered via the Cloud Build Pub/Sub topic (`cloud-builds`)
+# once the publish build (`cloudbuild-publish.yaml`) finishes and finalizes its
+# Artifact Registry uploads.
+#
+# Expected Cloud Build Pub/Sub trigger configuration:
+#   --subscription-filter='_STATUS == "SUCCESS" && _TRIGGER_ID == "<publish-trigger-id>"'
+#   --substitutions='\
+#     _STATUS=$(body.message.data.status),\
+#     _TRIGGER_ID=$(body.message.data.buildTriggerId),\
+#     _EXPECTED_TRIGGER_ID=<publish-trigger-id>,\
+#     _COMMIT_SHA=$(body.message.data.substitutions.COMMIT_SHA),\
+#     _BRANCH_NAME=$(body.message.data.substitutions.BRANCH_NAME)'
 steps:
   - name: "gcr.io/cloud-builders/git"
     env:
@@ -26,9 +36,9 @@ steps:
       #!/usr/bin/env bash
       set -euo pipefail
       [ "${STATUS}" = "SUCCESS" ] || exit 0
+      gcloud secrets versions access latest --secret=github-token-access --format='get(payload.data)' | tr '_-' '/+' | base64 -d > ~/token.txt
       ./scripts/write_exit_gate_manifest "${BRANCH_NAME}"
       gcloud storage cp publish_all.json gs://oss-exit-gate-prod-projects-bucket/dataform/npm/manifests/publish_all.json
-      gcloud secrets versions access latest --secret=github-token-access --format='get(payload.data)' | tr '_-' '/+' | base64 -d > ~/token.txt
   - name: "gcr.io/$PROJECT_ID/github"
     entrypoint: "bash"
     env:
@@ -40,9 +50,13 @@ steps:
         set -euo pipefail
         [ "${STATUS}" = "SUCCESS" ] || exit 0
         version=$(grep 'DF_VERSION' version.bzl | awk '{ print $3 }' | tr -d '"')
-        echo "Creating release notes for $version"
         gh auth login --with-token < ~/token.txt
-        gh release create "$version" --target "${COMMIT_SHA}" --generate-notes
+        if gh release view "$version" >/dev/null 2>&1; then
+          echo "Release $version already exists, skipping"
+        else
+          echo "Creating release notes for $version"
+          gh release create "$version" --target "${COMMIT_SHA}" --generate-notes
+        fi
 substitutions:
   _STATUS: ""
   _TRIGGER_ID: ""
