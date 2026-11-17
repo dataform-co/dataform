@@ -284,7 +284,7 @@ END;`;
     }
     const uniqueId = this.uniqueIdGenerator();
     const tempTableName = `${table.target.name}_df_temp_${uniqueId}_empty`;
-    const emptyTempTableTarget = this.resolveScratchTarget(table.target, tempTableName);
+    const emptyTempTableTarget = this.resolveScratchTarget(tempTableName);
     const emptyTempTableName = this.resolveTarget(emptyTempTableTarget);
     // Note: `existingColumns` is a build-time snapshot from `tables.get` metadata (whereas the
     // standard 3-part path queries INFORMATION_SCHEMA at execution time), so schema changes made
@@ -305,26 +305,27 @@ END;`;
     tasks.add(Task.statement(scriptSql));
   }
 
-  private resolveScratchTarget(
-    tableTarget: dataform.ITarget,
-    tempTableName: string,
-  ): dataform.ITarget {
+  private resolveScratchTarget(tempTableName: string): dataform.ITarget {
+    const baseDefaultDatabase = this.project?.defaultDatabase;
+    if (!baseDefaultDatabase) {
+      throw new Error(
+        "When defining an incremental Lakehouse table with onSchemaChange, 'defaultProject' must be defined in workflow_settings.yaml.",
+      );
+    }
     const baseDefaultSchema = this.project?.defaultSchema;
     if (!baseDefaultSchema) {
       throw new Error(
         "When defining an incremental Lakehouse table, 'defaultDataset' must be defined in workflow_settings.yaml.",
       );
     }
+    const scratchDatabase = this.project?.databaseSuffix
+      ? `${baseDefaultDatabase}_${this.project.databaseSuffix}`
+      : baseDefaultDatabase;
     const scratchSchema = this.project?.schemaSuffix
       ? `${baseDefaultSchema}_${this.project.schemaSuffix}`
       : baseDefaultSchema;
-    const defaultDatabase = this.project?.defaultDatabase
-      ? this.project.databaseSuffix
-        ? `${this.project.defaultDatabase}_${this.project.databaseSuffix}`
-        : this.project.defaultDatabase
-      : undefined;
     return {
-      database: tableTarget.database || defaultDatabase,
+      database: scratchDatabase,
       schema: scratchSchema,
       name: tempTableName,
     };

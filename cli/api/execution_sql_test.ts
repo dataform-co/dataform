@@ -557,4 +557,52 @@ suite("ExecutionSql for 4-part Lakehouse targets", () => {
       ),
     ).to.throw(/missing schema fields/);
   });
+
+  test("places scratch table in defaultDatabase when Lakehouse catalog lives in another project and throws if defaultProject is unset", () => {
+    const crossProjectExecutionSql = new ExecutionSql(
+      {
+        defaultDatabase: "default-project",
+        databaseSuffix: "dev",
+        defaultSchema: "default_dataset",
+        schemaSuffix: "staging",
+      },
+      "3.1.5",
+      () => "test_uuid",
+    );
+    const crossProjectTable: dataform.ITable = {
+      type: "incremental",
+      enumType: dataform.TableType.INCREMENTAL,
+      target: {
+        database: "catalog-project",
+        schema: "ecommerce_catalog.sales_dw",
+        name: "customer_orders",
+      },
+      query: "SELECT 1 AS order_id",
+      incrementalQuery: "SELECT 1 AS order_id",
+      onSchemaChange: dataform.OnSchemaChange.EXTEND,
+    };
+
+    const sql = crossProjectExecutionSql
+      .publishTasks(crossProjectTable, { fullRefresh: false }, lakehouseMetadata)
+      .build()[0].statement;
+
+    expect(sql).to.include(
+      "CREATE OR REPLACE TABLE `default-project_dev.default_dataset_staging.customer_orders_df_temp_test_uuid_empty`",
+    );
+    expect(sql).to.include(
+      "FROM `default-project_dev.default_dataset_staging.INFORMATION_SCHEMA.COLUMNS`",
+    );
+    expect(sql).to.include(
+      '"ALTER TABLE `catalog-project.ecommerce_catalog.sales_dw.customer_orders` "',
+    );
+
+    const noDefaultDbExecutionSql = new ExecutionSql({ defaultSchema: "default_dataset" }, "3.1.5");
+    expect(() =>
+      noDefaultDbExecutionSql.publishTasks(
+        crossProjectTable,
+        { fullRefresh: false },
+        lakehouseMetadata,
+      ),
+    ).to.throw(/'defaultProject' must be defined/);
+  });
 });
