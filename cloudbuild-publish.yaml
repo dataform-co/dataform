@@ -3,7 +3,6 @@ steps:
     script: |
       #!/usr/bin/env bash
       set -euo pipefail
-      gcloud secrets versions access latest --secret=github-token-access --format='get(payload.data)' | tr '_-' '/+' | base64 -d > ~/token.txt
       REPO_TOKEN="$(gcloud auth print-access-token)" ./scripts/create_npmrc
       PACKAGES_TO_DELETE=$(gcloud artifacts packages list \
         --project=oss-exit-gate-prod \
@@ -18,19 +17,11 @@ steps:
           --quiet
       done
   - name: gcr.io/cloud-builders/bazel:7.3.2
+    env:
+      - "BRANCH_NAME=$BRANCH_NAME"
     script: |
       #!/usr/bin/env bash
       ./scripts/publish
-  - name: "gcr.io/$PROJECT_ID/github"
-    entrypoint: "bash"
-    args:
-      - "-c"
-      - |
-        set -euo pipefail
-        version=$(cat version.bzl | grep DF_VERSION | awk '{ print $3 }' | sed "s/\"//g")
-        echo "Creating release notes for $version"
-        gh auth login --with-token < ~/token.txt
-        gh release create $version --generate-notes
 artifacts:
   npmPackages:
     - repository: 'https://us-npm.pkg.dev/oss-exit-gate-prod/dataform--npm'

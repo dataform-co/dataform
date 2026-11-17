@@ -1,28 +1,52 @@
-# Triggered by a Cloud Build Pub/Sub notification on `cloud-builds` once the
-# publish build (`cloudbuild-publish.yaml`) finishes SUCCESS and has uploaded the
-# npm packages, SLSA provenance, and SBOM to `oss-exit-gate-prod/dataform--npm`.
+# Follow-up build triggered via Cloud Build Pub/Sub notifications after
+# cloudbuild-publish.yaml succeeds and finalizes its Artifact Registry uploads.
 steps:
   - name: "gcr.io/cloud-builders/git"
     env:
+      - "STATUS=$_STATUS"
+      - "TRIGGER_ID=$_TRIGGER_ID"
+      - "EXPECTED_TRIGGER_ID=$_EXPECTED_TRIGGER_ID"
       - "COMMIT_SHA=$_COMMIT_SHA"
-    script: |
-      #!/usr/bin/env bash
-      set -euo pipefail
-      if [ -n "${COMMIT_SHA}" ]; then
-        git fetch --depth=1 origin "${COMMIT_SHA}"
-        git checkout "${COMMIT_SHA}"
-      fi
-  - name: "gcr.io/cloud-builders/gcloud"
-    env:
       - "BRANCH_NAME=$_BRANCH_NAME"
     script: |
       #!/usr/bin/env bash
       set -euo pipefail
+      [ "${STATUS}" = "SUCCESS" ] || { echo "status=${STATUS}, skipping"; exit 0; }
+      [ -n "${EXPECTED_TRIGGER_ID}" ] || { echo "missing _EXPECTED_TRIGGER_ID" >&2; exit 1; }
+      [ "${TRIGGER_ID}" = "${EXPECTED_TRIGGER_ID}" ] || { echo "unexpected trigger: ${TRIGGER_ID}" >&2; exit 1; }
+      [ -n "${COMMIT_SHA}" ] || { echo "missing _COMMIT_SHA" >&2; exit 1; }
+      [ -n "${BRANCH_NAME}" ] || { echo "missing _BRANCH_NAME" >&2; exit 1; }
+      git fetch --depth=1 origin "${COMMIT_SHA}"
+      git checkout "${COMMIT_SHA}"
+  - name: "gcr.io/cloud-builders/gcloud"
+    env:
+      - "STATUS=$_STATUS"
+      - "BRANCH_NAME=$_BRANCH_NAME"
+    script: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+      [ "${STATUS}" = "SUCCESS" ] || exit 0
       ./scripts/write_exit_gate_manifest "${BRANCH_NAME}"
       gcloud storage cp publish_all.json gs://oss-exit-gate-prod-projects-bucket/dataform/npm/manifests/publish_all.json
+      gcloud secrets versions access latest --secret=github-token-access --format='get(payload.data)' | tr '_-' '/+' | base64 -d > ~/token.txt
+  - name: "gcr.io/$PROJECT_ID/github"
+    entrypoint: "bash"
+    env:
+      - "STATUS=$_STATUS"
+      - "COMMIT_SHA=$_COMMIT_SHA"
+    args:
+      - "-c"
+      - |
+        set -euo pipefail
+        [ "${STATUS}" = "SUCCESS" ] || exit 0
+        version=$(grep 'DF_VERSION' version.bzl | awk '{ print $3 }' | tr -d '"')
+        echo "Creating release notes for $version"
+        gh auth login --with-token < ~/token.txt
+        gh release create "$version" --target "${COMMIT_SHA}" --generate-notes
 substitutions:
   _STATUS: ""
   _TRIGGER_ID: ""
+  _EXPECTED_TRIGGER_ID: ""
   _COMMIT_SHA: ""
   _BRANCH_NAME: ""
 options:

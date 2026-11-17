@@ -17,7 +17,9 @@ fi
 # Run all the tests.
 bazel test //... --build_tests_only --action_env=CLOUDSDK_CONTEXT_AWARE_USE_CLIENT_CERTIFICATE
 
-./scripts/write_exit_gate_manifest
+# Validate version and branch/tag rules early without writing publish_all.json.
+BRANCH="${BRANCH_NAME:-$(git rev-parse --abbrev-ref HEAD)}"
+./scripts/write_exit_gate_manifest --check-only "${BRANCH}"
 
 bazel build //packages/@dataform/cli:package //packages/@dataform/core:package
 

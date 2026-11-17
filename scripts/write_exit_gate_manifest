@@ -1,7 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BRANCH="${1:-$(git branch --show-current)}"
+CHECK_ONLY=false
+if [ "${1:-}" = "--check-only" ]; then
+    CHECK_ONLY=true
+    shift
+fi
+
+BRANCH="${1:-}"
+if [ -z "${BRANCH}" ]; then
+    echo "Branch argument is required; aborting." >&2
+    exit 1
+fi
+
 VERSION=$(grep 'DF_VERSION' version.bzl | awk '{ print $3 }' | tr -d '"')
 
 TAG=next
@@ -11,9 +22,14 @@ if [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     TAG=latest
 
     if [ "main" != "$BRANCH" ]; then
-        echo "Not on the 'main' branch (got '$BRANCH'); aborting." 1>&2
+        echo "Not on the 'main' branch (got '$BRANCH'); aborting." >&2
         exit 1
     fi
+fi
+
+if [ "$CHECK_ONLY" = true ]; then
+    echo "Validated version '$VERSION' (tag '$TAG', branch '$BRANCH')."
+    exit 0
 fi
 
 echo "Publishing as '$TAG' based on version: $VERSION"
