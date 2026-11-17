@@ -1,10 +1,10 @@
 import * as semver from "semver";
 
 import { Task, Tasks } from "df/cli/api/dbadapters/tasks";
-import { isLakehouseTarget } from "df/cli/api/utils/lakehouse";
 import { concatenateQueries } from "df/cli/api/utils/query_transforms";
 import { ErrorWithCause } from "df/common/errors/errors";
 import { CompilationSql } from "df/core/compilation_sql";
+import { isLakehouseTarget } from "df/core/targets";
 import { tableTypeEnumToString } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 

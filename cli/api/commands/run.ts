@@ -10,7 +10,6 @@ import {
   dryRunValidationQueryKey,
 } from "df/cli/api/utils/dry_run_validation";
 import { mapErrorPositions } from "df/cli/api/utils/error_parsing";
-import { isCatalogSchema, isLakehouseTarget } from "df/cli/api/utils/lakehouse";
 import {
   CREATE_SCHEMA_WRAPPER_LINE_OFFSET,
   wrapWithCreateSchemaIfNotExists,
@@ -19,7 +18,12 @@ import { Timer } from "df/cli/api/utils/timer";
 import { Flags } from "df/common/flags";
 import { retry } from "df/common/promises";
 import { deepClone, equals } from "df/common/protos";
-import { targetAsReadableString, targetStringifier } from "df/core/targets";
+import {
+  isCatalogSchema,
+  isLakehouseTarget,
+  targetAsReadableString,
+  targetStringifier,
+} from "df/core/targets";
 import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
 

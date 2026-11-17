@@ -19,10 +19,10 @@ import {
   OnCancel,
 } from "df/cli/api/dbadapters/index";
 import { parseBigqueryEvalError } from "df/cli/api/utils/error_parsing";
-import { isLakehouseTarget } from "df/cli/api/utils/lakehouse";
 import { LimitedResultSet } from "df/cli/api/utils/results";
 import { coerceAsError } from "df/common/errors/errors";
 import { retry } from "df/common/promises";
+import { isLakehouseTarget } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 
 const CLOUD_PLATFORM_SCOPE = "https://www.googleapis.com/auth/cloud-platform";
