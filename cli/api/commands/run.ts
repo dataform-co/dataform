@@ -18,12 +18,7 @@ import { Timer } from "df/cli/api/utils/timer";
 import { Flags } from "df/common/flags";
 import { retry } from "df/common/promises";
 import { deepClone, equals } from "df/common/protos";
-import {
-  isCatalogSchema,
-  isLakehouseTarget,
-  targetAsReadableString,
-  targetStringifier,
-} from "df/core/targets";
+import { isCatalogSchema, targetAsReadableString, targetStringifier } from "df/core/targets";
 import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
 
@@ -363,8 +358,7 @@ export class Runner {
           (action.tasks.length > 0 || !!action.jitCode) &&
           !!action.target &&
           !!action.target.schema &&
-          // Lakehouse catalog.namespace targets are managed externally via BigLake REST APIs
-          // and cannot be listed via datasets.list or created via CREATE SCHEMA.
+          // Lakehouse catalog.namespace targets cannot be created via CREATE SCHEMA; they must exist before the run.
           !isCatalogSchema(action.target.schema) &&
           writesToTarget(action),
       )
@@ -667,7 +661,7 @@ export class Runner {
     action: dataform.IExecutionAction,
     task: dataform.IExecutionTask,
   ): IMissingSchema | null {
-    if (!action.target?.schema || isLakehouseTarget(action.target) || !writesToTarget(action)) {
+    if (!action.target?.schema || !writesToTarget(action)) {
       return null;
     }
     // Assertion tasks must stay single statements: their result is read from the job's rows,
