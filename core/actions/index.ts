@@ -118,12 +118,19 @@ export abstract class ActionBuilder<T> {
       ];
     }
     const jobLabels = proto.actionDescriptor?.jobLabels;
+    const project = proto.target.database || undefined;
+    const dataset = this.session.projectConfig.assertionSchema || proto.target.schema || undefined;
     if (uniqueKeys) {
       uniqueKeys.forEach(({ uniqueKey }, index) => {
         const uniqueKeyAssertion = this.session
           .assert(
             `${assertionPrefix}${proto.target.schema}_${proto.target.name}_assertions_uniqueKey_${index}`,
-            dataform.ActionConfig.AssertionConfig.create({ filename: proto.fileName, jobLabels }),
+            dataform.ActionConfig.AssertionConfig.create({
+              filename: proto.fileName,
+              project,
+              dataset,
+              jobLabels,
+            }),
           )
           .query((ctx) =>
             this.session.compilationSql().indexAssertion(ctx.ref(proto.target), uniqueKey),
@@ -151,7 +158,12 @@ export abstract class ActionBuilder<T> {
       inlineAssertions.rowConditionsAssertion = this.session
         .assert(
           `${assertionPrefix}${proto.target.schema}_${proto.target.name}_assertions_rowConditions`,
-          dataform.ActionConfig.AssertionConfig.create({ filename: proto.fileName, jobLabels }),
+          dataform.ActionConfig.AssertionConfig.create({
+            filename: proto.fileName,
+            project,
+            dataset,
+            jobLabels,
+          }),
         )
         .query((ctx) =>
           this.session
