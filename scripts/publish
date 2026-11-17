@@ -35,17 +35,6 @@ echo "Publishing as '$TAG' based on version: $VERSION"
 
 bazel build //packages/@dataform/cli:package //packages/@dataform/core:package
 
-cat <<EOF > publish_all.json
-{
-  "publish_all": true,
-  "registry_config": {
-    "npm": {
-      "tags": ["$TAG"]
-    }
-  }
-}
-EOF
-
 rm -rf npm_packages
 mkdir -p npm_packages
 cp -rL bazel-bin/packages/@dataform/cli/package npm_packages/cli

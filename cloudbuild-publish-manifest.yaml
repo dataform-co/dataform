@@ -1,16 +1,44 @@
 steps:
-  - name: "gcr.io/cloud-builders/gcloud"
+  # Read version.bzl at the commit built by the publish build, which may no
+  # longer be the head of the branch this build was checked out from.
+  - name: "gcr.io/cloud-builders/git"
     env:
-      - "SRC_BUILD_ID=$_SRC_BUILD_ID"
-      - "STAGING_BUCKET=$_STAGING_BUCKET"
+      - "SRC_COMMIT=$_SRC_COMMIT"
     script: |
       #!/usr/bin/env bash
       set -euo pipefail
 
-      : "${SRC_BUILD_ID:?The _SRC_BUILD_ID substitution must be set on the trigger.}"
-      : "${STAGING_BUCKET:?The _STAGING_BUCKET substitution must be set on the trigger.}"
+      : "${SRC_COMMIT:?The _SRC_COMMIT substitution must be set on the trigger.}"
 
-      gcloud storage cp \
-        "gs://${STAGING_BUCKET}/exitgate-manifests/${SRC_BUILD_ID}/publish_all.json" \
-        gs://oss-exit-gate-prod-projects-bucket/dataform/npm/manifests/publish_all.json
+      if ! git cat-file -e "${SRC_COMMIT}^{commit}" 2>/dev/null; then
+        git fetch --depth=1 origin "${SRC_COMMIT}"
+      fi
+      git show "${SRC_COMMIT}:version.bzl" > published_version.bzl
+  - name: "gcr.io/cloud-builders/gcloud"
+    script: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+
+      VERSION=$(cat published_version.bzl | grep DF_VERSION | awk '{ print $3 }' | sed "s/\"//g")
+      if [ -z "$VERSION" ]; then
+        echo "Could not read the version from version.bzl; aborting." 1>&2
+        exit 1
+      fi
+      TAG=next
+      # If the version is a normal release (1.2.3) and not pre-release e.g (1.2.3-alpha.1) then publish with the 'latest' tag.
+      if [[ "$VERSION" =~ [0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        TAG=latest
+      fi
+      echo "Publishing as '$TAG' based on version: $VERSION"
+      cat <<EOF > publish_all.json
+      {
+        "publish_all": true,
+        "registry_config": {
+          "npm": {
+            "tags": ["$TAG"]
+          }
+        }
+      }
+      EOF
+      gcloud storage cp publish_all.json gs://oss-exit-gate-prod-projects-bucket/dataform/npm/manifests/publish_all.json
 timeout: 600s

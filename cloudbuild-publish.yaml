@@ -1,12 +1,8 @@
 steps:
   - name: "gcr.io/cloud-builders/gcloud"
-    env:
-      - "STAGING_BUCKET=$_STAGING_BUCKET"
     script: |
       #!/usr/bin/env bash
       set -euo pipefail
-      # Fail early, before the long build, if the trigger is misconfigured.
-      : "${STAGING_BUCKET:?The _STAGING_BUCKET substitution must be set on the trigger.}"
       gcloud secrets versions access latest --secret=github-token-access --format='get(payload.data)' | tr '_-' '/+' | base64 -d > ~/token.txt
       REPO_TOKEN="$(gcloud auth print-access-token)" ./scripts/create_npmrc
       PACKAGES_TO_DELETE=$(gcloud artifacts packages list \
@@ -25,13 +21,6 @@ steps:
     script: |
       #!/usr/bin/env bash
       ./scripts/publish
-  - name: "gcr.io/cloud-builders/gcloud"
-    env:
-      - "STAGING_BUCKET=$_STAGING_BUCKET"
-      - "BUILD_ID=$BUILD_ID"
-    script: |
-      #!/usr/bin/env bash
-      gcloud storage cp publish_all.json "gs://${STAGING_BUCKET}/exitgate-manifests/${BUILD_ID}/publish_all.json"
   - name: "gcr.io/$PROJECT_ID/github"
     entrypoint: "bash"
     args:
