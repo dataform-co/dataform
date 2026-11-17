@@ -332,7 +332,7 @@ suite("ExecutionSql for 4-part Lakehouse targets", () => {
     );
   });
 
-  test("emits CREATE OR REPLACE TABLE on first run and fullRefresh of 4-part incremental table", () => {
+  test("emits plain CREATE TABLE on first run / protected and CREATE OR REPLACE TABLE on fullRefresh of 4-part incremental table", () => {
     const incTable: dataform.ITable = {
       type: "incremental",
       enumType: dataform.TableType.INCREMENTAL,
@@ -340,19 +340,27 @@ suite("ExecutionSql for 4-part Lakehouse targets", () => {
       query: "SELECT 1 AS order_id, 2 AS customer_id",
       incrementalQuery: "SELECT 3 AS order_id, 4 AS customer_id",
     };
-
     const firstRunSql = executionSql
       .publishTasks(incTable, { fullRefresh: false })
+      .build()[0].statement;
+    const protectedFullRefreshSql = executionSql
+      .publishTasks({ ...incTable, protected: true }, { fullRefresh: true })
       .build()[0].statement;
     const fullRefreshSql = executionSql
       .publishTasks(incTable, { fullRefresh: true }, lakehouseMetadata)
       .build()[0].statement;
-
-    const expectedDdl =
+    expect(firstRunSql).to.equal(
+      "create table `project-id.ecommerce_catalog.sales_dw.customer_orders` " +
+        "as SELECT 1 AS order_id, 2 AS customer_id",
+    );
+    expect(protectedFullRefreshSql).to.equal(
+      "create table `project-id.ecommerce_catalog.sales_dw.customer_orders` " +
+        "as SELECT 1 AS order_id, 2 AS customer_id",
+    );
+    expect(fullRefreshSql).to.equal(
       "create or replace table `project-id.ecommerce_catalog.sales_dw.customer_orders` " +
-      "as SELECT 1 AS order_id, 2 AS customer_id";
-    expect(firstRunSql).to.equal(expectedDdl);
-    expect(fullRefreshSql).to.equal(expectedDdl);
+        "as SELECT 1 AS order_id, 2 AS customer_id",
+    );
   });
 
   test("emits valid 4-part DML for incremental INSERT, MERGE, and INSERT_OVERWRITE", () => {

@@ -147,7 +147,9 @@ from (${query}) as insertions`;
 
     if (table.enumType === dataform.TableType.INCREMENTAL) {
       if (!this.shouldWriteIncrementally(table, runConfig, tableMetadata)) {
-        tasks.add(Task.statement(this.createOrReplace(table)));
+        const allowReplace =
+          !isLakehouseTarget(table.target) || Boolean(runConfig.fullRefresh && !table.protected);
+        tasks.add(Task.statement(this.createOrReplace(table, allowReplace)));
       } else {
         const onSchemaChange = table.onSchemaChange ?? dataform.OnSchemaChange.IGNORE;
         switch (onSchemaChange) {
@@ -505,7 +507,7 @@ DROP TABLE IF EXISTS ${emptyTempTableName};
     return statements.join("\n\n");
   }
 
-  private createOrReplace(table: dataform.ITable) {
+  private createOrReplace(table: dataform.ITable, allowReplace = true) {
     const options = [];
     if (table.bigquery && table.bigquery.partitionBy && table.bigquery.partitionExpirationDays) {
       options.push(`partition_expiration_days=${table.bigquery.partitionExpirationDays}`);
@@ -519,7 +521,7 @@ DROP TABLE IF EXISTS ${emptyTempTableName};
       }
     }
 
-    return `create or replace ${table.materialized ? "materialized " : ""}${this.tableTypeAsSql(
+    return `create ${allowReplace ? "or replace " : ""}${table.materialized ? "materialized " : ""}${this.tableTypeAsSql(
       this.baseTableType(table.enumType),
     )} ${this.resolveTarget(table.target)} ${
       table.bigquery && table.bigquery.partitionBy
