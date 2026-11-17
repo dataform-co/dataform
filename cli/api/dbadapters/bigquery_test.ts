@@ -558,14 +558,19 @@ suite("BigQueryDbAdapter", () => {
       schema: "ecommerce_catalog.sales_dw",
       name: "customer_orders",
     });
-    await adapter.deleteTable({
-      schema: "ecommerce_catalog.sales_dw",
-      name: "fallback_project_orders",
-    });
+    let thrownError: Error | undefined;
+    try {
+      await adapter.deleteTable({
+        schema: "ecommerce_catalog.sales_dw",
+        name: "missing_project_orders",
+      });
+    } catch (e) {
+      thrownError = e as Error;
+    }
+    expect(thrownError?.message).to.include("without a target database");
     expect(restDeleteCalled).to.equal(false);
     expect(executedStatements).to.eql([
       "drop table if exists `explicit-project.ecommerce_catalog.sales_dw.customer_orders`",
-      "drop table if exists `creds-project.ecommerce_catalog.sales_dw.fallback_project_orders`",
     ]);
   });
 

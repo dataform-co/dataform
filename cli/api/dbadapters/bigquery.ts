@@ -391,9 +391,14 @@ export class BigQueryDbAdapter implements IDbAdapter {
 
   public async deleteTable(target: dataform.ITarget): Promise<void> {
     if (isLakehouseTarget(target)) {
-      const database = target.database || this.bigQueryCredentials.projectId;
-      const prefix = database ? `${database}.` : "";
-      await this.execute(`drop table if exists \`${prefix}${target.schema}.${target.name}\``);
+      if (!target.database) {
+        throw new Error(
+          `Cannot delete Lakehouse table "${target.schema}.${target.name}" without a target database (project).`,
+        );
+      }
+      await this.execute(
+        `drop table if exists \`${target.database}.${target.schema}.${target.name}\``,
+      );
       return;
     }
 
