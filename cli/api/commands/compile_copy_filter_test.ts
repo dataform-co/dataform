@@ -19,7 +19,7 @@ import { TmpDirFixture } from "df/testing/fixtures";
 suite("buildProjectCopyFilter", ({ afterEach }) => {
   const tmpDirFixture = new TmpDirFixture(afterEach);
 
-  test("with no .gitignore, only .git and node_modules are excluded", () => {
+  test("with no .gitignore, only the always-ignored names are excluded", () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
     fs.ensureDirSync(path.join(projectDir, "definitions"));
     fs.writeFileSync(path.join(projectDir, "definitions", "foo.sqlx"), "SELECT 1");
@@ -27,6 +27,7 @@ suite("buildProjectCopyFilter", ({ afterEach }) => {
     fs.ensureDirSync(path.join(projectDir, ".git"));
     fs.ensureDirSync(path.join(projectDir, "node_modules"));
     fs.ensureDirSync(path.join(projectDir, "scratch", "nested", "node_modules"));
+    fs.writeFileSync(path.join(projectDir, ".df-credentials.json"), "{}");
     const filter = buildProjectCopyFilter(projectDir);
 
     expect(filter(projectDir)).to.equal(true);
@@ -38,6 +39,20 @@ suite("buildProjectCopyFilter", ({ afterEach }) => {
     expect(filter(path.join(projectDir, "node_modules"))).to.equal(false);
     // Excluded at any depth, not just at the project root.
     expect(filter(path.join(projectDir, "scratch", "nested", "node_modules"))).to.equal(false);
+    expect(filter(path.join(projectDir, ".df-credentials.json"))).to.equal(false);
+  });
+
+  test("the credentials file is not copied, even when .dataformignore re-includes it", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    const destinationDir = tmpDirFixture.createNewTmpDir();
+    fs.writeFileSync(path.join(projectDir, ".dataformignore"), "!.df-credentials.json\n");
+    fs.writeFileSync(path.join(projectDir, ".df-credentials.json"), '{"projectId": "p"}');
+    fs.writeFileSync(path.join(projectDir, "workflow_settings.yaml"), "defaultProject: p\n");
+
+    copyProjectForStatelessInstall(projectDir, destinationDir);
+
+    expect(fs.existsSync(path.join(destinationDir, ".df-credentials.json"))).to.equal(false);
+    expect(fs.existsSync(path.join(destinationDir, "workflow_settings.yaml"))).to.equal(true);
   });
 
   test("does not dereference symlinks while filtering", () => {

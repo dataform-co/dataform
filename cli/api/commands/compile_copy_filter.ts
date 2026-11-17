@@ -2,17 +2,20 @@ import * as fs from "fs-extra";
 import ignore from "ignore";
 import * as path from "path";
 
+import { CREDENTIALS_FILENAME } from "df/cli/api/commands/credentials";
+
 // Excluded whatever the project's ignore files say, unless a compilation input is
 // reached through one (see COMPILATION_INPUT_ROOT_NAMES). `.git` holds no Dataform
 // project files. A top-level `node_modules` can't be present at all here -- `compile()`
 // rejects the project before copying if it finds one -- so that entry covers nested ones
-// outside the compilation inputs.
+// outside the compilation inputs. The credentials file can hold a service account key,
+// and compilation never connects to the warehouse, so the copy has no use for it.
 //
 // Checked independently of the `ignore` instance below, rather than seeded into it, so
 // that neither ignore file can override this floor: `ignore` lets later patterns
 // override earlier ones by design, so a `!node_modules` negation would otherwise
 // un-ignore it.
-const ALWAYS_IGNORED_NAMES = new Set([".git", "node_modules"]);
+const ALWAYS_IGNORED_NAMES = new Set([".git", "node_modules", CREDENTIALS_FILENAME]);
 
 // Project-root entries that compilation reads, and that are therefore copied with
 // everything reachable from them, whatever the project's ignore files say.

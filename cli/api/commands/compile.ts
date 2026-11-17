@@ -145,8 +145,8 @@ async function createIsolatedEnvironment(
       const ignoreFiles = findProjectIgnoreFiles(projectDir);
       log(
         ignoreFiles.length > 0
-          ? `Excluding .git, node_modules, and paths matched by ${ignoreFiles.join(" and ")}, except files reachable from definitions/ and includes/\n`
-          : `Excluding .git and node_modules, except files reachable from definitions/ and includes/ (no .gitignore or .dataformignore in project root)\n`,
+          ? `Excluding .git, node_modules, .df-credentials.json, and paths matched by ${ignoreFiles.join(" and ")}, except files reachable from definitions/ and includes/\n`
+          : `Excluding .git, node_modules and .df-credentials.json, except files reachable from definitions/ and includes/ (no .gitignore or .dataformignore in project root)\n`,
       );
     }
     const copyStartTime = performance.now();

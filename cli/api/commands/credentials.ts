@@ -1,10 +1,29 @@
 import * as fs from "fs";
 
 import * as dbadapters from "df/cli/api/dbadapters";
+import { prettyJsonStringify } from "df/cli/api/utils";
 import { verifyObjectMatchesProto } from "df/common/protos";
 import { dataform } from "df/protos/ts";
 
 export const CREDENTIALS_FILENAME = ".df-credentials.json";
+
+// The file can hold a service account key, so only its owner may read or write it.
+const CREDENTIALS_FILE_MODE = 0o600;
+
+/**
+ * Writes the credentials file with owner-only permissions. The mode passed when opening
+ * the file only applies if that creates it, so the permissions of an existing file are
+ * tightened too, before the credentials are written to it.
+ */
+export function write(credentialsPath: string, credentials: dataform.IBigQuery): void {
+  const fileDescriptor = fs.openSync(credentialsPath, "w", CREDENTIALS_FILE_MODE);
+  try {
+    fs.fchmodSync(fileDescriptor, CREDENTIALS_FILE_MODE);
+    fs.writeFileSync(fileDescriptor, prettyJsonStringify(credentials));
+  } finally {
+    fs.closeSync(fileDescriptor);
+  }
+}
 
 export function read(credentialsPath: string): dataform.IBigQuery {
   if (!fs.existsSync(credentialsPath)) {
