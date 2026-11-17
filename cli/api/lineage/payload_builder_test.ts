@@ -331,4 +331,33 @@ suite("LineagePayloadBuilder", () => {
     expect(opWithoutOutputComplete.inputs).to.deep.equal([]);
     expect(opWithoutOutputComplete.outputs).to.deep.equal([]);
   });
+
+  test("omits Lakehouse targets from inputs and omits inputs/outputs when action target is Lakehouse", () => {
+    const builder = new LineagePayloadBuilder("/tmp/proj");
+
+    const lakehouseAction = dataform.ExecutionAction.create({
+      target: { database: "proj", schema: "my_catalog.my_ns", name: "lh_table" },
+      type: "table",
+      dependencyTargets: [{ database: "proj", schema: "bq_dataset", name: "src_table" }],
+    });
+    const lhComplete = builder.build(lakehouseAction, COMPLETE_RESULT, "proj", "us");
+    expect(lhComplete.inputs).to.deep.equal([]);
+    expect(lhComplete.outputs).to.deep.equal([]);
+
+    const bqDownstreamAction = dataform.ExecutionAction.create({
+      target: { database: "proj", schema: "bq_dataset", name: "downstream_table" },
+      type: "table",
+      dependencyTargets: [
+        { database: "proj", schema: "my_catalog.my_ns", name: "lh_table" },
+        { database: "proj", schema: "bq_dataset", name: "src_table" },
+      ],
+    });
+    const bqComplete = builder.build(bqDownstreamAction, COMPLETE_RESULT, "proj", "us");
+    expect(bqComplete.inputs).to.deep.equal([
+      { namespace: "bigquery", name: "proj.bq_dataset.src_table" },
+    ]);
+    expect(bqComplete.outputs).to.deep.equal([
+      { namespace: "bigquery", name: "proj.bq_dataset.downstream_table" },
+    ]);
+  });
 });

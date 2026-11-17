@@ -79,6 +79,8 @@ Lineage events are emitted for every Dataform action that executes a BigQuery jo
 
 `inputs` and `outputs` are populated only on `COMPLETE` events (`START`, `FAIL`, and `ABORT` events carry empty `inputs` and `outputs` arrays) so failed or cancelled runs do not create false lineage edges.
 
+For **4-part Lakehouse Catalog targets** (`project.catalog.namespace.table`), `Process` and `Run` events are still emitted, but Lakehouse targets are omitted from `inputs`, and both `inputs` and `outputs` are empty (`[]`) when the action's own target is a Lakehouse target (because the Data Lineage `bigquery` namespace expects 3-part `<project>.<dataset>.<table>` identifiers).
+
 ---
 
 ## Where Lineage Appears in Google Cloud
