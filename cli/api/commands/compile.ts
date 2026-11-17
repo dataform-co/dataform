@@ -10,7 +10,7 @@ import {
   findProjectIgnoreFiles,
 } from "df/cli/api/commands/compile_copy_filter";
 import { MISSING_CORE_VERSION_ERROR } from "df/cli/api/commands/install";
-import { readConfigFromWorkflowSettings } from "df/cli/api/utils";
+import { readConfigFromWorkflowSettings, validateDataformCoreVersion } from "df/cli/api/utils";
 import { DEFAULT_COMPILATION_TIMEOUT_MILLIS } from "df/cli/api/utils/constants";
 import { coerceAsError } from "df/common/errors/errors";
 import { decode64 } from "df/common/protos";
@@ -128,6 +128,7 @@ async function createIsolatedEnvironment(
   dataformCoreVersion: string,
   log: Log,
 ): Promise<ICompilationEnvironment> {
+  validateDataformCoreVersion(dataformCoreVersion);
   ["node_modules", "package.json", "package-lock.json"]
     .map((npmFile) => path.join(projectDir, npmFile))
     .forEach((npmPath) => {
@@ -237,6 +238,7 @@ async function installCore(
   dataformCoreVersion: string,
   log: Log,
 ) {
+  validateDataformCoreVersion(dataformCoreVersion);
   log(`Generating temporary package.json\n`);
   fs.writeFileSync(
     path.join(environment.projectDir, "package.json"),
@@ -267,7 +269,7 @@ export class CompileChildProcess extends BaseWorker<string, string | Error> {
     return await this.runWorker(
       timeoutValue,
       (child) => child.send(compileConfig),
-      (message, child, resolve, reject) => {
+      (message, _child, resolve, reject) => {
         if (typeof message === "string") {
           resolve(message);
           return;
