@@ -277,11 +277,19 @@ END;`;
     table: dataform.ITable,
     tableMetadata?: dataform.ITableMetadata,
   ) {
+    if (!tableMetadata?.fields?.length) {
+      throw new Error(
+        `Cannot apply onSchemaChange to Lakehouse table ${this.resolveTarget(table.target)} because warehouse metadata is missing schema fields.`,
+      );
+    }
     const uniqueId = this.uniqueIdGenerator();
     const tempTableName = `${table.target.name}_df_temp_${uniqueId}_empty`;
     const emptyTempTableTarget = this.resolveScratchTarget(table.target, tempTableName);
     const emptyTempTableName = this.resolveTarget(emptyTempTableTarget);
-    const existingColumns = tableMetadata?.fields?.map((f) => f.name) || [];
+    // Note: `existingColumns` is a build-time snapshot from `tables.get` metadata (whereas the
+    // standard 3-part path queries INFORMATION_SCHEMA at execution time), so schema changes made
+    // by `incrementalPreOps` are not visible here.
+    const existingColumns = tableMetadata.fields.map((f) => f.name);
     const scriptBody = this.incrementalSchemaChangeBody(
       table,
       this.resolveTarget(table.target),
