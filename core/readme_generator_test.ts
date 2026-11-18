@@ -1,0 +1,173 @@
+import { expect } from "chai";
+
+import { suite, test } from "df/testing";
+import {
+  CORE_README_BLOCKS,
+  formatStaleCoreBlocks,
+  generateCoreReadme,
+  ICoreDocData,
+} from "df/tools/docs/core_readme_generator";
+
+function block(name: string, ...content: string[]): string {
+  return [`<!-- BEGIN GENERATED: ${name} -->`, ...content, `<!-- END GENERATED: ${name} -->`].join(
+    "\n",
+  );
+}
+
+function minimalReadme(extra = ""): string {
+  return ["# Core", ...CORE_README_BLOCKS.map((name) => block(name)), extra].join("\n");
+}
+
+function generatedBlock(content: string, name: string): string {
+  const begin = `<!-- BEGIN GENERATED: ${name} -->\n`;
+  const start = content.indexOf(begin) + begin.length;
+  return content.slice(start, content.indexOf(`<!-- END GENERATED: ${name} -->`, start)).trimEnd();
+}
+
+function sampleData(): ICoreDocData {
+  return {
+    workflowSettingsFields: [
+      {
+        name: "defaultDataset",
+        typeMarkdown: "`string`",
+        defaultMarkdown: '`"dataform"`',
+        descriptionMarkdown:
+          "Default BigQuery dataset (`schema`) for tables, views, and operations.",
+      },
+      {
+        name: "lineage",
+        typeMarkdown: "`object`",
+        defaultMarkdown: "—",
+        descriptionMarkdown:
+          "Knowledge Catalog Data Lineage settings (`lineage: { enabled: true }`).",
+      },
+    ],
+    sqlxContextFunctions: [
+      {
+        name: "ref",
+        signatureMarkdown: "`ref(name)` / `ref(schema, name)`",
+        descriptionMarkdown: "Resolves an action target and adds a dependency.",
+      },
+    ],
+    sessionGlobals: [
+      {
+        name: "publish",
+        signatureMarkdown: "`publish(name, queryOrConfig?)`",
+        descriptionMarkdown: "Creates a `table`, `view`, or `incremental` action.",
+      },
+      {
+        name: "dataform.projectConfig",
+        signatureMarkdown: "`dataform.ProjectConfig`",
+        descriptionMarkdown: "Read-only access to the resolved project configuration.",
+      },
+    ],
+    coreExports: [
+      {
+        name: "version",
+        typeLabel: "string",
+        descriptionMarkdown: "The installed `@dataform/core` semantic version string.",
+      },
+      {
+        name: "main",
+        typeLabel: "(coreExecutionRequest: Uint8Array | string) => Uint8Array | string",
+        descriptionMarkdown: "Entry point invoked by the compilation VM sandbox.",
+      },
+    ],
+    bundledProtos: [
+      {
+        fileName: "configs.proto",
+        itemsMarkdown: ["`WorkflowSettings`", "`ActionConfig` (`TableConfig`, `ViewConfig`)"],
+      },
+      {
+        fileName: "jit.proto",
+        itemsMarkdown: ["`DbAdapter` service", "`JitCompilationRequest`"],
+      },
+    ],
+  };
+}
+
+suite("core readme generator", () => {
+  test("renders all five generated blocks from structured doc data", () => {
+    const { content } = generateCoreReadme(minimalReadme("Hand-written prose."), sampleData());
+
+    expect(generatedBlock(content, "workflow-settings")).to.equal(
+      [
+        "| Field | Type | Default | Description |",
+        "|---|---|---|---|",
+        '| `defaultDataset` | `string` | `"dataform"` | Default BigQuery dataset (`schema`) for tables, views, and operations. |',
+        "| `lineage` | `object` | — | Knowledge Catalog Data Lineage settings (`lineage: { enabled: true }`). |",
+      ].join("\n"),
+    );
+
+    expect(generatedBlock(content, "sqlx-context-functions")).to.equal(
+      [
+        "| Function | Signature | Description |",
+        "|---|---|---|",
+        "| `ref` | `ref(name)` / `ref(schema, name)` | Resolves an action target and adds a dependency. |",
+      ].join("\n"),
+    );
+
+    expect(generatedBlock(content, "session-globals")).to.equal(
+      [
+        "| Global Function / Object | Signature | Description |",
+        "|---|---|---|",
+        "| `publish` | `publish(name, queryOrConfig?)` | Creates a `table`, `view`, or `incremental` action. |",
+        "| `dataform.projectConfig` | `dataform.ProjectConfig` | Read-only access to the resolved project configuration. |",
+      ].join("\n"),
+    );
+
+    expect(generatedBlock(content, "core-exports")).to.equal(
+      [
+        "- **`version`** (`string`): The installed `@dataform/core` semantic version string.",
+        "- **`main`** (`(coreExecutionRequest: Uint8Array | string) => Uint8Array | string`): Entry point invoked by the compilation VM sandbox.",
+      ].join("\n"),
+    );
+
+    expect(generatedBlock(content, "bundled-protos")).to.equal(
+      [
+        "- `configs.proto` — `WorkflowSettings`, `ActionConfig` (`TableConfig`, `ViewConfig`).",
+        "- `jit.proto` — `DbAdapter` service, `JitCompilationRequest`.",
+      ].join("\n"),
+    );
+    expect(content).to.include("Hand-written prose.");
+  });
+
+  test("is idempotent", () => {
+    const data = sampleData();
+    const first = generateCoreReadme(minimalReadme(), data);
+    const second = generateCoreReadme(first.content, data);
+    expect(second.content).to.equal(first.content);
+    expect(second.changedBlocks).to.deep.equal([]);
+  });
+
+  test("formats actionable diff output when a block is stale", () => {
+    const data = sampleData();
+    const upToDate = generateCoreReadme(minimalReadme(), data).content;
+    const stale = upToDate.replace(
+      "Default BigQuery dataset (`schema`) for tables, views, and operations.",
+      "Outdated description.",
+    );
+    const { staleBlocks } = generateCoreReadme(stale, data);
+
+    const formatted = formatStaleCoreBlocks(staleBlocks);
+    expect(formatted).to.include(
+      "core/README.md is out of date with the TypeScript and Protocol Buffer definitions in core/ and protos/.",
+    );
+    expect(formatted).to.include("Outdated description.");
+    expect(formatted).to.include(
+      "Default BigQuery dataset (`schema`) for tables, views, and operations.",
+    );
+    expect(formatted).to.include("bazel run //core:update_readme");
+  });
+
+  test("fails when a required block is missing or unknown", () => {
+    const data = sampleData();
+    expect(() =>
+      generateCoreReadme(minimalReadme().replace(block("core-exports"), ""), data),
+    ).to.throw(/has no "core-exports" generated block/);
+
+    expect(() => generateCoreReadme(minimalReadme(block("unknown-block")), data)).to.throw(
+      /unknown generated block "unknown-block"/,
+    );
+  });
+});

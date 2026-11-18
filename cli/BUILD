@@ -161,6 +161,7 @@ ts_library(
         ":cli",
         "//:node_modules/@types/node",
         "//:node_modules/@types/yargs",
+        "//common/markdown_docs",
     ],
 )
 

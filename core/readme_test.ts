@@ -3,6 +3,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 import { suite, test } from "df/testing";
+import { BUNDLED_PROTO_FILES } from "df/tools/docs/proto_extractor";
 
 suite("core/README.md", () => {
   test("is bundled into the @dataform/core npm package", () => {
@@ -46,5 +47,15 @@ suite("core/README.md", () => {
     for (const exportName of runtimeExports) {
       expect(exportsSection).to.include(`- **\`${exportName}\`**`);
     }
+  });
+
+  test("bundled proto list matches .proto files packaged into @dataform/core", () => {
+    const packageDir = "core/node_modules/@dataform/core";
+    const packagedProtos = fs
+      .readdirSync(packageDir)
+      .filter((entry) => entry.endsWith(".proto"))
+      .sort();
+
+    expect(packagedProtos).to.deep.equal([...BUNDLED_PROTO_FILES].sort());
   });
 });

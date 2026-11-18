@@ -6,7 +6,7 @@ import {
   verifyObjectMatchesProto,
   VerifyProtoErrorBehaviour,
 } from "df/common/protos";
-import { Action, ActionProto, ILegacyTableConfig, TableType } from "df/core/actions";
+import { Action, ActionProto, ILegacyTableConfig } from "df/core/actions";
 import { AContextable, Assertion, AssertionContext } from "df/core/actions/assertion";
 import { DataPreparation, DataPreparationContext } from "df/core/actions/data_preparation";
 import { Declaration } from "df/core/actions/declaration";
@@ -27,10 +27,21 @@ import { ResolvableMap, toResolvable } from "df/core/utils";
 import { version as dataformCoreVersion } from "df/core/version";
 import { dataform, google } from "df/protos/ts";
 
-const DEFAULT_CONFIG = {
+export const DEFAULT_PROJECT_CONFIG = {
   defaultSchema: "dataform",
   assertionSchema: "dataform_assertions",
-};
+} as const;
+
+export const SESSION_GLOBAL_METHODS = [
+  "publish",
+  "operate",
+  "assert",
+  "declare",
+  "test",
+  "notebook",
+  "getContents",
+  "jitData",
+] as const;
 
 /**
  * Contains methods that are published globally, so can be invoked anywhere in the `/definitions`
@@ -40,8 +51,7 @@ export class Session {
   public rootDir: string;
 
   /**
-   * Stores the Dataform project configuration of the current Dataform project. Can be accessed via
-   * the `dataform` global variable.
+   * Read-only access to the resolved project configuration, including custom variables (`dataform.projectConfig.vars`).
    *
    * Example:
    *
@@ -88,9 +98,11 @@ export class Session {
     originalProjectConfig?: dataform.ProjectConfig,
   ) {
     this.rootDir = rootDir;
-    this.projectConfig = dataform.ProjectConfig.create(projectConfig || DEFAULT_CONFIG);
+    this.projectConfig = dataform.ProjectConfig.create(projectConfig || DEFAULT_PROJECT_CONFIG);
     this.canonicalProjectConfig = getCanonicalProjectConfig(
-      dataform.ProjectConfig.create(originalProjectConfig || projectConfig || DEFAULT_CONFIG),
+      dataform.ProjectConfig.create(
+        originalProjectConfig || projectConfig || DEFAULT_PROJECT_CONFIG,
+      ),
     );
     this.actions = [];
     this.tests = [];
@@ -102,7 +114,10 @@ export class Session {
     return new CompilationSql(this.projectConfig, dataformCoreVersion);
   }
 
-  public getContents(filePath: string): string {
+  /**
+   * Reads a `.md` file inside the project directory (resolved relative to the caller file) and returns its contents as a string for `description` fields.
+   */
+  public getContents(relativeMdPath: string): string {
     const callerFile = utils.getCallerFile(this.rootDir);
     const callerDir = Path.dirName(callerFile);
     const rootDir = Path.toPosixPath(this.rootDir);
@@ -110,21 +125,24 @@ export class Session {
     // none for drive-letter paths (C:/...). Path.join and Path.normalize strip them.
     const rootPrefix = /^\/*/.exec(rootDir)[0];
     const absolutePath =
-      rootPrefix + Path.normalize(Path.join(rootDir.slice(rootPrefix.length), callerDir, filePath));
+      rootPrefix +
+      Path.normalize(Path.join(rootDir.slice(rootPrefix.length), callerDir, relativeMdPath));
 
     if (!Path.startsWithPath(absolutePath, rootDir)) {
-      throw new Error(`Cannot read "${filePath}": path resolves outside the project directory.`);
+      throw new Error(
+        `Cannot read "${relativeMdPath}": path resolves outside the project directory.`,
+      );
     }
 
     let module: any;
     try {
       module = utils.nativeRequire(absolutePath);
     } catch {
-      throw new Error(`Cannot read "${filePath}": file not found.`);
+      throw new Error(`Cannot read "${relativeMdPath}": file not found.`);
     }
 
     if (!module || typeof module.contents !== "string") {
-      throw new Error(`Cannot read "${filePath}": only .md files are supported.`);
+      throw new Error(`Cannot read "${relativeMdPath}": only .md files are supported.`);
     }
     return module.contents;
   }
@@ -366,7 +384,7 @@ export class Session {
   }
 
   /**
-   * Defines a SQL operation.
+   * Creates an `operations` action. Returns an `Operation` builder (`.queries(ctx => ...)`).
    *
    * Available only in the `/definitions` directory.
    *
@@ -374,17 +392,17 @@ export class Session {
    */
   public operate(
     name: string,
-    queryOrConfig?:
+    queriesOrConfig?:
       Contextable<IActionContext, string | string[]> | dataform.ActionConfig.OperationConfig,
   ): Operation {
     const filename = utils.getCallerFile(this.rootDir);
     let operation: Operation;
-    if (!!queryOrConfig && typeof queryOrConfig === "object") {
-      operation = new Operation(this, { name, filename, ...queryOrConfig });
+    if (!!queriesOrConfig && typeof queriesOrConfig === "object") {
+      operation = new Operation(this, { name, filename, ...queriesOrConfig });
     } else {
       operation = new Operation(this, { name, filename });
-      if (queryOrConfig) {
-        operation.queries(queryOrConfig as AContextable<string>);
+      if (queriesOrConfig) {
+        operation.queries(queriesOrConfig as AContextable<string>);
       }
     }
     this.actions.push(operation);
@@ -392,11 +410,11 @@ export class Session {
   }
 
   /**
-   * Creates a table, view, or incremental table.
+   * Creates a `table`, `view` (default if `type` is omitted), or `incremental` action. Returns a `Table`, `View`, or `IncrementalTable` builder (`.query(ctx => ...)`).
    *
    * Available only in the `/definitions` directory.
    *
-   * @see [Operation](Operation) for examples on how to make tables.
+   * @see [Table](Table) for examples on how to make tables.
    * @see [View](View) for examples on how to make views.
    * @see [IncrementalTable](IncrementalTable) for examples on how to make incremental tables.
    */
@@ -445,7 +463,7 @@ export class Session {
   }
 
   /**
-   * Adds a Dataform assertion the compiled graph.
+   * Creates an `assertion` action. Returns an `Assertion` builder (`.query(ctx => ...)`).
    *
    * Available only in the `/definitions` directory.
    *
@@ -473,7 +491,7 @@ export class Session {
   }
 
   /**
-   * Declares the dataset as a Dataform data source.
+   * Declares an external data source (`{ database?, schema?, name, description?, columns? }`).
    *
    * Available only in the `/definitions` directory.
    *
@@ -498,7 +516,7 @@ export class Session {
   }
 
   /**
-   * Creates a Test action.
+   * Creates a unit test action (`.dataset(target).input(refName, sql).expect(sql)`).
    *
    * Available only in the `/definitions` directory.
    *
@@ -518,7 +536,7 @@ export class Session {
   }
 
   /**
-   * Creates a Notebook action.
+   * Creates a `Notebook` action (`{ name?, filename, location?, project?, dependencyTargets?, tags?, disabled?, description? }`).
    *
    * Available only in the `/definitions` directory.
    *
@@ -531,12 +549,15 @@ export class Session {
     return notebook;
   }
 
-  public jitData(key: string, data: unknown): void {
+  /**
+   * Registers structured data in `CompiledGraph.jitData` for Just-in-Time (JiT) compilation workflows.
+   */
+  public jitData(key: string, value: unknown): void {
     if (this.jitContextData.fields[key] !== undefined) {
       throw new Error(`JiT context data with key ${key} already exists.`);
     }
 
-    this.jitContextData.fields[key] = unknownToValue(data);
+    this.jitContextData.fields[key] = unknownToValue(value);
   }
   public compileError(err: Error | string, path?: string, actionTarget?: dataform.ITarget) {
     const fileName =
