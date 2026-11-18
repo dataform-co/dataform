@@ -12,9 +12,7 @@ ts_library(
         ],
     ),
     deps = [
-        "//:node_modules/@types/long",
         "//:node_modules/@types/node",
-        "//:node_modules/long",
         "//:node_modules/object-sizeof",
         "//core",
         "//protos:ts",

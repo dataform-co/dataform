@@ -28,7 +28,6 @@ ts_library(
         "//:node_modules/google-auth-library",
         "//:node_modules/ignore",
         "//:node_modules/js-yaml",
-        "//:node_modules/long",
         "//:node_modules/promise-pool-executor",
         "//:node_modules/protobufjs",
         "//:node_modules/semver",
