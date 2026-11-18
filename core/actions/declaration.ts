@@ -1,6 +1,10 @@
 import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { ActionBuilder } from "df/core/actions";
-import { validateLakehouseColumns, validateLakehouseConfig } from "df/core/actions/lakehouse";
+import {
+  validateLakehouseColumns,
+  validateLakehouseConfig,
+  validateLakehouseTarget,
+} from "df/core/actions/lakehouse";
 import { ColumnDescriptors } from "df/core/column_descriptors";
 import { Session } from "df/core/session";
 import { actionConfigToCompiledGraphTarget } from "df/core/utils";
@@ -164,6 +168,7 @@ export class Declaration extends ActionBuilder<dataform.Declaration> {
   /** @hidden */
   public compile() {
     if (this.isLakehouseTarget) {
+      validateLakehouseTarget(this.session, this.proto.fileName, this.proto.target);
       validateLakehouseColumns(
         this.session,
         this.proto.actionDescriptor,

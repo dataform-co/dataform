@@ -12,6 +12,7 @@ import {
   validateLakehouseBigQueryOptions,
   validateLakehouseColumns,
   validateLakehouseConfig,
+  validateLakehouseTarget,
 } from "df/core/actions/lakehouse";
 import { JitTableResult, Table } from "df/core/actions/table";
 import { View } from "df/core/actions/view";
@@ -613,6 +614,7 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
     }
 
     if (this.isLakehouseTarget) {
+      validateLakehouseTarget(this.session, this.proto.fileName, this.proto.target);
       validateLakehouseColumns(
         this.session,
         this.proto.actionDescriptor,
