@@ -163,15 +163,16 @@ suite("buildProjectCopyFilter", ({ afterEach }) => {
     expect(fs.existsSync(path.join(destinationDir, "helper.js"))).to.equal(false);
   });
 
-  test("inside definitions/ and includes/, node_modules is copied but .git is not", () => {
+  test("inside definitions/ and includes/, node_modules is copied but .git and .df-credentials.json are not", () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
-    // Compilation's glob descends into nested node_modules but skips dot-directories.
+    // Compilation's glob descends into nested node_modules but skips dot-files and dot-directories.
     fs.ensureDirSync(path.join(projectDir, "definitions", "vendored", "node_modules"));
     fs.writeFileSync(
       path.join(projectDir, "definitions", "vendored", "node_modules", "table.sqlx"),
       "SELECT 1",
     );
     fs.ensureDirSync(path.join(projectDir, "includes", ".git"));
+    fs.writeFileSync(path.join(projectDir, "includes", ".df-credentials.json"), "{}");
 
     const filter = buildProjectCopyFilter(projectDir);
 
@@ -179,6 +180,7 @@ suite("buildProjectCopyFilter", ({ afterEach }) => {
       filter(path.join(projectDir, "definitions", "vendored", "node_modules", "table.sqlx")),
     ).to.equal(true);
     expect(filter(path.join(projectDir, "includes", ".git"))).to.equal(false);
+    expect(filter(path.join(projectDir, "includes", ".df-credentials.json"))).to.equal(false);
   });
 
   test("copies gitignored paths that definitions/ reaches through a symlink", () => {
@@ -229,6 +231,7 @@ suite("buildProjectCopyFilter", ({ afterEach }) => {
     fs.writeFileSync(path.join(projectDir, "generated", "table.sqlx"), "SELECT 1");
     fs.ensureDirSync(path.join(projectDir, ".git"));
     fs.writeFileSync(path.join(projectDir, ".git", "HEAD"), "ref: refs/heads/main\n");
+    fs.writeFileSync(path.join(projectDir, ".df-credentials.json"), '{"projectId": "p"}');
     // Compilation's glob follows this, so it compiles definitions/generated/table.sqlx.
     fs.symlinkSync(".", path.join(projectDir, "definitions"));
 
@@ -237,6 +240,26 @@ suite("buildProjectCopyFilter", ({ afterEach }) => {
     expect(fs.readFileSync(path.join(destinationDir, "generated", "table.sqlx"), "utf8")).to.equal(
       "SELECT 1",
     );
+    expect(fs.existsSync(path.join(destinationDir, ".git"))).to.equal(false);
+    expect(fs.existsSync(path.join(destinationDir, ".df-credentials.json"))).to.equal(false);
+  });
+
+  test("does not copy .df-credentials.json or .git when reached through symlinks in includes/", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    const destinationDir = tmpDirFixture.createNewTmpDir();
+    fs.writeFileSync(path.join(projectDir, ".df-credentials.json"), '{"projectId": "p"}');
+    fs.ensureDirSync(path.join(projectDir, ".git"));
+    fs.writeFileSync(path.join(projectDir, ".git", "HEAD"), "ref: refs/heads/main\n");
+    fs.ensureDirSync(path.join(projectDir, "includes"));
+    fs.symlinkSync(
+      path.join("..", ".df-credentials.json"),
+      path.join(projectDir, "includes", "creds.json"),
+    );
+    fs.symlinkSync(path.join("..", ".git"), path.join(projectDir, "includes", "git-dir"));
+
+    copyProjectForStatelessInstall(projectDir, destinationDir);
+
+    expect(fs.existsSync(path.join(destinationDir, ".df-credentials.json"))).to.equal(false);
     expect(fs.existsSync(path.join(destinationDir, ".git"))).to.equal(false);
   });
 
@@ -510,6 +533,7 @@ suite("explainExcludedModule", ({ afterEach }) => {
     fs.symlinkSync(path.join(".git", "lib"), path.join(projectDir, "git-lib"));
     fs.ensureDirSync(path.join(projectDir, "lib", "node_modules", "pkg"));
     fs.writeFileSync(path.join(projectDir, "lib", "node_modules", "pkg", "index.js"), "");
+    fs.writeFileSync(path.join(projectDir, ".df-credentials.json"), "{}");
     copyProjectForStatelessInstall(projectDir, copyDir);
     // Point the copied links where their relative targets resolve outside Bazel: at paths
     // in the copy that the filter left out.
@@ -566,8 +590,9 @@ suite("explainExcludedModule", ({ afterEach }) => {
       "Cannot find module 'git-lib/helper.js'",
       // A relative name, which isn't handled yet.
       "Cannot find module './example.sql'",
-      // Excluded by the node_modules floor, which no ignore file can override.
+      // Excluded by the fixed floor, which no ignore file can override.
       "Cannot find module 'lib/node_modules/pkg/index.js'",
+      "Cannot find module '.df-credentials.json'",
       // Missing from the project too.
       "Cannot find module 'missing/example.sql'",
       // Not a missing module at all.
