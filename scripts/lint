@@ -8,8 +8,5 @@ bazel build //protos:ts //core:version
 # Run eslint.
 bazel run //:eslint -- '**/*.ts'
 
-# Run prettier on .ts files changed since the branching point.
-BASE_REF=$(git rev-parse --verify --quiet upstream/main || echo origin/main)
-MERGE_BASE=$(git merge-base "$BASE_REF" HEAD)
-git diff -z --name-only --diff-filter=ACMR "$MERGE_BASE" -- '*.ts' \
-  | xargs -0 -r bazel run //:prettier -- --ignore-path .prettierignore --check
+# Check formatting of all .ts files with prettier.
+bazel run //:prettier -- --ignore-path .prettierignore --check '**/*.ts'
