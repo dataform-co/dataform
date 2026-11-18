@@ -42,16 +42,18 @@ export abstract class ActionBuilder<T> {
   public session: Session;
   public includeAssertionsForDependency: Map<string, boolean> = new Map();
   protected isLakehouseTarget = false;
+  private uniqueKeyAssertions: Assertion[] = [];
+  private rowConditionsAssertion?: Assertion;
   /**
    * The dataset explicitly configured for this action's inline assertions (`assertions.dataset`),
    * if any. Takes precedence over the project-level default assertion dataset.
    */
-  protected inlineAssertionsDataset?: string;
+  private inlineAssertionsDataset?: string;
   /**
    * The project explicitly configured for this action's inline assertions (`assertions.project`),
    * if any. Takes precedence over the project of the action itself.
    */
-  protected inlineAssertionsProject?: string;
+  private inlineAssertionsProject?: string;
 
   constructor(session?: Session) {
     this.session = session;
@@ -101,38 +103,17 @@ export abstract class ActionBuilder<T> {
   /** Creates the final protobuf representation. */
   public abstract compile(): T;
 
-  /**
-   * Whether inline assertions should be written to the same dataset as their parent action, i.e.
-   * neither an action-level nor a project-level assertion dataset has been configured.
-   */
-  protected inlineAssertionsFollowActionSchema(): boolean {
-    return !this.inlineAssertionsDataset && !this.session.projectConfig.assertionSchema;
-  }
-
-  /**
-   * Whether inline assertions should be written to the same project as their parent action, i.e.
-   * no action-level assertion project has been configured.
-   */
-  protected inlineAssertionsFollowActionDatabase(): boolean {
-    return !this.inlineAssertionsProject;
-  }
-
   protected generateInlineAssertions(
     tableAssertionsConfig: dataform.ActionConfig.TableAssertionsConfig,
     proto: dataform.Table,
-  ): { uniqueKeyAssertions: Assertion[]; rowConditionsAssertion?: Assertion } {
-    const inlineAssertions: {
-      uniqueKeyAssertions: Assertion[];
-      rowConditionsAssertion?: Assertion;
-    } = { uniqueKeyAssertions: [] };
+  ) {
+    this.uniqueKeyAssertions = [];
+    this.rowConditionsAssertion = undefined;
     if (!!tableAssertionsConfig.uniqueKey?.length && !!tableAssertionsConfig.uniqueKeys?.length) {
       this.session.compileError(
         new Error("Specify at most one of 'assertions.uniqueKey' and 'assertions.uniqueKeys'."),
       );
     }
-    const assertionPrefix = !!this.session.projectConfig.builtinAssertionNamePrefix
-      ? `${this.session.projectConfig.builtinAssertionNamePrefix}_`
-      : "";
     let uniqueKeys = tableAssertionsConfig.uniqueKeys?.map((uniqueKey) =>
       dataform.ActionConfig.TableAssertionsConfig.UniqueKey.create(uniqueKey),
     );
@@ -146,7 +127,7 @@ export abstract class ActionBuilder<T> {
     const jobLabels = proto.actionDescriptor?.jobLabels;
     // `database` and `schema` are the legacy names for `project` and `dataset`; they are accepted
     // here for callers of the JS API's `.assertions()` method, which bypasses the legacy config
-    // conversion.
+    // conversion. That method is deprecated, so once it's removed this code can be simplified.
     this.inlineAssertionsProject =
       (tableAssertionsConfig as any).database || tableAssertionsConfig.project || undefined;
     // Precedence: action-level assertion project, then the project of the parent action (which
@@ -163,7 +144,7 @@ export abstract class ActionBuilder<T> {
       uniqueKeys.forEach(({ uniqueKey }, index) => {
         const uniqueKeyAssertion = this.session
           .assert(
-            `${assertionPrefix}${proto.target.schema}_${proto.target.name}_assertions_uniqueKey_${index}`,
+            this.inlineAssertionName(proto.target, `assertions_uniqueKey_${index}`),
             dataform.ActionConfig.AssertionConfig.create({
               filename: proto.fileName,
               project,
@@ -181,7 +162,7 @@ export abstract class ActionBuilder<T> {
         if (proto.disabled) {
           uniqueKeyAssertion.disabled();
         }
-        inlineAssertions.uniqueKeyAssertions.push(uniqueKeyAssertion);
+        this.uniqueKeyAssertions.push(uniqueKeyAssertion);
       });
     }
     // Copy, so nonNull conditions are not appended to an array the user may share across actions.
@@ -194,9 +175,9 @@ export abstract class ActionBuilder<T> {
       nonNullCols.forEach((nonNullCol) => mergedRowConditions.push(`${nonNullCol} IS NOT NULL`));
     }
     if (!!mergedRowConditions && mergedRowConditions.length > 0) {
-      inlineAssertions.rowConditionsAssertion = this.session
+      this.rowConditionsAssertion = this.session
         .assert(
-          `${assertionPrefix}${proto.target.schema}_${proto.target.name}_assertions_rowConditions`,
+          this.inlineAssertionName(proto.target, "assertions_rowConditions"),
           dataform.ActionConfig.AssertionConfig.create({
             filename: proto.fileName,
             project,
@@ -209,15 +190,81 @@ export abstract class ActionBuilder<T> {
             .compilationSql()
             .rowConditionsAssertion(ctx.ref(proto.target), mergedRowConditions),
         );
-      inlineAssertions.rowConditionsAssertion.setParentAction(dataform.Target.create(proto.target));
+      this.rowConditionsAssertion.setParentAction(dataform.Target.create(proto.target));
       if (proto.disabled) {
-        inlineAssertions.rowConditionsAssertion.disabled();
+        this.rowConditionsAssertion.disabled();
       }
       if (proto.tags) {
-        inlineAssertions.rowConditionsAssertion.tags(proto.tags);
+        this.rowConditionsAssertion.tags(proto.tags);
       }
     }
-    return inlineAssertions;
+  }
+
+  protected setInlineAssertionsDisabled(disabled: boolean) {
+    this.uniqueKeyAssertions.forEach((assertion) => assertion.disabled(disabled));
+    this.rowConditionsAssertion?.disabled(disabled);
+  }
+
+  protected addInlineAssertionsTags(tags: string | string[]) {
+    this.uniqueKeyAssertions.forEach((assertion) => assertion.tags(tags));
+    this.rowConditionsAssertion?.tags(tags);
+  }
+
+  protected updateInlineAssertionsDatabase(database: string, parentTarget: dataform.ITarget) {
+    this.uniqueKeyAssertions.forEach((assertion) => {
+      if (this.inlineAssertionsFollowActionDatabase()) {
+        assertion.database(database);
+      }
+      assertion.setParentAction(dataform.Target.create(parentTarget));
+    });
+    if (this.rowConditionsAssertion) {
+      if (this.inlineAssertionsFollowActionDatabase()) {
+        this.rowConditionsAssertion.database(database);
+      }
+      this.rowConditionsAssertion.setParentAction(dataform.Target.create(parentTarget));
+    }
+  }
+
+  protected updateInlineAssertionsSchema(schema: string, parentTarget: dataform.ITarget) {
+    this.uniqueKeyAssertions.forEach((assertion, index) => {
+      if (this.inlineAssertionsFollowActionSchema()) {
+        assertion.schema(schema);
+      }
+      assertion.setName(this.inlineAssertionName(parentTarget, `assertions_uniqueKey_${index}`));
+      assertion.setParentAction(dataform.Target.create(parentTarget));
+    });
+    if (this.rowConditionsAssertion) {
+      if (this.inlineAssertionsFollowActionSchema()) {
+        this.rowConditionsAssertion.schema(schema);
+      }
+      this.rowConditionsAssertion.setName(
+        this.inlineAssertionName(parentTarget, "assertions_rowConditions"),
+      );
+      this.rowConditionsAssertion.setParentAction(dataform.Target.create(parentTarget));
+    }
+  }
+
+  private inlineAssertionName(parentTarget: dataform.ITarget, suffix: string): string {
+    const assertionPrefix = !!this.session.projectConfig.builtinAssertionNamePrefix
+      ? `${this.session.projectConfig.builtinAssertionNamePrefix}_`
+      : "";
+    return `${assertionPrefix}${parentTarget.schema}_${parentTarget.name}_${suffix}`;
+  }
+
+  /**
+   * Whether inline assertions should be written to the same dataset as their parent action, i.e.
+   * neither an action-level nor a project-level assertion dataset has been configured.
+   */
+  private inlineAssertionsFollowActionSchema(): boolean {
+    return !this.inlineAssertionsDataset && !this.session.projectConfig.assertionSchema;
+  }
+
+  /**
+   * Whether inline assertions should be written to the same project as their parent action, i.e.
+   * no action-level assertion project has been configured.
+   */
+  private inlineAssertionsFollowActionDatabase(): boolean {
+    return !this.inlineAssertionsProject;
   }
 
   private validateTarget(target: dataform.Target, fileName: string) {

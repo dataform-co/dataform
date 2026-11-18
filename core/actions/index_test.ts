@@ -518,12 +518,12 @@ publish("name", { type: "${tableType}" })
         {
           database: "customProject",
           schema: "customDataset",
-          name: "defaultDataset_name_assertions_uniqueKey_0",
+          name: "customDataset_name_assertions_uniqueKey_0",
         },
         {
           database: "customProject",
           schema: "customDataset",
-          name: "defaultDataset_name_assertions_rowConditions",
+          name: "customDataset_name_assertions_rowConditions",
         },
       ]);
     });
@@ -688,12 +688,12 @@ publish("name", { type: "${tableType}" })
         {
           database: "customAssertionProject",
           schema: "customAssertionDataset",
-          name: "defaultDataset_name_assertions_uniqueKey_0",
+          name: "customDataset_name_assertions_uniqueKey_0",
         },
         {
           database: "customAssertionProject",
           schema: "customAssertionDataset",
-          name: "defaultDataset_name_assertions_rowConditions",
+          name: "customDataset_name_assertions_rowConditions",
         },
       ]);
     });

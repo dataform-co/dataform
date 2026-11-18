@@ -7,7 +7,6 @@ import {
   LegacyConfigConverter,
   TableType,
 } from "df/core/actions";
-import { Assertion } from "df/core/actions/assertion";
 import {
   validateLakehouseBigQueryOptions,
   validateLakehouseColumns,
@@ -106,10 +105,6 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
     disabled: false,
     tags: [],
   });
-
-  /** @hidden */
-  private uniqueKeyAssertions: Assertion[] = [];
-  private rowConditionsAssertion: Assertion;
 
   /** @hidden */
   private unverifiedConfig: any;
@@ -382,8 +377,7 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
    */
   public disabled(disabled = true) {
     this.proto.disabled = disabled;
-    this.uniqueKeyAssertions.forEach((assertion) => assertion.disabled(disabled));
-    this.rowConditionsAssertion?.disabled(disabled);
+    this.setInlineAssertionsDisabled(disabled);
     return this;
   }
 
@@ -472,8 +466,7 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
     newTags.forEach((t) => {
       this.proto.tags.push(t);
     });
-    this.uniqueKeyAssertions.forEach((assertion) => assertion.tags(value));
-    this.rowConditionsAssertion?.tags(value);
+    this.addInlineAssertionsTags(value);
     return this;
   }
 
@@ -520,18 +513,7 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
       this.proto.fileName,
       { validateTarget: true },
     );
-    this.uniqueKeyAssertions.forEach((assertion) => {
-      if (this.inlineAssertionsFollowActionDatabase()) {
-        assertion.database(database);
-      }
-      assertion.setParentAction(dataform.Target.create(this.proto.target));
-    });
-    if (this.rowConditionsAssertion) {
-      if (this.inlineAssertionsFollowActionDatabase()) {
-        this.rowConditionsAssertion.database(database);
-      }
-      this.rowConditionsAssertion.setParentAction(dataform.Target.create(this.proto.target));
-    }
+    this.updateInlineAssertionsDatabase(database, this.proto.target);
     return this;
   }
 
@@ -556,18 +538,7 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
       this.proto.fileName,
       { validateTarget: true },
     );
-    this.uniqueKeyAssertions.forEach((assertion) => {
-      if (this.inlineAssertionsFollowActionSchema()) {
-        assertion.schema(schema);
-      }
-      assertion.setParentAction(dataform.Target.create(this.proto.target));
-    });
-    if (this.rowConditionsAssertion) {
-      if (this.inlineAssertionsFollowActionSchema()) {
-        this.rowConditionsAssertion.schema(schema);
-      }
-      this.rowConditionsAssertion.setParentAction(dataform.Target.create(this.proto.target));
-    }
+    this.updateInlineAssertionsSchema(schema, this.proto.target);
     return this;
   }
 
@@ -592,9 +563,7 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
       );
       return this;
     }
-    const inlineAssertions = this.generateInlineAssertions(tableAssertionsConfig, this.proto);
-    this.uniqueKeyAssertions = inlineAssertions.uniqueKeyAssertions;
-    this.rowConditionsAssertion = inlineAssertions.rowConditionsAssertion;
+    this.generateInlineAssertions(tableAssertionsConfig, this.proto);
     return this;
   }
 
