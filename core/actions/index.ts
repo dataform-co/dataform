@@ -41,6 +41,16 @@ export abstract class ActionBuilder<T> {
   public session: Session;
   public includeAssertionsForDependency: Map<string, boolean> = new Map();
   protected isLakehouseTarget = false;
+  /**
+   * The dataset explicitly configured for this action's inline assertions (`assertions.dataset`),
+   * if any. Takes precedence over the project-level default assertion dataset.
+   */
+  protected inlineAssertionsDataset?: string;
+  /**
+   * The project explicitly configured for this action's inline assertions (`assertions.project`),
+   * if any. Takes precedence over the project of the action itself.
+   */
+  protected inlineAssertionsProject?: string;
 
   constructor(session?: Session) {
     this.session = session;
@@ -90,6 +100,22 @@ export abstract class ActionBuilder<T> {
   /** Creates the final protobuf representation. */
   public abstract compile(): T;
 
+  /**
+   * Whether inline assertions should be written to the same dataset as their parent action, i.e.
+   * neither an action-level nor a project-level assertion dataset has been configured.
+   */
+  protected inlineAssertionsFollowActionSchema(): boolean {
+    return !this.inlineAssertionsDataset && !this.session.projectConfig.assertionSchema;
+  }
+
+  /**
+   * Whether inline assertions should be written to the same project as their parent action, i.e.
+   * no action-level assertion project has been configured.
+   */
+  protected inlineAssertionsFollowActionDatabase(): boolean {
+    return !this.inlineAssertionsProject;
+  }
+
   protected generateInlineAssertions(
     tableAssertionsConfig: dataform.ActionConfig.TableAssertionsConfig,
     proto: dataform.Table,
@@ -117,8 +143,21 @@ export abstract class ActionBuilder<T> {
       ];
     }
     const jobLabels = proto.actionDescriptor?.jobLabels;
-    const project = proto.target.database || undefined;
-    const dataset = this.session.projectConfig.assertionSchema || proto.target.schema || undefined;
+    // `database` and `schema` are the legacy names for `project` and `dataset`; they are accepted
+    // here for callers of the JS API's `.assertions()` method, which bypasses the legacy config
+    // conversion.
+    this.inlineAssertionsProject =
+      (tableAssertionsConfig as any).database || tableAssertionsConfig.project || undefined;
+    // Precedence: action-level assertion project, then the project of the parent action (which
+    // itself falls back to the default project).
+    const project = this.inlineAssertionsProject || proto.target.database || undefined;
+    this.inlineAssertionsDataset =
+      (tableAssertionsConfig as any).schema || tableAssertionsConfig.dataset || undefined;
+    const dataset =
+      this.inlineAssertionsDataset ||
+      this.session.projectConfig.assertionSchema ||
+      proto.target.schema ||
+      undefined;
     if (uniqueKeys) {
       uniqueKeys.forEach(({ uniqueKey }, index) => {
         const uniqueKeyAssertion = this.session
@@ -402,6 +441,8 @@ export interface ILegacyTableAssertions {
   uniqueKeys?: string[][];
   nonNull?: string | string[];
   rowConditions?: string[];
+  schema?: string;
+  database?: string;
 }
 
 export class LegacyConfigConverter {
@@ -447,6 +488,14 @@ export class LegacyConfigConverter {
       }
       if (typeof legacyConfig.assertions.nonNull === "string") {
         legacyConfig.assertions.nonNull = [legacyConfig.assertions.nonNull];
+      }
+      if (legacyConfig.assertions.schema) {
+        legacyConfig.assertions.dataset = legacyConfig.assertions.schema;
+        delete legacyConfig.assertions.schema;
+      }
+      if (legacyConfig.assertions.database) {
+        legacyConfig.assertions.project = legacyConfig.assertions.database;
+        delete legacyConfig.assertions.database;
       }
     }
     return legacyConfig;

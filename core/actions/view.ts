@@ -456,11 +456,15 @@ export class View extends ActionBuilder<dataform.Table> {
       { validateTarget: true },
     );
     this.uniqueKeyAssertions.forEach((assertion) => {
-      assertion.database(database);
+      if (this.inlineAssertionsFollowActionDatabase()) {
+        assertion.database(database);
+      }
       assertion.setParentAction(dataform.Target.create(this.proto.target));
     });
     if (this.rowConditionsAssertion) {
-      this.rowConditionsAssertion.database(database);
+      if (this.inlineAssertionsFollowActionDatabase()) {
+        this.rowConditionsAssertion.database(database);
+      }
       this.rowConditionsAssertion.setParentAction(dataform.Target.create(this.proto.target));
     }
     return this;
@@ -480,13 +484,13 @@ export class View extends ActionBuilder<dataform.Table> {
       { validateTarget: true },
     );
     this.uniqueKeyAssertions.forEach((assertion) => {
-      if (!this.session.projectConfig.assertionSchema) {
+      if (this.inlineAssertionsFollowActionSchema()) {
         assertion.schema(schema);
       }
       assertion.setParentAction(dataform.Target.create(this.proto.target));
     });
     if (this.rowConditionsAssertion) {
-      if (!this.session.projectConfig.assertionSchema) {
+      if (this.inlineAssertionsFollowActionSchema()) {
         this.rowConditionsAssertion.schema(schema);
       }
       this.rowConditionsAssertion.setParentAction(dataform.Target.create(this.proto.target));
