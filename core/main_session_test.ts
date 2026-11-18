@@ -279,6 +279,42 @@ actions:
     ]);
   });
 
+  [
+    { filename: "action.sqlx", contents: `config { type: "table" } SELECT 1` },
+    { filename: "action.js", contents: `publish("action", { type: "table" }).query("SELECT 1")` },
+  ].forEach(({ filename, contents }) => {
+    test(`fails when dataset is not set in workflow settings or the action in ${filename}`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      writeWorkflowSettingsFile(
+        projectDir,
+        `
+defaultProject: defaultProject
+defaultLocation: US
+`,
+      );
+      writeDefinitionFile(projectDir, filename, contents);
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(
+        result.compile.compiledGraph.graphErrors.compilationErrors.map(
+          ({ message, fileName, actionTarget }) => ({
+            message,
+            fileName,
+            actionTarget: asPlainObject(actionTarget),
+          }),
+        ),
+      ).deep.equals([
+        {
+          message:
+            "Action targets must have a dataset. Set defaultDataset in workflow_settings.yaml or dataset in the action config.",
+          fileName: `definitions/${filename}`,
+          actionTarget: { database: "defaultProject", name: "action" },
+        },
+      ]);
+    });
+  });
+
   test("backslash file paths in the compile config are normalized to forward slashes", () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
     writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
