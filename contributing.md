@@ -106,7 +106,7 @@ Use the following command to check for any linting and formatting errors
 ./scripts/lint
 ```
 
-All .ts files are expected to be formatted using prettier. You can format all files modified in your current branch by using this script:
+All .ts files are expected to be formatted using prettier. You can format all .ts files by using this script:
 
 ```bash
 ./scripts/format
