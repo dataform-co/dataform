@@ -149,6 +149,7 @@ select 1 as \${dataform.projectConfig.vars.testVar2}
       },
       runConfig: {
         fullRefresh: false,
+        overrideProtected: false,
         tags: ["someTag", "someOtherTag"],
         actions: ["example", "someOtherAction"],
       },
@@ -229,6 +230,7 @@ SELECT 1 as id
       runConfig: {
         actions: ["test_assertion", "example_table"],
         fullRefresh: false,
+        overrideProtected: false,
       },
       warehouseState: {},
     };
@@ -528,6 +530,7 @@ DROP SCHEMA IF EXISTS \`\${dataform.projectConfig.defaultDatabase}.\${dataform.p
             runConfig: {
               actions: ["example_incremental"],
               fullRefresh: false,
+              overrideProtected: false,
             },
             actions: [
               {
