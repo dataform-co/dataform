@@ -20,7 +20,7 @@ export async function handleDbRequest(
     case "GetTable":
       return await handleGetTable(dbadapter, request);
     case "DeleteTable":
-      return await handleDeleteTable(dbadapter, request, options?.dryRun);
+      return await handleDeleteTable(dbadapter, request, options);
     default:
       throw new Error(`Unrecognized RPC method: ${method}`);
   }
@@ -85,12 +85,12 @@ async function handleGetTable(dbadapter: IDbAdapter, request: Uint8Array): Promi
 async function handleDeleteTable(
   dbadapter: IDbAdapter,
   request: Uint8Array,
-  dryRun?: boolean,
+  options?: IBigQueryExecutionOptions,
 ): Promise<Uint8Array> {
   const deleteTableRequest = dataform.DeleteTableRequest.decode(request);
-  if (dryRun) {
+  if (options?.dryRun) {
     return new Uint8Array();
   }
-  await dbadapter.deleteTable(deleteTableRequest.target);
+  await dbadapter.deleteTable(deleteTableRequest.target, { bigquery: options });
   return new Uint8Array();
 }

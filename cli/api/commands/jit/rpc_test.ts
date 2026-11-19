@@ -89,11 +89,13 @@ suite("jit_rpc", () => {
       instance(mockClient),
       "DeleteTable",
       encodedRequest,
+      { location: "europe-west1" },
     );
 
-    verify(mockAdapter.deleteTable(anything())).once();
-    const capturedTarget = capture(mockAdapter.deleteTable).last()[0];
+    verify(mockAdapter.deleteTable(anything(), anything())).once();
+    const [capturedTarget, capturedOptions] = capture(mockAdapter.deleteTable).last();
     expect(dataform.Target.create(capturedTarget)).deep.equals(dataform.Target.create(target));
+    expect(capturedOptions).deep.equals({ bigquery: { location: "europe-west1" } });
     expect(response.length).equals(0);
   });
 
@@ -274,7 +276,7 @@ suite("jit_rpc", () => {
     );
 
     // Verify that the adapter method was NOT called
-    verify(mockAdapter.deleteTable(anything())).never();
+    verify(mockAdapter.deleteTable(anything(), anything())).never();
   });
 
   test("Execute RPC respects global dryRun flag", async () => {

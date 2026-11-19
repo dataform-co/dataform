@@ -565,16 +565,19 @@ suite("BigQueryDbAdapter", () => {
           }) as any,
       },
     );
-    const executedStatements: string[] = [];
-    adapter.execute = async (statement: string) => {
-      executedStatements.push(statement);
+    const executedCalls: Array<{ statement: string; location?: string }> = [];
+    adapter.execute = async (statement: string, options?: any) => {
+      executedCalls.push({ statement, location: options?.bigquery?.location });
       return { rows: [], metadata: {} };
     };
-    await adapter.deleteTable({
-      database: "explicit-project",
-      schema: "ecommerce_catalog.sales_dw",
-      name: "customer_orders",
-    });
+    await adapter.deleteTable(
+      {
+        database: "explicit-project",
+        schema: "ecommerce_catalog.sales_dw",
+        name: "customer_orders",
+      },
+      { bigquery: { location: "us-central1" } },
+    );
     let thrownError: Error | undefined;
     try {
       await adapter.deleteTable({
@@ -586,8 +589,12 @@ suite("BigQueryDbAdapter", () => {
     }
     expect(thrownError?.message).to.include("without a target database");
     expect(restDeleteCalled).to.equal(false);
-    expect(executedStatements).to.eql([
-      "drop table if exists `explicit-project.ecommerce_catalog.sales_dw.customer_orders`",
+    expect(executedCalls).to.eql([
+      {
+        statement:
+          "drop table if exists `explicit-project.ecommerce_catalog.sales_dw.customer_orders`",
+        location: "us-central1",
+      },
     ]);
   });
 

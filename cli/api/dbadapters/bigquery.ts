@@ -383,7 +383,10 @@ export class BigQueryDbAdapter implements IDbAdapter {
     });
   }
 
-  public async deleteTable(target: dataform.ITarget): Promise<void> {
+  public async deleteTable(
+    target: dataform.ITarget,
+    options?: { bigquery?: IBigQueryExecutionOptions },
+  ): Promise<void> {
     if (isLakehouseTarget(target)) {
       if (!target.database) {
         throw new Error(
@@ -392,6 +395,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
       }
       await this.execute(
         `drop table if exists \`${target.database}.${target.schema}.${target.name}\``,
+        { bigquery: options?.bigquery },
       );
       return;
     }

@@ -58,7 +58,10 @@ export interface IDbAdapter extends IDbClient {
     options?: { limit: number; location?: string },
   ): Promise<dataform.ITableMetadata[]>;
   table(target: dataform.ITarget): Promise<dataform.ITableMetadata>;
-  deleteTable(target: dataform.ITarget): Promise<void>;
+  deleteTable(
+    target: dataform.ITarget,
+    options?: { bigquery?: IBigQueryExecutionOptions },
+  ): Promise<void>;
 
   setMetadata(
     action: dataform.IExecutionAction,
