@@ -33,7 +33,24 @@ fi
 
 echo "Publishing as '$TAG' based on version: $VERSION"
 
-PUBLISH_REGISTRY=https://registry.npmjs.org/
+PUBLISH_REGISTRY=https://us-npm.pkg.dev/oss-exit-gate-prod/dataform--npm/
 
 bazel run //packages/@dataform/cli:package.publish -- --tag=$TAG --registry=$PUBLISH_REGISTRY
 bazel run //packages/@dataform/core:package.publish -- --tag=$TAG --registry=$PUBLISH_REGISTRY
+
+cat <<EOF > publish_all.json
+{
+  "publish_all": true,
+  "registry_config": {
+    "npm": {
+      "tags": ["$TAG"]
+    }
+  }
+}
+EOF
+
+rm -rf npm_packages
+mkdir -p npm_packages
+cp -rL bazel-bin/packages/@dataform/cli/package npm_packages/cli
+cp -rL bazel-bin/packages/@dataform/core/package npm_packages/core
+chmod -R u+w npm_packages

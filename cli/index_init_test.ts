@@ -43,6 +43,20 @@ defaultAssertionDataset: dataform_assertions
 `);
   });
 
+  test("workflow_settings.yaml generated from init without a location", async () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+
+    const result = await runCli("init", [projectDir, "--default-database=dataform-database"]);
+
+    expect(result.exitCode).equals(0);
+    expect(fs.readFileSync(path.join(projectDir, "workflow_settings.yaml"), "utf8")).to
+      .equal(`dataformCoreVersion: ${version}
+defaultProject: dataform-database
+defaultDataset: dataform
+defaultAssertionDataset: dataform_assertions
+`);
+  });
+
   suite("with --iceberg", () => {
     test("init with --iceberg sets defaultIcebergConfig with all fields", async () => {
       const projectDir = tmpDirFixture.createNewTmpDir();

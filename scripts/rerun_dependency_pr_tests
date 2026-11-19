@@ -1,0 +1,151 @@
+#!/usr/bin/env python3
+"""Re-runs the tests of dependency PRs once their new versions are available.
+
+PRs from Dependabot (dependabot/* branches) and from the security updates job
+(deps/security-updates) are tested by a Cloud Build push trigger. Their tests
+often fail at first because new package versions become installable in the
+registry used by CI only some time after they are published. For each such
+open PR, this script checks every package version that the PR adds to
+pnpm-lock.yaml in CI_REGISTRY and, once all of them are available, runs the
+trigger again on the PR's head commit if its last run there failed.
+
+A commit is tested at most MAX_RUNS times, so a PR that fails for another
+reason isn't re-run forever. PRs whose last run passed, is still running, or
+that don't add any new versions are left alone.
+
+Environment:
+  RERUN_TRIGGER   Name of the Cloud Build push trigger (required).
+  PROJECT_ID      Cloud Build project of the trigger (required).
+  REGION          Region of the trigger (required).
+  CI_REGISTRY     Registry the tests install from (host/path/; required).
+  REGISTRY_TOKEN  Access token for CI_REGISTRY (required).
+  GITHUB_TOKEN    Token for the GitHub API (optional; raises the rate limit).
+  GITHUB_REPO     owner/repo (default dataform-co/dataform).
+  MAX_RUNS        Maximum number of trigger runs per commit (default 3).
+  DRY_RUN         If "1" or "true", only print what would be done.
+"""
+
+import json
+import os
+import re
+import subprocess
+import sys
+import urllib.request
+
+REPO = os.environ.get("GITHUB_REPO", "dataform-co/dataform")
+MAX_RUNS = int(os.environ.get("MAX_RUNS", "3"))
+DRY_RUN = os.environ.get("DRY_RUN", "").lower() in ("1", "true")
+BOT_BRANCH = re.compile(r"^(dependabot/.*|deps/security-updates)$")
+NAME = re.compile(r"^(@[a-z0-9][a-z0-9._-]*/)?[a-z0-9][a-z0-9._-]*$")
+VERSION = re.compile(r"^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$")
+
+
+def github(path):
+    headers = {"Accept": "application/vnd.github+json", "User-Agent": "rerun_dependency_pr_tests"}
+    if os.environ.get("GITHUB_TOKEN"):
+        headers["Authorization"] = "Bearer " + os.environ["GITHUB_TOKEN"]
+    request = urllib.request.Request("https://api.github.com" + path, headers=headers)
+    with urllib.request.urlopen(request, timeout=60) as response:
+        return json.load(response)
+
+
+def lockfile_packages(sha):
+    """Returns {(name, version)} of the registry packages in pnpm-lock.yaml."""
+    url = "https://raw.githubusercontent.com/%s/%s/pnpm-lock.yaml" % (REPO, sha)
+    with urllib.request.urlopen(url, timeout=120) as response:
+        text = response.read().decode()
+    packages, in_packages = set(), False
+    for line in text.splitlines():
+        if line.startswith("packages:"):
+            in_packages = True
+            continue
+        if in_packages and line.strip() and not line[0].isspace():
+            break
+        m = re.match(r"^  '?(@?[^@\s']+)@([^(:'\s]+)", line) if in_packages else None
+        if m and NAME.match(m[1]) and VERSION.match(m[2]):
+            packages.add((m[1], m[2]))
+    return packages
+
+
+def available(name, version):
+    """Checks whether a package version can be downloaded from CI_REGISTRY."""
+    url = "https://%s%s/-/%s-%s.tgz" % (os.environ["CI_REGISTRY"], name,
+                                         name.split("/")[-1], version)
+    # curl rather than urllib: curl doesn't send the token on to the host that
+    # the registry redirects to. The token is passed on stdin.
+    result = subprocess.run(
+        ["curl", "-sS", "-L", "--connect-timeout", "10", "--max-time", "120",
+         "--retry", "2", "-o", "/dev/null", "-w", "%{http_code}", "-H", "@-", url],
+        input="Authorization: Bearer " + os.environ["REGISTRY_TOKEN"],
+        capture_output=True, text=True)
+    return result.stdout.strip() == "200"
+
+
+def trigger_runs(sha, trigger):
+    """Returns the check runs of the trigger on a commit, newest first."""
+    data = github("/repos/%s/commits/%s/check-runs?filter=all&per_page=100" % (REPO, sha))
+    runs = [r for r in data["check_runs"]
+            if r["name"] == trigger or r["name"].startswith(trigger + " (")]
+    return sorted(runs, key=lambda r: r.get("started_at") or "", reverse=True)
+
+
+def run_trigger(trigger, sha):
+    command = ["gcloud", "builds", "triggers", "run", trigger,
+               "--project=" + os.environ["PROJECT_ID"], "--region=" + os.environ["REGION"],
+               "--sha=" + sha, "--format=value(metadata.build.id)"]
+    if DRY_RUN:
+        print("  [dry run] " + " ".join(command))
+        return True
+    result = subprocess.run(command, capture_output=True, text=True)
+    if result.returncode != 0:
+        print("  WARNING: could not run the trigger: " + result.stderr.strip()[-500:],
+              file=sys.stderr)
+        return False
+    print("  started build " + result.stdout.strip())
+    return True
+
+
+def process(pr, trigger):
+    """Re-runs the trigger for one PR if needed; returns a short status."""
+    sha = pr["head"]["sha"]
+    runs = trigger_runs(sha, trigger)
+    if any(r["status"] != "completed" for r in runs):
+        return "tests are running"
+    if runs and runs[0]["conclusion"] == "success":
+        return "tests passed"
+    if len(runs) >= MAX_RUNS:
+        return "tested %d times already; not re-running" % len(runs)
+    new = sorted(lockfile_packages(sha) - lockfile_packages(pr["base"]["sha"]))
+    if not new and runs:
+        return "no new dependency versions; not re-running"
+    missing = [n + "@" + v for n, v in new if not available(n, v)]
+    if missing:
+        return "waiting for %d of %d version(s): %s" % (len(missing), len(new), ", ".join(missing))
+    if run_trigger(trigger, sha):
+        prefix = "all %d new version(s) available; " % len(new) if new else ""
+        return prefix + ("tests not run yet; running" if not runs else "re-running failed tests")
+    return "could not run the trigger"
+
+
+def main():
+    trigger = os.environ.get("RERUN_TRIGGER", "")
+    if not trigger:
+        print("RERUN_TRIGGER isn't set; not re-running dependency PR tests")
+        return
+    for name in ("PROJECT_ID", "REGION", "CI_REGISTRY", "REGISTRY_TOKEN"):
+        if not os.environ.get(name):
+            sys.exit("%s must be set" % name)
+    prs = [pr for pr in github("/repos/%s/pulls?state=open&per_page=100" % REPO)
+           if BOT_BRANCH.match(pr["head"]["ref"]) and
+           (pr["head"].get("repo") or {}).get("full_name") == REPO]
+    print("=== Re-running tests of %d dependency PR(s)%s" % (len(prs), " (dry run)" if DRY_RUN else ""))
+    for pr in prs:
+        try:
+            status = process(pr, trigger)
+        except Exception as e:  # Keep going with the other PRs.
+            status = "WARNING: %s" % e
+        print("PR #%d (%s): %s" % (pr["number"], pr["title"], status))
+
+
+if __name__ == "__main__":
+    main()

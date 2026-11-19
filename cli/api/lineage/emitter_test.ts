@@ -4,6 +4,8 @@ import Long from "long";
 
 import {
   createLineageClientProvider,
+  LINEAGE_CLIENT_INFO_BYTES,
+  LINEAGE_CLIENT_INFO_HEADER,
   LINEAGE_RETRY_CONFIG,
   LineageEmitter,
 } from "df/cli/api/lineage/emitter";
@@ -21,6 +23,7 @@ class StderrCapture {
 class MockLineageClient {
   public listProcessesCalledWith: any[] = [];
   public processOpenLineageRunEventCalledWith: any[] = [];
+  public processOpenLineageRunEventOptions: any[] = [];
   public listProcessesError: Error | null = null;
   public processOpenLineageRunEventError: Error | null = null;
 
@@ -32,8 +35,9 @@ class MockLineageClient {
     return [[]];
   }
 
-  public async processOpenLineageRunEvent(request: any): Promise<any> {
+  public async processOpenLineageRunEvent(request: any, options?: any): Promise<any> {
     this.processOpenLineageRunEventCalledWith.push(request);
+    this.processOpenLineageRunEventOptions.push(options);
     if (this.processOpenLineageRunEventError) {
       throw this.processOpenLineageRunEventError;
     }
@@ -160,6 +164,20 @@ suite("LineageEmitter", () => {
     expect(openLineage.job.facets.jobType.integration).to.equal("BIGQUERY_PIPELINES");
     expect(openLineage.job.facets.jobType.jobType).to.equal("ACTION");
     expect(openLineage.job.facets.jobType.processingType).to.equal("BATCH");
+
+    // Retry config and ClientInfo side-channel header verified on both calls
+    const expectedCallOptions = {
+      retry: LINEAGE_RETRY_CONFIG,
+      otherArgs: {
+        headers: {
+          [LINEAGE_CLIENT_INFO_HEADER]: [LINEAGE_CLIENT_INFO_BYTES],
+        },
+      },
+    };
+    expect(mockClient.processOpenLineageRunEventOptions).to.deep.equal([
+      expectedCallOptions,
+      expectedCallOptions,
+    ]);
   });
 
   test("emits open lineage run event with correct payload on action failure", async () => {
@@ -420,6 +438,29 @@ suite("LineageEmitter", () => {
       maxRpcTimeoutMillis: 2000,
       totalTimeoutMillis: 15000,
     });
+  });
+
+  test("LINEAGE_CLIENT_INFO_BYTES encodes ClientInfo(BQ_PIPELINES, DATAFORM_CLI) and builds valid gRPC metadata", () => {
+    expect(LINEAGE_CLIENT_INFO_HEADER).to.equal("x-goog-ext-512598505-bin");
+    expect(LINEAGE_CLIENT_INFO_BYTES.toString("hex")).to.equal(
+      "0a0c42515f504950454c494e4553120c44415441464f524d5f434c49",
+    );
+
+    const client: any = createLineageClientProvider(credentials)(
+      "test-project",
+      "datalineage.googleapis.com",
+    );
+    // Intentionally couples to google-gax's internal `_gaxGrpc.metadataBuilder` to verify
+    // that wrapping the Buffer in an array preserves binary Buffer metadata for `-bin` headers
+    // instead of coercing it to a string.
+    const buildMetadata = client._gaxGrpc.metadataBuilder({
+      "x-goog-api-client": "dataform-cli/test",
+    });
+    const metadata = buildMetadata(
+      {},
+      { [LINEAGE_CLIENT_INFO_HEADER]: [LINEAGE_CLIENT_INFO_BYTES] },
+    );
+    expect(metadata.get(LINEAGE_CLIENT_INFO_HEADER)).to.deep.equal([LINEAGE_CLIENT_INFO_BYTES]);
   });
 
   test("createLineageClientProvider impersonates the configured service account", async () => {

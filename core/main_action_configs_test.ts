@@ -49,7 +49,7 @@ actions:
     );
 
     expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
-      `Unexpected property "materialized", or property value type of "boolean" is incorrect. See https://dataform-co.github.io/dataform/docs/configs-reference#dataform-ActionConfigs for allowed properties.`,
+      `Unexpected property "materialized", or property value type of "boolean" is incorrect. See https://dataform-co.github.io/dataform/docs/reference/configs#dataform-ActionConfigs for allowed properties.`,
     );
   });
 
@@ -64,7 +64,7 @@ actions:`,
     );
 
     expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
-      `Unexpected empty value for "actions". See https://dataform-co.github.io/dataform/docs/configs-reference#dataform-ActionConfigs for allowed properties.`,
+      `Unexpected empty value for "actions". See https://dataform-co.github.io/dataform/docs/reference/configs#dataform-ActionConfigs for allowed properties.`,
     );
   });
 

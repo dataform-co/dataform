@@ -110,7 +110,7 @@ someKey: and an extra: colon
     writeWorkflowSettingsFile(projectDir, "notAProjectConfigField: value");
 
     expect(() => runMainInVm(coreExecutionRequestFromPath(projectDir))).to.throw(
-      `Workflow settings error: Unexpected property "notAProjectConfigField", or property value type of "string" is incorrect. See https://dataform-co.github.io/dataform/docs/configs-reference#dataform-WorkflowSettings for allowed properties.`,
+      `Workflow settings error: Unexpected property "notAProjectConfigField", or property value type of "string" is incorrect. See https://dataform-co.github.io/dataform/docs/reference/configs#dataform-WorkflowSettings for allowed properties.`,
     );
   });
 
@@ -186,6 +186,7 @@ ${lineageYaml}`,
       projectDir,
       `
 defaultProject: defaultProject
+defaultDataset: defaultDataset
 defaultLocation: locationInWorkflowSettings
 vars:
   selectVar: selectVal
@@ -226,6 +227,7 @@ select 1 AS \${dataform.projectConfig.vars.selectVar}`,
         jitData: {},
         projectConfig: {
           defaultDatabase: "defaultProject",
+          defaultSchema: "defaultDataset",
           defaultLocation: "locationInOverride",
           vars: {
             projectVar: "projectVal",
@@ -238,6 +240,7 @@ select 1 AS \${dataform.projectConfig.vars.selectVar}`,
             canonicalTarget: {
               database: "projectVal",
               name: "file",
+              schema: "defaultDataset",
             },
             disabled: false,
             enumType: "TABLE",
@@ -247,6 +250,7 @@ select 1 AS \${dataform.projectConfig.vars.selectVar}`,
             target: {
               database: "projectVal",
               name: "file",
+              schema: "defaultDataset",
             },
             type: "table",
           },
@@ -255,6 +259,7 @@ select 1 AS \${dataform.projectConfig.vars.selectVar}`,
           {
             database: "projectVal",
             name: "file",
+            schema: "defaultDataset",
           },
         ],
       }),
@@ -332,6 +337,7 @@ vars:
       writeWorkflowSettingsFile(
         projectDir,
         `
+defaultDataset: "defaultDataset"
 defaultLocation: "us"
 vars:
   descriptionVar: descriptionValue
@@ -376,6 +382,7 @@ select 1 AS \${dataform.projectConfig.vars.columnVar}`,
             {
               canonicalTarget: {
                 name: "tableSchema_file_assertions_rowConditions",
+                schema: "defaultDataset",
               },
               dependencyTargets: [
                 {
@@ -394,6 +401,7 @@ select 1 AS \${dataform.projectConfig.vars.columnVar}`,
                 "\nSELECT\n  'columnValue IS NOT NULL' AS failing_row_condition,\n  *\nFROM `databaseVal.tableSchema.file`\nWHERE NOT (columnValue IS NOT NULL)\n",
               target: {
                 name: "tableSchema_file_assertions_rowConditions",
+                schema: "defaultDataset",
               },
             },
           ],
@@ -401,6 +409,7 @@ select 1 AS \${dataform.projectConfig.vars.columnVar}`,
           graphErrors: {},
           jitData: {},
           projectConfig: {
+            defaultSchema: "defaultDataset",
             defaultLocation: "us",
             vars: {
               databaseVar: "databaseVal",
@@ -435,6 +444,7 @@ select 1 AS \${dataform.projectConfig.vars.columnVar}`,
           targets: [
             {
               name: "tableSchema_file_assertions_rowConditions",
+              schema: "defaultDataset",
             },
             {
               database: "databaseVal",

@@ -37,6 +37,7 @@ export interface IRunArgs
   jobPrefix?: string | null;
   tags?: string[];
   jobLabels?: { [key: string]: string };
+  buildOnly: boolean;
 }
 
 export const dryRunOption: INamedOption<yargs.Options, IRunArgs> = {
@@ -173,6 +174,17 @@ export const bigqueryJobLabelsOption: INamedOption<yargs.Options, IRunArgs> = {
   },
 };
 
+export const buildOnlyOption: INamedOption<yargs.Options, IRunArgs> = {
+  name: "build-only",
+  option: {
+    describe:
+      "Only builds the execution graph without submitting any queries to BigQuery. JiT actions are not compiled. " +
+      "Note that --dry-run and --run-tests will be ignored if combined with --build-only.",
+    type: "boolean",
+    default: false,
+  },
+};
+
 export const runOptions: Array<INamedOption<yargs.Options, IRunArgs>> = [
   dryRunOption,
   runTestsOption,
@@ -190,5 +202,6 @@ export const runOptions: Array<INamedOption<yargs.Options, IRunArgs>> = [
   jobPrefixOption,
   bigqueryJobLabelsOption,
   emitLineageOption,
+  buildOnlyOption,
   ...ProjectConfigOptions.allYargsOptions,
 ];

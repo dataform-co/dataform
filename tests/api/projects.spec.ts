@@ -39,17 +39,17 @@ suite("examples", () => {
         {
           fileName: "definitions/has_compile_errors/assertion_with_bigquery.sqlx",
           message:
-            'Unexpected property "bigquery", or property value type of "object" is incorrect. See https://dataform-co.github.io/dataform/docs/configs-reference#dataform-ActionConfig-AssertionConfig for allowed properties.',
+            'Unexpected property "bigquery", or property value type of "object" is incorrect. See https://dataform-co.github.io/dataform/docs/reference/configs#dataform-ActionConfig-AssertionConfig for allowed properties.',
         },
         {
           fileName: "definitions/has_compile_errors/assertion_with_materialized.sqlx",
           message:
-            'Unexpected property "materialized", or property value type of "boolean" is incorrect. See https://dataform-co.github.io/dataform/docs/configs-reference#dataform-ActionConfig-AssertionConfig for allowed properties.',
+            'Unexpected property "materialized", or property value type of "boolean" is incorrect. See https://dataform-co.github.io/dataform/docs/reference/configs#dataform-ActionConfig-AssertionConfig for allowed properties.',
         },
         {
           fileName: "definitions/has_compile_errors/assertion_with_output.sqlx",
           message:
-            'Unexpected property "hasOutput", or property value type of "boolean" is incorrect. See https://dataform-co.github.io/dataform/docs/configs-reference#dataform-ActionConfig-AssertionConfig for allowed properties.',
+            'Unexpected property "hasOutput", or property value type of "boolean" is incorrect. See https://dataform-co.github.io/dataform/docs/reference/configs#dataform-ActionConfig-AssertionConfig for allowed properties.',
         },
         {
           fileName: "definitions/has_compile_errors/assertion_with_postops.sqlx",
@@ -66,12 +66,12 @@ suite("examples", () => {
         {
           fileName: "definitions/has_compile_errors/protected_assertion.sqlx",
           message:
-            'Unexpected property "protected", or property value type of "boolean" is incorrect. See https://dataform-co.github.io/dataform/docs/configs-reference#dataform-ActionConfig-AssertionConfig for allowed properties.',
+            'Unexpected property "protected", or property value type of "boolean" is incorrect. See https://dataform-co.github.io/dataform/docs/reference/configs#dataform-ActionConfig-AssertionConfig for allowed properties.',
         },
         {
           fileName: "definitions/has_compile_errors/table_with_materialized.sqlx",
           message:
-            'Unexpected property "materialized", or property value type of "boolean" is incorrect. See https://dataform-co.github.io/dataform/docs/configs-reference#dataform-ActionConfig-TableConfig for allowed properties.',
+            'Unexpected property "materialized", or property value type of "boolean" is incorrect. See https://dataform-co.github.io/dataform/docs/reference/configs#dataform-ActionConfig-TableConfig for allowed properties.',
         },
         {
           fileName: "definitions/has_compile_errors/view_with_incremental.sqlx",

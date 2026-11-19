@@ -426,7 +426,7 @@ async function runCliFlows(projectDir: string): Promise<void> {
       const result = execCli([
         "run",
         projectDir,
-        "--dry-run",
+        "--build-only",
         "--json",
         "--actions",
         "sample_operation",

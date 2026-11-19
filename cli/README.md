@@ -65,10 +65,10 @@ Creates a new Dataform project (`workflow_settings.yaml`, `.gitignore`, `definit
 |---|---|---|
 | `project-dir` | No (default `.`) | The Dataform project directory. |
 | `default-database` | **Yes** | The default database to use, equivalent to Google Cloud Project ID. |
-| `default-location` | **Yes** | The default location to use. See https://cloud.google.com/bigquery/docs/locations for supported values. |
+| `default-location` | No | The default location to use (optional). If omitted, \`defaultLocation\` is not written to \`workflow_settings.yaml\` and the \`location\` from \`.df-credentials.json\` is used instead; if that is also unset, BigQuery chooses the location dynamically. See https://cloud.google.com/bigquery/docs/locations for supported values. |
 <!-- END GENERATED: positionals init -->
 
-`project-dir` is the directory to create the project in. `default-database` and `default-location` are positional but enforced as required at runtime — omitting either produces an error telling you to run `dataform help init`. All three positional arguments can also be passed as named flags (`--project-dir`, `--default-database`, `--default-location`), e.g. `dataform init my_project --default-database=my-gcp-project-id --default-location=US`.
+`project-dir` is the directory to create the project in. All three positional arguments can also be passed as named flags (`--project-dir`, `--default-database`, `--default-location`), e.g. `dataform init my_project --default-database=my-gcp-project-id --default-location=US`.
 
 **Options**
 
@@ -121,7 +121,7 @@ dataform init-creds [project-dir]
 Interactively creates a `.df-credentials.json` file in `project-dir` that Dataform uses to connect to BigQuery. **Only BigQuery is currently supported.**
 
 Prompts for:
-1. Dataset location (`US`, `EU`, or a custom region name).
+1. Dataset location (`US`, `EU`, a custom region name, or `auto`). Choosing `auto` leaves `location` out of the credentials file so BigQuery chooses the location dynamically.
 2. Authentication method — Application Default Credentials (ADC) or a JSON service account key file.
    - ADC: prompts for your billing project ID.
    - JSON key: prompts for the path to a downloaded service account key file.
@@ -263,6 +263,7 @@ Compiles and executes the project against BigQuery (or validates it with `--dry-
 | `--job-prefix` | string | — | Adds an additional prefix to BigQuery job IDs, in the form dataform-&lt;job-prefix&gt;-. |
 | `--job-labels` | string | — | Comma-separated list of labels to add to BigQuery jobs, e.g. 'key1=val1,key2=val2'. Also applied to unit tests with --run-tests. Overrides job labels and table labels that use the same key. |
 | `--emit-lineage` | boolean | — | If set, emits OpenLineage RunEvents to Knowledge Catalog Lineage for each executed action. Overrides workflow_settings.yaml lineage.enabled when specified. See https://github.com/dataform-co/dataform/blob/main/docs/lineage.md. |
+| `--build-only` | boolean | `false` | Only builds the execution graph without submitting any queries to BigQuery. JiT actions are not compiled. Note that --dry-run and --run-tests will be ignored if combined with --build-only. |
 | Project-config overrides | — | — | See [Shared project-config flags](#shared-project-config-flags). |
 <!-- END GENERATED: options run -->
 
@@ -270,7 +271,6 @@ Compiles and executes the project against BigQuery (or validates it with `--dry-
 
 - `--actions` entries are matched exactly: `*` wildcards are not expanded, and a bare action name that matches several actions is an error.
 - `--full-refresh` only affects incremental tables; regular tables and views are always rebuilt.
-- `--json` outputs the run result as JSON and is only supported together with `--dry-run`; plain `run --json` is rejected.
 - `--timeout` bounds compilation only, not execution. If it's set without `--execution-timeout`, `run` prints a warning reminding you of that.
 - `--job-labels` override `defaultJobLabels`, action `jobLabels` and table `labels` that use the same key.
 - `--emit-lineage` requires the Data Lineage API (`datalineage.googleapis.com`) to be enabled and the `roles/datalineage.producer` role; for configuration and troubleshooting, see the [Data Lineage guide](../docs/lineage.md).
@@ -339,6 +339,10 @@ Formats `.sqlx` and `.js` files in the project using Dataform's built-in formatt
 
 - **ADC-based**: `{ "projectId": ..., "location": ... }`
 - **JSON-key-based**: `{ "projectId": ..., "credentials": "<service account key JSON as a string>", "location": ... }`
+
+Additional details:
+
+- **Location** is optional in both of the above (`init-creds` omits it if `auto` is chosen)
 - **Service account impersonation** (optional, with either of the above): add `"impersonateServiceAccount": "<service account email>"` to run BigQuery queries (and lineage emission) as that service account. Your ADC identity, or the key above, is used to impersonate it and needs `roles/iam.serviceAccountTokenCreator` on that service account. `init-creds` asks for it as an optional last step.
 
 Only BigQuery is supported by `init-creds` and the bundled BigQuery adapter in this codebase. Treat `.df-credentials.json` as a secret — `dataform init` adds it to `.gitignore` automatically; never commit it.
@@ -445,3 +449,5 @@ DATAFORM_LINEAGE_DEBUG=1 dataform run --emit-lineage
 ```
 
 Lineage events are emitted for every action that runs a BigQuery job: tables (including views and incremental tables), operations, assertions and property graphs. On `COMPLETE` events, `inputs` and `outputs` are populated for actions that materialize a BigQuery object (`table`, `view`, `incremental`, `assertion`, `propertyGraph`, and `operations` with `hasOutput: true`). Assertions appear as a process for the assertion view written to the assertions dataset, with the assertion's dependencies reported as inputs. Property graph inputs are populated from the action's dependencies (`dependencyTargets`), so node and edge tables referenced via `ref` are reported as inputs while raw table paths in the graph definition are not. Declarations are not emitted. The action type is reported in the `gcp_bq_pipelines_job.actionType` attribute as `TABLE`, `OPERATIONS`, `ASSERTION` or `PROPERTY_GRAPH`, matching the values used by Dataform in Google Cloud. For prerequisites, `workflow_settings.yaml` configuration, and troubleshooting, see the [Data Lineage guide](../docs/lineage.md).
+
+Lineage events are sent to the location set by `defaultLocation` in `workflow_settings.yaml` or, if that is not set, by `location` in `.df-credentials.json`. If neither is set, lineage emission is skipped with a warning and the run proceeds normally.

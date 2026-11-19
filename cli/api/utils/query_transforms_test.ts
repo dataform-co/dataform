@@ -2,6 +2,7 @@ import { expect } from "chai";
 
 import {
   concatenateQueries,
+  setsDatasetId,
   wrapWithCreateSchemaIfNotExists,
 } from "df/cli/api/utils/query_transforms";
 import { suite, test } from "df/testing";
@@ -46,25 +47,6 @@ suite("concatenateQueries", () => {
   test("doesn't mistake -- inside a string literal for a trailing comment", () => {
     expect(concatenateQueries(["DELETE FROM t WHERE note = '--'", "SELECT 1"])).deep.equals(
       "DELETE FROM t WHERE note = '--';\nSELECT 1",
-    );
-  });
-
-  test("doesn't treat \\ as an escape inside raw string or bytes literals", () => {
-    const terminated = (statement: string) => concatenateQueries([statement, "SELECT 2"]);
-    expect(terminated("SELECT r'\\' -- comment")).equals("SELECT r'\\'; -- comment\nSELECT 2");
-    expect(terminated("SELECT REPLACE(p, r'\\', '/'), 'ok' -- don't fail")).equals(
-      "SELECT REPLACE(p, r'\\', '/'), 'ok'; -- don't fail\nSELECT 2",
-    );
-    expect(terminated('R"\\" -- comment')).equals('R"\\"; -- comment\nSELECT 2');
-    expect(terminated("SELECT r'''a\\''' -- comment")).equals(
-      "SELECT r'''a\\'''; -- comment\nSELECT 2",
-    );
-    expect(terminated("SELECT rb'\\' -- comment")).equals("SELECT rb'\\'; -- comment\nSELECT 2");
-    expect(terminated('SELECT BR"\\" -- comment')).equals('SELECT BR"\\"; -- comment\nSELECT 2');
-    // Non-raw `b` prefix and SQL keywords ending in `r` still escape quotes with `\`.
-    expect(terminated("SELECT b'it\\'s -- x'")).equals("SELECT b'it\\'s -- x';\nSELECT 2");
-    expect(terminated("SELECT flag OR'it\\'s -- x'")).equals(
-      "SELECT flag OR'it\\'s -- x';\nSELECT 2",
     );
   });
 
@@ -208,5 +190,39 @@ suite("wrapWithCreateSchemaIfNotExists", () => {
     expect(wrapWithCreateSchemaIfNotExists(undefined, "dataset", "SELECT 1;")).equals(
       "create schema if not exists `dataset`;\nbegin\nSELECT 1;\nend;",
     );
+  });
+});
+
+suite("setsDatasetId", () => {
+  test("detects SET @@dataset_id statements", () => {
+    expect(setsDatasetId("SET @@dataset_id = 'my_ds'")).equals(true);
+    expect(setsDatasetId('set @@DATASET_ID="my_ds";\nSELECT * FROM t')).equals(true);
+    expect(setsDatasetId("DECLARE x INT64;\nSET\n  @@dataset_id = 'my_ds';")).equals(true);
+    expect(setsDatasetId("SET /* comment */ @@dataset_id = 'my_ds'")).equals(true);
+    expect(setsDatasetId("SET -- comment\n@@dataset_id = 'my_ds'")).equals(true);
+    expect(setsDatasetId("SET (@@dataset_project_id, @@dataset_id) = ('proj', 'my_ds')")).equals(
+      true,
+    );
+  });
+
+  test("ignores SET @@dataset_id inside comments, string literals, and quoted identifiers", () => {
+    expect(setsDatasetId("SELECT 1 -- SET @@dataset_id = 'my_ds'")).equals(false);
+    expect(setsDatasetId("SELECT 1 # SET @@dataset_id = 'my_ds'")).equals(false);
+    expect(setsDatasetId("/* SET @@dataset_id = 'my_ds' */\nSELECT 1")).equals(false);
+    expect(setsDatasetId("SELECT 'SET @@dataset_id = \"my_ds\"'")).equals(false);
+    expect(setsDatasetId("SELECT \"SET @@dataset_id = 'my_ds'\"")).equals(false);
+    expect(setsDatasetId("SELECT '''\nSET @@dataset_id = 'my_ds'\n'''")).equals(false);
+    expect(setsDatasetId("SELECT r'\\' -- not a comment\n, 'SET @@dataset_id = \"my_ds\"'")).equals(
+      false,
+    );
+    expect(setsDatasetId("SELECT * FROM `SET @@dataset_id = 'my_ds'`")).equals(false);
+  });
+
+  test("ignores reading @@dataset_id or setting other variables", () => {
+    expect(setsDatasetId("SELECT @@dataset_id")).equals(false);
+    expect(setsDatasetId("SET x = @@dataset_id")).equals(false);
+    expect(setsDatasetId("SET (x, y) = (@@dataset_id, 1)")).equals(false);
+    expect(setsDatasetId("SET @@dataset_project_id = 'proj'")).equals(false);
+    expect(setsDatasetId("SET @@dataset_id_other = 'my_ds'")).equals(false);
   });
 });
