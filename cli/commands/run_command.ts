@@ -121,6 +121,7 @@ export const runCommand: ICommand<IRunArgs> = {
       compiledGraph,
       {
         fullRefresh: argv.fullRefresh,
+        overrideProtected: argv.overrideProtected,
         actions: argv.actions,
         includeDependencies: argv.includeDeps,
         includeDependents: argv.includeDependents,

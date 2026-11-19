@@ -30,6 +30,7 @@ export interface IRunArgs
   actionRetryLimit: number;
   emitLineage?: boolean;
   fullRefresh: boolean;
+  overrideProtected: boolean;
   includeDeps?: boolean;
   includeDependents?: boolean;
   executionTimeout?: number | null;
@@ -73,6 +74,23 @@ export const fullRefreshOption: INamedOption<yargs.Options, IRunArgs> = {
     describe: "Forces incremental tables (unless marked protected) to be rebuilt from scratch.",
     type: "boolean",
     default: false,
+  },
+};
+
+export const overrideProtectedOption: INamedOption<yargs.Options, IRunArgs> = {
+  name: "override-protected",
+  option: {
+    describe:
+      "Also rebuilds incremental tables marked protected from scratch. Requires --full-refresh.",
+    type: "boolean",
+    default: false,
+  },
+  check: (argv) => {
+    if (argv.overrideProtected && !argv.fullRefresh) {
+      throw new Error(
+        `The --override-protected flag should only be supplied along with --${fullRefreshOption.name}.`,
+      );
+    }
   },
 };
 
@@ -194,6 +212,7 @@ export const runOptions: Array<INamedOption<yargs.Options, IRunArgs>> = [
   includeDepsOption,
   includeDependentsOption,
   fullRefreshOption,
+  overrideProtectedOption,
   credentialsOption,
   jsonOutputOption,
   timeoutOption,
