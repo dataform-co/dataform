@@ -36,33 +36,36 @@ steps:
       #!/usr/bin/env bash
       set -euo pipefail
       [ "${STATUS}" = "SUCCESS" ] || exit 0
-      gcloud secrets versions access latest --secret=github-token-access --format='get(payload.data)' | tr '_-' '/+' | base64 -d > ~/token.txt
       ./scripts/write_exit_gate_manifest "${BRANCH_NAME}"
       gcloud storage cp publish_all.json gs://oss-exit-gate-prod-projects-bucket/dataform/npm/manifests/publish_all.json
   - name: "gcr.io/$PROJECT_ID/github"
-    entrypoint: "bash"
     env:
       - "STATUS=$_STATUS"
       - "COMMIT_SHA=$_COMMIT_SHA"
-    args:
-      - "-c"
-      - |
-        set -euo pipefail
-        [ "${STATUS}" = "SUCCESS" ] || exit 0
-        version=$(grep 'DF_VERSION' version.bzl | awk '{ print $3 }' | tr -d '"')
-        gh auth login --with-token < ~/token.txt
-        if gh release view "$version" >/dev/null 2>&1; then
-          echo "Release $version already exists, skipping"
-        else
-          echo "Creating release notes for $version"
-          gh release create "$version" --target "${COMMIT_SHA}" --generate-notes
-        fi
+    # gh reads GITHUB_TOKEN from the environment; the token is never written to disk.
+    secretEnv: ["GITHUB_TOKEN"]
+    script: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+      [ "${STATUS}" = "SUCCESS" ] || exit 0
+      version=$(grep 'DF_VERSION' version.bzl | awk '{ print $3 }' | tr -d '"')
+      if gh release view "$version" >/dev/null 2>&1; then
+        echo "Release $version already exists, skipping"
+      else
+        echo "Creating release notes for $version"
+        gh release create "$version" --target "${COMMIT_SHA}" --generate-notes
+      fi
+availableSecrets:
+  secretManager:
+    - versionName: projects/$PROJECT_ID/secrets/github-token-access/versions/latest
+      env: "GITHUB_TOKEN"
 substitutions:
   _STATUS: ""
   _TRIGGER_ID: ""
   _EXPECTED_TRIGGER_ID: ""
   _COMMIT_SHA: ""
   _BRANCH_NAME: ""
+timeout: 600s
 options:
   substitutionOption: ALLOW_LOOSE
   logging: CLOUD_LOGGING_ONLY
