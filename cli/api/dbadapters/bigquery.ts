@@ -388,6 +388,9 @@ export class BigQueryDbAdapter implements IDbAdapter {
     options?: { bigquery?: IBigQueryExecutionOptions },
   ): Promise<void> {
     if (isLakehouseTarget(target)) {
+      // Unlike read-only `tables.get`, BigQuery rejects REST `tables.delete` on Iceberg REST
+      // Catalog tables with HTTP 400 ("Biglake resources cannot be modified in BigQuery."), so drop
+      // them via 4-part SQL instead.
       if (!target.database) {
         throw new Error(
           `Cannot delete Lakehouse table "${target.schema}.${target.name}" without a target database (project).`,
