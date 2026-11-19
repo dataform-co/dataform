@@ -151,6 +151,11 @@ from (${query}) as insertions`;
           !isLakehouseTarget(table.target) || Boolean(runConfig.fullRefresh && !table.protected);
         tasks.add(Task.statement(this.createOrReplace(table, allowReplace)));
       } else {
+        if (isLakehouseTarget(table.target) && !tableMetadata?.fields?.length) {
+          throw new Error(
+            `Cannot write incrementally to Lakehouse table ${this.resolveTarget(table.target)} because warehouse metadata is missing schema fields.`,
+          );
+        }
         const onSchemaChange = table.onSchemaChange ?? dataform.OnSchemaChange.IGNORE;
         switch (onSchemaChange) {
           case dataform.OnSchemaChange.FAIL:
@@ -277,11 +282,6 @@ END;`;
     table: dataform.ITable,
     tableMetadata?: dataform.ITableMetadata,
   ) {
-    if (!tableMetadata?.fields?.length) {
-      throw new Error(
-        `Cannot apply onSchemaChange to Lakehouse table ${this.resolveTarget(table.target)} because warehouse metadata is missing schema fields.`,
-      );
-    }
     const uniqueId = this.uniqueIdGenerator();
     const tempTableName = `${table.target.name}_df_temp_${uniqueId}_empty`;
     const emptyTempTableTarget = this.resolveScratchTarget(tempTableName);

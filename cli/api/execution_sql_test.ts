@@ -539,26 +539,32 @@ suite("ExecutionSql for 4-part Lakehouse targets", () => {
     ]);
   });
 
-  test("throws when applying onSchemaChange to Lakehouse table with missing schema fields", () => {
-    const table: dataform.ITable = {
-      type: "incremental",
-      enumType: dataform.TableType.INCREMENTAL,
-      target: lakehouseTarget,
-      query: "SELECT 1 AS order_id",
-      incrementalQuery: "SELECT 1 AS order_id",
-      onSchemaChange: dataform.OnSchemaChange.FAIL,
-    };
-
-    expect(() =>
-      executionSql.publishTasks(
-        table,
-        { fullRefresh: false },
-        dataform.TableMetadata.create({
-          type: dataform.TableMetadata.Type.TABLE,
-          target: lakehouseTarget,
-        }),
-      ),
-    ).to.throw(/missing schema fields/);
+  test("throws on incremental Lakehouse write with missing schema fields across all onSchemaChange modes including IGNORE", () => {
+    for (const onSchemaChange of [
+      dataform.OnSchemaChange.IGNORE,
+      dataform.OnSchemaChange.FAIL,
+      dataform.OnSchemaChange.EXTEND,
+      dataform.OnSchemaChange.SYNCHRONIZE,
+    ]) {
+      const table: dataform.ITable = {
+        type: "incremental",
+        enumType: dataform.TableType.INCREMENTAL,
+        target: lakehouseTarget,
+        query: "SELECT 1 AS order_id",
+        incrementalQuery: "SELECT 1 AS order_id",
+        onSchemaChange,
+      };
+      expect(() =>
+        executionSql.publishTasks(
+          table,
+          { fullRefresh: false },
+          dataform.TableMetadata.create({
+            type: dataform.TableMetadata.Type.TABLE,
+            target: lakehouseTarget,
+          }),
+        ),
+      ).to.throw(/missing schema fields/);
+    }
   });
 
   test("places scratch table in defaultDatabase when Lakehouse catalog lives in another project and throws if defaultProject is unset", () => {
