@@ -12,6 +12,7 @@ import { PromisePoolExecutor } from "promise-pool-executor";
 import { collectEvaluationQueries, QueryOrAction } from "df/cli/api/dbadapters/execution_sql";
 import {
   IBigQueryError,
+  IBigQueryExecutionOptions,
   IDbAdapter,
   IDbClient,
   IExecutionResult,
@@ -37,14 +38,7 @@ const BIGQUERY_DATE_RELATED_FIELDS = [
 
 const BIGQUERY_INTERNAL_ERROR_JOB_MAX_ATTEMPTS = 3;
 
-export interface IBigQueryExecutionOptions {
-  actionRetryLimit?: number;
-  labels?: { [label: string]: string };
-  location?: string;
-  jobPrefix?: string;
-  dryRun?: boolean;
-  reservation?: string;
-}
+export { IBigQueryExecutionOptions };
 
 export type BigQueryClientProvider = (projectId?: string) => BigQuery;
 

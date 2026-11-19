@@ -16,6 +16,15 @@ export interface IBigQueryError extends Error {
   metadata?: dataform.IExecutionMetadata;
 }
 
+export interface IBigQueryExecutionOptions {
+  actionRetryLimit?: number;
+  labels?: { [label: string]: string };
+  location?: string;
+  jobPrefix?: string;
+  dryRun?: boolean;
+  reservation?: string;
+}
+
 export interface IDbClient {
   execute(
     statement: string,
@@ -24,13 +33,7 @@ export interface IDbClient {
       interactive?: boolean;
       rowLimit?: number;
       byteLimit?: number;
-      bigquery?: {
-        labels?: { [label: string]: string };
-        location?: string;
-        jobPrefix?: string;
-        dryRun?: boolean;
-        reservation?: string;
-      };
+      bigquery?: IBigQueryExecutionOptions;
     },
   ): Promise<IExecutionResult>;
 
@@ -39,13 +42,7 @@ export interface IDbClient {
     options?: {
       params?: { [name: string]: any };
       rowLimit?: number;
-      bigquery?: {
-        labels?: { [label: string]: string };
-        location?: string;
-        jobPrefix?: string;
-        dryRun?: boolean;
-        reservation?: string;
-      };
+      bigquery?: IBigQueryExecutionOptions;
     },
   ): Promise<IExecutionResultRaw>;
 }
@@ -65,14 +62,6 @@ export interface IDbAdapter extends IDbClient {
 
   setMetadata(
     action: dataform.IExecutionAction,
-    options?: {
-      bigquery?: {
-        labels?: { [label: string]: string };
-        location?: string;
-        jobPrefix?: string;
-        dryRun?: boolean;
-        reservation?: string;
-      };
-    },
+    options?: { bigquery?: IBigQueryExecutionOptions },
   ): Promise<void>;
 }
