@@ -315,7 +315,7 @@ END;`;
     const baseDefaultSchema = this.project?.defaultSchema;
     if (!baseDefaultSchema) {
       throw new Error(
-        "When defining an incremental Lakehouse table, 'defaultDataset' must be defined in workflow_settings.yaml.",
+        "When defining an incremental Lakehouse table with onSchemaChange, 'defaultDataset' must be defined in workflow_settings.yaml.",
       );
     }
     const scratchDatabase = this.project?.databaseSuffix
