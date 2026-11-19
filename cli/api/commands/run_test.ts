@@ -203,4 +203,84 @@ suite("Runner with 4-part Lakehouse targets", () => {
     expect(result.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
     verify(mockedDbAdapter.setMetadata(anything(), anything())).once();
   });
+
+  test("creates missing defaultDataset (with suffixes) for incremental Lakehouse action", async () => {
+    const mockedDbAdapter = mock(BigQueryDbAdapter);
+    const executedStatements: string[] = [];
+    const executedLocations: Array<string | undefined> = [];
+    when(mockedDbAdapter.schemas("default-proj_dev")).thenResolve([]);
+    when(mockedDbAdapter.execute(anyString(), anything())).thenCall(
+      async (statement: string, options?: { bigquery?: { location?: string } }) => {
+        executedStatements.push(statement);
+        executedLocations.push(options?.bigquery?.location);
+        return { rows: [], metadata: {} };
+      },
+    );
+
+    const incStatement =
+      "BEGIN\nSELECT 1;\nEND;\nmerge `catalog-proj.my_cat.my_ns.lh_inc` DATAFORM_DEST using (select 1) DATAFORM_SOURCE on false";
+    const graph = dataform.ExecutionGraph.create({
+      projectConfig: {
+        warehouse: "bigquery",
+        defaultDatabase: "default-proj",
+        databaseSuffix: "dev",
+        defaultSchema: "default_dataset",
+        schemaSuffix: "staging",
+        defaultLocation: "us-central1",
+      },
+      runConfig: {},
+      warehouseState: {},
+      actions: [
+        {
+          type: "table",
+          tableType: "incremental",
+          target: { database: "catalog-proj", schema: "my_cat.my_ns", name: "lh_inc" },
+          tasks: [{ type: "statement", statement: incStatement }],
+          dependencyTargets: [],
+        },
+      ],
+    });
+
+    const result = await new Runner(instance(mockedDbAdapter), graph).execute().result();
+
+    expect(result.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
+    verify(mockedDbAdapter.schemas("default-proj_dev")).once();
+    expect(executedStatements).deep.equals([
+      wrapWithCreateSchemaIfNotExists("default-proj_dev", "default_dataset_staging", incStatement),
+    ]);
+    expect(executedLocations).deep.equals(["us-central1"]);
+  });
+
+  test("does not emit CREATE SCHEMA for incremental Lakehouse action when defaultDataset already exists", async () => {
+    const mockedDbAdapter = mock(BigQueryDbAdapter);
+    const executedStatements: string[] = [];
+    when(mockedDbAdapter.schemas("my-gcp-project")).thenResolve(["default_dataset"]);
+    when(mockedDbAdapter.execute(anyString(), anything())).thenCall(async (statement: string) => {
+      executedStatements.push(statement);
+      return { rows: [], metadata: {} };
+    });
+
+    const incStatement =
+      "BEGIN\nSELECT 1;\nEND;\nmerge `my-gcp-project.my_cat.my_ns.lh_inc` DATAFORM_DEST using (select 1) DATAFORM_SOURCE on false";
+    const graph = dataform.ExecutionGraph.create({
+      projectConfig,
+      runConfig: {},
+      warehouseState: {},
+      actions: [
+        {
+          type: "table",
+          tableType: "incremental",
+          target: { database: "my-gcp-project", schema: "my_cat.my_ns", name: "lh_inc" },
+          tasks: [{ type: "statement", statement: incStatement }],
+          dependencyTargets: [],
+        },
+      ],
+    });
+
+    const result = await new Runner(instance(mockedDbAdapter), graph).execute().result();
+
+    expect(result.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
+    verify(mockedDbAdapter.schemas("my-gcp-project")).once();
+    expect(executedStatements).deep.equals([incStatement]);
+  });
 });

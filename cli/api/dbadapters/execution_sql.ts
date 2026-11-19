@@ -296,12 +296,7 @@ END;`;
       emptyTempTableTarget,
       existingColumns,
     );
-    const locationOption = this.project?.defaultLocation
-      ? ` OPTIONS(location=${this.CompilationSql.sqlString(this.project.defaultLocation)})`
-      : "";
-    const createScratchSchemaSql = `CREATE SCHEMA IF NOT EXISTS \`${emptyTempTableTarget.database}.${emptyTempTableTarget.schema}\`${locationOption};`;
-    const scriptSql = `${createScratchSchemaSql}
-BEGIN
+    const scriptSql = `BEGIN
 ${scriptBody}
 EXCEPTION WHEN ERROR THEN
   DROP TABLE IF EXISTS ${emptyTempTableName};
