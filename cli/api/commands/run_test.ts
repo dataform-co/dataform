@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import Long from "long";
-import { anyString, anything, instance, mock, verify, when } from "ts-mockito";
+import { anyString, anything, capture, instance, mock, verify, when } from "ts-mockito";
 
 import { build } from "df/cli/api/commands/build";
 import { Runner } from "df/cli/api/commands/run";
@@ -171,7 +171,11 @@ suite("Runner with 4-part Lakehouse targets", () => {
     when(mockedDbAdapter.setMetadata(anything(), anything())).thenResolve();
 
     const graph = dataform.ExecutionGraph.create({
-      projectConfig,
+      projectConfig: {
+        ...projectConfig,
+        defaultLocation: "us-central1",
+        defaultReservation: "projects/my-gcp-project/locations/us-central1/reservations/default",
+      },
       runConfig: {},
       warehouseState: {},
       actions: [
@@ -186,6 +190,7 @@ suite("Runner with 4-part Lakehouse targets", () => {
           actionDescriptor: {
             description: "Lakehouse orders table",
             columns: [{ path: ["order_id"], description: "Order ID" }],
+            jobLabels: { team: "analytics" },
           },
           tasks: [
             {
@@ -199,9 +204,28 @@ suite("Runner with 4-part Lakehouse targets", () => {
       ],
     });
 
-    const result = await new Runner(instance(mockedDbAdapter), graph).execute().result();
+    const result = await new Runner(instance(mockedDbAdapter), graph, {
+      bigquery: {
+        jobPrefix: "df-prefix",
+        labels: { env: "prod" },
+        actionRetryLimit: 2,
+      },
+    })
+      .execute()
+      .result();
     expect(result.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
     verify(mockedDbAdapter.setMetadata(anything(), anything())).once();
+    const [, capturedOptions] = capture(mockedDbAdapter.setMetadata).last();
+    expect(capturedOptions).deep.equals({
+      bigquery: {
+        dryRun: undefined,
+        jobPrefix: "df-prefix",
+        labels: { team: "analytics", env: "prod" },
+        actionRetryLimit: 2,
+        location: "us-central1",
+        reservation: "projects/my-gcp-project/locations/us-central1/reservations/default",
+      },
+    });
   });
 
   test("creates missing defaultDataset (with suffixes) for incremental Lakehouse action", async () => {
