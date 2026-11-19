@@ -238,7 +238,7 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
               config.iceberg.connection,
               session.projectConfig.defaultIcebergConfig?.connection,
             ),
-            fileFormat: getFileFormatValueForIcebergTable(config.iceberg.fileFormat?.toString()),
+            fileFormat: getFileFormatValueForIcebergTable(config.iceberg.fileFormat),
             tableFormat: dataform.TableFormat.ICEBERG,
             storageUri: getStorageUriForIcebergTable(
               getEffectiveBucketName(
@@ -753,6 +753,7 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
     }
     if (unverifiedConfig.iceberg) {
       if (
+        typeof unverifiedConfig.iceberg.fileFormat === "string" &&
         unverifiedConfig.iceberg.fileFormat &&
         unverifiedConfig.iceberg.fileFormat.toUpperCase() !== "PARQUET"
       ) {

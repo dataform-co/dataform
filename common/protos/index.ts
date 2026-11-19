@@ -1,5 +1,6 @@
 import { configure, util } from "protobufjs";
 
+import { Structs } from "df/common/protos/structs";
 import { google } from "df/protos/ts";
 
 const CONFIGS_PROTO_DOCUMENTATION_URL =
@@ -67,36 +68,7 @@ export enum VerifyProtoErrorBehaviour {
   SHOW_DOCS_LINK,
 }
 
-const Struct = google.protobuf.Struct;
-
-// Save references to the original generated methods
-const originalVerify = Struct.verify;
-const originalFromObject = Struct.fromObject;
-
-// Monkey Patching Methods
-Struct.verify = function (object: any) {
-  if (object && typeof object === "object" && !("fields" in object)) {
-    const fields: { [key: string]: any } = {};
-    for (const [k, v] of Object.entries(object)) {
-      fields[k] = unknownToValueShallow(v);
-    }
-    Object.keys(object).forEach((key) => delete object[key]);
-    object.fields = fields;
-  }
-  return originalVerify.call(this, object);
-};
-
-Struct.fromObject = function (object: any) {
-  if (object && typeof object === "object" && !("fields" in object)) {
-    const fields: { [key: string]: any } = {};
-    for (const [k, v] of Object.entries(object)) {
-      fields[k] = unknownToValueShallow(v);
-    }
-    Object.keys(object).forEach((key) => delete object[key]);
-    object.fields = fields;
-  }
-  return originalFromObject.call(this, object);
-};
+Structs.installNonMutatingProtoHandlers();
 
 // This is a minimalist Typescript equivalent for the validation part of Profobuf's JsonFormat's
 // mergeMessage method:
@@ -115,19 +87,17 @@ export function verifyObjectMatchesProto<Proto>(
     throw ReferenceError(`Expected a top-level object, but found an array`);
   }
 
-  // Calling fromObject on the object/JSON triggers Struct.fromObject to format Struct plain objects.
-  try {
-    protoType.fromObject(object);
-  } catch {
-    // fromObject may throw TypeError on invalid field types. Ignore it and let checkFields throw formatted ReferenceError.
-  }
-  const proto = protoType.create(object);
+  const normalizedObject = Structs.normalizePlainStructsNonMutating(protoType, object);
+  const proto = protoType.create(normalizedObject);
   const protoCastObject = protoType.toObject(proto);
 
   function checkFields(present: { [k: string]: any }, desired: { [k: string]: any }) {
     // Only the entries of `present` need to be iterated through as `desired` is guaranteed to be a
     // strict subset of `present`.
     Object.entries(present).forEach(([presentKey, presentValue]) => {
+      if (presentValue instanceof google.protobuf.Struct) {
+        return;
+      }
       const desiredValue = desired[presentKey];
       if (typeof desiredValue !== typeof presentValue) {
         if (Array.isArray(presentValue) && presentValue.length === 0) {
@@ -164,7 +134,7 @@ export function verifyObjectMatchesProto<Proto>(
     });
   }
 
-  checkFields(object, protoCastObject);
+  checkFields(normalizedObject, protoCastObject);
   return proto;
 }
 
@@ -218,28 +188,6 @@ function fromBase64(value: string): Uint8Array {
   const buf = new Uint8Array(util.base64.length(value));
   util.base64.decode(value, buf, 0);
   return buf;
-}
-
-function unknownToValueShallow(raw: unknown): google.protobuf.IValue {
-  if (raw === null || typeof raw === "undefined") {
-    return { nullValue: 0 };
-  }
-  if (typeof raw === "string") {
-    return { stringValue: raw };
-  }
-  if (typeof raw === "number") {
-    return { numberValue: raw };
-  }
-  if (typeof raw === "boolean") {
-    return { boolValue: raw };
-  }
-  if (Array.isArray(raw)) {
-    return { listValue: { values: raw.map(unknownToValueShallow) } };
-  }
-  if (typeof raw === "object") {
-    return { structValue: raw as any };
-  }
-  throw new Error(`Unsupported value: ${raw}`);
 }
 
 export function unknownToValue(raw: unknown): google.protobuf.IValue {

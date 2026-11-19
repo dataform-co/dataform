@@ -83,8 +83,11 @@ export class ColumnDescriptors {
   }
 
   public static mapLegacyObjectToConfigProto(
-    columns: IColumnsDescriptor,
+    columns: IColumnsDescriptor | dataform.ActionConfig.ColumnDescriptor[],
   ): dataform.ActionConfig.ColumnDescriptor[] {
+    if (Array.isArray(columns)) {
+      return columns;
+    }
     return Object.keys(columns)
       .map((column) => ColumnDescriptors.mapColumnDescriptionToProto([column], columns[column]))
       .flat();

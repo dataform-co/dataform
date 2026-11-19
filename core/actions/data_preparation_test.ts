@@ -945,5 +945,110 @@ FROM x
         },
       });
     });
+
+    test(`data preparation supports numeric LoadMode enum values in sqlx config`, () => {
+      const projectDir = createSimpleDataPreparationProject(VALID_WORKFLOW_SETTINGS_YAML, false);
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/append_dp.sqlx"),
+        `
+config {
+  type: "dataPreparation",
+  name: "append_dest",
+  loadMode: {
+    mode: ${dataform.ActionConfig.LoadMode.APPEND},
+  },
+}
+FROM x
+|> SELECT *
+`,
+      );
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/merge_dp.sqlx"),
+        `
+config {
+  type: "dataPreparation",
+  name: "merge_dest",
+  loadMode: {
+    mode: ${dataform.ActionConfig.LoadMode.MERGE},
+    uniqueKey: ["id"],
+  },
+}
+FROM x
+|> SELECT *
+`,
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.dataPreparations)).deep.equals(
+        asPlainObject([
+          {
+            target: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "append_dest",
+            },
+            canonicalTarget: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "append_dest",
+            },
+            targets: [
+              {
+                database: "defaultProject",
+                schema: "defaultDataset",
+                name: "append_dest",
+              },
+            ],
+            canonicalTargets: [
+              {
+                database: "defaultProject",
+                schema: "defaultDataset",
+                name: "append_dest",
+              },
+            ],
+            fileName: "definitions/append_dp.sqlx",
+            load: {
+              append: {},
+            },
+            query: "FROM x\n|> SELECT *",
+          },
+          {
+            target: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "merge_dest",
+            },
+            canonicalTarget: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "merge_dest",
+            },
+            targets: [
+              {
+                database: "defaultProject",
+                schema: "defaultDataset",
+                name: "merge_dest",
+              },
+            ],
+            canonicalTargets: [
+              {
+                database: "defaultProject",
+                schema: "defaultDataset",
+                name: "merge_dest",
+              },
+            ],
+            fileName: "definitions/merge_dp.sqlx",
+            load: {
+              merge: {
+                uniqueKey: ["id"],
+              },
+            },
+            query: "FROM x\n|> SELECT *",
+          },
+        ]),
+      );
+    });
   });
 });
