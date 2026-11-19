@@ -305,30 +305,39 @@ END;`;
     tasks.add(Task.statement(scriptSql));
   }
 
-  private resolveScratchTarget(tempTableName: string): dataform.ITarget {
+  /**
+   * Returns the dataset that holds the short-lived schema-inspection table of incremental Lakehouse
+   * tables with `onSchemaChange`: `defaultDataset` in `defaultProject` (with suffixes), or null if
+   * either of them is not configured.
+   */
+  public lakehouseScratchDataset(): { database: string; schema: string } | null {
     const baseDefaultDatabase = this.project?.defaultDatabase;
-    if (!baseDefaultDatabase) {
+    const baseDefaultSchema = this.project?.defaultSchema;
+    if (!baseDefaultDatabase || !baseDefaultSchema) {
+      return null;
+    }
+    return {
+      database: this.project.databaseSuffix
+        ? `${baseDefaultDatabase}_${this.project.databaseSuffix}`
+        : baseDefaultDatabase,
+      schema: this.project.schemaSuffix
+        ? `${baseDefaultSchema}_${this.project.schemaSuffix}`
+        : baseDefaultSchema,
+    };
+  }
+
+  private resolveScratchTarget(tempTableName: string): dataform.ITarget {
+    if (!this.project?.defaultDatabase) {
       throw new Error(
         "When defining an incremental Lakehouse table with onSchemaChange, 'defaultProject' must be defined in workflow_settings.yaml.",
       );
     }
-    const baseDefaultSchema = this.project?.defaultSchema;
-    if (!baseDefaultSchema) {
+    if (!this.project?.defaultSchema) {
       throw new Error(
         "When defining an incremental Lakehouse table with onSchemaChange, 'defaultDataset' must be defined in workflow_settings.yaml.",
       );
     }
-    const scratchDatabase = this.project?.databaseSuffix
-      ? `${baseDefaultDatabase}_${this.project.databaseSuffix}`
-      : baseDefaultDatabase;
-    const scratchSchema = this.project?.schemaSuffix
-      ? `${baseDefaultSchema}_${this.project.schemaSuffix}`
-      : baseDefaultSchema;
-    return {
-      database: scratchDatabase,
-      schema: scratchSchema,
-      name: tempTableName,
-    };
+    return { ...this.lakehouseScratchDataset(), name: tempTableName };
   }
 
   private createProcedureName(target: dataform.ITarget, uniqueId: string): string {

@@ -392,23 +392,9 @@ export class Runner {
       return null;
     }
     if (isCatalogSchema(action.target.schema)) {
-      if (action.tableType !== "incremental") {
-        return null;
-      }
-      const baseSchema = this.graph.projectConfig?.defaultSchema;
-      if (!baseSchema) {
-        return null;
-      }
-      const baseDatabase = this.graph.projectConfig?.defaultDatabase;
-      const database = baseDatabase
-        ? this.graph.projectConfig?.databaseSuffix
-          ? `${baseDatabase}_${this.graph.projectConfig.databaseSuffix}`
-          : baseDatabase
-        : undefined;
-      const schema = this.graph.projectConfig?.schemaSuffix
-        ? `${baseSchema}_${this.graph.projectConfig.schemaSuffix}`
-        : baseSchema;
-      return { database, schema };
+      return action.tableType === "incremental"
+        ? this.executionSql.lakehouseScratchDataset()
+        : null;
     }
     return {
       database: this.targetDatabase(action.target),
