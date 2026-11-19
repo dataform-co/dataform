@@ -14,9 +14,6 @@ set -euo pipefail
 #   _CANARY_LOCATION    - GCP location
 #   _CANARY_REPO        - Dataform repository name
 #   GCP_TOKEN           - GCP OAuth access token
-#
-# Optional environment variables:
-#   EXPECT_ERROR        - Set to "true" when compilationResults.create is expected to return an HTTP error
 
 : "${PROJECT_DIR:?Error: PROJECT_DIR must be set}"
 : "${TARBALL_URL:?Error: TARBALL_URL must be set}"
@@ -25,7 +22,6 @@ set -euo pipefail
 : "${_CANARY_LOCATION:?Error: _CANARY_LOCATION must be set}"
 : "${_CANARY_REPO:?Error: _CANARY_REPO must be set}"
 : "${GCP_TOKEN:?Error: GCP_TOKEN must be set}"
-EXPECT_ERROR="${EXPECT_ERROR:-false}"
 
 PROJECT_DIR="${PROJECT_DIR%/}"
 if [[ ! -d "${PROJECT_DIR}" ]]; then
@@ -143,11 +139,7 @@ if [[ "$INSTALL_HTTP_CODE" -lt 200 || "$INSTALL_HTTP_CODE" -ge 300 ]]; then
   exit 1
 fi
 
-if [[ "${EXPECT_ERROR}" == "true" ]]; then
-  echo "Compiling canary project via dataform.googleapis.com (expecting failure)..." 1>&2
-else
-  echo "Compiling canary project via dataform.googleapis.com..." 1>&2
-fi
+echo "Compiling canary project via dataform.googleapis.com..." 1>&2
 
 COMPILE_HTTP_CODE=$(curl --retry 3 --retry-all-errors --retry-delay 5 -s -o "${TMP_DIR}/compile_response.json" -w "%{http_code}" \
   -X POST \
@@ -156,18 +148,13 @@ COMPILE_HTTP_CODE=$(curl --retry 3 --retry-all-errors --retry-delay 5 -s -o "${T
   "${REPO_URL}/compilationResults" \
   -d "$(python3 -c 'import json, sys; print(json.dumps({"workspace": sys.argv[1]}))' "${REPO_PATH}/workspaces/${WORKSPACE_ID}")")
 
-if [[ "${EXPECT_ERROR}" == "true" ]]; then
-  if [[ "$COMPILE_HTTP_CODE" -ge 200 && "$COMPILE_HTTP_CODE" -lt 300 ]]; then
-    echo "Negative canary compilation unexpectedly succeeded with the broken Core bundle (HTTP ${COMPILE_HTTP_CODE}):" 1>&2
-    cat "${TMP_DIR}/compile_response.json" 1>&2
-    exit 1
-  fi
-else
-  if [[ "$COMPILE_HTTP_CODE" -lt 200 || "$COMPILE_HTTP_CODE" -ge 300 ]]; then
-    echo "Error calling compilationResults.create (HTTP ${COMPILE_HTTP_CODE}):" 1>&2
-    cat "${TMP_DIR}/compile_response.json" 1>&2
-    exit 1
-  fi
+if [[ "$COMPILE_HTTP_CODE" -lt 200 || "$COMPILE_HTTP_CODE" -ge 300 ]]; then
+  # scripts/run_negative_canary_test looks for this exact line, followed by the response body,
+  # in the output of scripts/run_canary_test. Keep the two in sync.
+  echo "Error calling compilationResults.create (HTTP ${COMPILE_HTTP_CODE}):" 1>&2
+  cat "${TMP_DIR}/compile_response.json" 1>&2
+  echo 1>&2
+  exit 1
 fi
 
 cat "${TMP_DIR}/compile_response.json"

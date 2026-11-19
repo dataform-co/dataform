@@ -9,6 +9,13 @@ set -euo pipefail
 # Usage: scripts/run_canary_test [--regenerate]
 #   --regenerate: instead of comparing the compilation result actions against the baseline,
 #                 overwrite the baseline with them. Prefer scripts/regenerate_canary_baseline.
+#
+# Optional environment variables:
+#   CANARY_TARBALL   - Path to the Core tarball to test, instead of the one built by bazel.
+#                      Used by scripts/run_negative_canary_test to check that this script
+#                      fails when given a broken bundle.
+#   CANARY_ID_SUFFIX - Suffix appended to the temporary workspace ID and the uploaded tarball
+#                      name, so that several runs within one build do not collide.
 
 MODE="test"
 if [[ "${1:-}" == "--regenerate" ]]; then
@@ -36,14 +43,21 @@ if [[ "${MODE}" == "test" && ! -f "${EXPECTED_ACTIONS_FILE}" ]]; then
   exit 1
 fi
 
-LOCAL_TARBALL="bazel-bin/packages/@dataform/core/package.tar.gz"
+DEFAULT_TARBALL="bazel-bin/packages/@dataform/core/package.tar.gz"
+LOCAL_TARBALL="${CANARY_TARBALL:-${DEFAULT_TARBALL}}"
 if [[ ! -f "${LOCAL_TARBALL}" ]]; then
-  echo "Error: ${LOCAL_TARBALL} not found. Build it with: bazel build //packages/@dataform/core:package_tar" 1>&2
+  if [[ "${LOCAL_TARBALL}" == "${DEFAULT_TARBALL}" ]]; then
+    echo "Error: ${LOCAL_TARBALL} not found. Build it with: bazel build //packages/@dataform/core:package_tar" 1>&2
+  else
+    echo "Error: ${LOCAL_TARBALL} (from CANARY_TARBALL) not found." 1>&2
+  fi
   exit 1
 fi
+echo "Testing Core tarball: ${LOCAL_TARBALL}"
 
-WORKSPACE_ID="pr-${_PR_NUMBER}-${RUN_ID}"
-TARBALL_NAME="build-${_PR_NUMBER}-${RUN_ID}.tar.gz"
+CANARY_ID_SUFFIX="${CANARY_ID_SUFFIX:-}"
+WORKSPACE_ID="pr-${_PR_NUMBER}-${RUN_ID}${CANARY_ID_SUFFIX}"
+TARBALL_NAME="build-${_PR_NUMBER}-${RUN_ID}${CANARY_ID_SUFFIX}.tar.gz"
 TMP_DIR=$(mktemp -d)
 trap 'rm -rf "${TMP_DIR}"' EXIT
 

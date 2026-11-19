@@ -1,11 +1,12 @@
 #!/bin/bash
 set -euo pipefail
 
-# Negative counterpart of scripts/run_canary_test: uploads the deliberately broken Core bundle
-# tools/canary/negative/package.tar.gz, tries to compile the canary project with it via
-# dataform.googleapis.com, and verifies that compilation fails with the error in
+# Negative counterpart of scripts/run_canary_test: runs scripts/run_canary_test itself against the
+# deliberately broken Core bundle tools/canary/negative/package.tar.gz, and verifies that it
+# reports a failure, caused by compilationResults.create returning the error in
 # tools/canary/negative/expected_error.json. This guards against the canary test passing
-# vacuously (e.g. because the uploaded bundle is not actually the one used for compilation).
+# vacuously (e.g. because the uploaded bundle is not actually the one used for compilation, or
+# because the canary test's own failure detection is broken).
 #
 # By default, this script uses the dataform-open-source GCP project,
 # taking the configuration from tools/canary/config.env. If you want to
@@ -18,9 +19,13 @@ if [[ -n "${1:-}" ]]; then
   exit 1
 fi
 
-source "tools/canary/scripts/setup"
+CANARY_TEST_SCRIPT="scripts/run_canary_test"
+NEGATIVE_DIR="tools/canary/negative"
 
-NEGATIVE_DIR="${CANARY_DIR}/negative"
+if [[ ! -x "${CANARY_TEST_SCRIPT}" ]]; then
+  echo "Error: ${CANARY_TEST_SCRIPT} not found. Make sure the script is run from the repository root." 1>&2
+  exit 1
+fi
 
 EXPECTED_ERROR_FILE="${NEGATIVE_DIR}/expected_error.json"
 if [[ ! -f "${EXPECTED_ERROR_FILE}" ]]; then
@@ -28,57 +33,74 @@ if [[ ! -f "${EXPECTED_ERROR_FILE}" ]]; then
   exit 1
 fi
 
-LOCAL_TARBALL="${NEGATIVE_DIR}/package.tar.gz"
-if [[ ! -f "${LOCAL_TARBALL}" ]]; then
-  echo "Error: ${LOCAL_TARBALL} not found." 1>&2
+BROKEN_TARBALL="${NEGATIVE_DIR}/package.tar.gz"
+if [[ ! -f "${BROKEN_TARBALL}" ]]; then
+  echo "Error: ${BROKEN_TARBALL} not found." 1>&2
   exit 1
 fi
 
-WORKSPACE_ID="pr-${_PR_NUMBER}-${RUN_ID}-negative"
-TARBALL_NAME="build-${_PR_NUMBER}-${RUN_ID}-negative.tar.gz"
 TMP_DIR=$(mktemp -d)
 trap 'rm -rf "${TMP_DIR}"' EXIT
+CANARY_OUTPUT_FILE="${TMP_DIR}/canary_output.log"
 
-SIGNED_TARBALL_URL=$(
-  LOCAL_TARBALL="${LOCAL_TARBALL}" \
-  TARBALL_NAME="${TARBALL_NAME}" \
-  "${CANARY_DIR}/scripts/upload_canary_tarball"
-)
+echo "Running ${CANARY_TEST_SCRIPT} with the broken Core bundle ${BROKEN_TARBALL} (expecting it to fail)..."
+echo "---------------- ${CANARY_TEST_SCRIPT} output ----------------"
+set +e
+CANARY_TARBALL="${BROKEN_TARBALL}" \
+CANARY_ID_SUFFIX="-negative" \
+"${CANARY_TEST_SCRIPT}" 2>&1 | tee "${CANARY_OUTPUT_FILE}"
+CANARY_EXIT_CODE="${PIPESTATUS[0]}"
+set -e
+echo "---------------- end of ${CANARY_TEST_SCRIPT} output ----------------"
 
-PROJECT_DIR="${CANARY_DIR}/project" \
-TARBALL_URL="${SIGNED_TARBALL_URL}" \
-WORKSPACE_ID="${WORKSPACE_ID}" \
-EXPECT_ERROR=true \
-"${CANARY_DIR}/scripts/compile_canary_project" \
-  > "${TMP_DIR}/compile_response.json"
+if [[ "${CANARY_EXIT_CODE}" -eq 0 ]]; then
+  echo "Negative canary test failed: ${CANARY_TEST_SCRIPT} reported success for the broken Core bundle." 1>&2
+  exit 1
+fi
+echo "${CANARY_TEST_SCRIPT} failed as expected (exit code ${CANARY_EXIT_CODE})."
 
-echo "Comparing compilationResults.create response against ${EXPECTED_ERROR_FILE}..."
-python3 - "${TMP_DIR}/compile_response.json" "${EXPECTED_ERROR_FILE}" <<'EOF'
+# A failure alone is not enough: the canary test also fails on infra issues (auth, GCS, workspace
+# creation, npm install...). Check that it failed because of the broken bundle.
+echo "Checking that the failure was caused by the error in ${EXPECTED_ERROR_FILE}..."
+python3 - "${CANARY_OUTPUT_FILE}" "${EXPECTED_ERROR_FILE}" <<'EOF'
 import difflib
 import json
+import re
 import sys
 
-actual_path, expected_path = sys.argv[1:3]
+output_path, expected_path = sys.argv[1:3]
 
-with open(actual_path, "r", encoding="utf-8") as f:
-    actual_raw = f.read()
+with open(output_path, "r", encoding="utf-8", errors="replace") as f:
+    output = f.read()
 with open(expected_path, "r", encoding="utf-8") as f:
     expected = json.load(f)
 
+# Printed by tools/canary/scripts/compile_canary_project, followed by the response body.
+marker = re.search(r"^Error calling compilationResults\.create \(HTTP (\d+)\):[ \t\r]*\n", output, re.MULTILINE)
+if not marker:
+    sys.stderr.write(
+        "Negative canary test failed: the canary test failed, but not because "
+        "compilationResults.create returned an error. See its output above.\n"
+    )
+    sys.exit(1)
+
+body = output[marker.end():].lstrip()
 try:
-    actual = json.loads(actual_raw)
+    actual, _ = json.JSONDecoder().raw_decode(body)
 except json.JSONDecodeError:
-    sys.stderr.write("compilationResults.create returned a non-JSON response:\n")
-    sys.stderr.write(actual_raw + "\n")
+    sys.stderr.write("Negative canary test failed: compilationResults.create returned a non-JSON error response.\n")
     sys.exit(1)
 
 if actual != expected:
-    sys.stderr.write("Negative canary compilation failed, but not with the expected error:\n")
+    sys.stderr.write("Negative canary test failed: compilation failed, but not with the expected error:\n")
     actual_str = json.dumps(actual, indent=2, sort_keys=True).splitlines()
     expected_str = json.dumps(expected, indent=2, sort_keys=True).splitlines()
     for line in difflib.unified_diff(expected_str, actual_str, fromfile="expected", tofile="actual", lineterm=""):
         sys.stderr.write(line + "\n")
     sys.exit(1)
 
-print(f"Negative canary compilation failed with the expected error: {expected.get('error', {}).get('message', '')}")
+print(
+    "Negative canary test passed: the canary test rejected the broken Core bundle with the expected error "
+    f"(HTTP {marker.group(1)}): {expected.get('error', {}).get('message', '')}"
+)
 EOF
