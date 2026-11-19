@@ -614,4 +614,33 @@ suite("ExecutionSql for 4-part Lakehouse targets", () => {
       ),
     ).to.throw(/'defaultProject' must be defined/);
   });
+
+  test("matches golden SQL for 4-part Lakehouse onSchemaChange = EXTEND with incremental pre/post ops and single DML", () => {
+    const table: dataform.ITable = {
+      type: "incremental",
+      enumType: dataform.TableType.INCREMENTAL,
+      target: lakehouseTarget,
+      uniqueKey: ["order_id"],
+      query: "SELECT 1 AS order_id, 2 AS customer_id",
+      incrementalQuery: "SELECT 1 AS order_id, 2 AS customer_id, 'new' AS status",
+      preOps: ["SELECT 'regular_pre_op'"],
+      postOps: ["SELECT 'regular_post_op'"],
+      incrementalPreOps: ["SELECT 'inc_pre_op'"],
+      incrementalPostOps: ["SELECT 'inc_post_op'"],
+      onSchemaChange: dataform.OnSchemaChange.EXTEND,
+    };
+
+    const sql = executionSql
+      .publishTasks(table, { fullRefresh: false }, lakehouseMetadata)
+      .build()
+      .map((t) => t.statement)
+      .join("\n;\n");
+
+    const expectedSql = fs.readFileSync(
+      "cli/api/goldens/lakehouse_on_schema_change_extend.sql",
+      "utf8",
+    );
+    expect(sql).to.equal(expectedSql.trim());
+    expect(sql.match(/\bmerge\b/gi)?.length).to.equal(1);
+  });
 });
