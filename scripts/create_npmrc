@@ -1,7 +1,8 @@
 set -e
 cat > ~/.npmrc <<EOL
-//registry.npmjs.org/:_authToken=$NPM_TOKEN
 registry=https://us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/
 //us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/:always-auth=true
 //us-npm.pkg.dev/artifact-foundry-prod/npm-3p-trusted/:_authToken=${REPO_TOKEN}
+//us-npm.pkg.dev/oss-exit-gate-prod/dataform--npm/:always-auth=true
+//us-npm.pkg.dev/oss-exit-gate-prod/dataform--npm/:_authToken=${REPO_TOKEN}
 EOL

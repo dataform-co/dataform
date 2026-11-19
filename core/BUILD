@@ -6,6 +6,10 @@ load("//tools:ts_library.bzl", "ts_library")
 
 package(default_visibility = ["//visibility:public"])
 
+exports_files([
+    "README.md",
+])
+
 expand_template(
     name = "version",
     out = "version.ts",
@@ -48,16 +52,11 @@ ts_library(
         ":version.ts",
     ],
     deps = [
-        "//:node_modules/@types/fs-extra",
         "//:node_modules/@types/js-yaml",
         "//:node_modules/@types/node",
-        "//:node_modules/@types/semver",
-        "//:node_modules/fs-extra",
         "//:node_modules/js-yaml",
         "//:node_modules/protobufjs",
-        "//:node_modules/semver",
         "//:node_modules/tarjan-graph",
-        "//common/errors",
         "//common/protos",
         "//common/strings",
         "//core/compilation_sql",
@@ -99,11 +98,14 @@ ts_test_suite(
         "main_session_test.ts",
         "main_sqlx_chars_test.ts",
         "main_workflow_settings_test.ts",
+        "package_test.ts",
         "path_test.ts",
+        "readme_test.ts",
         "utils_test.ts",
         "workflow_settings_test.ts",
     ],
     data = [
+        "README.md",
         ":node_modules",
     ],
     deps = [

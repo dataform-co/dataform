@@ -2,6 +2,7 @@ load("@aspect_rules_webpack//webpack:defs.bzl", "webpack_bundle")
 load("//:version.bzl", "DF_VERSION")
 load("//packages:index.bzl", "add_license_header_to_file", "pkg_bundle_dts", "pkg_json", "pkg_npm_tar")
 load("//tools:ts_library.bzl", "ts_library")
+load("//tools/common:copy.bzl", "copy_file")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -36,7 +37,6 @@ pkg_json(
     description = "Dataform core API.",
     external_deps = [],
     layers = [
-        "//:package.json",
         "//packages/@dataform:package.layer.json",
     ],
     main = "bundle.js",
@@ -89,14 +89,17 @@ pkg_bundle_dts(
     name = "bundle.d",
     externals = [
         "protobufjs",
-        "tarjan-graph",
-        "semver",
-        "moo",
         "long",
     ],
     deps = [
         ":core",
     ],
+)
+
+copy_file(
+    name = "readme",
+    src = "//core:README.md",
+    out = "README.md",
 )
 
 pkg_npm_tar(
@@ -111,6 +114,7 @@ pkg_npm_tar(
         ":jit_proto_with_license",
         ":package.json",
         ":property_graph_config_proto_with_license",
+        ":readme",
     ],
     publishable = True,
 )

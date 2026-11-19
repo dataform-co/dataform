@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { spawn } from "child_process";
 import * as fs from "fs-extra";
-import { dump as dumpYaml, load as loadYaml } from "js-yaml";
+import { dump as dumpYaml } from "js-yaml";
 import * as path from "path";
 
 import { TEMPORARY_ENVIRONMENT_PREFIX } from "df/cli/api/commands/compile";
@@ -161,6 +161,79 @@ suite("compile", () => {
           `${npmFile}' unexpected; remove it and try again`,
         );
       });
+    });
+
+    for (const { label, yamlLine } of [
+      {
+        label: "file tarball specifier",
+        yamlLine: 'dataformCoreVersion: "file:./custom-core.tgz"',
+      },
+      {
+        label: "HTTPS tarball URL",
+        yamlLine: 'dataformCoreVersion: "https://example.invalid/core.tgz"',
+      },
+      {
+        label: "git URL specifier",
+        yamlLine: 'dataformCoreVersion: "git+https://example.invalid/repo.git"',
+      },
+      { label: "npm alias specifier", yamlLine: 'dataformCoreVersion: "npm:semver@7.5.4"' },
+      { label: "semver range", yamlLine: 'dataformCoreVersion: "^3.0.0"' },
+      { label: "malformed dot prerelease", yamlLine: 'dataformCoreVersion: "3.0.0-."' },
+      { label: "leading zero version", yamlLine: 'dataformCoreVersion: "03.0.0"' },
+      { label: "non-string YAML array", yamlLine: 'dataformCoreVersion: ["3.0.0"]' },
+    ]) {
+      test(`compile rejects ${label} before creating temporary environment or invoking npm`, async () => {
+        const projectDir = tmpDirFixture.createNewTmpDir();
+        fs.writeFileSync(
+          path.join(projectDir, "workflow_settings.yaml"),
+          `defaultProject: dataform\n${yamlLine}\n`,
+        );
+        const missingTmpDir = path.join(tmpDirFixture.createNewTmpDir(), "must-not-be-used");
+        const fakeBinDir = tmpDirFixture.createNewTmpDir();
+        const npmCalledFile = path.join(tmpDirFixture.createNewTmpDir(), "npm-called");
+        fs.writeFileSync(
+          path.join(fakeBinDir, "npm"),
+          `#!/bin/sh\ntouch "${npmCalledFile}"\nexit 1\n`,
+          { mode: 0o755 },
+        );
+        fs.writeFileSync(
+          path.join(fakeBinDir, "npm.cmd"),
+          `@echo off\r\necho. > "${npmCalledFile}"\r\nexit /b 1\r\n`,
+        );
+
+        const result = await runCli("compile", [projectDir, "--verbose"], {
+          env: {
+            ...process.env,
+            TMPDIR: missingTmpDir,
+            TEMP: missingTmpDir,
+            TMP: missingTmpDir,
+            PATH: `${fakeBinDir}${path.delimiter}${process.env.PATH}`,
+          },
+        });
+
+        expect(result.exitCode).equals(1);
+        expect(result.stderr).contains("Invalid dataformCoreVersion");
+        expect(result.stderr).contains("must be a valid semantic version");
+        expect(result.stderr).not.contains("Using isolated environment");
+        expect(result.stderr).not.contains("Copying project to temporary directory");
+        expect(fs.existsSync(npmCalledFile)).equals(false);
+        expect(fs.existsSync(missingTmpDir)).equals(false);
+      });
+    }
+
+    test("install rejects invalid dataformCoreVersion in workflow_settings.yaml", async () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        'defaultProject: dataform\ndataformCoreVersion: "^3.0.0"\n',
+      );
+
+      const result = await runCli("install", [projectDir]);
+
+      expect(result.exitCode).equals(1);
+      expect(result.stderr).contains(
+        'Invalid dataformCoreVersion "^3.0.0": must be a valid semantic version.',
+      );
     });
 
     // Runs the CLI with a fake `npm` that records its pid, marks that it has started and then
