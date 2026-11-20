@@ -9,12 +9,12 @@ import {
   renderEdge,
   renderNode,
   resolveDeploymentTarget,
-  SEMANTIC_ONTOLOGY_VERSION,
   unquoteIdentifier,
   validateCaseInsensitiveUnique,
   validateIdentifierName,
   validatePhysicalColumnList,
 } from "df/core/actions/property_graph_utils";
+import { SEMANTIC_ONTOLOGY_VERSION } from "df/core/actions/property_graph_validation";
 import { Session } from "df/core/session";
 import { checkAssertionsForDependency, setActionJobLabels } from "df/core/utils";
 import { dataform } from "df/protos/ts";
