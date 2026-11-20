@@ -4,6 +4,7 @@ BEGIN
 
 -- Declare variables for schema comparison and strategy execution.
 DECLARE dataform_columns ARRAY<STRING>;
+DECLARE dataform_columns_list STRING;
 DECLARE temp_table_columns ARRAY<STRUCT<column_name STRING, data_type STRING>>;
 DECLARE columns_added ARRAY<STRUCT<column_name STRING, data_type STRING>>;
 DECLARE columns_removed ARRAY<STRING>;
@@ -60,18 +61,12 @@ END IF;
 
 
 
--- Cleanup temporary tables.
-DROP TABLE IF EXISTS `project-id.dataset-id.incremental_on_schema_change_df_temp_test_uuid_empty`;
-    
-END;
-BEGIN
-  CALL `project-id.dataset-id.df_osc_test_uuid`();
-EXCEPTION WHEN ERROR THEN
-  DROP TABLE IF EXISTS `project-id.dataset-id.incremental_on_schema_change_df_temp_test_uuid_empty`;
-  DROP PROCEDURE IF EXISTS `project-id.dataset-id.df_osc_test_uuid`;
-  RAISE;
-END;
-DROP PROCEDURE IF EXISTS `project-id.dataset-id.df_osc_test_uuid`;
+-- Prepare dynamic column lists for DML.
+SET dataform_columns_list = (
+  SELECT STRING_AGG(FORMAT("`%s`", column_info.column_name), ", ")
+  FROM UNNEST(temp_table_columns) AS column_info
+);
+
 CREATE OR REPLACE TEMP TABLE `staging_table_temp_test_uuid` AS (
   select 1 as id, 'a' as field1, 'new' as field2
 );
@@ -85,15 +80,31 @@ BEGIN
     )
   );
 
-  MERGE `project-id.dataset-id.incremental_on_schema_change` DATAFORM_DEST
+  EXECUTE IMMEDIATE ("""MERGE `project-id.dataset-id.incremental_on_schema_change` DATAFORM_DEST
   USING `staging_table_temp_test_uuid` DATAFORM_SOURCE
   ON FALSE
-  WHEN NOT MATCHED BY SOURCE AND DATE(ts) IN UNNEST(partitions_for_replacement) 
+  WHEN NOT MATCHED BY SOURCE AND DATE(ts) IN UNNEST(@partitions_for_replacement) 
   
   THEN
     DELETE
   WHEN NOT MATCHED BY TARGET THEN
-    INSERT (`id`,`field1`) VALUES (`id`,`field1`);
+    INSERT (""" || dataform_columns_list || """) VALUES (""" || dataform_columns_list || """)""")
+  USING partitions_for_replacement AS partitions_for_replacement;
 END;
 
+-- Cleanup staging table
 DROP TABLE IF EXISTS `staging_table_temp_test_uuid`;
+
+
+-- Cleanup empty temp table
+DROP TABLE IF EXISTS `project-id.dataset-id.incremental_on_schema_change_df_temp_test_uuid_empty`;
+    
+END;
+BEGIN
+  CALL `project-id.dataset-id.df_osc_test_uuid`();
+EXCEPTION WHEN ERROR THEN
+  DROP TABLE IF EXISTS `project-id.dataset-id.incremental_on_schema_change_df_temp_test_uuid_empty`;
+  DROP PROCEDURE IF EXISTS `project-id.dataset-id.df_osc_test_uuid`;
+  RAISE;
+END;
+DROP PROCEDURE IF EXISTS `project-id.dataset-id.df_osc_test_uuid`;

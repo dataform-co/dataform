@@ -22,4 +22,5 @@ BEGIN
     INSERT (`id`,`field1`) VALUES (`id`,`field1`);
 END;
 
+-- Cleanup staging table
 DROP TABLE IF EXISTS `staging_table_temp_test_uuid`;

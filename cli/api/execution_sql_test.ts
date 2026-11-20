@@ -178,6 +178,86 @@ suite("ExecutionSql with 'onSchemaChange'", () => {
       }
     }
   });
+
+  test("executes dynamic DML inside procedure and does not emit static DML outside procedure for onSchemaChange", () => {
+    for (const strategy of [
+      dataform.OnSchemaChange.FAIL,
+      dataform.OnSchemaChange.EXTEND,
+      dataform.OnSchemaChange.SYNCHRONIZE,
+    ]) {
+      const table = {
+        ...baseTable,
+        onSchemaChange: strategy,
+        uniqueKey: ["id"],
+      };
+      const tasks = executionSql.publishTasks(table, { fullRefresh: false }, tableMetadata);
+      const builtTasks = tasks.build();
+      expect(builtTasks.length).to.equal(1);
+
+      const fullSql = builtTasks[0].statement;
+      const [procedurePart, ...rest] = fullSql.split("\nEND;\n");
+      const afterProcedurePart = rest.join("\nEND;\n");
+      expect(procedurePart).to.include("SET dataform_columns_list =");
+      expect(procedurePart).to.include("SET dataform_columns_merge =");
+      expect(procedurePart).to.include("EXECUTE IMMEDIATE");
+      expect(afterProcedurePart).to.not.include("insert into");
+      expect(afterProcedurePart).to.not.include("merge ");
+      expect(afterProcedurePart).to.not.include("field1");
+    }
+  });
+
+  test("error handler outside the procedure only drops fully qualified tables", () => {
+    // The staging table is scoped to the stored procedure, so it is not resolvable
+    // from the calling script. Referencing it there raises "must be qualified with a
+    // dataset", which masks the original error and leaks the procedure.
+    for (const strategy of [
+      dataform.OnSchemaChange.FAIL,
+      dataform.OnSchemaChange.EXTEND,
+      dataform.OnSchemaChange.SYNCHRONIZE,
+    ]) {
+      const table = {
+        ...baseTable,
+        onSchemaChange: strategy,
+        uniqueKey: ["id"],
+      };
+      const fullSql = executionSql
+        .publishTasks(table, { fullRefresh: false }, tableMetadata)
+        .build()[0].statement;
+
+      const errorHandler = fullSql.split("EXCEPTION WHEN ERROR THEN")[1];
+      const droppedTables = [...errorHandler.matchAll(/DROP TABLE IF EXISTS `([^`]+)`/g)].map(
+        (match) => match[1],
+      );
+      for (const droppedTable of droppedTables) {
+        expect(
+          droppedTable,
+          `error handler for ${dataform.OnSchemaChange[strategy]} drops an unqualified table`,
+        ).to.match(/^[^.]+\.[^.]+\.[^.]+$/);
+      }
+    }
+  });
+
+  test("places incrementalPreOps and incrementalPostOps inside procedure with inner BEGIN...END block for onSchemaChange", () => {
+    const table: dataform.ITable = {
+      ...baseTable,
+      onSchemaChange: dataform.OnSchemaChange.EXTEND,
+      incrementalPreOps: ["DECLARE watermark TIMESTAMP;\nSET watermark = CURRENT_TIMESTAMP();"],
+      incrementalPostOps: ["SELECT watermark;"],
+    };
+    const builtTasks = executionSql
+      .publishTasks(table, { fullRefresh: false }, tableMetadata)
+      .build();
+    expect(builtTasks.length).to.equal(1);
+
+    const fullSql = builtTasks[0].statement;
+    expect(fullSql).to.match(/^CREATE OR REPLACE PROCEDURE/);
+    expect(fullSql).to.include(
+      "BEGIN\nDECLARE watermark TIMESTAMP;\nSET watermark = CURRENT_TIMESTAMP();\n\nBEGIN\n\n-- Declare variables for schema comparison and strategy execution.",
+    );
+    expect(fullSql).to.include(
+      "-- Cleanup empty temp table\nDROP TABLE IF EXISTS `project-id.dataset-id.incremental_on_schema_change_df_temp_test_uuid_empty`;\n    \nEND;\n\nSELECT watermark;\nEND;",
+    );
+  });
 });
 
 suite("ExecutionSql for property graphs", () => {
