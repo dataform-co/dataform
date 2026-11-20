@@ -273,7 +273,7 @@ When `hasOutput: true` is set, the operation registers a referenceable target at
 
 ### `assertion` and Built-in Assertions
 
-An assertion is a data quality query that **fails if it returns one or more rows**. Assertions materialize as views in `defaultAssertionDataset` (`dataform_assertions` by default). See [`AssertionConfig`](https://dataform-co.github.io/dataform/docs/reference/configs#dataform-ActionConfig-AssertionConfig).
+An assertion is a data quality query that **fails if it returns one or more rows**. Assertions materialize as views in a designated dataset (normally `defaultAssertionDataset` (`dataform_assertions` by default), but it can be overriden for specific actions by setting the `dataset` parameter in the action config (or inside the `assertions` block for inline assertions)). See [`AssertionConfig`](https://dataform-co.github.io/dataform/docs/reference/configs#dataform-ActionConfig-AssertionConfig).
 
 ```sql
 -- definitions/assertions/assert_positive_order_amount.sqlx

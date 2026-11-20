@@ -457,6 +457,11 @@ export class View extends ActionBuilder<dataform.Table> {
    * [ViewConfig.dataset](configs#dataform-ActionConfig-ViewConfig).
    *
    * Sets the schema (BigQuery dataset) in which to create the output of this action.
+   *
+   * If inline assertions are defined on this action, changing the schema also updates their
+   * generated names (to include the new schema) and, unless an assertion dataset or
+   * `defaultAssertionDataset` is configured, their target dataset. Any references to those inline
+   * assertions by generated name (such as `dependencies` or `--actions`) must use the updated name.
    */
   public schema(schema: string) {
     this.proto.target = this.applySessionToTarget(
