@@ -146,6 +146,7 @@ ts_test_suite(
         "index.ts",
         "session.ts",
         ":node_modules",
+        "//packages/@dataform/core:index.ts",
         "//protos:proto_files",
     ],
     deps = [

@@ -4,6 +4,7 @@ import * as path from "path";
 
 import { suite, test } from "df/testing";
 import { BUNDLED_PROTO_FILES } from "df/tools/docs/proto_extractor";
+import { extractCoreExports, extractNamedReExports } from "df/tools/docs/ts_extractor";
 
 suite("core/README.md", () => {
   test("is bundled into the @dataform/core npm package", () => {
@@ -32,21 +33,31 @@ suite("core/README.md", () => {
     expect(nonNpmSafeLinks).to.deep.equal([]);
   });
 
-  test("documents public @dataform/core runtime exports", () => {
-    const readme = fs.readFileSync("core/README.md", "utf8");
-    const exportsSectionMatch =
-      /### TypeScript \/ JavaScript Exports\r?\n([\s\S]*?)(?=\r?\n### |\r?\n## |$)/.exec(readme);
-    expect(exportsSectionMatch).to.not.equal(null);
-    const exportsSection = exportsSectionMatch![1];
-
+  test("documents exact public @dataform/core runtime and type exports without internal leaks", () => {
     const corePackage = require(path.resolve("core/node_modules/@dataform/core"));
-    const runtimeExports = Object.keys(corePackage).filter(
-      (exportName) => exportName !== "indexFileGenerator",
-    );
+    const runtimeExports = Object.keys(corePackage)
+      .filter((exportName) => exportName !== "indexFileGenerator")
+      .sort();
 
-    for (const exportName of runtimeExports) {
-      expect(exportsSection).to.include(`- **\`${exportName}\`**`);
-    }
+    const documentedExports = extractCoreExports(
+      "core/index.ts",
+      "packages/@dataform/core/index.ts",
+    );
+    const documentedRuntimeNames = documentedExports
+      .filter((item) => item.typeLabel !== "interface" && item.typeLabel !== "type")
+      .map((item) => item.name)
+      .sort();
+    expect(runtimeExports).to.deep.equal(documentedRuntimeNames);
+
+    const packageReExports = extractNamedReExports("packages/@dataform/core/index.ts");
+    expect(packageReExports.has("SQLX_CONTEXT_FUNCTIONS")).to.equal(false);
+    expect(packageReExports.has("SESSION_GLOBAL_METHODS")).to.equal(false);
+
+    const bundleDts = fs.readFileSync("core/node_modules/@dataform/core/bundle.d.ts", "utf8");
+    expect(bundleDts).to.include("IDataformExtension");
+    expect(bundleDts).to.include("IJitCompiler");
+    expect(bundleDts).to.not.include("SQLX_CONTEXT_FUNCTIONS");
+    expect(bundleDts).to.not.include("SESSION_GLOBAL_METHODS");
   });
 
   test("bundled proto list matches .proto files packaged into @dataform/core", () => {

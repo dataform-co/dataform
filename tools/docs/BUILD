@@ -9,7 +9,6 @@ ts_library(
         "core_readme_generator.ts",
         "proto_extractor.ts",
         "ts_extractor.ts",
-        "update_core_readme.ts",
     ],
     deps = [
         "//:node_modules/@types/node",
@@ -20,10 +19,20 @@ ts_library(
     ],
 )
 
+ts_library(
+    name = "update_core_readme_bin",
+    srcs = ["update_core_readme.ts"],
+    visibility = ["//visibility:private"],
+    deps = [
+        ":core_readme_generator",
+        "//:node_modules/@types/node",
+    ],
+)
+
 js_binary(
     name = "update_core_readme",
     data = [
-        ":core_readme_generator",
+        ":update_core_readme_bin",
         "//:node_modules/source-map-support",
         "//testing:resolver-patch",
     ],

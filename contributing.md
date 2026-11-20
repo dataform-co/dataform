@@ -131,16 +131,18 @@ Option descriptions are shown both in `dataform help` and in the README, so keep
 
 ### Changing `@dataform/core` public APIs or protos
 
-Structured reference tables and schema lists in [`core/README.md`](core/README.md) (`workflow_settings.yaml` fields, SQLX context functions, `Session` globals, package exports and bundled `.proto` files) are generated from `core/` and `protos/` between `<!-- BEGIN GENERATED: ... -->` and `<!-- END GENERATED: ... -->` markers. If you change those definitions or their summary comments:
+Structured reference tables and export lists in [`core/README.md`](core/README.md) (`workflow_settings.yaml` fields, SQLX context functions, `Session` globals and package exports) are generated from `core/`, `packages/@dataform/core/index.ts` and `protos/` between `<!-- BEGIN GENERATED: ... -->` and `<!-- END GENERATED: ... -->` markers. If you change those definitions or their summary comments:
 
-1. Change the definition or JSDoc/proto comment in `core/` or `protos/` (not the generated blocks in `core/README.md`).
+1. Change the definition or first-paragraph JSDoc/proto comment in `core/` or `protos/` (not the generated blocks in `core/README.md`).
+   - Use a custom `@signature` JSDoc tag (for example, `@signature \`ref(name)\` / \`ref(schema, name)\``) when a method accepts multiple calling conventions that a single TypeScript parameter list doesn't express clearly.
+   - Mark internal-only exports with `@internal` so documentation extractors skip them.
 2. Regenerate the README:
 
    ```bash
    bazel run //core:update_readme
    ```
 
-3. Update the hand-written sections or examples in `core/README.md` if needed, and commit them together with your change.
+3. Update the hand-written sections or examples in `core/README.md` (such as bundled `.proto` summaries) if needed, and commit them together with your change.
 
 You can run the staleness check directly with `bazel test //core:readme_generated_test`.
 

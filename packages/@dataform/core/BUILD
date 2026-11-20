@@ -6,6 +6,8 @@ load("//tools/common:copy.bzl", "copy_file")
 
 package(default_visibility = ["//visibility:public"])
 
+exports_files(["index.ts"])
+
 ts_library(
     name = "core",
     srcs = glob(["*.ts"]),

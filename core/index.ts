@@ -20,6 +20,10 @@ function globalSession() {
   return (global as any)._DF_SESSION as Session;
 }
 
+// These exports constitute the public API of @dataform/core.
+// They must also be listed in packages/@dataform/core/index.ts.
+// Changes to these will break @dataform/cli, so take care!
+
 /** The installed `@dataform/core` semantic version string (for example, `"3.1.5"`). */
 export const version: string = coreVersion;
 
@@ -49,6 +53,8 @@ export type IJitCompiler = JitCompiler;
 /**
  * Older versions of the CLI are not compatible with Core version ^3.0.0, and throw when this
  * method is not available. Instead this more interpretable error message is thrown.
+ * Note: for future backwards compatibility breaking changes, the exported "version" variable
+ * should be used instead.
  *
  * @internal
  */

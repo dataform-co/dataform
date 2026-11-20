@@ -27,11 +27,12 @@ import { ResolvableMap, toResolvable } from "df/core/utils";
 import { version as dataformCoreVersion } from "df/core/version";
 import { dataform, google } from "df/protos/ts";
 
-export const DEFAULT_PROJECT_CONFIG = {
+const DEFAULT_CONFIG = {
   defaultSchema: "dataform",
   assertionSchema: "dataform_assertions",
-} as const;
+};
 
+/** @internal Exported only for `core/main.ts` and repository documentation tooling. */
 export const SESSION_GLOBAL_METHODS = [
   "publish",
   "operate",
@@ -98,11 +99,9 @@ export class Session {
     originalProjectConfig?: dataform.ProjectConfig,
   ) {
     this.rootDir = rootDir;
-    this.projectConfig = dataform.ProjectConfig.create(projectConfig || DEFAULT_PROJECT_CONFIG);
+    this.projectConfig = dataform.ProjectConfig.create(projectConfig || DEFAULT_CONFIG);
     this.canonicalProjectConfig = getCanonicalProjectConfig(
-      dataform.ProjectConfig.create(
-        originalProjectConfig || projectConfig || DEFAULT_PROJECT_CONFIG,
-      ),
+      dataform.ProjectConfig.create(originalProjectConfig || projectConfig || DEFAULT_CONFIG),
     );
     this.actions = [];
     this.tests = [];

@@ -3,6 +3,7 @@ import { load as loadYaml, YAMLException } from "js-yaml";
 import * as Path from "df/core/path";
 import { SyntaxTreeNode, SyntaxTreeNodeType } from "df/sqlx/lexer";
 
+/** @internal Exported only for repository documentation tooling. */
 export const SQLX_CONTEXT_FUNCTIONS = [
   "self",
   "ref",

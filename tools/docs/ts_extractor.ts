@@ -122,14 +122,22 @@ export function extractSessionGlobals(sessionPath: string): IFunctionDoc[] {
   return docs;
 }
 
-export function extractCoreExports(coreIndexPath: string): IExportDoc[] {
+export function extractCoreExports(coreIndexPath: string, packageIndexPath?: string): IExportDoc[] {
   const sourceFile = parseSourceFile(coreIndexPath);
-  const exports: IExportDoc[] = [];
+  const importedInterfaceAliases = collectImportedInterfaceAliases(sourceFile);
+  const allCoreExportNames = new Set<string>();
+  const publicExports: IExportDoc[] = [];
 
   sourceFile.forEachChild((node) => {
-    if (!hasExportModifier(node) || hasInternalJsDocTag(node)) {
+    if (ts.isExportDeclaration(node)) {
+      throw new Error(
+        `${coreIndexPath}: unexpected re-export declaration; declare public exports directly with JSDoc so types and descriptions can be extracted.`,
+      );
+    }
+    if (!hasExportModifier(node)) {
       return;
     }
+    const isInternal = hasInternalJsDocTag(node);
 
     if (ts.isVariableStatement(node)) {
       const descriptionMarkdown = extractFirstJsDocParagraph(node, sourceFile);
@@ -137,18 +145,26 @@ export function extractCoreExports(coreIndexPath: string): IExportDoc[] {
         if (!ts.isIdentifier(decl.name)) {
           continue;
         }
+        allCoreExportNames.add(decl.name.text);
+        if (isInternal) {
+          continue;
+        }
         if (!descriptionMarkdown) {
           throw new Error(
             `${coreIndexPath}: exported variable "${decl.name.text}" is missing a JSDoc summary.`,
           );
         }
-        exports.push({
+        publicExports.push({
           name: decl.name.text,
           typeLabel: decl.type ? collapseWhitespace(decl.type.getText(sourceFile)) : "unknown",
           descriptionMarkdown,
         });
       }
     } else if (ts.isFunctionDeclaration(node) && node.name) {
+      allCoreExportNames.add(node.name.text);
+      if (isInternal) {
+        return;
+      }
       const descriptionMarkdown = extractFirstJsDocParagraph(node, sourceFile);
       if (!descriptionMarkdown) {
         throw new Error(
@@ -156,27 +172,109 @@ export function extractCoreExports(coreIndexPath: string): IExportDoc[] {
         );
       }
       const returnType = node.type ? node.type.getText(sourceFile) : "void";
-      exports.push({
+      publicExports.push({
         name: node.name.text,
         typeLabel: `${formatParameterList(node.parameters, sourceFile)} => ${collapseWhitespace(returnType)}`,
         descriptionMarkdown,
       });
-    } else if (ts.isTypeAliasDeclaration(node) || ts.isInterfaceDeclaration(node)) {
+    } else if (ts.isInterfaceDeclaration(node)) {
+      allCoreExportNames.add(node.name.text);
+      if (isInternal) {
+        return;
+      }
+      const descriptionMarkdown = extractFirstJsDocParagraph(node, sourceFile);
+      if (!descriptionMarkdown) {
+        throw new Error(
+          `${coreIndexPath}: exported interface "${node.name.text}" is missing a JSDoc summary.`,
+        );
+      }
+      publicExports.push({
+        name: node.name.text,
+        typeLabel: "interface",
+        descriptionMarkdown,
+      });
+    } else if (ts.isTypeAliasDeclaration(node)) {
+      allCoreExportNames.add(node.name.text);
+      if (isInternal) {
+        return;
+      }
       const descriptionMarkdown = extractFirstJsDocParagraph(node, sourceFile);
       if (!descriptionMarkdown) {
         throw new Error(
           `${coreIndexPath}: exported type "${node.name.text}" is missing a JSDoc summary.`,
         );
       }
-      exports.push({
+      const isInterfaceAlias =
+        ts.isTypeReferenceNode(node.type) &&
+        ts.isIdentifier(node.type.typeName) &&
+        importedInterfaceAliases.has(node.type.typeName.text);
+      publicExports.push({
         name: node.name.text,
-        typeLabel: "interface",
+        typeLabel: isInterfaceAlias ? "interface" : "type",
         descriptionMarkdown,
       });
     }
   });
 
-  return exports;
+  if (packageIndexPath) {
+    verifyPackageEntrypointParity(coreIndexPath, allCoreExportNames, packageIndexPath);
+  }
+
+  return publicExports;
+}
+
+export function extractNamedReExports(entrypointPath: string): Set<string> {
+  const sourceFile = parseSourceFile(entrypointPath);
+  const names = new Set<string>();
+  sourceFile.forEachChild((node) => {
+    if (ts.isExportDeclaration(node) && node.exportClause && ts.isNamedExports(node.exportClause)) {
+      for (const element of node.exportClause.elements) {
+        names.add(element.name.text);
+      }
+    }
+  });
+  return names;
+}
+
+function verifyPackageEntrypointParity(
+  coreIndexPath: string,
+  coreExportNames: Set<string>,
+  packageIndexPath: string,
+): void {
+  const packageExportNames = extractNamedReExports(packageIndexPath);
+  const missingInPackage = [...coreExportNames].filter((name) => !packageExportNames.has(name));
+  const missingInCore = [...packageExportNames].filter((name) => !coreExportNames.has(name));
+  if (missingInPackage.length > 0 || missingInCore.length > 0) {
+    const details: string[] = [];
+    if (missingInPackage.length > 0) {
+      details.push(`missing in ${packageIndexPath}: ${missingInPackage.join(", ")}`);
+    }
+    if (missingInCore.length > 0) {
+      details.push(`missing in ${coreIndexPath}: ${missingInCore.join(", ")}`);
+    }
+    throw new Error(
+      `Export mismatch between ${coreIndexPath} and ${packageIndexPath} (${details.join("; ")}).`,
+    );
+  }
+}
+
+function collectImportedInterfaceAliases(sourceFile: ts.SourceFile): Set<string> {
+  const aliases = new Set<string>();
+  sourceFile.forEachChild((node) => {
+    if (
+      ts.isImportDeclaration(node) &&
+      node.importClause?.namedBindings &&
+      ts.isNamedImports(node.importClause.namedBindings)
+    ) {
+      for (const element of node.importClause.namedBindings.elements) {
+        const originalName = (element.propertyName || element.name).text;
+        if (/^I[A-Z]/.test(originalName)) {
+          aliases.add(element.name.text);
+        }
+      }
+    }
+  });
+  return aliases;
 }
 
 function parseSourceFile(filePath: string): ts.SourceFile {
@@ -250,8 +348,8 @@ function formatParameterList(
 }
 
 function extractFirstJsDocParagraph(node: ts.Node, sourceFile: ts.SourceFile): string {
-  const jsDocs = (node as { jsDoc?: ts.JSDoc[] }).jsDoc;
-  if (!jsDocs || jsDocs.length === 0) {
+  const jsDocs = ts.getJSDocCommentsAndTags(node).filter(ts.isJSDoc);
+  if (jsDocs.length === 0) {
     return "";
   }
   const latestDoc = jsDocs[jsDocs.length - 1];

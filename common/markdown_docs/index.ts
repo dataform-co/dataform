@@ -35,6 +35,7 @@ export interface IGenerateMarkedMarkdownOptions {
 
 export interface IFormatStaleBlocksOptions {
   filePath: string;
+  currentLabel?: string;
   expectedLabel: string;
   summaryLine: string;
   fixInstructions: string[];
@@ -120,11 +121,18 @@ export function formatStaleBlocks(
   staleBlocks: IStaleBlock[],
   options: IFormatStaleBlocksOptions,
 ): string {
-  const { filePath, expectedLabel, summaryLine, fixInstructions } = options;
+  const {
+    filePath,
+    currentLabel = filePath,
+    expectedLabel,
+    summaryLine,
+    fixInstructions,
+  } = options;
   const blocks = staleBlocks.map((block) => {
     const lastLine = block.firstLine + Math.max(block.current.length - 1, 0);
     const labelled = diffLines(block.current, block.expected).map(({ kind, line, index }) => ({
-      label: kind === "current" ? `README (line ${block.firstLine + index}):` : expectedLabel,
+      label:
+        kind === "current" ? `${currentLabel} (line ${block.firstLine + index}):` : expectedLabel,
       line,
     }));
     const labelWidth = Math.max(...labelled.map(({ label }) => label.length));

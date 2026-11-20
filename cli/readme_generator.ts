@@ -37,10 +37,9 @@ const PER_COMMAND_BLOCK_KINDS = ["usage", "positionals", "options"];
 
 type AnyOption = INamedOption<any, any>;
 
-export type IGeneratedReadme = IGeneratedMarkdown;
-export { IStaleBlock };
+export { IGeneratedMarkdown, IStaleBlock };
 
-export function generateReadme(readme: string, commands: ICommandBase[]): IGeneratedReadme {
+export function generateReadme(readme: string, commands: ICommandBase[]): IGeneratedMarkdown {
   return generateMarkedMarkdown(readme, {
     filePath: README_PATH,
     renderBlock: (blockName) => renderBlock(blockName, commands),
@@ -53,6 +52,7 @@ export function generateReadme(readme: string, commands: ICommandBase[]): IGener
 export function formatStaleBlocks(staleBlocks: IStaleBlock[]): string {
   return sharedFormatStaleBlocks(staleBlocks, {
     filePath: README_PATH,
+    currentLabel: "README",
     expectedLabel: "expected from cli/:",
     summaryLine:
       "cli/README.md is out of date with the CLI command and option definitions in cli/.",

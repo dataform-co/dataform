@@ -2,8 +2,8 @@
 
 <!--
   The workflow_settings.yaml field table, SQLX context functions table, JavaScript Session globals
-  table, public package exports list and bundled .proto schemas list in this file are generated
-  from the definitions in core/ and protos/. Don't edit the generated blocks by hand: change the
+  table and public package exports list in this file are generated from the definitions in core/,
+  packages/@dataform/core/index.ts and protos/. Don't edit the generated blocks by hand: change the
   source definitions or JSDoc/proto comments and run `bazel run //core:update_readme`.
 -->
 
@@ -98,10 +98,10 @@ my-dataform-project/
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `dataformCoreVersion` | `string` | — | `@dataform/core` version to compile against (for example, `3.1.5`). |
-| `defaultProject` | `string` | — | Default Google Cloud project ID (`database`) for compiled actions. |
-| `defaultDataset` | `string` | `"dataform"` | Default BigQuery dataset (`schema`) for tables, views, and operations. |
-| `defaultLocation` | `string` | — | Default BigQuery dataset location (for example, `US`, `EU`, `us-central1`). |
-| `defaultAssertionDataset` | `string` | `"dataform_assertions"` | Default BigQuery dataset (`schema`) for assertion views. |
+| `defaultProject` | `string` | — | Required. Default Google Cloud project ID (`database`) for compiled actions. |
+| `defaultDataset` | `string` | — | Required. Default BigQuery dataset (`schema`) for tables, views, and operations. |
+| `defaultLocation` | `string` | — | Required. Default BigQuery dataset location (for example, `US`, `EU`, `us-central1`). |
+| `defaultAssertionDataset` | `string` | — | Required. Default BigQuery dataset (`schema`) for assertion views. |
 | `vars` | `map<string, string>` | `{}` | Custom string key-value variables accessible via `dataform.projectConfig.vars.<key>`. |
 | `projectSuffix` | `string` | — | Suffix appended to target Google Cloud project IDs (`<project>_<projectSuffix>`). |
 | `datasetSuffix` | `string` | — | Suffix appended to target dataset names (`<dataset>_<datasetSuffix>`). |
@@ -152,8 +152,8 @@ Inside the SQL body and operation blocks of a `.sqlx` file (or via the `ctx` arg
 | `name` | `name()` | Returns the finalized table/action name of the current action (including `namePrefix` if set). |
 | `schema` | `schema()` | Returns the finalized dataset (`schema`) name of the current action (including `datasetSuffix` if set). |
 | `database` | `database()` | Returns the finalized Google Cloud project (`database`) of the current action (including `projectSuffix` if set). |
-| `when` | `when(condition, trueCase, falseCase = "")` | Returns `trueCase` when `condition` is truthy and `falseCase` otherwise (`table`, `incremental`, `view`, `operations`, `assertion`, `test`, `dataPreparation`). |
-| `incremental` | `incremental()` | Returns `true` when compiling the incremental update query of an `incremental` table, or `false` when compiling its initial/full-refresh query (`table`, `incremental`, `view`). |
+| `when` | `when(condition, trueCase, falseCase = "")` | Returns `trueCase` when `condition` is truthy and `falseCase` otherwise. |
+| `incremental` | `incremental()` | Returns `true` when compiling the incremental update query of an `incremental` table, or `false` when compiling its initial/full-refresh query (`table`, `incremental`, `view`, `dataPreparation`). |
 <!-- END GENERATED: sqlx-context-functions -->
 
 ---
@@ -284,7 +284,7 @@ When `hasOutput: true` is set, the operation registers a referenceable target at
 
 ### `assertion` and Built-in Assertions
 
-An assertion is a data quality query that **fails if it returns one or more rows**. Assertions materialize as views in `defaultAssertionDataset` (`dataform_assertions` by default). See [`AssertionConfig`](https://dataform-co.github.io/dataform/docs/reference/configs#dataform-ActionConfig-AssertionConfig).
+An assertion is a data quality query that **fails if it returns one or more rows**. Assertions materialize as views in `defaultAssertionDataset` (`dataform init` sets `"dataform_assertions"`). See [`AssertionConfig`](https://dataform-co.github.io/dataform/docs/reference/configs#dataform-ActionConfig-AssertionConfig).
 
 ```sql
 -- definitions/assertions/assert_positive_order_amount.sqlx
@@ -469,14 +469,12 @@ When imported as an npm library (`import * as dataformCore from "@dataform/core"
 
 The published `@dataform/core` package includes the canonical `.proto` definitions at the package root:
 
-<!-- BEGIN GENERATED: bundled-protos -->
 - `core.proto` — `CompiledGraph`, `Table`, `Operation`, `Assertion`, `Declaration`, `Test`, `Notebook`, `DataPreparation`, `PropertyGraph`, `Target`, `ProjectConfig`, `CoreExecutionRequest`, `CoreExecutionResponse`.
 - `configs.proto` — `WorkflowSettings`, `ActionConfigs`, `ActionConfig` (`TableConfig`, `ViewConfig`, `IncrementalTableConfig`, `AssertionConfig`, `OperationConfig`, `DeclarationConfig`, `NotebookConfig`, `DataPreparationConfig`).
 - `property_graph_config.proto` — `PropertyGraphConfig` (`SemanticModelConfig`, `GraphAiContextConfig`, `GraphDeploymentConfig`, `GraphEntityConfig`, `GraphRelationshipConfig`, `GraphMetricConfig`).
 - `db_adapter.proto` — `Field`, `Fields`, `TableMetadata`, `ExecutionMetadata`.
 - `jit.proto` — `DbAdapter` service, `JitCompilationRequest`, `JitCompilationResponse`, `JitTableResult`, `JitIncrementalTableResult`, `JitOperationResult`, `JitAssertionResult`.
 - `extension.proto` — `Extension` (`ExtensionCompilationMode`).
-<!-- END GENERATED: bundled-protos -->
 
 ---
 

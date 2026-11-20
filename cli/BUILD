@@ -155,7 +155,6 @@ ts_library(
     name = "readme_generator",
     srcs = [
         "readme_generator.ts",
-        "update_readme.ts",
     ],
     deps = [
         ":cli",
@@ -165,11 +164,22 @@ ts_library(
     ],
 )
 
+ts_library(
+    name = "update_readme_bin",
+    srcs = ["update_readme.ts"],
+    visibility = ["//visibility:private"],
+    deps = [
+        ":cli",
+        ":readme_generator",
+        "//:node_modules/@types/node",
+    ],
+)
+
 # Regenerates the generated blocks of README.md: bazel run //cli:update_readme
 js_binary(
     name = "update_readme",
     data = [
-        ":readme_generator",
+        ":update_readme_bin",
         "//:node_modules/source-map-support",
         "//testing:resolver-patch",
     ],

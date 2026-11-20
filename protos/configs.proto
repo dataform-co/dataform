@@ -15,8 +15,9 @@ import "property_graph_config.proto";
 // Workflow Settings defines the contents of the `workflow_settings.yaml`
 // configuration file.
 message WorkflowSettings {
-  // `@dataform/core` version to compile against (for example, `3.1.5`). When
-  // set, the CLI installs this version into a copy of the project in a
+  // `@dataform/core` version to compile against (for example, `3.1.5`).
+  //
+  // When set, the CLI installs this version into a copy of the project in a
   // temporary directory and compiles the copy, which skips paths matched by
   // `.gitignore` or `.dataformignore` outside `definitions/` and `includes/`.
   // For details, see https://dataform-co.github.io/dataform/docs/stateless-install.
@@ -29,6 +30,7 @@ message WorkflowSettings {
   string default_dataset = 3;
 
   // Required. Default BigQuery dataset location (for example, `US`, `EU`, `us-central1`).
+  //
   // For more information on BigQuery locations, see
   // https://cloud.google.com/bigquery/docs/locations.
   string default_location = 4;
@@ -37,6 +39,7 @@ message WorkflowSettings {
   string default_assertion_dataset = 5;
 
   // Optional. Custom string key-value variables accessible via `dataform.projectConfig.vars.<key>`.
+  //
   // An object containing a list of "key": value pairs.
   map<string, string> vars = 6;
 
@@ -59,11 +62,13 @@ message WorkflowSettings {
   DefaultIcebergConfig default_iceberg_config = 12;
 
   // Optional. Marks all manual and built-in assertions as `disabled: true` in the compiled graph.
+  //
   // Includes built-in assertions (uniqueKey, nonNull, rowConditions) and manual
   // assertions (type: assertion).
   bool disable_assertions = 13;
 
   // Optional. Default BigQuery reservation for query execution (`projects/<p>/locations/<l>/reservations/<r>` or `none`).
+  //
   // If unset, default BigQuery behavior applies.
   // Dataform CLI only (GCP Dataform support pending).
   string default_reservation = 14;
@@ -78,10 +83,12 @@ message WorkflowSettings {
   bool preserve_governance_controls = 18;
 
   // Optional. Knowledge Catalog Data Lineage settings (`lineage: { enabled: true }`).
+  //
   // See [Data Lineage guide](https://github.com/dataform-co/dataform/blob/main/docs/lineage.md).
   LineageSettings lineage = 19;
 
   // Optional. Default labels applied to BigQuery jobs executed for actions in the project.
+  //
   // Merged key-by-key when
   // overridden via `projectConfigOverride`. Action-level `jobLabels` override
   // matching keys; an action can't remove a default key. Built-in assertions

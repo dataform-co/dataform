@@ -1,4 +1,7 @@
 import { expect } from "chai";
+import * as fs from "fs";
+import * as os from "os";
+import * as path from "path";
 
 import { suite, test } from "df/testing";
 import {
@@ -7,6 +10,8 @@ import {
   generateCoreReadme,
   ICoreDocData,
 } from "df/tools/docs/core_readme_generator";
+import { extractFirstProtoParagraph } from "df/tools/docs/proto_extractor";
+import { extractCoreExports } from "df/tools/docs/ts_extractor";
 
 function block(name: string, ...content: string[]): string {
   return [`<!-- BEGIN GENERATED: ${name} -->`, ...content, `<!-- END GENERATED: ${name} -->`].join(
@@ -30,9 +35,9 @@ function sampleData(): ICoreDocData {
       {
         name: "defaultDataset",
         typeMarkdown: "`string`",
-        defaultMarkdown: '`"dataform"`',
+        defaultMarkdown: "—",
         descriptionMarkdown:
-          "Default BigQuery dataset (`schema`) for tables, views, and operations.",
+          "Required. Default BigQuery dataset (`schema`) for tables, views, and operations.",
       },
       {
         name: "lineage",
@@ -73,28 +78,18 @@ function sampleData(): ICoreDocData {
         descriptionMarkdown: "Entry point invoked by the compilation VM sandbox.",
       },
     ],
-    bundledProtos: [
-      {
-        fileName: "configs.proto",
-        itemsMarkdown: ["`WorkflowSettings`", "`ActionConfig` (`TableConfig`, `ViewConfig`)"],
-      },
-      {
-        fileName: "jit.proto",
-        itemsMarkdown: ["`DbAdapter` service", "`JitCompilationRequest`"],
-      },
-    ],
   };
 }
 
 suite("core readme generator", () => {
-  test("renders all five generated blocks from structured doc data", () => {
+  test("renders all four generated blocks from structured doc data", () => {
     const { content } = generateCoreReadme(minimalReadme("Hand-written prose."), sampleData());
 
     expect(generatedBlock(content, "workflow-settings")).to.equal(
       [
         "| Field | Type | Default | Description |",
         "|---|---|---|---|",
-        '| `defaultDataset` | `string` | `"dataform"` | Default BigQuery dataset (`schema`) for tables, views, and operations. |',
+        "| `defaultDataset` | `string` | — | Required. Default BigQuery dataset (`schema`) for tables, views, and operations. |",
         "| `lineage` | `object` | — | Knowledge Catalog Data Lineage settings (`lineage: { enabled: true }`). |",
       ].join("\n"),
     );
@@ -122,13 +117,6 @@ suite("core readme generator", () => {
         "- **`main`** (`(coreExecutionRequest: Uint8Array | string) => Uint8Array | string`): Entry point invoked by the compilation VM sandbox.",
       ].join("\n"),
     );
-
-    expect(generatedBlock(content, "bundled-protos")).to.equal(
-      [
-        "- `configs.proto` — `WorkflowSettings`, `ActionConfig` (`TableConfig`, `ViewConfig`).",
-        "- `jit.proto` — `DbAdapter` service, `JitCompilationRequest`.",
-      ].join("\n"),
-    );
     expect(content).to.include("Hand-written prose.");
   });
 
@@ -144,7 +132,7 @@ suite("core readme generator", () => {
     const data = sampleData();
     const upToDate = generateCoreReadme(minimalReadme(), data).content;
     const stale = upToDate.replace(
-      "Default BigQuery dataset (`schema`) for tables, views, and operations.",
+      "Required. Default BigQuery dataset (`schema`) for tables, views, and operations.",
       "Outdated description.",
     );
     const { staleBlocks } = generateCoreReadme(stale, data);
@@ -155,9 +143,17 @@ suite("core readme generator", () => {
     );
     expect(formatted).to.include("Outdated description.");
     expect(formatted).to.include(
-      "Default BigQuery dataset (`schema`) for tables, views, and operations.",
+      "Required. Default BigQuery dataset (`schema`) for tables, views, and operations.",
     );
     expect(formatted).to.include("bazel run //core:update_readme");
+  });
+
+  test("fails fast on unescaped pipes or newlines in table cell markdown", () => {
+    const badData = sampleData();
+    badData.workflowSettingsFields[0].descriptionMarkdown = "Contains unescaped | pipe.";
+    expect(() => generateCoreReadme(minimalReadme(), badData)).to.throw(
+      /description of defaultDataset can't contain line breaks or unescaped "\|"/,
+    );
   });
 
   test("fails when a required block is missing or unknown", () => {
@@ -169,5 +165,51 @@ suite("core readme generator", () => {
     expect(() => generateCoreReadme(minimalReadme(block("unknown-block")), data)).to.throw(
       /unknown generated block "unknown-block"/,
     );
+  });
+
+  test("extractFirstProtoParagraph keeps Required. and splits on blank lines", () => {
+    expect(
+      extractFirstProtoParagraph(
+        "Required. Default dataset (e.g. `analytics`, v1.0).\n\nSecond paragraph details.",
+      ),
+    ).to.equal("Required. Default dataset (e.g. `analytics`, v1.0).");
+
+    expect(
+      extractFirstProtoParagraph("Optional. Custom variables.\nwrapped on second line."),
+    ).to.equal("Custom variables. wrapped on second line.");
+  });
+
+  test("extractCoreExports enforces package entrypoint parity and distinguishes types", () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "core-exports-test-"));
+    try {
+      const coreIdx = path.join(tmpDir, "core_index.ts");
+      const pkgIdx = path.join(tmpDir, "pkg_index.ts");
+      fs.writeFileSync(
+        coreIdx,
+        [
+          'import { IFoo as Foo } from "./foo";',
+          "/** Version string. */",
+          'export const version: string = "1.0.0";',
+          "/** Foo interface. */",
+          "export type IFoo = Foo;",
+          "/** Mode union. */",
+          'export type Mode = "a" | "b";',
+          "/** @internal */",
+          "export function internalHelper(): void {}",
+        ].join("\n"),
+      );
+      fs.writeFileSync(pkgIdx, 'export { IFoo, internalHelper, Mode, version } from "df/core";\n');
+
+      expect(extractCoreExports(coreIdx, pkgIdx)).to.deep.equal([
+        { name: "version", typeLabel: "string", descriptionMarkdown: "Version string." },
+        { name: "IFoo", typeLabel: "interface", descriptionMarkdown: "Foo interface." },
+        { name: "Mode", typeLabel: "type", descriptionMarkdown: "Mode union." },
+      ]);
+
+      fs.writeFileSync(pkgIdx, 'export { version } from "df/core";\n');
+      expect(() => extractCoreExports(coreIdx, pkgIdx)).to.throw(/Export mismatch between/);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
   });
 });

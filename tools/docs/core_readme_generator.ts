@@ -10,9 +10,7 @@ import {
   tableRow,
 } from "df/common/markdown_docs";
 import {
-  extractBundledProtoSchemas,
   extractWorkflowSettingsFields,
-  IBundledProtoFileDoc,
   IWorkflowSettingsFieldDoc,
   loadDataformProtos,
 } from "df/tools/docs/proto_extractor";
@@ -34,17 +32,13 @@ export const CORE_README_BLOCKS = [
   "sqlx-context-functions",
   "session-globals",
   "core-exports",
-  "bundled-protos",
 ] as const;
-
-export type CoreReadmeBlockName = (typeof CORE_README_BLOCKS)[number];
 
 export interface ICoreDocData {
   workflowSettingsFields: IWorkflowSettingsFieldDoc[];
   sqlxContextFunctions: IFunctionDoc[];
   sessionGlobals: IFunctionDoc[];
   coreExports: IExportDoc[];
-  bundledProtos: IBundledProtoFileDoc[];
 }
 
 export interface ICoreSourcePaths {
@@ -52,10 +46,10 @@ export interface ICoreSourcePaths {
   contextablesPath: string;
   sessionPath: string;
   coreIndexPath: string;
+  packageIndexPath: string;
 }
 
-export type IGeneratedCoreReadme = IGeneratedMarkdown;
-export { IStaleBlock };
+export { IGeneratedMarkdown, IStaleBlock };
 
 export function defaultCoreSourcePaths(workspaceRoot = "."): ICoreSourcePaths {
   return {
@@ -63,6 +57,7 @@ export function defaultCoreSourcePaths(workspaceRoot = "."): ICoreSourcePaths {
     contextablesPath: path.join(workspaceRoot, "core", "contextables.ts"),
     sessionPath: path.join(workspaceRoot, "core", "session.ts"),
     coreIndexPath: path.join(workspaceRoot, "core", "index.ts"),
+    packageIndexPath: path.join(workspaceRoot, "packages", "@dataform", "core", "index.ts"),
   };
 }
 
@@ -72,15 +67,14 @@ export function loadCoreDocData(paths: ICoreSourcePaths = defaultCoreSourcePaths
     workflowSettingsFields: extractWorkflowSettingsFields(protoRoot),
     sqlxContextFunctions: extractSqlxContextFunctions(paths.contextablesPath),
     sessionGlobals: extractSessionGlobals(paths.sessionPath),
-    coreExports: extractCoreExports(paths.coreIndexPath),
-    bundledProtos: extractBundledProtoSchemas(protoRoot, paths.protosDir),
+    coreExports: extractCoreExports(paths.coreIndexPath, paths.packageIndexPath),
   };
 }
 
 export function generateCoreReadme(
   readme: string,
   data: ICoreDocData = loadCoreDocData(),
-): IGeneratedCoreReadme {
+): IGeneratedMarkdown {
   return generateMarkedMarkdown(readme, {
     filePath: README_PATH,
     renderBlock: (blockName) => renderBlock(blockName, data),
@@ -91,6 +85,7 @@ export function generateCoreReadme(
 export function formatStaleCoreBlocks(staleBlocks: IStaleBlock[]): string {
   return sharedFormatStaleBlocks(staleBlocks, {
     filePath: README_PATH,
+    currentLabel: "README",
     expectedLabel: "expected from core/ & protos/:",
     summaryLine:
       "core/README.md is out of date with the TypeScript and Protocol Buffer definitions in core/ and protos/.",
@@ -121,8 +116,6 @@ function renderBlock(blockName: string, data: ICoreDocData): string[] {
       return renderSessionGlobalsTable(data.sessionGlobals);
     case "core-exports":
       return renderCoreExportsList(data.coreExports);
-    case "bundled-protos":
-      return renderBundledProtosList(data.bundledProtos);
     default:
       throw new Error(`${README_PATH}: unknown generated block "${blockName}".`);
   }
@@ -135,9 +128,9 @@ function renderWorkflowSettingsTable(fields: IWorkflowSettingsFieldDoc[]): strin
     ...fields.map((field) =>
       tableRow([
         codeCell(field.name),
-        markdownCell(escapeTablePipes(field.typeMarkdown), `type of ${field.name}`),
-        markdownCell(escapeTablePipes(field.defaultMarkdown), `default of ${field.name}`),
-        markdownCell(escapeTablePipes(field.descriptionMarkdown), `description of ${field.name}`),
+        markdownCell(field.typeMarkdown, `type of ${field.name}`),
+        markdownCell(field.defaultMarkdown, `default of ${field.name}`),
+        markdownCell(field.descriptionMarkdown, `description of ${field.name}`),
       ]),
     ),
   ];
@@ -150,8 +143,8 @@ function renderSqlxContextTable(functions: IFunctionDoc[]): string[] {
     ...functions.map((fn) =>
       tableRow([
         codeCell(fn.name),
-        markdownCell(escapeTablePipes(fn.signatureMarkdown), `signature of ${fn.name}`),
-        markdownCell(escapeTablePipes(fn.descriptionMarkdown), `JSDoc of ${fn.name}`),
+        markdownCell(fn.signatureMarkdown, `signature of ${fn.name}`),
+        markdownCell(fn.descriptionMarkdown, `JSDoc of ${fn.name}`),
       ]),
     ),
   ];
@@ -164,8 +157,8 @@ function renderSessionGlobalsTable(globals: IFunctionDoc[]): string[] {
     ...globals.map((item) =>
       tableRow([
         codeCell(item.name),
-        markdownCell(escapeTablePipes(item.signatureMarkdown), `signature of ${item.name}`),
-        markdownCell(escapeTablePipes(item.descriptionMarkdown), `JSDoc of ${item.name}`),
+        markdownCell(item.signatureMarkdown, `signature of ${item.name}`),
+        markdownCell(item.descriptionMarkdown, `JSDoc of ${item.name}`),
       ]),
     ),
   ];
@@ -175,14 +168,6 @@ function renderCoreExportsList(exportsList: IExportDoc[]): string[] {
   return exportsList.map(
     (item) => `- **\`${item.name}\`** (\`${item.typeLabel}\`): ${item.descriptionMarkdown}`,
   );
-}
-
-function renderBundledProtosList(protos: IBundledProtoFileDoc[]): string[] {
-  return protos.map((proto) => `- \`${proto.fileName}\` — ${proto.itemsMarkdown.join(", ")}.`);
-}
-
-function escapeTablePipes(markdown: string): string {
-  return markdown.replace(/\s*\n\s*/g, " ").replace(/(^|[^\\])\|/g, "$1\\|");
 }
 
 function codeCell(value: string): string {

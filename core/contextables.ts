@@ -85,24 +85,24 @@ export interface IActionContext {
    * Returns the finalized Google Cloud project (`database`) of the current action (including `projectSuffix` if set).
    */
   database: () => string;
-}
 
-/**
- * Table context is available when evaluating contextable SQL code for actions of type Table,
- * View, or Incremental tables.
- */
-export interface ITableContext extends IActionContext {
   /**
-   * Returns `trueCase` when `condition` is truthy and `falseCase` otherwise (`table`, `incremental`, `view`, `operations`, `assertion`, `test`, `dataPreparation`).
+   * Returns `trueCase` when `condition` is truthy and `falseCase` otherwise.
    *
    * Equivalent to `condition ? trueCase : falseCase`.
    *
    * @signature `when(condition, trueCase, falseCase = "")`
    */
   when: (condition: boolean, trueCase: string, falseCase?: string) => string;
+}
 
+/**
+ * Table context is available when evaluating contextable SQL code for actions of type Table,
+ * View, Incremental, or DataPreparation.
+ */
+export interface ITableContext extends IActionContext {
   /**
-   * Returns `true` when compiling the incremental update query of an `incremental` table, or `false` when compiling its initial/full-refresh query (`table`, `incremental`, `view`).
+   * Returns `true` when compiling the incremental update query of an `incremental` table, or `false` when compiling its initial/full-refresh query (`table`, `incremental`, `view`, `dataPreparation`).
    */
   incremental: () => boolean;
 }
