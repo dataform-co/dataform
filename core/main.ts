@@ -15,7 +15,7 @@ import { Table } from "df/core/actions/table";
 import { View } from "df/core/actions/view";
 import { IDataformExtension } from "df/core/extension";
 import * as Path from "df/core/path";
-import { Session } from "df/core/session";
+import { Session, SESSION_GLOBAL_METHODS } from "df/core/session";
 import { nativeRequire, validateJobLabels } from "df/core/utils";
 import { readWorkflowSettings } from "df/core/workflow_settings";
 import { dataform } from "df/protos/ts";
@@ -337,14 +337,9 @@ function dataformCompile(compileRequest: dataform.ICompileExecutionRequest, sess
   Object.assign(globalAny, topLevelIncludes);
 
   // Bind various @dataform/core APIs to the 'global' object.
-  globalAny.publish = session.publish.bind(session);
-  globalAny.operate = session.operate.bind(session);
-  globalAny.assert = session.assert.bind(session);
-  globalAny.declare = session.declare.bind(session);
-  globalAny.notebook = session.notebook.bind(session);
-  globalAny.test = session.test.bind(session);
-  globalAny.jitData = session.jitData.bind(session);
-  globalAny.getContents = session.getContents.bind(session);
+  for (const methodName of SESSION_GLOBAL_METHODS) {
+    globalAny[methodName] = session[methodName].bind(session);
+  }
 
   loadActionConfigs(session, compileRequest.compileConfig.filePaths);
   loadPropertyGraphs(session, compileRequest.compileConfig.filePaths);

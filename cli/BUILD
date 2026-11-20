@@ -155,12 +155,23 @@ ts_library(
     name = "readme_generator",
     srcs = [
         "readme_generator.ts",
-        "update_readme.ts",
     ],
     deps = [
         ":cli",
         "//:node_modules/@types/node",
         "//:node_modules/@types/yargs",
+        "//common/markdown_docs",
+    ],
+)
+
+ts_library(
+    name = "update_readme_bin",
+    srcs = ["update_readme.ts"],
+    visibility = ["//visibility:private"],
+    deps = [
+        ":cli",
+        ":readme_generator",
+        "//:node_modules/@types/node",
     ],
 )
 
@@ -168,7 +179,7 @@ ts_library(
 js_binary(
     name = "update_readme",
     data = [
-        ":readme_generator",
+        ":update_readme_bin",
         "//:node_modules/source-map-support",
         "//testing:resolver-patch",
     ],
