@@ -1,6 +1,10 @@
 import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { ActionBuilder } from "df/core/actions";
-import { validateLakehouseColumns, validateLakehouseConfig } from "df/core/actions/lakehouse";
+import {
+  validateLakehouseColumns,
+  validateLakehouseConfig,
+  validateLakehouseTarget,
+} from "df/core/actions/lakehouse";
 import { ColumnDescriptors } from "df/core/column_descriptors";
 import { Contextable, IActionContext, JitContextable, Resolvable } from "df/core/contextables";
 import * as Path from "df/core/path";
@@ -398,6 +402,7 @@ export class Operation extends ActionBuilder<dataform.Operation> {
       );
     }
     if (this.isLakehouseTarget) {
+      validateLakehouseTarget(this.session, this.proto.fileName, this.proto.target);
       validateLakehouseColumns(
         this.session,
         this.proto.actionDescriptor,
