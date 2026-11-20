@@ -1,6 +1,12 @@
 #!/bin/bash
 set -e
 
+# Install every package in pnpm-lock.yaml from the registry configured in
+# ~/.npmrc (the CI registry), so that a lockfile with versions that aren't
+# available there fails here rather than later, e.g. in the canary or publish
+# builds. Bazel itself only fetches the packages that its targets need.
+bazel run -- @pnpm//:pnpm --dir "$PWD" install --frozen-lockfile
+
 # Run unit tests
 ./scripts/run_tests
 
