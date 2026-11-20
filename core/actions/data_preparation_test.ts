@@ -3,6 +3,8 @@ import * as fs from "fs-extra";
 import { dump as dumpYaml, load as loadYaml } from "js-yaml";
 import * as path from "path";
 
+import { DataPreparation } from "df/core/actions/data_preparation";
+import { Session } from "df/core/session";
 import { dataform } from "df/protos/ts";
 import { asPlainObject, suite, test } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
@@ -946,42 +948,44 @@ FROM x
       });
     });
 
-    test(`data preparation supports numeric LoadMode enum values in sqlx config`, () => {
-      const projectDir = createSimpleDataPreparationProject(VALID_WORKFLOW_SETTINGS_YAML, false);
-      fs.writeFileSync(
-        path.join(projectDir, "definitions/append_dp.sqlx"),
-        `
-config {
-  type: "dataPreparation",
-  name: "append_dest",
-  loadMode: {
-    mode: ${dataform.ActionConfig.LoadMode.APPEND},
-  },
-}
-FROM x
-|> SELECT *
-`,
+    // actions.yaml rejects .sqlx filenames (actionConfigFilenameIsInvalidSqlx), so test fromObject directly.
+    test(`data preparation supports numeric LoadMode enum values from DataPreparationConfig.fromObject`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      const appendSqlxPath = path.join(projectDir, "append_dp.sqlx");
+      const mergeSqlxPath = path.join(projectDir, "merge_dp.sqlx");
+      fs.writeFileSync(appendSqlxPath, 'module.exports = { query: "FROM x\\n|> SELECT *" };');
+      fs.writeFileSync(mergeSqlxPath, 'module.exports = { query: "FROM x\\n|> SELECT *" };');
+
+      const session = new Session(
+        projectDir,
+        dataform.ProjectConfig.create({
+          defaultDatabase: "defaultProject",
+          defaultSchema: "defaultDataset",
+        }),
       );
-      fs.writeFileSync(
-        path.join(projectDir, "definitions/merge_dp.sqlx"),
-        `
-config {
-  type: "dataPreparation",
-  name: "merge_dest",
-  loadMode: {
-    mode: ${dataform.ActionConfig.LoadMode.MERGE},
-    uniqueKey: ["id"],
-  },
-}
-FROM x
-|> SELECT *
-`,
+      const appendDp = new DataPreparation(
+        session,
+        dataform.ActionConfig.DataPreparationConfig.fromObject({
+          name: "append_dest",
+          filename: appendSqlxPath,
+          loadMode: {
+            mode: "APPEND",
+          },
+        }),
+      );
+      const mergeDp = new DataPreparation(
+        session,
+        dataform.ActionConfig.DataPreparationConfig.fromObject({
+          name: "merge_dest",
+          filename: mergeSqlxPath,
+          loadMode: {
+            mode: "MERGE",
+            uniqueKey: ["id"],
+          },
+        }),
       );
 
-      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
-
-      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-      expect(asPlainObject(result.compile.compiledGraph.dataPreparations)).deep.equals(
+      expect(asPlainObject([appendDp.compile(), mergeDp.compile()])).deep.equals(
         asPlainObject([
           {
             target: {
@@ -1008,7 +1012,7 @@ FROM x
                 name: "append_dest",
               },
             ],
-            fileName: "definitions/append_dp.sqlx",
+            fileName: appendSqlxPath,
             load: {
               append: {},
             },
@@ -1039,7 +1043,7 @@ FROM x
                 name: "merge_dest",
               },
             ],
-            fileName: "definitions/merge_dp.sqlx",
+            fileName: mergeSqlxPath,
             load: {
               merge: {
                 uniqueKey: ["id"],

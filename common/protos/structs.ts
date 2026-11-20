@@ -14,123 +14,128 @@ const PROTO_VALUE_KEYS = new Set([
   "listValue",
 ]);
 
-export interface IProtoMessageType {
-  readonly prototype: object;
-  fromObject(object: { [k: string]: unknown }): unknown;
-  verify(object: unknown): string | null;
+let protoHandlersInstalled = false;
+let plainStructSeen = false;
+let mutatePlainStructsInPlace = false;
+
+export class UnsupportedStructValueError extends TypeError {
+  constructor(
+    public readonly key: string | undefined,
+    public readonly valueType: string,
+  ) {
+    super(
+      `Unsupported Struct value of type "${valueType}"${key !== undefined ? ` at "${key}"` : ""}`,
+    );
+  }
 }
 
-interface IStructFieldMeta {
-  kind: "none" | "struct" | "message" | "repeated" | "map";
-  childProto?: IProtoMessageType;
-  isChildStruct?: boolean;
+export function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (
+    !value ||
+    typeof value !== "object" ||
+    Object.prototype.toString.call(value) !== "[object Object]"
+  ) {
+    return false;
+  }
+  const proto = Object.getPrototypeOf(value);
+  return proto === null || Object.getPrototypeOf(proto) === null;
 }
 
-const structFieldMetaCache = new WeakMap<object, Map<string, IStructFieldMeta>>();
+export function isProtoMessageInstance(value: unknown): boolean {
+  if (
+    !value ||
+    typeof value !== "object" ||
+    Array.isArray(value) ||
+    (util.Long && value instanceof util.Long)
+  ) {
+    return false;
+  }
+  const ctor = value.constructor;
+  return typeof ctor === "function" && typeof Reflect.get(ctor, "verify") === "function";
+}
 
-function toStructCandidate(object: unknown): unknown {
+function strictJsonToProtoValue(val: unknown, key: string | undefined): google.protobuf.IValue {
+  if (val === null || val === undefined) {
+    return { nullValue: 0 };
+  }
+  if (typeof val === "number") {
+    return { numberValue: val };
+  }
+  if (typeof val === "string") {
+    return { stringValue: val };
+  }
+  if (typeof val === "boolean") {
+    return { boolValue: val };
+  }
+  if (Array.isArray(val)) {
+    return {
+      listValue: {
+        values: val.map((item) => strictJsonToProtoValue(item, key)),
+      },
+    };
+  }
+  if (isPlainObject(val)) {
+    return { structValue: strictPlainObjectToStruct(val) };
+  }
+  throw new UnsupportedStructValueError(key, typeof val);
+}
+
+function strictPlainObjectToStruct(obj: Record<string, unknown>): google.protobuf.IStruct {
+  const fields: { [key: string]: google.protobuf.IValue } = {};
+  for (const [key, val] of Object.entries(obj)) {
+    fields[key] = strictJsonToProtoValue(val, key);
+  }
+  return { fields };
+}
+
+function cloneRecord(record: object): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [key, val] of Object.entries(record)) {
+    out[key] = cloneForProtoVerification(val);
+  }
+  return out;
+}
+
+function cloneForProtoVerification(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item) => cloneForProtoVerification(item));
+  }
+  if (
+    !value ||
+    typeof value !== "object" ||
+    value instanceof google.protobuf.Struct ||
+    value instanceof Uint8Array ||
+    (util.Long && value instanceof util.Long)
+  ) {
+    return value;
+  }
+  if (!isPlainObject(value) && !isProtoMessageInstance(value)) {
+    return value;
+  }
+  return cloneRecord(value);
+}
+
+function toStructCandidate(object: { [k: string]: unknown }): { [k: string]: unknown } {
   if (!object || typeof object !== "object" || Array.isArray(object)) {
     return object;
   }
   if (Structs.isWrappedStructObject(object)) {
     return object;
   }
-  return Structs.fromObject(object as { [key: string]: AnyValue });
-}
-
-function probeChildProto(
-  protoCtor: IProtoMessageType,
-  sampleInput: { [key: string]: unknown },
-  extractSample: (probe: Record<string, unknown>) => unknown,
-): { childProto: IProtoMessageType; isStruct: boolean } | undefined {
-  try {
-    const probe = protoCtor.fromObject(sampleInput);
-    if (!probe || typeof probe !== "object") {
-      return undefined;
-    }
-    const candidate = extractSample(probe as Record<string, unknown>);
-    if (
-      candidate &&
-      typeof candidate === "object" &&
-      !(util.Long && candidate instanceof util.Long)
-    ) {
-      const ctor = (candidate as { constructor?: Partial<IProtoMessageType> }).constructor;
-      if (ctor && typeof ctor.fromObject === "function" && typeof ctor.verify === "function") {
-        return {
-          childProto: ctor as IProtoMessageType,
-          isStruct: candidate instanceof google.protobuf.Struct,
-        };
-      }
-    }
-  } catch {
-    // Non-message fields (such as int64, bytes or enums) throw when probed with `{}`.
+  if (!isPlainObject(object)) {
+    throw new UnsupportedStructValueError(undefined, typeof object);
   }
-  return undefined;
-}
-
-function getStructFieldMeta(protoCtor: IProtoMessageType, key: string): IStructFieldMeta {
-  let ctorCache = structFieldMetaCache.get(protoCtor);
-  if (!ctorCache) {
-    ctorCache = new Map<string, IStructFieldMeta>();
-    structFieldMetaCache.set(protoCtor, ctorCache);
-  }
-  const cached = ctorCache.get(key);
-  if (cached) {
-    return cached;
-  }
-
-  const descriptor = Object.getOwnPropertyDescriptor(protoCtor.prototype, key);
-  if (
-    !descriptor ||
-    descriptor.get !== undefined ||
-    descriptor.set !== undefined ||
-    typeof descriptor.value === "function"
-  ) {
-    const noneMeta: IStructFieldMeta = { kind: "none" };
-    ctorCache.set(key, noneMeta);
-    return noneMeta;
-  }
-
-  const defaultVal = descriptor.value;
-  let meta: IStructFieldMeta = { kind: "none" };
-
-  if (Array.isArray(defaultVal)) {
-    const childInfo = probeChildProto(protoCtor, { [key]: [{}] }, (probe) => {
-      const arr = probe[key];
-      return Array.isArray(arr) ? arr[0] : undefined;
-    });
-    if (childInfo) {
-      meta = {
-        kind: "repeated",
-        childProto: childInfo.childProto,
-        isChildStruct: childInfo.isStruct,
-      };
+  plainStructSeen = true;
+  const converted = strictPlainObjectToStruct(object);
+  if (mutatePlainStructsInPlace) {
+    for (const key of Object.keys(object)) {
+      delete object[key];
     }
-  } else if (defaultVal === util.emptyObject) {
-    const childInfo = probeChildProto(protoCtor, { [key]: { k: {} } }, (probe) => {
-      const mapObj = probe[key];
-      return mapObj && typeof mapObj === "object"
-        ? (mapObj as Record<string, unknown>).k
-        : undefined;
-    });
-    if (childInfo) {
-      meta = {
-        kind: "map",
-        childProto: childInfo.childProto,
-        isChildStruct: childInfo.isStruct,
-      };
-    }
-  } else if (defaultVal === null) {
-    const childInfo = probeChildProto(protoCtor, { [key]: {} }, (probe) => probe[key]);
-    if (childInfo?.isStruct) {
-      meta = { kind: "struct", childProto: childInfo.childProto };
-    } else if (childInfo?.childProto) {
-      meta = { kind: "message", childProto: childInfo.childProto };
-    }
+    object.fields = converted.fields;
+    Object.setPrototypeOf(object, google.protobuf.Struct.prototype);
+    return object;
   }
-
-  ctorCache.set(key, meta);
-  return meta;
+  return { fields: converted.fields };
 }
 
 export class Structs {
@@ -155,151 +160,100 @@ export class Structs {
     return { fields };
   }
 
+  /**
+   * Returns true if `object` is a `google.protobuf.Struct` instance or a plain `IStruct` literal
+   * (`{ fields: { <key>: { <protoValueKey>: ... } } }`), which SQLX config blocks can pass
+   * without importing the `Struct` constructor. Plain JSON payloads shaped identically to an
+   * `IStruct` wrapper are intentionally treated as pre-wrapped.
+   */
   public static isWrappedStructObject(object: unknown): boolean {
     if (object instanceof google.protobuf.Struct) {
       return true;
     }
-    if (!object || typeof object !== "object" || Array.isArray(object)) {
+    if (!isPlainObject(object)) {
       return false;
     }
     const keys = Object.keys(object);
     if (keys.length !== 1 || keys[0] !== "fields") {
       return false;
     }
-    const fields = (object as { fields?: unknown }).fields;
-    if (!fields || typeof fields !== "object" || Array.isArray(fields)) {
+    const fields = object.fields;
+    if (!isPlainObject(fields)) {
       return false;
     }
-    return Object.values(fields).every(
-      (entry) =>
-        Boolean(entry) &&
-        typeof entry === "object" &&
-        !Array.isArray(entry) &&
-        Object.keys(entry as object).every((entryKey) => PROTO_VALUE_KEYS.has(entryKey)),
-    );
+    return Object.values(fields).every((entry) => {
+      if (!isPlainObject(entry)) {
+        return false;
+      }
+      const entryKeys = Object.keys(entry);
+      return entryKeys.length === 1 && PROTO_VALUE_KEYS.has(entryKeys[0]);
+    });
   }
 
   public static installNonMutatingProtoHandlers(): void {
+    if (protoHandlersInstalled) {
+      return;
+    }
+    protoHandlersInstalled = true;
     const Struct = google.protobuf.Struct;
+    // Save references to the original generated methods to prevent infinite recursion.
     const originalVerify = Struct.verify;
     const originalFromObject = Struct.fromObject;
 
     Struct.verify = function (object: { [k: string]: unknown }) {
-      return originalVerify.call(this, toStructCandidate(object));
+      if (!object || typeof object !== "object" || Array.isArray(object)) {
+        return "object expected";
+      }
+      try {
+        return originalVerify.call(this, toStructCandidate(object));
+      } catch (err) {
+        if (err instanceof UnsupportedStructValueError) {
+          return err.message;
+        }
+        throw err;
+      }
     };
 
     Struct.fromObject = function (object: { [k: string]: unknown }) {
-      return originalFromObject.call(this, toStructCandidate(object) as { [k: string]: unknown });
+      return originalFromObject.call(this, toStructCandidate(object));
     };
   }
 
   /**
-   * Returns an object suitable for `protoType.create(...)` where any plain-JSON
-   * `google.protobuf.Struct` fields are converted into `google.protobuf.Struct` instances on
-   * shallow-cloned ancestor paths without mutating the caller's input object in place.
+   * Normalizes plain JSON `google.protobuf.Struct` fields via `protoType.fromObject` without
+   * mutating `object`. When `object` contains no plain JSON `Struct` fields, returns `object`
+   * directly without cloning; otherwise clones `object` first and normalizes on the clone.
    */
-  public static normalizePlainStructsNonMutating<T extends object>(
-    protoCtor: IProtoMessageType,
-    presentObject: T,
-  ): T {
-    if (!presentObject || typeof presentObject !== "object" || Array.isArray(presentObject)) {
-      return presentObject;
-    }
-
-    let clonedObject: Record<string, unknown> | undefined;
-
-    for (const [key, presentValue] of Object.entries(presentObject)) {
-      if (!presentValue || typeof presentValue !== "object") {
-        continue;
-      }
-
-      const meta = getStructFieldMeta(protoCtor, key);
-      if (meta.kind === "none") {
-        continue;
-      }
-
-      if (meta.kind === "struct") {
-        if (!Array.isArray(presentValue) && !Structs.isWrappedStructObject(presentValue)) {
-          clonedObject = clonedObject ?? { ...(presentObject as Record<string, unknown>) };
-          clonedObject[key] = google.protobuf.Struct.fromObject(
-            presentValue as Record<string, unknown>,
-          );
-        }
-        continue;
-      }
-
-      if (meta.kind === "message" && meta.childProto && !Array.isArray(presentValue)) {
-        const normalizedChild = Structs.normalizePlainStructsNonMutating(
-          meta.childProto,
-          presentValue,
-        );
-        if (normalizedChild !== presentValue) {
-          clonedObject = clonedObject ?? { ...(presentObject as Record<string, unknown>) };
-          clonedObject[key] = normalizedChild;
-        }
-        continue;
-      }
-
-      if (meta.kind === "repeated" && Array.isArray(presentValue) && meta.childProto) {
-        let clonedArray: unknown[] | undefined;
-        for (let i = 0; i < presentValue.length; i++) {
-          const elem: unknown = presentValue[i];
-          if (!elem || typeof elem !== "object" || Array.isArray(elem)) {
-            continue;
-          }
-          if (meta.isChildStruct) {
-            if (!Structs.isWrappedStructObject(elem)) {
-              clonedArray = clonedArray ?? presentValue.slice();
-              clonedArray[i] = google.protobuf.Struct.fromObject(elem as Record<string, unknown>);
-            }
-          } else {
-            const normalizedElem = Structs.normalizePlainStructsNonMutating(meta.childProto, elem);
-            if (normalizedElem !== elem) {
-              clonedArray = clonedArray ?? presentValue.slice();
-              clonedArray[i] = normalizedElem;
-            }
-          }
-        }
-        if (clonedArray) {
-          clonedObject = clonedObject ?? { ...(presentObject as Record<string, unknown>) };
-          clonedObject[key] = clonedArray;
-        }
-        continue;
-      }
-
-      if (meta.kind === "map" && !Array.isArray(presentValue) && meta.childProto) {
-        const presentMap = presentValue as Record<string, unknown>;
-        let clonedMap: Record<string, unknown> | undefined;
-        for (const [mapKey, mapVal] of Object.entries(presentMap)) {
-          if (!mapVal || typeof mapVal !== "object" || Array.isArray(mapVal)) {
-            continue;
-          }
-          if (meta.isChildStruct) {
-            if (!Structs.isWrappedStructObject(mapVal)) {
-              clonedMap = clonedMap ?? { ...presentMap };
-              clonedMap[mapKey] = google.protobuf.Struct.fromObject(
-                mapVal as Record<string, unknown>,
-              );
-            }
-          } else {
-            const normalizedMapVal = Structs.normalizePlainStructsNonMutating(
-              meta.childProto,
-              mapVal,
-            );
-            if (normalizedMapVal !== mapVal) {
-              clonedMap = clonedMap ?? { ...presentMap };
-              clonedMap[mapKey] = normalizedMapVal;
-            }
-          }
-        }
-        if (clonedMap) {
-          clonedObject = clonedObject ?? { ...(presentObject as Record<string, unknown>) };
-          clonedObject[key] = clonedMap;
-        }
+  public static normalizeForProtoVerification(
+    protoType: { fromObject(obj: object): unknown },
+    object: object,
+  ): object {
+    plainStructSeen = false;
+    try {
+      protoType.fromObject(object);
+    } catch (err) {
+      if (err instanceof UnsupportedStructValueError && err.key !== undefined) {
+        throw err;
       }
     }
+    if (!plainStructSeen) {
+      return object;
+    }
 
-    return (clonedObject as T | undefined) ?? presentObject;
+    const cloned = Array.isArray(object)
+      ? object.map((item) => cloneForProtoVerification(item))
+      : cloneRecord(object);
+    mutatePlainStructsInPlace = true;
+    try {
+      protoType.fromObject(cloned);
+    } catch (err) {
+      if (err instanceof UnsupportedStructValueError && err.key !== undefined) {
+        throw err;
+      }
+    } finally {
+      mutatePlainStructsInPlace = false;
+    }
+    return cloned;
   }
 
   private static fromValue(value: google.protobuf.IValue): AnyValue {
@@ -325,28 +279,6 @@ export class Structs {
   }
 
   private static toValue(val: AnyValue): google.protobuf.IValue {
-    if (typeof val === "number") {
-      return { numberValue: val };
-    }
-    if (typeof val === "string") {
-      return { stringValue: val };
-    }
-    if (typeof val === "boolean") {
-      return { boolValue: val };
-    }
-    if (val === null || val === undefined) {
-      return { nullValue: 0 };
-    }
-    if (Array.isArray(val)) {
-      return {
-        listValue: {
-          values: val.map((v) => this.toValue(v)),
-        },
-      };
-    }
-    if (typeof val === "object") {
-      return { structValue: this.fromObject(val as { [key: string]: AnyValue }) };
-    }
-    return { nullValue: 0 };
+    return strictJsonToProtoValue(val, undefined);
   }
 }

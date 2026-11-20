@@ -128,5 +128,148 @@ suite("verifyObjectMatchesProto", () => {
         },
       });
     });
+
+    test("installNonMutatingProtoHandlers is idempotent across repeated calls", () => {
+      const verifyBefore = google.protobuf.Struct.verify;
+      const fromObjectBefore = google.protobuf.Struct.fromObject;
+
+      Structs.installNonMutatingProtoHandlers();
+      Structs.installNonMutatingProtoHandlers();
+
+      expect(google.protobuf.Struct.verify).to.equal(verifyBefore);
+      expect(google.protobuf.Struct.fromObject).to.equal(fromObjectBefore);
+    });
+
+    test("rejects non-object Struct field values such as strings and arrays", () => {
+      expect(() =>
+        verifyObjectMatchesProto(
+          dataform.ActionConfig.TableConfig,
+          { metadata: { extraProperties: "str" } } as any,
+          VerifyProtoErrorBehaviour.SHOW_DOCS_LINK,
+        ),
+      ).to.throw(
+        ReferenceError,
+        /Unexpected property "extraProperties", or property value type of "string" is incorrect\. See https:\/\/dataform-co\.github\.io\/dataform\/docs\/reference\/configs#dataform-ActionConfig-TableConfig/,
+      );
+      expect(() =>
+        verifyObjectMatchesProto(
+          dataform.ActionConfig.TableConfig,
+          { metadata: { extraProperties: [1] } } as any,
+          VerifyProtoErrorBehaviour.SHOW_DOCS_LINK,
+        ),
+      ).to.throw(
+        ReferenceError,
+        /Unexpected property "extraProperties", or property value type of "object" is incorrect\. See https:\/\/dataform-co\.github\.io\/dataform\/docs\/reference\/configs#dataform-ActionConfig-TableConfig/,
+      );
+    });
+
+    test("rejects non-JSON values inside Struct fields with formatted ReferenceError", () => {
+      expect(() =>
+        verifyObjectMatchesProto(
+          dataform.ActionConfig.TableConfig,
+          { metadata: { extraProperties: { created: new Date() } } } as any,
+          VerifyProtoErrorBehaviour.SHOW_DOCS_LINK,
+        ),
+      ).to.throw(
+        ReferenceError,
+        /Unexpected property "created", or property value type of "object" is incorrect\. See https:\/\/dataform-co\.github\.io\/dataform\/docs\/reference\/configs#dataform-ActionConfig-TableConfig/,
+      );
+      expect(() =>
+        verifyObjectMatchesProto(
+          dataform.ActionConfig.TableConfig,
+          { metadata: { extraProperties: { fn: () => 1 } } } as any,
+          VerifyProtoErrorBehaviour.SHOW_DOCS_LINK,
+        ),
+      ).to.throw(
+        ReferenceError,
+        /Unexpected property "fn", or property value type of "function" is incorrect\. See https:\/\/dataform-co\.github\.io\/dataform\/docs\/reference\/configs#dataform-ActionConfig-TableConfig/,
+      );
+      expect(() =>
+        verifyObjectMatchesProto(
+          dataform.ActionConfig.TableConfig,
+          { metadata: { extraProperties: { sym: Symbol("x") } } } as any,
+          VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM,
+        ),
+      ).to.throw(
+        ReferenceError,
+        /Unexpected property "sym" for "dataform\.ActionConfig\.TableConfig", please report this to the Dataform team/,
+      );
+      expect(() =>
+        verifyObjectMatchesProto(
+          dataform.ActionConfig.TableConfig,
+          { metadata: { extraProperties: new Date() } } as any,
+          VerifyProtoErrorBehaviour.SHOW_DOCS_LINK,
+        ),
+      ).to.throw(
+        ReferenceError,
+        /Unexpected property "extraProperties", or property value type of "object" is incorrect\. See https:\/\/dataform-co\.github\.io\/dataform\/docs\/reference\/configs#dataform-ActionConfig-TableConfig/,
+      );
+      expect(() =>
+        verifyObjectMatchesProto(
+          dataform.ActionConfig.TableConfig,
+          { metadata: { extraProperties: new Map([["a", 1]]) } } as any,
+          VerifyProtoErrorBehaviour.SHOW_DOCS_LINK,
+        ),
+      ).to.throw(
+        ReferenceError,
+        /Unexpected property "extraProperties", or property value type of "object" is incorrect\. See https:\/\/dataform-co\.github\.io\/dataform\/docs\/reference\/configs#dataform-ActionConfig-TableConfig/,
+      );
+      expect(() =>
+        verifyObjectMatchesProto(
+          dataform.ActionConfig.TableConfig,
+          { iceberg: new Date() } as any,
+          VerifyProtoErrorBehaviour.SHOW_DOCS_LINK,
+        ),
+      ).to.throw(
+        ReferenceError,
+        /Unexpected property "iceberg", or property value type of "object" is incorrect\. See https:\/\/dataform-co\.github\.io\/dataform\/docs\/reference\/configs#dataform-ActionConfig-TableConfig/,
+      );
+      expect(() =>
+        verifyObjectMatchesProto(
+          dataform.ActionConfig.TableConfig,
+          { metadata: { extraProperties: { validKey: 1, "": new Date() } } } as any,
+          VerifyProtoErrorBehaviour.SHOW_DOCS_LINK,
+        ),
+      ).to.throw(
+        ReferenceError,
+        /Unexpected property "", or property value type of "object" is incorrect\. See https:\/\/dataform-co\.github\.io\/dataform\/docs\/reference\/configs#dataform-ActionConfig-TableConfig/,
+      );
+      expect(() => google.protobuf.Struct.fromObject({ fn: () => 1 } as any)).to.throw(
+        TypeError,
+        /Unsupported Struct value/,
+      );
+      expect(google.protobuf.Struct.verify([] as any)).to.equal("object expected");
+      expect(google.protobuf.Struct.verify(new Date() as any)).to.match(/Unsupported Struct value/);
+      expect(google.protobuf.Struct.verify({ fn: () => 1 } as any)).to.match(
+        /Unsupported Struct value/,
+      );
+    });
+
+    test("preserves plain JSON Struct payloads with empty nested objects under fields key", () => {
+      const nullProtoSection = Object.create(null);
+      nullProtoSection.region = "EU";
+      const verified = verifyObjectMatchesProto(dataform.ActionConfig.TableConfig, {
+        metadata: { extraProperties: { fields: { user_id: {} }, config: nullProtoSection } },
+      } as any);
+
+      expect(Structs.toObject(verified.metadata?.extraProperties)).to.deep.equal({
+        fields: { user_id: {} },
+        config: { region: "EU" },
+      });
+    });
+
+    test("rejects custom class instances on Struct fields", () => {
+      class CustomConfig {}
+      expect(() =>
+        verifyObjectMatchesProto(
+          dataform.ActionConfig.TableConfig,
+          { metadata: { extraProperties: new CustomConfig() } } as any,
+          VerifyProtoErrorBehaviour.SHOW_DOCS_LINK,
+        ),
+      ).to.throw(
+        ReferenceError,
+        /Unexpected property "extraProperties", or property value type of "object" is incorrect/,
+      );
+    });
   });
 });

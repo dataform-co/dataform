@@ -1,6 +1,11 @@
 import { configure, util } from "protobufjs";
 
-import { Structs } from "df/common/protos/structs";
+import {
+  isPlainObject,
+  isProtoMessageInstance,
+  Structs,
+  UnsupportedStructValueError,
+} from "df/common/protos/structs";
 import { google } from "df/protos/ts";
 
 const CONFIGS_PROTO_DOCUMENTATION_URL =
@@ -78,6 +83,16 @@ Structs.installNonMutatingProtoHandlers();
 // * Other protobuf libraries, such as ProtobufTS, incur significant performance hits.
 // A key downside of using ProtobufJS is that it does not record the expected types of fields,
 // meaning that the type of fields cannot be verified; an int can be confused with a string.
+function isVerifiableObject(value: unknown): boolean {
+  return (
+    Array.isArray(value) ||
+    isPlainObject(value) ||
+    isProtoMessageInstance(value) ||
+    value instanceof Uint8Array ||
+    Boolean(util.Long && value instanceof util.Long)
+  );
+}
+
 export function verifyObjectMatchesProto<Proto>(
   protoType: IProtoClass<any, Proto>,
   object: object,
@@ -87,7 +102,15 @@ export function verifyObjectMatchesProto<Proto>(
     throw ReferenceError(`Expected a top-level object, but found an array`);
   }
 
-  const normalizedObject = Structs.normalizePlainStructsNonMutating(protoType, object);
+  let normalizedObject: object;
+  try {
+    normalizedObject = Structs.normalizeForProtoVerification(protoType, object);
+  } catch (err) {
+    if (err instanceof UnsupportedStructValueError) {
+      throw formatUnexpectedPropertyError(protoType, err.key ?? "", err.valueType, errorBehaviour);
+    }
+    throw err;
+  }
   const proto = protoType.create(normalizedObject);
   const protoCastObject = protoType.toObject(proto);
 
@@ -98,8 +121,19 @@ export function verifyObjectMatchesProto<Proto>(
       if (presentValue instanceof google.protobuf.Struct) {
         return;
       }
+      if (presentValue && typeof presentValue === "object" && !isVerifiableObject(presentValue)) {
+        throw formatUnexpectedPropertyError(
+          protoType,
+          presentKey,
+          typeof presentValue,
+          errorBehaviour,
+        );
+      }
       const desiredValue = desired[presentKey];
-      if (typeof desiredValue !== typeof presentValue) {
+      if (
+        typeof desiredValue !== typeof presentValue ||
+        Array.isArray(desiredValue) !== Array.isArray(presentValue)
+      ) {
         if (Array.isArray(presentValue) && presentValue.length === 0) {
           // Empty arrays are assigned to empty proto array fields by ProtobufJS.
           return;
@@ -110,22 +144,20 @@ export function verifyObjectMatchesProto<Proto>(
               maybeGetDocsLinkPrefix(errorBehaviour, protoType),
           );
         }
-        if (typeof presentValue === "object" && Object.keys(presentValue).length === 0) {
+        if (
+          typeof presentValue === "object" &&
+          !Array.isArray(presentValue) &&
+          (isPlainObject(presentValue) || isProtoMessageInstance(presentValue)) &&
+          Object.keys(presentValue).length === 0
+        ) {
           // Empty objects are assigned to empty object fields by ProtobufJS.
           return;
         }
-        if (errorBehaviour === VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM) {
-          throw ReferenceError(
-            `Unexpected property "${presentKey}" for "${protoType
-              .getTypeUrl("")
-              .replace("/", "")}", please report this to the Dataform team at ` +
-              `${REPORT_ISSUE_URL}.`,
-          );
-        }
-        throw ReferenceError(
-          `Unexpected property "${presentKey}", or property value type of ` +
-            `"${typeof presentValue}" is incorrect.` +
-            maybeGetDocsLinkPrefix(errorBehaviour, protoType),
+        throw formatUnexpectedPropertyError(
+          protoType,
+          presentKey,
+          typeof presentValue,
+          errorBehaviour,
         );
       }
       if (typeof presentValue === "object") {
@@ -136,6 +168,26 @@ export function verifyObjectMatchesProto<Proto>(
 
   checkFields(normalizedObject, protoCastObject);
   return proto;
+}
+
+function formatUnexpectedPropertyError<Proto>(
+  protoType: IProtoClass<any, Proto>,
+  propertyName: string,
+  propertyType: string,
+  errorBehaviour: VerifyProtoErrorBehaviour,
+): ReferenceError {
+  if (errorBehaviour === VerifyProtoErrorBehaviour.SUGGEST_REPORTING_TO_DATAFORM_TEAM) {
+    return ReferenceError(
+      `Unexpected property "${propertyName}" for "${protoType
+        .getTypeUrl("")
+        .replace("/", "")}", please report this to the Dataform team at ` + `${REPORT_ISSUE_URL}.`,
+    );
+  }
+  return ReferenceError(
+    `Unexpected property "${propertyName}", or property value type of ` +
+      `"${propertyType}" is incorrect.` +
+      maybeGetDocsLinkPrefix(errorBehaviour, protoType),
+  );
 }
 
 function maybeGetDocsLinkPrefix<Proto>(

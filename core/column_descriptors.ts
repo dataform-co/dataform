@@ -1,3 +1,4 @@
+import { isPlainObject } from "df/common/protos/structs";
 import * as utils from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
@@ -83,14 +84,23 @@ export class ColumnDescriptors {
   }
 
   public static mapLegacyObjectToConfigProto(
-    columns: IColumnsDescriptor | dataform.ActionConfig.ColumnDescriptor[],
+    columns: IColumnsDescriptor,
   ): dataform.ActionConfig.ColumnDescriptor[] {
-    if (Array.isArray(columns)) {
-      return columns;
-    }
     return Object.keys(columns)
       .map((column) => ColumnDescriptors.mapColumnDescriptionToProto([column], columns[column]))
       .flat();
+  }
+
+  public static normalizeConfigColumns(
+    columns: dataform.ActionConfig.IColumnDescriptor[] | IColumnsDescriptor,
+  ): dataform.ActionConfig.IColumnDescriptor[] {
+    if (Array.isArray(columns)) {
+      return columns.slice();
+    }
+    if (isPlainObject(columns)) {
+      return ColumnDescriptors.mapLegacyObjectToConfigProto(columns);
+    }
+    return columns;
   }
 
   public static mapColumnDescriptionToProto(

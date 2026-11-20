@@ -369,17 +369,11 @@ export function getFileFormatValueForIcebergTable(
     return dataform.FileFormat.PARQUET;
   }
 
-  if (typeof configFileFormat === "number") {
-    switch (configFileFormat) {
-      case dataform.ActionConfig.IcebergTableConfig.FileFormat.PARQUET:
-        return dataform.FileFormat.PARQUET;
-      default:
-        throw new Error(`File format ${configFileFormat} is not supported.`);
-    }
-  }
-
-  switch (configFileFormat.toUpperCase()) {
+  const normalizedFormat =
+    typeof configFileFormat === "string" ? configFileFormat.toUpperCase() : configFileFormat;
+  switch (normalizedFormat) {
     case "PARQUET":
+    case dataform.ActionConfig.IcebergTableConfig.FileFormat.PARQUET:
       return dataform.FileFormat.PARQUET;
 
     default:

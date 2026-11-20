@@ -722,8 +722,8 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
         delete unverifiedConfig.fileName;
       }
       if (unverifiedConfig.columns) {
-        unverifiedConfig.columns = ColumnDescriptors.mapLegacyObjectToConfigProto(
-          unverifiedConfig.columns as any,
+        unverifiedConfig.columns = ColumnDescriptors.normalizeConfigColumns(
+          unverifiedConfig.columns,
         );
       }
       unverifiedConfig =

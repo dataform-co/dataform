@@ -415,43 +415,26 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
       return dataform.LoadConfiguration.create({ replace: {} });
     }
 
-    if (typeof loadMode === "number") {
-      switch (loadMode) {
-        case dataform.ActionConfig.LoadMode.REPLACE_TABLE:
-          return dataform.LoadConfiguration.create({ replace: {} });
-        case dataform.ActionConfig.LoadMode.APPEND:
-          return dataform.LoadConfiguration.create({ append: {} });
-        case dataform.ActionConfig.LoadMode.MAXIMUM:
-          return dataform.LoadConfiguration.create({
-            maximum: { columnName: this.validateLoadModeColumnName(incrementalColumn) },
-          });
-        case dataform.ActionConfig.LoadMode.UNIQUE:
-          return dataform.LoadConfiguration.create({
-            unique: { columnName: this.validateLoadModeColumnName(incrementalColumn) },
-          });
-        case dataform.ActionConfig.LoadMode.MERGE:
-          return dataform.LoadConfiguration.create({
-            merge: { uniqueKey: this.validateUniqueKey(uniqueKey) },
-          });
-        default:
-          throw new Error(`LoadMode value "${loadMode}" is not supported`);
-      }
-    }
-
-    switch (loadMode.toString().toUpperCase()) {
+    const normalizedLoadMode = typeof loadMode === "string" ? loadMode.toUpperCase() : loadMode;
+    switch (normalizedLoadMode) {
       case "REPLACE_TABLE":
+      case dataform.ActionConfig.LoadMode.REPLACE_TABLE:
         return dataform.LoadConfiguration.create({ replace: {} });
       case "APPEND":
+      case dataform.ActionConfig.LoadMode.APPEND:
         return dataform.LoadConfiguration.create({ append: {} });
       case "MAXIMUM":
+      case dataform.ActionConfig.LoadMode.MAXIMUM:
         return dataform.LoadConfiguration.create({
           maximum: { columnName: this.validateLoadModeColumnName(incrementalColumn) },
         });
       case "UNIQUE":
+      case dataform.ActionConfig.LoadMode.UNIQUE:
         return dataform.LoadConfiguration.create({
           unique: { columnName: this.validateLoadModeColumnName(incrementalColumn) },
         });
       case "MERGE":
+      case dataform.ActionConfig.LoadMode.MERGE:
         return dataform.LoadConfiguration.create({
           merge: { uniqueKey: this.validateUniqueKey(uniqueKey) },
         });
