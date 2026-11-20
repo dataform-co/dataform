@@ -261,6 +261,14 @@ suite("buildProjectCopyFilter", ({ afterEach }) => {
 
     expect(fs.existsSync(path.join(destinationDir, ".df-credentials.json"))).to.equal(false);
     expect(fs.existsSync(path.join(destinationDir, ".git"))).to.equal(false);
+    // Copied as links, whose targets are not in the copy. (Under Bazel a copied link
+    // points back into the original project, so its target can't be checked through it.)
+    for (const link of ["creds.json", "git-dir"]) {
+      expect(
+        fs.lstatSync(path.join(destinationDir, "includes", link)).isSymbolicLink(),
+        link,
+      ).to.equal(true);
+    }
   });
 
   test("terminates on symlink loops and tolerates dangling links", () => {

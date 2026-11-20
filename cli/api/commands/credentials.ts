@@ -11,17 +11,23 @@ export const CREDENTIALS_FILENAME = ".df-credentials.json";
 const CREDENTIALS_FILE_MODE = 0o600;
 
 /**
- * Writes the credentials file with owner-only permissions. The mode passed when opening
- * the file only applies if that creates it, so the permissions of an existing file are
- * tightened too, before the credentials are written to it.
+ * Writes the credentials file with owner-only permissions. The credentials go into a new
+ * file that then replaces the target in one step, so a failed write leaves the previous
+ * file as it was, an existing file with wider permissions is replaced, and a symbolic
+ * link at the target is replaced rather than written through. On Windows the mode has no
+ * effect beyond the read-only bit.
  */
 export function write(credentialsPath: string, credentials: dataform.IBigQuery): void {
-  const fileDescriptor = fs.openSync(credentialsPath, "w", CREDENTIALS_FILE_MODE);
+  const temporaryPath = `${credentialsPath}.${process.pid}.tmp`;
   try {
-    fs.fchmodSync(fileDescriptor, CREDENTIALS_FILE_MODE);
-    fs.writeFileSync(fileDescriptor, prettyJsonStringify(credentials));
-  } finally {
-    fs.closeSync(fileDescriptor);
+    fs.writeFileSync(temporaryPath, prettyJsonStringify(credentials), {
+      mode: CREDENTIALS_FILE_MODE,
+      flag: "wx",
+    });
+    fs.renameSync(temporaryPath, credentialsPath);
+  } catch (e) {
+    fs.rmSync(temporaryPath, { force: true });
+    throw e;
   }
 }
 

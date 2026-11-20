@@ -7,7 +7,8 @@ import { CREDENTIALS_FILENAME } from "df/cli/api/commands/credentials";
 // Excluded everywhere in the copy, including under compilation inputs and through
 // symbolic links. `.git` holds no Dataform project files. The credentials file can hold
 // a service account key, and compilation never connects to the warehouse, so the copy
-// has no use for it.
+// has no use for it. Only the default name is matched: a credentials file kept under
+// another name and passed with `--credentials` is filtered like any other file.
 const NEVER_COPIED_NAMES = new Set([".git", CREDENTIALS_FILENAME]);
 
 // Excluded whatever the project's ignore files say, unless a compilation input is

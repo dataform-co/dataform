@@ -127,6 +127,26 @@ suite("@dataform/api/credentials", ({ afterEach }) => {
     });
   });
 
+  test("write leaves only the credentials file in its directory", () => {
+    const directory = tmpDirFixture.createNewTmpDir();
+
+    credentials.write(path.join(directory, "credentials.json"), { projectId: "my-gcp-project" });
+
+    expect(fs.readdirSync(directory)).to.deep.equal(["credentials.json"]);
+  });
+
+  test("write removes its temporary file when it cannot replace the target", () => {
+    const directory = tmpDirFixture.createNewTmpDir();
+    const credentialsPath = path.join(directory, "credentials.json");
+    // A file can't be renamed over a directory.
+    fs.mkdirSync(credentialsPath);
+
+    expect(() => credentials.write(credentialsPath, { projectId: "my-gcp-project" })).to.throw();
+
+    expect(fs.readdirSync(directory)).to.deep.equal(["credentials.json"]);
+    expect(fs.statSync(credentialsPath).isDirectory()).to.equal(true);
+  });
+
   // Permission bits are POSIX-only.
   if (process.platform !== "win32") {
     const permissionBits = (filePath: string) => fs.statSync(filePath).mode & 0o777;
@@ -148,6 +168,20 @@ suite("@dataform/api/credentials", ({ afterEach }) => {
       credentials.write(credentialsPath, { projectId: "my-gcp-project" });
 
       expect(permissionBits(credentialsPath)).to.equal(0o600);
+    });
+
+    test("write replaces a symbolic link instead of writing through it", () => {
+      const directory = tmpDirFixture.createNewTmpDir();
+      const linkTargetPath = path.join(directory, "shared.json");
+      const credentialsPath = path.join(directory, "credentials.json");
+      fs.writeFileSync(linkTargetPath, "{}");
+      fs.symlinkSync(linkTargetPath, credentialsPath);
+
+      credentials.write(credentialsPath, { projectId: "my-gcp-project" });
+
+      expect(fs.lstatSync(credentialsPath).isSymbolicLink()).to.equal(false);
+      expect(fs.readFileSync(linkTargetPath, "utf8")).to.equal("{}");
+      expect(credentials.read(credentialsPath).projectId).to.equal("my-gcp-project");
     });
   }
 });
