@@ -1,53 +1,41 @@
-# Follow-up build triggered via the Cloud Build Pub/Sub topic (`cloud-builds`)
-# once the publish build (`cloudbuild-publish.yaml`) finishes and finalizes its
-# Artifact Registry uploads.
+# Follow-up release build for `cloudbuild-publish.yaml`.
 #
-# Expected Cloud Build Pub/Sub trigger configuration:
-#   --subscription-filter='_STATUS == "SUCCESS" && _TRIGGER_ID == "<publish-trigger-id>"'
-#   --substitutions='\
-#     _STATUS=$(body.message.data.status),\
-#     _TRIGGER_ID=$(body.message.data.buildTriggerId),\
-#     _EXPECTED_TRIGGER_ID=<publish-trigger-id>,\
-#     _COMMIT_SHA=$(body.message.data.substitutions.COMMIT_SHA),\
-#     _BRANCH_NAME=$(body.message.data.substitutions.BRANCH_NAME)'
+# Started by the last step of the publish build through a manual Cloud Build
+# trigger (`exit-gate-npm-release-trigger`), run at the published commit. It waits
+# until the publish build has finished, so that Cloud Build has uploaded the npm
+# packages and attached their provenance, and only then uploads the Exit Gate
+# release manifest and creates the GitHub release.
 steps:
-  - name: "gcr.io/cloud-builders/git"
-    env:
-      - "STATUS=$_STATUS"
-      - "TRIGGER_ID=$_TRIGGER_ID"
-      - "EXPECTED_TRIGGER_ID=$_EXPECTED_TRIGGER_ID"
-      - "COMMIT_SHA=$_COMMIT_SHA"
-      - "BRANCH_NAME=$_BRANCH_NAME"
-    script: |
-      #!/usr/bin/env bash
-      set -euo pipefail
-      [ "${STATUS}" = "SUCCESS" ] || { echo "status=${STATUS}, skipping"; exit 0; }
-      [ -n "${EXPECTED_TRIGGER_ID}" ] || { echo "missing _EXPECTED_TRIGGER_ID" >&2; exit 1; }
-      [ "${TRIGGER_ID}" = "${EXPECTED_TRIGGER_ID}" ] || { echo "unexpected trigger: ${TRIGGER_ID}" >&2; exit 1; }
-      [ -n "${COMMIT_SHA}" ] || { echo "missing _COMMIT_SHA" >&2; exit 1; }
-      [ -n "${BRANCH_NAME}" ] || { echo "missing _BRANCH_NAME" >&2; exit 1; }
-      git fetch --depth=1 origin "${COMMIT_SHA}"
-      git checkout "${COMMIT_SHA}"
   - name: "gcr.io/cloud-builders/gcloud"
     env:
-      - "STATUS=$_STATUS"
+      - "PARENT_BUILD_ID=$_PARENT_BUILD_ID"
       - "BRANCH_NAME=$_BRANCH_NAME"
+      - "LOCATION=$LOCATION"
     script: |
       #!/usr/bin/env bash
       set -euo pipefail
-      [ "${STATUS}" = "SUCCESS" ] || exit 0
+      [ -n "${PARENT_BUILD_ID}" ] || { echo "missing _PARENT_BUILD_ID" >&2; exit 1; }
+      [ -n "${BRANCH_NAME}" ] || { echo "missing _BRANCH_NAME" >&2; exit 1; }
+      # Wait up to 30 minutes for the publish build to finish.
+      for _ in $(seq 1 180); do
+        status=$(gcloud builds describe "${PARENT_BUILD_ID}" --region="${LOCATION}" --format='value(status)')
+        case "${status}" in
+          SUCCESS) break ;;
+          QUEUED|PENDING|WORKING) sleep 10 ;;
+          *) echo "Publish build ${PARENT_BUILD_ID} ended with status ${status}; not releasing." >&2; exit 1 ;;
+        esac
+      done
+      [ "${status}" = "SUCCESS" ] || { echo "Timed out waiting for publish build ${PARENT_BUILD_ID}." >&2; exit 1; }
       ./scripts/write_exit_gate_manifest "${BRANCH_NAME}"
       gcloud storage cp publish_all.json gs://oss-exit-gate-prod-projects-bucket/dataform/npm/manifests/publish_all.json
   - name: "gcr.io/$PROJECT_ID/github"
     env:
-      - "STATUS=$_STATUS"
-      - "COMMIT_SHA=$_COMMIT_SHA"
+      - "COMMIT_SHA=$COMMIT_SHA"
     # gh reads GITHUB_TOKEN from the environment; the token is never written to disk.
     secretEnv: ["GITHUB_TOKEN"]
     script: |
       #!/usr/bin/env bash
       set -euo pipefail
-      [ "${STATUS}" = "SUCCESS" ] || exit 0
       version=$(grep 'DF_VERSION' version.bzl | awk '{ print $3 }' | tr -d '"')
       # Secret Manager payloads may end with a newline, which gh would send as part
       # of the Authorization header.
@@ -65,12 +53,9 @@ availableSecrets:
     - versionName: projects/$PROJECT_ID/secrets/github-token-access/versions/latest
       env: "GITHUB_TOKEN"
 substitutions:
-  _STATUS: ""
-  _TRIGGER_ID: ""
-  _EXPECTED_TRIGGER_ID: ""
-  _COMMIT_SHA: ""
+  _PARENT_BUILD_ID: ""
   _BRANCH_NAME: ""
-timeout: 600s
+timeout: 2400s
 options:
   substitutionOption: ALLOW_LOOSE
   logging: CLOUD_LOGGING_ONLY
