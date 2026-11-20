@@ -297,9 +297,10 @@ message GraphCustomExtensionConfig {
   // (`"GOOGLE"` in any casing is rejected in `0.2.0.dev0/google` documents,
   // where Google extensions are declared as native keys).
   string vendor_name = 1;
-  // Required. Vendor-specific extension payload. In `graph.yaml`, either a
-  // serialized JSON string or a plain mapping object (normalized to a JSON
-  // string with nested keys preserved verbatim) is accepted.
+  // Required. Opaque vendor-specific extension payload. In `graph.yaml`, either
+  // an opaque string (typically JSON, preserved verbatim) or a plain mapping
+  // object (normalized to a JSON string with nested keys preserved verbatim) is
+  // accepted.
   string data = 2;
 }
 

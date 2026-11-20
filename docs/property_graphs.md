@@ -248,7 +248,7 @@ On entities and relationships, metadata is emitted as `DEFAULT LABEL OPTIONS(...
   2. `("examples", "<json_array>")` when `ai_context.examples` is non-empty (serialized via `JSON.stringify`, for example `("examples", "[\"Alice\"]")`).
 - **Knowledge Catalog custom metadata (omitted from BigQuery DDL):**
   - **`ai_context.custom`:** Accepts an optional mapping of custom key-value pairs (`string`, `number`, `boolean`, `null`, array, or nested object) on the model, entities, fields, relationships, and metrics. Nested `snake_case` keys are preserved verbatim, and standard `ai_context` keys (`instructions`, `synonyms`, `examples`) must be written directly under `ai_context` rather than inside `custom`.
-  - **`custom_extensions`:** Accepts a list of `{ vendor_name: "<vendor>", data: "<json_string_or_object>" }` blocks on the model, entities, fields, relationships, and metrics for third-party vendor metadata. Entries with `vendor_name` matching `"GOOGLE"` (in any casing) are rejected in `0.2.0.dev0/google` documents because Google extensions are declared as native YAML keys.
+  - **`custom_extensions`:** Accepts a list of `{ vendor_name: "<vendor>", data: "<string_or_object>" }` blocks on the model, entities, fields, relationships, and metrics for third-party vendor metadata. Entries with `vendor_name` matching `"GOOGLE"` (in any casing) are rejected in `0.2.0.dev0/google` documents because Google extensions are declared as native YAML keys.
 
 ---
 

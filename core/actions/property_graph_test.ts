@@ -1,6 +1,8 @@
 import { expect } from "chai";
 
+import { Structs } from "df/common/protos/structs";
 import { PropertyGraph } from "df/core/actions/property_graph";
+import { normalizePropertyGraphConfig } from "df/core/actions/property_graph_utils";
 import { Session } from "df/core/session";
 import { dataform } from "df/protos/ts";
 import { asPlainObject, suite, test } from "df/testing";
@@ -432,6 +434,53 @@ suite("property_graph", () => {
       }),
     );
 
+    expect(asPlainObject(compiled.nodes)).deep.equals([
+      {
+        name: "Account",
+        dataSource: { database: "p", schema: "d", name: "accounts" },
+        keys: ["id"],
+        labels: [
+          {
+            name: "Account",
+            description: "Bank account",
+            synonyms: ["acct", "wallet"],
+            extensions: { examples: '["Checking account"]' },
+            importAll: true,
+            isDefault: true,
+          },
+        ],
+      },
+      {
+        name: "AuditLog",
+        dataSource: { database: "p", schema: "d", name: "audit_logs" },
+        keys: ["log_id"],
+        labels: [
+          {
+            name: "AuditLog",
+            extensions: { instructions: "Filter by recent timestamps." },
+            importAll: true,
+            isDefault: true,
+          },
+        ],
+      },
+    ]);
+    expect(asPlainObject(compiled.edges)).deep.equals([
+      {
+        name: "LoggedFor",
+        dataSource: { database: "p", schema: "d", name: "audit_logs" },
+        keys: ["log_id"],
+        source: { node: "AuditLog", edgeColumns: ["log_id"], nodeColumns: ["log_id"] },
+        destination: { node: "Account", edgeColumns: ["account_id"], nodeColumns: ["id"] },
+        labels: [
+          {
+            name: "LoggedFor",
+            extensions: { instructions: "Join audit entries to their owning account." },
+            importAll: false,
+            isDefault: true,
+          },
+        ],
+      },
+    ]);
     expect(compiled.graphBody).equals(
       "NODE TABLES (\n" +
         "  `p.d.accounts` AS Account KEY (id) " +
@@ -1278,6 +1327,7 @@ suite("property_graph", () => {
       ["COUNT(r'x')", "r'x'"],
       ["COUNT(TRUE)", "TRUE"],
       ["COUNT(NULL)", "NULL"],
+      ["my_schema.count(COUNT(1))", "1"],
     ] as const) {
       expect(() =>
         build(
@@ -1321,6 +1371,11 @@ suite("property_graph", () => {
             entity: "Order",
             expression: "COUNT(`1`)",
           },
+          {
+            name: "qualified_udf_call",
+            entity: "Order",
+            expression: "SUM(id) + my_schema.count(1) + `my_schema` /* c */ . count(1)",
+          },
         ],
       }),
     );
@@ -1331,7 +1386,8 @@ suite("property_graph", () => {
         "id, status, " +
         "MEASURE(COUNT(CASE WHEN status = 'COUNT(*)' THEN id END)) AS quoted_star_in_string, " +
         "MEASURE(/* COUNT(*) */ COUNT(id) -- COUNT(1)) AS commented_star, " +
-        "MEASURE(COUNT(`1`)) AS backticked_digit_col" +
+        "MEASURE(COUNT(`1`)) AS backticked_digit_col, " +
+        "MEASURE(SUM(id) + my_schema.count(1) + `my_schema` /* c */ . count(1)) AS qualified_udf_call" +
         ")\n" +
         ")",
     );
@@ -1420,6 +1476,7 @@ suite("property_graph", () => {
       custom_extensions: [
         { vendor_name: "dbt", data: '{"meta":{"model_tier":"gold"}}' },
         { vendor_name: "looker", data: { view_label: "Core", snake_flag: true } },
+        { vendor_name: "looker_raw", data: "not json at all" },
       ],
       entities: [
         {
@@ -1473,6 +1530,41 @@ suite("property_graph", () => {
       ],
     });
 
+    const normalized = normalizePropertyGraphConfig(rawConfig);
+    expect(Structs.toObject(normalized.semanticModel[0].aiContext.custom)).deep.equals({
+      owner_team: "analytics",
+      nested_meta: {
+        snake_key: 42,
+        is_certified: false,
+        nullable_val: null,
+        tag_list: ["a", { item_key: "b" }],
+        fields: ["not_a_proto_struct_fields_map"],
+        empty_obj: {},
+        empty_arr: [],
+      },
+    });
+    expect(normalized.semanticModel[0].customExtensions).deep.equals([
+      { vendorName: "dbt", data: '{"meta":{"model_tier":"gold"}}' },
+      { vendorName: "looker", data: '{"view_label":"Core","snake_flag":true}' },
+      { vendorName: "looker_raw", data: "not json at all" },
+    ]);
+    expect(Structs.toObject(normalized.semanticModel[0].entities[0].aiContext.custom)).deep.equals({
+      domain_owner: "infra",
+    });
+    expect(
+      Structs.toObject(normalized.semanticModel[0].entities[0].fields[0].aiContext.custom),
+    ).deep.equals({
+      pii_level: "none",
+    });
+    expect(
+      Structs.toObject(normalized.semanticModel[0].relationships[0].aiContext.custom),
+    ).deep.equals({
+      cardinality_hint: "many_to_one",
+    });
+    expect(Structs.toObject(normalized.semanticModel[0].metrics[0].aiContext.custom)).deep.equals({
+      unit_name: "cores",
+    });
+
     const compiled = compile(rawConfig);
     expect(compiled.description).equals("Model desc\n\nModel instructions");
     expect(compiled.graphBody).equals(
@@ -1499,6 +1591,21 @@ suite("property_graph", () => {
         }),
       ),
     ).to.throw("Property graph 'G': 'ai_context.custom' must be a key-value mapping object.");
+
+    for (const protoPayload of [
+      JSON.parse('{"__proto__":{"polluted":true}}'),
+      { nested_obj: [JSON.parse('{"__proto__":"bad"}')] },
+    ]) {
+      expect(() =>
+        build(
+          makeModelConfig({
+            name: "G",
+            ai_context: { custom: protoPayload },
+            entities: [{ name: "A", source: "p.d.A", primary_key: ["id"] }],
+          }),
+        ),
+      ).to.throw("Property graph 'G': 'ai_context.custom' member '__proto__' is not supported.");
+    }
 
     expect(() =>
       build(
@@ -1567,7 +1674,7 @@ suite("property_graph", () => {
         }),
       ),
     ).to.throw(
-      "Property graph 'G': 'custom_extensions' entry for vendor 'dbt' must declare 'data' as a JSON string or mapping object.",
+      "Property graph 'G': 'custom_extensions' entry for vendor 'dbt' must declare 'data' as a string or mapping object.",
     );
   });
 

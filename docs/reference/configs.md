@@ -528,7 +528,7 @@ AI context metadata attached to a semantic model, entity, relationship, field, o
 | synonyms     | [string](#string)                                    | repeated | Optional. Alternative names emitted as `OPTIONS(synonyms=[...])`.                                                                                                                                       |
 | examples     | [string](#string)                                    | repeated | Optional. Example values or questions emitted as a JSON-serialized array in `OPTIONS(extensions=[("examples", "[...]")])` on labels, fields, and metrics (and folded into `PropertyGraph.description` on `semantic_model`). |
 | instructions | [string](#string)                                    |          | Optional. Free-form AI instructions emitted as `OPTIONS(extensions=[("instructions", "...")])` on labels, fields, and metrics (and folded into `PropertyGraph.description` on `semantic_model`).       |
-| custom       | [google.protobuf.Struct](#google-protobuf-Struct)    |          | Optional. Opaque mapping of custom AI context member names to arbitrary JSON/YAML values (preserving nested `snake_case` keys verbatim). Accepted for Knowledge Catalog compatibility and omitted from generated BigQuery DDL. |
+| custom       | [google.protobuf.Struct](https://protobuf.dev/reference/protobuf/google.protobuf/#struct) |          | Optional. Opaque mapping of custom AI context member names to arbitrary JSON/YAML values (preserving nested `snake_case` keys verbatim). Accepted for Knowledge Catalog compatibility and omitted from generated BigQuery DDL. |
 
 <a name="dataform-GraphCustomExtensionConfig"></a>
 
@@ -539,7 +539,7 @@ Vendor-scoped custom extension metadata block attached to a semantic model, enti
 | Field      | Type              | Label | Description                                                                                                                                                                                                     |
 | ---------- | ----------------- | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | vendorName | [string](#string) |       | Required (`vendor_name` in YAML). Non-empty third-party vendor identifier (`"GOOGLE"` in any casing is rejected in `0.2.0.dev0/google` documents, where Google extensions are declared as native keys).          |
-| data       | [string](#string) |       | Required. Vendor-specific extension payload. In `graph.yaml`, either a serialized JSON string or a plain mapping object (normalized to a JSON string with nested keys preserved verbatim) is accepted.          |
+| data       | [string](#string) |       | Required. Opaque vendor-specific extension payload. In `graph.yaml`, either an opaque string (typically JSON, preserved verbatim) or a plain mapping object (normalized to a JSON string with nested keys preserved verbatim) is accepted. |
 
 <a name="dataform-GraphDeploymentConfig"></a>
 

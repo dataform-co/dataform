@@ -1,12 +1,13 @@
 import {
+  buildAiExtensions,
+  nonEmptyExtensions,
   normalizeAndValidateAiContext,
   normalizeAndValidateCustomExtensions,
+  orderedExtensionEntries,
   validateMetricExpression,
 } from "df/core/actions/property_graph_validation";
 import { snakeToCamelKeys } from "df/core/utils";
 import { dataform } from "df/protos/ts";
-
-export const SEMANTIC_ONTOLOGY_VERSION = "0.2.0.dev0/google";
 
 export const CATALOG_NOT_SUPPORTED_MESSAGE =
   "Catalog-based data sources (BigLake/Iceberg/external catalogs) are not yet supported.";
@@ -499,30 +500,6 @@ export function composeElementDescription(
   ]);
 }
 
-export function buildAiExtensions(
-  aiContext?: dataform.IGraphAiContextConfig | null,
-): Record<string, string> {
-  const extensions: Record<string, string> = {};
-  if (!aiContext) {
-    return extensions;
-  }
-  const instructions =
-    typeof aiContext.instructions === "string" ? aiContext.instructions.trim() : "";
-  if (instructions.length > 0) {
-    extensions.instructions = instructions;
-  }
-  if (aiContext.examples && aiContext.examples.length > 0) {
-    extensions.examples = JSON.stringify(aiContext.examples);
-  }
-  return extensions;
-}
-
-function nonEmptyExtensions(
-  extensions: Record<string, string>,
-): Record<string, string> | undefined {
-  return Object.keys(extensions).length > 0 ? extensions : undefined;
-}
-
 export function buildEntityLabels(
   entityConfig: dataform.IGraphEntityConfig,
   entityMetrics: dataform.IGraphMetricConfig[],
@@ -782,25 +759,6 @@ export function quoteBigQueryString(value: string): string {
       (ch) => `\\x${ch.charCodeAt(0).toString(16).padStart(2, "0")}`,
     );
   return `"${escaped}"`;
-}
-
-const AI_EXTENSION_KEY_ORDER = ["instructions", "examples"];
-
-function orderedExtensionEntries(
-  extensions: Record<string, string> | null | undefined,
-): Array<[string, string]> {
-  if (!extensions) {
-    return [];
-  }
-  const keys = Object.keys(extensions);
-  if (keys.length === 0) {
-    return [];
-  }
-  const orderedKeys = [
-    ...AI_EXTENSION_KEY_ORDER.filter((k) => Object.prototype.hasOwnProperty.call(extensions, k)),
-    ...keys.filter((k) => !AI_EXTENSION_KEY_ORDER.includes(k)).sort(),
-  ];
-  return orderedKeys.map((k) => [k, extensions[k]]);
 }
 
 export function renderOptionsClause(

@@ -1,7 +1,50 @@
 import { Structs } from "df/common/protos/structs";
+import { dataform } from "df/protos/ts";
 
-const SEMANTIC_ONTOLOGY_GOOGLE_VERSION = "0.2.0.dev0/google";
+export const SEMANTIC_ONTOLOGY_VERSION = "0.2.0.dev0/google";
 const CLOSED_AI_CONTEXT_KEYS = ["instructions", "synonyms", "examples"] as const;
+const AI_EXTENSION_KEY_ORDER = ["instructions", "examples"];
+
+export function buildAiExtensions(
+  aiContext?: dataform.IGraphAiContextConfig | null,
+): Record<string, string> {
+  const extensions: Record<string, string> = {};
+  if (!aiContext) {
+    return extensions;
+  }
+  const instructions =
+    typeof aiContext.instructions === "string" ? aiContext.instructions.trim() : "";
+  if (instructions.length > 0) {
+    extensions.instructions = instructions;
+  }
+  if (aiContext.examples && aiContext.examples.length > 0) {
+    extensions.examples = JSON.stringify(aiContext.examples);
+  }
+  return extensions;
+}
+
+export function nonEmptyExtensions(
+  extensions: Record<string, string>,
+): Record<string, string> | undefined {
+  return Object.keys(extensions).length > 0 ? extensions : undefined;
+}
+
+export function orderedExtensionEntries(
+  extensions: Record<string, string> | null | undefined,
+): Array<[string, string]> {
+  if (!extensions) {
+    return [];
+  }
+  const keys = Object.keys(extensions);
+  if (keys.length === 0) {
+    return [];
+  }
+  const orderedKeys = [
+    ...AI_EXTENSION_KEY_ORDER.filter((k) => Object.prototype.hasOwnProperty.call(extensions, k)),
+    ...keys.filter((k) => !AI_EXTENSION_KEY_ORDER.includes(k)).sort(),
+  ];
+  return orderedKeys.map((k) => [k, extensions[k]]);
+}
 
 export function normalizeAndValidateAiContext(container: any, where: string): void {
   if (typeof container.aiContext === "string") {
@@ -15,16 +58,13 @@ export function normalizeAndValidateAiContext(container: any, where: string): vo
   ) {
     return;
   }
-  if (!("custom" in container.aiContext) || container.aiContext.custom === undefined) {
+  if (container.aiContext.custom === undefined) {
     return;
   }
 
   const rawCustom = container.aiContext.custom;
   if (!rawCustom || typeof rawCustom !== "object" || Array.isArray(rawCustom)) {
     throw new Error(`${where}: 'ai_context.custom' must be a key-value mapping object.`);
-  }
-  if (Object.prototype.hasOwnProperty.call(rawCustom, "__proto__")) {
-    throw new Error(`${where}: 'ai_context.custom' member '__proto__' is not supported.`);
   }
   for (const closedKey of CLOSED_AI_CONTEXT_KEYS) {
     if (Object.prototype.hasOwnProperty.call(rawCustom, closedKey)) {
@@ -57,6 +97,21 @@ function validateStructCompatibleValue(value: unknown, where: string): void {
     return;
   }
   if (typeof value === "object") {
+    const proto = Object.getPrototypeOf(value);
+    if (
+      Object.prototype.hasOwnProperty.call(value, "__proto__") ||
+      (proto !== Object.prototype &&
+        proto !== null &&
+        Object.getPrototypeOf(proto) === Object.prototype)
+    ) {
+      throw new Error(`${where} member '__proto__' is not supported.`);
+    }
+    if (proto !== Object.prototype && proto !== null) {
+      throw new Error(
+        `${where} contains an unsupported non-plain object; ` +
+          `expected strings, finite numbers, booleans, null, arrays, or plain objects.`,
+      );
+    }
     for (const entryValue of Object.values(value as Record<string, unknown>)) {
       validateStructCompatibleValue(entryValue, where);
     }
@@ -69,7 +124,7 @@ function validateStructCompatibleValue(value: unknown, where: string): void {
 }
 
 export function normalizeAndValidateCustomExtensions(container: any, where: string): void {
-  if (!("customExtensions" in container) || container.customExtensions === undefined) {
+  if (!container || container.customExtensions === undefined) {
     return;
   }
   if (!Array.isArray(container.customExtensions)) {
@@ -91,9 +146,10 @@ export function normalizeAndValidateCustomExtensions(container: any, where: stri
     if (vendorTrimmed.toUpperCase() === "GOOGLE") {
       throw new Error(
         `${where}: 'GOOGLE' custom_extensions blocks are not accepted in ` +
-          `'${SEMANTIC_ONTOLOGY_GOOGLE_VERSION}' documents; declare Google extensions using native keys.`,
+          `'${SEMANTIC_ONTOLOGY_VERSION}' documents; declare Google extensions using native keys.`,
       );
     }
+    // Non-GOOGLE vendor payloads are opaque strings per spec and preserved verbatim.
     if (typeof ext.data === "string") {
       return ext;
     }
@@ -105,7 +161,7 @@ export function normalizeAndValidateCustomExtensions(container: any, where: stri
     }
     throw new Error(
       `${where}: 'custom_extensions' entry for vendor '${ext.vendorName}' must declare 'data' ` +
-        `as a JSON string or mapping object.`,
+        `as a string or mapping object.`,
     );
   });
 }
@@ -132,17 +188,29 @@ export function validateMetricExpression(expression: string, where: string): voi
 
 function extractCountCallArguments(sql: string): string[] {
   const args: string[] = [];
+  let prevTokenChar = "";
   let i = 0;
   while (i < sql.length) {
-    const skipped = skipCommentOrQuotedToken(sql, i);
-    if (skipped > i) {
-      i = skipped;
+    const commentEnd = consumeSqlComment(sql, i);
+    if (commentEnd > i) {
+      i = commentEnd;
+      continue;
+    }
+    const quotedEnd = consumeQuotedOrBackticked(sql, i);
+    if (quotedEnd > i) {
+      prevTokenChar = sql[i];
+      i = quotedEnd;
+      continue;
+    }
+    if (/\s/.test(sql[i])) {
+      i++;
       continue;
     }
 
     if (
       sql.slice(i, i + 5).toUpperCase() === "COUNT" &&
       (i === 0 || !/[A-Za-z0-9_$]/.test(sql[i - 1])) &&
+      prevTokenChar !== "." &&
       !/[A-Za-z0-9_$]/.test(sql[i + 5] || "")
     ) {
       const openParen = skipWhitespaceAndComments(sql, i + 5);
@@ -150,11 +218,13 @@ function extractCountCallArguments(sql: string): string[] {
         const closeParen = findMatchingCloseParen(sql, openParen);
         if (closeParen !== -1) {
           args.push(sql.slice(openParen + 1, closeParen));
+          prevTokenChar = "(";
           i = openParen + 1;
           continue;
         }
       }
     }
+    prevTokenChar = sql[i];
     i++;
   }
   return args;

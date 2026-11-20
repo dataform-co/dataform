@@ -1229,4 +1229,278 @@ semantic_model:
       }),
     );
   });
+
+  test("compiles graph.yaml through main() with OPTIONS(extensions), derived AGG() metrics, ai_context.custom, and custom_extensions", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
+    writeDefinitionFile(
+      projectDir,
+      "graph.yaml",
+      `
+version: 0.2.0.dev0/google
+job_labels:
+  env_name: prod
+semantic_model:
+- name: KcVmGraph
+  ai_context:
+    instructions: "Model instructions"
+    custom:
+      team_owner: analytics
+      nested_meta:
+        snake_flag: true
+  custom_extensions:
+  - vendor_name: looker
+    data:
+      view_label: Core
+      snake_flag: true
+  - vendor_name: looker_raw
+    data: "not json at all"
+  entities:
+  - name: Process
+    source: bigquery:defaultProject.defaultDataset.processes
+    primary_key:
+    - process_id
+    ai_context:
+      instructions: "Node instructions"
+      synonyms:
+      - proc
+      examples:
+      - "Example node"
+      custom:
+        domain_owner: infra
+    fields:
+    - name: process_id
+    - name: cpu
+      ai_context:
+        instructions: "CPU cores"
+        custom:
+          unit_name: cores
+  - name: Machine
+    source: bigquery:defaultProject.defaultDataset.machines
+    primary_key:
+    - machine_id
+    fields:
+    - name: machine_id
+  relationships:
+  - name: RunsOn
+    from: Process
+    to: Machine
+    from_columns:
+    - machine_id
+    to_columns:
+    - machine_id
+    ai_context:
+      instructions: "Edge instructions"
+      custom:
+        edge_hint: n_to_1
+  metrics:
+  - name: total_cpu
+    entity: Process
+    datatype: Float
+    expression: SUM(cpu)
+  - name: proc_count
+    entity: Process
+    datatype: Integer
+    expression: COUNT(process_id)
+  - name: avg_cpu
+    entity: Process
+    datatype: Float
+    expression: SAFE_DIVIDE(AGG(total_cpu), NULLIF(AGG(proc_count), 0))
+    ai_context:
+      instructions: "Derived metric"
+      examples:
+      - "Average CPU per process"
+      custom:
+        metric_tier: gold
+`,
+    );
+
+    const request = dataform.CoreExecutionRequest.create({
+      compile: {
+        compileConfig: {
+          projectDir: fs.realpathSync(projectDir),
+          filePaths: ["workflow_settings.yaml", "definitions/graph.yaml"],
+        },
+      },
+    });
+
+    const result = runMainInVm(request);
+    expect(result.compile?.compiledGraph?.graphErrors?.compilationErrors).deep.equals([]);
+    expect(asPlainObject(result.compile?.compiledGraph?.propertyGraphs)).deep.equals(
+      asPlainObject([
+        {
+          target: { schema: "defaultDataset", name: "KcVmGraph", database: "defaultProject" },
+          canonicalTarget: {
+            schema: "defaultDataset",
+            name: "KcVmGraph",
+            database: "defaultProject",
+          },
+          fileName: "definitions/graph.yaml",
+          description: "Model instructions",
+          disabled: false,
+          actionDescriptor: {
+            jobLabels: { env_name: "prod" },
+          },
+          nodes: [
+            {
+              name: "Process",
+              dataSource: {
+                schema: "defaultDataset",
+                name: "processes",
+                database: "defaultProject",
+              },
+              keys: ["process_id"],
+              labels: [
+                {
+                  name: "Process",
+                  synonyms: ["proc"],
+                  extensions: {
+                    instructions: "Node instructions",
+                    examples: '["Example node"]',
+                  },
+                  fields: [
+                    { name: "process_id", expression: "process_id", description: "" },
+                    {
+                      name: "cpu",
+                      expression: "cpu",
+                      description: "",
+                      extensions: { instructions: "CPU cores" },
+                    },
+                    { name: "total_cpu", expression: "MEASURE(SUM(cpu))", description: "" },
+                    {
+                      name: "proc_count",
+                      expression: "MEASURE(COUNT(process_id))",
+                      description: "",
+                    },
+                    {
+                      name: "avg_cpu",
+                      expression:
+                        "MEASURE(SAFE_DIVIDE(AGG(total_cpu), NULLIF(AGG(proc_count), 0)))",
+                      description: "",
+                      extensions: {
+                        instructions: "Derived metric",
+                        examples: '["Average CPU per process"]',
+                      },
+                    },
+                  ],
+                  importAll: false,
+                  isDefault: true,
+                },
+              ],
+            },
+            {
+              name: "Machine",
+              dataSource: {
+                schema: "defaultDataset",
+                name: "machines",
+                database: "defaultProject",
+              },
+              keys: ["machine_id"],
+              labels: [
+                {
+                  name: "Machine",
+                  fields: [{ name: "machine_id", expression: "machine_id", description: "" }],
+                  importAll: false,
+                  isDefault: true,
+                },
+              ],
+            },
+          ],
+          edges: [
+            {
+              name: "RunsOn",
+              dataSource: {
+                schema: "defaultDataset",
+                name: "processes",
+                database: "defaultProject",
+              },
+              keys: ["process_id"],
+              source: { node: "Process", edgeColumns: ["process_id"], nodeColumns: ["process_id"] },
+              destination: {
+                node: "Machine",
+                edgeColumns: ["machine_id"],
+                nodeColumns: ["machine_id"],
+              },
+              labels: [
+                {
+                  name: "RunsOn",
+                  extensions: { instructions: "Edge instructions" },
+                  importAll: false,
+                  isDefault: true,
+                },
+              ],
+            },
+          ],
+          graphBody:
+            "NODE TABLES (\n" +
+            '  `defaultProject.defaultDataset.processes` AS Process KEY (process_id) DEFAULT LABEL OPTIONS(synonyms=["proc"], extensions=[("instructions", "Node instructions"), ("examples", "[\\"Example node\\"]")]) ' +
+            "PROPERTIES (" +
+            "process_id, " +
+            'cpu OPTIONS(extensions=[("instructions", "CPU cores")]), ' +
+            "MEASURE(SUM(cpu)) AS total_cpu, " +
+            "MEASURE(COUNT(process_id)) AS proc_count, " +
+            'MEASURE(SAFE_DIVIDE(AGG(total_cpu), NULLIF(AGG(proc_count), 0))) AS avg_cpu OPTIONS(extensions=[("instructions", "Derived metric"), ("examples", "[\\"Average CPU per process\\"]")])' +
+            "),\n" +
+            "  `defaultProject.defaultDataset.machines` AS Machine KEY (machine_id) PROPERTIES (machine_id)\n" +
+            ")\n" +
+            "EDGE TABLES (\n" +
+            "  `defaultProject.defaultDataset.processes` AS RunsOn KEY (process_id) " +
+            "SOURCE KEY (process_id) REFERENCES Process (process_id) " +
+            "DESTINATION KEY (machine_id) REFERENCES Machine (machine_id) " +
+            'DEFAULT LABEL OPTIONS(extensions=[("instructions", "Edge instructions")]) NO PROPERTIES\n' +
+            ")",
+        },
+      ]),
+    );
+  });
+
+  test("rejects __proto__ inside ai_context.custom when loading graph.yaml through main()", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
+    writeDefinitionFile(
+      projectDir,
+      "graph.yaml",
+      `
+version: 0.2.0.dev0/google
+semantic_model:
+- name: BadProtoGraph
+  ai_context:
+    custom:
+      nested_meta:
+        "__proto__":
+          polluted: true
+  entities:
+  - name: Node
+    source: bigquery:defaultProject.defaultDataset.t
+    primary_key:
+    - id
+`,
+    );
+
+    const request = dataform.CoreExecutionRequest.create({
+      compile: {
+        compileConfig: {
+          projectDir: fs.realpathSync(projectDir),
+          filePaths: ["workflow_settings.yaml", "definitions/graph.yaml"],
+        },
+      },
+    });
+
+    const result = runMainInVm(request);
+    expect(asPlainGraph(result.compile?.compiledGraph)).deep.equals(
+      asPlainObject({
+        projectConfig: graphProjectConfig,
+        graphErrors: {
+          compilationErrors: [
+            graphError(
+              "definitions/graph.yaml",
+              "Property graph 'BadProtoGraph': 'ai_context.custom' member '__proto__' is not supported.",
+            ),
+          ],
+        },
+        dataformCoreVersion: version,
+        jitData: {},
+      }),
+    );
+  });
 });
