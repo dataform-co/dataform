@@ -9,12 +9,18 @@ if [ "$(git status --porcelain)" ]; then
     exit 1
 fi
 
-# Run all the tests.
-bazel test //... --build_tests_only --action_env=CLOUDSDK_CONTEXT_AWARE_USE_CLIENT_CERTIFICATE
-
-# Validate version and branch/tag rules early without writing publish_all.json.
+# Validate version and branch/tag rules before running tests, without writing
+# publish_all.json. In Cloud Build the follow-up release build needs the branch,
+# so fail here rather than after the packages are uploaded.
+if [ -n "${BUILD_ID:-}" ] && [ -z "${BRANCH_NAME:-}" ]; then
+    echo "BRANCH_NAME must be set when running in Cloud Build; aborting." 1>&2
+    exit 1
+fi
 BRANCH="${BRANCH_NAME:-$(git rev-parse --abbrev-ref HEAD)}"
 ./scripts/write_exit_gate_manifest --check-only "${BRANCH}"
+
+# Run all the tests.
+bazel test //... --build_tests_only --action_env=CLOUDSDK_CONTEXT_AWARE_USE_CLIENT_CERTIFICATE
 
 bazel build //packages/@dataform/cli:package //packages/@dataform/core:package
 

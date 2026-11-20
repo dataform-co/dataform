@@ -19,6 +19,7 @@ steps:
   - name: gcr.io/cloud-builders/bazel:7.3.2
     env:
       - "BRANCH_NAME=$BRANCH_NAME"
+      - "BUILD_ID=$BUILD_ID"
     script: |
       #!/usr/bin/env bash
       ./scripts/publish

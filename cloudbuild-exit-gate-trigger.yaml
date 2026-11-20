@@ -49,6 +49,11 @@ steps:
       set -euo pipefail
       [ "${STATUS}" = "SUCCESS" ] || exit 0
       version=$(grep 'DF_VERSION' version.bzl | awk '{ print $3 }' | tr -d '"')
+      # Secret Manager payloads may end with a newline, which gh would send as part
+      # of the Authorization header.
+      GITHUB_TOKEN="$(printf '%s' "${GITHUB_TOKEN}" | tr -d '\r\n')"
+      export GITHUB_TOKEN
+      gh auth status >/dev/null
       if gh release view "$version" >/dev/null 2>&1; then
         echo "Release $version already exists, skipping"
       else
