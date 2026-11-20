@@ -167,4 +167,78 @@ suite("prune", () => {
       }),
     );
   });
+
+  const LAKEHOUSE_TARGET: dataform.ITarget = {
+    database: "p",
+    schema: "cat.ns",
+    name: "orders",
+  };
+  const LAKEHOUSE_ACTION: dataform.ITable = {
+    type: "table",
+    enumType: dataform.TableType.TABLE,
+    target: LAKEHOUSE_TARGET,
+    canonicalTarget: LAKEHOUSE_TARGET,
+    query: "select 1 as order_id",
+    dependencyTargets: [],
+  };
+  const DOWNSTREAM_OF_LAKEHOUSE_TARGET: dataform.ITarget = {
+    database: "p",
+    schema: "d",
+    name: "order_summary",
+  };
+  const DOWNSTREAM_OF_LAKEHOUSE_ACTION: dataform.ITable = {
+    type: "table",
+    enumType: dataform.TableType.TABLE,
+    target: DOWNSTREAM_OF_LAKEHOUSE_TARGET,
+    canonicalTarget: DOWNSTREAM_OF_LAKEHOUSE_TARGET,
+    query: "select * from `p.cat.ns.orders`",
+    dependencyTargets: [LAKEHOUSE_TARGET],
+  };
+
+  test("--actions matches 4-part Lakehouse target by database.catalog.namespace.name", () => {
+    const compiledGraph: dataform.ICompiledGraph = {
+      tables: [LAKEHOUSE_ACTION, DOWNSTREAM_OF_LAKEHOUSE_ACTION],
+      operations: [],
+      assertions: [],
+      propertyGraphs: [],
+      targets: [LAKEHOUSE_TARGET, DOWNSTREAM_OF_LAKEHOUSE_TARGET],
+    };
+    expect(asPlainObject(prune(compiledGraph, { actions: ["p.cat.ns.orders"] }))).deep.equals(
+      asPlainObject({
+        tables: [LAKEHOUSE_ACTION],
+        operations: [],
+        assertions: [],
+        propertyGraphs: [],
+        targets: [LAKEHOUSE_TARGET],
+      }),
+    );
+  });
+
+  test("--actions matches 4-part Lakehouse target by bare name and resolves includeDependents", () => {
+    const compiledGraph: dataform.ICompiledGraph = {
+      tables: [LAKEHOUSE_ACTION, DOWNSTREAM_OF_LAKEHOUSE_ACTION],
+      operations: [],
+      assertions: [],
+      propertyGraphs: [],
+      targets: [LAKEHOUSE_TARGET, DOWNSTREAM_OF_LAKEHOUSE_TARGET],
+    };
+    expect(
+      asPlainObject(prune(compiledGraph, { actions: ["orders"], includeDependents: true })),
+    ).deep.equals(asPlainObject(compiledGraph));
+  });
+
+  test("--actions with includeDependencies pulls in upstream 4-part Lakehouse table", () => {
+    const compiledGraph: dataform.ICompiledGraph = {
+      tables: [LAKEHOUSE_ACTION, DOWNSTREAM_OF_LAKEHOUSE_ACTION],
+      operations: [],
+      assertions: [],
+      propertyGraphs: [],
+      targets: [LAKEHOUSE_TARGET, DOWNSTREAM_OF_LAKEHOUSE_TARGET],
+    };
+    expect(
+      asPlainObject(
+        prune(compiledGraph, { actions: ["p.d.order_summary"], includeDependencies: true }),
+      ),
+    ).deep.equals(asPlainObject(compiledGraph));
+  });
 });

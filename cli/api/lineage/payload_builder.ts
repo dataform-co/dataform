@@ -3,6 +3,7 @@ import Long from "long";
 import * as path from "path";
 
 import { toLineageActionType } from "df/cli/api/lineage/action_type";
+import { isLakehouseTarget } from "df/core/targets";
 import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
 
@@ -81,13 +82,21 @@ export class LineagePayloadBuilder {
       }
     }
 
-    const emitDatasets = eventType === "COMPLETE" && hasLineageOutput(action, actionType);
-
+    // Data Lineage expects 3-part `<project>.<dataset>.<table>` BigQuery dataset names; a 4-part
+    // Lakehouse target (`project.catalog.namespace.table`) would be misparsed as project
+    // `project.catalog`. Skip Lakehouse targets in `inputs`, and omit `inputs`/`outputs` altogether
+    // when the action's own target is a Lakehouse target.
+    const emitDatasets =
+      eventType === "COMPLETE" &&
+      hasLineageOutput(action, actionType) &&
+      !isLakehouseTarget(action.target);
     const inputs = emitDatasets
-      ? (action.dependencyTargets || []).map((dep) => ({
-          namespace: "bigquery",
-          name: toFqn(dep, projectId),
-        }))
+      ? (action.dependencyTargets || [])
+          .filter((dep) => !isLakehouseTarget(dep))
+          .map((dep) => ({
+            namespace: "bigquery",
+            name: toFqn(dep, projectId),
+          }))
       : [];
 
     const outputs = emitDatasets

@@ -12,6 +12,7 @@ import { PromisePoolExecutor } from "promise-pool-executor";
 import { collectEvaluationQueries, QueryOrAction } from "df/cli/api/dbadapters/execution_sql";
 import {
   IBigQueryError,
+  IBigQueryExecutionOptions,
   IDbAdapter,
   IDbClient,
   IExecutionResult,
@@ -22,6 +23,7 @@ import { parseBigqueryEvalError } from "df/cli/api/utils/error_parsing";
 import { LimitedResultSet } from "df/cli/api/utils/results";
 import { coerceAsError } from "df/common/errors/errors";
 import { retry } from "df/common/promises";
+import { isLakehouseTarget } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 
 const CLOUD_PLATFORM_SCOPE = "https://www.googleapis.com/auth/cloud-platform";
@@ -36,14 +38,7 @@ const BIGQUERY_DATE_RELATED_FIELDS = [
 
 const BIGQUERY_INTERNAL_ERROR_JOB_MAX_ATTEMPTS = 3;
 
-export interface IBigQueryExecutionOptions {
-  actionRetryLimit?: number;
-  labels?: { [label: string]: string };
-  location?: string;
-  jobPrefix?: string;
-  dryRun?: boolean;
-  reservation?: string;
-}
+export { IBigQueryExecutionOptions };
 
 export type BigQueryClientProvider = (projectId?: string) => BigQuery;
 
@@ -376,8 +371,10 @@ export class BigQueryDbAdapter implements IDbAdapter {
             ? dataform.TableMetadata.Type.VIEW
             : dataform.TableMetadata.Type.UNKNOWN,
       target,
-      fields: metadata.schema.fields?.map((field) => convertField(field)),
-      lastUpdatedMillis: Long.fromString(metadata.lastModifiedTime),
+      fields: metadata.schema?.fields?.map((field) => convertField(field)),
+      lastUpdatedMillis: metadata.lastModifiedTime
+        ? Long.fromString(metadata.lastModifiedTime)
+        : Long.ZERO,
       description: metadata.description,
       labels: metadata.labels,
       bigquery: {
@@ -386,7 +383,26 @@ export class BigQueryDbAdapter implements IDbAdapter {
     });
   }
 
-  public async deleteTable(target: dataform.ITarget): Promise<void> {
+  public async deleteTable(
+    target: dataform.ITarget,
+    options?: { bigquery?: IBigQueryExecutionOptions },
+  ): Promise<void> {
+    if (isLakehouseTarget(target)) {
+      // Unlike read-only `tables.get`, BigQuery rejects REST `tables.delete` on Iceberg REST
+      // Catalog tables with HTTP 400 ("Biglake resources cannot be modified in BigQuery."), so drop
+      // them via 4-part SQL instead.
+      if (!target.database) {
+        throw new Error(
+          `Cannot delete Lakehouse table "${target.schema}.${target.name}" without a target database (project).`,
+        );
+      }
+      await this.execute(
+        `drop table if exists \`${target.database}.${target.schema}.${target.name}\``,
+        { bigquery: options?.bigquery },
+      );
+      return;
+    }
+
     await this.getClient(target.database)
       .dataset(target.schema)
       .table(target.name)
@@ -401,8 +417,15 @@ export class BigQueryDbAdapter implements IDbAdapter {
     return data[0].map((dataset) => dataset.id);
   }
 
-  public async setMetadata(action: dataform.IExecutionAction): Promise<void> {
+  public async setMetadata(
+    action: dataform.IExecutionAction,
+    options?: { bigquery?: IBigQueryExecutionOptions },
+  ): Promise<void> {
     const { target, actionDescriptor } = action;
+    if (isLakehouseTarget(target)) {
+      await this.setLakehouseMetadata(target, actionDescriptor, options);
+      return;
+    }
 
     const metadata = await this.getMetadata(target);
     const schemaWithDescription = addDescriptionToMetadata(
@@ -417,6 +440,40 @@ export class BigQueryDbAdapter implements IDbAdapter {
     });
   }
 
+  private async setLakehouseMetadata(
+    target: dataform.ITarget,
+    actionDescriptor?: dataform.IActionDescriptor | null,
+    options?: { bigquery?: IBigQueryExecutionOptions },
+  ): Promise<void> {
+    if (!target.database) {
+      throw new Error(
+        `Cannot set metadata on Lakehouse table "${target.schema}.${target.name}" without a target database (project).`,
+      );
+    }
+    // BigQuery's tables.patch REST endpoint rejects 4-part Lakehouse Iceberg tables, so apply
+    // table and top-level column descriptions via SQL DDL instead. BigQuery does not allow
+    // mixing table SET OPTIONS and ALTER COLUMN in a single ALTER TABLE statement.
+    const qualifiedTable = `\`${target.database}.${target.schema}.${target.name}\``;
+    const statements: string[] = [];
+    if (actionDescriptor?.description != null && actionDescriptor.description !== "") {
+      statements.push(
+        `ALTER TABLE ${qualifiedTable} SET OPTIONS(description = ${escapeSqlStringLiteral(actionDescriptor.description)});`,
+      );
+    }
+    const alterColumns = (actionDescriptor?.columns || [])
+      .filter((col) => col.path?.length === 1 && col.description != null && col.description !== "")
+      .map(
+        (col) =>
+          `ALTER COLUMN IF EXISTS \`${col.path[0]}\` SET OPTIONS(description = ${escapeSqlStringLiteral(col.description)})`,
+      );
+    if (alterColumns.length > 0) {
+      statements.push(`ALTER TABLE ${qualifiedTable} ${alterColumns.join(", ")};`);
+    }
+    if (statements.length > 0) {
+      await this.execute(statements.join("\n"), { bigquery: options?.bigquery });
+    }
+  }
+
   private async getMetadata(target: dataform.ITarget): Promise<TableMetadata> {
     try {
       const table = await this.getClient(target.database)
@@ -425,7 +482,7 @@ export class BigQueryDbAdapter implements IDbAdapter {
         .getMetadata();
       return table?.[0];
     } catch (e) {
-      if (e?.errors?.[0]?.reason === "notFound") {
+      if (e?.code === 404 || e?.errors?.[0]?.reason === "notFound") {
         // if the table can't be found, just return null
         return null;
       }
@@ -723,4 +780,12 @@ function createBigQueryError(jobMetadata: any): IBigQueryError {
     };
   }
   return error;
+}
+
+function escapeSqlStringLiteral(value: string): string {
+  return `'${value
+    .replace(/\\/g, "\\\\")
+    .replace(/'/g, "\\'")
+    .replace(/\n/g, "\\n")
+    .replace(/\r/g, "\\r")}'`;
 }

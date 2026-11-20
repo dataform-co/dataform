@@ -21,7 +21,7 @@ import { CompilationSql } from "df/core/compilation_sql";
 import { validateSqlxActionBlocks } from "df/core/compilers";
 import { Contextable, IActionContext, ITableContext, Resolvable } from "df/core/contextables";
 import * as Path from "df/core/path";
-import { targetAsReadableString, targetStringifier } from "df/core/targets";
+import { isCatalogSchema, targetAsReadableString, targetStringifier } from "df/core/targets";
 import * as utils from "df/core/utils";
 import { ResolvableMap, toResolvable } from "df/core/utils";
 import { version as dataformCoreVersion } from "df/core/version";
@@ -678,7 +678,7 @@ export class Session {
   public finalizeSchema(schema: string): string {
     // Normalized 4-part Lakehouse schemas ("${catalog}.${namespace}") do not take datasetSuffix.
     // Standard dataset names cannot contain '.' (enforced by ActionBuilder.validateTarget).
-    if (schema.includes(".")) {
+    if (isCatalogSchema(schema)) {
       return schema;
     }
     return `${schema}${this.getSchemaSuffixWithUnderscore()}`;

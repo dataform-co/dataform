@@ -31,11 +31,12 @@ export const outputActionsOption: INamedOption<yargs.Options, ICompileArgs> = {
   name: "output-actions",
   option: {
     // No wildcard support: prune()'s matchPatterns() does exact matching on the
-    // action name or its fully-qualified `database.schema.name`.
+    // action name or its fully-qualified `database.schema.name` (or 4-part
+    // `database.catalog.namespace.name`).
     describe:
       "Filters the printed output to these actions (comma-separated or repeatable). Each entry " +
-      "is an action name or a fully-qualified database.schema.name target. The whole project " +
-      "is still compiled.",
+      "is an action name or a fully-qualified database.schema.name (or 4-part " +
+      "database.catalog.namespace.name) target. The whole project is still compiled.",
     type: "array",
     coerce: splitCommas,
   },

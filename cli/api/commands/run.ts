@@ -18,7 +18,7 @@ import { Timer } from "df/cli/api/utils/timer";
 import { Flags } from "df/common/flags";
 import { retry } from "df/common/promises";
 import { deepClone, equals } from "df/common/protos";
-import { targetAsReadableString, targetStringifier } from "df/core/targets";
+import { isCatalogSchema, targetAsReadableString, targetStringifier } from "df/core/targets";
 import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
 
@@ -347,25 +347,22 @@ export class Runner {
   }
 
   /**
-   * Returns the target datasets of pending actions that don't exist yet, keyed by `schemaKey()`.
+   * Returns the datasets required by pending actions that don't exist yet, keyed by `schemaKey()`.
    */
   private async findMissingSchemas(): Promise<Map<string, IMissingSchema>> {
     // Work out all the schemas we are going to need.
     const databaseSchemas = new Map<string | undefined, Set<string>>();
     this.pendingActions
-      .filter(
-        (action) =>
-          (action.tasks.length > 0 || !!action.jitCode) &&
-          !!action.target &&
-          !!action.target.schema &&
-          writesToTarget(action),
-      )
-      .forEach(({ target }) => {
-        const trueDatabase = this.targetDatabase(target!);
-        if (!databaseSchemas.has(trueDatabase)) {
-          databaseSchemas.set(trueDatabase, new Set<string>());
+      .filter((action) => action.tasks.length > 0 || !!action.jitCode)
+      .forEach((action) => {
+        const dataset = this.actionDatasetToCreate(action);
+        if (!dataset) {
+          return;
         }
-        databaseSchemas.get(trueDatabase).add(target.schema);
+        if (!databaseSchemas.has(dataset.database)) {
+          databaseSchemas.set(dataset.database, new Set<string>());
+        }
+        databaseSchemas.get(dataset.database).add(dataset.schema);
       });
 
     // Find all nonexistent schemas.
@@ -383,14 +380,36 @@ export class Runner {
     return missingSchemas;
   }
 
+  /**
+   * Returns the BigQuery dataset that must exist before `action` runs, or null if none is needed.
+   * Standard actions need their own target dataset; incremental Lakehouse actions may write a
+   * temporary schema-inspection table to the project's `defaultDataset` (with suffixes). Other
+   * Lakehouse actions write only to `catalog.namespace`, which cannot be created via CREATE SCHEMA;
+   * it must exist before the run.
+   */
+  private actionDatasetToCreate(action: dataform.IExecutionAction): IMissingSchema | null {
+    if (!action.target?.schema || !writesToTarget(action)) {
+      return null;
+    }
+    if (isCatalogSchema(action.target.schema)) {
+      return action.tableType === "incremental"
+        ? this.executionSql.lakehouseScratchDataset()
+        : null;
+    }
+    return {
+      database: this.targetDatabase(action.target),
+      schema: action.target.schema,
+    };
+  }
+
   private targetDatabase(target: dataform.ITarget): string | undefined {
     // Either may be unset (e.g. no defaultProject in workflow_settings.yaml, or older versions of
     // dataform), in which case BigQuery uses the project of the credentials.
     return target.database || this.graph.projectConfig?.defaultDatabase || undefined;
   }
 
-  private schemaKey(target: dataform.ITarget): string {
-    return `${this.targetDatabase(target)}.${target.schema}`;
+  private schemaKey(schema: IMissingSchema): string {
+    return `${schema.database}.${schema.schema}`;
   }
 
   private async executeAllActionsReadyForExecution() {
@@ -620,7 +639,9 @@ export class Runner {
       action.type === "table"
     ) {
       try {
-        await this.dbadapter.setMetadata(action);
+        await this.dbadapter.setMetadata(action, {
+          bigquery: this.getBigQueryExecutionOptions(action),
+        });
       } catch (e) {
         // TODO: Setting the metadata is not a task itself, so we have nowhere to surface this error cleanly.
         // For now, we can attach the error to the last task in the action so it gets
@@ -657,7 +678,8 @@ export class Runner {
     action: dataform.IExecutionAction,
     task: dataform.IExecutionTask,
   ): IMissingSchema | null {
-    if (!action.target?.schema || !writesToTarget(action)) {
+    const dataset = this.actionDatasetToCreate(action);
+    if (!dataset) {
       return null;
     }
     // Assertion tasks must stay single statements: their result is read from the job's rows,
@@ -665,7 +687,7 @@ export class Runner {
     if (task.type === "assertion") {
       return null;
     }
-    return this.missingSchemas.get(this.schemaKey(action.target)) || null;
+    return this.missingSchemas.get(this.schemaKey(dataset)) || null;
   }
 
   /**
@@ -677,10 +699,11 @@ export class Runner {
     action: dataform.IExecutionAction,
     task: dataform.IExecutionTask,
   ): Promise<void> | undefined {
-    if (!this.missingSchemaToCreate(action, task)) {
+    const missingSchema = this.missingSchemaToCreate(action, task);
+    if (!missingSchema) {
       return undefined;
     }
-    return this.schemaCreations.get(this.schemaKey(action.target));
+    return this.schemaCreations.get(this.schemaKey(missingSchema));
   }
 
   /**
@@ -719,7 +742,7 @@ export class Runner {
 
     // Registered without awaiting anything since `schemaCreationToWaitFor()` returned nothing, so
     // no other task can become the creator in between.
-    const key = this.schemaKey(action.target);
+    const key = this.schemaKey(missingSchema);
     let release: () => void;
     this.schemaCreations.set(key, new Promise<void>((resolve) => (release = resolve)));
     try {

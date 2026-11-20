@@ -1,7 +1,8 @@
-import { Dataset, Table } from "@google-cloud/bigquery";
+import { BigQuery, Dataset, Table } from "@google-cloud/bigquery";
 import { expect } from "chai";
 import { EventEmitter } from "events";
 import { AuthClient, gaxios, Impersonated } from "google-auth-library";
+import Long from "long";
 import { anything, instance, mock, when } from "ts-mockito";
 
 import {
@@ -427,5 +428,205 @@ suite("BigQueryDbAdapter", () => {
       schema: liveSchema,
       name: tableName,
     });
+  });
+
+  test("table() handles 4-part Lakehouse datasetId including when lastModifiedTime is absent", async () => {
+    const projectId = "my-gcp-project";
+    const lakehouseDatasetId = "ecommerce_catalog.sales_dw";
+    const tableName = "customer_orders";
+    const mockBigQuery: any = {
+      dataset: (datasetId: string) => {
+        expect(datasetId).to.equal(lakehouseDatasetId);
+        return {
+          table: (id: string) => {
+            expect(id).to.equal(tableName);
+            return {
+              getMetadata: () =>
+                Promise.resolve([
+                  {
+                    kind: "bigquery#table",
+                    id: `${projectId}:${lakehouseDatasetId}.${tableName}`,
+                    tableReference: {
+                      projectId,
+                      datasetId: lakehouseDatasetId,
+                      tableId: tableName,
+                    },
+                    type: "TABLE",
+                    location: "US",
+                    biglakeConfiguration: {
+                      storageUri: "gs://my-lakehouse-bucket/sales_dw/customer_orders/123/",
+                    },
+                    schema: {
+                      fields: [
+                        { name: "order_id", type: "INTEGER" },
+                        { name: "customer_id", type: "INTEGER" },
+                      ],
+                    },
+                    // lastModifiedTime intentionally omitted (UIT / Lakehouse response)
+                  },
+                ]),
+            };
+          },
+        };
+      },
+    };
+    const adapter = new BigQueryDbAdapter(dataform.BigQuery.create({ projectId, location: "US" }), {
+      clientProvider: () => mockBigQuery,
+    });
+    const target = { database: projectId, schema: lakehouseDatasetId, name: tableName };
+    const result = await adapter.table(target);
+    expect(result).to.not.equal(null);
+    expect(result.type).to.equal(dataform.TableMetadata.Type.TABLE);
+    expect(result.target).to.eql(target);
+    expect(result.fields.map((f) => f.name)).to.eql(["order_id", "customer_id"]);
+    expect(result.lastUpdatedMillis.equals(Long.ZERO)).to.equal(true);
+  });
+
+  test("table() returns null on 404 for nonexistent 4-part Lakehouse table", async () => {
+    const mockBigQuery: any = {
+      dataset: () => ({
+        table: () => ({
+          getMetadata: () => Promise.reject({ code: 404, message: "Not found" }),
+        }),
+      }),
+    };
+    const adapter = new BigQueryDbAdapter(
+      dataform.BigQuery.create({ projectId: "my-gcp-project", location: "US" }),
+      { clientProvider: () => mockBigQuery },
+    );
+    const result = await adapter.table({
+      database: "my-gcp-project",
+      schema: "ecommerce_catalog.sales_dw",
+      name: "missing_table",
+    });
+    expect(result).to.equal(null);
+  });
+
+  test("setMetadata() applies table and top-level column descriptions via ALTER TABLE SQL for 4-part Lakehouse targets", async () => {
+    let datasetCalled = false;
+    const mockBigQuery = {
+      dataset: () => {
+        datasetCalled = true;
+        throw new Error("tables.patch must not be called for Lakehouse targets");
+      },
+    } as unknown as BigQuery;
+    const adapter = new BigQueryDbAdapter(
+      dataform.BigQuery.create({ projectId: "my-gcp-project", location: "US" }),
+      { concurrencyLimit: 1, clientProvider: () => mockBigQuery },
+    );
+    const executedCalls: Array<{ statement: string; location?: string }> = [];
+    adapter.execute = async (statement: string, options?: any) => {
+      executedCalls.push({ statement, location: options?.bigquery?.location });
+      return { rows: [], metadata: {} };
+    };
+    await adapter.setMetadata(
+      dataform.ExecutionAction.create({
+        target: {
+          database: "my-gcp-project",
+          schema: "ecommerce_catalog.sales_dw",
+          name: "customer_orders",
+        },
+        actionDescriptor: {
+          description: "Orders' main\ntable",
+          columns: [
+            { path: ["order_id"], description: "Primary key" },
+            { path: ["struct_col", "nested"], description: "Ignored nested field" },
+          ],
+        },
+      }),
+      { bigquery: { location: "us-central1" } },
+    );
+    expect(datasetCalled).to.equal(false);
+    expect(executedCalls).to.eql([
+      {
+        statement:
+          "ALTER TABLE `my-gcp-project.ecommerce_catalog.sales_dw.customer_orders` SET OPTIONS(description = 'Orders\\' main\\ntable');\n" +
+          "ALTER TABLE `my-gcp-project.ecommerce_catalog.sales_dw.customer_orders` ALTER COLUMN IF EXISTS `order_id` SET OPTIONS(description = 'Primary key');",
+        location: "us-central1",
+      },
+    ]);
+  });
+
+  test("deleteTable() executes 4-part DROP TABLE IF EXISTS for Lakehouse targets", async () => {
+    let restDeleteCalled = false;
+    const adapter = new BigQueryDbAdapter(
+      dataform.BigQuery.create({ projectId: "creds-project", location: "US" }),
+      {
+        clientProvider: () =>
+          ({
+            dataset: () => ({
+              table: () => ({
+                delete: () => {
+                  restDeleteCalled = true;
+                  return Promise.resolve();
+                },
+              }),
+            }),
+          }) as any,
+      },
+    );
+    const executedCalls: Array<{ statement: string; location?: string }> = [];
+    adapter.execute = async (statement: string, options?: any) => {
+      executedCalls.push({ statement, location: options?.bigquery?.location });
+      return { rows: [], metadata: {} };
+    };
+    await adapter.deleteTable(
+      {
+        database: "explicit-project",
+        schema: "ecommerce_catalog.sales_dw",
+        name: "customer_orders",
+      },
+      { bigquery: { location: "us-central1" } },
+    );
+    let thrownError: Error | undefined;
+    try {
+      await adapter.deleteTable({
+        schema: "ecommerce_catalog.sales_dw",
+        name: "missing_project_orders",
+      });
+    } catch (e) {
+      thrownError = e as Error;
+    }
+    expect(thrownError?.message).to.include("without a target database");
+    expect(restDeleteCalled).to.equal(false);
+    expect(executedCalls).to.eql([
+      {
+        statement:
+          "drop table if exists `explicit-project.ecommerce_catalog.sales_dw.customer_orders`",
+        location: "us-central1",
+      },
+    ]);
+  });
+
+  test("deleteTable() uses REST table.delete for standard 3-part targets", async () => {
+    let deletedWithIgnoreNotFound = false;
+    const adapter = new BigQueryDbAdapter(
+      dataform.BigQuery.create({ projectId: "p", location: "US" }),
+      {
+        clientProvider: () =>
+          ({
+            dataset: (schema: string) => {
+              expect(schema).to.equal("standard_dataset");
+              return {
+                table: (name: string) => {
+                  expect(name).to.equal("standard_table");
+                  return {
+                    delete: (opts: { ignoreNotFound: boolean }) => {
+                      deletedWithIgnoreNotFound = opts.ignoreNotFound;
+                      return Promise.resolve();
+                    },
+                  };
+                },
+              };
+            },
+          }) as any,
+      },
+    );
+    await adapter.deleteTable({
+      database: "p",
+      schema: "standard_dataset",
+      name: "standard_table",
+    });
+    expect(deletedWithIgnoreNotFound).to.equal(true);
   });
 });
