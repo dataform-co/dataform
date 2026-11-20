@@ -211,18 +211,14 @@ export abstract class ActionBuilder<T> {
   }
 
   protected updateInlineAssertionsDatabase(database: string, parentTarget: dataform.ITarget) {
-    this.uniqueKeyAssertions.forEach((assertion) => {
-      if (this.inlineAssertionsFollowActionDatabase()) {
-        assertion.database(database);
-      }
-      assertion.setParentAction(dataform.Target.create(parentTarget));
-    });
-    if (this.rowConditionsAssertion) {
-      if (this.inlineAssertionsFollowActionDatabase()) {
-        this.rowConditionsAssertion.database(database);
-      }
-      this.rowConditionsAssertion.setParentAction(dataform.Target.create(parentTarget));
-    }
+    [...this.uniqueKeyAssertions, this.rowConditionsAssertion]
+      .filter(Boolean)
+      .forEach((assertion) => {
+        if (this.inlineAssertionsFollowActionDatabase()) {
+          assertion.database(database);
+        }
+        assertion.setParentAction(dataform.Target.create(parentTarget));
+      });
   }
 
   protected updateInlineAssertionsSchema(schema: string, parentTarget: dataform.ITarget) {

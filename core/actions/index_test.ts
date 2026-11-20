@@ -528,6 +528,144 @@ publish("name", { type: "${tableType}" })
       ]);
     });
 
+    test(`${tableType} built-in assertions renamed by chained .schema() are resolved by new name in dependencies and targets`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML,
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/file.js"),
+        `
+publish("name", { type: "${tableType}" })
+  .assertions({
+    uniqueKey: ["id"],
+    rowConditions: ["id > 0"],
+  })
+  .schema("customDataset")
+  .query("SELECT 1 AS id");
+
+operate("downstream")
+  .dependencies([
+    "customDataset_name_assertions_uniqueKey_0",
+    "customDataset_name_assertions_rowConditions",
+  ])
+  .queries("SELECT 1");
+
+publish("downstream_with_assertions", {
+  type: "view",
+  dependOnDependencyAssertions: true,
+}).query(ctx => \`SELECT * FROM \${ctx.ref("customDataset", "name")}\`);
+`,
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      const expectedAssertionTargets = [
+        {
+          database: "defaultProject",
+          schema: "customDataset",
+          name: "customDataset_name_assertions_uniqueKey_0",
+        },
+        {
+          database: "defaultProject",
+          schema: "customDataset",
+          name: "customDataset_name_assertions_rowConditions",
+        },
+      ];
+      expect(
+        asPlainObject(result.compile.compiledGraph.operations[0].dependencyTargets),
+      ).deep.equals(expectedAssertionTargets);
+      const downstreamView = result.compile.compiledGraph.tables.find(
+        (t) => t.target.name === "downstream_with_assertions",
+      );
+      expect(asPlainObject(downstreamView.dependencyTargets)).deep.equals([
+        {
+          database: "defaultProject",
+          schema: "customDataset",
+          name: "name",
+        },
+        ...expectedAssertionTargets,
+      ]);
+      const compiledTargetNames = result.compile.compiledGraph.targets.map((t) => t.name);
+      expect(compiledTargetNames).to.include("customDataset_name_assertions_uniqueKey_0");
+      expect(compiledTargetNames).to.include("customDataset_name_assertions_rowConditions");
+      expect(compiledTargetNames).to.not.include("defaultDataset_name_assertions_uniqueKey_0");
+      expect(compiledTargetNames).to.not.include("defaultDataset_name_assertions_rowConditions");
+    });
+
+    test(`${tableType} built-in assertions renamed by chained .schema() cannot be resolved by old name`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML,
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/file.js"),
+        `
+publish("name", { type: "${tableType}" })
+  .assertions({
+    rowConditions: ["id > 0"],
+  })
+  .schema("customDataset")
+  .query("SELECT 1 AS id");
+
+operate("downstream")
+  .dependencies(["defaultDataset_name_assertions_rowConditions"])
+  .queries("SELECT 1");
+`,
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).equals(1);
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).contains(
+        "Missing dependency detected",
+      );
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).contains(
+        "defaultDataset_name_assertions_rowConditions",
+      );
+    });
+
+    test(`${tableType} built-in assertions renamed by chained .schema() trigger duplicate-name check for the new name`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML,
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/file.js"),
+        `
+publish("name", { type: "${tableType}" })
+  .assertions({
+    rowConditions: ["id > 0"],
+  })
+  .schema("customDataset")
+  .query("SELECT 1 AS id");
+
+assert("customDataset_name_assertions_rowConditions", {
+  dataset: "customDataset",
+}).query("SELECT 1");
+`,
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.assertions).deep.equals([]);
+      const errorMessages = result.compile.compiledGraph.graphErrors.compilationErrors.map(
+        (e) => e.message,
+      );
+      expect(errorMessages.length).equals(2);
+      errorMessages.forEach((message) => {
+        expect(message).contains("Duplicate action name detected");
+        expect(message).contains("customDataset_name_assertions_rowConditions");
+      });
+    });
+
     [
       { projectKey: "database", datasetKey: "schema" },
       { projectKey: "project", datasetKey: "dataset" },
