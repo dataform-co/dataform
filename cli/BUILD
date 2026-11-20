@@ -70,6 +70,7 @@ ts_library(
 ts_test_suite(
     name = "tests",
     srcs = [
+        "tests/run_command_test.ts",
         "console_test.ts",
         "credentials_test.ts",
         "index_compile_test.ts",

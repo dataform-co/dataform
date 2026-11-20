@@ -82,7 +82,7 @@ from (${query}) as insertions`;
     tableMetadata?: dataform.ITableMetadata,
   ) {
     return (
-      (!runConfig.fullRefresh || table.protected) &&
+      (!runConfig.fullRefresh || (table.protected && !runConfig.overrideProtected)) &&
       tableMetadata &&
       tableMetadata.type !== dataform.TableMetadata.Type.VIEW
     );

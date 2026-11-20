@@ -137,4 +137,23 @@ SELECT  1  as   test
       expect(checkResult.stdout).contains("All files are formatted correctly");
     });
   });
+
+  suite("run command", () => {
+    test("--override-protected without --full-refresh is rejected", async () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+
+      await runCli("init", [
+        projectDir,
+        "--default-database=dataform-database",
+        "--default-location=us-central1",
+      ]);
+
+      const result = await runCli("run", [projectDir, "--override-protected"]);
+
+      expect(result.exitCode).not.equals(0);
+      expect(result.stderr).contains(
+        "The --override-protected flag can only be supplied along with --full-refresh.",
+      );
+    });
+  });
 });
