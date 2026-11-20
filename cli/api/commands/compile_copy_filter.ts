@@ -2,25 +2,34 @@ import * as fs from "fs-extra";
 import ignore from "ignore";
 import * as path from "path";
 
+import { CREDENTIALS_FILENAME } from "df/cli/api/commands/credentials";
+
+// Excluded everywhere in the copy, including under compilation inputs and through
+// symbolic links. `.git` holds no Dataform project files. The credentials file can hold
+// a service account key, and compilation never connects to the warehouse, so the copy
+// has no use for it. Only the default name is matched: a credentials file kept under
+// another name and passed with `--credentials` is filtered like any other file.
+const NEVER_COPIED_NAMES = new Set([".git", CREDENTIALS_FILENAME]);
+
 // Excluded whatever the project's ignore files say, unless a compilation input is
-// reached through one (see COMPILATION_INPUT_ROOT_NAMES). `.git` holds no Dataform
-// project files. A top-level `node_modules` can't be present at all here -- `compile()`
-// rejects the project before copying if it finds one -- so that entry covers nested ones
-// outside the compilation inputs.
+// reached through one (see COMPILATION_INPUT_ROOT_NAMES). A top-level `node_modules`
+// can't be present at all here -- `compile()` rejects the project before copying if it
+// finds one -- so that entry covers nested ones outside the compilation inputs.
 //
 // Checked independently of the `ignore` instance below, rather than seeded into it, so
 // that neither ignore file can override this floor: `ignore` lets later patterns
 // override earlier ones by design, so a `!node_modules` negation would otherwise
 // un-ignore it.
-const ALWAYS_IGNORED_NAMES = new Set([".git", "node_modules"]);
+const ALWAYS_IGNORED_NAMES = new Set([...NEVER_COPIED_NAMES, "node_modules"]);
 
 // Project-root entries that compilation reads, and that are therefore copied with
 // everything reachable from them, whatever the project's ignore files say.
 //
 // - `definitions` and `includes` are the directories core compiles from. Compilation
 //   lists their files with a glob that follows symbolic links and descends into nested
-//   `node_modules`, so both are followed here too. `.git` directories are still skipped:
-//   the glob skips dot-directories, so nothing in them is compiled.
+//   `node_modules`, so both are followed here too. `NEVER_COPIED_NAMES` entries are
+//   still skipped: the glob skips dot-files and dot-directories, so nothing in them is
+//   compiled.
 // - `workflow_settings.yaml` (or the legacy `dataform.json`) has already been read from
 //   the original project to decide on a stateless install, and compilation in the copy
 //   reads it again, so a broad pattern like `*.yaml` must not drop it.
@@ -135,7 +144,7 @@ function resolveSymlink(
 
 /**
  * Whether the filter copies the project-relative path `segments` by its location alone:
- * anything under one of the COMPILATION_INPUT_ROOT_NAMES, apart from `.git` directories.
+ * anything under one of the COMPILATION_INPUT_ROOT_NAMES, apart from NEVER_COPIED_NAMES.
  */
 function isUnderCompilationInputRoot(
   segments: string[],
@@ -143,7 +152,7 @@ function isUnderCompilationInputRoot(
 ): boolean {
   return (
     COMPILATION_INPUT_ROOT_NAMES.has(normalizeCase(segments[0])) &&
-    !segments.slice(1).some((segment) => normalizeCase(segment) === ".git")
+    !segments.slice(1).some((segment) => NEVER_COPIED_NAMES.has(normalizeCase(segment)))
   );
 }
 
@@ -162,7 +171,7 @@ function isUnderCompilationInputRoot(
  *
  * A link that resolves to the project root makes the whole project reachable, since
  * compilation's glob follows it (`definitions -> .` compiles `definitions/generated/*`),
- * so everything apart from `.git` directories is then required. A link that resolves
+ * so everything apart from NEVER_COPIED_NAMES is then required. A link that resolves
  * outside the project is copied as a link, and not followed: the filter only decides
  * what is copied from inside the project.
  */
@@ -180,6 +189,9 @@ function collectCompilationInputs(
       return;
     }
     const segments = relative.split(path.sep);
+    if (segments.some((segment) => NEVER_COPIED_NAMES.has(normalizeCase(segment)))) {
+      return;
+    }
     for (let i = 1; i <= segments.length; i++) {
       required.add(normalizeCase(segments.slice(0, i).join("/")));
     }
@@ -197,8 +209,11 @@ function collectCompilationInputs(
       if (relative !== "" && !isInsideDirectory(relative)) {
         return;
       }
-      covered =
-        relative !== "" && isUnderCompilationInputRoot(relative.split(path.sep), normalizeCase);
+      const segments = relative === "" ? [] : relative.split(path.sep);
+      if (segments.some((segment) => NEVER_COPIED_NAMES.has(normalizeCase(segment)))) {
+        return;
+      }
+      covered = segments.length > 0 && isUnderCompilationInputRoot(segments, normalizeCase);
     }
     entry = entry ?? lstatIfExists(entryPath);
     if (!entry) {
@@ -215,7 +230,7 @@ function collectCompilationInputs(
     } else if (entry.isDirectory() && !visitedDirectories.has(entryPath)) {
       visitedDirectories.add(entryPath);
       for (const child of fs.readdirSync(entryPath, { withFileTypes: true })) {
-        if (normalizeCase(child.name) !== ".git") {
+        if (!NEVER_COPIED_NAMES.has(normalizeCase(child.name))) {
           // Under a covered directory, so is the child; otherwise, as for the project
           // root's own children, it has to be checked.
           visit(path.join(entryPath, child.name), child, covered || undefined);
@@ -250,9 +265,9 @@ function collectCompilationInputs(
  * is excluded, since the copy never descends into that directory.
  *
  * Neither ignore file nor ALWAYS_IGNORED_NAMES applies to compilation inputs: the
- * COMPILATION_INPUT_ROOT_NAMES and everything reachable from them apart from `.git`
- * directories, including through symbolic links into otherwise-ignored paths inside the
- * project. Other files are filtered, including ones project code loads with `require()`;
+ * COMPILATION_INPUT_ROOT_NAMES and everything reachable from them apart from
+ * NEVER_COPIED_NAMES, including through symbolic links into otherwise-ignored paths inside
+ * the project. Other files are filtered, including ones project code loads with `require()`;
  * if one of those is excluded, compilation in the copy fails where the original
  * project's would succeed, or, if the code catches the error, behaves differently.
  *
@@ -292,6 +307,10 @@ export function buildProjectCopyFilter(
     }
 
     const relativeSegments = relative.split(path.sep);
+    if (relativeSegments.some((segment) => NEVER_COPIED_NAMES.has(normalizeCase(segment)))) {
+      return false;
+    }
+
     if (
       isUnderCompilationInputRoot(relativeSegments, normalizeCase) ||
       compilationInputs.has(normalizeCase(relativeSegments.join("/")))
