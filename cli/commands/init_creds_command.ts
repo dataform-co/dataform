@@ -1,10 +1,8 @@
-import * as fs from "fs";
 import * as path from "path";
 import yargs from "yargs";
 
 import { credentials } from "df/cli/api";
 import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
-import { prettyJsonStringify } from "df/cli/api/utils";
 import { assertProjectDirExists, IProjectDirArgs, projectDirOption } from "df/cli/common_options";
 import { print, printInitCredsResult, printSuccess } from "df/cli/console";
 import { getBigQueryCredentials } from "df/cli/credentials";
@@ -55,7 +53,7 @@ export const initCredsCommand: ICommand<IInitCredsArgs> = {
       print("\nCredentials test query was not run.\n");
     }
     const filePath = path.resolve(argv.projectDir, credentials.CREDENTIALS_FILENAME);
-    fs.writeFileSync(filePath, prettyJsonStringify(finalCredentials));
+    credentials.write(filePath, finalCredentials);
     printInitCredsResult(filePath);
     return 0;
   },

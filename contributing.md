@@ -106,7 +106,7 @@ Use the following command to check for any linting and formatting errors
 ./scripts/lint
 ```
 
-All .ts files are expected to be formatted using prettier. You can format all files modified in your current branch by using this script:
+All .ts files are expected to be formatted using prettier. You can format all .ts files by using this script:
 
 ```bash
 ./scripts/format
@@ -128,6 +128,23 @@ The command list, usage lines and argument/option tables in [`cli/README.md`](cl
 3. Update the hand-written parts of `cli/README.md` (command descriptions, Notes, examples) if needed, and commit them together with your change.
 
 Option descriptions are shown both in `dataform help` and in the README, so keep them plain text (no markdown) and put longer explanations in the command's Notes in the README. The unit tests fail if the README is out of date (`./scripts/run_tests`, also run in CI); you can run just this check with `bazel test //cli:readme_generated_test`.
+
+### Changing `@dataform/core` public APIs or protos
+
+Structured reference tables and export lists in [`core/README.md`](core/README.md) (`workflow_settings.yaml` fields, SQLX context functions, `Session` globals and package exports) are generated from `core/`, `packages/@dataform/core/index.ts` and `protos/` between `<!-- BEGIN GENERATED: ... -->` and `<!-- END GENERATED: ... -->` markers. If you change those definitions or their summary comments:
+
+1. Change the definition or first-paragraph JSDoc/proto comment in `core/` or `protos/` (not the generated blocks in `core/README.md`).
+   - Use a custom `@signature` JSDoc tag (for example, `@signature \`ref(name)\` / \`ref(schema, name)\``) when a method accepts multiple calling conventions that a single TypeScript parameter list doesn't express clearly.
+   - Mark internal-only exports with `@internal` so documentation extractors skip them.
+2. Regenerate the README:
+
+   ```bash
+   bazel run //core:update_readme
+   ```
+
+3. Update the hand-written sections or examples in `core/README.md` (such as bundled `.proto` summaries) if needed, and commit them together with your change.
+
+You can run the staleness check directly with `bazel test //core:readme_generated_test`.
 
 ### Canary test
 
