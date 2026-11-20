@@ -223,7 +223,7 @@ Incremental-specific config properties (in addition to `table` properties):
 - `incrementalStrategy`: `"merge"` (requires `uniqueKey`) or `"insert_overwrite"` (requires `partitionBy`) in SQLX and JavaScript (or `"INCREMENTAL_STRATEGY_MERGE"` / `"INCREMENTAL_STRATEGY_INSERT_OVERWRITE"` in `actions.yaml`).
 - `updatePartitionFilter` / `incrementalPredicates`: Mutually exclusive SQL filter(s) restricting target partitions scanned during incremental updates (setting both is a compile error; prefer `incrementalPredicates`).
 - `onSchemaChange`: `"IGNORE"` (default), `"FAIL"`, `"EXTEND"`, or `"SYNCHRONIZE"`.
-- `protected` (default `true`): Prevents the table from being dropped and rebuilt from scratch on `--full-refresh`. Set `protected: false` to allow full refreshes, or pass `--override-protected` along with `--full-refresh` to rebuild protected tables for a single run.
+- `protected` (default `true`): Prevents the table from being dropped and rebuilt from scratch on `--full-refresh`. Set `protected: false` to allow full refreshes, or pass `--override-protected` along with `--full-refresh` to rebuild protected tables for a single run (this will drop existing data, potentially leading to a permanent data loss).
 
 ---
 

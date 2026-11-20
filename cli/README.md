@@ -254,8 +254,8 @@ Compiles and executes the project against BigQuery (or validates it with `--dry-
 | `--tags` | array | — | Tags to filter the actions to run (comma-separated or repeatable). |
 | `--include-deps` | boolean | — | Also runs upstream dependencies of the selected actions. Requires --actions or --tags. |
 | `--include-dependents` | boolean | — | Also runs downstream dependents of the selected actions. Requires --actions or --tags. |
-| `--full-refresh` | boolean | `false` | Forces incremental tables (unless marked protected) to be rebuilt from scratch. |
-| `--override-protected` | boolean | `false` | Also rebuilds incremental tables marked protected from scratch. Requires --full-refresh. |
+| `--full-refresh` | boolean | `false` | Forces incremental tables (unless marked protected; see --override-protected) to be rebuilt from scratch. |
+| `--override-protected` | boolean | `false` | Also rebuilds incremental tables marked protected from scratch. This will purge data from all protected incremental tables (unless excluded by a --actions/--tags selector), potentially leading to permanent data loss. Requires --full-refresh. |
 | `--credentials` | string | `.df-credentials.json` | Path to the credentials JSON file to use. |
 | `--json` | boolean | `false` | Outputs the result as JSON instead of human-readable text. |
 | `--timeout` | string | `'60s'` | Duration to allow project compilation to complete, e.g. '1s', '10m'. |
