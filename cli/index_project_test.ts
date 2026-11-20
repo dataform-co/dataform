@@ -296,7 +296,7 @@ SELECT  1  as   test
 
       expect(result.exitCode).not.equals(0);
       expect(result.stderr).contains(
-        "The --override-protected flag should only be supplied along with --full-refresh.",
+        "The --override-protected flag can only be supplied along with --full-refresh.",
       );
     });
   });
