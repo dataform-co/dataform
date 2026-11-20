@@ -52,15 +52,31 @@ export function getBigQueryCredentials(
   if (!fs.existsSync(cloudCredentialsPath)) {
     throw new Error(`Google Cloud private key file "${cloudCredentialsPath}" does not exist!`);
   }
-  const cloudCredentials = JSON.parse(fs.readFileSync(cloudCredentialsPath, "utf8"));
   return withServiceAccountToImpersonate(
-    {
-      projectId: cloudCredentials.project_id,
-      credentials: fs.readFileSync(cloudCredentialsPath, "utf8"),
-      location,
-    },
+    credentialsFromServiceAccountJson(fs.readFileSync(cloudCredentialsPath, "utf8"), location),
     prompts,
   );
+}
+
+// Copy a non-default universe_domain from the key so BigQuery and google-auth target the same
+// universe. googleapis.com is the GDU default; current GDU keys include it, so omit that value.
+const DEFAULT_UNIVERSE_DOMAIN = "googleapis.com";
+
+export function credentialsFromServiceAccountJson(
+  keyJson: string,
+  location: string,
+): dataform.IBigQuery {
+  const cloudCredentials = JSON.parse(keyJson);
+  const universeDomain =
+    typeof cloudCredentials.universe_domain === "string"
+      ? cloudCredentials.universe_domain.trim()
+      : "";
+  return {
+    projectId: cloudCredentials.project_id,
+    credentials: keyJson,
+    location,
+    ...(universeDomain && universeDomain !== DEFAULT_UNIVERSE_DOMAIN ? { universeDomain } : {}),
+  };
 }
 
 /** Asks for an optional service account to impersonate with the given credentials. */
