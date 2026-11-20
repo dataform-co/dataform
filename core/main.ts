@@ -16,7 +16,7 @@ import { View } from "df/core/actions/view";
 import { IDataformExtension } from "df/core/extension";
 import * as Path from "df/core/path";
 import { Session, SESSION_GLOBAL_METHODS } from "df/core/session";
-import { nativeRequire, snakeToCamelKeys, validateJobLabels } from "df/core/utils";
+import { nativeRequire, validateJobLabels } from "df/core/utils";
 import { readWorkflowSettings } from "df/core/workflow_settings";
 import { dataform } from "df/protos/ts";
 
@@ -263,7 +263,7 @@ function loadPropertyGraphs(session: Session, filePaths: string[]) {
   const graphPath = graphPaths[0];
   let configAsJson: any;
   try {
-    configAsJson = snakeToCamelKeys(nativeRequire(graphPath).asJson, new Set(["jobLabels"]));
+    configAsJson = nativeRequire(graphPath).asJson;
   } catch (e) {
     session.compileError(e, graphPath);
     return;

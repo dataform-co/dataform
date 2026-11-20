@@ -98,4 +98,90 @@ suite("@dataform/api/credentials", ({ afterEach }) => {
       /Unexpected property "unknownProperty"/,
     );
   });
+
+  test("write creates a credentials file that read parses back", () => {
+    const credentialsPath = path.join(tmpDirFixture.createNewTmpDir(), "credentials.json");
+
+    credentials.write(credentialsPath, { projectId: "my-gcp-project", location: "US" });
+
+    expect(JSON.parse(fs.readFileSync(credentialsPath, "utf8"))).to.deep.equal({
+      projectId: "my-gcp-project",
+      location: "US",
+    });
+    const parsed = credentials.read(credentialsPath);
+    expect(parsed.projectId).to.equal("my-gcp-project");
+    expect(parsed.location).to.equal("US");
+  });
+
+  test("write replaces the contents of an existing credentials file", () => {
+    const credentialsPath = path.join(tmpDirFixture.createNewTmpDir(), "credentials.json");
+    fs.writeFileSync(
+      credentialsPath,
+      JSON.stringify({ projectId: "old-gcp-project", location: "EU", credentials: "old-key" }),
+    );
+
+    credentials.write(credentialsPath, { projectId: "my-gcp-project" });
+
+    expect(JSON.parse(fs.readFileSync(credentialsPath, "utf8"))).to.deep.equal({
+      projectId: "my-gcp-project",
+    });
+  });
+
+  test("write leaves only the credentials file in its directory", () => {
+    const directory = tmpDirFixture.createNewTmpDir();
+
+    credentials.write(path.join(directory, "credentials.json"), { projectId: "my-gcp-project" });
+
+    expect(fs.readdirSync(directory)).to.deep.equal(["credentials.json"]);
+  });
+
+  test("write removes its temporary file when it cannot replace the target", () => {
+    const directory = tmpDirFixture.createNewTmpDir();
+    const credentialsPath = path.join(directory, "credentials.json");
+    // A file can't be renamed over a directory.
+    fs.mkdirSync(credentialsPath);
+
+    expect(() => credentials.write(credentialsPath, { projectId: "my-gcp-project" })).to.throw();
+
+    expect(fs.readdirSync(directory)).to.deep.equal(["credentials.json"]);
+    expect(fs.statSync(credentialsPath).isDirectory()).to.equal(true);
+  });
+
+  // Permission bits are POSIX-only.
+  if (process.platform !== "win32") {
+    const permissionBits = (filePath: string) => fs.statSync(filePath).mode & 0o777;
+
+    test("write creates the credentials file with owner-only permissions", () => {
+      const credentialsPath = path.join(tmpDirFixture.createNewTmpDir(), "credentials.json");
+
+      credentials.write(credentialsPath, { projectId: "my-gcp-project" });
+
+      expect(permissionBits(credentialsPath)).to.equal(0o600);
+    });
+
+    test("write restricts an existing credentials file to its owner", () => {
+      const credentialsPath = path.join(tmpDirFixture.createNewTmpDir(), "credentials.json");
+      fs.writeFileSync(credentialsPath, "{}");
+      // Set explicitly, so that the starting permissions don't depend on the umask.
+      fs.chmodSync(credentialsPath, 0o644);
+
+      credentials.write(credentialsPath, { projectId: "my-gcp-project" });
+
+      expect(permissionBits(credentialsPath)).to.equal(0o600);
+    });
+
+    test("write replaces a symbolic link instead of writing through it", () => {
+      const directory = tmpDirFixture.createNewTmpDir();
+      const linkTargetPath = path.join(directory, "shared.json");
+      const credentialsPath = path.join(directory, "credentials.json");
+      fs.writeFileSync(linkTargetPath, "{}");
+      fs.symlinkSync(linkTargetPath, credentialsPath);
+
+      credentials.write(credentialsPath, { projectId: "my-gcp-project" });
+
+      expect(fs.lstatSync(credentialsPath).isSymbolicLink()).to.equal(false);
+      expect(fs.readFileSync(linkTargetPath, "utf8")).to.equal("{}");
+      expect(credentials.read(credentialsPath).projectId).to.equal("my-gcp-project");
+    });
+  }
 });

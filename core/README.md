@@ -471,7 +471,7 @@ The published `@dataform/core` package includes the canonical `.proto` definitio
 
 - `core.proto` — `CompiledGraph`, `Table`, `Operation`, `Assertion`, `Declaration`, `Test`, `Notebook`, `DataPreparation`, `PropertyGraph`, `Target`, `ProjectConfig`, `CoreExecutionRequest`, `CoreExecutionResponse`.
 - `configs.proto` — `WorkflowSettings`, `ActionConfigs`, `ActionConfig` (`TableConfig`, `ViewConfig`, `IncrementalTableConfig`, `AssertionConfig`, `OperationConfig`, `DeclarationConfig`, `NotebookConfig`, `DataPreparationConfig`).
-- `property_graph_config.proto` — `PropertyGraphConfig` (`SemanticModelConfig`, `GraphAiContextConfig`, `GraphDeploymentConfig`, `GraphEntityConfig`, `GraphRelationshipConfig`, `GraphMetricConfig`).
+- `property_graph_config.proto` — `PropertyGraphConfig` (`SemanticModelConfig`, `GraphAiContextConfig`, `GraphDeploymentConfig`, `GraphEntityConfig`, `GraphRelationshipConfig`, `GraphMetricConfig`, `GraphCustomExtensionConfig`).
 - `db_adapter.proto` — `Field`, `Fields`, `TableMetadata`, `ExecutionMetadata`.
 - `jit.proto` — `DbAdapter` service, `JitCompilationRequest`, `JitCompilationResponse`, `JitTableResult`, `JitIncrementalTableResult`, `JitOperationResult`, `JitAssertionResult`.
 - `extension.proto` — `Extension` (`ExtensionCompilationMode`).
