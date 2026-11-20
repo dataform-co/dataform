@@ -720,6 +720,15 @@ SELECT 1 AS id
           dataform.TaskResult.ExecutionStatus.SUCCESSFUL,
         );
         expect(parsed.actions[0].tasks[0].compiledSql).to.include("SELECT 1 AS id");
+        // Dry runs report the statistics of BigQuery's dry-run job.
+        const bigqueryMetadata = parsed.actions[0].tasks[0].metadata.bigquery;
+        expect(bigqueryMetadata.totalBytesProcessed).deep.equals({
+          low: 0,
+          high: 0,
+          unsigned: false,
+        });
+        expect(bigqueryMetadata.referencedTables).deep.equals([]);
+        expect(bigqueryMetadata.schema).deep.equals([{ name: "id", primitive: "INTEGER" }]);
       },
     );
 
@@ -746,9 +755,11 @@ SELECT 1 AS id
       expect(parsed.actions[0].tasks[0].status).equals(
         dataform.TaskResult.ExecutionStatus.SUCCESSFUL,
       );
-      expect(parsed.actions[0].tasks[0].metadata?.bigquery?.jobId)
-        .to.be.a("string")
-        .and.not.equal("");
+      const bigqueryMetadata = parsed.actions[0].tasks[0].metadata?.bigquery;
+      expect(bigqueryMetadata?.jobId).to.be.a("string").and.not.equal("");
+      // Their contents depend on what BigQuery reports for the statement, so only check they're set.
+      expect(bigqueryMetadata.referencedTables).to.be.an("array");
+      expect(bigqueryMetadata.schema).to.be.an("array");
     });
 
     test(

@@ -2,6 +2,7 @@ import { Dataset, Table } from "@google-cloud/bigquery";
 import { expect } from "chai";
 import { EventEmitter } from "events";
 import { AuthClient, gaxios, Impersonated } from "google-auth-library";
+import Long from "long";
 import { anything, instance, mock, when } from "ts-mockito";
 
 import {
@@ -12,6 +13,7 @@ import {
   DeferredAuthClient,
   getBigQueryClientOptions,
 } from "df/cli/api/dbadapters/bigquery";
+import { prettyJsonStringify } from "df/cli/api/utils";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 
@@ -426,6 +428,345 @@ suite("BigQueryDbAdapter", () => {
       database: projectId,
       schema: liveSchema,
       name: tableName,
+    });
+  });
+
+  suite("dry runs", () => {
+    function dryRunAdapter(
+      jobMetadata: any,
+      onCreateQueryJob: (options: any) => void = () => undefined,
+    ) {
+      let resultsRead = false;
+      const mockBigQuery: any = {
+        createQueryJob: async (options: any) => {
+          onCreateQueryJob(options);
+          return [
+            {
+              metadata: jobMetadata,
+              getQueryResultsStream: () => {
+                resultsRead = true;
+                // Like BigQuery: dry-run jobs aren't saved, so reading their results fails.
+                let ended = false;
+                const stream = Object.assign(new EventEmitter(), { end: () => (ended = true) });
+                process.nextTick(() => {
+                  if (!ended) {
+                    stream.emit("error", new Error("Not found: Job"));
+                  }
+                });
+                return stream;
+              },
+            },
+          ];
+        },
+      };
+      const adapter = new BigQueryDbAdapter(dataform.BigQuery.create({ projectId: "p" }), {
+        clientProvider: () => mockBigQuery,
+      });
+      return { adapter, resultsRead: () => resultsRead };
+    }
+
+    test("returns the job statistics without reading the results", async () => {
+      let dryRunOption: boolean;
+      const { adapter, resultsRead } = dryRunAdapter(
+        {
+          jobReference: { projectId: "p", location: "US" },
+          statistics: {
+            query: {
+              statementType: "CREATE_TABLE_AS_SELECT",
+              totalBytesProcessed: "2650191",
+              referencedTables: [
+                { projectId: "bigquery-public-data", datasetId: "samples", tableId: "shakespeare" },
+              ],
+              schema: {
+                fields: [
+                  { name: "word", type: "STRING", mode: "NULLABLE" },
+                  { name: "tags", type: "STRING", mode: "REPEATED" },
+                  {
+                    name: "stats",
+                    type: "RECORD",
+                    fields: [{ name: "c", type: "INTEGER" }],
+                  },
+                ],
+              },
+            },
+          },
+        },
+        (options) => (dryRunOption = options.dryRun),
+      );
+
+      const result = await adapter.execute("CREATE TABLE t AS SELECT 1", {
+        bigquery: { dryRun: true },
+      });
+
+      expect(dryRunOption).equals(true);
+      expect(resultsRead()).equals(false);
+      expect(result.rows).deep.equals([]);
+      expect(result.metadata.bigquery.jobId).equals(undefined);
+      expect(result.metadata.bigquery.totalBytesProcessed.toString()).equals("2650191");
+      // Proto JSON form, which renders int64 as strings. `run --json` prints Long objects instead;
+      // see the precision test.
+      expect(dataform.ExecutionMetadata.create(result.metadata).toJSON()).deep.equals({
+        bigquery: {
+          totalBytesProcessed: "2650191",
+          referencedTables: [
+            { database: "bigquery-public-data", schema: "samples", name: "shakespeare" },
+          ],
+          schema: [
+            { name: "word", primitive: "STRING" },
+            { name: "tags", primitive: "STRING", flags: ["REPEATED"] },
+            { name: "stats", struct: { fields: [{ name: "c", primitive: "INTEGER" }] } },
+          ],
+        },
+      });
+    });
+
+    test("handles statistics without referenced tables or schema", async () => {
+      // As returned for scripts whose estimation stops at a DDL statement.
+      const { adapter } = dryRunAdapter({
+        statistics: {
+          query: {
+            statementType: "SCRIPT",
+            totalBytesProcessed: "0",
+            totalBytesProcessedAccuracy: "LOWER_BOUND",
+          },
+        },
+      });
+
+      const result = await adapter.execute("CREATE TEMP TABLE t AS SELECT 1; SELECT * FROM t", {
+        bigquery: { dryRun: true },
+      });
+
+      expect(result.rows).deep.equals([]);
+      expect(result.metadata.bigquery.totalBytesProcessed.toString()).equals("0");
+      expect(result.metadata.bigquery.referencedTables).deep.equals([]);
+      expect(result.metadata.bigquery.schema).deep.equals([]);
+    });
+
+    test("keeps the full precision of large byte counts", async () => {
+      // Above both 2^32 and Number.MAX_SAFE_INTEGER.
+      const { adapter } = dryRunAdapter({
+        statistics: { query: { totalBytesProcessed: "9007199254740993" } },
+      });
+
+      const result = await adapter.execute("SELECT 1", { bigquery: { dryRun: true } });
+
+      expect(result.metadata.bigquery.totalBytesProcessed.toString()).equals("9007199254740993");
+      // As printed by `run --json`.
+      const printed = JSON.parse(prettyJsonStringify({ metadata: result.metadata }));
+      expect(Object.keys(printed.metadata.bigquery.totalBytesProcessed)).to.have.members([
+        "low",
+        "high",
+        "unsigned",
+      ]);
+      expect(Long.fromValue(printed.metadata.bigquery.totalBytesProcessed).toString()).equals(
+        "9007199254740993",
+      );
+    });
+
+    test("reports 0 for byte counts BigQuery didn't report, like real runs", async () => {
+      for (const jobMetadata of [{}, { statistics: {} }, { statistics: { query: {} } }]) {
+        const { adapter } = dryRunAdapter(jobMetadata);
+
+        const result = await adapter.execute("SELECT 1", { bigquery: { dryRun: true } });
+
+        expect(JSON.parse(prettyJsonStringify(result.metadata))).deep.equals({
+          bigquery: {
+            totalBytesProcessed: { low: 0, high: 0, unsigned: false },
+            referencedTables: [],
+            schema: [],
+          },
+        });
+      }
+    });
+
+    test("maps nested repeated records and RANGE as UNKNOWN", async () => {
+      const { adapter } = dryRunAdapter({
+        statistics: {
+          query: {
+            totalBytesProcessed: "0",
+            schema: {
+              fields: [
+                {
+                  name: "events",
+                  type: "RECORD",
+                  mode: "REPEATED",
+                  fields: [
+                    { name: "amount", type: "NUMERIC" },
+                    {
+                      name: "items",
+                      type: "STRUCT",
+                      mode: "REPEATED",
+                      fields: [{ name: "tags", type: "STRING", mode: "REPEATED" }],
+                    },
+                  ],
+                },
+                { name: "period", type: "RANGE", rangeElementType: { type: "DATE" } },
+              ],
+            },
+          },
+        },
+      });
+
+      const result = await adapter.execute("SELECT 1", { bigquery: { dryRun: true } });
+
+      expect(
+        dataform.ExecutionMetadata.create(result.metadata).toJSON().bigquery.schema,
+      ).deep.equals([
+        {
+          name: "events",
+          flags: ["REPEATED"],
+          struct: {
+            fields: [
+              { name: "amount", primitive: "NUMERIC" },
+              {
+                name: "items",
+                flags: ["REPEATED"],
+                struct: {
+                  fields: [{ name: "tags", primitive: "STRING", flags: ["REPEATED"] }],
+                },
+              },
+            ],
+          },
+        },
+        { name: "period", primitive: "UNKNOWN" },
+      ]);
+    });
+
+    test("propagates errors from creating the job without retrying them", async () => {
+      let attempts = 0;
+      const { adapter, resultsRead } = dryRunAdapter({ statistics: { query: {} } }, () => {
+        attempts++;
+        throw new Error("Syntax error: Unexpected end of script at [1:7]");
+      });
+
+      let caughtError: Error;
+      try {
+        await adapter.execute("SELECT", { bigquery: { dryRun: true } });
+      } catch (e) {
+        caughtError = e;
+      }
+
+      expect(caughtError?.message).equals("Syntax error: Unexpected end of script at [1:7]");
+      expect(attempts).equals(1);
+      expect(resultsRead()).equals(false);
+    });
+
+    test("retries creating the job after a retryable error", async () => {
+      let attempts = 0;
+      const { adapter, resultsRead } = dryRunAdapter(
+        { statistics: { query: { totalBytesProcessed: "42" } } },
+        () => {
+          attempts++;
+          if (attempts === 1) {
+            throw new Error("An internal error occurred. Retrying the job may solve the problem.");
+          }
+        },
+      );
+
+      const result = await adapter.execute("SELECT 1", { bigquery: { dryRun: true } });
+
+      expect(attempts).equals(2);
+      expect(result.metadata.bigquery.totalBytesProcessed.toString()).equals("42");
+      expect(resultsRead()).equals(false);
+    });
+
+    test("rejects when cancelled while the job is being created", async () => {
+      let cancel: () => void;
+      const { adapter } = dryRunAdapter({ statistics: { query: {} } }, () => cancel());
+
+      let caughtError: Error;
+      try {
+        await adapter.execute("SELECT 1", {
+          bigquery: { dryRun: true },
+          onCancel: (handleCancel) => (cancel = handleCancel),
+        });
+      } catch (e) {
+        caughtError = e;
+      }
+
+      expect(caughtError?.message).equals("Query cancelled.");
+    });
+  });
+
+  suite("real runs", () => {
+    function realRunAdapter(jobMetadata: any) {
+      const mockBigQuery: any = {
+        createQueryJob: async () => [
+          {
+            getQueryResultsStream: () => {
+              const stream = Object.assign(new EventEmitter(), { end: () => undefined });
+              process.nextTick(() => {
+                stream.emit("data", { id: 1 });
+                stream.emit("end");
+              });
+              return stream;
+            },
+            getMetadata: async () => [jobMetadata],
+          },
+        ],
+      };
+      return new BigQueryDbAdapter(dataform.BigQuery.create({ projectId: "p" }), {
+        clientProvider: () => mockBigQuery,
+      });
+    }
+
+    test("reports referenced tables and schema with the job ID and byte counts", async () => {
+      const adapter = realRunAdapter({
+        jobReference: { projectId: "p", jobId: "dataform-123", location: "US" },
+        status: { state: "DONE" },
+        statistics: {
+          query: {
+            statementType: "CREATE_TABLE_AS_SELECT",
+            totalBytesProcessed: "2650191",
+            totalBytesBilled: "10485760",
+            referencedTables: [
+              { projectId: "bigquery-public-data", datasetId: "samples", tableId: "shakespeare" },
+            ],
+            schema: { fields: [{ name: "word", type: "STRING" }] },
+          },
+        },
+      });
+
+      const result = await adapter.execute("CREATE TABLE t AS SELECT 1");
+
+      expect(result.rows).deep.equals([{ id: 1 }]);
+      expect(dataform.ExecutionMetadata.create(result.metadata).toJSON()).deep.equals({
+        bigquery: {
+          jobId: "dataform-123",
+          totalBytesProcessed: "2650191",
+          totalBytesBilled: "10485760",
+          referencedTables: [
+            { database: "bigquery-public-data", schema: "samples", name: "shakespeare" },
+          ],
+          schema: [{ name: "word", primitive: "STRING" }],
+        },
+      });
+    });
+
+    test("leaves out what BigQuery didn't report", async () => {
+      // As returned for a real MERGE, which reports no schema.
+      const adapter = realRunAdapter({
+        jobReference: { projectId: "p", jobId: "dataform-456", location: "US" },
+        status: { state: "DONE" },
+        statistics: {
+          query: {
+            statementType: "MERGE",
+            referencedTables: [{ projectId: "p", datasetId: "s", tableId: "t" }],
+          },
+        },
+      });
+
+      const result = await adapter.execute("MERGE s.t USING (SELECT 1) ON FALSE");
+
+      expect(JSON.parse(prettyJsonStringify(result.metadata))).deep.equals({
+        bigquery: {
+          jobId: "dataform-456",
+          totalBytesBilled: { low: 0, high: 0, unsigned: false },
+          totalBytesProcessed: { low: 0, high: 0, unsigned: false },
+          referencedTables: [{ database: "p", schema: "s", name: "t" }],
+          schema: [],
+        },
+      });
     });
   });
 });
