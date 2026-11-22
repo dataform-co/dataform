@@ -46,7 +46,9 @@ steps:
         echo "Release $version already exists, skipping"
       else
         echo "Creating release notes for $version"
-        gh release create "$version" --target "${COMMIT_SHA}" --generate-notes
+        prerelease_flag=""
+        [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || prerelease_flag="--prerelease"
+        gh release create "$version" --target "${COMMIT_SHA}" --generate-notes ${prerelease_flag}
       fi
 availableSecrets:
   secretManager:
