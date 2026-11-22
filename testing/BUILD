@@ -28,7 +28,6 @@ ts_library(
         "test.ts",
     ],
     deps = [
-        "//:node_modules/@types/diff",
         "//:node_modules/@types/fs-extra",
         "//:node_modules/@types/js-yaml",
         "//:node_modules/@types/json-stable-stringify",
@@ -67,13 +66,9 @@ ts_test_suite(
     deps = [
         ":testing",
         "//:node_modules/@types/chai",
-        "//:node_modules/@types/diff",
         "//:node_modules/@types/fs-extra",
-        "//:node_modules/@types/json-stable-stringify",
         "//:node_modules/@types/node",
         "//:node_modules/chai",
-        "//:node_modules/diff",
         "//:node_modules/fs-extra",
-        "//:node_modules/json-stable-stringify",
     ],
 )
