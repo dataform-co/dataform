@@ -671,15 +671,14 @@ defaultLocation: US
     const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
     const expectedMessage =
       "When defining a Lakehouse target, 'defaultProject' must be defined in workflow_settings.yaml or 'project' in the action config.";
-    const errorsByFile = new Map(
-      result.compile.compiledGraph.graphErrors.compilationErrors.map((e) => [
-        e.fileName,
-        e.message,
-      ]),
-    );
-    expect(errorsByFile.get("definitions/lh_table.sqlx")).equals(expectedMessage);
-    expect(errorsByFile.get("definitions/lh_op.sqlx")).equals(expectedMessage);
-    expect(errorsByFile.get("definitions/lh_decl.sqlx")).equals(expectedMessage);
+    const errors = result.compile.compiledGraph.graphErrors.compilationErrors
+      .map((e) => ({ fileName: e.fileName, message: e.message }))
+      .sort((a, b) => (a.fileName ?? "").localeCompare(b.fileName ?? ""));
+    expect(errors).deep.equals([
+      { fileName: "definitions/lh_decl.sqlx", message: expectedMessage },
+      { fileName: "definitions/lh_op.sqlx", message: expectedMessage },
+      { fileName: "definitions/lh_table.sqlx", message: expectedMessage },
+    ]);
   });
 
   test("succeeds without defaultProject in workflow_settings.yaml when project is set on action, via .database(), or via compilation override", () => {
