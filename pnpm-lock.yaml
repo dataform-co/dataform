@@ -22,8 +22,10 @@ overrides:
   '@eslint/plugin-kit': ^0.7.2
   fast-uri: ^3.1.7
   minimatch@>=7.0.0 <11.0.1: ^11.0.1
-  js-beautify@1.15.4>glob: 14.0.4
-  rimraf@5.0.10>glob: 14.0.4
+  js-beautify@1.15.4>glob: 14.0.3
+  rimraf@5.0.10>glob: 14.0.3
+  glob@14.0.3>minimatch: 11.0.3
+  minimatch@11.0.3>@isaacs/nonrecursive-glob-match: 1.0.3
 
 importers:
 
@@ -42,8 +44,8 @@ importers:
         specifier: ^9.0.0
         version: 9.0.0
       glob:
-        specifier: 14.0.4
-        version: 14.0.4
+        specifier: 14.0.3
+        version: 14.0.3
       google-auth-library:
         specifier: ~10.5.0
         version: 10.5.0
@@ -332,8 +334,8 @@ packages:
   '@isaacs/nonrecursive-glob-match@1.0.1':
     resolution: {integrity: sha512-rNKPuTXBacPpn5+CP+S3/UI6uq/0jHZjPpaBLaRE3blpgX+E+ZUIrGfViPvUjUnQG6W1+3OTFUiVRCjTffs2+Q==}
 
-  '@isaacs/nonrecursive-glob-match@1.1.0':
-    resolution: {integrity: sha512-GPm/Dbvk5RLmhRnxXIa7nTpK0xtl4E0wj0MslsuNiJ1FIROU+2+9lgUC/dgF7Ey4QCWhfEsgxilMRMCdHPfDfw==}
+  '@isaacs/nonrecursive-glob-match@1.0.3':
+    resolution: {integrity: sha512-SI7kyKHq4XXDRozw+r9GlRZkia1ZkFrpLW98r2IC2Bpr8YkFGE3fvjzmxCG0x78A++69HmDNrDvSMYBZmHGpKA==}
 
   '@jridgewell/gen-mapping@0.3.8':
     resolution: {integrity: sha512-imAbBGkb+ebQyxKgzv5Hu2nmROxoDOXHh80evxdoXNOrvAnVx7zimzc1Oo5h9RlfV4vPXaE2iM5pOFbvOCClWA==}
@@ -1051,8 +1053,8 @@ packages:
   glob-to-regexp@0.4.1:
     resolution: {integrity: sha512-lkX1HJXwyMcprw/5YUZc2s7DrpAiHB21/V+E1rHUrVNokkvB6bqMzT0VfV6/86ZNabt1k14YOIaT7nDvOX3Iiw==}
 
-  glob@14.0.4:
-    resolution: {integrity: sha512-mMiwNKoJZ4HAIRVJxotO6LsNRReA30gQwP9E2/p94tfLv+jygCNpKDjhhSL6OLY6LE371EZm5EAf7RpYuUqlsw==}
+  glob@14.0.3:
+    resolution: {integrity: sha512-A1vjIwC3qpdCso45Iw127gnp7sPhqgY8lUQhDrArIs+GbmfaaVPFuoyy7WyLT9EPZCRZ7j7aLdwUhQmHWesEow==}
     engines: {node: 18 || 20 || >=22}
 
   glob@8.0.3:
@@ -1318,9 +1320,9 @@ packages:
     resolution: {integrity: sha512-t+Vn6DX4wPCxS23y03C0uhF7S1jpi1GfqPrnlEipCJaA2ykiNbMkVlDutZtmvLfRcUN6R8AYVlzTsQrT4RZoLQ==}
     engines: {node: 18 || 20 || >=22}
 
-  minimatch@11.0.9:
-    resolution: {integrity: sha512-KCFkfyjqerNlSstjlhIGNXIKZGA/6O4V4RlhZ+Dsr621SPPw0mzlypE9D9ZOoPiVefHID+j7/XuMMlqfD/F60Q==}
-    engines: {node: 20 || >=22}
+  minimatch@11.0.3:
+    resolution: {integrity: sha512-iny/40PEGkNJQ5/Pv6z3nm6FbRAby32GeZRjCUJk2WnNDbgPSTcdI+DDvLqsgBdD4cD5sMtMheqPPnehCCa8Nw==}
+    engines: {node: 18 || 20 || >=22}
 
   minimatch@5.1.9:
     resolution: {integrity: sha512-7o1wEA2RyMP7Iu7GNba9vc0RWWGACJOCZBJX2GJWip0ikV+wcOsgVuY9uE8CPiyQhkGFSlhuSkZPavN7u1c2Fw==}
@@ -2000,7 +2002,7 @@ snapshots:
 
   '@isaacs/nonrecursive-glob-match@1.0.1': {}
 
-  '@isaacs/nonrecursive-glob-match@1.1.0': {}
+  '@isaacs/nonrecursive-glob-match@1.0.3': {}
 
   '@jridgewell/gen-mapping@0.3.8':
     dependencies:
@@ -2737,9 +2739,9 @@ snapshots:
 
   glob-to-regexp@0.4.1: {}
 
-  glob@14.0.4:
+  glob@14.0.3:
     dependencies:
-      minimatch: 11.0.9
+      minimatch: 11.0.3
       minipass: 7.1.3
       path-scurry: 3.0.0
 
@@ -2887,7 +2889,7 @@ snapshots:
     dependencies:
       config-chain: 1.1.13
       editorconfig: 1.0.7
-      glob: 14.0.4
+      glob: 14.0.3
       js-cookie: 3.0.8
       nopt: 7.2.1
 
@@ -3038,9 +3040,9 @@ snapshots:
       '@isaacs/nonrecursive-glob-match': 1.0.1
       brace-expansion: 5.0.12
 
-  minimatch@11.0.9:
+  minimatch@11.0.3:
     dependencies:
-      '@isaacs/nonrecursive-glob-match': 1.1.0
+      '@isaacs/nonrecursive-glob-match': 1.0.3
       brace-expansion: 5.0.12
 
   minimatch@5.1.9:
@@ -3250,7 +3252,7 @@ snapshots:
 
   rimraf@5.0.10:
     dependencies:
-      glob: 14.0.4
+      glob: 14.0.3
 
   rollup-plugin-dts@6.4.1(rollup@3.30.0)(typescript@5.5.4):
     dependencies:
