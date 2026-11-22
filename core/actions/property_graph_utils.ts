@@ -348,13 +348,24 @@ export function parseSourceTableString(rawSource: string, where: string): datafo
   const withoutPrefix = trimmed.startsWith("bigquery:")
     ? trimmed.slice("bigquery:".length)
     : trimmed;
-  const parts = withoutPrefix.split(".");
+  const colonIndex = withoutPrefix.indexOf(":");
+  if (colonIndex === 0 || (colonIndex > 0 && withoutPrefix.includes(":", colonIndex + 1))) {
+    throw new Error(
+      `${where}: 'source' must be a '{ ref: ... }' object, 'bigquery:project.dataset.table', ` +
+        `'project.dataset.table', or ` +
+        `'bigquery.googleapis.com/projects/<project>/datasets/<dataset>/tables/<table>' ` +
+        `(got '${rawSource}').`,
+    );
+  }
+  const domainPrefix = colonIndex > 0 ? withoutPrefix.slice(0, colonIndex + 1) : "";
+  const afterDomain = colonIndex > 0 ? withoutPrefix.slice(colonIndex + 1) : withoutPrefix;
+  const parts = afterDomain.split(".");
   if (parts.length === 4 && parts.every((p) => p.length > 0)) {
     throw new Error(`${where}: ${CATALOG_NOT_SUPPORTED_MESSAGE}`);
   }
   if (parts.length === 3 && parts.every((p) => p.length > 0)) {
     return dataform.Target.create({
-      database: parts[0],
+      database: `${domainPrefix}${parts[0]}`,
       schema: parts[1],
       name: parts[2],
     });

@@ -182,7 +182,10 @@ export abstract class ActionBuilder<T> {
         target,
       );
     }
-    if (target.database.includes(".")) {
+    const projectId = target.database.includes(":")
+      ? target.database.slice(target.database.indexOf(":") + 1)
+      : target.database;
+    if (projectId.includes(".")) {
       this.session.compileError(
         new Error("Action target projects cannot include '.'"),
         fileName,

@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import { load as loadYaml } from "js-yaml";
 
 import { Structs } from "df/common/protos/structs";
 import { PropertyGraph } from "df/core/actions/property_graph";
@@ -174,10 +175,17 @@ suite("property_graph", () => {
     );
   });
 
-  test("supports all 3 source string formats (bigquery:p.d.t, p.d.t, and GCP table URI) and rejects leading //", () => {
+  test("supports all 3 source string formats (bigquery:p.d.t, p.d.t, and GCP table URI), including domain-scoped projects, and rejects leading //", () => {
     const compiled = compile(
       makeModelConfig({
         name: "G",
+        deployments: [
+          {
+            name: "default",
+            target:
+              "bigquery.googleapis.com/projects/google.com:graph-proj/datasets/graph_ds/propertyGraphs/G",
+          },
+        ],
         entities: [
           {
             name: "A",
@@ -194,14 +202,61 @@ suite("property_graph", () => {
             source: "bigquery.googleapis.com/projects/p3/datasets/d3/tables/T3",
             primary_key: ["id"],
           },
+          {
+            name: "D",
+            source: "bigquery:google.com:p4.d4.T4",
+            primary_key: ["id"],
+          },
+          {
+            name: "E",
+            source: "sub.domain.com:p5.d5.T5",
+            primary_key: ["id"],
+          },
         ],
       }),
     );
 
+    expect(asPlainObject(compiled.target)).deep.equals({
+      database: "google.com:graph-proj",
+      schema: "graph_ds",
+      name: "G",
+    });
     expect(asPlainObject(compiled.nodes)).deep.equals([
       { name: "A", dataSource: { database: "p1", schema: "d1", name: "T1" }, keys: ["id"] },
       { name: "B", dataSource: { database: "p2", schema: "d2", name: "T2" }, keys: ["id"] },
       { name: "C", dataSource: { database: "p3", schema: "d3", name: "T3" }, keys: ["id"] },
+      {
+        name: "D",
+        dataSource: { database: "google.com:p4", schema: "d4", name: "T4" },
+        keys: ["id"],
+      },
+      {
+        name: "E",
+        dataSource: { database: "sub.domain.com:p5", schema: "d5", name: "T5" },
+        keys: ["id"],
+      },
+    ]);
+
+    const badDeploySession = makeSession();
+    const badDeployGraph = new PropertyGraph(
+      badDeploySession,
+      makeModelConfig({
+        name: "G",
+        deployments: [
+          {
+            name: "default",
+            target:
+              "bigquery.googleapis.com/projects/google.com:bad.proj/datasets/bad.ds/propertyGraphs/G",
+          },
+        ],
+        entities: [{ name: "A", source: "p1.d1.T1", primary_key: ["id"] }],
+      }),
+      "definitions/graph.yaml",
+    );
+    expect(badDeployGraph.getTarget().name).equals("G");
+    expect(badDeploySession.graphErrors.compilationErrors.map((e) => e.message)).deep.equals([
+      "Action target datasets cannot include '.'",
+      "Action target projects cannot include '.'",
     ]);
 
     expect(() =>
@@ -1594,6 +1649,7 @@ suite("property_graph", () => {
 
     for (const protoPayload of [
       JSON.parse('{"__proto__":{"polluted":true}}'),
+      Object.setPrototypeOf({}, { polluted: true }),
       { nested_obj: [JSON.parse('{"__proto__":"bad"}')] },
     ]) {
       expect(() =>
@@ -1605,6 +1661,59 @@ suite("property_graph", () => {
           }),
         ),
       ).to.throw("Property graph 'G': 'ai_context.custom' member '__proto__' is not supported.");
+    }
+
+    class CustomMetadata {}
+    const yamlParsedWithDate = loadYaml(
+      [
+        "version: 0.2.0.dev0/google",
+        "semantic_model:",
+        "  - name: G",
+        "    ai_context:",
+        "      custom:",
+        "        verified_on: 2026-05-01",
+        "    entities:",
+        "      - name: A",
+        "        source: p.d.A",
+        "        primary_key: [id]",
+      ].join("\n"),
+    );
+    expect(() => build(yamlParsedWithDate)).to.throw(
+      "Property graph 'G': 'ai_context.custom' contains an unsupported non-plain object; expected strings, finite numbers, booleans, null, arrays, or plain objects.",
+    );
+
+    for (const nonPlain of [
+      { re: /pattern/ },
+      { map: new Map([["k", "v"]]) },
+      { set: new Set(["v"]) },
+      { instance: new CustomMetadata() },
+      new Date("2026-05-01T00:00:00.000Z"),
+    ]) {
+      expect(() =>
+        build(
+          makeModelConfig({
+            name: "G",
+            ai_context: { custom: nonPlain },
+            entities: [{ name: "A", source: "p.d.A", primary_key: ["id"] }],
+          }),
+        ),
+      ).to.throw(
+        "Property graph 'G': 'ai_context.custom' contains an unsupported non-plain object; expected strings, finite numbers, booleans, null, arrays, or plain objects.",
+      );
+    }
+
+    for (const badExtData of [new Date("2026-05-01T00:00:00.000Z"), new Map([["k", "v"]]), /re/]) {
+      expect(() =>
+        build(
+          makeModelConfig({
+            name: "G",
+            custom_extensions: [{ vendor_name: "acme", data: badExtData }],
+            entities: [{ name: "A", source: "p.d.A", primary_key: ["id"] }],
+          }),
+        ),
+      ).to.throw(
+        "Property graph 'G': 'custom_extensions' entry for vendor 'acme' must declare 'data' as a string or mapping object.",
+      );
     }
 
     expect(() =>

@@ -1503,4 +1503,80 @@ semantic_model:
       }),
     );
   });
+
+  test("compiles graph.yaml with explicit deployments when defaultDataset is omitted from workflow_settings.yaml", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    writeWorkflowSettingsFile(
+      projectDir,
+      `
+defaultProject: defaultProject
+defaultLocation: US
+`,
+    );
+    writeDefinitionFile(
+      projectDir,
+      "graph.yaml",
+      `
+version: 0.2.0.dev0/google
+semantic_model:
+- name: DeployedGraph
+  deployments:
+  - name: default
+    target: bigquery.googleapis.com/projects/customProj/datasets/customDs/propertyGraphs/DeployedGraph
+  entities:
+  - name: Node
+    source: bigquery:customProj.customDs.nodes
+    primary_key:
+    - id
+`,
+    );
+
+    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+    expect(asPlainGraph(result.compile?.compiledGraph)).deep.equals(
+      asPlainObject({
+        projectConfig: {
+          warehouse: "bigquery",
+          defaultDatabase: "defaultProject",
+          defaultLocation: "US",
+        },
+        graphErrors: {},
+        dataformCoreVersion: version,
+        targets: [{ database: "customProj", schema: "customDs", name: "DeployedGraph" }],
+        jitData: {},
+        propertyGraphs: [
+          {
+            target: {
+              database: "customProj",
+              schema: "customDs",
+              name: "DeployedGraph",
+            },
+            canonicalTarget: {
+              database: "customProj",
+              schema: "customDs",
+              name: "DeployedGraph",
+            },
+            fileName: "definitions/graph.yaml",
+            description: "",
+            disabled: false,
+            nodes: [
+              {
+                name: "Node",
+                dataSource: {
+                  database: "customProj",
+                  schema: "customDs",
+                  name: "nodes",
+                },
+                keys: ["id"],
+              },
+            ],
+            graphBody:
+              "NODE TABLES (\n" +
+              "  `customProj.customDs.nodes` AS Node KEY (id) PROPERTIES ALL COLUMNS\n" +
+              ")",
+          },
+        ],
+      }),
+    );
+  });
 });
