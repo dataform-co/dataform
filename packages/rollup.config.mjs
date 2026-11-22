@@ -20,7 +20,6 @@ const knownNodeBuiltins = [
   "child_process",
   "crypto",
   "events",
-  "long",
   "https",
   "net",
   "module",
