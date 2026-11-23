@@ -511,7 +511,20 @@ export class OperationContext implements IActionContext {
   }
 
   public schema(): string {
-    return this.operation.session.finalizeSchema(this.operation.getTarget().schema);
+    const schema = this.operation.getTarget().schema;
+    if (!schema) {
+      if (!this.operation.getHasOutput()) {
+        this.operation.session.compileError(
+          new Error(
+            "Action targets must have a dataset to call schema(). Set defaultDataset in workflow_settings.yaml or dataset in the action config.",
+          ),
+          this.operation.getFileName(),
+          this.operation.getTarget(),
+        );
+      }
+      return "";
+    }
+    return this.operation.session.finalizeSchema(schema);
   }
 
   public database(): string {

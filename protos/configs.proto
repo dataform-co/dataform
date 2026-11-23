@@ -211,6 +211,18 @@ message ActionConfig {
     // If set, the resulting assertion will fail if any row violates any of
     // these condition(s).
     repeated string row_conditions = 4;
+
+    // Optional. The dataset (schema) in which to create the resulting
+    // assertion(s). Takes precedence over `defaultAssertionDataset` in
+    // `workflow_settings.yaml`. If neither is set, the assertion(s) are created
+    // in the same dataset as the action they are defined on.
+    string dataset = 5;
+
+    // Optional. The Google Cloud project (database) in which to create the
+    // resulting assertion(s). Takes precedence over the project of the action
+    // they are defined on. If unset, the assertion(s) are created in the same
+    // project as the action they are defined on.
+    string project = 6;
   }
 
   message IcebergTableConfig {

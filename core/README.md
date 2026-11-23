@@ -217,8 +217,7 @@ config {
   bigquery: {
     partitionBy: "DATE(event_timestamp)",
     updatePartitionFilter: "event_timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 7 DAY)"
-  },
-  protected: false
+  }
 }
 
 SELECT
@@ -234,7 +233,7 @@ Incremental-specific config properties (in addition to `table` properties):
 - `incrementalStrategy`: `"merge"` (requires `uniqueKey`) or `"insert_overwrite"` (requires `partitionBy`) in SQLX and JavaScript (or `"INCREMENTAL_STRATEGY_MERGE"` / `"INCREMENTAL_STRATEGY_INSERT_OVERWRITE"` in `actions.yaml`).
 - `updatePartitionFilter` / `incrementalPredicates`: Mutually exclusive SQL filter(s) restricting target partitions scanned during incremental updates (setting both is a compile error; prefer `incrementalPredicates`).
 - `onSchemaChange`: `"IGNORE"` (default), `"FAIL"`, `"EXTEND"`, or `"SYNCHRONIZE"`.
-- `protected` (default `true`): Prevents the table from being dropped and rebuilt from scratch on `--full-refresh`. Set `protected: false` to allow full refreshes.
+- `protected` (default `false`): Prevents the table from being dropped and rebuilt from scratch on `--full-refresh`. Set `protected: true` on specific incremental tables to avoid overwriting them on full refreshes.
 
 ---
 
@@ -284,7 +283,7 @@ When `hasOutput: true` is set, the operation registers a referenceable target at
 
 ### `assertion` and Built-in Assertions
 
-An assertion is a data quality query that **fails if it returns one or more rows**. Assertions materialize as views in `defaultAssertionDataset`, falling back to `defaultDataset` when omitted (`dataform init` sets `"dataform_assertions"`). See [`AssertionConfig`](https://dataform-co.github.io/dataform/docs/reference/configs#dataform-ActionConfig-AssertionConfig).
+An assertion is a data quality query that **fails if it returns one or more rows**. Assertions materialize as views in `defaultAssertionDataset`, falling back to `defaultDataset` when omitted (`dataform init` sets `"dataform_assertions"`). The default dataset can be overridden for specific actions by setting the `dataset` parameter in the action config (or inside the `assertions` block for inline assertions). See [`AssertionConfig`](https://dataform-co.github.io/dataform/docs/reference/configs#dataform-ActionConfig-AssertionConfig).
 
 ```sql
 -- definitions/assertions/assert_positive_order_amount.sqlx
