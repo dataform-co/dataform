@@ -35,6 +35,8 @@ export const compileCommand: ICommand<ICompileArgs> = {
         outputType = compiledGraphOutputType.Json;
       } else if (argv.dot) {
         outputType = compiledGraphOutputType.Dot;
+      } else if (argv.mermaid) {
+        outputType = compiledGraphOutputType.Mermaid;
       }
 
       if (outputType === compiledGraphOutputType.Summary) {

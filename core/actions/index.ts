@@ -11,6 +11,7 @@ import { View } from "df/core/actions/view";
 import { IColumnsDescriptor } from "df/core/column_descriptors";
 import { Resolvable } from "df/core/contextables";
 import { Session } from "df/core/session";
+import { hasInvalidProjectColonUsage, stripProjectDomainPrefix } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 
 export type Action =
@@ -137,7 +138,8 @@ export abstract class ActionBuilder<T> {
         inlineAssertions.uniqueKeyAssertions.push(uniqueKeyAssertion);
       });
     }
-    const mergedRowConditions = tableAssertionsConfig.rowConditions || [];
+    // Copy, so nonNull conditions are not appended to an array the user may share across actions.
+    const mergedRowConditions = [...(tableAssertionsConfig.rowConditions || [])];
     if (!!tableAssertionsConfig.nonNull) {
       const nonNullCols =
         typeof tableAssertionsConfig.nonNull === "string"
@@ -182,7 +184,17 @@ export abstract class ActionBuilder<T> {
         target,
       );
     }
-    if (target.database.includes(".")) {
+    if (hasInvalidProjectColonUsage(target.database)) {
+      this.session.compileError(
+        new Error(
+          "Action target projects with ':' must follow '<domain>:<project>' with non-empty segments",
+        ),
+        fileName,
+        target,
+      );
+      return;
+    }
+    if (stripProjectDomainPrefix(target.database).includes(".")) {
       this.session.compileError(
         new Error("Action target projects cannot include '.'"),
         fileName,

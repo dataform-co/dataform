@@ -35,7 +35,7 @@ message WorkflowSettings {
   // https://cloud.google.com/bigquery/docs/locations.
   string default_location = 4;
 
-  // Required. Default BigQuery dataset (`schema`) for assertion views.
+  // Optional. Default BigQuery dataset (`schema`) for assertion views (falls back to `defaultDataset` when omitted).
   string default_assertion_dataset = 5;
 
   // Optional. Custom string key-value variables accessible via `dataform.projectConfig.vars.<key>`.

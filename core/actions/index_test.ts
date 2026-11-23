@@ -623,4 +623,96 @@ publish("name", {
       );
     });
   });
+
+  test("domain-scoped GCP project IDs compile and resolve refs while malformed or dotted project IDs fail", () => {
+    const compileWith = (defaultProject: string, defs: Record<string, string>) => {
+      const dir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(dir, "workflow_settings.yaml"),
+        `defaultProject: ${defaultProject}\ndefaultDataset: ds\ndefaultLocation: US\n`,
+      );
+      fs.mkdirSync(path.join(dir, "definitions"));
+      for (const [name, body] of Object.entries(defs)) {
+        fs.writeFileSync(path.join(dir, "definitions", name), body);
+      }
+      return runMainInVm(coreExecutionRequestFromPath(dir)).compile.compiledGraph;
+    };
+
+    const validGraph = compileWith("google.com:my-project", {
+      "base.sqlx": `config { type: "table" }\nSELECT 1 AS id`,
+      "view.sqlx": `config { type: "view", database: "sub.domain.com:other" }\nSELECT * FROM \${ref("base")}`,
+    });
+    expect(validGraph.graphErrors.compilationErrors).deep.equals([]);
+    const baseTarget = { database: "google.com:my-project", schema: "ds", name: "base" };
+    const viewTarget = { database: "sub.domain.com:other", schema: "ds", name: "view" };
+    expect(asPlainObject(validGraph.tables)).deep.equals(
+      asPlainObject([
+        {
+          target: baseTarget,
+          canonicalTarget: baseTarget,
+          type: "table",
+          enumType: "TABLE",
+          disabled: false,
+          fileName: "definitions/base.sqlx",
+          hermeticity: "NON_HERMETIC",
+          query: "\nSELECT 1 AS id",
+        },
+        {
+          target: viewTarget,
+          canonicalTarget: viewTarget,
+          dependencyTargets: [baseTarget],
+          type: "view",
+          enumType: "VIEW",
+          disabled: false,
+          fileName: "definitions/view.sqlx",
+          hermeticity: "NON_HERMETIC",
+          query: "\nSELECT * FROM `google.com:my-project.ds.base`",
+        },
+      ]),
+    );
+
+    const invalidGraph = compileWith("google.com:my-project.typo_ds", {
+      "t1.sqlx": `config { type: "table" }\nSELECT 1`,
+      "t2.sqlx": `config { type: "table", database: "my-project.typo_ds" }\nSELECT 1`,
+      "t3.sqlx": `config { type: "table", database: ":proj" }\nSELECT 1`,
+      "t4.sqlx": `config { type: "table", database: "dom:" }\nSELECT 1`,
+      "t5.sqlx": `config { type: "table", database: "a:b:c" }\nSELECT 1`,
+    });
+    expect(
+      invalidGraph.graphErrors.compilationErrors.map(({ message, fileName, actionTarget }) => ({
+        message,
+        fileName,
+        actionTarget: asPlainObject(actionTarget),
+      })),
+    ).deep.equals([
+      {
+        message: "Action target projects cannot include '.'",
+        fileName: "definitions/t1.sqlx",
+        actionTarget: { database: "google.com:my-project.typo_ds", schema: "ds", name: "t1" },
+      },
+      {
+        message: "Action target projects cannot include '.'",
+        fileName: "definitions/t2.sqlx",
+        actionTarget: { database: "my-project.typo_ds", schema: "ds", name: "t2" },
+      },
+      {
+        message:
+          "Action target projects with ':' must follow '<domain>:<project>' with non-empty segments",
+        fileName: "definitions/t3.sqlx",
+        actionTarget: { database: ":proj", schema: "ds", name: "t3" },
+      },
+      {
+        message:
+          "Action target projects with ':' must follow '<domain>:<project>' with non-empty segments",
+        fileName: "definitions/t4.sqlx",
+        actionTarget: { database: "dom:", schema: "ds", name: "t4" },
+      },
+      {
+        message:
+          "Action target projects with ':' must follow '<domain>:<project>' with non-empty segments",
+        fileName: "definitions/t5.sqlx",
+        actionTarget: { database: "a:b:c", schema: "ds", name: "t5" },
+      },
+    ]);
+  });
 });
