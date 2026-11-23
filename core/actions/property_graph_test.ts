@@ -212,6 +212,11 @@ suite("property_graph", () => {
             source: "sub.domain.com:p5.d5.T5",
             primary_key: ["id"],
           },
+          {
+            name: "F",
+            source: "bigquery.googleapis.com/projects/google.com:p6/datasets/d6/tables/T6",
+            primary_key: ["id"],
+          },
         ],
       }),
     );
@@ -235,7 +240,44 @@ suite("property_graph", () => {
         dataSource: { database: "sub.domain.com:p5", schema: "d5", name: "T5" },
         keys: ["id"],
       },
+      {
+        name: "F",
+        dataSource: { database: "google.com:p6", schema: "d6", name: "T6" },
+        keys: ["id"],
+      },
     ]);
+
+    for (const invalidSource of [
+      "bigquery::p.d.T",
+      "dom:.d.T",
+      "a:b:p.d.T",
+      "bigquery.googleapis.com/projects/:p/datasets/d/tables/T",
+      "bigquery.googleapis.com/projects/dom:/datasets/d/tables/T",
+      "bigquery.googleapis.com/projects/a:b:p/datasets/d/tables/T",
+      "bigquery.googleapis.com/projects/google.com:bad.p/datasets/d/tables/T",
+      "bigquery.googleapis.com/projects/p/datasets/bad.d/tables/T",
+      "bigquery.googleapis.com/projects/p/datasets/d/tables/bad.T",
+    ]) {
+      expect(() =>
+        build(
+          makeModelConfig({
+            name: "G",
+            entities: [{ name: "Bad", source: invalidSource, primary_key: ["id"] }],
+          }),
+        ),
+      ).to.throw(`(got '${invalidSource}')`);
+    }
+
+    expect(() =>
+      build(
+        makeModelConfig({
+          name: "G",
+          entities: [{ name: "Bad", source: "google.com:bad.proj.d.T", primary_key: ["id"] }],
+        }),
+      ),
+    ).to.throw(
+      "Property graph 'G': entity 'Bad': Catalog-based data sources (BigLake/Iceberg/external catalogs) are not yet supported.",
+    );
 
     const badDeploySession = makeSession();
     const badDeployGraph = new PropertyGraph(

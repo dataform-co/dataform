@@ -624,7 +624,7 @@ publish("name", {
     });
   });
 
-  test("domain-scoped GCP project IDs compile and resolve refs while dotted project typos fail", () => {
+  test("domain-scoped GCP project IDs compile and resolve refs while malformed or dotted project IDs fail", () => {
     const compileWith = (defaultProject: string, defs: Record<string, string>) => {
       const dir = tmpDirFixture.createNewTmpDir();
       fs.writeFileSync(
@@ -674,6 +674,9 @@ publish("name", {
     const invalidGraph = compileWith("google.com:my-project.typo_ds", {
       "t1.sqlx": `config { type: "table" }\nSELECT 1`,
       "t2.sqlx": `config { type: "table", database: "my-project.typo_ds" }\nSELECT 1`,
+      "t3.sqlx": `config { type: "table", database: ":proj" }\nSELECT 1`,
+      "t4.sqlx": `config { type: "table", database: "dom:" }\nSELECT 1`,
+      "t5.sqlx": `config { type: "table", database: "a:b:c" }\nSELECT 1`,
     });
     expect(
       invalidGraph.graphErrors.compilationErrors.map(({ message, fileName, actionTarget }) => ({
@@ -691,6 +694,24 @@ publish("name", {
         message: "Action target projects cannot include '.'",
         fileName: "definitions/t2.sqlx",
         actionTarget: { database: "my-project.typo_ds", schema: "ds", name: "t2" },
+      },
+      {
+        message:
+          "Action target projects with ':' must follow '<domain>:<project>' with non-empty segments",
+        fileName: "definitions/t3.sqlx",
+        actionTarget: { database: ":proj", schema: "ds", name: "t3" },
+      },
+      {
+        message:
+          "Action target projects with ':' must follow '<domain>:<project>' with non-empty segments",
+        fileName: "definitions/t4.sqlx",
+        actionTarget: { database: "dom:", schema: "ds", name: "t4" },
+      },
+      {
+        message:
+          "Action target projects with ':' must follow '<domain>:<project>' with non-empty segments",
+        fileName: "definitions/t5.sqlx",
+        actionTarget: { database: "a:b:c", schema: "ds", name: "t5" },
       },
     ]);
   });

@@ -6,6 +6,7 @@ import {
   orderedExtensionEntries,
   validateMetricExpression,
 } from "df/core/actions/property_graph_validation";
+import { hasInvalidProjectColonUsage, stripProjectDomainPrefix } from "df/core/targets";
 import { snakeToCamelKeys } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
@@ -331,7 +332,13 @@ export function parseSourceTableString(rawSource: string, where: string): datafo
   }
   if (trimmed.startsWith("bigquery.googleapis.com/")) {
     const match = trimmed.match(TABLE_SOURCE_URI_REGEX);
-    if (!match) {
+    if (
+      !match ||
+      hasInvalidProjectColonUsage(match[1]) ||
+      stripProjectDomainPrefix(match[1]).includes(".") ||
+      match[2].includes(".") ||
+      match[3].includes(".")
+    ) {
       throw new Error(
         `${where}: 'source' URI must match ` +
           `'bigquery.googleapis.com/projects/<project>/datasets/<dataset>/tables/<table>' ` +
@@ -348,27 +355,21 @@ export function parseSourceTableString(rawSource: string, where: string): datafo
   const withoutPrefix = trimmed.startsWith("bigquery:")
     ? trimmed.slice("bigquery:".length)
     : trimmed;
-  const colonIndex = withoutPrefix.indexOf(":");
-  if (colonIndex === 0 || (colonIndex > 0 && withoutPrefix.includes(":", colonIndex + 1))) {
-    throw new Error(
-      `${where}: 'source' must be a '{ ref: ... }' object, 'bigquery:project.dataset.table', ` +
-        `'project.dataset.table', or ` +
-        `'bigquery.googleapis.com/projects/<project>/datasets/<dataset>/tables/<table>' ` +
-        `(got '${rawSource}').`,
-    );
-  }
-  const domainPrefix = colonIndex > 0 ? withoutPrefix.slice(0, colonIndex + 1) : "";
-  const afterDomain = colonIndex > 0 ? withoutPrefix.slice(colonIndex + 1) : withoutPrefix;
-  const parts = afterDomain.split(".");
-  if (parts.length === 4 && parts.every((p) => p.length > 0)) {
-    throw new Error(`${where}: ${CATALOG_NOT_SUPPORTED_MESSAGE}`);
-  }
-  if (parts.length === 3 && parts.every((p) => p.length > 0)) {
-    return dataform.Target.create({
-      database: `${domainPrefix}${parts[0]}`,
-      schema: parts[1],
-      name: parts[2],
-    });
+  if (!hasInvalidProjectColonUsage(withoutPrefix)) {
+    const colonIndex = withoutPrefix.indexOf(":");
+    const domainPrefix = colonIndex > 0 ? withoutPrefix.slice(0, colonIndex + 1) : "";
+    const afterDomain = stripProjectDomainPrefix(withoutPrefix);
+    const parts = afterDomain.split(".");
+    if (parts.length === 4 && parts.every((p) => p.length > 0)) {
+      throw new Error(`${where}: ${CATALOG_NOT_SUPPORTED_MESSAGE}`);
+    }
+    if (parts.length === 3 && parts.every((p) => p.length > 0)) {
+      return dataform.Target.create({
+        database: `${domainPrefix}${parts[0]}`,
+        schema: parts[1],
+        name: parts[2],
+      });
+    }
   }
   throw new Error(
     `${where}: 'source' must be a '{ ref: ... }' object, 'bigquery:project.dataset.table', ` +
