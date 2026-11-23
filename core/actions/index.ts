@@ -11,7 +11,11 @@ import { View } from "df/core/actions/view";
 import { IColumnsDescriptor } from "df/core/column_descriptors";
 import { Resolvable } from "df/core/contextables";
 import { Session } from "df/core/session";
-import { hasInvalidProjectColonUsage, stripProjectDomainPrefix } from "df/core/targets";
+import {
+  hasInvalidProjectColonUsage,
+  resolvableAsActionConfigTarget,
+  stripProjectDomainPrefix,
+} from "df/core/targets";
 import { dataform } from "df/protos/ts";
 
 export type Action =
@@ -128,13 +132,26 @@ export abstract class ActionBuilder<T> {
     // `database` and `schema` are the legacy names for `project` and `dataset`; they are accepted
     // here for callers of the JS API's `.assertions()` method, which bypasses the legacy config
     // conversion. That method is deprecated, so once it's removed this code can be simplified.
-    this.inlineAssertionsProject =
-      (tableAssertionsConfig as any).database || tableAssertionsConfig.project || undefined;
+    const assertionsConfig: Record<string, any> = { ...tableAssertionsConfig };
+    this.resolveLegacyAlias(
+      assertionsConfig,
+      "database",
+      "project",
+      proto.fileName,
+      "assertions.",
+    );
+    this.resolveLegacyAlias(
+      assertionsConfig,
+      "schema",
+      "dataset",
+      proto.fileName,
+      "assertions.",
+    );
+    this.inlineAssertionsProject = assertionsConfig.project || undefined;
     // Precedence: action-level assertion project, then the project of the parent action (which
     // itself falls back to the default project).
     const project = this.inlineAssertionsProject || proto.target.database || undefined;
-    this.inlineAssertionsDataset =
-      (tableAssertionsConfig as any).schema || tableAssertionsConfig.dataset || undefined;
+    this.inlineAssertionsDataset = assertionsConfig.dataset || undefined;
     const dataset =
       this.inlineAssertionsDataset ||
       this.session.projectConfig.assertionSchema ||
@@ -261,6 +278,82 @@ export abstract class ActionBuilder<T> {
    */
   private inlineAssertionsFollowActionDatabase(): boolean {
     return !this.inlineAssertionsProject;
+  }
+
+  /**
+   * Normalizes legacy config field aliases (`database` -> `project`, `schema` -> `dataset`,
+   * `fileName` -> `filename`, and `dependencies` -> `dependencyTargets`) on `config` in place,
+   * reporting a compile error if both the modern and legacy names are specified in the same
+   * config.
+   */
+  protected normalizeLegacyConfigAliases(config: Record<string, any>, fileName?: string) {
+    if (!config) {
+      return;
+    }
+    const resolvedFileName = fileName || config.filename || config.fileName;
+    if (config.dependencies !== undefined) {
+      if (Array.isArray(config.dependencies) && config.dependencies.length > 0) {
+        if (config.dependencyTargets?.length > 0) {
+          this.session?.compileError(
+            new Error(
+              "Cannot specify both 'dependencyTargets' and 'dependencies' in the same config.",
+            ),
+            resolvedFileName,
+          );
+        } else {
+          config.dependencyTargets = config.dependencies.map((dependency: string | object) =>
+            resolvableAsActionConfigTarget(dependency),
+          );
+        }
+      } else if (config.dependencyTargets === undefined && Array.isArray(config.dependencies)) {
+        config.dependencyTargets = [];
+      }
+      delete config.dependencies;
+    }
+    this.resolveLegacyAlias(config, "database", "project", resolvedFileName);
+    this.resolveLegacyAlias(config, "schema", "dataset", resolvedFileName);
+    this.resolveLegacyAlias(config, "fileName", "filename", resolvedFileName);
+    if (config.assertions) {
+      config.assertions = { ...config.assertions };
+      this.resolveLegacyAlias(
+        config.assertions,
+        "database",
+        "project",
+        resolvedFileName,
+        "assertions.",
+      );
+      this.resolveLegacyAlias(
+        config.assertions,
+        "schema",
+        "dataset",
+        resolvedFileName,
+        "assertions.",
+      );
+    }
+  }
+
+  private resolveLegacyAlias(
+    config: Record<string, any>,
+    legacyKey: string,
+    modernKey: string,
+    fileName?: string,
+    keyPrefix = "",
+  ) {
+    if (config[legacyKey] !== undefined) {
+      if (config[legacyKey]) {
+        if (config[modernKey]) {
+          this.session?.compileError(
+            new Error(
+              `Cannot specify both '${keyPrefix}${modernKey}' and '${keyPrefix}${legacyKey}' in the same config.`,
+            ),
+            fileName,
+          );
+        } else {
+          config[modernKey] = config[legacyKey];
+        }
+      }
+      delete config[legacyKey];
+    }
   }
 
   private validateTarget(target: dataform.Target, fileName: string) {
@@ -543,14 +636,6 @@ export class LegacyConfigConverter {
       }
       if (typeof legacyConfig.assertions.nonNull === "string") {
         legacyConfig.assertions.nonNull = [legacyConfig.assertions.nonNull];
-      }
-      if (legacyConfig.assertions.schema) {
-        legacyConfig.assertions.dataset = legacyConfig.assertions.schema;
-        delete legacyConfig.assertions.schema;
-      }
-      if (legacyConfig.assertions.database) {
-        legacyConfig.assertions.project = legacyConfig.assertions.database;
-        delete legacyConfig.assertions.database;
       }
     }
     return legacyConfig;

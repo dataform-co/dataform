@@ -2,6 +2,8 @@ import { expect } from "chai";
 import * as fs from "fs-extra";
 import * as path from "path";
 
+import { DataPreparation } from "df/core/actions/data_preparation";
+import { Session } from "df/core/session";
 import { dataform } from "df/protos/ts";
 import { asPlainObject, suite, test } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
@@ -1221,5 +1223,215 @@ publish("name", {
         actionTarget: { database: "a:b:c", schema: "ds", name: "t5" },
       },
     ]);
+  });
+
+  suite("conflicting legacy and modern config aliases", () => {
+    const compileProject = (files: { [name: string]: string }) => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML,
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      for (const [name, content] of Object.entries(files)) {
+        fs.writeFileSync(path.join(projectDir, "definitions", name), content);
+      }
+      return runMainInVm(coreExecutionRequestFromPath(projectDir)).compile.compiledGraph;
+    };
+
+    for (const actionType of [
+      "table",
+      "view",
+      "incremental",
+      "operations",
+      "assertion",
+      "dataPreparation",
+    ]) {
+      test(`reports compile errors for conflicting aliases in ${actionType} sqlx config`, () => {
+        const graph = compileProject({
+          "dep.sqlx": `config { type: "table" }\nSELECT 1`,
+          "action.sqlx": `
+config {
+  type: "${actionType}",
+  dataset: "new_dataset",
+  schema: "old_schema",
+  project: "new_project",
+  database: "old_database",
+  filename: "definitions/action.sqlx",
+  fileName: "old_file.sqlx",
+  dependencyTargets: [{ name: "dep" }],
+  dependencies: ["dep"],
+}
+SELECT 1`,
+        });
+
+        expect(
+          graph.graphErrors.compilationErrors.map((e) => e.message),
+        ).deep.equals([
+          "Cannot specify both 'dependencyTargets' and 'dependencies' in the same config.",
+          "Cannot specify both 'project' and 'database' in the same config.",
+          "Cannot specify both 'dataset' and 'schema' in the same config.",
+          "Cannot specify both 'filename' and 'fileName' in the same config.",
+        ]);
+      });
+    }
+
+    test("reports compile errors for conflicting aliases in declaration sqlx config", () => {
+      const graph = compileProject({
+        "decl.sqlx": `
+config {
+  type: "declaration",
+  name: "my_decl",
+  dataset: "new_dataset",
+  schema: "old_schema",
+  project: "new_project",
+  database: "old_database",
+  filename: "definitions/action.sqlx",
+  fileName: "old_file.sqlx",
+}`,
+      });
+
+      expect(
+        graph.graphErrors.compilationErrors.map((e) => e.message),
+      ).deep.equals([
+        "Cannot specify both 'project' and 'database' in the same config.",
+        "Cannot specify both 'dataset' and 'schema' in the same config.",
+        "Cannot specify both 'filename' and 'fileName' in the same config.",
+      ]);
+    });
+
+    test("reports compile errors for conflicting aliases in inline assertions (sqlx and js api)", () => {
+      const graph = compileProject({
+        "t.sqlx": `
+config {
+  type: "table",
+  assertions: {
+    uniqueKey: ["a"],
+    dataset: "new_ds",
+    schema: "old_schema",
+    project: "new_proj",
+    database: "old_db",
+  }
+}
+SELECT 1 AS a`,
+        "js_table.js": `
+publish("js_t", { type: "table" })
+  .assertions({
+    uniqueKey: ["a"],
+    dataset: "new_ds",
+    schema: "old_schema",
+    project: "new_proj",
+    database: "old_db",
+  })
+  .query("SELECT 1 AS a");`,
+      });
+
+      expect(
+        graph.graphErrors.compilationErrors.map((e) => ({
+          message: e.message,
+          fileName: e.fileName,
+        })),
+      ).deep.equals([
+        {
+          message:
+            "Cannot specify both 'assertions.project' and 'assertions.database' in the same config.",
+          fileName: "definitions/js_table.js",
+        },
+        {
+          message:
+            "Cannot specify both 'assertions.dataset' and 'assertions.schema' in the same config.",
+          fileName: "definitions/js_table.js",
+        },
+        {
+          message:
+            "Cannot specify both 'assertions.project' and 'assertions.database' in the same config.",
+          fileName: "definitions/t.sqlx",
+        },
+        {
+          message:
+            "Cannot specify both 'assertions.dataset' and 'assertions.schema' in the same config.",
+          fileName: "definitions/t.sqlx",
+        },
+      ]);
+    });
+
+    test("reports compile errors for conflicting aliases in DataPreparation config() helper", () => {
+      const session = new Session(
+        "/tmp",
+        dataform.ProjectConfig.create({
+          defaultDatabase: "defaultProject",
+          defaultSchema: "defaultDataset",
+        }),
+      );
+      const dp = new DataPreparation(
+        session,
+        dataform.ActionConfig.DataPreparationConfig.create({
+          name: "dp",
+          filename: "definitions/dp.dp",
+        }),
+      );
+      dp.config({
+        filename: "definitions/dp.dp",
+        dataset: "new_ds",
+        schema: "old_schema",
+        project: "new_proj",
+        database: "old_db",
+      });
+
+      expect(
+        session.graphErrors.compilationErrors.map((e) => e.message),
+      ).deep.equals([
+        "Cannot specify both 'project' and 'database' in the same config.",
+        "Cannot specify both 'dataset' and 'schema' in the same config.",
+      ]);
+    });
+
+    test("allows legacy fileName alone without conflicting with auto-populated filename", () => {
+      const graph = compileProject({
+        "sqlx_table.sqlx": `
+config {
+  type: "table",
+  fileName: "custom/sqlx_table.sqlx",
+}
+SELECT 1`,
+        "js_actions.js": `
+publish("js_table", { type: "table", fileName: "custom/js_table.sql" }).query("SELECT 1");
+assert("js_assert", { fileName: "custom/js_assert.sql" }).query("SELECT 1");
+operate("js_op", { type: "operations", fileName: "custom/js_op.sql" }).queries("SELECT 1");`,
+      });
+
+      expect(graph.graphErrors.compilationErrors).deep.equals([]);
+      expect(
+        graph.tables.find((t) => t.target.name === "sqlx_table").fileName,
+      ).equals("custom/sqlx_table.sqlx");
+      expect(
+        graph.tables.find((t) => t.target.name === "js_table").fileName,
+      ).equals("custom/js_table.sql");
+      expect(
+        graph.assertions.find((a) => a.target.name === "js_assert").fileName,
+      ).equals("custom/js_assert.sql");
+      expect(
+        graph.operations.find((o) => o.target.name === "js_op").fileName,
+      ).equals("custom/js_op.sql");
+    });
+
+    test("allows legacy schema and database alone in DataPreparation sqlx config", () => {
+      const graph = compileProject({
+        "dp.sqlx": `
+config {
+  type: "dataPreparation",
+  schema: "legacy_schema",
+  database: "legacy_db",
+}
+SELECT 1`,
+      });
+
+      expect(graph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(graph.dataPreparations[0].target)).deep.equals({
+        database: "legacy_db",
+        schema: "legacy_schema",
+        name: "dp",
+      });
+    });
   });
 });

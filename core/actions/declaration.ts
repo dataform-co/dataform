@@ -83,7 +83,7 @@ export class Declaration extends ActionBuilder<dataform.Declaration> {
     }
 
     const hasDatasetOrSchema = Boolean(unverifiedConfig.dataset || unverifiedConfig.schema);
-    const config = this.verifyConfig(unverifiedConfig);
+    const config = this.verifyConfig(unverifiedConfig, filename);
 
     if (!config.name) {
       throw Error("Declarations must have a populated 'name' field.");
@@ -189,6 +189,7 @@ export class Declaration extends ActionBuilder<dataform.Declaration> {
    */
   private verifyConfig(
     unverifiedConfig: ILegacyDeclarationConfig,
+    fileName?: string,
   ): dataform.ActionConfig.DeclarationConfig {
     const configToVerify: ILegacyDeclarationConfig = {
       ...unverifiedConfig,
@@ -196,14 +197,7 @@ export class Declaration extends ActionBuilder<dataform.Declaration> {
         ? { columns: ColumnDescriptors.normalizeConfigColumns(unverifiedConfig.columns) }
         : {}),
     };
-    if (configToVerify.database) {
-      configToVerify.project = configToVerify.database;
-      delete configToVerify.database;
-    }
-    if (configToVerify.schema) {
-      configToVerify.dataset = configToVerify.schema;
-      delete configToVerify.schema;
-    }
+    this.normalizeLegacyConfigAliases(configToVerify, fileName);
 
     if (configToVerify.type) {
       delete configToVerify.type;
