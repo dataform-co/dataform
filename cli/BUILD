@@ -32,7 +32,6 @@ ts_library(
         "yargswrapper.ts",
     ],
     deps = [
-        "//:node_modules/@types/glob",
         "//:node_modules/@types/long",
         "//:node_modules/@types/node",
         "//:node_modules/@types/readline-sync",
@@ -44,7 +43,6 @@ ts_library(
         "//:node_modules/untildify",
         "//:node_modules/yargs",
         "//cli/api",
-        "//cli/vm",
         "//core",
         "//protos:ts",
         "//sqlx:format",
@@ -80,6 +78,7 @@ ts_test_suite(
         "tests/bin_test.ts",
         "tests/jit/jit_build_test.ts",
         "tests/jit/jit_run_test.ts",
+        "tests/package_test.ts",
         "util_test.ts",
     ],
     data = [
@@ -135,12 +134,10 @@ ts_test_suite(
         "//:node_modules/@types/chai",
         "//:node_modules/@types/fs-extra",
         "//:node_modules/@types/js-yaml",
-        "//:node_modules/@types/long",
         "//:node_modules/@types/node",
         "//:node_modules/chai",
         "//:node_modules/fs-extra",
         "//:node_modules/js-yaml",
-        "//:node_modules/ts-mockito",
         "//cli",
         "//cli/api",
         "//core",
@@ -155,12 +152,23 @@ ts_library(
     name = "readme_generator",
     srcs = [
         "readme_generator.ts",
-        "update_readme.ts",
     ],
     deps = [
         ":cli",
         "//:node_modules/@types/node",
         "//:node_modules/@types/yargs",
+        "//common/markdown_docs",
+    ],
+)
+
+ts_library(
+    name = "update_readme_bin",
+    srcs = ["update_readme.ts"],
+    visibility = ["//visibility:private"],
+    deps = [
+        ":cli",
+        ":readme_generator",
+        "//:node_modules/@types/node",
     ],
 )
 
@@ -168,7 +176,7 @@ ts_library(
 js_binary(
     name = "update_readme",
     data = [
-        ":readme_generator",
+        ":update_readme_bin",
         "//:node_modules/source-map-support",
         "//testing:resolver-patch",
     ],

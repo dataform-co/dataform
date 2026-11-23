@@ -1,5 +1,4 @@
 load("@aspect_bazel_lib//lib:copy_to_bin.bzl", "copy_to_bin")
-load("@bazel_gazelle//:def.bzl", "gazelle")
 load("@npm//:defs.bzl", "npm_link_all_packages")
 load("@npm//:eslint/package_json.bzl", eslint_bin = "bin")
 load("@npm//:prettier/package_json.bzl", prettier_bin = "bin")
@@ -39,8 +38,3 @@ prettier_bin.prettier_binary(
     chdir = "$$BUILD_WORKSPACE_DIRECTORY",
     visibility = ["//visibility:public"],
 )
-
-# gazelle:prefix github.com/dataform-co/dataform
-# gazelle:proto package
-# gazelle:proto_group go_package
-gazelle(name = "gazelle")

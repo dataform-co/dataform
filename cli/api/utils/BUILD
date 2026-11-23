@@ -14,8 +14,6 @@ ts_library(
     deps = [
         "//:node_modules/@types/node",
         "//:node_modules/object-sizeof",
-        "//common/protos",
-        "//common/strings",
         "//core",
         "//protos:ts",
     ],
