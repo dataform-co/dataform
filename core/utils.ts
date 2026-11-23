@@ -718,16 +718,24 @@ export class ResolvableMap<T> {
   }
 }
 
+export function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+  const proto = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
+}
+
 export function snakeToCamelKeys(value: any, preserveMapKeysFields: Set<string> = new Set()): any {
   if (Array.isArray(value)) {
     return value.map((item) => snakeToCamelKeys(item, preserveMapKeysFields));
   }
-  if (value && typeof value === "object") {
+  if (isPlainObject(value)) {
     const out: { [key: string]: any } = {};
     for (const [key, val] of Object.entries(value)) {
       const camel = key.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
       out[camel] =
-        preserveMapKeysFields.has(camel) && val && typeof val === "object" && !Array.isArray(val)
+        preserveMapKeysFields.has(camel) && isPlainObject(val)
           ? { ...val }
           : snakeToCamelKeys(val, preserveMapKeysFields);
     }

@@ -1,4 +1,5 @@
 import { Structs } from "df/common/protos/structs";
+import { isPlainObject } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
 export const SEMANTIC_ONTOLOGY_VERSION = "0.2.0.dev0/google";
@@ -81,6 +82,18 @@ export function normalizeAndValidateAiContext(container: any, where: string): vo
   };
 }
 
+// Distinguishes JS object literals that mutated [[Prototype]] via `__proto__` from built-in or
+// user class instances (such as `Date`), whose prototype owns `constructor` or has a non-Object tag.
+function hasMutatedPlainPrototype(value: object, proto: unknown): boolean {
+  return (
+    proto !== Object.prototype &&
+    proto !== null &&
+    (Object.getPrototypeOf(proto) === Object.prototype || Object.getPrototypeOf(proto) === null) &&
+    !Object.prototype.hasOwnProperty.call(proto, "constructor") &&
+    Object.prototype.toString.call(value) === "[object Object]"
+  );
+}
+
 function validateStructCompatibleValue(value: unknown, where: string): void {
   if (
     value === null ||
@@ -100,19 +113,17 @@ function validateStructCompatibleValue(value: unknown, where: string): void {
     const proto = Object.getPrototypeOf(value);
     if (
       Object.prototype.hasOwnProperty.call(value, "__proto__") ||
-      (proto !== Object.prototype &&
-        proto !== null &&
-        Object.getPrototypeOf(proto) === Object.prototype)
+      hasMutatedPlainPrototype(value, proto)
     ) {
       throw new Error(`${where} member '__proto__' is not supported.`);
     }
-    if (proto !== Object.prototype && proto !== null) {
+    if (!isPlainObject(value)) {
       throw new Error(
         `${where} contains an unsupported non-plain object; ` +
           `expected strings, finite numbers, booleans, null, arrays, or plain objects.`,
       );
     }
-    for (const entryValue of Object.values(value as Record<string, unknown>)) {
+    for (const entryValue of Object.values(value)) {
       validateStructCompatibleValue(entryValue, where);
     }
     return;
@@ -153,7 +164,7 @@ export function normalizeAndValidateCustomExtensions(container: any, where: stri
     if (typeof ext.data === "string") {
       return ext;
     }
-    if (ext.data !== null && typeof ext.data === "object" && !Array.isArray(ext.data)) {
+    if (isPlainObject(ext.data)) {
       return {
         ...ext,
         data: JSON.stringify(ext.data),

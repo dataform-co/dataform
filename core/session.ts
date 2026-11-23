@@ -377,7 +377,7 @@ export class Session {
     return {
       ...target,
       database: target.database && this.finalizeDatabase(target.database),
-      schema: this.finalizeSchema(target.schema),
+      schema: target.schema && this.finalizeSchema(target.schema),
       name: this.finalizeName(target.name),
     };
   }
@@ -627,13 +627,15 @@ export class Session {
       this.addTestsToCompiledGraph(this.actions);
     }
 
-    // Notebooks are not checked: they cannot set a dataset in their config, and do not need one.
+    // Notebooks and non-output operations are not checked: notebooks cannot set a dataset in their
+    // config, and operations without `hasOutput: true` do not materialize a target in a dataset.
     this.checkActionTargetsHaveDataset(
       [].concat(
         compiledGraph.tables,
         compiledGraph.assertions,
-        compiledGraph.operations,
+        compiledGraph.operations.filter((operation) => operation.hasOutput),
         compiledGraph.dataPreparations,
+        compiledGraph.propertyGraphs,
       ),
     );
 
@@ -846,15 +848,17 @@ export class Session {
     );
 
     actions.forEach((action) => {
-      newTargetByOriginalTarget.set(targetStringifier.stringify(action.target), {
+      const originalTargetKey = targetStringifier.stringify(action.target);
+      const updatedTarget = dataform.Target.create({
         ...action.target,
-        database:
-          action.target.database &&
-          `${action.target.database}${this.getDatabaseSuffixWithUnderscore()}`,
-        schema: this.finalizeSchema(action.target.schema),
-        name: `${this.getTablePrefixWithUnderscore()}${action.target.name}`,
+        database: action.target.database
+          ? this.finalizeDatabase(action.target.database)
+          : undefined,
+        schema: action.target.schema ? this.finalizeSchema(action.target.schema) : undefined,
+        name: this.finalizeName(action.target.name),
       });
-      action.target = newTargetByOriginalTarget.get(targetStringifier.stringify(action.target));
+      newTargetByOriginalTarget.set(originalTargetKey, updatedTarget);
+      action.target = updatedTarget;
     });
 
     // Fix up dependencies in case those dependencies' names have changed.

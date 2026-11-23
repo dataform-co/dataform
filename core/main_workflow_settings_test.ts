@@ -345,8 +345,7 @@ vars:
       );
       writeDefinitionFile(
         projectDir,
-        "file.sqlx", // TODO(https://github.com/dataform-co/dataform/issues/1295): add a test and fix
-        // functionality for assertions overriding database.
+        "file.sqlx",
         `
 config {
   type: "table",
@@ -381,8 +380,9 @@ select 1 AS \${dataform.projectConfig.vars.columnVar}`,
           assertions: [
             {
               canonicalTarget: {
+                database: "databaseVal",
                 name: "tableSchema_file_assertions_rowConditions",
-                schema: "defaultDataset",
+                schema: "tableSchema",
               },
               dependencyTargets: [
                 {
@@ -400,8 +400,9 @@ select 1 AS \${dataform.projectConfig.vars.columnVar}`,
               query:
                 "\nSELECT\n  'columnValue IS NOT NULL' AS failing_row_condition,\n  *\nFROM `databaseVal.tableSchema.file`\nWHERE NOT (columnValue IS NOT NULL)\n",
               target: {
+                database: "databaseVal",
                 name: "tableSchema_file_assertions_rowConditions",
-                schema: "defaultDataset",
+                schema: "tableSchema",
               },
             },
           ],
@@ -443,8 +444,9 @@ select 1 AS \${dataform.projectConfig.vars.columnVar}`,
           ],
           targets: [
             {
+              database: "databaseVal",
               name: "tableSchema_file_assertions_rowConditions",
-              schema: "defaultDataset",
+              schema: "tableSchema",
             },
             {
               database: "databaseVal",

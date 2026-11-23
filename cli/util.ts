@@ -5,7 +5,11 @@ import untildify from "untildify";
 import { setsDatasetId } from "df/cli/api/utils/query_transforms";
 import { interactiveQuestion, print, printError, printSuccess, printWarning } from "df/cli/console";
 import { targetAsReadableString } from "df/core/targets";
-import { validateConnectionFormat } from "df/core/utils";
+import {
+  setOrValidateTableEnumType,
+  tableTypeEnumToString,
+  validateConnectionFormat,
+} from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
 export function actuallyResolve(...filePaths: string[]) {
@@ -292,3 +296,15 @@ export const ICEBERG_TABLE_FOLDER_SUBPATH_PROMPT_QUESTION =
 export const ICEBERG_CONNECTION_HINT =
   "The connection can have the form `{project}.{location}.{connection_id}` or `projects/{project}/locations/{location}/connections/{connection_id} or be set to DEFAULT. If you do not want to provide a workflow-level default connection, leave this input empty.\n";
 export const ICEBERG_CONNECTION_QUESTION = "Enter the default connection:";
+
+/**
+ * Returns the table's type for its label in the DOT and Mermaid outputs. For graphs that only set
+ * the string `type`, prune() normally converts it to `enumType`; but prune() only runs with
+ * --output-actions or --output-tags, so this does the same conversion, on a copy so the caller's
+ * graph is unchanged.
+ */
+export function tableTypeLabel(table: dataform.ITable) {
+  const normalized: dataform.ITable = { type: table.type, enumType: table.enumType };
+  setOrValidateTableEnumType(normalized);
+  return tableTypeEnumToString(normalized.enumType || dataform.TableType.UNKNOWN_TYPE);
+}
