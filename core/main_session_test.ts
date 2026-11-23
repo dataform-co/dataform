@@ -282,6 +282,19 @@ actions:
   [
     { filename: "action.sqlx", contents: `config { type: "table" } SELECT 1` },
     { filename: "action.js", contents: `publish("action", { type: "table" }).query("SELECT 1")` },
+    {
+      filename: "graph.yaml",
+      contents: `
+version: 0.2.0.dev0/google
+semantic_model:
+- name: action
+  entities:
+  - name: Node
+    source: bigquery:defaultProject.raw.nodes
+    primary_key:
+    - id
+`,
+    },
   ].forEach(({ filename, contents }) => {
     test(`fails when dataset is not set in workflow settings or the action in ${filename}`, () => {
       const projectDir = tmpDirFixture.createNewTmpDir();

@@ -101,7 +101,9 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
     // `deployments[].target` sets the base project/dataset/name on `configTarget`;
     // Dataform session overrides (`databaseSuffix`, `schemaSuffix`, `namePrefix`)
     // are still applied via `applySessionToTarget`.
-    this.proto.target = this.applySessionToTarget(configTarget, session.projectConfig, filename);
+    this.proto.target = this.applySessionToTarget(configTarget, session.projectConfig, filename, {
+      validateTarget: true,
+    });
     this.proto.canonicalTarget = this.applySessionToTarget(
       configTarget,
       session.canonicalProjectConfig,
