@@ -15,73 +15,81 @@ import "property_graph_config.proto";
 // Workflow Settings defines the contents of the `workflow_settings.yaml`
 // configuration file.
 message WorkflowSettings {
-  // The desired dataform core version to compile against. When set, the CLI
-  // installs this version into a copy of the project in a temporary directory
-  // and compiles the copy, which skips paths matched by `.gitignore` or
-  // `.dataformignore` outside `definitions/` and `includes/`. For details, see
-  // https://dataform-co.github.io/dataform/docs/stateless-install.
+  // `@dataform/core` version to compile against (for example, `3.1.5`).
+  //
+  // When set, the CLI installs this version into a copy of the project in a
+  // temporary directory and compiles the copy, which skips paths matched by
+  // `.gitignore` or `.dataformignore` outside `definitions/` and `includes/`.
+  // For details, see https://dataform-co.github.io/dataform/docs/stateless-install.
   string dataform_core_version = 1;
 
-  // Required. The default Google Cloud project (database).
+  // Required. Default Google Cloud project ID (`database`) for compiled actions.
   string default_project = 2;
 
-  // Required. The default dataset (schema).
+  // Required. Default BigQuery dataset (`schema`) for tables, views, and operations.
   string default_dataset = 3;
 
-  // Required. The default BigQuery location to use. For more information on
-  // BigQuery locations, see https://cloud.google.com/bigquery/docs/locations.
+  // Required. Default BigQuery dataset location (for example, `US`, `EU`, `us-central1`).
+  //
+  // For more information on BigQuery locations, see
+  // https://cloud.google.com/bigquery/docs/locations.
   string default_location = 4;
 
-  // Required. The default dataset (schema) for assertions.
+  // Optional. Default BigQuery dataset (`schema`) for assertion views (falls back to `defaultDataset` when omitted).
   string default_assertion_dataset = 5;
 
-  // Optional. User-defined variables that are made available to project code
-  // during compilation. An object containing a list of "key": value pairs.
+  // Optional. Custom string key-value variables accessible via `dataform.projectConfig.vars.<key>`.
+  //
+  // An object containing a list of "key": value pairs.
   map<string, string> vars = 6;
 
-  // Optional. The suffix to append to all Google Cloud project references.
+  // Optional. Suffix appended to target Google Cloud project IDs (`<project>_<projectSuffix>`).
   string project_suffix = 7;
 
-  // Optional. The suffix to append to all dataset references.
+  // Optional. Suffix appended to target dataset names (`<dataset>_<datasetSuffix>`).
   string dataset_suffix = 8;
 
-  // Optional. The prefix to append to all action names.
+  // Optional. Prefix prepended to target action names (`<namePrefix>_<name>`).
   string name_prefix = 9;
 
   // Optional. Default runtime options for Notebook actions.
   NotebookRuntimeOptionsConfig default_notebook_runtime_options = 10;
 
-  // Optional. The prefix to append to built-in assertion names.
+  // Optional. Prefix prepended to auto-generated built-in assertion names.
   string builtin_assertion_name_prefix = 11;
 
-  // Optional. Default config options for Iceberg tables.
+  // Optional. Project-level defaults for BigQuery Apache Iceberg tables.
   DefaultIcebergConfig default_iceberg_config = 12;
 
-  // Optional. Disables all assertions including built-in assertions
-  // (uniqueKey, nonNull, rowConditions) and manual assertions (type: assertion).
-  // When true, assertions will still be compiled but marked as disabled.
+  // Optional. Marks all manual and built-in assertions as `disabled: true` in the compiled graph.
+  //
+  // Includes built-in assertions (uniqueKey, nonNull, rowConditions) and manual
+  // assertions (type: assertion).
   bool disable_assertions = 13;
 
-  // Optional. The default BigQuery reservation to use for execution.
+  // Optional. Default BigQuery reservation for query execution (`projects/<p>/locations/<l>/reservations/<r>` or `none`).
+  //
   // If unset, default BigQuery behavior applies.
   // Dataform CLI only (GCP Dataform support pending).
   string default_reservation = 14;
 
-  // Optional. An external package that provides an extension.
+  // Optional. External compilation extension package configuration.
   Extension extension = 15;
 
-  // Optional. If set to true, unit tests will be included in the compiled graph.
+  // Optional. Includes unit test actions (`type: "test"`) in `CompiledGraph.tests`.
   bool include_tests_in_compiled_graph = 16;
 
-  // Optional. If set to true, governance controls (e.g. Data Policies) will be
-  // preserved on BigQuery tables.
+  // Optional. Preserves existing BigQuery column governance controls (such as Data Policies) when recreating tables.
   bool preserve_governance_controls = 18;
 
-  // Optional. Configuration for Knowledge Catalog lineage emission.
+  // Optional. Knowledge Catalog Data Lineage settings (`lineage: { enabled: true }`).
+  //
+  // See [Data Lineage guide](https://github.com/dataform-co/dataform/blob/main/docs/lineage.md).
   LineageSettings lineage = 19;
 
-  // Optional. Default key-value pairs for BigQuery job labels applied to
-  // BigQuery jobs executed for actions in this project. Merged key-by-key when
+  // Optional. Default labels applied to BigQuery jobs executed for actions in the project.
+  //
+  // Merged key-by-key when
   // overridden via `projectConfigOverride`. Action-level `jobLabels` override
   // matching keys; an action can't remove a default key. Built-in assertions
   // use the job labels of their table. When an action has any job labels,
@@ -98,7 +106,7 @@ message WorkflowSettings {
   // `"0042"`.
   map<string, string> default_job_labels = 20;
 
-  // Optional. Default config options for Lakehouse (4-part) targets.
+  // Optional. Project-level defaults for 4-part Lakehouse targets.
   DefaultLakehouseConfig default_lakehouse_config = 21;
 }
 
