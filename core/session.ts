@@ -634,6 +634,7 @@ export class Session {
         compiledGraph.assertions,
         compiledGraph.operations,
         compiledGraph.dataPreparations,
+        compiledGraph.propertyGraphs,
       ),
     );
 

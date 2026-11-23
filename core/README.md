@@ -101,7 +101,7 @@ my-dataform-project/
 | `defaultProject` | `string` | — | Required. Default Google Cloud project ID (`database`) for compiled actions. |
 | `defaultDataset` | `string` | — | Required. Default BigQuery dataset (`schema`) for tables, views, and operations. |
 | `defaultLocation` | `string` | — | Required. Default BigQuery dataset location (for example, `US`, `EU`, `us-central1`). |
-| `defaultAssertionDataset` | `string` | — | Required. Default BigQuery dataset (`schema`) for assertion views. |
+| `defaultAssertionDataset` | `string` | — | Default BigQuery dataset (`schema`) for assertion views (falls back to `defaultDataset` when omitted). |
 | `vars` | `map<string, string>` | `{}` | Custom string key-value variables accessible via `dataform.projectConfig.vars.<key>`. |
 | `projectSuffix` | `string` | — | Suffix appended to target Google Cloud project IDs (`<project>_<projectSuffix>`). |
 | `datasetSuffix` | `string` | — | Suffix appended to target dataset names (`<dataset>_<datasetSuffix>`). |
@@ -139,7 +139,7 @@ A `.sqlx` file combines a `config {}` metadata block, optional JavaScript (`js {
 
 ### SQLX Context Functions
 
-Each action maps to an **action target** (`database.schema.name`) in BigQuery. By default, `name` is the action's filename (without extension), `schema` is `defaultDataset` (or `defaultAssertionDataset` for assertions), and `database` is `defaultProject` from `workflow_settings.yaml`.
+Each action maps to an **action target** (`database.schema.name`) in BigQuery. By default, `name` is the action's filename (without extension), `schema` is `defaultDataset` (or `defaultAssertionDataset` for assertions, falling back to `defaultDataset` when omitted), and `database` is `defaultProject` from `workflow_settings.yaml`.
 
 Inside the SQL body and operation blocks of a `.sqlx` file (or via the `ctx` argument in JavaScript API callbacks), the following context methods are available:
 
@@ -217,8 +217,7 @@ config {
   bigquery: {
     partitionBy: "DATE(event_timestamp)",
     updatePartitionFilter: "event_timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 7 DAY)"
-  },
-  protected: false
+  }
 }
 
 SELECT
@@ -234,7 +233,7 @@ Incremental-specific config properties (in addition to `table` properties):
 - `incrementalStrategy`: `"merge"` (requires `uniqueKey`) or `"insert_overwrite"` (requires `partitionBy`) in SQLX and JavaScript (or `"INCREMENTAL_STRATEGY_MERGE"` / `"INCREMENTAL_STRATEGY_INSERT_OVERWRITE"` in `actions.yaml`).
 - `updatePartitionFilter` / `incrementalPredicates`: Mutually exclusive SQL filter(s) restricting target partitions scanned during incremental updates (setting both is a compile error; prefer `incrementalPredicates`).
 - `onSchemaChange`: `"IGNORE"` (default), `"FAIL"`, `"EXTEND"`, or `"SYNCHRONIZE"`.
-- `protected` (default `true`): Prevents the table from being dropped and rebuilt from scratch on `--full-refresh`. Set `protected: false` to allow full refreshes.
+- `protected` (default `false`): Prevents the table from being dropped and rebuilt from scratch on `--full-refresh`. Set `protected: true` on specific incremental tables to avoid overwriting them on full refreshes.
 
 ---
 
@@ -284,7 +283,7 @@ When `hasOutput: true` is set, the operation registers a referenceable target at
 
 ### `assertion` and Built-in Assertions
 
-An assertion is a data quality query that **fails if it returns one or more rows**. Assertions materialize as views in `defaultAssertionDataset` (`dataform init` sets `"dataform_assertions"`). See [`AssertionConfig`](https://dataform-co.github.io/dataform/docs/reference/configs#dataform-ActionConfig-AssertionConfig).
+An assertion is a data quality query that **fails if it returns one or more rows**. Assertions materialize as views in `defaultAssertionDataset`, falling back to `defaultDataset` when omitted (`dataform init` sets `"dataform_assertions"`). See [`AssertionConfig`](https://dataform-co.github.io/dataform/docs/reference/configs#dataform-ActionConfig-AssertionConfig).
 
 ```sql
 -- definitions/assertions/assert_positive_order_amount.sqlx

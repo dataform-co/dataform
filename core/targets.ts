@@ -19,3 +19,18 @@ export function targetAsReadableString(target: dataform.ITarget): string {
   }
   return nameParts.reverse().join(".");
 }
+
+export function hasInvalidProjectColonUsage(database: string): boolean {
+  const colonIndex = database.indexOf(":");
+  return (
+    colonIndex !== -1 &&
+    (colonIndex === 0 ||
+      colonIndex === database.length - 1 ||
+      database.includes(":", colonIndex + 1))
+  );
+}
+
+export function stripProjectDomainPrefix(database: string): string {
+  const colonIndex = database.indexOf(":");
+  return colonIndex > 0 ? database.slice(colonIndex + 1) : database;
+}
