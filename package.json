@@ -4,7 +4,7 @@
     "@google-cloud/lineage": "^2.1.1",
     "chokidar": "^4.0.3",
     "fs-extra": "^9.0.0",
-    "glob": "13.0.6",
+    "glob": "14.0.3",
     "google-auth-library": "~10.5.0",
     "google-sql-syntax-ts": "^1.0.3",
     "ignore": "^7.0.8",
@@ -83,7 +83,11 @@
       "linkify-it": "^5.0.2",
       "@eslint/plugin-kit": "^0.7.2",
       "fast-uri": "^3.1.7",
-      "minimatch@>=7.0.0 <11.0.1": "^11.0.1"
+      "minimatch@>=7.0.0 <11.0.1": "^11.0.1",
+      "js-beautify@1.15.4>glob": "14.0.3",
+      "rimraf@5.0.10>glob": "14.0.3",
+      "glob@14.0.3>minimatch": "11.0.3",
+      "minimatch@11.0.3>@isaacs/nonrecursive-glob-match": "1.0.3"
     }
   }
 }
