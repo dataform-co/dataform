@@ -361,14 +361,19 @@ export function validateStorageUriFormat(storageUri: string) {
  * @param configFileFormat User-provided file format, if it exists.
  * @return File format used when creating an Iceberg table.
  */
-export function getFileFormatValueForIcebergTable(configFileFormat?: string): dataform.FileFormat {
+export function getFileFormatValueForIcebergTable(
+  configFileFormat?: string | dataform.ActionConfig.IcebergTableConfig.FileFormat,
+): dataform.FileFormat {
   if (!configFileFormat) {
-    // Default to PARQUET if fileFormat is undefined.
+    // Default to PARQUET if fileFormat is undefined or FILE_FORMAT_UNSPECIFIED (0).
     return dataform.FileFormat.PARQUET;
   }
 
-  switch (configFileFormat.toUpperCase()) {
+  const normalizedFormat =
+    typeof configFileFormat === "string" ? configFileFormat.toUpperCase() : configFileFormat;
+  switch (normalizedFormat) {
     case "PARQUET":
+    case dataform.ActionConfig.IcebergTableConfig.FileFormat.PARQUET:
       return dataform.FileFormat.PARQUET;
 
     default:
