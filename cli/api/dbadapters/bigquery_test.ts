@@ -206,7 +206,15 @@ suite("BigQueryDbAdapter", () => {
         {
           type: "TABLE",
           tableReference: { projectId, datasetId: schemaName, tableId: tableName },
-          schema: { fields: [{ name: "col1", type: "STRING", mode: "NULLABLE" }] },
+          schema: {
+            fields: [
+              { name: "col1", type: "STRING", mode: "NULLABLE" },
+              { name: "bn", type: "BIGNUMERIC" },
+              { name: "n", type: "NUMERIC" },
+              { name: "j", type: "JSON" },
+              { name: "iv", type: "INTERVAL" },
+            ],
+          },
           lastModifiedTime: "123456789",
         },
       ] as any),
@@ -218,8 +226,13 @@ suite("BigQueryDbAdapter", () => {
     expect(result[0].target.database).to.equal(projectId);
     expect(result[0].target.schema).to.equal(schemaName);
     expect(result[0].target.name).to.equal(tableName);
-    expect(result[0].fields.length).to.equal(1);
-    expect(result[0].fields[0].name).to.equal("col1");
+    expect(result[0].fields.map((field) => [field.name, field.primitive])).deep.equals([
+      ["col1", dataform.Field.Primitive.STRING],
+      ["bn", dataform.Field.Primitive.BIGNUMERIC],
+      ["n", dataform.Field.Primitive.NUMERIC],
+      ["j", dataform.Field.Primitive.JSON],
+      ["iv", dataform.Field.Primitive.INTERVAL],
+    ]);
   });
 
   test("tables() without schema lists all datasets and tables", async () => {

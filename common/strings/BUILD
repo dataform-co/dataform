@@ -21,7 +21,6 @@ ts_test_suite(
     deps = [
         ":strings",
         "//:node_modules/@types/chai",
-        "//:node_modules/@types/long",
         "//:node_modules/@types/node",
         "//:node_modules/chai",
         "@df//testing",
