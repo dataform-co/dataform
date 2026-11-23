@@ -3,7 +3,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 import { suite, test } from "df/testing";
-import { BUNDLED_PROTO_FILES } from "df/tools/docs/proto_extractor";
+import { BUNDLED_PROTO_FILES, loadDataformProtos } from "df/tools/docs/proto_extractor";
 import { extractCoreExports, extractNamedReExports } from "df/tools/docs/ts_extractor";
 
 suite("core/README.md", () => {
@@ -60,7 +60,7 @@ suite("core/README.md", () => {
     expect(bundleDts).to.not.include("SESSION_GLOBAL_METHODS");
   });
 
-  test("bundled proto list matches .proto files packaged into @dataform/core", () => {
+  test("bundled proto list matches .proto files packaged into @dataform/core and each resolves standalone", () => {
     const packageDir = "core/node_modules/@dataform/core";
     const packagedProtos = fs
       .readdirSync(packageDir)
@@ -68,5 +68,15 @@ suite("core/README.md", () => {
       .sort();
 
     expect(packagedProtos).to.deep.equal([...BUNDLED_PROTO_FILES].sort());
+
+    const rootsByFile = new Map(
+      packagedProtos.map((protoFile) => [protoFile, loadDataformProtos(packageDir, [protoFile])]),
+    );
+
+    const configsRoot = rootsByFile.get("configs.proto")!;
+    expect(
+      configsRoot.lookupType("dataform.WorkflowSettings").fieldsArray.length,
+    ).to.be.greaterThan(0);
+    expect(configsRoot.lookup("dataform.ProjectConfig")).to.equal(null);
   });
 });

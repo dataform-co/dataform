@@ -37,7 +37,10 @@ const SCALAR_TYPE_LABELS: Record<string, string> = {
   bytes: "Uint8Array",
 };
 
-export function loadDataformProtos(protosDir: string): protobuf.Root {
+export function loadDataformProtos(
+  protosDir: string,
+  entryFiles: readonly string[] = BUNDLED_PROTO_FILES,
+): protobuf.Root {
   const resolvedProtosDir = path.resolve(protosDir);
   const root = new protobuf.Root();
   const defaultResolvePath = root.resolvePath;
@@ -52,7 +55,7 @@ export function loadDataformProtos(protosDir: string): protobuf.Root {
     return path.join(resolvedProtosDir, path.basename(target));
   };
 
-  const protoPaths = BUNDLED_PROTO_FILES.map((file) => path.join(resolvedProtosDir, file));
+  const protoPaths = entryFiles.map((file) => path.join(resolvedProtosDir, file));
   root.loadSync(protoPaths, {
     keepCase: false,
     alternateCommentMode: true,

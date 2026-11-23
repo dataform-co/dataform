@@ -108,6 +108,34 @@ message WorkflowSettings {
 
   // Optional. Project-level defaults for 4-part Lakehouse targets.
   DefaultLakehouseConfig default_lakehouse_config = 21;
+
+  // Project-level defaults for BigQuery Apache Iceberg tables.
+  message DefaultIcebergConfig {
+    // Optional. Bucket name used to construct a storage URI when creating an
+    // Iceberg table.
+    string bucket_name = 1;
+
+    // Optional. Table folder root used to construct a storage URI when creating
+    // an Iceberg table.
+    string table_folder_root = 2;
+
+    // Optional. Table folder subpath used to construct a storage URI when
+    // creating an Iceberg table.
+    string table_folder_subpath = 3;
+
+    // Optional. The connection specifying the credentials to be used to read and
+    // write to external storage, such as Cloud Storage.
+    string connection = 4;
+  }
+
+  // Project-level defaults for 4-part Lakehouse targets.
+  message DefaultLakehouseConfig {
+    // Optional. Default Lakehouse catalog name.
+    string catalog = 1;
+
+    // Optional. Default Lakehouse namespace name.
+    string namespace = 2;
+  }
 }
 
 // Configuration for Knowledge Catalog lineage emission.
