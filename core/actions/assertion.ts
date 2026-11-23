@@ -321,6 +321,11 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
   }
 
   /** @hidden */
+  public setName(name: string) {
+    this.proto.target = dataform.Target.create({ ...this.proto.target, name });
+  }
+
+  /** @hidden */
   public setParentAction(target: dataform.Target) {
     this.proto.parentAction = target;
   }
