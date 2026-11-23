@@ -33,19 +33,7 @@ export type Contextable<Context, T> = T | ((ctx: Context) => T);
  */
 export interface IActionContext {
   /**
-   * Equivelant to `resolve(name())`.
-   *
-   * Returns a valid SQL string that can be used to reference the dataset produced by this action.
-   */
-  self: () => string;
-
-  /**
-   * Returns the name of this dataset.
-   */
-  name: () => string;
-
-  /**
-   * References another action, adding it as a dependency to this action, returning valid SQL to be used in a `from` expression.
+   * Resolves an action target to its backtick-quoted SQL identifier and registers it as an upstream dependency.
    *
    * This function can be called with a [Resolvable](#Resolvable) object, for example:
    *
@@ -55,48 +43,66 @@ export interface IActionContext {
    *
    * This function can also be called using individual arguments for the "database", "schema", and "name" values.
    * When only two values are provided, the default database will be used and the values will be interpreted as "schema" and "name".
-   * When only one value is provided, the default data base schema will be used, with the provided value interpreted as "name".
+   * When only one value is provided, the default database and schema will be used, with the provided value interpreted as "name".
    *
    * ```typescript
    * ${ref("database", "schema", "name")}
    * ${ref("schema", "name")}
    * ${ref("name")}
    * ```
+   *
+   * @signature `ref(name)` / `ref(schema, name)` / `ref(database, schema, name)` / `ref({ database?, schema?, name, includeDependentAssertions? })`
    */
   ref: (ref: Resolvable | string[], ...rest: string[]) => string;
 
   /**
-   * Similar to `ref` except that it does not add a dependency, but just resolves the provided reference
-   * so that it can be used in SQL, for example in a `from` expression.
+   * Resolves an action target to its backtick-quoted SQL identifier **without** adding it as a dependency.
    *
    * See the `ref` function for example usage.
+   *
+   * @signature `resolve(name)` / `resolve(schema, name)` / `resolve(database, schema, name)` / `resolve(targetObj)`
    */
   resolve: (ref: Resolvable | string[], ...rest: string[]) => string;
 
   /**
-   * Returns the schema of this dataset.
+   * Returns the fully qualified, backtick-quoted SQL identifier of the current action's target.
+   *
+   * Equivalent to `resolve(name())`.
+   */
+  self: () => string;
+
+  /**
+   * Returns the finalized table/action name of the current action (including `namePrefix` if set).
+   */
+  name: () => string;
+
+  /**
+   * Returns the finalized dataset (`schema`) name of the current action (including `datasetSuffix` if set).
    */
   schema: () => string;
 
   /**
-   * Returns the database of this dataset, if applicable.
+   * Returns the finalized Google Cloud project (`database`) of the current action (including `projectSuffix` if set).
    */
   database: () => string;
+
+  /**
+   * Returns `trueCase` when `condition` is truthy and `falseCase` otherwise.
+   *
+   * Equivalent to `condition ? trueCase : falseCase`.
+   *
+   * @signature `when(condition, trueCase, falseCase = "")`
+   */
+  when: (condition: boolean, trueCase: string, falseCase?: string) => string;
 }
 
 /**
- * Table context is are available when evaluating contextable SQL code for actions of type Table,
- * View, or Incremental tables.
+ * Table context is available when evaluating contextable SQL code for actions of type Table,
+ * View, Incremental, or DataPreparation.
  */
 export interface ITableContext extends IActionContext {
   /**
-   * Shorthand for an `if` condition. Equivalent to `cond ? trueCase : falseCase`.
-   * `falseCase` is optional, and defaults to an empty string.
-   */
-  when: (cond: boolean, trueCase: string, falseCase?: string) => string;
-
-  /**
-   * Indicates whether the config indicates the file is dealing with an incremental table.
+   * Returns `true` when compiling the incremental update query of an `incremental` table, or `false` when compiling its initial/full-refresh query (`table`, `incremental`, `view`, `dataPreparation`).
    */
   incremental: () => boolean;
 }

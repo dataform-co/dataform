@@ -13,14 +13,12 @@ ts_library(
         "worker.ts",
     ],
     deps = [
-        "//:node_modules/@types/glob",
         "//:node_modules/@types/node",
         "//:node_modules/@types/semver",
         "//:node_modules/glob",
         "//:node_modules/semver",
         "//common/protos",
         "//common/vm:vm_runner",
-        "//core",
         "//protos:ts",
     ],
 )
