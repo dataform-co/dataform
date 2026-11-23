@@ -53,7 +53,7 @@ export function warnAboutOverrideProtectedFullRefresh(
   const existingTableTargets = new Set(
     (executionGraph.warehouseState?.tables ?? [])
       .filter((table) => table.target && table.type !== dataform.TableMetadata.Type.VIEW)
-      .map((table) => targetStringifier.stringify(table.target)),
+      .map((table) => targetStringifier.stringify(table.target!)),
   );
 
   const incrementalActions = (executionGraph.actions ?? []).filter(
@@ -71,19 +71,24 @@ export function warnAboutOverrideProtectedFullRefresh(
   const protectedTargets = new Set(
     compiledTables
       .filter((table) => table.protected && table.target)
-      .map((table) => targetStringifier.stringify(table.target)),
+      .map((table) => targetStringifier.stringify(table.target!)),
   );
 
-  const affectedTables = incrementalActions.map((action) => {
-    const name = targetAsReadableString(action.target);
-    const isProtected = protectedTargets.has(targetStringifier.stringify(action.target));
-    return `  ${name}${isProtected ? " (protected)" : ""}`;
-  });
+  const affectedTables = incrementalActions
+    .filter(
+      (action) => action.target && protectedTargets.has(targetStringifier.stringify(action.target)),
+    )
+    .map((action) => {
+      const name = targetAsReadableString(action.target!);
+      return `  ${name}`;
+    });
+  if (affectedTables.length === 0) {
+    return;
+  }
 
   printWarning(
     `Warning: --${fullRefreshOption.name} and --${overrideProtectedOption.name} are both set. ` +
-      "This will purge data from all incremental tables, even protected ones.\n" +
-      `Affected tables:\n${affectedTables.join("\n")}\n`,
+      `The following protected incremental tables will be dropped and recreated: \n${affectedTables.join("\n")}`,
   );
 }
 

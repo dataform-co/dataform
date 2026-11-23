@@ -84,7 +84,7 @@ export const overrideProtectedOption: INamedOption<yargs.Options, IRunArgs> = {
     describe:
       "Also rebuilds incremental tables marked protected from scratch. This will purge data from all " +
       "protected incremental tables (unless excluded by a --actions/--tags selector), potentially leading " +
-      `to permanent data loss. Requires --full-refresh.`,
+      "to permanent data loss. Requires --full-refresh.",
     type: "boolean",
     default: false,
   },

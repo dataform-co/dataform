@@ -20,7 +20,7 @@ suite("warnAboutOverrideProtectedFullRefresh", ({ beforeEach, afterEach }) => {
     process.stderr.write = originalStderrWrite;
   });
 
-  test("warns and lists existing incremental tables, marking protected ones", () => {
+  test("warns and lists existing protected incremental tables", () => {
     warnAboutOverrideProtectedFullRefresh(
       {
         actions: [
@@ -106,21 +106,71 @@ suite("warnAboutOverrideProtectedFullRefresh", ({ beforeEach, afterEach }) => {
           target: { database: "db", schema: "schema", name: "inc_unprotected" },
           protected: false,
         },
+        {
+          target: { database: "db", schema: "schema", name: "regular_table" },
+          protected: true,
+        },
+        {
+          target: { database: "db", schema: "schema", name: "inc_disabled" },
+          protected: true,
+        },
+        {
+          target: { database: "db", schema: "schema", name: "inc_jit" },
+          protected: true,
+        },
+        {
+          target: { database: "db", schema: "schema", name: "inc_new" },
+          protected: true,
+        },
+        {
+          target: { database: "db", schema: "schema", name: "inc_was_view" },
+          protected: true,
+        },
       ],
     );
 
     expect(stderrOutput).to.have.length(1);
-    expect(stderrOutput[0]).to.include(
-      "Warning: --full-refresh and --override-protected are both set. " +
-        "This will purge data from all incremental tables, even protected ones.",
+    const plainOutput = stderrOutput.join("").replace(/\x1b\[[0-9;]*m/g, "");
+    expect(plainOutput).equals(
+      [
+        "Warning: --full-refresh and --override-protected are both set. " +
+          "The following protected incremental tables will be dropped and recreated: ",
+        "  db.schema.inc_protected",
+        "  db.schema.inc_jit",
+        "",
+      ].join("\n"),
     );
-    expect(stderrOutput[0]).to.include("  db.schema.inc_unprotected\n");
-    expect(stderrOutput[0]).to.include("  db.schema.inc_protected (protected)\n");
-    expect(stderrOutput[0]).to.include("  db.schema.inc_jit\n");
-    expect(stderrOutput[0]).to.not.include("regular_table");
-    expect(stderrOutput[0]).to.not.include("inc_disabled");
-    expect(stderrOutput[0]).to.not.include("inc_new");
-    expect(stderrOutput[0]).to.not.include("inc_was_view");
+  });
+
+  test("does not warn when no protected incremental tables are present", () => {
+    warnAboutOverrideProtectedFullRefresh(
+      {
+        actions: [
+          {
+            type: "table",
+            tableType: "incremental",
+            target: { database: "db", schema: "schema", name: "inc_unprotected" },
+            tasks: [{ type: "statement", statement: "SELECT 1" }],
+          },
+        ],
+        warehouseState: {
+          tables: [
+            {
+              target: { database: "db", schema: "schema", name: "inc_unprotected" },
+              type: dataform.TableMetadata.Type.TABLE,
+            },
+          ],
+        },
+      },
+      [
+        {
+          target: { database: "db", schema: "schema", name: "inc_unprotected" },
+          protected: false,
+        },
+      ],
+    );
+
+    expect(stderrOutput).deep.equals([]);
   });
 
   test("does not warn when no incremental tables are present", () => {
@@ -158,53 +208,73 @@ suite("warnAboutOverrideProtectedFullRefresh", ({ beforeEach, afterEach }) => {
   });
 
   test("does not warn when incremental tables do not exist in warehouse yet", () => {
-    warnAboutOverrideProtectedFullRefresh({
-      actions: [
-        {
-          type: "table",
-          tableType: "incremental",
-          target: { database: "db", schema: "schema", name: "inc_new" },
-          tasks: [{ type: "statement", statement: "SELECT 1" }],
-        },
-        {
-          type: "table",
-          tableType: "incremental",
-          target: { database: "db", schema: "schema", name: "inc_was_view" },
-          tasks: [{ type: "statement", statement: "SELECT 1" }],
-        },
-      ],
-      warehouseState: {
-        tables: [
+    warnAboutOverrideProtectedFullRefresh(
+      {
+        actions: [
           {
+            type: "table",
+            tableType: "incremental",
+            target: { database: "db", schema: "schema", name: "inc_new" },
+            tasks: [{ type: "statement", statement: "SELECT 1" }],
+          },
+          {
+            type: "table",
+            tableType: "incremental",
             target: { database: "db", schema: "schema", name: "inc_was_view" },
-            type: dataform.TableMetadata.Type.VIEW,
+            tasks: [{ type: "statement", statement: "SELECT 1" }],
           },
         ],
+        warehouseState: {
+          tables: [
+            {
+              target: { database: "db", schema: "schema", name: "inc_was_view" },
+              type: dataform.TableMetadata.Type.VIEW,
+            },
+          ],
+        },
       },
-    });
+      [
+        {
+          target: { database: "db", schema: "schema", name: "inc_new" },
+          protected: true,
+        },
+        {
+          target: { database: "db", schema: "schema", name: "inc_was_view" },
+          protected: true,
+        },
+      ],
+    );
 
     expect(stderrOutput).deep.equals([]);
   });
 
   test("does not warn when only disabled incremental tables are present", () => {
-    warnAboutOverrideProtectedFullRefresh({
-      actions: [
-        {
-          type: "table",
-          tableType: "incremental",
-          target: { database: "db", schema: "schema", name: "inc_disabled" },
-          tasks: [],
-        },
-      ],
-      warehouseState: {
-        tables: [
+    warnAboutOverrideProtectedFullRefresh(
+      {
+        actions: [
           {
+            type: "table",
+            tableType: "incremental",
             target: { database: "db", schema: "schema", name: "inc_disabled" },
-            type: dataform.TableMetadata.Type.TABLE,
+            tasks: [],
           },
         ],
+        warehouseState: {
+          tables: [
+            {
+              target: { database: "db", schema: "schema", name: "inc_disabled" },
+              type: dataform.TableMetadata.Type.TABLE,
+            },
+          ],
+        },
       },
-    });
+      [
+        {
+          target: { database: "db", schema: "schema", name: "inc_disabled" },
+          protected: true,
+        },
+      ],
+    );
 
     expect(stderrOutput).deep.equals([]);
   });
