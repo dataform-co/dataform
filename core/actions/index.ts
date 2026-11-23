@@ -292,21 +292,22 @@ export abstract class ActionBuilder<T> {
     }
     const resolvedFileName = fileName || config.filename || config.fileName;
     if (config.dependencies !== undefined) {
-      if (Array.isArray(config.dependencies) && config.dependencies.length > 0) {
-        if (config.dependencyTargets?.length > 0) {
-          this.session?.compileError(
-            new Error(
-              "Cannot specify both 'dependencyTargets' and 'dependencies' in the same config.",
-            ),
-            resolvedFileName,
-          );
-        } else {
-          config.dependencyTargets = config.dependencies.map((dependency: string | object) =>
-            resolvableAsActionConfigTarget(dependency),
-          );
-        }
-      } else if (config.dependencyTargets === undefined && Array.isArray(config.dependencies)) {
-        config.dependencyTargets = [];
+      if (config.dependencyTargets !== undefined) {
+        this.session?.compileError(
+          new Error(
+            "Cannot specify both 'dependencyTargets' and 'dependencies' in the same config.",
+          ),
+          resolvedFileName,
+        );
+      } else if (config.dependencies !== null && !Array.isArray(config.dependencies)) {
+        this.session?.compileError(
+          new Error("The 'dependencies' config field must be an array."),
+          resolvedFileName,
+        );
+      } else if (config.dependencies !== null) {
+        config.dependencyTargets = config.dependencies.map((dependency: string | object) =>
+          resolvableAsActionConfigTarget(dependency),
+        );
       }
       delete config.dependencies;
     }
@@ -332,7 +333,12 @@ export abstract class ActionBuilder<T> {
     }
   }
 
-  private resolveLegacyAlias(
+  /**
+   * Moves the value of `legacyKey` to `modernKey` on `config` in place, reporting a compile error
+   * if both keys are present. The check is on presence rather than truthiness, so an empty value
+   * under either key still counts as specified.
+   */
+  protected resolveLegacyAlias(
     config: Record<string, any>,
     legacyKey: string,
     modernKey: string,
@@ -340,17 +346,15 @@ export abstract class ActionBuilder<T> {
     keyPrefix = "",
   ) {
     if (config[legacyKey] !== undefined) {
-      if (config[legacyKey]) {
-        if (config[modernKey]) {
-          this.session?.compileError(
-            new Error(
-              `Cannot specify both '${keyPrefix}${modernKey}' and '${keyPrefix}${legacyKey}' in the same config.`,
-            ),
-            fileName,
-          );
-        } else {
-          config[modernKey] = config[legacyKey];
-        }
+      if (config[modernKey] !== undefined) {
+        this.session?.compileError(
+          new Error(
+            `Cannot specify both '${keyPrefix}${modernKey}' and '${keyPrefix}${legacyKey}' in the same config.`,
+          ),
+          fileName,
+        );
+      } else if (config[legacyKey] !== null) {
+        config[modernKey] = config[legacyKey];
       }
       delete config[legacyKey];
     }

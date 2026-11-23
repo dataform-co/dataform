@@ -7,7 +7,6 @@ import {
   getEffectiveTableFolderSubpath,
   getFileFormatValueForIcebergTable,
   getStorageUriForIcebergTable,
-  resolvableAsActionConfigTarget,
   resolvableAsTarget,
   setActionJobLabels,
   snakeToCamelKeys,
@@ -18,6 +17,7 @@ import {
   validateStorageUriFormat,
 } from "./utils";
 
+import { resolvableAsActionConfigTarget } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 

@@ -11,14 +11,8 @@ import { View } from "df/core/actions/view";
 import { Contextable, Resolvable } from "df/core/contextables";
 import * as Path from "df/core/path";
 import { Session } from "df/core/session";
-import {
-  invalidRefInputMessage,
-  isResolvableArray,
-  resolvableAsActionConfigTarget,
-} from "df/core/targets";
+import { invalidRefInputMessage, isResolvableArray } from "df/core/targets";
 import { dataform } from "df/protos/ts";
-
-export { resolvableAsActionConfigTarget };
 
 declare var __webpack_require__: any;
 declare var __non_webpack_require__: any;

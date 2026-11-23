@@ -78,7 +78,8 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
    */
   public config(config: any) {
     const normalizedConfig = { ...config };
-    this.normalizeLegacyConfigAliases(normalizedConfig, this.proto.fileName);
+    this.resolveLegacyAlias(normalizedConfig, "database", "project", this.proto.fileName);
+    this.resolveLegacyAlias(normalizedConfig, "schema", "dataset", this.proto.fileName);
     if (normalizedConfig.project) {
       this.database(normalizedConfig.project);
     }

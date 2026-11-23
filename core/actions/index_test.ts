@@ -2,8 +2,6 @@ import { expect } from "chai";
 import * as fs from "fs-extra";
 import * as path from "path";
 
-import { DataPreparation } from "df/core/actions/data_preparation";
-import { Session } from "df/core/session";
 import { dataform } from "df/protos/ts";
 import { asPlainObject, suite, test } from "df/testing";
 import { TmpDirFixture } from "df/testing/fixtures";
@@ -1356,35 +1354,68 @@ publish("js_t", { type: "table" })
     });
 
     test("reports compile errors for conflicting aliases in DataPreparation config() helper", () => {
-      const session = new Session(
-        "/tmp",
-        dataform.ProjectConfig.create({
-          defaultDatabase: "defaultProject",
-          defaultSchema: "defaultDataset",
-        }),
-      );
-      const dp = new DataPreparation(
-        session,
-        dataform.ActionConfig.DataPreparationConfig.create({
-          name: "dp",
-          filename: "definitions/dp.dp",
-        }),
-      );
-      dp.config({
-        filename: "definitions/dp.dp",
-        dataset: "new_ds",
-        schema: "old_schema",
-        project: "new_proj",
-        database: "old_db",
+      const graph = compileProject({
+        "dp.dp.sqlx": `
+config {
+  type: "dataPreparation",
+}
+FROM x
+|> SELECT *
+\${ctx.config({
+  dataset: "new_ds",
+  schema: "old_schema",
+  project: "new_proj",
+  database: "old_db",
+})}`,
       });
 
       expect(
-        session.graphErrors.compilationErrors.map((e) => e.message),
+        graph.graphErrors.compilationErrors.map((e) => ({
+          message: e.message,
+          fileName: e.fileName,
+        })),
       ).deep.equals([
-        "Cannot specify both 'project' and 'database' in the same config.",
-        "Cannot specify both 'dataset' and 'schema' in the same config.",
+        {
+          message: "Cannot specify both 'project' and 'database' in the same config.",
+          fileName: "definitions/dp.dp.sqlx",
+        },
+        {
+          message: "Cannot specify both 'dataset' and 'schema' in the same config.",
+          fileName: "definitions/dp.dp.sqlx",
+        },
       ]);
+      expect(asPlainObject(graph.dataPreparations[0].target)).deep.equals({
+        database: "new_proj",
+        schema: "new_ds",
+        name: "dp",
+      });
     });
+
+    for (const actionType of ["table", "view", "incremental", "operations", "assertion"]) {
+      test(`reports a compile error for non-array dependencies in ${actionType} sqlx config`, () => {
+        const graph = compileProject({
+          "dep.sqlx": `config { type: "table" }\nSELECT 1`,
+          "action.sqlx": `
+config {
+  type: "${actionType}",
+  dependencies: "dep",
+}
+SELECT 1`,
+        });
+
+        expect(
+          graph.graphErrors.compilationErrors.map((e) => ({
+            message: e.message,
+            fileName: e.fileName,
+          })),
+        ).deep.equals([
+          {
+            message: "The 'dependencies' config field must be an array.",
+            fileName: "definitions/action.sqlx",
+          },
+        ]);
+      });
+    }
 
     test("allows legacy fileName alone without conflicting with auto-populated filename", () => {
       const graph = compileProject({
