@@ -5,7 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  serialize-javascript: ^7.1.2
+  serialize-javascript: ^7.1.3
   glob-parent: ^5.1.2
   json-bigint: ^1.0.0
   y18n: ^5.0.5
@@ -97,24 +97,6 @@ importers:
       untildify:
         specifier: ^4.0.0
         version: 4.0.0
-      vscode-jsonrpc:
-        specifier: ^5.0.1
-        version: 5.0.1
-      vscode-languageclient:
-        specifier: ^6.1.3
-        version: 6.1.3
-      vscode-languageserver:
-        specifier: ^6.1.1
-        version: 6.1.1
-      vscode-languageserver-protocol:
-        specifier: ^3.15.3
-        version: 3.15.3
-      vscode-languageserver-textdocument:
-        specifier: ^1.0.1
-        version: 1.0.1
-      vscode-languageserver-types:
-        specifier: 3.15.1
-        version: 3.15.1
       yargs:
         specifier: ^16.2.0
         version: 16.2.0
@@ -158,9 +140,6 @@ importers:
       '@types/tmp':
         specifier: ^0.2.0
         version: 0.2.6
-      '@types/vscode':
-        specifier: ^1.45.1
-        version: 1.45.1
       '@types/yargs':
         specifier: ^15.0.5
         version: 15.0.5
@@ -492,9 +471,6 @@ packages:
   '@types/tmp@0.2.6':
     resolution: {integrity: sha512-chhaNf2oKHlRkDGt+tiKE2Z5aJ6qalm7Z9rlLdBwmOiAAf09YQvvoLXjWK4HWPF1xU/fqvMgfNfpVoBscA/tKA==}
 
-  '@types/vscode@1.45.1':
-    resolution: {integrity: sha512-0NO9qrrEJBO8FsqHCrFMgR2suKnwCsKBWvRSb2OzH5gs4i3QO5AhEMQYrSzDbU/wLPt7N617/rN9lPY213gmwg==}
-
   '@types/yargs-parser@15.0.0':
     resolution: {integrity: sha512-FA/BWv8t8ZWJ+gEOnLLd8ygxH/2UFbAvgEonyfN6yWGLKc7zVjbpl2Y4CTjid9h2RfgPP6SEt6uHwEOply00yw==}
 
@@ -675,8 +651,8 @@ packages:
   ajv@6.15.0:
     resolution: {integrity: sha512-fgFx7Hfoq60ytK2c7DhnF8jIvzYgOMxfugjLOSMHjLIPgenqa7S7oaagATUq99mV6IYvN2tRmC0wnTYX6iPbMw==}
 
-  ajv@8.17.1:
-    resolution: {integrity: sha512-B/gBuNg5SiMTrPkC+A2+cW0RszwxYmn6VYxB/inlBStS5nx6xHIt/ehKRhIMhqusl7a8LjQoZnjCs5vhwxOQ1g==}
+  ajv@8.18.0:
+    resolution: {integrity: sha512-PlXPeEWMXMZ7sPYOHqmDyCJzcfNrUr3fGNKtezX14ykXOEIvyK81d+qydx89KY5O71FKMPaQ2vBfBFI5NHR63A==}
 
   ansi-regex@3.0.1:
     resolution: {integrity: sha512-+O9Jct8wf++lXxxFc4hc8LsjaSq0HFzzL7cVsw8pRDIPdjKD2mT4ytDZlLuSBZ4cLKZFXIrMGO7DbQCtMJJMKw==}
@@ -1493,8 +1469,8 @@ packages:
     resolution: {integrity: sha512-uxFIHU0YlHYhDQtV4R9J6a52SLx28BCjT+4ieh7IGbgwVJWO+km431c4yRlREUAsAmt/uMjQUyQHNEPf0M39CA==}
     engines: {node: '>=6'}
 
-  punycode@2.1.1:
-    resolution: {integrity: sha512-XRsRjdf+j5ml+y/6GKHPZbrF/8p2Yga0JPtdqTIY2Xe5ohJPD9saDJJLPvp9+NSBprVvevdXZybnj2cv8OEd0A==}
+  punycode@2.3.1:
+    resolution: {integrity: sha512-vYt7UD1U9Wg6138shLtLOvdAu+8DsC/ilFtEVHcH+wydcSpNE20AfSOduf6MkRFahL5FY7X1oU7nKVZFtfq8Fg==}
     engines: {node: '>=6'}
 
   readable-stream@3.6.0:
@@ -1564,17 +1540,13 @@ packages:
     resolution: {integrity: sha512-eflK8wEtyOE6+hsaRVPxvUKYCpRgzLqDTb8krvAsRIwOGlHoSgYLgBXoubGgLd2fT41/OUYdb48v4k4WWHQurA==}
     engines: {node: '>= 10.13.0'}
 
-  semver@6.3.1:
-    resolution: {integrity: sha512-BR7VvDCVHO+q2xBEWskxS6DJE1qRnb7DxzUrogb71CWoSficBxYsiAGd+Kl0mmq/MprG9yArRkyrQxTO6XjMzA==}
-    hasBin: true
-
   semver@7.8.5:
     resolution: {integrity: sha512-Y7/KDsb8LjooZpwaqGyulO6DQlksgCncchHGk+sZIY4SBvUocMBEFH5Ur1fI4dV+Jvl0w6cjvucaIi40puRioA==}
     engines: {node: '>=10'}
     hasBin: true
 
-  serialize-javascript@7.1.2:
-    resolution: {integrity: sha512-GL2BWwVa6JydKO6l/ljVgjAZF4QJ3S7dWDWi53s5GZT8PJzD2fNxi67HANQGKAqPrwEpL5ba7gUBGi0Ls/sEoQ==}
+  serialize-javascript@7.1.3:
+    resolution: {integrity: sha512-kYEnegpAxWFjUw3dSYdSM9zVlTrsxDbsSkq/qd3B7VanqyJ+JdDy6qVyuqVGBhSfuD/rLZQEKuXsO5KZFCrVYQ==}
     engines: {node: '>=20.0.0'}
 
   shallow-clone@3.0.1:
@@ -1748,27 +1720,6 @@ packages:
 
   uuidv7@0.4.4:
     resolution: {integrity: sha512-jjRGChg03uGp9f6wQYSO8qXkweJwRbA5WRuEQE8xLIiehIzIIi23qZSzsyvZPCPoFqkeLtZuz7Plt1LGukAInA==}
-    hasBin: true
-
-  vscode-jsonrpc@5.0.1:
-    resolution: {integrity: sha512-JvONPptw3GAQGXlVV2utDcHx0BiY34FupW/kI6mZ5x06ER5DdPG/tXWMVHjTNULF5uKPOUUD0SaXg5QaubJL0A==}
-    engines: {node: '>=8.0.0 || >=10.0.0'}
-
-  vscode-languageclient@6.1.3:
-    resolution: {integrity: sha512-YciJxk08iU5LmWu7j5dUt9/1OLjokKET6rME3cI4BRpiF6HZlusm2ZwPt0MYJ0lV5y43sZsQHhyon2xBg4ZJVA==}
-    engines: {vscode: ^1.41.0}
-
-  vscode-languageserver-protocol@3.15.3:
-    resolution: {integrity: sha512-zrMuwHOAQRhjDSnflWdJG+O2ztMWss8GqUUB8dXLR/FPenwkiBNkMIJJYfSN6sgskvsF0rHAoBowNQfbyZnnvw==}
-
-  vscode-languageserver-textdocument@1.0.1:
-    resolution: {integrity: sha512-UIcJDjX7IFkck7cSkNNyzIz5FyvpQfY7sdzVy+wkKN/BLaD4DQ0ppXQrKePomCxTS7RrolK1I0pey0bG9eh8dA==}
-
-  vscode-languageserver-types@3.15.1:
-    resolution: {integrity: sha512-+a9MPUQrNGRrGU630OGbYVQ+11iOIovjCkqxajPa9w57Sd5ruK8WQNsslzpa0x/QJqC8kRc2DUxWjIFwoNm4ZQ==}
-
-  vscode-languageserver@6.1.1:
-    resolution: {integrity: sha512-DueEpkUAkD5XTR4MLYNr6bQIp/UFR0/IPApgXU3YfCBCB08u2sm9hRCs6DxYZELkk++STPjpcjksR2H8qI3cDQ==}
     hasBin: true
 
   watchpack@2.5.1:
@@ -2144,8 +2095,6 @@ snapshots:
 
   '@types/tmp@0.2.6': {}
 
-  '@types/vscode@1.45.1': {}
-
   '@types/yargs-parser@15.0.0': {}
 
   '@types/yargs@15.0.5':
@@ -2357,13 +2306,13 @@ snapshots:
 
   agent-base@7.1.4: {}
 
-  ajv-formats@2.1.1(ajv@8.17.1):
+  ajv-formats@2.1.1(ajv@8.18.0):
     optionalDependencies:
-      ajv: 8.17.1
+      ajv: 8.18.0
 
-  ajv-keywords@5.1.0(ajv@8.17.1):
+  ajv-keywords@5.1.0(ajv@8.18.0):
     dependencies:
-      ajv: 8.17.1
+      ajv: 8.18.0
       fast-deep-equal: 3.1.3
 
   ajv@6.15.0:
@@ -2373,7 +2322,7 @@ snapshots:
       json-schema-traverse: 0.4.1
       uri-js: 4.4.1
 
-  ajv@8.17.1:
+  ajv@8.18.0:
     dependencies:
       fast-deep-equal: 3.1.3
       fast-uri: 3.1.9
@@ -3206,7 +3155,7 @@ snapshots:
 
   punycode.js@2.3.1: {}
 
-  punycode@2.1.1: {}
+  punycode@2.3.1: {}
 
   readable-stream@3.6.0:
     dependencies:
@@ -3274,15 +3223,13 @@ snapshots:
   schema-utils@4.3.3:
     dependencies:
       '@types/json-schema': 7.0.15
-      ajv: 8.17.1
-      ajv-formats: 2.1.1(ajv@8.17.1)
-      ajv-keywords: 5.1.0(ajv@8.17.1)
-
-  semver@6.3.1: {}
+      ajv: 8.18.0
+      ajv-formats: 2.1.1(ajv@8.18.0)
+      ajv-keywords: 5.1.0(ajv@8.18.0)
 
   semver@7.8.5: {}
 
-  serialize-javascript@7.1.2: {}
+  serialize-javascript@7.1.3: {}
 
   shallow-clone@3.0.1:
     dependencies:
@@ -3358,7 +3305,7 @@ snapshots:
       '@jridgewell/trace-mapping': 0.3.25
       jest-worker: 27.5.1
       schema-utils: 4.3.3
-      serialize-javascript: 7.1.2
+      serialize-javascript: 7.1.3
       terser: 5.39.0
       webpack: 5.104.1(webpack-cli@4.10.0)
 
@@ -3431,31 +3378,11 @@ snapshots:
 
   uri-js@4.4.1:
     dependencies:
-      punycode: 2.1.1
+      punycode: 2.3.1
 
   util-deprecate@1.0.2: {}
 
   uuidv7@0.4.4: {}
-
-  vscode-jsonrpc@5.0.1: {}
-
-  vscode-languageclient@6.1.3:
-    dependencies:
-      semver: 6.3.1
-      vscode-languageserver-protocol: 3.15.3
-
-  vscode-languageserver-protocol@3.15.3:
-    dependencies:
-      vscode-jsonrpc: 5.0.1
-      vscode-languageserver-types: 3.15.1
-
-  vscode-languageserver-textdocument@1.0.1: {}
-
-  vscode-languageserver-types@3.15.1: {}
-
-  vscode-languageserver@6.1.1:
-    dependencies:
-      vscode-languageserver-protocol: 3.15.3
 
   watchpack@2.5.1:
     dependencies:

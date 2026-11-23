@@ -40,7 +40,7 @@ suite("@dataform/cli package", () => {
   test("package.json dependencies match external packages required by CLI bundles", () => {
     const packageJson = JSON.parse(
       fs.readFileSync(path.join(PACKAGED_CLI_DIR, "package.json"), "utf8"),
-    ) as { dependencies: Record<string, string> };
+    ) as Record<string, unknown> & { dependencies: Record<string, string> };
     const mainBundle = fs.readFileSync(cliEntryPointPath, "utf8");
     const workerBundle = fs.readFileSync(path.join(PACKAGED_CLI_DIR, "worker_bundle.js"), "utf8");
 
@@ -53,5 +53,8 @@ suite("@dataform/cli package", () => {
     const declaredDependencies = Object.keys(packageJson.dependencies).sort();
 
     expect(declaredDependencies).to.deep.equal(requiredPackages);
+    expect(packageJson).to.not.have.property("devDependencies");
+    expect(packageJson).to.not.have.property("pnpm");
+    expect(packageJson).to.not.have.property("packageManager");
   });
 });
