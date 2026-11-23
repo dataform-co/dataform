@@ -1,0 +1,68 @@
+#!/usr/bin/env python3
+"""Checks that the Cloud Build tests install the whole lockfile.
+
+The Cloud Build tests (cloudbuild-test.yaml) must install every package in
+pnpm-lock.yaml from the CI registry in the step with the ID
+verify-npm-from-ci-registry. Bazel only fetches the npm packages that its
+targets need, so without this step a lockfile with versions that aren't
+available in the CI registry passes the tests and only fails later (see #2458,
+which removed the full install by accident, and #2452).
+
+This check fails if the step is missing or doesn't run a full
+`pnpm install --frozen-lockfile`.
+
+Usage: ./scripts/check_cloudbuild_installs_lockfile [cloudbuild-test.yaml]
+"""
+
+import re
+import sys
+
+STEP_ID = "verify-npm-from-ci-registry"
+REQUIRED = [
+    (re.compile(r"@pnpm//:pnpm\b"), "run pnpm through Bazel (@pnpm//:pnpm)"),
+    (re.compile(r"\binstall\b[^\n]*--frozen-lockfile\b"), "run `install --frozen-lockfile`"),
+]
+# Options that install or fetch only part of the lockfile, or nothing at all.
+FORBIDDEN = re.compile(r"(?<![\w-])(--prod|--production|-P|--dev|-D|--filter|-F|--no-optional|"
+                       r"--offline|--prefer-offline|--lockfile-only|--ignore-workspace|"
+                       r"--resolution-only)(?![\w-])")
+
+
+def steps(text):
+    """Splits the `steps:` list of a Cloud Build config into step texts."""
+    match = re.search(r"^steps:\s*\n((?:[ \t].*\n|\s*\n)*)", text, re.M)
+    if not match:
+        return []
+    return [s for s in re.split(r"^  - ", match.group(1), flags=re.M) if s.strip()]
+
+
+def main():
+    path = sys.argv[1] if len(sys.argv) > 1 else "cloudbuild-test.yaml"
+    text = open(path).read()
+    candidates = [s for s in steps(text)
+                  if re.search(r"^\s*id:\s*[\"']?%s[\"']?\s*$" % re.escape(STEP_ID), s, re.M)]
+    errors = []
+    if len(candidates) != 1:
+        errors.append("%s must have exactly one step with `id: %s` (found %d)"
+                      % (path, STEP_ID, len(candidates)))
+    else:
+        step = "\n".join(line for line in candidates[0].splitlines()
+                         if not line.strip().startswith("#") or line.strip().startswith("#!"))
+        for pattern, description in REQUIRED:
+            if not pattern.search(step):
+                errors.append("the %s step must %s" % (STEP_ID, description))
+        forbidden = FORBIDDEN.search(step)
+        if forbidden:
+            errors.append("the %s step must install the whole lockfile, without %s"
+                          % (STEP_ID, forbidden.group(1)))
+    for error in errors:
+        print("ERROR: " + error, file=sys.stderr)
+    if errors:
+        sys.exit("The Cloud Build tests must install every package in pnpm-lock.yaml from the CI "
+                 "registry; Bazel alone only fetches the packages its targets need. See the "
+                 "comment in %s and scripts/check_cloudbuild_installs_lockfile." % path)
+    print("%s installs the whole lockfile in the %s step." % (path, STEP_ID))
+
+
+if __name__ == "__main__":
+    main()
