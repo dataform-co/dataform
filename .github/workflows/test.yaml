@@ -34,7 +34,9 @@ jobs:
         run: ./scripts/lint
 
       - name: Check that the Cloud Build tests install the whole lockfile
-        run: ./scripts/check_cloudbuild_installs_lockfile
+        run: |
+          ./scripts/check_cloudbuild_installs_lockfile_test.py
+          ./scripts/check_cloudbuild_installs_lockfile
 
   # Unit and integration tests run on Cloud Build (cloudbuild-test.yaml); this job only
   # builds the packages and the smoke test bundle that the Windows job needs.

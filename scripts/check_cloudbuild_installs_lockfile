@@ -8,8 +8,11 @@ targets need, so without this step a lockfile with versions that aren't
 available in the CI registry passes the tests and only fails later (see #2458,
 which removed the full install by accident, and #2452).
 
-This check fails if the step is missing or doesn't run a full
-`pnpm install --frozen-lockfile`.
+This check fails unless exactly one step has that ID and it:
+  - runs `pnpm install --frozen-lockfile` through Bazel (@pnpm//:pnpm), without
+    --prod or --filter, which install only part of the lockfile;
+  - waits for the step that writes ~/.npmrc (scripts/create_npmrc);
+  - runs before the step that runs the tests (scripts/run_tests_on_cloudbuild).
 
 Usage: ./scripts/check_cloudbuild_installs_lockfile [cloudbuild-test.yaml]
 """
@@ -17,50 +20,75 @@ Usage: ./scripts/check_cloudbuild_installs_lockfile [cloudbuild-test.yaml]
 import re
 import sys
 
+try:
+    import yaml
+except ImportError:
+    sys.exit("PyYAML is required: pip install pyyaml")
+
 STEP_ID = "verify-npm-from-ci-registry"
-REQUIRED = [
-    (re.compile(r"@pnpm//:pnpm\b"), "run pnpm through Bazel (@pnpm//:pnpm)"),
-    (re.compile(r"\binstall\b[^\n]*--frozen-lockfile\b"), "run `install --frozen-lockfile`"),
-]
-# Options that install or fetch only part of the lockfile, or nothing at all.
-FORBIDDEN = re.compile(r"(?<![\w-])(--prod|--production|-P|--dev|-D|--filter|-F|--no-optional|"
-                       r"--offline|--prefer-offline|--lockfile-only|--ignore-workspace|"
-                       r"--resolution-only)(?![\w-])")
+NPMRC_SCRIPT = "scripts/create_npmrc"
+TESTS_SCRIPT = "scripts/run_tests_on_cloudbuild"
+PARTIAL_INSTALL = re.compile(r"(?<![\w-])(--prod|--production|--filter)(?![\w-])")
 
 
-def steps(text):
-    """Splits the `steps:` list of a Cloud Build config into step texts."""
-    match = re.search(r"^steps:\s*\n((?:[ \t].*\n|\s*\n)*)", text, re.M)
-    if not match:
-        return []
-    return [s for s in re.split(r"^  - ", match.group(1), flags=re.M) if s.strip()]
+def command(step):
+    """Returns the step's script or args without comment lines."""
+    text = step.get("script") or " ".join(step.get("args") or [])
+    return "\n".join(line for line in str(text).splitlines()
+                     if not line.lstrip().startswith("#") or line.lstrip().startswith("#!"))
+
+
+def check(config):
+    """Returns the list of problems with a parsed Cloud Build config."""
+    steps = (config or {}).get("steps") or []
+    matches = [i for i, step in enumerate(steps) if step.get("id") == STEP_ID]
+    if len(matches) != 1:
+        return ["there must be exactly one step with `id: %s` (found %d)" % (STEP_ID, len(matches))]
+    index = matches[0]
+    step = steps[index]
+    script = command(step)
+    errors = []
+    if "@pnpm//:pnpm" not in script:
+        errors.append("the %s step must run pnpm through Bazel (@pnpm//:pnpm)" % STEP_ID)
+    if not re.search(r"\binstall\b[^\n]*--frozen-lockfile\b", script):
+        errors.append("the %s step must run `install --frozen-lockfile`" % STEP_ID)
+    partial = PARTIAL_INSTALL.search(script)
+    if partial:
+        errors.append("the %s step must install the whole lockfile, without %s"
+                      % (STEP_ID, partial.group(1)))
+
+    npmrc = [i for i, s in enumerate(steps) if NPMRC_SCRIPT in command(s)]
+    if not npmrc:
+        errors.append("no step runs %s" % NPMRC_SCRIPT)
+    elif npmrc[0] > index:
+        errors.append("the %s step must come after the step that runs %s" % (STEP_ID, NPMRC_SCRIPT))
+    elif "waitFor" in step:
+        npmrc_id = steps[npmrc[0]].get("id")
+        if not npmrc_id or npmrc_id not in step["waitFor"]:
+            errors.append("the %s step must wait for the step that runs %s (give it an id and "
+                          "list it in waitFor)" % (STEP_ID, NPMRC_SCRIPT))
+
+    tests = [i for i, s in enumerate(steps) if TESTS_SCRIPT in command(s)]
+    if not tests:
+        errors.append("no step runs %s" % TESTS_SCRIPT)
+    elif tests[0] < index:
+        errors.append("the %s step must come before the step that runs %s" % (STEP_ID, TESTS_SCRIPT))
+    elif "waitFor" in steps[tests[0]] and STEP_ID not in steps[tests[0]]["waitFor"]:
+        errors.append("the step that runs %s must wait for the %s step" % (TESTS_SCRIPT, STEP_ID))
+    return errors
 
 
 def main():
     path = sys.argv[1] if len(sys.argv) > 1 else "cloudbuild-test.yaml"
-    text = open(path).read()
-    candidates = [s for s in steps(text)
-                  if re.search(r"^\s*id:\s*[\"']?%s[\"']?\s*$" % re.escape(STEP_ID), s, re.M)]
-    errors = []
-    if len(candidates) != 1:
-        errors.append("%s must have exactly one step with `id: %s` (found %d)"
-                      % (path, STEP_ID, len(candidates)))
-    else:
-        step = "\n".join(line for line in candidates[0].splitlines()
-                         if not line.strip().startswith("#") or line.strip().startswith("#!"))
-        for pattern, description in REQUIRED:
-            if not pattern.search(step):
-                errors.append("the %s step must %s" % (STEP_ID, description))
-        forbidden = FORBIDDEN.search(step)
-        if forbidden:
-            errors.append("the %s step must install the whole lockfile, without %s"
-                          % (STEP_ID, forbidden.group(1)))
+    with open(path) as f:
+        errors = check(yaml.safe_load(f))
     for error in errors:
-        print("ERROR: " + error, file=sys.stderr)
+        print("ERROR: %s: %s" % (path, error), file=sys.stderr)
     if errors:
         sys.exit("The Cloud Build tests must install every package in pnpm-lock.yaml from the CI "
-                 "registry; Bazel alone only fetches the packages its targets need. See the "
-                 "comment in %s and scripts/check_cloudbuild_installs_lockfile." % path)
+                 "registry before running the tests; Bazel alone only fetches the packages its "
+                 "targets need. See the comment in %s and scripts/check_cloudbuild_installs_lockfile."
+                 % path)
     print("%s installs the whole lockfile in the %s step." % (path, STEP_ID))
 
 
