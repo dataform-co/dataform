@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+# Compile protos with protoc (not exercised by the tests below)
+bazel build //protos:dataform_proto
+
 # Run unit tests
 bazel test ... \
   --test_tag_filters=-integration \
