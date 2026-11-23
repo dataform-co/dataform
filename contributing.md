@@ -70,6 +70,8 @@ Integration tests run against BigQuery using [Application Default Credentials (A
    - `roles/bigquery.jobUser` (BigQuery Job User)
    - `roles/bigquery.dataEditor` (BigQuery Data Editor)
 
+   Additionally, the Lakehouse E2E suite (`//cli:index_lakehouse_e2e_test`) requires a pre-existing BigLake Iceberg `lakehouse` catalog and namespace in your project (`df_integration_test_catalog` / `df_integration_test_ns` by default, in your test location) with permissions to create, alter, and drop tables in that namespace (for example `roles/biglake.admin` and `roles/storage.objectAdmin` on the catalog's bucket). To point the test at a custom catalog, namespace, or location on your own project, set `INTEGRATION_TEST_LAKEHOUSE_CATALOG`, `INTEGRATION_TEST_LAKEHOUSE_NAMESPACE`, and/or `INTEGRATION_TEST_LAKEHOUSE_LOCATION` in your environment when running with `--config=integration`.
+
 3. **Configure the target GCP project (optional for `dataform-open-source` members):**
 
    By default, the committed `test_credentials/bigquery.default.json` points to `"projectId": "dataform-open-source"` and `"location": "US"`, and sets `"impersonateServiceAccount"` to the test service account.
