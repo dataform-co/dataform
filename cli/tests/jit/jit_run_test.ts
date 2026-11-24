@@ -323,7 +323,8 @@ suite("run", ({ afterEach }) => {
       "insert into `db.sch.incremental_jit`\n" +
         "(`t`)\n" +
         "select `t`\n" +
-        "from (SELECT 'inc' as t) as insertions",
+        "from (SELECT 'inc' as t\n" +
+        ") as insertions",
     );
   });
 

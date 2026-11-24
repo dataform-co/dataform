@@ -228,6 +228,7 @@ suite("ExecutionSql with 'onSchemaChange'", () => {
       const droppedTables = [...errorHandler.matchAll(/DROP TABLE IF EXISTS `([^`]+)`/g)].map(
         (match) => match[1],
       );
+      expect(droppedTables).to.have.lengthOf(1);
       for (const droppedTable of droppedTables) {
         expect(
           droppedTable,

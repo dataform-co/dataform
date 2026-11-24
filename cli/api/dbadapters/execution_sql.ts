@@ -341,7 +341,8 @@ DECLARE dataform_columns_removed ARRAY<STRING>;`;
     return `
 -- Create empty table to extract schema of new query.
 CREATE OR REPLACE TABLE ${emptyTempTableName} AS (
-  SELECT * FROM (${query}) AS insertions LIMIT 0
+  SELECT * FROM (${query}
+) AS insertions LIMIT 0
 );`;
   }
 
@@ -676,7 +677,7 @@ END;`;
           ? this.withTempStagingTable(incrementalQuery, (stagingTable) =>
               this.insertInto(table.target, undefined, stagingTable),
             )
-          : this.insertInto(table.target, columns, `(${incrementalQuery}) as insertions`);
+          : this.insertInto(table.target, columns, `(${incrementalQuery}\n) as insertions`);
     }
   }
 }

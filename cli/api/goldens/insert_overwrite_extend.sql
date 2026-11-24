@@ -12,7 +12,8 @@ DECLARE dataform_columns_removed ARRAY<STRING>;
 
 -- Create empty table to extract schema of new query.
 CREATE OR REPLACE TABLE `project-id.dataset-id.incremental_on_schema_change_df_temp_test_uuid_empty` AS (
-  SELECT * FROM (select 1 as id, 'a' as field1, 'new' as field2) AS insertions LIMIT 0
+  SELECT * FROM (select 1 as id, 'a' as field1, 'new' as field2
+) AS insertions LIMIT 0
 );
 
 
