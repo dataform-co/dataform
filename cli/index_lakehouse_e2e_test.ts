@@ -4,7 +4,7 @@ import { dump as dumpYaml, load as loadYaml } from "js-yaml";
 import * as path from "path";
 
 import * as dfapi from "df/cli/api";
-import { BigQueryDbAdapter } from "df/cli/api/dbadapters/bigquery";
+import { BigQueryDbAdapter, createBigQueryClientProvider } from "df/cli/api/dbadapters/bigquery";
 import {
   CREDENTIALS_PATH,
   INTEGRATION_TEST_LAKEHOUSE_CATALOG,
@@ -39,7 +39,9 @@ const STALE_TABLE_MIN_AGE_HOURS = 6;
 integrationSuite("lakehouse e2e", { parallel: true }, ({ before, after }) => {
   const tmpDirFixture = new TmpDirFixture(after);
   const credentials = dfapi.credentials.read(CREDENTIALS_PATH);
-  const dbadapter = new BigQueryDbAdapter(credentials);
+  const clientProvider = createBigQueryClientProvider(credentials);
+  const dbadapter = new BigQueryDbAdapter(credentials, { clientProvider });
+  const bigqueryClient = clientProvider(INTEGRATION_TEST_PROJECT);
   const lakehouseSchema = `${INTEGRATION_TEST_LAKEHOUSE_CATALOG}.${INTEGRATION_TEST_LAKEHOUSE_NAMESPACE}`;
   const lakehouseExecutor = {
     execute: (statement: string) =>
@@ -99,20 +101,27 @@ integrationSuite("lakehouse e2e", { parallel: true }, ({ before, after }) => {
     // Best-effort cleanup of orphaned Lakehouse tables left behind by killed/timed-out CI runs.
     try {
       const cutoffMillis = Date.now() - STALE_TABLE_MIN_AGE_HOURS * 3600 * 1000;
-      const existingTables = await dbadapter.tables(INTEGRATION_TEST_PROJECT, lakehouseSchema);
+      const [existingTables] = await bigqueryClient
+        .dataset(lakehouseSchema)
+        .getTables({ autoPaginate: true, maxResults: 1000 });
       const staleTables = existingTables.filter((t) => {
-        const match = STALE_TABLE_REGEX.exec(t.target?.name || "");
+        const match = STALE_TABLE_REGEX.exec(t.id || "");
         return match && parseInt(match[1], 10) * 1000 < cutoffMillis;
       });
       await Promise.all(
         staleTables.map((t) =>
           dbadapter
-            .deleteTable(t.target, {
-              bigquery: { location: INTEGRATION_TEST_LAKEHOUSE_LOCATION },
-            })
-            .catch((err) =>
-              console.warn(`Failed to drop stale Lakehouse table ${t.target?.name}: ${err}`),
-            ),
+            .deleteTable(
+              {
+                database: INTEGRATION_TEST_PROJECT,
+                schema: lakehouseSchema,
+                name: t.id,
+              },
+              {
+                bigquery: { location: INTEGRATION_TEST_LAKEHOUSE_LOCATION },
+              },
+            )
+            .catch((err) => console.warn(`Failed to drop stale Lakehouse table ${t.id}: ${err}`)),
         ),
       );
     } catch (e) {
@@ -218,21 +227,10 @@ integrationSuite("lakehouse e2e", { parallel: true }, ({ before, after }) => {
 
   async function fetchExecutedJobQuery(jobId: string): Promise<string> {
     expect(jobId, "expected BigQuery jobId in task metadata").to.be.a("string").and.not.equal("");
-    const { rows } = await dbadapter.execute(
-      `SELECT query
-       FROM \`${INTEGRATION_TEST_PROJECT}\`.\`region-${INTEGRATION_TEST_LAKEHOUSE_LOCATION.toLowerCase()}\`.INFORMATION_SCHEMA.JOBS_BY_USER
-       WHERE creation_time > TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 1 HOUR)
-         AND job_id = @jobId`,
-      {
-        params: { jobId },
-        bigquery: { location: INTEGRATION_TEST_LAKEHOUSE_LOCATION },
-      },
-    );
-    expect(
-      rows.length,
-      `BigQuery job ${jobId} not found in INFORMATION_SCHEMA.JOBS_BY_USER`,
-    ).equals(1);
-    const query = String(rows[0].query || "");
+    const [metadata] = await bigqueryClient
+      .job(jobId, { location: INTEGRATION_TEST_LAKEHOUSE_LOCATION })
+      .getMetadata();
+    const query = String(metadata?.configuration?.query?.query || "");
     expect(query, `empty query for BigQuery job ${jobId}`).to.not.equal("");
     return query;
   }
