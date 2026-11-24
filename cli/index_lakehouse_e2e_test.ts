@@ -20,20 +20,24 @@ import { dropDatasets, dropStaleDatasets, makeUniqueSuffix } from "df/testing/bi
 import { integrationSuite, readTestCredentialsConfig } from "df/testing/credentials";
 import { TmpDirFixture } from "df/testing/fixtures";
 
-const SCRATCH_DATASET_PREFIXES = [
-  "df_e2e_lh_table",
-  "df_e2e_lh_inc",
-  "df_e2e_lh_osc",
-  "df_e2e_lh_op",
-  "df_e2e_lh_meta",
-  "df_e2e_lh_view",
-  "df_e2e_lh_loc",
-  "df_e2e_lh_ds_missing",
-  "df_e2e_lh_ds_existing",
-  "df_e2e_lh_missing_ns",
-];
+const SCRATCH_DATASET_PREFIX = {
+  TABLE: "df_e2e_lh_table",
+  INCREMENTAL: "df_e2e_lh_inc",
+  ON_SCHEMA_CHANGE: "df_e2e_lh_osc",
+  OPERATION: "df_e2e_lh_op",
+  METADATA: "df_e2e_lh_meta",
+  VIEW: "df_e2e_lh_view",
+  LOCATION: "df_e2e_lh_loc",
+  DS_MISSING: "df_e2e_lh_ds_missing",
+  DS_EXISTING: "df_e2e_lh_ds_existing",
+  MISSING_NS: "df_e2e_lh_missing_ns",
+} as const;
 
-const STALE_TABLE_REGEX = /^lh_e2e_[a-z_]+_(\d+)_[0-9a-f]{8}$/;
+type ScratchDatasetPrefix = (typeof SCRATCH_DATASET_PREFIX)[keyof typeof SCRATCH_DATASET_PREFIX];
+
+const SCRATCH_DATASET_PREFIXES: string[] = Object.values(SCRATCH_DATASET_PREFIX);
+
+const STALE_TABLE_REGEX = /^lh_e2e_[a-z0-9_]+_(\d+)_[0-9a-f]{8}$/;
 const STALE_TABLE_MIN_AGE_HOURS = 6;
 
 integrationSuite("lakehouse e2e", { parallel: true }, ({ before, after }) => {
@@ -130,13 +134,13 @@ integrationSuite("lakehouse e2e", { parallel: true }, ({ before, after }) => {
   });
 
   async function withLakehouseProject(
-    datasetPrefix: string,
+    datasetPrefix: ScratchDatasetPrefix,
     fn: (ctx: {
       projectDir: string;
       scratchDataset: string;
       registerTableForCleanup: (tableName: string) => dataform.ITarget;
     }) => Promise<void>,
-    options?: { defaultLocation?: string | undefined },
+    options?: { omitDefaultLocation?: boolean },
   ): Promise<void> {
     const projectDir = tmpDirFixture.createNewTmpDir();
     const scratchDataset = `${datasetPrefix}_${makeUniqueSuffix()}`;
@@ -152,21 +156,18 @@ integrationSuite("lakehouse e2e", { parallel: true }, ({ before, after }) => {
       return target;
     };
 
-    const hasLocationOverride = options && "defaultLocation" in options;
-    const effectiveLocation = hasLocationOverride
-      ? options.defaultLocation
-      : INTEGRATION_TEST_LAKEHOUSE_LOCATION;
+    const omitDefaultLocation = Boolean(options?.omitDefaultLocation);
 
     try {
       await setupProject(tmpDirFixture, projectDir, {
         defaultDataset: scratchDataset,
-        ...(effectiveLocation ? { defaultLocation: effectiveLocation } : {}),
+        ...(!omitDefaultLocation ? { defaultLocation: INTEGRATION_TEST_LAKEHOUSE_LOCATION } : {}),
         defaultLakehouseConfig: {
           catalog: INTEGRATION_TEST_LAKEHOUSE_CATALOG,
           namespace: INTEGRATION_TEST_LAKEHOUSE_NAMESPACE,
         },
       });
-      if (hasLocationOverride && effectiveLocation === undefined) {
+      if (omitDefaultLocation) {
         const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
         const workflowSettings = loadYaml(fs.readFileSync(workflowSettingsPath, "utf8")) as {
           [key: string]: any;
@@ -265,7 +266,7 @@ integrationSuite("lakehouse e2e", { parallel: true }, ({ before, after }) => {
     { timeout: 180000 },
     async () => {
       await withLakehouseProject(
-        "df_e2e_lh_table",
+        SCRATCH_DATASET_PREFIX.TABLE,
         async ({ projectDir, registerTableForCleanup }) => {
           const tableName = makeUniqueTableName("table");
           registerTableForCleanup(tableName);
@@ -305,7 +306,7 @@ SELECT 2 AS id, 'v2' AS val`,
     { timeout: 240000 },
     async () => {
       await withLakehouseProject(
-        "df_e2e_lh_inc",
+        SCRATCH_DATASET_PREFIX.INCREMENTAL,
         async ({ projectDir, registerTableForCleanup }) => {
           const appendTable = makeUniqueTableName("inc_append");
           const mergeTable = makeUniqueTableName("inc_merge");
@@ -373,7 +374,7 @@ SELECT 3 AS id, 'v2' AS val`,
     { timeout: 240000 },
     async () => {
       await withLakehouseProject(
-        "df_e2e_lh_osc",
+        SCRATCH_DATASET_PREFIX.ON_SCHEMA_CHANGE,
         async ({ projectDir, scratchDataset, registerTableForCleanup }) => {
           const extendTable = makeUniqueTableName("osc_ext");
           const syncTable = makeUniqueTableName("osc_sync");
@@ -474,7 +475,7 @@ SELECT 2 AS id, 'bob' AS name`,
     { timeout: 180000 },
     async () => {
       await withLakehouseProject(
-        "df_e2e_lh_op",
+        SCRATCH_DATASET_PREFIX.OPERATION,
         async ({ projectDir, registerTableForCleanup }) => {
           const opTable = makeUniqueTableName("op");
           registerTableForCleanup(opTable);
@@ -509,7 +510,7 @@ SELECT 1 AS id, 'from_operation' AS source`,
     { timeout: 180000 },
     async () => {
       await withLakehouseProject(
-        "df_e2e_lh_meta",
+        SCRATCH_DATASET_PREFIX.METADATA,
         async ({ projectDir, registerTableForCleanup }) => {
           const tableName = makeUniqueTableName("meta");
           const target = registerTableForCleanup(tableName);
@@ -558,7 +559,7 @@ SELECT 1 AS id, STRUCT('ok' AS nested_note) AS details`,
     "missing namespace: fails with a clear not-found error without attempting CREATE SCHEMA",
     { timeout: 120000 },
     async () => {
-      await withLakehouseProject("df_e2e_lh_missing_ns", async ({ projectDir }) => {
+      await withLakehouseProject(SCRATCH_DATASET_PREFIX.MISSING_NS, async ({ projectDir }) => {
         const tableName = makeUniqueTableName("bad_ns");
         const missingNamespace = `nonexistent_ns_${makeUniqueSuffix()}`;
         writeDefinitionFile(
@@ -605,7 +606,7 @@ SELECT 1 AS id`,
     { timeout: 180000 },
     async () => {
       await withLakehouseProject(
-        "df_e2e_lh_view",
+        SCRATCH_DATASET_PREFIX.VIEW,
         async ({ projectDir, scratchDataset, registerTableForCleanup }) => {
           const lhTable = makeUniqueTableName("src");
           const viewName = `view_over_${lhTable}`;
@@ -649,7 +650,7 @@ SELECT id, UPPER(label) AS upper_label FROM \${ref("${lhTable}")}`,
 
       // 8a. With `defaultLocation`: overrides conflicting location in credentials.
       await withLakehouseProject(
-        "df_e2e_lh_loc",
+        SCRATCH_DATASET_PREFIX.LOCATION,
         async ({ projectDir, registerTableForCleanup }) => {
           const tableName = makeUniqueTableName("loc_explicit");
           const target = registerTableForCleanup(tableName);
@@ -665,13 +666,12 @@ SELECT 1 AS id`,
           expect(await selectAllLakehouseRows(tableName)).to.eql([{ id: 1 }]);
           expect((await dbadapter.table(target))?.description).to.equal("Explicit location");
         },
-        { defaultLocation: INTEGRATION_TEST_LAKEHOUSE_LOCATION },
       );
 
       // 8b. Without `defaultLocation`: fails when credentials force wrong location, succeeds when
       // credentials also omit location (BigQuery infers catalog location from 4-part target).
       await withLakehouseProject(
-        "df_e2e_lh_loc",
+        SCRATCH_DATASET_PREFIX.LOCATION,
         async ({ projectDir, registerTableForCleanup }) => {
           const tableName = makeUniqueTableName("loc_inferred");
           registerTableForCleanup(tableName);
@@ -699,7 +699,7 @@ SELECT 1 AS id`,
           ).equals(0);
           expect(await selectAllLakehouseRows(tableName)).to.eql([{ id: 1 }]);
         },
-        { defaultLocation: undefined },
+        { omitDefaultLocation: true },
       );
     },
   );
@@ -712,7 +712,7 @@ SELECT 1 AS id`,
       // 9a. Missing `defaultDataset` -> Runner wraps first run with `create schema if not exists`
       // in the Lakehouse location, and subsequent incremental runs emit no `CREATE SCHEMA`.
       await withLakehouseProject(
-        "df_e2e_lh_ds_missing",
+        SCRATCH_DATASET_PREFIX.DS_MISSING,
         async ({ projectDir, scratchDataset, registerTableForCleanup }) => {
           const tableName = makeUniqueTableName("ds_missing");
           const target = registerTableForCleanup(tableName);
@@ -755,7 +755,7 @@ SELECT 2 AS id, 'b' AS name, 'active' AS status`,
 
       // 9b. Existing `defaultDataset` -> neither Runner nor ExecutionSql emits `CREATE SCHEMA`.
       await withLakehouseProject(
-        "df_e2e_lh_ds_existing",
+        SCRATCH_DATASET_PREFIX.DS_EXISTING,
         async ({ projectDir, scratchDataset, registerTableForCleanup }) => {
           const tableName = makeUniqueTableName("ds_existing");
           const target = registerTableForCleanup(tableName);
