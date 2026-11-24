@@ -405,10 +405,12 @@ SELECT 2 AS id, 'bob' AS name, 'active' AS status`,
 
           const extendMetadata = await dbadapter.table(extendTarget);
           expect(extendMetadata?.fields?.map((f) => f.name)).to.eql(["id", "name", "status"]);
-          const extendRows = await selectAllLakehouseRows(extendTable);
-          expect(extendRows.map(({ id, name }) => ({ id, name }))).to.eql([
-            { id: 1, name: "alice" },
-            { id: 2, name: "bob" },
+          // TODO(#2320): Once dynamic DML lands in onSchemaChange, row 2 will populate
+          // `status: "active"` in the same run (this assertion will intentionally fail on rebase
+          // so it cannot be forgotten).
+          expect(await selectAllLakehouseRows(extendTable)).to.eql([
+            { id: 1, name: "alice", status: null },
+            { id: 2, name: "bob", status: null },
           ]);
 
           // 3b. SYNCHRONIZE: remove column `legacy_col`
@@ -430,23 +432,24 @@ SELECT 1 AS id, 'alice' AS name, 'old' AS legacy_col`,
             `config { type: "incremental", onSchemaChange: "SYNCHRONIZE", lakehouse: {} }
 SELECT 2 AS id, 'bob' AS name`,
           );
-          // TODO: Once PR #2320 lands (dynamic DML inside the schema-change script), remove this
-          // fallback and require `syncRun2.exitCode === 0` directly (and assert `status: "active"`
-          // on row 2 in 3a above).
+          // TODO(#2320): Before dynamic DML lands, the schema-change script drops `legacy_col` and
+          // cleans up the scratch table, then static DML fails referencing `legacy_col`, and the
+          // following run succeeds. Pin this exact behavior so rebasing onto #2320 intentionally
+          // fails here and prompts switching to `expect(syncRun2.exitCode).equals(0)` directly.
           const syncRun2 = await runDataform(projectDir, [`--actions=${syncTable}`]);
-          if (syncRun2.exitCode !== 0) {
-            const parsed2 = parseRunResultJson(syncRun2);
-            const errorMessages = (parsed2.actions?.[0]?.tasks || [])
-              .map((t: { errorMessage?: string }) => t.errorMessage || "")
-              .join("\n")
-              .toLowerCase();
-            expect(errorMessages).to.include("legacy_col");
-            const syncRun3 = await runDataform(projectDir, [`--actions=${syncTable}`]);
-            expect(
-              syncRun3.exitCode,
-              `stdout:\n${syncRun3.stdout}\nstderr:\n${syncRun3.stderr}`,
-            ).equals(0);
-          }
+          expect(syncRun2.exitCode).to.not.equal(0);
+          const parsed2 = parseRunResultJson(syncRun2);
+          expect(parsed2.status).equals(dataform.RunResult.ExecutionStatus.FAILED);
+          const errorMessages = (parsed2.actions?.[0]?.tasks || [])
+            .map((t: { errorMessage?: string }) => t.errorMessage || "")
+            .join("\n")
+            .toLowerCase();
+          expect(errorMessages).to.include("legacy_col");
+          const syncRun3 = await runDataform(projectDir, [`--actions=${syncTable}`]);
+          expect(
+            syncRun3.exitCode,
+            `stdout:\n${syncRun3.stdout}\nstderr:\n${syncRun3.stderr}`,
+          ).equals(0);
 
           const syncMetadata = await dbadapter.table(syncTarget);
           expect(syncMetadata?.fields?.map((f) => f.name)).to.eql(["id", "name"]);
