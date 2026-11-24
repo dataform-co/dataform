@@ -588,7 +588,7 @@ SELECT 1 AS id
           unsigned: false,
         });
         expect(bigqueryMetadata.referencedTables).deep.equals([]);
-        expect(bigqueryMetadata.schema).deep.equals([{ name: "id", primitive: "INTEGER" }]);
+        expect(bigqueryMetadata.schemaFields).deep.equals([{ name: "id", primitive: "INTEGER" }]);
       },
     );
 
@@ -619,7 +619,7 @@ SELECT 1 AS id
       expect(bigqueryMetadata?.jobId).to.be.a("string").and.not.equal("");
       // Their contents depend on what BigQuery reports for the statement, so only check they're set.
       expect(bigqueryMetadata.referencedTables).to.be.an("array");
-      expect(bigqueryMetadata.schema).to.be.an("array");
+      expect(bigqueryMetadata.schemaFields).to.be.an("array");
     });
 
     test(

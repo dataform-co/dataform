@@ -669,7 +669,9 @@ function jobStatisticsMetadata(jobMetadata: any): dataform.IExecutionMetadata {
             name: table.tableId,
           }),
       ),
-      schema: (statistics.schema?.fields || []).map((field: TableField) => convertField(field)),
+      schemaFields: (statistics.schema?.fields || []).map((field: TableField) =>
+        convertField(field),
+      ),
     },
   };
 }

@@ -91,7 +91,7 @@ message ExecutionMetadata {
     // documents it for dry runs only; real runs may include it for some
     // statements, but not reliably. Uses Dataform's lossy Field representation:
     // e.g. RANGE becomes UNKNOWN, and nullability and type parameters aren't kept.
-    repeated Field schema = 5;
+    repeated Field schema_fields = 5;
   }
   BigqueryMetadata bigquery = 1;
 }

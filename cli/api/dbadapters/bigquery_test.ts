@@ -874,7 +874,7 @@ suite("BigQueryDbAdapter", () => {
           referencedTables: [
             { database: "bigquery-public-data", schema: "samples", name: "shakespeare" },
           ],
-          schema: [
+          schemaFields: [
             { name: "word", primitive: "STRING" },
             { name: "tags", primitive: "STRING", flags: ["REPEATED"] },
             { name: "stats", struct: { fields: [{ name: "c", primitive: "INTEGER" }] } },
@@ -902,7 +902,7 @@ suite("BigQueryDbAdapter", () => {
       expect(result.rows).deep.equals([]);
       expect(result.metadata.bigquery.totalBytesProcessed.toString()).equals("0");
       expect(result.metadata.bigquery.referencedTables).deep.equals([]);
-      expect(result.metadata.bigquery.schema).deep.equals([]);
+      expect(result.metadata.bigquery.schemaFields).deep.equals([]);
     });
 
     test("keeps the full precision of large byte counts", async () => {
@@ -936,7 +936,7 @@ suite("BigQueryDbAdapter", () => {
           bigquery: {
             totalBytesProcessed: { low: 0, high: 0, unsigned: false },
             referencedTables: [],
-            schema: [],
+            schemaFields: [],
           },
         });
       }
@@ -973,7 +973,7 @@ suite("BigQueryDbAdapter", () => {
       const result = await adapter.execute("SELECT 1", { bigquery: { dryRun: true } });
 
       expect(
-        dataform.ExecutionMetadata.create(result.metadata).toJSON().bigquery.schema,
+        dataform.ExecutionMetadata.create(result.metadata).toJSON().bigquery.schemaFields,
       ).deep.equals([
         {
           name: "events",
@@ -1101,7 +1101,7 @@ suite("BigQueryDbAdapter", () => {
           referencedTables: [
             { database: "bigquery-public-data", schema: "samples", name: "shakespeare" },
           ],
-          schema: [{ name: "word", primitive: "STRING" }],
+          schemaFields: [{ name: "word", primitive: "STRING" }],
         },
       });
     });
@@ -1127,7 +1127,7 @@ suite("BigQueryDbAdapter", () => {
           totalBytesBilled: { low: 0, high: 0, unsigned: false },
           totalBytesProcessed: { low: 0, high: 0, unsigned: false },
           referencedTables: [{ database: "p", schema: "s", name: "t" }],
-          schema: [],
+          schemaFields: [],
         },
       });
     });
