@@ -140,15 +140,51 @@ from ${source}`;
     runConfig: dataform.IRunConfig,
     tableMetadata?: dataform.ITableMetadata,
   ): Tasks {
-    const tasks = new Tasks();
     const preOpTasks = this.preOps(table, runConfig, tableMetadata);
     const postOpTasks = this.postOps(table, runConfig, tableMetadata);
-    const isIncrementalSchemaChange =
-      table.enumType === dataform.TableType.INCREMENTAL &&
+    const tasks =
+      table.enumType === dataform.TableType.INCREMENTAL
+        ? this.buildIncrementalTasks(table, runConfig, preOpTasks, postOpTasks, tableMetadata)
+        : this.buildNonIncrementalTasks(table, preOpTasks, postOpTasks, tableMetadata);
+    return tasks.concatenate();
+  }
+
+  private buildNonIncrementalTasks(
+    table: dataform.ITable,
+    preOpTasks: Task[],
+    postOpTasks: Task[],
+    tableMetadata?: dataform.ITableMetadata,
+  ): Tasks {
+    const tasks = new Tasks();
+
+    preOpTasks.forEach((statement) => tasks.add(statement));
+
+    const baseTableType = this.baseTableType(table.enumType);
+    if (tableMetadata && tableMetadata.type !== baseTableType) {
+      tasks.add(
+        Task.statement(this.dropIfExists(table.target, this.oppositeTableType(baseTableType))),
+      );
+    }
+    tasks.add(Task.statement(this.createOrReplace(table)));
+    postOpTasks.forEach((statement) => tasks.add(statement));
+
+    return tasks;
+  }
+
+  private buildIncrementalTasks(
+    table: dataform.ITable,
+    runConfig: dataform.IRunConfig,
+    preOpTasks: Task[],
+    postOpTasks: Task[],
+    tableMetadata?: dataform.ITableMetadata,
+  ): Tasks {
+    const tasks = new Tasks();
+
+    const usesSchemaChangeProcedure =
       this.shouldWriteIncrementally(table, runConfig, tableMetadata) &&
       (table.onSchemaChange ?? dataform.OnSchemaChange.IGNORE) !== dataform.OnSchemaChange.IGNORE;
 
-    if (!isIncrementalSchemaChange) {
+    if (!usesSchemaChangeProcedure) {
       preOpTasks.forEach((statement) => tasks.add(statement));
     }
 
@@ -159,36 +195,32 @@ from ${source}`;
       );
     }
 
-    if (table.enumType === dataform.TableType.INCREMENTAL) {
-      if (!this.shouldWriteIncrementally(table, runConfig, tableMetadata)) {
-        tasks.add(Task.statement(this.createOrReplace(table)));
-      } else {
-        const onSchemaChange = table.onSchemaChange ?? dataform.OnSchemaChange.IGNORE;
-        switch (onSchemaChange) {
-          case dataform.OnSchemaChange.FAIL:
-          case dataform.OnSchemaChange.EXTEND:
-          case dataform.OnSchemaChange.SYNCHRONIZE:
-            this.buildIncrementalSchemaChangeTasks(tasks, table, preOpTasks, postOpTasks);
-            break;
-          case dataform.OnSchemaChange.IGNORE:
-            const columns = tableMetadata?.fields.map((f) => f.name) || [];
-            tasks.add(Task.statement(this.getIncrementalDmlStatement(table, columns)));
-            break;
-          default:
-            throw new Error(
-              `Unexpected onSchemaChange policy: ${dataform.OnSchemaChange[onSchemaChange].toLowerCase()}`,
-            );
-        }
-      }
-    } else {
+    if (!this.shouldWriteIncrementally(table, runConfig, tableMetadata)) {
       tasks.add(Task.statement(this.createOrReplace(table)));
+    } else {
+      const onSchemaChange = table.onSchemaChange ?? dataform.OnSchemaChange.IGNORE;
+      switch (onSchemaChange) {
+        case dataform.OnSchemaChange.FAIL:
+        case dataform.OnSchemaChange.EXTEND:
+        case dataform.OnSchemaChange.SYNCHRONIZE:
+          this.buildIncrementalSchemaChangeTasks(tasks, table, preOpTasks, postOpTasks);
+          break;
+        case dataform.OnSchemaChange.IGNORE:
+          const columns = tableMetadata?.fields.map((f) => f.name) || [];
+          tasks.add(Task.statement(this.getIncrementalDmlStatement(table, columns)));
+          break;
+        default:
+          throw new Error(
+            `Unexpected onSchemaChange policy: ${dataform.OnSchemaChange[onSchemaChange].toLowerCase()}`,
+          );
+      }
     }
 
-    if (!isIncrementalSchemaChange) {
+    if (!usesSchemaChangeProcedure) {
       postOpTasks.forEach((statement) => tasks.add(statement));
     }
 
-    return tasks.concatenate();
+    return tasks;
   }
 
   public createTableTasks(
