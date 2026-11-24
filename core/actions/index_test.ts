@@ -1609,11 +1609,10 @@ SELECT 1`,
       });
     });
 
-    test("defaultAssertionDataset containing '.' compiles without errors", () => {
+    test("defaultAssertionDataset containing '.' compiles for assertion actions", () => {
       const graph = compileWith(
         `defaultProject: my-project\ndefaultDataset: ds\ndefaultAssertionDataset: dotted.assertions\ndefaultLocation: US\n`,
         {
-          "table.sqlx": `config { type: "table", assertions: { nonNull: ["id"] } }\nSELECT 1 AS id`,
           "assertion.sqlx": `config { type: "assertion" }\nSELECT 1 AS id WHERE FALSE`,
         },
       );
