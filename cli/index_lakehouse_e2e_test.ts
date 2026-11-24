@@ -88,11 +88,16 @@ integrationSuite("lakehouse e2e", { parallel: true }, ({ before, after }) => {
       );
     } catch (e) {
       throw new Error(
-        `Lakehouse E2E prerequisite check failed for '${INTEGRATION_TEST_PROJECT}.${lakehouseSchema}' ` +
-          `(location '${INTEGRATION_TEST_LAKEHOUSE_LOCATION}'). Ensure the catalog and namespace ` +
-          `exist or override INTEGRATION_TEST_LAKEHOUSE_CATALOG / INTEGRATION_TEST_LAKEHOUSE_NAMESPACE ` +
-          `/ INTEGRATION_TEST_LAKEHOUSE_LOCATION (see contributing.md). Underlying error: ` +
-          `${e?.message || e}`,
+        `Lakehouse E2E prerequisite check failed: BigLake catalog ` +
+          `'${INTEGRATION_TEST_LAKEHOUSE_CATALOG}' and namespace ` +
+          `'${INTEGRATION_TEST_LAKEHOUSE_NAMESPACE}' are not accessible in project ` +
+          `'${INTEGRATION_TEST_PROJECT}' (location '${INTEGRATION_TEST_LAKEHOUSE_LOCATION}'). ` +
+          `This suite requires a pre-existing BigLake Iceberg catalog and namespace (SQL cannot ` +
+          `create them). Create them, override INTEGRATION_TEST_LAKEHOUSE_CATALOG / ` +
+          `INTEGRATION_TEST_LAKEHOUSE_NAMESPACE / INTEGRATION_TEST_LAKEHOUSE_LOCATION (see ` +
+          `contributing.md), or exclude this suite when running other integration tests ` +
+          `('./scripts/run_integration_tests -- -//cli:index_lakehouse_e2e_test'). ` +
+          `Underlying error: ${e?.message || e}`,
       );
     }
 
