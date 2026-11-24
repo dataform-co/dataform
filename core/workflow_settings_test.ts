@@ -99,6 +99,7 @@ suite("workflowSettingsAsProjectConfig", () => {
     ]);
     expect(configFields).to.deep.equal(coreFields);
 
+    // Descriptor (name, id, type) parity via fieldsArray is also asserted in core/readme_test.ts.
     const sample = Object.fromEntries(
       coreFields.map((field, index) => [field, `iceberg_${field}_${index}`]),
     );
@@ -108,6 +109,12 @@ suite("workflowSettingsAsProjectConfig", () => {
       dataform.DefaultIcebergConfig.decode(encodedFromConfig),
     );
     expect(decodedAsCore).to.deep.equal(sample);
+
+    const encodedFromCore = dataform.DefaultIcebergConfig.encode(sample).finish();
+    const decodedAsConfig = dataform.WorkflowSettings.DefaultIcebergConfig.toObject(
+      dataform.WorkflowSettings.DefaultIcebergConfig.decode(encodedFromCore),
+    );
+    expect(decodedAsConfig).to.deep.equal(sample);
 
     const projectConfig = workflowSettingsAsProjectConfig(
       dataform.WorkflowSettings.create({ defaultIcebergConfig: sample }),
@@ -139,6 +146,12 @@ suite("workflowSettingsAsProjectConfig", () => {
       dataform.DefaultLakehouseConfig.decode(encodedFromConfig),
     );
     expect(decodedAsCore).to.deep.equal(sample);
+
+    const encodedFromCore = dataform.DefaultLakehouseConfig.encode(sample).finish();
+    const decodedAsConfig = dataform.WorkflowSettings.DefaultLakehouseConfig.toObject(
+      dataform.WorkflowSettings.DefaultLakehouseConfig.decode(encodedFromCore),
+    );
+    expect(decodedAsConfig).to.deep.equal(sample);
 
     const projectConfig = workflowSettingsAsProjectConfig(
       dataform.WorkflowSettings.create({ defaultLakehouseConfig: sample }),

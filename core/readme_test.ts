@@ -78,5 +78,16 @@ suite("core/README.md", () => {
       configsRoot.lookupType("dataform.WorkflowSettings").fieldsArray.length,
     ).to.be.greaterThan(0);
     expect(configsRoot.lookup("dataform.ProjectConfig")).to.equal(null);
+
+    const coreRoot = loadDataformProtos(packageDir, ["core.proto"]);
+    for (const typeName of ["DefaultIcebergConfig", "DefaultLakehouseConfig"]) {
+      const configShape = configsRoot
+        .lookupType(`dataform.WorkflowSettings.${typeName}`)
+        .fieldsArray.map((field) => [field.name, field.id, field.type]);
+      const coreShape = coreRoot
+        .lookupType(`dataform.${typeName}`)
+        .fieldsArray.map((field) => [field.name, field.id, field.type]);
+      expect(configShape).to.deep.equal(coreShape);
+    }
   });
 });
