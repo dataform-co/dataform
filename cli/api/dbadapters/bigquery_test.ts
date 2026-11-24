@@ -1,4 +1,4 @@
-import { Dataset, Table } from "@google-cloud/bigquery";
+import { BigQuery, Dataset, Table, TableField, TableMetadata } from "@google-cloud/bigquery";
 import { expect } from "chai";
 import { EventEmitter } from "events";
 import { AuthClient, gaxios, Impersonated } from "google-auth-library";
@@ -16,6 +16,43 @@ import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 
 const TARGET_SERVICE_ACCOUNT = "target-sa@target-project.iam.gserviceaccount.com";
+const TEST_POLICY_TAG = "projects/test-project/locations/us/taxonomies/1/policyTags/2";
+const OTHER_POLICY_TAG = "projects/test-project/locations/us/taxonomies/1/policyTags/3";
+
+async function setMetadataAndCaptureSchema(
+  initialFields: TableField[],
+  columns: dataform.IColumnDescriptor[],
+): Promise<TableField[]> {
+  const mockBigQuery = mock<BigQuery>();
+  const mockDataset = mock<Dataset>();
+  const mockTable = mock<Table>();
+  let capturedSchema: TableField[] = [];
+
+  when(mockBigQuery.dataset("sch")).thenReturn(instance(mockDataset));
+  when(mockDataset.table("tab")).thenReturn(instance(mockTable));
+  when(mockTable.getMetadata()).thenResolve([{ schema: { fields: initialFields } }, undefined]);
+  when(mockTable.setMetadata(anything())).thenCall(async (metadata: TableMetadata) => {
+    capturedSchema = metadata.schema?.fields ?? (metadata.schema as TableField[]);
+    return [{}, undefined];
+  });
+
+  const adapter = new BigQueryDbAdapter(
+    dataform.BigQuery.create({ projectId: "p", location: "US" }),
+    {
+      concurrencyLimit: 1,
+      clientProvider: () => instance(mockBigQuery),
+    },
+  );
+
+  await adapter.setMetadata(
+    dataform.ExecutionAction.create({
+      target: { database: "db", schema: "sch", name: "tab" },
+      actionDescriptor: { columns },
+    }),
+  );
+
+  return capturedSchema;
+}
 
 /** A source AuthClient that records its requests and answers them with an impersonated token. */
 class FakeSourceClient extends AuthClient {
@@ -382,6 +419,156 @@ suite("BigQueryDbAdapter", () => {
     });
 
     await adapter.setMetadata(action);
+  });
+
+  test("setMetadata distinguishes flat column from nested column when flat column is listed first", async () => {
+    const schema = await setMetadataAndCaptureSchema(
+      [
+        { name: "userssn", type: "STRING" },
+        { name: "user", type: "RECORD", fields: [{ name: "ssn", type: "STRING" }] },
+      ],
+      [
+        { path: ["userssn"], description: "flat column" },
+        { path: ["user"], description: "user record" },
+        {
+          path: ["user", "ssn"],
+          description: "nested column",
+          bigqueryPolicyTags: [TEST_POLICY_TAG],
+        },
+      ],
+    );
+
+    expect(schema).to.deep.equal([
+      { name: "userssn", type: "STRING", description: "flat column" },
+      {
+        name: "user",
+        type: "RECORD",
+        description: "user record",
+        fields: [
+          {
+            name: "ssn",
+            type: "STRING",
+            description: "nested column",
+            policyTags: { names: [TEST_POLICY_TAG] },
+          },
+        ],
+      },
+    ]);
+  });
+
+  test("setMetadata distinguishes flat column from nested column when nested column is listed first", async () => {
+    const schema = await setMetadataAndCaptureSchema(
+      [
+        { name: "userssn", type: "STRING" },
+        { name: "user", type: "RECORD", fields: [{ name: "ssn", type: "STRING" }] },
+      ],
+      [
+        {
+          path: ["user", "ssn"],
+          description: "nested column",
+          bigqueryPolicyTags: [TEST_POLICY_TAG],
+        },
+        { path: ["userssn"], description: "flat column" },
+      ],
+    );
+
+    expect(schema).to.deep.equal([
+      { name: "userssn", type: "STRING", description: "flat column" },
+      {
+        name: "user",
+        type: "RECORD",
+        fields: [
+          {
+            name: "ssn",
+            type: "STRING",
+            description: "nested column",
+            policyTags: { names: [TEST_POLICY_TAG] },
+          },
+        ],
+      },
+    ]);
+  });
+
+  test("setMetadata distinguishes nested columns with different segment boundaries", async () => {
+    const schema = await setMetadataAndCaptureSchema(
+      [
+        { name: "ab", type: "RECORD", fields: [{ name: "c", type: "STRING" }] },
+        { name: "a", type: "RECORD", fields: [{ name: "bc", type: "STRING" }] },
+      ],
+      [
+        { path: ["ab", "c"], description: "ab.c desc", bigqueryPolicyTags: [TEST_POLICY_TAG] },
+        { path: ["a", "bc"], description: "a.bc desc", bigqueryPolicyTags: [OTHER_POLICY_TAG] },
+      ],
+    );
+
+    expect(schema).to.deep.equal([
+      {
+        name: "ab",
+        type: "RECORD",
+        fields: [
+          {
+            name: "c",
+            type: "STRING",
+            description: "ab.c desc",
+            policyTags: { names: [TEST_POLICY_TAG] },
+          },
+        ],
+      },
+      {
+        name: "a",
+        type: "RECORD",
+        fields: [
+          {
+            name: "bc",
+            type: "STRING",
+            description: "a.bc desc",
+            policyTags: { names: [OTHER_POLICY_TAG] },
+          },
+        ],
+      },
+    ]);
+  });
+
+  test("setMetadata applies a record description and nested field policy tags", async () => {
+    const schema = await setMetadataAndCaptureSchema(
+      [{ name: "user", type: "RECORD", fields: [{ name: "ssn", type: "STRING" }] }],
+      [
+        { path: ["user"], description: "user record" },
+        {
+          path: ["user", "ssn"],
+          description: "nested ssn",
+          bigqueryPolicyTags: [TEST_POLICY_TAG],
+        },
+      ],
+    );
+
+    expect(schema).to.deep.equal([
+      {
+        name: "user",
+        type: "RECORD",
+        description: "user record",
+        fields: [
+          {
+            name: "ssn",
+            type: "STRING",
+            description: "nested ssn",
+            policyTags: { names: [TEST_POLICY_TAG] },
+          },
+        ],
+      },
+    ]);
+  });
+
+  test("setMetadata ignores a column descriptor without a path", async () => {
+    const schema = await setMetadataAndCaptureSchema(
+      [{ name: "id", type: "INTEGER" }],
+      [
+        { description: "missing path", bigqueryPolicyTags: [TEST_POLICY_TAG] },
+        { path: ["id"], description: "id desc" },
+      ],
+    );
+
+    expect(schema).to.deep.equal([{ name: "id", type: "INTEGER", description: "id desc" }]);
   });
 
   test("search() filters out tables whose metadata is not found", async () => {
