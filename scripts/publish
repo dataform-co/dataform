@@ -4,36 +4,28 @@ set -e
 # This can be uncommented once it no longer throws an error exit code.
 # ./scripts/regenerate_docs
 
-# By default GCB uses master branch name. This code change it to main.
-if [ "master" == "$(git branch --show-current)" ]; then
-    git branch -m main
-fi
-
 if [ "$(git status --porcelain)" ]; then
     echo "There are uncommitted changes; aborting." 1>&2
     exit 1
 fi
 
+# Validate version and branch/tag rules before running tests, without writing
+# publish_all.json. In Cloud Build the follow-up release build needs the branch,
+# so fail here rather than after the packages are uploaded.
+if [ -n "${BUILD_ID:-}" ] && [ -z "${BRANCH_NAME:-}" ]; then
+    echo "BRANCH_NAME must be set when running in Cloud Build; aborting." 1>&2
+    exit 1
+fi
+BRANCH="${BRANCH_NAME:-$(git rev-parse --abbrev-ref HEAD)}"
+./scripts/write_exit_gate_manifest --check-only "${BRANCH}"
+
 # Run all the tests.
 bazel test //... --build_tests_only --action_env=CLOUDSDK_CONTEXT_AWARE_USE_CLIENT_CERTIFICATE
 
-VERSION=$(cat version.bzl | grep DF_VERSION | awk '{ print $3 }' | sed "s/\"//g")
+bazel build //packages/@dataform/cli:package //packages/@dataform/core:package
 
-TAG=next
-
-# If the version is a normal release (1.2.3) and not pre-release e.g (1.2.3-alpha.1) then publish with the 'latest' tag.
-if [[ "$VERSION" =~ [0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-    TAG=latest
-
-    if [ "main" != "$(git branch --show-current)" ]; then
-        echo "Not on the 'main' branch; aborting." 1>&2
-        exit 1
-    fi
-fi
-
-echo "Publishing as '$TAG' based on version: $VERSION"
-
-PUBLISH_REGISTRY=https://registry.npmjs.org/
-
-bazel run //packages/@dataform/cli:package.publish -- --tag=$TAG --registry=$PUBLISH_REGISTRY
-bazel run //packages/@dataform/core:package.publish -- --tag=$TAG --registry=$PUBLISH_REGISTRY
+rm -rf npm_packages
+mkdir -p npm_packages
+cp -rL bazel-bin/packages/@dataform/cli/package npm_packages/cli
+cp -rL bazel-bin/packages/@dataform/core/package npm_packages/core
+chmod -R u+w npm_packages

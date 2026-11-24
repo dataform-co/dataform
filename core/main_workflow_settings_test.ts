@@ -186,6 +186,7 @@ ${lineageYaml}`,
       projectDir,
       `
 defaultProject: defaultProject
+defaultDataset: defaultDataset
 defaultLocation: locationInWorkflowSettings
 vars:
   selectVar: selectVal
@@ -226,6 +227,7 @@ select 1 AS \${dataform.projectConfig.vars.selectVar}`,
         jitData: {},
         projectConfig: {
           defaultDatabase: "defaultProject",
+          defaultSchema: "defaultDataset",
           defaultLocation: "locationInOverride",
           vars: {
             projectVar: "projectVal",
@@ -238,6 +240,7 @@ select 1 AS \${dataform.projectConfig.vars.selectVar}`,
             canonicalTarget: {
               database: "projectVal",
               name: "file",
+              schema: "defaultDataset",
             },
             disabled: false,
             enumType: "TABLE",
@@ -247,6 +250,7 @@ select 1 AS \${dataform.projectConfig.vars.selectVar}`,
             target: {
               database: "projectVal",
               name: "file",
+              schema: "defaultDataset",
             },
             type: "table",
           },
@@ -255,6 +259,7 @@ select 1 AS \${dataform.projectConfig.vars.selectVar}`,
           {
             database: "projectVal",
             name: "file",
+            schema: "defaultDataset",
           },
         ],
       }),
@@ -332,6 +337,7 @@ vars:
       writeWorkflowSettingsFile(
         projectDir,
         `
+defaultDataset: "defaultDataset"
 defaultLocation: "us"
 vars:
   descriptionVar: descriptionValue
@@ -339,8 +345,7 @@ vars:
       );
       writeDefinitionFile(
         projectDir,
-        "file.sqlx", // TODO(https://github.com/dataform-co/dataform/issues/1295): add a test and fix
-        // functionality for assertions overriding database.
+        "file.sqlx",
         `
 config {
   type: "table",
@@ -375,7 +380,9 @@ select 1 AS \${dataform.projectConfig.vars.columnVar}`,
           assertions: [
             {
               canonicalTarget: {
+                database: "databaseVal",
                 name: "tableSchema_file_assertions_rowConditions",
+                schema: "tableSchema",
               },
               dependencyTargets: [
                 {
@@ -393,7 +400,9 @@ select 1 AS \${dataform.projectConfig.vars.columnVar}`,
               query:
                 "\nSELECT\n  'columnValue IS NOT NULL' AS failing_row_condition,\n  *\nFROM `databaseVal.tableSchema.file`\nWHERE NOT (columnValue IS NOT NULL)\n",
               target: {
+                database: "databaseVal",
                 name: "tableSchema_file_assertions_rowConditions",
+                schema: "tableSchema",
               },
             },
           ],
@@ -401,6 +410,7 @@ select 1 AS \${dataform.projectConfig.vars.columnVar}`,
           graphErrors: {},
           jitData: {},
           projectConfig: {
+            defaultSchema: "defaultDataset",
             defaultLocation: "us",
             vars: {
               databaseVar: "databaseVal",
@@ -434,7 +444,9 @@ select 1 AS \${dataform.projectConfig.vars.columnVar}`,
           ],
           targets: [
             {
+              database: "databaseVal",
               name: "tableSchema_file_assertions_rowConditions",
+              schema: "tableSchema",
             },
             {
               database: "databaseVal",

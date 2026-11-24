@@ -1,5 +1,6 @@
 import { expect } from "chai";
 
+import { version } from "df/core/version";
 import { dataform } from "df/protos/ts";
 import {
   asPlainObject,
@@ -276,6 +277,223 @@ actions:
       `Action target names cannot include '.'`,
       `Action target names cannot include '.'`,
       `Action target names cannot include '.'`,
+    ]);
+  });
+
+  [
+    { filename: "action.sqlx", contents: `config { type: "table" } SELECT 1` },
+    { filename: "action.js", contents: `publish("action", { type: "table" }).query("SELECT 1")` },
+    {
+      filename: "operation.sqlx",
+      contents: `config { type: "operations", name: "action", hasOutput: true } SELECT 1`,
+    },
+    {
+      filename: "operation.js",
+      contents: `operate("action", { hasOutput: true }).queries("SELECT 1")`,
+    },
+    {
+      filename: "graph.yaml",
+      contents: `
+version: 0.2.0.dev0/google
+semantic_model:
+- name: action
+  entities:
+  - name: Node
+    source: bigquery:defaultProject.raw.nodes
+    primary_key:
+    - id
+`,
+    },
+  ].forEach(({ filename, contents }) => {
+    test(`fails when dataset is not set in workflow settings or the action in ${filename}`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      writeWorkflowSettingsFile(
+        projectDir,
+        `
+defaultProject: defaultProject
+defaultLocation: US
+`,
+      );
+      writeDefinitionFile(projectDir, filename, contents);
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(
+        result.compile.compiledGraph.graphErrors.compilationErrors.map(
+          ({ message, fileName, actionName, actionTarget }) => ({
+            message,
+            fileName,
+            actionName,
+            actionTarget: asPlainObject(actionTarget),
+          }),
+        ),
+      ).deep.equals([
+        {
+          message:
+            "Action targets must have a dataset. Set defaultDataset in workflow_settings.yaml or dataset in the action config.",
+          fileName: `definitions/${filename}`,
+          actionName: "defaultProject..action",
+          actionTarget: { database: "defaultProject", name: "action" },
+        },
+      ]);
+    });
+  });
+
+  test("fails when dataset is not set for an operation with hasOutput in actions.yaml", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    writeWorkflowSettingsFile(
+      projectDir,
+      `
+defaultProject: defaultProject
+defaultLocation: US
+`,
+    );
+    writeDefinitionFile(
+      projectDir,
+      "actions.yaml",
+      `
+actions:
+- operation:
+    filename: action.sql
+    hasOutput: true
+`,
+    );
+    writeDefinitionFile(projectDir, "action.sql", "SELECT 1");
+
+    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+    expect(
+      result.compile.compiledGraph.graphErrors.compilationErrors.map(
+        ({ message, fileName, actionName, actionTarget }) => ({
+          message,
+          fileName,
+          actionName,
+          actionTarget: asPlainObject(actionTarget),
+        }),
+      ),
+    ).deep.equals([
+      {
+        message:
+          "Action targets must have a dataset. Set defaultDataset in workflow_settings.yaml or dataset in the action config.",
+        fileName: "definitions/action.sql",
+        actionName: "defaultProject..action",
+        actionTarget: { database: "defaultProject", name: "action" },
+      },
+    ]);
+  });
+
+  test("succeeds when dataset is not set for operations without output", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    writeWorkflowSettingsFile(projectDir, `dataformCoreVersion: ${version}`);
+    writeDefinitionFile(projectDir, "../staged.sql", "SELECT 1");
+    writeDefinitionFile(
+      projectDir,
+      "actions.yaml",
+      `
+actions:
+- operation:
+    filename: ../staged.sql
+`,
+    );
+    writeDefinitionFile(
+      projectDir,
+      "sqlx_op.sqlx",
+      `config { type: "operations", database: "opProject" } SELECT 2`,
+    );
+    writeDefinitionFile(projectDir, "js_op.js", `operate("js_op").queries("SELECT 3")`);
+
+    const result = runMainInVm(
+      coreExecutionRequestFromPath(
+        projectDir,
+        dataform.ProjectConfig.create({
+          databaseSuffix: "db",
+          schemaSuffix: "ds",
+          tablePrefix: "pre",
+        }),
+      ),
+    );
+
+    expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+    expect(asPlainObject(result.compile.compiledGraph.operations)).deep.equals([
+      {
+        target: { name: "pre_staged" },
+        canonicalTarget: { name: "staged" },
+        fileName: "staged.sql",
+        hermeticity: "NON_HERMETIC",
+        queries: ["SELECT 1"],
+      },
+      {
+        target: { name: "pre_js_op" },
+        canonicalTarget: { name: "js_op" },
+        fileName: "definitions/js_op.js",
+        hermeticity: "NON_HERMETIC",
+        queries: ["SELECT 3"],
+      },
+      {
+        target: { database: "opProject_db", name: "pre_sqlx_op" },
+        canonicalTarget: { database: "opProject", name: "sqlx_op" },
+        fileName: "definitions/sqlx_op.sqlx",
+        hermeticity: "NON_HERMETIC",
+        queries: [" SELECT 2"],
+      },
+    ]);
+  });
+
+  test("fails when schema() is called in a non-output operation without a dataset", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    writeWorkflowSettingsFile(
+      projectDir,
+      `
+defaultProject: defaultProject
+defaultLocation: US
+`,
+    );
+    writeDefinitionFile(
+      projectDir,
+      "sqlx_op.sqlx",
+      `config { type: "operations" } SELECT * FROM \`\${schema()}.tbl\``,
+    );
+    writeDefinitionFile(
+      projectDir,
+      "js_op.js",
+      `operate("js_op").queries(ctx => \`SELECT * FROM \\\`\${ctx.schema()}.tbl\\\`\`)`,
+    );
+
+    const result = runMainInVm(
+      coreExecutionRequestFromPath(
+        projectDir,
+        dataform.ProjectConfig.create({ schemaSuffix: "ds" }),
+      ),
+    );
+
+    expect(
+      result.compile.compiledGraph.graphErrors.compilationErrors.map(
+        ({ message, fileName, actionName, actionTarget }) => ({
+          message,
+          fileName,
+          actionName,
+          actionTarget: asPlainObject(actionTarget),
+        }),
+      ),
+    ).deep.equals([
+      {
+        message:
+          "Action targets must have a dataset to call schema(). Set defaultDataset in workflow_settings.yaml or dataset in the action config.",
+        fileName: "definitions/js_op.js",
+        actionName: "defaultProject..js_op",
+        actionTarget: { database: "defaultProject", name: "js_op" },
+      },
+      {
+        message:
+          "Action targets must have a dataset to call schema(). Set defaultDataset in workflow_settings.yaml or dataset in the action config.",
+        fileName: "definitions/sqlx_op.sqlx",
+        actionName: "defaultProject..sqlx_op",
+        actionTarget: { database: "defaultProject", name: "sqlx_op" },
+      },
+    ]);
+    expect(result.compile.compiledGraph.operations.map((op) => op.queries)).deep.equals([
+      ["SELECT * FROM `.tbl`"],
+      [" SELECT * FROM `.tbl`"],
     ]);
   });
 

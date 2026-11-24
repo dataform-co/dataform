@@ -19,3 +19,8 @@ bigquery.json
 tmp/
 
 tools/canary/config.local.env
+
+npm_packages
+
+__pycache__/
+*.py[cod]

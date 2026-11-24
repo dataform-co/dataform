@@ -6,6 +6,10 @@ load("//tools:ts_library.bzl", "ts_library")
 
 package(default_visibility = ["//visibility:public"])
 
+exports_files([
+    "README.md",
+])
+
 expand_template(
     name = "version",
     out = "version.ts",
@@ -28,6 +32,7 @@ ts_library(
         "actions/operation.ts",
         "actions/property_graph.ts",
         "actions/property_graph_utils.ts",
+        "actions/property_graph_validation.ts",
         "actions/table.ts",
         "actions/test.ts",
         "actions/view.ts",
@@ -47,16 +52,11 @@ ts_library(
         ":version.ts",
     ],
     deps = [
-        "//:node_modules/@types/fs-extra",
         "//:node_modules/@types/js-yaml",
         "//:node_modules/@types/node",
-        "//:node_modules/@types/semver",
-        "//:node_modules/fs-extra",
         "//:node_modules/js-yaml",
         "//:node_modules/protobufjs",
-        "//:node_modules/semver",
         "//:node_modules/tarjan-graph",
-        "//common/errors",
         "//common/protos",
         "//common/strings",
         "//core/compilation_sql",
@@ -98,6 +98,7 @@ ts_test_suite(
         "main_session_test.ts",
         "main_sqlx_chars_test.ts",
         "main_workflow_settings_test.ts",
+        "package_test.ts",
         "path_test.ts",
         "utils_test.ts",
         "workflow_settings_test.ts",
@@ -120,6 +121,38 @@ ts_test_suite(
         "//protos:ts",
         "//testing",
         "//testing:run_core",
+    ],
+)
+
+# Regenerates the generated blocks of core/README.md: bazel run //core:update_readme
+alias(
+    name = "update_readme",
+    actual = "//tools/docs:update_core_readme",
+)
+
+ts_test_suite(
+    name = "readme_tests",
+    srcs = [
+        "readme_generated_test.ts",
+        "readme_generator_test.ts",
+        "readme_test.ts",
+    ],
+    data = [
+        "README.md",
+        "contextables.ts",
+        "index.ts",
+        "session.ts",
+        ":node_modules",
+        "//packages/@dataform/core:index.ts",
+        "//protos:proto_files",
+    ],
+    deps = [
+        ":core",
+        "//:node_modules/@types/chai",
+        "//:node_modules/@types/node",
+        "//:node_modules/chai",
+        "//testing",
+        "//tools/docs:core_readme_generator",
     ],
 )
 
