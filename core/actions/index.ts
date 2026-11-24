@@ -93,7 +93,7 @@ export abstract class ActionBuilder<T> {
       database: targetFromConfig.database || projectConfig.defaultDatabase || undefined,
     });
     if (options?.validateTarget) {
-      this.validateTarget(target, fileName);
+      this.validateTarget(targetFromConfig, fileName);
     }
     return target;
   }
