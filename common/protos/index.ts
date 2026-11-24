@@ -1,4 +1,4 @@
-import { configure, util } from "protobufjs";
+import { configure, IConversionOptions, util } from "protobufjs";
 
 import {
   isPlainObject,
@@ -59,7 +59,7 @@ export interface IProtoClass<IProto, Proto> {
   encode(proto: IProto | Proto): { finish(): Uint8Array };
   decode(bytes: Uint8Array): Proto;
 
-  toObject(proto: Proto): { [k: string]: any };
+  toObject(proto: Proto, options?: IConversionOptions): { [k: string]: any };
   fromObject(obj: { [k: string]: any }): Proto;
 
   verify(obj: any): string | null;
@@ -93,6 +93,13 @@ function isVerifiableObject(value: unknown): boolean {
   );
 }
 
+function getOwnPropertyValue(target: object, key: string): unknown {
+  if (!Object.prototype.hasOwnProperty.call(target, key)) {
+    return undefined;
+  }
+  return Object.getOwnPropertyDescriptor(target, key)?.value;
+}
+
 export function verifyObjectMatchesProto<Proto>(
   protoType: IProtoClass<any, Proto>,
   object: object,
@@ -112,16 +119,22 @@ export function verifyObjectMatchesProto<Proto>(
     throw err;
   }
   const proto = protoType.create(normalizedObject);
-  const protoCastObject = protoType.toObject(proto);
+  const protoCastObject = protoType.toObject(proto, { arrays: true, objects: true });
 
   function checkFields(present: { [k: string]: any }, desired: { [k: string]: any }) {
-    // Only the entries of `present` need to be iterated through as `desired` is guaranteed to be a
-    // strict subset of `present`.
+    // Iterate caller-supplied entries; `protoCastObject` includes defined empty arrays and maps so
+    // valid empty containers match `desired` while unknown keys remain absent.
     Object.entries(present).forEach(([presentKey, presentValue]) => {
-      if (presentValue instanceof google.protobuf.Struct) {
+      if (presentValue === undefined || presentValue instanceof google.protobuf.Struct) {
         return;
       }
-      if (presentValue && typeof presentValue === "object" && !isVerifiableObject(presentValue)) {
+      if (presentValue === null) {
+        throw ReferenceError(
+          `Unexpected empty value for "${presentKey}".` +
+            maybeGetDocsLinkPrefix(errorBehaviour, protoType),
+        );
+      }
+      if (typeof presentValue === "object" && !isVerifiableObject(presentValue)) {
         throw formatUnexpectedPropertyError(
           protoType,
           presentKey,
@@ -129,29 +142,16 @@ export function verifyObjectMatchesProto<Proto>(
           errorBehaviour,
         );
       }
-      const desiredValue = desired[presentKey];
+      const desiredValue = getOwnPropertyValue(desired, presentKey);
       if (
         typeof desiredValue !== typeof presentValue ||
         Array.isArray(desiredValue) !== Array.isArray(presentValue)
       ) {
-        if (Array.isArray(presentValue) && presentValue.length === 0) {
-          // Empty arrays are assigned to empty proto array fields by ProtobufJS.
-          return;
-        }
         if (!presentValue) {
           throw ReferenceError(
             `Unexpected empty value for "${presentKey}".` +
               maybeGetDocsLinkPrefix(errorBehaviour, protoType),
           );
-        }
-        if (
-          typeof presentValue === "object" &&
-          !Array.isArray(presentValue) &&
-          (isPlainObject(presentValue) || isProtoMessageInstance(presentValue)) &&
-          Object.keys(presentValue).length === 0
-        ) {
-          // Empty objects are assigned to empty object fields by ProtobufJS.
-          return;
         }
         throw formatUnexpectedPropertyError(
           protoType,
