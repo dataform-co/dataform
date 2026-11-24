@@ -9,94 +9,65 @@ filegroup(
     srcs = glob(["*.proto"]),
 )
 
-proto_library(
-    name = "extension_proto",
-    srcs = ["extension.proto"],
-    strip_import_prefix = "/protos",
-)
-
-proto_library(
-    name = "property_graph_config_proto",
-    srcs = ["property_graph_config.proto"],
-    strip_import_prefix = "/protos",
-    deps = [
-        "@com_google_protobuf//:struct_proto",
-    ],
-)
-
-# Intentionally excludes `core_proto` so `configs.proto` remains decoupled from
-# compiled-graph protobufs under `protoc --direct_dependencies`.
-proto_library(
-    name = "configs_proto",
-    srcs = ["configs.proto"],
-    strip_import_prefix = "/protos",
-    deps = [
+_PROTO_DEPS = {
+    # Intentionally excludes `core_proto` so `configs.proto` remains decoupled
+    # from compiled-graph protobufs under `protoc --direct_dependencies`.
+    "configs.proto": [
         ":extension_proto",
         ":property_graph_config_proto",
         "@com_google_protobuf//:struct_proto",
     ],
-)
-
-proto_library(
-    name = "core_proto",
-    srcs = ["core.proto"],
-    strip_import_prefix = "/protos",
-    deps = [
+    "core.proto": [
         ":extension_proto",
         "@com_google_protobuf//:struct_proto",
     ],
-)
-
-proto_library(
-    name = "db_adapter_proto",
-    srcs = ["db_adapter.proto"],
-    strip_import_prefix = "/protos",
-    deps = [
+    "db_adapter.proto": [
         ":core_proto",
     ],
-)
-
-proto_library(
-    name = "evaluation_proto",
-    srcs = ["evaluation.proto"],
-    strip_import_prefix = "/protos",
-)
-
-proto_library(
-    name = "execution_proto",
-    srcs = ["execution.proto"],
-    strip_import_prefix = "/protos",
-    deps = [
+    "evaluation.proto": [],
+    "execution.proto": [
         ":core_proto",
         ":db_adapter_proto",
         "@com_google_protobuf//:struct_proto",
     ],
-)
-
-proto_library(
-    name = "jit_proto",
-    srcs = ["jit.proto"],
-    strip_import_prefix = "/protos",
-    deps = [
+    "extension.proto": [],
+    "jit.proto": [
         ":core_proto",
         ":db_adapter_proto",
         "@com_google_protobuf//:empty_proto",
         "@com_google_protobuf//:struct_proto",
         "@com_google_protobuf//:timestamp_proto",
     ],
-)
+    "profiles.proto": [],
+    "property_graph_config.proto": [
+        "@com_google_protobuf//:struct_proto",
+    ],
+}
 
-proto_library(
-    name = "profiles_proto",
-    srcs = ["profiles.proto"],
-    strip_import_prefix = "/protos",
-)
+[
+    fail("Add %s to _PROTO_DEPS in protos/BUILD so protoc validates its imports." % src)
+    for src in glob(["*.proto"])
+    if src not in _PROTO_DEPS
+]
+
+# Private per-file targets used only by `:build_test` to validate direct imports;
+# kept private so downstream targets cannot link both a per-file target and `:dataform_proto`.
+[
+    proto_library(
+        name = src.removesuffix(".proto") + "_proto",
+        srcs = [src],
+        strip_import_prefix = "/protos",
+        visibility = ["//visibility:private"],
+        deps = deps,
+    )
+    for src, deps in _PROTO_DEPS.items()
+]
 
 # Stages all `.proto` sources into a single `_virtual_imports/dataform_proto/`
 # directory so `pbjs` in `ts_proto_library` can resolve sibling relative imports.
 proto_library(
     name = "dataform_proto",
-    srcs = glob(["*.proto"]),
+    srcs = list(_PROTO_DEPS.keys()),
     strip_import_prefix = "/protos",
     deps = [
         "@com_google_protobuf//:empty_proto",
@@ -114,17 +85,8 @@ ts_proto_library(
 
 build_test(
     name = "build_test",
-    deps = [
-        ":configs_proto",
-        ":core_proto",
+    deps = [":" + src.removesuffix(".proto") + "_proto" for src in _PROTO_DEPS] + [
         ":dataform_proto",
-        ":db_adapter_proto",
-        ":evaluation_proto",
-        ":execution_proto",
-        ":extension_proto",
-        ":jit_proto",
-        ":profiles_proto",
-        ":property_graph_config_proto",
         ":ts",
     ],
 )

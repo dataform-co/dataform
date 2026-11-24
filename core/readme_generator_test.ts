@@ -225,7 +225,7 @@ suite("core readme generator", () => {
         'syntax = "proto3";\npackage dataform;\nmessage WorkflowSettings { OnlyInCore x = 1; }\n',
       );
 
-      expect(() => loadDataformProtos(tmpDir, ["configs.proto"])).to.throw(/no such Type or Enum/);
+      expect(() => loadDataformProtos(tmpDir, ["configs.proto"])).to.throw(Error, /OnlyInCore/);
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }

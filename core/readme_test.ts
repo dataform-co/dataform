@@ -69,11 +69,11 @@ suite("core/README.md", () => {
 
     expect(packagedProtos).to.deep.equal([...BUNDLED_PROTO_FILES].sort());
 
-    const rootsByFile = new Map(
-      packagedProtos.map((protoFile) => [protoFile, loadDataformProtos(packageDir, [protoFile])]),
-    );
+    for (const protoFile of packagedProtos) {
+      loadDataformProtos(packageDir, [protoFile]);
+    }
 
-    const configsRoot = rootsByFile.get("configs.proto")!;
+    const configsRoot = loadDataformProtos(packageDir, ["configs.proto"]);
     expect(
       configsRoot.lookupType("dataform.WorkflowSettings").fieldsArray.length,
     ).to.be.greaterThan(0);
