@@ -6,16 +6,25 @@
 # packages and attached their provenance, and only then uploads the Exit Gate
 # release manifest and creates the GitHub release.
 steps:
+  # Check the GitHub token first, so a bad token fails the build before the npm
+  # release is started.
+  - name: "gcr.io/$PROJECT_ID/github"
+    secretEnv: ["GITHUB_TOKEN"]
+    script: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+      GITHUB_TOKEN="$(printf '%s' "${GITHUB_TOKEN}" | tr -d '\r\n')"
+      export GITHUB_TOKEN
+      gh auth status >/dev/null
   - name: "gcr.io/cloud-builders/gcloud"
     env:
       - "PARENT_BUILD_ID=$_PARENT_BUILD_ID"
-      - "BRANCH_NAME=$_BRANCH_NAME"
+      - "COMMIT_SHA=$COMMIT_SHA"
       - "LOCATION=$LOCATION"
     script: |
       #!/usr/bin/env bash
       set -euo pipefail
       [ -n "${PARENT_BUILD_ID}" ] || { echo "missing _PARENT_BUILD_ID" >&2; exit 1; }
-      [ -n "${BRANCH_NAME}" ] || { echo "missing _BRANCH_NAME" >&2; exit 1; }
       # Wait up to 30 minutes for the publish build to finish.
       for _ in $(seq 1 180); do
         status=$(gcloud builds describe "${PARENT_BUILD_ID}" --region="${LOCATION}" --format='value(status)')
@@ -26,7 +35,16 @@ steps:
         esac
       done
       [ "${status}" = "SUCCESS" ] || { echo "Timed out waiting for publish build ${PARENT_BUILD_ID}." >&2; exit 1; }
-      ./scripts/write_exit_gate_manifest "${BRANCH_NAME}"
+      # Take the branch and commit from the publish build itself rather than
+      # trusting the values passed to this build.
+      publish_trigger_id=$(gcloud builds triggers describe push-to-main-publish-trigger --region="${LOCATION}" --format='value(id)')
+      parent_trigger_id=$(gcloud builds describe "${PARENT_BUILD_ID}" --region="${LOCATION}" --format='value(buildTriggerId)')
+      parent_commit=$(gcloud builds describe "${PARENT_BUILD_ID}" --region="${LOCATION}" --format='value(substitutions.COMMIT_SHA)')
+      parent_branch=$(gcloud builds describe "${PARENT_BUILD_ID}" --region="${LOCATION}" --format='value(substitutions.BRANCH_NAME)')
+      [ "${parent_trigger_id}" = "${publish_trigger_id}" ] || { echo "Build ${PARENT_BUILD_ID} was not started by the publish trigger." >&2; exit 1; }
+      [ "${parent_commit}" = "${COMMIT_SHA}" ] || { echo "Publish build commit ${parent_commit} does not match ${COMMIT_SHA}." >&2; exit 1; }
+      [ -n "${parent_branch}" ] || { echo "Publish build has no branch." >&2; exit 1; }
+      ./scripts/write_exit_gate_manifest "${parent_branch}"
       gcloud storage cp publish_all.json gs://oss-exit-gate-prod-projects-bucket/dataform/npm/manifests/publish_all.json
   - name: "gcr.io/$PROJECT_ID/github"
     env:
@@ -41,7 +59,6 @@ steps:
       # of the Authorization header.
       GITHUB_TOKEN="$(printf '%s' "${GITHUB_TOKEN}" | tr -d '\r\n')"
       export GITHUB_TOKEN
-      gh auth status >/dev/null
       if gh release view "$version" >/dev/null 2>&1; then
         echo "Release $version already exists, skipping"
       else
@@ -56,7 +73,6 @@ availableSecrets:
       env: "GITHUB_TOKEN"
 substitutions:
   _PARENT_BUILD_ID: ""
-  _BRANCH_NAME: ""
 timeout: 2400s
 options:
   substitutionOption: ALLOW_LOOSE

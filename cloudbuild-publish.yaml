@@ -28,7 +28,6 @@ steps:
   - name: "gcr.io/cloud-builders/gcloud"
     env:
       - "BUILD_ID=$BUILD_ID"
-      - "BRANCH_NAME=$BRANCH_NAME"
       - "COMMIT_SHA=$COMMIT_SHA"
       - "LOCATION=$LOCATION"
     script: |
@@ -37,7 +36,7 @@ steps:
       gcloud builds triggers run exit-gate-npm-release-trigger \
         --region="${LOCATION}" \
         --sha="${COMMIT_SHA}" \
-        --substitutions="_PARENT_BUILD_ID=${BUILD_ID},_BRANCH_NAME=${BRANCH_NAME}" \
+        --substitutions="_PARENT_BUILD_ID=${BUILD_ID}" \
         --format='value(metadata.build.id)'
 artifacts:
   npmPackages:
