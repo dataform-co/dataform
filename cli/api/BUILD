@@ -17,6 +17,7 @@ ts_library(
     data = ["//cli/vm:worker_loader"],
     deps = [
         "//:node_modules/@google-cloud/bigquery",
+        "//:node_modules/@google-cloud/dataplex",
         "//:node_modules/@google-cloud/lineage",
         "//:node_modules/@types/fs-extra",
         "//:node_modules/@types/js-yaml",
@@ -52,7 +53,10 @@ ts_test_suite(
         "commands/prune_test.ts",
         "dbadapters/bigquery_test.ts",
         "execution_sql_test.ts",
-    ] + glob(["lineage/*_test.ts"]),
+    ] + glob([
+        "catalog/*_test.ts",
+        "lineage/*_test.ts",
+    ]),
     data = glob(["goldens/**"]),
     deps = [
         ":api",
@@ -61,6 +65,7 @@ ts_test_suite(
         "//protos:ts",
         "//testing",
         "//:node_modules/@google-cloud/bigquery",
+        "//:node_modules/@google-cloud/dataplex",
         "//:node_modules/@google-cloud/lineage",
         "//:node_modules/@types/chai",
         "//:node_modules/@types/fs-extra",

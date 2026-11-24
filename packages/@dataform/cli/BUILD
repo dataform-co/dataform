@@ -28,6 +28,7 @@ js_binary(
 
 externals = [
     "@google-cloud/bigquery",
+    "@google-cloud/dataplex",
     "@google-cloud/lineage",
     "chokidar",
     "fs-extra",

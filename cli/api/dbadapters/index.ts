@@ -64,4 +64,5 @@ export interface IDbAdapter extends IDbClient {
   deleteTable(target: dataform.ITarget): Promise<void>;
 
   setMetadata(action: dataform.IExecutionAction): Promise<void>;
+  drainMetadataWrites?(): Promise<void>;
 }
