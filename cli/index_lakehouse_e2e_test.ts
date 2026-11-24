@@ -214,6 +214,16 @@ integrationSuite("lakehouse e2e", { parallel: true }, ({ before, after }) => {
     return rows;
   }
 
+  /**
+   * In non-dry `dataform run --json` output, `Runner` only populates `task.compiledSql` when it
+   * overrides the task's SQL (for example, wrapping it in `CREATE SCHEMA IF NOT EXISTS` for a
+   * missing dataset). When `compiledSql` is `undefined`, the task executed unwrapped.
+   */
+  function expectUnwrappedTask(task: { compiledSql?: string } | undefined): void {
+    expect(task, "expected executed task in run result").to.not.equal(undefined);
+    expect(task?.compiledSql).equals(undefined);
+  }
+
   function parseRunResultJson(res: { exitCode: number; stdout: string; stderr: string }): any {
     try {
       return JSON.parse(res.stdout);
@@ -481,7 +491,7 @@ SELECT 1 AS id, 'from_operation' AS source`,
           const res = await runDataform(projectDir);
           expect(res.exitCode, `stdout:\n${res.stdout}\nstderr:\n${res.stderr}`).equals(0);
           const parsed = parseRunResultJson(res);
-          expect(parsed.actions?.[0]?.tasks?.[0]?.compiledSql).equals(undefined);
+          expectUnwrappedTask(parsed.actions?.[0]?.tasks?.[0]);
           expect(await selectAllLakehouseRows(opTable)).to.eql([
             { id: 1, source: "from_operation" },
           ]);
@@ -561,12 +571,24 @@ SELECT 1 AS id, STRUCT('ok' AS nested_note) AS details`,
 SELECT 1 AS id`,
         );
 
+        // Dry run always emits the exact SQL sent to BigQuery in `compiledSql` (including any
+        // `CREATE SCHEMA` wrapper if Runner tried to create the missing namespace). Because
+        // BigQuery rejects the failed real run with 404 before assigning a jobId, inspect the
+        // dry-run SQL directly to verify no `CREATE SCHEMA` statement was attempted.
+        const dryRunRes = await runDataform(projectDir, ["--dry-run"]);
+        expect(dryRunRes.exitCode).to.not.equal(0);
+        const parsedDryRun = parseRunResultJson(dryRunRes);
+        expect(parsedDryRun.status).equals(dataform.RunResult.ExecutionStatus.FAILED);
+        const dryRunSql = parsedDryRun.actions?.[0]?.tasks?.[0]?.compiledSql || "";
+        expect(dryRunSql).to.match(/create\s+or\s+replace\s+table/i);
+        expect(dryRunSql).to.not.match(/create\s+schema/i);
+
         const res = await runDataform(projectDir);
         expect(res.exitCode).to.not.equal(0);
         const parsed = parseRunResultJson(res);
         expect(parsed.status).equals(dataform.RunResult.ExecutionStatus.FAILED);
         const task = parsed.actions?.[0]?.tasks?.[0];
-        expect(task?.compiledSql).equals(undefined);
+        expectUnwrappedTask(task);
         const errorMessage = (task?.errorMessage || "").toLowerCase();
         expect(errorMessage).to.include("not found");
         expect(errorMessage).to.include(missingNamespace.toLowerCase());
@@ -700,6 +722,8 @@ SELECT 1 AS id, 'a' AS name`,
           const run1 = await runDataform(projectDir);
           expect(run1.exitCode, `stdout:\n${run1.stdout}\nstderr:\n${run1.stderr}`).equals(0);
           const parsed1 = parseRunResultJson(run1);
+          // Runner sets `compiledSql` in non-dry runs only when it wraps the task's SQL
+          // (here, prepending `CREATE SCHEMA IF NOT EXISTS` for the missing scratch dataset).
           expect(parsed1.actions?.[0]?.tasks?.[0]?.compiledSql?.toLowerCase() || "").to.include(
             `create schema if not exists \`${INTEGRATION_TEST_PROJECT}.${scratchDataset}\``.toLowerCase(),
           );
@@ -714,7 +738,7 @@ SELECT 2 AS id, 'b' AS name, 'active' AS status`,
           const run2 = await runDataform(projectDir);
           expect(run2.exitCode, `stdout:\n${run2.stdout}\nstderr:\n${run2.stderr}`).equals(0);
           const parsed2 = parseRunResultJson(run2);
-          expect(parsed2.actions?.[0]?.tasks?.[0]?.compiledSql).equals(undefined);
+          expectUnwrappedTask(parsed2.actions?.[0]?.tasks?.[0]);
           const run2Sql = await fetchExecutedJobQuery(
             parsed2.actions?.[0]?.tasks?.[0]?.metadata?.bigquery?.jobId,
           );
@@ -747,7 +771,7 @@ SELECT 1 AS id, 'alice' AS name`,
           const run1 = await runDataform(projectDir);
           expect(run1.exitCode, `stdout:\n${run1.stdout}\nstderr:\n${run1.stderr}`).equals(0);
           const parsed1 = parseRunResultJson(run1);
-          expect(parsed1.actions?.[0]?.tasks?.[0]?.compiledSql).equals(undefined);
+          expectUnwrappedTask(parsed1.actions?.[0]?.tasks?.[0]);
           const run1Sql = await fetchExecutedJobQuery(
             parsed1.actions?.[0]?.tasks?.[0]?.metadata?.bigquery?.jobId,
           );
@@ -762,7 +786,7 @@ SELECT 2 AS id, 'bob' AS name, 'active' AS status`,
           const run2 = await runDataform(projectDir);
           expect(run2.exitCode, `stdout:\n${run2.stdout}\nstderr:\n${run2.stderr}`).equals(0);
           const parsed2 = parseRunResultJson(run2);
-          expect(parsed2.actions?.[0]?.tasks?.[0]?.compiledSql).equals(undefined);
+          expectUnwrappedTask(parsed2.actions?.[0]?.tasks?.[0]);
           const run2Sql = await fetchExecutedJobQuery(
             parsed2.actions?.[0]?.tasks?.[0]?.metadata?.bigquery?.jobId,
           );
