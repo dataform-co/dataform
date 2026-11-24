@@ -15,6 +15,7 @@ steps:
     waitFor: ["create-npmrc"]
     script: |
       #!/usr/bin/env bash
+      set -euo pipefail
       bazel run -- @pnpm//:pnpm --dir "$PWD" install --frozen-lockfile
   - name: gcr.io/cloud-builders/bazel:7.3.2
     id: tests

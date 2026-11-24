@@ -86,6 +86,37 @@ class CheckTest(unittest.TestCase):
         self.assert_error(config(NPMRC, with_script(
             VERIFY, VERIFY["script"].replace("bazel run", "# bazel run")), TESTS), "@pnpm//:pnpm")
 
+    def test_commented_out_at_end_of_line(self):
+        self.assert_error(config(NPMRC, with_script(
+            VERIFY, VERIFY["script"].replace("install --frozen-lockfile", "install # --frozen-lockfile")),
+            TESTS), "install --frozen-lockfile")
+
+    def test_frozen_lockfile_false(self):
+        self.assert_error(config(NPMRC, with_script(
+            VERIFY, VERIFY["script"].replace("--frozen-lockfile", "--frozen-lockfile=false")), TESTS),
+            "install --frozen-lockfile")
+
+    def test_frozen_lockfile_in_another_command(self):
+        self.assert_error(config(NPMRC, with_script(
+            VERIFY, VERIFY["script"].replace(" --frozen-lockfile", "\necho --frozen-lockfile")), TESTS),
+            "install --frozen-lockfile")
+
+    def test_filter_with_equals(self):
+        self.assert_error(config(NPMRC, with_script(
+            VERIFY, VERIFY["script"].replace("--frozen-lockfile", "--frozen-lockfile --filter=x")), TESTS),
+            "without --filter")
+
+    def test_line_continuation_passes(self):
+        script = ('#!/usr/bin/env bash\nset -euo pipefail\nbazel run -- @pnpm//:pnpm \\\n'
+                  '  --dir "$PWD" \\\n  install --frozen-lockfile  # full install\n')
+        self.assertEqual(guard.check(config(NPMRC, with_script(VERIFY, script), TESTS)), [])
+
+    def test_args_instead_of_script_passes(self):
+        verify = {k: v for k, v in VERIFY.items() if k != "script"}
+        verify.update(entrypoint="bazel",
+                      args=["run", "--", "@pnpm//:pnpm", "--dir", ".", "install", "--frozen-lockfile"])
+        self.assertEqual(guard.check(config(NPMRC, verify, TESTS)), [])
+
     def test_after_tests(self):
         self.assert_error(config(NPMRC, TESTS, VERIFY), "must come before")
 

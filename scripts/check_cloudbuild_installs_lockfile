@@ -18,6 +18,7 @@ Usage: ./scripts/check_cloudbuild_installs_lockfile [cloudbuild-test.yaml]
 """
 
 import re
+import shlex
 import sys
 
 try:
@@ -28,14 +29,39 @@ except ImportError:
 STEP_ID = "verify-npm-from-ci-registry"
 NPMRC_SCRIPT = "scripts/create_npmrc"
 TESTS_SCRIPT = "scripts/run_tests_on_cloudbuild"
-PARTIAL_INSTALL = re.compile(r"(?<![\w-])(--prod|--production|--filter)(?![\w-])")
+PARTIAL_INSTALL = re.compile(r"^(--prod|--production|--filter)(=|$)")
 
 
-def command(step):
-    """Returns the step's script or args without comment lines."""
-    text = step.get("script") or " ".join(step.get("args") or [])
-    return "\n".join(line for line in str(text).splitlines()
-                     if not line.lstrip().startswith("#") or line.lstrip().startswith("#!"))
+def commands(step):
+    """Returns the step's shell commands as lists of words, without comments.
+
+    Joins lines continued with a trailing backslash and drops comments, including
+    ones at the end of a line.
+    """
+    if step.get("script"):
+        text = re.sub(r"\\\n", " ", str(step["script"]))
+    else:
+        text = " ".join(shlex.quote(str(arg)) for arg in step.get("args") or [])
+    result = []
+    for line in text.splitlines():
+        try:
+            words = shlex.split(line, comments=True)
+        except ValueError:  # Unbalanced quotes: fall back to splitting on spaces.
+            words = line.split("#", 1)[0].split()
+        if words:
+            result.append(words)
+    return result
+
+
+def runs(step, script):
+    """Whether any command of the step mentions the given script."""
+    return any(script in word for words in commands(step) for word in words)
+
+
+def installs_whole_lockfile(words):
+    """Whether a command runs `@pnpm//:pnpm ... install --frozen-lockfile`."""
+    return ("@pnpm//:pnpm" in words and "install" in words
+            and "--frozen-lockfile" in words[words.index("install"):])
 
 
 def check(config):
@@ -46,18 +72,19 @@ def check(config):
         return ["there must be exactly one step with `id: %s` (found %d)" % (STEP_ID, len(matches))]
     index = matches[0]
     step = steps[index]
-    script = command(step)
+    words = [word for command in commands(step) for word in command]
     errors = []
-    if "@pnpm//:pnpm" not in script:
+    if "@pnpm//:pnpm" not in words:
         errors.append("the %s step must run pnpm through Bazel (@pnpm//:pnpm)" % STEP_ID)
-    if not re.search(r"\binstall\b[^\n]*--frozen-lockfile\b", script):
-        errors.append("the %s step must run `install --frozen-lockfile`" % STEP_ID)
-    partial = PARTIAL_INSTALL.search(script)
+    if not any(installs_whole_lockfile(command) for command in commands(step)):
+        errors.append("the %s step must run `@pnpm//:pnpm ... install --frozen-lockfile`"
+                      % STEP_ID)
+    partial = [m.group(1) for m in map(PARTIAL_INSTALL.match, words) if m]
     if partial:
         errors.append("the %s step must install the whole lockfile, without %s"
-                      % (STEP_ID, partial.group(1)))
+                      % (STEP_ID, partial[0]))
 
-    npmrc = [i for i, s in enumerate(steps) if NPMRC_SCRIPT in command(s)]
+    npmrc = [i for i, s in enumerate(steps) if runs(s, NPMRC_SCRIPT)]
     if not npmrc:
         errors.append("no step runs %s" % NPMRC_SCRIPT)
     elif npmrc[0] > index:
@@ -68,7 +95,7 @@ def check(config):
             errors.append("the %s step must wait for the step that runs %s (give it an id and "
                           "list it in waitFor)" % (STEP_ID, NPMRC_SCRIPT))
 
-    tests = [i for i, s in enumerate(steps) if TESTS_SCRIPT in command(s)]
+    tests = [i for i, s in enumerate(steps) if runs(s, TESTS_SCRIPT)]
     if not tests:
         errors.append("no step runs %s" % TESTS_SCRIPT)
     elif tests[0] < index:
