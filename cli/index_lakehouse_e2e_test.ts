@@ -260,7 +260,7 @@ integrationSuite("lakehouse e2e", { parallel: true }, ({ before, after }) => {
     expect(rows[0].location.toUpperCase()).equals(expectedLocation.toUpperCase());
   }
 
-  // Case 1: `table` run twice, second run replaces the table.
+  // Regular `table` run twice: the second run replaces the table.
   test(
     "table: creates and replaces a 4-part Lakehouse table across two runs",
     { timeout: 180000 },
@@ -300,7 +300,7 @@ SELECT 2 AS id, 'v2' AS val`,
     },
   );
 
-  // Case 2: `incremental` — first run creates, second without `uniqueKey` inserts, second with `uniqueKey` merges.
+  // `incremental`: first run creates, second without `uniqueKey` inserts, with `uniqueKey` merges.
   test(
     "incremental: creates on first run, inserts without uniqueKey, and merges with uniqueKey",
     { timeout: 240000 },
@@ -368,7 +368,7 @@ SELECT 3 AS id, 'v2' AS val`,
     },
   );
 
-  // Case 3: `onSchemaChange`: EXTEND (new column) and SYNCHRONIZE (removed column) + no leftover scratch tables.
+  // `onSchemaChange`: EXTEND (new column) and SYNCHRONIZE (removed column).
   test(
     "onSchemaChange: applies EXTEND and SYNCHRONIZE without leaving scratch tables in defaultDataset",
     { timeout: 240000 },
@@ -381,7 +381,7 @@ SELECT 3 AS id, 'v2' AS val`,
           const extendTarget = registerTableForCleanup(extendTable);
           const syncTarget = registerTableForCleanup(syncTable);
 
-          // 3a. EXTEND: add new column `status`
+          // EXTEND: add new column `status`.
           writeDefinitionFile(
             projectDir,
             `${extendTable}.sqlx`,
@@ -414,7 +414,7 @@ SELECT 2 AS id, 'bob' AS name, 'active' AS status`,
             { id: 2, name: "bob", status: null },
           ]);
 
-          // 3b. SYNCHRONIZE: remove column `legacy_col`
+          // SYNCHRONIZE: remove column `legacy_col`.
           writeDefinitionFile(
             projectDir,
             `${syncTable}.sqlx`,
@@ -469,7 +469,7 @@ SELECT 2 AS id, 'bob' AS name`,
     },
   );
 
-  // Case 4: `operations` with `hasOutput: true`.
+  // `operations` with `hasOutput: true`.
   test(
     "operations: creates a 4-part Lakehouse table when hasOutput is true",
     { timeout: 180000 },
@@ -504,7 +504,7 @@ SELECT 1 AS id, 'from_operation' AS source`,
     },
   );
 
-  // Case 5: Table and top-level column descriptions set after run (nested STRUCT ignored safely).
+  // Table and top-level column descriptions set after run (nested STRUCT ignored safely).
   test(
     "descriptions: sets table and top-level column descriptions while ignoring nested STRUCT fields",
     { timeout: 180000 },
@@ -515,6 +515,7 @@ SELECT 1 AS id, 'from_operation' AS source`,
           const tableName = makeUniqueTableName("meta");
           const target = registerTableForCleanup(tableName);
 
+          // Intentional apostrophe in table description to exercise SQL string escaping in ALTER TABLE.
           writeDefinitionFile(
             projectDir,
             `${tableName}.sqlx`,
@@ -554,7 +555,7 @@ SELECT 1 AS id, STRUCT('ok' AS nested_note) AS details`,
     },
   );
 
-  // Case 6: Non-existent namespace fails with a clear error.
+  // Non-existent namespace fails with a clear error.
   test(
     "missing namespace: fails with a clear not-found error without attempting CREATE SCHEMA",
     { timeout: 120000 },
@@ -600,7 +601,7 @@ SELECT 1 AS id`,
     },
   );
 
-  // Case 7: Regular 3-part `view` reading a Lakehouse table through `ref()`.
+  // Regular 3-part `view` reading a Lakehouse table through `ref()`.
   test(
     "ref(): regular 3-part view reads a 4-part Lakehouse table",
     { timeout: 180000 },
@@ -638,7 +639,7 @@ SELECT id, UPPER(label) AS upper_label FROM \${ref("${lhTable}")}`,
     },
   );
 
-  // Case 8: Location resolution with and without `defaultLocation`.
+  // Location resolution with and without `defaultLocation`.
   test(
     "location: resolves catalog location with defaultLocation and without defaultLocation",
     { timeout: 240000 },
@@ -648,7 +649,7 @@ SELECT id, UPPER(label) AS upper_label FROM \${ref("${lhTable}")}`,
       const conflictingCredsPath = writeCredentialsWithLocation(conflictingLocation);
       const noLocationCredsPath = writeCredentialsWithLocation(undefined);
 
-      // 8a. With `defaultLocation`: overrides conflicting location in credentials.
+      // With `defaultLocation`: overrides conflicting location in credentials.
       await withLakehouseProject(
         SCRATCH_DATASET_PREFIX.LOCATION,
         async ({ projectDir, registerTableForCleanup }) => {
@@ -668,7 +669,7 @@ SELECT 1 AS id`,
         },
       );
 
-      // 8b. Without `defaultLocation`: fails when credentials force wrong location, succeeds when
+      // Without `defaultLocation`: fails when credentials force wrong location, succeeds when
       // credentials also omit location (BigQuery infers catalog location from 4-part target).
       await withLakehouseProject(
         SCRATCH_DATASET_PREFIX.LOCATION,
@@ -704,12 +705,12 @@ SELECT 1 AS id`,
     },
   );
 
-  // Case 9: `defaultDataset` missing vs already existing (no CREATE SCHEMA emitted).
+  // `defaultDataset` missing vs already existing (no CREATE SCHEMA emitted).
   test(
     "defaultDataset: creates missing scratch dataset once and skips CREATE SCHEMA when it exists",
     { timeout: 240000 },
     async () => {
-      // 9a. Missing `defaultDataset` -> Runner wraps first run with `create schema if not exists`
+      // Missing `defaultDataset` -> Runner wraps first run with `create schema if not exists`
       // in the Lakehouse location, and subsequent incremental runs emit no `CREATE SCHEMA`.
       await withLakehouseProject(
         SCRATCH_DATASET_PREFIX.DS_MISSING,
@@ -753,7 +754,7 @@ SELECT 2 AS id, 'b' AS name, 'active' AS status`,
         },
       );
 
-      // 9b. Existing `defaultDataset` -> neither Runner nor ExecutionSql emits `CREATE SCHEMA`.
+      // Existing `defaultDataset` -> neither Runner nor ExecutionSql emits `CREATE SCHEMA`.
       await withLakehouseProject(
         SCRATCH_DATASET_PREFIX.DS_EXISTING,
         async ({ projectDir, scratchDataset, registerTableForCleanup }) => {
