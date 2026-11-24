@@ -18,7 +18,7 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import { getRealPath } from "df/common/vm/path_utils";
+import { getRealPath, isRealPathContained } from "df/common/vm/path_utils";
 
 // Node's CommonJS loader. Its lookup helpers are used directly (see findInNodeModules).
 const NodeModule: any = require("module");
@@ -74,17 +74,10 @@ export class ModuleResolver {
 
   public isPathContained(targetPath: string): boolean {
     const realTarget = getRealPath(targetPath);
-    const isContainedIn = (parentDir: string) => {
-      const rel = path.relative(parentDir, realTarget);
-      // Only ".." itself and "../…" leave parentDir; a file named "..foo" is still inside it.
-      // An absolute result means a different drive on Windows.
-      return rel !== ".." && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel);
-    };
-
-    if (isContainedIn(this.projectDir)) {
+    if (isRealPathContained(realTarget, this.projectDir)) {
       return true;
     }
-    return this.allowedExternalPaths.some((allowed) => isContainedIn(allowed));
+    return this.allowedExternalPaths.some((allowed) => isRealPathContained(realTarget, allowed));
   }
 
   private resolveUncached(moduleName: string, fromPath: string): string {
