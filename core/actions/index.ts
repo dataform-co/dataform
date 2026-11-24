@@ -40,6 +40,13 @@ export type ActionProto =
   | dataform.PropertyGraph
   | dataform.Test;
 
+function legacyAliasConflictMessage(legacyKey: string, modernKey: string) {
+  return (
+    `'${legacyKey}' is a legacy alias for '${modernKey}'; cannot specify both at the same time. ` +
+    `It's recommended to use '${modernKey}'.`
+  );
+}
+
 // In v4, consider making methods on inheritors of this private, forcing users to use constructors
 // in order to populate actions.
 export abstract class ActionBuilder<T> {
@@ -294,9 +301,7 @@ export abstract class ActionBuilder<T> {
     if (config.dependencies !== undefined) {
       if (config.dependencyTargets !== undefined) {
         this.session?.compileError(
-          new Error(
-            "Cannot specify both 'dependencyTargets' and 'dependencies' in the same config.",
-          ),
+          new Error(legacyAliasConflictMessage("dependencies", "dependencyTargets")),
           resolvedFileName,
         );
       } else if (config.dependencies !== null && !Array.isArray(config.dependencies)) {
@@ -349,7 +354,7 @@ export abstract class ActionBuilder<T> {
       if (config[modernKey] !== undefined) {
         this.session?.compileError(
           new Error(
-            `Cannot specify both '${keyPrefix}${modernKey}' and '${keyPrefix}${legacyKey}' in the same config.`,
+            legacyAliasConflictMessage(`${keyPrefix}${legacyKey}`, `${keyPrefix}${modernKey}`),
           ),
           fileName,
         );

@@ -1266,10 +1266,10 @@ SELECT 1`,
         expect(
           graph.graphErrors.compilationErrors.map((e) => e.message),
         ).deep.equals([
-          "Cannot specify both 'dependencyTargets' and 'dependencies' in the same config.",
-          "Cannot specify both 'project' and 'database' in the same config.",
-          "Cannot specify both 'dataset' and 'schema' in the same config.",
-          "Cannot specify both 'filename' and 'fileName' in the same config.",
+          "'dependencies' is a legacy alias for 'dependencyTargets'; cannot specify both at the same time. It's recommended to use 'dependencyTargets'.",
+          "'database' is a legacy alias for 'project'; cannot specify both at the same time. It's recommended to use 'project'.",
+          "'schema' is a legacy alias for 'dataset'; cannot specify both at the same time. It's recommended to use 'dataset'.",
+          "'fileName' is a legacy alias for 'filename'; cannot specify both at the same time. It's recommended to use 'filename'.",
         ]);
       });
     }
@@ -1292,9 +1292,9 @@ config {
       expect(
         graph.graphErrors.compilationErrors.map((e) => e.message),
       ).deep.equals([
-        "Cannot specify both 'project' and 'database' in the same config.",
-        "Cannot specify both 'dataset' and 'schema' in the same config.",
-        "Cannot specify both 'filename' and 'fileName' in the same config.",
+        "'database' is a legacy alias for 'project'; cannot specify both at the same time. It's recommended to use 'project'.",
+        "'schema' is a legacy alias for 'dataset'; cannot specify both at the same time. It's recommended to use 'dataset'.",
+        "'fileName' is a legacy alias for 'filename'; cannot specify both at the same time. It's recommended to use 'filename'.",
       ]);
     });
 
@@ -1332,22 +1332,22 @@ publish("js_t", { type: "table" })
       ).deep.equals([
         {
           message:
-            "Cannot specify both 'assertions.project' and 'assertions.database' in the same config.",
+            "'assertions.database' is a legacy alias for 'assertions.project'; cannot specify both at the same time. It's recommended to use 'assertions.project'.",
           fileName: "definitions/js_table.js",
         },
         {
           message:
-            "Cannot specify both 'assertions.dataset' and 'assertions.schema' in the same config.",
+            "'assertions.schema' is a legacy alias for 'assertions.dataset'; cannot specify both at the same time. It's recommended to use 'assertions.dataset'.",
           fileName: "definitions/js_table.js",
         },
         {
           message:
-            "Cannot specify both 'assertions.project' and 'assertions.database' in the same config.",
+            "'assertions.database' is a legacy alias for 'assertions.project'; cannot specify both at the same time. It's recommended to use 'assertions.project'.",
           fileName: "definitions/t.sqlx",
         },
         {
           message:
-            "Cannot specify both 'assertions.dataset' and 'assertions.schema' in the same config.",
+            "'assertions.schema' is a legacy alias for 'assertions.dataset'; cannot specify both at the same time. It's recommended to use 'assertions.dataset'.",
           fileName: "definitions/t.sqlx",
         },
       ]);
@@ -1376,11 +1376,13 @@ FROM x
         })),
       ).deep.equals([
         {
-          message: "Cannot specify both 'project' and 'database' in the same config.",
+          message:
+            "'database' is a legacy alias for 'project'; cannot specify both at the same time. It's recommended to use 'project'.",
           fileName: "definitions/dp.dp.sqlx",
         },
         {
-          message: "Cannot specify both 'dataset' and 'schema' in the same config.",
+          message:
+            "'schema' is a legacy alias for 'dataset'; cannot specify both at the same time. It's recommended to use 'dataset'.",
           fileName: "definitions/dp.dp.sqlx",
         },
       ]);
