@@ -255,8 +255,37 @@ suite("ExecutionSql with 'onSchemaChange'", () => {
       "BEGIN\nDECLARE watermark TIMESTAMP;\nSET watermark = CURRENT_TIMESTAMP();\n\nBEGIN\n\n-- Declare variables for schema comparison and strategy execution.",
     );
     expect(fullSql).to.include(
-      "-- Cleanup empty temp table\nDROP TABLE IF EXISTS `project-id.dataset-id.incremental_on_schema_change_df_temp_test_uuid_empty`;\n    \nEND;\n\nSELECT watermark;\nEND;",
+      "-- Cleanup staging table\nDROP TABLE IF EXISTS `staging_table_temp_test_uuid`;\nEND;\n\nSELECT watermark;\nEND;",
     );
+  });
+
+  test("wraps core body in inner BEGIN...END block when only incrementalPostOps are set for onSchemaChange", () => {
+    const table: dataform.ITable = {
+      ...baseTable,
+      onSchemaChange: dataform.OnSchemaChange.SYNCHRONIZE,
+      incrementalPostOps: ["SELECT 1;"],
+    };
+    const builtTasks = executionSql
+      .publishTasks(table, { fullRefresh: false }, tableMetadata)
+      .build();
+    expect(builtTasks.length).to.equal(1);
+
+    const fullSql = builtTasks[0].statement;
+    // The internal variables are declared at the start of the inner block...
+    expect(fullSql).to.include(
+      "OPTIONS(strict_mode=false)\nBEGIN\nBEGIN\n\n-- Declare variables for schema comparison and strategy execution.\nDECLARE dataform_columns ARRAY<STRING>;",
+    );
+    // ...which is closed before the post-operations, so they are out of scope there.
+    const [procedureSql] = fullSql.split("SELECT 1;");
+    expect(procedureSql).to.match(/\nEND;\n\n$/);
+    expect((procedureSql.match(/^BEGIN$/gm) || []).length).to.equal(
+      (procedureSql.match(/^END;$/gm) || []).length + 1,
+    );
+    const declaredVariables = [...fullSql.matchAll(/^\s*DECLARE (\w+)/gm)].map((match) => match[1]);
+    expect(declaredVariables.length).to.be.greaterThan(0);
+    for (const declaredVariable of declaredVariables) {
+      expect(declaredVariable).to.match(/^dataform_/);
+    }
   });
 });
 

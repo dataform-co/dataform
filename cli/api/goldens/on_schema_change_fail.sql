@@ -5,9 +5,9 @@ BEGIN
 -- Declare variables for schema comparison and strategy execution.
 DECLARE dataform_columns ARRAY<STRING>;
 DECLARE dataform_columns_list STRING;
-DECLARE temp_table_columns ARRAY<STRUCT<column_name STRING, data_type STRING>>;
-DECLARE columns_added ARRAY<STRUCT<column_name STRING, data_type STRING>>;
-DECLARE columns_removed ARRAY<STRING>;
+DECLARE dataform_temp_table_columns ARRAY<STRUCT<column_name STRING, data_type STRING>>;
+DECLARE dataform_columns_added ARRAY<STRUCT<column_name STRING, data_type STRING>>;
+DECLARE dataform_columns_removed ARRAY<STRING>;
 
 
 -- Create empty table to extract schema of new query.
@@ -23,30 +23,35 @@ SET dataform_columns = (
   WHERE table_name = 'incremental_on_schema_change'
 );
 
-SET temp_table_columns = (
+SET dataform_temp_table_columns = (
   SELECT IFNULL(ARRAY_AGG(STRUCT(column_name, data_type)), [])
   FROM `project-id.dataset-id.INFORMATION_SCHEMA.COLUMNS`
   WHERE table_name = 'incremental_on_schema_change_df_temp_test_uuid_empty'
 );
 
-SET columns_added = (
+SET dataform_columns_added = (
   SELECT IFNULL(ARRAY_AGG(column_info), [])
-  FROM UNNEST(temp_table_columns) AS column_info
+  FROM UNNEST(dataform_temp_table_columns) AS column_info
   WHERE column_info.column_name NOT IN UNNEST(dataform_columns)
 );
-SET columns_removed = (
+SET dataform_columns_removed = (
   SELECT IFNULL(ARRAY_AGG(column_name), [])
   FROM UNNEST(dataform_columns) AS column_name
-  WHERE column_name NOT IN (SELECT col.column_name FROM UNNEST(temp_table_columns) AS col)
+  WHERE column_name NOT IN (SELECT col.column_name FROM UNNEST(dataform_temp_table_columns) AS col)
 );
+
+
+-- Cleanup empty temp table
+DROP TABLE IF EXISTS `project-id.dataset-id.incremental_on_schema_change_df_temp_test_uuid_empty`;
+    
 
 
 -- Apply schema change strategy (FAIL).
-IF ARRAY_LENGTH(columns_added) > 0 OR ARRAY_LENGTH(columns_removed) > 0 THEN
+IF ARRAY_LENGTH(dataform_columns_added) > 0 OR ARRAY_LENGTH(dataform_columns_removed) > 0 THEN
   RAISE USING MESSAGE = FORMAT(
     "Schema mismatch defined by on_schema_change = 'FAIL'. Added columns: %T, removed columns: %T",
-    columns_added,
-    columns_removed
+    dataform_columns_added,
+    dataform_columns_removed
   );
 END IF;
 
@@ -55,7 +60,7 @@ END IF;
 -- Prepare dynamic column lists for DML.
 SET dataform_columns_list = (
   SELECT STRING_AGG(FORMAT("`%s`", column_info.column_name), ", ")
-  FROM UNNEST(temp_table_columns) AS column_info
+  FROM UNNEST(dataform_temp_table_columns) AS column_info
 );
 
 CREATE OR REPLACE TEMP TABLE `staging_table_temp_test_uuid` AS (
@@ -70,11 +75,6 @@ from `staging_table_temp_test_uuid`""");
 
 -- Cleanup staging table
 DROP TABLE IF EXISTS `staging_table_temp_test_uuid`;
-
-
--- Cleanup empty temp table
-DROP TABLE IF EXISTS `project-id.dataset-id.incremental_on_schema_change_df_temp_test_uuid_empty`;
-    
 END;
 BEGIN
   CALL `project-id.dataset-id.df_osc_test_uuid`();

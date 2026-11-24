@@ -327,12 +327,12 @@ DECLARE dataform_columns_list STRING;`;
     }
 
     sql += `
-DECLARE temp_table_columns ARRAY<STRUCT<column_name STRING, data_type STRING>>;
-DECLARE columns_added ARRAY<STRUCT<column_name STRING, data_type STRING>>;
-DECLARE columns_removed ARRAY<STRING>;`;
+DECLARE dataform_temp_table_columns ARRAY<STRUCT<column_name STRING, data_type STRING>>;
+DECLARE dataform_columns_added ARRAY<STRUCT<column_name STRING, data_type STRING>>;
+DECLARE dataform_columns_removed ARRAY<STRING>;`;
 
     if (onSchemaChange === dataform.OnSchemaChange.SYNCHRONIZE) {
-      sql += `\nDECLARE invalid_removed_columns ARRAY<STRING>;`;
+      sql += `\nDECLARE dataform_invalid_removed_columns ARRAY<STRING>;`;
     }
     return sql;
   }
@@ -357,21 +357,21 @@ SET dataform_columns = (
   WHERE table_name = '${target.name}'
 );
 
-SET temp_table_columns = (
+SET dataform_temp_table_columns = (
   SELECT IFNULL(ARRAY_AGG(STRUCT(column_name, data_type)), [])
   FROM \`${emptyTempTableTarget.database}.${emptyTempTableTarget.schema}.INFORMATION_SCHEMA.COLUMNS\`
   WHERE table_name = '${emptyTempTableTarget.name}'
 );
 
-SET columns_added = (
+SET dataform_columns_added = (
   SELECT IFNULL(ARRAY_AGG(column_info), [])
-  FROM UNNEST(temp_table_columns) AS column_info
+  FROM UNNEST(dataform_temp_table_columns) AS column_info
   WHERE column_info.column_name NOT IN UNNEST(dataform_columns)
 );
-SET columns_removed = (
+SET dataform_columns_removed = (
   SELECT IFNULL(ARRAY_AGG(column_name), [])
   FROM UNNEST(dataform_columns) AS column_name
-  WHERE column_name NOT IN (SELECT col.column_name FROM UNNEST(temp_table_columns) AS col)
+  WHERE column_name NOT IN (SELECT col.column_name FROM UNNEST(dataform_temp_table_columns) AS col)
 );`;
   }
 
@@ -386,21 +386,21 @@ SET columns_removed = (
     switch (onSchemaChange) {
       case dataform.OnSchemaChange.FAIL:
         sql += `
-IF ARRAY_LENGTH(columns_added) > 0 OR ARRAY_LENGTH(columns_removed) > 0 THEN
+IF ARRAY_LENGTH(dataform_columns_added) > 0 OR ARRAY_LENGTH(dataform_columns_removed) > 0 THEN
   RAISE USING MESSAGE = FORMAT(
     "Schema mismatch defined by on_schema_change = 'FAIL'. Added columns: %T, removed columns: %T",
-    columns_added,
-    columns_removed
+    dataform_columns_added,
+    dataform_columns_removed
   );
 END IF;
 `;
         break;
       case dataform.OnSchemaChange.EXTEND:
         sql += `
-IF ARRAY_LENGTH(columns_removed) > 0 THEN
+IF ARRAY_LENGTH(dataform_columns_removed) > 0 THEN
   RAISE USING MESSAGE = FORMAT(
     "Column removals are not allowed when on_schema_change = 'EXTEND'. Removed columns: %T",
-    columns_removed
+    dataform_columns_removed
   );
 END IF;
 
@@ -410,23 +410,23 @@ ${this.alterTableAddColumnsSql(qualifiedTargetTableName)}
       case dataform.OnSchemaChange.SYNCHRONIZE:
         const uniqueKeys = table.uniqueKey || [];
         sql += `
-SET invalid_removed_columns = (
-  SELECT IFNULL(ARRAY_AGG(col), []) FROM UNNEST(columns_removed) AS col WHERE col IN UNNEST(${JSON.stringify(uniqueKeys)})
+SET dataform_invalid_removed_columns = (
+  SELECT IFNULL(ARRAY_AGG(col), []) FROM UNNEST(dataform_columns_removed) AS col WHERE col IN UNNEST(${JSON.stringify(uniqueKeys)})
 );
 
-IF ARRAY_LENGTH(invalid_removed_columns) > 0 THEN
+IF ARRAY_LENGTH(dataform_invalid_removed_columns) > 0 THEN
   RAISE USING MESSAGE = FORMAT(
     "Cannot drop columns %T as they are part of the unique key for table ${qualifiedTargetTableName}",
-    invalid_removed_columns
+    dataform_invalid_removed_columns
   );
 END IF;
 
-IF ARRAY_LENGTH(columns_removed) > 0 THEN
+IF ARRAY_LENGTH(dataform_columns_removed) > 0 THEN
   EXECUTE IMMEDIATE (
     "ALTER TABLE ${qualifiedTargetTableName} " ||
     (
       SELECT STRING_AGG(FORMAT("DROP COLUMN IF EXISTS %s", col), ", ")
-      FROM UNNEST(columns_removed) AS col
+      FROM UNNEST(dataform_columns_removed) AS col
     )
   );
 END IF;
@@ -439,12 +439,12 @@ ${this.alterTableAddColumnsSql(qualifiedTargetTableName)}
   }
 
   private alterTableAddColumnsSql(qualifiedTargetTableName: string): string {
-    return `IF ARRAY_LENGTH(columns_added) > 0 THEN
+    return `IF ARRAY_LENGTH(dataform_columns_added) > 0 THEN
   EXECUTE IMMEDIATE (
     "ALTER TABLE ${qualifiedTargetTableName} " ||
     (
       SELECT STRING_AGG(FORMAT("ADD COLUMN IF NOT EXISTS %s %s", column_info.column_name, column_info.data_type), ", ")
-      FROM UNNEST(columns_added) AS column_info
+      FROM UNNEST(dataform_columns_added) AS column_info
     )
   );
 END IF;`;
@@ -455,14 +455,14 @@ END IF;`;
 -- Prepare dynamic column lists for DML.
 SET dataform_columns_list = (
   SELECT STRING_AGG(FORMAT("\`%s\`", column_info.column_name), ", ")
-  FROM UNNEST(temp_table_columns) AS column_info
+  FROM UNNEST(dataform_temp_table_columns) AS column_info
 );`;
 
     if (this.isMergeStrategy(table)) {
       sql += `
 SET dataform_columns_merge = (
   SELECT STRING_AGG(FORMAT("\`%s\` = DATAFORM_SOURCE.\`%s\`", column_info.column_name, column_info.column_name), ", ")
-  FROM UNNEST(temp_table_columns) AS column_info
+  FROM UNNEST(dataform_temp_table_columns) AS column_info
 );`;
     }
 
@@ -489,22 +489,25 @@ DROP TABLE IF EXISTS ${emptyTempTableName};
       this.declareSchemaChangeVariablesSql(table),
       this.createEmptyTempTableSql(emptyTempTableName, query),
       this.compareSchemasSql(table.target, emptyTempTableTarget),
+      this.cleanupSql(emptyTempTableName),
       this.applySchemaChangeStrategySql(table, qualifiedTargetTableName),
       this.prepareDynamicColumnsSql(table),
       this.getIncrementalDmlStatement(table),
-      this.cleanupSql(emptyTempTableName),
     ].join("\n\n");
 
     const preOpsSql = terminateStatements(preOpTasks.map((t) => t.getStatement()));
     const postOpsSql = terminateStatements(postOpTasks.map((t) => t.getStatement()));
 
+    // Whenever user-provided operations share the procedure scope, the core body is wrapped in its
+    // own block. This places its DECLARE statements at the start of a block when they follow
+    // pre-operations, and takes the internal variables out of scope before post-operations run.
+    // Post-operations are left unwrapped so that comment-only operations don't produce an empty
+    // (invalid) BEGIN...END block.
     const bodyParts: string[] = [];
     if (preOpsSql) {
       bodyParts.push(preOpsSql);
-      bodyParts.push(`BEGIN\n${coreBody}\nEND;`);
-    } else {
-      bodyParts.push(coreBody);
     }
+    bodyParts.push(preOpsSql || postOpsSql ? `BEGIN\n${coreBody}\nEND;` : coreBody);
     if (postOpsSql) {
       bodyParts.push(postOpsSql);
     }
@@ -612,7 +615,9 @@ when not matched then
     const resolveTargetTable = columns
       ? this.resolveTarget(target)
       : this.escapeSqlString(this.resolveTarget(target));
-    const partitionsVar = columns ? "partitions_for_replacement" : "@partitions_for_replacement";
+    const partitionsVar = columns
+      ? "dataform_partitions_for_replacement"
+      : "@dataform_partitions_for_replacement";
     const notMatchedBySourceCondition = `${partitionBy} IN UNNEST(${partitionsVar}) ${updatePartitionFilter ? `and DATAFORM_DEST.${updatePartitionFilter}` : ""}\n  ${incrementalPredicatesString ? ` ${incrementalPredicatesString}` : ""}`;
 
     const mergeSql = `MERGE ${resolveTargetTable} DATAFORM_DEST
@@ -625,7 +630,7 @@ when not matched then
     INSERT (${cols}) VALUES (${cols})`;
 
     return `BEGIN
-  DECLARE partitions_for_replacement DEFAULT (
+  DECLARE dataform_partitions_for_replacement DEFAULT (
     ARRAY(
       SELECT DISTINCT ${partitionBy}
       FROM ${stagingTable}
@@ -633,7 +638,7 @@ when not matched then
     )
   );
 
-  ${columns ? mergeSql : `EXECUTE IMMEDIATE ("""${mergeSql}""")\n  USING partitions_for_replacement AS partitions_for_replacement`};
+  ${columns ? mergeSql : `EXECUTE IMMEDIATE ("""${mergeSql}""")\n  USING dataform_partitions_for_replacement AS dataform_partitions_for_replacement`};
 END;`;
   }
 
