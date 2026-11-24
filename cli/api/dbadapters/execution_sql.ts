@@ -50,12 +50,8 @@ export class ExecutionSql {
   }
 
   private insertInto(target: dataform.ITarget, columns: string[] | undefined, source: string) {
-    const cols = columns
-      ? columns.map((c) => `\`${c}\``).join(",")
-      : '""" || dataform_columns_list || """';
-    const resolvedTarget = columns
-      ? this.resolveTarget(target)
-      : this.escapeSqlString(this.resolveTarget(target));
+    const cols = this.colsList(columns);
+    const resolvedTarget = this.resolveDmlTarget(target, columns);
     const dml = `	
 insert into ${resolvedTarget}
 (${cols})
@@ -286,7 +282,10 @@ from ${source}`;
 
   private isMergeStrategy(table: dataform.ITable): boolean {
     return (
-      table.incrementalStrategy !== dataform.IncrementalStrategy.INSERT_OVERWRITE &&
+      (table.incrementalStrategy === undefined ||
+        table.incrementalStrategy === dataform.IncrementalStrategy.MERGE ||
+        table.incrementalStrategy ===
+          dataform.IncrementalStrategy.INCREMENTAL_STRATEGY_UNSPECIFIED) &&
       Boolean(table.uniqueKey && table.uniqueKey.length > 0)
     );
   }
@@ -604,9 +603,7 @@ DROP TABLE IF EXISTS ${stagingTable};`;
     uniqueKey: string[],
     bigquery: dataform.IBigQueryOptions,
   ) {
-    const cols = columns
-      ? columns.map((column) => `\`${column}\``).join(",")
-      : '""" || dataform_columns_list || """';
+    const cols = this.colsList(columns);
     const updateSet = columns
       ? columns.map((column) => `\`${column}\` = DATAFORM_SOURCE.\`${column}\``).join(",")
       : '""" || dataform_columns_merge || """';
@@ -614,9 +611,7 @@ DROP TABLE IF EXISTS ${stagingTable};`;
     const incrementalPredicates = bigquery && bigquery.incrementalPredicates;
     const incrementalPredicatesString =
       this.buildIncrementalPredicatesString(incrementalPredicates);
-    const resolvedTarget = columns
-      ? this.resolveTarget(target)
-      : this.escapeSqlString(this.resolveTarget(target));
+    const resolvedTarget = this.resolveDmlTarget(target, columns);
     const onCondition = `${uniqueKey.map((uniqueKeyCol) => `DATAFORM_DEST.${uniqueKeyCol} = DATAFORM_SOURCE.${uniqueKeyCol}`).join(` and `)} ${updatePartitionFilter ? `and DATAFORM_DEST.${updatePartitionFilter}` : ""}\n${incrementalPredicatesString ? ` ${incrementalPredicatesString}` : ""}`;
 
     const dml = `
@@ -637,17 +632,13 @@ when not matched then
     stagingTable: string,
     bigquery: dataform.IBigQueryOptions,
   ): string {
-    const cols = columns
-      ? columns.map((column) => `\`${column}\``).join(",")
-      : '""" || dataform_columns_list || """';
+    const cols = this.colsList(columns);
     const partitionBy = bigquery && bigquery.partitionBy;
     const updatePartitionFilter = bigquery && bigquery.updatePartitionFilter;
     const incrementalPredicates = bigquery && bigquery.incrementalPredicates;
     const incrementalPredicatesString =
       this.buildIncrementalPredicatesString(incrementalPredicates);
-    const resolveTargetTable = columns
-      ? this.resolveTarget(target)
-      : this.escapeSqlString(this.resolveTarget(target));
+    const resolveTargetTable = this.resolveDmlTarget(target, columns);
     const partitionsVar = columns
       ? "dataform_partitions_for_replacement"
       : "@dataform_partitions_for_replacement";
@@ -675,42 +666,59 @@ when not matched then
 END;`;
   }
 
-  private getIncrementalDmlStatement(table: dataform.ITable, columns?: string[]): string {
-    const incrementalQuery = this.getIncrementalQuery(table);
-    const isDynamic = !columns;
+  private colsList(columns: string[] | undefined): string {
+    return columns
+      ? columns.map((column) => `\`${column}\``).join(",")
+      : '""" || dataform_columns_list || """';
+  }
 
+  /**
+   * Resolves the target for use in a DML statement. When `columns` is undefined the statement is
+   * built dynamically inside an EXECUTE IMMEDIATE string literal, so the target is escaped.
+   */
+  private resolveDmlTarget(target: dataform.ITarget, columns: string[] | undefined): string {
+    const resolvedTarget = this.resolveTarget(target);
+    return columns ? resolvedTarget : this.escapeSqlString(resolvedTarget);
+  }
+
+  private getIncrementalDmlStatement(table: dataform.ITable, columns?: string[]): string {
     switch (table.incrementalStrategy) {
       case dataform.IncrementalStrategy.INSERT_OVERWRITE:
-        return this.withTempStagingTable(incrementalQuery, (stagingTable) =>
+        return this.withTempStagingTable(this.getIncrementalQuery(table), (stagingTable) =>
           this.insertOverwrite(table.target, columns, stagingTable, table.bigquery),
         );
       case dataform.IncrementalStrategy.MERGE:
       default:
-        if (this.isMergeStrategy(table)) {
-          return isDynamic
-            ? this.withTempStagingTable(incrementalQuery, (stagingTable) =>
-                this.mergeInto(
-                  table.target,
-                  undefined,
-                  stagingTable,
-                  table.uniqueKey,
-                  table.bigquery,
-                ),
-              )
-            : this.mergeInto(
-                table.target,
-                columns,
-                `(${incrementalQuery}\n)`,
-                table.uniqueKey,
-                table.bigquery,
-              );
-        }
-        return isDynamic
-          ? this.withTempStagingTable(incrementalQuery, (stagingTable) =>
-              this.insertInto(table.target, undefined, stagingTable),
-            )
-          : this.insertInto(table.target, columns, `(${incrementalQuery}\n) as insertions`);
+        return this.isMergeStrategy(table)
+          ? this.getMergeIncrementalDmlStatement(table, columns)
+          : this.getInsertIncrementalDmlStatement(table, columns);
     }
+  }
+
+  private getMergeIncrementalDmlStatement(table: dataform.ITable, columns?: string[]): string {
+    const incrementalQuery = this.getIncrementalQuery(table);
+    if (!columns) {
+      return this.withTempStagingTable(incrementalQuery, (stagingTable) =>
+        this.mergeInto(table.target, undefined, stagingTable, table.uniqueKey, table.bigquery),
+      );
+    }
+    return this.mergeInto(
+      table.target,
+      columns,
+      `(${incrementalQuery}\n)`,
+      table.uniqueKey,
+      table.bigquery,
+    );
+  }
+
+  private getInsertIncrementalDmlStatement(table: dataform.ITable, columns?: string[]): string {
+    const incrementalQuery = this.getIncrementalQuery(table);
+    if (!columns) {
+      return this.withTempStagingTable(incrementalQuery, (stagingTable) =>
+        this.insertInto(table.target, undefined, stagingTable),
+      );
+    }
+    return this.insertInto(table.target, columns, `(${incrementalQuery}\n) as insertions`);
   }
 }
 
