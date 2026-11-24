@@ -237,6 +237,50 @@ suite("ExecutionSql with 'onSchemaChange'", () => {
     }
   });
 
+  test("escapes double quotes and backslashes of updatePartitionFilter and incrementalPredicates in dynamic DML for onSchemaChange", () => {
+    const updatePartitionFilter = String.raw`region = "EU"`;
+    // The triple quotes would terminate the EXECUTE IMMEDIATE string literal if left unescaped.
+    const incrementalPredicate = String.raw`DATAFORM_DEST.field1 != """a\\b"""`;
+    const bigquery = { updatePartitionFilter, incrementalPredicates: [incrementalPredicate] };
+
+    const tables: { [name: string]: dataform.ITable } = {
+      MERGE: {
+        ...baseTable,
+        onSchemaChange: dataform.OnSchemaChange.EXTEND,
+        uniqueKey: ["id"],
+        bigquery,
+      },
+      INSERT_OVERWRITE: {
+        ...baseTable,
+        onSchemaChange: dataform.OnSchemaChange.EXTEND,
+        incrementalStrategy: dataform.IncrementalStrategy.INSERT_OVERWRITE,
+        bigquery: { ...bigquery, partitionBy: "DATE(ts)" },
+      },
+    };
+
+    for (const [name, table] of Object.entries(tables)) {
+      const fullSql = executionSql
+        .publishTasks(table, { fullRefresh: false }, tableMetadata)
+        .build()[0].statement;
+
+      const dynamicDmlBlocks = fullSql.split('EXECUTE IMMEDIATE ("""');
+      expect(dynamicDmlBlocks.length, `${name}: number of dynamic DML blocks`).to.equal(2);
+      // The part of the string literal up to its first closing triple quote (which precedes the
+      // concatenated column list) holds the whole condition built from the user-provided values.
+      const literal = dynamicDmlBlocks[1].split('"""')[0];
+
+      expect(literal, name).to.include(String.raw`and DATAFORM_DEST.region = \"EU\"`);
+      expect(literal, name).to.include(
+        String.raw`and (DATAFORM_DEST.field1 != \"\"\"a\\\\b\"\"\")`,
+      );
+
+      // Evaluating the escape sequences of the literal yields the original values back.
+      const evaluatedLiteral = literal.replace(/\\(.)/g, "$1");
+      expect(evaluatedLiteral, name).to.include(`and DATAFORM_DEST.${updatePartitionFilter}`);
+      expect(evaluatedLiteral, name).to.include(`and (${incrementalPredicate})`);
+    }
+  });
+
   test("places incrementalPreOps and incrementalPostOps inside procedure with inner BEGIN...END block for onSchemaChange", () => {
     const table: dataform.ITable = {
       ...baseTable,
