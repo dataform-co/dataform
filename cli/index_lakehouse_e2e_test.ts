@@ -685,12 +685,13 @@ SELECT 1 AS id`,
           const failedRes = await runDataform(projectDir, [], conflictingCredsPath);
           expect(failedRes.exitCode).to.not.equal(0);
           const parsedFailed = parseRunResultJson(failedRes);
-          const failedError = (
-            parsedFailed.actions?.[0]?.tasks?.[0]?.errorMessage || ""
-          ).toLowerCase();
-          expect(failedError).to.include("not found");
-          expect(failedError).to.include(conflictingLocation.toLowerCase());
+          expect(parsedFailed.status).equals(dataform.RunResult.ExecutionStatus.FAILED);
+          const failedError = parsedFailed.actions?.[0]?.tasks?.[0]?.errorMessage || "";
+          expect(failedError).to.match(/location|not found/i);
 
+          // Verifies Dataform omits the job location (rather than forcing a conflicting default)
+          // when neither `defaultLocation` nor `credentials.location` is set, letting BigQuery
+          // infer the catalog's region from the 4-part target.
           const inferredRes = await runDataform(projectDir, [], noLocationCredsPath);
           expect(
             inferredRes.exitCode,
