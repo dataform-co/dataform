@@ -1,7 +1,7 @@
 import * as semver from "semver";
 
 import { Task, Tasks } from "df/cli/api/dbadapters/tasks";
-import { concatenateQueries } from "df/cli/api/utils/query_transforms";
+import { concatenateQueries, terminateStatements } from "df/cli/api/utils/query_transforms";
 import { ErrorWithCause } from "df/common/errors/errors";
 import { CompilationSql } from "df/core/compilation_sql";
 import { tableTypeEnumToString } from "df/core/utils";
@@ -49,12 +49,15 @@ export class ExecutionSql {
     }
   }
 
-  public insertInto(target: dataform.ITarget, columns: string[], query: string) {
-    return `	
-insert into ${this.resolveTarget(target)}	
-(${columns.join(",")})	
-select ${columns.join(",")}	
-from (${query}) as insertions`;
+  private insertInto(target: dataform.ITarget, columns: string[] | undefined, source: string) {
+    const cols = this.colsList(columns);
+    const resolvedTarget = this.resolveDmlTarget(target, columns);
+    const dml = `	
+insert into ${resolvedTarget}
+(${cols})
+select ${cols}
+from ${source}`;
+    return columns ? dml : `EXECUTE IMMEDIATE ("""${dml}""");`;
   }
 
   public oppositeTableType(type: dataform.TableMetadata.Type) {
@@ -133,9 +136,53 @@ from (${query}) as insertions`;
     runConfig: dataform.IRunConfig,
     tableMetadata?: dataform.ITableMetadata,
   ): Tasks {
+    const preOpTasks = this.preOps(table, runConfig, tableMetadata);
+    const postOpTasks = this.postOps(table, runConfig, tableMetadata);
+    const tasks =
+      table.enumType === dataform.TableType.INCREMENTAL
+        ? this.buildIncrementalTasks(table, runConfig, preOpTasks, postOpTasks, tableMetadata)
+        : this.buildNonIncrementalTasks(table, preOpTasks, postOpTasks, tableMetadata);
+    return tasks.concatenate();
+  }
+
+  private buildNonIncrementalTasks(
+    table: dataform.ITable,
+    preOpTasks: Task[],
+    postOpTasks: Task[],
+    tableMetadata?: dataform.ITableMetadata,
+  ): Tasks {
     const tasks = new Tasks();
 
-    this.preOps(table, runConfig, tableMetadata).forEach((statement) => tasks.add(statement));
+    preOpTasks.forEach((statement) => tasks.add(statement));
+
+    const baseTableType = this.baseTableType(table.enumType);
+    if (tableMetadata && tableMetadata.type !== baseTableType) {
+      tasks.add(
+        Task.statement(this.dropIfExists(table.target, this.oppositeTableType(baseTableType))),
+      );
+    }
+    tasks.add(Task.statement(this.createOrReplace(table)));
+    postOpTasks.forEach((statement) => tasks.add(statement));
+
+    return tasks;
+  }
+
+  private buildIncrementalTasks(
+    table: dataform.ITable,
+    runConfig: dataform.IRunConfig,
+    preOpTasks: Task[],
+    postOpTasks: Task[],
+    tableMetadata?: dataform.ITableMetadata,
+  ): Tasks {
+    const tasks = new Tasks();
+
+    const usesSchemaChangeProcedure =
+      this.shouldWriteIncrementally(table, runConfig, tableMetadata) &&
+      (table.onSchemaChange ?? dataform.OnSchemaChange.IGNORE) !== dataform.OnSchemaChange.IGNORE;
+
+    if (!usesSchemaChangeProcedure) {
+      preOpTasks.forEach((statement) => tasks.add(statement));
+    }
 
     const baseTableType = this.baseTableType(table.enumType);
     if (tableMetadata && tableMetadata.type !== baseTableType) {
@@ -144,30 +191,32 @@ from (${query}) as insertions`;
       );
     }
 
-    if (table.enumType === dataform.TableType.INCREMENTAL) {
-      if (!this.shouldWriteIncrementally(table, runConfig, tableMetadata)) {
-        tasks.add(Task.statement(this.createOrReplace(table)));
-      } else {
-        const onSchemaChange = table.onSchemaChange ?? dataform.OnSchemaChange.IGNORE;
-        switch (onSchemaChange) {
-          case dataform.OnSchemaChange.FAIL:
-          case dataform.OnSchemaChange.EXTEND:
-          case dataform.OnSchemaChange.SYNCHRONIZE:
-            this.buildIncrementalSchemaChangeTasks(tasks, table);
-          // Fall through to run the static DML after the procedure alters the schema
-          case dataform.OnSchemaChange.IGNORE:
-            const columns = tableMetadata?.fields.map((f) => f.name) || [];
-            tasks.add(Task.statement(this.getIncrementalDmlStatement(table, columns)));
-            break;
-        }
-      }
-    } else {
+    if (!this.shouldWriteIncrementally(table, runConfig, tableMetadata)) {
       tasks.add(Task.statement(this.createOrReplace(table)));
+    } else {
+      const onSchemaChange = table.onSchemaChange ?? dataform.OnSchemaChange.IGNORE;
+      switch (onSchemaChange) {
+        case dataform.OnSchemaChange.FAIL:
+        case dataform.OnSchemaChange.EXTEND:
+        case dataform.OnSchemaChange.SYNCHRONIZE:
+          this.buildIncrementalSchemaChangeTasks(tasks, table, preOpTasks, postOpTasks);
+          break;
+        case dataform.OnSchemaChange.IGNORE:
+          const columns = tableMetadata?.fields.map((f) => f.name) || [];
+          tasks.add(Task.statement(this.getIncrementalDmlStatement(table, columns)));
+          break;
+        default:
+          throw new Error(
+            `Unexpected onSchemaChange policy: ${dataform.OnSchemaChange[onSchemaChange].toLowerCase()}`,
+          );
+      }
     }
 
-    this.postOps(table, runConfig, tableMetadata).forEach((statement) => tasks.add(statement));
+    if (!usesSchemaChangeProcedure) {
+      postOpTasks.forEach((statement) => tasks.add(statement));
+    }
 
-    return tasks.concatenate();
+    return tasks;
   }
 
   public createTableTasks(
@@ -231,7 +280,22 @@ from (${query}) as insertions`;
     return `and ${validPredicates.map((p) => `(${p})`).join(" and ")}`;
   }
 
-  private buildIncrementalSchemaChangeTasks(tasks: Tasks, table: dataform.ITable) {
+  private isMergeStrategy(table: dataform.ITable): boolean {
+    return (
+      (table.incrementalStrategy === undefined ||
+        table.incrementalStrategy === dataform.IncrementalStrategy.MERGE ||
+        table.incrementalStrategy ===
+          dataform.IncrementalStrategy.INCREMENTAL_STRATEGY_UNSPECIFIED) &&
+      Boolean(table.uniqueKey && table.uniqueKey.length > 0)
+    );
+  }
+
+  private buildIncrementalSchemaChangeTasks(
+    tasks: Tasks,
+    table: dataform.ITable,
+    preOpTasks: Task[] = [],
+    postOpTasks: Task[] = [],
+  ) {
     const uniqueId = this.uniqueIdGenerator();
 
     const emptyTempTableTarget = {
@@ -244,6 +308,8 @@ from (${query}) as insertions`;
       table,
       this.resolveTarget(table.target),
       emptyTempTableTarget,
+      preOpTasks,
+      postOpTasks,
     );
 
     const createProcedureSql = `CREATE OR REPLACE PROCEDURE ${procedureName}()
@@ -279,16 +345,25 @@ END;
 DROP PROCEDURE IF EXISTS ${procedureName};`;
   }
 
-  private declareSchemaChangeVariablesSql(onSchemaChange: dataform.OnSchemaChange): string {
+  private declareSchemaChangeVariablesSql(table: dataform.ITable): string {
+    const onSchemaChange = table.onSchemaChange || dataform.OnSchemaChange.IGNORE;
+
     let sql = `
 -- Declare variables for schema comparison and strategy execution.
 DECLARE dataform_columns ARRAY<STRING>;
-DECLARE temp_table_columns ARRAY<STRUCT<column_name STRING, data_type STRING>>;
-DECLARE columns_added ARRAY<STRUCT<column_name STRING, data_type STRING>>;
-DECLARE columns_removed ARRAY<STRING>;`;
+DECLARE dataform_columns_list STRING;`;
+
+    if (this.isMergeStrategy(table)) {
+      sql += `\nDECLARE dataform_columns_merge STRING;`;
+    }
+
+    sql += `
+DECLARE dataform_temp_table_columns ARRAY<STRUCT<column_name STRING, data_type STRING>>;
+DECLARE dataform_columns_added ARRAY<STRUCT<column_name STRING, data_type STRING>>;
+DECLARE dataform_columns_removed ARRAY<STRING>;`;
 
     if (onSchemaChange === dataform.OnSchemaChange.SYNCHRONIZE) {
-      sql += `\nDECLARE invalid_removed_columns ARRAY<STRING>;`;
+      sql += `\nDECLARE dataform_invalid_removed_columns ARRAY<STRING>;`;
     }
     return sql;
   }
@@ -297,7 +372,8 @@ DECLARE columns_removed ARRAY<STRING>;`;
     return `
 -- Create empty table to extract schema of new query.
 CREATE OR REPLACE TABLE ${emptyTempTableName} AS (
-  SELECT * FROM (${query}) AS insertions LIMIT 0
+  SELECT * FROM (${query}
+) AS insertions LIMIT 0
 );`;
   }
 
@@ -313,21 +389,21 @@ SET dataform_columns = (
   WHERE table_name = '${target.name}'
 );
 
-SET temp_table_columns = (
+SET dataform_temp_table_columns = (
   SELECT IFNULL(ARRAY_AGG(STRUCT(column_name, data_type)), [])
   FROM \`${emptyTempTableTarget.database}.${emptyTempTableTarget.schema}.INFORMATION_SCHEMA.COLUMNS\`
   WHERE table_name = '${emptyTempTableTarget.name}'
 );
 
-SET columns_added = (
+SET dataform_columns_added = (
   SELECT IFNULL(ARRAY_AGG(column_info), [])
-  FROM UNNEST(temp_table_columns) AS column_info
+  FROM UNNEST(dataform_temp_table_columns) AS column_info
   WHERE column_info.column_name NOT IN UNNEST(dataform_columns)
 );
-SET columns_removed = (
+SET dataform_columns_removed = (
   SELECT IFNULL(ARRAY_AGG(column_name), [])
   FROM UNNEST(dataform_columns) AS column_name
-  WHERE column_name NOT IN (SELECT col.column_name FROM UNNEST(temp_table_columns) AS col)
+  WHERE column_name NOT IN (SELECT col.column_name FROM UNNEST(dataform_temp_table_columns) AS col)
 );`;
   }
 
@@ -342,21 +418,21 @@ SET columns_removed = (
     switch (onSchemaChange) {
       case dataform.OnSchemaChange.FAIL:
         sql += `
-IF ARRAY_LENGTH(columns_added) > 0 OR ARRAY_LENGTH(columns_removed) > 0 THEN
+IF ARRAY_LENGTH(dataform_columns_added) > 0 OR ARRAY_LENGTH(dataform_columns_removed) > 0 THEN
   RAISE USING MESSAGE = FORMAT(
     "Schema mismatch defined by on_schema_change = 'FAIL'. Added columns: %T, removed columns: %T",
-    columns_added,
-    columns_removed
+    dataform_columns_added,
+    dataform_columns_removed
   );
 END IF;
 `;
         break;
       case dataform.OnSchemaChange.EXTEND:
         sql += `
-IF ARRAY_LENGTH(columns_removed) > 0 THEN
+IF ARRAY_LENGTH(dataform_columns_removed) > 0 THEN
   RAISE USING MESSAGE = FORMAT(
     "Column removals are not allowed when on_schema_change = 'EXTEND'. Removed columns: %T",
-    columns_removed
+    dataform_columns_removed
   );
 END IF;
 
@@ -366,23 +442,23 @@ ${this.alterTableAddColumnsSql(qualifiedTargetTableName)}
       case dataform.OnSchemaChange.SYNCHRONIZE:
         const uniqueKeys = table.uniqueKey || [];
         sql += `
-SET invalid_removed_columns = (
-  SELECT IFNULL(ARRAY_AGG(col), []) FROM UNNEST(columns_removed) AS col WHERE col IN UNNEST(${JSON.stringify(uniqueKeys)})
+SET dataform_invalid_removed_columns = (
+  SELECT IFNULL(ARRAY_AGG(col), []) FROM UNNEST(dataform_columns_removed) AS col WHERE col IN UNNEST(${JSON.stringify(uniqueKeys)})
 );
 
-IF ARRAY_LENGTH(invalid_removed_columns) > 0 THEN
+IF ARRAY_LENGTH(dataform_invalid_removed_columns) > 0 THEN
   RAISE USING MESSAGE = FORMAT(
     "Cannot drop columns %T as they are part of the unique key for table ${qualifiedTargetTableName}",
-    invalid_removed_columns
+    dataform_invalid_removed_columns
   );
 END IF;
 
-IF ARRAY_LENGTH(columns_removed) > 0 THEN
+IF ARRAY_LENGTH(dataform_columns_removed) > 0 THEN
   EXECUTE IMMEDIATE (
     "ALTER TABLE ${qualifiedTargetTableName} " ||
     (
       SELECT STRING_AGG(FORMAT("DROP COLUMN IF EXISTS %s", col), ", ")
-      FROM UNNEST(columns_removed) AS col
+      FROM UNNEST(dataform_columns_removed) AS col
     )
   );
 END IF;
@@ -395,20 +471,39 @@ ${this.alterTableAddColumnsSql(qualifiedTargetTableName)}
   }
 
   private alterTableAddColumnsSql(qualifiedTargetTableName: string): string {
-    return `IF ARRAY_LENGTH(columns_added) > 0 THEN
+    return `IF ARRAY_LENGTH(dataform_columns_added) > 0 THEN
   EXECUTE IMMEDIATE (
     "ALTER TABLE ${qualifiedTargetTableName} " ||
     (
       SELECT STRING_AGG(FORMAT("ADD COLUMN IF NOT EXISTS %s %s", column_info.column_name, column_info.data_type), ", ")
-      FROM UNNEST(columns_added) AS column_info
+      FROM UNNEST(dataform_columns_added) AS column_info
     )
   );
 END IF;`;
   }
 
+  private prepareDynamicColumnsSql(table: dataform.ITable): string {
+    let sql = `
+-- Prepare dynamic column lists for DML.
+SET dataform_columns_list = (
+  SELECT STRING_AGG(FORMAT("\`%s\`", column_info.column_name), ", ")
+  FROM UNNEST(dataform_temp_table_columns) AS column_info
+);`;
+
+    if (this.isMergeStrategy(table)) {
+      sql += `
+SET dataform_columns_merge = (
+  SELECT STRING_AGG(FORMAT("\`%s\` = DATAFORM_SOURCE.\`%s\`", column_info.column_name, column_info.column_name), ", ")
+  FROM UNNEST(dataform_temp_table_columns) AS column_info
+);`;
+    }
+
+    return sql;
+  }
+
   private cleanupSql(emptyTempTableName: string): string {
     return `
--- Cleanup temporary tables.
+-- Cleanup empty temp table
 DROP TABLE IF EXISTS ${emptyTempTableName};
     `;
   }
@@ -417,19 +512,39 @@ DROP TABLE IF EXISTS ${emptyTempTableName};
     table: dataform.ITable,
     qualifiedTargetTableName: string,
     emptyTempTableTarget: dataform.ITarget,
+    preOpTasks: Task[] = [],
+    postOpTasks: Task[] = [],
   ): string {
     const emptyTempTableName = this.resolveTarget(emptyTempTableTarget);
     const query = this.getIncrementalQuery(table);
-    const onSchemaChange = table.onSchemaChange || dataform.OnSchemaChange.IGNORE;
-    const statements: string[] = [
-      this.declareSchemaChangeVariablesSql(onSchemaChange),
+    const coreBody = [
+      this.declareSchemaChangeVariablesSql(table),
       this.createEmptyTempTableSql(emptyTempTableName, query),
       this.compareSchemasSql(table.target, emptyTempTableTarget),
-      this.applySchemaChangeStrategySql(table, qualifiedTargetTableName),
       this.cleanupSql(emptyTempTableName),
-    ];
+      this.applySchemaChangeStrategySql(table, qualifiedTargetTableName),
+      this.prepareDynamicColumnsSql(table),
+      this.getIncrementalDmlStatement(table),
+    ].join("\n\n");
 
-    return statements.join("\n\n");
+    const preOpsSql = terminateStatements(preOpTasks.map((t) => t.getStatement()));
+    const postOpsSql = terminateStatements(postOpTasks.map((t) => t.getStatement()));
+
+    // Whenever user-provided operations share the procedure scope, the core body is wrapped in its
+    // own block. This places its DECLARE statements at the start of a block when they follow
+    // pre-operations, and takes the internal variables out of scope before post-operations run.
+    // Post-operations are left unwrapped so that comment-only operations don't produce an empty
+    // (invalid) BEGIN...END block.
+    const bodyParts: string[] = [];
+    if (preOpsSql) {
+      bodyParts.push(preOpsSql);
+    }
+    bodyParts.push(preOpsSql || postOpsSql ? `BEGIN\n${coreBody}\nEND;` : coreBody);
+    if (postOpsSql) {
+      bodyParts.push(postOpsSql);
+    }
+
+    return bodyParts.join("\n\n");
   }
 
   private createOrReplace(table: dataform.ITable) {
@@ -464,96 +579,146 @@ DROP TABLE IF EXISTS ${emptyTempTableName};
       create or replace view ${this.resolveTarget(target)} as ${query}`;
   }
 
+  private escapeSqlString(str: string): string {
+    return str.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  }
+
+  private withTempStagingTable(query: string, buildBody: (stagingTable: string) => string): string {
+    const uniqueId = this.uniqueIdGenerator();
+    const stagingTable = `\`staging_table_temp_${uniqueId}\``;
+    return `CREATE OR REPLACE TEMP TABLE ${stagingTable} AS (
+  ${query}
+);
+
+${buildBody(stagingTable)}
+
+-- Cleanup staging table
+DROP TABLE IF EXISTS ${stagingTable};`;
+  }
+
   private mergeInto(
     target: dataform.ITarget,
-    columns: string[],
-    query: string,
+    columns: string[] | undefined,
+    source: string,
     uniqueKey: string[],
     bigquery: dataform.IBigQueryOptions,
   ) {
+    const cols = this.colsList(columns);
+    const updateSet = columns
+      ? columns.map((column) => `\`${column}\` = DATAFORM_SOURCE.\`${column}\``).join(",")
+      : '""" || dataform_columns_merge || """';
     const updatePartitionFilter = bigquery && bigquery.updatePartitionFilter;
     const incrementalPredicates = bigquery && bigquery.incrementalPredicates;
     const incrementalPredicatesString =
       this.buildIncrementalPredicatesString(incrementalPredicates);
-    const backtickedColumns = columns.map((column) => `\`${column}\``);
-    return `
-merge ${this.resolveTarget(target)} DATAFORM_DEST
-using (${query}
-) DATAFORM_SOURCE
-on ${uniqueKey.map((uniqueKeyCol) => `DATAFORM_DEST.${uniqueKeyCol} = DATAFORM_SOURCE.${uniqueKeyCol}`).join(` and `)} ${updatePartitionFilter ? `and DATAFORM_DEST.${updatePartitionFilter}` : ""}
-${incrementalPredicatesString ? ` ${incrementalPredicatesString}` : ""}
+    const resolvedTarget = this.resolveDmlTarget(target, columns);
+    const onCondition = `${uniqueKey.map((uniqueKeyCol) => `DATAFORM_DEST.${uniqueKeyCol} = DATAFORM_SOURCE.${uniqueKeyCol}`).join(` and `)} ${updatePartitionFilter ? `and DATAFORM_DEST.${updatePartitionFilter}` : ""}\n${incrementalPredicatesString ? ` ${incrementalPredicatesString}` : ""}`;
+
+    const dml = `
+merge ${resolvedTarget} DATAFORM_DEST
+using ${source} DATAFORM_SOURCE
+on ${columns ? onCondition : this.escapeSqlString(onCondition)}
 when matched then
-  update set ${columns.map((column) => `\`${column}\` = DATAFORM_SOURCE.${column}`).join(",")}
+  update set ${updateSet}
 when not matched then
-  insert (${backtickedColumns.join(",")}) values (${backtickedColumns.join(",")})`;
+  insert (${cols}) values (${cols})`;
+
+    return columns ? dml : `EXECUTE IMMEDIATE ("""${dml}""");`;
   }
 
   private insertOverwrite(
     target: dataform.ITarget,
-    columns: string[],
-    query: string,
+    columns: string[] | undefined,
+    stagingTable: string,
     bigquery: dataform.IBigQueryOptions,
   ): string {
+    const cols = this.colsList(columns);
     const partitionBy = bigquery && bigquery.partitionBy;
     const updatePartitionFilter = bigquery && bigquery.updatePartitionFilter;
     const incrementalPredicates = bigquery && bigquery.incrementalPredicates;
     const incrementalPredicatesString =
       this.buildIncrementalPredicatesString(incrementalPredicates);
-    const uniqueId = this.uniqueIdGenerator();
-    const stagingTableUnqualified = `staging_table_temp_${uniqueId}`;
-    const backtickedColumns = columns.map((column) => `\`${column}\``);
-    const resolveTargetTable = this.resolveTarget(target);
+    const resolveTargetTable = this.resolveDmlTarget(target, columns);
+    const partitionsVar = columns
+      ? "dataform_partitions_for_replacement"
+      : "@dataform_partitions_for_replacement";
+    const notMatchedBySourceCondition = `${partitionBy} IN UNNEST(${partitionsVar}) ${updatePartitionFilter ? `and DATAFORM_DEST.${updatePartitionFilter}` : ""}\n  ${incrementalPredicatesString ? ` ${incrementalPredicatesString}` : ""}`;
 
-    return `CREATE OR REPLACE TEMP TABLE \`${stagingTableUnqualified}\` AS (
-  ${query}
-);
+    const mergeSql = `MERGE ${resolveTargetTable} DATAFORM_DEST
+  USING ${stagingTable} DATAFORM_SOURCE
+  ON FALSE
+  WHEN NOT MATCHED BY SOURCE AND ${columns ? notMatchedBySourceCondition : this.escapeSqlString(notMatchedBySourceCondition)}
+  THEN
+    DELETE
+  WHEN NOT MATCHED BY TARGET THEN
+    INSERT (${cols}) VALUES (${cols})`;
 
-BEGIN
-  DECLARE partitions_for_replacement DEFAULT (
+    return `BEGIN
+  DECLARE dataform_partitions_for_replacement DEFAULT (
     ARRAY(
       SELECT DISTINCT ${partitionBy}
-      FROM \`${stagingTableUnqualified}\`
+      FROM ${stagingTable}
       WHERE ${partitionBy} IS NOT NULL
     )
   );
 
-  MERGE ${resolveTargetTable} DATAFORM_DEST
-  USING \`${stagingTableUnqualified}\` DATAFORM_SOURCE
-  ON FALSE
-  WHEN NOT MATCHED BY SOURCE AND ${partitionBy} IN UNNEST(partitions_for_replacement) ${updatePartitionFilter ? `and DATAFORM_DEST.${updatePartitionFilter}` : ""}
-  ${incrementalPredicatesString ? ` ${incrementalPredicatesString}` : ""}
-  THEN
-    DELETE
-  WHEN NOT MATCHED BY TARGET THEN
-    INSERT (${backtickedColumns.join(",")}) VALUES (${backtickedColumns.join(",")});
-END;
-
-DROP TABLE IF EXISTS \`${stagingTableUnqualified}\`;`;
+  ${columns ? mergeSql : `EXECUTE IMMEDIATE ("""${mergeSql}""")\n  USING dataform_partitions_for_replacement AS dataform_partitions_for_replacement`};
+END;`;
   }
 
-  private getIncrementalDmlStatement(table: dataform.ITable, columns: string[]): string {
-    const incrementalQuery = this.getIncrementalQuery(table);
+  private colsList(columns: string[] | undefined): string {
+    return columns
+      ? columns.map((column) => `\`${column}\``).join(",")
+      : '""" || dataform_columns_list || """';
+  }
 
+  /**
+   * Resolves the target for use in a DML statement. When `columns` is undefined the statement is
+   * built dynamically inside an EXECUTE IMMEDIATE string literal, so the target is escaped.
+   */
+  private resolveDmlTarget(target: dataform.ITarget, columns: string[] | undefined): string {
+    const resolvedTarget = this.resolveTarget(target);
+    return columns ? resolvedTarget : this.escapeSqlString(resolvedTarget);
+  }
+
+  private getIncrementalDmlStatement(table: dataform.ITable, columns?: string[]): string {
     switch (table.incrementalStrategy) {
       case dataform.IncrementalStrategy.INSERT_OVERWRITE:
-        return this.insertOverwrite(table.target, columns, incrementalQuery, table.bigquery);
+        return this.withTempStagingTable(this.getIncrementalQuery(table), (stagingTable) =>
+          this.insertOverwrite(table.target, columns, stagingTable, table.bigquery),
+        );
       case dataform.IncrementalStrategy.MERGE:
       default:
-        if (table.uniqueKey && table.uniqueKey.length > 0) {
-          return this.mergeInto(
-            table.target,
-            columns,
-            incrementalQuery,
-            table.uniqueKey,
-            table.bigquery,
-          );
-        }
-        return this.insertInto(
-          table.target,
-          columns.map((column) => `\`${column}\``),
-          incrementalQuery,
-        );
+        return this.isMergeStrategy(table)
+          ? this.getMergeIncrementalDmlStatement(table, columns)
+          : this.getInsertIncrementalDmlStatement(table, columns);
     }
+  }
+
+  private getMergeIncrementalDmlStatement(table: dataform.ITable, columns?: string[]): string {
+    const incrementalQuery = this.getIncrementalQuery(table);
+    if (!columns) {
+      return this.withTempStagingTable(incrementalQuery, (stagingTable) =>
+        this.mergeInto(table.target, undefined, stagingTable, table.uniqueKey, table.bigquery),
+      );
+    }
+    return this.mergeInto(
+      table.target,
+      columns,
+      `(${incrementalQuery}\n)`,
+      table.uniqueKey,
+      table.bigquery,
+    );
+  }
+
+  private getInsertIncrementalDmlStatement(table: dataform.ITable, columns?: string[]): string {
+    const incrementalQuery = this.getIncrementalQuery(table);
+    if (!columns) {
+      return this.withTempStagingTable(incrementalQuery, (stagingTable) =>
+        this.insertInto(table.target, undefined, stagingTable),
+      );
+    }
+    return this.insertInto(table.target, columns, `(${incrementalQuery}\n) as insertions`);
   }
 }
 

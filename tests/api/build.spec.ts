@@ -228,7 +228,7 @@ suite("@dataform/api/build", () => {
         dataform.ExecutionTask.create({
           type: "statement",
           statement:
-            "incremental preOp;\ndrop view if exists `schema.a`;\ninsert into `schema.a`\t\n()\t\nselect \t\nfrom (incremental foo) as insertions;\nincremental postOp",
+            "incremental preOp;\ndrop view if exists `schema.a`;\ninsert into `schema.a`\n()\nselect \nfrom (incremental foo\n) as insertions;\nincremental postOp",
         }),
       ]);
     });
