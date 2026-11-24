@@ -28,6 +28,7 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
   public contextableQuery: Contextable<ITableContext, string>;
 
   private proto = dataform.DataPreparation.create();
+  private resolvedYamlDefinition?: { [key: string]: any };
 
   constructor(
     session?: Session,
@@ -136,23 +137,35 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
   }
 
   public database(database: string) {
-    this.proto.target = this.applySessionToTarget(
-      dataform.Target.create({ ...this.proto.target, database }),
-      this.session.projectConfig,
-      this.proto.fileName,
-      { validateTarget: true },
-    );
+    this.setTargetDatabase(this.proto, database);
+    this.syncPrimaryTargetOutputs();
     return this;
   }
 
   public schema(schema: string) {
-    this.proto.target = this.applySessionToTarget(
-      dataform.Target.create({ ...this.proto.target, schema }),
-      this.session.projectConfig,
-      this.proto.fileName,
-      { validateTarget: true },
-    );
+    this.setTargetSchema(this.proto, schema);
+    this.syncPrimaryTargetOutputs();
     return this;
+  }
+
+  private syncPrimaryTargetOutputs() {
+    const finalizedPrimaryTarget = this.finalizeTarget(dataform.Target.create(this.proto.target));
+    if (this.proto.targets?.length) {
+      this.proto.targets[0] = finalizedPrimaryTarget;
+    }
+    if (this.proto.canonicalTargets?.length) {
+      this.proto.canonicalTargets[0] = this.proto.canonicalTarget;
+    }
+    if (this.resolvedYamlDefinition?.nodes) {
+      const primaryDestinationNode = (
+        this.resolvedYamlDefinition.nodes as Array<{ [key: string]: any }>
+      ).find((node) => node.destination?.table);
+      if (primaryDestinationNode) {
+        primaryDestinationNode.destination.table =
+          this.targetToTableReference(finalizedPrimaryTarget);
+        this.proto.dataPreparationYaml = dumpYaml(this.resolvedYamlDefinition);
+      }
+    }
   }
 
   private configureYamlWithoutTargets(
@@ -163,19 +176,23 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     config?: dataform.ActionConfig.DataPreparationConfig,
   ) {
     const defaultTarget = dataform.Target.create({ name: config.name });
-    this.proto.target = this.finalizeTarget(
-      this.applySessionToTarget(defaultTarget, session.projectConfig, config.filename, {
+    const resolvedTarget = this.applySessionToTarget(
+      defaultTarget,
+      session.projectConfig,
+      config.filename,
+      {
         validateTarget: true,
-      }),
+      },
     );
-    this.proto.targets = [this.proto.target];
+    this.proto.target = resolvedTarget;
+    this.proto.targets = [this.finalizeTarget(resolvedTarget)];
     this.proto.canonicalTarget = this.applySessionToTarget(
       defaultTarget,
       session.canonicalProjectConfig,
     );
     this.proto.canonicalTargets = [this.proto.canonicalTarget];
-    const resolvedDefinition = this.applySessionToDataPreparationContents(dataPreparationAsJson);
-    this.proto.dataPreparationYaml = dumpYaml(resolvedDefinition);
+    this.resolvedYamlDefinition = this.applySessionToDataPreparationContents(dataPreparationAsJson);
+    this.proto.dataPreparationYaml = dumpYaml(this.resolvedYamlDefinition);
   }
 
   private configureYamlWithTargets(
@@ -197,8 +214,8 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
       this.applySessionToTarget(target, session.canonicalProjectConfig),
     );
     // Resolve all table references with compilation overrides and encode resolved proto instance
-    const resolvedDefinition = this.applySessionToDataPreparationContents(dataPreparationAsJson);
-    this.proto.dataPreparationYaml = dumpYaml(resolvedDefinition);
+    this.resolvedYamlDefinition = this.applySessionToDataPreparationContents(dataPreparationAsJson);
+    this.proto.dataPreparationYaml = dumpYaml(this.resolvedYamlDefinition);
 
     // Set the unique target key as the first target defined.
     // TODO: Remove once multiple targets are supported.
@@ -258,21 +275,25 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
       dataform.Target.create(target),
       this.session.projectConfig,
     );
-    // Convert resolved target into a Data Preparation Table Reference
+    return this.targetToTableReference(this.finalizeTarget(resolvedTarget));
+  }
+
+  private targetToTableReference(finalizedTarget: dataform.ITarget): { [key: string]: string } {
+    // Convert finalized target into a Data Preparation Table Reference
     let resolvedTableReference: { [key: string]: string } = {
-      table: this.session.finalizeName(resolvedTarget.name),
+      table: finalizedTarget.name,
     };
 
     // Ensure project and dataset field are added in order
-    if (resolvedTarget.schema) {
+    if (finalizedTarget.schema) {
       resolvedTableReference = {
-        dataset: this.session.finalizeSchema(resolvedTarget.schema),
+        dataset: finalizedTarget.schema,
         ...resolvedTableReference,
       };
     }
-    if (resolvedTarget.database) {
+    if (finalizedTarget.database) {
       resolvedTableReference = {
-        project: this.session.finalizeDatabase(resolvedTarget.database),
+        project: finalizedTarget.database,
         ...resolvedTableReference,
       };
     }
@@ -363,16 +384,15 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     );
 
     // Resolve targets
-    this.proto.targets = targets
-      .map((target) =>
-        this.applySessionToTarget(target, session.projectConfig, config.filename, {
-          validateTarget: true,
-        }),
-      )
-      .map((target) => this.finalizeTarget(target));
+    const resolvedTargets = targets.map((target) =>
+      this.applySessionToTarget(target, session.projectConfig, config.filename, {
+        validateTarget: true,
+      }),
+    );
+    this.proto.targets = resolvedTargets.map((target) => this.finalizeTarget(target));
 
-    // Add target and error table to proto
-    this.proto.target = this.proto.targets[0];
+    // Add unfinalized primary target (finalized once by Session.alterActionName) and error table to proto
+    this.proto.target = resolvedTargets[0];
     if (this.proto.targets.length > 1) {
       this.proto.errorTable = this.proto.targets[1];
     }

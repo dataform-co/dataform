@@ -68,8 +68,8 @@ publish("name", {
                     name: projectConfig.namePrefix ? `${projectConfig.namePrefix}_name` : "name",
                   },
                   canonicalTarget: {
-                    database: projectConfig.defaultProject,
-                    schema: projectConfig.defaultDataset,
+                    database: "otherProject",
+                    schema: "otherDataset",
                     name: "name",
                   },
                   disabled: false,
@@ -245,8 +245,8 @@ operate("name", {
                   name: projectConfig.namePrefix ? `${projectConfig.namePrefix}_name` : "name",
                 },
                 canonicalTarget: {
-                  database: projectConfig.defaultProject,
-                  schema: projectConfig.defaultDataset,
+                  database: "otherProject",
+                  schema: "otherDataset",
                   name: "name",
                 },
                 fileName: "definitions/operate.js",
@@ -345,8 +345,8 @@ assert("name", {
                   name: projectConfig.namePrefix ? `${projectConfig.namePrefix}_name` : "name",
                 },
                 canonicalTarget: {
-                  database: projectConfig.defaultProject,
-                  schema: projectConfig.defaultDataset,
+                  database: "otherProject",
+                  schema: "otherDataset",
                   name: "name",
                 },
                 fileName: "definitions/assert.js",

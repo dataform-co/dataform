@@ -318,12 +318,7 @@ export class Operation extends ActionBuilder<dataform.Operation> {
    * operation.
    */
   public database(database: string) {
-    this.proto.target = this.applySessionToTarget(
-      dataform.Target.create({ ...this.proto.target, database }),
-      this.session.projectConfig,
-      this.proto.fileName,
-      { validateTarget: true },
-    );
+    this.setTargetDatabase(this.proto, database);
     return this;
   }
 
@@ -342,12 +337,7 @@ export class Operation extends ActionBuilder<dataform.Operation> {
       );
       return this;
     }
-    this.proto.target = this.applySessionToTarget(
-      dataform.Target.create({ ...this.proto.target, schema }),
-      this.session.projectConfig,
-      this.proto.fileName,
-      { validateTarget: true },
-    );
+    this.setTargetSchema(this.proto, schema);
     return this;
   }
 

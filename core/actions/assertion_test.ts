@@ -653,5 +653,50 @@ SELECT 1 WHERE FALSE\`
         },
       ]);
     });
+
+    test("fluent .database() and .schema() update both target and canonicalTarget with suffixes and prefixes", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      writeWorkflowSettingsFile(
+        projectDir,
+        `
+defaultProject: defaultProject
+defaultDataset: defaultDataset
+defaultAssertionDataset: assertionDataset
+projectSuffix: ps
+datasetSuffix: ds
+namePrefix: tp
+`,
+      );
+      writeDefinitionFile(
+        projectDir,
+        "fluent_assertion.js",
+        `
+assert("custom_assert")
+  .database("customProject")
+  .schema("customAssertionDataset")
+  .query("SELECT 1 WHERE FALSE");
+`,
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals([
+        {
+          target: {
+            database: "customProject_ps",
+            schema: "customAssertionDataset_ds",
+            name: "tp_custom_assert",
+          },
+          canonicalTarget: {
+            database: "customProject",
+            schema: "customAssertionDataset",
+            name: "custom_assert",
+          },
+          fileName: "definitions/fluent_assertion.js",
+          query: "SELECT 1 WHERE FALSE",
+        },
+      ]);
+    });
   });
 });

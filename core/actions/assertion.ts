@@ -279,12 +279,7 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
    * assertion.
    */
   public database(database: string) {
-    this.proto.target = this.applySessionToTarget(
-      dataform.Target.create({ ...this.proto.target, database }),
-      this.session.projectConfig,
-      this.proto.fileName,
-      { validateTarget: true, useDefaultAssertionDataset: true },
-    );
+    this.setTargetDatabase(this.proto, database, true);
     return this;
   }
 
@@ -296,12 +291,7 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
    * assertion.
    */
   public schema(schema: string) {
-    this.proto.target = this.applySessionToTarget(
-      dataform.Target.create({ ...this.proto.target, schema }),
-      this.session.projectConfig,
-      this.proto.fileName,
-      { validateTarget: true, useDefaultAssertionDataset: true },
-    );
+    this.setTargetSchema(this.proto, schema, true);
     return this;
   }
 
@@ -321,8 +311,12 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
   }
 
   /** @hidden */
-  public setName(name: string) {
+  public setName(name: string, canonicalName: string = name) {
     this.proto.target = dataform.Target.create({ ...this.proto.target, name });
+    this.proto.canonicalTarget = dataform.Target.create({
+      ...(this.proto.canonicalTarget || this.proto.target),
+      name: canonicalName,
+    });
   }
 
   /** @hidden */
