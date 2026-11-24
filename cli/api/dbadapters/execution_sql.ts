@@ -49,7 +49,7 @@ export class ExecutionSql {
     }
   }
 
-  public insertInto(target: dataform.ITarget, columns: string[] | undefined, source: string) {
+  private insertInto(target: dataform.ITarget, columns: string[] | undefined, source: string) {
     const cols = columns
       ? columns.map((c) => `\`${c}\``).join(",")
       : '""" || dataform_columns_list || """';
@@ -57,9 +57,9 @@ export class ExecutionSql {
       ? this.resolveTarget(target)
       : this.escapeSqlString(this.resolveTarget(target));
     const dml = `	
-insert into ${resolvedTarget}	
-(${cols})	
-select ${cols}	
+insert into ${resolvedTarget}
+(${cols})
+select ${cols}
 from ${source}`;
     return columns ? dml : `EXECUTE IMMEDIATE ("""${dml}""");`;
   }
@@ -174,6 +174,10 @@ from ${source}`;
             const columns = tableMetadata?.fields.map((f) => f.name) || [];
             tasks.add(Task.statement(this.getIncrementalDmlStatement(table, columns)));
             break;
+          default:
+            throw new Error(
+              `Unexpected onSchemaChange policy: ${dataform.OnSchemaChange[onSchemaChange].toLowerCase()}`,
+            );
         }
       }
     } else {

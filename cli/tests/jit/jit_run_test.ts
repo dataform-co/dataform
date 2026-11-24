@@ -320,9 +320,9 @@ suite("run", ({ afterEach }) => {
     // For BigQuery, it should be an 'insert into' because no uniqueKey was specified.
     // We check for substrings without trailing spaces to avoid exact whitespace mismatches.
     expect(executedSql).to.equal(
-      "insert into `db.sch.incremental_jit`	\n" +
-        "(`t`)	\n" +
-        "select `t`	\n" +
+      "insert into `db.sch.incremental_jit`\n" +
+        "(`t`)\n" +
+        "select `t`\n" +
         "from (SELECT 'inc' as t) as insertions",
     );
   });

@@ -63,9 +63,9 @@ CREATE OR REPLACE TEMP TABLE `staging_table_temp_test_uuid` AS (
 );
 
 EXECUTE IMMEDIATE ("""	
-insert into `project-id.dataset-id.incremental_on_schema_change`	
-(""" || dataform_columns_list || """)	
-select """ || dataform_columns_list || """	
+insert into `project-id.dataset-id.incremental_on_schema_change`
+(""" || dataform_columns_list || """)
+select """ || dataform_columns_list || """
 from `staging_table_temp_test_uuid`""");
 
 -- Cleanup staging table
