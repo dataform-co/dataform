@@ -369,7 +369,59 @@ suite("verifyObjectMatchesProto", () => {
 
       expect(() =>
         verifyObjectMatchesProto(dataform.ActionConfig.TableConfig, JSON.parse('{"tags":[null]}')),
-      ).to.throw(ReferenceError, /Unexpected empty value for "0"/);
+      ).to.throw(ReferenceError, /Unexpected empty value for "tags\[0\]"/);
+    });
+
+    test("rejects null and undefined elements of repeated message fields", () => {
+      expect(() =>
+        verifyObjectMatchesProto(
+          dataform.ActionConfig.TableConfig,
+          JSON.parse('{"columns":[null]}'),
+          VerifyProtoErrorBehaviour.SHOW_DOCS_LINK,
+        ),
+      ).to.throw(
+        ReferenceError,
+        /Unexpected empty value for "columns\[0\]"\. See https:\/\/dataform-co\.github\.io\/dataform\/docs\/reference\/configs#dataform-ActionConfig-TableConfig/,
+      );
+
+      expect(() =>
+        verifyObjectMatchesProto(dataform.ActionConfig.TableConfig, {
+          dependencyTargets: [{ name: "first" }, undefined],
+        }),
+      ).to.throw(ReferenceError, /Unexpected empty value for "dependencyTargets\[1\]"/);
+
+      expect(() =>
+        verifyObjectMatchesProto(dataform.ActionConfig.TableConfig, {
+          columns: [{ path: ["col_a", null] }],
+        }),
+      ).to.throw(ReferenceError, /Unexpected empty value for "path\[1\]"/);
+    });
+
+    test("rejects undefined scalar array elements and map values", () => {
+      expect(() =>
+        verifyObjectMatchesProto(dataform.ActionConfig.TableConfig, { tags: [undefined] }),
+      ).to.throw(ReferenceError, /Unexpected empty value for "tags\[0\]"/);
+
+      expect(() =>
+        verifyObjectMatchesProto(dataform.ActionConfig.TableConfig, { tags: new Array(1) }),
+      ).to.throw(ReferenceError, /Unexpected empty value for "tags\[0\]"/);
+
+      expect(() =>
+        verifyObjectMatchesProto(dataform.ActionConfig.TableConfig, {
+          labels: { env: undefined },
+        }),
+      ).to.throw(ReferenceError, /Unexpected empty value for "env"/);
+
+      expect(() =>
+        verifyObjectMatchesProto(
+          dataform.WorkflowSettings,
+          { vars: { missingVar: undefined } },
+          VerifyProtoErrorBehaviour.SHOW_DOCS_LINK,
+        ),
+      ).to.throw(
+        ReferenceError,
+        /Unexpected empty value for "missingVar"\. See https:\/\/dataform-co\.github\.io\/dataform\/docs\/reference\/configs#dataform-WorkflowSettings/,
+      );
     });
 
     test("rejects unknown empty object and array properties at root and nested message levels", () => {

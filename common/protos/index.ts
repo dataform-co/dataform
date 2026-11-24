@@ -93,6 +93,13 @@ function isVerifiableObject(value: unknown): boolean {
   );
 }
 
+function isNestedContainer(value: unknown): value is object {
+  if (!value || typeof value !== "object" || value instanceof google.protobuf.Struct) {
+    return false;
+  }
+  return Array.isArray(value) || isPlainObject(value) || isProtoMessageInstance(value);
+}
+
 function getOwnPropertyValue(target: object, key: string): unknown {
   if (!Object.prototype.hasOwnProperty.call(target, key)) {
     return undefined;
@@ -118,6 +125,34 @@ export function verifyObjectMatchesProto<Proto>(
     }
     throw err;
   }
+  // The generated toObject() reads every repeated message element, so null and undefined entries
+  // are rejected before the cast. This runs on every compiled action, so paths are only built
+  // when needed.
+  function checkNoEmptyEntries(container: object, containerPath: string) {
+    if (Array.isArray(container)) {
+      for (let index = 0; index < container.length; index++) {
+        const element = container[index];
+        if (element === null || element === undefined) {
+          throw formatEmptyValueError(protoType, `${containerPath}[${index}]`, errorBehaviour);
+        }
+        if (isNestedContainer(element)) {
+          checkNoEmptyEntries(element, `${containerPath}[${index}]`);
+        }
+      }
+      return;
+    }
+    for (const key of Object.keys(container)) {
+      const value = Reflect.get(container, key);
+      if (value === null) {
+        throw formatEmptyValueError(protoType, key, errorBehaviour);
+      }
+      if (isNestedContainer(value)) {
+        checkNoEmptyEntries(value, key);
+      }
+    }
+  }
+
+  checkNoEmptyEntries(normalizedObject, "");
   const proto = protoType.create(normalizedObject);
   const protoCastObject = protoType.toObject(proto, { arrays: true, objects: true });
 
@@ -125,14 +160,19 @@ export function verifyObjectMatchesProto<Proto>(
     // Iterate caller-supplied entries; `protoCastObject` includes defined empty arrays and maps so
     // valid empty containers match `desired` while unknown keys remain absent.
     Object.entries(present).forEach(([presentKey, presentValue]) => {
-      if (presentValue === undefined || presentValue instanceof google.protobuf.Struct) {
+      if (presentValue instanceof google.protobuf.Struct) {
         return;
       }
-      if (presentValue === null) {
-        throw ReferenceError(
-          `Unexpected empty value for "${presentKey}".` +
-            maybeGetDocsLinkPrefix(errorBehaviour, protoType),
-        );
+      const desiredValue = getOwnPropertyValue(desired, presentKey);
+      if (presentValue === undefined) {
+        // toObject() copies map entries as they are and leaves unset message fields out, so an
+        // undefined value that was copied is an empty map entry.
+        const isEmptyMapEntry =
+          desiredValue === undefined && Object.prototype.hasOwnProperty.call(desired, presentKey);
+        if (isEmptyMapEntry) {
+          throw formatEmptyValueError(protoType, presentKey, errorBehaviour);
+        }
+        return;
       }
       if (typeof presentValue === "object" && !isVerifiableObject(presentValue)) {
         throw formatUnexpectedPropertyError(
@@ -142,16 +182,12 @@ export function verifyObjectMatchesProto<Proto>(
           errorBehaviour,
         );
       }
-      const desiredValue = getOwnPropertyValue(desired, presentKey);
       if (
         typeof desiredValue !== typeof presentValue ||
         Array.isArray(desiredValue) !== Array.isArray(presentValue)
       ) {
         if (!presentValue) {
-          throw ReferenceError(
-            `Unexpected empty value for "${presentKey}".` +
-              maybeGetDocsLinkPrefix(errorBehaviour, protoType),
-          );
+          throw formatEmptyValueError(protoType, presentKey, errorBehaviour);
         }
         throw formatUnexpectedPropertyError(
           protoType,
@@ -168,6 +204,17 @@ export function verifyObjectMatchesProto<Proto>(
 
   checkFields(normalizedObject, protoCastObject);
   return proto;
+}
+
+function formatEmptyValueError<Proto>(
+  protoType: IProtoClass<any, Proto>,
+  propertyPath: string,
+  errorBehaviour: VerifyProtoErrorBehaviour,
+): ReferenceError {
+  return ReferenceError(
+    `Unexpected empty value for "${propertyPath}".` +
+      maybeGetDocsLinkPrefix(errorBehaviour, protoType),
+  );
 }
 
 function formatUnexpectedPropertyError<Proto>(

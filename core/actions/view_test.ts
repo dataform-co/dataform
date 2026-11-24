@@ -345,7 +345,7 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
     );
   });
 
-  test("accepts empty legacy bigquery block on view and rejects unknown empty object blocks", () => {
+  test("accepts empty legacy bigquery block on view", () => {
     const projectDir = tmpDirFixture.createNewTmpDir();
     fs.writeFileSync(path.join(projectDir, "workflow_settings.yaml"), VALID_WORKFLOW_SETTINGS_YAML);
     fs.mkdirSync(path.join(projectDir, "definitions"));
@@ -358,10 +358,10 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
       SELECT 1`,
     );
 
-    const validResult = runMainInVm(coreExecutionRequestFromPath(projectDir));
+    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
-    expect(validResult.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-    expect(asPlainObject(validResult.compile.compiledGraph.tables)).deep.equals([
+    expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+    expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals([
       {
         target: {
           database: "defaultProject",
@@ -381,7 +381,12 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
         query: "\n      SELECT 1",
       },
     ]);
+  });
 
+  test("rejects unknown empty object block on view", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    fs.writeFileSync(path.join(projectDir, "workflow_settings.yaml"), VALID_WORKFLOW_SETTINGS_YAML);
+    fs.mkdirSync(path.join(projectDir, "definitions"));
     fs.writeFileSync(
       path.join(projectDir, "definitions/invalid_view.sqlx"),
       `config {
@@ -391,10 +396,10 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
       SELECT 1`,
     );
 
-    const invalidResult = runMainInVm(coreExecutionRequestFromPath(projectDir));
+    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
-    expect(invalidResult.compile.compiledGraph.graphErrors.compilationErrors.length).equals(1);
-    expect(invalidResult.compile.compiledGraph.graphErrors.compilationErrors[0].message).contains(
+    expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).equals(1);
+    expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).contains(
       'Unexpected property "unknownEmptyBlock", or property value type of "object" is incorrect.',
     );
   });
