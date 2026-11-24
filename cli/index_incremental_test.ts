@@ -240,6 +240,13 @@ WHERE id != 1 OR field2 IS NULL OR field2 != 'synced'
           syncRunResult.exitCode,
           `stdout:\n${syncRunResult.stdout}\nstderr:\n${syncRunResult.stderr}`,
         ).equals(0);
+
+        const tableMetadata = await dbadapter.table({
+          database: INTEGRATION_TEST_PROJECT,
+          schema: uniqueDataset,
+          name: "example_synchronize",
+        });
+        expect(tableMetadata.fields.map((f) => f.name)).deep.equals(["id", "field2"]);
       },
     );
 
