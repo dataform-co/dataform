@@ -575,7 +575,7 @@ DROP TABLE IF EXISTS ${stagingTable};`;
       ? columns.map((column) => `\`${column}\``).join(",")
       : '""" || dataform_columns_list || """';
     const updateSet = columns
-      ? columns.map((column) => `\`${column}\` = DATAFORM_SOURCE.${column}`).join(",")
+      ? columns.map((column) => `\`${column}\` = DATAFORM_SOURCE.\`${column}\``).join(",")
       : '""" || dataform_columns_merge || """';
     const updatePartitionFilter = bigquery && bigquery.updatePartitionFilter;
     const incrementalPredicates = bigquery && bigquery.incrementalPredicates;
