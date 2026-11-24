@@ -1582,6 +1582,9 @@ SELECT 1`,
       return runMainInVm(coreExecutionRequestFromPath(dir)).compile.compiledGraph;
     };
 
+    const defaultSettings = `defaultProject: my-project\ndefaultDataset: ds\ndefaultLocation: US\n`;
+    const noDatasetSettings = `defaultProject: my-project\ndefaultLocation: US\n`;
+
     const allActionTypes = {
       "table.sqlx": `config { type: "table" }\nSELECT 1 AS id`,
       "view.sqlx": `config { type: "view" }\nSELECT 1 AS id`,
@@ -1618,7 +1621,7 @@ SELECT 1`,
     });
 
     test("actions compile without errors when no dataset is set anywhere", () => {
-      const graph = compileWith(`defaultProject: my-project\ndefaultLocation: US\n`, allActionTypes);
+      const graph = compileWith(noDatasetSettings, allActionTypes);
       expect(graph.graphErrors.compilationErrors).deep.equals([]);
     });
 
@@ -1628,7 +1631,7 @@ SELECT 1`,
     });
 
     test("explicitly configured dataset containing '.' still fails compilation", () => {
-      const graph = compileWith(`defaultProject: my-project\ndefaultDataset: ds\ndefaultLocation: US\n`, {
+      const graph = compileWith(defaultSettings, {
         "t.sqlx": `config { type: "table", dataset: "dotted.ds" }\nSELECT 1`,
       });
       expect(
@@ -1639,7 +1642,7 @@ SELECT 1`,
     });
 
     test("explicitly configured name containing '.' still fails compilation", () => {
-      const graph = compileWith(`defaultProject: my-project\ndefaultDataset: ds\ndefaultLocation: US\n`, {
+      const graph = compileWith(defaultSettings, {
         "t.sqlx": `config { type: "table", name: "dotted.name" }\nSELECT 1`,
       });
       expect(
