@@ -241,7 +241,7 @@ function formatPlaceholderInSqlx(
   if (textAfterPlaceholder.trim().length > 0) {
     newLines.push(`${indent}${textAfterPlaceholder.trim()}`);
   }
-  return sqlx.replace(wholeLine, newLines.join("\n"));
+  return sqlx.replace(wholeLine, () => newLines.join("\n"));
 }
 
 function formatSqlQueryPlaceholder(node: SyntaxTreeNode, jsIndent: string): string {
