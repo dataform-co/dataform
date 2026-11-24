@@ -1263,9 +1263,7 @@ config {
 SELECT 1`,
         });
 
-        expect(
-          graph.graphErrors.compilationErrors.map((e) => e.message),
-        ).deep.equals([
+        expect(graph.graphErrors.compilationErrors.map((e) => e.message)).deep.equals([
           "'dependencies' is a legacy alias for 'dependencyTargets'; cannot specify both at the same time. It's recommended to use 'dependencyTargets'.",
           "'database' is a legacy alias for 'project'; cannot specify both at the same time. It's recommended to use 'project'.",
           "'schema' is a legacy alias for 'dataset'; cannot specify both at the same time. It's recommended to use 'dataset'.",
@@ -1289,9 +1287,7 @@ config {
 }`,
       });
 
-      expect(
-        graph.graphErrors.compilationErrors.map((e) => e.message),
-      ).deep.equals([
+      expect(graph.graphErrors.compilationErrors.map((e) => e.message)).deep.equals([
         "'database' is a legacy alias for 'project'; cannot specify both at the same time. It's recommended to use 'project'.",
         "'schema' is a legacy alias for 'dataset'; cannot specify both at the same time. It's recommended to use 'dataset'.",
         "'fileName' is a legacy alias for 'filename'; cannot specify both at the same time. It's recommended to use 'filename'.",
@@ -1434,18 +1430,18 @@ operate("js_op", { type: "operations", fileName: "custom/js_op.sql" }).queries("
       });
 
       expect(graph.graphErrors.compilationErrors).deep.equals([]);
-      expect(
-        graph.tables.find((t) => t.target.name === "sqlx_table").fileName,
-      ).equals("custom/sqlx_table.sqlx");
-      expect(
-        graph.tables.find((t) => t.target.name === "js_table").fileName,
-      ).equals("custom/js_table.sql");
-      expect(
-        graph.assertions.find((a) => a.target.name === "js_assert").fileName,
-      ).equals("custom/js_assert.sql");
-      expect(
-        graph.operations.find((o) => o.target.name === "js_op").fileName,
-      ).equals("custom/js_op.sql");
+      expect(graph.tables.find((t) => t.target.name === "sqlx_table").fileName).equals(
+        "custom/sqlx_table.sqlx",
+      );
+      expect(graph.tables.find((t) => t.target.name === "js_table").fileName).equals(
+        "custom/js_table.sql",
+      );
+      expect(graph.assertions.find((a) => a.target.name === "js_assert").fileName).equals(
+        "custom/js_assert.sql",
+      );
+      expect(graph.operations.find((o) => o.target.name === "js_op").fileName).equals(
+        "custom/js_op.sql",
+      );
     });
 
     test("allows legacy schema and database alone in DataPreparation sqlx config", () => {

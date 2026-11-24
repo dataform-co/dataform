@@ -140,20 +140,8 @@ export abstract class ActionBuilder<T> {
     // here for callers of the JS API's `.assertions()` method, which bypasses the legacy config
     // conversion. That method is deprecated, so once it's removed this code can be simplified.
     const assertionsConfig: Record<string, any> = { ...tableAssertionsConfig };
-    this.resolveLegacyAlias(
-      assertionsConfig,
-      "database",
-      "project",
-      proto.fileName,
-      "assertions.",
-    );
-    this.resolveLegacyAlias(
-      assertionsConfig,
-      "schema",
-      "dataset",
-      proto.fileName,
-      "assertions.",
-    );
+    this.resolveLegacyAlias(assertionsConfig, "database", "project", proto.fileName, "assertions.");
+    this.resolveLegacyAlias(assertionsConfig, "schema", "dataset", proto.fileName, "assertions.");
     this.inlineAssertionsProject = assertionsConfig.project || undefined;
     // Precedence: action-level assertion project, then the project of the parent action (which
     // itself falls back to the default project).
