@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+# Copies the npm packages built by the publish build, with all their
+# attachments (provenance, SBOM), from the staging Artifact Registry repository
+# into the Exit Gate repository.
+#
+# Usage: scripts/copy_to_exit_gate <version>
+set -euo pipefail
+
+VERSION="${1:?version is required}"
+PACKAGES=("@dataform/cli" "@dataform/core")
+
+STAGING_PROJECT="dataform-open-source"
+STAGING_REPO="dataform-npm-staging"
+EG_PROJECT="oss-exit-gate-prod"
+EG_REPO="dataform--npm"
+LOCATION="us"
+
+# How long to wait for Cloud Build to attach an SBOM to each staged version.
+SBOM_WAIT_SECONDS="${SBOM_WAIT_SECONDS:-600}"
+
+api="https://artifactregistry.googleapis.com/v1"
+staging_repo_path="projects/${STAGING_PROJECT}/locations/${LOCATION}/repositories/${STAGING_REPO}"
+
+token() { gcloud auth print-access-token; }
+
+for pkg in "${PACKAGES[@]}"; do
+  encoded_pkg="${pkg//\//%2F}"
+  version_path="${staging_repo_path}/packages/${encoded_pkg}/versions/${VERSION}"
+
+  # SBOM attachments are added asynchronously after the build finishes.
+  deadline=$((SECONDS + SBOM_WAIT_SECONDS))
+  until gcloud artifacts attachments list \
+      --project="${STAGING_PROJECT}" --location="${LOCATION}" --repository="${STAGING_REPO}" \
+      --target="${version_path}" --format='value(type)' | grep -qi 'spdx\|sbom'; do
+    if (( SECONDS >= deadline )); then
+      echo "WARNING: no SBOM attachment on ${pkg}@${VERSION} after ${SBOM_WAIT_SECONDS}s; copying without it." >&2
+      break
+    fi
+    sleep 15
+  done
+
+  echo "Copying ${pkg}@${VERSION} with attachments to ${EG_PROJECT}/${EG_REPO}"
+  operation=$(curl -sS --fail-with-body -X POST \
+    -H "Authorization: Bearer $(token)" -H "Content-Type: application/json" \
+    "${api}/projects/${EG_PROJECT}/locations/${LOCATION}/repositories/${EG_REPO}:copyArtifact" \
+    -d "{\"sourceRepository\": \"${staging_repo_path}\", \"sourceVersion\": \"${version_path}\", \"includeAllAttachments\": true}" \
+    | python3 -c 'import json,sys; print(json.load(sys.stdin)["name"])')
+
+  for _ in $(seq 1 60); do
+    result=$(curl -sS --fail-with-body -H "Authorization: Bearer $(token)" "${api}/${operation}")
+    if python3 -c 'import json,sys; d=json.load(sys.stdin); sys.exit(0 if d.get("done") else 1)' <<<"${result}"; then
+      if python3 -c 'import json,sys; sys.exit(1 if "error" in json.load(sys.stdin) else 0)' <<<"${result}"; then
+        break
+      fi
+      echo "Copy of ${pkg}@${VERSION} failed: ${result}" >&2
+      exit 1
+    fi
+    sleep 5
+  done
+  python3 -c 'import json,sys; sys.exit(0 if json.load(sys.stdin).get("done") else 1)' <<<"${result}" \
+    || { echo "Timed out copying ${pkg}@${VERSION}." >&2; exit 1; }
+done

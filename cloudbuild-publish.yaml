@@ -4,17 +4,15 @@ steps:
       #!/usr/bin/env bash
       set -euo pipefail
       REPO_TOKEN="$(gcloud auth print-access-token)" ./scripts/create_npmrc
-      PACKAGES_TO_DELETE=$(gcloud artifacts packages list \
-        --project=oss-exit-gate-prod \
-        --location=us \
-        --repository=dataform--npm \
-        --format="value(name)")
-      for pkg in $PACKAGES_TO_DELETE; do
-        gcloud artifacts packages delete "$pkg" \
-          --project=oss-exit-gate-prod \
-          --location=us \
-          --repository=dataform--npm \
-          --quiet
+      # Clear previous uploads from the staging and Exit Gate repositories.
+      for repo in "dataform-open-source/dataform-npm-staging" "oss-exit-gate-prod/dataform--npm"; do
+        project="${repo%%/*}"
+        repository="${repo##*/}"
+        for pkg in $(gcloud artifacts packages list --project="${project}" --location=us \
+            --repository="${repository}" --format="value(name)"); do
+          gcloud artifacts packages delete "$pkg" --project="${project}" --location=us \
+            --repository="${repository}" --quiet
+        done
       done
   - name: gcr.io/cloud-builders/bazel:7.3.2
     env:
@@ -40,9 +38,9 @@ steps:
         --format='value(metadata.build.id)'
 artifacts:
   npmPackages:
-    - repository: 'https://us-npm.pkg.dev/oss-exit-gate-prod/dataform--npm'
+    - repository: 'https://us-npm.pkg.dev/dataform-open-source/dataform-npm-staging'
       packagePath: './npm_packages/cli'
-    - repository: 'https://us-npm.pkg.dev/oss-exit-gate-prod/dataform--npm'
+    - repository: 'https://us-npm.pkg.dev/dataform-open-source/dataform-npm-staging'
       packagePath: './npm_packages/core'
 options:
   machineType: E2_HIGHCPU_8

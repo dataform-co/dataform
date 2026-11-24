@@ -3,8 +3,9 @@
 # Started by the last step of the publish build through a manual Cloud Build
 # trigger (`exit-gate-npm-release-trigger`), run at the published commit. It waits
 # until the publish build has finished, so that Cloud Build has uploaded the npm
-# packages and attached their provenance, and only then uploads the Exit Gate
-# release manifest and creates the GitHub release.
+# packages to the staging repository and attached their provenance and SBOM,
+# copies them with all attachments into the Exit Gate repository, and only then
+# uploads the Exit Gate release manifest and creates the GitHub release.
 steps:
   # Check the GitHub token first, so a bad token fails the build before the npm
   # release is started.
@@ -44,6 +45,9 @@ steps:
       [ "${parent_trigger_id}" = "${publish_trigger_id}" ] || { echo "Build ${PARENT_BUILD_ID} was not started by the publish trigger." >&2; exit 1; }
       [ "${parent_commit}" = "${COMMIT_SHA}" ] || { echo "Publish build commit ${parent_commit} does not match ${COMMIT_SHA}." >&2; exit 1; }
       [ -n "${parent_branch}" ] || { echo "Publish build has no branch." >&2; exit 1; }
+      # Copy the staged packages, with their provenance and SBOM attachments,
+      # into the Exit Gate repository before releasing them.
+      ./scripts/copy_to_exit_gate "$(grep 'DF_VERSION' version.bzl | awk '{ print $3 }' | tr -d '"')"
       ./scripts/write_exit_gate_manifest "${parent_branch}"
       gcloud storage cp publish_all.json gs://oss-exit-gate-prod-projects-bucket/dataform/npm/manifests/publish_all.json
   - name: "gcr.io/$PROJECT_ID/github"
@@ -73,7 +77,7 @@ availableSecrets:
       env: "GITHUB_TOKEN"
 substitutions:
   _PARENT_BUILD_ID: ""
-timeout: 2400s
+timeout: 3600s
 options:
   substitutionOption: ALLOW_LOOSE
   logging: CLOUD_LOGGING_ONLY
