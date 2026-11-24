@@ -1,9 +1,25 @@
 steps:
   - name: "gcr.io/cloud-builders/gcloud"
+    id: create-npmrc
     script: |
       #!/usr/bin/env bash
       REPO_TOKEN="$(gcloud auth print-access-token)" ./scripts/create_npmrc
+  # Installs every package in pnpm-lock.yaml from the CI registry configured in
+  # ~/.npmrc, so that a lockfile with versions that aren't available there fails
+  # here. Bazel only fetches the packages that its targets need, so the tests
+  # alone don't catch it. Takes about 30 seconds (empty pnpm store). Don't remove
+  # or weaken this step: scripts/check_cloudbuild_installs_lockfile checks it in
+  # GitHub Actions.
   - name: gcr.io/cloud-builders/bazel:7.3.2
+    id: verify-npm-from-ci-registry
+    waitFor: ["create-npmrc"]
+    script: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+      bazel run -- @pnpm//:pnpm --dir "$PWD" install --frozen-lockfile
+  - name: gcr.io/cloud-builders/bazel:7.3.2
+    id: tests
+    waitFor: ["verify-npm-from-ci-registry"]
     script: |
       #!/usr/bin/env bash
       ./scripts/run_tests_on_cloudbuild

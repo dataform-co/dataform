@@ -229,7 +229,7 @@ export class Table extends ActionBuilder<dataform.Table> {
               config.iceberg.connection,
               session.projectConfig.defaultIcebergConfig?.connection,
             ),
-            fileFormat: getFileFormatValueForIcebergTable(config.iceberg.fileFormat?.toString()),
+            fileFormat: getFileFormatValueForIcebergTable(config.iceberg.fileFormat),
             tableFormat: dataform.TableFormat.ICEBERG,
             storageUri: getStorageUriForIcebergTable(
               getEffectiveBucketName(
@@ -697,8 +697,8 @@ export class Table extends ActionBuilder<dataform.Table> {
         delete unverifiedConfig.fileName;
       }
       if (unverifiedConfig.columns) {
-        unverifiedConfig.columns = ColumnDescriptors.mapLegacyObjectToConfigProto(
-          unverifiedConfig.columns as any,
+        unverifiedConfig.columns = ColumnDescriptors.normalizeConfigColumns(
+          unverifiedConfig.columns,
         );
       }
 
@@ -728,6 +728,7 @@ export class Table extends ActionBuilder<dataform.Table> {
       }
       if (unverifiedConfig.iceberg) {
         if (
+          typeof unverifiedConfig.iceberg.fileFormat === "string" &&
           unverifiedConfig.iceberg.fileFormat &&
           unverifiedConfig.iceberg.fileFormat.toUpperCase() !== "PARQUET"
         ) {

@@ -465,8 +465,8 @@ export class Operation extends ActionBuilder<dataform.Operation> {
         delete unverifiedConfig.fileName;
       }
       if (unverifiedConfig.columns) {
-        unverifiedConfig.columns = ColumnDescriptors.mapLegacyObjectToConfigProto(
-          unverifiedConfig.columns as any,
+        unverifiedConfig.columns = ColumnDescriptors.normalizeConfigColumns(
+          unverifiedConfig.columns,
         );
       }
     }

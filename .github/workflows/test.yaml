@@ -33,6 +33,11 @@ jobs:
       - name: Run lint and format checks
         run: ./scripts/lint
 
+      - name: Check that the Cloud Build tests install the whole lockfile
+        run: |
+          ./scripts/check_cloudbuild_installs_lockfile_test.py
+          ./scripts/check_cloudbuild_installs_lockfile
+
   # Unit and integration tests run on Cloud Build (cloudbuild-test.yaml); this job only
   # builds the packages and the smoke test bundle that the Windows job needs.
   build-linux:
@@ -44,6 +49,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
 
       - name: Setup Bazel
         uses: bazelbuild/setup-bazelisk@b39c379c82683a5f25d34f0d062761f62693e0b2 # v3.0.0

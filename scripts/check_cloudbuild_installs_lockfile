@@ -1,0 +1,123 @@
+#!/usr/bin/env python3
+"""Checks that the Cloud Build tests install the whole lockfile.
+
+The Cloud Build tests (cloudbuild-test.yaml) must install every package in
+pnpm-lock.yaml from the CI registry in the step with the ID
+verify-npm-from-ci-registry. Bazel only fetches the npm packages that its
+targets need, so without this step a lockfile with versions that aren't
+available in the CI registry passes the tests and only fails later (see #2458,
+which removed the full install by accident, and #2452).
+
+This check fails unless exactly one step has that ID and it:
+  - runs `pnpm install --frozen-lockfile` through Bazel (@pnpm//:pnpm), without
+    --prod or --filter, which install only part of the lockfile;
+  - waits for the step that writes ~/.npmrc (scripts/create_npmrc);
+  - runs before the step that runs the tests (scripts/run_tests_on_cloudbuild).
+
+Usage: ./scripts/check_cloudbuild_installs_lockfile [cloudbuild-test.yaml]
+"""
+
+import re
+import shlex
+import sys
+
+try:
+    import yaml
+except ImportError:
+    sys.exit("PyYAML is required: pip install pyyaml")
+
+STEP_ID = "verify-npm-from-ci-registry"
+NPMRC_SCRIPT = "scripts/create_npmrc"
+TESTS_SCRIPT = "scripts/run_tests_on_cloudbuild"
+PARTIAL_INSTALL = re.compile(r"^(--prod|--production|--filter)(=|$)")
+
+
+def commands(step):
+    """Returns the step's shell commands as lists of words, without comments.
+
+    Joins lines continued with a trailing backslash and drops comments, including
+    ones at the end of a line.
+    """
+    if step.get("script"):
+        text = re.sub(r"\\\n", " ", str(step["script"]))
+    else:
+        text = " ".join(shlex.quote(str(arg)) for arg in step.get("args") or [])
+    result = []
+    for line in text.splitlines():
+        try:
+            words = shlex.split(line, comments=True)
+        except ValueError:  # Unbalanced quotes: fall back to splitting on spaces.
+            words = line.split("#", 1)[0].split()
+        if words:
+            result.append(words)
+    return result
+
+
+def runs(step, script):
+    """Whether any command of the step mentions the given script."""
+    return any(script in word for words in commands(step) for word in words)
+
+
+def installs_whole_lockfile(words):
+    """Whether a command runs `@pnpm//:pnpm ... install --frozen-lockfile`."""
+    return ("@pnpm//:pnpm" in words and "install" in words
+            and "--frozen-lockfile" in words[words.index("install"):])
+
+
+def check(config):
+    """Returns the list of problems with a parsed Cloud Build config."""
+    steps = (config or {}).get("steps") or []
+    matches = [i for i, step in enumerate(steps) if step.get("id") == STEP_ID]
+    if len(matches) != 1:
+        return ["there must be exactly one step with `id: %s` (found %d)" % (STEP_ID, len(matches))]
+    index = matches[0]
+    step = steps[index]
+    words = [word for command in commands(step) for word in command]
+    errors = []
+    if "@pnpm//:pnpm" not in words:
+        errors.append("the %s step must run pnpm through Bazel (@pnpm//:pnpm)" % STEP_ID)
+    if not any(installs_whole_lockfile(command) for command in commands(step)):
+        errors.append("the %s step must run `@pnpm//:pnpm ... install --frozen-lockfile`"
+                      % STEP_ID)
+    partial = [m.group(1) for m in map(PARTIAL_INSTALL.match, words) if m]
+    if partial:
+        errors.append("the %s step must install the whole lockfile, without %s"
+                      % (STEP_ID, partial[0]))
+
+    npmrc = [i for i, s in enumerate(steps) if runs(s, NPMRC_SCRIPT)]
+    if not npmrc:
+        errors.append("no step runs %s" % NPMRC_SCRIPT)
+    elif npmrc[0] > index:
+        errors.append("the %s step must come after the step that runs %s" % (STEP_ID, NPMRC_SCRIPT))
+    elif "waitFor" in step:
+        npmrc_id = steps[npmrc[0]].get("id")
+        if not npmrc_id or npmrc_id not in step["waitFor"]:
+            errors.append("the %s step must wait for the step that runs %s (give it an id and "
+                          "list it in waitFor)" % (STEP_ID, NPMRC_SCRIPT))
+
+    tests = [i for i, s in enumerate(steps) if runs(s, TESTS_SCRIPT)]
+    if not tests:
+        errors.append("no step runs %s" % TESTS_SCRIPT)
+    elif tests[0] < index:
+        errors.append("the %s step must come before the step that runs %s" % (STEP_ID, TESTS_SCRIPT))
+    elif "waitFor" in steps[tests[0]] and STEP_ID not in steps[tests[0]]["waitFor"]:
+        errors.append("the step that runs %s must wait for the %s step" % (TESTS_SCRIPT, STEP_ID))
+    return errors
+
+
+def main():
+    path = sys.argv[1] if len(sys.argv) > 1 else "cloudbuild-test.yaml"
+    with open(path) as f:
+        errors = check(yaml.safe_load(f))
+    for error in errors:
+        print("ERROR: %s: %s" % (path, error), file=sys.stderr)
+    if errors:
+        sys.exit("The Cloud Build tests must install every package in pnpm-lock.yaml from the CI "
+                 "registry before running the tests; Bazel alone only fetches the packages its "
+                 "targets need. See the comment in %s and scripts/check_cloudbuild_installs_lockfile."
+                 % path)
+    print("%s installs the whole lockfile in the %s step." % (path, STEP_ID))
+
+
+if __name__ == "__main__":
+    main()
