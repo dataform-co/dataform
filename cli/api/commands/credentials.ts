@@ -1,10 +1,35 @@
 import * as fs from "fs";
 
 import * as dbadapters from "df/cli/api/dbadapters";
+import { prettyJsonStringify } from "df/cli/api/utils";
 import { verifyObjectMatchesProto } from "df/common/protos";
 import { dataform } from "df/protos/ts";
 
 export const CREDENTIALS_FILENAME = ".df-credentials.json";
+
+// The file can hold a service account key, so only its owner may read or write it.
+const CREDENTIALS_FILE_MODE = 0o600;
+
+/**
+ * Writes the credentials file with owner-only permissions. The credentials go into a new
+ * file that then replaces the target in one step, so a failed write leaves the previous
+ * file as it was, an existing file with wider permissions is replaced, and a symbolic
+ * link at the target is replaced rather than written through. On Windows the mode has no
+ * effect beyond the read-only bit.
+ */
+export function write(credentialsPath: string, credentials: dataform.IBigQuery): void {
+  const temporaryPath = `${credentialsPath}.${process.pid}.tmp`;
+  try {
+    fs.writeFileSync(temporaryPath, prettyJsonStringify(credentials), {
+      mode: CREDENTIALS_FILE_MODE,
+      flag: "wx",
+    });
+    fs.renameSync(temporaryPath, credentialsPath);
+  } catch (e) {
+    fs.rmSync(temporaryPath, { force: true });
+    throw e;
+  }
+}
 
 export function read(credentialsPath: string): dataform.IBigQuery {
   if (!fs.existsSync(credentialsPath)) {

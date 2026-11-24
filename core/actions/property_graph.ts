@@ -9,12 +9,12 @@ import {
   renderEdge,
   renderNode,
   resolveDeploymentTarget,
-  SEMANTIC_ONTOLOGY_VERSION,
   unquoteIdentifier,
   validateCaseInsensitiveUnique,
   validateIdentifierName,
   validatePhysicalColumnList,
 } from "df/core/actions/property_graph_utils";
+import { SEMANTIC_ONTOLOGY_VERSION } from "df/core/actions/property_graph_validation";
 import { Session } from "df/core/session";
 import { checkAssertionsForDependency, setActionJobLabels } from "df/core/utils";
 import { dataform } from "df/protos/ts";
@@ -101,7 +101,9 @@ export class PropertyGraph extends ActionBuilder<dataform.PropertyGraph> {
     // `deployments[].target` sets the base project/dataset/name on `configTarget`;
     // Dataform session overrides (`databaseSuffix`, `schemaSuffix`, `namePrefix`)
     // are still applied via `applySessionToTarget`.
-    this.proto.target = this.applySessionToTarget(configTarget, session.projectConfig, filename);
+    this.proto.target = this.applySessionToTarget(configTarget, session.projectConfig, filename, {
+      validateTarget: true,
+    });
     this.proto.canonicalTarget = this.applySessionToTarget(
       configTarget,
       session.canonicalProjectConfig,

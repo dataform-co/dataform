@@ -1,5 +1,12 @@
 # Dataform Core (`@dataform/core`)
 
+<!--
+  The workflow_settings.yaml field table, SQLX context functions table, JavaScript Session globals
+  table and public package exports list in this file are generated from the definitions in core/,
+  packages/@dataform/core/index.ts and protos/. Don't edit the generated blocks by hand: change the
+  source definitions or JSDoc/proto comments and run `bazel run //core:update_readme`.
+-->
+
 `@dataform/core` is the open-source SQLX compiler, JavaScript workflow SDK, and Protocol Buffer schema package for [Dataform](https://cloud.google.com/dataform/docs/overview). It compiles SQLX (`.sqlx`), JavaScript (`.js`), action configuration (`actions.yaml`), BigQuery Property Graph (`graph.yaml`), and Jupyter Notebook (`.ipynb`) definitions into a dependency-ordered execution graph (`dataform.CompiledGraph`) for BigQuery.
 
 For command-line execution (`dataform init`, `compile`, `test`, `run`, `format`), see the [Dataform CLI Reference](https://github.com/dataform-co/dataform/blob/main/cli/README.md) (`@dataform/cli`) and the [root repository overview](https://github.com/dataform-co/dataform/blob/main/readme.md).
@@ -87,13 +94,14 @@ my-dataform-project/
 
 `workflow_settings.yaml` is validated against the [`dataform.WorkflowSettings`](https://dataform-co.github.io/dataform/docs/reference/configs#dataform-WorkflowSettings) schema.
 
+<!-- BEGIN GENERATED: workflow-settings -->
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `dataformCoreVersion` | `string` | — | `@dataform/core` version to compile against (for example, `3.1.5`). |
-| `defaultProject` | `string` | — | Default Google Cloud project ID (`database`) for compiled actions. |
-| `defaultDataset` | `string` | `"dataform"` | Default BigQuery dataset (`schema`) for tables, views, and operations. |
-| `defaultLocation` | `string` | — | Default BigQuery dataset location (for example, `US`, `EU`, `us-central1`). |
-| `defaultAssertionDataset` | `string` | `"dataform_assertions"` | Default BigQuery dataset (`schema`) for assertion views. |
+| `defaultProject` | `string` | — | Required. Default Google Cloud project ID (`database`) for compiled actions. |
+| `defaultDataset` | `string` | — | Required. Default BigQuery dataset (`schema`) for tables, views, and operations. |
+| `defaultLocation` | `string` | — | Required. Default BigQuery dataset location (for example, `US`, `EU`, `us-central1`). |
+| `defaultAssertionDataset` | `string` | — | Default BigQuery dataset (`schema`) for assertion views (falls back to `defaultDataset` when omitted). |
 | `vars` | `map<string, string>` | `{}` | Custom string key-value variables accessible via `dataform.projectConfig.vars.<key>`. |
 | `projectSuffix` | `string` | — | Suffix appended to target Google Cloud project IDs (`<project>_<projectSuffix>`). |
 | `datasetSuffix` | `string` | — | Suffix appended to target dataset names (`<dataset>_<datasetSuffix>`). |
@@ -101,14 +109,15 @@ my-dataform-project/
 | `builtinAssertionNamePrefix` | `string` | — | Prefix prepended to auto-generated built-in assertion names. |
 | `disableAssertions` | `boolean` | `false` | Marks all manual and built-in assertions as `disabled: true` in the compiled graph. |
 | `defaultReservation` | `string` | — | Default BigQuery reservation for query execution (`projects/<p>/locations/<l>/reservations/<r>` or `none`). |
-| `defaultJobLabels` | `map<string, string>` | `{}` | Default labels applied to BigQuery jobs executed for actions in the project. |
-| `preserveGovernanceControls` | `boolean` | `false` | Preserves existing BigQuery column governance controls (such as Data Policies) when recreating tables. |
-| `lineage` | `object` | — | Knowledge Catalog Data Lineage settings (`lineage: { enabled: true }`). See [Data Lineage guide](https://github.com/dataform-co/dataform/blob/main/docs/lineage.md). |
-| `defaultIcebergConfig` | `object` | — | Project-level defaults for BigQuery Apache Iceberg tables (`bucketName`, `tableFolderRoot`, `tableFolderSubpath`, `connection`). |
-| `defaultLakehouseConfig` | `object` | — | Project-level defaults for 4-part Lakehouse targets (`catalog`, `namespace`). |
-| `defaultNotebookRuntimeOptions` | `object` | — | Default runtime options for Notebook actions (`outputBucket`, `runtimeTemplateName`, `repositorySnapshotDestination`). |
 | `includeTestsInCompiledGraph` | `boolean` | `false` | Includes unit test actions (`type: "test"`) in `CompiledGraph.tests`. |
-| `extension` | `object` | — | External compilation extension package configuration (`name`, `compilationMode`). |
+| `preserveGovernanceControls` | `boolean` | `false` | Preserves existing BigQuery column governance controls (such as Data Policies) when recreating tables. |
+| `defaultJobLabels` | `map<string, string>` | `{}` | Default labels applied to BigQuery jobs executed for actions in the project. |
+| `defaultNotebookRuntimeOptions` | `object` | — | Default runtime options for Notebook actions (`outputBucket`, `runtimeTemplateName`, `repositorySnapshotDestination`). |
+| `defaultIcebergConfig` | `object` | — | Project-level defaults for BigQuery Apache Iceberg tables (`bucketName`, `tableFolderRoot`, `tableFolderSubpath`, `connection`). |
+| `extension` | `object` | — | External compilation extension package configuration (`name`, `compilationMode`, `options`). |
+| `lineage` | `object` | — | Knowledge Catalog Data Lineage settings (`lineage: { enabled: true }`). See [Data Lineage guide](https://github.com/dataform-co/dataform/blob/main/docs/lineage.md). |
+| `defaultLakehouseConfig` | `object` | — | Project-level defaults for 4-part Lakehouse targets (`catalog`, `namespace`). |
+<!-- END GENERATED: workflow-settings -->
 
 ---
 
@@ -130,10 +139,11 @@ A `.sqlx` file combines a `config {}` metadata block, optional JavaScript (`js {
 
 ### SQLX Context Functions
 
-Each action maps to an **action target** (`database.schema.name`) in BigQuery. By default, `name` is the action's filename (without extension), `schema` is `defaultDataset` (or `defaultAssertionDataset` for assertions), and `database` is `defaultProject` from `workflow_settings.yaml`.
+Each action maps to an **action target** (`database.schema.name`) in BigQuery. By default, `name` is the action's filename (without extension), `schema` is `defaultDataset` (or `defaultAssertionDataset` for assertions, falling back to `defaultDataset` when omitted), and `database` is `defaultProject` from `workflow_settings.yaml`.
 
 Inside the SQL body and operation blocks of a `.sqlx` file (or via the `ctx` argument in JavaScript API callbacks), the following context methods are available:
 
+<!-- BEGIN GENERATED: sqlx-context-functions -->
 | Function | Signature | Description |
 |---|---|---|
 | `ref` | `ref(name)` / `ref(schema, name)` / `ref(database, schema, name)` / `ref({ database?, schema?, name, includeDependentAssertions? })` | Resolves an action target to its backtick-quoted SQL identifier and registers it as an upstream dependency. |
@@ -142,8 +152,9 @@ Inside the SQL body and operation blocks of a `.sqlx` file (or via the `ctx` arg
 | `name` | `name()` | Returns the finalized table/action name of the current action (including `namePrefix` if set). |
 | `schema` | `schema()` | Returns the finalized dataset (`schema`) name of the current action (including `datasetSuffix` if set). |
 | `database` | `database()` | Returns the finalized Google Cloud project (`database`) of the current action (including `projectSuffix` if set). |
-| `when` | `when(condition, trueCase, falseCase = "")` | Returns `trueCase` when `condition` is truthy and `falseCase` otherwise (`table`, `incremental`, `view`, `operations`, `assertion`, `test`, `dataPreparation`). |
-| `incremental` | `incremental()` | Returns `true` when compiling the incremental update query of an `incremental` table, or `false` when compiling its initial/full-refresh query (`table`, `incremental`, `view`). |
+| `when` | `when(condition, trueCase, falseCase = "")` | Returns `trueCase` when `condition` is truthy and `falseCase` otherwise. |
+| `incremental` | `incremental()` | Returns `true` when compiling the incremental update query of an `incremental` table, or `false` when compiling its initial/full-refresh query (`table`, `incremental`, `view`, `dataPreparation`). |
+<!-- END GENERATED: sqlx-context-functions -->
 
 ---
 
@@ -206,8 +217,7 @@ config {
   bigquery: {
     partitionBy: "DATE(event_timestamp)",
     updatePartitionFilter: "event_timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 7 DAY)"
-  },
-  protected: false
+  }
 }
 
 SELECT
@@ -223,7 +233,7 @@ Incremental-specific config properties (in addition to `table` properties):
 - `incrementalStrategy`: `"merge"` (requires `uniqueKey`) or `"insert_overwrite"` (requires `partitionBy`) in SQLX and JavaScript (or `"INCREMENTAL_STRATEGY_MERGE"` / `"INCREMENTAL_STRATEGY_INSERT_OVERWRITE"` in `actions.yaml`).
 - `updatePartitionFilter` / `incrementalPredicates`: Mutually exclusive SQL filter(s) restricting target partitions scanned during incremental updates (setting both is a compile error; prefer `incrementalPredicates`).
 - `onSchemaChange`: `"IGNORE"` (default), `"FAIL"`, `"EXTEND"`, or `"SYNCHRONIZE"`.
-- `protected` (default `true`): Prevents the table from being dropped and rebuilt from scratch on `--full-refresh`. Set `protected: false` to allow full refreshes.
+- `protected` (default `false`): Prevents the table from being dropped and rebuilt from scratch on `--full-refresh`. Set `protected: true` on specific incremental tables to avoid overwriting them on full refreshes.
 
 ---
 
@@ -273,7 +283,7 @@ When `hasOutput: true` is set, the operation registers a referenceable target at
 
 ### `assertion` and Built-in Assertions
 
-An assertion is a data quality query that **fails if it returns one or more rows**. Assertions materialize as views in `defaultAssertionDataset` (`dataform_assertions` by default). See [`AssertionConfig`](https://dataform-co.github.io/dataform/docs/reference/configs#dataform-ActionConfig-AssertionConfig).
+An assertion is a data quality query that **fails if it returns one or more rows**. Assertions materialize as views in `defaultAssertionDataset`, falling back to `defaultDataset` when omitted (`dataform init` sets `"dataform_assertions"`). The default dataset can be overridden for specific actions by setting the `dataset` parameter in the action config (or inside the `assertions` block for inline assertions). See [`AssertionConfig`](https://dataform-co.github.io/dataform/docs/reference/configs#dataform-ActionConfig-AssertionConfig).
 
 ```sql
 -- definitions/assertions/assert_positive_order_amount.sqlx
@@ -402,6 +412,7 @@ actions:
 
 Inside `definitions/**/*.js` files (and `js {}` blocks in `.sqlx` files), Dataform attaches the active [`Session`](https://github.com/dataform-co/dataform/blob/main/docs/reference/session.md) instance to `global.dataform` and binds its action-builder methods as global functions:
 
+<!-- BEGIN GENERATED: session-globals -->
 | Global Function / Object | Signature | Description |
 |---|---|---|
 | `publish` | `publish(name, queryOrConfig?)` | Creates a `table`, `view` (default if `type` is omitted), or `incremental` action. Returns a `Table`, `View`, or `IncrementalTable` builder (`.query(ctx => ...)`). |
@@ -413,6 +424,7 @@ Inside `definitions/**/*.js` files (and `js {}` blocks in `.sqlx` files), Datafo
 | `getContents` | `getContents(relativeMdPath)` | Reads a `.md` file inside the project directory (resolved relative to the caller file) and returns its contents as a string for `description` fields. |
 | `jitData` | `jitData(key, value)` | Registers structured data in `CompiledGraph.jitData` for Just-in-Time (JiT) compilation workflows. |
 | `dataform.projectConfig` | `dataform.ProjectConfig` | Read-only access to the resolved project configuration, including custom variables (`dataform.projectConfig.vars`). |
+<!-- END GENERATED: session-globals -->
 
 Example (`definitions/generate_staging_views.js`):
 
@@ -441,13 +453,16 @@ sourceTables.forEach((tableName) => {
 
 When imported as an npm library (`import * as dataformCore from "@dataform/core"`), `@dataform/core` exports the following symbols (with TypeScript typings in `bundle.d.ts`):
 
+<!-- BEGIN GENERATED: core-exports -->
 - **`version`** (`string`): The installed `@dataform/core` semantic version string (for example, `"3.1.5"`).
 - **`session`** (`Session`): The singleton compilation `Session` instance.
 - **`compiler`** (`(code: string, path: string) => string`): Transpiles `.sqlx`, `.yaml`/`.yml`, `.sql`, `.ipynb`, and `.md` source strings into executable JavaScript modules.
 - **`main`** (`(coreExecutionRequest: Uint8Array | string) => Uint8Array | string`): Entry point invoked by the compilation VM sandbox; accepts an encoded `dataform.CoreExecutionRequest` proto and returns an encoded `dataform.CoreExecutionResponse` proto containing `CompiledGraph`.
-- **`jitCompiler`** (`IJitCompiler`): Just-in-Time (JiT) action compiler entry point.
+- **`jitCompiler`** (`(rpcCallback: RpcCallback) => IJitCompiler`): Creates a Just-in-Time (JiT) action compiler bound to a database adapter `RpcCallback`.
 - **`supportedFeatures`** (`dataform.SupportedFeatures[]`): Feature capability flags supported by this `@dataform/core` version (such as `ARRAY_BUFFER_IPC`).
-- **`IDataformExtension`** / **`IJitCompiler`**: TypeScript interfaces for extensions and JiT compilation.
+- **`IDataformExtension`** (`interface`): TypeScript interface for compilation extensions.
+- **`IJitCompiler`** (`interface`): TypeScript interface for Just-in-Time (JiT) action compilers.
+<!-- END GENERATED: core-exports -->
 
 ### Bundled Protocol Buffer Schemas
 
@@ -455,9 +470,10 @@ The published `@dataform/core` package includes the canonical `.proto` definitio
 
 - `core.proto` — `CompiledGraph`, `Table`, `Operation`, `Assertion`, `Declaration`, `Test`, `Notebook`, `DataPreparation`, `PropertyGraph`, `Target`, `ProjectConfig`, `CoreExecutionRequest`, `CoreExecutionResponse`.
 - `configs.proto` — `WorkflowSettings`, `ActionConfigs`, `ActionConfig` (`TableConfig`, `ViewConfig`, `IncrementalTableConfig`, `AssertionConfig`, `OperationConfig`, `DeclarationConfig`, `NotebookConfig`, `DataPreparationConfig`).
-- `property_graph_config.proto` — `PropertyGraphConfig` (`SemanticModel`, `Entity`, `Relationship`, `Deployment`).
-- `db_adapter.proto` & `jit.proto` — Database adapter and Just-in-Time (JiT) compilation RPC messages.
-- `extension.proto` — `Extension` configuration schema.
+- `property_graph_config.proto` — `PropertyGraphConfig` (`SemanticModelConfig`, `GraphAiContextConfig`, `GraphDeploymentConfig`, `GraphEntityConfig`, `GraphRelationshipConfig`, `GraphMetricConfig`, `GraphCustomExtensionConfig`).
+- `db_adapter.proto` — `Field`, `Fields`, `TableMetadata`, `ExecutionMetadata`.
+- `jit.proto` — `DbAdapter` service, `JitCompilationRequest`, `JitCompilationResponse`, `JitTableResult`, `JitIncrementalTableResult`, `JitOperationResult`, `JitAssertionResult`.
+- `extension.proto` — `Extension` (`ExtensionCompilationMode`).
 
 ---
 

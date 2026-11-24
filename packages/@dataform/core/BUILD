@@ -6,6 +6,8 @@ load("//tools/common:copy.bzl", "copy_file")
 
 package(default_visibility = ["//visibility:public"])
 
+exports_files(["index.ts"])
+
 ts_library(
     name = "core",
     srcs = glob(["*.ts"]),
@@ -37,7 +39,6 @@ pkg_json(
     description = "Dataform core API.",
     external_deps = [],
     layers = [
-        "//:package.json",
         "//packages/@dataform:package.layer.json",
     ],
     main = "bundle.js",
@@ -90,9 +91,6 @@ pkg_bundle_dts(
     name = "bundle.d",
     externals = [
         "protobufjs",
-        "tarjan-graph",
-        "semver",
-        "moo",
         "long",
     ],
     deps = [

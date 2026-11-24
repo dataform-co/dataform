@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import Long from "long";
 
-import { printExecutionGraph } from "df/cli/console";
+import { dotRepresentation, printExecutionGraph } from "df/cli/console";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
 
@@ -75,5 +75,35 @@ suite("printExecutionGraph", () => {
         "",
       ].join("\n"),
     );
+  });
+});
+
+suite("dotRepresentation", () => {
+  test("labels tables in graphs that only set the string type", () => {
+    const tables = [
+      { target: { database: "p", schema: "ds", name: "inc" }, type: "incremental" },
+      {
+        target: { database: "p", schema: "ds", name: "t" },
+        type: "table",
+        dependencyTargets: [{ database: "p", schema: "ds", name: "inc" }],
+      },
+    ];
+    const expected = [
+      "digraph {",
+      '"ds.inc" [label="ds.inc [incremental]"];',
+      '"ds.t" [label="ds.t [table]"];',
+      '"ds.inc" -> "ds.t";',
+      "}",
+    ].join("\n");
+
+    // As created in memory: enumType is unset.
+    const created = dataform.CompiledGraph.create({ tables });
+    expect(dotRepresentation(created, false)).equals(expected);
+    // After a protobuf round-trip: the absent enumType defaults to UNKNOWN_TYPE.
+    const decoded = dataform.CompiledGraph.decode(dataform.CompiledGraph.encode(created).finish());
+    expect(decoded.tables[0].enumType).equals(dataform.TableType.UNKNOWN_TYPE);
+    expect(dotRepresentation(decoded, false)).equals(expected);
+    // The graph passed in isn't modified.
+    expect(decoded.tables[0].enumType).equals(dataform.TableType.UNKNOWN_TYPE);
   });
 });

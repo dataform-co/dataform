@@ -3,6 +3,11 @@ load("//tools:ts_proto_library.bzl", "ts_proto_library")
 
 package(default_visibility = ["//visibility:public"])
 
+filegroup(
+    name = "proto_files",
+    srcs = glob(["*.proto"]),
+)
+
 proto_library(
     name = "dataform_proto",
     srcs = [
