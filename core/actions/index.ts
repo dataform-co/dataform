@@ -295,9 +295,9 @@ export abstract class ActionBuilder<T> {
   }
 
   /**
-   * Converts the legacy `dependencies` config field to `dependencyTargets` on `config` in place,
-   * reporting a compile error if both are specified or if `dependencies` is not an array. Only
-   * for actions that can have dependencies.
+   * Converts the legacy `dependencies` config field (a single dependency or an array of them) to
+   * `dependencyTargets` on `config` in place, reporting a compile error if both are specified.
+   * Only for actions that can have dependencies.
    */
   protected normalizeLegacyConfigDependencies(config: Record<string, any>, fileName?: string) {
     if (!config || config.dependencies === undefined) {
@@ -309,13 +309,11 @@ export abstract class ActionBuilder<T> {
         new Error(legacyAliasConflictMessage("dependencies", "dependencyTargets")),
         resolvedFileName,
       );
-    } else if (config.dependencies !== null && !Array.isArray(config.dependencies)) {
-      this.session?.compileError(
-        new Error("The 'dependencies' config field must be an array."),
-        resolvedFileName,
-      );
     } else if (config.dependencies !== null) {
-      config.dependencyTargets = config.dependencies.map((dependency: string | object) =>
+      const dependencies = Array.isArray(config.dependencies)
+        ? config.dependencies
+        : [config.dependencies];
+      config.dependencyTargets = dependencies.map((dependency: string | object) =>
         resolvableAsActionConfigTarget(dependency),
       );
     }

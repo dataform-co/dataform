@@ -1390,7 +1390,7 @@ FROM x
     });
 
     for (const actionType of ["table", "view", "incremental", "operations", "assertion"]) {
-      test(`reports a compile error for non-array dependencies in ${actionType} sqlx config`, () => {
+      test(`accepts a single-value dependencies field in ${actionType} sqlx config`, () => {
         const graph = compileProject({
           "dep.sqlx": `config { type: "table" }\nSELECT 1`,
           "action.sqlx": `
@@ -1401,15 +1401,15 @@ config {
 SELECT 1`,
         });
 
-        expect(
-          graph.graphErrors.compilationErrors.map((e) => ({
-            message: e.message,
-            fileName: e.fileName,
-          })),
-        ).deep.equals([
+        expect(graph.graphErrors.compilationErrors).deep.equals([]);
+        const action = [...graph.tables, ...graph.operations, ...graph.assertions].find(
+          (a) => a.target.name === "action",
+        );
+        expect(asPlainObject(action.dependencyTargets)).deep.equals([
           {
-            message: "The 'dependencies' config field must be an array.",
-            fileName: "definitions/action.sqlx",
+            database: "defaultProject",
+            schema: "defaultDataset",
+            name: "dep",
           },
         ]);
       });
