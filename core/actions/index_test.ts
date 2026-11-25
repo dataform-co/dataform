@@ -1491,7 +1491,7 @@ declare({
           `docs/reference/configs#dataform-ActionConfig-${configType} for allowed properties.`,
         fileName,
       });
-      expect(compilationErrors( graph)).deep.equals([
+      expect(compilationErrors(graph)).deep.equals([
         emptyProjectError("AssertionConfig", "definitions/assert_legacy.js"),
         emptyProjectError("AssertionConfig", "definitions/assert_modern.js"),
         emptyProjectError("DeclarationConfig", "definitions/declare_legacy.js"),
