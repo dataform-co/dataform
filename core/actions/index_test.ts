@@ -1523,6 +1523,23 @@ declare({
       [a1, a2, d1, d2].forEach((action) => expect(targetWithoutName(action)).deep.equals(defaults));
     });
 
+    test("accepts legacy names in JS operate() without a type", () => {
+      const graph = compileProject({
+        "dep.sqlx": `config { type: "table" }\nSELECT 1`,
+        "js_op.js": `operate("js_op", { schema: "s", database: "d", dependencies: ["dep"] }).queries("SELECT 1");`,
+      });
+
+      expect(compilationErrors(graph)).deep.equals([]);
+      expect(asPlainObject(graph.operations[0].target)).deep.equals({
+        database: "d",
+        schema: "s",
+        name: "js_op",
+      });
+      expect(asPlainObject(graph.operations[0].dependencyTargets)).deep.equals([
+        { database: "defaultProject", schema: "defaultDataset", name: "dep" },
+      ]);
+    });
+
     test("allows legacy fileName alone without conflicting with auto-populated filename", () => {
       const graph = compileProject({
         "sqlx_table.sqlx": `

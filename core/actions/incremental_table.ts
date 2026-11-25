@@ -698,42 +698,41 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
     // different to the new structure.
     unverifiedConfig: dataform.ActionConfig.IncrementalTableConfig | ILegacyTableConfig | any,
   ): dataform.ActionConfig.IncrementalTableConfig {
-    // The "type" field only exists on legacy incremental table configs. Here we convert them to the
-    // new format.
+    // The "type" field only exists on legacy incremental table configs.
     if (unverifiedConfig.type) {
       delete unverifiedConfig.type;
-      this.normalizeLegacyConfigDependencies(unverifiedConfig);
-      this.normalizeLegacyConfigAliases(unverifiedConfig);
-      this.normalizeLegacyConfigInlineAssertions(unverifiedConfig);
-      if (unverifiedConfig.columns) {
-        unverifiedConfig.columns = ColumnDescriptors.normalizeConfigColumns(
-          unverifiedConfig.columns,
-        );
-      }
-      unverifiedConfig =
-        LegacyConfigConverter.insertLegacyInlineAssertionsToConfigProto(unverifiedConfig);
-      unverifiedConfig =
-        LegacyConfigConverter.insertLegacyBigQueryOptionsToConfigProto(unverifiedConfig);
-      if (unverifiedConfig.bigquery) {
-        checkExcessProperties(
-          (e: Error) => {
-            throw e;
-          },
-          unverifiedConfig.bigquery,
-          strictKeysOf<ILegacyBigQueryOptions>()([
-            "partitionBy",
-            "clusterBy",
-            "updatePartitionFilter",
-            "labels",
-            "partitionExpirationDays",
-            "requirePartitionFilter",
-            "additionalOptions",
-            "incrementalPredicates",
-            "iceberg",
-          ]),
-          "BigQuery table config",
-        );
-      }
+    }
+    // Legacy fields are converted to the new format whether or not "type" is set. These are no-ops
+    // for configs already in the new format.
+    this.normalizeLegacyConfigDependencies(unverifiedConfig);
+    this.normalizeLegacyConfigAliases(unverifiedConfig);
+    this.normalizeLegacyConfigInlineAssertions(unverifiedConfig);
+    if (unverifiedConfig.columns) {
+      unverifiedConfig.columns = ColumnDescriptors.normalizeConfigColumns(unverifiedConfig.columns);
+    }
+    unverifiedConfig =
+      LegacyConfigConverter.insertLegacyInlineAssertionsToConfigProto(unverifiedConfig);
+    unverifiedConfig =
+      LegacyConfigConverter.insertLegacyBigQueryOptionsToConfigProto(unverifiedConfig);
+    if (unverifiedConfig.bigquery) {
+      checkExcessProperties(
+        (e: Error) => {
+          throw e;
+        },
+        unverifiedConfig.bigquery,
+        strictKeysOf<ILegacyBigQueryOptions>()([
+          "partitionBy",
+          "clusterBy",
+          "updatePartitionFilter",
+          "labels",
+          "partitionExpirationDays",
+          "requirePartitionFilter",
+          "additionalOptions",
+          "incrementalPredicates",
+          "iceberg",
+        ]),
+        "BigQuery table config",
+      );
     }
     if (unverifiedConfig.iceberg) {
       if (
