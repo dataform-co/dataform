@@ -1571,8 +1571,7 @@ SELECT 1`,
       });
     });
   });
-
-  suite("target validation keeps backwards compatibility with workflow settings defaults", () => {
+  suite("target validation with workflow settings defaults", () => {
     const compileWith = (workflowSettings: string, defs: Record<string, string>) => {
       const dir = tmpDirFixture.createNewTmpDir();
       fs.writeFileSync(path.join(dir, "workflow_settings.yaml"), workflowSettings);

@@ -385,8 +385,7 @@ export abstract class ActionBuilder<T> {
    * Validates an action target.
    *
    * Name and dataset checks only apply to values set explicitly in the action config. Defaults from
-   * workflow settings (e.g. a `defaultDataset` containing '.') have always been accepted by core and
-   * by BigQuery, so rejecting them here would break existing repositories.
+   * workflow settings (e.g. `defaultDataset`, `defaultAssertionDataset`) are not checked here.
    *
    * Project checks apply to the resolved target (including `defaultProject`), so malformed or dotted
    * project IDs are reported regardless of where they come from.
