@@ -382,17 +382,18 @@ export class Runner {
 
   /**
    * Returns the BigQuery dataset that must exist before `action` runs, or null if none is needed.
-   * Standard actions need their own target dataset; incremental Lakehouse actions may write a
-   * temporary schema-inspection table to the project's `defaultDataset` (with suffixes). Other
-   * Lakehouse actions write only to `catalog.namespace`, which cannot be created via CREATE SCHEMA;
-   * it must exist before the run.
+   * Standard actions need their own target dataset; incremental Lakehouse actions with
+   * `onSchemaChange` (`FAIL`, `EXTEND`, or `SYNCHRONIZE`) may write a temporary schema-inspection
+   * table to the project's `defaultDataset` (with suffixes). Other Lakehouse actions write only to
+   * `catalog.namespace`, which cannot be created via CREATE SCHEMA; it must exist before the run.
    */
   private actionDatasetToCreate(action: dataform.IExecutionAction): IMissingSchema | null {
     if (!action.target?.schema || !writesToTarget(action)) {
       return null;
     }
     if (isCatalogSchema(action.target.schema)) {
-      return action.tableType === "incremental"
+      const onSchemaChange = action.onSchemaChange ?? dataform.OnSchemaChange.IGNORE;
+      return action.tableType === "incremental" && onSchemaChange !== dataform.OnSchemaChange.IGNORE
         ? this.executionSql.lakehouseScratchDataset()
         : null;
     }
