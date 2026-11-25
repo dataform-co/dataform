@@ -136,6 +136,27 @@ function writesToTarget(action: dataform.IExecutionAction): boolean {
   return action.type !== "operation" || !!action.hasOutput;
 }
 
+const STRANDED_ACTION_ERROR_MESSAGE =
+  "Action did not run: it is part of a dependency cycle, or depends on an action that is.";
+
+/**
+ * Returns the task results of an action that is skipped before it starts: one per task, with
+ * `errorMessage` on the first. An action with no tasks (for example, a JiT action that hasn't been
+ * compiled yet) gets a single result if there is a message to carry, and none otherwise.
+ */
+function skippedTaskResults(
+  action: dataform.IExecutionAction,
+  errorMessage?: string,
+): dataform.ITaskResult[] {
+  const status = dataform.TaskResult.ExecutionStatus.SKIPPED;
+  if (!action.tasks?.length) {
+    return errorMessage ? [{ status, errorMessage }] : [];
+  }
+  return action.tasks.map((_, i) =>
+    i === 0 && errorMessage ? { status, errorMessage } : { status },
+  );
+}
+
 /** A target dataset that doesn't exist yet. */
 interface IMissingSchema {
   // Unset if the action's target has no database and there's no default database, in which case
@@ -328,6 +349,11 @@ export class Runner {
       return this.runResult;
     }
 
+    // A timed out run is cancelled too.
+    if (!this.cancelled) {
+      this.failStrandedActions();
+    }
+
     this.runResult.timing = timer.end();
 
     this.runResult.status = dataform.RunResult.ExecutionStatus.SUCCESSFUL;
@@ -347,6 +373,32 @@ export class Runner {
   }
 
   /**
+   * Fails the actions that never became executable or skippable. Compilation rejects dependency
+   * cycles, so this only happens for execution graphs that were built by hand. Without it such a
+   * run would report success while leaving these actions out of the result.
+   */
+  private failStrandedActions() {
+    if (this.pendingActions.length === 0) {
+      return;
+    }
+    const strandedActions = this.pendingActions;
+    this.pendingActions = [];
+    strandedActions.forEach((strandedAction) => {
+      this.runResult.actions.push({
+        target: strandedAction.target,
+        status: dataform.ActionResult.ExecutionStatus.FAILED,
+        tasks: [
+          {
+            status: dataform.TaskResult.ExecutionStatus.FAILED,
+            errorMessage: STRANDED_ACTION_ERROR_MESSAGE,
+          },
+        ],
+      });
+    });
+    this.notifyListeners();
+  }
+
+  /**
    * Returns the target datasets of pending actions that don't exist yet, keyed by `schemaKey()`.
    */
   private async findMissingSchemas(): Promise<Map<string, IMissingSchema>> {
@@ -355,7 +407,7 @@ export class Runner {
     this.pendingActions
       .filter(
         (action) =>
-          (action.tasks.length > 0 || !!action.jitCode) &&
+          (action.tasks?.length > 0 || !!action.jitCode) &&
           !!action.target &&
           !!action.target.schema &&
           writesToTarget(action),
@@ -404,24 +456,10 @@ export class Runner {
       this.pendingActions = [];
       const skipErrorMessage = this.skipReason || "Run cancelled before action started";
       allPendingActions.forEach((pendingAction) => {
-        let tasks: dataform.ITaskResult[];
-        if (pendingAction.tasks && pendingAction.tasks.length > 0) {
-          tasks = pendingAction.tasks.map((_, i) => ({
-            status: dataform.TaskResult.ExecutionStatus.SKIPPED,
-            ...(i === 0 ? { errorMessage: skipErrorMessage } : {}),
-          }));
-        } else {
-          tasks = [
-            {
-              status: dataform.TaskResult.ExecutionStatus.SKIPPED,
-              errorMessage: skipErrorMessage,
-            },
-          ];
-        }
         this.runResult.actions.push({
           target: pendingAction.target,
           status: dataform.ActionResult.ExecutionStatus.SKIPPED,
-          tasks,
+          tasks: skippedTaskResults(pendingAction, skipErrorMessage),
         });
       });
       this.notifyListeners();
@@ -465,10 +503,11 @@ export class Runner {
           this.runResult.actions.push({
             target: skippableAction.target,
             status: dataform.ActionResult.ExecutionStatus.SKIPPED,
-            tasks: skippableAction.tasks.map(() => ({
-              status: dataform.TaskResult.ExecutionStatus.SKIPPED,
-            })),
+            tasks: skippedTaskResults(skippableAction),
           });
+          // A skipped action has completed too, so that the actions depending on it are skipped
+          // in turn rather than left pending forever.
+          this.executedActionTargets.add(targetStringifier.stringify(skippableAction.target));
         });
         if (skippableActions.length > 0) {
           this.notifyListeners();
@@ -510,7 +549,7 @@ export class Runner {
       tasks: [],
     };
 
-    if (action.tasks.length === 0 && !action.jitCode) {
+    if (!action.tasks?.length && !action.jitCode) {
       actionResult.status = dataform.ActionResult.ExecutionStatus.DISABLED;
       this.runResult.actions.push(actionResult);
       this.notifyListeners();
