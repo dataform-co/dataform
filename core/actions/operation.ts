@@ -1,6 +1,10 @@
 import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { ActionBuilder } from "df/core/actions";
-import { validateLakehouseColumns, validateLakehouseConfig } from "df/core/actions/lakehouse";
+import {
+  validateLakehouseColumns,
+  validateLakehouseConfig,
+  validateLakehouseTarget,
+} from "df/core/actions/lakehouse";
 import { ColumnDescriptors } from "df/core/column_descriptors";
 import { Contextable, IActionContext, JitContextable, Resolvable } from "df/core/contextables";
 import * as Path from "df/core/path";
@@ -398,6 +402,7 @@ export class Operation extends ActionBuilder<dataform.Operation> {
       );
     }
     if (this.isLakehouseTarget) {
+      validateLakehouseTarget(this.session, this.proto.fileName, this.proto.target);
       validateLakehouseColumns(
         this.session,
         this.proto.actionDescriptor,
@@ -465,8 +470,8 @@ export class Operation extends ActionBuilder<dataform.Operation> {
         delete unverifiedConfig.fileName;
       }
       if (unverifiedConfig.columns) {
-        unverifiedConfig.columns = ColumnDescriptors.mapLegacyObjectToConfigProto(
-          unverifiedConfig.columns as any,
+        unverifiedConfig.columns = ColumnDescriptors.normalizeConfigColumns(
+          unverifiedConfig.columns,
         );
       }
     }
@@ -511,7 +516,20 @@ export class OperationContext implements IActionContext {
   }
 
   public schema(): string {
-    return this.operation.session.finalizeSchema(this.operation.getTarget().schema);
+    const schema = this.operation.getTarget().schema;
+    if (!schema) {
+      if (!this.operation.getHasOutput()) {
+        this.operation.session.compileError(
+          new Error(
+            "Action targets must have a dataset to call schema(). Set defaultDataset in workflow_settings.yaml or dataset in the action config.",
+          ),
+          this.operation.getFileName(),
+          this.operation.getTarget(),
+        );
+      }
+      return "";
+    }
+    return this.operation.session.finalizeSchema(schema);
   }
 
   public database(): string {

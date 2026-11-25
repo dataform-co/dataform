@@ -116,6 +116,22 @@ export function validateLakehouseConfig(
   return true;
 }
 
+export function validateLakehouseTarget(
+  session: Session,
+  fileName: string,
+  target: dataform.ITarget,
+) {
+  if (!target?.database) {
+    session.compileError(
+      new Error(
+        "When defining a Lakehouse target, 'defaultProject' must be defined in workflow_settings.yaml or 'project' in the action config.",
+      ),
+      fileName,
+      target,
+    );
+  }
+}
+
 export function validateLakehouseColumns(
   session: Session,
   actionDescriptor: dataform.IActionDescriptor | null | undefined,

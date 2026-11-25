@@ -60,13 +60,13 @@ export const exampleBuiltInAssertions = {
           },
         },
         target: {
-          database: "defaultProject",
-          schema: "defaultDataset",
+          database: "project",
+          schema: "dataset",
           name: "dataset_name_assertions_uniqueKey_0",
         },
         canonicalTarget: {
-          database: "defaultProject",
-          schema: "defaultDataset",
+          database: "project",
+          schema: "dataset",
           name: "dataset_name_assertions_uniqueKey_0",
         },
         dependencyTargets: [
@@ -94,13 +94,13 @@ export const exampleBuiltInAssertions = {
           },
         },
         target: {
-          database: "defaultProject",
-          schema: "defaultDataset",
+          database: "project",
+          schema: "dataset",
           name: "dataset_name_assertions_rowConditions",
         },
         canonicalTarget: {
-          database: "defaultProject",
-          schema: "defaultDataset",
+          database: "project",
+          schema: "dataset",
           name: "dataset_name_assertions_rowConditions",
         },
         dependencyTargets: [
@@ -145,13 +145,13 @@ export const exampleBuiltInAssertionsAsYaml = {
         },
       },
       target: {
-        database: "defaultProject",
-        schema: "defaultDataset",
+        database: "project",
+        schema: "dataset",
         name: "dataset_name_assertions_uniqueKey_0",
       },
       canonicalTarget: {
-        database: "defaultProject",
-        schema: "defaultDataset",
+        database: "project",
+        schema: "dataset",
         name: "dataset_name_assertions_uniqueKey_0",
       },
       dependencyTargets: [
@@ -181,13 +181,13 @@ export const exampleBuiltInAssertionsAsYaml = {
         },
       },
       target: {
-        database: "defaultProject",
-        schema: "defaultDataset",
+        database: "project",
+        schema: "dataset",
         name: "dataset_name_assertions_rowConditions",
       },
       canonicalTarget: {
-        database: "defaultProject",
-        schema: "defaultDataset",
+        database: "project",
+        schema: "dataset",
         name: "dataset_name_assertions_rowConditions",
       },
       dependencyTargets: [
@@ -315,13 +315,13 @@ SELECT 1`,
         asPlainObject([
           {
             target: {
-              database: "defaultProject",
-              schema: "defaultDataset",
+              database: "project",
+              schema: "dataset",
               name: `builtin_dataset_name_assertions_uniqueKey_0`,
             },
             canonicalTarget: {
-              database: "defaultProject",
-              schema: "defaultDataset",
+              database: "project",
+              schema: "dataset",
               name: `builtin_dataset_name_assertions_uniqueKey_0`,
             },
             dependencyTargets: [
@@ -342,13 +342,13 @@ SELECT 1`,
           },
           {
             target: {
-              database: "defaultProject",
-              schema: "defaultDataset",
+              database: "project",
+              schema: "dataset",
               name: `builtin_dataset_name_assertions_rowConditions`,
             },
             canonicalTarget: {
-              database: "defaultProject",
-              schema: "defaultDataset",
+              database: "project",
+              schema: "dataset",
               name: `builtin_dataset_name_assertions_rowConditions`,
             },
             dependencyTargets: [
@@ -378,6 +378,513 @@ SELECT 1`,
           builtinAssertionNamePrefix: "builtin",
         }),
       );
+    });
+
+    test(`${tableType} built-in assertions use parent database and defaultAssertionDataset when available`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        `
+defaultProject: defaultProject
+defaultDataset: defaultDataset
+defaultAssertionDataset: assertionDataset
+defaultLocation: US
+`,
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/file.sqlx"),
+        `
+config {
+  type: "${tableType}",
+  database: "customProject",
+  schema: "customDataset",
+  name: "name",
+  assertions: {
+    uniqueKey: ["id"],
+    rowConditions: ["id > 0"],
+  }
+}
+SELECT 1 AS id`,
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(
+        result.compile.compiledGraph.assertions.map((assertion) => asPlainObject(assertion.target)),
+      ).deep.equals([
+        {
+          database: "customProject",
+          schema: "assertionDataset",
+          name: "customDataset_name_assertions_uniqueKey_0",
+        },
+        {
+          database: "customProject",
+          schema: "assertionDataset",
+          name: "customDataset_name_assertions_rowConditions",
+        },
+      ]);
+      expect(
+        result.compile.compiledGraph.assertions.map((assertion) =>
+          asPlainObject(assertion.canonicalTarget),
+        ),
+      ).deep.equals([
+        {
+          database: "customProject",
+          schema: "assertionDataset",
+          name: "customDataset_name_assertions_uniqueKey_0",
+        },
+        {
+          database: "customProject",
+          schema: "assertionDataset",
+          name: "customDataset_name_assertions_rowConditions",
+        },
+      ]);
+    });
+
+    test(`${tableType} built-in assertions fall back to defaultDataset when neither defaultAssertionDataset nor action schema is set`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        `
+defaultProject: defaultProject
+defaultDataset: defaultDataset
+defaultLocation: US
+`,
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/file.sqlx"),
+        `
+config {
+  type: "${tableType}",
+  database: "customProject",
+  name: "name",
+  assertions: {
+    uniqueKey: ["id"],
+    rowConditions: ["id > 0"],
+  }
+}
+SELECT 1 AS id`,
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(
+        result.compile.compiledGraph.assertions.map((assertion) => asPlainObject(assertion.target)),
+      ).deep.equals([
+        {
+          database: "customProject",
+          schema: "defaultDataset",
+          name: "defaultDataset_name_assertions_uniqueKey_0",
+        },
+        {
+          database: "customProject",
+          schema: "defaultDataset",
+          name: "defaultDataset_name_assertions_rowConditions",
+        },
+      ]);
+    });
+
+    test(`${tableType} built-in assertions in JS API inherit database and schema from chained methods`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML,
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/file.js"),
+        `
+publish("name", { type: "${tableType}" })
+  .assertions({
+    uniqueKey: ["id"],
+    rowConditions: ["id > 0"],
+  })
+  .database("customProject")
+  .schema("customDataset")
+  .query("SELECT 1 AS id");
+`,
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(
+        result.compile.compiledGraph.assertions.map((assertion) => asPlainObject(assertion.target)),
+      ).deep.equals([
+        {
+          database: "customProject",
+          schema: "customDataset",
+          name: "customDataset_name_assertions_uniqueKey_0",
+        },
+        {
+          database: "customProject",
+          schema: "customDataset",
+          name: "customDataset_name_assertions_rowConditions",
+        },
+      ]);
+    });
+
+    test(`${tableType} built-in assertions renamed by chained .schema() are resolved by new name in dependencies and targets`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML,
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/file.js"),
+        `
+publish("name", { type: "${tableType}" })
+  .assertions({
+    uniqueKey: ["id"],
+    rowConditions: ["id > 0"],
+  })
+  .schema("customDataset")
+  .query("SELECT 1 AS id");
+
+operate("downstream")
+  .dependencies([
+    "customDataset_name_assertions_uniqueKey_0",
+    "customDataset_name_assertions_rowConditions",
+  ])
+  .queries("SELECT 1");
+
+publish("downstream_with_assertions", {
+  type: "view",
+  dependOnDependencyAssertions: true,
+}).query(ctx => \`SELECT * FROM \${ctx.ref("customDataset", "name")}\`);
+`,
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      const expectedAssertionTargets = [
+        {
+          database: "defaultProject",
+          schema: "customDataset",
+          name: "customDataset_name_assertions_uniqueKey_0",
+        },
+        {
+          database: "defaultProject",
+          schema: "customDataset",
+          name: "customDataset_name_assertions_rowConditions",
+        },
+      ];
+      expect(
+        asPlainObject(result.compile.compiledGraph.operations[0].dependencyTargets),
+      ).deep.equals(expectedAssertionTargets);
+      const downstreamView = result.compile.compiledGraph.tables.find(
+        (t) => t.target.name === "downstream_with_assertions",
+      );
+      expect(asPlainObject(downstreamView.dependencyTargets)).deep.equals([
+        {
+          database: "defaultProject",
+          schema: "customDataset",
+          name: "name",
+        },
+        ...expectedAssertionTargets,
+      ]);
+      const compiledTargetNames = result.compile.compiledGraph.targets.map((t) => t.name);
+      expect(compiledTargetNames).to.include("customDataset_name_assertions_uniqueKey_0");
+      expect(compiledTargetNames).to.include("customDataset_name_assertions_rowConditions");
+      expect(compiledTargetNames).to.not.include("defaultDataset_name_assertions_uniqueKey_0");
+      expect(compiledTargetNames).to.not.include("defaultDataset_name_assertions_rowConditions");
+    });
+
+    test(`${tableType} built-in assertions renamed by chained .schema() cannot be resolved by old name`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML,
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/file.js"),
+        `
+publish("name", { type: "${tableType}" })
+  .assertions({
+    rowConditions: ["id > 0"],
+  })
+  .schema("customDataset")
+  .query("SELECT 1 AS id");
+
+operate("downstream")
+  .dependencies(["defaultDataset_name_assertions_rowConditions"])
+  .queries("SELECT 1");
+`,
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).equals(1);
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).contains(
+        "Missing dependency detected",
+      );
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).contains(
+        "defaultDataset_name_assertions_rowConditions",
+      );
+    });
+
+    test(`${tableType} built-in assertions renamed by chained .schema() trigger duplicate-name check for the new name`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML,
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/file.js"),
+        `
+publish("name", { type: "${tableType}" })
+  .assertions({
+    rowConditions: ["id > 0"],
+  })
+  .schema("customDataset")
+  .query("SELECT 1 AS id");
+
+assert("customDataset_name_assertions_rowConditions", {
+  dataset: "customDataset",
+}).query("SELECT 1");
+`,
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.assertions).deep.equals([]);
+      const errorMessages = result.compile.compiledGraph.graphErrors.compilationErrors.map(
+        (e) => e.message,
+      );
+      expect(errorMessages.length).equals(2);
+      errorMessages.forEach((message) => {
+        expect(message).contains("Duplicate action name detected");
+        expect(message).contains("customDataset_name_assertions_rowConditions");
+      });
+    });
+
+    [
+      { projectKey: "database", datasetKey: "schema" },
+      { projectKey: "project", datasetKey: "dataset" },
+    ].forEach(({ projectKey, datasetKey }) => {
+      test(`${tableType} built-in assertions use assertions.${projectKey} and assertions.${datasetKey} over action-level and default values`, () => {
+        const projectDir = tmpDirFixture.createNewTmpDir();
+        fs.writeFileSync(
+          path.join(projectDir, "workflow_settings.yaml"),
+          `
+defaultProject: defaultProject
+defaultDataset: defaultDataset
+defaultAssertionDataset: assertionDataset
+defaultLocation: US
+`,
+        );
+        fs.mkdirSync(path.join(projectDir, "definitions"));
+        fs.writeFileSync(
+          path.join(projectDir, "definitions/file.sqlx"),
+          `
+config {
+  type: "${tableType}",
+  database: "customProject",
+  schema: "customDataset",
+  name: "name",
+  assertions: {
+    ${projectKey}: "customAssertionProject",
+    ${datasetKey}: "customAssertionDataset",
+    uniqueKey: ["id"],
+    rowConditions: ["id > 0"],
+  }
+}
+SELECT 1 AS id`,
+        );
+
+        const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+        expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+        const expectedTargets = [
+          {
+            database: "customAssertionProject",
+            schema: "customAssertionDataset",
+            name: "customDataset_name_assertions_uniqueKey_0",
+          },
+          {
+            database: "customAssertionProject",
+            schema: "customAssertionDataset",
+            name: "customDataset_name_assertions_rowConditions",
+          },
+        ];
+        expect(
+          result.compile.compiledGraph.assertions.map((assertion) =>
+            asPlainObject(assertion.target),
+          ),
+        ).deep.equals(expectedTargets);
+        expect(
+          result.compile.compiledGraph.assertions.map((assertion) =>
+            asPlainObject(assertion.canonicalTarget),
+          ),
+        ).deep.equals(expectedTargets);
+        // The parent action's own target is unaffected, and the assertions still query it.
+        const parentTarget = {
+          database: "customProject",
+          schema: "customDataset",
+          name: "name",
+        };
+        expect(asPlainObject(result.compile.compiledGraph.tables[0].target)).deep.equals(
+          parentTarget,
+        );
+        result.compile.compiledGraph.assertions.forEach((assertion) => {
+          expect(assertion.query).contains("`customProject.customDataset.name`");
+          expect(asPlainObject(assertion.parentAction)).deep.equals(parentTarget);
+        });
+      });
+    });
+
+    test(`${tableType} built-in assertions can override only the project or only the dataset`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML,
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/project_only.sqlx"),
+        `
+config {
+  type: "${tableType}",
+  assertions: {
+    database: "customAssertionProject",
+    rowConditions: ["id > 0"],
+  }
+}
+SELECT 1 AS id`,
+      );
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/dataset_only.sqlx"),
+        `
+config {
+  type: "${tableType}",
+  assertions: {
+    schema: "customAssertionDataset",
+    rowConditions: ["id > 0"],
+  }
+}
+SELECT 1 AS id`,
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(
+        result.compile.compiledGraph.assertions
+          .map((assertion) => asPlainObject(assertion.target))
+          .sort((a, b) => a.name.localeCompare(b.name)),
+      ).deep.equals([
+        {
+          database: "defaultProject",
+          schema: "customAssertionDataset",
+          name: "defaultDataset_dataset_only_assertions_rowConditions",
+        },
+        {
+          database: "customAssertionProject",
+          schema: "defaultDataset",
+          name: "defaultDataset_project_only_assertions_rowConditions",
+        },
+      ]);
+    });
+
+    test(`${tableType} built-in assertions in JS API keep assertions.database and assertions.schema after chained methods`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML,
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/file.js"),
+        `
+publish("name", { type: "${tableType}" })
+  .assertions({
+    database: "customAssertionProject",
+    schema: "customAssertionDataset",
+    uniqueKey: ["id"],
+    rowConditions: ["id > 0"],
+  })
+  .database("customProject")
+  .schema("customDataset")
+  .query("SELECT 1 AS id");
+`,
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(
+        result.compile.compiledGraph.assertions.map((assertion) => asPlainObject(assertion.target)),
+      ).deep.equals([
+        {
+          database: "customAssertionProject",
+          schema: "customAssertionDataset",
+          name: "customDataset_name_assertions_uniqueKey_0",
+        },
+        {
+          database: "customAssertionProject",
+          schema: "customAssertionDataset",
+          name: "customDataset_name_assertions_rowConditions",
+        },
+      ]);
+    });
+
+    test(`${tableType} built-in assertions use assertions.project and assertions.dataset from actions.yaml`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        `
+defaultProject: defaultProject
+defaultDataset: defaultDataset
+defaultAssertionDataset: assertionDataset
+defaultLocation: US
+`,
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(path.join(projectDir, "definitions/filename.sql"), "SELECT 1 AS id");
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/actions.yaml"),
+        `
+actions:
+- ${tableType === "incremental" ? "incrementalTable" : tableType}:
+    name: name
+    project: customProject
+    dataset: customDataset
+    filename: filename.sql
+    assertions:
+      project: customAssertionProject
+      dataset: customAssertionDataset
+      uniqueKey:
+      - id
+      rowConditions:
+      - id > 0
+`,
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(
+        result.compile.compiledGraph.assertions.map((assertion) => asPlainObject(assertion.target)),
+      ).deep.equals([
+        {
+          database: "customAssertionProject",
+          schema: "customAssertionDataset",
+          name: "customDataset_name_assertions_uniqueKey_0",
+        },
+        {
+          database: "customAssertionProject",
+          schema: "customAssertionDataset",
+          name: "customDataset_name_assertions_rowConditions",
+        },
+      ]);
     });
   });
 
@@ -622,5 +1129,97 @@ publish("name", {
         'Invalid job label key "goog-reserved" in jobLabels: key cannot start with reserved prefix "goog-".',
       );
     });
+  });
+
+  test("domain-scoped GCP project IDs compile and resolve refs while malformed or dotted project IDs fail", () => {
+    const compileWith = (defaultProject: string, defs: Record<string, string>) => {
+      const dir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(dir, "workflow_settings.yaml"),
+        `defaultProject: ${defaultProject}\ndefaultDataset: ds\ndefaultLocation: US\n`,
+      );
+      fs.mkdirSync(path.join(dir, "definitions"));
+      for (const [name, body] of Object.entries(defs)) {
+        fs.writeFileSync(path.join(dir, "definitions", name), body);
+      }
+      return runMainInVm(coreExecutionRequestFromPath(dir)).compile.compiledGraph;
+    };
+
+    const validGraph = compileWith("google.com:my-project", {
+      "base.sqlx": `config { type: "table" }\nSELECT 1 AS id`,
+      "view.sqlx": `config { type: "view", database: "sub.domain.com:other" }\nSELECT * FROM \${ref("base")}`,
+    });
+    expect(validGraph.graphErrors.compilationErrors).deep.equals([]);
+    const baseTarget = { database: "google.com:my-project", schema: "ds", name: "base" };
+    const viewTarget = { database: "sub.domain.com:other", schema: "ds", name: "view" };
+    expect(asPlainObject(validGraph.tables)).deep.equals(
+      asPlainObject([
+        {
+          target: baseTarget,
+          canonicalTarget: baseTarget,
+          type: "table",
+          enumType: "TABLE",
+          disabled: false,
+          fileName: "definitions/base.sqlx",
+          hermeticity: "NON_HERMETIC",
+          query: "\nSELECT 1 AS id",
+        },
+        {
+          target: viewTarget,
+          canonicalTarget: viewTarget,
+          dependencyTargets: [baseTarget],
+          type: "view",
+          enumType: "VIEW",
+          disabled: false,
+          fileName: "definitions/view.sqlx",
+          hermeticity: "NON_HERMETIC",
+          query: "\nSELECT * FROM `google.com:my-project.ds.base`",
+        },
+      ]),
+    );
+
+    const invalidGraph = compileWith("google.com:my-project.typo_ds", {
+      "t1.sqlx": `config { type: "table" }\nSELECT 1`,
+      "t2.sqlx": `config { type: "table", database: "my-project.typo_ds" }\nSELECT 1`,
+      "t3.sqlx": `config { type: "table", database: ":proj" }\nSELECT 1`,
+      "t4.sqlx": `config { type: "table", database: "dom:" }\nSELECT 1`,
+      "t5.sqlx": `config { type: "table", database: "a:b:c" }\nSELECT 1`,
+    });
+    expect(
+      invalidGraph.graphErrors.compilationErrors.map(({ message, fileName, actionTarget }) => ({
+        message,
+        fileName,
+        actionTarget: asPlainObject(actionTarget),
+      })),
+    ).deep.equals([
+      {
+        message: "Action target projects cannot include '.'",
+        fileName: "definitions/t1.sqlx",
+        actionTarget: { database: "google.com:my-project.typo_ds", schema: "ds", name: "t1" },
+      },
+      {
+        message: "Action target projects cannot include '.'",
+        fileName: "definitions/t2.sqlx",
+        actionTarget: { database: "my-project.typo_ds", schema: "ds", name: "t2" },
+      },
+      {
+        message:
+          "Action target projects with ':' must follow '<domain>:<project>' with non-empty segments",
+        fileName: "definitions/t3.sqlx",
+        actionTarget: { database: ":proj", schema: "ds", name: "t3" },
+      },
+      {
+        message:
+          "Action target projects with ':' must follow '<domain>:<project>' with non-empty segments",
+        fileName: "definitions/t4.sqlx",
+        actionTarget: { database: "dom:", schema: "ds", name: "t4" },
+      },
+      {
+        message:
+          "Action target projects with ':' must follow '<domain>:<project>' with non-empty segments",
+        fileName: "definitions/t5.sqlx",
+        actionTarget: { database: "a:b:c", schema: "ds", name: "t5" },
+      },
+    ]);
   });
 });

@@ -1,7 +1,11 @@
 import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { ActionBuilder } from "df/core/actions";
-import { validateLakehouseColumns, validateLakehouseConfig } from "df/core/actions/lakehouse";
-import { ColumnDescriptors } from "df/core/column_descriptors";
+import {
+  validateLakehouseColumns,
+  validateLakehouseConfig,
+  validateLakehouseTarget,
+} from "df/core/actions/lakehouse";
+import { ColumnDescriptors, IColumnsDescriptor } from "df/core/column_descriptors";
 import { Session } from "df/core/session";
 import { actionConfigToCompiledGraphTarget } from "df/core/utils";
 import { dataform } from "df/protos/ts";
@@ -12,11 +16,15 @@ import { dataform } from "df/protos/ts";
  * This maintains backwards compatability with older versions.
  * Consider breaking backwards compatability of these in v4.
  */
-interface ILegacyDeclarationConfig extends dataform.ActionConfig.DeclarationConfig {
-  database: string;
-  schema: string;
-  fileName: string;
-  type: string;
+interface ILegacyDeclarationConfig extends Omit<
+  dataform.ActionConfig.IDeclarationConfig,
+  "columns"
+> {
+  columns?: dataform.ActionConfig.IColumnDescriptor[] | IColumnsDescriptor;
+  database?: string;
+  schema?: string;
+  fileName?: string;
+  type?: string;
 }
 
 /**
@@ -164,6 +172,7 @@ export class Declaration extends ActionBuilder<dataform.Declaration> {
   /** @hidden */
   public compile() {
     if (this.isLakehouseTarget) {
+      validateLakehouseTarget(this.session, this.proto.fileName, this.proto.target);
       validateLakehouseColumns(
         this.session,
         this.proto.actionDescriptor,
@@ -186,27 +195,28 @@ export class Declaration extends ActionBuilder<dataform.Declaration> {
   private verifyConfig(
     unverifiedConfig: ILegacyDeclarationConfig,
   ): dataform.ActionConfig.DeclarationConfig {
-    if (unverifiedConfig.database) {
-      unverifiedConfig.project = unverifiedConfig.database;
-      delete unverifiedConfig.database;
+    const configToVerify: ILegacyDeclarationConfig = {
+      ...unverifiedConfig,
+      ...(unverifiedConfig.columns !== undefined
+        ? { columns: ColumnDescriptors.normalizeConfigColumns(unverifiedConfig.columns) }
+        : {}),
+    };
+    if (configToVerify.database) {
+      configToVerify.project = configToVerify.database;
+      delete configToVerify.database;
     }
-    if (unverifiedConfig.schema) {
-      unverifiedConfig.dataset = unverifiedConfig.schema;
-      delete unverifiedConfig.schema;
-    }
-    if (unverifiedConfig.columns) {
-      unverifiedConfig.columns = ColumnDescriptors.mapLegacyObjectToConfigProto(
-        unverifiedConfig.columns as any,
-      );
+    if (configToVerify.schema) {
+      configToVerify.dataset = configToVerify.schema;
+      delete configToVerify.schema;
     }
 
-    if (unverifiedConfig.type) {
-      delete unverifiedConfig.type;
+    if (configToVerify.type) {
+      delete configToVerify.type;
     }
 
     return verifyObjectMatchesProto(
       dataform.ActionConfig.DeclarationConfig,
-      unverifiedConfig,
+      configToVerify,
       VerifyProtoErrorBehaviour.SHOW_DOCS_LINK,
     );
   }

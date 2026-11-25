@@ -32,8 +32,6 @@ ts_test_suite(
         "//:node_modules/fs-extra",
         "//cli:index_test_base",
         "//cli/api",
-        "//cli/api/utils",
-        "//common/promises",
         "//core",
         "//protos:ts",
         "//testing",

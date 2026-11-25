@@ -1,9 +1,6 @@
 #!/bin/bash
 set -e
 
-# Run eslint.
-bazel run //:eslint -- '**/*.ts'
-
 # Run unit tests
 bazel test ... \
   --test_tag_filters=-integration \

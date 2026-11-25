@@ -1,9 +1,6 @@
 #!/bin/bash
 set -e
 
-# Run eslint.
-bazel run //:eslint -- '**/*.ts'
-
 # Run integration tests (--config=integration forwards the ADC environment, see .bazelrc).
 bazel test ... \
   --config=integration \

@@ -301,6 +301,19 @@ suite("Dataform Utility Validations", () => {
       expect(getFileFormatValueForIcebergTable("pArQuEt")).to.equal(dataform.FileFormat.PARQUET);
     });
 
+    test("accepts numeric ActionConfig Iceberg FileFormat enum values", () => {
+      expect(
+        getFileFormatValueForIcebergTable(
+          dataform.ActionConfig.IcebergTableConfig.FileFormat.PARQUET,
+        ),
+      ).to.equal(dataform.FileFormat.PARQUET);
+      expect(
+        getFileFormatValueForIcebergTable(
+          dataform.ActionConfig.IcebergTableConfig.FileFormat.FILE_FORMAT_UNSPECIFIED,
+        ),
+      ).to.equal(dataform.FileFormat.PARQUET);
+    });
+
     test("throws an error for an unsupported file format string", () => {
       assertThrowsWithMessage(
         () => getFileFormatValueForIcebergTable("CSV"),
@@ -634,6 +647,23 @@ suite("Dataform Utility Validations", () => {
           team_name: "data_eng",
         },
       });
+    });
+
+    test("leaves non-plain objects and prototype-polluted objects intact without coercing to {}", () => {
+      const dateValue = new Date("2026-05-01T00:00:00.000Z");
+      const mapValue = new Map([["snake_key", 1]]);
+      const protoPolluted = Object.setPrototypeOf({}, { polluted: true });
+      const input = {
+        verified_on: dateValue,
+        custom: protoPolluted,
+        nested_list: [mapValue],
+      };
+
+      const result = snakeToCamelKeys(input, new Set(["custom"]));
+
+      expect(result.verifiedOn).to.equal(dateValue);
+      expect(result.custom).to.equal(protoPolluted);
+      expect(result.nestedList[0]).to.equal(mapValue);
     });
   });
 

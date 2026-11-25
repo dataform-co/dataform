@@ -1,0 +1,120 @@
+name: Security updates
+
+# Updates npm dependencies affected by security advisories to fixed versions
+# released at least 14 days ago (see scripts/update_vulnerable_deps) and opens
+# or updates a PR from the deps/security-updates branch. The branch is
+# rewritten when the updates change, so don't push changes to it. The run
+# summary lists the updated packages and the vulnerable ones that are waiting,
+# changed in other PRs or need a manual update.
+#
+# The branch is pushed and the PR opened with an installation token of the
+# dataform-security-updates GitHub App (repo secrets SECURITY_UPDATES_APP_ID
+# and SECURITY_UPDATES_PRIVATE_KEY; contents and pull requests: read and
+# write). Unlike with the default GITHUB_TOKEN, its pushes and PRs trigger the
+# GitHub Actions workflows.
+
+on:
+  schedule:
+    - cron: "0 6 * * 1-5" # Weekdays at 06:00 UTC.
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: >-
+          Only report vulnerable dependencies and the planned updates in the run
+          summary; don't push or open a PR.
+        type: boolean
+        default: true
+
+permissions: {}
+
+concurrency:
+  group: security-updates
+  cancel-in-progress: false
+
+jobs:
+  update:
+    name: Update vulnerable dependencies
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read # Check out the repo; writes use the GitHub App token.
+    env:
+      BRANCH: deps/security-updates
+      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+
+      - name: Update vulnerable dependencies
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          SKIP_BRANCH: ${{ env.BRANCH }}
+        run: |
+          ./scripts/update_vulnerable_deps --summary "${RUNNER_TEMP}/summary.md"
+          cat "${RUNNER_TEMP}/summary.md" >> "${GITHUB_STEP_SUMMARY}"
+          git diff --stat
+
+      - name: Create a GitHub App token
+        id: app-token
+        if: env.DRY_RUN != 'true'
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          app-id: ${{ secrets.SECURITY_UPDATES_APP_ID }}
+          private-key: ${{ secrets.SECURITY_UPDATES_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: Open, update or close the PR
+        if: env.DRY_RUN != 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
+        run: |
+          set -euo pipefail
+          title="Update vulnerable npm dependencies"
+          existing="$(gh pr list --head "${BRANCH}" --state open --json number --jq '.[0].number // empty')"
+
+          if git diff --quiet -- package.json pnpm-lock.yaml; then
+            echo "No updates."
+            if [[ -n "${existing}" ]]; then
+              gh pr close "${existing}" --delete-branch \
+                --comment "No dependency updates are needed any more; closing."
+            fi
+            exit 0
+          fi
+
+          # Don't push if the PR already has exactly these changes (e.g. on the
+          # days when no new fix passed the cooldown); only refresh its
+          # description, which includes the waiting and manual updates.
+          if [[ -n "${existing}" ]] && git fetch -q origin "${BRANCH}" &&
+             git diff --quiet FETCH_HEAD -- package.json pnpm-lock.yaml; then
+            echo "The PR is up to date; only updating its description."
+            gh pr edit "${existing}" --body-file "${RUNNER_TEMP}/summary.md"
+            exit 0
+          fi
+
+          # Commit as the GitHub App's bot user.
+          bot="${APP_SLUG}[bot]"
+          bot_id="$(gh api "/users/${bot}" --jq .id)"
+          git config user.name "${bot}"
+          git config user.email "${bot_id}+${bot}@users.noreply.github.com"
+          git switch -c "${BRANCH}"
+          git commit -q -m "${title}" -- package.json pnpm-lock.yaml
+          auth="$(printf 'x-access-token:%s' "${GH_TOKEN}" | base64 -w0)"
+          echo "::add-mask::${auth}"
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic ${auth}" \
+            push --force origin "HEAD:refs/heads/${BRANCH}"
+
+          if [[ -n "${existing}" ]]; then
+            gh pr edit "${existing}" --title "${title}" --body-file "${RUNNER_TEMP}/summary.md"
+          else
+            gh pr create --base "${GITHUB_REF_NAME}" --head "${BRANCH}" \
+              --title "${title}" --body-file "${RUNNER_TEMP}/summary.md"
+          fi

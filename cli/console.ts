@@ -2,10 +2,12 @@ import * as readlineSync from "readline-sync";
 
 import { IInitResult } from "df/cli/api/commands/init";
 import { prettyJsonStringify } from "df/cli/api/utils";
+import { mermaidRepresentation, mermaidSizeWarning } from "df/cli/mermaid";
 import {
   formatBytesInHumanReadableFormat,
   formatDatasetWarehouseState,
   formatExecutionSuffix,
+  tableTypeLabel,
 } from "df/cli/util";
 import { targetStringifier } from "df/core/targets";
 import { setOrValidateTableEnumType, tableTypeEnumToString } from "df/core/utils";
@@ -201,13 +203,10 @@ export function printInitCredsResult(writtenFilePath: string) {
   writeStdOut("To change connection settings, edit this file directly.");
 }
 
-export function isInteractive({ stream = process.stdout } = {}) {
-  return Boolean(stream && stream.isTTY && process.env.TERM !== "dumb" && !("CI" in process.env));
-}
-
 export enum compiledGraphOutputType {
   Json = "json",
   Dot = "dot",
+  Mermaid = "mermaid",
   Summary = "summary",
 }
 
@@ -216,12 +215,17 @@ export function printCompiledGraph(
   outputType: compiledGraphOutputType,
   quietCompilation: boolean = false,
 ) {
-  const interactive = isInteractive();
-
   if (outputType === compiledGraphOutputType.Json) {
     writeStdOut(prettyJsonStringify(graph));
   } else if (outputType === compiledGraphOutputType.Dot) {
-    writeStdOut(dotRepresentation(graph, interactive));
+    writeStdOut(dotRepresentation(graph));
+  } else if (outputType === compiledGraphOutputType.Mermaid) {
+    const mermaid = mermaidRepresentation(graph);
+    writeStdOut(mermaid);
+    const sizeWarning = mermaidSizeWarning(mermaid);
+    if (sizeWarning) {
+      printWarning(sizeWarning);
+    }
   } else {
     const actionCount =
       0 +
@@ -647,39 +651,73 @@ function targetString(target: dataform.ITarget) {
   return calloutOutput(`${target.schema}.${target.name}`);
 }
 
-export function dotRepresentation(graph: dataform.ICompiledGraph, interactive: boolean): string {
+/**
+ * Escapes a string for use inside a Graphviz DOT double-quoted string literal (`"..."`), covering
+ * both node identifiers and `escString` `label="..."` attributes.
+ *
+ * In Graphviz `escString` labels, `\"` produces a literal quote and `\\` produces a literal
+ * backslash, whereas single-backslash sequences (`\n`, `\l`, `\r`, `\N`, `\G`, `\E`, `\T`, `\H`)
+ * act as formatting or macro directives and unrecognized `\x` sequences drop the backslash.
+ * Escaping `\` to `\\` and control or line-separator characters to `\\n`, `\\r`, `\\t` or `\\uXXXX`
+ * keeps DOT statements single-line, prevents macro expansion and invalid XML 1.0 control bytes in
+ * `dot -Tsvg` output.
+ *
+ * The escaping is not one-to-one: a control character and the same sequence spelled out with a
+ * literal backslash (a line feed and a backslash followed by `n`) produce the same output, so two
+ * such names would share a node. BigQuery names cannot contain these characters.
+ */
+export function escapeDotString(value: string): string {
+  return value.replace(/["\\\u0000-\u001f\u007f-\u009f\u2028\u2029]/g, (char) => {
+    switch (char) {
+      case '"':
+        return '\\"';
+      case "\\":
+        return "\\\\";
+      case "\n":
+        return "\\\\n";
+      case "\r":
+        return "\\\\r";
+      case "\t":
+        return "\\\\t";
+      default:
+        return `\\\\u${char.charCodeAt(0).toString(16).padStart(4, "0")}`;
+    }
+  });
+}
+
+export function dotRepresentation(graph: dataform.ICompiledGraph): string {
   const nodes: string[] = [];
   const edges: string[] = [];
 
-  const formatTarget = interactive ? targetString : plainTargetString;
+  const addAction = (
+    action: { target?: dataform.ITarget; dependencyTargets?: dataform.ITarget[] },
+    tableType?: string,
+  ) => {
+    const rawTarget = plainTargetString(action.target);
+    const escapedNodeId = escapeDotString(rawTarget);
+    const rawLabel = tableType === undefined ? rawTarget : `${rawTarget} [${tableType}]`;
+    nodes.push(`"${escapedNodeId}" [label="${escapeDotString(rawLabel)}"]`);
+    for (const dependencyTarget of action.dependencyTargets ?? []) {
+      edges.push(`"${escapeDotString(plainTargetString(dependencyTarget))}" -> "${escapedNodeId}"`);
+    }
+  };
 
-  graph.tables?.forEach((table) => {
-    const nodeName = `${formatTarget(table.target)}`;
-    nodes.push(
-      `"${nodeName}" [label="${formatTarget(table.target)} [${tableTypeEnumToString(table.enumType)}]"]`,
-    );
-    table.dependencyTargets?.forEach((dependencyTarget) => {
-      edges.push(`"${formatTarget(dependencyTarget)}" -> "${nodeName}"`);
-    });
-  });
+  for (const table of graph.tables ?? []) {
+    addAction(table, tableTypeLabel(table));
+  }
+  for (const assertion of graph.assertions ?? []) {
+    addAction(assertion);
+  }
+  for (const operation of graph.operations ?? []) {
+    addAction(operation);
+  }
 
-  graph.assertions?.forEach((assertion) => {
-    const nodeName = `${formatTarget(assertion.target)}`;
-    nodes.push(`"${nodeName}" [label="${formatTarget(assertion.target)}"]`);
-    assertion.dependencyTargets?.forEach((dependencyTarget) => {
-      edges.push(`"${formatTarget(dependencyTarget)}" -> "${nodeName}"`);
-    });
-  });
-
-  graph.operations?.forEach((operation) => {
-    const nodeName = `${formatTarget(operation.target)}`;
-    nodes.push(`"${nodeName}" [label="${formatTarget(operation.target)}"]`);
-    operation.dependencyTargets?.forEach((dependencyTarget) => {
-      edges.push(`"${formatTarget(dependencyTarget)}" -> "${nodeName}"`);
-    });
-  });
-
-  return `digraph {\n${nodes.join(";\n")};\n${edges.join(";\n")};\n}`;
+  return [
+    "digraph {",
+    ...nodes.map((node) => `${node};`),
+    ...edges.map((edge) => `${edge};`),
+    "}",
+  ].join("\n");
 }
 
 function printExecutedActionErrors(

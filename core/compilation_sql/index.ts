@@ -15,8 +15,14 @@ export class CompilationSql {
   }
 
   public sqlString(stringContents: string) {
-    // Escape escape characters, then escape single quotes, then wrap the string in single quotes.
-    return `'${stringContents.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`;
+    // Escape backslashes first (so the escapes added below are not doubled), then single quotes,
+    // then line breaks, and wrap the result in single quotes. BigQuery single-quoted literals
+    // cannot span lines; "\n" / "\r" escapes parse back to the original characters.
+    return `'${stringContents
+      .replace(/\\/g, "\\\\")
+      .replace(/'/g, "\\'")
+      .replace(/\n/g, "\\n")
+      .replace(/\r/g, "\\r")}'`;
   }
 
   public indexAssertion(dataset: string, indexCols: string[]) {
@@ -37,15 +43,18 @@ WHERE index_row_count > 1
 
   public rowConditionsAssertion(dataset: string, rowConditions: string[]) {
     return rowConditions
-      .map(
-        (rowCondition: string) => `
+      .map((rowCondition: string) => {
+        // A condition ending in a "--" or "#" line comment would comment out a closing parenthesis
+        // on the same line, so close on a new line when the condition has a comment or spans lines.
+        const closingParenthesis = /\n|--|#/.test(rowCondition) ? "\n)" : ")";
+        return `
 SELECT
   ${this.sqlString(rowCondition)} AS failing_row_condition,
   *
 FROM ${dataset}
-WHERE NOT (${rowCondition})
-`,
-      )
+WHERE NOT (${rowCondition}${closingParenthesis}
+`;
+      })
       .join(`UNION ALL`);
   }
 }
