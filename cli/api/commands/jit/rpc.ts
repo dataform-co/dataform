@@ -3,7 +3,7 @@ import Long from "long";
 import { IDbAdapter, IDbClient } from "df/cli/api/dbadapters";
 import { IBigQueryExecutionOptions } from "df/cli/api/dbadapters/bigquery";
 import { Structs } from "df/common/protos/structs";
-import { dataform, google } from "df/protos/ts";
+import { dataform } from "df/protos/ts";
 
 export async function handleDbRequest(
   dbadapter: IDbAdapter,
@@ -26,6 +26,17 @@ export async function handleDbRequest(
   }
 }
 
+/** The error text sent to the JiT worker for a failed RPC. */
+export function rpcErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+/** An unset int64 limit decodes to zero, which means that no limit was requested. */
+function positiveLimit(limit?: number | Long | null): number | undefined {
+  const value = typeof limit === "number" ? limit : limit?.toNumber();
+  return value > 0 ? value : undefined;
+}
+
 async function handleExecute(
   dbclient: IDbClient,
   request: Uint8Array,
@@ -38,7 +49,8 @@ async function handleExecute(
   const requestOptions = executeRequestObj.bigQueryOptions;
 
   const results = await dbclient.executeRaw(executeRequest.statement, {
-    rowLimit: executeRequest.rowLimit ? (executeRequest.rowLimit as Long).toNumber() : undefined,
+    rowLimit: positiveLimit(executeRequest.rowLimit),
+    maximumBytesBilled: positiveLimit(executeRequest.byteLimit),
     params: Structs.toObject(executeRequest.params),
     bigquery: {
       ...options,
