@@ -747,6 +747,53 @@ suite("BigQueryDbAdapter", () => {
     ]);
   });
 
+  test("setMetadata() clears empty or unset table and top-level column descriptions with NULL on Lakehouse targets", async () => {
+    const adapter = new BigQueryDbAdapter(
+      dataform.BigQuery.create({ projectId: "my-gcp-project", location: "US" }),
+      { concurrencyLimit: 1, clientProvider: () => ({}) as unknown as BigQuery },
+    );
+    const executedCalls: Array<{ statement: string; location?: string }> = [];
+    adapter.execute = async (statement: string, options?: any) => {
+      executedCalls.push({ statement, location: options?.bigquery?.location });
+      return { rows: [], metadata: {} };
+    };
+
+    const target = {
+      database: "my-gcp-project",
+      schema: "ecommerce_catalog.sales_dw",
+      name: "customer_orders",
+    };
+
+    await adapter.setMetadata(
+      dataform.ExecutionAction.create({
+        target,
+        actionDescriptor: {
+          description: "",
+          columns: [
+            { path: ["order_id"], description: "" },
+            { path: ["customer_id"] },
+            { path: ["struct_col", "nested"], description: "" },
+          ],
+        },
+      }),
+      { bigquery: { location: "us-central1" } },
+    );
+
+    // Omitting actionDescriptor altogether is a no-op.
+    await adapter.setMetadata(dataform.ExecutionAction.create({ target }));
+
+    expect(executedCalls).to.eql([
+      {
+        statement:
+          "ALTER TABLE `my-gcp-project.ecommerce_catalog.sales_dw.customer_orders` SET OPTIONS(description = NULL);\n" +
+          "ALTER TABLE `my-gcp-project.ecommerce_catalog.sales_dw.customer_orders` " +
+          "ALTER COLUMN IF EXISTS `order_id` SET OPTIONS(description = NULL), " +
+          "ALTER COLUMN IF EXISTS `customer_id` SET OPTIONS(description = NULL);",
+        location: "us-central1",
+      },
+    ]);
+  });
+
   test("deleteTable() executes 4-part DROP TABLE IF EXISTS for Lakehouse targets", async () => {
     let restDeleteCalled = false;
     const adapter = new BigQueryDbAdapter(
