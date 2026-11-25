@@ -44,6 +44,7 @@ ts_library(
         "//:node_modules/untildify",
         "//:node_modules/yargs",
         "//cli/api",
+        "//common/vm:vm_runner",
         "//core",
         "//protos:ts",
         "//sqlx:format",
