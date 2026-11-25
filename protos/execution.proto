@@ -11,6 +11,11 @@ option go_package = "github.com/dataform-co/dataform/protos/dataform";
 message RunConfig {
   repeated string actions = 1;
   repeated string tags = 5;
+  // If true, an action is selected by `tags` only when it has every listed tag
+  // (intersection). By default it needs any one of them (union). Selection by
+  // `actions` and the include_dependencies/include_dependents expansion are
+  // unchanged: they are still applied on top of the tag selection.
+  bool tags_intersection = 13;
   bool include_dependencies = 3;
   bool include_dependents = 11;
   bool full_refresh = 2;

@@ -5,6 +5,7 @@ import {
   IProjectDirArgs,
   ITimeoutArgs,
   jsonOutputOption,
+  requiresNonEmptyTags,
   requiresSelection,
   splitCommas,
   timeoutOption,
@@ -20,6 +21,7 @@ export interface ICompileArgs
   quiet: boolean;
   outputActions?: string[];
   outputTags?: string[];
+  outputTagsIntersection?: boolean;
   outputIncludeDeps?: boolean;
   outputIncludeDependents?: boolean;
   verbose: boolean;
@@ -44,11 +46,22 @@ export const outputTagsOption: INamedOption<yargs.Options, ICompileArgs> = {
   name: "output-tags",
   option: {
     describe:
-      "Filters the printed output to actions with any of these tags (comma-separated or " +
-      "repeatable).",
+      "Filters the printed output to actions with any of these tags, or all of them with " +
+      "--output-tags-intersection (comma-separated or repeatable).",
     type: "array",
     coerce: splitCommas,
   },
+};
+
+export const outputTagsIntersectionOption: INamedOption<yargs.Options, ICompileArgs> = {
+  name: "output-tags-intersection",
+  option: {
+    describe:
+      "Filters the printed output to actions that have every tag given in --output-tags, " +
+      "instead of any of them. Requires --output-tags.",
+    type: "boolean",
+  },
+  check: requiresNonEmptyTags("output-tags-intersection", outputTagsOption),
 };
 
 export const outputIncludeDepsOption: INamedOption<yargs.Options, ICompileArgs> = {
@@ -147,6 +160,7 @@ export const compileOptions: Array<INamedOption<yargs.Options, ICompileArgs>> = 
   timeoutOption,
   outputActionsOption,
   outputTagsOption,
+  outputTagsIntersectionOption,
   outputIncludeDepsOption,
   outputIncludeDependentsOption,
   ...ProjectConfigOptions.allYargsOptions,

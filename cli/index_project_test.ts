@@ -26,6 +26,40 @@ suite("project ops", ({ afterEach }) => {
     });
   });
 
+  suite("run command option validation", () => {
+    // These are rejected while parsing arguments, before credentials are read, so they don't
+    // need BigQuery.
+    test("--tags-intersection without --tags is rejected", async () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      await setupProject(tmpDirFixture, projectDir);
+      const result = await runCli("run", [projectDir, "--actions=example", "--tags-intersection"]);
+      expect(result.exitCode).not.equals(0);
+      expect(result.stderr).contains(
+        "The --tags-intersection flag requires at least one tag in --tags.",
+      );
+    });
+
+    test("--tags-intersection with an empty tag is rejected", async () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      await setupProject(tmpDirFixture, projectDir);
+      const result = await runCli("run", [projectDir, "--tags=a,", "--tags-intersection"]);
+      expect(result.exitCode).not.equals(0);
+      expect(result.stderr).contains(
+        "The --tags-intersection flag does not accept empty tags in --tags",
+      );
+    });
+
+    test("--tags-intersection with an empty --tags is rejected", async () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      await setupProject(tmpDirFixture, projectDir);
+      const result = await runCli("run", [projectDir, "--tags", "--tags-intersection"]);
+      expect(result.exitCode).not.equals(0);
+      expect(result.stderr).contains(
+        "The --tags-intersection flag requires at least one tag in --tags.",
+      );
+    });
+  });
+
   suite("format command", () => {
     test("test for format command", async () => {
       const projectDir = tmpDirFixture.createNewTmpDir();
