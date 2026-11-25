@@ -228,7 +228,7 @@ suite("Runner with 4-part Lakehouse targets", () => {
     });
   });
 
-  test("creates missing defaultDataset (with suffixes) for incremental Lakehouse action", async () => {
+  test("creates missing defaultDataset (with suffixes) for incremental Lakehouse action with onSchemaChange", async () => {
     const mockedDbAdapter = mock(BigQueryDbAdapter);
     const executedStatements: string[] = [];
     const executedLocations: Array<string | undefined> = [];
@@ -258,6 +258,7 @@ suite("Runner with 4-part Lakehouse targets", () => {
         {
           type: "table",
           tableType: "incremental",
+          onSchemaChange: dataform.OnSchemaChange.EXTEND,
           target: { database: "catalog-proj", schema: "my_cat.my_ns", name: "lh_inc" },
           tasks: [{ type: "statement", statement: incStatement }],
           dependencyTargets: [],
@@ -275,7 +276,7 @@ suite("Runner with 4-part Lakehouse targets", () => {
     expect(executedLocations).deep.equals(["us-central1"]);
   });
 
-  test("does not emit CREATE SCHEMA for incremental Lakehouse action when defaultDataset already exists", async () => {
+  test("does not emit CREATE SCHEMA for incremental Lakehouse action with onSchemaChange when defaultDataset already exists", async () => {
     const mockedDbAdapter = mock(BigQueryDbAdapter);
     const executedStatements: string[] = [];
     when(mockedDbAdapter.schemas("my-gcp-project")).thenResolve(["default_dataset"]);
@@ -294,6 +295,7 @@ suite("Runner with 4-part Lakehouse targets", () => {
         {
           type: "table",
           tableType: "incremental",
+          onSchemaChange: dataform.OnSchemaChange.EXTEND,
           target: { database: "my-gcp-project", schema: "my_cat.my_ns", name: "lh_inc" },
           tasks: [{ type: "statement", statement: incStatement }],
           dependencyTargets: [],
@@ -306,5 +308,89 @@ suite("Runner with 4-part Lakehouse targets", () => {
     expect(result.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
     verify(mockedDbAdapter.schemas("my-gcp-project")).once();
     expect(executedStatements).deep.equals([incStatement]);
+  });
+
+  test("skips defaultDataset lookup and creation for incremental Lakehouse action when onSchemaChange is unset or IGNORE", async () => {
+    const mockedDbAdapter = mock(BigQueryDbAdapter);
+    const lakehouseTarget: dataform.ITarget = {
+      database: "my-gcp-project",
+      schema: "ecommerce_catalog.sales_dw",
+      name: "customer_orders",
+    };
+    const extendTarget: dataform.ITarget = {
+      database: "my-gcp-project",
+      schema: "ecommerce_catalog.sales_dw",
+      name: "customer_orders_extend",
+    };
+    when(mockedDbAdapter.table(anything())).thenResolve(null);
+    const executedStatements: string[] = [];
+    when(mockedDbAdapter.execute(anyString(), anything())).thenCall(async (statement: string) => {
+      executedStatements.push(statement);
+      return { rows: [], metadata: {} };
+    });
+
+    const compiledGraph = dataform.CompiledGraph.create({
+      projectConfig,
+      dataformCoreVersion: "3.1.5",
+      tables: [
+        {
+          type: "incremental",
+          enumType: dataform.TableType.INCREMENTAL,
+          target: lakehouseTarget,
+          query: "SELECT 1 AS order_id",
+          incrementalQuery: "SELECT 2 AS order_id",
+        },
+        {
+          type: "incremental",
+          enumType: dataform.TableType.INCREMENTAL,
+          onSchemaChange: dataform.OnSchemaChange.IGNORE,
+          target: {
+            database: "my-gcp-project",
+            schema: "ecommerce_catalog.sales_dw",
+            name: "customer_orders_ignore",
+          },
+          query: "SELECT 1 AS order_id",
+          incrementalQuery: "SELECT 2 AS order_id",
+        },
+      ],
+    });
+
+    const executionGraph = await build(
+      compiledGraph,
+      { fullRefresh: false },
+      instance(mockedDbAdapter),
+    );
+    expect(
+      executionGraph.actions.map((a) => a.onSchemaChange ?? dataform.OnSchemaChange.IGNORE),
+    ).deep.equals([dataform.OnSchemaChange.IGNORE, dataform.OnSchemaChange.IGNORE]);
+
+    const result = await new Runner(instance(mockedDbAdapter), executionGraph).execute().result();
+    expect(result.status).equals(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
+    verify(mockedDbAdapter.schemas(anything())).never();
+    expect(executedStatements).to.have.lengthOf(2);
+    for (const stmt of executedStatements) {
+      expect(stmt.toLowerCase()).to.not.include("create schema");
+    }
+
+    // Verify build() forwards non-IGNORE onSchemaChange onto ExecutionAction.
+    const extendGraph = await build(
+      dataform.CompiledGraph.create({
+        projectConfig,
+        dataformCoreVersion: "3.1.5",
+        tables: [
+          {
+            type: "incremental",
+            enumType: dataform.TableType.INCREMENTAL,
+            onSchemaChange: dataform.OnSchemaChange.EXTEND,
+            target: extendTarget,
+            query: "SELECT 1 AS order_id",
+            incrementalQuery: "SELECT 2 AS order_id",
+          },
+        ],
+      }),
+      { fullRefresh: false },
+      instance(mockedDbAdapter),
+    );
+    expect(extendGraph.actions[0].onSchemaChange).equals(dataform.OnSchemaChange.EXTEND);
   });
 });

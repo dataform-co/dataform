@@ -56,6 +56,8 @@ message ExecutionAction {
 
   bool has_output = 13;
 
+  OnSchemaChange on_schema_change = 14;
+
   reserved 1, 3, 7;
 }
 

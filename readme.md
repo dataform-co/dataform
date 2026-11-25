@@ -41,7 +41,7 @@ To emit table-level data lineage to Google Cloud Data Lineage during CLI runs, e
 - Import [pre-defined packages](https://dataform-co.github.io/dataform/docs/packages), or create your own.
 - Define [BigQuery property graphs](docs/property_graphs.md) using YAML (`graph.yaml`).
 - Emit table-level [data lineage to Knowledge Catalog](docs/lineage.md).
-- View the [Dataform Core reference](https://cloud.google.com/dataform/docs/reference/dataform-core-reference).
+- View the [Dataform Core package reference](core/README.md) and [Google Cloud Dataform Core reference](https://cloud.google.com/dataform/docs/reference/dataform-core-reference).
 - View the [Dataform CLI reference](cli/README.md).
 - View the [Dataform configs reference](https://dataform-co.github.io/dataform/docs/reference/configs).
 

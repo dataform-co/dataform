@@ -252,6 +252,22 @@ defaultProject: "defaultProject"
 defaultLocation: "us-central1"
 `,
     },
+    {
+      testName: "fails when neither defaultProject nor action project is set",
+      configBlock: `
+        type: "incremental",
+        name: "inc_err_no_project",
+        lakehouse: {
+          catalog: "my_catalog",
+          namespace: "my_namespace",
+        }`,
+      expectError:
+        "When defining a Lakehouse target, 'defaultProject' must be defined in workflow_settings.yaml or 'project' in the action config.",
+      wsContent: `
+defaultDataset: "defaultDataset"
+defaultLocation: "us-central1"
+`,
+    },
   ];
 
   testCases.forEach((testCase, index) => {

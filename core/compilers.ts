@@ -3,7 +3,8 @@ import { load as loadYaml, YAMLException } from "js-yaml";
 import * as Path from "df/core/path";
 import { SyntaxTreeNode, SyntaxTreeNodeType } from "df/sqlx/lexer";
 
-const CONTEXT_FUNCTIONS = [
+/** @internal Exported only for repository documentation tooling. */
+export const SQLX_CONTEXT_FUNCTIONS = [
   "self",
   "ref",
   "resolve",
@@ -12,26 +13,19 @@ const CONTEXT_FUNCTIONS = [
   "incremental",
   "schema",
   "database",
-]
-  .map((name) => `const ${name} = ctx.${name} ? ctx.${name}.bind(ctx) : undefined;`)
-  .join("\n");
+] as const;
+
+const CONTEXT_FUNCTIONS = SQLX_CONTEXT_FUNCTIONS.map(
+  (name) => `const ${name} = ctx.${name} ? ctx.${name}.bind(ctx) : undefined;`,
+).join("\n");
 
 const CONTEXT_CONSTANTS = ["EXPECT"]
   .map((name) => `const ${name} = ctx.${name} ? ctx.${name} : undefined;`)
   .join("\n");
 
-const JIT_CONTEXT_FUNCTIONS = [
-  "self",
-  "ref",
-  "resolve",
-  "name",
-  "when",
-  "incremental",
-  "schema",
-  "database",
-]
-  .map((name) => `const ${name} = jctx.${name} ? jctx.${name}.bind(jctx) : undefined;`)
-  .join("\n    ");
+const JIT_CONTEXT_FUNCTIONS = SQLX_CONTEXT_FUNCTIONS.map(
+  (name) => `const ${name} = jctx.${name} ? jctx.${name}.bind(jctx) : undefined;`,
+).join("\n    ");
 
 const JIT_CONTEXT_CONSTANTS = ["adapter", "data", "executionData"]
   .map((name) => `const ${name} = jctx.${name} ? jctx.${name} : undefined;`)

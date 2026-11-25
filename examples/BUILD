@@ -33,7 +33,6 @@ ts_test_suite(
         "//:node_modules/chai",
         "//:node_modules/fs-extra",
         "//cli:index_test_base",
-        "//cli/api",
         "//common/protos",
         "//protos:ts",
         "//testing",

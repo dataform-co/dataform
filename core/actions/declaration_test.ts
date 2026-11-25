@@ -416,4 +416,66 @@ config {
       );
     });
   });
+
+  test("declare preserves frozen ColumnDescriptor arrays without mutating caller config", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    fs.writeFileSync(path.join(projectDir, "workflow_settings.yaml"), VALID_WORKFLOW_SETTINGS_YAML);
+    fs.mkdirSync(path.join(projectDir, "definitions"));
+    fs.writeFileSync(
+      path.join(projectDir, "definitions/decls.js"),
+      `
+const sharedColumns = Object.freeze([
+  Object.freeze({ path: Object.freeze(["user_id"]), description: "User key" }),
+]);
+declare(Object.freeze({ database: "p", schema: "s", name: "d1", columns: sharedColumns }));
+declare(Object.freeze({ database: "p", schema: "s", name: "d2", columns: sharedColumns }));
+publish("t1", { type: "table", columns: sharedColumns }).query("SELECT 1 AS user_id");
+`,
+    );
+
+    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+    expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+    expect(asPlainObject(result.compile.compiledGraph.declarations)).deep.equals(
+      asPlainObject([
+        {
+          target: { database: "p", schema: "s", name: "d1" },
+          canonicalTarget: { database: "p", schema: "s", name: "d1" },
+          fileName: "definitions/decls.js",
+          actionDescriptor: {
+            columns: [{ path: ["user_id"], description: "User key" }],
+          },
+        },
+        {
+          target: { database: "p", schema: "s", name: "d2" },
+          canonicalTarget: { database: "p", schema: "s", name: "d2" },
+          fileName: "definitions/decls.js",
+          actionDescriptor: {
+            columns: [{ path: ["user_id"], description: "User key" }],
+          },
+        },
+      ]),
+    );
+    expect(asPlainObject(result.compile.compiledGraph.tables[0].actionDescriptor)).deep.equals({
+      columns: [{ path: ["user_id"], description: "User key" }],
+    });
+  });
+
+  test("declare rejects non-object primitive columns config", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    fs.writeFileSync(path.join(projectDir, "workflow_settings.yaml"), VALID_WORKFLOW_SETTINGS_YAML);
+    fs.mkdirSync(path.join(projectDir, "definitions"));
+    fs.writeFileSync(
+      path.join(projectDir, "definitions/bad_decl.js"),
+      `declare({ database: "p", schema: "s", name: "bad", columns: 123 });`,
+    );
+
+    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+    expect(
+      result.compile.compiledGraph.graphErrors.compilationErrors.map((e) => e.message),
+    ).to.deep.equal([
+      'Unexpected property "columns", or property value type of "number" is incorrect. See https://dataform-co.github.io/dataform/docs/reference/configs#dataform-ActionConfig-DeclarationConfig for allowed properties.',
+    ]);
+  });
 });

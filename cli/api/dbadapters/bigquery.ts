@@ -14,7 +14,6 @@ import {
   IBigQueryError,
   IBigQueryExecutionOptions,
   IDbAdapter,
-  IDbClient,
   IExecutionResult,
   IExecutionResultRaw,
   OnCancel,
@@ -450,28 +449,33 @@ export class BigQueryDbAdapter implements IDbAdapter {
         `Cannot set metadata on Lakehouse table "${target.schema}.${target.name}" without a target database (project).`,
       );
     }
+    if (!actionDescriptor) {
+      return;
+    }
     // BigQuery's tables.patch REST endpoint rejects 4-part Lakehouse Iceberg tables, so apply
     // table and top-level column descriptions via SQL DDL instead. BigQuery does not allow
     // mixing table SET OPTIONS and ALTER COLUMN in a single ALTER TABLE statement.
     const qualifiedTable = `\`${target.database}.${target.schema}.${target.name}\``;
-    const statements: string[] = [];
-    if (actionDescriptor?.description != null && actionDescriptor.description !== "") {
-      statements.push(
-        `ALTER TABLE ${qualifiedTable} SET OPTIONS(description = ${escapeSqlStringLiteral(actionDescriptor.description)});`,
-      );
-    }
-    const alterColumns = (actionDescriptor?.columns || [])
-      .filter((col) => col.path?.length === 1 && col.description != null && col.description !== "")
-      .map(
-        (col) =>
-          `ALTER COLUMN IF EXISTS \`${col.path[0]}\` SET OPTIONS(description = ${escapeSqlStringLiteral(col.description)})`,
-      );
+    const tableDescriptionSql =
+      actionDescriptor.description != null && actionDescriptor.description !== ""
+        ? escapeSqlStringLiteral(actionDescriptor.description)
+        : "NULL";
+    const statements: string[] = [
+      `ALTER TABLE ${qualifiedTable} SET OPTIONS(description = ${tableDescriptionSql});`,
+    ];
+    const alterColumns = (actionDescriptor.columns || [])
+      .filter((col) => col.path?.length === 1 && !!col.path[0])
+      .map((col) => {
+        const colDescriptionSql =
+          col.description != null && col.description !== ""
+            ? escapeSqlStringLiteral(col.description)
+            : "NULL";
+        return `ALTER COLUMN IF EXISTS \`${col.path[0]}\` SET OPTIONS(description = ${colDescriptionSql})`;
+      });
     if (alterColumns.length > 0) {
       statements.push(`ALTER TABLE ${qualifiedTable} ${alterColumns.join(", ")};`);
     }
-    if (statements.length > 0) {
-      await this.execute(statements.join("\n"), { bigquery: options?.bigquery });
-    }
+    await this.execute(statements.join("\n"), { bigquery: options?.bigquery });
   }
 
   private async getMetadata(target: dataform.ITarget): Promise<TableMetadata> {
@@ -702,14 +706,11 @@ function convertFieldType(type: string) {
     case "INT64":
       return dataform.Field.Primitive.INTEGER;
     case "NUMERIC":
-    case "BIGNUMERIC":
       return dataform.Field.Primitive.NUMERIC;
     case "BOOL":
     case "BOOLEAN":
       return dataform.Field.Primitive.BOOLEAN;
     case "STRING":
-    case "JSON":
-    case "INTERVAL":
       return dataform.Field.Primitive.STRING;
     case "DATE":
       return dataform.Field.Primitive.DATE;
@@ -734,6 +735,11 @@ function convertFieldType(type: string) {
   }
 }
 
+/** Whether two column paths have the same segments in the same order. */
+function isSameColumnPath(left: string[], right: string[]): boolean {
+  return left.length === right.length && left.every((segment, index) => segment === right[index]);
+}
+
 function addDescriptionToMetadata(
   columnDescriptions: dataform.IColumnDescriptor[],
   metadataArray: TableField[],
@@ -742,7 +748,7 @@ function addDescriptionToMetadata(
     return metadataArray;
   }
   const findDescription = (path: string[]) =>
-    columnDescriptions.find((column) => column.path.join("") === path.join(""));
+    columnDescriptions.find((column) => isSameColumnPath(column.path ?? [], path));
 
   const mapDescriptionToMetadata = (metadata: TableField, path: string[]) => {
     const description = findDescription(path);

@@ -86,6 +86,7 @@ export class Builder {
       tableType: utils.tableTypeEnumToString(table.enumType),
       tasks: this.executionSql.createTableTasks(table, runConfig, tableMetadata),
       hermeticity: table.hermeticity || dataform.ActionHermeticity.HERMETIC,
+      ...(table.onSchemaChange ? { onSchemaChange: table.onSchemaChange } : {}),
     };
   }
 

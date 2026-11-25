@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { spawn } from "child_process";
 import * as fs from "fs-extra";
-import { dump as dumpYaml, load as loadYaml } from "js-yaml";
+import { dump as dumpYaml } from "js-yaml";
 import * as path from "path";
 
 import { TEMPORARY_ENVIRONMENT_PREFIX } from "df/cli/api/commands/compile";
@@ -161,6 +161,79 @@ suite("compile", () => {
           `${npmFile}' unexpected; remove it and try again`,
         );
       });
+    });
+
+    for (const { label, yamlLine } of [
+      {
+        label: "file tarball specifier",
+        yamlLine: 'dataformCoreVersion: "file:./custom-core.tgz"',
+      },
+      {
+        label: "HTTPS tarball URL",
+        yamlLine: 'dataformCoreVersion: "https://example.invalid/core.tgz"',
+      },
+      {
+        label: "git URL specifier",
+        yamlLine: 'dataformCoreVersion: "git+https://example.invalid/repo.git"',
+      },
+      { label: "npm alias specifier", yamlLine: 'dataformCoreVersion: "npm:semver@7.5.4"' },
+      { label: "semver range", yamlLine: 'dataformCoreVersion: "^3.0.0"' },
+      { label: "malformed dot prerelease", yamlLine: 'dataformCoreVersion: "3.0.0-."' },
+      { label: "leading zero version", yamlLine: 'dataformCoreVersion: "03.0.0"' },
+      { label: "non-string YAML array", yamlLine: 'dataformCoreVersion: ["3.0.0"]' },
+    ]) {
+      test(`compile rejects ${label} before creating temporary environment or invoking npm`, async () => {
+        const projectDir = tmpDirFixture.createNewTmpDir();
+        fs.writeFileSync(
+          path.join(projectDir, "workflow_settings.yaml"),
+          `defaultProject: dataform\n${yamlLine}\n`,
+        );
+        const missingTmpDir = path.join(tmpDirFixture.createNewTmpDir(), "must-not-be-used");
+        const fakeBinDir = tmpDirFixture.createNewTmpDir();
+        const npmCalledFile = path.join(tmpDirFixture.createNewTmpDir(), "npm-called");
+        fs.writeFileSync(
+          path.join(fakeBinDir, "npm"),
+          `#!/bin/sh\ntouch "${npmCalledFile}"\nexit 1\n`,
+          { mode: 0o755 },
+        );
+        fs.writeFileSync(
+          path.join(fakeBinDir, "npm.cmd"),
+          `@echo off\r\necho. > "${npmCalledFile}"\r\nexit /b 1\r\n`,
+        );
+
+        const result = await runCli("compile", [projectDir, "--verbose"], {
+          env: {
+            ...process.env,
+            TMPDIR: missingTmpDir,
+            TEMP: missingTmpDir,
+            TMP: missingTmpDir,
+            PATH: `${fakeBinDir}${path.delimiter}${process.env.PATH}`,
+          },
+        });
+
+        expect(result.exitCode).equals(1);
+        expect(result.stderr).contains("Invalid dataformCoreVersion");
+        expect(result.stderr).contains("must be a valid semantic version");
+        expect(result.stderr).not.contains("Using isolated environment");
+        expect(result.stderr).not.contains("Copying project to temporary directory");
+        expect(fs.existsSync(npmCalledFile)).equals(false);
+        expect(fs.existsSync(missingTmpDir)).equals(false);
+      });
+    }
+
+    test("install rejects invalid dataformCoreVersion in workflow_settings.yaml", async () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        'defaultProject: dataform\ndataformCoreVersion: "^3.0.0"\n',
+      );
+
+      const result = await runCli("install", [projectDir]);
+
+      expect(result.exitCode).equals(1);
+      expect(result.stderr).contains(
+        'Invalid dataformCoreVersion "^3.0.0": must be a valid semantic version.',
+      );
     });
 
     // Runs the CLI with a fake `npm` that records its pid, marks that it has started and then
@@ -648,6 +721,77 @@ SELECT 1 as id
       ]);
       expect(result.exitCode, result.stderr).equals(0);
       expect(tableNames(result.stdout)).deep.equals(["downstream", "midstream"]);
+    });
+
+    test("--mermaid prints a flowchart of the (filtered) graph", async () => {
+      const result = await runCli("compile", [
+        projectDir,
+        "--output-actions",
+        "midstream",
+        "--output-include-deps",
+        "--mermaid",
+      ]);
+      expect(result.exitCode, result.stderr).equals(0);
+      const lines = result.stdout.trim().split("\n");
+      expect(lines[0]).equals("graph LR");
+      const nodeLine = (name: string) => lines.find((line) => line.endsWith(`.${name} [table]"]`));
+      const idOf = (name: string) => nodeLine(name)?.trim().split("[")[0];
+      expect(idOf("upstream")).to.match(/^n[0-9a-f]{8}$/);
+      expect(idOf("midstream")).to.match(/^n[0-9a-f]{8}$/);
+      // Sorted by target, so midstream comes before upstream.
+      expect(lines.indexOf(nodeLine("midstream"))).lessThan(lines.indexOf(nodeLine("upstream")));
+      expect(lines.filter((line) => line.includes("-->"))).deep.equals([
+        `  ${idOf("upstream")} --> ${idOf("midstream")}`,
+      ]);
+    });
+
+    test("--mermaid shows dependencies outside the selection as plain nodes", async () => {
+      const result = await runCli("compile", [
+        projectDir,
+        "--output-actions",
+        "midstream",
+        "--mermaid",
+      ]);
+      expect(result.exitCode, result.stderr).equals(0);
+      const nodeLines = result.stdout
+        .trim()
+        .split("\n")
+        .filter((line) => line.includes('["'));
+      expect(nodeLines.map((line) => line.replace(/^.*\["[^.]*\./, ""))).deep.equals([
+        'midstream [table]"]',
+        'upstream"]',
+      ]);
+    });
+
+    test("--mermaid warns on stderr when the diagram is too large to render", async () => {
+      writeDefinitionFile(
+        projectDir,
+        "chain.js",
+        `for (let i = 1; i <= 501; i++) {
+          operate("c" + i).dependencies(["c" + (i - 1)]).queries("SELECT 1");
+        }
+        operate("c0").queries("SELECT 1");`,
+      );
+      const result = await runCli("compile", [projectDir, "--mermaid"]);
+      expect(result.exitCode, result.stderr).equals(0);
+      expect(result.stdout.startsWith("graph LR\n")).equals(true);
+      expect(result.stdout).not.contains("Warning");
+      expect(result.stdout.split("\n").filter((line) => line.includes(" --> ")).length).equals(503);
+      expect(result.stderr).contains("Warning: this diagram has 503 edges");
+    });
+
+    test("--mermaid prints no warning for a diagram within the limits", async () => {
+      const result = await runCli("compile", [projectDir, "--mermaid"]);
+      expect(result.exitCode, result.stderr).equals(0);
+      expect(result.stderr).not.contains("Warning");
+    });
+
+    test("--mermaid cannot be combined with --json or --dot", async () => {
+      for (const other of ["--json", "--dot"]) {
+        const result = await runCli("compile", [projectDir, "--mermaid", other]);
+        expect(result.exitCode).not.equals(0);
+        expect(result.stderr).contains("mutually exclusive");
+      }
     });
 
     test("--output-tags filters output to actions carrying the tag", async () => {

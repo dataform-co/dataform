@@ -1,5 +1,6 @@
 import { expect } from "chai";
 
+import { dataform } from "df/protos/ts";
 import {
   asPlainObject,
   suite,
@@ -640,5 +641,98 @@ SELECT * FROM \${ref({ catalog: "custom_cat", name: "shared_name" })}
     expect(errors).to.include(
       "Lakehouse target reference must specify both 'catalog' and 'namespace' (or set defaultLakehouseConfig in workflow_settings.yaml).",
     );
+  });
+
+  test("fails when neither defaultProject nor action project is set on Lakehouse table, operations, and declaration", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    writeWorkflowSettingsFile(
+      projectDir,
+      `
+defaultDataset: defaultDataset
+defaultLocation: US
+`,
+    );
+    writeDefinitionFile(
+      projectDir,
+      "lh_table.sqlx",
+      `config { type: "table", lakehouse: { catalog: "c", namespace: "n" } }\nSELECT 1`,
+    );
+    writeDefinitionFile(
+      projectDir,
+      "lh_op.sqlx",
+      `config { type: "operations", hasOutput: true, lakehouse: { catalog: "c", namespace: "n" } }\nSELECT 1`,
+    );
+    writeDefinitionFile(
+      projectDir,
+      "lh_decl.sqlx",
+      `config { type: "declaration", name: "ext_tbl", lakehouse: { catalog: "c", namespace: "n" } }`,
+    );
+
+    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+    const expectedMessage =
+      "When defining a Lakehouse target, 'defaultProject' must be defined in workflow_settings.yaml or 'project' in the action config.";
+    const errors = result.compile.compiledGraph.graphErrors.compilationErrors
+      .map((e) => ({ fileName: e.fileName, message: e.message }))
+      .sort((a, b) => (a.fileName ?? "").localeCompare(b.fileName ?? ""));
+    expect(errors).deep.equals([
+      { fileName: "definitions/lh_decl.sqlx", message: expectedMessage },
+      { fileName: "definitions/lh_op.sqlx", message: expectedMessage },
+      { fileName: "definitions/lh_table.sqlx", message: expectedMessage },
+    ]);
+  });
+
+  test("succeeds without defaultProject in workflow_settings.yaml when project is set on action, via .database(), or via compilation override", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    writeWorkflowSettingsFile(
+      projectDir,
+      `
+defaultDataset: defaultDataset
+defaultLocation: US
+`,
+    );
+    writeDefinitionFile(
+      projectDir,
+      "lh_explicit_proj.sqlx",
+      `config { type: "table", project: "explicit_proj", lakehouse: { catalog: "c", namespace: "n" } }\nSELECT 1`,
+    );
+    writeDefinitionFile(
+      projectDir,
+      "lh_js_db.js",
+      `publish("lh_js_db", { type: "table", lakehouse: { catalog: "c", namespace: "n" } }).database("js_proj").query(() => "SELECT 1");`,
+    );
+
+    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+    expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+    const targets = result.compile.compiledGraph.tables.map((t) => asPlainObject(t.target));
+    expect(targets).to.deep.include({
+      database: "explicit_proj",
+      schema: "c.n",
+      name: "lh_explicit_proj",
+    });
+    expect(targets).to.deep.include({
+      database: "js_proj",
+      schema: "c.n",
+      name: "lh_js_db",
+    });
+
+    const overrideDir = tmpDirFixture.createNewTmpDir();
+    writeWorkflowSettingsFile(overrideDir, "defaultDataset: defaultDataset\n");
+    writeDefinitionFile(
+      overrideDir,
+      "lh_override.sqlx",
+      `config { type: "table", lakehouse: { catalog: "c", namespace: "n" } }\nSELECT 1`,
+    );
+    const overrideResult = runMainInVm(
+      coreExecutionRequestFromPath(
+        overrideDir,
+        dataform.ProjectConfig.create({ defaultDatabase: "override_proj" }),
+      ),
+    );
+    expect(overrideResult.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+    expect(asPlainObject(overrideResult.compile.compiledGraph.tables[0].target)).deep.equals({
+      database: "override_proj",
+      schema: "c.n",
+      name: "lh_override",
+    });
   });
 });
