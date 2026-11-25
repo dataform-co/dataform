@@ -309,7 +309,11 @@ export abstract class ActionBuilder<T> {
         new Error(legacyAliasConflictMessage("dependencies", "dependencyTargets")),
         resolvedFileName,
       );
-    } else if (config.dependencies !== null) {
+    } else if (config.dependencies === null) {
+      // Passed on as is, so that it fails verification the same way a null `dependencyTargets`
+      // does.
+      config.dependencyTargets = null;
+    } else {
       const dependencies = Array.isArray(config.dependencies)
         ? config.dependencies
         : [config.dependencies];
@@ -356,7 +360,7 @@ export abstract class ActionBuilder<T> {
           ),
           fileName,
         );
-      } else if (config[legacyKey] !== null) {
+      } else {
         config[modernKey] = config[legacyKey];
       }
       delete config[legacyKey];
