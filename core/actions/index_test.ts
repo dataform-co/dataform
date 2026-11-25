@@ -1222,4 +1222,353 @@ publish("name", {
       },
     ]);
   });
+
+  suite("conflicting legacy and modern config aliases", () => {
+    const compileProject = (files: { [name: string]: string }) => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        VALID_WORKFLOW_SETTINGS_YAML,
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      for (const [name, content] of Object.entries(files)) {
+        fs.writeFileSync(path.join(projectDir, "definitions", name), content);
+      }
+      return runMainInVm(coreExecutionRequestFromPath(projectDir)).compile.compiledGraph;
+    };
+
+    for (const actionType of [
+      "table",
+      "view",
+      "incremental",
+      "operations",
+      "assertion",
+      "dataPreparation",
+    ]) {
+      test(`reports compile errors for conflicting aliases in ${actionType} sqlx config`, () => {
+        const graph = compileProject({
+          "dep.sqlx": `config { type: "table" }\nSELECT 1`,
+          "action.sqlx": `
+config {
+  type: "${actionType}",
+  dataset: "new_dataset",
+  schema: "old_schema",
+  project: "new_project",
+  database: "old_database",
+  filename: "definitions/action.sqlx",
+  fileName: "old_file.sqlx",
+  dependencyTargets: [{ name: "dep" }],
+  dependencies: ["dep"],
+}
+SELECT 1`,
+        });
+
+        expect(graph.graphErrors.compilationErrors.map((e) => e.message)).deep.equals([
+          "'dependencies' is a legacy alias for 'dependencyTargets'; cannot specify both at the same time. It's recommended to use 'dependencyTargets'.",
+          "'database' is a legacy alias for 'project'; cannot specify both at the same time. It's recommended to use 'project'.",
+          "'schema' is a legacy alias for 'dataset'; cannot specify both at the same time. It's recommended to use 'dataset'.",
+          "'fileName' is a legacy alias for 'filename'; cannot specify both at the same time. It's recommended to use 'filename'.",
+        ]);
+      });
+    }
+
+    test("reports compile errors for conflicting aliases in declaration sqlx config", () => {
+      const graph = compileProject({
+        "decl.sqlx": `
+config {
+  type: "declaration",
+  name: "my_decl",
+  dataset: "new_dataset",
+  schema: "old_schema",
+  project: "new_project",
+  database: "old_database",
+  filename: "definitions/action.sqlx",
+  fileName: "old_file.sqlx",
+}`,
+      });
+
+      expect(graph.graphErrors.compilationErrors.map((e) => e.message)).deep.equals([
+        "'database' is a legacy alias for 'project'; cannot specify both at the same time. It's recommended to use 'project'.",
+        "'schema' is a legacy alias for 'dataset'; cannot specify both at the same time. It's recommended to use 'dataset'.",
+        "'fileName' is a legacy alias for 'filename'; cannot specify both at the same time. It's recommended to use 'filename'.",
+      ]);
+    });
+
+    test("reports compile errors for conflicting aliases in inline assertions (sqlx and js api)", () => {
+      const graph = compileProject({
+        "t.sqlx": `
+config {
+  type: "table",
+  assertions: {
+    uniqueKey: ["a"],
+    dataset: "new_ds",
+    schema: "old_schema",
+    project: "new_proj",
+    database: "old_db",
+  }
+}
+SELECT 1 AS a`,
+        "js_table.js": `
+publish("js_t", { type: "table" })
+  .assertions({
+    uniqueKey: ["a"],
+    dataset: "new_ds",
+    schema: "old_schema",
+    project: "new_proj",
+    database: "old_db",
+  })
+  .query("SELECT 1 AS a");`,
+      });
+
+      expect(
+        graph.graphErrors.compilationErrors.map((e) => ({
+          message: e.message,
+          fileName: e.fileName,
+        })),
+      ).deep.equals([
+        {
+          message:
+            "'assertions.database' is a legacy alias for 'assertions.project'; cannot specify both at the same time. It's recommended to use 'assertions.project'.",
+          fileName: "definitions/js_table.js",
+        },
+        {
+          message:
+            "'assertions.schema' is a legacy alias for 'assertions.dataset'; cannot specify both at the same time. It's recommended to use 'assertions.dataset'.",
+          fileName: "definitions/js_table.js",
+        },
+        {
+          message:
+            "'assertions.database' is a legacy alias for 'assertions.project'; cannot specify both at the same time. It's recommended to use 'assertions.project'.",
+          fileName: "definitions/t.sqlx",
+        },
+        {
+          message:
+            "'assertions.schema' is a legacy alias for 'assertions.dataset'; cannot specify both at the same time. It's recommended to use 'assertions.dataset'.",
+          fileName: "definitions/t.sqlx",
+        },
+      ]);
+    });
+
+    test("reports compile errors for conflicting aliases in DataPreparation config() helper", () => {
+      const graph = compileProject({
+        "dp.dp.sqlx": `
+config {
+  type: "dataPreparation",
+}
+FROM x
+|> SELECT *
+\${ctx.config({
+  dataset: "new_ds",
+  schema: "old_schema",
+  project: "new_proj",
+  database: "old_db",
+})}`,
+      });
+
+      expect(
+        graph.graphErrors.compilationErrors.map((e) => ({
+          message: e.message,
+          fileName: e.fileName,
+        })),
+      ).deep.equals([
+        {
+          message:
+            "'database' is a legacy alias for 'project'; cannot specify both at the same time. It's recommended to use 'project'.",
+          fileName: "definitions/dp.dp.sqlx",
+        },
+        {
+          message:
+            "'schema' is a legacy alias for 'dataset'; cannot specify both at the same time. It's recommended to use 'dataset'.",
+          fileName: "definitions/dp.dp.sqlx",
+        },
+      ]);
+      expect(asPlainObject(graph.dataPreparations[0].target)).deep.equals({
+        database: "new_proj",
+        schema: "new_ds",
+        name: "dp",
+      });
+    });
+
+    for (const actionType of ["table", "view", "incremental", "operations", "assertion"]) {
+      test(`accepts a single-value dependencies field in ${actionType} sqlx config`, () => {
+        const graph = compileProject({
+          "dep.sqlx": `config { type: "table" }\nSELECT 1`,
+          "action.sqlx": `
+config {
+  type: "${actionType}",
+  dependencies: "dep",
+}
+SELECT 1`,
+        });
+
+        expect(graph.graphErrors.compilationErrors).deep.equals([]);
+        const action = [...graph.tables, ...graph.operations, ...graph.assertions].find(
+          (a) => a.target.name === "action",
+        );
+        expect(asPlainObject(action.dependencyTargets)).deep.equals([
+          {
+            database: "defaultProject",
+            schema: "defaultDataset",
+            name: "dep",
+          },
+        ]);
+      });
+    }
+
+    test("reports an invalid legacy dependency as a compile error without aborting the file", () => {
+      const graph = compileProject({
+        "actions.js": `
+publish("first", { type: "table", dependencies: ["a.b.c.d"] }).query("SELECT 1");
+publish("second", { type: "table" }).query("SELECT 1");`,
+      });
+
+      expect(
+        graph.graphErrors.compilationErrors.map((e) => ({
+          message: e.message,
+          fileName: e.fileName,
+        })),
+      ).deep.equals([
+        {
+          message:
+            "Invalid dependency. Accepted inputs include: a string of the form 'name', " +
+            "'dataset.name' or 'project.dataset.name', or a target object.",
+          fileName: "definitions/actions.js",
+        },
+      ]);
+      expect(graph.tables.map((t) => t.target.name).sort()).deep.equals(["first", "second"]);
+    });
+
+    const aliasConflictErrors = (fileName: string) =>
+      [
+        ["database", "project"],
+        ["schema", "dataset"],
+      ].map(([legacyKey, modernKey]) => ({
+        message:
+          `'${legacyKey}' is a legacy alias for '${modernKey}'; cannot specify both at the ` +
+          `same time. It's recommended to use '${modernKey}'.`,
+        fileName,
+      }));
+    const compilationErrors = (graph: dataform.ICompiledGraph) =>
+      graph.graphErrors.compilationErrors.map((e) => ({
+        message: e.message,
+        fileName: e.fileName,
+      }));
+
+    for (const { description, legacyValue } of [
+      { description: "both names", legacyValue: `"legacy"` },
+      { description: "an empty legacy value alongside the modern name", legacyValue: `""` },
+    ]) {
+      test(`reports compile errors for ${description} in JS assert() and declare()`, () => {
+        const graph = compileProject({
+          "assert.js": `
+assert("a", {
+  dataset: "ds", schema: ${legacyValue}, project: "proj", database: ${legacyValue},
+}).query("SELECT 1");`,
+          "declare.js": `
+declare({
+  name: "d", dataset: "ds", schema: ${legacyValue}, project: "proj", database: ${legacyValue},
+});`,
+        });
+
+        expect(compilationErrors(graph)).deep.equals([
+          ...aliasConflictErrors("definitions/assert.js"),
+          ...aliasConflictErrors("definitions/declare.js"),
+        ]);
+      });
+    }
+
+    test("treats a null legacy value like a null modern value in JS assert() and declare()", () => {
+      const graph = compileProject({
+        "assert_legacy.js": `assert("a1", { database: null }).query("SELECT 1");`,
+        "assert_modern.js": `assert("a2", { project: null }).query("SELECT 1");`,
+        "declare_legacy.js": `declare({ name: "d1", dataset: "ds", database: null });`,
+        "declare_modern.js": `declare({ name: "d2", dataset: "ds", project: null });`,
+      });
+
+      const emptyProjectError = (configType: string, fileName: string) => ({
+        message:
+          `Unexpected empty value for "project". See https://dataform-co.github.io/dataform/` +
+          `docs/reference/configs#dataform-ActionConfig-${configType} for allowed properties.`,
+        fileName,
+      });
+      expect(compilationErrors(graph)).deep.equals([
+        emptyProjectError("AssertionConfig", "definitions/assert_legacy.js"),
+        emptyProjectError("AssertionConfig", "definitions/assert_modern.js"),
+        emptyProjectError("DeclarationConfig", "definitions/declare_legacy.js"),
+        emptyProjectError("DeclarationConfig", "definitions/declare_modern.js"),
+      ]);
+    });
+
+    test("treats an empty legacy value like an empty modern value in JS assert() and declare()", () => {
+      const graph = compileProject({
+        "assert_legacy.js": `assert("a1", { schema: "", database: "" }).query("SELECT 1");`,
+        "assert_modern.js": `assert("a2", { dataset: "", project: "" }).query("SELECT 1");`,
+        "declare_legacy.js": `declare({ name: "d1", schema: "", database: "" });`,
+        "declare_modern.js": `declare({ name: "d2", dataset: "", project: "" });`,
+      });
+
+      expect(compilationErrors(graph)).deep.equals([]);
+      const targetWithoutName = (action: { target?: dataform.ITarget }) => ({
+        database: action.target.database,
+        schema: action.target.schema,
+      });
+      const [a1, a2] = ["a1", "a2"].map((name) =>
+        graph.assertions.find((a) => a.target.name === name),
+      );
+      const [d1, d2] = ["d1", "d2"].map((name) =>
+        graph.declarations.find((d) => d.target.name === name),
+      );
+      // An empty value behaves as unset under either name, so the defaults apply.
+      const defaults = { database: "defaultProject", schema: "defaultDataset" };
+      [a1, a2, d1, d2].forEach((action) => expect(targetWithoutName(action)).deep.equals(defaults));
+    });
+
+    test("allows legacy fileName alone without conflicting with auto-populated filename", () => {
+      const graph = compileProject({
+        "sqlx_table.sqlx": `
+config {
+  type: "table",
+  fileName: "custom/sqlx_table.sqlx",
+}
+SELECT 1`,
+        "js_actions.js": `
+publish("js_table", { type: "table", fileName: "custom/js_table.sql" }).query("SELECT 1");
+assert("js_assert", { fileName: "custom/js_assert.sql" }).query("SELECT 1");
+operate("js_op", { type: "operations", fileName: "custom/js_op.sql" }).queries("SELECT 1");`,
+      });
+
+      expect(graph.graphErrors.compilationErrors).deep.equals([]);
+      expect(graph.tables.find((t) => t.target.name === "sqlx_table").fileName).equals(
+        "custom/sqlx_table.sqlx",
+      );
+      expect(graph.tables.find((t) => t.target.name === "js_table").fileName).equals(
+        "custom/js_table.sql",
+      );
+      expect(graph.assertions.find((a) => a.target.name === "js_assert").fileName).equals(
+        "custom/js_assert.sql",
+      );
+      expect(graph.operations.find((o) => o.target.name === "js_op").fileName).equals(
+        "custom/js_op.sql",
+      );
+    });
+
+    test("allows legacy schema and database alone in DataPreparation sqlx config", () => {
+      const graph = compileProject({
+        "dp.sqlx": `
+config {
+  type: "dataPreparation",
+  schema: "legacy_schema",
+  database: "legacy_db",
+}
+SELECT 1`,
+      });
+
+      expect(graph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(graph.dataPreparations[0].target)).deep.equals({
+        database: "legacy_db",
+        schema: "legacy_schema",
+        name: "dp",
+      });
+    });
+  });
 });
