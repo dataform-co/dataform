@@ -20,6 +20,7 @@ ts_test_suite(
     name = "tests",
     srcs = [
         "module_resolver_test.ts",
+        "path_utils_test.ts",
         "vm_runner_test.ts",
     ],
     deps = [

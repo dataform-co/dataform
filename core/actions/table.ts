@@ -12,6 +12,7 @@ import {
   validateLakehouseBigQueryOptions,
   validateLakehouseColumns,
   validateLakehouseConfig,
+  validateLakehouseTarget,
 } from "df/core/actions/lakehouse";
 import { View } from "df/core/actions/view";
 import { ColumnDescriptors } from "df/core/column_descriptors";
@@ -577,6 +578,7 @@ export class Table extends ActionBuilder<dataform.Table> {
     }
 
     if (this.isLakehouseTarget) {
+      validateLakehouseTarget(this.session, this.proto.fileName, this.proto.target);
       validateLakehouseColumns(
         this.session,
         this.proto.actionDescriptor,

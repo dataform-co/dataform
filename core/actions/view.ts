@@ -658,6 +658,9 @@ export class View extends ActionBuilder<dataform.Table> {
           unverifiedConfig.clusterBy = unverifiedConfig.bigquery.clusterBy;
           delete unverifiedConfig.bigquery.clusterBy;
         }
+        if (Object.keys(unverifiedConfig.bigquery).length === 0) {
+          delete unverifiedConfig.bigquery;
+        }
       }
     }
 
