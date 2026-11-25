@@ -100,6 +100,7 @@ ts_test_suite(
         "main_workflow_settings_test.ts",
         "package_test.ts",
         "path_test.ts",
+        "targets_test.ts",
         "utils_test.ts",
         "workflow_settings_test.ts",
     ],

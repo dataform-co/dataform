@@ -11,6 +11,7 @@ import { View } from "df/core/actions/view";
 import { Contextable, Resolvable } from "df/core/contextables";
 import * as Path from "df/core/path";
 import { Session } from "df/core/session";
+import { isResolvableArray } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 
 declare var __webpack_require__: any;
@@ -123,13 +124,6 @@ export function toResolvable(ref: Resolvable | string[], rest: string[] = []): R
   return { database, schema, name };
 }
 
-function isResolvableArray(parts: any[]): parts is [string, string?, string?, string?] {
-  if (parts.some((part) => typeof part !== "string")) {
-    return false;
-  }
-  return parts.length > 0 && parts.length <= 4;
-}
-
 export function resolvableAsTarget(
   resolvable: Resolvable | dataform.ActionConfig.Target,
   defaultLakehouseConfig?: dataform.IDefaultLakehouseConfig | null,
@@ -164,43 +158,6 @@ export function resolvableAsTarget(
     });
   }
   return dataform.Target.create(resolvable);
-}
-
-export function resolvableAsActionConfigTarget(
-  resolvable: string | object,
-): dataform.ActionConfig.ITarget {
-  if (typeof resolvable === "string") {
-    const parts = resolvable.split(".").reverse();
-    if (!isResolvableArray(parts) || parts.length > 3) {
-      throw new Error(invalidRefInputMessage);
-    }
-
-    const [name, schema, database] = parts;
-    return {
-      name,
-      dataset: schema,
-      project: database,
-    };
-  }
-
-  const obj = resolvable as any;
-  if (obj && typeof obj === "object") {
-    const catalog = obj.catalog ?? obj.lakehouse?.catalog;
-    const namespace = obj.namespace ?? obj.lakehouse?.namespace;
-    if (catalog != null || namespace != null || obj.lakehouse != null) {
-      return {
-        name: obj.name,
-        project: obj.project ?? obj.database,
-        lakehouse: {
-          catalog,
-          namespace,
-        },
-        includeDependentAssertions: obj.includeDependentAssertions,
-      };
-    }
-  }
-
-  return resolvable as dataform.ActionConfig.ITarget;
 }
 
 export function stringifyResolvable(res: Resolvable) {
