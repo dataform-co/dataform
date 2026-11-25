@@ -20,6 +20,7 @@ steps:
   - name: "gcr.io/cloud-builders/gcloud"
     env:
       - "PARENT_BUILD_ID=$_PARENT_BUILD_ID"
+      - "ALLOW_MISSING_SBOM=$_ALLOW_MISSING_SBOM"
       - "COMMIT_SHA=$COMMIT_SHA"
       - "LOCATION=$LOCATION"
     script: |
@@ -77,6 +78,7 @@ availableSecrets:
       env: "GITHUB_TOKEN"
 substitutions:
   _PARENT_BUILD_ID: ""
+  _ALLOW_MISSING_SBOM: "false"
 timeout: 3600s
 options:
   substitutionOption: ALLOW_LOOSE

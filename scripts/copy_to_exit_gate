@@ -17,11 +17,24 @@ LOCATION="us"
 
 # How long to wait for Cloud Build to attach an SBOM to each staged version.
 SBOM_WAIT_SECONDS="${SBOM_WAIT_SECONDS:-600}"
+ALLOW_MISSING_SBOM="${ALLOW_MISSING_SBOM:-false}"
 
 api="https://artifactregistry.googleapis.com/v1"
 staging_repo_path="projects/${STAGING_PROJECT}/locations/${LOCATION}/repositories/${STAGING_REPO}"
 
 token() { gcloud auth print-access-token; }
+
+call_ar_api() {
+  local auth_token response
+  auth_token=$(token)
+  if ! response=$(curl -sS --fail-with-body -H "Authorization: Bearer ${auth_token}" "$@"); then
+    if [[ -n "${response}" ]]; then
+      printf '%s\n' "${response}" >&2
+    fi
+    return 1
+  fi
+  printf '%s\n' "${response}"
+}
 
 # SBOM attachments are added asynchronously after the build finishes. Use one
 # deadline for all packages, since they are scanned in parallel.
@@ -31,27 +44,51 @@ for pkg in "${PACKAGES[@]}"; do
   encoded_pkg="${pkg//\//%2F}"
   version_path="${staging_repo_path}/packages/${encoded_pkg}/versions/${VERSION}"
 
-  until gcloud artifacts attachments list \
+  while true; do
+    attachments=$(gcloud artifacts attachments list \
       --project="${STAGING_PROJECT}" --location="${LOCATION}" --repository="${STAGING_REPO}" \
-      --target="${version_path}" --format='value(name.basename(),type)' \
-      | awk '$1 ~ /-sbom$/ && $2 ~ /bcid\.in-toto\.reference/ { found = 1 } END { exit !found }'; do
-    if (( SECONDS >= deadline )); then
-      echo "WARNING: no SBOM attachment on ${pkg}@${VERSION} after ${SBOM_WAIT_SECONDS}s; copying without it." >&2
+      --target="${version_path}" --format='value(name.basename(),type)')
+    if awk '$1 ~ /-sbom$/ && $2 ~ /bcid\.in-toto\.reference/ { found = 1 } END { exit !found }' <<<"${attachments}"; then
       break
+    fi
+    if (( SECONDS >= deadline )); then
+      if [[ "${ALLOW_MISSING_SBOM}" == "true" ]]; then
+        echo "WARNING: no SBOM attachment on ${pkg}@${VERSION} after ${SBOM_WAIT_SECONDS}s; copying without it." >&2
+        break
+      fi
+      echo "ERROR: no SBOM attachment on ${pkg}@${VERSION} after ${SBOM_WAIT_SECONDS}s." >&2
+      exit 1
     fi
     sleep 15
   done
+done
+
+# Clear previous uploads from the Exit Gate repository right before copying so
+# retries do not hit ALREADY_EXISTS and publish_all only sees this release.
+packages_to_delete=$(gcloud artifacts packages list \
+  --project="${EG_PROJECT}" --location="${LOCATION}" \
+  --repository="${EG_REPO}" --format="value(name)")
+for pkg in ${packages_to_delete}; do
+  gcloud artifacts packages delete "${pkg}" \
+    --project="${EG_PROJECT}" --location="${LOCATION}" \
+    --repository="${EG_REPO}" --quiet
+done
+
+for pkg in "${PACKAGES[@]}"; do
+  encoded_pkg="${pkg//\//%2F}"
+  version_path="${staging_repo_path}/packages/${encoded_pkg}/versions/${VERSION}"
 
   echo "Copying ${pkg}@${VERSION} with attachments to ${EG_PROJECT}/${EG_REPO}"
-  operation=$(curl -sS --fail-with-body -X POST \
-    -H "Authorization: Bearer $(token)" -H "Content-Type: application/json" \
+  copy_response=$(call_ar_api -X POST -H "Content-Type: application/json" \
     "${api}/projects/${EG_PROJECT}/locations/${LOCATION}/repositories/${EG_REPO}:copyArtifact" \
-    -d "{\"sourceRepository\": \"${staging_repo_path}\", \"sourceVersion\": \"${version_path}\", \"includeAllAttachments\": true}" \
-    | python3 -c 'import json,sys; print(json.load(sys.stdin)["name"])')
+    -d "{\"sourceRepository\": \"${staging_repo_path}\", \"sourceVersion\": \"${version_path}\", \"includeAllAttachments\": true}")
+  operation=$(python3 -c 'import json,sys; print(json.load(sys.stdin)["name"])' <<<"${copy_response}")
 
   for attempt in $(seq 1 60); do
-    (( attempt > 1 )) && sleep 5
-    result=$(curl -sS --fail-with-body -H "Authorization: Bearer $(token)" "${api}/${operation}")
+    if (( attempt > 1 )); then
+      sleep 5
+    fi
+    result=$(call_ar_api "${api}/${operation}")
     if python3 -c 'import json,sys; d=json.load(sys.stdin); sys.exit(0 if d.get("done") else 1)' <<<"${result}"; then
       if python3 -c 'import json,sys; sys.exit(1 if "error" in json.load(sys.stdin) else 0)' <<<"${result}"; then
         break

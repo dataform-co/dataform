@@ -4,16 +4,6 @@ steps:
       #!/usr/bin/env bash
       set -euo pipefail
       REPO_TOKEN="$(gcloud auth print-access-token)" ./scripts/create_npmrc
-      # Clear previous uploads from the staging and Exit Gate repositories.
-      for repo in "dataform-open-source/dataform-npm-staging" "oss-exit-gate-prod/dataform--npm"; do
-        project="${repo%%/*}"
-        repository="${repo##*/}"
-        for pkg in $(gcloud artifacts packages list --project="${project}" --location=us \
-            --repository="${repository}" --format="value(name)"); do
-          gcloud artifacts packages delete "$pkg" --project="${project}" --location=us \
-            --repository="${repository}" --quiet
-        done
-      done
   - name: gcr.io/cloud-builders/bazel:7.3.2
     env:
       - "BRANCH_NAME=$BRANCH_NAME"
@@ -21,8 +11,9 @@ steps:
     script: |
       #!/usr/bin/env bash
       ./scripts/publish
-  # Start the release build. It waits for this build to finish (including the
-  # artifact uploads below) before releasing anything.
+  # Clear previous staging uploads and start the release build. It waits for
+  # this build to finish (including the artifact uploads below) before copying
+  # staged packages or releasing anything.
   - name: "gcr.io/cloud-builders/gcloud"
     env:
       - "BUILD_ID=$BUILD_ID"
@@ -31,6 +22,18 @@ steps:
     script: |
       #!/usr/bin/env bash
       set -euo pipefail
+      packages_to_delete=$(gcloud artifacts packages list \
+        --project=dataform-open-source \
+        --location=us \
+        --repository=dataform-npm-staging \
+        --format="value(name)")
+      for pkg in ${packages_to_delete}; do
+        gcloud artifacts packages delete "${pkg}" \
+          --project=dataform-open-source \
+          --location=us \
+          --repository=dataform-npm-staging \
+          --quiet
+      done
       gcloud builds triggers run exit-gate-npm-release-trigger \
         --region="${LOCATION}" \
         --sha="${COMMIT_SHA}" \
