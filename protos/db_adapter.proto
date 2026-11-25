@@ -90,7 +90,9 @@ message ExecutionMetadata {
     // statement. Not necessarily the destination table's schema. BigQuery
     // documents it for dry runs only; real runs may include it for some
     // statements, but not reliably. Uses Dataform's lossy Field representation:
-    // e.g. RANGE becomes UNKNOWN, and nullability and type parameters aren't kept.
+    // preserves names, descriptions, mapped types, REPEATED flags and nested
+    // field structure. Unsupported types (e.g. RANGE) become UNKNOWN.
+    // Nullability, type parameters and collation aren't preserved.
     repeated Field schema_fields = 5;
   }
   BigqueryMetadata bigquery = 1;
