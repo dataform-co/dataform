@@ -1458,7 +1458,7 @@ publish("second", { type: "table" }).query("SELECT 1");`,
       { description: "both names", legacyValue: `"legacy"` },
       { description: "an empty legacy value alongside the modern name", legacyValue: `""` },
     ]) {
-      test(`reports compile errors for ${description} in JS assert() and declare()`, () => {
+      test(`reports compile errors for ${description} in JS assert(), declare() and operate()`, () => {
         const graph = compileProject({
           "assert.js": `
 assert("a", {
@@ -1468,21 +1468,28 @@ assert("a", {
 declare({
   name: "d", dataset: "ds", schema: ${legacyValue}, project: "proj", database: ${legacyValue},
 });`,
+          "operate.js": `
+operate("o", {
+  dataset: "ds", schema: ${legacyValue}, project: "proj", database: ${legacyValue},
+}).queries("SELECT 1");`,
         });
 
         expect(compilationErrors(graph)).deep.equals([
           ...aliasConflictErrors("definitions/assert.js"),
           ...aliasConflictErrors("definitions/declare.js"),
+          ...aliasConflictErrors("definitions/operate.js"),
         ]);
       });
     }
 
-    test("treats a null legacy value like a null modern value in JS assert() and declare()", () => {
+    test("treats a null legacy value like a null modern value in JS assert(), declare() and operate()", () => {
       const graph = compileProject({
         "assert_legacy.js": `assert("a1", { database: null }).query("SELECT 1");`,
         "assert_modern.js": `assert("a2", { project: null }).query("SELECT 1");`,
         "declare_legacy.js": `declare({ name: "d1", dataset: "ds", database: null });`,
         "declare_modern.js": `declare({ name: "d2", dataset: "ds", project: null });`,
+        "operate_legacy.js": `operate("o1", { database: null }).queries("SELECT 1");`,
+        "operate_modern.js": `operate("o2", { project: null }).queries("SELECT 1");`,
       });
 
       const emptyProjectError = (configType: string, fileName: string) => ({
@@ -1496,15 +1503,19 @@ declare({
         emptyProjectError("AssertionConfig", "definitions/assert_modern.js"),
         emptyProjectError("DeclarationConfig", "definitions/declare_legacy.js"),
         emptyProjectError("DeclarationConfig", "definitions/declare_modern.js"),
+        emptyProjectError("OperationConfig", "definitions/operate_legacy.js"),
+        emptyProjectError("OperationConfig", "definitions/operate_modern.js"),
       ]);
     });
 
-    test("treats an empty legacy value like an empty modern value in JS assert() and declare()", () => {
+    test("treats an empty legacy value like an empty modern value in JS assert(), declare() and operate()", () => {
       const graph = compileProject({
         "assert_legacy.js": `assert("a1", { schema: "", database: "" }).query("SELECT 1");`,
         "assert_modern.js": `assert("a2", { dataset: "", project: "" }).query("SELECT 1");`,
         "declare_legacy.js": `declare({ name: "d1", schema: "", database: "" });`,
         "declare_modern.js": `declare({ name: "d2", dataset: "", project: "" });`,
+        "operate_legacy.js": `operate("o1", { schema: "", database: "" }).queries("SELECT 1");`,
+        "operate_modern.js": `operate("o2", { dataset: "", project: "" }).queries("SELECT 1");`,
       });
 
       expect(compilationErrors(graph)).deep.equals([]);
@@ -1518,26 +1529,55 @@ declare({
       const [d1, d2] = ["d1", "d2"].map((name) =>
         graph.declarations.find((d) => d.target.name === name),
       );
+      const [o1, o2] = ["o1", "o2"].map((name) =>
+        graph.operations.find((o) => o.target.name === name),
+      );
       // An empty value behaves as unset under either name, so the defaults apply.
       const defaults = { database: "defaultProject", schema: "defaultDataset" };
-      [a1, a2, d1, d2].forEach((action) => expect(targetWithoutName(action)).deep.equals(defaults));
+      [a1, a2, d1, d2, o1, o2].forEach((action) =>
+        expect(targetWithoutName(action)).deep.equals(defaults),
+      );
     });
 
     test("accepts legacy names in JS operate() without a type", () => {
       const graph = compileProject({
         "dep.sqlx": `config { type: "table" }\nSELECT 1`,
-        "js_op.js": `operate("js_op", { schema: "s", database: "d", dependencies: ["dep"] }).queries("SELECT 1");`,
+        "js_op.js": `
+operate("js_op", {
+  schema: "s",
+  database: "d",
+  dependencies: ["dep"],
+  hasOutput: true,
+  columns: { col: "desc" },
+}).queries("SELECT 1");`,
       });
 
       expect(compilationErrors(graph)).deep.equals([]);
-      expect(asPlainObject(graph.operations[0].target)).deep.equals({
-        database: "d",
-        schema: "s",
-        name: "js_op",
+      expect(asPlainObject(graph.operations[0])).deep.equals({
+        target: {
+          database: "d",
+          schema: "s",
+          name: "js_op",
+        },
+        canonicalTarget: {
+          database: "d",
+          schema: "s",
+          name: "js_op",
+        },
+        dependencyTargets: [{ database: "defaultProject", schema: "defaultDataset", name: "dep" }],
+        fileName: "definitions/js_op.js",
+        hermeticity: "NON_HERMETIC",
+        hasOutput: true,
+        queries: ["SELECT 1"],
+        actionDescriptor: {
+          columns: [
+            {
+              description: "desc",
+              path: ["col"],
+            },
+          ],
+        },
       });
-      expect(asPlainObject(graph.operations[0].dependencyTargets)).deep.equals([
-        { database: "defaultProject", schema: "defaultDataset", name: "dep" },
-      ]);
     });
 
     test("allows legacy fileName alone without conflicting with auto-populated filename", () => {
@@ -1551,7 +1591,7 @@ SELECT 1`,
         "js_actions.js": `
 publish("js_table", { type: "table", fileName: "custom/js_table.sql" }).query("SELECT 1");
 assert("js_assert", { fileName: "custom/js_assert.sql" }).query("SELECT 1");
-operate("js_op", { type: "operations", fileName: "custom/js_op.sql" }).queries("SELECT 1");`,
+operate("js_op", { fileName: "custom/js_op.sql" }).queries("SELECT 1");`,
       });
 
       expect(graph.graphErrors.compilationErrors).deep.equals([]);
