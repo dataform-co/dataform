@@ -1,0 +1,163 @@
+#!/usr/bin/env python3
+"""Auto-assigns open pull requests to an eligible human maintainer.
+
+For each open PR that does not already have an assignee, this script selects at
+most one eligible human maintainer from `ELIGIBLE_HUMANS` in the following
+order:
+
+  1. The PR creator, if eligible.
+  2. Otherwise, the first eligible human in `requested_reviewers` (team review
+     requests in `requested_teams` are ignored).
+  3. Otherwise, the first eligible human in submitted reviews (`pulls/{n}/reviews`).
+  4. Otherwise, leaves the PR unassigned.
+
+PR reviewers are never modified; only the PR assignee is set.
+
+Environment:
+  GITHUB_TOKEN   Token with pull-requests and issues write access (required).
+  GITHUB_REPO    owner/repo (default: GITHUB_REPOSITORY or dataform-co/dataform).
+  PR_NUMBER      Only process this PR (optional; omit to process all open PRs).
+  DRY_RUN        If "true" or "1", only print what would be done.
+"""
+
+import json
+import os
+import sys
+import urllib.error
+import urllib.request
+
+REPO = os.environ.get("GITHUB_REPO") or os.environ.get("GITHUB_REPOSITORY") or \
+    "dataform-co/dataform"
+DRY_RUN = os.environ.get("DRY_RUN", "").lower() in ("1", "true")
+
+# Repository maintainers eligible for automatic PR assignment.
+ELIGIBLE_HUMANS = frozenset({
+    "apilaskowski",
+    "Ford544",
+    "k-matuszek",
+    "mbiernacik",
+    "Pawbag123",
+    "rafal-hawrylak",
+})
+
+
+def api(method, path, body=None):
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "Authorization": "Bearer " + os.environ["GITHUB_TOKEN"],
+        "User-Agent": "auto_assign_pr",
+    }
+    data = None
+    if body is not None:
+        headers["Content-Type"] = "application/json"
+        data = json.dumps(body).encode()
+    request = urllib.request.Request(
+        "https://api.github.com" + path, method=method, data=data, headers=headers)
+    with urllib.request.urlopen(request, timeout=60) as response:
+        raw = response.read()
+        return json.loads(raw) if raw else None
+
+
+def write(method, path, body=None):
+    """Like api(), but only logged in dry-run mode."""
+    if DRY_RUN:
+        print("  [dry run] %s %s %s" % (method, path, json.dumps(body) if body else ""))
+        return None
+    return api(method, path, body)
+
+
+def paginate(path):
+    """Fetches all pages of a list endpoint (100 items per page)."""
+    items, page = [], 1
+    sep = "&" if "?" in path else "?"
+    while True:
+        batch = api("GET", "%s%sper_page=100&page=%d" % (path, sep, page))
+        items.extend(batch)
+        if len(batch) < 100:
+            return items
+        page += 1
+
+
+def is_eligible_human(user):
+    """Returns True if `user` is an allowlisted human GitHub User object."""
+    if not isinstance(user, dict):
+        return False
+    login = user.get("login") or ""
+    if not login or user.get("type") != "User":
+        return False
+    return login.lower() in {u.lower() for u in ELIGIBLE_HUMANS}
+
+
+def select_assignee(pr, repo=None):
+    """Selects (login, source) for an unassigned open PR, or (None, None)."""
+    target_repo = repo or REPO
+    creator = pr.get("user")
+    if is_eligible_human(creator):
+        return creator["login"], "creator"
+
+    for reviewer in pr.get("requested_reviewers") or ():
+        if is_eligible_human(reviewer):
+            return reviewer["login"], "requested reviewer"
+
+    reviews = paginate("/repos/%s/pulls/%d/reviews" % (target_repo, pr["number"]))
+    for review in reviews:
+        reviewer = review.get("user")
+        if is_eligible_human(reviewer):
+            return reviewer["login"], "submitted reviewer"
+
+    return None, None
+
+
+def process(pr, repo=None):
+    """Processes a single PR dictionary and assigns it if appropriate."""
+    target_repo = repo or REPO
+    number = pr["number"]
+    title = pr.get("title") or ""
+
+    if pr.get("state") != "open":
+        print("PR #%d (%s): skipped (state=%s)" % (number, title, pr.get("state")))
+        return None
+
+    assignees = pr.get("assignees") or ([pr["assignee"]] if pr.get("assignee") else [])
+    if assignees:
+        names = ", ".join(a.get("login", "?") for a in assignees if isinstance(a, dict))
+        print("PR #%d (%s): skipped (already assigned to %s)" % (number, title, names))
+        return None
+
+    assignee, source = select_assignee(pr, repo=target_repo)
+    if not assignee:
+        print("PR #%d (%s): left unassigned (no eligible human maintainer)" % (number, title))
+        return None
+
+    print("PR #%d (%s): assign %s (%s)" % (number, title, assignee, source))
+    write("POST", "/repos/%s/issues/%d/assignees" % (target_repo, number),
+          {"assignees": [assignee]})
+    return assignee
+
+
+def fetch_prs(pr_number=None, repo=None):
+    """Fetches a single PR by number or paginates all open PRs."""
+    target_repo = repo or REPO
+    if pr_number:
+        return [api("GET", "/repos/%s/pulls/%d" % (target_repo, int(pr_number)))]
+    return paginate("/repos/%s/pulls?state=open" % target_repo)
+
+
+def main():
+    if not os.environ.get("GITHUB_TOKEN"):
+        sys.exit("GITHUB_TOKEN must be set")
+    pr_number = (os.environ.get("PR_NUMBER") or "").strip()
+    prs = fetch_prs(pr_number=pr_number or None)
+    print("%d PR(s) fetched%s" % (len(prs), " (dry run)" if DRY_RUN else ""))
+    failed = False
+    for pr in prs:
+        try:
+            process(pr)
+        except urllib.error.HTTPError as e:  # Keep going with the other PRs.
+            print("WARNING: PR #%d: %s" % (pr["number"], e), file=sys.stderr)
+            failed = True
+    sys.exit(1 if failed else 0)
+
+
+if __name__ == "__main__":
+    main()

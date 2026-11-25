@@ -1,0 +1,49 @@
+name: Auto-assign PR
+
+# Assigns open PRs without an assignee to an eligible human maintainer (either
+# the PR creator or a reviewer), without modifying PR reviewers.
+# See scripts/auto_assign_pr.
+
+on: # zizmor: ignore[dangerous-triggers] -- base branch checkout only; write token needed for fork PRs.
+  pull_request_target:
+    types: [opened, reopened, review_requested]
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: Only show what would be done.
+        type: boolean
+        default: true
+      pr-number:
+        description: Only process this PR (optional, omit to process all open PRs).
+        type: string
+        required: false
+
+permissions: {}
+
+concurrency:
+  group: auto-assign-pr-${{ github.event.pull_request.number || 'all' }}
+  cancel-in-progress: false
+
+jobs:
+  assign:
+    name: Auto-assign PR
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read # Check out this repo.
+      issues: write # Assign PRs via the Issues API.
+      pull-requests: write # Read PR details and update PR metadata.
+    steps:
+      # Checks out the trusted base branch (GITHUB_SHA) on pull_request_target;
+      # never check out or execute untrusted PR code here.
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Auto-assign PR
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run }}
+          PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr-number }}
+        run: ./scripts/auto_assign_pr
