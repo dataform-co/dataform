@@ -493,9 +493,9 @@ SELECT 1 AS id, 'from_operation' AS source`,
     },
   );
 
-  // Table and top-level column descriptions set after run (nested STRUCT ignored safely).
+  // Table and top-level column descriptions set and cleared via ALTER TABLE (nested STRUCT ignored).
   test(
-    "descriptions: sets table and top-level column descriptions while ignoring nested STRUCT fields",
+    "descriptions: sets and clears table and top-level column descriptions while ignoring nested STRUCT fields",
     { timeout: 180000 },
     async () => {
       await withLakehouseProject(
@@ -509,7 +509,7 @@ SELECT 1 AS id, 'from_operation' AS source`,
             projectDir,
             `${tableName}.sqlx`,
             `config {
-  type: "table",
+  type: "incremental",
   description: "Lakehouse E2E test table's description",
   columns: {
     id: "Primary identifier",
@@ -539,6 +539,35 @@ SELECT 1 AS id, STRUCT('ok' AS nested_note) AS details`,
           expect(detailsField?.description).to.equal("Top-level struct column");
           expect(nestedNoteField).to.not.equal(undefined);
           expect(nestedNoteField?.description || "").to.equal("");
+
+          // Incremental run removing table description and clearing `id` column description
+          // exercises `SET OPTIONS(description = NULL)` without recreating the table.
+          writeDefinitionFile(
+            projectDir,
+            `${tableName}.sqlx`,
+            `config {
+  type: "incremental",
+  columns: {
+    id: "",
+    details: "Top-level struct column"
+  },
+  lakehouse: {}
+}
+SELECT 2 AS id, STRUCT('ok2' AS nested_note) AS details`,
+          );
+
+          const clearRes = await runDataform(projectDir);
+          expect(
+            clearRes.exitCode,
+            `stdout:\n${clearRes.stdout}\nstderr:\n${clearRes.stderr}`,
+          ).equals(0);
+
+          const clearedMetadata = await dbadapter.table(target);
+          expect(clearedMetadata?.description || "").to.equal("");
+          const clearedIdField = clearedMetadata?.fields?.find((f) => f.name === "id");
+          const keptDetailsField = clearedMetadata?.fields?.find((f) => f.name === "details");
+          expect(clearedIdField?.description || "").to.equal("");
+          expect(keptDetailsField?.description).to.equal("Top-level struct column");
         },
       );
     },
