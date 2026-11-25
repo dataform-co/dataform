@@ -37,6 +37,9 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     super(session);
     this.session = session;
 
+    this.normalizeLegacyConfigDependencies(config as Record<string, any>);
+    this.normalizeLegacyConfigAliases(config as Record<string, any>);
+
     if (!config.name) {
       // Ensure we extract only the file name.
       // This handles both .yaml and .dp.yaml extensions
@@ -75,17 +78,14 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
    * @hidden
    */
   public config(config: any) {
-    if (config.database) {
-      this.database(config.database);
+    const normalizedConfig = { ...config };
+    this.resolveLegacyAlias(normalizedConfig, "database", "project", this.proto.fileName);
+    this.resolveLegacyAlias(normalizedConfig, "schema", "dataset", this.proto.fileName);
+    if (normalizedConfig.project) {
+      this.database(normalizedConfig.project);
     }
-    if (config.project) {
-      this.database(config.project);
-    }
-    if (config.schema) {
-      this.schema(config.schema);
-    }
-    if (config.dataset) {
-      this.schema(config.dataset);
+    if (normalizedConfig.dataset) {
+      this.schema(normalizedConfig.dataset);
     }
     return this;
   }

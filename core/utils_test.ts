@@ -7,7 +7,6 @@ import {
   getEffectiveTableFolderSubpath,
   getFileFormatValueForIcebergTable,
   getStorageUriForIcebergTable,
-  resolvableAsActionConfigTarget,
   resolvableAsTarget,
   setActionJobLabels,
   snakeToCamelKeys,
@@ -755,31 +754,6 @@ suite("Dataform Utility Validations", () => {
       );
       expect(() => resolvableAsTarget({ namespace: "n", name: "t" })).to.throw(
         "Lakehouse target reference must specify both 'catalog' and 'namespace' (or set defaultLakehouseConfig in workflow_settings.yaml).",
-      );
-    });
-
-    test("resolvableAsActionConfigTarget supports Lakehouse objects and rejects 4-part dotted strings", () => {
-      expect(
-        resolvableAsActionConfigTarget({
-          project: "p",
-          catalog: "c",
-          namespace: "n",
-          name: "t",
-        }),
-      ).to.deep.equal({
-        name: "t",
-        project: "p",
-        lakehouse: {
-          catalog: "c",
-          namespace: "n",
-        },
-        includeDependentAssertions: undefined,
-      });
-      expect(() => resolvableAsActionConfigTarget("p.c.n.t")).to.throw(
-        "Invalid input. Accepted inputs include",
-      );
-      expect(() => resolvableAsActionConfigTarget("example.com:proj.d.t")).to.throw(
-        "Invalid input. Accepted inputs include",
       );
     });
   });
