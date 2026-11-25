@@ -4,7 +4,7 @@ name: Auto-assign PR
 # the PR creator or a reviewer), without modifying PR reviewers.
 # See scripts/auto_assign_pr.
 
-on:
+on: # zizmor: ignore[dangerous-triggers] -- base branch checkout only; write token needed for fork PRs.
   pull_request_target:
     types: [opened, reopened, review_requested]
   workflow_dispatch:
