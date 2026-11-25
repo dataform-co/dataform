@@ -22,10 +22,10 @@ suite("targets", () => {
       includeDependentAssertions: undefined,
     });
     expect(() => resolvableAsActionConfigTarget("p.c.n.t")).to.throw(
-      "Invalid input. Accepted inputs include",
+      "Invalid dependency. Accepted inputs include",
     );
     expect(() => resolvableAsActionConfigTarget("example.com:proj.d.t")).to.throw(
-      "Invalid input. Accepted inputs include",
+      "Invalid dependency. Accepted inputs include",
     );
   });
 });

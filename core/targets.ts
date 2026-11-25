@@ -35,10 +35,9 @@ export function stripProjectDomainPrefix(database: string): string {
   return colonIndex > 0 ? database.slice(colonIndex + 1) : database;
 }
 
-export const invalidRefInputMessage =
-  "Invalid input. Accepted inputs include: a single object containing " +
-  "an (optional) 'database', (optional) 'schema' (or 'catalog' and 'namespace'), and 'name', " +
-  "or 1-4 inputs consisting of an (optional) database, (optional) catalog and namespace (or schema), and 'name'.";
+export const invalidDependencyInputMessage =
+  "Invalid dependency. Accepted inputs include: a string of the form 'name', 'dataset.name' or " +
+  "'project.dataset.name', or a target object.";
 
 export function isResolvableArray(parts: any[]): parts is [string, string?, string?, string?] {
   if (parts.some((part) => typeof part !== "string")) {
@@ -53,7 +52,7 @@ export function resolvableAsActionConfigTarget(
   if (typeof resolvable === "string") {
     const parts = resolvable.split(".").reverse();
     if (!isResolvableArray(parts) || parts.length > 3) {
-      throw new Error(invalidRefInputMessage);
+      throw new Error(invalidDependencyInputMessage);
     }
 
     const [name, schema, database] = parts;

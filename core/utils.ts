@@ -11,7 +11,7 @@ import { View } from "df/core/actions/view";
 import { Contextable, Resolvable } from "df/core/contextables";
 import * as Path from "df/core/path";
 import { Session } from "df/core/session";
-import { invalidRefInputMessage, isResolvableArray } from "df/core/targets";
+import { isResolvableArray } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 
 declare var __webpack_require__: any;
@@ -99,6 +99,11 @@ function getCurrentStack(): NodeJS.CallSite[] {
 export function graphHasErrors(graph: dataform.ICompiledGraph) {
   return graph.graphErrors?.compilationErrors.length > 0;
 }
+
+const invalidRefInputMessage =
+  "Invalid input. Accepted inputs include: a single object containing " +
+  "an (optional) 'database', (optional) 'schema' (or 'catalog' and 'namespace'), and 'name', " +
+  "or 1-4 inputs consisting of an (optional) database, (optional) catalog and namespace (or schema), and 'name'.";
 
 export function toResolvable(ref: Resolvable | string[], rest: string[] = []): Resolvable {
   if (Array.isArray(ref) && rest.length > 0) {
