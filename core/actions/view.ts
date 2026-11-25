@@ -445,7 +445,7 @@ export class View extends ActionBuilder<dataform.Table> {
       dataform.Target.create({ ...this.proto.target, database }),
       this.session.projectConfig,
       this.proto.fileName,
-      { validateTarget: true },
+      { validateTarget: true, validateSchema: false },
     );
     this.updateInlineAssertionsDatabase(database, this.proto.target);
     return this;

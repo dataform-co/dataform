@@ -282,7 +282,7 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
       dataform.Target.create({ ...this.proto.target, database }),
       this.session.projectConfig,
       this.proto.fileName,
-      { validateTarget: true, useDefaultAssertionDataset: true },
+      { validateTarget: true, validateSchema: false, useDefaultAssertionDataset: true },
     );
     return this;
   }
@@ -322,6 +322,12 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
   /** @hidden */
   public setName(name: string) {
     this.proto.target = dataform.Target.create({ ...this.proto.target, name });
+  }
+
+  /** @hidden */
+  public setSchema(schema: string) {
+    this.proto.target = dataform.Target.create({ ...this.proto.target, schema });
+    this.proto.canonicalTarget = dataform.Target.create({ ...this.proto.canonicalTarget, schema });
   }
 
   /** @hidden */

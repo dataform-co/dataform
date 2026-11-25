@@ -81,6 +81,7 @@ export abstract class ActionBuilder<T> {
     fileName?: string,
     options?: {
       validateTarget?: boolean;
+      validateSchema?: boolean;
       useDefaultAssertionDataset?: boolean;
     },
   ): dataform.Target {
@@ -93,7 +94,11 @@ export abstract class ActionBuilder<T> {
       database: targetFromConfig.database || projectConfig.defaultDatabase || undefined,
     });
     if (options?.validateTarget) {
-      this.validateTarget(targetFromConfig, target, fileName);
+      const targetToValidate =
+        options.validateSchema === false
+          ? dataform.Target.create({ ...targetFromConfig, schema: undefined })
+          : targetFromConfig;
+      this.validateTarget(targetToValidate, target, fileName);
     }
     return target;
   }
@@ -151,11 +156,9 @@ export abstract class ActionBuilder<T> {
     // itself falls back to the default project).
     const project = this.inlineAssertionsProject || proto.target.database || undefined;
     this.inlineAssertionsDataset = assertionsConfig.dataset || undefined;
-    const dataset =
-      this.inlineAssertionsDataset ||
-      this.session.projectConfig.assertionSchema ||
-      proto.target.schema ||
-      undefined;
+    const inheritedDataset = !this.inlineAssertionsDataset
+      ? this.session.projectConfig.assertionSchema || proto.target.schema || undefined
+      : undefined;
     if (uniqueKeys) {
       uniqueKeys.forEach(({ uniqueKey }, index) => {
         const uniqueKeyAssertion = this.session
@@ -164,13 +167,16 @@ export abstract class ActionBuilder<T> {
             dataform.ActionConfig.AssertionConfig.create({
               filename: proto.fileName,
               project,
-              dataset,
+              dataset: this.inlineAssertionsDataset,
               jobLabels,
             }),
           )
           .query((ctx) =>
             this.session.compilationSql().indexAssertion(ctx.ref(proto.target), uniqueKey),
           );
+        if (inheritedDataset) {
+          uniqueKeyAssertion.setSchema(inheritedDataset);
+        }
         if (proto.tags) {
           uniqueKeyAssertion.tags(proto.tags);
         }
@@ -197,7 +203,7 @@ export abstract class ActionBuilder<T> {
           dataform.ActionConfig.AssertionConfig.create({
             filename: proto.fileName,
             project,
-            dataset,
+            dataset: this.inlineAssertionsDataset,
             jobLabels,
           }),
         )
@@ -206,6 +212,9 @@ export abstract class ActionBuilder<T> {
             .compilationSql()
             .rowConditionsAssertion(ctx.ref(proto.target), mergedRowConditions),
         );
+      if (inheritedDataset) {
+        this.rowConditionsAssertion.setSchema(inheritedDataset);
+      }
       this.rowConditionsAssertion.setParentAction(dataform.Target.create(proto.target));
       if (proto.disabled) {
         this.rowConditionsAssertion.disabled();

@@ -1597,10 +1597,14 @@ SELECT 1`,
       test(`defaultDataset "${defaultDataset}" containing '.' compiles without errors`, () => {
         const graph = compileWith(
           `defaultProject: my-project\ndefaultDataset: ${defaultDataset}\ndefaultLocation: US\n`,
-          allActionTypes,
+          {
+            ...allActionTypes,
+            "view_with_project.sqlx": `config { type: "view", project: "other-project" }\nSELECT 1 AS id`,
+          },
         );
         expect(graph.graphErrors.compilationErrors).deep.equals([]);
         expect(graph.tables.map((table) => table.target.schema)).deep.equals([
+          defaultDataset,
           defaultDataset,
           defaultDataset,
           defaultDataset,
@@ -1609,14 +1613,38 @@ SELECT 1`,
       });
     });
 
-    test("defaultAssertionDataset containing '.' compiles for assertion actions", () => {
-      const graph = compileWith(
-        `defaultProject: my-project\ndefaultDataset: ds\ndefaultAssertionDataset: dotted.assertions\ndefaultLocation: US\n`,
-        {
-          "assertion.sqlx": `config { type: "assertion" }\nSELECT 1 AS id WHERE FALSE`,
-        },
-      );
-      expect(graph.graphErrors.compilationErrors).deep.equals([]);
+    [".assertions", "dotted.assertions"].forEach((defaultAssertionDataset) => {
+      test(`defaultAssertionDataset "${defaultAssertionDataset}" containing '.' compiles for standalone and inline assertions`, () => {
+        const graph = compileWith(
+          `defaultProject: my-project\ndefaultDataset: ds\ndefaultAssertionDataset: ${defaultAssertionDataset}\ndefaultLocation: US\n`,
+          {
+            "table.sqlx": `config { type: "table", assertions: { uniqueKey: ["id"], nonNull: ["id"] } }\nSELECT 1 AS id`,
+            "view.sqlx": `config { type: "view", assertions: { nonNull: ["id"] } }\nSELECT 1 AS id`,
+            "incremental.sqlx": `config { type: "incremental", assertions: { nonNull: ["id"] } }\nSELECT 1 AS id`,
+            "js_table.js": `publish("js_table", { type: "table", assertions: { nonNull: ["id"] } }).query("SELECT 1 AS id");`,
+            "assertion.sqlx": `config { type: "assertion" }\nSELECT 1 AS id WHERE FALSE`,
+          },
+        );
+        expect(graph.graphErrors.compilationErrors).deep.equals([]);
+        expect(graph.assertions.length).equals(6);
+        graph.assertions.forEach((assertion) => {
+          expect(assertion.target.schema).equals(defaultAssertionDataset);
+        });
+      });
+    });
+
+    test("explicitly configured assertions.dataset containing '.' still fails compilation", () => {
+      const graph = compileWith(defaultSettings, {
+        "t.sqlx": `config { type: "table", assertions: { dataset: "dotted.assertions", nonNull: ["id"] } }\nSELECT 1 AS id`,
+      });
+      expect(
+        graph.graphErrors.compilationErrors.map(({ message, fileName }) => ({
+          message,
+          fileName,
+        })),
+      ).to.include.deep.members([
+        { message: "Action target datasets cannot include '.'", fileName: "definitions/t.sqlx" },
+      ]);
     });
 
     test("actions compile without errors when no dataset is set anywhere", () => {

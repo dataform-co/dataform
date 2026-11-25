@@ -325,7 +325,7 @@ export class Operation extends ActionBuilder<dataform.Operation> {
       dataform.Target.create({ ...this.proto.target, database }),
       this.session.projectConfig,
       this.proto.fileName,
-      { validateTarget: true },
+      { validateTarget: true, validateSchema: false },
     );
     return this;
   }
