@@ -3,6 +3,7 @@ import { expect } from "chai";
 import {
   concatenateQueries,
   setsDatasetId,
+  terminateStatements,
   wrapWithCreateSchemaIfNotExists,
 } from "df/cli/api/utils/query_transforms";
 import { suite, test } from "df/testing";
@@ -224,5 +225,21 @@ suite("setsDatasetId", () => {
     expect(setsDatasetId("SET (x, y) = (@@dataset_id, 1)")).equals(false);
     expect(setsDatasetId("SET @@dataset_project_id = 'proj'")).equals(false);
     expect(setsDatasetId("SET @@dataset_id_other = 'my_ds'")).equals(false);
+  });
+});
+
+suite("terminateStatements", () => {
+  test("terminates every statement including the last one", () => {
+    expect(terminateStatements(["SELECT 1", "SELECT 2"])).equals("SELECT 1;\nSELECT 2;");
+  });
+
+  test("places semicolons before trailing comments and skips empty statements", () => {
+    expect(terminateStatements(["  SELECT 1 -- comment  ", "", "SELECT 2;"])).equals(
+      "SELECT 1; -- comment\nSELECT 2;",
+    );
+  });
+
+  test("returns empty string for empty input", () => {
+    expect(terminateStatements([])).equals("");
   });
 });

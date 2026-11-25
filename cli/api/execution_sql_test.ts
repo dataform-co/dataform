@@ -178,6 +178,160 @@ suite("ExecutionSql with 'onSchemaChange'", () => {
       }
     }
   });
+
+  test("executes dynamic DML inside procedure and does not emit static DML outside procedure for onSchemaChange", () => {
+    for (const strategy of [
+      dataform.OnSchemaChange.FAIL,
+      dataform.OnSchemaChange.EXTEND,
+      dataform.OnSchemaChange.SYNCHRONIZE,
+    ]) {
+      const table = {
+        ...baseTable,
+        onSchemaChange: strategy,
+        uniqueKey: ["id"],
+      };
+      const tasks = executionSql.publishTasks(table, { fullRefresh: false }, tableMetadata);
+      const builtTasks = tasks.build();
+      expect(builtTasks.length).to.equal(1);
+
+      const fullSql = builtTasks[0].statement;
+      const [procedurePart, ...rest] = fullSql.split("\nEND;\n");
+      const afterProcedurePart = rest.join("\nEND;\n");
+      expect(procedurePart).to.include("SET dataform_columns_list =");
+      expect(procedurePart).to.include("SET dataform_columns_merge =");
+      expect(procedurePart).to.include("EXECUTE IMMEDIATE");
+      expect(afterProcedurePart).to.not.include("insert into");
+      expect(afterProcedurePart).to.not.include("merge ");
+      expect(afterProcedurePart).to.not.include("field1");
+    }
+  });
+
+  test("error handler outside the procedure only drops fully qualified tables", () => {
+    // The staging table is scoped to the stored procedure, so it is not resolvable
+    // from the calling script. Referencing it there raises "must be qualified with a
+    // dataset", which masks the original error and leaks the procedure.
+    for (const strategy of [
+      dataform.OnSchemaChange.FAIL,
+      dataform.OnSchemaChange.EXTEND,
+      dataform.OnSchemaChange.SYNCHRONIZE,
+    ]) {
+      const table = {
+        ...baseTable,
+        onSchemaChange: strategy,
+        uniqueKey: ["id"],
+      };
+      const fullSql = executionSql
+        .publishTasks(table, { fullRefresh: false }, tableMetadata)
+        .build()[0].statement;
+
+      const errorHandler = fullSql.split("EXCEPTION WHEN ERROR THEN")[1];
+      const droppedTables = [...errorHandler.matchAll(/DROP TABLE IF EXISTS `([^`]+)`/g)].map(
+        (match) => match[1],
+      );
+      expect(droppedTables).to.have.lengthOf(1);
+      for (const droppedTable of droppedTables) {
+        expect(
+          droppedTable,
+          `error handler for ${dataform.OnSchemaChange[strategy]} drops an unqualified table`,
+        ).to.match(/^[^.]+\.[^.]+\.[^.]+$/);
+      }
+    }
+  });
+
+  test("escapes double quotes and backslashes of updatePartitionFilter and incrementalPredicates in dynamic DML for onSchemaChange", () => {
+    const updatePartitionFilter = String.raw`region = "EU"`;
+    // The triple quotes would terminate the EXECUTE IMMEDIATE string literal if left unescaped.
+    const incrementalPredicate = String.raw`DATAFORM_DEST.field1 != """a\\b"""`;
+    const bigquery = { updatePartitionFilter, incrementalPredicates: [incrementalPredicate] };
+
+    const tables: { [name: string]: dataform.ITable } = {
+      MERGE: {
+        ...baseTable,
+        onSchemaChange: dataform.OnSchemaChange.EXTEND,
+        uniqueKey: ["id"],
+        bigquery,
+      },
+      INSERT_OVERWRITE: {
+        ...baseTable,
+        onSchemaChange: dataform.OnSchemaChange.EXTEND,
+        incrementalStrategy: dataform.IncrementalStrategy.INSERT_OVERWRITE,
+        bigquery: { ...bigquery, partitionBy: "DATE(ts)" },
+      },
+    };
+
+    for (const [name, table] of Object.entries(tables)) {
+      const fullSql = executionSql
+        .publishTasks(table, { fullRefresh: false }, tableMetadata)
+        .build()[0].statement;
+
+      const dynamicDmlBlocks = fullSql.split('EXECUTE IMMEDIATE ("""');
+      expect(dynamicDmlBlocks.length, `${name}: number of dynamic DML blocks`).to.equal(2);
+      // The part of the string literal up to its first closing triple quote (which precedes the
+      // concatenated column list) holds the whole condition built from the user-provided values.
+      const literal = dynamicDmlBlocks[1].split('"""')[0];
+
+      expect(literal, name).to.include(String.raw`and DATAFORM_DEST.region = \"EU\"`);
+      expect(literal, name).to.include(
+        String.raw`and (DATAFORM_DEST.field1 != \"\"\"a\\\\b\"\"\")`,
+      );
+
+      // Evaluating the escape sequences of the literal yields the original values back.
+      const evaluatedLiteral = literal.replace(/\\(.)/g, "$1");
+      expect(evaluatedLiteral, name).to.include(`and DATAFORM_DEST.${updatePartitionFilter}`);
+      expect(evaluatedLiteral, name).to.include(`and (${incrementalPredicate})`);
+    }
+  });
+
+  test("places incrementalPreOps and incrementalPostOps inside procedure with inner BEGIN...END block for onSchemaChange", () => {
+    const table: dataform.ITable = {
+      ...baseTable,
+      onSchemaChange: dataform.OnSchemaChange.EXTEND,
+      incrementalPreOps: ["DECLARE watermark TIMESTAMP;\nSET watermark = CURRENT_TIMESTAMP();"],
+      incrementalPostOps: ["SELECT watermark;"],
+    };
+    const builtTasks = executionSql
+      .publishTasks(table, { fullRefresh: false }, tableMetadata)
+      .build();
+    expect(builtTasks.length).to.equal(1);
+
+    const fullSql = builtTasks[0].statement;
+    expect(fullSql).to.match(/^CREATE OR REPLACE PROCEDURE/);
+    expect(fullSql).to.include(
+      "BEGIN\nDECLARE watermark TIMESTAMP;\nSET watermark = CURRENT_TIMESTAMP();\n\nBEGIN\n\n-- Declare variables for schema comparison and strategy execution.",
+    );
+    expect(fullSql).to.include(
+      "-- Cleanup staging table\nDROP TABLE IF EXISTS `staging_table_temp_test_uuid`;\nEND;\n\nSELECT watermark;\nEND;",
+    );
+  });
+
+  test("wraps core body in inner BEGIN...END block when only incrementalPostOps are set for onSchemaChange", () => {
+    const table: dataform.ITable = {
+      ...baseTable,
+      onSchemaChange: dataform.OnSchemaChange.SYNCHRONIZE,
+      incrementalPostOps: ["SELECT 1;"],
+    };
+    const builtTasks = executionSql
+      .publishTasks(table, { fullRefresh: false }, tableMetadata)
+      .build();
+    expect(builtTasks.length).to.equal(1);
+
+    const fullSql = builtTasks[0].statement;
+    // The internal variables are declared at the start of the inner block...
+    expect(fullSql).to.include(
+      "OPTIONS(strict_mode=false)\nBEGIN\nBEGIN\n\n-- Declare variables for schema comparison and strategy execution.\nDECLARE dataform_columns ARRAY<STRING>;",
+    );
+    // ...which is closed before the post-operations, so they are out of scope there.
+    const [procedureSql] = fullSql.split("SELECT 1;");
+    expect(procedureSql).to.match(/\nEND;\n\n$/);
+    expect((procedureSql.match(/^BEGIN$/gm) || []).length).to.equal(
+      (procedureSql.match(/^END;$/gm) || []).length + 1,
+    );
+    const declaredVariables = [...fullSql.matchAll(/^\s*DECLARE (\w+)/gm)].map((match) => match[1]);
+    expect(declaredVariables.length).to.be.greaterThan(0);
+    for (const declaredVariable of declaredVariables) {
+      expect(declaredVariable).to.match(/^dataform_/);
+    }
+  });
 });
 
 suite("ExecutionSql for property graphs", () => {

@@ -44,6 +44,7 @@ ts_library(
         "//:node_modules/untildify",
         "//:node_modules/yargs",
         "//cli/api",
+        "//common/vm:vm_runner",
         "//core",
         "//protos:ts",
         "//sqlx:format",
@@ -113,6 +114,7 @@ ts_test_suite(
     name = "integration_tests",
     srcs = [
         "index_compile_isolated_environment_test.ts",
+        "index_incremental_test.ts",
         "index_location_test.ts",
         "index_run_e2e_test.ts",
         "tests/jit/index_jit_advanced_test.ts",

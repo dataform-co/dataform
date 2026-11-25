@@ -181,6 +181,46 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
     );
   });
 
+  test("accepts empty legacy bigquery block on table", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
+    writeDefinitionFile(
+      projectDir,
+      "table.sqlx",
+      `config {
+        type: "table",
+        bigquery: {}
+      }
+      SELECT 1`,
+    );
+
+    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+    expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+    expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals(
+      asPlainObject([
+        {
+          target: {
+            database: "defaultProject",
+            schema: "defaultDataset",
+            name: "table",
+          },
+          canonicalTarget: {
+            database: "defaultProject",
+            schema: "defaultDataset",
+            name: "table",
+          },
+          fileName: "definitions/table.sqlx",
+          hermeticity: "NON_HERMETIC",
+          query: "\n      SELECT 1",
+          type: "table",
+          enumType: "TABLE",
+          disabled: false,
+        },
+      ]),
+    );
+  });
+
   suite("jit compilation", () => {
     test("jit compilation is supported", () => {
       const projectDir = tmpDirFixture.createNewTmpDir();

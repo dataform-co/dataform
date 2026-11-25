@@ -80,10 +80,19 @@ function strictJsonToProtoValue(val: unknown, key: string | undefined): google.p
   throw new UnsupportedStructValueError(key, typeof val);
 }
 
+function setOwnProperty<T>(target: Record<string, T>, key: string, value: T): void {
+  Object.defineProperty(target, key, {
+    value,
+    writable: true,
+    enumerable: true,
+    configurable: true,
+  });
+}
+
 function strictPlainObjectToStruct(obj: Record<string, unknown>): google.protobuf.IStruct {
   const fields: { [key: string]: google.protobuf.IValue } = {};
   for (const [key, val] of Object.entries(obj)) {
-    fields[key] = strictJsonToProtoValue(val, key);
+    setOwnProperty(fields, key, strictJsonToProtoValue(val, key));
   }
   return { fields };
 }
@@ -91,7 +100,7 @@ function strictPlainObjectToStruct(obj: Record<string, unknown>): google.protobu
 function cloneRecord(record: object): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const [key, val] of Object.entries(record)) {
-    out[key] = cloneForProtoVerification(val);
+    setOwnProperty(out, key, cloneForProtoVerification(val));
   }
   return out;
 }
@@ -147,7 +156,7 @@ export class Structs {
     }
     const result: { [key: string]: AnyValue } = {};
     for (const [key, value] of Object.entries(struct.fields)) {
-      result[key] = this.fromValue(value);
+      setOwnProperty(result, key, this.fromValue(value));
     }
     return result;
   }
@@ -155,7 +164,7 @@ export class Structs {
   public static fromObject(obj: { [key: string]: AnyValue }): google.protobuf.IStruct {
     const fields: { [key: string]: google.protobuf.IValue } = {};
     for (const [key, val] of Object.entries(obj)) {
-      fields[key] = this.toValue(val);
+      setOwnProperty(fields, key, this.toValue(val));
     }
     return { fields };
   }
