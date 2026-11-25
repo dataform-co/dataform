@@ -345,6 +345,65 @@ ${exampleBuiltInAssertionsAsYaml.inputActionConfigBlock}
     );
   });
 
+  test("accepts empty legacy bigquery block on view", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    fs.writeFileSync(path.join(projectDir, "workflow_settings.yaml"), VALID_WORKFLOW_SETTINGS_YAML);
+    fs.mkdirSync(path.join(projectDir, "definitions"));
+    fs.writeFileSync(
+      path.join(projectDir, "definitions/valid_view.sqlx"),
+      `config {
+        type: "view",
+        bigquery: {}
+      }
+      SELECT 1`,
+    );
+
+    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+    expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+    expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals([
+      {
+        target: {
+          database: "defaultProject",
+          schema: "defaultDataset",
+          name: "valid_view",
+        },
+        canonicalTarget: {
+          database: "defaultProject",
+          schema: "defaultDataset",
+          name: "valid_view",
+        },
+        type: "view",
+        enumType: "VIEW",
+        disabled: false,
+        hermeticity: "NON_HERMETIC",
+        fileName: "definitions/valid_view.sqlx",
+        query: "\n      SELECT 1",
+      },
+    ]);
+  });
+
+  test("rejects unknown empty object block on view", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    fs.writeFileSync(path.join(projectDir, "workflow_settings.yaml"), VALID_WORKFLOW_SETTINGS_YAML);
+    fs.mkdirSync(path.join(projectDir, "definitions"));
+    fs.writeFileSync(
+      path.join(projectDir, "definitions/invalid_view.sqlx"),
+      `config {
+        type: "view",
+        unknownEmptyBlock: {}
+      }
+      SELECT 1`,
+    );
+
+    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+    expect(result.compile.compiledGraph.graphErrors.compilationErrors.length).equals(1);
+    expect(result.compile.compiledGraph.graphErrors.compilationErrors[0].message).contains(
+      'Unexpected property "unknownEmptyBlock", or property value type of "object" is incorrect.',
+    );
+  });
+
   suite("jit compilation", () => {
     test("jit compilation is supported", () => {
       const projectDir = tmpDirFixture.createNewTmpDir();

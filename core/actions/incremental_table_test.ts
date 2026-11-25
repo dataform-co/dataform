@@ -217,6 +217,50 @@ select \${incremental()} as is_incremental`,
     expect(compiledTable.target.database).equals("");
   });
 
+  test("accepts empty legacy bigquery block on incremental table", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
+    writeDefinitionFile(
+      projectDir,
+      "incremental.sqlx",
+      `config {
+        type: "incremental",
+        bigquery: {}
+      }
+      SELECT 1`,
+    );
+
+    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+    expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+    expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals(
+      asPlainObject([
+        {
+          target: {
+            database: "defaultProject",
+            schema: "defaultDataset",
+            name: "incremental",
+          },
+          canonicalTarget: {
+            database: "defaultProject",
+            schema: "defaultDataset",
+            name: "incremental",
+          },
+          fileName: "definitions/incremental.sqlx",
+          hermeticity: "NON_HERMETIC",
+          onSchemaChange: "IGNORE",
+          query: "\n      SELECT 1",
+          incrementalQuery: "\n      SELECT 1",
+          incrementalStrategy: "INCREMENTAL_STRATEGY_UNSPECIFIED",
+          type: "incremental",
+          enumType: "INCREMENTAL",
+          protected: false,
+          disabled: false,
+        },
+      ]),
+    );
+  });
+
   suite("jit compilation", () => {
     test("jit compilation is supported", () => {
       const projectDir = tmpDirFixture.createNewTmpDir();

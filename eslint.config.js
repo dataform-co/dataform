@@ -41,6 +41,7 @@ module.exports = [
       'no-var': 'error',
       'no-debugger': 'error',
       'no-duplicate-imports': 'error',
+      'no-duplicate-case': 'error',
       'no-empty': ['error', { allowEmptyCatch: true }],
       'curly': 'error',
       'eqeqeq': ['error', 'smart'],
@@ -83,14 +84,13 @@ module.exports = [
     },
   },
   {
-    // Tests, testing helpers, examples, CLI console wrapper, VSCode extension, and common promises logger may use console
+    // Tests, testing helpers, examples, CLI console wrapper, and common promises logger may use console
     files: [
       '**/*_test.ts',
       '**/*.test.ts',
       'testing/**/*.ts',
       'examples/**/*.ts',
       'cli/console.ts',
-      'vscode/**/*.ts',
       'common/promises/index.ts',
     ],
     rules: {

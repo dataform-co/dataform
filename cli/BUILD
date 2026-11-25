@@ -26,13 +26,13 @@ ts_library(
         "console.ts",
         "credentials.ts",
         "index.ts",
+        "mermaid.ts",
         "project_config_options.ts",
         "signals.ts",
         "util.ts",
         "yargswrapper.ts",
     ],
     deps = [
-        "//:node_modules/@types/glob",
         "//:node_modules/@types/long",
         "//:node_modules/@types/node",
         "//:node_modules/@types/readline-sync",
@@ -44,7 +44,7 @@ ts_library(
         "//:node_modules/untildify",
         "//:node_modules/yargs",
         "//cli/api",
-        "//cli/vm",
+        "//common/vm:vm_runner",
         "//core",
         "//protos:ts",
         "//sqlx:format",
@@ -76,10 +76,12 @@ ts_test_suite(
         "index_help_test.ts",
         "index_init_test.ts",
         "index_project_test.ts",
+        "mermaid_test.ts",
         "signals_test.ts",
         "tests/bin_test.ts",
         "tests/jit/jit_build_test.ts",
         "tests/jit/jit_run_test.ts",
+        "tests/package_test.ts",
         "util_test.ts",
     ],
     data = [
@@ -112,6 +114,7 @@ ts_test_suite(
     name = "integration_tests",
     srcs = [
         "index_compile_isolated_environment_test.ts",
+        "index_incremental_test.ts",
         "index_location_test.ts",
         "index_run_e2e_test.ts",
         "tests/jit/index_jit_advanced_test.ts",
@@ -135,12 +138,10 @@ ts_test_suite(
         "//:node_modules/@types/chai",
         "//:node_modules/@types/fs-extra",
         "//:node_modules/@types/js-yaml",
-        "//:node_modules/@types/long",
         "//:node_modules/@types/node",
         "//:node_modules/chai",
         "//:node_modules/fs-extra",
         "//:node_modules/js-yaml",
-        "//:node_modules/ts-mockito",
         "//cli",
         "//cli/api",
         "//core",
@@ -155,12 +156,23 @@ ts_library(
     name = "readme_generator",
     srcs = [
         "readme_generator.ts",
-        "update_readme.ts",
     ],
     deps = [
         ":cli",
         "//:node_modules/@types/node",
         "//:node_modules/@types/yargs",
+        "//common/markdown_docs",
+    ],
+)
+
+ts_library(
+    name = "update_readme_bin",
+    srcs = ["update_readme.ts"],
+    visibility = ["//visibility:private"],
+    deps = [
+        ":cli",
+        ":readme_generator",
+        "//:node_modules/@types/node",
     ],
 )
 
@@ -168,7 +180,7 @@ ts_library(
 js_binary(
     name = "update_readme",
     data = [
-        ":readme_generator",
+        ":update_readme_bin",
         "//:node_modules/source-map-support",
         "//testing:resolver-patch",
     ],

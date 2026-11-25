@@ -13,6 +13,7 @@ import {
 } from "df/cli/common_options";
 import { printError, printFormatFilesResult, printSuccess } from "df/cli/console";
 import { ICommand, INamedOption } from "df/cli/yargswrapper";
+import { getRealPath, isRealPathContained } from "df/common/vm/path_utils";
 import { formatFile } from "df/sqlx/format";
 
 const normalizeLineEndings = (text: string) => text.replace(/\r\n/g, "\n");
@@ -79,6 +80,7 @@ export const formatCommand: ICommand<IFormatArgs> = {
       .flat();
 
     const isCheckMode = argv.check;
+    const realProjectRoot = getRealPath(argv.projectDir);
     const results: Array<{
       filename: string;
       err?: Error;
@@ -87,6 +89,10 @@ export const formatCommand: ICommand<IFormatArgs> = {
       filenames.map(async (filename: string) => {
         try {
           const filePath = path.resolve(argv.projectDir, filename);
+          // Symbolic links and ".." patterns must not reach files outside the project.
+          if (!isRealPathContained(fs.realpathSync(filePath), realProjectRoot)) {
+            throw new Error(`Refusing to format file outside project directory: "${filename}"`);
+          }
           if (isCheckMode) {
             // In check mode, we don't modify files, just check if they need formatting
             const fileContent = fs.readFileSync(filePath).toString();

@@ -11,8 +11,6 @@ ts_library(
     srcs = glob(["*.ts"]),
     deps = [
         "//cli",
-        "//cli/api",
-        "//protos:ts",
     ],
 )
 
@@ -32,7 +30,6 @@ externals = [
     "@google-cloud/bigquery",
     "@google-cloud/lineage",
     "chokidar",
-    "deepmerge",
     "fs-extra",
     "glob",
     "google-auth-library",
@@ -40,6 +37,7 @@ externals = [
     "ignore",
     "js-beautify",
     "js-yaml",
+    "long",
     "moo",
     "object-sizeof",
     "parse-duration",
@@ -47,7 +45,6 @@ externals = [
     "protobufjs",
     "readline-sync",
     "semver",
-    "tarjan-graph",
     "tmp",
     "typeid-js",
     "untildify",

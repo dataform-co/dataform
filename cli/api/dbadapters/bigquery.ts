@@ -13,7 +13,6 @@ import { collectEvaluationQueries, QueryOrAction } from "df/cli/api/dbadapters/e
 import {
   IBigQueryError,
   IDbAdapter,
-  IDbClient,
   IExecutionResult,
   IExecutionResultRaw,
   OnCancel,
@@ -645,14 +644,11 @@ function convertFieldType(type: string) {
     case "INT64":
       return dataform.Field.Primitive.INTEGER;
     case "NUMERIC":
-    case "BIGNUMERIC":
       return dataform.Field.Primitive.NUMERIC;
     case "BOOL":
     case "BOOLEAN":
       return dataform.Field.Primitive.BOOLEAN;
     case "STRING":
-    case "JSON":
-    case "INTERVAL":
       return dataform.Field.Primitive.STRING;
     case "DATE":
       return dataform.Field.Primitive.DATE;
@@ -677,6 +673,11 @@ function convertFieldType(type: string) {
   }
 }
 
+/** Whether two column paths have the same segments in the same order. */
+function isSameColumnPath(left: string[], right: string[]): boolean {
+  return left.length === right.length && left.every((segment, index) => segment === right[index]);
+}
+
 function addDescriptionToMetadata(
   columnDescriptions: dataform.IColumnDescriptor[],
   metadataArray: TableField[],
@@ -685,7 +686,7 @@ function addDescriptionToMetadata(
     return metadataArray;
   }
   const findDescription = (path: string[]) =>
-    columnDescriptions.find((column) => column.path.join("") === path.join(""));
+    columnDescriptions.find((column) => isSameColumnPath(column.path ?? [], path));
 
   const mapDescriptionToMetadata = (metadata: TableField, path: string[]) => {
     const description = findDescription(path);

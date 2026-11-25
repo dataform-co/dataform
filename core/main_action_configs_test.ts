@@ -351,4 +351,137 @@ actions:
       });
     });
   });
+
+  suite("actions.yaml enum and declaration column handling", () => {
+    test("compiles table and incrementalTable with iceberg fileFormat PARQUET in actions.yaml", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
+      writeDefinitionFile(
+        projectDir,
+        "actions.yaml",
+        `
+actions:
+- table:
+    filename: tbl.sql
+    iceberg:
+      bucketName: my-bucket
+      fileFormat: PARQUET
+- incrementalTable:
+    filename: inc.sql
+    iceberg:
+      bucketName: my-bucket
+      fileFormat: PARQUET`,
+      );
+      writeDefinitionFile(projectDir, "tbl.sql", "SELECT 1");
+      writeDefinitionFile(projectDir, "inc.sql", "SELECT 1");
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals(
+        asPlainObject([
+          {
+            target: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "tbl",
+            },
+            canonicalTarget: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "tbl",
+            },
+            type: "table",
+            enumType: "TABLE",
+            disabled: false,
+            fileName: "definitions/tbl.sql",
+            query: "SELECT 1",
+            hermeticity: "NON_HERMETIC",
+            bigquery: {
+              connection: "DEFAULT",
+              fileFormat: "PARQUET",
+              tableFormat: "ICEBERG",
+              storageUri: "gs://my-bucket/_dataform/defaultDataset/tbl",
+            },
+          },
+          {
+            target: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "inc",
+            },
+            canonicalTarget: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "inc",
+            },
+            type: "incremental",
+            enumType: "INCREMENTAL",
+            disabled: false,
+            protected: false,
+            fileName: "definitions/inc.sql",
+            query: "SELECT 1",
+            incrementalQuery: "SELECT 1",
+            incrementalStrategy: "INCREMENTAL_STRATEGY_UNSPECIFIED",
+            onSchemaChange: "IGNORE",
+            hermeticity: "NON_HERMETIC",
+            bigquery: {
+              connection: "DEFAULT",
+              fileFormat: "PARQUET",
+              tableFormat: "ICEBERG",
+              storageUri: "gs://my-bucket/_dataform/defaultDataset/inc",
+            },
+          },
+        ]),
+      );
+    });
+
+    test("preserves declaration column paths in actions.yaml", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
+      writeDefinitionFile(
+        projectDir,
+        "actions.yaml",
+        `
+actions:
+- declaration:
+    name: raw_users
+    dataset: raw
+    columns:
+      - path:
+          - user_id
+        description: Primary user key
+      - path:
+          - profile
+          - email
+        description: Nested email`,
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.declarations)).deep.equals(
+        asPlainObject([
+          {
+            target: {
+              database: "defaultProject",
+              schema: "raw",
+              name: "raw_users",
+            },
+            canonicalTarget: {
+              database: "defaultProject",
+              schema: "raw",
+              name: "raw_users",
+            },
+            actionDescriptor: {
+              columns: [
+                { path: ["user_id"], description: "Primary user key" },
+                { path: ["profile", "email"], description: "Nested email" },
+              ],
+            },
+          },
+        ]),
+      );
+    });
+  });
 });
