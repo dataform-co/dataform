@@ -3,10 +3,17 @@
 # attachments (provenance, SBOM), from the staging Artifact Registry repository
 # into the Exit Gate repository.
 #
-# Usage: scripts/copy_to_exit_gate <version>
+# Usage: scripts/copy_to_exit_gate [version]
 set -euo pipefail
 
-VERSION="${1:?version is required}"
+VERSION="${1:-}"
+if [[ -z "${VERSION}" ]]; then
+  VERSION=$(grep 'DF_VERSION' version.bzl | awk '{ print $3 }' | tr -d '"')
+fi
+if [[ -z "${VERSION}" ]]; then
+  echo "version is required" >&2
+  exit 1
+fi
 PACKAGES=("@dataform/cli" "@dataform/core")
 
 STAGING_PROJECT="dataform-open-source"

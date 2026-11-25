@@ -48,7 +48,7 @@ steps:
       [ -n "${parent_branch}" ] || { echo "Publish build has no branch." >&2; exit 1; }
       # Copy the staged packages, with their provenance and SBOM attachments,
       # into the Exit Gate repository before releasing them.
-      ./scripts/copy_to_exit_gate "$(grep 'DF_VERSION' version.bzl | awk '{ print $3 }' | tr -d '"')"
+      ./scripts/copy_to_exit_gate
       ./scripts/write_exit_gate_manifest "${parent_branch}"
       gcloud storage cp publish_all.json gs://oss-exit-gate-prod-projects-bucket/dataform/npm/manifests/publish_all.json
   - name: "gcr.io/$PROJECT_ID/github"
