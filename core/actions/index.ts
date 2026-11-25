@@ -317,9 +317,15 @@ export abstract class ActionBuilder<T> {
       const dependencies = Array.isArray(config.dependencies)
         ? config.dependencies
         : [config.dependencies];
-      config.dependencyTargets = dependencies.map((dependency: string | object) =>
-        resolvableAsActionConfigTarget(dependency),
-      );
+      const dependencyTargets: dataform.ActionConfig.ITarget[] = [];
+      dependencies.forEach((dependency: string | object) => {
+        try {
+          dependencyTargets.push(resolvableAsActionConfigTarget(dependency));
+        } catch (e) {
+          this.session.compileError(e, resolvedFileName);
+        }
+      });
+      config.dependencyTargets = dependencyTargets;
     }
     delete config.dependencies;
   }

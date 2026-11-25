@@ -1415,6 +1415,29 @@ SELECT 1`,
       });
     }
 
+    test("reports an invalid legacy dependency as a compile error without aborting the file", () => {
+      const graph = compileProject({
+        "actions.js": `
+publish("first", { type: "table", dependencies: ["a.b.c.d"] }).query("SELECT 1");
+publish("second", { type: "table" }).query("SELECT 1");`,
+      });
+
+      expect(
+        graph.graphErrors.compilationErrors.map((e) => ({
+          message: e.message,
+          fileName: e.fileName,
+        })),
+      ).deep.equals([
+        {
+          message:
+            "Invalid dependency. Accepted inputs include: a string of the form 'name', " +
+            "'dataset.name' or 'project.dataset.name', or a target object.",
+          fileName: "definitions/actions.js",
+        },
+      ]);
+      expect(graph.tables.map((t) => t.target.name).sort()).deep.equals(["first", "second"]);
+    });
+
     test("allows legacy fileName alone without conflicting with auto-populated filename", () => {
       const graph = compileProject({
         "sqlx_table.sqlx": `
