@@ -2,8 +2,8 @@
 """Auto-assigns open pull requests to an eligible human maintainer.
 
 For each open PR that does not already have an assignee, this script selects at
-most one eligible human maintainer (write or admin repository permission, not a
-bot or shared/automation account) in the following order:
+most one eligible human maintainer from `ELIGIBLE_HUMANS` in the following
+order:
 
   1. The PR creator, if eligible.
   2. Otherwise, the first eligible human in `requested_reviewers` (team review
@@ -24,26 +24,20 @@ import json
 import os
 import sys
 import urllib.error
-import urllib.parse
 import urllib.request
 
 REPO = os.environ.get("GITHUB_REPO") or os.environ.get("GITHUB_REPOSITORY") or \
     "dataform-co/dataform"
 DRY_RUN = os.environ.get("DRY_RUN", "").lower() in ("1", "true")
 
-ELIGIBLE_PERMISSIONS = frozenset({"write", "admin"})
-
-# Shared, automation, or service User accounts that do not represent an
-# individual human maintainer.
-NON_HUMAN_ACCOUNTS = frozenset({
-    "copybara-service",
-    "dataform-team",
-    "google-admin",
-    "google-admin-automation-1",
-    "google-admin-automation-2",
-    "google-admin-backup",
-    "google-ospo-team",
-    "googlebot",
+# Repository maintainers eligible for automatic PR assignment.
+ELIGIBLE_HUMANS = frozenset({
+    "apilaskowski",
+    "Ford544",
+    "k-matuszek",
+    "mbiernacik",
+    "Pawbag123",
+    "rafal-hawrylak",
 })
 
 
@@ -84,66 +78,37 @@ def paginate(path):
         page += 1
 
 
-def is_human_account(user):
-    """Returns True if `user` is an individual human GitHub User object."""
+def is_eligible_human(user):
+    """Returns True if `user` is an allowlisted human GitHub User object."""
     if not isinstance(user, dict):
         return False
     login = user.get("login") or ""
     if not login or user.get("type") != "User":
         return False
-    lower = login.lower()
-    if lower.endswith("[bot]") or lower in NON_HUMAN_ACCOUNTS:
-        return False
-    return True
+    return login.lower() in {u.lower() for u in ELIGIBLE_HUMANS}
 
 
-def get_permission(login, permission_cache, repo=None):
-    """Returns repository permission for `login` (cached; 404 treated as 'none')."""
-    target_repo = repo or REPO
-    key = login.lower()
-    if key in permission_cache:
-        return permission_cache[key]
-    encoded_login = urllib.parse.quote(login, safe="")
-    try:
-        data = api("GET", "/repos/%s/collaborators/%s/permission" % (target_repo, encoded_login))
-        permission = (data or {}).get("permission") or "none"
-    except urllib.error.HTTPError as e:
-        if e.code == 404:
-            permission = "none"
-        else:
-            raise
-    permission_cache[key] = permission
-    return permission
-
-
-def is_eligible_member(user, permission_cache, repo=None):
-    """Returns True if `user` is an eligible human team member with write/admin access."""
-    if not is_human_account(user):
-        return False
-    return get_permission(user["login"], permission_cache, repo=repo) in ELIGIBLE_PERMISSIONS
-
-
-def select_assignee(pr, permission_cache, repo=None):
+def select_assignee(pr, repo=None):
     """Selects (login, source) for an unassigned open PR, or (None, None)."""
     target_repo = repo or REPO
     creator = pr.get("user")
-    if is_eligible_member(creator, permission_cache, repo=target_repo):
+    if is_eligible_human(creator):
         return creator["login"], "creator"
 
     for reviewer in pr.get("requested_reviewers") or ():
-        if is_eligible_member(reviewer, permission_cache, repo=target_repo):
+        if is_eligible_human(reviewer):
             return reviewer["login"], "requested reviewer"
 
     reviews = paginate("/repos/%s/pulls/%d/reviews" % (target_repo, pr["number"]))
     for review in reviews:
         reviewer = review.get("user")
-        if is_eligible_member(reviewer, permission_cache, repo=target_repo):
+        if is_eligible_human(reviewer):
             return reviewer["login"], "submitted reviewer"
 
     return None, None
 
 
-def process(pr, permission_cache, repo=None):
+def process(pr, repo=None):
     """Processes a single PR dictionary and assigns it if appropriate."""
     target_repo = repo or REPO
     number = pr["number"]
@@ -159,7 +124,7 @@ def process(pr, permission_cache, repo=None):
         print("PR #%d (%s): skipped (already assigned to %s)" % (number, title, names))
         return None
 
-    assignee, source = select_assignee(pr, permission_cache, repo=target_repo)
+    assignee, source = select_assignee(pr, repo=target_repo)
     if not assignee:
         print("PR #%d (%s): left unassigned (no eligible human maintainer)" % (number, title))
         return None
@@ -184,11 +149,10 @@ def main():
     pr_number = (os.environ.get("PR_NUMBER") or "").strip()
     prs = fetch_prs(pr_number=pr_number or None)
     print("%d PR(s) fetched%s" % (len(prs), " (dry run)" if DRY_RUN else ""))
-    permission_cache = {}
     failed = False
     for pr in prs:
         try:
-            process(pr, permission_cache)
+            process(pr)
         except urllib.error.HTTPError as e:  # Keep going with the other PRs.
             print("WARNING: PR #%d: %s" % (pr["number"], e), file=sys.stderr)
             failed = True
