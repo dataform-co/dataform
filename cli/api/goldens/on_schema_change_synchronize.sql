@@ -65,7 +65,7 @@ IF ARRAY_LENGTH(dataform_columns_removed) > 0 THEN
   EXECUTE IMMEDIATE (
     "ALTER TABLE `project-id.dataset-id.incremental_on_schema_change` " ||
     (
-      SELECT STRING_AGG(FORMAT("DROP COLUMN IF EXISTS %s", col), ", ")
+      SELECT STRING_AGG(FORMAT("DROP COLUMN IF EXISTS `%s`", col), ", ")
       FROM UNNEST(dataform_columns_removed) AS col
     )
   );
@@ -75,7 +75,7 @@ IF ARRAY_LENGTH(dataform_columns_added) > 0 THEN
   EXECUTE IMMEDIATE (
     "ALTER TABLE `project-id.dataset-id.incremental_on_schema_change` " ||
     (
-      SELECT STRING_AGG(FORMAT("ADD COLUMN IF NOT EXISTS %s %s", column_info.column_name, column_info.data_type), ", ")
+      SELECT STRING_AGG(FORMAT("ADD COLUMN IF NOT EXISTS `%s` %s", column_info.column_name, column_info.data_type), ", ")
       FROM UNNEST(dataform_columns_added) AS column_info
     )
   );

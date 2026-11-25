@@ -251,6 +251,76 @@ WHERE id != 1 OR field2 IS NULL OR field2 != 'synced'
     );
 
     test(
+      "adds, merges and drops reserved-word and flexible column names and guards backticked uniqueKey",
+      { timeout: 120000 },
+      async () => {
+        const tableTarget = {
+          database: INTEGRATION_TEST_PROJECT,
+          schema: uniqueDataset,
+          name: "quoted_columns_incremental",
+        };
+        const writeAndRun = async (onSchemaChange: string, query: string) => {
+          writeDefinitionFile(
+            projectDir,
+            "quoted_columns_incremental.sqlx",
+            `
+config {
+  type: "incremental",
+  uniqueKey: ["\`my-id\`"],
+  onSchemaChange: "${onSchemaChange}"
+}
+${query}
+`,
+          );
+          return await runCli("run", [projectDir, "--credentials", CREDENTIALS_PATH]);
+        };
+        const getColumnNames = async () =>
+          (await dbadapter.table(tableTarget)).fields.map((f) => f.name);
+        const getRows = async () =>
+          (
+            await dbadapter.execute(
+              `SELECT * FROM \`${INTEGRATION_TEST_PROJECT}.${uniqueDataset}.quoted_columns_incremental\``,
+              { bigquery: { location: INTEGRATION_TEST_LOCATION } },
+            )
+          ).rows;
+
+        const initialRun = await writeAndRun("EXTEND", "SELECT 1 AS \`my-id\`, 'v1' AS val");
+        expect(
+          initialRun.exitCode,
+          `stdout:\n${initialRun.stdout}\nstderr:\n${initialRun.stderr}`,
+        ).equals(0);
+        expect(await getColumnNames()).deep.equals(["my-id", "val"]);
+
+        const extendRun = await writeAndRun(
+          "EXTEND",
+          "SELECT 1 AS \`my-id\`, 'v2' AS val, 'ord' AS \`order\`, 'flex' AS \`my-col\`",
+        );
+        expect(
+          extendRun.exitCode,
+          `stdout:\n${extendRun.stdout}\nstderr:\n${extendRun.stderr}`,
+        ).equals(0);
+        expect(await getColumnNames()).deep.equals(["my-id", "val", "order", "my-col"]);
+        expect(await getRows()).deep.equals([
+          { "my-id": 1, val: "v2", order: "ord", "my-col": "flex" },
+        ]);
+
+        const syncRun = await writeAndRun("SYNCHRONIZE", "SELECT 1 AS \`my-id\`, 'v3' AS val");
+        expect(syncRun.exitCode, `stdout:\n${syncRun.stdout}\nstderr:\n${syncRun.stderr}`).equals(
+          0,
+        );
+        expect(await getColumnNames()).deep.equals(["my-id", "val"]);
+        expect(await getRows()).deep.equals([{ "my-id": 1, val: "v3" }]);
+
+        const dropKeyRun = await writeAndRun("SYNCHRONIZE", "SELECT 'v4' AS val");
+        expect(dropKeyRun.exitCode).equals(1);
+        expect(dropKeyRun.stderr).to.include(
+          'Cannot drop columns ["my-id"] as they are part of the unique key',
+        );
+        expect(await getColumnNames()).deep.equals(["my-id", "val"]);
+      },
+    );
+
+    test(
       "executes FAIL strategy in BigQuery and raises an error on schema mismatch",
       { timeout: 120000 },
       async () => {

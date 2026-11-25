@@ -332,6 +332,30 @@ suite("ExecutionSql with 'onSchemaChange'", () => {
       expect(declaredVariable).to.match(/^dataform_/);
     }
   });
+
+  test("strips outer backticks from single-identifier uniqueKey entries in SYNCHRONIZE drop guard while keeping MERGE ON keys intact", () => {
+    const table: dataform.ITable = {
+      ...baseTable,
+      onSchemaChange: dataform.OnSchemaChange.SYNCHRONIZE,
+      uniqueKey: ["`my-id`", " `first name` ", "`x`", "`my-rec`.`sub-id`", "`", "``", "plain_id"],
+    };
+    const fullSql = executionSql
+      .publishTasks(table, { fullRefresh: false }, tableMetadata)
+      .build()[0].statement;
+
+    expect(fullSql).to.include(
+      'WHERE col IN UNNEST(["my-id","first name","x","`my-rec`.`sub-id`","`","``","plain_id"])',
+    );
+    expect(fullSql).to.include(
+      "on DATAFORM_DEST.`my-id` = DATAFORM_SOURCE.`my-id` " +
+        "and DATAFORM_DEST. `first name`  = DATAFORM_SOURCE. `first name`  " +
+        "and DATAFORM_DEST.`x` = DATAFORM_SOURCE.`x` " +
+        "and DATAFORM_DEST.`my-rec`.`sub-id` = DATAFORM_SOURCE.`my-rec`.`sub-id` " +
+        "and DATAFORM_DEST.` = DATAFORM_SOURCE.` " +
+        "and DATAFORM_DEST.`` = DATAFORM_SOURCE.`` " +
+        "and DATAFORM_DEST.plain_id = DATAFORM_SOURCE.plain_id",
+    );
+  });
 });
 
 suite("ExecutionSql for property graphs", () => {
