@@ -30,6 +30,7 @@ const SCRATCH_DATASET_PREFIX = {
   LOCATION: "df_e2e_lh_loc",
   DS_MISSING: "df_e2e_lh_ds_missing",
   DS_EXISTING: "df_e2e_lh_ds_existing",
+  DS_IGNORE: "df_e2e_lh_ds_ignore",
   MISSING_NS: "df_e2e_lh_missing_ns",
 } as const;
 
@@ -723,10 +724,10 @@ SELECT 1 AS id`,
     },
   );
 
-  // `defaultDataset` missing vs already existing (no CREATE SCHEMA emitted).
+  // `defaultDataset` missing vs existing with `onSchemaChange`, and skipped for default `IGNORE`.
   test(
-    "defaultDataset: creates missing scratch dataset once and skips CREATE SCHEMA when it exists",
-    { timeout: 240000 },
+    "defaultDataset: creates missing scratch dataset once for onSchemaChange, skips CREATE SCHEMA when it exists, and skips creation for IGNORE",
+    { timeout: 300000 },
     async () => {
       // Missing `defaultDataset` -> Runner wraps first run with `create schema if not exists`
       // in the Lakehouse location, and subsequent incremental runs emit no `CREATE SCHEMA`.
@@ -817,6 +818,56 @@ SELECT 2 AS id, 'bob' AS name, 'active' AS status`,
 
           const metadata = await dbadapter.table(target);
           expect(metadata?.fields?.map((f) => f.name)).to.eql(["id", "name", "status"]);
+        },
+      );
+
+      // Default `onSchemaChange` (`IGNORE`) with missing `defaultDataset` -> Runner never creates
+      // `defaultDataset` across initial and incremental runs.
+      await withLakehouseProject(
+        SCRATCH_DATASET_PREFIX.DS_IGNORE,
+        async ({ projectDir, scratchDataset, registerTableForCleanup }) => {
+          const tableName = makeUniqueTableName("ds_ignore");
+          registerTableForCleanup(tableName);
+
+          writeDefinitionFile(
+            projectDir,
+            `${tableName}.sqlx`,
+            `config { type: "incremental", lakehouse: {} }
+SELECT 1 AS id, 'alice' AS name`,
+          );
+          const run1 = await runDataform(projectDir);
+          expect(run1.exitCode, `stdout:\n${run1.stdout}\nstderr:\n${run1.stderr}`).equals(0);
+          const parsed1 = parseRunResultJson(run1);
+          expectUnwrappedTask(parsed1.actions?.[0]?.tasks?.[0]);
+          const run1Sql = await fetchExecutedJobQuery(
+            parsed1.actions?.[0]?.tasks?.[0]?.metadata?.bigquery?.jobId,
+          );
+          expect(run1Sql).to.not.match(/create\s+schema/i);
+
+          writeDefinitionFile(
+            projectDir,
+            `${tableName}.sqlx`,
+            `config { type: "incremental", lakehouse: {} }
+SELECT 2 AS id, 'bob' AS name`,
+          );
+          const run2 = await runDataform(projectDir);
+          expect(run2.exitCode, `stdout:\n${run2.stdout}\nstderr:\n${run2.stderr}`).equals(0);
+          const parsed2 = parseRunResultJson(run2);
+          expectUnwrappedTask(parsed2.actions?.[0]?.tasks?.[0]);
+          const run2Sql = await fetchExecutedJobQuery(
+            parsed2.actions?.[0]?.tasks?.[0]?.metadata?.bigquery?.jobId,
+          );
+          expect(run2Sql).to.not.match(/create\s+schema/i);
+
+          const [datasetExists] = await bigqueryClient.dataset(scratchDataset).exists();
+          expect(
+            datasetExists,
+            `scratch dataset ${scratchDataset} should not have been created for IGNORE mode`,
+          ).equals(false);
+          expect(await selectAllLakehouseRows(tableName)).to.eql([
+            { id: 1, name: "alice" },
+            { id: 2, name: "bob" },
+          ]);
         },
       );
     },
