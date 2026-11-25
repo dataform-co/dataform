@@ -82,6 +82,7 @@ ts_test_suite(
         "tests/jit/jit_build_test.ts",
         "tests/jit/jit_run_test.ts",
         "tests/package_test.ts",
+        "tests/run_command_test.ts",
         "util_test.ts",
     ],
     data = [
