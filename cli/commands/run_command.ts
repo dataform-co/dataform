@@ -12,7 +12,9 @@ import {
   buildOnlyOption,
   dryRunOption,
   executionTimeoutOption,
+  fullRefreshOption,
   IRunArgs,
+  overrideProtectedOption,
   runOptions,
   runTestsOption,
 } from "df/cli/commands/run_options";
@@ -35,7 +37,7 @@ import {
   warnAboutSetDatasetIdWithoutLocation,
 } from "df/cli/util";
 import { ICommand } from "df/cli/yargswrapper";
-import { targetAsReadableString } from "df/core/targets";
+import { targetAsReadableString, targetStringifier } from "df/core/targets";
 import { dataform } from "df/protos/ts";
 
 // Maximum time to wait for outstanding lineage emissions to complete before
@@ -43,6 +45,52 @@ import { dataform } from "df/protos/ts";
 // within this window, in-flight requests are abandoned and the run status is
 // unaffected.
 const LINEAGE_DRAIN_TIMEOUT_MS = 15_000;
+
+export function warnAboutOverrideProtectedFullRefresh(
+  executionGraph: dataform.IExecutionGraph,
+  compiledTables: dataform.ITable[] = [],
+) {
+  const existingTableTargets = new Set(
+    (executionGraph.warehouseState?.tables ?? [])
+      .filter((table) => table.target && table.type !== dataform.TableMetadata.Type.VIEW)
+      .map((table) => targetStringifier.stringify(table.target!)),
+  );
+
+  const incrementalActions = (executionGraph.actions ?? []).filter(
+    (action) =>
+      action.type === "table" &&
+      action.tableType === "incremental" &&
+      ((action.tasks?.length ?? 0) > 0 || !!action.jitCode) &&
+      !!action.target &&
+      existingTableTargets.has(targetStringifier.stringify(action.target)),
+  );
+  if (incrementalActions.length === 0) {
+    return;
+  }
+
+  const protectedTargets = new Set(
+    compiledTables
+      .filter((table) => table.protected && table.target)
+      .map((table) => targetStringifier.stringify(table.target!)),
+  );
+
+  const affectedTables = incrementalActions
+    .filter(
+      (action) => action.target && protectedTargets.has(targetStringifier.stringify(action.target)),
+    )
+    .map((action) => {
+      const name = targetAsReadableString(action.target!);
+      return `  ${name}`;
+    });
+  if (affectedTables.length === 0) {
+    return;
+  }
+
+  printWarning(
+    `Warning: --${fullRefreshOption.name} and --${overrideProtectedOption.name} are both set. ` +
+      `The following protected incremental tables will be dropped and recreated: \n${affectedTables.join("\n")}`,
+  );
+}
 
 function createLineageEmitter(
   argv: yargs.Arguments<IRunArgs>,
@@ -121,6 +169,7 @@ export const runCommand: ICommand<IRunArgs> = {
       compiledGraph,
       {
         fullRefresh: argv.fullRefresh,
+        overrideProtected: argv.overrideProtected,
         actions: argv.actions,
         includeDependencies: argv.includeDeps,
         includeDependents: argv.includeDependents,
@@ -140,6 +189,10 @@ export const runCommand: ICommand<IRunArgs> = {
     if (jobLabelLimitError) {
       printError(jobLabelLimitError);
       return 1;
+    }
+
+    if (argv.fullRefresh && argv.overrideProtected) {
+      warnAboutOverrideProtectedFullRefresh(executionGraph, compiledGraph.tables);
     }
 
     if (argv.buildOnly) {
