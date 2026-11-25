@@ -33,7 +33,7 @@ for pkg in "${PACKAGES[@]}"; do
 
   until gcloud artifacts attachments list \
       --project="${STAGING_PROJECT}" --location="${LOCATION}" --repository="${STAGING_REPO}" \
-      --target="${version_path}" --format='value(type)' | grep -qi 'spdx\|sbom'; do
+      --target="${version_path}" --format='value(type)' | grep -qi 'reference'; do
     if (( SECONDS >= deadline )); then
       echo "WARNING: no SBOM attachment on ${pkg}@${VERSION} after ${SBOM_WAIT_SECONDS}s; copying without it." >&2
       break
