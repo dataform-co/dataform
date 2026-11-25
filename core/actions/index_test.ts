@@ -1438,6 +1438,91 @@ publish("second", { type: "table" }).query("SELECT 1");`,
       expect(graph.tables.map((t) => t.target.name).sort()).deep.equals(["first", "second"]);
     });
 
+    const aliasConflictErrors = (fileName: string) =>
+      [
+        ["database", "project"],
+        ["schema", "dataset"],
+      ].map(([legacyKey, modernKey]) => ({
+        message:
+          `'${legacyKey}' is a legacy alias for '${modernKey}'; cannot specify both at the ` +
+          `same time. It's recommended to use '${modernKey}'.`,
+        fileName,
+      }));
+    const compilationErrors = (graph: dataform.ICompiledGraph) =>
+      graph.graphErrors.compilationErrors.map((e) => ({
+        message: e.message,
+        fileName: e.fileName,
+      }));
+
+    for (const { description, legacyValue } of [
+      { description: "both names", legacyValue: `"legacy"` },
+      { description: "an empty legacy value alongside the modern name", legacyValue: `""` },
+    ]) {
+      test(`reports compile errors for ${description} in JS assert() and declare()`, () => {
+        const graph = compileProject({
+          "assert.js": `
+assert("a", {
+  dataset: "ds", schema: ${legacyValue}, project: "proj", database: ${legacyValue},
+}).query("SELECT 1");`,
+          "declare.js": `
+declare({
+  name: "d", dataset: "ds", schema: ${legacyValue}, project: "proj", database: ${legacyValue},
+});`,
+        });
+
+        expect(compilationErrors(graph)).deep.equals([
+          ...aliasConflictErrors("definitions/assert.js"),
+          ...aliasConflictErrors("definitions/declare.js"),
+        ]);
+      });
+    }
+
+    test("treats a null legacy value like a null modern value in JS assert() and declare()", () => {
+      const graph = compileProject({
+        "assert_legacy.js": `assert("a1", { database: null }).query("SELECT 1");`,
+        "assert_modern.js": `assert("a2", { project: null }).query("SELECT 1");`,
+        "declare_legacy.js": `declare({ name: "d1", dataset: "ds", database: null });`,
+        "declare_modern.js": `declare({ name: "d2", dataset: "ds", project: null });`,
+      });
+
+      const emptyProjectError = (configType: string, fileName: string) => ({
+        message:
+          `Unexpected empty value for "project". See https://dataform-co.github.io/dataform/` +
+          `docs/reference/configs#dataform-ActionConfig-${configType} for allowed properties.`,
+        fileName,
+      });
+      expect(compilationErrors( graph)).deep.equals([
+        emptyProjectError("AssertionConfig", "definitions/assert_legacy.js"),
+        emptyProjectError("AssertionConfig", "definitions/assert_modern.js"),
+        emptyProjectError("DeclarationConfig", "definitions/declare_legacy.js"),
+        emptyProjectError("DeclarationConfig", "definitions/declare_modern.js"),
+      ]);
+    });
+
+    test("treats an empty legacy value like an empty modern value in JS assert() and declare()", () => {
+      const graph = compileProject({
+        "assert_legacy.js": `assert("a1", { schema: "", database: "" }).query("SELECT 1");`,
+        "assert_modern.js": `assert("a2", { dataset: "", project: "" }).query("SELECT 1");`,
+        "declare_legacy.js": `declare({ name: "d1", schema: "", database: "" });`,
+        "declare_modern.js": `declare({ name: "d2", dataset: "", project: "" });`,
+      });
+
+      expect(compilationErrors(graph)).deep.equals([]);
+      const targetWithoutName = (action: { target?: dataform.ITarget }) => ({
+        database: action.target.database,
+        schema: action.target.schema,
+      });
+      const [a1, a2] = ["a1", "a2"].map((name) =>
+        graph.assertions.find((a) => a.target.name === name),
+      );
+      const [d1, d2] = ["d1", "d2"].map((name) =>
+        graph.declarations.find((d) => d.target.name === name),
+      );
+      // An empty value behaves as unset under either name, so the defaults apply.
+      const defaults = { database: "defaultProject", schema: "defaultDataset" };
+      [a1, a2, d1, d2].forEach((action) => expect(targetWithoutName(action)).deep.equals(defaults));
+    });
+
     test("allows legacy fileName alone without conflicting with auto-populated filename", () => {
       const graph = compileProject({
         "sqlx_table.sqlx": `
