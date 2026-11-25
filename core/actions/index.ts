@@ -93,7 +93,7 @@ export abstract class ActionBuilder<T> {
       database: targetFromConfig.database || projectConfig.defaultDatabase || undefined,
     });
     if (options?.validateTarget) {
-      this.validateTarget(target, fileName);
+      this.validateTarget(targetFromConfig, target, fileName);
     }
     return target;
   }
@@ -381,22 +381,38 @@ export abstract class ActionBuilder<T> {
     this.resolveLegacyAlias(assertionsConfig, "schema", "dataset", fileName, "assertions.");
   }
 
-  private validateTarget(target: dataform.Target, fileName: string) {
-    if (target.name.includes(".")) {
+  /**
+   * Validates an action target.
+   *
+   * Name and dataset checks only apply to values set explicitly in the action config. Defaults from
+   * workflow settings (e.g. a `defaultDataset` containing '.') have always been accepted by core and
+   * by BigQuery, so rejecting them here would break existing repositories.
+   *
+   * Project checks apply to the resolved target (including `defaultProject`), so malformed or dotted
+   * project IDs are reported regardless of where they come from.
+   *
+   * Errors are always reported against the resolved target.
+   */
+  private validateTarget(
+    targetFromConfig: dataform.Target,
+    target: dataform.Target,
+    fileName: string,
+  ) {
+    if ((targetFromConfig.name || "").includes(".")) {
       this.session.compileError(
         new Error("Action target names cannot include '.'"),
         fileName,
         target,
       );
     }
-    if (!this.isLakehouseTarget && target.schema.includes(".")) {
+    if (!this.isLakehouseTarget && (targetFromConfig.schema || "").includes(".")) {
       this.session.compileError(
         new Error("Action target datasets cannot include '.'"),
         fileName,
         target,
       );
     }
-    if (hasInvalidProjectColonUsage(target.database)) {
+    if (hasInvalidProjectColonUsage(target.database || "")) {
       this.session.compileError(
         new Error(
           "Action target projects with ':' must follow '<domain>:<project>' with non-empty segments",
@@ -406,7 +422,7 @@ export abstract class ActionBuilder<T> {
       );
       return;
     }
-    if (stripProjectDomainPrefix(target.database).includes(".")) {
+    if (stripProjectDomainPrefix(target.database || "").includes(".")) {
       this.session.compileError(
         new Error("Action target projects cannot include '.'"),
         fileName,

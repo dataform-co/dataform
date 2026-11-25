@@ -1571,4 +1571,83 @@ SELECT 1`,
       });
     });
   });
+
+  suite("target validation keeps backwards compatibility with workflow settings defaults", () => {
+    const compileWith = (workflowSettings: string, defs: Record<string, string>) => {
+      const dir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(path.join(dir, "workflow_settings.yaml"), workflowSettings);
+      fs.mkdirSync(path.join(dir, "definitions"));
+      for (const [name, body] of Object.entries(defs)) {
+        fs.writeFileSync(path.join(dir, "definitions", name), body);
+      }
+      return runMainInVm(coreExecutionRequestFromPath(dir)).compile.compiledGraph;
+    };
+
+    const allActionTypes = {
+      "table.sqlx": `config { type: "table" }\nSELECT 1 AS id`,
+      "view.sqlx": `config { type: "view" }\nSELECT 1 AS id`,
+      "incremental.sqlx": `config { type: "incremental" }\nSELECT 1 AS id`,
+      "operation.sqlx": `config { type: "operations", hasOutput: true }\nCREATE TABLE \${self()} AS SELECT 1 AS id`,
+      "assertion.sqlx": `config { type: "assertion" }\nSELECT 1 AS id WHERE FALSE`,
+    };
+
+    [".leading_dot_ds", "dotted.ds"].forEach((defaultDataset) => {
+      test(`defaultDataset "${defaultDataset}" containing '.' compiles without errors`, () => {
+        const graph = compileWith(
+          `defaultProject: my-project\ndefaultDataset: ${defaultDataset}\ndefaultLocation: US\n`,
+          allActionTypes,
+        );
+        expect(graph.graphErrors.compilationErrors).deep.equals([]);
+        expect(graph.tables.map((table) => table.target.schema)).deep.equals([
+          defaultDataset,
+          defaultDataset,
+          defaultDataset,
+        ]);
+        expect(graph.operations[0].target.schema).equals(defaultDataset);
+      });
+    });
+
+    test("defaultAssertionDataset containing '.' compiles without errors", () => {
+      const graph = compileWith(
+        `defaultProject: my-project\ndefaultDataset: ds\ndefaultAssertionDataset: dotted.assertions\ndefaultLocation: US\n`,
+        {
+          "table.sqlx": `config { type: "table", assertions: { nonNull: ["id"] } }\nSELECT 1 AS id`,
+          "assertion.sqlx": `config { type: "assertion" }\nSELECT 1 AS id WHERE FALSE`,
+        },
+      );
+      expect(graph.graphErrors.compilationErrors).deep.equals([]);
+    });
+
+    test("actions compile without errors when no dataset is set anywhere", () => {
+      const graph = compileWith(`defaultProject: my-project\ndefaultLocation: US\n`, allActionTypes);
+      expect(graph.graphErrors.compilationErrors).deep.equals([]);
+    });
+
+    test("actions compile without errors when no project is set anywhere", () => {
+      const graph = compileWith(`defaultDataset: ds\ndefaultLocation: US\n`, allActionTypes);
+      expect(graph.graphErrors.compilationErrors).deep.equals([]);
+    });
+
+    test("explicitly configured dataset containing '.' still fails compilation", () => {
+      const graph = compileWith(`defaultProject: my-project\ndefaultDataset: ds\ndefaultLocation: US\n`, {
+        "t.sqlx": `config { type: "table", dataset: "dotted.ds" }\nSELECT 1`,
+      });
+      expect(
+        graph.graphErrors.compilationErrors.map(({ message, fileName }) => ({ message, fileName })),
+      ).deep.equals([
+        { message: "Action target datasets cannot include '.'", fileName: "definitions/t.sqlx" },
+      ]);
+    });
+
+    test("explicitly configured name containing '.' still fails compilation", () => {
+      const graph = compileWith(`defaultProject: my-project\ndefaultDataset: ds\ndefaultLocation: US\n`, {
+        "t.sqlx": `config { type: "table", name: "dotted.name" }\nSELECT 1`,
+      });
+      expect(
+        graph.graphErrors.compilationErrors.map(({ message, fileName }) => ({ message, fileName })),
+      ).deep.equals([
+        { message: "Action target names cannot include '.'", fileName: "definitions/t.sqlx" },
+      ]);
+    });
+  });
 });
