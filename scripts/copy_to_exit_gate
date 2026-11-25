@@ -23,12 +23,14 @@ staging_repo_path="projects/${STAGING_PROJECT}/locations/${LOCATION}/repositorie
 
 token() { gcloud auth print-access-token; }
 
+# SBOM attachments are added asynchronously after the build finishes. Use one
+# deadline for all packages, since they are scanned in parallel.
+deadline=$((SECONDS + SBOM_WAIT_SECONDS))
+
 for pkg in "${PACKAGES[@]}"; do
   encoded_pkg="${pkg//\//%2F}"
   version_path="${staging_repo_path}/packages/${encoded_pkg}/versions/${VERSION}"
 
-  # SBOM attachments are added asynchronously after the build finishes.
-  deadline=$((SECONDS + SBOM_WAIT_SECONDS))
   until gcloud artifacts attachments list \
       --project="${STAGING_PROJECT}" --location="${LOCATION}" --repository="${STAGING_REPO}" \
       --target="${version_path}" --format='value(type)' | grep -qi 'spdx\|sbom'; do
