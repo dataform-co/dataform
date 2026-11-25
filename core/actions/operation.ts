@@ -445,6 +445,7 @@ export class Operation extends ActionBuilder<dataform.Operation> {
     // The "type" field only exists on legacy view configs. Here we convert them to the new format.
     if (unverifiedConfig.type) {
       delete unverifiedConfig.type;
+      this.normalizeLegacyConfigDependencies(unverifiedConfig);
       this.normalizeLegacyConfigAliases(unverifiedConfig);
       if (unverifiedConfig.columns) {
         unverifiedConfig.columns = ColumnDescriptors.normalizeConfigColumns(

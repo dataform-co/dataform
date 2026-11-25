@@ -47,6 +47,11 @@ function legacyAliasConflictMessage(legacyKey: string, modernKey: string) {
   );
 }
 
+/** The file to attribute legacy config errors to, before or after `fileName` is normalized. */
+function legacyConfigFileName(config: Record<string, any>, fileName?: string): string | undefined {
+  return fileName || config.filename || config.fileName;
+}
+
 // In v4, consider making methods on inheritors of this private, forcing users to use constructors
 // in order to populate actions.
 export abstract class ActionBuilder<T> {
@@ -140,8 +145,7 @@ export abstract class ActionBuilder<T> {
     // here for callers of the JS API's `.assertions()` method, which bypasses the legacy config
     // conversion. That method is deprecated, so once it's removed this code can be simplified.
     const assertionsConfig: Record<string, any> = { ...tableAssertionsConfig };
-    this.resolveLegacyAlias(assertionsConfig, "database", "project", proto.fileName, "assertions.");
-    this.resolveLegacyAlias(assertionsConfig, "schema", "dataset", proto.fileName, "assertions.");
+    this.resolveLegacyInlineAssertionsAliases(assertionsConfig, proto.fileName);
     this.inlineAssertionsProject = assertionsConfig.project || undefined;
     // Precedence: action-level assertion project, then the project of the parent action (which
     // itself falls back to the default project).
@@ -276,54 +280,62 @@ export abstract class ActionBuilder<T> {
   }
 
   /**
-   * Normalizes legacy config field aliases (`database` -> `project`, `schema` -> `dataset`,
-   * `fileName` -> `filename`, and `dependencies` -> `dependencyTargets`) on `config` in place,
-   * reporting a compile error if both the modern and legacy names are specified in the same
-   * config.
+   * Normalizes the legacy config field aliases shared by all actions (`database` -> `project`,
+   * `schema` -> `dataset` and `fileName` -> `filename`) on `config` in place, reporting a compile
+   * error if both the modern and legacy names are specified in the same config.
    */
   protected normalizeLegacyConfigAliases(config: Record<string, any>, fileName?: string) {
     if (!config) {
       return;
     }
-    const resolvedFileName = fileName || config.filename || config.fileName;
-    if (config.dependencies !== undefined) {
-      if (config.dependencyTargets !== undefined) {
-        this.session?.compileError(
-          new Error(legacyAliasConflictMessage("dependencies", "dependencyTargets")),
-          resolvedFileName,
-        );
-      } else if (config.dependencies !== null && !Array.isArray(config.dependencies)) {
-        this.session?.compileError(
-          new Error("The 'dependencies' config field must be an array."),
-          resolvedFileName,
-        );
-      } else if (config.dependencies !== null) {
-        config.dependencyTargets = config.dependencies.map((dependency: string | object) =>
-          resolvableAsActionConfigTarget(dependency),
-        );
-      }
-      delete config.dependencies;
-    }
+    const resolvedFileName = legacyConfigFileName(config, fileName);
     this.resolveLegacyAlias(config, "database", "project", resolvedFileName);
     this.resolveLegacyAlias(config, "schema", "dataset", resolvedFileName);
     this.resolveLegacyAlias(config, "fileName", "filename", resolvedFileName);
-    if (config.assertions) {
-      config.assertions = { ...config.assertions };
-      this.resolveLegacyAlias(
-        config.assertions,
-        "database",
-        "project",
+  }
+
+  /**
+   * Converts the legacy `dependencies` config field to `dependencyTargets` on `config` in place,
+   * reporting a compile error if both are specified or if `dependencies` is not an array. Only
+   * for actions that can have dependencies.
+   */
+  protected normalizeLegacyConfigDependencies(config: Record<string, any>, fileName?: string) {
+    if (!config || config.dependencies === undefined) {
+      return;
+    }
+    const resolvedFileName = legacyConfigFileName(config, fileName);
+    if (config.dependencyTargets !== undefined) {
+      this.session?.compileError(
+        new Error(legacyAliasConflictMessage("dependencies", "dependencyTargets")),
         resolvedFileName,
-        "assertions.",
       );
-      this.resolveLegacyAlias(
-        config.assertions,
-        "schema",
-        "dataset",
+    } else if (config.dependencies !== null && !Array.isArray(config.dependencies)) {
+      this.session?.compileError(
+        new Error("The 'dependencies' config field must be an array."),
         resolvedFileName,
-        "assertions.",
+      );
+    } else if (config.dependencies !== null) {
+      config.dependencyTargets = config.dependencies.map((dependency: string | object) =>
+        resolvableAsActionConfigTarget(dependency),
       );
     }
+    delete config.dependencies;
+  }
+
+  /**
+   * Normalizes the legacy field aliases (`database` -> `project` and `schema` -> `dataset`) of
+   * the inline `assertions` block of `config`, replacing the block with a normalized copy. Only
+   * for actions that support inline assertions.
+   */
+  protected normalizeLegacyConfigInlineAssertions(config: Record<string, any>, fileName?: string) {
+    if (!config?.assertions) {
+      return;
+    }
+    config.assertions = { ...config.assertions };
+    this.resolveLegacyInlineAssertionsAliases(
+      config.assertions,
+      legacyConfigFileName(config, fileName),
+    );
   }
 
   /**
@@ -351,6 +363,14 @@ export abstract class ActionBuilder<T> {
       }
       delete config[legacyKey];
     }
+  }
+
+  private resolveLegacyInlineAssertionsAliases(
+    assertionsConfig: Record<string, any>,
+    fileName?: string,
+  ) {
+    this.resolveLegacyAlias(assertionsConfig, "database", "project", fileName, "assertions.");
+    this.resolveLegacyAlias(assertionsConfig, "schema", "dataset", fileName, "assertions.");
   }
 
   private validateTarget(target: dataform.Target, fileName: string) {

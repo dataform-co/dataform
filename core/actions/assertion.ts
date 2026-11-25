@@ -374,6 +374,7 @@ export class Assertion extends ActionBuilder<dataform.Assertion> {
   private verifyConfig(
     unverifiedConfig: ILegacyAssertionConfig,
   ): dataform.ActionConfig.AssertionConfig {
+    this.normalizeLegacyConfigDependencies(unverifiedConfig);
     this.normalizeLegacyConfigAliases(unverifiedConfig);
 
     if (unverifiedConfig.type) {

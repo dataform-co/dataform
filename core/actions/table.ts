@@ -677,7 +677,9 @@ export class Table extends ActionBuilder<dataform.Table> {
         );
       }
       delete unverifiedConfig.type;
+      this.normalizeLegacyConfigDependencies(unverifiedConfig);
       this.normalizeLegacyConfigAliases(unverifiedConfig);
+      this.normalizeLegacyConfigInlineAssertions(unverifiedConfig);
       if (unverifiedConfig.columns) {
         unverifiedConfig.columns = ColumnDescriptors.normalizeConfigColumns(
           unverifiedConfig.columns,

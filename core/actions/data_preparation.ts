@@ -37,6 +37,7 @@ export class DataPreparation extends ActionBuilder<dataform.DataPreparation> {
     super(session);
     this.session = session;
 
+    this.normalizeLegacyConfigDependencies(config as Record<string, any>);
     this.normalizeLegacyConfigAliases(config as Record<string, any>);
 
     if (!config.name) {

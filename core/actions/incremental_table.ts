@@ -700,7 +700,9 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
     // new format.
     if (unverifiedConfig.type) {
       delete unverifiedConfig.type;
+      this.normalizeLegacyConfigDependencies(unverifiedConfig);
       this.normalizeLegacyConfigAliases(unverifiedConfig);
+      this.normalizeLegacyConfigInlineAssertions(unverifiedConfig);
       if (unverifiedConfig.columns) {
         unverifiedConfig.columns = ColumnDescriptors.normalizeConfigColumns(
           unverifiedConfig.columns,
