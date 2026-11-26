@@ -1,5 +1,3 @@
-CREATE OR REPLACE PROCEDURE `project-id.dataset-id.df_osc_test_uuid`()
-OPTIONS(strict_mode=false)
 BEGIN
 
 -- Declare variables for schema comparison and strategy execution.
@@ -85,12 +83,7 @@ from `staging_table_temp_test_uuid`""");
 
 -- Cleanup staging table
 DROP TABLE IF EXISTS `staging_table_temp_test_uuid`;
-END;
-BEGIN
-  CALL `project-id.dataset-id.df_osc_test_uuid`();
 EXCEPTION WHEN ERROR THEN
   DROP TABLE IF EXISTS `project-id.dataset-id.incremental_on_schema_change_df_temp_test_uuid_empty`;
-  DROP PROCEDURE IF EXISTS `project-id.dataset-id.df_osc_test_uuid`;
   RAISE;
 END;
-DROP PROCEDURE IF EXISTS `project-id.dataset-id.df_osc_test_uuid`;

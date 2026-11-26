@@ -176,11 +176,11 @@ from ${source}`;
   ): Tasks {
     const tasks = new Tasks();
 
-    const usesSchemaChangeProcedure =
+    const usesSchemaChangeScript =
       this.shouldWriteIncrementally(table, runConfig, tableMetadata) &&
       (table.onSchemaChange ?? dataform.OnSchemaChange.IGNORE) !== dataform.OnSchemaChange.IGNORE;
 
-    if (!usesSchemaChangeProcedure) {
+    if (!usesSchemaChangeScript) {
       preOpTasks.forEach((statement) => tasks.add(statement));
     }
 
@@ -212,7 +212,7 @@ from ${source}`;
       }
     }
 
-    if (!usesSchemaChangeProcedure) {
+    if (!usesSchemaChangeScript) {
       postOpTasks.forEach((statement) => tasks.add(statement));
     }
 
@@ -303,8 +303,7 @@ from ${source}`;
       name: `${table.target.name}_df_temp_${uniqueId}_empty`,
     };
 
-    const procedureName = this.createProcedureName(table.target, uniqueId);
-    const procedureBody = this.incrementalSchemaChangeBody(
+    const body = this.incrementalSchemaChangeBody(
       table,
       this.resolveTarget(table.target),
       emptyTempTableTarget,
@@ -312,37 +311,17 @@ from ${source}`;
       postOpTasks,
     );
 
-    const createProcedureSql = `CREATE OR REPLACE PROCEDURE ${procedureName}()
-OPTIONS(strict_mode=false)
-BEGIN
-${procedureBody}
-END;`;
-
-    const callProcedureSql = this.safeCallAndDropProcedure(
-      procedureName,
-      this.resolveTarget(emptyTempTableTarget),
-    );
-    tasks.add(Task.statement(createProcedureSql));
-    tasks.add(Task.statement(callProcedureSql));
-  }
-
-  private createProcedureName(target: dataform.ITarget, uniqueId: string): string {
-    return this.resolveTarget({
-      ...target,
-      name: `df_osc_${uniqueId}`,
-    });
-  }
-
-  private safeCallAndDropProcedure(procedureName: string, emptyTempTableName: string): string {
-    return `
-BEGIN
-  CALL ${procedureName}();
+    // The body runs in its own block, so that its DECLARE statements are at the start of a block
+    // even when other statements precede it in the script, and so that the empty temp table is
+    // dropped if the body fails before reaching its own cleanup.
+    tasks.add(
+      Task.statement(`BEGIN
+${body}
 EXCEPTION WHEN ERROR THEN
-  DROP TABLE IF EXISTS ${emptyTempTableName};
-  DROP PROCEDURE IF EXISTS ${procedureName};
+  DROP TABLE IF EXISTS ${this.resolveTarget(emptyTempTableTarget)};
   RAISE;
-END;
-DROP PROCEDURE IF EXISTS ${procedureName};`;
+END;`),
+    );
   }
 
   private declareSchemaChangeVariablesSql(table: dataform.ITable): string {
@@ -530,7 +509,7 @@ DROP TABLE IF EXISTS ${emptyTempTableName};
     const preOpsSql = terminateStatements(preOpTasks.map((t) => t.getStatement()));
     const postOpsSql = terminateStatements(postOpTasks.map((t) => t.getStatement()));
 
-    // Whenever user-provided operations share the procedure scope, the core body is wrapped in its
+    // Whenever user-provided operations share the block scope, the core body is wrapped in its
     // own block. This places its DECLARE statements at the start of a block when they follow
     // pre-operations, and takes the internal variables out of scope before post-operations run.
     // Post-operations are left unwrapped so that comment-only operations don't produce an empty

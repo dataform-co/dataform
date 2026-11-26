@@ -105,7 +105,7 @@ config {
           `stdout:\n${initialRunResult.stdout}\nstderr:\n${initialRunResult.stderr}`,
         ).equals(0);
 
-        // Run the incremental table in build-only mode first to verify procedural SQL structure.
+        // Run the incremental table in build-only mode first to verify the structure of the SQL script.
         const dryRunResult = await runCli("run", [
           projectDir,
           "--credentials",
@@ -156,7 +156,7 @@ config {
         };
 
         expect(executionGraph).deep.equals(expectedRunResult);
-        expect(statement).to.include("CREATE OR REPLACE PROCEDURE");
+        expect(statement).to.not.include("PROCEDURE");
         expect(statement).to.include(
           "Column removals are not allowed when on_schema_change = 'EXTEND'.",
         );
