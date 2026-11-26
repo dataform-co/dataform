@@ -486,7 +486,7 @@ suite("ExecutionSql for 4-part Lakehouse targets", () => {
     );
   });
 
-  test("emits plain CREATE TABLE on first run / protected and CREATE OR REPLACE TABLE on fullRefresh of 4-part incremental table", () => {
+  test("emits plain CREATE TABLE on first run / protected and CREATE OR REPLACE TABLE on fullRefresh (or overrideProtected) of 4-part incremental table", () => {
     const incTable: dataform.ITable = {
       type: "incremental",
       enumType: dataform.TableType.INCREMENTAL,
@@ -500,6 +500,13 @@ suite("ExecutionSql for 4-part Lakehouse targets", () => {
     const protectedFullRefreshSql = executionSql
       .publishTasks({ ...incTable, protected: true }, { fullRefresh: true })
       .build()[0].statement;
+    const protectedOverrideFullRefreshSql = executionSql
+      .publishTasks(
+        { ...incTable, protected: true },
+        { fullRefresh: true, overrideProtected: true },
+        lakehouseMetadata,
+      )
+      .build()[0].statement;
     const fullRefreshSql = executionSql
       .publishTasks(incTable, { fullRefresh: true }, lakehouseMetadata)
       .build()[0].statement;
@@ -509,6 +516,10 @@ suite("ExecutionSql for 4-part Lakehouse targets", () => {
     );
     expect(protectedFullRefreshSql).to.equal(
       "create table `project-id.ecommerce_catalog.sales_dw.customer_orders` " +
+        "as SELECT 1 AS order_id, 2 AS customer_id",
+    );
+    expect(protectedOverrideFullRefreshSql).to.equal(
+      "create or replace table `project-id.ecommerce_catalog.sales_dw.customer_orders` " +
         "as SELECT 1 AS order_id, 2 AS customer_id",
     );
     expect(fullRefreshSql).to.equal(

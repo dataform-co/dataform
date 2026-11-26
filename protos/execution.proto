@@ -15,6 +15,10 @@ message RunConfig {
   bool include_dependents = 11;
   bool full_refresh = 2;
 
+  // If true, a full refresh also rebuilds incremental tables that are marked
+  // protected. Only has an effect when full_refresh is set.
+  bool override_protected = 12;
+
   // Wall-clock deadline for the entire run. When it fires, in-flight actions
   // (including any running JiT compilation worker) are cancelled.
   int32 timeout_millis = 7;

@@ -170,7 +170,7 @@ export class Session {
     ];
   }) {
     const { sqlxConfig } = actionOptions;
-    if (!sqlxConfig.filename) {
+    if (!sqlxConfig.filename && !sqlxConfig.fileName) {
       sqlxConfig.filename = utils.getCallerFile(this.rootDir);
     }
     const actionType = this.processSqlxConfig(actionOptions);
@@ -276,7 +276,7 @@ export class Session {
     hasPostOperations?: boolean;
   }) {
     const { sqlxConfig } = actionOptions;
-    if (!sqlxConfig.filename) {
+    if (!sqlxConfig.filename && !sqlxConfig.fileName) {
       sqlxConfig.filename = utils.getCallerFile(this.rootDir);
     }
     const actionType = this.processSqlxConfig(actionOptions);
@@ -397,7 +397,11 @@ export class Session {
     const filename = utils.getCallerFile(this.rootDir);
     let operation: Operation;
     if (!!queriesOrConfig && typeof queriesOrConfig === "object") {
-      operation = new Operation(this, { name, filename, ...queriesOrConfig });
+      operation = new Operation(this, {
+        name,
+        ...(!(queriesOrConfig as any).fileName ? { filename } : {}),
+        ...queriesOrConfig,
+      });
     } else {
       operation = new Operation(this, { name, filename });
       if (queriesOrConfig) {
@@ -438,17 +442,23 @@ export class Session {
     });
     if (!!queryOrConfig) {
       if (typeof queryOrConfig === "object") {
+        const defaultFilename = !queryOrConfig.fileName ? { filename } : {};
         if (queryOrConfig?.type === "view" || queryOrConfig.type === undefined) {
-          newTable = new View(this, { type: "view", name, filename, ...queryOrConfig });
+          newTable = new View(this, { type: "view", name, ...defaultFilename, ...queryOrConfig });
         } else if (queryOrConfig?.type === "incremental") {
           newTable = new IncrementalTable(this, {
             type: "incremental",
             name,
-            filename,
+            ...defaultFilename,
             ...queryOrConfig,
           });
         } else if (queryOrConfig?.type === "table") {
-          newTable = new Table(this, { type: "table", name, filename, ...queryOrConfig });
+          newTable = new Table(this, {
+            type: "table",
+            name,
+            ...defaultFilename,
+            ...queryOrConfig,
+          });
         } else {
           throw Error(`Unrecognized table type: ${queryOrConfig.type}`);
         }
@@ -478,7 +488,11 @@ export class Session {
     const filename = utils.getCallerFile(this.rootDir);
     let assertion: Assertion;
     if (!!queryOrConfig && typeof queryOrConfig === "object") {
-      assertion = new Assertion(this, { name, filename, ...queryOrConfig });
+      assertion = new Assertion(this, {
+        name,
+        ...(!(queryOrConfig as any).fileName ? { filename } : {}),
+        ...queryOrConfig,
+      });
     } else {
       assertion = new Assertion(this, { name, filename });
       if (queryOrConfig) {
