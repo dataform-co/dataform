@@ -110,6 +110,53 @@ export abstract class ActionBuilder<T> {
     });
   }
 
+  protected setTargetDatabase(
+    proto: {
+      target?: dataform.ITarget | null;
+      canonicalTarget?: dataform.ITarget | null;
+      fileName?: string | null;
+    },
+    database: string,
+    useDefaultAssertionDataset = false,
+  ) {
+    this.setTargetOverrides(proto, { database }, useDefaultAssertionDataset);
+  }
+
+  protected setTargetSchema(
+    proto: {
+      target?: dataform.ITarget | null;
+      canonicalTarget?: dataform.ITarget | null;
+      fileName?: string | null;
+    },
+    schema: string,
+    useDefaultAssertionDataset = false,
+  ) {
+    this.setTargetOverrides(proto, { schema }, useDefaultAssertionDataset);
+  }
+
+  private setTargetOverrides(
+    proto: {
+      target?: dataform.ITarget | null;
+      canonicalTarget?: dataform.ITarget | null;
+      fileName?: string | null;
+    },
+    overrides: { database?: string; schema?: string },
+    useDefaultAssertionDataset = false,
+  ) {
+    proto.target = this.applySessionToTarget(
+      dataform.Target.create({ ...proto.target, ...overrides }),
+      this.session.projectConfig,
+      proto.fileName,
+      { validateTarget: true, useDefaultAssertionDataset },
+    );
+    proto.canonicalTarget = this.applySessionToTarget(
+      dataform.Target.create({ ...(proto.canonicalTarget || proto.target), ...overrides }),
+      this.session.canonicalProjectConfig,
+      undefined,
+      { validateTarget: false, useDefaultAssertionDataset },
+    );
+  }
+
   /** Retrieves the filename from the config. */
   public abstract getFileName(): string;
 
@@ -237,22 +284,26 @@ export abstract class ActionBuilder<T> {
       });
   }
 
-  protected updateInlineAssertionsSchema(schema: string, parentTarget: dataform.ITarget) {
-    this.uniqueKeyAssertions.forEach((assertion, index) => {
+  protected updateInlineAssertionsSchema(
+    schema: string,
+    parentTarget: dataform.ITarget,
+    parentCanonicalTarget: dataform.ITarget = parentTarget,
+  ) {
+    const updateAssertion = (assertion: Assertion, suffix: string) => {
       if (this.inlineAssertionsFollowActionSchema()) {
         assertion.schema(schema);
       }
-      assertion.setName(this.inlineAssertionName(parentTarget, `assertions_uniqueKey_${index}`));
-      assertion.setParentAction(dataform.Target.create(parentTarget));
-    });
-    if (this.rowConditionsAssertion) {
-      if (this.inlineAssertionsFollowActionSchema()) {
-        this.rowConditionsAssertion.schema(schema);
-      }
-      this.rowConditionsAssertion.setName(
-        this.inlineAssertionName(parentTarget, "assertions_rowConditions"),
+      assertion.setName(
+        this.inlineAssertionName(parentTarget, suffix),
+        this.inlineAssertionName(parentCanonicalTarget, suffix),
       );
-      this.rowConditionsAssertion.setParentAction(dataform.Target.create(parentTarget));
+      assertion.setParentAction(dataform.Target.create(parentTarget));
+    };
+    this.uniqueKeyAssertions.forEach((assertion, index) =>
+      updateAssertion(assertion, `assertions_uniqueKey_${index}`),
+    );
+    if (this.rowConditionsAssertion) {
+      updateAssertion(this.rowConditionsAssertion, "assertions_rowConditions");
     }
   }
 

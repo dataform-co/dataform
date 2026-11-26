@@ -512,18 +512,433 @@ publish("name", { type: "${tableType}" })
       const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
       expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
-      expect(
-        result.compile.compiledGraph.assertions.map((assertion) => asPlainObject(assertion.target)),
-      ).deep.equals([
+      expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals([
         {
-          database: "customProject",
-          schema: "customDataset",
-          name: "customDataset_name_assertions_uniqueKey_0",
+          type: tableType,
+          enumType: tableType.toUpperCase(),
+          target: {
+            database: "customProject",
+            schema: "customDataset",
+            name: "name",
+          },
+          canonicalTarget: {
+            database: "customProject",
+            schema: "customDataset",
+            name: "name",
+          },
+          disabled: false,
+          fileName: "definitions/file.js",
+          hermeticity: "NON_HERMETIC",
+          query: "SELECT 1 AS id",
+          ...(tableType === "incremental"
+            ? {
+                incrementalQuery: "SELECT 1 AS id",
+                incrementalStrategy: "INCREMENTAL_STRATEGY_UNSPECIFIED",
+                onSchemaChange: "IGNORE",
+                protected: false,
+              }
+            : {}),
+        },
+      ]);
+      expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals([
+        {
+          target: {
+            database: "customProject",
+            schema: "customDataset",
+            name: "customDataset_name_assertions_uniqueKey_0",
+          },
+          canonicalTarget: {
+            database: "customProject",
+            schema: "customDataset",
+            name: "customDataset_name_assertions_uniqueKey_0",
+          },
+          dependencyTargets: [
+            {
+              database: "customProject",
+              schema: "customDataset",
+              name: "name",
+            },
+          ],
+          parentAction: {
+            database: "customProject",
+            schema: "customDataset",
+            name: "name",
+          },
+          fileName: "definitions/file.js",
+          query:
+            "\nSELECT\n  *\nFROM (\n  SELECT\n    id,\n    COUNT(1) AS index_row_count\n  FROM `customProject.customDataset.name`\n  GROUP BY id\n  ) AS data\nWHERE index_row_count > 1\n",
         },
         {
-          database: "customProject",
-          schema: "customDataset",
-          name: "customDataset_name_assertions_rowConditions",
+          target: {
+            database: "customProject",
+            schema: "customDataset",
+            name: "customDataset_name_assertions_rowConditions",
+          },
+          canonicalTarget: {
+            database: "customProject",
+            schema: "customDataset",
+            name: "customDataset_name_assertions_rowConditions",
+          },
+          dependencyTargets: [
+            {
+              database: "customProject",
+              schema: "customDataset",
+              name: "name",
+            },
+          ],
+          parentAction: {
+            database: "customProject",
+            schema: "customDataset",
+            name: "name",
+          },
+          fileName: "definitions/file.js",
+          query:
+            "\nSELECT\n  'id > 0' AS failing_row_condition,\n  *\nFROM `customProject.customDataset.name`\nWHERE NOT (id > 0)\n",
+        },
+      ]);
+    });
+
+    test(`${tableType} chained .assertions(), .database() and .schema() updates canonicalTarget without suffixes and avoids duplicate canonicalTarget collisions`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        `
+defaultProject: defaultProject
+defaultDataset: defaultDataset
+projectSuffix: ps
+datasetSuffix: ds
+namePrefix: tp
+`,
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/file.js"),
+        `
+publish("name", { type: "${tableType}" })
+  .assertions({
+    uniqueKey: ["id"],
+    rowConditions: ["id > 0"],
+  })
+  .database("customProject")
+  .schema("customDataset")
+  .query("SELECT 1 AS id");
+
+publish("name", {
+  type: "${tableType}",
+  assertions: {
+    uniqueKey: ["id"],
+    rowConditions: ["id > 0"],
+  },
+}).query("SELECT 1 AS id");
+`,
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      const incrementalFields =
+        tableType === "incremental"
+          ? {
+              incrementalQuery: "SELECT 1 AS id",
+              incrementalStrategy: "INCREMENTAL_STRATEGY_UNSPECIFIED",
+              onSchemaChange: "IGNORE",
+              protected: false,
+            }
+          : {};
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals([
+        {
+          type: tableType,
+          enumType: tableType.toUpperCase(),
+          target: {
+            database: "customProject_ps",
+            schema: "customDataset_ds",
+            name: "tp_name",
+          },
+          canonicalTarget: {
+            database: "customProject",
+            schema: "customDataset",
+            name: "name",
+          },
+          disabled: false,
+          fileName: "definitions/file.js",
+          hermeticity: "NON_HERMETIC",
+          query: "SELECT 1 AS id",
+          ...incrementalFields,
+        },
+        {
+          type: tableType,
+          enumType: tableType.toUpperCase(),
+          target: {
+            database: "defaultProject_ps",
+            schema: "defaultDataset_ds",
+            name: "tp_name",
+          },
+          canonicalTarget: {
+            database: "defaultProject",
+            schema: "defaultDataset",
+            name: "name",
+          },
+          disabled: false,
+          fileName: "definitions/file.js",
+          hermeticity: "NON_HERMETIC",
+          query: "SELECT 1 AS id",
+          ...incrementalFields,
+        },
+      ]);
+      expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals([
+        {
+          target: {
+            database: "customProject_ps",
+            schema: "customDataset_ds",
+            name: "tp_customDataset_name_assertions_uniqueKey_0",
+          },
+          canonicalTarget: {
+            database: "customProject",
+            schema: "customDataset",
+            name: "customDataset_name_assertions_uniqueKey_0",
+          },
+          dependencyTargets: [
+            {
+              database: "customProject_ps",
+              schema: "customDataset_ds",
+              name: "tp_name",
+            },
+          ],
+          parentAction: {
+            database: "customProject_ps",
+            schema: "customDataset_ds",
+            name: "tp_name",
+          },
+          fileName: "definitions/file.js",
+          query:
+            "\nSELECT\n  *\nFROM (\n  SELECT\n    id,\n    COUNT(1) AS index_row_count\n  FROM `customProject_ps.customDataset_ds.tp_name`\n  GROUP BY id\n  ) AS data\nWHERE index_row_count > 1\n",
+        },
+        {
+          target: {
+            database: "customProject_ps",
+            schema: "customDataset_ds",
+            name: "tp_customDataset_name_assertions_rowConditions",
+          },
+          canonicalTarget: {
+            database: "customProject",
+            schema: "customDataset",
+            name: "customDataset_name_assertions_rowConditions",
+          },
+          dependencyTargets: [
+            {
+              database: "customProject_ps",
+              schema: "customDataset_ds",
+              name: "tp_name",
+            },
+          ],
+          parentAction: {
+            database: "customProject_ps",
+            schema: "customDataset_ds",
+            name: "tp_name",
+          },
+          fileName: "definitions/file.js",
+          query:
+            "\nSELECT\n  'id > 0' AS failing_row_condition,\n  *\nFROM `customProject_ps.customDataset_ds.tp_name`\nWHERE NOT (id > 0)\n",
+        },
+        {
+          target: {
+            database: "defaultProject_ps",
+            schema: "defaultDataset_ds",
+            name: "tp_defaultDataset_name_assertions_uniqueKey_0",
+          },
+          canonicalTarget: {
+            database: "defaultProject",
+            schema: "defaultDataset",
+            name: "defaultDataset_name_assertions_uniqueKey_0",
+          },
+          dependencyTargets: [
+            {
+              database: "defaultProject_ps",
+              schema: "defaultDataset_ds",
+              name: "tp_name",
+            },
+          ],
+          parentAction: {
+            database: "defaultProject_ps",
+            schema: "defaultDataset_ds",
+            name: "tp_name",
+          },
+          fileName: "definitions/file.js",
+          query:
+            "\nSELECT\n  *\nFROM (\n  SELECT\n    id,\n    COUNT(1) AS index_row_count\n  FROM `defaultProject_ps.defaultDataset_ds.tp_name`\n  GROUP BY id\n  ) AS data\nWHERE index_row_count > 1\n",
+        },
+        {
+          target: {
+            database: "defaultProject_ps",
+            schema: "defaultDataset_ds",
+            name: "tp_defaultDataset_name_assertions_rowConditions",
+          },
+          canonicalTarget: {
+            database: "defaultProject",
+            schema: "defaultDataset",
+            name: "defaultDataset_name_assertions_rowConditions",
+          },
+          dependencyTargets: [
+            {
+              database: "defaultProject_ps",
+              schema: "defaultDataset_ds",
+              name: "tp_name",
+            },
+          ],
+          parentAction: {
+            database: "defaultProject_ps",
+            schema: "defaultDataset_ds",
+            name: "tp_name",
+          },
+          fileName: "definitions/file.js",
+          query:
+            "\nSELECT\n  'id > 0' AS failing_row_condition,\n  *\nFROM `defaultProject_ps.defaultDataset_ds.tp_name`\nWHERE NOT (id > 0)\n",
+        },
+      ]);
+    });
+
+    test(`${tableType} chained .database() and .schema() before .assertions() produces matching target and canonicalTarget with suffixes`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        `
+defaultProject: defaultProject
+defaultDataset: defaultDataset
+projectSuffix: ps
+datasetSuffix: ds
+namePrefix: tp
+`,
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/file.js"),
+        `
+publish("name", { type: "${tableType}" })
+  .database("customProject")
+  .schema("customDataset")
+  .assertions({
+    rowConditions: ["id > 0"],
+  })
+  .query("SELECT 1 AS id");
+`,
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals([
+        {
+          type: tableType,
+          enumType: tableType.toUpperCase(),
+          target: {
+            database: "customProject_ps",
+            schema: "customDataset_ds",
+            name: "tp_name",
+          },
+          canonicalTarget: {
+            database: "customProject",
+            schema: "customDataset",
+            name: "name",
+          },
+          disabled: false,
+          fileName: "definitions/file.js",
+          hermeticity: "NON_HERMETIC",
+          query: "SELECT 1 AS id",
+          ...(tableType === "incremental"
+            ? {
+                incrementalQuery: "SELECT 1 AS id",
+                incrementalStrategy: "INCREMENTAL_STRATEGY_UNSPECIFIED",
+                onSchemaChange: "IGNORE",
+                protected: false,
+              }
+            : {}),
+        },
+      ]);
+      expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals([
+        {
+          target: {
+            database: "customProject_ps",
+            schema: "customDataset_ds",
+            name: "tp_customDataset_name_assertions_rowConditions",
+          },
+          canonicalTarget: {
+            database: "customProject",
+            schema: "customDataset",
+            name: "customDataset_name_assertions_rowConditions",
+          },
+          dependencyTargets: [
+            {
+              database: "customProject_ps",
+              schema: "customDataset_ds",
+              name: "tp_name",
+            },
+          ],
+          parentAction: {
+            database: "customProject_ps",
+            schema: "customDataset_ds",
+            name: "tp_name",
+          },
+          fileName: "definitions/file.js",
+          query:
+            "\nSELECT\n  'id > 0' AS failing_row_condition,\n  *\nFROM `customProject_ps.customDataset_ds.tp_name`\nWHERE NOT (id > 0)\n",
+        },
+      ]);
+    });
+
+    test(`${tableType} chained .assertions() and .schema() with defaultAssertionDataset updates canonicalTarget name while keeping assertion dataset`, () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      fs.writeFileSync(
+        path.join(projectDir, "workflow_settings.yaml"),
+        `
+defaultProject: defaultProject
+defaultDataset: defaultDataset
+defaultAssertionDataset: assertionDataset
+`,
+      );
+      fs.mkdirSync(path.join(projectDir, "definitions"));
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/file.js"),
+        `
+publish("name", { type: "${tableType}" })
+  .assertions({
+    rowConditions: ["id > 0"],
+  })
+  .database("customProject")
+  .schema("customDataset")
+  .query("SELECT 1 AS id");
+`,
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.assertions)).deep.equals([
+        {
+          target: {
+            database: "customProject",
+            schema: "assertionDataset",
+            name: "customDataset_name_assertions_rowConditions",
+          },
+          canonicalTarget: {
+            database: "customProject",
+            schema: "assertionDataset",
+            name: "customDataset_name_assertions_rowConditions",
+          },
+          dependencyTargets: [
+            {
+              database: "customProject",
+              schema: "customDataset",
+              name: "name",
+            },
+          ],
+          parentAction: {
+            database: "customProject",
+            schema: "customDataset",
+            name: "name",
+          },
+          fileName: "definitions/file.js",
+          query:
+            "\nSELECT\n  'id > 0' AS failing_row_condition,\n  *\nFROM `customProject.customDataset.name`\nWHERE NOT (id > 0)\n",
         },
       ]);
     });
@@ -659,9 +1074,16 @@ assert("customDataset_name_assertions_rowConditions", {
       const errorMessages = result.compile.compiledGraph.graphErrors.compilationErrors.map(
         (e) => e.message,
       );
-      expect(errorMessages.length).equals(2);
+      expect(errorMessages.length).equals(4);
+      expect(
+        errorMessages.filter((message) => message.includes("Duplicate action name detected"))
+          .length,
+      ).equals(2);
+      expect(
+        errorMessages.filter((message) => message.includes("Duplicate canonical target detected"))
+          .length,
+      ).equals(2);
       errorMessages.forEach((message) => {
-        expect(message).contains("Duplicate action name detected");
         expect(message).contains("customDataset_name_assertions_rowConditions");
       });
     });
@@ -821,17 +1243,34 @@ publish("name", { type: "${tableType}" })
 
       expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(
-        result.compile.compiledGraph.assertions.map((assertion) => asPlainObject(assertion.target)),
+        result.compile.compiledGraph.assertions.map((assertion) => ({
+          target: asPlainObject(assertion.target),
+          canonicalTarget: asPlainObject(assertion.canonicalTarget),
+        })),
       ).deep.equals([
         {
-          database: "customAssertionProject",
-          schema: "customAssertionDataset",
-          name: "customDataset_name_assertions_uniqueKey_0",
+          target: {
+            database: "customAssertionProject",
+            schema: "customAssertionDataset",
+            name: "customDataset_name_assertions_uniqueKey_0",
+          },
+          canonicalTarget: {
+            database: "customAssertionProject",
+            schema: "customAssertionDataset",
+            name: "customDataset_name_assertions_uniqueKey_0",
+          },
         },
         {
-          database: "customAssertionProject",
-          schema: "customAssertionDataset",
-          name: "customDataset_name_assertions_rowConditions",
+          target: {
+            database: "customAssertionProject",
+            schema: "customAssertionDataset",
+            name: "customDataset_name_assertions_rowConditions",
+          },
+          canonicalTarget: {
+            database: "customAssertionProject",
+            schema: "customAssertionDataset",
+            name: "customDataset_name_assertions_rowConditions",
+          },
         },
       ]);
     });
@@ -872,17 +1311,34 @@ actions:
 
       expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
       expect(
-        result.compile.compiledGraph.assertions.map((assertion) => asPlainObject(assertion.target)),
+        result.compile.compiledGraph.assertions.map((assertion) => ({
+          target: asPlainObject(assertion.target),
+          canonicalTarget: asPlainObject(assertion.canonicalTarget),
+        })),
       ).deep.equals([
         {
-          database: "customAssertionProject",
-          schema: "customAssertionDataset",
-          name: "customDataset_name_assertions_uniqueKey_0",
+          target: {
+            database: "customAssertionProject",
+            schema: "customAssertionDataset",
+            name: "customDataset_name_assertions_uniqueKey_0",
+          },
+          canonicalTarget: {
+            database: "customAssertionProject",
+            schema: "customAssertionDataset",
+            name: "customDataset_name_assertions_uniqueKey_0",
+          },
         },
         {
-          database: "customAssertionProject",
-          schema: "customAssertionDataset",
-          name: "customDataset_name_assertions_rowConditions",
+          target: {
+            database: "customAssertionProject",
+            schema: "customAssertionDataset",
+            name: "customDataset_name_assertions_rowConditions",
+          },
+          canonicalTarget: {
+            database: "customAssertionProject",
+            schema: "customAssertionDataset",
+            name: "customDataset_name_assertions_rowConditions",
+          },
         },
       ]);
     });

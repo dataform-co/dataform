@@ -411,4 +411,53 @@ SELECT 1
       );
     });
   });
+
+  test("fluent .database() and .schema() update both target and canonicalTarget with suffixes and prefixes", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    fs.writeFileSync(
+      path.join(projectDir, "workflow_settings.yaml"),
+      `
+defaultProject: defaultProject
+defaultDataset: defaultDataset
+projectSuffix: ps
+datasetSuffix: ds
+namePrefix: tp
+`,
+    );
+    fs.mkdirSync(path.join(projectDir, "definitions"));
+    fs.writeFileSync(
+      path.join(projectDir, "definitions/fluent_op.js"),
+      `
+operate("custom_op")
+  .hasOutput(true)
+  .database("customProject")
+  .schema("customDataset")
+  .queries(ctx => \`CREATE OR REPLACE TABLE \${ctx.self()} AS SELECT 1 AS id\`);
+`,
+    );
+
+    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+    expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+    expect(asPlainObject(result.compile.compiledGraph.operations)).deep.equals([
+      {
+        target: {
+          database: "customProject_ps",
+          schema: "customDataset_ds",
+          name: "tp_custom_op",
+        },
+        canonicalTarget: {
+          database: "customProject",
+          schema: "customDataset",
+          name: "custom_op",
+        },
+        fileName: "definitions/fluent_op.js",
+        hasOutput: true,
+        hermeticity: "NON_HERMETIC",
+        queries: [
+          "CREATE OR REPLACE TABLE `customProject_ps.customDataset_ds.tp_custom_op` AS SELECT 1 AS id",
+        ],
+      },
+    ]);
+  });
 });

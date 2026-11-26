@@ -1054,5 +1054,232 @@ FROM x
         ]),
       );
     });
+
+    test("fluent .database() and .schema() update target, canonicalTarget, targets and canonicalTargets with suffixes and prefixes", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      const dpSqlxPath = path.join(projectDir, "fluent_dp.sqlx");
+      fs.writeFileSync(dpSqlxPath, 'module.exports = { query: "FROM x\\n|> SELECT *" };');
+
+      const session = new Session(
+        projectDir,
+        dataform.ProjectConfig.create({
+          defaultDatabase: "defaultProject",
+          defaultSchema: "defaultDataset",
+          databaseSuffix: "ps",
+          schemaSuffix: "ds",
+          tablePrefix: "tp",
+        }),
+      );
+      const dp = new DataPreparation(
+        session,
+        dataform.ActionConfig.DataPreparationConfig.fromObject({
+          name: "fluent_dest",
+          filename: dpSqlxPath,
+          errorTable: {
+            name: "err_tbl",
+            project: "errProject",
+            dataset: "errDataset",
+          },
+        }),
+      )
+        .database("customProject")
+        .schema("customDataset");
+      session.actions.push(dp);
+
+      const compiledGraph = session.compile();
+
+      expect(compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(compiledGraph.dataPreparations)).deep.equals(
+        asPlainObject([
+          {
+            target: {
+              database: "customProject_ps",
+              schema: "customDataset_ds",
+              name: "tp_fluent_dest",
+            },
+            canonicalTarget: {
+              database: "customProject",
+              schema: "customDataset",
+              name: "fluent_dest",
+            },
+            targets: [
+              {
+                database: "customProject_ps",
+                schema: "customDataset_ds",
+                name: "tp_fluent_dest",
+              },
+              {
+                database: "errProject_ps",
+                schema: "errDataset_ds",
+                name: "tp_err_tbl",
+              },
+            ],
+            canonicalTargets: [
+              {
+                database: "customProject",
+                schema: "customDataset",
+                name: "fluent_dest",
+              },
+              {
+                database: "errProject",
+                schema: "errDataset",
+                name: "err_tbl",
+              },
+            ],
+            errorTable: {
+              database: "errProject_ps",
+              schema: "errDataset_ds",
+              name: "tp_err_tbl",
+            },
+            errorTableRetentionDays: 0,
+            fileName: dpSqlxPath,
+            load: {
+              replace: {},
+            },
+            query: "FROM x\n|> SELECT *",
+          },
+        ]),
+      );
+    });
+
+    test("fluent .database() and .schema() on YAML data preparation update targets and re-encode dataPreparationYaml", () => {
+      const projectDir = createSimpleDataPreparationProject(`
+defaultProject: defaultProject
+defaultDataset: defaultDataset
+projectSuffix: ps
+datasetSuffix: ds
+namePrefix: tp
+`);
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/data_preparation.dp.yaml"),
+        `
+nodes:
+- id: node1
+  destination:
+    table:
+      table: yaml_dest
+`,
+      );
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/override.js"),
+        `
+dataform.actions[0].database("customProject").schema("customDataset");
+`,
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.dataPreparations)).deep.equals(
+        asPlainObject([
+          {
+            target: {
+              database: "customProject_ps",
+              schema: "customDataset_ds",
+              name: "tp_yaml_dest",
+            },
+            canonicalTarget: {
+              database: "customProject",
+              schema: "customDataset",
+              name: "yaml_dest",
+            },
+            targets: [
+              {
+                database: "customProject_ps",
+                schema: "customDataset_ds",
+                name: "tp_yaml_dest",
+              },
+            ],
+            canonicalTargets: [
+              {
+                database: "customProject",
+                schema: "customDataset",
+                name: "yaml_dest",
+              },
+            ],
+            fileName: "definitions/data_preparation.dp.yaml",
+            dataPreparationYaml: dumpYaml({
+              nodes: [
+                {
+                  id: "node1",
+                  destination: {
+                    table: {
+                      project: "customProject_ps",
+                      dataset: "customDataset_ds",
+                      table: "tp_yaml_dest",
+                    },
+                  },
+                },
+              ],
+            }),
+          },
+        ]),
+      );
+    });
+
+    test("sqlx data preparation with suffixes and prefixes finalizes target once", () => {
+      const projectDir = createSimpleDataPreparationProject(
+        `
+defaultProject: defaultProject
+defaultDataset: defaultDataset
+projectSuffix: ps
+datasetSuffix: ds
+namePrefix: tp
+`,
+        false,
+      );
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/dp_suffix.sqlx"),
+        `
+config {
+  type: "dataPreparation",
+  name: "dest",
+  project: "prj",
+  dataset: "dsName",
+}
+FROM x
+|> SELECT *
+`,
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.dataPreparations)).deep.equals(
+        asPlainObject([
+          {
+            target: {
+              database: "prj_ps",
+              schema: "dsName_ds",
+              name: "tp_dest",
+            },
+            canonicalTarget: {
+              database: "prj",
+              schema: "dsName",
+              name: "dest",
+            },
+            targets: [
+              {
+                database: "prj_ps",
+                schema: "dsName_ds",
+                name: "tp_dest",
+              },
+            ],
+            canonicalTargets: [
+              {
+                database: "prj",
+                schema: "dsName",
+                name: "dest",
+              },
+            ],
+            fileName: "definitions/dp_suffix.sqlx",
+            load: {
+              replace: {},
+            },
+            query: "FROM x\n|> SELECT *",
+          },
+        ]),
+      );
+    });
   });
 });

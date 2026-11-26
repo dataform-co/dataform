@@ -476,12 +476,7 @@ export class Table extends ActionBuilder<dataform.Table> {
    * Sets the database (Google Cloud project ID) in which to create the output of this action.
    */
   public database(database: string) {
-    this.proto.target = this.applySessionToTarget(
-      dataform.Target.create({ ...this.proto.target, database }),
-      this.session.projectConfig,
-      this.proto.fileName,
-      { validateTarget: true },
-    );
+    this.setTargetDatabase(this.proto, database);
     this.updateInlineAssertionsDatabase(database, this.proto.target);
     return this;
   }
@@ -506,13 +501,8 @@ export class Table extends ActionBuilder<dataform.Table> {
       );
       return this;
     }
-    this.proto.target = this.applySessionToTarget(
-      dataform.Target.create({ ...this.proto.target, schema }),
-      this.session.projectConfig,
-      this.proto.fileName,
-      { validateTarget: true },
-    );
-    this.updateInlineAssertionsSchema(schema, this.proto.target);
+    this.setTargetSchema(this.proto, schema);
+    this.updateInlineAssertionsSchema(schema, this.proto.target, this.proto.canonicalTarget);
     return this;
   }
 
