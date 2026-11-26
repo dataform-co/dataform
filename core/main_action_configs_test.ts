@@ -1,4 +1,6 @@
 import { expect } from "chai";
+import * as fs from "fs-extra";
+import * as path from "path";
 
 import {
   asPlainObject,
@@ -479,6 +481,137 @@ actions:
                 { path: ["profile", "email"], description: "Nested email" },
               ],
             },
+          },
+        ]),
+      );
+    });
+
+    test("transpiles explicitly referenced uppercase .SQL, .IPYNB and .MD files without auto-discovering uppercase definitions", () => {
+      const projectDir = tmpDirFixture.createNewTmpDir();
+      writeWorkflowSettingsFile(projectDir, VALID_WORKFLOW_SETTINGS_YAML);
+      fs.ensureDirSync(path.join(projectDir, "includes"));
+      fs.writeFileSync(
+        path.join(projectDir, "includes/ignored_helper.JS"),
+        "module.exports = { val: 'ignored' };\n",
+      );
+      writeDefinitionFile(projectDir, "ignored_table.SQLX", `config { type: "table" }\nSELECT 999`);
+      writeDefinitionFile(
+        projectDir,
+        "ignored_script.JS",
+        `publish("ignored_js").query("SELECT 999");`,
+      );
+      writeDefinitionFile(
+        projectDir,
+        "actions.YAML",
+        `actions:\n- table:\n    filename: ignored_from_yaml.sql\n`,
+      );
+      writeDefinitionFile(projectDir, "ignored_from_yaml.sql", "SELECT 999");
+      writeDefinitionFile(projectDir, "graph.YAML", "invalid_graph_yaml: true\n");
+
+      writeDefinitionFile(
+        projectDir,
+        "actions.yaml",
+        `
+actions:
+- table:
+    filename: upper_query.SQL
+- notebook:
+    filename: upper_nb.IPYNB`,
+      );
+      writeDefinitionFile(
+        projectDir,
+        "upper_query.SQL",
+        `global.__upper_sql_ran_as_js = "RAN";\nSELECT 1 AS id`,
+      );
+      writeDefinitionFile(
+        projectDir,
+        "upper_nb.IPYNB",
+        JSON.stringify({ cells: [], nbformat: 4, nbformat_minor: 3 }),
+      );
+      writeDefinitionFile(
+        projectDir,
+        "README.MD",
+        `global.__upper_md_ran_as_js = "RAN";\n# Uppercase docs`,
+      );
+      writeDefinitionFile(
+        projectDir,
+        "with_md.sqlx",
+        `config { type: "view", description: \`\${getContents("README.MD")}\` }\n` +
+          `SELECT '\${global.__upper_sql_ran_as_js || "SAFE"}:\${global.__upper_md_ran_as_js || "SAFE"}:\${typeof ignored_helper}' AS status`,
+      );
+
+      // Include uppercase paths explicitly in compileConfig.filePaths (matching CLI and Cloud hosts)
+      // because coreExecutionRequestFromPath pre-filters by lowercase SOURCE_EXTENSIONS.
+      const request = coreExecutionRequestFromPath(projectDir);
+      request.compile.compileConfig.filePaths.push(
+        "includes/ignored_helper.JS",
+        "definitions/ignored_table.SQLX",
+        "definitions/ignored_script.JS",
+        "definitions/actions.YAML",
+        "definitions/graph.YAML",
+      );
+      const result = runMainInVm(request);
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      expect(result.compile.compiledGraph.propertyGraphs).deep.equals([]);
+      expect(asPlainObject(result.compile.compiledGraph.tables)).deep.equals(
+        asPlainObject([
+          {
+            type: "table",
+            enumType: "TABLE",
+            target: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "upper_query",
+            },
+            canonicalTarget: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "upper_query",
+            },
+            fileName: "definitions/upper_query.SQL",
+            query: `global.__upper_sql_ran_as_js = "RAN";\nSELECT 1 AS id`,
+            disabled: false,
+            hermeticity: "NON_HERMETIC",
+          },
+          {
+            type: "view",
+            enumType: "VIEW",
+            target: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "with_md",
+            },
+            canonicalTarget: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "with_md",
+            },
+            fileName: "definitions/with_md.sqlx",
+            query: "\nSELECT 'SAFE:SAFE:undefined' AS status",
+            actionDescriptor: {
+              description: `global.__upper_md_ran_as_js = "RAN";\n# Uppercase docs`,
+            },
+            disabled: false,
+            hermeticity: "NON_HERMETIC",
+          },
+        ]),
+      );
+      expect(asPlainObject(result.compile.compiledGraph.notebooks)).deep.equals(
+        asPlainObject([
+          {
+            target: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "upper_nb",
+            },
+            canonicalTarget: {
+              database: "defaultProject",
+              schema: "defaultDataset",
+              name: "upper_nb",
+            },
+            fileName: "definitions/upper_nb.IPYNB",
+            notebookContents: '{"cells":[],"nbformat":4,"nbformat_minor":3}',
           },
         ]),
       );

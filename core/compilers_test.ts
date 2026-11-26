@@ -140,6 +140,23 @@ suite("core/compilers", () => {
       expect(result).to.equal("exports.contents = `select \\`a\\` from \\`b\\``;");
     });
 
+    test("compiles uppercase and mixed-case file extensions identically to lowercase", () => {
+      expect(compile(`config { type: "table" } select 1`, "definitions/foo.SQLX")).to.equal(
+        compile(`config { type: "table" } select 1`, "definitions/foo.sqlx"),
+      );
+      expect(compile("foo: bar", "definitions/foo.YAML")).to.equal(
+        `exports.asJson = {"foo":"bar"}`,
+      );
+      expect(compile("foo: bar", "definitions/foo.Yml")).to.equal(`exports.asJson = {"foo":"bar"}`);
+      expect(compile('{"cells": []}', "definitions/foo.IPYNB")).to.equal(
+        'exports.asJson = {"cells":[]}',
+      );
+      expect(compile("select 1", "definitions/foo.SQL")).to.equal("exports.query = `select 1`;");
+      expect(compile("# heading", "definitions/foo.MD")).to.equal(
+        "exports.contents = `# heading`;",
+      );
+    });
+
     suite("sqlx jit compilation", () => {
       test("compiles sqlx with compilation_mode: 'jit' to sqlxJitAction", () => {
         const code = `config { type: "table", compilation_mode: "jit" } select 1`;
