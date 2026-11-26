@@ -362,7 +362,7 @@ suite("run", ({ afterEach }) => {
     const actionResult = result.actions[0];
     expect(actionResult.status).equals(dataform.ActionResult.ExecutionStatus.SUCCESSFUL);
 
-    verify(mockAdapter.deleteTable(anything())).once();
+    verify(mockAdapter.deleteTable(anything(), anything())).once();
     const [deletedTarget] = capture(mockAdapter.deleteTable).last();
     expect(deletedTarget.name).equals("existing_table");
 

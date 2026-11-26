@@ -136,6 +136,7 @@ config {
             {
               fileName: "definitions/example_incremental.sqlx",
               hermeticity: "NON_HERMETIC",
+              onSchemaChange: "EXTEND",
               tableType: "incremental",
               target: {
                 database: INTEGRATION_TEST_PROJECT,

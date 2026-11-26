@@ -175,7 +175,7 @@ Compiles the project and prints a summary (or JSON / Graphviz DOT / Mermaid repr
 | `--quiet` | boolean | `false` | Less verbose compilation output. Mutually exclusive with --verbose. |
 | `--watch` | boolean | `false` | Watches the project directory and recompiles on changes. |
 | `--timeout` | string | `'60s'` | Duration to allow project compilation to complete, e.g. '1s', '10m'. |
-| `--output-actions` | array | — | Filters the printed output to these actions (comma-separated or repeatable). Each entry is an action name or a fully-qualified database.schema.name target. The whole project is still compiled. |
+| `--output-actions` | array | — | Filters the printed output to these actions (comma-separated or repeatable). Each entry is an action name or a fully-qualified database.schema.name (or 4-part database.catalog.namespace.name) target. The whole project is still compiled. |
 | `--output-tags` | array | — | Filters the printed output to actions with any of these tags (comma-separated or repeatable). |
 | `--output-include-deps` | boolean | — | Also includes upstream dependencies of the selected actions in the output. Requires --output-actions or --output-tags. |
 | `--output-include-dependents` | boolean | — | Also includes downstream dependents of the selected actions in the output. Requires --output-actions or --output-tags. |
@@ -252,7 +252,7 @@ Compiles and executes the project against BigQuery (or validates it with `--dry-
 | `--dry-run` | boolean | — | Validates the run SQL with BigQuery without applying any changes to the warehouse. |
 | `--run-tests` | boolean | — | Requires the project's unit tests to pass before executing; aborts the run if any test fails. |
 | `--action-retry-limit` | number | `0` | Retries idempotent actions up to this many times on failure. |
-| `--actions` | array | — | Actions to run (comma-separated or repeatable). Each entry is an action name or a fully-qualified database.schema.name target. |
+| `--actions` | array | — | Actions to run (comma-separated or repeatable). Each entry is an action name or a fully-qualified database.schema.name (or 4-part database.catalog.namespace.name) target. |
 | `--tags` | array | — | Tags to filter the actions to run (comma-separated or repeatable). |
 | `--include-deps` | boolean | — | Also runs upstream dependencies of the selected actions. Requires --actions or --tags. |
 | `--include-dependents` | boolean | — | Also runs downstream dependents of the selected actions. Requires --actions or --tags. |
@@ -277,6 +277,10 @@ Compiles and executes the project against BigQuery (or validates it with `--dry-
 - `--timeout` bounds compilation only, not execution. If it's set without `--execution-timeout`, `run` prints a warning reminding you of that.
 - `--job-labels` override `defaultJobLabels`, action `jobLabels` and table `labels` that use the same key.
 - `--emit-lineage` requires the Data Lineage API (`datalineage.googleapis.com`) to be enabled and the `roles/datalineage.producer` role; for configuration and troubleshooting, see the [Data Lineage guide](../docs/lineage.md).
+- **4-part Lakehouse Catalog targets (`project.catalog.namespace.table`):**
+  - The target catalog and namespace must already exist before running `dataform run` (Lakehouse namespaces are managed via BigLake APIs and are not created via `CREATE SCHEMA`).
+  - Incremental Lakehouse tables with `onSchemaChange` (`FAIL`, `EXTEND`, or `SYNCHRONIZE`) inspect the incoming query schema using a short-lived empty table in `defaultDataset`. Both `defaultProject` and `defaultDataset` must be configured in `workflow_settings.yaml` (or via CLI overrides) in the same location as the Lakehouse catalog (`defaultLocation`), and the execution identity needs permissions to create the dataset (if missing) and create/drop tables in `defaultDataset`. `dataform run` checks `defaultDataset` only when the run includes an incremental Lakehouse table with `onSchemaChange` (`FAIL`, `EXTEND`, or `SYNCHRONIZE`), and creates it only if it does not exist.
+  - Table descriptions and top-level column descriptions on Lakehouse tables are applied after action execution via `ALTER TABLE` SQL statements (nested `STRUCT` field descriptions are skipped because BigQuery `ALTER COLUMN` only supports top-level columns).
 
 Exit codes: `0` on success, `1` if compilation fails, a BigQuery job would get more than 64 labels (checked before any action or unit test runs), unit tests fail (with `--run-tests`), the run fails, times out, or is cancelled (Ctrl+C).
 

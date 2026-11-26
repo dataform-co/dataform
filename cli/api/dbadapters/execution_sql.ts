@@ -4,6 +4,7 @@ import { Task, Tasks } from "df/cli/api/dbadapters/tasks";
 import { concatenateQueries, terminateStatements } from "df/cli/api/utils/query_transforms";
 import { ErrorWithCause } from "df/common/errors/errors";
 import { CompilationSql } from "df/core/compilation_sql";
+import { isLakehouseTarget } from "df/core/targets";
 import { tableTypeEnumToString } from "df/core/utils";
 import { dataform } from "df/protos/ts";
 
@@ -156,7 +157,7 @@ from ${source}`;
     preOpTasks.forEach((statement) => tasks.add(statement));
 
     const baseTableType = this.baseTableType(table.enumType);
-    if (tableMetadata && tableMetadata.type !== baseTableType) {
+    if (!isLakehouseTarget(table.target) && tableMetadata && tableMetadata.type !== baseTableType) {
       tasks.add(
         Task.statement(this.dropIfExists(table.target, this.oppositeTableType(baseTableType))),
       );
@@ -185,24 +186,38 @@ from ${source}`;
     }
 
     const baseTableType = this.baseTableType(table.enumType);
-    if (tableMetadata && tableMetadata.type !== baseTableType) {
+    if (!isLakehouseTarget(table.target) && tableMetadata && tableMetadata.type !== baseTableType) {
       tasks.add(
         Task.statement(this.dropIfExists(table.target, this.oppositeTableType(baseTableType))),
       );
     }
 
     if (!this.shouldWriteIncrementally(table, runConfig, tableMetadata)) {
-      tasks.add(Task.statement(this.createOrReplace(table)));
+      const allowReplace =
+        !isLakehouseTarget(table.target) ||
+        Boolean(runConfig.fullRefresh && (!table.protected || runConfig.overrideProtected));
+      tasks.add(Task.statement(this.createOrReplace(table, allowReplace)));
     } else {
+      if (isLakehouseTarget(table.target) && !tableMetadata?.fields?.length) {
+        throw new Error(
+          `Cannot write incrementally to Lakehouse table ${this.resolveTarget(table.target)} because warehouse metadata is missing schema fields.`,
+        );
+      }
       const onSchemaChange = table.onSchemaChange ?? dataform.OnSchemaChange.IGNORE;
       switch (onSchemaChange) {
         case dataform.OnSchemaChange.FAIL:
         case dataform.OnSchemaChange.EXTEND:
         case dataform.OnSchemaChange.SYNCHRONIZE:
-          this.buildIncrementalSchemaChangeTasks(tasks, table, preOpTasks, postOpTasks);
+          this.buildIncrementalSchemaChangeTasks(
+            tasks,
+            table,
+            preOpTasks,
+            postOpTasks,
+            tableMetadata,
+          );
           break;
         case dataform.OnSchemaChange.IGNORE:
-          const columns = tableMetadata?.fields.map((f) => f.name) || [];
+          const columns = tableMetadata?.fields?.map((f) => f.name) || [];
           tasks.add(Task.statement(this.getIncrementalDmlStatement(table, columns)));
           break;
         default:
@@ -295,7 +310,19 @@ from ${source}`;
     table: dataform.ITable,
     preOpTasks: Task[] = [],
     postOpTasks: Task[] = [],
+    tableMetadata?: dataform.ITableMetadata,
   ) {
+    if (isLakehouseTarget(table.target)) {
+      this.buildLakehouseIncrementalSchemaChangeTasks(
+        tasks,
+        table,
+        preOpTasks,
+        postOpTasks,
+        tableMetadata,
+      );
+      return;
+    }
+
     const uniqueId = this.uniqueIdGenerator();
 
     const emptyTempTableTarget = {
@@ -324,6 +351,73 @@ END;`;
     );
     tasks.add(Task.statement(createProcedureSql));
     tasks.add(Task.statement(callProcedureSql));
+  }
+
+  private buildLakehouseIncrementalSchemaChangeTasks(
+    tasks: Tasks,
+    table: dataform.ITable,
+    preOpTasks: Task[] = [],
+    postOpTasks: Task[] = [],
+    tableMetadata?: dataform.ITableMetadata,
+  ) {
+    const uniqueId = this.uniqueIdGenerator();
+    const tempTableName = `${table.target.name}_df_temp_${uniqueId}_empty`;
+    const emptyTempTableTarget = this.resolveScratchTarget(tempTableName);
+    const emptyTempTableName = this.resolveTarget(emptyTempTableTarget);
+    // Note: `existingColumns` is a build-time snapshot from `tables.get` metadata (whereas the
+    // standard 3-part path queries INFORMATION_SCHEMA at execution time), so schema changes made
+    // by `incrementalPreOps` are not visible here.
+    const existingColumns = tableMetadata.fields.map((f) => f.name);
+    const scriptBody = this.incrementalSchemaChangeBody(
+      table,
+      this.resolveTarget(table.target),
+      emptyTempTableTarget,
+      preOpTasks,
+      postOpTasks,
+      existingColumns,
+    );
+    const scriptSql = `BEGIN
+${scriptBody}
+EXCEPTION WHEN ERROR THEN
+  DROP TABLE IF EXISTS ${emptyTempTableName};
+  RAISE;
+END;`;
+    tasks.add(Task.statement(scriptSql));
+  }
+
+  /**
+   * Returns the dataset that holds the short-lived schema-inspection table of incremental Lakehouse
+   * tables with `onSchemaChange`: `defaultDataset` in `defaultProject` (with suffixes), or null if
+   * either of them is not configured.
+   */
+  public lakehouseScratchDataset(): { database: string; schema: string } | null {
+    const baseDefaultDatabase = this.project?.defaultDatabase;
+    const baseDefaultSchema = this.project?.defaultSchema;
+    if (!baseDefaultDatabase || !baseDefaultSchema) {
+      return null;
+    }
+    return {
+      database: this.project.databaseSuffix
+        ? `${baseDefaultDatabase}_${this.project.databaseSuffix}`
+        : baseDefaultDatabase,
+      schema: this.project.schemaSuffix
+        ? `${baseDefaultSchema}_${this.project.schemaSuffix}`
+        : baseDefaultSchema,
+    };
+  }
+
+  private resolveScratchTarget(tempTableName: string): dataform.ITarget {
+    if (!this.project?.defaultDatabase) {
+      throw new Error(
+        "When defining an incremental Lakehouse table with onSchemaChange, 'defaultProject' must be defined in workflow_settings.yaml.",
+      );
+    }
+    if (!this.project?.defaultSchema) {
+      throw new Error(
+        "When defining an incremental Lakehouse table with onSchemaChange, 'defaultDataset' must be defined in workflow_settings.yaml.",
+      );
+    }
+    return { ...this.lakehouseScratchDataset(), name: tempTableName };
   }
 
   private createProcedureName(target: dataform.ITarget, uniqueId: string): string {
@@ -368,10 +462,17 @@ DECLARE dataform_columns_removed ARRAY<STRING>;`;
     return sql;
   }
 
-  private createEmptyTempTableSql(emptyTempTableName: string, query: string): string {
+  private createEmptyTempTableSql(
+    emptyTempTableName: string,
+    query: string,
+    setExpiration = false,
+  ): string {
+    const optionsClause = setExpiration
+      ? "\nOPTIONS(expiration_timestamp = TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 1 DAY))"
+      : "";
     return `
 -- Create empty table to extract schema of new query.
-CREATE OR REPLACE TABLE ${emptyTempTableName} AS (
+CREATE OR REPLACE TABLE ${emptyTempTableName}${optionsClause} AS (
   SELECT * FROM (${query}
 ) AS insertions LIMIT 0
 );`;
@@ -380,18 +481,30 @@ CREATE OR REPLACE TABLE ${emptyTempTableName} AS (
   private compareSchemasSql(
     target: dataform.ITarget,
     emptyTempTableTarget: dataform.ITarget,
+    existingColumns?: string[],
   ): string {
-    return `
--- Compare schemas
-SET dataform_columns = (
+    const setDataformColumnsSql =
+      existingColumns !== undefined
+        ? `SET dataform_columns = ARRAY<STRING>[${existingColumns
+            .map((col) => this.CompilationSql.sqlString(col))
+            .join(", ")}];`
+        : `SET dataform_columns = (
   SELECT IFNULL(ARRAY_AGG(DISTINCT column_name), [])
   FROM \`${target.database}.${target.schema}.INFORMATION_SCHEMA.COLUMNS\`
   WHERE table_name = '${target.name}'
-);
+);`;
+
+    const tempInfoSchemaPrefix = emptyTempTableTarget.database
+      ? `${emptyTempTableTarget.database}.${emptyTempTableTarget.schema}`
+      : emptyTempTableTarget.schema;
+
+    return `
+-- Compare schemas
+${setDataformColumnsSql}
 
 SET dataform_temp_table_columns = (
   SELECT IFNULL(ARRAY_AGG(STRUCT(column_name, data_type)), [])
-  FROM \`${emptyTempTableTarget.database}.${emptyTempTableTarget.schema}.INFORMATION_SCHEMA.COLUMNS\`
+  FROM \`${tempInfoSchemaPrefix}.INFORMATION_SCHEMA.COLUMNS\`
   WHERE table_name = '${emptyTempTableTarget.name}'
 );
 
@@ -514,13 +627,14 @@ DROP TABLE IF EXISTS ${emptyTempTableName};
     emptyTempTableTarget: dataform.ITarget,
     preOpTasks: Task[] = [],
     postOpTasks: Task[] = [],
+    existingColumns?: string[],
   ): string {
     const emptyTempTableName = this.resolveTarget(emptyTempTableTarget);
     const query = this.getIncrementalQuery(table);
     const coreBody = [
       this.declareSchemaChangeVariablesSql(table),
-      this.createEmptyTempTableSql(emptyTempTableName, query),
-      this.compareSchemasSql(table.target, emptyTempTableTarget),
+      this.createEmptyTempTableSql(emptyTempTableName, query, isLakehouseTarget(table.target)),
+      this.compareSchemasSql(table.target, emptyTempTableTarget, existingColumns),
       this.cleanupSql(emptyTempTableName),
       this.applySchemaChangeStrategySql(table, qualifiedTargetTableName),
       this.prepareDynamicColumnsSql(table),
@@ -547,7 +661,7 @@ DROP TABLE IF EXISTS ${emptyTempTableName};
     return bodyParts.join("\n\n");
   }
 
-  private createOrReplace(table: dataform.ITable) {
+  private createOrReplace(table: dataform.ITable, allowReplace = true) {
     const options = [];
     if (table.bigquery && table.bigquery.partitionBy && table.bigquery.partitionExpirationDays) {
       options.push(`partition_expiration_days=${table.bigquery.partitionExpirationDays}`);
@@ -561,7 +675,7 @@ DROP TABLE IF EXISTS ${emptyTempTableName};
       }
     }
 
-    return `create or replace ${table.materialized ? "materialized " : ""}${this.tableTypeAsSql(
+    return `create ${allowReplace ? "or replace " : ""}${table.materialized ? "materialized " : ""}${this.tableTypeAsSql(
       this.baseTableType(table.enumType),
     )} ${this.resolveTarget(table.target)} ${
       table.bigquery && table.bigquery.partitionBy

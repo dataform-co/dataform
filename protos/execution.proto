@@ -60,6 +60,10 @@ message ExecutionAction {
 
   bool has_output = 13;
 
+  // Populated for table actions so Runner knows whether an incremental
+  // Lakehouse table needs the scratch dataset.
+  OnSchemaChange on_schema_change = 14;
+
   reserved 1, 3, 7;
 }
 

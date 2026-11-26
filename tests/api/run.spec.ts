@@ -736,7 +736,7 @@ suite("@dataform/api/run", () => {
         executionOptions.push(options);
         return Promise.resolve({ rows: [], metadata: {} });
       });
-      when(mockedDbAdapter.setMetadata(anything())).thenCall(
+      when(mockedDbAdapter.setMetadata(anything(), anything())).thenCall(
         (action: dataform.IExecutionAction) => {
           setMetadataActionDescriptors.push(action.actionDescriptor!);
           return Promise.resolve();
@@ -786,7 +786,7 @@ suite("@dataform/api/run", () => {
       const result = await runner.execute().result();
 
       expect(result.status).to.equal(dataform.RunResult.ExecutionStatus.SUCCESSFUL);
-      verify(mockedDbAdapter.setMetadata(anything())).never();
+      verify(mockedDbAdapter.setMetadata(anything(), anything())).never();
     });
 
     test("resolveJobLabels falls back to bigqueryLabels when jobLabels is empty, and execution labels override them", () => {
@@ -910,7 +910,9 @@ suite("@dataform/api/run", () => {
       rows: [],
       metadata: {},
     });
-    when(mockedDbAdapter.setMetadata(anything())).thenReject(new Error("Error during setMetadata"));
+    when(mockedDbAdapter.setMetadata(anything(), anything())).thenReject(
+      new Error("Error during setMetadata"),
+    );
 
     const mockDbAdapterInstance = instance(mockedDbAdapter);
 

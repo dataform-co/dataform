@@ -45,10 +45,10 @@ export const actionsOption: INamedOption<yargs.Options, IActionsArgs> = {
   name: "actions",
   option: {
     // No wildcard support: prune()'s matchPatterns() does exact matching on the action name or
-    // its fully-qualified `database.schema.name`.
+    // its fully-qualified `database.schema.name` (or 4-part `database.catalog.namespace.name`).
     describe:
       "Actions to run (comma-separated or repeatable). Each entry is an action name or a " +
-      "fully-qualified database.schema.name target.",
+      "fully-qualified database.schema.name (or 4-part database.catalog.namespace.name) target.",
     type: "array",
     coerce: splitCommas,
   },
