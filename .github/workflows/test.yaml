@@ -38,6 +38,9 @@ jobs:
           ./scripts/check_cloudbuild_installs_lockfile_test.py
           ./scripts/check_cloudbuild_installs_lockfile
 
+      - name: Run PR auto-assign script tests
+        run: ./scripts/auto_assign_pr_test.py
+
   # Unit and integration tests run on Cloud Build (cloudbuild-test.yaml); this job only
   # builds the packages and the smoke test bundle that the Windows job needs.
   build-linux:

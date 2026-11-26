@@ -86,7 +86,7 @@ from ${source}`;
     tableMetadata?: dataform.ITableMetadata,
   ) {
     return (
-      (!runConfig.fullRefresh || table.protected) &&
+      (!runConfig.fullRefresh || (table.protected && !runConfig.overrideProtected)) &&
       tableMetadata &&
       tableMetadata.type !== dataform.TableMetadata.Type.VIEW
     );
@@ -194,7 +194,8 @@ from ${source}`;
 
     if (!this.shouldWriteIncrementally(table, runConfig, tableMetadata)) {
       const allowReplace =
-        !isLakehouseTarget(table.target) || Boolean(runConfig.fullRefresh && !table.protected);
+        !isLakehouseTarget(table.target) ||
+        Boolean(runConfig.fullRefresh && (!table.protected || runConfig.overrideProtected));
       tasks.add(Task.statement(this.createOrReplace(table, allowReplace)));
     } else {
       if (isLakehouseTarget(table.target) && !tableMetadata?.fields?.length) {

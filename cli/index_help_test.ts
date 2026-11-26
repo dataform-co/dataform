@@ -81,6 +81,7 @@ suite("help command", () => {
     expect(output).to.include("--action-retry-limit");
     expect(output).to.include("--actions");
     expect(output).to.include("--full-refresh");
+    expect(output).to.include("--override-protected");
     expect(output).to.include("--include-deps");
     expect(output).to.include("--include-dependents");
     expect(output).to.include("--tags");
