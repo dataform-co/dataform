@@ -172,6 +172,53 @@ export function promptForIcebergConfig(): dataform.IDefaultIcebergConfig | undef
 }
 
 /**
+ * Handles prompting and validation for default Lakehouse catalog and namespace
+ * when the user provides the --lakehouse flag to `dataform init`.
+ *
+ * @returns Constructed DefaultLakehouseConfig object, or undefined if no inputs
+ * were provided.
+ */
+export function promptForLakehouseConfig(): dataform.IDefaultLakehouseConfig | undefined {
+  print(LAKEHOUSE_CONFIG_PROMPT_TEXT);
+  print(LAKEHOUSE_CONFIG_PROMPT_HINT);
+
+  const tempLakehouseConfig: dataform.IDefaultLakehouseConfig = {};
+
+  while (true) {
+    print(LAKEHOUSE_CATALOG_HINT);
+    const catalog = interactiveQuestion(LAKEHOUSE_CATALOG_PROMPT_QUESTION);
+    try {
+      validateLakehouseConfigField(catalog, "catalog");
+      tempLakehouseConfig.catalog = catalog.trim();
+      break;
+    } catch (e) {
+      printError(`Validation Error: ${e.message}`);
+      print("Please try again.");
+    }
+  }
+
+  while (true) {
+    print(LAKEHOUSE_NAMESPACE_HINT);
+    const namespace = interactiveQuestion(LAKEHOUSE_NAMESPACE_PROMPT_QUESTION);
+    try {
+      validateLakehouseConfigField(namespace, "namespace");
+      tempLakehouseConfig.namespace = namespace.trim();
+      break;
+    } catch (e) {
+      printError(`Validation Error: ${e.message}`);
+      print("Please try again.");
+    }
+  }
+
+  printSuccess(LAKEHOUSE_CONFIG_COLLECTED_TEXT);
+
+  if (Object.keys(tempLakehouseConfig).length > 0) {
+    return tempLakehouseConfig;
+  }
+  return undefined;
+}
+
+/**
  * Validates a string to ensure it is a valid name for a GCS bucket. Based on
  * https://cloud.google.com/storage/docs/buckets#naming.
  *
@@ -248,6 +295,24 @@ export function validateIcebergConfigTableFolderSubpath(tableFolderSubpath: stri
   }
 }
 
+/**
+ * Validates a Lakehouse catalog or namespace value.
+ * Rejects empty/whitespace-only strings and values containing '.', which
+ * @dataform/core disallows in 4-part Lakehouse targets.
+ */
+export function validateLakehouseConfigField(
+  value: string,
+  fieldName: "catalog" | "namespace",
+): void {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    throw new Error(`Lakehouse ${fieldName} cannot be empty.`);
+  }
+  if (trimmed.includes(".")) {
+    throw new Error(`Lakehouse ${fieldName} cannot contain '.'.`);
+  }
+}
+
 const MAX_SET_DATASET_ID_AFFECTED_ACTIONS = 5;
 
 export function warnAboutSetDatasetIdWithoutLocation(
@@ -296,6 +361,17 @@ export const ICEBERG_TABLE_FOLDER_SUBPATH_PROMPT_QUESTION =
 export const ICEBERG_CONNECTION_HINT =
   "The connection can have the form `{project}.{location}.{connection_id}` or `projects/{project}/locations/{location}/connections/{connection_id} or be set to DEFAULT. If you do not want to provide a workflow-level default connection, leave this input empty.\n";
 export const ICEBERG_CONNECTION_QUESTION = "Enter the default connection:";
+
+export const LAKEHOUSE_CONFIG_PROMPT_TEXT = "\n--- Lakehouse Configuration ---\n";
+export const LAKEHOUSE_CONFIG_PROMPT_HINT =
+  "Set repository-level default Lakehouse catalog and namespace. Both values are required and cannot contain periods ('.').\n";
+export const LAKEHOUSE_CONFIG_COLLECTED_TEXT = "Lakehouse configuration collected.\n";
+export const LAKEHOUSE_CATALOG_HINT =
+  "The Lakehouse catalog name is required and cannot contain '.'.\n";
+export const LAKEHOUSE_CATALOG_PROMPT_QUESTION = "Enter the default Lakehouse catalog:";
+export const LAKEHOUSE_NAMESPACE_HINT =
+  "The Lakehouse namespace name is required and cannot contain '.'.\n";
+export const LAKEHOUSE_NAMESPACE_PROMPT_QUESTION = "Enter the default Lakehouse namespace:";
 
 /**
  * Returns the table's type for its label in the DOT and Mermaid outputs. For graphs that only set

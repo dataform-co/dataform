@@ -8,6 +8,7 @@ import {
   validateIcebergConfigBucketName,
   validateIcebergConfigTableFolderRoot,
   validateIcebergConfigTableFolderSubpath,
+  validateLakehouseConfigField,
   warnAboutSetDatasetIdWithoutLocation,
 } from "df/cli/util";
 import { dataform } from "df/protos/ts";
@@ -169,6 +170,45 @@ suite("Iceberg Config Validation", () => {
 
     test('invalidates subpaths containing ".."', () => {
       expect(() => validateIcebergConfigTableFolderSubpath("subp..ath")).to.throw("Invalid input.");
+    });
+  });
+});
+
+suite("Lakehouse Config Validation", () => {
+  suite("validateLakehouseConfigField", () => {
+    test("valid catalog and namespace values do not throw errors", () => {
+      expect(() => validateLakehouseConfigField("my_catalog", "catalog")).to.not.throw();
+      expect(() => validateLakehouseConfigField("my-rest-catalog-1", "catalog")).to.not.throw();
+      expect(() => validateLakehouseConfigField("MyNamespace_123", "namespace")).to.not.throw();
+      expect(() => validateLakehouseConfigField("  my_catalog  ", "catalog")).to.not.throw();
+      expect(() => validateLakehouseConfigField("a", "namespace")).to.not.throw();
+    });
+
+    test("rejects empty and whitespace-only values", () => {
+      expect(() => validateLakehouseConfigField("", "catalog")).to.throw(
+        "Lakehouse catalog cannot be empty.",
+      );
+      expect(() => validateLakehouseConfigField("   ", "catalog")).to.throw(
+        "Lakehouse catalog cannot be empty.",
+      );
+      expect(() => validateLakehouseConfigField("\t\n", "namespace")).to.throw(
+        "Lakehouse namespace cannot be empty.",
+      );
+    });
+
+    test("rejects values containing periods", () => {
+      expect(() => validateLakehouseConfigField("my.catalog", "catalog")).to.throw(
+        "Lakehouse catalog cannot contain '.'.",
+      );
+      expect(() => validateLakehouseConfigField(".catalog", "catalog")).to.throw(
+        "Lakehouse catalog cannot contain '.'.",
+      );
+      expect(() => validateLakehouseConfigField("namespace.", "namespace")).to.throw(
+        "Lakehouse namespace cannot contain '.'.",
+      );
+      expect(() => validateLakehouseConfigField("a.b.c", "namespace")).to.throw(
+        "Lakehouse namespace cannot contain '.'.",
+      );
     });
   });
 });
