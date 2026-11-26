@@ -1,20 +1,69 @@
 version: 2
 updates:
-  # Security updates only: the open PR limit of 0 disables version updates.
+  # npm: security updates (one grouped PR) and version updates of all direct
+  # dependencies. Version updates are minor and patch only, in two groups, so
+  # changes shipped to users (dependencies) are reviewed separately from the
+  # build tooling (devDependencies). Each group is a single PR that Dependabot
+  # keeps updating to the newest versions. Majors are left to manual updates.
   # Note: with pnpm, Dependabot can only update direct dependencies (listed in
   # package.json). Vulnerable transitive dependencies are fixed with
-  # pnpm.overrides in package.json.
+  # pnpm.overrides in package.json (see scripts/update_vulnerable_deps).
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 0
-    # Wait 14 days after a release before proposing it. This applies only to
-    # version updates (currently disabled), not to security updates.
+      interval: "daily" # Use "weekly" if this turns out to be too often.
+      time: "02:00" # UTC, before the nightly prefetch of new versions (03:00).
+    open-pull-requests-limit: 5
+    # New npm versions become available in the registry used by the Cloud
+    # Build tests only after about 3 weeks, so proposing them earlier only
+    # produces failing PRs. Applies to version updates, not security updates.
     cooldown:
-      default-days: 14
+      default-days: 21
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+      # Keep @types/node at the major of the Node.js toolchain in MODULE.bazel.
+      - dependency-name: "@types/node"
+        versions: [">=25"]
     groups:
       npm-security-updates:
         applies-to: security-updates
+        patterns:
+          - "*"
+      npm-runtime:
+        dependency-type: "production"
+        update-types: ["minor", "patch"]
+      npm-dev-tooling:
+        dependency-type: "development"
+        update-types: ["minor", "patch"]
+
+  # Bazel modules (bazel_dep in MODULE.bazel, with MODULE.bazel.lock): minor
+  # and patch versions in one PR. Bazel itself, Node.js and pnpm are updated
+  # by the Toolchain updates workflow.
+  - package-ecosystem: "bazel"
+    directory: "/"
+    schedule:
+      interval: "daily"
+      time: "02:00"
+    cooldown:
+      default-days: 7
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      bazel-modules:
+        patterns:
+          - "*"
+        update-types: ["minor", "patch"]
+
+  # GitHub Actions used by the workflows (pinned to commit SHAs).
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+    groups:
+      github-actions:
         patterns:
           - "*"
