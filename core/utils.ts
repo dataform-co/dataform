@@ -41,11 +41,13 @@ export const nativeRequire =
 // above has already consumed every "*", so none can reach here. ("]" and "\" carry
 // backslashes for the character class's own syntax; "-" and "/" are not metacharacters
 // outside a class and so need no escaping.)
-function globToRegExp(pattern: string): RegExp {
+/** @internal */
+export function globToRegExp(pattern: string): RegExp {
   const escapeLiteral = (literal: string) => literal.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
   return new RegExp(`^${pattern.replace(/\*+/g, "*").split("*").map(escapeLiteral).join(".*")}$`);
 }
 
+/** @internal */
 export function matchPatterns(patterns: string[], values: string[]) {
   const fullyQualifiedActions: string[] = [];
   patterns.forEach((pattern) => {
