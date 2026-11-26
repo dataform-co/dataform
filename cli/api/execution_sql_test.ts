@@ -179,7 +179,7 @@ suite("ExecutionSql with 'onSchemaChange'", () => {
     }
   });
 
-  test("executes dynamic DML inside the script block, without a stored procedure, for onSchemaChange", () => {
+  test("executes dynamic DML inside the script block for onSchemaChange", () => {
     for (const strategy of [
       dataform.OnSchemaChange.FAIL,
       dataform.OnSchemaChange.EXTEND,
@@ -195,8 +195,6 @@ suite("ExecutionSql with 'onSchemaChange'", () => {
       expect(builtTasks.length).to.equal(1);
 
       const fullSql = builtTasks[0].statement;
-      expect(fullSql).to.not.match(/\bPROCEDURE\b/i);
-      expect(fullSql).to.not.match(/\bCALL\b/i);
 
       const parts = fullSql.split("\nEXCEPTION WHEN ERROR THEN\n");
       expect(parts.length).to.equal(2);

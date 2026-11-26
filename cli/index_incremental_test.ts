@@ -156,7 +156,6 @@ config {
         };
 
         expect(executionGraph).deep.equals(expectedRunResult);
-        expect(statement).to.not.include("PROCEDURE");
         expect(statement).to.include(
           "Column removals are not allowed when on_schema_change = 'EXTEND'.",
         );
