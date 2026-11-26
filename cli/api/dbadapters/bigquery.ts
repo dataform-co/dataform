@@ -144,7 +144,6 @@ export function createBigQueryClientProvider(
 }
 
 export class BigQueryDbAdapter implements IDbAdapter {
-  private bigQueryCredentials: dataform.IBigQuery;
   private pool: PromisePoolExecutor;
   private clientProvider: BigQueryClientProvider;
 
@@ -155,7 +154,6 @@ export class BigQueryDbAdapter implements IDbAdapter {
       clientProvider?: BigQueryClientProvider;
     },
   ) {
-    this.bigQueryCredentials = credentials;
     this.clientProvider = options?.clientProvider || createBigQueryClientProvider(credentials);
 
     // Bigquery allows 50 concurrent queries, and a rate limit of 100/user/second by default.
@@ -350,37 +348,6 @@ export class BigQueryDbAdapter implements IDbAdapter {
     );
 
     return tablesMetadata;
-  }
-
-  public async search(
-    searchText: string,
-    options: { limit: number; location?: string } = { limit: 1000 },
-  ): Promise<dataform.ITableMetadata[]> {
-    const location = options.location || this.bigQueryCredentials.location || "US";
-    const results = await this.execute(
-      `select table_catalog, table_schema, table_name
-       from region-${location}.INFORMATION_SCHEMA.COLUMN_FIELD_PATHS
-       where regexp_contains(table_schema, @searchText) or regexp_contains(table_name, @searchText) or regexp_contains(field_path, @searchText)
-       group by 1, 2, 3`,
-      {
-        params: {
-          searchText: `(?i)${searchText}`,
-        },
-        interactive: true,
-        rowLimit: options.limit,
-        bigquery: { location },
-      },
-    );
-    const tables = await Promise.all(
-      results.rows.map((row) =>
-        this.table({
-          database: row.table_catalog,
-          schema: row.table_schema,
-          name: row.table_name,
-        }),
-      ),
-    );
-    return tables.filter((table) => Boolean(table));
   }
 
   public async table(target: dataform.ITarget): Promise<dataform.ITableMetadata> {

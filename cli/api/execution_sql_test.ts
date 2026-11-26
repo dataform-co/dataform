@@ -470,3 +470,60 @@ suite("ExecutionSql for operations", () => {
     ).deep.equals([]);
   });
 });
+
+suite("ExecutionSql default uniqueIdGenerator", () => {
+  const executionSql = new ExecutionSql(
+    { defaultDatabase: "project-id", defaultSchema: "dataset-id" },
+    "2.0.0",
+  );
+  const tableMetadata: dataform.ITableMetadata = {
+    type: dataform.TableMetadata.Type.TABLE,
+    fields: [{ name: "id", primitive: dataform.Field.Primitive.INTEGER }],
+  };
+  const baseTable: dataform.ITable = {
+    type: "incremental",
+    enumType: dataform.TableType.INCREMENTAL,
+    target: { database: "project-id", schema: "dataset-id", name: "tbl" },
+    query: "SELECT 1 AS id, TIMESTAMP '2024-01-01 00:00:00 UTC' AS ts",
+    incrementalQuery: "SELECT 2 AS id, TIMESTAMP '2024-01-02 00:00:00 UTC' AS ts",
+    incrementalStrategy: dataform.IncrementalStrategy.INSERT_OVERWRITE,
+    bigquery: { partitionBy: "DATE(ts)" },
+  };
+
+  test("generates 16-character lowercase hex temporary identifiers for onSchemaChange and staging tables", () => {
+    const table: dataform.ITable = {
+      ...baseTable,
+      onSchemaChange: dataform.OnSchemaChange.EXTEND,
+    };
+
+    const sql = executionSql
+      .publishTasks(table, { fullRefresh: false }, tableMetadata)
+      .build()[0].statement;
+
+    const procedureMatch = sql.match(/`project-id\.dataset-id\.df_osc_([0-9a-f]{16})`/);
+    const emptyTempMatch = sql.match(/`project-id\.dataset-id\.tbl_df_temp_([0-9a-f]{16})_empty`/);
+    const stagingMatch = sql.match(/`staging_table_temp_([0-9a-f]{16})`/);
+
+    expect(procedureMatch).to.not.equal(null);
+    expect(emptyTempMatch).to.not.equal(null);
+    expect(stagingMatch).to.not.equal(null);
+    expect(procedureMatch[1]).to.equal(emptyTempMatch[1]);
+    expect(stagingMatch[1]).to.not.equal(procedureMatch[1]);
+  });
+
+  test("generates distinct temporary identifiers across consecutive invocations", () => {
+    const firstSql = executionSql
+      .publishTasks(baseTable, { fullRefresh: false }, tableMetadata)
+      .build()[0].statement;
+    const secondSql = executionSql
+      .publishTasks(baseTable, { fullRefresh: false }, tableMetadata)
+      .build()[0].statement;
+
+    const firstId = firstSql.match(/`staging_table_temp_([0-9a-f]{16})`/)?.[1];
+    const secondId = secondSql.match(/`staging_table_temp_([0-9a-f]{16})`/)?.[1];
+
+    expect(firstId).to.match(/^[0-9a-f]{16}$/);
+    expect(secondId).to.match(/^[0-9a-f]{16}$/);
+    expect(firstId).to.not.equal(secondId);
+  });
+});

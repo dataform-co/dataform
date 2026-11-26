@@ -1,8 +1,7 @@
 import { BigQuery, Dataset, Table, TableField, TableMetadata } from "@google-cloud/bigquery";
 import { expect } from "chai";
-import { EventEmitter } from "events";
 import { AuthClient, gaxios, Impersonated } from "google-auth-library";
-import { anything, instance, mock, when } from "ts-mockito";
+import { anything, deepEqual, instance, mock, when } from "ts-mockito";
 
 import {
   BigQueryDbAdapter,
@@ -355,6 +354,50 @@ suite("BigQueryDbAdapter", () => {
     expect(caughtError?.message).to.equal("Access Denied: Dataset project1:restricted_schema");
   });
 
+  test("table() returns null on notFound and tables() omits concurrently deleted tables", async () => {
+    const mockBigQuery = mock<BigQuery>();
+    const mockDataset = mock<Dataset>();
+    const mockLiveTable = mock<Table>();
+    const mockDeletedTable = mock<Table>();
+
+    when(mockLiveTable.id).thenReturn("live_table");
+    when(mockDeletedTable.id).thenReturn("deleted_table");
+    when(mockBigQuery.dataset("schema1")).thenReturn(instance(mockDataset));
+    when(mockDataset.getTables(deepEqual({ autoPaginate: true, maxResults: 1000 }))).thenResolve([
+      [instance(mockLiveTable), instance(mockDeletedTable)],
+      {},
+      {},
+    ]);
+    when(mockDataset.table("live_table")).thenReturn(instance(mockLiveTable));
+    when(mockDataset.table("deleted_table")).thenReturn(instance(mockDeletedTable));
+    when(mockLiveTable.getMetadata()).thenResolve([
+      {
+        type: "TABLE",
+        tableReference: { projectId: "project1", datasetId: "schema1", tableId: "live_table" },
+        schema: { fields: [{ name: "col1", type: "STRING" }] },
+        lastModifiedTime: "123456789",
+      },
+      undefined,
+    ]);
+    when(mockDeletedTable.getMetadata()).thenReject(
+      Object.assign(new Error("Not found"), { errors: [{ reason: "notFound" }] }),
+    );
+
+    const adapter = new BigQueryDbAdapter(
+      dataform.BigQuery.create({ projectId: "project1", location: "US" }),
+      { clientProvider: () => instance(mockBigQuery) },
+    );
+
+    expect(
+      await adapter.table({ database: "project1", schema: "schema1", name: "deleted_table" }),
+    ).to.equal(null);
+
+    const tables = await adapter.tables("project1", "schema1");
+    expect(tables.map((t) => t.target)).to.deep.equal([
+      { database: "project1", schema: "schema1", name: "live_table" },
+    ]);
+  });
+
   test("setMetadata handles action without columns", async () => {
     // Partial mock for BigQuery client to avoid real network calls
     const mockBigQuery: any = {
@@ -569,64 +612,6 @@ suite("BigQueryDbAdapter", () => {
     );
 
     expect(schema).to.deep.equal([{ name: "id", type: "INTEGER", description: "id desc" }]);
-  });
-
-  test("search() filters out tables whose metadata is not found", async () => {
-    const projectId = "project1";
-    const liveSchema = "live_schema";
-    const deletedSchema = "deleted_schema";
-    const tableName = "table1";
-
-    const mockBigQuery: any = {
-      createQueryStream: () => {
-        const stream = new EventEmitter();
-        process.nextTick(() => {
-          stream.emit("data", {
-            table_catalog: projectId,
-            table_schema: liveSchema,
-            table_name: tableName,
-          });
-          stream.emit("data", {
-            table_catalog: projectId,
-            table_schema: deletedSchema,
-            table_name: tableName,
-          });
-          stream.emit("end");
-        });
-        return stream;
-      },
-      dataset: (schema: string) => ({
-        table: (name: string) => ({
-          getMetadata: () => {
-            if (schema === deletedSchema) {
-              return Promise.reject({ errors: [{ reason: "notFound" }] });
-            }
-            return Promise.resolve([
-              {
-                type: "TABLE",
-                tableReference: { projectId, datasetId: schema, tableId: name },
-                schema: { fields: [{ name: "col1", type: "STRING" }] },
-                lastModifiedTime: "123456789",
-              },
-            ]);
-          },
-        }),
-      }),
-    };
-
-    const credentials = dataform.BigQuery.create({ projectId, location: "US" });
-    const adapter = new BigQueryDbAdapter(credentials, {
-      clientProvider: () => mockBigQuery,
-    });
-
-    const result = await adapter.search("schema");
-
-    expect(result.length).to.equal(1);
-    expect(result[0].target).to.eql({
-      database: projectId,
-      schema: liveSchema,
-      name: tableName,
-    });
   });
 
   suite("executeRaw", () => {
