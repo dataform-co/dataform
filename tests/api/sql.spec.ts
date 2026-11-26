@@ -106,6 +106,64 @@ suite("@dataform/api/sql", () => {
         ),
       );
     });
+
+    test("full refresh of a protected dataset with override protected", () => {
+      const protectedIncrementalTable = {
+        ...incrementalTable,
+        protected: true,
+      };
+      const graph = dataform.CompiledGraph.create({
+        projectConfig,
+        tables: [protectedIncrementalTable],
+      });
+
+      const executionGraph = new Builder(
+        graph,
+        { fullRefresh: true, overrideProtected: true },
+        warehouseState,
+      ).build();
+
+      expect(
+        cleanSql(
+          executionGraph.actions.filter(
+            (n) => targetAsReadableString(n.target) === "schema.incremental",
+          )[0].tasks[0].statement,
+        ),
+      ).equals(cleanSql("create or replace table `deeb.schema.incremental` as select 1 as test"));
+    });
+
+    test("override protected has no effect without full refresh", () => {
+      const protectedIncrementalTable = {
+        ...incrementalTable,
+        protected: true,
+      };
+      const graph = dataform.CompiledGraph.create({
+        projectConfig,
+        tables: [protectedIncrementalTable],
+      });
+
+      const executionGraph = new Builder(
+        graph,
+        { fullRefresh: false, overrideProtected: true },
+        warehouseState,
+      ).build();
+
+      expect(
+        cleanSql(
+          executionGraph.actions.filter(
+            (n) => targetAsReadableString(n.target) === "schema.incremental",
+          )[0].tasks[0].statement,
+        ),
+      ).equals(
+        cleanSql(
+          `insert into \`deeb.schema.incremental\` (\`existing_field\`)
+            select \`existing_field\` from (
+              select * from (select 1 as test) as subquery
+              where true
+            ) as insertions`,
+        ),
+      );
+    });
   });
 
   test("bigquery_materialized", () => {

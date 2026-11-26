@@ -31,7 +31,6 @@ import {
   getFileFormatValueForIcebergTable,
   getStorageUriForIcebergTable,
   nativeRequire,
-  resolvableAsActionConfigTarget,
   resolvableAsTarget,
   resolveActionsConfigFilename,
   setActionJobLabels,
@@ -703,24 +702,9 @@ export class IncrementalTable extends ActionBuilder<dataform.Table> {
     // new format.
     if (unverifiedConfig.type) {
       delete unverifiedConfig.type;
-      if (unverifiedConfig.dependencies) {
-        unverifiedConfig.dependencyTargets = unverifiedConfig.dependencies.map(
-          (dependency: string | object) => resolvableAsActionConfigTarget(dependency),
-        );
-        delete unverifiedConfig.dependencies;
-      }
-      if (unverifiedConfig.database) {
-        unverifiedConfig.project = unverifiedConfig.database;
-        delete unverifiedConfig.database;
-      }
-      if (unverifiedConfig.schema) {
-        unverifiedConfig.dataset = unverifiedConfig.schema;
-        delete unverifiedConfig.schema;
-      }
-      if (unverifiedConfig.fileName) {
-        unverifiedConfig.filename = unverifiedConfig.fileName;
-        delete unverifiedConfig.fileName;
-      }
+      this.normalizeLegacyConfigDependencies(unverifiedConfig);
+      this.normalizeLegacyConfigAliases(unverifiedConfig);
+      this.normalizeLegacyConfigInlineAssertions(unverifiedConfig);
       if (unverifiedConfig.columns) {
         unverifiedConfig.columns = ColumnDescriptors.normalizeConfigColumns(
           unverifiedConfig.columns,

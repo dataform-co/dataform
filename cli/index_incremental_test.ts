@@ -130,6 +130,7 @@ config {
           runConfig: {
             actions: ["example_incremental"],
             fullRefresh: false,
+            overrideProtected: false,
           },
           actions: [
             {
