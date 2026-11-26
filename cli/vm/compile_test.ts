@@ -4,7 +4,7 @@ import * as path from "path";
 
 import { checkCoreCompatibility, compile, MIN_SUPPORTED_CORE_VERSION } from "df/cli/vm/compile";
 import { findInstalledCoreBundle } from "df/cli/vm/core_installation";
-import { handleJitRequest, IJitCompileMessage } from "df/cli/vm/jit_worker";
+import { handleJitRequest, handleRpcResponse, IJitCompileMessage } from "df/cli/vm/jit_worker";
 import { decode64 } from "df/common/protos";
 import { dataform } from "df/protos/ts";
 import { suite, test, writeCorePackage, writeWorkflowSettingsFile } from "df/testing";
@@ -299,6 +299,124 @@ publish("a_leaky", { type: "table" }).query("SELECT 1");`,
     expect(messages).to.have.lengthOf(1);
     expect(messages[0].type).to.equal("jit_error");
     expect(messages[0].error).to.include("@dataform/core 3.0.0 does not support JiT compilation");
+  });
+
+  const EXECUTING_JIT_CODE = `async (ctx) => {
+    await ctx.adapter.execute({ statement: "SELECT 1" });
+    return "SELECT 2";
+  }`;
+
+  function executingJitRequest(compilationTargetType: dataform.JitCompilationTargetType) {
+    return dataform.JitCompilationRequest.create({
+      jitCode: EXECUTING_JIT_CODE,
+      target: { database: "db", schema: "schema", name: "test_action" },
+      compilationTargetType,
+    });
+  }
+
+  /**
+   * Runs a JiT request, answering each RPC request of the worker with the given fields like the
+   * parent process would.
+   */
+  async function runJitRequestAnsweringRpcs(
+    message: IJitCompileMessage,
+    rpcResponseFields: { response?: number[]; error?: string },
+  ): Promise<any[]> {
+    const messages: any[] = [];
+    const origSend = process.send;
+    (process as any).send = (msg: any) => {
+      messages.push(msg);
+      if (msg.type === "rpc_request") {
+        setImmediate(() =>
+          handleRpcResponse({
+            type: "rpc_response",
+            correlationId: msg.correlationId,
+            ...rpcResponseFields,
+          }),
+        );
+      }
+    };
+    try {
+      await handleJitRequest(message);
+    } finally {
+      (process as any).send = origSend;
+    }
+    return messages;
+  }
+
+  test("handleJitRequest fails when an RPC is answered with an empty error message", async () => {
+    const { projectDir } = createProjectWithPrebuiltCore();
+
+    const messages = await runJitRequestAnsweringRpcs(
+      {
+        request: executingJitRequest(
+          dataform.JitCompilationTargetType.JIT_COMPILATION_TARGET_TYPE_OPERATION,
+        ),
+        projectDir,
+      },
+      { error: "" },
+    );
+
+    expect(messages.map((message) => message.type)).to.deep.equal(["rpc_request", "jit_error"]);
+  });
+
+  test("handleJitRequest fails when an RPC is answered with an error message", async () => {
+    const { projectDir } = createProjectWithPrebuiltCore();
+
+    const messages = await runJitRequestAnsweringRpcs(
+      {
+        request: executingJitRequest(
+          dataform.JitCompilationTargetType.JIT_COMPILATION_TARGET_TYPE_OPERATION,
+        ),
+        projectDir,
+      },
+      { error: "boom" },
+    );
+
+    expect(messages.map((message) => message.type)).to.deep.equal(["rpc_request", "jit_error"]);
+    expect(messages[1].error).to.include("boom");
+  });
+
+  test("handleJitRequest succeeds when an RPC is answered with an empty response", async () => {
+    const { projectDir } = createProjectWithPrebuiltCore();
+
+    const messages = await runJitRequestAnsweringRpcs(
+      {
+        request: executingJitRequest(
+          dataform.JitCompilationTargetType.JIT_COMPILATION_TARGET_TYPE_OPERATION,
+        ),
+        projectDir,
+      },
+      { response: [] },
+    );
+
+    expect(messages.map((message) => message.type)).to.deep.equal(["rpc_request", "jit_response"]);
+    expect(messages[1].response.operation.queries).to.deep.equal(["SELECT 2"]);
+  });
+
+  test("handleJitRequest gives concurrent RPCs distinct consecutive correlation ids", async () => {
+    const { projectDir } = createProjectWithPrebuiltCore();
+
+    // An incremental table runs the JiT code twice, so two RPCs are pending at the same time.
+    const messages = await runJitRequestAnsweringRpcs(
+      {
+        request: executingJitRequest(
+          dataform.JitCompilationTargetType.JIT_COMPILATION_TARGET_TYPE_INCREMENTAL_TABLE,
+        ),
+        projectDir,
+      },
+      { response: [] },
+    );
+
+    expect(messages.map((message) => message.type)).to.deep.equal([
+      "rpc_request",
+      "rpc_request",
+      "jit_response",
+    ]);
+    const [firstId, secondId] = messages
+      .slice(0, 2)
+      .map((message) => Number(message.correlationId));
+    expect(secondId).to.equal(firstId + 1);
   });
 });
 

@@ -699,6 +699,12 @@ SELECT 1 as id
       ]);
     });
 
+    test("--output-actions supports '*' wildcards", async () => {
+      const result = await runCli("compile", [projectDir, "--output-actions", "*stream", "--json"]);
+      expect(result.exitCode, result.stderr).equals(0);
+      expect(tableNames(result.stdout)).deep.equals(["downstream", "midstream", "upstream"]);
+    });
+
     test("--output-actions --output-include-deps pulls in upstream dependencies", async () => {
       const result = await runCli("compile", [
         projectDir,
