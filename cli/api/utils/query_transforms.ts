@@ -2,7 +2,11 @@
  * Returns `statement` with comments (`--`, `#` and `/* *\/`) and the contents of string/bytes
  * literals (single, double and triple quoted, including raw literals) and quoted identifiers
  * replaced with spaces of the same length. Preserving lengths keeps character indices aligned
- * with `statement`, while leaving only unquoted SQL tokens and empty quotes.
+ * with `statement`, while leaving only unquoted SQL tokens and empty quotes. An unterminated
+ * literal runs to the end of the statement, and its last character is replaced with its quote
+ * character rather than a space, so that it still ends in code.
+ *
+ * Exported only for unit testing; not intended for use outside this file.
  */
 export function stripCommentsAndQuotedContent(statement: string): string {
   let result = "";
