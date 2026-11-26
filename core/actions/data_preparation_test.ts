@@ -1054,5 +1054,125 @@ FROM x
         ]),
       );
     });
+
+    test(`sqlx data preparation applies suffixes and prefixes once to target, targets, and refs`, () => {
+      const projectDir = createSimpleDataPreparationProject(
+        `
+defaultProject: defaultProject
+defaultDataset: defaultDataset
+defaultLocation: US
+projectSuffix: projectSuffix
+datasetSuffix: datasetSuffix
+namePrefix: tablePrefix
+`,
+        false,
+      );
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/my_dp.sqlx"),
+        `
+config {
+  type: "dataPreparation",
+  errorTable: {
+    name: "my_error",
+  },
+}
+
+SELECT '\${self()}' AS self_ref, '\${schema()}' AS schema_name
+`,
+      );
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/downstream.sqlx"),
+        `
+config {
+  type: "table",
+}
+
+SELECT * FROM \${ref("my_dp")}
+`,
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      const dp = result.compile.compiledGraph.dataPreparations[0];
+      expect(asPlainObject(dp.target)).deep.equals({
+        database: "defaultProject_projectSuffix",
+        schema: "defaultDataset_datasetSuffix",
+        name: "tablePrefix_my_dp",
+      });
+      expect(asPlainObject(dp.canonicalTarget)).deep.equals({
+        database: "defaultProject",
+        schema: "defaultDataset",
+        name: "my_dp",
+      });
+      expect(asPlainObject(dp.targets)).deep.equals([
+        {
+          database: "defaultProject_projectSuffix",
+          schema: "defaultDataset_datasetSuffix",
+          name: "tablePrefix_my_dp",
+        },
+        {
+          database: "defaultProject_projectSuffix",
+          schema: "defaultDataset_datasetSuffix",
+          name: "tablePrefix_my_error",
+        },
+      ]);
+      expect(asPlainObject(dp.errorTable)).deep.equals({
+        database: "defaultProject_projectSuffix",
+        schema: "defaultDataset_datasetSuffix",
+        name: "tablePrefix_my_error",
+      });
+      expect(dp.query).equals(
+        "SELECT '`defaultProject_projectSuffix.defaultDataset_datasetSuffix.tablePrefix_my_dp`' AS self_ref, 'defaultDataset_datasetSuffix' AS schema_name",
+      );
+      const downstream = result.compile.compiledGraph.tables[0];
+      expect(downstream.query.trim()).equals(
+        "SELECT * FROM `defaultProject_projectSuffix.defaultDataset_datasetSuffix.tablePrefix_my_dp`",
+      );
+      expect(asPlainObject(downstream.dependencyTargets)).deep.equals([
+        {
+          database: "defaultProject_projectSuffix",
+          schema: "defaultDataset_datasetSuffix",
+          name: "tablePrefix_my_dp",
+        },
+      ]);
+    });
+
+    test(`empty yaml data preparation applies suffixes and prefixes once`, () => {
+      const projectDir = createSimpleDataPreparationProject(`
+defaultProject: defaultProject
+defaultDataset: defaultDataset
+defaultLocation: US
+projectSuffix: projectSuffix
+datasetSuffix: datasetSuffix
+namePrefix: tablePrefix
+`);
+      fs.writeFileSync(
+        path.join(projectDir, "definitions/data_preparation.dp.yaml"),
+        "nodes: []\n",
+      );
+
+      const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+      expect(result.compile.compiledGraph.graphErrors.compilationErrors).deep.equals([]);
+      const dp = result.compile.compiledGraph.dataPreparations[0];
+      expect(asPlainObject(dp.target)).deep.equals({
+        database: "defaultProject_projectSuffix",
+        schema: "defaultDataset_datasetSuffix",
+        name: "tablePrefix_data_preparation",
+      });
+      expect(asPlainObject(dp.canonicalTarget)).deep.equals({
+        database: "defaultProject",
+        schema: "defaultDataset",
+        name: "data_preparation",
+      });
+      expect(asPlainObject(dp.targets)).deep.equals([
+        {
+          database: "defaultProject_projectSuffix",
+          schema: "defaultDataset_datasetSuffix",
+          name: "tablePrefix_data_preparation",
+        },
+      ]);
+    });
   });
 });
