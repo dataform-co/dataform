@@ -14,6 +14,10 @@ export interface IValidationQuery {
   incremental?: boolean;
 }
 
+const QUOTED_TOP_LEVEL_COLUMN_REGEX = /^`([^`]+)`(?:\s*\.\s*(?:`[^`]+`|[A-Za-z_][A-Za-z0-9_]*))*$/;
+const UNQUOTED_TOP_LEVEL_COLUMN_REGEX =
+  /^([A-Za-z_][A-Za-z0-9_]*)(?:\s*\.\s*(?:`[^`]+`|[A-Za-z_][A-Za-z0-9_]*))*$/;
+
 export class ExecutionSql {
   private readonly CompilationSql: CompilationSql;
 
@@ -440,10 +444,10 @@ ${this.alterTableAddColumnsSql(qualifiedTargetTableName)}
 `;
         break;
       case dataform.OnSchemaChange.SYNCHRONIZE:
-        const uniqueKeys = table.uniqueKey || [];
+        const uniqueKeyColumnNames = this.normalizeUniqueKeyColumnNames(table.uniqueKey);
         sql += `
 SET dataform_invalid_removed_columns = (
-  SELECT IFNULL(ARRAY_AGG(col), []) FROM UNNEST(dataform_columns_removed) AS col WHERE col IN UNNEST(${JSON.stringify(uniqueKeys)})
+  SELECT IFNULL(ARRAY_AGG(col), []) FROM UNNEST(dataform_columns_removed) AS col WHERE LOWER(col) IN UNNEST(${JSON.stringify(uniqueKeyColumnNames)})
 );
 
 IF ARRAY_LENGTH(dataform_invalid_removed_columns) > 0 THEN
@@ -457,7 +461,7 @@ IF ARRAY_LENGTH(dataform_columns_removed) > 0 THEN
   EXECUTE IMMEDIATE (
     "ALTER TABLE ${qualifiedTargetTableName} " ||
     (
-      SELECT STRING_AGG(FORMAT("DROP COLUMN IF EXISTS %s", col), ", ")
+      SELECT STRING_AGG(FORMAT("DROP COLUMN IF EXISTS \`%s\`", col), ", ")
       FROM UNNEST(dataform_columns_removed) AS col
     )
   );
@@ -470,12 +474,33 @@ ${this.alterTableAddColumnsSql(qualifiedTargetTableName)}
     return sql;
   }
 
+  /**
+   * Extracts lowercased top-level column names from `uniqueKey` entries (handling backticks and
+   * dotted struct paths such as `` "`My-Rec`.`sub-id`" `` -> `"my-rec"`) for case-insensitive
+   * matching against `INFORMATION_SCHEMA.COLUMNS`.
+   */
+  private normalizeUniqueKeyColumnNames(uniqueKeys?: string[] | null): string[] {
+    const normalized = (uniqueKeys || []).map((key) => {
+      const trimmed = key.trim();
+      const quotedTopLevel = QUOTED_TOP_LEVEL_COLUMN_REGEX.exec(trimmed);
+      if (quotedTopLevel) {
+        return quotedTopLevel[1].toLowerCase();
+      }
+      const unquotedTopLevel = UNQUOTED_TOP_LEVEL_COLUMN_REGEX.exec(trimmed);
+      if (unquotedTopLevel) {
+        return unquotedTopLevel[1].toLowerCase();
+      }
+      return trimmed.toLowerCase();
+    });
+    return Array.from(new Set(normalized));
+  }
+
   private alterTableAddColumnsSql(qualifiedTargetTableName: string): string {
     return `IF ARRAY_LENGTH(dataform_columns_added) > 0 THEN
   EXECUTE IMMEDIATE (
     "ALTER TABLE ${qualifiedTargetTableName} " ||
     (
-      SELECT STRING_AGG(FORMAT("ADD COLUMN IF NOT EXISTS %s %s", column_info.column_name, column_info.data_type), ", ")
+      SELECT STRING_AGG(FORMAT("ADD COLUMN IF NOT EXISTS \`%s\` %s", column_info.column_name, column_info.data_type), ", ")
       FROM UNNEST(dataform_columns_added) AS column_info
     )
   );

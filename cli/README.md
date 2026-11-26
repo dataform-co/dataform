@@ -277,6 +277,7 @@ Compiles and executes the project against BigQuery (or validates it with `--dry-
 - `--timeout` bounds compilation only, not execution. If it's set without `--execution-timeout`, `run` prints a warning reminding you of that.
 - `--job-labels` override `defaultJobLabels`, action `jobLabels` and table `labels` that use the same key.
 - `--emit-lineage` requires the Data Lineage API (`datalineage.googleapis.com`) to be enabled and the `roles/datalineage.producer` role; for configuration and troubleshooting, see the [Data Lineage guide](../docs/lineage.md).
+- Queries that JiT code runs with `adapter.execute(...)` honor `rowLimit` (the maximum number of rows returned) and `byteLimit` (the maximum number of bytes billed; the query fails above it). A query without `rowLimit` returns all rows.
 
 Exit codes: `0` on success, `1` if compilation fails, a BigQuery job would get more than 64 labels (checked before any action or unit test runs), unit tests fail (with `--run-tests`), the run fails, times out, or is cancelled (Ctrl+C).
 

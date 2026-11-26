@@ -628,4 +628,128 @@ suite("BigQueryDbAdapter", () => {
       name: tableName,
     });
   });
+
+  suite("executeRaw", () => {
+    interface IFakePage {
+      rows: any[];
+      apiResponse?: any;
+    }
+
+    /**
+     * A fake BigQuery client that answers a query with the first page and the requests for its
+     * next pages with the following ones. It records the arguments of every call.
+     */
+    function fakeBigQueryReturning(pages: IFakePage[]) {
+      const queryArguments: any[][] = [];
+      const nextPageOptions: any[] = [];
+      let pagesReturned = 0;
+      const job = {
+        getQueryResults: async (options: any): Promise<any[]> => {
+          nextPageOptions.push(options);
+          return nextAnswer();
+        },
+      };
+      function nextAnswer(): any[] {
+        const page = pages[pagesReturned++];
+        const nextPage =
+          pagesReturned < pages.length ? { job, pageToken: `page-${pagesReturned}` } : null;
+        return [page.rows, nextPage, page.apiResponse ?? {}];
+      }
+      const client: any = {
+        query: async (...args: any[]): Promise<any[]> => {
+          queryArguments.push(args);
+          return nextAnswer();
+        },
+      };
+      return { client, queryArguments, nextPageOptions };
+    }
+
+    function adapterFor(client: any) {
+      return new BigQueryDbAdapter(dataform.BigQuery.create({ projectId: "p", location: "US" }), {
+        clientProvider: () => client,
+      });
+    }
+
+    const row = (value: string) => ({ f: [{ v: value }] });
+
+    test("passes rowLimit to the query and asks the client for a single page", async () => {
+      const fake = fakeBigQueryReturning([{ rows: [row("1"), row("2")] }]);
+
+      const result = await adapterFor(fake.client).executeRaw("SELECT 1", { rowLimit: 2 });
+
+      expect(result.rows).to.deep.equal([row("1"), row("2")]);
+      const [query, queryOptions] = fake.queryArguments[0];
+      expect(query.maxResults).to.equal(2);
+      expect(queryOptions).to.deep.equal({ maxResults: 2 });
+      expect(fake.nextPageOptions).to.deep.equal([]);
+    });
+
+    test("waits for a query that is still running when rowLimit is set", async () => {
+      const fake = fakeBigQueryReturning([
+        { rows: [], apiResponse: { jobComplete: false } },
+        {
+          rows: [row("1"), row("2")],
+          apiResponse: { jobComplete: true, schema: { fields: [{ name: "x", type: "INTEGER" }] } },
+        },
+      ]);
+
+      const result = await adapterFor(fake.client).executeRaw("SELECT 1", { rowLimit: 2 });
+
+      expect(result.rows).to.deep.equal([row("1"), row("2")]);
+      expect(result.schema.map((field) => field.name)).to.deep.equal(["x"]);
+    });
+
+    test("fetches the next pages until rowLimit is reached", async () => {
+      const fake = fakeBigQueryReturning([
+        { rows: [row("1")], apiResponse: { schema: { fields: [{ name: "x", type: "INTEGER" }] } } },
+        { rows: [row("2"), row("3")] },
+        { rows: [row("4"), row("5")] },
+        { rows: [row("6")] },
+      ]);
+
+      const result = await adapterFor(fake.client).executeRaw("SELECT 1", { rowLimit: 4 });
+
+      expect(result.rows).to.deep.equal([row("1"), row("2"), row("3"), row("4")]);
+      expect(result.schema.map((field) => field.name)).to.deep.equal(["x"]);
+      expect(
+        fake.nextPageOptions.map(({ pageToken, maxResults }) => ({ pageToken, maxResults })),
+      ).to.deep.equal([
+        { pageToken: "page-1", maxResults: 3 },
+        { pageToken: "page-2", maxResults: 1 },
+      ]);
+    });
+
+    test("returns fewer rows than rowLimit when the query has no more", async () => {
+      const fake = fakeBigQueryReturning([{ rows: [row("1")] }, { rows: [row("2")] }]);
+
+      const result = await adapterFor(fake.client).executeRaw("SELECT 1", { rowLimit: 5 });
+
+      expect(result.rows).to.deep.equal([row("1"), row("2")]);
+    });
+
+    test("passes maximumBytesBilled to the query as a string", async () => {
+      const fake = fakeBigQueryReturning([{ rows: [] }]);
+
+      await adapterFor(fake.client).executeRaw("SELECT 1", { maximumBytesBilled: 1048576 });
+
+      expect(fake.queryArguments[0][0].maximumBytesBilled).to.equal("1048576");
+    });
+
+    for (const [description, options] of [
+      ["no options are given", undefined],
+      ["the limits are unset", {}],
+      ["the query is a dry run", { rowLimit: 2, bigquery: { dryRun: true } }],
+    ] as const) {
+      test(`lets the client fetch every page when ${description}`, async () => {
+        const fake = fakeBigQueryReturning([{ rows: [row("1")] }]);
+
+        const result = await adapterFor(fake.client).executeRaw("SELECT 1", options);
+
+        expect(result.rows).to.deep.equal([row("1")]);
+        expect(fake.queryArguments[0]).to.have.lengthOf(1);
+        expect(fake.queryArguments[0][0].maximumBytesBilled).to.equal(undefined);
+        expect(fake.nextPageOptions).to.deep.equal([]);
+      });
+    }
+  });
 });
