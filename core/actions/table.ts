@@ -480,7 +480,7 @@ export class Table extends ActionBuilder<dataform.Table> {
       dataform.Target.create({ ...this.proto.target, database }),
       this.session.projectConfig,
       this.proto.fileName,
-      { validateTarget: true, validateSchema: false },
+      { validateTarget: true, validateFields: ["database"] },
     );
     this.updateInlineAssertionsDatabase(database, this.proto.target);
     return this;
@@ -510,7 +510,7 @@ export class Table extends ActionBuilder<dataform.Table> {
       dataform.Target.create({ ...this.proto.target, schema }),
       this.session.projectConfig,
       this.proto.fileName,
-      { validateTarget: true },
+      { validateTarget: true, validateFields: ["schema"] },
     );
     this.updateInlineAssertionsSchema(schema, this.proto.target);
     return this;

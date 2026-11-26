@@ -124,6 +124,9 @@ export class Operation extends ActionBuilder<dataform.Operation> {
     );
     this.proto.target = this.applySessionToTarget(target, session.projectConfig, fileName, {
       validateTarget: true,
+      // `project` and `dataset` are validated by `.database()` and `.schema()` below, except that
+      // `.schema()` is not called for Lakehouse targets.
+      validateFields: config.lakehouse ? ["name", "schema"] : ["name"],
     });
     this.proto.canonicalTarget = this.applySessionToTarget(
       actionConfigToCompiledGraphTarget(
@@ -325,7 +328,7 @@ export class Operation extends ActionBuilder<dataform.Operation> {
       dataform.Target.create({ ...this.proto.target, database }),
       this.session.projectConfig,
       this.proto.fileName,
-      { validateTarget: true, validateSchema: false },
+      { validateTarget: true, validateFields: ["database"] },
     );
     return this;
   }
@@ -349,7 +352,7 @@ export class Operation extends ActionBuilder<dataform.Operation> {
       dataform.Target.create({ ...this.proto.target, schema }),
       this.session.projectConfig,
       this.proto.fileName,
-      { validateTarget: true },
+      { validateTarget: true, validateFields: ["schema"] },
     );
     return this;
   }

@@ -641,6 +641,8 @@ export class Session {
       this.addTestsToCompiledGraph(this.actions);
     }
 
+    this.checkPropertyGraphTargetsHaveDataset(compiledGraph.propertyGraphs);
+
     this.fullyQualifyDependencies(
       [].concat(
         compiledGraph.tables,
@@ -743,6 +745,22 @@ export class Session {
     });
 
     return compiledChunks;
+  }
+
+  // Unlike other actions, property graphs have no fallback for a missing dataset: without one the
+  // generated `CREATE PROPERTY GRAPH` DDL is invalid.
+  private checkPropertyGraphTargetsHaveDataset(propertyGraphs: dataform.IPropertyGraph[]) {
+    propertyGraphs.forEach((propertyGraph) => {
+      if (!propertyGraph.target?.schema) {
+        this.compileError(
+          new Error(
+            "Property graph targets must have a dataset. Set defaultDataset in workflow_settings.yaml or a deployment target in the graph definition.",
+          ),
+          propertyGraph.fileName,
+          propertyGraph.target,
+        );
+      }
+    });
   }
 
   private fullyQualifyDependencies(actions: ActionProto[]) {

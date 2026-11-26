@@ -267,16 +267,62 @@ actions:
 
     const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
 
+    // Each invalid value is reported once: the name of the table, and the name and dataset of the
+    // operation.
     expect(
       result.compile.compiledGraph.graphErrors.compilationErrors
         .map(({ message }) => message)
         .sort(),
     ).deep.equals([
       `Action target datasets cannot include '.'`,
-      `Action target datasets cannot include '.'`,
       `Action target names cannot include '.'`,
       `Action target names cannot include '.'`,
-      `Action target names cannot include '.'`,
+    ]);
+  });
+
+  test("fails when dataset is not set in workflow settings or the deployment in graph.yaml", () => {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    writeWorkflowSettingsFile(
+      projectDir,
+      `
+defaultProject: defaultProject
+defaultLocation: US
+`,
+    );
+    writeDefinitionFile(
+      projectDir,
+      "graph.yaml",
+      `
+version: 0.2.0.dev0/google
+semantic_model:
+- name: action
+  entities:
+  - name: Node
+    source: bigquery:defaultProject.raw.nodes
+    primary_key:
+    - id
+`,
+    );
+
+    const result = runMainInVm(coreExecutionRequestFromPath(projectDir));
+
+    expect(
+      result.compile.compiledGraph.graphErrors.compilationErrors.map(
+        ({ message, fileName, actionName, actionTarget }) => ({
+          message,
+          fileName,
+          actionName,
+          actionTarget: asPlainObject(actionTarget),
+        }),
+      ),
+    ).deep.equals([
+      {
+        message:
+          "Property graph targets must have a dataset. Set defaultDataset in workflow_settings.yaml or a deployment target in the graph definition.",
+        fileName: "definitions/graph.yaml",
+        actionName: "defaultProject..action",
+        actionTarget: { database: "defaultProject", name: "action" },
+      },
     ]);
   });
 

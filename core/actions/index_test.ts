@@ -1191,12 +1191,9 @@ publish("name", {
         fileName,
         actionTarget: asPlainObject(actionTarget),
       })),
+      // t1 inherits the dotted default project: workflow settings defaults are not validated, only
+      // projects set explicitly on an action are.
     ).deep.equals([
-      {
-        message: "Action target projects cannot include '.'",
-        fileName: "definitions/t1.sqlx",
-        actionTarget: { database: "google.com:my-project.typo_ds", schema: "ds", name: "t1" },
-      },
       {
         message: "Action target projects cannot include '.'",
         fileName: "definitions/t2.sqlx",
@@ -1600,16 +1597,68 @@ SELECT 1`,
           {
             ...allActionTypes,
             "view_with_project.sqlx": `config { type: "view", project: "other-project" }\nSELECT 1 AS id`,
+            "with_assertions.sqlx": `config { type: "table", assertions: { uniqueKey: ["id"], nonNull: ["id"] } }\nSELECT 1 AS id`,
           },
         );
         expect(graph.graphErrors.compilationErrors).deep.equals([]);
-        expect(graph.tables.map((table) => table.target.schema)).deep.equals([
-          defaultDataset,
-          defaultDataset,
-          defaultDataset,
-          defaultDataset,
-        ]);
+        expect(graph.tables.length).equals(5);
+        graph.tables.forEach((table) => expect(table.target.schema).equals(defaultDataset));
         expect(graph.operations[0].target.schema).equals(defaultDataset);
+        // Inline assertion names embed the dataset of the parent action, with '.' replaced by '_'.
+        const namePrefix = `${defaultDataset.replace(/\./g, "_")}_with_assertions_assertions`;
+        expect(graph.assertions.map((assertion) => assertion.target.name)).to.have.members([
+          "assertion",
+          `${namePrefix}_uniqueKey_0`,
+          `${namePrefix}_rowConditions`,
+        ]);
+        graph.assertions.forEach((assertion) =>
+          expect(assertion.target.schema).equals(defaultDataset),
+        );
+      });
+    });
+
+    ["dotted.project", "google.com:my-project.typo_ds"].forEach((defaultProject) => {
+      test(`defaultProject "${defaultProject}" containing '.' compiles without errors`, () => {
+        const graph = compileWith(
+          `defaultProject: "${defaultProject}"\ndefaultDataset: ds\ndefaultLocation: US\n`,
+          {
+            ...allActionTypes,
+            "with_assertions.sqlx": `config { type: "table", assertions: { uniqueKey: ["id"], nonNull: ["id"] } }\nSELECT 1 AS id`,
+          },
+        );
+        expect(graph.graphErrors.compilationErrors).deep.equals([]);
+        [...graph.tables, ...graph.operations, ...graph.assertions].forEach((action) =>
+          expect(action.target.database).equals(defaultProject),
+        );
+      });
+    });
+
+    Object.entries({
+      table: `config { type: "table", CONFIG }\nSELECT 1 AS id`,
+      view: `config { type: "view", CONFIG }\nSELECT 1 AS id`,
+      incremental: `config { type: "incremental", CONFIG }\nSELECT 1 AS id`,
+      operations: `config { type: "operations", hasOutput: true, CONFIG }\nSELECT 1 AS id`,
+      assertion: `config { type: "assertion", CONFIG }\nSELECT 1 AS id WHERE FALSE`,
+    }).forEach(([type, definition]) => {
+      [
+        { config: `name: "dotted.name"`, message: "Action target names cannot include '.'" },
+        { config: `dataset: "dotted.ds"`, message: "Action target datasets cannot include '.'" },
+        {
+          config: `project: "dotted.project"`,
+          message: "Action target projects cannot include '.'",
+        },
+      ].forEach(({ config, message }) => {
+        test(`${type} with explicitly configured ${config} fails compilation exactly once`, () => {
+          const graph = compileWith(defaultSettings, {
+            "t.sqlx": definition.replace("CONFIG", config),
+          });
+          expect(
+            graph.graphErrors.compilationErrors.map(({ message: errorMessage, fileName }) => ({
+              message: errorMessage,
+              fileName,
+            })),
+          ).deep.equals([{ message, fileName: "definitions/t.sqlx" }]);
+        });
       });
     });
 

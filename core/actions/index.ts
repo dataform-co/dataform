@@ -40,6 +40,9 @@ export type ActionProto =
   | dataform.PropertyGraph
   | dataform.Test;
 
+/** A field of an action target that `ActionBuilder.applySessionToTarget` can validate. */
+export type TargetField = "name" | "schema" | "database";
+
 function legacyAliasConflictMessage(legacyKey: string, modernKey: string) {
   return (
     `'${legacyKey}' is a legacy alias for '${modernKey}'; cannot specify both at the same time. ` +
@@ -81,7 +84,12 @@ export abstract class ActionBuilder<T> {
     fileName?: string,
     options?: {
       validateTarget?: boolean;
-      validateSchema?: boolean;
+      /**
+       * The fields of `targetFromConfig` to validate; all of them by default. Setters that change a
+       * single field of an already resolved target (`.database()`, `.schema()`) validate only that
+       * field, so that each value is checked once and resolved defaults are not checked at all.
+       */
+      validateFields?: TargetField[];
       useDefaultAssertionDataset?: boolean;
     },
   ): dataform.Target {
@@ -94,11 +102,7 @@ export abstract class ActionBuilder<T> {
       database: targetFromConfig.database || projectConfig.defaultDatabase || undefined,
     });
     if (options?.validateTarget) {
-      const targetToValidate =
-        options.validateSchema === false
-          ? dataform.Target.create({ ...targetFromConfig, schema: undefined })
-          : targetFromConfig;
-      this.validateTarget(targetToValidate, target, fileName);
+      this.validateTarget(targetFromConfig, target, fileName, options.validateFields);
     }
     return target;
   }
@@ -153,8 +157,12 @@ export abstract class ActionBuilder<T> {
     this.resolveLegacyInlineAssertionsAliases(assertionsConfig, proto.fileName);
     this.inlineAssertionsProject = assertionsConfig.project || undefined;
     // Precedence: action-level assertion project, then the project of the parent action (which
-    // itself falls back to the default project).
-    const project = this.inlineAssertionsProject || proto.target.database || undefined;
+    // itself falls back to the default project). Only an explicitly configured project or dataset
+    // is passed in the assertion config, so that inherited values are not validated again as if
+    // they were set on the assertion.
+    const inheritedProject = !this.inlineAssertionsProject
+      ? proto.target.database || undefined
+      : undefined;
     this.inlineAssertionsDataset = assertionsConfig.dataset || undefined;
     const inheritedDataset = !this.inlineAssertionsDataset
       ? this.session.projectConfig.assertionSchema || proto.target.schema || undefined
@@ -166,7 +174,7 @@ export abstract class ActionBuilder<T> {
             this.inlineAssertionName(proto.target, `assertions_uniqueKey_${index}`),
             dataform.ActionConfig.AssertionConfig.create({
               filename: proto.fileName,
-              project,
+              project: this.inlineAssertionsProject,
               dataset: this.inlineAssertionsDataset,
               jobLabels,
             }),
@@ -174,6 +182,9 @@ export abstract class ActionBuilder<T> {
           .query((ctx) =>
             this.session.compilationSql().indexAssertion(ctx.ref(proto.target), uniqueKey),
           );
+        if (inheritedProject) {
+          uniqueKeyAssertion.setDatabase(inheritedProject);
+        }
         if (inheritedDataset) {
           uniqueKeyAssertion.setSchema(inheritedDataset);
         }
@@ -202,7 +213,7 @@ export abstract class ActionBuilder<T> {
           this.inlineAssertionName(proto.target, "assertions_rowConditions"),
           dataform.ActionConfig.AssertionConfig.create({
             filename: proto.fileName,
-            project,
+            project: this.inlineAssertionsProject,
             dataset: this.inlineAssertionsDataset,
             jobLabels,
           }),
@@ -212,6 +223,9 @@ export abstract class ActionBuilder<T> {
             .compilationSql()
             .rowConditionsAssertion(ctx.ref(proto.target), mergedRowConditions),
         );
+      if (inheritedProject) {
+        this.rowConditionsAssertion.setDatabase(inheritedProject);
+      }
       if (inheritedDataset) {
         this.rowConditionsAssertion.setSchema(inheritedDataset);
       }
@@ -269,7 +283,12 @@ export abstract class ActionBuilder<T> {
     const assertionPrefix = !!this.session.projectConfig.builtinAssertionNamePrefix
       ? `${this.session.projectConfig.builtinAssertionNamePrefix}_`
       : "";
-    return `${assertionPrefix}${parentTarget.schema}_${parentTarget.name}_${suffix}`;
+    // The name embeds the dataset of the parent action, which can contain '.' when it comes from
+    // `defaultDataset`. Action names cannot contain '.', so it is replaced with '_'.
+    return `${assertionPrefix}${parentTarget.schema}_${parentTarget.name}_${suffix}`.replace(
+      /\./g,
+      "_",
+    );
   }
 
   /**
@@ -393,11 +412,10 @@ export abstract class ActionBuilder<T> {
   /**
    * Validates an action target.
    *
-   * Name and dataset checks only apply to values set explicitly in the action config. Defaults from
-   * workflow settings (e.g. `defaultDataset`, `defaultAssertionDataset`) are not checked here.
-   *
-   * Project checks apply to the resolved target (including `defaultProject`), so malformed or dotted
-   * project IDs are reported regardless of where they come from.
+   * All checks only apply to values set explicitly on the action (in its config, or through
+   * `.database()` / `.schema()`). Defaults from workflow settings (`defaultProject`,
+   * `defaultDataset`, `defaultAssertionDataset`) are not checked here, so projects that compiled
+   * with a '.' in those settings keep compiling.
    *
    * Errors are always reported against the resolved target.
    */
@@ -405,22 +423,31 @@ export abstract class ActionBuilder<T> {
     targetFromConfig: dataform.Target,
     target: dataform.Target,
     fileName: string,
+    fields: TargetField[] = ["name", "schema", "database"],
   ) {
-    if ((targetFromConfig.name || "").includes(".")) {
+    if (fields.includes("name") && (targetFromConfig.name || "").includes(".")) {
       this.session.compileError(
         new Error("Action target names cannot include '.'"),
         fileName,
         target,
       );
     }
-    if (!this.isLakehouseTarget && (targetFromConfig.schema || "").includes(".")) {
+    if (
+      fields.includes("schema") &&
+      !this.isLakehouseTarget &&
+      (targetFromConfig.schema || "").includes(".")
+    ) {
       this.session.compileError(
         new Error("Action target datasets cannot include '.'"),
         fileName,
         target,
       );
     }
-    if (hasInvalidProjectColonUsage(target.database || "")) {
+    if (!fields.includes("database")) {
+      return;
+    }
+    const project = targetFromConfig.database || "";
+    if (hasInvalidProjectColonUsage(project)) {
       this.session.compileError(
         new Error(
           "Action target projects with ':' must follow '<domain>:<project>' with non-empty segments",
@@ -430,7 +457,7 @@ export abstract class ActionBuilder<T> {
       );
       return;
     }
-    if (stripProjectDomainPrefix(target.database || "").includes(".")) {
+    if (stripProjectDomainPrefix(project).includes(".")) {
       this.session.compileError(
         new Error("Action target projects cannot include '.'"),
         fileName,
