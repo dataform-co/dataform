@@ -373,13 +373,7 @@ export class Session {
     if (resolved instanceof Declaration) {
       return resolved.getTarget();
     }
-    const target = resolved.getTarget();
-    return {
-      ...target,
-      database: target.database && this.finalizeDatabase(target.database),
-      schema: target.schema && this.finalizeSchema(target.schema),
-      name: this.finalizeName(target.name),
-    };
+    return this.finalizeTarget(resolved.getTarget());
   }
 
   /**
@@ -633,7 +627,11 @@ export class Session {
       ),
       graphErrors: this.graphErrors,
       dataformCoreVersion,
-      targets: this.actions.map((action) => action.getTarget()),
+      targets: this.actions.map((action) =>
+        action instanceof Declaration
+          ? action.getTarget()
+          : this.finalizeTarget(action.getTarget()),
+      ),
       jitData: this.jitContextData,
     });
 
@@ -722,6 +720,15 @@ export class Session {
 
   public finalizeName(name: string): string {
     return `${this.getTablePrefixWithUnderscore()}${name}`;
+  }
+
+  public finalizeTarget(target: dataform.ITarget): dataform.Target {
+    return dataform.Target.create({
+      ...target,
+      database: target.database ? this.finalizeDatabase(target.database) : undefined,
+      schema: target.schema ? this.finalizeSchema(target.schema) : undefined,
+      name: target.name ? this.finalizeName(target.name) : undefined,
+    });
   }
 
   private getDatabaseSuffixWithUnderscore() {
@@ -863,14 +870,7 @@ export class Session {
 
     actions.forEach((action) => {
       const originalTargetKey = targetStringifier.stringify(action.target);
-      const updatedTarget = dataform.Target.create({
-        ...action.target,
-        database: action.target.database
-          ? this.finalizeDatabase(action.target.database)
-          : undefined,
-        schema: action.target.schema ? this.finalizeSchema(action.target.schema) : undefined,
-        name: this.finalizeName(action.target.name),
-      });
+      const updatedTarget = this.finalizeTarget(action.target);
       newTargetByOriginalTarget.set(originalTargetKey, updatedTarget);
       action.target = updatedTarget;
     });

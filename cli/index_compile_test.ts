@@ -705,6 +705,33 @@ SELECT 1 as id
       expect(tableNames(result.stdout)).deep.equals(["downstream", "midstream", "upstream"]);
     });
 
+    test("--output-actions with --schema-suffix retains suffixed targets", async () => {
+      const result = await runCli("compile", [
+        projectDir,
+        "--schema-suffix",
+        "dev",
+        "--output-actions",
+        "midstream",
+        "--json",
+      ]);
+      expect(result.exitCode, result.stderr).equals(0);
+      const compiledGraph = JSON.parse(result.stdout);
+      expect(compiledGraph.tables.map((table: any) => table.target)).deep.equals([
+        {
+          database: INTEGRATION_TEST_PROJECT,
+          schema: "dataform_dev",
+          name: "midstream",
+        },
+      ]);
+      expect(compiledGraph.targets).deep.equals([
+        {
+          database: INTEGRATION_TEST_PROJECT,
+          schema: "dataform_dev",
+          name: "midstream",
+        },
+      ]);
+    });
+
     test("--output-actions --output-include-deps pulls in upstream dependencies", async () => {
       const result = await runCli("compile", [
         projectDir,
