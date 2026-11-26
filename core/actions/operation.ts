@@ -1,6 +1,10 @@
 import { verifyObjectMatchesProto, VerifyProtoErrorBehaviour } from "df/common/protos";
 import { ActionBuilder } from "df/core/actions";
-import { validateLakehouseColumns, validateLakehouseConfig } from "df/core/actions/lakehouse";
+import {
+  validateLakehouseColumns,
+  validateLakehouseConfig,
+  validateLakehouseTarget,
+} from "df/core/actions/lakehouse";
 import { ColumnDescriptors } from "df/core/column_descriptors";
 import { Contextable, IActionContext, JitContextable, Resolvable } from "df/core/contextables";
 import * as Path from "df/core/path";
@@ -10,7 +14,6 @@ import {
   checkAssertionsForDependency,
   configTargetToCompiledGraphTarget,
   nativeRequire,
-  resolvableAsActionConfigTarget,
   resolvableAsTarget,
   resolveActionsConfigFilename,
   setActionJobLabels,
@@ -398,6 +401,7 @@ export class Operation extends ActionBuilder<dataform.Operation> {
       );
     }
     if (this.isLakehouseTarget) {
+      validateLakehouseTarget(this.session, this.proto.fileName, this.proto.target);
       validateLakehouseColumns(
         this.session,
         this.proto.actionDescriptor,
@@ -446,24 +450,8 @@ export class Operation extends ActionBuilder<dataform.Operation> {
     // The "type" field only exists on legacy view configs. Here we convert them to the new format.
     if (unverifiedConfig.type) {
       delete unverifiedConfig.type;
-      if (unverifiedConfig.dependencies) {
-        unverifiedConfig.dependencyTargets = unverifiedConfig.dependencies.map(
-          (dependency: string | object) => resolvableAsActionConfigTarget(dependency),
-        );
-        delete unverifiedConfig.dependencies;
-      }
-      if (unverifiedConfig.database) {
-        unverifiedConfig.project = unverifiedConfig.database;
-        delete unverifiedConfig.database;
-      }
-      if (unverifiedConfig.schema) {
-        unverifiedConfig.dataset = unverifiedConfig.schema;
-        delete unverifiedConfig.schema;
-      }
-      if (unverifiedConfig.fileName) {
-        unverifiedConfig.filename = unverifiedConfig.fileName;
-        delete unverifiedConfig.fileName;
-      }
+      this.normalizeLegacyConfigDependencies(unverifiedConfig);
+      this.normalizeLegacyConfigAliases(unverifiedConfig);
       if (unverifiedConfig.columns) {
         unverifiedConfig.columns = ColumnDescriptors.normalizeConfigColumns(
           unverifiedConfig.columns,

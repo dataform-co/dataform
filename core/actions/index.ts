@@ -11,7 +11,11 @@ import { View } from "df/core/actions/view";
 import { IColumnsDescriptor } from "df/core/column_descriptors";
 import { Resolvable } from "df/core/contextables";
 import { Session } from "df/core/session";
-import { hasInvalidProjectColonUsage, stripProjectDomainPrefix } from "df/core/targets";
+import {
+  hasInvalidProjectColonUsage,
+  resolvableAsActionConfigTarget,
+  stripProjectDomainPrefix,
+} from "df/core/targets";
 import { dataform } from "df/protos/ts";
 
 export type Action =
@@ -35,6 +39,18 @@ export type ActionProto =
   | dataform.DataPreparation
   | dataform.PropertyGraph
   | dataform.Test;
+
+function legacyAliasConflictMessage(legacyKey: string, modernKey: string) {
+  return (
+    `'${legacyKey}' is a legacy alias for '${modernKey}'; cannot specify both at the same time. ` +
+    `It's recommended to use '${modernKey}'.`
+  );
+}
+
+/** The file to attribute legacy config errors to, before or after `fileName` is normalized. */
+function legacyConfigFileName(config: Record<string, any>, fileName?: string): string | undefined {
+  return fileName || config.filename || config.fileName;
+}
 
 // In v4, consider making methods on inheritors of this private, forcing users to use constructors
 // in order to populate actions.
@@ -128,13 +144,13 @@ export abstract class ActionBuilder<T> {
     // `database` and `schema` are the legacy names for `project` and `dataset`; they are accepted
     // here for callers of the JS API's `.assertions()` method, which bypasses the legacy config
     // conversion. That method is deprecated, so once it's removed this code can be simplified.
-    this.inlineAssertionsProject =
-      (tableAssertionsConfig as any).database || tableAssertionsConfig.project || undefined;
+    const assertionsConfig: Record<string, any> = { ...tableAssertionsConfig };
+    this.resolveLegacyInlineAssertionsAliases(assertionsConfig, proto.fileName);
+    this.inlineAssertionsProject = assertionsConfig.project || undefined;
     // Precedence: action-level assertion project, then the project of the parent action (which
     // itself falls back to the default project).
     const project = this.inlineAssertionsProject || proto.target.database || undefined;
-    this.inlineAssertionsDataset =
-      (tableAssertionsConfig as any).schema || tableAssertionsConfig.dataset || undefined;
+    this.inlineAssertionsDataset = assertionsConfig.dataset || undefined;
     const dataset =
       this.inlineAssertionsDataset ||
       this.session.projectConfig.assertionSchema ||
@@ -261,6 +277,108 @@ export abstract class ActionBuilder<T> {
    */
   private inlineAssertionsFollowActionDatabase(): boolean {
     return !this.inlineAssertionsProject;
+  }
+
+  /**
+   * Normalizes the legacy config field aliases shared by all actions (`database` -> `project`,
+   * `schema` -> `dataset` and `fileName` -> `filename`) on `config` in place, reporting a compile
+   * error if both the modern and legacy names are specified in the same config.
+   */
+  protected normalizeLegacyConfigAliases(config: Record<string, any>, fileName?: string) {
+    if (!config) {
+      return;
+    }
+    const resolvedFileName = legacyConfigFileName(config, fileName);
+    this.resolveLegacyAlias(config, "database", "project", resolvedFileName);
+    this.resolveLegacyAlias(config, "schema", "dataset", resolvedFileName);
+    this.resolveLegacyAlias(config, "fileName", "filename", resolvedFileName);
+  }
+
+  /**
+   * Converts the legacy `dependencies` config field (a single dependency or an array of them) to
+   * `dependencyTargets` on `config` in place, reporting a compile error if both are specified.
+   * Only for actions that can have dependencies.
+   */
+  protected normalizeLegacyConfigDependencies(config: Record<string, any>, fileName?: string) {
+    if (!config || config.dependencies === undefined) {
+      return;
+    }
+    const resolvedFileName = legacyConfigFileName(config, fileName);
+    if (config.dependencyTargets !== undefined) {
+      this.session?.compileError(
+        new Error(legacyAliasConflictMessage("dependencies", "dependencyTargets")),
+        resolvedFileName,
+      );
+    } else if (config.dependencies === null) {
+      // Passed on as is, so that it fails verification the same way a null `dependencyTargets`
+      // does.
+      config.dependencyTargets = null;
+    } else {
+      const dependencies = Array.isArray(config.dependencies)
+        ? config.dependencies
+        : [config.dependencies];
+      const dependencyTargets: dataform.ActionConfig.ITarget[] = [];
+      dependencies.forEach((dependency: string | object) => {
+        try {
+          dependencyTargets.push(resolvableAsActionConfigTarget(dependency));
+        } catch (e) {
+          this.session.compileError(e, resolvedFileName);
+        }
+      });
+      config.dependencyTargets = dependencyTargets;
+    }
+    delete config.dependencies;
+  }
+
+  /**
+   * Normalizes the legacy field aliases (`database` -> `project` and `schema` -> `dataset`) of
+   * the inline `assertions` block of `config`, replacing the block with a normalized copy. Only
+   * for actions that support inline assertions.
+   */
+  protected normalizeLegacyConfigInlineAssertions(config: Record<string, any>, fileName?: string) {
+    if (!config?.assertions) {
+      return;
+    }
+    config.assertions = { ...config.assertions };
+    this.resolveLegacyInlineAssertionsAliases(
+      config.assertions,
+      legacyConfigFileName(config, fileName),
+    );
+  }
+
+  /**
+   * Moves the value of `legacyKey` to `modernKey` on `config` in place, reporting a compile error
+   * if both keys are present. The check is on presence rather than truthiness, so an empty value
+   * under either key still counts as specified.
+   */
+  protected resolveLegacyAlias(
+    config: Record<string, any>,
+    legacyKey: string,
+    modernKey: string,
+    fileName?: string,
+    keyPrefix = "",
+  ) {
+    if (config[legacyKey] !== undefined) {
+      if (config[modernKey] !== undefined) {
+        this.session?.compileError(
+          new Error(
+            legacyAliasConflictMessage(`${keyPrefix}${legacyKey}`, `${keyPrefix}${modernKey}`),
+          ),
+          fileName,
+        );
+      } else {
+        config[modernKey] = config[legacyKey];
+      }
+      delete config[legacyKey];
+    }
+  }
+
+  private resolveLegacyInlineAssertionsAliases(
+    assertionsConfig: Record<string, any>,
+    fileName?: string,
+  ) {
+    this.resolveLegacyAlias(assertionsConfig, "database", "project", fileName, "assertions.");
+    this.resolveLegacyAlias(assertionsConfig, "schema", "dataset", fileName, "assertions.");
   }
 
   private validateTarget(target: dataform.Target, fileName: string) {
@@ -543,14 +661,6 @@ export class LegacyConfigConverter {
       }
       if (typeof legacyConfig.assertions.nonNull === "string") {
         legacyConfig.assertions.nonNull = [legacyConfig.assertions.nonNull];
-      }
-      if (legacyConfig.assertions.schema) {
-        legacyConfig.assertions.dataset = legacyConfig.assertions.schema;
-        delete legacyConfig.assertions.schema;
-      }
-      if (legacyConfig.assertions.database) {
-        legacyConfig.assertions.project = legacyConfig.assertions.database;
-        delete legacyConfig.assertions.database;
       }
     }
     return legacyConfig;
