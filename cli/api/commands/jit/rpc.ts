@@ -28,7 +28,8 @@ export async function handleDbRequest(
 
 /** The error text sent to the JiT worker for a failed RPC. */
 export function rpcErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+  const message = error instanceof Error ? error.message : String(error);
+  return message || "Database request failed without an error message";
 }
 
 /** An unset int64 limit decodes to zero, which means that no limit was requested. */

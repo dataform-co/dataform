@@ -611,8 +611,11 @@ suite("jit_rpc", () => {
       expect(rpcErrorMessage(new Error("boom"))).equals("boom");
     });
 
-    test("keeps an empty Error message as a string", () => {
-      expect(rpcErrorMessage(new Error(""))).equals("");
+    test("uses a fallback message when the error message is empty", () => {
+      expect(rpcErrorMessage(new Error(""))).equals(
+        "Database request failed without an error message",
+      );
+      expect(rpcErrorMessage("")).equals("Database request failed without an error message");
     });
 
     test("stringifies values that are not Errors", () => {
