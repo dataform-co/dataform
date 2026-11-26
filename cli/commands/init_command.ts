@@ -81,10 +81,7 @@ export const initCommand: ICommand<IInitArgs> = {
     }
 
     if (argv.lakehouse) {
-      const lakehouseConfig = promptForLakehouseConfig();
-      if (lakehouseConfig) {
-        projectConfig.defaultLakehouseConfig = lakehouseConfig;
-      }
+      projectConfig.defaultLakehouseConfig = promptForLakehouseConfig();
     }
 
     print("Writing project files...\n");

@@ -175,10 +175,9 @@ export function promptForIcebergConfig(): dataform.IDefaultIcebergConfig | undef
  * Handles prompting and validation for default Lakehouse catalog and namespace
  * when the user provides the --lakehouse flag to `dataform init`.
  *
- * @returns Constructed DefaultLakehouseConfig object, or undefined if no inputs
- * were provided.
+ * @returns Constructed DefaultLakehouseConfig object.
  */
-export function promptForLakehouseConfig(): dataform.IDefaultLakehouseConfig | undefined {
+export function promptForLakehouseConfig(): dataform.IDefaultLakehouseConfig {
   print(LAKEHOUSE_CONFIG_PROMPT_TEXT);
   print(LAKEHOUSE_CONFIG_PROMPT_HINT);
 
@@ -212,10 +211,7 @@ export function promptForLakehouseConfig(): dataform.IDefaultLakehouseConfig | u
 
   printSuccess(LAKEHOUSE_CONFIG_COLLECTED_TEXT);
 
-  if (Object.keys(tempLakehouseConfig).length > 0) {
-    return tempLakehouseConfig;
-  }
-  return undefined;
+  return tempLakehouseConfig;
 }
 
 /**
