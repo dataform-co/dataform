@@ -820,5 +820,34 @@ suite("Dataform Utility Validations", () => {
       const tricky = ["schema.mrd_a", "schemaXmrd_b"];
       expect(matchPatterns(["schema.*"], tricky)).to.deep.equal(["schema.mrd_a"]);
     });
+
+    test("three-part project.dataset.name targets match proj.schema.* and *.schema.*", () => {
+      // When defaultProject is set, targetAsReadableString always includes the project prefix,
+      // so "schema.*" alone does not match and "*.schema.*" (or "proj.schema.*") is needed.
+      const threePart = [
+        "proj.schema.mrd_a",
+        "proj.schema.mrd_b",
+        "proj.other.orders",
+        "other_proj.schema.mrd_c",
+      ];
+      expect(matchPatterns(["proj.schema.*"], threePart)).to.deep.equal([
+        "proj.schema.mrd_a",
+        "proj.schema.mrd_b",
+      ]);
+      expect(matchPatterns(["*.schema.*"], threePart)).to.deep.equal([
+        "proj.schema.mrd_a",
+        "proj.schema.mrd_b",
+        "other_proj.schema.mrd_c",
+      ]);
+      expect(matchPatterns(["schema.*"], threePart)).to.deep.equal([]);
+    });
+
+    test("consecutive wildcards are collapsed and avoid catastrophic backtracking", () => {
+      expect(matchPatterns(["**features**"], values)).to.deep.equal([
+        "schema.mrd_features_inference",
+        "schema.mrd_features_training",
+      ]);
+      expect(matchPatterns(["**********zzz"], [`schema.${"a".repeat(50)}`])).to.deep.equal([]);
+    });
   });
 });

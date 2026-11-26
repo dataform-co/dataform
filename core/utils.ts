@@ -28,9 +28,10 @@ export const nativeRequire =
 // everything else is literal text, e.g. "mrd*" -> /^mrd.*$/ and
 // "*features*" -> /^.*features.*$/.
 //
-// Splitting on "*" first is what keeps the rest simple: every "*" in a pattern is a
-// wildcard by definition, so the pieces between them are pure literal text and can be
-// escaped wholesale, then rejoined with ".*".
+// Splitting on "*" first (after collapsing adjacent "*"s so we never emit ".*.*" and risk
+// catastrophic backtracking on non-matching inputs) is what keeps the rest simple: every
+// "*" in a pattern is a wildcard by definition, so the pieces between them are pure
+// literal text and can be escaped wholesale, then rejoined with ".*".
 //
 // The escape is needed because an action name is not regex-safe. Names are
 // dot-separated ("project.dataset.name"), and "." in a regex matches any character, so
@@ -42,7 +43,7 @@ export const nativeRequire =
 // outside a class and so need no escaping.)
 function globToRegExp(pattern: string): RegExp {
   const escapeLiteral = (literal: string) => literal.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
-  return new RegExp(`^${pattern.split("*").map(escapeLiteral).join(".*")}$`);
+  return new RegExp(`^${pattern.replace(/\*+/g, "*").split("*").map(escapeLiteral).join(".*")}$`);
 }
 
 export function matchPatterns(patterns: string[], values: string[]) {
