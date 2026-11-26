@@ -9,16 +9,23 @@ const pendingRpcCallbacks = new Map<
   (err: string | null, resBytes: Uint8Array | null) => void
 >();
 
+let nextCorrelationId = 0;
+
+/** Completes the pending RPC that a response from the parent process belongs to. */
+export function handleRpcResponse(res: any) {
+  if (res.type !== "rpc_response") {
+    return;
+  }
+  const callback = pendingRpcCallbacks.get(res.correlationId);
+  if (callback) {
+    pendingRpcCallbacks.delete(res.correlationId);
+    // An empty error message is still an error. Only a missing one means success.
+    callback(res.error ?? null, res.response ? Buffer.from(res.response) : null);
+  }
+}
+
 export function registerRpcResponseHandler() {
-  process.on("message", (res: any) => {
-    if (res.type === "rpc_response") {
-      const callback = pendingRpcCallbacks.get(res.correlationId);
-      if (callback) {
-        pendingRpcCallbacks.delete(res.correlationId);
-        callback(res.error || null, res.response ? Buffer.from(res.response) : null);
-      }
-    }
-  });
+  process.on("message", handleRpcResponse);
 }
 
 export function registerJitCompileHandler() {
@@ -60,7 +67,7 @@ export async function handleJitRequest(message: IJitCompileMessage) {
       reqBytes: Uint8Array,
       callback: (err: string | null, resBytes: Uint8Array | null) => void,
     ) => {
-      const correlationId = Math.random().toString(36).substring(7);
+      const correlationId = String(++nextCorrelationId);
       pendingRpcCallbacks.set(correlationId, callback);
 
       process.send({
@@ -100,7 +107,7 @@ export async function handleJitRequest(message: IJitCompileMessage) {
           const requestBytesTyped = new Uint8Array(requestBytes);
           const internalRpcCallback = (method, reqBytes, callback) => {
             armoredRpcCallback(method, Array.from(reqBytes), (errStr, resBytes) => {
-              if (errStr) {
+              if (errStr !== null && errStr !== undefined) {
                 return callback(new Error(errStr));
               }
               callback(null, resBytes ? new Uint8Array(resBytes) : new Uint8Array());

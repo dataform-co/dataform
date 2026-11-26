@@ -1,7 +1,7 @@
 import { ChildProcess } from "child_process";
 
 import { BaseWorker } from "df/cli/api/commands/base_worker";
-import { handleDbRequest } from "df/cli/api/commands/jit/rpc";
+import { handleDbRequest, rpcErrorMessage } from "df/cli/api/commands/jit/rpc";
 import { IDbAdapter, IDbClient } from "df/cli/api/dbadapters";
 import { IBigQueryExecutionOptions } from "df/cli/api/dbadapters/bigquery";
 import { DEFAULT_COMPILATION_TIMEOUT_MILLIS } from "df/cli/api/utils/constants";
@@ -99,7 +99,7 @@ export class JitCompileChildProcess extends BaseWorker<
       child.send({
         type: "rpc_response",
         correlationId: message.correlationId,
-        error: e.message,
+        error: rpcErrorMessage(e),
       });
     }
   }
