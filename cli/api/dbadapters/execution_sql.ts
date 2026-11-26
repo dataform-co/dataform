@@ -14,6 +14,10 @@ export interface IValidationQuery {
   incremental?: boolean;
 }
 
+const QUOTED_TOP_LEVEL_COLUMN_REGEX = /^`([^`]+)`(?:\s*\.\s*(?:`[^`]+`|[A-Za-z_][A-Za-z0-9_]*))*$/;
+const UNQUOTED_TOP_LEVEL_COLUMN_REGEX =
+  /^([A-Za-z_][A-Za-z0-9_]*)(?:\s*\.\s*(?:`[^`]+`|[A-Za-z_][A-Za-z0-9_]*))*$/;
+
 export class ExecutionSql {
   private readonly CompilationSql: CompilationSql;
 
@@ -443,7 +447,7 @@ ${this.alterTableAddColumnsSql(qualifiedTargetTableName)}
         const uniqueKeyColumnNames = this.normalizeUniqueKeyColumnNames(table.uniqueKey);
         sql += `
 SET dataform_invalid_removed_columns = (
-  SELECT IFNULL(ARRAY_AGG(col), []) FROM UNNEST(dataform_columns_removed) AS col WHERE col IN UNNEST(${JSON.stringify(uniqueKeyColumnNames)})
+  SELECT IFNULL(ARRAY_AGG(col), []) FROM UNNEST(dataform_columns_removed) AS col WHERE LOWER(col) IN UNNEST(${JSON.stringify(uniqueKeyColumnNames)})
 );
 
 IF ARRAY_LENGTH(dataform_invalid_removed_columns) > 0 THEN
@@ -471,19 +475,24 @@ ${this.alterTableAddColumnsSql(qualifiedTargetTableName)}
   }
 
   /**
-   * Strips outer backticks from single-identifier `uniqueKey` entries (for example `` "`my-id`" ``
-   * -> `"my-id"`) so they match unquoted column names from `INFORMATION_SCHEMA.COLUMNS`.
+   * Extracts lowercased top-level column names from `uniqueKey` entries (handling backticks and
+   * dotted struct paths such as `` "`My-Rec`.`sub-id`" `` -> `"my-rec"`) for case-insensitive
+   * matching against `INFORMATION_SCHEMA.COLUMNS`.
    */
   private normalizeUniqueKeyColumnNames(uniqueKeys?: string[] | null): string[] {
-    return (uniqueKeys || []).map((key) => {
+    const normalized = (uniqueKeys || []).map((key) => {
       const trimmed = key.trim();
-      return trimmed.startsWith("`") &&
-        trimmed.endsWith("`") &&
-        trimmed.length > 2 &&
-        !trimmed.slice(1, -1).includes("`")
-        ? trimmed.slice(1, -1)
-        : trimmed;
+      const quotedTopLevel = QUOTED_TOP_LEVEL_COLUMN_REGEX.exec(trimmed);
+      if (quotedTopLevel) {
+        return quotedTopLevel[1].toLowerCase();
+      }
+      const unquotedTopLevel = UNQUOTED_TOP_LEVEL_COLUMN_REGEX.exec(trimmed);
+      if (unquotedTopLevel) {
+        return unquotedTopLevel[1].toLowerCase();
+      }
+      return trimmed.toLowerCase();
     });
+    return Array.from(new Set(normalized));
   }
 
   private alterTableAddColumnsSql(qualifiedTargetTableName: string): string {

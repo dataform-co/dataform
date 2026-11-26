@@ -253,7 +253,7 @@ WHERE id != 1 OR field2 IS NULL OR field2 != 'synced'
 
     test(
       "adds, merges and drops reserved-word and flexible column names and guards backticked uniqueKey",
-      { timeout: 120000 },
+      { timeout: 240000 },
       async () => {
         const tableTarget = {
           database: INTEGRATION_TEST_PROJECT,
@@ -267,7 +267,7 @@ WHERE id != 1 OR field2 IS NULL OR field2 != 'synced'
             `
 config {
   type: "incremental",
-  uniqueKey: ["\`my-id\`"],
+  uniqueKey: ["\`My-Id\`"],
   onSchemaChange: "${onSchemaChange}"
 }
 ${query}

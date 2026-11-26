@@ -51,7 +51,7 @@ DROP TABLE IF EXISTS `project-id.dataset-id.incremental_on_schema_change_df_temp
 
 -- Apply schema change strategy (SYNCHRONIZE).
 SET dataform_invalid_removed_columns = (
-  SELECT IFNULL(ARRAY_AGG(col), []) FROM UNNEST(dataform_columns_removed) AS col WHERE col IN UNNEST(["id"])
+  SELECT IFNULL(ARRAY_AGG(col), []) FROM UNNEST(dataform_columns_removed) AS col WHERE LOWER(col) IN UNNEST(["id"])
 );
 
 IF ARRAY_LENGTH(dataform_invalid_removed_columns) > 0 THEN
