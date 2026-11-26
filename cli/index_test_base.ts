@@ -20,6 +20,8 @@ import { TmpDirFixture } from "df/testing/fixtures";
 
 const DEFAULT_PROJECT = "dataform-open-source";
 const DEFAULT_LOCATION = "US";
+const DEFAULT_LAKEHOUSE_CATALOG = "df_integration_test_catalog";
+const DEFAULT_LAKEHOUSE_NAMESPACE = "df_integration_test_ns";
 
 export const CREDENTIALS_PATH = resolveCredentialsPath();
 
@@ -45,6 +47,12 @@ function getCredentialsLocation(): string {
 export const INTEGRATION_TEST_PROJECT = getCredentialsProjectId();
 export const INTEGRATION_TEST_LOCATION = getCredentialsLocation();
 export const INTEGRATION_TEST_RESERVATION = `projects/${INTEGRATION_TEST_PROJECT}/locations/${INTEGRATION_TEST_LOCATION.toLowerCase()}/reservations/dataform-test`;
+export const INTEGRATION_TEST_LAKEHOUSE_CATALOG =
+  process.env.INTEGRATION_TEST_LAKEHOUSE_CATALOG || DEFAULT_LAKEHOUSE_CATALOG;
+export const INTEGRATION_TEST_LAKEHOUSE_NAMESPACE =
+  process.env.INTEGRATION_TEST_LAKEHOUSE_NAMESPACE || DEFAULT_LAKEHOUSE_NAMESPACE;
+export const INTEGRATION_TEST_LAKEHOUSE_LOCATION =
+  process.env.INTEGRATION_TEST_LAKEHOUSE_LOCATION || INTEGRATION_TEST_LOCATION;
 
 export const cliEntryPointPath = path.resolve("packages/@dataform/cli/bundle.js");
 

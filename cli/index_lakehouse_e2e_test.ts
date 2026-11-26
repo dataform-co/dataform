@@ -1,0 +1,875 @@
+import { expect } from "chai";
+import * as fs from "fs-extra";
+import { dump as dumpYaml, load as loadYaml } from "js-yaml";
+import * as path from "path";
+
+import * as dfapi from "df/cli/api";
+import { BigQueryDbAdapter, createBigQueryClientProvider } from "df/cli/api/dbadapters/bigquery";
+import {
+  CREDENTIALS_PATH,
+  INTEGRATION_TEST_LAKEHOUSE_CATALOG,
+  INTEGRATION_TEST_LAKEHOUSE_LOCATION,
+  INTEGRATION_TEST_LAKEHOUSE_NAMESPACE,
+  INTEGRATION_TEST_PROJECT,
+  runCli,
+  setupProject,
+} from "df/cli/index_test_base";
+import { dataform } from "df/protos/ts";
+import { test, writeDefinitionFile } from "df/testing";
+import { dropDatasets, dropStaleDatasets, makeUniqueSuffix } from "df/testing/bigquery";
+import { integrationSuite, readTestCredentialsConfig } from "df/testing/credentials";
+import { TmpDirFixture } from "df/testing/fixtures";
+
+const SCRATCH_DATASET_PREFIX = {
+  TABLE: "df_e2e_lh_table",
+  INCREMENTAL: "df_e2e_lh_inc",
+  ON_SCHEMA_CHANGE: "df_e2e_lh_osc",
+  OPERATION: "df_e2e_lh_op",
+  METADATA: "df_e2e_lh_meta",
+  VIEW: "df_e2e_lh_view",
+  LOCATION: "df_e2e_lh_loc",
+  DS_MISSING: "df_e2e_lh_ds_missing",
+  DS_EXISTING: "df_e2e_lh_ds_existing",
+  DS_IGNORE: "df_e2e_lh_ds_ignore",
+  MISSING_NS: "df_e2e_lh_missing_ns",
+} as const;
+
+type ScratchDatasetPrefix = (typeof SCRATCH_DATASET_PREFIX)[keyof typeof SCRATCH_DATASET_PREFIX];
+
+const SCRATCH_DATASET_PREFIXES: string[] = Object.values(SCRATCH_DATASET_PREFIX);
+
+const STALE_TABLE_REGEX = /^lh_e2e_[a-z0-9_]+_(\d+)_[0-9a-f]{8}$/;
+const STALE_TABLE_MIN_AGE_HOURS = 6;
+
+integrationSuite("lakehouse e2e", { parallel: true }, ({ before, after }) => {
+  const tmpDirFixture = new TmpDirFixture(after);
+  const credentials = dfapi.credentials.read(CREDENTIALS_PATH);
+  const clientProvider = createBigQueryClientProvider(credentials);
+  const dbadapter = new BigQueryDbAdapter(credentials, { clientProvider });
+  const bigqueryClient = clientProvider(INTEGRATION_TEST_PROJECT);
+  const lakehouseSchema = `${INTEGRATION_TEST_LAKEHOUSE_CATALOG}.${INTEGRATION_TEST_LAKEHOUSE_NAMESPACE}`;
+  const lakehouseExecutor = {
+    execute: (statement: string) =>
+      dbadapter.execute(statement, {
+        bigquery: { location: INTEGRATION_TEST_LAKEHOUSE_LOCATION },
+      }),
+  };
+
+  function makeUniqueTableName(prefix: string): string {
+    const epochSeconds = Math.floor(Date.now() / 1000);
+    return `lh_e2e_${prefix}_${epochSeconds}_${makeUniqueSuffix()}`;
+  }
+
+  function writeCredentialsWithLocation(location: string | undefined): string {
+    const credentialsPath = path.join(tmpDirFixture.createNewTmpDir(), "credentials.json");
+    const config = { ...readTestCredentialsConfig(CREDENTIALS_PATH) };
+    if (location === undefined) {
+      delete config.location;
+    } else {
+      config.location = location;
+    }
+    fs.writeFileSync(credentialsPath, JSON.stringify(config));
+    return credentialsPath;
+  }
+
+  before("verify Lakehouse namespace prerequisite and drop stale test resources", async () => {
+    // Fail fast with an actionable message if the prerequisite Lakehouse catalog/namespace does not
+    // exist in INTEGRATION_TEST_PROJECT or the caller lacks permissions (SQL cannot create
+    // Lakehouse namespaces, and dbadapter.table() swallows 404).
+    const probeTable = `lh_e2e_probe_${makeUniqueSuffix()}`;
+    try {
+      await dbadapter.execute(
+        `CREATE TABLE \`${INTEGRATION_TEST_PROJECT}.${lakehouseSchema}.${probeTable}\` AS SELECT 1 AS id`,
+        {
+          bigquery: {
+            dryRun: true,
+            location: INTEGRATION_TEST_LAKEHOUSE_LOCATION,
+          },
+        },
+      );
+    } catch (e) {
+      throw new Error(
+        `Lakehouse E2E prerequisite check failed: BigLake catalog ` +
+          `'${INTEGRATION_TEST_LAKEHOUSE_CATALOG}' and namespace ` +
+          `'${INTEGRATION_TEST_LAKEHOUSE_NAMESPACE}' are not accessible in project ` +
+          `'${INTEGRATION_TEST_PROJECT}' (location '${INTEGRATION_TEST_LAKEHOUSE_LOCATION}'). ` +
+          `This suite requires a pre-existing BigLake Iceberg catalog and namespace (SQL cannot ` +
+          `create them). Create them, override INTEGRATION_TEST_LAKEHOUSE_CATALOG / ` +
+          `INTEGRATION_TEST_LAKEHOUSE_NAMESPACE / INTEGRATION_TEST_LAKEHOUSE_LOCATION (see ` +
+          `contributing.md), or exclude this suite when running other integration tests ` +
+          `('./scripts/run_integration_tests -- -//cli:index_lakehouse_e2e_test'). ` +
+          `Underlying error: ${e?.message || e}`,
+      );
+    }
+
+    await dropStaleDatasets(lakehouseExecutor, {
+      project: INTEGRATION_TEST_PROJECT,
+      location: INTEGRATION_TEST_LAKEHOUSE_LOCATION,
+      prefixes: SCRATCH_DATASET_PREFIXES,
+    });
+
+    // Best-effort cleanup of orphaned Lakehouse tables left behind by killed/timed-out CI runs.
+    try {
+      const cutoffMillis = Date.now() - STALE_TABLE_MIN_AGE_HOURS * 3600 * 1000;
+      const [existingTables] = await bigqueryClient
+        .dataset(lakehouseSchema)
+        .getTables({ autoPaginate: true, maxResults: 1000 });
+      const staleTables = existingTables.filter((t) => {
+        const match = STALE_TABLE_REGEX.exec(t.id || "");
+        return match && parseInt(match[1], 10) * 1000 < cutoffMillis;
+      });
+      await Promise.all(
+        staleTables.map((t) =>
+          dbadapter
+            .deleteTable(
+              {
+                database: INTEGRATION_TEST_PROJECT,
+                schema: lakehouseSchema,
+                name: t.id,
+              },
+              {
+                bigquery: { location: INTEGRATION_TEST_LAKEHOUSE_LOCATION },
+              },
+            )
+            .catch((err) => console.warn(`Failed to drop stale Lakehouse table ${t.id}: ${err}`)),
+        ),
+      );
+    } catch (e) {
+      console.warn(`Skipping stale Lakehouse table cleanup: ${e?.message || e}`);
+    }
+  });
+
+  async function withLakehouseProject(
+    datasetPrefix: ScratchDatasetPrefix,
+    fn: (ctx: {
+      projectDir: string;
+      scratchDataset: string;
+      registerTableForCleanup: (tableName: string) => dataform.ITarget;
+    }) => Promise<void>,
+    options?: { omitDefaultLocation?: boolean },
+  ): Promise<void> {
+    const projectDir = tmpDirFixture.createNewTmpDir();
+    const scratchDataset = `${datasetPrefix}_${makeUniqueSuffix()}`;
+    const createdTables: dataform.ITarget[] = [];
+
+    const registerTableForCleanup = (tableName: string): dataform.ITarget => {
+      const target: dataform.ITarget = {
+        database: INTEGRATION_TEST_PROJECT,
+        schema: lakehouseSchema,
+        name: tableName,
+      };
+      createdTables.push(target);
+      return target;
+    };
+
+    const omitDefaultLocation = Boolean(options?.omitDefaultLocation);
+
+    try {
+      await setupProject(tmpDirFixture, projectDir, {
+        defaultDataset: scratchDataset,
+        ...(!omitDefaultLocation ? { defaultLocation: INTEGRATION_TEST_LAKEHOUSE_LOCATION } : {}),
+        defaultLakehouseConfig: {
+          catalog: INTEGRATION_TEST_LAKEHOUSE_CATALOG,
+          namespace: INTEGRATION_TEST_LAKEHOUSE_NAMESPACE,
+        },
+      });
+      if (omitDefaultLocation) {
+        const workflowSettingsPath = path.join(projectDir, "workflow_settings.yaml");
+        const workflowSettings = loadYaml(fs.readFileSync(workflowSettingsPath, "utf8")) as {
+          [key: string]: any;
+        };
+        delete workflowSettings.defaultLocation;
+        fs.writeFileSync(workflowSettingsPath, dumpYaml(workflowSettings));
+      }
+
+      await fn({ projectDir, scratchDataset, registerTableForCleanup });
+    } finally {
+      await Promise.all(
+        createdTables.map(async (target) => {
+          try {
+            await dbadapter.deleteTable(target, {
+              bigquery: { location: INTEGRATION_TEST_LAKEHOUSE_LOCATION },
+            });
+          } catch (e) {
+            console.warn(`Failed to drop Lakehouse table ${target.name}: ${e}`);
+          }
+        }),
+      );
+      await dropDatasets(lakehouseExecutor, INTEGRATION_TEST_PROJECT, [scratchDataset]);
+    }
+  }
+
+  async function runDataform(
+    projectDir: string,
+    extraArgs: string[] = [],
+    credentialsPath: string = CREDENTIALS_PATH,
+  ) {
+    return await runCli("run", [
+      projectDir,
+      "--credentials",
+      credentialsPath,
+      "--json",
+      ...extraArgs,
+    ]);
+  }
+
+  async function selectAllLakehouseRows(tableName: string): Promise<any[]> {
+    const { rows } = await dbadapter.execute(
+      `SELECT * FROM \`${INTEGRATION_TEST_PROJECT}.${lakehouseSchema}.${tableName}\` ORDER BY id`,
+      { bigquery: { location: INTEGRATION_TEST_LAKEHOUSE_LOCATION } },
+    );
+    return rows;
+  }
+
+  /**
+   * In non-dry `dataform run --json` output, `Runner` only populates `task.compiledSql` when it
+   * overrides the task's SQL (for example, wrapping it in `CREATE SCHEMA IF NOT EXISTS` for a
+   * missing dataset). When `compiledSql` is `undefined`, the task executed unwrapped.
+   */
+  function expectUnwrappedTask(task: { compiledSql?: string } | undefined): void {
+    expect(task, "expected executed task in run result").to.not.equal(undefined);
+    expect(task?.compiledSql).equals(undefined);
+  }
+
+  function parseRunResultJson(res: { exitCode: number; stdout: string; stderr: string }): any {
+    try {
+      return JSON.parse(res.stdout);
+    } catch (e) {
+      throw new Error(
+        `Expected JSON stdout from dataform CLI (exitCode=${res.exitCode}): ${e?.message || e}\n` +
+          `stdout:\n${res.stdout}\nstderr:\n${res.stderr}`,
+      );
+    }
+  }
+
+  async function fetchExecutedJobQuery(jobId: string): Promise<string> {
+    expect(jobId, "expected BigQuery jobId in task metadata").to.be.a("string").and.not.equal("");
+    const [metadata] = await bigqueryClient
+      .job(jobId, { location: INTEGRATION_TEST_LAKEHOUSE_LOCATION })
+      .getMetadata();
+    const query = String(metadata?.configuration?.query?.query || "");
+    expect(query, `empty query for BigQuery job ${jobId}`).to.not.equal("");
+    return query;
+  }
+
+  async function expectDatasetInLocation(dataset: string, expectedLocation: string): Promise<void> {
+    const { rows } = await dbadapter.execute(
+      `SELECT location
+       FROM \`${INTEGRATION_TEST_PROJECT}\`.\`region-${expectedLocation.toLowerCase()}\`.INFORMATION_SCHEMA.SCHEMATA
+       WHERE schema_name = @dataset`,
+      {
+        params: { dataset },
+        bigquery: { location: expectedLocation },
+      },
+    );
+    expect(rows.length, `dataset ${dataset} not found in ${expectedLocation}`).equals(1);
+    expect(rows[0].location.toUpperCase()).equals(expectedLocation.toUpperCase());
+  }
+
+  // Regular `table` run twice: the second run replaces the table.
+  test(
+    "table: creates and replaces a 4-part Lakehouse table across two runs",
+    { timeout: 180000 },
+    async () => {
+      await withLakehouseProject(
+        SCRATCH_DATASET_PREFIX.TABLE,
+        async ({ projectDir, registerTableForCleanup }) => {
+          const tableName = makeUniqueTableName("table");
+          registerTableForCleanup(tableName);
+
+          writeDefinitionFile(
+            projectDir,
+            `${tableName}.sqlx`,
+            `config { type: "table", lakehouse: {} }
+SELECT 1 AS id, 'v1' AS val`,
+          );
+          const run1 = await runDataform(projectDir);
+          expect(run1.exitCode, `stdout:\n${run1.stdout}\nstderr:\n${run1.stderr}`).equals(0);
+          expect(await selectAllLakehouseRows(tableName)).to.eql([{ id: 1, val: "v1" }]);
+
+          writeDefinitionFile(
+            projectDir,
+            `${tableName}.sqlx`,
+            `config { type: "table", lakehouse: {} }
+SELECT 1 AS id, 'v2' AS val
+UNION ALL
+SELECT 2 AS id, 'v2' AS val`,
+          );
+          const run2 = await runDataform(projectDir);
+          expect(run2.exitCode, `stdout:\n${run2.stdout}\nstderr:\n${run2.stderr}`).equals(0);
+          expect(await selectAllLakehouseRows(tableName)).to.eql([
+            { id: 1, val: "v2" },
+            { id: 2, val: "v2" },
+          ]);
+        },
+      );
+    },
+  );
+
+  // `incremental`: first run creates, second without `uniqueKey` inserts, with `uniqueKey` merges.
+  test(
+    "incremental: creates on first run, inserts without uniqueKey, and merges with uniqueKey",
+    { timeout: 240000 },
+    async () => {
+      await withLakehouseProject(
+        SCRATCH_DATASET_PREFIX.INCREMENTAL,
+        async ({ projectDir, registerTableForCleanup }) => {
+          const appendTable = makeUniqueTableName("inc_append");
+          const mergeTable = makeUniqueTableName("inc_merge");
+          registerTableForCleanup(appendTable);
+          registerTableForCleanup(mergeTable);
+
+          writeDefinitionFile(
+            projectDir,
+            `${appendTable}.sqlx`,
+            `config { type: "incremental", lakehouse: {} }
+SELECT 1 AS id, 'a' AS val`,
+          );
+          writeDefinitionFile(
+            projectDir,
+            `${mergeTable}.sqlx`,
+            `config { type: "incremental", uniqueKey: ["id"], lakehouse: {} }
+SELECT 1 AS id, 'v1' AS val
+UNION ALL
+SELECT 2 AS id, 'v1' AS val`,
+          );
+
+          const run1 = await runDataform(projectDir);
+          expect(run1.exitCode, `stdout:\n${run1.stdout}\nstderr:\n${run1.stderr}`).equals(0);
+          expect(await selectAllLakehouseRows(appendTable)).to.eql([{ id: 1, val: "a" }]);
+          expect(await selectAllLakehouseRows(mergeTable)).to.eql([
+            { id: 1, val: "v1" },
+            { id: 2, val: "v1" },
+          ]);
+
+          writeDefinitionFile(
+            projectDir,
+            `${appendTable}.sqlx`,
+            `config { type: "incremental", lakehouse: {} }
+SELECT 2 AS id, 'b' AS val`,
+          );
+          writeDefinitionFile(
+            projectDir,
+            `${mergeTable}.sqlx`,
+            `config { type: "incremental", uniqueKey: ["id"], lakehouse: {} }
+SELECT 2 AS id, 'v2' AS val
+UNION ALL
+SELECT 3 AS id, 'v2' AS val`,
+          );
+
+          const run2 = await runDataform(projectDir);
+          expect(run2.exitCode, `stdout:\n${run2.stdout}\nstderr:\n${run2.stderr}`).equals(0);
+
+          expect(await selectAllLakehouseRows(appendTable)).to.eql([
+            { id: 1, val: "a" },
+            { id: 2, val: "b" },
+          ]);
+          expect(await selectAllLakehouseRows(mergeTable)).to.eql([
+            { id: 1, val: "v1" },
+            { id: 2, val: "v2" },
+            { id: 3, val: "v2" },
+          ]);
+        },
+      );
+    },
+  );
+
+  // `onSchemaChange`: EXTEND (new column) and SYNCHRONIZE (removed column).
+  test(
+    "onSchemaChange: applies EXTEND and SYNCHRONIZE without leaving scratch tables in defaultDataset",
+    { timeout: 240000 },
+    async () => {
+      await withLakehouseProject(
+        SCRATCH_DATASET_PREFIX.ON_SCHEMA_CHANGE,
+        async ({ projectDir, scratchDataset, registerTableForCleanup }) => {
+          const extendTable = makeUniqueTableName("osc_ext");
+          const syncTable = makeUniqueTableName("osc_sync");
+          const extendTarget = registerTableForCleanup(extendTable);
+          const syncTarget = registerTableForCleanup(syncTable);
+
+          // EXTEND: add new column `status`.
+          writeDefinitionFile(
+            projectDir,
+            `${extendTable}.sqlx`,
+            `config { type: "incremental", onSchemaChange: "EXTEND", lakehouse: {} }
+SELECT 1 AS id, 'alice' AS name`,
+          );
+          const extRun1 = await runDataform(projectDir, [`--actions=${extendTable}`]);
+          expect(extRun1.exitCode, `stdout:\n${extRun1.stdout}\nstderr:\n${extRun1.stderr}`).equals(
+            0,
+          );
+
+          writeDefinitionFile(
+            projectDir,
+            `${extendTable}.sqlx`,
+            `config { type: "incremental", onSchemaChange: "EXTEND", lakehouse: {} }
+SELECT 2 AS id, 'bob' AS name, 'active' AS status`,
+          );
+          const extRun2 = await runDataform(projectDir, [`--actions=${extendTable}`]);
+          expect(extRun2.exitCode, `stdout:\n${extRun2.stdout}\nstderr:\n${extRun2.stderr}`).equals(
+            0,
+          );
+
+          const extendMetadata = await dbadapter.table(extendTarget);
+          expect(extendMetadata?.fields?.map((f) => f.name)).to.eql(["id", "name", "status"]);
+          expect(await selectAllLakehouseRows(extendTable)).to.eql([
+            { id: 1, name: "alice", status: null },
+            { id: 2, name: "bob", status: "active" },
+          ]);
+
+          // SYNCHRONIZE: remove column `legacy_col`.
+          writeDefinitionFile(
+            projectDir,
+            `${syncTable}.sqlx`,
+            `config { type: "incremental", onSchemaChange: "SYNCHRONIZE", lakehouse: {} }
+SELECT 1 AS id, 'alice' AS name, 'old' AS legacy_col`,
+          );
+          const syncRun1 = await runDataform(projectDir, [`--actions=${syncTable}`]);
+          expect(
+            syncRun1.exitCode,
+            `stdout:\n${syncRun1.stdout}\nstderr:\n${syncRun1.stderr}`,
+          ).equals(0);
+
+          writeDefinitionFile(
+            projectDir,
+            `${syncTable}.sqlx`,
+            `config { type: "incremental", onSchemaChange: "SYNCHRONIZE", lakehouse: {} }
+SELECT 2 AS id, 'bob' AS name`,
+          );
+          const syncRun2 = await runDataform(projectDir, [`--actions=${syncTable}`]);
+          expect(
+            syncRun2.exitCode,
+            `stdout:\n${syncRun2.stdout}\nstderr:\n${syncRun2.stderr}`,
+          ).equals(0);
+
+          const syncMetadata = await dbadapter.table(syncTarget);
+          expect(syncMetadata?.fields?.map((f) => f.name)).to.eql(["id", "name"]);
+          expect(await selectAllLakehouseRows(syncTable)).to.eql([
+            { id: 1, name: "alice" },
+            { id: 2, name: "bob" },
+          ]);
+
+          const leftoverScratchTables = await dbadapter.tables(
+            INTEGRATION_TEST_PROJECT,
+            scratchDataset,
+          );
+          expect(leftoverScratchTables).to.eql([]);
+        },
+      );
+    },
+  );
+
+  // `operations` with `hasOutput: true`.
+  test(
+    "operations: creates a 4-part Lakehouse table when hasOutput is true",
+    { timeout: 180000 },
+    async () => {
+      await withLakehouseProject(
+        SCRATCH_DATASET_PREFIX.OPERATION,
+        async ({ projectDir, registerTableForCleanup }) => {
+          const opTable = makeUniqueTableName("op");
+          registerTableForCleanup(opTable);
+
+          writeDefinitionFile(
+            projectDir,
+            `${opTable}.sqlx`,
+            `config {
+  type: "operations",
+  hasOutput: true,
+  lakehouse: {}
+}
+CREATE OR REPLACE TABLE \${self()} AS
+SELECT 1 AS id, 'from_operation' AS source`,
+          );
+
+          const res = await runDataform(projectDir);
+          expect(res.exitCode, `stdout:\n${res.stdout}\nstderr:\n${res.stderr}`).equals(0);
+          const parsed = parseRunResultJson(res);
+          expectUnwrappedTask(parsed.actions?.[0]?.tasks?.[0]);
+          expect(await selectAllLakehouseRows(opTable)).to.eql([
+            { id: 1, source: "from_operation" },
+          ]);
+        },
+      );
+    },
+  );
+
+  // Table and top-level column descriptions set and cleared via ALTER TABLE (nested STRUCT ignored).
+  test(
+    "descriptions: sets and clears table and top-level column descriptions while ignoring nested STRUCT fields",
+    { timeout: 180000 },
+    async () => {
+      await withLakehouseProject(
+        SCRATCH_DATASET_PREFIX.METADATA,
+        async ({ projectDir, registerTableForCleanup }) => {
+          const tableName = makeUniqueTableName("meta");
+          const target = registerTableForCleanup(tableName);
+
+          // Intentional apostrophe in table description to exercise SQL string escaping in ALTER TABLE.
+          writeDefinitionFile(
+            projectDir,
+            `${tableName}.sqlx`,
+            `config {
+  type: "incremental",
+  description: "Lakehouse E2E test table's description",
+  columns: {
+    id: "Primary identifier",
+    details: {
+      description: "Top-level struct column",
+      columns: {
+        nested_note: "Nested description skipped for Lakehouse"
+      }
+    }
+  },
+  lakehouse: {}
+}
+SELECT 1 AS id, STRUCT('ok' AS nested_note) AS details`,
+          );
+
+          const res = await runDataform(projectDir);
+          expect(res.exitCode, `stdout:\n${res.stdout}\nstderr:\n${res.stderr}`).equals(0);
+
+          const metadata = await dbadapter.table(target);
+          expect(metadata?.description).to.equal("Lakehouse E2E test table's description");
+          const idField = metadata?.fields?.find((f) => f.name === "id");
+          const detailsField = metadata?.fields?.find((f) => f.name === "details");
+          const nestedNoteField = detailsField?.struct?.fields?.find(
+            (f) => f.name === "nested_note",
+          );
+          expect(idField?.description).to.equal("Primary identifier");
+          expect(detailsField?.description).to.equal("Top-level struct column");
+          expect(nestedNoteField).to.not.equal(undefined);
+          expect(nestedNoteField?.description || "").to.equal("");
+
+          // Incremental run removing table description and clearing `id` column description
+          // exercises `SET OPTIONS(description = NULL)` without recreating the table.
+          writeDefinitionFile(
+            projectDir,
+            `${tableName}.sqlx`,
+            `config {
+  type: "incremental",
+  columns: {
+    id: "",
+    details: "Top-level struct column"
+  },
+  lakehouse: {}
+}
+SELECT 2 AS id, STRUCT('ok2' AS nested_note) AS details`,
+          );
+
+          const clearRes = await runDataform(projectDir);
+          expect(
+            clearRes.exitCode,
+            `stdout:\n${clearRes.stdout}\nstderr:\n${clearRes.stderr}`,
+          ).equals(0);
+
+          const clearedMetadata = await dbadapter.table(target);
+          expect(clearedMetadata?.description || "").to.equal("");
+          const clearedIdField = clearedMetadata?.fields?.find((f) => f.name === "id");
+          const keptDetailsField = clearedMetadata?.fields?.find((f) => f.name === "details");
+          expect(clearedIdField?.description || "").to.equal("");
+          expect(keptDetailsField?.description).to.equal("Top-level struct column");
+        },
+      );
+    },
+  );
+
+  // Non-existent namespace fails with a clear error.
+  test(
+    "missing namespace: fails with a clear not-found error without attempting CREATE SCHEMA",
+    { timeout: 120000 },
+    async () => {
+      await withLakehouseProject(SCRATCH_DATASET_PREFIX.MISSING_NS, async ({ projectDir }) => {
+        const tableName = makeUniqueTableName("bad_ns");
+        const missingNamespace = `nonexistent_ns_${makeUniqueSuffix()}`;
+        writeDefinitionFile(
+          projectDir,
+          `${tableName}.sqlx`,
+          `config {
+  type: "table",
+  lakehouse: {
+    catalog: "${INTEGRATION_TEST_LAKEHOUSE_CATALOG}",
+    namespace: "${missingNamespace}"
+  }
+}
+SELECT 1 AS id`,
+        );
+
+        // Dry run always emits the exact SQL sent to BigQuery in `compiledSql` (including any
+        // `CREATE SCHEMA` wrapper if Runner tried to create the missing namespace). Because
+        // BigQuery rejects the failed real run with 404 before assigning a jobId, inspect the
+        // dry-run SQL directly to verify no `CREATE SCHEMA` statement was attempted.
+        const dryRunRes = await runDataform(projectDir, ["--dry-run"]);
+        expect(dryRunRes.exitCode).to.not.equal(0);
+        const parsedDryRun = parseRunResultJson(dryRunRes);
+        expect(parsedDryRun.status).equals(dataform.RunResult.ExecutionStatus.FAILED);
+        const dryRunSql = parsedDryRun.actions?.[0]?.tasks?.[0]?.compiledSql || "";
+        expect(dryRunSql).to.match(/create\s+or\s+replace\s+table/i);
+        expect(dryRunSql).to.not.match(/create\s+schema/i);
+
+        const res = await runDataform(projectDir);
+        expect(res.exitCode).to.not.equal(0);
+        const parsed = parseRunResultJson(res);
+        expect(parsed.status).equals(dataform.RunResult.ExecutionStatus.FAILED);
+        const task = parsed.actions?.[0]?.tasks?.[0];
+        expectUnwrappedTask(task);
+        const errorMessage = (task?.errorMessage || "").toLowerCase();
+        expect(errorMessage).to.include("not found");
+        expect(errorMessage).to.include(missingNamespace.toLowerCase());
+      });
+    },
+  );
+
+  // Regular 3-part `view` reading a Lakehouse table through `ref()`.
+  test(
+    "ref(): regular 3-part view reads a 4-part Lakehouse table",
+    { timeout: 180000 },
+    async () => {
+      await withLakehouseProject(
+        SCRATCH_DATASET_PREFIX.VIEW,
+        async ({ projectDir, scratchDataset, registerTableForCleanup }) => {
+          const lhTable = makeUniqueTableName("src");
+          const viewName = `view_over_${lhTable}`;
+          registerTableForCleanup(lhTable);
+
+          writeDefinitionFile(
+            projectDir,
+            `${lhTable}.sqlx`,
+            `config { type: "table", lakehouse: {} }
+SELECT 1 AS id, 'lakehouse_row' AS label`,
+          );
+          writeDefinitionFile(
+            projectDir,
+            `${viewName}.sqlx`,
+            `config { type: "view" }
+SELECT id, UPPER(label) AS upper_label FROM \${ref("${lhTable}")}`,
+          );
+
+          const res = await runDataform(projectDir, [`--actions=${viewName}`, "--include-deps"]);
+          expect(res.exitCode, `stdout:\n${res.stdout}\nstderr:\n${res.stderr}`).equals(0);
+
+          const { rows } = await dbadapter.execute(
+            `SELECT * FROM \`${INTEGRATION_TEST_PROJECT}.${scratchDataset}.${viewName}\``,
+            { bigquery: { location: INTEGRATION_TEST_LAKEHOUSE_LOCATION } },
+          );
+          expect(rows).to.eql([{ id: 1, upper_label: "LAKEHOUSE_ROW" }]);
+        },
+      );
+    },
+  );
+
+  // Location resolution with and without `defaultLocation`.
+  test(
+    "location: resolves catalog location with defaultLocation and without defaultLocation",
+    { timeout: 240000 },
+    async () => {
+      const conflictingLocation =
+        INTEGRATION_TEST_LAKEHOUSE_LOCATION.toUpperCase() === "US" ? "EU" : "US";
+      const conflictingCredsPath = writeCredentialsWithLocation(conflictingLocation);
+      const noLocationCredsPath = writeCredentialsWithLocation(undefined);
+
+      // With `defaultLocation`: overrides conflicting location in credentials.
+      await withLakehouseProject(
+        SCRATCH_DATASET_PREFIX.LOCATION,
+        async ({ projectDir, registerTableForCleanup }) => {
+          const tableName = makeUniqueTableName("loc_explicit");
+          const target = registerTableForCleanup(tableName);
+          writeDefinitionFile(
+            projectDir,
+            `${tableName}.sqlx`,
+            `config { type: "table", description: "Explicit location", lakehouse: {} }
+SELECT 1 AS id`,
+          );
+
+          const res = await runDataform(projectDir, [], conflictingCredsPath);
+          expect(res.exitCode, `stdout:\n${res.stdout}\nstderr:\n${res.stderr}`).equals(0);
+          expect(await selectAllLakehouseRows(tableName)).to.eql([{ id: 1 }]);
+          expect((await dbadapter.table(target))?.description).to.equal("Explicit location");
+        },
+      );
+
+      // Without `defaultLocation`: fails when credentials force wrong location, succeeds when
+      // credentials also omit location (BigQuery infers catalog location from 4-part target).
+      await withLakehouseProject(
+        SCRATCH_DATASET_PREFIX.LOCATION,
+        async ({ projectDir, registerTableForCleanup }) => {
+          const tableName = makeUniqueTableName("loc_inferred");
+          registerTableForCleanup(tableName);
+          writeDefinitionFile(
+            projectDir,
+            `${tableName}.sqlx`,
+            `config { type: "table", lakehouse: {} }
+SELECT 1 AS id`,
+          );
+
+          const failedRes = await runDataform(projectDir, [], conflictingCredsPath);
+          expect(failedRes.exitCode).to.not.equal(0);
+          const parsedFailed = parseRunResultJson(failedRes);
+          expect(parsedFailed.status).equals(dataform.RunResult.ExecutionStatus.FAILED);
+          const failedError = parsedFailed.actions?.[0]?.tasks?.[0]?.errorMessage || "";
+          expect(failedError).to.match(/location|not found/i);
+
+          // Verifies Dataform omits the job location (rather than forcing a conflicting default)
+          // when neither `defaultLocation` nor `credentials.location` is set, letting BigQuery
+          // infer the catalog's region from the 4-part target.
+          const inferredRes = await runDataform(projectDir, [], noLocationCredsPath);
+          expect(
+            inferredRes.exitCode,
+            `stdout:\n${inferredRes.stdout}\nstderr:\n${inferredRes.stderr}`,
+          ).equals(0);
+          expect(await selectAllLakehouseRows(tableName)).to.eql([{ id: 1 }]);
+        },
+        { omitDefaultLocation: true },
+      );
+    },
+  );
+
+  // `defaultDataset` missing vs existing with `onSchemaChange`, and skipped for default `IGNORE`.
+  test(
+    "defaultDataset: creates missing scratch dataset once for onSchemaChange, skips CREATE SCHEMA when it exists, and skips creation for IGNORE",
+    { timeout: 300000 },
+    async () => {
+      // Missing `defaultDataset` -> Runner wraps first run with `create schema if not exists`
+      // in the Lakehouse location, and subsequent incremental runs emit no `CREATE SCHEMA`.
+      await withLakehouseProject(
+        SCRATCH_DATASET_PREFIX.DS_MISSING,
+        async ({ projectDir, scratchDataset, registerTableForCleanup }) => {
+          const tableName = makeUniqueTableName("ds_missing");
+          const target = registerTableForCleanup(tableName);
+          writeDefinitionFile(
+            projectDir,
+            `${tableName}.sqlx`,
+            `config { type: "incremental", onSchemaChange: "EXTEND", lakehouse: {} }
+SELECT 1 AS id, 'a' AS name`,
+          );
+
+          const run1 = await runDataform(projectDir);
+          expect(run1.exitCode, `stdout:\n${run1.stdout}\nstderr:\n${run1.stderr}`).equals(0);
+          const parsed1 = parseRunResultJson(run1);
+          // Runner sets `compiledSql` in non-dry runs only when it wraps the task's SQL
+          // (here, prepending `CREATE SCHEMA IF NOT EXISTS` for the missing scratch dataset).
+          expect(parsed1.actions?.[0]?.tasks?.[0]?.compiledSql?.toLowerCase() || "").to.include(
+            `create schema if not exists \`${INTEGRATION_TEST_PROJECT}.${scratchDataset}\``.toLowerCase(),
+          );
+          await expectDatasetInLocation(scratchDataset, INTEGRATION_TEST_LAKEHOUSE_LOCATION);
+
+          writeDefinitionFile(
+            projectDir,
+            `${tableName}.sqlx`,
+            `config { type: "incremental", onSchemaChange: "EXTEND", lakehouse: {} }
+SELECT 2 AS id, 'b' AS name, 'active' AS status`,
+          );
+          const run2 = await runDataform(projectDir);
+          expect(run2.exitCode, `stdout:\n${run2.stdout}\nstderr:\n${run2.stderr}`).equals(0);
+          const parsed2 = parseRunResultJson(run2);
+          expectUnwrappedTask(parsed2.actions?.[0]?.tasks?.[0]);
+          const run2Sql = await fetchExecutedJobQuery(
+            parsed2.actions?.[0]?.tasks?.[0]?.metadata?.bigquery?.jobId,
+          );
+          expect(run2Sql).to.not.match(/create\s+schema/i);
+
+          const metadata = await dbadapter.table(target);
+          expect(metadata?.fields?.map((f) => f.name)).to.eql(["id", "name", "status"]);
+        },
+      );
+
+      // Existing `defaultDataset` -> neither Runner nor ExecutionSql emits `CREATE SCHEMA`.
+      await withLakehouseProject(
+        SCRATCH_DATASET_PREFIX.DS_EXISTING,
+        async ({ projectDir, scratchDataset, registerTableForCleanup }) => {
+          const tableName = makeUniqueTableName("ds_existing");
+          const target = registerTableForCleanup(tableName);
+
+          await dbadapter.execute(
+            `CREATE SCHEMA IF NOT EXISTS \`${INTEGRATION_TEST_PROJECT}.${scratchDataset}\` ` +
+              `OPTIONS(location = '${INTEGRATION_TEST_LAKEHOUSE_LOCATION}')`,
+            { bigquery: { location: INTEGRATION_TEST_LAKEHOUSE_LOCATION } },
+          );
+
+          writeDefinitionFile(
+            projectDir,
+            `${tableName}.sqlx`,
+            `config { type: "incremental", onSchemaChange: "EXTEND", lakehouse: {} }
+SELECT 1 AS id, 'alice' AS name`,
+          );
+          const run1 = await runDataform(projectDir);
+          expect(run1.exitCode, `stdout:\n${run1.stdout}\nstderr:\n${run1.stderr}`).equals(0);
+          const parsed1 = parseRunResultJson(run1);
+          expectUnwrappedTask(parsed1.actions?.[0]?.tasks?.[0]);
+          const run1Sql = await fetchExecutedJobQuery(
+            parsed1.actions?.[0]?.tasks?.[0]?.metadata?.bigquery?.jobId,
+          );
+          expect(run1Sql).to.not.match(/create\s+schema/i);
+
+          writeDefinitionFile(
+            projectDir,
+            `${tableName}.sqlx`,
+            `config { type: "incremental", onSchemaChange: "EXTEND", lakehouse: {} }
+SELECT 2 AS id, 'bob' AS name, 'active' AS status`,
+          );
+          const run2 = await runDataform(projectDir);
+          expect(run2.exitCode, `stdout:\n${run2.stdout}\nstderr:\n${run2.stderr}`).equals(0);
+          const parsed2 = parseRunResultJson(run2);
+          expectUnwrappedTask(parsed2.actions?.[0]?.tasks?.[0]);
+          const run2Sql = await fetchExecutedJobQuery(
+            parsed2.actions?.[0]?.tasks?.[0]?.metadata?.bigquery?.jobId,
+          );
+          expect(run2Sql).to.not.match(/create\s+schema/i);
+
+          const metadata = await dbadapter.table(target);
+          expect(metadata?.fields?.map((f) => f.name)).to.eql(["id", "name", "status"]);
+        },
+      );
+
+      // Default `onSchemaChange` (`IGNORE`) with missing `defaultDataset` -> Runner never creates
+      // `defaultDataset` across initial and incremental runs.
+      await withLakehouseProject(
+        SCRATCH_DATASET_PREFIX.DS_IGNORE,
+        async ({ projectDir, scratchDataset, registerTableForCleanup }) => {
+          const tableName = makeUniqueTableName("ds_ignore");
+          registerTableForCleanup(tableName);
+
+          writeDefinitionFile(
+            projectDir,
+            `${tableName}.sqlx`,
+            `config { type: "incremental", lakehouse: {} }
+SELECT 1 AS id, 'alice' AS name`,
+          );
+          const run1 = await runDataform(projectDir);
+          expect(run1.exitCode, `stdout:\n${run1.stdout}\nstderr:\n${run1.stderr}`).equals(0);
+          const parsed1 = parseRunResultJson(run1);
+          expectUnwrappedTask(parsed1.actions?.[0]?.tasks?.[0]);
+          const run1Sql = await fetchExecutedJobQuery(
+            parsed1.actions?.[0]?.tasks?.[0]?.metadata?.bigquery?.jobId,
+          );
+          expect(run1Sql).to.not.match(/create\s+schema/i);
+
+          writeDefinitionFile(
+            projectDir,
+            `${tableName}.sqlx`,
+            `config { type: "incremental", lakehouse: {} }
+SELECT 2 AS id, 'bob' AS name`,
+          );
+          const run2 = await runDataform(projectDir);
+          expect(run2.exitCode, `stdout:\n${run2.stdout}\nstderr:\n${run2.stderr}`).equals(0);
+          const parsed2 = parseRunResultJson(run2);
+          expectUnwrappedTask(parsed2.actions?.[0]?.tasks?.[0]);
+          const run2Sql = await fetchExecutedJobQuery(
+            parsed2.actions?.[0]?.tasks?.[0]?.metadata?.bigquery?.jobId,
+          );
+          expect(run2Sql).to.not.match(/create\s+schema/i);
+
+          const [datasetExists] = await bigqueryClient.dataset(scratchDataset).exists();
+          expect(
+            datasetExists,
+            `scratch dataset ${scratchDataset} should not have been created for IGNORE mode`,
+          ).equals(false);
+          expect(await selectAllLakehouseRows(tableName)).to.eql([
+            { id: 1, name: "alice" },
+            { id: 2, name: "bob" },
+          ]);
+        },
+      );
+    },
+  );
+});
