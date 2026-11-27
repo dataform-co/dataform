@@ -106,7 +106,7 @@ config {
         ).equals(0);
 
         // Run the incremental table in build-only mode first to verify the structure of the SQL script.
-        const dryRunResult = await runCli("run", [
+        const buildOnlyResult = await runCli("run", [
           projectDir,
           "--credentials",
           CREDENTIALS_PATH,
@@ -115,9 +115,23 @@ config {
           "--actions=example_incremental",
         ]);
 
-        expect(dryRunResult.exitCode).equals(0);
-        const executionGraph = JSON.parse(dryRunResult.stdout);
+        expect(buildOnlyResult.exitCode).equals(0);
+        const executionGraph = JSON.parse(buildOnlyResult.stdout);
         const statement = executionGraph.actions[0].tasks[0].statement;
+
+        // Test that the dry-run passes
+        const dryRunResult = await runCli("run", [
+          projectDir,
+          "--credentials",
+          CREDENTIALS_PATH,
+          "--dry-run",
+          "--json",
+          "--actions=example_incremental",
+        ]);
+        expect(
+          dryRunResult.exitCode,
+          `stdout:\n${dryRunResult.stdout}\nstderr:\n${dryRunResult.stderr}`,
+        ).equals(0);
 
         const expectedRunResult = {
           projectConfig: {
