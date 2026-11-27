@@ -202,8 +202,8 @@ Prefer a range (for example `"^3.1.9"`) over an exact version in overrides, so l
 Dependency updates are proposed automatically (see `.github/dependabot.yml`):
 
 - **Security updates:** Dependabot updates vulnerable direct dependencies, and the Security updates workflow fixes vulnerable transitive ones (`deps/security-updates`).
-- **Version updates:** every night Dependabot checks for new minor and patch versions of all direct npm dependencies, Bazel modules (`MODULE.bazel`) and GitHub Actions. They're grouped into a few PRs (npm `dependencies`, npm `devDependencies`, Bazel modules, GitHub Actions), and each group PR is kept updated to the newest versions. npm versions are proposed 21 days after their release, when they're usually available in the registry used by CI.
-- **Majors** aren't proposed automatically; they're updated by hand.
+- **Version updates:** every night Dependabot checks for new minor and patch versions of all direct npm dependencies and Bazel modules (`MODULE.bazel`), and every week for new versions of the GitHub Actions used by the workflows, including major ones (a new major of an action usually only moves it to a newer Node.js runtime, and GitHub retires the old runtimes). They're grouped into a few PRs (npm `dependencies`, npm `devDependencies`, Bazel modules, GitHub Actions), and each group PR is kept updated to the newest versions. npm versions are proposed 21 days after their release, when they're usually available in the registry used by CI.
+- **Majors** (except for GitHub Actions) aren't proposed automatically; they're updated by hand.
 
 The Dependency PR auto-merge workflow enables auto-merge on these PRs. To merge one, check the changes and the release notes, approve it, and comment `/gcbrun` to start the required Cloud Build checks (PRs from bots don't start them automatically). GitHub merges the PR once the checks pass. If a new version breaks something, fix it in the PR, or exclude the version with an `ignore` entry in `.github/dependabot.yml` and open an issue.
 
