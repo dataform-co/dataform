@@ -76,9 +76,12 @@ Creates a new Dataform project (`workflow_settings.yaml`, `.gitignore`, `definit
 | Flag | Type | Default | Description |
 |---|---|---|---|
 | `--iceberg` | boolean | `false` | Initialize the project with workflow-level Iceberg tables configuration. |
+| `--lakehouse` | boolean | `false` | Initialize the project with workflow-level Lakehouse configuration. |
 <!-- END GENERATED: options init -->
 
 When `--iceberg` is set, `init` prompts interactively for an Iceberg bucket name, table folder root/subpath, and connection.
+
+When `--lakehouse` is set, `init` prompts interactively for the default Lakehouse catalog and namespace, and writes them to `workflow_settings.yaml` as `defaultLakehouseConfig`.
 
 ---
 
