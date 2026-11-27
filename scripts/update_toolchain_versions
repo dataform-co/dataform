@@ -1,0 +1,304 @@
+#!/usr/bin/env python3
+"""Updates the Node.js and pnpm toolchain versions within their major version.
+
+Dependabot updates npm packages and Bazel modules, but not the toolchain
+versions that the Bazel build downloads itself. This script updates:
+
+  - Node.js: node.toolchain(node_version = ...) in MODULE.bazel, to the newest
+    release of the current major line published at least NODE_COOLDOWN_DAYS
+    ago;
+  - pnpm: pnpm_version and pnpm_version_integrity in pnpm.pnpm(...) in
+    MODULE.bazel, and "packageManager" in package.json, to the newest release
+    of the current major published at least PNPM_COOLDOWN_DAYS ago (pnpm is
+    installed from the npm registry, so it reaches the registry used by CI as
+    late as other npm packages). The integrity is set because aspect_rules_js
+    only knows the integrity of the pnpm versions that existed when it was
+    released.
+
+Major versions are never updated. Bazel itself isn't updated either: the Cloud
+Build image (gcr.io/cloud-builders/bazel) only exists for a few Bazel versions.
+
+MODULE.bazel.lock must be refreshed afterwards, e.g. with
+`bazel build --nobuild --lockfile_mode=update //...`. Review its diff: for
+Node.js versions newer than the ones rules_nodejs has built-in checksums for,
+the node extension downloads the release's SHASUMS256.txt during the refresh,
+so the checksums of the Node.js archives are only pinned in MODULE.bazel.lock.
+
+Usage:
+  ./scripts/update_toolchain_versions [--dry-run] [--summary FILE]
+
+Environment:
+  NODE_COOLDOWN_DAYS  Minimum age of a Node.js release, in days (default 7).
+  PNPM_COOLDOWN_DAYS  Minimum age of a pnpm release, in days (default 21).
+
+Writes a markdown summary (for the PR description) to --summary and exits with
+0 whether or not anything changed; compare the files to find out.
+"""
+
+import argparse
+import datetime
+import http.client
+import json
+import os
+import re
+import sys
+import urllib.error
+import urllib.parse
+import urllib.request
+
+NODE_COOLDOWN_DAYS = int(os.environ.get("NODE_COOLDOWN_DAYS", "7"))
+PNPM_COOLDOWN_DAYS = int(os.environ.get("PNPM_COOLDOWN_DAYS", "21"))
+
+MODULE_BAZEL = "MODULE.bazel"
+PACKAGE_JSON = "package.json"
+
+NODE_INDEX = "https://nodejs.org/dist/index.json"
+NPM_REGISTRY = "https://registry.npmjs.org/"
+
+# Network errors that skip an update with a warning instead of failing.
+FETCH_ERRORS = (OSError, http.client.HTTPException, ValueError, KeyError)
+
+VERSION = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
+INTEGRITY = re.compile(r"^sha512-[A-Za-z0-9+/]+={0,2}$")
+NODE_VERSION_ATTR = re.compile(r'(node\.toolchain\([^)]*?node_version\s*=\s*")([^"]+)(")', re.S)
+PNPM_CALL = re.compile(r"(?P<head>pnpm\.pnpm\()(?P<args>[^)]*)(?P<tail>\))", re.S)
+PNPM_VERSION_ATTR = re.compile(r'(\bpnpm_version\s*=\s*")([^"]+)(")')
+PNPM_INTEGRITY_ATTR = re.compile(r'(\bpnpm_version_integrity\s*=\s*")([^"]*)(")')
+PACKAGE_MANAGER = re.compile(r'("packageManager"\s*:\s*"pnpm@)([^"]+)(")')
+
+
+# --- Versions ----------------------------------------------------------------
+
+def parse_version(text):
+    """Returns (major, minor, patch) for a stable x.y.z version, else None."""
+    match = VERSION.match(text.strip().lstrip("v"))
+    return tuple(int(n) for n in match.groups()) if match else None
+
+
+def major_line(version):
+    """The part of a version that changes on a breaking release: the major, or
+    the minor for 0.x versions (as with npm's caret ranges)."""
+    return version[:1] if version[0] > 0 else version[:2]
+
+
+def newest_in_line(current, releases, now, cooldown_days):
+    """Returns (version, date) of the newest release in current's major line
+    released at least cooldown_days before now, if newer than current.
+
+    releases: iterable of (version string, release datetime)."""
+    line = major_line(current)
+    cutoff = now - datetime.timedelta(days=cooldown_days)
+    best = None
+    for text, released in releases:
+        version = parse_version(text)
+        if not version or major_line(version) != line or released > cutoff:
+            continue
+        if version > current and (best is None or version > best[0]):
+            best = (version, released)
+    return best
+
+
+def fmt(version):
+    return ".".join(str(n) for n in version)
+
+
+# --- File edits ----------------------------------------------------------------
+
+def node_version(module):
+    match = NODE_VERSION_ATTR.search(module)
+    return match.group(2) if match else None
+
+
+def set_node_version(module, version):
+    return NODE_VERSION_ATTR.sub(lambda m: m.group(1) + version + m.group(3), module, count=1)
+
+
+def pnpm_version(module):
+    call = PNPM_CALL.search(module)
+    match = call and PNPM_VERSION_ATTR.search(call.group("args"))
+    return match.group(2) if match else None
+
+
+def set_pnpm_version(module, version, integrity):
+    """Sets pnpm_version and pnpm_version_integrity in the pnpm.pnpm(...) call,
+    keeping its other attributes."""
+    if not INTEGRITY.match(integrity):
+        raise ValueError("unexpected pnpm integrity: %r" % integrity)
+
+    def replace(call):
+        args = PNPM_VERSION_ATTR.sub(lambda m: m.group(1) + version + m.group(3),
+                                     call.group("args"), count=1)
+        if PNPM_INTEGRITY_ATTR.search(args):
+            args = PNPM_INTEGRITY_ATTR.sub(lambda m: m.group(1) + integrity + m.group(3), args,
+                                           count=1)
+        else:
+            # Put each attribute on its own line, as buildifier formats calls
+            # with more than one argument.
+            attrs = [a.strip() for a in args.split(",") if a.strip()]
+            attrs.append('pnpm_version_integrity = "%s"' % integrity)
+            args = "\n" + "".join("    %s,\n" % a for a in attrs)
+        return call.group("head") + args + call.group("tail")
+
+    return PNPM_CALL.sub(replace, module, count=1)
+
+
+def package_manager_version(package_json):
+    match = PACKAGE_MANAGER.search(package_json)
+    return match.group(2) if match else None
+
+
+def set_package_manager_version(package_json, version):
+    return PACKAGE_MANAGER.sub(lambda m: m.group(1) + version + m.group(3), package_json, count=1)
+
+
+# --- Network -------------------------------------------------------------------
+
+def fetch_json(url):
+    request = urllib.request.Request(url, headers={
+        "Accept": "application/json", "User-Agent": "update_toolchain_versions"})
+    with urllib.request.urlopen(request, timeout=60) as response:
+        return json.load(response)
+
+
+def parse_time(value):
+    if len(value) == 10:  # A date, e.g. in nodejs.org/dist/index.json.
+        value += "T00:00:00Z"
+    return datetime.datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+
+def node_releases():
+    """Returns [(version, release time)] of all Node.js releases."""
+    return [(entry["version"].lstrip("v"), parse_time(entry["date"]))
+            for entry in fetch_json(NODE_INDEX)]
+
+
+def pnpm_package():
+    """Returns the npm registry document of pnpm."""
+    return fetch_json(NPM_REGISTRY + "pnpm")
+
+
+def npm_releases(package):
+    return [(version, parse_time(time)) for version, time in package["time"].items()
+            if version not in ("created", "modified")]
+
+
+# --- Updates -------------------------------------------------------------------
+
+def plan_updates(module, now, fetch_node_releases=node_releases, fetch_pnpm=pnpm_package):
+    """Returns a list of updates: dicts with name, current, new, released and,
+    for pnpm, integrity. A toolchain whose data can't be fetched is skipped
+    with a warning."""
+    updates = []
+    current = parse_version(node_version(module) or "")
+    if not current:
+        print("WARNING: no node.toolchain(node_version) in %s" % MODULE_BAZEL, file=sys.stderr)
+    else:
+        try:
+            best = newest_in_line(current, fetch_node_releases(), now, NODE_COOLDOWN_DAYS)
+        except FETCH_ERRORS as e:
+            print("WARNING: can't get the Node.js releases: %s" % e, file=sys.stderr)
+            best = None
+        if best:
+            updates.append({"name": "Node.js", "current": fmt(current), "new": fmt(best[0]),
+                            "released": best[1]})
+
+    current = parse_version(pnpm_version(module) or "")
+    if not current:
+        print("WARNING: no pnpm.pnpm(pnpm_version) in %s" % MODULE_BAZEL, file=sys.stderr)
+    else:
+        try:
+            package = fetch_pnpm()
+            best = newest_in_line(current, npm_releases(package), now, PNPM_COOLDOWN_DAYS)
+            integrity = best and package["versions"][fmt(best[0])]["dist"]["integrity"]
+        except FETCH_ERRORS as e:
+            print("WARNING: can't get the pnpm releases: %s" % e, file=sys.stderr)
+            best = None
+        if best and not INTEGRITY.match(integrity or ""):
+            print("WARNING: unexpected integrity for pnpm %s: %r" % (fmt(best[0]), integrity),
+                  file=sys.stderr)
+            best = None
+        if best:
+            updates.append({"name": "pnpm", "current": fmt(current), "new": fmt(best[0]),
+                            "released": best[1], "integrity": integrity})
+    return updates
+
+
+def apply_updates(module, package_json, updates):
+    for update in updates:
+        if update["name"] == "Node.js":
+            module = set_node_version(module, update["new"])
+        elif update["name"] == "pnpm":
+            module = set_pnpm_version(module, update["new"], update["integrity"])
+            package_json = set_package_manager_version(package_json, update["new"])
+    return module, package_json
+
+
+def update_summary(updates):
+    if not updates:
+        return "The Node.js and pnpm toolchain versions are up to date.\n"
+    lines = [
+        "Updates the toolchain versions that the Bazel build downloads, within the current "
+        "major version. Generated by `scripts/update_toolchain_versions` (Toolchain updates "
+        "workflow); the branch is rewritten when the updates change.",
+        "",
+        "| Toolchain | Current | New | Released |",
+        "|---|---|---|---|",
+    ]
+    for u in updates:
+        lines.append("| %s | `%s` | `%s` | %s |"
+                     % (u["name"], u["current"], u["new"], u["released"].date().isoformat()))
+    lines += [
+        "",
+        "Release notes: [Node.js](https://github.com/nodejs/node/releases), "
+        "[pnpm](https://github.com/pnpm/pnpm/releases).",
+        "",
+        "`MODULE.bazel.lock` is refreshed with the new versions. Please check its diff: for "
+        "Node.js versions that rules_nodejs has no built-in checksums for, the checksums of the "
+        "Node.js archives (from the release's `SHASUMS256.txt`) are only pinned there.",
+        "",
+        "To merge: check the release notes and the lockfile diff, approve, and comment "
+        "`/gcbrun`; auto-merge is enabled by the Dependency PR auto-merge workflow.",
+    ]
+    return "\n".join(lines) + "\n"
+
+
+# --- Main ----------------------------------------------------------------------
+
+def read(path):
+    with open(path) as f:
+        return f.read()
+
+
+def write(path, text):
+    with open(path, "w") as f:
+        f.write(text)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    parser.add_argument("--dry-run", action="store_true", help="Don't change any files.")
+    parser.add_argument("--summary", help="Write a markdown summary of the updates here.")
+    args = parser.parse_args()
+    now = datetime.datetime.now(datetime.timezone.utc)
+    module, package_json = read(MODULE_BAZEL), read(PACKAGE_JSON)
+
+    if package_manager_version(package_json) != pnpm_version(module):
+        print("WARNING: packageManager in %s (%s) differs from pnpm_version in %s (%s)"
+              % (PACKAGE_JSON, package_manager_version(package_json), MODULE_BAZEL,
+                 pnpm_version(module)), file=sys.stderr)
+    updates = plan_updates(module, now)
+    for u in updates:
+        print("%s: %s -> %s (released %s)" % (u["name"], u["current"], u["new"],
+                                               u["released"].date()))
+    if not updates:
+        print("The Node.js and pnpm toolchain versions are up to date.")
+    if updates and not args.dry_run:
+        new_module, new_package_json = apply_updates(module, package_json, updates)
+        write(MODULE_BAZEL, new_module)
+        write(PACKAGE_JSON, new_package_json)
+    if args.summary:
+        write(args.summary, update_summary(updates))
+
+
+if __name__ == "__main__":
+    main()

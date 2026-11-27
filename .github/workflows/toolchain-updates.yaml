@@ -1,0 +1,187 @@
+name: Toolchain updates
+
+# Updates the Node.js and pnpm versions in MODULE.bazel and package.json within
+# their current major version (see scripts/update_toolchain_versions),
+# refreshes MODULE.bazel.lock, and opens or updates a PR from the
+# deps/toolchain-updates branch (or closes it when nothing is left to update).
+# The branch is rewritten when the updates change, so don't push changes to it.
+# The Dependency PR auto-merge workflow enables auto-merge on the PR.
+#
+# Two jobs, so that the code that the Bazel build downloads and runs (repository
+# rules, module extensions) never shares a job with the write token: "update"
+# only has read access and passes its changes as a patch artifact to "pr",
+# which applies it (after checking that it only touches the expected files)
+# and pushes it with an installation token of the repo's GitHub App (repo
+# secrets SECURITY_UPDATES_APP_ID and SECURITY_UPDATES_PRIVATE_KEY; contents
+# and pull requests: read and write). Unlike with the default GITHUB_TOKEN, its
+# pushes and PRs trigger the GitHub Actions workflows.
+
+on:
+  schedule:
+    - cron: "30 1 * * *" # Daily at 01:30 UTC.
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: >-
+          Only show the planned updates in the run summary; don't push or open
+          a PR.
+        type: boolean
+        default: true
+
+permissions: {}
+
+# One group for scheduled and manual runs, so that they never push the branch
+# at the same time.
+concurrency:
+  group: toolchain-updates
+  cancel-in-progress: false
+
+env:
+  FILES: MODULE.bazel MODULE.bazel.lock package.json
+
+jobs:
+  update:
+    name: Update toolchain versions
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read # Check out the repo.
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Update toolchain versions
+        run: |
+          mkdir -p "${RUNNER_TEMP}/out"
+          ./scripts/update_toolchain_versions --summary "${RUNNER_TEMP}/out/summary.md"
+          cat "${RUNNER_TEMP}/out/summary.md" >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Setup Bazelisk
+        uses: bazelbuild/setup-bazelisk@b39c379c82683a5f25d34f0d062761f62693e0b2 # v3.0.0
+
+      # `bazel mod deps` fails on an unused module extension of
+      # aspect_rules_rollup, so the lockfile is refreshed by loading all targets.
+      # MODULE.bazel sets `use_home_npmrc = True`, which requires ~/.npmrc.
+      - name: Refresh MODULE.bazel.lock
+        run: |
+          if git diff --quiet -- MODULE.bazel; then
+            echo "MODULE.bazel is unchanged."
+            exit 0
+          fi
+          touch ~/.npmrc
+          bazel build --nobuild --lockfile_mode=update //...
+          bazel build --nobuild --lockfile_mode=error //...
+
+      - name: Save the changes as a patch
+        run: |
+          read -r -a files <<< "${FILES}"
+          git diff --binary -- "${files[@]}" > "${RUNNER_TEMP}/out/changes.patch"
+          git diff --stat -- "${files[@]}"
+
+      - name: Upload the patch
+        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
+        with:
+          name: toolchain-updates
+          path: ${{ runner.temp }}/out/
+          retention-days: 1
+          if-no-files-found: error
+
+  pr:
+    name: Open, update or close the PR
+    needs: update
+    if: github.event_name != 'workflow_dispatch' || !inputs.dry-run
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read # Check out the repo; writes use the GitHub App token.
+    env:
+      BRANCH: deps/toolchain-updates
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Download the patch
+        uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806 # v4.1.9
+        with:
+          name: toolchain-updates
+          path: ${{ runner.temp }}/out
+
+      - name: Apply the patch
+        run: |
+          set -euo pipefail
+          patch="${RUNNER_TEMP}/out/changes.patch"
+          if [[ ! -s "${patch}" ]]; then
+            echo "No changes."
+            exit 0
+          fi
+          # Only accept changes to the expected files.
+          read -r -a files <<< "${FILES}"
+          while IFS=$'\t' read -r _ _ path; do
+            if [[ " ${files[*]} " != *" ${path} "* ]]; then
+              echo "::error::The patch changes an unexpected file: ${path}"
+              exit 1
+            fi
+          done < <(git apply --numstat "${patch}")
+          git apply "${patch}"
+          git diff --stat
+
+      - name: Create a GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          app-id: ${{ secrets.SECURITY_UPDATES_APP_ID }}
+          private-key: ${{ secrets.SECURITY_UPDATES_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: Open, update or close the PR
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
+        run: |
+          set -euo pipefail
+          title="Update Node.js and pnpm toolchain versions"
+          summary="${RUNNER_TEMP}/out/summary.md"
+          existing="$(gh pr list --head "${BRANCH}" --state open --json number --jq '.[0].number // empty')"
+          read -r -a files <<< "${FILES}"
+
+          if git diff --quiet -- "${files[@]}"; then
+            echo "No updates."
+            if [[ -n "${existing}" ]]; then
+              gh pr close "${existing}" --delete-branch \
+                --comment "The toolchain versions are up to date; closing."
+            fi
+            exit 0
+          fi
+
+          # Don't push if the PR already has exactly these changes; only
+          # refresh its description.
+          if [[ -n "${existing}" ]] && git fetch -q origin "${BRANCH}" &&
+             git diff --quiet FETCH_HEAD -- "${files[@]}"; then
+            echo "The PR is up to date; only updating its description."
+            gh pr edit "${existing}" --body-file "${summary}"
+            exit 0
+          fi
+
+          # Commit as the GitHub App's bot user.
+          bot="${APP_SLUG}[bot]"
+          bot_id="$(gh api "/users/${bot}" --jq .id)"
+          git config user.name "${bot}"
+          git config user.email "${bot_id}+${bot}@users.noreply.github.com"
+          git switch -c "${BRANCH}"
+          git commit -q -m "${title}" -- "${files[@]}"
+          auth="$(printf 'x-access-token:%s' "${GH_TOKEN}" | base64 -w0)"
+          echo "::add-mask::${auth}"
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic ${auth}" \
+            push --force origin "HEAD:refs/heads/${BRANCH}"
+
+          if [[ -n "${existing}" ]]; then
+            gh pr edit "${existing}" --title "${title}" --body-file "${summary}"
+          else
+            gh pr create --base "${GITHUB_REF_NAME}" --head "${BRANCH}" \
+              --title "${title}" --body-file "${summary}"
+          fi

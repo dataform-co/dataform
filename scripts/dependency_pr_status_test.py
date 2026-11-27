@@ -45,6 +45,12 @@ class IsNpmDependencyPrTest(unittest.TestCase):
         self.assertTrue(status.is_npm_dependency_pr(
             pr("deps/security-updates", author="dataform-automation[bot]")))
 
+    def test_toolchain_updates_branch_is_skipped(self):
+        # It doesn't change pnpm-lock.yaml, so rerun_dependency_pr_tests can't
+        # tell when it would pass; don't label it as waiting.
+        self.assertFalse(status.is_npm_dependency_pr(
+            pr("deps/toolchain-updates", author="dataform-automation[bot]")))
+
     def test_security_updates_branch_from_a_fork(self):
         self.assertFalse(status.is_npm_dependency_pr(
             pr("deps/security-updates", author="someone", repo="someone/dataform")))
