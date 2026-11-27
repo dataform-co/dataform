@@ -5,8 +5,10 @@ import {
   compiledGraphOutputType,
   dotRepresentation,
   escapeDotString,
+  interactiveQuestion,
   printCompiledGraph,
   printExecutionGraph,
+  resetTestInputState,
 } from "df/cli/console";
 import { dataform } from "df/protos/ts";
 import { suite, test } from "df/testing";
@@ -235,6 +237,53 @@ suite("dotRepresentation", () => {
         '"ds.o1" [label="ds.o1"];',
         "}",
       ].join("\n"),
+    );
+  });
+});
+
+suite("interactiveQuestion with DATAFORM_CLI_TEST_INPUTS", ({ beforeEach, afterEach }) => {
+  const originalTestInputs = process.env.DATAFORM_CLI_TEST_INPUTS;
+  const originalIsTty = Object.getOwnPropertyDescriptor(process.stdin, "isTTY");
+  const originalStdoutWrite = process.stdout.write.bind(process.stdout);
+
+  beforeEach("configure non-TTY stdin and suppress stdout", () => {
+    resetTestInputState();
+    Object.defineProperty(process.stdin, "isTTY", { value: false, configurable: true });
+    process.stdout.write = (() => true) as typeof process.stdout.write;
+  });
+
+  afterEach("restore stdin, stdout and env", () => {
+    resetTestInputState();
+    process.stdout.write = originalStdoutWrite;
+    if (originalIsTty) {
+      Object.defineProperty(process.stdin, "isTTY", originalIsTty);
+    } else {
+      Reflect.deleteProperty(process.stdin, "isTTY");
+    }
+    if (originalTestInputs === undefined) {
+      delete process.env.DATAFORM_CLI_TEST_INPUTS;
+    } else {
+      process.env.DATAFORM_CLI_TEST_INPUTS = originalTestInputs;
+    }
+  });
+
+  test("returns a single string input once and throws if exhausted", () => {
+    process.env.DATAFORM_CLI_TEST_INPUTS = JSON.stringify({ "Question:": "answer" });
+    expect(interactiveQuestion("Question:")).equals("answer");
+    expect(() => interactiveQuestion("Question:")).to.throw(
+      '[EXHAUSTED TEST_INPUT for "Question:"]',
+    );
+  });
+
+  test("consumes sequential array inputs in order and throws when exhausted", () => {
+    process.env.DATAFORM_CLI_TEST_INPUTS = JSON.stringify({
+      "Question:": ["", "bad.value", "good_value"],
+    });
+    expect(interactiveQuestion("Question:")).equals("");
+    expect(interactiveQuestion("Question:")).equals("bad.value");
+    expect(interactiveQuestion("Question:")).equals("good_value");
+    expect(() => interactiveQuestion("Question:")).to.throw(
+      '[EXHAUSTED TEST_INPUT for "Question:"]',
     );
   });
 });
